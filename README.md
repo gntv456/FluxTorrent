@@ -89,8 +89,10 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 | 评论（UTF-8 中文）/感谢（重复 → 5002）/收藏 | ✅ |
 | 下载 .torrent（注入本站 announce + passkey + private=1） | ✅ |
 | 促销引擎（保种区 seeders>7 自动移出 + 3 天免费延续） | ✅ |
-| **Tracker announce 全链路**（started/regular/completed/stopped 生命周期 + compact 响应 + 错误 passkey 拒绝） | ✅ |
-| **announce → Redis Stream → worker 计费**（事件消费 + 促销倍率裁决：free 种子下行计 0） | ✅ |
+| **Tracker announce 全链路**（BEP3 二进制安全：percent-encoded info_hash/peer_id + compact 响应 + 错误 passkey 拒绝） | ✅ |
+| **announce → Redis Stream → worker 计费**（游标消费不丢不重 + 促销倍率裁决：free 种子下行计 0） | ✅ |
+| **下载 info_hash 一致性**（上传 raw 存储 → 下载重注入 announce + private=1 → 重算 SHA1 与库中一致） | ✅ |
+| **用户上/下载量/种子计数快照回填**（权威在 traffic_ledger 流水，worker 周期刷新） | ✅ |
 | 做种收益结算（spark_ledger 流水 + 幂等重跑） | ✅ |
 | Web 三页渲染真实数据（首页统计/列表/详情含免费徽章） | ✅ |
 

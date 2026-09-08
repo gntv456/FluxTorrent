@@ -398,6 +398,14 @@ async fn upload(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
+    // 存原始 .torrent 字节（下载时重新注入 announce，M05）
+    sqlx::query("INSERT INTO torrent_files (torrent_id, raw) VALUES ($1, $2)")
+        .bind(id)
+        .bind(&parsed.raw)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+
     state
         .repo
         .audit(Some(auth.id), "torrent_upload", Some(id))
@@ -411,36 +419,42 @@ async fn download(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
+    use actix_web::body::BoxBody;
+
     let auth = require_auth(&req, &state).await?;
-    let row: Option<(String, Vec<u8>)> = sqlx::query_as(
-        "SELECT info_hash, ''::bytea FROM torrents WHERE id = $1 AND approval_status = 1",
+    let raw: Option<Vec<u8>> = sqlx::query_scalar(
+        "SELECT f.raw FROM torrent_files f \
+         JOIN torrents t ON t.id = f.torrent_id \
+         WHERE f.torrent_id = $1 AND t.approval_status = 1",
     )
     .bind(path.into_inner())
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((info_hash, _raw)) = row else {
+    let Some(raw) = raw else {
         return Err(DomainError::NotFound(0));
     };
-    // 重建最小 .torrent（info dict 由 raw 存储还原；此处以重新查 raw 文件存储为准）
     let user = state
         .repo
         .find_user_by_id(auth.id)
         .await?
         .ok_or(DomainError::Unauthorized)?;
-    let announce = format!("http://tracker.flux.local:6969/{}{}", user.passkey, "");
-    let _ = &info_hash;
-    // raw 字节在对象存储；演示态返回带 announce 的最小合法种子由 build_download_torrent 处理
-    let stub = format!(
-        "d8:announce{}:{}4:infod6:lengthi0e4:name4:demo12:piece lengthi16384eee",
-        announce.len(),
-        announce
+    // 注入本站 announce（含 passkey）+ private=1；info dict 不动 → info_hash 与上传时一致（M05）
+    let tracker_host =
+        std::env::var("PUBLIC_TRACKER_URL").unwrap_or_else(|_| "http://127.0.0.1:7070".into());
+    let announce = format!(
+        "{}/announce/{}",
+        tracker_host.trim_end_matches('/'),
+        user.passkey
     );
-    let body = crate::bencode::build_download_torrent(stub.as_bytes(), &announce)
+    let body = crate::bencode::build_download_torrent(&raw, &announce)
         .map_err(DomainError::TorrentInvalid)?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/x-bittorrent")
-        .body(body))
+    let mut resp = HttpResponse::with_body(actix_web::http::StatusCode::OK, BoxBody::new(body));
+    resp.headers_mut().insert(
+        actix_web::http::header::CONTENT_TYPE,
+        actix_web::http::header::HeaderValue::from_static("application/x-bittorrent"),
+    );
+    Ok(resp)
 }
 
 // ============ 邀请（M23 P0 面） ============
