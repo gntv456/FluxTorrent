@@ -8,30 +8,28 @@ use uuid::Uuid;
 use crate::dto::ok;
 use crate::economy::{self, checkin_reward, maturity_interest, term_rate, VALID_TERMS};
 use crate::errors::{DomainError, DomainResult};
-use crate::http::{self, require_auth};
+use crate::http::require_auth;
 use crate::state::AppState;
 
-/// 经济路由挂载到主 /api/v1 scope（与 http::configure 共用同一 scope，避免同名 scope 互相遮蔽）
-pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        http::v1_scope()
-            .service(shop_items)
-            .service(shop_buy)
-            .service(my_spark)
-            .service(my_ledger)
-            .service(bank_deposit)
-            .service(bank_withdraw)
-            .service(bank_list)
-            .service(checkin)
-            .service(checkin_status)
-            .service(pool_status)
-            .service(pool_donate),
-    );
+/// 经济路由（挂载进主 /api/v1 scope，单 scope 避免遮蔽）
+pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
+    scope
+        .service(shop_items)
+        .service(shop_buy)
+        .service(my_spark)
+        .service(my_ledger)
+        .service(bank_deposit)
+        .service(bank_withdraw)
+        .service(bank_list)
+        .service(checkin)
+        .service(checkin_status)
+        .service(pool_status)
+        .service(pool_donate)
 }
 
 /// 动账核心：余额充足校验 + 负流水 + 余额快照更新（单事务）。
 /// 幂等键唯一约束（shop_orders/应用层先查）防重复扣款。
-async fn spend_spark(
+pub async fn spend_spark(
     db: &PgPool,
     user_id: i64,
     amount: i64,
@@ -89,7 +87,7 @@ async fn spend_spark(
 }
 
 /// 入账（签到/利息/奖励）
-async fn earn_spark(
+pub async fn earn_spark(
     db: &PgPool,
     user_id: i64,
     amount: i64,
