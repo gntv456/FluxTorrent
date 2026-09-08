@@ -1,0 +1,1782 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="generator" content="NexusPHP" />
+<title>好学 :: 规则 - Powered by NexusPHP</title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+<link rel="search" type="application/opensearchdescription+xml" title="好学 Torrents" href="opensearch.php" />
+<link rel="stylesheet" href="styles/mediumfont.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="styles/sprites.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="pic/forum_pic/chs/forumsprites.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="styles/CuteTop/theme.css?v=1787399426" type="text/css" />
+<link rel="stylesheet" href="styles/CuteTop/DomTT.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="styles/curtain_imageresizer.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="styles/nexus.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="css/avatar-frame.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="css/username-style.css?20260901113500" type="text/css" />
+<link rel="alternate" type="application/rss+xml" title="Latest Torrents" href="torrentrss.php" />
+<script type="text/javascript" src="js/curtain_imageresizer.js?20260901113500&v=2"></script>
+<script type="text/javascript" src="js/ajaxbasic.js?20260901113500"></script>
+<script type="text/javascript" src="js/common.js?20260901113500&v=2"></script>
+<script type="text/javascript" src="js/domLib.js?20260901113500"></script>
+<script type="text/javascript" src="js/domTT.js?20260901113500"></script>
+<script type="text/javascript" src="js/domTT_drag.js?20260901113500"></script>
+<script type="text/javascript" src="js/fadomatic.js?20260901113500"></script>
+<link rel="stylesheet" href="ddlevelsfiles/new-base.css" type="text/css"><style type="text/css">.sticky-promotion-box {
+    padding: 15px 30px;
+    color: black;
+}
+.sticky-promotion-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 10px;
+}
+.sticky-promotion-box a {
+    color: black !important;
+}</style><script type="text/javascript" src="js/jquery-1.12.4.min.js?20260901113500"></script>
+<script type="text/javascript">
+    jQuery.noConflict();
+    window.nexusLayerOptions = {
+        confirm: {btnAlign: 'c', title: 'Confirm', btn: ['OK', 'Cancel']},
+        alert: {btnAlign: 'c', title: 'Info', btn: ['OK', 'Cancel']}
+    }
+</script>
+<script type="text/javascript" src="vendor/layer-v3.5.1/layer/layer.js?20260901113500"></script>
+<style>
+/* 濠碉紕鍋戦崐婵嗩焽瑜旀俊鐢稿籍閳ь剙顕ラ崟顖氱骇闁瑰瓨绻傛竟鏍ㄤ繆椤愶絾绶查悗姘煎灦閿濈偛顓奸崪浣告闂侀潻瀵岄崢鎯х暦閸洘鐓涚€广儱鎳庡Σ鑽ょ磼?*/
+.header-avatar-wrapper {
+    position: relative;
+    width: 36px;
+    height: 36px;
+}
+
+/* 濠碉紕鍋戦崐婵嗩焽瑜旀俊鐢稿籍閸屾瑧鍓ㄩ棅顐㈡处閹歌埖绂掗崼銉︾厱鐎广儱鎳愮粻铏箾閸喎鐏︾€垫澘瀚板鍫曞箣濠靛棗顥涙繝纰樺墲椤ㄥ懎螞濞嗘挻鍋嬮柛妤冨剱閸?*/
+.header-avatar-wrapper .avatar-wrapper {
+    width: 36px !important;
+    height: 36px !important;
+}
+
+.header-avatar-wrapper .avatar-wrapper.avatar-frame-overlay .frame-overlay {
+    width: 36px !important;
+    height: 36px !important;
+}
+
+/* 濠碘槅鍋呭妯尖偓姘煎灦閿濈偛顓奸崪浣告闂侀潻瀵岄崢鎯х暦閸洘鐓曢柟閭﹀墯閸ｈ姤绻涢崼鐔风仸鐎垫澘瀚板鍫曞箣濠靛棗顥涙繝纰樺墲椤ㄥ懎螞濞嗘挻鍋嬮柛妤冨剱閸?*/
+#header-avatar-preview .avatar-wrapper {
+    width: 500px !important;
+    height: 500px !important;
+}
+
+#header-avatar-preview .avatar-wrapper.avatar-frame-overlay .frame-overlay {
+    width: 500px !important;
+    height: 500px !important;
+}
+
+#header-avatar-preview .avatar-wrapper.avatar-frame-overlay img {
+    width: 80% !important;
+    height: 80% !important;
+}
+
+/* 闂備礁鎲￠弻锝夊礉瀹ュ鐒垫い鎴ｆ硶椤︼箓鏌曢崶銊︻棃鐎规洘鎹佺粻娑㈠箻绾惧鎯堝┑鈽嗗亝濠㈡鈧凹鍨堕敐鐐差吋閸℃瑢鏋栧銈嗘尵婵敻鎮鹃柆宥嗙厸鐎广儱鎳庡Σ鑽ょ磼閹插绡€闁轰礁绉瑰畷濂告偄閻戞?00*500闂?0%闂備焦瀵х粙鎴︽嚐椤栨氨鏆?00*400闂?*/
+#header-avatar-preview .avatar-wrapper img.animated-avatar {
+    width: 80% !important;
+    height: 80% !important;
+    max-width: 400px !important;
+    max-height: 400px !important;
+    margin: auto;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+</style>
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+    var $preview = $('#header-avatar-preview');
+    var previewWidth = 500;
+    var previewHeight = 500;
+    var hideTimeout = null;
+    var avatarSelector = '.header-avatar-wrapper, .cute-top-avatar-preview-trigger';
+    var avatarPreviewFrame = null;
+    var lastAvatarEvent = null;
+
+    function getPreviewPosition(e) {
+        var margin = 16;
+        var viewportWidth = window.innerWidth || $(window).width();
+        var viewportHeight = window.innerHeight || $(window).height();
+        var left = e.clientX + 24;
+        var top = e.clientY - (previewHeight / 2);
+
+        if (left + previewWidth > viewportWidth - margin) {
+            left = e.clientX - previewWidth - 24;
+        }
+        if (left < margin) {
+            left = margin;
+        }
+
+        if (top < margin) {
+            top = margin;
+        }
+        if (top + previewHeight > viewportHeight - margin) {
+            top = viewportHeight - previewHeight - margin;
+        }
+        if (top < margin) {
+            top = margin;
+        }
+
+        return {
+            left: left,
+            top: top
+        };
+    }
+
+    function applyAvatarPreviewPosition(e) {
+        if (!$preview.length || !e) {
+            return;
+        }
+        var pos = getPreviewPosition(e);
+        $preview.css({
+            top: pos.top + 'px',
+            left: pos.left + 'px'
+        });
+    }
+
+    function scheduleAvatarPreviewPosition(e) {
+        lastAvatarEvent = e;
+        if (avatarPreviewFrame) {
+            return;
+        }
+        avatarPreviewFrame = window.requestAnimationFrame(function() {
+            avatarPreviewFrame = null;
+            applyAvatarPreviewPosition(lastAvatarEvent);
+        });
+    }
+
+    function hideAvatarPreviewImmediately() {
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+        }
+        if (avatarPreviewFrame) {
+            window.cancelAnimationFrame(avatarPreviewFrame);
+            avatarPreviewFrame = null;
+        }
+        lastAvatarEvent = null;
+        $preview.hide();
+    }
+
+    $(document).on('mouseenter', avatarSelector, function(e) {
+        if (!$preview.length) {
+            return;
+        }
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+        }
+        $preview.css({
+            display: 'block'
+        });
+        scheduleAvatarPreviewPosition(e);
+    });
+
+    $(document).on('mousemove', avatarSelector, function(e) {
+        if (!$preview.length || $preview.css('display') === 'none') {
+            return;
+        }
+        scheduleAvatarPreviewPosition(e);
+    });
+
+    $(document).on('mouseleave', avatarSelector, function() {
+        hideTimeout = setTimeout(function() {
+            hideAvatarPreviewImmediately();
+        }, 80);
+    });
+
+    $preview.on('mouseenter', function() {
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+        }
+    });
+
+    $preview.on('mouseleave', function() {
+        hideAvatarPreviewImmediately();
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible') {
+            hideAvatarPreviewImmediately();
+        }
+    });
+    window.addEventListener('pagehide', hideAvatarPreviewImmediately);
+});
+</script>
+</head>
+<body>
+<div class="cute-top-header">
+    <div class="cute-top-header__inner">
+        <div class="cute-top-header__brand">
+            <a class="cute-top-header__brand-link" href="index.php">
+                <span class="cute-top-header__brand-logo"><img src="/logo-clear.png" alt="好学" title="好学 - 好学者如春苗，日有所长；心向学，梦有光！" /></span>
+                    </a>
+        </div>
+        <div class="cute-top-header__nav">
+<table class="main" width="1600" border="0" cellspacing="0" cellpadding="0"><tr><td class="embedded" ><div id="nav"><ul id="mainmenu" class="menu"><li><a href="/index.php" target="_self" style="">  首页  </a></li><li><a href="/forums.php" target="_blank" style="">论坛</a></li><li><a href="/medal_wall.php" target="_self" style="">勋章墙</a></li><li><a href="/textbooks.php" target="_self" style="">课本</a></li><li><a href="/torrents.php?tag_id=3" target="_self" style="" rel="nexus-menu-10">官种</a></li><li><a href="/torrents.php" target="_self" style="" rel="nexus-menu-3">资源库</a></li><li><a href="/seed_preserve.php" target="_self" style="">保种区</a></li><li><a href="/upload.php" target="_self" style="" rel="nexus-menu-17">发布</a></li><li><a href="/faq.php" target="_self" style="" rel="nexus-menu-22">帮助</a></li><li><a href="/image/ImageToken.php" target="_blank" style="" rel="nexus-menu-50">工具</a></li><li><a href="/mybonus.php" target="_self" style="" rel="nexus-menu-70">娱乐市场</a></li><li><a href="/magic_pool.php" target="_self" style="">站免池</a></li><li><a href="/contactstaff.php" target="_self" style="" rel="nexus-menu-25">PM管理</a></li><li><a href="/my_data_stats.php" target="_self" style="" rel="nexus-menu-86">我的数据</a></li><li><a href="/plugin-bank.php" target="_self" style="">火花银行</a></li></ul><ul id="nexus-menu-10" class="ddsubmenustyle"><li><a href="/torrents.php?tag_id=3" target="_self" style="">全部官种</a></li><li><a href="/torrents.php?cat401=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">学前教育</a></li><li><a href="/torrents.php?cat402=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">小 学</a></li><li><a href="/torrents.php?cat403=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">初 中</a></li><li><a href="/torrents.php?cat404=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">职 高</a></li><li><a href="/torrents.php?cat405=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">高 中</a></li><li><a href="/torrents.php?cat406=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">教育影音</a></li><li><a href="/torrents.php?cat410=1&tags%5B4%5D%5B%5D=3&incldead=1&torrent_status=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&add" target="_self" style="">纪录片</a></li></ul><ul id="nexus-menu-3" class="ddsubmenustyle"><li><a href="/torrents.php" target="_self" style="">全部资源</a></li><li><a href="/torrents.php?cat=401" target="_self" style="">学前教育</a></li><li><a href="/torrents.php?cat=402" target="_self" style="">小 学</a><ul id="nexus-menu-5" class="ddsubmenustyle"><li><a href="/torrents.php?audiocodec2=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">一年级</a></li><li><a href="/torrents.php?audiocodec3=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">二年级</a></li><li><a href="/torrents.php?audiocodec4=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">三年级</a></li><li><a href="/torrents.php?audiocodec5=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">四年级</a></li><li><a href="/torrents.php?audiocodec6=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">五年级</a></li><li><a href="/torrents.php?cat402=1&audiocodec7=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_" target="_self" style="">六年级</a></li></ul></li><li><a href="/torrents.php?cat=403" target="_self" style="">初 中</a><ul id="" class=""><li><a href="/torrents.php?cat403=1&audiocodec7=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_" target="_self" style="">六年级</a></li><li><a href="/torrents.php?audiocodec8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">七年级</a></li><li><a href="/torrents.php?audiocodec9=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">八年级</a></li><li><a href="/torrents.php?audiocodec10=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&s" target="_self" style="">九年级</a></li></ul></li><li><a href="/torrents.php?cat=404" target="_self" style="">职 高</a></li><li><a href="/torrents.php?cat=405" target="_self" style="">高 中</a><ul id="" class=""><li><a href="/torrents.php?audiocodec11=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&s" target="_self" style="">高 一</a></li><li><a href="https://www.hxpt.org/torrents.php?audiocodec12=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sea" target="_self" style="">高 二</a></li><li><a href="/torrents.php?audiocodec13=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&s" target="_self" style="">高 三</a></li></ul></li><li><a href="/torrents.php?cat=406" target="_self" style="">教育影音</a><ul id="" class=""><li><a href="/torrents.php?cat406=1&medium1=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area" target="_self" style="">影</a></li><li><a href="/torrents.php?cat406=1&medium2=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area" target="_self" style="">音  频</a></li><li><a href="/torrents.php?cat406=1&medium3=1&medium4=1&medium5=1&medium6=1&medium8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&add" target="_self" style="">书  籍</a></li></ul></li><li><a href="/torrents.php?cat410=1&incldead=1&torrent_status=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&sear" target="_self" style="">纪录片</a></li></ul><ul id="nexus-menu-17" class="ddsubmenustyle"><li><a href="/upload.php" target="_self" style="">发资源</a></li><li><a href="/subtitles.php" target="_self" style="">发字幕</a></li><li><a href="/offers.php" target="_self" style="">候 选</a></li><li><a href="/viewrequests.php" target="_self" style="">求 种</a></li></ul><ul id="nexus-menu-22" class="ddsubmenustyle"><li><a href="/rules.php" target="_self" style="">规则</a></li><li><a href="/faq.php" target="_self" style="">常见问题</a></li><li><a href="/wiki/PTPatronus/dev/plugin-dev.html" target="_blank" style="">PTPatronus Wiki</a></li></ul><ul id="nexus-menu-50" class="ddsubmenustyle"><li><a href="/image/ImageToken.php" target="_blank" style="">获取图床Token</a></li><li><a href="https://img.hxpt.org/" target="_blank" style="">官方图床</a></li><li><a href="/tool/img-piliang.php" target="_blank" style="">图床批量上传复制工具</a></li><li><a href="https://greasyfork.org/zh-CN/scripts/424132-auto-feed" target="_blank" style="">auto-feed 转种</a></li><li><a href="https://iyuu.cn/" target="_blank" style="">IYUU 辅种</a></li><li><a href="/tool/photo-compressor.php" target="_self" style="">照片压缩工具</a></li></ul><ul id="nexus-menu-70" class="ddsubmenustyle"><li><a href="/zhuangshi.php" target="_self" style="">装饰品中心</a></li><li><a href="/wuziqi.php" target="_self" style="">五子棋</a></li><li><a href="/magic_fram.php" target="_self" style="">好学农场</a></li><li><a href="/magic_scratch.php" target="_self" style="">刮刮乐</a></li><li><a href="/jgg.php" target="_self" style="">九宫格抽奖</a></li><li><a href="/bigsmall.php" target="_self" style="">猜大小</a></li><li><a href="/medal_synthesis.php" target="_self" style="">卡牌合成</a></li></ul><ul id="nexus-menu-25" class="ddsubmenustyle"><li><a href="/jgg_admin.php" target="_self" style="">九宫格抽奖配置</a></li><li><a href="/jixiao.php" target="_self" style="">绩效考核界面</a></li><li><a href="/jixiao_admin.php" target="_self" style="">绩效考核后台管理</a></li><li><a href="/zhuangshi_admin.php" target="_self" style="">装饰品管理中心</a></li><li><a href="/torrents.php?incldead=0&spstate=0&inclbookmarked=0&approval_status=0&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&search_mode=0" target="_self" style="">待审核</a></li><li><a href="/torrents.php?incldead=0&spstate=0&inclbookmarked=0&approval_status=2&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&search_mode=0" target="_self" style="">禁止中</a></li><li><a href="/staff.php" target="_self" style="">管 理 组</a></li><li><a href="/contactstaff.php" target="_self" style="">PM 管 理 组</a></li><li><a href="/topten.php" target="_self" style="">排行榜</a></li><li><a href="/log.php" target="_self" style="">日 志</a></li></ul><ul id="nexus-menu-86" class="ddsubmenustyle"><li><a href="/my_data_stats.php" target="_self" style="">我的数据</a></li><li><a href="/ptlife.php" target="_self" style="">守护神</a></li></ul></div></td></tr></table>
+        </div>
+        <div class="cute-top-header__profile">
+            <div class="cute-top-profile">
+                <span class="cute-top-profile__trigger" aria-label="&amp;nbsp;控制面板&amp;nbsp;">
+                    <span class="cute-top-profile__avatar">
+                        <div class="avatar-wrapper avatar-frame-overlay avatar-small"><span class="cute-top-avatar-image" class="animated-avatar" style="background-image: url('https://img.ptang.top/i/2026/01/30/福697c4a7bc9b002.gif');"></span><div class="frame-overlay" style="background-image: url('https://img.ptang.top/i/2026/01/30/新春06697c128a4b1342.gif');"></div></div>                    </span>
+                </span>
+                <div class="cute-top-profile__dropdown">
+                    <div class="cute-top-profile__summary">
+                        <div class="cute-top-profile__summary-main">
+                            <span class="cute-top-profile__summary-avatar cute-top-avatar-preview-trigger">
+                                <div class="avatar-wrapper avatar-frame-overlay "><span class="cute-top-avatar-image" class="animated-avatar" style="background-image: url('https://img.ptang.top/i/2026/01/30/福697c4a7bc9b002.gif');"></span><div class="frame-overlay" style="background-image: url('https://img.ptang.top/i/2026/01/30/新春06697c128a4b1342.gif');"></div></div>                            </span>
+                            <span class="cute-top-profile__summary-text">
+                                <span class="cute-top-profile__name"><span class="nowrap"><a  href="https://www.hxpt.org/userdetails.php?id=8" class='SysOp_Name'><b>gntv</b></a><img src="https://img.seedvault.cn/i/2025/07/18/%E5%A5%BD%E5%AD%A6%E5%BC%80%E7%AB%99%E5%8B%8B%E7%AB%A06879e35ebe92955.png" title="开站勋章" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/><img src="https://img.ptang.top/i/2025/09/04/%E6%94%BE%E6%9A%91%E5%81%87%E5%95%A6.gif" title="放暑假啦" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/><img src="https://img.ptang.top/i/2025/09/04/%E5%BC%80%E5%AD%A6%E5%85%88%E9%94%8B.gif" title="开学先锋" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/><img src="https://img.ptang.top/i/2025/09/29/%E5%86%AC%E8%87%B30268da1ddac17fb2.gif" title="二十四节气 - 冬至" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/><img src="https://img.ptang.top/i/2026/03/16/%E7%BE%8E%E4%BA%BA%E9%B1%BC69b7d6fbadc882.webp" title="美人鱼" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/></span></span>
+                                <span class="cute-top-profile__subline">
+                                    <span><font class="color_bonus">火花 </font> [<a href="mybonus.php">&#28779;&#33457;&#21830;&#24215;</a>] [<a href="mybonusmine.php">&#25105;&#30340;&#28779;&#33457;</a>]: 85,812,618.9</span>
+                                    <span><font class="color_invite">邀请 </font> [<a href="invite.php?id=8">发送</a>]: 1120(0)</span>
+                                </span>
+                            </span>
+                            <a class="cute-top-profile__summary-logout" href="logout.php">退出</a>
+                        </div>
+                    </div>
+                    <div class="cute-top-profile__stats">
+                        <span class="cute-top-profile__ratio"><font class="color_ratio">分享率:</font> 38.501</span>
+                        <span><font class="color_uploaded">上传量:</font> 108.976 TB</span>
+                        <span><font class="color_downloaded">下载量:</font> 2.830 TB</span>
+                        <span><font class="color_active">当前活动:</font> <img class="arrowup" alt="Torrents seeding" title="当前做种" src="pic/trans.gif" />14248 <img class="arrowdown" alt="Torrents leeching" title="当前下载" src="pic/trans.gif" />40</span>
+                        <span><font class="color_slots">连接数：</font>无限制</span>
+                                                <span><font class='color_bonus'>认领: </font> [<a href="claim.php?uid=8">0/1000</a>]</span>                    </div>
+                    <div class="cute-top-profile__links cute-top-profile__links--primary">
+                        <a class="cute-top-profile__attendance-link is-attended" href="attendance.php"><span class="cute-top-profile__attendance-title">&#31614;&#21040;&#24050;&#24471;120, &#34917;&#31614;&#21345;: 8</span></a>
+                        <a href="mybonus.php">&#28779;&#33457;&#21830;&#24215;</a>
+                        <a href="mybonusmine.php">&#25105;&#30340;&#28779;&#33457;</a>
+                        <a href="task.php">任务</a>
+                        <a href="medal.php">勋章</a>
+                        <a href="countdown_manage.php">&#27963;&#21160;</a>                        <a href="zhuangshi.php">&#35013;&#39280;&#21697;&#20013;&#24515;</a>
+                        <a href="torrents.php?inclbookmarked=1&amp;allsec=1&amp;incldead=0">收藏</a>
+                        <a href="usercp.php">&nbsp;控制面板&nbsp;</a>
+                        <a href="staffpanel.php">管理组面板</a>                        <a href="settings.php">站点设定</a>                        <a href="nexusphp" target="_blank">管理系统</a>                    </div>
+                    <div class="cute-top-profile__links">
+                        <a href="messages.php"><img class="inbox" alt="inbox" title="收件箱" src="styles/CuteTop/icons/inbox.png" /> 65 (0 新)</a>
+                        <a href="messages.php?action=viewmailbox&amp;box=-1"><img class="sentbox" alt="sentbox" title="发件箱" src="styles/CuteTop/icons/sentbox.png" /> 1</a>
+                        <a href="cheaterbox.php"><img class="cheaterbox" alt="cheaterbox" title="作弊者" src="styles/CuteTop/icons/cheaterbox.png" /> 1</a>
+                        <a href="reports.php"><img class="reportbox" alt="reportbox" title="举报信箱" src="styles/CuteTop/icons/reportbox.png" /> 0</a>
+                        <a href="staffbox.php"><img class="staffbox" alt="staffbox" title="管理组信箱" src="styles/CuteTop/icons/staffbox.png" /> 561</a>
+                        <a href="friends.php"><img class="buddylist" alt="Buddylist" title="社交名单" src="styles/CuteTop/icons/buddylist.png" /></a>
+                        <a href="getrss.php"><img class="rss" alt="RSS" title="获取RSS" src="styles/CuteTop/icons/rss.png" /></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+    <div class="cute-top-header__body">
+    </div>
+</div>
+<script type="text/javascript">
+jQuery(function($) {
+    var $header = $('.cute-top-header');
+    var $menuRow = $('.cute-top-header__inner');
+    var $body = $('.cute-top-header__body');
+    var $mainouter = $('.theme-mainouter').first();
+    var $mainmenu = $('#mainmenu');
+    var cuteTopHeaderFullHeight = 0;
+    var cuteTopHeaderTicking = false;
+    var cuteTopDropdownTicking = false;
+    var cuteTopMenuHeight = 0;
+    var cuteTopBodyHeight = 0;
+    var cuteTopResumeTicking = false;
+    var cuteTopResumeTimeout = null;
+    var cuteTopLastResumeAt = 0;
+    if (!$header.length || !$menuRow.length || !$body.length || !$mainouter.length) {
+        return;
+    }
+
+    function measureCuteTopHeader() {
+        cuteTopMenuHeight = Math.ceil($menuRow.outerHeight(true) || 0);
+        cuteTopBodyHeight = Math.ceil($body.outerHeight(true) || 0);
+        cuteTopHeaderFullHeight = Math.max(cuteTopMenuHeight + cuteTopBodyHeight, 0);
+        var documentWidth = Math.max(
+            document.documentElement.scrollWidth || 0,
+            document.body ? document.body.scrollWidth : 0,
+            window.innerWidth || 0
+        );
+
+        $header[0].style.setProperty('--cute-top-menu-height', cuteTopMenuHeight + 'px');
+        $header.css({
+            height: cuteTopHeaderFullHeight + 'px',
+            width: documentWidth + 'px'
+        });
+        $mainouter.css('margin-top', (cuteTopHeaderFullHeight + 12) + 'px');
+    }
+
+    function syncCuteTopHeaderState() {
+        var scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+        var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || 0;
+
+        $header.css('transform', 'translateX(-' + scrollLeft + 'px)');
+
+        if (scrollTop <= 2) {
+            $menuRow.css('transform', 'translateY(0)');
+            $body.css({
+                transform: 'translateY(0)',
+                opacity: 1
+            });
+            syncCuteTopDropdowns();
+            return;
+        }
+        var hideBodyOffset = Math.min(scrollTop, cuteTopBodyHeight);
+        var hideMenuOffset = Math.min(Math.max(scrollTop - cuteTopBodyHeight, 0), cuteTopMenuHeight);
+        var bodyProgress = cuteTopBodyHeight > 0 ? Math.max(0, Math.min(1, 1 - (hideBodyOffset / cuteTopBodyHeight))) : 1;
+
+        $menuRow.css('transform', 'translateY(-' + hideMenuOffset + 'px)');
+        $body.css({
+            transform: 'translateY(-' + hideBodyOffset + 'px)',
+            opacity: bodyProgress
+        });
+
+        syncCuteTopDropdowns();
+    }
+
+    function requestCuteTopHeaderSync() {
+        if (cuteTopHeaderTicking) {
+            return;
+        }
+        cuteTopHeaderTicking = true;
+        window.requestAnimationFrame(function() {
+            cuteTopHeaderTicking = false;
+            syncCuteTopHeaderState();
+        });
+    }
+
+    function getCuteTopAnchorByRel(rel) {
+        if (!rel) {
+            return null;
+        }
+        return document.querySelector('#mainmenu > li > a[rel="' + rel + '"]');
+    }
+
+    function positionCuteTopDropdown(anchor, shell) {
+        if (!anchor || !shell) {
+            return;
+        }
+
+        var rect = anchor.getBoundingClientRect();
+        var viewportWidth = document.documentElement.clientWidth || window.innerWidth || 0;
+        var anchorWidth = Math.ceil(rect.width || 0);
+        var shellWidth = shell.offsetWidth || 0;
+        var left = rect.left;
+        var top = rect.bottom + 1;
+
+        if (anchorWidth > 0) {
+            shell.style.setProperty('min-width', Math.max(anchorWidth + 18, 172) + 'px', 'important');
+            shellWidth = shell.offsetWidth || shellWidth;
+        }
+
+        if (shellWidth > 0) {
+            left = rect.left + ((anchorWidth - shellWidth) / 2);
+        }
+
+        if (left < 12) {
+            left = 12;
+        }
+
+        if (left + shellWidth > viewportWidth - 12) {
+            left = Math.max(12, viewportWidth - shellWidth - 12);
+        }
+
+        shell.style.setProperty('position', 'fixed', 'important');
+        shell.style.setProperty('left', left + 'px', 'important');
+        shell.style.setProperty('top', top + 'px', 'important');
+    }
+
+    function positionCuteTopDropdownByShell($shell) {
+        var rel = $shell.find('ul[id]').first().attr('id');
+        var anchor = getCuteTopAnchorByRel(rel);
+        if (anchor) {
+            positionCuteTopDropdown(anchor, $shell.get(0));
+        }
+    }
+
+    function syncCuteTopDropdowns() {
+        $('.ddsubmenustyle').each(function() {
+            var $shell = $(this);
+            var rel = $shell.find('ul[id]').first().attr('id');
+            var anchor = getCuteTopAnchorByRel(rel);
+            if (!anchor) {
+                return;
+            }
+
+            if ($shell.css('visibility') !== 'hidden' || $shell.get(0).style.visibility === 'visible') {
+                positionCuteTopDropdown(anchor, $shell.get(0));
+            }
+        });
+    }
+
+    function requestCuteTopDropdownSync() {
+        if (cuteTopDropdownTicking) {
+            return;
+        }
+        cuteTopDropdownTicking = true;
+        window.requestAnimationFrame(function() {
+            cuteTopDropdownTicking = false;
+            syncCuteTopDropdowns();
+        });
+    }
+
+    function closeCuteTopDropdowns() {
+        $('.ddsubmenustyle').each(function() {
+            this.style.removeProperty('left');
+            this.style.removeProperty('top');
+            this.style.removeProperty('min-width');
+        });
+    }
+
+    function temporarilyDisableCuteTopTransitions() {
+        var nodes = [$header.get(0), $menuRow.get(0), $body.get(0), $mainmenu.get(0)];
+        nodes.forEach(function(node) {
+            if (!node) {
+                return;
+            }
+            node.setAttribute('data-cute-top-prev-transition', node.style.transition || '');
+            node.style.transition = 'none';
+        });
+
+        window.setTimeout(function() {
+            nodes.forEach(function(node) {
+                if (!node) {
+                    return;
+                }
+                var previous = node.getAttribute('data-cute-top-prev-transition');
+                if (previous) {
+                    node.style.transition = previous;
+                } else {
+                    node.style.removeProperty('transition');
+                }
+                node.removeAttribute('data-cute-top-prev-transition');
+            });
+        }, 220);
+    }
+
+    function resumeCuteTopHeaderState() {
+        temporarilyDisableCuteTopTransitions();
+        $menuRow.css({
+            transform: 'translateY(0)',
+            visibility: 'visible',
+            opacity: 1
+        });
+        $body.css({
+            transform: 'translateY(0)',
+            visibility: 'visible',
+            opacity: 1
+        });
+        $mainmenu.css({
+            visibility: 'visible',
+            opacity: 1
+        });
+        measureCuteTopHeader();
+        syncCuteTopHeaderState();
+        requestCuteTopDropdownSync();
+    }
+
+    function scheduleCuteTopResumeSync() {
+        var now = Date.now();
+        if (now - cuteTopLastResumeAt < 400) {
+            return;
+        }
+        cuteTopLastResumeAt = now;
+
+        if (!cuteTopResumeTicking) {
+            cuteTopResumeTicking = true;
+            window.requestAnimationFrame(function() {
+                cuteTopResumeTicking = false;
+                resumeCuteTopHeaderState();
+            });
+        }
+
+        if (cuteTopResumeTimeout) {
+            clearTimeout(cuteTopResumeTimeout);
+        }
+        cuteTopResumeTimeout = window.setTimeout(function() {
+            cuteTopResumeTimeout = null;
+            resumeCuteTopHeaderState();
+        }, 120);
+
+        window.setTimeout(resumeCuteTopHeaderState, 320);
+        window.setTimeout(resumeCuteTopHeaderState, 700);
+    }
+
+    measureCuteTopHeader();
+    syncCuteTopHeaderState();
+    $(window).on('load resize', function() {
+        measureCuteTopHeader();
+        syncCuteTopHeaderState();
+    });
+    window.addEventListener('scroll', requestCuteTopHeaderSync, { passive: true });
+    window.addEventListener('resize', requestCuteTopDropdownSync, { passive: true });
+    document.addEventListener('mousemove', function(event) {
+        if (event.target && event.target.closest && (event.target.closest('#mainmenu') || event.target.closest('.ddsubmenustyle'))) {
+            requestCuteTopDropdownSync();
+        }
+    }, { passive: true });
+    document.addEventListener('mouseover', function(event) {
+        if (event.target && event.target.closest && (event.target.closest('#mainmenu') || event.target.closest('.ddsubmenustyle'))) {
+            requestCuteTopDropdownSync();
+        }
+    }, { passive: true });
+    window.addEventListener('pageshow', function() {
+        scheduleCuteTopResumeSync();
+    });
+    window.addEventListener('focus', function() {
+        scheduleCuteTopResumeSync();
+    });
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            closeCuteTopDropdowns();
+            scheduleCuteTopResumeSync();
+        }
+    });
+
+
+    document.addEventListener('readystatechange', function() {
+        if (document.readyState === 'complete') {
+            scheduleCuteTopResumeSync();
+        }
+    });
+    $('.theme-mainouter img').each(function() {
+        if (!this.hasAttribute('loading')) {
+            this.setAttribute('loading', 'lazy');
+        }
+        if (!this.hasAttribute('decoding')) {
+            this.setAttribute('decoding', 'async');
+        }
+    });
+
+    $('.theme-mainouter iframe').each(function() {
+        if (!this.hasAttribute('loading')) {
+            this.setAttribute('loading', 'lazy');
+        }
+    });
+});
+</script>
+
+<table class="mainouter theme-mainouter" width="1600" cellspacing="0" cellpadding="5" align="center">
+	<tr><td class="text theme-mainouter-cell" align="center">
+
+</td></tr>
+
+<tr><td id="outer" align="center" class="outer" style="padding-top: 20px; padding-bottom: 20px">
+<table class="main" width="1600" border="0" cellspacing="0" cellpadding="0"><tr><td class="embedded" ><h2 align="left">总则 - <font class=striking>不遵守这些将导致帐号被封！</font></h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请不要做管理员明文禁止的事情。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不允许发送垃圾信息。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />账号保留规则：<br />
+1.<b>Veteran User</b>及以上等级用户会永远保留；<br />
+2.<b>Elite User</b>及以上等级用户封存账号（在<a class="faqlink" href="usercp.php?action=personal" target="_blank">控制面板</a>）后不会被删除帐号；<br />
+3.封存账号的用户连续400天不登录将被删除帐号；<br />
+4.未封存账号的用户连续150天不登录将被删除帐号；<br />
+5.没有流量的用户（即上传/下载数据都为0）连续100天不登录将被删除帐号。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />一切作弊的帐号会被封，请勿心存侥幸。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />注册多个好学账号的用户将被禁止。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不要把本站的种子文件上传到其他Tracker！(具体请看<a class="faqlink" href="faq.php#38" target="_blank"><b>常见问题</b></a>)<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />第一次在论坛或服务器中的捣乱行为会受到警告，第二次您将永远无缘好学 。</td></tr></table>
+<h2 align="left">下载规则 - <font class=striking>违规将会失去下载权限！</font></h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />过低的分享率会导致严重的后果，包括禁止帐号。详见<a class="faqlink" href="faq.php#22" target="_blank">常见问题</a>。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />种子促销规则：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />随机促销（种子上传后系统自动随机设为促销）：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />10%的概率成为“<span style="color: #7c7ff6;"><b>50%下载</b></span>”；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />5%的概率成为“<span style="color: #f0cc00;"><b>免费</b></span>”；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />5%的概率成为“<span style="color: #aaaaaa;"><b>2x上传</b></span>”；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />3%的概率成为“<span style="color: #7ad6ea;"><b>50%下载&amp;2x上传</b></span>”；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />1%的概率成为“<span style="color: #99cc66;"><b>免费&amp;2x上传</b></span>”。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />文件总体积大于20GB的种子将自动成为“<span style="color: #f0cc00;"><b>免费</b></span>”。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />Blu-ray Disk, HD DVD原盘将成为“<span style="color: #f0cc00;"><b>免费</b></span>”。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />电视剧等每季的第一集将成为“<span style="color: #f0cc00;"><b>免费</b></span>”。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />关注度高的种子将被设置为促销（由管理员定夺）。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />促销时限：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />除了“<span style="color: #aaaaaa;"><b>2x上传</b></span>”以外，其余类型的促销限时7天（自种子发布时起）；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />“<span style="color: #aaaaaa;"><b>2x上传</b></span>”无时限。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />所有种子在发布1个月后将自动永久成为“<span style="color: #aaaaaa;"><b>2x上传</b></span>”。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />我们也将不定期开启全站<span style="color: #f0cc00;"><b>免费</b></span>，届时尽情狂欢吧~:mml: &nbsp;:mml: &nbsp;:mml:<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />你只能使用允许的BT客户端下载本站资源。详见<a class="faqlink" href="faq.php#29" target="_blank">常见问题</a>。</td></tr></table>
+<h2 align="left">上传规则 - <font class=striking> 谨记: 违规的种子将不经提醒而直接删除 </font></h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+请遵守规则。如果你对规则有任何不清楚或不理解的地方，请<a class="faqlink" href="contactstaff.php" target="_blank">咨询管理组</a>。<b>管理组保留裁决的权力。</b><br />
+<br />
+<b>上传总则</b><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />上传者必须对上传的文件拥有合法的传播权。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />上传者必须保证上传速度与做种时间。如果在其他人完成前撤种或做种时间不足24小时，或者故意低速上传，上传者将会被警告甚至取消上传权限。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />对于自己发布的种子，发布者将获得双倍的上传量。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />如果你有一些违规但却有价值的资源，请将详细情况<a class="faqlink" href="contactstaff.php" target="_blank">告知管理组</a>，我们可能破例允许其发布。<br />
+<br />
+<b>上传者资格</b><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />任何人都能发布资源。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不过，有些用户需要先在<a class="faqlink" href="offers.php" target="_blank">候选区</a>提交候选。详见常见问题中的<a class="faqlink" href="faq.php#22" target="_blank">相关说明</a>。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />对于游戏类资源，只有<span style="color: #DC143C;"><b>上传员</b></span>及以上等级的用户，或者是管理组特别指定的用户，才能自由上传。其他用户必须先在<a class="faqlink" href="offers.php" target="_blank">候选区</a>提交候选。<br />
+<br />
+<b>允许的资源和文件：</b><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />高清（HD）视频，包括<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />完整高清媒介，如蓝光（Blu-ray）原碟、HD DVD原碟等，或remux，<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />HDTV流媒体，<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />来源于上述媒介的高清重编码（至少为720p标准），<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />其他高清视频，如高清DV；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />标清（SD）视频，只能是<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />来源于高清媒介的标清重编码（至少为480p标准）；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />DVDR/DVDISO，<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />DVDRip、CNDVDRip；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />无损音轨（及相应cue表单），如FLAC、Monkey&#039;s Audio等；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />5.1声道或以上标准的电影音轨、音乐音轨（DTS、DTSCD镜像等），评论音轨；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />PC游戏（必须为原版光盘镜像）；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />7日内发布的高清预告片；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />与高清相关的软件和文档。<br />
+<br />
+<b>不允许的资源和文件：</b><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />总体积小于100MB的资源；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />标清视频upscale或部分upscale而成的视频文件；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />属于标清级别但质量较差的视频文件，包括CAM、TC、TS、SCR、DVDSCR、R5、R5.Line、HalfCD等；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />RealVideo编码的视频（通常封装于RMVB或RM）、flv文件；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />单独的样片（样片请和正片一起上传）；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />未达到5.1声道标准的有损音频文件，如常见的有损MP3、有损WMA等；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />无正确cue表单的多轨音频文件；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />硬盘版、高压版的游戏资源，非官方制作的游戏镜像，第三方mod，小游戏合集，单独的游戏破解或补丁；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />RAR等压缩文件；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />重复（dupe）的资源（判定规则见下文）；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />涉及禁忌或敏感内容（如色情、敏感政治话题等）的资源；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />损坏的文件，指在读取或回放过程中出现错误的文件；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />垃圾文件，如病毒、木马、网站链接、广告文档、种子中包含的种子文件等，或无关文件。<br />
+<br />
+<b>重复（dupe）判定规则：质量重于数量</b><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />视频资源按来源媒介确定优先级，主要为：Blu-ray/HD DVD &gt; HDTV &gt; DVD &gt; TV。同一视频高优先级版本将使低优先级版本被判定为重复。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />同一视频的高清版本将使标清版本被判定为重复。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />对于动漫类视频资源，HDTV版本和DVD版本有相同的优先级，这是一个特例。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />来源于相同媒介，相同分辨率水平的高清视频重编码<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />参考“<a class="faqlink" href="forums.php?action=viewtopic&amp;forumid=6&amp;topicid=1520" target="_blank">Scene &amp; Internal, from Group to Quality-Degree. ONLY FOR HD-resources</a>”按发布组确定优先级；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />高优先级发布组发布的版本将使低优先级或相同优先级发布组发布的其他版本被判定为重复；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />但是，总会保留一个当前最佳画质的来源经重编码而成的DVD5大小（即4.38 GB左右）的版本；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />基于无损截图对比，高质量版本将使低质量版本被视为重复。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />来自其他区域，包含不同配音和/或字幕的blu-ray/HD DVD原盘版本不被视为重复版本。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />每个无损音轨资源原则上只保留一个版本，其余不同格式的版本将被视为重复。分轨FLAC格式有最高的优先级。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />对于站内已有的资源，<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />如果新版本没有旧版本中已确认的错误/画质问题，或新版本的来源有更好的质量，新版本允许发布且旧版本将被视为重复；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />如果旧版本已经连续断种45日以上或已经发布18个月以上，发布新版本将不受重复判定规则约束。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />新版本发布后，旧的、重复的版本将被保留，直至断种。<br />
+<br />
+<b>资源打包规则（试行）</b><br />
+原则上只允许以下资源打包：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />按套装售卖的高清电影合集（如<i>The Ultimate Matrix Collection Blu-ray Box</i>）；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />整季的电视剧/综艺节目/动漫；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />同一专题的纪录片；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />7日内的高清预告片；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />同一艺术家的MV<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />标清MV只允许按DVD打包，且不允许单曲MV单独发布；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />分辨率相同的高清MV；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />同一艺术家的音乐<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />5张或5张以上专辑方可打包发布；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />两年内发售的专辑可以单独发布；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />打包时应剔除站内已有的资源，或者将它们都包括进来；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />分卷发售的动漫剧集、角色歌、广播剧等；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />发布组打包发布的资源。<br />
+打包发布的视频资源必须来源于相同类型的媒介（如蓝光原碟），有相同的分辨率水平（如720p），编码格式一致（如x264），但预告片例外。对于电影合集，发布组也必须统一。打包发布的音频资源必须编码格式一致（如全部为分轨FLAC）。打包发布后，将视情况删除相应单独的种子。<br />
+如果你对资源打包有任何不明确的地方，请<a class="faqlink" href="contactstaff.php" target="_blank">咨询管理组</a>。管理组保留资源打包相关问题的解释权和处理权。<br />
+<br />
+<b>例外</b><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />允许发布来源于TV或是DSR的体育类的标清视频。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />允许发布小于100MB的高清相关软件和文档。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />允许发布小于100MB的单曲专辑。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />允许发布2.0声道或以上标准的国语/粤语音轨。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />允许在发布的资源中附带字幕、游戏破解与补丁、字体、包装等的扫描图。上述几种文件必须统一打包或统一不打包。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />允许在发布音轨时附带附赠DVD的相关文件。<br />
+<br />
+<b>种子信息</b><br />
+所有种子都应该有描述性的标题，必要的介绍以及其他信息。以下是一份简明的规范，完整的、详尽的规范请参阅“<a class="faqlink" href="forums.php?action=viewtopic&amp;topicid=3438&amp;page=0#56711" target="_blank">种子信息填写规范与指导</a>”。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />标题<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />电影：<i>[中文名] 名称 [年份] [剪辑版本] [发布说明] 分辨率 来源 [音频/]视频编码-发布组名称</i><br />
+例：<i>蝙蝠侠:黑暗骑士 The Dark Knight 2008 PROPER 720p BluRay x264-SiNNERS</i><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />电视剧：<i>[中文名] 名称 [年份] S**E** [发布说明] 分辨率 来源 [音频/]视频编码-发布组名称</i><br />
+例：<i>越狱 Prison Break S04E01 PROPER 720p HDTV x264-CTU</i><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />音轨：<i>[中文艺术家名 - 中文专辑名] 艺术家名 - 专辑名 [年份] [版本] [发布说明] 音频编码[-发布组名称]</i><br />
+例：<i>恩雅 - 冬季降临 Enya - And Winter Came 2008 FLAC</i><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />游戏：<i>[中文名] 名称 [年份] [版本] [发布说明][-发布组名称]</i><br />
+例：<i>红色警戒3:起义时刻 Command And Conquer Red Alert 3 Uprising-RELOADED</i><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />副标题<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不要包含广告或求种/续种请求。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />外部信息<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />电影和电视剧必须包含外部信息链接（如IMDb连接）地址（如果存在的话）。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />简介<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />NFO图请写入NFO文件，而不是粘贴到简介里。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />电影、电视剧、动漫：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />必须包含海报、横幅或BD/HDDVD/DVD封面（如果存在的话）；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请尽可能包含画面截图或其缩略图和链接；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请尽可能包含文件的详细情况，包括格式、时长、编码、码率、分辨率、语言、字幕等；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请尽可能包含演职员名单以及剧情概要。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />体育节目：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请勿在文字介绍或截图/文件名/文件大小/时长中泄漏比赛结果。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />音乐：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />必须包含专辑封面和曲目列表（如果存在的话）；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />PC游戏：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />必须包含海报或BD/HDDVD/DVD封面（如果存在的话）；<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请尽可能包含画面截图或其缩略图和链接。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />杂项<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请正确选择资源的类型和质量信息。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />注意事项<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />管理员会根据规范对种子信息进行编辑。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请勿改变或去除管理员对种子信息作出的修改（但上传者可以修正一些错误）。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />种子信息不符合规范的种子可能会被删除，视种子信息的规范程度而定。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />如果资源的原始发布信息基本符合规范，请尽量使用原始发布信息。<br />
+</td></tr></table>
+<h2 align="left">论坛总则 - <font class=striking>请遵循以下的守则，违规会受到警告！</font></h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />禁止攻击、挑动他人的言辞。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />禁止恶意灌水或发布垃圾信息。请勿在论坛非Water Jar版块发布无意义主题或回复（如纯表情）等。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不要为了获取魔力值而大肆灌水。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />禁止在标题或正文使用脏话。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不要讨论禁忌、政治敏感或当地法律禁止的话题。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />禁止任何基于种族、国家、民族、肤色、宗教、性别、年龄、性取向、身体或精神障碍的歧视性言辞。违规将导致账号永久性禁用。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />禁止挖坟（所有挖坟帖都要被删掉）。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />禁止重复发帖。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请确保问题发布在相对应的板块。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />365天无新回复的主题将被系统自动锁定.<br />
+</td></tr></table>
+<h2 align="left">评论总则 - <font class=striking>永远尊重上传者！</font></h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />无论如何，请尊重上传者！<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />所有论坛发帖的规则同样适用于评论。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />如果你没有下载的意向，请不要随便发表否定性的评论。</td></tr></table>
+<h2 align="left">头像使用规定 - <font class=striking>请尽量遵守以下规则</font></h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />允许的格式为.gif， .jpg， 和.png。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />图片大小不能超过150KB，为了统一，系统会调整头像宽度到150像素大小（浏览器会把图片调整成合适的大小，小图片将被拉伸，而过大的图片只会浪费带宽和CPU) 。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />请不要使用可能引起别人反感的图片，包括色情、宗教、血腥的动物/人类、宣扬某种意识形态的图片。如果你不确定某张图片是否合适，请站短管理员。</td></tr></table>
+<h2 align="left">趣味盒规则 - <font class=striking>在娱乐中赚分</font></h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />任何用户都可在趣味盒中投放笑话、趣图、搞笑视频、Flash等有趣的内容，除了色情、禁忌、政治敏感和当地法律禁止的内容。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />正常情况下，一条趣味内容在发布24小时后过期。然而，如果获得的投票数超过20且其中“有趣”的比例低于25%，趣味内容将提前过期。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />新的趣味内容<b>只有</b>在旧的内容过期后才能提交。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />若趣味内容被多数用户投票认为有趣，其发布者将得到以下奖励：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />票数超过25，其中认为“有趣”比例超过50%，发布者得到5个魔力值。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />票数超过50，其中认为“有趣”比例超过50%，发布者得到另外的5个魔力值。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />票数超过100，其中认为“有趣”比例超过50%，发布者得到另外的5个魔力值。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />票数超过200，其中认为“有趣”比例超过50%，发布者得到另外的5个魔力值。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />票数超过25，其中认为“有趣”比例超过75%，发布者得到10个魔力值。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />票数超过50，其中认为“有趣”比例超过75%，发布者得到另外的10个魔力值。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />票数超过100，其中认为“有趣”比例超过75%，发布者得到另外的10个魔力值。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />票数超过200，其中认为“有趣”比例超过75%，发布者得到另外的10个魔力值。</td></tr></table>
+<h2 align="left">管理守则 - <font class=striking>请慎用你的权限！</font></h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />最重要的一条：慎用你手中的权限！<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />对于违规行为不要怕说“不”！<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不要公开和其他管理员冲突，一切通过私下沟通解决。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不要太绝情，给违规者一个改过的机会。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不要试图“打预防针”，等到人们犯错了再去纠正。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />尝试去改正一个不适当的帖而不是简单的关闭它。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />多尝试移动帖子到适合的版面而不是简单地锁帖。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />当处理版聊帖的时候要宽容适度。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />锁帖的时候请给予简单的操作理由。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />在屏蔽某个用户前请先站短通知他/她, 如果有所积极回应可以考虑再给2周观察期。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不要禁用一个注册尚未满4周的帐户。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />永远记得以理服人。</td></tr></table>
+<h2 align="left">字幕区规则 - <font class=striking>违规字幕将被删除</font></h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+<b>总则：</b><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />所有上传的字幕必须符合规则（即合格的）。不合格的字幕将被删除。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />允许上传的文件格式为srt/ssa/ass/cue/zip/rar。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />如果你打算上传的字幕是Vobsub格式（idx+sub）或其它格式，或者是合集（如电视剧整季的字幕），请将它们打包为zip/rar后再上传。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />字幕区开放音轨对应cue表单文件的上传。如有多个cue，请将它们打包起来。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />不允许lrc歌词或其它非字幕/cue文件的上传。上传的无关文件将被直接删除。<br />
+<br />
+<b>不合格字幕/cue文件判定：被判定为不合格的字幕/cue文件将被直接删除。</b><br />
+出现以下情况之一的字幕/cue文件将被判定为不合格：<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />与相应种子不匹配。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />与相应的视频/音频文件不同步。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />打包错误。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />包含无关文件或垃圾信息。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />编码错误。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />cue文件错误。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />语种标识错误。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />标题命名不明确或包含冗余信息或字符。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />被判定为重复。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />接到多个用户举报并被证实有其它问题的。<br />
+<b>管理组保留裁定和处理不合格字幕的权力。</b><br />
+不合格字幕/cue文件判定细则、字幕上传的其它注意事项以及命名指引请参阅论坛的<a class="faqlink" href="http://www.nexushd.org/forums.php?action=viewtopic&amp;forumid=13&amp;topicid=2848" target="_blank">这个帖子</a>。<br />
+<br />
+<b>字幕奖惩：</b><br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />欢迎举报不合格的字幕和恶意发布不合格字幕的用户。举报不合格字幕请在字幕区点击相应字幕的“举报”按钮。举报用户请点击相应用户详细信息页面底部的“举报”按钮。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />对每一例不合格字幕的举报，确认后将奖励举报者50点魔力值（三天内发放）。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />被确定为不合格的字幕将被删除，而在每一例中，相应的字幕上传者将被扣除100点魔力值。<br />
+<img class="listicon listitem" src="pic/trans.gif" alt="list" />对为赚取积分等目的恶意上传不合格字幕的用户，或是恶意举报的用户，将视情节轻重扣除额外的魔力值甚至给予警告。<br />
+</td></tr></table>
+<h2 align="left">管理组成员退休待遇</h2><table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text" >
+满足以下条件可获得的退休待遇:<br />
+<br />
+<br />
+<b>对于 <span style="color: #DC143C;">上传员 (Uploaders)</span>: </b><br />
+<br />
+成为 <span style="color: #1cc6d5;"><b>养老族 (Retiree) </b>: </span><br />
+升职一年以上; 上传过200个以上的种子资源 (特殊情况如原碟发布, 0day更新等可以由管理组投票表决; 须被认定为作出过重大及持久的贡献).<br />
+<br />
+成为 <span style="color: #009F00;"><b>VIP</b>: </span><br />
+升职6个月以上; 上传过100个以上的种子资源 (特殊情况如原碟发布, 0day更新等可以由管理组投票表决).<br />
+<br />
+其他:<br />
+成为 <span style="color: #F88C00;"><b>Extreme User</b></span> (如果你的条件满足 <span style="color: #F88C00;"><b>Extreme User</b></span> 及以上, 则成为 <span style="color: #38ACEC;"><b>Nexus Master</b></span>) .<br />
+<br />
+<br />
+<br />
+<b>对于 <span style="color: #6495ED;">管理员 (Moderators)</span>: </b><br />
+<br />
+成为 <span style="color: #1cc6d5;"><b>养老族 (Retiree)</b>: </span><br />
+升职一年以上; 参加过至少2次站务组正式会议; 参与过 规则/答疑 的修订工作.<br />
+<br />
+成为 <span style="color: #009F00;"><b>VIP</b>: </span><br />
+若不满足成为 <span style="color: #1cc6d5;"><b>养老族 (Retiree)</b></span> 的条件, 你可以<b>无条件</b>成为 <span style="color: #009F00;"><b>VIP</b></span> .<br />
+<br />
+<br />
+<br />
+<b>对于 <span style="color: #4b0082;">总管理员 (Administrators)</span> 及 以上等级: </b><br />
+<br />
+可以<b>直接</b>成为 <span style="color: #1cc6d5;"><b>养老族 (Retiree)</b></span> .<br />
+</td></tr></table>
+</td></tr></table>
+</td></tr></table><div id="footer"><div style="margin-top: 10px; margin-bottom: 30px;" align="center"> (c)  <a href="https://www.hxpt.org" target="_self">好学</a> 2025-2026 Powered by <a href="aboutnexus.php">NexusPHP</a><br /><br />[page created in <b> 0.033 </b> sec with <b>6</b> db queries, <b>30</b> reads and <b>0</b> writes of Redis and <b>1.03 MB</b> ram]</div>
+<div style="display: none;" id="lightbox" class="lightbox"></div><div style="display: none;" id="curtain" class="curtain"></div></div>
+<!-- ANALYTICS_LEN:0 -->
+<div class="cute-m-shell" id="cute-m-shell">
+    <div class="cute-m-overlay" id="cute-m-overlay" hidden></div>
+    <aside class="cute-m-drawer" id="cute-m-drawer" aria-hidden="true" hidden>
+        <div class="cute-m-drawer__head">
+            <strong>菜单导航</strong>
+            <button type="button" class="cute-m-drawer__close" id="cute-m-drawer-close" aria-label="关闭">×</button>
+        </div>
+        <div class="cute-m-drawer__scroll">
+            <section class="cute-m-drawer__section">
+                <h4 class="cute-m-drawer__title">菜单导航</h4>
+                <div class="cute-m-drawer__body" id="cute-m-drawer-nav"></div>
+            </section>
+        </div>
+    </aside>
+    <nav class="cute-m-dock" id="cute-m-tabbar" aria-label="手机底部导航">
+        <a class="cute-m-dock__item is-active" href="index.php" aria-label="首页" data-dock="home">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z"/></svg>
+            </span>
+        </a>
+        <a class="cute-m-dock__item" href="torrents.php" aria-label="种子" data-dock="torrents">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h7l3 3v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v4h4"/><path d="M9 13h6M9 17h6"/></svg>
+            </span>
+        </a>
+        <a class="cute-m-dock__item cute-m-dock__item--center" href="usercp.php" aria-label="我的" data-dock="me" id="cute-m-dock-me">
+            <span class="cute-m-dock__avatar" id="cute-m-dock-avatar"></span>
+        </a>
+        <button type="button" class="cute-m-dock__item" id="cute-m-dock-search" aria-label="搜索" data-dock="search">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/></svg>
+            </span>
+        </button>
+        <button type="button" class="cute-m-dock__item" id="cute-m-nav-toggle" aria-label="菜单导航" aria-controls="cute-m-drawer" aria-expanded="false" data-dock="more">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+            </span>
+                    </button>
+    </nav>
+</div>
+<script>
+(function() {
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+    function cleanText(text) {
+        return String(text || '').replace(/\u00a0/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function isMobile() { return window.matchMedia('(max-width: 768px)').matches; }
+    function makeItem(href, text, active) {
+        var item = document.createElement('a');
+        item.className = 'cute-m-drawer__item' + (active ? ' is-active' : '');
+        item.href = href || '#';
+        item.textContent = cleanText(text) || href || '入口';
+        return item;
+    }
+    function collectUniqueLinks(selectors) {
+        var seen = {}, list = [];
+        selectors.forEach(function(sel) {
+            document.querySelectorAll(sel).forEach(function(a) {
+                var href = a.getAttribute('href') || '';
+                if (!href || href === '#' || href.indexOf('javascript:') === 0) return;
+                var key = href.replace(/#.*$/, '');
+                if (seen[key]) return;
+                var text = cleanText(a.getAttribute('title') || a.getAttribute('aria-label') || a.textContent || a.innerText || '');
+                if (!text || /^\d+(\s*\(.*\))?$/.test(text)) {
+                    var img = a.querySelector('img');
+                    var imgTitle = img ? cleanText(img.getAttribute('title') || img.getAttribute('alt') || '') : '';
+                    if (imgTitle) text = imgTitle + (text ? (' ' + text) : '');
+                }
+                if (!text || /^\d+$/.test(text)) return;
+                seen[key] = true;
+                list.push({ href: href, text: text, active: !!(a.closest && a.closest('li.selected, .selected, .is-active')) });
+            });
+        });
+        return list;
+    }
+    function fillGroup(container, items) {
+        if (!container) return;
+        container.innerHTML = '';
+        if (!items.length) { container.innerHTML = '<p class="cute-m-drawer__empty">暂无入口</p>'; return; }
+        var frag = document.createDocumentFragment();
+        items.forEach(function(it) { frag.appendChild(makeItem(it.href, it.text, it.active)); });
+        container.appendChild(frag);
+    }
+    function linkInfo(a) {
+        if (!a) return null;
+        var href = a.getAttribute('href') || '';
+        if (!href || href === '#' || href.indexOf('javascript:') === 0) return null;
+        var text = cleanText(a.getAttribute('title') || a.getAttribute('aria-label') || a.textContent || a.innerText || '');
+        if (!text) {
+            var img = a.querySelector('img');
+            text = img ? cleanText(img.getAttribute('title') || img.getAttribute('alt') || '') : '';
+        }
+        if (!text) return null;
+        var active = false;
+        try {
+            var cur = (location.pathname.split('/').pop() || '') + location.search;
+            var h = href.replace(/^\//, '');
+            if (h && cur.indexOf(h.replace(/^\//, '')) === 0) active = true;
+            if (a.closest && a.closest('li.selected, .selected')) active = true;
+        } catch (err) {}
+        return { href: href, text: text, active: active };
+    }
+    function buildMainMenuTree() {
+        var tree = [];
+        var topLinks = document.querySelectorAll('#mainmenu > li > a, #nav > ul.menu > li > a, ul.menu#mainmenu > li > a');
+        if (!topLinks.length) topLinks = document.querySelectorAll('#mainmenu a');
+        var seenTop = {};
+        Array.prototype.forEach.call(topLinks, function(a) {
+            // only direct top-level anchors
+            if (a.closest && a.closest('.ddsubmenustyle')) return;
+            var li = a.parentElement;
+            if (li && li.parentElement && li.parentElement.id !== 'mainmenu' && !li.parentElement.classList.contains('menu')) {
+                // still accept if under mainmenu
+                if (!(a.closest && a.closest('#mainmenu'))) return;
+            }
+            var info = linkInfo(a);
+            if (!info) return;
+            var key = info.href + '|' + info.text;
+            if (seenTop[key]) return;
+            seenTop[key] = true;
+            var children = [];
+            var rel = a.getAttribute('rel') || '';
+            if (rel) {
+                var sub = document.getElementById(rel);
+                if (sub) {
+                    var seenChild = {};
+                    sub.querySelectorAll('a').forEach(function(ca) {
+                        var ci = linkInfo(ca);
+                        if (!ci) return;
+                        var ck = ci.href.replace(/#.*$/, '');
+                        if (seenChild[ck]) return;
+                        seenChild[ck] = true;
+                        children.push(ci);
+                    });
+                }
+            }
+            tree.push({ href: info.href, text: info.text, active: info.active, children: children });
+        });
+        return tree;
+    }
+    function fillMainMenu(container) {
+        if (!container) return;
+        container.innerHTML = '';
+        container.classList.add('cute-m-menu');
+        var tree = buildMainMenuTree();
+        if (!tree.length) {
+            // fallback flat
+            var flat = collectUniqueLinks(['#mainmenu > li > a', '.ddsubmenustyle a']);
+            fillGroup(container, flat);
+            return;
+        }
+        var frag = document.createDocumentFragment();
+        tree.forEach(function(node) {
+            var group = document.createElement('div');
+            group.className = 'cute-m-menu__group' + (node.children && node.children.length ? ' has-children' : '') + (node.active ? ' is-active' : '');
+
+            var head = document.createElement('div');
+            head.className = 'cute-m-menu__head';
+
+            var link = document.createElement('a');
+            link.className = 'cute-m-menu__link' + (node.active ? ' is-active' : '');
+            link.href = node.href;
+            link.textContent = node.text;
+            head.appendChild(link);
+
+            if (node.children && node.children.length) {
+                var chev = document.createElement('button');
+                chev.type = 'button';
+                chev.className = 'cute-m-menu__chev';
+                chev.setAttribute('aria-expanded', 'false');
+                chev.setAttribute('aria-label', '展开子菜单');
+                chev.innerHTML = '<span></span>';
+                head.appendChild(chev);
+
+                var body = document.createElement('div');
+                body.className = 'cute-m-menu__sub';
+                body.hidden = true;
+                node.children.forEach(function(ch) {
+                    var ca = document.createElement('a');
+                    ca.className = 'cute-m-menu__sublink' + (ch.active ? ' is-active' : '');
+                    ca.href = ch.href;
+                    ca.textContent = ch.text;
+                    body.appendChild(ca);
+                });
+
+                function setOpen(open) {
+                    group.classList.toggle('is-open', open);
+                    body.hidden = !open;
+                    chev.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    chev.setAttribute('aria-label', open ? '收起子菜单' : '展开子菜单');
+                }
+                chev.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOpen(!group.classList.contains('is-open'));
+                });
+                // tap parent row text area (not only chev): if want navigate keep link default
+                // double behavior: long list - clicking chev expands only
+
+                // auto-expand if current page in children
+                var childActive = node.children.some(function(ch){ return ch.active; });
+                if (childActive || node.active) setOpen(true);
+
+                group.appendChild(head);
+                group.appendChild(body);
+            } else {
+                group.appendChild(head);
+            }
+            frag.appendChild(group);
+        });
+        container.appendChild(frag);
+    }
+    ready(function() {
+        var shell = document.getElementById('cute-m-shell');
+        var drawer = document.getElementById('cute-m-drawer');
+        var overlay = document.getElementById('cute-m-overlay');
+        var toggle = document.getElementById('cute-m-nav-toggle');
+        var closeBtn = document.getElementById('cute-m-drawer-close');
+        var searchBtn = document.getElementById('cute-m-dock-search');
+        var avatarHost = document.getElementById('cute-m-dock-avatar');
+        if (!shell || !drawer || !overlay || !toggle) return;
+
+        // clone user avatar into center dock
+        if (avatarHost) {
+            var srcAvatar = document.querySelector('.cute-top-profile__avatar img, .cute-top-profile__trigger img');
+            if (srcAvatar) {
+                var img = srcAvatar.cloneNode(true);
+                img.removeAttribute('width'); img.removeAttribute('height');
+                img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover';
+                avatarHost.appendChild(img);
+            } else {
+                avatarHost.textContent = '我';
+            }
+        }
+
+        // hide legacy top hamburger if duplicated id moved - ensure top header toggle removed
+        document.querySelectorAll('.cute-m-nav-toggle').forEach(function(btn) {
+            if (btn.id !== 'cute-m-nav-toggle') btn.remove();
+        });
+
+        function fillDrawer() {
+            // 更多弹窗仅展示电脑版主菜单树
+            fillMainMenu(document.getElementById('cute-m-drawer-nav'));
+        }
+
+        function openDrawer() {
+            if (!isMobile()) return;
+            try { fillDrawer(); } catch (err) { try { console.warn('fillDrawer failed', err); } catch (e2) {} }
+            drawer.hidden = false; overlay.hidden = false;
+            shell.classList.add('is-drawer-open');
+            drawer.setAttribute('aria-hidden', 'false');
+            toggle.setAttribute('aria-expanded', 'true');
+            document.documentElement.classList.add('cute-m-lock');
+            document.body.classList.add('cute-m-lock');
+        }
+        function closeDrawer() {
+            shell.classList.remove('is-drawer-open');
+            drawer.setAttribute('aria-hidden', 'true');
+            toggle.setAttribute('aria-expanded', 'false');
+            document.documentElement.classList.remove('cute-m-lock');
+            document.body.classList.remove('cute-m-lock');
+            window.setTimeout(function() {
+                if (!shell.classList.contains('is-drawer-open')) { drawer.hidden = true; overlay.hidden = true; }
+            }, 220);
+        }
+        function syncShellVisibility() {
+            if (isMobile()) {
+                document.documentElement.classList.add('cute-m-active');
+                document.body.classList.add('cute-m-active');
+            } else {
+                closeDrawer();
+                document.documentElement.classList.remove('cute-m-active');
+                document.body.classList.remove('cute-m-active');
+            }
+        }
+
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            if (shell.classList.contains('is-drawer-open')) closeDrawer(); else openDrawer();
+        });
+        if (closeBtn) closeBtn.addEventListener('click', function(e){ e.preventDefault(); closeDrawer(); });
+        overlay.addEventListener('click', closeDrawer);
+        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeDrawer(); });
+        window.addEventListener('resize', syncShellVisibility);
+        syncShellVisibility();
+
+        // Mobile profile panel: same content as desktop dropdown, tap to open
+        (function setupMobileProfilePanel() {
+            var profile = document.querySelector('.cute-top-profile');
+            var trigger = document.querySelector('.cute-top-profile__trigger');
+            var dropdown = document.querySelector('.cute-top-profile__dropdown');
+            if (!profile || !trigger || !dropdown) return;
+
+            var overlay = document.getElementById('cute-m-profile-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'cute-m-profile-overlay';
+                overlay.className = 'cute-m-profile-overlay';
+                overlay.hidden = true;
+                document.body.appendChild(overlay);
+            }
+
+            // Mobile summary layout: put subline full-width under avatar/name/logout
+            var summaryMain = dropdown.querySelector('.cute-top-profile__summary-main');
+            var subline = dropdown.querySelector('.cute-top-profile__subline');
+            if (summaryMain && subline && subline.parentElement !== summaryMain) {
+                summaryMain.appendChild(subline);
+            }
+
+            // Ensure secondary icon links have readable text on mobile
+            dropdown.querySelectorAll('.cute-top-profile__links:not(.cute-top-profile__links--primary) a').forEach(function(a) {
+                if (a.dataset.cuteLabeled === '1') return;
+                a.dataset.cuteLabeled = '1';
+                var title = a.getAttribute('title') || '';
+                var img = a.querySelector('img[title], img[alt]');
+                if (!title && img) title = img.getAttribute('title') || img.getAttribute('alt') || '';
+                title = cleanText(title);
+                if (!title || a.querySelector('.cute-m-profile-linktext')) return;
+                var span = document.createElement('span');
+                span.className = 'cute-m-profile-linktext';
+                span.textContent = title;
+                a.appendChild(span);
+            });
+
+            function openProfile(e) {
+                if (e) { e.preventDefault(); e.stopPropagation(); }
+                if (!isMobile()) return;
+                // close function drawer if open
+                try { closeDrawer(); } catch (err) {}
+                // Portal to body so fixed positioning is not trapped by header transform
+                if (dropdown.parentElement !== document.body) {
+                    dropdown.dataset.cuteHome = '1';
+                    document.body.appendChild(dropdown);
+                }
+                profile.classList.add('is-open');
+                dropdown.classList.add('is-open');
+                document.documentElement.classList.add('cute-m-profile-open');
+                document.body.classList.add('cute-m-profile-open');
+                overlay.hidden = false;
+                trigger.setAttribute('aria-expanded', 'true');
+                dropdown.setAttribute('aria-hidden', 'false');
+            }
+            function closeProfile() {
+                profile.classList.remove('is-open');
+                dropdown.classList.remove('is-open');
+                document.documentElement.classList.remove('cute-m-profile-open');
+                document.body.classList.remove('cute-m-profile-open');
+                overlay.hidden = true;
+                trigger.setAttribute('aria-expanded', 'false');
+                dropdown.setAttribute('aria-hidden', 'true');
+                if (dropdown.dataset.cuteHome === '1' && profile) {
+                    profile.appendChild(dropdown);
+                }
+            }
+            function toggleProfile(e) {
+                if (!isMobile()) return;
+                if (profile.classList.contains('is-open')) closeProfile();
+                else openProfile(e);
+            }
+
+            trigger.setAttribute('role', 'button');
+            trigger.setAttribute('tabindex', '0');
+            trigger.setAttribute('aria-expanded', 'false');
+            dropdown.setAttribute('aria-hidden', 'true');
+
+            trigger.addEventListener('click', function(e) {
+                if (!isMobile()) return;
+                e.preventDefault();
+                e.stopPropagation();
+                toggleProfile(e);
+            });
+            trigger.addEventListener('keydown', function(e) {
+                if (!isMobile()) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleProfile(e);
+                }
+            });
+            overlay.addEventListener('click', closeProfile);
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeProfile();
+            });
+            // click outside closes
+            document.addEventListener('click', function(e) {
+                if (!isMobile() || !profile.classList.contains('is-open')) return;
+                if (profile.contains(e.target)) return;
+                if (dropdown.contains(e.target)) return;
+                if (overlay.contains(e.target)) return;
+                closeProfile();
+            });
+            // dock center avatar also opens same panel
+            var dockMe = document.getElementById('cute-m-dock-me');
+            if (dockMe) {
+                dockMe.addEventListener('click', function(e) {
+                    if (!isMobile()) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (profile.classList.contains('is-open')) closeProfile();
+                    else openProfile(e);
+                });
+            }
+            window.addEventListener('resize', function() {
+                if (!isMobile()) closeProfile();
+            });
+        })();
+
+        function setSearchExpanded(open) {
+            var box = document.getElementById('ksearchboxmain');
+            var pic = document.getElementById('picsearchboxmain');
+            var searchbox = document.querySelector('table.searchbox');
+            if (!box) return;
+            if (open) {
+                box.style.display = '';
+                box.classList.add('cute-search-open');
+                if (searchbox) searchbox.classList.add('cute-search-open');
+                if (pic) pic.className = 'minus';
+            } else {
+                box.style.display = 'none';
+                box.classList.remove('cute-search-open');
+                if (searchbox) searchbox.classList.remove('cute-search-open');
+                if (pic) pic.className = 'plus';
+            }
+        }
+
+        function getTorrentMetaLabels() {
+            var head = document.querySelector('table.torrents > tbody > tr:has(td.colhead), table.torrents tr:has(td.colhead)');
+            var labels = [];
+            if (!head) return labels;
+            Array.prototype.forEach.call(head.children, function(td) {
+                var img = td.querySelector('img[title], img[alt]');
+                var a = td.querySelector('a[title]');
+                var raw = '';
+                if (img) raw = img.getAttribute('title') || img.getAttribute('alt') || '';
+                else if (a) raw = a.getAttribute('title') || cleanText(a.textContent);
+                else raw = cleanText(td.textContent);
+                raw = cleanText(raw);
+                var shortMap = [
+                    [/评论|comments?/i, '评'],
+                    [/时间|added|time/i, '时'],
+                    [/大小|size/i, '大小'],
+                    [/做种|seed/i, '做'],
+                    [/下载|leech/i, '下'],
+                    [/完成|snatch/i, '完'],
+                    [/等待|wait/i, '等'],
+                    [/上传|uploader|作者/i, '传']
+                ];
+                var short = '';
+                for (var i = 0; i < shortMap.length; i++) {
+                    if (shortMap[i][0].test(raw)) { short = shortMap[i][1]; break; }
+                }
+                labels.push(short || (raw ? raw.slice(0, 2) : ''));
+            });
+            return labels;
+        }
+
+        function enhanceTorrentCards() {
+            document.querySelectorAll('table.torrents > tbody > tr').forEach(function(tr) {
+                if (tr.querySelector('td.colhead')) return;
+                if (tr.dataset.cuteCarded === '1') return;
+                var tds = Array.prototype.slice.call(tr.children).filter(function(n){ return n.tagName === 'TD'; });
+                if (tds.length < 5) return;
+                tr.dataset.cuteCarded = '1';
+                tr.classList.add('cute-torrent-card');
+
+                // Stable short labels by column count (type,name,...,action)
+                // Common: +comments => 9 cols; no comments => 8 cols; +wait => +1
+                var labelMap = null;
+                if (tds.length >= 10) labelMap = {2:'等',3:'评',4:'时',5:'大小',6:'做',7:'下',8:'完'};
+                else if (tds.length === 9) labelMap = {2:'评',3:'时',4:'大小',5:'做',6:'下',7:'完'};
+                else if (tds.length === 8) labelMap = {2:'时',3:'大小',4:'做',5:'下',6:'完'};
+                else if (tds.length === 7) labelMap = {2:'时',3:'大小',4:'做',5:'下'};
+                else labelMap = {};
+
+                var metaRow = document.createElement('div');
+                metaRow.className = 'cute-torrent-meta-row';
+                var lastIdx = tds.length - 1;
+                for (var idx = 2; idx < lastIdx; idx++) {
+                    var td = tds[idx];
+                    if (!td || td.dataset.cuteMeta === '1') continue;
+                    td.dataset.cuteMeta = '1';
+                    var chip = document.createElement('span');
+                    chip.className = 'cute-torrent-meta-chip';
+                    var label = labelMap[idx] || '';
+                    var html = td.innerHTML;
+                    if (label) {
+                        chip.innerHTML = '<span class="cute-torrent-meta__label">' + label + '</span><span class="cute-torrent-meta__val">' + html + '</span>';
+                    } else {
+                        chip.innerHTML = html;
+                    }
+                    // color seed/leech/snatch slightly
+                    if (label === '做') chip.classList.add('is-seed');
+                    if (label === '下') chip.classList.add('is-leech');
+                    if (label === '完') chip.classList.add('is-done');
+                    metaRow.appendChild(chip);
+                    td.classList.add('cute-torrent-meta-src');
+                    td.setAttribute('aria-hidden', 'true');
+                    td.style.setProperty('display', 'none', 'important');
+                    td.style.setProperty('width', '0', 'important');
+                    td.style.setProperty('height', '0', 'important');
+                    td.style.setProperty('padding', '0', 'important');
+                    td.style.setProperty('margin', '0', 'important');
+                    td.style.setProperty('border', '0', 'important');
+                    td.style.setProperty('overflow', 'hidden', 'important');
+                }
+                // keep action icons on top-right
+                if (tds[lastIdx]) {
+                    tds[lastIdx].classList.add('cute-torrent-action');
+                }
+                if (metaRow.childNodes.length) {
+                    tr.appendChild(metaRow);
+                }
+            });
+        }
+
+        // Mobile search modal (dock search button)
+        (function setupMobileSearchModal() {
+            var searchForm = document.querySelector('form[name="searchbox"]');
+            var searchHomeParent = null;
+            var searchHomeNext = null;
+            var modal = document.getElementById('cute-m-search-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'cute-m-search-modal';
+                modal.className = 'cute-m-search-modal';
+                modal.hidden = true;
+                modal.innerHTML = ''
+                    + '<div class="cute-m-search-modal__overlay" data-close="1"></div>'
+                    + '<div class="cute-m-search-modal__sheet" role="dialog" aria-modal="true" aria-label="搜索">'
+                    +   '<div class="cute-m-search-modal__head">'
+                    +     '<strong>搜索种子</strong>'
+                    +     '<button type="button" class="cute-m-search-modal__close" data-close="1" aria-label="关闭">×</button>'
+                    +   '</div>'
+                    +   '<div class="cute-m-search-modal__body" id="cute-m-search-modal-body"></div>'
+                    +   '<div class="cute-m-search-modal__fallback" id="cute-m-search-fallback" hidden>'
+                    +     '<form method="get" action="torrents.php" class="cute-m-search-fallback-form">'
+                    +       '<input type="search" name="search" id="cute-m-search-fallback-input" placeholder="输入关键字搜索种子" autocomplete="off" />'
+                    +       '<div class="cute-m-search-fallback-row">'
+                    +         '<select name="search_area">'
+                    +           '<option value="0">标题</option>'
+                    +           '<option value="1">简介</option>'
+                    +           '<option value="3">发布者</option>'
+                    +         '</select>'
+                    +         '<button type="submit">搜索</button>'
+                    +       '</div>'
+                    +     '</form>'
+                    +   '</div>'
+                    + '</div>';
+                document.body.appendChild(modal);
+            }
+            var modalBody = document.getElementById('cute-m-search-modal-body');
+            var fallback = document.getElementById('cute-m-search-fallback');
+            var advancedBtn = null;
+
+            function ensureAdvancedToggle() {
+                if (!searchForm || advancedBtn) return;
+                var box = document.getElementById('ksearchboxmain');
+                if (!box) return;
+                advancedBtn = document.createElement('button');
+                advancedBtn.type = 'button';
+                advancedBtn.className = 'cute-m-search-advanced-toggle';
+                advancedBtn.textContent = '高级筛选';
+                advancedBtn.addEventListener('click', function() {
+                    var isOpen = box.classList.contains('cute-search-open') || (box.style.display !== 'none' && getComputedStyle(box).display !== 'none');
+                    setSearchExpanded(!isOpen);
+                    advancedBtn.classList.toggle('is-open', !isOpen);
+                    advancedBtn.textContent = !isOpen ? '收起筛选' : '高级筛选';
+                });
+                if (searchForm.firstChild) searchForm.insertBefore(advancedBtn, searchForm.firstChild);
+                else searchForm.appendChild(advancedBtn);
+            }
+
+            function compactSearchRangeRows() {
+                if (!searchForm || searchForm.dataset.cuteRangeCompact === '1') return;
+                var rightTable = document.querySelector('#ksearchboxmain > tr > td:last-child > table');
+                if (!rightTable) return;
+                var rows = Array.prototype.slice.call(rightTable.querySelectorAll(':scope > tbody > tr'));
+                for (var i = 0; i < rows.length - 1; i++) {
+                    var labelTd = rows[i].querySelector('td.bottom');
+                    var valueTd = rows[i + 1] ? rows[i + 1].querySelector('td.bottom') : null;
+                    if (!labelTd || !valueTd) continue;
+                    var hasLabel = !!labelTd.querySelector('font.medium') && !labelTd.querySelector('input, select');
+                    var hasInputs = !!valueTd.querySelector('input, select');
+                    if (!hasLabel || !hasInputs) continue;
+                    var wrap = document.createElement('div');
+                    wrap.className = 'cute-m-search-range-row';
+                    var lab = document.createElement('div');
+                    lab.className = 'cute-m-search-range-label';
+                    lab.innerHTML = labelTd.innerHTML;
+                    var val = document.createElement('div');
+                    val.className = 'cute-m-search-range-inputs';
+                    // move real inputs to preserve state/listeners better
+                    while (valueTd.firstChild) val.appendChild(valueTd.firstChild);
+                    wrap.appendChild(lab);
+                    wrap.appendChild(val);
+                    valueTd.appendChild(wrap);
+                    labelTd.style.display = 'none';
+                    rows[i].style.display = 'none';
+                    rows[i].dataset.cuteRangeHidden = '1';
+                    i++; // skip value row
+                }
+                // mark selects-only blocks
+                rightTable.classList.add('cute-m-search-right');
+                searchForm.dataset.cuteRangeCompact = '1';
+            }
+
+            function openSearchModal() {
+                if (!isMobile()) return;
+                try { closeDrawer(); } catch (err) {}
+                // close profile if open
+                try {
+                    var profile = document.querySelector('.cute-top-profile');
+                    if (profile && profile.classList.contains('is-open')) {
+                        profile.classList.remove('is-open');
+                        var dd = document.querySelector('.cute-top-profile__dropdown');
+                        if (dd) dd.classList.remove('is-open');
+                        document.documentElement.classList.remove('cute-m-profile-open');
+                        document.body.classList.remove('cute-m-profile-open');
+                        var po = document.getElementById('cute-m-profile-overlay');
+                        if (po) po.hidden = true;
+                    }
+                } catch (err2) {}
+
+                if (searchForm) {
+                    if (!searchHomeParent) {
+                        searchHomeParent = searchForm.parentNode;
+                        searchHomeNext = searchForm.nextSibling;
+                    }
+                    ensureAdvancedToggle();
+                    compactSearchRangeRows();
+                    // default collapse advanced for clean first view
+                    setSearchExpanded(false);
+                    if (advancedBtn) {
+                        advancedBtn.classList.remove('is-open');
+                        advancedBtn.textContent = '高级筛选';
+                    }
+                    modalBody.hidden = false;
+                    if (fallback) fallback.hidden = true;
+                    modalBody.appendChild(searchForm);
+                    searchForm.classList.add('cute-m-search-form');
+                } else {
+                    modalBody.hidden = true;
+                    if (fallback) fallback.hidden = false;
+                }
+
+                modal.hidden = false;
+                document.documentElement.classList.add('cute-m-search-open');
+                document.body.classList.add('cute-m-search-open');
+                window.setTimeout(function() {
+                    var input = document.querySelector('#searchinput, #cute-m-search-fallback-input, form.cute-m-search-form input[name="search"]');
+                    if (input) {
+                        try { input.focus(); input.select && input.select(); } catch (err3) {}
+                    }
+                }, 180);
+            }
+
+            function closeSearchModal() {
+                modal.hidden = true;
+                document.documentElement.classList.remove('cute-m-search-open');
+                document.body.classList.remove('cute-m-search-open');
+                if (searchForm && searchHomeParent) {
+                    if (searchHomeNext && searchHomeNext.parentNode === searchHomeParent) {
+                        searchHomeParent.insertBefore(searchForm, searchHomeNext);
+                    } else {
+                        searchHomeParent.appendChild(searchForm);
+                    }
+                    searchForm.classList.remove('cute-m-search-form');
+                    setSearchExpanded(false);
+                }
+            }
+
+            if (searchBtn) {
+                searchBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isMobile()) return;
+                    if (!searchForm && !/torrents\.php|special\.php|music\.php/i.test(location.pathname)) {
+                        // go torrents with open flag
+                        location.href = 'torrents.php#search';
+                        return;
+                    }
+                    if (modal.hidden === false) closeSearchModal();
+                    else openSearchModal();
+                });
+            }
+            modal.addEventListener('click', function(e) {
+                var t = e.target;
+                if (t && (t.getAttribute('data-close') === '1' || t.classList.contains('cute-m-search-modal__overlay'))) {
+                    closeSearchModal();
+                }
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modal && modal.hidden === false) closeSearchModal();
+            });
+            window.addEventListener('resize', function() {
+                if (!isMobile() && modal && modal.hidden === false) closeSearchModal();
+            });
+            // auto open from hash
+            if (isMobile() && (location.hash || '').indexOf('search') >= 0) {
+                window.setTimeout(openSearchModal, 120);
+            }
+            // expose for other handlers if needed
+            window.cuteOpenMobileSearch = openSearchModal;
+            window.cuteCloseMobileSearch = closeSearchModal;
+        })();
+
+        if (isMobile()) {
+            document.querySelectorAll('table.cute-msgalert, table.msgalert').forEach(function(table) {
+                table.classList.add('cute-msgalert--ready');
+                table.classList.remove('is-collapsed');
+            });
+            // Sunny-clean: collapse advanced filters by default
+            var searchMain = document.getElementById('ksearchboxmain');
+            if (searchMain) {
+                var hasQuery = /[?&](search|incldead|spstate|picktype|cat\d*|standard\d*|source\d*|medium\d*|codec\d*|audiocodec\d*|team\d*|processing\d*|tag_id)=/i.test(location.search);
+                var hashSearch = (location.hash || '').indexOf('search') >= 0;
+                if (hasQuery || hashSearch) setSearchExpanded(true);
+                else setSearchExpanded(false);
+            }
+            enhanceTorrentCards();
+        }
+    });
+})();
+</script>
+<script type="text/javascript" src="ddlevelsfiles/ddlevelsmenu.js"></script><script type="text/javascript">ddlevelsmenu.setup("nav", "topbar")</script><style id="ptlife-card-style">
+.ptlife-card{position:fixed;top:64px;left:64px;visibility:hidden;z-index:120001;width:300px;box-sizing:border-box;border-radius:10px;overflow:hidden;
+  font-size:12px;line-height:1.5;text-align:left;color:var(--theme-primary,#333);
+  background:var(--theme-bg-secondary,rgba(255,255,255,.96));
+  border:1px solid rgba(var(--theme-rgb,120,120,120),.35);
+  box-shadow:0 6px 18px rgba(var(--theme-rgb,120,120,120),.28);backdrop-filter:blur(4px);}
+.ptlife-card .ptl-head{display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:var(--theme-gradient,linear-gradient(135deg,#8a8a8a,#b5b5b5));color:#fff;}
+.ptlife-card .ptl-head .ptl-name{font-weight:bold;font-size:13px;text-shadow:0 1px 2px rgba(0,0,0,.15);}
+.ptlife-card .ptl-head .ptl-sites{margin-left:auto;font-size:11px;opacity:.9;white-space:nowrap;}
+.ptlife-card .ptl-body{padding:8px 12px 4px;}
+.ptlife-card .ptl-row{display:flex;justify-content:space-between;padding:2px 0;}
+.ptlife-card .ptl-row .ptl-k{opacity:.72;}
+.ptlife-card .ptl-row .ptl-v{font-weight:bold;font-variant-numeric:tabular-nums;}
+.ptlife-card .ptl-foot{display:flex;align-items:center;justify-content:space-between;
+  padding:4px 12px 8px;font-size:11px;opacity:.85;}
+.ptlife-card a.ptl-detail{color:var(--theme-primary,#333);font-weight:bold;text-decoration:none;
+  border:1px solid rgba(var(--theme-rgb,120,120,120),.5);border-radius:20px;padding:1px 10px;}
+.ptlife-card a.ptl-detail:hover{background:var(--theme-bg-glass,rgba(120,120,120,.15));}
+</style>
+<script>
+jQuery(function($) {
+    var tip = null, tipUid = 0, hideTimer = null, cache = {}, deadUntil = {};
+    var API_URL = 'https://www.hxpt.org/api/ptlife/query.php';
+    var DETAIL_URL = 'https://www.hxpt.org/ptlife.php?id=';
+    function mkSize(b) {
+        b = Number(b) || 0;
+        var u = ['B','KB','MB','GB','TB','PB'], i = 0;
+        while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+        return b.toFixed(2) + ' ' + u[i];
+    }
+    function esc(s) { return $('<i>').text(s == null ? '' : String(s)).html(); }
+    function buildTip(d) {
+        var t = d.totals || {};
+        var ratio = t.downloaded > 0 ? (t.uploaded / t.downloaded).toFixed(3) : '∞';
+        var name = d.username || ('用户 #' + d.uid);
+        var h = '<div class="ptlife-card">';
+        h += '<div class="ptl-head"><span class="ptl-name">🐝 ' + esc(name) + '</span>'
+           + '<span class="ptl-sites">' + (d.site_count || 0) + ' 站</span></div>';
+        h += '<div class="ptl-body">';
+        h += '<div class="ptl-row"><span class="ptl-k">总上传</span><span class="ptl-v">' + mkSize(t.uploaded) + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">总下载</span><span class="ptl-v">' + mkSize(t.downloaded) + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">分享率</span><span class="ptl-v">' + ratio + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">做种体积</span><span class="ptl-v">' + mkSize(t.seeding_size) + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">魔力值</span><span class="ptl-v">' + (Number(t.bonus) || 0).toLocaleString() + '</span></div>';
+        h += '</div>';
+        h += '<div class="ptl-foot"><span>更新于 ' + esc(d.synced_at || '-') + '</span>'
+           + '<a class="ptl-detail" href="' + DETAIL_URL + d.uid + '">详情</a></div>';
+        h += '</div>';
+        return h;
+    }
+    // 未同步/关闭展示的轻提示卡（不复用数据卡布局，避免误导）
+    function buildEmptyTip() {
+        return '<div class="ptlife-card ptl-empty">'
+             + '<div class="ptl-head"><span class="ptl-name">🐝 PT Patronus</span></div>'
+             + '<div class="ptl-body" style="padding:10px 12px 12px;">该用户尚未同步 PT Patronus</div>'
+             + '</div>';
+    }
+    function closeTip() {
+        if (tip) tip.remove();
+        tip = null; tipUid = 0;
+    }
+    function markDead(uid) { deadUntil[uid] = Date.now() + 60000; } // 无数据/失败静默 60s，而非整页会话
+    function isDead(uid) { return (deadUntil[uid] || 0) > Date.now(); }
+    function showTip(link, uid) {
+        clearTimeout(hideTimer);
+        if (isDead(uid)) return;
+        var cached = cache[uid];
+        if (cached) { closeTip(); tipUid = uid; tip = $(cached).appendTo('body'); position(link, tip); return; }
+        closeTip();
+        tipUid = uid;
+        // 数据到达前不建任何 DOM，避免占位闪烁；到达后一次性建卡并定位
+        $.getJSON(API_URL, { uid: uid }, function(res) {
+            if (!res || !res.success) { markDead(uid); return; }
+            var html = (res.found && res.data) ? buildTip(res.data) : buildEmptyTip();
+            cache[uid] = html;
+            if (tipUid !== uid) return; // 已切换到别的链接
+            tip = $(html).appendTo('body');
+            position(link, tip);
+        }).fail(function() { markDead(uid); });
+    }
+    function position(link, card) {
+        // position:fixed 需要视口坐标（getBoundingClientRect）；CSS 里 top/left 只是防错兜底
+        card.css({ visibility: 'hidden' });
+        var rect = link.getBoundingClientRect();
+        var w = card.outerWidth() || 300, h = card.outerHeight() || 160;
+        var left = Math.min(rect.left, $(window).width() - w - 12);
+        left = Math.max(8, left);
+        var top = rect.bottom + 6;
+        if (top + h > $(window).height() - 8) {
+            top = rect.top - h - 6; // 下方放不下改到链接上方
+            if (top < 8) top = 8;
+        }
+        card.css({ left: left, top: top, visibility: 'visible' });
+    }
+    function hideSoon() { hideTimer = setTimeout(closeTip, 350); }
+    function keepOpen() { clearTimeout(hideTimer); }
+    $(document).off('mouseenter.ptlife mouseleave.ptlife', "a[class*='_Name'][href*='userdetails.php']")
+        .on('mouseenter.ptlife', "a[class*='_Name'][href*='userdetails.php']", function() {
+            var m = this.href.match(/userdetails\.php\?id=(\d+)/);
+            if (m) showTip(this, m[1]);
+        })
+        .on('mouseleave.ptlife', "a[class*='_Name'][href*='userdetails.php']", hideSoon);
+    // 卡片本体可交互：移入卡片保持显示，「详情」可点击；移出才关闭
+    $(document).off('mouseenter.ptlife-card mouseleave.ptlife-card', '.ptlife-card')
+        .on('mouseenter.ptlife-card', '.ptlife-card', keepOpen)
+        .on('mouseleave.ptlife-card', '.ptlife-card', closeTip);
+});
+</script><script type="application/javascript" src="js/nexus.js"></script>
+<script type="application/javascript" src="vendor/jquery-goup-1.1.3/jquery.goup.min.js"></script>
+<script>
+jQuery(document).ready(function(){
+    jQuery.goup()
+});
+</script><script>
+jQuery(function($) {
+    var previewEle = $('#nexus-preview');
+    if (!previewEle.length) {
+        return;
+    }
+    var medalPreviewFrame = null;
+    var lastMedalImage = null;
+
+    function isUsernameMedal($img) {
+        return $img.hasClass('nexus-username-medal') || $img.hasClass('nexus-username-medal-big');
+    }
+
+    function centerPreview($img) {
+        var src = $img.attr('src');
+        if (!src) {
+            return;
+        }
+
+        var naturalWidth = $img.prop('naturalWidth') || $img.width() || 240;
+        var naturalHeight = $img.prop('naturalHeight') || $img.height() || 240;
+        var ratio = naturalWidth / naturalHeight || 1;
+        var margin = 16;
+        var maxWidth = Math.max(160, window.innerWidth - margin * 2);
+        var maxHeight = Math.max(160, window.innerHeight - margin * 2);
+        var imgWidth = Math.min(naturalWidth, maxWidth);
+        var imgHeight = imgWidth / ratio;
+
+        if (imgHeight > maxHeight) {
+            imgHeight = maxHeight;
+            imgWidth = imgHeight * ratio;
+        }
+
+        previewEle.stop(true, true).attr('src', src).css({
+            display: 'block',
+            position: 'fixed',
+            zIndex: 120000,
+            left: Math.max(margin, (window.innerWidth - imgWidth) / 2),
+            top: Math.max(margin, (window.innerHeight - imgHeight) / 2),
+            width: imgWidth,
+            height: imgHeight,
+            maxWidth: 'none',
+            maxHeight: 'none'
+        }).show();
+    }
+
+    function scheduleMedalPreview($img) {
+        lastMedalImage = $img;
+        if (medalPreviewFrame) {
+            return;
+        }
+        medalPreviewFrame = window.requestAnimationFrame(function() {
+            medalPreviewFrame = null;
+            if (lastMedalImage && lastMedalImage.length) {
+                centerPreview(lastMedalImage);
+            }
+        });
+    }
+
+    function hideMedalPreview() {
+        if (medalPreviewFrame) {
+            window.cancelAnimationFrame(medalPreviewFrame);
+            medalPreviewFrame = null;
+        }
+        lastMedalImage = null;
+        previewEle.hide();
+    }
+
+    $(document)
+        .off('mouseenter.hxptMedalPreview mousemove.hxptMedalPreview mouseleave.hxptMedalPreview', 'img.preview')
+        .on('mouseenter.hxptMedalPreview', 'img.preview', function() {
+            var $img = $(this);
+            if (!isUsernameMedal($img)) {
+                return;
+            }
+            scheduleMedalPreview($img);
+        })
+        .on('mousemove.hxptMedalPreview', 'img.preview', function() {
+            var $img = $(this);
+            if (!isUsernameMedal($img) || previewEle.css('display') === 'none') {
+                return;
+            }
+            scheduleMedalPreview($img);
+        })
+        .on('mouseleave.hxptMedalPreview', 'img.preview', function() {
+            var $img = $(this);
+            if (!isUsernameMedal($img)) {
+                return;
+            }
+            hideMedalPreview();
+        });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible') {
+            hideMedalPreview();
+        }
+    });
+    window.addEventListener('pagehide', hideMedalPreview);
+});
+</script><img id="nexus-preview" style="display:none; position:fixed; z-index:120000; max-width:none; max-height:none;" src="" /><div id="header-avatar-preview" class="avatar-preview-popup" style="display:none; position: fixed; z-index: 99999; background: transparent; padding: 0; border-radius: 0; box-shadow: none; overflow: visible; pointer-events: none;"><div style="width: 500px; height: 500px; line-height: 0; position: relative; z-index: 1;"><div class="avatar-wrapper avatar-frame-overlay "><img src="https://img.ptang.top/i/2026/01/30/福697c4a7bc9b002.gif" alt="avatar" class="animated-avatar" style="object-fit: contain; display: block;" onload="check_avatar(this, 'chs');" /><div class="frame-overlay" style="background-image: url('https://img.ptang.top/i/2026/01/30/新春06697c128a4b1342.gif');"></div></div></div></div></body></html>

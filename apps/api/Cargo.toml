@@ -1,0 +1,27 @@
+[package]
+name = "flux-api"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+tokio.workspace = true
+actix-web.workspace = true
+actix-cors.workspace = true
+actix-multipart = "0.7"
+futures-util.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+argon2.workspace = true
+jsonwebtoken.workspace = true
+rand.workspace = true
+envy.workspace = true
+dotenvy.workspace = true
+redis.workspace = true
+sha1 = "0.10"

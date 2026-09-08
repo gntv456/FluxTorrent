@@ -1,0 +1,1563 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="generator" content="NexusPHP" />
+<title>好学 :: 课本中心 - Powered by NexusPHP</title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+<link rel="search" type="application/opensearchdescription+xml" title="好学 Torrents" href="opensearch.php" />
+<link rel="stylesheet" href="styles/mediumfont.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="styles/sprites.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="pic/forum_pic/chs/forumsprites.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="styles/CuteTop/theme.css?v=1787399426" type="text/css" />
+<link rel="stylesheet" href="styles/CuteTop/DomTT.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="styles/curtain_imageresizer.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="styles/nexus.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="css/avatar-frame.css?20260901113500" type="text/css" />
+<link rel="stylesheet" href="css/username-style.css?20260901113500" type="text/css" />
+<link rel="alternate" type="application/rss+xml" title="Latest Torrents" href="torrentrss.php" />
+<script type="text/javascript" src="js/curtain_imageresizer.js?20260901113500&v=2"></script>
+<script type="text/javascript" src="js/ajaxbasic.js?20260901113500"></script>
+<script type="text/javascript" src="js/common.js?20260901113500&v=2"></script>
+<script type="text/javascript" src="js/domLib.js?20260901113500"></script>
+<script type="text/javascript" src="js/domTT.js?20260901113500"></script>
+<script type="text/javascript" src="js/domTT_drag.js?20260901113500"></script>
+<script type="text/javascript" src="js/fadomatic.js?20260901113500"></script>
+<link rel="stylesheet" href="ddlevelsfiles/new-base.css" type="text/css"><style type="text/css">.sticky-promotion-box {
+    padding: 15px 30px;
+    color: black;
+}
+.sticky-promotion-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 10px;
+}
+.sticky-promotion-box a {
+    color: black !important;
+}</style><script type="text/javascript" src="js/jquery-1.12.4.min.js?20260901113500"></script>
+<script type="text/javascript">
+    jQuery.noConflict();
+    window.nexusLayerOptions = {
+        confirm: {btnAlign: 'c', title: 'Confirm', btn: ['OK', 'Cancel']},
+        alert: {btnAlign: 'c', title: 'Info', btn: ['OK', 'Cancel']}
+    }
+</script>
+<script type="text/javascript" src="vendor/layer-v3.5.1/layer/layer.js?20260901113500"></script>
+<style>
+/* 濠碉紕鍋戦崐婵嗩焽瑜旀俊鐢稿籍閳ь剙顕ラ崟顖氱骇闁瑰瓨绻傛竟鏍ㄤ繆椤愶絾绶查悗姘煎灦閿濈偛顓奸崪浣告闂侀潻瀵岄崢鎯х暦閸洘鐓涚€广儱鎳庡Σ鑽ょ磼?*/
+.header-avatar-wrapper {
+    position: relative;
+    width: 36px;
+    height: 36px;
+}
+
+/* 濠碉紕鍋戦崐婵嗩焽瑜旀俊鐢稿籍閸屾瑧鍓ㄩ棅顐㈡处閹歌埖绂掗崼銉︾厱鐎广儱鎳愮粻铏箾閸喎鐏︾€垫澘瀚板鍫曞箣濠靛棗顥涙繝纰樺墲椤ㄥ懎螞濞嗘挻鍋嬮柛妤冨剱閸?*/
+.header-avatar-wrapper .avatar-wrapper {
+    width: 36px !important;
+    height: 36px !important;
+}
+
+.header-avatar-wrapper .avatar-wrapper.avatar-frame-overlay .frame-overlay {
+    width: 36px !important;
+    height: 36px !important;
+}
+
+/* 濠碘槅鍋呭妯尖偓姘煎灦閿濈偛顓奸崪浣告闂侀潻瀵岄崢鎯х暦閸洘鐓曢柟閭﹀墯閸ｈ姤绻涢崼鐔风仸鐎垫澘瀚板鍫曞箣濠靛棗顥涙繝纰樺墲椤ㄥ懎螞濞嗘挻鍋嬮柛妤冨剱閸?*/
+#header-avatar-preview .avatar-wrapper {
+    width: 500px !important;
+    height: 500px !important;
+}
+
+#header-avatar-preview .avatar-wrapper.avatar-frame-overlay .frame-overlay {
+    width: 500px !important;
+    height: 500px !important;
+}
+
+#header-avatar-preview .avatar-wrapper.avatar-frame-overlay img {
+    width: 80% !important;
+    height: 80% !important;
+}
+
+/* 闂備礁鎲￠弻锝夊礉瀹ュ鐒垫い鎴ｆ硶椤︼箓鏌曢崶銊︻棃鐎规洘鎹佺粻娑㈠箻绾惧鎯堝┑鈽嗗亝濠㈡鈧凹鍨堕敐鐐差吋閸℃瑢鏋栧銈嗘尵婵敻鎮鹃柆宥嗙厸鐎广儱鎳庡Σ鑽ょ磼閹插绡€闁轰礁绉瑰畷濂告偄閻戞?00*500闂?0%闂備焦瀵х粙鎴︽嚐椤栨氨鏆?00*400闂?*/
+#header-avatar-preview .avatar-wrapper img.animated-avatar {
+    width: 80% !important;
+    height: 80% !important;
+    max-width: 400px !important;
+    max-height: 400px !important;
+    margin: auto;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+</style>
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+    var $preview = $('#header-avatar-preview');
+    var previewWidth = 500;
+    var previewHeight = 500;
+    var hideTimeout = null;
+    var avatarSelector = '.header-avatar-wrapper, .cute-top-avatar-preview-trigger';
+    var avatarPreviewFrame = null;
+    var lastAvatarEvent = null;
+
+    function getPreviewPosition(e) {
+        var margin = 16;
+        var viewportWidth = window.innerWidth || $(window).width();
+        var viewportHeight = window.innerHeight || $(window).height();
+        var left = e.clientX + 24;
+        var top = e.clientY - (previewHeight / 2);
+
+        if (left + previewWidth > viewportWidth - margin) {
+            left = e.clientX - previewWidth - 24;
+        }
+        if (left < margin) {
+            left = margin;
+        }
+
+        if (top < margin) {
+            top = margin;
+        }
+        if (top + previewHeight > viewportHeight - margin) {
+            top = viewportHeight - previewHeight - margin;
+        }
+        if (top < margin) {
+            top = margin;
+        }
+
+        return {
+            left: left,
+            top: top
+        };
+    }
+
+    function applyAvatarPreviewPosition(e) {
+        if (!$preview.length || !e) {
+            return;
+        }
+        var pos = getPreviewPosition(e);
+        $preview.css({
+            top: pos.top + 'px',
+            left: pos.left + 'px'
+        });
+    }
+
+    function scheduleAvatarPreviewPosition(e) {
+        lastAvatarEvent = e;
+        if (avatarPreviewFrame) {
+            return;
+        }
+        avatarPreviewFrame = window.requestAnimationFrame(function() {
+            avatarPreviewFrame = null;
+            applyAvatarPreviewPosition(lastAvatarEvent);
+        });
+    }
+
+    function hideAvatarPreviewImmediately() {
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+        }
+        if (avatarPreviewFrame) {
+            window.cancelAnimationFrame(avatarPreviewFrame);
+            avatarPreviewFrame = null;
+        }
+        lastAvatarEvent = null;
+        $preview.hide();
+    }
+
+    $(document).on('mouseenter', avatarSelector, function(e) {
+        if (!$preview.length) {
+            return;
+        }
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+        }
+        $preview.css({
+            display: 'block'
+        });
+        scheduleAvatarPreviewPosition(e);
+    });
+
+    $(document).on('mousemove', avatarSelector, function(e) {
+        if (!$preview.length || $preview.css('display') === 'none') {
+            return;
+        }
+        scheduleAvatarPreviewPosition(e);
+    });
+
+    $(document).on('mouseleave', avatarSelector, function() {
+        hideTimeout = setTimeout(function() {
+            hideAvatarPreviewImmediately();
+        }, 80);
+    });
+
+    $preview.on('mouseenter', function() {
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+        }
+    });
+
+    $preview.on('mouseleave', function() {
+        hideAvatarPreviewImmediately();
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible') {
+            hideAvatarPreviewImmediately();
+        }
+    });
+    window.addEventListener('pagehide', hideAvatarPreviewImmediately);
+});
+</script>
+</head>
+<body>
+<div class="cute-top-header">
+    <div class="cute-top-header__inner">
+        <div class="cute-top-header__brand">
+            <a class="cute-top-header__brand-link" href="index.php">
+                <span class="cute-top-header__brand-logo"><img src="/logo-clear.png" alt="好学" title="好学 - 好学者如春苗，日有所长；心向学，梦有光！" /></span>
+                    </a>
+        </div>
+        <div class="cute-top-header__nav">
+<table class="main" width="1600" border="0" cellspacing="0" cellpadding="0"><tr><td class="embedded" ><div id="nav"><ul id="mainmenu" class="menu"><li><a href="/index.php" target="_self" style="">  首页  </a></li><li><a href="/forums.php" target="_blank" style="">论坛</a></li><li><a href="/medal_wall.php" target="_self" style="">勋章墙</a></li><li class="selected"><a href="/textbooks.php" target="_self" style="">课本</a></li><li><a href="/torrents.php?tag_id=3" target="_self" style="" rel="nexus-menu-10">官种</a></li><li><a href="/torrents.php" target="_self" style="" rel="nexus-menu-3">资源库</a></li><li><a href="/seed_preserve.php" target="_self" style="">保种区</a></li><li><a href="/upload.php" target="_self" style="" rel="nexus-menu-17">发布</a></li><li><a href="/faq.php" target="_self" style="" rel="nexus-menu-22">帮助</a></li><li><a href="/image/ImageToken.php" target="_blank" style="" rel="nexus-menu-50">工具</a></li><li><a href="/mybonus.php" target="_self" style="" rel="nexus-menu-70">娱乐市场</a></li><li><a href="/magic_pool.php" target="_self" style="">站免池</a></li><li><a href="/contactstaff.php" target="_self" style="" rel="nexus-menu-25">PM管理</a></li><li><a href="/my_data_stats.php" target="_self" style="" rel="nexus-menu-86">我的数据</a></li><li><a href="/plugin-bank.php" target="_self" style="">火花银行</a></li></ul><ul id="nexus-menu-10" class="ddsubmenustyle"><li><a href="/torrents.php?tag_id=3" target="_self" style="">全部官种</a></li><li><a href="/torrents.php?cat401=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">学前教育</a></li><li><a href="/torrents.php?cat402=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">小 学</a></li><li><a href="/torrents.php?cat403=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">初 中</a></li><li><a href="/torrents.php?cat404=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">职 高</a></li><li><a href="/torrents.php?cat405=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">高 中</a></li><li><a href="/torrents.php?cat406=1&team11=1&team9=1&team8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sear" target="_self" style="">教育影音</a></li><li><a href="/torrents.php?cat410=1&tags%5B4%5D%5B%5D=3&incldead=1&torrent_status=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&add" target="_self" style="">纪录片</a></li></ul><ul id="nexus-menu-3" class="ddsubmenustyle"><li><a href="/torrents.php" target="_self" style="">全部资源</a></li><li><a href="/torrents.php?cat=401" target="_self" style="">学前教育</a></li><li><a href="/torrents.php?cat=402" target="_self" style="">小 学</a><ul id="nexus-menu-5" class="ddsubmenustyle"><li><a href="/torrents.php?audiocodec2=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">一年级</a></li><li><a href="/torrents.php?audiocodec3=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">二年级</a></li><li><a href="/torrents.php?audiocodec4=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">三年级</a></li><li><a href="/torrents.php?audiocodec5=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">四年级</a></li><li><a href="/torrents.php?audiocodec6=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">五年级</a></li><li><a href="/torrents.php?cat402=1&audiocodec7=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_" target="_self" style="">六年级</a></li></ul></li><li><a href="/torrents.php?cat=403" target="_self" style="">初 中</a><ul id="" class=""><li><a href="/torrents.php?cat403=1&audiocodec7=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_" target="_self" style="">六年级</a></li><li><a href="/torrents.php?audiocodec8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">七年级</a></li><li><a href="/torrents.php?audiocodec9=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&se" target="_self" style="">八年级</a></li><li><a href="/torrents.php?audiocodec10=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&s" target="_self" style="">九年级</a></li></ul></li><li><a href="/torrents.php?cat=404" target="_self" style="">职 高</a></li><li><a href="/torrents.php?cat=405" target="_self" style="">高 中</a><ul id="" class=""><li><a href="/torrents.php?audiocodec11=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&s" target="_self" style="">高 一</a></li><li><a href="https://www.hxpt.org/torrents.php?audiocodec12=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&sea" target="_self" style="">高 二</a></li><li><a href="/torrents.php?audiocodec13=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&s" target="_self" style="">高 三</a></li></ul></li><li><a href="/torrents.php?cat=406" target="_self" style="">教育影音</a><ul id="" class=""><li><a href="/torrents.php?cat406=1&medium1=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area" target="_self" style="">影</a></li><li><a href="/torrents.php?cat406=1&medium2=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area" target="_self" style="">音  频</a></li><li><a href="/torrents.php?cat406=1&medium3=1&medium4=1&medium5=1&medium6=1&medium8=1&incldead=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&add" target="_self" style="">书  籍</a></li></ul></li><li><a href="/torrents.php?cat410=1&incldead=1&torrent_status=0&spstate=0&inclbookmarked=0&approval_status=&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&sear" target="_self" style="">纪录片</a></li></ul><ul id="nexus-menu-17" class="ddsubmenustyle"><li><a href="/upload.php" target="_self" style="">发资源</a></li><li><a href="/subtitles.php" target="_self" style="">发字幕</a></li><li><a href="/offers.php" target="_self" style="">候 选</a></li><li><a href="/viewrequests.php" target="_self" style="">求 种</a></li></ul><ul id="nexus-menu-22" class="ddsubmenustyle"><li><a href="/rules.php" target="_self" style="">规则</a></li><li><a href="/faq.php" target="_self" style="">常见问题</a></li><li><a href="/wiki/PTPatronus/dev/plugin-dev.html" target="_blank" style="">PTPatronus Wiki</a></li></ul><ul id="nexus-menu-50" class="ddsubmenustyle"><li><a href="/image/ImageToken.php" target="_blank" style="">获取图床Token</a></li><li><a href="https://img.hxpt.org/" target="_blank" style="">官方图床</a></li><li><a href="/tool/img-piliang.php" target="_blank" style="">图床批量上传复制工具</a></li><li><a href="https://greasyfork.org/zh-CN/scripts/424132-auto-feed" target="_blank" style="">auto-feed 转种</a></li><li><a href="https://iyuu.cn/" target="_blank" style="">IYUU 辅种</a></li><li><a href="/tool/photo-compressor.php" target="_self" style="">照片压缩工具</a></li></ul><ul id="nexus-menu-70" class="ddsubmenustyle"><li><a href="/zhuangshi.php" target="_self" style="">装饰品中心</a></li><li><a href="/wuziqi.php" target="_self" style="">五子棋</a></li><li><a href="/magic_fram.php" target="_self" style="">好学农场</a></li><li><a href="/magic_scratch.php" target="_self" style="">刮刮乐</a></li><li><a href="/jgg.php" target="_self" style="">九宫格抽奖</a></li><li><a href="/bigsmall.php" target="_self" style="">猜大小</a></li><li><a href="/medal_synthesis.php" target="_self" style="">卡牌合成</a></li></ul><ul id="nexus-menu-25" class="ddsubmenustyle"><li><a href="/jgg_admin.php" target="_self" style="">九宫格抽奖配置</a></li><li><a href="/jixiao.php" target="_self" style="">绩效考核界面</a></li><li><a href="/jixiao_admin.php" target="_self" style="">绩效考核后台管理</a></li><li><a href="/zhuangshi_admin.php" target="_self" style="">装饰品管理中心</a></li><li><a href="/torrents.php?incldead=0&spstate=0&inclbookmarked=0&approval_status=0&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&search_mode=0" target="_self" style="">待审核</a></li><li><a href="/torrents.php?incldead=0&spstate=0&inclbookmarked=0&approval_status=2&size_begin=&size_end=&seeders_begin=&seeders_end=&leechers_begin=&leechers_end=&times_completed_begin=&times_completed_end=&added_begin=&added_end=&search=&search_area=0&search_mode=0" target="_self" style="">禁止中</a></li><li><a href="/staff.php" target="_self" style="">管 理 组</a></li><li><a href="/contactstaff.php" target="_self" style="">PM 管 理 组</a></li><li><a href="/topten.php" target="_self" style="">排行榜</a></li><li><a href="/log.php" target="_self" style="">日 志</a></li></ul><ul id="nexus-menu-86" class="ddsubmenustyle"><li><a href="/my_data_stats.php" target="_self" style="">我的数据</a></li><li><a href="/ptlife.php" target="_self" style="">守护神</a></li></ul></div></td></tr></table>
+        </div>
+        <div class="cute-top-header__profile">
+            <div class="cute-top-profile">
+                <span class="cute-top-profile__trigger" aria-label="&amp;nbsp;控制面板&amp;nbsp;">
+                    <span class="cute-top-profile__avatar">
+                        <div class="avatar-wrapper avatar-frame-overlay avatar-small"><span class="cute-top-avatar-image" class="animated-avatar" style="background-image: url('https://img.ptang.top/i/2026/01/30/福697c4a7bc9b002.gif');"></span><div class="frame-overlay" style="background-image: url('https://img.ptang.top/i/2026/01/30/新春06697c128a4b1342.gif');"></div></div>                    </span>
+                </span>
+                <div class="cute-top-profile__dropdown">
+                    <div class="cute-top-profile__summary">
+                        <div class="cute-top-profile__summary-main">
+                            <span class="cute-top-profile__summary-avatar cute-top-avatar-preview-trigger">
+                                <div class="avatar-wrapper avatar-frame-overlay "><span class="cute-top-avatar-image" class="animated-avatar" style="background-image: url('https://img.ptang.top/i/2026/01/30/福697c4a7bc9b002.gif');"></span><div class="frame-overlay" style="background-image: url('https://img.ptang.top/i/2026/01/30/新春06697c128a4b1342.gif');"></div></div>                            </span>
+                            <span class="cute-top-profile__summary-text">
+                                <span class="cute-top-profile__name"><span class="nowrap"><a  href="https://www.hxpt.org/userdetails.php?id=8" class='SysOp_Name'><b>gntv</b></a><img src="https://img.seedvault.cn/i/2025/07/18/%E5%A5%BD%E5%AD%A6%E5%BC%80%E7%AB%99%E5%8B%8B%E7%AB%A06879e35ebe92955.png" title="开站勋章" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/><img src="https://img.ptang.top/i/2025/09/04/%E6%94%BE%E6%9A%91%E5%81%87%E5%95%A6.gif" title="放暑假啦" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/><img src="https://img.ptang.top/i/2025/09/04/%E5%BC%80%E5%AD%A6%E5%85%88%E9%94%8B.gif" title="开学先锋" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/><img src="https://img.ptang.top/i/2025/09/29/%E5%86%AC%E8%87%B30268da1ddac17fb2.gif" title="二十四节气 - 冬至" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/><img src="https://img.ptang.top/i/2026/03/16/%E7%BE%8E%E4%BA%BA%E9%B1%BC69b7d6fbadc882.webp" title="美人鱼" class="nexus-username-medal preview" style="max-height: 11px;max-width: 11px;margin-left: 2pt"/></span></span>
+                                <span class="cute-top-profile__subline">
+                                    <span><font class="color_bonus">火花 </font> [<a href="mybonus.php">&#28779;&#33457;&#21830;&#24215;</a>] [<a href="mybonusmine.php">&#25105;&#30340;&#28779;&#33457;</a>]: 85,811,618.9</span>
+                                    <span><font class="color_invite">邀请 </font> [<a href="invite.php?id=8">发送</a>]: 1120(0)</span>
+                                </span>
+                            </span>
+                            <a class="cute-top-profile__summary-logout" href="logout.php">退出</a>
+                        </div>
+                    </div>
+                    <div class="cute-top-profile__stats">
+                        <span class="cute-top-profile__ratio"><font class="color_ratio">分享率:</font> 38.501</span>
+                        <span><font class="color_uploaded">上传量:</font> 108.974 TB</span>
+                        <span><font class="color_downloaded">下载量:</font> 2.830 TB</span>
+                        <span><font class="color_active">当前活动:</font> <img class="arrowup" alt="Torrents seeding" title="当前做种" src="pic/trans.gif" />14247 <img class="arrowdown" alt="Torrents leeching" title="当前下载" src="pic/trans.gif" />40</span>
+                        <span><font class="color_slots">连接数：</font>无限制</span>
+                                                <span><font class='color_bonus'>认领: </font> [<a href="claim.php?uid=8">0/1000</a>]</span>                    </div>
+                    <div class="cute-top-profile__links cute-top-profile__links--primary">
+                        <a class="cute-top-profile__attendance-link is-attended" href="attendance.php"><span class="cute-top-profile__attendance-title">&#31614;&#21040;&#24050;&#24471;120, &#34917;&#31614;&#21345;: 8</span></a>
+                        <a href="mybonus.php">&#28779;&#33457;&#21830;&#24215;</a>
+                        <a href="mybonusmine.php">&#25105;&#30340;&#28779;&#33457;</a>
+                        <a href="task.php">任务</a>
+                        <a href="medal.php">勋章</a>
+                        <a href="countdown_manage.php">&#27963;&#21160;</a>                        <a href="zhuangshi.php">&#35013;&#39280;&#21697;&#20013;&#24515;</a>
+                        <a href="torrents.php?inclbookmarked=1&amp;allsec=1&amp;incldead=0">收藏</a>
+                        <a href="usercp.php">&nbsp;控制面板&nbsp;</a>
+                        <a href="staffpanel.php">管理组面板</a>                        <a href="settings.php">站点设定</a>                        <a href="nexusphp" target="_blank">管理系统</a>                    </div>
+                    <div class="cute-top-profile__links">
+                        <a href="messages.php"><img class="inbox" alt="inbox" title="收件箱" src="styles/CuteTop/icons/inbox.png" /> 65 (0 新)</a>
+                        <a href="messages.php?action=viewmailbox&amp;box=-1"><img class="sentbox" alt="sentbox" title="发件箱" src="styles/CuteTop/icons/sentbox.png" /> 1</a>
+                        <a href="cheaterbox.php"><img class="cheaterbox" alt="cheaterbox" title="作弊者" src="styles/CuteTop/icons/cheaterbox.png" /> 1</a>
+                        <a href="reports.php"><img class="reportbox" alt="reportbox" title="举报信箱" src="styles/CuteTop/icons/reportbox.png" /> 0</a>
+                        <a href="staffbox.php"><img class="staffbox" alt="staffbox" title="管理组信箱" src="styles/CuteTop/icons/staffbox.png" /> 561</a>
+                        <a href="friends.php"><img class="buddylist" alt="Buddylist" title="社交名单" src="styles/CuteTop/icons/buddylist.png" /></a>
+                        <a href="getrss.php"><img class="rss" alt="RSS" title="获取RSS" src="styles/CuteTop/icons/rss.png" /></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+    <div class="cute-top-header__body">
+    </div>
+</div>
+<script type="text/javascript">
+jQuery(function($) {
+    var $header = $('.cute-top-header');
+    var $menuRow = $('.cute-top-header__inner');
+    var $body = $('.cute-top-header__body');
+    var $mainouter = $('.theme-mainouter').first();
+    var $mainmenu = $('#mainmenu');
+    var cuteTopHeaderFullHeight = 0;
+    var cuteTopHeaderTicking = false;
+    var cuteTopDropdownTicking = false;
+    var cuteTopMenuHeight = 0;
+    var cuteTopBodyHeight = 0;
+    var cuteTopResumeTicking = false;
+    var cuteTopResumeTimeout = null;
+    var cuteTopLastResumeAt = 0;
+    if (!$header.length || !$menuRow.length || !$body.length || !$mainouter.length) {
+        return;
+    }
+
+    function measureCuteTopHeader() {
+        cuteTopMenuHeight = Math.ceil($menuRow.outerHeight(true) || 0);
+        cuteTopBodyHeight = Math.ceil($body.outerHeight(true) || 0);
+        cuteTopHeaderFullHeight = Math.max(cuteTopMenuHeight + cuteTopBodyHeight, 0);
+        var documentWidth = Math.max(
+            document.documentElement.scrollWidth || 0,
+            document.body ? document.body.scrollWidth : 0,
+            window.innerWidth || 0
+        );
+
+        $header[0].style.setProperty('--cute-top-menu-height', cuteTopMenuHeight + 'px');
+        $header.css({
+            height: cuteTopHeaderFullHeight + 'px',
+            width: documentWidth + 'px'
+        });
+        $mainouter.css('margin-top', (cuteTopHeaderFullHeight + 12) + 'px');
+    }
+
+    function syncCuteTopHeaderState() {
+        var scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+        var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || 0;
+
+        $header.css('transform', 'translateX(-' + scrollLeft + 'px)');
+
+        if (scrollTop <= 2) {
+            $menuRow.css('transform', 'translateY(0)');
+            $body.css({
+                transform: 'translateY(0)',
+                opacity: 1
+            });
+            syncCuteTopDropdowns();
+            return;
+        }
+        var hideBodyOffset = Math.min(scrollTop, cuteTopBodyHeight);
+        var hideMenuOffset = Math.min(Math.max(scrollTop - cuteTopBodyHeight, 0), cuteTopMenuHeight);
+        var bodyProgress = cuteTopBodyHeight > 0 ? Math.max(0, Math.min(1, 1 - (hideBodyOffset / cuteTopBodyHeight))) : 1;
+
+        $menuRow.css('transform', 'translateY(-' + hideMenuOffset + 'px)');
+        $body.css({
+            transform: 'translateY(-' + hideBodyOffset + 'px)',
+            opacity: bodyProgress
+        });
+
+        syncCuteTopDropdowns();
+    }
+
+    function requestCuteTopHeaderSync() {
+        if (cuteTopHeaderTicking) {
+            return;
+        }
+        cuteTopHeaderTicking = true;
+        window.requestAnimationFrame(function() {
+            cuteTopHeaderTicking = false;
+            syncCuteTopHeaderState();
+        });
+    }
+
+    function getCuteTopAnchorByRel(rel) {
+        if (!rel) {
+            return null;
+        }
+        return document.querySelector('#mainmenu > li > a[rel="' + rel + '"]');
+    }
+
+    function positionCuteTopDropdown(anchor, shell) {
+        if (!anchor || !shell) {
+            return;
+        }
+
+        var rect = anchor.getBoundingClientRect();
+        var viewportWidth = document.documentElement.clientWidth || window.innerWidth || 0;
+        var anchorWidth = Math.ceil(rect.width || 0);
+        var shellWidth = shell.offsetWidth || 0;
+        var left = rect.left;
+        var top = rect.bottom + 1;
+
+        if (anchorWidth > 0) {
+            shell.style.setProperty('min-width', Math.max(anchorWidth + 18, 172) + 'px', 'important');
+            shellWidth = shell.offsetWidth || shellWidth;
+        }
+
+        if (shellWidth > 0) {
+            left = rect.left + ((anchorWidth - shellWidth) / 2);
+        }
+
+        if (left < 12) {
+            left = 12;
+        }
+
+        if (left + shellWidth > viewportWidth - 12) {
+            left = Math.max(12, viewportWidth - shellWidth - 12);
+        }
+
+        shell.style.setProperty('position', 'fixed', 'important');
+        shell.style.setProperty('left', left + 'px', 'important');
+        shell.style.setProperty('top', top + 'px', 'important');
+    }
+
+    function positionCuteTopDropdownByShell($shell) {
+        var rel = $shell.find('ul[id]').first().attr('id');
+        var anchor = getCuteTopAnchorByRel(rel);
+        if (anchor) {
+            positionCuteTopDropdown(anchor, $shell.get(0));
+        }
+    }
+
+    function syncCuteTopDropdowns() {
+        $('.ddsubmenustyle').each(function() {
+            var $shell = $(this);
+            var rel = $shell.find('ul[id]').first().attr('id');
+            var anchor = getCuteTopAnchorByRel(rel);
+            if (!anchor) {
+                return;
+            }
+
+            if ($shell.css('visibility') !== 'hidden' || $shell.get(0).style.visibility === 'visible') {
+                positionCuteTopDropdown(anchor, $shell.get(0));
+            }
+        });
+    }
+
+    function requestCuteTopDropdownSync() {
+        if (cuteTopDropdownTicking) {
+            return;
+        }
+        cuteTopDropdownTicking = true;
+        window.requestAnimationFrame(function() {
+            cuteTopDropdownTicking = false;
+            syncCuteTopDropdowns();
+        });
+    }
+
+    function closeCuteTopDropdowns() {
+        $('.ddsubmenustyle').each(function() {
+            this.style.removeProperty('left');
+            this.style.removeProperty('top');
+            this.style.removeProperty('min-width');
+        });
+    }
+
+    function temporarilyDisableCuteTopTransitions() {
+        var nodes = [$header.get(0), $menuRow.get(0), $body.get(0), $mainmenu.get(0)];
+        nodes.forEach(function(node) {
+            if (!node) {
+                return;
+            }
+            node.setAttribute('data-cute-top-prev-transition', node.style.transition || '');
+            node.style.transition = 'none';
+        });
+
+        window.setTimeout(function() {
+            nodes.forEach(function(node) {
+                if (!node) {
+                    return;
+                }
+                var previous = node.getAttribute('data-cute-top-prev-transition');
+                if (previous) {
+                    node.style.transition = previous;
+                } else {
+                    node.style.removeProperty('transition');
+                }
+                node.removeAttribute('data-cute-top-prev-transition');
+            });
+        }, 220);
+    }
+
+    function resumeCuteTopHeaderState() {
+        temporarilyDisableCuteTopTransitions();
+        $menuRow.css({
+            transform: 'translateY(0)',
+            visibility: 'visible',
+            opacity: 1
+        });
+        $body.css({
+            transform: 'translateY(0)',
+            visibility: 'visible',
+            opacity: 1
+        });
+        $mainmenu.css({
+            visibility: 'visible',
+            opacity: 1
+        });
+        measureCuteTopHeader();
+        syncCuteTopHeaderState();
+        requestCuteTopDropdownSync();
+    }
+
+    function scheduleCuteTopResumeSync() {
+        var now = Date.now();
+        if (now - cuteTopLastResumeAt < 400) {
+            return;
+        }
+        cuteTopLastResumeAt = now;
+
+        if (!cuteTopResumeTicking) {
+            cuteTopResumeTicking = true;
+            window.requestAnimationFrame(function() {
+                cuteTopResumeTicking = false;
+                resumeCuteTopHeaderState();
+            });
+        }
+
+        if (cuteTopResumeTimeout) {
+            clearTimeout(cuteTopResumeTimeout);
+        }
+        cuteTopResumeTimeout = window.setTimeout(function() {
+            cuteTopResumeTimeout = null;
+            resumeCuteTopHeaderState();
+        }, 120);
+
+        window.setTimeout(resumeCuteTopHeaderState, 320);
+        window.setTimeout(resumeCuteTopHeaderState, 700);
+    }
+
+    measureCuteTopHeader();
+    syncCuteTopHeaderState();
+    $(window).on('load resize', function() {
+        measureCuteTopHeader();
+        syncCuteTopHeaderState();
+    });
+    window.addEventListener('scroll', requestCuteTopHeaderSync, { passive: true });
+    window.addEventListener('resize', requestCuteTopDropdownSync, { passive: true });
+    document.addEventListener('mousemove', function(event) {
+        if (event.target && event.target.closest && (event.target.closest('#mainmenu') || event.target.closest('.ddsubmenustyle'))) {
+            requestCuteTopDropdownSync();
+        }
+    }, { passive: true });
+    document.addEventListener('mouseover', function(event) {
+        if (event.target && event.target.closest && (event.target.closest('#mainmenu') || event.target.closest('.ddsubmenustyle'))) {
+            requestCuteTopDropdownSync();
+        }
+    }, { passive: true });
+    window.addEventListener('pageshow', function() {
+        scheduleCuteTopResumeSync();
+    });
+    window.addEventListener('focus', function() {
+        scheduleCuteTopResumeSync();
+    });
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            closeCuteTopDropdowns();
+            scheduleCuteTopResumeSync();
+        }
+    });
+
+
+    document.addEventListener('readystatechange', function() {
+        if (document.readyState === 'complete') {
+            scheduleCuteTopResumeSync();
+        }
+    });
+    $('.theme-mainouter img').each(function() {
+        if (!this.hasAttribute('loading')) {
+            this.setAttribute('loading', 'lazy');
+        }
+        if (!this.hasAttribute('decoding')) {
+            this.setAttribute('decoding', 'async');
+        }
+    });
+
+    $('.theme-mainouter iframe').each(function() {
+        if (!this.hasAttribute('loading')) {
+            this.setAttribute('loading', 'lazy');
+        }
+    });
+});
+</script>
+
+<table class="mainouter theme-mainouter" width="1600" cellspacing="0" cellpadding="5" align="center">
+	<tr><td class="text theme-mainouter-cell" align="center">
+
+</td></tr>
+
+<tr><td id="outer" align="center" class="outer" style="padding-top: 20px; padding-bottom: 20px">
+<link rel="stylesheet" href="css/textbooks.css?v=7.2" type="text/css" /><table class="main" width="1600" border="0" cellspacing="0" cellpadding="0"><tr><td class="embedded" ><div class="textbooks-header"><h1 class="textbooks-title">📚 课本中心</h1><p class="textbooks-subtitle">小学、初中、高中课本资源一键下载</p><div class="admin-actions"><a href="admin_textbooks.php?action=my_submissions" class="btn-admin">📋 我的提交</a><a href="admin_textbooks.php" class="btn-admin">⚙️ 管理课本</a><a href="admin_textbooks.php?action=add" class="btn-admin btn-primary">➕ 创建课本</a></div><div class="textbooks-search-box"><form method="get" action="textbooks.php" class="search-form"><div class="search-input-group"><input type="text" name="search" class="search-input" placeholder="搜索课本名称、科目、版本..." value=""><button type="submit" class="search-btn">搜索</button></div></form></div></div><div class="textbooks-filter-container" id="textbooks-filter-panel"><button type="button" class="filter-toggle" id="textbooks-filter-toggle" aria-expanded="false" aria-controls="textbooks-filter-body" data-expand-label="展开" data-collapse-label="收起"><span class="filter-toggle-title"><span class="filter-toggle-icon" aria-hidden="true"></span>筛选课本</span><span class="filter-toggle-control"><span class="filter-toggle-state">展开</span><span class="filter-toggle-chevron" aria-hidden="true"></span></span></button><div class="filter-body" id="textbooks-filter-body"><div class="filter-section"><span class="filter-label">科目:</span><div class="filter-tags"><a href="textbooks.php?subject=&page=1" class="filter-tag active">全部</a><a href="textbooks.php?subject=%E4%B9%A6%E6%B3%95&page=1" class="filter-tag">书法</a><a href="textbooks.php?subject=%E4%BD%93%E8%82%B2%E4%B8%8E%E5%81%A5%E5%BA%B7&page=1" class="filter-tag">体育与健康</a><a href="textbooks.php?subject=%E4%BF%84%E8%AF%AD&page=1" class="filter-tag">俄语</a><a href="textbooks.php?subject=%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF&page=1" class="filter-tag">信息技术</a><a href="textbooks.php?subject=%E5%8A%B3%E5%8A%A8&page=1" class="filter-tag">劳动</a><a href="textbooks.php?subject=%E5%8C%96%E5%AD%A6&page=1" class="filter-tag">化学</a><a href="textbooks.php?subject=%E5%8E%86%E5%8F%B2&page=1" class="filter-tag">历史</a><a href="textbooks.php?subject=%E5%9C%B0%E7%90%86&page=1" class="filter-tag">地理</a><a href="textbooks.php?subject=%E5%9C%B0%E7%90%86%E5%9B%BE%E5%86%8C&page=1" class="filter-tag">地理图册</a><a href="textbooks.php?subject=%E5%BF%83%E7%90%86%E5%81%A5%E5%BA%B7&page=1" class="filter-tag">心理健康</a><a href="textbooks.php?subject=%E6%80%9D%E6%83%B3%E6%94%BF%E6%B2%BB&page=1" class="filter-tag">思想政治</a><a href="textbooks.php?subject=%E6%95%B0%E5%AD%A6&page=1" class="filter-tag">数学</a><a href="textbooks.php?subject=%E6%97%A5%E8%AF%AD&page=1" class="filter-tag">日语</a><a href="textbooks.php?subject=%E7%89%A9%E7%90%86&page=1" class="filter-tag">物理</a><a href="textbooks.php?subject=%E7%94%9F%E7%89%A9&page=1" class="filter-tag">生物</a><a href="textbooks.php?subject=%E7%94%9F%E7%89%A9%E5%AD%A6&page=1" class="filter-tag">生物学</a><a href="textbooks.php?subject=%E7%A7%91%E5%AD%A6&page=1" class="filter-tag">科学</a><a href="textbooks.php?subject=%E7%BB%BC%E5%90%88%E5%AE%9E%E8%B7%B5%E6%B4%BB%E5%8A%A8&page=1" class="filter-tag">综合实践活动</a><a href="textbooks.php?subject=%E7%BE%8E%E6%9C%AF&page=1" class="filter-tag">美术</a><a href="textbooks.php?subject=%E8%89%BA%E6%9C%AF&page=1" class="filter-tag">艺术</a><a href="textbooks.php?subject=%E8%89%BA%E6%9C%AF%C2%B7%E7%BE%8E%E6%9C%AF&page=1" class="filter-tag">艺术·美术</a><a href="textbooks.php?subject=%E8%89%BA%E6%9C%AF%C2%B7%E8%88%9E%E8%B9%88%2F%E5%BD%B1%E8%A7%86%2F%E6%88%8F%E5%89%A7&page=1" class="filter-tag">艺术·舞蹈/影视/戏剧</a><a href="textbooks.php?subject=%E8%89%BA%E6%9C%AF%C2%B7%E9%9F%B3%E4%B9%90&page=1" class="filter-tag">艺术·音乐</a><a href="textbooks.php?subject=%E8%8B%B1%E8%AF%AD&page=1" class="filter-tag">英语</a><a href="textbooks.php?subject=%E8%AF%AD%E6%96%87&page=1" class="filter-tag">语文</a><a href="textbooks.php?subject=%E8%AF%AD%E6%96%87%C2%B7%E4%B9%A6%E6%B3%95%E7%BB%83%E4%B9%A0%E6%8C%87%E5%AF%BC&page=1" class="filter-tag">语文·书法练习指导</a><a href="textbooks.php?subject=%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF&page=1" class="filter-tag">通用技术</a><a href="textbooks.php?subject=%E9%81%93%E5%BE%B7%E4%B8%8E%E6%B3%95%E6%B2%BB&page=1" class="filter-tag">道德与法治</a><a href="textbooks.php?subject=%E9%9F%B3%E4%B9%90&page=1" class="filter-tag">音乐</a></div></div><div class="filter-section"><span class="filter-label">学制:</span><div class="filter-tags" id="system-filter-tags"><a href="textbooks.php?system=&grade=&page=1" class="filter-tag system-tag active" data-system="">全部</a><a href="textbooks.php?system=%E5%85%AD%E4%B8%89%E5%88%B6&grade=&page=1" class="filter-tag system-tag" data-system="六三制" title="六三制 (小学6年+初中3年)">六三制</a><a href="textbooks.php?system=%E4%BA%94%E5%9B%9B%E5%88%B6&grade=&page=1" class="filter-tag system-tag" data-system="五四制" title="五四制 (小学5年+初中4年)">五四制</a><a href="textbooks.php?system=%E9%AB%98%E4%B8%AD&grade=&page=1" class="filter-tag system-tag" data-system="高中" title="高中 (含必修/选择性必修/选修)">高中</a><a href="textbooks.php?system=%E5%AD%A6%E5%89%8D&grade=&page=1" class="filter-tag system-tag" data-system="学前" title="学前教育 (幼儿园/学前班)">学前</a></div></div><div class="filter-section" id="grade-filter-section"><span class="filter-label">年级:</span><div class="filter-tags" id="grade-filter-tags"><a href="textbooks.php?grade=&page=1" class="filter-tag grade-tag active" data-grade="">全部</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%80%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制一年级上册" data-system="五四制">五四制一年级上册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%80%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制一年级下册" data-system="五四制">五四制一年级下册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%83%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制七年级上册" data-system="五四制">五四制七年级上册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%83%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制七年级下册" data-system="五四制">五四制七年级下册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%83%E5%B9%B4%E7%BA%A7%E5%85%A8%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制七年级全一册" data-system="五四制">五四制七年级全一册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%89%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制三年级上册" data-system="五四制">五四制三年级上册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%89%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制三年级下册" data-system="五四制">五四制三年级下册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%96%E7%95%8C%E5%8E%86%E5%8F%B2%E7%AC%AC%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制世界历史第一册" data-system="五四制">五四制世界历史第一册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%96%E7%95%8C%E5%8E%86%E5%8F%B2%E7%AC%AC%E4%BA%8C%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制世界历史第二册" data-system="五四制">五四制世界历史第二册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%AD%E5%9B%BD%E5%8E%86%E5%8F%B2%E7%AC%AC%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制中国历史第一册" data-system="五四制">五四制中国历史第一册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%AD%E5%9B%BD%E5%8E%86%E5%8F%B2%E7%AC%AC%E4%B8%89%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制中国历史第三册" data-system="五四制">五四制中国历史第三册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%AD%E5%9B%BD%E5%8E%86%E5%8F%B2%E7%AC%AC%E4%BA%8C%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制中国历史第二册" data-system="五四制">五四制中国历史第二册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B8%AD%E5%9B%BD%E5%8E%86%E5%8F%B2%E7%AC%AC%E5%9B%9B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制中国历史第四册" data-system="五四制">五四制中国历史第四册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B9%9D%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制九年级上册" data-system="五四制">五四制九年级上册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B9%9D%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制九年级下册" data-system="五四制">五四制九年级下册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%B9%9D%E5%B9%B4%E7%BA%A7%E5%85%A8%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制九年级全一册" data-system="五四制">五四制九年级全一册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%BA%8C%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制二年级上册" data-system="五四制">五四制二年级上册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%BA%8C%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制二年级下册" data-system="五四制">五四制二年级下册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%BA%94%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制五年级上册" data-system="五四制">五四制五年级上册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E4%BA%94%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制五年级下册" data-system="五四制">五四制五年级下册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E5%85%AB%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制八年级上册" data-system="五四制">五四制八年级上册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E5%85%AB%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制八年级下册" data-system="五四制">五四制八年级下册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E5%85%AB%E5%B9%B4%E7%BA%A7%E5%85%A8%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制八年级全一册" data-system="五四制">五四制八年级全一册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E5%85%AD%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制六年级上册" data-system="五四制">五四制六年级上册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E5%85%AD%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制六年级下册" data-system="五四制">五四制六年级下册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E5%9B%9B%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制四年级上册" data-system="五四制">五四制四年级上册</a><a href="textbooks.php?grade=%E4%BA%94%E5%9B%9B%E5%88%B6%E5%9B%9B%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="五四制四年级下册" data-system="五四制">五四制四年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%80%E5%B9%B4%E7%BA%A7&page=1" class="filter-tag grade-tag" data-grade="六三制一年级" data-system="六三制">六三制一年级</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%80%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制一年级上册" data-system="六三制">六三制一年级上册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%80%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制一年级下册" data-system="六三制">六三制一年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%80%E5%B9%B4%E7%BA%A7%E8%B5%B7%E7%82%B9&page=1" class="filter-tag grade-tag" data-grade="六三制一年级起点" data-system="六三制">六三制一年级起点</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%83%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制七年级上册" data-system="六三制">六三制七年级上册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%83%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制七年级下册" data-system="六三制">六三制七年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%83%E5%B9%B4%E7%BA%A7%E5%85%A8%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制七年级全一册" data-system="六三制">六三制七年级全一册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%89%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制三年级上册" data-system="六三制">六三制三年级上册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%89%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制三年级下册" data-system="六三制">六三制三年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B8%89%E5%B9%B4%E7%BA%A7%E5%85%A8%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制三年级全一册" data-system="六三制">六三制三年级全一册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B9%9D%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制九年级上册" data-system="六三制">六三制九年级上册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B9%9D%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制九年级下册" data-system="六三制">六三制九年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%B9%9D%E5%B9%B4%E7%BA%A7%E5%85%A8%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制九年级全一册" data-system="六三制">六三制九年级全一册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%BA%8C%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制二年级上册" data-system="六三制">六三制二年级上册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%BA%8C%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制二年级下册" data-system="六三制">六三制二年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%BA%8C%E5%B9%B4%E7%BA%A7%E5%85%A8%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制二年级全一册" data-system="六三制">六三制二年级全一册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%BA%94%E5%B9%B4%E7%BA%A7&page=1" class="filter-tag grade-tag" data-grade="六三制五年级" data-system="六三制">六三制五年级</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%BA%94%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制五年级上册" data-system="六三制">六三制五年级上册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E4%BA%94%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制五年级下册" data-system="六三制">六三制五年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E5%85%AB%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制八年级上册" data-system="六三制">六三制八年级上册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E5%85%AB%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制八年级下册" data-system="六三制">六三制八年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E5%85%AB%E5%B9%B4%E7%BA%A7%E5%85%A8%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制八年级全一册" data-system="六三制">六三制八年级全一册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E5%85%AD%E5%B9%B4%E7%BA%A7&page=1" class="filter-tag grade-tag" data-grade="六三制六年级" data-system="六三制">六三制六年级</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E5%85%AD%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制六年级上册" data-system="六三制">六三制六年级上册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E5%85%AD%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制六年级下册" data-system="六三制">六三制六年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E5%9B%9B%E5%B9%B4%E7%BA%A7&page=1" class="filter-tag grade-tag" data-grade="六三制四年级" data-system="六三制">六三制四年级</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E5%9B%9B%E5%B9%B4%E7%BA%A7%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制四年级上册" data-system="六三制">六三制四年级上册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E5%9B%9B%E5%B9%B4%E7%BA%A7%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="六三制四年级下册" data-system="六三制">六三制四年级下册</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E6%95%99%E5%B8%88%E7%94%A8%E4%B9%A6%E6%B0%B4%E5%B9%B3%E4%B8%80&page=1" class="filter-tag grade-tag" data-grade="六三制教师用书水平一" data-system="六三制">六三制教师用书水平一</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E6%95%99%E5%B8%88%E7%94%A8%E4%B9%A6%E6%B0%B4%E5%B9%B3%E4%B8%89&page=1" class="filter-tag grade-tag" data-grade="六三制教师用书水平三" data-system="六三制">六三制教师用书水平三</a><a href="textbooks.php?grade=%E5%85%AD%E4%B8%89%E5%88%B6%E6%95%99%E5%B8%88%E7%94%A8%E4%B9%A6%E6%B0%B4%E5%B9%B3%E4%BA%8C&page=1" class="filter-tag grade-tag" data-grade="六三制教师用书水平二" data-system="六三制">六三制教师用书水平二</a><a href="textbooks.php?grade=%E5%AD%A6%E7%94%9F%E8%AF%BB%E6%9C%AC%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="学生读本一册" data-system="">学生读本一册</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE&page=1" class="filter-tag grade-tag" data-grade="必修" data-system="高中">必修</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE+%E7%AC%AC%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="必修 第一册" data-system="高中">必修 第一册</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE+%E7%AC%AC%E4%B8%89%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="必修 第三册" data-system="高中">必修 第三册</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE+%E7%AC%AC%E4%BA%8C%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="必修 第二册" data-system="高中">必修 第二册</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE+%E7%AC%AC%E5%9B%9B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="必修 第四册" data-system="高中">必修 第四册</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE1&page=1" class="filter-tag grade-tag" data-grade="必修1" data-system="高中">必修1</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE2&page=1" class="filter-tag grade-tag" data-grade="必修2" data-system="高中">必修2</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE3&page=1" class="filter-tag grade-tag" data-grade="必修3" data-system="高中">必修3</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE4&page=1" class="filter-tag grade-tag" data-grade="必修4" data-system="高中">必修4</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE5&page=1" class="filter-tag grade-tag" data-grade="必修5" data-system="高中">必修5</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE6&page=1" class="filter-tag grade-tag" data-grade="必修6" data-system="高中">必修6</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE%E4%B8%80&page=1" class="filter-tag grade-tag" data-grade="必修一" data-system="高中">必修一</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE%E4%B8%89&page=1" class="filter-tag grade-tag" data-grade="必修三" data-system="高中">必修三</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE%E4%B8%8A&page=1" class="filter-tag grade-tag" data-grade="必修上" data-system="高中">必修上</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE%E4%B8%8B&page=1" class="filter-tag grade-tag" data-grade="必修下" data-system="高中">必修下</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE%E4%BA%8C&page=1" class="filter-tag grade-tag" data-grade="必修二" data-system="高中">必修二</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE%E7%AC%AC%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="必修第一册" data-system="高中">必修第一册</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE%E7%AC%AC%E4%B8%89%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="必修第三册" data-system="高中">必修第三册</a><a href="textbooks.php?grade=%E5%BF%85%E4%BF%AE%E7%AC%AC%E4%BA%8C%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="必修第二册" data-system="高中">必修第二册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE&page=1" class="filter-tag grade-tag" data-grade="选择性必修" data-system="高中">选择性必修</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE+%E7%AC%AC%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修 第一册" data-system="高中">选择性必修 第一册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE+%E7%AC%AC%E4%B8%89%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修 第三册" data-system="高中">选择性必修 第三册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE+%E7%AC%AC%E4%BA%8C%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修 第二册" data-system="高中">选择性必修 第二册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE+%E7%AC%AC%E5%9B%9B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修 第四册" data-system="高中">选择性必修 第四册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE1&page=1" class="filter-tag grade-tag" data-grade="选择性必修1" data-system="高中">选择性必修1</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE10&page=1" class="filter-tag grade-tag" data-grade="选择性必修10" data-system="高中">选择性必修10</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE11&page=1" class="filter-tag grade-tag" data-grade="选择性必修11" data-system="高中">选择性必修11</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE2&page=1" class="filter-tag grade-tag" data-grade="选择性必修2" data-system="高中">选择性必修2</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE3&page=1" class="filter-tag grade-tag" data-grade="选择性必修3" data-system="高中">选择性必修3</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE4&page=1" class="filter-tag grade-tag" data-grade="选择性必修4" data-system="高中">选择性必修4</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE5&page=1" class="filter-tag grade-tag" data-grade="选择性必修5" data-system="高中">选择性必修5</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE6&page=1" class="filter-tag grade-tag" data-grade="选择性必修6" data-system="高中">选择性必修6</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE7&page=1" class="filter-tag grade-tag" data-grade="选择性必修7" data-system="高中">选择性必修7</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE8&page=1" class="filter-tag grade-tag" data-grade="选择性必修8" data-system="高中">选择性必修8</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE9&page=1" class="filter-tag grade-tag" data-grade="选择性必修9" data-system="高中">选择性必修9</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE%E4%B8%8A%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修上册" data-system="高中">选择性必修上册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE%E4%B8%8B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修下册" data-system="高中">选择性必修下册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE%E4%B8%AD%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修中册" data-system="高中">选择性必修中册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE%E7%AC%AC%E4%B8%80%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修第一册" data-system="高中">选择性必修第一册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE%E7%AC%AC%E4%B8%89%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修第三册" data-system="高中">选择性必修第三册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE%E7%AC%AC%E4%BA%8C%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修第二册" data-system="高中">选择性必修第二册</a><a href="textbooks.php?grade=%E9%80%89%E6%8B%A9%E6%80%A7%E5%BF%85%E4%BF%AE%E7%AC%AC%E5%9B%9B%E5%86%8C&page=1" class="filter-tag grade-tag" data-grade="选择性必修第四册" data-system="高中">选择性必修第四册</a></div></div><div class="filter-section"><span class="filter-label">版本:</span><div class="filter-tags"><a href="textbooks.php?version=&page=1" class="filter-tag active">全部</a><a href="textbooks.php?version=2011%E8%AF%BE%E6%A0%87%E7%89%88&page=1" class="filter-tag">2011课标版</a><a href="textbooks.php?version=2022%E6%96%B0%E8%AF%BE%E6%A0%87%E7%89%88&page=1" class="filter-tag">2022新课标版</a><a href="textbooks.php?version=%E4%B8%AD%E5%9B%BE%E4%B8%AD%E5%8D%8E%E5%9C%B0%E5%9B%BE%E7%89%88&page=1" class="filter-tag">中图中华地图版</a><a href="textbooks.php?version=%E4%B8%AD%E5%9B%BE%E7%89%88&page=1" class="filter-tag">中图版</a><a href="textbooks.php?version=%E4%BA%BA%E6%95%99A%E7%89%88&page=1" class="filter-tag">人教A版</a><a href="textbooks.php?version=%E4%BA%BA%E6%95%99%E4%B8%AD%E5%9B%BE%E7%89%88&page=1" class="filter-tag">人教中图版</a><a href="textbooks.php?version=%E4%BA%BA%E6%95%99%E7%89%88&page=1" class="filter-tag">人教版</a><a href="textbooks.php?version=%E4%BA%BA%E6%95%99%E7%89%88+b%E7%89%88&page=1" class="filter-tag">人教版 b版</a><a href="textbooks.php?version=%E4%BA%BA%E6%95%99%E7%89%88+pep&page=1" class="filter-tag">人教版 pep</a><a href="textbooks.php?version=%E4%BA%BA%E6%95%99%E7%89%88+%E4%BA%94%E7%BA%BF%E8%B0%B1&page=1" class="filter-tag">人教版 五线谱</a><a href="textbooks.php?version=%E4%BA%BA%E6%95%99%E7%89%88+%E7%AE%80%E8%B0%B1&page=1" class="filter-tag">人教版 简谱</a><a href="textbooks.php?version=%E4%BA%BA%E6%95%99%E7%89%88+%E7%B2%BE%E9%80%9A&page=1" class="filter-tag">人教版 精通</a><a href="textbooks.php?version=%E4%BA%BA%E6%95%99%E9%84%82%E6%95%99%E7%89%88&page=1" class="filter-tag">人教鄂教版</a><a href="textbooks.php?version=%E4%BA%BA%E7%BE%8E%E7%89%88&page=1" class="filter-tag">人美版</a><a href="textbooks.php?version=%E4%BA%BA%E9%9F%B3%E7%89%88&page=1" class="filter-tag">人音版</a><a href="textbooks.php?version=%E4%BA%BA%E9%9F%B3%E7%89%88+%E4%BA%94%E7%BA%BF%E8%B0%B1&page=1" class="filter-tag">人音版 五线谱</a><a href="textbooks.php?version=%E4%BA%BA%E9%9F%B3%E7%89%88+%E7%AE%80%E8%B0%B1&page=1" class="filter-tag">人音版 简谱</a><a href="textbooks.php?version=%E4%BA%BA%E9%9F%B3%E7%89%88%E4%BA%94%E7%BA%BF%E8%B0%B1&page=1" class="filter-tag">人音版五线谱</a><a href="textbooks.php?version=%E4%BA%BA%E9%9F%B3%E7%89%88%E7%AE%80%E8%B0%B1&page=1" class="filter-tag">人音版简谱</a><a href="textbooks.php?version=%E5%86%80%E4%BA%BA%E7%89%88&page=1" class="filter-tag">冀人版</a><a href="textbooks.php?version=%E5%86%80%E5%B0%91%E7%89%88&page=1" class="filter-tag">冀少版</a><a href="textbooks.php?version=%E5%86%80%E6%95%99%E7%89%88&page=1" class="filter-tag">冀教版</a><a href="textbooks.php?version=%E5%86%80%E7%BE%8E%E7%89%88&page=1" class="filter-tag">冀美版</a><a href="textbooks.php?version=%E5%8C%97%E4%BA%AC%E7%89%88&page=1" class="filter-tag">北京版</a><a href="textbooks.php?version=%E5%8C%97%E4%BA%AC%E7%89%88+%E6%95%99%E5%B8%88%E7%94%A8%E4%B9%A6&page=1" class="filter-tag">北京版 教师用书</a><a href="textbooks.php?version=%E5%8C%97%E5%B8%88%E5%A4%A7%E7%89%88&page=1" class="filter-tag">北师大版</a><a href="textbooks.php?version=%E5%8D%8E%E4%B8%9C%E5%B8%88%E5%A4%A7%E7%89%88&page=1" class="filter-tag">华东师大版</a><a href="textbooks.php?version=%E5%8D%8E%E4%B8%AD%E5%B8%88%E5%A4%A7%E7%89%88&page=1" class="filter-tag">华中师大版</a><a href="textbooks.php?version=%E5%8D%8E%E6%96%87%E7%A4%BE%E7%89%88&page=1" class="filter-tag">华文社版</a><a href="textbooks.php?version=%E5%95%86%E5%8A%A1%E6%98%9F%E7%90%83%E7%89%88&page=1" class="filter-tag">商务星球版</a><a href="textbooks.php?version=%E5%9C%B0%E8%B4%A8%E7%A4%BE%E7%89%88&page=1" class="filter-tag">地质社版</a><a href="textbooks.php?version=%E5%A4%96%E7%A0%94%E7%89%88&page=1" class="filter-tag">外研版</a><a href="textbooks.php?version=%E5%A4%96%E7%A0%94%E7%A4%BE%E7%89%88&page=1" class="filter-tag">外研社版</a><a href="textbooks.php?version=%E5%A4%A7%E7%BA%B2%E7%89%88&page=1" class="filter-tag">大纲版</a><a href="textbooks.php?version=%E5%A4%A7%E8%B1%A1%E7%A4%BE%E7%89%88&page=1" class="filter-tag">大象社版</a><a href="textbooks.php?version=%E5%B2%AD%E5%8D%97%E7%89%88&page=1" class="filter-tag">岭南版</a><a href="textbooks.php?version=%E5%B2%AD%E5%8D%97%E7%BE%8E%E7%89%88&page=1" class="filter-tag">岭南美版</a><a href="textbooks.php?version=%E5%B7%9D%E6%95%99%E7%89%88&page=1" class="filter-tag">川教版</a><a href="textbooks.php?version=%E5%B9%BF%E8%A5%BF%E5%B8%88%E5%A4%A7%E7%89%88&page=1" class="filter-tag">广西师大版</a><a href="textbooks.php?version=%E6%8E%A5%E5%8A%9B%E7%A4%BE%E7%89%88&page=1" class="filter-tag">接力社版</a><a href="textbooks.php?version=%E6%95%99%E7%A7%91%E7%89%88&page=1" class="filter-tag">教科版</a><a href="textbooks.php?version=%E6%95%99%E7%A7%91%E7%89%88+eec%E5%AD%A6%E9%99%A2&page=1" class="filter-tag">教科版 eec学院</a><a href="textbooks.php?version=%E6%99%8B%E4%BA%BA%E7%89%88&page=1" class="filter-tag">晋人版</a><a href="textbooks.php?version=%E6%99%8B%E6%95%99%E7%89%88&page=1" class="filter-tag">晋教版</a><a href="textbooks.php?version=%E6%A1%82%E6%95%99%E7%89%88&page=1" class="filter-tag">桂教版</a><a href="textbooks.php?version=%E6%A1%82%E7%BE%8E%E7%89%88&page=1" class="filter-tag">桂美版</a><a href="textbooks.php?version=%E6%AD%A6%E6%B1%89%E7%A4%BE%E7%89%88&page=1" class="filter-tag">武汉社版</a><a href="textbooks.php?version=%E6%B2%AA%E4%B9%A6%E7%94%BB%E7%89%88&page=1" class="filter-tag">沪书画版</a><a href="textbooks.php?version=%E6%B2%AA%E5%A4%96%E6%95%99%E7%89%88&page=1" class="filter-tag">沪外教版</a><a href="textbooks.php?version=%E6%B2%AA%E6%95%99%E7%89%88&page=1" class="filter-tag">沪教版</a><a href="textbooks.php?version=%E6%B2%AA%E7%A7%91%E6%8A%80%E7%89%88&page=1" class="filter-tag">沪科技版</a><a href="textbooks.php?version=%E6%B2%AA%E7%A7%91%E6%8A%80%E7%B2%A4%E6%95%99%E7%89%88&page=1" class="filter-tag">沪科技粤教版</a><a href="textbooks.php?version=%E6%B2%AA%E7%A7%91%E6%95%99%E7%89%88&page=1" class="filter-tag">沪科教版</a><a href="textbooks.php?version=%E6%B2%AA%E9%9F%B3%E7%89%88&page=1" class="filter-tag">沪音版</a><a href="textbooks.php?version=%E6%B5%8E%E5%8D%97%E7%89%88&page=1" class="filter-tag">济南版</a><a href="textbooks.php?version=%E6%B5%99%E4%BA%BA%E7%BE%8E%E7%89%88&page=1" class="filter-tag">浙人美版</a><a href="textbooks.php?version=%E6%B5%99%E6%95%99%E7%89%88&page=1" class="filter-tag">浙教版</a><a href="textbooks.php?version=%E6%B5%99%E7%A7%91%E7%89%88&page=1" class="filter-tag">浙科版</a><a href="textbooks.php?version=%E6%B8%85%E5%8D%8E%E5%A4%A7%E5%AD%A6%E7%89%88&page=1" class="filter-tag">清华大学版</a><a href="textbooks.php?version=%E6%B9%98%E5%B0%91%E7%89%88&page=1" class="filter-tag">湘少版</a><a href="textbooks.php?version=%E6%B9%98%E6%95%99%E7%89%88&page=1" class="filter-tag">湘教版</a><a href="textbooks.php?version=%E6%B9%98%E6%96%87%E8%89%BA%E7%89%88&page=1" class="filter-tag">湘文艺版</a><a href="textbooks.php?version=%E6%B9%98%E7%A7%91%E7%89%88&page=1" class="filter-tag">湘科版</a><a href="textbooks.php?version=%E6%B9%98%E7%BE%8E%E7%89%88&page=1" class="filter-tag">湘美版</a><a href="textbooks.php?version=%E6%B9%98%E8%89%BA%E7%89%88&page=1" class="filter-tag">湘艺版</a><a href="textbooks.php?version=%E7%A7%91%E5%AD%A6%E7%A4%BE%E7%89%88+%E6%95%99%E5%B8%88%E7%94%A8%E4%B9%A6&page=1" class="filter-tag">科学社版 教师用书</a><a href="textbooks.php?version=%E7%A7%91%E5%AD%A6%E7%B2%A4%E6%95%99%E7%89%88&page=1" class="filter-tag">科学粤教版</a><a href="textbooks.php?version=%E7%A7%91%E6%99%AE%E7%89%88&page=1" class="filter-tag">科普版</a><a href="textbooks.php?version=%E7%B2%A4%E6%95%99%E6%B2%AA%E5%A4%96%E6%95%99%E7%89%88&page=1" class="filter-tag">粤教沪外教版</a><a href="textbooks.php?version=%E7%B2%A4%E6%95%99%E7%89%88&page=1" class="filter-tag">粤教版</a><a href="textbooks.php?version=%E7%B2%A4%E6%95%99%E7%A7%91%E6%8A%80%E7%89%88&page=1" class="filter-tag">粤教科技版</a><a href="textbooks.php?version=%E7%B2%A4%E6%95%99%E7%B2%A4%E4%BA%BA%E7%89%88&page=1" class="filter-tag">粤教粤人版</a><a href="textbooks.php?version=%E7%B2%A4%E6%95%99%E7%B2%A4%E7%A7%91%E7%89%88&page=1" class="filter-tag">粤教粤科版</a><a href="textbooks.php?version=%E7%B2%A4%E6%95%99%E8%8A%B1%E5%9F%8E%E7%89%88&page=1" class="filter-tag">粤教花城版</a><a href="textbooks.php?version=%E7%BB%9F%E7%BC%96%E7%89%88&page=1" class="filter-tag">统编版</a><a href="textbooks.php?version=%E8%8A%B1%E5%9F%8E%E7%89%88&page=1" class="filter-tag">花城版</a><a href="textbooks.php?version=%E8%8B%8F%E5%B0%91%E7%89%88&page=1" class="filter-tag">苏少版</a><a href="textbooks.php?version=%E8%8B%8F%E5%B0%91%E7%89%88+%E4%BA%94%E7%BA%BF%E8%B0%B1&page=1" class="filter-tag">苏少版 五线谱</a><a href="textbooks.php?version=%E8%8B%8F%E5%B0%91%E7%89%88+%E7%AE%80%E8%B0%B1&page=1" class="filter-tag">苏少版 简谱</a><a href="textbooks.php?version=%E8%8B%8F%E6%95%99%E7%89%88&page=1" class="filter-tag">苏教版</a><a href="textbooks.php?version=%E8%8B%8F%E7%A7%91%E7%89%88&page=1" class="filter-tag">苏科版</a><a href="textbooks.php?version=%E8%A5%BF%E5%8D%97%E5%A4%A7%E5%AD%A6%E7%89%88&page=1" class="filter-tag">西南大学版</a><a href="textbooks.php?version=%E8%A5%BF%E5%B8%88%E7%89%88&page=1" class="filter-tag">西师版</a><a href="textbooks.php?version=%E8%A5%BF%E6%B3%A0%E5%8D%B0%E7%A4%BE%E7%89%88&page=1" class="filter-tag">西泠印社版</a><a href="textbooks.php?version=%E8%AF%91%E6%9E%97%E7%89%88&page=1" class="filter-tag">译林版</a><a href="textbooks.php?version=%E8%AF%AD%E6%96%87%E7%89%88&page=1" class="filter-tag">语文版</a><a href="textbooks.php?version=%E8%B1%AB%E7%A7%91%E7%89%88&page=1" class="filter-tag">豫科版</a><a href="textbooks.php?version=%E8%B5%A3%E7%BE%8E%E7%89%88&page=1" class="filter-tag">赣美版</a><a href="textbooks.php?version=%E8%BE%BD%E5%AE%81%E5%B8%88%E5%A4%A7%E7%89%88&page=1" class="filter-tag">辽宁师大版</a><a href="textbooks.php?version=%E8%BE%BD%E6%B5%B7%E7%89%88&page=1" class="filter-tag">辽海版</a><a href="textbooks.php?version=%E9%83%A8%E7%BC%96%E7%89%88&page=1" class="filter-tag">部编版</a><a href="textbooks.php?version=%E9%84%82%E6%95%99%E7%89%88&page=1" class="filter-tag">鄂教版</a><a href="textbooks.php?version=%E9%85%8D%E5%A5%97%E4%B8%AD%E5%9B%BE%E4%B8%AD%E5%8D%8E%E5%9C%B0%E5%9B%BE%E7%89%88&page=1" class="filter-tag">配套中图中华地图版</a><a href="textbooks.php?version=%E9%85%8D%E5%A5%97%E4%B8%AD%E5%9B%BE%E7%89%88&page=1" class="filter-tag">配套中图版</a><a href="textbooks.php?version=%E9%85%8D%E5%A5%97%E4%BA%BA%E6%95%99%E7%89%88&page=1" class="filter-tag">配套人教版</a><a href="textbooks.php?version=%E9%85%8D%E5%A5%97%E5%95%86%E5%8A%A1%E6%98%9F%E7%90%83%E7%89%88&page=1" class="filter-tag">配套商务星球版</a><a href="textbooks.php?version=%E9%85%8D%E5%A5%97%E6%99%8B%E6%95%99%E7%89%88&page=1" class="filter-tag">配套晋教版</a><a href="textbooks.php?version=%E9%85%8D%E5%A5%97%E6%B9%98%E6%95%99%E7%89%88&page=1" class="filter-tag">配套湘教版</a><a href="textbooks.php?version=%E9%85%8D%E5%A5%97%E7%A7%91%E6%99%AE%E7%89%88&page=1" class="filter-tag">配套科普版</a><a href="textbooks.php?version=%E9%85%8D%E5%A5%97%E7%B2%A4%E6%95%99%E7%B2%A4%E4%BA%BA%E7%89%88&page=1" class="filter-tag">配套粤教粤人版</a><a href="textbooks.php?version=%E9%85%8D%E5%A5%97%E9%B2%81%E6%95%99%E7%89%88&page=1" class="filter-tag">配套鲁教版</a><a href="textbooks.php?version=%E9%87%8D%E5%BA%86%E5%A4%A7%E5%AD%A6%E7%89%88&page=1" class="filter-tag">重庆大学版</a><a href="textbooks.php?version=%E9%97%BD%E6%95%99%E7%89%88&page=1" class="filter-tag">闽教版</a><a href="textbooks.php?version=%E9%99%95%E6%97%85%E7%89%88&page=1" class="filter-tag">陕旅版</a><a href="textbooks.php?version=%E9%9D%92%E5%B2%9B%E7%89%88&page=1" class="filter-tag">青岛版</a><a href="textbooks.php?version=%E9%9D%92%E5%B2%9B%E7%89%88%E4%BA%94%E5%9B%9B%E5%88%B6&page=1" class="filter-tag">青岛版五四制</a><a href="textbooks.php?version=%E9%9D%92%E5%B2%9B%E7%89%88%E5%85%AD%E4%B8%89%E5%88%B6&page=1" class="filter-tag">青岛版六三制</a><a href="textbooks.php?version=%E9%B2%81%E6%95%99%E6%B9%98%E6%95%99%E7%89%88&page=1" class="filter-tag">鲁教湘教版</a><a href="textbooks.php?version=%E9%B2%81%E6%95%99%E7%89%88&page=1" class="filter-tag">鲁教版</a><a href="textbooks.php?version=%E9%B2%81%E7%A7%91%E7%89%88&page=1" class="filter-tag">鲁科版</a><a href="textbooks.php?version=%E9%B2%81%E7%BE%8E%E7%89%88&page=1" class="filter-tag">鲁美版</a></div></div><div class="filter-section"><span class="filter-label">年份:</span><div class="filter-tags"><a href="textbooks.php?year=0&page=1" class="filter-tag active">全部</a><a href="textbooks.php?year=2028&page=1" class="filter-tag">2028</a><a href="textbooks.php?year=2027&page=1" class="filter-tag">2027</a><a href="textbooks.php?year=2026&page=1" class="filter-tag">2026</a><a href="textbooks.php?year=2025&page=1" class="filter-tag">2025</a><a href="textbooks.php?year=2024&page=1" class="filter-tag">2024</a><a href="textbooks.php?year=2023&page=1" class="filter-tag">2023</a><a href="textbooks.php?year=2022&page=1" class="filter-tag">2022</a><a href="textbooks.php?year=2021&page=1" class="filter-tag">2021</a><a href="textbooks.php?year=2020&page=1" class="filter-tag">2020</a><a href="textbooks.php?year=2019&page=1" class="filter-tag">2019</a><a href="textbooks.php?year=2018&page=1" class="filter-tag">2018</a><a href="textbooks.php?year=2017&page=1" class="filter-tag">2017</a><a href="textbooks.php?year=2016&page=1" class="filter-tag">2016</a><a href="textbooks.php?year=2015&page=1" class="filter-tag">2015</a><a href="textbooks.php?year=2014&page=1" class="filter-tag">2014</a><a href="textbooks.php?year=2013&page=1" class="filter-tag">2013</a><a href="textbooks.php?year=2012&page=1" class="filter-tag">2012</a><a href="textbooks.php?year=2011&page=1" class="filter-tag">2011</a><a href="textbooks.php?year=2010&page=1" class="filter-tag">2010</a><a href="textbooks.php?year=2009&page=1" class="filter-tag">2009</a><a href="textbooks.php?year=2008&page=1" class="filter-tag">2008</a><a href="textbooks.php?year=2007&page=1" class="filter-tag">2007</a><a href="textbooks.php?year=2006&page=1" class="filter-tag">2006</a><a href="textbooks.php?year=2005&page=1" class="filter-tag">2005</a><a href="textbooks.php?year=2004&page=1" class="filter-tag">2004</a><a href="textbooks.php?year=2003&page=1" class="filter-tag">2003</a><a href="textbooks.php?year=2002&page=1" class="filter-tag">2002</a><a href="textbooks.php?year=2001&page=1" class="filter-tag">2001</a><a href="textbooks.php?year=2000&page=1" class="filter-tag">2000</a></div></div><div class="active-filters"></div></div></div><div class="textbooks-content"><div class="textbooks-count">共找到 <strong>2080</strong> 本课本</div><div class="textbooks-grid"><div class="textbook-card has-torrent" data-book-id="197" onclick="showTextbookDetail(197)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/b87e153f-a64c-451a-aa6c-6ed9ac7d6821.t/zh-CN/1772437264666/transcode/image/1.jpg" alt="人民教育出版社 小学语文 统编版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="人民教育出版社 小学语文 统编版 一年级下册 2025">人民教育出版社 小学语文 统编版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">语文</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">统编版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">人民教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="198" onclick="showTextbookDetail(198)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r3-ndr.ykt.cbern.com.cn/edu_product/esp/assets/1c73b348-e8b6-47d6-84b0-6dbacbe28268.t/zh-CN/1756191799599/transcode/image/1.jpg" alt="人民教育出版社 小学语文 统编版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="人民教育出版社 小学语文 统编版 一年级上册 2025">人民教育出版社 小学语文 统编版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">语文</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">统编版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">人民教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="199" onclick="showTextbookDetail(199)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/83939ed0-3a79-417b-b3b5-17e12c280263.t/zh-CN/1772437362522/transcode/image/1.jpg" alt="北京师范大学出版社 小学数学 北师大版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="北京师范大学出版社 小学数学 北师大版 一年级下册 2025">北京师范大学出版社 小学数学 北师大版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">北师大版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">北京师范大学出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="200" onclick="showTextbookDetail(200)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/e9a3cef0-a95c-4ad6-93c2-eb0aaadc8891.t/zh-CN/1754905827769/transcode/image/1.jpg" alt="北京师范大学出版社 小学数学 北师大版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="北京师范大学出版社 小学数学 北师大版 一年级上册 2025">北京师范大学出版社 小学数学 北师大版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">北师大版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">北京师范大学出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="201" onclick="showTextbookDetail(201)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/e62ac75c-971b-4487-bbb3-ba6b5014172b.t/zh-CN/1772437339082/transcode/image/1.jpg" alt="江苏凤凰教育出版社 小学数学 苏教版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="江苏凤凰教育出版社 小学数学 苏教版 一年级下册 2025">江苏凤凰教育出版社 小学数学 苏教版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">苏教版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">江苏凤凰教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="202" onclick="showTextbookDetail(202)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r3-ndr.ykt.cbern.com.cn/edu_product/esp/assets/932af069-bc0a-41b7-aa94-1eaff1c99323.t/zh-CN/1754905820533/transcode/image/1.jpg" alt="江苏凤凰教育出版社 小学数学 苏教版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="江苏凤凰教育出版社 小学数学 苏教版 一年级上册 2025">江苏凤凰教育出版社 小学数学 苏教版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">苏教版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">江苏凤凰教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="203" onclick="showTextbookDetail(203)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/d81f9c58-1e8e-47db-87e5-6ebff77e18e2.t/zh-CN/1772437336214/transcode/image/1.jpg" alt="河北教育出版社 小学数学 冀教版 一年级下册 2022" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="河北教育出版社 小学数学 冀教版 一年级下册 2022">河北教育出版社 小学数学 冀教版 一年级下册 2022</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">冀教版</span><span class="meta-item meta-year">2022</span></div><div class="textbook-publisher">河北教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="204" onclick="showTextbookDetail(204)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/dc10c400-3f13-4856-867d-87659e985049.t/zh-CN/1754905817549/transcode/image/1.jpg" alt="河北教育出版社 小学数学 冀教版 一年级上册 2023" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="河北教育出版社 小学数学 冀教版 一年级上册 2023">河北教育出版社 小学数学 冀教版 一年级上册 2023</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">冀教版</span><span class="meta-item meta-year">2023</span></div><div class="textbook-publisher">河北教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="205" onclick="showTextbookDetail(205)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/fcb591d2-ba58-4e82-80db-c104da90e275.t/zh-CN/1772437371965/transcode/image/1.jpg" alt="北京出版社 小学数学 北京版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="北京出版社 小学数学 北京版 一年级下册 2025">北京出版社 小学数学 北京版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">北京版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">北京出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="206" onclick="showTextbookDetail(206)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/7b435b01-7a16-4b72-8b38-653fe9eb94ae.t/zh-CN/1754905830482/transcode/image/1.jpg" alt="北京出版社 小学数学 北京版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="北京出版社 小学数学 北京版 一年级上册 2025">北京出版社 小学数学 北京版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">北京版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">北京出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="207" onclick="showTextbookDetail(207)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/0e2e4d56-6627-4263-9c64-45dcf5d3cb8c.t/zh-CN/1772437356099/transcode/image/1.jpg" alt="青岛出版社 小学数学 青岛版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="青岛出版社 小学数学 青岛版 一年级下册 2025">青岛出版社 小学数学 青岛版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">青岛版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">青岛出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="208" onclick="showTextbookDetail(208)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/b26657ba-65dc-4876-9db9-319dcaadbd7f.t/zh-CN/1754905825199/transcode/image/1.jpg" alt="青岛出版社 小学数学 青岛版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="青岛出版社 小学数学 青岛版 一年级上册 2025">青岛出版社 小学数学 青岛版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">青岛版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">青岛出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="209" onclick="showTextbookDetail(209)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/6bf8ae7e-d987-40b4-8fb3-bbb98fcb50b5.t/zh-CN/1772437367206/transcode/image/1.jpg" alt="人民教育出版社 小学数学 人教版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="人民教育出版社 小学数学 人教版 一年级下册 2025">人民教育出版社 小学数学 人教版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">人教版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">人民教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="210" onclick="showTextbookDetail(210)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/c3e06fe4-c6b3-49cb-8727-4f8ff69bbfbc.t/zh-CN/1756191666166/transcode/image/1.jpg" alt="人民教育出版社 小学数学 人教版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="人民教育出版社 小学数学 人教版 一年级上册 2025">人民教育出版社 小学数学 人教版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">人教版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">人民教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="211" onclick="showTextbookDetail(211)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r3-ndr.ykt.cbern.com.cn/edu_product/esp/assets/13eff838-24b9-48dc-ace4-fc6e8e34dd2c.t/zh-CN/1772437345167/transcode/image/1.jpg" alt="西南大学出版社 小学数学 西南大学版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="西南大学出版社 小学数学 西南大学版 一年级下册 2025">西南大学出版社 小学数学 西南大学版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">西南大学版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">西南大学出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="212" onclick="showTextbookDetail(212)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r3-ndr.ykt.cbern.com.cn/edu_product/esp/assets/3e6eb324-6ea9-4c3a-a51f-fc37e07b38c1.t/zh-CN/1754905822825/transcode/image/1.jpg" alt="西南大学出版社 小学数学 西南大学版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="西南大学出版社 小学数学 西南大学版 一年级上册 2025">西南大学出版社 小学数学 西南大学版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">数学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">西南大学版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">西南大学出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="213" onclick="showTextbookDetail(213)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/1e04e52e-41df-4689-b12a-f3b7315a4243.t/zh-CN/1772437269017/transcode/image/1.jpg" alt="人民教育出版社 小学道德与法治 统编版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="人民教育出版社 小学道德与法治 统编版 一年级下册 2025">人民教育出版社 小学道德与法治 统编版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">道德与法治</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">统编版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">人民教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="214" onclick="showTextbookDetail(214)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r3-ndr.ykt.cbern.com.cn/edu_product/esp/assets/bdc00134-465d-454b-a541-dcd0cec4d86e.t/zh-CN/1756191806467/transcode/image/1.jpg" alt="人民教育出版社 小学道德与法治 统编版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="人民教育出版社 小学道德与法治 统编版 一年级上册 2025">人民教育出版社 小学道德与法治 统编版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">道德与法治</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">统编版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">人民教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="215" onclick="showTextbookDetail(215)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/27bef766-de39-4edb-baf5-7026de1dd465.t/zh-CN/1772437168122/transcode/image/1.jpg" alt="江苏凤凰教育出版社 小学科学 苏教版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="江苏凤凰教育出版社 小学科学 苏教版 一年级下册 2025">江苏凤凰教育出版社 小学科学 苏教版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">苏教版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">江苏凤凰教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="216" onclick="showTextbookDetail(216)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/a32d0ba5-c2de-49df-9173-5e7cf2b572a3.t/zh-CN/1754905736756/transcode/image/1.jpg" alt="江苏凤凰教育出版社 小学科学 苏教版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="江苏凤凰教育出版社 小学科学 苏教版 一年级上册 2025">江苏凤凰教育出版社 小学科学 苏教版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">苏教版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">江苏凤凰教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="217" onclick="showTextbookDetail(217)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/bb1d5d4c-8bb2-4b4a-8ad3-2a57bd4fd998.t/zh-CN/1772437193582/transcode/image/1.jpg" alt="青岛出版社 小学科学 青岛版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="青岛出版社 小学科学 青岛版 一年级下册 2025">青岛出版社 小学科学 青岛版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">青岛版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">青岛出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="218" onclick="showTextbookDetail(218)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/2c31bb8a-5578-4ec4-9b42-761313ba005d.t/zh-CN/1754905742388/transcode/image/1.jpg" alt="青岛出版社 小学科学 青岛版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="青岛出版社 小学科学 青岛版 一年级上册 2025">青岛出版社 小学科学 青岛版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">青岛版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">青岛出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="219" onclick="showTextbookDetail(219)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r3-ndr.ykt.cbern.com.cn/edu_product/esp/assets/e231dd57-90b2-49c3-a82f-a44a72f8e330.t/zh-CN/1772437172935/transcode/image/1.jpg" alt="人民教育出版社 小学科学 人教鄂教版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="人民教育出版社 小学科学 人教鄂教版 一年级下册 2025">人民教育出版社 小学科学 人教鄂教版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">人教鄂教版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">人民教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="220" onclick="showTextbookDetail(220)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/64e96b25-9c23-498a-91da-c63e1ef531c7.t/zh-CN/1756191639793/transcode/image/1.jpg" alt="人民教育出版社 小学科学 人教鄂教版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="人民教育出版社 小学科学 人教鄂教版 一年级上册 2025">人民教育出版社 小学科学 人教鄂教版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">人教鄂教版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">人民教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="221" onclick="showTextbookDetail(221)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/6747ab99-ffe6-4414-a4ba-e8de1e9a6b5f.t/zh-CN/1772437165118/transcode/image/1.jpg" alt="教育科学出版社 小学科学 教科版 一年级下册 2026" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="教育科学出版社 小学科学 教科版 一年级下册 2026">教育科学出版社 小学科学 教科版 一年级下册 2026</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">教科版</span><span class="meta-item meta-year">2026</span></div><div class="textbook-publisher">教育科学出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="222" onclick="showTextbookDetail(222)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r3-ndr.ykt.cbern.com.cn/edu_product/esp/assets/assets_document.t/zh-CN/1750816492656/transcode/image/1.jpg" alt="教育科学出版社 小学科学 教科版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="教育科学出版社 小学科学 教科版 一年级上册 2025">教育科学出版社 小学科学 教科版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">教科版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">教育科学出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="223" onclick="showTextbookDetail(223)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/4f631c6a-5e03-4590-a8cf-f48fb1913454.t/zh-CN/1772437151137/transcode/image/1.jpg" alt="河北人民出版社 小学科学 冀人版 一年级下册 2022" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="河北人民出版社 小学科学 冀人版 一年级下册 2022">河北人民出版社 小学科学 冀人版 一年级下册 2022</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">冀人版</span><span class="meta-item meta-year">2022</span></div><div class="textbook-publisher">河北人民出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="224" onclick="showTextbookDetail(224)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/2096c624-82a2-40ec-a03f-92e8ad178e63.t/zh-CN/1754905729196/transcode/image/1.jpg" alt="河北人民出版社 小学科学 冀人版 一年级上册 2022" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="河北人民出版社 小学科学 冀人版 一年级上册 2022">河北人民出版社 小学科学 冀人版 一年级上册 2022</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">冀人版</span><span class="meta-item meta-year">2022</span></div><div class="textbook-publisher">河北人民出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="225" onclick="showTextbookDetail(225)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r3-ndr.ykt.cbern.com.cn/edu_product/esp/assets/f05e6878-15c4-4caa-a320-82598fff0811.t/zh-CN/1772437177516/transcode/image/1.jpg" alt="大象出版社 小学科学 大象社版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="大象出版社 小学科学 大象社版 一年级下册 2025">大象出版社 小学科学 大象社版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">大象社版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">大象出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="226" onclick="showTextbookDetail(226)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r3-ndr.ykt.cbern.com.cn/edu_product/esp/assets/assets_document.t/zh-CN/1750744184746/transcode/image/1.jpg" alt="大象出版社 小学科学 大象社版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="大象出版社 小学科学 大象社版 一年级上册 2025">大象出版社 小学科学 大象社版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">大象社版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">大象出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="227" onclick="showTextbookDetail(227)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r1-ndr.ykt.cbern.com.cn/edu_product/esp/assets/5343f071-29c6-49af-96a4-cb3627be38b9.t/zh-CN/1750745059890/transcode/image/1.jpg" alt="广东教育出版社 小学科学 粤教科技版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="广东教育出版社 小学科学 粤教科技版 一年级下册 2025">广东教育出版社 小学科学 粤教科技版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">粤教科技版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">广东教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="228" onclick="showTextbookDetail(228)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/c8fce409-aedf-4a37-9de1-b62c42876192.t/zh-CN/1754905739566/transcode/image/1.jpg" alt="广东教育出版社 小学科学 粤教科技版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="广东教育出版社 小学科学 粤教科技版 一年级上册 2025">广东教育出版社 小学科学 粤教科技版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">粤教科技版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">广东教育出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="229" onclick="showTextbookDetail(229)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/bab36dc9-75be-4a71-9d80-803300439b01.t/zh-CN/1772437157280/transcode/image/1.jpg" alt="湖南科学技术出版社 小学科学 湘科版 一年级下册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="湖南科学技术出版社 小学科学 湘科版 一年级下册 2025">湖南科学技术出版社 小学科学 湘科版 一年级下册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">湘科版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">湖南科学技术出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="230" onclick="showTextbookDetail(230)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/36b21477-70a9-4210-a75f-ee958d438632.t/zh-CN/1754905731902/transcode/image/1.jpg" alt="湖南科学技术出版社 小学科学 湘科版 一年级上册 2025" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="湖南科学技术出版社 小学科学 湘科版 一年级上册 2025">湖南科学技术出版社 小学科学 湘科版 一年级上册 2025</h3><div class="textbook-meta"><span class="meta-item meta-subject">科学</span><span class="meta-item meta-grade">六三制一年级上册</span></div><div class="textbook-meta"><span class="meta-item meta-version">湘科版</span><span class="meta-item meta-year">2025</span></div><div class="textbook-publisher">湖南科学技术出版社</div></div></div><div class="textbook-card has-torrent" data-book-id="231" onclick="showTextbookDetail(231)" style="cursor: pointer;"><div class="textbook-cover"><img src="https://images.weserv.nl/?url=r2-ndr.ykt.cbern.com.cn/edu_product/esp/assets/0f93b83e-b3c2-4a5d-8acd-ea460ab962d4.t/zh-CN/1772437265301/transcode/image/1.jpg" alt="人民教育出版社 小学语文 统编版 二年级下册 2026" loading="lazy" onerror="this.onerror=null;this.src='pic/textbook_default.svg';"><div class="torrent-badge has-torrent">1</div></div><div class="textbook-info"><h3 class="textbook-name" title="人民教育出版社 小学语文 统编版 二年级下册 2026">人民教育出版社 小学语文 统编版 二年级下册 2026</h3><div class="textbook-meta"><span class="meta-item meta-subject">语文</span><span class="meta-item meta-grade">六三制二年级下册</span></div><div class="textbook-meta"><span class="meta-item meta-version">统编版</span><span class="meta-item meta-year">2026</span></div><div class="textbook-publisher">人民教育出版社</div></div></div></div><div class="textbooks-pagination"><span class="page-btn page-current">1</span><a href="textbooks.php?page=2" class="page-btn">2</a><a href="textbooks.php?page=3" class="page-btn">3</a><span class="page-ellipsis">...</span><a href="textbooks.php?page=60" class="page-btn">60</a><a href="textbooks.php?page=2" class="page-btn page-next">下一页 →</a></div></div><div id="textbook-modal" class="textbook-modal"><div class="modal-overlay"></div><div class="modal-content"><div class="modal-header"><h2 class="modal-title">课本详情</h2><div class="modal-header-actions"><button class="btn-modal-edit" id="modal-edit-btn" onclick="toggleEditMode()" style="display:none;">✏️ 编辑</button><button class="btn-modal-delete" id="modal-delete-btn" onclick="deleteTextbook()" style="display:none;">🗑️ 删除</button><button class="btn-modal-close" onclick="closeTextbookModal()">✕</button></div></div><div class="modal-body" id="modal-body-content"></div></div></div></td></tr></table>
+<script src="js/textbooks.js?v=5.1"></script><script>
+(function() {
+    function moveModalToBody() {
+        var modal = document.getElementById("textbook-modal");
+        if (modal && modal.parentElement && modal.parentElement.tagName.toLowerCase() !== "body") {
+            // 将弹窗移动到body的直接子元素
+            document.body.appendChild(modal);
+            console.log("弹窗已移到body的直接子元素");
+        }
+    }
+
+    function initFilterToggle() {
+        var panel = document.getElementById("textbooks-filter-panel");
+        var toggle = document.getElementById("textbooks-filter-toggle");
+        var body = document.getElementById("textbooks-filter-body");
+        var state = toggle ? toggle.querySelector(".filter-toggle-state") : null;
+
+        if (!panel || !toggle || !body) {
+            return;
+        }
+
+        toggle.addEventListener("click", function() {
+            var expanded = !panel.classList.contains("is-expanded");
+            panel.classList.toggle("is-expanded", expanded);
+            toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+            if (state) {
+                state.textContent = expanded ? toggle.dataset.collapseLabel : toggle.dataset.expandLabel;
+            }
+        });
+    }
+
+    function initTextbooksPage() {
+        moveModalToBody();
+        initFilterToggle();
+    }
+
+    // 页面加载时执行
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initTextbooksPage);
+    } else {
+        initTextbooksPage();
+    }
+})();
+</script></td></tr></table><div id="footer"><div style="margin-top: 10px; margin-bottom: 30px;" align="center"> (c)  <a href="https://www.hxpt.org" target="_self">好学</a> 2025-2026 Powered by <a href="aboutnexus.php">NexusPHP</a><br /><br />[page created in <b> 0.063 </b> sec with <b>9</b> db queries, <b>29</b> reads and <b>0</b> writes of Redis and <b>1.10 MB</b> ram]</div>
+<div style="display: none;" id="lightbox" class="lightbox"></div><div style="display: none;" id="curtain" class="curtain"></div></div>
+<!-- ANALYTICS_LEN:0 -->
+<div class="cute-m-shell" id="cute-m-shell">
+    <div class="cute-m-overlay" id="cute-m-overlay" hidden></div>
+    <aside class="cute-m-drawer" id="cute-m-drawer" aria-hidden="true" hidden>
+        <div class="cute-m-drawer__head">
+            <strong>菜单导航</strong>
+            <button type="button" class="cute-m-drawer__close" id="cute-m-drawer-close" aria-label="关闭">×</button>
+        </div>
+        <div class="cute-m-drawer__scroll">
+            <section class="cute-m-drawer__section">
+                <h4 class="cute-m-drawer__title">菜单导航</h4>
+                <div class="cute-m-drawer__body" id="cute-m-drawer-nav"></div>
+            </section>
+        </div>
+    </aside>
+    <nav class="cute-m-dock" id="cute-m-tabbar" aria-label="手机底部导航">
+        <a class="cute-m-dock__item" href="index.php" aria-label="首页" data-dock="home">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z"/></svg>
+            </span>
+        </a>
+        <a class="cute-m-dock__item is-active" href="torrents.php" aria-label="种子" data-dock="torrents">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h7l3 3v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v4h4"/><path d="M9 13h6M9 17h6"/></svg>
+            </span>
+        </a>
+        <a class="cute-m-dock__item cute-m-dock__item--center" href="usercp.php" aria-label="我的" data-dock="me" id="cute-m-dock-me">
+            <span class="cute-m-dock__avatar" id="cute-m-dock-avatar"></span>
+        </a>
+        <button type="button" class="cute-m-dock__item" id="cute-m-dock-search" aria-label="搜索" data-dock="search">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/></svg>
+            </span>
+        </button>
+        <button type="button" class="cute-m-dock__item" id="cute-m-nav-toggle" aria-label="菜单导航" aria-controls="cute-m-drawer" aria-expanded="false" data-dock="more">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+            </span>
+                    </button>
+    </nav>
+</div>
+<script>
+(function() {
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+    function cleanText(text) {
+        return String(text || '').replace(/\u00a0/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function isMobile() { return window.matchMedia('(max-width: 768px)').matches; }
+    function makeItem(href, text, active) {
+        var item = document.createElement('a');
+        item.className = 'cute-m-drawer__item' + (active ? ' is-active' : '');
+        item.href = href || '#';
+        item.textContent = cleanText(text) || href || '入口';
+        return item;
+    }
+    function collectUniqueLinks(selectors) {
+        var seen = {}, list = [];
+        selectors.forEach(function(sel) {
+            document.querySelectorAll(sel).forEach(function(a) {
+                var href = a.getAttribute('href') || '';
+                if (!href || href === '#' || href.indexOf('javascript:') === 0) return;
+                var key = href.replace(/#.*$/, '');
+                if (seen[key]) return;
+                var text = cleanText(a.getAttribute('title') || a.getAttribute('aria-label') || a.textContent || a.innerText || '');
+                if (!text || /^\d+(\s*\(.*\))?$/.test(text)) {
+                    var img = a.querySelector('img');
+                    var imgTitle = img ? cleanText(img.getAttribute('title') || img.getAttribute('alt') || '') : '';
+                    if (imgTitle) text = imgTitle + (text ? (' ' + text) : '');
+                }
+                if (!text || /^\d+$/.test(text)) return;
+                seen[key] = true;
+                list.push({ href: href, text: text, active: !!(a.closest && a.closest('li.selected, .selected, .is-active')) });
+            });
+        });
+        return list;
+    }
+    function fillGroup(container, items) {
+        if (!container) return;
+        container.innerHTML = '';
+        if (!items.length) { container.innerHTML = '<p class="cute-m-drawer__empty">暂无入口</p>'; return; }
+        var frag = document.createDocumentFragment();
+        items.forEach(function(it) { frag.appendChild(makeItem(it.href, it.text, it.active)); });
+        container.appendChild(frag);
+    }
+    function linkInfo(a) {
+        if (!a) return null;
+        var href = a.getAttribute('href') || '';
+        if (!href || href === '#' || href.indexOf('javascript:') === 0) return null;
+        var text = cleanText(a.getAttribute('title') || a.getAttribute('aria-label') || a.textContent || a.innerText || '');
+        if (!text) {
+            var img = a.querySelector('img');
+            text = img ? cleanText(img.getAttribute('title') || img.getAttribute('alt') || '') : '';
+        }
+        if (!text) return null;
+        var active = false;
+        try {
+            var cur = (location.pathname.split('/').pop() || '') + location.search;
+            var h = href.replace(/^\//, '');
+            if (h && cur.indexOf(h.replace(/^\//, '')) === 0) active = true;
+            if (a.closest && a.closest('li.selected, .selected')) active = true;
+        } catch (err) {}
+        return { href: href, text: text, active: active };
+    }
+    function buildMainMenuTree() {
+        var tree = [];
+        var topLinks = document.querySelectorAll('#mainmenu > li > a, #nav > ul.menu > li > a, ul.menu#mainmenu > li > a');
+        if (!topLinks.length) topLinks = document.querySelectorAll('#mainmenu a');
+        var seenTop = {};
+        Array.prototype.forEach.call(topLinks, function(a) {
+            // only direct top-level anchors
+            if (a.closest && a.closest('.ddsubmenustyle')) return;
+            var li = a.parentElement;
+            if (li && li.parentElement && li.parentElement.id !== 'mainmenu' && !li.parentElement.classList.contains('menu')) {
+                // still accept if under mainmenu
+                if (!(a.closest && a.closest('#mainmenu'))) return;
+            }
+            var info = linkInfo(a);
+            if (!info) return;
+            var key = info.href + '|' + info.text;
+            if (seenTop[key]) return;
+            seenTop[key] = true;
+            var children = [];
+            var rel = a.getAttribute('rel') || '';
+            if (rel) {
+                var sub = document.getElementById(rel);
+                if (sub) {
+                    var seenChild = {};
+                    sub.querySelectorAll('a').forEach(function(ca) {
+                        var ci = linkInfo(ca);
+                        if (!ci) return;
+                        var ck = ci.href.replace(/#.*$/, '');
+                        if (seenChild[ck]) return;
+                        seenChild[ck] = true;
+                        children.push(ci);
+                    });
+                }
+            }
+            tree.push({ href: info.href, text: info.text, active: info.active, children: children });
+        });
+        return tree;
+    }
+    function fillMainMenu(container) {
+        if (!container) return;
+        container.innerHTML = '';
+        container.classList.add('cute-m-menu');
+        var tree = buildMainMenuTree();
+        if (!tree.length) {
+            // fallback flat
+            var flat = collectUniqueLinks(['#mainmenu > li > a', '.ddsubmenustyle a']);
+            fillGroup(container, flat);
+            return;
+        }
+        var frag = document.createDocumentFragment();
+        tree.forEach(function(node) {
+            var group = document.createElement('div');
+            group.className = 'cute-m-menu__group' + (node.children && node.children.length ? ' has-children' : '') + (node.active ? ' is-active' : '');
+
+            var head = document.createElement('div');
+            head.className = 'cute-m-menu__head';
+
+            var link = document.createElement('a');
+            link.className = 'cute-m-menu__link' + (node.active ? ' is-active' : '');
+            link.href = node.href;
+            link.textContent = node.text;
+            head.appendChild(link);
+
+            if (node.children && node.children.length) {
+                var chev = document.createElement('button');
+                chev.type = 'button';
+                chev.className = 'cute-m-menu__chev';
+                chev.setAttribute('aria-expanded', 'false');
+                chev.setAttribute('aria-label', '展开子菜单');
+                chev.innerHTML = '<span></span>';
+                head.appendChild(chev);
+
+                var body = document.createElement('div');
+                body.className = 'cute-m-menu__sub';
+                body.hidden = true;
+                node.children.forEach(function(ch) {
+                    var ca = document.createElement('a');
+                    ca.className = 'cute-m-menu__sublink' + (ch.active ? ' is-active' : '');
+                    ca.href = ch.href;
+                    ca.textContent = ch.text;
+                    body.appendChild(ca);
+                });
+
+                function setOpen(open) {
+                    group.classList.toggle('is-open', open);
+                    body.hidden = !open;
+                    chev.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    chev.setAttribute('aria-label', open ? '收起子菜单' : '展开子菜单');
+                }
+                chev.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOpen(!group.classList.contains('is-open'));
+                });
+                // tap parent row text area (not only chev): if want navigate keep link default
+                // double behavior: long list - clicking chev expands only
+
+                // auto-expand if current page in children
+                var childActive = node.children.some(function(ch){ return ch.active; });
+                if (childActive || node.active) setOpen(true);
+
+                group.appendChild(head);
+                group.appendChild(body);
+            } else {
+                group.appendChild(head);
+            }
+            frag.appendChild(group);
+        });
+        container.appendChild(frag);
+    }
+    ready(function() {
+        var shell = document.getElementById('cute-m-shell');
+        var drawer = document.getElementById('cute-m-drawer');
+        var overlay = document.getElementById('cute-m-overlay');
+        var toggle = document.getElementById('cute-m-nav-toggle');
+        var closeBtn = document.getElementById('cute-m-drawer-close');
+        var searchBtn = document.getElementById('cute-m-dock-search');
+        var avatarHost = document.getElementById('cute-m-dock-avatar');
+        if (!shell || !drawer || !overlay || !toggle) return;
+
+        // clone user avatar into center dock
+        if (avatarHost) {
+            var srcAvatar = document.querySelector('.cute-top-profile__avatar img, .cute-top-profile__trigger img');
+            if (srcAvatar) {
+                var img = srcAvatar.cloneNode(true);
+                img.removeAttribute('width'); img.removeAttribute('height');
+                img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover';
+                avatarHost.appendChild(img);
+            } else {
+                avatarHost.textContent = '我';
+            }
+        }
+
+        // hide legacy top hamburger if duplicated id moved - ensure top header toggle removed
+        document.querySelectorAll('.cute-m-nav-toggle').forEach(function(btn) {
+            if (btn.id !== 'cute-m-nav-toggle') btn.remove();
+        });
+
+        function fillDrawer() {
+            // 更多弹窗仅展示电脑版主菜单树
+            fillMainMenu(document.getElementById('cute-m-drawer-nav'));
+        }
+
+        function openDrawer() {
+            if (!isMobile()) return;
+            try { fillDrawer(); } catch (err) { try { console.warn('fillDrawer failed', err); } catch (e2) {} }
+            drawer.hidden = false; overlay.hidden = false;
+            shell.classList.add('is-drawer-open');
+            drawer.setAttribute('aria-hidden', 'false');
+            toggle.setAttribute('aria-expanded', 'true');
+            document.documentElement.classList.add('cute-m-lock');
+            document.body.classList.add('cute-m-lock');
+        }
+        function closeDrawer() {
+            shell.classList.remove('is-drawer-open');
+            drawer.setAttribute('aria-hidden', 'true');
+            toggle.setAttribute('aria-expanded', 'false');
+            document.documentElement.classList.remove('cute-m-lock');
+            document.body.classList.remove('cute-m-lock');
+            window.setTimeout(function() {
+                if (!shell.classList.contains('is-drawer-open')) { drawer.hidden = true; overlay.hidden = true; }
+            }, 220);
+        }
+        function syncShellVisibility() {
+            if (isMobile()) {
+                document.documentElement.classList.add('cute-m-active');
+                document.body.classList.add('cute-m-active');
+            } else {
+                closeDrawer();
+                document.documentElement.classList.remove('cute-m-active');
+                document.body.classList.remove('cute-m-active');
+            }
+        }
+
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            if (shell.classList.contains('is-drawer-open')) closeDrawer(); else openDrawer();
+        });
+        if (closeBtn) closeBtn.addEventListener('click', function(e){ e.preventDefault(); closeDrawer(); });
+        overlay.addEventListener('click', closeDrawer);
+        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeDrawer(); });
+        window.addEventListener('resize', syncShellVisibility);
+        syncShellVisibility();
+
+        // Mobile profile panel: same content as desktop dropdown, tap to open
+        (function setupMobileProfilePanel() {
+            var profile = document.querySelector('.cute-top-profile');
+            var trigger = document.querySelector('.cute-top-profile__trigger');
+            var dropdown = document.querySelector('.cute-top-profile__dropdown');
+            if (!profile || !trigger || !dropdown) return;
+
+            var overlay = document.getElementById('cute-m-profile-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'cute-m-profile-overlay';
+                overlay.className = 'cute-m-profile-overlay';
+                overlay.hidden = true;
+                document.body.appendChild(overlay);
+            }
+
+            // Mobile summary layout: put subline full-width under avatar/name/logout
+            var summaryMain = dropdown.querySelector('.cute-top-profile__summary-main');
+            var subline = dropdown.querySelector('.cute-top-profile__subline');
+            if (summaryMain && subline && subline.parentElement !== summaryMain) {
+                summaryMain.appendChild(subline);
+            }
+
+            // Ensure secondary icon links have readable text on mobile
+            dropdown.querySelectorAll('.cute-top-profile__links:not(.cute-top-profile__links--primary) a').forEach(function(a) {
+                if (a.dataset.cuteLabeled === '1') return;
+                a.dataset.cuteLabeled = '1';
+                var title = a.getAttribute('title') || '';
+                var img = a.querySelector('img[title], img[alt]');
+                if (!title && img) title = img.getAttribute('title') || img.getAttribute('alt') || '';
+                title = cleanText(title);
+                if (!title || a.querySelector('.cute-m-profile-linktext')) return;
+                var span = document.createElement('span');
+                span.className = 'cute-m-profile-linktext';
+                span.textContent = title;
+                a.appendChild(span);
+            });
+
+            function openProfile(e) {
+                if (e) { e.preventDefault(); e.stopPropagation(); }
+                if (!isMobile()) return;
+                // close function drawer if open
+                try { closeDrawer(); } catch (err) {}
+                // Portal to body so fixed positioning is not trapped by header transform
+                if (dropdown.parentElement !== document.body) {
+                    dropdown.dataset.cuteHome = '1';
+                    document.body.appendChild(dropdown);
+                }
+                profile.classList.add('is-open');
+                dropdown.classList.add('is-open');
+                document.documentElement.classList.add('cute-m-profile-open');
+                document.body.classList.add('cute-m-profile-open');
+                overlay.hidden = false;
+                trigger.setAttribute('aria-expanded', 'true');
+                dropdown.setAttribute('aria-hidden', 'false');
+            }
+            function closeProfile() {
+                profile.classList.remove('is-open');
+                dropdown.classList.remove('is-open');
+                document.documentElement.classList.remove('cute-m-profile-open');
+                document.body.classList.remove('cute-m-profile-open');
+                overlay.hidden = true;
+                trigger.setAttribute('aria-expanded', 'false');
+                dropdown.setAttribute('aria-hidden', 'true');
+                if (dropdown.dataset.cuteHome === '1' && profile) {
+                    profile.appendChild(dropdown);
+                }
+            }
+            function toggleProfile(e) {
+                if (!isMobile()) return;
+                if (profile.classList.contains('is-open')) closeProfile();
+                else openProfile(e);
+            }
+
+            trigger.setAttribute('role', 'button');
+            trigger.setAttribute('tabindex', '0');
+            trigger.setAttribute('aria-expanded', 'false');
+            dropdown.setAttribute('aria-hidden', 'true');
+
+            trigger.addEventListener('click', function(e) {
+                if (!isMobile()) return;
+                e.preventDefault();
+                e.stopPropagation();
+                toggleProfile(e);
+            });
+            trigger.addEventListener('keydown', function(e) {
+                if (!isMobile()) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleProfile(e);
+                }
+            });
+            overlay.addEventListener('click', closeProfile);
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeProfile();
+            });
+            // click outside closes
+            document.addEventListener('click', function(e) {
+                if (!isMobile() || !profile.classList.contains('is-open')) return;
+                if (profile.contains(e.target)) return;
+                if (dropdown.contains(e.target)) return;
+                if (overlay.contains(e.target)) return;
+                closeProfile();
+            });
+            // dock center avatar also opens same panel
+            var dockMe = document.getElementById('cute-m-dock-me');
+            if (dockMe) {
+                dockMe.addEventListener('click', function(e) {
+                    if (!isMobile()) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (profile.classList.contains('is-open')) closeProfile();
+                    else openProfile(e);
+                });
+            }
+            window.addEventListener('resize', function() {
+                if (!isMobile()) closeProfile();
+            });
+        })();
+
+        function setSearchExpanded(open) {
+            var box = document.getElementById('ksearchboxmain');
+            var pic = document.getElementById('picsearchboxmain');
+            var searchbox = document.querySelector('table.searchbox');
+            if (!box) return;
+            if (open) {
+                box.style.display = '';
+                box.classList.add('cute-search-open');
+                if (searchbox) searchbox.classList.add('cute-search-open');
+                if (pic) pic.className = 'minus';
+            } else {
+                box.style.display = 'none';
+                box.classList.remove('cute-search-open');
+                if (searchbox) searchbox.classList.remove('cute-search-open');
+                if (pic) pic.className = 'plus';
+            }
+        }
+
+        function getTorrentMetaLabels() {
+            var head = document.querySelector('table.torrents > tbody > tr:has(td.colhead), table.torrents tr:has(td.colhead)');
+            var labels = [];
+            if (!head) return labels;
+            Array.prototype.forEach.call(head.children, function(td) {
+                var img = td.querySelector('img[title], img[alt]');
+                var a = td.querySelector('a[title]');
+                var raw = '';
+                if (img) raw = img.getAttribute('title') || img.getAttribute('alt') || '';
+                else if (a) raw = a.getAttribute('title') || cleanText(a.textContent);
+                else raw = cleanText(td.textContent);
+                raw = cleanText(raw);
+                var shortMap = [
+                    [/评论|comments?/i, '评'],
+                    [/时间|added|time/i, '时'],
+                    [/大小|size/i, '大小'],
+                    [/做种|seed/i, '做'],
+                    [/下载|leech/i, '下'],
+                    [/完成|snatch/i, '完'],
+                    [/等待|wait/i, '等'],
+                    [/上传|uploader|作者/i, '传']
+                ];
+                var short = '';
+                for (var i = 0; i < shortMap.length; i++) {
+                    if (shortMap[i][0].test(raw)) { short = shortMap[i][1]; break; }
+                }
+                labels.push(short || (raw ? raw.slice(0, 2) : ''));
+            });
+            return labels;
+        }
+
+        function enhanceTorrentCards() {
+            document.querySelectorAll('table.torrents > tbody > tr').forEach(function(tr) {
+                if (tr.querySelector('td.colhead')) return;
+                if (tr.dataset.cuteCarded === '1') return;
+                var tds = Array.prototype.slice.call(tr.children).filter(function(n){ return n.tagName === 'TD'; });
+                if (tds.length < 5) return;
+                tr.dataset.cuteCarded = '1';
+                tr.classList.add('cute-torrent-card');
+
+                // Stable short labels by column count (type,name,...,action)
+                // Common: +comments => 9 cols; no comments => 8 cols; +wait => +1
+                var labelMap = null;
+                if (tds.length >= 10) labelMap = {2:'等',3:'评',4:'时',5:'大小',6:'做',7:'下',8:'完'};
+                else if (tds.length === 9) labelMap = {2:'评',3:'时',4:'大小',5:'做',6:'下',7:'完'};
+                else if (tds.length === 8) labelMap = {2:'时',3:'大小',4:'做',5:'下',6:'完'};
+                else if (tds.length === 7) labelMap = {2:'时',3:'大小',4:'做',5:'下'};
+                else labelMap = {};
+
+                var metaRow = document.createElement('div');
+                metaRow.className = 'cute-torrent-meta-row';
+                var lastIdx = tds.length - 1;
+                for (var idx = 2; idx < lastIdx; idx++) {
+                    var td = tds[idx];
+                    if (!td || td.dataset.cuteMeta === '1') continue;
+                    td.dataset.cuteMeta = '1';
+                    var chip = document.createElement('span');
+                    chip.className = 'cute-torrent-meta-chip';
+                    var label = labelMap[idx] || '';
+                    var html = td.innerHTML;
+                    if (label) {
+                        chip.innerHTML = '<span class="cute-torrent-meta__label">' + label + '</span><span class="cute-torrent-meta__val">' + html + '</span>';
+                    } else {
+                        chip.innerHTML = html;
+                    }
+                    // color seed/leech/snatch slightly
+                    if (label === '做') chip.classList.add('is-seed');
+                    if (label === '下') chip.classList.add('is-leech');
+                    if (label === '完') chip.classList.add('is-done');
+                    metaRow.appendChild(chip);
+                    td.classList.add('cute-torrent-meta-src');
+                    td.setAttribute('aria-hidden', 'true');
+                    td.style.setProperty('display', 'none', 'important');
+                    td.style.setProperty('width', '0', 'important');
+                    td.style.setProperty('height', '0', 'important');
+                    td.style.setProperty('padding', '0', 'important');
+                    td.style.setProperty('margin', '0', 'important');
+                    td.style.setProperty('border', '0', 'important');
+                    td.style.setProperty('overflow', 'hidden', 'important');
+                }
+                // keep action icons on top-right
+                if (tds[lastIdx]) {
+                    tds[lastIdx].classList.add('cute-torrent-action');
+                }
+                if (metaRow.childNodes.length) {
+                    tr.appendChild(metaRow);
+                }
+            });
+        }
+
+        // Mobile search modal (dock search button)
+        (function setupMobileSearchModal() {
+            var searchForm = document.querySelector('form[name="searchbox"]');
+            var searchHomeParent = null;
+            var searchHomeNext = null;
+            var modal = document.getElementById('cute-m-search-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'cute-m-search-modal';
+                modal.className = 'cute-m-search-modal';
+                modal.hidden = true;
+                modal.innerHTML = ''
+                    + '<div class="cute-m-search-modal__overlay" data-close="1"></div>'
+                    + '<div class="cute-m-search-modal__sheet" role="dialog" aria-modal="true" aria-label="搜索">'
+                    +   '<div class="cute-m-search-modal__head">'
+                    +     '<strong>搜索种子</strong>'
+                    +     '<button type="button" class="cute-m-search-modal__close" data-close="1" aria-label="关闭">×</button>'
+                    +   '</div>'
+                    +   '<div class="cute-m-search-modal__body" id="cute-m-search-modal-body"></div>'
+                    +   '<div class="cute-m-search-modal__fallback" id="cute-m-search-fallback" hidden>'
+                    +     '<form method="get" action="torrents.php" class="cute-m-search-fallback-form">'
+                    +       '<input type="search" name="search" id="cute-m-search-fallback-input" placeholder="输入关键字搜索种子" autocomplete="off" />'
+                    +       '<div class="cute-m-search-fallback-row">'
+                    +         '<select name="search_area">'
+                    +           '<option value="0">标题</option>'
+                    +           '<option value="1">简介</option>'
+                    +           '<option value="3">发布者</option>'
+                    +         '</select>'
+                    +         '<button type="submit">搜索</button>'
+                    +       '</div>'
+                    +     '</form>'
+                    +   '</div>'
+                    + '</div>';
+                document.body.appendChild(modal);
+            }
+            var modalBody = document.getElementById('cute-m-search-modal-body');
+            var fallback = document.getElementById('cute-m-search-fallback');
+            var advancedBtn = null;
+
+            function ensureAdvancedToggle() {
+                if (!searchForm || advancedBtn) return;
+                var box = document.getElementById('ksearchboxmain');
+                if (!box) return;
+                advancedBtn = document.createElement('button');
+                advancedBtn.type = 'button';
+                advancedBtn.className = 'cute-m-search-advanced-toggle';
+                advancedBtn.textContent = '高级筛选';
+                advancedBtn.addEventListener('click', function() {
+                    var isOpen = box.classList.contains('cute-search-open') || (box.style.display !== 'none' && getComputedStyle(box).display !== 'none');
+                    setSearchExpanded(!isOpen);
+                    advancedBtn.classList.toggle('is-open', !isOpen);
+                    advancedBtn.textContent = !isOpen ? '收起筛选' : '高级筛选';
+                });
+                if (searchForm.firstChild) searchForm.insertBefore(advancedBtn, searchForm.firstChild);
+                else searchForm.appendChild(advancedBtn);
+            }
+
+            function compactSearchRangeRows() {
+                if (!searchForm || searchForm.dataset.cuteRangeCompact === '1') return;
+                var rightTable = document.querySelector('#ksearchboxmain > tr > td:last-child > table');
+                if (!rightTable) return;
+                var rows = Array.prototype.slice.call(rightTable.querySelectorAll(':scope > tbody > tr'));
+                for (var i = 0; i < rows.length - 1; i++) {
+                    var labelTd = rows[i].querySelector('td.bottom');
+                    var valueTd = rows[i + 1] ? rows[i + 1].querySelector('td.bottom') : null;
+                    if (!labelTd || !valueTd) continue;
+                    var hasLabel = !!labelTd.querySelector('font.medium') && !labelTd.querySelector('input, select');
+                    var hasInputs = !!valueTd.querySelector('input, select');
+                    if (!hasLabel || !hasInputs) continue;
+                    var wrap = document.createElement('div');
+                    wrap.className = 'cute-m-search-range-row';
+                    var lab = document.createElement('div');
+                    lab.className = 'cute-m-search-range-label';
+                    lab.innerHTML = labelTd.innerHTML;
+                    var val = document.createElement('div');
+                    val.className = 'cute-m-search-range-inputs';
+                    // move real inputs to preserve state/listeners better
+                    while (valueTd.firstChild) val.appendChild(valueTd.firstChild);
+                    wrap.appendChild(lab);
+                    wrap.appendChild(val);
+                    valueTd.appendChild(wrap);
+                    labelTd.style.display = 'none';
+                    rows[i].style.display = 'none';
+                    rows[i].dataset.cuteRangeHidden = '1';
+                    i++; // skip value row
+                }
+                // mark selects-only blocks
+                rightTable.classList.add('cute-m-search-right');
+                searchForm.dataset.cuteRangeCompact = '1';
+            }
+
+            function openSearchModal() {
+                if (!isMobile()) return;
+                try { closeDrawer(); } catch (err) {}
+                // close profile if open
+                try {
+                    var profile = document.querySelector('.cute-top-profile');
+                    if (profile && profile.classList.contains('is-open')) {
+                        profile.classList.remove('is-open');
+                        var dd = document.querySelector('.cute-top-profile__dropdown');
+                        if (dd) dd.classList.remove('is-open');
+                        document.documentElement.classList.remove('cute-m-profile-open');
+                        document.body.classList.remove('cute-m-profile-open');
+                        var po = document.getElementById('cute-m-profile-overlay');
+                        if (po) po.hidden = true;
+                    }
+                } catch (err2) {}
+
+                if (searchForm) {
+                    if (!searchHomeParent) {
+                        searchHomeParent = searchForm.parentNode;
+                        searchHomeNext = searchForm.nextSibling;
+                    }
+                    ensureAdvancedToggle();
+                    compactSearchRangeRows();
+                    // default collapse advanced for clean first view
+                    setSearchExpanded(false);
+                    if (advancedBtn) {
+                        advancedBtn.classList.remove('is-open');
+                        advancedBtn.textContent = '高级筛选';
+                    }
+                    modalBody.hidden = false;
+                    if (fallback) fallback.hidden = true;
+                    modalBody.appendChild(searchForm);
+                    searchForm.classList.add('cute-m-search-form');
+                } else {
+                    modalBody.hidden = true;
+                    if (fallback) fallback.hidden = false;
+                }
+
+                modal.hidden = false;
+                document.documentElement.classList.add('cute-m-search-open');
+                document.body.classList.add('cute-m-search-open');
+                window.setTimeout(function() {
+                    var input = document.querySelector('#searchinput, #cute-m-search-fallback-input, form.cute-m-search-form input[name="search"]');
+                    if (input) {
+                        try { input.focus(); input.select && input.select(); } catch (err3) {}
+                    }
+                }, 180);
+            }
+
+            function closeSearchModal() {
+                modal.hidden = true;
+                document.documentElement.classList.remove('cute-m-search-open');
+                document.body.classList.remove('cute-m-search-open');
+                if (searchForm && searchHomeParent) {
+                    if (searchHomeNext && searchHomeNext.parentNode === searchHomeParent) {
+                        searchHomeParent.insertBefore(searchForm, searchHomeNext);
+                    } else {
+                        searchHomeParent.appendChild(searchForm);
+                    }
+                    searchForm.classList.remove('cute-m-search-form');
+                    setSearchExpanded(false);
+                }
+            }
+
+            if (searchBtn) {
+                searchBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isMobile()) return;
+                    if (!searchForm && !/torrents\.php|special\.php|music\.php/i.test(location.pathname)) {
+                        // go torrents with open flag
+                        location.href = 'torrents.php#search';
+                        return;
+                    }
+                    if (modal.hidden === false) closeSearchModal();
+                    else openSearchModal();
+                });
+            }
+            modal.addEventListener('click', function(e) {
+                var t = e.target;
+                if (t && (t.getAttribute('data-close') === '1' || t.classList.contains('cute-m-search-modal__overlay'))) {
+                    closeSearchModal();
+                }
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modal && modal.hidden === false) closeSearchModal();
+            });
+            window.addEventListener('resize', function() {
+                if (!isMobile() && modal && modal.hidden === false) closeSearchModal();
+            });
+            // auto open from hash
+            if (isMobile() && (location.hash || '').indexOf('search') >= 0) {
+                window.setTimeout(openSearchModal, 120);
+            }
+            // expose for other handlers if needed
+            window.cuteOpenMobileSearch = openSearchModal;
+            window.cuteCloseMobileSearch = closeSearchModal;
+        })();
+
+        if (isMobile()) {
+            document.querySelectorAll('table.cute-msgalert, table.msgalert').forEach(function(table) {
+                table.classList.add('cute-msgalert--ready');
+                table.classList.remove('is-collapsed');
+            });
+            // Sunny-clean: collapse advanced filters by default
+            var searchMain = document.getElementById('ksearchboxmain');
+            if (searchMain) {
+                var hasQuery = /[?&](search|incldead|spstate|picktype|cat\d*|standard\d*|source\d*|medium\d*|codec\d*|audiocodec\d*|team\d*|processing\d*|tag_id)=/i.test(location.search);
+                var hashSearch = (location.hash || '').indexOf('search') >= 0;
+                if (hasQuery || hashSearch) setSearchExpanded(true);
+                else setSearchExpanded(false);
+            }
+            enhanceTorrentCards();
+        }
+    });
+})();
+</script>
+<script type="text/javascript" src="ddlevelsfiles/ddlevelsmenu.js"></script><script type="text/javascript">ddlevelsmenu.setup("nav", "topbar")</script><style id="ptlife-card-style">
+.ptlife-card{position:fixed;top:64px;left:64px;visibility:hidden;z-index:120001;width:300px;box-sizing:border-box;border-radius:10px;overflow:hidden;
+  font-size:12px;line-height:1.5;text-align:left;color:var(--theme-primary,#333);
+  background:var(--theme-bg-secondary,rgba(255,255,255,.96));
+  border:1px solid rgba(var(--theme-rgb,120,120,120),.35);
+  box-shadow:0 6px 18px rgba(var(--theme-rgb,120,120,120),.28);backdrop-filter:blur(4px);}
+.ptlife-card .ptl-head{display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:var(--theme-gradient,linear-gradient(135deg,#8a8a8a,#b5b5b5));color:#fff;}
+.ptlife-card .ptl-head .ptl-name{font-weight:bold;font-size:13px;text-shadow:0 1px 2px rgba(0,0,0,.15);}
+.ptlife-card .ptl-head .ptl-sites{margin-left:auto;font-size:11px;opacity:.9;white-space:nowrap;}
+.ptlife-card .ptl-body{padding:8px 12px 4px;}
+.ptlife-card .ptl-row{display:flex;justify-content:space-between;padding:2px 0;}
+.ptlife-card .ptl-row .ptl-k{opacity:.72;}
+.ptlife-card .ptl-row .ptl-v{font-weight:bold;font-variant-numeric:tabular-nums;}
+.ptlife-card .ptl-foot{display:flex;align-items:center;justify-content:space-between;
+  padding:4px 12px 8px;font-size:11px;opacity:.85;}
+.ptlife-card a.ptl-detail{color:var(--theme-primary,#333);font-weight:bold;text-decoration:none;
+  border:1px solid rgba(var(--theme-rgb,120,120,120),.5);border-radius:20px;padding:1px 10px;}
+.ptlife-card a.ptl-detail:hover{background:var(--theme-bg-glass,rgba(120,120,120,.15));}
+</style>
+<script>
+jQuery(function($) {
+    var tip = null, tipUid = 0, hideTimer = null, cache = {}, deadUntil = {};
+    var API_URL = 'https://www.hxpt.org/api/ptlife/query.php';
+    var DETAIL_URL = 'https://www.hxpt.org/ptlife.php?id=';
+    function mkSize(b) {
+        b = Number(b) || 0;
+        var u = ['B','KB','MB','GB','TB','PB'], i = 0;
+        while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+        return b.toFixed(2) + ' ' + u[i];
+    }
+    function esc(s) { return $('<i>').text(s == null ? '' : String(s)).html(); }
+    function buildTip(d) {
+        var t = d.totals || {};
+        var ratio = t.downloaded > 0 ? (t.uploaded / t.downloaded).toFixed(3) : '∞';
+        var name = d.username || ('用户 #' + d.uid);
+        var h = '<div class="ptlife-card">';
+        h += '<div class="ptl-head"><span class="ptl-name">🐝 ' + esc(name) + '</span>'
+           + '<span class="ptl-sites">' + (d.site_count || 0) + ' 站</span></div>';
+        h += '<div class="ptl-body">';
+        h += '<div class="ptl-row"><span class="ptl-k">总上传</span><span class="ptl-v">' + mkSize(t.uploaded) + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">总下载</span><span class="ptl-v">' + mkSize(t.downloaded) + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">分享率</span><span class="ptl-v">' + ratio + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">做种体积</span><span class="ptl-v">' + mkSize(t.seeding_size) + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">魔力值</span><span class="ptl-v">' + (Number(t.bonus) || 0).toLocaleString() + '</span></div>';
+        h += '</div>';
+        h += '<div class="ptl-foot"><span>更新于 ' + esc(d.synced_at || '-') + '</span>'
+           + '<a class="ptl-detail" href="' + DETAIL_URL + d.uid + '">详情</a></div>';
+        h += '</div>';
+        return h;
+    }
+    // 未同步/关闭展示的轻提示卡（不复用数据卡布局，避免误导）
+    function buildEmptyTip() {
+        return '<div class="ptlife-card ptl-empty">'
+             + '<div class="ptl-head"><span class="ptl-name">🐝 PT Patronus</span></div>'
+             + '<div class="ptl-body" style="padding:10px 12px 12px;">该用户尚未同步 PT Patronus</div>'
+             + '</div>';
+    }
+    function closeTip() {
+        if (tip) tip.remove();
+        tip = null; tipUid = 0;
+    }
+    function markDead(uid) { deadUntil[uid] = Date.now() + 60000; } // 无数据/失败静默 60s，而非整页会话
+    function isDead(uid) { return (deadUntil[uid] || 0) > Date.now(); }
+    function showTip(link, uid) {
+        clearTimeout(hideTimer);
+        if (isDead(uid)) return;
+        var cached = cache[uid];
+        if (cached) { closeTip(); tipUid = uid; tip = $(cached).appendTo('body'); position(link, tip); return; }
+        closeTip();
+        tipUid = uid;
+        // 数据到达前不建任何 DOM，避免占位闪烁；到达后一次性建卡并定位
+        $.getJSON(API_URL, { uid: uid }, function(res) {
+            if (!res || !res.success) { markDead(uid); return; }
+            var html = (res.found && res.data) ? buildTip(res.data) : buildEmptyTip();
+            cache[uid] = html;
+            if (tipUid !== uid) return; // 已切换到别的链接
+            tip = $(html).appendTo('body');
+            position(link, tip);
+        }).fail(function() { markDead(uid); });
+    }
+    function position(link, card) {
+        // position:fixed 需要视口坐标（getBoundingClientRect）；CSS 里 top/left 只是防错兜底
+        card.css({ visibility: 'hidden' });
+        var rect = link.getBoundingClientRect();
+        var w = card.outerWidth() || 300, h = card.outerHeight() || 160;
+        var left = Math.min(rect.left, $(window).width() - w - 12);
+        left = Math.max(8, left);
+        var top = rect.bottom + 6;
+        if (top + h > $(window).height() - 8) {
+            top = rect.top - h - 6; // 下方放不下改到链接上方
+            if (top < 8) top = 8;
+        }
+        card.css({ left: left, top: top, visibility: 'visible' });
+    }
+    function hideSoon() { hideTimer = setTimeout(closeTip, 350); }
+    function keepOpen() { clearTimeout(hideTimer); }
+    $(document).off('mouseenter.ptlife mouseleave.ptlife', "a[class*='_Name'][href*='userdetails.php']")
+        .on('mouseenter.ptlife', "a[class*='_Name'][href*='userdetails.php']", function() {
+            var m = this.href.match(/userdetails\.php\?id=(\d+)/);
+            if (m) showTip(this, m[1]);
+        })
+        .on('mouseleave.ptlife', "a[class*='_Name'][href*='userdetails.php']", hideSoon);
+    // 卡片本体可交互：移入卡片保持显示，「详情」可点击；移出才关闭
+    $(document).off('mouseenter.ptlife-card mouseleave.ptlife-card', '.ptlife-card')
+        .on('mouseenter.ptlife-card', '.ptlife-card', keepOpen)
+        .on('mouseleave.ptlife-card', '.ptlife-card', closeTip);
+});
+</script><script type="application/javascript" src="js/nexus.js"></script>
+<script type="application/javascript" src="vendor/jquery-goup-1.1.3/jquery.goup.min.js"></script>
+<script>
+jQuery(document).ready(function(){
+    jQuery.goup()
+});
+</script><script>
+jQuery(function($) {
+    var previewEle = $('#nexus-preview');
+    if (!previewEle.length) {
+        return;
+    }
+    var medalPreviewFrame = null;
+    var lastMedalImage = null;
+
+    function isUsernameMedal($img) {
+        return $img.hasClass('nexus-username-medal') || $img.hasClass('nexus-username-medal-big');
+    }
+
+    function centerPreview($img) {
+        var src = $img.attr('src');
+        if (!src) {
+            return;
+        }
+
+        var naturalWidth = $img.prop('naturalWidth') || $img.width() || 240;
+        var naturalHeight = $img.prop('naturalHeight') || $img.height() || 240;
+        var ratio = naturalWidth / naturalHeight || 1;
+        var margin = 16;
+        var maxWidth = Math.max(160, window.innerWidth - margin * 2);
+        var maxHeight = Math.max(160, window.innerHeight - margin * 2);
+        var imgWidth = Math.min(naturalWidth, maxWidth);
+        var imgHeight = imgWidth / ratio;
+
+        if (imgHeight > maxHeight) {
+            imgHeight = maxHeight;
+            imgWidth = imgHeight * ratio;
+        }
+
+        previewEle.stop(true, true).attr('src', src).css({
+            display: 'block',
+            position: 'fixed',
+            zIndex: 120000,
+            left: Math.max(margin, (window.innerWidth - imgWidth) / 2),
+            top: Math.max(margin, (window.innerHeight - imgHeight) / 2),
+            width: imgWidth,
+            height: imgHeight,
+            maxWidth: 'none',
+            maxHeight: 'none'
+        }).show();
+    }
+
+    function scheduleMedalPreview($img) {
+        lastMedalImage = $img;
+        if (medalPreviewFrame) {
+            return;
+        }
+        medalPreviewFrame = window.requestAnimationFrame(function() {
+            medalPreviewFrame = null;
+            if (lastMedalImage && lastMedalImage.length) {
+                centerPreview(lastMedalImage);
+            }
+        });
+    }
+
+    function hideMedalPreview() {
+        if (medalPreviewFrame) {
+            window.cancelAnimationFrame(medalPreviewFrame);
+            medalPreviewFrame = null;
+        }
+        lastMedalImage = null;
+        previewEle.hide();
+    }
+
+    $(document)
+        .off('mouseenter.hxptMedalPreview mousemove.hxptMedalPreview mouseleave.hxptMedalPreview', 'img.preview')
+        .on('mouseenter.hxptMedalPreview', 'img.preview', function() {
+            var $img = $(this);
+            if (!isUsernameMedal($img)) {
+                return;
+            }
+            scheduleMedalPreview($img);
+        })
+        .on('mousemove.hxptMedalPreview', 'img.preview', function() {
+            var $img = $(this);
+            if (!isUsernameMedal($img) || previewEle.css('display') === 'none') {
+                return;
+            }
+            scheduleMedalPreview($img);
+        })
+        .on('mouseleave.hxptMedalPreview', 'img.preview', function() {
+            var $img = $(this);
+            if (!isUsernameMedal($img)) {
+                return;
+            }
+            hideMedalPreview();
+        });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible') {
+            hideMedalPreview();
+        }
+    });
+    window.addEventListener('pagehide', hideMedalPreview);
+});
+</script><img id="nexus-preview" style="display:none; position:fixed; z-index:120000; max-width:none; max-height:none;" src="" /><div id="header-avatar-preview" class="avatar-preview-popup" style="display:none; position: fixed; z-index: 99999; background: transparent; padding: 0; border-radius: 0; box-shadow: none; overflow: visible; pointer-events: none;"><div style="width: 500px; height: 500px; line-height: 0; position: relative; z-index: 1;"><div class="avatar-wrapper avatar-frame-overlay "><img src="https://img.ptang.top/i/2026/01/30/福697c4a7bc9b002.gif" alt="avatar" class="animated-avatar" style="object-fit: contain; display: block;" onload="check_avatar(this, 'chs');" /><div class="frame-overlay" style="background-image: url('https://img.ptang.top/i/2026/01/30/新春06697c128a4b1342.gif');"></div></div></div></div></body></html>

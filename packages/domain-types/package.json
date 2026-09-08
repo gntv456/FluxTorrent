@@ -1,0 +1,14 @@
+{
+  "name": "@fluxtorrent/domain-types",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "test": "echo no-op"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

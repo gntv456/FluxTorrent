@@ -1,0 +1,112 @@
+# FluxTorrent
+
+下一代教育类 PT 站点引擎 —— Rust (Actix-web) + Next.js 15 + PostgreSQL 16 + Redis，基于 Monorepo（Turborepo + Cargo workspace）。
+
+> 策划总纲见 `_doc/FluxTorrent 策划方案.md`（技术架构、29 模块 PRD、数据模型、UI 规范、路线图）。
+
+## 目录结构
+
+```
+FluxTorrent/
+├── apps/
+│   ├── api/          # Rust Actix-web 业务 API（认证/种子/促销/经济/管理）
+│   │   ├── migrations/   # sqlx 迁移（0001 init + 0002 sequences）
+│   │   └── src/          # domain(纯业务)/repo(sqlx)/http(handlers)/bencode/…
+│   ├── worker/       # Rust 异步任务（促销到期/保种移出/做种收益/announce 消费）
+│   └── web/          # Next.js 15 前端（设计 Token §7.1 / RSC / 多端）
+├── packages/
+│   └── domain-types/ # 前后端共享契约（信封/错误码/枚举/魔法数字）
+├── docker/           # docker-compose.yml + 各服务 Dockerfile + .env.example
+└── _doc/             # 策划方案与参考资料
+```
+
+## 快速启动
+
+### 一键（Docker Compose）
+
+```bash
+cp docker/.env.example .env   # 修改密钥
+docker compose -f docker/docker-compose.yml up -d
+# web: http://localhost:3000  api: http://localhost:8080/api/v1/health
+```
+
+### 本地开发
+
+```bash
+# 1. 基础设施
+docker compose -f docker/docker-compose.yml up -d postgres redis
+
+# 2. API（自动执行迁移）
+DATABASE_URL="postgres://flux:fluxdevpass@127.0.0.1:5432/fluxtorrent" \
+REDIS_URL="redis://127.0.0.1:6379" \
+JWT_SECRET="dev_secret_change_me_at_least_32_bytes!" \
+cargo run -p flux-api
+
+# 3. Worker（定时任务）
+DATABASE_URL="postgres://flux:fluxdevpass@127.0.0.1:5432/fluxtorrent" \
+REDIS_URL="redis://127.0.0.1:6379" \
+cargo run -p flux-worker
+
+# 4. Web
+pnpm install
+pnpm --filter @fluxtorrent/web dev
+```
+
+### 引导首个账号
+
+注册采用邀请制（M01）。冷启动由站长直接向 `invites` 表发码：
+
+```sql
+-- root(站长, class 99) 为引导示例；发放一枚邀请码
+INSERT INTO users (username, email, pass_hash, passkey, class_id)
+VALUES ('root', 'root@flux.local', 'stub', 'rootpasskey0000000000000000000ff', 99);
+INSERT INTO invites (inviter_id, code, expires_at)
+VALUES (1, '<恰好32位字符的邀请码>', now() + interval '3 days');
+```
+
+## 质量门禁（方案 §8.4）
+
+```bash
+cargo fmt --all --check   # 格式 ✅
+cargo check               # 零警告 ✅
+cargo test                # 9 单测（促销裁决/密码/JWT/Bencode）✅
+pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
+```
+
+## 已验证的端到端链路（实测通过）
+
+| 链路 | 结果 |
+| :--- | :--- |
+| 注册（邀请码一码一用，错误码 2005/2006 区分） | ✅ |
+| 登录 + JWT + `/me` + 无 token 401 | ✅ |
+| 登录限流（第 6 次/分钟 → 401） | ✅ |
+| 上传 .torrent（Bencode 解析/info_hash/重复检测/待审核） | ✅ |
+| 审核 → 列表/详情（筛选 Chip/游标分页） | ✅ |
+| 评论（UTF-8 中文）/感谢（重复 → 5002）/收藏 | ✅ |
+| 下载 .torrent（注入本站 announce + passkey + private=1） | ✅ |
+| 促销引擎（保种区 seeders>7 自动移出 + 3 天免费延续） | ✅ |
+| 做种收益结算（spark_ledger 流水 + 幂等重跑） | ✅ |
+| Web 三页渲染真实数据（首页统计/列表/详情含免费徽章） | ✅ |
+
+## API 概览（/api/v1）
+
+| 方法 | 路径 | 说明 |
+| :--- | :--- | :--- |
+| GET | /health | 健康检查 |
+| POST | /auth/register · /auth/login | 注册（邀请码）/登录 |
+| GET | /me · POST /me/passkey/rotate | 当前用户 / passkey 重置 |
+| GET | /torrents · /torrents/{id} | 列表（筛选+游标分页）/详情 |
+| POST | /torrents（multipart） | 发布（待审核） |
+| GET | /torrents/{id}/download | 动态生成 .torrent |
+| GET/POST | /torrents/{id}/comments | 评论 |
+| POST | /torrents/{id}/thanks | 感谢（一人一次） |
+| PUT | /torrents/{id}/bookmark | 收藏开关 |
+| GET | /stats | 站点统计（旧站首页口径） |
+| POST | /invites | 邀请发放（LV3+ 周配额） |
+
+统一信封 `{code, message, data, request_id}`；错误码分段见 `packages/domain-types`。
+
+## 后续路线（对照方案 §9 路线图）
+
+当前完成度 ≈ **Phase 2 主体 + Phase 3 核心**（M01–M07, M10 基础, M19 规则, M23 部分）。
+下一步按方案排期：Torrust Tracker 生产对接（announce 计费全链路）→ M11–M22 经济与社区模块 → 折叠屏全形态适配 → M24+ 玩法与生态。

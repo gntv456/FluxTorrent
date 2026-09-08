@@ -1,0 +1,91 @@
+# FluxTorrent Docker Compose（方案 §8.4/§12 一键部署）
+# 用法：cp docker/.env.example .env && docker compose up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: flux-postgres
+    environment:
+      POSTGRES_USER: flux
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-fluxdevpass}
+      POSTGRES_DB: fluxtorrent
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flux"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: flux-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/api.Dockerfile
+    container_name: flux-api
+    environment:
+      BIND: 0.0.0.0:8080
+      DATABASE_URL: postgres://flux:${DB_PASSWORD:-fluxdevpass}@postgres:5432/fluxtorrent
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me_at_least_32_bytes!}
+      DB_POOL_SIZE: "10"
+      RUST_LOG: info
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/worker.Dockerfile
+    container_name: flux-worker
+    environment:
+      DATABASE_URL: postgres://flux:${DB_PASSWORD:-fluxdevpass}@postgres:5432/fluxtorrent
+      REDIS_URL: redis://redis:6379
+      RUST_LOG: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/web.Dockerfile
+    container_name: flux-web
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:

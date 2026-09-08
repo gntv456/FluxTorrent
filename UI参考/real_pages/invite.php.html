@@ -1,0 +1,946 @@
+<table align="center" class="main" width="500" border="0" cellpadding="0" cellspacing="0"><tr><td class="embedded">
+<h2>对不起</h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="10"><tr><td class="text">没有该权限！</td></tr></table></td></tr></table>
+</td></tr></table><div id="footer"><div style="margin-top: 10px; margin-bottom: 30px;" align="center"> (c)  <a href="https://www.hxpt.org" target="_self">好学</a> 2025-2026 Powered by <a href="aboutnexus.php">NexusPHP</a><br /><br />[page created in <b> 0.009 </b> sec with <b>0</b> db queries, <b>4</b> reads and <b>0</b> writes of Redis and <b>713.77 KB</b> ram]</div>
+<div style="display: none;" id="lightbox" class="lightbox"></div><div style="display: none;" id="curtain" class="curtain"></div></div>
+<!-- ANALYTICS_LEN:0 -->
+<div class="cute-m-shell" id="cute-m-shell">
+    <div class="cute-m-overlay" id="cute-m-overlay" hidden></div>
+    <aside class="cute-m-drawer" id="cute-m-drawer" aria-hidden="true" hidden>
+        <div class="cute-m-drawer__head">
+            <strong>菜单导航</strong>
+            <button type="button" class="cute-m-drawer__close" id="cute-m-drawer-close" aria-label="关闭">×</button>
+        </div>
+        <div class="cute-m-drawer__scroll">
+            <section class="cute-m-drawer__section">
+                <h4 class="cute-m-drawer__title">菜单导航</h4>
+                <div class="cute-m-drawer__body" id="cute-m-drawer-nav"></div>
+            </section>
+        </div>
+    </aside>
+    <nav class="cute-m-dock" id="cute-m-tabbar" aria-label="手机底部导航">
+        <a class="cute-m-dock__item" href="index.php" aria-label="首页" data-dock="home">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z"/></svg>
+            </span>
+        </a>
+        <a class="cute-m-dock__item" href="torrents.php" aria-label="种子" data-dock="torrents">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h7l3 3v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v4h4"/><path d="M9 13h6M9 17h6"/></svg>
+            </span>
+        </a>
+        <a class="cute-m-dock__item cute-m-dock__item--center is-active" href="usercp.php" aria-label="我的" data-dock="me" id="cute-m-dock-me">
+            <span class="cute-m-dock__avatar" id="cute-m-dock-avatar"></span>
+        </a>
+        <button type="button" class="cute-m-dock__item" id="cute-m-dock-search" aria-label="搜索" data-dock="search">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/></svg>
+            </span>
+        </button>
+        <button type="button" class="cute-m-dock__item" id="cute-m-nav-toggle" aria-label="菜单导航" aria-controls="cute-m-drawer" aria-expanded="false" data-dock="more">
+            <span class="cute-m-dock__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+            </span>
+                    </button>
+    </nav>
+</div>
+<script>
+(function() {
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+    function cleanText(text) {
+        return String(text || '').replace(/\u00a0/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function isMobile() { return window.matchMedia('(max-width: 768px)').matches; }
+    function makeItem(href, text, active) {
+        var item = document.createElement('a');
+        item.className = 'cute-m-drawer__item' + (active ? ' is-active' : '');
+        item.href = href || '#';
+        item.textContent = cleanText(text) || href || '入口';
+        return item;
+    }
+    function collectUniqueLinks(selectors) {
+        var seen = {}, list = [];
+        selectors.forEach(function(sel) {
+            document.querySelectorAll(sel).forEach(function(a) {
+                var href = a.getAttribute('href') || '';
+                if (!href || href === '#' || href.indexOf('javascript:') === 0) return;
+                var key = href.replace(/#.*$/, '');
+                if (seen[key]) return;
+                var text = cleanText(a.getAttribute('title') || a.getAttribute('aria-label') || a.textContent || a.innerText || '');
+                if (!text || /^\d+(\s*\(.*\))?$/.test(text)) {
+                    var img = a.querySelector('img');
+                    var imgTitle = img ? cleanText(img.getAttribute('title') || img.getAttribute('alt') || '') : '';
+                    if (imgTitle) text = imgTitle + (text ? (' ' + text) : '');
+                }
+                if (!text || /^\d+$/.test(text)) return;
+                seen[key] = true;
+                list.push({ href: href, text: text, active: !!(a.closest && a.closest('li.selected, .selected, .is-active')) });
+            });
+        });
+        return list;
+    }
+    function fillGroup(container, items) {
+        if (!container) return;
+        container.innerHTML = '';
+        if (!items.length) { container.innerHTML = '<p class="cute-m-drawer__empty">暂无入口</p>'; return; }
+        var frag = document.createDocumentFragment();
+        items.forEach(function(it) { frag.appendChild(makeItem(it.href, it.text, it.active)); });
+        container.appendChild(frag);
+    }
+    function linkInfo(a) {
+        if (!a) return null;
+        var href = a.getAttribute('href') || '';
+        if (!href || href === '#' || href.indexOf('javascript:') === 0) return null;
+        var text = cleanText(a.getAttribute('title') || a.getAttribute('aria-label') || a.textContent || a.innerText || '');
+        if (!text) {
+            var img = a.querySelector('img');
+            text = img ? cleanText(img.getAttribute('title') || img.getAttribute('alt') || '') : '';
+        }
+        if (!text) return null;
+        var active = false;
+        try {
+            var cur = (location.pathname.split('/').pop() || '') + location.search;
+            var h = href.replace(/^\//, '');
+            if (h && cur.indexOf(h.replace(/^\//, '')) === 0) active = true;
+            if (a.closest && a.closest('li.selected, .selected')) active = true;
+        } catch (err) {}
+        return { href: href, text: text, active: active };
+    }
+    function buildMainMenuTree() {
+        var tree = [];
+        var topLinks = document.querySelectorAll('#mainmenu > li > a, #nav > ul.menu > li > a, ul.menu#mainmenu > li > a');
+        if (!topLinks.length) topLinks = document.querySelectorAll('#mainmenu a');
+        var seenTop = {};
+        Array.prototype.forEach.call(topLinks, function(a) {
+            // only direct top-level anchors
+            if (a.closest && a.closest('.ddsubmenustyle')) return;
+            var li = a.parentElement;
+            if (li && li.parentElement && li.parentElement.id !== 'mainmenu' && !li.parentElement.classList.contains('menu')) {
+                // still accept if under mainmenu
+                if (!(a.closest && a.closest('#mainmenu'))) return;
+            }
+            var info = linkInfo(a);
+            if (!info) return;
+            var key = info.href + '|' + info.text;
+            if (seenTop[key]) return;
+            seenTop[key] = true;
+            var children = [];
+            var rel = a.getAttribute('rel') || '';
+            if (rel) {
+                var sub = document.getElementById(rel);
+                if (sub) {
+                    var seenChild = {};
+                    sub.querySelectorAll('a').forEach(function(ca) {
+                        var ci = linkInfo(ca);
+                        if (!ci) return;
+                        var ck = ci.href.replace(/#.*$/, '');
+                        if (seenChild[ck]) return;
+                        seenChild[ck] = true;
+                        children.push(ci);
+                    });
+                }
+            }
+            tree.push({ href: info.href, text: info.text, active: info.active, children: children });
+        });
+        return tree;
+    }
+    function fillMainMenu(container) {
+        if (!container) return;
+        container.innerHTML = '';
+        container.classList.add('cute-m-menu');
+        var tree = buildMainMenuTree();
+        if (!tree.length) {
+            // fallback flat
+            var flat = collectUniqueLinks(['#mainmenu > li > a', '.ddsubmenustyle a']);
+            fillGroup(container, flat);
+            return;
+        }
+        var frag = document.createDocumentFragment();
+        tree.forEach(function(node) {
+            var group = document.createElement('div');
+            group.className = 'cute-m-menu__group' + (node.children && node.children.length ? ' has-children' : '') + (node.active ? ' is-active' : '');
+
+            var head = document.createElement('div');
+            head.className = 'cute-m-menu__head';
+
+            var link = document.createElement('a');
+            link.className = 'cute-m-menu__link' + (node.active ? ' is-active' : '');
+            link.href = node.href;
+            link.textContent = node.text;
+            head.appendChild(link);
+
+            if (node.children && node.children.length) {
+                var chev = document.createElement('button');
+                chev.type = 'button';
+                chev.className = 'cute-m-menu__chev';
+                chev.setAttribute('aria-expanded', 'false');
+                chev.setAttribute('aria-label', '展开子菜单');
+                chev.innerHTML = '<span></span>';
+                head.appendChild(chev);
+
+                var body = document.createElement('div');
+                body.className = 'cute-m-menu__sub';
+                body.hidden = true;
+                node.children.forEach(function(ch) {
+                    var ca = document.createElement('a');
+                    ca.className = 'cute-m-menu__sublink' + (ch.active ? ' is-active' : '');
+                    ca.href = ch.href;
+                    ca.textContent = ch.text;
+                    body.appendChild(ca);
+                });
+
+                function setOpen(open) {
+                    group.classList.toggle('is-open', open);
+                    body.hidden = !open;
+                    chev.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    chev.setAttribute('aria-label', open ? '收起子菜单' : '展开子菜单');
+                }
+                chev.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOpen(!group.classList.contains('is-open'));
+                });
+                // tap parent row text area (not only chev): if want navigate keep link default
+                // double behavior: long list - clicking chev expands only
+
+                // auto-expand if current page in children
+                var childActive = node.children.some(function(ch){ return ch.active; });
+                if (childActive || node.active) setOpen(true);
+
+                group.appendChild(head);
+                group.appendChild(body);
+            } else {
+                group.appendChild(head);
+            }
+            frag.appendChild(group);
+        });
+        container.appendChild(frag);
+    }
+    ready(function() {
+        var shell = document.getElementById('cute-m-shell');
+        var drawer = document.getElementById('cute-m-drawer');
+        var overlay = document.getElementById('cute-m-overlay');
+        var toggle = document.getElementById('cute-m-nav-toggle');
+        var closeBtn = document.getElementById('cute-m-drawer-close');
+        var searchBtn = document.getElementById('cute-m-dock-search');
+        var avatarHost = document.getElementById('cute-m-dock-avatar');
+        if (!shell || !drawer || !overlay || !toggle) return;
+
+        // clone user avatar into center dock
+        if (avatarHost) {
+            var srcAvatar = document.querySelector('.cute-top-profile__avatar img, .cute-top-profile__trigger img');
+            if (srcAvatar) {
+                var img = srcAvatar.cloneNode(true);
+                img.removeAttribute('width'); img.removeAttribute('height');
+                img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover';
+                avatarHost.appendChild(img);
+            } else {
+                avatarHost.textContent = '我';
+            }
+        }
+
+        // hide legacy top hamburger if duplicated id moved - ensure top header toggle removed
+        document.querySelectorAll('.cute-m-nav-toggle').forEach(function(btn) {
+            if (btn.id !== 'cute-m-nav-toggle') btn.remove();
+        });
+
+        function fillDrawer() {
+            // 更多弹窗仅展示电脑版主菜单树
+            fillMainMenu(document.getElementById('cute-m-drawer-nav'));
+        }
+
+        function openDrawer() {
+            if (!isMobile()) return;
+            try { fillDrawer(); } catch (err) { try { console.warn('fillDrawer failed', err); } catch (e2) {} }
+            drawer.hidden = false; overlay.hidden = false;
+            shell.classList.add('is-drawer-open');
+            drawer.setAttribute('aria-hidden', 'false');
+            toggle.setAttribute('aria-expanded', 'true');
+            document.documentElement.classList.add('cute-m-lock');
+            document.body.classList.add('cute-m-lock');
+        }
+        function closeDrawer() {
+            shell.classList.remove('is-drawer-open');
+            drawer.setAttribute('aria-hidden', 'true');
+            toggle.setAttribute('aria-expanded', 'false');
+            document.documentElement.classList.remove('cute-m-lock');
+            document.body.classList.remove('cute-m-lock');
+            window.setTimeout(function() {
+                if (!shell.classList.contains('is-drawer-open')) { drawer.hidden = true; overlay.hidden = true; }
+            }, 220);
+        }
+        function syncShellVisibility() {
+            if (isMobile()) {
+                document.documentElement.classList.add('cute-m-active');
+                document.body.classList.add('cute-m-active');
+            } else {
+                closeDrawer();
+                document.documentElement.classList.remove('cute-m-active');
+                document.body.classList.remove('cute-m-active');
+            }
+        }
+
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            if (shell.classList.contains('is-drawer-open')) closeDrawer(); else openDrawer();
+        });
+        if (closeBtn) closeBtn.addEventListener('click', function(e){ e.preventDefault(); closeDrawer(); });
+        overlay.addEventListener('click', closeDrawer);
+        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeDrawer(); });
+        window.addEventListener('resize', syncShellVisibility);
+        syncShellVisibility();
+
+        // Mobile profile panel: same content as desktop dropdown, tap to open
+        (function setupMobileProfilePanel() {
+            var profile = document.querySelector('.cute-top-profile');
+            var trigger = document.querySelector('.cute-top-profile__trigger');
+            var dropdown = document.querySelector('.cute-top-profile__dropdown');
+            if (!profile || !trigger || !dropdown) return;
+
+            var overlay = document.getElementById('cute-m-profile-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'cute-m-profile-overlay';
+                overlay.className = 'cute-m-profile-overlay';
+                overlay.hidden = true;
+                document.body.appendChild(overlay);
+            }
+
+            // Mobile summary layout: put subline full-width under avatar/name/logout
+            var summaryMain = dropdown.querySelector('.cute-top-profile__summary-main');
+            var subline = dropdown.querySelector('.cute-top-profile__subline');
+            if (summaryMain && subline && subline.parentElement !== summaryMain) {
+                summaryMain.appendChild(subline);
+            }
+
+            // Ensure secondary icon links have readable text on mobile
+            dropdown.querySelectorAll('.cute-top-profile__links:not(.cute-top-profile__links--primary) a').forEach(function(a) {
+                if (a.dataset.cuteLabeled === '1') return;
+                a.dataset.cuteLabeled = '1';
+                var title = a.getAttribute('title') || '';
+                var img = a.querySelector('img[title], img[alt]');
+                if (!title && img) title = img.getAttribute('title') || img.getAttribute('alt') || '';
+                title = cleanText(title);
+                if (!title || a.querySelector('.cute-m-profile-linktext')) return;
+                var span = document.createElement('span');
+                span.className = 'cute-m-profile-linktext';
+                span.textContent = title;
+                a.appendChild(span);
+            });
+
+            function openProfile(e) {
+                if (e) { e.preventDefault(); e.stopPropagation(); }
+                if (!isMobile()) return;
+                // close function drawer if open
+                try { closeDrawer(); } catch (err) {}
+                // Portal to body so fixed positioning is not trapped by header transform
+                if (dropdown.parentElement !== document.body) {
+                    dropdown.dataset.cuteHome = '1';
+                    document.body.appendChild(dropdown);
+                }
+                profile.classList.add('is-open');
+                dropdown.classList.add('is-open');
+                document.documentElement.classList.add('cute-m-profile-open');
+                document.body.classList.add('cute-m-profile-open');
+                overlay.hidden = false;
+                trigger.setAttribute('aria-expanded', 'true');
+                dropdown.setAttribute('aria-hidden', 'false');
+            }
+            function closeProfile() {
+                profile.classList.remove('is-open');
+                dropdown.classList.remove('is-open');
+                document.documentElement.classList.remove('cute-m-profile-open');
+                document.body.classList.remove('cute-m-profile-open');
+                overlay.hidden = true;
+                trigger.setAttribute('aria-expanded', 'false');
+                dropdown.setAttribute('aria-hidden', 'true');
+                if (dropdown.dataset.cuteHome === '1' && profile) {
+                    profile.appendChild(dropdown);
+                }
+            }
+            function toggleProfile(e) {
+                if (!isMobile()) return;
+                if (profile.classList.contains('is-open')) closeProfile();
+                else openProfile(e);
+            }
+
+            trigger.setAttribute('role', 'button');
+            trigger.setAttribute('tabindex', '0');
+            trigger.setAttribute('aria-expanded', 'false');
+            dropdown.setAttribute('aria-hidden', 'true');
+
+            trigger.addEventListener('click', function(e) {
+                if (!isMobile()) return;
+                e.preventDefault();
+                e.stopPropagation();
+                toggleProfile(e);
+            });
+            trigger.addEventListener('keydown', function(e) {
+                if (!isMobile()) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleProfile(e);
+                }
+            });
+            overlay.addEventListener('click', closeProfile);
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeProfile();
+            });
+            // click outside closes
+            document.addEventListener('click', function(e) {
+                if (!isMobile() || !profile.classList.contains('is-open')) return;
+                if (profile.contains(e.target)) return;
+                if (dropdown.contains(e.target)) return;
+                if (overlay.contains(e.target)) return;
+                closeProfile();
+            });
+            // dock center avatar also opens same panel
+            var dockMe = document.getElementById('cute-m-dock-me');
+            if (dockMe) {
+                dockMe.addEventListener('click', function(e) {
+                    if (!isMobile()) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (profile.classList.contains('is-open')) closeProfile();
+                    else openProfile(e);
+                });
+            }
+            window.addEventListener('resize', function() {
+                if (!isMobile()) closeProfile();
+            });
+        })();
+
+        function setSearchExpanded(open) {
+            var box = document.getElementById('ksearchboxmain');
+            var pic = document.getElementById('picsearchboxmain');
+            var searchbox = document.querySelector('table.searchbox');
+            if (!box) return;
+            if (open) {
+                box.style.display = '';
+                box.classList.add('cute-search-open');
+                if (searchbox) searchbox.classList.add('cute-search-open');
+                if (pic) pic.className = 'minus';
+            } else {
+                box.style.display = 'none';
+                box.classList.remove('cute-search-open');
+                if (searchbox) searchbox.classList.remove('cute-search-open');
+                if (pic) pic.className = 'plus';
+            }
+        }
+
+        function getTorrentMetaLabels() {
+            var head = document.querySelector('table.torrents > tbody > tr:has(td.colhead), table.torrents tr:has(td.colhead)');
+            var labels = [];
+            if (!head) return labels;
+            Array.prototype.forEach.call(head.children, function(td) {
+                var img = td.querySelector('img[title], img[alt]');
+                var a = td.querySelector('a[title]');
+                var raw = '';
+                if (img) raw = img.getAttribute('title') || img.getAttribute('alt') || '';
+                else if (a) raw = a.getAttribute('title') || cleanText(a.textContent);
+                else raw = cleanText(td.textContent);
+                raw = cleanText(raw);
+                var shortMap = [
+                    [/评论|comments?/i, '评'],
+                    [/时间|added|time/i, '时'],
+                    [/大小|size/i, '大小'],
+                    [/做种|seed/i, '做'],
+                    [/下载|leech/i, '下'],
+                    [/完成|snatch/i, '完'],
+                    [/等待|wait/i, '等'],
+                    [/上传|uploader|作者/i, '传']
+                ];
+                var short = '';
+                for (var i = 0; i < shortMap.length; i++) {
+                    if (shortMap[i][0].test(raw)) { short = shortMap[i][1]; break; }
+                }
+                labels.push(short || (raw ? raw.slice(0, 2) : ''));
+            });
+            return labels;
+        }
+
+        function enhanceTorrentCards() {
+            document.querySelectorAll('table.torrents > tbody > tr').forEach(function(tr) {
+                if (tr.querySelector('td.colhead')) return;
+                if (tr.dataset.cuteCarded === '1') return;
+                var tds = Array.prototype.slice.call(tr.children).filter(function(n){ return n.tagName === 'TD'; });
+                if (tds.length < 5) return;
+                tr.dataset.cuteCarded = '1';
+                tr.classList.add('cute-torrent-card');
+
+                // Stable short labels by column count (type,name,...,action)
+                // Common: +comments => 9 cols; no comments => 8 cols; +wait => +1
+                var labelMap = null;
+                if (tds.length >= 10) labelMap = {2:'等',3:'评',4:'时',5:'大小',6:'做',7:'下',8:'完'};
+                else if (tds.length === 9) labelMap = {2:'评',3:'时',4:'大小',5:'做',6:'下',7:'完'};
+                else if (tds.length === 8) labelMap = {2:'时',3:'大小',4:'做',5:'下',6:'完'};
+                else if (tds.length === 7) labelMap = {2:'时',3:'大小',4:'做',5:'下'};
+                else labelMap = {};
+
+                var metaRow = document.createElement('div');
+                metaRow.className = 'cute-torrent-meta-row';
+                var lastIdx = tds.length - 1;
+                for (var idx = 2; idx < lastIdx; idx++) {
+                    var td = tds[idx];
+                    if (!td || td.dataset.cuteMeta === '1') continue;
+                    td.dataset.cuteMeta = '1';
+                    var chip = document.createElement('span');
+                    chip.className = 'cute-torrent-meta-chip';
+                    var label = labelMap[idx] || '';
+                    var html = td.innerHTML;
+                    if (label) {
+                        chip.innerHTML = '<span class="cute-torrent-meta__label">' + label + '</span><span class="cute-torrent-meta__val">' + html + '</span>';
+                    } else {
+                        chip.innerHTML = html;
+                    }
+                    // color seed/leech/snatch slightly
+                    if (label === '做') chip.classList.add('is-seed');
+                    if (label === '下') chip.classList.add('is-leech');
+                    if (label === '完') chip.classList.add('is-done');
+                    metaRow.appendChild(chip);
+                    td.classList.add('cute-torrent-meta-src');
+                    td.setAttribute('aria-hidden', 'true');
+                    td.style.setProperty('display', 'none', 'important');
+                    td.style.setProperty('width', '0', 'important');
+                    td.style.setProperty('height', '0', 'important');
+                    td.style.setProperty('padding', '0', 'important');
+                    td.style.setProperty('margin', '0', 'important');
+                    td.style.setProperty('border', '0', 'important');
+                    td.style.setProperty('overflow', 'hidden', 'important');
+                }
+                // keep action icons on top-right
+                if (tds[lastIdx]) {
+                    tds[lastIdx].classList.add('cute-torrent-action');
+                }
+                if (metaRow.childNodes.length) {
+                    tr.appendChild(metaRow);
+                }
+            });
+        }
+
+        // Mobile search modal (dock search button)
+        (function setupMobileSearchModal() {
+            var searchForm = document.querySelector('form[name="searchbox"]');
+            var searchHomeParent = null;
+            var searchHomeNext = null;
+            var modal = document.getElementById('cute-m-search-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'cute-m-search-modal';
+                modal.className = 'cute-m-search-modal';
+                modal.hidden = true;
+                modal.innerHTML = ''
+                    + '<div class="cute-m-search-modal__overlay" data-close="1"></div>'
+                    + '<div class="cute-m-search-modal__sheet" role="dialog" aria-modal="true" aria-label="搜索">'
+                    +   '<div class="cute-m-search-modal__head">'
+                    +     '<strong>搜索种子</strong>'
+                    +     '<button type="button" class="cute-m-search-modal__close" data-close="1" aria-label="关闭">×</button>'
+                    +   '</div>'
+                    +   '<div class="cute-m-search-modal__body" id="cute-m-search-modal-body"></div>'
+                    +   '<div class="cute-m-search-modal__fallback" id="cute-m-search-fallback" hidden>'
+                    +     '<form method="get" action="torrents.php" class="cute-m-search-fallback-form">'
+                    +       '<input type="search" name="search" id="cute-m-search-fallback-input" placeholder="输入关键字搜索种子" autocomplete="off" />'
+                    +       '<div class="cute-m-search-fallback-row">'
+                    +         '<select name="search_area">'
+                    +           '<option value="0">标题</option>'
+                    +           '<option value="1">简介</option>'
+                    +           '<option value="3">发布者</option>'
+                    +         '</select>'
+                    +         '<button type="submit">搜索</button>'
+                    +       '</div>'
+                    +     '</form>'
+                    +   '</div>'
+                    + '</div>';
+                document.body.appendChild(modal);
+            }
+            var modalBody = document.getElementById('cute-m-search-modal-body');
+            var fallback = document.getElementById('cute-m-search-fallback');
+            var advancedBtn = null;
+
+            function ensureAdvancedToggle() {
+                if (!searchForm || advancedBtn) return;
+                var box = document.getElementById('ksearchboxmain');
+                if (!box) return;
+                advancedBtn = document.createElement('button');
+                advancedBtn.type = 'button';
+                advancedBtn.className = 'cute-m-search-advanced-toggle';
+                advancedBtn.textContent = '高级筛选';
+                advancedBtn.addEventListener('click', function() {
+                    var isOpen = box.classList.contains('cute-search-open') || (box.style.display !== 'none' && getComputedStyle(box).display !== 'none');
+                    setSearchExpanded(!isOpen);
+                    advancedBtn.classList.toggle('is-open', !isOpen);
+                    advancedBtn.textContent = !isOpen ? '收起筛选' : '高级筛选';
+                });
+                if (searchForm.firstChild) searchForm.insertBefore(advancedBtn, searchForm.firstChild);
+                else searchForm.appendChild(advancedBtn);
+            }
+
+            function compactSearchRangeRows() {
+                if (!searchForm || searchForm.dataset.cuteRangeCompact === '1') return;
+                var rightTable = document.querySelector('#ksearchboxmain > tr > td:last-child > table');
+                if (!rightTable) return;
+                var rows = Array.prototype.slice.call(rightTable.querySelectorAll(':scope > tbody > tr'));
+                for (var i = 0; i < rows.length - 1; i++) {
+                    var labelTd = rows[i].querySelector('td.bottom');
+                    var valueTd = rows[i + 1] ? rows[i + 1].querySelector('td.bottom') : null;
+                    if (!labelTd || !valueTd) continue;
+                    var hasLabel = !!labelTd.querySelector('font.medium') && !labelTd.querySelector('input, select');
+                    var hasInputs = !!valueTd.querySelector('input, select');
+                    if (!hasLabel || !hasInputs) continue;
+                    var wrap = document.createElement('div');
+                    wrap.className = 'cute-m-search-range-row';
+                    var lab = document.createElement('div');
+                    lab.className = 'cute-m-search-range-label';
+                    lab.innerHTML = labelTd.innerHTML;
+                    var val = document.createElement('div');
+                    val.className = 'cute-m-search-range-inputs';
+                    // move real inputs to preserve state/listeners better
+                    while (valueTd.firstChild) val.appendChild(valueTd.firstChild);
+                    wrap.appendChild(lab);
+                    wrap.appendChild(val);
+                    valueTd.appendChild(wrap);
+                    labelTd.style.display = 'none';
+                    rows[i].style.display = 'none';
+                    rows[i].dataset.cuteRangeHidden = '1';
+                    i++; // skip value row
+                }
+                // mark selects-only blocks
+                rightTable.classList.add('cute-m-search-right');
+                searchForm.dataset.cuteRangeCompact = '1';
+            }
+
+            function openSearchModal() {
+                if (!isMobile()) return;
+                try { closeDrawer(); } catch (err) {}
+                // close profile if open
+                try {
+                    var profile = document.querySelector('.cute-top-profile');
+                    if (profile && profile.classList.contains('is-open')) {
+                        profile.classList.remove('is-open');
+                        var dd = document.querySelector('.cute-top-profile__dropdown');
+                        if (dd) dd.classList.remove('is-open');
+                        document.documentElement.classList.remove('cute-m-profile-open');
+                        document.body.classList.remove('cute-m-profile-open');
+                        var po = document.getElementById('cute-m-profile-overlay');
+                        if (po) po.hidden = true;
+                    }
+                } catch (err2) {}
+
+                if (searchForm) {
+                    if (!searchHomeParent) {
+                        searchHomeParent = searchForm.parentNode;
+                        searchHomeNext = searchForm.nextSibling;
+                    }
+                    ensureAdvancedToggle();
+                    compactSearchRangeRows();
+                    // default collapse advanced for clean first view
+                    setSearchExpanded(false);
+                    if (advancedBtn) {
+                        advancedBtn.classList.remove('is-open');
+                        advancedBtn.textContent = '高级筛选';
+                    }
+                    modalBody.hidden = false;
+                    if (fallback) fallback.hidden = true;
+                    modalBody.appendChild(searchForm);
+                    searchForm.classList.add('cute-m-search-form');
+                } else {
+                    modalBody.hidden = true;
+                    if (fallback) fallback.hidden = false;
+                }
+
+                modal.hidden = false;
+                document.documentElement.classList.add('cute-m-search-open');
+                document.body.classList.add('cute-m-search-open');
+                window.setTimeout(function() {
+                    var input = document.querySelector('#searchinput, #cute-m-search-fallback-input, form.cute-m-search-form input[name="search"]');
+                    if (input) {
+                        try { input.focus(); input.select && input.select(); } catch (err3) {}
+                    }
+                }, 180);
+            }
+
+            function closeSearchModal() {
+                modal.hidden = true;
+                document.documentElement.classList.remove('cute-m-search-open');
+                document.body.classList.remove('cute-m-search-open');
+                if (searchForm && searchHomeParent) {
+                    if (searchHomeNext && searchHomeNext.parentNode === searchHomeParent) {
+                        searchHomeParent.insertBefore(searchForm, searchHomeNext);
+                    } else {
+                        searchHomeParent.appendChild(searchForm);
+                    }
+                    searchForm.classList.remove('cute-m-search-form');
+                    setSearchExpanded(false);
+                }
+            }
+
+            if (searchBtn) {
+                searchBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isMobile()) return;
+                    if (!searchForm && !/torrents\.php|special\.php|music\.php/i.test(location.pathname)) {
+                        // go torrents with open flag
+                        location.href = 'torrents.php#search';
+                        return;
+                    }
+                    if (modal.hidden === false) closeSearchModal();
+                    else openSearchModal();
+                });
+            }
+            modal.addEventListener('click', function(e) {
+                var t = e.target;
+                if (t && (t.getAttribute('data-close') === '1' || t.classList.contains('cute-m-search-modal__overlay'))) {
+                    closeSearchModal();
+                }
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modal && modal.hidden === false) closeSearchModal();
+            });
+            window.addEventListener('resize', function() {
+                if (!isMobile() && modal && modal.hidden === false) closeSearchModal();
+            });
+            // auto open from hash
+            if (isMobile() && (location.hash || '').indexOf('search') >= 0) {
+                window.setTimeout(openSearchModal, 120);
+            }
+            // expose for other handlers if needed
+            window.cuteOpenMobileSearch = openSearchModal;
+            window.cuteCloseMobileSearch = closeSearchModal;
+        })();
+
+        if (isMobile()) {
+            document.querySelectorAll('table.cute-msgalert, table.msgalert').forEach(function(table) {
+                table.classList.add('cute-msgalert--ready');
+                table.classList.remove('is-collapsed');
+            });
+            // Sunny-clean: collapse advanced filters by default
+            var searchMain = document.getElementById('ksearchboxmain');
+            if (searchMain) {
+                var hasQuery = /[?&](search|incldead|spstate|picktype|cat\d*|standard\d*|source\d*|medium\d*|codec\d*|audiocodec\d*|team\d*|processing\d*|tag_id)=/i.test(location.search);
+                var hashSearch = (location.hash || '').indexOf('search') >= 0;
+                if (hasQuery || hashSearch) setSearchExpanded(true);
+                else setSearchExpanded(false);
+            }
+            enhanceTorrentCards();
+        }
+    });
+})();
+</script>
+<style id="ptlife-card-style">
+.ptlife-card{position:fixed;top:64px;left:64px;visibility:hidden;z-index:120001;width:300px;box-sizing:border-box;border-radius:10px;overflow:hidden;
+  font-size:12px;line-height:1.5;text-align:left;color:var(--theme-primary,#333);
+  background:var(--theme-bg-secondary,rgba(255,255,255,.96));
+  border:1px solid rgba(var(--theme-rgb,120,120,120),.35);
+  box-shadow:0 6px 18px rgba(var(--theme-rgb,120,120,120),.28);backdrop-filter:blur(4px);}
+.ptlife-card .ptl-head{display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:var(--theme-gradient,linear-gradient(135deg,#8a8a8a,#b5b5b5));color:#fff;}
+.ptlife-card .ptl-head .ptl-name{font-weight:bold;font-size:13px;text-shadow:0 1px 2px rgba(0,0,0,.15);}
+.ptlife-card .ptl-head .ptl-sites{margin-left:auto;font-size:11px;opacity:.9;white-space:nowrap;}
+.ptlife-card .ptl-body{padding:8px 12px 4px;}
+.ptlife-card .ptl-row{display:flex;justify-content:space-between;padding:2px 0;}
+.ptlife-card .ptl-row .ptl-k{opacity:.72;}
+.ptlife-card .ptl-row .ptl-v{font-weight:bold;font-variant-numeric:tabular-nums;}
+.ptlife-card .ptl-foot{display:flex;align-items:center;justify-content:space-between;
+  padding:4px 12px 8px;font-size:11px;opacity:.85;}
+.ptlife-card a.ptl-detail{color:var(--theme-primary,#333);font-weight:bold;text-decoration:none;
+  border:1px solid rgba(var(--theme-rgb,120,120,120),.5);border-radius:20px;padding:1px 10px;}
+.ptlife-card a.ptl-detail:hover{background:var(--theme-bg-glass,rgba(120,120,120,.15));}
+</style>
+<script>
+jQuery(function($) {
+    var tip = null, tipUid = 0, hideTimer = null, cache = {}, deadUntil = {};
+    var API_URL = 'https://www.hxpt.org/api/ptlife/query.php';
+    var DETAIL_URL = 'https://www.hxpt.org/ptlife.php?id=';
+    function mkSize(b) {
+        b = Number(b) || 0;
+        var u = ['B','KB','MB','GB','TB','PB'], i = 0;
+        while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+        return b.toFixed(2) + ' ' + u[i];
+    }
+    function esc(s) { return $('<i>').text(s == null ? '' : String(s)).html(); }
+    function buildTip(d) {
+        var t = d.totals || {};
+        var ratio = t.downloaded > 0 ? (t.uploaded / t.downloaded).toFixed(3) : '∞';
+        var name = d.username || ('用户 #' + d.uid);
+        var h = '<div class="ptlife-card">';
+        h += '<div class="ptl-head"><span class="ptl-name">🐝 ' + esc(name) + '</span>'
+           + '<span class="ptl-sites">' + (d.site_count || 0) + ' 站</span></div>';
+        h += '<div class="ptl-body">';
+        h += '<div class="ptl-row"><span class="ptl-k">总上传</span><span class="ptl-v">' + mkSize(t.uploaded) + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">总下载</span><span class="ptl-v">' + mkSize(t.downloaded) + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">分享率</span><span class="ptl-v">' + ratio + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">做种体积</span><span class="ptl-v">' + mkSize(t.seeding_size) + '</span></div>';
+        h += '<div class="ptl-row"><span class="ptl-k">魔力值</span><span class="ptl-v">' + (Number(t.bonus) || 0).toLocaleString() + '</span></div>';
+        h += '</div>';
+        h += '<div class="ptl-foot"><span>更新于 ' + esc(d.synced_at || '-') + '</span>'
+           + '<a class="ptl-detail" href="' + DETAIL_URL + d.uid + '">详情</a></div>';
+        h += '</div>';
+        return h;
+    }
+    // 未同步/关闭展示的轻提示卡（不复用数据卡布局，避免误导）
+    function buildEmptyTip() {
+        return '<div class="ptlife-card ptl-empty">'
+             + '<div class="ptl-head"><span class="ptl-name">🐝 PT Patronus</span></div>'
+             + '<div class="ptl-body" style="padding:10px 12px 12px;">该用户尚未同步 PT Patronus</div>'
+             + '</div>';
+    }
+    function closeTip() {
+        if (tip) tip.remove();
+        tip = null; tipUid = 0;
+    }
+    function markDead(uid) { deadUntil[uid] = Date.now() + 60000; } // 无数据/失败静默 60s，而非整页会话
+    function isDead(uid) { return (deadUntil[uid] || 0) > Date.now(); }
+    function showTip(link, uid) {
+        clearTimeout(hideTimer);
+        if (isDead(uid)) return;
+        var cached = cache[uid];
+        if (cached) { closeTip(); tipUid = uid; tip = $(cached).appendTo('body'); position(link, tip); return; }
+        closeTip();
+        tipUid = uid;
+        // 数据到达前不建任何 DOM，避免占位闪烁；到达后一次性建卡并定位
+        $.getJSON(API_URL, { uid: uid }, function(res) {
+            if (!res || !res.success) { markDead(uid); return; }
+            var html = (res.found && res.data) ? buildTip(res.data) : buildEmptyTip();
+            cache[uid] = html;
+            if (tipUid !== uid) return; // 已切换到别的链接
+            tip = $(html).appendTo('body');
+            position(link, tip);
+        }).fail(function() { markDead(uid); });
+    }
+    function position(link, card) {
+        // position:fixed 需要视口坐标（getBoundingClientRect）；CSS 里 top/left 只是防错兜底
+        card.css({ visibility: 'hidden' });
+        var rect = link.getBoundingClientRect();
+        var w = card.outerWidth() || 300, h = card.outerHeight() || 160;
+        var left = Math.min(rect.left, $(window).width() - w - 12);
+        left = Math.max(8, left);
+        var top = rect.bottom + 6;
+        if (top + h > $(window).height() - 8) {
+            top = rect.top - h - 6; // 下方放不下改到链接上方
+            if (top < 8) top = 8;
+        }
+        card.css({ left: left, top: top, visibility: 'visible' });
+    }
+    function hideSoon() { hideTimer = setTimeout(closeTip, 350); }
+    function keepOpen() { clearTimeout(hideTimer); }
+    $(document).off('mouseenter.ptlife mouseleave.ptlife', "a[class*='_Name'][href*='userdetails.php']")
+        .on('mouseenter.ptlife', "a[class*='_Name'][href*='userdetails.php']", function() {
+            var m = this.href.match(/userdetails\.php\?id=(\d+)/);
+            if (m) showTip(this, m[1]);
+        })
+        .on('mouseleave.ptlife', "a[class*='_Name'][href*='userdetails.php']", hideSoon);
+    // 卡片本体可交互：移入卡片保持显示，「详情」可点击；移出才关闭
+    $(document).off('mouseenter.ptlife-card mouseleave.ptlife-card', '.ptlife-card')
+        .on('mouseenter.ptlife-card', '.ptlife-card', keepOpen)
+        .on('mouseleave.ptlife-card', '.ptlife-card', closeTip);
+});
+</script><script type="application/javascript" src="js/nexus.js"></script>
+<script type="application/javascript" src="vendor/jquery-goup-1.1.3/jquery.goup.min.js"></script>
+<script>
+jQuery(document).ready(function(){
+    jQuery.goup()
+});
+</script><script>
+jQuery(function($) {
+    var previewEle = $('#nexus-preview');
+    if (!previewEle.length) {
+        return;
+    }
+    var medalPreviewFrame = null;
+    var lastMedalImage = null;
+
+    function isUsernameMedal($img) {
+        return $img.hasClass('nexus-username-medal') || $img.hasClass('nexus-username-medal-big');
+    }
+
+    function centerPreview($img) {
+        var src = $img.attr('src');
+        if (!src) {
+            return;
+        }
+
+        var naturalWidth = $img.prop('naturalWidth') || $img.width() || 240;
+        var naturalHeight = $img.prop('naturalHeight') || $img.height() || 240;
+        var ratio = naturalWidth / naturalHeight || 1;
+        var margin = 16;
+        var maxWidth = Math.max(160, window.innerWidth - margin * 2);
+        var maxHeight = Math.max(160, window.innerHeight - margin * 2);
+        var imgWidth = Math.min(naturalWidth, maxWidth);
+        var imgHeight = imgWidth / ratio;
+
+        if (imgHeight > maxHeight) {
+            imgHeight = maxHeight;
+            imgWidth = imgHeight * ratio;
+        }
+
+        previewEle.stop(true, true).attr('src', src).css({
+            display: 'block',
+            position: 'fixed',
+            zIndex: 120000,
+            left: Math.max(margin, (window.innerWidth - imgWidth) / 2),
+            top: Math.max(margin, (window.innerHeight - imgHeight) / 2),
+            width: imgWidth,
+            height: imgHeight,
+            maxWidth: 'none',
+            maxHeight: 'none'
+        }).show();
+    }
+
+    function scheduleMedalPreview($img) {
+        lastMedalImage = $img;
+        if (medalPreviewFrame) {
+            return;
+        }
+        medalPreviewFrame = window.requestAnimationFrame(function() {
+            medalPreviewFrame = null;
+            if (lastMedalImage && lastMedalImage.length) {
+                centerPreview(lastMedalImage);
+            }
+        });
+    }
+
+    function hideMedalPreview() {
+        if (medalPreviewFrame) {
+            window.cancelAnimationFrame(medalPreviewFrame);
+            medalPreviewFrame = null;
+        }
+        lastMedalImage = null;
+        previewEle.hide();
+    }
+
+    $(document)
+        .off('mouseenter.hxptMedalPreview mousemove.hxptMedalPreview mouseleave.hxptMedalPreview', 'img.preview')
+        .on('mouseenter.hxptMedalPreview', 'img.preview', function() {
+            var $img = $(this);
+            if (!isUsernameMedal($img)) {
+                return;
+            }
+            scheduleMedalPreview($img);
+        })
+        .on('mousemove.hxptMedalPreview', 'img.preview', function() {
+            var $img = $(this);
+            if (!isUsernameMedal($img) || previewEle.css('display') === 'none') {
+                return;
+            }
+            scheduleMedalPreview($img);
+        })
+        .on('mouseleave.hxptMedalPreview', 'img.preview', function() {
+            var $img = $(this);
+            if (!isUsernameMedal($img)) {
+                return;
+            }
+            hideMedalPreview();
+        });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible') {
+            hideMedalPreview();
+        }
+    });
+    window.addEventListener('pagehide', hideMedalPreview);
+});
+</script><img id="nexus-preview" style="display:none; position:fixed; z-index:120000; max-width:none; max-height:none;" src="" /><div id="header-avatar-preview" class="avatar-preview-popup" style="display:none; position: fixed; z-index: 99999; background: transparent; padding: 0; border-radius: 0; box-shadow: none; overflow: visible; pointer-events: none;"><div style="width: 500px; height: 500px; line-height: 0; position: relative; z-index: 1;"><div class="avatar-wrapper avatar-frame-overlay "><img src="https://img.ptang.top/i/2026/01/30/福697c4a7bc9b002.gif" alt="avatar" class="animated-avatar" style="object-fit: contain; display: block;" onload="check_avatar(this, 'chs');" /><div class="frame-overlay" style="background-image: url('https://img.ptang.top/i/2026/01/30/新春06697c128a4b1342.gif');"></div></div></div></div></body></html>
