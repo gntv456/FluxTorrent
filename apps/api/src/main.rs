@@ -12,6 +12,7 @@ mod economy;
 mod economy_http;
 mod errors;
 mod http;
+mod ops_http;
 mod repo;
 mod state;
 mod torrents;
