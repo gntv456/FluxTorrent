@@ -115,6 +115,24 @@ pub async fn consume_announce(
                 continue;
             };
 
+            // 促销快照裁决（§5.4-⑦）：免费→下行不计；2x→上行加倍；单种子覆盖全站取强
+            let kind: Option<String> = sqlx::query_scalar(
+                "SELECT kind::text FROM promotions                  WHERE torrent_id = $1 AND starts_at <= now() AND ends_at > now()                  ORDER BY id DESC LIMIT 1",
+            )
+            .bind(torrent_id)
+            .fetch_optional(db)
+            .await
+            .unwrap_or(None);
+            let global: Option<String> = sqlx::query_scalar(
+                "SELECT kind::text FROM promotions                  WHERE scope = 'global' AND starts_at <= now() AND ends_at > now()                  ORDER BY id DESC LIMIT 1",
+            )
+            .fetch_optional(db)
+            .await
+            .unwrap_or(None);
+            let (up_mult, down_mult) = billing_multipliers(kind.as_deref(), global.as_deref());
+            let delta_up = (ev.up as f64 * up_mult) as i64;
+            let delta_down = (ev.down as f64 * down_mult) as i64;
+
             let seeding = ev.left == 0;
             // upsert snatch 状态
             sqlx::query(
@@ -144,8 +162,8 @@ pub async fn consume_announce(
             )
             .bind(ev.user)
             .bind(torrent_id)
-            .bind(ev.up)
-            .bind(ev.down)
+            .bind(delta_up)
+            .bind(delta_down)
             .execute(db)
             .await?;
             applied += 1;
@@ -173,5 +191,60 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if let Err(e) = seeding_reward(&db, 10).await { tracing::error!(?e, "seeding_reward"); }
             }
         }
+    }
+}
+
+/// 促销计费倍率（M06 倍率表，与 api domain::PromotionKind::multipliers 同口径）
+fn billing_multipliers(torrent_kind: Option<&str>, global_kind: Option<&str>) -> (f64, f64) {
+    let strength = |k: &str| -> u8 {
+        match k {
+            "p30" => 1,
+            "half" => 2,
+            "free" => 3,
+            "x2" => 4,
+            "x2half" => 5,
+            "x2free" => 6,
+            _ => 0,
+        }
+    };
+    let table = |k: Option<&str>| -> (f64, f64) {
+        match k {
+            Some("free") => (1.0, 0.0),
+            Some("x2") => (2.0, 1.0),
+            Some("x2free") => (2.0, 0.0),
+            Some("half") => (1.0, 0.5),
+            Some("x2half") => (2.0, 0.5),
+            Some("p30") => (1.0, 0.3),
+            _ => (1.0, 1.0),
+        }
+    };
+    let winner = match (torrent_kind, global_kind) {
+        (Some(t), Some(g)) => Some(if strength(t) >= strength(g) { t } else { g }),
+        (t, g) => t.or(g),
+    };
+    table(winner)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::billing_multipliers;
+
+    #[test]
+    fn free_zeroes_download() {
+        assert_eq!(billing_multipliers(Some("free"), None), (1.0, 0.0));
+    }
+
+    #[test]
+    fn stronger_promotion_wins() {
+        assert_eq!(billing_multipliers(Some("free"), Some("x2")), (2.0, 1.0));
+        assert_eq!(
+            billing_multipliers(Some("x2free"), Some("free")),
+            (2.0, 0.0)
+        );
+    }
+
+    #[test]
+    fn none_is_normal() {
+        assert_eq!(billing_multipliers(None, None), (1.0, 1.0));
     }
 }
