@@ -94,84 +94,130 @@ pub async fn consume_announce(
 ) -> anyhow::Result<u64> {
     use redis::AsyncCommands;
 
-    // 拉取一批事件（生产态用 XREADGROUP 消费组；此处保证类型正确的批拉语义）
-    let batches: Vec<(String, Vec<(String, String)>)> = redis
-        .xrange("flux:announce", "-", "+")
+    // 游标消费：从上次处理到的 ID 继续拉取（Redis 键持久化游标，重启不丢事件、不重复计费）
+    let last_id: Option<String> = redis.get("flux:announce:cursor").await.unwrap_or(None);
+    let from = last_id.clone().unwrap_or_else(|| "-".to_string());
+
+    // XRANGE → StreamRangeReply（redis 0.27 类型映射；错误必须可见，不允许静默空消费）
+    let reply = match redis
+        .xrange::<_, _, _, redis::streams::StreamRangeReply>("flux:announce", &from, "+")
         .await
-        .unwrap_or_default();
-    let mut applied = 0u64;
-    for (_stream, entries) in batches {
-        for (_id, payload) in entries {
-            let Ok(ev) = serde_json::from_str::<AnnounceEvent>(&payload) else {
-                continue;
-            };
-            let torrent_id: Option<i64> =
-                sqlx::query_scalar("SELECT id FROM torrents WHERE info_hash = $1")
-                    .bind(&ev.hash)
-                    .fetch_optional(db)
-                    .await
-                    .unwrap_or(None);
-            let Some(torrent_id) = torrent_id else {
-                continue;
-            };
-
-            // 促销快照裁决（§5.4-⑦）：免费→下行不计；2x→上行加倍；单种子覆盖全站取强
-            let kind: Option<String> = sqlx::query_scalar(
-                "SELECT kind::text FROM promotions                  WHERE torrent_id = $1 AND starts_at <= now() AND ends_at > now()                  ORDER BY id DESC LIMIT 1",
-            )
-            .bind(torrent_id)
-            .fetch_optional(db)
-            .await
-            .unwrap_or(None);
-            let global: Option<String> = sqlx::query_scalar(
-                "SELECT kind::text FROM promotions                  WHERE scope = 'global' AND starts_at <= now() AND ends_at > now()                  ORDER BY id DESC LIMIT 1",
-            )
-            .fetch_optional(db)
-            .await
-            .unwrap_or(None);
-            let (up_mult, down_mult) = billing_multipliers(kind.as_deref(), global.as_deref());
-            let delta_up = (ev.up as f64 * up_mult) as i64;
-            let delta_down = (ev.down as f64 * down_mult) as i64;
-
-            let seeding = ev.left == 0;
-            // upsert snatch 状态
-            sqlx::query(
-                r#"
-                INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, leeching, seeding, completed_at)
-                VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE NULL END)
-                ON CONFLICT (user_id, torrent_id) DO UPDATE SET
-                  uploaded = snatches.uploaded + EXCLUDED.uploaded,
-                  downloaded = snatches.downloaded + EXCLUDED.downloaded,
-                  leeching = EXCLUDED.leeching,
-                  seeding = EXCLUDED.seeding OR snatches.seeding,
-                  completed_at = COALESCE(snatches.completed_at, EXCLUDED.completed_at)
-                "#,
-            )
-            .bind(ev.user)
-            .bind(torrent_id)
-            .bind(ev.up)
-            .bind(ev.down)
-            .bind(!seeding)
-            .bind(seeding)
-            .bind(ev.event == "completed")
-            .execute(db)
-            .await?;
-            // 计费流水
-            sqlx::query(
-                "INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, delta_down, window_start)                  VALUES (nextval('traffic_ledger_id_seq'), $1, $2, $3, $4, now())",
-            )
-            .bind(ev.user)
-            .bind(torrent_id)
-            .bind(delta_up)
-            .bind(delta_down)
-            .execute(db)
-            .await?;
-            applied += 1;
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(?e, "xrange flux:announce 失败");
+            return Err(e.into());
         }
-        // 已处理事件裁剪（保留近期数据用于审计）
-        let _: () = redis.del("flux:announce").await.unwrap_or(());
+    };
+
+    let mut applied = 0u64;
+    let mut last_seen_id: Option<String> = None;
+    for entry in reply.ids {
+        let id = entry.id;
+        // 已处理过的游标本条跳过
+        if Some(&id) == last_id.as_ref() {
+            last_seen_id = Some(id);
+            continue;
+        }
+        let Some(payload) = entry
+            .map
+            .get("payload")
+            .and_then(|v| redis::from_redis_value::<String>(v).ok())
+        else {
+            continue;
+        };
+        if let Ok(ev) = serde_json::from_str::<AnnounceEvent>(&payload) {
+            if process_event(db, &ev).await.is_ok() {
+                applied += 1;
+            }
+        }
+        last_seen_id = Some(id);
     }
+    if let Some(id) = last_seen_id {
+        let _: () = redis.set("flux:announce:cursor", &id).await.unwrap_or(());
+        // 控制流体积（保留 10k 条供审计，游标保证语义正确）
+        let _: () = redis
+            .xtrim("flux:announce", redis::streams::StreamMaxlen::Approx(10000))
+            .await
+            .unwrap_or(());
+    }
+    // 刷新用户上/下载量快照（权威在 traffic_ledger 流水，§6.2 快照仅展示）
+    sqlx::query(
+        "UPDATE users SET             uploaded = COALESCE((SELECT sum(delta_up) FROM traffic_ledger WHERE user_id = users.id), 0),             downloaded = COALESCE((SELECT sum(delta_down) FROM traffic_ledger WHERE user_id = users.id), 0)",
+    )
+    .execute(db)
+    .await?;
+    // 回填种子做种/下载计数（详情页与保种规则数据源）
+    sqlx::query(
+        "UPDATE torrents t SET             seeders = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.seeding), 0),             leechers = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.leeching), 0),             times_completed = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.completed_at IS NOT NULL), 0)",
+    )
+    .execute(db)
+    .await?;
     Ok(applied)
+}
+
+/// 单事件计费（促销裁决 + snatch upsert + 流水）
+async fn process_event(db: &PgPool, ev: &AnnounceEvent) -> anyhow::Result<()> {
+    let torrent_id: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM torrents WHERE info_hash = $1")
+            .bind(&ev.hash)
+            .fetch_optional(db)
+            .await
+            .unwrap_or(None);
+    let Some(torrent_id) = torrent_id else {
+        return Ok(()); // 未知种子：忽略（不计费）
+    };
+
+    // 促销快照裁决（§5.4-⑦）
+    let kind: Option<String> = sqlx::query_scalar(
+        "SELECT kind::text FROM promotions WHERE torrent_id = $1 AND starts_at <= now() AND ends_at > now() ORDER BY id DESC LIMIT 1",
+    )
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await
+    .unwrap_or(None);
+    let global: Option<String> = sqlx::query_scalar(
+        "SELECT kind::text FROM promotions WHERE scope = 'global' AND starts_at <= now() AND ends_at > now() ORDER BY id DESC LIMIT 1",
+    )
+    .fetch_optional(db)
+    .await
+    .unwrap_or(None);
+    let (up_mult, down_mult) = billing_multipliers(kind.as_deref(), global.as_deref());
+    let delta_up = (ev.up as f64 * up_mult) as i64;
+    let delta_down = (ev.down as f64 * down_mult) as i64;
+
+    let seeding = ev.left == 0;
+    sqlx::query(
+        r#"
+        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, leeching, seeding, completed_at)
+        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE NULL END)
+        ON CONFLICT (user_id, torrent_id) DO UPDATE SET
+          uploaded = snatches.uploaded + EXCLUDED.uploaded,
+          downloaded = snatches.downloaded + EXCLUDED.downloaded,
+          leeching = EXCLUDED.leeching,
+          seeding = EXCLUDED.seeding OR snatches.seeding,
+          completed_at = COALESCE(snatches.completed_at, EXCLUDED.completed_at)
+        "#,
+    )
+    .bind(ev.user)
+    .bind(torrent_id)
+    .bind(ev.up)
+    .bind(ev.down)
+    .bind(!seeding)
+    .bind(seeding)
+    .bind(ev.event == "completed")
+    .execute(db)
+    .await?;
+    sqlx::query(
+        "INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, delta_down, window_start)          VALUES (nextval('traffic_ledger_id_seq'), $1, $2, $3, $4, now())",
+    )
+    .bind(ev.user)
+    .bind(torrent_id)
+    .bind(delta_up)
+    .bind(delta_down)
+    .execute(db)
+    .await?;
+    Ok(())
 }
 
 /// 主循环：定时任务调度。
