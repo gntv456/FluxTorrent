@@ -73,7 +73,7 @@ VALUES (1, '<恰好32位字符的邀请码>', now() + interval '3 days');
 ```bash
 cargo fmt --all --check   # 格式 ✅
 cargo check               # 零警告 ✅
-cargo test                # 15 单测（促销裁决/密码/JWT/Bencode/peer 表/计费倍率）✅
+cargo test                # 25 单测（促销/密码/JWT/Bencode/peer 表/计费倍率/签到/利息/站免池窗口）✅
 pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 ```
 
@@ -93,6 +93,10 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 | **announce → Redis Stream → worker 计费**（游标消费不丢不重 + 促销倍率裁决：free 种子下行计 0） | ✅ |
 | **下载 info_hash 一致性**（上传 raw 存储 → 下载重注入 announce + private=1 → 重算 SHA1 与库中一致） | ✅ |
 | **用户上/下载量/种子计数快照回填**（权威在 traffic_ledger 流水，worker 周期刷新） | ✅ |
+| **M11 商店**：18 商品（旧站全集）、幂等购买（同键重放零重复扣款）、上传量商品即刻到账 | ✅ |
+| **M11 银行**：7/30/90/180/365 天五档利率、到期利息（10000×18%×365d=1800 实测）、提前支取仅本金 | ✅ |
+| **M12 签到**：首签+10、连签+5、里程碑 10/20/30 天加 200/500/1000（封顶 1000）、当日重复签到拒绝 | ✅ |
+| **M13 站免池**：捐赠入池、进度百分比、捐赠排行 | ✅ |
 | 做种收益结算（spark_ledger 流水 + 幂等重跑） | ✅ |
 | Web 三页渲染真实数据（首页统计/列表/详情含免费徽章） | ✅ |
 
@@ -116,6 +120,7 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 
 ## 后续路线（对照方案 §9 路线图）
 
-当前完成度 ≈ **Phase 2 主体 + Phase 3 核心**（M01–M07, M10 基础, M19 规则, M23 部分, M05 announce 计费全链路）。
+当前完成度 ≈ **Phase 2 主体 + Phase 3 核心 + Phase 4 经济系统**（M01–M07, M10 基础, M19 规则, M23 部分, M05 announce 计费全链路, M11 火花经济, M12 签到, M13 站免池）。
 Tracker 采用方案 §2.5 的自研轻量路线（~300 行核心，passkey 鉴权 + DashMap 内存 peer + Redis Stream 事件），已实测 30 万 announce/s 目标的架构基础（零 DB 依赖路径）。
-下一步按方案排期：UDP announce 协议 → M11–M22 经济与社区模块 → 折叠屏全形态适配 → M24+ 玩法与生态。
+经济系统：统一流水记账（spark_ledger 唯一事实源）+ 商店 18 商品的幂等购买 + 银行五档定期（提前支取不计息）+ 签到连签里程碑（10/20/30 天，单日封顶 1000）+ 站免池进度与捐赠排行。
+下一步按方案排期：M14–M17 社区模块（勋章/论坛/短讯/求种）→ M20–M22（排行/考核/任务）→ 折叠屏全形态 → M24+ 玩法与生态。

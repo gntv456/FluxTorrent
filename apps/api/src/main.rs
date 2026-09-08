@@ -6,6 +6,8 @@ mod bencode;
 mod config;
 mod domain;
 mod dto;
+mod economy;
+mod economy_http;
 mod errors;
 mod http;
 mod repo;
@@ -50,9 +52,12 @@ async fn main() -> anyhow::Result<()> {
             .wrap(
                 Cors::permissive(), // 生产由 Pingora 网关收敛来源（§5.1 边缘层）
             )
-            .configure(http::configure)
+            .configure(economy_http::configure)
             .default_service(web::to(|| async {
-                dto::ok(serde_json::json!({"route": null}))
+                actix_web::HttpResponse::NotFound().json(serde_json::json!({
+                    "code": 1004, "message": "接口不存在", "data": null,
+                    "request_id": uuid::Uuid::new_v4().to_string()
+                }))
             }))
     })
     .bind(&bind)?
