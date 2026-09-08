@@ -13,26 +13,24 @@ use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 use crate::torrents;
 
-pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/api/v1")
-            .service(health)
-            .service(register)
-            .service(login)
-            .service(me)
-            .service(rotate_passkey)
-            .service(list)
-            .service(detail)
-            .service(comments)
-            .service(create_comment)
-            .service(do_thank)
-            .service(do_bookmark)
-            .service(stats)
-            .service(announce_stats)
-            .service(upload)
-            .service(download)
-            .service(issue_invite_handler),
-    );
+pub fn v1_scope() -> actix_web::Scope {
+    web::scope("/api/v1")
+        .service(health)
+        .service(register)
+        .service(login)
+        .service(me)
+        .service(rotate_passkey)
+        .service(list)
+        .service(detail)
+        .service(comments)
+        .service(create_comment)
+        .service(do_thank)
+        .service(do_bookmark)
+        .service(stats)
+        .service(announce_stats)
+        .service(upload)
+        .service(download)
+        .service(issue_invite_handler)
 }
 
 // ============ 基础 ============
@@ -145,7 +143,7 @@ pub struct AuthUser {
 }
 
 /// 从 Authorization: Bearer 提取用户（§8.1：后端权威鉴权）
-async fn require_auth(
+pub async fn require_auth(
     req: &HttpRequest,
     state: &web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<AuthUser> {
