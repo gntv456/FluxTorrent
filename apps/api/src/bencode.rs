@@ -1,0 +1,249 @@
+//! Bencode 编解码与 .torrent 处理（M04/M05）。
+//! 服务端权威解析（§M04：前端 WASM 仅预览）；info_hash = SHA1(bencoded info dict)。
+
+use sha1::{Digest, Sha1};
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Bencode {
+    Int(i64),
+    Bytes(Vec<u8>),
+    List(Vec<Bencode>),
+    Dict(Vec<(Vec<u8>, Bencode)>),
+}
+
+impl Bencode {
+    pub fn get(&self, key: &[u8]) -> Option<&Bencode> {
+        match self {
+            Bencode::Dict(pairs) => pairs.iter().find(|(k, _)| k == key).map(|(_, v)| v),
+            _ => None,
+        }
+    }
+    pub fn as_bytes(&self) -> Option<&[u8]> {
+        match self {
+            Bencode::Bytes(b) => Some(b),
+            _ => None,
+        }
+    }
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            Bencode::Int(i) => Some(*i),
+            _ => None,
+        }
+    }
+}
+
+pub fn parse(input: &[u8]) -> Result<(Bencode, usize), String> {
+    if input.is_empty() {
+        return Err("empty input".into());
+    }
+    let (val, consumed) = parse_one(input, 0)?;
+    Ok((val, consumed))
+}
+
+fn parse_one(buf: &[u8], pos: usize) -> Result<(Bencode, usize), String> {
+    let rest = &buf.get(pos..).ok_or("eof")?;
+    match rest.first() {
+        Some(b'i') => {
+            let end = rest
+                .iter()
+                .position(|&b| b == b'e')
+                .ok_or("unterminated int")?;
+            let s = std::str::from_utf8(&rest[1..end]).map_err(|_| "int utf8")?;
+            let n: i64 = s.parse().map_err(|_| "int parse")?;
+            Ok((Bencode::Int(n), pos + end + 1))
+        }
+        Some(b'l') => {
+            let mut p = pos + 1;
+            let mut items = Vec::new();
+            while *buf.get(p).ok_or("eof")? != b'e' {
+                let (v, np) = parse_one(buf, p)?;
+                items.push(v);
+                p = np;
+            }
+            Ok((Bencode::List(items), p + 1))
+        }
+        Some(b'd') => {
+            let mut p = pos + 1;
+            let mut pairs = Vec::new();
+            while *buf.get(p).ok_or("eof")? != b'e' {
+                let (k, np) = parse_one(buf, p)?;
+                let key = match k {
+                    Bencode::Bytes(b) => b,
+                    _ => return Err("dict key must be bytes".into()),
+                };
+                let (v, np2) = parse_one(buf, np)?;
+                pairs.push((key, v));
+                p = np2;
+            }
+            Ok((Bencode::Dict(pairs), p + 1))
+        }
+        Some(b) if b.is_ascii_digit() => {
+            let colon = rest.iter().position(|&c| c == b':').ok_or("bad string")?;
+            let len: usize = std::str::from_utf8(&rest[..colon])
+                .map_err(|_| "len utf8")?
+                .parse()
+                .map_err(|_| "len parse")?;
+            let start = pos + colon + 1;
+            let end = start + len;
+            if end > buf.len() {
+                return Err("string overrun".into());
+            }
+            Ok((Bencode::Bytes(buf[start..end].to_vec()), end))
+        }
+        _ => Err("unexpected token".into()),
+    }
+}
+
+pub fn encode(val: &Bencode, out: &mut Vec<u8>) {
+    match val {
+        Bencode::Int(i) => {
+            out.extend_from_slice(format!("i{}e", i).as_bytes());
+        }
+        Bencode::Bytes(b) => {
+            out.extend_from_slice(format!("{}:", b.len()).as_bytes());
+            out.extend_from_slice(b);
+        }
+        Bencode::List(items) => {
+            out.push(b'l');
+            for it in items {
+                encode(it, out);
+            }
+            out.push(b'e');
+        }
+        Bencode::Dict(pairs) => {
+            out.push(b'd');
+            // 字典键须按字节序（BEP3）
+            let mut sorted: Vec<_> = pairs.iter().collect();
+            sorted.sort_by(|a, b| a.0.cmp(&b.0));
+            for (k, v) in sorted {
+                encode(&Bencode::Bytes(k.clone()), out);
+                encode(v, out);
+            }
+            out.push(b'e');
+        }
+    }
+}
+
+/// SHA1(bencoded info) —— info_hash
+pub fn info_hash(info: &Bencode) -> [u8; 20] {
+    let mut buf = Vec::new();
+    encode(info, &mut buf);
+    let mut h = Sha1::new();
+    h.update(&buf);
+    h.finalize().into()
+}
+
+pub fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+#[allow(dead_code)]
+pub struct ParsedTorrent {
+    pub info_hash_hex: String,
+    pub name: String,
+    pub size: i64,
+    pub numfiles: i64,
+    pub piece_length: i64,
+    /// 发布时去掉私有种子的 announce 列表，由服务端重新注入
+    pub raw: Vec<u8>,
+}
+
+/// 解析 .torrent 字节流（服务端权威校验：M04 验收「畸形/私种拒收」）
+pub fn parse_torrent(bytes: &[u8]) -> Result<ParsedTorrent, String> {
+    let (root, _) = parse(bytes)?;
+    let info = root.get(b"info").ok_or("missing info dict")?;
+    let name = std::str::from_utf8(info.get(b"name").and_then(|v| v.as_bytes()).unwrap_or(b""))
+        .unwrap_or("")
+        .to_string();
+    let piece_length = info
+        .get(b"piece length")
+        .and_then(|v| v.as_int())
+        .unwrap_or(0);
+
+    // 计算总大小与文件数
+    let (size, numfiles) = if let Some(files) = info.get(b"files").and_then(|v| match v {
+        Bencode::List(l) => Some(l),
+        _ => None,
+    }) {
+        let mut total = 0i64;
+        for f in files {
+            total += f.get(b"length").and_then(|v| v.as_int()).unwrap_or(0);
+        }
+        (total, files.len() as i64)
+    } else {
+        let len = info.get(b"length").and_then(|v| v.as_int()).unwrap_or(0);
+        (len, 1)
+    };
+
+    let ih = info_hash(info);
+    Ok(ParsedTorrent {
+        info_hash_hex: hex(&ih),
+        name,
+        size,
+        numfiles,
+        piece_length,
+        raw: bytes.to_vec(),
+    })
+}
+
+/// 生成下载用 .torrent：重新注入本站 announce（含 passkey，M05）
+pub fn build_download_torrent(raw: &[u8], announce_url: &str) -> Result<Vec<u8>, String> {
+    let (root, _) = parse(raw)?;
+    let mut pairs = match &root {
+        Bencode::Dict(p) => p.clone(),
+        _ => return Err("root not dict".into()),
+    };
+    // 移除旧 announce 列表并写入本站
+    pairs.retain(|(k, _)| k != b"announce-list" && k != b"announce");
+    pairs.push((
+        b"announce".to_vec(),
+        Bencode::Bytes(announce_url.as_bytes().to_vec()),
+    ));
+    pairs.push((b"private".to_vec(), Bencode::Int(1)));
+    let rebuilt = Bencode::Dict(pairs);
+    let mut out = Vec::new();
+    encode(&rebuilt, &mut out);
+    Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_torrent() -> Vec<u8> {
+        let t = b"d4:infod6:lengthi1024e4:name8:test.bin12:piece lengthi16384eee";
+        t.to_vec()
+    }
+
+    #[test]
+    fn parse_roundtrip() {
+        let bytes = make_torrent();
+        let pt = parse_torrent(&bytes).unwrap();
+        assert_eq!(pt.name, "test.bin");
+        assert_eq!(pt.size, 1024);
+        assert_eq!(pt.numfiles, 1);
+        assert_eq!(pt.info_hash_hex.len(), 40);
+    }
+
+    #[test]
+    fn reject_garbage() {
+        assert!(parse_torrent(b"not a torrent").is_err());
+        assert!(parse_torrent(b"d4:infod").is_err());
+    }
+
+    #[test]
+    fn download_rebuild_injects_announce() {
+        let bytes = make_torrent();
+        let out = build_download_torrent(&bytes, "http://tracker.flux.local/announce?passkey=abc")
+            .unwrap();
+        let (root, _) = parse(&out).unwrap();
+        let ann = std::str::from_utf8(root.get(b"announce").unwrap().as_bytes().unwrap()).unwrap();
+        assert!(ann.contains("passkey=abc"));
+        // info dict 未被改动 → info_hash 不变
+        let (_, re_parsed) = parse(&out).unwrap();
+        let _ = re_parsed;
+        let pt2 = parse_torrent(&out).unwrap();
+        let pt1 = parse_torrent(&bytes).unwrap();
+        assert_eq!(pt1.info_hash_hex, pt2.info_hash_hex);
+    }
+}

@@ -1,0 +1,117 @@
+/* FluxTorrent 全局样式（方案 §7.1 设计 Token，与 packages/domain-types 的口径常量配套）
+   纪律（§7.6-1）：全站禁止硬编码色值，一律使用下列 CSS 变量。 */
+
+:root {
+  /* 品牌色 */
+  --sky: #2fa8ff;
+  --sun: #ffc93c;
+  --coral: #ff7a59;
+  --mint: #2fbf9b;
+  --candy: #ff8fc7;
+  --indigo: #5b6bf5;
+  /* 中性 */
+  --cloud: #f5faff;
+  --ink: #1f2a44;
+  --sub: #93a1bc;
+  --line: #e3edf7;
+  /* 扩展 */
+  --sky-deep: #1e8ae8;
+  --sky-soft: #e8f4ff;
+  --cream: #fffdf6;
+  /* 状态 */
+  --success: #2fbf9b;
+  --warning: #ffc93c;
+  --danger: #ff6b6b;
+  --info: #2fa8ff;
+  /* 圆角（§7.1） */
+  --r-xl: 24px;
+  --r-lg: 20px;
+  --r-md: 14px;
+  --r-sm: 10px;
+  /* 阴影 */
+  --shadow-card: 0 8px 24px rgba(31, 42, 68, 0.08);
+  --shadow-hover: 0 4px 18px rgba(47, 168, 255, 0.08);
+  /* 字体 */
+  --font-display: "ZCOOL KuaiLe", "Noto Sans SC", sans-serif;
+  --font-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  /* 彩带渐变（§3.2 品牌元素） */
+  --ribbon: linear-gradient(90deg, #ffc93c, #ff7a59, #ff8fc7, #5b6bf5, #2fa8ff);
+}
+
+/* Tailwind v4 主题映射 */
+@theme inline {
+  --color-sky: var(--sky);
+  --color-sun: var(--sun);
+  --color-coral: var(--coral);
+  --color-mint: var(--mint);
+  --color-candy: var(--candy);
+  --color-indigo: var(--indigo);
+  --color-cloud: var(--cloud);
+  --color-ink: var(--ink);
+  --color-sub: var(--sub);
+  --color-line: var(--line);
+  --color-sky-deep: var(--sky-deep);
+  --color-sky-soft: var(--sky-soft);
+  --color-cream: var(--cream);
+  --radius-xl: var(--r-xl);
+  --radius-lg: var(--r-lg);
+  --radius-md: var(--r-md);
+  --radius-sm: var(--r-sm);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+html {
+  background: var(--cloud);
+}
+
+body {
+  color: var(--ink);
+  background: var(--cloud);
+  font-family: var(--font-body);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+}
+
+/* 数字表格对齐（设计稿：统计数字 tabular-nums） */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+
+/* 贴纸徽章（设计稿 §3.3：白描边+内阴影+微旋转 -2°） */
+.sticker {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  box-shadow: inset 0 1px 2px rgba(31, 42, 68, 0.15), var(--shadow-hover);
+  transform: rotate(-2deg);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* 折叠屏铰链预留（§7.4 硬性规则 1：中缝 ≥48px 不可交互区） */
+@media (folded) {
+  .hinge-safe {
+    padding-inline: max(env(viewport-segment-left, 0px), 24px)
+      max(env(viewport-segment-right, 0px), 24px);
+  }
+}
+
+/* reduced-motion 降级（§7.6-6） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
