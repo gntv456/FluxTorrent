@@ -549,5 +549,6 @@ async fn friend_list(
 /// 主配置：主 scope + 经济路由 + 社区路由（单一 /api/v1 scope）
 pub fn configure(cfg: &mut web::ServiceConfig) {
     let scope = crate::economy_http::mount_economy(crate::http::v1_scope());
-    cfg.service(mount_community(scope));
+    let scope = mount_community(scope);
+    cfg.service(crate::content_http::mount_content(scope));
 }

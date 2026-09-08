@@ -5,6 +5,7 @@ mod auth;
 mod bencode;
 mod community_http;
 mod config;
+mod content_http;
 mod domain;
 mod dto;
 mod economy;
