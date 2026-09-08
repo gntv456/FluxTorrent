@@ -3,6 +3,7 @@
 
 mod auth;
 mod bencode;
+mod community_http;
 mod config;
 mod domain;
 mod dto;
@@ -52,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
             .wrap(
                 Cors::permissive(), // 生产由 Pingora 网关收敛来源（§5.1 边缘层）
             )
-            .configure(economy_http::configure)
+            .configure(community_http::configure)
             .default_service(web::to(|| async {
                 actix_web::HttpResponse::NotFound().json(serde_json::json!({
                     "code": 1004, "message": "接口不存在", "data": null,
