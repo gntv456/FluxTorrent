@@ -6,7 +6,11 @@ export function Header() {
     { href: "/", label: "首页" },
     { href: "/torrents", label: "资源库" },
     { href: "/torrents?official=1", label: "官种" },
+    { href: "/forums", label: "论坛" },
     { href: "/textbooks", label: "课本" },
+    { href: "/medals", label: "勋章" },
+    { href: "/top", label: "排行" },
+    { href: "/magic-pool", label: "站免池" },
   ];
   return (
     <header className="sticky top-0 z-40 h-16 border-b border-line bg-ink/95 backdrop-blur">
@@ -52,8 +56,8 @@ export function MobileTabBar() {
     { href: "/", label: "首页", icon: "🏠" },
     { href: "/torrents", label: "搜索", icon: "🔍" },
     { href: "/upload", label: "发布", icon: "➕" },
-    { href: "/messages", label: "消息", icon: "✉️" },
     { href: "/my", label: "我的", icon: "👤" },
+    { href: "/shop", label: "商店", icon: "🛍️" },
   ];
   return (
     <nav
