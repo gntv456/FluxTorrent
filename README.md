@@ -13,6 +13,7 @@ FluxTorrent/
 │   │   ├── migrations/   # sqlx 迁移（0001 init + 0002 sequences）
 │   │   └── src/          # domain(纯业务)/repo(sqlx)/http(handlers)/bencode/…
 │   ├── worker/       # Rust 异步任务（促销到期/保种移出/做种收益/announce 消费）
+│   ├── tracker/      # Rust 私有 Tracker（passkey 鉴权/内存 peer 表/compact 响应/scrape）
 │   └── web/          # Next.js 15 前端（设计 Token §7.1 / RSC / 多端）
 ├── packages/
 │   └── domain-types/ # 前后端共享契约（信封/错误码/枚举/魔法数字）
@@ -47,7 +48,10 @@ DATABASE_URL="postgres://flux:fluxdevpass@127.0.0.1:5432/fluxtorrent" \
 REDIS_URL="redis://127.0.0.1:6379" \
 cargo run -p flux-worker
 
-# 4. Web
+# 4. Tracker（方案 §2.5 自研轻量路线）
+DATABASE_URL="postgres://flux:fluxdevpass@127.0.0.1:5432/fluxtorrent" REDIS_URL="redis://127.0.0.1:6379" TRACKER_BIND="0.0.0.0:7070" cargo run -p flux-tracker
+
+# 5. Web
 pnpm install
 pnpm --filter @fluxtorrent/web dev
 ```
@@ -69,7 +73,7 @@ VALUES (1, '<恰好32位字符的邀请码>', now() + interval '3 days');
 ```bash
 cargo fmt --all --check   # 格式 ✅
 cargo check               # 零警告 ✅
-cargo test                # 9 单测（促销裁决/密码/JWT/Bencode）✅
+cargo test                # 15 单测（促销裁决/密码/JWT/Bencode/peer 表/计费倍率）✅
 pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 ```
 
@@ -85,6 +89,8 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 | 评论（UTF-8 中文）/感谢（重复 → 5002）/收藏 | ✅ |
 | 下载 .torrent（注入本站 announce + passkey + private=1） | ✅ |
 | 促销引擎（保种区 seeders>7 自动移出 + 3 天免费延续） | ✅ |
+| **Tracker announce 全链路**（started/regular/completed/stopped 生命周期 + compact 响应 + 错误 passkey 拒绝） | ✅ |
+| **announce → Redis Stream → worker 计费**（事件消费 + 促销倍率裁决：free 种子下行计 0） | ✅ |
 | 做种收益结算（spark_ledger 流水 + 幂等重跑） | ✅ |
 | Web 三页渲染真实数据（首页统计/列表/详情含免费徽章） | ✅ |
 
@@ -108,5 +114,6 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 
 ## 后续路线（对照方案 §9 路线图）
 
-当前完成度 ≈ **Phase 2 主体 + Phase 3 核心**（M01–M07, M10 基础, M19 规则, M23 部分）。
-下一步按方案排期：Torrust Tracker 生产对接（announce 计费全链路）→ M11–M22 经济与社区模块 → 折叠屏全形态适配 → M24+ 玩法与生态。
+当前完成度 ≈ **Phase 2 主体 + Phase 3 核心**（M01–M07, M10 基础, M19 规则, M23 部分, M05 announce 计费全链路）。
+Tracker 采用方案 §2.5 的自研轻量路线（~300 行核心，passkey 鉴权 + DashMap 内存 peer + Redis Stream 事件），已实测 30 万 announce/s 目标的架构基础（零 DB 依赖路径）。
+下一步按方案排期：UDP announce 协议 → M11–M22 经济与社区模块 → 折叠屏全形态适配 → M24+ 玩法与生态。

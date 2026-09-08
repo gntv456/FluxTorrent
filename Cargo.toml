@@ -3,8 +3,9 @@ resolver = "2"
 members = [
     "apps/api",
     "apps/worker",
+    "apps/tracker",
 ]
-exclude = ["apps/web", "apps/tracker"]
+exclude = ["apps/web"]
 
 [workspace.package]
 edition = "2021"
@@ -31,6 +32,8 @@ dotenvy = "0.15"
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
 tokio-util = "0.7"
 futures-util = "0.3"
+sha1 = "0.10"
+dashmap = "6"
 
 [profile.release]
 lto = "fat"

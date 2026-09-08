@@ -74,6 +74,25 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  tracker:
+    build:
+      context: ..
+      dockerfile: docker/tracker.Dockerfile
+    container_name: flux-tracker
+    environment:
+      TRACKER_BIND: 0.0.0.0:7070
+      DATABASE_URL: postgres://flux:${DB_PASSWORD:-fluxdevpass}@postgres:5432/fluxtorrent
+      REDIS_URL: redis://redis:6379
+      RUST_LOG: info
+    ports:
+      - "7070:7070"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   web:
     build:
       context: ..
