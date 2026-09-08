@@ -27,6 +27,8 @@ pub enum DomainError {
     InsufficientSpark,
     #[error("流水冲突，请重试")]
     LedgerConflict,
+    #[error("操作太频繁啦，休息一下")]
+    RateLimited,
     #[error("已感谢过")]
     AlreadyThanked,
     #[error("种子文件无效: {0}")]
@@ -51,6 +53,7 @@ impl DomainError {
             DomainError::Validation(_) => 1002,
             DomainError::InsufficientSpark => 4001,
             DomainError::LedgerConflict => 4002,
+            DomainError::RateLimited => 1015,
             DomainError::AlreadyThanked => 5002,
             DomainError::TorrentInvalid(_) => 3003,
             DomainError::TorrentDuplicate => 3004,
@@ -67,6 +70,7 @@ impl DomainError {
             | DomainError::InviteUsed
             | DomainError::UsernameTaken
             | DomainError::AlreadyThanked
+            | DomainError::RateLimited
             | DomainError::TorrentInvalid(_)
             | DomainError::TorrentDuplicate
             | DomainError::Validation(_) => StatusCode::BAD_REQUEST,

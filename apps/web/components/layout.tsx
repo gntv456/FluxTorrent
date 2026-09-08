@@ -11,6 +11,7 @@ export function Header() {
     { href: "/medals", label: "勋章" },
     { href: "/top", label: "排行" },
     { href: "/magic-pool", label: "站免池" },
+    { href: "/games", label: "娱乐屋" },
   ];
   return (
     <header className="sticky top-0 z-40 h-16 border-b border-line bg-ink/95 backdrop-blur">
