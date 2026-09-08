@@ -11,6 +11,8 @@ mod dto;
 mod economy;
 mod economy_http;
 mod errors;
+mod games;
+mod games_http;
 mod http;
 mod ops_http;
 mod repo;
