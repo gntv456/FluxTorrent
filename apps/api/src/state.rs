@@ -7,6 +7,8 @@ pub struct AppState {
     pub cfg: AppConfig,
     pub repo: Repo,
     pub redis: redis::aio::ConnectionManager,
+    /// M28 插件管理器（编译期装配，运行期启停由插件 enabled() 决定）
+    pub plugins: crate::plugins::PluginManager,
 }
 
 impl AppState {
@@ -22,6 +24,7 @@ impl AppState {
             cfg,
             repo: Repo::new(db),
             redis,
+            plugins: crate::plugins::PluginManager::builtin(),
         })
     }
 }

@@ -116,6 +116,8 @@ async fn login(
     }
     let token = auth::issue(user.id, user.class_id, &state.cfg.jwt_secret, 24)
         .map_err(DomainError::Internal)?;
+    // M28 插件 Hook：登录成功后分发
+    state.plugins.dispatch_login(&state, user.id);
     Ok(ok(serde_json::json!({
         "token": token,
         "must_reset_password": user.must_reset_password,
@@ -453,6 +455,8 @@ async fn upload(
         .repo
         .audit(Some(auth.id), "torrent_upload", Some(id))
         .await;
+    // M28 插件 Hook：发布成功后分发（异步、失败不影响主流程）
+    state.plugins.dispatch_upload(&state, id, auth.id);
     Ok(ok(serde_json::json!({ "id": id, "approval_status": 0 })))
 }
 
