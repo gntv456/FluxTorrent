@@ -36,6 +36,7 @@ export default async function TorrentsPage({
     official: sp.official ? sp.official === "1" : undefined,
     include_dead: sp.include_dead === "1",
     search: sp.search,
+    sort: sp.sort,
     cursor: sp.cursor,
   });
 
@@ -82,6 +83,7 @@ export default async function TorrentsPage({
         {sp.include_dead && (
           <input type="hidden" name="include_dead" value="1" />
         )}
+        {sp.sort && <input type="hidden" name="sort" value={sp.sort} />}
         <button
           type="submit"
           className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm font-bold text-white active:scale-[0.97]"
@@ -148,6 +150,31 @@ export default async function TorrentsPage({
             }
             className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
               currentGrade === (gid === 0 ? undefined : gid - 1)
+                ? "bg-sky-deep text-white"
+                : "bg-white text-ink border border-line"
+            }`}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+
+      {/* 排序（旧站 torrents.php 口径）：默认时间 · 做种 · 体积 · 完成 */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {(
+          [
+            [undefined, dict.torrents.sortCreated],
+            ["seeders", dict.torrents.sortSeeders],
+            ["size", dict.torrents.sortSize],
+            ["completed", dict.torrents.sortCompleted],
+          ] as [string | undefined, string][]
+        ).map(([value, label]) => (
+          <a
+            key={label}
+            href={withParam(sp, "sort", value)}
+            aria-current={(sp.sort ?? undefined) === value ? "true" : undefined}
+            className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
+              (sp.sort ?? undefined) === value
                 ? "bg-sky-deep text-white"
                 : "bg-white text-ink border border-line"
             }`}

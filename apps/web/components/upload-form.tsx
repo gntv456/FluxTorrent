@@ -19,6 +19,7 @@ export function UploadForm() {
   const [gradeId, setGradeId] = useState("");
   const [editionId, setEditionId] = useState("");
   const [smallDescr, setSmallDescr] = useState("");
+  const [descr, setDescr] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -43,6 +44,7 @@ export function UploadForm() {
       if (gradeId) qs.set("grade_id", gradeId);
       if (editionId) qs.set("edition_id", editionId);
       if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
+      if (descr.trim()) qs.set("descr", descr.trim());
       const base =
         process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
       const res = await fetch(`${base}/api/v1/torrents?${qs}`, {
@@ -58,6 +60,7 @@ export function UploadForm() {
       } else {
         setMsg(fmt(dict.upload.success, { id: body.data.id }));
         if (fileRef.current) fileRef.current.value = "";
+        setDescr("");
       }
     } catch {
       setMsg(dict.upload.networkError);
@@ -94,6 +97,18 @@ export function UploadForm() {
           maxLength={120}
           className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
         />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-sub">{dict.upload.descr}</span>
+        <textarea
+          value={descr}
+          onChange={(e) => setDescr(e.target.value)}
+          placeholder={dict.upload.descrPlaceholder}
+          rows={6}
+          maxLength={10000}
+          className="min-h-[120px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2 text-sm outline-none focus:border-sky"
+        />
+        <span className="text-xs text-sub">{dict.upload.descrHint}</span>
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1">
