@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -175,15 +176,15 @@ export default function LoginPage() {
       <div className="flex w-full flex-col gap-2 border-t border-line pt-4 text-sm">
         <p className="text-sub">
           {dict.login.noAccount}{" "}
-          <a href="/register" className="font-bold text-sky">
+          <Link href="/register" className="font-bold text-sky">
             {dict.login.signup}
-          </a>
+          </Link>
         </p>
         <p className="text-sub">
           {dict.login.forgotPassword}{" "}
-          <a href="mailto:admin@flux.local" className="font-bold text-sky">
+          <Link href="/forgot" className="font-bold text-sky">
             {dict.login.recoverByEmail}
-          </a>
+          </Link>
         </p>
       </div>
 

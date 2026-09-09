@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * HttpOnly 仅作存在性标记，真正鉴权仍是请求头 Bearer token）。
  */
 
-const PUBLIC_PATHS = ["/login", "/offline"];
+const PUBLIC_PATHS = ["/login", "/register", "/forgot", "/offline"];
 
 function isAsset(pathname: string): boolean {
   return (
