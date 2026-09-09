@@ -86,6 +86,18 @@ async fn medal_buy(
     let Some(price) = price else {
         return Err(DomainError::NotFound(body.medal_id)); // 非卖品勋章（如开站勋章）
     };
+    // 已拥有直接拒绝（防重复扣款）
+    let owned: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM user_medals WHERE user_id = $1 AND medal_id = $2)",
+    )
+    .bind(auth.id)
+    .bind(body.medal_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    if owned {
+        return Err(DomainError::Validation("已拥有该勋章".into()));
+    }
     let idem = format!("medal-buy:{}:{}:{}", auth.id, body.medal_id, Uuid::new_v4());
     crate::economy_http::spend_spark(
         &state.repo.db,
@@ -349,7 +361,7 @@ async fn topic_detail(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let posts = sqlx::query_as::<_, PostRow>(
         "SELECT p.id, u.username, p.body, p.created_at FROM posts p \
-         LEFT JOIN users u ON u.id = p.user_id WHERE p.topic_id = $1 ORDER BY p.id",
+         LEFT JOIN users u ON u.id = p.user_id WHERE p.topic_id = $1 ORDER BY p.id LIMIT 200",
     )
     .bind(tid)
     .fetch_all(&state.repo.db)
@@ -537,7 +549,7 @@ async fn friend_list(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<(String, String)> = sqlx::query_as(
-        "SELECT u.username, f.list FROM friendships f JOIN users u ON u.id = f.friend_id WHERE f.user_id = $1 ORDER BY u.username",
+        "SELECT u.username, f.list FROM friendships f JOIN users u ON u.id = f.friend_id WHERE f.user_id = $1 ORDER BY u.username LIMIT 200",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)

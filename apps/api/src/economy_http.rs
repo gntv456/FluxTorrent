@@ -94,15 +94,6 @@ pub async fn earn_spark(
     kind: &str,
     idem: &str,
 ) -> DomainResult<()> {
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
-            .bind(idem)
-            .fetch_one(db)
-            .await
-            .unwrap_or(false);
-    if exists {
-        return Ok(());
-    }
     let mut tx = db
         .begin()
         .await
@@ -113,6 +104,16 @@ pub async fn earn_spark(
             .fetch_one(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+    // 幂等检查必须在行锁之后（P0：防并发双入账）
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
+            .bind(idem)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap_or(false);
+    if exists {
+        return Ok(());
+    }
     sqlx::query(
         "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
          VALUES (nextval('spark_ledger_id_seq'), $1, $2, $3, $4, $5)",
@@ -460,7 +461,7 @@ async fn checkin(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let today = chrono::Utc::now().date_naive();
+    let today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive(); // 站点时区 UTC+8
     let yesterday = today - chrono::Duration::days(1);
 
     // 幂等：今日已签直接返回
@@ -495,7 +496,7 @@ async fn checkin(
     };
     let reward = checkin_reward(streak, total_days == 0);
 
-    sqlx::query(
+    let inserted = sqlx::query(
         "INSERT INTO attendance (user_id, date, streak, reward) VALUES ($1, $2, $3, $4) \
          ON CONFLICT (user_id, date) DO NOTHING",
     )
@@ -506,6 +507,9 @@ async fn checkin(
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    if inserted.rows_affected() == 0 {
+        return Err(DomainError::Validation("今天已经签到过啦".into()));
+    }
 
     let idem = format!("attendance:{}:{}", auth.id, today.format("%Y%m%d"));
     earn_spark(&state.repo.db, auth.id, reward.total, "attendance", &idem).await?;
@@ -529,7 +533,7 @@ async fn checkin_status(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let today = chrono::Utc::now().date_naive();
+    let today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive(); // 站点时区 UTC+8
     let checked_today = rows.iter().any(|(d, _, _)| *d == today);
     let current_streak = rows.last().map(|(_, s, _)| *s).unwrap_or(0);
     Ok(ok(serde_json::json!({

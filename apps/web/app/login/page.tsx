@@ -20,7 +20,8 @@ export default function LoginPage() {
 
   const messages: Record<number, string> = {
     2004: "用户名或密码不对哦，再想想～",
-    2001: "试得太频繁啦，休息一分钟再来",
+    2001: "登录态失效，请重新登录",
+    1015: "试得太频繁啦，休息一分钟再来",
   };
 
   async function submit(e: React.FormEvent) {

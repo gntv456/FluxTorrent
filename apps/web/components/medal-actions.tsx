@@ -18,13 +18,14 @@ export function MedalActions({
   const [isOwned, setIsOwned] = useState(owned);
   const [isWearing, setIsWearing] = useState(wearing);
   const [msg, setMsg] = useState<string | null>(null);
+  const [idem] = useState(() => `web-medal-${medalId}-${crypto.randomUUID()}`);
 
   async function buy() {
     setMsg(null);
     try {
       await api.post("/api/v1/medals/buy", {
         medal_id: medalId,
-        idempotency_key: `web-medal-${medalId}-${Date.now()}`,
+        idempotency_key: idem,
       });
       setIsOwned(true);
       setMsg("收入囊中！");

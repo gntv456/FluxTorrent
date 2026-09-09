@@ -42,6 +42,7 @@ export function CheckinCard() {
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
 
   async function refresh() {
     try {
@@ -59,6 +60,7 @@ export function CheckinCard() {
   }
 
   useEffect(() => {
+    setHasToken(Boolean(localStorage.getItem("flux.token")));
     refresh();
   }, []);
 
@@ -79,10 +81,7 @@ export function CheckinCard() {
     }
   }
 
-  const token =
-    typeof window !== "undefined" && localStorage.getItem("flux.token");
-
-  if (!token) {
+  if (!hasToken) {
     return (
       <div className="rounded-[var(--r-lg)] border border-line bg-white p-6 text-center shadow-[var(--shadow-card)]">
         <span aria-hidden className="text-[60px]">

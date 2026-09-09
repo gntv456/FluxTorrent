@@ -92,6 +92,7 @@ pub async fn consume_announce(
     db: &PgPool,
     redis: &mut redis::aio::ConnectionManager,
 ) -> anyhow::Result<u64> {
+    let redis_dead_letter = redis.clone();
     use redis::AsyncCommands;
 
     // 游标消费：从上次处理到的 ID 继续拉取（Redis 键持久化游标，重启不丢事件、不重复计费）
@@ -124,18 +125,50 @@ pub async fn consume_announce(
             .get("payload")
             .and_then(|v| redis::from_redis_value::<String>(v).ok())
         else {
+            // 损坏事件进死信，不阻塞游标
+            tracing::warn!(%id, "announce 事件损坏，进死信");
+            let mut conn_dl = redis_dead_letter.clone();
+            let _: Result<(), _> = redis::cmd("RPUSH")
+                .arg("flux:announce:dlq")
+                .arg(&id)
+                .query_async(&mut conn_dl)
+                .await;
+            last_seen_id = Some(id);
             continue;
         };
-        if let Ok(ev) = serde_json::from_str::<AnnounceEvent>(&payload) {
-            if process_event(db, &ev).await.is_ok() {
+        let ev = match serde_json::from_str::<AnnounceEvent>(&payload) {
+            Ok(ev) => ev,
+            Err(e) => {
+                tracing::warn!(%id, ?e, "事件 JSON 解析失败，进死信");
+                let mut conn_dl = redis_dead_letter.clone();
+                let _: Result<(), _> = redis::cmd("RPUSH")
+                    .arg("flux:announce:dlq")
+                    .arg(&payload)
+                    .query_async(&mut conn_dl)
+                    .await;
+                last_seen_id = Some(id);
+                continue;
+            }
+        };
+        match process_event(db, &ev).await {
+            Ok(()) => {
                 applied += 1;
+                last_seen_id = Some(id);
+            }
+            Err(e) => {
+                // 处理失败：不推进游标，下轮重试（避免丢失计费）
+                tracing::error!(%id, ?e, "事件计费失败，游标暂停等待重试");
+                break;
             }
         }
-        last_seen_id = Some(id);
     }
     if let Some(id) = last_seen_id {
-        let _: () = redis.set("flux:announce:cursor", &id).await.unwrap_or(());
-        // 控制流体积（保留 10k 条供审计，游标保证语义正确）
+        let cur: Result<(), redis::RedisError> = redis.set("flux:announce:cursor", &id).await;
+        if let Err(e) = cur {
+            // 游标写入失败必须显式报错：静默失败会导致下轮重复计费
+            tracing::error!(?e, "游标写入失败（下轮可能重复计费，需人工核对）");
+            return Err(e.into());
+        }
         let _: () = redis
             .xtrim("flux:announce", redis::streams::StreamMaxlen::Approx(10000))
             .await
@@ -158,14 +191,14 @@ pub async fn consume_announce(
 
 /// 单事件计费（促销裁决 + snatch upsert + 流水）
 async fn process_event(db: &PgPool, ev: &AnnounceEvent) -> anyhow::Result<()> {
+    // 未知种子的查询失败必须显式报错（重试），不能静默丢弃计费
     let torrent_id: Option<i64> =
         sqlx::query_scalar("SELECT id FROM torrents WHERE info_hash = $1")
             .bind(&ev.hash)
             .fetch_optional(db)
-            .await
-            .unwrap_or(None);
+            .await?;
     let Some(torrent_id) = torrent_id else {
-        return Ok(()); // 未知种子：忽略（不计费）
+        return Ok(()); // 种子确实不存在：跳过
     };
 
     // 促销快照裁决（§5.4-⑦）
@@ -174,26 +207,40 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent) -> anyhow::Result<()> {
     )
     .bind(torrent_id)
     .fetch_optional(db)
-    .await
-    .unwrap_or(None);
+    .await?;
     let global: Option<String> = sqlx::query_scalar(
         "SELECT kind::text FROM promotions WHERE scope = 'global' AND starts_at <= now() AND ends_at > now() ORDER BY id DESC LIMIT 1",
     )
     .fetch_optional(db)
-    .await
-    .unwrap_or(None);
+    .await?;
     let (up_mult, down_mult) = billing_multipliers(kind.as_deref(), global.as_deref());
-    let delta_up = (ev.up as f64 * up_mult) as i64;
-    let delta_down = (ev.down as f64 * down_mult) as i64;
+
+    // BEP3：ev.up/down 是客户端累计总量 —— 先取出上次上报值换算增量（P0 修复）
+    let mut tx = db.begin().await?;
+    let last: Option<(i64, i64)> = sqlx::query_as(
+        "SELECT last_up, last_down FROM snatches WHERE user_id = $1 AND torrent_id = $2 FOR UPDATE",
+    )
+    .bind(ev.user)
+    .bind(torrent_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    let (last_up, last_down) = last.unwrap_or((0, 0));
+    // 计数器回绕/客户端重置时按 0 处理
+    let raw_up = (ev.up - last_up).max(0);
+    let raw_down = (ev.down - last_down).max(0);
+    let delta_up = (raw_up as f64 * up_mult) as i64;
+    let delta_down = (raw_down as f64 * down_mult) as i64;
 
     let seeding = ev.left == 0;
     sqlx::query(
         r#"
-        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, leeching, seeding, completed_at)
-        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE NULL END)
+        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CASE WHEN $9 THEN now() ELSE NULL END)
         ON CONFLICT (user_id, torrent_id) DO UPDATE SET
           uploaded = snatches.uploaded + EXCLUDED.uploaded,
           downloaded = snatches.downloaded + EXCLUDED.downloaded,
+          last_up = EXCLUDED.last_up,
+          last_down = EXCLUDED.last_down,
           leeching = EXCLUDED.leeching,
           seeding = EXCLUDED.seeding OR snatches.seeding,
           completed_at = COALESCE(snatches.completed_at, EXCLUDED.completed_at)
@@ -201,22 +248,28 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent) -> anyhow::Result<()> {
     )
     .bind(ev.user)
     .bind(torrent_id)
+    .bind(raw_up)
+    .bind(raw_down)
     .bind(ev.up)
     .bind(ev.down)
     .bind(!seeding)
     .bind(seeding)
     .bind(ev.event == "completed")
-    .execute(db)
+    .execute(&mut *tx)
     .await?;
-    sqlx::query(
-        "INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, delta_down, window_start)          VALUES (nextval('traffic_ledger_id_seq'), $1, $2, $3, $4, now())",
-    )
-    .bind(ev.user)
-    .bind(torrent_id)
-    .bind(delta_up)
-    .bind(delta_down)
-    .execute(db)
-    .await?;
+    // 仅在有实际增量时落流水（避免零增量噪声）
+    if delta_up > 0 || delta_down > 0 {
+        sqlx::query(
+            "INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, delta_down, window_start)          VALUES (nextval('traffic_ledger_id_seq'), $1, $2, $3, $4, now())",
+        )
+        .bind(ev.user)
+        .bind(torrent_id)
+        .bind(delta_up)
+        .bind(delta_down)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
     Ok(())
 }
 

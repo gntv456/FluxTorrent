@@ -11,7 +11,7 @@ pub const MAX_PLAYS_PER_HOUR: i64 = 60;
 
 // ============ 刮刮乐（即开型） ============
 
-/// 奖池：45% 空、30% 保底 0.5x、15% 1x、8% 2x、2% 10x —— 期望回报 ≈ 0.79（庄家优势 21%，运营可调）
+/// 奖池：45% 空、30% 保底 0.5x、15% 1x、8% 2x、2% 10x —— 期望回报 0.66（庄家优势 34%，运营可调）
 #[derive(Debug, PartialEq)]
 pub struct ScratchOutcome {
     pub multiplier: f64,

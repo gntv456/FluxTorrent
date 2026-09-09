@@ -19,6 +19,7 @@ pub struct TorrentRow {
     pub seeders: i32,
     pub leechers: i32,
     pub times_completed: i32,
+    #[serde(rename = "official")]
     pub official_tag: bool,
     pub anonymous: bool,
     pub approval_status: i16,
@@ -55,7 +56,12 @@ pub async fn list_torrents(
     limit: i64,
 ) -> DomainResult<TorrentPage> {
     let limit = limit.clamp(1, MAX_LIMIT);
-    let pattern = filter.search.as_deref().map(|s| format!("%{}%", s));
+    let pattern = filter.search.as_deref().map(|s| {
+        format!(
+            "%{}%",
+            s.replace('\\', "").replace('%', "\\%").replace('_', "\\_")
+        )
+    });
 
     // 游标分页（§6.2：禁 OFFSET）。cursor 为 id 游标（按 id DESC 稳定排序）。
     let rows = sqlx::query_as::<_, TorrentRow>(
@@ -77,7 +83,7 @@ pub async fn list_torrents(
           AND ($4::int IS NULL OR t.edition_id = $4)
           AND ($5::bool IS NULL OR t.official_tag = $5)
           AND ($6::bool OR t.seeders > 0)
-          AND ($7::text IS NULL OR t.name ILIKE $7 OR t.small_descr ILIKE $7)
+          AND ($7::text IS NULL OR t.name ILIKE $7 ESCAPE chr(92) OR t.small_descr ILIKE $7 ESCAPE chr(92))
           AND ($8::bigint IS NULL OR t.id < $8)
         ORDER BY t.sticky DESC, t.id DESC
         LIMIT $9
@@ -101,7 +107,7 @@ pub async fn list_torrents(
          AND ($1::int IS NULL OR t.category_id = $1) AND ($2::int IS NULL OR t.medium_id = $2) \
          AND ($3::int IS NULL OR t.grade_id = $3) AND ($4::int IS NULL OR t.edition_id = $4) \
          AND ($5::bool IS NULL OR t.official_tag = $5) AND ($6::bool OR t.seeders > 0) \
-         AND ($7::text IS NULL OR t.name ILIKE $7 OR t.small_descr ILIKE $7)",
+         AND ($7::text IS NULL OR t.name ILIKE $7 ESCAPE chr(92) OR t.small_descr ILIKE $7 ESCAPE chr(92))",
     )
     .bind(filter.category_id)
     .bind(filter.medium_id)
