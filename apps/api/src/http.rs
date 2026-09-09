@@ -19,6 +19,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(register)
         .service(login)
         .service(me)
+        .service(my_torrentlist)
         .service(rotate_passkey)
         .service(list)
         .service(detail)
@@ -293,6 +294,68 @@ async fn rotate_passkey(
         .audit(Some(auth.id), "passkey_rotate", Some(auth.id))
         .await;
     Ok(ok(serde_json::json!({ "passkey": pk })))
+}
+
+// ============ 我的做种/下载/完成列表（旧站 getusertorrentlist 口径） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct SnatchRow {
+    torrent_id: i64,
+    name: String,
+    size: i64,
+    seeders: i32,
+    leechers: i32,
+    seeding: bool,
+    leeching: bool,
+    completed_at: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(rename = "done")]
+    uploaded_here: i64,
+}
+
+#[derive(Deserialize)]
+struct SnatchQuery {
+    /// seeding / leeching / completed / uploads
+    kind: Option<String>,
+    limit: Option<i64>,
+}
+
+#[get("/me/torrentlist")]
+async fn my_torrentlist(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<SnatchQuery>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let limit = q.limit.unwrap_or(50).clamp(1, 100);
+    let rows: Vec<SnatchRow> = match q.kind.as_deref() {
+        Some("uploads") => sqlx::query_as(
+            "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
+             false AS seeding, false AS leeching, NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here \
+             FROM torrents t WHERE t.owner_id = $1 AND t.approval_status = 1 \
+             ORDER BY t.id DESC LIMIT $2",
+        ),
+        Some("completed") => sqlx::query_as(
+            "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
+             s.completed_at, s.uploaded AS uploaded_here \
+             FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+             WHERE s.user_id = $1 AND s.completed_at IS NOT NULL \
+             ORDER BY s.completed_at DESC LIMIT $2",
+        ),
+        // 默认做种中
+        _ => sqlx::query_as(
+            "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
+             s.completed_at, s.uploaded AS uploaded_here \
+             FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+             WHERE s.user_id = $1 AND s.seeding \
+             ORDER BY s.torrent_id DESC LIMIT $2",
+        ),
+    }
+    .bind(auth.id)
+    .bind(limit)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
 }
 
 // ============ 种子（M02/M03/M07/M10） ============
