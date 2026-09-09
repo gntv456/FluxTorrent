@@ -273,6 +273,29 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// 做种里程碑采集（M28 插件数据源）：把达到档位的事件落表，api 侧插件按需消费。
+/// 幂等：UNIQUE(user_id, torrent_id, hours) + ON CONFLICT DO NOTHING。
+async fn collect_milestones(db: &PgPool) -> anyhow::Result<u64> {
+    let res = sqlx::query(
+        r#"
+        INSERT INTO seed_milestones (id, user_id, torrent_id, hours)
+        SELECT nextval('seed_milestones_id_seq'), user_id, torrent_id, h.hours
+        FROM snatches s
+        CROSS JOIN (VALUES (24), (168), (720), (2160)) AS h(hours)
+        WHERE s.seeding
+          AND EXTRACT(EPOCH FROM (now() - s.completed_at))::bigint / 3600 >= h.hours
+          AND s.completed_at IS NOT NULL
+        ON CONFLICT (user_id, torrent_id, hours) DO NOTHING
+        "#,
+    )
+    .execute(db)
+    .await?;
+    if res.rows_affected() > 0 {
+        tracing::info!(n = res.rows_affected(), "seed milestones collected");
+    }
+    Ok(res.rows_affected())
+}
+
 /// 主循环：定时任务调度。
 pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> anyhow::Result<()> {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
@@ -284,6 +307,7 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if let Err(e) = expire_promotions(&db).await { tracing::error!(?e, "expire_promotions"); }
                 if let Err(e) = preserve_exit(&db).await { tracing::error!(?e, "preserve_exit"); }
                 if let Err(e) = consume_announce(&db, &mut redis).await { tracing::error!(?e, "consume_announce"); }
+                if let Err(e) = collect_milestones(&db).await { tracing::error!(?e, "collect_milestones"); }
             }
             _ = hour_tick.tick() => {
                 if first_hour { first_hour = false; continue; }
