@@ -29,6 +29,32 @@ pub struct TorrentRow {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// 详情页扩展字段（简介/文件数/感谢数；列表不需要，独立查询）
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct TorrentDetailRow {
+    pub id: i64,
+    pub descr: Option<String>,
+    pub numfiles: i32,
+    pub thanks_count: i64,
+    pub bookmark_count: i64,
+    pub last_action: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// 详情页文件列表（files 表；无记录时前端隐藏该区块）
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct FileRow {
+    pub file_index: i32,
+    pub path: String,
+    pub size: i64,
+}
+
+/// 感谢者列表（近 50 人）
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct ThankRow {
+    pub username: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
 #[derive(Debug, Default, Serialize)]
 pub struct TorrentFilter {
     pub category_id: Option<i32>,
@@ -163,6 +189,49 @@ fn items_or_not_found(mut v: Vec<TorrentRow>, id: i64) -> DomainResult<TorrentRo
     } else {
         Ok(v.remove(0))
     }
+}
+
+pub async fn get_torrent_detail(db: &PgPool, id: i64) -> DomainResult<TorrentDetailRow> {
+    let row = sqlx::query_as::<_, TorrentDetailRow>(
+        r#"
+        SELECT t.id, t.descr, t.numfiles,
+               (SELECT count(*) FROM thanks th WHERE th.torrent_id = t.id) AS thanks_count,
+               (SELECT count(*) FROM bookmarks b WHERE b.torrent_id = t.id) AS bookmark_count,
+               NULL::timestamptz AS last_action
+        FROM torrents t
+        WHERE t.id = $1 AND t.approval_status = 1
+        "#,
+    )
+    .bind(id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    row.ok_or(DomainError::NotFound(id))
+}
+
+pub async fn list_files(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<FileRow>> {
+    sqlx::query_as::<_, FileRow>(
+        "SELECT file_index, path, size FROM files WHERE torrent_id = $1 ORDER BY file_index LIMIT 500",
+    )
+    .bind(torrent_id)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))
+}
+
+pub async fn list_thanks(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<ThankRow>> {
+    sqlx::query_as::<_, ThankRow>(
+        r#"
+        SELECT u.username, th.created_at
+        FROM thanks th LEFT JOIN users u ON u.id = th.user_id
+        WHERE th.torrent_id = $1
+        ORDER BY th.created_at DESC LIMIT 50
+        "#,
+    )
+    .bind(torrent_id)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
