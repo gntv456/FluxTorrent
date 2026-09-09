@@ -5,7 +5,7 @@ INSERT INTO users (id, username, email, pass_hash, passkey, class_id, status, sp
 VALUES (
     1, 'root', 'root@fluxtorrent.local',
     '$argon2id$v=19$m=19456,t=2,p=1$XAMwi8WTuzejCBPhdilR6w$xUb/nkW8/iUYTMb+dCPsstkyeldF5LuM2sOIK4m8++c',
-    'rootbootstrap0000000passkey00', 99, 0, 100000
+    'rootbootstrap0000000passkey00000', 99, 0, 100000
 ) ON CONFLICT DO NOTHING;
 
 -- 必须重置序列，否则后续注册的用户会与 id=1 冲突

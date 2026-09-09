@@ -217,6 +217,38 @@ check("管理·后台概览", r.get("code") == 0)
 s, r = call("GET", "/admin/audit", token=rtok)
 check("管理·审计日志", r.get("code") == 0)
 
+# ============ 8.5 新增功能（RSS/2FA/规则/验证码） ============
+import re as _re
+try:
+    rss = urllib.request.urlopen(f"{BASE}/rss/rootbootstrap0000000passkey00000", timeout=10).read().decode()
+    check("RSS·订阅输出", rss.startswith("<?xml") and "<item>" in rss)
+except Exception:
+    check("RSS·订阅输出", False)
+
+_, r = call("GET", "/rules/box")
+check("规则·盒子声明", r.get("code") == 0 and len((r.get("data") or {}).get("rules") or []) == 5)
+
+_, r = call("GET", "/auth/captcha")
+q = (r.get("data") or {}).get("question", "")
+m = _re.match(r"(\d+) \+ (\d+)", q)
+check("验证码·签发", r.get("code") == 0 and bool(m))
+
+_, r = call("GET", "/classes")
+check("等级·规则表", r.get("code") == 0 and len(r.get("data") or []) == 6)
+
+_, r = call("GET", "/me/class-progress", token=tok)
+check("等级·我的进度", r.get("code") == 0)
+
+_, r = call("GET", "/me/hr", token=tok)
+check("H&R·我的追责状态", r.get("code") == 0)
+
+_, r = call("GET", "/me/appeals", token=tok)
+check("申诉·我的列表", r.get("code") == 0)
+
+_, r = call("POST", "/me/2fa/setup", None, tok)
+_b32 = (r.get("data") or {}).get("secret", "")
+check("2FA·setup", r.get("code") == 0 and bool(_b32))
+
 # ============ 9. Web / PWA ============
 for path in ["/", "/torrents", "/games", "/farm", "/dressup", "/my", "/offline",
              "/manifest.webmanifest", "/sw.js", "/icons/icon-192.png"]:

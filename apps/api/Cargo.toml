@@ -26,6 +26,8 @@ dotenvy.workspace = true
 redis.workspace = true
 sha1 = "0.10"
 sha3 = "0.10"
+hmac = "0.12"
+data-encoding = "2"
 url = "2"
 sha2 = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }

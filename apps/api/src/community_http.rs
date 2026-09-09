@@ -567,5 +567,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     ));
     let scope = crate::admin_http::mount_admin(scope);
     let scope = crate::push_http::mount_push(scope);
+    let scope = crate::gaps_http::mount_gaps(scope);
+    let scope = crate::rss_http::mount_rss(scope);
+    let scope = crate::twofa_http::mount_twofa(scope);
     cfg.service(crate::openapi_http::mount_openapi(scope));
 }

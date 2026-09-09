@@ -14,6 +14,7 @@ mod economy_http;
 mod errors;
 mod games;
 mod games_http;
+mod gaps_http;
 mod http;
 mod i18n;
 mod openapi_http;
@@ -21,8 +22,10 @@ mod ops_http;
 mod plugins;
 mod push_http;
 mod repo;
+mod rss_http;
 mod state;
 mod torrents;
+mod twofa_http;
 
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
