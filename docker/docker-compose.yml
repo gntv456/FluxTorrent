@@ -46,6 +46,8 @@ services:
       DB_POOL_SIZE: "10"
       PUBLIC_TRACKER_URL: ${PUBLIC_TRACKER_URL:-http://localhost:7070}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       RUST_LOG: info
     ports:
       # 生产：仅本机可达，外部流量经 Nginx/Pingora 反代（§5.1 边缘层）

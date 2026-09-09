@@ -1,0 +1,8 @@
+# 宿主机依赖（Windows 符号链接无法正确进容器，且覆盖容器内 pnpm 安装产物）
+**/node_modules
+**/.next
+**/target
+**/.git
+**/tsconfig.tsbuildinfo
+apps/web/.env.local
+docker/.env
