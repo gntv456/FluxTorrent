@@ -296,6 +296,119 @@ async fn collect_milestones(db: &PgPool) -> anyhow::Result<u64> {
     Ok(res.rows_affected())
 }
 
+/// H&R 追责（M05 补齐）：为「完成下载」建立策略快照（时点正确），到期结算违规。
+/// 策略口径（§5.4）：hr_policy JSONB {"days": N, "seed_hours": H} —— 完成后 N 天内需累计做种 H 小时。
+async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
+    // 1) 为新完成的下载建快照（幂等）
+    sqlx::query(
+        r#"
+        INSERT INTO hr_snapshots (user_id, torrent_id, required_seconds, deadline)
+        SELECT s.user_id, s.torrent_id,
+               COALESCE((t.hr_policy->>'seed_hours')::int, 48) * 3600,
+               s.completed_at + make_interval(days => COALESCE((t.hr_policy->>'days')::int, 14))
+        FROM snatches s
+        JOIN torrents t ON t.id = s.torrent_id
+        WHERE s.completed_at IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM hr_snapshots h WHERE h.user_id = s.user_id AND h.torrent_id = s.torrent_id)
+          AND COALESCE(t.hr_policy->>'enabled', 'true')::boolean
+        ON CONFLICT DO NOTHING
+        "#,
+    )
+    .execute(db)
+    .await?;
+
+    // 2) 刷新累计做种秒数（快照口径：snatches.seeded_seconds）
+    sqlx::query(
+        "UPDATE hr_snapshots h SET seeded_seconds = s.seeded_seconds, updated_at = now()          FROM snatches s          WHERE s.user_id = h.user_id AND s.torrent_id = h.torrent_id AND h.status = 'open'",
+    )
+    .execute(db)
+    .await?;
+
+    // 3) 达标即 satisfied
+    sqlx::query(
+        "UPDATE hr_snapshots SET status = 'satisfied', updated_at = now()          WHERE status = 'open' AND seeded_seconds >= required_seconds",
+    )
+    .execute(db)
+    .await?;
+
+    // 4) 过期未达标 → violated + 落违规表（追责依据）
+    let violated = sqlx::query(
+        r#"
+        WITH dead AS (
+            UPDATE hr_snapshots SET status = 'violated', updated_at = now()
+            WHERE status = 'open' AND deadline < now()
+            RETURNING user_id, torrent_id, seeded_seconds, required_seconds
+        )
+        INSERT INTO hr_violations (user_id, torrent_id, seeded_seconds, required_seconds)
+        SELECT user_id, torrent_id, seeded_seconds, required_seconds FROM dead
+        ON CONFLICT DO NOTHING
+        "#,
+    )
+    .execute(db)
+    .await?;
+    if violated.rows_affected() > 0 {
+        tracing::warn!(n = violated.rows_affected(), "H&R violations detected");
+    }
+    Ok(())
+}
+
+/// 等级自动升降（class_rules）：达标即升（逐级检查），不达标且 demotable 则降至仍满足的最高级。
+async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
+    let promoted = sqlx::query(
+        r#"
+        WITH stats AS (
+            SELECT u.id, u.class_id, u.uploaded,
+                   (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.completed_at IS NOT NULL) AS dl,
+                   (SELECT COALESCE(sum(s.seeded_seconds),0)/3600 FROM snatches s WHERE s.user_id = u.id) AS sh,
+                   EXTRACT(DAY FROM now() - u.created_at)::bigint AS age
+            FROM users u WHERE u.class_id < 90
+        ),
+        target AS (
+            SELECT s.id, max(r.class_id) AS new_class
+            FROM stats s JOIN class_rules r ON
+                s.uploaded >= r.min_uploaded AND s.dl >= r.min_download_count AND
+                s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days
+            GROUP BY s.id
+        )
+        UPDATE users u SET class_id = t.new_class
+        FROM target t WHERE u.id = t.id AND t.new_class > u.class_id
+        "#,
+    )
+    .execute(db)
+    .await?;
+    let demoted = sqlx::query(
+        r#"
+        WITH stats AS (
+            SELECT u.id, u.class_id, u.uploaded,
+                   (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.completed_at IS NOT NULL) AS dl,
+                   (SELECT COALESCE(sum(s.seeded_seconds),0)/3600 FROM snatches s WHERE s.user_id = u.id) AS sh,
+                   EXTRACT(DAY FROM now() - u.created_at)::bigint AS age
+            FROM users u JOIN class_rules cr ON cr.class_id = u.class_id
+            WHERE u.class_id < 90 AND cr.demotable
+        ),
+        target AS (
+            -- 仍满足的最高级；一条都不满足 → 1（保底不降为 0）
+            SELECT s.id, COALESCE(max(r.class_id), 1) AS new_class
+            FROM stats s JOIN class_rules r ON
+                s.uploaded >= r.min_uploaded AND s.dl >= r.min_download_count AND
+                s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days
+            GROUP BY s.id
+        )
+        UPDATE users u SET class_id = t.new_class
+        FROM target t WHERE u.id = t.id AND t.new_class < u.class_id
+        "#,
+    )
+    .execute(db)
+    .await?;
+    if promoted.rows_affected() > 0 {
+        tracing::info!(n = promoted.rows_affected(), "users promoted");
+    }
+    if demoted.rows_affected() > 0 {
+        tracing::info!(n = demoted.rows_affected(), "users demoted");
+    }
+    Ok(())
+}
+
 /// 主循环：定时任务调度。
 pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> anyhow::Result<()> {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
@@ -308,6 +421,8 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if let Err(e) = preserve_exit(&db).await { tracing::error!(?e, "preserve_exit"); }
                 if let Err(e) = consume_announce(&db, &mut redis).await { tracing::error!(?e, "consume_announce"); }
                 if let Err(e) = collect_milestones(&db).await { tracing::error!(?e, "collect_milestones"); }
+                if let Err(e) = hr_enforce(&db).await { tracing::error!(?e, "hr_enforce"); }
+                if let Err(e) = class_auto_adjust(&db).await { tracing::error!(?e, "class_auto_adjust"); }
             }
             _ = hour_tick.tick() => {
                 if first_hour { first_hour = false; continue; }

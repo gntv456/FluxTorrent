@@ -49,6 +49,10 @@ struct RegisterReq {
     email: String,
     password: String,
     invite_code: String,
+    #[serde(default)]
+    captcha_id: String,
+    #[serde(default)]
+    captcha_answer: i32,
 }
 
 #[post("/auth/register")]
@@ -63,6 +67,12 @@ async fn register(
         password: body.password.clone(),
     };
     domain::validate_register(&new_user)?;
+    // 图形验证码校验（防注册机）
+    if body.captcha_id.is_empty()
+        || !crate::gaps_http::captcha_verify(&state, &body.captcha_id, body.captcha_answer).await
+    {
+        return Err(DomainError::Validation("验证码错误或已过期".into()));
+    }
     // 注册限流（§5.7）：按来源 IP 每分钟 5 次，防邀请码爆破
     let ip = req
         .connection_info()
@@ -105,6 +115,8 @@ async fn register(
 struct LoginReq {
     username: String,
     password: String,
+    #[serde(default)]
+    totp_code: Option<u32>,
 }
 
 #[post("/auth/login")]
@@ -122,6 +134,9 @@ async fn login(
     if !domain::verify_password(&user.pass_hash, &body.password) {
         return Err(DomainError::InvalidCredentials);
     }
+    // 2FA（启用者必须带 totp_code）
+    crate::twofa_http::login_totp_check(&state.repo.db, user.id, body.totp_code.unwrap_or(0))
+        .await?;
     let token = auth::issue(user.id, user.class_id, &state.cfg.jwt_secret, 24)
         .map_err(DomainError::Internal)?;
     // M28 插件 Hook：登录成功后分发
