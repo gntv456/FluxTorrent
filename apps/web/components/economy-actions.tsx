@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 
@@ -64,7 +64,8 @@ export function CheckinCard() {
       // 后端撤销失败也照常清理本地凭证
     }
     localStorage.removeItem("flux.token");
-    location.href = "/";
+    setSessionCookie(null);
+    location.href = "/login";
   }
 
   async function checkin() {

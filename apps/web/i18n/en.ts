@@ -149,6 +149,7 @@ export const en: Dict = {
     submit: "Sign in",
     busy: "Signing in…",
     fail: "Sign-in failed ({code})",
+    inviteOnly: "Invite-based private community — accounts are registered via invite codes",
   },
   upload: {
     title: "Publish",
