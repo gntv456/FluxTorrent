@@ -562,7 +562,9 @@ async fn friend_list(
 pub fn configure(cfg: &mut web::ServiceConfig) {
     let scope = crate::economy_http::mount_economy(crate::http::v1_scope());
     let scope = mount_community(scope);
-    cfg.service(crate::games_http::mount_games(crate::ops_http::mount_ops(
+    let scope = crate::games_http::mount_games(crate::ops_http::mount_ops(
         crate::content_http::mount_content(scope),
-    )));
+    ));
+    let scope = crate::admin_http::mount_admin(scope);
+    cfg.service(crate::openapi_http::mount_openapi(scope));
 }

@@ -21,6 +21,8 @@ pub fn mount_ops(scope: actix_web::Scope) -> actix_web::Scope {
         // M19 保种区
         .service(preserve_list)
         .service(preserve_claim)
+        // M28 插件
+        .service(plugins_overview)
 }
 
 // ============ M21 绩效考核 ============
@@ -350,4 +352,22 @@ async fn preserve_claim(
         .audit(Some(auth.id), "preserve_claim", Some(body.torrent_id))
         .await;
     Ok(ok(serde_json::json!({ "claimed": body.torrent_id })))
+}
+
+// ============ M28 插件 ============
+
+/// 插件清单（staff 可见）
+#[get("/admin/plugins")]
+async fn plugins_overview(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    Ok(ok(serde_json::json!({
+        "plugins": state.plugins.list(),
+        "hooks": ["on_user_login", "on_torrent_upload", "on_seeding_milestone"],
+    })))
 }
