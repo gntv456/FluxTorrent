@@ -10,6 +10,7 @@ export async function Header() {
     { href: "/torrents", label: dict.nav.library },
     { href: "/torrents?official=1", label: dict.nav.official },
     { href: "/forums", label: dict.nav.forums },
+    { href: "/messages", label: dict.nav.messages },
     { href: "/textbooks", label: dict.nav.textbooks },
     { href: "/medals", label: dict.nav.medals },
     { href: "/top", label: dict.nav.top },
