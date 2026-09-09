@@ -25,6 +25,8 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(checkin_status)
         .service(pool_status)
         .service(pool_donate)
+        .service(dressup_list)
+        .service(dressup_wear)
 }
 
 /// 动账核心：余额充足校验 + 负流水 + 余额快照更新（单事务）。
@@ -223,7 +225,9 @@ async fn shop_buy(
 
     // 商品效果只在真实扣款时执行一次（幂等重放不重复发效果）
     if matches!(outcome, crate::economy_http::SpendOutcome::Spent) {
-        apply_item_effect(&state.repo.db, auth.id, &kind, &config).await?;
+        let mut cfg = config.clone();
+        cfg["item_id"] = serde_json::json!(body.item_id);
+        apply_item_effect(&state.repo.db, auth.id, &kind, &cfg).await?;
     }
 
     state
@@ -260,6 +264,18 @@ async fn apply_item_effect(
                 .execute(db)
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        // 装扮（M25）：写入拥有记录（佩戴需显式调 /dressup/wear）
+        "avatar_frame" | "animated_avatar" | "rainbow_id" | "rainbow_name" => {
+            let item_id = config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
+            sqlx::query(
+                "INSERT INTO user_dressups (user_id, item_id, source) VALUES ($1, $2, 'buy')                  ON CONFLICT (user_id, item_id) DO NOTHING",
+            )
+            .bind(user_id)
+            .bind(item_id)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
         // 邀请：直接发一枚 72h 有效邀请码
         "invite" => {
@@ -627,5 +643,105 @@ async fn pool_donate(
         .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(
         serde_json::json!({ "month": month, "donated": body.amount }),
+    ))
+}
+
+// ============ M25 装扮中心 ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct DressupRow {
+    item_id: i64,
+    name: String,
+    kind: String,
+    price: i64,
+    slot: Option<String>,
+    owned: bool,
+    wearing: bool,
+}
+
+/// 装扮列表（拥有状态 + 佩戴中）
+#[get("/dressup/list")]
+async fn dressup_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<DressupRow> = sqlx::query_as(
+        "SELECT si.id AS item_id, si.name, si.kind, si.price,             si.config->>'slot' AS slot,             EXISTS(SELECT 1 FROM user_dressups ud WHERE ud.user_id = $1 AND ud.item_id = si.id) AS owned,             COALESCE((SELECT ud.wearing FROM user_dressups ud WHERE ud.user_id = $1 AND ud.item_id = si.id), FALSE) AS wearing          FROM shop_items si          WHERE si.active AND si.kind IN ('avatar_frame','animated_avatar','rainbow_id','rainbow_name')          ORDER BY si.price",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct WearReq {
+    item_id: i64,
+    wear: bool,
+}
+
+/// 佩戴/摘下（同类互斥由 DB 触发器保证：佩戴前先摘同类）
+#[post("/dressup/wear")]
+async fn dressup_wear(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<WearReq>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let owned: Option<(Option<String>,)> = sqlx::query_as(
+        "SELECT si.config->>'slot' FROM user_dressups ud JOIN shop_items si ON si.id = ud.item_id          WHERE ud.user_id = $1 AND ud.item_id = $2",
+    )
+    .bind(auth.id)
+    .bind(body.item_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((slot,)) = owned else {
+        return Err(DomainError::Validation(
+            "尚未拥有该装扮（先在商店购买）".into(),
+        ));
+    };
+
+    if body.wear {
+        // 先摘下同槽位（触发器互斥的最简前置）。注意 UPDATE...FROM 里目标表列不能带别名前缀
+        sqlx::query(
+            r#"UPDATE user_dressups ud SET wearing = FALSE FROM shop_items si
+             WHERE si.id = ud.item_id AND ud.user_id = $1 AND si.config->>'slot' = $2"#,
+        )
+        .bind(auth.id)
+        .bind(&slot)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query("UPDATE user_dressups SET wearing = TRUE WHERE user_id = $1 AND item_id = $2")
+            .bind(auth.id)
+            .bind(body.item_id)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    } else {
+        sqlx::query("UPDATE user_dressups SET wearing = FALSE WHERE user_id = $1 AND item_id = $2")
+            .bind(auth.id)
+            .bind(body.item_id)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    state
+        .repo
+        .audit(
+            Some(auth.id),
+            if body.wear {
+                "dressup.wear"
+            } else {
+                "dressup.takeoff"
+            },
+            Some(body.item_id),
+        )
+        .await;
+    Ok(ok(
+        serde_json::json!({ "item_id": body.item_id, "wearing": body.wear }),
     ))
 }

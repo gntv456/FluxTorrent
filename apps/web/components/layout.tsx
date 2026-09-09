@@ -12,6 +12,8 @@ export function Header() {
     { href: "/top", label: "排行" },
     { href: "/magic-pool", label: "站免池" },
     { href: "/games", label: "娱乐屋" },
+    { href: "/farm", label: "农场" },
+    { href: "/dressup", label: "装扮" },
   ];
   return (
     <header className="sticky top-0 z-40 h-16 border-b border-line bg-ink/95 backdrop-blur">
