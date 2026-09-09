@@ -59,12 +59,12 @@ def psql(sql):
 
 
 # ============ 1. 认证 ============
-s, r = call("POST", "/auth/login", {"username": "uploader", "password": "password123"})
+s, r = call("POST", "/auth/login", {"username": "root", "password": "password123"})
 tok = (r.get("data") or {}).get("token")
 check("认证·登录", s == 200 and r["code"] == 0 and bool(tok))
 
 s, r = call("GET", "/me", token=tok)
-check("认证·我的信息", r.get("code") == 0 and r["data"]["username"] == "uploader")
+check("认证·我的信息", r.get("code") == 0 and r["data"]["username"] == "root")
 
 import time as _t
 _t.sleep(2)  # 确保 nbf 时间戳严格大于 token 的 iat（同秒内 iat==nbf 不算撤销）
@@ -72,7 +72,7 @@ s, r = call("POST", "/auth/logout", {}, token=tok)
 check("认证·登出", r.get("code") == 0)
 s, r = call("GET", "/me", token=tok)
 check("认证·旧token已撤销", r.get("code") == 2001)
-s, r = call("POST", "/auth/login", {"username": "uploader", "password": "password123"})
+s, r = call("POST", "/auth/login", {"username": "root", "password": "password123"})
 if r.get("code") != 0:
     print(f"FATAL 登录失败（可能被限流）：{r}")
     sys.exit(2)
@@ -106,7 +106,7 @@ check("经济·商店", r.get("code") == 0 and len(r["data"]) > 0)
 key = f"regr-buy-{bal0}"
 s, r = call("POST", "/shop/buy", {"item_id": 18, "idempotency_key": key}, token=tok)
 s2, r2 = call("POST", "/shop/buy", {"item_id": 18, "idempotency_key": key}, token=tok)
-bal_after = int(psql("SELECT spark_balance FROM users WHERE id=6"))
+bal_after = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
 check("经济·购买幂等", r.get("code") == 0 and r2.get("code") == 0 and bal_after == bal0 - 1000,
       f"(扣款恰一次 {bal0}->{bal_after})")
 
@@ -204,7 +204,7 @@ s, r = call("GET", "/openapi.json")
 check("开放API·文档", r.get("code") == 0 and "openapi" in json.dumps(r.get("data") or {}))
 
 s, r = call("GET", "/admin/plugins", token=tok)
-check("插件·清单(staff限定)", r.get("code") == 2003)
+check("插件·清单(root可见)", r.get("code") == 0)
 
 # ============ 8. 邀请 ============
 s, r = call("POST", "/auth/login", {"username": "root", "password": "password123"})

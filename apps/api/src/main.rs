@@ -15,6 +15,7 @@ mod errors;
 mod games;
 mod games_http;
 mod http;
+mod i18n;
 mod openapi_http;
 mod ops_http;
 mod plugins;
@@ -84,10 +85,17 @@ async fn main() -> anyhow::Result<()> {
             .app_data(state.clone())
             .wrap(Logger::default().exclude("/api/v1/health"))
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
+            .wrap(actix_web::middleware::from_fn(i18n::locale_mw)) // Accept-Language → task-local（错误消息三语）
             .configure(community_http::configure)
-            .default_service(web::to(|| async {
+            .default_service(web::to(|req: actix_web::HttpRequest| async move {
+                let locale = req
+                    .headers()
+                    .get(actix_web::http::header::ACCEPT_LANGUAGE)
+                    .and_then(|v| v.to_str().ok())
+                    .map(i18n::from_accept_language)
+                    .unwrap_or(i18n::Locale::ZhCn);
                 actix_web::HttpResponse::NotFound().json(serde_json::json!({
-                    "code": 1004, "message": "接口不存在", "data": null,
+                    "code": 1004, "message": i18n::endpoint_not_found(locale), "data": null,
                     "request_id": uuid::Uuid::new_v4().to_string()
                 }))
             }))

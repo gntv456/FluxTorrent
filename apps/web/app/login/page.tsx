@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 interface LoginResp {
   token: string;
@@ -12,17 +14,12 @@ interface LoginResp {
 
 /** 登录页（设计稿：吉祥物 + 蜡笔字标题；错误按 code 映射文案 §8.2） */
 export default function LoginPage() {
+  const { dict } = useI18n();
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const messages: Record<number, string> = {
-    2004: "用户名或密码不对哦，再想想～",
-    2001: "登录态失效，请重新登录",
-    1015: "试得太频繁啦，休息一分钟再来",
-  };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,9 +34,11 @@ export default function LoginPage() {
       router.push("/torrents");
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(messages[err.code] ?? `登录失败（${err.code}）`);
+        setError(
+          dict.errors[err.code] ?? fmt(dict.login.fail, { code: err.code }),
+        );
       } else {
-        setError("网络异常，请稍后再试");
+        setError(dict.common.networkError);
       }
     } finally {
       setBusy(false);
@@ -51,11 +50,11 @@ export default function LoginPage() {
       <span aria-hidden className="text-[80px] leading-none">
         🦉
       </span>
-      <h1 className="font-display text-3xl">欢迎回来</h1>
-      <p className="-mt-4 text-sm text-sub">种子等你很久啦</p>
+      <h1 className="font-display text-3xl">{dict.login.welcome}</h1>
+      <p className="-mt-4 text-sm text-sub">{dict.login.subtitle}</p>
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">用户名</span>
+          <span className="text-sm text-sub">{dict.login.username}</span>
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -65,7 +64,7 @@ export default function LoginPage() {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">密码</span>
+          <span className="text-sm text-sub">{dict.login.password}</span>
           <input
             type="password"
             value={password}
@@ -85,7 +84,7 @@ export default function LoginPage() {
           disabled={busy}
           className="min-h-[44px] rounded-full bg-sky font-bold text-white active:scale-[0.97] disabled:opacity-50"
         >
-          {busy ? "登录中…" : "登录"}
+          {busy ? dict.login.busy : dict.login.submit}
         </button>
       </form>
     </div>

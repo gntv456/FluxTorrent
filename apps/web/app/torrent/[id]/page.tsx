@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { categoryColor, formatBytes, promotionBadge } from "@/lib/format";
 import { DownloadButton } from "@/components/download-button";
+import { getDict } from "@/i18n/server";
+import { dateLocale } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +23,7 @@ export default async function TorrentDetailPage({
     notFound();
   }
 
+  const { dict, locale } = await getDict();
   const promo = promotionBadge(t.promotion);
 
   return (
@@ -36,37 +39,43 @@ export default async function TorrentDetailPage({
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-2xl break-all">{t.name}</h1>
               {promo && (
-                <span className={`sticker ${promo.className}`}>{promo.label}</span>
+                <span className={`sticker ${promo.className}`}>
+                  {dict.promotion[promo.key]}
+                </span>
               )}
               {t.official && (
-                <span className="sticker bg-indigo text-white">官种</span>
+                <span className="sticker bg-indigo text-white">
+                  {dict.torrent.official}
+                </span>
               )}
             </div>
             {t.small_descr && <p className="mt-1 text-sub">{t.small_descr}</p>}
             <dl className="num mt-3 grid grid-cols-2 gap-x-8 gap-y-1 text-sm md:grid-cols-4">
               <div className="flex justify-between gap-2">
-                <dt className="text-sub">大小</dt>
+                <dt className="text-sub">{dict.torrent.size}</dt>
                 <dd>{formatBytes(t.size)}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-sub">做种</dt>
+                <dt className="text-sub">{dict.torrent.seeding}</dt>
                 <dd className="text-mint">{t.seeders}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-sub">下载</dt>
+                <dt className="text-sub">{dict.torrent.leeching}</dt>
                 <dd className="text-coral">{t.leechers}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-sub">完成</dt>
+                <dt className="text-sub">{dict.torrent.completed}</dt>
                 <dd>{t.times_completed}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-sub">发布人</dt>
-                <dd>{t.anonymous ? "匿名" : (t.owner_name ?? "—")}</dd>
+                <dt className="text-sub">{dict.torrent.uploader}</dt>
+                <dd>{t.anonymous ? dict.torrent.anonymous : (t.owner_name ?? "—")}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-sub">发布时间</dt>
-                <dd>{new Date(t.created_at).toLocaleString("zh-CN")}</dd>
+                <dt className="text-sub">{dict.torrent.uploadedAt}</dt>
+                <dd>
+                  {new Date(t.created_at).toLocaleString(dateLocale(locale))}
+                </dd>
               </div>
             </dl>
           </div>

@@ -11,3 +11,4 @@ dist/
 
 # 部署密钥（绝不入库）
 docker/.env
+.trae/

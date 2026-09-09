@@ -1,31 +1,10 @@
 import { EmptyTorrents, TorrentRow } from "@/components/torrent";
 import { paged } from "@/lib/api-client";
+import { getDict } from "@/i18n/server";
+import { fmt } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 
 export const dynamic = "force-dynamic";
-
-const CATEGORIES = [
-  { id: undefined as number | undefined, label: "全部" },
-  { id: 1, label: "学前教育" },
-  { id: 2, label: "小学" },
-  { id: 3, label: "初中" },
-  { id: 4, label: "职高" },
-  { id: 5, label: "高中" },
-  { id: 6, label: "教育影音" },
-  { id: 7, label: "纪录片" },
-];
-
-const MEDIA = [
-  { id: undefined as number | undefined, label: "全部媒介" },
-  { id: 1, label: "视频" },
-  { id: 2, label: "音频" },
-  { id: 3, label: "书籍" },
-  { id: 4, label: "文档" },
-  { id: 5, label: "笔记" },
-  { id: 6, label: "课件" },
-  { id: 7, label: "软件" },
-  { id: 8, label: "图片" },
-];
 
 /** 在现有参数上增量修改，保留其余筛选（修复翻页丢参数） */
 function withParam(
@@ -48,6 +27,7 @@ export default async function TorrentsPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const sp = await searchParams;
+  const { dict } = await getDict();
   const page = await paged<TorrentListItem>("/api/v1/torrents", {
     limit: 20,
     category_id: sp.category_id ? Number(sp.category_id) : undefined,
@@ -58,24 +38,72 @@ export default async function TorrentsPage({
     cursor: sp.cursor,
   });
 
+  // 字典分类/媒介数组按下标对齐：index 0 = 全部，1..n = 对应 id
+  const categories = dict.torrents.categories.map((label, i) => ({
+    id: i === 0 ? undefined : i,
+    label,
+  }));
+  const media = dict.torrents.media.map((label, i) => ({
+    id: i === 0 ? undefined : i,
+    label,
+  }));
+  const currentCategory = sp.category_id ? Number(sp.category_id) : undefined;
+  const currentMedium = sp.medium_id ? Number(sp.medium_id) : undefined;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">资源库</h1>
+        <h1 className="font-display text-2xl">{dict.torrents.title}</h1>
         <span className="num text-sm text-sub">
-          共 {page.total_estimate} 个种子
+          {fmt(dict.torrents.total, { n: page.total_estimate })}
         </span>
       </div>
 
+      {/* 全文搜索（标题/简介/文件名，后端 pg_trgm）——GET 表单保留其余筛选 */}
+      <form action="/torrents" method="get" className="flex gap-2">
+        <input
+          type="search"
+          name="search"
+          defaultValue={sp.search}
+          placeholder={dict.torrents.searchPlaceholder}
+          aria-label={dict.torrents.searchAction}
+          className="min-h-[44px] flex-1 rounded-full border border-line bg-white px-4 text-sm outline-none focus:border-sky"
+        />
+        {sp.category_id && (
+          <input type="hidden" name="category_id" value={sp.category_id} />
+        )}
+        {sp.medium_id && (
+          <input type="hidden" name="medium_id" value={sp.medium_id} />
+        )}
+        {sp.official && <input type="hidden" name="official" value={sp.official} />}
+        {sp.include_dead && (
+          <input type="hidden" name="include_dead" value="1" />
+        )}
+        <button
+          type="submit"
+          className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm font-bold text-white active:scale-[0.97]"
+        >
+          {dict.torrents.searchAction}
+        </button>
+      </form>
+      {sp.search && (
+        <a
+          href={withParam(sp, "search", undefined)}
+          className="self-start text-sm text-sky"
+        >
+          ✕ {dict.torrents.clearSearch}「{sp.search}」
+        </a>
+      )}
+
       {/* 筛选 Chip（移动端横向滚动，§7.3）—— 增量参数互不覆盖 */}
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <a
             key={c.label}
             href={withParam(sp, "category_id", c.id ? String(c.id) : undefined)}
-            aria-current={(sp.category_id ? Number(sp.category_id) : undefined) === c.id ? "true" : undefined}
+            aria-current={currentCategory === c.id ? "true" : undefined}
             className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
-              (sp.category_id ? Number(sp.category_id) : undefined) === c.id
+              currentCategory === c.id
                 ? "bg-sky-deep text-white"
                 : "bg-white text-ink border border-line"
             }`}
@@ -85,13 +113,13 @@ export default async function TorrentsPage({
         ))}
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {MEDIA.map((m) => (
+        {media.map((m) => (
           <a
             key={m.label}
             href={withParam(sp, "medium_id", m.id ? String(m.id) : undefined)}
-            aria-current={(sp.medium_id ? Number(sp.medium_id) : undefined) === m.id ? "true" : undefined}
+            aria-current={currentMedium === m.id ? "true" : undefined}
             className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
-              (sp.medium_id ? Number(sp.medium_id) : undefined) === m.id
+              currentMedium === m.id
                 ? "bg-sky-deep text-white"
                 : "bg-white text-ink border border-line"
             }`}
@@ -116,7 +144,7 @@ export default async function TorrentsPage({
           href={withParam(sp, "cursor", page.next_cursor)}
           className="mx-auto min-h-[44px] flex items-center rounded-full border border-line bg-white px-6 text-sm text-sky-deep"
         >
-          下一页
+          {dict.common.nextPage}
         </a>
       )}
     </div>

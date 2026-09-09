@@ -1,5 +1,7 @@
 import { getMedals } from "@/lib/data";
 import { MedalActions } from "@/components/medal-actions";
+import { getDict } from "@/i18n/server";
+import { dateLocale, fmt } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +13,13 @@ const RARITY_STYLE: Record<string, string> = {
 };
 
 export default async function MedalsPage() {
+  const { dict, locale } = await getDict();
   const medals = await getMedals();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">勋章图鉴</h1>
-        <span className="text-sm text-sub">收集勋章，见证成长</span>
+        <h1 className="font-display text-2xl">{dict.medals.title}</h1>
+        <span className="text-sm text-sub">{dict.medals.subtitle}</span>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {medals.map((m) => (
@@ -36,8 +39,10 @@ export default async function MedalsPage() {
             </div>
             <h2 className="font-display text-lg">{m.name}</h2>
             <p className="num text-xs text-sub">
-              {m.price ? `${m.price.toLocaleString("zh-CN")} 火花` : "非卖品"}
-              {m.limited ? " · 限定" : ""}
+              {m.price
+                ? fmt(dict.medals.sparkPrice, { n: m.price.toLocaleString(dateLocale(locale)) })
+                : dict.medals.notForSale}
+              {m.limited ? ` · ${dict.medals.limited}` : ""}
             </p>
             <MedalActions medalId={m.id} owned={m.owned} wearing={m.wearing} price={m.price} />
           </div>

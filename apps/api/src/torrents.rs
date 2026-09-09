@@ -83,7 +83,10 @@ pub async fn list_torrents(
           AND ($4::int IS NULL OR t.edition_id = $4)
           AND ($5::bool IS NULL OR t.official_tag = $5)
           AND ($6::bool OR t.seeders > 0)
-          AND ($7::text IS NULL OR t.name ILIKE $7 ESCAPE chr(92) OR t.small_descr ILIKE $7 ESCAPE chr(92))
+          AND ($7::text IS NULL OR t.name ILIKE $7 ESCAPE chr(92)
+               OR t.small_descr ILIKE $7 ESCAPE chr(92)
+               OR t.descr ILIKE $7 ESCAPE chr(92)
+               OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7 ESCAPE chr(92)))
           AND ($8::bigint IS NULL OR t.id < $8)
         ORDER BY t.sticky DESC, t.id DESC
         LIMIT $9
@@ -107,7 +110,9 @@ pub async fn list_torrents(
          AND ($1::int IS NULL OR t.category_id = $1) AND ($2::int IS NULL OR t.medium_id = $2) \
          AND ($3::int IS NULL OR t.grade_id = $3) AND ($4::int IS NULL OR t.edition_id = $4) \
          AND ($5::bool IS NULL OR t.official_tag = $5) AND ($6::bool OR t.seeders > 0) \
-         AND ($7::text IS NULL OR t.name ILIKE $7 ESCAPE chr(92) OR t.small_descr ILIKE $7 ESCAPE chr(92))",
+         AND ($7::text IS NULL OR t.name ILIKE $7 ESCAPE chr(92) OR t.small_descr ILIKE $7 ESCAPE chr(92) \
+          OR t.descr ILIKE $7 ESCAPE chr(92) \
+          OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7 ESCAPE chr(92)))",
     )
     .bind(filter.category_id)
     .bind(filter.medium_id)

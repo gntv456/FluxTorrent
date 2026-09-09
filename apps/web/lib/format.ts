@@ -34,23 +34,25 @@ export function categoryColor(categoryId: number): string {
   return CATEGORY_COLORS[categoryId] ?? "#93a1bc";
 }
 
-/** 促销徽章色（§7.3：免费=薄荷绿 / 2x=珊瑚橙） */
+/** 促销徽章（§7.3：免费=薄荷绿 / 2x=珊瑚橙）。label 由调用方按 dict.promotion[key] 本地化 */
+export type PromotionKey = "free" | "x2" | "x2free" | "half" | "x2half" | "p30";
+
 export function promotionBadge(
   promotion: TorrentListItem["promotion"],
-): { label: string; className: string } | null {
+): { key: PromotionKey; className: string } | null {
   switch (promotion) {
     case "free":
-      return { label: "免费", className: "bg-mint text-white" };
+      return { key: "free", className: "bg-mint text-white" };
     case "x2":
-      return { label: "2x", className: "bg-coral text-white" };
+      return { key: "x2", className: "bg-coral text-white" };
     case "x2free":
-      return { label: "2x免费", className: "bg-coral text-white" };
+      return { key: "x2free", className: "bg-coral text-white" };
     case "half":
-      return { label: "50%", className: "bg-sun text-ink" };
+      return { key: "half", className: "bg-sun text-ink" };
     case "x2half":
-      return { label: "2x 50%", className: "bg-sun text-ink" };
+      return { key: "x2half", className: "bg-sun text-ink" };
     case "p30":
-      return { label: "30%", className: "bg-sun text-ink" };
+      return { key: "p30", className: "bg-sun text-ink" };
     default:
       return null;
   }

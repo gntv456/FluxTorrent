@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { api, paged } from "@/lib/api-client";
 import { TorrentRow } from "@/components/torrent";
+import { getDict } from "@/i18n/server";
+import { dateLocale } from "@/i18n/config";
 import type { Page, TorrentListItem } from "@fluxtorrent/domain-types";
 
 export const dynamic = "force-dynamic";
 
 /** 首页工作台（设计稿：站点统计 + 最新种子） */
 export default async function HomePage() {
+  const { dict, locale } = await getDict();
   let stats: { users: number; torrents: number; dead: number; seed_size: number } | null =
     null;
   let latest: Page<TorrentListItem> | null = null;
@@ -23,10 +26,8 @@ export default async function HomePage() {
     <div className="flex flex-col gap-6">
       {/* Hero 渐变（§7.1: 135deg sky→indigo→candy） */}
       <section className="rounded-[var(--r-xl)] bg-[linear-gradient(135deg,var(--sky),var(--indigo),var(--candy))] p-8 text-white">
-        <h1 className="font-display text-4xl">种下种子，一起成长</h1>
-        <p className="mt-2 text-white/85">
-          好学 —— 教育资源私有种子社区（FluxTorrent 驱动）
-        </p>
+        <h1 className="font-display text-4xl">{dict.home.heroTitle}</h1>
+        <p className="mt-2 text-white/85">{dict.home.heroSubtitle}</p>
         {/* 彩带进度条（§3.2 品牌元素） */}
         {stats && (
           <div className="mt-4 h-2 w-full max-w-md rounded-full bg-[var(--ribbon)]" />
@@ -37,11 +38,11 @@ export default async function HomePage() {
       {stats && (
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
-            { label: "用户", value: stats.users.toLocaleString("zh-CN") },
-            { label: "种子", value: stats.torrents.toLocaleString("zh-CN") },
-            { label: "断种", value: stats.dead.toLocaleString("zh-CN") },
+            { label: dict.home.users, value: stats.users.toLocaleString(dateLocale(locale)) },
+            { label: dict.home.torrents, value: stats.torrents.toLocaleString(dateLocale(locale)) },
+            { label: dict.home.dead, value: stats.dead.toLocaleString(dateLocale(locale)) },
             {
-              label: "做种体积",
+              label: dict.home.seedSize,
               value: `${(stats.seed_size / 1024 ** 4).toFixed(1)} TB`,
             },
           ].map((s) => (
@@ -59,9 +60,9 @@ export default async function HomePage() {
       {/* 最新种子 */}
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-2xl">最新资源</h2>
+          <h2 className="font-display text-2xl">{dict.home.latest}</h2>
           <Link href="/torrents" className="text-sm text-sky">
-            查看全部 →
+            {dict.home.viewAll}
           </Link>
         </div>
         {latest && latest.items.length > 0 ? (
@@ -75,7 +76,7 @@ export default async function HomePage() {
             <span aria-hidden className="text-[80px] leading-none">
               🦉
             </span>
-            <p className="font-display text-lg">站点刚刚发芽，还没有资源</p>
+            <p className="font-display text-lg">{dict.home.empty}</p>
           </div>
         )}
       </section>

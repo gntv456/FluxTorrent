@@ -3,6 +3,7 @@ import type {
   Page,
   PageParams,
 } from "@fluxtorrent/domain-types";
+import { LOCALE_COOKIE } from "@/i18n/config";
 
 /**
  * 统一 API 客户端（方案 §8.3.2：组件内禁止裸 fetch）。
@@ -17,6 +18,15 @@ function baseUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 }
 
+/** 浏览器侧：读语言 Cookie → Accept-Language，后端错误消息按语言返回 */
+function acceptLanguage(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const m = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]+)`),
+  );
+  return m ? decodeURIComponent(m[1]) : undefined;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly code: number,
@@ -29,11 +39,13 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("flux.token") : null;
+  const lang = acceptLanguage();
   const res = await fetch(`${baseUrl()}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(lang ? { "Accept-Language": lang } : {}),
       ...init?.headers,
     },
     cache: "no-store",
@@ -53,8 +65,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 /** 二进制下载（携带鉴权） */
 async function requestBlob(path: string): Promise<ArrayBuffer> {
   const token = localStorage.getItem("flux.token");
+  const lang = acceptLanguage();
   const res = await fetch(`${baseUrl()}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(lang ? { "Accept-Language": lang } : {}),
+    },
   });
   if (res.status === 401) {
     throw new ApiError(2001, "请先登录");

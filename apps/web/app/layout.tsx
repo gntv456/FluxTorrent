@@ -1,21 +1,26 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Header, MobileTabBar } from "@/components/layout";
+import { getDict } from "@/i18n/server";
+import { LocaleProvider } from "@/i18n/client";
 
-export const metadata: Metadata = {
-  title: "FluxTorrent · 好学",
-  description: "教育资源私有种子社区 —— 种下种子，一起成长",
-  manifest: "/manifest.webmanifest",
-  icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/icon-192.png",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "好学",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { dict } = await getDict();
+  return {
+    title: `FluxTorrent · ${dict.meta.titleSuffix}`,
+    description: dict.meta.description,
+    manifest: "/manifest.webmanifest",
+    icons: {
+      icon: "/icons/icon-192.png",
+      apple: "/icons/icon-192.png",
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: dict.common.brand,
+    },
+  };
+}
 
 /** M26 PWA：注册 Service Worker（仅生产，避免开发态热更被缓存干扰） */
 function ServiceWorkerRegister() {
@@ -29,20 +34,23 @@ function ServiceWorkerRegister() {
   );
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const { dict, locale } = await getDict();
   return (
-    <html lang="zh-CN">
+    <html lang={locale}>
       <body>
-        {/* 桌面顶栏 64px 吸顶（设计稿 §4.1） */}
-        <Header />
-        <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-6 md:px-6">
-          {children}
-        </main>
-        {/* 移动底部 5 Tab（设计稿：首页/搜索/发布/消息/个人中心） */}
-        <MobileTabBar />
-        <ServiceWorkerRegister />
+        <LocaleProvider dict={dict} locale={locale}>
+          {/* 桌面顶栏 64px 吸顶（设计稿 §4.1） */}
+          <Header />
+          <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-6 md:px-6">
+            {children}
+          </main>
+          {/* 移动底部 5 Tab（设计稿：首页/搜索/发布/消息/个人中心） */}
+          <MobileTabBar />
+          <ServiceWorkerRegister />
+        </LocaleProvider>
       </body>
     </html>
   );
