@@ -147,6 +147,7 @@ export const zhTW: Dict = {
     submit: "登入",
     busy: "登入中…",
     fail: "登入失敗（{code}）",
+    inviteOnly: "本站為邀請制私有社群，帳號由邀請碼註冊",
   },
   upload: {
     title: "發布資源",

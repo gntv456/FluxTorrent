@@ -145,6 +145,7 @@ export const zhCN = {
     submit: "登录",
     busy: "登录中…",
     fail: "登录失败（{code}）",
+    inviteOnly: "本站为邀请制私有社区，账号由邀请码注册",
   },
   upload: {
     title: "发布资源",

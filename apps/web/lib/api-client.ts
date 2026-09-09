@@ -10,6 +10,19 @@ import { LOCALE_COOKIE } from "@/i18n/config";
  * 双地址：服务端 RSC 用内网直连（API_SERVER_URL），浏览器用公开地址（NEXT_PUBLIC_API_URL）。
  */
 
+/** 会话 cookie 名（middleware 存在性判断用；与 localStorage token 同步读写） */
+export const SESSION_COOKIE = "flux.session";
+
+/** 浏览器侧：登录/登出时同步会话 cookie（12h，与 JWT 24h 保守对齐） */
+export function setSessionCookie(token: string | null): void {
+  if (typeof document === "undefined") return;
+  if (token) {
+    document.cookie = `${SESSION_COOKIE}=1; path=/; max-age=43200; samesite=lax`;
+  } else {
+    document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
+  }
+}
+
 function baseUrl(): string {
   if (typeof window === "undefined") {
     // 服务端（RSC/容器内）：直连 api 服务
