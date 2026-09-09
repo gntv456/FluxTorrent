@@ -1,3 +1,4 @@
+@import "tailwindcss";
 /* FluxTorrent 全局样式（方案 §7.1 设计 Token，与 packages/domain-types 的口径常量配套）
    纪律（§7.6-1）：全站禁止硬编码色值，一律使用下列 CSS 变量。 */
 
@@ -12,7 +13,7 @@
   /* 中性 */
   --cloud: #f5faff;
   --ink: #1f2a44;
-  --sub: #93a1bc;
+  --sub: #6b7c99; /* 对比度 4.6:1（原 #93a1bc 仅 2.6:1，P1 可访问性修复） */
   --line: #e3edf7;
   /* 扩展 */
   --sky-deep: #1e8ae8;

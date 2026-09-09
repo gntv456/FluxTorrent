@@ -154,9 +154,7 @@ export interface TorrentListItem {
   leechers: number;
   times_completed: number;
   official: boolean;
-  tags: string[];
-  promotion: PromotionKind;
-  promotion_ends_at: string | null;
+  promotion: PromotionKind | null;
   owner_name: string | null;
   anonymous: boolean;
   created_at: string;

@@ -84,10 +84,16 @@ async fn announce(
     let numwant = params.get_i64("numwant", 50).clamp(1, 200) as usize;
     let event = params.get_str("event").unwrap_or_default();
     let event = event.as_str();
-    let ip = params
-        .get_str("ip")
-        .or_else(|| req.peer_addr().map(|a| a.ip().to_string()))
-        .unwrap_or_else(|| "0.0.0.0".into());
+    // 安全（P2）：不信任客户端自报 IP —— 仅显式配置代理时才采用参数值
+    let trust_param_ip = std::env::var("TRUST_PROXY_IP").unwrap_or_default() == "1";
+    let ip = if trust_param_ip {
+        params
+            .get_str("ip")
+            .or_else(|| req.peer_addr().map(|a| a.ip().to_string()))
+    } else {
+        req.peer_addr().map(|a| a.ip().to_string())
+    }
+    .unwrap_or_else(|| "0.0.0.0".into());
 
     // ① passkey → user_id
     let Some(user_id) = resolve_passkey(&state.db, &passkey).await else {

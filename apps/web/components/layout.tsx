@@ -35,7 +35,7 @@ export function Header() {
         <div className="ml-auto flex items-center gap-3">
           <Link
             href="/upload"
-            className="rounded-full bg-coral px-4 py-2 text-sm font-bold text-white shadow-[var(--shadow-hover)] transition-transform active:scale-[0.97]"
+            className="inline-flex min-h-[44px] items-center rounded-full bg-coral px-4 text-sm font-bold text-white shadow-[var(--shadow-hover)] transition-transform active:scale-[0.97]"
           >
             发布资源
           </Link>

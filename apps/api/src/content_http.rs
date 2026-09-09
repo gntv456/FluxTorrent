@@ -155,10 +155,15 @@ async fn request_fulfill(
     if updated.rows_affected() == 0 {
         return Err(DomainError::LedgerConflict);
     }
-    // 悬赏转移给应种人
-    if bounty > 0 && requester != auth.id {
+    // 悬赏：应种给他人 → 转移；自己应自己的 → 退还
+    if bounty > 0 {
+        let payee = if requester != auth.id {
+            auth.id
+        } else {
+            requester
+        };
         let idem = format!("req-payout:{}", id);
-        earn_spark(&state.repo.db, auth.id, bounty, "task_reward", &idem).await?;
+        earn_spark(&state.repo.db, payee, bounty, "task_reward", &idem).await?;
     }
     Ok(ok(
         serde_json::json!({ "request_id": id, "bounty_paid": bounty }),
@@ -226,9 +231,19 @@ async fn offer_vote(
     body: web::Json<OfferVoteReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // 候选投票 1 火花（旧站口径）
+    // 先占位投票记录（原子判重，防重放刷票）
+    let voted = sqlx::query("INSERT INTO offer_votes (offer_id, user_id, cost) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING")
+        .bind(body.offer_id)
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if voted.rows_affected() == 0 {
+        return Err(DomainError::Validation("已投过票啦".into()));
+    }
+    // 候选投票 1 火花（旧站口径）；扣款失败回滚占位
     let idem = format!("offer-vote:{}:{}", auth.id, body.offer_id);
-    spend_spark(
+    if let Err(e) = spend_spark(
         &state.repo.db,
         auth.id,
         1,
@@ -237,7 +252,15 @@ async fn offer_vote(
         "offer",
         body.offer_id,
     )
-    .await?;
+    .await
+    {
+        let _ = sqlx::query("DELETE FROM offer_votes WHERE offer_id = $1 AND user_id = $2")
+            .bind(body.offer_id)
+            .bind(auth.id)
+            .execute(&state.repo.db)
+            .await;
+        return Err(e);
+    }
     let updated = sqlx::query("UPDATE offers SET votes = votes + 1 WHERE id = $1 AND NOT promoted")
         .bind(body.offer_id)
         .execute(&state.repo.db)
@@ -246,12 +269,6 @@ async fn offer_vote(
     if updated.rows_affected() == 0 {
         return Err(DomainError::NotFound(body.offer_id));
     }
-    sqlx::query("INSERT INTO offer_votes (offer_id, user_id, cost) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING")
-        .bind(body.offer_id)
-        .bind(auth.id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "voted": true })))
 }
 

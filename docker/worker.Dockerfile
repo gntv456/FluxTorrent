@@ -1,8 +1,7 @@
 FROM rust:1.97-slim AS builder
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
-COPY apps/api ./apps/api
-COPY apps/worker ./apps/worker
+COPY apps ./apps
 RUN cargo build --release -p flux-worker
 
 FROM debian:bookworm-slim

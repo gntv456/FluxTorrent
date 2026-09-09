@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { categoryColor, formatBytes, promotionBadge } from "@/lib/format";
+import { DownloadButton } from "@/components/download-button";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +12,11 @@ export default async function TorrentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const tid = Number(id);
+  if (!Number.isFinite(tid)) notFound();
   let t: TorrentListItem;
   try {
-    t = await api.get<TorrentListItem>(`/api/v1/torrents/${id}`);
+    t = await api.get<TorrentListItem>(`/api/v1/torrents/${encodeURIComponent(tid)}`);
   } catch {
     notFound();
   }
@@ -68,13 +71,7 @@ export default async function TorrentDetailPage({
             </dl>
           </div>
         </div>
-        {/* 下载按钮（珊瑚橙行动色，§7.1 Token 语义） */}
-        <a
-          href={`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1/torrents/${t.id}/download`}
-          className="mt-4 inline-flex min-h-[44px] items-center rounded-full bg-coral px-6 font-bold text-white active:scale-[0.97]"
-        >
-          下载种子
-        </a>
+        <DownloadButton torrentId={t.id} name={t.name} />
       </header>
     </article>
   );

@@ -5,7 +5,7 @@ import type { TorrentListItem } from "@fluxtorrent/domain-types";
 export const dynamic = "force-dynamic";
 
 const CATEGORIES = [
-  { id: undefined, label: "全部" },
+  { id: undefined as number | undefined, label: "全部" },
   { id: 1, label: "学前教育" },
   { id: 2, label: "小学" },
   { id: 3, label: "初中" },
@@ -16,7 +16,7 @@ const CATEGORIES = [
 ];
 
 const MEDIA = [
-  { id: undefined, label: "全部媒介" },
+  { id: undefined as number | undefined, label: "全部媒介" },
   { id: 1, label: "视频" },
   { id: 2, label: "音频" },
   { id: 3, label: "书籍" },
@@ -26,6 +26,21 @@ const MEDIA = [
   { id: 7, label: "软件" },
   { id: 8, label: "图片" },
 ];
+
+/** 在现有参数上增量修改，保留其余筛选（修复翻页丢参数） */
+function withParam(
+  sp: Record<string, string | undefined>,
+  key: string,
+  value: string | undefined,
+): string {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (v !== undefined && v !== "" && k !== key) qs.set(k, v);
+  }
+  if (value !== undefined && value !== "") qs.set(key, value);
+  const s = qs.toString();
+  return s ? `/torrents?${s}` : "/torrents";
+}
 
 export default async function TorrentsPage({
   searchParams,
@@ -45,7 +60,6 @@ export default async function TorrentsPage({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 结果头（设计稿数据口径：共 N 个种子 · 断种 M） */}
       <div className="flex flex-wrap items-baseline gap-2">
         <h1 className="font-display text-2xl">资源库</h1>
         <span className="num text-sm text-sub">
@@ -53,15 +67,16 @@ export default async function TorrentsPage({
         </span>
       </div>
 
-      {/* 筛选 Chip（移动端横向滚动，§7.3） */}
+      {/* 筛选 Chip（移动端横向滚动，§7.3）—— 增量参数互不覆盖 */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         {CATEGORIES.map((c) => (
           <a
             key={c.label}
-            href={c.id ? `/torrents?category_id=${c.id}` : "/torrents"}
+            href={withParam(sp, "category_id", c.id ? String(c.id) : undefined)}
+            aria-current={(sp.category_id ? Number(sp.category_id) : undefined) === c.id ? "true" : undefined}
             className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
               (sp.category_id ? Number(sp.category_id) : undefined) === c.id
-                ? "bg-sky text-white"
+                ? "bg-sky-deep text-white"
                 : "bg-white text-ink border border-line"
             }`}
           >
@@ -73,14 +88,11 @@ export default async function TorrentsPage({
         {MEDIA.map((m) => (
           <a
             key={m.label}
-            href={
-              m.id
-                ? `/torrents?medium_id=${m.id}${sp.category_id ? `&category_id=${sp.category_id}` : ""}`
-                : `/torrents${sp.category_id ? `?category_id=${sp.category_id}` : ""}`
-            }
+            href={withParam(sp, "medium_id", m.id ? String(m.id) : undefined)}
+            aria-current={(sp.medium_id ? Number(sp.medium_id) : undefined) === m.id ? "true" : undefined}
             className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
               (sp.medium_id ? Number(sp.medium_id) : undefined) === m.id
-                ? "bg-sky text-white"
+                ? "bg-sky-deep text-white"
                 : "bg-white text-ink border border-line"
             }`}
           >
@@ -89,7 +101,6 @@ export default async function TorrentsPage({
         ))}
       </div>
 
-      {/* 列表 */}
       {page.items.length === 0 ? (
         <EmptyTorrents />
       ) : (
@@ -100,11 +111,10 @@ export default async function TorrentsPage({
         </div>
       )}
 
-      {/* 游标分页 */}
       {page.next_cursor && (
         <a
-          href={`/torrents?cursor=${page.next_cursor}`}
-          className="mx-auto min-h-[44px] flex items-center rounded-full border border-line bg-white px-6 text-sm text-sky"
+          href={withParam(sp, "cursor", page.next_cursor)}
+          className="mx-auto min-h-[44px] flex items-center rounded-full border border-line bg-white px-6 text-sm text-sky-deep"
         >
           下一页
         </a>

@@ -26,7 +26,8 @@ FluxTorrent/
 ### 一键（Docker Compose）
 
 ```bash
-cp docker/.env.example .env   # 修改密钥
+# 注意：compose 的 project 目录是 docker/，env 文件须放在那里
+cp docker/.env.example docker/.env && vim docker/.env   # 必填 DB_PASSWORD/REDIS_PASSWORD/JWT_SECRET（缺失会拒绝启动）
 docker compose -f docker/docker-compose.yml up -d
 # web: http://localhost:3000  api: http://localhost:8080/api/v1/health
 ```
@@ -90,7 +91,7 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 | 下载 .torrent（注入本站 announce + passkey + private=1） | ✅ |
 | 促销引擎（保种区 seeders>7 自动移出 + 3 天免费延续） | ✅ |
 | **Tracker announce 全链路**（BEP3 二进制安全：percent-encoded info_hash/peer_id + compact 响应 + 错误 passkey 拒绝） | ✅ |
-| **announce → Redis Stream → worker 计费**（游标消费不丢不重 + 促销倍率裁决：free 种子下行计 0） | ✅ |
+| **announce → Redis Stream → worker 计费**（BEP3 累计量转增量计费 + 游标失败暂停重试 + 损坏事件死信 + 促销倍率裁决） | ✅ |
 | **下载 info_hash 一致性**（上传 raw 存储 → 下载重注入 announce + private=1 → 重算 SHA1 与库中一致） | ✅ |
 | **用户上/下载量/种子计数快照回填**（权威在 traffic_ledger 流水，worker 周期刷新） | ✅ |
 | **M11 商店**：18 商品（旧站全集）、幂等购买（同键重放零重复扣款）、上传量商品即刻到账 | ✅ |
@@ -107,8 +108,9 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 | **M22 任务中心**：认领限流 + 重复认领拒绝、限时任务表 | ✅ |
 | **M19 保种区**：待保种列表（低做种优先）、认领（worker 自动移出规则已上线） | ✅ |
 | **web 全站页面**：14 页渲染真实数据（含娱乐屋游戏页） | ✅ |
-| **M24 娱乐玩法（首批）**：刮刮乐（五档奖池/庄家优势常量化）、猜大小（平局返本/2x 赔率）、统一交易管线 + 下注上限 + 每时限次风控 | ✅ |
-| **折叠屏适配基线**：viewport-segment 铰链预留（≥48px）、外屏 ≤360px 降级、三折叠三栏栅格 | ✅ |
+| **M24 娱乐玩法（首批）**：刮刮乐（五档奖池/EV 0.66）、猜大小（平局返本/2x）、统一交易管线 + 下注上限 + 每时限次 fail-close 风控 | ✅ |
+| **全站代码审查修复**（2026-09-09）：BEP3 增量计费、earn_spark 行锁幂等、封禁即时生效、bencode 深度限制、Tailwind 接入、Dockerfile 全修、双 URL、对比度 4.6:1 等 30+ 项 | ✅ |
+| **折叠屏适配基线**：viewport-segment 铰链预留 CSS（需真机验证）、外屏 ≤360px 降级、三折叠栅格 | ✅ |
 | 做种收益结算（spark_ledger 流水 + 幂等重跑） | ✅ |
 | Web 三页渲染真实数据（首页统计/列表/详情含免费徽章） | ✅ |
 

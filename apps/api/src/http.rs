@@ -131,7 +131,7 @@ async fn throttle(state: &Arc<AppState>, key: String) -> DomainResult<()> {
         let _: () = c.expire(&k, 60).await.unwrap_or(());
     }
     if n > 5 {
-        return Err(DomainError::Unauthorized);
+        return Err(DomainError::RateLimited);
     }
     Ok(())
 }
@@ -154,9 +154,22 @@ pub async fn require_auth(
         .and_then(|v| v.strip_prefix("Bearer "))
         .ok_or(DomainError::Unauthorized)?;
     let claims = auth::verify(token, &state.cfg.jwt_secret).ok_or(DomainError::Unauthorized)?;
+    // 权威校验（P1 修复）：token 只是凭证，状态与等级以库为准 —— 封禁/降级即时生效
+    let row: Option<(i16, i32)> =
+        sqlx::query_as("SELECT status, class_id FROM users WHERE id = $1")
+            .bind(claims.sub)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((status, class_id)) = row else {
+        return Err(DomainError::Unauthorized);
+    };
+    if status >= 2 {
+        return Err(DomainError::Forbidden); // 封禁账户
+    }
     Ok(AuthUser {
         id: claims.sub,
-        class_id: claims.class_id,
+        class_id,
     })
 }
 

@@ -14,6 +14,8 @@ export function BuyButton({
 }) {
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
   const [message, setMessage] = useState<string | null>(null);
+  // 幂等键：挂载时生成一次，重试复用（§8.2 幂等语义），成功后不再购买
+  const [idem] = useState(() => `web-${itemId}-${crypto.randomUUID()}`);
 
   async function buy() {
     setState("busy");
@@ -21,7 +23,7 @@ export function BuyButton({
     try {
       await api.post("/api/v1/shop/buy", {
         item_id: itemId,
-        idempotency_key: `web-${itemId}-${Date.now()}`,
+        idempotency_key: idem,
       });
       setState("done");
       setMessage("购买成功～");
