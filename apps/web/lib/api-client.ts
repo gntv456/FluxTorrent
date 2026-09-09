@@ -10,16 +10,19 @@ import { LOCALE_COOKIE } from "@/i18n/config";
  * 双地址：服务端 RSC 用内网直连（API_SERVER_URL），浏览器用公开地址（NEXT_PUBLIC_API_URL）。
  */
 
-/** 会话 cookie 名（middleware 存在性判断用；与 localStorage token 同步读写） */
+/** 浏览器侧：登录/登出时同步会话 cookie（12h，与 JWT 24h 保守对齐）。
+ *  flux.session 是 middleware 存在性标记；flux.token 供 RSC 服务端读取转发 Bearer。 */
 export const SESSION_COOKIE = "flux.session";
+export const TOKEN_COOKIE = "flux.token";
 
-/** 浏览器侧：登录/登出时同步会话 cookie（12h，与 JWT 24h 保守对齐） */
 export function setSessionCookie(token: string | null): void {
   if (typeof document === "undefined") return;
   if (token) {
     document.cookie = `${SESSION_COOKIE}=1; path=/; max-age=43200; samesite=lax`;
+    document.cookie = `${TOKEN_COOKIE}=${token}; path=/; max-age=43200; samesite=lax`;
   } else {
     document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
+    document.cookie = `${TOKEN_COOKIE}=; path=/; max-age=0; samesite=lax`;
   }
 }
 
@@ -50,8 +53,15 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("flux.token") : null;
+  // 浏览器：localStorage；服务端 RSC：请求 cookie 里的 flux.token（登录时同步写入）
+  let token: string | null = null;
+  if (typeof window !== "undefined") {
+    token = localStorage.getItem("flux.token");
+  } else {
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    token = store.get("flux.token")?.value ?? null;
+  }
   const lang = acceptLanguage();
   const res = await fetch(`${baseUrl()}${path}`, {
     ...init,

@@ -376,9 +376,11 @@ struct ListQuery {
 
 #[get("/torrents")]
 async fn list(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
+    require_auth(&req, &state).await?; // 站点准入收口：资源元数据不对外
     let filter = torrents::TorrentFilter {
         category_id: q.category_id,
         medium_id: q.medium_id,
@@ -403,9 +405,11 @@ async fn list(
 
 #[get("/torrents/{id}")]
 async fn detail(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
+    require_auth(&req, &state).await?;
     let t = torrents::get_torrent(&state.repo.db, path.into_inner()).await?;
     Ok(ok(t))
 }
@@ -499,7 +503,11 @@ async fn do_bookmark(
 // ============ 统计（M10 / tracker 对接预演） ============
 
 #[get("/stats")]
-async fn stats(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn stats(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    require_auth(&req, &state).await?;
     Ok(ok(torrents::site_stats(&state.repo.db).await?))
 }
 
