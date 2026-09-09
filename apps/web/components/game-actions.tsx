@@ -147,3 +147,82 @@ export function BigSmall() {
     </section>
   );
 }
+
+/** 九宫格抽奖（M24 jgg 口径）：票价 100，8 格奖池 */
+export function JggCard() {
+  const [busy, setBusy] = useState(false);
+  const [active, setActive] = useState<number | null>(null);
+  const [won, setWon] = useState<number | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const CELLS = [
+    "🎁 100x", "💧 2x", "⭐ 50x", "🌱 3x",
+    "🍀 10x", "❌ 谢谢", "🔁 再来", "🌻 5x",
+  ];
+
+  async function draw() {
+    setBusy(true);
+    setMsg(null);
+    setWon(null);
+    try {
+      // 简易滚动动画：快速轮询点亮再定格
+      let i = 0;
+      const spin = setInterval(() => {
+        setActive(i % 8);
+        i += 1;
+      }, 80);
+      const r = await api.post<{ index: number; prize: string; net: number }>(
+        "/api/v1/games/jgg",
+      );
+      setTimeout(() => {
+        clearInterval(spin);
+        setActive(r.index);
+        setWon(r.index);
+        setMsg(
+          r.net > 0
+            ? `「${r.prize}」 净赚 +${r.net} 火花！`
+            : r.net === 0
+              ? "「再来一次」 票价已返还"
+              : "谢谢参与，下次一定～",
+        );
+      }, 900);
+    } catch (e) {
+      setMsg(e instanceof ApiError ? e.message : "网络异常");
+    } finally {
+      setTimeout(() => setBusy(false), 950);
+    }
+  }
+
+  return (
+    <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg">九宫格抽奖</h2>
+        <span className="num text-sm text-sky">票价 100</span>
+      </div>
+      <div className="mt-3 grid grid-cols-4 gap-2">
+        {CELLS.map((c, i) => (
+          <div
+            key={i}
+            className={`flex min-h-[64px] items-center justify-center rounded-[var(--r-sm)] border text-center text-xs font-bold transition-all ${
+              won === i
+                ? "scale-105 border-sun bg-sun/20 text-ink shadow-[var(--shadow-hover)]"
+                : active === i
+                  ? "border-sky bg-sky-soft"
+                  : "border-line bg-white text-sub"
+            }`}
+          >
+            {c}
+          </div>
+        ))}
+        <button
+          onClick={draw}
+          disabled={busy}
+          className="flex min-h-[64px] items-center justify-center rounded-[var(--r-sm)] bg-coral text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
+        >
+          {busy ? "…" : "GO!"}
+        </button>
+      </div>
+      {msg && <p className="mt-2 text-sm text-sub">{msg}</p>}
+    </section>
+  );
+}

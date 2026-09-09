@@ -85,6 +85,104 @@ pub fn validate_bet(bet: i64) -> Result<(), String> {
     Ok(())
 }
 
+// ============ 好学农场（magic_fram 口径） ============
+
+/// 市场价波动窗口：每日 0/4/8/12/16/20 点刷新一次（§M24 规则要点）
+pub fn market_window_start(ts: i64) -> i64 {
+    const WINDOW: i64 = 4 * 3600;
+    ts - (ts % WINDOW)
+}
+
+/// 确定性市场价：基准价 ±50% 波动，同一价格窗口内稳定。
+/// 用窗口起点做种子（不是真随机），保证全站所有用户同一窗口看到同一价格。
+pub fn market_price(seed_price: i64, window_start: i64) -> i64 {
+    // xorshift64*：窗口起点哈希 → [0, 2^64) → 归一到 ±50%
+    let mut x = window_start as u64 ^ 0x9E3779B97F4A7C15;
+    x ^= x >> 12;
+    x ^= x << 25;
+    x ^= x >> 27;
+    let unit = x.wrapping_mul(0x2545F4914F6CDD1D) >> 33; // 高 31 位
+                                                         // ±50%：0.5x ..= 1.5x
+    let factor = 50 + (unit % 101); // 50..150
+    (seed_price * factor as i64) / 100
+}
+
+/// 20% 概率双倍收获（真随机）
+pub fn roll_double() -> bool {
+    rand::thread_rng().gen_range(0..100) < 20
+}
+
+// ============ 九宫格抽奖（jgg 口径） ============
+
+/// 奖池档位（管理端可配的简化常量版）：期望回报 ≈ 0.72，庄家优势 28%
+pub struct JggPrize {
+    pub label: &'static str,
+    pub weight: u32, // 权重（总 1000）
+    pub payout: i64, // 相对票价倍数（10 = 10x）
+}
+
+pub const JGG_PRIZES: [JggPrize; 8] = [
+    JggPrize {
+        label: "谢谢参与",
+        weight: 380,
+        payout: 0,
+    },
+    JggPrize {
+        label: "再来一次",
+        weight: 120,
+        payout: 1,
+    },
+    JggPrize {
+        label: "2x 火花",
+        weight: 200,
+        payout: 2,
+    },
+    JggPrize {
+        label: "3x 火花",
+        weight: 120,
+        payout: 3,
+    },
+    JggPrize {
+        label: "5x 火花",
+        weight: 100,
+        payout: 5,
+    },
+    JggPrize {
+        label: "10x 火花",
+        weight: 55,
+        payout: 10,
+    },
+    JggPrize {
+        label: "50x 火花",
+        weight: 20,
+        payout: 50,
+    },
+    JggPrize {
+        label: "100x 火花",
+        weight: 5,
+        payout: 100,
+    },
+];
+
+pub const JGG_TICKET: i64 = 100;
+
+pub struct JggDraw {
+    pub index: usize, // 中奖格子 0..8（渲染九宫格）
+    pub prize: &'static JggPrize,
+}
+
+pub fn jgg_draw() -> JggDraw {
+    let total: u32 = JGG_PRIZES.iter().map(|p| p.weight).sum();
+    let mut roll: u32 = rand::thread_rng().gen_range(0..total);
+    for (i, p) in JGG_PRIZES.iter().enumerate() {
+        if roll < p.weight {
+            return JggDraw { index: i, prize: p };
+        }
+        roll -= p.weight;
+    }
+    unreachable!("weights sum to total")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -119,5 +217,34 @@ mod tests {
                 assert_eq!(o.payout, 200);
             }
         }
+    }
+
+    #[test]
+    fn market_price_stable_in_window() {
+        let w = market_window_start(1788000000);
+        assert_eq!(market_price(100, w), market_price(100, w));
+        // 相邻窗口价格可以变也可以不变，但窗口起点对齐 4h
+        assert_eq!(w % (4 * 3600), 0);
+    }
+
+    #[test]
+    fn market_price_within_bounds() {
+        for w in 0..50 {
+            let p = market_price(1000, w * 14400);
+            assert!((500..=1500).contains(&p), "price {p} out of ±50% bounds");
+        }
+    }
+
+    #[test]
+    fn jgg_weights_cover_all() {
+        let total: u32 = JGG_PRIZES.iter().map(|p| p.weight).sum();
+        assert_eq!(total, 1000);
+        // 抽 2000 次必须覆盖到所有格子（权重最低 5/1000，2000 次漏检概率 ≈ e^-10）
+        let mut seen = [false; 8];
+        for _ in 0..2000 {
+            let d = jgg_draw();
+            seen[d.index] = true;
+        }
+        assert!(seen.iter().all(|&s| s), "some prize never drawn: {seen:?}");
     }
 }
