@@ -32,6 +32,7 @@ export default async function TorrentsPage({
     limit: 20,
     category_id: sp.category_id ? Number(sp.category_id) : undefined,
     medium_id: sp.medium_id ? Number(sp.medium_id) : undefined,
+    grade_id: sp.grade_id ? Number(sp.grade_id) : undefined,
     official: sp.official ? sp.official === "1" : undefined,
     include_dead: sp.include_dead === "1",
     search: sp.search,
@@ -49,6 +50,7 @@ export default async function TorrentsPage({
   }));
   const currentCategory = sp.category_id ? Number(sp.category_id) : undefined;
   const currentMedium = sp.medium_id ? Number(sp.medium_id) : undefined;
+  const currentGrade = sp.grade_id !== undefined && sp.grade_id !== "" ? Number(sp.grade_id) : undefined;
 
   return (
     <div className="flex flex-col gap-4">
@@ -75,6 +77,7 @@ export default async function TorrentsPage({
         {sp.medium_id && (
           <input type="hidden" name="medium_id" value={sp.medium_id} />
         )}
+        {sp.grade_id && <input type="hidden" name="grade_id" value={sp.grade_id} />}
         {sp.official && <input type="hidden" name="official" value={sp.official} />}
         {sp.include_dead && (
           <input type="hidden" name="include_dead" value="1" />
@@ -125,6 +128,31 @@ export default async function TorrentsPage({
             }`}
           >
             {m.label}
+          </a>
+        ))}
+      </div>
+      {/* 学段筛选（grades id 0-12 与字典下标 i=id+1 对齐） */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {dict.torrents.grades.map((label, gid) => (
+          <a
+            key={label}
+            href={withParam(
+              sp,
+              "grade_id",
+              gid === 0 ? undefined : String(gid - 1),
+            )}
+            aria-current={
+              currentGrade === (gid === 0 ? undefined : gid - 1)
+                ? "true"
+                : undefined
+            }
+            className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
+              currentGrade === (gid === 0 ? undefined : gid - 1)
+                ? "bg-sky-deep text-white"
+                : "bg-white text-ink border border-line"
+            }`}
+          >
+            {label}
           </a>
         ))}
       </div>

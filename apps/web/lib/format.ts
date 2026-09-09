@@ -34,6 +34,28 @@ export function categoryColor(categoryId: number): string {
   return CATEGORY_COLORS[categoryId] ?? "#93a1bc";
 }
 
+/** 学段标签（grades 表 id 0-12；§6.2 教育元数据）。文案按 dict.torrents.grades[i] 取。 */
+export function gradeIndex(gradeId: number | null): number | null {
+  // grades 表：0=幼儿园 … 12=高三；字典数组下标 i 与 id 一一对应
+  return gradeId !== null && gradeId >= 0 && gradeId <= 12 ? gradeId : null;
+}
+
+/** 版本标签（editions 表 id 1-7：人教/部编/统编/苏教/北师大/外研/沪教） */
+export const EDITIONS = [
+  "",
+  "人教",
+  "部编",
+  "统编",
+  "苏教",
+  "北师大",
+  "外研",
+  "沪教",
+] as const;
+
+export function editionName(editionId: number | null): string | null {
+  return editionId && EDITIONS[editionId] ? EDITIONS[editionId] : null;
+}
+
 /** 促销徽章（§7.3：免费=薄荷绿 / 2x=珊瑚橙）。label 由调用方按 dict.promotion[key] 本地化 */
 export type PromotionKey = "free" | "x2" | "x2free" | "half" | "x2half" | "p30";
 

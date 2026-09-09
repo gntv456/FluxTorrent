@@ -1,6 +1,11 @@
 import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
-import { categoryColor, formatBytes, promotionBadge } from "@/lib/format";
+import {
+  categoryColor,
+  editionName,
+  formatBytes,
+  promotionBadge,
+} from "@/lib/format";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 
@@ -11,6 +16,9 @@ import { dateLocale } from "@/i18n/config";
 export async function TorrentRow({ t }: { t: TorrentListItem }) {
   const { dict, locale } = await getDict();
   const promo = promotionBadge(t.promotion);
+  const edition = editionName(t.edition_id);
+  const grade =
+    t.grade_id !== null ? dict.torrents.grades[t.grade_id + 1] : undefined;
   return (
     <Link
       href={`/torrent/${t.id}`}
@@ -25,6 +33,11 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
       {/* 中：主区 */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
+          {t.sticky && (
+            <span className="sticker bg-sun text-ink">
+              {dict.torrent.sticky}
+            </span>
+          )}
           <span className="truncate font-bold text-ink">{t.name}</span>
           {promo && (
             <span className={`sticker ${promo.className}`}>
@@ -40,12 +53,20 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
         {t.small_descr && (
           <p className="mt-0.5 truncate text-xs text-sub">{t.small_descr}</p>
         )}
+        {/* 教育元数据（媒介 · 学段 · 版本） */}
+        {(grade || edition) && (
+          <p className="mt-0.5 flex flex-wrap gap-1.5 text-[11px] text-sub">
+            {grade && <span>{grade}</span>}
+            {grade && edition && <span aria-hidden>·</span>}
+            {edition && <span>{edition}</span>}
+          </p>
+        )}
         <p className="mt-0.5 text-[11px] text-sub">
           {t.anonymous ? dict.torrent.anonymous : (t.owner_name ?? "—")} ·{" "}
           {new Date(t.created_at).toLocaleDateString(dateLocale(locale))}
         </p>
       </div>
-      {/* 右：数据列（tabular-nums；做种绿/下载橙） */}
+      {/* 右：数据列（tabular-nums；做种绿/下载橙/完成灰） */}
       <div className="num flex shrink-0 flex-col items-end gap-0.5 text-xs">
         <span className="text-sub">{formatBytes(t.size)}</span>
         <span className="text-mint">
@@ -53,6 +74,9 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
         </span>
         <span className="text-coral">
           {dict.torrent.leeching} {t.leechers}
+        </span>
+        <span className="text-sub">
+          {dict.torrent.completed} {t.times_completed}
         </span>
       </div>
     </Link>
