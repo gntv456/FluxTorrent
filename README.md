@@ -111,6 +111,8 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 | **M24 娱乐玩法（首批）**：刮刮乐（五档奖池/EV 0.66）、猜大小（平局返本/2x）、统一交易管线 + 下注上限 + 每时限次 fail-close 风控 | ✅ |
 | **全站代码审查修复**（2026-09-09）：BEP3 增量计费、earn_spark 行锁幂等、封禁即时生效、bencode 深度限制、Tailwind 接入、Dockerfile 全修、双 URL、对比度 4.6:1 等 30+ 项 | ✅ |
 | **折叠屏适配基线**：viewport-segment 铰链预留 CSS（需真机验证）、外屏 ≤360px 降级、三折叠栅格 | ✅ |
+| **多语言三语**（2026-09-09）：zh-CN/zh-TW/en Cookie 切换、零新增依赖（自研字典 + task-local 后端错误本地化，Accept-Language 协商）、全站 21 页 + 9 组件文案抽取 | ✅ |
+| **全文搜索（标题外）**（2026-09-09）：pg_trgm GIN 索引 ×4，标题/副标题/简介/文件名四列 ILIKE 子串匹配（中文友好），零外挂搜索服务 | ✅ |
 | 做种收益结算（spark_ledger 流水 + 幂等重跑） | ✅ |
 | Web 三页渲染真实数据（首页统计/列表/详情含免费徽章） | ✅ |
 
@@ -121,7 +123,7 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 | GET | /health | 健康检查 |
 | POST | /auth/register · /auth/login | 注册（邀请码）/登录 |
 | GET | /me · POST /me/passkey/rotate | 当前用户 / passkey 重置 |
-| GET | /torrents · /torrents/{id} | 列表（筛选+游标分页）/详情 |
+| GET | /torrents · /torrents/{id} | 列表（筛选+全文搜索+游标分页）/详情 |
 | POST | /torrents（multipart） | 发布（待审核） |
 | GET | /torrents/{id}/download | 动态生成 .torrent |
 | GET/POST | /torrents/{id}/comments | 评论 |

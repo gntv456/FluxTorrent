@@ -2,15 +2,14 @@
 
 import { useRef, useState } from "react";
 import { ApiError } from "@/lib/api-client";
-
-const CATEGORIES = [
-  [1, "学前教育"], [2, "小学"], [3, "初中"], [4, "职高"], [5, "高中"], [6, "教育影音"], [7, "纪录片"],
-] as const;
-const MEDIA = [
-  [1, "视频"], [2, "音频"], [3, "书籍"], [4, "文档"], [5, "笔记"], [6, "课件"], [7, "软件"], [8, "图片"],
-] as const;
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 export function UploadForm() {
+  const { dict } = useI18n();
+  // 字典分类/媒介数组按下标对齐：index 0 = 全部，1..n = 对应 id
+  const categories = dict.torrents.categories.slice(1);
+  const media = dict.torrents.media.slice(1);
   const fileRef = useRef<HTMLInputElement>(null);
   const [categoryId, setCategoryId] = useState(2);
   const [mediumId, setMediumId] = useState(1);
@@ -22,7 +21,7 @@ export function UploadForm() {
     e.preventDefault();
     const file = fileRef.current?.files?.[0];
     if (!file) {
-      setMsg("请选择 .torrent 文件");
+      setMsg(dict.upload.chooseFile);
       return;
     }
     setBusy(true);
@@ -46,13 +45,13 @@ export function UploadForm() {
       });
       const body = await res.json();
       if (body.code !== 0) {
-        setMsg(body.message ?? "发布失败");
+        setMsg(dict.errors[body.code] ?? body.message ?? dict.upload.fail);
       } else {
-        setMsg(`发布成功（#${body.data.id}），等待管理员审核`);
+        setMsg(fmt(dict.upload.success, { id: body.data.id }));
         if (fileRef.current) fileRef.current.value = "";
       }
     } catch {
-      setMsg("网络异常，请先登录后再发布");
+      setMsg(dict.upload.networkError);
     } finally {
       setBusy(false);
     }
@@ -64,7 +63,7 @@ export function UploadForm() {
       className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]"
     >
       <label className="flex flex-col gap-1">
-        <span className="text-sm text-sub">.torrent 文件</span>
+        <span className="text-sm text-sub">{dict.upload.fileLabel}</span>
         <input
           ref={fileRef}
           type="file"
@@ -75,26 +74,30 @@ export function UploadForm() {
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">分类</span>
+          <span className="text-sm text-sub">{dict.upload.category}</span>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(Number(e.target.value))}
             className="min-h-[44px] rounded-[var(--r-sm)] border border-line px-3"
           >
-            {CATEGORIES.map(([id, name]) => (
-              <option key={id} value={id}>{name}</option>
+            {categories.map((label, i) => (
+              <option key={i + 1} value={i + 1}>
+                {label}
+              </option>
             ))}
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">媒介</span>
+          <span className="text-sm text-sub">{dict.upload.medium}</span>
           <select
             value={mediumId}
             onChange={(e) => setMediumId(Number(e.target.value))}
             className="min-h-[44px] rounded-[var(--r-sm)] border border-line px-3"
           >
-            {MEDIA.map(([id, name]) => (
-              <option key={id} value={id}>{name}</option>
+            {media.map((label, i) => (
+              <option key={i + 1} value={i + 1}>
+                {label}
+              </option>
             ))}
           </select>
         </label>
@@ -106,14 +109,14 @@ export function UploadForm() {
           onChange={(e) => setAnonymous(e.target.checked)}
           className="h-5 w-5"
         />
-        <span className="text-sm">匿名发布</span>
+        <span className="text-sm">{dict.upload.anonymous}</span>
       </label>
       <button
         type="submit"
         disabled={busy}
         className="min-h-[44px] rounded-full bg-coral font-bold text-white active:scale-[0.97] disabled:opacity-50"
       >
-        {busy ? "发布中…" : "提交发布"}
+        {busy ? dict.upload.busy : dict.upload.submit}
       </button>
       {msg && <p role="status" className="text-sm text-ink">{msg}</p>}
     </form>

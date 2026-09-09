@@ -86,9 +86,28 @@ impl ResponseError for DomainError {
         if let DomainError::Internal(e) = self {
             tracing::error!(error = ?e, "internal error");
         }
+        // 本地化消息：Accept-Language 经 locale_mw 注入 task-local（i18n.rs）
+        let locale = crate::i18n::current();
+        let message = match self {
+            DomainError::Validation(d) => {
+                format!(
+                    "{}: {}",
+                    crate::i18n::localized_message(self.code(), locale),
+                    d
+                )
+            }
+            DomainError::TorrentInvalid(d) => {
+                format!(
+                    "{}: {}",
+                    crate::i18n::localized_message(self.code(), locale),
+                    d
+                )
+            }
+            _ => crate::i18n::localized_message(self.code(), locale).to_string(),
+        };
         HttpResponse::build(status).json(json!({
             "code": self.code(),
-            "message": self.to_string(),
+            "message": message,
             "data": null,
             "request_id": uuid::Uuid::new_v4().to_string(),
         }))

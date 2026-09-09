@@ -1,20 +1,24 @@
 import Link from "next/link";
 import { getForums } from "@/lib/data";
+import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ForumsPage() {
+  const { dict } = await getDict();
   const forums = await getForums();
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">论坛</h1>
+      <h1 className="font-display text-2xl">{dict.forums.title}</h1>
       <div className="overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-card)]">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-sky-soft text-left text-ink">
-              <th className="px-4 py-3">版块</th>
-              <th className="px-4 py-3 text-right">主题</th>
-              <th className="hidden px-4 py-3 text-right sm:table-cell">帖子</th>
+              <th className="px-4 py-3">{dict.forums.board}</th>
+              <th className="px-4 py-3 text-right">{dict.forums.topics}</th>
+              <th className="hidden px-4 py-3 text-right sm:table-cell">
+                {dict.forums.posts}
+              </th>
             </tr>
           </thead>
           <tbody>

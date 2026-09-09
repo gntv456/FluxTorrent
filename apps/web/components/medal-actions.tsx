@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 
 /** 勋章购买/佩戴（客户端交互叶子组件 §8.3.2） */
 export function MedalActions({
@@ -15,6 +16,7 @@ export function MedalActions({
   wearing: boolean;
   price: number | null;
 }) {
+  const { dict } = useI18n();
   const [isOwned, setIsOwned] = useState(owned);
   const [isWearing, setIsWearing] = useState(wearing);
   const [msg, setMsg] = useState<string | null>(null);
@@ -28,9 +30,9 @@ export function MedalActions({
         idempotency_key: idem,
       });
       setIsOwned(true);
-      setMsg("收入囊中！");
+      setMsg(dict.medals.buyOk);
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : "网络异常");
+      setMsg(apiErrorMessage(dict, e));
     }
   }
 
@@ -39,9 +41,9 @@ export function MedalActions({
     try {
       await api.put("/api/v1/medals/wear", { medal_id: on ? medalId : null });
       setIsWearing(on);
-      setMsg(on ? "已佩戴" : "已摘下");
+      setMsg(on ? dict.medals.worn : dict.medals.unworn);
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : "网络异常");
+      setMsg(apiErrorMessage(dict, e));
     }
   }
 
@@ -53,7 +55,7 @@ export function MedalActions({
           disabled={price === null}
           className="min-h-[44px] rounded-full bg-coral px-3 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-40"
         >
-          {price === null ? "不可购买" : "购买"}
+          {price === null ? dict.medals.notBuyable : dict.medals.buy}
         </button>
         {msg && <p className="text-xs text-sub">{msg}</p>}
       </div>
@@ -67,7 +69,7 @@ export function MedalActions({
           isWearing ? "bg-mint text-white" : "border border-line bg-cloud text-ink"
         }`}
       >
-        {isWearing ? "佩戴中 ✓" : "佩戴"}
+        {isWearing ? dict.medals.wearing : dict.medals.wear}
       </button>
       {msg && <p className="text-xs text-sub">{msg}</p>}
     </div>

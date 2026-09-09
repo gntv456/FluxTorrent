@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { dateLocale, fmt } from "@/i18n/config";
 
 interface Dressup {
   item_id: number;
@@ -13,20 +15,9 @@ interface Dressup {
   wearing: boolean;
 }
 
-const KIND_LABEL: Record<string, string> = {
-  avatar_frame: "头像框",
-  animated_avatar: "动态头像",
-  rainbow_id: "彩虹 ID",
-  rainbow_name: "彩虹用户名样式",
-};
-
-const SLOT_LABEL: Record<string, string> = {
-  avatar: "头像位",
-  username: "用户名位",
-};
-
 /** 装扮中心（M25）：购买走商店管线，佩戴同类互斥 */
 export default function DressupPage() {
+  const { dict, locale } = useI18n();
   const [items, setItems] = useState<Dressup[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,9 +26,13 @@ export default function DressupPage() {
     try {
       setItems(await api.get<Dressup[]>("/api/v1/dressup/list"));
     } catch (e) {
-      setMsg(e instanceof ApiError && e.code === 2001 ? "请先登录" : "加载失败");
+      setMsg(
+        e instanceof ApiError && e.code === 2001
+          ? dict.errors[2001]
+          : dict.common.loadFailed,
+      );
     }
-  }, []);
+  }, [dict]);
 
   useEffect(() => {
     refresh();
@@ -51,10 +46,18 @@ export default function DressupPage() {
         item_id: item.item_id,
         wear,
       });
-      setMsg(wear ? `已佩戴「${item.name}」` : `已摘下「${item.name}」`);
+      setMsg(
+        wear
+          ? fmt(dict.dressup.worn, { name: item.name })
+          : fmt(dict.dressup.unworn, { name: item.name }),
+      );
       refresh();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : "网络异常");
+      setMsg(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
+      );
     } finally {
       setBusy(false);
     }
@@ -68,10 +71,14 @@ export default function DressupPage() {
         item_id: item.item_id,
         idempotency_key: `dressup-${item.item_id}-${Date.now()}`,
       });
-      setMsg(`购买成功「${item.name}」（- ${item.price} 火花）`);
+      setMsg(fmt(dict.dressup.buyOk, { name: item.name, price: item.price }));
       refresh();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : "网络异常");
+      setMsg(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
+      );
     } finally {
       setBusy(false);
     }
@@ -82,8 +89,8 @@ export default function DressupPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">装扮中心</h1>
-        <span className="text-sm text-sub">同类装扮同时只能佩戴一件</span>
+        <h1 className="font-display text-2xl">{dict.dressup.title}</h1>
+        <span className="text-sm text-sub">{dict.dressup.subtitle}</span>
       </div>
 
       {slots.map((slot) => {
@@ -95,7 +102,7 @@ export default function DressupPage() {
             className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
           >
             <h2 className="mb-3 font-display text-lg">
-              {SLOT_LABEL[slot] ?? slot}
+              {dict.dressup.slots[slot] ?? slot}
             </h2>
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {slotItems.map((d) => (
@@ -121,13 +128,17 @@ export default function DressupPage() {
                       {d.name}
                       {d.wearing && (
                         <span className="ml-1 rounded-full bg-sun px-2 py-0.5 text-[10px] text-ink">
-                          佩戴中
+                          {dict.dressup.wearing}
                         </span>
                       )}
                     </p>
                     <p className="text-xs text-sub">
-                      {KIND_LABEL[d.kind] ?? d.kind} ·{" "}
-                      {d.owned ? "已拥有" : `${d.price.toLocaleString("zh-CN")} 火花`}
+                      {dict.dressup.kinds[d.kind] ?? d.kind} ·{" "}
+                      {d.owned
+                        ? dict.dressup.owned
+                        : fmt(dict.dressup.price, {
+                            n: d.price.toLocaleString(dateLocale(locale)),
+                          })}
                     </p>
                   </div>
                   {d.owned ? (
@@ -136,7 +147,7 @@ export default function DressupPage() {
                       disabled={busy}
                       className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-ink active:scale-[0.97] disabled:opacity-50"
                     >
-                      {d.wearing ? "摘下" : "佩戴"}
+                      {d.wearing ? dict.dressup.unwear : dict.dressup.wear}
                     </button>
                   ) : (
                     <button
@@ -144,7 +155,7 @@ export default function DressupPage() {
                       disabled={busy}
                       className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white active:scale-[0.97] disabled:opacity-50"
                     >
-                      购买
+                      {dict.dressup.buy}
                     </button>
                   )}
                 </li>
