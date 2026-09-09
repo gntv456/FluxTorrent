@@ -32,6 +32,20 @@ fn default_true() -> bool {
 
 impl AppConfig {
     pub fn from_env() -> anyhow::Result<Self> {
-        envy::from_env::<AppConfig>().map_err(|e| anyhow::anyhow!("config: {e}"))
+        let cfg = envy::from_env::<AppConfig>().map_err(|e| anyhow::anyhow!("config: {e}"))?;
+        // §5.7：HS256 密钥 ≥32 字节；含 "change_me" 的占位密钥禁止在非开发态使用
+        if cfg.jwt_secret.len() < 32 {
+            return Err(anyhow::anyhow!(
+                "JWT_SECRET 长度不足 32 字节（当前 {}）",
+                cfg.jwt_secret.len()
+            ));
+        }
+        let dev = std::env::var("FLUX_DEV").unwrap_or_default() == "1";
+        if !dev && cfg.jwt_secret.contains("change_me") {
+            return Err(anyhow::anyhow!(
+                "生产环境禁止使用含 change_me 的占位 JWT_SECRET（设 FLUX_DEV=1 跳过开发态检查）"
+            ));
+        }
+        Ok(cfg)
     }
 }

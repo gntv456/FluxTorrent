@@ -23,7 +23,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: flux-redis
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-fluxdevredis}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     ports:
       - "127.0.0.1:6379:6379"
     healthcheck:
@@ -41,13 +41,15 @@ services:
     environment:
       BIND: 0.0.0.0:8080
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
-      REDIS_URL: redis://:${REDIS_PASSWORD:-fluxdevredis}@redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET:?请在 .env 中设置 JWT_SECRET（至少 32 字节随机值）}
       DB_POOL_SIZE: "10"
       PUBLIC_TRACKER_URL: ${PUBLIC_TRACKER_URL:-http://localhost:7070}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       RUST_LOG: info
     ports:
-      - "8080:8080"
+      # 生产：仅本机可达，外部流量经 Nginx/Pingora 反代（§5.1 边缘层）
+      - "${API_BIND:-127.0.0.1}:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,7 +69,7 @@ services:
     container_name: flux-worker
     environment:
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
-      REDIS_URL: redis://:${REDIS_PASSWORD:-fluxdevredis}@redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       RUST_LOG: info
     depends_on:
       postgres:
@@ -84,7 +86,7 @@ services:
     environment:
       TRACKER_BIND: 0.0.0.0:7070
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
-      REDIS_URL: redis://:${REDIS_PASSWORD:-fluxdevredis}@redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       RUST_LOG: info
     ports:
       - "7070:7070"
@@ -104,7 +106,7 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
       API_SERVER_URL: http://api:8080
     ports:
-      - "3000:3000"
+      - "${WEB_BIND:-127.0.0.1}:3000:3000"
     depends_on:
       - api
     restart: unless-stopped

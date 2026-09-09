@@ -73,6 +73,9 @@ check("认证·登出", r.get("code") == 0)
 s, r = call("GET", "/me", token=tok)
 check("认证·旧token已撤销", r.get("code") == 2001)
 s, r = call("POST", "/auth/login", {"username": "uploader", "password": "password123"})
+if r.get("code") != 0:
+    print(f"FATAL 登录失败（可能被限流）：{r}")
+    sys.exit(2)
 tok = r["data"]["token"]
 
 # ============ 2. 种子 ============
@@ -182,20 +185,20 @@ check("运营·排行榜", r.get("code") == 0)
 # ============ 7.5 开放 API / 插件 / 管理 ============
 s, r = call("POST", "/me/tokens", {"name": "回归-开放API", "rate_per_min": 120}, token=tok)
 tok_plain = (r.get("data") or {}).get("token", "")
+tok_fid = (r.get("data") or {}).get("id")
 check("开放API·签发token", r.get("code") == 0 and tok_plain.startswith("fxo_"))
 if tok_plain:
     s, r = call("GET", "/open/recent", token_header=f"Token {tok_plain}")
     check("开放API·访问", r.get("code") == 0)
     s, r = call("GET", "/open/recent", token_header="Token fxo_invalid")
     check("开放API·假token被拒", r.get("code") == 2001)
-    tid_del = None
-    s, r = call("GET", "/me/tokens", token=tok)
-    for t in (r.get("data") or []):
-        if t.get("name") == "回归-开放API":
-            tid_del = t["id"]
+    # 用签发时返回的 id 撤销（按名字回查会命中历史同名已撤销枚）
+    tid_del = tok_fid  # 直接用签发返回的 id
     if tid_del:
         s, r = call("POST", "/me/tokens/revoke", {"id": tid_del}, token=tok)
         check("开放API·撤销", r.get("code") == 0)
+    else:
+        check("开放API·撤销", False, "(无未撤销的回归 token)")
 
 s, r = call("GET", "/openapi.json")
 check("开放API·文档", r.get("code") == 0 and "openapi" in json.dumps(r.get("data") or {}))

@@ -25,6 +25,31 @@ mod torrents;
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 
+/// CORS：CORS_ORIGINS 逗号分隔白名单（生产必填）；未配置时退化为宽松并打警告
+fn build_cors() -> actix_cors::Cors {
+    let origins = std::env::var("CORS_ORIGINS").unwrap_or_default();
+    let list: Vec<&str> = origins
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if list.is_empty() {
+        tracing::warn!("CORS_ORIGINS 未配置，使用宽松 CORS（仅限开发态；生产由网关收敛）");
+        return Cors::permissive();
+    }
+    let mut cors = Cors::default()
+        .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+        .allowed_headers(vec![
+            actix_web::http::header::AUTHORIZATION,
+            actix_web::http::header::CONTENT_TYPE,
+        ])
+        .max_age(3600);
+    for o in &list {
+        cors = cors.allowed_origin(o);
+    }
+    cors
+}
+
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
@@ -57,9 +82,7 @@ async fn main() -> anyhow::Result<()> {
         App::new()
             .app_data(state.clone())
             .wrap(Logger::default().exclude("/api/v1/health"))
-            .wrap(
-                Cors::permissive(), // 生产由 Pingora 网关收敛来源（§5.1 边缘层）
-            )
+            .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
             .configure(community_http::configure)
             .default_service(web::to(|| async {
                 actix_web::HttpResponse::NotFound().json(serde_json::json!({
