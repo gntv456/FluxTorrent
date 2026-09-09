@@ -197,6 +197,23 @@ export const en: Dict = {
     remembered: "Remembered it?",
     backToLogin: "Back to sign in",
   },
+
+  reset: {
+    title: "Set a new password",
+    subtitle: "Set a new password via the email reset link",
+    token: "Reset token",
+    newPassword: "New password",
+    confirmPassword: "Confirm password",
+    passwordHint: "At least 8 characters",
+    mismatch: "Passwords do not match",
+    noToken: "Missing reset token — open this page from the link in the email",
+    backToForgot: "Request a new reset email",
+    submit: "Reset password",
+    busy: "Submitting…",
+    success: "Password reset — redirecting to sign in…",
+    remembered: "Remembered it?",
+    backToLogin: "Back to sign in",
+  },
   upload: {
     title: "Publish",
     subtitle: "Submissions enter review before going public",

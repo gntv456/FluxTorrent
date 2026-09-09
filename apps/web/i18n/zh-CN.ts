@@ -193,6 +193,23 @@ export const zhCN = {
     remembered: "想起来了？",
     backToLogin: "返回登录",
   },
+
+  reset: {
+    title: "设置新密码",
+    subtitle: "通过邮件重置链接设置新密码",
+    token: "重置令牌",
+    newPassword: "新密码",
+    confirmPassword: "确认新密码",
+    passwordHint: "至少 8 位",
+    mismatch: "两次输入的密码不一致",
+    noToken: "缺少重置令牌，请从邮件中的重置链接进入",
+    backToForgot: "重新申请重置邮件",
+    submit: "重置密码",
+    busy: "提交中…",
+    success: "密码已重置，正在跳转登录页…",
+    remembered: "想起来了？",
+    backToLogin: "返回登录",
+  },
   upload: {
     title: "发布资源",
     subtitle: "发布进入待审核，通过后全站可见",

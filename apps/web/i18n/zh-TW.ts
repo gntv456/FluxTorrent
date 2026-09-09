@@ -195,6 +195,23 @@ export const zhTW: Dict = {
     remembered: "想起來了？",
     backToLogin: "返回登入",
   },
+
+  reset: {
+    title: "設定新密碼",
+    subtitle: "透過郵件重置連結設定新密碼",
+    token: "重置權杖",
+    newPassword: "新密碼",
+    confirmPassword: "確認新密碼",
+    passwordHint: "至少 8 位",
+    mismatch: "兩次輸入的密碼不一致",
+    noToken: "缺少重置權杖，請從郵件中的重置連結進入",
+    backToForgot: "重新申請重置郵件",
+    submit: "重置密碼",
+    busy: "提交中…",
+    success: "密碼已重置，正在跳轉登入頁…",
+    remembered: "想起來了？",
+    backToLogin: "返回登入",
+  },
   upload: {
     title: "發布資源",
     subtitle: "發布進入待審核，通過後全站可見",
