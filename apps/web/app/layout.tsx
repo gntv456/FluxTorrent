@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Header, MobileTabBar } from "@/components/layout";
 import { getDict } from "@/i18n/server";
 import { LocaleProvider } from "@/i18n/client";
 
@@ -42,13 +41,7 @@ export default async function RootLayout({
     <html lang={locale}>
       <body>
         <LocaleProvider dict={dict} locale={locale}>
-          {/* 桌面顶栏 64px 吸顶（设计稿 §4.1） */}
-          <Header />
-          <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-6 md:px-6">
-            {children}
-          </main>
-          {/* 移动底部 5 Tab（设计稿：首页/搜索/发布/消息/个人中心） */}
-          <MobileTabBar />
+          {children}
           <ServiceWorkerRegister />
         </LocaleProvider>
       </body>
