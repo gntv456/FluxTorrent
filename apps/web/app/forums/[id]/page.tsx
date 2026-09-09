@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTopics } from "@/lib/data";
+import { TopicComposer } from "@/components/forum-composer";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt } from "@/i18n/config";
 
@@ -24,9 +25,12 @@ export default async function ForumPage({
           {dict.forums.backToForums}
         </Link>
       </div>
-      <h1 className="font-display text-2xl">
-        {fmt(dict.forums.boardTitle, { id: forumId })}
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="font-display text-2xl">
+          {fmt(dict.forums.boardTitle, { id: forumId })}
+        </h1>
+        <TopicComposer forumId={forumId} />
+      </div>
       {topics.length === 0 ? (
         <p className="py-10 text-center text-sub">{dict.forums.noTopics}</p>
       ) : (

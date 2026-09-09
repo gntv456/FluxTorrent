@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPosts } from "@/lib/data";
+import { ReplyBox } from "@/components/forum-composer";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt } from "@/i18n/config";
 
@@ -19,6 +20,9 @@ export default async function TopicPage({
       <Link href="/forums" className="text-sm text-sky">
         {dict.forums.backToForum}
       </Link>
+      <h1 className="font-display text-2xl">
+        {posts.length > 0 ? dict.forums.topicTitleFallback : dict.forums.noTopics}
+      </h1>
       <ol className="flex flex-col gap-3">
         {posts.map((p, i) => (
           <li
@@ -40,6 +44,7 @@ export default async function TopicPage({
           </li>
         ))}
       </ol>
+      <ReplyBox topicId={Number(id)} />
     </div>
   );
 }
