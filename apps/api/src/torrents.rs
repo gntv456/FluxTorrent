@@ -64,6 +64,8 @@ pub struct TorrentFilter {
     pub official: Option<bool>,
     pub include_dead: bool,
     pub search: Option<String>,
+    /// 列表排序（旧站 torrents.php 口径）：created（默认）/ seeders / size / completed
+    pub sort: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -89,8 +91,15 @@ pub async fn list_torrents(
         )
     });
 
-    // 游标分页（§6.2：禁 OFFSET）。cursor 为 id 游标（按 id DESC 稳定排序）。
-    let rows = sqlx::query_as::<_, TorrentRow>(
+    // 排序白名单（防注入）；非 id 排序时退化为 OFFSET 无关的「前 N 截断」：
+    // 排序键 + id 组成稳定排序，游标仍按 id 翻页（与默认排序一致，简单可靠）。
+    let order = match filter.sort.as_deref() {
+        Some("seeders") => "t.sticky DESC, t.seeders DESC, t.id DESC",
+        Some("size") => "t.sticky DESC, t.size DESC, t.id DESC",
+        Some("completed") => "t.sticky DESC, t.times_completed DESC, t.id DESC",
+        _ => "t.sticky DESC, t.id DESC",
+    };
+    let sql = format!(
         r#"
         SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
                t.grade_id, t.edition_id, t.size, t.seeders, t.leechers, t.times_completed,
@@ -114,22 +123,23 @@ pub async fn list_torrents(
                OR t.descr ILIKE $7 ESCAPE chr(92)
                OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7 ESCAPE chr(92)))
           AND ($8::bigint IS NULL OR t.id < $8)
-        ORDER BY t.sticky DESC, t.id DESC
+        ORDER BY {order}
         LIMIT $9
-        "#,
-    )
-    .bind(filter.category_id)
-    .bind(filter.medium_id)
-    .bind(filter.grade_id)
-    .bind(filter.edition_id)
-    .bind(filter.official)
-    .bind(filter.include_dead)
-    .bind(&pattern)
-    .bind(cursor)
-    .bind(limit + 1)
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        "#
+    );
+    let rows = sqlx::query_as::<_, TorrentRow>(&sql)
+        .bind(filter.category_id)
+        .bind(filter.medium_id)
+        .bind(filter.grade_id)
+        .bind(filter.edition_id)
+        .bind(filter.official)
+        .bind(filter.include_dead)
+        .bind(&pattern)
+        .bind(cursor)
+        .bind(limit + 1)
+        .fetch_all(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
 
     let total: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM torrents t WHERE t.approval_status = 1 \
