@@ -18,6 +18,7 @@ mod http;
 mod openapi_http;
 mod ops_http;
 mod plugins;
+mod push_http;
 mod repo;
 mod state;
 mod torrents;

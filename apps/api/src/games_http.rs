@@ -21,6 +21,8 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(farm_plant)
         .service(farm_water)
         .service(farm_harvest)
+        .service(fun_polls)
+        .service(fun_vote)
 }
 
 #[get("/games")]
@@ -33,6 +35,7 @@ async fn games_overview() -> impl Responder {
         "jgg": { "name": "九宫格抽奖", "ticket": games::JGG_TICKET,
             "prizes": ["谢谢参与 38%", "再来一次 12%", "2x 20%", "3x 12%", "5x 10%", "10x 5.5%", "50x 2%", "100x 0.5%"] },
         "farm": { "name": "好学农场", "slots": 6, "market_refresh": "每日 0/4/8/12/16/20 点", "volatility": "±50%" },
+        "funvote": { "name": "趣味盒投票", "cost": "1 火花/票", "rule": "一人一票" },
         "rate_limit": format!("每人每小时 {MAX_PLAYS_PER_HOUR} 次"),
     }))
 }
@@ -396,4 +399,123 @@ async fn farm_harvest(
     Ok(ok(serde_json::json!({
         "crop": crop.name, "amount": amount, "market_price": market, "doubled": doubled,
     })))
+}
+
+// ============ 趣味盒投票（funvote 口径：投票 +1 火花） ============
+
+#[derive(sqlx::FromRow)]
+struct FunPollRow {
+    id: i64,
+    question: String,
+    options: serde_json::Value,
+    closed: bool,
+    my_vote: Option<i32>,
+    total: i64,
+}
+
+#[get("/fun/polls")]
+async fn fun_polls(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<FunPollRow> = sqlx::query_as(
+        "SELECT p.id, p.question, p.options, p.closed,             (SELECT v.option_index FROM fun_votes v WHERE v.poll_id = p.id AND v.user_id = $1) AS my_vote,             (SELECT count(*) FROM fun_votes v WHERE v.poll_id = p.id) AS total          FROM fun_polls p WHERE NOT p.closed ORDER BY p.id LIMIT 20",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 附每项计数
+    let mut out = Vec::with_capacity(rows.len());
+    for r in rows {
+        let counts: Vec<(i32, i64)> = sqlx::query_as(
+            "SELECT option_index, count(*) FROM fun_votes WHERE poll_id = $1 GROUP BY option_index",
+        )
+        .bind(r.id)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        out.push(serde_json::json!({
+            "id": r.id, "question": r.question, "options": r.options,
+            "closed": r.closed, "my_vote": r.my_vote, "total_votes": r.total,
+            "counts": counts.into_iter().map(|(i, c)| serde_json::json!({"index": i, "votes": c})).collect::<Vec<_>>(),
+        }));
+    }
+    Ok(ok(out))
+}
+
+#[derive(Deserialize)]
+struct FunVoteReq {
+    poll_id: i64,
+    option_index: i32,
+}
+
+#[post("/fun/vote")]
+async fn fun_vote(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<FunVoteReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    // 占位（一人一票）
+    let voted = sqlx::query(
+        "INSERT INTO fun_votes (poll_id, user_id, option_index) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+    )
+    .bind(body.poll_id)
+    .bind(auth.id)
+    .bind(body.option_index)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if voted.rows_affected() == 0 {
+        return Err(DomainError::Validation("已经投过啦，一人一票".into()));
+    }
+    // 选项合法性（json 数组下标）+ 未关闭
+    let valid: Option<(serde_json::Value, bool)> =
+        sqlx::query_as("SELECT options, closed FROM fun_polls WHERE id = $1")
+            .bind(body.poll_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((options, closed)) = valid else {
+        return Err(DomainError::Validation("投票不存在".into()));
+    };
+    let n = options.as_array().map(|a| a.len()).unwrap_or(0);
+    if closed || body.option_index < 0 || body.option_index as usize >= n {
+        // 回滚占位
+        let _ = sqlx::query("DELETE FROM fun_votes WHERE poll_id = $1 AND user_id = $2")
+            .bind(body.poll_id)
+            .bind(auth.id)
+            .execute(&state.repo.db)
+            .await;
+        return Err(DomainError::Validation(if closed {
+            "投票已结束".into()
+        } else {
+            "选项无效".into()
+        }));
+    }
+    // 投票 +1 火花（旧站口径），扣款失败回滚占位
+    let idem = format!("fun-vote:{}:{}", auth.id, body.poll_id);
+    if let Err(e) = spend_spark(
+        &state.repo.db,
+        auth.id,
+        1,
+        "vote",
+        &idem,
+        "fun_poll",
+        body.poll_id,
+    )
+    .await
+    {
+        let _ = sqlx::query("DELETE FROM fun_votes WHERE poll_id = $1 AND user_id = $2")
+            .bind(body.poll_id)
+            .bind(auth.id)
+            .execute(&state.repo.db)
+            .await;
+        return Err(e);
+    }
+    Ok(ok(
+        serde_json::json!({ "voted": body.option_index, "cost": 1 }),
+    ))
 }
