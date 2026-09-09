@@ -22,6 +22,9 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(rotate_passkey)
         .service(list)
         .service(detail)
+        .service(torrent_detail_ext)
+        .service(torrent_files)
+        .service(torrent_thanks)
         .service(comments)
         .service(create_comment)
         .service(do_thank)
@@ -249,9 +252,32 @@ async fn me(
         .find_user_by_id(auth.id)
         .await?
         .ok_or(DomainError::Unauthorized)?;
+    // 个人主页口径（旧站 getusertorrentlist / my_data_stats）：传输量 + 分享率 + 做种/下载计数
+    let row: Option<(i64, i64, i64, i64, i64, i64, Option<String>)> = sqlx::query_as(
+        r#"
+        SELECT u.uploaded, u.downloaded,
+               (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
+               (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
+               (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS uploads,
+               (SELECT count(*) FROM bookmarks b WHERE b.user_id = u.id) AS bookmarks,
+               c.name AS class_name
+        FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
+        WHERE u.id = $1
+        "#,
+    )
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (uploaded, downloaded, seeding, leeching, uploads, bookmarks, class_name) =
+        row.unwrap_or((0, 0, 0, 0, 0, 0, None));
     Ok(ok(serde_json::json!({
         "id": user.id, "username": user.username, "class_id": user.class_id,
-        "must_reset_password": user.must_reset_password
+        "must_reset_password": user.must_reset_password,
+        "uploaded": uploaded, "downloaded": downloaded,
+        "seeding": seeding, "leeching": leeching,
+        "uploads": uploads, "bookmarks": bookmarks,
+        "class_name": class_name,
     })))
 }
 
@@ -317,6 +343,36 @@ async fn detail(
 ) -> DomainResult<impl Responder> {
     let t = torrents::get_torrent(&state.repo.db, path.into_inner()).await?;
     Ok(ok(t))
+}
+
+/// 详情页扩展数据（简介/文件数/感谢数），与 detail 合并渲染
+#[get("/torrents/{id}/detail")]
+async fn torrent_detail_ext(
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    let t = torrents::get_torrent_detail(&state.repo.db, path.into_inner()).await?;
+    Ok(ok(t))
+}
+
+#[get("/torrents/{id}/files")]
+async fn torrent_files(
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    Ok(ok(
+        torrents::list_files(&state.repo.db, path.into_inner()).await?
+    ))
+}
+
+#[get("/torrents/{id}/thanks")]
+async fn torrent_thanks(
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    Ok(ok(
+        torrents::list_thanks(&state.repo.db, path.into_inner()).await?
+    ))
 }
 
 #[get("/torrents/{id}/comments")]

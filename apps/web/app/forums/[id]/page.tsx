@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTopics } from "@/lib/data";
 import { getDict } from "@/i18n/server";
-import { fmt } from "@/i18n/config";
+import { dateLocale, fmt } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export default async function ForumPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { dict } = await getDict();
+  const { dict, locale } = await getDict();
   const forumId = Number(id);
   if (!Number.isFinite(forumId)) notFound();
   const topics = await getTopics(forumId);
@@ -35,17 +35,26 @@ export default async function ForumPage({
             <li key={t.id}>
               <Link
                 href={`/forums/topic/${t.id}`}
-                className="flex items-center justify-between rounded-[var(--r-md)] border border-line bg-white p-3 shadow-[var(--shadow-card)] hover:-translate-y-0.5"
+                className="flex items-center justify-between gap-3 rounded-[var(--r-md)] border border-line bg-white p-3 shadow-[var(--shadow-card)] hover:-translate-y-0.5"
               >
                 <div className="min-w-0">
                   <p className="truncate font-bold">{t.title}</p>
                   <p className="text-xs text-sub">
                     {t.username ?? "—"} ·{" "}
                     {fmt(dict.forums.views, { n: t.views })}
+                    {t.last_post_at && (
+                      <>
+                        {" · "}
+                        {dict.forums.lastPost}{" "}
+                        {new Date(t.last_post_at).toLocaleDateString(
+                          dateLocale(locale),
+                        )}
+                      </>
+                    )}
                   </p>
                 </div>
                 <span className="num shrink-0 text-sm text-sub">
-                  {fmt(dict.forums.replies, { n: t.replies })}
+                  {fmt(dict.forums.replies, { n: Math.max(t.replies, 0) })}
                 </span>
               </Link>
             </li>
