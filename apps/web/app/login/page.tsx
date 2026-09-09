@@ -20,8 +20,11 @@ function LoginForm() {
   const next = search.get("next") ?? "/torrents";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState<number>(0); // 连续失败次数（前端口径，5 次触发后端限流）
   const [busy, setBusy] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // middleware 已挡未登录；这里兜底：残留会话 cookie 直接跳回目标页
   useEffect(() => {
@@ -38,6 +41,7 @@ function LoginForm() {
       const resp = await api.post<LoginResp>("/api/v1/auth/login", {
         username,
         password,
+        totp_code: totp.trim() ? Number(totp.trim()) : undefined,
       });
       localStorage.setItem("flux.token", resp.token);
       setSessionCookie(resp.token);
@@ -47,6 +51,7 @@ function LoginForm() {
         setError(
           dict.errors[err.code] ?? fmt(dict.login.fail, { code: err.code }),
         );
+        if (err.code === 2004) setAttempts((n) => n + 1);
       } else {
         setError(dict.common.networkError);
       }
@@ -54,6 +59,9 @@ function LoginForm() {
       setBusy(false);
     }
   }
+
+  const inputCls =
+    "min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40";
 
   return (
     <form onSubmit={submit} className="flex w-full flex-col gap-3">
@@ -64,7 +72,7 @@ function LoginForm() {
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
           required
-          className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40"
+          className={inputCls}
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -75,26 +83,74 @@ function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           required
-          className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40"
+          className={inputCls}
         />
       </label>
+
+      {/* 高级选项（NexusPHP 同款折叠）：两步验证码 */}
+      <button
+        type="button"
+        onClick={() => setShowAdvanced((v) => !v)}
+        aria-expanded={showAdvanced}
+        className="self-start text-sm text-sky"
+      >
+        {showAdvanced ? "▾ " : "▸ "}
+        {dict.login.advancedOptions}
+      </button>
+      {showAdvanced && (
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-sub">{dict.login.twoStepCode}</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={6}
+            value={totp}
+            onChange={(e) => setTotp(e.target.value.replace(/\D/g, ""))}
+            placeholder={dict.login.twoStepTooltip}
+            className={inputCls}
+          />
+        </label>
+      )}
+
       {error && (
         <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={busy}
-        className="min-h-[44px] rounded-full bg-sky font-bold text-white active:scale-[0.97] disabled:opacity-50"
-      >
-        {busy ? dict.login.busy : dict.login.submit}
-      </button>
+      {/* 剩余尝试提醒（后端 §5.7：5 次/分钟/用户名） */}
+      {attempts > 0 && attempts < 5 && (
+        <p className="text-xs text-sub">
+          {fmt(dict.login.remainingTries, { n: 5 - attempts })}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={busy}
+          className="min-h-[44px] flex-1 rounded-full bg-sky font-bold text-white active:scale-[0.97] disabled:opacity-50"
+        >
+          {busy ? dict.login.busy : dict.login.submit}
+        </button>
+        <button
+          type="reset"
+          onClick={() => {
+            setUsername("");
+            setPassword("");
+            setTotp("");
+            setError(null);
+          }}
+          className="min-h-[44px] rounded-full border border-line px-5 text-sm text-sub active:scale-[0.97]"
+        >
+          {dict.login.reset}
+        </button>
+      </div>
     </form>
   );
 }
 
-/** 登录页（设计稿：吉祥物 + 蜡笔字标题；错误按 code 映射文案 §8.2） */
+/** 登录页（设计稿：吉祥物 + 蜡笔字标题；字段对齐 NexusPHP login.php） */
 export default function LoginPage() {
   const { dict } = useI18n();
   return (
@@ -104,9 +160,33 @@ export default function LoginPage() {
       </span>
       <h1 className="font-display text-3xl">{dict.login.welcome}</h1>
       <p className="-mt-4 text-sm text-sub">{dict.login.subtitle}</p>
-      <Suspense fallback={<div className="h-[220px]" aria-hidden />}>
+      <Suspense fallback={<div className="h-[260px]" aria-hidden />}>
         <LoginForm />
       </Suspense>
+
+      {/* 安全提示（NexusPHP：cookie 提示 + 失败封禁警示） */}
+      <p className="text-xs leading-relaxed text-sub">
+        {dict.login.cookieNote}
+        <br />
+        {fmt(dict.login.failBanNote, { n: 5 })}
+      </p>
+
+      {/* 账号辅助链接（NexusPHP：注册/找回密码） */}
+      <div className="flex w-full flex-col gap-2 border-t border-line pt-4 text-sm">
+        <p className="text-sub">
+          {dict.login.noAccount}{" "}
+          <a href="/register" className="font-bold text-sky">
+            {dict.login.signup}
+          </a>
+        </p>
+        <p className="text-sub">
+          {dict.login.forgotPassword}{" "}
+          <a href="mailto:admin@flux.local" className="font-bold text-sky">
+            {dict.login.recoverByEmail}
+          </a>
+        </p>
+      </div>
+
       <p className="text-xs text-sub">{dict.login.inviteOnly}</p>
     </div>
   );
