@@ -20,7 +20,8 @@ WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
 # Next standalone 输出自带最小 node_modules
 COPY --from=builder /build/apps/web/.next/standalone ./
-COPY --from=builder /build/apps/web/.next/static ./.next/static
+# server.js 位于 apps/web/ 下，静态资源须相对它放置（/app/apps/web/.next/static、/app/apps/web/public）
+COPY --from=builder /build/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /build/apps/web/public ./apps/web/public
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
