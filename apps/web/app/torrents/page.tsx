@@ -28,6 +28,7 @@ export default async function TorrentsPage({
 }) {
   const sp = await searchParams;
   const { dict } = await getDict();
+  // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用
   const page = await paged<TorrentListItem>("/api/v1/torrents", {
     limit: 20,
     category_id: sp.category_id ? Number(sp.category_id) : undefined,
@@ -38,7 +39,11 @@ export default async function TorrentsPage({
     search: sp.search,
     sort: sp.sort,
     cursor: sp.cursor,
-  });
+  }).catch(() => ({
+    items: [] as TorrentListItem[],
+    next_cursor: null,
+    total_estimate: 0,
+  }));
 
   // 字典分类/媒介数组按下标对齐：index 0 = 全部，1..n = 对应 id
   const categories = dict.torrents.categories.map((label, i) => ({
