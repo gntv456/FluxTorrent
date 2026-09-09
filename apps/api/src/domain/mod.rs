@@ -37,11 +37,14 @@ pub fn hash_password(password: &str) -> DomainResult<String> {
 }
 
 pub fn verify_password(hash: &str, password: &str) -> bool {
+    // 非法/占位哈希（如种子数据 "stub"）直接判失败，绝不让验证器 panic 拖垮 worker 线程
+    let Ok(parsed) = argon2::PasswordHash::new(hash) else {
+        return false;
+    };
     argon2::PasswordVerifier::verify_password(
         &argon2::Argon2::default(),
         password.as_bytes(),
-        &argon2::PasswordHash::new(hash)
-            .unwrap_or_else(|_| argon2::PasswordHash::new("$argon2id$").unwrap()),
+        &parsed,
     )
     .is_ok()
 }

@@ -62,8 +62,7 @@ async fn compute_metrics(
     .bind(period)
     .fetch_optional(db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .map(|(a, b, c, d)| (a, b, c, d));
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let (up, down, seeding_count, ops) = record.unwrap_or((0, 0, 0, 0));
     let uploads: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM torrents WHERE owner_id = $1 AND to_char(created_at, 'YYYY-MM') = $2",

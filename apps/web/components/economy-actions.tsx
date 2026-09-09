@@ -64,6 +64,16 @@ export function CheckinCard() {
     refresh();
   }, []);
 
+  async function logout() {
+    try {
+      await api.post("/api/v1/auth/logout", {});
+    } catch {
+      // 后端撤销失败也照常清理本地凭证
+    }
+    localStorage.removeItem("flux.token");
+    location.href = "/";
+  }
+
   async function checkin() {
     setBusy(true);
     setMsg(null);
@@ -130,6 +140,14 @@ export function CheckinCard() {
           </button>
         </div>
         {msg && <p className="mt-2 text-sm text-sub">{msg}</p>}
+        <div className="mt-2 flex justify-end">
+          <button
+            onClick={logout}
+            className="min-h-[44px] rounded-full border border-line px-5 text-sm text-sub transition-colors hover:text-coral"
+          >
+            退出登录
+          </button>
+        </div>
       </section>
 
       <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">

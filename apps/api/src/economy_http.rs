@@ -29,6 +29,12 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
 
 /// 动账核心：余额充足校验 + 负流水 + 余额快照更新（单事务）。
 /// 幂等键唯一约束（shop_orders/应用层先查）防重复扣款。
+/// 扣款结果：区分真实扣款与幂等重放（调用方据此决定是否执行副作用）
+pub enum SpendOutcome {
+    Spent,
+    Replayed,
+}
+
 pub async fn spend_spark(
     db: &PgPool,
     user_id: i64,
@@ -37,7 +43,7 @@ pub async fn spend_spark(
     idem: &str,
     ref_type: &str,
     ref_id: i64,
-) -> DomainResult<()> {
+) -> DomainResult<SpendOutcome> {
     let mut tx = db
         .begin()
         .await
@@ -58,7 +64,7 @@ pub async fn spend_spark(
             .await
             .unwrap_or(false);
     if exists {
-        return Ok(()); // 幂等重放
+        return Ok(SpendOutcome::Replayed);
     }
     sqlx::query(
         "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
@@ -83,7 +89,7 @@ pub async fn spend_spark(
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(())
+    Ok(SpendOutcome::Spent)
 }
 
 /// 入账（签到/利息/奖励）
@@ -184,11 +190,13 @@ async fn shop_buy(
         return Err(DomainError::NotFound(body.item_id));
     };
 
+    // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款
     let idem = body
         .idempotency_key
         .clone()
-        .unwrap_or_else(|| format!("buy:{}:{}", auth.id, Uuid::new_v4()));
-    spend_spark(
+        .filter(|k| !k.is_empty())
+        .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
+    let outcome = spend_spark(
         &state.repo.db,
         auth.id,
         price,
@@ -213,8 +221,10 @@ async fn shop_buy(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 商品效果（上传量立即到账；邀请发放）
-    apply_item_effect(&state.repo.db, auth.id, &kind, &config).await?;
+    // 商品效果只在真实扣款时执行一次（幂等重放不重复发效果）
+    if matches!(outcome, crate::economy_http::SpendOutcome::Spent) {
+        apply_item_effect(&state.repo.db, auth.id, &kind, &config).await?;
+    }
 
     state
         .repo
