@@ -566,5 +566,6 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         crate::content_http::mount_content(scope),
     ));
     let scope = crate::admin_http::mount_admin(scope);
+    let scope = crate::push_http::mount_push(scope);
     cfg.service(crate::openapi_http::mount_openapi(scope));
 }
