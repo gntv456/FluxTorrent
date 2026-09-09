@@ -53,6 +53,7 @@ struct RegisterReq {
 
 #[post("/auth/register")]
 async fn register(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<RegisterReq>,
 ) -> DomainResult<impl Responder> {
@@ -62,6 +63,13 @@ async fn register(
         password: body.password.clone(),
     };
     domain::validate_register(&new_user)?;
+    // 注册限流（§5.7）：按来源 IP 每分钟 5 次，防邀请码爆破
+    let ip = req
+        .connection_info()
+        .peer_addr()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "unknown".into());
+    throttle(&state, format!("register-ip:{ip}")).await?;
     let pass_hash = domain::hash_password(&new_user.password)?;
     // 先建用户（未绑定邀请人），再原子消费邀请码回填（一码一用）
     let user_id = state
