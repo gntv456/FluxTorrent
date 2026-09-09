@@ -31,6 +31,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(upload)
         .service(download)
         .service(issue_invite_handler)
+        .service(logout)
 }
 
 // ============ 基础 ============
@@ -154,6 +155,19 @@ pub async fn require_auth(
         .and_then(|v| v.strip_prefix("Bearer "))
         .ok_or(DomainError::Unauthorized)?;
     let claims = auth::verify(token, &state.cfg.jwt_secret).ok_or(DomainError::Unauthorized)?;
+    // 登出撤销检查：签发时间早于 not-before 的 token 一律拒绝
+    {
+        let mut c = state.redis.clone();
+        let nbf: Option<i64> =
+            redis::AsyncCommands::get(&mut c, format!("logout_nbf:{}", claims.sub))
+                .await
+                .unwrap_or(None);
+        if let Some(nbf) = nbf {
+            if claims.iat < nbf {
+                return Err(DomainError::Unauthorized);
+            }
+        }
+    }
     // 权威校验（P1 修复）：token 只是凭证，状态与等级以库为准 —— 封禁/降级即时生效
     let row: Option<(i16, i32)> =
         sqlx::query_as("SELECT status, class_id FROM users WHERE id = $1")
@@ -179,6 +193,24 @@ fn require_staff(user: &AuthUser) -> DomainResult<()> {
     } else {
         Err(DomainError::Forbidden)
     }
+}
+
+#[post("/auth/logout")]
+async fn logout(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    // 令牌撤销（§5.7）：Redis 记录该用户 not-before 时间戳，require_auth 校验 iat >= nbf，
+    // 登出后旧 token 立即失效，新登录不受影响。TTL 与 token 最长寿命对齐（24h）。
+    let mut c = state.redis.clone();
+    let key = format!("logout_nbf:{}", auth.id);
+    let nbf = chrono::Utc::now().timestamp();
+    let _: () = redis::AsyncCommands::set_ex(&mut c, &key, nbf, 86400u64)
+        .await
+        .unwrap_or(());
+    state.repo.audit(Some(auth.id), "auth.logout", None).await;
+    Ok(ok(serde_json::json!({ "ok": true })))
 }
 
 #[get("/me")]
@@ -476,16 +508,24 @@ async fn issue_invite_handler(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // 简单配额：等级 LV3+ 每周 2 枚（§8.5-8 魔法数字常量化；阈值运营可调）
+    // 配额：等级 LV3+ 每周 2 枚。原子占位（UPDATE 计数行）防并发穿透
     let quota: i64 = if auth.class_id >= 3 { 2 } else { 0 };
-    let issued: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM invites WHERE inviter_id = $1 AND created_at > now() - interval '7 days'",
+    sqlx::query(
+        "INSERT INTO invite_quota (user_id, period, used) VALUES ($1, date_trunc('week', now())::date, 0) ON CONFLICT DO NOTHING",
     )
     .bind(auth.id)
-    .fetch_one(&state.repo.db)
+    .execute(&state.repo.db)
     .await
-    .unwrap_or(0);
-    if issued >= quota {
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let taken: Option<i32> = sqlx::query_scalar(
+        "UPDATE invite_quota SET used = used + 1 WHERE user_id = $1 AND period = date_trunc('week', now())::date AND used < $2 RETURNING used",
+    )
+    .bind(auth.id)
+    .bind(quota)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if taken.is_none() {
         return Err(DomainError::Forbidden);
     }
     let code = crate::domain::new_invite_code();

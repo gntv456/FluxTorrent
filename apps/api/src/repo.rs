@@ -151,7 +151,7 @@ impl Repo {
 
     pub async fn audit(&self, actor_id: Option<i64>, action: &str, ref_id: Option<i64>) {
         // 审计日志失败不阻塞业务，但必须记录（§5.7）
-        let _ = sqlx::query(
+        let audit = sqlx::query(
             "INSERT INTO audit_log (id, actor_id, action, ref) VALUES (nextval('audit_log_id_seq'), $1, $2, $3::jsonb)",
         )
         .bind(actor_id)
@@ -159,5 +159,8 @@ impl Repo {
         .bind(ref_id.map(|i| serde_json::json!({"id": i}).to_string()))
         .execute(&self.db)
         .await;
+        if let Err(e) = &audit {
+            tracing::error!(?e, "审计日志写入失败（§5.7 要求必记）");
+        }
     }
 }
