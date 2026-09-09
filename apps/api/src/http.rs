@@ -403,6 +403,8 @@ struct UploadForm {
     small_descr: Option<String>,
     category_id: i32,
     medium_id: i32,
+    grade_id: Option<i32>,
+    edition_id: Option<i32>,
     #[serde(default)]
     anonymous: bool,
 }
@@ -451,13 +453,16 @@ async fn upload(
         .filter(|n| !n.trim().is_empty())
         .unwrap_or(parsed.name.clone());
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO torrents (info_hash, name, small_descr, category_id, medium_id, owner_id,          anonymous, size, numfiles, approval_status)          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0) RETURNING id",
+        "INSERT INTO torrents (info_hash, name, small_descr, category_id, medium_id, grade_id, edition_id, owner_id, anonymous, size, numfiles, approval_status) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0) RETURNING id",
     )
     .bind(&parsed.info_hash_hex)
     .bind(&name)
     .bind(&form.small_descr)
     .bind(form.category_id)
     .bind(form.medium_id)
+    .bind(form.grade_id)
+    .bind(form.edition_id)
     .bind(auth.id)
     .bind(form.anonymous)
     .bind(parsed.size)

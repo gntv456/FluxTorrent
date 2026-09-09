@@ -10,9 +10,15 @@ export function UploadForm() {
   // 字典分类/媒介数组按下标对齐：index 0 = 全部，1..n = 对应 id
   const categories = dict.torrents.categories.slice(1);
   const media = dict.torrents.media.slice(1);
+  // grades 字典下标 i 与 grades 表 id（i-1）对齐；0 = 不选择
+  const grades = dict.torrents.grades.slice(1);
+  const editions = dict.upload.editions;
   const fileRef = useRef<HTMLInputElement>(null);
   const [categoryId, setCategoryId] = useState(2);
   const [mediumId, setMediumId] = useState(1);
+  const [gradeId, setGradeId] = useState("");
+  const [editionId, setEditionId] = useState("");
+  const [smallDescr, setSmallDescr] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,6 +40,9 @@ export function UploadForm() {
         medium_id: String(mediumId),
         anonymous: String(anonymous),
       });
+      if (gradeId) qs.set("grade_id", gradeId);
+      if (editionId) qs.set("edition_id", editionId);
+      if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
       const base =
         process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
       const res = await fetch(`${base}/api/v1/torrents?${qs}`, {
@@ -57,6 +66,9 @@ export function UploadForm() {
     }
   }
 
+  const selectCls =
+    "min-h-[44px] rounded-[var(--r-sm)] border border-line px-3 bg-white";
+
   return (
     <form
       onSubmit={submit}
@@ -72,13 +84,24 @@ export function UploadForm() {
           className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2"
         />
       </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-sub">{dict.upload.smallDescr}</span>
+        <input
+          type="text"
+          value={smallDescr}
+          onChange={(e) => setSmallDescr(e.target.value)}
+          placeholder={dict.upload.smallDescrPlaceholder}
+          maxLength={120}
+          className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+        />
+      </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-sm text-sub">{dict.upload.category}</span>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(Number(e.target.value))}
-            className="min-h-[44px] rounded-[var(--r-sm)] border border-line px-3"
+            className={selectCls}
           >
             {categories.map((label, i) => (
               <option key={i + 1} value={i + 1}>
@@ -92,9 +115,39 @@ export function UploadForm() {
           <select
             value={mediumId}
             onChange={(e) => setMediumId(Number(e.target.value))}
-            className="min-h-[44px] rounded-[var(--r-sm)] border border-line px-3"
+            className={selectCls}
           >
             {media.map((label, i) => (
+              <option key={i + 1} value={i + 1}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-sub">{dict.upload.grade}</span>
+          <select
+            value={gradeId}
+            onChange={(e) => setGradeId(e.target.value)}
+            className={selectCls}
+          >
+            <option value="">{dict.upload.gradeNone}</option>
+            {grades.map((label, i) => (
+              <option key={i} value={i}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-sub">{dict.upload.edition}</span>
+          <select
+            value={editionId}
+            onChange={(e) => setEditionId(e.target.value)}
+            className={selectCls}
+          >
+            <option value="">{dict.upload.editionNone}</option>
+            {editions.map((label, i) => (
               <option key={i + 1} value={i + 1}>
                 {label}
               </option>
