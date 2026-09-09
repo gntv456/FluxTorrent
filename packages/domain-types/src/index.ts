@@ -149,14 +149,27 @@ export interface TorrentListItem {
   small_descr: string | null;
   category_id: number;
   medium_id: number;
+  grade_id: number | null;
+  edition_id: number | null;
   size: number;
   seeders: number;
   leechers: number;
   times_completed: number;
   official: boolean;
+  anonymous: boolean;
+  approval_status: number;
+  sticky: boolean;
   promotion: PromotionKind | null;
   owner_name: string | null;
-  anonymous: boolean;
+  created_at: string;
+}
+
+/** 种子评论（M07） */
+export interface TorrentComment {
+  id: number;
+  torrent_id: number;
+  username: string | null;
+  body: string;
   created_at: string;
 }
 
