@@ -31,6 +31,7 @@ export async function Header() {
     { href: "/friends", label: dict.nav.friends },
     { href: "/textbooks", label: dict.nav.textbooks },
     { href: "/magic-pool", label: dict.nav.magicPool },
+    { href: "/myhr", label: dict.nav.myhr },
   ];
   return (
     <header className="border-b border-line bg-[var(--baozi-bg)]">

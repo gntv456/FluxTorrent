@@ -26,6 +26,9 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(post_reply)
         // M16 短讯与好友
         .service(message_send)
+        .service(my_hr)
+        .service(shoutbox_list)
+        .service(shoutbox_send)
         .service(message_inbox)
         .service(message_sent)
         .service(friend_add)
@@ -434,6 +437,87 @@ async fn post_reply(
 }
 
 // ============ M16 短讯与好友 ============
+
+// ============ 我的 H&R（myhr.php 口径）============
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct HrRow {
+    torrent_id: i64,
+    name: String,
+    size: i64,
+    added: Option<chrono::DateTime<chrono::Utc>>,
+    completed_at: Option<chrono::DateTime<chrono::Utc>>,
+    seeded_seconds: i32,
+    hr_flag: bool,
+    /// H&R 达标剩余做种秒数（旧站口径 120h = 432000s）
+    #[sqlx(default)]
+    remaining_seconds: Option<i64>,
+}
+
+#[get("/me/hr")]
+async fn my_hr(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<HrRow> = sqlx::query_as(
+        "SELECT s.torrent_id, t.name, t.size, t.created_at AS added, s.completed_at,             s.seeded_seconds, s.hr_flag,             GREATEST(0, 432000 - s.seeded_seconds)::bigint AS remaining_seconds          FROM snatches s JOIN torrents t ON t.id = s.torrent_id          WHERE s.user_id = $1 AND s.completed_at IS NOT NULL          ORDER BY s.hr_flag DESC, s.completed_at DESC LIMIT 100",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+// ============ 聊天盒（shoutbox.php 口径：最近消息 + 发言） ============
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct ShoutRow {
+    id: i64,
+    username: Option<String>,
+    message: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/shoutbox")]
+async fn shoutbox_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let rows: Vec<ShoutRow> = sqlx::query_as(
+        "SELECT sb.id, u.username, sb.message, sb.created_at          FROM shoutbox sb LEFT JOIN users u ON u.id = sb.user_id          ORDER BY sb.id DESC LIMIT 50",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct ShoutReq {
+    message: String,
+}
+
+#[post("/shoutbox")]
+async fn shoutbox_send(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<ShoutReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if body.message.trim().is_empty() || body.message.len() > 300 {
+        return Err(DomainError::Validation("发言需 1-300 字".into()));
+    }
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO shoutbox (user_id, message) VALUES ($1, $2) RETURNING id",
+    )
+    .bind(auth.id)
+    .bind(body.message.trim())
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
 
 #[derive(Deserialize)]
 struct SendMsgReq {

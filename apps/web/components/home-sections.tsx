@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { ShoutBox } from "@/components/shout-box";
 
 /** 首页板块（复刻包子站 index.php）：
  *  社区新鲜事（头条+列表+公告弹窗）· 签到得魔力日历 · 新增资源统计（30 天堆叠柱状图）
  *  · 站点数据三列 · 幸运大转盘流水 · 免责条款 + 友情链接 */
 
-export interface HomeData {
+interface HomeData {
   news: { id: number; title: string; body: string; badge: string; date: string }[];
   attendance: {
     month: string;
@@ -315,6 +316,9 @@ export function HomeSections() {
           </ul>
         </aside>
       </div>
+
+      {/* ==== 聊天盒（全宽） ==== */}
+      <ShoutBox />
 
       {/* ==== 免责条款 + 友情链接 ==== */}
       <div className="home-native-modules">

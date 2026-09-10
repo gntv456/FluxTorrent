@@ -3309,3 +3309,66 @@ textarea.bbcode {
   font-size: 13px;
   font-weight: 700;
 }
+
+/* ============ 聊天盒 + 我的 H&R ============ */
+.shoutbox__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  margin: 0;
+  padding: 10px 14px;
+  list-style: none;
+  overflow-y: auto;
+}
+.shoutbox__list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed #f0e2cb;
+  font-size: 13px;
+}
+.shoutbox__list li:last-child {
+  border-bottom: 0;
+}
+.shoutbox__list b {
+  flex: 0 0 auto;
+  color: var(--baozi-orange-dark);
+}
+.shoutbox__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #5a4634;
+  word-break: break-word;
+}
+.shoutbox__list time {
+  flex: 0 0 auto;
+  color: #b8a488;
+  font-size: 11px;
+}
+.shoutbox__empty {
+  justify-content: center;
+  color: #a08a6f;
+}
+.shoutbox__msg {
+  margin: 0 14px 6px;
+  color: #c14b3a;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.shoutbox__form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid #f0e2cb;
+}
+.shoutbox__form input {
+  flex: 1 1 auto;
+  min-height: 38px;
+  padding: 6px 12px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 8px;
+  background: #fffdf8;
+  font-size: 13.5px;
+}
