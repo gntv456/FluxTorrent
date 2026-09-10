@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getPosts } from "@/lib/data";
 import { ReplyBox } from "@/components/forum-composer";
 import { getDict } from "@/i18n/server";
@@ -12,39 +13,46 @@ export default async function TopicPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const topicId = Number(id);
   const { dict, locale } = await getDict();
-  const posts = await getPosts(Number(id));
+  if (!Number.isFinite(topicId)) notFound();
+  const detail = await getPosts(topicId);
+  if (!detail || detail.posts.length === 0) notFound();
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/forums" className="text-sm text-sky">
-        {dict.forums.backToForum}
-      </Link>
-      <h1 className="font-display text-2xl">
-        {posts.length > 0 ? dict.forums.topicTitleFallback : dict.forums.noTopics}
-      </h1>
-      <ol className="flex flex-col gap-3">
-        {posts.map((p, i) => (
-          <li
-            key={p.id}
-            className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
-          >
-            <div className="flex items-baseline justify-between">
-              <span className="font-bold text-sky">
-                {p.username ?? dict.torrent.anonymous}
-              </span>
-              <span className="num text-xs text-sub">
-                {fmt(dict.forums.floor, { n: i + 1 })}
-              </span>
-            </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm">{p.body}</p>
-            <p className="mt-2 text-[11px] text-sub">
-              {new Date(p.created_at).toLocaleString(dateLocale(locale))}
-            </p>
-          </li>
-        ))}
-      </ol>
-      <ReplyBox topicId={Number(id)} />
+      <div className="flex items-baseline gap-2">
+        <Link href="/forums" className="text-sm text-sky">
+          {dict.forums.backToForums}
+        </Link>
+        {detail.forum_name && (
+          <span className="text-sm text-sub">» {detail.forum_name}</span>
+        )}
+      </div>
+      <h1 className="font-display text-2xl">{detail.title}</h1>
+      <table className="nexus-table">
+        <tbody>
+          {detail.posts.map((p, i) => (
+            <tr key={p.id} className="align-top">
+              <td className="w-36 border-r border-line bg-[rgba(255,232,197,0.45)] p-3">
+                <span className="font-bold text-sky">
+                  {p.username ?? dict.torrent.anonymous}
+                </span>
+                <p className="mt-1 text-[11px] text-sub">
+                  {fmt(dict.forums.floor, { n: i + 1 })}
+                </p>
+              </td>
+              <td className="p-3">
+                <p className="whitespace-pre-wrap text-sm">{p.body}</p>
+                <p className="mt-2 text-[11px] text-sub">
+                  {new Date(p.created_at).toLocaleString(dateLocale(locale))}
+                </p>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <ReplyBox topicId={topicId} />
     </div>
   );
 }

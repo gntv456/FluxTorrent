@@ -359,6 +359,16 @@ async fn topic_detail(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // NexusPHP 帖子页头部：主题标题 + 所属版块（找不到主题时 404）
+    let meta: (String, Option<String>, String) = sqlx::query_as(
+        "SELECT t.title, f.name, COALESCE(t.created_at::text, '') FROM topics t \
+         LEFT JOIN forums f ON f.id = t.forum_id WHERE t.id = $1",
+    )
+    .bind(tid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .ok_or(DomainError::NotFound(tid))?;
     let posts = sqlx::query_as::<_, PostRow>(
         "SELECT p.id, u.username, p.body, p.created_at FROM posts p \
          LEFT JOIN users u ON u.id = p.user_id WHERE p.topic_id = $1 ORDER BY p.id LIMIT 200",
@@ -367,7 +377,12 @@ async fn topic_detail(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(posts))
+    Ok(ok(serde_json::json!({
+        "topic_id": tid,
+        "title": meta.0,
+        "forum_name": meta.1,
+        "posts": posts,
+    })))
 }
 
 #[derive(Deserialize)]

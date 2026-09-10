@@ -74,11 +74,17 @@ export interface Post {
   body: string;
   created_at: string;
 }
-export async function getPosts(topicId: number): Promise<Post[]> {
+export interface TopicDetail {
+  topic_id: number;
+  title: string;
+  forum_name: string | null;
+  posts: Post[];
+}
+export async function getPosts(topicId: number): Promise<TopicDetail | null> {
   try {
-    return await api.get<Post[]>(`/api/v1/forums/topics/${topicId}`);
+    return await api.get<TopicDetail>(`/api/v1/forums/topics/${topicId}`);
   } catch {
-    return [];
+    return null;
   }
 }
 
