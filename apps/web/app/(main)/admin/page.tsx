@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { ContentManage } from "@/components/content-manage";
 
 interface Overview {
   pending_reviews: number;
@@ -77,7 +78,8 @@ type AdminTab =
   | "reports"
   | "users"
   | "audit"
-  | "cheaters";
+  | "cheaters"
+  | "content";
 
 /** 管理组面板（staffpanel.php 复刻）+ 站点设定 + 管理系统（审核/举报/用户/审计） */
 export default function AdminPage({
@@ -220,6 +222,7 @@ export default function AdminPage({
     ["users", a.tabs.users],
     ["audit", a.tabs.audit],
     ["cheaters", a.cheatersTitle],
+    ["content", a.tabs.content],
   ] as const;
 
   const panelGroups: [string, PanelEntry[]][] = ["sysop", "admin", "moderator"]
@@ -457,6 +460,13 @@ export default function AdminPage({
               <li className="py-6 text-center text-sub">{a.searchFirst}</li>
             )}
           </ul>
+        </section>
+      )}
+
+      {tab === "content" && (
+        <section className="nexus-detail">
+          <h2 className="mb-3 text-base font-bold text-ink">{a.tabs.content}</h2>
+          <ContentManage />
         </section>
       )}
 
