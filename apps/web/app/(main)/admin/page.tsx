@@ -199,6 +199,16 @@ export default function AdminPage({
     }
   }
 
+  async function setUserClass(userId: number, classId: number) {
+    try {
+      await api.post("/api/v1/admin/users/class", { user_id: userId, class_id: classId });
+      setMsg(fmt(a.classChanged, { id: userId, cls: classId }));
+      searchUsers();
+    } catch (e) {
+      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
+    }
+  }
+
   async function saveSetting(name: string) {
     const value = editing[name];
     if (value === undefined) return;
@@ -450,6 +460,18 @@ export default function AdminPage({
                     #{u.id} · LV{u.class_id} · {u.email}
                   </p>
                 </div>
+                <select
+                  value={u.class_id}
+                  onChange={(e) => setUserClass(u.id, Number(e.target.value))}
+                  className="min-h-[36px] rounded-full border border-line bg-white px-2 text-xs font-bold"
+                  title={a.classAdjust}
+                >
+                  {a.classList.map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
                 <button
                   onClick={() => setUserStatus(u.id, u.status >= 2 ? 0 : 2)}
                   className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${
