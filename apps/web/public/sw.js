@@ -20,6 +20,11 @@ self.addEventListener("install", (event) => {
   );
 });
 
+// 页面注册脚本发 SKIP_WAITING：新 SW 立即接管（配合页面刷新一次拿新 bundle）
+self.addEventListener("message", (event) => {
+  if (event.data === "SKIP_WAITING") self.skipWaiting();
+});
+
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -29,7 +34,12 @@ self.addEventListener("activate", (event) => {
           keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k)),
         ),
       )
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
+      .then(() =>
+        self.clients.matchAll({ type: "window" }).then((clients) => {
+          clients.forEach((c) => c.postMessage("FLUX_SW_ACTIVATED"));
+        }),
+      ),
   );
 });
 
