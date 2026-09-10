@@ -1,4 +1,5 @@
-import { EmptyTorrents, TorrentRow } from "@/components/torrent";
+import { EmptyTorrents } from "@/components/torrent";
+import { TorrentTr } from "@/components/torrent-table";
 import { paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
@@ -192,11 +193,25 @@ export default async function TorrentsPage({
       {page.items.length === 0 ? (
         <EmptyTorrents />
       ) : (
-        <div className="flex flex-col gap-2">
-          {page.items.map((t) => (
-            <TorrentRow key={t.id} t={t} />
-          ))}
-        </div>
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <th className="w-12">{dict.torrents.colType}</th>
+              <th>{dict.torrents.colTitle}</th>
+              <th className="w-16">{dict.torrents.colComments}</th>
+              <th className="w-20">{dict.torrents.colSize}</th>
+              <th className="w-16">{dict.torrents.colSeeders}</th>
+              <th className="w-16">{dict.torrents.colLeechers}</th>
+              <th className="w-16">{dict.torrents.colCompleted}</th>
+              <th className="w-28">{dict.torrents.colOwner}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {page.items.map((t) => (
+              <TorrentTr key={t.id} t={t} />
+            ))}
+          </tbody>
+        </table>
       )}
 
       {page.next_cursor && (

@@ -1,23 +1,44 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api-client";
-import { setSessionCookie } from "@/lib/api-client";
+import { api, setSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { formatBytes, formatRatio } from "@/lib/format";
+
+/** /me 返回口径（http.rs me handler）+ spark_balance */
+interface MeInfo {
+  username: string;
+  class_name?: string | null;
+  uploaded: number;
+  downloaded: number;
+  seeding: number;
+  leeching: number;
+}
 
 /**
- * 右上角用户位：登录后显示用户名 + 退出，未登录显示登录链接。
+ * 包子站用户信息条（userbar）：头像 + 欢迎回来 {用户} 退出 + 魔力胶囊
+ * + 快捷入口（控制面板/收藏/勋章/任务/邀请）+ 票券统计条
+ * （分享率/上传/下载/做种/下载中）。未登录回落为登录链接。
  * 服务端 Header 无法读 localStorage 的 JWT，状态由客户端补齐。
  */
 export function UserBox({ loginLabel }: { loginLabel: string }) {
   const { dict } = useI18n();
-  const [username, setUsername] = useState<string | null>(null);
+  const [me, setMe] = useState<MeInfo | null>(null);
+  const [spark, setSpark] = useState<number | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem("flux.token")) return;
     api
-      .get<{ username: string }>("/api/v1/me")
-      .then((me) => setUsername(me.username))
+      .get<MeInfo & { spark_balance?: number }>("/api/v1/me")
+      .then((r) => {
+        setMe(r);
+        setSpark(r.spark_balance ?? null);
+        // 魔力值单独取（economy /me/spark），失败不打扰
+        return api
+          .get<{ balance: number }>("/api/v1/me/spark")
+          .then((b) => setSpark(b.balance))
+          .catch(() => {});
+      })
       .catch(() => {
         // token 失效：清掉本地凭证，回落到登录链接
         localStorage.removeItem("flux.token");
@@ -38,38 +59,74 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
     location.href = "/login";
   }
 
-  if (!username) {
+  if (!me) {
     return (
-      <a
-        href="/login"
-        className="min-h-[44px] flex items-center text-sm text-white/80 hover:text-sky"
-      >
-        {loginLabel}
-      </a>
+      <div className="userbar__identity">
+        <a href="/login" className="mainmenu-link">
+          {loginLabel}
+        </a>
+      </div>
     );
   }
+
+  const ratio = formatRatio(me.uploaded, me.downloaded);
   return (
-    <div className="flex items-center gap-2">
-      <a
-        href="/my"
-        className="min-h-[44px] flex items-center gap-1.5 text-sm text-white/90 hover:text-sky"
-        title={dict.my.center}
-      >
-        <span
-          aria-hidden
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-deep text-sm font-bold text-white"
-        >
-          {username.slice(0, 1).toUpperCase()}
-        </span>
-        <span className="hidden sm:inline">{username}</span>
-      </a>
-      <button
-        type="button"
-        onClick={logout}
-        className="min-h-[44px] flex items-center text-sm text-white/60 hover:text-coral"
-      >
-        {dict.my.logout}
-      </button>
-    </div>
+    <>
+      <div className="userbar__identity">
+        <a href="/my" aria-hidden className="userbar__avatar" title={me.username}>
+          {me.username.slice(0, 1).toUpperCase()}
+        </a>
+        <div className="min-w-0">
+          <div className="userbar__welcome">
+            <span>{dict.my.welcomeBack}</span>
+            <a href="/my" className="userbar__name">
+              {me.username}
+            </a>
+            {me.class_name && <span className="sticker">{me.class_name}</span>}
+            <button type="button" onClick={logout} className="text-xs text-sub hover:text-sky">
+              {dict.my.logout}
+            </button>
+          </div>
+          <div className="userbar__meta">
+            <span className="bonus-pill">
+              <span>魔力值：</span>
+              <b className="num">{spark !== null ? Number(spark).toLocaleString() : "…"}</b>
+              <a href="/my" className="bonus-hint">
+                [{dict.my.dailyCheckin}]
+              </a>
+            </span>
+            <nav className="userbar__shortcuts" aria-label={dict.my.center}>
+              <a href="/my">{dict.my.center}</a>
+              <a href="/my?tab=bookmarks">{dict.my.bookmarksCount}</a>
+              <a href="/medals">{dict.nav.medals}</a>
+              <a href="/tasks">{dict.nav.tasks}</a>
+              <a href="/invites">{dict.nav.invites}</a>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div className="userbar__stats">
+        <div className="userstat">
+          <span>{dict.my.ratio}</span>
+          <strong className="num">{ratio}</strong>
+        </div>
+        <div className="userstat">
+          <span>{dict.my.uploaded}</span>
+          <strong className="num seed-arrow">{formatBytes(me.uploaded)}</strong>
+        </div>
+        <div className="userstat">
+          <span>{dict.my.downloaded}</span>
+          <strong className="num leech-arrow">{formatBytes(me.downloaded)}</strong>
+        </div>
+        <div className="userstat">
+          <span>{dict.my.seedingCount}</span>
+          <strong className="num">{me.seeding}</strong>
+        </div>
+        <div className="userstat">
+          <span>{dict.my.leechingLabel}</span>
+          <strong className="num">{me.leeching}</strong>
+        </div>
+      </div>
+    </>
   );
 }

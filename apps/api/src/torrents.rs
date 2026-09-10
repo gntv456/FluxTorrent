@@ -19,6 +19,7 @@ pub struct TorrentRow {
     pub seeders: i32,
     pub leechers: i32,
     pub times_completed: i32,
+    pub comments: i64,
     #[serde(rename = "official")]
     pub official_tag: bool,
     pub anonymous: bool,
@@ -103,6 +104,7 @@ pub async fn list_torrents(
         r#"
         SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
                t.grade_id, t.edition_id, t.size, t.seeders, t.leechers, t.times_completed,
+               (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments,
                t.official_tag, t.anonymous, t.approval_status, t.sticky,
                CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name,
                (SELECT kind::text FROM promotions p
@@ -176,6 +178,7 @@ pub async fn get_torrent(db: &PgPool, id: i64) -> DomainResult<TorrentRow> {
         r#"
         SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
                t.grade_id, t.edition_id, t.size, t.seeders, t.leechers, t.times_completed,
+               (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments,
                t.official_tag, t.anonymous, t.approval_status, t.sticky,
                CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name,
                (SELECT kind::text FROM promotions p

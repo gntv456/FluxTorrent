@@ -1,42 +1,58 @@
 @import "tailwindcss";
-/* FluxTorrent 全局样式（方案 §7.1 设计 Token，与 packages/domain-types 的口径常量配套）
+/* FluxTorrent 全局样式 —— 包子站（p.t-baozi.cc BaoziPT theme）像素级复刻 token。
+   色板/圆角/阴影取自站点 theme.css 的 --baozi-* 变量；
    纪律（§7.6-1）：全站禁止硬编码色值，一律使用下列 CSS 变量。 */
 
 :root {
-  /* 品牌色 */
-  --sky: #2fa8ff;
-  --sun: #ffc93c;
-  --coral: #ff7a59;
-  --mint: #2fbf9b;
-  --candy: #ff8fc7;
-  --indigo: #5b6bf5;
+  /* 包子主色（theme.css 原值） */
+  --baozi-bg: #fbf3e6; /* 页面底 */
+  --baozi-paper: #fffaf3; /* 卡片纸面 */
+  --baozi-cream: #fff0d8; /* 奶油强调底 */
+  --baozi-line: #efb26c; /* 主描边 */
+  --baozi-line-soft: #ecd4b1; /* 弱描边 */
+  --baozi-orange: #ed5a17; /* 主橙 */
+  --baozi-orange-bright: #ff741e;
+  --baozi-orange-dark: #c94412; /* 链接/按钮深橙 */
+  --baozi-green: #198340;
+  --baozi-blue: #2e6fae;
+  --baozi-shell: 1536px;
+
+  /* 品牌色（沿用原变量名，值换为包子色板 → 全站组件自动换肤） */
+  --sky: #ed5a17; /* 主强调（链接/焦点） */
+  --sun: #ffe5bb; /* 高亮底 */
+  --coral: #ff741e; /* 次强调 */
+  --mint: #198340; /* 成功/做种 */
+  --candy: #f0a05a; /* 装饰 */
+  --indigo: #b3742f; /* 深装饰 */
   /* 中性 */
-  --cloud: #f5faff;
-  --ink: #1f2a44;
-  --sub: #6b7c99; /* 对比度 4.6:1（原 #93a1bc 仅 2.6:1，P1 可访问性修复） */
-  --line: #e3edf7;
+  --cloud: #f7ead4; /* html 底色（theme.css html 背景） */
+  --ink: #231f1a;
+  --sub: #74695e;
+  --line: #ecd4b1;
   /* 扩展 */
-  --sky-deep: #1e8ae8;
-  --sky-soft: #e8f4ff;
-  --cream: #fffdf6;
+  --sky-deep: #c94412; /* 实心按钮 */
+  --sky-soft: #fff0d8;
+  --cream: #fffaf3;
   /* 状态 */
-  --success: #2fbf9b;
-  --warning: #ffc93c;
-  --danger: #ff6b6b;
-  --info: #2fa8ff;
-  /* 圆角（§7.1） */
-  --r-xl: 24px;
-  --r-lg: 20px;
-  --r-md: 14px;
-  --r-sm: 10px;
-  /* 阴影 */
-  --shadow-card: 0 8px 24px rgba(31, 42, 68, 0.08);
-  --shadow-hover: 0 4px 18px rgba(47, 168, 255, 0.08);
-  /* 字体 */
-  --font-display: "ZCOOL KuaiLe", "Noto Sans SC", sans-serif;
-  --font-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  /* 彩带渐变（§3.2 品牌元素） */
-  --ribbon: linear-gradient(90deg, #ffc93c, #ff7a59, #ff8fc7, #5b6bf5, #2fa8ff);
+  --success: #198340;
+  --warning: #efb26c;
+  --danger: #c64f36;
+  --info: #2e6fae;
+  /* 圆角（theme.css --baozi-radius: 12px） */
+  --r-xl: 16px;
+  --r-lg: 14px;
+  --r-md: 12px;
+  --r-sm: 8px;
+  /* 阴影（theme.css --baozi-shadow） */
+  --shadow-card: 0 7px 22px rgba(121, 76, 28, 0.07);
+  --shadow-hover: 0 5px 13px rgba(157, 72, 18, 0.13);
+  /* 字体（theme.css body 栈；标题用楷体，同站内信息页 h1） */
+  --font-display: "STKaiti", "KaiTi", "Noto Serif SC", serif;
+  --font-body:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+  /* 彩带渐变 → 包子橙带 */
+  --ribbon: linear-gradient(90deg, #ffe5bb, #ff741e, #ed5a17, #c94412);
 }
 
 /* Tailwind v4 主题映射 */
@@ -69,9 +85,10 @@ html {
 
 body {
   color: var(--ink);
-  background: var(--cloud);
+  background: var(--baozi-bg);
   font-family: var(--font-body);
   font-size: 14px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -80,23 +97,273 @@ h2 {
   font-family: var(--font-display);
 }
 
-/* 数字表格对齐（设计稿：统计数字 tabular-nums） */
-.num {
-  font-variant-numeric: tabular-nums;
-  font-weight: 900;
+/* 链接：包子深橙、无下划线（theme.css .theme-baozipt a） */
+a {
+  color: var(--baozi-orange-dark);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--baozi-orange);
 }
 
-/* 贴纸徽章（设计稿 §3.3：白描边+内阴影+微旋转 -2°） */
+/* 数字表格对齐（统计数字 tabular-nums） */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+/* 贴纸徽章 → 包子内联小徽（奶底细边，不再旋转） */
 .sticker {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 2px solid #fff;
-  box-shadow: inset 0 1px 2px rgba(31, 42, 68, 0.15), var(--shadow-hover);
-  transform: rotate(-2deg);
+  padding: 1px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--baozi-line);
+  background: var(--baozi-cream);
+  color: var(--baozi-orange-dark);
   font-size: 11px;
   font-weight: 700;
+  line-height: 1.5;
+}
+
+/* ============ NexusPHP 经典表格（.colhead 渐变表头 + rowfollow 行） ============ */
+.nexus-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--baozi-paper);
+  border: 1px solid var(--baozi-line-soft);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.nexus-table th,
+.nexus-table thead td {
+  color: #6c421f;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--baozi-line-soft);
+  background: linear-gradient(90deg, #ffe8c5, #fff8eb);
+}
+.nexus-table tbody td {
+  padding: 7px 10px;
+  color: #493b2f;
+  border-bottom: 1px solid #ead8bd;
+  background: rgba(255, 253, 249, 0.94);
+}
+.nexus-table tbody tr:hover td {
+  background: #fff3df;
+}
+.nexus-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ============ 顶栏主导航（#mainmenu 卡片按钮条） ============ */
+.mainmenu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  list-style: none;
+}
+.mainmenu::-webkit-scrollbar {
+  display: none;
+}
+.mainmenu-link {
+  display: flex;
+  min-height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 6px 14px;
+  color: var(--baozi-ink);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid var(--baozi-line);
+  border-radius: 10px;
+  background: rgba(255, 252, 245, 0.84);
+  box-shadow: 0 2px 0 rgba(187, 110, 34, 0.04);
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+.mainmenu-link:hover {
+  color: var(--baozi-orange);
+  border-color: var(--baozi-orange);
+  background: #fffdf8;
+  transform: translateY(-1px);
+}
+.mainmenu-link[data-active="true"] {
+  color: #fff;
+  border-color: var(--baozi-orange);
+  background: linear-gradient(
+    135deg,
+    var(--baozi-orange-bright),
+    var(--baozi-orange)
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 5px 13px rgba(237, 90, 23, 0.18);
+}
+
+/* ============ 用户信息条（userbar：欢迎 + 魔力 + 票券统计） ============ */
+.userbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid var(--baozi-line-soft);
+  border-radius: var(--r-md);
+  background: var(--baozi-paper);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.userbar__identity {
+  display: flex;
+  flex: 1 1 340px;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+}
+.userbar__avatar {
+  display: flex;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ff8b32, #eb510e);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.32);
+}
+.userbar__welcome {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.userbar__welcome a.userbar__name {
+  color: var(--baozi-orange);
+  font-size: 17px;
+}
+.userbar__welcome a.userbar__name:hover {
+  color: var(--baozi-orange-dark);
+}
+.userbar__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 12px;
+}
+.userbar__shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: 12px;
+}
+.userbar__shortcuts a {
+  color: #4b3d2f;
+  font-weight: 600;
+}
+.userbar__shortcuts a:hover {
+  color: var(--baozi-orange);
+}
+/* 魔力胶囊（userbar__bonus） */
+.bonus-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 9px;
+  color: #4b3d2f;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid #efd2a7;
+  border-radius: 999px;
+  background: rgba(255, 247, 233, 0.9);
+}
+.bonus-pill b {
+  color: var(--baozi-orange-dark);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.bonus-pill .bonus-hint {
+  color: #72593e;
+  font-size: 10px;
+  font-weight: 600;
+}
+/* 票券统计（userstat：奶油底票券格子） */
+.userbar__stats {
+  display: grid;
+  flex: 0 1 auto;
+  grid-template-columns: repeat(5, minmax(96px, 1fr));
+  gap: 8px;
+  align-items: stretch;
+  padding: 9px 18px 12px;
+  border-top: 1px solid var(--baozi-line-soft);
+  background: var(--baozi-paper);
+}
+@media (min-width: 900px) {
+  .userbar__stats {
+    border-top: 0;
+    border-left: 1px solid var(--baozi-line-soft);
+  }
+}
+.userstat {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  text-align: center;
+  border: 1px solid #f0dcbc;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff7e8, #ffefd6);
+}
+.userstat span {
+  display: block;
+  color: #4a4239;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.userstat strong {
+  display: block;
+  overflow: hidden;
+  color: #111;
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.userstat strong em {
+  font-style: normal;
+  font-weight: 900;
+}
+.userstat .seed-arrow {
+  color: #139536;
+}
+.userstat .leech-arrow {
+  margin-left: 0.2em;
+  color: #f04c1d;
 }
 
 /* 折叠屏铰链预留（§7.4 硬性规则 1：中缝 ≥48px 不可交互区） */

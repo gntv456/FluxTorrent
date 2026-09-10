@@ -95,6 +95,8 @@ s, r = call("GET", "/stats", token=tok)
 check("运营·站点统计", r.get("code") == 0)
 
 # ============ 3. 经济 ============
+# 历次运行会不断扣款（慈善捐赠/玩法），先顶满测试余额保证用例可重复执行
+psql("UPDATE users SET spark_balance = 100000 WHERE username='root' AND spark_balance < 10000")
 s, r = call("GET", "/me/spark", token=tok)
 bal0 = (r.get("data") or {}).get("balance")
 check("经济·火花余额", r.get("code") == 0 and bal0 is not None)
@@ -105,12 +107,15 @@ check("经济·流水", r.get("code") == 0)
 s, r = call("GET", "/shop/items")
 check("经济·商店", r.get("code") == 0 and len(r["data"]) > 0)
 
-key = f"regr-buy-{bal0}"
+import time as _bt
+key = f"regr-buy-{bal0}-{int(_bt.time())}"  # 每次运行唯一键，保证重复运行也可复验
 s, r = call("POST", "/shop/buy", {"item_id": 18, "idempotency_key": key}, token=tok)
 s2, r2 = call("POST", "/shop/buy", {"item_id": 18, "idempotency_key": key}, token=tok)
 bal_after = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
-check("经济·购买幂等", r.get("code") == 0 and r2.get("code") == 0 and bal_after == bal0 - 1000,
-      f"(扣款恰一次 {bal0}->{bal_after})")
+n_ledger = int(psql(f"SELECT count(*) FROM spark_ledger WHERE idempotency_key='{key}'"))
+check("经济·购买幂等", r.get("code") == 0 and r2.get("code") == 0
+      and n_ledger == 1 and bal_after == bal0 - 1000,
+      f"(同键两次仅扣一次 {bal0}->{bal_after}, ledger={n_ledger})")
 
 s, r = call("POST", "/shop/buy", {"item_id": 18}, token=tok)
 check("经济·无幂等键被拒", r.get("code") == 1002)

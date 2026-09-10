@@ -12,3 +12,7 @@ dist/
 # 部署密钥（绝不入库）
 docker/.env
 .trae/
+
+# 本地备份与截图产物（不入库）
+backups/
+docker/bz-css/

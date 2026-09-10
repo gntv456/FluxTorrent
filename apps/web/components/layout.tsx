@@ -2,8 +2,14 @@ import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { UserBox } from "@/components/user-box";
+import { MainMenu } from "@/components/main-menu";
 
-/** 桌面顶栏（设计稿：Logo + 搜索 + 导航 + 发布按钮 + 头像位，64px 吸顶） */
+/**
+ * 包子站三段式页头复刻：
+ * 1) logo 行（站标 + 语言切换 + 发布按钮）
+ * 2) #mainmenu 卡片导航条（当前页橙色渐变高亮）
+ * 3) userbar 用户信息条（欢迎回来 + 魔力胶囊 + 票券统计，UserBox 客户端补齐）
+ */
 export async function Header() {
   const { dict, locale } = await getDict();
   const nav = [
@@ -11,51 +17,48 @@ export async function Header() {
     { href: "/torrents", label: dict.nav.library },
     { href: "/torrents?official=1", label: dict.nav.official },
     { href: "/forums", label: dict.nav.forums },
-    { href: "/messages", label: dict.nav.messages },
-    { href: "/textbooks", label: dict.nav.textbooks },
-    { href: "/medals", label: dict.nav.medals },
-    { href: "/top", label: dict.nav.top },
-    { href: "/magic-pool", label: dict.nav.magicPool },
+    { href: "/requests", label: dict.nav.candidates },
+    { href: "/preserve", label: dict.nav.preserve },
+    { href: "/upload", label: dict.nav.upload },
     { href: "/games", label: dict.nav.games },
-    { href: "/farm", label: dict.nav.farm },
-    { href: "/dressup", label: dict.nav.dressup },
+    { href: "/top", label: dict.nav.top },
+    { href: "/messages", label: dict.nav.messages },
+    { href: "/medals", label: dict.nav.medals },
     { href: "/tasks", label: dict.nav.tasks },
     { href: "/bank", label: dict.nav.bank },
     { href: "/invites", label: dict.nav.invites },
     { href: "/subtitles", label: dict.nav.subtitles },
     { href: "/friends", label: dict.nav.friends },
+    { href: "/textbooks", label: dict.nav.textbooks },
+    { href: "/magic-pool", label: dict.nav.magicPool },
   ];
   return (
-    <header className="sticky top-0 z-40 h-16 border-b border-line bg-ink/95 backdrop-blur">
-      <div className="mx-auto flex h-full max-w-[1280px] items-center gap-6 px-4 md:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          {/* 猫头鹰学士吉祥物占位（素材入库后替换为 next/image） */}
-          <span aria-hidden className="text-2xl">
-            🦉
+    <header className="border-b border-line bg-[var(--baozi-bg)]">
+      {/* 1) logo 行 */}
+      <div className="mx-auto flex h-[86px] w-full max-w-[1536px] items-center justify-between px-6">
+        <Link href="/" className="flex items-center gap-3">
+          <span aria-hidden className="text-4xl">
+            🥟
           </span>
-          <span className="font-display text-xl text-white">
-            {dict.common.brand}
-          </span>
+          <span className="font-display text-3xl text-ink">{dict.common.brand}</span>
         </Link>
-        <nav className="hidden items-center gap-4 md:flex" aria-label="主导航">
-          {nav.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className="min-h-[44px] flex items-center text-sm text-white/80 transition-colors hover:text-sky"
-            >
-              {n.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <LocaleSwitcher current={locale} />
           <Link
             href="/upload"
-            className="hidden min-h-[44px] items-center rounded-full bg-coral px-4 text-sm font-bold text-white shadow-[var(--shadow-hover)] transition-transform active:scale-[0.97] sm:inline-flex"
+            className="flex min-h-[44px] items-center rounded-[10px] border border-[var(--baozi-orange-dark)] bg-[linear-gradient(135deg,var(--baozi-orange-bright),var(--baozi-orange))] px-4 text-sm font-bold text-white shadow-[var(--shadow-hover)] transition-transform active:scale-[0.97]"
           >
             {dict.common.publish}
           </Link>
+        </div>
+      </div>
+      {/* 2) 卡片导航条（客户端组件跟踪路径，当前页橙色渐变高亮） */}
+      <div className="mx-auto w-full max-w-[1536px] px-6">
+        <MainMenu items={nav} ariaLabel={dict.nav.ariaPrimary} />
+      </div>
+      {/* 3) 用户信息条（登录态客户端补齐） */}
+      <div className="mx-auto w-full max-w-[1536px] px-6 pb-3 pt-2">
+        <div className="userbar">
           <UserBox loginLabel={dict.common.login} />
         </div>
       </div>
@@ -63,7 +66,7 @@ export async function Header() {
   );
 }
 
-/** 移动底部 5 Tab（设计稿 C 系列：图标 24px + 标签 11px，触控 ≥44px） */
+/** 移动底部 5 Tab（图标 24px + 标签 11px，触控 ≥44px） */
 export async function MobileTabBar() {
   const { dict } = await getDict();
   const tabs = [
@@ -76,7 +79,7 @@ export async function MobileTabBar() {
   return (
     <nav
       aria-label={dict.tabbar.ariaBottom}
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-[var(--baozi-paper)] pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       {tabs.map((t) => (
         <Link
