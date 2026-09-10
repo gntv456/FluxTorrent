@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { ContentManage } from "@/components/content-manage";
+import { StaffTools } from "@/components/staff-tools";
 
 interface Overview {
   pending_reviews: number;
@@ -79,7 +80,8 @@ type AdminTab =
   | "users"
   | "audit"
   | "cheaters"
-  | "content";
+  | "content"
+  | "tools";
 
 /** 管理组面板（staffpanel.php 复刻）+ 站点设定 + 管理系统（审核/举报/用户/审计） */
 export default function AdminPage({
@@ -89,12 +91,13 @@ export default function AdminPage({
 }) {
   const { dict, locale } = useI18n();
   const a = dict.admin;
-  const [tab, setTab] = useState<AdminTab>(() =>
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("tool") === "cheaters"
-      ? "cheaters"
-      : "panel",
-  );
+  const [tab, setTab] = useState<AdminTab>(() => {
+    if (typeof window === "undefined") return "panel";
+    const tool = new URLSearchParams(window.location.search).get("tool");
+    if (tool === "cheaters") return "cheaters";
+    if (["faqmanage", "modrules", "catmanage", "bans", "massmail"].includes(tool ?? "")) return "tools";
+    return "panel";
+  });
   const [cheaters, setCheaters] = useState<CheaterRow[]>([]);
   const [ov, setOv] = useState<Overview | null>(null);
   const [reviews, setReviews] = useState<PendingTorrent[]>([]);
@@ -223,6 +226,7 @@ export default function AdminPage({
     ["audit", a.tabs.audit],
     ["cheaters", a.cheatersTitle],
     ["content", a.tabs.content],
+    ["tools", dict.stafftools.title],
   ] as const;
 
   const panelGroups: [string, PanelEntry[]][] = ["sysop", "admin", "moderator"]
@@ -469,6 +473,8 @@ export default function AdminPage({
           <ContentManage />
         </section>
       )}
+
+      {tab === "tools" && <StaffTools />}
 
       {tab === "cheaters" && (
         <section className="nexus-detail">
