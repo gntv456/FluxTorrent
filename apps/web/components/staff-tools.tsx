@@ -25,12 +25,20 @@ interface NotConnectRow { id: number; username: string; torrents: number; last_s
 interface UploaderRow { id: number; username: string; uploads: number; seeding: number; total_size: number }
 interface AgentRow { agent: string; peers: number }
 interface PollRow { id: number; question: string; closed: boolean; votes: number; created_at: string }
+interface PgConn { state: string; count: number }
+interface TableSize { relname: string; total_size: number; row_estimates: number }
+interface DbStats { engine: string; database: string; connections: PgConn[]; total_connections: number; database_size: number; slow_transactions: number; dead_tuples: number; tables: TableSize[] }
+interface SysLogItem { id: number; actor: string | null; action: string; ref_json: unknown; ip: string | null; created_at: string }
+interface SysLogPage { items: SysLogItem[]; total: number; page: number; per_page: number; pages: number }
+interface LocationItem { net: string; netmask: number; logins: number; users: number; failed: number; last_seen: string | null }
+interface LocationPage { items: LocationItem[]; total: number; page: number; per_page: number; pages: number }
 
 type ToolTab =
   | "faq" | "rules" | "cats" | "bans" | "mail"
   | "promo" | "staffmess" | "adduser" | "bonus" | "warned" | "ipcheck" | "maxlogin"
   | "upload" | "resetpass" | "deldisabled" | "emailbans" | "testip" | "stats"
-  | "cleanup" | "ads" | "notconnect" | "uploaders" | "agents" | "polls";
+  | "cleanup" | "ads" | "notconnect" | "uploaders" | "agents" | "polls"
+  | "dbstats" | "syslog" | "locations";
 
 export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const { dict } = useI18n();
@@ -89,6 +97,12 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [uploaderRows, setUploaderRows] = useState<UploaderRow[]>([]);
   const [agentRows, setAgentRows] = useState<AgentRow[]>([]);
   const [pollRows, setPollRows] = useState<PollRow[]>([]);
+  const [dbStats, setDbStats] = useState<DbStats | null>(null);
+  const [logPage, setLogPage] = useState(1);
+  const [logQ, setLogQ] = useState("");
+  const [logData, setLogData] = useState<SysLogPage | null>(null);
+  const [locPage, setLocPage] = useState(1);
+  const [locData, setLocData] = useState<LocationPage | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -119,11 +133,21 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       api.get<UploaderRow[]>("/api/v1/admin/uploaders").then(setUploaderRows).catch(() => setUploaderRows([]));
       api.get<AgentRow[]>("/api/v1/admin/allagents").then(setAgentRows).catch(() => setAgentRows([]));
       api.get<PollRow[]>("/api/v1/admin/polloverview").then(setPollRows).catch(() => setPollRows([]));
+      api.get<DbStats | null>("/api/v1/admin/dbstats").then(setDbStats).catch(() => setDbStats(null));
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : dict.common.loadFailed);
     }
   }, [dict]);
   useEffect(() => { load(); }, [load]);
+  // 系统日志/位置管理：按需分页加载
+  useEffect(() => {
+    api.get<SysLogPage>(`/api/v1/admin/syslog?page=${logPage}&q=${encodeURIComponent(logQ)}`)
+      .then(setLogData).catch(() => setLogData(null));
+  }, [logPage, logQ]);
+  useEffect(() => {
+    api.get<LocationPage>(`/api/v1/admin/locations?page=${locPage}`)
+      .then(setLocData).catch(() => setLocData(null));
+  }, [locPage]);
 
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(null), 2500); }
   async function guard(fn: () => Promise<void>, ok: string) {
@@ -141,6 +165,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
     ["emailbans", t.tabEmailbans], ["testip", t.tabTestip], ["stats", t.tabStats],
     ["cleanup", t.tabCleanup], ["ads", t.tabAds],
     ["notconnect", t.tabNotconnect], ["uploaders", t.tabUploaders], ["agents", t.tabAgents], ["polls", t.tabPolls],
+    ["dbstats", t.tabDbstats], ["syslog", t.tabSyslog], ["locations", t.tabLocations],
   ];
 
   return (
@@ -847,6 +872,117 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
             {pollRows.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-sub">{t.plEmpty}</td></tr>}
           </tbody>
         </table>
+      )}
+      {/* 数据库状态（mysql_stats → PostgreSQL） */}
+      {tab === "dbstats" && dbStats && (
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="baozi-panel p-4">
+              <p className="text-xs text-sub">{t.dsEngine}</p>
+              <p className="text-base font-bold text-ink">{dbStats.engine} · {dbStats.database}</p>
+            </div>
+            <div className="baozi-panel p-4">
+              <p className="text-xs text-sub">{t.dsConns}</p>
+              <p className="num text-2xl font-bold text-ink">{dbStats.total_connections}</p>
+            </div>
+            <div className="baozi-panel p-4">
+              <p className="text-xs text-sub">{t.dsSize}</p>
+              <p className="num text-lg font-bold text-ink">{(dbStats.database_size / 1024 ** 2).toFixed(1)} MB</p>
+            </div>
+            <div className="baozi-panel p-4">
+              <p className="text-xs text-sub">{t.dsSlow}</p>
+              <p className={`num text-2xl font-bold ${dbStats.slow_transactions > 0 ? "text-[#e14d4d]" : "text-[#2fb26b]"}`}>{dbStats.slow_transactions}</p>
+            </div>
+          </div>
+          <table className="nexus-table">
+            <tbody>
+              <tr><td className="colhead">{t.dsState}</td><td className="colhead">{t.dsCount}</td></tr>
+              {dbStats.connections.map((c) => (
+                <tr key={c.state}><td className="font-mono text-xs">{c.state}</td><td className="num">{c.count}</td></tr>
+              ))}
+              {dbStats.connections.length === 0 && <tr><td colSpan={2} className="py-6 text-center text-sub">{t.dsEmpty}</td></tr>}
+            </tbody>
+          </table>
+          <table className="nexus-table">
+            <tbody>
+              <tr><td className="colhead">{t.dsTable}</td><td className="colhead">{t.dsRows}</td><td className="colhead text-right">{t.dsTableSize}</td></tr>
+              {dbStats.tables.map((tb) => (
+                <tr key={tb.relname}>
+                  <td className="font-mono text-xs">{tb.relname}</td>
+                  <td className="num">{tb.row_estimates}</td>
+                  <td className="num text-right">{(tb.total_size / 1024 ** 2).toFixed(2)} MB</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-xs text-sub">{t.dsDead.replace("{n}", dbStats.dead_tuples.toLocaleString("zh-CN"))}</p>
+        </>
+      )}
+
+      {/* 系统日志（bitbucketlog → 审计日志） */}
+      {tab === "syslog" && (
+        <>
+          <section className="baozi-panel p-4">
+            <div className="cmgmt-form">
+              <label>{t.slSearch}<input value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogPage(1); }} placeholder="massmail / warn_user / freeleech" /></label>
+            </div>
+          </section>
+          <table className="nexus-table">
+            <tbody>
+              <tr><td className="colhead">ID</td><td className="colhead">{t.slActor}</td><td className="colhead">{t.slAction}</td><td className="colhead">{t.fldIp}</td><td className="colhead">{t.mailAt}</td></tr>
+              {logData?.items.map((r) => (
+                <tr key={r.id}>
+                  <td className="num">{r.id}</td>
+                  <td>{r.actor ?? "system"}</td>
+                  <td className="font-mono text-xs">{r.action}</td>
+                  <td className="font-mono text-xs">{r.ip ?? "—"}</td>
+                  <td className="text-xs text-sub">{new Date(r.created_at).toLocaleString("zh-CN")}</td>
+                </tr>
+              ))}
+              {(!logData || logData.items.length === 0) && <tr><td colSpan={5} className="py-6 text-center text-sub">{t.slEmpty}</td></tr>}
+            </tbody>
+          </table>
+          {logData && logData.pages > 1 && (
+            <div className="flex items-center justify-between">
+              <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-40"
+                disabled={logPage <= 1} onClick={() => setLogPage((p) => p - 1)}>{dict.common.nextPage}</button>
+              <span className="text-xs text-sub">{logData.page} / {logData.pages}（{logData.total}）</span>
+              <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-40"
+                disabled={logPage >= logData.pages} onClick={() => setLogPage((p) => p + 1)}>{dict.common.nextPage}</button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 位置管理（location → IP 网段视图） */}
+      {tab === "locations" && (
+        <>
+          <p className="text-xs text-sub">{t.loNote}</p>
+          <table className="nexus-table">
+            <tbody>
+              <tr><td className="colhead">{t.loNet}</td><td className="colhead">{t.loLogins}</td><td className="colhead">{t.ipAccounts}</td><td className="colhead">{t.loFailed}</td><td className="colhead">{t.ipLastSeen}</td></tr>
+              {locData?.items.map((r) => (
+                <tr key={`${r.net}/${r.netmask}`}>
+                  <td className="font-mono">{r.net}/{r.netmask}</td>
+                  <td className="num">{r.logins}</td>
+                  <td className="num">{r.users}</td>
+                  <td className="num">{r.failed > 0 ? <span className="text-[#e14d4d]">{r.failed}</span> : 0}</td>
+                  <td className="text-xs text-sub">{r.last_seen ? new Date(r.last_seen).toLocaleString("zh-CN") : "—"}</td>
+                </tr>
+              ))}
+              {(!locData || locData.items.length === 0) && <tr><td colSpan={5} className="py-6 text-center text-sub">{t.loEmpty}</td></tr>}
+            </tbody>
+          </table>
+          {locData && locData.pages > 1 && (
+            <div className="flex items-center justify-between">
+              <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-40"
+                disabled={locPage <= 1} onClick={() => setLocPage((p) => p - 1)}>‹</button>
+              <span className="text-xs text-sub">{locData.page} / {locData.pages}（{locData.total}）</span>
+              <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-40"
+                disabled={locPage >= locData.pages} onClick={() => setLocPage((p) => p + 1)}>›</button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
