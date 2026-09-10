@@ -245,15 +245,18 @@ struct ForumRow {
     descr: Option<String>,
     topics: i64,
     posts: i64,
+    #[sqlx(default)]
+    latest_topic: Option<String>,
+    #[sqlx(default)]
+    latest_author: Option<String>,
+    #[sqlx(default)]
+    latest_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[get("/forums")]
 async fn forum_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
     let rows = sqlx::query_as::<_, ForumRow>(
-        "SELECT f.id, f.name, f.descr, \
-            (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics, \
-            (SELECT count(*) FROM posts p JOIN topics t ON t.id = p.topic_id WHERE t.forum_id = f.id) AS posts \
-         FROM forums f WHERE f.min_class <= 99 ORDER BY f.id",
+        "SELECT f.id, f.name, f.descr,             (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics,             (SELECT count(*) FROM posts p JOIN topics t ON t.id = p.topic_id WHERE t.forum_id = f.id) AS posts,             (SELECT t.title FROM topics t WHERE t.forum_id = f.id ORDER BY t.id DESC LIMIT 1) AS latest_topic,             (SELECT u.username FROM topics t JOIN users u ON u.id = t.user_id WHERE t.forum_id = f.id ORDER BY t.id DESC LIMIT 1) AS latest_author,             (SELECT t.created_at FROM topics t WHERE t.forum_id = f.id ORDER BY t.id DESC LIMIT 1) AS latest_at          FROM forums f WHERE f.min_class <= 99 ORDER BY f.id",
     )
     .fetch_all(&state.repo.db)
     .await

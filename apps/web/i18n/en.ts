@@ -585,6 +585,17 @@ export const en: Dict = {
     stFlagged: "H&R flagged",
     empty: "No H&R records",
   },
+  forums2: {
+    allNodes: "Boards",
+    totalPrefix: "",
+    totalSuffix: " topics in total",
+    newTopic: "New topic",
+    topicsUnit: "topics",
+    postsUnit: "posts",
+    latest: "Latest",
+    goBoard: "Open board",
+    by: "by ",
+  },
   usercp: {
     navTitle: "Control Panel",
     days: "days",

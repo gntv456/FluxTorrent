@@ -42,6 +42,9 @@ export interface Forum {
   descr: string | null;
   topics: number;
   posts: number;
+  latest_topic?: string;
+  latest_author?: string;
+  latest_at?: string;
 }
 export async function getForums(): Promise<Forum[]> {
   try {
