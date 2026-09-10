@@ -294,6 +294,7 @@ export const en: Dict = {
     editionNone: "Not set",
     editions: ["PEP", "MOE Compiled", "Unified", "Jiangsu", "BNU", "FLTRP", "Shanghai"],
     anonymous: "Publish anonymously",
+    formFileHint: "Click to choose or drop a .torrent file here",
     submit: "Submit",
     busy: "Publishing…",
     chooseFile: "Please choose a .torrent file",

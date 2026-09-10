@@ -290,6 +290,7 @@ export const zhCN = {
     editionNone: "不选择",
     editions: ["人教", "部编", "统编", "苏教", "北师大", "外研", "沪教"],
     anonymous: "匿名发布",
+    formFileHint: "点击选择或拖拽 .torrent 文件到此处",
     submit: "提交发布",
     busy: "发布中…",
     chooseFile: "请选择 .torrent 文件",

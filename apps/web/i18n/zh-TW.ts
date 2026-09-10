@@ -292,6 +292,7 @@ export const zhTW: Dict = {
     editionNone: "不選擇",
     editions: ["人教", "部編", "統編", "蘇教", "北師大", "外研", "滬教"],
     anonymous: "匿名發布",
+    formFileHint: "點擊選擇或拖曳 .torrent 檔案到此處",
     submit: "提交發布",
     busy: "發布中…",
     chooseFile: "請選擇 .torrent 檔案",

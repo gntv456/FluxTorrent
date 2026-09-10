@@ -160,6 +160,24 @@ a:hover {
   border-bottom: 0;
 }
 
+/* ============ NexusPHP 表单表格（rowhead 标签列 + rowfollow 值列） ============ */
+.nexus-form td.rowhead {
+  width: 132px;
+  padding: 10px 12px;
+  color: #4a3a2c;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: top;
+  background: #fff1dc;
+}
+.nexus-form td.rowfollow {
+  padding: 10px 12px;
+  background: #fffaf3;
+}
+.nexus-form tbody tr:hover td.rowfollow {
+  background: #fff6e9;
+}
+
 /* ============ 种子详情页（NexusPHP 详情块：colhead 表头 + label/value 行） ============ */
 .nexus-detail {
   overflow: hidden;
