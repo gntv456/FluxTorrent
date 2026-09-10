@@ -1,56 +1,60 @@
 import Link from "next/link";
 import { getRequests } from "@/lib/data";
 import { getDict } from "@/i18n/server";
-import { dateLocale, fmt } from "@/i18n/config";
+import { dateLocale } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
+/** 求种区（NexusPHP 经典表格：colhead 表头 + rowfollow 行） */
 export default async function RequestsPage() {
   const { dict, locale } = await getDict();
   const requests = await getRequests();
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.requests.title}</h1>
-        <span className="text-sm text-sub">{dict.requests.subtitle}</span>
-      </div>
+      <h1 className="font-display text-2xl">{dict.requests.title}</h1>
       {requests.length === 0 ? (
         <p className="py-10 text-center text-sub">{dict.requests.empty}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {requests.map((r) => (
-            <li
-              key={r.id}
-              className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-bold">{r.title}</h2>
-                {r.bounty > 0 && (
-                  <span className="sticker bg-sun text-ink num">
-                    {fmt(dict.requests.bounty, {
-                      n: r.bounty.toLocaleString(dateLocale(locale)),
-                    })}
-                  </span>
-                )}
-              </div>
-              {r.descr && <p className="mt-1 text-sm text-sub">{r.descr}</p>}
-              <p className="mt-1 text-xs text-sub">
-                {fmt(dict.requests.requester, { name: r.username ?? "—" })}
-                {r.fulfilled_torrent_id ? (
-                  <>
-                    {" · "}
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <td className="colhead">{dict.requests.colName}</td>
+              <td className="colhead w-24 text-right">{dict.requests.colBounty}</td>
+              <td className="colhead hidden w-32 sm:table-cell">{dict.requests.colRequester}</td>
+              <td className="colhead w-24 text-right">{dict.requests.colStatus}</td>
+            </tr>
+          </thead>
+          <tbody>
+            {requests.map((r) => (
+              <tr key={r.id}>
+                <td>
+                  <span className="font-bold text-ink">{r.title}</span>
+                  {r.descr && <p className="mt-1 text-xs text-sub">{r.descr}</p>}
+                </td>
+                <td className="num text-right font-bold text-[var(--baozi-orange-dark)]">
+                  {r.bounty > 0
+                    ? r.bounty.toLocaleString(dateLocale(locale))
+                    : "—"}
+                </td>
+                <td className="hidden text-sub sm:table-cell">
+                  {r.username ?? "—"}
+                </td>
+                <td className="text-right">
+                  {r.fulfilled_torrent_id ? (
                     <Link
                       href={`/torrent/${r.fulfilled_torrent_id}`}
-                      className="text-sky"
+                      className="font-bold text-sky hover:text-[var(--baozi-orange)]"
                     >
                       {dict.requests.fulfilled}
                     </Link>
-                  </>
-                ) : null}
-              </p>
-            </li>
-          ))}
-        </ul>
+                  ) : (
+                    <span className="text-sub">{dict.requests.pending}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );

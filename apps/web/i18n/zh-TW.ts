@@ -487,11 +487,13 @@ export const zhTW: Dict = {
   },
   requests: {
     title: "求種區",
-    subtitle: "說出你想要的資源，懸賞求種",
+    colName: "資源名稱",
+    colBounty: "懸賞",
+    colRequester: "求種人",
+    colStatus: "狀態",
     empty: "暫無求種",
-    bounty: "懸賞 {n}",
-    requester: "求種人 {name}",
     fulfilled: "已應種 →",
+    pending: "待應種",
   },
   top: {
     title: "排行榜 · 上傳榜",
