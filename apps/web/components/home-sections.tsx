@@ -1,0 +1,430 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { api } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+
+/** 首页板块（复刻包子站 index.php）：
+ *  社区新鲜事（头条+列表+公告弹窗）· 签到得魔力日历 · 新增资源统计（30 天堆叠柱状图）
+ *  · 站点数据三列 · 幸运大转盘流水 · 免责条款 + 友情链接 */
+
+export interface HomeData {
+  news: { id: number; title: string; body: string; badge: string; date: string }[];
+  attendance: {
+    month: string;
+    streak: number;
+    total_days: number;
+    checked_today: boolean;
+    calendar: { date: string; day: number; done: boolean; reward: number }[];
+  };
+  resource_stats: {
+    today: number;
+    avg7: number;
+    total30: number;
+    series: { date: string; ordinary: number; official: number; total: number }[];
+  };
+  site_data: {
+    users: number;
+    torrents: number;
+    peers: number;
+    seeders: number;
+    leechers: number;
+    warned: number;
+    banned: number;
+    unverified: number;
+    total_upload: number;
+    total_download: number;
+    total_size: number;
+  };
+  lucky_draw: { user: string; kind: string; amount: number }[];
+  friend_links: { name: string; url: string; title: string | null }[];
+}
+
+function fmtBytes(bytes: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+  let v = bytes;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return `${v >= 100 ? v.toFixed(0) : v.toFixed(3)} ${units[i]}`;
+}
+
+export function HomeSections() {
+  const { dict } = useI18n();
+  const t = dict.home2;
+  const [data, setData] = useState<HomeData | null>(null);
+  const [err, setErr] = useState(false);
+  const [modal, setModal] = useState<number | null>(null);
+  const [checkinBusy, setCheckinBusy] = useState(false);
+  const [checkinMsg, setCheckinMsg] = useState<string | null>(null);
+
+  const load = () => {
+    api
+      .get<HomeData>("/api/v1/home")
+      .then(setData)
+      .catch(() => setErr(true));
+  };
+  useEffect(load, []);
+
+  async function checkin() {
+    if (checkinBusy) return;
+    setCheckinBusy(true);
+    try {
+      const r = await api.post<{ reward: number; streak: number }>("/api/v1/attendance/checkin");
+      setCheckinMsg(dict.my.checkinOk.replace("{reward}", String(r.reward)).replace("{streak}", String(r.streak)));
+      load();
+    } catch {
+      setCheckinMsg(dict.home2.checkinFail);
+    } finally {
+      setCheckinBusy(false);
+    }
+  }
+
+  if (err) return <p className="text-sm text-sub">{dict.common.loadFailed}</p>;
+  if (!data) return <p className="text-sm text-sub">{dict.my.loading}</p>;
+
+  const [headline, ...rest] = data.news;
+  const headlineBodyPlain = headline?.body.replace(/<[^>]+>/g, "").slice(0, 160) ?? "";
+
+  // 周一开头对齐：本月 1 号之前补空位
+  const firstDate = new Date(data.attendance.calendar[0]?.date ?? Date.now());
+  const leadingBlanks = (firstDate.getDay() + 6) % 7; // 周一=0
+
+  return (
+    <div className="home-stack">
+      {/* ==== 第一行：社区新鲜事（主） + 签到日历（侧） ==== */}
+      <div className="home-row home-row--top">
+        <section className="baozi-panel home-news">
+          <header className="baozi-panel__head baozi-panel__head--ribbon">
+            <h1>
+              <span aria-hidden="true">📣</span> {t.newsTitle}
+            </h1>
+          </header>
+          <div className="home-news__body">
+            <div className="home-news__poster" aria-hidden="true">
+              {dict.common.brand}
+            </div>
+            <div className="home-news__content">
+              {headline && (
+                <article className="home-news__summary">
+                  <strong>{headline.title}</strong>
+                  <p>{headlineBodyPlain}…</p>
+                  <div className="home-news__summary-footer">
+                    <button
+                      type="button"
+                      className="baozi-button"
+                      onClick={() => setModal(headline.id)}
+                    >
+                      {t.viewNews}
+                    </button>
+                  </div>
+                </article>
+              )}
+              <div className="home-news__list" aria-label={t.moreNews}>
+                {rest.map((n) => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    className="home-news__item"
+                    onClick={() => setModal(n.id)}
+                  >
+                    <span className="home-news__badge">{n.badge}</span>
+                    <strong>{n.title}</strong>
+                    <time>{n.date}</time>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside className="baozi-panel attendance-card">
+          <header className="baozi-panel__head">
+            <h2>
+              <span aria-hidden="true">📅</span> {t.attendanceTitle}
+            </h2>
+            {data.attendance.checked_today ? (
+              <span className="attendance-done">{t.attended}</span>
+            ) : (
+              <button type="button" className="baozi-button" onClick={checkin} disabled={checkinBusy}>
+                {checkinBusy ? dict.my.checkinBusy : t.checkinNow}
+              </button>
+            )}
+          </header>
+          {checkinMsg && <p className="attendance-msg">{checkinMsg}</p>}
+          <div className="attendance-card__summary">
+            <div>
+              <strong>{data.attendance.month}</strong>
+              <span>
+                {t.streak} {data.attendance.streak} {dict.usercp.days}
+              </span>
+            </div>
+            <div>
+              <strong>{data.attendance.total_days}</strong>
+              <span>{t.totalDays}</span>
+            </div>
+          </div>
+          <div className="attendance-calendar" aria-label={`${data.attendance.month}${t.calendar}`}>
+            {t.weekdays.map((w) => (
+              <span key={w} className="attendance-calendar__weekday">
+                {w}
+              </span>
+            ))}
+            {Array.from({ length: leadingBlanks }).map((_, i) => (
+              <span key={`blank-${i}`} className="attendance-calendar__day is-outside" />
+            ))}
+            {data.attendance.calendar.map((d) => {
+              const todayStr = new Date().toISOString().slice(0, 10);
+              const isToday = d.date === todayStr;
+              const isFuture = d.date > todayStr;
+              const cls = [
+                "attendance-calendar__day",
+                d.done ? "is-done" : isFuture ? "is-future" : "is-missed",
+                isToday ? "is-today" : "",
+              ].join(" ");
+              return (
+                <span
+                  key={d.date}
+                  className={cls}
+                  title={`${d.date} · ${d.done ? `${t.signed} +${d.reward}` : isFuture ? "" : t.unsigned}`}
+                >
+                  <strong>{d.day}</strong>
+                  <small>{d.done ? `+${d.reward}` : isFuture ? "\u00A0" : t.unsignedShort}</small>
+                </span>
+              );
+            })}
+          </div>
+          <footer className="attendance-card__legend">
+            <span>
+              <i className="is-done" /> {t.legendDone}
+            </span>
+            <span>
+              <i className="is-today" /> {t.legendToday}
+            </span>
+          </footer>
+        </aside>
+      </div>
+
+      {/* ==== 新增资源统计（近 30 天堆叠柱状图 + 摘要） ==== */}
+      <ResourceStatsPanel series={data.resource_stats} t={t} />
+
+      {/* ==== 底部行：站点数据三列（主） + 幸运大转盘（侧） ==== */}
+      <div className="home-row home-row--bottom">
+        <section className="baozi-panel home-site-data">
+          <header className="baozi-panel__head">
+            <h2>
+              <span aria-hidden="true">▦</span> {t.siteDataTitle}
+            </h2>
+            <small>{t.siteDataNote}</small>
+          </header>
+          <div className="home-site-data__grid">
+            <dl className="home-site-data__column">
+              <div className="home-site-data__item is-primary">
+                <dt>{t.sdTodayUsers}</dt>
+                <dd className="num">{data.site_data.peers.toLocaleString()}</dd>
+              </div>
+              <div className="home-site-data__item">
+                <dt>{dict.home.torrents}</dt>
+                <dd className="num">{data.site_data.torrents.toLocaleString()}</dd>
+              </div>
+              <div className="home-site-data__item">
+                <dt>{t.sdPeers}</dt>
+                <dd className="num">{data.site_data.peers.toLocaleString()}</dd>
+              </div>
+              <div className="home-site-data__item">
+                <dt>{t.sdSeeders}</dt>
+                <dd className="num">{data.site_data.seeders.toLocaleString()}</dd>
+              </div>
+              <div className="home-site-data__item">
+                <dt>{t.sdLeechers}</dt>
+                <dd className="num">{data.site_data.leechers.toLocaleString()}</dd>
+              </div>
+              <div className="home-site-data__item">
+                <dt>{t.sdTotalDown}</dt>
+                <dd className="num">{fmtBytes(data.site_data.total_download)}</dd>
+              </div>
+            </dl>
+            <dl className="home-site-data__column">
+              <div className="home-site-data__item is-primary">
+                <dt>{t.sdUsers}</dt>
+                <dd className="num">{data.site_data.users.toLocaleString()}</dd>
+              </div>
+              <div className="home-site-data__item is-warning">
+                <dt>
+                  {t.sdWarned}
+                  <i aria-hidden="true">!</i>
+                </dt>
+                <dd className="num">{data.site_data.warned.toLocaleString()}</dd>
+              </div>
+              <div className="home-site-data__item is-danger">
+                <dt>
+                  {t.sdBanned}
+                  <i aria-hidden="true">×</i>
+                </dt>
+                <dd className="num">{data.site_data.banned.toLocaleString()}</dd>
+              </div>
+              <div className="home-site-data__item">
+                <dt>{t.sdSeedLeechRatio}</dt>
+                <dd className="num">
+                  {data.site_data.leechers === 0
+                    ? "∞"
+                    : `${((data.site_data.seeders / Math.max(1, data.site_data.leechers)) * 100).toFixed(0)}%`}
+                </dd>
+              </div>
+              <div className="home-site-data__item">
+                <dt>{dict.home.seedSize}</dt>
+                <dd className="num">{fmtBytes(data.site_data.total_size)}</dd>
+              </div>
+              <div className="home-site-data__item">
+                <dt>{t.sdTotalData}</dt>
+                <dd className="num">
+                  {fmtBytes(data.site_data.total_upload + data.site_data.total_download)}
+                </dd>
+              </div>
+            </dl>
+            <dl className="home-site-data__column">
+              <div className="home-site-data__item is-primary">
+                <dt>{t.sdUnverified}</dt>
+                <dd className="num">{data.site_data.unverified.toLocaleString()}</dd>
+              </div>
+              <div className="home-site-data__item">
+                <dt>{t.sdTotalUp}</dt>
+                <dd className="num">{fmtBytes(data.site_data.total_upload)}</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <aside className="baozi-panel home-lucky-draw" aria-label={t.luckyTitle}>
+          <header className="baozi-panel__head">
+            <h2>
+              <span aria-hidden="true">🎰</span> {t.luckyTitle}
+            </h2>
+            <Link href="/games">{t.goDraw}</Link>
+          </header>
+          <ul className="home-lucky-draw__list">
+            {data.lucky_draw.map((l, i) => (
+              <li key={i}>
+                <b className="rainbow">{l.user}</b> {t.got} {dict.common.spark} {l.amount}
+              </li>
+            ))}
+            {data.lucky_draw.length === 0 && <li className="text-sub">{t.luckyEmpty}</li>}
+          </ul>
+        </aside>
+      </div>
+
+      {/* ==== 免责条款 + 友情链接 ==== */}
+      <div className="home-native-modules">
+        <h2>{t.disclaimerTitle}</h2>
+        <p className="home-native-modules__text">{t.disclaimerBody}</p>
+        <h2>
+          {t.linksTitle}
+          <small>
+            {" "}
+            - [<Link href="/faq">{t.applyLink}</Link>]
+          </small>
+        </h2>
+        <p className="home-native-modules__text">
+          {data.friend_links.map((l) => (
+            <a key={l.url} href={l.url} title={l.title ?? l.name} target="_blank" rel="noreferrer">
+              {l.name}
+            </a>
+          ))}
+        </p>
+      </div>
+
+      {/* ==== 公告弹窗 ==== */}
+      {modal !== null && (
+        <dialog
+          className="home-news-modal"
+          open
+          onClick={(e) => e.target === e.currentTarget && setModal(null)}
+        >
+          <section className="home-news-modal__panel">
+            <header className="home-news-modal__head">
+              <div>
+                <span>{t.newsBadge}</span>
+                <h2>{data.news.find((n) => n.id === modal)?.title}</h2>
+              </div>
+              <button
+                type="button"
+                aria-label={t.closeModal}
+                title={t.closeModal}
+                onClick={() => setModal(null)}
+              >
+                ×
+              </button>
+            </header>
+            <div
+              className="home-news-modal__body"
+              dangerouslySetInnerHTML={{
+                __html: data.news.find((n) => n.id === modal)?.body ?? "",
+              }}
+            />
+          </section>
+        </dialog>
+      )}
+    </div>
+  );
+}
+
+function ResourceStatsPanel({
+  series,
+  t,
+}: {
+  series: HomeData["resource_stats"];
+  t: NonNullable<ReturnType<typeof useI18n>["dict"]>["home2"];
+}) {
+  const max = Math.max(1, ...series.series.map((d) => d.total));
+  return (
+    <section className="baozi-panel home-resource-stats">
+      <header className="baozi-panel__head">
+        <h2>
+          <span aria-hidden="true">▥</span> {t.statsTitle}
+        </h2>
+        <small>{t.statsNote}</small>
+      </header>
+      <div className="home-resource-stats__metrics">
+        <div className="home-resource-stats__metric">
+          <span>{t.statsToday}</span>
+          <strong className="num">{series.today}</strong>
+          <small>{t.statsAsOfNow}</small>
+        </div>
+        <div className="home-resource-stats__metric">
+          <span>{t.statsAvg7}</span>
+          <strong className="num">{series.avg7.toFixed(1)}</strong>
+          <small>{t.statsExclToday}</small>
+        </div>
+        <div className="home-resource-stats__metric">
+          <span>{t.statsTotal30}</span>
+          <strong className="num">{series.total30.toLocaleString()}</strong>
+          <small>{t.statsResource}</small>
+        </div>
+        <div className="home-resource-stats__legend">
+          <span>
+            <i className="legend-swatch legend-swatch--ordinary" aria-hidden="true" />{" "}
+            {t.statsOrdinary}
+          </span>
+          <span>
+            <i className="legend-swatch legend-swatch--official" aria-hidden="true" /> {t.statsOfficial}
+          </span>
+        </div>
+      </div>
+      <figure className="home-resource-stats__figure">
+        <div className="home-resource-stats__chart" role="img" aria-label={t.statsChartAria}>
+          {series.series.map((d) => (
+            <div key={d.date} className="rs-bar" title={`${d.date}：${t.statsOrdinary} ${d.ordinary}，${t.statsOfficial} ${d.official}，${t.statsTotalShort} ${d.total}`}>
+              {d.official > 0 && (
+                <i className="rs-bar__official" style={{ flexGrow: d.official / max }} />
+              )}
+              <i className="rs-bar__ordinary" style={{ flexGrow: d.ordinary / max }} />
+            </div>
+          ))}
+        </div>
+      </figure>
+    </section>
+  );
+}

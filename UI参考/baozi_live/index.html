@@ -1,0 +1,786 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN" xml:lang="zh-CN"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="generator" content="NexusPHP">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>baozi :: 首页 @baozi - Powered by NexusPHP</title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="search" type="application/opensearchdescription+xml" title="baozi Torrents" href="opensearch.php">
+<link rel="stylesheet" href="styles/mediumfont.css" type="text/css">
+<link rel="stylesheet" href="styles/sprites.css" type="text/css">
+<link rel="stylesheet" href="pic/forum_pic/chs/forumsprites.css" type="text/css">
+<link rel="stylesheet" href="styles/BaoziPT/DomTT.css" type="text/css">
+<link rel="stylesheet" href="styles/nexus.css" type="text/css">
+<link rel="stylesheet" href="styles/BaoziPT/theme.css?v=1788879236" type="text/css">
+<link rel="alternate" type="application/rss+xml" title="Latest Torrents" href="torrentrss.php">
+<script type="text/javascript" src="js/curtain_imageresizer.js"></script><style type="text/css">body {overflow-y:scroll;}</style>
+<script type="text/javascript" src="js/ajaxbasic.js"></script>
+<script type="text/javascript" src="js/common.js"></script>
+<script type="text/javascript" src="js/domLib.js"></script>
+<script type="text/javascript" src="js/domTT.js"></script>
+<script type="text/javascript" src="js/domTT_drag.js"></script>
+<script type="text/javascript" src="js/fadomatic.js"></script>
+<link rel="stylesheet" href="styles/BaoziPT/home-resource-stats.css?v=1788234915" type="text/css"><link rel="stylesheet" href="ddlevelsfiles/new-base.css" type="text/css"><script type="text/javascript" src="js/jquery-1.12.4.min.js"></script>
+<script type="text/javascript">
+    jQuery.noConflict();
+    window.nexusLayerOptions = {
+        confirm: {btnAlign: 'c', title: 'Confirm', btn: ['OK', 'Cancel'], skin: 'baozi-layer', shade: [0.26, '#6a3a16']},
+        alert: {btnAlign: 'c', title: 'Info', btn: ['OK'], skin: 'baozi-layer', shade: [0.26, '#6a3a16']}
+    }
+</script>
+<script type="text/javascript" src="vendor/layer-v3.5.1/layer/layer.js"></script><link rel="stylesheet" href="https://p.t-baozi.cc/vendor/layer-v3.5.1/layer/theme/default/layer.css?v=3.5.1" id="layuicss-layer">
+<style type="text/css">.medium-zoom-overlay{position:fixed;top:0;right:0;bottom:0;left:0;opacity:0;transition:opacity .3s;will-change:opacity}.medium-zoom--opened .medium-zoom-overlay{cursor:pointer;cursor:zoom-out;opacity:1}.medium-zoom-image{cursor:pointer;cursor:zoom-in;transition:transform .3s cubic-bezier(.2,0,.2,1)!important}.medium-zoom-image--hidden{visibility:hidden}.medium-zoom-image--opened{position:relative;cursor:pointer;cursor:zoom-out;will-change:transform}</style></head>
+<body class="theme-baozipt page-index is-authenticated" data-theme="BaoziPT" data-locale="zh-CN" style="--baozi-copy-attendance-retroactive:&quot;补&quot;;--baozi-copy-torrent-hall:&quot;◉  种子大厅&quot;;--baozi-copy-hot:&quot;热&quot;;--baozi-copy-upload-torrent:&quot;发布种子&quot;;--baozi-copy-upload-drop-hint:&quot;☁  拖拽 .torrent 文件到这里&quot;;--baozi-copy-site-navigation:&quot;站点导航&quot;;--baozi-copy-username:&quot;用户名&quot;;--baozi-copy-ban-reason:&quot;封禁原因&quot;;--baozi-copy-banned-at:&quot;封禁时间&quot;;--baozi-copy-upload-short:&quot;发布&quot;;--baozi-copy-today-short:&quot;今&quot;;--baozi-copy-horizontal-scroll-hint:&quot;可左右滑动查看&quot;;">
+<table class="head" cellspacing="0" cellpadding="0" align="center" style="width: 1228.66px">
+	<tbody><tr>
+		<td class="clear">
+			<div class="site-brand">
+				<a class="site-brand__home" href="index.php" aria-label="返回首页"><div class="logo_img"><img src="pic/baozi-brand-transparent.png?v=1787133655" alt="baozi - The Ultimate File Sharing Experience"></div></a>
+			</div>
+		</td>
+		<td class="clear nowrap" align="right" valign="middle">
+		</td>
+	</tr>
+</tbody></table>
+
+<table class="mainouter" width="1200" cellspacing="0" cellpadding="5" align="center">
+	<tbody><tr><td id="nav_block" class="text" align="center">
+<div id="nav" style="display: block;"><ul id="mainmenu" class="menu"><li class="selected"><a href="/index.php" target="_self" style="">首  页</a></li><li><a href="/forums.php" target="_self" style="" rel="nexus-menu-2">论  坛<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="/offers.php" target="_self" style="" rel="nexus-menu-4">候  选<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="requireseed.php">保种区</a></li><li><a href="/torrents.php" target="_self" style="" rel="nexus-menu-3">种  子<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="/upload.php" target="_self" style="">发  布</a></li><li><a href="/bank.php" target="_self" style="" rel="nexus-menu-26">娱  乐<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="/contactstaff.php" target="_self" style="">PM管理组</a></li><li><a href="/faq.php" target="_self" style="" rel="nexus-menu-28">关  于<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="/poster-wall.php" target="_blank" style="">海报墙</a></li></ul></div><button id="nav-mobiletoggle" class="baozi-mobile-nav-toggle animateddrawer" type="button" aria-label="打开站点导航" aria-controls="nav-mobile" style="display: none;"><span aria-hidden="true"></span><b aria-hidden="true">菜单</b></button>
+<div id="info_block" class="userbar userbar--home">
+	<div class="userbar__identity">
+		<a class="userbar__avatar" href="userdetails.php?id=13284" aria-label="gntv">
+			<img src="pic/baozi-avatar.png?v=1787110708" alt="">
+		</a>
+		<div class="userbar__welcome">
+			<span>欢迎回来</span>
+			<strong id="welcome_text"><span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13284" class="User_Name"><b>gntv</b></a></span></strong>
+			<a class="userbar__logout" href="logout.php">退出</a>
+			<span class="userbar__bonus">
+				<img src="pic/baozi-tool-bonus-transparent.png?v=1787134962" alt="">
+				<span class="userbar__bonus-label">魔力值：</span>
+				<a class="userbar__bonus-value" href="mybonus.php">600.0</a>
+				<a class="userbar__bonus-hint userbar__bonus-hint--attended" href="attendance.php">[签到已得200, 补签卡: 0]</a>
+			</span>
+		</div>
+		<nav class="userbar__shortcuts" aria-label="User shortcuts">
+			<a href="usercp.php">控制面板</a><a href="torrents.php?inclbookmarked=1&amp;allsec=1&amp;incldead=0">收藏</a><a href="medal.php">勋章</a><a href="task.php">任务</a><a href="invite.php?id=13284">邀请1/0</a>		</nav>
+	</div>
+		<div class="userbar__meta">
+			<div class="userbar__stats">
+				<div class="userstat userstat--ratio"><img class="userstat__icon" src="pic/baozi-ticket-ratio-transparent.svg?v=1787191197" alt=""><span>分享率</span><strong>无限</strong></div>
+				<div class="userstat userstat--upload"><img class="userstat__icon" src="pic/baozi-ticket-upload-transparent.png?v=1787151281" alt=""><span>上传量</span><strong>100.00 GB</strong></div>
+				<div class="userstat userstat--download"><img class="userstat__icon" src="pic/baozi-ticket-download-transparent.png?v=1787151281" alt=""><span>下载量</span><strong>0.00 KB</strong></div>
+				<div class="userstat userstat--active"><img class="userstat__icon" src="pic/baozi-ticket-active-transparent.png?v=1787151281" alt=""><span>当前活动</span><strong><em class="seed-arrow" title="当前做种">↑</em>0 <em class="leech-arrow" title="当前下载">↓</em>0</strong></div>
+				<div class="userstat userstat--connectable"><img class="userstat__icon" src="pic/baozi-ticket-connectable-transparent.svg?v=1787190561" alt=""><span>可连接</span><strong>未知</strong></div>
+				<div class="userstat userstat--connect"><img class="userstat__icon" src="pic/baozi-ticket-connect-transparent.png?v=1787151281" alt=""><span>连接数</span><strong><font class="color_slots">连接数：</font>无限制</strong></div>
+				<div class="userstat userstat--claim"><img class="userstat__icon" src="pic/baozi-ticket-claim-transparent.svg?v=1787190562" alt=""><span>认领</span><strong><a href="claim.php?uid=13284">0/2000</a></strong></div>
+			</div>			<div class="userbar__tools" style="--baozi-tool-count:4">
+												<a class="userbar-tool userbar-tool--inbox" href="messages.php" title="收件箱&nbsp;(无新短讯)" aria-label="收件箱&nbsp;(无新短讯)"><img class="userbar-tool__icon" src="pic/baozi-tool-inbox.svg?v=1787359432" alt=""><b>1</b></a>
+				<a class="userbar-tool userbar-tool--outbox" href="messages.php?action=viewmailbox&amp;box=-1" title="发件箱" aria-label="发件箱"><img class="userbar-tool__icon" src="pic/baozi-tool-outbox.png?v=1787188812" alt=""><b>0</b></a>
+				<a class="userbar-tool userbar-tool--friends" href="friends.php" title="社交白名单" aria-label="社交白名单"><img class="userbar-tool__icon" src="pic/baozi-tool-friends.png?v=1787188812" alt=""><b>0</b></a>
+				<a class="userbar-tool userbar-tool--rss" href="getrss.php" title="获取RSS" aria-label="获取RSS"><img class="userbar-tool__icon" src="pic/baozi-tool-rss-feed.png?v=1787188812" alt=""></a>
+			</div>
+		</div>
+</div>
+
+</td></tr>
+
+<tr><td id="outer" align="center" class="outer" style="padding-top: 20px; padding-bottom: 20px">
+<div align="center" style="margin-bottom: 10px" id=""><span><strong><a href="https://p.t-baozi.cc/usercp.php?action=security" target="_self" style="color: black;font-size: 21px">官方交流群：</a></strong>
+<a href="https://t.me/+5uveeF7jQrQzY2U1" target="_blank"><img alt="telegram_icon" width="21px" height="21px" src="/pic/tg.svg"></a>&nbsp;
+<a href="https://qm.qq.com/q/SdrV9nPosy" target="_blank"><img alt="qq_icon" width="21px" height="21px" src="/pic/qq.svg"></a></span></div><div class="home-dashboard-stack">
+    <div class="home-dashboard home-dashboard--row home-dashboard--top">
+        <div class="home-dashboard__main">
+            <section class="baozi-panel home-news">
+            <header class="baozi-panel__head baozi-panel__head--ribbon">
+                <h1><span aria-hidden="true">📣</span> 社区新鲜事</h1>
+                            </header>
+            <div class="home-news__body">
+                <div class="home-news__poster">
+                    <img class="home-news__poster-image" src="pic/baozi-community-announcement.png?v=1787187907" alt="包子PT 社区公告：温暖相聚，分享有料">
+                </div>
+                <div class="home-news__content">
+                                            <article class="baozi-empty home-news__summary">
+                            <strong>保种员、发布员招募中……</strong>
+                            <p>1、保种员招募规则如下： 基础工资：300,000 魔力值 考核周期：每30天 保种数量要求：30 个（用于计算额外奖励） 最低保种数量要求：100个（低于此值无法获得基本工资甚至移除身份） 最低保种体积要求：2TB 保种体积要求：10TB 奖励计算：每超过 1 个 + 10,24.00 GB 获得 100,000 魔力值 奖励上限：2000,000 魔力值 保种时间要求达标24个月 均已官种为准 官种不满足标准时并不影响计算工时官种达到时必须拉满 上传速率不得低于40Mbps/s 长期保持最低标…</p>
+                            <div class="home-news__summary-footer">
+                                <button class="baozi-button home-news__open" type="button" data-news-modal="home-news-modal-17" aria-haspopup="dialog">查看公告</button>
+                                                            </div>
+                        </article>
+                                    </div>
+                                    <div class="home-news__list" aria-label="更多社区公告">
+                                                    <div class="home-news__item">
+                                <button class="home-news__trigger" type="button" data-news-modal="home-news-modal-16" aria-haspopup="dialog">
+                                    <span class="home-news__badge">公告</span>
+                                    <strong>baoziPT新主题上线啦~~~</strong>
+                                    <time datetime="2026-02-05">02-05</time>
+                                </button>
+                                                            </div>
+                                                    <div class="home-news__item">
+                                <button class="home-news__trigger" type="button" data-news-modal="home-news-modal-4" aria-haspopup="dialog">
+                                    <span class="home-news__badge">公告</span>
+                                    <strong>本站已适配工具清单</strong>
+                                    <time datetime="2025-12-02">12-02</time>
+                                </button>
+                                                            </div>
+                                                    <div class="home-news__item">
+                                <button class="home-news__trigger" type="button" data-news-modal="home-news-modal-1" aria-haspopup="dialog">
+                                    <span class="home-news__badge">公告</span>
+                                    <strong>站点开放测试</strong>
+                                    <time datetime="2025-12-01">12-01</time>
+                                </button>
+                                                            </div>
+                                            </div>
+                            </div>
+            </section>
+        </div>
+
+        <aside class="home-dashboard__side">
+            <section class="baozi-panel attendance-card">
+                <header class="baozi-panel__head"><h2><span aria-hidden="true">📅</span> 签到得魔力</h2><a href="attendance.php">今日已签到</a></header>
+                <div class="attendance-card__summary">
+                    <div><strong>2026年9月</strong><span>连续签到 2 天</span></div>
+                    <div><strong>4</strong><span>累计签到</span></div>
+                </div>
+                <div class="attendance-calendar" aria-label="2026年9月签到日历">
+                    <span class="attendance-calendar__weekday">周一</span><span class="attendance-calendar__weekday">周二</span><span class="attendance-calendar__weekday">周三</span><span class="attendance-calendar__weekday">周四</span><span class="attendance-calendar__weekday">周五</span><span class="attendance-calendar__weekday">周六</span><span class="attendance-calendar__weekday">周日</span>                                            <span class="attendance-calendar__day is-outside is-missed" title="2026-08-31 · 未签到">
+                            <strong>31</strong>
+                            <small>未签到</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-done" title="2026-09-01 · 已签 +100">
+                            <strong>1</strong>
+                            <small>已签 +100</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-done" title="2026-09-02 · 已签 +200">
+                            <strong>2</strong>
+                            <small>已签 +200</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-missed" title="2026-09-03 · 未签到">
+                            <strong>3</strong>
+                            <small>未签到</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-missed" title="2026-09-04 · 未签到">
+                            <strong>4</strong>
+                            <small>未签到</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-missed" title="2026-09-05 · 未签到">
+                            <strong>5</strong>
+                            <small>未签到</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-missed" title="2026-09-06 · 未签到">
+                            <strong>6</strong>
+                            <small>未签到</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-missed" title="2026-09-07 · 未签到">
+                            <strong>7</strong>
+                            <small>未签到</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-missed" title="2026-09-08 · 未签到">
+                            <strong>8</strong>
+                            <small>未签到</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-done" title="2026-09-09 · 已签 +100">
+                            <strong>9</strong>
+                            <small>已签 +100</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-done is-today" title="2026-09-10 · 已签 +200">
+                            <strong>10</strong>
+                            <small>已签 +200</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-11">
+                            <strong>11</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-12">
+                            <strong>12</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-13">
+                            <strong>13</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-14">
+                            <strong>14</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-15">
+                            <strong>15</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-16">
+                            <strong>16</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-17">
+                            <strong>17</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-18">
+                            <strong>18</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-19">
+                            <strong>19</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-20">
+                            <strong>20</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-21">
+                            <strong>21</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-22">
+                            <strong>22</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-23">
+                            <strong>23</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-24">
+                            <strong>24</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-25">
+                            <strong>25</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-26">
+                            <strong>26</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-27">
+                            <strong>27</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-28">
+                            <strong>28</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-29">
+                            <strong>29</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-future" title="2026-09-30">
+                            <strong>30</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-01">
+                            <strong>1</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-02">
+                            <strong>2</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-03">
+                            <strong>3</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-04">
+                            <strong>4</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-05">
+                            <strong>5</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-06">
+                            <strong>6</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-07">
+                            <strong>7</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-08">
+                            <strong>8</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-09">
+                            <strong>9</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-10">
+                            <strong>10</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                            <span class="attendance-calendar__day is-outside is-future" title="2026-10-11">
+                            <strong>11</strong>
+                            <small>&nbsp;</small>
+                        </span>
+                                    </div>
+                <footer class="attendance-card__legend"><span><i class="is-done"></i>已签到</span><span><i class="is-retroactive"></i>补签</span><span><i class="is-today"></i>今天</span></footer>
+            </section>
+        </aside>
+    </div>
+
+    <section class="baozi-panel home-resource-stats" aria-labelledby="home-resource-stats-title">
+        <header class="baozi-panel__head home-resource-stats__head">
+            <h2 id="home-resource-stats-title"><span aria-hidden="true">▥</span> BaoziPT 新增资源统计</h2>
+            <small>近 30 天 · 每 5 分钟更新</small>
+        </header>
+                    <div class="home-resource-stats__metrics" aria-label="新增资源摘要">
+                <div class="home-resource-stats__metric"><span>今日新增</span><strong>64</strong><small>截至当前</small></div>
+                <div class="home-resource-stats__metric"><span>过去 7 日日均</span><strong>68.4</strong><small>不含今天</small></div>
+                <div class="home-resource-stats__metric"><span>近 30 日新增</span><strong>2,375</strong><small>资源</small></div>
+                <div class="home-resource-stats__legend" aria-label="图表图例">
+                    <span><i class="home-resource-stats__legend-swatch home-resource-stats__legend-swatch--ordinary" aria-hidden="true"></i>普通资源</span>
+                    <span><i class="home-resource-stats__legend-swatch home-resource-stats__legend-swatch--official" aria-hidden="true"></i>官种</span>                </div>
+            </div>
+            <figure class="home-resource-stats__figure" data-home-resource-stats-chart="" aria-describedby="home-resource-stats-caption" data-resource-stats-initialized="true" data-resource-stats-reduced-motion="false" data-chart-ready="true">
+                <div class="home-resource-stats__chart">
+                    <div class="home-resource-stats__canvas" data-resource-stats-canvas="" data-chart-ready="true"><svg viewBox="0 0 1189 112" width="100%" height="112" preserveAspectRatio="xMidYMid meet" role="group" aria-roledescription="堆叠柱状图" aria-labelledby="home-resource-stats-1-title home-resource-stats-1-description" class="home-resource-stats-chart__svg"><title id="home-resource-stats-1-title">BaoziPT 新增资源统计</title><desc id="home-resource-stats-1-description">最近 30 天每日新增普通资源和官种的柱状图。使用左右方向键浏览每日数据。</desc><line x1="40" y1="88" x2="1179" y2="88" stroke="#d8b98f" stroke-width="1.25" stroke-dasharray="0" class="home-resource-stats-chart__grid-line home-resource-stats__grid-line home-resource-stats__axis-line" data-resource-stats-grid="true"></line><text x="32" y="88" fill="#71513a" font-size="10" text-anchor="end" dominant-baseline="middle" class="home-resource-stats-chart__axis-label home-resource-stats__axis-label" data-resource-stats-label="true">0</text><line x1="40" y1="68" x2="1179" y2="68" stroke="#ead7bd" stroke-width="1" stroke-dasharray="4 4" class="home-resource-stats-chart__grid-line home-resource-stats__grid-line" data-resource-stats-grid="true"></line><text x="32" y="68" fill="#71513a" font-size="10" text-anchor="end" dominant-baseline="middle" class="home-resource-stats-chart__axis-label home-resource-stats__axis-label" data-resource-stats-label="true">50</text><line x1="40" y1="48" x2="1179" y2="48" stroke="#ead7bd" stroke-width="1" stroke-dasharray="4 4" class="home-resource-stats-chart__grid-line home-resource-stats__grid-line" data-resource-stats-grid="true"></line><text x="32" y="48" fill="#71513a" font-size="10" text-anchor="end" dominant-baseline="middle" class="home-resource-stats-chart__axis-label home-resource-stats__axis-label" data-resource-stats-label="true">100</text><line x1="40" y1="28" x2="1179" y2="28" stroke="#ead7bd" stroke-width="1" stroke-dasharray="4 4" class="home-resource-stats-chart__grid-line home-resource-stats__grid-line" data-resource-stats-grid="true"></line><text x="32" y="28" fill="#71513a" font-size="10" text-anchor="end" dominant-baseline="middle" class="home-resource-stats-chart__axis-label home-resource-stats__axis-label" data-resource-stats-label="true">150</text><line x1="40" y1="8" x2="1179" y2="8" stroke="#ead7bd" stroke-width="1" stroke-dasharray="4 4" class="home-resource-stats-chart__grid-line home-resource-stats__grid-line" data-resource-stats-grid="true"></line><text x="32" y="8" fill="#71513a" font-size="10" text-anchor="end" dominant-baseline="middle" class="home-resource-stats-chart__axis-label home-resource-stats__axis-label" data-resource-stats-label="true">200</text><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="0" tabindex="-1" focusable="true" role="img" aria-label="2026-08-12，普通资源 165，官种 0，新增总数 165"><rect x="40" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="47.983333333333334" y="22" width="22" height="66" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="44.983333333333334" y="19" width="28" height="72" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="1" tabindex="-1" focusable="true" role="img" aria-label="2026-08-13，普通资源 168，官种 0，新增总数 168"><rect x="77.96666666666667" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="85.95" y="20.799999999999997" width="22" height="67.2" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="82.95" y="17.799999999999997" width="28" height="73.2" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="2" tabindex="-1" focusable="true" role="img" aria-label="2026-08-14，普通资源 85，官种 0，新增总数 85"><rect x="115.93333333333334" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="123.91666666666669" y="54" width="22" height="34" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="120.91666666666669" y="51" width="28" height="40" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="3" tabindex="-1" focusable="true" role="img" aria-label="2026-08-15，普通资源 79，官种 0，新增总数 79"><rect x="153.9" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="161.88333333333333" y="56.4" width="22" height="31.6" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="158.88333333333333" y="53.4" width="28" height="37.6" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="4" tabindex="-1" focusable="true" role="img" aria-label="2026-08-16，普通资源 55，官种 0，新增总数 55"><rect x="191.86666666666667" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="199.85000000000002" y="66" width="22" height="22" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="196.85000000000002" y="63" width="28" height="28" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="5" tabindex="-1" focusable="true" role="img" aria-label="2026-08-17，普通资源 71，官种 0，新增总数 71"><rect x="229.83333333333334" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="237.81666666666666" y="59.6" width="22" height="28.4" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="234.81666666666666" y="56.6" width="28" height="34.4" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="6" tabindex="-1" focusable="true" role="img" aria-label="2026-08-18，普通资源 55，官种 0，新增总数 55"><rect x="267.8" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="275.78333333333336" y="66" width="22" height="22" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="272.78333333333336" y="63" width="28" height="28" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="7" tabindex="-1" focusable="true" role="img" aria-label="2026-08-19，普通资源 69，官种 0，新增总数 69"><rect x="305.76666666666665" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="313.75" y="60.400000000000006" width="22" height="27.599999999999998" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="310.75" y="57.400000000000006" width="28" height="33.599999999999994" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="8" tabindex="-1" focusable="true" role="img" aria-label="2026-08-20，普通资源 87，官种 0，新增总数 87"><rect x="343.73333333333335" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="351.7166666666667" y="53.2" width="22" height="34.8" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="348.7166666666667" y="50.2" width="28" height="40.8" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="9" tabindex="-1" focusable="true" role="img" aria-label="2026-08-21，普通资源 66，官种 0，新增总数 66"><rect x="381.70000000000005" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="389.6833333333334" y="61.599999999999994" width="22" height="26.400000000000002" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="386.6833333333334" y="58.599999999999994" width="28" height="32.400000000000006" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="10" tabindex="-1" focusable="true" role="img" aria-label="2026-08-22，普通资源 109，官种 0，新增总数 109"><rect x="419.6666666666667" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="427.65000000000003" y="44.4" width="22" height="43.6" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="424.65000000000003" y="41.4" width="28" height="49.6" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="11" tabindex="-1" focusable="true" role="img" aria-label="2026-08-23，普通资源 115，官种 0，新增总数 115"><rect x="457.6333333333333" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="465.6166666666667" y="42" width="22" height="46" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="462.6166666666667" y="39" width="28" height="52" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="12" tabindex="-1" focusable="true" role="img" aria-label="2026-08-24，普通资源 56，官种 0，新增总数 56"><rect x="495.6" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="503.58333333333337" y="65.6" width="22" height="22.400000000000002" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="500.58333333333337" y="62.599999999999994" width="28" height="28.400000000000002" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="13" tabindex="-1" focusable="true" role="img" aria-label="2026-08-25，普通资源 29，官种 0，新增总数 29"><rect x="533.5666666666667" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="541.5500000000001" y="76.4" width="22" height="11.6" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="538.5500000000001" y="73.4" width="28" height="17.6" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="14" tabindex="-1" focusable="true" role="img" aria-label="2026-08-26，普通资源 43，官种 0，新增总数 43"><rect x="571.5333333333333" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="579.5166666666667" y="70.8" width="22" height="17.2" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="576.5166666666667" y="67.8" width="28" height="23.2" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="15" tabindex="-1" focusable="true" role="img" aria-label="2026-08-27，普通资源 49，官种 4，新增总数 53"><rect x="609.5" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="617.4833333333333" y="68.4" width="22" height="19.6" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="617.4833333333333" y="66.80000000000001" width="22" height="1.6" rx="2" fill="#f6a545" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--official home-resource-stats__bar home-resource-stats__bar--official" data-series="official" data-resource-stats-series="official"></rect><rect x="614.4833333333333" y="63.80000000000001" width="28" height="27.200000000000003" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="16" tabindex="-1" focusable="true" role="img" aria-label="2026-08-28，普通资源 46，官种 23，新增总数 69"><rect x="647.4666666666667" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="655.45" y="69.6" width="22" height="18.400000000000002" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="655.45" y="60.39999999999999" width="22" height="9.200000000000001" rx="2" fill="#f6a545" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--official home-resource-stats__bar home-resource-stats__bar--official" data-series="official" data-resource-stats-series="official"></rect><rect x="652.45" y="57.39999999999999" width="28" height="33.6" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="17" tabindex="-1" focusable="true" role="img" aria-label="2026-08-29，普通资源 66，官种 7，新增总数 73"><rect x="685.4333333333334" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="693.4166666666667" y="61.599999999999994" width="22" height="26.400000000000002" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="693.4166666666667" y="58.8" width="22" height="2.8000000000000003" rx="2" fill="#f6a545" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--official home-resource-stats__bar home-resource-stats__bar--official" data-series="official" data-resource-stats-series="official"></rect><rect x="690.4166666666667" y="55.8" width="28" height="35.2" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="18" tabindex="-1" focusable="true" role="img" aria-label="2026-08-30，普通资源 109，官种 5，新增总数 114"><rect x="723.4000000000001" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="731.3833333333334" y="44.4" width="22" height="43.6" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="731.3833333333334" y="42.4" width="22" height="2" rx="2" fill="#f6a545" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--official home-resource-stats__bar home-resource-stats__bar--official" data-series="official" data-resource-stats-series="official"></rect><rect x="728.3833333333334" y="39.4" width="28" height="51.6" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="19" tabindex="-1" focusable="true" role="img" aria-label="2026-08-31，普通资源 88，官种 34，新增总数 122"><rect x="761.3666666666667" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="769.35" y="52.8" width="22" height="35.2" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="769.35" y="39.199999999999996" width="22" height="13.600000000000001" rx="2" fill="#f6a545" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--official home-resource-stats__bar home-resource-stats__bar--official" data-series="official" data-resource-stats-series="official"></rect><rect x="766.35" y="36.199999999999996" width="28" height="54.800000000000004" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="20" tabindex="-1" focusable="true" role="img" aria-label="2026-09-01，普通资源 48，官种 7，新增总数 55"><rect x="799.3333333333334" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="807.3166666666667" y="68.8" width="22" height="19.2" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="807.3166666666667" y="66" width="22" height="2.8000000000000003" rx="2" fill="#f6a545" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--official home-resource-stats__bar home-resource-stats__bar--official" data-series="official" data-resource-stats-series="official"></rect><rect x="804.3166666666667" y="63" width="28" height="28" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="21" tabindex="-1" focusable="true" role="img" aria-label="2026-09-02，普通资源 89，官种 5，新增总数 94"><rect x="837.3000000000001" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="845.2833333333334" y="52.4" width="22" height="35.6" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="845.2833333333334" y="50.4" width="22" height="2" rx="2" fill="#f6a545" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--official home-resource-stats__bar home-resource-stats__bar--official" data-series="official" data-resource-stats-series="official"></rect><rect x="842.2833333333334" y="47.4" width="28" height="43.6" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="22" tabindex="-1" focusable="true" role="img" aria-label="2026-09-03，普通资源 70，官种 3，新增总数 73"><rect x="875.2666666666667" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="883.25" y="60" width="22" height="28" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="883.25" y="58.8" width="22" height="1.2" rx="2" fill="#f6a545" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--official home-resource-stats__bar home-resource-stats__bar--official" data-series="official" data-resource-stats-series="official"></rect><rect x="880.25" y="55.8" width="28" height="35.2" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="23" tabindex="-1" focusable="true" role="img" aria-label="2026-09-04，普通资源 71，官种 0，新增总数 71"><rect x="913.2333333333333" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="921.2166666666667" y="59.6" width="22" height="28.4" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="918.2166666666667" y="56.6" width="28" height="34.4" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="24" tabindex="-1" focusable="true" role="img" aria-label="2026-09-05，普通资源 41，官种 0，新增总数 41"><rect x="951.2" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="959.1833333333334" y="71.6" width="22" height="16.4" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="956.1833333333334" y="68.6" width="28" height="22.4" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="25" tabindex="-1" focusable="true" role="img" aria-label="2026-09-06，普通资源 63，官种 0，新增总数 63"><rect x="989.1666666666667" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="997.1500000000001" y="62.8" width="22" height="25.2" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="994.1500000000001" y="59.8" width="28" height="31.2" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="26" tabindex="-1" focusable="true" role="img" aria-label="2026-09-07，普通资源 78，官种 0，新增总数 78"><rect x="1027.1333333333334" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="1035.1166666666668" y="56.8" width="22" height="31.200000000000003" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="1032.1166666666668" y="53.8" width="28" height="37.2" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="27" tabindex="-1" focusable="true" role="img" aria-label="2026-09-08，普通资源 62，官种 0，新增总数 62"><rect x="1065.1000000000001" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="1073.0833333333335" y="63.2" width="22" height="24.8" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="1070.0833333333335" y="60.2" width="28" height="30.8" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="28" tabindex="-1" focusable="true" role="img" aria-label="2026-09-09，普通资源 91，官种 0，新增总数 91"><rect x="1103.0666666666666" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="1111.05" y="51.6" width="22" height="36.4" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="1108.05" y="48.6" width="28" height="42.4" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><g class="home-resource-stats-chart__bar-group" data-resource-stats-index="29" tabindex="0" focusable="true" role="img" aria-label="2026-09-10，普通资源 64，官种 0，新增总数 64"><rect x="1141.0333333333333" y="8" width="37.96666666666667" height="80" fill="transparent" pointer-events="all" class="home-resource-stats-chart__hit-area"></rect><rect x="1149.0166666666667" y="62.4" width="22" height="25.6" rx="2" fill="#a7a7a7" class="home-resource-stats-chart__bar home-resource-stats-chart__bar--ordinary home-resource-stats__bar home-resource-stats__bar--ordinary" data-series="ordinary" data-resource-stats-series="ordinary"></rect><rect x="1146.0166666666667" y="59.4" width="28" height="31.6" rx="4" fill="none" stroke="transparent" stroke-width="2" class="home-resource-stats-chart__focus-ring"></rect></g><text x="58.983333333333334" y="108" fill="#71513a" font-size="10" text-anchor="middle" class="home-resource-stats-chart__x-label home-resource-stats__axis-label" data-resource-stats-label="true">08-12</text><text x="210.85000000000002" y="108" fill="#71513a" font-size="10" text-anchor="middle" class="home-resource-stats-chart__x-label home-resource-stats__axis-label" data-resource-stats-label="true">08-16</text><text x="362.7166666666667" y="108" fill="#71513a" font-size="10" text-anchor="middle" class="home-resource-stats-chart__x-label home-resource-stats__axis-label" data-resource-stats-label="true">08-20</text><text x="514.5833333333334" y="108" fill="#71513a" font-size="10" text-anchor="middle" class="home-resource-stats-chart__x-label home-resource-stats__axis-label" data-resource-stats-label="true">08-24</text><text x="666.45" y="108" fill="#71513a" font-size="10" text-anchor="middle" class="home-resource-stats-chart__x-label home-resource-stats__axis-label" data-resource-stats-label="true">08-28</text><text x="818.3166666666667" y="108" fill="#71513a" font-size="10" text-anchor="middle" class="home-resource-stats-chart__x-label home-resource-stats__axis-label" data-resource-stats-label="true">09-01</text><text x="970.1833333333334" y="108" fill="#71513a" font-size="10" text-anchor="middle" class="home-resource-stats-chart__x-label home-resource-stats__axis-label" data-resource-stats-label="true">09-05</text><text x="1122.05" y="108" fill="#71513a" font-size="10" text-anchor="middle" class="home-resource-stats-chart__x-label home-resource-stats__axis-label" data-resource-stats-label="true">09-09</text><text x="1160.0166666666667" y="108" fill="#71513a" font-size="10" text-anchor="middle" class="home-resource-stats-chart__x-label home-resource-stats__axis-label" data-resource-stats-label="true">09-10</text></svg></div>
+                    <div class="home-resource-stats__tooltip" data-resource-stats-tooltip="" hidden="" aria-hidden="true"></div>
+                </div>
+                <figcaption class="home-resource-stats__caption" id="home-resource-stats-caption">柱形总高度表示每日新增资源数；今天的数据统计截至当前时间。</figcaption>
+            </figure>
+            <table class="home-resource-stats__data-table">
+                <caption>近 30 天 BaoziPT 新增资源明细</caption>
+                <thead><tr><th scope="col">日期</th><th scope="col">普通资源</th><th scope="col">官种</th><th scope="col">总数</th></tr></thead>
+                <tbody>
+                                            <tr><th scope="row">2026-08-12</th><td>165</td><td>0</td><td>165</td></tr>
+                                            <tr><th scope="row">2026-08-13</th><td>168</td><td>0</td><td>168</td></tr>
+                                            <tr><th scope="row">2026-08-14</th><td>85</td><td>0</td><td>85</td></tr>
+                                            <tr><th scope="row">2026-08-15</th><td>79</td><td>0</td><td>79</td></tr>
+                                            <tr><th scope="row">2026-08-16</th><td>55</td><td>0</td><td>55</td></tr>
+                                            <tr><th scope="row">2026-08-17</th><td>71</td><td>0</td><td>71</td></tr>
+                                            <tr><th scope="row">2026-08-18</th><td>55</td><td>0</td><td>55</td></tr>
+                                            <tr><th scope="row">2026-08-19</th><td>69</td><td>0</td><td>69</td></tr>
+                                            <tr><th scope="row">2026-08-20</th><td>87</td><td>0</td><td>87</td></tr>
+                                            <tr><th scope="row">2026-08-21</th><td>66</td><td>0</td><td>66</td></tr>
+                                            <tr><th scope="row">2026-08-22</th><td>109</td><td>0</td><td>109</td></tr>
+                                            <tr><th scope="row">2026-08-23</th><td>115</td><td>0</td><td>115</td></tr>
+                                            <tr><th scope="row">2026-08-24</th><td>56</td><td>0</td><td>56</td></tr>
+                                            <tr><th scope="row">2026-08-25</th><td>29</td><td>0</td><td>29</td></tr>
+                                            <tr><th scope="row">2026-08-26</th><td>43</td><td>0</td><td>43</td></tr>
+                                            <tr><th scope="row">2026-08-27</th><td>49</td><td>4</td><td>53</td></tr>
+                                            <tr><th scope="row">2026-08-28</th><td>46</td><td>23</td><td>69</td></tr>
+                                            <tr><th scope="row">2026-08-29</th><td>66</td><td>7</td><td>73</td></tr>
+                                            <tr><th scope="row">2026-08-30</th><td>109</td><td>5</td><td>114</td></tr>
+                                            <tr><th scope="row">2026-08-31</th><td>88</td><td>34</td><td>122</td></tr>
+                                            <tr><th scope="row">2026-09-01</th><td>48</td><td>7</td><td>55</td></tr>
+                                            <tr><th scope="row">2026-09-02</th><td>89</td><td>5</td><td>94</td></tr>
+                                            <tr><th scope="row">2026-09-03</th><td>70</td><td>3</td><td>73</td></tr>
+                                            <tr><th scope="row">2026-09-04</th><td>71</td><td>0</td><td>71</td></tr>
+                                            <tr><th scope="row">2026-09-05</th><td>41</td><td>0</td><td>41</td></tr>
+                                            <tr><th scope="row">2026-09-06</th><td>63</td><td>0</td><td>63</td></tr>
+                                            <tr><th scope="row">2026-09-07</th><td>78</td><td>0</td><td>78</td></tr>
+                                            <tr><th scope="row">2026-09-08</th><td>62</td><td>0</td><td>62</td></tr>
+                                            <tr><th scope="row">2026-09-09</th><td>91</td><td>0</td><td>91</td></tr>
+                                            <tr><th scope="row">2026-09-10</th><td>64</td><td>0</td><td>64</td></tr>
+                                    </tbody>
+            </table>
+            <script type="application/json" id="home-resource-stats-data">{"days":[{"date":"2026-08-12","label":"08-12","ordinary":165,"official":0,"total":165},{"date":"2026-08-13","label":"08-13","ordinary":168,"official":0,"total":168},{"date":"2026-08-14","label":"08-14","ordinary":85,"official":0,"total":85},{"date":"2026-08-15","label":"08-15","ordinary":79,"official":0,"total":79},{"date":"2026-08-16","label":"08-16","ordinary":55,"official":0,"total":55},{"date":"2026-08-17","label":"08-17","ordinary":71,"official":0,"total":71},{"date":"2026-08-18","label":"08-18","ordinary":55,"official":0,"total":55},{"date":"2026-08-19","label":"08-19","ordinary":69,"official":0,"total":69},{"date":"2026-08-20","label":"08-20","ordinary":87,"official":0,"total":87},{"date":"2026-08-21","label":"08-21","ordinary":66,"official":0,"total":66},{"date":"2026-08-22","label":"08-22","ordinary":109,"official":0,"total":109},{"date":"2026-08-23","label":"08-23","ordinary":115,"official":0,"total":115},{"date":"2026-08-24","label":"08-24","ordinary":56,"official":0,"total":56},{"date":"2026-08-25","label":"08-25","ordinary":29,"official":0,"total":29},{"date":"2026-08-26","label":"08-26","ordinary":43,"official":0,"total":43},{"date":"2026-08-27","label":"08-27","ordinary":49,"official":4,"total":53},{"date":"2026-08-28","label":"08-28","ordinary":46,"official":23,"total":69},{"date":"2026-08-29","label":"08-29","ordinary":66,"official":7,"total":73},{"date":"2026-08-30","label":"08-30","ordinary":109,"official":5,"total":114},{"date":"2026-08-31","label":"08-31","ordinary":88,"official":34,"total":122},{"date":"2026-09-01","label":"09-01","ordinary":48,"official":7,"total":55},{"date":"2026-09-02","label":"09-02","ordinary":89,"official":5,"total":94},{"date":"2026-09-03","label":"09-03","ordinary":70,"official":3,"total":73},{"date":"2026-09-04","label":"09-04","ordinary":71,"official":0,"total":71},{"date":"2026-09-05","label":"09-05","ordinary":41,"official":0,"total":41},{"date":"2026-09-06","label":"09-06","ordinary":63,"official":0,"total":63},{"date":"2026-09-07","label":"09-07","ordinary":78,"official":0,"total":78},{"date":"2026-09-08","label":"09-08","ordinary":62,"official":0,"total":62},{"date":"2026-09-09","label":"09-09","ordinary":91,"official":0,"total":91},{"date":"2026-09-10","label":"09-10","ordinary":64,"official":0,"total":64}],"hasOfficial":true,"labels":{"ordinary":"普通资源","official":"官种","total":"新增总数"}}</script>
+            </section>
+
+            <div class="home-dashboard home-dashboard--row home-dashboard--bottom">
+                            <div class="home-dashboard__main">
+                    <section class="baozi-panel home-site-data" aria-labelledby="home-site-data-title">
+                        <header class="baozi-panel__head home-site-data__head">
+                            <h2 id="home-site-data-title"><span aria-hidden="true">▦</span> 站点数据</h2>
+                            <small>全站数据概览 · 每 5 分钟更新</small>
+                        </header>
+                        <div class="home-site-data__grid">
+                                                            <dl class="home-site-data__column">
+                                                                            <div class="home-site-data__item is-primary">
+                                            <dt>今日访问用户数</dt>
+                                            <dd>1,457</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>种子</dt>
+                                            <dd>59,796</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>同伴</dt>
+                                            <dd>182,236</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>做种数</dt>
+                                            <dd>182,012</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>当前Tracker用户数</dt>
+                                            <dd>1,168</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>总下载量</dt>
+                                            <dd>181.626 TB</dd>
+                                        </div>
+                                                                    </dl>
+                                                            <dl class="home-site-data__column">
+                                                                            <div class="home-site-data__item is-primary">
+                                            <dt>本周访问用户数</dt>
+                                            <dd>1,724</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item is-warning">
+                                            <dt>被警告用户<i aria-hidden="true">!</i></dt>
+                                            <dd>20</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item is-danger">
+                                            <dt>被禁用户<i aria-hidden="true">×</i></dt>
+                                            <dd>68</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>做种数 / 下载数比例</dt>
+                                            <dd>81,255%</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>种子总大小</dt>
+                                            <dd>826.493 TB</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>总数据量</dt>
+                                            <dd>2.354 PB</dd>
+                                        </div>
+                                                                    </dl>
+                                                            <dl class="home-site-data__column">
+                                                                            <div class="home-site-data__item is-primary">
+                                            <dt>注册用户 / 上限</dt>
+                                            <dd>2,215 / 3,000</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>未验证用户</dt>
+                                            <dd>7</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>下载数</dt>
+                                            <dd>224</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>当前访问用户数</dt>
+                                            <dd>243</dd>
+                                        </div>
+                                                                            <div class="home-site-data__item">
+                                            <dt>总上传量</dt>
+                                            <dd>2.177 PB</dd>
+                                        </div>
+                                                                    </dl>
+                                                    </div>
+                    </section>
+                </div>
+                                        <aside class="home-dashboard__side">
+                    <div class="home-native-modules home-dashboard__native-side home-lucky-draw" aria-label="首页扩展模块">
+                        <h2>幸运大转盘<font class="small"> - [<a class="altlink" href="/plugin/lucky-draw" target="_blank"><b>去抽奖</b></a>]</font></h2><table width="100%" border="0" cellpadding="5"><tbody><tr><td width="100%"><div>[2026-09-10 21:01] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13002" class="EliteUser_Name"><b class="rainbow">pyjstory</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 21:01] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13002" class="EliteUser_Name"><b class="rainbow">pyjstory</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 21:01] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13002" class="EliteUser_Name"><b class="rainbow">pyjstory</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 21:01] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13002" class="EliteUser_Name"><b class="rainbow">pyjstory</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 21:01] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13002" class="EliteUser_Name"><b class="rainbow">pyjstory</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 21:01] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13002" class="EliteUser_Name"><b class="rainbow">pyjstory</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 21:01] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13002" class="EliteUser_Name"><b class="rainbow">pyjstory</b></a></span> 获得 上传量 10 GB</div><div>[2026-09-10 21:01] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13002" class="EliteUser_Name"><b class="rainbow">pyjstory</b></a></span> 获得 魔力 2000</div><div>[2026-09-10 21:01] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13002" class="EliteUser_Name"><b class="rainbow">pyjstory</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 15:17] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=12447" class="CrazyUser_Name"><b class="rainbow">xin5281</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 15:16] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=12447" class="CrazyUser_Name"><b class="rainbow">xin5281</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 15:16] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=12447" class="CrazyUser_Name"><b class="rainbow">xin5281</b></a></span> 获得 上传量 1 GB</div><div>[2026-09-10 15:16] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=12447" class="CrazyUser_Name"><b class="rainbow">xin5281</b></a></span> 获得 魔力 2000</div><div>[2026-09-10 15:16] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=12447" class="CrazyUser_Name"><b class="rainbow">xin5281</b></a></span> 获得 魔力 1000</div><div>[2026-09-10 15:16] <span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=12447" class="CrazyUser_Name"><b class="rainbow">xin5281</b></a></span> 获得 魔力 2000</div></td></tr></tbody></table>                    </div>
+                </aside>
+                    </div>
+    </div>
+<div class="home-native-modules home-native-modules--below" aria-label="首页其他功能模块">
+<h2>免责条款</h2>
+<table width="100%"><tbody><tr><td class="text">
+  本站列出的文件并没有保存在本站的服务器上。本站仅负责连接，我们对被传播文件的内容一无所知。本站的链接均由用户自发提供。baozi的管理员无法对用户的提交内容或其他行为负责。您不能使用baozi传播或下载任何您没有使用许可的文件或材料，由此引起的后果由您自己承担。</td></tr></tbody></table>
+<h2>友情链接<font class="small"> - [<a class="altlink" href="linksmanage.php?action=apply"><b>申请链接</b></a>]</font></h2><table width="100%"><tbody><tr><td class="text"><a href="https://img.t-baozi.cc/" title="官方图床" target="_blank">官方图床</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://t.me/+5uveeF7jQrQzY2U1" title="官方TG群组" target="_blank">官方TG群组</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://tcp.ping.pe/" title="端口测试" target="_blank">端口测试</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://www.ipjiance.cn/" title="IP检测" target="_blank">IP检测</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://pixhost.to/" title="pixhost图床" target="_blank">pixhost图床</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://greasyfork.org/zh-CN/scripts/424132-auto-feed" title="auto-feed" target="_blank">auto-feed</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://mediaarea.net/MediaInfoOnline" title="Mediainfo在线版" target="_blank">Mediainfo在线版</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr></tbody></table></div>
+    <dialog class="home-news-modal" id="home-news-modal-17" aria-labelledby="home-news-modal-17-title">
+        <section class="home-news-modal__panel">
+            <header class="home-news-modal__head">
+                <div>
+                    <span>社区公告</span>
+                    <h2 id="home-news-modal-17-title">保种员、发布员招募中……</h2>
+                </div>
+                <button type="button" data-news-modal-close="" aria-label="关闭公告弹窗" title="关闭">×</button>
+            </header>
+            <div class="home-news-modal__body"><b>1、保种员招募规则如下：</b> <br>
+• 基础工资：300,000 魔力值<br>
+• 考核周期：每30天<br>
+• 保种数量要求：30 个（用于计算额外奖励）<br>
+• 最低保种数量要求：100个（低于此值无法获得基本工资甚至移除身份）<br>
+• 最低保种体积要求：2TB<br>
+• 保种体积要求：10TB<br>
+• 奖励计算：每超过 1 个 + 10,24.00 GB 获得 100,000 魔力值<br>
+• 奖励上限：2000,000 魔力值<br>
+• 保种时间要求达标24个月 均已官种为准 官种不满足标准时并不影响计算工时官种达到时必须拉满<br>
+• 上传速率不得低于40Mbps/s<br>
+• 长期保持最低标准将被警告 警告后未恢复将被降级<br>
+<br>
+<b>2、官种发布员招募规则如下：</b> <br>
+• 基础工资：50,0000 魔力值<br>
+• 考核周期：每30天<br>
+• 发布数量要求：100个（用于计算额外奖励）<br>
+• 最低发布数量要求：100个（低于此值无法获得基本工资甚至移除身份）<br>
+• 发布体积要求：500.00 GB（用于计算额外奖励）<br>
+• 最低发布体积要求：100.00 GB（低于此值无法获得基本工资甚至移除身份）<br>
+• 奖励计算：每超过 1 个获得 10,000 魔力值<br>
+• 奖励上限：500,000 魔力值<br>
+• 上传速率不得低于100Mbps/s<br>
+• 长期保持最低标准将被警告 警告后未恢复将被降级<br>
+<br>
+<b>3、非官种发布员招募规则如下：</b> <br>
+• 基础工资：50,0000 魔力值<br>
+• 考核周期：每30天<br>
+• 发布数量要求：1000个（用于计算额外奖励）<br>
+• 最低发布数量要求：500个（低于此值无法获得基本工资甚至移除身份）<br>
+• 发布体积要求：5000.00 GB（用于计算额外奖励）<br>
+• 最低发布体积要求：1000.00 GB（低于此值无法获得基本工资甚至移除身份）<br>
+• 奖励计算：每超过 1 个获得 10,000 魔力值<br>
+• 奖励上限：500,000 魔力值<br>
+• 上传速率不得低于100Mbps/s<br>
+<br>
+<span style="color: Red;word-break: break-word"><b>说明：</b>只要符合最低要求就得基础工资。数量要求必须同时满足才能获得额外奖励，取最小值计算。超出奖励上限的部分不累计。</span><br>
+<br>
+<b>如有意向请：<a class="faqlink" href="https://p.t-baozi.cc/contactstaff.php" target="_blank">【PM管理组】</a></b><br>
+</div>
+            <footer class="home-news-modal__foot">
+                <time datetime="2026-02-09 22:25:28">发布于 2026-02-09 22:25</time>
+            </footer>
+        </section>
+    </dialog>
+    <dialog class="home-news-modal" id="home-news-modal-16" aria-labelledby="home-news-modal-16-title">
+        <section class="home-news-modal__panel">
+            <header class="home-news-modal__head">
+                <div>
+                    <span>社区公告</span>
+                    <h2 id="home-news-modal-16-title">baoziPT新主题上线啦~~~</h2>
+                </div>
+                <button type="button" data-news-modal-close="" aria-label="关闭公告弹窗" title="关闭">×</button>
+            </header>
+            <div class="home-news-modal__body">新主题上线，如有BUG请及时反馈</div>
+            <footer class="home-news-modal__foot">
+                <time datetime="2026-02-05 17:12:31">发布于 2026-02-05 17:12</time>
+            </footer>
+        </section>
+    </dialog>
+    <dialog class="home-news-modal" id="home-news-modal-4" aria-labelledby="home-news-modal-4-title">
+        <section class="home-news-modal__panel">
+            <header class="home-news-modal__head">
+                <div>
+                    <span>社区公告</span>
+                    <h2 id="home-news-modal-4-title">本站已适配工具清单</h2>
+                </div>
+                <button type="button" data-news-modal-close="" aria-label="关闭公告弹窗" title="关闭">×</button>
+            </header>
+            <div class="home-news-modal__body"><font size="3"><br>
+1、已适配 IYUU，请在IYUU管理中心-站点-获取最新站点信息；<span style="color: DarkRed;word-break: break-word"><b>同时已支持IYUU绑定合作站点！</b></span><br>
+2、已适配auto_feed,请更新版本至v2.1.0.3，或者点击链接【<a class="faqlink" href="https://github.com/tomorrow505/auto_feed_js/raw/refs/heads/master/auto_feed.user.js" target="_blank">更新插件</a>】；<br>
+3、已适配MoviePilot，请重启MoviePilot升级资源包至[2.2.1]及以上版本；<br>
+4、已适配PT Depiler，请在谷歌商店安装；<br>
+5、ARDTU自动转种工具<br>
+6、已适配PT Nexus，请更新至PTN最新版本V3.4.0<br>
+<br>
+（更多站点适配敬请期待）……<br>
+</font><br>
+ <img src="/pic/smilies/73.gif" alt="[em73]"> &nbsp;<img src="/pic/smilies/73.gif" alt="[em73]"> &nbsp;<img src="/pic/smilies/73.gif" alt="[em73]"> &nbsp;<img src="/pic/smilies/73.gif" alt="[em73]"> </div>
+            <footer class="home-news-modal__foot">
+                <time datetime="2025-12-02 20:31:05">发布于 2025-12-02 20:31</time>
+            </footer>
+        </section>
+    </dialog>
+    <dialog class="home-news-modal" id="home-news-modal-1" aria-labelledby="home-news-modal-1-title">
+        <section class="home-news-modal__panel">
+            <header class="home-news-modal__head">
+                <div>
+                    <span>社区公告</span>
+                    <h2 id="home-news-modal-1-title">站点开放测试</h2>
+                </div>
+                <button type="button" data-news-modal-close="" aria-label="关闭公告弹窗" title="关闭">×</button>
+            </header>
+            <div class="home-news-modal__body"><font size="3"><br>
+ <img src="/pic/smilies/30.gif" alt="[em30]"> &nbsp;为给广大资源爱好者打造一个高质量、规范化的资源分享交流平台，baozi PT 站历经筹备与搭建阶段，现正式进入测试阶段。我们致力于为大家提供稳定的资源下载环境、丰富的优质内容以及友好的互动社区，现就试运行相关事宜通知如下：​<br>
+<br>
+ <img src="/pic/smilies/28.gif" alt="[em28]"> <b>测试时间：</b>自2025年12月1日 起至2026年1月31 止，在此期间将不定期开放会员注册通道，测试期间平台将根据实际运行情况动态调整部分细节。​<br>
+<br>
+ <img src="/pic/smilies/28.gif" alt="[em28]"> <b>测试阶段核心功能</b>:<br>
+资源下载与上传：用户可免费下载站内影视、纪录片、音乐、软件等合规资源，同时具备权限的用户可上传优质资源，分享资源将获得相应积分奖励。​<br>
+用户互动交流：支持资源论坛、评论、候种、求种、发布、字幕等功能，用户可在评论区交流心得、资源使用技巧等。​<br>
+控制面板管理：设定首页、个人设定、网站设定、安全设定（两步验证、TG 账号绑定）等功能设置模块。​<br>
+<br>
+ <img src="/pic/smilies/28.gif" alt="[em28]"> <b>测试期间使用须知​</b><br>
+请严格遵守国家法律法规及本站《用户服务协议》《资源管理规范》，严禁上传、传播盗版、色情、暴力、违法违规等不良内容，一经发现，将立即封禁账号并保留追责权利。​<br>
+试运行阶段可能存在部分功能不稳定、页面加载缓慢等问题，我们将实时监测并优化，期间用户账号数据（积分、收藏等）将永久保留，不受影响。​<br>
+<fieldset><legend> 引用 </legend><br><img src="/pic/smilies/30.gif" alt="[em30]"> &nbsp;<img src="/pic/smilies/30.gif" alt="[em30]"> &nbsp;<img src="/pic/smilies/30.gif" alt="[em30]"> <br>
+<b><span style="color: Red;word-break: break-word">1.参与测试人员赠送VIP资格，规则如下：发种100赠送1年VIP，发种800赠送永久VIP。</span></b><br>
+<b><span style="color: Red;word-break: break-word">2.测试期间，请及时绑定tg及两步验证，保障账号安全。​</span></b><br>
+</fieldset><br><br>
+ <img src="/pic/smilies/28.gif" alt="[em28]"> <b>反馈渠道​</b><br>
+试运行期间，欢迎各位用户积极反馈使用过程中遇到的问题及优化建议。您可通过以下方式联系我们：​<br>
+我们将对每一条反馈认真对待，持续完善平台功能与服务质量。​<br>
+官方邮箱：baozipt@gmail.com<br>
+站内反馈通道：“联系管理组”菜单进行反馈<br>
+官方QQ群：1039396872 <br>
+<br>
+<br>
+<b>baozi管理组​</b><br>
+通知发布日期 2025年12月1日 </font></div><font size="3">
+            <footer class="home-news-modal__foot">
+                <time datetime="2025-12-01 16:55:53">发布于 2025-12-01 16:55</time>
+            </footer>
+        </font></section><font size="3">
+    </font></dialog><font size="3">
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function closeNewsModal(dialog) {
+        if (!dialog) return;
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+    }
+
+    document.addEventListener('click', function (event) {
+        var trigger = event.target.closest('[data-news-modal]');
+        if (trigger) {
+            var dialog = document.getElementById(trigger.getAttribute('data-news-modal'));
+            if (dialog) {
+                if (typeof dialog.showModal === 'function') dialog.showModal();
+                else dialog.setAttribute('open', 'open');
+            }
+            return;
+        }
+
+        var closeButton = event.target.closest('[data-news-modal-close]');
+        if (closeButton) closeNewsModal(closeButton.closest('dialog'));
+        if (event.target.matches('dialog.home-news-modal')) closeNewsModal(event.target);
+    });
+});
+</script>
+</font></td></tr></tbody></table><div id="footer"><div class="footer-inner"><div class="footer-meta"><div class="footer-browser-note">获得本站最佳效果，请使用<a href="https://www.google.com/chrome/" target="_blank"><img class="img-browser" src="/pic/misc/chrome-logo.svg" alt="下载 Google Chrome" title="下载 Google Chrome"></a>或者<a href="https://www.mozilla.org/en-US/firefox/new/" target="_blank"><img class="img-browser" src="/pic/misc/firefox-logo.svg" alt="Firefox" title="下载 Firefox" border="0"></a>且使用大于1024*768的分辨率。推荐BT客户端为<a href="https://www.qbittorrent.org/download.php" target="_blank"><img class="img-browser" src="/pic/misc/qBittorrent.ico" alt="qBittorrent" title="下载 qBittorrent"></a>或<a href="https://transmissionbt.com/download/" target="_blank"><img class="img-browser" src="/pic/misc/transmission.png" alt="Transmission" title="下载 Transmission"></a></div><div class="footer-copyright">(c) <a href="https://p.t-baozi.cc" target="_self">NexusPHP</a> 2010-2026 Powered by <a href="aboutnexus.php">NexusPHP</a> <strong class="footer-mobile-ready">本站已适配手机端</strong></div><div class="footer-runtime">[page created in <b> 0.056 </b> sec with <b>20</b> db queries, <b>25</b> reads and <b>7</b> writes of Redis and <b>1.05 MB</b> ram]</div></div><div class="footer-stamp" aria-hidden="true"><span>包子PT</span><i></i><em>Share with love,<br>Stay cozy</em></div></div>
+</div><link rel="stylesheet" href="/plugin/ai-pet/assets/widget-css?v=1.0.7">
+
+<aside class="baozi-ai-pet" data-ai-pet="widget" data-chat-url="/plugin/ai-pet/chat" data-request-token="v1.eyJ1aWQiOjEzMjg0LCJleHAiOjE3ODkwNTU2MzgsInB1cnBvc2UiOiJhaS1wZXQtY2hhdCJ9.b82Hqsx5dfShxCi1UAUmuCF-cVOjLKvubRugS0ew04Q" aria-label="包小答" data-initialized="yes">
+    <button class="baozi-ai-pet__launcher" type="button" aria-expanded="false" aria-controls="baozi-ai-pet-panel">
+        <span class="baozi-ai-pet__status-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="baozi-ai-pet__mascot" aria-hidden="true"></span>
+        <span class="baozi-ai-pet__launcher-label">包小答</span>
+        <span class="baozi-ai-pet__welcome-bubble">有规则问题？问我呀～</span>
+    </button>
+
+    <section class="baozi-ai-pet__panel" id="baozi-ai-pet-panel" hidden="" aria-hidden="true">
+        <header class="baozi-ai-pet__header">
+            <span class="baozi-ai-pet__avatar"><img src="/plugin/ai-pet/assets/bao-xiaoda?v=1.0.3" alt=""></span>
+            <span class="baozi-ai-pet__identity">
+                <strong>包小答</strong>
+                <small><i aria-hidden="true"></i>规则知识库在线</small>
+            </span>
+            <button class="baozi-ai-pet__close" type="button" aria-label="关闭包小答">×</button>
+        </header>
+
+        <div class="baozi-ai-pet__messages" role="log" aria-live="polite" aria-relevant="additions">
+            <div class="baozi-ai-pet__message baozi-ai-pet__message--assistant">
+                <div class="baozi-ai-pet__message-content">你好呀，我是包小答。站点规则、上传下载和常见问题都可以问我。</div>
+            </div>
+            <div class="baozi-ai-pet__suggestions" aria-label="常见问题">
+                <button type="button">如何保持分享率？</button>
+                <button type="button">发布种子有哪些要求？</button>
+                <button type="button">账号被警告怎么办？</button>
+            </div>
+        </div>
+
+        <form class="baozi-ai-pet__composer">
+            <label class="baozi-ai-pet__sr-only" for="baozi-ai-pet-question">向包小答提问</label>
+            <textarea id="baozi-ai-pet-question" rows="1" maxlength="1000" placeholder="输入站点规则或常见问题…"></textarea>
+            <button type="submit" aria-label="发送问题">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 4.4 21 12 3.5 19.6l1.2-6.1L14 12l-9.3-1.5-1.2-6.1Z"></path></svg>
+            </button>
+        </form>
+        <p class="baozi-ai-pet__notice">回答来自 Baozi Wiki，仅供快速查询；重要事项请以原规则页和管理组答复为准。</p>
+    </section>
+
+    <script type="application/json" class="baozi-ai-pet__strings">{"thinking":"正在查找规则","genericError":"暂时无法回答，请稍后再试。","sources":"参考来源","emptyQuestion":"请先输入问题"}</script>
+</aside>
+
+<script src="/plugin/ai-pet/assets/widget-js?v=1.0.7" defer=""></script>
+<script type="text/javascript" src="js/baozi-home-resource-stats.js?v=1788234944"></script><script type="text/javascript" src="ddlevelsfiles/ddlevelsmenu.js"></script><script type="text/javascript">ddlevelsmenu.setup("nav", "topbar")</script><nav class="baozi-page-jump" aria-label="页面快速滚动">
+    <button type="button" class="baozi-page-jump__button baozi-page-jump__button--top" data-label="至顶端" aria-label="至顶端" title="至顶端" disabled="">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5h14M12 19V8M7.5 12.5 12 8l4.5 4.5"></path></svg>
+    </button>
+    <button type="button" class="baozi-page-jump__button baozi-page-jump__button--bottom" data-label="至底端" aria-label="至底端" title="至底端">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 19h14M12 5v11m-4.5-4.5L12 16l4.5-4.5"></path></svg>
+    </button>
+</nav><script type="application/javascript" src="js/nexus.js"></script>
+<script type="application/javascript" src="js/medium-zoom.min.js"></script>
+<script type="application/javascript" src="vendor/jquery-goup-1.1.3/jquery.goup.min.js"></script>
+<script>
+jQuery(document).ready(function(){
+    mediumZoom('[data-zoomable]');
+    var pageJump = document.querySelector('.baozi-page-jump');
+    if (!pageJump) {
+        jQuery.goup();
+        return;
+    }
+
+    var topButton = pageJump.querySelector('.baozi-page-jump__button--top');
+    var bottomButton = pageJump.querySelector('.baozi-page-jump__button--bottom');
+    var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var updateQueued = false;
+
+    function getScrollTop() {
+        return window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    }
+
+    function getMaximumScroll() {
+        var root = document.documentElement;
+        var body = document.body;
+        var pageHeight = Math.max(
+            root.scrollHeight,
+            root.offsetHeight,
+            root.clientHeight,
+            body ? body.scrollHeight : 0,
+            body ? body.offsetHeight : 0
+        );
+        return Math.max(0, pageHeight - window.innerHeight);
+    }
+
+    function updatePageJump() {
+        updateQueued = false;
+        var maximumScroll = getMaximumScroll();
+        var scrollTop = getScrollTop();
+        pageJump.hidden = maximumScroll < 160;
+        topButton.disabled = scrollTop < 8;
+        bottomButton.disabled = maximumScroll - scrollTop < 8;
+    }
+
+    function queuePageJumpUpdate() {
+        if (updateQueued) {
+            return;
+        }
+        updateQueued = true;
+        window.requestAnimationFrame(updatePageJump);
+    }
+
+    topButton.addEventListener('click', function () {
+        window.scrollTo({top: 0, behavior: reducedMotion ? 'auto' : 'smooth'});
+    });
+    bottomButton.addEventListener('click', function () {
+        window.scrollTo({top: getMaximumScroll(), behavior: reducedMotion ? 'auto' : 'smooth'});
+    });
+    window.addEventListener('scroll', queuePageJumpUpdate, {passive: true});
+    window.addEventListener('resize', queuePageJumpUpdate, {passive: true});
+    if ('ResizeObserver' in window && document.body) {
+        new ResizeObserver(queuePageJumpUpdate).observe(document.body);
+    }
+    updatePageJump();
+});
+</script><script>
+(function () {
+    function enhanceWideTables() {
+        document.querySelectorAll('#outer table').forEach(function (table) {
+            if (table.closest('.baozi-wide-table-scroll, .claim-table-scroll, .invite-table-scroll') ||
+                table.matches('.head, .mainouter, .nexus-main-frame, .auth-form-table, .torrents, .forums')) {
+                return;
+            }
+            var maximumColumns = 0;
+            var hasDataHeading = false;
+            Array.prototype.forEach.call(table.rows || [], function (row) {
+                var columns = 0;
+                Array.prototype.forEach.call(row.cells || [], function (cell) {
+                    columns += Math.max(1, parseInt(cell.getAttribute('colspan') || '1', 10));
+                    if (cell.matches('th, .colhead, .colhead2')) hasDataHeading = true;
+                });
+                maximumColumns = Math.max(maximumColumns, columns);
+            });
+            if (!hasDataHeading || maximumColumns < 8) return;
+            var wrapper = document.createElement('div');
+            wrapper.className = 'baozi-wide-table-scroll';
+            wrapper.setAttribute('role', 'region');
+            wrapper.setAttribute('aria-label', '可横向滚动的数据表');
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+            table.classList.add('baozi-wide-data-table');
+            table.style.setProperty('--baozi-wide-table-min', Math.min(1680, Math.max(820, maximumColumns * 108)) + 'px');
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enhanceWideTables, {once: true});
+    } else {
+        enhanceWideTables();
+    }
+}());
+</script><img id="nexus-preview" style="display: none; position: absolute" src=""><iframe class="ddiframeshim" src="about:blank" frameborder="0"></iframe><iframe class="ddiframeshim" src="about:blank" frameborder="0"></iframe><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-2" style="visibility: hidden;"><li><a href="https://hdblue.cc" target="_blank" style="">蓝影论坛</a></li><li><a href="/forums.php" target="_self" style="">本站论坛</a></li></ul></div><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-4" style="visibility: hidden;"><li><a href="/viewrequests.php" target="_self" style="">求  种</a></li><li><a href="/subtitles.php" target="_self" style="">字  幕</a></li></ul></div><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-3" style="visibility: hidden;"><li><a href="/torrents.php" target="_self" style="">全  部</a></li><li><a href="/torrents.php?cat=401" target="_self" style="">电  影</a></li><li><a href="/torrents.php?cat=402" target="_self" style="">剧  集</a></li><li><a href="/torrents.php?cat=403" target="_self" style="">综  艺</a></li><li><a href="/torrents.php?cat=404" target="_self" style="">纪 录 片</a></li><li><a href="/torrents.php?cat=405" target="_self" style="">动  漫</a></li><li><a href="/torrents.php?cat=406" target="_self" style="">音乐视频</a></li><li><a href="/torrents.php?cat=408" target="_self" style="">高品质音频</a></li><li><a href="/torrents.php?cat=407" target="_self" style="">体育运动</a></li><li><a href="/torrents.php?cat=409" target="_self" style="">其  他</a></li></ul></div><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-26" style="visibility: hidden;"><li><a href="/magic_fram.php" target="_self" style="">魔力农场</a></li><li><a href="/bank.php" target="_self" style="">包子信用社</a></li><li><a href="/plugin/lucky-draw" target="_self" style="">魔力大转盘</a></li></ul></div><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-28" style="visibility: hidden;"><li><a href="https://wiki.t-baozi.cc" target="_blank" style="">规  则</a></li><li><a href="/staff.php" target="_self" style="">管 理 组</a></li><li><a href="/topten.php" target="_self" style="">排 行 榜</a></li><li><a href="/log.php" target="_self" style="">日  志</a></li></ul></div></body></html>
