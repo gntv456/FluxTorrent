@@ -27,6 +27,15 @@ export interface Medal {
   limited: boolean;
   owned: boolean;
   wearing: boolean;
+  description: string | null;
+  duration_days: number | null;
+  get_type: number;
+  sale_begin_at: string | null;
+  sale_end_at: string | null;
+  inventory: number | null;
+  bonus_addition_factor: number;
+  category_id: number;
+  category_name: string | null;
 }
 export async function getMedals(): Promise<Medal[]> {
   try {

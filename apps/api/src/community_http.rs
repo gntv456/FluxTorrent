@@ -46,6 +46,15 @@ struct MedalRow {
     limited: bool,
     owned: bool,
     wearing: bool,
+    description: Option<String>,
+    duration_days: Option<i32>,
+    get_type: i16,
+    sale_begin_at: Option<chrono::DateTime<chrono::Utc>>,
+    sale_end_at: Option<chrono::DateTime<chrono::Utc>>,
+    inventory: Option<i32>,
+    bonus_addition_factor: f64,
+    category_id: i32,
+    category_name: Option<String>,
 }
 
 #[get("/medals")]
@@ -56,10 +65,7 @@ async fn medal_list(
     let auth = require_auth(&req, &state).await.ok();
     let uid = auth.map(|a| a.id);
     let rows = sqlx::query_as::<_, MedalRow>(
-        "SELECT m.id, m.name, m.price, m.rarity, m.limited, \
-            ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1)) AS owned, \
-            ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND um.wearing)) AS wearing \
-         FROM medals m ORDER BY m.id",
+        "SELECT m.id, m.name, m.price, m.rarity, m.limited, m.description, m.duration_days, m.get_type,             m.sale_begin_at, m.sale_end_at, m.inventory, m.bonus_addition_factor::float8, m.category_id,             c.name AS category_name,             ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1)) AS owned,             ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND um.wearing)) AS wearing          FROM medals m LEFT JOIN medal_categories c ON c.id = m.category_id ORDER BY m.category_id, m.id",
     )
     .bind(uid)
     .fetch_all(&state.repo.db)
