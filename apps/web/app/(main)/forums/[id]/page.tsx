@@ -34,36 +34,47 @@ export default async function ForumPage({
       {topics.length === 0 ? (
         <p className="py-10 text-center text-sub">{dict.forums.noTopics}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {topics.map((t) => (
-            <li key={t.id}>
-              <Link
-                href={`/forums/topic/${t.id}`}
-                className="flex items-center justify-between gap-3 rounded-[var(--r-md)] border border-line bg-white p-3 shadow-[var(--shadow-card)] hover:-translate-y-0.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-bold">{t.title}</p>
-                  <p className="text-xs text-sub">
-                    {t.username ?? "—"} ·{" "}
-                    {fmt(dict.forums.views, { n: t.views })}
-                    {t.last_post_at && (
-                      <>
-                        {" · "}
-                        {dict.forums.lastPost}{" "}
-                        {new Date(t.last_post_at).toLocaleDateString(
-                          dateLocale(locale),
-                        )}
-                      </>
-                    )}
-                  </p>
-                </div>
-                <span className="num shrink-0 text-sm text-sub">
-                  {fmt(dict.forums.replies, { n: Math.max(t.replies, 0) })}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <td className="colhead">{dict.forums.topicTitleFallback}</td>
+              <td className="colhead w-32">{dict.forums.author}</td>
+              <td className="colhead w-16 text-right">{dict.forums.replies.replace("{n}", "").trim() || dict.forums.replies}</td>
+              <td className="colhead hidden w-20 text-right sm:table-cell">
+                {dict.forums.views.replace("{n}", "").trim() || dict.forums.views}
+              </td>
+              <td className="colhead hidden w-28 text-right sm:table-cell">
+                {dict.forums.lastPost}
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            {topics.map((t) => (
+              <tr key={t.id}>
+                <td>
+                  <Link
+                    href={`/forums/topic/${t.id}`}
+                    className="font-bold text-ink hover:text-sky"
+                  >
+                    {t.title}
+                  </Link>
+                </td>
+                <td className="text-sub">{t.username ?? "—"}</td>
+                <td className="num text-right">{Math.max(t.replies, 0)}</td>
+                <td className="num hidden text-right sm:table-cell">
+                  {t.views}
+                </td>
+                <td className="num hidden text-right text-sub sm:table-cell">
+                  {t.last_post_at
+                    ? new Date(t.last_post_at).toLocaleDateString(
+                        dateLocale(locale),
+                      )
+                    : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );

@@ -359,6 +359,7 @@ export const en: Dict = {
     title: "Forums",
     board: "Board",
     topics: "Topics",
+    author: "Author",
     posts: "Posts",
     backToForums: "← Forums",
     boardTitle: "Board #{id}",
