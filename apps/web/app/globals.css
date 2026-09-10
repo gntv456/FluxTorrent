@@ -2968,3 +2968,137 @@ textarea.bbcode {
   font-size: 13px;
   font-weight: 700;
 }
+
+/* ============ 快捷工具条（userbar__tools 复刻：举报信箱/管理组信箱/社交名单/获取RSS） ============ */
+.usertools {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+}
+.userbar-tool {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: #5a4634;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.userbar-tool:hover {
+  border-color: var(--baozi-orange);
+  color: var(--baozi-orange);
+}
+.userbar-tool > span:first-child {
+  font-size: 15px;
+  color: var(--baozi-orange);
+}
+.userbar-tool b {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ffedd0;
+  color: var(--baozi-orange-dark);
+  font-size: 10.5px;
+  text-align: center;
+}
+.usertools__msg {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin: 4px 0 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #fff;
+  color: #2e7d43;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: var(--shadow-card);
+  z-index: 30;
+}
+.usertools-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(420px, 92vw);
+  padding: 12px 14px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 12px;
+  background: var(--baozi-paper);
+  box-shadow: 0 14px 40px rgba(67, 45, 30, 0.25);
+  z-index: 30;
+}
+.usertools-popover h3 {
+  margin: 0 0 10px;
+  color: #6c421f;
+  font-size: 14px;
+  font-weight: 800;
+}
+.usertools-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.usertools-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #7a6650;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.usertools-form select,
+.usertools-form input,
+.usertools-form textarea {
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 8px;
+  background: #fffdf8;
+  font-size: 13px;
+}
+.usertools-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.usertools-form .baozi-button {
+  align-self: flex-start;
+  min-height: 36px;
+}
+.usertools-rss {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.usertools-rss__note {
+  margin: 0;
+  color: #a08a6f;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.usertools-rss label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: #7a6650;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.usertools-rss input {
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #5a4634;
+  font-size: 11.5px;
+  font-family: monospace;
+}

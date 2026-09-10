@@ -53,6 +53,16 @@ interface PanelEntry {
   info: string;
 }
 
+interface CheaterRow {
+  user_id: number;
+  username: string;
+  torrent_id: number | null;
+  name: string | null;
+  upspeed: number;
+  uploaded_delta: number;
+  announced_at: string;
+}
+
 interface SiteSetting {
   name: string;
   value: string;
@@ -66,13 +76,24 @@ type AdminTab =
   | "reviews"
   | "reports"
   | "users"
-  | "audit";
+  | "audit"
+  | "cheaters";
 
 /** 管理组面板（staffpanel.php 复刻）+ 站点设定 + 管理系统（审核/举报/用户/审计） */
-export default function AdminPage() {
+export default function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tool?: string }>;
+}) {
   const { dict, locale } = useI18n();
   const a = dict.admin;
-  const [tab, setTab] = useState<AdminTab>("panel");
+  const [tab, setTab] = useState<AdminTab>(() =>
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("tool") === "cheaters"
+      ? "cheaters"
+      : "panel",
+  );
+  const [cheaters, setCheaters] = useState<CheaterRow[]>([]);
   const [ov, setOv] = useState<Overview | null>(null);
   const [reviews, setReviews] = useState<PendingTorrent[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
@@ -85,6 +106,15 @@ export default function AdminPage() {
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [userQ, setUserQ] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+
+  const loadCheaters = useCallback(async () => {
+    try {
+      const r = await api.get<CheaterRow[]>("/api/v1/admin/cheaters");
+      setCheaters(r);
+    } catch {
+      setCheaters([]);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -189,6 +219,7 @@ export default function AdminPage() {
     ["reports", fmt(a.tabs.reports, { n: reports.length })],
     ["users", a.tabs.users],
     ["audit", a.tabs.audit],
+    ["cheaters", a.cheatersTitle],
   ] as const;
 
   const panelGroups: [string, PanelEntry[]][] = ["sysop", "admin", "moderator"]
@@ -426,6 +457,60 @@ export default function AdminPage() {
               <li className="py-6 text-center text-sub">{a.searchFirst}</li>
             )}
           </ul>
+        </section>
+      )}
+
+      {tab === "cheaters" && (
+        <section className="nexus-detail">
+          <h2 className="mb-2 text-base font-bold text-ink">{a.cheatersTitle}</h2>
+          <p className="mb-2 text-xs text-sub">{a.cheatersNote}</p>
+          <button
+            onClick={loadCheaters}
+            className="mb-3 min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white"
+          >
+            {a.cheatersScan}
+          </button>
+          <div className="baozi-wide-table-scroll">
+            <table className="nexus-table">
+              <tbody>
+                <tr>
+                  <td className="colhead">{a.cheaterUser}</td>
+                  <td className="colhead">{a.cheaterTorrent}</td>
+                  <td className="colhead">{a.cheaterSpeed}</td>
+                  <td className="colhead">{a.cheaterDelta}</td>
+                  <td className="colhead">{a.cheaterAt}</td>
+                </tr>
+                {cheaters.map((row) => (
+                  <tr key={`${row.user_id}-${row.torrent_id}`}>
+                    <td className="rowfollow">
+                      {row.username} #{row.user_id}
+                    </td>
+                    <td className="rowfollow">
+                      {row.torrent_id ? (
+                        <a href={`/torrent/${row.torrent_id}`}>{row.name ?? `#${row.torrent_id}`}</a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="rowfollow num">
+                      {(row.upspeed / 1024 / 1024).toFixed(1)} MB/s
+                    </td>
+                    <td className="rowfollow num">{(row.uploaded_delta / 1024 ** 3).toFixed(2)} GB</td>
+                    <td className="rowfollow text-xs text-sub">
+                      {new Date(row.announced_at).toLocaleString(dateLocale(locale))}
+                    </td>
+                  </tr>
+                ))}
+                {cheaters.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-sub">
+                      {a.cheatersEmpty}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 

@@ -36,6 +36,8 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(do_thank)
         .service(do_bookmark)
         .service(stats)
+        .service(report_create)
+        .service(rss_info)
         .service(home_sections)
         .service(announce_stats)
         .service(upload)
@@ -905,6 +907,64 @@ async fn stats(
 ) -> DomainResult<impl Responder> {
     require_auth(&req, &state).await?;
     Ok(ok(torrents::site_stats(&state.repo.db).await?))
+}
+
+// ============ 举报信箱（用户提交举报，进管理后台审核队列） ============
+
+#[derive(Deserialize)]
+struct ReportReq {
+    ref_type: String,
+    ref_id: i64,
+    reason: String,
+}
+
+#[post("/reports")]
+async fn report_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<ReportReq>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let allowed = ["torrent", "comment", "user", "subtitle", "forum"];
+    if !allowed.contains(&body.ref_type.as_str()) {
+        return Err(DomainError::Validation("非法的举报对象".into()));
+    }
+    if body.reason.trim().is_empty() || body.reason.len() > 500 {
+        return Err(DomainError::Validation("举报理由需 1-500 字".into()));
+    }
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) VALUES ($1, $2, $3, $4) RETURNING id",
+    )
+    .bind(auth.id)
+    .bind(&body.ref_type)
+    .bind(body.ref_id)
+    .bind(body.reason.trim())
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[get("/rss-info")]
+async fn rss_info(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let passkey: String = sqlx::query_scalar("SELECT passkey FROM users WHERE id = $1")
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let base = std::env::var("PUBLIC_API_URL")
+        .unwrap_or_else(|_| "http://127.0.0.1:8080".into());
+    Ok(ok(serde_json::json!({
+        "urls": [
+            { "label": "全部种子", "url": format!("{}/api/v1/rss/{}", base, passkey) },
+            { "label": "官种", "url": format!("{}/api/v1/rss/{}?official=true", base, passkey) },
+        ],
+        "passkey": passkey,
+    })))
 }
 
 // ============ 首页（复刻包子站 index.php 五大板块） ============

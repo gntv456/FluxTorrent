@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, setSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { formatBytes, formatRatio } from "@/lib/format";
+import { UserTools } from "@/components/user-tools";
 
 /** /me 返回口径（http.rs me handler）+ spark_balance */
 interface MeInfo {
@@ -127,6 +128,7 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
           <strong className="num">{me.leeching}</strong>
         </div>
       </div>
+      <UserTools />
     </>
   );
 }
