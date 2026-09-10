@@ -259,6 +259,7 @@ export const zhCN = {
   },
   my: {
     title: "我的",
+    center: "个人中心",
     loginToView: "登录后查看你的火花与签到",
     loading: "加载中…",
     uploaded: "上传量",

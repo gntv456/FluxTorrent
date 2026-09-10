@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { UserBox } from "@/components/user-box";
 
 /** 桌面顶栏（设计稿：Logo + 搜索 + 导航 + 发布按钮 + 头像位，64px 吸顶） */
 export async function Header() {
@@ -50,12 +51,7 @@ export async function Header() {
           >
             {dict.common.publish}
           </Link>
-          <Link
-            href="/login"
-            className="min-h-[44px] flex items-center text-sm text-white/80 hover:text-sky"
-          >
-            {dict.common.login}
-          </Link>
+          <UserBox loginLabel={dict.common.login} />
         </div>
       </div>
     </header>
