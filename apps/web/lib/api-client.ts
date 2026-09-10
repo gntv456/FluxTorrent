@@ -29,9 +29,10 @@ export function setSessionCookie(token: string | null): void {
 function baseUrl(): string {
   if (typeof window === "undefined") {
     // 服务端（RSC/容器内）：直连 api 服务
-    return process.env.API_SERVER_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+    return process.env.API_SERVER_URL ?? "http://localhost:8080";
   }
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  // 浏览器：同源相对路径，经 Next rewrites 转发（免 CORS、免暴露 API 端口）
+  return process.env.NEXT_PUBLIC_API_URL ?? "";
 }
 
 /** 浏览器侧：读语言 Cookie → Accept-Language，后端错误消息按语言返回 */

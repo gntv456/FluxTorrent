@@ -10,8 +10,11 @@ COPY packages/domain-types/package.json ./packages/domain-types/
 RUN pnpm config set registry https://registry.npmmirror.com && pnpm install --frozen-lockfile
 COPY apps/web ./apps/web
 COPY packages/domain-types ./packages/domain-types
-ARG NEXT_PUBLIC_API_URL=http://localhost:8080
+ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# rewrites 在 build 时求值并固化 —— 构建期就要给出容器内可达的 API 地址
+ARG API_SERVER_URL=http://api:8080
+ENV API_SERVER_URL=$API_SERVER_URL
 WORKDIR /build/apps/web
 RUN pnpm exec next build
 
