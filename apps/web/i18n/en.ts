@@ -698,6 +698,55 @@ export const en: Dict = {
     appealHint: "If you disagree with a ban, file an",
     note: "For privacy only status and time are shown; rate-limited to 5 checks/minute.",
   },
+  rules: {
+    title: "Site rules",
+    updated: "Last updated: 2026-09",
+    sections: [
+      {
+        head: "Accounts & security",
+        items: [
+          "One account per person. Lending, sharing or trading accounts is forbidden; change your password immediately after any suspicious login.",
+          "Register with a valid email so review and staff notices can reach you.",
+        ],
+      },
+      {
+        head: "Uploading & seeding",
+        items: [
+          "Only upload content free of copyright disputes, with a complete description and correct category; duplicates are not allowed.",
+          "Long-term seeding keeps this community alive — seed for at least 72 hours after finishing a download.",
+        ],
+      },
+      {
+        head: "Cheating & penalties",
+        items: [
+          "Any form of cheating (fake up/down, tampering with client reports) is strictly prohibited.",
+          "Violations are punished by warning, muting or banning depending on severity; cheaters are permanently banned.",
+        ],
+      },
+    ],
+  },
+  faqPage: {
+    title: "FAQ",
+    updated: "Last updated: 2026-09",
+    items: [
+      {
+        q: "How do I get an invite code?",
+        a: "Invites are granted periodically based on class and seeding performance, or earned via tasks; never trade invites in public.",
+      },
+      {
+        q: "What is bonus (magic) for?",
+        a: "Bonus accrues from seeding time and volume. Spend it in the shop, join the freeleech pool, or pay fees of certain features.",
+      },
+      {
+        q: "Downloads are slow, what should I do?",
+        a: "Make sure your client port is connectable (green network status) and prefer well-seeded torrents; try unthrottling upload to test.",
+      },
+      {
+        q: "How do I recover a lost password?",
+        a: "Click “Forgot password” on the login page and follow the reset link sent to your email; contact staff via appeal if the mailbox is lost.",
+      },
+    ],
+  },
   footer: {
     aboutTitle: "About",
     about: "A private education torrent community — plant a seed, grow together.",
