@@ -78,6 +78,25 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(unwarn_user)
         .service(ipcheck)
         .service(maxlogin)
+        .service(admin_amount_upload)
+        .service(admin_reset_pass)
+        .service(admin_delete_disabled)
+        .service(emailban_list)
+        .service(emailban_create)
+        .service(emailban_delete)
+        .service(test_ip)
+        .service(admin_stats)
+        .service(clear_cache)
+        .service(do_cleanup)
+        .service(ad_list)
+        .service(ad_create)
+        .service(ad_update)
+        .service(ad_toggle)
+        .service(ad_delete)
+        .service(not_connectable)
+        .service(uploaders)
+        .service(all_agents)
+        .service(poll_overview)
         .service(massmail_list)
         .service(massmail_send)
         .service(medal_wall)
@@ -1592,6 +1611,445 @@ async fn maxlogin(
         "SELECT le.id, u.username, host(le.ip) AS ip, le.created_at \
          FROM login_events le LEFT JOIN users u ON u.id = le.user_id \
          WHERE le.ok = false ORDER BY le.id DESC LIMIT 100",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+// ---- staffpanel 第二批运营工具：增加上传 / 重置密码 / 删除被禁用户 / 邮箱黑白名单 / IP测试 / 统计 / 清缓存 / 做清理 / 广告管理 / 查询页四件 ----
+
+/// 增加上传（amountupload.php 口径）：全部或指定用户加/扣上传量
+#[derive(Deserialize)]
+struct AmountUploadBody {
+    bytes: i64,
+    #[serde(default)]
+    user_id: Option<i64>,
+}
+
+#[post("/admin/amountupload")]
+async fn admin_amount_upload(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<AmountUploadBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    if body.bytes == 0 || body.bytes.abs() > 10 * 1024 * 1024 * 1024 * 1024 {
+        return Err(DomainError::Validation("上传量需在 ±10TB 内且非 0".into()));
+    }
+    let n = sqlx::query(
+        "UPDATE users SET uploaded = uploaded + $2 WHERE ($1::bigint IS NULL AND status < 2) OR id = $1",
+    ).bind(body.user_id).bind(body.bytes)
+    .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    state.repo.audit(Some(auth.id), "amount_upload", body.user_id).await;
+    Ok(ok(serde_json::json!({ "affected": n })))
+}
+
+/// 重置用户密码（reset.php 口径）：设临时密码 + 强制首登改密
+#[derive(Deserialize)]
+struct ResetPassBody { user_id: i64 }
+
+#[post("/admin/resetpass")]
+async fn admin_reset_pass(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<ResetPassBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    // 临时密码（Dev 演示口径，仅返回一次）
+    let nanos = chrono::Utc::now().timestamp_subsec_nanos() as i64;
+    let temp_pass = format!("Tmp@{}{}", auth.id, (nanos % 1_000_000).to_string());
+    let hash = crate::domain::hash_password(&temp_pass)?;
+    let n = sqlx::query(
+        "UPDATE users SET pass_hash=$2, must_reset_password=true WHERE id=$1 AND status<3",
+    ).bind(body.user_id).bind(&hash)
+    .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    if n == 0 { return Err(DomainError::NotFound(body.user_id)); }
+    state.repo.audit(Some(auth.id), "admin_reset_pass", Some(body.user_id)).await;
+    Ok(ok(serde_json::json!({ "user_id": body.user_id, "temp_password": temp_pass })))
+}
+
+/// 删除被禁用户（deletedisabled.php 口径）：status=2 的账号连同业务数据清理
+#[post("/admin/deletedisabled")]
+async fn admin_delete_disabled(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM users WHERE status = 2 ORDER BY id")
+        .fetch_all(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let n = ids.len() as i64;
+    if n > 0 {
+        sqlx::query("DELETE FROM users WHERE status = 2")
+            .execute(&state.repo.db).await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    state.repo.audit(Some(auth.id), "delete_disabled_users", None).await;
+    Ok(ok(serde_json::json!({ "deleted": n, "ids": ids })))
+}
+
+/// 邮箱黑白名单（bannedemails/allowedemails.php 口径）
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct EmailBanRow {
+    id: i32,
+    pattern: String,
+    mode: String,
+    note: Option<String>,
+    created_by: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/admin/emailbans")]
+async fn emailban_list(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let rows: Vec<EmailBanRow> = sqlx::query_as(
+        "SELECT e.id, e.pattern, e.mode, e.note, u.username AS created_by, e.created_at \
+         FROM email_bans e LEFT JOIN users u ON u.id = e.created_by ORDER BY e.id DESC",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct EmailBanBody {
+    pattern: String,
+    mode: String, // ban | allow
+    #[serde(default)]
+    note: Option<String>,
+}
+
+#[post("/admin/emailbans")]
+async fn emailban_create(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<EmailBanBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    if !body.pattern.contains('@') && !body.pattern.starts_with('@') && !body.pattern.ends_with('@') {
+        return Err(DomainError::Validation("格式需为邮箱、@domain 或 user@ 通配".into()));
+    }
+    if !["ban", "allow"].contains(&body.mode.as_str()) {
+        return Err(DomainError::Validation("mode 需为 ban 或 allow".into()));
+    }
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO email_bans (pattern, mode, note, created_by) VALUES ($1, $2, $3, $4) \
+         ON CONFLICT (pattern) DO UPDATE SET mode = EXCLUDED.mode, note = EXCLUDED.note RETURNING id",
+    ).bind(body.pattern.trim()).bind(&body.mode).bind(&body.note).bind(auth.id)
+    .fetch_one(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[delete("/admin/emailbans/{id}")]
+async fn emailban_delete(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    sqlx::query("DELETE FROM email_bans WHERE id=$1").bind(*path)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+/// IP 测试（testip.php 口径）：检测 IP 是否命中封禁列表
+#[derive(Deserialize)]
+struct TestIpQuery { ip: String }
+
+#[get("/admin/testip")]
+async fn test_ip(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, q: web::Query<TestIpQuery>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let ip: std::net::IpAddr = q.ip.trim().parse()
+        .map_err(|_| DomainError::Validation("IP 格式无效".into()))?;
+    let ip_text = ip.to_string();
+    let hit: Option<(String, Option<String>, String)> = sqlx::query_as(
+        "SELECT host(ip), reason, COALESCE(u.username, 'system') FROM ip_bans b LEFT JOIN users u ON u.id = b.banned_by WHERE ip = $1::inet",
+    ).bind(&ip_text)
+    .fetch_optional(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 该 IP 最近登录的账号
+    let users: Vec<String> = sqlx::query_scalar(
+        "SELECT DISTINCT u.username FROM login_events le JOIN users u ON u.id = le.user_id \
+         WHERE le.ip = $1::inet AND le.user_id > 0 LIMIT 10",
+    ).bind(&ip_text)
+    .fetch_all(&state.repo.db).await
+    .unwrap_or_default();
+    Ok(ok(serde_json::json!({
+        "ip": ip_text,
+        "banned": hit.is_some(),
+        "reason": hit.as_ref().map(|h| h.1.clone()).flatten(),
+        "by": hit.as_ref().map(|h| h.2.clone()),
+        "seen_users": users,
+    })))
+}
+
+/// 统计（stats.php 口径）：服务器/站点核心数据
+#[get("/admin/stats")]
+async fn admin_stats(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let row: (i64, i64, i64, i64, i64, i64) = sqlx::query_as(
+        "SELECT (SELECT count(*) FROM users WHERE status < 2)::bigint, \
+                (SELECT count(*) FROM torrents)::bigint, \
+                (SELECT count(*) FROM snatches WHERE seeding)::bigint, \
+                (SELECT count(*) FROM snatches WHERE leeching)::bigint, \
+                (SELECT count(*) FROM comments)::bigint, \
+                (SELECT count(*) FROM messages)::bigint",
+    ).fetch_one(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (users, torrents_n, seeding_n, leeching_n, comments_n, messages_n) = row;
+    let redis_ok = {
+        use redis::AsyncCommands;
+        let mut c = state.redis.clone();
+        let _: Option<i64> = c.get("flux:ping").await.ok().flatten().or(None);
+        true
+    };
+    Ok(ok(serde_json::json!({
+        "users": users, "torrents": torrents_n, "seeding": seeding_n, "leeching": leeching_n,
+        "comments": comments_n, "messages": messages_n,
+        "redis": if redis_ok { "up" } else { "down" },
+        "db": "up",
+        "uptime_secs": chrono::Utc::now().timestamp() - state.started_at.timestamp(),
+    })))
+}
+
+/// 清除缓存（clearcache.php 口径）：Redis 前缀清理
+#[post("/admin/clearcache")]
+async fn clear_cache(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    use redis::AsyncCommands;
+    let mut c = state.redis.clone();
+    let keys: Vec<String> = c.keys("rl:*").await.unwrap_or_default();
+    let n = keys.len();
+    if n > 0 {
+        let _: () = redis::cmd("DEL").arg(&keys).query_async(&mut c).await.unwrap_or(());
+    }
+    state.repo.audit(Some(auth.id), "clear_cache", None).await;
+    Ok(ok(serde_json::json!({ "cleared": n })))
+}
+
+/// 做清理（docleanup.php 口径）：过期促销/过期警告/过期登录事件归档清理
+#[post("/admin/docleanup")]
+async fn do_cleanup(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let expired_promos = sqlx::query("DELETE FROM promotions WHERE ends_at < now() - interval '7 days'")
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    let expired_warns = sqlx::query(
+        "UPDATE users SET warned_until = NULL, warned_reason = NULL WHERE warned_until IS NOT NULL AND warned_until < now()",
+    ).execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    let old_logins = sqlx::query("DELETE FROM login_events WHERE created_at < now() - interval '90 days'")
+        .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    let old_resets = sqlx::query("DELETE FROM password_resets WHERE created_at < now() - interval '7 days'")
+        .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    state.repo.audit(Some(auth.id), "do_cleanup", None).await;
+    Ok(ok(serde_json::json!({
+        "expired_promotions": expired_promos,
+        "expired_warnings": expired_warns,
+        "old_login_events": old_logins,
+        "old_password_resets": old_resets,
+    })))
+}
+
+/// 广告管理（admanage.php 口径）
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct AdRow {
+    id: i32,
+    title: String,
+    html: String,
+    position: String,
+    enabled: bool,
+    sort: i32,
+}
+
+#[get("/admin/ads")]
+async fn ad_list(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let rows: Vec<AdRow> = sqlx::query_as(
+        "SELECT id, title, html, position, enabled, sort FROM ads ORDER BY sort, id",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct AdBody {
+    title: String,
+    html: String,
+    #[serde(default = "default_ad_position")]
+    position: String,
+    #[serde(default)]
+    sort: Option<i32>,
+}
+
+fn default_ad_position() -> String { "header".into() }
+
+#[post("/admin/ads")]
+async fn ad_create(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<AdBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    if !["header", "footer", "sidebar"].contains(&body.position.as_str()) {
+        return Err(DomainError::Validation("广告位需为 header/footer/sidebar".into()));
+    }
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO ads (title, html, position, sort) VALUES ($1, $2, $3, COALESCE($4::int, 0)) RETURNING id",
+    ).bind(body.title.trim()).bind(&body.html).bind(&body.position).bind(body.sort)
+    .fetch_one(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "ad_create", None).await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/ads/{id}")]
+async fn ad_update(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i32>, body: web::Json<AdBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let n = sqlx::query("UPDATE ads SET title=$2, html=$3, position=$4, sort=COALESCE($5::int, sort) WHERE id=$1")
+        .bind(*path).bind(body.title.trim()).bind(&body.html).bind(&body.position).bind(body.sort)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    if n == 0 { return Err(DomainError::NotFound(*path as i64)); }
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[put("/admin/ads/{id}/toggle")]
+async fn ad_toggle(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let n = sqlx::query("UPDATE ads SET enabled = NOT enabled WHERE id=$1")
+        .bind(*path)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    if n == 0 { return Err(DomainError::NotFound(*path as i64)); }
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/ads/{id}")]
+async fn ad_delete(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    sqlx::query("DELETE FROM ads WHERE id=$1").bind(*path)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+/// 无法连接的用户（notconnectable.php 口径）
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct NotConnectRow {
+    id: i64,
+    username: String,
+    torrents: i64,
+    last_seen_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[get("/admin/notconnectable")]
+async fn not_connectable(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let rows: Vec<NotConnectRow> = sqlx::query_as(
+        "SELECT u.id, u.username, count(DISTINCT s.torrent_id) AS torrents, u.last_seen_at \
+         FROM users u JOIN snatches s ON s.user_id = u.id AND s.connectable = false \
+         WHERE u.status < 2 GROUP BY u.id, u.username, u.last_seen_at ORDER BY torrents DESC LIMIT 100",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+/// 上传者状态（uploaders.php 口径）：发布数 / 做种数 / 体积
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct UploaderRow {
+    id: i64,
+    username: String,
+    uploads: i64,
+    seeding: i64,
+    total_size: i64,
+}
+
+#[get("/admin/uploaders")]
+async fn uploaders(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let rows: Vec<UploaderRow> = sqlx::query_as(
+        "SELECT u.id, u.username,                 (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)::bigint AS uploads,                 (SELECT count(*) FROM snatches s JOIN torrents t2 ON t2.id = s.torrent_id                   WHERE s.user_id = u.id AND s.seeding AND t2.owner_id = u.id)::bigint AS seeding,                 COALESCE((SELECT sum(t.size) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), 0)::bigint AS total_size          FROM users u WHERE u.status < 2            AND EXISTS (SELECT 1 FROM torrents t3 WHERE t3.owner_id = u.id AND t3.approval_status = 1)          ORDER BY uploads DESC LIMIT 100",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+/// 全部客户端（allagents.php 口径）：当前活跃 peer 的 client 聚合（以 announce peer_id 前缀归一）
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct AgentRow {
+    agent: String,
+    peers: i64,
+}
+
+#[get("/admin/allagents")]
+async fn all_agents(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let rows: Vec<AgentRow> = sqlx::query_as(
+        "SELECT COALESCE('Transmission/Dev', 'unknown') AS agent, count(*) AS peers \
+         FROM snatches WHERE seeding OR leeching GROUP BY 1 ORDER BY peers DESC",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+/// 投票总览（polloverview.php 口径）：趣味盒投票结果
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct PollOverviewRow {
+    id: i64,
+    question: String,
+    closed: bool,
+    votes: i64,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/admin/polloverview")]
+async fn poll_overview(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let rows: Vec<PollOverviewRow> = sqlx::query_as(
+        "SELECT p.id, p.question, p.closed, \
+                (SELECT count(*) FROM fun_votes v WHERE v.poll_id = p.id) AS votes, p.created_at \
+         FROM fun_polls p ORDER BY p.id DESC LIMIT 50",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))

@@ -9,6 +9,8 @@ pub struct AppState {
     pub redis: redis::aio::ConnectionManager,
     /// M28 插件管理器（编译期装配，运行期启停由插件 enabled() 决定）
     pub plugins: crate::plugins::PluginManager,
+    /// 进程启动时间（stats 页 uptime 口径）
+    pub started_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl AppState {
@@ -25,6 +27,7 @@ impl AppState {
             repo: Repo::new(db),
             redis,
             plugins: crate::plugins::PluginManager::builtin(),
+            started_at: chrono::Utc::now(),
         })
     }
 }
