@@ -288,7 +288,7 @@ export const zhCN = {
   },
   my: {
     title: "我的",
-    center: "个人中心",
+    center: "控制面板",
     welcomeBack: "欢迎回来",
     loginToView: "登录后查看你的火花与签到",
     loading: "加载中…",
@@ -309,6 +309,8 @@ export const zhCN = {
     passkeyRotating: "轮换中…",
     passkeyRotated: "已轮换，请更新 BT 客户端中的种子地址",
     passkeyConfirm: "轮换后所有正在做种/下载的客户端需重新下载种子文件，确认继续？",
+    bmRemove: "取消收藏",
+    bmEmpty: "还没有收藏，去种子详情页点击「收藏」吧",
     tlSeeding: "做种中",
     tlCompleted: "已完成",
     tlUploads: "我的发布",
