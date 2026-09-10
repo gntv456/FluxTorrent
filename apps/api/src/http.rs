@@ -67,6 +67,17 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(ban_list)
         .service(ban_create)
         .service(ban_delete)
+        .service(freeleech_set)
+        .service(freeleech_clear)
+        .service(freeleech_list)
+        .service(staffmess_send)
+        .service(admin_add_user)
+        .service(admin_amount_bonus)
+        .service(warned_list)
+        .service(warn_user)
+        .service(unwarn_user)
+        .service(ipcheck)
+        .service(maxlogin)
         .service(massmail_list)
         .service(massmail_send)
         .service(medal_wall)
@@ -174,17 +185,41 @@ struct LoginReq {
 
 #[post("/auth/login")]
 async fn login(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<LoginReq>,
 ) -> DomainResult<impl Responder> {
     // 登录限流（§5.7：5 次/分钟/用户名，Redis 计数）
     throttle(&state, format!("login:{}", body.username)).await?;
+    let peer_ip = req
+        .peer_addr()
+        .map(|a| a.ip().to_string())
+        .unwrap_or_default();
     let user = state
         .repo
         .find_user_by_name(body.username.trim())
         .await?
-        .ok_or(DomainError::InvalidCredentials)?;
+        .ok_or(DomainError::InvalidCredentials);
+    let user = match user {
+        Ok(u) => u,
+        Err(e) => {
+            let _ = sqlx::query(
+                "INSERT INTO login_events (user_id, ip, ok) VALUES (0, NULLIF($1,'')::inet, false)",
+            )
+            .bind(&peer_ip)
+            .execute(&state.repo.db)
+            .await;
+            return Err(e);
+        }
+    };
     if !domain::verify_password(&user.pass_hash, &body.password) {
+        let _ = sqlx::query(
+            "INSERT INTO login_events (user_id, ip, ok) VALUES ($1, NULLIF($2,'')::inet, false)",
+        )
+        .bind(user.id)
+        .bind(&peer_ip)
+        .execute(&state.repo.db)
+        .await;
         return Err(DomainError::InvalidCredentials);
     }
     // 2FA（启用者必须带 totp_code）
@@ -192,9 +227,10 @@ async fn login(
         .await?;
     let token = auth::issue(user.id, user.class_id, &state.cfg.jwt_secret, 24)
         .map_err(DomainError::Internal)?;
-    // 登录事件（控制面板账户概览 30 天活跃趋势）
-    let _ = sqlx::query("INSERT INTO login_events (user_id) VALUES ($1)")
+    // 登录事件（控制面板账户概览 30 天活跃趋势；含 IP 供 ipcheck/maxlogin）
+    let _ = sqlx::query("INSERT INTO login_events (user_id, ip, ok) VALUES ($1, NULLIF($2,'')::inet, true)")
         .bind(user.id)
+        .bind(&peer_ip)
         .execute(&state.repo.db)
         .await;
     // M28 插件 Hook：登录成功后分发
@@ -1285,6 +1321,280 @@ async fn ban_delete(
         .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "ip_unban", None).await;
     Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+// ---- staffpanel 运营工具：免费下载 / 批量私信 / 添加用户 / 增加魔力 / 警告用户 / 重复IP / 失败登录 ----
+
+/// 全站促销（freeleech.php 口径）：向 promotions 写一条 global 限时促销
+#[derive(Deserialize)]
+struct FreeleechBody {
+    kind: String, // free / x2 / x2free / half / x2half / p30
+    hours: i32,
+}
+
+#[post("/admin/freeleech")]
+async fn freeleech_set(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<FreeleechBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let kind = match body.kind.as_str() {
+        "free" | "x2" | "x2free" | "half" | "x2half" | "p30" => body.kind.as_str(),
+        _ => return Err(DomainError::Validation("促销类型无效".into())),
+    };
+    if !(1..=720).contains(&body.hours) {
+        return Err(DomainError::Validation("时长需在 1-720 小时".into()));
+    }
+    // 关闭进行中的手动 global 促销，再写新促销
+    let mut tx = state.repo.db.begin().await.map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("DELETE FROM promotions WHERE scope='global' AND source='manual' AND ends_at > now()")
+        .execute(&mut *tx).await.map_err(|e| DomainError::Internal(e.into()))?;
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO promotions (scope, kind, starts_at, ends_at, source, created_by) \
+         VALUES ('global', $1::promotion_kind_enum, now(), now() + make_interval(hours => $2), 'manual', $3) RETURNING id",
+    ).bind(kind).bind(body.hours).bind(auth.id)
+    .fetch_one(&mut *tx).await.map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "freeleech_set", None).await;
+    Ok(ok(serde_json::json!({ "id": id, "kind": kind, "hours": body.hours })))
+}
+
+#[delete("/admin/freeleech")]
+async fn freeleech_clear(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let n = sqlx::query("DELETE FROM promotions WHERE scope='global' AND source='manual' AND ends_at > now()")
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    state.repo.audit(Some(auth.id), "freeleech_clear", None).await;
+    Ok(ok(serde_json::json!({ "cleared": n })))
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct GlobalPromoRow {
+    id: i64,
+    kind: String,
+    starts_at: chrono::DateTime<chrono::Utc>,
+    ends_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/admin/freeleech")]
+async fn freeleech_list(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let row: Option<GlobalPromoRow> = sqlx::query_as(
+        "SELECT id, kind::text AS kind, starts_at, ends_at FROM promotions \
+         WHERE scope='global' AND source='manual' AND ends_at > now() ORDER BY id DESC LIMIT 1",
+    ).fetch_optional(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(row))
+}
+
+/// 批量私信（staffmess.php 口径）：给全部（或某等级以上）用户发站内信
+#[derive(Deserialize)]
+struct StaffMessBody {
+    subject: String,
+    body: String,
+    #[serde(default)]
+    min_class: Option<i32>,
+}
+
+#[post("/admin/staffmess")]
+async fn staffmess_send(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<StaffMessBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    if body.subject.trim().is_empty() || body.body.trim().is_empty() {
+        return Err(DomainError::Validation("主题和正文不能为空".into()));
+    }
+    let n = sqlx::query(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         SELECT $1, id, $2, $3 FROM users WHERE status < 2 AND ($4::int IS NULL OR class_id >= $4)",
+    ).bind(auth.id).bind(body.subject.trim()).bind(&body.body).bind(body.min_class)
+    .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    state.repo.audit(Some(auth.id), "staffmess_send", None).await;
+    Ok(ok(serde_json::json!({ "sent": n })))
+}
+
+/// 添加用户（adduser.php 口径）：管理组直接建号（class 0，需首登改密）
+#[derive(Deserialize)]
+struct AddUserBody {
+    username: String,
+    email: String,
+    password: String,
+}
+
+#[post("/admin/adduser")]
+async fn admin_add_user(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<AddUserBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    if body.username.trim().len() < 2 || !body.email.contains('@') || body.password.len() < 8 {
+        return Err(DomainError::Validation("用户名≥2字符、邮箱合法、密码≥8位".into()));
+    }
+    let pass_hash = crate::domain::hash_password(&body.password)?;
+    let uid = state
+        .repo
+        .create_user(body.username.trim(), body.email.trim(), &pass_hash, None)
+        .await
+        .map_err(|_| DomainError::Validation("用户名或邮箱已存在".into()))?;
+    // 管理组建的号要求首登改密
+    let _ = sqlx::query("UPDATE users SET must_reset_password = true WHERE id = $1")
+        .bind(uid)
+        .execute(&state.repo.db)
+        .await;
+    state.repo.audit(Some(auth.id), "admin_add_user", Some(uid)).await;
+    Ok(ok(serde_json::json!({ "user_id": uid })))
+}
+
+/// 增加魔力（amountbonus.php 口径）：全部用户或指定用户
+#[derive(Deserialize)]
+struct AmountBonusBody {
+    amount: i64,
+    #[serde(default)]
+    user_id: Option<i64>,
+}
+
+#[post("/admin/amountbonus")]
+async fn admin_amount_bonus(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<AmountBonusBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    if body.amount == 0 || body.amount.abs() > 1_000_000 {
+        return Err(DomainError::Validation("数量需在 ±1,000,000 之间且非 0".into()));
+    }
+    let n = sqlx::query(
+        "UPDATE users SET spark_balance = spark_balance + $2 WHERE ($1::bigint IS NULL AND status < 2) OR id = $1",
+    ).bind(body.user_id).bind(body.amount)
+    .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    state.repo.audit(Some(auth.id), "amount_bonus", body.user_id).await;
+    Ok(ok(serde_json::json!({ "affected": n })))
+}
+
+/// 警告用户列表（warned.php 口径）
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct WarnedRow {
+    id: i64,
+    username: String,
+    warned_until: Option<chrono::DateTime<chrono::Utc>>,
+    warned_reason: Option<String>,
+}
+
+#[get("/admin/warned")]
+async fn warned_list(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let rows: Vec<WarnedRow> = sqlx::query_as(
+        "SELECT id, username, warned_until, warned_reason FROM users WHERE warned_until > now() ORDER BY warned_until",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct WarnBody {
+    user_id: i64,
+    weeks: i32,
+    #[serde(default)]
+    reason: Option<String>,
+}
+
+#[post("/admin/warned")]
+async fn warn_user(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<WarnBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    if !(1..=52).contains(&body.weeks) {
+        return Err(DomainError::Validation("警告时长需 1-52 周".into()));
+    }
+    let n = sqlx::query(
+        "UPDATE users SET warned_until = now() + make_interval(weeks => $2), warned_reason = $3 WHERE id = $1 AND status < 2",
+    ).bind(body.user_id).bind(body.weeks).bind(&body.reason)
+    .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    if n == 0 { return Err(DomainError::NotFound(body.user_id)); }
+    state.repo.audit(Some(auth.id), "warn_user", Some(body.user_id)).await;
+    Ok(ok(serde_json::json!({ "warned": body.user_id, "until_weeks": body.weeks })))
+}
+
+#[delete("/admin/warned/{user_id}")]
+async fn unwarn_user(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let n = sqlx::query("UPDATE users SET warned_until = NULL, warned_reason = NULL WHERE id = $1")
+        .bind(*path)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    if n == 0 { return Err(DomainError::NotFound(*path)); }
+    state.repo.audit(Some(auth.id), "unwarn_user", Some(*path)).await;
+    Ok(ok(serde_json::json!({ "unwarned": *path })))
+}
+
+/// 重复 IP 检测（ipcheck.php 口径）：同 IP 登录过的多账号聚合
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct IpCheckRow {
+    ip: Option<String>,
+    users: i64,
+    usernames: Option<String>,
+    last_seen: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[get("/admin/ipcheck")]
+async fn ipcheck(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let rows: Vec<IpCheckRow> = sqlx::query_as(
+        "SELECT host(ip) AS ip, \
+            count(DISTINCT user_id) AS users, \
+            string_agg(DISTINCT u.username, ', ') AS usernames, \
+            max(le.created_at) AS last_seen \
+         FROM login_events le LEFT JOIN users u ON u.id = le.user_id \
+         WHERE ip IS NOT NULL AND user_id > 0 \
+         GROUP BY ip HAVING count(DISTINCT user_id) > 1 \
+         ORDER BY users DESC LIMIT 100",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+/// 失败登录（maxlogin.php 口径）：最近失败尝试
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct FailedLoginRow {
+    id: i64,
+    username: Option<String>,
+    ip: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/admin/maxlogin")]
+async fn maxlogin(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let rows: Vec<FailedLoginRow> = sqlx::query_as(
+        "SELECT le.id, u.username, host(le.ip) AS ip, le.created_at \
+         FROM login_events le LEFT JOIN users u ON u.id = le.user_id \
+         WHERE le.ok = false ORDER BY le.id DESC LIMIT 100",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
 }
 
 // ---- 批量邮件（massmail）----
