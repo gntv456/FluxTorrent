@@ -13,6 +13,7 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 use crate::torrents;
+use crate::economy_http::spend_spark;
 
 pub fn v1_scope() -> actix_web::Scope {
     web::scope("/api/v1")
@@ -51,6 +52,32 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(link_admin_list)
         .service(link_update)
         .service(link_delete)
+        .service(faq_list)
+        .service(faq_create)
+        .service(faq_update)
+        .service(faq_delete)
+        .service(rules_content)
+        .service(rule_create)
+        .service(rule_update)
+        .service(rule_delete)
+        .service(category_list)
+        .service(category_create)
+        .service(category_update)
+        .service(category_delete)
+        .service(ban_list)
+        .service(ban_create)
+        .service(ban_delete)
+        .service(massmail_list)
+        .service(massmail_send)
+        .service(medal_wall)
+        .service(contest_list)
+        .service(contest_join)
+        .service(frame_list)
+        .service(frame_equip)
+        .service(gomoku_create)
+        .service(gomoku_join)
+        .service(gomoku_move)
+        .service(gomoku_get)
         .service(home_sections)
         .service(announce_stats)
         .service(upload)
@@ -299,6 +326,12 @@ async fn me(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (uploaded, downloaded, seeding, leeching, uploads, bookmarks, class_name) =
         row.unwrap_or((0, 0, 0, 0, 0, 0, None));
+    let frame_id: Option<i32> = sqlx::query_scalar("SELECT avatar_frame_id FROM users WHERE id = $1")
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten();
     Ok(ok(serde_json::json!({
         "id": user.id, "username": user.username, "class_id": user.class_id,
         "must_reset_password": user.must_reset_password,
@@ -306,6 +339,7 @@ async fn me(
         "seeding": seeding, "leeching": leeching,
         "uploads": uploads, "bookmarks": bookmarks,
         "class_name": class_name,
+        "avatar_frame_id": frame_id,
     })))
 }
 
@@ -978,6 +1012,558 @@ async fn rss_info(
         ],
         "passkey": passkey,
     })))
+}
+
+// ============ staffpanel 管理工具（hxpt faqmanage/modrules/catmanage/bans/massmail 口径） ============
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct FaqRow {
+    id: i32,
+    category: String,
+    question: String,
+    answer: String,
+    sort: i32,
+}
+
+#[get("/faq")]
+async fn faq_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    let rows: Vec<FaqRow> = sqlx::query_as(
+        "SELECT id, category, question, answer, sort FROM faq_items ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct FaqBody {
+    question: String,
+    answer: String,
+    #[serde(default)]
+    category: String,
+    #[serde(default)]
+    sort: Option<i32>,
+}
+
+#[post("/admin/faq")]
+async fn faq_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<FaqBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO faq_items (question, answer, category, sort) VALUES ($1, $2, $3, COALESCE($4, (SELECT max(sort)+1 FROM faq_items))) RETURNING id",
+    )
+    .bind(&body.question)
+    .bind(&body.answer)
+    .bind(if body.category.is_empty() { "default" } else { &body.category })
+    .bind(body.sort)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/faq/{id}")]
+async fn faq_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i32>,
+    body: web::Json<FaqBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let n = sqlx::query("UPDATE faq_items SET question=$2, answer=$3, category=$4, updated_at=now() WHERE id=$1")
+        .bind(*path).bind(&body.question).bind(&body.answer).bind(&body.category)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if n.rows_affected() == 0 { return Err(DomainError::NotFound(*path as i64)); }
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/faq/{id}")]
+async fn faq_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    sqlx::query("DELETE FROM faq_items WHERE id=$1").bind(*path)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+// ---- 规则管理 ----
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct RuleRow {
+    id: i32,
+    title: String,
+    body: String,
+    sort: i32,
+}
+
+#[get("/rules-content")]
+async fn rules_content(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    let rows: Vec<RuleRow> = sqlx::query_as(
+        "SELECT id, title, body, sort FROM site_rules ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct RuleBody { title: String, body: String, #[serde(default)] sort: Option<i32> }
+
+#[post("/admin/rules")]
+async fn rule_create(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<RuleBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO site_rules (title, body, sort) VALUES ($1,$2,COALESCE($3,(SELECT max(sort)+1 FROM site_rules))) RETURNING id",
+    ).bind(&body.title).bind(&body.body).bind(body.sort)
+    .fetch_one(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/rules/{id}")]
+async fn rule_update(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>, body: web::Json<RuleBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let n = sqlx::query("UPDATE site_rules SET title=$2, body=$3, updated_at=now() WHERE id=$1")
+        .bind(*path).bind(&body.title).bind(&body.body)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if n.rows_affected() == 0 { return Err(DomainError::NotFound(*path as i64)); }
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/rules/{id}")]
+async fn rule_delete(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    sqlx::query("DELETE FROM site_rules WHERE id=$1").bind(*path)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+// ---- 分类管理（catmanage）----
+
+#[derive(Deserialize)]
+struct CatBody { name: String }
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct CatRow { id: i32, name: String, torrents: i64 }
+
+#[get("/admin/categories")]
+async fn category_list(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let rows: Vec<CatRow> = sqlx::query_as(
+        "SELECT c.id, c.name, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
+         FROM categories c ORDER BY c.id",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[post("/admin/categories")]
+async fn category_create(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<CatBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let id: i32 = sqlx::query_scalar("INSERT INTO categories (id, name) VALUES ((SELECT max(id)+1 FROM categories), $1) RETURNING id")
+        .bind(&body.name).fetch_one(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/categories/{id}")]
+async fn category_update(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>, body: web::Json<CatBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let n = sqlx::query("UPDATE categories SET name=$2 WHERE id=$1")
+        .bind(*path).bind(&body.name)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if n.rows_affected() == 0 { return Err(DomainError::NotFound(*path as i64)); }
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/categories/{id}")]
+async fn category_delete(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let used: i64 = sqlx::query_scalar("SELECT count(*) FROM torrents WHERE category_id=$1")
+        .bind(*path).fetch_one(&state.repo.db).await.unwrap_or(0);
+    if used > 0 { return Err(DomainError::Validation("该分类下仍有种子，无法删除".into())); }
+    sqlx::query("DELETE FROM categories WHERE id=$1").bind(*path)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+// ---- 封禁系统（bans）----
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct IpBanRow {
+    id: i32,
+    ip: String,
+    reason: Option<String>,
+    banned_by: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/admin/bans")]
+async fn ban_list(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let rows: Vec<IpBanRow> = sqlx::query_as(
+        "SELECT b.id, b.ip::text AS ip, b.reason, u.username AS banned_by, b.created_at \
+         FROM ip_bans b LEFT JOIN users u ON u.id = b.banned_by ORDER BY b.id DESC",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct BanBody { ip: String, #[serde(default)] reason: Option<String> }
+
+#[post("/admin/bans")]
+async fn ban_create(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<BanBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    let ip: std::net::IpAddr = body.ip.trim().parse()
+        .map_err(|_| DomainError::Validation("IP 格式无效".into()))?;
+    let ip_text = ip.to_string();
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO ip_bans (ip, reason, banned_by) VALUES ($1::inet, $2, $3) ON CONFLICT (ip) DO UPDATE SET reason = EXCLUDED.reason RETURNING id",
+    ).bind(ip_text).bind(&body.reason).bind(auth.id)
+    .fetch_one(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "ip_ban", None).await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[delete("/admin/bans/{id}")]
+async fn ban_delete(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    sqlx::query("DELETE FROM ip_bans WHERE id=$1").bind(*path)
+        .execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "ip_unban", None).await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+// ---- 批量邮件（massmail）----
+
+#[derive(Deserialize)]
+struct MassMailBody { subject: String, body: String }
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct MassMailRow {
+    id: i32,
+    subject: String,
+    recipients: i32,
+    created_at: chrono::DateTime<chrono::Utc>,
+    #[sqlx(default)]
+    sender: Option<String>,
+}
+
+#[get("/admin/massmail")]
+async fn massmail_list(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let rows: Vec<MassMailRow> = sqlx::query_as(
+        "SELECT m.id, m.subject, m.recipients, m.created_at, u.username AS sender \
+         FROM mass_mails m LEFT JOIN users u ON u.id = m.sent_by ORDER BY m.id DESC LIMIT 50",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[post("/admin/massmail")]
+async fn massmail_send(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<MassMailBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    if body.subject.trim().is_empty() || body.body.trim().is_empty() {
+        return Err(DomainError::Validation("主题和正文不能为空".into()));
+    }
+    let users: i64 = sqlx::query_scalar("SELECT count(*) FROM users WHERE status < 2")
+        .fetch_one(&state.repo.db).await.unwrap_or(0);
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO mass_mails (subject, body, sent_by, recipients) VALUES ($1,$2,$3,$4) RETURNING id",
+    ).bind(body.subject.trim()).bind(&body.body).bind(auth.id).bind(users as i32)
+    .fetch_one(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "massmail_send", None).await;
+    // Dev 环境无 SMTP：落库即视为入队（worker 负责实际投递）
+    Ok(ok(serde_json::json!({ "id": id, "queued": users })))
+}
+
+// ============ 插件：勋章墙 / 大赛 / 头像挂件 / 五子棋 ============
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct MedalWallEntry {
+    username: String,
+    medal_name: String,
+}
+
+/// 勋章墙（medal_wall.php 口径）：全部用户的勋章展示墙
+#[get("/medal-wall")]
+async fn medal_wall(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    let rows: Vec<MedalWallEntry> = sqlx::query_as(
+        "SELECT u.username, m.name AS medal_name \
+         FROM user_medals um JOIN users u ON u.id = um.user_id JOIN medals m ON m.id = um.medal_id \
+         ORDER BY u.id, m.id LIMIT 200",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct ContestInfo {
+    id: i32,
+    title: String,
+    descr: Option<String>,
+    starts_at: chrono::DateTime<chrono::Utc>,
+    ends_at: chrono::DateTime<chrono::Utc>,
+    is_active: bool,
+    entries: i64,
+    #[sqlx(default)]
+  leader: Option<String>,
+    #[sqlx(default)]
+  leader_score: Option<i32>,
+}
+
+#[get("/contests")]
+async fn contest_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    let mut rows: Vec<ContestInfo> = sqlx::query_as(
+        "SELECT c.id, c.title, c.descr, c.starts_at, c.ends_at, c.is_active, \
+            (SELECT count(*) FROM contest_entries e WHERE e.contest_id = c.id) AS entries, \
+            (SELECT u.username FROM contest_entries e JOIN users u ON u.id = e.user_id \
+             WHERE e.contest_id = c.id ORDER BY e.score DESC LIMIT 1) AS leader, \
+            (SELECT e.score FROM contest_entries e WHERE e.contest_id = c.id ORDER BY e.score DESC LIMIT 1) AS leader_score \
+         FROM contests c ORDER BY c.is_active DESC, c.id DESC",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let _ = &mut rows;
+    Ok(ok(rows))
+}
+
+#[post("/contests/{id}/join")]
+async fn contest_join(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let inserted = sqlx::query(
+        "INSERT INTO contest_entries (contest_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+    ).bind(*path).bind(auth.id)
+    .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if inserted.rows_affected() == 0 {
+        return Err(DomainError::Validation("已报名".into()));
+    }
+    Ok(ok(serde_json::json!({ "joined": true })))
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct FrameRow { id: i32, name: String, css: String, price: i32 }
+
+#[get("/avatar-frames")]
+async fn frame_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    let rows: Vec<FrameRow> = sqlx::query_as(
+        "SELECT id, name, css, price FROM avatar_frames ORDER BY sort, id",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct FrameSetBody { frame_id: Option<i32> }
+
+/// 佩戴头像挂件（需已购买：简化口径 price=0 免费 / >0 扣魔力）
+#[put("/me/avatar-frame")]
+async fn frame_equip(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<FrameSetBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    match body.frame_id {
+        Some(fid) => {
+            let price: Option<i32> = sqlx::query_scalar("SELECT price FROM avatar_frames WHERE id=$1")
+                .bind(fid).fetch_optional(&state.repo.db).await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            let Some(price) = price else { return Err(DomainError::NotFound(fid as i64)) };
+            if price > 0 {
+                let idem = format!("frame:{}:{}", auth.id, fid);
+                spend_spark(&state.repo.db, auth.id, price as i64, "shop", &idem, "avatar_frame", fid as i64).await?;
+            }
+            sqlx::query("UPDATE users SET avatar_frame_id=$2 WHERE id=$1")
+                .bind(auth.id).bind(fid)
+                .execute(&state.repo.db).await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            Ok(ok(serde_json::json!({ "equipped": fid })))
+        }
+        None => {
+            sqlx::query("UPDATE users SET avatar_frame_id=NULL WHERE id=$1")
+                .bind(auth.id)
+                .execute(&state.repo.db).await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            Ok(ok(serde_json::json!({ "equipped": null })))
+        }
+    }
+}
+
+// ---- 五子棋（wuziqi 口径：建房/加入/落子/棋盘）----
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct GomokuGame {
+    id: i32,
+    black_id: i64,
+    white_id: Option<i64>,
+    board: String,
+    turn: String,
+    winner_id: Option<i64>,
+}
+
+#[post("/gomoku/games")]
+async fn gomoku_create(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO gomoku_games (black_id, board) VALUES ($1, '') RETURNING id",
+    ).bind(auth.id).fetch_one(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[post("/gomoku/games/{id}/join")]
+async fn gomoku_join(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let n = sqlx::query(
+        "UPDATE gomoku_games SET white_id=$2, updated_at=now() WHERE id=$1 AND white_id IS NULL AND black_id <> $2",
+    ).bind(*path).bind(auth.id)
+    .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if n.rows_affected() == 0 { return Err(DomainError::Validation("对局不存在或已有对手".into())); }
+    Ok(ok(serde_json::json!({ "joined": true })))
+}
+
+#[derive(Deserialize)]
+struct MoveBody { pos: i32 }
+
+#[post("/gomoku/games/{id}/move")]
+async fn gomoku_move(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>, body: web::Json<MoveBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if !(0..225).contains(&body.pos) {
+        return Err(DomainError::Validation("落点越界".into()));
+    }
+    let g: Option<(i64, Option<i64>, String, String, Option<i64>)> = sqlx::query_as(
+        "SELECT black_id, white_id, board, turn, winner_id FROM gomoku_games WHERE id=$1",
+    ).bind(*path).fetch_optional(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((black, white, board, turn, winner)) = g else {
+        return Err(DomainError::NotFound(*path as i64));
+    };
+    if winner.is_some() { return Err(DomainError::Validation("对局已结束".into())); }
+    let Some(white) = white else { return Err(DomainError::Validation("等待对手加入".into())); };
+    let my_color = if auth.id == black { 'b' } else if auth.id == white { 'w' } else {
+        return Err(DomainError::Forbidden);
+    };
+    if my_color.to_string() != turn { return Err(DomainError::Validation("还没轮到你".into())); }
+    // 棋盘惰性填充
+    let mut cells: Vec<char> = board.chars().collect();
+    cells.resize(225, '.');
+    if cells[body.pos as usize] != '.' {
+        return Err(DomainError::Validation("该点已有棋子".into()));
+    }
+    cells[body.pos as usize] = my_color;
+    let new_board: String = cells.iter().collect();
+    let next_turn = if my_color == 'b' { "w" } else { "b" };
+    // 胜负判定（四方向五连）
+    let won = check_gomoku_win(&cells, body.pos as usize, my_color);
+    let winner_id = if won { Some(auth.id) } else { None };
+    sqlx::query(
+        "UPDATE gomoku_games SET board=$2, turn=$3, winner_id=$4, updated_at=now() WHERE id=$1",
+    ).bind(*path).bind(&new_board).bind(next_turn).bind(winner_id)
+    .execute(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "board": new_board, "turn": next_turn, "winner": winner_id, "you_won": won })))
+}
+
+#[get("/gomoku/games/{id}")]
+async fn gomoku_get(
+    state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let g: Option<GomokuGame> = sqlx::query_as(
+        "SELECT id, black_id, white_id, board, turn, winner_id FROM gomoku_games WHERE id=$1",
+    ).bind(*path).fetch_optional(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(g) = g else { return Err(DomainError::NotFound(*path as i64)) };
+    Ok(ok(g))
+}
+
+fn check_gomoku_win(cells: &[char], pos: usize, color: char) -> bool {
+    const SIZE: usize = 15;
+    let (r, c) = (pos / SIZE, pos % SIZE);
+    let dirs: [(isize, isize); 4] = [(0, 1), (1, 0), (1, 1), (1, -1)];
+    for (dr, dc) in dirs {
+        let mut count = 1;
+        for sign in [1, -1] {
+            let mut step = 1;
+            loop {
+                let rr = r as isize + dr * step * sign;
+                let cc = c as isize + dc * step * sign;
+                if rr < 0 || rr >= SIZE as isize || cc < 0 || cc >= SIZE as isize { break; }
+                if cells[rr as usize * SIZE + cc as usize] != color { break; }
+                count += 1;
+                step += 1;
+            }
+        }
+        if count >= 5 { return true; }
+    }
+    false
 }
 
 // ============ 公告管理（news.php 复刻：发布/编辑/删除，staff 专用） ============

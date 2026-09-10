@@ -32,6 +32,11 @@ export async function Header() {
     { href: "/textbooks", label: dict.nav.textbooks },
     { href: "/magic-pool", label: dict.nav.magicPool },
     { href: "/myhr", label: dict.nav.myhr },
+    { href: "/contests", label: dict.nav.contests },
+    { href: "/medal-wall", label: dict.nav.medalWall },
+    { href: "/avatar-frames", label: dict.nav.frames },
+    { href: "/gomoku", label: dict.nav.gomoku },
+    { href: "/faq", label: dict.nav.faq },
   ];
   return (
     <header className="border-b border-line bg-[var(--baozi-bg)]">

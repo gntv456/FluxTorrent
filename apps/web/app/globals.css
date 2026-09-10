@@ -3530,3 +3530,89 @@ textarea.bbcode {
     flex-wrap: wrap;
   }
 }
+
+/* ============ 插件移植：勋章墙 / 大赛 / 头像挂件 / 五子棋 ============ */
+
+.medalwall-medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fdf3d8, #f6d98a);
+  border: 1px solid var(--baozi-orange-dark);
+  font-size: 22px;
+  flex: none;
+}
+
+.contest-live {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #2fb26b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.avatar-frame-demo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid #d7dee8;
+  background: var(--baozi-paper);
+  font-size: 30px;
+}
+
+.avatar-frame-demo.frame-on {
+  border-color: var(--baozi-orange-dark);
+  box-shadow: 0 0 0 3px rgba(226, 122, 36, 0.25);
+}
+
+.gomoku-board {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  width: min(100%, 540px);
+  aspect-ratio: 1;
+  border: 2px solid #b9832f;
+  background: linear-gradient(135deg, #f0cf94, #e4b96d);
+  padding: 4px;
+  gap: 1px;
+}
+
+.gomoku-cell {
+  position: relative;
+  border: 1px solid rgba(140, 100, 40, 0.35);
+  border-radius: 0;
+  background: transparent;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+}
+
+.gomoku-cell:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.gomoku-cell.gomoku-b::after,
+.gomoku-cell.gomoku-w::after {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+}
+
+.gomoku-cell.gomoku-b::after {
+  background: radial-gradient(circle at 35% 30%, #4a4a4a, #000);
+}
+
+.gomoku-cell.gomoku-w::after {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #cfd6df);
+  border: 1px solid #aab3bf;
+}
