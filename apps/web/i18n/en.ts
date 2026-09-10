@@ -489,11 +489,13 @@ export const en: Dict = {
   },
   requests: {
     title: "Requests",
-    subtitle: "Ask for what you want, with a bounty",
+    colName: "Name",
+    colBounty: "Bounty",
+    colRequester: "Requester",
+    colStatus: "Status",
     empty: "No requests yet",
-    bounty: "Bounty {n}",
-    requester: "By {name}",
     fulfilled: "Fulfilled →",
+    pending: "Pending",
   },
   top: {
     title: "Leaderboard · Upload",

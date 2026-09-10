@@ -485,11 +485,13 @@ export const zhCN = {
   },
   requests: {
     title: "求种区",
-    subtitle: "说出你想要的资源，悬赏求种",
+    colName: "资源名称",
+    colBounty: "悬赏",
+    colRequester: "求种人",
+    colStatus: "状态",
     empty: "暂无求种",
-    bounty: "悬赏 {n}",
-    requester: "求种人 {name}",
     fulfilled: "已应种 →",
+    pending: "待应种",
   },
   top: {
     title: "排行榜 · 上传榜",
