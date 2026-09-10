@@ -172,7 +172,7 @@ export default function LoginPage() {
         {fmt(dict.login.failBanNote, { n: 5 })}
       </p>
 
-      {/* 账号辅助链接（NexusPHP：注册/找回密码） */}
+      {/* 账号辅助链接（NexusPHP login.php 全口径） */}
       <div className="flex w-full flex-col gap-2 border-t border-line pt-4 text-sm">
         <p className="text-sub">
           {dict.login.noAccount}{" "}
@@ -184,6 +184,24 @@ export default function LoginPage() {
           {dict.login.forgotPassword}{" "}
           <Link href="/forgot" className="font-bold text-sky">
             {dict.login.recoverByEmail}
+          </Link>
+        </p>
+        <p className="text-sub">
+          {dict.login.bannedIntro}{" "}
+          <Link href="/ban-log" className="font-bold text-sky">
+            {dict.login.bannedLog}
+          </Link>
+        </p>
+        <p className="text-sub">
+          {dict.login.resendIntro}{" "}
+          <Link href="/resend" className="font-bold text-sky">
+            {dict.login.resendLink}
+          </Link>
+        </p>
+        <p className="text-sub">
+          {dict.login.appealIntro}{" "}
+          <Link href="/appeals" className="font-bold text-sky">
+            {dict.login.appealLink}
           </Link>
         </p>
       </div>

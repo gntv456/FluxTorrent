@@ -6,7 +6,16 @@ import { NextResponse, type NextRequest } from "next/server";
  * HttpOnly 仅作存在性标记，真正鉴权仍是请求头 Bearer token）。
  */
 
-const PUBLIC_PATHS = ["/login", "/register", "/forgot", "/reset", "/offline"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/register",
+  "/forgot",
+  "/reset",
+  "/offline",
+  "/appeals",
+  "/ban-log",
+  "/resend",
+];
 
 function isAsset(pathname: string): boolean {
   return (
@@ -19,6 +28,11 @@ function isAsset(pathname: string): boolean {
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const hasSession = Boolean(req.cookies.get("flux.session")?.value);
+
+  // API 经 rewrites 转发，不属页面路由 —— 鉴权由 API 侧 Bearer 校验，middleware 不拦
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
 
   if (hasSession || isAsset(pathname) || PUBLIC_PATHS.includes(pathname)) {
     // 已登录访问登录页 → 回资源库，避免原地打转
