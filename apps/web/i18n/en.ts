@@ -58,6 +58,8 @@ export const en: Dict = {
     p30: "30%",
   },
   home: {
+    welcomeTitle: "Welcome",
+    statsTitle: "Site stats",
     heroTitle: "Plant seeds, grow together",
     heroSubtitle:
       "Haoxue — private educational torrent community (powered by FluxTorrent)",
