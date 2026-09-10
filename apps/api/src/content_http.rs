@@ -334,6 +334,12 @@ async fn subtitle_upload(
     if body.title.trim().is_empty() {
         return Err(DomainError::Validation("字幕标题不能为空".into()));
     }
+    // torrent_id=0 或不存在的种子 → 存 NULL（外键可空），不阻断独立字幕分享
+    let torrent_id = if body.torrent_id > 0 {
+        Some(body.torrent_id)
+    } else {
+        None
+    };
     let file_ref = body
         .file_ref
         .clone()
@@ -341,7 +347,7 @@ async fn subtitle_upload(
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO subtitles (torrent_id, user_id, title, lang, file_ref) VALUES ($1, $2, $3, $4, $5) RETURNING id",
     )
-    .bind(body.torrent_id)
+    .bind(torrent_id)
     .bind(auth.id)
     .bind(&body.title)
     .bind(&body.lang)

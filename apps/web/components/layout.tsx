@@ -19,6 +19,11 @@ export async function Header() {
     { href: "/games", label: dict.nav.games },
     { href: "/farm", label: dict.nav.farm },
     { href: "/dressup", label: dict.nav.dressup },
+    { href: "/tasks", label: dict.nav.tasks },
+    { href: "/bank", label: dict.nav.bank },
+    { href: "/invites", label: dict.nav.invites },
+    { href: "/subtitles", label: dict.nav.subtitles },
+    { href: "/friends", label: dict.nav.friends },
   ];
   return (
     <header className="sticky top-0 z-40 h-16 border-b border-line bg-ink/95 backdrop-blur">

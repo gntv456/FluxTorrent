@@ -175,4 +175,120 @@ export async function getTorrents(
   }
 }
 
+// ============ 缺口补齐：任务/银行/邀请/字幕/社交/投票（包子站同款入口） ============
+
+export interface TaskItem {
+  id: number;
+  name: string;
+  metric: Record<string, unknown>;
+  reward: number;
+  penalty: number;
+  claim_limit: number | null;
+  claimed: number;
+  starts_at: string;
+  ends_at: string;
+}
+export async function getTasks(): Promise<TaskItem[]> {
+  try {
+    return await api.get<TaskItem[]>("/api/v1/tasks");
+  } catch {
+    return [];
+  }
+}
+
+export interface BankDeposit {
+  id: number;
+  amount: number;
+  term_days: number;
+  interest: number;
+  status: number;
+  maturity_at: string;
+}
+export async function getBankDeposits(): Promise<BankDeposit[]> {
+  try {
+    return await api.get<BankDeposit[]>("/api/v1/bank/deposits");
+  } catch {
+    return [];
+  }
+}
+
+export interface InviteItem {
+  id: number;
+  code: string;
+  status: number;
+  used_by: string | null;
+  expires_at: string;
+}
+export async function getInvites(): Promise<InviteItem[]> {
+  try {
+    return await api.get<InviteItem[]>("/api/v1/invites");
+  } catch {
+    return [];
+  }
+}
+
+export interface SubtitleItem {
+  id: number;
+  torrent_id: number | null;
+  username: string | null;
+  title: string;
+  lang: string | null;
+  downloads: number;
+  created_at: string;
+}
+export async function getSubtitles(): Promise<SubtitleItem[]> {
+  try {
+    return await api.get<SubtitleItem[]>("/api/v1/subtitles");
+  } catch {
+    return [];
+  }
+}
+
+export interface FriendItem {
+  username: string;
+  list: string;
+}
+export async function getFriends(): Promise<FriendItem[]> {
+  try {
+    return await api.get<FriendItem[]>("/api/v1/friends");
+  } catch {
+    return [];
+  }
+}
+
+export interface OfferItem {
+  id: number;
+  username: string | null;
+  torrent_id: number | null;
+  torrent_name: string | null;
+  votes: number;
+  promoted: boolean;
+  created_at: string;
+}
+export async function getOffers(): Promise<OfferItem[]> {
+  try {
+    return await api.get<OfferItem[]>("/api/v1/offers");
+  } catch {
+    return [];
+  }
+}
+
+export interface PollItem {
+  id: number;
+  question: string;
+  options: string[];
+  closed: boolean;
+  my_vote: number | null;
+  total_votes: number;
+  counts: { index: number; votes: number }[];
+}
+export async function getPolls(): Promise<PollItem[]> {
+  try {
+    return await api.get<PollItem[]>("/api/v1/fun/polls");
+  } catch {
+    return [];
+  }
+}
+
+
 export type { TorrentListItem, UserPublic };

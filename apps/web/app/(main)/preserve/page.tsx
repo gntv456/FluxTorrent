@@ -3,6 +3,7 @@ import { formatBytes } from "@/lib/format";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
+import { ClaimButton } from "@/components/claim-button";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,12 @@ export default async function PreservePage() {
                     {fmt(dict.preserve.seeding, { n: p.seeders })}
                   </span>
                 </div>
+                <ClaimButton
+                  torrentId={p.torrent_id}
+                  claimed={Boolean(p.claimed_by)}
+                  label={dict.preserve.claimAction}
+                  claimedLabel={dict.preserve.claimedTag}
+                />
               </Link>
             </li>
           ))}
