@@ -160,11 +160,32 @@ export interface PreserveItem {
   seeders: number;
   claimed_by: string | null;
 }
-export async function getPreserve(): Promise<PreserveItem[]> {
+export interface PreserveStats {
+  preserving: number;
+  continued: number;
+  official: number;
+  general: number;
+  today_in: number;
+  today_out: number;
+}
+export interface PreserveEnvelope {
+  items: PreserveItem[];
+  total: number;
+  stats: PreserveStats;
+  page: number;
+  per_page: number;
+}
+export async function getPreserve(): Promise<PreserveEnvelope> {
   try {
-    return await api.get<PreserveItem[]>("/api/v1/preserve");
+    return await api.get<PreserveEnvelope>("/api/v1/preserve");
   } catch {
-    return [];
+    return {
+      items: [],
+      total: 0,
+      stats: { preserving: 0, continued: 0, official: 0, general: 0, today_in: 0, today_out: 0 },
+      page: 0,
+      per_page: 50,
+    };
   }
 }
 

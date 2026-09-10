@@ -22,6 +22,8 @@ function withParam(
   return s ? `/torrents?${s}` : "/torrents";
 }
 
+/** 种子页（包子站 torrents.php 复刻）：
+ *  搜索盒（范围/关键字/匹配模式/给我搜/高级搜索折叠）+ 分类 chip + 九列 colhead 图标表头表格 */
 export default async function TorrentsPage({
   searchParams,
 }: {
@@ -60,64 +62,124 @@ export default async function TorrentsPage({
   const currentGrade = sp.grade_id !== undefined && sp.grade_id !== "" ? Number(sp.grade_id) : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.torrents.title}</h1>
-        <span className="num text-sm text-sub">
-          {fmt(dict.torrents.total, { n: page.total_estimate })}
-        </span>
-      </div>
+    <div className="flex flex-col gap-3">
+      <h1 className="sr-only">{dict.torrents.title}</h1>
 
-      {/* 全文搜索（标题/简介/文件名，后端 pg_trgm）——GET 表单保留其余筛选 */}
-      <form action="/torrents" method="get" className="flex gap-2">
-        <input
-          type="search"
-          name="search"
-          defaultValue={sp.search}
-          placeholder={dict.torrents.searchPlaceholder}
-          aria-label={dict.torrents.searchAction}
-          className="min-h-[44px] flex-1 rounded-full border border-line bg-white px-4 text-sm outline-none focus:border-sky"
-        />
-        {sp.category_id && (
-          <input type="hidden" name="category_id" value={sp.category_id} />
-        )}
-        {sp.medium_id && (
-          <input type="hidden" name="medium_id" value={sp.medium_id} />
-        )}
-        {sp.grade_id && <input type="hidden" name="grade_id" value={sp.grade_id} />}
-        {sp.official && <input type="hidden" name="official" value={sp.official} />}
-        {sp.include_dead && (
-          <input type="hidden" name="include_dead" value="1" />
-        )}
-        {sp.sort && <input type="hidden" name="sort" value={sp.sort} />}
-        <button
-          type="submit"
-          className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm font-bold text-white active:scale-[0.97]"
-        >
-          {dict.torrents.searchAction}
-        </button>
+      {/* 搜索盒（包子站 torrent-search-box 同构：范围+关键字+匹配模式 / 给我搜 / 高级搜索折叠） */}
+      <form action="/torrents" method="get" className="torrent-search-form">
+        <table className="searchbox torrent-search-box">
+          <tbody className="torrent-search-box__quick">
+            <tr>
+              <td className="rowfollow torrent-search-box__quick-fields">
+                <div className="torrent-search-box__primary">
+                  <div className="torrent-search-box__search-line">
+                    <label className="torrent-search-box__scope">
+                      <span className="torrent-search-box__visually-hidden">
+                        {dict.torrents2.scope}：
+                      </span>
+                      <select name="search_area" aria-label={dict.torrents2.scope}>
+                        <option value="0">{dict.torrents2.areaTitle}</option>
+                        <option value="1">{dict.torrents2.areaDescr}</option>
+                        <option value="3">{dict.torrents2.areaUploader}</option>
+                        <option value="4">IMDb</option>
+                      </select>
+                    </label>
+                    <div className="torrent-search-box__keyword">
+                      <input
+                        id="searchinput"
+                        name="search"
+                        type="text"
+                        defaultValue={sp.search}
+                        placeholder={dict.torrents2.keywordPh}
+                        autoComplete="off"
+                      />
+                    </div>
+                    <label className="torrent-search-box__mode">
+                      <span className="torrent-search-box__visually-hidden">
+                        {dict.torrents2.mode}：
+                      </span>
+                      <select name="search_mode" aria-label={dict.torrents2.mode}>
+                        <option value="0">{dict.torrents2.modeAnd}</option>
+                        <option value="2">{dict.torrents2.modeExact}</option>
+                      </select>
+                    </label>
+                  </div>
+                  <button type="submit" className="baozi-button torrent-search-box__submit-button">
+                    {dict.torrents2.searchBtn}
+                  </button>
+                  {/* 高级搜索折叠区（原生 details，与旧站 aria-expanded 折叠一致） */}
+                  <details className="torrent-search-box__advanced-toggle">
+                    <summary>
+                      <span>{dict.torrents2.advanced}</span>
+                      <span className="torrent-search-box__chevron" aria-hidden="true" />
+                    </summary>
+                    <div className="torrent-search-box__advanced-content">
+                      <div className="torrent-search-box__taxonomy-grid">
+                        <fieldset>
+                          <legend>{dict.torrents2.catLegend}</legend>
+                          <div className="torrent-search-box__cat-checks">
+                            {categories.slice(1).map((c) => (
+                              <label key={c.label} className="torrent-search-box__cat-item">
+                                <input
+                                  type="checkbox"
+                                  name="category_id"
+                                  value={c.id}
+                                  defaultChecked={
+                                    currentCategory !== undefined && currentCategory === c.id
+                                  }
+                                />
+                                {c.label}
+                              </label>
+                            ))}
+                          </div>
+                        </fieldset>
+                        <fieldset>
+                          <legend>{dict.torrents2.deadLegend}</legend>
+                          <label className="torrent-search-box__cat-item">
+                            <input
+                              type="checkbox"
+                              name="include_dead"
+                              value="1"
+                              defaultChecked={sp.include_dead === "1"}
+                            />
+                            {dict.torrents2.inclDead}
+                          </label>
+                        </fieldset>
+                        <fieldset>
+                          <legend>{dict.torrents2.officialLegend}</legend>
+                          <label className="torrent-search-box__cat-item">
+                            <input
+                              type="checkbox"
+                              name="official"
+                              value="1"
+                              defaultChecked={sp.official === "1"}
+                            />
+                            {dict.torrents2.officialOnly}
+                          </label>
+                        </fieldset>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </form>
-      {sp.search && (
-        <a
-          href={withParam(sp, "search", undefined)}
-          className="self-start text-sm text-sky"
-        >
-          ✕ {dict.torrents.clearSearch}「{sp.search}」
-        </a>
-      )}
 
-      {/* 筛选 Chip（移动端横向滚动，§7.3）—— 增量参数互不覆盖 */}
+      <span className="num text-xs text-sub">
+        {fmt(dict.torrents.total, { n: page.total_estimate })}
+      </span>
+
+      {/* 筛选 Chip（移动端横向滚动）—— 增量参数互不覆盖 */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         {categories.map((c) => (
           <a
             key={c.label}
             href={withParam(sp, "category_id", c.id ? String(c.id) : undefined)}
             aria-current={currentCategory === c.id ? "true" : undefined}
-            className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
-              currentCategory === c.id
-                ? "bg-sky-deep text-white"
-                : "bg-white text-ink border border-line"
-            }`}
+            data-active={currentCategory === c.id ? "true" : undefined}
+            className="filter-chip"
           >
             {c.label}
           </a>
@@ -129,11 +191,8 @@ export default async function TorrentsPage({
             key={m.label}
             href={withParam(sp, "medium_id", m.id ? String(m.id) : undefined)}
             aria-current={currentMedium === m.id ? "true" : undefined}
-            className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
-              currentMedium === m.id
-                ? "bg-sky-deep text-white"
-                : "bg-white text-ink border border-line"
-            }`}
+            data-active={currentMedium === m.id ? "true" : undefined}
+            className="filter-chip"
           >
             {m.label}
           </a>
@@ -144,28 +203,17 @@ export default async function TorrentsPage({
         {dict.torrents.grades.map((label, gid) => (
           <a
             key={label}
-            href={withParam(
-              sp,
-              "grade_id",
-              gid === 0 ? undefined : String(gid - 1),
-            )}
-            aria-current={
-              currentGrade === (gid === 0 ? undefined : gid - 1)
-                ? "true"
-                : undefined
-            }
-            className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
-              currentGrade === (gid === 0 ? undefined : gid - 1)
-                ? "bg-sky-deep text-white"
-                : "bg-white text-ink border border-line"
-            }`}
+            href={withParam(sp, "grade_id", gid === 0 ? undefined : String(gid - 1))}
+            aria-current={currentGrade === (gid === 0 ? undefined : gid - 1) ? "true" : undefined}
+            data-active={currentGrade === (gid === 0 ? undefined : gid - 1) ? "true" : undefined}
+            className="filter-chip"
           >
             {label}
           </a>
         ))}
       </div>
 
-      {/* 排序（旧站 torrents.php 口径）：默认时间 · 做种 · 体积 · 完成 */}
+      {/* 排序（旧站 torrents.php 口径） */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         {(
           [
@@ -179,39 +227,54 @@ export default async function TorrentsPage({
             key={label}
             href={withParam(sp, "sort", value)}
             aria-current={(sp.sort ?? undefined) === value ? "true" : undefined}
-            className={`min-h-[44px] flex shrink-0 items-center rounded-full px-3 text-sm ${
-              (sp.sort ?? undefined) === value
-                ? "bg-sky-deep text-white"
-                : "bg-white text-ink border border-line"
-            }`}
+            data-active={(sp.sort ?? undefined) === value ? "true" : undefined}
+            className="filter-chip"
           >
             {label}
           </a>
         ))}
       </div>
 
+      {/* 种子九列表格（包子站 colhead 图标表头） */}
       {page.items.length === 0 ? (
         <EmptyTorrents />
       ) : (
-        <table className="nexus-table">
-          <thead>
-            <tr>
-              <th className="w-12">{dict.torrents.colType}</th>
-              <th>{dict.torrents.colTitle}</th>
-              <th className="w-16">{dict.torrents.colComments}</th>
-              <th className="w-20">{dict.torrents.colSize}</th>
-              <th className="w-16">{dict.torrents.colSeeders}</th>
-              <th className="w-16">{dict.torrents.colLeechers}</th>
-              <th className="w-16">{dict.torrents.colCompleted}</th>
-              <th className="w-28">{dict.torrents.colOwner}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {page.items.map((t) => (
-              <TorrentTr key={t.id} t={t} />
-            ))}
-          </tbody>
-        </table>
+        <div className="baozi-wide-table-scroll" role="region" aria-label={dict.torrents.title}>
+          <table className="nexus-table torrents-table">
+            <thead>
+              <tr>
+                <th className="w-12">{dict.torrents.colType}</th>
+                <th>
+                  <a href={withParam(sp, "sort", undefined)}>{dict.torrents.colTitle}</a>
+                </th>
+                <th className="w-16" title={dict.torrents.colComments}>
+                  💬
+                </th>
+                <th className="w-20" title={dict.torrents2.colAlive}>
+                  ⏱
+                </th>
+                <th className="w-20" title={dict.torrents.colSize}>
+                  💾
+                </th>
+                <th className="w-16" title={dict.torrents.colSeeders}>
+                  🌱
+                </th>
+                <th className="w-16" title={dict.torrents.colLeechers}>
+                  ⬇️
+                </th>
+                <th className="w-16" title={dict.torrents.colCompleted}>
+                  ✅
+                </th>
+                <th className="w-28">{dict.torrents.colOwner}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {page.items.map((t) => (
+                <TorrentTr key={t.id} t={t} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {page.next_cursor && (

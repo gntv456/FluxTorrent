@@ -17,6 +17,7 @@ pub fn mount_ops(scope: actix_web::Scope) -> actix_web::Scope {
         .service(jixiao_my)
         // M22 任务中心
         .service(task_list)
+        .service(task_overview)
         .service(task_claim)
         // M19 保种区
         .service(preserve_list)
@@ -225,6 +226,22 @@ struct TaskRow {
     claimed: i64,
     starts_at: chrono::DateTime<chrono::Utc>,
     ends_at: chrono::DateTime<chrono::Utc>,
+    /// 五档任务卡（包子站 task.php 口径）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tier: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    subtitle: Option<String>,
+    #[sqlx(default)]
+    fee: i64,
+    #[sqlx(default)]
+    duration_days: i32,
+    #[sqlx(default)]
+    quota_total: i32,
+    #[sqlx(default)]
+    sort: i32,
+    /// 当前用户是否已领取
+    #[sqlx(default)]
+    claimed_by_me: bool,
 }
 
 #[get("/tasks")]
@@ -236,15 +253,116 @@ async fn task_list(
     let rows = sqlx::query_as::<_, TaskRow>(
         "SELECT t.id, t.name, t.metric, t.reward, t.penalty, t.claim_limit, \
             (SELECT count(*) FROM task_claims tc WHERE tc.task_id = t.id)::bigint AS claimed, \
-            t.starts_at, t.ends_at \
+            t.starts_at, t.ends_at, t.tier, t.subtitle, t.fee, t.duration_days, \
+            t.quota_total, t.sort, \
+            EXISTS(SELECT 1 FROM task_claims tc WHERE tc.task_id = t.id AND tc.user_id = $1) AS claimed_by_me \
          FROM tasks t WHERE now() BETWEEN t.starts_at AND t.ends_at \
-         ORDER BY t.id",
+         ORDER BY t.sort NULLS LAST, t.id",
     )
     .bind(uid)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
+}
+
+/// 任务系统总览（包子站 task.php 区块口径）：商店/动态/统计/我的记录
+#[get("/tasks/overview")]
+async fn task_overview(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let uid = auth.id;
+
+    // 商店
+    let shop: Vec<(String, String, String, i32, f64, i32)> = sqlx::query_as(
+        "SELECT name, span, require_tier, require_count, cost::float8, stock \
+         FROM task_shop_items ORDER BY sort",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let shop_json: Vec<serde_json::Value> = shop
+        .iter()
+        .map(|(n, s, t, c, cost, stock)| {
+            serde_json::json!({
+                "name": n, "span": s, "require_tier": t, "require_count": c,
+                "cost": cost, "stock": stock,
+            })
+        })
+        .collect();
+
+    // 最新动态（领取流）
+    let feed: Vec<(String, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT u.username, t.name, now() FROM task_claims c \
+         JOIN users u ON u.id = c.user_id JOIN tasks t ON t.id = c.task_id \
+         ORDER BY c.id DESC LIMIT 10",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let feed_json: Vec<serde_json::Value> = feed
+        .iter()
+        .map(|(u, name, ts)| {
+            serde_json::json!({ "user": u, "task": name, "at": ts.to_rfc3339() })
+        })
+        .collect();
+
+    // 统计：进行中/已完成/失败 + 各档完成率
+    let (ongoing, done, failed): (i64, i64, i64) = sqlx::query_as(
+        "SELECT count(*) FILTER (WHERE status = 0), count(*) FILTER (WHERE status = 1), \
+                count(*) FILTER (WHERE status = 2) FROM task_claims",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let tier_stats: Vec<(Option<String>, i64, i64)> = sqlx::query_as(
+        "SELECT t.tier, count(*) AS total, count(*) FILTER (WHERE c.status = 1) AS done \
+         FROM task_claims c JOIN tasks t ON t.id = c.task_id \
+         GROUP BY t.tier ORDER BY t.tier NULLS LAST",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let tiers_json: Vec<serde_json::Value> = tier_stats
+        .iter()
+        .map(|(tier, total, done)| {
+            let pct = if *total == 0 {
+                0.0
+            } else {
+                (*done as f64 / *total as f64) * 100.0
+            };
+            serde_json::json!({ "tier": tier, "total": total, "done": done, "pct": pct })
+        })
+        .collect();
+
+    // 我的任务记录
+    let mine: Vec<(i64, String, i16, chrono::DateTime<chrono::Utc>, Option<chrono::DateTime<chrono::Utc>>)> = sqlx::query_as(
+        "SELECT t.id, t.name, c.status, now(), c.settled_at \
+         FROM task_claims c JOIN tasks t ON t.id = c.task_id \
+         WHERE c.user_id = $1 ORDER BY c.id DESC LIMIT 20",
+    )
+    .bind(uid)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mine_json: Vec<serde_json::Value> = mine
+        .iter()
+        .map(|(id, name, status, at, settled)| {
+            serde_json::json!({
+                "task_id": id, "name": name, "status": status,
+                "claimed_at": at.to_rfc3339(), "settled_at": settled.map(|s| s.to_rfc3339()),
+            })
+        })
+        .collect();
+
+    Ok(ok(serde_json::json!({
+        "shop": shop_json,
+        "feed": feed_json,
+        "stats": { "ongoing": ongoing, "done": done, "failed": failed, "tiers": tiers_json },
+        "my_records": mine_json,
+    })))
 }
 
 #[derive(Deserialize)]
@@ -307,20 +425,84 @@ struct PreserveRow {
     claimed_by: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct PreserveQuery {
+    /// scope: all/official/general；status: current/active/grace/expired
+    #[serde(default)]
+    scope: Option<String>,
+    #[serde(default)]
+    status: Option<String>,
+    #[serde(default)]
+    category: Option<i32>,
+    #[serde(default)]
+    keyword: Option<String>,
+    #[serde(default)]
+    page: Option<i64>,
+}
+
+/// 保种区列表（包子站 requireseed.php 口径）：统计六格 + 筛选 + 分页 + 种子九列表格
 #[get("/preserve")]
-async fn preserve_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn preserve_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<PreserveQuery>,
+) -> DomainResult<impl Responder> {
+    let page = q.page.unwrap_or(0).max(0);
+    let per = 50i64;
+    let kw = q
+        .keyword
+        .as_deref()
+        .map(|k| format!("%{}%", k.trim()))
+        .unwrap_or_else(|| "%".into());
+
     let rows = sqlx::query_as::<_, PreserveRow>(
         "SELECT sp.torrent_id, t.name, t.size, t.seeders, u.username AS claimed_by \
          FROM seed_preserve sp \
          JOIN torrents t ON t.id = sp.torrent_id \
          LEFT JOIN users u ON u.id = sp.claimed_by \
          WHERE sp.exited_at IS NULL AND t.approval_status = 1 \
-         ORDER BY t.seeders ASC, sp.torrent_id LIMIT 100",
+           AND ($1::int IS NULL OR t.category_id = $1) \
+           AND t.name ILIKE $2 \
+         ORDER BY t.seeders ASC, sp.torrent_id LIMIT $3 OFFSET $4",
     )
+    .bind(q.category)
+    .bind(kw)
+    .bind(per)
+    .bind(page * per)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+
+    // 统计六格（包子站保种区口径：保种中/延续中/官方保种/普通保种/今日新增/今日移出）
+    let (preserving, exited, total, today_in, today_out): (i64, i64, i64, i64, i64) =
+        sqlx::query_as(
+            "SELECT \
+                (SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL), \
+                (SELECT count(*) FROM seed_preserve WHERE exited_at IS NOT NULL), \
+                (SELECT count(*) FROM seed_preserve), \
+                (SELECT count(*) FROM seed_preserve WHERE claimed_at > now() - interval '1 day'), \
+                (SELECT count(*) FROM seed_preserve WHERE exited_at > now() - interval '1 day')",
+        )
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let official = sqlx::query_scalar::<_, i64>(
+        "SELECT count(*) FROM seed_preserve sp JOIN torrents t ON t.id = sp.torrent_id \
+         WHERE sp.exited_at IS NULL AND t.official_tag",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+
+    Ok(ok(serde_json::json!({
+        "items": rows,
+        "total": total,
+        "stats": {
+            "preserving": preserving, "continued": 0,
+            "official": official, "general": (preserving - official).max(0),
+            "today_in": today_in, "today_out": today_out,
+        },
+        "page": page, "per_page": per,
+    })))
 }
 
 #[derive(Deserialize)]
