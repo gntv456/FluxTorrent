@@ -10,40 +10,34 @@ export default async function ForumsPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl">{dict.forums.title}</h1>
-      <div className="overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-card)]">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-sky-soft text-left text-ink">
-              <th className="px-4 py-3">{dict.forums.board}</th>
-              <th className="px-4 py-3 text-right">{dict.forums.topics}</th>
-              <th className="hidden px-4 py-3 text-right sm:table-cell">
-                {dict.forums.posts}
-              </th>
+      <table className="nexus-table">
+        <thead>
+          <tr>
+            <td className="colhead">{dict.forums.board}</td>
+            <td className="colhead w-24 text-right">{dict.forums.topics}</td>
+            <td className="colhead hidden w-24 text-right sm:table-cell">
+              {dict.forums.posts}
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          {forums.map((f) => (
+            <tr key={f.id}>
+              <td>
+                <Link
+                  href={`/forums/${f.id}`}
+                  className="font-bold text-ink hover:text-sky"
+                >
+                  {f.name}
+                </Link>
+                {f.descr && <p className="text-xs text-sub">{f.descr}</p>}
+              </td>
+              <td className="num text-right">{f.topics}</td>
+              <td className="num hidden text-right sm:table-cell">{f.posts}</td>
             </tr>
-          </thead>
-          <tbody>
-            {forums.map((f, i) => (
-              <tr key={f.id} className={i % 2 ? "bg-cloud/60" : ""}>
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/forums/${f.id}`}
-                    className="font-bold text-ink hover:text-sky"
-                  >
-                    {f.name}
-                  </Link>
-                  {f.descr && (
-                    <p className="text-xs text-sub">{f.descr}</p>
-                  )}
-                </td>
-                <td className="num px-4 py-3 text-right">{f.topics}</td>
-                <td className="num hidden px-4 py-3 text-right sm:table-cell">
-                  {f.posts}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
