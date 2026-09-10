@@ -155,6 +155,7 @@ export interface TorrentListItem {
   seeders: number;
   leechers: number;
   times_completed: number;
+  comments: number;
   official: boolean;
   anonymous: boolean;
   approval_status: number;
