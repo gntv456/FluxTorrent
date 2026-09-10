@@ -357,6 +357,7 @@ export const zhTW: Dict = {
     title: "論壇",
     board: "版塊",
     topics: "主題",
+    author: "作者",
     posts: "貼文",
     backToForums: "← 論壇",
     boardTitle: "版塊 #{id}",

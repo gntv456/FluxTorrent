@@ -355,6 +355,7 @@ export const zhCN = {
     title: "论坛",
     board: "版块",
     topics: "主题",
+    author: "作者",
     posts: "帖子",
     backToForums: "← 论坛",
     boardTitle: "版块 #{id}",
