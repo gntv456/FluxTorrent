@@ -96,16 +96,60 @@ struct RequestRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// 求种列表（包子站 viewrequests.php 口径）：finished 筛选 + 名称搜索。
+/// 最新出价/评论数/应求数：数据模型暂无加价与评论表，取 bounty/0/0 兜底。
 #[get("/requests")]
-async fn request_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
-    let rows = sqlx::query_as::<_, RequestRow>(
-        "SELECT r.id, u.username, r.title, r.descr, r.bounty, r.status, r.fulfilled_torrent_id, r.created_at \
-         FROM requests r LEFT JOIN users u ON u.id = r.user_id \
-         WHERE r.status = 0 ORDER BY r.id DESC LIMIT 50",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+async fn request_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let finished = q.get("finished").map(|s| s.as_str()).unwrap_or("no");
+    let search = q
+        .get("search")
+        .map(|s| format!("%{}%", s.trim()))
+        .unwrap_or_else(|| "%".into());
+    let status_cond = match finished {
+        "all" => "TRUE",
+        "yes" => "r.status = 1",
+        "ing" => "r.status = 2",
+        _ => "r.status = 0",
+    };
+    let only_mine = finished == "my";
+    let rows: Vec<serde_json::Value> = if only_mine {
+        sqlx::query_as::<_, (i64, Option<String>, String, Option<String>, i64, i16, Option<i64>, chrono::DateTime<chrono::Utc>)>(
+            "SELECT r.id, u.username, r.title, r.descr, r.bounty, r.status, r.fulfilled_torrent_id, r.created_at \
+             FROM requests r LEFT JOIN users u ON u.id = r.user_id \
+             WHERE r.user_id = $2 AND r.title ILIKE $1 ORDER BY r.id DESC LIMIT 50",
+        )
+        .bind(&search)
+        .bind(auth.id)
+        .fetch_all(&state.repo.db)
+        .await
+    } else {
+        sqlx::query_as::<_, (i64, Option<String>, String, Option<String>, i64, i16, Option<i64>, chrono::DateTime<chrono::Utc>)>(
+            &format!(
+                "SELECT r.id, u.username, r.title, r.descr, r.bounty, r.status, r.fulfilled_torrent_id, r.created_at \
+                 FROM requests r LEFT JOIN users u ON u.id = r.user_id \
+                 WHERE {status_cond} AND r.title ILIKE $1 ORDER BY r.id DESC LIMIT 50",
+            ),
+        )
+        .bind(&search)
+        .fetch_all(&state.repo.db)
+        .await
+    }
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .into_iter()
+    .map(|(id, username, title, descr, bounty, status, fulfilled, ts)| {
+        serde_json::json!({
+            "id": id, "username": username, "title": title, "descr": descr,
+            "bounty": bounty, "latest_bounty": bounty,
+            "comments": 0, "bids": 0,
+            "status": status, "fulfilled_torrent_id": fulfilled, "created_at": ts,
+        })
+    })
+    .collect();
     Ok(ok(rows))
 }
 
@@ -370,16 +414,34 @@ struct SubtitleRow {
     lang: Option<String>,
     downloads: i32,
     created_at: chrono::DateTime<chrono::Utc>,
+    /// 文件大小（字节；无真实文件时为 0）
+    #[sqlx(default)]
+    size: Option<i64>,
 }
 
+/// 字幕列表（包子站 subtitles.php 口径）：search 关键词 + lang 语言 + letter 首字母筛选
 #[get("/subtitles")]
-async fn subtitle_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn subtitle_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<impl Responder> {
+    let search = q
+        .get("search")
+        .map(|s| format!("%{}%", s.trim()))
+        .unwrap_or_else(|| "%".into());
+    let lang = q.get("lang_id").filter(|s| s.as_str() != "0").cloned();
+    let letter = q.get("letter").filter(|s| !s.is_empty()).cloned();
     let rows = sqlx::query_as::<_, SubtitleRow>(
-        "SELECT s.id, s.torrent_id, u.username, s.title, s.lang, s.downloads, s.created_at \
+        "SELECT s.id, s.torrent_id, u.username, s.title, s.lang, s.downloads, s.created_at, 0::bigint AS size \
          FROM subtitles s LEFT JOIN users u ON u.id = s.user_id \
-         WHERE ($1::bigint IS NULL OR s.torrent_id = $1) ORDER BY s.id DESC LIMIT 50",
+         WHERE s.title ILIKE $1 \
+           AND ($2::text IS NULL OR s.lang = $2) \
+           AND ($3::text IS NULL OR s.title ILIKE $3 || '%') \
+         ORDER BY s.id DESC LIMIT 50",
     )
-    .bind(None::<i64>)
+    .bind(search)
+    .bind(lang)
+    .bind(letter)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

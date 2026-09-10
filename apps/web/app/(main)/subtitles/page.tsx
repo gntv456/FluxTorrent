@@ -1,18 +1,15 @@
-import { getDict } from "@/i18n/server";
 import { SubtitleBoard } from "@/components/subtitle-board";
+import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-/** 字幕区（包子站 subtitles.php 同款）：上传字幕 +5 火花 */
+/** 字幕区（包子站 subtitles.php 复刻）：规则卡 + 上传表单 + 语言/字母筛选 + 七列表格 */
 export default async function SubtitlesPage() {
   const { dict } = await getDict();
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.subtitles.title}</h1>
-        <span className="text-sm text-sub">{dict.subtitles.subtitle}</span>
-      </div>
-      <SubtitleBoard empty={dict.subtitles.empty} />
+      <h1 className="sr-only">{dict.subtitles.title}</h1>
+      <SubtitleBoard />
     </div>
   );
 }
