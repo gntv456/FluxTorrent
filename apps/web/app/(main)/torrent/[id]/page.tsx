@@ -111,158 +111,210 @@ export default async function TorrentDetailPage({
 
   return (
     <article className="flex flex-col gap-4">
-      <header className="rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
-        <div className="flex items-start gap-4">
-          <span
-            aria-hidden
-            className="h-[64px] w-[64px] shrink-0 rounded-[var(--r-md)]"
-            style={{ background: categoryColor(t.category_id) }}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-2xl break-all">{t.name}</h1>
-              {t.sticky && (
-                <span className="sticker bg-sun text-ink">
-                  {dict.torrent.sticky}
-                </span>
-              )}
-              {promo && (
-                <span className={`sticker ${promo.className}`}>
-                  {dict.promotion[promo.key]}
-                </span>
-              )}
-              {t.official && (
-                <span className="sticker bg-indigo text-white">
-                  {dict.torrent.official}
-                </span>
-              )}
-            </div>
-            {t.small_descr && <p className="mt-1 text-sub">{t.small_descr}</p>}
-            <dl className="num mt-3 grid grid-cols-2 gap-x-8 gap-y-1 text-sm md:grid-cols-4">
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.size}</dt>
-                <dd>{formatBytes(t.size)}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.numFiles}</dt>
-                <dd>{ext?.numfiles ?? "—"}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.seeding}</dt>
-                <dd className="text-mint">{t.seeders}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.leeching}</dt>
-                <dd className="text-coral">{t.leechers}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.completed}</dt>
-                <dd>{t.times_completed}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.thanksCount}</dt>
-                <dd>{ext?.thanks_count ?? 0}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.uploader}</dt>
-                <dd>{t.anonymous ? dict.torrent.anonymous : (t.owner_name ?? "—")}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.uploadedAt}</dt>
-                <dd>
-                  {new Date(t.created_at).toLocaleString(dateLocale(locale))}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.medium}</dt>
-                <dd>{medium}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.grade}</dt>
-                <dd>{grade ?? "—"}</dd>
-              </div>
-              {edition && (
-                <div className="flex justify-between gap-2">
-                  <dt className="text-sub">{dict.torrent.edition}</dt>
-                  <dd>{edition}</dd>
+      {/* 信息头（NexusPHP 详情块：label/value 表格） */}
+      <section className="nexus-detail">
+        <table className="nexus-table">
+          <tbody>
+            <tr>
+              <td colSpan={2} className="nexus-detail__title">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="inline-block h-[40px] w-[40px] shrink-0 rounded-[var(--r-sm)] align-middle"
+                    style={{ background: categoryColor(t.category_id) }}
+                  />
+                  <h1 className="font-display text-xl break-all">{t.name}</h1>
+                  {t.sticky && (
+                    <span className="sticker bg-sun text-ink">
+                      {dict.torrent.sticky}
+                    </span>
+                  )}
+                  {promo && (
+                    <span className={`sticker ${promo.className}`}>
+                      {dict.promotion[promo.key]}
+                    </span>
+                  )}
+                  {t.official && (
+                    <span className="sticker bg-indigo text-white">
+                      {dict.torrent.official}
+                    </span>
+                  )}
                 </div>
-              )}
-              <div className="flex justify-between gap-2">
-                <dt className="text-sub">{dict.torrent.category}</dt>
-                <dd>{category}</dd>
-              </div>
-            </dl>
-            <p className="mt-2 break-all text-[11px] text-sub">
-              {dict.torrent.infoHash}: {t.info_hash.trim()}
-            </p>
-          </div>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <DownloadButton torrentId={t.id} name={t.name} />
-          <TorrentSocial torrentId={t.id} />
-        </div>
-      </header>
+                {t.small_descr && <p className="mt-1 text-sub">{t.small_descr}</p>}
+              </td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.download}</td>
+              <td>
+                <div className="flex flex-wrap items-center gap-3">
+                  <DownloadButton torrentId={t.id} name={t.name} />
+                  <TorrentSocial torrentId={t.id} />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.size}</td>
+              <td className="num">{formatBytes(t.size)}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.numFiles}</td>
+              <td className="num">{ext?.numfiles ?? "—"}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.seeding}</td>
+              <td className="num text-mint">{t.seeders}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.leeching}</td>
+              <td className="num text-coral">{t.leechers}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.completed}</td>
+              <td className="num">{t.times_completed}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.thanksCount}</td>
+              <td className="num">{ext?.thanks_count ?? 0}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.uploader}</td>
+              <td>
+                {t.anonymous ? dict.torrent.anonymous : (t.owner_name ?? "—")}
+              </td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.uploadedAt}</td>
+              <td className="num">
+                {new Date(t.created_at).toLocaleString(dateLocale(locale))}
+              </td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.medium}</td>
+              <td>{medium}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.grade}</td>
+              <td>{grade ?? "—"}</td>
+            </tr>
+            {edition && (
+              <tr>
+                <td className="nexus-detail__label">{dict.torrent.edition}</td>
+                <td>{edition}</td>
+              </tr>
+            )}
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.category}</td>
+              <td>{category}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrent.infoHash}</td>
+              <td className="num break-all text-[11px] text-sub">
+                {t.info_hash.trim()}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
       {/* 简介（descr） */}
       {ext?.descr && (
-        <section className="rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
-          <h2 className="mb-2 font-display text-lg">{dict.torrent.descrTitle}</h2>
-          <Descr text={ext.descr} />
+        <section className="nexus-detail">
+          <table className="nexus-table">
+            <thead>
+              <tr>
+                <td className="colhead">{dict.torrent.descrTitle}</td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <Descr text={ext.descr} />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </section>
       )}
 
       {/* 文件列表（files 表有记录时展示） */}
       {files.length > 0 && (
-        <section className="rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
-          <h2 className="mb-2 font-display text-lg">
-            {dict.torrent.filesTitle} ({files.length})
-          </h2>
-          <ul className="num max-h-72 divide-y divide-line overflow-y-auto text-sm">
-            {files.map((f) => (
-              <li key={f.file_index} className="flex items-center justify-between gap-4 py-1.5">
-                <span className="min-w-0 truncate">{f.path}</span>
-                <span className="shrink-0 text-sub">{formatBytes(f.size)}</span>
-              </li>
-            ))}
-          </ul>
+        <section className="nexus-detail">
+          <table className="nexus-table">
+            <thead>
+              <tr>
+                <td className="colhead">{dict.torrent.filesTitle} ({files.length})</td>
+                <td className="colhead w-32 text-right">{dict.torrent.size}</td>
+              </tr>
+            </thead>
+            <tbody className="block max-h-72 overflow-y-auto">
+              {files.map((f) => (
+                <tr key={f.file_index}>
+                  <td className="min-w-0 truncate">{f.path}</td>
+                  <td className="shrink-0 text-right text-sub">{formatBytes(f.size)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       )}
 
       {/* 感谢者（近 50 人） */}
       {thanks.length > 0 && (
-        <section className="rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
-          <h2 className="mb-2 font-display text-lg">
-            {dict.torrent.thankersTitle} ({ext?.thanks_count ?? thanks.length})
-          </h2>
-          <p className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-            {thanks.map((th, i) => (
-              <span key={i} className="font-bold text-ink">
-                {th.username ?? dict.torrent.anonymous}
-              </span>
-            ))}
-          </p>
+        <section className="nexus-detail">
+          <table className="nexus-table">
+            <thead>
+              <tr>
+                <td className="colhead">
+                  {dict.torrent.thankersTitle} ({ext?.thanks_count ?? thanks.length})
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <p className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                    {thanks.map((th, i) => (
+                      <span key={i} className="font-bold text-ink">
+                        {th.username ?? dict.torrent.anonymous}
+                      </span>
+                    ))}
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </section>
       )}
 
       {/* 评论区（M07）：发表 + 列表 */}
-      <section className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
-        <h2 className="font-display text-lg">
-          {dict.torrent.commentsTitle.replace("{n}", String(comments.length))}
-        </h2>
-        <ul className="flex flex-col divide-y divide-line">
-          {comments.map((c) => (
-            <li key={c.id} className="py-3">
-              <p className="text-sm font-bold">{c.username ?? dict.torrent.anonymous}</p>
-              <p className="mt-1 text-sm whitespace-pre-wrap">{c.body}</p>
-              <p className="mt-1 text-[11px] text-sub">
-                {new Date(c.created_at).toLocaleString(dateLocale(locale))}
-              </p>
-            </li>
-          ))}
-          {comments.length === 0 && (
-            <li className="py-4 text-center text-sub">{dict.torrent.noComments}</li>
-          )}
-        </ul>
+      <section className="nexus-detail">
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <td className="colhead">
+                {dict.torrent.commentsTitle.replace("{n}", String(comments.length))}
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            {comments.map((c) => (
+              <tr key={c.id}>
+                <td>
+                  <p className="text-sm font-bold">{c.username ?? dict.torrent.anonymous}</p>
+                  <p className="mt-1 text-sm whitespace-pre-wrap">{c.body}</p>
+                  <p className="mt-1 text-[11px] text-sub">
+                    {new Date(c.created_at).toLocaleString(dateLocale(locale))}
+                  </p>
+                </td>
+              </tr>
+            ))}
+            {comments.length === 0 && (
+              <tr>
+                <td className="py-4 text-center text-sub">{dict.torrent.noComments}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </section>
     </article>
   );

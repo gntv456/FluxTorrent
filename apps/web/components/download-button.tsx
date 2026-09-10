@@ -38,7 +38,7 @@ export function DownloadButton({ torrentId, name }: { torrentId: number; name: s
     <button
       onClick={download}
       disabled={state === "busy"}
-      className="mt-4 inline-flex min-h-[44px] items-center rounded-full bg-coral px-6 font-bold text-white active:scale-[0.97] disabled:opacity-50"
+      className="inline-flex min-h-[44px] items-center rounded-full bg-coral px-6 font-bold text-white active:scale-[0.97] disabled:opacity-50"
     >
       {state === "busy" ? dict.torrent.downloading : dict.torrent.download}
     </button>
