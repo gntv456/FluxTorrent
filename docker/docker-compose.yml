@@ -105,7 +105,8 @@ services:
       dockerfile: docker/web.Dockerfile
     container_name: flux-web
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      # 浏览器走同源 /api（rewrites 转发），服务端 RSC 直连容器网
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
       API_SERVER_URL: http://api:8080
     ports:
       - "${WEB_BIND:-127.0.0.1}:3000:3000"
