@@ -79,17 +79,19 @@ if r.get("code") != 0:
 tok = r["data"]["token"]
 
 # ============ 2. 种子 ============
-s, r = call("GET", "/torrents?limit=5")
+s, r = call("GET", "/torrents?limit=5", token=tok)
 rows = (r.get("data") or {}).get("rows") or (r.get("data") or {}).get("items") or []
 check("种子·列表", r.get("code") == 0)
+s, r = call("GET", "/torrents?limit=5")
+check("种子·列表匿名拒绝(准入收口)", r.get("code") == 2001)
 tid = rows[0]["id"] if rows else None
 if tid:
-    s, r = call("GET", f"/torrents/{tid}")
+    s, r = call("GET", f"/torrents/{tid}", token=tok)
     check("种子·详情", r.get("code") == 0)
-    s, r = call("GET", f"/torrents/{tid}/comments")
+    s, r = call("GET", f"/torrents/{tid}/comments", token=tok)
     check("种子·评论列表", r.get("code") == 0)
 
-s, r = call("GET", "/stats")
+s, r = call("GET", "/stats", token=tok)
 check("运营·站点统计", r.get("code") == 0)
 
 # ============ 3. 经济 ============

@@ -263,6 +263,7 @@ export const en: Dict = {
   },
   my: {
     title: "Me",
+    center: "Profile",
     loginToView: "Sign in to view your sparks and check-in",
     loading: "Loading…",
     uploaded: "Uploaded",

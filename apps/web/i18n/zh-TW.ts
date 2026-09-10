@@ -261,6 +261,7 @@ export const zhTW: Dict = {
   },
   my: {
     title: "我的",
+    center: "個人中心",
     loginToView: "登入後查看你的火花與簽到",
     loading: "載入中…",
     uploaded: "上傳量",
