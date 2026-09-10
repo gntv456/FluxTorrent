@@ -9,6 +9,7 @@ import { UserTools } from "@/components/user-tools";
 /** /me 返回口径（http.rs me handler）+ spark_balance */
 interface MeInfo {
   username: string;
+  class_id?: number;
   class_name?: string | null;
   uploaded: number;
   downloaded: number;
@@ -102,6 +103,11 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
               <a href="/medals">{dict.nav.medals}</a>
               <a href="/tasks">{dict.nav.tasks}</a>
               <a href="/invites">{dict.nav.invites}</a>
+              {me.class_id !== undefined && me.class_id >= 90 && (
+                  <a href="/admin" className="font-bold text-[var(--baozi-orange-dark)]">
+                    {dict.admin.panelTitle}
+                  </a>
+                )}
             </nav>
           </div>
         </div>
