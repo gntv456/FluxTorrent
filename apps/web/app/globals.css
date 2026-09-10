@@ -160,6 +160,33 @@ a:hover {
   border-bottom: 0;
 }
 
+/* ============ 种子详情页（NexusPHP 详情块：colhead 表头 + label/value 行） ============ */
+.nexus-detail {
+  overflow: hidden;
+}
+.nexus-detail .nexus-table {
+  box-shadow: none;
+}
+.nexus-detail thead td.colhead {
+  color: #432d1e;
+  font-size: 14px;
+  font-weight: 800;
+}
+.nexus-detail__title {
+  background: linear-gradient(100deg, #ffecd2, #fffaf2 72%);
+}
+.nexus-detail__label {
+  width: 132px;
+  color: #6c421f;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: top;
+  background: rgba(255, 232, 197, 0.45);
+}
+.nexus-detail tbody td {
+  vertical-align: top;
+}
+
 /* ============ 顶栏主导航（#mainmenu 卡片按钮条） ============ */
 .mainmenu {
   display: flex;
