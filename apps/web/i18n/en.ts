@@ -292,7 +292,7 @@ export const en: Dict = {
   },
   my: {
     title: "Me",
-    center: "Profile",
+    center: "Control Panel",
     welcomeBack: "Welcome back",
     loginToView: "Sign in to view your sparks and check-in",
     loading: "Loading…",
@@ -313,6 +313,8 @@ export const en: Dict = {
     passkeyRotating: "Rotating…",
     passkeyRotated: "Rotated — re-download torrents in your BT client",
     passkeyConfirm: "All seeding/leeching clients must re-download torrents after rotation. Continue?",
+    bmRemove: "Remove",
+    bmEmpty: "No bookmarks yet — open a torrent and hit the bookmark button",
     tlSeeding: "Seeding",
     tlCompleted: "Completed",
     tlUploads: "My uploads",

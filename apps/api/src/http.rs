@@ -20,6 +20,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(login)
         .service(me)
         .service(my_torrentlist)
+        .service(my_bookmarks)
         .service(rotate_passkey)
         .service(list)
         .service(detail)
@@ -351,6 +352,45 @@ async fn my_torrentlist(
              ORDER BY s.torrent_id DESC LIMIT $2",
         ),
     }
+    .bind(auth.id)
+    .bind(limit)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+/// 我的收藏列表（usercp 收藏夹口径）：bookmark 时间倒序
+#[derive(Deserialize)]
+struct BookmarksQuery {
+    limit: Option<i64>,
+}
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct BookmarkRow {
+    torrent_id: i64,
+    name: String,
+    small_descr: Option<String>,
+    size: i64,
+    seeders: i32,
+    leechers: i32,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/me/bookmarks")]
+async fn my_bookmarks(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<BookmarksQuery>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let limit = q.limit.unwrap_or(50).clamp(1, 100);
+    let rows: Vec<BookmarkRow> = sqlx::query_as(
+        "SELECT t.id AS torrent_id, t.name, t.small_descr, t.size, t.seeders, t.leechers, \
+         b.created_at FROM bookmarks b JOIN torrents t ON t.id = b.torrent_id \
+         WHERE b.user_id = $1 AND t.approval_status = 1 \
+         ORDER BY b.created_at DESC, t.id DESC LIMIT $2",
+    )
     .bind(auth.id)
     .bind(limit)
     .fetch_all(&state.repo.db)

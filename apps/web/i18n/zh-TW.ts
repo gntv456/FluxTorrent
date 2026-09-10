@@ -290,7 +290,7 @@ export const zhTW: Dict = {
   },
   my: {
     title: "我的",
-    center: "個人中心",
+    center: "控制面板",
     welcomeBack: "歡迎回來",
     loginToView: "登入後查看你的火花與簽到",
     loading: "載入中…",
@@ -311,6 +311,8 @@ export const zhTW: Dict = {
     passkeyRotating: "輪換中…",
     passkeyRotated: "已輪換，請更新 BT 用戶端中的種子地址",
     passkeyConfirm: "輪換後所有正在做種/下載的用戶端需重新下載種子檔案，確認繼續？",
+    bmRemove: "取消收藏",
+    bmEmpty: "還沒有收藏，去種子詳情頁點擊「收藏」吧",
     tlSeeding: "做種中",
     tlCompleted: "已完成",
     tlUploads: "我的發布",
