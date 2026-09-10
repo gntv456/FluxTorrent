@@ -15,6 +15,8 @@ const PUBLIC_PATHS = [
   "/appeals",
   "/ban-log",
   "/resend",
+  "/rules",
+  "/faq",
 ];
 
 function isAsset(pathname: string): boolean {

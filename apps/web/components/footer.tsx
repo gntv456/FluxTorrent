@@ -79,7 +79,7 @@ export async function Footer() {
               </li>
               <li>
                 <Link
-                  href="/banlog"
+                  href="/ban-log"
                   className="text-sm text-sky hover:text-[var(--baozi-orange)]"
                 >
                   {dict.footer.banlog}
