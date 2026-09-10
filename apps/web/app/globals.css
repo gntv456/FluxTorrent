@@ -366,6 +366,577 @@ a:hover {
   color: #f04c1d;
 }
 
+/* ============ 登录页双栏画布（theme.css page-login 校准至 2170×1180 artwork） ============ */
+.bz-login-page {
+  display: flex;
+  min-height: calc(100vh - 40px);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 116, 30, 0.06), transparent 42%),
+    radial-gradient(circle at 84% 88%, rgba(237, 90, 23, 0.07), transparent 46%),
+    var(--baozi-bg);
+}
+
+.bz-login-canvas {
+  display: grid;
+  grid-template-columns: 50.4% 49.6%;
+  grid-template-rows: 52px minmax(0, 1fr);
+  width: min(1132px, calc(100vw - 48px));
+  min-height: 615px;
+  overflow: hidden;
+  border: 1px solid #d9b47d;
+  border-radius: 24px;
+  background-color: #fff9ef;
+  background-image: radial-gradient(rgba(233, 178, 108, 0.14) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  box-shadow:
+    0 16px 45px rgba(111, 70, 28, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+
+/* 左栏：品牌插画 */
+.bz-login-intro {
+  display: flex;
+  grid-column: 1;
+  grid-row: 1 / 3;
+  flex-direction: column;
+  min-height: 613px;
+  border-right: 1px solid #e6cba2;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(255, 116, 30, 0.14), transparent 46%),
+    radial-gradient(circle at 20% 86%, rgba(237, 90, 23, 0.12), transparent 52%),
+    linear-gradient(168deg, #fff3de 0%, #fff1d9 54%, #ffecd0 100%);
+}
+
+.bz-login-intro-inner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 40px 32px;
+  text-align: center;
+}
+
+.bz-login-intro-mascot {
+  font-size: 96px;
+  line-height: 1;
+  filter: drop-shadow(0 10px 18px rgba(201, 68, 18, 0.18));
+}
+
+.bz-login-intro-tagline {
+  font-family: var(--font-display);
+  color: #17130f;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+
+.bz-login-intro-desc {
+  color: #7a6856;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 右上：语言行 */
+.bz-login-lang-row {
+  display: flex;
+  z-index: 4;
+  grid-column: 2;
+  grid-row: 1;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 10px 20px 0;
+}
+
+.bz-lang select {
+  width: 122px;
+  min-height: 32px;
+  padding: 5px 10px;
+  color: #554334;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid #d9b47d;
+  border-radius: 7px;
+  background: rgba(255, 253, 248, 0.86);
+  box-shadow: 0 2px 8px rgba(111, 70, 28, 0.05);
+  outline: none;
+  cursor: pointer;
+}
+
+/* 右栏：表单卡 */
+.bz-login-card {
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  min-width: 0;
+  align-self: start;
+  padding: 0 59px 22px 49px;
+  max-height: 563px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #ddb980 transparent;
+}
+
+.bz-login-header {
+  padding: 12px 0 15px;
+  text-align: center;
+}
+
+.bz-login-header h2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 0;
+  color: #17130f;
+  font-family: var(--font-display);
+  font-size: 37px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: 2px;
+}
+
+/* 楷体标题两侧的三道橙杠装饰 */
+.bz-login-header h2::before,
+.bz-login-header h2::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 25px;
+  height: 22px;
+  background:
+    linear-gradient(25deg, transparent 40%, #ef871d 42% 58%, transparent 60%) 0 2px / 11px 6px no-repeat,
+    linear-gradient(0deg, transparent 40%, #ef871d 42% 58%, transparent 60%) 0 9px / 14px 5px no-repeat,
+    linear-gradient(-25deg, transparent 40%, #ef871d 42% 58%, transparent 60%) 0 15px / 11px 6px no-repeat;
+}
+
+.bz-login-header h2::after {
+  transform: scaleX(-1);
+}
+
+/* 表单本体 */
+.bz-form {
+  width: 100%;
+}
+
+.bz-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+}
+
+.bz-form-error {
+  margin: 0 0 10px;
+  padding: 7px 11px;
+  color: #b33005;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  border: 1px solid #f2b193;
+  border-radius: 8px;
+  background: #fff0e5;
+}
+
+.bz-form-error--soft {
+  color: #7d4c26;
+  border-color: #efc58e;
+  background: #fff6e7;
+}
+
+.bz-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.bz-field {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+}
+
+.bz-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  padding: 12px 54px 12px 58px;
+  color: #40372e;
+  font-size: 15px;
+  line-height: 1.4;
+  border: 1px solid #d4b17f;
+  border-radius: 9px;
+  outline: 0;
+  background: rgba(255, 253, 249, 0.72);
+  box-shadow:
+    inset 0 1px 2px rgba(132, 84, 33, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.45);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.bz-field input::placeholder {
+  color: #8b7b69;
+  opacity: 1;
+}
+
+.bz-field input:focus {
+  border-color: #ee8c2c;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(239, 104, 23, 0.12);
+}
+
+.bz-field-icon {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 19px;
+  display: block;
+  width: 25px;
+  height: 25px;
+  color: #8b745b;
+  font-size: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.bz-field-icon svg,
+.bz-pwd-toggle svg,
+.bz-method svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bz-pwd-toggle {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: 17px;
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  color: #8b745b;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.bz-pwd-toggle:hover {
+  color: var(--baozi-orange);
+}
+
+.bz-pwd-toggle[aria-pressed="true"] .bz-toggle-slash {
+  display: none;
+}
+
+/* 记住登录 + 两步验证行 */
+.bz-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 28px;
+  align-items: center;
+  gap: 14px;
+  margin-top: 15px;
+  color: #40372e;
+  font-size: 13px;
+}
+
+.bz-remember {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.bz-remember > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.bz-checkbox-mark {
+  position: relative;
+  display: inline-block;
+  width: 19px;
+  height: 19px;
+  border: 1px solid #d09352;
+  border-radius: 4px;
+  background: #fffaf2;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.bz-remember > input:checked + .bz-checkbox-mark {
+  border-color: #e65c10;
+  background: linear-gradient(145deg, #f47d20, #e94f08);
+}
+
+.bz-remember > input:checked + .bz-checkbox-mark::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.bz-remember > input:focus-visible + .bz-checkbox-mark {
+  box-shadow: 0 0 0 3px rgba(239, 104, 23, 0.18);
+}
+
+.bz-totp-toggle {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-self: end;
+  padding: 4px 10px;
+  color: #e65010;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  border: 1px solid #efc08b;
+  border-radius: 999px;
+  background: rgba(255, 239, 216, 0.78);
+  cursor: pointer;
+}
+
+.bz-totp-toggle::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #f06a18;
+  box-shadow: 0 0 0 3px rgba(240, 106, 24, 0.12);
+}
+
+.bz-totp-toggle:hover,
+.bz-totp-toggle[aria-expanded="true"] {
+  color: #fff;
+  border-color: #e9530b;
+  background: #e9530b;
+}
+
+/* 巨型提交钮 */
+.bz-actions {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.bz-submit {
+  width: 100%;
+  min-height: 52px;
+  padding: 11px 16px;
+  color: #fff;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 4px;
+  border: 1px solid #e9530b;
+  border-radius: 7px;
+  background: linear-gradient(100deg, #f16c09, #ff520b);
+  box-shadow: 0 8px 18px rgba(226, 83, 11, 0.12);
+  cursor: pointer;
+}
+
+.bz-submit:hover,
+.bz-submit:focus-visible {
+  background: linear-gradient(100deg, #e85c00, #ef4100);
+}
+
+.bz-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* 账号辅助链接卡 */
+.bz-account-links {
+  margin-top: 13px;
+  padding: 9px 12px;
+  color: #5f4e3d;
+  border: 1px solid #ead1ad;
+  border-radius: 9px;
+  background: rgba(255, 249, 239, 0.66);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+}
+
+.bz-assistance p {
+  position: relative;
+  margin: 0;
+  padding: 4px 2px 4px 15px;
+  color: #5b4a3a;
+  font-size: 11.5px;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+.bz-assistance p + p {
+  border-top: 1px dashed rgba(222, 184, 132, 0.58);
+}
+
+.bz-assistance p::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 2px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid #ef8c36;
+  transform: rotate(45deg);
+}
+
+.bz-assistance a {
+  margin-left: 4px;
+  color: #e9530b;
+  font-weight: 800;
+  padding-bottom: 1px;
+  border-bottom: 1px dashed rgba(233, 83, 11, 0.48);
+}
+
+.bz-assistance a:hover {
+  color: #bd3904;
+  border-bottom-style: solid;
+}
+
+/* 其他登录方式 */
+.bz-methods {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+  margin: 7px 0 0;
+  padding-top: 7px;
+  border-top: 1px dashed rgba(222, 184, 132, 0.58);
+}
+
+.bz-method {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  color: #8b6a45;
+  font-size: 10px;
+  font-weight: 800;
+  border: 1px dashed #ddb980;
+  border-radius: 999px;
+  background: rgba(255, 252, 245, 0.8);
+  cursor: not-allowed;
+}
+
+.bz-method svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 登录提示条 */
+.bz-login-notice {
+  margin: 10px 0 0;
+  padding: 6px 10px;
+  color: #7d4c26;
+  font-size: 9px;
+  line-height: 1.6;
+  border: 1px solid #efc58e;
+  border-radius: 7px;
+  background: #fff6e7;
+  text-align: center;
+}
+
+.bz-form-skeleton {
+  height: 340px;
+}
+
+/* ≤1120px：单列堆叠 */
+@media (max-width: 1120px) {
+  .bz-login-canvas {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    width: min(580px, calc(100vw - 24px));
+    min-height: 0;
+    border-radius: 18px;
+  }
+
+  .bz-login-intro {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+    border-right: 0;
+    border-bottom: 1px solid #e6cba2;
+  }
+
+  .bz-login-intro-inner {
+    padding: 28px 20px;
+  }
+
+  .bz-login-intro-mascot {
+    font-size: 64px;
+  }
+
+  .bz-login-lang-row {
+    grid-column: 1;
+    grid-row: 2;
+    padding: 12px 28px 0;
+  }
+
+  .bz-login-card {
+    grid-column: 1;
+    grid-row: 3;
+    max-height: none;
+    padding: 10px 28px 28px;
+    overflow: visible;
+  }
+
+  .bz-login-header h2 {
+    font-size: 34px;
+  }
+}
+
+@media (max-width: 440px) {
+  .bz-login-card {
+    padding: 8px 18px 24px;
+  }
+
+  .bz-login-lang-row {
+    padding: 10px 18px 0;
+  }
+
+  .bz-options {
+    grid-template-columns: auto 1fr;
+  }
+
+  .bz-account-links {
+    padding: 8px 10px;
+  }
+}
+
 /* 折叠屏铰链预留（§7.4 硬性规则 1：中缝 ≥48px 不可交互区） */
 @media (folded) {
   .hinge-safe {
