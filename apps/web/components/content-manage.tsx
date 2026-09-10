@@ -1,0 +1,395 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+
+interface NewsItem {
+  id: number;
+  title: string;
+  body: string;
+  badge: string;
+  date: string;
+}
+
+interface FunItem {
+  id: number;
+  username: string | null;
+  title: string;
+  body: string | null;
+  status: string;
+  added: string;
+  fun_votes: number | null;
+  dull_votes: number | null;
+  my_vote: string | null;
+}
+
+interface LinkItem {
+  id: number;
+  name: string;
+  url: string;
+  title: string | null;
+  status: string;
+  admin_name: string | null;
+  email: string | null;
+  reason: string | null;
+}
+
+type MgmtTab = "news" | "fun" | "links";
+
+/** 内容管理（管理后台扩展）：公告 / 趣味盒 / 友情链接 的发布·编辑·删除·禁止·审核 */
+export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
+  const { dict } = useI18n();
+  const t = dict.cmgmt;
+  const [tab, setTab] = useState<MgmtTab>(initialTab ?? "news");
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [fun, setFun] = useState<FunItem[]>([]);
+  const [links, setLinks] = useState<LinkItem[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // 公告编辑器
+  const [nEdit, setNEdit] = useState<{ id: number | null; title: string; body: string; badge: string }>({
+    id: null, title: "", body: "", badge: "公告",
+  });
+  // 趣味盒编辑器
+  const [fEdit, setFEdit] = useState<{ id: number | null; title: string; body: string }>({
+    id: null, title: "", body: "",
+  });
+
+  const load = useCallback(async () => {
+    try {
+      const home = await api.get<{ news: NewsItem[] }>("/api/v1/home");
+      setNews(home.news);
+      setFun(await api.get<FunItem[]>("/api/v1/fun/items?status=all"));
+      setLinks(await api.get<LinkItem[]>("/api/v1/admin/links"));
+    } catch (e) {
+      setMsg(e instanceof ApiError ? e.message : dict.common.loadFailed);
+    }
+  }, [dict]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  function flash(m: string) {
+    setMsg(m);
+    setTimeout(() => setMsg(null), 2500);
+  }
+
+  // ---------- 公告 ----------
+  async function saveNews() {
+    if (!nEdit.title.trim() || !nEdit.body.trim()) return;
+    setBusy(true);
+    try {
+      if (nEdit.id === null) {
+        await api.post("/api/v1/admin/news", { title: nEdit.title, body: nEdit.body, badge: nEdit.badge });
+        flash(t.newsCreated);
+      } else {
+        await api.put(`/api/v1/admin/news/${nEdit.id}`, { title: nEdit.title, body: nEdit.body, badge: nEdit.badge });
+        flash(t.newsUpdated);
+      }
+      setNEdit({ id: null, title: "", body: "", badge: "公告" });
+      load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : dict.common.networkError);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function delNews(id: number) {
+    if (!confirm(t.confirmDelete)) return;
+    try {
+      await api.del(`/api/v1/admin/news/${id}`);
+      flash(t.newsDeleted);
+      load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : dict.common.networkError);
+    }
+  }
+
+  // ---------- 趣味盒 ----------
+  async function saveFun() {
+    if (!fEdit.title.trim()) return;
+    setBusy(true);
+    try {
+      if (fEdit.id === null) {
+        await api.post("/api/v1/fun/items", { title: fEdit.title, body: fEdit.body });
+        flash(t.funCreated);
+      } else {
+        await api.put(`/api/v1/fun/items/${fEdit.id}`, { title: fEdit.title, body: fEdit.body });
+        flash(t.funUpdated);
+      }
+      setFEdit({ id: null, title: "", body: "" });
+      load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : dict.common.networkError);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function funCall(path: string, okMsg: string): Promise<void> {
+    try {
+      await api.call(path);
+      flash(okMsg);
+      load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : dict.common.networkError);
+    }
+  }
+  async function delFun(id: number) {
+    if (!confirm(t.confirmDelete)) return;
+    funCall(`DELETE /api/v1/fun/items/${id}`, t.funDeleted);
+  }
+
+  // ---------- 友链 ----------
+  async function reviewLink(id: number, status: "active" | "hidden" | "pending") {
+    try {
+      await api.put(`/api/v1/admin/links/${id}`, { status });
+      flash(t.linkReviewed);
+      load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : dict.common.networkError);
+    }
+  }
+  async function delLink(id: number) {
+    if (!confirm(t.confirmDelete)) return;
+    try {
+      await api.del(`/api/v1/admin/links/${id}`);
+      flash(t.linkDeleted);
+      load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : dict.common.networkError);
+    }
+  }
+
+  const TABS: [MgmtTab, string][] = [
+    ["news", t.tabNews],
+    ["fun", t.tabFun],
+    ["links", t.tabLinks],
+  ];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-2" role="tablist">
+        {TABS.map(([k, label]) => (
+          <button
+            key={k}
+            role="tab"
+            aria-selected={tab === k}
+            onClick={() => setTab(k)}
+            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${
+              tab === k ? "bg-sky text-white" : "border border-line bg-white text-sub"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {msg && <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
+
+      {/* 公告管理 */}
+      {tab === "news" && (
+        <>
+          <section className="baozi-panel p-4">
+            <h2 className="mb-3 text-base font-bold text-ink">
+              {nEdit.id === null ? t.newsPublish : t.newsEdit}
+            </h2>
+            <div className="cmgmt-form">
+              <label>
+                {t.fldTitle}
+                <input value={nEdit.title} onChange={(e) => setNEdit({ ...nEdit, title: e.target.value })} />
+              </label>
+              <label>
+                {t.fldBadge}
+                <input value={nEdit.badge} onChange={(e) => setNEdit({ ...nEdit, badge: e.target.value })} />
+              </label>
+              <label>
+                {t.fldBody}
+                <textarea rows={6} value={nEdit.body} onChange={(e) => setNEdit({ ...nEdit, body: e.target.value })} />
+              </label>
+              <div className="flex gap-2">
+                <button className="baozi-button" onClick={saveNews} disabled={busy}>
+                  {nEdit.id === null ? t.btnPublish : t.btnSave}
+                </button>
+                {nEdit.id !== null && (
+                  <button
+                    className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                    onClick={() => setNEdit({ id: null, title: "", body: "", badge: "公告" })}
+                  >
+                    {t.btnCancel}
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+          <table className="nexus-table">
+            <tbody>
+              <tr>
+                <td className="colhead">{t.fldTitle}</td>
+                <td className="colhead">{t.fldBadge}</td>
+                <td className="colhead">{t.fldDate}</td>
+                <td className="colhead text-right">{t.colActions}</td>
+              </tr>
+              {news.map((n) => (
+                <tr key={n.id}>
+                  <td>{n.title}</td>
+                  <td>{n.badge}</td>
+                  <td className="text-sub">{n.date}</td>
+                  <td className="text-right">
+                    <button
+                      className="cmgmt-act"
+                      onClick={() => setNEdit({ id: n.id, title: n.title, body: n.body, badge: n.badge })}
+                    >
+                      {t.btnEdit}
+                    </button>
+                    <button className="cmgmt-act cmgmt-act--danger" onClick={() => delNews(n.id)}>
+                      {t.btnDelete}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* 趣味盒管理 */}
+      {tab === "fun" && (
+        <>
+          <section className="baozi-panel p-4">
+            <h2 className="mb-3 text-base font-bold text-ink">
+              {fEdit.id === null ? t.funPublish : t.funEdit}
+            </h2>
+            <div className="cmgmt-form">
+              <label>
+                {t.fldTitle}
+                <input value={fEdit.title} onChange={(e) => setFEdit({ ...fEdit, title: e.target.value })} />
+              </label>
+              <label>
+                {t.fldBody}
+                <textarea rows={5} value={fEdit.body} onChange={(e) => setFEdit({ ...fEdit, body: e.target.value })} />
+              </label>
+              <div className="flex gap-2">
+                <button className="baozi-button" onClick={saveFun} disabled={busy}>
+                  {fEdit.id === null ? t.btnPublish : t.btnSave}
+                </button>
+                {fEdit.id !== null && (
+                  <button
+                    className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                    onClick={() => setFEdit({ id: null, title: "", body: "" })}
+                  >
+                    {t.btnCancel}
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+          <table className="nexus-table">
+            <tbody>
+              <tr>
+                <td className="colhead">{t.fldTitle}</td>
+                <td className="colhead">{t.funAuthor}</td>
+                <td className="colhead">{t.funVotes}</td>
+                <td className="colhead">{t.funStatus}</td>
+                <td className="colhead text-right">{t.colActions}</td>
+              </tr>
+              {fun.map((f) => (
+                <tr key={f.id}>
+                  <td>{f.title}</td>
+                  <td className="text-sub">{f.username ?? "—"}</td>
+                  <td className="num">
+                    😂 {f.fun_votes ?? 0} / 😑 {f.dull_votes ?? 0}
+                  </td>
+                  <td>
+                    <span className={`fun-status fun-status--${f.status}`}>
+                      {t.funSt[f.status] ?? f.status}
+                    </span>
+                  </td>
+                  <td className="text-right">
+                    <button className="cmgmt-act" onClick={() => setFEdit({ id: f.id, title: f.title, body: f.body ?? "" })}>
+                      {t.btnEdit}
+                    </button>
+                    {f.status !== "banned" ? (
+                      <button
+                        className="cmgmt-act cmgmt-act--danger"
+                        onClick={() => funCall(`PUT /api/v1/fun/items/${f.id}/status {"status":"banned"}`, t.funBanned)}
+                      >
+                        {t.btnBan}
+                      </button>
+                    ) : (
+                      <button
+                        className="cmgmt-act cmgmt-act--ok"
+                        onClick={() => funCall(`PUT /api/v1/fun/items/${f.id}/status {"status":"normal"}`, t.funRestored)}
+                      >
+                        {t.btnUnban}
+                      </button>
+                    )}
+                    <button className="cmgmt-act cmgmt-act--danger" onClick={() => delFun(f.id)}>
+                      {t.btnDelete}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* 友情链接管理 */}
+      {tab === "links" && (
+        <table className="nexus-table">
+          <tbody>
+            <tr>
+              <td className="colhead">{t.linkName}</td>
+              <td className="colhead">URL</td>
+              <td className="colhead">{t.linkAdmin}</td>
+              <td className="colhead">{t.linkEmail}</td>
+              <td className="colhead">{t.fldStatus}</td>
+              <td className="colhead text-right">{t.colActions}</td>
+            </tr>
+            {links.map((l) => (
+              <tr key={l.id}>
+                <td>
+                  {l.name}
+                  {l.title && <span className="text-sub"> ({l.title})</span>}
+                </td>
+                <td>
+                  <a href={l.url} target="_blank" rel="noreferrer" className="text-xs">
+                    {l.url}
+                  </a>
+                </td>
+                <td className="text-sub">{l.admin_name ?? "—"}</td>
+                <td className="text-sub">{l.email ?? "—"}</td>
+                <td>
+                  <span className={`link-status link-status--${l.status}`}>
+                    {t.linkSt[l.status] ?? l.status}
+                  </span>
+                </td>
+                <td className="text-right">
+                  {l.status === "pending" && (
+                    <button className="cmgmt-act cmgmt-act--ok" onClick={() => reviewLink(l.id, "active")}>
+                      {t.btnApprove}
+                    </button>
+                  )}
+                  {l.status === "active" && (
+                    <button className="cmgmt-act" onClick={() => reviewLink(l.id, "hidden")}>
+                      {t.btnHide}
+                    </button>
+                  )}
+                  {l.status === "hidden" && (
+                    <button className="cmgmt-act cmgmt-act--ok" onClick={() => reviewLink(l.id, "active")}>
+                      {t.btnShow}
+                    </button>
+                  )}
+                  <button className="cmgmt-act cmgmt-act--danger" onClick={() => delLink(l.id)}>
+                    {t.btnDelete}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}

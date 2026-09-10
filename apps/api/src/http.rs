@@ -1,7 +1,7 @@
 //! HTTP 接口层：路由 + handlers + 鉴权提取器 + 限流。
 //! 分层约束（§8.3.1）：本层只做协议适配，业务规则在 domain/repo。
 
-use actix_web::{get, post, put, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 use sqlx::Row;
 use std::sync::Arc;
@@ -38,6 +38,19 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(stats)
         .service(report_create)
         .service(rss_info)
+        .service(news_create)
+        .service(news_update)
+        .service(news_delete)
+        .service(fun_items)
+        .service(fun_item_vote)
+        .service(fun_item_create)
+        .service(fun_item_update)
+        .service(fun_item_set_status)
+        .service(fun_item_delete)
+        .service(link_apply)
+        .service(link_admin_list)
+        .service(link_update)
+        .service(link_delete)
         .service(home_sections)
         .service(announce_stats)
         .service(upload)
@@ -965,6 +978,463 @@ async fn rss_info(
         ],
         "passkey": passkey,
     })))
+}
+
+// ============ 公告管理（news.php 复刻：发布/编辑/删除，staff 专用） ============
+
+#[derive(Deserialize)]
+struct NewsBody {
+    title: String,
+    body: String,
+    #[serde(default)]
+    badge: String,
+}
+
+#[post("/admin/news")]
+async fn news_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<NewsBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    if body.title.trim().is_empty() || body.body.trim().is_empty() {
+        return Err(DomainError::Validation("标题和正文不能为空".into()));
+    }
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO announcements (title, body, badge, author_id, sort)          VALUES ($1, $2, $3, $4, (SELECT COALESCE(max(sort),0)+10 FROM announcements)) RETURNING id",
+    )
+    .bind(body.title.trim())
+    .bind(&body.body)
+    .bind(if body.badge.trim().is_empty() { "公告" } else { body.badge.trim() })
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "news_create", None).await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/news/{id}")]
+async fn news_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    body: web::Json<NewsBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let updated = sqlx::query(
+        "UPDATE announcements SET title = $2, body = $3, badge = $4 WHERE id = $1",
+    )
+    .bind(*path)
+    .bind(body.title.trim())
+    .bind(&body.body)
+    .bind(if body.badge.trim().is_empty() { "公告" } else { body.badge.trim() })
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if updated.rows_affected() == 0 {
+        return Err(DomainError::NotFound(*path));
+    }
+    state.repo.audit(Some(auth.id), "news_update", None).await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/news/{id}")]
+async fn news_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let deleted = sqlx::query("DELETE FROM announcements WHERE id = $1")
+        .bind(*path)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if deleted.rows_affected() == 0 {
+        return Err(DomainError::NotFound(*path));
+    }
+    state.repo.audit(Some(auth.id), "news_delete", None).await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+// ============ 趣味盒（fun.php 复刻：浏览/投票/发布/编辑/删除/禁止） ============
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct FunItemRow {
+    id: i32,
+    username: Option<String>,
+    title: String,
+    body: Option<String>,
+    status: String,
+    added: chrono::DateTime<chrono::Utc>,
+    #[sqlx(default)]
+    fun_votes: Option<i64>,
+    #[sqlx(default)]
+    dull_votes: Option<i64>,
+    #[sqlx(default)]
+    my_vote: Option<String>,
+}
+
+/// 趣味盒列表（?status=all 全量需 staff；默认仅 normal）
+#[get("/fun/items")]
+async fn fun_items(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let staff_view = q.get("status").map(|s| s.as_str()).unwrap_or("") == "all";
+    let rows: Vec<FunItemRow> = sqlx::query_as(
+        "SELECT f.id, u.username, f.title, f.body, f.status, f.added, \
+            (SELECT count(*) FROM fun_item_votes v WHERE v.fun_id = f.id AND v.vote = 'fun') AS fun_votes, \
+            (SELECT count(*) FROM fun_item_votes v WHERE v.fun_id = f.id AND v.vote = 'dull') AS dull_votes, \
+            (SELECT v.vote FROM fun_item_votes v WHERE v.fun_id = f.id AND v.user_id = $2) AS my_vote \
+         FROM fun_items f LEFT JOIN users u ON u.id = f.user_id \
+         WHERE ($3::bool OR f.status = 'normal') \
+         ORDER BY f.added DESC LIMIT 50",
+    )
+    .bind(true)
+    .bind(auth.id)
+    .bind(auth.class_id >= 90 && staff_view)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct FunVoteBody {
+    fun_id: i32,
+    vote: String,
+}
+
+#[post("/fun/items/vote")]
+async fn fun_item_vote(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<FunVoteBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if body.vote != "fun" && body.vote != "dull" {
+        return Err(DomainError::Validation("投票只能是 fun 或 dull".into()));
+    }
+    let inserted = sqlx::query(
+        "INSERT INTO fun_item_votes (fun_id, user_id, vote) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+    )
+    .bind(body.fun_id)
+    .bind(auth.id)
+    .bind(&body.vote)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if inserted.rows_affected() == 0 {
+        return Err(DomainError::Validation("已经投过啦".into()));
+    }
+    Ok(ok(serde_json::json!({ "voted": body.vote })))
+}
+
+#[derive(Deserialize)]
+struct FunItemBody {
+    title: String,
+    #[serde(default)]
+    body: Option<String>,
+}
+
+/// 发布趣味内容（24h 冷却：最新一条发布不足 24 小时则拒绝，staff 豁免）
+#[post("/fun/items")]
+async fn fun_item_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<FunItemBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if body.title.trim().is_empty() {
+        return Err(DomainError::Validation("标题不能为空".into()));
+    }
+    let recent: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+        "SELECT max(added) FROM fun_items WHERE status NOT IN ('banned','dull')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(t) = recent {
+        if chrono::Utc::now() - t < chrono::Duration::hours(24) && auth.class_id < 90 {
+            return Err(DomainError::Validation(
+                "最新一条发布不足 24 小时，请稍后再来".into(),
+            ));
+        }
+    }
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO fun_items (user_id, title, body) VALUES ($1, $2, $3) RETURNING id",
+    )
+    .bind(auth.id)
+    .bind(body.title.trim())
+    .bind(&body.body)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/fun/items/{id}")]
+async fn fun_item_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i32>,
+    body: web::Json<FunItemBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let owner: Option<i64> = sqlx::query_scalar("SELECT user_id FROM fun_items WHERE id = $1")
+        .bind(*path)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(owner) = owner else {
+        return Err(DomainError::NotFound(*path as i64));
+    };
+    if owner != auth.id && auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    sqlx::query("UPDATE fun_items SET title = $2, body = $3 WHERE id = $1")
+        .bind(*path)
+        .bind(body.title.trim())
+        .bind(&body.body)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[derive(Deserialize)]
+struct FunStatusBody {
+    status: String,
+}
+
+/// 修改状态（含「禁止」banned；staff 或作者对自己可 dull）
+#[put("/fun/items/{id}/status")]
+async fn fun_item_set_status(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i32>,
+    body: web::Json<FunStatusBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let allowed = ["normal", "dull", "notfunny", "funny", "veryfunny", "banned"];
+    if !allowed.contains(&body.status.as_str()) {
+        return Err(DomainError::Validation("非法状态".into()));
+    }
+    let owner: Option<i64> = sqlx::query_scalar("SELECT user_id FROM fun_items WHERE id = $1")
+        .bind(*path)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(owner) = owner else {
+        return Err(DomainError::NotFound(*path as i64));
+    };
+    let is_staff = auth.class_id >= 90;
+    if (body.status == "banned" || owner != auth.id) && !is_staff {
+        return Err(DomainError::Forbidden);
+    }
+    sqlx::query("UPDATE fun_items SET status = $2 WHERE id = $1")
+        .bind(*path)
+        .bind(&body.status)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "fun_status_change", None).await;
+    Ok(ok(serde_json::json!({ "ok": true, "status": body.status })))
+}
+
+#[delete("/fun/items/{id}")]
+async fn fun_item_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let owner: Option<i64> = sqlx::query_scalar("SELECT user_id FROM fun_items WHERE id = $1")
+        .bind(*path)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(owner) = owner else {
+        return Err(DomainError::NotFound(*path as i64));
+    };
+    if owner != auth.id && auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    sqlx::query("DELETE FROM fun_items WHERE id = $1")
+        .bind(*path)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+// ============ 友情链接管理（linksmanage.php 复刻：申请/审核/编辑/删除） ============
+
+#[derive(Deserialize)]
+struct LinkApplyBody {
+    name: String,
+    url: String,
+    #[serde(default)]
+    title: Option<String>,
+    admin: String,
+    email: String,
+    reason: String,
+}
+
+/// 申请友链（进 pending，staff 审核后 active）
+#[post("/links/apply")]
+async fn link_apply(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<LinkApplyBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if body.name.trim().is_empty() || body.url.trim().is_empty() {
+        return Err(DomainError::Validation("站点名和 URL 必填".into()));
+    }
+    if !body.email.contains('@') {
+        return Err(DomainError::Validation("邮箱格式无效".into()));
+    }
+    if body.reason.trim().chars().count() < 20 {
+        return Err(DomainError::Validation("申请理由至少 20 字".into()));
+    }
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO friend_links (name, url, title, status, applied_by, admin_name, email, reason)          VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7) RETURNING id",
+    )
+    .bind(body.name.trim())
+    .bind(body.url.trim())
+    .bind(&body.title)
+    .bind(auth.id)
+    .bind(body.admin.trim())
+    .bind(body.email.trim())
+    .bind(body.reason.trim())
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "link_apply", None).await;
+    Ok(ok(serde_json::json!({ "id": id, "status": "pending" })))
+}
+
+#[derive(Deserialize)]
+struct LinkAdminBody {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    url: Option<String>,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    sort: Option<i32>,
+    #[serde(default)]
+    status: Option<String>,
+}
+
+/// 编辑/审核友链（staff；status: pending→active 通过）
+#[put("/admin/links/{id}")]
+async fn link_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    body: web::Json<LinkAdminBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    if let Some(st) = &body.status {
+        if !["pending", "active", "hidden"].contains(&st.as_str()) {
+            return Err(DomainError::Validation("非法状态".into()));
+        }
+    }
+    let updated = sqlx::query(
+        "UPDATE friend_links SET \
+            name = COALESCE($2, name), url = COALESCE($3, url), title = COALESCE($4, title), \
+            sort = COALESCE($5, sort), status = COALESCE($6, status) \
+         WHERE id = $1",
+    )
+    .bind(*path)
+    .bind(&body.name)
+    .bind(&body.url)
+    .bind(&body.title)
+    .bind(body.sort)
+    .bind(&body.status)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if updated.rows_affected() == 0 {
+        return Err(DomainError::NotFound(*path));
+    }
+    state.repo.audit(Some(auth.id), "link_update", None).await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/links/{id}")]
+async fn link_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    sqlx::query("DELETE FROM friend_links WHERE id = $1")
+        .bind(*path)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "link_delete", None).await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct LinkRow {
+    id: i32,
+    name: String,
+    url: String,
+    title: Option<String>,
+    status: String,
+    #[sqlx(default)]
+    applied_by: Option<i64>,
+    #[sqlx(default)]
+    admin_name: Option<String>,
+    #[sqlx(default)]
+    email: Option<String>,
+    #[sqlx(default)]
+    reason: Option<String>,
+}
+
+/// 友链管理列表（staff，含 pending）
+#[get("/admin/links")]
+async fn link_admin_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let rows: Vec<LinkRow> = sqlx::query_as(
+        "SELECT id, name, url, title, status, applied_by, admin_name, email, reason \
+         FROM friend_links ORDER BY (status = 'pending') DESC, sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
 }
 
 // ============ 首页（复刻包子站 index.php 五大板块） ============

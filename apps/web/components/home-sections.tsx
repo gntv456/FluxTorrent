@@ -324,7 +324,7 @@ export function HomeSections() {
           {t.linksTitle}
           <small>
             {" "}
-            - [<Link href="/faq">{t.applyLink}</Link>]
+            - [<Link href="/links/apply">{t.applyLink}</Link>]
           </small>
         </h2>
         <p className="home-native-modules__text">

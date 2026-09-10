@@ -1,4 +1,5 @@
 import { BigSmall, JggCard, ScratchCard } from "@/components/game-actions";
+import { FunBox } from "@/components/fun-box";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
 
@@ -23,6 +24,8 @@ export default async function GamesPage() {
           <span className="text-xs text-sub">{dict.games.farmSub}</span>
         </Link>
       </div>
+      <FunBox embedded />
+
       <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-xs text-ink">
         {dict.games.rule}
       </p>
