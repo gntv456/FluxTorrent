@@ -680,6 +680,22 @@ export const zhCN = {
     appealHint: "如对封禁有异议，可前往",
     note: "出于隐私考虑，仅展示状态与时间；查询频率限制 5 次/分钟。",
   },
+  footer: {
+    aboutTitle: "站点信息",
+    about: "教育资源私有种子社区，种下种子，一起成长。",
+    linksTitle: "快捷导航",
+    helpTitle: "帮助",
+    rules: "站点规则",
+    faq: "常见问题",
+    banlog: "封禁记录",
+    disclaimer:
+      "本站不存储任何资源文件，仅提供种子索引服务；请勿上传未经授权的内容，下载后请自行评估留存合法性。",
+    copyright: "© {year} 好学 FluxTorrent · 复刻自 NexusPHP 经典版式",
+    statsUsers: "注册会员 {n}",
+    statsTorrents: "发布种子 {n}",
+    statsSeedSize: "做种总量 {n}",
+    deadTorrents: "无种资源 {n}",
+  },
 };
 
 export type Dict = typeof zhCN;

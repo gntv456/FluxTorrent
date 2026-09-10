@@ -686,4 +686,20 @@ export const en: Dict = {
     appealHint: "If you disagree with a ban, file an",
     note: "For privacy only status and time are shown; rate-limited to 5 checks/minute.",
   },
+  footer: {
+    aboutTitle: "About",
+    about: "A private education torrent community — plant a seed, grow together.",
+    linksTitle: "Quick links",
+    helpTitle: "Help",
+    rules: "Site rules",
+    faq: "FAQ",
+    banlog: "Ban log",
+    disclaimer:
+      "We host no content files, only torrent indexing. Do not upload unauthorized material; evaluate retention legality yourself after downloading.",
+    copyright: "© {year} FluxTorrent · Replicating the classic NexusPHP layout",
+    statsUsers: "Members {n}",
+    statsTorrents: "Torrents {n}",
+    statsSeedSize: "Seeding size {n}",
+    deadTorrents: "Dead torrents {n}",
+  },
 };

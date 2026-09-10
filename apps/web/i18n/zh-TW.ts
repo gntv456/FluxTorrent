@@ -682,4 +682,20 @@ export const zhTW: Dict = {
     appealHint: "如對封禁有異議，可前往",
     note: "出於隱私考量，僅顯示狀態與時間；查詢頻率限制 5 次/分鐘。",
   },
+  footer: {
+    aboutTitle: "站點資訊",
+    about: "教育資源私有種子社群，種下種子，一起成長。",
+    linksTitle: "快捷導航",
+    helpTitle: "說明",
+    rules: "站點規則",
+    faq: "常見問題",
+    banlog: "封禁記錄",
+    disclaimer:
+      "本站不儲存任何資源檔案，僅提供種子索引服務；請勿上傳未經授權的內容，下載後請自行評估留存合法性。",
+    copyright: "© {year} 好學 FluxTorrent · 復刻自 NexusPHP 經典版式",
+    statsUsers: "註冊會員 {n}",
+    statsTorrents: "發布種子 {n}",
+    statsSeedSize: "做種總量 {n}",
+    deadTorrents: "無種資源 {n}",
+  },
 };

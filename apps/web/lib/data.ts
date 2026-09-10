@@ -60,6 +60,20 @@ export interface Topic {
   views: number;
   last_post_at: string | null;
 }
+/** 站点运行统计（/stats 需登录；页脚展示用，未登录返回 null） */
+export interface SiteStats {
+  users: number;
+  torrents: number;
+  dead: number;
+  seed_size: number;
+}
+export async function getSiteStats(): Promise<SiteStats | null> {
+  try {
+    return await api.get<SiteStats>("/api/v1/stats");
+  } catch {
+    return null;
+  }
+}
 export async function getTopics(forumId: number): Promise<Topic[]> {
   try {
     return await api.get<Topic[]>(`/api/v1/forums/${forumId}/topics`);
