@@ -40,38 +40,57 @@ export function PasskeyCard() {
   }
 
   return (
-    <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
-      <h2 className="font-display text-lg">{dict.my.passkeyTitle}</h2>
-      <p className="mt-1 text-xs text-sub">{dict.my.passkeyHint}</p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <code className="num min-h-[44px] flex items-center rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm">
-          {revealed && passkey
-            ? passkey
-            : revealed
-              ? dict.my.passkeyHidden
-              : "•••••••••••••••••••••••••••••••••"}
-        </code>
-        <button
-          type="button"
-          onClick={load}
-          className="min-h-[44px] rounded-full border border-line px-4 text-sm text-sub active:scale-[0.97]"
-        >
-          {revealed ? dict.my.passkeyHide : dict.my.passkeyShow}
-        </button>
-        <button
-          type="button"
-          onClick={rotate}
-          disabled={busy}
-          className="min-h-[44px] rounded-full bg-coral px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
-        >
-          {busy ? dict.my.passkeyRotating : dict.my.passkeyRotate}
-        </button>
-      </div>
-      {msg && (
-        <p role="status" className="mt-2 text-sm text-sub">
-          {msg}
-        </p>
-      )}
+    <section className="nexus-detail">
+      <table className="nexus-table nexus-form">
+        <thead>
+          <tr>
+            <td colSpan={2} className="colhead">
+              {dict.my.passkeyTitle}
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="rowhead">{dict.my.passkeyTitle}</td>
+            <td className="rowfollow">
+              <code className="num break-all">
+                {revealed && passkey
+                  ? passkey
+                  : revealed
+                    ? dict.my.passkeyHidden
+                    : "••••••••••••••••••••••••••••••••"}
+              </code>
+            </td>
+          </tr>
+          <tr>
+            <td className="rowhead">{dict.my.passkeyHint}</td>
+            <td className="rowfollow">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={load}
+                  className="min-h-[44px] rounded-full border border-line px-4 text-sm text-sub active:scale-[0.97]"
+                >
+                  {revealed ? dict.my.passkeyHide : dict.my.passkeyShow}
+                </button>
+                <button
+                  type="button"
+                  onClick={rotate}
+                  disabled={busy}
+                  className="min-h-[44px] rounded-full bg-coral px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
+                >
+                  {busy ? dict.my.passkeyRotating : dict.my.passkeyRotate}
+                </button>
+              </div>
+              {msg && (
+                <p role="status" className="mt-2 text-sm text-sub">
+                  {msg}
+                </p>
+              )}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </section>
   );
 }

@@ -83,7 +83,7 @@ export function MyTorrentList() {
   ];
 
   return (
-    <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+    <section className="nexus-detail">
       <div className="mb-3 flex gap-2 overflow-x-auto">
         {tabs.map(([k, label]) => (
           <button
@@ -111,61 +111,84 @@ export function MyTorrentList() {
         </p>
       )}
       {rows && rows.length > 0 && kind === "bookmarks" && (
-        <ul className="flex flex-col divide-y divide-line">
-          {(rows as unknown as BookmarkRow[]).map((r) => (
-            <li key={r.torrent_id} className="flex items-center gap-3 py-2.5">
-              <div className="min-w-0 flex-1">
-                <Link
-                  href={`/torrent/${r.torrent_id}`}
-                  className="block truncate text-sm font-bold text-ink hover:text-sky"
-                >
-                  {r.name}
-                </Link>
-                {r.small_descr && (
-                  <p className="truncate text-xs text-sub">{r.small_descr}</p>
-                )}
-              </div>
-              <span className="num shrink-0 text-xs text-sub">
-                {formatBytes(r.size)}
-              </span>
-              <span className="num shrink-0 text-xs text-sub">
-                ↑{r.seeders} ↓{r.leechers}
-              </span>
-              <button
-                type="button"
-                onClick={() => removeBookmark(r.torrent_id)}
-                aria-label={dict.my.bmRemove}
-                className="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-sub hover:border-coral hover:text-coral"
-              >
-                {dict.my.bmRemove}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <td className="colhead">{dict.torrents.colTitle}</td>
+              <td className="colhead w-24">{dict.torrents.colSize}</td>
+              <td className="colhead w-20 text-center">{dict.torrents.colSeeders}</td>
+              <td className="colhead w-20 text-center">{dict.torrents.colLeechers}</td>
+              <td className="colhead w-24 text-right" />
+            </tr>
+          </thead>
+          <tbody>
+            {(rows as unknown as BookmarkRow[]).map((r) => (
+              <tr key={r.torrent_id}>
+                <td className="min-w-0 max-w-0">
+                  <Link
+                    href={`/torrent/${r.torrent_id}`}
+                    className="block truncate font-bold text-ink hover:text-sky"
+                  >
+                    {r.name}
+                  </Link>
+                  {r.small_descr && (
+                    <p className="truncate text-xs text-sub">{r.small_descr}</p>
+                  )}
+                </td>
+                <td className="num w-24 text-sub">{formatBytes(r.size)}</td>
+                <td className="num w-20 text-center text-mint">{r.seeders}</td>
+                <td className="num w-20 text-center text-coral">{r.leechers}</td>
+                <td className="w-24 text-right">
+                  <button
+                    type="button"
+                    onClick={() => removeBookmark(r.torrent_id)}
+                    aria-label={dict.my.bmRemove}
+                    className="rounded-full border border-line px-2 py-0.5 text-xs text-sub hover:border-coral hover:text-coral"
+                  >
+                    {dict.my.bmRemove}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
       {rows && rows.length > 0 && kind !== "bookmarks" && (
-        <ul className="flex flex-col divide-y divide-line">
-          {rows.map((r) => (
-            <li key={r.torrent_id} className="flex items-center gap-3 py-2.5">
-              <Link
-                href={`/torrent/${r.torrent_id}`}
-                className="min-w-0 flex-1 truncate text-sm font-bold text-ink hover:text-sky"
-              >
-                {r.name}
-              </Link>
-              <span className="num shrink-0 text-xs text-sub">
-                {formatBytes(r.size)}
-              </span>
-              <span
-                className={`num shrink-0 text-xs ${
-                  r.seeding ? "text-mint" : r.leeching ? "text-coral" : "text-sub"
-                }`}
-              >
-                ↑{r.seeders} ↓{r.leechers}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <td className="colhead">{dict.torrents.colTitle}</td>
+              <td className="colhead w-24">{dict.torrents.colSize}</td>
+              <td className="colhead w-20 text-center">{dict.torrents.colSeeders}</td>
+              <td className="colhead w-20 text-center">{dict.torrents.colLeechers}</td>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.torrent_id}>
+                <td className="min-w-0 max-w-0">
+                  <Link
+                    href={`/torrent/${r.torrent_id}`}
+                    className="block truncate font-bold text-ink hover:text-sky"
+                  >
+                    {r.name}
+                  </Link>
+                </td>
+                <td className="num w-24 text-sub">{formatBytes(r.size)}</td>
+                <td
+                  className={`num w-20 text-center ${r.seeding ? "text-mint" : "text-sub"}`}
+                >
+                  {r.seeders}
+                </td>
+                <td
+                  className={`num w-20 text-center ${r.leeching ? "text-coral" : "text-sub"}`}
+                >
+                  {r.leechers}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </section>
   );
