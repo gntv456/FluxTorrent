@@ -35,6 +35,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(upload)
         .service(download)
         .service(issue_invite_handler)
+        .service(list_invites_handler)
         .service(logout)
 }
 
@@ -664,6 +665,33 @@ async fn download(
 }
 
 // ============ 邀请（M23 P0 面） ============
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct InviteRow {
+    id: i64,
+    code: String,
+    status: i16,
+    used_by: Option<String>,
+    expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/invites")]
+async fn list_invites_handler(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows = sqlx::query_as::<_, InviteRow>(
+        "SELECT i.id, i.code, i.status, u.username AS used_by, i.expires_at \
+         FROM invites i LEFT JOIN users u ON u.id = i.used_by \
+         WHERE i.inviter_id = $1 ORDER BY i.id DESC LIMIT 50",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
 
 #[post("/invites")]
 async fn issue_invite_handler(
