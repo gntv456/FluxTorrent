@@ -57,6 +57,8 @@ export const zhTW: Dict = {
     p30: "30%",
   },
   home: {
+    welcomeTitle: "歡迎",
+    statsTitle: "站點統計",
     heroTitle: "種下種子，一起成長",
     heroSubtitle: "好學 —— 教育資源私有種子社群（FluxTorrent 驅動）",
     users: "使用者",

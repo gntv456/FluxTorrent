@@ -55,6 +55,8 @@ export const zhCN = {
     p30: "30%",
   },
   home: {
+    welcomeTitle: "欢迎",
+    statsTitle: "站点统计",
     heroTitle: "种下种子，一起成长",
     heroSubtitle: "好学 —— 教育资源私有种子社区（FluxTorrent 驱动）",
     users: "用户",
