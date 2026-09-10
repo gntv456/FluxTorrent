@@ -581,6 +581,17 @@ export const zhCN = {
     stFlagged: "H&R 未达标",
     empty: "暂无 H&R 记录",
   },
+  forums2: {
+    allNodes: "兴趣节点",
+    totalPrefix: "当前共收录 ",
+    totalSuffix: " 篇内容",
+    newTopic: "发布新帖",
+    topicsUnit: "话题",
+    postsUnit: "帖子",
+    latest: "最新",
+    goBoard: "进入版块",
+    by: "作者：",
+  },
   usercp: {
     navTitle: "控制面板",
     days: "天",

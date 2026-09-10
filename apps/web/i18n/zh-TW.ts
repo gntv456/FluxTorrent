@@ -583,6 +583,17 @@ export const zhTW: Dict = {
     stFlagged: "H&R 未達標",
     empty: "暫無 H&R 記錄",
   },
+  forums2: {
+    allNodes: "興趣節點",
+    totalPrefix: "當前共收錄 ",
+    totalSuffix: " 篇內容",
+    newTopic: "發布新帖",
+    topicsUnit: "話題",
+    postsUnit: "帖子",
+    latest: "最新",
+    goBoard: "進入版塊",
+    by: "作者：",
+  },
   usercp: {
     navTitle: "控制面板",
     days: "天",

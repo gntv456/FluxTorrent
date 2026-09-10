@@ -3372,3 +3372,161 @@ textarea.bbcode {
   background: #fffdf8;
   font-size: 13.5px;
 }
+
+/* ============ 论坛（pting.club 布局：左侧节点栏 + 版块卡片流） ============ */
+.pting-forums {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.pting-sidenav {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 12px;
+  border: 1px solid var(--baozi-line-soft);
+  border-radius: var(--r-md);
+  background: var(--baozi-paper);
+  box-shadow: var(--shadow-card);
+}
+.pting-sidenav h2 {
+  margin: 0 0 4px;
+  padding: 0 8px;
+  color: #a08a6f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.pting-sidenav nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pting-sidenav a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: #5a4634;
+  font-size: 13px;
+  font-weight: 700;
+}
+.pting-sidenav a:hover {
+  background: #fff3df;
+  color: var(--baozi-orange);
+}
+.pting-sidenav__dot {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 12px;
+  background: linear-gradient(145deg, var(--baozi-orange-bright), var(--baozi-orange-dark));
+}
+.pting-board__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--baozi-line-soft);
+  border-radius: var(--r-md);
+  background: linear-gradient(100deg, #ff9a3d, var(--baozi-orange-dark));
+  box-shadow: var(--shadow-card);
+  color: #fff;
+}
+.pting-board__head h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+}
+.pting-board__head p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  opacity: 0.92;
+}
+.pting-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+.pting-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--baozi-line-soft);
+  border-radius: var(--r-md);
+  background: var(--baozi-paper);
+  box-shadow: var(--shadow-card);
+}
+.pting-card header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pting-card__title {
+  color: #432d1e;
+  font-size: 16px;
+  font-weight: 900;
+}
+.pting-card__title:hover {
+  color: var(--baozi-orange);
+}
+.pting-card__count {
+  color: #a08a6f;
+  font-size: 12px;
+}
+.pting-card__descr {
+  margin: 0;
+  color: #7a6650;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.pting-card__latest {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #f0e2cb;
+}
+.pting-card__latest-label {
+  flex: 0 0 auto;
+  color: var(--baozi-orange-dark);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+.pting-card__latest-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+.pting-card__empty {
+  padding: 24px;
+  color: #a08a6f;
+  text-align: center;
+}
+@media (max-width: 860px) {
+  .pting-forums {
+    grid-template-columns: 1fr;
+  }
+  .pting-sidenav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
