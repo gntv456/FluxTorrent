@@ -279,7 +279,8 @@ a:hover {
   border-radius: var(--r-md);
   background: var(--baozi-paper);
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  /* 工具条弹层（举报信箱/获取RSS）挂在 userbar 内部，需允许溢出显示 */
+  overflow: visible;
 }
 .userbar__identity {
   display: flex;
