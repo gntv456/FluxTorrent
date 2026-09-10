@@ -1,0 +1,397 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN" xml:lang="zh-CN"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="generator" content="NexusPHP">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>baozi :: 控制面板 - 个人设定 @baozi - Powered by NexusPHP</title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="search" type="application/opensearchdescription+xml" title="baozi Torrents" href="opensearch.php">
+<link rel="stylesheet" href="styles/mediumfont.css" type="text/css">
+<link rel="stylesheet" href="styles/sprites.css" type="text/css">
+<link rel="stylesheet" href="pic/forum_pic/chs/forumsprites.css" type="text/css">
+<link rel="stylesheet" href="styles/BaoziPT/DomTT.css" type="text/css">
+<link rel="stylesheet" href="styles/nexus.css" type="text/css">
+<link rel="stylesheet" href="styles/BaoziPT/theme.css?v=1788879236" type="text/css">
+<link rel="stylesheet" href="pic/category/chd/scenetorrents/catsprites.css" type="text/css">
+<link rel="alternate" type="application/rss+xml" title="Latest Torrents" href="torrentrss.php">
+<script type="text/javascript" src="js/curtain_imageresizer.js"></script><style type="text/css">body {overflow-y:scroll;}</style>
+<script type="text/javascript" src="js/ajaxbasic.js"></script>
+<script type="text/javascript" src="js/common.js"></script>
+<script type="text/javascript" src="js/domLib.js"></script>
+<script type="text/javascript" src="js/domTT.js"></script>
+<script type="text/javascript" src="js/domTT_drag.js"></script>
+<script type="text/javascript" src="js/fadomatic.js"></script>
+<link rel="stylesheet" href="ddlevelsfiles/new-base.css" type="text/css"><script type="text/javascript" src="js/jquery-1.12.4.min.js"></script>
+<script type="text/javascript">
+    jQuery.noConflict();
+    window.nexusLayerOptions = {
+        confirm: {btnAlign: 'c', title: 'Confirm', btn: ['OK', 'Cancel'], skin: 'baozi-layer', shade: [0.26, '#6a3a16']},
+        alert: {btnAlign: 'c', title: 'Info', btn: ['OK'], skin: 'baozi-layer', shade: [0.26, '#6a3a16']}
+    }
+</script>
+<script type="text/javascript" src="vendor/layer-v3.5.1/layer/layer.js"></script><link rel="stylesheet" href="https://p.t-baozi.cc/vendor/layer-v3.5.1/layer/theme/default/layer.css?v=3.5.1" id="layuicss-layer">
+<style type="text/css">.medium-zoom-overlay{position:fixed;top:0;right:0;bottom:0;left:0;opacity:0;transition:opacity .3s;will-change:opacity}.medium-zoom--opened .medium-zoom-overlay{cursor:pointer;cursor:zoom-out;opacity:1}.medium-zoom-image{cursor:pointer;cursor:zoom-in;transition:transform .3s cubic-bezier(.2,0,.2,1)!important}.medium-zoom-image--hidden{visibility:hidden}.medium-zoom-image--opened{position:relative;cursor:pointer;cursor:zoom-out;will-change:transform}</style></head>
+<body class="theme-baozipt page-usercp is-authenticated" data-theme="BaoziPT" data-locale="zh-CN" style="--baozi-copy-attendance-retroactive:&quot;补&quot;;--baozi-copy-torrent-hall:&quot;◉  种子大厅&quot;;--baozi-copy-hot:&quot;热&quot;;--baozi-copy-upload-torrent:&quot;发布种子&quot;;--baozi-copy-upload-drop-hint:&quot;☁  拖拽 .torrent 文件到这里&quot;;--baozi-copy-site-navigation:&quot;站点导航&quot;;--baozi-copy-username:&quot;用户名&quot;;--baozi-copy-ban-reason:&quot;封禁原因&quot;;--baozi-copy-banned-at:&quot;封禁时间&quot;;--baozi-copy-upload-short:&quot;发布&quot;;--baozi-copy-today-short:&quot;今&quot;;--baozi-copy-horizontal-scroll-hint:&quot;可左右滑动查看&quot;;">
+<table class="head" cellspacing="0" cellpadding="0" align="center" style="width: 1228.66px">
+	<tbody><tr>
+		<td class="clear">
+			<div class="site-brand">
+				<a class="site-brand__home" href="index.php" aria-label="返回首页"><div class="logo_img"><img src="pic/baozi-brand-transparent.png?v=1787133655" alt="baozi - The Ultimate File Sharing Experience"></div></a>
+			</div>
+		</td>
+		<td class="clear nowrap" align="right" valign="middle">
+		</td>
+	</tr>
+</tbody></table>
+
+<table class="mainouter" width="1200" cellspacing="0" cellpadding="5" align="center">
+	<tbody><tr><td id="nav_block" class="text" align="center">
+<div id="nav" style="display: block;"><ul id="mainmenu" class="menu"><li><a href="/index.php" target="_self" style="">首  页</a></li><li><a href="/forums.php" target="_self" style="" rel="nexus-menu-2">论  坛<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="/offers.php" target="_self" style="" rel="nexus-menu-4">候  选<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="requireseed.php">保种区</a></li><li><a href="/torrents.php" target="_self" style="" rel="nexus-menu-3">种  子<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="/upload.php" target="_self" style="">发  布</a></li><li><a href="/bank.php" target="_self" style="" rel="nexus-menu-26">娱  乐<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="/contactstaff.php" target="_self" style="">PM管理组</a></li><li><a href="/faq.php" target="_self" style="" rel="nexus-menu-28">关  于<img src="ddlevelsfiles/arrow-down.gif" class="downarrowpointer" style="width: 11px; height: 7px;"></a></li><li><a href="/poster-wall.php" target="_blank" style="">海报墙</a></li></ul></div><button id="nav-mobiletoggle" class="baozi-mobile-nav-toggle animateddrawer" type="button" aria-label="打开站点导航" aria-controls="nav-mobile" style="display: none;"><span aria-hidden="true"></span><b aria-hidden="true">菜单</b></button>
+<div id="info_block" class="userbar userbar--compact">
+	<div class="userbar__identity">
+		<a class="userbar__avatar" href="userdetails.php?id=13284" aria-label="gntv">
+			<img src="pic/baozi-avatar.png?v=1787110708" alt="">
+		</a>
+		<div class="userbar__welcome">
+			<span>欢迎回来</span>
+			<strong id="welcome_text"><span class="nowrap"><a href="https://p.t-baozi.cc/userdetails.php?id=13284" class="User_Name"><b>gntv</b></a></span></strong>
+			<a class="userbar__logout" href="logout.php">退出</a>
+			<span class="userbar__bonus">
+				<img src="pic/baozi-tool-bonus-transparent.png?v=1787134962" alt="">
+				<span class="userbar__bonus-label">魔力值：</span>
+				<a class="userbar__bonus-value" href="mybonus.php">600.0</a>
+				<a class="userbar__bonus-hint userbar__bonus-hint--attended" href="attendance.php">[签到已得200, 补签卡: 0]</a>
+			</span>
+		</div>
+		<nav class="userbar__shortcuts" aria-label="User shortcuts">
+			<a href="usercp.php">控制面板</a><a href="torrents.php?inclbookmarked=1&amp;allsec=1&amp;incldead=0">收藏</a><a href="medal.php">勋章</a><a href="task.php">任务</a><a href="invite.php?id=13284">邀请1/0</a>		</nav>
+	</div>
+		<div class="userbar__meta">
+						<div class="userbar__tools" style="--baozi-tool-count:4">
+												<a class="userbar-tool userbar-tool--inbox" href="messages.php" title="收件箱&nbsp;(无新短讯)" aria-label="收件箱&nbsp;(无新短讯)"><img class="userbar-tool__icon" src="pic/baozi-tool-inbox.svg?v=1787359432" alt=""><b>1</b></a>
+				<a class="userbar-tool userbar-tool--outbox" href="messages.php?action=viewmailbox&amp;box=-1" title="发件箱" aria-label="发件箱"><img class="userbar-tool__icon" src="pic/baozi-tool-outbox.png?v=1787188812" alt=""><b>0</b></a>
+				<a class="userbar-tool userbar-tool--friends" href="friends.php" title="社交白名单" aria-label="社交白名单"><img class="userbar-tool__icon" src="pic/baozi-tool-friends.png?v=1787188812" alt=""><b>0</b></a>
+				<a class="userbar-tool userbar-tool--rss" href="getrss.php" title="获取RSS" aria-label="获取RSS"><img class="userbar-tool__icon" src="pic/baozi-tool-rss-feed.png?v=1787188812" alt=""></a>
+			</div>
+		</div>
+</div>
+
+</td></tr>
+
+<tr><td id="outer" align="center" class="outer" style="padding-top: 20px; padding-bottom: 20px">
+<div align="center" style="margin-bottom: 10px" id=""><span><strong><a href="https://p.t-baozi.cc/usercp.php?action=security" target="_self" style="color: black;font-size: 21px">官方交流群：</a></strong>
+<a href="https://t.me/+5uveeF7jQrQzY2U1" target="_blank"><img alt="telegram_icon" width="21px" height="21px" src="/pic/tg.svg"></a>&nbsp;
+<a href="https://qm.qq.com/q/SdrV9nPosy" target="_blank"><img alt="qq_icon" width="21px" height="21px" src="/pic/qq.svg"></a></span></div><div class="usercp-settings-shell"><aside class="account-dashboard__nav"><h1><span aria-hidden="true">⚙</span>控制面板</h1><a href="usercp.php"><span aria-hidden="true">⌂</span>账户概览</a><a class="is-active" href="usercp.php?action=personal"><span aria-hidden="true">♙</span>个人资料</a><a href="usercp.php?action=tracker"><span aria-hidden="true">⚙</span>网站设定</a><a href="usercp.php?action=forum"><span aria-hidden="true">♧</span>论坛设定</a><a href="usercp.php?action=security"><span aria-hidden="true">⌾</span>安全设定</a></aside><main class="usercp-settings-content usercp-settings-content--personal"><header class="usercp-settings-heading"><span class="usercp-settings-heading__icon" aria-hidden="true">♙</span><div><h2>个人资料</h2><p>管理账户资料、短讯偏好、网络信息与个人头像</p></div></header><form class="usercp-form usercp-form--personal" method="post" action="usercp.php" id="formDRMM7D"><input type="hidden" name="action" value="personal"><input type="hidden" name="type" value="save"><table border="0" cellspacing="0" cellpadding="5" width="1200"><tbody><tr><td width="1%" class="rowhead nowrap" valign="top" align="right">封存账号</td><td width="99%" class="rowfollow" valign="top" align="left"><input type="checkbox" name="parked" value="yes">我将长期不使用账号。<br><font class="small" size="1"><b>注意：</b>封存账号可避免因长期（如假期）不活动而被删除账号。封存后账号处于受限状态，此时不能下载种子或浏览某些页面。</font></td></tr><tr><td width="1%" class="rowhead nowrap" valign="top" align="right">短讯</td><td width="99%" class="rowfollow" valign="top" align="left">接受以下短讯：<input type="radio" name="acceptpms" checked="" value="yes">所有(除了黑名单)<input type="radio" name="acceptpms" value="friends">仅好友<input type="radio" name="acceptpms" value="no">管理组成员<br><input type="checkbox" name="deletepms" checked=""> 回复后删除短讯<br><input type="checkbox" name="savepms"> 保存短讯至发件箱<br><input type="checkbox" name="commentpm" checked="" value="yes"> 我发布的种子有新评论时通知我<br><input type="checkbox" name="notifs[topic_reply]" checked="" value="yes"> 论坛帖子有新回复时通知我<br><input type="checkbox" name="notifs[hr_reached]" checked="" value="yes"> H&amp;R 达标时通知我</td></tr><tr><td width="1%" class="rowhead nowrap" valign="top" align="right">性别</td><td width="99%" class="rowfollow" valign="top" align="left"><input type="radio" name="gender" value="N/A">未知
+<input type="radio" name="gender" checked="" value="Male">男<input type="radio" name="gender" value="Female">女</td></tr><tr><td width="1%" class="rowhead nowrap" valign="top" align="right">Tracker URL</td><td width="99%" class="rowfollow" valign="top" align="left"><select name="tracker_url_id">
+<option value="0">---- 未选 ----</option>
+<option value="4">https://tracker.t-baozi.cc/announce.php</option>
+<option value="1">https://p.t-baozi.cc/announce.php</option>
+<option value="5">https://tracker.t-baozi.org/announce.php</option>
+
+</select><br><font class="small" size="1"><b>注意：</b>选择后只能向选中的链接汇报。默认只能向列表中的第 1 个默认链接汇报。</font></td></tr><tr><td width="1%" class="rowhead nowrap" valign="top" align="right">国家/地区</td><td width="99%" class="rowfollow" valign="top" align="left"><select name="country">
+<option value="0">---- 未选 ----</option>
+<option value="54">Afghanistan</option>
+<option value="65">Albania</option>
+<option value="35">Algeria</option>
+<option value="68">Andorra</option>
+<option value="36">Angola</option>
+<option value="89">Antigua Barbuda</option>
+<option value="19">Argentina</option>
+<option value="20">Australia</option>
+<option value="37">Austria</option>
+<option value="82">Bahamas</option>
+<option value="86">Bangladesh</option>
+<option value="85">Barbados</option>
+<option value="16">Belgium</option>
+<option value="34">Belize</option>
+<option value="67">Bosnia Herzegovina</option>
+<option value="18">Brazil</option>
+<option value="104">Bulgaria</option>
+<option value="60">Burkina Faso</option>
+<option value="84">Cambodia</option>
+<option value="5">Canada</option>
+<option value="51">Chile</option>
+<option value="99">Colombia</option>
+<option value="53">Congo</option>
+<option value="102">Costa Rica</option>
+<option value="97">Croatia</option>
+<option value="52">Cuba</option>
+<option value="46">Czech Republic</option>
+<option value="10">Denmark</option>
+<option value="41">Dominican Republic</option>
+<option value="81">Ecuador</option>
+<option value="103">Egypt</option>
+<option value="98">Estonia</option>
+<option value="4">Finland</option>
+<option value="6">France</option>
+<option value="7">Germany</option>
+<option value="42">Greece</option>
+<option value="43">Guatemala</option>
+<option value="79">Honduras</option>
+<option value="74">Hungary</option>
+<option value="62">Iceland</option>
+<option value="70">India</option>
+<option value="13">Ireland</option>
+<option value="105">Isla de Muerte</option>
+<option value="44">Israel</option>
+<option value="9">Italy</option>
+<option value="31">Jamaica</option>
+<option value="17">Japan</option>
+<option value="58">Kiribati</option>
+<option value="80">Kyrgyzstan</option>
+<option value="87">Laos</option>
+<option value="101">Latvia</option>
+<option value="100">Lebanon</option>
+<option value="69">Lithuania</option>
+<option value="32">Luxembourg</option>
+<option value="40">Malaysia</option>
+<option value="25">Mexico</option>
+<option value="63">Nauru</option>
+<option value="15">Netherlands</option>
+<option value="71">Netherlands Antilles</option>
+<option value="21">New Zealand</option>
+<option value="61">Nigeria</option>
+<option value="96">North Korea</option>
+<option value="11">Norway</option>
+<option value="45">Pakistan</option>
+<option value="90">Paraguay</option>
+<option value="83">Peru</option>
+<option value="59">Philippines</option>
+<option value="107">Pirates</option>
+<option value="14">Poland</option>
+<option value="24">Portugal</option>
+<option value="50">Puerto Rico</option>
+<option value="75">Romania</option>
+<option value="3">Russia</option>
+<option value="94">Senegal</option>
+<option value="47">Serbia</option>
+<option value="48">Seychelles</option>
+<option value="26">Singapore</option>
+<option value="64">Slovenia</option>
+<option value="29">South Africa</option>
+<option value="30">South Korea</option>
+<option value="23">Spain</option>
+<option value="1">Sweden</option>
+<option value="57">Switzerland</option>
+<option value="93">Thailand</option>
+<option value="95">Togo</option>
+<option value="78">Trinidad &amp; Tobago</option>
+<option value="55">Turkey</option>
+<option value="66">Turkmenistan</option>
+<option value="72">Ukraine</option>
+<option value="92">Union of Soviet Socialist Republics</option>
+<option value="12">United Kingdom</option>
+<option value="2">United States of America</option>
+<option value="88">Uruguay</option>
+<option value="56">Uzbekistan</option>
+<option value="76">Vanuatu</option>
+<option value="73">Venezuela</option>
+<option value="77">Vietnam</option>
+<option value="39">Western Samoa</option>
+<option value="38">Yugoslavia</option>
+<option value="8" selected="">中国</option>
+
+</select></td></tr><tr><td width="1%" class="rowhead nowrap" valign="top" align="right">网络带宽</td><td width="99%" class="rowfollow" valign="top" align="left"><b>下行带宽</b>: <select name="download"><option value="0">---- 未选 ----</option>
+<option value="1">64kbps</option>
+<option value="2">128kbps</option>
+<option value="3">256kbps</option>
+<option value="4">512kbps</option>
+<option value="5">768kbps</option>
+<option value="6">1Mbps</option>
+<option value="7">1.5Mbps</option>
+<option value="8">2Mbps</option>
+<option value="9">3Mbps</option>
+<option value="10">4Mbps</option>
+<option value="11">5Mbps</option>
+<option value="12">6Mbps</option>
+<option value="13">7Mbps</option>
+<option value="14">8Mbps</option>
+<option value="15">9Mbps</option>
+<option value="16">10Mbps</option>
+<option value="17">48Mbps</option>
+<option value="18">100Mbit</option>
+</select>&nbsp;&nbsp;<b>上行带宽</b>: <select name="upload"><option value="0">---- 未选 ----</option>
+<option value="1">64kbps</option>
+<option value="2">128kbps</option>
+<option value="3">256kbps</option>
+<option value="4">512kbps</option>
+<option value="5">768kbps</option>
+<option value="6">1Mbps</option>
+<option value="7">1.5Mbps</option>
+<option value="8">2Mbps</option>
+<option value="9">3Mbps</option>
+<option value="10">4Mbps</option>
+<option value="11">5Mbps</option>
+<option value="12">6Mbps</option>
+<option value="13">7Mbps</option>
+<option value="14">8Mbps</option>
+<option value="15">9Mbps</option>
+<option value="16">10Mbps</option>
+<option value="17">48Mbps</option>
+<option value="18">100Mbit</option>
+</select>&nbsp;&nbsp;<b>互联网服务提供商</b>: <select name="isp"><option value="0">---- 未选 ----</option>
+<option value="1">中国电信</option>
+<option value="2">中国网通</option>
+<option value="3">中国铁通</option>
+<option value="4">中国移动</option>
+<option value="5">中国联通</option>
+<option value="6">中国教育网</option>
+<option value="20">Other</option>
+</select></td></tr><tr><td width="1%" class="rowhead nowrap" valign="top" align="right">头像URL</td><td width="99%" class="rowfollow" valign="top" align="left"><img src="https://p.t-baozi.cc/pic/default_avatar.png" name="avatarimg"><br>
+  <select name="savatar" onchange="document.forms[0].avatarimg.src=this.value;this.form.avatar.value=this.value;">
+  <option value="">选择头像</option>
+  <option value="https://p.t-baozi.cc/pic/default_avatar.png">默认头像</option>
+  <option value="https://p.t-baozi.cc/bitbucket/l160.png">l160.png</option><option value="https://p.t-baozi.cc/bitbucket/fc174c7c-e937-4434-8b81-0ba774f76b0a.png">fc174c7c-e937-4434-8b81-0ba774f76b0a.png</option>
+  </select><input type="text" name="avatar" style="width: 400px" value=""><br>
+最大宽度为150像素（必要的时候会被缩放）。</td></tr><tr><td class="rowhead nowrap" valign="top" align="right">个人说明</td><td class="rowfollow" valign="top" align="left"><textarea name="info" style="width:700px" rows="10"></textarea><br>显示在你的个人信息页面。允许使用<a class="faqlink" href="tags.php" target="_new">BBCode代码</a>。</td></tr><tr><td class="rowhead" valign="top" align="right">保存设定</td><td class="rowfollow" valign="top" align="left"><input type="submit" value="保存设定！&nbsp;(只需点击一次)"></td></tr></tbody></table></form></main></div></td></tr></tbody></table><div id="footer"><div class="footer-inner"><div class="footer-meta"><div class="footer-browser-note">获得本站最佳效果，请使用<a href="https://www.google.com/chrome/" target="_blank"><img class="img-browser" src="/pic/misc/chrome-logo.svg" alt="下载 Google Chrome" title="下载 Google Chrome"></a>或者<a href="https://www.mozilla.org/en-US/firefox/new/" target="_blank"><img class="img-browser" src="/pic/misc/firefox-logo.svg" alt="Firefox" title="下载 Firefox" border="0"></a>且使用大于1024*768的分辨率。推荐BT客户端为<a href="https://www.qbittorrent.org/download.php" target="_blank"><img class="img-browser" src="/pic/misc/qBittorrent.ico" alt="qBittorrent" title="下载 qBittorrent"></a>或<a href="https://transmissionbt.com/download/" target="_blank"><img class="img-browser" src="/pic/misc/transmission.png" alt="Transmission" title="下载 Transmission"></a></div><div class="footer-copyright">(c) <a href="https://p.t-baozi.cc" target="_self">NexusPHP</a> 2010-2026 Powered by <a href="aboutnexus.php">NexusPHP</a> <strong class="footer-mobile-ready">本站已适配手机端</strong></div><div class="footer-runtime">[page created in <b> 0.031 </b> sec with <b>18</b> db queries, <b>20</b> reads and <b>0</b> writes of Redis and <b>1.05 MB</b> ram]</div></div><div class="footer-stamp" aria-hidden="true"><span>包子PT</span><i></i><em>Share with love,<br>Stay cozy</em></div></div>
+</div><link rel="stylesheet" href="/plugin/ai-pet/assets/widget-css?v=1.0.7">
+
+<aside class="baozi-ai-pet" data-ai-pet="widget" data-chat-url="/plugin/ai-pet/chat" data-request-token="v1.eyJ1aWQiOjEzMjg0LCJleHAiOjE3ODkwNTE0MDcsInB1cnBvc2UiOiJhaS1wZXQtY2hhdCJ9.FzQ4sS-7ZNeS7JotIaTNBhIGLYbvLkmBCUwQa_VPwwM" aria-label="包小答" data-initialized="yes">
+    <button class="baozi-ai-pet__launcher" type="button" aria-expanded="false" aria-controls="baozi-ai-pet-panel">
+        <span class="baozi-ai-pet__status-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="baozi-ai-pet__mascot" aria-hidden="true"></span>
+        <span class="baozi-ai-pet__launcher-label">包小答</span>
+        <span class="baozi-ai-pet__welcome-bubble">有规则问题？问我呀～</span>
+    </button>
+
+    <section class="baozi-ai-pet__panel" id="baozi-ai-pet-panel" hidden="" aria-hidden="true">
+        <header class="baozi-ai-pet__header">
+            <span class="baozi-ai-pet__avatar"><img src="/plugin/ai-pet/assets/bao-xiaoda?v=1.0.3" alt=""></span>
+            <span class="baozi-ai-pet__identity">
+                <strong>包小答</strong>
+                <small><i aria-hidden="true"></i>规则知识库在线</small>
+            </span>
+            <button class="baozi-ai-pet__close" type="button" aria-label="关闭包小答">×</button>
+        </header>
+
+        <div class="baozi-ai-pet__messages" role="log" aria-live="polite" aria-relevant="additions">
+            <div class="baozi-ai-pet__message baozi-ai-pet__message--assistant">
+                <div class="baozi-ai-pet__message-content">你好呀，我是包小答。站点规则、上传下载和常见问题都可以问我。</div>
+            </div>
+            <div class="baozi-ai-pet__suggestions" aria-label="常见问题">
+                <button type="button">如何保持分享率？</button>
+                <button type="button">发布种子有哪些要求？</button>
+                <button type="button">账号被警告怎么办？</button>
+            </div>
+        </div>
+
+        <form class="baozi-ai-pet__composer">
+            <label class="baozi-ai-pet__sr-only" for="baozi-ai-pet-question">向包小答提问</label>
+            <textarea id="baozi-ai-pet-question" rows="1" maxlength="1000" placeholder="输入站点规则或常见问题…"></textarea>
+            <button type="submit" aria-label="发送问题">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 4.4 21 12 3.5 19.6l1.2-6.1L14 12l-9.3-1.5-1.2-6.1Z"></path></svg>
+            </button>
+        </form>
+        <p class="baozi-ai-pet__notice">回答来自 Baozi Wiki，仅供快速查询；重要事项请以原规则页和管理组答复为准。</p>
+    </section>
+
+    <script type="application/json" class="baozi-ai-pet__strings">{"thinking":"正在查找规则","genericError":"暂时无法回答，请稍后再试。","sources":"参考来源","emptyQuestion":"请先输入问题"}</script>
+</aside>
+
+<script src="/plugin/ai-pet/assets/widget-js?v=1.0.7" defer=""></script>
+<script type="text/javascript" src="ddlevelsfiles/ddlevelsmenu.js"></script><script type="text/javascript">ddlevelsmenu.setup("nav", "topbar")</script><nav class="baozi-page-jump" aria-label="页面快速滚动">
+    <button type="button" class="baozi-page-jump__button baozi-page-jump__button--top" data-label="至顶端" aria-label="至顶端" title="至顶端" disabled="">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5h14M12 19V8M7.5 12.5 12 8l4.5 4.5"></path></svg>
+    </button>
+    <button type="button" class="baozi-page-jump__button baozi-page-jump__button--bottom" data-label="至底端" aria-label="至底端" title="至底端">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 19h14M12 5v11m-4.5-4.5L12 16l4.5-4.5"></path></svg>
+    </button>
+</nav><script type="application/javascript" src="js/nexus.js"></script>
+<script type="application/javascript" src="js/medium-zoom.min.js"></script>
+<script type="application/javascript" src="vendor/jquery-goup-1.1.3/jquery.goup.min.js"></script>
+<script>
+jQuery(document).ready(function(){
+    mediumZoom('[data-zoomable]');
+    var pageJump = document.querySelector('.baozi-page-jump');
+    if (!pageJump) {
+        jQuery.goup();
+        return;
+    }
+
+    var topButton = pageJump.querySelector('.baozi-page-jump__button--top');
+    var bottomButton = pageJump.querySelector('.baozi-page-jump__button--bottom');
+    var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var updateQueued = false;
+
+    function getScrollTop() {
+        return window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    }
+
+    function getMaximumScroll() {
+        var root = document.documentElement;
+        var body = document.body;
+        var pageHeight = Math.max(
+            root.scrollHeight,
+            root.offsetHeight,
+            root.clientHeight,
+            body ? body.scrollHeight : 0,
+            body ? body.offsetHeight : 0
+        );
+        return Math.max(0, pageHeight - window.innerHeight);
+    }
+
+    function updatePageJump() {
+        updateQueued = false;
+        var maximumScroll = getMaximumScroll();
+        var scrollTop = getScrollTop();
+        pageJump.hidden = maximumScroll < 160;
+        topButton.disabled = scrollTop < 8;
+        bottomButton.disabled = maximumScroll - scrollTop < 8;
+    }
+
+    function queuePageJumpUpdate() {
+        if (updateQueued) {
+            return;
+        }
+        updateQueued = true;
+        window.requestAnimationFrame(updatePageJump);
+    }
+
+    topButton.addEventListener('click', function () {
+        window.scrollTo({top: 0, behavior: reducedMotion ? 'auto' : 'smooth'});
+    });
+    bottomButton.addEventListener('click', function () {
+        window.scrollTo({top: getMaximumScroll(), behavior: reducedMotion ? 'auto' : 'smooth'});
+    });
+    window.addEventListener('scroll', queuePageJumpUpdate, {passive: true});
+    window.addEventListener('resize', queuePageJumpUpdate, {passive: true});
+    if ('ResizeObserver' in window && document.body) {
+        new ResizeObserver(queuePageJumpUpdate).observe(document.body);
+    }
+    updatePageJump();
+});
+</script><script>
+(function () {
+    function enhanceWideTables() {
+        document.querySelectorAll('#outer table').forEach(function (table) {
+            if (table.closest('.baozi-wide-table-scroll, .claim-table-scroll, .invite-table-scroll') ||
+                table.matches('.head, .mainouter, .nexus-main-frame, .auth-form-table, .torrents, .forums')) {
+                return;
+            }
+            var maximumColumns = 0;
+            var hasDataHeading = false;
+            Array.prototype.forEach.call(table.rows || [], function (row) {
+                var columns = 0;
+                Array.prototype.forEach.call(row.cells || [], function (cell) {
+                    columns += Math.max(1, parseInt(cell.getAttribute('colspan') || '1', 10));
+                    if (cell.matches('th, .colhead, .colhead2')) hasDataHeading = true;
+                });
+                maximumColumns = Math.max(maximumColumns, columns);
+            });
+            if (!hasDataHeading || maximumColumns < 8) return;
+            var wrapper = document.createElement('div');
+            wrapper.className = 'baozi-wide-table-scroll';
+            wrapper.setAttribute('role', 'region');
+            wrapper.setAttribute('aria-label', '可横向滚动的数据表');
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+            table.classList.add('baozi-wide-data-table');
+            table.style.setProperty('--baozi-wide-table-min', Math.min(1680, Math.max(820, maximumColumns * 108)) + 'px');
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enhanceWideTables, {once: true});
+    } else {
+        enhanceWideTables();
+    }
+}());
+</script><img id="nexus-preview" style="display: none; position: absolute" src=""><iframe class="ddiframeshim" src="about:blank" frameborder="0"></iframe><iframe class="ddiframeshim" src="about:blank" frameborder="0"></iframe><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-2" style="visibility: hidden;"><li><a href="https://hdblue.cc" target="_blank" style="">蓝影论坛</a></li><li><a href="/forums.php" target="_self" style="">本站论坛</a></li></ul></div><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-4" style="visibility: hidden;"><li><a href="/viewrequests.php" target="_self" style="">求  种</a></li><li><a href="/subtitles.php" target="_self" style="">字  幕</a></li></ul></div><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-3" style="visibility: hidden;"><li><a href="/torrents.php" target="_self" style="">全  部</a></li><li><a href="/torrents.php?cat=401" target="_self" style="">电  影</a></li><li><a href="/torrents.php?cat=402" target="_self" style="">剧  集</a></li><li><a href="/torrents.php?cat=403" target="_self" style="">综  艺</a></li><li><a href="/torrents.php?cat=404" target="_self" style="">纪 录 片</a></li><li><a href="/torrents.php?cat=405" target="_self" style="">动  漫</a></li><li><a href="/torrents.php?cat=406" target="_self" style="">音乐视频</a></li><li><a href="/torrents.php?cat=408" target="_self" style="">高品质音频</a></li><li><a href="/torrents.php?cat=407" target="_self" style="">体育运动</a></li><li><a href="/torrents.php?cat=409" target="_self" style="">其  他</a></li></ul></div><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-26" style="visibility: hidden;"><li><a href="/magic_fram.php" target="_self" style="">魔力农场</a></li><li><a href="/bank.php" target="_self" style="">包子信用社</a></li><li><a href="/plugin/lucky-draw" target="_self" style="">魔力大转盘</a></li></ul></div><div class="ddsubmenustyle" style="z-index: 2000; left: 0px; top: 0px; visibility: hidden;"><ul id="nexus-menu-28" style="visibility: hidden;"><li><a href="https://wiki.t-baozi.cc" target="_blank" style="">规  则</a></li><li><a href="/staff.php" target="_self" style="">管 理 组</a></li><li><a href="/topten.php" target="_self" style="">排 行 榜</a></li><li><a href="/log.php" target="_self" style="">日  志</a></li></ul></div></body></html>
