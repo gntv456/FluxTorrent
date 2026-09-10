@@ -3,6 +3,7 @@
 
 use actix_web::{get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
+use sqlx::Row;
 use std::sync::Arc;
 
 use crate::auth;
@@ -19,6 +20,9 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(register)
         .service(login)
         .service(me)
+        .service(me_overview)
+        .service(me_settings_get)
+        .service(me_settings_put)
         .service(my_torrentlist)
         .service(my_bookmarks)
         .service(rotate_passkey)
@@ -145,6 +149,11 @@ async fn login(
         .await?;
     let token = auth::issue(user.id, user.class_id, &state.cfg.jwt_secret, 24)
         .map_err(DomainError::Internal)?;
+    // 登录事件（控制面板账户概览 30 天活跃趋势）
+    let _ = sqlx::query("INSERT INTO login_events (user_id) VALUES ($1)")
+        .bind(user.id)
+        .execute(&state.repo.db)
+        .await;
     // M28 插件 Hook：登录成功后分发
     state.plugins.dispatch_login(&state, user.id);
     Ok(ok(serde_json::json!({
@@ -296,6 +305,351 @@ async fn rotate_passkey(
         .audit(Some(auth.id), "passkey_rotate", Some(auth.id))
         .await;
     Ok(ok(serde_json::json!({ "passkey": pk })))
+}
+
+// ============ 控制面板（复刻 NexusPHP usercp：账户概览 + 四组设定） ============
+
+/// 账户概览（usercp.php 首页口径）：资料卡 + 分享率概况 + 登录趋势 + 摘要行 + 更多信息表
+#[get("/me/overview")]
+async fn me_overview(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let uid = auth.id;
+    // 主档 + 统计（一次查询，口径与旧站 my_data_stats 一致）
+    let row = sqlx::query(
+        r#"
+        SELECT u.username, u.email, u.uploaded, u.downloaded, u.created_at, u.avatar_url,
+               u.parked, u.privacy, u.totp_enabled, u.passkey,
+               u.spark_balance,
+               (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
+               (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
+               (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS uploads,
+               (SELECT count(*) FROM comments c WHERE c.user_id = u.id) AS comments,
+               (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 0) AS invites_pending,
+               (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 1) AS invites_used,
+               (SELECT count(*) FROM user_medals m WHERE m.user_id = u.id) AS medals,
+               c.name AS class_name, c.id AS cid
+        FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
+        WHERE u.id = $1
+        "#,
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .ok_or(DomainError::Unauthorized)?;
+    let r = &row;
+    let get = |col: &str| -> serde_json::Value {
+        r.try_get(col).unwrap_or(serde_json::Value::Null)
+    };
+    let get_i64 = |col: &str| -> i64 { r.try_get::<i64, _>(col).unwrap_or(0) };
+    let get_bool = |col: &str| -> bool { r.try_get::<bool, _>(col).unwrap_or(false) };
+    let get_str = |col: &str| -> String { r.try_get::<String, _>(col).unwrap_or_default() };
+    let get_ts = |col: &str| -> Option<String> {
+        r.try_get::<chrono::DateTime<chrono::Utc>, _>(col)
+            .ok()
+            .map(|t| t.to_rfc3339())
+    };
+
+    let downloaded = get_i64("downloaded");
+    let uploaded = get_i64("uploaded");
+    let ratio = if downloaded == 0 {
+        None
+    } else {
+        Some((uploaded as f64 / downloaded as f64 * 100.0).round() / 100.0)
+    };
+    // 最近 30 天登录趋势（对齐旧站 usercp 首页活跃图）
+    let trend: Vec<(chrono::NaiveDate, i64)> = sqlx::query_as(
+        "SELECT created_at::date AS d, count(*) AS n FROM login_events \
+         WHERE user_id = $1 AND created_at > now() - interval '30 days' \
+         GROUP BY d ORDER BY d",
+    )
+    .bind(uid)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .into_iter()
+    .map(|(d, n)| (d, n))
+    .collect::<Vec<_>>();
+    let trend_json: Vec<serde_json::Value> = trend
+        .iter()
+        .map(|(d, n)| serde_json::json!({ "date": d.format("%Y-%m-%d").to_string(), "count": n }))
+        .collect();
+    let login_total_30d: i64 = trend.iter().map(|(_, n)| n).sum();
+    let last_login: Option<String> = sqlx::query_scalar(
+        "SELECT max(created_at)::text FROM login_events WHERE user_id = $1",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    // 等级进度：以最小上传量门槛推算下一等级（无做种积分体系时用 uploaded/1e9 GB 近似）
+    let class_id = get_i64("cid") as i32;
+    let next: Option<(String, i64)> = sqlx::query_as(
+        "SELECT name, min_uploaded FROM user_classes WHERE id > $1 AND id < 90 ORDER BY id LIMIT 1",
+    )
+    .bind(class_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let seeding = get_i64("seeding");
+    let seed_points = (seeding as f64) * 100.0;
+    let (next_name, next_req) = next.unwrap_or_else(|| ("Max".into(), uploaded.max(1)));
+
+    Ok(ok(serde_json::json!({
+        "id": uid,
+        "username": get_str("username"),
+        "email": get_str("email"),
+        "class_name": get("class_name"),
+        "avatar_url": get("avatar_url"),
+        "created_at": get_ts("created_at"),
+        "uploaded": uploaded,
+        "downloaded": downloaded,
+        "ratio": ratio,
+        "seeding": seeding,
+        "leeching": get_i64("leeching"),
+        "uploads": get_i64("uploads"),
+        "comments": get_i64("comments"),
+        "bookmarks": 0,
+        "spark_balance": get_i64("spark_balance"),
+        "invites_pending": get_i64("invites_pending"),
+        "invites_used": get_i64("invites_used"),
+        "medals": get_i64("medals"),
+        "parked": get_bool("parked"),
+        "privacy": get_str("privacy"),
+        "totp_enabled": get_bool("totp_enabled"),
+        "passkey": get_str("passkey"),
+        "last_ip": "—",
+        "login_trend_30d": trend_json,
+        "login_days_30d": trend.iter().filter(|(_, n)| *n > 0).count(),
+        "login_total_30d": login_total_30d,
+        "last_login": last_login,
+        "seed_points": seed_points,
+        "next_class": { "name": next_name, "required": next_req },
+    })))
+}
+
+/// 用户偏好（usercp 四个 action 表单的读写口径，字段名对齐 NexusPHP）
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct UserSettings {
+    parked: bool,
+    accept_pm: String,
+    delete_pm: bool,
+    save_pm: bool,
+    comment_pm: bool,
+    notify_topic_reply: bool,
+    notify_hr: bool,
+    gender: i16,
+    country: i32,
+    download_speed: i32,
+    upload_speed: i32,
+    isp: i32,
+    info: Option<String>,
+    avatar_url: Option<String>,
+    // tracker
+    browsecat: Option<String>,
+    stylesheet: String,
+    fontsize: String,
+    site_language: String,
+    pm_per_page: i32,
+    show_description: bool,
+    show_imdb: bool,
+    show_comment: bool,
+    show_ad: bool,
+    time_type: String,
+    torrents_per_page: i32,
+    incl_dead: i32,
+    sp_state: i32,
+    incl_bookmarked: i32,
+    tooltip: String,
+    append_sticky: bool,
+    append_new: bool,
+    append_promotion: String,
+    append_picked: bool,
+    small_descr: bool,
+    dl_icon: bool,
+    bm_icon: bool,
+    show_com_num: bool,
+    show_last_com: String,
+    // forum
+    topics_per_page: i32,
+    posts_per_page: i32,
+    view_avatars: bool,
+    view_signatures: bool,
+    tt_last_post: bool,
+    click_topic: String,
+    signature: Option<String>,
+    // security（只读展示，改密走独立接口）
+    privacy: String,
+}
+
+#[get("/me/settings")]
+async fn me_settings_get(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let s: UserSettings = sqlx::query_as(
+        "SELECT parked, accept_pm, delete_pm, save_pm, comment_pm, notify_topic_reply, notify_hr, \
+         gender, country, download_speed, upload_speed, isp, info, avatar_url, browsecat, \
+         stylesheet, fontsize, site_language, pm_per_page, show_description, show_imdb, \
+         show_comment, show_ad, time_type, torrents_per_page, incl_dead, sp_state, \
+         incl_bookmarked, tooltip, append_sticky, append_new, append_promotion, append_picked, \
+         small_descr, dl_icon, bm_icon, show_com_num, show_last_com, topics_per_page, \
+         posts_per_page, view_avatars, view_signatures, tt_last_post, click_topic, signature, privacy \
+         FROM users WHERE id = $1",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(s))
+}
+
+#[derive(serde::Deserialize, Default)]
+#[serde(default)]
+struct SettingsUpdate {
+    parked: Option<bool>,
+    accept_pm: Option<String>,
+    delete_pm: Option<bool>,
+    save_pm: Option<bool>,
+    comment_pm: Option<bool>,
+    notify_topic_reply: Option<bool>,
+    notify_hr: Option<bool>,
+    gender: Option<i16>,
+    country: Option<i32>,
+    download_speed: Option<i32>,
+    upload_speed: Option<i32>,
+    isp: Option<i32>,
+    info: Option<String>,
+    avatar_url: Option<String>,
+    browsecat: Option<String>,
+    stylesheet: Option<String>,
+    fontsize: Option<String>,
+    site_language: Option<String>,
+    pm_per_page: Option<i32>,
+    show_description: Option<bool>,
+    show_imdb: Option<bool>,
+    show_comment: Option<bool>,
+    show_ad: Option<bool>,
+    time_type: Option<String>,
+    torrents_per_page: Option<i32>,
+    incl_dead: Option<i32>,
+    sp_state: Option<i32>,
+    incl_bookmarked: Option<i32>,
+    tooltip: Option<String>,
+    append_sticky: Option<bool>,
+    append_new: Option<bool>,
+    append_promotion: Option<String>,
+    append_picked: Option<bool>,
+    small_descr: Option<bool>,
+    dl_icon: Option<bool>,
+    bm_icon: Option<bool>,
+    show_com_num: Option<bool>,
+    show_last_com: Option<String>,
+    topics_per_page: Option<i32>,
+    posts_per_page: Option<i32>,
+    view_avatars: Option<bool>,
+    view_signatures: Option<bool>,
+    tt_last_post: Option<bool>,
+    click_topic: Option<String>,
+    signature: Option<String>,
+    privacy: Option<String>,
+}
+
+/// 逐字段 COALESCE 更新（与 NexusPHP usercp save 一致：只改提交的字段）
+#[put("/me/settings")]
+async fn me_settings_put(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<SettingsUpdate>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let b = body.into_inner();
+    // 枚举合法性（后端权威，§8.1）
+    for (v, allowed) in [
+        (&b.accept_pm, &["yes", "friends", "no"][..]),
+        (&b.fontsize, &["small", "medium", "large"][..]),
+        (&b.time_type, &["timeadded", "timealive"][..]),
+        (&b.tooltip, &["minorimdb", "medianimdb", "off"][..]),
+        (&b.append_promotion, &["highlight", "word", "icon", "off"][..]),
+        (&b.show_last_com, &["yes", "no"][..]),
+        (&b.click_topic, &["firstpage", "lastpage"][..]),
+        (&b.privacy, &["normal", "low", "strong"][..]),
+    ] {
+        if let Some(v) = v {
+            if !allowed.contains(&v.as_str()) {
+                return Err(DomainError::Validation("非法的设定值".into()));
+            }
+        }
+    }
+    for n in [
+        b.gender.map(|v| v as i32),
+        b.country, b.download_speed, b.upload_speed, b.isp, b.pm_per_page,
+        b.torrents_per_page, b.incl_dead, b.sp_state, b.incl_bookmarked,
+        b.topics_per_page, b.posts_per_page,
+    ]
+    .into_iter()
+    .flatten()
+    {
+        if !(-1..=200).contains(&n) {
+            return Err(DomainError::Validation("数值超出范围".into()));
+        }
+    }
+    let updated = sqlx::query(
+        "UPDATE users SET \
+         parked = COALESCE($2, parked), accept_pm = COALESCE($3, accept_pm), \
+         delete_pm = COALESCE($4, delete_pm), save_pm = COALESCE($5, save_pm), \
+         comment_pm = COALESCE($6, comment_pm), notify_topic_reply = COALESCE($7, notify_topic_reply), \
+         notify_hr = COALESCE($8, notify_hr), gender = COALESCE($9, gender), \
+         country = COALESCE($10, country), download_speed = COALESCE($11, download_speed), \
+         upload_speed = COALESCE($12, upload_speed), isp = COALESCE($13, isp), \
+         info = COALESCE($14, info), avatar_url = COALESCE($15, avatar_url), \
+         browsecat = COALESCE($16, browsecat), stylesheet = COALESCE($17, stylesheet), \
+         fontsize = COALESCE($18, fontsize), site_language = COALESCE($19, site_language), \
+         pm_per_page = COALESCE($20, pm_per_page), show_description = COALESCE($21, show_description), \
+         show_imdb = COALESCE($22, show_imdb), show_comment = COALESCE($23, show_comment), \
+         show_ad = COALESCE($24, show_ad), time_type = COALESCE($25, time_type), \
+         torrents_per_page = COALESCE($26, torrents_per_page), incl_dead = COALESCE($27, incl_dead), \
+         sp_state = COALESCE($28, sp_state), incl_bookmarked = COALESCE($29, incl_bookmarked), \
+         tooltip = COALESCE($30, tooltip), append_sticky = COALESCE($31, append_sticky), \
+         append_new = COALESCE($32, append_new), append_promotion = COALESCE($33, append_promotion), \
+         append_picked = COALESCE($34, append_picked), small_descr = COALESCE($35, small_descr), \
+         dl_icon = COALESCE($36, dl_icon), bm_icon = COALESCE($37, bm_icon), \
+         show_com_num = COALESCE($38, show_com_num), show_last_com = COALESCE($39, show_last_com), \
+         topics_per_page = COALESCE($40, topics_per_page), posts_per_page = COALESCE($41, posts_per_page), \
+         view_avatars = COALESCE($42, view_avatars), view_signatures = COALESCE($43, view_signatures), \
+         tt_last_post = COALESCE($44, tt_last_post), click_topic = COALESCE($45, click_topic), \
+         signature = COALESCE($46, signature), privacy = COALESCE($47, privacy) \
+         WHERE id = $1",
+    )
+    .bind(auth.id)
+    .bind(b.parked).bind(b.accept_pm).bind(b.delete_pm).bind(b.save_pm)
+    .bind(b.comment_pm).bind(b.notify_topic_reply).bind(b.notify_hr)
+    .bind(b.gender).bind(b.country).bind(b.download_speed).bind(b.upload_speed)
+    .bind(b.isp).bind(b.info).bind(b.avatar_url).bind(b.browsecat)
+    .bind(b.stylesheet).bind(b.fontsize).bind(b.site_language).bind(b.pm_per_page)
+    .bind(b.show_description).bind(b.show_imdb).bind(b.show_comment).bind(b.show_ad)
+    .bind(b.time_type).bind(b.torrents_per_page).bind(b.incl_dead).bind(b.sp_state)
+    .bind(b.incl_bookmarked).bind(b.tooltip).bind(b.append_sticky).bind(b.append_new)
+    .bind(b.append_promotion).bind(b.append_picked).bind(b.small_descr).bind(b.dl_icon)
+    .bind(b.bm_icon).bind(b.show_com_num).bind(b.show_last_com)
+    .bind(b.topics_per_page).bind(b.posts_per_page).bind(b.view_avatars).bind(b.view_signatures)
+    .bind(b.tt_last_post).bind(b.click_topic).bind(b.signature).bind(b.privacy)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if updated.rows_affected() == 0 {
+        return Err(DomainError::Unauthorized);
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "usercp_settings_save", Some(auth.id))
+        .await;
+    Ok(ok(serde_json::json!({ "ok": true })))
 }
 
 // ============ 我的做种/下载/完成列表（旧站 getusertorrentlist 口径） ============

@@ -4,7 +4,7 @@
 //! 举报处理、用户管理（封禁/解封/等级调整）、审计日志查询、站点运营概览。
 //! 敏感操作全部 require_staff + audit 落库（§5.7）。
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse};
+use actix_web::{get, post, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -23,6 +23,9 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(user_set_status)
         .service(user_set_class)
         .service(audit_query)
+        .service(staff_panel)
+        .service(site_settings_get)
+        .service(site_settings_put)
 }
 
 async fn staff(
@@ -339,4 +342,110 @@ async fn audit_query(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
+}
+
+// ============ 管理组面板（staffpanel.php 复刻） + 站点设定 ============
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct StaffPanelEntry {
+    panel: String,
+    name: String,
+    url: String,
+    info: String,
+}
+
+/// 管理组面板三组入口：SysOp(99+) 全部；Administrator(93+) sysop+admin；版主(90+) 全部
+#[get("/admin/staffpanel")]
+async fn staff_panel(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let visible_panels: &[&str] = if auth.class_id >= 99 {
+        &["sysop", "admin", "moderator"]
+    } else if auth.class_id >= 93 {
+        &["admin", "moderator"]
+    } else {
+        &["moderator"]
+    };
+    let rows: Vec<StaffPanelEntry> = sqlx::query_as(
+        "SELECT panel, name, url, info FROM staff_panel_entries \
+         WHERE panel = ANY($1) ORDER BY panel, sort",
+    )
+    .bind(visible_panels.to_vec())
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "entries": rows,
+        "role": if auth.class_id >= 99 { "sysop" }
+            else if auth.class_id >= 93 { "administrator" }
+            else { "moderator" },
+    })))
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct SiteSettingRow {
+    name: String,
+    value: String,
+    updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// 站点设定：sysop（99）只读 + 可写；administrator 只读
+#[get("/admin/settings")]
+async fn site_settings_get(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let rows: Vec<SiteSettingRow> = sqlx::query_as(
+        "SELECT name, value, updated_at FROM site_settings ORDER BY name",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "settings": rows,
+        "editable": auth.class_id >= 99,
+    })))
+}
+
+#[derive(Deserialize)]
+struct SettingPut {
+    name: String,
+    value: String,
+}
+
+/// 修改单项站点设定（仅 sysop）
+#[put("/admin/settings")]
+async fn site_settings_put(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<SettingPut>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if auth.class_id < 99 {
+        return Err(DomainError::Forbidden);
+    }
+    if body.name.trim().is_empty() || body.value.len() > 4096 {
+        return Err(DomainError::Validation("非法的设定项".into()));
+    }
+    let updated = sqlx::query(
+        "UPDATE site_settings SET value = $3, updated_at = now() \
+         WHERE name = $2 RETURNING name",
+    )
+    .bind(auth.id)
+    .bind(body.name.trim())
+    .bind(body.value.trim())
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if updated.is_none() {
+        return Err(DomainError::Validation("设定项不存在".into()));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "site_setting_update", None)
+        .await;
+    Ok(ok(serde_json::json!({ "ok": true })))
 }

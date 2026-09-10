@@ -1,24 +1,31 @@
-import { Suspense } from "react";
-import { CheckinCard } from "@/components/economy-actions";
-import { MyProfileCard } from "@/components/my-profile";
-import { MyTorrentList } from "@/components/my-torrentlist";
-import { PasskeyCard } from "@/components/passkey-card";
+import Link from "next/link";
+import { UsercpPanel, type UsercpTab } from "@/components/usercp";
 import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-/** 个人中心（M09+）：数据总览 + 做种/下载/收藏列表 + 签到 + 火花流水 + passkey 管理 */
-export default async function MyPage() {
+const VALID_TABS: UsercpTab[] = ["overview", "personal", "tracker", "forum", "security"];
+
+/** 控制面板 —— 像素级复刻 NexusPHP usercp：侧边六项导航 + 账户概览/四组设定 */
+export default async function MyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { dict } = await getDict();
+  const sp = await searchParams;
+  const tab = VALID_TABS.includes(sp.tab as UsercpTab)
+    ? (sp.tab as UsercpTab)
+    : "overview";
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">{dict.my.title}</h1>
-      <MyProfileCard />
-      <Suspense fallback={null}>
-        <MyTorrentList />
-      </Suspense>
-      <CheckinCard />
-      <PasskeyCard />
+      <h1 className="font-display text-2xl">{dict.my.center}</h1>
+      <UsercpPanel initialTab={tab} />
+      <p className="text-xs text-sub">
+        <Link href="/faq" className="faqlink">
+          {dict.my.center}
+        </Link>
+      </p>
     </div>
   );
 }

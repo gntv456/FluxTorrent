@@ -46,28 +46,73 @@ interface AuditRow {
   created_at: string;
 }
 
-/** M29 管理后台（staff 专用）：概览 + 审核队列 + 举报 + 用户 + 审计 */
+interface PanelEntry {
+  panel: string;
+  name: string;
+  url: string;
+  info: string;
+}
+
+interface SiteSetting {
+  name: string;
+  value: string;
+  updated_at: string;
+}
+
+type AdminTab =
+  | "overview"
+  | "panel"
+  | "settings"
+  | "reviews"
+  | "reports"
+  | "users"
+  | "audit";
+
+/** 管理组面板（staffpanel.php 复刻）+ 站点设定 + 管理系统（审核/举报/用户/审计） */
 export default function AdminPage() {
   const { dict, locale } = useI18n();
-  const [tab, setTab] = useState<"overview" | "reviews" | "reports" | "users" | "audit">("overview");
+  const a = dict.admin;
+  const [tab, setTab] = useState<AdminTab>("panel");
   const [ov, setOv] = useState<Overview | null>(null);
   const [reviews, setReviews] = useState<PendingTorrent[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [audit, setAudit] = useState<AuditRow[]>([]);
+  const [panel, setPanel] = useState<PanelEntry[]>([]);
+  const [role, setRole] = useState("");
+  const [settings, setSettings] = useState<SiteSetting[]>([]);
+  const [settingsEditable, setSettingsEditable] = useState(false);
+  const [editing, setEditing] = useState<Record<string, string>>({});
   const [userQ, setUserQ] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setOv(await api.get<Overview>("/api/v1/admin/overview"));
-      setReviews(await api.get<PendingTorrent[]>("/api/v1/admin/reviews"));
-      setReports(await api.get<Report[]>("/api/v1/admin/reports"));
-      setAudit(await api.get<AuditRow[]>("/api/v1/admin/audit"));
+      const [ovr, rev, rep, aud, pnl] = await Promise.all([
+        api.get<Overview>("/api/v1/admin/overview"),
+        api.get<PendingTorrent[]>("/api/v1/admin/reviews"),
+        api.get<Report[]>("/api/v1/admin/reports"),
+        api.get<AuditRow[]>("/api/v1/admin/audit"),
+        api.get<{ entries: PanelEntry[]; role: string }>("/api/v1/admin/staffpanel"),
+      ]);
+      setOv(ovr);
+      setReviews(rev);
+      setReports(rep);
+      setAudit(aud);
+      setPanel(pnl.entries);
+      setRole(pnl.role);
+      if (pnl.role === "sysop" || pnl.role === "administrator") {
+        const st = await api.get<{ settings: SiteSetting[]; editable: boolean }>(
+          "/api/v1/admin/settings",
+        );
+        setSettings(st.settings);
+        setSettingsEditable(st.editable);
+      }
+      setTab("panel");
     } catch (e) {
-      setMsg(e instanceof ApiError && e.code === 2003 ? dict.admin.needAdmin : dict.common.loadFailed);
+      setMsg(e instanceof ApiError && e.code === 2003 ? a.needAdmin : dict.common.loadFailed);
     }
-  }, [dict]);
+  }, [a, dict]);
 
   useEffect(() => {
     load();
@@ -79,12 +124,12 @@ export default function AdminPage() {
         await api.get<AdminUser[]>(`/api/v1/admin/users?q=${encodeURIComponent(userQ)}`),
       );
     } catch {
-      setMsg(dict.admin.searchUsersFail);
+      setMsg(a.searchUsersFail);
     }
   }
 
   async function decide(torrentId: number, approve: boolean) {
-    const reason = approve ? "" : (prompt(dict.admin.rejectReason) ?? "");
+    const reason = approve ? "" : (prompt(a.rejectReason) ?? "");
     if (!approve && !reason) return;
     try {
       await api.post("/api/v1/admin/reviews/decide", {
@@ -92,44 +137,67 @@ export default function AdminPage() {
         approve,
         reason,
       });
-      setMsg(approve ? fmt(dict.admin.approved, { id: torrentId }) : fmt(dict.admin.rejected, { id: torrentId }));
+      setMsg(approve ? fmt(a.approved, { id: torrentId }) : fmt(a.rejected, { id: torrentId }));
       load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.admin.actionFailed);
+      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
     }
   }
 
   async function resolveReport(id: number) {
     try {
       await api.post("/api/v1/admin/reports/resolve", { report_id: id });
-      setMsg(fmt(dict.admin.resolved, { id }));
+      setMsg(fmt(a.resolved, { id }));
       load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.admin.actionFailed);
+      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
     }
   }
 
   async function setUserStatus(userId: number, status: number) {
     try {
       await api.post("/api/v1/admin/users/status", { user_id: userId, status });
-      setMsg(fmt(dict.admin.statusChanged, { id: userId, status: dict.admin.status[status] }));
+      setMsg(fmt(a.statusChanged, { id: userId, status: a.status[status] }));
       searchUsers();
     } catch (e) {
-      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.admin.actionFailed);
+      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
+    }
+  }
+
+  async function saveSetting(name: string) {
+    const value = editing[name];
+    if (value === undefined) return;
+    try {
+      await api.put("/api/v1/admin/settings", { name, value });
+      setMsg(fmt(a.settingSaved, { name }));
+      const st = await api.get<{ settings: SiteSetting[]; editable: boolean }>(
+        "/api/v1/admin/settings",
+      );
+      setSettings(st.settings);
+    } catch (e) {
+      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
     }
   }
 
   const TABS = [
-    ["overview", dict.admin.tabs.overview],
-    ["reviews", fmt(dict.admin.tabs.reviews, { n: reviews.length })],
-    ["reports", fmt(dict.admin.tabs.reports, { n: reports.length })],
-    ["users", dict.admin.tabs.users],
-    ["audit", dict.admin.tabs.audit],
+    ["panel", a.tabs.panel],
+    ["overview", a.tabs.overview],
+    ...(role === "sysop" || role === "administrator"
+      ? ([["settings", a.tabs.settings]] as const)
+      : []),
+    ["reviews", fmt(a.tabs.reviews, { n: reviews.length })],
+    ["reports", fmt(a.tabs.reports, { n: reports.length })],
+    ["users", a.tabs.users],
+    ["audit", a.tabs.audit],
   ] as const;
+
+  const panelGroups: [string, PanelEntry[]][] = ["sysop", "admin", "moderator"]
+    .map((g) => [g, panel.filter((e) => e.panel === g)] as [string, PanelEntry[]])
+    .filter(([, entries]) => entries.length > 0);
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">{dict.admin.title}</h1>
+      <h1 className="font-display text-2xl">{a.panelTitle}</h1>
 
       <div className="flex flex-wrap gap-2" role="tablist">
         {TABS.map(([key, label]) => (
@@ -151,14 +219,45 @@ export default function AdminPage() {
         <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>
       )}
 
+      {/* 管理组面板：三组 colhead 表格（SysOp/Administrator/Moderator） */}
+      {tab === "panel" &&
+        panelGroups.map(([group, entries]) => (
+          <section key={group} className="nexus-detail">
+            <h2 className="mb-2 text-center text-base font-bold text-ink">
+              ..:: {a.groups[group]} ::..
+            </h2>
+            <table className="nexus-table">
+              <thead>
+                <tr>
+                  <td className="colhead">{a.colOptionName}</td>
+                  <td className="colhead">{a.colInfo}</td>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((e) => (
+                  <tr key={`${e.panel}-${e.name}`}>
+                    <td className="rowfollow font-bold">
+                      <a href={e.url}>{e.name}</a>
+                    </td>
+                    <td className="rowfollow">{e.info}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        ))}
+      {tab === "panel" && panelGroups.length === 0 && (
+        <p className="py-6 text-center text-sub">{a.panelEmpty}</p>
+      )}
+
       {tab === "overview" && ov && (
         <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {[
-            [dict.admin.pendingReviews, ov.pending_reviews],
-            [dict.admin.openReports, ov.open_reports],
-            [dict.admin.users, ov.users],
-            [dict.admin.torrents, ov.torrents],
-            [dict.admin.bannedUsers, ov.banned_users],
+            [a.pendingReviews, ov.pending_reviews],
+            [a.openReports, ov.open_reports],
+            [a.users, ov.users],
+            [a.torrents, ov.torrents],
+            [a.bannedUsers, ov.banned_users],
           ].map(([label, v]) => (
             <div
               key={String(label)}
@@ -171,6 +270,55 @@ export default function AdminPage() {
         </section>
       )}
 
+      {/* 站点设定：键值表（sysop 可编辑） */}
+      {tab === "settings" && (
+        <section className="nexus-detail">
+          <table className="nexus-table">
+            <thead>
+              <tr>
+                <td className="colhead">{a.colSettingName}</td>
+                <td className="colhead">{a.colSettingValue}</td>
+                <td className="colhead">{a.colSettingUpdated}</td>
+                {settingsEditable && <td className="colhead">{a.colSettingAction}</td>}
+              </tr>
+            </thead>
+            <tbody>
+              {settings.map((s) => (
+                <tr key={s.name}>
+                  <td className="rowfollow font-mono text-xs">{s.name}</td>
+                  <td className="rowfollow">
+                    {settingsEditable ? (
+                      <input
+                        className="uc-input-wide"
+                        defaultValue={s.value}
+                        onChange={(e) =>
+                          setEditing((prev) => ({ ...prev, [s.name]: e.target.value }))
+                        }
+                      />
+                    ) : (
+                      s.value
+                    )}
+                  </td>
+                  <td className="rowfollow text-xs text-sub">
+                    {new Date(s.updated_at).toLocaleString(dateLocale(locale))}
+                  </td>
+                  {settingsEditable && (
+                    <td className="rowfollow">
+                      <button
+                        onClick={() => saveSetting(s.name)}
+                        className="min-h-[32px] rounded-full bg-sky px-3 text-xs font-bold text-white"
+                      >
+                        {a.saveSetting}
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       {tab === "reviews" && (
         <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
           <ul className="flex flex-col divide-y divide-line">
@@ -179,7 +327,7 @@ export default function AdminPage() {
                 <div className="flex-1">
                   <p className="text-sm font-bold">{t.name}</p>
                   <p className="text-xs text-sub">
-                    #{t.id} · {fmt(dict.admin.uploader, { name: t.owner_id ?? dict.torrent.anonymous })} ·{" "}
+                    #{t.id} · {fmt(a.uploader, { name: t.owner_id ?? dict.torrent.anonymous })} ·{" "}
                     {(t.size / 1024 / 1024 / 1024).toFixed(2)}GB
                   </p>
                 </div>
@@ -187,17 +335,17 @@ export default function AdminPage() {
                   onClick={() => decide(t.id, true)}
                   className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white"
                 >
-                  {dict.admin.approve}
+                  {a.approve}
                 </button>
                 <button
                   onClick={() => decide(t.id, false)}
                   className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white"
                 >
-                  {dict.admin.reject}
+                  {a.reject}
                 </button>
               </li>
             ))}
-            {reviews.length === 0 && <li className="py-6 text-center text-sub">{dict.admin.queueEmpty}</li>}
+            {reviews.length === 0 && <li className="py-6 text-center text-sub">{a.queueEmpty}</li>}
           </ul>
         </section>
       )}
@@ -215,18 +363,18 @@ export default function AdminPage() {
                     #{r.ref_id}
                   </p>
                   <p className="text-xs text-sub">
-                    {r.reason} · {fmt(dict.admin.reporter, { id: r.reporter_id })}
+                    {r.reason} · {fmt(a.reporter, { id: r.reporter_id })}
                   </p>
                 </div>
                 <button
                   onClick={() => resolveReport(r.id)}
                   className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
                 >
-                  {dict.admin.resolve}
+                  {a.resolve}
                 </button>
               </li>
             ))}
-            {reports.length === 0 && <li className="py-6 text-center text-sub">{dict.admin.noReports}</li>}
+            {reports.length === 0 && <li className="py-6 text-center text-sub">{a.noReports}</li>}
           </ul>
         </section>
       )}
@@ -238,14 +386,14 @@ export default function AdminPage() {
               value={userQ}
               onChange={(e) => setUserQ(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && searchUsers()}
-              placeholder={dict.admin.searchPlaceholder}
+              placeholder={a.searchPlaceholder}
               className="min-h-[44px] flex-1 rounded-[var(--r-sm)] border border-line px-3"
             />
             <button
               onClick={searchUsers}
               className="min-h-[44px] rounded-full bg-sky px-5 text-sm font-bold text-white"
             >
-              {dict.admin.search}
+              {a.search}
             </button>
           </div>
           <ul className="flex flex-col divide-y divide-line rounded-[var(--r-lg)] border border-line bg-white p-4">
@@ -256,7 +404,7 @@ export default function AdminPage() {
                     {u.username}
                     {u.status > 0 && (
                       <span className="ml-1 rounded-full bg-coral/20 px-2 py-0.5 text-[10px] text-danger">
-                        {dict.admin.status[u.status]}
+                        {a.status[u.status]}
                       </span>
                     )}
                   </p>
@@ -270,12 +418,12 @@ export default function AdminPage() {
                     u.status >= 2 ? "bg-mint text-white" : "border border-line text-danger"
                   }`}
                 >
-                  {u.status >= 2 ? dict.admin.unban : dict.admin.ban}
+                  {u.status >= 2 ? a.unban : a.ban}
                 </button>
               </li>
             ))}
             {users.length === 0 && (
-              <li className="py-6 text-center text-sub">{dict.admin.searchFirst}</li>
+              <li className="py-6 text-center text-sub">{a.searchFirst}</li>
             )}
           </ul>
         </section>
@@ -284,12 +432,12 @@ export default function AdminPage() {
       {tab === "audit" && (
         <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
           <ul className="flex flex-col divide-y divide-line text-sm">
-            {audit.map((a) => (
-              <li key={a.id} className="flex items-center justify-between py-2">
-                <span className="font-mono text-xs">{a.action}</span>
+            {audit.map((row) => (
+              <li key={row.id} className="flex items-center justify-between py-2">
+                <span className="font-mono text-xs">{row.action}</span>
                 <span className="text-xs text-sub">
-                  {fmt(dict.admin.actor, { id: a.actor_id ?? "-" })} ·{" "}
-                  {new Date(a.created_at).toLocaleString(dateLocale(locale))}
+                  {fmt(a.actor, { id: row.actor_id ?? "-" })} ·{" "}
+                  {new Date(row.created_at).toLocaleString(dateLocale(locale))}
                 </span>
               </li>
             ))}
