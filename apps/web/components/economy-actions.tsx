@@ -101,82 +101,117 @@ export function CheckinCard() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
-          <p className="text-xs text-sub">{dict.my.balance}</p>
-          <p className="num mt-1 text-xl">
-            {(spark?.balance ?? 0).toLocaleString(dateLocale(locale))}
-          </p>
-        </div>
-        <div className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
-          <p className="text-xs text-sub">{dict.my.seedingCount}</p>
-          <p className="num mt-1 text-xl text-mint">{spark?.seeding_count ?? 0}</p>
-        </div>
-        <div className="col-span-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)] sm:col-span-1">
-          <p className="text-xs text-sub">{dict.my.hourly}</p>
-          <p className="num mt-1 text-xl text-sky">
-            +{spark?.hourly_estimate ?? 0}
-          </p>
-        </div>
+    <div className="flex flex-col gap-4">
+      {/* 火花总览（rowhead/rowfollow 经典表格） */}
+      <section className="nexus-detail">
+        <table className="nexus-table nexus-form">
+          <thead>
+            <tr>
+              <td colSpan={2} className="colhead">
+                {dict.common.spark}
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="rowhead">{dict.my.balance}</td>
+              <td className="rowfollow">
+                <span className="num">
+                  {(spark?.balance ?? 0).toLocaleString(dateLocale(locale))}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td className="rowhead">{dict.my.seedingCount}</td>
+              <td className="rowfollow">
+                <span className="num text-mint">{spark?.seeding_count ?? 0}</span>
+              </td>
+            </tr>
+            <tr>
+              <td className="rowhead">{dict.my.hourly}</td>
+              <td className="rowfollow">
+                <span className="num text-sky">+{spark?.hourly_estimate ?? 0}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
-      <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-lg">{dict.my.dailyCheckin}</h2>
-            {att && (
-              <p className="text-xs text-sub">
-                {fmt(dict.my.streak, { n: att.streak })}
-              </p>
+      {/* 签到 / 登出 */}
+      <section className="nexus-detail">
+        <table className="nexus-table nexus-form">
+          <thead>
+            <tr>
+              <td colSpan={2} className="colhead">
+                {dict.my.dailyCheckin}
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="rowhead">{dict.my.streak.replace("{n}", String(att?.streak ?? 0))}</td>
+              <td className="rowfollow">
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={checkin}
+                    disabled={busy || att?.checked_today}
+                    className="min-h-[44px] rounded-full bg-sun px-6 font-bold text-ink active:scale-[0.97] disabled:opacity-50"
+                  >
+                    {att?.checked_today
+                      ? dict.my.checked
+                      : busy
+                        ? dict.my.checkinBusy
+                        : dict.my.checkin}
+                  </button>
+                  <button
+                    onClick={logout}
+                    className="min-h-[44px] rounded-full border border-line px-5 text-sm text-sub transition-colors hover:text-coral"
+                  >
+                    {dict.my.logout}
+                  </button>
+                </div>
+                {msg && <p className="mt-2 text-sm text-sub">{msg}</p>}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      {/* 火花流水 */}
+      <section className="nexus-detail">
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <td className="colhead">{dict.my.ledger}</td>
+              <td className="colhead w-36 text-right">±{dict.common.spark}</td>
+            </tr>
+          </thead>
+          <tbody>
+            {ledger.map((row, i) => (
+              <tr key={i}>
+                <td>
+                  <p>{dict.my.kinds[row.kind] ?? row.kind}</p>
+                  <p className="text-[11px] text-sub">
+                    {new Date(row.created_at).toLocaleString(dateLocale(locale))}
+                  </p>
+                </td>
+                <td
+                  className={`num w-36 text-right font-bold ${row.amount >= 0 ? "text-mint" : "text-coral"}`}
+                >
+                  {row.amount >= 0 ? "+" : ""}
+                  {row.amount.toLocaleString(dateLocale(locale))}
+                </td>
+              </tr>
+            ))}
+            {ledger.length === 0 && (
+              <tr>
+                <td colSpan={2} className="py-4 text-center text-sub">
+                  {dict.my.noLedger}
+                </td>
+              </tr>
             )}
-          </div>
-          <button
-            onClick={checkin}
-            disabled={busy || att?.checked_today}
-            className="min-h-[44px] rounded-full bg-sun px-6 font-bold text-ink active:scale-[0.97] disabled:opacity-50"
-          >
-            {att?.checked_today
-              ? dict.my.checked
-              : busy
-                ? dict.my.checkinBusy
-                : dict.my.checkin}
-          </button>
-        </div>
-        {msg && <p className="mt-2 text-sm text-sub">{msg}</p>}
-        <div className="mt-2 flex justify-end">
-          <button
-            onClick={logout}
-            className="min-h-[44px] rounded-full border border-line px-5 text-sm text-sub transition-colors hover:text-coral"
-          >
-            {dict.my.logout}
-          </button>
-        </div>
-      </section>
-
-      <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
-        <h2 className="mb-2 font-display text-lg">{dict.my.ledger}</h2>
-        <ul className="flex flex-col divide-y divide-line text-sm">
-          {ledger.map((row, i) => (
-            <li key={i} className="flex items-center justify-between py-2">
-              <div>
-                <p>{dict.my.kinds[row.kind] ?? row.kind}</p>
-                <p className="text-[11px] text-sub">
-                  {new Date(row.created_at).toLocaleString(dateLocale(locale))}
-                </p>
-              </div>
-              <span
-                className={`num font-bold ${row.amount >= 0 ? "text-mint" : "text-coral"}`}
-              >
-                {row.amount >= 0 ? "+" : ""}
-                {row.amount.toLocaleString(dateLocale(locale))}
-              </span>
-            </li>
-          ))}
-          {ledger.length === 0 && (
-            <li className="py-4 text-center text-sub">{dict.my.noLedger}</li>
-          )}
-        </ul>
+          </tbody>
+        </table>
       </section>
     </div>
   );

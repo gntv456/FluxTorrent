@@ -205,6 +205,18 @@ a:hover {
   vertical-align: top;
 }
 
+/* 评论区（NexusPHP 外观）：作者列窄底奶色 + 正文列宽，与详情 label/value 一致 */
+.nexus-comment td:first-child {
+  width: 132px;
+  background: #fff1dc;
+}
+.nexus-comment td:last-child {
+  background: #fffaf3;
+}
+.nexus-comment:hover td {
+  background: #fff6e9;
+}
+
 /* ============ 顶栏主导航（#mainmenu 卡片按钮条） ============ */
 .mainmenu {
   display: flex;

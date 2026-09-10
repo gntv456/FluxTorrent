@@ -16,7 +16,7 @@ interface MeProfile {
   bookmarks: number;
 }
 
-/** 我的数据总览（旧站 my_data_stats 口径）：传输量/分享率/做种下载/发布数 */
+/** 我的数据总览（旧站 usercp/my_data_stats 口径）：rowhead/rowfollow 经典表格 */
 export function MyProfileCard() {
   const { dict } = useI18n();
   const [me, setMe] = useState<MeProfile | null>(null);
@@ -41,39 +41,48 @@ export function MyProfileCard() {
       ? "∞"
       : (me.uploaded / me.downloaded).toFixed(2);
 
-  const cells: { label: string; value: string; cls?: string }[] = [
-    { label: dict.my.uploaded, value: formatBytesLocal(me.uploaded), cls: "text-mint" },
-    { label: dict.my.downloaded, value: formatBytesLocal(me.downloaded), cls: "text-coral" },
-    { label: dict.my.ratio, value: ratio, cls: Number(ratio) < 1 ? "text-coral" : "text-mint" },
+  const rows: { label: string; value: React.ReactNode }[] = [
     { label: dict.my.classLabel, value: me.class_name ?? "—" },
-    { label: dict.my.seedingLabel, value: String(me.seeding), cls: "text-mint" },
-    { label: dict.my.leechingLabel, value: String(me.leeching), cls: "text-coral" },
-    { label: dict.my.uploadsCount, value: String(me.uploads) },
-    { label: dict.my.bookmarksCount, value: String(me.bookmarks) },
+    {
+      label: dict.my.uploaded,
+      value: <span className="num text-mint">{formatBytesLocal(me.uploaded)}</span>,
+    },
+    {
+      label: dict.my.downloaded,
+      value: <span className="num text-coral">{formatBytesLocal(me.downloaded)}</span>,
+    },
+    {
+      label: dict.my.ratio,
+      value: (
+        <span className={`num ${Number(ratio) < 1 ? "text-coral" : "text-mint"}`}>{ratio}</span>
+      ),
+    },
+    { label: dict.my.seedingLabel, value: <span className="num text-mint">{me.seeding}</span> },
+    { label: dict.my.leechingLabel, value: <span className="num text-coral">{me.leeching}</span> },
+    { label: dict.my.uploadsCount, value: <span className="num">{me.uploads}</span> },
+    { label: dict.my.bookmarksCount, value: <span className="num">{me.bookmarks}</span> },
   ];
 
   return (
-    <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
-      <div className="mb-3 flex items-center gap-3">
-        <span aria-hidden className="text-[40px] leading-none">
-          🦉
-        </span>
-        <div>
-          <h2 className="font-display text-lg">{me.username}</h2>
-          <p className="text-xs text-sub">{me.class_name ?? ""}</p>
-        </div>
-      </div>
-      <dl className="num grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        {cells.map((c) => (
-          <div
-            key={c.label}
-            className="rounded-[var(--r-md)] border border-line bg-cloud/60 p-3"
-          >
-            <dt className="text-xs text-sub">{c.label}</dt>
-            <dd className={`mt-1 text-lg ${c.cls ?? ""}`}>{c.value}</dd>
-          </div>
-        ))}
-      </dl>
+    <section className="nexus-detail">
+      <table className="nexus-table nexus-form">
+        <thead>
+          <tr>
+            <td colSpan={2} className="colhead">
+              {me.username}
+              {me.class_name ? <span className="text-sub"> · {me.class_name}</span> : null}
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label}>
+              <td className="rowhead">{r.label}</td>
+              <td className="rowfollow">{r.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   );
 }

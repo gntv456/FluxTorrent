@@ -298,14 +298,14 @@ export default async function TorrentDetailPage({
           </thead>
           <tbody>
             {comments.map((c) => (
-              <tr key={c.id}>
+              <tr key={c.id} className="nexus-comment">
                 <td>
                   <p className="text-sm font-bold">{c.username ?? dict.torrent.anonymous}</p>
-                  <p className="mt-1 text-sm whitespace-pre-wrap">{c.body}</p>
                   <p className="mt-1 text-[11px] text-sub">
                     {new Date(c.created_at).toLocaleString(dateLocale(locale))}
                   </p>
                 </td>
+                <td className="text-sm whitespace-pre-wrap">{c.body}</td>
               </tr>
             ))}
             {comments.length === 0 && (
