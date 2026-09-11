@@ -13,8 +13,8 @@ export type Theme = "brand" | "brand-night";
 
 /** 主题对应的浏览器界面色（移动端状态栏 / PWA 标题栏） */
 const THEME_CHROME: Record<Theme, string> = {
-  brand: "#f2f7fd",
-  "brand-night": "#0f1826",
+  brand: "#f5faff",
+  "brand-night": "#0f1424",
 };
 
 function applyChromeColor(theme: Theme) {

@@ -46,6 +46,12 @@ const zhCnBase = {
     preserve: "保种区",
     upload: "发布",
     ariaPrimary: "主导航",
+    more: "更多",
+    discover: "发现",
+    spark: "火花经济",
+    growth: "成长荣誉",
+    fun: "娱乐",
+    tabbarMessages: "消息",
   },
   tabbar: {
     home: "首页",
