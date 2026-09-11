@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { PushSettings } from "@/components/push-settings";
 import { TwoFactorSetup } from "@/components/twofa-setup";
 import { ApiTokens } from "@/components/api-tokens";
@@ -26,6 +28,25 @@ export const USERCP_NAV: { key: UsercpTab; icon: string }[] = [
   { key: "forum", icon: "♧" },
   { key: "security", icon: "⌾" },
 ];
+
+// ============ 站点语言 ⇄ 前端 locale 映射 ============
+// 库里存 NexusPHP 风格码（en/chs/cht），前端 i18n 用 BCP47（zh-CN/zh-TW/en）。
+// 两套体系此前割裂：控制面板改语言只落库，页面语言纹丝不动 —— 修复为保存时同步 cookie 并刷新。
+
+const LANG_TO_LOCALE: Record<string, Locale> = {
+  en: "en",
+  chs: "zh-CN",
+  cht: "zh-TW",
+};
+const LOCALE_TO_LANG: Record<Locale, string> = {
+  en: "en",
+  "zh-CN": "chs",
+  "zh-TW": "cht",
+};
+
+function syncLocaleCookie(locale: Locale) {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
+}
 
 // ============ 类型 ============
 
@@ -152,7 +173,8 @@ function daysSince(iso: string | null): number {
 // ============ 主组件 ============
 
 export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
+  const router = useRouter();
   const t = dict.usercp;
   const [tab, setTab] = useState<UsercpTab>(initialTab);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -169,7 +191,15 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
     setErr(null);
     api
       .get<UserSettings>("/api/v1/me/settings")
-      .then(setSettings)
+      .then((s) => {
+        setSettings(s);
+        // 反向一致：库里语言与当前 locale 不一致（如别的设备改过）→ 以库为准同步 cookie
+        const want = LANG_TO_LOCALE[s.site_language];
+        if (want && want !== locale) {
+          syncLocaleCookie(want);
+          router.refresh();
+        }
+      })
       .catch((e) =>
         setErr(e instanceof ApiError ? e.message : dict.common.loadFailed),
       );
@@ -179,7 +209,8 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
         .then(setOverview)
         .catch(() => setOverview(null));
     }
-  }, [tab, dict]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   const patch = (p: Partial<UserSettings>) => {
     if (settings) setSettings({ ...settings, ...p });
@@ -193,6 +224,12 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
     try {
       await api.put("/api/v1/me/settings", settings);
       setSaved(true);
+      // 站点语言变更 → 同步前端 locale cookie 并刷新整站（RSC 重取词典）
+      const want = LANG_TO_LOCALE[settings.site_language];
+      if (want && want !== locale) {
+        syncLocaleCookie(want);
+        router.refresh();
+      }
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : dict.common.loadFailed);
     } finally {
