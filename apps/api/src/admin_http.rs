@@ -390,6 +390,8 @@ struct SiteSettingRow {
     name: String,
     value: String,
     updated_at: chrono::DateTime<chrono::Utc>,
+    descr: Option<String>,
+    grp: Option<String>,
 }
 
 /// 站点设定：sysop（99）只读 + 可写；administrator 只读
@@ -400,7 +402,7 @@ async fn site_settings_get(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     let rows: Vec<SiteSettingRow> = sqlx::query_as(
-        "SELECT name, value, updated_at FROM site_settings ORDER BY name",
+        "SELECT name, value, updated_at, descr, COALESCE(grp, 'misc') AS grp FROM site_settings ORDER BY grp, name",
     )
     .fetch_all(&state.repo.db)
     .await
