@@ -69,6 +69,8 @@ interface SiteSetting {
   name: string;
   value: string;
   updated_at: string;
+  descr?: string | null;
+  grp?: string | null;
 }
 
 type AdminTab =
@@ -239,6 +241,19 @@ export default function AdminPage({
     ["tools", dict.stafftools.title],
   ] as const;
 
+  // 站点设定十三分组（NexusPHP settings.php 口径）
+  const GROUP_LABELS: Record<string, string> = a.settingGroups ?? {};
+  const FALLBACK_ORDER = ["basic", "main", "smtp", "security", "authority", "tweak", "bonus", "account", "torrent", "attachment", "advertisement", "misc"];
+  const settingGroups: [string, string, SiteSetting[]][] = (() => {
+    const byGrp = new Map<string, SiteSetting[]>();
+    for (const s of settings) {
+      const g = s.grp ?? "misc";
+      byGrp.set(g, [...(byGrp.get(g) ?? []), s]);
+    }
+    const order = [...FALLBACK_ORDER.filter((g) => byGrp.has(g)), ...[...byGrp.keys()].filter((g) => !FALLBACK_ORDER.includes(g))];
+    return order.map((g) => [g, GROUP_LABELS[g] ?? g, byGrp.get(g)!] as [string, string, SiteSetting[]]);
+  })();
+
   const panelGroups: [string, PanelEntry[]][] = ["sysop", "admin", "moderator"]
     .map((g) => [g, panel.filter((e) => e.panel === g)] as [string, PanelEntry[]])
     .filter(([, entries]) => entries.length > 0);
@@ -320,50 +335,66 @@ export default function AdminPage({
 
       {/* 站点设定：键值表（sysop 可编辑） */}
       {tab === "settings" && (
-        <section className="nexus-detail">
-          <table className="nexus-table">
-            <thead>
-              <tr>
-                <td className="colhead">{a.colSettingName}</td>
-                <td className="colhead">{a.colSettingValue}</td>
-                <td className="colhead">{a.colSettingUpdated}</td>
-                {settingsEditable && <td className="colhead">{a.colSettingAction}</td>}
-              </tr>
-            </thead>
-            <tbody>
-              {settings.map((s) => (
-                <tr key={s.name}>
-                  <td className="rowfollow font-mono text-xs">{s.name}</td>
-                  <td className="rowfollow">
-                    {settingsEditable ? (
-                      <input
-                        className="uc-input-wide"
-                        defaultValue={s.value}
-                        onChange={(e) =>
-                          setEditing((prev) => ({ ...prev, [s.name]: e.target.value }))
-                        }
-                      />
-                    ) : (
-                      s.value
-                    )}
+        <section className="flex flex-col gap-4">
+          <p className="text-xs text-sub">{a.settingsGroupNote}</p>
+          {settingGroups.map(([grp, label, items]) => (
+            <table key={grp} className="nexus-table">
+              <thead>
+                <tr>
+                  <td className="colhead" colSpan={settingsEditable ? 4 : 3}>
+                    <h2 className="font-display">
+                      {label}
+                      <span className="ml-2 text-xs font-normal text-sub">{items.length}</span>
+                    </h2>
                   </td>
-                  <td className="rowfollow text-xs text-sub">
-                    {new Date(s.updated_at).toLocaleString(dateLocale(locale))}
-                  </td>
-                  {settingsEditable && (
-                    <td className="rowfollow">
-                      <button
-                        onClick={() => saveSetting(s.name)}
-                        className="min-h-[32px] rounded-full bg-sky px-3 text-xs font-bold text-white"
-                      >
-                        {a.saveSetting}
-                      </button>
-                    </td>
-                  )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+                <tr>
+                  <th className="w-56">{a.colSettingName}</th>
+                  <th>{a.colSettingValue}</th>
+                  <th className="w-36">{a.colSettingUpdated}</th>
+                  {settingsEditable && <th className="w-24">{a.colSettingAction}</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((s) => (
+                  <tr key={s.name}>
+                    <td className="rowfollow">
+                      <span className="font-mono text-xs">{s.name}</span>
+                      {s.descr && (
+                        <p className="mt-0.5 text-[11px] leading-tight text-sub">{s.descr}</p>
+                      )}
+                    </td>
+                    <td className="rowfollow">
+                      {settingsEditable ? (
+                        <input
+                          className="uc-input-wide"
+                          defaultValue={s.value}
+                          onChange={(e) =>
+                            setEditing((prev) => ({ ...prev, [s.name]: e.target.value }))
+                          }
+                        />
+                      ) : (
+                        s.value
+                      )}
+                    </td>
+                    <td className="rowfollow text-xs text-sub">
+                      {new Date(s.updated_at).toLocaleString(dateLocale(locale))}
+                    </td>
+                    {settingsEditable && (
+                      <td className="rowfollow">
+                        <button
+                          onClick={() => saveSetting(s.name)}
+                          className="min-h-[32px] rounded-full bg-sky px-3 text-xs font-bold text-white"
+                        >
+                          {a.saveSetting}
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ))}
         </section>
       )}
 
