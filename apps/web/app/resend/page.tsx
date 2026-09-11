@@ -46,7 +46,7 @@ export default function ResendPage() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
-            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40"
+            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 outline-none focus:ring-2 focus:ring-sky/40"
           />
         </label>
         {msg && (

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt, LOCALES, LOCALE_COOKIE, type Locale } from "@/i18n/config";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface LoginResp {
   token: string;
@@ -282,7 +283,10 @@ function LoginShell() {
 
         {/* 右上：语言行 */}
         <div className="bz-login-lang-row">
-          <LoginLangSwitcher current={locale} />
+          <div className="flex items-center gap-2">
+            <ThemeToggle className="min-h-0" />
+            <LoginLangSwitcher current={locale} />
+          </div>
         </div>
 
         {/* 右：表单卡 */}

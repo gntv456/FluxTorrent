@@ -42,7 +42,7 @@ export function PollBox({ empty }: { empty: string }) {
         return (
           <div
             key={p.id}
-            className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+            className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
           >
             <h3 className="font-bold">{p.question}</h3>
             <ul className="mt-2 flex flex-col gap-1.5">
@@ -57,7 +57,7 @@ export function PollBox({ empty }: { empty: string }) {
                       disabled={p.my_vote !== null}
                       onClick={() => vote(p.id, i)}
                       className={`w-full min-h-[36px] rounded-[var(--r-sm)] border px-3 text-left text-sm ${
-                        mine ? "border-sky-deep bg-sky-soft" : "border-line bg-white"
+                        mine ? "border-sky-deep bg-sky-soft" : "border-line bg-[var(--surface-card)]"
                       } ${p.my_vote !== null ? "cursor-default" : "hover:border-sky"}`}
                     >
                       <span className="flex items-center justify-between gap-2">
@@ -94,7 +94,7 @@ export function OfferList({ offers, empty }: { offers: OfferItem[]; empty: strin
       {offers.map((o) => (
         <li
           key={o.id}
-          className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
         >
           <div className="min-w-0">
             <p className="truncate font-bold">{o.torrent_name ?? `#${o.torrent_id ?? "?"}`}</p>

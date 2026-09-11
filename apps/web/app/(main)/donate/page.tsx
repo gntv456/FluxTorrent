@@ -209,7 +209,7 @@ export default function DonatePage() {
             {(st?.ledger ?? []).map((r) => (
               <tr key={r.id}>
                 <td>{r.kind === "topup" ? t.kindTopup : t.kindOrder}{r.note ? ` · ${r.note}` : ""}</td>
-                <td className={`num font-bold ${r.amount_usd >= 0 ? "text-[#2fb26b]" : "text-[#e14d4d]"}`}>
+                <td className={`num font-bold ${r.amount_usd >= 0 ? "text-success" : "text-danger"}`}>
                   {r.amount_usd >= 0 ? "+" : ""}{r.amount_usd.toFixed(2)}
                 </td>
                 <td className="num">{r.balance_after.toFixed(2)}</td>

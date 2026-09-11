@@ -125,7 +125,7 @@ export function TorrentManage({
       </div>
 
       {open && (
-        <div className="flex w-full flex-col gap-2 rounded-[var(--r-md)] border border-line bg-white p-3">
+        <div className="flex w-full flex-col gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3">
           <label className="flex flex-col gap-1 text-xs">
             {t.fieldName}
             <input

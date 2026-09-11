@@ -22,7 +22,7 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
   return (
     <Link
       href={`/torrent/${t.id}`}
-      className="flex items-center gap-3 rounded-[var(--r-md)] border border-line bg-white p-3 shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5 active:scale-[0.99]"
+      className="flex items-center gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5 active:scale-[0.99]"
     >
       {/* 左：分类色块（34px 圆角 9px） */}
       <span

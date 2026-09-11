@@ -99,7 +99,7 @@ export default function DressupPage() {
         return (
           <section
             key={slot}
-            className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+            className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
           >
             <h2 className="mb-3 font-display text-lg">
               {dict.dressup.slots[slot] ?? slot}
@@ -111,7 +111,7 @@ export default function DressupPage() {
                   className={`flex items-center gap-3 rounded-[var(--r-md)] border p-3 ${
                     d.wearing
                       ? "border-sun bg-sun/10"
-                      : "border-line bg-white"
+                      : "border-line bg-[var(--surface-card)]"
                   }`}
                 >
                   <span aria-hidden className="text-3xl">

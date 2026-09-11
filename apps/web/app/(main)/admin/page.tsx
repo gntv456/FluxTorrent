@@ -243,6 +243,23 @@ export default function AdminPage({
     ["tools", dict.stafftools.title],
   ] as const;
 
+  /** 12 个功能按职能分四组渲染（避免一条平铺的药丸带找不到功能） */
+  const TAB_GROUPS: { label: string; keys: AdminTab[] }[] = [
+    { label: a.groupOverview ?? "概览", keys: ["panel", "overview"] },
+    {
+      label: a.groupQueue ?? "处理队列",
+      keys: ["reviews", "reports", "appeals", "cheaters"],
+    },
+    {
+      label: a.groupManage ?? "用户与内容",
+      keys: ["users", "torrents", "content", "audit"],
+    },
+    {
+      label: a.groupOps ?? "运营与配置",
+      keys: ["p2tools", "tools"],
+    },
+  ];
+
   const panelGroups: [string, PanelEntry[]][] = ["sysop", "admin", "moderator"]
     .map((g) => [g, panel.filter((e) => e.panel === g)] as [string, PanelEntry[]])
     .filter(([, entries]) => entries.length > 0);
@@ -251,19 +268,34 @@ export default function AdminPage({
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl">{a.panelTitle}</h1>
 
-      <div className="flex flex-wrap gap-2" role="tablist">
-        {TABS.map(([key, label]) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${
-              tab === key ? "bg-sky text-white" : "border border-line bg-white text-sub"
-            }`}
-          >
-            {label}
-          </button>
+      {/* 分组标签条：四组职能，组内药丸切换（不再一条平铺 12 个） */}
+      <div className="flex flex-col gap-2" role="tablist">
+        {TAB_GROUPS.map((group) => (
+          <div key={group.label} className="flex flex-wrap items-center gap-2">
+            <span className="min-w-[72px] shrink-0 text-xs font-bold text-sub">
+              {group.label}
+            </span>
+            {group.keys.map((key) => {
+              const item = TABS.find(([k]) => k === key);
+              if (!item) return null;
+              const [, label] = item;
+              return (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={tab === key}
+                  onClick={() => setTab(key)}
+                  className={`min-h-[36px] rounded-full px-3.5 text-[13px] font-bold ${
+                    tab === key
+                      ? "bg-sky text-white"
+                      : "border border-line bg-[var(--surface-card)] text-sub"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         ))}
       </div>
 
@@ -271,11 +303,34 @@ export default function AdminPage({
         <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>
       )}
 
+      {/* panel 页顶部：核心数字条（点击直达对应队列），不用再切"概览"才能看到 */}
+      {tab === "panel" && ov && (
+        <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+          {[
+            { label: a.pendingReviews, v: ov.pending_reviews, to: "reviews" as AdminTab },
+            { label: a.openReports, v: ov.open_reports, to: "reports" as AdminTab },
+            { label: a.users, v: ov.users, to: "users" as AdminTab },
+            { label: a.torrents, v: ov.torrents, to: "torrents" as AdminTab },
+            { label: a.bannedUsers, v: ov.banned_users, to: "users" as AdminTab },
+          ].map((s) => (
+            <button
+              key={s.label}
+              onClick={() => setTab(s.to)}
+              title={a.overviewOpen ?? "点击打开对应管理页"}
+              className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 text-center shadow-[var(--shadow-card)] transition hover:border-sky"
+            >
+              <p className="text-xs text-sub">{s.label}</p>
+              <p className="num mt-1 text-2xl text-sky">{s.v}</p>
+            </button>
+          ))}
+        </section>
+      )}
+
       {/* 站点设定入口：新版类型化设定页位于独立路由 /admin/settings，仅 sysop/administrator 可见 */}
       {tab === "panel" && (role === "sysop" || role === "administrator") && (
         <a
           href="/admin/settings"
-          className="flex items-center justify-between gap-3 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)] transition hover:border-sky"
+          className="flex items-center justify-between gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)] transition hover:border-sky"
         >
           <span className="min-w-0">
             <span className="block font-bold text-ink">{dict.settingsAdmin.title}</span>
@@ -287,31 +342,27 @@ export default function AdminPage({
         </a>
       )}
 
-      {/* 管理组面板：三组 colhead 表格（SysOp/Administrator/Moderator） */}
+      {/* 管理组面板：三组条目改为紧凑卡片网格（原为三张两列大表纵铺，密度过低） */}
       {tab === "panel" &&
         panelGroups.map(([group, entries]) => (
-          <section key={group} className="nexus-detail">
-            <h2 className="mb-2 text-center text-base font-bold text-ink">
-              ..:: {a.groups[group]} ::..
+          <section key={group}>
+            <h2 className="mb-2 text-sm font-bold text-[var(--text-brand)]">
+              {a.groups[group]}
             </h2>
-            <table className="nexus-table">
-              <thead>
-                <tr>
-                  <td className="colhead">{a.colOptionName}</td>
-                  <td className="colhead">{a.colInfo}</td>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((e) => (
-                  <tr key={`${e.panel}-${e.name}`}>
-                    <td className="rowfollow font-bold">
-                      <a href={e.url}>{e.name}</a>
-                    </td>
-                    <td className="rowfollow">{e.info}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {entries.map((e) => (
+                <a
+                  key={`${e.panel}-${e.name}`}
+                  href={e.url}
+                  className="group rounded-[var(--r-md)] border border-line bg-[var(--surface-raised)] p-3 transition hover:border-sky"
+                >
+                  <span className="block text-sm font-bold text-ink group-hover:text-sky">
+                    {e.name}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-sub">{e.info}</span>
+                </a>
+              ))}
+            </div>
           </section>
         ))}
       {tab === "panel" && panelGroups.length === 0 && (
@@ -321,19 +372,21 @@ export default function AdminPage({
       {tab === "overview" && ov && (
         <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {[
-            [a.pendingReviews, ov.pending_reviews],
-            [a.openReports, ov.open_reports],
-            [a.users, ov.users],
-            [a.torrents, ov.torrents],
-            [a.bannedUsers, ov.banned_users],
-          ].map(([label, v]) => (
-            <div
-              key={String(label)}
-              className="rounded-[var(--r-md)] border border-line bg-white p-4 text-center shadow-[var(--shadow-card)]"
+            { label: a.pendingReviews, v: ov.pending_reviews, to: "reviews" as AdminTab },
+            { label: a.openReports, v: ov.open_reports, to: "reports" as AdminTab },
+            { label: a.users, v: ov.users, to: "users" as AdminTab },
+            { label: a.torrents, v: ov.torrents, to: "torrents" as AdminTab },
+            { label: a.bannedUsers, v: ov.banned_users, to: "users" as AdminTab },
+          ].map((s) => (
+            <button
+              key={s.label}
+              onClick={() => setTab(s.to)}
+              title={a.overviewOpen}
+              className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 text-center shadow-[var(--shadow-card)] transition hover:border-sky"
             >
-              <p className="text-xs text-sub">{label}</p>
-              <p className="num mt-1 text-2xl text-sky">{String(v)}</p>
-            </div>
+              <p className="text-xs text-sub">{s.label}</p>
+              <p className="num mt-1 text-2xl text-sky">{s.v}</p>
+            </button>
           ))}
         </section>
       )}
@@ -341,7 +394,7 @@ export default function AdminPage({
       {/* 站点设定已迁移至独立路由 /admin/settings（类型化控件 / 服务端校验 / 修改历史 / 导出导入） */}
 
       {tab === "reviews" && (
-        <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+        <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <ul className="flex flex-col divide-y divide-line">
             {reviews.map((t) => (
               <li key={t.id} className="flex items-center gap-3 py-2">
@@ -372,7 +425,7 @@ export default function AdminPage({
       )}
 
       {tab === "reports" && (
-        <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+        <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <ul className="flex flex-col divide-y divide-line">
             {reports.map((r) => (
               <li key={r.id} className="flex items-center gap-3 py-2">
@@ -401,7 +454,7 @@ export default function AdminPage({
       )}
 
       {tab === "appeals" && (
-        <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+        <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <ul className="flex flex-col divide-y divide-line">
             {appeals.map((ap) => (
               <li key={ap.id} className="flex items-center gap-3 py-2">
@@ -523,7 +576,7 @@ export default function AdminPage({
       )}
 
       {tab === "audit" && (
-        <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+        <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <ul className="flex flex-col divide-y divide-line text-sm">
             {audit.map((row) => (
               <li key={row.id} className="flex items-center justify-between py-2">

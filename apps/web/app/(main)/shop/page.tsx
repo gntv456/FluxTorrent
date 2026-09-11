@@ -41,7 +41,7 @@ export default async function ShopPage() {
             {medals.map((m) => (
               <div
                 key={m.id}
-                className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+                className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
               >
                 <div className="flex items-center justify-between">
                   <span aria-hidden className="text-3xl">🏅</span>
@@ -81,7 +81,7 @@ export default async function ShopPage() {
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+              className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
             >
               <div className="flex items-center justify-between">
                 <h2 className="font-bold">{item.name}</h2>

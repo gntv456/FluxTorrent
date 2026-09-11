@@ -1,0 +1,5 @@
+﻿ last_seen_at
+
+
+[2m2026-09-11T15:35:29.953588Z[0m [32m INFO[0m [2mflux_tracker[0m[2m:[0m flux-tracker listening on 0.0.0.0:7070锛堥槻鎶わ細姣忕敤鎴?1800/min锛屾瘡 IP 3600/min锛宨nterval 1800s锛?[2m2026-09-11T15:35:29.954590Z[0m [32m INFO[0m [2mactix_server::builder[0m[2m:[0m starting 12 workers
+[2m2026-09-11T15:35:29.955040Z[0m [32m INFO[0m [2mactix_server::server[0m[2m:[0m starting service: "actix-web-service-0.0.0.0:7070", workers: 12, listening on: 0.0.0.0:7070

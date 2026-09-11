@@ -73,7 +73,7 @@ export function InviteManager({
           {invites.map((i) => (
             <li
               key={i.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
             >
               <button
                 type="button"

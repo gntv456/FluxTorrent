@@ -99,8 +99,8 @@ export default function MySparkPage() {
               <div className="flex items-baseline justify-between">
                 <h2 className="font-display">{t.ledger}</h2>
                 <span className="text-xs font-normal text-sub">
-                  {t.recentIncome} <b className="num text-[#2fb26b]">+{income.toLocaleString()}</b> ·{" "}
-                  {t.recentSpend} <b className="num text-[#e14d4d]">{spend.toLocaleString()}</b>
+                  {t.recentIncome} <b className="num text-success">+{income.toLocaleString()}</b> ·{" "}
+                  {t.recentSpend} <b className="num text-danger">{spend.toLocaleString()}</b>
                 </span>
               </div>
             </td>
@@ -114,7 +114,7 @@ export default function MySparkPage() {
           {rows.map((r, i) => (
             <tr key={i}>
               <td>{KIND_LABEL[r.kind] ?? r.kind}</td>
-              <td className={`num font-bold ${r.amount >= 0 ? "text-[#2fb26b]" : "text-[#e14d4d]"}`}>
+              <td className={`num font-bold ${r.amount >= 0 ? "text-success" : "text-danger"}`}>
                 {r.amount >= 0 ? "+" : ""}{r.amount.toLocaleString()}
               </td>
               <td className="num">{r.balance_after?.toLocaleString() ?? "—"}</td>

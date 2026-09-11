@@ -27,7 +27,7 @@ export default async function TextbooksPage() {
           {books.map((b) => (
             <div
               key={b.id}
-              className="flex flex-col gap-1 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+              className="flex flex-col gap-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
             >
               <div className="flex items-center justify-between">
                 <h2 className="font-bold">{b.subject}</h2>

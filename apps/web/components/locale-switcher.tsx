@@ -22,7 +22,7 @@ export function LocaleSwitcher({ current }: { current: Locale }) {
 
   return (
     <div
-      className="flex items-center gap-0.5 rounded-full border border-line bg-white/70 p-0.5"
+      className="flex items-center gap-0.5 rounded-full border border-line bg-[var(--surface-card)]/70 p-0.5"
       role="group"
       aria-label="Language / 语言"
     >

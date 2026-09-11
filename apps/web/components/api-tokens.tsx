@@ -85,7 +85,7 @@ export function ApiTokens() {
           onChange={(e) => setName(e.target.value)}
           placeholder={t.namePlaceholder}
           aria-label={t.namePlaceholder}
-          className="min-h-[36px] w-56 rounded-[var(--r-sm)] border border-line bg-white px-3 text-sm"
+          className="min-h-[36px] w-56 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm"
         />
         <button
           type="button"

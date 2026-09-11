@@ -1,0 +1,16 @@
+﻿g attestation manifest sha256:78cb2bc4d6b821be9c6c3a3d8ddc22196ce584538bfa7a77db73c8390fa6f70a 0.1s done
+#50 exporting manifest list sha256:aae988c3ae3864b77d09f4aecdd3bc3daaa9cf67b52f7a352e418ff512297be0 0.0s done
+#50 naming to docker.io/library/docker-api:latest done
+#50 unpacking to docker.io/library/docker-api:latest
+#50 unpacking to docker.io/library/docker-api:latest 0.2s done
+#50 DONE 1.4s
+
+#51 [api] resolving provenance for metadata file
+#51 DONE 0.0s
+ Image docker-api Built 
+ Image docker-worker Built 
+ Image docker-tracker Built 
+ Image docker-web Built 
+
+BUILD_EXIT=0
+

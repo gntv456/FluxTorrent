@@ -64,7 +64,7 @@ export function TorrentTags({ torrentId }: { torrentId: number }) {
                 ? d.kind === "official"
                   ? "bg-indigo text-white"
                   : "bg-sky text-white"
-                : "border border-line bg-white text-sub"
+                : "border border-line bg-[var(--surface-card)] text-sub"
             }`}
           >
             {d.name}

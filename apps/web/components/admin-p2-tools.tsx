@@ -68,7 +68,7 @@ export function AdminP2Tools() {
             role="tab"
             aria-selected={sub === k}
             onClick={() => setSub(k)}
-            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : "border border-line bg-white text-sub"}`}
+            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"}`}
           >
             {label}
           </button>
@@ -484,7 +484,7 @@ function Claims({ flash }: { flash: (m: string) => void }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
-        <select value={state} onChange={(e) => { setState(e.target.value); setPage(1); }} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+        <select value={state} onChange={(e) => { setState(e.target.value); setPage(1); }} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
           <option value="all">全部</option>
           <option value="active">认领中</option>
           <option value="unclaimed">待认领</option>

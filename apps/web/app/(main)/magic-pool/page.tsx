@@ -17,7 +17,7 @@ export default async function MagicPoolPage() {
         <span className="text-sm text-sub">{t.subtitle}</span>
       </div>
 
-      <section className="rounded-[var(--r-lg)] border border-line bg-white p-6 shadow-[var(--shadow-card)]">
+      <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-6 shadow-[var(--shadow-card)]">
         <p className="text-sm text-sub">{t.rule}</p>
         {/* 彩带进度条（§3.2 品牌元素） */}
         <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-cloud">
@@ -39,7 +39,7 @@ export default async function MagicPoolPage() {
       </section>
 
       {pool && pool.top_donors.length > 0 && (
-        <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+        <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <h2 className="mb-2 font-display text-lg">{t.donors}</h2>
           <ol className="flex flex-col gap-1 text-sm">
             {pool.top_donors.map(([name, amount], i) => (
