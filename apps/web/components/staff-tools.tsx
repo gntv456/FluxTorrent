@@ -38,7 +38,7 @@ type ToolTab =
   | "promo" | "staffmess" | "adduser" | "bonus" | "warned" | "ipcheck" | "maxlogin"
   | "upload" | "resetpass" | "deldisabled" | "emailbans" | "testip" | "stats"
   | "cleanup" | "ads" | "notconnect" | "uploaders" | "agents" | "polls"
-  | "dbstats" | "syslog" | "locations" | "hrpardon";
+  | "dbstats" | "syslog" | "locations" | "hrpardon" | "plugins";
 
 export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const { dict } = useI18n();
@@ -106,6 +106,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [hpUser, setHpUser] = useState("");
   const [hpTorrent, setHpTorrent] = useState("");
   const [hpNote, setHpNote] = useState("");
+  const [pluginList, setPluginList] = useState<string[] | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -170,6 +171,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
     ["notconnect", t.tabNotconnect], ["uploaders", t.tabUploaders], ["agents", t.tabAgents], ["polls", t.tabPolls],
     ["dbstats", t.tabDbstats], ["syslog", t.tabSyslog], ["locations", t.tabLocations],
     ["hrpardon", t.tabHrpardon],
+    ["plugins", t.tabPlugins ?? "插件"],
   ];
 
   return (
@@ -1007,6 +1009,31 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
             </button>
             <p className="text-xs text-sub">{t.hpNote}</p>
           </div>
+        </section>
+      )}
+      {/* 插件清单（M28 只读：启停由插件配置决定） */}
+      {tab === "plugins" && (
+        <section className="baozi-panel p-4">
+          <h2 className="mb-3 text-base font-bold text-ink">{t.pluginsTitle ?? "插件清单"}</h2>
+          {pluginList === null ? (
+            <button className="baozi-button" onClick={async () => {
+              try {
+                const r = await api.get<{ plugins: string[] }>("/api/v1/admin/plugins");
+                setPluginList(r.plugins);
+              } catch { setPluginList([]); }
+            }}>{t.pluginsLoad ?? "加载"}</button>
+          ) : (
+            <ul className="flex flex-col gap-1 text-sm">
+              {pluginList.map((pl) => (
+                <li key={pl} className="flex items-center gap-2">
+                  <span className="fun-status fun-status--normal">on</span>
+                  <code className="text-xs">{pl}</code>
+                </li>
+              ))}
+              {pluginList.length === 0 && <li className="text-sub">{t.pluginsEmpty ?? "无插件"}</li>}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-sub">{t.pluginsNote ?? "插件启停由服务端配置决定，此处为只读清单"}</p>
         </section>
       )}
     </div>

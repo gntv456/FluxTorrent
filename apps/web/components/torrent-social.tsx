@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
-/** 感谢 / 收藏 / 评论表单（M07 社区互动，客户端叶子组件） */
+/** 感谢 / 收藏 / 评论表单（M07 社区互动，客户端叶子组件）
+ *  魔力答谢按钮组对齐馒头详情页口径（+1/+10/+100/+500/+1000/+10000） */
 export function TorrentSocial({ torrentId }: { torrentId: number }) {
   const { dict } = useI18n();
+  const t = dict.tdetail;
   const [thanked, setThanked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [comment, setComment] = useState("");
@@ -18,15 +20,25 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
     setHasToken(Boolean(localStorage.getItem("flux.token")));
   }, []);
 
-  async function thank() {
+  async function thank(amount = 0) {
+    setBusy(true);
     try {
-      await api.post(`/api/v1/torrents/${torrentId}/thanks`, {});
+      const r = await api.post<{ spark_given: number }>(
+        `/api/v1/torrents/${torrentId}/thanks`,
+        { amount },
+      );
       setThanked(true);
-      setMsg(dict.torrent.thanksOk);
+      setMsg(
+        r.spark_given > 0
+          ? t.thankSparkOk.replace("{n}", String(r.spark_given))
+          : dict.torrent.thanksOk,
+      );
     } catch (e) {
       setMsg(
         e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError,
       );
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -73,8 +85,8 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
     <div className="flex w-full flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={thank}
-          disabled={thanked}
+          onClick={() => thank(0)}
+          disabled={thanked || busy}
           className="min-h-[44px] rounded-full border border-line px-5 text-sm font-bold text-ink transition-transform active:scale-[0.97] disabled:opacity-60"
         >
           {thanked ? dict.torrent.thanked : dict.torrent.thanks}
@@ -104,6 +116,24 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
           </button>
         </form>
       </div>
+
+      {/* 魔力答谢（馒头口径按钮组） */}
+      <div className="donate-spark">
+        <span className="text-xs font-bold text-sub">{t.sparkReward}</span>
+        <div className="flex flex-wrap gap-2">
+          {[1, 10, 100, 500, 1000, 10000].map((v) => (
+            <button
+              key={v}
+              onClick={() => thank(v)}
+              disabled={busy}
+              className="min-h-[32px] rounded-full border border-[var(--baozi-orange)] px-3 text-xs font-bold text-[var(--baozi-orange-dark)] active:scale-[0.97] disabled:opacity-50"
+            >
+              +{v}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {msg && (
         <p role="status" className="text-sm text-sub">
           {msg}

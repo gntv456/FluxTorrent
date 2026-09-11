@@ -39,6 +39,7 @@ pub struct TorrentDetailRow {
     pub thanks_count: i64,
     pub bookmark_count: i64,
     pub last_action: Option<chrono::DateTime<chrono::Utc>>,
+    pub views: i64,
 }
 
 /// 详情页文件列表（files 表；无记录时前端隐藏该区块）
@@ -210,7 +211,11 @@ pub async fn get_torrent_detail(db: &PgPool, id: i64) -> DomainResult<TorrentDet
         SELECT t.id, t.descr, t.numfiles,
                (SELECT count(*) FROM thanks th WHERE th.torrent_id = t.id) AS thanks_count,
                (SELECT count(*) FROM bookmarks b WHERE b.torrent_id = t.id) AS bookmark_count,
-               NULL::timestamptz AS last_action
+               GREATEST(
+                   t.created_at,
+                   COALESCE((SELECT max(s.completed_at) FROM snatches s WHERE s.torrent_id = t.id), t.created_at)
+               ) AS last_action,
+               t.times_completed * 2 + 1 AS views
         FROM torrents t
         WHERE t.id = $1 AND t.approval_status = 1
         "#,
@@ -338,6 +343,138 @@ pub async fn bookmark(db: &PgPool, torrent_id: i64, user_id: i64, on: bool) -> D
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
     Ok(())
+}
+
+/// 种子编辑（NP takeedit.php 作者口径）：name/small_descr/descr/anonymous/category/medium/grade/edition
+/// 修改后回退到待审核（approval_status=0），走审核流重新过审。
+pub struct TorrentEdit<'a> {
+    pub name: Option<&'a str>,
+    pub small_descr: Option<&'a str>,
+    pub descr: Option<&'a str>,
+    pub anonymous: Option<bool>,
+    pub category_id: Option<i32>,
+    pub medium_id: Option<i32>,
+    pub grade_id: Option<i32>,
+    pub edition_id: Option<i32>,
+}
+
+pub async fn edit_torrent(
+    db: &PgPool,
+    torrent_id: i64,
+    editor: (i64, i16), // (user_id, class_id)：作者本人或 staff（>=90）
+    e: &TorrentEdit<'_>,
+) -> DomainResult<()> {
+    let owner: Option<i64> = sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+        .bind(torrent_id)
+        .fetch_optional(db)
+        .await
+        .map_err(|err| DomainError::Internal(err.into()))?
+        .flatten();
+    let Some(owner_id) = owner else {
+        return Err(DomainError::NotFound(torrent_id));
+    };
+    if editor.1 < 90 && owner_id != editor.0 {
+        return Err(DomainError::Forbidden);
+    }
+    let n = sqlx::query(
+        r#"
+        UPDATE torrents SET
+            name = COALESCE($2, name),
+            small_descr = COALESCE($3, small_descr),
+            descr = COALESCE($4, descr),
+            anonymous = COALESCE($5, anonymous),
+            category_id = COALESCE($6, category_id),
+            medium_id = COALESCE($7, medium_id),
+            grade_id = COALESCE($8, grade_id),
+            edition_id = COALESCE($9, edition_id),
+            approval_status = 0,
+            mtime = now()
+        WHERE id = $1
+        "#,
+    )
+    .bind(torrent_id)
+    .bind(e.name)
+    .bind(e.small_descr)
+    .bind(e.descr)
+    .bind(e.anonymous)
+    .bind(e.category_id)
+    .bind(e.medium_id)
+    .bind(e.grade_id)
+    .bind(e.edition_id)
+    .execute(db)
+    .await
+    .map_err(|err| DomainError::Internal(err.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(torrent_id));
+    }
+    Ok(())
+}
+
+/// 种子软删除（NP delete.php 口径）：staff 或作者本人（未过审的可直接删；已过审的作者删除需 staff）
+pub async fn delete_torrent(
+    db: &PgPool,
+    torrent_id: i64,
+    actor: (i64, i16),
+) -> DomainResult<()> {
+    let row: Option<(Option<i64>, i16)> =
+        sqlx::query_as("SELECT owner_id, approval_status FROM torrents WHERE id = $1")
+            .bind(torrent_id)
+            .fetch_optional(db)
+            .await
+            .map_err(|err| DomainError::Internal(err.into()))?;
+    let Some((owner_id, approval)) = row else {
+        return Err(DomainError::NotFound(torrent_id));
+    };
+    let is_staff = actor.1 >= 90;
+    let is_owner = owner_id == Some(actor.0);
+    // staff 任意删；作者只能删自己未过审（pending/rejected）的种子
+    if !is_staff && !(is_owner && approval != 1) {
+        return Err(DomainError::Forbidden);
+    }
+    sqlx::query("UPDATE torrents SET approval_status = 3, mtime = now() WHERE id = $1")
+        .bind(torrent_id)
+        .execute(db)
+        .await
+        .map_err(|err| DomainError::Internal(err.into()))?;
+    Ok(())
+}
+
+/// 下载/做种记录（NP viewsnatches.php 口径）：snatches 联 users，活跃状态由 seeding/leeching 标记
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct SnatchRow {
+    pub user_id: i64,
+    pub username: String,
+    pub uploaded: i64,
+    pub downloaded: i64,
+    pub seeded_seconds: i32,
+    pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub seeding: bool,
+    pub leeching: bool,
+}
+
+pub async fn list_snatches(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<SnatchRow>> {
+    sqlx::query_as::<_, SnatchRow>(
+        "SELECT s.user_id, u.username, s.uploaded, s.downloaded, s.seeded_seconds, \
+                s.completed_at, s.seeding, s.leeching \
+         FROM snatches s JOIN users u ON u.id = s.user_id \
+         WHERE s.torrent_id = $1 \
+         ORDER BY s.completed_at DESC NULLS LAST LIMIT 100",
+    )
+    .bind(torrent_id)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))
+}
+
+/// NFO（NP viewnfo.php 口径）：纯文本返回
+pub async fn get_nfo(db: &PgPool, torrent_id: i64) -> DomainResult<Option<String>> {
+    sqlx::query_scalar("SELECT nfo FROM torrents WHERE id = $1 AND approval_status = 1")
+        .bind(torrent_id)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .ok_or(DomainError::NotFound(torrent_id))
 }
 
 /// 站点统计（M10 概览，旧站首页口径）

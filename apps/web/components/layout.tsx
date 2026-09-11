@@ -38,6 +38,7 @@ export async function Header() {
     { href: "/avatar-frames", label: dict.nav.frames },
     { href: "/gomoku", label: dict.nav.gomoku },
     { href: "/faq", label: dict.nav.faq },
+    { href: "/donate", label: dict.nav.donate },
   ];
   return (
     <header className="border-b border-line bg-[var(--baozi-bg)]">

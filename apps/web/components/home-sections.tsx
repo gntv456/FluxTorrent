@@ -147,13 +147,36 @@ export function HomeSections() {
             <h2>
               <span aria-hidden="true">📅</span> {t.attendanceTitle}
             </h2>
-            {data.attendance.checked_today ? (
-              <span className="attendance-done">{t.attended}</span>
-            ) : (
-              <button type="button" className="baozi-button" onClick={checkin} disabled={checkinBusy}>
-                {checkinBusy ? dict.my.checkinBusy : t.checkinNow}
+            <span className="flex items-center gap-2">
+              {data.attendance.checked_today ? (
+                <span className="attendance-done">{t.attended}</span>
+              ) : (
+                <button type="button" className="baozi-button" onClick={checkin} disabled={checkinBusy}>
+                  {checkinBusy ? dict.my.checkinBusy : t.checkinNow}
+                </button>
+              )}
+              <button
+                type="button"
+                className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold text-sub"
+                title={dict.attResub2?.note ?? "消耗补签卡（商店购买），补过去 7 天内漏签"}
+                onClick={async () => {
+                  const d = prompt(dict.attResub2?.prompt ?? "补签日期（YYYY-MM-DD，限过去 7 天）");
+                  if (!d) return;
+                  try {
+                    await api.post("/api/v1/attendance/resub", {
+                      target_date: d,
+                      idempotency_key: `resub-web-${d}-${crypto.randomUUID()}`,
+                    });
+                    alert(dict.attResub2?.ok ?? "补签成功");
+                    window.location.reload();
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : "补签失败");
+                  }
+                }}
+              >
+                {dict.attResub2?.btn ?? "补签"}
               </button>
-            )}
+            </span>
           </header>
           {checkinMsg && <p className="attendance-msg">{checkinMsg}</p>}
           <div className="attendance-card__summary">

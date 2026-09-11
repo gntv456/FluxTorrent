@@ -27,6 +27,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(my_torrentlist)
         .service(my_bookmarks)
         .service(rotate_passkey)
+        .service(user_public_profile)
         .service(list)
         .service(detail)
         .service(torrent_detail_ext)
@@ -36,6 +37,10 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(create_comment)
         .service(do_thank)
         .service(do_bookmark)
+        .service(edit_torrent)
+        .service(delete_torrent)
+        .service(torrent_snatches)
+        .service(torrent_nfo)
         .service(stats)
         .service(report_create)
         .service(rss_info)
@@ -100,6 +105,9 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(db_stats)
         .service(sys_log)
         .service(locations)
+        .service(donate_state)
+        .service(donate_topup)
+        .service(donate_order)
         .service(massmail_list)
         .service(massmail_send)
         .service(medal_wall)
@@ -415,9 +423,93 @@ async fn rotate_passkey(
     Ok(ok(serde_json::json!({ "passkey": pk })))
 }
 
-// ============ 控制面板（复刻 NexusPHP usercp：账户概览 + 四组设定） ============
+/// 用户公开主页（NP userdetails.php 口径，脱敏：不回 email/passkey/火花）
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct PublicProfile {
+    id: i64,
+    username: String,
+    title: Option<String>,
+    avatar_url: Option<String>,
+    class_id: i32,
+    class_name: Option<String>,
+    uploaded: i64,
+    downloaded: i64,
+    donor: bool,
+    created_at: chrono::DateTime<chrono::Utc>,
+    last_seen_at: Option<chrono::DateTime<chrono::Utc>>,
+    seeding: i64,
+    leeching: i64,
+    uploads: i64,
+    #[serde(rename = "comments")]
+    comment_count: i64,
+    medals: i64,
+}
 
-/// 账户概览（usercp.php 首页口径）：资料卡 + 分享率概况 + 登录趋势 + 摘要行 + 更多信息表
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct RecentUpload {
+    id: i64,
+    name: String,
+    small_descr: Option<String>,
+    size: i64,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct RecentComment {
+    torrent_id: i64,
+    body: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/users/{id}")]
+async fn user_public_profile(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    require_auth(&req, &state).await?;
+    let uid = path.into_inner();
+    let profile: Option<PublicProfile> = sqlx::query_as(
+        r#"
+        SELECT $1::bigint AS id, u.username, u.title, u.avatar_url, u.class_id, c.name AS class_name,
+               u.uploaded, u.downloaded, u.donor, u.created_at, u.last_seen_at,
+               (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
+               (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
+               (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1 AND NOT t.anonymous) AS uploads,
+               (SELECT count(*) FROM comments cm WHERE cm.user_id = u.id) AS comment_count,
+               (SELECT count(*) FROM user_medals um WHERE um.user_id = u.id) AS medals
+        FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
+        WHERE u.id = $1 AND u.status < 2
+        "#,
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(profile) = profile else {
+        return Err(DomainError::NotFound(uid));
+    };
+    let uploads: Vec<RecentUpload> = sqlx::query_as(
+        "SELECT id, name, small_descr, size, created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",
+    )
+    .bind(uid)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let recent_comments: Vec<RecentComment> = sqlx::query_as(
+        "SELECT torrent_id, body, created_at FROM comments WHERE user_id = $1 ORDER BY id DESC LIMIT 10",
+    )
+    .bind(uid)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "profile": profile,
+        "recent_uploads": uploads,
+        "recent_comments": recent_comments,
+    })))
+}
+
 #[get("/me/overview")]
 async fn me_overview(
     req: HttpRequest,
@@ -975,20 +1067,139 @@ async fn create_comment(
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
+#[derive(Deserialize)]
+struct ThankBody {
+    /// 魔力答谢数额（馒头口径：+1/+10/+100/+500/+1000/+10000；缺省 0 = 免费感谢）
+    #[serde(default)]
+    amount: Option<i64>,
+}
+
 #[post("/torrents/{id}/thanks")]
 async fn do_thank(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
+    body: Option<web::Json<ThankBody>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    torrents::thank(&state.repo.db, path.into_inner(), auth.id).await?;
-    Ok(ok(serde_json::json!({ "thanked": true })))
+    let tid = path.into_inner();
+    torrents::thank(&state.repo.db, tid, auth.id).await?;
+    let amount = body.and_then(|b| b.amount).unwrap_or(0);
+    if amount > 0 {
+        if ![1, 10, 100, 500, 1000, 10000].contains(&amount) {
+            return Err(DomainError::Validation("答谢数额需为 1/10/100/500/1000/10000".into()));
+        }
+        // 给发布者转魔力（匿名也按 owner_id 记账）
+        let owner: Option<i64> = sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+            .bind(tid)
+            .fetch_optional(&state.repo.db).await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
+        if let Some(owner) = owner {
+            if owner != auth.id {
+                let idem = format!("thank-spark:{}:{}:{}", auth.id, tid, chrono::Utc::now().timestamp());
+                crate::economy_http::earn_spark(&state.repo.db, owner, amount, "task_reward", &idem).await?;
+            }
+        }
+    }
+    Ok(ok(serde_json::json!({ "thanked": true, "spark_given": amount })))
 }
 
 #[derive(Deserialize)]
 struct BookmarkReq {
     on: bool,
+}
+
+/// 编辑种子（NP edit/takeedit 作者口径；修改后回退待审）
+#[derive(Deserialize)]
+struct TorrentEditReq {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    small_descr: Option<String>,
+    #[serde(default)]
+    descr: Option<String>,
+    #[serde(default)]
+    anonymous: Option<bool>,
+    #[serde(default)]
+    category_id: Option<i32>,
+    #[serde(default)]
+    medium_id: Option<i32>,
+    #[serde(default)]
+    grade_id: Option<i32>,
+    #[serde(default)]
+    edition_id: Option<i32>,
+}
+
+#[put("/torrents/{id}")]
+async fn edit_torrent(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    body: web::Json<TorrentEditReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let tid = path.into_inner();
+    torrents::edit_torrent(
+        &state.repo.db,
+        tid,
+        (auth.id, auth.class_id as i16),
+        &torrents::TorrentEdit {
+            name: body.name.as_deref().map(str::trim).filter(|s| !s.is_empty()),
+            small_descr: body.small_descr.as_deref(),
+            descr: body.descr.as_deref(),
+            anonymous: body.anonymous,
+            category_id: body.category_id,
+            medium_id: body.medium_id,
+            grade_id: body.grade_id,
+            edition_id: body.edition_id,
+        },
+    )
+    .await?;
+    state
+        .repo
+        .audit(Some(auth.id), "torrent.edit", Some(tid))
+        .await;
+    Ok(ok(serde_json::json!({ "edited": true, "note": "已回退待审核" })))
+}
+
+/// 删除种子（软删 approval_status=3；staff 任意删，作者仅限未过审）
+#[delete("/torrents/{id}")]
+async fn delete_torrent(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let id = path.into_inner();
+    torrents::delete_torrent(&state.repo.db, id, (auth.id, auth.class_id as i16)).await?;
+    state.repo.audit(Some(auth.id), "torrent.delete", Some(id)).await;
+    Ok(ok(serde_json::json!({ "deleted": id })))
+}
+
+/// 下载/做种记录（NP viewsnatches.php）
+#[get("/torrents/{id}/snatches")]
+async fn torrent_snatches(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    require_auth(&req, &state).await?;
+    Ok(ok(
+        torrents::list_snatches(&state.repo.db, path.into_inner()).await?,
+    ))
+}
+
+/// NFO（NP viewnfo.php）
+#[get("/torrents/{id}/nfo")]
+async fn torrent_nfo(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    require_auth(&req, &state).await?;
+    let nfo = torrents::get_nfo(&state.repo.db, path.into_inner()).await?;
+    Ok(ok(serde_json::json!({ "nfo": nfo })))
 }
 
 #[put("/torrents/{id}/bookmark")]
@@ -2191,6 +2402,168 @@ async fn locations(
         "items": rows, "total": total, "page": page, "per_page": per,
         "pages": (total + per - 1) / per,
     })))
+}
+
+// ---- 捐赠中心（馒头 donate 口径：储值钱包 + 三区套餐 + VIP）----
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct DonatePlan {
+    id: i32,
+    plan_type: String,
+    title: String,
+    reward: Option<String>,
+    #[sqlx(default)]
+    price_usd: f64,
+    sort: i32,
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct DonateLedgerRow {
+    id: i64,
+    kind: String,
+    #[sqlx(default)]
+    amount_usd: f64,
+    #[sqlx(default)]
+    balance_after: f64,
+    note: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(serde::Serialize)]
+struct DonateState {
+    wallet_usd: f64,
+    vip_until: Option<chrono::DateTime<chrono::Utc>>,
+    plans: Vec<DonatePlan>,
+    ledger: Vec<DonateLedgerRow>,
+}
+
+/// 捐赠中心总览：钱包余额 + VIP 状态 + 套餐 + 我的流水
+#[get("/donate/state")]
+async fn donate_state(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let (wallet, vip_until): (f64, Option<chrono::DateTime<chrono::Utc>>) = sqlx::query_as(
+        "SELECT wallet_usd::float8, vip_until FROM users WHERE id = $1",
+    ).bind(auth.id)
+    .fetch_one(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let plans: Vec<DonatePlan> = sqlx::query_as(
+        "SELECT id, plan_type, title, reward, price_usd::float8, sort FROM donation_plans WHERE enabled ORDER BY sort, id",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let ledger: Vec<DonateLedgerRow> = sqlx::query_as(
+        "SELECT id, kind, amount_usd::float8, balance_after::float8, note, created_at          FROM donation_ledger WHERE user_id = $1 ORDER BY id DESC LIMIT 30",
+    ).bind(auth.id)
+    .fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(DonateState { wallet_usd: wallet, vip_until, plans, ledger }))
+}
+
+#[derive(Deserialize)]
+struct TopupBody {
+    amount_usd: f64,
+    #[serde(default)]
+    channel: String, // alipay / wechat（Dev 环境仅记录）
+}
+
+/// 充值（Dev 无支付网关：直接入账，模拟支付成功）
+#[post("/donate/topup")]
+async fn donate_topup(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<TopupBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if !(10.0..=66.0).contains(&body.amount_usd) {
+        return Err(DomainError::Validation("单笔 10 ~ 66 USD".into()));
+    }
+    if !["alipay", "wechat"].contains(&body.channel.as_str()) {
+        return Err(DomainError::Validation("支付方式需为 alipay/wechat".into()));
+    }
+    let mut tx = state.repo.db.begin().await.map_err(|e| DomainError::Internal(e.into()))?;
+    let balance: f64 = sqlx::query_scalar(
+        "UPDATE users SET wallet_usd = wallet_usd + $2, donor = true WHERE id = $1 RETURNING wallet_usd::float8",
+    ).bind(auth.id).bind(body.amount_usd)
+    .fetch_one(&mut *tx).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO donation_ledger (user_id, kind, amount_usd, balance_after, note) VALUES ($1, 'topup', $2, $3, $4)",
+    ).bind(auth.id).bind(body.amount_usd).bind(balance)
+    .bind(format!("模拟支付成功（{}）", body.channel))
+    .execute(&mut *tx).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "donate_topup", None).await;
+    Ok(ok(serde_json::json!({ "wallet_usd": balance })))
+}
+
+#[derive(Deserialize)]
+struct OrderBody { plan_id: i32 }
+
+/// 用余额订购套餐（上传量 / 片单额度 / VIP）
+#[post("/donate/order")]
+async fn donate_order(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<OrderBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let plan: Option<(String, String, Option<String>, f64)> = sqlx::query_as(
+        "SELECT plan_type, title, reward, price_usd::float8 FROM donation_plans WHERE id = $1 AND enabled",
+    ).bind(body.plan_id)
+    .fetch_optional(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((plan_type, title, reward, price)) = plan else {
+        return Err(DomainError::NotFound(body.plan_id as i64));
+    };
+    let mut tx = state.repo.db.begin().await.map_err(|e| DomainError::Internal(e.into()))?;
+    let balance: Option<f64> = sqlx::query_scalar(
+        "UPDATE users SET wallet_usd = wallet_usd - $2 WHERE id = $1 AND wallet_usd >= $2 RETURNING wallet_usd::float8",
+    ).bind(auth.id).bind(price)
+    .fetch_optional(&mut *tx).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(balance) = balance else {
+        return Err(DomainError::Validation(format!("余额不足，还差 {:.2} USD", price)));
+    };
+    // 套餐生效
+    match plan_type.as_str() {
+        "upload" => {
+            // 「100 GB 上传量」/「500 GB 上传量」
+            let gb: i64 = title.split_whitespace().next().and_then(|w| w.parse().ok()).unwrap_or(0);
+            sqlx::query("UPDATE users SET uploaded = uploaded + $2 WHERE id = $1")
+                .bind(auth.id).bind(gb * 1024 * 1024 * 1024)
+                .execute(&mut *tx).await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        "quota" => {
+            sqlx::query("UPDATE users SET quota_extra = quota_extra + 10 WHERE id = $1")
+                .bind(auth.id)
+                .execute(&mut *tx).await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        "vip" => {
+            let days: i64 = if title.contains("终身") { 36500 }
+                else if title.contains("180") { 180 } else { 30 };
+            sqlx::query(
+                "UPDATE users SET vip_until = GREATEST(COALESCE(vip_until, now()), now()) + ($2 || ' days')::interval WHERE id = $1",
+            ).bind(auth.id).bind(days)
+            .execute(&mut *tx).await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        _ => {}
+    }
+    // 附赠邀请 1
+    if reward.as_deref().unwrap_or("").contains("邀请") {
+        let _: () = sqlx::query("UPDATE invite_quota SET quota = quota + 1 WHERE user_id = $1")
+            .bind(auth.id)
+            .execute(&mut *tx).await
+            .map(|_| ()).unwrap_or(());
+    }
+    sqlx::query(
+        "INSERT INTO donation_ledger (user_id, kind, amount_usd, balance_after, plan_id, note) VALUES ($1, 'order', -$2, $3, $4, $5)",
+    ).bind(auth.id).bind(price).bind(balance).bind(body.plan_id).bind(&title)
+    .execute(&mut *tx).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "donate_order", Some(body.plan_id as i64)).await;
+    Ok(ok(serde_json::json!({ "plan": title, "wallet_usd": balance })))
 }
 
 // ---- 批量邮件（massmail）----
