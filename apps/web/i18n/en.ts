@@ -49,6 +49,12 @@ const enBase: Omit<Dict, "security2fa" | "apitokens"> = {
     preserve: "Preserve",
     upload: "Upload",
     ariaPrimary: "Primary navigation",
+    more: "More",
+    discover: "Discover",
+    spark: "Spark Economy",
+    growth: "Growth & Honors",
+    fun: "Fun",
+    tabbarMessages: "Messages",
   },
   tabbar: {
     home: "Home",

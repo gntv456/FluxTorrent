@@ -48,6 +48,12 @@ const zhTwBase: Omit<Dict, "security2fa" | "apitokens"> = {
     preserve: "保種區",
     upload: "發佈",
     ariaPrimary: "主導航",
+    more: "更多",
+    discover: "發現",
+    spark: "火花經濟",
+    growth: "成長榮譽",
+    fun: "娛樂",
+    tabbarMessages: "訊息",
   },
   tabbar: {
     home: "首頁",

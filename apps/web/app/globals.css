@@ -1,204 +1,222 @@
 @import "tailwindcss";
-/* FluxTorrent 全局样式 —— 包子站（p.t-baozi.cc BaoziPT theme）token 体系。
+/* FluxTorrent 全局样式 —— Seedlight「流光种子」Aurora token 体系（design-system/FluxTorrent-UI设计方案.html）。
    纪律（§7.6-1）：全站禁止硬编码色值，一律使用下列 CSS 变量。
-   主题机制：<html data-theme="baozi | baozi-night"> 切换；
-   新增主题 = 追加一个 [data-theme] 块覆盖全部变量（方便设计扩展与用户切换）。 */
+   主题机制：<html data-theme="baozi | baozi-night"> 切换（沿用旧键名，用户已存的偏好不丢）；
+   换新主题 = 追加一个 [data-theme] 块覆盖全部变量。
+   兼容层：--baozi-* 旧变量名继续存在（映射到 Aurora 语义色），30+ 组件零改动换肤。 */
 
 :root,
 [data-theme="baozi"] {
   color-scheme: light;
-  /* ===== 表面：清透白 + 淡晴空 ===== */
-  --surface-page: #f2f7fd; /* 页面底 */
-  --surface-cloud: #e8f0fa; /* html 外底 */
-  --surface-card: #ffffff; /* 卡片 */
-  --surface-raised: #fbfdff; /* 输入框/工具钮 */
-  --surface-hover: #eef5fe; /* 行/项悬停 */
-  --surface-sunken: #e9f2fc; /* rowhead 标签列/选中态底 */
-  --surface-cream: #e3f0fd; /* 强调底（原奶油位 → 淡晴空） */
-  --head-a: #dcebfb; /* 表头渐变起点 */
-  --head-b: #f6faff; /* 表头渐变终点 */
-  /* ===== 文本：冷调深蓝灰 ===== */
-  --text-strong: #16324f;
-  --text-heading: #0f2440;
-  --text-body: #35506b;
-  --text-body-deep: #2c4660;
-  --text-brand: #1c4f86;
-  --text-muted: #5b7490;
-  --text-faint: #7e95ad;
-  --text-fainter: #9db0c4;
+  /* ===== Aurora 品牌六色（Seedlight §2） ===== */
+  --sky: #2fa8ff;
+  --sky-deep: #1e8ae8;
+  --sky-soft: #e8f4ff;
+  --sun: #ffc93c;
+  --sun-soft: #fff4d6;
+  --coral: #ff7a59;
+  --coral-soft: #ffe9e2;
+  --mint: #2fbf9b;
+  --mint-soft: #dff7f0;
+  --candy: #ff8fc7;
+  --candy-soft: #ffe9f4;
+  --indigo: #5b6bf5;
+  --indigo-soft: #eaebff;
+  /* ===== 中性 ===== */
+  --cloud: #f5faff;
+  --cream: #fffdf6;
+  --ink: #1f2a44;
+  --sub: #6b7a99;
+  --line: #e3edf7;
+  /* ===== 渐变与彩带 ===== */
+  --grad-aurora: linear-gradient(135deg, #2fa8ff 0%, #5b6bf5 48%, #ff8fc7 100%);
+  --grad-rainbow: linear-gradient(90deg, #ffc93c, #ff7a59, #ff8fc7, #5b6bf5, #2fa8ff);
+  --ribbon: var(--grad-rainbow);
+  --brand-glow: #5b6bf5;
+  --brand-soft: var(--indigo-soft);
+  /* ===== 表面 ===== */
+  --surface-page: #f5faff;
+  --surface-cloud: #eef5fd;
+  --surface-card: #ffffff;
+  --surface-raised: #fbfdff;
+  --surface-hover: #eef5fe;
+  --surface-sunken: #eaf3fd;
+  --surface-cream: #fffdf6;
+  --head-a: #e8f4ff;
+  --head-b: #f8fbff;
+  /* ===== 文本 ===== */
+  --text-strong: #1f2a44;
+  --text-heading: #141d33;
+  --text-body: #40506e;
+  --text-body-deep: #35435e;
+  --text-brand: #1e8ae8;
+  --text-muted: #6b7a99;
+  --text-faint: #8493ad;
+  --text-fainter: #a3b1c6;
   --text-on-accent: #fff;
   /* ===== 边框 ===== */
-  --border-soft: #dde8f4;
-  --border-deep: #9dbfe2;
-  --border-strong: #5f8fc4;
-  /* ===== 品牌（沿用原变量名 —— 值已从橙系换为晴空蓝系，全站自动换肤） ===== */
+  --border-soft: #e3edf7;
+  --border-deep: #bcd7ef;
+  --border-strong: #7fb0d9;
+  /* ===== 状态 ===== */
+  --success: #2fbf9b;
+  --success-bright: #3dd2ab;
+  --success-soft: #dff7f0;
+  --success-border: #a9e5d4;
+  --warning: #e8a80c;
+  --warning-soft: #fff4d6;
+  --warning-border: #f0dca0;
+  --danger: #ff6b6b;
+  --danger-soft: #ffe9e2;
+  --danger-border: #ffc7ba;
+  --info: #1e8ae8;
+  --muted-soft: #eef2f8;
+  --accent-purple: #5b6bf5;
+  /* ===== 圆角（按钮统一胶囊 999，见 .btn 类） ===== */
+  --r-xl: 24px;
+  --r-lg: 20px;
+  --r-md: 14px;
+  --r-sm: 10px;
+  /* ===== 阴影 ===== */
+  --shadow-card: 0 8px 24px rgba(31, 42, 68, 0.08);
+  --shadow-hover: 0 12px 32px rgba(47, 168, 255, 0.16);
+  /* ===== 表面层（派生半透明层，禁止在组件里硬编码 rgba 白色） ===== */
+  --row-veil: rgba(255, 255, 255, 0.94);
+  --row-veil-soft: rgba(255, 255, 255, 0.84);
+  --row-veil-mist: rgba(255, 255, 255, 0.72);
+  --chip-veil: rgba(252, 254, 255, 0.9);
+  --chip-veil-thin: rgba(252, 254, 255, 0.66);
+  --label-veil: rgba(232, 244, 255, 0.45);
+  --label-veil-deep: rgba(232, 244, 255, 0.78);
+  --hairline: rgba(255, 255, 255, 0.5);
+  --hairline-soft: rgba(255, 255, 255, 0.38);
+  --hairline-strong: rgba(255, 255, 255, 0.78);
+  --focus-ring: rgba(47, 168, 255, 0.22);
+  --focus-ring-soft: rgba(47, 168, 255, 0.14);
+  --on-accent-glass: rgba(255, 255, 255, 0.2);
+  --brand-glow-veil: rgba(91, 107, 245, 0.1);
+  --accent-shadow: rgba(91, 107, 245, 0.28);
+  --accent-shadow-soft: rgba(91, 107, 245, 0.18);
+  --accent-rule: rgba(47, 168, 255, 0.5);
+  /* ===== 字体：蜡笔字仅标题（童趣但不幼稚）；正文现代无衬线 ===== */
+  --font-display: "ZCOOL KuaiLe", "STKaiti", "KaiTi", "Noto Sans SC", sans-serif;
+  --font-body:
+    "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+  /* ===== 兼容层：--baozi-* → Aurora 语义映射（30+ 组件零改动） ===== */
   --baozi-bg: var(--surface-page);
   --baozi-paper: var(--surface-card);
   --baozi-cream: var(--surface-cream);
-  --baozi-line: #7db1e8; /* 主描边 */
+  --baozi-line: #9ec8ee;
   --baozi-line-soft: var(--line);
-  --baozi-orange: #2b7de9; /* 主色（原主橙位 → 晴空蓝） */
-  --baozi-orange-bright: #4d95ff;
-  --baozi-orange-dark: #1a5fd0; /* 链接/按钮深蓝 */
-  --baozi-green: #1f9d55;
-  --baozi-blue: #2e6fae;
-  --baozi-ink: #16283c;
-  --brand-soft: #dcebfd; /* 品牌强调底 */
-  --brand-glow: #5fa5ff; /* hero 渐变起点 */
-  /* 品牌别名 */
-  --sky: #2b7de9;
-  --sun: #dcebfb;
-  --coral: #4d95ff;
-  --mint: #1f9d55;
-  --candy: #7fb5f2;
-  --indigo: #35507a;
-  --cloud: var(--surface-cloud);
-  --ink: #16283c;
-  --sub: #5b7490;
-  --line: #d5e4f5;
-  --sky-deep: #1a5fd0;
-  --sky-soft: var(--surface-cream);
-  --cream: #ffffff;
-  /* ===== 状态 ===== */
-  --success: #1f9d55;
-  --success-bright: #2fbe6c;
-  --success-soft: #e3f7eb;
-  --success-border: #b5e3c8;
-  --warning: #e0a213;
-  --warning-soft: #fdf0cf;
-  --warning-border: #f0d494;
-  --danger: #d9483b;
-  --danger-soft: #fdeeee;
-  --danger-border: #f3c1bc;
-  --info: #2e6fae;
-  --muted-soft: #edf1f7;
-  --accent-purple: #7c5cd6;
-  /* 圆角（theme.css --baozi-radius: 12px） */
-  --r-xl: 16px;
-  --r-lg: 14px;
-  --r-md: 12px;
-  --r-sm: 8px;
-  /* 阴影：冷调蓝灰 */
-  --shadow-card: 0 7px 22px rgba(45, 90, 160, 0.08);
-  --shadow-hover: 0 5px 13px rgba(45, 110, 200, 0.14);
-  /* ===== 表面层（派生半透明层，禁止在组件里硬编码 rgba 白色） ===== */
-  --row-veil: rgba(251, 253, 255, 0.94); /* 表格行底 */
-  --row-veil-soft: rgba(251, 253, 255, 0.84); /* 按钮/胶囊底 */
-  --row-veil-mist: rgba(251, 253, 255, 0.72); /* 输入框底 */
-  --chip-veil: rgba(248, 251, 255, 0.9); /* 小胶囊/信息条底 */
-  --chip-veil-thin: rgba(248, 251, 255, 0.66); /* 辅助卡底 */
-  --label-veil: rgba(220, 235, 251, 0.45); /* 详情 label 列底 */
-  --label-veil-deep: rgba(220, 235, 251, 0.78); /* 强调小钮底 */
-  --hairline: rgba(255, 255, 255, 0.45); /* 浮层内描边 */
-  --hairline-soft: rgba(255, 255, 255, 0.34);
-  --hairline-strong: rgba(255, 255, 255, 0.72);
-  --focus-ring: rgba(43, 125, 233, 0.18); /* 键盘焦点环 */
-  --focus-ring-soft: rgba(43, 125, 233, 0.12);
-  --on-accent-glass: rgba(255, 255, 255, 0.22); /* 品牌底上的玻璃块 */
-  --brand-glow-veil: rgba(43, 125, 233, 0.07); /* 页面氛围光斑 */
-  --accent-shadow: rgba(43, 125, 233, 0.18); /* 品牌色投影（导航激活/按钮） */
-  --accent-shadow-soft: rgba(43, 125, 233, 0.12);
-  --accent-rule: rgba(43, 125, 233, 0.48); /* 品牌色虚线分隔 */
-  /* 字体（theme.css body 栈；标题用楷体，同站内信息页 h1） */
-  --font-display: "STKaiti", "KaiTi", "Noto Serif SC", serif;
-  --font-body:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
-  /* 彩带渐变 → 晴空蓝带 */
-  --ribbon: linear-gradient(90deg, #dcebfb, #4d95ff, #2b7de9, #1a5fd0);
+  --baozi-orange: var(--sky);
+  --baozi-orange-bright: #5cb8ff;
+  --baozi-orange-dark: var(--sky-deep);
+  --baozi-green: var(--mint);
+  --baozi-blue: var(--info);
+  --baozi-ink: var(--ink);
 }
 
-/* ===== 夜间主题：深海军蓝 × 星光蓝，与日间晴空同族 ===== */
+/* ===== 夜间主题：Aurora Night（Seedlight §9）—— 深夜蓝底，品牌六色提亮 +8% ===== */
 [data-theme="baozi-night"] {
   color-scheme: dark;
+  /* 品牌六色（提亮） */
+  --sky: #47b3ff;
+  --sky-deep: #6cc0ff;
+  --sky-soft: #12233c;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #ffa3d3;
+  --candy-soft: #35101f;
+  --indigo: #7d8aff;
+  --indigo-soft: #1d2145;
+  /* 中性 */
+  --cloud: #0b101f;
+  --cream: #1a2036;
+  --ink: #e8eef9;
+  --sub: #93a2bf;
+  --line: #262f4a;
+  /* 渐变 */
+  --grad-aurora: linear-gradient(135deg, #47b3ff 0%, #7d8aff 48%, #ffa3d3 100%);
+  --grad-rainbow: linear-gradient(90deg, #ffd35f, #ff9072, #ffa3d3, #7d8aff, #47b3ff);
+  --ribbon: var(--grad-rainbow);
+  --brand-glow: #7d8aff;
+  --brand-soft: var(--indigo-soft);
   /* 表面 */
-  --surface-page: #0f1826;
-  --surface-cloud: #0a101b;
-  --surface-card: #16202f;
-  --surface-raised: #1c2838;
-  --surface-hover: #223045;
-  --surface-sunken: #131c2b;
-  --surface-cream: #1d2c40;
-  --head-a: #1f3350;
-  --head-b: #16202f;
+  --surface-page: #0f1424;
+  --surface-cloud: #0b101f;
+  --surface-card: #1a2036;
+  --surface-raised: #212945;
+  --surface-hover: #232c4a;
+  --surface-sunken: #161d33;
+  --surface-cream: #1c2340;
+  --head-a: #1e2a4d;
+  --head-b: #1a2036;
   /* 文本 */
-  --text-strong: #e8f0fa;
-  --text-heading: #f5f9ff;
-  --text-body: #c3d3e4;
-  --text-body-deep: #b0c2d6;
-  --text-brand: #8fc2ff;
-  --text-muted: #8fa5bd;
-  --text-faint: #74899f;
-  --text-fainter: #5a6e84;
+  --text-strong: #e8eef9;
+  --text-heading: #f4f7fd;
+  --text-body: #c6d1e6;
+  --text-body-deep: #b4c1da;
+  --text-brand: #6cc0ff;
+  --text-muted: #93a2bf;
+  --text-faint: #76849f;
+  --text-fainter: #5c6a84;
   --text-on-accent: #fff;
   /* 边框 */
-  --border-soft: #24344a;
-  --border-deep: #3b5578;
-  --border-strong: #5580b0;
-  /* 品牌 */
+  --border-soft: #262f4a;
+  --border-deep: #3a4670;
+  --border-strong: #5b6ca0;
+  /* 状态 */
+  --success: #43cda8;
+  --success-bright: #58dcb8;
+  --success-soft: #0d2a22;
+  --success-border: #1d4a3a;
+  --warning: #ffd35f;
+  --warning-soft: #33290f;
+  --warning-border: #66551c;
+  --danger: #ff8f82;
+  --danger-soft: #38160f;
+  --danger-border: #6b2c26;
+  --info: #6cc0ff;
+  --muted-soft: #232c4a;
+  --accent-purple: #9aa8ff;
+  /* 阴影：暗色加深 */
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
+  /* 表面层（夜间改深色半透明，组件代码零改动换肤） */
+  --row-veil: rgba(26, 32, 54, 0.94);
+  --row-veil-soft: rgba(33, 41, 69, 0.84);
+  --row-veil-mist: rgba(33, 41, 69, 0.72);
+  --chip-veil: rgba(33, 41, 69, 0.9);
+  --chip-veil-thin: rgba(33, 41, 69, 0.66);
+  --label-veil: rgba(30, 42, 77, 0.45);
+  --label-veil-deep: rgba(30, 42, 77, 0.78);
+  --hairline: rgba(151, 170, 210, 0.16);
+  --hairline-soft: rgba(151, 170, 210, 0.1);
+  --hairline-strong: rgba(151, 170, 210, 0.24);
+  --focus-ring: rgba(103, 176, 255, 0.4);
+  --focus-ring-soft: rgba(103, 176, 255, 0.24);
+  --on-accent-glass: rgba(255, 255, 255, 0.14);
+  --brand-glow-veil: rgba(125, 138, 255, 0.1);
+  --accent-shadow: rgba(125, 138, 255, 0.3);
+  --accent-shadow-soft: rgba(125, 138, 255, 0.2);
+  --accent-rule: rgba(103, 176, 255, 0.45);
+  /* 兼容层 */
   --baozi-bg: var(--surface-page);
   --baozi-paper: var(--surface-card);
   --baozi-cream: var(--surface-cream);
-  --baozi-line: #4f7fb5;
+  --baozi-line: #46609a;
   --baozi-line-soft: var(--line);
-  --baozi-orange: #4d95ff;
-  --baozi-orange-bright: #6cabff;
-  --baozi-orange-dark: #7db6ff; /* 深底上链接/文字用亮蓝保证对比 */
-  --baozi-green: #4ade80;
-  --baozi-blue: #6aa5dd;
+  --baozi-orange: var(--sky);
+  --baozi-orange-bright: #6cc0ff;
+  --baozi-orange-dark: #7fc6ff;
+  --baozi-green: var(--mint);
+  --baozi-blue: var(--info);
   --baozi-ink: var(--ink);
-  --brand-soft: #1c3050;
-  --brand-glow: #2f5f9e;
-  /* 品牌别名 */
-  --sky: #4d95ff;
-  --sun: #1f3350;
-  --coral: #6cabff;
-  --mint: #4ade80;
-  --candy: #7fb5f2;
-  --indigo: #93b4d9;
-  --cloud: var(--surface-cloud);
-  --ink: #e8f0fa;
-  --sub: #8fa5bd;
-  --line: #24344a;
-  --sky-deep: #7db6ff;
-  --sky-soft: var(--surface-cream);
-  --cream: #16202f;
-  /* 状态 */
-  --success: #4ade80;
-  --success-bright: #3ddc84;
-  --success-soft: #12291b;
-  --success-border: #1f4a2e;
-  --warning: #f2c94c;
-  --warning-soft: #3a3012;
-  --warning-border: #6b5a1f;
-  --danger: #ff8f82;
-  --danger-soft: #3a1a18;
-  --danger-border: #6b2c26;
-  --info: #6aa5dd;
-  --muted-soft: #223046;
-  --accent-purple: #b39af0;
-  /* 阴影：暗色加深 */
-  --shadow-card: 0 7px 22px rgba(0, 0, 0, 0.35);
-  --shadow-hover: 0 5px 13px rgba(0, 0, 0, 0.45);
-  /* ===== 表面层（夜间改深色半透明，组件代码零改动换肤） ===== */
-  --row-veil: rgba(22, 32, 47, 0.94);
-  --row-veil-soft: rgba(28, 40, 56, 0.84);
-  --row-veil-mist: rgba(28, 40, 56, 0.72);
-  --chip-veil: rgba(28, 40, 56, 0.9);
-  --chip-veil-thin: rgba(28, 40, 56, 0.66);
-  --label-veil: rgba(31, 51, 80, 0.45);
-  --label-veil-deep: rgba(31, 51, 80, 0.78);
-  --hairline: rgba(133, 176, 224, 0.16);
-  --hairline-soft: rgba(133, 176, 224, 0.1);
-  --hairline-strong: rgba(133, 176, 224, 0.22);
-  --focus-ring: rgba(109, 171, 255, 0.35);
-  --focus-ring-soft: rgba(109, 171, 255, 0.22);
-  --on-accent-glass: rgba(255, 255, 255, 0.14);
-  --brand-glow-veil: rgba(77, 149, 255, 0.09);
-  --accent-shadow: rgba(77, 149, 255, 0.25);
-  --accent-shadow-soft: rgba(77, 149, 255, 0.16);
-  --accent-rule: rgba(125, 182, 255, 0.45);
-  --ribbon: linear-gradient(90deg, #1f3350, #6cabff, #4d95ff, #7db6ff);
 }
 
 /* Tailwind v4 主题映射 */
@@ -209,12 +227,17 @@
   --color-mint: var(--mint);
   --color-candy: var(--candy);
   --color-indigo: var(--indigo);
+  --color-sky-soft: var(--sky-soft);
+  --color-sun-soft: var(--sun-soft);
+  --color-coral-soft: var(--coral-soft);
+  --color-mint-soft: var(--mint-soft);
+  --color-candy-soft: var(--candy-soft);
+  --color-indigo-soft: var(--indigo-soft);
   --color-cloud: var(--cloud);
   --color-ink: var(--ink);
   --color-sub: var(--sub);
   --color-line: var(--line);
   --color-sky-deep: var(--sky-deep);
-  --color-sky-soft: var(--sky-soft);
   --color-cream: var(--cream);
   --color-danger: var(--danger);
   --color-success: var(--success);
@@ -289,7 +312,11 @@ textarea:focus-visible {
 
 body {
   color: var(--ink);
-  background: var(--baozi-bg);
+  background:
+    radial-gradient(1100px 560px at 82% -8%, var(--brand-glow-veil), transparent 60%),
+    radial-gradient(900px 480px at -8% 18%, var(--focus-ring-soft), transparent 62%),
+    var(--baozi-bg);
+  background-attachment: fixed;
   font-family: var(--font-body);
   font-size: 14px;
   line-height: 1.45;
@@ -318,18 +345,109 @@ a:hover {
   font-weight: 800;
 }
 
-/* 贴纸徽章 → 包子内联小徽（奶底细边，不再旋转） */
+/* 贴纸徽章（Seedlight §4）：白描边 + 内阴影 + 微旋转 −2°，如真实贴纸。
+   默认中性；语义变体由运营标签选用（free=薄荷 / 2x=珊瑚 / new=糖果 / official=靛 / hr=灰蓝 / premium=暖阳） */
 .sticker {
   display: inline-flex;
   align-items: center;
-  padding: 1px 7px;
-  border-radius: 6px;
-  border: 1px solid var(--baozi-line);
-  background: var(--baozi-paper);
-  color: var(--baozi-orange-dark);
+  padding: 2px 10px;
+  border-radius: 9px;
+  border: 2px solid #fff;
+  background: var(--indigo);
+  color: #fff;
   font-size: 11px;
   font-weight: 700;
   line-height: 1.5;
+  letter-spacing: 0.5px;
+  box-shadow:
+    0 2px 6px rgba(31, 42, 68, 0.18),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.12);
+  transform: rotate(-2deg);
+}
+[data-theme="baozi-night"] .sticker {
+  border-color: var(--surface-card);
+}
+.sticker.s-free,
+.sticker[data-variant="free"] {
+  background: var(--mint);
+}
+.sticker.s-two,
+.sticker[data-variant="two"] {
+  background: var(--coral);
+}
+.sticker.s-new,
+.sticker[data-variant="new"] {
+  background: var(--candy);
+}
+.sticker.s-official,
+.sticker[data-variant="official"] {
+  background: var(--indigo);
+}
+.sticker.s-hr,
+.sticker[data-variant="hr"] {
+  background: #7c8aa5;
+}
+.sticker.s-premium,
+.sticker[data-variant="premium"] {
+  background: var(--sun);
+  color: #6b4e00;
+}
+/* 旧调用（纯文本贴纸，无 variant）保持低调样式，不与语义贴纸抢戏 */
+.sticker:not([data-variant]):not(.s-free):not(.s-two):not(.s-new):not(.s-official):not(.s-hr):not(.s-premium) {
+  border-width: 1px;
+  border-color: var(--baozi-line);
+  background: var(--baozi-paper);
+  color: var(--baozi-orange-dark);
+  box-shadow: none;
+  transform: none;
+}
+
+/* ===== Seedlight 主按钮（极光渐变胶囊，§4）：按语义挂 .btn-primary/.btn-aurora ===== */
+.btn-aurora,
+.btn-primary-aurora {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--grad-aurora);
+  color: var(--text-on-accent);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 18px var(--accent-shadow);
+  transition: transform 0.15s ease-out, box-shadow 0.2s ease-out, filter 0.15s ease-out;
+}
+.btn-aurora:hover,
+.btn-primary-aurora:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 8px 22px var(--accent-shadow);
+}
+.btn-aurora:active,
+.btn-primary-aurora:active {
+  transform: scale(0.96);
+}
+
+/* ===== 彩虹彩带进度（§4 品牌心跳线）：进度/横幅分隔，3s 位移动画 ===== */
+.ribbon-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--grad-rainbow);
+  background-size: 200% 100%;
+  animation: ribbon-slide 3s linear infinite;
+}
+@keyframes ribbon-slide {
+  to {
+    background-position: 200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-bar {
+    animation: none;
+  }
 }
 
 /* ============ NexusPHP 经典表格（.colhead 渐变表头 + rowfollow 行） ============ */
@@ -464,15 +582,63 @@ a:hover {
 }
 .mainmenu-link[data-active="true"] {
   color: var(--text-on-accent);
-  border-color: var(--baozi-orange);
-  background: linear-gradient(
-    135deg,
-    var(--baozi-orange-bright),
-    var(--baozi-orange)
-  );
-  box-shadow:
-    inset 0 0 0 1px var(--hairline-soft),
-    0 5px 13px var(--accent-shadow);
+  border-color: transparent;
+  background: var(--grad-aurora);
+  box-shadow: 0 5px 13px var(--accent-shadow);
+}
+
+/* ===== 更多 ▾ 分组下拉（Seedlight §3 导航收敛） ===== */
+.mainmenu-drop {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px 18px;
+  min-width: min(680px, calc(100vw - 48px));
+  max-height: min(480px, calc(100vh - 220px));
+  overflow-y: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--baozi-paper);
+  box-shadow: var(--shadow-card);
+}
+.mainmenu-drop__group {
+  min-width: 0;
+}
+.mainmenu-drop__title {
+  margin: 2px 0 6px;
+  color: var(--text-brand);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.mainmenu-drop__links {
+  display: grid;
+  gap: 2px;
+}
+.mainmenu-drop__link {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 2px 10px;
+  color: var(--text-body);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.mainmenu-drop__link:hover {
+  color: var(--text-brand);
+  background: var(--surface-hover);
+}
+.mainmenu-drop__link[data-active="true"] {
+  color: var(--text-brand);
+  background: var(--sky-soft);
+}
+[data-theme="baozi-night"] .mainmenu-drop__link[data-active="true"] {
+  color: var(--text-brand);
 }
 
 /* ============ 用户信息条（userbar：欢迎 + 魔力 + 票券统计） ============ */

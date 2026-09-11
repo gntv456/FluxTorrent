@@ -13,8 +13,8 @@ export type Theme = "baozi" | "baozi-night";
 
 /** 主题对应的浏览器界面色（移动端状态栏 / PWA 标题栏） */
 const THEME_CHROME: Record<Theme, string> = {
-  baozi: "#f2f7fd",
-  "baozi-night": "#0f1826",
+  baozi: "#f5faff",
+  "baozi-night": "#0f1424",
 };
 
 function applyChromeColor(theme: Theme) {

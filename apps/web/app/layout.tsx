@@ -60,7 +60,7 @@ window.__fluxSwUpdated=false;location.reload();
  *  同时同步 PWA theme-color，并监听系统偏好变化（未手动选择时实时跟随）。 */
 function ThemeNoFlash() {
   const script =
-    `(function(){var CH={baozi:'#f2f7fd','baozi-night':'#0f1826'};` +
+    `(function(){var CH={baozi:'#f5faff','baozi-night':'#0f1424'};` +
     `function chrome(t){var m=document.querySelector('meta[name="theme-color"]');` +
     `if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m);}m.content=CH[t];}` +
     `function apply(t){document.documentElement.dataset.theme=t;chrome(t);}` +
@@ -80,6 +80,16 @@ export default async function RootLayout({
   const { dict, locale } = await getDict();
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        {/* Seedlight 展示字体：站酷快乐体（仅 H1/品牌/等级名，小面积使用）。
+            preconnect + display=swap：字体未就绪时标题先以回退栈渲染，不阻塞首屏。 */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap"
+        />
+      </head>
       <body>
         <ThemeNoFlash />
         <LocaleProvider dict={dict} locale={locale}>
