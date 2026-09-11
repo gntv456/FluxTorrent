@@ -10,6 +10,7 @@ import { useI18n } from "@/i18n/client";
 interface FaqItem { id: number; category: string; question: string; answer: string; sort: number }
 interface RuleItem { id: number; title: string; body: string; sort: number }
 interface CatItem { id: number; name: string; torrents: number }
+interface TypePack { code: string; name: string; description: string | null; brand: string; categories: { id: number; name: string }[]; modules: Record<string, boolean>; sort: number }
 interface BanItem { id: number; ip: string; reason: string | null; banned_by: string | null; created_at: string }
 interface MailItem { id: number; subject: string; recipients: number; created_at: string; sender: string | null }
 interface GlobalPromo { id: number; kind: string; starts_at: string; ends_at: string }
@@ -38,7 +39,7 @@ type ToolTab =
   | "promo" | "staffmess" | "adduser" | "bonus" | "warned" | "ipcheck" | "maxlogin"
   | "upload" | "resetpass" | "deldisabled" | "emailbans" | "testip" | "stats"
   | "cleanup" | "ads" | "notconnect" | "uploaders" | "agents" | "polls"
-  | "dbstats" | "syslog" | "locations" | "hrpardon" | "plugins";
+  | "dbstats" | "syslog" | "locations" | "hrpardon" | "plugins" | "agentrules";
 
 export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const { dict } = useI18n();
@@ -47,6 +48,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [rules, setRules] = useState<RuleItem[]>([]);
   const [cats, setCats] = useState<CatItem[]>([]);
+  const [packs, setPacks] = useState<TypePack[]>([]);
+  const [packMode, setPackMode] = useState<"replace" | "merge">("merge");
   const [bans, setBans] = useState<BanItem[]>([]);
   const [mails, setMails] = useState<MailItem[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
@@ -107,6 +110,12 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [hpTorrent, setHpTorrent] = useState("");
   const [hpNote, setHpNote] = useState("");
   const [pluginList, setPluginList] = useState<string[] | null>(null);
+  const [agentRules, setAgentRules] = useState<
+    { id: number; mode: string; pattern: string; note: string | null; created_by: string | null; created_at: string }[] | null
+  >(null);
+  const [arMode, setArMode] = useState("deny");
+  const [arPattern, setArPattern] = useState("");
+  const [arNote, setArNote] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -133,6 +142,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       api.get<EmailBan[]>("/api/v1/admin/emailbans").then(setEmailBans).catch(() => setEmailBans([]));
       api.get<SiteStats | null>("/api/v1/admin/stats").then(setStats).catch(() => setStats(null));
       api.get<AdItem[]>("/api/v1/admin/ads").then(setAds).catch(() => setAds([]));
+      api.get<TypePack[]>("/api/v1/admin/site-type-packs").then(setPacks).catch(() => setPacks([]));
       api.get<NotConnectRow[]>("/api/v1/admin/notconnectable").then(setNotConnectRows).catch(() => setNotConnectRows([]));
       api.get<UploaderRow[]>("/api/v1/admin/uploaders").then(setUploaderRows).catch(() => setUploaderRows([]));
       api.get<AgentRow[]>("/api/v1/admin/allagents").then(setAgentRows).catch(() => setAgentRows([]));
@@ -172,6 +182,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
     ["dbstats", t.tabDbstats], ["syslog", t.tabSyslog], ["locations", t.tabLocations],
     ["hrpardon", t.tabHrpardon],
     ["plugins", t.tabPlugins ?? "插件"],
+    ["agentrules", dict.agentRules2?.tab ?? "客户端名单"],
   ];
 
   return (
@@ -268,6 +279,32 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
 
       {/* 分类管理 */}
       {tab === "cats" && (
+        <>
+        <section className="baozi-panel p-4">
+          <h2 className="mb-3 text-base font-bold text-ink">{t.packTitle}</h2>
+          <p className="mb-3 text-xs text-sub">{t.packNote}</p>
+          <div className="mb-2 flex items-center gap-3">
+            <span className="text-xs font-bold text-sub">{t.packMode}</span>
+            <label className="flex items-center gap-1 text-xs"><input type="radio" checked={packMode === "replace"} onChange={() => setPackMode("replace")} />{t.packModeReplace}</label>
+            <label className="flex items-center gap-1 text-xs"><input type="radio" checked={packMode === "merge"} onChange={() => setPackMode("merge")} />{t.packModeMerge}</label>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {packs.map((pk) => (
+              <button key={pk.code}
+                className="min-h-[40px] rounded-full border border-[var(--baozi-orange)] px-4 text-xs font-bold text-[var(--baozi-orange-dark)] disabled:opacity-50"
+                disabled={busy}
+                title={pk.description ?? ""}
+                onClick={() => {
+                  if (!window.confirm(t.packConfirm.replace("{name}", pk.name))) return;
+                  void guard(async () => {
+                    await api.post("/api/v1/admin/site-type-packs/apply", { code: pk.code, mode: packMode });
+                  }, t.packApplied.replace("{name}", pk.name));
+                }}>
+                {pk.name}
+              </button>
+            ))}
+          </div>
+        </section>
         <section className="baozi-panel p-4">
           <h2 className="mb-3 text-base font-bold text-ink">{t.tabCats}</h2>
           <div className="cmgmt-form">
@@ -299,6 +336,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
             </tbody>
           </table>
         </section>
+        </>
       )}
 
       {/* 封禁系统 */}
@@ -1034,6 +1072,69 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
             </ul>
           )}
           <p className="mt-2 text-xs text-sub">{t.pluginsNote ?? "插件启停由服务端配置决定，此处为只读清单"}</p>
+        </section>
+      )}
+      {/* 客户端黑白名单（G-06） */}
+      {tab === "agentrules" && (
+        <section className="baozi-panel p-4">
+          <h2 className="mb-3 text-base font-bold text-ink">{(dict.agentRules2?.title ?? "客户端黑白名单")}</h2>
+          <div className="cmgmt-form">
+            <label>
+              {(dict.agentRules2?.mode ?? "类型")}
+              <select value={arMode} onChange={(e) => setArMode(e.target.value)}>
+                <option value="deny">{dict.agentRules2?.deny ?? "黑名单"}</option>
+                <option value="allow">{dict.agentRules2?.allow ?? "白名单"}</option>
+              </select>
+            </label>
+            <label>{(dict.agentRules2?.pattern ?? "匹配串")}<input value={arPattern} onChange={(e) => setArPattern(e.target.value)} placeholder="Transmission/3" /></label>
+            <label>{(dict.agentRules2?.note ?? "备注")}<input value={arNote} onChange={(e) => setArNote(e.target.value)} /></label>
+            <button className="baozi-button self-start" disabled={busy || !arPattern.trim()}
+              onClick={() => guard(async () => {
+                await api.post("/api/v1/admin/agentrules", { mode: arMode, pattern: arPattern.trim(), note: arNote.trim() || null });
+                setArPattern(""); setArNote("");
+                setAgentRules(await api.get("/api/v1/admin/agentrules"));
+              }, (dict.agentRules2?.add ?? "已添加"))}>
+              {dict.agentRules2?.add ?? "添加规则"}
+            </button>
+            <p className="text-xs text-sub">
+              {arMode === "deny" ? (dict.agentRules2?.modeDenyNote ?? "") : (dict.agentRules2?.modeAllowNote ?? "")}
+            </p>
+          </div>
+          {agentRules === null ? (
+            <button className="baozi-button mt-3" onClick={async () => {
+              try { setAgentRules(await api.get("/api/v1/admin/agentrules")); } catch { setAgentRules([]); }
+            }}>Load</button>
+          ) : (
+            <table className="nexus-table mt-3 text-xs">
+              <thead><tr>
+                <td className="colhead">{dict.agentRules2?.mode ?? "类型"}</td>
+                <td className="colhead">{dict.agentRules2?.pattern ?? "匹配串"}</td>
+                <td className="colhead">{dict.agentRules2?.note ?? "备注"}</td>
+                <td className="colhead" />
+              </tr></thead>
+              <tbody>
+                {agentRules.map((r) => (
+                  <tr key={r.id}>
+                    <td><span className={`fun-status ${r.mode === "deny" ? "fun-status--banned" : "fun-status--normal"}`}>{r.mode === "deny" ? (dict.agentRules2?.deny ?? "黑") : (dict.agentRules2?.allow ?? "白")}</span></td>
+                    <td><code>{r.pattern}</code></td>
+                    <td className="text-sub">{r.note ?? "—"}</td>
+                    <td>
+                      <button className="min-h-[28px] rounded-full border border-line px-3 font-bold text-danger"
+                        onClick={() => guard(async () => {
+                          await api.post("/api/v1/admin/agentrules/delete", { id: r.id });
+                          setAgentRules(await api.get("/api/v1/admin/agentrules"));
+                        }, "OK")}>
+                        {dict.agentRules2?.del ?? "删除"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {agentRules.length === 0 && (
+                  <tr><td colSpan={4} className="py-4 text-center text-sub">{dict.agentRules2?.empty ?? "暂无规则"}</td></tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </section>
       )}
     </div>

@@ -27,6 +27,9 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(cheaters_scan)
         .service(site_settings_get)
         .service(site_settings_put)
+        .service(agent_rules_list)
+        .service(agent_rules_add)
+        .service(agent_rules_del)
 }
 
 async fn staff(
@@ -480,4 +483,94 @@ async fn site_settings_put(
         .audit(Some(auth.id), "site_setting_update", None)
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+// ============ G-06 客户端黑白名单（NP AgentAllow/AgentDeny 口径） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct AgentRuleRow {
+    id: i64,
+    mode: String,
+    pattern: String,
+    note: Option<String>,
+    created_by: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/admin/agentrules")]
+async fn agent_rules_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let rows: Vec<AgentRuleRow> = sqlx::query_as(
+        "SELECT r.id, r.mode, r.pattern, r.note, u.username AS created_by, r.created_at \
+         FROM agent_rules r LEFT JOIN users u ON u.id = r.created_by \
+         ORDER BY r.mode, r.id DESC LIMIT 200",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct AgentRuleReq {
+    mode: String,
+    pattern: String,
+    #[serde(default)]
+    note: Option<String>,
+}
+
+#[post("/admin/agentrules")]
+async fn agent_rules_add(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<AgentRuleReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if !["allow", "deny"].contains(&body.mode.as_str()) {
+        return Err(DomainError::Validation("mode 取值 allow/deny".into()));
+    }
+    let p = body.pattern.trim();
+    if p.is_empty() || p.len() > 100 {
+        return Err(DomainError::Validation("pattern 长度 1-100".into()));
+    }
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO agent_rules (mode, pattern, note, created_by) VALUES ($1, $2, $3, $4) RETURNING id",
+    )
+    .bind(&body.mode)
+    .bind(p)
+    .bind(&body.note)
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "agentrule.add", Some(id)).await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[derive(Deserialize)]
+struct AgentRuleDel {
+    id: i64,
+}
+
+#[post("/admin/agentrules/delete")]
+async fn agent_rules_del(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<AgentRuleDel>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let n = sqlx::query("DELETE FROM agent_rules WHERE id = $1")
+        .bind(body.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(body.id));
+    }
+    state.repo.audit(Some(auth.id), "agentrule.del", Some(body.id)).await;
+    Ok(ok(serde_json::json!({ "deleted": body.id })))
 }

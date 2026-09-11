@@ -41,6 +41,9 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(delete_torrent)
         .service(torrent_snatches)
         .service(torrent_nfo)
+        .service(request_reseed)
+        .service(torrent_tags)
+        .service(torrent_tag_put)
         .service(stats)
         .service(report_create)
         .service(rss_info)
@@ -108,6 +111,9 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(donate_state)
         .service(donate_topup)
         .service(donate_order)
+        .service(site_profile)
+        .service(site_type_pack_list)
+        .service(site_type_pack_apply)
         .service(massmail_list)
         .service(massmail_send)
         .service(medal_wall)
@@ -965,6 +971,7 @@ struct ListQuery {
     include_dead: Option<bool>,
     search: Option<String>,
     sort: Option<String>,
+    tag_id: Option<i32>,
     cursor: Option<String>,
     limit: Option<i64>,
 }
@@ -985,6 +992,7 @@ async fn list(
         include_dead: q.include_dead.unwrap_or(false),
         search: q.search.as_deref().map(str::to_string),
         sort: q.sort.as_deref().map(str::to_string),
+        tag_id: q.tag_id,
     };
     let cursor = match q.cursor.as_deref() {
         Some(c) if !c.is_empty() => Some(
@@ -1200,6 +1208,59 @@ async fn torrent_nfo(
     require_auth(&req, &state).await?;
     let nfo = torrents::get_nfo(&state.repo.db, path.into_inner()).await?;
     Ok(ok(serde_json::json!({ "nfo": nfo })))
+}
+
+/// 请求补种（NP takereseed.php：死种 → PM 全体完成者，900s 限频）
+#[post("/torrents/{id}/reseed")]
+async fn request_reseed(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let tid = path.into_inner();
+    let username: String = sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or_else(|_| "user".into());
+    let n = torrents::request_reseed(&state.repo.db, tid, (auth.id, username)).await?;
+    state
+        .repo
+        .audit(Some(auth.id), "torrent.reseed", Some(tid))
+        .await;
+    Ok(ok(serde_json::json!({ "notified": n })))
+}
+
+/// 种子标签（T-04）：字典 + 已打
+#[get("/torrents/{id}/tags")]
+async fn torrent_tags(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    require_auth(&req, &state).await?;
+    Ok(ok(torrents::list_tags(&state.repo.db, path.into_inner()).await?))
+}
+
+#[derive(Deserialize)]
+struct TagReq {
+    tag_id: i32,
+    on: bool,
+}
+
+#[put("/torrents/{id}/tags")]
+async fn torrent_tag_put(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    body: web::Json<TagReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let tid = path.into_inner();
+    torrents::tag_torrent(&state.repo.db, tid, (auth.id, auth.class_id as i16), body.tag_id, body.on).await?;
+    state.repo.audit(Some(auth.id), "torrent.tag", Some(tid)).await;
+    Ok(ok(serde_json::json!({ "tag": body.tag_id, "on": body.on })))
 }
 
 #[put("/torrents/{id}/bookmark")]
@@ -2402,6 +2463,133 @@ async fn locations(
         "items": rows, "total": total, "page": page, "per_page": per,
         "pages": (total + per - 1) / per,
     })))
+}
+
+// ---- 通用 PT 站点类型系统（site-type packs：教育/影视/音乐/…可切换）----
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct SiteTypePack {
+    code: String,
+    name: String,
+    description: Option<String>,
+    brand: String,
+    categories: serde_json::Value,
+    modules: serde_json::Value,
+    sort: i32,
+}
+
+/// 公开：当前站点档案（类型包 + 分类 + 模块开关 + 品牌名），前端布局/导航/上传表单由此驱动
+#[get("/site-profile")]
+async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    let site_type: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'site_type'",
+    ).fetch_optional(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or_else(|| "general".into());
+    let pack: Option<SiteTypePack> = sqlx::query_as(
+        "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs WHERE code = $1",
+    ).bind(&site_type)
+    .fetch_optional(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 实际分类以 categories 表为准（类型包只是初始快照，管理组可再编辑）
+    let cats: Vec<(i32, String)> = sqlx::query_as("SELECT id, name FROM categories ORDER BY id")
+        .fetch_all(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let brand: String = sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'site_name'")
+        .fetch_optional(&state.repo.db).await.ok().flatten().flatten()
+        .or(pack.as_ref().map(|p| p.brand.clone()))
+        .unwrap_or_default();
+    Ok(ok(serde_json::json!({
+        "site_type": site_type,
+        "pack_name": pack.as_ref().map(|p| p.name.clone()),
+        "brand": brand,
+        "categories": cats.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
+        "modules": pack.as_ref().map(|p| p.modules.clone()).unwrap_or(serde_json::json!({})),
+    })))
+}
+
+/// 类型包列表（管理组：切换向导）
+#[get("/admin/site-type-packs")]
+async fn site_type_pack_list(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let rows: Vec<SiteTypePack> = sqlx::query_as(
+        "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs ORDER BY sort",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct ApplyPackBody {
+    code: String,
+    /// replace = 清空现有分类重建；merge = 保留现有，仅追加新分类
+    #[serde(default)]
+    mode: Option<String>,
+}
+
+/// 应用类型包（sysop）：重建分类 + 写 site_type/site_name + 更新课本模块开关
+#[post("/admin/site-type-packs/apply")]
+async fn site_type_pack_apply(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<ApplyPackBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let mode = body.mode.as_deref().unwrap_or("replace");
+    if !["replace", "merge"].contains(&mode) {
+        return Err(DomainError::Validation("mode 需为 replace/merge".into()));
+    }
+    let pack: Option<SiteTypePack> = sqlx::query_as(
+        "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs WHERE code = $1",
+    ).bind(&body.code)
+    .fetch_optional(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(pack) = pack else { return Err(DomainError::Validation("类型包不存在".into())); };
+
+    let mut tx = state.repo.db.begin().await.map_err(|e| DomainError::Internal(e.into()))?;
+    let cats = pack.categories.as_array().cloned().unwrap_or_default();
+    let added = cats.len() as i64;
+    if mode == "replace" {
+        let used: i64 = sqlx::query_scalar("SELECT count(*) FROM torrents")
+            .fetch_one(&mut *tx).await.unwrap_or(0);
+        if used > 0 {
+            // 有种子时禁止整表重建（避免悬挂引用）：提示改用 merge
+            return Err(DomainError::Validation("站点已有种子，replace 会悬挂引用；请使用 merge 模式（保留现有分类，追加新分类）".into()));
+        }
+        sqlx::query("DELETE FROM categories").execute(&mut *tx).await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    for (i, c) in cats.iter().enumerate() {
+        let id = c.get("id").and_then(serde_json::Value::as_i64).unwrap_or(i as i64 + 1) as i32;
+        let name = c.get("name").and_then(serde_json::Value::as_str).unwrap_or("").to_string();
+        if name.is_empty() { continue; }
+        let _ = sqlx::query(
+            "INSERT INTO categories (id, name) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
+        ).bind(id).bind(&name)
+        .execute(&mut *tx).await;
+    }
+    // site_type + 品牌默认
+    sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_type', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
+        .bind(&pack.code).execute(&mut *tx).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_name', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
+        .bind(&pack.brand).execute(&mut *tx).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 模块开关 → 站点设定键（textbooks 等）
+    if let Some(mods) = pack.modules.as_object() {
+        for (k, v) in mods {
+            let val = if v.as_bool().unwrap_or(false) { "yes" } else { "no" };
+            let _ = sqlx::query(
+                "INSERT INTO site_settings (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
+            ).bind(format!("module_{k}")).bind(val)
+            .execute(&mut *tx).await;
+        }
+    }
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "site_type_pack_apply", None).await;
+    Ok(ok(serde_json::json!({ "applied": pack.code, "mode": mode, "categories": added })))
 }
 
 // ---- 捐赠中心（馒头 donate 口径：储值钱包 + 三区套餐 + VIP）----

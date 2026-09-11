@@ -5,6 +5,7 @@ import { DownloadButton } from "@/components/download-button";
 import { TorrentSocial } from "@/components/torrent-social";
 import { TorrentManage } from "@/components/torrent-manage";
 import { SnatchList } from "@/components/snatch-list";
+import { TorrentTags } from "@/components/torrent-tags";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import type { TorrentComment, TorrentListItem } from "@fluxtorrent/domain-types";
@@ -168,6 +169,7 @@ export default async function TorrentDetailPage({
                   smallDescr={t.small_descr}
                   descr={ext?.descr ?? null}
                   anonymous={t.anonymous}
+                  seeders={t.seeders}
                 />
               </td>
             </tr>
@@ -190,6 +192,12 @@ export default async function TorrentDetailPage({
             <tr>
               <td className="nexus-detail__label">{dict.torrent.completed}</td>
               <td className="num">{t.times_completed}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.torrTags2?.title ?? "标签"}</td>
+              <td>
+                <TorrentTags torrentId={t.id} />
+              </td>
             </tr>
             <tr>
               <td className="nexus-detail__label">{dict.tdetail?.heatViews ?? "查看"}</td>

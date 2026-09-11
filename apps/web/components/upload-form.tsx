@@ -1,15 +1,25 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { ApiError } from "@/lib/api-client";
+import { useEffect, useRef, useState } from "react";
+import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
-/** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局） */
+interface ProfileCat { id: number; name: string }
+
+/** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类来自站点档案，支持任意类型 PT 站） */
 export function UploadForm() {
   const { dict } = useI18n();
-  // 字典分类/媒介数组按下标对齐：index 0 = 全部，1..n = 对应 id
-  const categories = dict.torrents.categories.slice(1);
+  // 分类以 /site-profile 为准（类型包可切换）；字典仅兜底
+  const [profileCats, setProfileCats] = useState<ProfileCat[] | null>(null);
+  useEffect(() => {
+    api.get<{ categories: ProfileCat[] }>("/api/v1/site-profile")
+      .then((p) => setProfileCats(p.categories))
+      .catch(() => setProfileCats([]));
+  }, []);
+  const categories = profileCats
+    ? profileCats.map((c) => c.name)
+    : dict.torrents.categories.slice(1);
   const media = dict.torrents.media.slice(1);
   // grades 字典下标 i 与 grades 表 id（i-1）对齐；0 = 不选择
   const grades = dict.torrents.grades.slice(1);
@@ -143,9 +153,9 @@ export function UploadForm() {
               onChange={(e) => setCategoryId(Number(e.target.value))}
               className={fieldCls}
             >
-              {categories.map((label, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {label}
+              {(profileCats ?? categories.map((name, i) => ({ id: i + 1, name }))).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>,

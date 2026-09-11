@@ -68,6 +68,8 @@ pub struct TorrentFilter {
     pub search: Option<String>,
     /// 列表排序（旧站 torrents.php 口径）：created（默认）/ seeders / size / completed
     pub sort: Option<String>,
+    /// 标签筛选（T-04）：tag_dict.id，命中 tags 关联
+    pub tag_id: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -126,6 +128,7 @@ pub async fn list_torrents(
                OR t.descr ILIKE $7 ESCAPE chr(92)
                OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7 ESCAPE chr(92)))
           AND ($8::bigint IS NULL OR t.id < $8)
+          AND ($10::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $10))
         ORDER BY {order}
         LIMIT $9
         "#
@@ -140,6 +143,7 @@ pub async fn list_torrents(
         .bind(&pattern)
         .bind(cursor)
         .bind(limit + 1)
+        .bind(filter.tag_id)
         .fetch_all(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -475,6 +479,123 @@ pub async fn get_nfo(db: &PgPool, torrent_id: i64) -> DomainResult<Option<String
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
         .ok_or(DomainError::NotFound(torrent_id))
+}
+
+/// 请求补种（NP takereseed.php 口径）：
+/// 仅限 seeders=0 的"死种"；向所有完成过下载的用户群发 PM；900 秒限频。
+/// 返回通知人数。
+pub async fn request_reseed(
+    db: &PgPool,
+    torrent_id: i64,
+    requester: (i64, String),
+) -> DomainResult<usize> {
+    let row: Option<(i32, Option<chrono::DateTime<chrono::Utc>>, String)> = sqlx::query_as(
+        "SELECT seeders, last_reseed, name FROM torrents WHERE id = $1 AND approval_status = 1",
+    )
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((seeders, last_reseed, name)) = row else {
+        return Err(DomainError::NotFound(torrent_id));
+    };
+    if seeders > 0 {
+        return Err(DomainError::Validation("该种子仍有人做种，无需补种".into()));
+    }
+    if let Some(lr) = last_reseed {
+        if chrono::Utc::now() - lr < chrono::Duration::seconds(900) {
+            return Err(DomainError::Validation("15 分钟内已发起过补种请求，请稍候".into()));
+        }
+    }
+    // 完成过下载的用户（含发布者）
+    let receivers: Vec<i64> = sqlx::query_scalar(
+        "SELECT DISTINCT user_id FROM snatches WHERE torrent_id = $1 AND completed_at IS NOT NULL \
+         UNION SELECT owner_id FROM torrents WHERE id = $1 AND owner_id IS NOT NULL",
+    )
+    .bind(torrent_id)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let subject = "【补种请求】".to_string();
+    let body = format!(
+        "用户 {} 请求补种：{}（/torrent/{}）。如果你保留了文件，欢迎重新做种，谢谢！",
+        requester.1, name, torrent_id
+    );
+    for uid in &receivers {
+        sqlx::query("INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)")
+            .bind(requester.0)
+            .bind(uid)
+            .bind(&subject)
+            .bind(&body)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    sqlx::query("UPDATE torrents SET last_reseed = now() WHERE id = $1")
+        .bind(torrent_id)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(receivers.len())
+}
+
+/// 种子标签（T-04）：列出字典 + 该种子已打的标签
+pub async fn list_tags(db: &PgPool, torrent_id: i64) -> DomainResult<serde_json::Value> {
+    let dict: Vec<(i32, String, String)> =
+        sqlx::query_as("SELECT id, name, kind FROM tag_dict ORDER BY id")
+            .fetch_all(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let mine: Vec<i32> = sqlx::query_scalar(
+        "SELECT tag_id FROM tags WHERE torrent_id = $1 ORDER BY tag_id",
+    )
+    .bind(torrent_id)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(serde_json::json!({ "dict": dict, "mine": mine }))
+}
+
+/// 打/去标签（作者或 staff；官种标签仅 staff 可打）
+pub async fn tag_torrent(
+    db: &PgPool,
+    torrent_id: i64,
+    actor: (i64, i16),
+    tag_id: i32,
+    on: bool,
+) -> DomainResult<()> {
+    let row: Option<(Option<i64>, String)> =
+        sqlx::query_as("SELECT owner_id, kind FROM torrents t JOIN tag_dict d ON d.id = $2 WHERE t.id = $1")
+            .bind(torrent_id)
+            .bind(tag_id)
+            .fetch_optional(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((owner_id, kind)) = row else {
+        return Err(DomainError::NotFound(torrent_id));
+    };
+    if actor.1 < 90 && owner_id != Some(actor.0) {
+        return Err(DomainError::Forbidden);
+    }
+    if kind == "official" && actor.1 < 90 {
+        return Err(DomainError::Forbidden); // 官种/官方标签仅 staff
+    }
+    if on {
+        sqlx::query("INSERT INTO tags (torrent_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
+            .bind(torrent_id)
+            .bind(tag_id)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    } else {
+        sqlx::query("DELETE FROM tags WHERE torrent_id = $1 AND tag_id = $2")
+            .bind(torrent_id)
+            .bind(tag_id)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    Ok(())
 }
 
 /// 站点统计（M10 概览，旧站首页口径）

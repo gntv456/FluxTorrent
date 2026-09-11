@@ -13,12 +13,14 @@ export function TorrentManage({
   smallDescr,
   descr,
   anonymous,
+  seeders,
 }: {
   torrentId: number;
   name: string;
   smallDescr: string | null;
   descr: string | null;
   anonymous: boolean;
+  seeders?: number;
 }) {
   const { dict } = useI18n();
   const router = useRouter();
@@ -63,6 +65,19 @@ export function TorrentManage({
     }
   }
 
+  async function reseed() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.post<{ notified: number }>(`/api/v1/torrents/${torrentId}/reseed`, {});
+      setMsg((dict.reseed2?.ok ?? "已通知 {n} 位下载者").replace("{n}", String(r.notified)));
+    } catch (e) {
+      setMsg(apiErrorMessage(dict, e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function del() {
     if (!window.confirm(t.delConfirm)) return;
     setBusy(true);
@@ -88,6 +103,17 @@ export function TorrentManage({
         >
           ✎ {t.edit}
         </button>
+        {(seeders ?? 1) === 0 && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={reseed}
+            className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-sun disabled:opacity-50"
+            title={dict.reseed2?.note ?? "向所有完成下载的用户发送补种请求（15 分钟限频）"}
+          >
+            🔄 {dict.reseed2?.btn ?? "请求补种"}
+          </button>
+        )}
         <button
           type="button"
           disabled={busy}
