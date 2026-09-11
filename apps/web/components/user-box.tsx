@@ -103,6 +103,7 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
               <a href="/medals">{dict.nav.medals}</a>
               <a href="/tasks">{dict.nav.tasks}</a>
               <a href="/invites">{dict.nav.invites}</a>
+              <a href="/jixiao">{dict.nav.jixiao}</a>
               {me.class_id !== undefined && me.class_id >= 90 && (
                   <a href="/admin" className="font-bold text-[var(--baozi-orange-dark)]">
                     {dict.admin.panelTitle}

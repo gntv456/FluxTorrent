@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { PushSettings } from "@/components/push-settings";
 
 /** 控制面板 —— 像素级复刻 NexusPHP usercp（包子站）：
  *  左侧 ⚙控制面板 六项侧边导航（账户概览/个人资料/网站设定/论坛设定/安全设定）
@@ -1299,6 +1300,12 @@ function SecurityTab({
           <br />
           {t.twoStepHint}
         </Row>
+        <tr>
+          <td className="rowhead">{t.pushNotify}</td>
+          <td className="rowfollow p-0">
+            <PushSettings />
+          </td>
+        </tr>
         <Row head={t.passkeyLabel}>
           {t.passkeyHint}
         </Row>

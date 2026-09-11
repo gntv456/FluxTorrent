@@ -18,6 +18,7 @@ export async function Header() {
     { href: "/torrents?official=1", label: dict.nav.official },
     { href: "/forums", label: dict.nav.forums },
     { href: "/requests", label: dict.nav.candidates },
+    { href: "/offers", label: dict.nav.offers },
     { href: "/preserve", label: dict.nav.preserve },
     { href: "/upload", label: dict.nav.upload },
     { href: "/games", label: dict.nav.games },

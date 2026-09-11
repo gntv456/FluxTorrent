@@ -38,7 +38,7 @@ type ToolTab =
   | "promo" | "staffmess" | "adduser" | "bonus" | "warned" | "ipcheck" | "maxlogin"
   | "upload" | "resetpass" | "deldisabled" | "emailbans" | "testip" | "stats"
   | "cleanup" | "ads" | "notconnect" | "uploaders" | "agents" | "polls"
-  | "dbstats" | "syslog" | "locations";
+  | "dbstats" | "syslog" | "locations" | "hrpardon";
 
 export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const { dict } = useI18n();
@@ -103,6 +103,9 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [logData, setLogData] = useState<SysLogPage | null>(null);
   const [locPage, setLocPage] = useState(1);
   const [locData, setLocData] = useState<LocationPage | null>(null);
+  const [hpUser, setHpUser] = useState("");
+  const [hpTorrent, setHpTorrent] = useState("");
+  const [hpNote, setHpNote] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -166,6 +169,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
     ["cleanup", t.tabCleanup], ["ads", t.tabAds],
     ["notconnect", t.tabNotconnect], ["uploaders", t.tabUploaders], ["agents", t.tabAgents], ["polls", t.tabPolls],
     ["dbstats", t.tabDbstats], ["syslog", t.tabSyslog], ["locations", t.tabLocations],
+    ["hrpardon", t.tabHrpardon],
   ];
 
   return (
@@ -983,6 +987,27 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
             </div>
           )}
         </>
+      )}
+      {/* H&R 赦免（hr/pardon） */}
+      {tab === "hrpardon" && (
+        <section className="baozi-panel p-4">
+          <h2 className="mb-3 text-base font-bold text-ink">{t.hpTitle}</h2>
+          <div className="cmgmt-form">
+            <label>{t.hpUser}<input value={hpUser} onChange={(e) => setHpUser(e.target.value.replace(/\D/g, ""))} placeholder="4" /></label>
+            <label>{t.hpTorrent}<input value={hpTorrent} onChange={(e) => setHpTorrent(e.target.value.replace(/\D/g, ""))} placeholder="12" /></label>
+            <label>{t.fldReason}<input value={hpNote} onChange={(e) => setHpNote(e.target.value)} /></label>
+            <button className="baozi-button self-start" disabled={busy || !hpUser || !hpTorrent || !hpNote.trim()}
+              onClick={() => guard(async () => {
+                await api.post("/api/v1/admin/hr/pardon", {
+                  user_id: Number(hpUser), torrent_id: Number(hpTorrent), note: hpNote,
+                });
+                setHpUser(""); setHpTorrent(""); setHpNote("");
+              }, t.hpDone)}>
+              {t.hpBtn}
+            </button>
+            <p className="text-xs text-sub">{t.hpNote}</p>
+          </div>
+        </section>
       )}
     </div>
   );
