@@ -2542,19 +2542,21 @@ async fn donate_order(
             let days: i64 = if title.contains("终身") { 36500 }
                 else if title.contains("180") { 180 } else { 30 };
             sqlx::query(
-                "UPDATE users SET vip_until = GREATEST(COALESCE(vip_until, now()), now()) + ($2 || ' days')::interval WHERE id = $1",
+                "UPDATE users SET vip_until = GREATEST(COALESCE(vip_until, now()), now()) + make_interval(days => $2::int) WHERE id = $1",
             ).bind(auth.id).bind(days)
             .execute(&mut *tx).await
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
         _ => {}
     }
-    // 附赠邀请 1
+    // 附赠邀请 1（invite_quota 是 (user_id, period) 结构：当天无行则插入 used=0）
     if reward.as_deref().unwrap_or("").contains("邀请") {
-        let _: () = sqlx::query("UPDATE invite_quota SET quota = quota + 1 WHERE user_id = $1")
-            .bind(auth.id)
-            .execute(&mut *tx).await
-            .map(|_| ()).unwrap_or(());
+        sqlx::query(
+            "INSERT INTO invite_quota (user_id, period, used) VALUES ($1, current_date, 0)              ON CONFLICT (user_id, period) DO NOTHING",
+        )
+        .bind(auth.id)
+        .execute(&mut *tx).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     sqlx::query(
         "INSERT INTO donation_ledger (user_id, kind, amount_usd, balance_after, plan_id, note) VALUES ($1, 'order', -$2, $3, $4, $5)",

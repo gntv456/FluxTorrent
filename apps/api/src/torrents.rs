@@ -215,7 +215,7 @@ pub async fn get_torrent_detail(db: &PgPool, id: i64) -> DomainResult<TorrentDet
                    t.created_at,
                    COALESCE((SELECT max(s.completed_at) FROM snatches s WHERE s.torrent_id = t.id), t.created_at)
                ) AS last_action,
-               t.times_completed * 2 + 1 AS views
+               (t.times_completed * 2 + 1)::bigint AS views
         FROM torrents t
         WHERE t.id = $1 AND t.approval_status = 1
         "#,
