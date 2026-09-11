@@ -673,7 +673,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     let scope = crate::games_http::mount_games(crate::ops_http::mount_ops(
         crate::content_http::mount_content(scope),
     ));
-    let scope = crate::admin_http::mount_admin(scope);
+    let scope = crate::admin_p2_http::mount_p2_tools(crate::admin_http::mount_admin(scope));
+    let scope = crate::settings_http::mount_settings(scope);
     let scope = crate::push_http::mount_push(scope);
     let scope = crate::gaps_http::mount_gaps(scope);
     let scope = crate::rss_http::mount_rss(scope);

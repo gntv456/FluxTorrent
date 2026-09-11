@@ -1,0 +1,39 @@
+﻿docker :  Container flux-tracker Running 
+所在位置 行:445 字符: 27
++ ... ent\docker; docker compose -f docker-compose.yml up -d api web 2>&1 | ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container flux-tracker Running : 
+   String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container flux-worker Running 
+ Container flux-postgres Running 
+ Container flux-redis Running 
+ Container flux-api Recreate 
+ Container flux-api Recreated 
+ Container flux-web Recreate 
+ Container flux-web Recreated 
+ Container flux-postgres Waiting 
+ Container flux-redis Waiting 
+ Container flux-postgres Healthy 
+ Container flux-redis Healthy 
+ Container flux-api Starting 
+ Container flux-api Started 
+ Container flux-web Starting 
+ Container flux-web Started 
+
+flux-web|Up 8 seconds
+flux-api|Up 8 seconds (health: starting)
+flux-tracker|Up 42 minutes
+flux-worker|Up 42 hours
+flux-postgres|Up 2 days (healthy)
+flux-redis|Up 2 days (healthy)
+nexusphp-scheduler|Up 2 days
+nexusphp-cleanup|Up 2 days
+nexusphp-queue|Up 2 days
+nexusphp-openresty|Up 2 days
+nexusphp-phpmyadmin|Up 2 days
+nexusphp-php|Up 2 days
+nexusphp-redis|Up 2 days
+nexusphp-mysql|Up 2 days
+

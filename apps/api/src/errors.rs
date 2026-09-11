@@ -23,6 +23,9 @@ pub enum DomainError {
     UsernameTaken,
     #[error("参数校验失败: {0}")]
     Validation(String),
+    /// 字段级校验失败（站点设定批量保存 / 预校验，§4.1）：(字段名, 错误说明)
+    #[error("字段校验失败")]
+    FieldErrors(Vec<(String, String)>),
     #[error("余额不足")]
     InsufficientSpark,
     #[error("流水冲突，请重试")]
@@ -51,6 +54,7 @@ impl DomainError {
             DomainError::InviteUsed => 2006,
             DomainError::UsernameTaken => 2007,
             DomainError::Validation(_) => 1002,
+            DomainError::FieldErrors(_) => 1002,
             DomainError::InsufficientSpark => 4001,
             DomainError::LedgerConflict => 4002,
             DomainError::RateLimited => 1015,
@@ -73,7 +77,8 @@ impl DomainError {
             | DomainError::RateLimited
             | DomainError::TorrentInvalid(_)
             | DomainError::TorrentDuplicate
-            | DomainError::Validation(_) => StatusCode::BAD_REQUEST,
+            | DomainError::Validation(_)
+            | DomainError::FieldErrors(_) => StatusCode::BAD_REQUEST,
             DomainError::InsufficientSpark | DomainError::LedgerConflict => StatusCode::CONFLICT,
             DomainError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -103,12 +108,25 @@ impl ResponseError for DomainError {
                     d
                 )
             }
+            DomainError::FieldErrors(list) => format!(
+                "{}: {} 个字段未通过校验",
+                crate::i18n::localized_message(self.code(), locale),
+                list.len()
+            ),
             _ => crate::i18n::localized_message(self.code(), locale).to_string(),
+        };
+        // 字段级错误随信封 data 返回（前端据此内联红字），其余错误 data 保持 null
+        let data = match self {
+            DomainError::FieldErrors(list) => serde_json::json!(list
+                .iter()
+                .map(|(f, e)| serde_json::json!({ "field": f, "error": e }))
+                .collect::<Vec<_>>()),
+            _ => serde_json::Value::Null,
         };
         HttpResponse::build(status).json(json!({
             "code": self.code(),
             "message": message,
-            "data": null,
+            "data": data,
             "request_id": uuid::Uuid::new_v4().to_string(),
         }))
     }

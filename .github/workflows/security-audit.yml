@@ -1,0 +1,24 @@
+# 依赖安全审计：Rust CVE 扫描（§11 安全清单 cargo-audit 项）
+# 无需 secrets；PR 与每周定期跑，发现已知漏洞即失败
+name: security-audit
+
+on:
+  push:
+    paths:
+      - "Cargo.lock"
+      - "**/Cargo.toml"
+      - ".github/workflows/security-audit.yml"
+  schedule:
+    - cron: "0 3 * * 1" # 每周一 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Run audit（有已知漏洞即非零退出）
+        run: cargo audit --deny warnings

@@ -29,9 +29,9 @@ export async function Footer() {
         {/* 三栏信息卡片 */}
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-[var(--r-md)] border border-[var(--baozi-line-soft)] bg-[var(--baozi-paper)] p-4 shadow-[var(--shadow-card)]">
-            <h3 className="font-display text-sm font-bold text-ink">
+            <h2 className="font-display text-sm font-bold text-ink">
               {dict.footer.aboutTitle}
-            </h3>
+            </h2>
             <p className="mt-2 flex items-center gap-2 text-sm text-sub">
               <span aria-hidden className="text-xl">
                 🥟
@@ -40,9 +40,9 @@ export async function Footer() {
             </p>
           </div>
           <div className="rounded-[var(--r-md)] border border-[var(--baozi-line-soft)] bg-[var(--baozi-paper)] p-4 shadow-[var(--shadow-card)]">
-            <h3 className="font-display text-sm font-bold text-ink">
+            <h2 className="font-display text-sm font-bold text-ink">
               {dict.footer.linksTitle}
-            </h3>
+            </h2>
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
               {links.map((l) => (
                 <li key={l.href}>
@@ -57,9 +57,9 @@ export async function Footer() {
             </ul>
           </div>
           <div className="rounded-[var(--r-md)] border border-[var(--baozi-line-soft)] bg-[var(--baozi-paper)] p-4 shadow-[var(--shadow-card)]">
-            <h3 className="font-display text-sm font-bold text-ink">
+            <h2 className="font-display text-sm font-bold text-ink">
               {dict.footer.helpTitle}
-            </h3>
+            </h2>
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
               <li>
                 <Link
@@ -91,7 +91,7 @@ export async function Footer() {
 
         {/* 运行统计条（登录后可见） */}
         {stats && (
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 rounded-[var(--r-md)] border border-[var(--baozi-line)] bg-[var(--baozi-cream)] px-4 py-2 text-center text-xs font-bold text-[var(--baozi-orange-dark)]">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 rounded-[var(--r-md)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-4 py-2 text-center text-xs font-bold text-[var(--baozi-orange-dark)]">
             <span>👥 {fmt(dict.footer.statsUsers, { n: stats.users })}</span>
             <span>
               🌱 {fmt(dict.footer.statsTorrents, { n: stats.torrents })}

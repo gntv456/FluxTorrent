@@ -75,7 +75,8 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
   return (
     <>
       <div className="userbar__identity">
-        <a href="/my" aria-hidden className="userbar__avatar" title={me.username}>
+        {/* 装饰性头像（用户名链接已在旁侧）：aria-hidden 时须移出 tab 序列 */}
+        <a href="/my" aria-hidden tabIndex={-1} className="userbar__avatar" title={me.username}>
           {me.username.slice(0, 1).toUpperCase()}
         </a>
         <div className="min-w-0">

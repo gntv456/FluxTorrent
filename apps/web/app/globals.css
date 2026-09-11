@@ -119,7 +119,7 @@ a:hover {
   padding: 1px 7px;
   border-radius: 6px;
   border: 1px solid var(--baozi-line);
-  background: var(--baozi-cream);
+  background: var(--baozi-paper);
   color: var(--baozi-orange-dark);
   font-size: 11px;
   font-weight: 700;
@@ -315,11 +315,12 @@ a:hover {
   line-height: 1.35;
 }
 .userbar__welcome a.userbar__name {
-  color: var(--baozi-orange);
+  color: var(--baozi-orange-dark);
   font-size: 17px;
 }
 .userbar__welcome a.userbar__name:hover {
-  color: var(--baozi-orange-dark);
+  color: var(--ink);
+  text-decoration: underline;
 }
 .userbar__meta {
   display: flex;
@@ -336,6 +337,9 @@ a:hover {
   font-size: 12px;
 }
 .userbar__shortcuts a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   color: #4b3d2f;
   font-weight: 600;
 }

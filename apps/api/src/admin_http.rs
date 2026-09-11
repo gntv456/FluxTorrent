@@ -4,7 +4,7 @@
 //! 举报处理、用户管理（封禁/解封/等级调整）、审计日志查询、站点运营概览。
 //! 敏感操作全部 require_staff + audit 落库（§5.7）。
 
-use actix_web::{get, post, put, web, HttpRequest, HttpResponse};
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -20,6 +20,9 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(report_queue)
         .service(report_resolve)
         .service(user_admin_list)
+        .service(user_admin_detail)
+        .service(user_adjust)
+        .service(user_flags)
         .service(user_set_status)
         .service(user_set_class)
         .service(audit_query)
@@ -30,6 +33,15 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(agent_rules_list)
         .service(agent_rules_add)
         .service(agent_rules_del)
+        .service(deny_reasons_list)
+        .service(deny_reasons_add)
+        .service(deny_reasons_update)
+        .service(deny_reasons_delete)
+        .service(admin_torrent_list)
+        .service(torrent_op_logs)
+        .service(admin_spark_logs)
+        .service(admin_torrent_buys)
+        .service(admin_login_logs)
 }
 
 async fn staff(
@@ -101,6 +113,9 @@ struct ReviewReq {
     approve: bool,
     #[serde(default)]
     reason: String,
+    /// 拒绝原因字典（torrent_deny_reasons.id；好学站 torrent-deny-reasons 口径）
+    #[serde(default)]
+    deny_reason_id: Option<i64>,
 }
 
 #[post("/admin/reviews/decide")]
@@ -110,16 +125,37 @@ async fn review_decide(
     body: web::Json<ReviewReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    if !body.approve && body.reason.trim().is_empty() {
-        return Err(DomainError::Validation("拒绝必须填理由".into()));
+    let deny_reason_valid = if let Some(dr) = body.deny_reason_id {
+        if body.approve {
+            return Err(DomainError::Validation("通过时不需要拒绝原因".into()));
+        }
+        let exists: Option<i64> = sqlx::query_scalar(
+            "SELECT id FROM torrent_deny_reasons WHERE id = $1 AND enabled",
+        )
+        .bind(dr)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if exists.is_none() {
+            return Err(DomainError::Validation("拒绝原因不存在或已停用".into()));
+        }
+        true
+    } else {
+        false
+    };
+    if !body.approve && !deny_reason_valid && body.reason.trim().is_empty() {
+        return Err(DomainError::Validation("拒绝必须选择原因或填写理由".into()));
     }
     // 1=已过 2=被拒
     let n = sqlx::query(
-        "UPDATE torrents SET approval_status = $2 \
+        "UPDATE torrents SET approval_status = $2, \
+            deny_reason_id = $3, deny_note = $4 \
          WHERE id = $1 AND approval_status = 0",
     )
     .bind(body.torrent_id)
     .bind(if body.approve { 1 } else { 2 })
+    .bind(if body.approve { None } else { body.deny_reason_id })
+    .bind(if body.approve { None } else { Some(body.reason.trim().to_string()) })
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
@@ -127,6 +163,22 @@ async fn review_decide(
     if n == 0 {
         return Err(DomainError::Validation("种子不存在或不在待审状态".into()));
     }
+    let action = if body.approve { "approve" } else { "reject" };
+    // 种子操作记录（torrent-operation-logs 口径）
+    let _ = sqlx::query(
+        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
+         VALUES ($1, $2, $3, $4::jsonb)",
+    )
+    .bind(body.torrent_id)
+    .bind(auth.id)
+    .bind(action)
+    .bind(serde_json::json!({
+        "reason": body.reason,
+        "deny_reason_id": body.deny_reason_id,
+    })
+    .to_string())
+    .execute(&state.repo.db)
+    .await;
     state
         .repo
         .audit(
@@ -141,6 +193,7 @@ async fn review_decide(
         .await;
     Ok(ok(serde_json::json!({
         "torrent_id": body.torrent_id, "approved": body.approve, "reason": body.reason,
+        "deny_reason_id": body.deny_reason_id,
     })))
 }
 
@@ -207,35 +260,394 @@ async fn report_resolve(
     Ok(ok(serde_json::json!({ "resolved": body.report_id })))
 }
 
-// ============ 用户管理 ============
+// ============ 用户管理（第五轮：好学站 /nexusphp user/users 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
-struct AdminUserRow {
+struct AdminUserListRow {
     id: i64,
     username: String,
     email: String,
     class_id: i32,
+    class_name: Option<String>,
+    uploaded: i64,
+    downloaded: i64,
     status: i16,
+    download_enabled: bool,
+    suspended: bool,
     created_at: chrono::DateTime<chrono::Utc>,
+    last_seen_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// 五维筛选 + 排序 + 分页（ID/等级/状态/启用/下载权限/挂起 + 用户名/邮箱搜索）
+#[derive(Deserialize)]
+struct UserListQ {
+    #[serde(default)]
+    q: String,
+    #[serde(default)]
+    id: Option<i64>,
+    #[serde(default)]
+    class_id: Option<i32>,
+    /// 0=全部 1=正常 2=禁言 3=封禁
+    #[serde(default)]
+    status: Option<i16>,
+    /// yes/no/全部
+    #[serde(default)]
+    enabled: Option<String>,
+    #[serde(default)]
+    download: Option<String>,
+    #[serde(default)]
+    suspended: Option<String>,
+    #[serde(default = "default_sort")]
+    sort: String,
+    #[serde(default = "default_desc")]
+    desc: bool,
+    #[serde(default = "default_page")]
+    page: i64,
+    #[serde(default = "default_per_page")]
+    per_page: i64,
+}
+fn default_sort() -> String {
+    "id".into()
+}
+fn default_desc() -> bool {
+    true
+}
+fn default_page() -> i64 {
+    1
+}
+fn default_per_page() -> i64 {
+    20
 }
 
 #[get("/admin/users")]
 async fn user_admin_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<SearchQ>,
+    q: web::Query<UserListQ>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let pattern = format!("%{}%", q.q.trim());
-    let rows: Vec<AdminUserRow> = sqlx::query_as(
-        "SELECT id, username, email, class_id, status, created_at FROM users \
-         WHERE username ILIKE $1 OR email ILIKE $1 ORDER BY id LIMIT 100",
+    if !(1..=100).contains(&q.per_page) {
+        return Err(DomainError::Validation("per_page 取值 1-100".into()));
+    }
+    // 白名单排序字段（好学站可排序列：Id/等级/上传量/下载量/添加时间）
+    let order_col = match q.sort.as_str() {
+        "id" => "u.id",
+        "class" => "u.class_id",
+        "uploaded" => "u.uploaded",
+        "downloaded" => "u.downloaded",
+        "created" => "u.created_at",
+        _ => "u.id",
+    };
+    // 条件占位符：$1=搜索 $2=ID $3=等级（WHERE 里按出现顺序绑定，见下方 bind 次序）
+    let mut where_parts: Vec<String> = Vec::new();
+    if q.id.is_some() {
+        where_parts.push("u.id = $2".into());
+    }
+    if q.class_id.is_some() {
+        where_parts.push("u.class_id = $3".into());
+    }
+    if let Some(st) = q.status {
+        match st {
+            0 => {}
+            1 => where_parts.push("u.status = 0".into()),
+            2 => where_parts.push("u.status = 1".into()),
+            3 => where_parts.push("u.status >= 2".into()),
+            _ => return Err(DomainError::Validation("status 取值 0-3".into())),
+        }
+    }
+    if let Some(e) = q.enabled.as_deref() {
+        match e {
+            "yes" => where_parts.push("u.status < 2".into()),
+            "no" => where_parts.push("u.status >= 2".into()),
+            _ => {}
+        }
+    }
+    if let Some(d) = q.download.as_deref() {
+        match d {
+            "yes" => where_parts.push("u.download_enabled".into()),
+            "no" => where_parts.push("NOT u.download_enabled".into()),
+            _ => {}
+        }
+    }
+    if let Some(s) = q.suspended.as_deref() {
+        match s {
+            "yes" => where_parts.push("u.suspended".into()),
+            "no" => where_parts.push("NOT u.suspended".into()),
+            _ => {}
+        }
+    }
+    if !q.q.trim().is_empty() {
+        where_parts.push("(u.username ILIKE $1 OR u.email ILIKE $1)".into());
+    }
+    let where_sql = if where_parts.is_empty() {
+        "TRUE".to_string()
+    } else {
+        where_parts.join(" AND ")
+    };
+    let dir = if q.desc { "DESC" } else { "ASC" };
+    let sql = format!(
+        r#"SELECT u.id, u.username, u.email, u.class_id, c.name AS class_name,
+                  u.uploaded, u.downloaded, u.status, u.download_enabled, u.suspended,
+                  u.created_at, u.last_seen_at
+           FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
+           WHERE {where_sql}
+           ORDER BY {order_col} {dir}, u.id {dir}
+           LIMIT $4 OFFSET $5"#,
+    );
+    let pattern = crate::http::like_pattern(&q.q);
+    let rows: Vec<AdminUserListRow> = sqlx::query_as(&sql)
+        .bind(pattern.clone())
+        .bind(q.id)
+        .bind(q.class_id)
+        .bind(q.per_page)
+        .bind((q.page.max(1) - 1) * q.per_page)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let count_sql = format!(
+        "SELECT count(*) FROM users u WHERE {where_sql}"
+    );
+    let total: i64 = sqlx::query_scalar(&count_sql)
+        .bind(pattern)
+        .bind(q.id)
+        .bind(q.class_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "rows": rows,
+        "total": total,
+        "page": q.page.max(1),
+        "per_page": q.per_page,
+    })))
+}
+
+/// 后台用户详情（好学站 user/users/{id} 详情口径：字段全景 + 统计）
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct AdminUserDetail {
+    id: i64,
+    username: String,
+    email: String,
+    passkey: String,
+    class_id: i32,
+    class_name: Option<String>,
+    title: Option<String>,
+    uploaded: i64,
+    downloaded: i64,
+    spark_balance: i64,
+    status: i16,
+    download_enabled: bool,
+    suspended: bool,
+    parked: bool,
+    donor: bool,
+    totp_enabled: bool,
+    invited_by: Option<i64>,
+    inviter_name: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+    last_seen_at: Option<chrono::DateTime<chrono::Utc>>,
+    seeding: i64,
+    leeching: i64,
+    uploads: i64,
+    invites_unused: i64,
+}
+
+#[get("/admin/users/{id}")]
+async fn user_admin_detail(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let uid = path.into_inner();
+    let row: Option<AdminUserDetail> = sqlx::query_as(
+        r#"SELECT u.id, u.username, u.email, u.passkey, u.class_id, c.name AS class_name,
+                  u.title, u.uploaded, u.downloaded, u.spark_balance, u.status,
+                  u.download_enabled, u.suspended, u.parked, u.donor, u.totp_enabled,
+                  u.invited_by, i.username AS inviter_name, u.created_at, u.last_seen_at,
+                  (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
+                  (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
+                  (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id) AS uploads,
+                  (SELECT count(*) FROM invites v WHERE v.inviter_id = u.id AND v.status = 0) AS invites_unused
+           FROM users u
+           LEFT JOIN user_classes c ON c.id = u.class_id
+           LEFT JOIN users i ON i.id = u.invited_by
+           WHERE u.id = $1"#,
     )
-    .bind(pattern)
-    .fetch_all(&state.repo.db)
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    let user = row.ok_or(DomainError::NotFound(uid))?;
+    Ok(ok(user))
+}
+
+/// 「修改上传量等」（好学站用户详情按钮口径）：delta 语义，正加负减，下限 0
+#[derive(Deserialize)]
+struct UserAdjustReq {
+    user_id: i64,
+    #[serde(default)]
+    uploaded_delta: Option<i64>,
+    #[serde(default)]
+    downloaded_delta: Option<i64>,
+    #[serde(default)]
+    spark_delta: Option<i64>,
+    /// 增发邀请码数量（正数为增发，直接发放有效邀请）
+    #[serde(default)]
+    invite_grant: Option<i32>,
+    #[serde(default)]
+    note: Option<String>,
+}
+
+#[post("/admin/users/adjust")]
+async fn user_adjust(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<UserAdjustReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if body.uploaded_delta.is_none()
+        && body.downloaded_delta.is_none()
+        && body.spark_delta.is_none()
+        && body.invite_grant.is_none()
+    {
+        return Err(DomainError::Validation("至少提供一项调整".into()));
+    }
+    // 数值调整仅 sysop/管理员（等级 93+）
+    if auth.class_id < 93 {
+        return Err(DomainError::Forbidden);
+    }
+    let row: Option<(i64, i64, i64)> = sqlx::query_as(
+        "SELECT uploaded, downloaded, spark_balance FROM users WHERE id = $1",
+    )
+    .bind(body.user_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (up0, down0, spark0) = row.ok_or(DomainError::NotFound(body.user_id))?;
+    let up = ((up0 as i128 + body.uploaded_delta.unwrap_or(0) as i128).max(0)) as i64;
+    let down = ((down0 as i128 + body.downloaded_delta.unwrap_or(0) as i128).max(0)) as i64;
+    let spark = ((spark0 as i128 + body.spark_delta.unwrap_or(0) as i128).max(0)) as i64;
+    sqlx::query(
+        "UPDATE users SET uploaded = $2, downloaded = $3, spark_balance = $4 WHERE id = $1",
+    )
+    .bind(body.user_id)
+    .bind(up)
+    .bind(down)
+    .bind(spark)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 火花调整写流水（余额权威在 spark_ledger；kind=admin，操作者入 ref_id）
+    if let Some(delta) = body.spark_delta {
+        if delta != 0 {
+            sqlx::query(
+                "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
+                 VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'admin', 'adjust', $3, $4, $5)",
+            )
+            .bind(body.user_id)
+            .bind(delta)
+            .bind(auth.id)
+            .bind(format!(
+                "admin-adjust-{}-{}",
+                body.user_id,
+                uuid::Uuid::new_v4().simple()
+            ))
+            .bind(spark)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+    }
+    // 增发邀请：直接生成有效邀请码（30 天有效，NP takeinvite 口径）
+    let mut granted_codes: Vec<String> = Vec::new();
+    if let Some(grant) = body.invite_grant {
+        if grant > 0 {
+            for _ in 0..grant.min(50) {
+                let code = uuid::Uuid::new_v4().simple().to_string();
+                sqlx::query(
+                    "INSERT INTO invites (inviter_id, code, expires_at) VALUES ($1, $2, now() + interval '30 days')",
+                )
+                .bind(body.user_id)
+                .bind(&code)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+                granted_codes.push(code);
+            }
+        } else if grant < 0 {
+            // 负数：回收最早到期的未用邀请
+            sqlx::query(
+                "DELETE FROM invites WHERE ctid IN (\
+                    SELECT ctid FROM invites WHERE inviter_id = $1 AND status = 0 \
+                    ORDER BY expires_at LIMIT $2)",
+            )
+            .bind(body.user_id)
+            .bind((-grant) as i64)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "user.adjust", Some(body.user_id))
+        .await;
+    Ok(ok(serde_json::json!({
+        "user_id": body.user_id,
+        "uploaded": up, "downloaded": down, "spark": spark,
+        "invite_grant": body.invite_grant.unwrap_or(0),
+        "granted_codes": granted_codes,
+        "note": body.note,
+    })))
+}
+
+/// 下载权限 / 挂起 开关（tracker announce 执行点生效）
+#[derive(Deserialize)]
+struct UserFlagsReq {
+    user_id: i64,
+    #[serde(default)]
+    download_enabled: Option<bool>,
+    #[serde(default)]
+    suspended: Option<bool>,
+}
+
+#[put("/admin/users/flags")]
+async fn user_flags(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<UserFlagsReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if body.download_enabled.is_none() && body.suspended.is_none() {
+        return Err(DomainError::Validation("至少提供一个开关".into()));
+    }
+    let n = sqlx::query(
+        "UPDATE users SET \
+            download_enabled = COALESCE($2, download_enabled), \
+            suspended = COALESCE($3, suspended) \
+         WHERE id = $1",
+    )
+    .bind(body.user_id)
+    .bind(body.download_enabled)
+    .bind(body.suspended)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(body.user_id));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "user.flags", Some(body.user_id))
+        .await;
+    // 挂起/禁下载变更需立即作用于 tracker（否则 passkey 缓存 60s 内仍有效）
+    crate::http::bump_guard_ver(&state).await;
+    Ok(ok(serde_json::json!({
+        "user_id": body.user_id,
+        "download_enabled": body.download_enabled,
+        "suspended": body.suspended,
+    })))
 }
 
 #[derive(Deserialize)]
@@ -336,7 +748,7 @@ async fn audit_query(
     q: web::Query<SearchQ>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let pattern = format!("%{}%", q.q.trim());
+    let pattern = crate::http::like_pattern(&q.q);
     let rows: Vec<AuditRow> = sqlx::query_as(
         "SELECT id, actor_id, action, created_at FROM audit_log \
          WHERE action ILIKE $1 ORDER BY id DESC LIMIT 200",
@@ -502,7 +914,7 @@ async fn agent_rules_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
+    let _auth = staff(&req, &state).await?;
     let rows: Vec<AgentRuleRow> = sqlx::query_as(
         "SELECT r.id, r.mode, r.pattern, r.note, u.username AS created_by, r.created_at \
          FROM agent_rules r LEFT JOIN users u ON u.id = r.created_by \
@@ -547,6 +959,7 @@ async fn agent_rules_add(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "agentrule.add", Some(id)).await;
+    crate::http::bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -572,5 +985,413 @@ async fn agent_rules_del(
         return Err(DomainError::NotFound(body.id));
     }
     state.repo.audit(Some(auth.id), "agentrule.del", Some(body.id)).await;
+    crate::http::bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "deleted": body.id })))
+}
+
+// ============ 第五轮：拒绝原因字典（好学站 torrent-deny-reasons 口径） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct DenyReasonRow {
+    id: i64,
+    sort: i32,
+    reason: String,
+    enabled: bool,
+}
+
+#[get("/admin/deny-reasons")]
+async fn deny_reasons_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let rows: Vec<DenyReasonRow> = sqlx::query_as(
+        "SELECT id, sort, reason, enabled FROM torrent_deny_reasons ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct DenyReasonReq {
+    reason: String,
+    #[serde(default)]
+    sort: Option<i32>,
+    #[serde(default)]
+    enabled: Option<bool>,
+}
+
+#[post("/admin/deny-reasons")]
+async fn deny_reasons_add(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<DenyReasonReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let r = body.reason.trim();
+    if r.is_empty() || r.len() > 200 {
+        return Err(DomainError::Validation("原因长度 1-200".into()));
+    }
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO torrent_deny_reasons (reason, sort, enabled) VALUES ($1, $2, $3) RETURNING id",
+    )
+    .bind(r)
+    .bind(body.sort.unwrap_or(0))
+    .bind(body.enabled.unwrap_or(true))
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "deny_reason.add", Some(id)).await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[derive(Deserialize)]
+struct DenyReasonPut {
+    reason: Option<String>,
+    sort: Option<i32>,
+    enabled: Option<bool>,
+}
+
+#[put("/admin/deny-reasons/{id}")]
+async fn deny_reasons_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    body: web::Json<DenyReasonPut>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if let Some(r) = body.reason.as_deref() {
+        if r.trim().is_empty() || r.len() > 200 {
+            return Err(DomainError::Validation("原因长度 1-200".into()));
+        }
+    }
+    let n = sqlx::query(
+        "UPDATE torrent_deny_reasons SET \
+            reason = COALESCE($2, reason), sort = COALESCE($3, sort), enabled = COALESCE($4, enabled) \
+         WHERE id = $1",
+    )
+    .bind(path.into_inner())
+    .bind(body.reason.as_deref().map(str::trim))
+    .bind(body.sort)
+    .bind(body.enabled)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation("拒绝原因不存在".into()));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "deny_reason.update", None)
+        .await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/deny-reasons/{id}")]
+async fn deny_reasons_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let n = sqlx::query("DELETE FROM torrent_deny_reasons WHERE id = $1")
+        .bind(path.into_inner())
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation("拒绝原因不存在".into()));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "deny_reason.delete", None)
+        .await;
+    Ok(ok(serde_json::json!({ "deleted": n })))
+}
+
+// ============ 第五轮：后台种子管理列表（好学站 torrent/torrents 口径） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct AdminTorrentRow {
+    id: i64,
+    name: String,
+    owner_id: Option<i64>,
+    owner_name: Option<String>,
+    category_id: i32,
+    size: i64,
+    seeders: i32,
+    leechers: i32,
+    approval_status: i16,
+    deny_reason: Option<String>,
+    deny_note: Option<String>,
+    sticky: bool,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Deserialize)]
+struct TorrentListQ {
+    #[serde(default)]
+    q: String,
+    /// 0=全部 1=待审 2=通过 3=拒绝 4=死种
+    #[serde(default)]
+    status: Option<i16>,
+    #[serde(default)]
+    category_id: Option<i32>,
+    #[serde(default = "default_page")]
+    page: i64,
+    #[serde(default = "default_per_page")]
+    per_page: i64,
+}
+
+#[get("/admin/torrents")]
+async fn admin_torrent_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<TorrentListQ>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    if !(1..=100).contains(&q.per_page) {
+        return Err(DomainError::Validation("per_page 取值 1-100".into()));
+    }
+    let mut where_parts: Vec<String> = Vec::new();
+    if !q.q.trim().is_empty() {
+        where_parts.push("t.name ILIKE $1".into());
+    }
+    match q.status {
+        Some(1) => where_parts.push("t.approval_status = 0".into()),
+        Some(2) => where_parts.push("t.approval_status = 1".into()),
+        Some(3) => where_parts.push("t.approval_status = 2".into()),
+        Some(4) => where_parts.push("t.approval_status = 1 AND t.seeders = 0".into()),
+        _ => {}
+    }
+    if let Some(c) = q.category_id {
+        if c > 0 {
+            where_parts.push("t.category_id = $2".into());
+        }
+    }
+    let where_sql = if where_parts.is_empty() {
+        "TRUE".to_string()
+    } else {
+        where_parts.join(" AND ")
+    };
+    let sql = format!(
+        r#"SELECT t.id, t.name, t.owner_id, u.username AS owner_name, t.category_id,
+                  t.size, t.seeders, t.leechers, t.approval_status,
+                  dr.reason AS deny_reason, t.deny_note, t.sticky, t.created_at
+           FROM torrents t
+           LEFT JOIN users u ON u.id = t.owner_id
+           LEFT JOIN torrent_deny_reasons dr ON dr.id = t.deny_reason_id
+           WHERE {where_sql}
+           ORDER BY t.id DESC LIMIT $3 OFFSET $4"#
+    );
+    let rows: Vec<AdminTorrentRow> = sqlx::query_as(&sql)
+        .bind(crate::http::like_pattern(&q.q))
+        .bind(q.category_id.filter(|c| *c > 0))
+        .bind(q.per_page)
+        .bind((q.page.max(1) - 1) * q.per_page)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "rows": rows,
+        "page": q.page.max(1),
+        "per_page": q.per_page,
+    })))
+}
+
+// ============ 第五轮：种子操作记录（好学站 torrent-operation-logs 口径） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct TorrentOpRow {
+    id: i64,
+    torrent_id: i64,
+    torrent_name: Option<String>,
+    operator_name: Option<String>,
+    action: String,
+    detail: Option<serde_json::Value>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+
+// ============ 第五轮：种子操作记录（好学站 torrent-operation-logs 口径） ============
+
+
+#[derive(Deserialize)]
+struct TorrentOpQ {
+    #[serde(default)]
+    torrent_id: Option<i64>,
+    #[serde(default = "default_page")]
+    page: i64,
+    #[serde(default = "default_per_page")]
+    per_page: i64,
+}
+
+#[get("/admin/torrent-ops")]
+async fn torrent_op_logs(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<TorrentOpQ>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let (rows, total): (Vec<TorrentOpRow>, i64) = if let Some(tid) = q.torrent_id {
+        let rows: Vec<TorrentOpRow> = sqlx::query_as(
+            r#"SELECT l.id, l.torrent_id, t.name AS torrent_name, u.username AS operator_name,
+                      l.action, l.detail, l.created_at
+               FROM torrent_operation_logs l
+               LEFT JOIN torrents t ON t.id = l.torrent_id
+               LEFT JOIN users u ON u.id = l.operator_id
+               WHERE l.torrent_id = $1
+               ORDER BY l.id DESC LIMIT $2 OFFSET $3"#,
+        )
+        .bind(tid)
+        .bind(q.per_page)
+        .bind((q.page.max(1) - 1) * q.per_page)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let total: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM torrent_operation_logs WHERE torrent_id = $1",
+        )
+        .bind(tid)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        (rows, total)
+    } else {
+        let rows: Vec<TorrentOpRow> = sqlx::query_as(
+            r#"SELECT l.id, l.torrent_id, t.name AS torrent_name, u.username AS operator_name,
+                      l.action, l.detail, l.created_at
+               FROM torrent_operation_logs l
+               LEFT JOIN torrents t ON t.id = l.torrent_id
+               LEFT JOIN users u ON u.id = l.operator_id
+               ORDER BY l.id DESC LIMIT $1 OFFSET $2"#,
+        )
+        .bind(q.per_page)
+        .bind((q.page.max(1) - 1) * q.per_page)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let total: i64 = sqlx::query_scalar("SELECT count(*) FROM torrent_operation_logs")
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        (rows, total)
+    };
+    Ok(ok(serde_json::json!({
+        "rows": rows, "total": total, "page": q.page.max(1), "per_page": q.per_page,
+    })))
+}
+
+// ============ 第五轮：记录查询（好学站 火花记录/种子购买/登录记录 口径） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct SparkLogRow {
+    id: i64,
+    username: String,
+    amount: i64,
+    kind: String,
+    balance_after: Option<i64>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Deserialize)]
+struct RecordQ {
+    #[serde(default)]
+    q: String,
+    #[serde(default = "default_page")]
+    page: i64,
+    #[serde(default = "default_per_page")]
+    per_page: i64,
+}
+
+#[get("/admin/spark-logs")]
+async fn admin_spark_logs(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<RecordQ>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let pattern = crate::http::like_pattern(&q.q);
+    let rows: Vec<SparkLogRow> = sqlx::query_as(
+        r#"SELECT l.id, u.username, l.amount, l.kind, l.balance_after, l.created_at
+           FROM spark_ledger l JOIN users u ON u.id = l.user_id
+           WHERE u.username ILIKE $1
+           ORDER BY l.created_at DESC, l.id DESC LIMIT $2 OFFSET $3"#,
+    )
+    .bind(pattern)
+    .bind(q.per_page)
+    .bind((q.page.max(1) - 1) * q.per_page)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page })))
+}
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct TorrentBuyRow {
+    id: i64,
+    username: String,
+    kind: String,
+    ref_id: Option<i64>,
+    amount: i64,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/admin/torrent-buys")]
+async fn admin_torrent_buys(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<RecordQ>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let pattern = crate::http::like_pattern(&q.q);
+    let rows: Vec<TorrentBuyRow> = sqlx::query_as(
+        r#"SELECT l.id, u.username, l.kind, l.ref_id, l.amount, l.created_at
+           FROM spark_ledger l JOIN users u ON u.id = l.user_id
+           WHERE l.kind IN ('torrent_buy', 'buy_torrent', 'token_buy') AND u.username ILIKE $1
+           ORDER BY l.created_at DESC, l.id DESC LIMIT $2 OFFSET $3"#,
+    )
+    .bind(pattern)
+    .bind(q.per_page)
+    .bind((q.page.max(1) - 1) * q.per_page)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page })))
+}
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct LoginLogRow {
+    id: i64,
+    username: String,
+    ip: Option<String>,
+    ok: bool,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/admin/login-logs")]
+async fn admin_login_logs(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<RecordQ>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let pattern = crate::http::like_pattern(&q.q);
+    let rows: Vec<LoginLogRow> = sqlx::query_as(
+        r#"SELECT l.id, u.username, host(l.ip) AS ip, l.ok, l.created_at
+           FROM login_events l JOIN users u ON u.id = l.user_id
+           WHERE u.username ILIKE $1 OR host(l.ip) ILIKE $1
+           ORDER BY l.id DESC LIMIT $2 OFFSET $3"#,
+    )
+    .bind(pattern)
+    .bind(q.per_page)
+    .bind((q.page.max(1) - 1) * q.per_page)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page })))
 }

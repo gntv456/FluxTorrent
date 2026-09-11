@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FluxTorrent 站点设定 · 复刻 + UI 重设计方案</title>
+<style>
+  :root{
+    --sky:#2FA8FF; --sky-deep:#1E8AE8; --sky-soft:#E8F4FF;
+    --sun:#FFC93C; --coral:#FF7A59; --mint:#2FBF9B; --candy:#FF8FC7;
+    --indigo:#5B6BF5; --indigo-deep:#3D4BD8; --indigo-soft:#EEF0FE;
+    --cloud:#F5FAFF; --ink:#1F2A44; --sub:#93A1BC; --line:#E3EDF7;
+    --ok:#2FBF9B; --warn:#E8A23D; --err:#E45B5B;
+    --radius-lg:20px; --radius-md:14px; --radius-sm:10px;
+    --shadow-card:0 8px 24px rgba(31,42,68,.08); --shadow-hover:0 4px 18px rgba(47,168,255,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);background:var(--cloud);line-height:1.66;font-size:15px;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px 80px;}
+  .cover{background:linear-gradient(135deg,#1F2A44 0%,#2A3A63 55%,#5B6BF5 130%);color:#fff;padding:64px 0 56px;position:relative;overflow:hidden;}
+  .cover::after{content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(255,143,199,.28),rgba(255,143,199,0) 65%);}
+  .cover::before{content:"";position:absolute;right:60px;bottom:-160px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(47,168,255,.25),rgba(47,168,255,0) 65%);}
+  .cover .wrap{position:relative;z-index:1;padding-bottom:0;}
+  .cover .tag{display:inline-block;font-size:12.5px;letter-spacing:2px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);padding:5px 14px;border-radius:999px;margin-bottom:18px;}
+  .cover h1{font-size:38px;font-weight:800;letter-spacing:1px;margin-bottom:14px;line-height:1.3;}
+  .cover h1 span{background:linear-gradient(90deg,#FF8FC7,#FFC93C);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .cover p.sub{font-size:16px;color:rgba(255,255,255,.82);max-width:780px;}
+  .cover .meta{display:flex;flex-wrap:wrap;gap:12px 28px;margin-top:26px;font-size:13px;color:rgba(255,255,255,.75);}
+  .cover .meta b{color:#fff;font-weight:600;}
+  .toc{background:#fff;border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-card);padding:22px 26px;margin:34px 0 44px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:6px 26px;}
+  .toc a{display:block;color:var(--ink);text-decoration:none;font-size:13.5px;padding:5px 0;border-bottom:1px dashed #EDF2FA;}
+  .toc a b{color:var(--indigo);font-family:ui-monospace,Consolas,monospace;font-size:12px;margin-right:8px;}
+  .toc a:hover{color:var(--indigo);}
+  section{margin-top:56px;scroll-margin-top:24px;}
+  h2{font-size:26px;font-weight:800;display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+  h2 .no{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:11px;background:var(--indigo);color:#fff;font-size:16px;flex:none;}
+  h3{font-size:18px;font-weight:700;margin:30px 0 12px;padding-left:12px;border-left:4px solid var(--indigo);}
+  h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--ink);}
+  .lead{color:var(--ink);font-size:15px;max-width:920px;margin-bottom:18px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-card);padding:22px 24px;margin:16px 0;}
+  .card p{color:var(--ink);font-size:14px;margin:6px 0;}
+  .concl{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin:18px 0;}
+  .concl .item{border-radius:var(--radius-md);padding:18px 20px;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow-card);}
+  .concl .item .ic{font-size:22px;}
+  .concl .item .t{font-weight:700;margin:8px 0 4px;font-size:15px;}
+  .concl .item .d{font-size:13px;color:var(--ink);}
+  .pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.7;}
+  .pill.ok{background:#E4F7F1;color:#1E8A6E;} .pill.warn{background:#FDF3E3;color:#B57718;}
+  .pill.err{background:#FCEBEB;color:#C44545;} .pill.info{background:var(--indigo-soft);color:var(--indigo-deep);}
+  .pill.sky{background:var(--sky-soft);color:var(--sky-deep);} .pill.pink{background:#FFEFF7;color:#D84E96;}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  th{background:#F3F7FD;color:var(--ink);font-weight:700;text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);white-space:nowrap;font-size:12.5px;}
+  td{padding:8px 11px;border-bottom:1px solid #F0F4FA;color:var(--ink);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  td b{color:var(--ink);}
+  .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#F4F7FC;border:1px solid var(--line);padding:1px 6px;border-radius:5px;color:#35508C;}
+  .num{font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,monospace;}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px;}
+  code.block{display:block;background:#0F172A;color:#D7E1F4;border-radius:10px;padding:16px 18px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;line-height:1.7;overflow-x:auto;margin:12px 0;white-space:pre;}
+  code.block .cm{color:#7A8BB5;} code.block .kw{color:#FF8FC7;} code.block .st{color:#7DD3A8;} code.block .fn{color:#7CC4FF;}
+  .warnbox{border-left:4px solid var(--warn);background:#FFFBF0;border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;font-size:14px;color:#6B5420;}
+  .warnbox b{color:#8A6416;}
+  .infobox{border-left:4px solid var(--indigo);background:var(--indigo-soft);border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;font-size:14px;color:#3B4A9F;}
+  .infobox b{color:var(--indigo-deep);}
+  .okbox{border-left:4px solid var(--ok);background:#F0FAF6;border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;font-size:14px;color:#1E6B55;}
+  .wf{border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;margin:14px 0;box-shadow:var(--shadow-card);}
+  .wf .wfbar{display:flex;align-items:center;gap:8px;background:#F3F7FD;padding:8px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--sub);}
+  .wf .wfbar .dot{width:9px;height:9px;border-radius:50%;}
+  .wf .wfbody{padding:16px;}
+  .badge{display:inline-block;padding:1px 9px;border-radius:999px;font-size:11px;font-weight:600;line-height:1.8;color:#fff;}
+  .badge.b-sky{background:var(--sky);} .badge.b-mint{background:var(--mint);} .badge.b-sun{background:var(--sun);color:#6B4E00;}
+  .badge.b-coral{background:var(--coral);} .badge.b-candy{background:var(--candy);} .badge.b-indigo{background:var(--indigo);}
+  .badge.b-gray{background:var(--sub);}
+  .badge.b-ok{background:#E4F7F1;color:#1E8A6E;border:1px solid #BDE8D9;} .badge.b-warn{background:#FDF3E3;color:#B57718;border:1px solid #F0D9AE;}
+  .steps{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;}
+  .step{flex:1 1 150px;min-width:140px;border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff;box-shadow:var(--shadow-card);}
+  .step .s{width:26px;height:26px;border-radius:8px;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-bottom:8px;}
+  .step .t{font-weight:700;font-size:13.5px;} .step .d{font-size:12px;color:var(--ink);margin-top:4px;}
+  ul.clean{list-style:none;margin:8px 0;}
+  ul.clean li{padding:5px 0 5px 22px;position:relative;font-size:14px;color:var(--ink);}
+  ul.clean li::before{content:"›";position:absolute;left:6px;color:var(--indigo);font-weight:700;}
+  ul.clean li b{color:var(--ink);}
+  .tagline{font-size:13px;color:var(--sub);margin-bottom:16px;}
+  .typechip{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:6px;margin:1px;}
+  .typechip.t-text{background:#F0F4FF;color:#3D4BD8;}
+  .typechip.t-num{background:#EFFAF5;color:#1E8A6E;}
+  .typechip.t-yes{background:#FFF6E5;color:#B57718;}
+  .typechip.t-enum{background:#FFEFF7;color:#D84E96;}
+  .typechip.t-pwd{background:#F1EDFB;color:#7C5CD6;}
+  .typechip.t-txt{background:#EAF6FF;color:#1B7FC4;}
+  .typechip.t-color{background:#FFF1F1;color:#C44545;}
+  .typechip.t-secret{background:#FCEBEB;color:#C44545;}
+  .nav-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;}
+  .ngrp{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;box-shadow:var(--shadow-card);}
+  .ngrp .h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13.5px;margin-bottom:6px;}
+  .ngrp .n{font-size:11px;color:var(--sub);margin-top:4px;}
+  .ngrp ul{list-style:none;margin-top:4px;}
+  .ngrp li{font-size:12px;color:var(--ink);padding:2px 0;border-bottom:1px dashed #F0F4FA;}
+  .ngrp li:last-child{border-bottom:none;}
+  .field{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#FBFDFF;margin:6px 0;flex-wrap:wrap;}
+  .field .lbl{font-size:13px;font-weight:600;min-width:150px;}
+  .field .ctl{flex:1 1 220px;display:flex;gap:6px;align-items:center;}
+  .in{height:34px;border:1px solid var(--line);border-radius:8px;padding:0 10px;font-size:13px;background:#fff;}
+  .in.wide{flex:1;}
+  .in.sm{width:70px;}
+  .sw{width:36px;height:20px;border-radius:999px;background:#C9D6E8;position:relative;display:inline-block;}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;}
+  .sw.on{background:var(--mint);}
+  .sw.on::after{left:18px;}
+  .rd{width:14px;height:14px;border-radius:50%;border:2px solid #C9D6E8;display:inline-block;vertical-align:-2px;}
+  .rd.on{border:4px solid var(--sky);}
+  .foot{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--sub);font-size:12.5px;text-align:center;}
+  @media (max-width:720px){ .cover h1{font-size:26px;} .wrap{padding:0 16px 60px;} body{font-size:14px;} .grid2{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="wrap">
+    <span class="tag">DESIGN PROPOSAL · v1.0 · 2026-09-11</span>
+    <h1>FluxTorrent 站点设定<br><span>功能复刻 + UI 重设计方案</span></h1>
+    <p class="sub">以好学站（hxpt.org）settings.php 十二分区为功能基线，在 FluxTorrent（Rust API + Next.js 15）复刻全部站点配置能力，并按 v44.0 设计稿 Token 全新设计管理界面。英文键名不再裸奔，字段类型化渲染、校验、审计、权限一次到位。</p>
+    <div class="meta">
+      <span>功能基线：<b>hxpt settings.php · 12 分区 · 200+ 配置键</b></span>
+      <span>实现载体：<b>apps/api + apps/web /admin</b></span>
+      <span>设计语言：<b>v44.0 设计 Token（sky 主色 / indigo 后台）</b></span>
+      <span>落地节奏：<b>P0 数据与 API → P1 UI → P2 高级能力</b></span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+<div class="toc">
+  <a href="#s1"><b>01</b>现状诊断：键值表的问题与复刻差距</a>
+  <a href="#s2"><b>02</b>功能复刻范围：12 分区全量基线</a>
+  <a href="#s3"><b>03</b>数据模型：类型化 settings 元数据</a>
+  <a href="#s4"><b>04</b>后端 API：schema / 分组保存 / 校验 / 审计</a>
+  <a href="#s5"><b>05</b>UI 重设计：页面架构与线框</a>
+  <a href="#s6"><b>06</b>字段组件与交互规范</a>
+  <a href="#s7"><b>07</b>权限 / 缓存 / 审计策略</a>
+  <a href="#s8"><b>08</b>落地路线与工作量</a>
+  <a href="#s9"><b>09</b>附录：12 分区字段映射表</a>
+</div>
+
+<!-- ===================== 01 ===================== -->
+<section id="s1">
+  <h2><span class="no">01</span>现状诊断：键值表的问题与复刻差距</h2>
+  <p class="lead">FluxTorrent 当前「站点设定」位于 <span class="mono">/admin</span> 的 settings 页签：从 <span class="mono">/api/v1/admin/settings</span> 拉取 <span class="mono">site_settings</span> 全表，按 grp 分组渲染成「键值表 + 保存按钮」。0034 迁移已把字段口径对齐 hxpt，但展示与交互停留在原型阶段。</p>
+
+  <div class="concl">
+    <div class="item"><div class="ic">🇬🇧</div><div class="t">英文键名直接裸露</div><div class="d">设定项列用 font-mono 原样展示 <span class="mono">SITENAME</span> / <span class="mono">authority_staffmem</span> / <span class="mono">randomfree</span> 等键名，管理组看到的是开发者视角而非产品视角。</div></div>
+    <div class="item"><div class="ic">🧱</div><div class="t">全部渲染成文本框</div><div class="d">开关（yes/no）、枚举（verification、largepro）、百分比、秒数、颜色全部是一个 text input，无类型化、无枚举下拉、无单位。</div></div>
+    <div class="item"><div class="ic">🕳️</div><div class="t">无校验无反馈</div><div class="d">输入非法值（负数概率、>100 百分比、非 URL）直接入库；保存成功只有一行 msg，无校验错误、无影响提示（如「保存后需刷新缓存」）。</div></div>
+    <div class="item"><div class="ic">🧩</div><div class="t">元数据混入</div><div class="d"><span class="mono">settings_group_order</span>（分组排序的元数据键）也作为设定项显示在「其他设定」里，管理组可直接改坏分组顺序。</div></div>
+    <div class="item"><div class="ic">🔒</div><div class="t">权限只有一档</div><div class="d">sysop 可编辑 / administrator 只读，其余 staff 完全不可见；hxpt 的分区级权限（如附件/广告仅站务可配）无法表达。</div></div>
+    <div class="item"><div class="ic">📉</div><div class="t">功能缺口</div><div class="d">与 hxpt 基线相比：缺类型元数据、缺枚举/开关渲染、缺分区级权限、缺审计展示、缺修改历史、缺导出/导入、缺「敏感字段」遮蔽。</div></div>
+  </div>
+
+  <h3>1.1 复刻差距（对照 hxpt settings.php 实测基线）</h3>
+  <table>
+    <tr><th style="width:200px">能力维度</th><th style="width:240px">hxpt settings.php（基线）</th><th>FluxTorrent 现状 → 复刻动作</th></tr>
+    <tr><td><b>分区结构</b></td><td>12 分区（基础/主要/SMTP/安全/权限/次要/火花/账号/种子/附件/广告/其他）</td><td>已有 12 组口径 → 保留，去掉 settings_group_order 混显，分组顺序改为元数据</td></tr>
+    <tr><td><b>字段规模</b></td><td>约 200+ 配置键（含好学站扩展：保种认领 claim_*、签到 attendance_*、轮播图、logo）</td><td>site_settings 现有 201 键 → 按 §9 附录补齐缺失键（SLOGAN、extforumurl、icplicense、torrent_dir、anninter*、psdl/psratio 六档、sticky 颜色、watermark 系列等）</td></tr>
+    <tr><td><b>字段类型</b></td><td>text / textarea / select / checkbox / radio / classlist 下拉 / 成对数组（签到连续奖励）</td><td>全 text → 引入 type 元数据（§3），按类型渲染（§6）</td></tr>
+    <tr><td><b>保存行为</b></td><td>写 DB + 部分写 config 常量 + write_log 审计 + 手动 FLUSHALL</td><td>分组批量保存 + 服务端校验 + audit 表记录（actor/old/new）+ 返回「需刷新缓存」影响提示</td></tr>
+    <tr><td><b>权限</b></td><td>staff 准入 + 分区级（附件/广告仅站务）</td><td>sysop 全写 / administrator 只读 / 分区级掩码（extension，§7）</td></tr>
+    <tr><td><b>只读信息</b></td><td>版本信息分区（mainversion/subversion/releasedate/website 只读展示）</td><td>code 分区保留为只读卡片（版本/构建时间）</td></tr>
+    <tr><td><b>特殊功能</b></td><td>MySQL/Redis 基础连接项（已注释停用）、备份入口（后台）、验证码/图床等</td><td>mysql_*/redis_* 不迁移（架构已定，不可改）；备份/图床走各自模块，站点设定不承担</td></tr>
+  </table>
+
+  <div class="infobox"><b>范围裁定（与用户确认过的边界）：</b>本方案复刻 hxpt settings.php 的<b>站点配置能力</b>（12 分区字段、类型、校验、保存、审计、权限），不迁移其已停用的 MySQL/Redis 基础连接项（FluxTorrent 架构固定，运行参数走 .env），也不把备份/图床/验证码等独立模块塞进站点设定页——它们保留在原模块入口，站点设定页只负责「站点业务配置」。</div>
+</section>
+
+<!-- ===================== 02 ===================== -->
+<section id="s2">
+  <h2><span class="no">02</span>功能复刻范围：12 分区全量基线</h2>
+  <p class="lead">以 hxpt settings.php 实测为准，12 分区 + 好学站扩展键，共约 240 个配置项。分区即左侧导航，字段分组卡片呈现。统计：12 分区 · 15 张卡片 · 约 240 字段。</p>
+
+  <div class="nav-groups">
+    <div class="ngrp"><div class="h"><span class="badge b-sky">01</span>基础设定 <span class="badge b-gray">3 项</span></div>
+      <ul><li>站点名称 SITENAME</li><li>站点根 URL BASEURL</li><li>Tracker 地址 announce_url</li></ul>
+      <div class="n">mysql_* / redis_* 不迁移（架构既定）</div></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">02</span>主要设定 <span class="badge b-gray">40 项</span></div>
+      <ul><li>注册：初始上传量/邀请数/邀请有效期/注册超时</li><li>页面：每页帖子/主题/种子/公告条数、用户上限</li><li>候选：最少票数/投票超时/跳过阈值</li><li>清理：autoclean 五档间隔</li><li>邮箱/捐赠/IMDb/样式默认值/标语/友链/ICP</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">03</span>SMTP 设定 <span class="badge b-gray">7 项</span></div>
+      <ul><li>SMTP 服务器/端口</li><li>发件地址/显示地址</li><li>账号/密码（密文）</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">04</span>安全设定 <span class="badge b-gray">9 项</span></div>
+      <ul><li>同 IP 登录数 maxip</li><li>失败锁定阈值 maxloginattempts</li><li>HTTPS announce 地址</li><li>登录方式/游客访问/验证码（枚举）</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">05</span>权限设定 <span class="badge b-gray">49 项</span></div>
+      <ul><li>默认等级/站务最低等级</li><li>authority_* 功能权限矩阵（公告/种子/论坛/邀请/上传/候选…）</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">06</span>次要设定 <span class="badge b-gray">6 项</span></div>
+      <ul><li>标题/关键词/META 描述</li><li>统计代码（密文）</li><li>建站日期</li><li>CSS 日期</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">07</span>火花设定 <span class="badge b-gray">39 项</span></div>
+      <ul><li>做种公式：perseeding/maxseeding/tzero/nzero/bzero/l/零火花系数</li><li>行为奖励：发布/字幕/发帖/回帖/评论/投票/感谢/推广</li><li>商店价格：上传量/邀请/头衔/改名卡/彩虹 ID/补签卡/取消 H&R</li><li>比率限制 + 捐赠倍数 + 官种加成</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">08</span>账号设定 <span class="badge b-gray">16 项</span></div>
+      <ul><li>自动删号：停用/未登录/无流量/低分享率</li><li>降级六档：psdl1-5 + psratio1-5</li><li>升级赠邀请开关</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">09</span>种子设定 <span class="badge b-gray">30 项</span></div>
+      <ul><li>促销概率五档 + 时长八档 + 到期回落</li><li>大种标准/自动促销</li><li>热门阈值/发布者双倍</li><li>置顶背景色（2 色）/付费种子/税率</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">10</span>附件设定 <span class="badge b-gray">14 项</span></div>
+      <ul><li>开关/保存目录/缩略图/水印/权限等级</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">11</span>广告设定 <span class="badge b-gray">6 项</span></div>
+      <ul><li>开关/免广告权限/火花购买免广告/点击奖励</li></ul></div>
+    <div class="ngrp"><div class="h"><span class="badge b-sky">12</span>其他设定 <span class="badge b-gray">3 项</span></div>
+      <ul><li>捐赠说明（文本域）</li><li>受保护版块 ID</li><li>版本信息卡（只读）</li></ul></div>
+  </div>
+  <p class="tagline">好学站扩展键归属：claim_*（保种认领 8 键）→ 种子设定卡片「保种认领」；attendance_*（签到 4 键）→ 火花设定卡片「签到奖励」；carousel_images / logo → 主要设定「外观」卡片；verification / getInvitesByPromotion / site_language_enabled / nfo_view_style_default / defaultlang → 对应分区。全量键级映射见 §9 附录。</p>
+</section>
+
+<!-- ===================== 03 ===================== -->
+<section id="s3">
+  <h2><span class="no">03</span>数据模型：类型化 settings 元数据</h2>
+  <p class="lead">在现有 <span class="mono">site_settings</span> 表之上叠加一张类型元数据表（或 JSON 列），用「配置声明」驱动渲染、校验、权限三件事——后端与前端共享同一份 schema，杜绝英文键名直出。</p>
+
+  <h3>3.1 表结构：settings_meta（新增，幂等迁移）</h3>
+<code class="block">CREATE TABLE IF NOT EXISTS settings_meta (
+  name          text PRIMARY KEY REFERENCES site_settings(name) ON DELETE CASCADE,
+  type          text NOT NULL DEFAULT 'text',   <span class="cm">-- text|number|yesno|enum|password|textarea|color|classlevel|pair</span>
+  label_zh      text,                           <span class="cm">-- 中文名（如「站点名称」），不再用英文键名</span>
+  label_en      text,                           <span class="cm">-- 英文名（en/zh-TW 语言包覆盖）</span>
+  hint          text,                           <span class="cm">-- 帮助说明（可含枚举解释，如「verification: none/email/img/emailimg」）</span>
+  unit          text,                           <span class="cm">-- 单位：字节 / 秒 / % / 天 / 火花</span>
+  min           double precision,               <span class="cm">-- 数值下限</span>
+  max           double precision,               <span class="cm">-- 数值上限</span>
+  step          double precision DEFAULT 1,     <span class="cm">-- 数值步长</span>
+  options       jsonb,                          <span class="cm">-- enum 选项：[{v:'none',l:'关闭'},...] 或 classlevel 标记</span>
+  secret        boolean DEFAULT false,          <span class="cm">-- 密文字段（SMTP 密码/统计代码）：回显掩码</span>
+  readonly      boolean DEFAULT false,          <span class="cm">-- 只读信息（版本号等）</span>
+  group_key     text,                           <span class="cm">-- 覆盖 site_settings.grp（分区内卡片分组）</span>
+  card_order    int,                            <span class="cm">-- 卡片内排序</span>
+  updated_at    timestamptz DEFAULT now()
+);</code>
+
+  <h3>3.2 类型系统（8 类，覆盖 hxpt 全部控件形态）</h3>
+  <table>
+    <tr><th style="width:110px">类型</th><th style="width:130px">控件</th><th>适用字段样例（hxpt 基线）</th><th style="width:170px">校验</th></tr>
+    <tr><td><span class="typechip t-text">text</span></td><td>单行输入</td><td>SITENAME、BASEURL、announce_url、SLOGAN、icplicense、torrent_dir</td><td>非空 / URL / 域名</td></tr>
+    <tr><td><span class="typechip t-num">number</span></td><td>数字输入 + 单位</td><td>iniupload(字节)、invite_count、announce_interval(秒)、postsperpage、maxseeding、psdl*</td><td>min/max/step；字节类 ≥0；概率类 0–1</td></tr>
+    <tr><td><span class="typechip t-yes">yesno</span></td><td>开关</td><td>enablead、enablebonusnoad、uploaderdouble、expirefree、getInvitesByPromotion、destroy_disabled</td><td>仅 yes/no</td></tr>
+    <tr><td><span class="typechip t-enum">enum</span></td><td>单选下拉/胶囊</td><td>verification(none/email/img/emailimg)、largepro(free/2up/…)、thumbnailtype、watermarkpos、login_type、guest_visit_type、defstylesheet</td><td>∈ options</td></tr>
+    <tr><td><span class="typechip t-pwd">password</span></td><td>密码（掩码 + 显隐）</td><td>accountpassword（SMTP）、analyticscode、smtp_account_password</td><td>非空可空；不回显明文</td></tr>
+    <tr><td><span class="typechip t-txt">textarea</span></td><td>多行</td><td>donation_custom、metadescription、loginattemptwhitelist</td><td>长度上限</td></tr>
+    <tr><td><span class="typechip t-color">color</span></td><td>取色器 + hex</td><td>sticky_first_level_background_color、sticky_second_level_background_color</td><td>合法 hex</td></tr>
+    <tr><td><span class="typechip t-secret">classlevel</span></td><td>等级下拉</td><td>authority_* 全部 49 项（最低等级）、attachment_authority、defaultclass</td><td>∈ 等级表</td></tr>
+    <tr><td><span class="typechip t-text">pair</span></td><td>成对数组</td><td>attendance_continuous_day + attendance_continuous_value（连签天数→奖励）</td><td>行内成对、day 递增</td></tr>
+  </table>
+
+  <div class="infobox"><b>双语标签策略：</b>label_zh/label_en 落库后，前端按当前 locale 取 <span class="mono">dict.admin.settingsMeta[name]</span> 覆盖（i18n 优先，DB 兜底）——与现有 zh-CN/en/zh-TW 三套字典一致；未来新增字段只改字典 + 一条 meta 行，不动页面组件。</div>
+</section>
+
+<!-- ===================== 04 ===================== -->
+<section id="s4">
+  <h2><span class="no">04</span>后端 API：schema / 分组保存 / 校验 / 审计</h2>
+  <p class="lead">在现有 <span class="mono">GET/PUT /api/v1/admin/settings</span> 之上升级为「声明 + 分组批量 + 校验 + 审计」协议。所有校验在后端权威执行，前端只做即时反馈。</p>
+
+  <h3>4.1 接口设计</h3>
+  <table>
+    <tr><th style="width:250px">接口</th><th>说明</th></tr>
+    <tr><td><span class="mono">GET /api/v1/admin/settings/schema</span></td><td>返回分组结构 + 每组字段声明（name/type/options/unit/min/max/secret/readonly/label/hint）+ 当前值（secret 字段只回掩码）＋权限掩码。前端据此渲染整页。</td></tr>
+    <tr><td><span class="mono">GET /api/v1/admin/settings?group=bonus</span></td><td>单分区值（兼容现前端，可下线）</td></tr>
+    <tr><td><span class="mono">PUT /api/v1/admin/settings/groups</span></td><td>按分区批量保存 <span class="mono">{"group":"bonus","values":{...}}</span>；服务端逐字段校验（类型/范围/枚举/URL），任一失败整体回滚并返回字段级错误。</td></tr>
+    <tr><td><span class="mono">POST /api/v1/admin/settings/validate</span></td><td>预校验（失焦/提交前调用），返回 <span class="mono">{"field":"randomfree","error":"概率须在 0–1 之间"}</span></td></tr>
+    <tr><td><span class="mono">GET /api/v1/admin/settings/history?name=&page=</span></td><td>单项修改历史（来自 audit 表）</td></tr>
+    <tr><td><span class="mono">POST /api/v1/admin/settings/export · /import</span></td><td>导出全量配置（JSON，secret 掩码可勾选明文）；导入仅 sysop，导入后强制 diff 确认。</td></tr>
+  </table>
+
+  <h3>4.2 保存管线（示意）</h3>
+<code class="block">PUT /admin/settings/groups
+  └─ auth：class_id ≥ 90 且 group 不在其只读掩码内
+  └─ 逐字段 validate(meta)：type / range / enum / url / required
+  └─ 批量 UPDATE site_settings（事务，失败回滚）
+  └─ 逐条 INSERT audit(user_id, 'setting:update', {name, old, new})
+  └─ 返回 { saved: n, cache: 'FLUSHALL', effects: [...] }
+      <span class="cm">-- effects 提示：如改动 announce_url → 「Tracker 地址变更，旧种子文件需重新下载」</span>
+      <span class="cm">-- 改动 SITENAME/BASEURL → 「全站文案与 RSS 链接将更新」</span></code>
+
+  <div class="warnbox"><b>安全注意：</b>SMTP 密码 / 统计代码等 <span class="mono">secret</span> 字段：GET 只回掩码（<span class="mono">••••••</span> + 长度提示）；保存时留空 = 保持不变，输入新值才覆盖；audit 日志中 secret 字段 new 值仅记「已更新」不记明文。</div>
+</section>
+
+<!-- ===================== 05 ===================== -->
+<section id="s5">
+  <h2><span class="no">05</span>UI 重设计：页面架构与线框</h2>
+  <p class="lead">「站点设定」从 /admin 页签升级为独立路由 <span class="mono">/admin/settings</span>（保留下拉入口），左侧 12 分区导航 + 搜索，右侧按卡片分组渲染字段，顶部全局操作条。设计延续 v44 Token：sky 主色、indigo 深辅助、卡片圆角 20px、胶囊按钮。</p>
+
+  <div class="wf">
+    <div class="wfbar"><span class="dot" style="background:#2FA8FF"></span><span class="dot" style="background:#FF8FC7"></span><span class="dot" style="background:#5B6BF5"></span><span style="margin-left:6px">目标「站点设定」页面 · 线框示意（示意，非真实数据）</span></div>
+    <div class="wfbody">
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <!-- 左导航 -->
+        <div style="flex:0 0 208px;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:12.5px;background:#FBFDFF;">
+          <div style="font-weight:800;color:var(--ink);font-size:13px;margin-bottom:8px">⚙️ 站点设定</div>
+          <div style="color:var(--sub);font-size:11px;margin-bottom:8px">仅系统管理员可保存</div>
+          <div style="border:1px solid var(--line);border-radius:9px;padding:4px 8px;color:var(--sub);font-size:12px;margin-bottom:8px">🔍 搜索字段…</div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <div style="background:var(--sky);color:#fff;border-radius:8px;padding:5px 10px;font-weight:700">基础设定 <span style="float:right">3</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">主要设定 <span style="float:right;color:var(--sub)">40</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">SMTP 设定 <span style="float:right;color:var(--sub)">7</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">安全设定 <span style="float:right;color:var(--sub)">9</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">权限设定 <span style="float:right;color:var(--sub)">49</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">次要设定 <span style="float:right;color:var(--sub)">6</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">火花设定 <span style="float:right;color:var(--sub)">39</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">账号设定 <span style="float:right;color:var(--sub)">16</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">种子设定 <span style="float:right;color:var(--sub)">30</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">附件设定 <span style="float:right;color:var(--sub)">14</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">广告设定 <span style="float:right;color:var(--sub)">6</span></div>
+            <div style="padding:5px 10px;color:var(--ink)">其他设定 <span style="float:right;color:var(--sub)">3</span></div>
+          </div>
+          <div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px;font-size:11.5px;color:var(--sub)">版本信息 v0.1.0 · 2026-09-11</div>
+        </div>
+        <!-- 右侧表单 -->
+        <div style="flex:1 1 480px;min-width:0;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+            <span style="font-size:16px;font-weight:800">火花设定</span>
+            <span class="badge b-sky">39 项</span>
+            <span class="badge b-ok">上次保存 5 分钟前</span>
+            <span style="flex:1"></span>
+            <span class="badge b-gray" style="font-size:12px;padding:6px 14px">历史记录</span>
+            <span class="badge b-indigo" style="font-size:12px;padding:6px 14px">保存全部修改</span>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff;margin-bottom:10px">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px">做种基础奖励 <span style="font-weight:400;color:var(--sub);font-size:11px">B = B0 · (1 + L·ln(做种数+1)) / (1 + N0·e^(−T/T0))</span></div>
+            <div class="field"><span class="lbl">每个做种基础火花</span><div class="ctl"><input class="in sm" value="1"><span style="font-size:12px;color:var(--sub)">火花/种</span></div></div>
+            <div class="field"><span class="lbl">计费做种上限</span><div class="ctl"><input class="in sm" value="7"><span style="font-size:12px;color:var(--sub)">个</span></div></div>
+            <div class="field"><span class="lbl">公式 T0</span><div class="ctl"><input class="in sm" value="4"><span style="font-size:12px;color:var(--sub)">小时</span></div></div>
+            <div class="field"><span class="lbl">零火花种子系数</span><div class="ctl"><input class="in sm" value="0.2"><span style="font-size:12px;color:var(--sub)">0–1</span></div></div>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff;margin-bottom:10px">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px">商店价格</div>
+            <div class="field"><span class="lbl">1GB 上传量价格</span><div class="ctl"><input class="in sm" value="300"><span style="font-size:12px;color:var(--sub)">火花</span></div></div>
+            <div class="field"><span class="lbl">取消 H&amp;R 价格</span><div class="ctl"><input class="in sm" value="20000"><span style="font-size:12px;color:var(--sub)">火花</span></div></div>
+            <div class="field"><span class="lbl">补签卡价格</span><div class="ctl"><input class="in sm" value="5000"><span style="font-size:12px;color:var(--sub)">火花</span></div></div>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px">签到奖励 <span style="font-weight:400;color:var(--sub);font-size:11px">连签天数 → 奖励（成对配置）</span></div>
+            <div class="field"><span class="lbl">连签 7 天</span><div class="ctl"><input class="in sm" value="10"> <span style="color:var(--sub);font-size:12px">→</span> <input class="in sm" value="200"><span style="font-size:12px;color:var(--sub)">火花</span> <span style="color:var(--coral);font-size:11px">＋ 添加一档</span></div></div>
+            <div class="field"><span class="lbl">连签 15 天</span><div class="ctl"><input class="in sm" value="20"> <span style="color:var(--sub);font-size:12px">→</span> <input class="in sm" value="500"><span style="font-size:12px;color:var(--sub)">火花</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>5.1 关键页面决策</h3>
+  <table>
+    <tr><th style="width:180px">决策点</th><th>方案</th></tr>
+    <tr><td><b>路由</b></td><td><span class="mono">/admin/settings</span> 独立页（保留 /admin 内页签跳转入口），URL 带 <span class="mono">?group=bonus&q=价格</span> 可深链分享。</td></tr>
+    <tr><td><b>搜索</b></td><td>左侧搜索框全量过滤（label_zh/en + key + hint 三字段），命中时右侧滚动定位并高亮；搜索命中跨分区时左侧分区高亮计数。</td></tr>
+    <tr><td><b>分组卡片</b></td><td>每分区内按 group_key 拆卡片（如火花设定 = 做种公式 / 行为奖励 / 商店价格 / 交易税 / 比率限制 / 签到奖励 6 卡）；卡片可折叠记忆状态。</td></tr>
+    <tr><td><b>保存</b></td><td>右上角「保存全部修改」胶囊按钮（有未保存修改时常驻 + 计数）；支持 Ctrl/Cmd+S；离开页面未保存时弹确认。保存后 toast：<span class="mono">✓ 已保存 6 项 · 需刷新缓存生效</span>（带「立即刷新」按钮调用 FLUSHALL）。</td></tr>
+    <tr><td><b>只读模式</b></td><td>administrator 进入显示只读 banner + 全部控件 disabled + 隐藏保存按钮；敏感字段不渲染输入控件，只显示「已设置」状态。</td></tr>
+    <tr><td><b>版本卡</b></td><td>其他设定内「版本信息」只读卡片：mainversion / subversion / releasedate / website + 构建时间，来源 code 分区键（readonly）。</td></tr>
+    <tr><td><b>移动端</b></td><td>≤768px 左侧导航变横向滚动 Chip 条（同种子列表筛选模式），表单单列；触控目标 ≥44px；折叠屏沿用 §7.4 容器查询。</td></tr>
+  </table>
+</section>
+
+<!-- ===================== 06 ===================== -->
+<section id="s6">
+  <h2><span class="no">06</span>字段组件与交互规范</h2>
+  <p class="lead">所有字段由 <span class="mono">SettingField</span> 组件按 meta.type 分发渲染，8 类控件统一规格（高 44px、聚焦光晕、错误态红描边），延续 §7.3 组件清单。</p>
+
+  <h3>6.1 控件规格</h3>
+  <div class="wf">
+    <div class="wfbar"><span class="dot" style="background:#2FA8FF"></span><span class="dot" style="background:#FF8FC7"></span><span class="dot" style="background:#5B6BF5"></span><span style="margin-left:6px">字段组件 · 8 类控件渲染示意</span></div>
+    <div class="wfbody">
+      <div class="field"><span class="lbl">开关 yesno</span><div class="ctl"><span class="sw on"></span><span style="font-size:12px;color:var(--sub)">免费到期回落（expirefree）</span></div></div>
+      <div class="field"><span class="lbl">枚举 enum</span><div class="ctl">
+        <span class="badge b-sky">none · 关闭</span> <span class="badge b-gray">email · 邮箱</span> <span class="badge b-gray">img · 图形</span> <span class="badge b-gray">emailimg · 邮箱+图形</span>
+      </div></div>
+      <div class="field"><span class="lbl">等级 classlevel</span><div class="ctl"><span class="in" style="width:130px;display:inline-flex;align-items:center;justify-content:space-between">上传种子（30）<span style="color:var(--sub)">▾</span></span><span style="font-size:12px;color:var(--sub)">最低等级 authority_upload</span></div></div>
+      <div class="field"><span class="lbl">数字 number</span><div class="ctl"><input class="in sm" value="1800"> <span style="font-size:12px;color:var(--sub)">秒 · announce_interval · 范围 300–86400</span></div></div>
+      <div class="field"><span class="lbl">颜色 color</span><div class="ctl"><span style="width:30px;height:22px;border-radius:6px;background:#FFD700;border:1px solid var(--line);display:inline-block"></span> <input class="in sm" value="#FFD700"> <span style="font-size:12px;color:var(--sub)">一级置顶背景色</span></div></div>
+      <div class="field"><span class="lbl">密文 password</span><div class="ctl"><input class="in wide" type="password" value="••••••••"> <span style="font-size:12px;color:var(--sub)">留空保持不变 · 已设置</span></div></div>
+      <div class="field" style="border-color:#F3C1C1;background:#FFF7F7"><span class="lbl" style="color:var(--err)">错误态</span><div class="ctl"><input class="in sm" value="1.5" style="border-color:var(--err)"> <span style="font-size:12px;color:var(--err)">概率须在 0–1 之间</span></div></div>
+    </div>
+  </div>
+
+  <h3>6.2 交互规则</h3>
+  <ul class="clean">
+    <li><b>即时校验：</b>数字/枚举失焦即调 <span class="mono">POST /validate</span>，错误内联展示（红描边 + 红字），不打断填写；保存时再次全量校验。</li>
+    <li><b>未保存标记：</b>修改过的字段左侧显示 sky 圆点 + 分区名旁计数；「保存全部修改」按钮常驻。</li>
+    <li><b>影响提示：</b>关键字段（announce_url / SITENAME / BASEURL / 促销概率）旁显示小字影响说明；保存后返回 effects 列表逐一提示。</li>
+    <li><b>危险操作：</b>删号天数改小、destroy_disabled 打开等用 coral 色值 + 确认弹窗（复用 ConfirmDialog）。</li>
+    <li><b>密文显隐：</b>password 控件带显隐切换；显示明文时二次确认（与登录态同源弹窗）。</li>
+    <li><b>键盘可达：</b>全字段 Tab 焦点环、Enter 提交、Esc 关闭弹窗；reduced-motion 下无位移动效。</li>
+  </ul>
+</section>
+
+<!-- ===================== 07 ===================== -->
+<section id="s7">
+  <h2><span class="no">07</span>权限 / 缓存 / 审计策略</h2>
+  <h3>7.1 权限矩阵（分区级掩码，扩展现有 class 判定）</h3>
+  <table>
+    <tr><th style="width:150px">角色</th><th>站点设定</th><th>可写分区</th><th>敏感字段</th></tr>
+    <tr><td><b>sysop（99）</b></td><td>全读写</td><td>12 分区全部</td><td>可见明文（显隐需确认）</td></tr>
+    <tr><td><b>administrator（90）</b></td><td>只读</td><td>—</td><td>只见掩码</td></tr>
+    <tr><td><b>其他 staff（&lt;90）</b></td><td>不可见</td><td>—</td><td>—</td></tr>
+  </table>
+  <div class="infobox"><b>扩展位：</b>meta 表预留 <span class="mono">min_class</span> 列（本方案默认全表 99 可写），后续若需「广告/附件交运营配置」只需改该列，不触代码。</div>
+
+  <h3>7.2 缓存策略</h3>
+  <ul class="clean">
+    <li>站点设定读取走 Redis 缓存（<span class="mono">settings:{grp}</span>），保存成功即失效对应分组缓存，不整库 FLUSHALL；</li>
+    <li>影响全局行为的三类键（SITENAME / BASEURL / announce_url / 促销概率）保存后额外广播 <span class="mono">settings:changed</span> 事件，worker 消费后刷新内存态；</li>
+    <li>前端保存成功 toast 附「立即刷新缓存」按钮（sysop 可见），对应现有运维习惯的 FLUSHALL 动作。</li>
+  </ul>
+
+  <h3>7.3 审计</h3>
+  <ul class="clean">
+    <li>复用现有 <span class="mono">audit</span> 表：action=<span class="mono">setting:update</span>，payload 记 <span class="mono">{name, old, new}</span>；secret 字段 new 记「已更新」；</li>
+    <li>管理组可在「审计」页签按 <span class="mono">setting:</span> 前缀过滤；单项修改历史在站点设定内弹抽屉查看（含操作人、时间、旧值→新值高亮 diff）。</li>
+  </ul>
+</section>
+
+<!-- ===================== 08 ===================== -->
+<section id="s8">
+  <h2><span class="no">08</span>落地路线与工作量</h2>
+  <p class="lead">估算基于 1 名全栈（Rust + Next.js 15），含本地验证；与 /admin 其他页签互不影响，独立灰度。</p>
+  <div class="steps">
+    <div class="step"><div class="s">1</div><div class="t">P0 · 数据与 API（2~3 天）</div><div class="d">settings_meta 迁移 + 补齐缺失键（§9 附录红项）+ schema/validate/groups 接口 + 校验引擎 + 审计写入 + 缓存失效</div></div>
+    <div class="step"><div class="s">2</div><div class="t">P1 · UI（3~4 天）</div><div class="d">/admin/settings 页面 + 左导航 + SettingField 8 类控件 + 分组卡片 + 搜索高亮 + 保存/校验/未保存交互 + 只读模式</div></div>
+    <div class="step"><div class="s">3</div><div class="t">P2 · 高级能力（2~3 天）</div><div class="d">修改历史抽屉 + 导出/导入 + 影响提示 effects + 密文显隐确认 + 移动端/折叠屏适配 + 验收（§7.6 十条）</div></div>
+  </div>
+  <table>
+    <tr><th style="width:140px">阶段</th><th>验收标准</th></tr>
+    <tr><td><b>P0</b></td><td>schema 接口返回全部 12 分区字段声明；非法值保存被后端拒绝并返回字段级错误；audit 出现 setting:update 记录；保存后缓存失效生效</td></tr>
+    <tr><td><b>P1</b></td><td>页面无一处英文键名裸露（含 en 语言包）；8 类控件渲染正确；未保存离开有提示；administrator 只读可正常浏览</td></tr>
+    <tr><td><b>P2</b></td><td>导出→清库→导入→diff 一致；history 抽屉 diff 高亮正确；Lighthouse ≥95、首屏 ≤1.5s；三端 + 折叠屏逐页对照无缺项</td></tr>
+  </table>
+  <div class="warnbox"><b>数据说明：</b>分区字段统计、缺失键清单来自 hxpt settings.php 与 FluxTorrent 迁移文件实读；工作量为估算，落地以实际为准。</div>
+</section>
+
+<!-- ===================== 09 ===================== -->
+<section id="s9">
+  <h2><span class="no">09</span>附录：12 分区字段映射表</h2>
+  <p class="lead">hxpt settings.php 实测键（name）→ FluxTorrent 落地：类型（§3.2）/ 建议卡片分组 / 迁移状态。<b>红字 = site_settings 现有缺口</b>（需在 P0 补齐）；其余为 0034 迁移已覆盖。</p>
+
+  <h3>基础设定 basic · 主要设定 main</h3>
+  <table>
+    <tr><th style="width:200px">配置键</th><th style="width:90px">类型</th><th style="width:120px">卡片</th><th>说明 / 状态</th></tr>
+    <tr><td class="mono">SITENAME</td><td><span class="typechip t-text">text</span></td><td>基础信息</td><td>站点名称</td></tr>
+    <tr><td class="mono">BASEURL</td><td><span class="typechip t-text">text</span></td><td>基础信息</td><td>站点根 URL（URL 校验）</td></tr>
+    <tr><td class="mono">announce_url</td><td><span class="typechip t-text">text</span></td><td>基础信息</td><td>Tracker 地址（URL 校验；影响提示）</td></tr>
+    <tr><td class="mono">iniupload / invite_count / invite_timeout / tmp_invite_count / signup_timeout / upload_deny_approval_deny_count</td><td><span class="typechip t-num">number</span></td><td>注册与邀请</td><td>注册/邀请参数（字节/秒/个）</td></tr>
+    <tr><td class="mono">postsperpage / topicsperpage / torrentsperpage / maxnewsnum / maxusers</td><td><span class="typechip t-num">number</span></td><td>页面分页</td><td>每页数量与用户上限</td></tr>
+    <tr><td class="mono">maxsubsize / max_torrent_size / max_dead_torrent_time</td><td><span class="typechip t-num">number</span></td><td>上传限制</td><td>体积/断种时限</td></tr>
+    <tr><td class="mono">minoffervotes / offervotetimeout / offer_skip_approved_count / offeruptimeout</td><td><span class="typechip t-num">number</span></td><td>候选规则</td><td>候选门槛（票/秒）</td></tr>
+    <tr><td class="mono">announce_interval / autoclean_interval_one..five</td><td><span class="typechip t-num">number</span></td><td>系统调度</td><td>汇报间隔 / 自动清理五档</td></tr>
+    <tr><td class="mono">SITEEMAIL / reportemail / PAYPALACCOUNT / SLOGAN / icplicense / extforumurl / imdb_language / defstylesheet / torrent_dir / torrentnameprefix / bitbucket / specialcat / browsecat / defaultlang / site_language_enabled / logo / carousel_images</td><td><span class="typechip t-text">text</span>/<span class="typechip t-enum">enum</span>/<span class="typechip t-txt">textarea</span></td><td>站务信息 / 外观</td><td><b style="color:#C44545">SLOGAN / reportemail / icplicense / extforumurl / torrent_dir / torrentnameprefix / max_dead_torrent_time / bitbucket / annintertwo / anninterthree / annintertwoage / anninterthreeage / specialcat / browsecat / defaultlang / site_language_enabled / logo / carousel_images / nfo_view_style_default / offeruptimeout / offer_skip_approved_count / upload_deny_approval_deny_count 为待补缺口</b></td></tr>
+  </table>
+
+  <h3>SMTP / 安全 / 次要 / 权限</h3>
+  <table>
+    <tr><th style="width:200px">配置键</th><th style="width:90px">类型</th><th style="width:120px">卡片</th><th>说明 / 状态</th></tr>
+    <tr><td class="mono">smtp_host / smtp_port / smtp_from / smtpaddress / smtpport</td><td><span class="typechip t-text">text</span>/<span class="typechip t-num">number</span></td><td>SMTP 服务器</td><td><b style="color:#C44545">smtpaddress / smtpport 为待补缺口</b></td></tr>
+    <tr><td class="mono">accountname / accountpassword</td><td><span class="typechip t-pwd">password</span></td><td>SMTP 账号</td><td>密文（留空不变）</td></tr>
+    <tr><td class="mono">maxip / maxloginattempts / https_announce_url</td><td><span class="typechip t-num">number</span>/<span class="typechip t-text">text</span></td><td>登录安全</td><td>—</td></tr>
+    <tr><td class="mono">login_type / guest_visit_type / verification / enable_attendance_captcha / enable_image_verification / cheater_detection_level / use_challenge_response_authentication</td><td><span class="typechip t-enum">enum</span>/<span class="typechip t-yes">yesno</span></td><td>安全策略</td><td>枚举渲染（部分为好学站扩展）</td></tr>
+    <tr><td class="mono">titlekeywords / metakeywords / metadescription / analyticscode / datefounded / cssdate</td><td><span class="typechip t-text">text</span>/<span class="typechip t-txt">textarea</span>/<span class="typechip t-pwd">password</span></td><td>SEO 与统计</td><td>analyticscode 密文；<b>cssdate 待补</b></td></tr>
+    <tr><td class="mono">defaultclass / staffmem / authority_*（49 项）</td><td><span class="typechip t-secret">classlevel</span></td><td>权限矩阵</td><td>等级下拉；<b>authority_* 部分键待补（对比 0034 迁移 authority_ 清单补齐）</b></td></tr>
+  </table>
+
+  <h3>火花 / 账号 / 种子 / 附件 / 广告 / 其他</h3>
+  <table>
+    <tr><th style="width:200px">配置键</th><th style="width:90px">类型</th><th style="width:120px">卡片</th><th>说明 / 状态</th></tr>
+    <tr><td class="mono">perseeding / maxseeding / tzero / nzero / bzero / l / zero_bonus_factor</td><td><span class="typechip t-num">number</span></td><td>做种公式</td><td>公式卡 + 实时预览</td></tr>
+    <tr><td class="mono">uploadtorrent / uploadsubtitle / starttopic / makepost / addcomment / pollvote / offervote / funboxvote / saythanks / receivethanks / funboxreward / prolinkpoint / prolinktime / donortimes / vipstatus / official_addition / harem_addition</td><td><span class="typechip t-num">number</span></td><td>行为奖励</td><td>火花/次；<b>prolinktime / vipstatus / official_addition / harem_addition 待补</b></td></tr>
+    <tr><td class="mono">onegbupload / fivegbupload / tengbupload / hundredgbupload / tengbdownload / hundredgbdownload / oneinvite / one_tmp_invite / customtitle / change_username_card / rainbow_id / attendance_card / cancel_hr / basictax / taxpercentage</td><td><span class="typechip t-num">number</span></td><td>商店价格 / 交易税</td><td>火花价格；<b>one_tmp_invite / change_username_card / rainbow_id / basictax / taxpercentage 待补</b></td></tr>
+    <tr><td class="mono">ratiolimit / dlamountlimit</td><td><span class="typechip t-num">number</span></td><td>比率限制</td><td>—</td></tr>
+    <tr><td class="mono">attendance_initial / attendance_step / attendance_max / attendance_continuous_day + _value</td><td><span class="typechip t-num">number</span>/<span class="typechip t-text">pair</span></td><td>签到奖励</td><td><b>attendance_* 全组待补</b>；成对数组控件</td></tr>
+    <tr><td class="mono">deletepacked / deleteunpacked / deletenotransfer / deletenotransfertwo / deletepeasant / destroy_disabled / getInvitesByPromotion / psdlone..five / psratioone..five</td><td><span class="typechip t-num">number</span>/<span class="typechip t-yes">yesno</span></td><td>自动删号 / 等级升降</td><td><b>psdl 2–5 / psratio 2–5 / deletenotransfertwo / deletepeasant 待补</b></td></tr>
+    <tr><td class="mono">randomfree / randomtwoup / randomhalfleech / randomtwoupfree / randomthirtypercentdown / randomtwouphalfdown（概率）· freebecome / twoupbecome / halfleechbecome / twoupfreebecome / twouphalfleechbecome / thirtypercentleechbecome / normalbecome + expire* 八档（时长）· largesize / largepro · hotdays / hotseeder · uploaderdouble / deldeadtorrent</td><td><span class="typechip t-num">number</span>/<span class="typechip t-enum">enum</span>/<span class="typechip t-yes">yesno</span></td><td>促销规则（概率/时长/大种/热门）</td><td>概率 0–1 校验；<b>randomtwouphalfdown / expire 八档部分 / max_price / tax_factor / paid_torrent_enabled / sticky 两色 待补</b></td></tr>
+    <tr><td class="mono">claim_enabled / claim_torrent_ttl / claim_bonus_multiplier / claim_*（认领 8 键）</td><td><span class="typechip t-yes">yesno</span>/<span class="typechip t-num">number</span></td><td>保种认领</td><td>好学站扩展；<b>claim 系列部分键待补（对比迁移补齐）</b></td></tr>
+    <tr><td class="mono">enableattach / savedirectory / savedirectorytype / thumbnailtype / thumbquality / thumbwidth / thumbheight / watermark / watermarkpos / watermarkquality / add_watermark_to_thumbnail / image_thumbnails / alternative_thumbnail_size / image_size_for_watermark / attachment_authority / http_directory</td><td><span class="typechip t-yes">yesno</span>/<span class="typechip t-enum">enum</span>/<span class="typechip t-num">number</span>/<span class="typechip t-secret">classlevel</span></td><td>附件总开关 / 缩略图 / 水印</td><td><b>watermark 系列多数待补</b></td></tr>
+    <tr><td class="mono">enablead / enablenoad / enablebonusnoad / bonusnoadpoint / bonusnoadtime / adclickbonus</td><td><span class="typechip t-yes">yesno</span>/<span class="typechip t-num">number</span></td><td>广告</td><td><b>enablead / adclickbonus 待补</b></td></tr>
+    <tr><td class="mono">donation_custom / protected_forum</td><td><span class="typechip t-txt">textarea</span>/<span class="typechip t-text">text</span></td><td>其他</td><td>—</td></tr>
+    <tr><td class="mono">mainversion / subversion / releasedate / website</td><td><span class="typechip t-text">text</span> readonly</td><td>版本信息</td><td>只读卡片</td></tr>
+  </table>
+  <div class="warnbox"><b>落地提示：</b>「待补」键的精确清单以 P0 开工时从 hxpt settings.php 再跑一次全量提取为准（本次已提取 152 个表单键 + 12 组 db group 键），并逐键核对 <span class="mono">site_settings</span> 现值，缺失即补迁移（ON CONFLICT DO NOTHING 幂等）。</div>
+</section>
+
+<div class="foot">
+  FluxTorrent 站点设定 · 功能复刻 + UI 重设计方案 v1.0 · 2026-09-11 · 依据 hxpt settings.php 全量解析、FluxTorrent apps/api 迁移与 apps/web /admin 现状、v44.0 设计 Token（§7.1）编制
+</div>
+
+</div>
+</body>
+</html>

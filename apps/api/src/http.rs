@@ -179,6 +179,10 @@ async fn register(
         .peer_addr()
         .map(|s| s.to_string())
         .unwrap_or_else(|| "unknown".into());
+    // IP 封禁强制校验（与登录同口径；封禁名单由管理面维护）
+    if ip_banned(&state, &ip).await {
+        return Err(DomainError::Validation("IP 已被封禁，请联系管理组".into()));
+    }
     throttle(&state, format!("register-ip:{ip}")).await?;
     let pass_hash = domain::hash_password(&new_user.password)?;
     // 先建用户（未绑定邀请人），再原子消费邀请码回填（一码一用）
@@ -225,12 +229,16 @@ async fn login(
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<LoginReq>,
 ) -> DomainResult<impl Responder> {
-    // 登录限流（§5.7：5 次/分钟/用户名，Redis 计数）
-    throttle(&state, format!("login:{}", body.username)).await?;
+    // IP 封禁强制校验（ip_bans 此前仅管理面 CRUD，无请求入口拦截）
     let peer_ip = req
         .peer_addr()
         .map(|a| a.ip().to_string())
         .unwrap_or_default();
+    if ip_banned(&state, &peer_ip).await {
+        return Err(DomainError::Validation("IP 已被封禁，请联系管理组".into()));
+    }
+    // 登录限流（§5.7：5 次/分钟/用户名，Redis 计数）
+    throttle(&state, format!("login:{}", body.username)).await?;
     let user = state
         .repo
         .find_user_by_name(body.username.trim())
@@ -290,6 +298,42 @@ async fn throttle(state: &Arc<AppState>, key: String) -> DomainResult<()> {
         return Err(DomainError::RateLimited);
     }
     Ok(())
+}
+
+/// ILIKE/LIKE 模式构造：转义用户输入中的通配符（% _ \），防 `%` 全表通配扫描的性能滥用。
+/// PG 的 LIKE/ILIKE 默认转义符即反斜杠，无需 ESCAPE 子句；torrents.rs 的 ESCAPE chr(92) 口径兼容。
+pub fn like_pattern(s: &str) -> String {
+    format!(
+        "%{}%",
+        s.trim()
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_")
+    )
+}
+
+/// 通知 tracker 立即刷新防护缓存（ip_bans/agent_rules/挂起/下载权限/passkey 变更后调用）。
+/// tracker 侧每 3s 轮询 flux:guard:ver（见 apps/tracker/src/main.rs）；失败静默 —— 仍有 60s TTL 兜底。
+pub async fn bump_guard_ver(state: &Arc<AppState>) {
+    use redis::AsyncCommands;
+    let mut c = state.redis.clone();
+    let _: Result<i64, _> = c.incr("flux:guard:ver", 1).await;
+}
+
+/// ip_bans 强制校验：命中返回 true（封禁名单由管理面维护，见 /admin/bans）。
+/// 登录/注册为低频入口，直接查库即可；高频路径（tracker announce）用内存缓存版，
+/// 见 apps/tracker/src/main.rs 的 refresh_guard()/ip_banned()。
+async fn ip_banned(state: &Arc<AppState>, ip: &str) -> bool {
+    if ip.is_empty() || ip == "unknown" {
+        return false;
+    }
+    sqlx::query_scalar::<_, i32>("SELECT 1 FROM ip_bans WHERE ip = $1::inet LIMIT 1")
+        .bind(ip)
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten()
+        .is_some()
 }
 
 #[derive(Debug)]
@@ -426,6 +470,8 @@ async fn rotate_passkey(
         .repo
         .audit(Some(auth.id), "passkey_rotate", Some(auth.id))
         .await;
+    // 旧 passkey 在 tracker passkey 缓存中立即失效（否则 60s TTL 内仍可用）
+    bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "passkey": pk })))
 }
 
@@ -1020,18 +1066,22 @@ async fn detail(
 /// 详情页扩展数据（简介/文件数/感谢数），与 detail 合并渲染
 #[get("/torrents/{id}/detail")]
 async fn torrent_detail_ext(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
+    require_auth(&req, &state).await?;
     let t = torrents::get_torrent_detail(&state.repo.db, path.into_inner()).await?;
     Ok(ok(t))
 }
 
 #[get("/torrents/{id}/files")]
 async fn torrent_files(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
+    require_auth(&req, &state).await?;
     Ok(ok(
         torrents::list_files(&state.repo.db, path.into_inner()).await?
     ))
@@ -1039,9 +1089,11 @@ async fn torrent_files(
 
 #[get("/torrents/{id}/thanks")]
 async fn torrent_thanks(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
+    require_auth(&req, &state).await?;
     Ok(ok(
         torrents::list_thanks(&state.repo.db, path.into_inner()).await?
     ))
@@ -1049,10 +1101,12 @@ async fn torrent_thanks(
 
 #[get("/torrents/{id}/comments")]
 async fn comments(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
+    require_auth(&req, &state).await?;
     let items =
         torrents::list_comments(&state.repo.db, path.into_inner(), q.limit.unwrap_or(20)).await?;
     Ok(ok(items))
@@ -1601,6 +1655,7 @@ async fn ban_create(
     .fetch_one(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "ip_ban", None).await;
+    bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -1614,6 +1669,7 @@ async fn ban_delete(
         .execute(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "ip_unban", None).await;
+    bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -3513,8 +3569,11 @@ async fn home_sections(
     let news_json: Vec<serde_json::Value> = news
         .iter()
         .map(|(id, title, body, badge, ts)| {
+            // 公告 body 为富文本 HTML（管理员撰写，NP 口径）：出站前 ammonia 白名单消毒，
+            // 剥离 script/事件属性/javascript: 协议 —— 管理员账号被盗也不构成全站存储 XSS
+            let safe_body = ammonia::Builder::default().clean(body).to_string();
             serde_json::json!({
-                "id": id, "title": title, "body": body, "badge": badge,
+                "id": id, "title": title, "body": safe_body, "badge": badge,
                 "date": ts.format("%m-%d").to_string(),
             })
         })
@@ -3808,14 +3867,37 @@ async fn download(
         .await?
         .ok_or(DomainError::Unauthorized)?;
     // 注入本站 announce（含 passkey）+ private=1；info dict 不动 → info_hash 与上传时一致（M05）
-    let tracker_host =
-        std::env::var("PUBLIC_TRACKER_URL").unwrap_or_else(|_| "http://127.0.0.1:7070".into());
-    let announce = format!(
-        "{}/announce/{}",
-        tracker_host.trim_end_matches('/'),
-        user.passkey
-    );
-    let body = crate::bencode::build_download_torrent(&raw, &announce)
+    // 汇报地址来源：站点设定 announce_url / https_announce_url 优先（设定页可改），
+    // PUBLIC_TRACKER_URL 环境变量兜底。配置了 https 时首选加密汇报，http 作 BEP12 回退。
+    async fn setting(db: &sqlx::PgPool, name: &str) -> Option<String> {
+        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
+            .bind(name)
+            .fetch_optional(db)
+            .await
+            .ok()
+            .flatten()
+            .map(|v| v.trim().trim_end_matches('/').to_string())
+            .filter(|v| !v.is_empty())
+    }
+    let env_host = std::env::var("PUBLIC_TRACKER_URL")
+        .unwrap_or_else(|_| "http://127.0.0.1:7070".into())
+        .trim_end_matches('/')
+        .to_string();
+    let base_http = setting(&state.repo.db, "announce_url")
+        .await
+        .unwrap_or(env_host);
+    let announce = match setting(&state.repo.db, "https_announce_url").await {
+        Some(https) if https != base_http => {
+            format!("{https}/announce/{}", user.passkey)
+        }
+        _ => format!("{base_http}/announce/{}", user.passkey),
+    };
+    // http 回退仅在与首选不同时下发（BEP12 单 tier：失败自动降级，不支持 TLS 的老客户端可用）
+    let mut fallbacks = Vec::new();
+    if !announce.starts_with(&format!("{base_http}/")) {
+        fallbacks.push(format!("{base_http}/announce/{}", user.passkey));
+    }
+    let body = crate::bencode::build_download_torrent(&raw, &announce, &fallbacks)
         .map_err(DomainError::TorrentInvalid)?;
     let mut resp = HttpResponse::with_body(actix_web::http::StatusCode::OK, BoxBody::new(body));
     resp.headers_mut().insert(

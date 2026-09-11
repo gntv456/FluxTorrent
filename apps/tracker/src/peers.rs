@@ -49,6 +49,11 @@ impl PeerTable {
         Self::default()
     }
 
+    /// 活跃 peer 总数（/metrics 用）
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
     pub fn upsert(&self, peer: Peer) {
         self.inner.insert(peer.key.clone(), peer);
     }
@@ -124,12 +129,16 @@ pub fn hex(bytes: &[u8]) -> String {
 }
 
 /// BEP3 bencode announce 响应（compact 模式：6 字节/peer）。
+/// interval / min interval 为 BEP3 强制字段：告知客户端汇报间隔，
+/// 缺失时部分客户端会按自身默认值频繁重发 —— 这是高频 announce 的诱因之一。
 /// 返回原始字节 —— peer 列表是二进制，绝不可经 String/UTF-8 转换（会损坏数据）。
 pub fn bencode_announce(
     complete: i64,
     incomplete: i64,
     downloaded: i64,
     peers: &[CompactPeer],
+    interval: i64,
+    min_interval: i64,
 ) -> Vec<u8> {
     let mut peers_bytes = Vec::with_capacity(peers.len() * 6);
     for p in peers {
@@ -137,7 +146,8 @@ pub fn bencode_announce(
         peers_bytes.extend_from_slice(&p.port.to_be_bytes());
     }
     let mut out = format!(
-        "d8:completei{complete}e10:incompletei{incomplete}e10:downloadedi{downloaded}e5:peers{}:",
+        "d8:completei{complete}e10:incompletei{incomplete}e10:downloadedi{downloaded}e\
+         8:intervali{interval}e12:min intervali{min_interval}e5:peers{}:",
         peers_bytes.len()
     )
     .into_bytes();
@@ -234,10 +244,20 @@ mod tests {
                 ip: [10, 0, 0, 1],
                 port: 0xC201, // 高字节非 ASCII —— 验证不经 UTF-8 损坏
             }],
+            1800,
+            600,
         );
         assert!(body.windows(6).any(|w| w == [10, 0, 0, 1, 0xC2, 0x01]));
         assert!(body.starts_with(b"d8:completei1e"));
         assert!(body.ends_with(b"e"));
+    }
+
+    #[test]
+    fn bencode_announce_includes_interval() {
+        let body = bencode_announce(1, 2, 3, &[], 1800, 600);
+        let s = String::from_utf8(body).unwrap();
+        assert!(s.contains("8:intervali1800e"), "缺 interval: {s}");
+        assert!(s.contains("12:min intervali600e"), "缺 min interval: {s}");
     }
 
     #[test]

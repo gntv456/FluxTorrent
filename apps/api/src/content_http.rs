@@ -85,6 +85,7 @@ async fn request_create(
 }
 
 #[derive(sqlx::FromRow, serde::Serialize)]
+#[allow(dead_code)] // 列表响应复用字段，部分列暂未在 handler 中读取
 struct RequestRow {
     id: i64,
     username: Option<String>,
@@ -108,7 +109,7 @@ async fn request_list(
     let finished = q.get("finished").map(|s| s.as_str()).unwrap_or("no");
     let search = q
         .get("search")
-        .map(|s| format!("%{}%", s.trim()))
+        .map(|s| crate::http::like_pattern(&s))
         .unwrap_or_else(|| "%".into());
     let status_cond = match finished {
         "all" => "TRUE",
@@ -427,7 +428,7 @@ async fn subtitle_list(
 ) -> DomainResult<impl Responder> {
     let search = q
         .get("search")
-        .map(|s| format!("%{}%", s.trim()))
+        .map(|s| crate::http::like_pattern(&s))
         .unwrap_or_else(|| "%".into());
     let lang = q.get("lang_id").filter(|s| s.as_str() != "0").cloned();
     let letter = q.get("letter").filter(|s| !s.is_empty()).cloned();

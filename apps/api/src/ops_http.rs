@@ -426,6 +426,7 @@ struct PreserveRow {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)] // 兼容前端传入、后端暂未消费的筛选参数
 struct PreserveQuery {
     /// scope: all/official/general；status: current/active/grace/expired
     #[serde(default)]
@@ -451,7 +452,7 @@ async fn preserve_list(
     let kw = q
         .keyword
         .as_deref()
-        .map(|k| format!("%{}%", k.trim()))
+        .map(|k| crate::http::like_pattern(&k))
         .unwrap_or_else(|| "%".into());
 
     let rows = sqlx::query_as::<_, PreserveRow>(
@@ -473,7 +474,7 @@ async fn preserve_list(
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 统计六格（包子站保种区口径：保种中/延续中/官方保种/普通保种/今日新增/今日移出）
-    let (preserving, exited, total, today_in, today_out): (i64, i64, i64, i64, i64) =
+    let (preserving, _exited, total, today_in, today_out): (i64, i64, i64, i64, i64) =
         sqlx::query_as(
             "SELECT \
                 (SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL), \
@@ -517,9 +518,17 @@ async fn preserve_claim(
     body: web::Json<PreserveClaimReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 认领即记录做种时长/上传量基线（NP claims.seed_time_begin/uploaded_begin 口径）
     let updated = sqlx::query(
-        "UPDATE seed_preserve SET claimed_by = $2, claimed_at = now() \
-         WHERE torrent_id = $1 AND claimed_by IS NULL",
+        "UPDATE seed_preserve sp SET \
+            claimed_by = $2, claimed_at = now(), last_settle_at = now(), \
+            seed_time_begin = COALESCE(( \
+                SELECT s.seeded_seconds FROM snatches s \
+                WHERE s.torrent_id = sp.torrent_id AND s.user_id = $2), 0), \
+            uploaded_begin = COALESCE(( \
+                SELECT s.uploaded FROM snatches s \
+                WHERE s.torrent_id = sp.torrent_id AND s.user_id = $2), 0) \
+         WHERE sp.torrent_id = $1 AND sp.claimed_by IS NULL",
     )
     .bind(body.torrent_id)
     .bind(auth.id)

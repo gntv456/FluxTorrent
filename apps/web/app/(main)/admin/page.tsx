@@ -6,6 +6,9 @@ import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { ContentManage } from "@/components/content-manage";
 import { StaffTools } from "@/components/staff-tools";
+import { AdminUsers } from "@/components/admin-users";
+import { AdminTorrents } from "@/components/admin-torrents";
+import { AdminP2Tools } from "@/components/admin-p2-tools";
 
 interface Overview {
   pending_reviews: number;
@@ -76,22 +79,15 @@ interface CheaterRow {
   announced_at: string;
 }
 
-interface SiteSetting {
-  name: string;
-  value: string;
-  updated_at: string;
-  descr?: string | null;
-  grp?: string | null;
-}
-
 type AdminTab =
   | "overview"
   | "panel"
-  | "settings"
   | "reviews"
   | "reports"
   | "appeals"
   | "users"
+  | "torrents"
+  | "p2tools"
   | "audit"
   | "cheaters"
   | "content"
@@ -121,9 +117,6 @@ export default function AdminPage({
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [panel, setPanel] = useState<PanelEntry[]>([]);
   const [role, setRole] = useState("");
-  const [settings, setSettings] = useState<SiteSetting[]>([]);
-  const [settingsEditable, setSettingsEditable] = useState(false);
-  const [editing, setEditing] = useState<Record<string, string>>({});
   const [userQ, setUserQ] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -153,13 +146,6 @@ export default function AdminPage({
       setPanel(pnl.entries);
       setRole(pnl.role);
       setAppeals(aps);
-      if (pnl.role === "sysop" || pnl.role === "administrator") {
-        const st = await api.get<{ settings: SiteSetting[]; editable: boolean }>(
-          "/api/v1/admin/settings",
-        );
-        setSettings(st.settings);
-        setSettingsEditable(st.editable);
-      }
       setTab("panel");
     } catch (e) {
       setMsg(e instanceof ApiError && e.code === 2003 ? a.needAdmin : dict.common.loadFailed);
@@ -242,49 +228,20 @@ export default function AdminPage({
     }
   }
 
-  async function saveSetting(name: string) {
-    const value = editing[name];
-    if (value === undefined) return;
-    try {
-      await api.put("/api/v1/admin/settings", { name, value });
-      setMsg(fmt(a.settingSaved, { name }));
-      const st = await api.get<{ settings: SiteSetting[]; editable: boolean }>(
-        "/api/v1/admin/settings",
-      );
-      setSettings(st.settings);
-    } catch (e) {
-      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
-    }
-  }
-
   const TABS = [
     ["panel", a.tabs.panel],
     ["overview", a.tabs.overview],
-    ...(role === "sysop" || role === "administrator"
-      ? ([["settings", a.tabs.settings]] as const)
-      : []),
     ["reviews", fmt(a.tabs.reviews, { n: reviews.length })],
     ["reports", fmt(a.tabs.reports, { n: reports.length })],
     ["appeals", a.tabs.appeals ?? "申诉"],
     ["users", a.tabs.users],
+    ["torrents", a.tabs.torrents ?? "种子管理"],
+    ["p2tools", a.tabs.p2tools ?? "运营配置"],
     ["audit", a.tabs.audit],
     ["cheaters", a.cheatersTitle],
     ["content", a.tabs.content],
     ["tools", dict.stafftools.title],
   ] as const;
-
-  // 站点设定十三分组（NexusPHP settings.php 口径）
-  const GROUP_LABELS: Record<string, string> = a.settingGroups ?? {};
-  const FALLBACK_ORDER = ["basic", "main", "smtp", "security", "authority", "tweak", "bonus", "account", "torrent", "attachment", "advertisement", "misc"];
-  const settingGroups: [string, string, SiteSetting[]][] = (() => {
-    const byGrp = new Map<string, SiteSetting[]>();
-    for (const s of settings) {
-      const g = s.grp ?? "misc";
-      byGrp.set(g, [...(byGrp.get(g) ?? []), s]);
-    }
-    const order = [...FALLBACK_ORDER.filter((g) => byGrp.has(g)), ...[...byGrp.keys()].filter((g) => !FALLBACK_ORDER.includes(g))];
-    return order.map((g) => [g, GROUP_LABELS[g] ?? g, byGrp.get(g)!] as [string, string, SiteSetting[]]);
-  })();
 
   const panelGroups: [string, PanelEntry[]][] = ["sysop", "admin", "moderator"]
     .map((g) => [g, panel.filter((e) => e.panel === g)] as [string, PanelEntry[]])
@@ -312,6 +269,22 @@ export default function AdminPage({
 
       {msg && (
         <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>
+      )}
+
+      {/* 站点设定入口：新版类型化设定页位于独立路由 /admin/settings，仅 sysop/administrator 可见 */}
+      {tab === "panel" && (role === "sysop" || role === "administrator") && (
+        <a
+          href="/admin/settings"
+          className="flex items-center justify-between gap-3 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)] transition hover:border-sky"
+        >
+          <span className="min-w-0">
+            <span className="block font-bold text-ink">{dict.settingsAdmin.title}</span>
+            <span className="mt-0.5 block text-xs text-sub">{dict.settingsAdmin.note}</span>
+          </span>
+          <span className="min-h-[44px] shrink-0 rounded-full bg-sky-deep px-5 text-sm font-bold leading-[44px] text-white">
+            {dict.settingsAdmin.entryOpen}
+          </span>
+        </a>
       )}
 
       {/* 管理组面板：三组 colhead 表格（SysOp/Administrator/Moderator） */}
@@ -365,70 +338,7 @@ export default function AdminPage({
         </section>
       )}
 
-      {/* 站点设定：键值表（sysop 可编辑） */}
-      {tab === "settings" && (
-        <section className="flex flex-col gap-4">
-          <p className="text-xs text-sub">{a.settingsGroupNote}</p>
-          {settingGroups.map(([grp, label, items]) => (
-            <table key={grp} className="nexus-table">
-              <thead>
-                <tr>
-                  <td className="colhead" colSpan={settingsEditable ? 4 : 3}>
-                    <h2 className="font-display">
-                      {label}
-                      <span className="ml-2 text-xs font-normal text-sub">{items.length}</span>
-                    </h2>
-                  </td>
-                </tr>
-                <tr>
-                  <th className="w-56">{a.colSettingName}</th>
-                  <th>{a.colSettingValue}</th>
-                  <th className="w-36">{a.colSettingUpdated}</th>
-                  {settingsEditable && <th className="w-24">{a.colSettingAction}</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((s) => (
-                  <tr key={s.name}>
-                    <td className="rowfollow">
-                      <span className="font-mono text-xs">{s.name}</span>
-                      {s.descr && (
-                        <p className="mt-0.5 text-[11px] leading-tight text-sub">{s.descr}</p>
-                      )}
-                    </td>
-                    <td className="rowfollow">
-                      {settingsEditable ? (
-                        <input
-                          className="uc-input-wide"
-                          defaultValue={s.value}
-                          onChange={(e) =>
-                            setEditing((prev) => ({ ...prev, [s.name]: e.target.value }))
-                          }
-                        />
-                      ) : (
-                        s.value
-                      )}
-                    </td>
-                    <td className="rowfollow text-xs text-sub">
-                      {new Date(s.updated_at).toLocaleString(dateLocale(locale))}
-                    </td>
-                    {settingsEditable && (
-                      <td className="rowfollow">
-                        <button
-                          onClick={() => saveSetting(s.name)}
-                          className="min-h-[32px] rounded-full bg-sky px-3 text-xs font-bold text-white"
-                        >
-                          {a.saveSetting}
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ))}
-        </section>
-      )}
+      {/* 站点设定已迁移至独立路由 /admin/settings（类型化控件 / 服务端校验 / 修改历史 / 导出导入） */}
 
       {tab === "reviews" && (
         <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
@@ -542,67 +452,12 @@ export default function AdminPage({
         </section>
       )}
 
-      {tab === "users" && (
-        <section className="flex flex-col gap-3">
-          <div className="flex gap-2">
-            <input
-              value={userQ}
-              onChange={(e) => setUserQ(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && searchUsers()}
-              placeholder={a.searchPlaceholder}
-              className="min-h-[44px] flex-1 rounded-[var(--r-sm)] border border-line px-3"
-            />
-            <button
-              onClick={searchUsers}
-              className="min-h-[44px] rounded-full bg-sky px-5 text-sm font-bold text-white"
-            >
-              {a.search}
-            </button>
-          </div>
-          <ul className="flex flex-col divide-y divide-line rounded-[var(--r-lg)] border border-line bg-white p-4">
-            {users.map((u) => (
-              <li key={u.id} className="flex items-center gap-3 py-2">
-                <div className="flex-1">
-                  <p className="text-sm font-bold">
-                    {u.username}
-                    {u.status > 0 && (
-                      <span className="ml-1 rounded-full bg-coral/20 px-2 py-0.5 text-[10px] text-danger">
-                        {a.status[u.status]}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-sub">
-                    #{u.id} · LV{u.class_id} · {u.email}
-                  </p>
-                </div>
-                <select
-                  value={u.class_id}
-                  onChange={(e) => setUserClass(u.id, Number(e.target.value))}
-                  className="min-h-[36px] rounded-full border border-line bg-white px-2 text-xs font-bold"
-                  title={a.classAdjust}
-                >
-                  {a.classList.map(([id, label]) => (
-                    <option key={id} value={id}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => setUserStatus(u.id, u.status >= 2 ? 0 : 2)}
-                  className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${
-                    u.status >= 2 ? "bg-mint text-white" : "border border-line text-danger"
-                  }`}
-                >
-                  {u.status >= 2 ? a.unban : a.ban}
-                </button>
-              </li>
-            ))}
-            {users.length === 0 && (
-              <li className="py-6 text-center text-sub">{a.searchFirst}</li>
-            )}
-          </ul>
-        </section>
-      )}
+      {tab === "users" && <AdminUsers classes={a.classList} />}
+
+      {tab === "torrents" && <AdminTorrents />}
+
+      {tab === "p2tools" && <AdminP2Tools />}
+
 
       {tab === "content" && (
         <section className="nexus-detail">

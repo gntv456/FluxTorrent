@@ -87,6 +87,15 @@ services:
     container_name: flux-tracker
     environment:
       TRACKER_BIND: 0.0.0.0:7070
+      # 高频请求防护：每用户/每 IP announce 限流（1/min）与 interval 兜底值（秒）
+      # 阈值按保种大户口径设置（interval 1800s 时 ≈ 挂种数/30 每分钟）；用户 1800/min 覆盖 5.4 万挂种
+      ANN_RATE_USER_PER_MIN: "1800"
+      ANN_RATE_IP_PER_MIN: "3600"
+      ANN_INTERVAL_DEFAULT: "1800"
+      # 全局限流应急熔断：0=关闭；遭分布式洪水时临时设置（如 120000 = 2000r/s 总闸）
+      ANN_RATE_GLOBAL_PER_MIN: "0"
+      # 指标端点 /metrics：设置非空 token 后启用（抓取端带 X-Metrics-Token 头）；留空=端点返回 404
+      ANN_METRICS_TOKEN: "${ANN_METRICS_TOKEN:-}"
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       RUST_LOG: info
