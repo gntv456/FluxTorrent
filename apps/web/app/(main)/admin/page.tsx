@@ -32,6 +32,17 @@ interface Report {
   created_at: string;
 }
 
+interface AppealRow {
+  id: number;
+  username: string;
+  kind: string;
+  ref_id: number | null;
+  body: string;
+  status: string;
+  result_note: string | null;
+  created_at: string;
+}
+
 interface AdminUser {
   id: number;
   username: string;
@@ -79,6 +90,7 @@ type AdminTab =
   | "settings"
   | "reviews"
   | "reports"
+  | "appeals"
   | "users"
   | "audit"
   | "cheaters"
@@ -104,6 +116,7 @@ export default function AdminPage({
   const [ov, setOv] = useState<Overview | null>(null);
   const [reviews, setReviews] = useState<PendingTorrent[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [appeals, setAppeals] = useState<AppealRow[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [panel, setPanel] = useState<PanelEntry[]>([]);
@@ -125,12 +138,13 @@ export default function AdminPage({
 
   const load = useCallback(async () => {
     try {
-      const [ovr, rev, rep, aud, pnl] = await Promise.all([
+      const [ovr, rev, rep, aud, pnl, aps] = await Promise.all([
         api.get<Overview>("/api/v1/admin/overview"),
         api.get<PendingTorrent[]>("/api/v1/admin/reviews"),
         api.get<Report[]>("/api/v1/admin/reports"),
         api.get<AuditRow[]>("/api/v1/admin/audit"),
         api.get<{ entries: PanelEntry[]; role: string }>("/api/v1/admin/staffpanel"),
+        api.get<AppealRow[]>("/api/v1/admin/appeals").catch(() => [] as AppealRow[]),
       ]);
       setOv(ovr);
       setReviews(rev);
@@ -138,6 +152,7 @@ export default function AdminPage({
       setAudit(aud);
       setPanel(pnl.entries);
       setRole(pnl.role);
+      setAppeals(aps);
       if (pnl.role === "sysop" || pnl.role === "administrator") {
         const st = await api.get<{ settings: SiteSetting[]; editable: boolean }>(
           "/api/v1/admin/settings",
@@ -191,6 +206,22 @@ export default function AdminPage({
     }
   }
 
+  async function handleAppeal(id: number, accept: boolean) {
+    const note = prompt(accept ? a.appealAcceptNote ?? "通过说明（可选）" : a.appealRejectNote ?? "驳回理由（必填）") ?? "";
+    if (!accept && !note.trim()) return;
+    try {
+      await api.post("/api/v1/admin/appeals/handle", {
+        appeal_id: id,
+        accept,
+        note,
+      });
+      setMsg(fmt(a.appealHandled, { id }));
+      load();
+    } catch (e) {
+      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
+    }
+  }
+
   async function setUserStatus(userId: number, status: number) {
     try {
       await api.post("/api/v1/admin/users/status", { user_id: userId, status });
@@ -234,6 +265,7 @@ export default function AdminPage({
       : []),
     ["reviews", fmt(a.tabs.reviews, { n: reviews.length })],
     ["reports", fmt(a.tabs.reports, { n: reports.length })],
+    ["appeals", a.tabs.appeals ?? "申诉"],
     ["users", a.tabs.users],
     ["audit", a.tabs.audit],
     ["cheaters", a.cheatersTitle],
@@ -454,6 +486,58 @@ export default function AdminPage({
               </li>
             ))}
             {reports.length === 0 && <li className="py-6 text-center text-sub">{a.noReports}</li>}
+          </ul>
+        </section>
+      )}
+
+      {tab === "appeals" && (
+        <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+          <ul className="flex flex-col divide-y divide-line">
+            {appeals.map((ap) => (
+              <li key={ap.id} className="flex items-center gap-3 py-2">
+                <div className="flex-1">
+                  <p className="text-sm">
+                    <span className="rounded-full bg-sun/30 px-2 py-0.5 text-[10px]">
+                      {ap.kind}
+                    </span>{" "}
+                    <b>{ap.username}</b>
+                    {ap.ref_id !== null && <span className="text-xs text-sub"> · #{ap.ref_id}</span>}
+                    {ap.status !== "open" && (
+                      <span
+                        className={`ml-1 rounded-full px-2 py-0.5 text-[10px] ${
+                          ap.status === "accepted" ? "bg-mint/30" : "bg-coral/20 text-danger"
+                        }`}
+                      >
+                        {ap.status === "accepted" ? (a.appealAccepted ?? "已通过") : (a.appealRejected ?? "已驳回")}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-sub">
+                    {ap.body}
+                    {ap.result_note ? ` · ${a.appealNoteLabel}: ${ap.result_note}` : ""}
+                  </p>
+                </div>
+                {ap.status === "open" && (
+                  <span className="flex gap-2">
+                    <button
+                      onClick={() => handleAppeal(ap.id, true)}
+                      className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white"
+                    >
+                      {a.appealAccept ?? "通过"}
+                    </button>
+                    <button
+                      onClick={() => handleAppeal(ap.id, false)}
+                      className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-danger"
+                    >
+                      {a.appealReject ?? "驳回"}
+                    </button>
+                  </span>
+                )}
+              </li>
+            ))}
+            {appeals.length === 0 && (
+              <li className="py-6 text-center text-sub">{a.appealEmpty ?? "暂无申诉"}</li>
+            )}
           </ul>
         </section>
       )}

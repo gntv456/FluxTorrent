@@ -2,6 +2,7 @@ import { getTextbooks } from "@/lib/data";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
+import { TextbookLinkButton } from "@/components/textbook-link-button";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,10 @@ export default async function TextbooksPage() {
                   {dict.textbooks.viewTorrent}
                 </Link>
               ) : (
-                <p className="text-xs text-sub">{dict.textbooks.noTorrent}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-sub">{dict.textbooks.noTorrent}</p>
+                  <TextbookLinkButton textbookId={b.id} />
+                </div>
               )}
             </div>
           ))}

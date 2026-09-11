@@ -2,7 +2,7 @@
 
 import type { Dict } from "./zh-CN";
 
-export const zhTW: Dict = {
+const zhTwBase: Omit<Dict, "security2fa" | "apitokens"> = {
   meta: {
     titleSuffix: "好學",
     description: "教育資源私有種子社群 —— 種下種子，一起成長",
@@ -589,6 +589,15 @@ export const zhTW: Dict = {
     stPending: "做種中",
     stFlagged: "H&R 未達標",
     empty: "暫無 H&R 記錄",
+    colRequired: "要求做種",
+    colDeadline: "截止時間",
+  },
+  myhr2: {
+    stPardoned: "已免罪",
+    pardonBtn: "火花免罪",
+    pardonConfirm: "消耗 20000 火花免除該條 H&R 違規，確認？",
+    pardonOk: "已免罪",
+    pardonNote: "消耗 20000 火花自助免除一條 H&R 違規",
   },
   forums2: {
     allNodes: "興趣節點",
@@ -941,6 +950,11 @@ export const zhTW: Dict = {
     progress: "{donated} / {goal} 火花（{pct}%）",
     active: "雙免促銷進行中！",
     donors: "本月捐贈榜",
+    donate: "捐贈火花",
+    donating: "捐贈中…",
+    donatedOk: "捐贈成功，感謝支持！",
+    amountLabel: "捐贈火花數",
+    amountInvalid: "請輸入正整數火花數",
   },
   preserve: {
     title: "保種區",
@@ -1086,6 +1100,11 @@ export const zhTW: Dict = {
     pending: "求種中",
     searchPlaceholder: "搜索求種…",
     search: "搜索",
+    fulfillBtn: "用種子達成",
+    fulfillTorrentId: "填入你的種子 ID（發布過審後可得）",
+    fulfillInvalid: "請輸入正整數種子 ID",
+    fulfillOk: "求種已標記為達成",
+    fulfillFailed: "達成失敗：",
   },
 
   top: {
@@ -1189,6 +1208,12 @@ export const zhTW: Dict = {
     owned: "已擁有",
     price: "{n} 火花",
   },
+  textbookLink2: {
+    link: "關聯種子",
+    linkPrompt: "填入你的種子 ID（發布過審的教育資源）",
+    linkInvalid: "請輸入正整數種子 ID",
+    linkedOk: "已關聯",
+  },
   admin: {
     title: "管理後台",
     settingsGroupNote: "對齊 NexusPHP settings.php 十二分組；僅系統管理員可儲存。",
@@ -1217,6 +1242,7 @@ export const zhTW: Dict = {
       settings: "站點設定",
       reviews: "審核 ({n})",
       reports: "舉報 ({n})",
+      appeals: "申訴",
       users: "用戶",
       audit: "審計",
       content: "內容管理",
@@ -1251,6 +1277,15 @@ export const zhTW: Dict = {
     resolved: "已处理舉報 #{id}",
     noReports: "暂无舉報",
     reporter: "報告人 {id}",
+    appealHandled: "已處理申訴 #{id}",
+    appealAccept: "通過",
+    appealReject: "駁回",
+    appealAcceptNote: "通過說明（可選）：",
+    appealRejectNote: "駁回理由（必填）：",
+    appealAccepted: "已通過",
+    appealRejected: "已駁回",
+    appealNoteLabel: "處理意見",
+    appealEmpty: "暫無申訴",
     searchPlaceholder: "用戶名或邮箱",
     search: "搜索",
     searchFirst: "搜索後顯示",
@@ -1625,6 +1660,10 @@ export const zhTW: Dict = {
   medals2: {
     uncategorized: "其他勳章",
     groupCount: "共 {n} 枚",
+    gift: "贈送",
+    giftTo: "贈送給（用戶名）",
+    giftInvalid: "請輸入對方用戶名",
+    giftOk: "已贈送給 {name}",
     getType: "取得方式",
     gtExchange: "魔力兌換",
     gtGrant: "管理員授予",
@@ -1749,4 +1788,31 @@ export const zhTW: Dict = {
     youWin: "你贏了！🎉",
     youLose: "你輸了",
   },
+};
+
+
+const apitokensTw: Dict["apitokens"] = {
+  title: "開放 API 權杖",
+  namePlaceholder: "權杖名稱（如：RSS 同步）",
+  issue: "簽發權杖",
+  revoke: "吊銷",
+  revoked: "已吊銷",
+  neverUsed: "未使用",
+  plainOnce: "權杖明文僅此一次顯示，請立即保存：",
+  limit: "每人最多 5 枚有效權杖；用法 Authorization: Token fxo_…",
+};
+
+export const zhTW: Dict = { ...zhTwBase, security2fa: {
+  statusOn: "已啟用",
+  statusOff: "未啟用",
+  statusLoading: "查詢中…",
+  setup: "生成 2FA 金鑰",
+  secretLabel: "金鑰（驗證器手動輸入用）",
+  codeLabel: "驗證器 6 位動態碼",
+  enable: "確認啟用",
+  disable: "關閉兩步驗證",
+  enabledOk: "兩步驗證已啟用",
+  disabledOk: "兩步驗證已關閉",
+},
+  apitokens: apitokensTw,
 };
