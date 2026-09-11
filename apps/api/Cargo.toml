@@ -35,3 +35,4 @@ base64 = "0.22"
 hkdf = "0.12"
 aes-gcm = "0.10"
 p256 = { version = "0.13", features = ["ecdh"] }
+ammonia.workspace = true

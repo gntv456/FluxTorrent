@@ -22,7 +22,7 @@ export function LocaleSwitcher({ current }: { current: Locale }) {
 
   return (
     <div
-      className="flex items-center gap-0.5 rounded-full bg-white/10 p-0.5"
+      className="flex items-center gap-0.5 rounded-full border border-line bg-white/70 p-0.5"
       role="group"
       aria-label="Language / 语言"
     >
@@ -34,8 +34,8 @@ export function LocaleSwitcher({ current }: { current: Locale }) {
           aria-current={l === current ? "true" : undefined}
           className={`min-h-[28px] rounded-full px-2.5 text-xs font-bold transition-colors ${
             l === current
-              ? "bg-sky text-white"
-              : "text-white/70 hover:text-white"
+              ? "bg-sky-deep text-white"
+              : "text-sub hover:text-ink"
           }`}
         >
           {LABELS[l]}

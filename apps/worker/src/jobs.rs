@@ -99,6 +99,21 @@ pub async fn consume_announce(
     let last_id: Option<String> = redis.get("flux:announce:cursor").await.unwrap_or(None);
     let from = last_id.clone().unwrap_or_else(|| "-".to_string());
 
+    // 保种时长累计容忍窗 = 2 × announce_interval（与 tracker 下发口径一致，站点设定缺省 1800）。
+    // 客户端按 interval 汇报，相邻两次做种 announce 的时间差即真实做种时长；
+    // 超窗（离线/故障）不计，防挂机伪造做种时长。
+    let announce_interval: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'announce_interval'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .map(|v| v.clamp(60, 86400))
+    .unwrap_or(1800);
+    let seed_cap = (announce_interval * 2).clamp(3600, 172_800);
+
     // XRANGE → StreamRangeReply（redis 0.27 类型映射；错误必须可见，不允许静默空消费）
     let reply = match redis
         .xrange::<_, _, _, redis::streams::StreamRangeReply>("flux:announce", &from, "+")
@@ -150,7 +165,7 @@ pub async fn consume_announce(
                 continue;
             }
         };
-        match process_event(db, &ev).await {
+        match process_event(db, &ev, seed_cap).await {
             Ok(()) => {
                 applied += 1;
                 last_seen_id = Some(id);
@@ -189,8 +204,9 @@ pub async fn consume_announce(
     Ok(applied)
 }
 
-/// 单事件计费（促销裁决 + snatch upsert + 流水）
-async fn process_event(db: &PgPool, ev: &AnnounceEvent) -> anyhow::Result<()> {
+/// 单事件计费（促销裁决 + snatch upsert + 流水 + 保种时长累计）
+/// seed_cap：做种时长单次累计容忍窗（秒）= 2 × announce_interval，由 consume_announce 按站点设定算出
+async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow::Result<()> {
     // 未知种子的查询失败必须显式报错（重试），不能静默丢弃计费
     let torrent_id: Option<i64> =
         sqlx::query_scalar("SELECT id FROM torrents WHERE info_hash = $1")
@@ -234,8 +250,8 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent) -> anyhow::Result<()> {
     let seeding = ev.left == 0;
     sqlx::query(
         r#"
-        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CASE WHEN $9 THEN now() ELSE NULL END)
+        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CASE WHEN $9 THEN now() ELSE NULL END, now())
         ON CONFLICT (user_id, torrent_id) DO UPDATE SET
           uploaded = snatches.uploaded + EXCLUDED.uploaded,
           downloaded = snatches.downloaded + EXCLUDED.downloaded,
@@ -243,7 +259,17 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent) -> anyhow::Result<()> {
           last_down = EXCLUDED.last_down,
           leeching = EXCLUDED.leeching,
           seeding = EXCLUDED.seeding OR snatches.seeding,
-          completed_at = COALESCE(snatches.completed_at, EXCLUDED.completed_at)
+          completed_at = COALESCE(snatches.completed_at, EXCLUDED.completed_at),
+          -- 保种时长（0043）：本次为做种 announce（left=0）且与上次 announce 间隔未超容忍窗时，
+          -- 记入真实时间差；离线过久不记（防挂机伪造），停止 announce 自然停止累计，
+          -- 也不受 seeding 粘性 OR 影响（以本次事件的 left 为准）
+          seeded_seconds = snatches.seeded_seconds + (
+              CASE WHEN EXCLUDED.seeding
+                        AND snatches.last_seen_at > now() - ($10::bigint * interval '1 second')
+                   THEN LEAST(GREATEST(EXTRACT(EPOCH FROM (now() - snatches.last_seen_at))::bigint, 0), $10::bigint)
+                   ELSE 0 END
+          ),
+          last_seen_at = now()
         "#,
     )
     .bind(ev.user)
@@ -255,6 +281,7 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent) -> anyhow::Result<()> {
     .bind(!seeding)
     .bind(seeding)
     .bind(ev.event == "completed")
+    .bind(seed_cap)
     .execute(&mut *tx)
     .await?;
     // 仅在有实际增量时落流水（避免零增量噪声）
@@ -356,6 +383,16 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     if violated.rows_affected() > 0 {
         tracing::warn!(n = violated.rows_affected(), "H&R violations detected");
     }
+
+    // 5) hr_flag 刷新（0029 一次性迁移的运行时延续）：完成已超 14 天且做种时长 < 120h。
+    //    此前该标记只在迁移里置过一次，运行时无人刷新 —— /me/hr（community_http）口径失真。
+    sqlx::query(
+        "UPDATE snatches SET hr_flag = TRUE \
+         WHERE completed_at IS NOT NULL AND seeded_seconds < 432000 \
+           AND completed_at < now() - interval '14 days' AND NOT hr_flag",
+    )
+    .execute(db)
+    .await?;
     Ok(())
 }
 

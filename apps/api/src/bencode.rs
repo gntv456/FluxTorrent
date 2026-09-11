@@ -186,8 +186,14 @@ pub fn parse_torrent(bytes: &[u8]) -> Result<ParsedTorrent, String> {
     })
 }
 
-/// 生成下载用 .torrent：重新注入本站 announce（含 passkey，M05）
-pub fn build_download_torrent(raw: &[u8], announce_url: &str) -> Result<Vec<u8>, String> {
+/// 生成下载用 .torrent：重新注入本站 announce（含 passkey，M05）。
+/// announce_fallbacks 非空时按 BEP12 追加 announce-list（单 tier：首选地址 + 回退地址，
+/// 如 https 首选 + http 回退），客户端汇报失败时自动降级。
+pub fn build_download_torrent(
+    raw: &[u8],
+    announce_url: &str,
+    announce_fallbacks: &[String],
+) -> Result<Vec<u8>, String> {
     let (root, _) = parse(raw)?;
     let mut pairs = match &root {
         Bencode::Dict(p) => p.clone(),
@@ -199,6 +205,19 @@ pub fn build_download_torrent(raw: &[u8], announce_url: &str) -> Result<Vec<u8>,
         b"announce".to_vec(),
         Bencode::Bytes(announce_url.as_bytes().to_vec()),
     ));
+    let mut tier: Vec<Bencode> = Vec::with_capacity(1 + announce_fallbacks.len());
+    tier.push(Bencode::Bytes(announce_url.as_bytes().to_vec()));
+    for u in announce_fallbacks {
+        if !u.is_empty() && u != announce_url {
+            tier.push(Bencode::Bytes(u.as_bytes().to_vec()));
+        }
+    }
+    if tier.len() > 1 {
+        pairs.push((
+            b"announce-list".to_vec(),
+            Bencode::List(vec![Bencode::List(tier)]),
+        ));
+    }
     pairs.push((b"private".to_vec(), Bencode::Int(1)));
     let rebuilt = Bencode::Dict(pairs);
     let mut out = Vec::new();
@@ -234,16 +253,61 @@ mod tests {
     #[test]
     fn download_rebuild_injects_announce() {
         let bytes = make_torrent();
-        let out = build_download_torrent(&bytes, "http://tracker.flux.local/announce?passkey=abc")
+        let out = build_download_torrent(&bytes, "http://tracker.flux.local/announce?passkey=abc", &[])
             .unwrap();
         let (root, _) = parse(&out).unwrap();
         let ann = std::str::from_utf8(root.get(b"announce").unwrap().as_bytes().unwrap()).unwrap();
         assert!(ann.contains("passkey=abc"));
+        assert!(root.get(b"announce-list").is_none(), "无回退时不应有 announce-list");
         // info dict 未被改动 → info_hash 不变
         let (_, re_parsed) = parse(&out).unwrap();
         let _ = re_parsed;
         let pt2 = parse_torrent(&out).unwrap();
         let pt1 = parse_torrent(&bytes).unwrap();
         assert_eq!(pt1.info_hash_hex, pt2.info_hash_hex);
+    }
+
+    #[test]
+    fn download_rebuild_announce_list_https_first() {
+        let bytes = make_torrent();
+        let out = build_download_torrent(
+            &bytes,
+            "https://tracker.flux.local/announce/PK",
+            &["http://tracker.flux.local/announce/PK".to_string()],
+        )
+        .unwrap();
+        let (root, _) = parse(&out).unwrap();
+        // BEP12：单 tier [https 首选, http 回退]
+        let list = root.get(b"announce-list").expect("announce-list 缺失");
+        let tier = match list {
+            Bencode::List(tiers) => match &tiers[0] {
+                Bencode::List(t) => t,
+                _ => panic!("tier 结构错误"),
+            },
+            _ => panic!("announce-list 结构错误"),
+        };
+        let first = std::str::from_utf8(tier[0].as_bytes().unwrap()).unwrap();
+        let second = std::str::from_utf8(tier[1].as_bytes().unwrap()).unwrap();
+        assert_eq!(first, "https://tracker.flux.local/announce/PK");
+        assert_eq!(second, "http://tracker.flux.local/announce/PK");
+        // info_hash 稳定
+        assert_eq!(
+            parse_torrent(&bytes).unwrap().info_hash_hex,
+            parse_torrent(&out).unwrap().info_hash_hex
+        );
+    }
+
+    #[test]
+    fn download_rebuild_dedup_fallback() {
+        let bytes = make_torrent();
+        // 回退与首选相同 → 不生成 announce-list
+        let out = build_download_torrent(
+            &bytes,
+            "http://t.example/announce/PK",
+            &["http://t.example/announce/PK".to_string()],
+        )
+        .unwrap();
+        let (root, _) = parse(&out).unwrap();
+        assert!(root.get(b"announce-list").is_none());
     }
 }

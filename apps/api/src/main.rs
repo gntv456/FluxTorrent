@@ -2,6 +2,7 @@
 //! 启动：迁移 schema → 连接池/Redis → HTTP 服务（信封 + CORS + tracing）。
 
 mod admin_http;
+mod admin_p2_http;
 mod auth;
 mod bencode;
 mod community_http;
@@ -23,6 +24,7 @@ mod plugins;
 mod push_http;
 mod repo;
 mod rss_http;
+mod settings_http;
 mod state;
 mod torrents;
 mod twofa_http;
@@ -88,6 +90,14 @@ async fn main() -> anyhow::Result<()> {
             .app_data(state.clone())
             .wrap(Logger::default().exclude("/api/v1/health"))
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
+            // 安全响应头基线（§5.7）：nosniff / 防点击劫持 / 引用策略
+            // （HSTS 由 TLS 终结的反代统一注入；完整 CSP 需 nonce 基建，web 侧已配基础头）
+            .wrap(
+                actix_web::middleware::DefaultHeaders::new()
+                    .add(("X-Content-Type-Options", "nosniff"))
+                    .add(("X-Frame-Options", "DENY"))
+                    .add(("Referrer-Policy", "strict-origin-when-cross-origin")),
+            )
             .wrap(actix_web::middleware::from_fn(i18n::locale_mw)) // Accept-Language → task-local（错误消息三语）
             .configure(community_http::configure)
             .default_service(web::to(|req: actix_web::HttpRequest| async move {

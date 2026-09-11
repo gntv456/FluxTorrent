@@ -48,6 +48,8 @@ export class ApiError extends Error {
   constructor(
     public readonly code: number,
     message: string,
+    /** 信封 data：站点设定的字段级校验错误等结构化的错误载荷 */
+    public readonly data?: unknown,
   ) {
     super(message);
   }
@@ -81,7 +83,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   const body = (await res.json()) as ApiEnvelope<T>;
   if (body.code !== 0) {
-    throw new ApiError(body.code, body.message);
+    throw new ApiError(body.code, body.message, body.data);
   }
   return body.data;
 }

@@ -34,6 +34,7 @@ tokio-util = "0.7"
 futures-util = "0.3"
 sha1 = "0.10"
 dashmap = "6"
+ammonia = "4"
 
 [profile.release]
 lto = "fat"
