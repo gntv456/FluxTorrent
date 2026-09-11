@@ -100,6 +100,11 @@ async fn announce(
         return bencode_err("passkey 无效，请在站点重置");
     };
 
+    // ①' 客户端黑名单（G-06）：deny 命中即拒；allow 列表存在时仅放行命中者
+    if let Some(reason) = agent_blocked(&state.db, params.get_str("agent").as_deref()).await {
+        return bencode_err(&reason);
+    }
+
     let key = PeerKey {
         info_hash: info_hash_hex.clone(),
         peer_id: peer_id_hex.clone(),
@@ -182,6 +187,27 @@ fn bencode_err(msg: &str) -> HttpResponse {
         msg.len(),
         msg
     ))
+}
+
+/// 客户端黑白名单判定（agent_rules）：deny 命中即拒；allow 列表非空时未命中 allow 的也拒。
+/// 每次查库（announce QPS 下可换 Redis 缓存，规则量小暂不优化）。
+async fn agent_blocked(db: &sqlx::PgPool, agent: Option<&str>) -> Option<String> {
+    let a = agent.unwrap_or("");
+    let rules: Vec<(String, String)> =
+        sqlx::query_as("SELECT mode, pattern FROM agent_rules")
+            .fetch_all(db)
+            .await
+            .ok()?;
+    let (allows, denies): (Vec<_>, Vec<_>) = rules
+        .into_iter()
+        .partition(|(m, _)| m == "allow");
+    if denies.iter().any(|(_, p)| !p.is_empty() && a.contains(p.as_str())) {
+        return Some("客户端被禁止（黑名单），请联系管理组".into());
+    }
+    if !allows.is_empty() && !allows.iter().any(|(_, p)| !p.is_empty() && a.contains(p.as_str())) {
+        return Some("客户端不在允许列表，请联系管理组".into());
+    }
+    None
 }
 
 async fn resolve_passkey(db: &sqlx::PgPool, passkey: &str) -> Option<i64> {

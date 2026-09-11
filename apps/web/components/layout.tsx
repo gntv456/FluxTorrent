@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
+import { getSiteProfile } from "@/lib/site-profile";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { UserBox } from "@/components/user-box";
 import { MainMenu } from "@/components/main-menu";
@@ -12,6 +13,9 @@ import { MainMenu } from "@/components/main-menu";
  */
 export async function Header() {
   const { dict, locale } = await getDict();
+  const profile = await getSiteProfile();
+  const textbooksOn = profile.modules.textbooks === true;
+  const brand = profile.brand || dict.common.brand;
   const nav = [
     { href: "/", label: dict.nav.home },
     { href: "/torrents", label: dict.nav.library },
@@ -30,7 +34,7 @@ export async function Header() {
     { href: "/invites", label: dict.nav.invites },
     { href: "/subtitles", label: dict.nav.subtitles },
     { href: "/friends", label: dict.nav.friends },
-    { href: "/textbooks", label: dict.nav.textbooks },
+    ...(textbooksOn ? [{ href: "/textbooks", label: dict.nav.textbooks }] : []),
     { href: "/magic-pool", label: dict.nav.magicPool },
     { href: "/myhr", label: dict.nav.myhr },
     { href: "/contests", label: dict.nav.contests },
@@ -48,7 +52,7 @@ export async function Header() {
           <span aria-hidden className="text-4xl">
             🥟
           </span>
-          <span className="font-display text-3xl text-ink">{dict.common.brand}</span>
+          <span className="font-display text-3xl text-ink">{brand}</span>
         </Link>
         <div className="flex items-center gap-3">
           <LocaleSwitcher current={locale} />

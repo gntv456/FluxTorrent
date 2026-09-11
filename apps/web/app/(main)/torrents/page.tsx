@@ -41,6 +41,7 @@ export default async function TorrentsPage({
     include_dead: sp.include_dead === "1",
     search: sp.search,
     sort: sp.sort,
+    tag_id: sp.tag_id ? Number(sp.tag_id) : undefined,
     cursor: sp.cursor,
   }).catch(() => ({
     items: [] as TorrentListItem[],
@@ -195,6 +196,20 @@ export default async function TorrentsPage({
             className="filter-chip"
           >
             {m.label}
+          </a>
+        ))}
+      </div>
+      {/* 标签筛选（T-04：tag_dict 1-5） */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {(dict.torrTags2?.filterRow ?? ["全部", "官方", "免费", "官种", "合集", "带答案"]).map((label, i) => (
+          <a
+            key={label}
+            href={withParam(sp, "tag_id", i === 0 ? undefined : String(i))}
+            aria-current={(sp.tag_id ? Number(sp.tag_id) : undefined) === (i === 0 ? undefined : i) ? "true" : undefined}
+            data-active={(sp.tag_id ? Number(sp.tag_id) : undefined) === (i === 0 ? undefined : i) ? "true" : undefined}
+            className="filter-chip"
+          >
+            {label}
           </a>
         ))}
       </div>
