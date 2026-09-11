@@ -86,6 +86,24 @@ export async function getSiteStats(): Promise<SiteStats | null> {
     return null;
   }
 }
+/** 自定义菜单项（admin menu_items 公开接口；仅返回启用项，按 sort, id 排序） */
+export interface MenuItem {
+  id: number;
+  location: string;
+  label: string;
+  url: string;
+  sort: number;
+  enabled: boolean;
+}
+export async function getMenuItems(location: string): Promise<MenuItem[]> {
+  try {
+    return await api.get<MenuItem[]>(
+      `/api/v1/menu-items?location=${encodeURIComponent(location)}`,
+    );
+  } catch {
+    return [];
+  }
+}
 export async function getTopics(forumId: number): Promise<Topic[]> {
   try {
     return await api.get<Topic[]>(`/api/v1/forums/${forumId}/topics`);

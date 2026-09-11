@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
-import { getSiteStats, type SiteStats } from "@/lib/data";
+import { getSiteStats, getMenuItems, type SiteStats } from "@/lib/data";
 import { fmt } from "@/i18n/config";
 import { formatBytes } from "@/lib/format";
+import { MenuItemLink } from "@/components/custom-menu";
 
 /**
  * 包子站页脚复刻（参照 ref1-bot.png）：
@@ -12,6 +13,7 @@ import { formatBytes } from "@/lib/format";
 export async function Footer() {
   const { dict } = await getDict();
   const stats = (await getSiteStats()) as SiteStats | null;
+  const customLinks = await getMenuItems("footer");
   const year = new Date().getFullYear();
 
   const links = [
@@ -52,6 +54,15 @@ export async function Footer() {
                   >
                     {l.label}
                   </Link>
+                </li>
+              ))}
+              {/* 自定义菜单（location=footer）：追加在快捷导航末尾 */}
+              {customLinks.map((m) => (
+                <li key={`m${m.id}`}>
+                  <MenuItemLink
+                    item={m}
+                    className="text-sm text-sky hover:text-[var(--baozi-orange)]"
+                  />
                 </li>
               ))}
             </ul>
