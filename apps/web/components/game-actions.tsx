@@ -84,7 +84,7 @@ export function ScratchCard() {
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
+    <section className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-5 shadow-[var(--shadow-card)]">
       <h2 className="font-display text-xl">{dict.games.scratch.title}</h2>
       <div className="flex items-center justify-between">
         <span aria-hidden className="text-5xl">
@@ -138,7 +138,7 @@ export function BigSmall() {
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
+    <section className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-5 shadow-[var(--shadow-card)]">
       <h2 className="font-display text-xl">{dict.games.bigsmall.title}</h2>
       <div className="flex items-center justify-between">
         <span aria-hidden className="num text-5xl font-black text-sky">
@@ -218,7 +218,7 @@ export function JggCard() {
   }
 
   return (
-    <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+    <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg">{dict.games.jgg.title}</h2>
         <span className="num text-sm text-sky">{dict.games.jgg.ticket}</span>
@@ -232,7 +232,7 @@ export function JggCard() {
                 ? "scale-105 border-sun bg-sun/20 text-ink shadow-[var(--shadow-hover)]"
                 : active === i
                   ? "border-sky bg-sky-soft"
-                  : "border-line bg-white text-sub"
+                  : "border-line bg-[var(--surface-card)] text-sub"
             }`}
           >
             {c}

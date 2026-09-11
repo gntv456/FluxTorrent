@@ -54,7 +54,7 @@ function ResetForm() {
   }
 
   const inputCls =
-    "min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40";
+    "min-h-[44px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 outline-none focus:ring-2 focus:ring-sky/40";
 
   if (!token) {
     return (

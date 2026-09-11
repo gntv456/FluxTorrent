@@ -113,7 +113,7 @@ export default function FarmPage() {
         {plots.map((p, i) => (
           <div
             key={i}
-            className="flex min-h-[120px] flex-col justify-between rounded-[var(--r-md)] border border-line bg-white p-3 shadow-[var(--shadow-card)]"
+            className="flex min-h-[120px] flex-col justify-between rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 shadow-[var(--shadow-card)]"
           >
             {p ? (
               <>
@@ -177,7 +177,7 @@ export default function FarmPage() {
       </section>
 
       {/* 行情 */}
-      <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+      <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
         <h2 className="mb-3 font-display text-lg">{dict.farm.market}</h2>
         <ul className="flex flex-col divide-y divide-line">
           {data.crops.map((c) => {

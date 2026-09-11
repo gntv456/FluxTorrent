@@ -91,7 +91,7 @@ export function SettingField({
   const cid = `sf-${field.name}`;
 
   const base =
-    "min-h-[44px] rounded-[var(--r-sm)] border bg-white px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-sky/40 disabled:bg-cloud disabled:text-sub";
+    "min-h-[44px] rounded-[var(--r-sm)] border bg-[var(--surface-card)] px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-sky/40 disabled:bg-cloud disabled:text-sub";
   const border = error ? "border-danger" : "border-line";
   const inputCls = `${base} ${border} w-full`;
 
@@ -113,7 +113,7 @@ export function SettingField({
                 className={`min-h-[44px] min-w-[76px] rounded-full px-4 text-sm font-bold ${
                   on
                     ? "bg-sky-deep text-white"
-                    : "border border-line bg-white text-sub hover:text-ink"
+                    : "border border-line bg-[var(--surface-card)] text-sub hover:text-ink"
                 }`}
               >
                 {v === "yes" ? s.yes : s.no}
@@ -141,7 +141,7 @@ export function SettingField({
                   className={`min-h-[44px] rounded-full px-4 text-sm font-bold ${
                     on
                       ? "bg-sky-deep text-white"
-                      : "border border-line bg-white text-sub hover:text-ink"
+                      : "border border-line bg-[var(--surface-card)] text-sub hover:text-ink"
                   }`}
                 >
                   {o.l}
@@ -195,7 +195,7 @@ export function SettingField({
             disabled={lock}
             value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : "#000000"}
             onChange={(e) => onChange(e.target.value)}
-            className="h-[44px] w-[56px] cursor-pointer rounded-[var(--r-sm)] border border-line bg-white p-1"
+            className="h-[44px] w-[56px] cursor-pointer rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-1"
           />
           <input
             id={cid}
@@ -238,7 +238,7 @@ export function SettingField({
               setReveal(true);
             }}
             disabled={lock}
-            className="min-h-[44px] rounded-full border border-line bg-white px-3 text-xs font-bold text-sub"
+            className="min-h-[44px] rounded-full border border-line bg-[var(--surface-card)] px-3 text-xs font-bold text-sub"
           >
             {reveal ? s.hide : s.show}
           </button>
@@ -294,7 +294,7 @@ export function SettingField({
   return (
     <div
       className={`rounded-[var(--r-sm)] border p-3 ${
-        error ? "border-danger bg-danger/5" : "border-line bg-white"
+        error ? "border-danger bg-danger/5" : "border-line bg-[var(--surface-card)]"
       }`}
     >
       <div className="flex flex-wrap items-baseline gap-2">
@@ -336,7 +336,7 @@ export function SettingField({
           <button
             type="button"
             onClick={() => setAskReveal(false)}
-            className="min-h-[44px] rounded-full border border-line bg-white px-3 text-[11px] font-bold text-sub"
+            className="min-h-[44px] rounded-full border border-line bg-[var(--surface-card)] px-3 text-[11px] font-bold text-sub"
           >
             {s.cancel}
           </button>

@@ -55,13 +55,33 @@ window.__fluxSwUpdated=false;location.reload();
   );
 }
 
+/** 主题 no-flash：首绘前读 localStorage（缺省跟随系统 prefers-color-scheme）
+ *  并写入 <html data-theme>，避免夜间用户刷新时白屏闪烁；
+ *  同时同步 PWA theme-color，并监听系统偏好变化（未手动选择时实时跟随）。 */
+function ThemeNoFlash() {
+  const script =
+    `(function(){var CH={baozi:'#f2f7fd','baozi-night':'#0f1826'};` +
+    `function chrome(t){var m=document.querySelector('meta[name="theme-color"]');` +
+    `if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m);}m.content=CH[t];}` +
+    `function apply(t){document.documentElement.dataset.theme=t;chrome(t);}` +
+    `try{var t=localStorage.getItem('flux-theme');` +
+    `if(t!=='baozi'&&t!=='baozi-night'){` +
+    `t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'baozi-night':'baozi';` +
+    `var mq=window.matchMedia('(prefers-color-scheme: dark)');` +
+    `if(mq.addEventListener){mq.addEventListener('change',function(e){` +
+    `try{if(!localStorage.getItem('flux-theme')){apply(e.matches?'baozi-night':'baozi');}}catch(_){}});}}` +
+    `apply(t);}catch(e){}})();`;
+  return <script dangerouslySetInnerHTML={{ __html: script }} />;
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { dict, locale } = await getDict();
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
       <body>
+        <ThemeNoFlash />
         <LocaleProvider dict={dict} locale={locale}>
           {children}
           <ServiceWorkerRegister />

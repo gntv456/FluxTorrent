@@ -58,7 +58,7 @@ export default async function MedalsPage() {
             {g.items.map((m) => (
               <div
                 key={m.id}
-                className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+                className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
               >
                 <div className="flex items-center justify-between">
                   <span aria-hidden className="text-3xl">

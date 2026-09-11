@@ -79,7 +79,7 @@ export function AdminTorrents() {
             role="tab"
             aria-selected={sub === k}
             onClick={() => setSub(k)}
-            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : "border border-line bg-white text-sub"}`}
+            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"}`}
           >
             {label}
           </button>
@@ -142,7 +142,7 @@ function TorrentList({ flash }: { flash: (m: string) => void }) {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="种子名" className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2" />
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
           <option value="">全部状态</option>
           <option value="1">待审</option>
           <option value="2">通过</option>

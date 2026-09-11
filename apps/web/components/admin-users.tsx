@@ -175,7 +175,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         </label>
         <label className="flex flex-col gap-1 text-xs">
           等级
-          <select value={fClass} onChange={(e) => setFClass(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+          <select value={fClass} onChange={(e) => setFClass(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
             <option value="">所有</option>
             {classes.map(([id, label]) => (
               <option key={id} value={id}>{label}</option>
@@ -184,7 +184,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         </label>
         <label className="flex flex-col gap-1 text-xs">
           状态
-          <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+          <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
             <option value="">所有</option>
             <option value="1">正常</option>
             <option value="2">禁言</option>
@@ -193,7 +193,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         </label>
         <label className="flex flex-col gap-1 text-xs">
           启用
-          <select value={fEnabled} onChange={(e) => setFEnabled(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+          <select value={fEnabled} onChange={(e) => setFEnabled(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
             <option value="">所有</option>
             <option value="yes">是</option>
             <option value="no">否</option>
@@ -201,7 +201,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         </label>
         <label className="flex flex-col gap-1 text-xs">
           下载权限
-          <select value={fDownload} onChange={(e) => setFDownload(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+          <select value={fDownload} onChange={(e) => setFDownload(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
             <option value="">所有</option>
             <option value="yes">有</option>
             <option value="no">无</option>
@@ -209,7 +209,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         </label>
         <label className="flex flex-col gap-1 text-xs">
           挂起
-          <select value={fSuspended} onChange={(e) => setFSuspended(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+          <select value={fSuspended} onChange={(e) => setFSuspended(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
             <option value="">所有</option>
             <option value="yes">是</option>
             <option value="no">否</option>

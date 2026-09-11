@@ -419,7 +419,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
   return (
     <div className="flex flex-col gap-4">
       {/* 顶部标题 + 全局操作条 */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-[var(--r-md)] border border-line bg-white/95 p-3 backdrop-blur shadow-[var(--shadow-card)]">
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]/95 p-3 backdrop-blur shadow-[var(--shadow-card)]">
         <div>
           <h1 className="font-display text-xl">{s.title}</h1>
           <p className="text-[11px] text-sub">
@@ -447,7 +447,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
             <button
               type="button"
               onClick={doExport}
-              className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-ink"
+              className="min-h-[44px] rounded-full border border-line bg-[var(--surface-card)] px-4 text-xs font-bold text-ink"
             >
               {s.doExport}
             </button>
@@ -455,7 +455,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
               <button
                 type="button"
                 onClick={() => setImportOpen(true)}
-                className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-ink"
+                className="min-h-[44px] rounded-full border border-line bg-[var(--surface-card)] px-4 text-xs font-bold text-ink"
               >
                 {s.doImport}
               </button>
@@ -470,7 +470,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
             <button
               type="button"
               onClick={() => setEdited({})}
-              className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-sub"
+              className="min-h-[44px] rounded-full border border-line bg-[var(--surface-card)] px-4 text-xs font-bold text-sub"
             >
               {s.discard}
             </button>
@@ -519,7 +519,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
               setExportPlain(false);
               setAskPlain(false);
             }}
-            className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-sub"
+            className="min-h-[44px] rounded-full border border-line bg-[var(--surface-card)] px-4 text-xs font-bold text-sub"
           >
             {s.cancel}
           </button>
@@ -547,13 +547,13 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
 
       <div className="flex flex-col gap-4 md:flex-row md:items-start">
         {/* 左导航（≤768px 变横向滚动 Chip 条） */}
-        <nav className="flex gap-2 overflow-x-auto border border-line bg-white p-2 md:w-56 md:flex-none md:flex-col md:overflow-visible md:rounded-[var(--r-md)] md:shadow-[var(--shadow-card)]">
+        <nav className="flex gap-2 overflow-x-auto border border-line bg-[var(--surface-card)] p-2 md:w-56 md:flex-none md:flex-col md:overflow-visible md:rounded-[var(--r-md)] md:shadow-[var(--shadow-card)]">
           <div className="hidden md:block">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={s.search}
-              className="min-h-[44px] w-full rounded-[var(--r-sm)] border border-line bg-white px-3 text-xs"
+              className="min-h-[44px] w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-xs"
             />
           </div>
           {groups.map((g) => (
@@ -572,7 +572,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
               className={`flex min-h-[44px] flex-none items-center gap-2 rounded-[var(--r-sm)] px-3 text-xs font-bold md:w-full ${
                 !searching && active === g.key
                   ? "bg-sky-deep text-white"
-                  : "border border-line bg-white text-sub md:border-0 md:text-ink"
+                  : "border border-line bg-[var(--surface-card)] text-sub md:border-0 md:text-ink"
               }`}
             >
               <span className="whitespace-nowrap">{dict.admin.settingGroups[g.key] ?? g.label}</span>
@@ -587,14 +587,14 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={s.search}
-            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 text-sm md:hidden"
+            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm md:hidden"
           />
 
           {searching ? (
             <section className="flex flex-col gap-3">
               <p className="text-xs text-sub">{fmt(s.searchHit, { n: matches.length })}</p>
               {matches.length === 0 && (
-                <p className="rounded-[var(--r-md)] border border-line bg-white p-6 text-center text-sm text-sub">
+                <p className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-6 text-center text-sm text-sub">
                   {s.searchEmpty}
                 </p>
               )}
@@ -610,7 +610,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
               {activeGroup.cards.map((c, i) => (
                 <div
                   key={c.key}
-                  className="rounded-[var(--r-md)] border border-line bg-white p-3 shadow-[var(--shadow-card)]"
+                  className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 shadow-[var(--shadow-card)]"
                 >
                   <h2 className="mb-2 flex items-baseline gap-2 text-sm font-bold text-ink">
                     {c.key || fmt(dict.settingsAdmin.fieldCount, { n: i + 1 })}
@@ -622,14 +622,14 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
                 </div>
               ))}
               {activeGroup.cards.length === 0 && (
-                <p className="rounded-[var(--r-md)] border border-line bg-white p-6 text-center text-sm text-sub">
+                <p className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-6 text-center text-sm text-sub">
                   {s.searchEmpty}
                 </p>
               )}
             </section>
           ) : (
             !schema && (
-              <p className="rounded-[var(--r-md)] border border-line bg-white p-6 text-center text-sm text-sub">
+              <p className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-6 text-center text-sm text-sub">
                 {s.loadFailed}
               </p>
             )
@@ -646,7 +646,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
           onClick={() => setImportOpen(false)}
         >
           <div
-            className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--r-md)] bg-white p-4 shadow-[var(--shadow-card)]"
+            className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--r-md)] bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center gap-2">
@@ -674,7 +674,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
               }}
               rows={6}
               placeholder={s.importPlaceholder}
-              className="w-full rounded-[var(--r-sm)] border border-line bg-white p-2 font-mono text-[11px] text-ink"
+              className="w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-2 font-mono text-[11px] text-ink"
             />
             {importUnknown.length > 0 && (
               <p className="mt-2 rounded-[var(--r-sm)] border border-sun/60 bg-sun/10 p-2 text-[11px] text-ink">
@@ -720,7 +720,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
                 type="button"
                 onClick={importDryRun}
                 disabled={importBusy || importText.trim() === ""}
-                className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-ink disabled:opacity-40"
+                className="min-h-[44px] rounded-full border border-line bg-[var(--surface-card)] px-4 text-xs font-bold text-ink disabled:opacity-40"
               >
                 {s.importPreview}
               </button>
@@ -746,7 +746,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
           onClick={() => setDrawer(null)}
         >
           <div
-            className="h-full w-full max-w-md overflow-y-auto bg-white p-4 shadow-[var(--shadow-card)]"
+            className="h-full w-full max-w-md overflow-y-auto bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center gap-2">

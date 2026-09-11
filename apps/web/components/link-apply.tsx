@@ -88,7 +88,7 @@ export function LinkApply() {
               <input type="submit" className="baozi-button" value={t.submit} disabled={busy} />
               <input
                 type="reset"
-                className="min-h-[34px] ml-3 rounded-full border-0 bg-[#ffedd0] px-4 text-xs font-bold text-[#6c421f]"
+                className="min-h-[34px] ml-3 rounded-full border-0 bg-brand-soft px-4 text-xs font-bold text-[var(--text-brand)]"
                 value={t.reset}
               />
             </td>

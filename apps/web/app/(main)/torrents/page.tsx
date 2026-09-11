@@ -295,7 +295,7 @@ export default async function TorrentsPage({
       {page.next_cursor && (
         <a
           href={withParam(sp, "cursor", page.next_cursor)}
-          className="mx-auto min-h-[44px] flex items-center rounded-full border border-line bg-white px-6 text-sm text-sky-deep"
+          className="mx-auto min-h-[44px] flex items-center rounded-full border border-line bg-[var(--surface-card)] px-6 text-sm text-sky-deep"
         >
           {dict.common.nextPage}
         </a>

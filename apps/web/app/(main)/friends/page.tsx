@@ -17,7 +17,7 @@ export default async function FriendsPage() {
           <h1 className="font-display text-2xl">{dict.friends.title}</h1>
           <span className="text-sm text-sub">{dict.friends.subtitle}</span>
         </div>
-        <section className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+        <section className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <h2 className="font-bold">{dict.friends.friends}</h2>
           {friendRows.length === 0 ? (
             <p className="py-4 text-center text-sub">{dict.friends.emptyFriends}</p>
@@ -31,7 +31,7 @@ export default async function FriendsPage() {
             </ul>
           )}
         </section>
-        <section className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+        <section className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <h2 className="font-bold">{dict.friends.blocklist}</h2>
           {blackRows.length === 0 ? (
             <p className="py-4 text-center text-sub">{dict.friends.emptyBlack}</p>

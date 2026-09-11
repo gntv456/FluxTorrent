@@ -1,0 +1,89 @@
+﻿app\(main)\admin\settings\settings-client.tsx:422: <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-[var(--r-md)] border border-line bg-white/95 p-3 backdrop-blur shadow-[var(--shadow-
+app\(main)\admin\settings\settings-client.tsx:450: className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-ink"
+app\(main)\admin\settings\settings-client.tsx:458: className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-ink"
+app\(main)\admin\settings\settings-client.tsx:473: className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-sub"
+app\(main)\admin\settings\settings-client.tsx:522: className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-sub"
+app\(main)\admin\settings\settings-client.tsx:550: <nav className="flex gap-2 overflow-x-auto border border-line bg-white p-2 md:w-56 md:flex-none md:flex-col md:overflow-visible md:rounded-[var(--r-md)] md:shad
+app\(main)\admin\settings\settings-client.tsx:556: className="min-h-[44px] w-full rounded-[var(--r-sm)] border border-line bg-white px-3 text-xs"
+app\(main)\admin\settings\settings-client.tsx:575: : "border border-line bg-white text-sub md:border-0 md:text-ink"
+app\(main)\admin\settings\settings-client.tsx:590: className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 text-sm md:hidden"
+app\(main)\admin\settings\settings-client.tsx:597: <p className="rounded-[var(--r-md)] border border-line bg-white p-6 text-center text-sm text-sub">
+app\(main)\admin\settings\settings-client.tsx:613: className="rounded-[var(--r-md)] border border-line bg-white p-3 shadow-[var(--shadow-card)]"
+app\(main)\admin\settings\settings-client.tsx:625: <p className="rounded-[var(--r-md)] border border-line bg-white p-6 text-center text-sm text-sub">
+app\(main)\admin\settings\settings-client.tsx:632: <p className="rounded-[var(--r-md)] border border-line bg-white p-6 text-center text-sm text-sub">
+app\(main)\admin\settings\settings-client.tsx:643: className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 p-3"
+app\(main)\admin\settings\settings-client.tsx:649: className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--r-md)] bg-white p-4 shadow-[var(--shadow-card)]"
+app\(main)\admin\settings\settings-client.tsx:677: className="w-full rounded-[var(--r-sm)] border border-line bg-white p-2 font-mono text-[11px] text-ink"
+app\(main)\admin\settings\settings-client.tsx:723: className="min-h-[44px] rounded-full border border-line bg-white px-4 text-xs font-bold text-ink disabled:opacity-40"
+app\(main)\admin\settings\settings-client.tsx:743: className="fixed inset-0 z-30 flex justify-end bg-black/30"
+app\(main)\admin\settings\settings-client.tsx:749: className="h-full w-full max-w-md overflow-y-auto bg-white p-4 shadow-[var(--shadow-card)]"
+app\(main)\admin\page.tsx:262: tab === key ? "bg-sky text-white" : "border border-line bg-white text-sub"
+app\(main)\admin\page.tsx:278: className="flex items-center justify-between gap-3 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)] transition hover:border-sky
+app\(main)\admin\page.tsx:332: className="rounded-[var(--r-md)] border border-line bg-white p-4 text-center shadow-[var(--shadow-card)]"
+app\(main)\admin\page.tsx:344: <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+app\(main)\admin\page.tsx:375: <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+app\(main)\admin\page.tsx:404: <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+app\(main)\admin\page.tsx:526: <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+app\(main)\dressup\page.tsx:102: className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+app\(main)\dressup\page.tsx:114: : "border-line bg-white"
+app\(main)\farm\page.tsx:116: className="flex min-h-[120px] flex-col justify-between rounded-[var(--r-md)] border border-line bg-white p-3 shadow-[var(--shadow-card)]"
+app\(main)\farm\page.tsx:180: <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+app\(main)\friends\page.tsx:20: <section className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+app\(main)\friends\page.tsx:34: <section className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+app\(main)\magic-pool\page.tsx:20: <section className="rounded-[var(--r-lg)] border border-line bg-white p-6 shadow-[var(--shadow-card)]">
+app\(main)\magic-pool\page.tsx:42: <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+app\(main)\medals\page.tsx:61: className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+app\(main)\shop\page.tsx:44: className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+app\(main)\shop\page.tsx:84: className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+app\(main)\textbooks\page.tsx:30: className="flex flex-col gap-1 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+app\(main)\torrents\page.tsx:298: className="mx-auto min-h-[44px] flex items-center rounded-full border border-line bg-white px-6 text-sm text-sky-deep"
+app\appeals\page.tsx:76: className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+app\appeals\page.tsx:124: <section className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+app\ban-log\page.tsx:60: className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40"
+app\ban-log\page.tsx:79: className="w-full rounded-[var(--r-lg)] border border-line bg-white p-4 text-sm shadow-[var(--shadow-card)]"
+app\forgot\page.tsx:51: className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40"
+app\register\page.tsx:75: "min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40";
+app\resend\page.tsx:49: className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40"
+app\reset\page.tsx:57: "min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40";
+components\admin-p2-tools.tsx:71: className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : "border border-line bg-white text-sub"}`}
+components\admin-p2-tools.tsx:487: <select value={state} onChange={(e) => { setState(e.target.value); setPage(1); }} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2
+components\admin-torrents.tsx:82: className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : "border border-line bg-white text-sub"}`}
+components\admin-torrents.tsx:145: <select value={status} onChange={(e) => setStatus(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+components\admin-users.tsx:178: <select value={fClass} onChange={(e) => setFClass(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+components\admin-users.tsx:187: <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+components\admin-users.tsx:196: <select value={fEnabled} onChange={(e) => setFEnabled(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+components\admin-users.tsx:204: <select value={fDownload} onChange={(e) => setFDownload(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+components\admin-users.tsx:212: <select value={fSuspended} onChange={(e) => setFSuspended(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-2">
+components\api-tokens.tsx:88: className="min-h-[36px] w-56 rounded-[var(--r-sm)] border border-line bg-white px-3 text-sm"
+components\bank-actions.tsx:62: <div className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+components\bank-actions.tsx:71: className="min-h-[44px] w-40 rounded-[var(--r-sm)] border border-line bg-white px-3"
+components\bank-actions.tsx:76: className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3"
+components\bank-actions.tsx:105: className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+components\community-extra.tsx:45: className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+components\community-extra.tsx:60: mine ? "border-sky-deep bg-sky-soft" : "border-line bg-white"
+components\community-extra.tsx:97: className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+components\content-manage.tsx:181: tab === k ? "bg-sky text-white" : "border border-line bg-white text-sub"
+components\forum-composer.tsx:52: className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+components\forum-composer.tsx:133: className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+components\game-actions.tsx:87: <section className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
+components\game-actions.tsx:141: <section className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
+components\game-actions.tsx:221: <section className="rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+components\game-actions.tsx:235: : "border-line bg-white text-sub"
+components\invite-manager.tsx:76: className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+components\locale-switcher.tsx:25: className="flex items-center gap-0.5 rounded-full border border-line bg-white/70 p-0.5"
+components\pool-donate.tsx:45: className="num w-32 rounded-[var(--r-sm)] border border-line bg-white px-3 py-2 text-sm"
+components\pool-donate.tsx:52: className="num min-h-[36px] rounded-full border border-line bg-white px-3 text-xs text-sub active:scale-[0.97]"
+components\request-board.tsx:206: className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-3 text-sm"
+components\setting-field.tsx:94: "min-h-[44px] rounded-[var(--r-sm)] border bg-white px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-sky/40 disabled:bg-cloud disabled:text-sub"
+components\setting-field.tsx:116: : "border border-line bg-white text-sub hover:text-ink"
+components\setting-field.tsx:144: : "border border-line bg-white text-sub hover:text-ink"
+components\setting-field.tsx:198: className="h-[44px] w-[56px] cursor-pointer rounded-[var(--r-sm)] border border-line bg-white p-1"
+components\setting-field.tsx:241: className="min-h-[44px] rounded-full border border-line bg-white px-3 text-xs font-bold text-sub"
+components\setting-field.tsx:297: error ? "border-danger bg-danger/5" : "border-line bg-white"
+components\setting-field.tsx:339: className="min-h-[44px] rounded-full border border-line bg-white px-3 text-[11px] font-bold text-sub"
+components\staff-tools.tsx:193: className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${tab === k ? "bg-sky text-white" : "border border-line bg-white text-sub"}`}>
+components\torrent-manage.tsx:128: <div className="flex w-full flex-col gap-2 rounded-[var(--r-md)] border border-line bg-white p-3">
+components\torrent-tags.tsx:67: : "border border-line bg-white text-sub"
+components\torrent.tsx:25: className="flex items-center gap-3 rounded-[var(--r-md)] border border-line bg-white p-3 shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5
+components\twofa-setup.tsx:125: className="num w-28 rounded-[var(--r-sm)] border border-line bg-white px-2 py-1 text-sm"
+components\twofa-setup.tsx:147: className="num w-28 rounded-[var(--r-sm)] border border-line bg-white px-2 py-1 text-sm"

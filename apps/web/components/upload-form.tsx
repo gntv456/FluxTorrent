@@ -106,7 +106,7 @@ export function UploadForm() {
           {row(
             dict.upload.fileLabel,
             <div className="flex flex-col gap-1">
-              <label className="flex min-h-[64px] cursor-pointer items-center justify-center rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[#fff8eb] px-3 text-sm text-[#5f5143] hover:border-[var(--baozi-orange)]">
+              <label className="flex min-h-[64px] cursor-pointer items-center justify-center rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--head-b)] px-3 text-sm text-[var(--text-body)] hover:border-[var(--baozi-orange)]">
                 <input
                   ref={fileRef}
                   type="file"

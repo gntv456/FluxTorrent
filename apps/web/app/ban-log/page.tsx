@@ -57,7 +57,7 @@ export default function BanLogPage() {
             onChange={(e) => setUsername(e.target.value)}
             required
             maxLength={24}
-            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3 outline-none focus:ring-2 focus:ring-sky/40"
+            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 outline-none focus:ring-2 focus:ring-sky/40"
           />
         </label>
         {msg && (
@@ -76,7 +76,7 @@ export default function BanLogPage() {
       {result && (
         <div
           role="status"
-          className="w-full rounded-[var(--r-lg)] border border-line bg-white p-4 text-sm shadow-[var(--shadow-card)]"
+          className="w-full rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 text-sm shadow-[var(--shadow-card)]"
         >
           <p className="flex justify-between">
             <span className="text-sub">{dict.banlog.currentStatus}</span>

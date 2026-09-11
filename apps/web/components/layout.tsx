@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { UserBox } from "@/components/user-box";
 import { MainMenu } from "@/components/main-menu";
 
@@ -55,6 +56,7 @@ export async function Header() {
           <span className="font-display text-3xl text-ink">{brand}</span>
         </Link>
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <LocaleSwitcher current={locale} />
           <Link
             href="/upload"

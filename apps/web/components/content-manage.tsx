@@ -178,7 +178,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
             aria-selected={tab === k}
             onClick={() => setTab(k)}
             className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${
-              tab === k ? "bg-sky text-white" : "border border-line bg-white text-sub"
+              tab === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"
             }`}
           >
             {label}

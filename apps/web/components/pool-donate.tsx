@@ -42,14 +42,14 @@ export function PoolDonate() {
         onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))}
         inputMode="numeric"
         aria-label={t.amountLabel}
-        className="num w-32 rounded-[var(--r-sm)] border border-line bg-white px-3 py-2 text-sm"
+        className="num w-32 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 py-2 text-sm"
       />
       {[1000, 5000, 20000].map((v) => (
         <button
           key={v}
           type="button"
           onClick={() => setAmount(String(v))}
-          className="num min-h-[36px] rounded-full border border-line bg-white px-3 text-xs text-sub active:scale-[0.97]"
+          className="num min-h-[36px] rounded-full border border-line bg-[var(--surface-card)] px-3 text-xs text-sub active:scale-[0.97]"
         >
           {v.toLocaleString("zh-CN")}
         </button>

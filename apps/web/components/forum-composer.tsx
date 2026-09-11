@@ -49,7 +49,7 @@ export function TopicComposer({ forumId }: { forumId: number }) {
   return (
     <form
       onSubmit={submit}
-      className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+      className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
     >
       <label className="flex flex-col gap-1">
         <span className="text-sm text-sub">{dict.forums.topicTitle}</span>
@@ -130,7 +130,7 @@ export function ReplyBox({ topicId }: { topicId: number }) {
   return (
     <form
       onSubmit={submit}
-      className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+      className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
     >
       <label className="flex flex-col gap-1">
         <span className="text-sm text-sub">{dict.forums.replyTitle}</span>

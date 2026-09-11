@@ -1,0 +1,11 @@
+﻿distinct=10
+   2 #a7a7a7
+   1 #ffffff
+   1 #000
+   1 #aab3bf
+   1 #cfd6df
+   1 #4a4a4a
+   1 #b9832f
+   1 #d7dee8
+   1 #e4b96d
+   1 #f0cf94

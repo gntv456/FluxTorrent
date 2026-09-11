@@ -190,7 +190,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       <div className="flex flex-wrap gap-2" role="tablist">
         {TABS.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${tab === k ? "bg-sky text-white" : "border border-line bg-white text-sub"}`}>
+            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${tab === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"}`}>
             {label}
           </button>
         ))}
@@ -753,7 +753,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
           ))}
           <div className="baozi-panel p-4">
             <p className="text-xs text-sub">{t.stRedis}</p>
-            <p className={`text-lg font-bold ${stats.redis === "up" ? "text-[#2fb26b]" : "text-[#e14d4d]"}`}>{stats.redis === "up" ? "✅ up" : "⛔ down"}</p>
+            <p className={`text-lg font-bold ${stats.redis === "up" ? "text-success" : "text-danger"}`}>{stats.redis === "up" ? "✅ up" : "⛔ down"}</p>
           </div>
           <div className="baozi-panel p-4">
             <p className="text-xs text-sub">{t.stUptime}</p>
@@ -935,7 +935,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
             </div>
             <div className="baozi-panel p-4">
               <p className="text-xs text-sub">{t.dsSlow}</p>
-              <p className={`num text-2xl font-bold ${dbStats.slow_transactions > 0 ? "text-[#e14d4d]" : "text-[#2fb26b]"}`}>{dbStats.slow_transactions}</p>
+              <p className={`num text-2xl font-bold ${dbStats.slow_transactions > 0 ? "text-danger" : "text-success"}`}>{dbStats.slow_transactions}</p>
             </div>
           </div>
           <table className="nexus-table">
@@ -1010,7 +1010,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                   <td className="font-mono">{r.net}/{r.netmask}</td>
                   <td className="num">{r.logins}</td>
                   <td className="num">{r.users}</td>
-                  <td className="num">{r.failed > 0 ? <span className="text-[#e14d4d]">{r.failed}</span> : 0}</td>
+                  <td className="num">{r.failed > 0 ? <span className="text-danger">{r.failed}</span> : 0}</td>
                   <td className="text-xs text-sub">{r.last_seen ? new Date(r.last_seen).toLocaleString("zh-CN") : "—"}</td>
                 </tr>
               ))}

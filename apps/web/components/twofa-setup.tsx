@@ -122,7 +122,7 @@ export function TwoFactorSetup() {
               inputMode="numeric"
               placeholder={t.codeLabel}
               aria-label={t.codeLabel}
-              className="num w-28 rounded-[var(--r-sm)] border border-line bg-white px-2 py-1 text-sm"
+              className="num w-28 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2 py-1 text-sm"
             />
             <button
               type="button"
@@ -144,7 +144,7 @@ export function TwoFactorSetup() {
             inputMode="numeric"
             placeholder={t.codeLabel}
             aria-label={t.codeLabel}
-            className="num w-28 rounded-[var(--r-sm)] border border-line bg-white px-2 py-1 text-sm"
+            className="num w-28 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2 py-1 text-sm"
           />
           <button
             type="button"

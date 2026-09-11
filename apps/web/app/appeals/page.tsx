@@ -73,7 +73,7 @@ export default function AppealsPage() {
 
       <form
         onSubmit={submit}
-        className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+        className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
       >
         <label className="flex flex-col gap-1">
           <span className="text-sm text-sub">{dict.appeals.kind}</span>
@@ -121,7 +121,7 @@ export default function AppealsPage() {
         </button>
       </form>
 
-      <section className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+      <section className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
         <h2 className="font-display text-lg">{dict.appeals.myRecords}</h2>
         {rows === null && <p className="py-2 text-sm text-sub">{dict.appeals.loading}</p>}
         {rows?.length === 0 && (

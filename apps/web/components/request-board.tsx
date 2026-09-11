@@ -203,7 +203,7 @@ export function RequestBoard({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchPlaceholder}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-white px-3 text-sm"
+            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm"
           />
           <button
             type="submit"

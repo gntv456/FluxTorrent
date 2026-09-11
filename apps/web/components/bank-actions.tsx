@@ -59,7 +59,7 @@ export function BankCard({ loginToView }: { loginToView: string }) {
   if (deposits === null) return null;
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]">
+      <div className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
         <h2 className="font-bold">{dict.bank.deposit}</h2>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input
@@ -68,12 +68,12 @@ export function BankCard({ loginToView }: { loginToView: string }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={dict.bank.amountPlaceholder}
-            className="min-h-[44px] w-40 rounded-[var(--r-sm)] border border-line bg-white px-3"
+            className="min-h-[44px] w-40 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3"
           />
           <select
             value={term}
             onChange={(e) => setTerm(Number(e.target.value))}
-            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-white px-3"
+            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3"
           >
             {TERMS.map((t) => (
               <option key={t} value={t}>
@@ -102,7 +102,7 @@ export function BankCard({ loginToView }: { loginToView: string }) {
           {deposits.map((d) => (
             <li
               key={d.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-white p-4 shadow-[var(--shadow-card)]"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
             >
               <span className="num font-bold">{d.amount.toLocaleString()}</span>
               <span className="text-sm text-sub">
