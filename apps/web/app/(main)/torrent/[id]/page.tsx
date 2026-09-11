@@ -3,6 +3,8 @@ import { api } from "@/lib/api-client";
 import { categoryColor, editionName, formatBytes, promotionBadge } from "@/lib/format";
 import { DownloadButton } from "@/components/download-button";
 import { TorrentSocial } from "@/components/torrent-social";
+import { TorrentManage } from "@/components/torrent-manage";
+import { SnatchList } from "@/components/snatch-list";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import type { TorrentComment, TorrentListItem } from "@fluxtorrent/domain-types";
@@ -14,6 +16,8 @@ interface TorrentDetailExt {
   numfiles: number;
   thanks_count: number;
   bookmark_count: number;
+  last_action: string | null;
+  views: number;
 }
 
 interface FileItem {
@@ -100,6 +104,9 @@ export default async function TorrentDetailPage({
       .get<TorrentComment[]>(`/api/v1/torrents/${encodeURIComponent(tid)}/comments`)
       .catch(() => [] as TorrentComment[]),
   ]);
+  const nfo = await api
+    .get<{ nfo: string | null }>(`/api/v1/torrents/${encodeURIComponent(tid)}/nfo`)
+    .catch(() => ({ nfo: null }));
 
   const { dict, locale } = await getDict();
   const promo = promotionBadge(t.promotion);
@@ -153,6 +160,18 @@ export default async function TorrentDetailPage({
               </td>
             </tr>
             <tr>
+              <td className="nexus-detail__label">{dict.torrentManage2?.edit ?? "管理"}</td>
+              <td>
+                <TorrentManage
+                  torrentId={t.id}
+                  name={t.name}
+                  smallDescr={t.small_descr}
+                  descr={ext?.descr ?? null}
+                  anonymous={t.anonymous}
+                />
+              </td>
+            </tr>
+            <tr>
               <td className="nexus-detail__label">{dict.torrent.size}</td>
               <td className="num">{formatBytes(t.size)}</td>
             </tr>
@@ -171,6 +190,16 @@ export default async function TorrentDetailPage({
             <tr>
               <td className="nexus-detail__label">{dict.torrent.completed}</td>
               <td className="num">{t.times_completed}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.tdetail?.heatViews ?? "查看"}</td>
+              <td className="num">{ext?.views ?? "—"}</td>
+            </tr>
+            <tr>
+              <td className="nexus-detail__label">{dict.tdetail?.lastActivity ?? "最近活动"}</td>
+              <td className="text-xs text-sub">
+                {new Date(ext?.last_action ?? t.created_at).toLocaleString(dateLocale(locale))}
+              </td>
             </tr>
             <tr>
               <td className="nexus-detail__label">{dict.torrent.thanksCount}</td>
@@ -257,6 +286,46 @@ export default async function TorrentDetailPage({
           </table>
         </section>
       )}
+
+      {/* NFO（viewnfo.php 口径，有内容时展示） */}
+      {nfo.nfo && (
+        <section className="nexus-detail">
+          <table className="nexus-table">
+            <thead>
+              <tr>
+                <td className="colhead">NFO</td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <pre className="max-h-80 overflow-auto rounded-[var(--r-sm)] bg-ink p-3 font-mono text-[11px] leading-snug text-cloud">
+                    {nfo.nfo}
+                  </pre>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {/* 下载/做种记录（viewsnatches.php 口径，按需加载） */}
+      <section className="nexus-detail">
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <td className="colhead">{dict.snatches2?.title ?? "下载记录"}</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="p-2">
+                <SnatchList torrentId={t.id} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
       {/* 感谢者（近 50 人） */}
       {thanks.length > 0 && (
