@@ -146,7 +146,33 @@ export function RequestBoard({
                         {t.fulfilled}
                       </a>
                     ) : (
-                      <span className="request-status is-progress">{t.pending}</span>
+                      <span className="flex items-center gap-1">
+                        <span className="request-status is-progress">{t.pending}</span>
+                        <button
+                          type="button"
+                          className="min-h-[28px] rounded-full border border-line px-2 text-[11px] font-bold text-sky-deep"
+                          title={t.fulfillTorrentId}
+                          onClick={async () => {
+                            const v = prompt(t.fulfillTorrentId);
+                            const tid = v ? parseInt(v, 10) : NaN;
+                            if (!Number.isFinite(tid) || tid <= 0) {
+                              if (v !== null) alert(t.fulfillInvalid);
+                              return;
+                            }
+                            try {
+                              await api.post("/api/v1/requests/fulfill", {
+                                request_id: r.id,
+                                torrent_id: tid,
+                              });
+                              load(finished, search);
+                            } catch (e) {
+                              alert(t.fulfillFailed + (e instanceof Error ? e.message : ""));
+                            }
+                          }}
+                        >
+                          {t.fulfillBtn}
+                        </button>
+                      </span>
                     )}
                   </td>
                 </tr>

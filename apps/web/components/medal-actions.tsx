@@ -61,6 +61,24 @@ export function MedalActions({
       </div>
     );
   }
+  async function gift() {
+    const to = prompt(dict.medals2.giftTo)?.trim();
+    if (!to) {
+      if (to !== null) setMsg(dict.medals2.giftInvalid);
+      return;
+    }
+    setMsg(null);
+    try {
+      await api.post("/api/v1/medals/gift", {
+        medal_id: medalId,
+        to_user: to,
+      });
+      setMsg(dict.medals2.giftOk.replace("{name}", to));
+    } catch (e) {
+      setMsg(apiErrorMessage(dict, e));
+    }
+  }
+
   return (
     <div className="flex flex-col gap-1">
       <button
@@ -70,6 +88,12 @@ export function MedalActions({
         }`}
       >
         {isWearing ? dict.medals.wearing : dict.medals.wear}
+      </button>
+      <button
+        onClick={gift}
+        className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub active:scale-[0.97]"
+      >
+        {dict.medals2.gift}
       </button>
       {msg && <p className="text-xs text-sub">{msg}</p>}
     </div>

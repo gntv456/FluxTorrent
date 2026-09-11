@@ -2,7 +2,7 @@
 
 import type { Dict } from "./zh-CN";
 
-export const en: Dict = {
+const enBase: Omit<Dict, "security2fa" | "apitokens"> = {
   meta: {
     titleSuffix: "FluxTorrent",
     description:
@@ -591,6 +591,15 @@ export const en: Dict = {
     stPending: "Seeding",
     stFlagged: "H&R flagged",
     empty: "No H&R records",
+    colRequired: "Required",
+    colDeadline: "Deadline",
+  },
+  myhr2: {
+    stPardoned: "Pardoned",
+    pardonBtn: "Pardon (20k sparks)",
+    pardonConfirm: "Spend 20,000 sparks to pardon this H&R violation?",
+    pardonOk: "Pardoned",
+    pardonNote: "Self-pardon one H&R violation for 20,000 sparks",
   },
   forums2: {
     allNodes: "Boards",
@@ -943,6 +952,11 @@ export const en: Dict = {
     progress: "{donated} / {goal} sparks ({pct}%)",
     active: "2x FREE promotion is live!",
     donors: "This month's donors",
+    donate: "Donate",
+    donating: "Donating…",
+    donatedOk: "Donated. Thank you!",
+    amountLabel: "Spark amount",
+    amountInvalid: "Enter a positive integer",
   },
   preserve: {
     title: "Seed Preserve",
@@ -1088,6 +1102,11 @@ export const en: Dict = {
     pending: "Open",
     searchPlaceholder: "Search requests…",
     search: "Search",
+    fulfillBtn: "Fulfill",
+    fulfillTorrentId: "Enter your torrent ID (approved)",
+    fulfillInvalid: "Enter a positive integer torrent ID",
+    fulfillOk: "Request fulfilled",
+    fulfillFailed: "Fulfill failed: ",
   },
 
   top: {
@@ -1192,6 +1211,12 @@ export const en: Dict = {
     owned: "Owned",
     price: "{n} sparks",
   },
+  textbookLink2: {
+    link: "Link torrent",
+    linkPrompt: "Enter your torrent ID (approved education resource)",
+    linkInvalid: "Enter a positive integer torrent ID",
+    linkedOk: "Linked",
+  },
   admin: {
     title: "Admin",
     settingsGroupNote: "Aligned with NexusPHP settings.php groups (12). Sysop only to save.",
@@ -1220,6 +1245,7 @@ export const en: Dict = {
       settings: "Site Settings",
       reviews: "Reviews ({n})",
       reports: "Reports ({n})",
+      appeals: "Appeals",
       users: "Users",
       audit: "Audit",
       content: "Content",
@@ -1254,6 +1280,15 @@ export const en: Dict = {
     resolved: "Resolved report #{id}",
     noReports: "No reports",
     reporter: "Reporter {id}",
+    appealHandled: "Handled appeal #{id}",
+    appealAccept: "Accept",
+    appealReject: "Reject",
+    appealAcceptNote: "Accept note (optional):",
+    appealRejectNote: "Reject reason (required):",
+    appealAccepted: "Accepted",
+    appealRejected: "Rejected",
+    appealNoteLabel: "Result",
+    appealEmpty: "No appeals",
     searchPlaceholder: "Username or email",
     search: "Search",
     searchFirst: "Search to show users",
@@ -1629,6 +1664,10 @@ export const en: Dict = {
   medals2: {
     uncategorized: "Other Medals",
     groupCount: "{n} medals",
+    gift: "Gift",
+    giftTo: "Gift to (username)",
+    giftInvalid: "Enter a username",
+    giftOk: "Gifted to {name}",
     getType: "Acquisition",
     gtExchange: "Spark exchange",
     gtGrant: "Granted",
@@ -1753,4 +1792,31 @@ export const en: Dict = {
     youWin: "You win! 🎉",
     youLose: "You lose",
   },
+};
+
+
+const apitokensEn: Dict["apitokens"] = {
+  title: "API token",
+  namePlaceholder: "Token name (e.g. RSS sync)",
+  issue: "Issue token",
+  revoke: "Revoke",
+  revoked: "Revoked",
+  neverUsed: "Never used",
+  plainOnce: "Plain token shown only once — save it now:",
+  limit: "Up to 5 active tokens; usage Authorization: Token fxo_…",
+};
+
+export const en: Dict = { ...enBase, security2fa: {
+  statusOn: "Enabled",
+  statusOff: "Disabled",
+  statusLoading: "Checking…",
+  setup: "Generate 2FA secret",
+  secretLabel: "Secret (manual entry in authenticator)",
+  codeLabel: "6-digit code",
+  enable: "Confirm enable",
+  disable: "Disable 2FA",
+  enabledOk: "2FA enabled",
+  disabledOk: "2FA disabled",
+},
+  apitokens: apitokensEn,
 };

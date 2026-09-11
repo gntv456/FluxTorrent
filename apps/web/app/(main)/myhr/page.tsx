@@ -6,12 +6,11 @@ export const dynamic = "force-dynamic";
 
 interface HrRow {
   torrent_id: number;
-  name: string;
-  size: number;
-  completed_at: string | null;
+  torrent_name: string;
+  required_seconds: number;
   seeded_seconds: number;
-  hr_flag: boolean;
-  remaining_seconds: number | null;
+  deadline: string;
+  status: string;
 }
 
 /** 我的 H&R（myhr.php 复刻）：完成下载的种子做种时长与达标状态 */

@@ -1,6 +1,6 @@
 /** 简体中文字典（源字典：其他语言以此结构为类型基准） */
 
-export const zhCN = {
+const zhCnBase = {
   meta: {
     titleSuffix: "好学",
     description: "教育资源私有种子社区 —— 种下种子，一起成长",
@@ -587,6 +587,15 @@ export const zhCN = {
     stPending: "做种中",
     stFlagged: "H&R 未达标",
     empty: "暂无 H&R 记录",
+    colRequired: "要求做种",
+    colDeadline: "截止时间",
+  },
+  myhr2: {
+    stPardoned: "已免罪",
+    pardonBtn: "火花免罪",
+    pardonConfirm: "消耗 20000 火花免除该条 H&R 违规，确认？",
+    pardonOk: "已免罪",
+    pardonNote: "消耗 20000 火花自助免除一条 H&R 违规",
   },
   forums2: {
     allNodes: "兴趣节点",
@@ -939,6 +948,11 @@ export const zhCN = {
     progress: "{donated} / {goal} 火花（{pct}%）",
     active: "双免促销进行中！",
     donors: "本月捐赠榜",
+    donate: "捐赠火花",
+    donating: "捐赠中…",
+    donatedOk: "捐赠成功，感谢支持！",
+    amountLabel: "捐赠火花数",
+    amountInvalid: "请输入正整数火花数",
   },
   preserve: {
     title: "保种区",
@@ -1084,6 +1098,11 @@ export const zhCN = {
     pending: "求种中",
     searchPlaceholder: "搜索求种…",
     search: "搜索",
+    fulfillBtn: "用种子达成",
+    fulfillTorrentId: "填入你的种子 ID（发布过审后可得）",
+    fulfillInvalid: "请输入正整数种子 ID",
+    fulfillOk: "求种已标记为达成",
+    fulfillFailed: "达成失败：",
   },
 
   top: {
@@ -1187,6 +1206,12 @@ export const zhCN = {
     owned: "已拥有",
     price: "{n} 火花",
   },
+  textbookLink2: {
+    link: "关联种子",
+    linkPrompt: "填入你的种子 ID（发布过审的教育资源）",
+    linkInvalid: "请输入正整数种子 ID",
+    linkedOk: "已关联",
+  },
   admin: {
     title: "管理后台",
     settingsGroupNote: "对齐 NexusPHP settings.php 十二分组；仅系统管理员可保存。",
@@ -1215,6 +1240,7 @@ export const zhCN = {
       settings: "站点设定",
       reviews: "审核 ({n})",
       reports: "举报 ({n})",
+      appeals: "申诉",
       users: "用户",
       audit: "审计",
       content: "内容管理",
@@ -1249,6 +1275,15 @@ export const zhCN = {
     resolved: "已处理举报 #{id}",
     noReports: "暂无举报",
     reporter: "报告人 {id}",
+    appealHandled: "已处理申诉 #{id}",
+    appealAccept: "通过",
+    appealReject: "驳回",
+    appealAcceptNote: "通过说明（可选）：",
+    appealRejectNote: "驳回理由（必填）：",
+    appealAccepted: "已通过",
+    appealRejected: "已驳回",
+    appealNoteLabel: "处理意见",
+    appealEmpty: "暂无申诉",
     searchPlaceholder: "用户名或邮箱",
     search: "搜索",
     searchFirst: "搜索后显示",
@@ -1632,6 +1667,10 @@ export const zhCN = {
     inventory: "库存 {n}",
     bonusAddition: "魔力加成 +{n}%",
     saleUntil: "销售截止",
+    gift: "赠送",
+    giftTo: "赠送给（用户名）",
+    giftInvalid: "请输入对方用户名",
+    giftOk: "已赠送给 {name}",
   },
   medalwall: {
     title: "勋章墙",
@@ -1746,6 +1785,57 @@ export const zhCN = {
     youWin: "你赢了！🎉",
     youLose: "你输了",
   },
+};
+
+export interface Security2faDict {
+  statusOn: string;
+  statusOff: string;
+  statusLoading: string;
+  setup: string;
+  secretLabel: string;
+  codeLabel: string;
+  enable: string;
+  disable: string;
+  enabledOk: string;
+  disabledOk: string;
+}
+
+export interface ApiTokensDict {
+  title: string;
+  namePlaceholder: string;
+  issue: string;
+  revoke: string;
+  revoked: string;
+  neverUsed: string;
+  plainOnce: string;
+  limit: string;
+}
+
+const security2fa: Security2faDict = {
+  statusOn: "已启用",
+  statusOff: "未启用",
+  statusLoading: "查询中…",
+  setup: "生成 2FA 密钥",
+  secretLabel: "密钥（验证器手动输入用）",
+  codeLabel: "验证器 6 位动态码",
+  enable: "确认启用",
+  disable: "关闭两步验证",
+  enabledOk: "两步验证已启用",
+  disabledOk: "两步验证已关闭",
+};
+export const zhCN = {
+  ...zhCnBase,
+  security2fa,
+  apitokens: {
+    title: "开放 API 令牌",
+    namePlaceholder: "令牌名称（如：RSS 同步）",
+    issue: "签发令牌",
+    revoke: "吊销",
+    revoked: "已吊销",
+    neverUsed: "未使用",
+    plainOnce: "令牌明文仅此一次显示，请立即保存：",
+    limit: "每人最多 5 枚有效令牌；用法 Authorization: Token fxo_…",
+  } as ApiTokensDict,
 };
 
 export type Dict = typeof zhCN;

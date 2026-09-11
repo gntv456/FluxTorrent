@@ -5,6 +5,8 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { PushSettings } from "@/components/push-settings";
+import { TwoFactorSetup } from "@/components/twofa-setup";
+import { ApiTokens } from "@/components/api-tokens";
 
 /** 控制面板 —— 像素级复刻 NexusPHP usercp（包子站）：
  *  左侧 ⚙控制面板 六项侧边导航（账户概览/个人资料/网站设定/论坛设定/安全设定）
@@ -1273,20 +1275,44 @@ function SecurityTab({
   const t = dict.usercp.security;
   const [newPass, setNewPass] = useState("");
   const [newPass2, setNewPass2] = useState("");
-  const [rotatePk, setRotatePk] = useState(false);
+  const [pkBusy, setPkBusy] = useState(false);
   const [pkResult, setPkResult] = useState<string | null>(null);
+  const [pkMsg, setPkMsg] = useState<string | null>(null);
+
+  async function rotatePasskeyNow() {
+    if (!window.confirm(dict.my.passkeyConfirm)) return;
+    setPkBusy(true);
+    setPkMsg(null);
+    try {
+      const r = await api.post<{ passkey: string }>("/api/v1/me/passkey/rotate", {});
+      setPkResult(r.passkey);
+      setPkMsg(dict.my.passkeyRotated);
+    } catch (e) {
+      setPkMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError);
+    } finally {
+      setPkBusy(false);
+    }
+  }
+
   return (
     <table className="nexus-table nexus-form">
       <tbody>
         <Row head={t.resetPasskey}>
-          <label>
-            <input
-              type="checkbox"
-              checked={rotatePk}
-              onChange={(e) => setRotatePk(e.target.checked)}
-            />
-            {t.resetPasskeyWant}
-          </label>
+          <button
+            type="button"
+            disabled={pkBusy}
+            onClick={rotatePasskeyNow}
+            className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white disabled:opacity-50"
+          >
+            {pkBusy ? dict.my.passkeyRotating : dict.my.passkeyRotate}
+          </button>
+          {pkResult && (
+            <>
+              <br />
+              <code className="num break-all text-xs">{pkResult}</code>
+            </>
+          )}
+          {pkMsg && <p className="text-xs text-sub">{pkMsg}</p>}
           <br />
           <span className="uc-note">
             <b>{dict.usercp.note}</b>
@@ -1294,9 +1320,7 @@ function SecurityTab({
           </span>
         </Row>
         <Row head={t.twoStep}>
-          <Link href="/my?tab=security" className="sticker">
-            {t.twoStepEnable}
-          </Link>
+          <TwoFactorSetup />
           <br />
           {t.twoStepHint}
         </Row>
@@ -1312,6 +1336,12 @@ function SecurityTab({
         <Row head={t.tgBind}>
           {t.tgBindHint}
         </Row>
+        <tr>
+          <td className="rowhead">{dict.apitokens.title}</td>
+          <td className="rowfollow p-0">
+            <ApiTokens />
+          </td>
+        </tr>
         <tr>
           <td className="rowhead nowrap">{t.newPassword}</td>
           <td className="rowfollow">

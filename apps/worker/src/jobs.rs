@@ -298,8 +298,9 @@ async fn collect_milestones(db: &PgPool) -> anyhow::Result<u64> {
 
 /// H&R 追责（M05 补齐）：为「完成下载」建立策略快照（时点正确），到期结算违规。
 /// 策略口径（§5.4）：hr_policy JSONB {"days": N, "seed_hours": H} —— 完成后 N 天内需累计做种 H 小时。
+/// B-01：完成时刻正处免费（free/x2free，含全局站免）窗口的种子豁免 H&R —— 行业惯例。
 async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
-    // 1) 为新完成的下载建快照（幂等）
+    // 1) 为新完成的下载建快照（幂等）；免费窗口内完成的不建快照（豁免）
     sqlx::query(
         r#"
         INSERT INTO hr_snapshots (user_id, torrent_id, required_seconds, deadline)
@@ -311,6 +312,12 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         WHERE s.completed_at IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM hr_snapshots h WHERE h.user_id = s.user_id AND h.torrent_id = s.torrent_id)
           AND COALESCE(t.hr_policy->>'enabled', 'true')::boolean
+          AND NOT EXISTS (
+              SELECT 1 FROM promotions p
+              WHERE (p.torrent_id = s.torrent_id OR p.scope = 'global')
+                AND p.starts_at <= s.completed_at AND p.ends_at > s.completed_at
+                AND p.kind IN ('free', 'x2free')
+          )
         ON CONFLICT DO NOTHING
         "#,
     )

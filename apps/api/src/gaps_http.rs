@@ -23,9 +23,11 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         // H&R
         .service(my_hr_status)
         .service(hr_pardon)
+        .service(hr_self_pardon)
         // 申诉
         .service(appeal_create)
         .service(appeal_my)
+        .service(appeal_queue)
         .service(appeal_handle)
         // 补签卡使用
         .service(resub_use)
@@ -384,6 +386,60 @@ async fn hr_pardon(
     Ok(ok(serde_json::json!({ "pardoned": true })))
 }
 
+#[derive(Deserialize)]
+struct SelfPardonReq {
+    torrent_id: i64,
+}
+
+/// 自助免罪（B-02）：消耗 20000 火花，赦免自己一条 violated H&R（NP 魔力免罪口径）
+#[post("/me/hr/pardon")]
+async fn hr_self_pardon(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<SelfPardonReq>,
+) -> DomainResult<HttpResponse> {
+    const SELF_PARDON_PRICE: i64 = 20_000;
+    let auth = require_auth(&req, &state).await?;
+    let n = sqlx::query(
+        "UPDATE hr_snapshots SET status = 'pardoned', pardoned_by = $1, updated_at = now() \
+         WHERE user_id = $1 AND torrent_id = $2 AND status = 'violated' \
+         RETURNING user_id",
+    )
+    .bind(auth.id)
+    .bind(body.torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if n.is_none() {
+        return Err(DomainError::Validation("无待免罪的 H&R 违规".into()));
+    }
+    let idem = format!("hr-self-pardon:{}:{}:{}", auth.id, body.torrent_id, uuid::Uuid::new_v4());
+    crate::economy_http::spend_spark(
+        &state.repo.db,
+        auth.id,
+        SELF_PARDON_PRICE,
+        "hr_pardon",
+        &idem,
+        "hr",
+        body.torrent_id,
+    )
+    .await?;
+    sqlx::query(
+        "UPDATE hr_violations SET resolved_at = now(), resolved_by = $1 \
+         WHERE user_id = $1 AND torrent_id = $2 AND resolved_at IS NULL",
+    )
+    .bind(auth.id)
+    .bind(body.torrent_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "hr.self_pardon", Some(body.torrent_id))
+        .await;
+    Ok(ok(serde_json::json!({ "pardoned": body.torrent_id, "cost": SELF_PARDON_PRICE })))
+}
+
 // ============ 申诉 ============
 
 #[derive(Deserialize)]
@@ -467,6 +523,48 @@ struct AppealHandleReq {
     appeal_id: i64,
     accept: bool,
     note: String,
+}
+
+/// staff 侧申诉队列（open 优先，可按状态过滤）
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct AdminAppealRow {
+    id: i64,
+    username: String,
+    kind: String,
+    ref_id: Option<i64>,
+    body: String,
+    status: String,
+    result_note: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/admin/appeals")]
+async fn appeal_queue(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<AppealQueueQuery>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let status = q.status.as_deref().unwrap_or("");
+    let rows: Vec<AdminAppealRow> = sqlx::query_as(
+        "SELECT a.id, u.username, a.kind, a.ref_id, a.body, a.status, a.result_note, a.created_at \
+         FROM appeals a JOIN users u ON u.id = a.user_id \
+         WHERE ($1 = '' OR a.status = $1) \
+         ORDER BY (a.status = 'open') DESC, a.id DESC LIMIT 100",
+    )
+    .bind(status)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct AppealQueueQuery {
+    status: Option<String>,
 }
 
 #[post("/admin/appeals/handle")]
