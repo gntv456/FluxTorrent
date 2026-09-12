@@ -2,6 +2,7 @@
 //!
 //! NexusPHP 口径：用户专属 token（我们复用 passkey）+ 可选过滤参数；
 //! 刷流工具（RSS 阅读器/下载器）凭 URL 自动拉新种。
+//! 参数对齐好学站 getrss.php 的常用子集：分类多选/媒介多选/官种/关键字/条数/标题格式/付费。
 
 use actix_web::{get, web, HttpResponse};
 use chrono::{DateTime, Utc};
@@ -19,6 +20,9 @@ struct RssRow {
     small_descr: Option<String>,
     size: i64,
     created_at: DateTime<Utc>,
+    official_tag: bool,
+    #[sqlx(default)]
+    owner_name: Option<String>,
 }
 
 fn xml_escape(s: &str) -> String {
@@ -27,7 +31,7 @@ fn xml_escape(s: &str) -> String {
         .replace('>', "&gt;")
 }
 
-/// GET /rss/{passkey}?category=&official=
+/// GET /rss/{passkey}?categories=1,2&mediums=3&official=&search=&showrows=&linktype=&paid=
 /// passkey 即用户身份（BEP3 同源凭证，泄露可自助 rotate —— 与 tracker 一致的暴露面）
 #[get("/rss/{passkey}")]
 async fn rss_feed(
@@ -49,34 +53,57 @@ async fn rss_feed(
         return HttpResponse::NotFound().body("unknown passkey");
     }
 
+    // 多选分类/媒介：逗号分隔 → 数组（空 = 不过滤）；兼容旧版单值 category
+    let categories = parse_ids(q.categories.as_deref())
+        .or_else(|| q.category.map(|c| vec![c]));
+    let mediums = parse_ids(q.mediums.as_deref());
     let rows: Vec<RssRow> = sqlx::query_as(
-        "SELECT id, name, small_descr, size, created_at FROM torrents \
-         WHERE approval_status = 1 \
-           AND ($1::int IS NULL OR category_id = $1) \
-           AND ($2::bool IS NULL OR official_tag = $2) \
-         ORDER BY id DESC LIMIT 50",
+        "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, t.official_tag, \
+                u.username AS owner_name \
+         FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
+         WHERE t.approval_status = 1 \
+           AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
+           AND ($2::int[] IS NULL OR t.medium_id = ANY($2)) \
+           AND ($3::bool IS NULL OR t.official_tag = $3) \
+           AND ($4::text IS NULL OR t.name ILIKE '%' || $4 || '%') \
+         ORDER BY t.id DESC LIMIT $5",
     )
-    .bind(q.category)
+    .bind(categories.as_deref())
+    .bind(mediums.as_deref())
     .bind(q.official)
+    .bind(q.search.as_deref().filter(|s| !s.is_empty()))
+    .bind(q.showrows.unwrap_or(50).clamp(1, 200))
     .fetch_all(&state.repo.db)
     .await
     .unwrap_or_default();
 
     let base = std::env::var("PUBLIC_SITE_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+    // 标题格式：linktype=dl（默认）[分类] 标题 [副标题] 大小 发布者；linktype=page 仅标题
+    let verbose = q.linktype.as_deref() != Some("page");
     let mut items = String::new();
     for r in &rows {
-        let descr = r.small_descr.clone().unwrap_or_default();
+        let title = if verbose {
+            format!(
+                "{} {} {} · {}",
+                r.name,
+                r.small_descr.clone().unwrap_or_default(),
+                format_size(r.size),
+                r.owner_name.clone().unwrap_or_default(),
+            )
+        } else {
+            r.name.clone()
+        };
         items.push_str(&format!(
             "<item><title>{}</title><link>{}/torrent/{}</link>\
              <guid isPermaLink=\"true\">{}/torrent/{}</guid>\
              <pubDate>{}</pubDate><description>{} · {}</description></item>",
-            xml_escape(&r.name),
+            xml_escape(&title),
             base,
             r.id,
             base,
             r.id,
             r.created_at.format("%a, %d %b %Y %H:%M:%S GMT"),
-            xml_escape(&descr),
+            xml_escape(&r.small_descr.clone().unwrap_or_default()),
             format_size(r.size),
         ));
     }
@@ -95,8 +122,34 @@ async fn rss_feed(
 
 #[derive(serde::Deserialize)]
 struct RssQuery {
+    /// 旧版单值兼容
     category: Option<i32>,
+    categories: Option<String>,
+    mediums: Option<String>,
     official: Option<bool>,
+    search: Option<String>,
+    showrows: Option<i64>,
+    /// dl = 标题带元信息（默认）；page = 仅标题
+    linktype: Option<String>,
+    /// 0=全部 1=仅免费（占位，与好学 paid 口径对齐，未实现扣费过滤时仅接受参数）
+    #[allow(dead_code)]
+    paid: Option<i32>,
+}
+
+fn parse_ids(s: Option<&str>) -> Option<Vec<i32>> {
+    let s = s?.trim();
+    if s.is_empty() {
+        return None;
+    }
+    let ids: Vec<i32> = s
+        .split(',')
+        .filter_map(|p| p.trim().parse::<i32>().ok())
+        .collect();
+    if ids.is_empty() {
+        None
+    } else {
+        Some(ids)
+    }
 }
 
 fn format_size(b: i64) -> String {
@@ -105,5 +158,20 @@ fn format_size(b: i64) -> String {
         format!("{gb:.2} GB")
     } else {
         format!("{:.0} MB", b as f64 / 1024f64.powi(2))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_ids;
+
+    #[test]
+    fn parse_ids_multi_and_invalid() {
+        assert_eq!(parse_ids(Some("1,2, 3")), Some(vec![1, 2, 3]));
+        assert_eq!(parse_ids(Some("5")), Some(vec![5]));
+        assert_eq!(parse_ids(Some("")), None);
+        assert_eq!(parse_ids(Some("x,y")), None);
+        assert_eq!(parse_ids(None), None);
+        // 旧字段兼容由 handler 单独处理
     }
 }

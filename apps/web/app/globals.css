@@ -4399,3 +4399,156 @@ textarea.bbcode {
     min-height: 520px;
   }
 }
+
+
+/* ==== 获取 RSS 页（好学站 getrss.php 复刻） ==== */
+.rss-card {
+  padding: 16px 18px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 12px;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rss-card__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.rss-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rss-fieldset legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub, #6b7280);
+  padding: 0;
+}
+
+.rss-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.rss-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  min-height: 28px;
+  cursor: pointer;
+}
+
+.rss-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 16px;
+}
+
+.rss-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.rss-row > span {
+  color: var(--text-sub, #6b7280);
+  white-space: nowrap;
+}
+
+.rss-row select,
+.rss-row input[type="text"] {
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: inherit;
+  font-size: 13px;
+}
+
+.rss-row--search input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+}
+
+.rss-hint {
+  font-size: 12px;
+  color: var(--text-sub, #6b7280);
+}
+
+.rss-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.rss-url-row input {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 8px;
+  background: var(--baozi-paper);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: inherit;
+}
+
+.rss-copy {
+  min-height: 40px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--sky-deep, #0369a1);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rss-copy:active {
+  opacity: 0.85;
+}
+
+.rss-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rss-preset {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.rss-preset span {
+  min-width: 72px;
+  color: var(--text-sub, #6b7280);
+}
+
+.rss-preset input {
+  flex: 1;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 8px;
+  background: var(--surface-card);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: inherit;
+}

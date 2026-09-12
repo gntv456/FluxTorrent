@@ -1,13 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-
-interface RssInfo {
-  urls: { label: string; url: string }[];
-  passkey: string;
-}
 
 /** 线性图标（24×24 stroke，仿好学站 userbar 图标语义） */
 function Icon({ d, extra }: { d: string; extra?: string }) {
@@ -39,21 +32,10 @@ const ICONS = {
 };
 
 /** 快捷工具条（好学站 userbar 口径）：收件箱/发件箱/作弊者/举报信箱/管理组信箱/社交/RSS。
- *  仅图标按钮，4+3 上下两行；悬停 title 提示。 */
+ *  仅图标按钮，4+3 上下两行；RSS 直达获取RSS页（getrss.php 同款）。 */
 export function UserTools() {
   const { dict } = useI18n();
   const t = dict.usertools;
-  const [rss, setRss] = useState<RssInfo | null>(null);
-  const [showRss, setShowRss] = useState(false);
-
-  useEffect(() => {
-    if (showRss && !rss) {
-      api
-        .get<RssInfo>("/api/v1/rss-info")
-        .then(setRss)
-        .catch(() => setRss(null));
-    }
-  }, [showRss, rss]);
 
   return (
     <div className="usertools usertools--grid">
@@ -75,35 +57,9 @@ export function UserTools() {
       <a className="userbar-tool userbar-tool--icon" href="/friends" title={t.socialList} aria-label={t.socialList}>
         <Icon {...ICONS.social} />
       </a>
-      <button
-        type="button"
-        className="userbar-tool userbar-tool--icon"
-        title={t.getRss}
-        aria-label={t.getRss}
-        onClick={() => setShowRss((v) => !v)}
-      >
+      <a className="userbar-tool userbar-tool--icon" href="/getrss" title={t.getRss} aria-label={t.getRss}>
         <Icon {...ICONS.rss} />
-      </button>
-
-      {/* RSS 弹层 */}
-      {showRss && (
-        <div className="usertools-popover">
-          <h3>{t.getRss}</h3>
-          {rss ? (
-            <div className="usertools-rss">
-              <p className="usertools-rss__note">{t.rssNote}</p>
-              {rss.urls.map((u) => (
-                <label key={u.url}>
-                  <span>{u.label}</span>
-                  <input type="password" readOnly value={u.url} />
-                </label>
-              ))}
-            </div>
-          ) : (
-            <p className="usertools-rss__note">{dict.my.loading}</p>
-          )}
-        </div>
-      )}
+      </a>
     </div>
   );
 }
