@@ -357,9 +357,7 @@ async fn settings_schema(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < SETTINGS_VIEW_MIN {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
     let order = group_order(&state).await;
     // SQL 已按 (grp, group_key, card_order, name) 排序 → 保序填充即得正确卡片/字段顺序
     let rows: Vec<MetaRow> = sqlx::query_as(&format!(
@@ -465,9 +463,7 @@ async fn settings_validate(
     body: web::Json<ValidateReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < SETTINGS_VIEW_MIN {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
     let name = body.name.trim();
     let meta: Option<MetaRow> = sqlx::query_as(&format!("{META_SELECT} WHERE s.name = $1"))
         .bind(name)
@@ -552,9 +548,7 @@ async fn settings_groups_put(
     body: web::Json<GroupsPut>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < SETTINGS_VIEW_MIN {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
     if body.values.is_empty() {
         return Err(DomainError::Validation("未提供任何修改".into()));
     }
@@ -744,9 +738,7 @@ async fn settings_history(
     q: web::Query<HistoryQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < SETTINGS_VIEW_MIN {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
     let per_page = q.per_page.clamp(1, 100);
     let name = q.name.trim();
     let rows: Vec<HistoryRow> = sqlx::query_as(
@@ -806,12 +798,10 @@ async fn settings_export(
     q: web::Query<ExportQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < SETTINGS_VIEW_MIN {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
     let plaintext = q.plaintext == 1;
-    if plaintext && auth.class_id < SETTINGS_WRITE_MIN {
-        return Err(DomainError::Forbidden);
+    if plaintext {
+        crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     }
     let rows: Vec<MetaRow> = sqlx::query_as(&format!(
         "{META_SELECT} ORDER BY s.grp, m.group_key, m.card_order, s.name"
@@ -861,9 +851,7 @@ async fn settings_import(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     // 导入仅 sysop（§4.3）
-    if auth.class_id < SETTINGS_WRITE_MIN {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     if body.settings.is_empty() {
         return Err(DomainError::Validation("导入内容为空".into()));
     }

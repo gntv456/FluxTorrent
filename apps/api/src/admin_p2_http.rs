@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::require_auth;
+use crate::http::{require_auth, optional_auth};
 use crate::state::AppState;
 
 async fn staff(
@@ -13,9 +13,7 @@ async fn staff(
     state: &web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<crate::http::AuthUser> {
     let auth = require_auth(req, state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL).await?;
     Ok(auth)
 }
 
@@ -167,8 +165,31 @@ struct MenuItemRow {
     location: String,
     label: String,
     url: String,
+    parent_id: i64,
+    target: String,
+    min_class: i32,
     sort: i32,
     enabled: bool,
+}
+
+/// 菜单全局开关（nav.custom_enabled / nav.min_visible_class）
+async fn menu_settings(db: &sqlx::PgPool) -> (bool, i32) {
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name IN ('nav.custom_enabled','nav.min_visible_class')",
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    let mut enabled = false;
+    let mut min_class = 0;
+    for (k, v) in rows {
+        match k.as_str() {
+            "nav.custom_enabled" => enabled = v == "1" || v.eq_ignore_ascii_case("true") || v == "yes",
+            "nav.min_visible_class" => min_class = v.parse().unwrap_or(0),
+            _ => {}
+        }
+    }
+    (enabled, min_class)
 }
 
 #[get("/admin/menu-items")]
@@ -178,12 +199,56 @@ async fn menu_items_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let rows: Vec<MenuItemRow> = sqlx::query_as(
-        "SELECT id, location, label, url, sort, enabled FROM menu_items ORDER BY location, sort, id",
+        "SELECT id, location, label, url, parent_id, target, min_class, sort, enabled \
+         FROM menu_items ORDER BY location, sort, id",
     )
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    let (custom_enabled, min_visible_class) = menu_settings(&state.repo.db).await;
+    Ok(ok(serde_json::json!({
+        "items": rows,
+        "custom_enabled": custom_enabled,
+        "min_visible_class": min_visible_class,
+    })))
+}
+
+/// 菜单全局开关设置
+#[derive(Deserialize)]
+struct MenuSettingsReq {
+    #[serde(default)]
+    custom_enabled: Option<bool>,
+    #[serde(default)]
+    min_visible_class: Option<i32>,
+}
+
+#[put("/admin/menu-settings")]
+async fn menu_settings_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<MenuSettingsReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if let Some(en) = body.custom_enabled {
+        sqlx::query("UPDATE site_settings SET value = $1, updated_at = now() WHERE name = 'nav.custom_enabled'")
+            .bind(if en { "1" } else { "0" })
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    if let Some(mc) = body.min_visible_class {
+        if !(0..=99).contains(&mc) {
+            return Err(DomainError::Validation("min_visible_class 取值 0-99".into()));
+        }
+        sqlx::query("UPDATE site_settings SET value = $1, updated_at = now() WHERE name = 'nav.min_visible_class'")
+            .bind(mc.to_string())
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    state.repo.audit(Some(auth.id), "menu_settings.update", None).await;
+    let (en, mc) = menu_settings(&state.repo.db).await;
+    Ok(ok(serde_json::json!({ "custom_enabled": en, "min_visible_class": mc })))
 }
 
 #[derive(Deserialize)]
@@ -195,9 +260,74 @@ struct MenuItemReq {
     #[serde(default)]
     url: Option<String>,
     #[serde(default)]
+    parent_id: Option<i64>,
+    #[serde(default)]
+    target: Option<String>,
+    #[serde(default)]
+    min_class: Option<i32>,
+    #[serde(default)]
     sort: Option<i32>,
     #[serde(default)]
     enabled: Option<bool>,
+}
+
+/// 校验 target / parent_id（parent 须存在且同 location）
+async fn menu_item_validate(
+    db: &sqlx::PgPool,
+    body: &MenuItemReq,
+    self_id: Option<i64>,
+) -> DomainResult<()> {
+    if let Some(t) = &body.target {
+        if !["_self", "_blank"].contains(&t.as_str()) {
+            return Err(DomainError::Validation("target 取值 _self/_blank".into()));
+        }
+    }
+    if let Some(mc) = body.min_class {
+        if !(0..=99).contains(&mc) {
+            return Err(DomainError::Validation("min_class 取值 0-99".into()));
+        }
+    }
+    if let Some(pid) = body.parent_id {
+        if pid > 0 {
+            if Some(pid) == self_id {
+                return Err(DomainError::Validation("父菜单不能是自己".into()));
+            }
+            if let Some(sid) = self_id {
+                if pid == sid {
+                    return Err(DomainError::Validation("父菜单不能是自己".into()));
+                }
+                // 禁止把自己的后代设为父（成环）
+                let child_cnt: i64 = sqlx::query_scalar(
+                    "WITH RECURSIVE sub AS (                         SELECT id FROM menu_items WHERE parent_id = $1                         UNION ALL SELECT m.id FROM menu_items m JOIN sub s ON m.parent_id = s.id                      ) SELECT count(*) FROM sub WHERE id = $2",
+                )
+                .bind(sid)
+                .bind(pid)
+                .fetch_one(db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+                if child_cnt > 0 {
+                    return Err(DomainError::Validation("不能把自己的子菜单设为父菜单".into()));
+                }
+            }
+            let row: Option<(i64, String)> = sqlx::query_as(
+                "SELECT id, location FROM menu_items WHERE id = $1",
+            )
+            .bind(pid)
+            .fetch_optional(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            match row {
+                None => return Err(DomainError::Validation("父菜单不存在".into())),
+                Some((_, ploc)) => {
+                    let loc = body.location.clone().unwrap_or_default();
+                    if !loc.is_empty() && ploc != loc {
+                        return Err(DomainError::Validation("父菜单须在同一定位".into()));
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 #[post("/admin/menu-items")]
@@ -216,12 +346,17 @@ async fn menu_items_add(
     if !["sidebar", "footer", "topbar"].contains(&location) {
         return Err(DomainError::Validation("location 取值 sidebar/footer/topbar".into()));
     }
+    menu_item_validate(&state.repo.db, &body, None).await?;
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO menu_items (location, label, url, sort, enabled) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        "INSERT INTO menu_items (location, label, url, parent_id, target, min_class, sort, enabled) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
     )
     .bind(location)
     .bind(label)
     .bind(url)
+    .bind(body.parent_id.unwrap_or(0))
+    .bind(body.target.as_deref().unwrap_or("_self"))
+    .bind(body.min_class.unwrap_or(0))
     .bind(body.sort.unwrap_or(0))
     .bind(body.enabled.unwrap_or(true))
     .fetch_one(&state.repo.db)
@@ -240,16 +375,21 @@ async fn menu_items_update(
 ) -> DomainResult<HttpResponse> {
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
+    menu_item_validate(&state.repo.db, &body, Some(path_id)).await?;
     let n = sqlx::query(
         "UPDATE menu_items SET \
             location = COALESCE($2, location), label = COALESCE($3, label), url = COALESCE($4, url), \
-            sort = COALESCE($5, sort), enabled = COALESCE($6, enabled) \
+            parent_id = COALESCE($5, parent_id), target = COALESCE($6, target), \
+            min_class = COALESCE($7, min_class), sort = COALESCE($8, sort), enabled = COALESCE($9, enabled) \
          WHERE id = $1",
     )
     .bind(path_id)
     .bind(body.location.clone())
     .bind(body.label.clone())
     .bind(body.url.clone())
+    .bind(body.parent_id)
+    .bind(body.target.clone())
+    .bind(body.min_class)
     .bind(body.sort)
     .bind(body.enabled)
     .execute(&state.repo.db)
@@ -271,6 +411,14 @@ async fn menu_items_delete(
 ) -> DomainResult<HttpResponse> {
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
+    let children: i64 = sqlx::query_scalar("SELECT count(*) FROM menu_items WHERE parent_id = $1")
+        .bind(path_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if children > 0 {
+        return Err(DomainError::Validation("存在子菜单，先删除或移动子菜单".into()));
+    }
     let n = sqlx::query("DELETE FROM menu_items WHERE id = $1")
         .bind(path_id)
         .execute(&state.repo.db)
@@ -296,17 +444,30 @@ fn default_location() -> String {
 
 #[get("/menu-items")]
 async fn menu_items_public(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<MenuPublicQ>,
 ) -> DomainResult<HttpResponse> {
     if !["sidebar", "footer", "topbar"].contains(&q.location.as_str()) {
         return Err(DomainError::Validation("location 取值 sidebar/footer/topbar".into()));
     }
+    // 全局开关关闭 → 返回空（前端显式回退默认导航，不做静默混淆）
+    let (custom_enabled, min_visible_class) = menu_settings(&state.repo.db).await;
+    if !custom_enabled {
+        return Ok(ok(Vec::<MenuItemRow>::new()));
+    }
+    // 可选鉴权：登录按等级过滤，匿名只看 min_class=0；整体门槛不过 → 空
+    let user_class = optional_auth(&req, &state).await.map(|u| u.class_id).unwrap_or(0);
+    if user_class < min_visible_class {
+        return Ok(ok(Vec::<MenuItemRow>::new()));
+    }
     let rows: Vec<MenuItemRow> = sqlx::query_as(
-        "SELECT id, location, label, url, sort, enabled FROM menu_items \
-         WHERE enabled AND location = $1 ORDER BY sort, id LIMIT 30",
+        "SELECT id, location, label, url, parent_id, target, min_class, sort, enabled \
+         FROM menu_items \
+         WHERE enabled AND location = $1 AND min_class <= $2 ORDER BY sort, id LIMIT 60",
     )
     .bind(&q.location)
+    .bind(user_class)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -426,6 +587,7 @@ pub fn mount_p2_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(menu_items_add)
         .service(menu_items_update)
         .service(menu_items_delete)
+        .service(menu_settings_update)
         .service(menu_items_public)
         .service(msg_templates_list)
         .service(msg_templates_update)

@@ -349,9 +349,7 @@ async fn hr_pardon(
     body: web::Json<PardonReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_PARDON).await?;
     if body.note.trim().is_empty() {
         return Err(DomainError::Validation("赦免必须填理由".into()));
     }
@@ -545,9 +543,7 @@ async fn appeal_queue(
     q: web::Query<AppealQueueQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::APPEAL_HANDLE).await?;
     let status = q.status.as_deref().unwrap_or("");
     let rows: Vec<AdminAppealRow> = sqlx::query_as(
         "SELECT a.id, u.username, a.kind, a.ref_id, a.body, a.status, a.result_note, a.created_at \
@@ -574,9 +570,7 @@ async fn appeal_handle(
     body: web::Json<AppealHandleReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::APPEAL_HANDLE).await?;
     let n = sqlx::query(
         "UPDATE appeals SET status = $2, handled_by = $1, handled_at = now(), result_note = $3 \
          WHERE id = $4 AND status = 'open'",

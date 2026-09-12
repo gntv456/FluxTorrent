@@ -4,6 +4,7 @@
 mod admin_http;
 mod admin_p2_http;
 mod auth;
+mod authz;
 mod bencode;
 mod community_http;
 mod config;

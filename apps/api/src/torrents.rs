@@ -71,6 +71,8 @@ pub struct TorrentFilter {
     pub edition_id: Option<i32>,
     pub official: Option<bool>,
     pub include_dead: bool,
+    /// 查看未过审（待审/被拒）种子——需 torrent.see_banned 权限，端点侧校验
+    pub include_unapproved: bool,
     pub search: Option<String>,
     /// 列表排序（旧站 torrents.php 口径）：created（默认）/ seeders / size / completed
     pub sort: Option<String>,
@@ -139,7 +141,7 @@ pub async fn list_torrents(
                t.created_at
         FROM torrents t
         LEFT JOIN users u ON u.id = t.owner_id
-        WHERE t.approval_status = 1
+        WHERE (t.approval_status = 1 OR $11::bool)
           AND ($1::int IS NULL OR t.category_id = $1)
           AND ($2::int IS NULL OR t.medium_id = $2)
           AND ($3::int IS NULL OR t.grade_id = $3)
@@ -167,12 +169,13 @@ pub async fn list_torrents(
         .bind(cursor)
         .bind(limit + 1)
         .bind(filter.tag_id)
+        .bind(filter.include_unapproved)
         .fetch_all(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
     let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM torrents t WHERE t.approval_status = 1 \
+        "SELECT count(*) FROM torrents t WHERE (t.approval_status = 1 OR $8::bool) \
          AND ($1::int IS NULL OR t.category_id = $1) AND ($2::int IS NULL OR t.medium_id = $2) \
          AND ($3::int IS NULL OR t.grade_id = $3) AND ($4::int IS NULL OR t.edition_id = $4) \
          AND ($5::bool IS NULL OR t.official_tag = $5) AND ($6::bool OR t.seeders > 0) \
@@ -187,6 +190,7 @@ pub async fn list_torrents(
     .bind(filter.official)
     .bind(filter.include_dead)
     .bind(&pattern)
+    .bind(filter.include_unapproved)
     .fetch_one(db)
     .await
     .unwrap_or(0);
@@ -201,14 +205,20 @@ pub async fn list_torrents(
     })
 }
 
-pub async fn get_torrent(db: &PgPool, id: i64) -> DomainResult<TorrentRow> {
+pub async fn get_torrent(db: &PgPool, id: i64, reveal_owner: bool) -> DomainResult<TorrentRow> {
+    // torrent.view_anonymous：持权者可见匿名种子的真实发布者
+    let owner_expr = if reveal_owner {
+        "u.username AS owner_name"
+    } else {
+        "CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name"
+    };
     let page = sqlx::query_as::<_, TorrentRow>(
-        r#"
+        &format!(r#"
         SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
                t.grade_id, t.edition_id, t.size, t.seeders, t.leechers, t.times_completed,
                (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments,
                t.official_tag, t.anonymous, t.approval_status, t.sticky,
-               CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name,
+               {owner_expr},
                (SELECT p.kind::text FROM promotions p
                   WHERE p.starts_at <= now() AND p.ends_at > now() AND (
                     p.torrent_id = t.id
@@ -232,7 +242,7 @@ pub async fn get_torrent(db: &PgPool, id: i64) -> DomainResult<TorrentRow> {
                t.created_at
         FROM torrents t LEFT JOIN users u ON u.id = t.owner_id
         WHERE t.id = $1 AND t.approval_status = 1
-        "#,
+        "#)
     )
     .bind(id)
     .fetch_all(db)

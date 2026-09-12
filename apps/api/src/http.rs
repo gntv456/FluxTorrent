@@ -98,6 +98,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(test_ip)
         .service(admin_stats)
         .service(clear_cache)
+        .service(seed_stats)
         .service(do_cleanup)
         .service(ad_list)
         .service(ad_create)
@@ -1087,6 +1088,8 @@ struct ListQuery {
     edition_id: Option<i32>,
     official: Option<bool>,
     include_dead: Option<bool>,
+    #[serde(default)]
+    include_unapproved: Option<bool>,
     search: Option<String>,
     sort: Option<String>,
     tag_id: Option<i32>,
@@ -1100,7 +1103,7 @@ async fn list(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
-    require_auth(&req, &state).await?; // 站点准入收口：资源元数据不对外
+    let auth = require_auth(&req, &state).await?; // 站点准入收口：资源元数据不对外
     let filter = torrents::TorrentFilter {
         category_id: q.category_id,
         medium_id: q.medium_id,
@@ -1108,6 +1111,9 @@ async fn list(
         edition_id: q.edition_id,
         official: q.official,
         include_dead: q.include_dead.unwrap_or(false),
+        // 仅持 see_banned 权限者可查看未过审种子；无权限时参数被静默忽略
+        include_unapproved: q.include_unapproved.unwrap_or(false)
+            && crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_SEE_BANNED).await,
         search: q.search.as_deref().map(str::to_string),
         sort: q.sort.as_deref().map(str::to_string),
         tag_id: q.tag_id,
@@ -1130,8 +1136,10 @@ async fn detail(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
-    require_auth(&req, &state).await?;
-    let t = torrents::get_torrent(&state.repo.db, path.into_inner()).await?;
+    let auth = require_auth(&req, &state).await?;
+    // 持 view_anonymous 权限者可见匿名种子的真实发布者
+    let reveal = crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_VIEW_ANONYMOUS).await;
+    let t = torrents::get_torrent(&state.repo.db, path.into_inner(), reveal).await?;
     Ok(ok(t))
 }
 
@@ -2351,6 +2359,56 @@ async fn admin_stats(
 }
 
 /// 清除缓存（clearcache.php 口径）：Redis 前缀清理
+/// 保种统计（seed.stats.view）：站点做种总览与 Top 保种用户。
+/// 注意：不走 staff 门槛——保种员 / VIP 持该权限即可访问（非管理组角色）。
+#[get("/seed-stats")]
+async fn seed_stats(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SEED_STATS_VIEW).await?;
+    let totals: (i64, i64, f64) = sqlx::query_as(
+        "SELECT count(DISTINCT s.user_id)::bigint, count(*)::bigint, \
+                COALESCE(avg(s.seeded_seconds) / 3600.0, 0)::float8 \
+         FROM snatches s WHERE s.seeding",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let top_count: Vec<(i64, String, i64)> = sqlx::query_as(
+        "SELECT s.user_id, u.username, count(*)::bigint AS c \
+         FROM snatches s JOIN users u ON u.id = s.user_id \
+         WHERE s.seeding GROUP BY s.user_id, u.username ORDER BY c DESC LIMIT 10",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let top_hours: Vec<(i64, String, f64)> = sqlx::query_as(
+        "SELECT s.user_id, u.username, (sum(s.seeded_seconds) / 3600.0)::float8 AS h \
+         FROM snatches s JOIN users u ON u.id = s.user_id \
+         WHERE s.seeded_seconds > 0 GROUP BY s.user_id, u.username ORDER BY h DESC LIMIT 10",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let top_count = top_count
+        .into_iter()
+        .map(|(uid, name, c)| serde_json::json!({"user_id": uid, "username": name, "seeding": c}))
+        .collect::<Vec<_>>();
+    let top_hours = top_hours
+        .into_iter()
+        .map(|(uid, name, hrs)| serde_json::json!({"user_id": uid, "username": name, "hours": (hrs * 10.0).round() / 10.0}))
+        .collect::<Vec<_>>();
+    Ok(ok(serde_json::json!({
+        "seeders": totals.0,
+        "seeding_torrents": totals.1,
+        "avg_seed_hours": (totals.2 * 10.0).round() / 10.0,
+        "top_by_count": top_count,
+        "top_by_hours": top_hours,
+    })))
+}
+
 #[post("/admin/clearcache")]
 async fn clear_cache(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
@@ -3307,7 +3365,7 @@ async fn news_create(
     body: web::Json<NewsBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::NEWS_MANAGE).await?;
+    crate::authz::require_any_perm(&state, &auth, &[crate::authz::perm::NEWS_MANAGE, crate::authz::perm::ANNOUNCE_PUBLISH]).await?;
     if body.title.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("标题和正文不能为空".into()));
     }
@@ -3333,7 +3391,7 @@ async fn news_update(
     body: web::Json<NewsBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::NEWS_MANAGE).await?;
+    crate::authz::require_any_perm(&state, &auth, &[crate::authz::perm::NEWS_MANAGE, crate::authz::perm::ANNOUNCE_PUBLISH]).await?;
     let updated = sqlx::query(
         "UPDATE announcements SET title = $2, body = $3, badge = $4 WHERE id = $1",
     )
@@ -3358,7 +3416,7 @@ async fn news_delete(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::NEWS_MANAGE).await?;
+    crate::authz::require_any_perm(&state, &auth, &[crate::authz::perm::NEWS_MANAGE, crate::authz::perm::ANNOUNCE_PUBLISH]).await?;
     let deleted = sqlx::query("DELETE FROM announcements WHERE id = $1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -3950,6 +4008,12 @@ struct UploadForm {
     /// 海报/封面外链 URL（存 media_info.poster；列表 46px 封面位与首页海报墙共用）
     #[serde(default)]
     poster: Option<String>,
+    /// 发布者直接设置促销（需 torrent.set_price 权限）
+    #[serde(default)]
+    promo_kind: Option<String>,
+    /// 促销时长（小时，1-720，默认 48）
+    #[serde(default)]
+    promo_hours: Option<i32>,
 }
 
 /// multipart：file=<.torrent> + 表单字段
@@ -4037,6 +4101,30 @@ async fn upload(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+
+    // 发布者设促销（torrent.set_price）：scope='global' 仅作占位，
+    // 命中走 torrent_id 分支（列表/详情/H&R 的促销子查询均含 p.torrent_id = t.id）
+    if let Some(kind) = form.promo_kind.as_deref().map(str::trim).filter(|k| !k.is_empty()) {
+        if !crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_SET_PRICE).await {
+            return Err(DomainError::Forbidden);
+        }
+        if !["free", "x2", "x2free", "half", "x2half", "p30"].contains(&kind) {
+            return Err(DomainError::Validation("促销类型无效".into()));
+        }
+        let hours = form.promo_hours.unwrap_or(48).clamp(1, 720);
+        sqlx::query(
+            "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source, created_by) \
+             VALUES ('global', $1, $2::promotion_kind_enum, now(), now() + make_interval(hours => $3), \
+                     'manual'::promotion_source, $4)",
+        )
+        .bind(id)
+        .bind(kind)
+        .bind(hours)
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
 
     state
         .repo
