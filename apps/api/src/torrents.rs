@@ -116,12 +116,24 @@ pub async fn list_torrents(
                (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments,
                t.official_tag, t.anonymous, t.approval_status, t.sticky,
                CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name,
-               (SELECT kind::text FROM promotions p
-                  WHERE p.torrent_id = t.id AND p.starts_at <= now() AND p.ends_at > now()
-                  ORDER BY p.id DESC LIMIT 1) AS promotion,
+               (SELECT p.kind::text FROM promotions p
+                  WHERE p.starts_at <= now() AND p.ends_at > now() AND (
+                    p.torrent_id = t.id
+                    OR (p.torrent_id IS NULL AND (
+                        p.scope = 'global'
+                        OR (p.scope = 'official' AND t.official_tag)
+                        OR (p.scope = 'non_official' AND NOT t.official_tag)
+                        OR (p.scope = 'category' AND t.category_id = p.category_id))))
+                  ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion,
                (SELECT p.ends_at FROM promotions p
-                  WHERE p.torrent_id = t.id AND p.starts_at <= now() AND p.ends_at > now()
-                  ORDER BY p.id DESC LIMIT 1) AS promotion_ends_at,
+                  WHERE p.starts_at <= now() AND p.ends_at > now() AND (
+                    p.torrent_id = t.id
+                    OR (p.torrent_id IS NULL AND (
+                        p.scope = 'global'
+                        OR (p.scope = 'official' AND t.official_tag)
+                        OR (p.scope = 'non_official' AND NOT t.official_tag)
+                        OR (p.scope = 'category' AND t.category_id = p.category_id))))
+                  ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion_ends_at,
                t.media_info->>'rating' AS rating,
                t.media_info->>'poster' AS poster,
                t.created_at
@@ -197,12 +209,24 @@ pub async fn get_torrent(db: &PgPool, id: i64) -> DomainResult<TorrentRow> {
                (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments,
                t.official_tag, t.anonymous, t.approval_status, t.sticky,
                CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name,
-               (SELECT kind::text FROM promotions p
-                  WHERE p.torrent_id = t.id AND p.starts_at <= now() AND p.ends_at > now()
-                  ORDER BY p.id DESC LIMIT 1) AS promotion,
+               (SELECT p.kind::text FROM promotions p
+                  WHERE p.starts_at <= now() AND p.ends_at > now() AND (
+                    p.torrent_id = t.id
+                    OR (p.torrent_id IS NULL AND (
+                        p.scope = 'global'
+                        OR (p.scope = 'official' AND t.official_tag)
+                        OR (p.scope = 'non_official' AND NOT t.official_tag)
+                        OR (p.scope = 'category' AND t.category_id = p.category_id))))
+                  ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion,
                (SELECT p.ends_at FROM promotions p
-                  WHERE p.torrent_id = t.id AND p.starts_at <= now() AND p.ends_at > now()
-                  ORDER BY p.id DESC LIMIT 1) AS promotion_ends_at,
+                  WHERE p.starts_at <= now() AND p.ends_at > now() AND (
+                    p.torrent_id = t.id
+                    OR (p.torrent_id IS NULL AND (
+                        p.scope = 'global'
+                        OR (p.scope = 'official' AND t.official_tag)
+                        OR (p.scope = 'non_official' AND NOT t.official_tag)
+                        OR (p.scope = 'category' AND t.category_id = p.category_id))))
+                  ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion_ends_at,
                t.media_info->>'rating' AS rating,
                t.media_info->>'poster' AS poster,
                t.created_at

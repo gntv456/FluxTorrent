@@ -1,9 +1,9 @@
 import { getPreserve } from "@/lib/data";
-import { formatBytes } from "@/lib/format";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
 import { ClaimButton } from "@/components/claim-button";
+import { TorrentTr } from "@/components/torrent-table";
 
 export const dynamic = "force-dynamic";
 
@@ -126,36 +126,56 @@ export default async function PreservePage() {
         {items.length === 0 ? (
           <p className="py-10 text-center text-sub">{dict.preserve.empty}</p>
         ) : (
-          <table className="nexus-table preserve-list-table">
-            <tbody>
+          <table className="nexus-table torrents-table preserve-list-table">
+            <thead>
               <tr>
-                <td className="colhead">{dict.torrents.colTitle}</td>
-                <td className="colhead">{dict.preserve.claimedBy}</td>
-                <td className="colhead text-right">{dict.torrents.colSize}</td>
-                <td className="colhead text-right">{dict.torrents.colSeeders}</td>
-                <td className="colhead text-right">{dict.preserve.action}</td>
+                <th className="w-12">{dict.torrents.colType}</th>
+                <th className="w-16" aria-label="封面" />
+                <th>{dict.torrents.colTitle}</th>
+                <th className="w-16" title={dict.torrents.colComments}>
+                  💬
+                </th>
+                <th className="w-20" title={dict.torrents.alive}>
+                  ⏱
+                </th>
+                <th className="w-20" title={dict.torrents.colSize}>
+                  💾
+                </th>
+                <th className="w-16" title={dict.torrents.colSeeders}>
+                  🌱
+                </th>
+                <th className="w-16" title={dict.torrents.colLeechers}>
+                  ⬇️
+                </th>
+                <th className="w-16" title={dict.torrents.colCompleted}>
+                  ✅
+                </th>
+                {/* 保种区专属列：认领人 + 认领操作 */}
+                <th className="w-24">{dict.preserve.claimedBy}</th>
+                <th className="w-24">{dict.torrents.colActions}</th>
               </tr>
+            </thead>
+            <tbody>
               {items.map((p) => (
-                <tr key={p.torrent_id}>
-                  <td>
-                    <Link href={`/torrent/${p.torrent_id}`} className="font-bold">
-                      {p.name}
-                    </Link>
-                  </td>
-                  <td className="text-sub">
-                    {p.claimed_by ?? dict.preserve.unclaimed}
-                  </td>
-                  <td className="num text-right">{formatBytes(p.size)}</td>
-                  <td className="num text-right text-mint">{p.seeders}</td>
-                  <td className="text-right">
-                    <ClaimButton
-                      torrentId={p.torrent_id}
-                      claimed={Boolean(p.claimed_by)}
-                      label={dict.preserve.claimAction}
-                      claimedLabel={dict.preserve.claimedTag}
-                    />
-                  </td>
-                </tr>
+                <TorrentTr
+                  key={p.torrent_id}
+                  t={p}
+                  extra={
+                    <>
+                      <td className="text-sub">
+                        {p.claimed_by ?? dict.preserve.unclaimed}
+                      </td>
+                      <td className="text-right">
+                        <ClaimButton
+                          torrentId={p.torrent_id}
+                          claimed={Boolean(p.claimed_by)}
+                          label={dict.preserve.claimAction}
+                          claimedLabel={dict.preserve.claimedTag}
+                        />
+                      </td>
+                    </>
+                  }
+                />
               ))}
             </tbody>
           </table>

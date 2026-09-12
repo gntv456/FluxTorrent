@@ -225,7 +225,15 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow
     .fetch_optional(db)
     .await?;
     let global: Option<String> = sqlx::query_scalar(
-        "SELECT kind::text FROM promotions WHERE scope = 'global' AND starts_at <= now() AND ends_at > now() ORDER BY id DESC LIMIT 1",
+        "SELECT kind::text FROM promotions p \
+         WHERE p.torrent_id IS NULL AND p.starts_at <= now() AND p.ends_at > now() \
+           AND (p.scope = 'global' \
+                OR (p.scope = 'official' AND EXISTS (SELECT 1 FROM torrents t WHERE t.id = $1 AND t.official_tag)) \
+                OR (p.scope = 'non_official' AND EXISTS (SELECT 1 FROM torrents t WHERE t.id = $1 AND NOT t.official_tag)) \
+                OR (p.scope = 'category' AND EXISTS (SELECT 1 FROM torrents t WHERE t.id = $1 AND t.category_id = p.category_id))) \
+         ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 \
+                                  WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC \
+         LIMIT 1",
     )
     .fetch_optional(db)
     .await?;
@@ -341,7 +349,12 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
           AND COALESCE(t.hr_policy->>'enabled', 'true')::boolean
           AND NOT EXISTS (
               SELECT 1 FROM promotions p
-              WHERE (p.torrent_id = s.torrent_id OR p.scope = 'global')
+              WHERE (p.torrent_id = s.torrent_id
+                     OR (p.torrent_id IS NULL AND (
+                         p.scope = 'global'
+                         OR (p.scope = 'official' AND t.official_tag)
+                         OR (p.scope = 'non_official' AND NOT t.official_tag)
+                         OR (p.scope = 'category' AND t.category_id = p.category_id))))
                 AND p.starts_at <= s.completed_at AND p.ends_at > s.completed_at
                 AND p.kind IN ('free', 'x2free')
           )
