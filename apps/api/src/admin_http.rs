@@ -23,6 +23,9 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(user_admin_detail)
         .service(user_admin_snatches)
         .service(user_grant_medal)
+        .service(user_grant_item)
+        .service(user_assign_jixiao)
+        .service(role_create)
         .service(user_admin_delete)
         .service(user_adjust)
         .service(user_flags)
@@ -661,6 +664,181 @@ async fn user_grant_medal(
         .audit(Some(auth.id), "user.grant_medal", Some(uid))
         .await;
     Ok(ok(serde_json::json!({ "user_id": uid, "medal_id": medal_id })))
+}
+
+/// 详情页授予道具/卡牌（好学站「授予道具」口径）：把商店道具（含化妆卡/改名卡等卡牌类）免费发放给目标用户。
+/// 即时类（上传量/火花/邀请）直接生效；卡牌装饰类入 shop_orders（零元，source=admin）待用户使用。
+#[post("/admin/users/{id}/grant-item/{item_id}")]
+async fn user_grant_item(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<(i64, i64)>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let (uid, item_id) = path.into_inner();
+    ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
+    let item: Option<(String, String, serde_json::Value)> = sqlx::query_as(
+        "SELECT name, kind, config FROM shop_items WHERE id = $1 AND active = true",
+    )
+    .bind(item_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((name, kind, config)) = item else {
+        return Err(DomainError::NotFound(item_id));
+    };
+    match kind.as_str() {
+        "upload_credit" => {
+            let gb = config.get("gb").and_then(|v| v.as_i64()).unwrap_or(0);
+            sqlx::query("UPDATE users SET uploaded = uploaded + $2 WHERE id = $1")
+                .bind(uid)
+                .bind(gb * 1024 * 1024 * 1024)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        "gift_spark" => {
+            let amount = config.get("amount").and_then(|v| v.as_i64()).unwrap_or(0);
+            if amount > 0 {
+                let idem = format!("admin_grant_item:{}:{}", uid, chrono::Utc::now().timestamp());
+                crate::economy_http::earn_spark(
+                    &state.repo.db, uid, amount, "admin_grant_item", &idem,
+                ).await?;
+            }
+        }
+        "invite" | "temp_invite" => {
+            sqlx::query("UPDATE users SET quota_extra = quota_extra + 1 WHERE id = $1")
+                .bind(uid)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        _ => {
+            let idem = format!("admin_grant_item:{}:{}:{}", uid, item_id, chrono::Utc::now().timestamp());
+            sqlx::query(
+                "INSERT INTO shop_orders (user_id, item_id, price, idempotency_key, config_snapshot) \
+                 VALUES ($1, $2, 0, $3, $4)",
+            )
+            .bind(uid)
+            .bind(item_id)
+            .bind(&idem)
+            .bind(&config)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "user.grant_item", Some(uid))
+        .await;
+    Ok(ok(serde_json::json!({ "user_id": uid, "item_id": item_id, "name": name, "kind": kind })))
+}
+
+/// 详情页分配考核（好学站「分配考核」口径）：把用户登记为某考核岗位（jixiao_claims，当期）
+#[derive(Deserialize)]
+struct AssignJixiaoReq {
+    type_id: i64,
+    /// YYYY-MM；缺省当月
+    #[serde(default)]
+    period: Option<String>,
+    #[serde(default)]
+    amount: Option<i64>,
+}
+
+#[post("/admin/users/{id}/jixiao")]
+async fn user_assign_jixiao(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    body: web::Json<AssignJixiaoReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let uid = path.into_inner();
+    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM jixiao_types WHERE id = $1)")
+        .bind(body.type_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+    if !exists {
+        return Err(DomainError::NotFound(body.type_id));
+    }
+    let period = body.period.clone().unwrap_or_else(|| {
+        (chrono::Utc::now() + chrono::Duration::hours(8)).format("%Y-%m").to_string()
+    });
+    let dup: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND period = $3)",
+    )
+    .bind(uid)
+    .bind(body.type_id)
+    .bind(&period)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    if dup {
+        return Err(DomainError::Validation("该用户本期已登记此考核岗位".into()));
+    }
+    sqlx::query(
+        "INSERT INTO jixiao_claims (user_id, type_id, period, amount) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(uid)
+    .bind(body.type_id)
+    .bind(&period)
+    .bind(body.amount.unwrap_or(0))
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "user.assign_jixiao", Some(uid))
+        .await;
+    Ok(ok(serde_json::json!({ "user_id": uid, "type_id": body.type_id, "period": period })))
+}
+
+/// 职务新增（好学站角色管理口径）：sysop 建新职务供分配
+#[derive(Deserialize)]
+struct RoleCreateReq {
+    key: String,
+    name: String,
+    #[serde(default)]
+    descr: Option<String>,
+    #[serde(default)]
+    sort: Option<i32>,
+}
+
+#[post("/admin/roles")]
+async fn role_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<RoleCreateReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    let key = body.key.trim().to_lowercase();
+    if key.is_empty() || !key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err(DomainError::Validation("职务 key 仅限小写字母/数字/下划线".into()));
+    }
+    let dup: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM roles WHERE key = $1)")
+        .bind(&key)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+    if dup {
+        return Err(DomainError::Validation("职务 key 已存在".into()));
+    }
+    sqlx::query("INSERT INTO roles (key, name, descr, sort) VALUES ($1, $2, $3, $4)")
+        .bind(&key)
+        .bind(body.name.trim())
+        .bind(&body.descr)
+        .bind(body.sort.unwrap_or(0))
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "role.create", None)
+        .await;
+    Ok(ok(serde_json::json!({ "key": key, "name": body.name })))
 }
 
 /// 详情页删除用户（好学站用户详情「删除」口径）：仅 sysop，且要求先封禁（防误删活跃账号）

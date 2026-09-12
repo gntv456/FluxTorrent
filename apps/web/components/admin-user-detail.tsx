@@ -60,6 +60,37 @@ function fmtBytes(n: number): string {
 }
 const fmtHours = (sec: number) => `${Math.floor(sec / 3600)} 小时`;
 
+/** 权限分类 → 中文标签（与后端 permissions.category 对应） */
+const CATEGORY_LABEL: Record<string, string> = {
+  content: "内容管理",
+  liaison: "外联",
+  repost: "转载",
+  seed: "做种与 H&R",
+  user: "用户管理",
+  system: "系统",
+  site: "站点管理",
+  upload: "发布管理",
+};
+
+/** 道具 kind → 中文标签（下拉分组用） */
+const ITEM_KIND_LABEL: Record<string, string> = {
+  upload_credit: "上传量",
+  invite: "邀请类",
+  temp_invite: "邀请类",
+  gift_spark: "火花",
+  custom_title: "头衔卡",
+  rename_card: "卡牌",
+  makeup_card: "卡牌",
+  rainbow_name: "卡牌",
+  rainbow_id: "卡牌",
+  avatar_frame: "装饰",
+  animated_avatar: "装饰",
+  vip: "VIP",
+  app_vip: "VIP",
+  ad_free: "特权",
+  charity: "公益",
+};
+
 export function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -78,18 +109,23 @@ export function AdminUserDetailPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // NP 级管理操作面板
-  const [panel, setPanel] = useState<"" | "class" | "role" | "perm" | "medal">("");
-  const [classes, setClasses] = useState<[number, string][]>([]);
+  const [panel, setPanel] = useState<"" | "class" | "role" | "perm" | "medal" | "item" | "jixiao">("");
   const [classId, setClassId] = useState("");
   const [roles, setRoles] = useState<{ key: string; name: string }[]>([]);
   const [roleKey, setRoleKey] = useState("");
   const [roleExp, setRoleExp] = useState("");
-  const [perms, setPerms] = useState<{ key: string; description: string | null }[]>([]);
+  const [newRole, setNewRole] = useState({ key: "", name: "", descr: "" });
+  const [perms, setPerms] = useState<{ key: string; name: string | null; category: string | null; descr: string | null }[]>([]);
   const [permData, setPermData] = useState<{ effective: string[]; overrides: { permission_key: string; granted: boolean }[] } | null>(null);
   const [permKey, setPermKey] = useState("");
   const [permGrant, setPermGrant] = useState<"1" | "0" | "">("");
   const [medals, setMedals] = useState<{ id: number; name: string }[]>([]);
   const [medalId, setMedalId] = useState("");
+  const [items, setItems] = useState<{ id: number; name: string; kind: string }[]>([]);
+  const [itemId, setItemId] = useState("");
+  const [jixiaoTypes, setJixiaoTypes] = useState<{ id: number; name: string }[]>([]);
+  const [jixiaoTypeId, setJixiaoTypeId] = useState("");
+  const [jixiaoPeriod, setJixiaoPeriod] = useState("");
   const [tmpPass, setTmpPass] = useState<string | null>(null);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(null), 3000); };
@@ -105,7 +141,7 @@ export function AdminUserDetailPage() {
       api.get<{ key: string; name: string }[]>("/api/v1/admin/roles").then(setRoles).catch(() => {});
     }
     if (panel === "perm") {
-      api.get<{ permissions: { key: string; description: string | null }[] }>("/api/v1/admin/permission-matrix")
+      api.get<{ permissions: { key: string; name: string | null; category: string | null; descr: string | null }[] }>("/api/v1/admin/permission-matrix")
         .then((m) => setPerms(m.permissions ?? []))
         .catch(() => {});
       api.get<{ effective: string[]; overrides: { permission_key: string; granted: boolean }[] }>(`/api/v1/admin/user-permissions?user_id=${uid}`)
@@ -115,7 +151,13 @@ export function AdminUserDetailPage() {
     if (panel === "medal" && medals.length === 0) {
       api.get<{ id: number; name: string }[]>("/api/v1/medals").then(setMedals).catch(() => {});
     }
-  }, [panel, uid, roles.length, medals.length]);
+    if (panel === "item" && items.length === 0) {
+      api.get<{ id: number; name: string; kind: string }[]>("/api/v1/shop/items").then(setItems).catch(() => {});
+    }
+    if (panel === "jixiao" && jixiaoTypes.length === 0) {
+      api.get<{ id: number; name: string }[]>("/api/v1/jixiao/types").then(setJixiaoTypes).catch(() => {});
+    }
+  }, [panel, uid, roles.length, medals.length, items.length, jixiaoTypes.length]);
 
   useEffect(() => {
     if (tab === "spark") {
@@ -224,6 +266,47 @@ export function AdminUserDetailPage() {
       flash("勋章已授予");
       setPanel("");
       await load();
+    } catch (e) { flash(e instanceof ApiError ? e.message : "操作失败"); }
+    finally { setBusy(false); }
+  }
+
+  async function submitItem() {
+    if (!itemId) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ name: string; kind: string }>(`/api/v1/admin/users/${uid}/grant-item/${itemId}`, {});
+      flash(`已发放「${r.name}」（${r.kind}）`);
+      setPanel("");
+      await load();
+    } catch (e) { flash(e instanceof ApiError ? e.message : "操作失败"); }
+    finally { setBusy(false); }
+  }
+
+  async function submitJixiao() {
+    if (!jixiaoTypeId) return;
+    setBusy(true);
+    try {
+      await api.post(`/api/v1/admin/users/${uid}/jixiao`, {
+        type_id: Number(jixiaoTypeId),
+        period: jixiaoPeriod || undefined,
+      });
+      flash("考核岗位已登记");
+      setPanel("");
+    } catch (e) { flash(e instanceof ApiError ? e.message : "操作失败"); }
+    finally { setBusy(false); }
+  }
+
+  async function submitNewRole() {
+    if (!newRole.key.trim() || !newRole.name.trim()) return;
+    setBusy(true);
+    try {
+      await api.post("/api/v1/admin/roles", {
+        key: newRole.key, name: newRole.name, descr: newRole.descr || undefined,
+      });
+      flash(`职务「${newRole.name}」已创建`);
+      setNewRole({ key: "", name: "", descr: "" });
+      const list = await api.get<{ key: string; name: string }[]>("/api/v1/admin/roles");
+      setRoles(list);
     } catch (e) { flash(e instanceof ApiError ? e.message : "操作失败"); }
     finally { setBusy(false); }
   }
@@ -339,6 +422,8 @@ export function AdminUserDetailPage() {
               <button className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${panel === "role" ? "bg-sky text-white" : "border border-line"}`} onClick={() => { setPanel(panel === "role" ? "" : "role"); setAdjust(false); }}>分配角色</button>
               <button className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${panel === "perm" ? "bg-sky text-white" : "border border-line"}`} onClick={() => { setPanel(panel === "perm" ? "" : "perm"); setAdjust(false); }}>分配权限</button>
               <button className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${panel === "medal" ? "bg-sky text-white" : "border border-line"}`} onClick={() => { setPanel(panel === "medal" ? "" : "medal"); setAdjust(false); }}>授予勋章</button>
+              <button className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${panel === "item" ? "bg-sky text-white" : "border border-line"}`} onClick={() => { setPanel(panel === "item" ? "" : "item"); setAdjust(false); }}>授予道具</button>
+              <button className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${panel === "jixiao" ? "bg-sky text-white" : "border border-line"}`} onClick={() => { setPanel(panel === "jixiao" ? "" : "jixiao"); setAdjust(false); }}>分配考核</button>
               <button disabled={busy} onClick={resetPass} className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold">重置密码</button>
               <button disabled={busy} onClick={() => toggle("download_enabled")}
                 className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${d.download_enabled ? "border border-line text-danger" : "bg-mint text-white"}`}>
@@ -377,8 +462,8 @@ export function AdminUserDetailPage() {
 
             {/* 分配角色 */}
             {panel === "role" && (
-              <div className="cmgmt-form rounded-[var(--r-md)] border border-line p-3">
-                <p className="mb-2 text-xs text-sub">职务可兼任；到期自动失效（可选）。</p>
+              <div className="cmgmt-form flex flex-col gap-3 rounded-[var(--r-md)] border border-line p-3">
+                <p className="text-xs text-sub">职务可兼任；到期自动失效（可选）。</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
                     <option value="">选择职务</option>
@@ -388,6 +473,19 @@ export function AdminUserDetailPage() {
                   <button className="baozi-button" disabled={busy || !roleKey} onClick={() => submitRole(true)}>分配</button>
                   <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-danger" disabled={busy || !roleKey} onClick={() => submitRole(false)}>收回</button>
                 </div>
+                {/* 新增职务（sysop）：分配前发现缺角色可直接建 */}
+                <details className="rounded-[var(--r-sm)] border border-dashed border-line p-2">
+                  <summary className="cursor-pointer text-xs font-bold text-sub">＋ 新增职务（需要新角色时在此创建）</summary>
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <label className="flex flex-col gap-1 text-xs">Key（小写/下划线）
+                      <input value={newRole.key} onChange={(e) => setNewRole({ ...newRole, key: e.target.value })} placeholder="translator" className="min-h-[40px] w-40 rounded-[var(--r-sm)] border border-line px-2" /></label>
+                    <label className="flex flex-col gap-1 text-xs">名称
+                      <input value={newRole.name} onChange={(e) => setNewRole({ ...newRole, name: e.target.value })} placeholder="翻译员" className="min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line px-2" /></label>
+                    <label className="flex flex-col gap-1 text-xs">说明（可选）
+                      <input value={newRole.descr} onChange={(e) => setNewRole({ ...newRole, descr: e.target.value })} className="min-h-[40px] w-48 rounded-[var(--r-sm)] border border-line px-2" /></label>
+                    <button className="baozi-button" disabled={busy || !newRole.key.trim() || !newRole.name.trim()} onClick={submitNewRole}>创建</button>
+                  </div>
+                </details>
               </div>
             )}
 
@@ -402,14 +500,27 @@ export function AdminUserDetailPage() {
                   </p>
                 )}
                 <div className="flex flex-wrap items-center gap-2">
-                  <select value={permKey} onChange={(e) => setPermKey(e.target.value)} className="min-h-[40px] max-w-72 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+                  <select value={permKey} onChange={(e) => setPermKey(e.target.value)} className="min-h-[40px] max-w-96 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
                     <option value="">选择权限</option>
-                    {perms.map((p) => <option key={p.key} value={p.key}>{p.key}{p.description ? ` · ${p.description}` : ""}</option>)}
+                    {Object.entries(
+                      perms.reduce<Record<string, typeof perms>>((acc, p) => {
+                        (acc[p.category ?? "其他"] ??= []).push(p);
+                        return acc;
+                      }, {}),
+                    ).map(([cat, list]) => (
+                      <optgroup key={cat} label={CATEGORY_LABEL[cat] ?? cat}>
+                        {list.map((p) => (
+                          <option key={p.key} value={p.key}>
+                            {p.name ?? p.key}{p.descr ? ` — ${p.descr}` : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                   <select value={permGrant} onChange={(e) => setPermGrant(e.target.value as "1" | "0" | "")} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
                     <option value="">授予/拒绝</option>
-                    <option value="1">授予</option>
-                    <option value="0">拒绝</option>
+                    <option value="1">授予（额外允许）</option>
+                    <option value="0">拒绝（显式禁止）</option>
                   </select>
                   <button className="baozi-button" disabled={busy || !permKey || !permGrant} onClick={submitPerm}>提交</button>
                 </div>
@@ -426,6 +537,44 @@ export function AdminUserDetailPage() {
                     {medals.map((m) => <option key={m.id} value={m.id}>#{m.id} {m.name}</option>)}
                   </select>
                   <button className="baozi-button" disabled={busy || !medalId} onClick={submitMedal}>授予</button>
+                </div>
+              </div>
+            )}
+
+            {/* 授予道具（含卡牌/装饰类） */}
+            {panel === "item" && (
+              <div className="cmgmt-form rounded-[var(--r-md)] border border-line p-3">
+                <p className="mb-2 text-xs text-sub">免费发放：上传量/火花/邀请即时生效；化妆卡、改名卡等卡牌道具入背包待用户使用。</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select value={itemId} onChange={(e) => setItemId(e.target.value)} className="min-h-[40px] max-w-80 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+                    <option value="">选择道具</option>
+                    {Object.entries(
+                      items.reduce<Record<string, typeof items>>((acc, it) => {
+                        (acc[ITEM_KIND_LABEL[it.kind] ?? it.kind] ??= []).push(it);
+                        return acc;
+                      }, {}),
+                    ).map(([kind, list]) => (
+                      <optgroup key={kind} label={kind}>
+                        {list.map((it) => <option key={it.id} value={it.id}>#{it.id} {it.name}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <button className="baozi-button" disabled={busy || !itemId} onClick={submitItem}>发放</button>
+                </div>
+              </div>
+            )}
+
+            {/* 分配考核 */}
+            {panel === "jixiao" && (
+              <div className="cmgmt-form rounded-[var(--r-md)] border border-line p-3">
+                <p className="mb-2 text-xs text-sub">登记为考核岗位后按系统流水自动核算绩效；期间留空默认当月。</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select value={jixiaoTypeId} onChange={(e) => setJixiaoTypeId(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+                    <option value="">选择考核岗位</option>
+                    {jixiaoTypes.map((j) => <option key={j.id} value={j.id}>#{j.id} {j.name}</option>)}
+                  </select>
+                  <input type="month" value={jixiaoPeriod} onChange={(e) => setJixiaoPeriod(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" title="考核期间（默认当月）" />
+                  <button className="baozi-button" disabled={busy || !jixiaoTypeId} onClick={submitJixiao}>登记</button>
                 </div>
               </div>
             )}
