@@ -470,7 +470,10 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
 pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> anyhow::Result<()> {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
     let mut hour_tick = tokio::time::interval(std::time::Duration::from_secs(3600));
+    let mut day_tick = tokio::time::interval(std::time::Duration::from_secs(3600 * 24));
     let mut first_hour = true;
+    let mut first_day = true;
+    let mut last_bank_day = chrono::Utc::now().date_naive();
     loop {
         tokio::select! {
             _ = tick.tick() => {
@@ -484,6 +487,16 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
             _ = hour_tick.tick() => {
                 if first_hour { first_hour = false; continue; }
                 if let Err(e) = seeding_reward(&db, 10).await { tracing::error!(?e, "seeding_reward"); }
+            }
+            _ = day_tick.tick() => {
+                if first_day { first_day = false; continue; }
+                // 站点时区 UTC+8 的自然日切换点（本地 00:10 = UTC 前一日 16:10）
+                let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
+                if site_day != last_bank_day {
+                    last_bank_day = site_day;
+                    tracing::info!(?site_day, "bank_daily start");
+                    crate::bank_jobs::bank_daily(&db).await;
+                }
             }
         }
     }

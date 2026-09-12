@@ -68,6 +68,40 @@ pub fn maturity_date(start: chrono::DateTime<Utc>, term_days: i32) -> chrono::Da
 
 pub const VALID_TERMS: [i32; 5] = [7, 30, 90, 180, 365];
 
+// ============ 银行利率（0048 全功能口径：bp = 万分比/日） ============
+
+/// 活期日利率（万分比）：0.01%/日
+pub const DEMAND_RATE_BP: i32 = 1;
+
+/// 贷款日利率分档（万分比/日），期限任意（活期口径的贷款，按天计）
+pub fn loan_rate_bp(term_days: i32) -> i32 {
+    match term_days {
+        7 => 8,
+        30 => 12,
+        90 => 18,
+        180 => 20,
+        365 => 22,
+        _ => 0,
+    }
+}
+
+pub const LOAN_TERMS: [i32; 5] = [7, 30, 90, 180, 365];
+
+/// 活期结息（整数火花，向下取整防超发）：本金 × 日利率 × 天数
+pub fn demand_interest(principal: i64, rate_bp: i32, days: i64) -> i64 {
+    principal * rate_bp as i64 * days / 10_000
+}
+
+/// 贷款计息（整数火花，向上取整防逃息）：本金 × 日利率 × 天数
+pub fn loan_interest(principal: i64, rate_bp: i32, days: i64) -> i64 {
+    (principal * rate_bp as i64 * days + 9_999) / 10_000
+}
+
+/// 定期提前支取手续费（万分比）
+pub fn early_penalty(principal: i64, penalty_bp: i32) -> i64 {
+    principal * penalty_bp as i64 / 10_000
+}
+
 // ============ 站免池（M13 旧站口径：月累计 200 万触发次月全局双免） ============
 
 pub const MAGIC_POOL_GOAL: i64 = 2_000_000;
@@ -142,6 +176,38 @@ mod tests {
     fn invalid_term_zero_rate() {
         assert_eq!(term_rate(45), 0.0);
         assert_eq!(maturity_interest(10000, 45), 0);
+    }
+
+    #[test]
+    fn demand_interest_floors() {
+        // 10000 火花 @0.01%/日 × 3 天 = 3
+        assert_eq!(demand_interest(10_000, 1, 3), 3);
+        // 99 火花 @0.01%/日 × 1 天 = 0.0099 → 0（防超发）
+        assert_eq!(demand_interest(99, 1, 1), 0);
+    }
+
+    #[test]
+    fn loan_interest_ceils() {
+        // 10000 火花 @0.08%/日 × 7 天 = 56
+        assert_eq!(loan_interest(10_000, 8, 7), 56);
+        // 10000 火花 @0.12%/日 × 30 天 = 360
+        assert_eq!(loan_interest(10_000, 12, 30), 360);
+        // 9999 火花 @0.12%/日 × 1 天 = 11.9988 → 12（防逃息进位）
+        assert_eq!(loan_interest(9_999, 12, 1), 12);
+        assert_eq!(loan_interest(0, 12, 30), 0);
+    }
+
+    #[test]
+    fn loan_rate_tiers() {
+        assert_eq!(loan_rate_bp(7), 8);
+        assert_eq!(loan_rate_bp(365), 22);
+        assert_eq!(loan_rate_bp(45), 0);
+    }
+
+    #[test]
+    fn early_penalty_math() {
+        // 10000 火花提前支取 @0.50% = 50
+        assert_eq!(early_penalty(10_000, 50), 50);
     }
 
     #[test]

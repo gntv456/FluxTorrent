@@ -3,7 +3,7 @@ import { BankCard } from "@/components/bank-actions";
 
 export const dynamic = "force-dynamic";
 
-/** 银行系统（包子站 bank.php 同款）：火花定期存款，利率按期限 1%~18% */
+/** 银行系统（火花银行对齐）：活期复利 + 定期分档 + 贷款 */
 export default async function BankPage() {
   const { dict } = await getDict();
   return (
