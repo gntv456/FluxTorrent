@@ -1,9 +1,13 @@
 import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
+import type { PreserveItem } from "@/lib/data";
 import { editionName, formatBytes, promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
+
+/** 保种区行（/preserve 下发的同构行：id 键为 torrent_id） */
+type PreserveRowAlias = PreserveItem;
 
 /** 分类色（好学站 catsprites 色系）：类型列色块 + 无封面时的回退底色 */
 const CAT_COLORS: Record<number, string> = {
@@ -42,10 +46,21 @@ function remaining(end: string | null | undefined, now: number): string | null {
  * 类型色块 | 封面 46px（media_info.poster 外链，无图回退类型色块）
  * | 标题三行（主标题[置顶/新] → 促销状态+剩余时间紧跟种子名 → 副题链 → 标签·发布者）
  * | 评论/存活/大小/做种/下载/完成 | 行为（下载 + ⋮ 下拉：收藏/编辑/删除）。
+ * id 字段：资源库行是 t.id，保种区行是 t.torrent_id（adaptId 兼容两种来源）。
  */
-async function TorrentTr({ t }: { t: TorrentListItem }) {
+async function TorrentTr({
+  t,
+  extra,
+}: {
+  t: TorrentListItem | PreserveRowAlias;
+  /** 行尾附加列（保种区的认领人/认领按钮）；渲染在数字列后、行为列前 */
+  extra?: React.ReactNode;
+}) {
   const { dict, locale } = await getDict();
-  const promo = promotionBadge(t.promotion);
+  const id = "torrent_id" in t ? t.torrent_id : t.id;
+  const promo = promotionBadge(
+    (t.promotion as TorrentListItem["promotion"]) ?? null,
+  );
   const edition = editionName(t.edition_id);
   const grade =
     t.grade_id !== null ? dict.torrents.grades[t.grade_id + 1] : undefined;
@@ -76,7 +91,7 @@ async function TorrentTr({ t }: { t: TorrentListItem }) {
       </td>
       {/* 封面（好学站 46px 外链图；无图回退类型色块底 + 🎬） */}
       <td className="torrents-td-cover">
-        <Link href={`/torrent/${t.id}`} aria-hidden tabIndex={-1}>
+        <Link href={`/torrent/${id}`} aria-hidden tabIndex={-1}>
           {t.poster ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -103,7 +118,7 @@ async function TorrentTr({ t }: { t: TorrentListItem }) {
               📌
             </span>
           )}
-          <Link href={`/torrent/${t.id}`} className="torrents-name" title={t.name}>
+          <Link href={`/torrent/${id}`} className="torrents-name" title={t.name}>
             <b>{t.name}</b>
           </Link>
           {isNew && <span className="torrents-new">{dict.torrents.newTag ?? "新"}</span>}
@@ -151,9 +166,10 @@ async function TorrentTr({ t }: { t: TorrentListItem }) {
       <td className="num seed-arrow">{t.seeders}</td>
       <td className="num leech-arrow">{t.leechers}</td>
       <td className="num">{t.times_completed}</td>
+      {extra}
       {/* 行为列：下载 + ⋮ 下拉（收藏/编辑/删除，好学站 staff 菜单口径） */}
       <td className="torrents-td-actions">
-        <TorrentActions torrentId={t.id} downloadLabel={dict.torrents.download ?? "下载本种"} />
+        <TorrentActions torrentId={id} downloadLabel={dict.torrents.download ?? "下载本种"} />
       </td>
     </tr>
   );

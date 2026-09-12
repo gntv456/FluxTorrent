@@ -423,6 +423,24 @@ struct PreserveRow {
     size: i64,
     seeders: i32,
     claimed_by: Option<String>,
+    // 资源库行同构字段（保种区列表复用 TorrentTr 渲染，好学站口径）
+    small_descr: Option<String>,
+    category_id: i32,
+    medium_id: i32,
+    grade_id: Option<i32>,
+    edition_id: Option<i32>,
+    leechers: i32,
+    times_completed: i32,
+    comments: i64,
+    #[serde(rename = "official")]
+    official_tag: bool,
+    sticky: bool,
+    anonymous: bool,
+    promotion: Option<String>,
+    promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
+    poster: Option<String>,
+    owner_name: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Deserialize)]
@@ -456,10 +474,36 @@ async fn preserve_list(
         .unwrap_or_else(|| "%".into());
 
     let rows = sqlx::query_as::<_, PreserveRow>(
-        "SELECT sp.torrent_id, t.name, t.size, t.seeders, u.username AS claimed_by \
+        "SELECT sp.torrent_id, t.name, t.size, t.seeders, u.username AS claimed_by, \
+         t.small_descr, t.category_id, t.medium_id, t.grade_id, t.edition_id, \
+         t.leechers, t.times_completed, \
+         (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments, \
+         t.official_tag, t.sticky, t.anonymous, \
+         (SELECT p.kind::text FROM promotions p WHERE p.starts_at <= now() AND p.ends_at > now() \
+            AND (
+                    p.torrent_id = t.id
+                    OR (p.torrent_id IS NULL AND (
+                        p.scope = 'global'
+                        OR (p.scope = 'official' AND t.official_tag)
+                        OR (p.scope = 'non_official' AND NOT t.official_tag)
+                        OR (p.scope = 'category' AND t.category_id = p.category_id)))) \
+            ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion, \
+         (SELECT p.ends_at FROM promotions p WHERE p.starts_at <= now() AND p.ends_at > now() \
+            AND (
+                    p.torrent_id = t.id
+                    OR (p.torrent_id IS NULL AND (
+                        p.scope = 'global'
+                        OR (p.scope = 'official' AND t.official_tag)
+                        OR (p.scope = 'non_official' AND NOT t.official_tag)
+                        OR (p.scope = 'category' AND t.category_id = p.category_id)))) \
+            ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion_ends_at, \
+         t.media_info->>'poster' AS poster, \
+         CASE WHEN t.anonymous THEN NULL ELSE o.username END AS owner_name, \
+         t.created_at \
          FROM seed_preserve sp \
          JOIN torrents t ON t.id = sp.torrent_id \
          LEFT JOIN users u ON u.id = sp.claimed_by \
+         LEFT JOIN users o ON o.id = t.owner_id \
          WHERE sp.exited_at IS NULL AND t.approval_status = 1 \
            AND ($1::int IS NULL OR t.category_id = $1) \
            AND t.name ILIKE $2 \

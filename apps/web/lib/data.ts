@@ -189,6 +189,23 @@ export interface PreserveItem {
   size: number;
   seeders: number;
   claimed_by: string | null;
+  // 资源库行同构字段（保种区列表复用资源库行渲染）
+  small_descr: string | null;
+  category_id: number;
+  medium_id: number;
+  grade_id: number | null;
+  edition_id: number | null;
+  leechers: number;
+  times_completed: number;
+  comments: number;
+  official: boolean;
+  anonymous: boolean;
+  sticky: boolean;
+  promotion: string | null;
+  promotion_ends_at: string | null;
+  poster: string | null;
+  owner_name: string | null;
+  created_at: string;
 }
 export interface PreserveStats {
   preserving: number;

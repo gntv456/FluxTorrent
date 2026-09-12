@@ -1735,13 +1735,18 @@ async fn ban_delete(
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
-// ---- staffpanel 运营工具：免费下载 / 批量私信 / 添加用户 / 增加魔力 / 警告用户 / 重复IP / 失败登录 ----
+// ---- staffpanel 运营工具：种子促销 / 批量私信 / 添加用户 / 增加魔力 / 警告用户 / 重复IP / 失败登录 ----
 
-/// 全站促销（freeleech.php 口径）：向 promotions 写一条 global 限时促销
+/// 种子促销（原"免费下载"，freeleech.php 升级口径）：
+/// scope = global 全站 | official 官种 | non_official 非官种 | category 某分类
 #[derive(Deserialize)]
 struct FreeleechBody {
     kind: String, // free / x2 / x2free / half / x2half / p30
     hours: i32,
+    #[serde(default)]
+    scope: Option<String>,
+    #[serde(default)]
+    category_id: Option<i32>,
 }
 
 #[post("/admin/freeleech")]
@@ -1757,18 +1762,47 @@ async fn freeleech_set(
     if !(1..=720).contains(&body.hours) {
         return Err(DomainError::Validation("时长需在 1-720 小时".into()));
     }
-    // 关闭进行中的手动 global 促销，再写新促销
+    let scope = body.scope.as_deref().unwrap_or("global");
+    let scope = match scope {
+        "global" | "official" | "non_official" | "category" => scope,
+        _ => return Err(DomainError::Validation("促销范围无效".into())),
+    };
     let mut tx = state.repo.db.begin().await.map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("DELETE FROM promotions WHERE scope='global' AND source='manual' AND ends_at > now()")
-        .execute(&mut *tx).await.map_err(|e| DomainError::Internal(e.into()))?;
+    if scope == "category" {
+        let Some(cid) = body.category_id else {
+            return Err(DomainError::Validation("分类促销需指定分类".into()));
+        };
+        let exists: Option<i32> = sqlx::query_scalar("SELECT id FROM categories WHERE id = $1")
+            .bind(cid).fetch_optional(&mut *tx).await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        if exists.is_none() {
+            return Err(DomainError::Validation("分类不存在".into()));
+        }
+        // 同分类的进行中手动促销先关闭，再写新促销
+        sqlx::query("DELETE FROM promotions WHERE scope='category' AND category_id=$1 AND source='manual' AND ends_at > now()")
+            .bind(cid).execute(&mut *tx).await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let id: i64 = sqlx::query_scalar(
+            "INSERT INTO promotions (scope, category_id, kind, starts_at, ends_at, source, created_by) \
+             VALUES ('category', $1, $2::promotion_kind_enum, now(), now() + make_interval(hours => $3), 'manual', $4) RETURNING id",
+        ).bind(cid).bind(kind).bind(body.hours).bind(auth.id)
+        .fetch_one(&mut *tx).await.map_err(|e| DomainError::Internal(e.into()))?;
+        tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+        state.repo.audit(Some(auth.id), "promo_set", None).await;
+        return Ok(ok(serde_json::json!({ "id": id, "kind": kind, "scope": scope, "category_id": cid, "hours": body.hours })));
+    }
+    // 关闭进行中的同范围手动促销，再写新促销
+    sqlx::query("DELETE FROM promotions WHERE scope=$1::promotion_scope AND source='manual' AND ends_at > now()")
+        .bind(scope).execute(&mut *tx).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO promotions (scope, kind, starts_at, ends_at, source, created_by) \
-         VALUES ('global', $1::promotion_kind_enum, now(), now() + make_interval(hours => $2), 'manual', $3) RETURNING id",
-    ).bind(kind).bind(body.hours).bind(auth.id)
+         VALUES ($1::promotion_scope, $2::promotion_kind_enum, now(), now() + make_interval(hours => $3), 'manual', $4) RETURNING id",
+    ).bind(scope).bind(kind).bind(body.hours).bind(auth.id)
     .fetch_one(&mut *tx).await.map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "freeleech_set", None).await;
-    Ok(ok(serde_json::json!({ "id": id, "kind": kind, "hours": body.hours })))
+    state.repo.audit(Some(auth.id), "promo_set", None).await;
+    Ok(ok(serde_json::json!({ "id": id, "kind": kind, "scope": scope, "hours": body.hours })))
 }
 
 #[delete("/admin/freeleech")]
@@ -1777,7 +1811,8 @@ async fn freeleech_clear(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     if auth.class_id < 99 { return Err(DomainError::Forbidden); }
-    let n = sqlx::query("DELETE FROM promotions WHERE scope='global' AND source='manual' AND ends_at > now()")
+    // 清除全部进行中的手动站点级促销（全站/官种/非官种/分类）
+    let n = sqlx::query("DELETE FROM promotions WHERE scope IN ('global','official','non_official','category') AND source='manual' AND ends_at > now()")
         .execute(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
     state.repo.audit(Some(auth.id), "freeleech_clear", None).await;
@@ -1785,9 +1820,12 @@ async fn freeleech_clear(
 }
 
 #[derive(serde::Serialize, sqlx::FromRow)]
-struct GlobalPromoRow {
+struct SitePromoRow {
     id: i64,
+    scope: String,
     kind: String,
+    category_id: Option<i32>,
+    category_name: Option<String>,
     starts_at: chrono::DateTime<chrono::Utc>,
     ends_at: chrono::DateTime<chrono::Utc>,
 }
@@ -1798,12 +1836,14 @@ async fn freeleech_list(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     if auth.class_id < 90 { return Err(DomainError::Forbidden); }
-    let row: Option<GlobalPromoRow> = sqlx::query_as(
-        "SELECT id, kind::text AS kind, starts_at, ends_at FROM promotions \
-         WHERE scope='global' AND source='manual' AND ends_at > now() ORDER BY id DESC LIMIT 1",
-    ).fetch_optional(&state.repo.db).await
+    let rows: Vec<SitePromoRow> = sqlx::query_as(
+        "SELECT p.id, p.scope::text AS scope, p.kind::text AS kind, p.category_id, c.name AS category_name, p.starts_at, p.ends_at \
+         FROM promotions p LEFT JOIN categories c ON c.id = p.category_id \
+         WHERE p.scope IN ('global','official','non_official','category') AND p.source='manual' AND p.ends_at > now() \
+         ORDER BY p.id DESC",
+    ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(row))
+    Ok(ok(rows))
 }
 
 /// 批量私信（staffmess.php 口径）：给全部（或某等级以上）用户发站内信

@@ -13,7 +13,7 @@ interface CatItem { id: number; name: string; torrents: number }
 interface TypePack { code: string; name: string; description: string | null; brand: string; categories: { id: number; name: string }[]; modules: Record<string, boolean>; sort: number }
 interface BanItem { id: number; ip: string; reason: string | null; banned_by: string | null; created_at: string }
 interface MailItem { id: number; subject: string; recipients: number; created_at: string; sender: string | null }
-interface GlobalPromo { id: number; kind: string; starts_at: string; ends_at: string }
+interface SitePromo { id: number; scope: string; kind: string; category_id: number | null; category_name: string | null; starts_at: string; ends_at: string }
 interface WarnedUser { id: number; username: string; warned_until: string | null; warned_reason: string | null }
 interface IpCheckRow { ip: string | null; users: number; usernames: string | null; last_seen: string | null }
 interface FailedLogin { id: number; username: string | null; ip: string | null; created_at: string }
@@ -64,7 +64,9 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
   // 运营工具状态
-  const [promo, setPromo] = useState<GlobalPromo | null>(null);
+  const [promo, setPromo] = useState<SitePromo[]>([]);
+  const [promoScope, setPromoScope] = useState("global");
+  const [promoCat, setPromoCat] = useState<number | "">("");
   const [promoKind, setPromoKind] = useState("free");
   const [promoHours, setPromoHours] = useState(24);
   const [smSubject, setSmSubject] = useState("");
@@ -135,7 +137,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
         setCats(cs);
       } catch { /* 分类需 sysop，无权限时保持为空 */ }
       // 运营工具数据（促销/警告/重复IP/失败登录，失败静默）
-      api.get<GlobalPromo | null>("/api/v1/admin/freeleech").then(setPromo).catch(() => {});
+      api.get<SitePromo[]>("/api/v1/admin/freeleech").then(setPromo).catch(() => {});
       api.get<WarnedUser[]>("/api/v1/admin/warned").then(setWarned).catch(() => setWarned([]));
       api.get<IpCheckRow[]>("/api/v1/admin/ipcheck").then(setIpRows).catch(() => setIpRows([]));
       api.get<FailedLogin[]>("/api/v1/admin/maxlogin").then(setFailRows).catch(() => setFailRows([]));
@@ -407,12 +409,32 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
         </>
       )}
 
-      {/* 全站促销（freeleech） */}
+      {/* 种子促销（freeleech 升级：全站/官种/非官种/分类） */}
       {tab === "promo" && (
         <>
           <section className="baozi-panel p-4">
             <h2 className="mb-3 text-base font-bold text-ink">{t.promoNew}</h2>
             <div className="cmgmt-form">
+              <label>
+                {t.promoScope}
+                <select value={promoScope} onChange={(e) => { setPromoScope(e.target.value); setPromoCat(""); }}>
+                  <option value="global">{t.scopeGlobal}</option>
+                  <option value="official">{t.scopeOfficial}</option>
+                  <option value="non_official">{t.scopeNonOfficial}</option>
+                  <option value="category">{t.scopeCategory}</option>
+                </select>
+              </label>
+              {promoScope === "category" && (
+                <label>
+                  {t.promoCat}
+                  <select value={promoCat} onChange={(e) => setPromoCat(e.target.value === "" ? "" : Number(e.target.value))}>
+                    <option value="">{t.promoCat}</option>
+                    {cats.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label>
                 {t.promoKind}
                 <select value={promoKind} onChange={(e) => setPromoKind(e.target.value)}>
@@ -426,26 +448,41 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
               </label>
               <label>{t.promoHours}<input type="number" min={1} max={720} value={promoHours} onChange={(e) => setPromoHours(Number(e.target.value))} /></label>
               <div className="flex gap-2">
-                <button className="baozi-button" disabled={busy || promoHours < 1}
+                <button className="baozi-button" disabled={busy || promoHours < 1 || (promoScope === "category" && promoCat === "")}
                   onClick={() => guard(async () => {
-                    await api.post("/api/v1/admin/freeleech", { kind: promoKind, hours: promoHours });
+                    await api.post("/api/v1/admin/freeleech", {
+                      kind: promoKind, hours: promoHours, scope: promoScope,
+                      ...(promoScope === "category" ? { category_id: promoCat } : {}),
+                    });
+                    setPromoCat("");
                   }, t.promoSet)}>{t.promoBtnSet}</button>
-                <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold" disabled={busy || !promo}
+                <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold" disabled={busy || promo.length === 0}
                   onClick={() => guard(async () => { await api.del("/api/v1/admin/freeleech"); }, t.promoCleared)}>{t.promoBtnClear}</button>
               </div>
             </div>
           </section>
           <table className="nexus-table">
+            <thead>
+              <tr><td className="colhead">{t.colScope}</td><td className="colhead">{t.promoKind}</td><td className="colhead">{t.promoStart}</td><td className="colhead">{t.promoEnd}</td></tr>
+            </thead>
             <tbody>
-              <tr><td className="colhead">{t.promoKind}</td><td className="colhead">{t.promoStart}</td><td className="colhead">{t.promoEnd}</td></tr>
-              {promo ? (
-                <tr>
-                  <td className="font-bold">{promo.kind}</td>
-                  <td className="text-xs text-sub">{new Date(promo.starts_at).toLocaleString("zh-CN")}</td>
-                  <td className="text-xs text-sub">{new Date(promo.ends_at).toLocaleString("zh-CN")}</td>
-                </tr>
+              {promo.length > 0 ? (
+                promo.map((p) => (
+                  <tr key={p.id}>
+                    <td className="font-bold">
+                      {p.scope === "global" ? t.scopeGlobal
+                      : p.scope === "official" ? t.scopeOfficial
+                      : p.scope === "non_official" ? t.scopeNonOfficial
+                      : p.scope === "category" ? `${t.scopeCategory} · ${p.category_name ?? `#${p.category_id}`}`
+                      : p.scope}
+                    </td>
+                    <td className="font-bold">{p.kind}</td>
+                    <td className="text-xs text-sub">{new Date(p.starts_at).toLocaleString("zh-CN")}</td>
+                    <td className="text-xs text-sub">{new Date(p.ends_at).toLocaleString("zh-CN")}</td>
+                  </tr>
+                ))
               ) : (
-                <tr><td colSpan={3} className="py-6 text-center text-sub">{t.promoNone}</td></tr>
+                <tr><td colSpan={4} className="py-6 text-center text-sub">{t.promoNone}</td></tr>
               )}
             </tbody>
           </table>
