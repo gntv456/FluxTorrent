@@ -33,8 +33,7 @@ export function ContactStaff() {
     setBusy(true);
     setMsg(null);
     try {
-      await api.post("/api/v1/messages", {
-        to: t.staffReceiver,
+      await api.post("/api/v1/contactstaff", {
         subject: subject.trim(),
         body: body.trim(),
       });

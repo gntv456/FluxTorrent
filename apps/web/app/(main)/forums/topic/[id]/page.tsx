@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPosts } from "@/lib/data";
-import { ReplyBox } from "@/components/forum-composer";
+import { getPosts, getForums } from "@/lib/data";
+import { ReplyBox, TopicModActions, PostActions } from "@/components/forum-composer";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt } from "@/i18n/config";
 
@@ -18,6 +18,9 @@ export default async function TopicPage({
   if (!Number.isFinite(topicId)) notFound();
   const detail = await getPosts(topicId);
   if (!detail || detail.posts.length === 0) notFound();
+  // 版主「移动到」下拉用：仅 can_mod 时才需要
+  const forums = detail.can_mod ? await getForums() : [];
+  const authId = detail.current_user_id ?? -1;
 
   return (
     <div className="flex flex-col gap-4">
@@ -26,10 +29,26 @@ export default async function TopicPage({
           {dict.forums.backToForums}
         </Link>
         {detail.forum_name && (
-          <span className="text-sm text-sub">» {detail.forum_name}</span>
+          <Link href={`/forums/${detail.forum_id}`} className="text-sm text-sub hover:text-sky">
+            » {detail.forum_name}
+          </Link>
         )}
       </div>
-      <h1 className="font-display text-2xl">{detail.title}</h1>
+      <div className="flex flex-wrap items-center gap-2">
+        <h1 className="font-display text-2xl">
+          {detail.sticky && <span className="mr-1 text-coral">📌</span>}
+          {detail.locked && <span className="mr-1">🔒</span>}
+          {detail.title}
+        </h1>
+      </div>
+      {detail.can_mod && (
+        <TopicModActions
+          topicId={topicId}
+          sticky={detail.sticky}
+          locked={detail.locked}
+          forums={forums.map((f) => ({ id: f.id, name: f.name }))}
+        />
+      )}
       <table className="nexus-table">
         <tbody>
           {detail.posts.map((p, i) => (
@@ -44,15 +63,41 @@ export default async function TopicPage({
               </td>
               <td className="p-3">
                 <p className="whitespace-pre-wrap text-sm">{p.body}</p>
-                <p className="mt-2 text-[11px] text-sub">
-                  {new Date(p.created_at).toLocaleString(dateLocale(locale))}
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-sub">
+                  <span>
+                    {new Date(p.created_at).toLocaleString(dateLocale(locale))}
+                  </span>
+                  {p.edited_at && (
+                    <span className="italic">
+                      已由 #{p.edited_by} 编辑于{" "}
+                      {new Date(p.edited_at).toLocaleString(dateLocale(locale))}
+                    </span>
+                  )}
+                </div>
+                {(detail.can_mod || p.user_id === authId) && p.body !== "……" && (
+                  <PostActions
+                    postId={p.id}
+                    canMod={detail.can_mod}
+                    isSelf={p.user_id === authId}
+                    initialBody={p.body}
+                  />
+                )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <ReplyBox topicId={topicId} />
+      {detail.locked && !detail.can_mod ? (
+        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-center text-sm text-sub">
+          主题已锁定，无法回复
+        </p>
+      ) : detail.can_write ? (
+        <ReplyBox topicId={topicId} />
+      ) : (
+        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-center text-sm text-sub">
+          您没有在本版块回帖的权限
+        </p>
+      )}
     </div>
   );
 }

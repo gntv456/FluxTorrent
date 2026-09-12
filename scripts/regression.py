@@ -148,7 +148,7 @@ if items:
         check("装扮·未拥有被拒", r.get("code") == 1002)
 
 # ============ 5. 社区 ============
-s, r = call("GET", "/forums")
+s, r = call("GET", "/forums", token=tok)
 check("社区·论坛列表", r.get("code") == 0)
 s, r = call("GET", "/medals")
 check("社区·勋章", r.get("code") == 0)
@@ -186,7 +186,7 @@ s, r = call("GET", "/preserve")
 check("内容·保种区", r.get("code") == 0)
 s, r = call("GET", "/requests", token=tok)
 check("内容·求种", r.get("code") == 0)
-s, r = call("GET", "/top/users")
+s, r = call("GET", "/top/boards")
 check("运营·排行榜", r.get("code") == 0)
 
 # ============ 7.5 开放 API / 插件 / 管理 ============

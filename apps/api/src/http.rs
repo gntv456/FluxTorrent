@@ -78,6 +78,8 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(ban_delete)
         .service(freeleech_set)
         .service(freeleech_clear)
+        .service(freeleech_update)
+        .service(freeleech_delete)
         .service(freeleech_list)
         .service(staffmess_send)
         .service(admin_add_user)
@@ -1739,14 +1741,60 @@ async fn ban_delete(
 
 /// 种子促销（原"免费下载"，freeleech.php 升级口径）：
 /// scope = global 全站 | official 官种 | non_official 非官种 | category 某分类
+/// 支持自定义起止时间（可预约：到达开始时间自动生效）；同范围可并存多个促销（计费取最强档）
 #[derive(Deserialize)]
 struct FreeleechBody {
     kind: String, // free / x2 / x2free / half / x2half / p30
-    hours: i32,
+    hours: i32,   // 结束时间未提供时用（自开始时间起算）
     #[serde(default)]
     scope: Option<String>,
     #[serde(default)]
     category_id: Option<i32>,
+    #[serde(default)]
+    starts_at: Option<String>, // RFC3339，缺省=now
+    #[serde(default)]
+    ends_at: Option<String>,   // RFC3339，缺省=starts_at+hours
+}
+
+/// 促销参数校验：kind/scope 合法性 + 起止时间解析（starts 缺省 now，ends 缺省 starts+hours）
+fn promo_parse(
+    kind_in: &str,
+    scope_in: Option<&str>,
+    hours: i32,
+    starts_at: &Option<String>,
+    ends_at: &Option<String>,
+) -> DomainResult<(String, String, chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>)> {
+    let kind = match kind_in {
+        "free" | "x2" | "x2free" | "half" | "x2half" | "p30" => kind_in.to_string(),
+        _ => return Err(DomainError::Validation("促销类型无效".into())),
+    };
+    if ends_at.is_none() && !(1..=720).contains(&hours) {
+        return Err(DomainError::Validation("时长需在 1-720 小时".into()));
+    }
+    let scope = scope_in.unwrap_or("global").to_string();
+    match scope.as_str() {
+        "global" | "official" | "non_official" | "category" => {}
+        _ => return Err(DomainError::Validation("促销范围无效".into())),
+    }
+    let starts_at = match starts_at {
+        Some(s) => chrono::DateTime::parse_from_rfc3339(s)
+            .map_err(|_| DomainError::Validation("开始时间格式无效".into()))?
+            .with_timezone(&chrono::Utc),
+        None => chrono::Utc::now(),
+    };
+    let ends_at = match ends_at {
+        Some(e) => chrono::DateTime::parse_from_rfc3339(e)
+            .map_err(|_| DomainError::Validation("结束时间格式无效".into()))?
+            .with_timezone(&chrono::Utc),
+        None => starts_at + chrono::Duration::hours(hours as i64),
+    };
+    if ends_at <= starts_at {
+        return Err(DomainError::Validation("结束时间需晚于开始时间".into()));
+    }
+    if (ends_at - starts_at) > chrono::Duration::hours(24 * 90) {
+        return Err(DomainError::Validation("促销时长不可超过 90 天".into()));
+    }
+    Ok((kind, scope, starts_at, ends_at))
 }
 
 #[post("/admin/freeleech")]
@@ -1755,18 +1803,10 @@ async fn freeleech_set(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     if auth.class_id < 99 { return Err(DomainError::Forbidden); }
-    let kind = match body.kind.as_str() {
-        "free" | "x2" | "x2free" | "half" | "x2half" | "p30" => body.kind.as_str(),
-        _ => return Err(DomainError::Validation("促销类型无效".into())),
-    };
-    if !(1..=720).contains(&body.hours) {
-        return Err(DomainError::Validation("时长需在 1-720 小时".into()));
-    }
-    let scope = body.scope.as_deref().unwrap_or("global");
-    let scope = match scope {
-        "global" | "official" | "non_official" | "category" => scope,
-        _ => return Err(DomainError::Validation("促销范围无效".into())),
-    };
+    let (kind, scope, starts_at, ends_at) = promo_parse(
+        &body.kind, body.scope.as_deref(), body.hours, &body.starts_at, &body.ends_at)?;
+    let kind = kind.as_str();
+    let scope = scope.as_str();
     let mut tx = state.repo.db.begin().await.map_err(|e| DomainError::Internal(e.into()))?;
     if scope == "category" {
         let Some(cid) = body.category_id else {
@@ -1778,27 +1818,19 @@ async fn freeleech_set(
         if exists.is_none() {
             return Err(DomainError::Validation("分类不存在".into()));
         }
-        // 同分类的进行中手动促销先关闭，再写新促销
-        sqlx::query("DELETE FROM promotions WHERE scope='category' AND category_id=$1 AND source='manual' AND ends_at > now()")
-            .bind(cid).execute(&mut *tx).await
-            .map_err(|e| DomainError::Internal(e.into()))?;
         let id: i64 = sqlx::query_scalar(
             "INSERT INTO promotions (scope, category_id, kind, starts_at, ends_at, source, created_by) \
-             VALUES ('category', $1, $2::promotion_kind_enum, now(), now() + make_interval(hours => $3), 'manual', $4) RETURNING id",
-        ).bind(cid).bind(kind).bind(body.hours).bind(auth.id)
+             VALUES ('category', $1, $2::promotion_kind_enum, $3, $4, 'manual', $5) RETURNING id",
+        ).bind(cid).bind(kind).bind(starts_at).bind(ends_at).bind(auth.id)
         .fetch_one(&mut *tx).await.map_err(|e| DomainError::Internal(e.into()))?;
         tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
         state.repo.audit(Some(auth.id), "promo_set", None).await;
         return Ok(ok(serde_json::json!({ "id": id, "kind": kind, "scope": scope, "category_id": cid, "hours": body.hours })));
     }
-    // 关闭进行中的同范围手动促销，再写新促销
-    sqlx::query("DELETE FROM promotions WHERE scope=$1::promotion_scope AND source='manual' AND ends_at > now()")
-        .bind(scope).execute(&mut *tx).await
-        .map_err(|e| DomainError::Internal(e.into()))?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO promotions (scope, kind, starts_at, ends_at, source, created_by) \
-         VALUES ($1::promotion_scope, $2::promotion_kind_enum, now(), now() + make_interval(hours => $3), 'manual', $4) RETURNING id",
-    ).bind(scope).bind(kind).bind(body.hours).bind(auth.id)
+         VALUES ($1::promotion_scope, $2::promotion_kind_enum, $3, $4, 'manual', $5) RETURNING id",
+    ).bind(scope).bind(kind).bind(starts_at).bind(ends_at).bind(auth.id)
     .fetch_one(&mut *tx).await.map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "promo_set", None).await;
@@ -1817,6 +1849,66 @@ async fn freeleech_clear(
         .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
     state.repo.audit(Some(auth.id), "freeleech_clear", None).await;
     Ok(ok(serde_json::json!({ "cleared": n })))
+}
+
+/// 编辑单条促销（类型/范围/起止时间均可改）
+#[put("/admin/freeleech/{id}")]
+async fn freeleech_update(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>, body: web::Json<FreeleechBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let pid = path.into_inner();
+    let exists: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM promotions WHERE id = $1 AND source = 'manual'")
+        .bind(pid).fetch_optional(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if exists.is_none() {
+        return Err(DomainError::Validation("促销不存在或非手动创建".into()));
+    }
+    let (kind, scope, starts_at, ends_at) = promo_parse(
+        &body.kind, body.scope.as_deref(), body.hours, &body.starts_at, &body.ends_at)?;
+    if scope == "category" {
+        let Some(cid) = body.category_id else {
+            return Err(DomainError::Validation("分类促销需指定分类".into()));
+        };
+        let exists: Option<i32> = sqlx::query_scalar("SELECT id FROM categories WHERE id = $1")
+            .bind(cid).fetch_optional(&state.repo.db).await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        if exists.is_none() {
+            return Err(DomainError::Validation("分类不存在".into()));
+        }
+        sqlx::query("UPDATE promotions SET scope='category', category_id=$1, kind=$2::promotion_kind_enum, starts_at=$3, ends_at=$4 WHERE id=$5")
+            .bind(cid).bind(&kind).bind(starts_at).bind(ends_at).bind(pid)
+            .execute(&state.repo.db).await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    } else {
+        sqlx::query("UPDATE promotions SET scope=$1::promotion_scope, category_id=NULL, kind=$2::promotion_kind_enum, starts_at=$3, ends_at=$4 WHERE id=$5")
+            .bind(&scope).bind(&kind).bind(starts_at).bind(ends_at).bind(pid)
+            .execute(&state.repo.db).await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    state.repo.audit(Some(auth.id), "promo_update", Some(pid)).await;
+    Ok(ok(serde_json::json!({ "updated": pid })))
+}
+
+/// 删除单条促销（不影响其他并存促销）
+#[delete("/admin/freeleech/{id}")]
+async fn freeleech_delete(
+    req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    let pid = path.into_inner();
+    let n = sqlx::query("DELETE FROM promotions WHERE id = $1 AND source = 'manual'")
+        .bind(pid).execute(&state.repo.db).await
+        .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation("促销不存在或非手动创建".into()));
+    }
+    state.repo.audit(Some(auth.id), "promo_delete", Some(pid)).await;
+    Ok(ok(serde_json::json!({ "deleted": pid })))
 }
 
 #[derive(serde::Serialize, sqlx::FromRow)]
