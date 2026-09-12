@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
 interface RssInfo {
@@ -45,12 +45,6 @@ export function UserTools() {
   const t = dict.usertools;
   const [rss, setRss] = useState<RssInfo | null>(null);
   const [showRss, setShowRss] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
-  const [refType, setRefType] = useState("torrent");
-  const [refId, setRefId] = useState("");
-  const [reason, setReason] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (showRss && !rss) {
@@ -61,27 +55,6 @@ export function UserTools() {
     }
   }, [showRss, rss]);
 
-  async function submitReport() {
-    if (!refId || !reason.trim()) return;
-    setBusy(true);
-    setMsg(null);
-    try {
-      await api.post("/api/v1/reports", {
-        ref_type: refType,
-        ref_id: Number(refId),
-        reason: reason.trim(),
-      });
-      setReportOpen(false);
-      setRefId("");
-      setReason("");
-      setMsg(t.reportOk);
-    } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="usertools usertools--grid">
       <a className="userbar-tool userbar-tool--icon" href="/messages" title={t.inbox} aria-label={t.inbox}>
@@ -90,22 +63,13 @@ export function UserTools() {
       <a className="userbar-tool userbar-tool--icon" href="/messages?box=sent" title={t.sentbox} aria-label={t.sentbox}>
         <Icon {...ICONS.sent} />
       </a>
-      <a className="userbar-tool userbar-tool--icon" href="/admin?tool=cheaters" title={t.cheaters} aria-label={t.cheaters}>
+      <a className="userbar-tool userbar-tool--icon" href="/cheaterbox" title={t.cheaters} aria-label={t.cheaters}>
         <Icon {...ICONS.cheaters} />
       </a>
-      <button
-        type="button"
-        className="userbar-tool userbar-tool--icon"
-        title={t.reportBox}
-        aria-label={t.reportBox}
-        onClick={() => {
-          setReportOpen((v) => !v);
-          setShowRss(false);
-        }}
-      >
+      <a className="userbar-tool userbar-tool--icon" href="/reports" title={t.reportBox} aria-label={t.reportBox}>
         <Icon {...ICONS.flag} />
-      </button>
-      <a className="userbar-tool userbar-tool--icon" href="/contactstaff" title={t.staffBox} aria-label={t.staffBox}>
+      </a>
+      <a className="userbar-tool userbar-tool--icon" href="/staffbox" title={t.staffBox} aria-label={t.staffBox}>
         <Icon {...ICONS.staff} />
       </a>
       <a className="userbar-tool userbar-tool--icon" href="/friends" title={t.socialList} aria-label={t.socialList}>
@@ -116,60 +80,10 @@ export function UserTools() {
         className="userbar-tool userbar-tool--icon"
         title={t.getRss}
         aria-label={t.getRss}
-        onClick={() => {
-          setShowRss((v) => !v);
-          setReportOpen(false);
-        }}
+        onClick={() => setShowRss((v) => !v)}
       >
         <Icon {...ICONS.rss} />
       </button>
-      {msg && <p className="usertools__msg">{msg}</p>}
-
-      {/* 举报信箱弹层 */}
-      {reportOpen && (
-        <div className="usertools-popover">
-          <h3>{t.reportBox}</h3>
-          <div className="usertools-form">
-            <label>
-              {t.reportType}
-              <select value={refType} onChange={(e) => setRefType(e.target.value)}>
-                <option value="torrent">{t.rtTorrent}</option>
-                <option value="comment">{t.rtComment}</option>
-                <option value="user">{t.rtUser}</option>
-                <option value="subtitle">{t.rtSubtitle}</option>
-                <option value="forum">{t.rtForum}</option>
-              </select>
-            </label>
-            <label>
-              {t.reportId}
-              <input
-                type="text"
-                inputMode="numeric"
-                value={refId}
-                onChange={(e) => setRefId(e.target.value.replace(/\D/g, ""))}
-                placeholder="#"
-              />
-            </label>
-            <label>
-              {t.reportReason}
-              <textarea
-                rows={4}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                maxLength={500}
-              />
-            </label>
-            <button
-              type="button"
-              className="baozi-button"
-              disabled={busy || !refId || !reason.trim()}
-              onClick={submitReport}
-            >
-              {t.reportSubmit}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* RSS 弹层 */}
       {showRss && (
