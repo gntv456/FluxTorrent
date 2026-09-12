@@ -13,7 +13,7 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 use crate::torrents;
-use crate::economy_http::spend_spark;
+use crate::economy_http::{spend_spark, SpendOutcome};
 
 pub fn v1_scope() -> actix_web::Scope {
     web::scope("/api/v1")
@@ -27,6 +27,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(my_torrentlist)
         .service(my_bookmarks)
         .service(rotate_passkey)
+        .service(me_password_change)
         .service(user_public_profile)
         .service(list)
         .service(detail)
@@ -130,6 +131,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(upload)
         .service(download)
         .service(issue_invite_handler)
+        .service(redeem_invite_handler)
         .service(list_invites_handler)
         .service(logout)
 }
@@ -340,6 +342,8 @@ async fn ip_banned(state: &Arc<AppState>, ip: &str) -> bool {
 pub struct AuthUser {
     pub id: i64,
     pub class_id: i32,
+    /// 本次凭证的签发秒（撤销线语义需要：改密时以它为界作废更早的 token）
+    pub iat: i64,
 }
 
 /// 从 Authorization: Bearer 提取用户（§8.1：后端权威鉴权）
@@ -362,7 +366,10 @@ pub async fn require_auth(
                 .await
                 .unwrap_or(None);
         if let Some(nbf) = nbf {
-            if claims.iat < nbf {
+            // <=：撤销线含义为「iat 不晚于 nbf 的凭证全部作废」。登出把 nbf 设为凭证 iat，
+            // 因此登出所用的 token（iat==nbf）自身也被判死 —— 这是登出的本意；
+            // 改密路径写 nbf=iat-1，保留改密后同秒重登的新凭证（见 me_password_change）。
+            if claims.iat <= nbf {
                 return Err(DomainError::Unauthorized);
             }
         }
@@ -383,6 +390,7 @@ pub async fn require_auth(
     Ok(AuthUser {
         id: claims.sub,
         class_id,
+        iat: claims.iat,
     })
 }
 
@@ -400,12 +408,11 @@ async fn logout(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    // 令牌撤销（§5.7）：Redis 记录该用户 not-before 时间戳，require_auth 校验 iat >= nbf，
-    // 登出后旧 token 立即失效，新登录不受影响。TTL 与 token 最长寿命对齐（24h）。
+    // 令牌撤销（§5.7）：nbf = 本次凭证 iat —— require_auth 用 iat<=nbf 判死，
+    // 因此登出所用的 token 与一切更早签发的立即失效；登出后新登录（iat 严格更大）不受影响。
     let mut c = state.redis.clone();
     let key = format!("logout_nbf:{}", auth.id);
-    let nbf = chrono::Utc::now().timestamp();
-    let _: () = redis::AsyncCommands::set_ex(&mut c, &key, nbf, 86400u64)
+    let _: () = redis::AsyncCommands::set_ex(&mut c, &key, auth.iat, 86400u64)
         .await
         .unwrap_or(());
     state.repo.audit(Some(auth.id), "auth.logout", None).await;
@@ -473,6 +480,61 @@ async fn rotate_passkey(
     // 旧 passkey 在 tracker passkey 缓存中立即失效（否则 60s TTL 内仍可用）
     bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "passkey": pk })))
+}
+
+/// 自助修改密码（usercp 口径）：验旧密码 → 换哈希 → 抬 logout_nbf 撤销既有 token
+///（改密后所有设备下线，重新登录拿新 token —— 与 logout 同一套撤销机制）。
+#[derive(Deserialize)]
+struct PasswordChangeReq {
+    old_password: String,
+    new_password: String,
+}
+
+#[post("/me/password/change")]
+async fn me_password_change(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PasswordChangeReq>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    if body.new_password.len() < 8 {
+        return Err(DomainError::Validation("新密码至少 8 位".into()));
+    }
+    if body.new_password == body.old_password {
+        return Err(DomainError::Validation("新密码不能与旧密码相同".into()));
+    }
+    let (pass_hash,): (String,) = sqlx::query_as("SELECT pass_hash FROM users WHERE id = $1")
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if !domain::verify_password(&pass_hash, &body.old_password) {
+        state
+            .repo
+            .audit(Some(auth.id), "password_change_fail", Some(auth.id))
+            .await;
+        return Err(DomainError::Validation("旧密码不正确".into()));
+    }
+    let new_hash = domain::hash_password(&body.new_password)?;
+    sqlx::query("UPDATE users SET pass_hash = $2, must_reset_password = false WHERE id = $1")
+        .bind(auth.id)
+        .bind(&new_hash)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 撤销既有 token：nbf 抬到「本次凭证 iat − 1」。require_auth 用 iat<=nbf 判失效，
+    // 因此界线为 iat−1 时：本次改密凭证自身已通过认证（不再受检），一切 iat ≤ iat−1
+    // 的旧 token 失效；改密后同秒重登的新 token（iat 相同）不受牵连 —— 不误杀合法新登录，
+    // 而真正的旧凭证（改密所用的那张）即便 iat 同秒也已在本次请求中消耗，语义无损。
+    let mut c = state.redis.clone();
+    let _: () = redis::AsyncCommands::set_ex(&mut c, format!("logout_nbf:{}", auth.id), auth.iat - 1, 86400u64)
+        .await
+        .unwrap_or(());
+    state
+        .repo
+        .audit(Some(auth.id), "password_change", Some(auth.id))
+        .await;
+    Ok(ok(serde_json::json!({ "changed": true })))
 }
 
 /// 用户公开主页（NP userdetails.php 口径，脱敏：不回 email/passkey/火花）
@@ -3968,4 +4030,57 @@ async fn issue_invite_handler(
     Ok(ok(
         serde_json::json!({ "id": id, "code": code, "expires_at": expires.to_rfc3339() }),
     ))
+}
+
+#[derive(Deserialize)]
+struct RedeemInviteReq {
+    #[serde(default)]
+    idempotency_key: Option<String>,
+}
+
+/// 魔力兑换邀请：按魔力商店「邀请名额」（kind=invite）现价扣火花，直接发一枚 72h 邀请码。
+/// 无等级限制（商店购买口径），与 /shop/buy 走同一条扣款管线（幂等键防双扣）。
+#[post("/invites/redeem")]
+async fn redeem_invite_handler(
+    req: HttpRequest,
+    state: web::Data<Arc<AppState>>,
+    body: web::Json<RedeemInviteReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let item: Option<(i64, i64)> = sqlx::query_as(
+        "SELECT id, price FROM shop_items WHERE kind = 'invite' AND active = true ORDER BY price LIMIT 1",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((item_id, price)) = item else {
+        return Err(DomainError::Validation("商店未开放邀请兑换".into()));
+    };
+    // 幂等键必填（与 /shop/buy 同口径）：网络重试携带同一键防双扣款
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.is_empty())
+        .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
+    let outcome = spend_spark(
+        &state.repo.db,
+        auth.id,
+        price,
+        "shop",
+        &idem,
+        "shop_item",
+        item_id,
+    )
+    .await?;
+    if matches!(outcome, SpendOutcome::Replayed) {
+        // 幂等重放：码已在首次请求发放，不重复发；前端刷新列表即可看到
+        return Ok(ok(serde_json::json!({ "replayed": true })));
+    }
+    let code = crate::domain::new_invite_code();
+    let expires = crate::domain::invite_expiry();
+    let id = state.repo.issue_invite(auth.id, &code, expires).await?;
+    state.repo.audit(Some(auth.id), "invite_redeem", Some(id)).await;
+    Ok(ok(serde_json::json!({
+        "id": id, "code": code, "expires_at": expires.to_rfc3339(), "price": price,
+    })))
 }

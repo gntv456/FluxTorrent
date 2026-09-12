@@ -1312,9 +1312,39 @@ function SecurityTab({
   const t = dict.usercp.security;
   const [newPass, setNewPass] = useState("");
   const [newPass2, setNewPass2] = useState("");
+  const [oldPass, setOldPass] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState<string | null>(null);
   const [pkBusy, setPkBusy] = useState(false);
   const [pkResult, setPkResult] = useState<string | null>(null);
   const [pkMsg, setPkMsg] = useState<string | null>(null);
+
+  async function changePasswordNow() {
+    setPwMsg(null);
+    if (newPass.length < 8) {
+      setPwMsg(dict.usercp.security.pwTooShort);
+      return;
+    }
+    if (newPass !== newPass2) {
+      setPwMsg(dict.usercp.security.pwMismatch);
+      return;
+    }
+    setPwBusy(true);
+    try {
+      await api.post("/api/v1/me/password/change", {
+        old_password: oldPass,
+        new_password: newPass,
+      });
+      setPwMsg(dict.usercp.security.pwChanged);
+      setOldPass("");
+      setNewPass("");
+      setNewPass2("");
+    } catch (e) {
+      setPwMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError);
+    } finally {
+      setPwBusy(false);
+    }
+  }
 
   async function rotatePasskeyNow() {
     if (!window.confirm(dict.my.passkeyConfirm)) return;
@@ -1380,11 +1410,24 @@ function SecurityTab({
           </td>
         </tr>
         <tr>
+          <td className="rowhead nowrap">{t.oldPassword}</td>
+          <td className="rowfollow">
+            <input
+              type="password"
+              className="uc-password"
+              autoComplete="current-password"
+              value={oldPass}
+              onChange={(e) => setOldPass(e.target.value)}
+            />
+          </td>
+        </tr>
+        <tr>
           <td className="rowhead nowrap">{t.newPassword}</td>
           <td className="rowfollow">
             <input
               type="password"
               className="uc-password"
+              autoComplete="new-password"
               value={newPass}
               onChange={(e) => setNewPass(e.target.value)}
             />
@@ -1396,9 +1439,20 @@ function SecurityTab({
             <input
               type="password"
               className="uc-password"
+              autoComplete="new-password"
               value={newPass2}
               onChange={(e) => setNewPass2(e.target.value)}
             />
+            <br />
+            <button
+              type="button"
+              disabled={pwBusy || !oldPass || !newPass || !newPass2}
+              onClick={changePasswordNow}
+              className="mt-2 min-h-[36px] rounded-full bg-sky-deep px-4 text-xs font-bold text-white disabled:opacity-50"
+            >
+              {pwBusy ? "…" : t.changeBtn}
+            </button>
+            {pwMsg && <p className="mt-1 text-xs text-sub">{pwMsg}</p>}
           </td>
         </tr>
         <Row head={t.privacy}>

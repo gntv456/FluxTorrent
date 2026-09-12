@@ -541,18 +541,16 @@ a:hover {
   background: var(--surface-hover);
 }
 
-/* ============ 顶栏主导航（#mainmenu 卡片按钮条） ============ */
+/* ============ 顶栏主导航（#mainmenu 卡片按钮条） ============
+ * 注意：不能设 overflow 滚动——「更多 ▾」下拉绝对定位在菜单条高度之外，
+ * 滚动容器会把它裁掉（表现为点击无反应）。空间不足改为换行。 */
 .mainmenu {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  height: 56px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  min-height: 56px;
   list-style: none;
-}
-.mainmenu::-webkit-scrollbar {
-  display: none;
 }
 .mainmenu-link {
   display: flex;

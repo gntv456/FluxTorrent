@@ -5,14 +5,15 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserBox } from "@/components/user-box";
 import { MainMenu } from "@/components/main-menu";
+import { CustomMenu } from "@/components/custom-menu";
 
 /** 导航项（Seedlight §3）：href + label；group 用于「更多 ▾」下拉分组。 */
 type NavItem = { href: string; label: string };
 type NavGroup = { group: string; items: NavItem[] };
 
 /**
- * Seedlight 页头：极光玻璃品牌行 + 分组收敛导航（桌面 6 项 + 更多 ▾）+ userbar。
- * 导航按「核心任务 / 发现 / 经济 / 成长 / 娱乐」四域收纳，移动端走底部 5 Tab。
+ * Seedlight 页头：单行导航条（logo 居左 + 一级/更多菜单居中 + 主题/语言切换居右）+ userbar。
+ * 导航按「核心任务 / 发现 / 经济 / 成长 / 娱乐」四域收纳，桌面发布入口收进一级菜单，移动端走底部 5 Tab。
  */
 export async function Header() {
   const { dict, locale } = await getDict();
@@ -20,12 +21,13 @@ export async function Header() {
   const textbooksOn = profile.modules.textbooks === true;
   const brand = profile.brand || dict.common.brand;
 
-  // 桌面一级：核心任务域（6 项）
+  // 桌面一级：核心任务域（发布入口在菜单内，不再放独立大按钮）
   const primary: NavItem[] = [
     { href: "/", label: dict.nav.home },
     { href: "/torrents", label: dict.nav.library },
     { href: "/forums", label: dict.nav.forums },
     { href: "/top", label: dict.nav.top },
+    { href: "/upload", label: dict.nav.upload },
   ];
 
   // 「更多 ▾」收纳域（Seedlight IA 分组）
@@ -84,26 +86,28 @@ export async function Header() {
 
   return (
     <header className="border-b border-line bg-[var(--baozi-bg)]">
-      {/* 1) 品牌行：猫头鹰站标 + 极光发布按钮 */}
-      <div className="mx-auto flex h-[86px] w-full max-w-[1536px] items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-3">
-          <span aria-hidden className="text-4xl">
+      {/* 1) 单行导航条：品牌（logo）居左 + 一级/更多菜单 + 主题/语言切换居右（菜单换行时允许整条长高） */}
+      <div className="mx-auto flex min-h-[72px] w-full max-w-[1536px] items-center gap-3 px-4 py-2 md:gap-5 md:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-2">
+          <span aria-hidden className="text-3xl">
             🦉
           </span>
-          <span className="font-display text-3xl text-ink">{brand}</span>
+          <span className="font-display text-2xl text-ink">{brand}</span>
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <MainMenu items={primary} groups={groups} moreLabel={`${dict.nav.more} ▾`} ariaLabel={dict.nav.ariaPrimary} />
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
           <LocaleSwitcher current={locale} />
-          <Link href="/upload" className="btn-aurora min-h-[44px] text-sm">
-            {dict.common.publish}
-          </Link>
         </div>
       </div>
-      {/* 2) 收敛导航（客户端组件：一级 + 更多下拉） */}
-      <div className="mx-auto w-full max-w-[1536px] px-6">
-        <MainMenu items={primary} groups={groups} moreLabel={`${dict.nav.more} ▾`} ariaLabel={dict.nav.ariaPrimary} />
-      </div>
+      {/* 2.5) 自定义菜单（location=topbar）：有配置才渲染，无则完全不出现在布局中 */}
+      <CustomMenu
+        location="topbar"
+        className="mx-auto flex w-full max-w-[1536px] flex-wrap items-center gap-x-4 gap-y-1 px-6 pb-1 pt-0.5"
+        linkClassName="text-xs text-sub hover:text-sky"
+      />
       {/* 3) 用户信息条（登录态客户端补齐） */}
       <div className="mx-auto w-full max-w-[1536px] px-6 pb-3 pt-2">
         <div className="userbar">

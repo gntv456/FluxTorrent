@@ -9,16 +9,24 @@ import type { InviteItem } from "@/lib/data";
 export function InviteManager({
   empty,
   issueLabel,
+  redeemLabel,
+  redeemNote,
+  replayedText,
   needClass,
 }: {
   empty: string;
   issueLabel: string;
+  redeemLabel: string;
+  redeemNote: string;
+  replayedText: string;
   needClass: string;
 }) {
   const { dict } = useI18n();
   const [invites, setInvites] = useState<InviteItem[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** 魔力商店「邀请名额」现价（kind=invite）；未开放兑换时为 null，隐藏兑换入口 */
+  const [price, setPrice] = useState<number | null>(null);
 
   async function refresh() {
     try {
@@ -29,6 +37,13 @@ export function InviteManager({
   }
   useEffect(() => {
     refresh();
+    api
+      .get<{ id: number; kind: string; price: number }[]>("/api/v1/shop/items")
+      .then((items) => {
+        const invite = items.find((i) => i.kind === "invite");
+        setPrice(invite ? invite.price : null);
+      })
+      .catch(() => setPrice(null));
   }, []);
 
   async function issue() {
@@ -45,6 +60,24 @@ export function InviteManager({
     }
   }
 
+  async function redeem() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      // 幂等键：每次点击生成新 UUID（与 /shop/buy 同口径，防网络重试双扣款）
+      const r = await api.post<{ code: string; replayed?: boolean }>(
+        "/api/v1/invites/redeem",
+        { idempotency_key: crypto.randomUUID() },
+      );
+      setMsg(r.code ?? replayedText);
+      refresh();
+    } catch (e) {
+      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function copy(code: string) {
     await navigator.clipboard.writeText(code);
     setMsg(code);
@@ -53,14 +86,27 @@ export function InviteManager({
   if (invites === null) return null;
   return (
     <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        disabled={busy}
-        onClick={issue}
-        className="self-start min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:opacity-50"
-      >
-        {issueLabel}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={issue}
+          className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:opacity-50"
+        >
+          {issueLabel}
+        </button>
+        {price !== null && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={redeem}
+            className="min-h-[44px] rounded-full border border-[var(--baozi-line)] px-5 text-sm text-sky-deep hover:border-[var(--baozi-orange)] hover:text-[var(--baozi-orange)] disabled:opacity-50"
+          >
+            {redeemLabel}（{price.toLocaleString()} {dict.common.spark}）
+          </button>
+        )}
+      </div>
+      {price !== null && <p className="text-xs text-sub">{redeemNote}</p>}
       {msg && (
         <p role="alert" className="text-sm text-sky-deep">
           {msg}
