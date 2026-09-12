@@ -265,7 +265,7 @@ export default async function TorrentsPage({
                 <th className="w-16" title={dict.torrents.colComments}>
                   💬
                 </th>
-                <th className="w-20" title={dict.torrents2.colAlive}>
+                <th className="w-20" title={dict.torrents.alive}>
                   ⏱
                 </th>
                 <th className="w-20" title={dict.torrents.colSize}>
@@ -280,7 +280,7 @@ export default async function TorrentsPage({
                 <th className="w-16" title={dict.torrents.colCompleted}>
                   ✅
                 </th>
-                <th className="w-28">{dict.torrents.colOwner}</th>
+                <th className="w-24">{dict.torrents.colActions}</th>
               </tr>
             </thead>
             <tbody>
