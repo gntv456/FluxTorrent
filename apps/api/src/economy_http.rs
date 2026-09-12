@@ -451,22 +451,32 @@ async fn bank_deposit(
     .await?;
 
     let interest = maturity_interest(body.amount, body.term_days);
+    // 结息模式：daily = 每日结息发到余额（到期只还本）；maturity = 到期一次性
+    let mode: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or_else(|| "maturity".into());
+    let mode = if mode == "daily" { "daily" } else { "maturity" };
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO bank_deposits (user_id, amount, term_days, rate, interest, maturity_at) \
-         VALUES ($1, $2, $3, $4, $5, now() + ($3 || ' days')::interval) RETURNING id",
+        "INSERT INTO bank_deposits (user_id, amount, term_days, rate, interest, maturity_at, settle_mode) \
+         VALUES ($1, $2, $3, $4, $5, now() + ($3 || ' days')::interval, $6) RETURNING id",
     )
     .bind(auth.id)
     .bind(body.amount)
     .bind(body.term_days)
     .bind(term_rate(body.term_days))
     .bind(interest)
+    .bind(mode)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     Ok(ok(serde_json::json!({
         "id": id, "amount": body.amount, "term_days": body.term_days,
-        "interest": interest, "rate": term_rate(body.term_days),
+        "interest": interest, "rate": term_rate(body.term_days), "settle_mode": mode,
     })))
 }
 
@@ -476,6 +486,8 @@ struct DepositRow {
     amount: i64,
     term_days: i32,
     interest: i64,
+    paid_interest: i64,
+    settle_mode: String,
     status: i16,
     maturity_at: chrono::DateTime<chrono::Utc>,
 }
@@ -487,7 +499,7 @@ async fn bank_list(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows = sqlx::query_as::<_, DepositRow>(
-        "SELECT id, amount, term_days, interest, status, maturity_at FROM bank_deposits \
+        "SELECT id, amount, term_days, interest, paid_interest, settle_mode, status, maturity_at FROM bank_deposits \
          WHERE user_id = $1 ORDER BY id DESC LIMIT 50",
     )
     .bind(auth.id)
@@ -509,15 +521,16 @@ async fn bank_withdraw(
     body: web::Json<WithdrawReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let d: Option<(i64, i64, i64, i16, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
-        "SELECT id, amount, interest, status, maturity_at FROM bank_deposits WHERE id = $1 AND user_id = $2",
+    let d: Option<(i64, i64, i64, i64, String, i16, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT id, amount, interest, paid_interest, settle_mode, status, maturity_at \
+         FROM bank_deposits WHERE id = $1 AND user_id = $2",
     )
     .bind(body.deposit_id)
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((id, amount, interest, status, maturity_at)) = d else {
+    let Some((id, amount, interest, paid_interest, mode, status, maturity_at)) = d else {
         return Err(DomainError::NotFound(body.deposit_id));
     };
     if status != 0 {
@@ -525,13 +538,26 @@ async fn bank_withdraw(
     }
     let bs = bank_settings(&state.repo.db).await;
     let matured = chrono::Utc::now() >= maturity_at;
-    // 到期：本息全额；提前支取：本金扣手续费，不计息（旧站口径）
-    let (payable, penalty) = if matured {
-        (amount + interest, 0i64)
+    // maturity：到期本息全额；提前支取扣手续费、不计息。
+    // daily：利息已按日发放（paid_interest），到期只还本；提前支取追回未到期部分利息防套利。
+    let (payable, penalty, clawback) = if mode == "daily" {
+        if matured {
+            (amount, 0i64, 0i64)
+        } else {
+            let p = early_penalty(amount, bs.penalty_bp);
+            (amount - p - paid_interest, p, paid_interest)
+        }
+    } else if matured {
+        (amount + interest, 0, 0)
     } else {
         let p = early_penalty(amount, bs.penalty_bp);
-        (amount - p, p)
+        (amount - p, p, 0)
     };
+    if payable < 0 {
+        return Err(DomainError::Validation(
+            "已发利息超过本金与手续费之和，无法支取，请联系管理员".into(),
+        ));
+    }
 
     let updated = sqlx::query(
         "UPDATE bank_deposits SET status = 1, settled_at = now(), penalty = $2, withdrawn_at = now() \
@@ -549,7 +575,8 @@ async fn bank_withdraw(
     earn_spark(&state.repo.db, auth.id, payable, "bank_withdraw", &idem).await?;
     Ok(ok(
         serde_json::json!({ "paid": payable, "matured": matured, "penalty": penalty,
-            "interest_earned": if matured { interest } else { 0 } }),
+            "clawback": clawback,
+            "interest_earned": if mode != "daily" && matured { interest } else { 0 } }),
     ))
 }
 
@@ -844,6 +871,35 @@ async fn bank_overview(
     let total_asset = spark + demand.balance + fixed.unwrap_or((0, 0)).0;
     let max_loan = max_loan_amount(&state.repo.db, auth.id, &bs).await?;
 
+    // 站点级运营概览 + 结息健康状态（对齐火花「站点银行概览/结息状态」）
+    let site: (i64, i64, i64, i64, i64, i64, i64) = sqlx::query_as(
+        "SELECT \
+           (SELECT COALESCE(sum(balance), 0) FROM bank_demand_accounts), \
+           (SELECT count(*) FROM bank_demand_accounts WHERE balance > 0), \
+           (SELECT COALESCE(sum(amount), 0) FROM bank_deposits WHERE status = 0), \
+           (SELECT count(*) FROM bank_deposits WHERE status = 0), \
+           (SELECT COALESCE(sum(remaining + accrued_interest), 0) FROM bank_loans WHERE status = 'active'), \
+           (SELECT count(*) FROM bank_loans WHERE status = 'active'), \
+           (SELECT count(*) FROM bank_interest_records WHERE calc_date = CURRENT_DATE)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let last_run: Option<chrono::NaiveDateTime> = sqlx::query_scalar(
+        "SELECT finished_at FROM bank_settle_runs WHERE run_date = \
+         ((CURRENT_TIMESTAMP + interval '8 hours')::date)",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let settle_mode: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or_else(|| "maturity".into());
+
     Ok(ok(serde_json::json!({
         "spark_balance": spark,
         "demand": { "balance": demand.balance, "daily_rate_bp": demand.daily_rate_bp },
@@ -857,6 +913,14 @@ async fn bank_overview(
             "min_deposit": bs.min_deposit, "max_deposit": bs.max_deposit,
             "min_demand": bs.min_demand, "min_loan": bs.min_loan,
             "penalty_bp": bs.penalty_bp,
+        },
+        "site": {
+            "demand_total": site.0, "demand_count": site.1,
+            "fixed_active_total": site.2, "fixed_count": site.3,
+            "loan_outstanding_total": site.4, "loan_count": site.5,
+            "today_interest_records": site.6,
+            "settle_healthy": last_run.is_some(),
+            "settle_mode": settle_mode,
         },
         "fixed_rates": VALID_TERMS.iter().map(|t| serde_json::json!({
             "term_days": t, "annual_rate": term_rate(*t),

@@ -470,10 +470,8 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
 pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> anyhow::Result<()> {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
     let mut hour_tick = tokio::time::interval(std::time::Duration::from_secs(3600));
-    let mut day_tick = tokio::time::interval(std::time::Duration::from_secs(3600 * 24));
     let mut first_hour = true;
-    let mut first_day = true;
-    let mut last_bank_day = chrono::Utc::now().date_naive();
+    let mut last_bank_day: Option<chrono::NaiveDate> = None;
     loop {
         tokio::select! {
             _ = tick.tick() => {
@@ -483,22 +481,38 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if let Err(e) = collect_milestones(&db).await { tracing::error!(?e, "collect_milestones"); }
                 if let Err(e) = hr_enforce(&db).await { tracing::error!(?e, "hr_enforce"); }
                 if let Err(e) = class_auto_adjust(&db).await { tracing::error!(?e, "class_auto_adjust"); }
+                // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
+                let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
+                if last_bank_day.is_none() {
+                    last_bank_day = Some(init_bank_day(&db).await);
+                }
+                if last_bank_day != Some(site_day) {
+                    tracing::info!(?site_day, "bank_daily start");
+                    crate::bank_jobs::bank_daily(&db).await;
+                    last_bank_day = Some(site_day);
+                }
             }
             _ = hour_tick.tick() => {
                 if first_hour { first_hour = false; continue; }
                 if let Err(e) = seeding_reward(&db, 10).await { tracing::error!(?e, "seeding_reward"); }
             }
-            _ = day_tick.tick() => {
-                if first_day { first_day = false; continue; }
-                // 站点时区 UTC+8 的自然日切换点（本地 00:10 = UTC 前一日 16:10）
-                let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
-                if site_day != last_bank_day {
-                    last_bank_day = site_day;
-                    tracing::info!(?site_day, "bank_daily start");
-                    crate::bank_jobs::bank_daily(&db).await;
-                }
-            }
         }
+    }
+}
+
+/// 启动基线：当日（站点时区）已由上一进程结算过则不重跑，取健康游标最近记录日期。
+async fn init_bank_day(db: &PgPool) -> chrono::NaiveDate {
+    let site_today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
+    let last_run: Option<chrono::NaiveDate> =
+        sqlx::query_scalar("SELECT max(run_date) FROM bank_settle_runs")
+            .fetch_one(db)
+            .await
+            .ok()
+            .flatten();
+    match last_run {
+        // 今日已结 → 以今日为基线（当日不重跑）；更早/无记录 → 昨日（跨日即触发）
+        Some(d) if d >= site_today => d,
+        _ => site_today - chrono::Duration::days(1),
     }
 }
 
