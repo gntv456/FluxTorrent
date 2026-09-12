@@ -112,6 +112,28 @@ export function BankCard({ loginToView }: { loginToView: string }) {
         </p>
       )}
 
+      {/* 站点银行条：运营概览 + 结息健康 */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2 text-xs text-sub shadow-[var(--shadow-card)]">
+        <span className="font-bold text-ink">{dict.bank.siteOverview}</span>
+        <span>
+          {dict.bank.siteDemand}: {fmt(ov.site.demand_total)}（{ov.site.demand_count}）
+        </span>
+        <span>
+          {dict.bank.siteFixed}: {fmt(ov.site.fixed_active_total)}（{ov.site.fixed_count}）
+        </span>
+        <span>
+          {dict.bank.siteLoan}: {fmt(ov.site.loan_outstanding_total)}（{ov.site.loan_count}）
+        </span>
+        <span>
+          {dict.bank.siteTodayRecords}: {fmt(ov.site.today_interest_records)}
+        </span>
+        <span
+          className={`ml-auto sticker ${ov.site.settle_healthy ? "bg-mint/40 text-ink" : "bg-sun/70 text-ink"}`}
+        >
+          {ov.site.settle_healthy ? dict.bank.settleOk : dict.bank.settlePending}
+        </span>
+      </div>
+
       {/* 资产概览 */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label={dict.bank.totalAsset} value={fmt(ov.total_asset)} />
@@ -326,8 +348,12 @@ function DepositRow({
     <li className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
       <span className="num font-bold">{d.amount.toLocaleString()}</span>
       <span className="text-sm text-sub">
-        {dict.bank.termDays.replace("{n}", String(d.term_days))} · {dict.bank.interest}:{" "}
-        {d.interest.toLocaleString()}
+        {dict.bank.termDays.replace("{n}", String(d.term_days))} ·{" "}
+        {d.settle_mode === "daily"
+          ? dict.bank.paidInterest
+            .replace("{n}", d.interest.toLocaleString())
+            .replace("{p}", d.paid_interest.toLocaleString())
+          : `${dict.bank.interest}: ${d.interest.toLocaleString()}`}
       </span>
       <span className="text-xs text-sub">
         {dict.bank.maturity}: {new Date(d.maturity_at).toLocaleDateString()}

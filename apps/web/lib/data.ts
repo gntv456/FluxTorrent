@@ -98,12 +98,15 @@ export async function getSiteStats(): Promise<SiteStats | null> {
     return null;
   }
 }
-/** 自定义菜单项（admin menu_items 公开接口；仅返回启用项，按 sort, id 排序） */
+/** 自定义菜单项（admin menu_items 公开接口；仅返回启用且当前等级可见项，按 sort, id 排序） */
 export interface MenuItem {
   id: number;
   location: string;
   label: string;
   url: string;
+  parent_id: number;
+  target: string;
+  min_class: number;
   sort: number;
   enabled: boolean;
 }
@@ -320,6 +323,8 @@ export interface BankDeposit {
   amount: number;
   term_days: number;
   interest: number;
+  paid_interest: number;
+  settle_mode: "maturity" | "daily";
   status: number;
   maturity_at: string;
 }
@@ -357,6 +362,17 @@ export interface BankOverview {
     min_demand: number;
     min_loan: number;
     penalty_bp: number;
+  };
+  site: {
+    demand_total: number;
+    demand_count: number;
+    fixed_active_total: number;
+    fixed_count: number;
+    loan_outstanding_total: number;
+    loan_count: number;
+    today_interest_records: number;
+    settle_healthy: boolean;
+    settle_mode: "maturity" | "daily";
   };
   fixed_rates: { term_days: number; annual_rate: number }[];
   loan_rates: { term_days: number; daily_rate_bp: number }[];
