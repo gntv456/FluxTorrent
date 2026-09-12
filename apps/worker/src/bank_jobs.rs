@@ -43,8 +43,9 @@ pub async fn bank_demand_settle(db: &PgPool) -> anyhow::Result<u64> {
 /// 定期每日结息（settle_mode='daily'）：按日利率把利息发到用户余额，到期只还本。
 /// 日利率 = 年化 rate / 365，整数向下取整；幂等靠 last_interest_date 游标 + ledger 幂等键。
 pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
-    let rows: Vec<(i64, i64, i64, f64, chrono::NaiveDate)> = sqlx::query_as(
-        "SELECT id, user_id, amount, rate, COALESCE(last_interest_date, (start_at::date - 1)) \
+    // rate 是 NUMERIC，sqlx 不直接解 NUMERIC→f64，取 text 自行解析
+    let rows: Vec<(i64, i64, i64, String, chrono::NaiveDate)> = sqlx::query_as(
+        "SELECT id, user_id, amount, rate::text, COALESCE(last_interest_date, (start_at::date - 1)) \
          FROM bank_deposits \
          WHERE status = 0 AND settle_mode = 'daily' \
            AND COALESCE(last_interest_date, (start_at::date - 1)) < LEAST(CURRENT_DATE, maturity_at::date) \
@@ -53,7 +54,8 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
     .fetch_all(db)
     .await?;
     let mut count = 0u64;
-    for (id, user_id, amount, annual_rate, last_date) in rows {
+    for (id, user_id, amount, rate_text, last_date) in rows {
+        let annual_rate: f64 = rate_text.parse().unwrap_or(0.0);
         let end = chrono::Utc::now().date_naive();
         let days = (end - last_date).num_days().max(0);
         if days == 0 {
@@ -130,30 +132,31 @@ pub async fn bank_loan_interest(db: &PgPool) -> anyhow::Result<u64> {
     let res = sqlx::query(
         r#"
         WITH due AS (
-            SELECT l.id, l.user_id, l.remaining, l.daily_rate_bp, l.last_interest_date,
+            SELECT l.id AS loan_id, l.user_id, l.remaining, l.daily_rate_bp, l.last_interest_date,
+                   l.created_at,
                    LEAST(CURRENT_DATE, l.due_at::date) AS end_date
             FROM bank_loans l
             WHERE l.status = 'active'
               AND COALESCE(l.last_interest_date, (l.created_at::date - 1)) < LEAST(CURRENT_DATE, l.due_at::date)
         ),
         calc AS (
-            SELECT id, user_id, daily_rate_bp,
-                   (remaining * daily_rate_bp *
-                     (end_date - COALESCE(last_interest_date, (created_at::date - 1))) / 10000)::bigint
+            SELECT d.loan_id, d.user_id, d.daily_rate_bp,
+                   (d.remaining * d.daily_rate_bp *
+                     (d.end_date - COALESCE(d.last_interest_date, (d.created_at::date - 1))) / 10000)::bigint
                      AS interest
-            FROM bank_loans l JOIN due ON due.id = l.id
+            FROM due d
         ),
         upd AS (
             UPDATE bank_loans l
             SET accrued_interest = l.accrued_interest + c.interest,
-                last_interest_date = (SELECT LEAST(CURRENT_DATE, l.due_at::date))
+                last_interest_date = LEAST(CURRENT_DATE, l.due_at::date)
             FROM calc c
-            WHERE l.id = c.id AND c.interest > 0
+            WHERE l.id = c.loan_id AND c.interest > 0
             RETURNING l.id
         )
         INSERT INTO bank_interest_records (user_id, kind, reference_id, amount, rate_bp)
-        SELECT c.user_id, 'loan', c.id, -c.interest, c.daily_rate_bp
-        FROM calc c JOIN upd ON upd.id = c.id
+        SELECT c.user_id, 'loan', c.loan_id, -c.interest, c.daily_rate_bp
+        FROM calc c JOIN upd ON upd.id = c.loan_id
         "#,
     )
     .execute(db)

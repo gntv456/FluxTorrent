@@ -377,6 +377,17 @@ async fn task_claim(
     body: web::Json<TaskClaimReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 任务需在有效期内
+    let window: Option<bool> = sqlx::query_scalar(
+        "SELECT now() BETWEEN starts_at AND ends_at FROM tasks WHERE id = $1",
+    )
+    .bind(body.task_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if window != Some(true) {
+        return Err(DomainError::Validation("任务不在可领取时段内".into()));
+    }
     // 认领人数限流（旧站 23/100 口径 → 数据库计数 + 唯一约束）
     let limit: Option<i32> = sqlx::query_scalar("SELECT claim_limit FROM tasks WHERE id = $1")
         .bind(body.task_id)
@@ -398,8 +409,36 @@ async fn task_claim(
             return Err(DomainError::Validation("认领名额已满".into()));
         }
     }
+    // 报名费（任务配置了 fee 时先扣，凭据 ref 指向任务；重复领取被唯一约束挡住，不会双扣）
+    let fee: i64 = sqlx::query_scalar("SELECT fee FROM tasks WHERE id = $1")
+        .bind(body.task_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
+    if fee > 0 {
+        let idem = format!("task_fee:{}:{}", auth.id, body.task_id);
+        crate::economy_http::spend_spark(
+            &state.repo.db,
+            auth.id,
+            fee,
+            "task_fee",
+            &idem,
+            "task",
+            body.task_id,
+        )
+        .await?;
+    }
+    // 指标基线快照（base + delta 结算口径，对齐好学站 UserTaskRecord）
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO task_claims (task_id, user_id) VALUES ($1, $2) RETURNING id",
+        r#"
+        INSERT INTO task_claims (task_id, user_id, base_uploaded, base_seed_seconds, base_uploads)
+        SELECT $1, $2,
+               u.uploaded,
+               COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0),
+               (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)
+        FROM users u WHERE u.id = $2
+        RETURNING id
+        "#,
     )
     .bind(body.task_id)
     .bind(auth.id)
@@ -598,9 +637,7 @@ async fn plugins_overview(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PLUGINS_MANAGE).await?;
     Ok(ok(serde_json::json!({
         "plugins": state.plugins.list(),
         "hooks": ["on_user_login", "on_torrent_upload", "on_seeding_milestone"],
