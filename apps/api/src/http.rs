@@ -396,6 +396,14 @@ pub async fn require_auth(
     })
 }
 
+/// 可选鉴权：匿名/无效 token 返回 None（自定义菜单公开端点按等级过滤用）
+pub async fn optional_auth(
+    req: &HttpRequest,
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> Option<AuthUser> {
+    require_auth(req, state).await.ok()
+}
+
 fn require_staff(user: &AuthUser) -> DomainResult<()> {
     if user.class_id >= 90 {
         Ok(())
@@ -1459,6 +1467,7 @@ async fn rss_info(
             { "label": "官种", "url": format!("{}/api/v1/rss/{}?official=true", base, passkey) },
         ],
         "passkey": passkey,
+        "base": format!("{}/api/v1/rss/", base),
     })))
 }
 
@@ -1501,9 +1510,7 @@ async fn faq_create(
     body: web::Json<FaqBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE).await?;
     let id: i32 = sqlx::query_scalar(
         "INSERT INTO faq_items (question, answer, category, sort) VALUES ($1, $2, $3, COALESCE($4, (SELECT max(sort)+1 FROM faq_items))) RETURNING id",
     )
@@ -1525,9 +1532,7 @@ async fn faq_update(
     body: web::Json<FaqBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE).await?;
     let n = sqlx::query("UPDATE faq_items SET question=$2, answer=$3, category=$4, updated_at=now() WHERE id=$1")
         .bind(*path).bind(&body.question).bind(&body.answer).bind(&body.category)
         .execute(&state.repo.db).await
@@ -1543,7 +1548,7 @@ async fn faq_delete(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE).await?;
     sqlx::query("DELETE FROM faq_items WHERE id=$1").bind(*path)
         .execute(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1578,7 +1583,7 @@ async fn rule_create(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<RuleBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE).await?;
     let id: i32 = sqlx::query_scalar(
         "INSERT INTO site_rules (title, body, sort) VALUES ($1,$2,COALESCE($3,(SELECT max(sort)+1 FROM site_rules))) RETURNING id",
     ).bind(&body.title).bind(&body.body).bind(body.sort)
@@ -1592,7 +1597,7 @@ async fn rule_update(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>, body: web::Json<RuleBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE).await?;
     let n = sqlx::query("UPDATE site_rules SET title=$2, body=$3, updated_at=now() WHERE id=$1")
         .bind(*path).bind(&body.title).bind(&body.body)
         .execute(&state.repo.db).await
@@ -1606,7 +1611,7 @@ async fn rule_delete(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE).await?;
     sqlx::query("DELETE FROM site_rules WHERE id=$1").bind(*path)
         .execute(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1626,7 +1631,7 @@ async fn category_list(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
     let rows: Vec<CatRow> = sqlx::query_as(
         "SELECT c.id, c.name, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
          FROM categories c ORDER BY c.id",
@@ -1640,7 +1645,7 @@ async fn category_create(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<CatBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
     let id: i32 = sqlx::query_scalar("INSERT INTO categories (id, name) VALUES ((SELECT max(id)+1 FROM categories), $1) RETURNING id")
         .bind(&body.name).fetch_one(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1652,7 +1657,7 @@ async fn category_update(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>, body: web::Json<CatBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
     let n = sqlx::query("UPDATE categories SET name=$2 WHERE id=$1")
         .bind(*path).bind(&body.name)
         .execute(&state.repo.db).await
@@ -1666,7 +1671,7 @@ async fn category_delete(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
     let used: i64 = sqlx::query_scalar("SELECT count(*) FROM torrents WHERE category_id=$1")
         .bind(*path).fetch_one(&state.repo.db).await.unwrap_or(0);
     if used > 0 { return Err(DomainError::Validation("该分类下仍有种子，无法删除".into())); }
@@ -1692,7 +1697,7 @@ async fn ban_list(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
     let rows: Vec<IpBanRow> = sqlx::query_as(
         "SELECT b.id, b.ip::text AS ip, b.reason, u.username AS banned_by, b.created_at \
          FROM ip_bans b LEFT JOIN users u ON u.id = b.banned_by ORDER BY b.id DESC",
@@ -1709,7 +1714,7 @@ async fn ban_create(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<BanBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
     let ip: std::net::IpAddr = body.ip.trim().parse()
         .map_err(|_| DomainError::Validation("IP 格式无效".into()))?;
     let ip_text = ip.to_string();
@@ -1728,7 +1733,7 @@ async fn ban_delete(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
     sqlx::query("DELETE FROM ip_bans WHERE id=$1").bind(*path)
         .execute(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1802,7 +1807,7 @@ async fn freeleech_set(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<FreeleechBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_MANAGE).await?;
     let (kind, scope, starts_at, ends_at) = promo_parse(
         &body.kind, body.scope.as_deref(), body.hours, &body.starts_at, &body.ends_at)?;
     let kind = kind.as_str();
@@ -1842,7 +1847,7 @@ async fn freeleech_clear(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_MANAGE).await?;
     // 清除全部进行中的手动站点级促销（全站/官种/非官种/分类）
     let n = sqlx::query("DELETE FROM promotions WHERE scope IN ('global','official','non_official','category') AND source='manual' AND ends_at > now()")
         .execute(&state.repo.db).await
@@ -1858,7 +1863,7 @@ async fn freeleech_update(
     path: web::Path<i64>, body: web::Json<FreeleechBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_MANAGE).await?;
     let pid = path.into_inner();
     let exists: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM promotions WHERE id = $1 AND source = 'manual'")
@@ -1899,7 +1904,7 @@ async fn freeleech_delete(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_MANAGE).await?;
     let pid = path.into_inner();
     let n = sqlx::query("DELETE FROM promotions WHERE id = $1 AND source = 'manual'")
         .bind(pid).execute(&state.repo.db).await
@@ -1927,7 +1932,7 @@ async fn freeleech_list(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_VIEW).await?;
     let rows: Vec<SitePromoRow> = sqlx::query_as(
         "SELECT p.id, p.scope::text AS scope, p.kind::text AS kind, p.category_id, c.name AS category_name, p.starts_at, p.ends_at \
          FROM promotions p LEFT JOIN categories c ON c.id = p.category_id \
@@ -1952,7 +1957,7 @@ async fn staffmess_send(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<StaffMessBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFFMESS).await?;
     if body.subject.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("主题和正文不能为空".into()));
     }
@@ -1979,7 +1984,7 @@ async fn admin_add_user(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<AddUserBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_CREATE).await?;
     if body.username.trim().len() < 2 || !body.email.contains('@') || body.password.len() < 8 {
         return Err(DomainError::Validation("用户名≥2字符、邮箱合法、密码≥8位".into()));
     }
@@ -2011,7 +2016,7 @@ async fn admin_amount_bonus(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<AmountBonusBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_AMOUNTBONUS).await?;
     if body.amount == 0 || body.amount.abs() > 1_000_000 {
         return Err(DomainError::Validation("数量需在 ±1,000,000 之间且非 0".into()));
     }
@@ -2038,7 +2043,7 @@ async fn warned_list(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN).await?;
     let rows: Vec<WarnedRow> = sqlx::query_as(
         "SELECT id, username, warned_until, warned_reason FROM users WHERE warned_until > now() ORDER BY warned_until",
     ).fetch_all(&state.repo.db).await
@@ -2059,7 +2064,7 @@ async fn warn_user(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<WarnBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN).await?;
     if !(1..=52).contains(&body.weeks) {
         return Err(DomainError::Validation("警告时长需 1-52 周".into()));
     }
@@ -2078,7 +2083,7 @@ async fn unwarn_user(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN).await?;
     let n = sqlx::query("UPDATE users SET warned_until = NULL, warned_reason = NULL WHERE id = $1")
         .bind(*path)
         .execute(&state.repo.db).await
@@ -2102,7 +2107,7 @@ async fn ipcheck(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::IP_CHECK).await?;
     let rows: Vec<IpCheckRow> = sqlx::query_as(
         "SELECT host(ip) AS ip, \
             count(DISTINCT user_id) AS users, \
@@ -2131,7 +2136,7 @@ async fn maxlogin(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MAXLOGIN_VIEW).await?;
     let rows: Vec<FailedLoginRow> = sqlx::query_as(
         "SELECT le.id, u.username, host(le.ip) AS ip, le.created_at \
          FROM login_events le LEFT JOIN users u ON u.id = le.user_id \
@@ -2156,7 +2161,7 @@ async fn admin_amount_upload(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<AmountUploadBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_AMOUNTUPLOAD).await?;
     if body.bytes == 0 || body.bytes.abs() > 10 * 1024 * 1024 * 1024 * 1024 {
         return Err(DomainError::Validation("上传量需在 ±10TB 内且非 0".into()));
     }
@@ -2178,7 +2183,7 @@ async fn admin_reset_pass(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<ResetPassBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_RESETPASS).await?;
     // 临时密码（Dev 演示口径，仅返回一次）
     let nanos = chrono::Utc::now().timestamp_subsec_nanos() as i64;
     let temp_pass = format!("Tmp@{}{}", auth.id, (nanos % 1_000_000).to_string());
@@ -2199,7 +2204,7 @@ async fn admin_delete_disabled(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_DELETE_DISABLED).await?;
     let ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM users WHERE status = 2 ORDER BY id")
         .fetch_all(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2229,7 +2234,7 @@ async fn emailban_list(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::EMAILBAN_MANAGE).await?;
     let rows: Vec<EmailBanRow> = sqlx::query_as(
         "SELECT e.id, e.pattern, e.mode, e.note, u.username AS created_by, e.created_at \
          FROM email_bans e LEFT JOIN users u ON u.id = e.created_by ORDER BY e.id DESC",
@@ -2251,7 +2256,7 @@ async fn emailban_create(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<EmailBanBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::EMAILBAN_MANAGE).await?;
     if !body.pattern.contains('@') && !body.pattern.starts_with('@') && !body.pattern.ends_with('@') {
         return Err(DomainError::Validation("格式需为邮箱、@domain 或 user@ 通配".into()));
     }
@@ -2272,7 +2277,7 @@ async fn emailban_delete(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::EMAILBAN_MANAGE).await?;
     sqlx::query("DELETE FROM email_bans WHERE id=$1").bind(*path)
         .execute(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2288,7 +2293,7 @@ async fn test_ip(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, q: web::Query<TestIpQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TESTIP).await?;
     let ip: std::net::IpAddr = q.ip.trim().parse()
         .map_err(|_| DomainError::Validation("IP 格式无效".into()))?;
     let ip_text = ip.to_string();
@@ -2319,7 +2324,7 @@ async fn admin_stats(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STATS_VIEW).await?;
     let row: (i64, i64, i64, i64, i64, i64) = sqlx::query_as(
         "SELECT (SELECT count(*) FROM users WHERE status < 2)::bigint, \
                 (SELECT count(*) FROM torrents)::bigint, \
@@ -2351,7 +2356,7 @@ async fn clear_cache(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEARCACHE).await?;
     use redis::AsyncCommands;
     let mut c = state.redis.clone();
     let keys: Vec<String> = c.keys("rl:*").await.unwrap_or_default();
@@ -2369,7 +2374,7 @@ async fn do_cleanup(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEANUP_RUN).await?;
     let expired_promos = sqlx::query("DELETE FROM promotions WHERE ends_at < now() - interval '7 days'")
         .execute(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
@@ -2408,7 +2413,7 @@ async fn ad_list(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
     let rows: Vec<AdRow> = sqlx::query_as(
         "SELECT id, title, html, position, enabled, sort FROM ads ORDER BY sort, id",
     ).fetch_all(&state.repo.db).await
@@ -2433,7 +2438,7 @@ async fn ad_create(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<AdBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
     if !["header", "footer", "sidebar"].contains(&body.position.as_str()) {
         return Err(DomainError::Validation("广告位需为 header/footer/sidebar".into()));
     }
@@ -2452,7 +2457,7 @@ async fn ad_update(
     path: web::Path<i32>, body: web::Json<AdBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
     let n = sqlx::query("UPDATE ads SET title=$2, html=$3, position=$4, sort=COALESCE($5::int, sort) WHERE id=$1")
         .bind(*path).bind(body.title.trim()).bind(&body.html).bind(&body.position).bind(body.sort)
         .execute(&state.repo.db).await
@@ -2466,7 +2471,7 @@ async fn ad_toggle(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
     let n = sqlx::query("UPDATE ads SET enabled = NOT enabled WHERE id=$1")
         .bind(*path)
         .execute(&state.repo.db).await
@@ -2480,7 +2485,7 @@ async fn ad_delete(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
     sqlx::query("DELETE FROM ads WHERE id=$1").bind(*path)
         .execute(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2501,7 +2506,7 @@ async fn not_connectable(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::NOTCONNECTABLE_VIEW).await?;
     let rows: Vec<NotConnectRow> = sqlx::query_as(
         "SELECT u.id, u.username, count(DISTINCT s.torrent_id) AS torrents, u.last_seen_at \
          FROM users u JOIN snatches s ON s.user_id = u.id AND s.connectable = false \
@@ -2526,7 +2531,7 @@ async fn uploaders(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::UPLOADERS_VIEW).await?;
     let rows: Vec<UploaderRow> = sqlx::query_as(
         "SELECT u.id, u.username,                 (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)::bigint AS uploads,                 (SELECT count(*) FROM snatches s JOIN torrents t2 ON t2.id = s.torrent_id                   WHERE s.user_id = u.id AND s.seeding AND t2.owner_id = u.id)::bigint AS seeding,                 COALESCE((SELECT sum(t.size) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), 0)::bigint AS total_size          FROM users u WHERE u.status < 2            AND EXISTS (SELECT 1 FROM torrents t3 WHERE t3.owner_id = u.id AND t3.approval_status = 1)          ORDER BY uploads DESC LIMIT 100",
     ).fetch_all(&state.repo.db).await
@@ -2546,7 +2551,7 @@ async fn all_agents(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::AGENTS_VIEW).await?;
     let rows: Vec<AgentRow> = sqlx::query_as(
         "SELECT COALESCE('Transmission/Dev', 'unknown') AS agent, count(*) AS peers \
          FROM snatches WHERE seeding OR leeching GROUP BY 1 ORDER BY peers DESC",
@@ -2570,7 +2575,7 @@ async fn poll_overview(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::POLLS_MANAGE).await?;
     let rows: Vec<PollOverviewRow> = sqlx::query_as(
         "SELECT p.id, p.question, p.closed, \
                 (SELECT count(*) FROM fun_votes v WHERE v.poll_id = p.id) AS votes, p.created_at \
@@ -2601,7 +2606,7 @@ async fn db_stats(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::DBSTATS_VIEW).await?;
     let conns: Vec<PgConnRow> = sqlx::query_as(
         "SELECT state, count(*)::bigint AS count FROM pg_stat_activity WHERE datname = current_database() GROUP BY state ORDER BY count DESC",
     ).fetch_all(&state.repo.db).await
@@ -2656,7 +2661,7 @@ async fn sys_log(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, q: web::Query<SysLogQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SYSLOG_VIEW).await?;
     let page = q.page.unwrap_or(1).clamp(1, 1000);
     let per = 30i64;
     let rows: Vec<SysLogRow> = sqlx::query_as(
@@ -2698,7 +2703,7 @@ async fn locations(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, q: web::Query<LocationQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::LOCATIONS_MANAGE).await?;
     let page = q.page.unwrap_or(1).clamp(1, 1000);
     let per = 30i64;
     let rows: Vec<LocationRow> = sqlx::query_as(
@@ -2764,7 +2769,7 @@ async fn site_type_pack_list(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
     let rows: Vec<SiteTypePack> = sqlx::query_as(
         "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs ORDER BY sort",
     ).fetch_all(&state.repo.db).await
@@ -2786,7 +2791,7 @@ async fn site_type_pack_apply(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<ApplyPackBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
     let mode = body.mode.as_deref().unwrap_or("replace");
     if !["replace", "merge"].contains(&mode) {
         return Err(DomainError::Validation("mode 需为 replace/merge".into()));
@@ -3026,7 +3031,7 @@ async fn massmail_list(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MASSMAIL).await?;
     let rows: Vec<MassMailRow> = sqlx::query_as(
         "SELECT m.id, m.subject, m.recipients, m.created_at, u.username AS sender \
          FROM mass_mails m LEFT JOIN users u ON u.id = m.sent_by ORDER BY m.id DESC LIMIT 50",
@@ -3040,7 +3045,7 @@ async fn massmail_send(
     req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>, body: web::Json<MassMailBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 99 { return Err(DomainError::Forbidden); }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MASSMAIL).await?;
     if body.subject.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("主题和正文不能为空".into()));
     }
@@ -3302,9 +3307,7 @@ async fn news_create(
     body: web::Json<NewsBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::NEWS_MANAGE).await?;
     if body.title.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("标题和正文不能为空".into()));
     }
@@ -3330,9 +3333,7 @@ async fn news_update(
     body: web::Json<NewsBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::NEWS_MANAGE).await?;
     let updated = sqlx::query(
         "UPDATE announcements SET title = $2, body = $3, badge = $4 WHERE id = $1",
     )
@@ -3357,9 +3358,7 @@ async fn news_delete(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::NEWS_MANAGE).await?;
     let deleted = sqlx::query("DELETE FROM announcements WHERE id = $1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -3473,7 +3472,9 @@ async fn fun_item_create(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if let Some(t) = recent {
-        if chrono::Utc::now() - t < chrono::Duration::hours(24) && auth.class_id < 90 {
+        if chrono::Utc::now() - t < chrono::Duration::hours(24)
+            && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE).await
+        {
             return Err(DomainError::Validation(
                 "最新一条发布不足 24 小时，请稍后再来".into(),
             ));
@@ -3507,7 +3508,7 @@ async fn fun_item_update(
     let Some(owner) = owner else {
         return Err(DomainError::NotFound(*path as i64));
     };
-    if owner != auth.id && auth.class_id < 90 {
+    if owner != auth.id && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE).await {
         return Err(DomainError::Forbidden);
     }
     sqlx::query("UPDATE fun_items SET title = $2, body = $3 WHERE id = $1")
@@ -3575,7 +3576,7 @@ async fn fun_item_delete(
     let Some(owner) = owner else {
         return Err(DomainError::NotFound(*path as i64));
     };
-    if owner != auth.id && auth.class_id < 90 {
+    if owner != auth.id && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE).await {
         return Err(DomainError::Forbidden);
     }
     sqlx::query("DELETE FROM fun_items WHERE id = $1")
@@ -3656,9 +3657,7 @@ async fn link_update(
     body: web::Json<LinkAdminBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE).await?;
     if let Some(st) = &body.status {
         if !["pending", "active", "hidden"].contains(&st.as_str()) {
             return Err(DomainError::Validation("非法状态".into()));
@@ -3693,9 +3692,7 @@ async fn link_delete(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE).await?;
     sqlx::query("DELETE FROM friend_links WHERE id = $1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -3729,9 +3726,7 @@ async fn link_admin_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE).await?;
     let rows: Vec<LinkRow> = sqlx::query_as(
         "SELECT id, name, url, title, status, applied_by, admin_name, email, reason \
          FROM friend_links ORDER BY (status = 'pending') DESC, sort, id",
@@ -3969,6 +3964,8 @@ async fn upload(
     use futures_util::StreamExt;
 
     let auth = require_auth(&req, &state).await?;
+    // 发种基础权限（默认配给全体用户 class 1；可用于限制上传资格）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TORRENT_UPLOAD).await?;
     let mut file_bytes: Option<Bytes> = None;
     while let Some(item) = payload.next().await {
         let mut field = item.map_err(|e| DomainError::Validation(e.to_string()))?;
@@ -4007,9 +4004,13 @@ async fn upload(
         .map(str::trim)
         .filter(|u| !u.is_empty())
         .map(|u| serde_json::json!({ "poster": u }));
+    // 发布员职务 / 免审核权限 → 发布即通过（torrent.approval.auto）
+    let auto_approve =
+        crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_APPROVAL_AUTO).await;
+    let approval_status: i16 = if auto_approve { 1 } else { 0 };
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO torrents (info_hash, name, small_descr, descr, category_id, medium_id, grade_id, edition_id, owner_id, anonymous, size, numfiles, approval_status, media_info) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13) RETURNING id",
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id",
     )
     .bind(&parsed.info_hash_hex)
     .bind(&name)
@@ -4023,6 +4024,7 @@ async fn upload(
     .bind(form.anonymous)
     .bind(parsed.size)
     .bind(parsed.numfiles)
+    .bind(approval_status)
     .bind(media_info)
     .fetch_one(&state.repo.db)
     .await
@@ -4042,7 +4044,11 @@ async fn upload(
         .await;
     // M28 插件 Hook：发布成功后分发（异步、失败不影响主流程）
     state.plugins.dispatch_upload(&state, id, auth.id);
-    Ok(ok(serde_json::json!({ "id": id, "approval_status": 0 })))
+    Ok(ok(serde_json::json!({
+        "id": id,
+        "approval_status": approval_status,
+        "auto_approved": auto_approve,
+    })))
 }
 
 #[get("/torrents/{id}/download")]
@@ -4147,8 +4153,16 @@ async fn issue_invite_handler(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // 配额：等级 LV3+ 每周 2 枚。原子占位（UPDATE 计数行）防并发穿透
-    let quota: i64 = if auth.class_id >= 3 { 2 } else { 0 };
+    // 配额：等级 LV3+ 每周 2 枚；持有 invites.bonus（外联员 / VIP）提升为 4 枚。
+    // 原子占位（UPDATE 计数行）防并发穿透
+    let quota: i64 =
+        if crate::authz::can(&state, &auth, crate::authz::perm::INVITES_BONUS).await {
+            4
+        } else if auth.class_id >= 3 {
+            2
+        } else {
+            0
+        };
     sqlx::query(
         "INSERT INTO invite_quota (user_id, period, used) VALUES ($1, date_trunc('week', now())::date, 0) ON CONFLICT DO NOTHING",
     )
