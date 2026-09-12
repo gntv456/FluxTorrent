@@ -3,8 +3,9 @@ import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { editionName, formatBytes, promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
+import { TorrentActions } from "@/components/torrent-actions";
 
-/** 分类色（好学站 catsprites 色系）：类型列色块 + 封面占位 */
+/** 分类色（好学站 catsprites 色系）：类型列色块 + 无封面时的回退底色 */
 const CAT_COLORS: Record<number, string> = {
   1: "#f6a5c0",
   2: "#7fb7e6",
@@ -38,8 +39,9 @@ function remaining(end: string | null | undefined, now: number): string | null {
 
 /**
  * 种子表行（好学站 torrents.php 行结构复刻）：
- * 类型色块 | 标题列（封面 46px + 三行：主标题[置顶/新/促销+剩余] / 副题链 / 标签+上传者）
- * | 评论 / 存活 / 大小 / 做种 / 下载 / 完成 / 上传者 / 行为（下载+收藏）。
+ * 类型色块 | 封面 46px（media_info.poster 外链，无图回退类型色块）
+ * | 标题三行（主标题[置顶/新] → 促销状态+剩余时间紧跟种子名 → 副题链 → 标签·发布者）
+ * | 评论/存活/大小/做种/下载/完成 | 行为（下载 + ⋮ 下拉：收藏/编辑/删除）。
  */
 async function TorrentTr({ t }: { t: TorrentListItem }) {
   const { dict, locale } = await getDict();
@@ -72,6 +74,27 @@ async function TorrentTr({ t }: { t: TorrentListItem }) {
           title={dict.torrents.categories[t.category_id] ?? ""}
         />
       </td>
+      {/* 封面（好学站 46px 外链图；无图回退类型色块底 + 🎬） */}
+      <td className="torrents-td-cover">
+        <Link href={`/torrent/${t.id}`} aria-hidden tabIndex={-1}>
+          {t.poster ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={t.poster}
+              alt=""
+              loading="lazy"
+              className="torrents-cover"
+            />
+          ) : (
+            <span
+              className="torrents-cover torrents-cover--fallback"
+              style={{ background: catColor(t.category_id) }}
+            >
+              🎬
+            </span>
+          )}
+        </Link>
+      </td>
       {/* 标题（好学站三行结构） */}
       <td className="torrents-td-title">
         <div className="torrents-title">
@@ -84,6 +107,7 @@ async function TorrentTr({ t }: { t: TorrentListItem }) {
             <b>{t.name}</b>
           </Link>
           {isNew && <span className="torrents-new">{dict.torrents.newTag ?? "新"}</span>}
+          {/* 促销状态 + 剩余时间：紧跟种子名（好学站口径） */}
           {promo && (
             <span
               className={`torrents-promo${promo.key === "free" ? " torrents-promo--free" : ""}`}
@@ -93,9 +117,8 @@ async function TorrentTr({ t }: { t: TorrentListItem }) {
             </span>
           )}
           {left && <span className="torrents-left">剩余 {left}</span>}
-          {t.official && <span className="torrents-tag torrents-tag--official">官方</span>}
         </div>
-        {/* 副题链：学段 · 媒介 · 版本 · 小备注（好学站「教材: xx | 章节: xx」口径） */}
+        {/* 副题链：学段 · 媒介 · 版本 · 小备注 */}
         {(grade || edition || subtitle) && (
           <div className="torrents-subtitle" title={subtitle}>
             {grade}
@@ -104,8 +127,12 @@ async function TorrentTr({ t }: { t: TorrentListItem }) {
             {subtitle ? `${grade || edition ? " · " : ""}${subtitle}` : ""}
           </div>
         )}
-        {/* 第三行：上传者 */}
+        {/* 第三行：标签在前、发布者在后（好学站标签色块 + 上传者口径） */}
         <div className="torrents-meta">
+          <span className="torrents-tags">
+            {t.official && <span className="torrents-tag torrents-tag--official">官方</span>}
+            {t.sticky && <span className="torrents-tag torrents-tag--sticky">{dict.torrent.sticky}</span>}
+          </span>
           {t.anonymous ? (
             <span className="text-sub">{dict.torrent.anonymous}</span>
           ) : (
@@ -124,24 +151,9 @@ async function TorrentTr({ t }: { t: TorrentListItem }) {
       <td className="num seed-arrow">{t.seeders}</td>
       <td className="num leech-arrow">{t.leechers}</td>
       <td className="num">{t.times_completed}</td>
-      {/* 行为列（好学站：下载 + 收藏图标按钮） */}
+      {/* 行为列：下载 + ⋮ 下拉（收藏/编辑/删除，好学站 staff 菜单口径） */}
       <td className="torrents-td-actions">
-        <a
-          href={`/api/v1/torrents/${t.id}/download`}
-          className="torrents-action"
-          title={dict.torrents.download ?? "下载本种"}
-          aria-label={dict.torrents.download ?? "下载本种"}
-        >
-          ⬇
-        </a>
-        <a
-          href={`/torrent/${t.id}`}
-          className="torrents-action"
-          title={dict.torrents.detail ?? "详情"}
-          aria-label={dict.torrents.detail ?? "详情"}
-        >
-          ⓘ
-        </a>
+        <TorrentActions torrentId={t.id} downloadLabel={dict.torrents.download ?? "下载本种"} />
       </td>
     </tr>
   );

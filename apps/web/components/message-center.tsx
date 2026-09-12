@@ -17,7 +17,13 @@ interface MessageRow {
 /** 站内消息中心（M17）：收件箱/已发送 + 写信（对接 /messages 三接口） */
 export function MessageCenter() {
   const { dict, locale } = useI18n();
-  const [box, setBox] = useState<"inbox" | "sent">("inbox");
+  // 支持 userbar 图标深链：/messages?box=sent 直达发件箱
+  const [box, setBox] = useState<"inbox" | "sent">(() => {
+    if (typeof window === "undefined") return "inbox";
+    return new URLSearchParams(window.location.search).get("box") === "sent"
+      ? "sent"
+      : "inbox";
+  });
   const [rows, setRows] = useState<MessageRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);

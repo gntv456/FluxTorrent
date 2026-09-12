@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ShoutBox } from "@/components/shout-box";
+import { FunBox } from "@/components/fun-box";
 
 /** 首页板块（复刻包子站 index.php）：
  *  社区新鲜事（头条+列表+公告弹窗）· 签到得魔力日历 · 新增资源统计（30 天堆叠柱状图）
@@ -232,7 +233,13 @@ export function HomeSections() {
         </aside>
       </div>
 
-      {/* ==== 新增资源统计（近 30 天堆叠柱状图 + 摘要） ==== */}
+{/* ==== 聊天室 + 趣味盒（各占一半，移动端上下堆叠） ==== */}
+      <div className="home-duo grid gap-4 lg:grid-cols-2">
+        <ShoutBox />
+        <FunBox embedded />
+      </div>
+
+            {/* ==== 新增资源统计（近 30 天堆叠柱状图 + 摘要） ==== */}
       <ResourceStatsPanel series={data.resource_stats} t={t} />
 
       {/* ==== 底部行：站点数据三列（主） + 幸运大转盘（侧） ==== */}
@@ -339,9 +346,6 @@ export function HomeSections() {
           </ul>
         </aside>
       </div>
-
-      {/* ==== 聊天盒（全宽） ==== */}
-      <ShoutBox />
 
       {/* ==== 免责条款 + 友情链接 ==== */}
       <div className="home-native-modules">

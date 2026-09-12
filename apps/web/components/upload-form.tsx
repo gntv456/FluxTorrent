@@ -32,6 +32,7 @@ export function UploadForm() {
   const [editionId, setEditionId] = useState("");
   const [smallDescr, setSmallDescr] = useState("");
   const [descr, setDescr] = useState("");
+  const [poster, setPoster] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,6 +58,7 @@ export function UploadForm() {
       if (editionId) qs.set("edition_id", editionId);
       if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
       if (descr.trim()) qs.set("descr", descr.trim());
+      if (poster.trim()) qs.set("poster", poster.trim());
       const base =
         process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
       const res = await fetch(`${base}/api/v1/torrents?${qs}`, {
@@ -131,6 +133,22 @@ export function UploadForm() {
               maxLength={120}
               className={fieldCls}
             />,
+          )}
+          {row(
+            dict.upload.poster ?? "封面图 URL",
+            <div className="flex flex-col gap-1">
+              <input
+                type="url"
+                value={poster}
+                onChange={(e) => setPoster(e.target.value)}
+                placeholder="https://…（种子列表封面位与首页海报墙共用，留空则显示分类色块）"
+                maxLength={500}
+                className={fieldCls}
+              />
+              <span className="text-xs text-sub">
+                {dict.upload.posterHint ?? "外链图床 URL；建议竖版海报比例"}
+              </span>
+            </div>,
           )}
           {row(
             dict.upload.descr,
