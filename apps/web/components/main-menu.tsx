@@ -49,13 +49,27 @@ export function MainMenu({
   return (
     <nav aria-label={ariaLabel}>
       <ul className="mainmenu">
-        {items.map((n) => (
-          <li key={n.href}>
-            <Link href={n.href} className="mainmenu-link" data-active={isActive(n.href) ? "true" : undefined}>
-              {n.label}
-            </Link>
-          </li>
-        ))}
+        {items.map((n) => {
+          const external = /^https?:\/\//i.test(n.href);
+          return (
+            <li key={n.href}>
+              {external ? (
+                <a
+                  href={n.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mainmenu-link"
+                >
+                  {n.label}
+                </a>
+              ) : (
+                <Link href={n.href} className="mainmenu-link" data-active={isActive(n.href) ? "true" : undefined}>
+                  {n.label}
+                </Link>
+              )}
+            </li>
+          );
+        })}
         {groups && groups.length > 0 && (
           <li className="relative" ref={moreRef}>
             <button

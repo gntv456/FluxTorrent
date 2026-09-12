@@ -2848,6 +2848,152 @@ a:hover {
   color: inherit;
 }
 
+/* ============ 种子列表行（好学站 torrents.php 口径） ============
+   类型色块 | 标题三行（主标题[置顶/新/促销+剩余] / 副题链 / 上传者+日期）
+   | 评论/存活/大小/做种/下载/完成 | 行为（下载/详情）。
+   促销行整行高亮（免费=好学蓝、2x=暖黄），剩余时间蓝色小字跟随促销徽标。 */
+:root,
+[data-theme="baozi"] {
+  --promo-free-bg: #e3f4fd; /* 免费/2x免费 行高亮（浅好学蓝，#89c9e6 同族更淡） */
+  --promo-x2-bg: #fdf6dd; /* 2x/2x半价 行高亮（暖黄） */
+}
+[data-theme="baozi-night"] {
+  --promo-free-bg: #10314a;
+  --promo-x2-bg: #33300f;
+}
+
+.torrents-td-cat {
+  padding: 8px 6px !important;
+  text-align: center;
+  vertical-align: middle;
+}
+.torrents-cat-block {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--baozi-line-soft);
+}
+
+.torrents-td-title {
+  min-width: 240px;
+}
+.torrents-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.torrents-pin {
+  font-size: 12px;
+  filter: saturate(1.2);
+}
+.torrents-name {
+  color: var(--text-strong);
+  min-width: 0;
+  /* 长标题截断为两行内（好学站整行展示，这里防超长标题撑爆表格） */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.torrents-name b {
+  font-weight: 700;
+}
+.torrents-new {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 700;
+}
+.torrents-promo {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--sun);
+  color: #6b4e00;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.7;
+}
+.torrents-promo--free {
+  background: var(--mint);
+  color: #fff;
+}
+.torrents-left {
+  color: var(--sky-deep);
+  font-size: 11.5px;
+}
+[data-theme="baozi-night"] .torrents-left {
+  color: var(--text-brand);
+}
+.torrents-tag--official {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--indigo);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.torrents-subtitle {
+  margin-top: 3px;
+  max-width: 640px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.torrents-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 3px;
+  font-size: 11.5px;
+}
+.torrents-uploader {
+  color: var(--baozi-orange-dark);
+  font-weight: 700;
+}
+.torrents-meta-date {
+  color: var(--text-faint);
+}
+.torrents-td-alive {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.torrents-td-actions {
+  white-space: nowrap;
+  text-align: center;
+}
+.torrents-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  color: var(--text-body);
+  font-size: 15px;
+}
+.torrents-action:hover {
+  color: var(--text-brand);
+  background: var(--surface-hover);
+}
+.torrents-action:first-child {
+  color: var(--coral);
+}
+/* 窄屏：行为列图标并列、数字列收紧 */
+@media (max-width: 768px) {
+  .torrents-td-title {
+    min-width: 160px;
+  }
+  .torrents-subtitle {
+    max-width: 200px;
+  }
+}
+
 /* ============ 保种区（requireseed.php 复刻） ============ */
 .preserve-page {
   display: flex;

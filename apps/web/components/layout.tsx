@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { UserBox } from "@/components/user-box";
 import { MainMenu } from "@/components/main-menu";
 import { CustomMenu } from "@/components/custom-menu";
+import { getMenuItems } from "@/lib/data";
 
 /** 导航项（Seedlight §3）：href + label；group 用于「更多 ▾」下拉分组。 */
 type NavItem = { href: string; label: string };
@@ -21,14 +22,21 @@ export async function Header() {
   const textbooksOn = profile.modules.textbooks === true;
   const brand = profile.brand || dict.common.brand;
 
-  // 桌面一级：核心任务域（发布入口在菜单内，不再放独立大按钮）
-  const primary: NavItem[] = [
+  // 自定义菜单（location=topbar）：配置了就直接替换主菜单一级项；未配置回落默认
+  const customItems = await getMenuItems("topbar");
+
+  // 默认一级：核心任务域（发布入口在菜单内，不再放独立大按钮）
+  const defaultPrimary: NavItem[] = [
     { href: "/", label: dict.nav.home },
     { href: "/torrents", label: dict.nav.library },
     { href: "/forums", label: dict.nav.forums },
     { href: "/top", label: dict.nav.top },
     { href: "/upload", label: dict.nav.upload },
   ];
+  const primary: NavItem[] =
+    customItems.length > 0
+      ? customItems.map((m) => ({ href: m.url, label: m.label }))
+      : defaultPrimary;
 
   // 「更多 ▾」收纳域（Seedlight IA 分组）
   const groups: NavGroup[] = [
@@ -102,12 +110,7 @@ export async function Header() {
           <LocaleSwitcher current={locale} />
         </div>
       </div>
-      {/* 2.5) 自定义菜单（location=topbar）：有配置才渲染，无则完全不出现在布局中 */}
-      <CustomMenu
-        location="topbar"
-        className="mx-auto flex w-full max-w-[1536px] flex-wrap items-center gap-x-4 gap-y-1 px-6 pb-1 pt-0.5"
-        linkClassName="text-xs text-sub hover:text-sky"
-      />
+      {/* 自定义菜单（location=topbar）已在上方替换主菜单一级项，无独立行 */}
       {/* 3) 用户信息条（登录态客户端补齐） */}
       <div className="mx-auto w-full max-w-[1536px] px-6 pb-3 pt-2">
         <div className="userbar">

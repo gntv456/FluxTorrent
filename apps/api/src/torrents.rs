@@ -27,6 +27,8 @@ pub struct TorrentRow {
     pub sticky: bool,
     pub owner_name: Option<String>,
     pub promotion: Option<String>,
+    /// 进行中促销的截止时刻（列表展示「剩余时间」，好学站口径）
+    pub promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -113,6 +115,9 @@ pub async fn list_torrents(
                (SELECT kind::text FROM promotions p
                   WHERE p.torrent_id = t.id AND p.starts_at <= now() AND p.ends_at > now()
                   ORDER BY p.id DESC LIMIT 1) AS promotion,
+               (SELECT p.ends_at FROM promotions p
+                  WHERE p.torrent_id = t.id AND p.starts_at <= now() AND p.ends_at > now()
+                  ORDER BY p.id DESC LIMIT 1) AS promotion_ends_at,
                t.created_at
         FROM torrents t
         LEFT JOIN users u ON u.id = t.owner_id
@@ -189,6 +194,9 @@ pub async fn get_torrent(db: &PgPool, id: i64) -> DomainResult<TorrentRow> {
                (SELECT kind::text FROM promotions p
                   WHERE p.torrent_id = t.id AND p.starts_at <= now() AND p.ends_at > now()
                   ORDER BY p.id DESC LIMIT 1) AS promotion,
+               (SELECT p.ends_at FROM promotions p
+                  WHERE p.torrent_id = t.id AND p.starts_at <= now() AND p.ends_at > now()
+                  ORDER BY p.id DESC LIMIT 1) AS promotion_ends_at,
                t.created_at
         FROM torrents t LEFT JOIN users u ON u.id = t.owner_id
         WHERE t.id = $1 AND t.approval_status = 1

@@ -161,6 +161,8 @@ export interface TorrentListItem {
   approval_status: number;
   sticky: boolean;
   promotion: PromotionKind | null;
+  /** 进行中促销的截止时刻（ISO；列表展示「剩余时间」，好学站口径） */
+  promotion_ends_at: string | null;
   owner_name: string | null;
   created_at: string;
 }
