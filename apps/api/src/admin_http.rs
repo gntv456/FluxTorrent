@@ -4,7 +4,7 @@
 //! 举报处理、用户管理（封禁/解封/等级调整）、审计日志查询、站点运营概览。
 //! 敏感操作全部 require_staff + audit 落库（§5.7）。
 
-use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse};
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -21,10 +21,21 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(report_resolve)
         .service(user_admin_list)
         .service(user_admin_detail)
+        .service(user_admin_snatches)
+        .service(user_grant_medal)
+        .service(user_admin_delete)
         .service(user_adjust)
         .service(user_flags)
         .service(user_set_status)
         .service(user_set_class)
+        .service(role_list)
+        .service(user_role_list)
+        .service(user_role_grant)
+        .service(user_role_revoke)
+        .service(permission_matrix)
+        .service(permission_matrix_update)
+        .service(user_permission_view)
+        .service(user_permission_set)
         .service(audit_query)
         .service(staff_panel)
         .service(cheaters_scan)
@@ -55,10 +66,29 @@ async fn staff(
     state: &web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<crate::http::AuthUser> {
     let auth = require_auth(req, state).await?;
-    if auth.class_id < 90 {
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL).await?;
+    Ok(auth)
+}
+
+/// 权限护栏（NexusPHP checkPermission 口径）：操作者等级须**严格大于**目标用户。
+///
+/// 用于所有会修改目标用户的端点。此前 status / flags / adjust 仅有 staff(>=90) 守卫，
+/// 导致总版主(93) 可封禁、挂起、扣减管理员(94) / 主管(95) / 站长(99) 的数据。
+async fn ensure_outranks(
+    db: &sqlx::PgPool,
+    actor_class: i32,
+    target_user_id: i64,
+) -> DomainResult<()> {
+    let target_class: Option<i32> = sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+        .bind(target_user_id)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let tc = target_class.ok_or(DomainError::NotFound(target_user_id))?;
+    if actor_class <= tc {
         return Err(DomainError::Forbidden);
     }
-    Ok(auth)
+    Ok(())
 }
 
 /// 运营概览：待审/举报/用户/种子计数
@@ -520,6 +550,15 @@ struct AdminUserDetail {
     leeching: i64,
     uploads: i64,
     invites_unused: i64,
+    // 详情页全景扩充（好学站 user-profile 口径）
+    comments: i64,
+    downloaded_count: i64,
+    medals: i64,
+    warned_until: Option<chrono::DateTime<chrono::Utc>>,
+    warned_reason: Option<String>,
+    last_ip: Option<String>,
+    seed_seconds: i64,
+    attendance_days: i64,
 }
 
 #[get("/admin/users/{id}")]
@@ -538,7 +577,14 @@ async fn user_admin_detail(
                   (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
                   (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
                   (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id) AS uploads,
-                  (SELECT count(*) FROM invites v WHERE v.inviter_id = u.id AND v.status = 0) AS invites_unused
+                  (SELECT count(*) FROM invites v WHERE v.inviter_id = u.id AND v.status = 0) AS invites_unused,
+                  (SELECT count(*) FROM comments cm WHERE cm.user_id = u.id) AS comments,
+                  (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.completed_at IS NOT NULL) AS downloaded_count,
+                  (SELECT count(*) FROM user_medals um WHERE um.user_id = u.id) AS medals,
+                  u.warned_until, u.warned_reason,
+                  host((SELECT l.ip FROM login_events l WHERE l.user_id = u.id ORDER BY l.id DESC LIMIT 1)) AS last_ip,
+                  COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0) AS seed_seconds,
+                  (SELECT count(*) FROM attendance a WHERE a.user_id = u.id) AS attendance_days
            FROM users u
            LEFT JOIN user_classes c ON c.id = u.class_id
            LEFT JOIN users i ON i.id = u.invited_by
@@ -550,6 +596,129 @@ async fn user_admin_detail(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let user = row.ok_or(DomainError::NotFound(uid))?;
     Ok(ok(user))
+}
+
+/// 详情页「做种/下载」关联 tab：该用户的 snatches 全景（种子名/大小/状态/时长/H&R）
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct UserSnatchRow {
+    torrent_id: i64,
+    name: String,
+    size: i64,
+    seeded_seconds: i32,
+    seeding: bool,
+    hr_flag: bool,
+}
+
+#[get("/admin/users/{id}/snatches")]
+async fn user_admin_snatches(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    let _auth = staff(&req, &state).await?;
+    let rows: Vec<UserSnatchRow> = sqlx::query_as(
+        "SELECT s.torrent_id, t.name, t.size, s.seeded_seconds, s.seeding, s.hr_flag \
+         FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+         WHERE s.user_id = $1 \
+         ORDER BY s.seeding DESC, s.seeded_seconds DESC LIMIT 200",
+    )
+    .bind(path.into_inner())
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+/// 详情页授予勋章（好学站用户详情「授予勋章」口径）：管理发放 source='admin'
+#[post("/admin/users/{id}/medal/{medal_id}")]
+async fn user_grant_medal(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<(i64, i64)>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let (uid, medal_id) = path.into_inner();
+    ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
+    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM medals WHERE id = $1)")
+        .bind(medal_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+    if !exists {
+        return Err(DomainError::NotFound(medal_id));
+    }
+    sqlx::query(
+        "INSERT INTO user_medals (user_id, medal_id, source) VALUES ($1, $2, 'admin') \
+         ON CONFLICT (user_id, medal_id) DO NOTHING",
+    )
+    .bind(uid)
+    .bind(medal_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "user.grant_medal", Some(uid))
+        .await;
+    Ok(ok(serde_json::json!({ "user_id": uid, "medal_id": medal_id })))
+}
+
+/// 详情页删除用户（好学站用户详情「删除」口径）：仅 sysop，且要求先封禁（防误删活跃账号）
+#[delete("/admin/users/{id}")]
+async fn user_admin_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_DELETE_DISABLED).await?;
+    let uid = path.into_inner();
+    if uid == auth.id {
+        return Err(DomainError::Validation("不能删除自己".into()));
+    }
+    let status: Option<i16> = sqlx::query_scalar("SELECT status FROM users WHERE id = $1")
+        .bind(uid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    match status {
+        None => return Err(DomainError::NotFound(uid)),
+        Some(s) if s < 2 => {
+            return Err(DomainError::Validation(
+                "仅封禁状态的账号可删除，请先封禁".into(),
+            ));
+        }
+        _ => {}
+    }
+    // 业务数据清理顺序：先无 FK 约束的流水/记录，再反向删到用户
+    for sql in [
+        "DELETE FROM spark_ledger WHERE user_id = $1",
+        "DELETE FROM attendance WHERE user_id = $1",
+        "DELETE FROM task_claims WHERE user_id = $1",
+        "DELETE FROM bank_demand_accounts WHERE user_id = $1",
+        "DELETE FROM bank_loans WHERE user_id = $1",
+        "DELETE FROM bank_interest_records WHERE user_id = $1",
+        "DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1",
+        "DELETE FROM comments WHERE user_id = $1",
+        "DELETE FROM posts WHERE user_id = $1",
+        "DELETE FROM user_medals WHERE user_id = $1",
+        "DELETE FROM user_roles WHERE user_id = $1",
+        "DELETE FROM user_permissions WHERE user_id = $1",
+        "DELETE FROM bookmarks WHERE user_id = $1",
+        "UPDATE torrents SET owner_id = NULL WHERE owner_id = $1",
+        "DELETE FROM users WHERE id = $1 AND status >= 2",
+    ] {
+        sqlx::query(sql)
+            .bind(uid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "user.delete", Some(uid))
+        .await;
+    Ok(ok(serde_json::json!({ "deleted": uid })))
 }
 
 /// 「修改上传量等」（好学站用户详情按钮口径）：delta 语义，正加负减，下限 0
@@ -584,9 +753,9 @@ async fn user_adjust(
         return Err(DomainError::Validation("至少提供一项调整".into()));
     }
     // 数值调整仅 sysop/管理员（等级 93+）
-    if auth.class_id < 93 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_ADJUST).await?;
+    // 数值调整同属伤害性操作，须严格高于目标等级
+    ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
     let row: Option<(i64, i64, i64)> = sqlx::query_as(
         "SELECT uploaded, downloaded, spark_balance FROM users WHERE id = $1",
     )
@@ -689,9 +858,12 @@ async fn user_flags(
     body: web::Json<UserFlagsReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_FLAGS).await?;
     if body.download_enabled.is_none() && body.suspended.is_none() {
         return Err(DomainError::Validation("至少提供一个开关".into()));
     }
+    // 挂起 / 禁下载属伤害性操作，须严格高于目标等级
+    ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
     let n = sqlx::query(
         "UPDATE users SET \
             download_enabled = COALESCE($2, download_enabled), \
@@ -744,9 +916,12 @@ async fn user_set_status(
     body: web::Json<SetStatusReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_STATUS).await?;
     if !(0..=2).contains(&body.status) {
         return Err(DomainError::Validation("status 取值 0/1/2".into()));
     }
+    // 操作者等级须严格大于目标用户（防同级/下级操作上级）
+    ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
     let n = sqlx::query("UPDATE users SET status = $2 WHERE id = $1")
         .bind(body.user_id)
         .bind(body.status)
@@ -780,9 +955,13 @@ async fn user_set_class(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // 站长（99）才能调整等级；且禁止操作同级/更高级账户
-    if auth.class_id < 99 || body.class_id >= 99 {
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_CLASS).await?;
+    // 不能把他人设为站长（与角色等级无关的结构性约束）
+    if body.class_id >= 99 {
         return Err(DomainError::Forbidden);
     }
+    // 与目标同高或更低不可调整（站长改自己也应被拦）
+    ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
     let n = sqlx::query("UPDATE users SET class_id = $2 WHERE id = $1 AND class_id < 99")
         .bind(body.user_id)
         .bind(body.class_id)
@@ -802,6 +981,367 @@ async fn user_set_class(
     ))
 }
 
+// ============ 职务管理（user_roles，可兼任） ============
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct RoleRow {
+    key: String,
+    name: String,
+    descr: Option<String>,
+}
+
+/// 职务字典（管理界面渲染用）
+#[get("/admin/roles")]
+async fn role_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let rows: Vec<RoleRow> = sqlx::query_as("SELECT key, name, descr FROM roles ORDER BY sort, key")
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct UserRoleRow {
+    user_id: i64,
+    role_key: String,
+    granted_by: Option<i64>,
+    granted_at: chrono::DateTime<chrono::Utc>,
+    expires_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(Deserialize)]
+struct UserRoleQ {
+    #[serde(default)]
+    user_id: Option<i64>,
+}
+
+/// 用户持有的职务（指定 user_id 则只看该用户）
+#[get("/admin/user-roles")]
+async fn user_role_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<UserRoleQ>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let rows: Vec<UserRoleRow> = match q.user_id {
+        Some(uid) => sqlx::query_as(
+            "SELECT user_id, role_key, granted_by, granted_at, expires_at \
+             FROM user_roles WHERE user_id = $1 ORDER BY granted_at",
+        )
+        .bind(uid)
+        .fetch_all(&state.repo.db)
+        .await,
+        None => sqlx::query_as(
+            "SELECT user_id, role_key, granted_by, granted_at, expires_at \
+             FROM user_roles ORDER BY granted_at DESC LIMIT 200",
+        )
+        .fetch_all(&state.repo.db)
+        .await,
+    }
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct GrantRoleReq {
+    user_id: i64,
+    role_key: String,
+    /// RFC3339；缺省为永久
+    #[serde(default)]
+    expires_at: Option<String>,
+}
+
+/// 授予职务：须严格高于目标等级（与其它用户操作同一护栏）
+#[post("/admin/user-roles")]
+async fn user_role_grant(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<GrantRoleReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
+    let exists: Option<String> =
+        sqlx::query_scalar("SELECT key FROM roles WHERE key = $1")
+            .bind(&body.role_key)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    if exists.is_none() {
+        return Err(DomainError::Validation("职务不存在".into()));
+    }
+    let expires = match &body.expires_at {
+        Some(t) if !t.trim().is_empty() => Some(
+            chrono::DateTime::parse_from_rfc3339(t)
+                .map_err(|_| DomainError::Validation("到期时间格式无效".into()))?
+                .with_timezone(&chrono::Utc),
+        ),
+        _ => None,
+    };
+    crate::authz::grant_role(&state.repo.db, body.user_id, &body.role_key, auth.id, expires)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "user.role_grant", Some(body.user_id))
+        .await;
+    Ok(ok(serde_json::json!({ "user_id": body.user_id, "role_key": body.role_key })))
+}
+
+/// 撤销职务
+#[delete("/admin/user-roles/{user_id}/{role_key}")]
+async fn user_role_revoke(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<(i64, String)>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let (uid, role_key) = path.into_inner();
+    ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
+    let n = crate::authz::revoke_role(&state.repo.db, uid, &role_key)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if n == 0 {
+        return Err(DomainError::NotFound(uid));
+    }
+    state.repo.audit(Some(auth.id), "user.role_revoke", Some(uid)).await;
+    Ok(ok(serde_json::json!({ "deleted": n })))
+}
+
+// ============ 权限配置（角色权限矩阵 + 用户级权限分配） ============
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct PermRow {
+    key: String,
+    name: String,
+    category: String,
+    descr: Option<String>,
+    /// 是否有真实生效点（false = 界面应标注「未接入」）
+    implemented: bool,
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct PermRoleRow {
+    role_type: String,
+    role_key: String,
+    name: String,
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct PermGrantRow {
+    role_type: String,
+    role_key: String,
+    permission_key: String,
+}
+
+/// 权限矩阵：权限清单 + 可配角色 + 当前授权映射
+#[get("/admin/permission-matrix")]
+async fn permission_matrix(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let permissions: Vec<PermRow> =
+        sqlx::query_as(
+            "SELECT key, name, category, descr, implemented FROM permissions \
+             ORDER BY category, sort, key",
+        )
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    // 可配角色 = 已有配置的等级档 + 全部职务
+    let roles: Vec<PermRoleRow> = sqlx::query_as(
+        "SELECT t.role_type, t.role_key, COALESCE(uc.name, r.name, t.role_key) AS name
+         FROM (
+             SELECT DISTINCT 'class'::text AS role_type, role_key, 0 AS ord
+             FROM role_permissions WHERE role_type = 'class'
+             UNION ALL
+             SELECT 'role', key, sort FROM roles
+         ) t
+         LEFT JOIN user_classes uc
+                ON t.role_type = 'class'
+               AND uc.id = CASE WHEN t.role_key ~ '^[0-9]+$'
+                                THEN t.role_key::integer
+                                ELSE -1 END
+         LEFT JOIN roles r ON t.role_type = 'role' AND r.key = t.role_key
+         ORDER BY t.role_type DESC, t.ord, t.role_key",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let grants: Vec<PermGrantRow> = sqlx::query_as(
+        "SELECT role_type, role_key, permission_key FROM role_permissions WHERE granted",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "permissions": permissions,
+        "roles": roles,
+        "grants": grants,
+    })))
+}
+
+#[derive(Deserialize)]
+struct PermMatrixItem {
+    role_type: String,
+    role_key: String,
+    permission_key: String,
+    granted: bool,
+}
+
+#[derive(Deserialize)]
+struct PermMatrixReq {
+    items: Vec<PermMatrixItem>,
+}
+
+/// 批量更新角色权限（勾选/取消）。仅站长可改，避免越权提权。
+#[put("/admin/permission-matrix")]
+async fn permission_matrix_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PermMatrixReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    if body.items.len() > 500 {
+        return Err(DomainError::Validation("单次最多 500 项".into()));
+    }
+    let mut changed = 0u64;
+    for it in &body.items {
+        if !["class", "role"].contains(&it.role_type.as_str()) {
+            return Err(DomainError::Validation("role_type 取值 class/role".into()));
+        }
+        let exists: Option<String> =
+            sqlx::query_scalar("SELECT key FROM permissions WHERE key = $1")
+                .bind(&it.permission_key)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        if exists.is_none() {
+            return Err(DomainError::Validation(format!("权限不存在：{}", it.permission_key)));
+        }
+        let n = if it.granted {
+            sqlx::query(
+                "INSERT INTO role_permissions (role_type, role_key, permission_key, granted)
+                 VALUES ($1, $2, $3, true) ON CONFLICT DO NOTHING",
+            )
+            .bind(&it.role_type)
+            .bind(&it.role_key)
+            .bind(&it.permission_key)
+            .execute(&state.repo.db)
+            .await
+        } else {
+            sqlx::query(
+                "DELETE FROM role_permissions
+                 WHERE role_type = $1 AND role_key = $2 AND permission_key = $3",
+            )
+            .bind(&it.role_type)
+            .bind(&it.role_key)
+            .bind(&it.permission_key)
+            .execute(&state.repo.db)
+            .await
+        }
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+        changed += n;
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "permission_matrix.update", None)
+        .await;
+    Ok(ok(serde_json::json!({ "changed": changed })))
+}
+
+#[derive(Deserialize)]
+struct UserPermQ {
+    user_id: i64,
+}
+
+/// 某用户的权限全貌：角色所得（effective）+ 用户级覆盖（overrides）
+#[get("/admin/user-permissions")]
+async fn user_permission_view(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<UserPermQ>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let class_id: Option<i32> = sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+        .bind(q.user_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(class_id) = class_id else {
+        return Err(DomainError::NotFound(q.user_id));
+    };
+    let effective = crate::authz::user_perm_keys(&state.repo.db, class_id, q.user_id).await;
+    let overrides = crate::authz::user_permission_overrides(&state.repo.db, q.user_id).await;
+    let roles = crate::authz::user_role_keys(&state.repo.db, q.user_id).await;
+    Ok(ok(serde_json::json!({
+        "user_id": q.user_id,
+        "class_id": class_id,
+        "roles": roles,
+        "effective": effective,
+        "overrides": overrides.into_iter()
+            .map(|(k, g)| serde_json::json!({ "permission_key": k, "granted": g }))
+            .collect::<Vec<_>>(),
+    })))
+}
+
+#[derive(Deserialize)]
+struct SetUserPermReq {
+    user_id: i64,
+    permission_key: String,
+    /// true=额外授予 / false=显式拒绝 / null=清除覆盖（继承角色）
+    #[serde(default)]
+    granted: Option<bool>,
+    #[serde(default)]
+    note: Option<String>,
+}
+
+/// 设置用户级权限覆盖（授予 / 拒绝 / 清除）
+#[put("/admin/user-permissions")]
+async fn user_permission_set(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<SetUserPermReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_CLASS).await?;
+    ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
+    let exists: Option<String> =
+        sqlx::query_scalar("SELECT key FROM permissions WHERE key = $1")
+            .bind(&body.permission_key)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    if exists.is_none() {
+        return Err(DomainError::Validation("权限不存在".into()));
+    }
+    crate::authz::set_user_permission(
+        &state.repo.db,
+        body.user_id,
+        &body.permission_key,
+        body.granted,
+        auth.id,
+        body.note.as_deref(),
+    )
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "user.permission_set", Some(body.user_id))
+        .await;
+    Ok(ok(serde_json::json!({
+        "user_id": body.user_id,
+        "permission_key": body.permission_key,
+        "granted": body.granted,
+    })))
+}
+
 // ============ 审计日志 ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -818,7 +1358,8 @@ async fn audit_query(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<SearchQ>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::AUDIT_VIEW).await?;
     let pattern = crate::http::like_pattern(&q.q);
     let rows: Vec<AuditRow> = sqlx::query_as(
         "SELECT id, actor_id, action, created_at FROM audit_log \
@@ -835,31 +1376,28 @@ async fn audit_query(
 
 #[derive(serde::Serialize, sqlx::FromRow)]
 struct StaffPanelEntry {
-    panel: String,
+    section: String,
     name: String,
     url: String,
     info: String,
+    tab_key: String,
+    min_class: i32,
 }
 
-/// 管理组面板三组入口：SysOp(99+) 全部；Administrator(93+) sysop+admin；版主(90+) 全部
+/// 管理组面板：职能分组（section）+ 细粒度等级过滤（min_class）
+/// 说明：旧的 panel 字段（sysop/admin/moderator）是权限等级，曾被当作分组维度，
+/// 导致同一职能被拆散；现改为按 section 分组、按 min_class 逐条过滤，无权条目直接不返回。
 #[get("/admin/staffpanel")]
 async fn staff_panel(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    let visible_panels: &[&str] = if auth.class_id >= 99 {
-        &["sysop", "admin", "moderator"]
-    } else if auth.class_id >= 93 {
-        &["admin", "moderator"]
-    } else {
-        &["moderator"]
-    };
     let rows: Vec<StaffPanelEntry> = sqlx::query_as(
-        "SELECT panel, name, url, info FROM staff_panel_entries \
-         WHERE panel = ANY($1) ORDER BY panel, sort",
+        "SELECT section, name, url, info, tab_key, min_class FROM staff_panel_entries \
+         WHERE min_class <= $1 ORDER BY section, sort, id",
     )
-    .bind(visible_panels.to_vec())
+    .bind(auth.class_id)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -868,6 +1406,7 @@ async fn staff_panel(
         "role": if auth.class_id >= 99 { "sysop" }
             else if auth.class_id >= 93 { "administrator" }
             else { "moderator" },
+        "class_id": auth.class_id,
     })))
 }
 
@@ -942,9 +1481,7 @@ async fn site_settings_put(
     body: web::Json<SettingPut>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    if auth.class_id < 99 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     if body.name.trim().is_empty() || body.value.len() > 4096 {
         return Err(DomainError::Validation("非法的设定项".into()));
     }
@@ -1373,6 +1910,9 @@ struct SparkLogRow {
 struct RecordQ {
     #[serde(default)]
     q: String,
+    /// 用户 ID 精确过滤（详情页关联 tab 用）
+    #[serde(default)]
+    user_id: Option<i64>,
     #[serde(default = "default_page")]
     page: i64,
     #[serde(default = "default_per_page")]
@@ -1390,16 +1930,26 @@ async fn admin_spark_logs(
     let rows: Vec<SparkLogRow> = sqlx::query_as(
         r#"SELECT l.id, u.username, l.amount, l.kind, l.balance_after, l.created_at
            FROM spark_ledger l JOIN users u ON u.id = l.user_id
-           WHERE u.username ILIKE $1
-           ORDER BY l.created_at DESC, l.id DESC LIMIT $2 OFFSET $3"#,
+           WHERE u.username ILIKE $1 AND ($2::bigint IS NULL OR l.user_id = $2)
+           ORDER BY l.created_at DESC, l.id DESC LIMIT $3 OFFSET $4"#,
     )
-    .bind(pattern)
+    .bind(&pattern)
+    .bind(q.user_id)
     .bind(q.per_page)
     .bind((q.page.max(1) - 1) * q.per_page)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page })))
+    let total: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM spark_ledger l JOIN users u ON u.id = l.user_id \
+         WHERE u.username ILIKE $1 AND ($2::bigint IS NULL OR l.user_id = $2)",
+    )
+    .bind(&pattern)
+    .bind(q.user_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page, "total": total })))
 }
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -1455,16 +2005,27 @@ async fn admin_login_logs(
     let rows: Vec<LoginLogRow> = sqlx::query_as(
         r#"SELECT l.id, u.username, host(l.ip) AS ip, l.ok, l.created_at
            FROM login_events l JOIN users u ON u.id = l.user_id
-           WHERE u.username ILIKE $1 OR host(l.ip) ILIKE $1
-           ORDER BY l.id DESC LIMIT $2 OFFSET $3"#,
+           WHERE (u.username ILIKE $1 OR host(l.ip) ILIKE $1)
+             AND ($2::bigint IS NULL OR l.user_id = $2)
+           ORDER BY l.id DESC LIMIT $3 OFFSET $4"#,
     )
-    .bind(pattern)
+    .bind(&pattern)
+    .bind(q.user_id)
     .bind(q.per_page)
     .bind((q.page.max(1) - 1) * q.per_page)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page })))
+    let total: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM login_events l JOIN users u ON u.id = l.user_id \
+         WHERE (u.username ILIKE $1 OR host(l.ip) ILIKE $1) AND ($2::bigint IS NULL OR l.user_id = $2)",
+    )
+    .bind(&pattern)
+    .bind(q.user_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page, "total": total })))
 }
 
 
@@ -1489,9 +2050,7 @@ async fn forum_admin_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    if auth.class_id < 93 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     let rows: Vec<ForumAdminRow> = sqlx::query_as(
         "SELECT f.id, f.name, f.descr, f.minclassread, f.minclasswrite, f.minclasscreate, f.protected, \
             (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics \
@@ -1544,9 +2103,7 @@ async fn forum_admin_create(
     body: web::Json<ForumUpsertReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    if auth.class_id < 93 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     forum_upsert_check(&body)?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO forums (name, descr, minclassread, minclasswrite, minclasscreate, min_class, protected) \
@@ -1573,9 +2130,7 @@ async fn forum_admin_update(
     body: web::Json<ForumUpsertReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    if auth.class_id < 93 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     forum_upsert_check(&body)?;
     let fid = path.into_inner();
     let n = sqlx::query(
@@ -1609,9 +2164,7 @@ async fn forum_admin_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    if auth.class_id < 93 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     let fid = path.into_inner();
     let n = sqlx::query("DELETE FROM forums WHERE id = $1")
         .bind(fid)
@@ -1640,9 +2193,7 @@ async fn forum_mod_add(
     body: web::Json<ForumModReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    if auth.class_id < 93 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     let fid = path.into_inner();
     let uid: Option<i64> = sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND status < 2")
         .bind(&body.username)
@@ -1670,9 +2221,7 @@ async fn forum_mod_remove(
     path: web::Path<(i64, i64)>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    if auth.class_id < 93 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     let (fid, uid) = path.into_inner();
     sqlx::query("DELETE FROM forum_mods WHERE forum_id = $1 AND user_id = $2")
         .bind(fid)

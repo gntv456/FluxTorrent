@@ -254,9 +254,9 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
             <tr key={u.id}>
               <td>{u.id}</td>
               <td>
-                <button className="font-bold text-link" onClick={() => openDetail(u.id)}>
+                <a className="font-bold text-link" href={`/admin/users/${u.id}`}>
                   {u.username}
-                </button>
+                </a>
                 {u.status > 0 && <span className="ml-1 rounded-full bg-coral/20 px-2 py-0.5 text-[10px] text-danger">{STATUS_LABELS[u.status] ?? u.status}</span>}
               </td>
               <td className="text-xs text-sub">{u.email}</td>
@@ -268,7 +268,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
               <td>{u.suspended ? "yes" : "no"}</td>
               <td className="text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
               <td>
-                <button className="cmgmt-act" onClick={() => openDetail(u.id)}>详情</button>
+                <a className="cmgmt-act" href={`/admin/users/${u.id}`}>详情</a>
               </td>
             </tr>
           ))}
