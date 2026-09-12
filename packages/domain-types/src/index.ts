@@ -163,6 +163,10 @@ export interface TorrentListItem {
   promotion: PromotionKind | null;
   /** 进行中促销的截止时刻（ISO；列表展示「剩余时间」，好学站口径） */
   promotion_ends_at: string | null;
+  /** 媒体评分（media_info.rating；首页海报墙展示，缺省 null） */
+  rating: string | null;
+  /** 海报图 URL（media_info.poster；缺省 null 时前端用生成式海报兜底） */
+  poster: string | null;
   owner_name: string | null;
   created_at: string;
 }

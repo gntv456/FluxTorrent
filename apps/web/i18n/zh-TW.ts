@@ -82,6 +82,8 @@ const zhTwBase: Omit<Dict, "security2fa" | "apitokens"> = {
     seedSize: "做種體積",
     latest: "最新資源",
     viewAll: "查看全部 →",
+    douban: "豆瓣",
+    noRating: "暫無評分",
     empty: "網站剛剛發芽，還沒有資源",
   },
   torrents: {

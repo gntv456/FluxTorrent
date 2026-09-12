@@ -54,13 +54,7 @@ export default async function TorrentsPage({
     id: i === 0 ? undefined : i,
     label,
   }));
-  const media = dict.torrents.media.map((label, i) => ({
-    id: i === 0 ? undefined : i,
-    label,
-  }));
   const currentCategory = sp.category_id ? Number(sp.category_id) : undefined;
-  const currentMedium = sp.medium_id ? Number(sp.medium_id) : undefined;
-  const currentGrade = sp.grade_id !== undefined && sp.grade_id !== "" ? Number(sp.grade_id) : undefined;
 
   return (
     <div className="flex flex-col gap-3">
@@ -171,84 +165,6 @@ export default async function TorrentsPage({
       <span className="num text-xs text-sub">
         {fmt(dict.torrents.total, { n: page.total_estimate })}
       </span>
-
-      {/* 筛选 Chip（移动端横向滚动）—— 增量参数互不覆盖 */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {categories.map((c) => (
-          <a
-            key={c.label}
-            href={withParam(sp, "category_id", c.id ? String(c.id) : undefined)}
-            aria-current={currentCategory === c.id ? "true" : undefined}
-            data-active={currentCategory === c.id ? "true" : undefined}
-            className="filter-chip"
-          >
-            {c.label}
-          </a>
-        ))}
-      </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {media.map((m) => (
-          <a
-            key={m.label}
-            href={withParam(sp, "medium_id", m.id ? String(m.id) : undefined)}
-            aria-current={currentMedium === m.id ? "true" : undefined}
-            data-active={currentMedium === m.id ? "true" : undefined}
-            className="filter-chip"
-          >
-            {m.label}
-          </a>
-        ))}
-      </div>
-      {/* 标签筛选（T-04：tag_dict 1-5） */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {(dict.torrTags2?.filterRow ?? ["全部", "官方", "免费", "官种", "合集", "带答案"]).map((label, i) => (
-          <a
-            key={label}
-            href={withParam(sp, "tag_id", i === 0 ? undefined : String(i))}
-            aria-current={(sp.tag_id ? Number(sp.tag_id) : undefined) === (i === 0 ? undefined : i) ? "true" : undefined}
-            data-active={(sp.tag_id ? Number(sp.tag_id) : undefined) === (i === 0 ? undefined : i) ? "true" : undefined}
-            className="filter-chip"
-          >
-            {label}
-          </a>
-        ))}
-      </div>
-      {/* 学段筛选（grades id 0-12 与字典下标 i=id+1 对齐） */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {dict.torrents.grades.map((label, gid) => (
-          <a
-            key={label}
-            href={withParam(sp, "grade_id", gid === 0 ? undefined : String(gid - 1))}
-            aria-current={currentGrade === (gid === 0 ? undefined : gid - 1) ? "true" : undefined}
-            data-active={currentGrade === (gid === 0 ? undefined : gid - 1) ? "true" : undefined}
-            className="filter-chip"
-          >
-            {label}
-          </a>
-        ))}
-      </div>
-
-      {/* 排序（旧站 torrents.php 口径） */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {(
-          [
-            [undefined, dict.torrents.sortCreated],
-            ["seeders", dict.torrents.sortSeeders],
-            ["size", dict.torrents.sortSize],
-            ["completed", dict.torrents.sortCompleted],
-          ] as [string | undefined, string][]
-        ).map(([value, label]) => (
-          <a
-            key={label}
-            href={withParam(sp, "sort", value)}
-            aria-current={(sp.sort ?? undefined) === value ? "true" : undefined}
-            data-active={(sp.sort ?? undefined) === value ? "true" : undefined}
-            className="filter-chip"
-          >
-            {label}
-          </a>
-        ))}
-      </div>
 
       {/* 种子九列表格（包子站 colhead 图标表头） */}
       {page.items.length === 0 ? (

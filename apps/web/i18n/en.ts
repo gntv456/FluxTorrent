@@ -84,6 +84,8 @@ const enBase: Omit<Dict, "security2fa" | "apitokens"> = {
     seedSize: "Seed size",
     latest: "Latest",
     viewAll: "View all →",
+    douban: "Douban",
+    noRating: "No rating",
     empty: "The site just sprouted — no resources yet",
   },
   torrents: {
