@@ -80,6 +80,8 @@ const zhCnBase = {
     seedSize: "做种体积",
     latest: "最新资源",
     viewAll: "查看全部 →",
+    douban: "豆瓣",
+    noRating: "暂无评分",
     empty: "站点刚刚发芽，还没有资源",
   },
   torrents: {

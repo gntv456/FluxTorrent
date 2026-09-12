@@ -541,6 +541,29 @@ a:hover {
   background: var(--surface-hover);
 }
 
+/* ============ 首页最新资源海报墙（匀速滚动 + 悬停暂停放大） ============ */
+@keyframes poster-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.poster-marquee {
+  animation: poster-marquee var(--marquee-duration, 40s) linear infinite;
+  will-change: transform;
+}
+.poster-marquee-wrap:hover .poster-marquee {
+  animation-play-state: paused;
+}
+.poster-card {
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+}
+.poster-card:hover {
+  transform: scale(1.09);
+  z-index: 10;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
 /* ============ 顶栏主导航（#mainmenu 卡片按钮条） ============
  * 注意：不能设 overflow 滚动——「更多 ▾」下拉绝对定位在菜单条高度之外，
  * 滚动容器会把它裁掉（表现为点击无反应）。空间不足改为换行。 */
