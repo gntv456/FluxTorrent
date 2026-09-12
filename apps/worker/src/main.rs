@@ -1,6 +1,7 @@
 //! FluxTorrent Worker：异步任务组（§5.2）。
-//! 职责：announce 计费消费、促销到期回收、保种区移出、做种收益结算、签到连签。
+//! 职责：announce 计费消费、促销到期回收、保种区移出、做种收益结算、签到连签、银行每日结算。
 
+mod bank_jobs;
 mod jobs;
 
 #[tokio::main]

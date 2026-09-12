@@ -331,6 +331,37 @@ export async function getBankDeposits(): Promise<BankDeposit[]> {
   }
 }
 
+export interface BankLoan {
+  id: number;
+  amount: number;
+  daily_rate_bp: number;
+  term_days: number;
+  remaining: number;
+  accrued_interest: number;
+  status: string;
+  due_at: string;
+}
+
+export interface BankOverview {
+  spark_balance: number;
+  demand: { balance: number; daily_rate_bp: number };
+  fixed: { active_total: number; active_count: number };
+  loan: BankLoan | null;
+  total_asset: number;
+  net_asset: number;
+  loan_outstanding: number;
+  max_loan: number;
+  limits: {
+    min_deposit: number;
+    max_deposit: number;
+    min_demand: number;
+    min_loan: number;
+    penalty_bp: number;
+  };
+  fixed_rates: { term_days: number; annual_rate: number }[];
+  loan_rates: { term_days: number; daily_rate_bp: number }[];
+}
+
 export interface InviteItem {
   id: number;
   code: string;
