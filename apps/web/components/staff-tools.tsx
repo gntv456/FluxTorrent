@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 
 /** staffpanel 管理工具落地页：FAQ 管理/规则管理/分类管理/封禁系统/批量邮件
  *  （hxpt faqmanage/modrules/catmanage/bans/massmail 口径，五个工具 tab） */
@@ -37,19 +38,53 @@ interface LocationPage { items: LocationItem[]; total: number; page: number; per
 
 interface ForumAdminForum { id: number; name: string; descr: string | null; minclassread: number; minclasswrite: number; minclasscreate: number; protected: boolean; topics: number }
 interface ForumAdminData { forums: ForumAdminForum[]; mods: [number, number, string][] }
+interface MenuItemAdmin {
+  id: number; location: string; label: string; url: string;
+  parent_id: number; target: string; min_class: number; sort: number; enabled: boolean;
+}
+interface MenuAdminData { items: MenuItemAdmin[]; custom_enabled: boolean; min_visible_class: number }
+interface RoleDef {
+  key: string; name: string; descr: string | null;
+}
+interface UserRoleRow {
+  user_id: number; role_key: string; granted_by: number | null;
+  granted_at: string; expires_at: string | null;
+}
+interface PermDef {
+  key: string; name: string; category: string; descr: string | null;
+  implemented: boolean;
+}
+interface PermRole {
+  role_type: string; role_key: string; name: string;
+}
+interface PermGrant {
+  role_type: string; role_key: string; permission_key: string;
+}
+interface PermMatrixData {
+  permissions: PermDef[]; roles: PermRole[]; grants: PermGrant[];
+}
+interface UserPermData {
+  user_id: number; class_id: number; roles: string[];
+  effective: string[]; overrides: { permission_key: string; granted: boolean }[];
+}
+interface SeedStats {
+  seeders: number; seeding_torrents: number; avg_seed_hours: number;
+  top_by_count: { user_id: number; username: string; seeding: number }[];
+  top_by_hours: { user_id: number; username: string; hours: number }[];
+}
 interface ReportItem {
   id: number; reporter_id: number; reporter_name: string | null;
   ref_type: string; ref_id: number; ref_label: string | null; reason: string;
   status: number; handled_name: string | null; handled_at: string | null; created_at: string;
 }
 
-type ToolTab =
+export type ToolTab =
   | "faq" | "rules" | "cats" | "bans" | "mail"
   | "promo" | "staffmess" | "adduser" | "bonus" | "warned" | "ipcheck" | "maxlogin"
   | "upload" | "resetpass" | "deldisabled" | "emailbans" | "testip" | "stats"
   | "cleanup" | "ads" | "notconnect" | "uploaders" | "agents" | "polls"
   | "dbstats" | "syslog" | "locations" | "hrpardon" | "plugins" | "agentrules"
-  | "forums" | "reports";
+  | "forums" | "reports" | "menu" | "roles" | "perm" | "seedstats";
 
 /** ISO → datetime-local 输入值（本地时区） */
 function toLocalInput(iso: string): string {
@@ -58,9 +93,14 @@ function toLocalInput(iso: string): string {
 }
 
 export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.stafftools;
   const [tab, setTab] = useState<ToolTab>(initialTab ?? "faq");
+  // 左侧导航切换 tool 时父组件重渲染但本组件不卸载，useState 不会重新初始化 ——
+  // 必须跟着 initialTab 同步，否则 URL 变了内容停在旧工具（「点了没反应」的根因）
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
   const [forumData, setForumData] = useState<ForumAdminData | null>(null);
   const [fEditId, setFEditId] = useState<number | null>(null);
   const [fName, setFName] = useState("");
@@ -74,6 +114,27 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [rpStatus, setRpStatus] = useState<"pending" | "handled" | "all">("pending");
   const [rpNote, setRpNote] = useState("");
   const [promoEditId, setPromoEditId] = useState<number | null>(null);
+  const [menuData, setMenuData] = useState<MenuAdminData | null>(null);
+  const [mLoc, setMLoc] = useState("topbar");
+  const [mLabel, setMLabel] = useState("");
+  const [mUrl, setMUrl] = useState("");
+  const [mParent, setMParent] = useState(0);
+  const [mTarget, setMTarget] = useState("_self");
+  const [mMinClass, setMMinClass] = useState(0);
+  const [mSort, setMSort] = useState(0);
+  const [mEnabled, setMEnabled] = useState(true);
+  const [mEditId, setMEditId] = useState<number | null>(null);
+  const [roleDefs, setRoleDefs] = useState<RoleDef[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
+  const [rFilter, setRFilter] = useState("");
+  const [rUserId, setRUserId] = useState("");
+  const [rRoleKey, setRRoleKey] = useState("uploader");
+  const [rExpires, setRExpires] = useState("");
+  const [permData, setPermData] = useState<PermMatrixData | null>(null);
+  const [permDirty, setPermDirty] = useState<PermGrant[]>([]);
+  const [upUserId, setUpUserId] = useState("");
+  const [upData, setUpData] = useState<UserPermData | null>(null);
+  const [seedStats, setSeedStats] = useState<SeedStats | null>(null);
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [rules, setRules] = useState<RuleItem[]>([]);
   const [cats, setCats] = useState<CatItem[]>([]);
@@ -182,6 +243,11 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       api.get<PollRow[]>("/api/v1/admin/polloverview").then(setPollRows).catch(() => setPollRows([]));
       api.get<DbStats | null>("/api/v1/admin/dbstats").then(setDbStats).catch(() => setDbStats(null));
       api.get<ForumAdminData | null>("/api/v1/admin/forums").then(setForumData).catch(() => setForumData(null));
+      api.get<MenuAdminData | null>("/api/v1/admin/menu-items").then(setMenuData).catch(() => setMenuData(null));
+      api.get<RoleDef[]>("/api/v1/admin/roles").then(setRoleDefs).catch(() => setRoleDefs([]));
+      api.get<UserRoleRow[]>("/api/v1/admin/user-roles").then(setUserRoles).catch(() => setUserRoles([]));
+      api.get<PermMatrixData>("/api/v1/admin/permission-matrix").then(setPermData).catch(() => setPermData(null));
+      api.get<SeedStats>("/api/v1/seed-stats").then(setSeedStats).catch(() => setSeedStats(null));
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : dict.common.loadFailed);
     }
@@ -223,6 +289,10 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
     ["agentrules", dict.agentRules2?.tab ?? "客户端名单"],
     ["forums", "论坛版块"],
     ["reports", "举报处理"],
+    ["menu", "导航菜单"],
+    ["roles", "职务管理"],
+    ["perm", "权限配置"],
+    ["seedstats", "保种统计"],
   ];
 
   return (
@@ -1460,6 +1530,629 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
               )}
             </tbody>
           </table>
+        </section>
+      )}
+
+      {/* 导航菜单（nexusphp-menu 口径）：全局开关 + 位置/树形/等级/排序 CRUD */}
+      {tab === "menu" && (
+        <section className="baozi-panel p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-base font-bold">导航菜单</h2>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={menuData?.custom_enabled ?? false}
+                onChange={(e) => guard(async () => {
+                  await api.put("/api/v1/admin/menu-settings", { custom_enabled: e.target.checked });
+                }, e.target.checked ? "自定义导航已开启" : "已回退默认导航")}
+              />
+              启用自定义导航（关闭 = 顶栏回退默认菜单）
+            </label>
+          </div>
+          <p className="mb-3 text-xs text-sub">
+            顶栏一级项替换默认导航；子项收进「更多 ▾」按父项名分组。min_class 为最低可见等级（0=所有人），外链自动新窗口打开。排序数字小的在前。
+          </p>
+          <table className="nexus-table text-xs">
+            <thead><tr>
+              <td className="colhead w-20">位置</td>
+              <td className="colhead">名称 / 链接</td>
+              <td className="colhead w-24">父项</td>
+              <td className="colhead w-16">等级</td>
+              <td className="colhead w-14">排序</td>
+              <td className="colhead w-14">状态</td>
+              <td className="colhead w-32" />
+            </tr></thead>
+            <tbody>
+              {(menuData?.items ?? []).map((m) => {
+                const parent = (menuData?.items ?? []).find((x) => x.id === m.parent_id);
+                return (
+                  <tr key={m.id} className={mEditId === m.id ? "bg-sky-soft" : ""}>
+                    <td>{m.location}</td>
+                    <td>
+                      <span className="font-bold">{m.label}</span>
+                      {m.target === "_blank" && <span className="ml-1 text-sub" title="新窗口">↗</span>}
+                      <p className="break-all text-sub">{m.url}</p>
+                    </td>
+                    <td className="text-sub">{parent ? parent.label : "—"}</td>
+                    <td className="num">{m.min_class}</td>
+                    <td className="num">{m.sort}</td>
+                    <td>{m.enabled ? "启用" : "停用"}</td>
+                    <td>
+                      <button className="min-h-[28px] rounded-full border border-line px-3 font-bold text-sky"
+                        onClick={() => {
+                          if (mEditId === m.id) { setMEditId(null); return; }
+                          setMEditId(m.id);
+                          setMLoc(m.location); setMLabel(m.label); setMUrl(m.url);
+                          setMParent(m.parent_id); setMTarget(m.target);
+                          setMMinClass(m.min_class); setMSort(m.sort); setMEnabled(m.enabled);
+                        }}>{mEditId === m.id ? "取消" : "编辑"}</button>
+                      <button className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-danger"
+                        onClick={() => guard(async () => {
+                          await api.del(`/api/v1/admin/menu-items/${m.id}`);
+                        }, "已删除")}>删除</button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {(menuData?.items ?? []).length === 0 && (
+                <tr><td colSpan={7} className="py-4 text-center text-sub">
+                  {menuData === null ? "加载失败或无权限" : "暂未配置，新建后开启开关即可替换默认导航"}
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <h3 className="w-full text-sm font-bold">{mEditId === null ? "新建菜单项" : `编辑菜单项 #${mEditId}`}</h3>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">位置</span>
+              <select value={mLoc} onChange={(e) => setMLoc(e.target.value)}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky">
+                <option value="topbar">顶栏</option>
+                <option value="sidebar">侧栏</option>
+                <option value="footer">页脚</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">名称</span>
+              <input value={mLabel} onChange={(e) => setMLabel(e.target.value)} maxLength={50}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">链接</span>
+              <input value={mUrl} onChange={(e) => setMUrl(e.target.value)} maxLength={300} placeholder="/torrents 或 https://…"
+                className="min-h-[40px] w-64 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">父项</span>
+              <select value={mParent} onChange={(e) => setMParent(Number(e.target.value))}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky">
+                <option value={0}>（一级）</option>
+                {(menuData?.items ?? []).filter((x) => x.location === mLoc && x.parent_id === 0 && x.id !== mEditId).map((x) => (
+                  <option key={x.id} value={x.id}>{x.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">打开方式</span>
+              <select value={mTarget} onChange={(e) => setMTarget(e.target.value)}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky">
+                <option value="_self">当前页</option>
+                <option value="_blank">新窗口</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">min_class</span>
+              <input type="number" min={0} max={99} value={mMinClass} onChange={(e) => setMMinClass(Number(e.target.value))}
+                className="min-h-[40px] w-20 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">排序</span>
+              <input type="number" value={mSort} onChange={(e) => setMSort(Number(e.target.value))}
+                className="min-h-[40px] w-20 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            </label>
+            <label className="flex items-center gap-2 pb-2 text-sm">
+              <input type="checkbox" checked={mEnabled} onChange={(e) => setMEnabled(e.target.checked)} />
+              启用
+            </label>
+            <button
+              disabled={busy}
+              className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+              onClick={() => guard(async () => {
+                const payload = {
+                  location: mLoc, label: mLabel.trim(), url: mUrl.trim(),
+                  parent_id: mParent, target: mTarget, min_class: mMinClass,
+                  sort: mSort, enabled: mEnabled,
+                };
+                if (mEditId === null) {
+                  await api.post("/api/v1/admin/menu-items", payload);
+                } else {
+                  await api.put(`/api/v1/admin/menu-items/${mEditId}`, payload);
+                  setMEditId(null);
+                }
+                setMLabel(""); setMUrl(""); setMParent(0); setMSort(0);
+              }, mEditId === null ? "已创建" : "已保存")}
+            >{mEditId === null ? "创建" : "保存"}</button>
+          </div>
+        </section>
+      )}
+
+      {/* 职务管理（user_roles）：与等级正交、可兼任，权限取并集 */}
+      {tab === "roles" && (
+        <section className="baozi-panel p-4">
+          <h2 className="mb-2 text-base font-bold">职务管理</h2>
+          <p className="mb-3 text-xs text-sub">
+            职务与等级正交，一人可兼任多个，权限取并集。授予与撤销都要求操作者等级严格高于目标用户。
+          </p>
+
+          <div className="mb-4 flex flex-wrap gap-2">
+            {roleDefs.map((r) => (
+              <div
+                key={r.key}
+                className="min-w-[150px] rounded-[var(--r-md)] border border-line bg-[var(--surface-raised)] px-3 py-2"
+              >
+                <p className="text-sm font-bold text-ink">{r.name}</p>
+                <p className="mt-0.5 text-xs text-sub">{r.descr}</p>
+              </div>
+            ))}
+            {roleDefs.length === 0 && (
+              <p className="text-xs text-sub">职务字典为空（迁移 0054 未应用？）</p>
+            )}
+          </div>
+
+          <div className="mb-2 flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">按用户 ID 过滤</span>
+              <input
+                value={rFilter}
+                onChange={(e) => setRFilter(e.target.value)}
+                placeholder="留空显示全部"
+                className="min-h-[40px] w-40 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              />
+            </label>
+            <button
+              disabled={busy}
+              className="min-h-[40px] rounded-full border border-line px-4 text-sm font-bold disabled:opacity-50"
+              onClick={() => guard(async () => {
+                const q = rFilter.trim() ? `?user_id=${encodeURIComponent(rFilter.trim())}` : "";
+                setUserRoles(await api.get<UserRoleRow[]>(`/api/v1/admin/user-roles${q}`));
+              }, "已刷新")}
+            >
+              刷新
+            </button>
+          </div>
+
+          <div className="baozi-wide-table-scroll">
+            <table className="nexus-table text-xs">
+              <thead>
+                <tr>
+                  <td className="colhead w-20">用户</td>
+                  <td className="colhead w-24">职务</td>
+                  <td className="colhead w-20">授予人</td>
+                  <td className="colhead">授予时间</td>
+                  <td className="colhead">到期</td>
+                  <td className="colhead w-20" />
+                </tr>
+              </thead>
+              <tbody>
+                {userRoles
+                  .filter((r) => !rFilter.trim() || String(r.user_id) === rFilter.trim())
+                  .map((r) => (
+                    <tr key={`${r.user_id}-${r.role_key}`}>
+                      <td className="rowfollow">#{r.user_id}</td>
+                      <td className="rowfollow font-bold">
+                        {roleDefs.find((d) => d.key === r.role_key)?.name ?? r.role_key}
+                      </td>
+                      <td className="rowfollow text-sub">
+                        {r.granted_by ? `#${r.granted_by}` : "—"}
+                      </td>
+                      <td className="rowfollow text-sub">
+                        {new Date(r.granted_at).toLocaleString(dateLocale(locale))}
+                      </td>
+                      <td className="rowfollow text-sub">
+                        {r.expires_at ? new Date(r.expires_at).toLocaleString(dateLocale(locale)) : "永久"}
+                      </td>
+                      <td className="rowfollow">
+                        <button
+                          disabled={busy}
+                          className="min-h-[28px] rounded-full border border-line px-3 font-bold text-danger disabled:opacity-50"
+                          onClick={() => guard(async () => {
+                            await api.del(`/api/v1/admin/user-roles/${r.user_id}/${r.role_key}`);
+                            setUserRoles(await api.get<UserRoleRow[]>("/api/v1/admin/user-roles"));
+                          }, "已撤销")}
+                        >
+                          撤销
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                {userRoles.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-4 text-center text-sub">
+                      暂无职务授予记录
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <h3 className="w-full text-sm font-bold">授予职务</h3>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">用户 ID</span>
+              <input
+                value={rUserId}
+                onChange={(e) => setRUserId(e.target.value)}
+                className="min-h-[40px] w-28 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">职务</span>
+              <select
+                value={rRoleKey}
+                onChange={(e) => setRRoleKey(e.target.value)}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              >
+                {roleDefs.map((r) => (
+                  <option key={r.key} value={r.key}>{r.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">到期（可选，RFC3339）</span>
+              <input
+                value={rExpires}
+                onChange={(e) => setRExpires(e.target.value)}
+                placeholder="留空为永久"
+                className="min-h-[40px] w-56 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              />
+            </label>
+            <button
+              disabled={busy || !rUserId.trim()}
+              className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+              onClick={() => guard(async () => {
+                const payload: Record<string, unknown> = {
+                  user_id: Number(rUserId.trim()),
+                  role_key: rRoleKey,
+                };
+                if (rExpires.trim()) payload.expires_at = rExpires.trim();
+                await api.post("/api/v1/admin/user-roles", payload);
+                setUserRoles(await api.get<UserRoleRow[]>("/api/v1/admin/user-roles"));
+                setRUserId("");
+                setRExpires("");
+              }, "已授予")}
+            >
+              授予
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* 权限配置：角色权限矩阵 + 用户级权限分配（对标 NexusPHP 角色插件） */}
+      {tab === "perm" && (
+        <div className="flex flex-col gap-3">
+          <section className="baozi-panel p-4">
+            <h2 className="mb-2 text-base font-bold">角色权限矩阵</h2>
+            <p className="mb-3 text-xs text-sub">
+              勾选即生效（仅站长可改）。等级为累进式，勾选低档会同时作用于更高档；职务权限仅对持有该职务的用户生效。
+              标「未接入」的权限项当前代码尚无对应业务端点，配置后不会产生实际效果。
+            </p>
+            <div className="baozi-wide-table-scroll">
+              <table className="nexus-table text-xs">
+                <thead>
+                  <tr>
+                    <td className="colhead" style={{ minWidth: 210 }}>权限</td>
+                    {(permData?.roles ?? []).map((r) => (
+                      <td
+                        key={`${r.role_type}:${r.role_key}`}
+                        className="colhead text-center"
+                        style={{ minWidth: 70 }}
+                      >
+                        <span className="block">
+                          {{
+                            "1": "全体用户", "20": "贵宾 VIP", "90": "管理组",
+                            "93": "总版主及以上", "98": "维护开发员及以上", "99": "站长",
+                          }[r.role_key] ?? r.name}
+                        </span>
+                        <span className="block text-[10px] font-normal">
+                          {r.role_type === "class" ? `L${r.role_key}+` : "职务"}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(
+                    (permData?.permissions ?? []).reduce<Record<string, PermDef[]>>((m, x) => {
+                      (m[x.category] ||= []).push(x);
+                      return m;
+                    }, {}),
+                  ).map(([cat, items]) => (
+                    <Fragment key={cat}>
+                      <tr>
+                        <td
+                          colSpan={1 + (permData?.roles ?? []).length}
+                          className="bg-sky-soft font-bold"
+                        >
+                          {{ content: "内容", user: "用户", site: "运营", system: "系统",
+                             upload: "发布", repost: "转载", seed: "保种", liaison: "外联" }[cat] ?? cat}
+                        </td>
+                      </tr>
+                      {items.map((p) => (
+                        <tr key={p.key}>
+                          <td className="rowfollow">
+                            <span className="font-bold">{p.name}</span>
+                            {!p.implemented && (
+                              <span
+                                className="ml-1 rounded-full bg-sun/40 px-1.5 text-[10px] text-ink"
+                                title="当前代码尚无对应业务端点，配置后不产生实际效果"
+                              >
+                                未接入
+                              </span>
+                            )}
+                            <span className="block font-mono text-[10px] text-sub">{p.key}</span>
+                          </td>
+                          {(permData?.roles ?? []).map((r) => {
+                            const on = (permData?.grants ?? []).some(
+                              (g) =>
+                                g.role_type === r.role_type &&
+                                g.role_key === r.role_key &&
+                                g.permission_key === p.key,
+                            );
+                            return (
+                              <td
+                                key={`${r.role_type}:${r.role_key}:${p.key}`}
+                                className="rowfollow text-center"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={on}
+                                  disabled={busy}
+                                  onChange={(e) =>
+                                    guard(async () => {
+                                      await api.put("/api/v1/admin/permission-matrix", {
+                                        items: [{
+                                          role_type: r.role_type,
+                                          role_key: r.role_key,
+                                          permission_key: p.key,
+                                          granted: e.target.checked,
+                                        }],
+                                      });
+                                      setPermData((prev) => {
+                                        if (!prev) return prev;
+                                        const grants = e.target.checked
+                                          ? [...prev.grants, {
+                                              role_type: r.role_type,
+                                              role_key: r.role_key,
+                                              permission_key: p.key,
+                                            }]
+                                          : prev.grants.filter(
+                                              (g) =>
+                                                !(g.role_type === r.role_type &&
+                                                  g.role_key === r.role_key &&
+                                                  g.permission_key === p.key),
+                                            );
+                                        return { ...prev, grants };
+                                      });
+                                    }, e.target.checked ? "已授权" : "已取消")
+                                  }
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                  {(permData?.permissions ?? []).length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="py-4 text-center text-sub">
+                        权限清单为空（迁移 0054 未应用？）
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="baozi-panel p-4">
+            <h2 className="mb-2 text-base font-bold">用户级权限分配</h2>
+            <p className="mb-3 text-xs text-sub">
+              在角色权限之上对单个用户逐项调整。用户级设置优先于角色：可单独授予、单独拒绝，或清除覆盖回归角色判定。
+            </p>
+
+            <div className="mb-3 flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-sub">用户 ID</span>
+                <input
+                  value={upUserId}
+                  onChange={(e) => setUpUserId(e.target.value)}
+                  className="min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+                />
+              </label>
+              <button
+                disabled={busy || !upUserId.trim()}
+                className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+                onClick={() => guard(async () => {
+                  setUpData(
+                    await api.get<UserPermData>(
+                      `/api/v1/admin/user-permissions?user_id=${encodeURIComponent(upUserId.trim())}`,
+                    ),
+                  );
+                }, "已加载")}
+              >
+                加载
+              </button>
+              {upData && (
+                <span className="pb-2 text-xs text-sub">
+                  #{upData.user_id} · 等级 {upData.class_id}
+                  {upData.roles.length > 0
+                    ? ` · 职务：${upData.roles
+                        .map((k) => roleDefs.find((d) => d.key === k)?.name ?? k)
+                        .join("、")}`
+                    : " · 无职务"}
+                </span>
+              )}
+            </div>
+
+            {upData && (
+              <div className="baozi-wide-table-scroll">
+                <table className="nexus-table text-xs">
+                  <thead>
+                    <tr>
+                      <td className="colhead" style={{ minWidth: 200 }}>权限</td>
+                      <td className="colhead w-28">当前状态</td>
+                      <td className="colhead" style={{ minWidth: 220 }}>用户级设置</td>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(permData?.permissions ?? []).map((p) => {
+                      const ov = upData.overrides.find((o) => o.permission_key === p.key);
+                      const eff = upData.effective.includes(p.key);
+                      const state = ov
+                        ? (ov.granted ? "单独授予" : "单独拒绝")
+                        : (eff ? "角色继承（有）" : "无");
+                      const btn = (label: string, g: boolean | null) => (
+                        <button
+                          key={label}
+                          disabled={busy}
+                          className={`mr-1 min-h-[28px] rounded-full border px-3 font-bold disabled:opacity-50 ${
+                            (g === null && !ov) ||
+                            (g === true && ov?.granted === true) ||
+                            (g === false && ov?.granted === false)
+                              ? "border-sky bg-sky text-white"
+                              : "border-line"
+                          }`}
+                          onClick={() => guard(async () => {
+                            await api.put("/api/v1/admin/user-permissions", {
+                              user_id: upData.user_id,
+                              permission_key: p.key,
+                              granted: g,
+                            });
+                            setUpData(
+                              await api.get<UserPermData>(
+                                `/api/v1/admin/user-permissions?user_id=${upData.user_id}`,
+                              ),
+                            );
+                          }, "已更新")}
+                        >
+                          {label}
+                        </button>
+                      );
+                      return (
+                        <tr key={p.key}>
+                          <td className="rowfollow">
+                            <span className="font-bold">{p.name}</span>
+                            {!p.implemented && (
+                              <span className="ml-1 rounded-full bg-sun/40 px-1.5 text-[10px] text-ink">
+                                未接入
+                              </span>
+                            )}
+                            <span className="block font-mono text-[10px] text-sub">{p.key}</span>
+                          </td>
+                          <td className="rowfollow text-sub">{state}</td>
+                          <td className="rowfollow">
+                            {btn("继承", null)}
+                            {btn("授予", true)}
+                            {btn("拒绝", false)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* 保种统计（seed.stats.view）：保种员 / 贵宾 / 管理组可看 */}
+      {tab === "seedstats" && (
+        <section className="baozi-panel p-4">
+          <h2 className="mb-2 text-base font-bold">保种统计</h2>
+          <p className="mb-3 text-xs text-sub">
+            站点做种总览与 Top 保种用户。持有「保种统计」权限者可见（保种员 / 贵宾 / 管理组）。
+          </p>
+          {seedStats ? (
+            <>
+              <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {[
+                  ["做种用户", seedStats.seeders],
+                  ["做种条目", seedStats.seeding_torrents],
+                  ["平均做种时长", `${seedStats.avg_seed_hours} 小时`],
+                ].map(([label, v]) => (
+                  <div
+                    key={String(label)}
+                    className="rounded-[var(--r-md)] border border-line bg-[var(--surface-raised)] p-3 text-center"
+                  >
+                    <p className="text-xs text-sub">{label}</p>
+                    <p className="num mt-1 text-2xl text-ink">
+                      {typeof v === "number" ? v.toLocaleString() : v}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="baozi-wide-table-scroll grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <h3 className="mb-2 text-sm font-bold">做种数 Top 10</h3>
+                  <table className="nexus-table w-full text-xs">
+                    <thead>
+                      <tr>
+                        <td className="colhead w-12">#</td>
+                        <td className="colhead">用户</td>
+                        <td className="colhead w-24">做种数</td>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {seedStats.top_by_count.map((r, i) => (
+                        <tr key={r.user_id}>
+                          <td className="rowfollow num">{i + 1}</td>
+                          <td className="rowfollow">
+                            <a href={`/user/${r.user_id}`} className="hover:text-sky">{r.username}</a>
+                          </td>
+                          <td className="rowfollow num">{r.seeding}</td>
+                        </tr>
+                      ))}
+                      {seedStats.top_by_count.length === 0 && (
+                        <tr><td colSpan={3} className="py-3 text-center text-sub">暂无数据</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div>
+                  <h3 className="mb-2 text-sm font-bold">做种时长 Top 10</h3>
+                  <table className="nexus-table w-full text-xs">
+                    <thead>
+                      <tr>
+                        <td className="colhead w-12">#</td>
+                        <td className="colhead">用户</td>
+                        <td className="colhead w-28">累计小时</td>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {seedStats.top_by_hours.map((r, i) => (
+                        <tr key={r.user_id}>
+                          <td className="rowfollow num">{i + 1}</td>
+                          <td className="rowfollow">
+                            <a href={`/user/${r.user_id}`} className="hover:text-sky">{r.username}</a>
+                          </td>
+                          <td className="rowfollow num">{r.hours}</td>
+                        </tr>
+                      ))}
+                      {seedStats.top_by_hours.length === 0 && (
+                        <tr><td colSpan={3} className="py-3 text-center text-sub">暂无数据</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="py-4 text-center text-sub">加载失败或无「保种统计」权限</p>
+          )}
         </section>
       )}
     </div>
