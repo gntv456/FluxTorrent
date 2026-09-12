@@ -175,6 +175,7 @@ export default async function TorrentsPage({
             <thead>
               <tr>
                 <th className="w-12">{dict.torrents.colType}</th>
+                <th className="w-16" aria-label="封面" />
                 <th>
                   <a href={withParam(sp, "sort", undefined)}>{dict.torrents.colTitle}</a>
                 </th>
