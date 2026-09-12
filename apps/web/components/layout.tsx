@@ -22,8 +22,22 @@ export async function Header() {
   const textbooksOn = profile.modules.textbooks === true;
   const brand = profile.brand || dict.common.brand;
 
-  // 自定义菜单（location=topbar）：配置了就直接替换主菜单一级项；未配置回落默认
+  // 自定义菜单（location=topbar，nav.custom_enabled 开启时接口才返回非空）：
+  // 一级项替换主菜单；带子项的一级项其子项收进「更多 ▾」作为独立分组（nexusphp-menu 生产口径）。
+  // 接口返回空 = 开关关闭或未配置 → 显式回退默认导航（不做静默混淆）。
   const customItems = await getMenuItems("topbar");
+  const customTops = customItems.filter((m) => m.parent_id === 0);
+  const customActive = customTops.length > 0;
+  const customGroups: NavGroup[] = customActive
+    ? customTops
+        .filter((m) => customItems.some((c) => c.parent_id === m.id))
+        .map((m) => ({
+          group: m.label,
+          items: customItems
+            .filter((c) => c.parent_id === m.id)
+            .map((c) => ({ href: c.url, label: c.label })),
+        }))
+    : [];
 
   // 默认一级：核心任务域（发布入口在菜单内，不再放独立大按钮）
   const defaultPrimary: NavItem[] = [
@@ -33,13 +47,14 @@ export async function Header() {
     { href: "/top", label: dict.nav.top },
     { href: "/upload", label: dict.nav.upload },
   ];
-  const primary: NavItem[] =
-    customItems.length > 0
-      ? customItems.map((m) => ({ href: m.url, label: m.label }))
-      : defaultPrimary;
+  const primary: NavItem[] = customActive
+    ? customTops.map((m) => ({ href: m.url, label: m.label }))
+    : defaultPrimary;
 
-  // 「更多 ▾」收纳域（Seedlight IA 分组）
-  const groups: NavGroup[] = [
+  // 「更多 ▾」收纳域（自定义生效时替换为自定义子项分组）
+  const groups: NavGroup[] = customActive
+    ? customGroups
+    : [
     {
       group: dict.nav.discover,
       items: [

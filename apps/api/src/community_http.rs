@@ -1462,9 +1462,7 @@ async fn staff_messages(
     q: web::Query<StaffMsgQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
     let rows = sqlx::query_as::<_, StaffMessageRow>(
         "SELECT s.id, u.username, s.subject, s.body, s.answered, a.username AS answered_by, \
                 s.answer, s.answered_at, s.permission, s.created_at \
@@ -1501,9 +1499,7 @@ async fn staff_answer(
     body: web::Json<AnswerReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
     if body.answer.trim().is_empty() {
         return Err(DomainError::Validation("答复内容不能为空".into()));
     }
@@ -1563,9 +1559,7 @@ async fn staff_mark(
     body: web::Json<StaffMsgActionReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
     let n = sqlx::query(
         "UPDATE staffmessages SET answered = 1, answered_by = COALESCE(answered_by, $2), answered_at = COALESCE(answered_at, now()) \
          WHERE id = ANY($1) AND answered = 0",
@@ -1587,9 +1581,7 @@ async fn staff_delete(
     body: web::Json<StaffMsgActionReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
-    }
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
     let n = sqlx::query("DELETE FROM staffmessages WHERE id = ANY($1)")
         .bind(&body.ids)
         .execute(&state.repo.db)

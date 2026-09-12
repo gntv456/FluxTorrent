@@ -329,9 +329,8 @@ async fn offer_promote(
     body: web::Json<PromoteReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if auth.class_id < 90 {
-        return Err(DomainError::Forbidden); // 转正为管理操作
-    }
+    // 候选转正为管理操作
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::OFFERS_PROMOTE).await?;
     let tid: Option<i64> = sqlx::query_scalar(
         "UPDATE offers SET promoted = true WHERE id = $1 AND NOT promoted RETURNING torrent_id",
     )

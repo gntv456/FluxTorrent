@@ -358,6 +358,8 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
                 AND p.starts_at <= s.completed_at AND p.ends_at > s.completed_at
                 AND p.kind IN ('free', 'x2free')
           )
+          -- 保种员 / VIP 持 hr.exempt 权限 → 免除 H&R，不建快照
+          AND NOT user_can(s.user_id, 'hr.exempt')
         ON CONFLICT DO NOTHING
         "#,
     )
