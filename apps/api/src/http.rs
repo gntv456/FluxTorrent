@@ -3820,6 +3820,9 @@ struct UploadForm {
     edition_id: Option<i32>,
     #[serde(default)]
     anonymous: bool,
+    /// 海报/封面外链 URL（存 media_info.poster；列表 46px 封面位与首页海报墙共用）
+    #[serde(default)]
+    poster: Option<String>,
 }
 
 /// multipart：file=<.torrent> + 表单字段
@@ -3865,9 +3868,16 @@ async fn upload(
         .clone()
         .filter(|n| !n.trim().is_empty())
         .unwrap_or(parsed.name.clone());
+    // 封面外链 → media_info.poster（JSONB 单键合并，留空则不动该列）
+    let media_info: Option<serde_json::Value> = form
+        .poster
+        .as_deref()
+        .map(str::trim)
+        .filter(|u| !u.is_empty())
+        .map(|u| serde_json::json!({ "poster": u }));
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO torrents (info_hash, name, small_descr, descr, category_id, medium_id, grade_id, edition_id, owner_id, anonymous, size, numfiles, approval_status) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0) RETURNING id",
+        "INSERT INTO torrents (info_hash, name, small_descr, descr, category_id, medium_id, grade_id, edition_id, owner_id, anonymous, size, numfiles, approval_status, media_info) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, $13) RETURNING id",
     )
     .bind(&parsed.info_hash_hex)
     .bind(&name)
@@ -3881,6 +3891,7 @@ async fn upload(
     .bind(form.anonymous)
     .bind(parsed.size)
     .bind(parsed.numfiles)
+    .bind(media_info)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
