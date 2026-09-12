@@ -15,6 +15,9 @@ export default async function InvitesPage() {
       <InviteManager
         empty={dict.invites.empty}
         issueLabel={dict.invites.issue}
+        redeemLabel={dict.invites.redeem}
+        redeemNote={dict.invites.redeemNote}
+        replayedText={dict.invites.replayed}
         needClass={dict.invites.needClass}
       />
     </div>

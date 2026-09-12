@@ -50,15 +50,14 @@ pub async fn spend_spark(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 幂等检查必须在余额检查之前：已成功扣过的键在余额不足时也应返回重放，
+    // 而不是误报「余额不足」（P0：防并发双扣的锁序不变，行锁仍先取）
     let balance: i64 =
         sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
             .bind(user_id)
             .fetch_one(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    if balance < amount {
-        return Err(DomainError::InsufficientSpark);
-    }
     let exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
             .bind(idem)
@@ -67,6 +66,9 @@ pub async fn spend_spark(
             .unwrap_or(false);
     if exists {
         return Ok(SpendOutcome::Replayed);
+    }
+    if balance < amount {
+        return Err(DomainError::InsufficientSpark);
     }
     sqlx::query(
         "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
@@ -504,7 +506,7 @@ async fn checkin(
     }
 
     let last: Option<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
-        "SELECT date, streak, (count(*) OVER ())::int FROM attendance WHERE user_id = $1 ORDER BY date DESC LIMIT 1",
+        "SELECT date, streak, (count(*) OVER ())::bigint FROM attendance WHERE user_id = $1 ORDER BY date DESC LIMIT 1",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)

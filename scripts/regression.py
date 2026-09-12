@@ -227,7 +227,10 @@ check("管理·审计日志", r.get("code") == 0)
 # ============ 8.5 新增功能（RSS/2FA/规则/验证码） ============
 import re as _re
 try:
-    rss = urllib.request.urlopen(f"{BASE}/rss/rootbootstrap0000000passkey00000", timeout=10).read().decode()
+    # passkey 会被 usercp E2E 轮换 —— 从 /me/overview 动态取当前值
+    _, r = call("GET", "/me/overview", token=rtok)
+    pk = (r.get("data") or {}).get("passkey") or ""
+    rss = urllib.request.urlopen(f"{BASE}/rss/{pk}", timeout=10).read().decode()
     check("RSS·订阅输出", rss.startswith("<?xml") and "<item>" in rss)
 except Exception:
     check("RSS·订阅输出", False)
