@@ -481,6 +481,7 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if let Err(e) = collect_milestones(&db).await { tracing::error!(?e, "collect_milestones"); }
                 if let Err(e) = hr_enforce(&db).await { tracing::error!(?e, "hr_enforce"); }
                 if let Err(e) = class_auto_adjust(&db).await { tracing::error!(?e, "class_auto_adjust"); }
+                if let Err(e) = crate::task_jobs::task_settle(&db).await { tracing::error!(?e, "task_settle"); }
                 // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
                 let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
                 if last_bank_day.is_none() {
