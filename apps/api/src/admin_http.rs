@@ -42,6 +42,12 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_spark_logs)
         .service(admin_torrent_buys)
         .service(admin_login_logs)
+        .service(forum_admin_list)
+        .service(forum_admin_create)
+        .service(forum_admin_update)
+        .service(forum_admin_delete)
+        .service(forum_mod_add)
+        .service(forum_mod_remove)
 }
 
 async fn staff(
@@ -199,13 +205,19 @@ async fn review_decide(
 
 // ============ 举报处理 ============
 
+/// 举报队列：状态过滤 + 举报人 + 被举报对象上下文摘要
 #[derive(sqlx::FromRow, serde::Serialize)]
-struct ReportRow {
+struct ReportQueueRow {
     id: i64,
     reporter_id: i64,
+    reporter_name: Option<String>,
     ref_type: String,
     ref_id: i64,
+    ref_label: Option<String>,
     reason: String,
+    status: i16,
+    handled_name: Option<String>,
+    handled_at: Option<chrono::DateTime<chrono::Utc>>,
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -213,12 +225,32 @@ struct ReportRow {
 async fn report_queue(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<ReportQueueQuery>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let rows: Vec<ReportRow> = sqlx::query_as(
-        "SELECT id, reporter_id, ref_type, ref_id, reason, created_at \
-         FROM reports WHERE status = 0 ORDER BY id LIMIT 200",
+    let status_filter = q.status.as_deref().unwrap_or("pending");
+    if !["pending", "handled", "all"].contains(&status_filter) {
+        return Err(DomainError::Validation("status 需为 pending/handled/all".into()));
+    }
+    let rows: Vec<ReportQueueRow> = sqlx::query_as(
+        "SELECT r.id, r.reporter_id, u.username AS reporter_name, r.ref_type, r.ref_id, r.reason, \
+            r.status AS status, hu.username AS handled_name, r.handled_at, r.created_at, \
+            CASE r.ref_type \
+              WHEN 'torrent' THEN (SELECT t.name FROM torrents t WHERE t.id = r.ref_id) \
+              WHEN 'user' THEN (SELECT ru.username FROM users ru WHERE ru.id = r.ref_id) \
+              WHEN 'comment' THEN (SELECT left(c.body, 80) FROM comments c WHERE c.id = r.ref_id) \
+              WHEN 'forum' THEN (SELECT left(p.body, 80) FROM posts p WHERE p.id = r.ref_id) \
+              WHEN 'subtitle' THEN (SELECT s.title FROM subtitles s WHERE s.id = r.ref_id) \
+            END AS ref_label \
+         FROM reports r \
+         LEFT JOIN users u ON u.id = r.reporter_id \
+         LEFT JOIN users hu ON hu.id = r.handled_by \
+         WHERE ($1 = 'all' AND TRUE) \
+            OR ($1 = 'pending' AND r.status = 0) \
+            OR ($1 = 'handled' AND r.status = 1) \
+         ORDER BY r.id DESC LIMIT 200",
     )
+    .bind(status_filter)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -226,8 +258,17 @@ async fn report_queue(
 }
 
 #[derive(Deserialize)]
+struct ReportQueueQuery {
+    #[serde(default)]
+    status: Option<String>,
+}
+
+/// 处置举报：action = act(已处置) | dismiss(驳回)；结果自动 PM 通知举报人
+#[derive(Deserialize)]
 struct ResolveReq {
     report_id: i64,
+    #[serde(default)]
+    action: Option<String>, // act / dismiss，缺省 act
     #[serde(default)]
     note: String,
 }
@@ -239,7 +280,22 @@ async fn report_resolve(
     body: web::Json<ResolveReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    let n = sqlx::query(
+    let action = body.action.as_deref().unwrap_or("act");
+    if !["act", "dismiss"].contains(&action) {
+        return Err(DomainError::Validation("action 需为 act/dismiss".into()));
+    }
+    // 取举报人与对象（供 PM）
+    let info: Option<(i64, String, i64)> = sqlx::query_as(
+        "SELECT reporter_id, ref_type, ref_id FROM reports WHERE id = $1 AND status = 0",
+    )
+    .bind(body.report_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((reporter_id, ref_type, ref_id)) = info else {
+        return Err(DomainError::Validation("举报不存在或已处理".into()));
+    };
+    sqlx::query(
         "UPDATE reports SET status = 1, handled_by = $1, handled_at = now() \
          WHERE id = $2 AND status = 0",
     )
@@ -247,17 +303,32 @@ async fn report_resolve(
     .bind(body.report_id)
     .execute(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
-    if n == 0 {
-        return Err(DomainError::Validation("举报不存在或已处理".into()));
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // PM 通知举报人
+    let subject = if action == "act" { "您的举报已处置" } else { "您的举报已审阅（未处置）" };
+    let mut pm = format!(
+        "您举报的对象（{} #{ref_id}）已被管理组审阅。\n\n结果：{}",
+        ref_type,
+        if action == "act" { "已按规则处置" } else { "经核实未违反规则，予以驳回" }
+    );
+    if !body.note.trim().is_empty() {
+        pm.push_str("\n\n管理备注：");
+        pm.push_str(body.note.trim());
     }
-    let _ = &body.note; // 处理备注并入审计日志
+    let _ = sqlx::query(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(auth.id)
+    .bind(reporter_id)
+    .bind(subject)
+    .bind(pm)
+    .execute(&state.repo.db)
+    .await;
     state
         .repo
         .audit(Some(auth.id), "report.resolve", Some(body.report_id))
         .await;
-    Ok(ok(serde_json::json!({ "resolved": body.report_id })))
+    Ok(ok(serde_json::json!({ "resolved": body.report_id, "action": action })))
 }
 
 // ============ 用户管理（第五轮：好学站 /nexusphp user/users 口径） ============
@@ -1394,4 +1465,221 @@ async fn admin_login_logs(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page })))
+}
+
+
+// ============ 论坛版块管理（forummanage.php 口径，forummanage ≥93） ============
+
+/// 版块管理：三档门槛 + 受保护标记 + 版主名单
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct ForumAdminRow {
+    id: i64,
+    name: String,
+    descr: Option<String>,
+    minclassread: i32,
+    minclasswrite: i32,
+    minclasscreate: i32,
+    protected: bool,
+    topics: i64,
+}
+
+#[get("/admin/forums")]
+async fn forum_admin_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if auth.class_id < 93 {
+        return Err(DomainError::Forbidden);
+    }
+    let rows: Vec<ForumAdminRow> = sqlx::query_as(
+        "SELECT f.id, f.name, f.descr, f.minclassread, f.minclasswrite, f.minclasscreate, f.protected, \
+            (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics \
+         FROM forums f ORDER BY f.id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mods: Vec<(i64, i64, String)> = sqlx::query_as(
+        "SELECT fm.forum_id, u.id, u.username FROM forum_mods fm JOIN users u ON u.id = fm.user_id ORDER BY fm.forum_id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "forums": rows, "mods": mods })))
+}
+
+#[derive(Deserialize)]
+struct ForumUpsertReq {
+    name: String,
+    #[serde(default)]
+    descr: Option<String>,
+    #[serde(default)]
+    minclassread: Option<i32>,
+    #[serde(default)]
+    minclasswrite: Option<i32>,
+    #[serde(default)]
+    minclasscreate: Option<i32>,
+    #[serde(default)]
+    protected: Option<bool>,
+}
+
+fn forum_upsert_check(body: &ForumUpsertReq) -> DomainResult<()> {
+    if body.name.trim().is_empty() {
+        return Err(DomainError::Validation("版块名不能为空".into()));
+    }
+    let mr = body.minclassread.unwrap_or(0);
+    let mw = body.minclasswrite.unwrap_or(0);
+    let mc = body.minclasscreate.unwrap_or(0);
+    if !(mr <= mw && mw <= mc) {
+        return Err(DomainError::Validation("三档门槛需满足 读 ≤ 回 ≤ 发".into()));
+    }
+    Ok(())
+}
+
+#[post("/admin/forums")]
+async fn forum_admin_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<ForumUpsertReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if auth.class_id < 93 {
+        return Err(DomainError::Forbidden);
+    }
+    forum_upsert_check(&body)?;
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO forums (name, descr, minclassread, minclasswrite, minclasscreate, min_class, protected) \
+         VALUES ($1, $2, $3, $4, $5, $3, $6) RETURNING id",
+    )
+    .bind(body.name.trim())
+    .bind(&body.descr)
+    .bind(body.minclassread.unwrap_or(0))
+    .bind(body.minclasswrite.unwrap_or(0))
+    .bind(body.minclasscreate.unwrap_or(0))
+    .bind(body.protected.unwrap_or(false))
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "forum.create", Some(id)).await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/forums/{id}")]
+async fn forum_admin_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    body: web::Json<ForumUpsertReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if auth.class_id < 93 {
+        return Err(DomainError::Forbidden);
+    }
+    forum_upsert_check(&body)?;
+    let fid = path.into_inner();
+    let n = sqlx::query(
+        "UPDATE forums SET name = $1, descr = $2, \
+            minclassread = $3, minclasswrite = $4, minclasscreate = $5, \
+            min_class = $3, protected = $6 \
+         WHERE id = $7",
+    )
+    .bind(body.name.trim())
+    .bind(&body.descr)
+    .bind(body.minclassread.unwrap_or(0))
+    .bind(body.minclasswrite.unwrap_or(0))
+    .bind(body.minclasscreate.unwrap_or(0))
+    .bind(body.protected.unwrap_or(false))
+    .bind(fid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(fid));
+    }
+    state.repo.audit(Some(auth.id), "forum.update", Some(fid)).await;
+    Ok(ok(serde_json::json!({ "updated": fid })))
+}
+
+#[delete("/admin/forums/{id}")]
+async fn forum_admin_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if auth.class_id < 93 {
+        return Err(DomainError::Forbidden);
+    }
+    let fid = path.into_inner();
+    let n = sqlx::query("DELETE FROM forums WHERE id = $1")
+        .bind(fid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(fid));
+    }
+    state.repo.audit(Some(auth.id), "forum.delete", Some(fid)).await;
+    Ok(ok(serde_json::json!({ "deleted": fid })))
+}
+
+/// 任命版主（无需等级）
+#[derive(Deserialize)]
+struct ForumModReq {
+    username: String,
+}
+
+#[post("/admin/forums/{id}/mods")]
+async fn forum_mod_add(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    body: web::Json<ForumModReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if auth.class_id < 93 {
+        return Err(DomainError::Forbidden);
+    }
+    let fid = path.into_inner();
+    let uid: Option<i64> = sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND status < 2")
+        .bind(&body.username)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(uid) = uid else {
+        return Err(DomainError::NotFound(0));
+    };
+    sqlx::query("INSERT INTO forum_mods (forum_id, user_id, created_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING")
+        .bind(fid)
+        .bind(uid)
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "forum.mod_add", Some(uid)).await;
+    Ok(ok(serde_json::json!({ "forum_id": fid, "user_id": uid })))
+}
+
+#[delete("/admin/forums/{id}/mods/{user_id}")]
+async fn forum_mod_remove(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<(i64, i64)>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    if auth.class_id < 93 {
+        return Err(DomainError::Forbidden);
+    }
+    let (fid, uid) = path.into_inner();
+    sqlx::query("DELETE FROM forum_mods WHERE forum_id = $1 AND user_id = $2")
+        .bind(fid)
+        .bind(uid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "forum.mod_remove", Some(uid)).await;
+    Ok(ok(serde_json::json!({ "removed": uid })))
 }

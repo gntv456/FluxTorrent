@@ -1,6 +1,6 @@
 //! 社区模块 HTTP 接口（M14 勋章 + M15 论坛 + M16 短讯/好友）。
 
-use actix_web::{get, post, put, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -24,8 +24,22 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(topic_list)
         .service(topic_detail)
         .service(post_reply)
+        .service(post_edit)
+        .service(post_delete)
+        .service(topic_delete)
+        .service(topic_manage)
         // M16 短讯与好友
         .service(message_send)
+        .service(message_markread)
+        .service(message_delete)
+        .service(message_move)
+        .service(message_boxes)
+        .service(message_box_upsert)
+        .service(contact_staff)
+        .service(staff_messages)
+        .service(staff_answer)
+        .service(staff_mark)
+        .service(staff_delete)
         .service(my_hr)
         .service(shoutbox_list)
         .service(shoutbox_send)
@@ -243,7 +257,98 @@ async fn my_medals(
     Ok(ok(rows))
 }
 
-// ============ M15 论坛 ============
+// ============ M15 论坛（forums.php 三层权限口径） ============
+//
+// 三层判定叠加：
+//   1) 版块三档门槛：minclassread 看 / minclasswrite 回 / minclasscreate 发主题（逐版块独立）
+//   2) 版主：forum_mods（forumid+userid，无需等级，仅本版块有效）
+//   3) 全局：postmanage = class≥90 全版块管帖；forummanage（≥93，见 admin_http）管版块
+// 反直觉点照搬：作者不能删自己的帖（删帖只对版主/postmanage 开放）；
+// 删主题收回发帖 +2 火花；管理员编辑他人帖自动 PM 通知并留 edited_by；
+// forumpost=FALSE 账户级禁言；发帖 10 秒防刷（postmanage 豁免）；
+// 受保护版块 2 楼起正文替换为提示（class≥90/发帖人本人/楼主/本版版主放行）。
+
+/// 三层权限判定结果
+#[derive(serde::Serialize, sqlx::FromRow, Clone, Copy)]
+struct ForumPerm {
+    can_read: bool,
+    can_write: bool,
+    can_create: bool,
+    can_mod: bool,
+}
+
+async fn forum_access(
+    db: &sqlx::PgPool,
+    user_id: i64,
+    class_id: i32,
+    forum_id: i64,
+) -> DomainResult<ForumPerm> {
+    let none = ForumPerm { can_read: false, can_write: false, can_create: false, can_mod: false };
+    let row: Option<(i32, i32, i32)> = sqlx::query_as(
+        "SELECT minclassread, minclasswrite, minclasscreate FROM forums WHERE id = $1",
+    )
+    .bind(forum_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((min_read, min_write, min_create)) = row else {
+        return Ok(none);
+    };
+    // 全局 postmanage：全版块放行
+    if class_id >= 90 {
+        return Ok(ForumPerm { can_read: true, can_write: true, can_create: true, can_mod: true });
+    }
+    // 版主：本版块全放行（任命不需要等级）
+    let is_mod: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM forum_mods WHERE forum_id = $1 AND user_id = $2)",
+    )
+    .bind(forum_id)
+    .bind(user_id)
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 账户级禁言（forumpost='no' 口径）：与等级、版块门槛无关，一律不能发帖回帖
+    let can_post: bool = sqlx::query_scalar("SELECT COALESCE(forumpost, TRUE) FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(db)
+        .await
+        .unwrap_or(true);
+    let can_read = is_mod || class_id >= min_read;
+    let can_write = can_read && can_post && (is_mod || class_id >= min_write);
+    let can_create = can_write && (is_mod || class_id >= min_create);
+    Ok(ForumPerm { can_read, can_write, can_create, can_mod: is_mod })
+}
+
+/// 发帖 10 秒防刷（postmanage/版主豁免）
+async fn forum_flood_check(db: &sqlx::PgPool, user_id: i64, class_id: i32) -> DomainResult<()> {
+    if class_id >= 90 {
+        return Ok(());
+    }
+    let last: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+        "SELECT last_sent_at FROM forum_flood WHERE user_id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .flatten();
+    if let Some(t) = last {
+        if (chrono::Utc::now() - t).num_seconds() < 10 {
+            return Err(DomainError::Validation("发送过于频繁，请 10 秒后再试".into()));
+        }
+    }
+    Ok(())
+}
+
+async fn forum_flood_mark(db: &sqlx::PgPool, user_id: i64) {
+    let _ = sqlx::query(
+        "INSERT INTO forum_flood (user_id, last_sent_at) VALUES ($1, now()) \
+         ON CONFLICT (user_id) DO UPDATE SET last_sent_at = now()",
+    )
+    .bind(user_id)
+    .execute(db)
+    .await;
+}
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct ForumRow {
@@ -258,17 +363,62 @@ struct ForumRow {
     latest_author: Option<String>,
     #[sqlx(default)]
     latest_at: Option<chrono::DateTime<chrono::Utc>>,
+    can_write: bool,
+    can_create: bool,
+    can_mod: bool,
 }
 
 #[get("/forums")]
-async fn forum_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
-    let rows = sqlx::query_as::<_, ForumRow>(
-        "SELECT f.id, f.name, f.descr,             (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics,             (SELECT count(*) FROM posts p JOIN topics t ON t.id = p.topic_id WHERE t.forum_id = f.id) AS posts,             (SELECT t.title FROM topics t WHERE t.forum_id = f.id ORDER BY t.id DESC LIMIT 1) AS latest_topic,             (SELECT u.username FROM topics t JOIN users u ON u.id = t.user_id WHERE t.forum_id = f.id ORDER BY t.id DESC LIMIT 1) AS latest_author,             (SELECT t.created_at FROM topics t WHERE t.forum_id = f.id ORDER BY t.id DESC LIMIT 1) AS latest_at          FROM forums f WHERE f.min_class <= 99 ORDER BY f.id",
+async fn forum_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    // 只列本版块门槛允许（minclassread）+ 版主兼任的版块
+    let rows = sqlx::query_as::<_, (i64, String, Option<String>, i64, i64)>(
+        "SELECT f.id, f.name, f.descr, \
+            (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics, \
+            (SELECT count(*) FROM posts p JOIN topics t ON t.id = p.topic_id WHERE t.forum_id = f.id) AS posts \
+         FROM forums f \
+         WHERE f.minclassread <= $1 OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $2) \
+         ORDER BY f.id",
     )
+    .bind(auth.class_id)
+    .bind(auth.id)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+
+    let mut latest: std::collections::HashMap<i64, (Option<String>, Option<String>, Option<chrono::DateTime<chrono::Utc>>)> =
+        std::collections::HashMap::new();
+    let latest_rows: Vec<(i64, Option<String>, Option<String>, Option<chrono::DateTime<chrono::Utc>>)> = sqlx::query_as(
+        "SELECT DISTINCT ON (t.forum_id) t.forum_id, t.title, u.username, t.created_at \
+         FROM topics t LEFT JOIN users u ON u.id = t.user_id \
+         WHERE t.forum_id = ANY(SELECT id FROM forums WHERE minclassread <= $1) \
+         ORDER BY t.forum_id, t.id DESC",
+    )
+    .bind(auth.class_id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    for (fid, title, author, at) in latest_rows {
+        latest.insert(fid, (title, author, at));
+    }
+
+    let mut out = Vec::with_capacity(rows.len());
+    for (id, name, descr, topics, posts) in rows {
+        let perm = forum_access(&state.repo.db, auth.id, auth.class_id, id).await?;
+        let (latest_topic, latest_author, latest_at) =
+            latest.get(&id).cloned().unwrap_or((None, None, None));
+        out.push(ForumRow {
+            id, name, descr, topics, posts,
+            latest_topic, latest_author, latest_at,
+            can_write: perm.can_write,
+            can_create: perm.can_create,
+            can_mod: perm.can_mod,
+        });
+    }
+    Ok(ok(out))
 }
 
 #[derive(Deserialize)]
@@ -288,6 +438,11 @@ async fn topic_create(
     if body.title.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("标题与正文不能为空".into()));
     }
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, body.forum_id).await?;
+    if !perm.can_create {
+        return Err(DomainError::Forbidden);
+    }
+    forum_flood_check(&state.repo.db, auth.id, auth.class_id).await?;
     let mut tx = state
         .repo
         .db
@@ -318,6 +473,7 @@ async fn topic_create(
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    forum_flood_mark(&state.repo.db, auth.id).await;
     // 发主题 +2 火花（M11 论坛行为奖励）
     let idem = format!("forum-topic:{}:{}", auth.id, topic_id);
     earn_spark(&state.repo.db, auth.id, 2, "forum", &idem).await?;
@@ -333,39 +489,62 @@ struct TopicRow {
     replies: i64,
     views: i32,
     last_post_at: Option<chrono::DateTime<chrono::Utc>>,
+    sticky: bool,
+    locked: bool,
 }
 
 #[get("/forums/{id}/topics")]
 async fn topic_list(
+    req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let fid = path.into_inner();
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_read {
+        return Err(DomainError::Forbidden);
+    }
     let rows = sqlx::query_as::<_, TopicRow>(
         "SELECT t.id, t.forum_id, t.title, u.username, \
-            (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) AS replies, t.views, t.last_post_at \
+            (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) AS replies, t.views, t.last_post_at, \
+            t.sticky, t.locked \
          FROM topics t LEFT JOIN users u ON u.id = t.user_id \
-         WHERE t.forum_id = $1 AND NOT t.locked ORDER BY t.sticky DESC, t.id DESC LIMIT 50",
+         WHERE t.forum_id = $1 ORDER BY t.sticky DESC, t.id DESC LIMIT 50",
     )
-    .bind(path.into_inner())
+    .bind(fid)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    Ok(ok(serde_json::json!({
+        "forum_id": fid,
+        "can_write": perm.can_write,
+        "can_create": perm.can_create,
+        "can_mod": perm.can_mod,
+        "topics": rows,
+    })))
 }
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct PostRow {
     id: i64,
     username: Option<String>,
+    user_id: Option<i64>,
     body: String,
     created_at: chrono::DateTime<chrono::Utc>,
+    edited_at: Option<chrono::DateTime<chrono::Utc>>,
+    edited_by: Option<i64>,
+    #[serde(skip)]
+    hidden: bool,
 }
 
 #[get("/forums/topics/{id}")]
 async fn topic_detail(
+    req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
     sqlx::query("UPDATE topics SET views = views + 1 WHERE id = $1")
         .bind(tid)
@@ -373,27 +552,57 @@ async fn topic_detail(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // NexusPHP 帖子页头部：主题标题 + 所属版块（找不到主题时 404）
-    let meta: (String, Option<String>, String) = sqlx::query_as(
-        "SELECT t.title, f.name, COALESCE(t.created_at::text, '') FROM topics t \
-         LEFT JOIN forums f ON f.id = t.forum_id WHERE t.id = $1",
+    let meta: Option<(String, i64, Option<String>, Option<i64>, bool, bool)> = sqlx::query_as(
+        "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked \
+         FROM topics t LEFT JOIN forums f ON f.id = t.forum_id WHERE t.id = $1",
     )
     .bind(tid)
     .fetch_optional(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .ok_or(DomainError::NotFound(tid))?;
-    let posts = sqlx::query_as::<_, PostRow>(
-        "SELECT p.id, u.username, p.body, p.created_at FROM posts p \
-         LEFT JOIN users u ON u.id = p.user_id WHERE p.topic_id = $1 ORDER BY p.id LIMIT 200",
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((title, fid, forum_name, op_id, sticky, locked)) = meta else {
+        return Err(DomainError::NotFound(tid));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_read {
+        return Err(DomainError::Forbidden);
+    }
+    let mut posts = sqlx::query_as::<_, PostRow>(
+        "SELECT p.id, u.username, p.user_id, p.body, p.created_at, p.edited_at, p.edited_by, FALSE AS hidden \
+         FROM posts p LEFT JOIN users u ON u.id = p.user_id \
+         WHERE p.topic_id = $1 ORDER BY p.id LIMIT 200",
     )
     .bind(tid)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 受保护版块：2 楼起正文替换为提示（class≥90 / 发帖人本人 / 楼主 / 本版版主放行）
+    let protected: bool = sqlx::query_scalar("SELECT protected FROM forums WHERE id = $1")
+        .bind(fid)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+    if protected {
+        let is_op = op_id == Some(auth.id);
+        for (i, p) in posts.iter_mut().enumerate() {
+            let is_self = p.user_id == Some(auth.id);
+            if i > 0 && !is_self && !is_op && !perm.can_mod {
+                p.hidden = true;
+                p.body = "……".to_string();
+            }
+        }
+    }
     Ok(ok(serde_json::json!({
         "topic_id": tid,
-        "title": meta.0,
-        "forum_name": meta.1,
+        "title": title,
+        "forum_id": fid,
+        "forum_name": forum_name,
+        "sticky": sticky,
+        "locked": locked,
+        "is_op": op_id == Some(auth.id),
+        "current_user_id": auth.id,
+        "can_write": perm.can_write,
+        "can_mod": perm.can_mod,
         "posts": posts,
     })))
 }
@@ -415,17 +624,22 @@ async fn post_reply(
     if body.body.trim().is_empty() {
         return Err(DomainError::Validation("回复不能为空".into()));
     }
-    let locked: Option<bool> = sqlx::query_scalar("SELECT locked FROM topics WHERE id = $1")
+    let row: Option<(i64, bool)> = sqlx::query_as("SELECT forum_id, locked FROM topics WHERE id = $1")
         .bind(tid)
         .fetch_optional(&state.repo.db)
         .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .flatten();
-    match locked {
-        None => return Err(DomainError::NotFound(tid)),
-        Some(true) => return Err(DomainError::Validation("主题已锁定".into())),
-        Some(false) => {}
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((fid, locked)) = row else {
+        return Err(DomainError::NotFound(tid));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_write {
+        return Err(DomainError::Forbidden);
     }
+    if locked && !perm.can_mod {
+        return Err(DomainError::Validation("主题已锁定".into()));
+    }
+    forum_flood_check(&state.repo.db, auth.id, auth.class_id).await?;
     let post_id: i64 = sqlx::query_scalar(
         "INSERT INTO posts (id, topic_id, user_id, body) VALUES (nextval('posts_id_seq'), $1, $2, $3) RETURNING id",
     )
@@ -440,12 +654,215 @@ async fn post_reply(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    forum_flood_mark(&state.repo.db, auth.id).await;
     // 回帖 +1 火花
     let idem = format!("forum-reply:{}:{}", auth.id, post_id);
     earn_spark(&state.repo.db, auth.id, 1, "forum", &idem).await?;
     Ok(ok(serde_json::json!({ "post_id": post_id })))
 }
 
+// ---- 论坛管理操作（版主限本版块 / postmanage 全站） ----
+
+/// 单帖上下文：(topic_id, forum_id, author_id)
+async fn post_context(db: &sqlx::PgPool, post_id: i64) -> DomainResult<Option<(i64, i64, i64)>> {
+    let row: Option<(i64, i64, i64)> = sqlx::query_as(
+        "SELECT p.topic_id, t.forum_id, p.user_id FROM posts p \
+         JOIN topics t ON t.id = p.topic_id \
+         WHERE p.id = $1",
+    )
+    .bind(post_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(row)
+}
+
+/// 编辑帖子：作者本人随时可改；版主/postmanage 可改他人帖 —— 后者自动 PM 通知作者并留 edited_by
+#[derive(Deserialize)]
+struct PostEditReq {
+    body: String,
+}
+
+#[put("/forums/posts/{id}")]
+async fn post_edit(
+    req: HttpRequest,
+    path: web::Path<i64>,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PostEditReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if body.body.trim().is_empty() {
+        return Err(DomainError::Validation("正文不能为空".into()));
+    }
+    let pid = path.into_inner();
+    let Some((tid, fid, author_id)) = post_context(&state.repo.db, pid).await? else {
+        return Err(DomainError::NotFound(pid));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_mod && author_id != auth.id {
+        return Err(DomainError::Forbidden);
+    }
+    let n = sqlx::query("UPDATE posts SET body = $1, edited_at = now(), edited_by = $2 WHERE id = $3")
+        .bind(body.body.trim())
+        .bind(auth.id)
+        .bind(pid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(pid));
+    }
+    // 管理员/版主编辑他人帖：自动 PM 通知作者（forums.php:426 口径）
+    if author_id != auth.id {
+        let _ = sqlx::query(
+            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)",
+        )
+        .bind(auth.id)
+        .bind(author_id)
+        .bind("您的帖子被编辑")
+        .bind(format!("您的帖子已被管理组成员编辑，请查看最新内容。"))
+        .execute(&state.repo.db)
+        .await;
+    }
+    Ok(ok(serde_json::json!({ "edited": pid })))
+}
+
+/// 删帖：仅版主/postmanage —— 普通用户（含作者本人）删不掉自己的帖，想删找版主
+#[delete("/forums/posts/{id}")]
+async fn post_delete(
+    req: HttpRequest,
+    path: web::Path<i64>,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let pid = path.into_inner();
+    let Some((tid, fid, _author)) = post_context(&state.repo.db, pid).await? else {
+        return Err(DomainError::NotFound(pid));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_mod {
+        return Err(DomainError::Forbidden);
+    }
+    sqlx::query("DELETE FROM posts WHERE id = $1 AND topic_id = $2")
+        .bind(pid)
+        .bind(tid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "forum.post_delete", Some(pid)).await;
+    Ok(ok(serde_json::json!({ "deleted": pid })))
+}
+
+/// 删主题：仅版主/postmanage；收回发帖 +2 火花（KPS("-", starttopic_bonus) 口径）
+#[delete("/forums/topics/{id}")]
+async fn topic_delete(
+    req: HttpRequest,
+    path: web::Path<i64>,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let tid = path.into_inner();
+    let fid: Option<i64> = sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
+        .bind(tid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(fid) = fid else {
+        return Err(DomainError::NotFound(tid));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_mod {
+        return Err(DomainError::Forbidden);
+    }
+    let op: Option<i64> = sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
+        .bind(tid)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(op_id) = op {
+        let _ = earn_spark(&state.repo.db, op_id, -2, "forum-topic-del", &format!("forum-topic-del:{tid}")).await;
+    }
+    sqlx::query("DELETE FROM topics WHERE id = $1")
+        .bind(tid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "forum.topic_delete", Some(tid)).await;
+    Ok(ok(serde_json::json!({ "deleted": tid })))
+}
+
+/// 主题管理：置顶/锁定/移动版块（版主限本版块）
+#[derive(Deserialize)]
+struct TopicManageReq {
+    #[serde(default)]
+    sticky: Option<bool>,
+    #[serde(default)]
+    locked: Option<bool>,
+    #[serde(default)]
+    move_to_forum_id: Option<i64>,
+}
+
+#[post("/forums/topics/{id}/manage")]
+async fn topic_manage(
+    req: HttpRequest,
+    path: web::Path<i64>,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<TopicManageReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let tid = path.into_inner();
+    let fid: Option<i64> = sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
+        .bind(tid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(fid) = fid else {
+        return Err(DomainError::NotFound(tid));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_mod {
+        return Err(DomainError::Forbidden);
+    }
+    let mut moved = false;
+    if let Some(target) = body.move_to_forum_id {
+        if target != fid {
+            let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM forums WHERE id = $1")
+                .bind(target)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            if exists.is_none() {
+                return Err(DomainError::Validation("目标版块不存在".into()));
+            }
+            sqlx::query("UPDATE topics SET forum_id = $1 WHERE id = $2")
+                .bind(target)
+                .bind(tid)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            moved = true;
+        }
+    }
+    if let Some(sticky) = body.sticky {
+        sqlx::query("UPDATE topics SET sticky = $1 WHERE id = $2")
+            .bind(sticky)
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    if let Some(locked) = body.locked {
+        sqlx::query("UPDATE topics SET locked = $1 WHERE id = $2")
+            .bind(locked)
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    state.repo.audit(Some(auth.id), "forum.topic_manage", Some(tid)).await;
+    Ok(ok(serde_json::json!({ "managed": tid, "moved": moved })))
+}
 // ============ M16 短讯与好友 ============
 
 // ============ 我的 H&R（myhr.php 口径）============
@@ -534,8 +951,17 @@ struct SendMsgReq {
     to: String,
     subject: String,
     body: String,
+    /// 回复/转发的原信 id（回复自动加 Re: 前缀+引用原文；转发原样带文）
+    #[serde(default)]
+    reply_to: Option<i64>,
+    #[serde(default)]
+    forward_of: Option<i64>,
 }
 
+/// 发信（sendmessage.php 口径 + takemessage 的管理组豁免）：
+/// - 接收限制：普通用户须过对方 accept_pm（yes/friends/no）+ 非黑名单；管理组（staff≥90）一律放行
+/// - 防刷：普通用户 60s 一条（message_flood 表）；staff 不限
+/// - 回复：subject 加 Re:/Re(n): 并引用原文；转发：原封带文给第三人
 #[post("/messages")]
 async fn message_send(
     req: HttpRequest,
@@ -543,29 +969,111 @@ async fn message_send(
     body: web::Json<SendMsgReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let to_id: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND status < 2")
+    let staff = auth.class_id >= 90;
+
+    let target: Option<(i64, String, i32)> =
+        sqlx::query_as("SELECT id, accept_pm, class_id FROM users WHERE username = $1 AND status < 2")
             .bind(&body.to)
             .fetch_optional(&state.repo.db)
             .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
-    let Some(to_id) = to_id else {
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((to_id, accept, _to_class)) = target else {
         return Err(DomainError::NotFound(0));
     };
     if body.subject.trim().is_empty() {
         return Err(DomainError::Validation("主题不能为空".into()));
     }
+    // 接收限制（管理组豁免 —— takemessage.php staffmem 口径）
+    if !staff {
+        match accept.as_str() {
+            "no" => return Err(DomainError::Validation("对方仅接收管理组私信".into())),
+            "friends" => {
+                let is_friend: bool = sqlx::query_scalar(
+                    "SELECT EXISTS(SELECT 1 FROM friendships f WHERE (f.user_id=$1 AND f.friend_id=$2) OR (f.user_id=$2 AND f.friend_id=$1))",
+                )
+                .bind(auth.id)
+                .bind(to_id)
+                .fetch_one(&state.repo.db)
+                .await
+                .unwrap_or(false);
+                if !is_friend {
+                    return Err(DomainError::Validation("对方仅接收好友私信".into()));
+                }
+            }
+            _ => {}
+        }
+        // 防刷：60s 一条
+        let last: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+            "SELECT last_sent_at FROM message_flood WHERE user_id = $1",
+        )
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten();
+        if let Some(t) = last {
+            if (chrono::Utc::now() - t).num_seconds() < 60 {
+                return Err(DomainError::Validation("发送过于频繁，请 1 分钟后再试".into()));
+            }
+        }
+    }
+
+    // 回复：Re:/Re(n): 前缀 + 引用原文；转发：原样带文
+    let mut subject = body.subject.trim().to_string();
+    let mut text = body.body.clone();
+    if let Some(rid) = body.reply_to {
+        let orig: Option<(String, String)> = sqlx::query_as(
+            "SELECT subject, body FROM messages WHERE id = $1 AND (receiver_id = $2 OR sender_id = $2)",
+        )
+        .bind(rid)
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if let Some((osub, obody)) = orig {
+            let n = osub.match_indices("Re(").count();
+            subject = if n == 0 && osub.starts_with("Re:") {
+                format!("Re: {}",osub.trim_start_matches("Re: "))
+            } else if n > 0 {
+                format!("Re({}): {}", n + 1, osub)
+            } else {
+                format!("Re: {}", osub)
+            };
+            text = format!("{}\n\n———— 原信 ————\n{}", body.body, obody);
+        }
+    }
+    if let Some(fid) = body.forward_of {
+        let orig: Option<(String, String)> = sqlx::query_as(
+            "SELECT subject, body FROM messages WHERE id = $1 AND (receiver_id = $2 OR sender_id = $2)",
+        )
+        .bind(fid)
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if let Some((osub, obody)) = orig {
+            subject = format!("Fw: {}", osub);
+            text = obody;
+        }
+    }
+
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, location, saved, unread) \
+         VALUES ($1, $2, $3, $4, 1, 1, true) RETURNING id",
     )
     .bind(auth.id)
     .bind(to_id)
-    .bind(&body.subject)
-    .bind(&body.body)
+    .bind(&subject)
+    .bind(&text)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("INSERT INTO message_flood (user_id, last_sent_at) VALUES ($1, now()) \
+                 ON CONFLICT (user_id) DO UPDATE SET last_sent_at = now()")
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await
+        .ok();
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -577,26 +1085,54 @@ struct MessageRow {
     body: String,
     read_at: Option<chrono::DateTime<chrono::Utc>>,
     created_at: chrono::DateTime<chrono::Utc>,
+    #[sqlx(default)]
+    unread: Option<bool>,
+    #[sqlx(default)]
+    folder: Option<i32>,
 }
 
+/// 收件箱（messages.php location=1 口径）：支持 box=folderid、关键词搜索（主题/正文/两者）与未读筛选
 #[get("/messages/inbox")]
 async fn message_inbox(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<InboxQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    let pattern = q
+        .search
+        .as_deref()
+        .map(|s| crate::http::like_pattern(s))
+        .unwrap_or_else(|| "%".into());
     let rows = sqlx::query_as::<_, MessageRow>(
-        "SELECT m.id, u.username AS counterpart, m.subject, m.body, m.read_at, m.created_at \
+        "SELECT m.id, u.username AS counterpart, m.subject, m.body, m.read_at, m.created_at, m.unread, m.folder \
          FROM messages m LEFT JOIN users u ON u.id = m.sender_id \
-         WHERE m.receiver_id = $1 ORDER BY m.id DESC LIMIT 50",
+         WHERE m.receiver_id = $1 AND m.location = 1 \
+           AND ($2::int IS NULL OR m.folder = $2) \
+           AND ($3::text IS NULL OR m.subject ILIKE $3 OR m.body ILIKE $3) \
+           AND ($4::bool IS NULL OR m.unread = $4) \
+         ORDER BY m.id DESC LIMIT 100",
     )
     .bind(auth.id)
+    .bind(q.box_id)
+    .bind(q.search.as_deref())
+    .bind(q.unread)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
 
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct InboxQuery {
+    /// 自建文件夹 id（缺省 = 主收件箱 folder IS NULL）
+    box_id: Option<i32>,
+    search: Option<String>,
+    unread: Option<bool>,
+}
+
+/// 发件箱（saved=1 口径）
 #[get("/messages/sent")]
 async fn message_sent(
     req: HttpRequest,
@@ -604,9 +1140,9 @@ async fn message_sent(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows = sqlx::query_as::<_, MessageRow>(
-        "SELECT m.id, u.username AS counterpart, m.subject, m.body, m.read_at, m.created_at \
+        "SELECT m.id, u.username AS counterpart, m.subject, m.body, m.read_at, m.created_at, m.unread, m.folder \
          FROM messages m LEFT JOIN users u ON u.id = m.receiver_id \
-         WHERE m.sender_id = $1 ORDER BY m.id DESC LIMIT 50",
+         WHERE m.sender_id = $1 AND m.saved = 1 ORDER BY m.id DESC LIMIT 100",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)
@@ -635,6 +1171,432 @@ async fn message_staff(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
+}
+
+// ============ 信箱操作（messages.php 口径：已读/逻辑删/移动/文件夹） ============
+
+#[derive(Deserialize)]
+struct MarkReadReq {
+    ids: Vec<i64>,
+}
+
+/// 标记已读（单条打开或列表批量 markread）
+#[post("/messages/markread")]
+async fn message_markread(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<MarkReadReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if body.ids.is_empty() {
+        return Err(DomainError::Validation("未选择信件".into()));
+    }
+    let n = sqlx::query(
+        "UPDATE messages SET unread = false, read_at = COALESCE(read_at, now()) \
+         WHERE receiver_id = $1 AND id = ANY($2)",
+    )
+    .bind(auth.id)
+    .bind(&body.ids)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    Ok(ok(serde_json::json!({ "updated": n })))
+}
+
+#[derive(Deserialize)]
+struct DeleteReq {
+    ids: Vec<i64>,
+}
+
+/// 逻辑删除（NexusPHP 双删语义）：收件方删 → location=0；发件方删 → saved=0；
+/// 两边都删才物理 DELETE。
+#[post("/messages/delete")]
+async fn message_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<DeleteReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if body.ids.is_empty() {
+        return Err(DomainError::Validation("未选择信件".into()));
+    }
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("UPDATE messages SET location = 0 WHERE receiver_id = $1 AND id = ANY($2) AND location = 1")
+        .bind(auth.id)
+        .bind(&body.ids)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("UPDATE messages SET saved = 0 WHERE sender_id = $1 AND id = ANY($2) AND saved = 1")
+        .bind(auth.id)
+        .bind(&body.ids)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("DELETE FROM messages WHERE id = ANY($1) AND location = 0 AND saved = 0")
+        .bind(&body.ids)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "deleted": body.ids.len() })))
+}
+
+#[derive(Deserialize)]
+struct MoveReq {
+    ids: Vec<i64>,
+    folder: Option<i32>,
+}
+
+/// 移动到自建文件夹（folder=NULL 即移回主收件箱）
+#[post("/messages/move")]
+async fn message_move(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<MoveReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if body.ids.is_empty() {
+        return Err(DomainError::Validation("未选择信件".into()));
+    }
+    if let Some(f) = body.folder {
+        let owned: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pmboxes WHERE id = $1 AND user_id = $2)")
+            .bind(f)
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+        if !owned {
+            return Err(DomainError::Validation("目标文件夹不存在".into()));
+        }
+    }
+    let n = sqlx::query("UPDATE messages SET folder = $2 WHERE receiver_id = $1 AND id = ANY($3) AND location = 1")
+        .bind(auth.id)
+        .bind(body.folder)
+        .bind(&body.ids)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    Ok(ok(serde_json::json!({ "moved": n })))
+}
+
+/// 文件夹列表 + 新建/改名（editmailboxes 口径：一人最多 3 个、名 ≤14 字；清空名=删除并连带清信）
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct PmBoxRow {
+    id: i64,
+    name: String,
+    count: i64,
+}
+
+#[get("/messages/boxes")]
+async fn message_boxes(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows = sqlx::query_as::<_, PmBoxRow>(
+        "SELECT b.id, b.name, (SELECT count(*) FROM messages m WHERE m.folder = b.id AND m.receiver_id = $1 AND m.location = 1) AS count \
+         FROM pmboxes b WHERE b.user_id = $1 ORDER BY b.id",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct BoxReq {
+    /// 缺省 = 新建；有值 = 改名/删除该 id
+    id: Option<i64>,
+    name: String,
+}
+
+#[post("/messages/boxes")]
+async fn message_box_upsert(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<BoxReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let name = body.name.trim();
+    // 清空名 = 删除文件夹（连带清掉夹内信件，NexusPHP 口径）
+    if name.is_empty() {
+        if let Some(bid) = body.id {
+            sqlx::query("DELETE FROM messages WHERE folder = $2 AND receiver_id = $1")
+                .bind(auth.id)
+                .bind(bid)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query("DELETE FROM pmboxes WHERE id = $2 AND user_id = $1")
+                .bind(auth.id)
+                .bind(bid)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        return Ok(ok(serde_json::json!({ "deleted": true })));
+    }
+    if name.chars().count() > 14 {
+        return Err(DomainError::Validation("文件夹名最多 14 字".into()));
+    }
+    match body.id {
+        None => {
+            let n: i64 = sqlx::query_scalar("SELECT count(*) FROM pmboxes WHERE user_id = $1")
+                .bind(auth.id)
+                .fetch_one(&state.repo.db)
+                .await
+                .unwrap_or(0);
+            if n >= 3 {
+                return Err(DomainError::Validation("最多 3 个文件夹".into()));
+            }
+            let id: i64 = sqlx::query_scalar(
+                "INSERT INTO pmboxes (user_id, name) VALUES ($1, $2) \
+                 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id",
+            )
+            .bind(auth.id)
+            .bind(name)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            Ok(ok(serde_json::json!({ "id": id })))
+        }
+        Some(bid) => {
+            let n = sqlx::query("UPDATE pmboxes SET name = $3 WHERE id = $2 AND user_id = $1")
+                .bind(auth.id)
+                .bind(bid)
+                .bind(name)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?
+                .rows_affected();
+            if n == 0 {
+                return Err(DomainError::NotFound(0));
+            }
+            Ok(ok(serde_json::json!({ "renamed": true })))
+        }
+    }
+}
+
+// ============ 咨询工作台（contactstaff → staffbox.php 口径） ============
+
+#[derive(Deserialize)]
+struct ContactReq {
+    subject: String,
+    body: String,
+}
+
+/// 用户提交咨询（takecontact.php 口径：写 staffmessages；普通用户 60s 防刷）
+#[post("/contactstaff")]
+async fn contact_staff(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<ContactReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        let last: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+            "SELECT last_sent_at FROM message_flood WHERE user_id = $1",
+        )
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten();
+        if let Some(t) = last {
+            if (chrono::Utc::now() - t).num_seconds() < 60 {
+                return Err(DomainError::Validation("发送过于频繁，请 1 分钟后再试".into()));
+            }
+        }
+    }
+    if body.subject.trim().is_empty() || body.body.trim().is_empty() {
+        return Err(DomainError::Validation("主题与正文不能为空".into()));
+    }
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO staffmessages (user_id, subject, body) VALUES ($1, $2, $3) RETURNING id",
+    )
+    .bind(auth.id)
+    .bind(body.subject.trim())
+    .bind(body.body.trim())
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("INSERT INTO message_flood (user_id, last_sent_at) VALUES ($1, now()) \
+                 ON CONFLICT (user_id) DO UPDATE SET last_sent_at = now()")
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await
+        .ok();
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct StaffMessageRow {
+    id: i64,
+    username: Option<String>,
+    subject: String,
+    body: String,
+    answered: i32,
+    answered_by: Option<String>,
+    answer: Option<String>,
+    answered_at: Option<chrono::DateTime<chrono::Utc>>,
+    permission: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// 咨询列表（staffbox.php）：全量给 staff（≥90）；permission 标签按标签名分流——
+/// 与 NP 的权限位映射不同，这里简化为「全员可见普通咨询 + 带 permission 标签的定向分流
+/// 也全员可见」，保留字段供未来按权限位过滤。
+#[get("/staffmessages")]
+async fn staff_messages(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<StaffMsgQuery>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let rows = sqlx::query_as::<_, StaffMessageRow>(
+        "SELECT s.id, u.username, s.subject, s.body, s.answered, a.username AS answered_by, \
+                s.answer, s.answered_at, s.permission, s.created_at \
+         FROM staffmessages s \
+         LEFT JOIN users u ON u.id = s.user_id \
+         LEFT JOIN users a ON a.id = s.answered_by \
+         WHERE ($1::int IS NULL OR s.answered = $1) \
+         ORDER BY s.answered ASC, s.id DESC LIMIT 100",
+    )
+    .bind(q.answered)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct StaffMsgQuery {
+    answered: Option<i32>,
+}
+
+#[derive(Deserialize)]
+struct AnswerReq {
+    id: i64,
+    answer: String,
+}
+
+/// 答复（takeanswer 口径）：给来信人发一条私信 + 答复原文回写 staffmessages + 置已答复
+#[post("/staffmessages/answer")]
+async fn staff_answer(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<AnswerReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    if body.answer.trim().is_empty() {
+        return Err(DomainError::Validation("答复内容不能为空".into()));
+    }
+    let orig: Option<(i64, String)> = sqlx::query_as(
+        "SELECT user_id, subject FROM staffmessages WHERE id = $1 AND answered = 0",
+    )
+    .bind(body.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((uid, subject)) = orig else {
+        return Err(DomainError::Validation("来信不存在或已答复".into()));
+    };
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // ① 给用户发私信（staff 直发，不走接收限制/防刷）
+    sqlx::query(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, location, saved, unread) \
+         VALUES ($1, $2, $3, $4, 1, 1, true)",
+    )
+    .bind(auth.id)
+    .bind(uid)
+    .bind(format!("Re: {}", subject))
+    .bind(body.answer.trim())
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // ② 回写答复原文 + 状态
+    sqlx::query(
+        "UPDATE staffmessages SET answered = 1, answered_by = $2, answer = $3, answered_at = now() WHERE id = $1",
+    )
+    .bind(body.id)
+    .bind(auth.id)
+    .bind(body.answer.trim())
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "staffmsg_answer", Some(body.id)).await;
+    Ok(ok(serde_json::json!({ "answered": true })))
+}
+
+#[derive(Deserialize)]
+struct StaffMsgActionReq {
+    ids: Vec<i64>,
+}
+
+/// 批量标记已答复
+#[post("/staffmessages/mark")]
+async fn staff_mark(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<StaffMsgActionReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let n = sqlx::query(
+        "UPDATE staffmessages SET answered = 1, answered_by = COALESCE(answered_by, $2), answered_at = COALESCE(answered_at, now()) \
+         WHERE id = ANY($1) AND answered = 0",
+    )
+    .bind(&body.ids)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    Ok(ok(serde_json::json!({ "marked": n })))
+}
+
+/// 删除来信（单条/批量）
+#[post("/staffmessages/delete")]
+async fn staff_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<StaffMsgActionReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let n = sqlx::query("DELETE FROM staffmessages WHERE id = ANY($1)")
+        .bind(&body.ids)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    Ok(ok(serde_json::json!({ "deleted": n })))
 }
 
 // ============ 好友（M16） ============

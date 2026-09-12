@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
@@ -34,17 +35,45 @@ interface SysLogPage { items: SysLogItem[]; total: number; page: number; per_pag
 interface LocationItem { net: string; netmask: number; logins: number; users: number; failed: number; last_seen: string | null }
 interface LocationPage { items: LocationItem[]; total: number; page: number; per_page: number; pages: number }
 
+interface ForumAdminForum { id: number; name: string; descr: string | null; minclassread: number; minclasswrite: number; minclasscreate: number; protected: boolean; topics: number }
+interface ForumAdminData { forums: ForumAdminForum[]; mods: [number, number, string][] }
+interface ReportItem {
+  id: number; reporter_id: number; reporter_name: string | null;
+  ref_type: string; ref_id: number; ref_label: string | null; reason: string;
+  status: number; handled_name: string | null; handled_at: string | null; created_at: string;
+}
+
 type ToolTab =
   | "faq" | "rules" | "cats" | "bans" | "mail"
   | "promo" | "staffmess" | "adduser" | "bonus" | "warned" | "ipcheck" | "maxlogin"
   | "upload" | "resetpass" | "deldisabled" | "emailbans" | "testip" | "stats"
   | "cleanup" | "ads" | "notconnect" | "uploaders" | "agents" | "polls"
-  | "dbstats" | "syslog" | "locations" | "hrpardon" | "plugins" | "agentrules";
+  | "dbstats" | "syslog" | "locations" | "hrpardon" | "plugins" | "agentrules"
+  | "forums" | "reports";
+
+/** ISO → datetime-local 输入值（本地时区） */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
 
 export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const { dict } = useI18n();
   const t = dict.stafftools;
   const [tab, setTab] = useState<ToolTab>(initialTab ?? "faq");
+  const [forumData, setForumData] = useState<ForumAdminData | null>(null);
+  const [fEditId, setFEditId] = useState<number | null>(null);
+  const [fName, setFName] = useState("");
+  const [fDescr, setFDescr] = useState("");
+  const [fMr, setFMr] = useState(0);
+  const [fMw, setFMw] = useState(0);
+  const [fMc, setFMc] = useState(0);
+  const [fProt, setFProt] = useState(false);
+  const [fModName, setFModName] = useState("");
+  const [reports, setReports] = useState<ReportItem[] | null>(null);
+  const [rpStatus, setRpStatus] = useState<"pending" | "handled" | "all">("pending");
+  const [rpNote, setRpNote] = useState("");
+  const [promoEditId, setPromoEditId] = useState<number | null>(null);
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [rules, setRules] = useState<RuleItem[]>([]);
   const [cats, setCats] = useState<CatItem[]>([]);
@@ -67,6 +96,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [promo, setPromo] = useState<SitePromo[]>([]);
   const [promoScope, setPromoScope] = useState("global");
   const [promoCat, setPromoCat] = useState<number | "">("");
+  const [promoStart, setPromoStart] = useState("");
+  const [promoEnd, setPromoEnd] = useState("");
   const [promoKind, setPromoKind] = useState("free");
   const [promoHours, setPromoHours] = useState(24);
   const [smSubject, setSmSubject] = useState("");
@@ -150,6 +181,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       api.get<AgentRow[]>("/api/v1/admin/allagents").then(setAgentRows).catch(() => setAgentRows([]));
       api.get<PollRow[]>("/api/v1/admin/polloverview").then(setPollRows).catch(() => setPollRows([]));
       api.get<DbStats | null>("/api/v1/admin/dbstats").then(setDbStats).catch(() => setDbStats(null));
+      api.get<ForumAdminData | null>("/api/v1/admin/forums").then(setForumData).catch(() => setForumData(null));
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : dict.common.loadFailed);
     }
@@ -164,6 +196,10 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
     api.get<LocationPage>(`/api/v1/admin/locations?page=${locPage}`)
       .then(setLocData).catch(() => setLocData(null));
   }, [locPage]);
+  useEffect(() => {
+    api.get<ReportItem[]>(`/api/v1/admin/reports?status=${rpStatus}`)
+      .then(setReports).catch(() => setReports(null));
+  }, [rpStatus]);
 
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(null), 2500); }
   async function guard(fn: () => Promise<void>, ok: string) {
@@ -185,6 +221,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
     ["hrpardon", t.tabHrpardon],
     ["plugins", t.tabPlugins ?? "插件"],
     ["agentrules", dict.agentRules2?.tab ?? "客户端名单"],
+    ["forums", "论坛版块"],
+    ["reports", "举报处理"],
   ];
 
   return (
@@ -436,6 +474,14 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                 </label>
               )}
               <label>
+                {t.promoStart}
+                <input type="datetime-local" value={promoStart} onChange={(e) => setPromoStart(e.target.value)} />
+              </label>
+              <label>
+                {t.promoEnd}
+                <input type="datetime-local" value={promoEnd} onChange={(e) => setPromoEnd(e.target.value)} />
+              </label>
+              <label>
                 {t.promoKind}
                 <select value={promoKind} onChange={(e) => setPromoKind(e.target.value)}>
                   <option value="free">Free 免费</option>
@@ -446,16 +492,24 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                   <option value="p30">30% 下载</option>
                 </select>
               </label>
-              <label>{t.promoHours}<input type="number" min={1} max={720} value={promoHours} onChange={(e) => setPromoHours(Number(e.target.value))} /></label>
+              <label>{t.promoHours}（未填结束时间时生效）<input type="number" min={1} max={720} value={promoHours} onChange={(e) => setPromoHours(Number(e.target.value))} /></label>
               <div className="flex gap-2">
                 <button className="baozi-button" disabled={busy || promoHours < 1 || (promoScope === "category" && promoCat === "")}
                   onClick={() => guard(async () => {
-                    await api.post("/api/v1/admin/freeleech", {
+                    const payload = {
                       kind: promoKind, hours: promoHours, scope: promoScope,
                       ...(promoScope === "category" ? { category_id: promoCat } : {}),
-                    });
+                      ...(promoStart ? { starts_at: new Date(promoStart).toISOString() } : {}),
+                      ...(promoEnd ? { ends_at: new Date(promoEnd).toISOString() } : {}),
+                    };
+                    if (promoEditId === null) {
+                      await api.post("/api/v1/admin/freeleech", payload);
+                    } else {
+                      await api.put(`/api/v1/admin/freeleech/${promoEditId}`, payload);
+                      setPromoEditId(null);
+                    }
                     setPromoCat("");
-                  }, t.promoSet)}>{t.promoBtnSet}</button>
+                  }, promoEditId === null ? t.promoSet : "已保存")}>{promoEditId === null ? t.promoBtnSet : "保存修改"}</button>
                 <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold" disabled={busy || promo.length === 0}
                   onClick={() => guard(async () => { await api.del("/api/v1/admin/freeleech"); }, t.promoCleared)}>{t.promoBtnClear}</button>
               </div>
@@ -463,12 +517,12 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
           </section>
           <table className="nexus-table">
             <thead>
-              <tr><td className="colhead">{t.colScope}</td><td className="colhead">{t.promoKind}</td><td className="colhead">{t.promoStart}</td><td className="colhead">{t.promoEnd}</td></tr>
+              <tr><td className="colhead">{t.colScope}</td><td className="colhead">{t.promoKind}</td><td className="colhead">{t.promoStart}</td><td className="colhead">{t.promoEnd}</td><td className="colhead w-32" /></tr>
             </thead>
             <tbody>
               {promo.length > 0 ? (
                 promo.map((p) => (
-                  <tr key={p.id}>
+                  <tr key={p.id} className={promoEditId === p.id ? "bg-sky-soft" : ""}>
                     <td className="font-bold">
                       {p.scope === "global" ? t.scopeGlobal
                       : p.scope === "official" ? t.scopeOfficial
@@ -479,10 +533,27 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                     <td className="font-bold">{p.kind}</td>
                     <td className="text-xs text-sub">{new Date(p.starts_at).toLocaleString("zh-CN")}</td>
                     <td className="text-xs text-sub">{new Date(p.ends_at).toLocaleString("zh-CN")}</td>
+                    <td>
+                      <button className="min-h-[28px] rounded-full border border-line px-3 text-xs font-bold text-sky"
+                        onClick={() => {
+                          if (promoEditId === p.id) { setPromoEditId(null); return; }
+                          setPromoEditId(p.id);
+                          setPromoScope(p.scope);
+                          setPromoCat(p.scope === "category" ? (p.category_id ?? "") : "");
+                          setPromoKind(p.kind);
+                          setPromoStart(toLocalInput(p.starts_at));
+                          setPromoEnd(toLocalInput(p.ends_at));
+                        }}>{promoEditId === p.id ? "取消" : "编辑"}</button>
+                      <button className="ml-1 min-h-[28px] rounded-full border border-line px-3 text-xs font-bold text-danger"
+                        onClick={() => guard(async () => {
+                          await api.del(`/api/v1/admin/freeleech/${p.id}`);
+                          if (promoEditId === p.id) setPromoEditId(null);
+                        }, "已删除")}>删除</button>
+                    </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={4} className="py-6 text-center text-sub">{t.promoNone}</td></tr>
+                <tr><td colSpan={5} className="py-6 text-center text-sub">{t.promoNone}</td></tr>
               )}
             </tbody>
           </table>
@@ -1172,6 +1243,223 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
               </tbody>
             </table>
           )}
+        </section>
+      )}
+
+      {/* 论坛版块管理（forummanage：三档门槛 + 受保护 + 版主任免） */}
+      {tab === "forums" && (
+        <section className="baozi-panel p-4">
+          <h2 className="mb-1 text-base font-bold">论坛版块管理</h2>
+          <p className="mb-3 text-xs text-sub">
+            三档门槛需满足 读 ≤ 回 ≤ 发（0 = 所有人）；受保护版块 2 楼起正文对普通用户隐藏；版主任免无需等级，仅在本版块有效。
+          </p>
+          <table className="nexus-table text-xs">
+            <thead><tr>
+              <td className="colhead">版块</td>
+              <td className="colhead w-36">门槛 读/回/发</td>
+              <td className="colhead w-14">保护</td>
+              <td className="colhead w-14">主题</td>
+              <td className="colhead">版主</td>
+              <td className="colhead w-24" />
+            </tr></thead>
+            <tbody>
+              {(forumData?.forums ?? []).map((f) => {
+                const mods = (forumData?.mods ?? []).filter((m) => m[0] === f.id);
+                return (
+                  <tr key={f.id}>
+                    <td>
+                      <Link href={`/forums/${f.id}`} className="font-bold text-sky">{f.name}</Link>
+                      {f.descr && <p className="text-sub">{f.descr}</p>}
+                    </td>
+                    <td className="num">{f.minclassread} / {f.minclasswrite} / {f.minclasscreate}</td>
+                    <td className="text-center">{f.protected ? "🛡" : "—"}</td>
+                    <td className="num">{f.topics}</td>
+                    <td>
+                      {mods.length === 0 ? (
+                        <span className="text-sub">—</span>
+                      ) : (
+                        mods.map((m) => (
+                          <span key={m[1]} className="mr-1 inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5">
+                            {m[2]}
+                            <button
+                              className="font-bold text-danger"
+                              title="移除版主"
+                              onClick={() => guard(async () => {
+                                await api.del(`/api/v1/admin/forums/${f.id}/mods/${m[1]}`);
+                                setForumData(await api.get("/api/v1/admin/forums"));
+                              }, "OK")}
+                            >×</button>
+                          </span>
+                        ))
+                      )}
+                      <input
+                        value={fModName}
+                        onChange={(e) => setFModName(e.target.value)}
+                        placeholder="用户名"
+                        className="ml-1 min-h-[28px] w-24 rounded-full border border-line bg-cloud px-2 text-xs outline-none focus:border-sky"
+                      />
+                      <button
+                        className="ml-1 min-h-[28px] rounded-full bg-sky px-2 text-xs font-bold text-white"
+                        onClick={() => guard(async () => {
+                          await api.post(`/api/v1/admin/forums/${f.id}/mods`, { username: fModName.trim() });
+                          setFModName("");
+                          setForumData(await api.get("/api/v1/admin/forums"));
+                        }, "已任命")}
+                      >+版主</button>
+                    </td>
+                    <td>
+                      <button
+                        className="min-h-[28px] rounded-full border border-line px-3 font-bold text-sky"
+                        onClick={() => { setFEditId(f.id); setFName(f.name); setFDescr(f.descr ?? ""); setFMr(f.minclassread); setFMw(f.minclasswrite); setFMc(f.minclasscreate); setFProt(f.protected); }}
+                      >编辑</button>
+                      <button
+                        className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-danger"
+                        onClick={() => guard(async () => {
+                          await api.del(`/api/v1/admin/forums/${f.id}`);
+                          setForumData(await api.get("/api/v1/admin/forums"));
+                        }, "已删除")}
+                      >删除</button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {(forumData?.forums ?? []).length === 0 && (
+                <tr><td colSpan={6} className="py-4 text-center text-sub">
+                  {forumData === null ? "Load 失败或无权限" : "暂无版块"}
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <h3 className="w-full text-sm font-bold">{fEditId === null ? "新建版块" : `编辑版块 #${fEditId}`}</h3>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">名称</span>
+              <input value={fName} onChange={(e) => setFName(e.target.value)}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">描述</span>
+              <input value={fDescr} onChange={(e) => setFDescr(e.target.value)}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">minclassread</span>
+              <input type="number" min={0} value={fMr} onChange={(e) => setFMr(Number(e.target.value))}
+                className="min-h-[40px] w-24 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">minclasswrite</span>
+              <input type="number" min={0} value={fMw} onChange={(e) => setFMw(Number(e.target.value))}
+                className="min-h-[40px] w-24 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">minclasscreate</span>
+              <input type="number" min={0} value={fMc} onChange={(e) => setFMc(Number(e.target.value))}
+                className="min-h-[40px] w-24 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            </label>
+            <label className="flex items-center gap-2 pb-2 text-sm">
+              <input type="checkbox" checked={fProt} onChange={(e) => setFProt(e.target.checked)} />
+              受保护版块
+            </label>
+            <button
+              disabled={busy}
+              className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+              onClick={() => guard(async () => {
+                const payload = { name: fName.trim(), descr: fDescr.trim() || null, minclassread: fMr, minclasswrite: fMw, minclasscreate: fMc, protected: fProt };
+                if (fEditId === null) {
+                  await api.post("/api/v1/admin/forums", payload);
+                } else {
+                  await api.put(`/api/v1/admin/forums/${fEditId}`, payload);
+                  setFEditId(null);
+                }
+                setFName(""); setFDescr(""); setFMr(0); setFMw(0); setFMc(0); setFProt(false);
+                setForumData(await api.get("/api/v1/admin/forums"));
+              }, fEditId === null ? "已创建" : "已保存")}
+            >{fEditId === null ? "创建" : "保存"}</button>
+            {fEditId !== null && (
+              <button className="min-h-[40px] rounded-full border border-line px-4 text-sm text-sub"
+                onClick={() => { setFEditId(null); setFName(""); setFDescr(""); setFMr(0); setFMw(0); setFMc(0); setFProt(false); }}>
+                取消
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* 举报处理（reports.php 口径）：列表 + 处置/驳回 + PM 通知举报人 */}
+      {tab === "reports" && (
+        <section className="baozi-panel p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-bold">举报处理</h2>
+            <div className="flex gap-2">
+              {([["pending", "待处理"], ["handled", "已处理"], ["all", "全部"]] as const).map(([k, label]) => (
+                <button key={k}
+                  className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${rpStatus === k ? "bg-sky text-white" : "border border-line text-sub"}`}
+                  onClick={() => setRpStatus(k)}>{label}</button>
+              ))}
+            </div>
+          </div>
+          <label className="mb-3 flex items-center gap-2 text-xs text-sub">
+            处置备注（随 PM 发给举报人，可空）
+            <input value={rpNote} onChange={(e) => setRpNote(e.target.value)}
+              className="min-h-[32px] flex-1 rounded-full border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+          </label>
+          <table className="nexus-table text-xs">
+            <thead><tr>
+              <td className="colhead w-12">#</td>
+              <td className="colhead">被举报对象</td>
+              <td className="colhead w-24">举报人</td>
+              <td className="colhead">理由</td>
+              <td className="colhead w-36">时间</td>
+              <td className="colhead w-40">处置</td>
+            </tr></thead>
+            <tbody>
+              {(reports ?? []).map((r) => (
+                <tr key={r.id} className={r.status === 0 ? "" : "opacity-60"}>
+                  <td className="num">{r.id}</td>
+                  <td>
+                    <span className="rounded-full bg-sky-soft px-2 py-0.5 font-bold">{r.ref_type}</span>
+                    {r.ref_label ? <span className="ml-1 text-sub">{r.ref_label}</span> : <span className="ml-1 text-sub">#{r.ref_id}</span>}
+                    {r.ref_type === "torrent" && (
+                      <Link href={`/torrents/${r.ref_id}`} className="ml-1 text-sky">查看</Link>
+                    )}
+                  </td>
+                  <td>{r.reporter_name ?? `#${r.reporter_id}`}</td>
+                  <td className="max-w-[280px] break-words">{r.reason}</td>
+                  <td className="text-sub">
+                    {new Date(r.created_at).toLocaleString("zh-CN")}
+                    {r.status === 1 && r.handled_name && (
+                      <p className="text-[11px]">{r.handled_name} 处理于 {r.handled_at ? new Date(r.handled_at).toLocaleString("zh-CN") : "—"}</p>
+                    )}
+                  </td>
+                  <td>
+                    {r.status === 0 ? (
+                      <>
+                        <button className="min-h-[28px] rounded-full bg-sky px-3 font-bold text-white"
+                          onClick={() => guard(async () => {
+                            await api.post("/api/v1/admin/reports/resolve", { report_id: r.id, action: "act", note: rpNote.trim() });
+                            setRpNote("");
+                          }, "已处置并通知举报人")}>处置</button>
+                        <button className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-sub"
+                          onClick={() => guard(async () => {
+                            await api.post("/api/v1/admin/reports/resolve", { report_id: r.id, action: "dismiss", note: rpNote.trim() });
+                            setRpNote("");
+                          }, "已驳回并通知举报人")}>驳回</button>
+                      </>
+                    ) : (
+                      <span className="text-sub">已处理</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {(reports ?? []).length === 0 && (
+                <tr><td colSpan={6} className="py-6 text-center text-sub">
+                  {reports === null ? "加载失败或无权限" : "暂无举报"}
+                </td></tr>
+              )}
+            </tbody>
+          </table>
         </section>
       )}
     </div>

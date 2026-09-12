@@ -54,6 +54,9 @@ export interface Forum {
   latest_topic?: string;
   latest_author?: string;
   latest_at?: string;
+  can_write?: boolean;
+  can_create?: boolean;
+  can_mod?: boolean;
 }
 export async function getForums(): Promise<Forum[]> {
   try {
@@ -71,6 +74,15 @@ export interface Topic {
   replies: number;
   views: number;
   last_post_at: string | null;
+  sticky?: boolean;
+  locked?: boolean;
+}
+export interface ForumTopics {
+  forum_id: number;
+  can_write: boolean;
+  can_create: boolean;
+  can_mod: boolean;
+  topics: Topic[];
 }
 /** 站点运行统计（/stats 需登录；页脚展示用，未登录返回 null） */
 export interface SiteStats {
@@ -104,24 +116,34 @@ export async function getMenuItems(location: string): Promise<MenuItem[]> {
     return [];
   }
 }
-export async function getTopics(forumId: number): Promise<Topic[]> {
+export async function getTopics(forumId: number): Promise<ForumTopics | null> {
   try {
-    return await api.get<Topic[]>(`/api/v1/forums/${forumId}/topics`);
+    return await api.get<ForumTopics>(`/api/v1/forums/${forumId}/topics`);
   } catch {
-    return [];
+    return null;
   }
 }
 
 export interface Post {
   id: number;
   username: string | null;
+  user_id: number | null;
   body: string;
   created_at: string;
+  edited_at: string | null;
+  edited_by: number | null;
 }
 export interface TopicDetail {
   topic_id: number;
   title: string;
+  forum_id: number;
   forum_name: string | null;
+  sticky: boolean;
+  locked: boolean;
+  is_op: boolean;
+  current_user_id?: number | null;
+  can_write: boolean;
+  can_mod: boolean;
   posts: Post[];
 }
 export async function getPosts(topicId: number): Promise<TopicDetail | null> {
@@ -132,19 +154,28 @@ export async function getPosts(topicId: number): Promise<TopicDetail | null> {
   }
 }
 
-export interface TopUser {
+export interface TopRow {
   rank: number;
   username: string;
   class_name: string;
-  uploaded: number;
-  downloaded: number;
-  seed_size: number;
+  title: string | null;
+  avatar_url: string | null;
+  val: number;
 }
-export async function getTopUsers(): Promise<TopUser[]> {
+export interface TopBoards {
+  bonus: TopRow[];
+  uploaded: TopRow[];
+  downloaded: TopRow[];
+  seedtime: TopRow[];
+  hourly: TopRow[];
+  torrents: TopRow[];
+}
+export async function getTopBoards(): Promise<TopBoards> {
+  const empty: TopBoards = { bonus: [], uploaded: [], downloaded: [], seedtime: [], hourly: [], torrents: [] };
   try {
-    return await api.get<TopUser[]>("/api/v1/top/users");
+    return await api.get<TopBoards>("/api/v1/top/boards");
   } catch {
-    return [];
+    return empty;
   }
 }
 

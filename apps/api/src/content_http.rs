@@ -28,7 +28,7 @@ pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
         .service(textbook_list)
         .service(textbook_link)
         // M20 排行榜
-        .service(top_users)
+        .service(top_boards)
 }
 
 // ============ M17 求种 ============
@@ -508,32 +508,83 @@ async fn textbook_link(
     Ok(ok(serde_json::json!({ "linked": true })))
 }
 
-// ============ M20 排行榜 ============
+// ============ M20 排行榜（六榜卡片：最多魔力/上传量/下载量/最长做种时间/后宫时魔/发种量） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
-struct TopUserRow {
+struct TopRow {
     rank: i64,
     username: String,
     class_name: String,
-    uploaded: i64,
-    downloaded: i64,
-    seed_size: i64,
+    title: Option<String>,
+    avatar_url: Option<String>,
+    val: f64,
 }
 
-#[get("/top/users")]
-async fn top_users(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
-    // 上传榜（聚合查询走索引；生产态物化视图 + L1 缓存 §M20）
-    let rows = sqlx::query_as::<_, TopUserRow>(
-        "SELECT row_number() OVER (ORDER BY u.uploaded DESC) AS rank, u.username, c.name AS class_name, \
-            u.uploaded, u.downloaded, \
-            COALESCE((SELECT sum(t.size) FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
-              WHERE s.user_id = u.id AND s.seeding), 0)::bigint AS seed_size \
-         FROM users u JOIN user_classes c ON c.id = u.class_id \
-         WHERE u.status < 2 AND u.uploaded > 0 \
-         ORDER BY u.uploaded DESC LIMIT 21",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+/// 六个榜单统一口径：status<2、每榜 Top10；后宫时魔 = 做种时魔（与 worker 小时结算同式：
+/// 基础10 + 做种数×2 + 做种体积TB，捐赠者×2）
+#[get("/top/boards")]
+async fn top_boards(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    let sel = "row_number() OVER (ORDER BY val DESC) AS rank, u.username, c.name AS class_name, \
+        u.title, u.avatar_url, x.val::float8 AS val";
+    let base = |agg: &str, joins: &str, extra_where: &str, group_by: &str| -> String {
+        format!(
+            "SELECT {sel} FROM ( \
+                SELECT u.id AS uid, {agg} AS val \
+                FROM users u {joins} \
+                WHERE u.status < 2 {extra_where} \
+                GROUP BY u.id {group_by} \
+                ORDER BY val DESC LIMIT 10 \
+            ) x JOIN users u ON u.id = x.uid JOIN user_classes c ON c.id = u.class_id"
+        )
+    };
+    let bonus_q = base(
+        "u.spark_balance",
+        "",
+        "AND u.spark_balance > 0",
+        "",
+    );
+    let uploaded_q = base(
+        "u.uploaded",
+        "",
+        "AND u.uploaded > 0",
+        "",
+    );
+    let downloaded_q = base(
+        "u.downloaded",
+        "",
+        "AND u.downloaded > 0",
+        "",
+    );
+    let seedtime_q = base(
+        "COALESCE(sum(s.seeded_seconds), 0) / 3600.0",
+        "JOIN snatches s ON s.user_id = u.id",
+        "",
+        "",
+    );
+    let hourly_q = base(
+        "(10 + count(*) * 2 + COALESCE(sum(t.size), 0) / 1099511627776.0) \
+            * CASE WHEN u.donor THEN 2 ELSE 1 END",
+        "JOIN snatches s ON s.user_id = u.id AND s.seeding JOIN torrents t ON t.id = s.torrent_id",
+        "",
+        "",
+    );
+    let torrents_q = base(
+        "count(*)",
+        "JOIN torrents t ON t.owner_id = u.id AND t.approval_status = 1",
+        "",
+        "",
+    );
+
+    let mut boards = serde_json::Map::new();
+    for (key, q) in [
+        ("bonus", bonus_q), ("uploaded", uploaded_q), ("downloaded", downloaded_q),
+        ("seedtime", seedtime_q), ("hourly", hourly_q), ("torrents", torrents_q),
+    ] {
+        let rows = sqlx::query_as::<_, TopRow>(&q)
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        boards.insert(key.to_string(), serde_json::to_value(rows).unwrap_or_default());
+    }
+    Ok(ok(serde_json::Value::Object(boards)))
 }

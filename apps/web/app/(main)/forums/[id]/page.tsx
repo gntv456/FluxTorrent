@@ -16,7 +16,10 @@ export default async function ForumPage({
   const { dict, locale } = await getDict();
   const forumId = Number(id);
   if (!Number.isFinite(forumId)) notFound();
-  const topics = await getTopics(forumId);
+  const data = await getTopics(forumId);
+  // 版块不存在或无 minclassread 门槛权限（Forbidden）→ 404 口径
+  if (!data) notFound();
+  const topics = data.topics;
 
   return (
     <div className="flex flex-col gap-4">
@@ -29,7 +32,7 @@ export default async function ForumPage({
         <h1 className="font-display text-2xl">
           {fmt(dict.forums.boardTitle, { id: forumId })}
         </h1>
-        <TopicComposer forumId={forumId} />
+        {data.can_create && <TopicComposer forumId={forumId} />}
       </div>
       {topics.length === 0 ? (
         <p className="py-10 text-center text-sub">{dict.forums.noTopics}</p>
@@ -52,6 +55,16 @@ export default async function ForumPage({
             {topics.map((t) => (
               <tr key={t.id}>
                 <td>
+                  {t.sticky && (
+                    <span className="mr-1 text-xs font-bold text-coral" title="置顶">
+                      📌
+                    </span>
+                  )}
+                  {t.locked && (
+                    <span className="mr-1 text-xs" title="已锁定">
+                      🔒
+                    </span>
+                  )}
                   <Link
                     href={`/forums/topic/${t.id}`}
                     className="font-bold text-ink hover:text-sky"
