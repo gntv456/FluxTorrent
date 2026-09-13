@@ -256,9 +256,15 @@ mod tests {
     fn jgg_weights_cover_all() {
         let total: u32 = JGG_PRIZES.iter().map(|p| p.weight).sum();
         assert_eq!(total, 1000);
-        // 抽 2000 次必须覆盖到所有格子（权重最低 5/1000，2000 次漏检概率 ≈ e^-10）
+        // 抽样次数按最低权重动态推算：期望最稀有档被抽到 ~25 次，
+        // 漏检概率 ≈ e^-25。不能用固定次数——赔率表调整会改变最低权重
+        // （旧表最低 5/1000 固定 2000 次即可，EV 修复后 50x 降至 1/1000，
+        // 2000 次漏检概率高达 ~13%，测试随机失败）。
+        let min_weight = JGG_PRIZES.iter().map(|p| p.weight).min().unwrap();
+        assert!(min_weight > 0, "存在权重为 0 的档位，该奖永远不可能被抽到");
+        let draws = 25 * total / min_weight;
         let mut seen = [false; 8];
-        for _ in 0..2000 {
+        for _ in 0..draws {
             let d = jgg_draw();
             seen[d.index] = true;
         }
