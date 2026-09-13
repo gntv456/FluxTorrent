@@ -25,6 +25,8 @@ pub struct UserAccount {
     pub passkey: String,
     pub class_id: i32,
     pub must_reset_password: bool,
+    /// 闲置停用时间（0072）：非空 = 账号被标记为休眠，登录需先联系管理组恢复
+    pub dormant_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// Argon2id 哈希（§5.7：禁止 MD5/SHA1 裸存）

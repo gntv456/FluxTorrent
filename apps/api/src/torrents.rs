@@ -1,11 +1,11 @@
 //! 种子域仓储与查询（M02/M03）：游标分页 + 覆盖索引（§6.2）。
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
 use crate::errors::{DomainError, DomainResult};
 
-#[derive(Debug, Serialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct TorrentRow {
     pub id: i64,
     pub info_hash: String,
@@ -85,7 +85,7 @@ pub struct TorrentFilter {
     pub sections: Vec<(String, i64)>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TorrentPage {
     pub items: Vec<TorrentRow>,
     pub next_cursor: Option<String>,

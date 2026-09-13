@@ -4,6 +4,7 @@ version = "0.1.0"
 edition.workspace = true
 
 [dependencies]
+regex.workspace = true
 tokio.workspace = true
 actix-web.workspace = true
 serde.workspace = true

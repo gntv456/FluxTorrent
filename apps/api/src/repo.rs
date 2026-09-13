@@ -17,6 +17,7 @@ struct UserRow {
     passkey: String,
     class_id: i32,
     must_reset_password: bool,
+    dormant_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl From<UserRow> for UserAccount {
@@ -28,6 +29,7 @@ impl From<UserRow> for UserAccount {
             passkey: r.passkey,
             class_id: r.class_id,
             must_reset_password: r.must_reset_password,
+            dormant_at: r.dormant_at,
         }
     }
 }
@@ -39,7 +41,7 @@ impl Repo {
 
     pub async fn find_user_by_name(&self, username: &str) -> DomainResult<Option<UserAccount>> {
         let row = sqlx::query_as::<_, UserRow>(
-            "SELECT id, username, pass_hash, passkey, class_id, must_reset_password \
+            "SELECT id, username, pass_hash, passkey, class_id, must_reset_password, dormant_at \
              FROM users WHERE username = $1 AND status < 2",
         )
         .bind(username)
@@ -51,7 +53,7 @@ impl Repo {
 
     pub async fn find_user_by_id(&self, id: i64) -> DomainResult<Option<UserAccount>> {
         let row = sqlx::query_as::<_, UserRow>(
-            "SELECT id, username, pass_hash, passkey, class_id, must_reset_password \
+            "SELECT id, username, pass_hash, passkey, class_id, must_reset_password, dormant_at \
              FROM users WHERE id = $1 AND status < 2",
         )
         .bind(id)

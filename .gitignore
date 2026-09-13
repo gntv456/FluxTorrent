@@ -12,6 +12,8 @@ dist/
 # 部署密钥（绝不入库）
 docker/.env
 .trae/
+# RS256 密钥自动落盘目录（JWT_RS_KEY_DIR 默认值；测试/开发自动生成，生产走密钥管理）
+apps/api/data/
 
 # 本地备份与截图产物（不入库）
 backups/

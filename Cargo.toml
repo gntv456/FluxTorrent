@@ -1,4 +1,4 @@
-[workspace]
+﻿[workspace]
 resolver = "2"
 members = [
     "apps/api",
@@ -27,6 +27,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 argon2 = "0.5"
 jsonwebtoken = "9"
 rand = "0.8"
+regex = "1"
 envy = "0.4"
 dotenvy = "0.15"
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }

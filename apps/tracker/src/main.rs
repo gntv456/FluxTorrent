@@ -105,10 +105,20 @@ fn env_i64(key: &str, default: i64) -> i64 {
 struct GuardInner {
     passkeys: HashMap<String, (i64, bool, bool, Instant)>,
     ip_bans: HashMap<String, String>,
-    /// None = 尚未完成首次加载
-    agent_rules: Option<Vec<(String, String)>>,
+    /// None = 尚未完成首次加载（0071：正则编译后的 agent/peer_id 交叉规则）
+    agent_rules: Option<Vec<AgentRule>>,
     announce_interval: i64,
     refreshed_at: Instant,
+}
+
+/// P0-7 客户端规则（NP `agent_allowed_family` 口径精简版）：
+/// User-Agent 与 peer_id 各一条正则；吸血客户端常 UA 报正常客户端而 peer_id 暴露 -XL/-XF 前缀，
+/// 单查 UA 会漏。规则正则无效时加载阶段即跳过（refresh 时 warn）。
+#[derive(Clone)]
+struct AgentRule {
+    deny: bool,
+    agent_re: Option<regex::Regex>,
+    peer_re: Option<regex::Regex>,
 }
 
 const GUARD_REFRESH: Duration = Duration::from_secs(60);
@@ -143,11 +153,45 @@ impl TrackerState {
                 .fetch_all(&self.db)
                 .await
                 .ok();
-        let rules: Option<Vec<(String, String)>> =
-            sqlx::query_as("SELECT mode, pattern FROM agent_rules")
-                .fetch_all(&self.db)
-                .await
-                .ok();
+        let rules: Option<Vec<AgentRule>> = sqlx::query_as::<_, (String, String, String)>(
+            "SELECT mode, pattern, COALESCE(peer_id_pattern, '') FROM agent_rules",
+        )
+        .fetch_all(&self.db)
+        .await
+        .ok()
+        .map(|rows| {
+            rows.into_iter()
+                .filter_map(|(mode, agent, peer)| {
+                    let agent_re = if agent.is_empty() {
+                        None
+                    } else {
+                        match regex::Regex::new(&agent) {
+                            Ok(r) => Some(r),
+                            Err(e) => {
+                                tracing::warn!(%agent, %e, "agent_rules 正则无效，规则跳过");
+                                return None;
+                            }
+                        }
+                    };
+                    let peer_re = if peer.is_empty() {
+                        None
+                    } else {
+                        match regex::Regex::new(&peer) {
+                            Ok(r) => Some(r),
+                            Err(e) => {
+                                tracing::warn!(%peer, %e, "agent_rules peer_id 正则无效，规则跳过");
+                                return None;
+                            }
+                        }
+                    };
+                    Some(AgentRule {
+                        deny: mode == "deny",
+                        agent_re,
+                        peer_re,
+                    })
+                })
+                .collect()
+        });
         let interval: i64 = sqlx::query_scalar::<_, String>(
             "SELECT value FROM site_settings WHERE name = 'announce_interval'",
         )
@@ -203,23 +247,23 @@ impl TrackerState {
         self.guard_read().ip_bans.get(ip).cloned()
     }
 
-    /// agent_rules 黑白名单判定（内存缓存版）。
-    /// deny 命中即拒；allow 列表非空时未命中 allow 的也拒。规则未加载时放行（fail-open）。
-    fn agent_blocked(&self, agent: Option<&str>) -> Option<String> {
+    /// agent_rules 黑白名单判定（P0-7 交叉验证版）：
+    /// deny 命中（UA 或 peer_id 任一命中 deny 规则）即拒；
+    /// allow 列表非空时须命中 allow 的 UA **或** peer_id 条件，未命中 allow 也拒。
+    /// 规则未加载时放行（fail-open）。peer_id 传可读形式（lossy）以匹配 -XL0014- 等前缀。
+    fn agent_blocked(&self, agent: Option<&str>, peer_id: &str) -> Option<String> {
         let rules = self.guard_read().agent_rules.clone()?;
         let a = agent.unwrap_or("");
-        let (allows, denies): (Vec<_>, Vec<_>) = rules.iter().partition(|(m, _)| m == "allow");
-        if denies
-            .iter()
-            .any(|(_, p)| !p.is_empty() && a.contains(p.as_str()))
-        {
+        let hit = |r: &&AgentRule| {
+            let agent_ok = r.agent_re.as_ref().is_some_and(|re| re.is_match(a));
+            let peer_ok = r.peer_re.as_ref().is_some_and(|re| re.is_match(peer_id));
+            agent_ok || peer_ok
+        };
+        let (allows, denies): (Vec<_>, Vec<_>) = rules.iter().partition(|r| !r.deny);
+        if denies.iter().any(hit) {
             return Some("客户端被禁止（黑名单），请联系管理组".into());
         }
-        if !allows.is_empty()
-            && !allows
-                .iter()
-                .any(|(_, p)| !p.is_empty() && a.contains(p.as_str()))
-        {
+        if !allows.is_empty() && !allows.iter().any(hit) {
             return Some("客户端不在允许列表，请联系管理组".into());
         }
         None
@@ -405,10 +449,12 @@ async fn announce(
         return bencode_err(msg);
     }
 
-    // ①'' 客户端黑名单（G-06）：deny 命中即拒；allow 列表存在时仅放行命中者（内存缓存）
+    // ①'' 客户端黑名单（G-06 / P0-7）：UA 与 peer_id 双正则交叉匹配；
     // 执行闭环（0069）：命中事件经 Redis 去重（每 user+agent 1h 一条）后投递 worker 落 cheat_events，
     // 管理组在后台可查 —— 不再是"拒绝即止、无处留痕"。
-    if let Some(reason) = state.agent_blocked(params.get_str("agent").as_deref()) {
+    let peer_id_readable = String::from_utf8_lossy(&peer_id_raw).into_owned();
+    if let Some(reason) = state.agent_blocked(params.get_str("agent").as_deref(), &peer_id_readable)
+    {
         state
             .metrics
             .announce_agent_blocked
@@ -435,17 +481,18 @@ async fn announce(
     } else {
         state.peers.upsert(Peer {
             key: key.clone(),
-            ip,
+            ip: ip.clone(),
             port,
             uploaded,
             downloaded,
             left,
             last_seen: chrono::Utc::now(),
             user_id,
+            connectable: peers::CONN_UNTESTED, // upsert 内部会保留既有测量值
         });
     }
 
-    // ④ 事件投递（fire-and-forget，失败仅告警）
+    // ④ 事件投递（fire-and-forget，失败仅告警；ip/conn 供 worker 反作弊分析）
     emit_event(
         &state.redis,
         &info_hash_hex,
@@ -454,6 +501,8 @@ async fn announce(
         downloaded,
         event,
         left,
+        &ip,
+        state.peers.connectable_of(&key),
     )
     .await;
 
@@ -536,12 +585,15 @@ async fn metrics(state: web::Data<TrackerState>, req: actix_web::HttpRequest) ->
         return HttpResponse::NotFound().finish();
     }
     let m = &state.metrics;
-    let (passkey_cache, ip_bans, agent_rules) = {
+    // 全量 GC 挂在抓取周期（P0-3：平时各桶惰性清理，这里兜底回收空桶与超时 peer）
+    state.peers.gc_all();
+    let (passkey_cache, ip_bans, agent_rules, swarms) = {
         let g = state.guard_read();
         (
             g.passkeys.len(),
             g.ip_bans.len(),
             g.agent_rules.as_ref().map_or(0, |r| r.len()),
+            state.peers.swarms(),
         )
     };
     let body = format!(
@@ -566,6 +618,8 @@ async fn metrics(state: web::Data<TrackerState>, req: actix_web::HttpRequest) ->
             "flux_tracker_redis_fallback_total {}\n",
             "# TYPE flux_tracker_peers_active gauge\n",
             "flux_tracker_peers_active {}\n",
+            "# TYPE flux_tracker_swarms_active gauge\n",
+            "flux_tracker_swarms_active {}\n",
             "# TYPE flux_tracker_guard_cache gauge\n",
             "flux_tracker_guard_cache{{kind=\"passkey\"}} {}\n",
             "flux_tracker_guard_cache{{kind=\"ip_ban\"}} {}\n",
@@ -581,6 +635,7 @@ async fn metrics(state: web::Data<TrackerState>, req: actix_web::HttpRequest) ->
         m.scrape_total.load(Ordering::Relaxed),
         m.redis_fallback.load(Ordering::Relaxed),
         state.peers.len(),
+        swarms,
         passkey_cache,
         ip_bans,
         agent_rules,
@@ -607,12 +662,21 @@ async fn emit_event(
     down: i64,
     event: &str,
     left: i64,
+    ip: &str,
+    conn: i8,
 ) {
-    let payload = serde_json::json!({
+    let mut payload = serde_json::json!({
         "user": user, "hash": info_hash_hex, "up": up, "down": down,
         "event": event, "left": left,
         "ts": chrono::Utc::now().to_rfc3339(),
     });
+    // 0071：仅在有测量值时携带（worker 端 Option 语义：缺省 = 不覆盖 snatches.connectable）
+    if !ip.is_empty() {
+        payload["ip"] = serde_json::json!(ip);
+    }
+    if conn != peers::CONN_UNTESTED {
+        payload["conn"] = serde_json::json!(conn);
+    }
     xadd(redis, "flux:announce", &payload).await;
 }
 
@@ -727,6 +791,28 @@ async fn main() -> anyhow::Result<()> {
                         st.force_refresh.store(true, Ordering::Relaxed);
                         st.guard_write().passkeys.clear();
                     }
+                }
+            }
+        });
+    }
+
+    // connectable 抽样（0071 P1-9，防假保种）：每 5min 抽 50 个 peer 做 TCP 回连（3s 超时），
+    // 未测优先、已测轮替复测。结果写回 peer 表 → 随 announce 事件流入 snatches.connectable，
+    // 「不可达 + 零上传」的做种不计做种收益并进作弊探测。纯探测不阻断任何响应路径。
+    {
+        let st = state.clone();
+        actix_web::rt::spawn(async move {
+            let mut tick = tokio::time::interval(Duration::from_secs(300));
+            loop {
+                tick.tick().await;
+                for (key, probe_ip, probe_port) in st.peers.sample_probes(50) {
+                    let attempt = tokio::time::timeout(
+                        Duration::from_secs(3),
+                        tokio::net::TcpStream::connect((probe_ip.as_str(), probe_port)),
+                    )
+                    .await;
+                    let reachable = matches!(attempt, Ok(Ok(_)));
+                    st.peers.set_connectable(&key, reachable);
                 }
             }
         });
