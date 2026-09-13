@@ -1,6 +1,243 @@
 //! 定时与消费任务。
 
+use chrono::Datelike;
 use sqlx::PgPool;
+
+/// 存量种子 pieces_hash 回填（0069）：扫描 pieces_hash IS NULL 的种子，读 raw 计算 SHA1(info.pieces)。
+/// 每轮 ≤50 条（避免一次长事务拖垮 worker），全部处理完后自然空转。worker 内置极简
+/// bencode 解析（只依赖「定位 info 字典 → 取 pieces 字节串」，不重复造完整编解码）。
+pub async fn backfill_pieces_hash(db: &PgPool) -> anyhow::Result<u64> {
+    let rows: Vec<(i64, Vec<u8>)> = sqlx::query_as(
+        "SELECT t.id, f.raw FROM torrents t \
+         JOIN torrent_files f ON f.torrent_id = t.id \
+         WHERE t.pieces_hash IS NULL LIMIT 50",
+    )
+    .fetch_all(db)
+    .await?;
+    let mut n = 0u64;
+    for (id, raw) in rows {
+        if let Some(hash) = extract_pieces_hash(&raw) {
+            sqlx::query(
+                "UPDATE torrents SET pieces_hash = $1 WHERE id = $2 AND pieces_hash IS NULL",
+            )
+            .bind(hash)
+            .bind(id)
+            .execute(db)
+            .await?;
+            n += 1;
+        } else {
+            // 缺 pieces 字段的畸形种：写空串占位，避免每轮重复扫描
+            sqlx::query(
+                "UPDATE torrents SET pieces_hash = '' WHERE id = $1 AND pieces_hash IS NULL",
+            )
+            .bind(id)
+            .execute(db)
+            .await?;
+        }
+    }
+    Ok(n)
+}
+
+/// 极简 bencode 遍历：返回 SHA1(info.pieces 原始字节) 的 hex。与 api 侧 bencode.rs 口径一致。
+fn extract_pieces_hash(raw: &[u8]) -> Option<String> {
+    use sha1::{Digest, Sha1};
+    fn parse(buf: &[u8], pos: usize) -> Option<(BVal, usize)> {
+        let rest = buf.get(pos..)?;
+        match rest.first()? {
+            b'i' => {
+                let end = rest.iter().position(|&b| b == b'e')?;
+                let n: i64 = std::str::from_utf8(&rest[1..end]).ok()?.parse().ok()?;
+                Some((BVal::Int(n), pos + end + 1))
+            }
+            b'l' => {
+                let mut p = pos + 1;
+                let mut items = Vec::new();
+                while *buf.get(p)? != b'e' {
+                    let (v, np) = parse(buf, p)?;
+                    items.push(v);
+                    p = np;
+                }
+                Some((BVal::List(items), p + 1))
+            }
+            b'd' => {
+                let mut p = pos + 1;
+                let mut pairs = Vec::new();
+                while *buf.get(p)? != b'e' {
+                    let (k, np) = parse(buf, p)?;
+                    let BVal::Bytes(kb) = k else { return None };
+                    let (v, np2) = parse(buf, np)?;
+                    pairs.push((kb, v));
+                    p = np2;
+                }
+                Some((BVal::Dict(pairs), p + 1))
+            }
+            b if b.is_ascii_digit() => {
+                let colon = rest.iter().position(|&c| c == b':')?;
+                let len: usize = std::str::from_utf8(&rest[..colon]).ok()?.parse().ok()?;
+                let start = pos + colon + 1;
+                let end = start + len;
+                if end > buf.len() {
+                    return None;
+                }
+                Some((BVal::Bytes(buf[start..end].to_vec()), end))
+            }
+            _ => None,
+        }
+    }
+    #[allow(dead_code)]
+    enum BVal {
+        Int(i64),
+        Bytes(Vec<u8>),
+        List(Vec<BVal>),
+        Dict(Vec<(Vec<u8>, BVal)>),
+    }
+    let (root, _) = parse(raw, 0)?;
+    let BVal::Dict(pairs) = root else { return None };
+    let info = pairs.into_iter().find(|(k, _)| k == b"info")?.1;
+    let BVal::Dict(info_pairs) = info else {
+        return None;
+    };
+    let pieces = info_pairs.into_iter().find(|(k, _)| k == b"pieces")?.1;
+    let BVal::Bytes(pieces) = pieces else {
+        return None;
+    };
+    if pieces.is_empty() {
+        return None;
+    }
+    let mut h = Sha1::new();
+    h.update(&pieces);
+    Some(h.finalize().iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// 消费 agent_rules 命中事件（tracker emit_agent_block 投递）→ cheat_events 落库。
+/// 同 (user_id, agent, reason) 累加 hits；首次命中投一条管理组信箱（staffmessages）。
+pub async fn consume_agent_blocks(
+    db: &PgPool,
+    redis: &mut redis::aio::ConnectionManager,
+) -> anyhow::Result<u64> {
+    use redis::AsyncCommands;
+    // 显式 turbofish：edition 2024 下 redis.get 的 never-type fallback 会拒绝 !: FromRedisValue
+    let last_id: Option<String> = redis
+        .get::<_, Option<String>>("flux:agentblock:cursor")
+        .await
+        .unwrap_or(None);
+    let from = last_id.clone().unwrap_or_else(|| "-".to_string());
+    let reply = match redis
+        .xrange::<_, _, _, redis::streams::StreamRangeReply>("flux:agent_block", &from, "+")
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(?e, "xrange flux:agent_block 失败");
+            return Err(e.into());
+        }
+    };
+    #[derive(serde::Deserialize)]
+    struct AgentBlockEvent {
+        user: i64,
+        #[serde(default)]
+        agent: String,
+        #[serde(default)]
+        ip: String,
+        #[serde(default)]
+        reason: String,
+    }
+    let mut applied = 0u64;
+    let mut last_seen_id: Option<String> = None;
+    for entry in reply.ids {
+        let id = entry.id;
+        if Some(&id) == last_id.as_ref() {
+            last_seen_id = Some(id);
+            continue;
+        }
+        let Some(payload) = entry
+            .map
+            .get("payload")
+            .and_then(|v| redis::from_redis_value::<String>(v).ok())
+        else {
+            last_seen_id = Some(id);
+            continue;
+        };
+        let Ok(ev) = serde_json::from_str::<AgentBlockEvent>(&payload) else {
+            tracing::warn!(%id, "agent_block 事件解析失败，跳过");
+            last_seen_id = Some(id);
+            continue;
+        };
+        let agent = if ev.agent.len() > 128 {
+            ev.agent[..128].to_string()
+        } else {
+            ev.agent
+        };
+        let reason = if ev.reason.len() > 200 {
+            ev.reason[..200].to_string()
+        } else {
+            ev.reason
+        };
+        // 首次命中判定先于写入（tracker 侧已 1h 去重，这里的额外查询可忽略不计）
+        let existed: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM cheat_events WHERE user_id = $1 AND agent = $2 AND reason = $3)",
+        )
+        .bind(ev.user)
+        .bind(&agent)
+        .bind(&reason)
+        .fetch_one(db)
+        .await
+        .unwrap_or(true);
+        let res = sqlx::query(
+            "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) VALUES ($1, $2, $3, $4) \
+             ON CONFLICT (user_id, agent, reason) DO UPDATE SET hits = cheat_events.hits + 1, last_seen = now()",
+        )
+        .bind(ev.user)
+        .bind(&agent)
+        .bind(&ev.ip)
+        .bind(&reason)
+        .execute(db)
+        .await;
+        match res {
+            Ok(_) => {
+                applied += 1;
+                last_seen_id = Some(id);
+                if !existed {
+                    // 首次命中 → 管理组信箱自动告警（staffmessages，permission=cheater 分流）
+                    let body = format!(
+                        "用户 #{} 的客户端命中黑白名单规则，tracker 已拒绝其 announce。\n客户端：{}\nIP：{}\n原因：{}\n（本条为系统自动告警，累计情况见后台「作弊探测」）",
+                        ev.user,
+                        if agent.is_empty() { "(空)" } else { &agent },
+                        if ev.ip.is_empty() { "(未知)" } else { &ev.ip },
+                        reason,
+                    );
+                    let _: Result<_, _> = sqlx::query(
+                        "INSERT INTO staffmessages (user_id, subject, body, permission) \
+                         VALUES ($1, '客户端黑白名单自动告警', $2, 'cheater')",
+                    )
+                    .bind(ev.user)
+                    .bind(body)
+                    .execute(db)
+                    .await;
+                }
+            }
+            Err(e) => {
+                tracing::error!(%id, ?e, "cheat_events 写入失败，游标暂停等待重试");
+                break;
+            }
+        }
+    }
+    if let Some(id) = last_seen_id {
+        let cur: Result<(), redis::RedisError> = redis.set("flux:agentblock:cursor", &id).await;
+        if let Err(e) = cur {
+            tracing::error!(?e, "agentblock 游标写入失败（下轮可能重复计数）");
+            return Err(e.into());
+        }
+        let _: () = redis
+            .xtrim(
+                "flux:agent_block",
+                redis::streams::StreamMaxlen::Approx(5000),
+            )
+            .await
+            .unwrap_or(());
+    }
+    Ok(applied)
+}
 
 /// 促销到期回收（M06：到期自动回收，无残留）。
 pub async fn expire_promotions(db: &PgPool) -> anyhow::Result<u64> {
@@ -8,6 +245,45 @@ pub async fn expire_promotions(db: &PgPool) -> anyhow::Result<u64> {
         .execute(db)
         .await?;
     Ok(res.rows_affected())
+}
+
+/// 魔法池双免联动（原实现为死功能：promo_started 全库无写入点）。
+/// 站点时区 UTC+8 每月 1-3 号检查上月是否达标（donated_total >= goal），
+/// 达标则开全站 scope 双免促销（x2free，3 天），幂等靠 promo_started 标记。
+pub async fn magic_pool_promo(db: &PgPool) -> anyhow::Result<u64> {
+    let now_site = chrono::Utc::now() + chrono::Duration::hours(8);
+    if !(1..=3).contains(&now_site.day()) {
+        return Ok(0);
+    }
+    let res = sqlx::query(
+        r#"
+        WITH prev AS (
+            SELECT to_char(date_trunc('month', $1::date) - interval '1 month', 'YYYY-MM') AS month
+        ),
+        pool AS (
+            SELECT mp.month, mp.promo_started
+            FROM magic_pool mp, prev
+            WHERE mp.month = prev.month AND mp.donated_total >= mp.goal AND NOT mp.promo_started
+        ),
+        started AS (
+            UPDATE magic_pool mp SET promo_started = TRUE
+            FROM pool WHERE mp.month = pool.month
+            RETURNING mp.month
+        )
+        INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source)
+        SELECT 'global', NULL, 'x2free', now(), now() + interval '3 days', 'magic_pool'
+        FROM started
+        ON CONFLICT DO NOTHING
+        "#,
+    )
+    .bind(now_site)
+    .execute(db)
+    .await?;
+    let n = res.rows_affected();
+    if n > 0 {
+        tracing::info!(n, "magic_pool promo started (x2free, 3d)");
+    }
+    Ok(n)
 }
 
 /// 保种区移出（M19 旧站口径：做种 > 7 移出，免费延续 3 天）。
@@ -217,9 +493,13 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow
         return Ok(()); // 种子确实不存在：跳过
     };
 
-    // 促销快照裁决（§5.4-⑦）
+    // 促销快照裁决（§5.4-⑦）——与 API 展示口径一致：同种子多条专属促销取最强档
+    // （修复前 ORDER BY id DESC 只认最新一条：先挂 free 后挂 half 时计费取 half、展示取 free）
     let kind: Option<String> = sqlx::query_scalar(
-        "SELECT kind::text FROM promotions WHERE torrent_id = $1 AND starts_at <= now() AND ends_at > now() ORDER BY id DESC LIMIT 1",
+        "SELECT kind::text FROM promotions WHERE torrent_id = $1 AND starts_at <= now() AND ends_at > now() \
+         ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 \
+                                  WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, id DESC \
+         LIMIT 1",
     )
     .bind(torrent_id)
     .fetch_optional(db)
@@ -256,17 +536,19 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow
     let delta_down = (raw_down as f64 * down_mult) as i64;
 
     let seeding = ev.left == 0;
+    // stopped = 客户端退出：与 tracker 侧 remove(peer) 对齐，DB 也不应继续标记在做种/下载
+    let stopped = ev.event == "stopped";
     sqlx::query(
         r#"
         INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CASE WHEN $9 THEN now() ELSE NULL END, now())
+        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $11 THEN FALSE ELSE $7 END, CASE WHEN $11 THEN FALSE ELSE $8 END, CASE WHEN $9 THEN now() ELSE NULL END, now())
         ON CONFLICT (user_id, torrent_id) DO UPDATE SET
           uploaded = snatches.uploaded + EXCLUDED.uploaded,
           downloaded = snatches.downloaded + EXCLUDED.downloaded,
           last_up = EXCLUDED.last_up,
           last_down = EXCLUDED.last_down,
-          leeching = EXCLUDED.leeching,
-          seeding = EXCLUDED.seeding OR snatches.seeding,
+          leeching = CASE WHEN $11 THEN FALSE ELSE EXCLUDED.leeching END,
+          seeding = CASE WHEN $11 THEN FALSE ELSE EXCLUDED.seeding OR snatches.seeding END,
           completed_at = COALESCE(snatches.completed_at, EXCLUDED.completed_at),
           -- 保种时长（0043）：本次为做种 announce（left=0）且与上次 announce 间隔未超容忍窗时，
           -- 记入真实时间差；离线过久不记（防挂机伪造），停止 announce 自然停止累计，
@@ -289,6 +571,7 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow
     .bind(!seeding)
     .bind(seeding)
     .bind(ev.event == "completed")
+    .bind(stopped)
     .bind(seed_cap)
     .execute(&mut *tx)
     .await?;
@@ -468,6 +751,40 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// 僵尸做种/下载标记清理：tracker peer 表 90s 超时即除名，但 DB 侧 snatches.seeding/leeching
+/// 原本只在下一次 announce 时被覆盖 —— 客户端崩溃/卸载（无 stopped 事件）的行会永久保持
+/// seeding=true，导致 seeding_reward 空转发钱（live 证据：27 行 last_seen 2 天前仍在领收益）
+/// 与 torrents.seeders 虚高。阈值 = max(2h, 2×announce_interval)，远大于正常重汇报抖动。
+async fn sweep_stale_peers(db: &PgPool) -> anyhow::Result<u64> {
+    let interval: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'announce_interval'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .map(|v| v.clamp(60, 86400))
+    .unwrap_or(1800);
+    let threshold_secs = (interval * 2).max(7200);
+    let res = sqlx::query(
+        "UPDATE snatches SET seeding = FALSE, leeching = FALSE \
+         WHERE (seeding OR leeching) AND last_seen_at < now() - ($1::bigint * interval '1 second')",
+    )
+    .bind(threshold_secs)
+    .execute(db)
+    .await?;
+    Ok(res.rows_affected())
+}
+
+/// 登录事件留存清理：IP 属个人信息，90 天后删除（每小时一次，幂等）。
+async fn purge_old_login_events(db: &PgPool) -> anyhow::Result<u64> {
+    let res = sqlx::query("DELETE FROM login_events WHERE created_at < now() - interval '90 days'")
+        .execute(db)
+        .await?;
+    Ok(res.rows_affected())
+}
+
 /// 主循环：定时任务调度。
 pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> anyhow::Result<()> {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
@@ -478,8 +795,12 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
         tokio::select! {
             _ = tick.tick() => {
                 if let Err(e) = expire_promotions(&db).await { tracing::error!(?e, "expire_promotions"); }
+                if let Err(e) = magic_pool_promo(&db).await { tracing::error!(?e, "magic_pool_promo"); }
                 if let Err(e) = preserve_exit(&db).await { tracing::error!(?e, "preserve_exit"); }
                 if let Err(e) = consume_announce(&db, &mut redis).await { tracing::error!(?e, "consume_announce"); }
+                if let Err(e) = consume_agent_blocks(&db, &mut redis).await { tracing::error!(?e, "consume_agent_blocks"); }
+                if let Err(e) = backfill_pieces_hash(&db).await { tracing::error!(?e, "backfill_pieces_hash"); }
+                if let Err(e) = sweep_stale_peers(&db).await { tracing::error!(?e, "sweep_stale_peers"); }
                 if let Err(e) = collect_milestones(&db).await { tracing::error!(?e, "collect_milestones"); }
                 if let Err(e) = hr_enforce(&db).await { tracing::error!(?e, "hr_enforce"); }
                 if let Err(e) = class_auto_adjust(&db).await { tracing::error!(?e, "class_auto_adjust"); }
@@ -498,6 +819,7 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
             _ = hour_tick.tick() => {
                 if first_hour { first_hour = false; continue; }
                 if let Err(e) = seeding_reward(&db, 10).await { tracing::error!(?e, "seeding_reward"); }
+                if let Err(e) = purge_old_login_events(&db).await { tracing::error!(?e, "purge_old_login_events"); }
             }
         }
     }

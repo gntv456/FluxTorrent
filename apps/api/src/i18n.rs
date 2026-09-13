@@ -59,6 +59,8 @@ pub fn from_accept_language(header: &str) -> Locale {
 /// 错误码 → 三语消息（与 errors.rs `code()` / packages/domain-types 对齐）
 const MESSAGES: &[(i32, &str, &str, &str)] = &[
     (1000, "内部错误", "內部錯誤", "Internal error"),
+    // 1001 保留码（前端 ErrorCode.BAD_REQUEST 已定义；后端 malformed JSON 统一走 JsonConfig→1002）
+    (1001, "请求格式错误", "請求格式錯誤", "Bad request"),
     (1002, "参数校验失败", "參數校驗失敗", "Validation failed"),
     (1004, "资源不存在", "資源不存在", "Resource not found"),
     (
@@ -68,6 +70,14 @@ const MESSAGES: &[(i32, &str, &str, &str)] = &[
         "Too many requests, take a break",
     ),
     (2001, "未认证", "未認證", "Not authenticated"),
+    // 2008 保留码（前端 ErrorCode.MUST_RESET_PASSWORD；登录响应以 must_reset_password 布尔下发，
+    // 该码为强制改密态下访问其他端点时的兜底文案）
+    (
+        2008,
+        "请先重置密码",
+        "請先重置密碼",
+        "Password reset required",
+    ),
     (2003, "无权限", "無權限", "Permission denied"),
     (2004, "凭证无效", "憑證無效", "Invalid credentials"),
     (

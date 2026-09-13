@@ -189,6 +189,20 @@ async fn request_fulfill(
     if !t_exists {
         return Err(DomainError::TorrentInvalid("种子不存在或未过审".into()));
     }
+    // 应种人必须是该种子的发布者（旧站口径）：防止他人拿别人的 torrent_id
+    // 完结求种、把悬赏转入自己账户（原实现任何登录用户可领任意求种的 bounty）
+    let owner_match: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND owner_id = $2)")
+            .bind(body.torrent_id)
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+    if !owner_match {
+        return Err(DomainError::Validation(
+            "只有该种子的发布者可以应种此求种".into(),
+        ));
+    }
     let updated = sqlx::query(
         "UPDATE requests SET status = 1, fulfilled_torrent_id = $2 WHERE id = $1 AND status = 0",
     )
@@ -229,6 +243,14 @@ async fn offer_create(
     body: web::Json<OfferCreateReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    let t_exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)")
+        .bind(body.torrent_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+    if !t_exists {
+        return Err(DomainError::TorrentInvalid("种子不存在".into()));
+    }
     let id: i64 =
         sqlx::query_scalar("INSERT INTO offers (user_id, torrent_id) VALUES ($1, $2) RETURNING id")
             .bind(auth.id)
@@ -276,6 +298,17 @@ async fn offer_vote(
     body: web::Json<OfferVoteReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 前置校验存在性与转正态（原实现对不存在 offer 先占位→扣款触发 FK 500；
+    // 对已转正 offer 扣款→回滚→404，报错语义混乱且浪费一轮账务）
+    let offer_ok: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM offers WHERE id = $1 AND NOT promoted)")
+            .bind(body.offer_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+    if !offer_ok {
+        return Err(DomainError::NotFound(body.offer_id));
+    }
     // 先占位投票记录（原子判重，防重放刷票）
     let voted = sqlx::query("INSERT INTO offer_votes (offer_id, user_id, cost) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING")
         .bind(body.offer_id)
@@ -536,24 +569,9 @@ async fn top_boards(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<
             ) x JOIN users u ON u.id = x.uid JOIN user_classes c ON c.id = u.class_id"
         )
     };
-    let bonus_q = base(
-        "u.spark_balance",
-        "",
-        "AND u.spark_balance > 0",
-        "",
-    );
-    let uploaded_q = base(
-        "u.uploaded",
-        "",
-        "AND u.uploaded > 0",
-        "",
-    );
-    let downloaded_q = base(
-        "u.downloaded",
-        "",
-        "AND u.downloaded > 0",
-        "",
-    );
+    let bonus_q = base("u.spark_balance", "", "AND u.spark_balance > 0", "");
+    let uploaded_q = base("u.uploaded", "", "AND u.uploaded > 0", "");
+    let downloaded_q = base("u.downloaded", "", "AND u.downloaded > 0", "");
     let seedtime_q = base(
         "COALESCE(sum(s.seeded_seconds), 0) / 3600.0",
         "JOIN snatches s ON s.user_id = u.id",
@@ -576,14 +594,21 @@ async fn top_boards(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<
 
     let mut boards = serde_json::Map::new();
     for (key, q) in [
-        ("bonus", bonus_q), ("uploaded", uploaded_q), ("downloaded", downloaded_q),
-        ("seedtime", seedtime_q), ("hourly", hourly_q), ("torrents", torrents_q),
+        ("bonus", bonus_q),
+        ("uploaded", uploaded_q),
+        ("downloaded", downloaded_q),
+        ("seedtime", seedtime_q),
+        ("hourly", hourly_q),
+        ("torrents", torrents_q),
     ] {
         let rows = sqlx::query_as::<_, TopRow>(&q)
             .fetch_all(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-        boards.insert(key.to_string(), serde_json::to_value(rows).unwrap_or_default());
+        boards.insert(
+            key.to_string(),
+            serde_json::to_value(rows).unwrap_or_default(),
+        );
     }
     Ok(ok(serde_json::Value::Object(boards)))
 }

@@ -69,16 +69,44 @@ export function TorrentActions({
     router.push(`/torrent/${torrentId}?edit=1`);
   }
 
+  /** 列表行下载：与详情页同口径走 getBlob（带 Bearer）；裸 <a href> 无鉴权头必 401 */
+  async function downloadRow() {
+    setBusy(true);
+    try {
+      const data = await api.getBlob(`/api/v1/torrents/${torrentId}/download`);
+      const blob = new Blob([data], { type: "application/x-bittorrent" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${torrentId}.torrent`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      const noauth = e instanceof ApiError && e.code === 2001;
+      alert(
+        noauth
+          ? (dict.torrent.downloadNoauth ?? "请先登录")
+          : e instanceof Error
+            ? e.message
+            : (dict.common.networkError ?? "下载失败"),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <span className="torrents-actions" ref={ref}>
-      <a
-        href={`/api/v1/torrents/${torrentId}/download`}
+      <button
+        type="button"
+        onClick={downloadRow}
+        disabled={busy}
         className="torrents-action"
         title={downloadLabel}
         aria-label={downloadLabel}
       >
         ⬇
-      </a>
+      </button>
       <button
         type="button"
         className="torrents-action"

@@ -88,6 +88,9 @@ pub fn loan_rate_bp(term_days: i32) -> i32 {
 pub const LOAN_TERMS: [i32; 5] = [7, 30, 90, 180, 365];
 
 /// 活期结息（整数火花，向下取整防超发）：本金 × 日利率 × 天数
+/// （活期批量结息的权威实现在 worker/bank_jobs.rs 的 SQL 内联计算；
+///  此函数保留作口径参考与单测基准，防止两处公式漂移）
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn demand_interest(principal: i64, rate_bp: i32, days: i64) -> i64 {
     principal * rate_bp as i64 * days / 10_000
 }

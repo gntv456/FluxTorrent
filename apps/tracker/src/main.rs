@@ -208,12 +208,18 @@ impl TrackerState {
     fn agent_blocked(&self, agent: Option<&str>) -> Option<String> {
         let rules = self.guard_read().agent_rules.clone()?;
         let a = agent.unwrap_or("");
-        let (allows, denies): (Vec<_>, Vec<_>) =
-            rules.iter().partition(|(m, _)| m == "allow");
-        if denies.iter().any(|(_, p)| !p.is_empty() && a.contains(p.as_str())) {
+        let (allows, denies): (Vec<_>, Vec<_>) = rules.iter().partition(|(m, _)| m == "allow");
+        if denies
+            .iter()
+            .any(|(_, p)| !p.is_empty() && a.contains(p.as_str()))
+        {
             return Some("客户端被禁止（黑名单），请联系管理组".into());
         }
-        if !allows.is_empty() && !allows.iter().any(|(_, p)| !p.is_empty() && a.contains(p.as_str())) {
+        if !allows.is_empty()
+            && !allows
+                .iter()
+                .any(|(_, p)| !p.is_empty() && a.contains(p.as_str()))
+        {
             return Some("客户端不在允许列表，请联系管理组".into());
         }
         None
@@ -347,7 +353,10 @@ async fn announce(
 
     // ⓪ 应急熔断（默认关闭，见 ANN_RATE_GLOBAL_PER_MIN）
     if state.global_shed().await {
-        state.metrics.announce_global_shed.fetch_add(1, Ordering::Relaxed);
+        state
+            .metrics
+            .announce_global_shed
+            .fetch_add(1, Ordering::Relaxed);
         return bencode_err("tracker 负载保护已触发，请稍后再试");
     }
 
@@ -356,19 +365,28 @@ async fn announce(
 
     // ⓪ IP 封禁（内存缓存，高频路径零 DB 开销）
     if let Some(reason) = state.ip_banned(&ip) {
-        state.metrics.announce_ip_banned.fetch_add(1, Ordering::Relaxed);
+        state
+            .metrics
+            .announce_ip_banned
+            .fetch_add(1, Ordering::Relaxed);
         return bencode_err(&format!("IP 已被封禁：{reason}"));
     }
     // ⓪' 每 IP 频率（在 passkey 之前拦垃圾流量，防无效 passkey 洪水打缓存/DB）
     if let Some(msg) = state.rate_limited_ip(&ip).await {
-        state.metrics.announce_limited_ip.fetch_add(1, Ordering::Relaxed);
+        state
+            .metrics
+            .announce_limited_ip
+            .fetch_add(1, Ordering::Relaxed);
         return bencode_err(msg);
     }
 
     // ① passkey → user_id + 管理开关（内存缓存 60s，命中免查 PG）
     let Some((user_id, download_enabled, suspended)) = state.resolve_passkey_cached(&passkey).await
     else {
-        state.metrics.announce_auth_fail.fetch_add(1, Ordering::Relaxed);
+        state
+            .metrics
+            .announce_auth_fail
+            .fetch_add(1, Ordering::Relaxed);
         return bencode_err("passkey 无效，请在站点重置");
     };
     if suspended {
@@ -380,13 +398,29 @@ async fn announce(
 
     // ①' 每用户频率（按 user_id 而非 IP —— NAT 场景按 IP 会误伤）
     if let Some(msg) = state.rate_limited_user(user_id).await {
-        state.metrics.announce_limited_user.fetch_add(1, Ordering::Relaxed);
+        state
+            .metrics
+            .announce_limited_user
+            .fetch_add(1, Ordering::Relaxed);
         return bencode_err(msg);
     }
 
     // ①'' 客户端黑名单（G-06）：deny 命中即拒；allow 列表存在时仅放行命中者（内存缓存）
+    // 执行闭环（0069）：命中事件经 Redis 去重（每 user+agent 1h 一条）后投递 worker 落 cheat_events，
+    // 管理组在后台可查 —— 不再是"拒绝即止、无处留痕"。
     if let Some(reason) = state.agent_blocked(params.get_str("agent").as_deref()) {
-        state.metrics.announce_agent_blocked.fetch_add(1, Ordering::Relaxed);
+        state
+            .metrics
+            .announce_agent_blocked
+            .fetch_add(1, Ordering::Relaxed);
+        emit_agent_block(
+            &state.redis,
+            user_id,
+            params.get_str("agent").as_deref().unwrap_or(""),
+            &ip,
+            &reason,
+        )
+        .await;
         return bencode_err(&reason);
     }
 
@@ -423,15 +457,23 @@ async fn announce(
     )
     .await;
 
-    // ③ compact 二进制响应（interval 按 site_settings.announce_interval 下发）
+    // ③ compact 二进制响应（interval 按 site_settings.announce_interval 下发；BEP-7 v6 进 peers6）
     let (interval, min_interval) = state.intervals();
     let body = if event == "stopped" {
-        bencode_announce(0, 0, 0, &[], interval, min_interval)
+        bencode_announce(0, 0, 0, &[], &[], interval, min_interval)
     } else {
         let seeders = state.peers.count_seeders(&info_hash_hex);
         let leechers = state.peers.count_leechers(&info_hash_hex);
-        let list = state.peers.snapshot(&info_hash_hex, numwant, &key.peer_id);
-        bencode_announce(seeders as i64, leechers as i64, 0, &list, interval, min_interval)
+        let snap = state.peers.snapshot(&info_hash_hex, numwant, &key.peer_id);
+        bencode_announce(
+            seeders as i64,
+            leechers as i64,
+            0,
+            &snap.v4,
+            &snap.v6,
+            interval,
+            min_interval,
+        )
     };
     HttpResponse::Ok().content_type("text/plain").body(body)
 }
@@ -496,7 +538,11 @@ async fn metrics(state: web::Data<TrackerState>, req: actix_web::HttpRequest) ->
     let m = &state.metrics;
     let (passkey_cache, ip_bans, agent_rules) = {
         let g = state.guard_read();
-        (g.passkeys.len(), g.ip_bans.len(), g.agent_rules.as_ref().map_or(0, |r| r.len()))
+        (
+            g.passkeys.len(),
+            g.ip_bans.len(),
+            g.agent_rules.as_ref().map_or(0, |r| r.len()),
+        )
     };
     let body = format!(
         concat!(
@@ -567,14 +613,49 @@ async fn emit_event(
         "event": event, "left": left,
         "ts": chrono::Utc::now().to_rfc3339(),
     });
+    xadd(redis, "flux:announce", &payload).await;
+}
+
+/// agent_rules 命中投递：同 (user, agent) 1 小时去重（SET NX EX），命中才 XADD flux:agent_block。
+/// worker 消费落 cheat_events（hits 累加 / 首次进管理组信箱）—— 高频拒绝路径零 DB 开销。
+async fn emit_agent_block(
+    redis: &redis::aio::ConnectionManager,
+    user: i64,
+    agent: &str,
+    ip: &str,
+    reason: &str,
+) {
+    use redis::AsyncCommands;
+    let mut c = redis.clone();
+    // agent 任意字节字符串 → 稳定短键（FNV-1a，仅作去重键）
+    let mut h: u64 = 0xcbf29ce484222325;
+    for b in agent.as_bytes() {
+        h = (h ^ (*b as u64)).wrapping_mul(0x100000001b3);
+    }
+    let dedup = format!("flux:agentblock:{user}:{h:016x}");
+    let fresh: Option<bool> = c.set_nx(&dedup, 1).await.ok();
+    let _: Result<(), _> = c.expire(&dedup, 3600).await;
+    match fresh {
+        Some(true) => {
+            let payload = serde_json::json!({
+                "user": user, "agent": agent, "ip": ip, "reason": reason,
+                "ts": chrono::Utc::now().to_rfc3339(),
+            });
+            xadd(redis, "flux:agent_block", &payload).await;
+        }
+        _ => {} // Redis 故障或 1h 内重复命中：静默丢弃（拒绝本身不受影响）
+    }
+}
+
+async fn xadd(redis: &redis::aio::ConnectionManager, stream: &str, payload: &serde_json::Value) {
     let mut cmd = redis::cmd("XADD");
-    cmd.arg("flux:announce")
+    cmd.arg(stream)
         .arg("*")
         .arg("payload")
         .arg(payload.to_string());
     let mut conn = redis.clone();
     if let Err(e) = cmd.query_async::<()>(&mut conn).await {
-        tracing::warn!(?e, "announce 事件投递失败（不影响响应）");
+        tracing::warn!(?e, "事件投递失败（不影响响应）");
     }
 }
 

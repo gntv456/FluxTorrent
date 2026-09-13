@@ -57,13 +57,14 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
         let now = chrono::Utc::now();
 
         // 用户当前指标
-        let cur: Option<(i64, i64)> = sqlx::query_as(
-            "SELECT uploaded, downloaded FROM users WHERE id = $1",
-        )
-        .bind(c.user_id)
-        .fetch_optional(db)
-        .await?;
-        let Some((uploaded, downloaded)) = cur else { continue }; // 用户已删，跳过
+        let cur: Option<(i64, i64)> =
+            sqlx::query_as("SELECT uploaded, downloaded FROM users WHERE id = $1")
+                .bind(c.user_id)
+                .fetch_optional(db)
+                .await?;
+        let Some((uploaded, downloaded)) = cur else {
+            continue;
+        }; // 用户已删，跳过
 
         let seed_seconds: i64 = sqlx::query_scalar(
             "SELECT COALESCE(sum(seeded_seconds), 0) FROM snatches WHERE user_id = $1",
@@ -79,13 +80,12 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
         .fetch_one(db)
         .await
         .unwrap_or(0);
-        let subtitles_now: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM subtitles WHERE uploader_id = $1",
-        )
-        .bind(c.user_id)
-        .fetch_one(db)
-        .await
-        .unwrap_or(0);
+        let subtitles_now: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM subtitles WHERE user_id = $1")
+                .bind(c.user_id)
+                .fetch_one(db)
+                .await
+                .unwrap_or(0);
 
         // 累计口径（tier 任务）：base 视为 0，用现值直接比
         let cumulative = c.tier.is_some();
@@ -169,12 +169,11 @@ async fn settle_complete(db: &PgPool, c: &OpenClaim) -> anyhow::Result<bool> {
         .fetch_one(&mut *tx)
         .await?;
         if !exists {
-            let balance: i64 = sqlx::query_scalar(
-                "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
-            )
-            .bind(c.user_id)
-            .fetch_one(&mut *tx)
-            .await?;
+            let balance: i64 =
+                sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+                    .bind(c.user_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
             sqlx::query(
                 "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
                  VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'task_reward', 'task', $3, $4, $5)",
@@ -230,12 +229,11 @@ async fn settle_fail(db: &PgPool, c: &OpenClaim) -> anyhow::Result<()> {
         .fetch_one(&mut *tx)
         .await?;
         if !exists {
-            let balance: i64 = sqlx::query_scalar(
-                "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
-            )
-            .bind(c.user_id)
-            .fetch_one(&mut *tx)
-            .await?;
+            let balance: i64 =
+                sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+                    .bind(c.user_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
             // 罚金只扣到 0，不制造负余额
             let take = balance.min(c.penalty).max(0);
             if take > 0 {
@@ -266,7 +264,11 @@ async fn settle_fail(db: &PgPool, c: &OpenClaim) -> anyhow::Result<()> {
     .bind(format!(
         "您认领的任务已超出完成时限（{} 天），任务标记为失败{}。",
         c.duration_days,
-        if c.penalty > 0 { format!("，扣除罚金 {} 火花", c.penalty) } else { String::new() }
+        if c.penalty > 0 {
+            format!("，扣除罚金 {} 火花", c.penalty)
+        } else {
+            String::new()
+        }
     ))
     .execute(&mut *tx)
     .await?;

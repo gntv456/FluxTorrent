@@ -15,3 +15,4 @@ tracing-subscriber.workspace = true
 dotenvy.workspace = true
 redis.workspace = true
 futures-util.workspace = true
+sha1.workspace = true

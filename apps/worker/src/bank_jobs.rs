@@ -87,12 +87,11 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
             .fetch_one(&mut *tx)
             .await?;
             if !exists {
-                let balance: i64 = sqlx::query_scalar(
-                    "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
-                )
-                .bind(user_id)
-                .fetch_one(&mut *tx)
-                .await?;
+                let balance: i64 =
+                    sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+                        .bind(user_id)
+                        .fetch_one(&mut *tx)
+                        .await?;
                 sqlx::query(
                     "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
                      VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'bank_fixed_interest', 'bank', $3, $4, $5)",
@@ -141,8 +140,9 @@ pub async fn bank_loan_interest(db: &PgPool) -> anyhow::Result<u64> {
         ),
         calc AS (
             SELECT d.loan_id, d.user_id, d.daily_rate_bp,
+                   -- 向上取整防逃息（economy::loan_interest 同口径：(x + 9999) / 10000）
                    (d.remaining * d.daily_rate_bp *
-                     (d.end_date - COALESCE(d.last_interest_date, (d.created_at::date - 1))) / 10000)::bigint
+                     (d.end_date - COALESCE(d.last_interest_date, (d.created_at::date - 1))) + 9999) / 10000
                      AS interest
             FROM due d
         ),
@@ -165,6 +165,8 @@ pub async fn bank_loan_interest(db: &PgPool) -> anyhow::Result<u64> {
 }
 
 /// 逾期罚息：逾期后每日按罚息率计息并并入本金（与火花口径一致）。
+/// 逾期超 term_days 一半仍未结清的贷款翻转为 defaulted（schema 声明的状态；
+/// 修复前永远停在 active，API 侧无法区分正常/逾期贷款）。
 pub async fn bank_overdue_penalty(db: &PgPool) -> anyhow::Result<u64> {
     let res = sqlx::query(
         r#"
@@ -177,7 +179,8 @@ pub async fn bank_overdue_penalty(db: &PgPool) -> anyhow::Result<u64> {
         ),
         calc AS (
             SELECT id, user_id, penalty_rate_bp,
-                   (remaining * penalty_rate_bp * days / 10000)::bigint AS penalty
+                   -- 罚息并入本金（欠款方向），与贷款计息同口径向上取整
+                   (remaining * penalty_rate_bp * days + 9999) / 10000 AS penalty
             FROM due
         ),
         upd AS (
@@ -187,10 +190,17 @@ pub async fn bank_overdue_penalty(db: &PgPool) -> anyhow::Result<u64> {
             FROM calc c
             WHERE l.id = c.id AND c.penalty > 0
             RETURNING l.id
+        ),
+        ins AS (
+            INSERT INTO bank_interest_records (user_id, kind, reference_id, amount, rate_bp)
+            SELECT c.user_id, 'loan_penalty', c.id, -c.penalty, c.penalty_rate_bp
+            FROM calc c JOIN upd ON upd.id = c.id
+            RETURNING reference_id
         )
-        INSERT INTO bank_interest_records (user_id, kind, reference_id, amount, rate_bp)
-        SELECT c.user_id, 'loan_penalty', c.id, -c.penalty, c.penalty_rate_bp
-        FROM calc c JOIN upd ON upd.id = c.id
+        UPDATE bank_loans l
+        SET status = 'defaulted'
+        WHERE l.status = 'active'
+          AND l.due_at < now() - make_interval(days => l.term_days / 2)
         "#,
     )
     .execute(db)
@@ -200,7 +210,11 @@ pub async fn bank_overdue_penalty(db: &PgPool) -> anyhow::Result<u64> {
 
 /// 严重逾期自动扣款：逾期超 N 天，先扣活期再扣站内余额，扣清为止。
 /// 负余额口径走站点设置 bank_allow_negative；每次调度最多扣一次（游标 = updated_at 当日已处理）。
-pub async fn bank_auto_deduct(db: &PgPool, deduct_days: i32, allow_negative: bool) -> anyhow::Result<u64> {
+pub async fn bank_auto_deduct(
+    db: &PgPool,
+    deduct_days: i32,
+    allow_negative: bool,
+) -> anyhow::Result<u64> {
     let loans: Vec<(i64, i64, i64)> = sqlx::query_as(
         "SELECT id, user_id, remaining FROM bank_loans \
          WHERE status = 'active' AND due_at < now() - ($1 || ' days')::interval \
@@ -222,7 +236,9 @@ pub async fn bank_auto_deduct(db: &PgPool, deduct_days: i32, allow_negative: boo
         .bind(remaining)
         .fetch_optional(&mut *tx)
         .await?;
-        let from_demand = before_after.map(|(before, after)| before - after).unwrap_or(0);
+        let from_demand = before_after
+            .map(|(before, after)| before - after)
+            .unwrap_or(0);
         let left = remaining - from_demand;
         let mut deducted = from_demand;
         if left > 0 {
@@ -247,15 +263,18 @@ pub async fn bank_auto_deduct(db: &PgPool, deduct_days: i32, allow_negative: boo
                 deducted += left;
             } else {
                 // 仅扣现有余额（balance_after 快照行锁口径）
-                let balance: i64 = sqlx::query_scalar(
-                    "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
-                )
-                .bind(user_id)
-                .fetch_one(&mut *tx)
-                .await?;
+                let balance: i64 =
+                    sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+                        .bind(user_id)
+                        .fetch_one(&mut *tx)
+                        .await?;
                 let take = balance.min(left).max(0);
                 if take > 0 {
-                    let idem = format!("auto_deduct:{}:{}", loan_id, chrono::Utc::now().format("%Y%m%d"));
+                    let idem = format!(
+                        "auto_deduct:{}:{}",
+                        loan_id,
+                        chrono::Utc::now().format("%Y%m%d")
+                    );
                     let exists: bool = sqlx::query_scalar(
                         "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
                     )
@@ -274,11 +293,13 @@ pub async fn bank_auto_deduct(db: &PgPool, deduct_days: i32, allow_negative: boo
                         .bind(balance - take)
                         .execute(&mut *tx)
                         .await?;
-                        sqlx::query("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1")
-                            .bind(user_id)
-                            .bind(take)
-                            .execute(&mut *tx)
-                            .await?;
+                        sqlx::query(
+                            "UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1",
+                        )
+                        .bind(user_id)
+                        .bind(take)
+                        .execute(&mut *tx)
+                        .await?;
                         deducted += take;
                     }
                 }
@@ -352,12 +373,11 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
         .fetch_one(&mut *tx)
         .await?;
         if !exists {
-            let balance: i64 = sqlx::query_scalar(
-                "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
-            )
-            .bind(user_id)
-            .fetch_one(&mut *tx)
-            .await?;
+            let balance: i64 =
+                sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+                    .bind(user_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
             let payable = amount + final_interest;
             sqlx::query(
                 "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
@@ -442,25 +462,53 @@ pub async fn bank_daily(db: &PgPool) {
             .ok()
             .flatten()
     }
-    let deduct_days: i32 = setting(db, "bank_auto_deduct_days").await.and_then(|v| v.parse().ok()).unwrap_or(7);
-    let allow_negative: bool = setting(db, "bank_allow_negative").await.map(|v| v == "true").unwrap_or(false);
+    let deduct_days: i32 = setting(db, "bank_auto_deduct_days")
+        .await
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(7);
+    let allow_negative: bool = setting(db, "bank_allow_negative")
+        .await
+        .map(|v| v == "true")
+        .unwrap_or(false);
 
     let mut demand_rows = 0u64;
     let mut fixed_rows = 0u64;
     let mut loan_rows = 0u64;
     let mut deduct_rows = 0u64;
-    match bank_demand_settle(db).await { Ok(n) => demand_rows = n, Err(e) => tracing::error!(?e, "bank_demand_settle") }
-    match bank_fixed_daily_settle(db).await { Ok(n) => fixed_rows += n, Err(e) => tracing::error!(?e, "bank_fixed_daily_settle") }
-    match bank_fixed_mature(db).await { Ok(n) => fixed_rows += n, Err(e) => tracing::error!(?e, "bank_fixed_mature") }
-    match bank_loan_interest(db).await { Ok(n) => loan_rows = n, Err(e) => tracing::error!(?e, "bank_loan_interest") }
-    match bank_overdue_penalty(db).await { Ok(n) => loan_rows += n, Err(e) => tracing::error!(?e, "bank_overdue_penalty") }
-    match bank_auto_deduct(db, deduct_days, allow_negative).await { Ok(n) => deduct_rows = n, Err(e) => tracing::error!(?e, "bank_auto_deduct") }
-    if let Err(e) = bank_due_notify(db, 3).await { tracing::error!(?e, "bank_due_notify"); }
+    match bank_demand_settle(db).await {
+        Ok(n) => demand_rows = n,
+        Err(e) => tracing::error!(?e, "bank_demand_settle"),
+    }
+    match bank_fixed_daily_settle(db).await {
+        Ok(n) => fixed_rows += n,
+        Err(e) => tracing::error!(?e, "bank_fixed_daily_settle"),
+    }
+    match bank_fixed_mature(db).await {
+        Ok(n) => fixed_rows += n,
+        Err(e) => tracing::error!(?e, "bank_fixed_mature"),
+    }
+    match bank_loan_interest(db).await {
+        Ok(n) => loan_rows = n,
+        Err(e) => tracing::error!(?e, "bank_loan_interest"),
+    }
+    match bank_overdue_penalty(db).await {
+        Ok(n) => loan_rows += n,
+        Err(e) => tracing::error!(?e, "bank_overdue_penalty"),
+    }
+    match bank_auto_deduct(db, deduct_days, allow_negative).await {
+        Ok(n) => deduct_rows = n,
+        Err(e) => tracing::error!(?e, "bank_auto_deduct"),
+    }
+    if let Err(e) = bank_due_notify(db, 3).await {
+        tracing::error!(?e, "bank_due_notify");
+    }
 
-    // 健康游标：当日结算完成时间 + 各任务行数（主键 run_date 天然幂等，重跑刷新计数）
+    // 健康游标：当日结算完成时间 + 各任务行数（主键 run_date 天然幂等，重跑刷新计数）。
+    // run_date 取站点日（UTC+8，与调度侧 site_day、API 健康页 (now()+8h)::date 同口径）；
+    // 直接写 CURRENT_DATE（DB 为 UTC）会让 API 在整个站点日内查不到「今日已结」。
     let _ = sqlx::query(
         "INSERT INTO bank_settle_runs (run_date, demand_rows, fixed_rows, loan_rows, deduct_rows, finished_at) \
-         VALUES (CURRENT_DATE, $1, $2, $3, $4, now()) \
+         VALUES ((CURRENT_TIMESTAMP + interval '8 hours')::date, $1, $2, $3, $4, now()) \
          ON CONFLICT (run_date) DO UPDATE SET \
            demand_rows = EXCLUDED.demand_rows, fixed_rows = EXCLUDED.fixed_rows, \
            loan_rows = EXCLUDED.loan_rows, deduct_rows = EXCLUDED.deduct_rows, \

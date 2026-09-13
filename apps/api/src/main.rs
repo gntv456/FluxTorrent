@@ -3,10 +3,12 @@
 
 mod admin_http;
 mod admin_p2_http;
+mod admin_p3_http;
 mod auth;
 mod authz;
 mod bencode;
 mod community_http;
+mod compat_http;
 mod config;
 mod content_http;
 mod domain;
@@ -17,6 +19,7 @@ mod errors;
 mod games;
 mod games_http;
 mod gaps_http;
+mod geo;
 mod http;
 mod i18n;
 mod openapi_http;
@@ -33,7 +36,7 @@ mod twofa_http;
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 
-/// CORS：CORS_ORIGINS 逗号分隔白名单（生产必填）；未配置时退化为宽松并打警告
+/// CORS：CORS_ORIGINS 逗号分隔白名单（生产必填）；未配置时仅开发态（FLUX_DEV=1）退化为宽松并打警告
 fn build_cors() -> actix_cors::Cors {
     let origins = std::env::var("CORS_ORIGINS").unwrap_or_default();
     let list: Vec<&str> = origins
@@ -42,6 +45,10 @@ fn build_cors() -> actix_cors::Cors {
         .filter(|s| !s.is_empty())
         .collect();
     if list.is_empty() {
+        let dev = std::env::var("FLUX_DEV").unwrap_or_default() == "1";
+        if !dev {
+            panic!("CORS_ORIGINS 未配置：生产环境禁止宽松 CORS（设 FLUX_DEV=1 跳过开发态检查）");
+        }
         tracing::warn!("CORS_ORIGINS 未配置，使用宽松 CORS（仅限开发态；生产由网关收敛）");
         return Cors::permissive();
     }
@@ -89,6 +96,23 @@ async fn main() -> anyhow::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(state.clone())
+            // malformed JSON 等载荷解析错误统一走信封（原为 actix 原生 text/plain 400，
+            // 前端 api-client 按 content-type 判非 JSON 会误报"服务异常"）
+            .app_data(actix_web::web::JsonConfig::default().error_handler(|err, _req| {
+                let locale = i18n::current();
+                let body = serde_json::json!({
+                    "code": 1002,
+                    "message": format!("{}: {}", crate::i18n::localized_message(1002, locale), err),
+                    "data": null,
+                    "request_id": uuid::Uuid::new_v4().to_string()
+                });
+                // error_handler 需返回 actix_web::Error；InternalError 是标准包裹方式
+                actix_web::error::InternalError::from_response(
+                    err.to_string(),
+                    actix_web::HttpResponse::BadRequest().json(body),
+                )
+                .into()
+            }))
             .wrap(Logger::default().exclude("/api/v1/health"))
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
             // 安全响应头基线（§5.7）：nosniff / 防点击劫持 / 引用策略

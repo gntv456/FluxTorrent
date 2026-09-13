@@ -6,6 +6,17 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
 interface ProfileCat { id: number; name: string }
+interface SectionDictRow { id: number; kind: string; name: string; sort: number; mode_id: number | null }
+
+/** 第八轮 Section 多维：发布表单新维度（kind → 中文名） */
+const SECTION_KINDS: [string, string][] = [
+  ["codec", "编码"],
+  ["audio_codec", "音频编码"],
+  ["standard", "规格"],
+  ["team", "制作组"],
+  ["source", "来源"],
+  ["processing", "处理工艺"],
+];
 
 /** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类来自站点档案，支持任意类型 PT 站） */
 export function UploadForm() {
@@ -36,6 +47,14 @@ export function UploadForm() {
   const [anonymous, setAnonymous] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // 第八轮 Section 多维：字典与所选值（kind → dict_id，可留空）
+  const [secDict, setSecDict] = useState<Record<string, SectionDictRow[]>>({});
+  const [secVals, setSecVals] = useState<Record<string, string>>({});
+  useEffect(() => {
+    api.get<Record<string, SectionDictRow[]>>("/api/v1/section-dict")
+      .then((d) => setSecDict(d))
+      .catch(() => setSecDict({}));
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,6 +78,11 @@ export function UploadForm() {
       if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
       if (descr.trim()) qs.set("descr", descr.trim());
       if (poster.trim()) qs.set("poster", poster.trim());
+      // 第八轮 Section 多维：非空维度打包成 sections JSON
+      const sections = Object.fromEntries(
+        Object.entries(secVals).filter(([, v]) => v),
+      );
+      if (Object.keys(sections).length > 0) qs.set("sections", JSON.stringify(sections));
       const base =
         process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
       const res = await fetch(`${base}/api/v1/torrents?${qs}`, {
@@ -222,6 +246,25 @@ export function UploadForm() {
               ))}
             </select>,
           )}
+          {SECTION_KINDS.map(([kind, label]) => (
+            (secDict[kind]?.length ?? 0) > 0 &&
+            row(
+              label,
+              <select
+                value={secVals[kind] ?? ""}
+                onChange={(e) => setSecVals((prev) => ({ ...prev, [kind]: e.target.value }))}
+                className={fieldCls}
+              >
+                <option value="">（不选择）</option>
+                {secDict[kind].map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>,
+              kind,
+            )
+          ))}
           {row(
             dict.upload.anonymous,
             <label className="flex cursor-pointer items-center gap-2 text-sm">

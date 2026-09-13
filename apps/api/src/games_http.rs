@@ -370,7 +370,11 @@ async fn farm_harvest(
     let crop = get_crop(&state.repo.db, crop_id)
         .await?
         .ok_or(DomainError::Validation("作物不存在".into()))?;
-    let market = games::market_price(crop.seed_price as i64, window);
+    // 收获量 = base_yield × 市场因子（与买种同一 ±50% 窗口波动）。
+    // 修复前按 seed_price 计价（买卖同价），base_yield 成死数据、每周期恒 +20%；
+    // 修复后产量承载收益：知识麦 80→均值 1.2×80=96（成本 100，微亏防刷），
+    // 高阶作物 4800→均值 5760（成本 5000），收益随档位拉开且受市场波动约束。
+    let market = games::market_price(crop.base_yield as i64, window);
 
     let doubled = games::roll_double();
     let amount = if doubled { market * 2 } else { market };
