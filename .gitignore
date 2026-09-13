@@ -19,3 +19,6 @@ docker/bz-css/
 
 # GeoIP 离线库（GeoLite2 mmdb，大文件不入库；构建机本地放置）
 apps/api/geoip/*.mmdb
+
+# 竞品源码克隆（调研用完整仓库，不入库；结论已沉淀 _doc/）
+.np-research/
