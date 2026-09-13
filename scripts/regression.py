@@ -244,7 +244,7 @@ m = _re.match(r"(\d+) \+ (\d+)", q)
 check("验证码·签发", r.get("code") == 0 and bool(m))
 
 _, r = call("GET", "/classes")
-check("等级·规则表", r.get("code") == 0 and len(r.get("data") or []) == 6)
+check("等级·规则表", r.get("code") == 0 and len(r.get("data") or []) == 12)  # 0058 等级重定标后 12 档
 
 _, r = call("GET", "/me/class-progress", token=tok)
 check("等级·我的进度", r.get("code") == 0)

@@ -54,9 +54,10 @@ async fn rss_feed(
     }
 
     // 多选分类/媒介：逗号分隔 → 数组（空 = 不过滤）；兼容旧版单值 category
-    let categories = parse_ids(q.categories.as_deref())
-        .or_else(|| q.category.map(|c| vec![c]));
+    let categories = parse_ids(q.categories.as_deref()).or_else(|| q.category.map(|c| vec![c]));
     let mediums = parse_ids(q.mediums.as_deref());
+    // paid=1 → 仅免费促销种（当前生效的 torrent 级或 scope 级 free/x2free；修复前参数被静默忽略）
+    let free_only = q.paid == Some(1);
     let rows: Vec<RssRow> = sqlx::query_as(
         "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, t.official_tag, \
                 u.username AS owner_name \
@@ -66,6 +67,16 @@ async fn rss_feed(
            AND ($2::int[] IS NULL OR t.medium_id = ANY($2)) \
            AND ($3::bool IS NULL OR t.official_tag = $3) \
            AND ($4::text IS NULL OR t.name ILIKE '%' || $4 || '%') \
+           AND (NOT $6::bool OR EXISTS ( \
+                SELECT 1 FROM promotions p \
+                WHERE p.starts_at <= now() AND p.ends_at > now() \
+                  AND (p.torrent_id = t.id \
+                       OR (p.torrent_id IS NULL AND ( \
+                            p.scope = 'global' \
+                            OR (p.scope = 'official' AND t.official_tag) \
+                            OR (p.scope = 'non_official' AND NOT t.official_tag) \
+                            OR (p.scope = 'category' AND p.category_id = t.category_id)))) \
+                  AND p.kind::text IN ('free','x2free'))) \
          ORDER BY t.id DESC LIMIT $5",
     )
     .bind(categories.as_deref())
@@ -73,18 +84,20 @@ async fn rss_feed(
     .bind(q.official)
     .bind(q.search.as_deref().filter(|s| !s.is_empty()))
     .bind(q.showrows.unwrap_or(50).clamp(1, 200))
+    .bind(free_only)
     .fetch_all(&state.repo.db)
     .await
     .unwrap_or_default();
 
     let base = std::env::var("PUBLIC_SITE_URL").unwrap_or_else(|_| "http://localhost:3000".into());
-    // 标题格式：linktype=dl（默认）[分类] 标题 [副标题] 大小 发布者；linktype=page 仅标题
+    // 标题格式：linktype=dl（默认）[官种] 标题 [副标题] 大小 发布者；linktype=page 仅标题
     let verbose = q.linktype.as_deref() != Some("page");
     let mut items = String::new();
     for r in &rows {
         let title = if verbose {
             format!(
-                "{} {} {} · {}",
+                "{}{} {} {} · {}",
+                if r.official_tag { "[官种] " } else { "" },
                 r.name,
                 r.small_descr.clone().unwrap_or_default(),
                 format_size(r.size),
@@ -131,8 +144,7 @@ struct RssQuery {
     showrows: Option<i64>,
     /// dl = 标题带元信息（默认）；page = 仅标题
     linktype: Option<String>,
-    /// 0=全部 1=仅免费（占位，与好学 paid 口径对齐，未实现扣费过滤时仅接受参数）
-    #[allow(dead_code)]
+    /// 0=全部 1=仅免费（当前生效的 free/x2free 促销种；与好学 paid 口径对齐）
     paid: Option<i32>,
 }
 

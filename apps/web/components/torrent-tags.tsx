@@ -10,6 +10,13 @@ interface TagDictRow {
   kind: string;
 }
 
+/** 兼容 API 历史形态：dict 行可能序列化为 [id, name, kind] 元组 */
+function normTagRow(r: TagDictRow | [number, string, string]): TagDictRow {
+  return Array.isArray(r)
+    ? { id: r[0], name: r[1], kind: r[2] }
+    : r;
+}
+
 /** 种子标签（T-04）：作者/staff 打标，官种/官方标签仅 staff；点击切换 */
 export function TorrentTags({ torrentId }: { torrentId: number }) {
   const { dict } = useI18n();
@@ -23,10 +30,10 @@ export function TorrentTags({ torrentId }: { torrentId: number }) {
 
   const load = useCallback(async () => {
     try {
-      const r = await api.get<{ dict: TagDictRow[]; mine: number[] }>(
+      const r = await api.get<{ dict: (TagDictRow | [number, string, string])[]; mine: number[] }>(
         `/api/v1/torrents/${torrentId}/tags`,
       );
-      setDictRows(r.dict);
+      setDictRows(r.dict.map(normTagRow));
       setMine(r.mine);
     } catch {
       setDictRows([]);
@@ -50,22 +57,20 @@ export function TorrentTags({ torrentId }: { torrentId: number }) {
   if (dictRows.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1">
-      {dictRows.map((d) => {
+    <div className="td-tagcloud">
+      {dictRows.map((d, i) => {
         const on = mine.includes(d.id);
+        const official = d.kind === "official";
+        // 列表口径的彩色轮换（官方类固定靛蓝，普通标签按位轮换品牌色）
+        const palette = ["torrents-tag--sky", "torrents-tag--mint", "torrents-tag--sun", "torrents-tag--candy"];
+        const colorCls = official ? "torrents-tag--official" : palette[i % palette.length];
         return (
           <button
             key={d.id}
             type="button"
             onClick={() => toggle(d.id, on)}
-            title={d.kind === "official" ? t.needStaff : d.name}
-            className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-              on
-                ? d.kind === "official"
-                  ? "bg-indigo text-white"
-                  : "bg-sky text-white"
-                : "border border-line bg-[var(--surface-card)] text-sub"
-            }`}
+            title={official ? t.needStaff : d.name}
+            className={`td-tag ${colorCls} ${on ? "" : "td-tag--off"}`}
           >
             {d.name}
           </button>

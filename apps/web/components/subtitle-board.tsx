@@ -287,6 +287,20 @@ export function SubtitleBoard() {
                     className="subtitles-report"
                     title={t.reportTitle}
                     aria-label={t.reportTitle}
+                    onClick={async () => {
+                      const reason = window.prompt(t.reportTitle);
+                      if (!reason?.trim()) return;
+                      try {
+                        await api.post("/api/v1/reports", {
+                          ref_type: "subtitle",
+                          ref_id: s.id,
+                          reason: reason.trim(),
+                        });
+                        setMsg(t.reportOk ?? "举报已提交，感谢反馈");
+                      } catch (e) {
+                        setMsg(e instanceof Error ? e.message : (t.reportFail ?? "举报失败"));
+                      }
+                    }}
                   >
                     ⚑
                   </button>

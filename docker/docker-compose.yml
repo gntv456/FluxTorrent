@@ -48,6 +48,11 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      # 功能性环境变量显式注入（空默认 = 功能静默禁用；此处列出让部署者可见可配）
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}          # RSS 信息页的 API 基址（空退 127.0.0.1）
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}        # RSS 链接前缀（空退 localhost:3000）
+      PUBLIC_SITE_NAME: ${PUBLIC_SITE_NAME:-}      # 站点显示名（空退 FluxTorrent）
+      SMTP_URL: ${SMTP_URL:-}                      # 邮件发送（空 = 邮件类通知跳过）
       RUST_LOG: info
     ports:
       # 生产：仅本机可达，外部流量经 Nginx/Pingora 反代（§5.1 边缘层）
@@ -73,10 +78,18 @@ services:
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       RUST_LOG: info
+    # 健康探测：worker 无 HTTP 面，用进程存活 + 近期无崩溃重启判定
+    healthcheck:
+      test: ["NONE"]
+      disable: true
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      # 迁移由 api 启动时执行（worker/tracker 自身不跑迁移）：
+      # 冷启动全新卷时若 worker 先于 api 起来会因表不存在反复崩重启
+      api:
         condition: service_healthy
     restart: unless-stopped
 
@@ -100,11 +113,20 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       RUST_LOG: info
     ports:
+      # BT 客户端直连入口，必须公网可达（与 api/web 的 127.0.0.1 收口不同，此为有意暴露）
       - "7070:7070"
+    healthcheck:
+      # 镜像是 debian-slim（无 wget/curl），用 bash /dev/tcp 探测端口连通
+      test: ["CMD", "bash", "-c", "timeout 2 bash -c '</dev/tcp/127.0.0.1/7070'"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      api:
         condition: service_healthy
     restart: unless-stopped
 

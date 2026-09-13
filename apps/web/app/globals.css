@@ -541,6 +541,480 @@ a:hover {
   background: var(--surface-hover);
 }
 
+/* ============ 种子详情页（馒头 M-Team + 阳光 SunnyPT 版式融合） ============ */
+/* 面包屑（阳光口径） */
+.td-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.td-crumbs a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.td-crumbs a:hover {
+  color: var(--text-brand);
+  text-decoration: underline;
+}
+.td-crumbs__id {
+  margin-left: auto;
+  font-family: var(--font-body);
+  letter-spacing: 0.02em;
+}
+
+/* 海报头：左海报 + 中主信息/操作 + 右状态卡；窄屏纵向堆叠 */
+.td-head {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) auto;
+  gap: 20px;
+  padding: 20px;
+  position: relative;
+}
+.td-head__poster {
+  position: relative;
+}
+.td-head__cat {
+  position: absolute;
+  z-index: 1;
+  left: -6px;
+  top: 10px;
+  padding: 2px 10px;
+  border-radius: 0 999px 999px 0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  max-width: 190px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 6px rgba(31, 42, 68, 0.18);
+}
+.td-head__img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-md);
+  object-fit: cover;
+  border: 1px solid var(--baozi-line-soft);
+  background: var(--surface-sunken);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.td-head__poster:hover .td-head__img {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+.td-head__img--fallback {
+  font-size: 42px;
+}
+.td-head__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.td-head__name {
+  font-size: 22px;
+  line-height: 1.35;
+  word-break: break-all;
+}
+.td-head__sub {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.td-head__chain {
+  color: var(--text-brand);
+  font-weight: 600;
+}
+.td-head__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.td-head__left {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--danger);
+}
+.td-anon-sticker {
+  background: var(--muted-soft);
+  color: var(--text-muted);
+}
+.td-head__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap-x: 18px;
+  gap-y: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.td-head__meta b {
+  color: var(--text-body-deep);
+}
+.td-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.td-head__actions > div {
+  flex: 1 1 320px;
+}
+/* 状态卡（阳光口径：三色统计列） */
+.td-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 128px;
+  align-self: stretch;
+  justify-content: center;
+}
+.td-stats__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: transform 0.12s ease;
+}
+.td-stats__row:hover {
+  transform: translateX(-2px);
+}
+.td-stats__row b {
+  font-size: 16px;
+}
+.td-stats__row--seed {
+  background: var(--success-soft);
+}
+.td-stats__row--seed b {
+  color: var(--success);
+}
+.td-stats__row--leech {
+  background: var(--coral-soft);
+}
+.td-stats__row--leech b {
+  color: var(--coral);
+}
+.td-stats__row--done {
+  background: var(--sky-soft);
+}
+.td-stats__row--done b {
+  color: var(--sky-deep);
+}
+.td-stats__health {
+  margin-top: 2px;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.td-stats__health--alive {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.td-stats__health--dead {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+@media (max-width: 900px) {
+  .td-head {
+    grid-template-columns: 130px minmax(0, 1fr);
+  }
+  .td-stats {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .td-stats__row {
+    flex: 1 1 100px;
+  }
+  .td-stats__health {
+    flex: 1 1 100%;
+  }
+}
+@media (max-width: 560px) {
+  .td-head {
+    grid-template-columns: 96px minmax(0, 1fr);
+    padding: 14px;
+  }
+  .td-head__name {
+    font-size: 17px;
+  }
+}
+
+/* 规格网格（阳光口径：数值 + 灰字说明） */
+.td-specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 2px;
+  padding: 14px 16px;
+}
+.td-spec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  min-width: 0;
+  transition: background 0.12s ease;
+}
+.td-spec:hover {
+  background: var(--surface-hover);
+}
+.td-spec b {
+  font-size: 15px;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+.td-spec span {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* 区块标题 */
+.td-sec-title {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(100deg, var(--head-a), var(--surface-card) 72%);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+/* 标签区（标签 + 右侧管理操作同排） */
+.td-tags__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px 14px;
+}
+.td-tagcloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* 标签芯片：与资源库列表 torrents-tag 同口径（小方角色块） */
+.td-tag {
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+  cursor: pointer;
+  transition: filter 0.12s ease, background 0.12s ease;
+}
+.td-tag:hover {
+  filter: brightness(1.06);
+}
+.td-tag--on {
+  background: var(--sky);
+  color: #fff;
+}
+.td-tag--on-official {
+  background: var(--indigo);
+  color: #fff;
+}
+.td-tag--off {
+  background: var(--muted-soft);
+  color: var(--text-muted);
+}
+.td-tags__manage {
+  margin-left: auto;
+}
+@media (max-width: 700px) {
+  .td-tags__manage {
+    margin-left: 0;
+  }
+}
+
+/* 简介区 */
+.td-descr__body {
+  padding: 14px 16px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* NFO */
+.td-nfo {
+  max-height: 320px;
+  overflow: auto;
+  border-radius: var(--r-sm);
+  background: var(--ink);
+  color: var(--cloud);
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.45;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+/* 文件列表 */
+.td-files {
+  width: 100%;
+  table-layout: fixed;
+  max-height: 300px;
+  overflow-y: auto;
+  display: block;
+  font-size: 13px;
+}
+.td-files td {
+  padding: 4px 12px;
+}
+.td-files tr:hover td {
+  background: var(--surface-hover);
+}
+
+/* 折叠分区（馒头口径） */
+.td-fold {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow 0.15s ease;
+}
+.td-fold[open] {
+  box-shadow: var(--shadow-hover);
+}
+.td-fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  background: linear-gradient(100deg, var(--head-a), var(--surface-card) 72%);
+}
+.td-fold > summary:hover {
+  background: linear-gradient(100deg, var(--head-a), var(--surface-hover) 72%);
+}
+.td-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.td-fold > summary h2 {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.td-fold__count {
+  font-size: 12px;
+  color: var(--text-brand);
+}
+.td-fold__chev {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-faint);
+  border-bottom: 2px solid var(--text-faint);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.td-fold[open] > summary .td-fold__chev {
+  transform: rotate(225deg);
+}
+.td-fold__body {
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* 感谢者（馒头口径：头像 + 用户名 chip） */
+.td-thanker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-body-deep);
+  transition: background 0.12s ease;
+}
+.td-thanker:hover {
+  background: var(--surface-hover);
+}
+.td-thanker__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--grad-aurora);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* 评论区（阳光口径：左作者侧栏 + 右正文） */
+.td-comments {
+  padding-bottom: 6px;
+}
+.td-comment {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  border-top: 1px solid var(--line);
+}
+.td-comment:first-of-type {
+  border-top: none;
+}
+.td-comment__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--surface-sunken);
+}
+.td-comment__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--grad-aurora);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+.td-comment__body {
+  padding: 12px 16px;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+@media (max-width: 560px) {
+  .td-comment {
+    grid-template-columns: 1fr;
+  }
+  .td-comment__side {
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 4px;
+  }
+}
+
+.td-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 /* ============ 首页最新资源海报墙（匀速滚动 + 悬停暂停放大） ============ */
 @keyframes poster-marquee {
   from { transform: translateX(0); }
@@ -2977,6 +3451,64 @@ a:hover {
   font-size: 11px;
   font-weight: 700;
   line-height: 1.7;
+}
+/* 详情页标签复用列表口径的彩色轮换（普通标签按位取色，选中即上色） */
+.torrents-tag--sky {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--sky);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.torrents-tag--mint {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--mint);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.torrents-tag--sun {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--sun);
+  color: #6b4e00;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.torrents-tag--candy {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--candy);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+/* 详情页标签未选中态：同色系浅底（选中=实色，未选中=浅色，标签云始终彩色） */
+.torrents-tag--official.td-tag--off {
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+.torrents-tag--sky.td-tag--off {
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+}
+.torrents-tag--mint.td-tag--off {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+.torrents-tag--sun.td-tag--off {
+  background: var(--sun-soft);
+  color: #8a6a00;
+}
+.torrents-tag--candy.td-tag--off {
+  background: var(--candy-soft);
+  color: var(--candy);
 }
 .torrents-tag--sticky {
   padding: 0 6px;

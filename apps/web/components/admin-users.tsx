@@ -69,6 +69,9 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   const [adjust, setAdjust] = useState<{ up: string; down: string; spark: string; invite: string; note: string } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // 第八轮 P2-9：批量操作
+  const [sel, setSel] = useState<Set<number>>(new Set());
+  const [batchClass, setBatchClass] = useState("");
 
   const flash = (m: string) => {
     setMsg(m);
@@ -90,6 +93,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
     params.set("per_page", "20");
     try {
       setData(await api.get<UsersPage>(`/api/v1/admin/users?${params.toString()}`));
+      setSel(new Set());
     } catch (e) {
       flash(e instanceof ApiError ? e.message : dict.common.loadFailed);
     }
@@ -146,6 +150,23 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   };
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1;
+
+  async function batch(action: "status" | "class", value: number) {
+    const ids = [...sel];
+    if (ids.length === 0) { flash("请先勾选用户"); return; }
+    const reason = action === "status" && value > 0 ? (window.prompt("批量操作理由（可选）") ?? undefined) : undefined;
+    if (!window.confirm(`确认对 ${ids.length} 个用户执行「${action === "status" ? ["恢复正常", "禁言", "封禁"][value] : `等级改为 ${value}`}」？`)) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ updated: number; skipped: number[] }>("/api/v1/admin/users/batch", { action, ids, value, reason });
+      flash(`已更新 ${r.updated} 个用户${r.skipped.length > 0 ? `，跳过（等级不足）${r.skipped.length} 个` : ""}`);
+      await load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : "操作失败");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const sortBtn = (key: string, label: string) => (
     <button
@@ -232,10 +253,35 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         </label>
       </section>
 
+      {/* 批量操作（第八轮 P2-9） */}
+      <section className="baozi-panel flex flex-wrap items-end gap-2 p-3">
+        <p className="w-full text-xs font-bold text-sub">批量操作（已选 {sel.size} 个；只能操作等级低于自己的用户）</p>
+        <button disabled={busy || sel.size === 0} onClick={() => batch("status", 0)} className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white disabled:opacity-50">批量恢复正常</button>
+        <button disabled={busy || sel.size === 0} onClick={() => batch("status", 1)} className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50">批量禁言</button>
+        <button disabled={busy || sel.size === 0} onClick={() => batch("status", 2)} className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-danger disabled:opacity-50">批量封禁</button>
+        <label className="flex flex-col gap-1 text-xs">
+          批量改等级
+          <select value={batchClass} onChange={(e) => setBatchClass(e.target.value)} className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+            <option value="">（选择等级）</option>
+            {classes.filter(([id]) => id > 0 && id < 99).map(([id, label]) => (
+              <option key={id} value={id}>{id} {label}</option>
+            ))}
+          </select>
+        </label>
+        <button disabled={busy || sel.size === 0 || !batchClass} onClick={() => batch("class", Number(batchClass))} className="min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white disabled:opacity-50">执行</button>
+      </section>
+
       {/* 用户列表 */}
       <table className="nexus-table">
         <thead>
           <tr>
+            <td className="colhead w-10">
+              <input
+                type="checkbox"
+                checked={(data?.rows.length ?? 0) > 0 && data!.rows.every((u) => sel.has(u.id))}
+                onChange={(e) => setSel(new Set(e.target.checked ? data!.rows.map((u) => u.id) : []))}
+              />
+            </td>
             <td className="colhead">{sortBtn("id", "Id")}</td>
             <td className="colhead">用户名</td>
             <td className="colhead">邮箱</td>
@@ -252,6 +298,13 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         <tbody>
           {data?.rows.map((u) => (
             <tr key={u.id}>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={sel.has(u.id)}
+                  onChange={(e) => setSel((prev) => { const n = new Set(prev); if (e.target.checked) n.add(u.id); else n.delete(u.id); return n; })}
+                />
+              </td>
               <td>{u.id}</td>
               <td>
                 <a className="font-bold text-link" href={`/admin/users/${u.id}`}>

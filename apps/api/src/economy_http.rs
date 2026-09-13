@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use crate::dto::ok;
 use crate::economy::{
-    self, checkin_reward, early_penalty, loan_rate_bp, maturity_interest, term_rate, DEMAND_RATE_BP,
-    LOAN_TERMS, VALID_TERMS,
+    self, checkin_reward, early_penalty, loan_rate_bp, maturity_interest, term_rate,
+    DEMAND_RATE_BP, LOAN_TERMS, VALID_TERMS,
 };
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -41,17 +41,50 @@ async fn bank_settings(db: &PgPool) -> BankSettings {
             .flatten()
     }
     BankSettings {
-        min_deposit: get(db, "bank_min_deposit").await.and_then(|v| v.parse().ok()).unwrap_or(100),
-        max_deposit: get(db, "bank_max_deposit").await.and_then(|v| v.parse().ok()).unwrap_or(1_000_000),
-        min_demand: get(db, "bank_min_demand").await.and_then(|v| v.parse().ok()).unwrap_or(100),
-        loan_ratio: get(db, "bank_loan_ratio").await.and_then(|v| v.parse().ok()).unwrap_or(100),
-        loan_constant: get(db, "bank_loan_ratio_constant").await.and_then(|v| v.parse().ok()).unwrap_or(1000),
-        min_loan: get(db, "bank_min_loan").await.and_then(|v| v.parse().ok()).unwrap_or(100),
-        demand_rate_bp: get(db, "bank_demand_rate_bp").await.and_then(|v| v.parse().ok()).unwrap_or(DEMAND_RATE_BP),
-        penalty_bp: get(db, "bank_penalty_rate_bp").await.and_then(|v| v.parse().ok()).unwrap_or(50),
-        overdue_penalty_bp: get(db, "bank_overdue_penalty_bp").await.and_then(|v| v.parse().ok()).unwrap_or(50),
-        auto_deduct_days: get(db, "bank_auto_deduct_days").await.and_then(|v| v.parse().ok()).unwrap_or(7),
-        allow_negative: get(db, "bank_allow_negative").await.map(|v| v == "true").unwrap_or(false),
+        min_deposit: get(db, "bank_min_deposit")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(100),
+        max_deposit: get(db, "bank_max_deposit")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(1_000_000),
+        min_demand: get(db, "bank_min_demand")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(100),
+        loan_ratio: get(db, "bank_loan_ratio")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(100),
+        loan_constant: get(db, "bank_loan_ratio_constant")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(1000),
+        min_loan: get(db, "bank_min_loan")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(100),
+        demand_rate_bp: get(db, "bank_demand_rate_bp")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(DEMAND_RATE_BP),
+        penalty_bp: get(db, "bank_penalty_rate_bp")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(50),
+        overdue_penalty_bp: get(db, "bank_overdue_penalty_bp")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(50),
+        auto_deduct_days: get(db, "bank_auto_deduct_days")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(7),
+        allow_negative: get(db, "bank_allow_negative")
+            .await
+            .map(|v| v == "true")
+            .unwrap_or(false),
     }
 }
 
@@ -452,13 +485,12 @@ async fn bank_deposit(
 
     let interest = maturity_interest(body.amount, body.term_days);
     // 结息模式：daily = 每日结息发到余额（到期只还本）；maturity = 到期一次性
-    let mode: String = sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .unwrap_or_else(|| "maturity".into());
+    let mode: String =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'")
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .unwrap_or_else(|| "maturity".into());
     let mode = if mode == "daily" { "daily" } else { "maturity" };
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO bank_deposits (user_id, amount, term_days, rate, interest, maturity_at, settle_mode) \
@@ -521,7 +553,15 @@ async fn bank_withdraw(
     body: web::Json<WithdrawReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let d: Option<(i64, i64, i64, i64, String, i16, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+    let d: Option<(
+        i64,
+        i64,
+        i64,
+        i64,
+        String,
+        i16,
+        chrono::DateTime<chrono::Utc>,
+    )> = sqlx::query_as(
         "SELECT id, amount, interest, paid_interest, settle_mode, status, maturity_at \
          FROM bank_deposits WHERE id = $1 AND user_id = $2",
     )
@@ -667,8 +707,17 @@ async fn demand_withdraw(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let idem = format!("demand_out:{}:{}", auth.id, Uuid::new_v4());
-    earn_spark(&state.repo.db, auth.id, body.amount, "bank_demand_out", &idem).await?;
-    Ok(ok(serde_json::json!({ "paid": body.amount, "balance_left": row })))
+    earn_spark(
+        &state.repo.db,
+        auth.id,
+        body.amount,
+        "bank_demand_out",
+        &idem,
+    )
+    .await?;
+    Ok(ok(
+        serde_json::json!({ "paid": body.amount, "balance_left": row }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -680,7 +729,7 @@ struct LoanApplyReq {
 /// 最大可贷额度 = 时魔/小时 × 系数 + 常数（时魔取自近 1 小时做种收益口径，无则 0）
 async fn max_loan_amount(db: &PgPool, user_id: i64, bs: &BankSettings) -> DomainResult<i64> {
     let hourly: Option<i64> = sqlx::query_scalar(
-        "SELECT COALESCE(sum(amount), 0) FROM spark_ledger \
+        "SELECT COALESCE(sum(amount), 0)::bigint FROM spark_ledger \
          WHERE user_id = $1 AND kind = 'seeding_reward' AND created_at > now() - interval '1 hour'",
     )
     .bind(user_id)
@@ -715,7 +764,9 @@ async fn loan_apply(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     if balance < 0 {
-        return Err(DomainError::Validation("当前火花为负，暂不可申请贷款".into()));
+        return Err(DomainError::Validation(
+            "当前火花为负，暂不可申请贷款".into(),
+        ));
     }
     let max = max_loan_amount(&state.repo.db, auth.id, &bs).await?;
     if body.amount > max {
@@ -725,7 +776,7 @@ async fn loan_apply(
         )));
     }
     let active: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM bank_loans WHERE user_id = $1 AND status = 'active')",
+        "SELECT EXISTS(SELECT 1 FROM bank_loans WHERE user_id = $1 AND status IN ('active', 'defaulted'))",
     )
     .bind(auth.id)
     .fetch_one(&state.repo.db)
@@ -750,7 +801,14 @@ async fn loan_apply(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let idem = format!("loan:{}:{}", auth.id, id);
-    earn_spark(&state.repo.db, auth.id, body.amount, "bank_loan_payout", &idem).await?;
+    earn_spark(
+        &state.repo.db,
+        auth.id,
+        body.amount,
+        "bank_loan_payout",
+        &idem,
+    )
+    .await?;
     Ok(ok(serde_json::json!({
         "id": id, "amount": body.amount, "term_days": body.term_days, "daily_rate_bp": rate,
         "due_in_days": body.term_days,
@@ -766,7 +824,7 @@ async fn loan_repay(
     // 结清额 = 剩余本金 + 计提至今利息（含当日，一次性结清）
     let loan: Option<(i64, i64, i64, i64, chrono::NaiveDate)> = sqlx::query_as(
         "SELECT id, remaining, accrued_interest, daily_rate_bp, last_interest_date \
-         FROM bank_loans WHERE user_id = $1 AND status = 'active' FOR UPDATE",
+         FROM bank_loans WHERE user_id = $1 AND status IN ('active', 'defaulted') FOR UPDATE",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -795,7 +853,7 @@ async fn loan_repay(
     .await?;
     sqlx::query(
         "UPDATE bank_loans SET remaining = 0, accrued_interest = 0, status = 'paid', \
-         paid_at = now(), last_interest_date = CURRENT_DATE WHERE id = $1 AND status = 'active'",
+         paid_at = now(), last_interest_date = CURRENT_DATE WHERE id = $1 AND status IN ('active', 'defaulted')",
     )
     .bind(id)
     .execute(&state.repo.db)
@@ -845,7 +903,7 @@ async fn bank_overview(
     .unwrap_or(DemandRow { balance: 0, daily_rate_bp: bs.demand_rate_bp, last_interest_date: None });
 
     let fixed: Option<(i64, i64)> = sqlx::query_as::<_, (i64, i64)>(
-        "SELECT COALESCE(sum(amount), 0), count(*) FROM bank_deposits WHERE user_id = $1 AND status = 0",
+        "SELECT COALESCE(sum(amount), 0)::bigint, count(*) FROM bank_deposits WHERE user_id = $1 AND status = 0",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -853,8 +911,9 @@ async fn bank_overview(
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     let loan: Option<BankLoanRow> = sqlx::query_as(
+        // defaulted（逾期半期未还）也展示：用户需能看到被标记违约的贷款并还款
         "SELECT id, amount, daily_rate_bp, term_days, remaining, accrued_interest, status, due_at \
-         FROM bank_loans WHERE user_id = $1 AND status = 'active'",
+         FROM bank_loans WHERE user_id = $1 AND status IN ('active', 'defaulted')",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -867,38 +926,40 @@ async fn bank_overview(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
-    let loan_outstanding = loan.as_ref().map(|l| l.remaining + l.accrued_interest).unwrap_or(0);
+    let loan_outstanding = loan
+        .as_ref()
+        .map(|l| l.remaining + l.accrued_interest)
+        .unwrap_or(0);
     let total_asset = spark + demand.balance + fixed.unwrap_or((0, 0)).0;
     let max_loan = max_loan_amount(&state.repo.db, auth.id, &bs).await?;
 
     // 站点级运营概览 + 结息健康状态（对齐火花「站点银行概览/结息状态」）
     let site: (i64, i64, i64, i64, i64, i64, i64) = sqlx::query_as(
         "SELECT \
-           (SELECT COALESCE(sum(balance), 0) FROM bank_demand_accounts), \
+           (SELECT COALESCE(sum(balance), 0)::bigint FROM bank_demand_accounts), \
            (SELECT count(*) FROM bank_demand_accounts WHERE balance > 0), \
-           (SELECT COALESCE(sum(amount), 0) FROM bank_deposits WHERE status = 0), \
+           (SELECT COALESCE(sum(amount), 0)::bigint FROM bank_deposits WHERE status = 0), \
            (SELECT count(*) FROM bank_deposits WHERE status = 0), \
-           (SELECT COALESCE(sum(remaining + accrued_interest), 0) FROM bank_loans WHERE status = 'active'), \
+           (SELECT COALESCE(sum(remaining + accrued_interest), 0)::bigint FROM bank_loans WHERE status = 'active'), \
            (SELECT count(*) FROM bank_loans WHERE status = 'active'), \
            (SELECT count(*) FROM bank_interest_records WHERE calc_date = CURRENT_DATE)",
     )
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let last_run: Option<chrono::NaiveDateTime> = sqlx::query_scalar(
+    let last_run: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
         "SELECT finished_at FROM bank_settle_runs WHERE run_date = \
          ((CURRENT_TIMESTAMP + interval '8 hours')::date)",
     )
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let settle_mode: String = sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .unwrap_or_else(|| "maturity".into());
+    let settle_mode: String =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'")
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .unwrap_or_else(|| "maturity".into());
 
     Ok(ok(serde_json::json!({
         "spark_balance": spark,
@@ -956,7 +1017,10 @@ async fn checkin(
     }
 
     let last: Option<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
-        "SELECT date, streak, (count(*) OVER ())::bigint FROM attendance WHERE user_id = $1 ORDER BY date DESC LIMIT 1",
+        // 跳过 makeup=true 的补签行读连签基线：admin 补签行 streak=0，
+        // 若被当作「最后一条」会让下一次签到的 streak 错误重置为 1
+        "SELECT date, streak, (count(*) OVER ())::bigint FROM attendance \
+         WHERE user_id = $1 AND NOT makeup ORDER BY date DESC LIMIT 1",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -1014,9 +1078,19 @@ async fn checkin_status(
     let today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive(); // 站点时区 UTC+8
     let checked_today = rows.iter().any(|(d, _, _)| *d == today);
     let current_streak = rows.last().map(|(_, s, _)| *s).unwrap_or(0);
+    // 补签卡持有数（未消耗订单；kind 兼容 makeup_card/resub_card，0066）
+    let makeup_cards: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM shop_orders o JOIN shop_items i ON i.id = o.item_id \
+         WHERE o.user_id = $1 AND i.kind IN ('makeup_card','resub_card') \
+           AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.idempotency_key = concat('resub:', o.id))",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "checked_today": checked_today, "streak": current_streak,
-        "recent": rows,
+        "recent": rows, "makeup_cards": makeup_cards,
     })))
 }
 

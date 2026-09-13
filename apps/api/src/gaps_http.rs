@@ -398,6 +398,20 @@ async fn hr_self_pardon(
 ) -> DomainResult<HttpResponse> {
     const SELF_PARDON_PRICE: i64 = 20_000;
     let auth = require_auth(&req, &state).await?;
+    // 先扣火花，成功后才赦免 —— 原顺序（先 UPDATE 后扣费）在余额不足时会把违规白白
+    // 赦免（扣费失败仅回 4001，状态已不可逆），且两步非事务，中途失败同样撕裂。
+    // spend_spark 自带行锁 + 幂等键，先扣可保证「未付费必不赦免」。
+    let idem = format!("hr-self-pardon:{}:{}", auth.id, body.torrent_id);
+    crate::economy_http::spend_spark(
+        &state.repo.db,
+        auth.id,
+        SELF_PARDON_PRICE,
+        "hr_pardon",
+        &idem,
+        "hr",
+        body.torrent_id,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE hr_snapshots SET status = 'pardoned', pardoned_by = $1, updated_at = now() \
          WHERE user_id = $1 AND torrent_id = $2 AND status = 'violated' \
@@ -409,19 +423,17 @@ async fn hr_self_pardon(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if n.is_none() {
+        // 并发窗口内另一请求已赦免（或本就不存在）：退回本次扣费，避免花 20000 买空气
+        crate::economy_http::earn_spark(
+            &state.repo.db,
+            auth.id,
+            SELF_PARDON_PRICE,
+            "hr_pardon_refund",
+            &format!("{idem}:refund:{}", uuid::Uuid::new_v4()),
+        )
+        .await?;
         return Err(DomainError::Validation("无待免罪的 H&R 违规".into()));
     }
-    let idem = format!("hr-self-pardon:{}:{}:{}", auth.id, body.torrent_id, uuid::Uuid::new_v4());
-    crate::economy_http::spend_spark(
-        &state.repo.db,
-        auth.id,
-        SELF_PARDON_PRICE,
-        "hr_pardon",
-        &idem,
-        "hr",
-        body.torrent_id,
-    )
-    .await?;
     sqlx::query(
         "UPDATE hr_violations SET resolved_at = now(), resolved_by = $1 \
          WHERE user_id = $1 AND torrent_id = $2 AND resolved_at IS NULL",
@@ -435,7 +447,9 @@ async fn hr_self_pardon(
         .repo
         .audit(Some(auth.id), "hr.self_pardon", Some(body.torrent_id))
         .await;
-    Ok(ok(serde_json::json!({ "pardoned": body.torrent_id, "cost": SELF_PARDON_PRICE })))
+    Ok(ok(
+        serde_json::json!({ "pardoned": body.torrent_id, "cost": SELF_PARDON_PRICE }),
+    ))
 }
 
 // ============ 申诉 ============
@@ -613,14 +627,16 @@ async fn resub_use(
     let date = chrono::NaiveDate::parse_from_str(&body.target_date, "%Y-%m-%d")
         .map_err(|_| DomainError::Validation("日期格式 YYYY-MM-DD".into()))?;
     // 只能补过去 7 天内
-    let days_ago = (chrono::Local::now().date_naive() - date).num_days();
+    let days_ago =
+        ((chrono::Utc::now() + chrono::Duration::hours(8)).date_naive() - date).num_days();
     if !(1..=7).contains(&days_ago) {
         return Err(DomainError::Validation("只能补过去 7 天内".into()));
     }
-    // 是否持有补签卡（未使用的订单）
+    // 是否持有补签卡（未使用的订单）。
+    // kind 兼容：商店种子为 makeup_card，本流程历史引用 resub_card——两种都认（0066 修复）。
     let owned: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM shop_orders o JOIN shop_items i ON i.id = o.item_id \
-         WHERE o.user_id = $1 AND i.kind = 'resub_card' \
+         WHERE o.user_id = $1 AND i.kind IN ('makeup_card','resub_card') \
            AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.idempotency_key = concat('resub:', o.id))",
     )
     .bind(auth.id)
@@ -628,7 +644,9 @@ async fn resub_use(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if owned < 1 {
-        return Err(DomainError::Validation("没有可用补签卡（商店购买）".into()));
+        return Err(DomainError::Validation(
+            "没有可用补签卡：商店购买或管理发放后可在此使用".into(),
+        ));
     }
     // 已签过则拒绝
     let signed: bool = sqlx::query_scalar(
@@ -651,9 +669,9 @@ async fn resub_use(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let order_id: i64 = sqlx::query_scalar(
         "SELECT o.id FROM shop_orders o JOIN shop_items i ON i.id = o.item_id \
-         WHERE o.user_id = $1 AND i.kind = 'resub_card' \
+         WHERE o.user_id = $1 AND i.kind IN ('makeup_card','resub_card') \
            AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.idempotency_key = concat('resub:', o.id)) \
-         ORDER BY o.id LIMIT 1",
+         ORDER BY o.id LIMIT 1 FOR UPDATE SKIP LOCKED",
     )
     .bind(auth.id)
     .fetch_one(&mut *tx)
@@ -668,16 +686,32 @@ async fn resub_use(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("INSERT INTO attendance (user_id, date, makeup) VALUES ($1, $2, TRUE) ON CONFLICT DO NOTHING")
-        .bind(auth.id)
-        .bind(date)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 补签出勤行：streak 不续（补的是漏签日）、reward=0（火花在正常签到发放）
+    sqlx::query(
+        "INSERT INTO attendance (user_id, date, streak, reward, makeup) \
+         VALUES ($1, $2, 0, 0, TRUE) ON CONFLICT (user_id, date) DO NOTHING",
+    )
+    .bind(auth.id)
+    .bind(date)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "resubbed": body.target_date })))
+    // 返回剩余持有数（前端按钮展示用）
+    let left: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM shop_orders o JOIN shop_items i ON i.id = o.item_id \
+         WHERE o.user_id = $1 AND i.kind IN ('makeup_card','resub_card') \
+           AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.idempotency_key = concat('resub:', o.id))",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    Ok(ok(
+        serde_json::json!({ "resubbed": body.target_date, "cards_left": left }),
+    ))
 }
 
 // ============ 等级规则与进度 ============

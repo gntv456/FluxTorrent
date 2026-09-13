@@ -19,13 +19,14 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(review_decide)
         .service(report_queue)
         .service(report_resolve)
+        .service(report_claim)
+        .service(report_release)
         .service(user_admin_list)
         .service(user_admin_detail)
         .service(user_admin_snatches)
         .service(user_grant_medal)
         .service(user_grant_item)
         .service(user_assign_jixiao)
-        .service(role_create)
         .service(user_admin_delete)
         .service(user_adjust)
         .service(user_flags)
@@ -168,13 +169,12 @@ async fn review_decide(
         if body.approve {
             return Err(DomainError::Validation("通过时不需要拒绝原因".into()));
         }
-        let exists: Option<i64> = sqlx::query_scalar(
-            "SELECT id FROM torrent_deny_reasons WHERE id = $1 AND enabled",
-        )
-        .bind(dr)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        let exists: Option<i64> =
+            sqlx::query_scalar("SELECT id FROM torrent_deny_reasons WHERE id = $1 AND enabled")
+                .bind(dr)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         if exists.is_none() {
             return Err(DomainError::Validation("拒绝原因不存在或已停用".into()));
         }
@@ -193,8 +193,16 @@ async fn review_decide(
     )
     .bind(body.torrent_id)
     .bind(if body.approve { 1 } else { 2 })
-    .bind(if body.approve { None } else { body.deny_reason_id })
-    .bind(if body.approve { None } else { Some(body.reason.trim().to_string()) })
+    .bind(if body.approve {
+        None
+    } else {
+        body.deny_reason_id
+    })
+    .bind(if body.approve {
+        None
+    } else {
+        Some(body.reason.trim().to_string())
+    })
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
@@ -211,11 +219,13 @@ async fn review_decide(
     .bind(body.torrent_id)
     .bind(auth.id)
     .bind(action)
-    .bind(serde_json::json!({
-        "reason": body.reason,
-        "deny_reason_id": body.deny_reason_id,
-    })
-    .to_string())
+    .bind(
+        serde_json::json!({
+            "reason": body.reason,
+            "deny_reason_id": body.deny_reason_id,
+        })
+        .to_string(),
+    )
     .execute(&state.repo.db)
     .await;
     state
@@ -262,12 +272,15 @@ async fn report_queue(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let status_filter = q.status.as_deref().unwrap_or("pending");
-    if !["pending", "handled", "all"].contains(&status_filter) {
-        return Err(DomainError::Validation("status 需为 pending/handled/all".into()));
+    if !["pending", "handling", "handled", "all"].contains(&status_filter) {
+        return Err(DomainError::Validation(
+            "status 需为 pending/handling/handled/all".into(),
+        ));
     }
     let rows: Vec<ReportQueueRow> = sqlx::query_as(
         "SELECT r.id, r.reporter_id, u.username AS reporter_name, r.ref_type, r.ref_id, r.reason, \
             r.status AS status, hu.username AS handled_name, r.handled_at, r.created_at, \
+            cu.username AS claimed_name, \
             CASE r.ref_type \
               WHEN 'torrent' THEN (SELECT t.name FROM torrents t WHERE t.id = r.ref_id) \
               WHEN 'user' THEN (SELECT ru.username FROM users ru WHERE ru.id = r.ref_id) \
@@ -278,8 +291,10 @@ async fn report_queue(
          FROM reports r \
          LEFT JOIN users u ON u.id = r.reporter_id \
          LEFT JOIN users hu ON hu.id = r.handled_by \
+         LEFT JOIN users cu ON cu.id = r.claimed_by \
          WHERE ($1 = 'all' AND TRUE) \
             OR ($1 = 'pending' AND r.status = 0) \
+            OR ($1 = 'handling' AND r.status = 2) \
             OR ($1 = 'handled' AND r.status = 1) \
          ORDER BY r.id DESC LIMIT 200",
     )
@@ -319,7 +334,7 @@ async fn report_resolve(
     }
     // 取举报人与对象（供 PM）
     let info: Option<(i64, String, i64)> = sqlx::query_as(
-        "SELECT reporter_id, ref_type, ref_id FROM reports WHERE id = $1 AND status = 0",
+        "SELECT reporter_id, ref_type, ref_id FROM reports WHERE id = $1 AND status IN (0, 2)",
     )
     .bind(body.report_id)
     .fetch_optional(&state.repo.db)
@@ -330,7 +345,7 @@ async fn report_resolve(
     };
     sqlx::query(
         "UPDATE reports SET status = 1, handled_by = $1, handled_at = now() \
-         WHERE id = $2 AND status = 0",
+         WHERE id = $2 AND status IN (0, 2)",
     )
     .bind(auth.id)
     .bind(body.report_id)
@@ -338,11 +353,19 @@ async fn report_resolve(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // PM 通知举报人
-    let subject = if action == "act" { "您的举报已处置" } else { "您的举报已审阅（未处置）" };
+    let subject = if action == "act" {
+        "您的举报已处置"
+    } else {
+        "您的举报已审阅（未处置）"
+    };
     let mut pm = format!(
         "您举报的对象（{} #{ref_id}）已被管理组审阅。\n\n结果：{}",
         ref_type,
-        if action == "act" { "已按规则处置" } else { "经核实未违反规则，予以驳回" }
+        if action == "act" {
+            "已按规则处置"
+        } else {
+            "经核实未违反规则，予以驳回"
+        }
     );
     if !body.note.trim().is_empty() {
         pm.push_str("\n\n管理备注：");
@@ -361,7 +384,68 @@ async fn report_resolve(
         .repo
         .audit(Some(auth.id), "report.resolve", Some(body.report_id))
         .await;
-    Ok(ok(serde_json::json!({ "resolved": body.report_id, "action": action })))
+    Ok(ok(
+        serde_json::json!({ "resolved": body.report_id, "action": action }),
+    ))
+}
+
+/// 认领举报（0 pending → 2 handling）：原子 CAS 防多人重复认领
+#[derive(Deserialize)]
+struct ReportClaimReq {
+    report_id: i64,
+}
+
+#[post("/admin/reports/claim")]
+async fn report_claim(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<ReportClaimReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let n = sqlx::query(
+        "UPDATE reports SET status = 2, claimed_by = $1, claimed_at = now() \
+         WHERE id = $2 AND status = 0",
+    )
+    .bind(auth.id)
+    .bind(body.report_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation(
+            "举报不存在、已被认领或已处理".into(),
+        ));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "report.claim", Some(body.report_id))
+        .await;
+    Ok(ok(serde_json::json!({ "claimed": body.report_id })))
+}
+
+/// 释放认领（2 handling → 0 pending）：认领人本人可退回队列
+#[post("/admin/reports/release")]
+async fn report_release(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<ReportClaimReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    let n = sqlx::query(
+        "UPDATE reports SET status = 0, claimed_by = NULL, claimed_at = NULL \
+         WHERE id = $1 AND status = 2 AND claimed_by = $2",
+    )
+    .bind(body.report_id)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation("举报不在你名下或已结案".into()));
+    }
+    Ok(ok(serde_json::json!({ "released": body.report_id })))
 }
 
 // ============ 用户管理（第五轮：好学站 /nexusphp user/users 口径） ============
@@ -416,10 +500,10 @@ fn default_sort() -> String {
 fn default_desc() -> bool {
     true
 }
-fn default_page() -> i64 {
+pub fn default_page() -> i64 {
     1
 }
-fn default_per_page() -> i64 {
+pub fn default_per_page() -> i64 {
     20
 }
 
@@ -508,9 +592,7 @@ async fn user_admin_list(
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let count_sql = format!(
-        "SELECT count(*) FROM users u WHERE {where_sql}"
-    );
+    let count_sql = format!("SELECT count(*) FROM users u WHERE {where_sql}");
     let total: i64 = sqlx::query_scalar(&count_sql)
         .bind(pattern)
         .bind(q.id)
@@ -651,7 +733,9 @@ async fn user_grant_medal(
         return Err(DomainError::NotFound(medal_id));
     }
     sqlx::query(
-        "INSERT INTO user_medals (user_id, medal_id, source) VALUES ($1, $2, 'admin') \
+        "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
+         SELECT $1, $2, 'admin', now() + make_interval(days => m.duration_days) \
+         FROM medals m WHERE m.id = $2 \
          ON CONFLICT (user_id, medal_id) DO NOTHING",
     )
     .bind(uid)
@@ -663,7 +747,9 @@ async fn user_grant_medal(
         .repo
         .audit(Some(auth.id), "user.grant_medal", Some(uid))
         .await;
-    Ok(ok(serde_json::json!({ "user_id": uid, "medal_id": medal_id })))
+    Ok(ok(
+        serde_json::json!({ "user_id": uid, "medal_id": medal_id }),
+    ))
 }
 
 /// 详情页授予道具/卡牌（好学站「授予道具」口径）：把商店道具（含化妆卡/改名卡等卡牌类）免费发放给目标用户。
@@ -677,13 +763,12 @@ async fn user_grant_item(
     let auth = staff(&req, &state).await?;
     let (uid, item_id) = path.into_inner();
     ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
-    let item: Option<(String, String, serde_json::Value)> = sqlx::query_as(
-        "SELECT name, kind, config FROM shop_items WHERE id = $1 AND active = true",
-    )
-    .bind(item_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let item: Option<(String, String, serde_json::Value)> =
+        sqlx::query_as("SELECT name, kind, config FROM shop_items WHERE id = $1 AND active = true")
+            .bind(item_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((name, kind, config)) = item else {
         return Err(DomainError::NotFound(item_id));
     };
@@ -700,10 +785,19 @@ async fn user_grant_item(
         "gift_spark" => {
             let amount = config.get("amount").and_then(|v| v.as_i64()).unwrap_or(0);
             if amount > 0 {
-                let idem = format!("admin_grant_item:{}:{}", uid, chrono::Utc::now().timestamp());
+                let idem = format!(
+                    "admin_grant_item:{}:{}",
+                    uid,
+                    chrono::Utc::now().timestamp()
+                );
                 crate::economy_http::earn_spark(
-                    &state.repo.db, uid, amount, "admin_grant_item", &idem,
-                ).await?;
+                    &state.repo.db,
+                    uid,
+                    amount,
+                    "admin_grant_item",
+                    &idem,
+                )
+                .await?;
             }
         }
         "invite" | "temp_invite" => {
@@ -714,7 +808,12 @@ async fn user_grant_item(
                 .map_err(|e| DomainError::Internal(e.into()))?;
         }
         _ => {
-            let idem = format!("admin_grant_item:{}:{}:{}", uid, item_id, chrono::Utc::now().timestamp());
+            let idem = format!(
+                "admin_grant_item:{}:{}:{}",
+                uid,
+                item_id,
+                chrono::Utc::now().timestamp()
+            );
             sqlx::query(
                 "INSERT INTO shop_orders (user_id, item_id, price, idempotency_key, config_snapshot) \
                  VALUES ($1, $2, 0, $3, $4)",
@@ -732,7 +831,9 @@ async fn user_grant_item(
         .repo
         .audit(Some(auth.id), "user.grant_item", Some(uid))
         .await;
-    Ok(ok(serde_json::json!({ "user_id": uid, "item_id": item_id, "name": name, "kind": kind })))
+    Ok(ok(
+        serde_json::json!({ "user_id": uid, "item_id": item_id, "name": name, "kind": kind }),
+    ))
 }
 
 /// 详情页分配考核（好学站「分配考核」口径）：把用户登记为某考核岗位（jixiao_claims，当期）
@@ -755,16 +856,19 @@ async fn user_assign_jixiao(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     let uid = path.into_inner();
-    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM jixiao_types WHERE id = $1)")
-        .bind(body.type_id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM jixiao_types WHERE id = $1)")
+            .bind(body.type_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
     if !exists {
         return Err(DomainError::NotFound(body.type_id));
     }
     let period = body.period.clone().unwrap_or_else(|| {
-        (chrono::Utc::now() + chrono::Duration::hours(8)).format("%Y-%m").to_string()
+        (chrono::Utc::now() + chrono::Duration::hours(8))
+            .format("%Y-%m")
+            .to_string()
     });
     let dup: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND period = $3)",
@@ -779,7 +883,11 @@ async fn user_assign_jixiao(
         return Err(DomainError::Validation("该用户本期已登记此考核岗位".into()));
     }
     sqlx::query(
-        "INSERT INTO jixiao_claims (user_id, type_id, period, amount) VALUES ($1, $2, $3, $4)",
+        // metrics_snapshot 记 source='admin'：管理端登记与用户侧领取混在同一张表，
+        // 用户侧 /jixiao/my 与达标月数加成（ops_http qualified_months）据此跳过 admin 行——
+        // 「登记岗位」≠「领取工资」，admin 行不应推进 +10% 加成分子
+        "INSERT INTO jixiao_claims (user_id, type_id, period, amount, metrics_snapshot) \
+         VALUES ($1, $2, $3, $4, '{\"source\":\"admin\"}'::jsonb)",
     )
     .bind(uid)
     .bind(body.type_id)
@@ -792,53 +900,9 @@ async fn user_assign_jixiao(
         .repo
         .audit(Some(auth.id), "user.assign_jixiao", Some(uid))
         .await;
-    Ok(ok(serde_json::json!({ "user_id": uid, "type_id": body.type_id, "period": period })))
-}
-
-/// 职务新增（好学站角色管理口径）：sysop 建新职务供分配
-#[derive(Deserialize)]
-struct RoleCreateReq {
-    key: String,
-    name: String,
-    #[serde(default)]
-    descr: Option<String>,
-    #[serde(default)]
-    sort: Option<i32>,
-}
-
-#[post("/admin/roles")]
-async fn role_create(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<RoleCreateReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
-    let key = body.key.trim().to_lowercase();
-    if key.is_empty() || !key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
-        return Err(DomainError::Validation("职务 key 仅限小写字母/数字/下划线".into()));
-    }
-    let dup: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM roles WHERE key = $1)")
-        .bind(&key)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
-    if dup {
-        return Err(DomainError::Validation("职务 key 已存在".into()));
-    }
-    sqlx::query("INSERT INTO roles (key, name, descr, sort) VALUES ($1, $2, $3, $4)")
-        .bind(&key)
-        .bind(body.name.trim())
-        .bind(&body.descr)
-        .bind(body.sort.unwrap_or(0))
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    state
-        .repo
-        .audit(Some(auth.id), "role.create", None)
-        .await;
-    Ok(ok(serde_json::json!({ "key": key, "name": body.name })))
+    Ok(ok(
+        serde_json::json!({ "user_id": uid, "type_id": body.type_id, "period": period }),
+    ))
 }
 
 /// 详情页删除用户（好学站用户详情「删除」口径）：仅 sysop，且要求先封禁（防误删活跃账号）
@@ -868,7 +932,9 @@ async fn user_admin_delete(
         }
         _ => {}
     }
-    // 业务数据清理顺序：先无 FK 约束的流水/记录，再反向删到用户
+    // 业务数据清理顺序：先无 FK 约束的流水/记录，再反向删到用户。
+    // 覆盖全部以 user_id 引用 users 且无 ON DELETE CASCADE 的业务表；
+    // 遗漏任何一张都会让最终 DELETE users 因 NO ACTION 外键失败（整个操作无事务，前序清理已生效）。
     for sql in [
         "DELETE FROM spark_ledger WHERE user_id = $1",
         "DELETE FROM attendance WHERE user_id = $1",
@@ -883,7 +949,17 @@ async fn user_admin_delete(
         "DELETE FROM user_roles WHERE user_id = $1",
         "DELETE FROM user_permissions WHERE user_id = $1",
         "DELETE FROM bookmarks WHERE user_id = $1",
+        // 做种/感谢/H&R 快照：账号删除后无保留意义，一并清理
+        "DELETE FROM snatches WHERE user_id = $1",
+        "DELETE FROM thanks WHERE user_id = $1",
+        "DELETE FROM hr_snapshots WHERE user_id = $1",
+        "DELETE FROM hr_violations WHERE user_id = $1",
+        // 发布者归属置空（种子保留），其余持有者侧记录清理
         "UPDATE torrents SET owner_id = NULL WHERE owner_id = $1",
+        "DELETE FROM invites WHERE inviter_id = $1",
+        "UPDATE topics SET user_id = NULL WHERE user_id = $1",
+        "DELETE FROM shop_orders WHERE user_id = $1",
+        "DELETE FROM login_events WHERE user_id = $1",
         "DELETE FROM users WHERE id = $1 AND status >= 2",
     ] {
         sqlx::query(sql)
@@ -934,13 +1010,12 @@ async fn user_adjust(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_ADJUST).await?;
     // 数值调整同属伤害性操作，须严格高于目标等级
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
-    let row: Option<(i64, i64, i64)> = sqlx::query_as(
-        "SELECT uploaded, downloaded, spark_balance FROM users WHERE id = $1",
-    )
-    .bind(body.user_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(i64, i64, i64)> =
+        sqlx::query_as("SELECT uploaded, downloaded, spark_balance FROM users WHERE id = $1")
+            .bind(body.user_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let (up0, down0, spark0) = row.ok_or(DomainError::NotFound(body.user_id))?;
     let up = ((up0 as i128 + body.uploaded_delta.unwrap_or(0) as i128).max(0)) as i64;
     let down = ((down0 as i128 + body.downloaded_delta.unwrap_or(0) as i128).max(0)) as i64;
@@ -1010,6 +1085,19 @@ async fn user_adjust(
         .repo
         .audit(Some(auth.id), "user.adjust", Some(body.user_id))
         .await;
+    crate::admin_p3_http::modify_log(
+        &state.repo.db,
+        body.user_id,
+        Some(auth.id),
+        &format!(
+            "数值调整 up{:+}/down{:+}/spark{:+}/invite{:+}",
+            body.uploaded_delta.unwrap_or(0),
+            body.downloaded_delta.unwrap_or(0),
+            body.spark_delta.unwrap_or(0),
+            body.invite_grant.unwrap_or(0)
+        ),
+    )
+    .await;
     Ok(ok(serde_json::json!({
         "user_id": body.user_id,
         "uploaded": up, "downloaded": down, "spark": spark,
@@ -1062,6 +1150,16 @@ async fn user_flags(
         .repo
         .audit(Some(auth.id), "user.flags", Some(body.user_id))
         .await;
+    crate::admin_p3_http::modify_log(
+        &state.repo.db,
+        body.user_id,
+        Some(auth.id),
+        &format!(
+            "开关变更 download_enabled={:?} suspended={:?}",
+            body.download_enabled, body.suspended
+        ),
+    )
+    .await;
     // 挂起/禁下载变更需立即作用于 tracker（否则 passkey 缓存 60s 内仍有效）
     crate::http::bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({
@@ -1085,6 +1183,9 @@ struct SetStatusReq {
     user_id: i64,
     /// 0 正常 1 禁言 2 封禁
     status: i16,
+    /// 操作理由（前端必填项；此前被 serde 静默丢弃）
+    #[serde(default)]
+    reason: String,
 }
 
 #[post("/admin/users/status")]
@@ -1114,6 +1215,22 @@ async fn user_set_status(
         .repo
         .audit(Some(auth.id), "user.set_status", Some(body.user_id))
         .await;
+    let label = match body.status {
+        1 => "禁言",
+        2 => "封禁",
+        _ => "恢复正常",
+    };
+    crate::admin_p3_http::modify_log(
+        &state.repo.db,
+        body.user_id,
+        Some(auth.id),
+        &if body.reason.trim().is_empty() {
+            format!("状态 → {}", body.status)
+        } else {
+            format!("{label}：{}", body.reason.trim())
+        },
+    )
+    .await;
     Ok(ok(
         serde_json::json!({ "user_id": body.user_id, "status": body.status }),
     ))
@@ -1154,6 +1271,13 @@ async fn user_set_class(
         .repo
         .audit(Some(auth.id), "user.set_class", Some(body.user_id))
         .await;
+    crate::admin_p3_http::modify_log(
+        &state.repo.db,
+        body.user_id,
+        Some(auth.id),
+        &format!("等级 → {}", body.class_id),
+    )
+    .await;
     Ok(ok(
         serde_json::json!({ "user_id": body.user_id, "class_id": body.class_id }),
     ))
@@ -1175,10 +1299,11 @@ async fn role_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let rows: Vec<RoleRow> = sqlx::query_as("SELECT key, name, descr FROM roles ORDER BY sort, key")
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows: Vec<RoleRow> =
+        sqlx::query_as("SELECT key, name, descr FROM roles ORDER BY sort, key")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
 
@@ -1206,19 +1331,23 @@ async fn user_role_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let rows: Vec<UserRoleRow> = match q.user_id {
-        Some(uid) => sqlx::query_as(
-            "SELECT user_id, role_key, granted_by, granted_at, expires_at \
+        Some(uid) => {
+            sqlx::query_as(
+                "SELECT user_id, role_key, granted_by, granted_at, expires_at \
              FROM user_roles WHERE user_id = $1 ORDER BY granted_at",
-        )
-        .bind(uid)
-        .fetch_all(&state.repo.db)
-        .await,
-        None => sqlx::query_as(
-            "SELECT user_id, role_key, granted_by, granted_at, expires_at \
+            )
+            .bind(uid)
+            .fetch_all(&state.repo.db)
+            .await
+        }
+        None => {
+            sqlx::query_as(
+                "SELECT user_id, role_key, granted_by, granted_at, expires_at \
              FROM user_roles ORDER BY granted_at DESC LIMIT 200",
-        )
-        .fetch_all(&state.repo.db)
-        .await,
+            )
+            .fetch_all(&state.repo.db)
+            .await
+        }
     }
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
@@ -1242,12 +1371,11 @@ async fn user_role_grant(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
-    let exists: Option<String> =
-        sqlx::query_scalar("SELECT key FROM roles WHERE key = $1")
-            .bind(&body.role_key)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: Option<String> = sqlx::query_scalar("SELECT key FROM roles WHERE key = $1")
+        .bind(&body.role_key)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     if exists.is_none() {
         return Err(DomainError::Validation("职务不存在".into()));
     }
@@ -1259,14 +1387,22 @@ async fn user_role_grant(
         ),
         _ => None,
     };
-    crate::authz::grant_role(&state.repo.db, body.user_id, &body.role_key, auth.id, expires)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    crate::authz::grant_role(
+        &state.repo.db,
+        body.user_id,
+        &body.role_key,
+        auth.id,
+        expires,
+    )
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "user.role_grant", Some(body.user_id))
         .await;
-    Ok(ok(serde_json::json!({ "user_id": body.user_id, "role_key": body.role_key })))
+    Ok(ok(
+        serde_json::json!({ "user_id": body.user_id, "role_key": body.role_key }),
+    ))
 }
 
 /// 撤销职务
@@ -1285,7 +1421,10 @@ async fn user_role_revoke(
     if n == 0 {
         return Err(DomainError::NotFound(uid));
     }
-    state.repo.audit(Some(auth.id), "user.role_revoke", Some(uid)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "user.role_revoke", Some(uid))
+        .await;
     Ok(ok(serde_json::json!({ "deleted": n })))
 }
 
@@ -1322,14 +1461,13 @@ async fn permission_matrix(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let permissions: Vec<PermRow> =
-        sqlx::query_as(
-            "SELECT key, name, category, descr, implemented FROM permissions \
+    let permissions: Vec<PermRow> = sqlx::query_as(
+        "SELECT key, name, category, descr, implemented FROM permissions \
              ORDER BY category, sort, key",
-        )
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 可配角色 = 已有配置的等级档 + 全部职务
     let roles: Vec<PermRoleRow> = sqlx::query_as(
         "SELECT t.role_type, t.role_key, COALESCE(uc.name, r.name, t.role_key) AS name
@@ -1400,7 +1538,10 @@ async fn permission_matrix_update(
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
         if exists.is_none() {
-            return Err(DomainError::Validation(format!("权限不存在：{}", it.permission_key)));
+            return Err(DomainError::Validation(format!(
+                "权限不存在：{}",
+                it.permission_key
+            )));
         }
         let n = if it.granted {
             sqlx::query(
@@ -1490,12 +1631,11 @@ async fn user_permission_set(
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_CLASS).await?;
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
-    let exists: Option<String> =
-        sqlx::query_scalar("SELECT key FROM permissions WHERE key = $1")
-            .bind(&body.permission_key)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: Option<String> = sqlx::query_scalar("SELECT key FROM permissions WHERE key = $1")
+        .bind(&body.permission_key)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     if exists.is_none() {
         return Err(DomainError::Validation("权限不存在".into()));
     }
@@ -1744,7 +1884,10 @@ async fn agent_rules_add(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "agentrule.add", Some(id)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "agentrule.add", Some(id))
+        .await;
     crate::http::bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
@@ -1770,7 +1913,10 @@ async fn agent_rules_del(
     if n == 0 {
         return Err(DomainError::NotFound(body.id));
     }
-    state.repo.audit(Some(auth.id), "agentrule.del", Some(body.id)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "agentrule.del", Some(body.id))
+        .await;
     crate::http::bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "deleted": body.id })))
 }
@@ -1829,7 +1975,10 @@ async fn deny_reasons_add(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "deny_reason.add", Some(id)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "deny_reason.add", Some(id))
+        .await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -1915,6 +2064,16 @@ struct AdminTorrentRow {
     deny_reason: Option<String>,
     deny_note: Option<String>,
     sticky: bool,
+    /// 批量工作台：置顶状态与截止（第八轮）
+    pos_state: i16,
+    pos_state_until: Option<chrono::DateTime<chrono::Utc>>,
+    /// 0 普通 1 推荐 2 经典
+    pick_type: i16,
+    /// 活动单种促销类型与截止（promotions scope='torrent'）
+    promotion: Option<String>,
+    promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// H&R 标记（hr_policy.on）
+    hr: bool,
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -1927,6 +2086,33 @@ struct TorrentListQ {
     status: Option<i16>,
     #[serde(default)]
     category_id: Option<i32>,
+    /// 发布者 UID
+    #[serde(default)]
+    owner: Option<i64>,
+    /// 置顶筛选：1=置顶中 0=未置顶
+    #[serde(default)]
+    pos_state: Option<i16>,
+    /// 单种促销：yes=促销中 no=无
+    #[serde(default)]
+    promo: Option<String>,
+    /// 推荐 1 / 经典 2
+    #[serde(default)]
+    pick_type: Option<i16>,
+    /// H&R 标记 yes/no
+    #[serde(default)]
+    hr: Option<String>,
+    #[serde(default)]
+    tag_id: Option<i32>,
+    /// 体积区间（字节）
+    #[serde(default)]
+    size_min: Option<i64>,
+    #[serde(default)]
+    size_max: Option<i64>,
+    /// 发布时间区间（RFC3339）
+    #[serde(default)]
+    created_from: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default)]
+    created_to: Option<chrono::DateTime<chrono::Utc>>,
     #[serde(default = "default_page")]
     page: i64,
     #[serde(default = "default_per_page")]
@@ -1943,49 +2129,101 @@ async fn admin_torrent_list(
     if !(1..=100).contains(&q.per_page) {
         return Err(DomainError::Validation("per_page 取值 1-100".into()));
     }
-    let mut where_parts: Vec<String> = Vec::new();
-    if !q.q.trim().is_empty() {
-        where_parts.push("t.name ILIKE $1".into());
-    }
-    match q.status {
-        Some(1) => where_parts.push("t.approval_status = 0".into()),
-        Some(2) => where_parts.push("t.approval_status = 1".into()),
-        Some(3) => where_parts.push("t.approval_status = 2".into()),
-        Some(4) => where_parts.push("t.approval_status = 1 AND t.seeders = 0".into()),
-        _ => {}
-    }
-    if let Some(c) = q.category_id {
-        if c > 0 {
-            where_parts.push("t.category_id = $2".into());
-        }
-    }
-    let where_sql = if where_parts.is_empty() {
-        "TRUE".to_string()
-    } else {
-        where_parts.join(" AND ")
+    // 全部谓词走「参数为 NULL 即放行」的固定形态，避免字符串拼接注入面
+    let promo_on = match q.promo.as_deref() {
+        Some("yes") => Some(true),
+        Some("no") => Some(false),
+        _ => None,
     };
+    let hr_on = match q.hr.as_deref() {
+        Some("yes") => Some(true),
+        Some("no") => Some(false),
+        _ => None,
+    };
+    let promo_exists = r#"(SELECT count(*) FROM promotions p WHERE p.starts_at <= now() AND p.ends_at > now() AND p.torrent_id = t.id) > 0"#;
+    let where_sql = r#"(CASE WHEN $1 = 1 THEN t.approval_status = 0 WHEN $1 = 2 THEN t.approval_status = 1 WHEN $1 = 3 THEN t.approval_status = 2 WHEN $1 = 4 THEN t.approval_status = 1 AND t.seeders = 0 ELSE TRUE END)
+           AND ($2::int IS NULL OR t.category_id = $2)
+           AND ($3::bigint IS NULL OR t.owner_id = $3)
+           AND ($4::smallint IS NULL OR t.pos_state = $4)
+           AND ($5::bool IS NULL OR ($5 AND {promo_exists}) OR (NOT $5 AND NOT {promo_exists}))
+           AND ($6::smallint IS NULL OR t.pick_type = $6)
+           AND ($7::bool IS NULL OR COALESCE((t.hr_policy->>'on')::bool, FALSE) = $7)
+           AND ($8::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $8))
+           AND ($9::bigint IS NULL OR t.size >= $9)
+           AND ($10::bigint IS NULL OR t.size <= $10)
+           AND ($11::timestamptz IS NULL OR t.created_at >= $11)
+           AND ($12::timestamptz IS NULL OR t.created_at <= $12)
+           AND ($13::text IS NULL OR t.name ILIKE $13)"#;
+    let where_sql = where_sql.replace("{promo_exists}", promo_exists);
     let sql = format!(
         r#"SELECT t.id, t.name, t.owner_id, u.username AS owner_name, t.category_id,
                   t.size, t.seeders, t.leechers, t.approval_status,
-                  dr.reason AS deny_reason, t.deny_note, t.sticky, t.created_at
+                  dr.reason AS deny_reason, t.deny_note, t.sticky,
+                  t.pos_state, t.pos_state_until, t.pick_type,
+                  (SELECT p.kind::text FROM promotions p
+                     WHERE p.starts_at <= now() AND p.ends_at > now() AND p.torrent_id = t.id
+                     ORDER BY p.id DESC LIMIT 1) AS promotion,
+                  (SELECT p.ends_at FROM promotions p
+                     WHERE p.starts_at <= now() AND p.ends_at > now() AND p.torrent_id = t.id
+                     ORDER BY p.id DESC LIMIT 1) AS promotion_ends_at,
+                  COALESCE((t.hr_policy->>'on')::bool, FALSE) AS hr,
+                  t.created_at
            FROM torrents t
            LEFT JOIN users u ON u.id = t.owner_id
            LEFT JOIN torrent_deny_reasons dr ON dr.id = t.deny_reason_id
            WHERE {where_sql}
-           ORDER BY t.id DESC LIMIT $3 OFFSET $4"#
+           ORDER BY t.id DESC LIMIT $14 OFFSET $15"#
     );
     let rows: Vec<AdminTorrentRow> = sqlx::query_as(&sql)
-        .bind(crate::http::like_pattern(&q.q))
-        .bind(q.category_id.filter(|c| *c > 0))
+        .bind(q.status)
+        .bind(q.category_id)
+        .bind(q.owner)
+        .bind(q.pos_state)
+        .bind(promo_on)
+        .bind(q.pick_type)
+        .bind(hr_on)
+        .bind(q.tag_id)
+        .bind(q.size_min)
+        .bind(q.size_max)
+        .bind(q.created_from)
+        .bind(q.created_to)
+        .bind(if q.q.trim().is_empty() {
+            None
+        } else {
+            Some(crate::http::like_pattern(&q.q))
+        })
         .bind(q.per_page)
         .bind((q.page.max(1) - 1) * q.per_page)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    let count_sql = format!("SELECT count(*) FROM torrents t WHERE {where_sql}");
+    let total: i64 = sqlx::query_scalar(&count_sql)
+        .bind(q.status)
+        .bind(q.category_id)
+        .bind(q.owner)
+        .bind(q.pos_state)
+        .bind(promo_on)
+        .bind(q.pick_type)
+        .bind(hr_on)
+        .bind(q.tag_id)
+        .bind(q.size_min)
+        .bind(q.size_max)
+        .bind(q.created_from)
+        .bind(q.created_to)
+        .bind(if q.q.trim().is_empty() {
+            None
+        } else {
+            Some(crate::http::like_pattern(&q.q))
+        })
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "rows": rows,
         "page": q.page.max(1),
         "per_page": q.per_page,
+        "total": total,
     })))
 }
 
@@ -2002,9 +2240,7 @@ struct TorrentOpRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
-
 // ============ 第五轮：种子操作记录（好学站 torrent-operation-logs 口径） ============
-
 
 #[derive(Deserialize)]
 struct TorrentOpQ {
@@ -2039,13 +2275,12 @@ async fn torrent_op_logs(
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        let total: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM torrent_operation_logs WHERE torrent_id = $1",
-        )
-        .bind(tid)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        let total: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM torrent_operation_logs WHERE torrent_id = $1")
+                .bind(tid)
+                .fetch_one(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         (rows, total)
     } else {
         let rows: Vec<TorrentOpRow> = sqlx::query_as(
@@ -2127,7 +2362,9 @@ async fn admin_spark_logs(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
-    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page, "total": total })))
+    Ok(ok(
+        serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page, "total": total }),
+    ))
 }
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -2160,7 +2397,9 @@ async fn admin_torrent_buys(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page })))
+    Ok(ok(
+        serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page }),
+    ))
 }
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -2194,6 +2433,21 @@ async fn admin_login_logs(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // GeoIP（GeoLite2 离线库）：国家/城市随行返回；库缺失或内网 IP 时为 null
+    let rows: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            let (iso, country, city) =
+                r.ip.as_deref()
+                    .map(crate::geo::lookup)
+                    .unwrap_or((None, None, None));
+            serde_json::json!({
+                "id": r.id, "username": r.username, "ip": r.ip, "ok": r.ok,
+                "country": iso, "country_name": country, "city": city,
+                "created_at": r.created_at,
+            })
+        })
+        .collect();
     let total: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM login_events l JOIN users u ON u.id = l.user_id \
          WHERE (u.username ILIKE $1 OR host(l.ip) ILIKE $1) AND ($2::bigint IS NULL OR l.user_id = $2)",
@@ -2203,9 +2457,10 @@ async fn admin_login_logs(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
-    Ok(ok(serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page, "total": total })))
+    Ok(ok(
+        serde_json::json!({ "rows": rows, "page": q.page.max(1), "per_page": q.per_page, "total": total }),
+    ))
 }
-
 
 // ============ 论坛版块管理（forummanage.php 口径，forummanage ≥93） ============
 
@@ -2269,7 +2524,9 @@ fn forum_upsert_check(body: &ForumUpsertReq) -> DomainResult<()> {
     let mw = body.minclasswrite.unwrap_or(0);
     let mc = body.minclasscreate.unwrap_or(0);
     if !(mr <= mw && mw <= mc) {
-        return Err(DomainError::Validation("三档门槛需满足 读 ≤ 回 ≤ 发".into()));
+        return Err(DomainError::Validation(
+            "三档门槛需满足 读 ≤ 回 ≤ 发".into(),
+        ));
     }
     Ok(())
 }
@@ -2296,7 +2553,10 @@ async fn forum_admin_create(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "forum.create", Some(id)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "forum.create", Some(id))
+        .await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -2331,7 +2591,10 @@ async fn forum_admin_update(
     if n == 0 {
         return Err(DomainError::NotFound(fid));
     }
-    state.repo.audit(Some(auth.id), "forum.update", Some(fid)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "forum.update", Some(fid))
+        .await;
     Ok(ok(serde_json::json!({ "updated": fid })))
 }
 
@@ -2353,7 +2616,10 @@ async fn forum_admin_delete(
     if n == 0 {
         return Err(DomainError::NotFound(fid));
     }
-    state.repo.audit(Some(auth.id), "forum.delete", Some(fid)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "forum.delete", Some(fid))
+        .await;
     Ok(ok(serde_json::json!({ "deleted": fid })))
 }
 
@@ -2373,11 +2639,12 @@ async fn forum_mod_add(
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     let fid = path.into_inner();
-    let uid: Option<i64> = sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND status < 2")
-        .bind(&body.username)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let uid: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND status < 2")
+            .bind(&body.username)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(uid) = uid else {
         return Err(DomainError::NotFound(0));
     };
@@ -2388,7 +2655,10 @@ async fn forum_mod_add(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "forum.mod_add", Some(uid)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "forum.mod_add", Some(uid))
+        .await;
     Ok(ok(serde_json::json!({ "forum_id": fid, "user_id": uid })))
 }
 
@@ -2407,6 +2677,9 @@ async fn forum_mod_remove(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "forum.mod_remove", Some(uid)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "forum.mod_remove", Some(uid))
+        .await;
     Ok(ok(serde_json::json!({ "removed": uid })))
 }

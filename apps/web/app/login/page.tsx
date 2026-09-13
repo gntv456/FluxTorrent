@@ -72,10 +72,20 @@ function LoginForm() {
   const [showTotp, setShowTotp] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
 
-  // middleware 已挡未登录；这里兜底：残留会话 cookie 直接跳回目标页
+  // middleware 已挡未登录；这里兜底：残留会话 cookie 直接跳回目标页。
+  // 半登录态防护：仅 localStorage 有 token 而 flux.session cookie 已过期（12h vs JWT 24h）
+  // 时不再跳转——否则会与 middleware 的 302 形成回显循环（登录页↔目标页反复横跳）
   useEffect(() => {
-    if (typeof window !== "undefined" && localStorage.getItem("flux.token")) {
+    if (typeof window === "undefined") return;
+    if (!localStorage.getItem("flux.token")) return;
+    const sessionAlive = document.cookie
+      .split("; ")
+      .some((c) => c.startsWith("flux.session=") && c.length > "flux.session=".length);
+    if (sessionAlive) {
       router.replace(next);
+    } else {
+      // cookie 已失效而 token 残留：清理本地令牌，让用户重新登录
+      localStorage.removeItem("flux.token");
     }
   }, [router, next]);
 

@@ -22,10 +22,18 @@ pub mod perm {
     pub const TORRENT_APPROVAL_AUTO: &str = "torrent.approval.auto";
     pub const TORRENT_SET_PRICE: &str = "torrent.set_price";
     pub const TORRENT_VIEW_ANONYMOUS: &str = "torrent.view_anonymous";
+    /// 尚无代码生效点（0062 迁移已标 implemented=false）：
+    /// 「特殊分类」概念未定义，接线时删除本 allow
+    #[allow(dead_code)]
     pub const TORRENT_UPLOAD_SPECIAL: &str = "torrent.upload_special";
     pub const TORRENT_SEE_BANNED: &str = "torrent.see_banned";
+    /// 转载（repost）功能整体未实现（0062 迁移已标 implemented=false），接线时删除本 allow
+    #[allow(dead_code)]
     pub const TORRENT_REPOST: &str = "torrent.repost";
     // 保种
+    /// 由 worker 的 hr_enforce 批量 SQL 经 user_can() 函数消费（0056/0057），
+    /// API 侧无常量引用点，保留以避免两边权限键拼写漂移
+    #[allow(dead_code)]
     pub const HR_EXEMPT: &str = "hr.exempt";
     pub const SEED_STATS_VIEW: &str = "seed.stats.view";
     // 外联
@@ -82,6 +90,17 @@ pub mod perm {
     pub const PLUGINS_MANAGE: &str = "plugins.manage";
     pub const AGENTS_VIEW: &str = "agents.view";
     pub const NOTCONNECTABLE_VIEW: &str = "notconnectable.view";
+    // 第八轮 P3 管理套件（好学站后台逐页深挖落地）
+    pub const TORRENT_MANAGE: &str = "torrent.manage";
+    pub const HR_VIEW: &str = "hr.view";
+    pub const INVITE_VIEW: &str = "invite.view";
+    pub const ATTENDANCE_MANAGE: &str = "attendance.manage";
+    pub const MEDAL_MANAGE: &str = "medal.manage";
+    pub const PROP_MANAGE: &str = "prop.manage";
+    pub const EXAM_MANAGE: &str = "exam.manage";
+    pub const TASK_MANAGE: &str = "task.manage";
+    pub const TRACKER_MANAGE: &str = "tracker.manage";
+    pub const ROLES_MANAGE: &str = "roles.manage";
 }
 
 /// 判定用户是否拥有某权限。

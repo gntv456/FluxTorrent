@@ -10,6 +10,17 @@ import { AdminUsers } from "@/components/admin-users";
 import { AdminTorrents } from "@/components/admin-torrents";
 import { AdminP2Tools } from "@/components/admin-p2-tools";
 import { AdminShell, type PanelEntry } from "@/components/admin-shell";
+import { AdminHr } from "@/components/admin-hr";
+import { AdminInvites } from "@/components/admin-invites";
+import { AdminUserLogs } from "@/components/admin-userlogs";
+import { AdminAttendance } from "@/components/admin-attendance";
+import { AdminTagDict } from "@/components/admin-tagdict";
+import { AdminSections } from "@/components/admin-sections";
+import { AdminMedals } from "@/components/admin-medals";
+import { AdminProps } from "@/components/admin-props";
+import { AdminExams } from "@/components/admin-exams";
+import { AdminTasks } from "@/components/admin-tasks";
+import { AdminTrackers } from "@/components/admin-trackers";
 
 interface Overview {
   pending_reviews: number;
@@ -72,7 +83,7 @@ interface PromoRow {
 /** 由 staff-tools 承载的工具页签（tab_key 与 ToolTab 同名） */
 const STAFF_TOOL_TABS: ToolTab[] = [
   "faq", "rules", "cats", "bans", "mail", "promo", "staffmess", "adduser",
-  "bonus", "warned", "ipcheck", "maxlogin", "upload", "resetpass", "deldisabled",
+  "incrementbulk", "warned", "ipcheck", "maxlogin", "resetpass", "deldisabled",
   "emailbans", "testip", "stats", "cleanup", "ads", "notconnect", "uploaders",
   "agents", "polls", "dbstats", "syslog", "locations", "hrpardon", "plugins",
   "agentrules", "forums", "reports", "menu", "roles", "perm", "seedstats",
@@ -88,8 +99,10 @@ const LEGACY_TOOL: Record<string, string> = {
   admanage: "ads",
   allagents: "agents",
   polloverview: "polls",
-  amountbonus: "bonus",
-  amountupload: "upload",
+  amountbonus: "incrementbulk",
+  bonus: "incrementbulk",
+  amountupload: "incrementbulk",
+  upload: "incrementbulk",
   notconnectable: "notconnect",
   location: "locations",
   faqmanage: "faq",
@@ -715,6 +728,29 @@ export default function AdminPage() {
         return <ClearCachePanel />;
       case "p2tools":
         return <AdminP2Tools />;
+      // 第八轮 P3 套件（好学站后台逐页深挖落地）
+      case "hr":
+        return <AdminHr />;
+      case "invites":
+        return <AdminInvites />;
+      case "userlogs":
+        return <AdminUserLogs />;
+      case "attendance":
+        return <AdminAttendance />;
+      case "tagdict":
+        return <AdminTagDict />;
+      case "sections":
+        return <AdminSections />;
+      case "medals":
+        return <AdminMedals />;
+      case "props":
+        return <AdminProps />;
+      case "exams":
+        return <AdminExams />;
+      case "tasks":
+        return <AdminTasks />;
+      case "trackers":
+        return <AdminTrackers />;
 
       default:
         if (STAFF_TOOL_TABS.includes(tool as ToolTab)) {

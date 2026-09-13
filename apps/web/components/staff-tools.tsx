@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { IncrementBulk } from "@/components/increment-bulk";
 
 /** staffpanel 管理工具落地页：FAQ 管理/规则管理/分类管理/封禁系统/批量邮件
  *  （hxpt faqmanage/modrules/catmanage/bans/massmail 口径，五个工具 tab） */
@@ -75,13 +76,14 @@ interface SeedStats {
 interface ReportItem {
   id: number; reporter_id: number; reporter_name: string | null;
   ref_type: string; ref_id: number; ref_label: string | null; reason: string;
-  status: number; handled_name: string | null; handled_at: string | null; created_at: string;
+  status: number; handled_name: string | null; handled_at: string | null;
+  claimed_name: string | null; created_at: string;
 }
 
 export type ToolTab =
   | "faq" | "rules" | "cats" | "bans" | "mail"
-  | "promo" | "staffmess" | "adduser" | "bonus" | "warned" | "ipcheck" | "maxlogin"
-  | "upload" | "resetpass" | "deldisabled" | "emailbans" | "testip" | "stats"
+  | "promo" | "staffmess" | "adduser" | "incrementbulk" | "warned" | "ipcheck" | "maxlogin"
+  | "resetpass" | "deldisabled" | "emailbans" | "testip" | "stats"
   | "cleanup" | "ads" | "notconnect" | "uploaders" | "agents" | "polls"
   | "dbstats" | "syslog" | "locations" | "hrpardon" | "plugins" | "agentrules"
   | "forums" | "reports" | "menu" | "roles" | "perm" | "seedstats";
@@ -101,6 +103,27 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   useEffect(() => {
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
+  // 权限清单（/me/perms）：Tab 按权限过滤——此前 34 个 Tab 对所有 staff 无差别渲染，
+  // 无权限者点击后只见空面板（后端 2003 被 catch 静默吞掉）
+  const [permKeys, setPermKeys] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    api.get<{ perms: string[] }>("/api/v1/me/perms")
+      .then((d) => setPermKeys(new Set(d.perms)))
+      .catch(() => setPermKeys(null)); // 拉取失败不拦截渲染（退化为全量 Tab）
+  }, []);
+  const TAB_PERM: Partial<Record<ToolTab, string>> = {
+    faq: "faq.manage", rules: "rules.manage", cats: "categories.manage",
+    bans: "bans.manage", mail: "staffmess", adduser: "user.create",
+    incrementbulk: "user.amountbonus", warned: "user.status", ipcheck: "ip.check",
+    maxlogin: "maxlogin.view", resetpass: "user.resetpass", deldisabled: "user.delete_disabled",
+    emailbans: "emailban.manage", testip: "testip", stats: "stats.view",
+    cleanup: "cleanup.run", ads: "ads.manage", notconnect: "notconnectable.view",
+    uploaders: "uploaders.view", agents: "agents.view", polls: "polls.manage",
+    dbstats: "dbstats.view", syslog: "syslog.view", locations: "locations.manage",
+    hrpardon: "hr.pardon", plugins: "plugins.manage",
+    agentrules: "agents.view", forums: "forums.manage", reports: "appeal.handle",
+    roles: "roles.manage", perm: "settings.manage", seedstats: "seed.stats.view",
+  };
   const [forumData, setForumData] = useState<ForumAdminData | null>(null);
   const [fEditId, setFEditId] = useState<number | null>(null);
   const [fName, setFName] = useState("");
@@ -111,7 +134,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [fProt, setFProt] = useState(false);
   const [fModName, setFModName] = useState("");
   const [reports, setReports] = useState<ReportItem[] | null>(null);
-  const [rpStatus, setRpStatus] = useState<"pending" | "handled" | "all">("pending");
+  const [rpStatus, setRpStatus] = useState<"pending" | "handling" | "handled" | "all">("pending");
   const [rpNote, setRpNote] = useState("");
   const [promoEditId, setPromoEditId] = useState<number | null>(null);
   const [menuData, setMenuData] = useState<MenuAdminData | null>(null);
@@ -125,6 +148,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [mEnabled, setMEnabled] = useState(true);
   const [mEditId, setMEditId] = useState<number | null>(null);
   const [roleDefs, setRoleDefs] = useState<RoleDef[]>([]);
+  const [roleEdit, setRoleEdit] = useState<{ key: string; name: string; descr: string; mode: "new" | "edit" } | null>(null);
   const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
   const [rFilter, setRFilter] = useState("");
   const [rUserId, setRUserId] = useState("");
@@ -278,8 +302,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const TABS: [ToolTab, string][] = [
     ["faq", t.tabFaq], ["rules", t.tabRules], ["cats", t.tabCats], ["bans", t.tabBans], ["mail", t.tabMail],
     ["promo", t.tabPromo], ["staffmess", t.tabStaffmess], ["adduser", t.tabAdduser],
-    ["bonus", t.tabBonus], ["warned", t.tabWarned], ["ipcheck", t.tabIpcheck], ["maxlogin", t.tabMaxlogin],
-    ["upload", t.tabUpload], ["resetpass", t.tabResetpass], ["deldisabled", t.tabDeldisabled],
+    ["incrementbulk", "批量发放"], ["warned", t.tabWarned], ["ipcheck", t.tabIpcheck], ["maxlogin", t.tabMaxlogin],
+    ["resetpass", t.tabResetpass], ["deldisabled", t.tabDeldisabled],
     ["emailbans", t.tabEmailbans], ["testip", t.tabTestip], ["stats", t.tabStats],
     ["cleanup", t.tabCleanup], ["ads", t.tabAds],
     ["notconnect", t.tabNotconnect], ["uploaders", t.tabUploaders], ["agents", t.tabAgents], ["polls", t.tabPolls],
@@ -298,7 +322,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2" role="tablist">
-        {TABS.map(([k, label]) => (
+        {TABS.filter(([k]) => !permKeys || !TAB_PERM[k] || permKeys.has(TAB_PERM[k]!)).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
             className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${tab === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"}`}>
             {label}
@@ -680,24 +704,22 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
         </section>
       )}
 
-      {/* 增加魔力（amountbonus） */}
-      {tab === "bonus" && (
+      {tab === "incrementbulk" && <IncrementBulk />}
+
+      {/* 魔力增减/上传量增减 已合并到「批量发放」（0065） */}
+      {(tab === ("bonus" as ToolTab)) && (
         <section className="baozi-panel p-4">
-          <h2 className="mb-3 text-base font-bold text-ink">{t.bonusNew}</h2>
-          <div className="cmgmt-form">
-            <label>{t.bonusAmount}<input value={bonusAmount} onChange={(e) => setBonusAmount(e.target.value)} placeholder="1000 / -500" /></label>
-            <label>{t.bonusUser}<input value={bonusUser} onChange={(e) => setBonusUser(e.target.value)} placeholder={t.bonusUserPh} /></label>
-            <button className="baozi-button self-start" disabled={busy || !bonusAmount.trim() || Number.isNaN(Number(bonusAmount))}
-              onClick={() => guard(async () => {
-                await api.post("/api/v1/admin/amountbonus", {
-                  amount: Number(bonusAmount),
-                  user_id: bonusUser.trim() ? Number(bonusUser) : null,
-                });
-              }, t.bonusDone)}>
-              {t.bonusBtn}
-            </button>
-            <p className="text-xs text-sub">{t.bonusNote}</p>
-          </div>
+          <h2 className="mb-1 text-base font-bold">已合并到「批量发放」</h2>
+          <p className="mb-3 text-xs text-sub">
+            魔力增减与上传量增减已合并为统一的批量发放工具：支持火花 / 上传量 / 邀请 / 补签卡，
+            可按等级、职务或指定用户批量执行，并群发 PM 通知。
+          </p>
+          <button
+            className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white"
+            onClick={() => { setTab("incrementbulk"); window.history.replaceState(null, "", "/admin?tool=incrementbulk"); }}
+          >
+            前往批量发放
+          </button>
         </section>
       )}
 
@@ -774,27 +796,6 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
             {failRows.length === 0 && <tr><td colSpan={3} className="py-6 text-center text-sub">{t.mlEmpty}</td></tr>}
           </tbody>
         </table>
-      )}
-
-      {/* 增加上传（amountupload） */}
-      {tab === "upload" && (
-        <section className="baozi-panel p-4">
-          <h2 className="mb-3 text-base font-bold text-ink">{t.upNew}</h2>
-          <div className="cmgmt-form">
-            <label>{t.upBytes}<input value={upBytes} onChange={(e) => setUpBytes(e.target.value)} placeholder="10737418240（字节，可负）" /></label>
-            <label>{t.bonusUser}<input value={upUser} onChange={(e) => setUpUser(e.target.value)} placeholder={t.bonusUserPh} /></label>
-            <button className="baozi-button self-start" disabled={busy || !upBytes.trim() || Number.isNaN(Number(upBytes))}
-              onClick={() => guard(async () => {
-                await api.post("/api/v1/admin/amountupload", {
-                  bytes: Number(upBytes),
-                  user_id: upUser.trim() ? Number(upUser) : null,
-                });
-              }, t.upDone)}>
-              {t.upBtn}
-            </button>
-            <p className="text-xs text-sub">{t.upNote}</p>
-          </div>
-        </section>
       )}
 
       {/* 重置用户密码（reset） */}
@@ -1463,7 +1464,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-bold">举报处理</h2>
             <div className="flex gap-2">
-              {([["pending", "待处理"], ["handled", "已处理"], ["all", "全部"]] as const).map(([k, label]) => (
+              {([["pending", "待处理"], ["handling", "处理中"], ["handled", "已处理"], ["all", "全部"]] as const).map(([k, label]) => (
                 <button key={k}
                   className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${rpStatus === k ? "bg-sky text-white" : "border border-line text-sub"}`}
                   onClick={() => setRpStatus(k)}>{label}</button>
@@ -1499,14 +1500,23 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                   <td className="max-w-[280px] break-words">{r.reason}</td>
                   <td className="text-sub">
                     {new Date(r.created_at).toLocaleString("zh-CN")}
+                    {r.status === 2 && r.claimed_name && (
+                      <p className="text-[11px] text-sky">{r.claimed_name} 处理中</p>
+                    )}
                     {r.status === 1 && r.handled_name && (
                       <p className="text-[11px]">{r.handled_name} 处理于 {r.handled_at ? new Date(r.handled_at).toLocaleString("zh-CN") : "—"}</p>
                     )}
                   </td>
                   <td>
-                    {r.status === 0 ? (
+                    {(r.status === 0 || r.status === 2) ? (
                       <>
-                        <button className="min-h-[28px] rounded-full bg-sky px-3 font-bold text-white"
+                        {r.status === 0 && (
+                          <button className="min-h-[28px] rounded-full border border-sky px-3 font-bold text-sky"
+                            onClick={() => guard(async () => {
+                              await api.post("/api/v1/admin/reports/claim", { report_id: r.id });
+                            }, "已认领，处理中")}>认领</button>
+                        )}
+                        <button className="ml-1 min-h-[28px] rounded-full bg-sky px-3 font-bold text-white"
                           onClick={() => guard(async () => {
                             await api.post("/api/v1/admin/reports/resolve", { report_id: r.id, action: "act", note: rpNote.trim() });
                             setRpNote("");
@@ -1516,6 +1526,12 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                             await api.post("/api/v1/admin/reports/resolve", { report_id: r.id, action: "dismiss", note: rpNote.trim() });
                             setRpNote("");
                           }, "已驳回并通知举报人")}>驳回</button>
+                        {r.status === 2 && (
+                          <button className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-sub"
+                            onClick={() => guard(async () => {
+                              await api.post("/api/v1/admin/reports/release", { report_id: r.id });
+                            }, "已释放回队列")}>释放</button>
+                        )}
                       </>
                     ) : (
                       <span className="text-sub">已处理</span>
@@ -1682,21 +1698,123 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
         <section className="baozi-panel p-4">
           <h2 className="mb-2 text-base font-bold">职务管理</h2>
           <p className="mb-3 text-xs text-sub">
-            职务与等级正交，一人可兼任多个，权限取并集。授予与撤销都要求操作者等级严格高于目标用户。
+            职务与等级正交，一人可兼任多个，权限取并集。授予与撤销都要求操作者等级严格高于目标用户；职务字典的新增/编辑/删除仅站长。
           </p>
 
-          <div className="mb-4 flex flex-wrap gap-2">
-            {roleDefs.map((r) => (
-              <div
-                key={r.key}
-                className="min-w-[150px] rounded-[var(--r-md)] border border-line bg-[var(--surface-raised)] px-3 py-2"
-              >
-                <p className="text-sm font-bold text-ink">{r.name}</p>
-                <p className="mt-0.5 text-xs text-sub">{r.descr}</p>
+          {/* 职务字典：卡片 + 编辑/删除；新增表单（sysop） */}
+          <div className="mb-4 flex flex-col gap-2">
+            <div className="flex flex-wrap gap-2">
+              {roleDefs.map((r) => (
+                <div
+                  key={r.key}
+                  className="min-w-[150px] rounded-[var(--r-md)] border border-line bg-[var(--surface-raised)] px-3 py-2"
+                >
+                  <p className="text-sm font-bold text-ink">{r.name}</p>
+                  <p className="mt-0.5 text-xs text-sub">{r.descr}</p>
+                  <p className="mt-1 flex items-center justify-between">
+                    <code className="text-[10px] text-sub">{r.key}</code>
+                    <span className="flex gap-1">
+                      <button
+                        className="min-h-[24px] rounded-full border border-line px-2 text-[11px] font-bold text-sky"
+                        title="编辑职务（仅站长）"
+                        onClick={() => {
+                          setRoleEdit({ key: r.key, name: r.name, descr: r.descr ?? "", mode: "edit" });
+                        }}
+                      >
+                        编辑
+                      </button>
+                      <button
+                        className="min-h-[24px] rounded-full border border-line px-2 text-[11px] font-bold text-danger"
+                        title="删除职务（需先撤销全部授予；仅站长）"
+                        onClick={() => guard(async () => {
+                          if (!window.confirm(`确认删除职务「${r.name}」？需先撤销全部授予。`)) return;
+                          await api.del(`/api/v1/admin/roles/${r.key}`);
+                          setRoleDefs(await api.get<RoleDef[]>("/api/v1/admin/roles"));
+                        }, "已删除")}
+                      >
+                        删除
+                      </button>
+                    </span>
+                  </p>
+                </div>
+              ))}
+              {roleDefs.length === 0 && (
+                <p className="text-xs text-sub">职务字典为空（迁移 0054 未应用？）</p>
+              )}
+            </div>
+
+            {/* 新增/编辑职务（sysop：roles.manage；无权限时后端拒绝，前端如实提示） */}
+            {roleEdit && (
+              <div className="cmgmt-form rounded-[var(--r-md)] border border-line p-3">
+                <h3 className="mb-2 text-sm font-bold">
+                  {roleEdit.mode === "new" ? "新增职务" : `编辑职务 ${roleEdit.key}（key 不可改）`}
+                </h3>
+                <div className="flex flex-wrap items-end gap-2">
+                  {roleEdit.mode === "new" && (
+                    <label className="flex flex-col gap-1 text-xs">
+                      Key（小写/下划线）
+                      <input
+                        value={roleEdit.key}
+                        onChange={(e) => setRoleEdit({ ...roleEdit, key: e.target.value })}
+                        placeholder="translator"
+                        className="min-h-[40px] w-40 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm"
+                      />
+                    </label>
+                  )}
+                  <label className="flex flex-col gap-1 text-xs">
+                    名称
+                    <input
+                      value={roleEdit.name}
+                      onChange={(e) => setRoleEdit({ ...roleEdit, name: e.target.value })}
+                      placeholder="翻译员"
+                      className="min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    说明（可选）
+                    <input
+                      value={roleEdit.descr}
+                      onChange={(e) => setRoleEdit({ ...roleEdit, descr: e.target.value })}
+                      className="min-h-[40px] w-48 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm"
+                    />
+                  </label>
+                  <button
+                    className="baozi-button"
+                    disabled={busy || !roleEdit.name.trim() || (roleEdit.mode === "new" && !roleEdit.key.trim())}
+                    onClick={() => guard(async () => {
+                      const payload = { key: roleEdit.key.trim(), name: roleEdit.name.trim(), descr: roleEdit.descr.trim() || undefined };
+                      if (roleEdit.mode === "new") {
+                        await api.post("/api/v1/admin/roles", payload);
+                      } else {
+                        await api.put(`/api/v1/admin/roles/${encodeURIComponent(roleEdit.key)}`, payload);
+                      }
+                      setRoleDefs(await api.get<RoleDef[]>("/api/v1/admin/roles"));
+                      setRoleEdit(null);
+                    }, "已保存")}
+                  >
+                    保存
+                  </button>
+                  <button
+                    className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                    onClick={() => setRoleEdit(null)}
+                  >
+                    取消
+                  </button>
+                </div>
+                {roleEdit.mode === "new" && (
+                  <p className="mt-2 text-xs text-sub">
+                    新建后到「权限配置」为其勾选权限，再到下方给用户授予。
+                  </p>
+                )}
               </div>
-            ))}
-            {roleDefs.length === 0 && (
-              <p className="text-xs text-sub">职务字典为空（迁移 0054 未应用？）</p>
+            )}
+            {!roleEdit && (
+              <button
+                className="self-start min-h-[36px] rounded-full border border-dashed border-line px-4 text-xs font-bold text-sky"
+                onClick={() => setRoleEdit({ key: "", name: "", descr: "", mode: "new" })}
+              >
+                ＋ 新增职务（仅站长）
+              </button>
             )}
           </div>
 

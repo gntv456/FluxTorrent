@@ -24,8 +24,6 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-/// 站点设定可见门槛（其他 staff 不可见，§7.1）
-const SETTINGS_VIEW_MIN: i32 = 90;
 /// 站点设定默认可写门槛（sysop；字段级可经 settings_meta.min_class 放宽）
 const SETTINGS_WRITE_MIN: i32 = 99;
 /// 单次批量保存的字段上限
@@ -391,7 +389,11 @@ async fn settings_schema(
             secret: m.secret,
             readonly: m.readonly,
             writable: !m.readonly && auth.class_id >= write_min(m),
-            value: if m.secret { String::new() } else { m.value.clone() },
+            value: if m.secret {
+                String::new()
+            } else {
+                m.value.clone()
+            },
             configured: !m.secret || !m.value.is_empty(),
             updated_at: m.updated_at,
         };
@@ -420,9 +422,7 @@ async fn settings_schema(
             .map(|i| grouped.remove(i).1)
             .unwrap_or_default();
         let count: usize = cards_vec.iter().map(|(_, f)| f.len()).sum();
-        let writable = cards_vec
-            .iter()
-            .any(|(_, f)| f.iter().any(|x| x.writable));
+        let writable = cards_vec.iter().any(|(_, f)| f.iter().any(|x| x.writable));
         let cards: Vec<CardOut> = cards_vec
             .into_iter()
             .map(|(key, fields)| CardOut { key, fields })
@@ -564,7 +564,8 @@ async fn settings_groups_put(
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let by_name: HashMap<String, MetaRow> = metas.into_iter().map(|m| (m.name.clone(), m)).collect();
+    let by_name: HashMap<String, MetaRow> =
+        metas.into_iter().map(|m| (m.name.clone(), m)).collect();
 
     // 未知键直接拒绝（避免前端拼错导致静默丢配置）
     if let Some(missing) = names.iter().find(|n| !by_name.contains_key(*n)) {

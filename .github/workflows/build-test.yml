@@ -1,0 +1,46 @@
+# 构建与测试 CI：Rust 三 crate（api/worker/tracker）编译+单测，Web tsc 类型检查。
+# 与 security-audit.yml 互补——此前 CI 只扫 CVE 不跑测试，40 个单测只在本地执行。
+name: build-test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Check（0 error 0 warning 基线）
+        run: cargo check --workspace --all-targets
+      - name: Tests
+        run: cargo test --workspace
+      # clippy 暂以 warning 不阻断（存量代码未按 lint 全量整备）；演进为 -D warnings
+      - name: Clippy（信息性）
+        run: cargo clippy --workspace --all-targets || true
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: tsc 类型检查（0 错误基线）
+        run: pnpm exec tsc --noEmit

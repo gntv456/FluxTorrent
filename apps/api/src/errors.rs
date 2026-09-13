@@ -74,11 +74,12 @@ impl DomainError {
             | DomainError::InviteUsed
             | DomainError::UsernameTaken
             | DomainError::AlreadyThanked
-            | DomainError::RateLimited
             | DomainError::TorrentInvalid(_)
             | DomainError::TorrentDuplicate
             | DomainError::Validation(_)
             | DomainError::FieldErrors(_) => StatusCode::BAD_REQUEST,
+            // 429 与 openapi 文档（openapi_http.rs 429 描述）及 scripts/_ratelimit_check.py 口径一致
+            DomainError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             DomainError::InsufficientSpark | DomainError::LedgerConflict => StatusCode::CONFLICT,
             DomainError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }

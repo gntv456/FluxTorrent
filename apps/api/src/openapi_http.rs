@@ -46,7 +46,8 @@ pub async fn require_token(
         .ok_or(DomainError::Unauthorized)?;
     let row: Option<(i64, i32)> = sqlx::query_as(
         "SELECT user_id, rate_per_min FROM api_tokens \
-         WHERE token_hash = $1 AND revoked_at IS NULL",
+         WHERE token_hash = $1 AND revoked_at IS NULL \
+           AND (expires_at IS NULL OR expires_at > now())",
     )
     .bind(hash_token(token))
     .fetch_optional(&state.repo.db)
@@ -90,6 +91,7 @@ struct TokenRow {
     scopes: Vec<String>,
     rate_per_min: i32,
     last_used_at: Option<chrono::DateTime<chrono::Utc>>,
+    expires_at: Option<chrono::DateTime<chrono::Utc>>,
     revoked_at: Option<chrono::DateTime<chrono::Utc>>,
     created_at: chrono::DateTime<chrono::Utc>,
 }
@@ -101,7 +103,7 @@ async fn token_list(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<TokenRow> = sqlx::query_as(
-        "SELECT id, name, scopes, rate_per_min, last_used_at, revoked_at, created_at \
+        "SELECT id, name, scopes, rate_per_min, last_used_at, expires_at, revoked_at, created_at \
          FROM api_tokens WHERE user_id = $1 ORDER BY id DESC",
     )
     .bind(auth.id)
@@ -140,7 +142,7 @@ async fn token_issue(
     if !(1..=600).contains(&body.rate_per_min) {
         return Err(DomainError::Validation("rate_per_min 取值 1-600".into()));
     }
-    // 每人最多 5 枚有效 token
+    // 每人最多 3 枚有效 token（YemaPT 口径：少而精，泄露面可控）
     let active: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM api_tokens WHERE user_id = $1 AND revoked_at IS NULL",
     )
@@ -148,16 +150,16 @@ async fn token_issue(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    if active >= 5 {
+    if active >= 3 {
         return Err(DomainError::Validation(
-            "有效 token 上限 5 枚，请先撤销旧的".into(),
+            "有效 token 上限 3 枚，请先撤销旧的".into(),
         ));
     }
-    // 明文仅此一次返回：fxo_ 前缀 + 32 随机字节 hex
+    // 明文仅此一次返回：fxo_ 前缀 + 32 随机字节 hex；有效期 180 天（0069）
     let plain = format!("fxo_{}", uuid::Uuid::new_v4().simple());
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO api_tokens (user_id, name, token_hash, scopes, rate_per_min) \
-         VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        "INSERT INTO api_tokens (user_id, name, token_hash, scopes, rate_per_min, expires_at) \
+         VALUES ($1, $2, $3, $4, $5, now() + interval '180 days') RETURNING id",
     )
     .bind(auth.id)
     .bind(name)
@@ -222,7 +224,7 @@ async fn open_recent_torrents(
     let rows: Vec<(i64, String, Option<String>, i64, i64)> = sqlx::query_as(
         "SELECT id, name, small_descr, size, created_epoch \
          FROM (SELECT id, name, small_descr, size, EXTRACT(EPOCH FROM created_at)::bigint AS created_epoch \
-               FROM torrents ORDER BY id DESC LIMIT 50) t",
+               FROM torrents WHERE approval_status = 1 ORDER BY id DESC LIMIT 50) t",
     )
     .fetch_all(&state.repo.db)
     .await

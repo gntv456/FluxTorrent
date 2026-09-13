@@ -16,3 +16,6 @@ docker/.env
 # 本地备份与截图产物（不入库）
 backups/
 docker/bz-css/
+
+# GeoIP 离线库（GeoLite2 mmdb，大文件不入库；构建机本地放置）
+apps/api/geoip/*.mmdb

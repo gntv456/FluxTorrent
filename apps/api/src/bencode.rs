@@ -140,10 +140,17 @@ pub fn hex(bytes: &[u8]) -> String {
 #[allow(dead_code)]
 pub struct ParsedTorrent {
     pub info_hash_hex: String,
+    /// 跨站辅种二级指纹：SHA1(info.pieces 原始字节)（YemaPT piecesHash 口径）。
+    /// info_hash 会因子典外字段变化（重打包/source）失效；pieces_hash 只由分片内容决定，
+    /// 是辅种 / 转种生态识别「同内容」的更鲁棒指纹。缺 pieces 字段时为空串。
+    pub pieces_hash_hex: String,
     pub name: String,
     pub size: i64,
     pub numfiles: i64,
     pub piece_length: i64,
+    /// 文件清单（多文件种按 files 列表展开为 path.join("/")；单文件种为 name 一行）。
+    /// 上传时写 files 表供「文件列表 / 按文件名搜索」使用（修复前该表从不写入）
+    pub files: Vec<(String, i64)>,
     /// 发布时去掉私有种子的 announce 列表，由服务端重新注入
     pub raw: Vec<u8>,
 }
@@ -160,28 +167,59 @@ pub fn parse_torrent(bytes: &[u8]) -> Result<ParsedTorrent, String> {
         .and_then(|v| v.as_int())
         .unwrap_or(0);
 
-    // 计算总大小与文件数
-    let (size, numfiles) = if let Some(files) = info.get(b"files").and_then(|v| match v {
+    // 计算总大小、文件数与文件清单（files 表数据源）
+    let (size, files) = if let Some(files) = info.get(b"files").and_then(|v| match v {
         Bencode::List(l) => Some(l),
         _ => None,
     }) {
         let mut total = 0i64;
+        let mut list = Vec::with_capacity(files.len());
         for f in files {
-            total += f.get(b"length").and_then(|v| v.as_int()).unwrap_or(0);
+            let length = f.get(b"length").and_then(|v| v.as_int()).unwrap_or(0);
+            total += length;
+            // path 是 UTF-8 字节段列表（BEP3）：逐段解码（非法字节有损替换）后拼接
+            let path = f
+                .get(b"path")
+                .and_then(|v| match v {
+                    Bencode::List(segs) => Some(
+                        segs.iter()
+                            .filter_map(|s| s.as_bytes())
+                            .map(|b| String::from_utf8_lossy(b).into_owned())
+                            .collect::<Vec<_>>(),
+                    ),
+                    _ => None,
+                })
+                .unwrap_or_default()
+                .join("/");
+            list.push((path, length));
         }
-        (total, files.len() as i64)
+        (total, list)
     } else {
         let len = info.get(b"length").and_then(|v| v.as_int()).unwrap_or(0);
-        (len, 1)
+        (len, vec![(name.clone(), len)])
     };
+    let numfiles = files.len() as i64;
 
     let ih = info_hash(info);
+    // pieces_hash = SHA1(info.pieces 原始字节)：只依赖文件分片内容，不含 announce/private/source
+    // 等字典外字段，跨站重打包后仍稳定 —— 辅种/转种工具按它匹配「同内容」（YemaPT 口径）。
+    let pieces_hash_hex = info
+        .get(b"pieces")
+        .and_then(|v| v.as_bytes())
+        .map(|pieces| {
+            let mut h = Sha1::new();
+            h.update(pieces);
+            hex(h.finalize().as_slice())
+        })
+        .unwrap_or_default();
     Ok(ParsedTorrent {
         info_hash_hex: hex(&ih),
+        pieces_hash_hex,
         name,
         size,
         numfiles,
         piece_length,
+        files,
         raw: bytes.to_vec(),
     })
 }
@@ -253,12 +291,19 @@ mod tests {
     #[test]
     fn download_rebuild_injects_announce() {
         let bytes = make_torrent();
-        let out = build_download_torrent(&bytes, "http://tracker.flux.local/announce?passkey=abc", &[])
-            .unwrap();
+        let out = build_download_torrent(
+            &bytes,
+            "http://tracker.flux.local/announce?passkey=abc",
+            &[],
+        )
+        .unwrap();
         let (root, _) = parse(&out).unwrap();
         let ann = std::str::from_utf8(root.get(b"announce").unwrap().as_bytes().unwrap()).unwrap();
         assert!(ann.contains("passkey=abc"));
-        assert!(root.get(b"announce-list").is_none(), "无回退时不应有 announce-list");
+        assert!(
+            root.get(b"announce-list").is_none(),
+            "无回退时不应有 announce-list"
+        );
         // info dict 未被改动 → info_hash 不变
         let (_, re_parsed) = parse(&out).unwrap();
         let _ = re_parsed;

@@ -46,6 +46,8 @@ pub struct TorrentDetailRow {
     pub bookmark_count: i64,
     pub last_action: Option<chrono::DateTime<chrono::Utc>>,
     pub views: i64,
+    /// 多维属性（第八轮 Section）：kind → { dict_id, name }
+    pub sections: serde_json::Value,
 }
 
 /// 详情页文件列表（files 表；无记录时前端隐藏该区块）
@@ -78,6 +80,9 @@ pub struct TorrentFilter {
     pub sort: Option<String>,
     /// 标签筛选（T-04）：tag_dict.id，命中 tags 关联
     pub tag_id: Option<i32>,
+    /// 第八轮 Section 多维筛选：kind → dict_id（kind 走白名单，dict_id 为整数，拼接安全）
+    #[serde(default)]
+    pub sections: Vec<(String, i64)>,
 }
 
 #[derive(Debug, Serialize)]
@@ -111,6 +116,16 @@ pub async fn list_torrents(
         Some("completed") => "t.sticky DESC, t.times_completed DESC, t.id DESC",
         _ => "t.sticky DESC, t.id DESC",
     };
+    // 第八轮 Section 多维筛选：每个维度一个子查询谓词（kind 白名单 + i64 内插，无注入面）
+    let mut sec_sql = String::new();
+    for (kind, dict_id) in &filter.sections {
+        if !crate::admin_p3_http::SECTION_KINDS.contains(&kind.as_str()) {
+            continue;
+        }
+        sec_sql.push_str(&format!(
+            " AND t.id IN (SELECT torrent_id FROM torrent_sections WHERE kind = '{kind}' AND dict_id = {dict_id})"
+        ));
+    }
     let sql = format!(
         r#"
         SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
@@ -154,6 +169,7 @@ pub async fn list_torrents(
                OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7 ESCAPE chr(92)))
           AND ($8::bigint IS NULL OR t.id < $8)
           AND ($10::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $10))
+          {sec_sql}
         ORDER BY {order}
         LIMIT $9
         "#
@@ -278,7 +294,23 @@ pub async fn get_torrent_detail(db: &PgPool, id: i64) -> DomainResult<TorrentDet
     .fetch_optional(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    row.ok_or(DomainError::NotFound(id))
+    let mut row = row.ok_or(DomainError::NotFound(id))?;
+    let secs: Vec<(String, i64, String)> = sqlx::query_as(
+        "SELECT ts.kind, ts.dict_id, d.name FROM torrent_sections ts          JOIN section_dict d ON d.id = ts.dict_id WHERE ts.torrent_id = $1",
+    )
+    .bind(id)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    let mut m = serde_json::Map::new();
+    for (kind, dict_id, name) in secs {
+        m.insert(
+            kind,
+            serde_json::json!({ "dict_id": dict_id, "name": name }),
+        );
+    }
+    row.sections = serde_json::Value::Object(m);
+    Ok(row)
 }
 
 pub async fn list_files(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<FileRow>> {
@@ -466,11 +498,7 @@ pub async fn edit_torrent(
 }
 
 /// 种子软删除（NP delete.php 口径）：staff 或作者本人（未过审的可直接删；已过审的作者删除需 staff）
-pub async fn delete_torrent(
-    db: &PgPool,
-    torrent_id: i64,
-    actor: (i64, i16),
-) -> DomainResult<()> {
+pub async fn delete_torrent(db: &PgPool, torrent_id: i64, actor: (i64, i16)) -> DomainResult<()> {
     let row: Option<(Option<i64>, i16)> =
         sqlx::query_as("SELECT owner_id, approval_status FROM torrents WHERE id = $1")
             .bind(torrent_id)
@@ -521,14 +549,17 @@ pub async fn list_snatches(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<Sna
     .map_err(|e| DomainError::Internal(e.into()))
 }
 
-/// NFO（NP viewnfo.php 口径）：纯文本返回
+/// NFO（NP viewnfo.php 口径）：纯文本返回。
+/// 种子存在但 nfo 为 NULL 时返回 Ok(None)（无 NFO），而非 404——
+/// 修复前 fetch_optional 展平后把「行存在列空」也当 NotFound。
 pub async fn get_nfo(db: &PgPool, torrent_id: i64) -> DomainResult<Option<String>> {
-    sqlx::query_scalar("SELECT nfo FROM torrents WHERE id = $1 AND approval_status = 1")
-        .bind(torrent_id)
-        .fetch_optional(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .ok_or(DomainError::NotFound(torrent_id))
+    let row: Option<Option<String>> =
+        sqlx::query_scalar("SELECT nfo FROM torrents WHERE id = $1 AND approval_status = 1")
+            .bind(torrent_id)
+            .fetch_optional(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    row.ok_or(DomainError::NotFound(torrent_id))
 }
 
 /// 请求补种（NP takereseed.php 口径）：
@@ -554,7 +585,9 @@ pub async fn request_reseed(
     }
     if let Some(lr) = last_reseed {
         if chrono::Utc::now() - lr < chrono::Duration::seconds(900) {
-            return Err(DomainError::Validation("15 分钟内已发起过补种请求，请稍候".into()));
+            return Err(DomainError::Validation(
+                "15 分钟内已发起过补种请求，请稍候".into(),
+            ));
         }
     }
     // 完成过下载的用户（含发布者）
@@ -572,14 +605,16 @@ pub async fn request_reseed(
         requester.1, name, torrent_id
     );
     for uid in &receivers {
-        sqlx::query("INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)")
-            .bind(requester.0)
-            .bind(uid)
-            .bind(&subject)
-            .bind(&body)
-            .execute(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)",
+        )
+        .bind(requester.0)
+        .bind(uid)
+        .bind(&subject)
+        .bind(&body)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     sqlx::query("UPDATE torrents SET last_reseed = now() WHERE id = $1")
         .bind(torrent_id)
@@ -596,13 +631,12 @@ pub async fn list_tags(db: &PgPool, torrent_id: i64) -> DomainResult<serde_json:
             .fetch_all(db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    let mine: Vec<i32> = sqlx::query_scalar(
-        "SELECT tag_id FROM tags WHERE torrent_id = $1 ORDER BY tag_id",
-    )
-    .bind(torrent_id)
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mine: Vec<i32> =
+        sqlx::query_scalar("SELECT tag_id FROM tags WHERE torrent_id = $1 ORDER BY tag_id")
+            .bind(torrent_id)
+            .fetch_all(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(serde_json::json!({ "dict": dict, "mine": mine }))
 }
 
@@ -614,13 +648,14 @@ pub async fn tag_torrent(
     tag_id: i32,
     on: bool,
 ) -> DomainResult<()> {
-    let row: Option<(Option<i64>, String)> =
-        sqlx::query_as("SELECT owner_id, kind FROM torrents t JOIN tag_dict d ON d.id = $2 WHERE t.id = $1")
-            .bind(torrent_id)
-            .bind(tag_id)
-            .fetch_optional(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(Option<i64>, String)> = sqlx::query_as(
+        "SELECT owner_id, kind FROM torrents t JOIN tag_dict d ON d.id = $2 WHERE t.id = $1",
+    )
+    .bind(torrent_id)
+    .bind(tag_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((owner_id, kind)) = row else {
         return Err(DomainError::NotFound(torrent_id));
     };

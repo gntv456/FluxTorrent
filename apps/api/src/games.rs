@@ -114,7 +114,8 @@ pub fn roll_double() -> bool {
 
 // ============ 九宫格抽奖（jgg 口径） ============
 
-/// 奖池档位（管理端可配的简化常量版）：期望回报 ≈ 0.72，庄家优势 28%
+/// 奖池档位（管理端可配的简化常量版）：期望回报 = 0.725，庄家优势 27.5%
+/// （修复前 50x/100x 权重过高致 EV=3.43 持续增发；按下表权重×赔率精确复算）
 pub struct JggPrize {
     pub label: &'static str,
     pub weight: u32, // 权重（总 1000）
@@ -124,7 +125,7 @@ pub struct JggPrize {
 pub const JGG_PRIZES: [JggPrize; 8] = [
     JggPrize {
         label: "谢谢参与",
-        weight: 380,
+        weight: 731,
         payout: 0,
     },
     JggPrize {
@@ -134,33 +135,33 @@ pub const JGG_PRIZES: [JggPrize; 8] = [
     },
     JggPrize {
         label: "2x 火花",
-        weight: 200,
+        weight: 60,
         payout: 2,
     },
     JggPrize {
         label: "3x 火花",
-        weight: 120,
+        weight: 50,
         payout: 3,
     },
     JggPrize {
         label: "5x 火花",
-        weight: 100,
+        weight: 25,
         payout: 5,
     },
     JggPrize {
         label: "10x 火花",
-        weight: 55,
+        weight: 10,
         payout: 10,
     },
     JggPrize {
-        label: "50x 火花",
-        weight: 20,
-        payout: 50,
+        label: "20x 火花",
+        weight: 3,
+        payout: 20,
     },
     JggPrize {
-        label: "100x 火花",
-        weight: 5,
-        payout: 100,
+        label: "50x 火花",
+        weight: 1,
+        payout: 50,
     },
 ];
 
@@ -193,6 +194,22 @@ mod tests {
         assert!(validate_bet(0).is_err());
         assert!(validate_bet(-5).is_err());
         assert!(validate_bet(MAX_BET + 1).is_err());
+    }
+
+    /// 九宫格期望回报恒为 0.725（庄家优势 27.5%）——防止赔率表回归到增发配置
+    #[test]
+    fn jgg_expected_value_house_edge() {
+        let total: u32 = JGG_PRIZES.iter().map(|p| p.weight).sum();
+        assert_eq!(total, 1000, "权重总和建议恒为 1000");
+        let ev: f64 = JGG_PRIZES
+            .iter()
+            .map(|p| p.weight as f64 * p.payout as f64)
+            .sum::<f64>()
+            / total as f64;
+        assert!(
+            (ev - 0.725).abs() < 1e-9,
+            "EV 漂移: {ev}（调整赔率表必须同步更新本断言与经济模型）"
+        );
     }
 
     #[test]

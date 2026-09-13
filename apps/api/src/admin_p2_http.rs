@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::{require_auth, optional_auth};
+use crate::http::{optional_auth, require_auth};
 use crate::state::AppState;
 
 async fn staff(
@@ -83,7 +83,10 @@ async fn sticky_promos_add(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "sticky_promo.add", Some(id)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "sticky_promo.add", Some(id))
+        .await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -115,7 +118,10 @@ async fn sticky_promos_update(
     if n == 0 {
         return Err(DomainError::NotFound(path_id));
     }
-    state.repo.audit(Some(auth.id), "sticky_promo.update", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "sticky_promo.update", None)
+        .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -136,7 +142,10 @@ async fn sticky_promos_delete(
     if n == 0 {
         return Err(DomainError::NotFound(path_id));
     }
-    state.repo.audit(Some(auth.id), "sticky_promo.delete", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "sticky_promo.delete", None)
+        .await;
     Ok(ok(serde_json::json!({ "deleted": n })))
 }
 
@@ -184,7 +193,9 @@ async fn menu_settings(db: &sqlx::PgPool) -> (bool, i32) {
     let mut min_class = 0;
     for (k, v) in rows {
         match k.as_str() {
-            "nav.custom_enabled" => enabled = v == "1" || v.eq_ignore_ascii_case("true") || v == "yes",
+            "nav.custom_enabled" => {
+                enabled = v == "1" || v.eq_ignore_ascii_case("true") || v == "yes"
+            }
             "nav.min_visible_class" => min_class = v.parse().unwrap_or(0),
             _ => {}
         }
@@ -238,7 +249,9 @@ async fn menu_settings_update(
     }
     if let Some(mc) = body.min_visible_class {
         if !(0..=99).contains(&mc) {
-            return Err(DomainError::Validation("min_visible_class 取值 0-99".into()));
+            return Err(DomainError::Validation(
+                "min_visible_class 取值 0-99".into(),
+            ));
         }
         sqlx::query("UPDATE site_settings SET value = $1, updated_at = now() WHERE name = 'nav.min_visible_class'")
             .bind(mc.to_string())
@@ -246,9 +259,14 @@ async fn menu_settings_update(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
-    state.repo.audit(Some(auth.id), "menu_settings.update", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "menu_settings.update", None)
+        .await;
     let (en, mc) = menu_settings(&state.repo.db).await;
-    Ok(ok(serde_json::json!({ "custom_enabled": en, "min_visible_class": mc })))
+    Ok(ok(
+        serde_json::json!({ "custom_enabled": en, "min_visible_class": mc }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -306,16 +324,17 @@ async fn menu_item_validate(
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
                 if child_cnt > 0 {
-                    return Err(DomainError::Validation("不能把自己的子菜单设为父菜单".into()));
+                    return Err(DomainError::Validation(
+                        "不能把自己的子菜单设为父菜单".into(),
+                    ));
                 }
             }
-            let row: Option<(i64, String)> = sqlx::query_as(
-                "SELECT id, location FROM menu_items WHERE id = $1",
-            )
-            .bind(pid)
-            .fetch_optional(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            let row: Option<(i64, String)> =
+                sqlx::query_as("SELECT id, location FROM menu_items WHERE id = $1")
+                    .bind(pid)
+                    .fetch_optional(db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
             match row {
                 None => return Err(DomainError::Validation("父菜单不存在".into())),
                 Some((_, ploc)) => {
@@ -344,7 +363,9 @@ async fn menu_items_add(
         return Err(DomainError::Validation("名称 1-50，链接 1-300".into()));
     }
     if !["sidebar", "footer", "topbar"].contains(&location) {
-        return Err(DomainError::Validation("location 取值 sidebar/footer/topbar".into()));
+        return Err(DomainError::Validation(
+            "location 取值 sidebar/footer/topbar".into(),
+        ));
     }
     menu_item_validate(&state.repo.db, &body, None).await?;
     let id: i64 = sqlx::query_scalar(
@@ -362,7 +383,10 @@ async fn menu_items_add(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "menu_item.add", Some(id)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "menu_item.add", Some(id))
+        .await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -399,7 +423,10 @@ async fn menu_items_update(
     if n == 0 {
         return Err(DomainError::NotFound(path_id));
     }
-    state.repo.audit(Some(auth.id), "menu_item.update", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "menu_item.update", None)
+        .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -417,7 +444,9 @@ async fn menu_items_delete(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     if children > 0 {
-        return Err(DomainError::Validation("存在子菜单，先删除或移动子菜单".into()));
+        return Err(DomainError::Validation(
+            "存在子菜单，先删除或移动子菜单".into(),
+        ));
     }
     let n = sqlx::query("DELETE FROM menu_items WHERE id = $1")
         .bind(path_id)
@@ -428,7 +457,10 @@ async fn menu_items_delete(
     if n == 0 {
         return Err(DomainError::NotFound(path_id));
     }
-    state.repo.audit(Some(auth.id), "menu_item.delete", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "menu_item.delete", None)
+        .await;
     Ok(ok(serde_json::json!({ "deleted": n })))
 }
 
@@ -449,7 +481,9 @@ async fn menu_items_public(
     q: web::Query<MenuPublicQ>,
 ) -> DomainResult<HttpResponse> {
     if !["sidebar", "footer", "topbar"].contains(&q.location.as_str()) {
-        return Err(DomainError::Validation("location 取值 sidebar/footer/topbar".into()));
+        return Err(DomainError::Validation(
+            "location 取值 sidebar/footer/topbar".into(),
+        ));
     }
     // 全局开关关闭 → 返回空（前端显式回退默认导航，不做静默混淆）
     let (custom_enabled, min_visible_class) = menu_settings(&state.repo.db).await;
@@ -457,7 +491,10 @@ async fn menu_items_public(
         return Ok(ok(Vec::<MenuItemRow>::new()));
     }
     // 可选鉴权：登录按等级过滤，匿名只看 min_class=0；整体门槛不过 → 空
-    let user_class = optional_auth(&req, &state).await.map(|u| u.class_id).unwrap_or(0);
+    let user_class = optional_auth(&req, &state)
+        .await
+        .map(|u| u.class_id)
+        .unwrap_or(0);
     if user_class < min_visible_class {
         return Ok(ok(Vec::<MenuItemRow>::new()));
     }
@@ -537,7 +574,10 @@ async fn msg_templates_update(
     if n == 0 {
         return Err(DomainError::NotFound(path_id));
     }
-    state.repo.audit(Some(auth.id), "msg_template.update", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "msg_template.update", None)
+        .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 

@@ -147,7 +147,7 @@ async fn jixiao_claim(
     }
     // 达标月数加成：每累计 3 个达标月 +10%
     let qualified_months: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM jixiao_claims WHERE user_id = $1 AND type_id = $2",
+        "SELECT count(*) FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND NOT (metrics_snapshot->>'source' = 'admin')",
     )
     .bind(auth.id)
     .bind(body.type_id)
@@ -204,7 +204,7 @@ async fn jixiao_my(
     let rows = sqlx::query_as::<_, ClaimRow>(
         "SELECT c.id, t.name AS type_name, c.period, c.amount, c.claimed_at \
          FROM jixiao_claims c JOIN jixiao_types t ON t.id = c.type_id \
-         WHERE c.user_id = $1 ORDER BY c.id DESC LIMIT 20",
+         WHERE c.user_id = $1 AND NOT (c.metrics_snapshot->>'source' = 'admin') ORDER BY c.id DESC LIMIT 20",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)
@@ -304,9 +304,7 @@ async fn task_overview(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let feed_json: Vec<serde_json::Value> = feed
         .iter()
-        .map(|(u, name, ts)| {
-            serde_json::json!({ "user": u, "task": name, "at": ts.to_rfc3339() })
-        })
+        .map(|(u, name, ts)| serde_json::json!({ "user": u, "task": name, "at": ts.to_rfc3339() }))
         .collect();
 
     // 统计：进行中/已完成/失败 + 各档完成率
@@ -338,7 +336,13 @@ async fn task_overview(
         .collect();
 
     // 我的任务记录
-    let mine: Vec<(i64, String, i16, chrono::DateTime<chrono::Utc>, Option<chrono::DateTime<chrono::Utc>>)> = sqlx::query_as(
+    let mine: Vec<(
+        i64,
+        String,
+        i16,
+        chrono::DateTime<chrono::Utc>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    )> = sqlx::query_as(
         "SELECT t.id, t.name, c.status, now(), c.settled_at \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
          WHERE c.user_id = $1 ORDER BY c.id DESC LIMIT 20",
@@ -378,13 +382,12 @@ async fn task_claim(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     // 任务需在有效期内
-    let window: Option<bool> = sqlx::query_scalar(
-        "SELECT now() BETWEEN starts_at AND ends_at FROM tasks WHERE id = $1",
-    )
-    .bind(body.task_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let window: Option<bool> =
+        sqlx::query_scalar("SELECT now() BETWEEN starts_at AND ends_at FROM tasks WHERE id = $1")
+            .bind(body.task_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if window != Some(true) {
         return Err(DomainError::Validation("任务不在可领取时段内".into()));
     }

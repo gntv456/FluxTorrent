@@ -7,6 +7,29 @@ import type { TorrentListItem } from "@fluxtorrent/domain-types";
 
 export const dynamic = "force-dynamic";
 
+interface SectionDictRow { id: number; kind: string; name: string; sort: number }
+
+/** 第八轮 Section 多维：筛选下拉字典（匿名接口；失败时隐藏筛选区） */
+async function loadSectionDict(): Promise<Record<string, SectionDictRow[]>> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  try {
+    const res = await fetch(`${base}/api/v1/section-dict`, { cache: "no-store" });
+    const j = await res.json();
+    return j?.code === 0 ? (j.data as Record<string, SectionDictRow[]>) : {};
+  } catch {
+    return {};
+  }
+}
+
+const SEC_KINDS: [string, string][] = [
+  ["codec", "编码"],
+  ["audio_codec", "音频编码"],
+  ["standard", "规格"],
+  ["team", "制作组"],
+  ["source", "来源"],
+  ["processing", "处理工艺"],
+];
+
 /** 在现有参数上增量修改，保留其余筛选（修复翻页丢参数） */
 function withParam(
   sp: Record<string, string | undefined>,
@@ -31,6 +54,8 @@ export default async function TorrentsPage({
 }) {
   const sp = await searchParams;
   const { dict } = await getDict();
+  const secDict = await loadSectionDict();
+  const hasSecDict = SEC_KINDS.some(([k]) => (secDict[k]?.length ?? 0) > 0);
   // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用
   const page = await paged<TorrentListItem>("/api/v1/torrents", {
     limit: 20,
@@ -42,6 +67,12 @@ export default async function TorrentsPage({
     search: sp.search,
     sort: sp.sort,
     tag_id: sp.tag_id ? Number(sp.tag_id) : undefined,
+    sec_codec: sp.sec_codec ? Number(sp.sec_codec) : undefined,
+    sec_audio_codec: sp.sec_audio_codec ? Number(sp.sec_audio_codec) : undefined,
+    sec_standard: sp.sec_standard ? Number(sp.sec_standard) : undefined,
+    sec_team: sp.sec_team ? Number(sp.sec_team) : undefined,
+    sec_source: sp.sec_source ? Number(sp.sec_source) : undefined,
+    sec_processing: sp.sec_processing ? Number(sp.sec_processing) : undefined,
     cursor: sp.cursor,
   }).catch(() => ({
     items: [] as TorrentListItem[],
@@ -152,6 +183,25 @@ export default async function TorrentsPage({
                             {dict.torrents2.officialOnly}
                           </label>
                         </fieldset>
+                        {hasSecDict && (
+                          <fieldset>
+                            <legend>多维筛选</legend>
+                            <div className="torrent-search-box__cat-checks">
+                              {SEC_KINDS.map(([k, label]) => (
+                                (secDict[k]?.length ?? 0) > 0 && (
+                                  <label key={k} className="torrent-search-box__cat-item">
+                                    <select name={`sec_${k}`} defaultValue={sp[`sec_${k}`] ?? ""} aria-label={label}>
+                                      <option value="">{label}</option>
+                                      {secDict[k].map((d) => (
+                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                )
+                              ))}
+                            </div>
+                          </fieldset>
+                        )}
                       </div>
                     </div>
                   </details>

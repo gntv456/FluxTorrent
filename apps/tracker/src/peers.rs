@@ -36,6 +36,21 @@ pub struct CompactPeer {
     pub port: u16,
 }
 
+/// BEP-7：IPv6 peer（16 字节 IP + 2 字节端口，进响应的 peers6 字段）。
+/// 教育网（CERNET2）IPv6 覆盖率极高，纯 v6 用户拿不到 v4 peer —— 不实现 peers6 等于拒服务。
+#[derive(Clone, Copy)]
+pub struct CompactPeer6 {
+    pub ip: [u8; 16],
+    pub port: u16,
+}
+
+/// 同一 info_hash 的 peer 快照（v4/v6 分列，响应里分别进 peers / peers6）
+#[derive(Default)]
+pub struct Snapshot {
+    pub v4: Vec<CompactPeer>,
+    pub v6: Vec<CompactPeer6>,
+}
+
 #[derive(Default)]
 pub struct PeerTable {
     inner: DashMap<PeerKey, Peer>,
@@ -62,31 +77,34 @@ impl PeerTable {
         self.inner.remove(key);
     }
 
-    /// 取同一 info_hash 的活跃 peer（排除自己，numwant 上限）
-    pub fn snapshot(&self, info_hash: &str, numwant: usize, exclude: &str) -> Vec<CompactPeer> {
+    /// 取同一 info_hash 的活跃 peer（排除自己，numwant 上限），v4/v6 分列。
+    /// BEP-7：v6 peer 不再被丢弃（此前简化版只回 v4，纯 v6 用户拿不到任何 peer）。
+    pub fn snapshot(&self, info_hash: &str, numwant: usize, exclude: &str) -> Snapshot {
         self.gc();
         let limit = numwant.clamp(1, MAX_PEERS_RESPONSE);
-        self.inner
+        let mut snap = Snapshot::default();
+        for e in self
+            .inner
             .iter()
             .filter(|e| e.key().info_hash == info_hash && e.key().peer_id != exclude)
             .take(limit)
-            .filter_map(|e| {
-                let ip: Vec<u8> = e
-                    .value()
-                    .ip
-                    .split('.')
-                    .filter_map(|p| p.parse::<u8>().ok())
-                    .collect();
-                if ip.len() == 4 {
-                    Some(CompactPeer {
-                        ip: [ip[0], ip[1], ip[2], ip[3]],
-                        port: e.value().port,
-                    })
-                } else {
-                    None // IPv6 → 简化版暂不进 compact 列表
-                }
-            })
-            .collect()
+        {
+            let port = e.value().port;
+            let ip = &e.value().ip;
+            if let Ok(v6) = ip.parse::<std::net::Ipv6Addr>() {
+                snap.v6.push(CompactPeer6 {
+                    ip: v6.octets(),
+                    port,
+                });
+            } else if let Ok(v4) = ip.parse::<std::net::Ipv4Addr>() {
+                snap.v4.push(CompactPeer {
+                    ip: v4.octets(),
+                    port,
+                });
+            }
+            // 其余非法字符串（历史脏数据）丢弃
+        }
+        snap
     }
 
     pub fn count_seeders(&self, info_hash: &str) -> usize {
@@ -128,7 +146,7 @@ pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
-/// BEP3 bencode announce 响应（compact 模式：6 字节/peer）。
+/// BEP3 bencode announce 响应（compact 模式：v4 6 字节/peer，BEP-7 v6 18 字节/peer 进 peers6）。
 /// interval / min interval 为 BEP3 强制字段：告知客户端汇报间隔，
 /// 缺失时部分客户端会按自身默认值频繁重发 —— 这是高频 announce 的诱因之一。
 /// 返回原始字节 —— peer 列表是二进制，绝不可经 String/UTF-8 转换（会损坏数据）。
@@ -137,6 +155,7 @@ pub fn bencode_announce(
     incomplete: i64,
     downloaded: i64,
     peers: &[CompactPeer],
+    peers6: &[CompactPeer6],
     interval: i64,
     min_interval: i64,
 ) -> Vec<u8> {
@@ -145,6 +164,12 @@ pub fn bencode_announce(
         peers_bytes.extend_from_slice(&p.ip);
         peers_bytes.extend_from_slice(&p.port.to_be_bytes());
     }
+    let mut peers6_bytes = Vec::with_capacity(peers6.len() * 18);
+    for p in peers6 {
+        peers6_bytes.extend_from_slice(&p.ip);
+        peers6_bytes.extend_from_slice(&p.port.to_be_bytes());
+    }
+    // 字典键序按字节序（BEP3）：… peers < peers6（前缀短者在前）
     let mut out = format!(
         "d8:completei{complete}e10:incompletei{incomplete}e10:downloadedi{downloaded}e\
          8:intervali{interval}e12:min intervali{min_interval}e5:peers{}:",
@@ -152,6 +177,10 @@ pub fn bencode_announce(
     )
     .into_bytes();
     out.extend_from_slice(&peers_bytes);
+    if !peers6_bytes.is_empty() {
+        out.extend_from_slice(format!("6:peers6{}:", peers6_bytes.len()).as_bytes());
+        out.extend_from_slice(&peers6_bytes);
+    }
     out.extend_from_slice(b"e");
     out
 }
@@ -219,7 +248,7 @@ mod tests {
         t.upsert(mk_peer("xyz", "p3", 0)); // 另一种子
         assert_eq!(t.counts("abc"), (1, 1));
         let snap = t.snapshot("abc", 50, "p1");
-        assert_eq!(snap.len(), 1); // 排除自己
+        assert_eq!(snap.v4.len() + snap.v6.len(), 1); // 排除自己
     }
 
     #[test]
@@ -244,6 +273,7 @@ mod tests {
                 ip: [10, 0, 0, 1],
                 port: 0xC201, // 高字节非 ASCII —— 验证不经 UTF-8 损坏
             }],
+            &[],
             1800,
             600,
         );
@@ -253,8 +283,66 @@ mod tests {
     }
 
     #[test]
+    fn bencode_announce_ipv6_bep7() {
+        let body = bencode_announce(
+            1,
+            1,
+            0,
+            &[CompactPeer {
+                ip: [10, 0, 0, 1],
+                port: 51413,
+            }],
+            &[CompactPeer6 {
+                ip: [
+                    0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01,
+                ],
+                port: 0xC201,
+            }],
+            1800,
+            600,
+        );
+        // BEP-7：peers6 紧跟 peers（字节序），18 字节/peer；二进制内容不经 UTF-8 损坏
+        assert!(body.windows(6).any(|w| w == [10, 0, 0, 1, 0xC8, 0xD5])); // 51413 = 0xC8D5
+        assert!(body.windows(18).any(|w| w[..16]
+            == [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01]
+            && w[16] == 0xC2
+            && w[17] == 0x01));
+        let s = String::from_utf8_lossy(&body);
+        assert!(s.contains("6:peers618:"), "缺 peers6: {s}");
+        assert!(
+            s.find("5:peers").unwrap() < s.find("6:peers6").unwrap(),
+            "字典键序"
+        );
+    }
+
+    #[test]
+    fn bencode_announce_omits_empty_peers6() {
+        let body = bencode_announce(1, 2, 3, &[], &[], 1800, 600);
+        let s = String::from_utf8(body).unwrap();
+        assert!(!s.contains("peers6"), "空 v6 列表不应输出 peers6 键: {s}");
+    }
+
+    #[test]
+    fn snapshot_splits_v4_v6() {
+        let t = PeerTable::new();
+        let mut p4 = mk_peer("abc", "p4", 0);
+        p4.ip = "192.168.1.2".into();
+        let mut p6 = mk_peer("abc", "p6", 0);
+        p6.ip = "2001:db8::5".into();
+        t.upsert(p4);
+        t.upsert(p6);
+        let snap = t.snapshot("abc", 50, "");
+        assert_eq!(snap.v4.len(), 1);
+        assert_eq!(snap.v6.len(), 1);
+        assert_eq!(
+            snap.v6[0].ip,
+            [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]
+        );
+    }
+
+    #[test]
     fn bencode_announce_includes_interval() {
-        let body = bencode_announce(1, 2, 3, &[], 1800, 600);
+        let body = bencode_announce(1, 2, 3, &[], &[], 1800, 600);
         let s = String::from_utf8(body).unwrap();
         assert!(s.contains("8:intervali1800e"), "缺 interval: {s}");
         assert!(s.contains("12:min intervali600e"), "缺 min interval: {s}");

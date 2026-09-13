@@ -74,7 +74,7 @@ VALUES (1, '<恰好32位字符的邀请码>', now() + interval '3 days');
 ```bash
 cargo fmt --all --check   # 格式 ✅
 cargo check               # 零警告 ✅
-cargo test                # 25 单测（促销/密码/JWT/Bencode/peer 表/计费倍率/签到/利息/站免池窗口）✅
+cargo test                # 53 单测（促销/密码/JWT/Bencode/peer 表/计费倍率/签到/利息/站免池窗口/BEP-7 peers6/snapshot v4v6 分列）✅
 pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 ```
 
@@ -111,6 +111,7 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 | **M24 娱乐玩法（首批）**：刮刮乐（五档奖池/EV 0.66）、猜大小（平局返本/2x）、统一交易管线 + 下注上限 + 每时限次 fail-close 风控 | ✅ |
 | **全站代码审查修复**（2026-09-09）：BEP3 增量计费、earn_spark 行锁幂等、封禁即时生效、bencode 深度限制、Tailwind 接入、Dockerfile 全修、双 URL、对比度 4.6:1 等 30+ 项 | ✅ |
 | **折叠屏适配基线**：viewport-segment 铰链预留 CSS（需真机验证）、外屏 ≤360px 降级、三折叠栅格 | ✅ |
+| **0069 生态适配**（2026-09-13，对照《主流PT架构横向对比与借鉴》v2）：`pieces_hash` 跨站辅种二级指纹（上传写入 + worker 存量回填）、Tracker **BEP-7** IPv6 peers6、NP 兼容端点（`/compat/nexusphp/*` 含 download.php 形状）+ `/compat/meta` 架构自描述、**30 分钟临时下载凭证**（与长期 Token/passkey 解耦）、API Token 180 天时效 + 上限 3 枚、聚合组 torrent_groups（详情页「同组版本」）、agent_rules 命中落 `cheat_events` + 管理组信箱告警、`/stats` 对象级读缓存（60s TTL） | ✅ |
 | **多语言三语**（2026-09-09）：zh-CN/zh-TW/en Cookie 切换、零新增依赖（自研字典 + task-local 后端错误本地化，Accept-Language 协商）、全站 21 页 + 9 组件文案抽取 | ✅ |
 | **全文搜索（标题外）**（2026-09-09）：pg_trgm GIN 索引 ×4，标题/副标题/简介/文件名四列 ILIKE 子串匹配（中文友好），零外挂搜索服务 | ✅ |
 | 做种收益结算（spark_ledger 流水 + 幂等重跑） | ✅ |
@@ -129,8 +130,15 @@ pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 | GET/POST | /torrents/{id}/comments | 评论 |
 | POST | /torrents/{id}/thanks | 感谢（一人一次） |
 | PUT | /torrents/{id}/bookmark | 收藏开关 |
-| GET | /stats | 站点统计（旧站首页口径） |
+| GET | /stats | 站点统计（旧站首页口径；Redis 60s 读缓存） |
 | POST | /invites | 邀请发放（LV3+ 周配额） |
+| GET/POST | /torrents/{id}/group | 聚合组查询 / 挂入（同资源多版本） |
+| GET | /compat/meta | 架构自描述（第三方适配器接入入口） |
+| GET | /compat/nexusphp/user.json · torrents.json · torrent/{id}.json | NexusPHP 字段口径兼容端点（API Token 鉴权） |
+| GET | /compat/nexusphp/download.php?id=&passkey= | NP 形状下载端点（passkey 鉴权 + 限流） |
+| POST | /downloads/keys · GET /downloads/{id}?token= | 30 分钟临时下载凭证（与长期 Token/passkey 解耦） |
+| GET | /me/tokens · POST /me/tokens · /me/tokens/revoke | API Token 管理（180 天时效、上限 3 枚、可吊销） |
+| GET | /admin/cheat-events | 客户端黑白名单命中记录（staff） |
 
 统一信封 `{code, message, data, request_id}`；错误码分段见 `packages/domain-types`。
 
