@@ -267,7 +267,7 @@ async fn ptpp_user_info(
         i64,
         i64,
         i64,
-        i64,
+        i32,
         chrono::DateTime<chrono::Utc>,
     )> = sqlx::query_as(
         "SELECT u.id, u.username, u.spark_balance, u.uploaded, u.downloaded, u.seeding_size, \
