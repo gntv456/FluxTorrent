@@ -6,7 +6,7 @@ use serde::Deserialize;
 use sqlx::Row;
 use std::sync::Arc;
 
-use crate::auth;
+// auth 模块经 state.jwt 使用（0071 RS256 化后 http 层不再直接调用）
 
 use crate::domain::{self};
 use crate::dto::ok;
@@ -297,7 +297,23 @@ async fn login(
     // 2FA（启用者必须带 totp_code）
     crate::twofa_http::login_totp_check(&state.repo.db, user.id, body.totp_code.unwrap_or(0))
         .await?;
-    let token = auth::issue(user.id, user.class_id, &state.cfg.jwt_secret, 24)
+    // 0072 闲置停用拦截：dormant_mark（worker 每小时）给 90 天未登录且无做种的非员工账号打标。
+    // 拦截放在密码/2FA 之后 —— 不给探测者区分「休眠账号是否存在」的信息差。
+    if user.dormant_at.is_some() {
+        let _ = sqlx::query(
+            "INSERT INTO login_events (user_id, ip, ok) VALUES ($1, NULLIF($2,'')::inet, false)",
+        )
+        .bind(user.id)
+        .bind(&peer_ip)
+        .execute(&state.repo.db)
+        .await;
+        return Err(DomainError::Validation(
+            "账号因长期未登录已被停用，请通过『联系我们』附上用户名申请恢复".into(),
+        ));
+    }
+    let token = state
+        .jwt
+        .issue(user.id, user.class_id, 24)
         .map_err(DomainError::Internal)?;
     // 登录事件（控制面板账户概览 30 天活跃趋势；含 IP 供 ipcheck/maxlogin）
     let _ = sqlx::query(
@@ -385,7 +401,7 @@ pub async fn require_auth(
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
         .ok_or(DomainError::Unauthorized)?;
-    let claims = auth::verify(token, &state.cfg.jwt_secret).ok_or(DomainError::Unauthorized)?;
+    let claims = state.jwt.verify(token).ok_or(DomainError::Unauthorized)?;
     // 登出撤销检查：签发时间早于 not-before 的 token 一律拒绝
     {
         let mut c = state.redis.clone();
@@ -1198,6 +1214,41 @@ async fn list(
         ),
         _ => None,
     };
+    // P1-4 读缓存（0071）：仅覆盖「首屏等价视图」——无筛选/无搜索/无游标/默认排序的第 1 页。
+    // 该视图不含用户视角字段（owner 匿名化在 SQL 层完成），全部登录用户看到的字节一致，可共享缓存。
+    // TTL 45s 兜底 + Redis 故障直查；带任何筛选条件时不走缓存（避免失效风暴复杂化）。
+    let is_first_screen = cursor.is_none()
+        && filter.category_id.is_none()
+        && filter.medium_id.is_none()
+        && filter.grade_id.is_none()
+        && filter.edition_id.is_none()
+        && filter.official.is_none()
+        && !filter.include_dead
+        && !filter.include_unapproved
+        && filter.search.is_none()
+        && filter.sort.is_none()
+        && filter.tag_id.is_none()
+        && filter.sections.is_empty()
+        && q.limit.unwrap_or(20) == 20;
+    let cache_key = "cache:tlist:first:v1";
+    if is_first_screen {
+        let mut c = state.redis.clone();
+        let hit: Option<String> = redis::AsyncCommands::get(&mut c, cache_key)
+            .await
+            .unwrap_or(None);
+        if let Some(json) = hit {
+            if let Ok(page) = serde_json::from_str::<torrents::TorrentPage>(&json) {
+                return Ok(ok(page));
+            }
+        }
+        let page =
+            torrents::list_torrents(&state.repo.db, &filter, cursor, q.limit.unwrap_or(20)).await?;
+        if let Ok(json) = serde_json::to_string(&page) {
+            let _: Result<(), _> =
+                redis::AsyncCommands::set_ex(&mut c, cache_key, json, 45u64).await;
+        }
+        return Ok(ok(page));
+    }
     let page =
         torrents::list_torrents(&state.repo.db, &filter, cursor, q.limit.unwrap_or(20)).await?;
     Ok(ok(page))

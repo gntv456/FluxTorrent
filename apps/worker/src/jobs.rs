@@ -1,7 +1,7 @@
 //! 定时与消费任务。
 
 use chrono::Datelike;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 /// 存量种子 pieces_hash 回填（0069）：扫描 pieces_hash IS NULL 的种子，读 raw 计算 SHA1(info.pieces)。
 /// 每轮 ≤50 条（避免一次长事务拖垮 worker），全部处理完后自然空转。worker 内置极简
@@ -318,7 +318,9 @@ pub async fn seeding_reward(db: &PgPool, base: i64) -> anyhow::Result<u64> {
                    count(*) AS seeding_count, COALESCE(sum(t.size),0) AS seeding_size
             FROM users u
             JOIN snatches s ON s.user_id = u.id AND s.seeding
+            -- 0071 反假保种：回连不可达且从无上传的做种不计收益（真 NAT 用户有真实上传，不受影响）
             JOIN torrents t ON t.id = s.torrent_id
+              AND NOT (s.connectable = 0 AND s.uploaded = 0)
             WHERE u.status < 2
             GROUP BY u.id, u.donor
         ),
@@ -341,6 +343,15 @@ pub async fn seeding_reward(db: &PgPool, base: i64) -> anyhow::Result<u64> {
     .bind(&hour)
     .execute(db)
     .await?;
+    // 0072：顺手物化做种体积（ptppUserInfo 的 seedingSize 字段来源；earners 已扫全量做种行）
+    sqlx::query(
+        "UPDATE users u SET seeding_size = COALESCE(s.sz, 0) \
+         FROM (SELECT s2.user_id, sum(t2.size) AS sz FROM snatches s2 \
+               JOIN torrents t2 ON t2.id = s2.torrent_id WHERE s2.seeding GROUP BY s2.user_id) s \
+         WHERE u.id = s.user_id",
+    )
+    .execute(db)
+    .await?;
     // 刷新余额快照（权威在流水，快照仅展示）
     sqlx::query(
         "UPDATE users SET spark_balance = COALESCE((             SELECT sum(amount) FROM spark_ledger WHERE user_id = users.id          ), 0)",
@@ -360,6 +371,12 @@ struct AnnounceEvent {
     event: String,
     #[serde(default)]
     left: i64,
+    /// announce 来源 IP（0071 反作弊：账号 IP 跳变/多 IP 分析）
+    #[serde(default)]
+    ip: String,
+    /// tracker 主动回连抽样结果（0071）：-1=未测（缺省/旧事件） 0=不可达 1=可达
+    #[serde(default)]
+    conn: Option<i16>,
 }
 
 /// 消费 announce 事件流（§5.4 链路 ④-⑦）：Redis Stream → 计费流水 + snatches。
@@ -404,6 +421,10 @@ pub async fn consume_announce(
 
     let mut applied = 0u64;
     let mut last_seen_id: Option<String> = None;
+    // P0-1 快照增量化：只刷本轮涉及的用户/种子（此前每轮对 users/torrents 全表重算，
+    // 万级种子下每分钟两次全表聚合；纠偏由 run_all 的 reconcile_snapshots 周期兜底）
+    let mut touched_users: std::collections::BTreeSet<i64> = Default::default();
+    let mut touched_torrents: std::collections::BTreeSet<i64> = Default::default();
     for entry in reply.ids {
         let id = entry.id;
         // 已处理过的游标本条跳过
@@ -442,7 +463,27 @@ pub async fn consume_announce(
             }
         };
         match process_event(db, &ev, seed_cap).await {
-            Ok(()) => {
+            Ok(Some(torrent_id)) => {
+                applied += 1;
+                last_seen_id = Some(id);
+                touched_users.insert(ev.user);
+                touched_torrents.insert(torrent_id);
+                // connectable 抽样联动（0071 P1-9）：不可达 + 零上传 → 疑似假保种，记入作弊探测
+                if ev.conn == Some(0) {
+                    let _ = sqlx::query(
+                        "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
+                         VALUES ($1, 'connectable', $2, 'suspect_ghost_seed') \
+                         ON CONFLICT (user_id, agent, reason) DO UPDATE \
+                           SET hits = cheat_events.hits + 1, last_seen = now()",
+                    )
+                    .bind(ev.user)
+                    .bind(&ev.ip)
+                    .execute(db)
+                    .await;
+                }
+            }
+            Ok(None) => {
+                // 种子不存在：跳过计费但推进游标
                 applied += 1;
                 last_seen_id = Some(id);
             }
@@ -465,24 +506,44 @@ pub async fn consume_announce(
             .await
             .unwrap_or(());
     }
-    // 刷新用户上/下载量快照（权威在 traffic_ledger 流水，§6.2 快照仅展示）
-    sqlx::query(
-        "UPDATE users SET             uploaded = COALESCE((SELECT sum(delta_up) FROM traffic_ledger WHERE user_id = users.id), 0),             downloaded = COALESCE((SELECT sum(delta_down) FROM traffic_ledger WHERE user_id = users.id), 0)",
-    )
-    .execute(db)
-    .await?;
-    // 回填种子做种/下载计数（详情页与保种规则数据源）
-    sqlx::query(
-        "UPDATE torrents t SET             seeders = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.seeding), 0),             leechers = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.leeching), 0),             times_completed = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.completed_at IS NOT NULL), 0)",
-    )
-    .execute(db)
-    .await?;
+    // P0-1：快照点刷——仅本轮有事件的用户/种子（权威在流水，快照仅展示）
+    let users: Vec<i64> = touched_users.into_iter().collect();
+    if !users.is_empty() {
+        sqlx::query(
+            "UPDATE users SET \
+             uploaded = COALESCE((SELECT sum(delta_up) FROM traffic_ledger WHERE user_id = users.id), 0), \
+             downloaded = COALESCE((SELECT sum(delta_down) FROM traffic_ledger WHERE user_id = users.id), 0) \
+             WHERE id = ANY($1)",
+        )
+        .bind(&users)
+        .execute(db)
+        .await?;
+    }
+    let torrents: Vec<i64> = touched_torrents.into_iter().collect();
+    if !torrents.is_empty() {
+        // 回填种子做种/下载计数（详情页与保种规则数据源）
+        sqlx::query(
+            "UPDATE torrents t SET \
+             seeders = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.seeding), 0), \
+             leechers = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.leeching), 0), \
+             times_completed = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.completed_at IS NOT NULL), 0) \
+             WHERE t.id = ANY($1)",
+        )
+        .bind(&torrents)
+        .execute(db)
+        .await?;
+    }
     Ok(applied)
 }
 
 /// 单事件计费（促销裁决 + snatch upsert + 流水 + 保种时长累计）
+/// 返回 torrent_id 供快照点刷收集（种子不存在返回 None）。
 /// seed_cap：做种时长单次累计容忍窗（秒）= 2 × announce_interval，由 consume_announce 按站点设定算出
-async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow::Result<()> {
+async fn process_event(
+    db: &PgPool,
+    ev: &AnnounceEvent,
+    seed_cap: i64,
+) -> anyhow::Result<Option<i64>> {
     // 未知种子的查询失败必须显式报错（重试），不能静默丢弃计费
     let torrent_id: Option<i64> =
         sqlx::query_scalar("SELECT id FROM torrents WHERE info_hash = $1")
@@ -490,7 +551,7 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow
             .fetch_optional(db)
             .await?;
     let Some(torrent_id) = torrent_id else {
-        return Ok(()); // 种子确实不存在：跳过
+        return Ok(None); // 种子确实不存在：跳过
     };
 
     // 促销快照裁决（§5.4-⑦）——与 API 展示口径一致：同种子多条专属促销取最强档
@@ -540,8 +601,8 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow
     let stopped = ev.event == "stopped";
     sqlx::query(
         r#"
-        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at)
-        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $11 THEN FALSE ELSE $7 END, CASE WHEN $11 THEN FALSE ELSE $8 END, CASE WHEN $9 THEN now() ELSE NULL END, now())
+        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at, connectable)
+        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $11 THEN FALSE ELSE $7 END, CASE WHEN $11 THEN FALSE ELSE $8 END, CASE WHEN $9 THEN now() ELSE NULL END, now(), COALESCE($12, 1))
         ON CONFLICT (user_id, torrent_id) DO UPDATE SET
           uploaded = snatches.uploaded + EXCLUDED.uploaded,
           downloaded = snatches.downloaded + EXCLUDED.downloaded,
@@ -559,6 +620,8 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow
                    THEN LEAST(GREATEST(EXTRACT(EPOCH FROM (now() - snatches.last_seen_at))::bigint, 0), $10::bigint)
                    ELSE 0 END
           ),
+          -- connectable（0071）：tracker 回连抽样结果覆盖（NULL=本次未测，保持原值）
+          connectable = COALESCE($12, snatches.connectable),
           last_seen_at = now()
         "#,
     )
@@ -573,6 +636,7 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow
     .bind(ev.event == "completed")
     .bind(stopped)
     .bind(seed_cap)
+    .bind(ev.conn)
     .execute(&mut *tx)
     .await?;
     // 仅在有实际增量时落流水（避免零增量噪声）
@@ -588,7 +652,7 @@ async fn process_event(db: &PgPool, ev: &AnnounceEvent, seed_cap: i64) -> anyhow
         .await?;
     }
     tx.commit().await?;
-    Ok(())
+    Ok(Some(torrent_id))
 }
 
 /// 做种里程碑采集（M28 插件数据源）：把达到档位的事件落表，api 侧插件按需消费。
@@ -630,6 +694,8 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         WHERE s.completed_at IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM hr_snapshots h WHERE h.user_id = s.user_id AND h.torrent_id = s.torrent_id)
           AND COALESCE(t.hr_policy->>'enabled', 'true')::boolean
+          -- 0072 buffer 豁免（U3D hitrun.buffer 口径）：下载量不足种子 10% 视为误触/秒删，不计 H&R
+          AND s.downloaded > t.size / 10
           AND NOT EXISTS (
               SELECT 1 FROM promotions p
               WHERE (p.torrent_id = s.torrent_id
@@ -663,6 +729,35 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     .execute(db)
     .await?;
 
+    // 3.5) 预警（0072，U3D prewarn 口径）：48h 内到期、未达标、未预警过的 → 站内信提醒。
+    //      处罚前的缓冲带：教育站新人多，一次 PM 能挡掉大部分无意违规。
+    let prewarned = sqlx::query(
+        r#"
+        WITH due AS (
+            UPDATE hr_snapshots SET prewarned_at = now(), updated_at = now()
+            WHERE status = 'open' AND prewarned_at IS NULL
+              AND seeded_seconds < required_seconds
+              AND deadline < now() + interval '48 hours'
+            RETURNING user_id, torrent_id, seeded_seconds, required_seconds, deadline
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, d.user_id,
+               'H&R 预警：请尽快补足做种',
+               format('你完成的种子 #%s 距 H&R 考察截止还剩不到 48 小时（截止 %s）。当前累计做种 %s 小时，'
+                      '需 %s 小时。请尽快恢复做种；也可在「我的 H&R」页用火花自助免罪。',
+                      d.torrent_id,
+                      to_char(d.deadline AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI'),
+                      round(d.seeded_seconds / 3600.0, 1),
+                      round(d.required_seconds / 3600.0, 1))
+        FROM due d
+        "#,
+    )
+    .execute(db)
+    .await?;
+    if prewarned.rows_affected() > 0 {
+        tracing::info!(n = prewarned.rows_affected(), "H&R pre-warnings sent");
+    }
+
     // 4) 过期未达标 → violated + 落违规表（追责依据）
     let violated = sqlx::query(
         r#"
@@ -695,6 +790,8 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
 }
 
 /// 等级自动升降（class_rules）：达标即升（逐级检查），不达标且 demotable 则降至仍满足的最高级。
+/// 0072 晋升待遇：升级时按 class_rules.promo_sparks 发放火花 + 系统消息（NP 升级送邀请口径；
+/// 幂等键 class_promo:{user}:{new_class}，用户重复升降只补发差额档不重复入账）。
 async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
     let promoted = sqlx::query(
         r#"
@@ -714,10 +811,69 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
         )
         UPDATE users u SET class_id = t.new_class
         FROM target t WHERE u.id = t.id AND t.new_class > u.class_id
+        RETURNING u.id, u.class_id AS old_class, t.new_class
         "#,
     )
-    .execute(db)
+    .fetch_all(db)
     .await?;
+    if !promoted.is_empty() {
+        tracing::info!(n = promoted.len(), "class promoted");
+    }
+    // 晋升待遇发放（0072）：promo_sparks > 0 的档位才发；幂等键防重复
+    for row in &promoted {
+        let (uid, old_class, new_class): (i64, i32, i32) =
+            (row.try_get(0)?, row.try_get(1)?, row.try_get(2)?);
+        let reward: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(sum(promo_sparks),0) FROM class_rules \
+             WHERE class_id > $1 AND class_id <= $2",
+        )
+        .bind(old_class)
+        .bind(new_class)
+        .fetch_one(db)
+        .await?;
+        if reward <= 0 {
+            continue;
+        }
+        let idem = format!("class_promo:{}:{}", uid, new_class);
+        let credited = sqlx::query(
+            r#"
+            INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
+            SELECT nextval('spark_ledger_id_seq'), $1, $2, 'class_promotion', $3
+            WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)
+            "#,
+        )
+        .bind(uid)
+        .bind(reward)
+        .bind(&idem)
+        .execute(db)
+        .await?
+        .rows_affected();
+        if credited > 0 {
+            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+                .bind(uid)
+                .bind(reward)
+                .execute(db)
+                .await?;
+            let level_name: String =
+                sqlx::query_scalar("SELECT name FROM class_rules WHERE class_id = $1")
+                    .bind(new_class)
+                    .fetch_optional(db)
+                    .await?
+                    .unwrap_or_else(|| format!("LV{new_class}"));
+            let _ = sqlx::query(
+                "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+                 VALUES (NULL, $1, $2, $3)",
+            )
+            .bind(uid)
+            .bind("等级晋升祝贺")
+            .bind(format!(
+                "恭喜晋升至「{level_name}」！系统发放晋升奖励 {reward} 火花，已入账。\
+                 继续保持做种与分享，更高等级还有更多奖励。"
+            ))
+            .execute(db)
+            .await;
+        }
+    }
     let demoted = sqlx::query(
         r#"
         WITH stats AS (
@@ -742,9 +898,6 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
     )
     .execute(db)
     .await?;
-    if promoted.rows_affected() > 0 {
-        tracing::info!(n = promoted.rows_affected(), "users promoted");
-    }
     if demoted.rows_affected() > 0 {
         tracing::info!(n = demoted.rows_affected(), "users demoted");
     }
@@ -785,12 +938,300 @@ async fn purge_old_login_events(db: &PgPool) -> anyhow::Result<u64> {
     Ok(res.rows_affected())
 }
 
+/// 闲置账号停用（0072，U3D AutoDisableInactiveUsers 口径的教育站收敛版）：
+/// 90 天未登录、无任何做种、非员工（class<90）且非捐赠者 → dormant_at 打标。
+/// 不改 status（保留封禁语义）、不删数据；登录侧拦截 dormant_at 非空者并提示联系管理组。
+/// 排除 dormant_at 已打标（幂等）与 90 天内注册的新号（新人宽限）。
+async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
+    let res = sqlx::query(
+        r#"
+        UPDATE users u SET dormant_at = now()
+        WHERE u.class_id < 90 AND NOT u.donor AND u.dormant_at IS NULL
+          AND u.created_at < now() - interval '90 days'
+          AND COALESCE(u.last_seen_at, u.created_at) < now() - interval '90 days'
+          AND NOT EXISTS (SELECT 1 FROM snatches s WHERE s.user_id = u.id AND s.seeding)
+        "#,
+    )
+    .execute(db)
+    .await?;
+    if res.rows_affected() > 0 {
+        tracing::info!(n = res.rows_affected(), "dormant accounts marked");
+    }
+    Ok(res.rows_affected())
+}
+
+/// P0-2 分区预建：为三张 RANGE 流水表预建 [当月, +2 月] 的月分区（每日一次，IF NOT EXISTS 幂等）。
+/// 存量拆分见迁移 0070；没有本 job 时数据会持续落 default 分区导致裁剪失效。
+pub async fn ensure_partitions(db: &PgPool) -> anyhow::Result<()> {
+    let now_site = chrono::Utc::now() + chrono::Duration::hours(8);
+    let first_of_month = now_site.date_naive().with_day(1).unwrap();
+    let tables = [
+        ("traffic_ledger", "window_start"),
+        ("spark_ledger", "created_at"),
+        ("posts", "created_at"),
+    ];
+    for (tbl, col) in tables {
+        for i in 0..3i32 {
+            let start = first_of_month + chrono::Duration::days(30 * i as i64);
+            // 用 date_trunc 语义对齐月首（+30 天近似在月末附近可能漂移，改为逐次取下月一号）
+            let start = first_of_month
+                .checked_add_months(chrono::Months::new(i as u32))
+                .unwrap_or(start);
+            let end = start
+                .checked_add_months(chrono::Months::new(1))
+                .unwrap_or(start);
+            let name = format!("{}_{}", tbl, start.format("%Y_%m"));
+            sqlx::query(&format!(
+                "CREATE TABLE IF NOT EXISTS {} PARTITION OF {} FOR VALUES FROM ('{}') TO ('{}')",
+                name,
+                tbl,
+                start.format("%Y-%m-%d"),
+                end.format("%Y-%m-%d")
+            ))
+            .execute(db)
+            .await?;
+            let _ = col; // 分区键仅作文档提示
+        }
+    }
+    Ok(())
+}
+
+/// P0-6 种子级 up/down 差额对账（NP cheaterbox 口径）：
+/// 虚报上传者没有对应真实下载方，同种子 7 天窗口 Σ(delta_up) − Σ(delta_down) 长期为正且巨大。
+/// 免费促销（free/x2free，含全局/官种/分类维度）天然产生差额，豁免。
+/// 命中 → cheat_events（agent='torrent_gap', agent 字段存 torrent:{id}）+ 首次进管理组信箱。
+pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
+    let threshold_gb: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'cheat_gap_threshold_gb'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(50)
+    .clamp(1, 10240);
+    let threshold = threshold_gb * 1024 * 1024 * 1024;
+
+    let rows: Vec<(i64, i64)> = sqlx::query_as(
+        r#"
+        SELECT torrent_id, SUM(delta_up) - SUM(delta_down) AS gap
+        FROM traffic_ledger
+        WHERE window_start > now() - interval '7 days'
+        GROUP BY torrent_id
+        HAVING SUM(delta_up) - SUM(delta_down) > $1 AND COUNT(DISTINCT user_id) >= 2
+        "#,
+    )
+    .bind(threshold)
+    .fetch_all(db)
+    .await?;
+
+    let mut first_hits = 0u64;
+    for (torrent_id, gap) in rows {
+        // 免费促销豁免（与 hr_enforce 的免费判定同口径）
+        let exempt: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM promotions p \
+             WHERE (p.torrent_id = $1 OR p.torrent_id IS NULL) \
+               AND p.starts_at <= now() AND p.ends_at > now() \
+               AND (p.kind IN ('free','x2free') OR (p.scope = 'official' AND EXISTS (SELECT 1 FROM torrents t WHERE t.id = $1 AND t.official_tag))))",
+        )
+        .bind(torrent_id)
+        .fetch_one(db)
+        .await
+        .unwrap_or(false);
+        if exempt {
+            continue;
+        }
+        let agent = format!("torrent:{torrent_id}");
+        let existed: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM cheat_events WHERE user_id = 0 AND agent = $1 AND reason = 'torrent_gap_audit')",
+        )
+        .bind(&agent)
+        .fetch_one(db)
+        .await
+        .unwrap_or(true);
+        sqlx::query(
+            "INSERT INTO cheat_events (user_id, agent, reason) VALUES (0, $1, 'torrent_gap_audit') \
+             ON CONFLICT (user_id, agent, reason) DO UPDATE SET hits = cheat_events.hits + 1, last_seen = now()",
+        )
+        .bind(&agent)
+        .execute(db)
+        .await?;
+        if !existed {
+            first_hits += 1;
+            let body = format!(
+                "种子 #{torrent_id} 近 7 天上传总量比下载总量高出约 {gap} 字节（阈值 {threshold_gb} GiB），\
+                 存在虚报上传（假流量）嫌疑。明细见后台「作弊探测」，请人工核对做种者列表。"
+            );
+            let _: Result<_, _> = sqlx::query(
+                "INSERT INTO staffmessages (user_id, subject, body, permission) \
+                 SELECT MIN(id), '流量差额审计告警', $1, 'cheater' FROM users WHERE class_id >= 90",
+            )
+            .bind(body)
+            .execute(db)
+            .await;
+        }
+    }
+    if first_hits > 0 {
+        tracing::warn!(n = first_hits, "cheat_audit: new torrent-gap suspects");
+    }
+    Ok(first_hits)
+}
+
+/// P1-8 Ratio Watch（GZ 口径柔性观察期）：
+/// 分享率跌破阈值 → 一次性站内信警告 + 14 天观察期；期内恢复自动解除，到期仍跌破 → 停下载权并通知管理组。
+/// 阈值/期限走 site_settings：ratio_watch_threshold（默认 0.4）、ratio_watch_days（默认 14）。
+pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
+    let threshold_f: f64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'ratio_watch_threshold'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<f64>().ok())
+    .unwrap_or(0.4)
+    .clamp(0.01, 10.0);
+    let days: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'ratio_watch_days'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(14)
+    .clamp(1, 90);
+
+    // ① 新跌破者：进入观察期 + 一次性警告信
+    let entered = sqlx::query(
+        r#"
+        WITH low AS (
+            SELECT id, username, uploaded, downloaded FROM users
+            WHERE status < 2 AND class_id < 90 AND downloaded > 0 AND ratio_watch_until IS NULL
+              AND uploaded::float8 / downloaded::float8 < $1
+        ),
+        entered AS (
+            UPDATE users u SET ratio_watch_until = now() + make_interval(days => $2), ratio_warned_at = now()
+            FROM low WHERE u.id = low.id RETURNING low.id, low.username
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, id, '分享率警告（观察期）',
+               '您好 ' || username || '，您的分享率已跌破站点警戒线。请在 ' || $2 || ' 天内恢复（做种/发布均可提升上传量），' ||
+               '观察期结束仍未恢复将暂停下载权限。如有特殊情况请联系管理组。'
+        FROM entered
+        "#,
+    )
+    .bind(threshold_f)
+    .bind(days)
+    .execute(db)
+    .await?
+    .rows_affected();
+
+    // ② 到期仍跌破：暂停下载 + 通知管理组（管理组可手动恢复 download_enabled）
+    let punished = sqlx::query(
+        r#"
+        WITH expired AS (
+            UPDATE users SET download_enabled = FALSE
+            WHERE status < 2 AND class_id < 90 AND download_enabled
+              AND ratio_watch_until IS NOT NULL AND ratio_watch_until < now()
+              AND downloaded > 0 AND uploaded::float8 / downloaded::float8 < $1
+            RETURNING id, username
+        )
+        INSERT INTO staffmessages (user_id, subject, body, permission)
+        SELECT id, 'Ratio Watch 到期处置', '用户 ' || username || '（#' || id || '）观察期结束仍未恢复分享率，已按规则暂停下载权限，请人工复核。', 'cheater'
+        FROM expired
+        "#,
+    )
+    .bind(threshold_f)
+    .execute(db)
+    .await?
+    .rows_affected();
+
+    // ③ 期内恢复：自动解除观察
+    let cleared = sqlx::query(
+        "UPDATE users SET ratio_watch_until = NULL \
+         WHERE ratio_watch_until IS NOT NULL \
+           AND (downloaded = 0 OR uploaded::float8 / downloaded::float8 >= $1)",
+    )
+    .bind(threshold_f)
+    .execute(db)
+    .await?
+    .rows_affected();
+
+    if entered + punished + cleared > 0 {
+        tracing::info!(entered, punished, cleared, "ratio_watch cycle");
+    }
+    Ok(entered + punished)
+}
+
+/// P2-11 登录 IP 跳变检测（/24 段近似）：24h 内单账号登录来源超过阈值个不同 /24 段 → 记录作弊探测。
+/// 纯近似（无 GeoIP 依赖，教育网 DHCP 换段是常态），只记录供人工参考，不自动处置。
+pub async fn multi_ip_check(db: &PgPool) -> anyhow::Result<u64> {
+    let threshold: i64 = 8;
+    let rows: Vec<(i64, i64)> = sqlx::query_as(
+        r#"
+        SELECT user_id, COUNT(DISTINCT split_part(host(ip), '.', 1) || '.' || split_part(host(ip), '.', 2) || '.' || split_part(host(ip), '.', 3)) AS segments
+        FROM login_events
+        WHERE created_at > now() - interval '24 hours' AND ip IS NOT NULL AND host(ip) LIKE '%.%'
+        GROUP BY user_id
+        HAVING COUNT(DISTINCT split_part(host(ip), '.', 1) || '.' || split_part(host(ip), '.', 2) || '.' || split_part(host(ip), '.', 3)) >= $1
+        "#,
+    )
+    .bind(threshold)
+    .fetch_all(db)
+    .await?;
+    let mut n = 0u64;
+    for (user_id, segments) in rows {
+        sqlx::query(
+            "INSERT INTO cheat_events (user_id, agent, reason) VALUES ($1, 'login_ip_spread', 'multi_subnet_24h') \
+             ON CONFLICT (user_id, agent, reason) DO UPDATE SET hits = cheat_events.hits + 1, last_seen = now()",
+        )
+        .bind(user_id)
+        .execute(db)
+        .await?;
+        let _ = segments;
+        n += 1;
+    }
+    Ok(n)
+}
+
+/// P0-1 兜底纠偏：全量重算 users/torrents 快照（每 6h 一次）。
+/// 快照权威在流水；增量化后的点刷可能因历史漂移累积误差，低频全量对账收敛。
+pub async fn reconcile_snapshots(db: &PgPool) -> anyhow::Result<()> {
+    sqlx::query(
+        "UPDATE users SET \
+         uploaded = COALESCE((SELECT sum(delta_up) FROM traffic_ledger WHERE user_id = users.id), 0), \
+         downloaded = COALESCE((SELECT sum(delta_down) FROM traffic_ledger WHERE user_id = users.id), 0)",
+    )
+    .execute(db)
+    .await?;
+    sqlx::query(
+        "UPDATE torrents t SET \
+         seeders = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.seeding), 0), \
+         leechers = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.leeching), 0), \
+         times_completed = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.completed_at IS NOT NULL), 0)",
+    )
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
 /// 主循环：定时任务调度。
 pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> anyhow::Result<()> {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
     let mut hour_tick = tokio::time::interval(std::time::Duration::from_secs(3600));
     let mut first_hour = true;
     let mut last_bank_day: Option<chrono::NaiveDate> = None;
+    // 0071 反作弊/性能调度
+    let mut tick10 = tokio::time::interval(std::time::Duration::from_secs(600));
+    let mut tick30 = tokio::time::interval(std::time::Duration::from_secs(1800));
+    let mut tick6h = tokio::time::interval(std::time::Duration::from_secs(6 * 3600));
+    let mut tick1d = tokio::time::interval(std::time::Duration::from_secs(24 * 3600));
+    let mut first_tick10 = true;
+    let mut first_tick30 = true;
+    let mut first_tick6h = true;
+    let mut first_tick1d = true;
     loop {
         tokio::select! {
             _ = tick.tick() => {
@@ -820,6 +1261,24 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if first_hour { first_hour = false; continue; }
                 if let Err(e) = seeding_reward(&db, 10).await { tracing::error!(?e, "seeding_reward"); }
                 if let Err(e) = purge_old_login_events(&db).await { tracing::error!(?e, "purge_old_login_events"); }
+                if let Err(e) = ratio_watch(&db).await { tracing::error!(?e, "ratio_watch"); }
+                if let Err(e) = dormant_mark(&db).await { tracing::error!(?e, "dormant_mark"); }
+            }
+            _ = tick10.tick() => {
+                if first_tick10 { first_tick10 = false; continue; }
+                if let Err(e) = cheat_audit(&db).await { tracing::error!(?e, "cheat_audit"); }
+            }
+            _ = tick30.tick() => {
+                if first_tick30 { first_tick30 = false; continue; }
+                if let Err(e) = multi_ip_check(&db).await { tracing::error!(?e, "multi_ip_check"); }
+            }
+            _ = tick6h.tick() => {
+                if first_tick6h { first_tick6h = false; continue; }
+                if let Err(e) = reconcile_snapshots(&db).await { tracing::error!(?e, "reconcile_snapshots"); }
+            }
+            _ = tick1d.tick() => {
+                if first_tick1d { first_tick1d = false; continue; }
+                if let Err(e) = ensure_partitions(&db).await { tracing::error!(?e, "ensure_partitions"); }
             }
         }
     }

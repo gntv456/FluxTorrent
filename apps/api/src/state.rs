@@ -4,9 +4,13 @@ use crate::config::AppConfig;
 use crate::repo::Repo;
 
 pub struct AppState {
+    /// 应用配置（JWT 密钥等敏感项已在启动期消化进 jwt；字段保留供后续配置类功能读取）
+    #[allow(dead_code)]
     pub cfg: AppConfig,
     pub repo: Repo,
     pub redis: redis::aio::ConnectionManager,
+    /// JWT 签发器（0071：hs256 / rs256 由配置决定，启动时构造一次）
+    pub jwt: crate::auth::JwtSigner,
     /// M28 插件管理器（编译期装配，运行期启停由插件 enabled() 决定）
     pub plugins: crate::plugins::PluginManager,
     /// 进程启动时间（stats 页 uptime 口径）
@@ -15,6 +19,7 @@ pub struct AppState {
 
 impl AppState {
     pub async fn new(cfg: AppConfig) -> anyhow::Result<Self> {
+        let jwt = crate::auth::JwtSigner::from_config(&cfg.jwt_alg, &cfg.jwt_secret)?;
         let db = sqlx::postgres::PgPoolOptions::new()
             .max_connections(cfg.db_pool_size as u32)
             .connect(&cfg.database_url)
@@ -32,6 +37,7 @@ impl AppState {
             cfg,
             repo: Repo::new(db),
             redis,
+            jwt,
             plugins: crate::plugins::PluginManager::builtin(),
             started_at: chrono::Utc::now(),
         })
