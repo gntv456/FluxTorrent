@@ -523,13 +523,13 @@ seeding_reward worker 每小时批量 10 结算，基础+加成结构，参数�
 7. **复活任务制**（U3D Graveyard→我们的保种区+seed_milestones 联动）。✅ 已落地（0073：/resurrections 领取 + worker 自动验收 → 5000 火花+免费券+7 天 free bump）
 8. **速度作弊扫描**（NP 双阈值+U3D balance 结余，worker cheat_scan 离线任务，读 traffic_ledger）。✅ 已由并行批次落地（0071 `cheat_audit`：Σup−Σdown 差值审计+staff 信箱告警，10min 周期；另有 ratio_watch/multi_ip_check/connectable 回连）
 9. **闲置账号三段清理**（U3D 90 天/Disabled/软删）。✅ 收敛版落地（0072 `dormant_mark`：90 天未登录+无做种+非员工/捐赠者→停用；登录拦截+恢复指引；不做自动删除）
-10. **聚合组补完**：上传自动推荐入组+组级订阅（教材改版通知）。⏳ 未做
-11. **通知偏好设置页**（U3D 32 字段开关的简化版，8-10 类高频通知）。⏳ 未做
+10. **聚合组补完**：上传自动推荐入组+组级订阅（教材改版通知）。✅ 已落地（0075：pieces_hash 命中锁定推荐 + trgm>0.4 相似候选；group_subscriptions 表 + 订阅/退订端点 + 过审推送）
+11. **通知偏好设置页**（U3D 32 字段开关的简化版，8-10 类高频通知）。✅ 已落地（0075/0076：notice_prefs JSONB + u_notice_enabled SQL 函数（worker/API 共用防漂移）+ /me/notice-prefs 端点，hr_prewarn/wishlist/resurrection/class_promo/group_new_version 五类已接过滤）
 12. **教材愿望单**（U3D WishList 教育化：订阅科目/年级/教材名，新种匹配推送）。✅ 已落地（0074：wishlist 表+/wishlist 端点+worker 每小时扫新过审种子匹配推送，每用户聚合一信+24h 节流）
 
 ### P2（体验与运营精细化）
-13. 站免池荣誉层（AB 池页+贡献榜）+定向众筹免费（HDBits Featured）。
-14. 免审积分制+被拒 N 次禁发（NP）+POSTPONED 审核态（U3D）。
+13. ✅ 站免池荣誉层已落地（0075：v_pool_honor 视图 + /pool/honor 贡献榜端点）；定向众筹免费（HDBits Featured）⏳。
+14. ✅ 免审积分制已落地（0075：users.approve_streak 连击计数，过审+1/被拒清零；被拒 N 次禁发与 POSTPONED 态 ⏳。
 15. 盒子识别打标+泄露者检测（U3D）。
 16. 论坛已读跟踪+工单体系+规则页版本化。
 17. 自动促销规则表（U3D）+Refundable 退下载量（U3D）。

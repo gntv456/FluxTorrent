@@ -43,6 +43,8 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(delete_torrent)
         .service(group_attach)
         .service(group_info)
+        .service(group_subscribe)
+        .service(group_unsubscribe)
         .service(torrent_snatches)
         .service(torrent_nfo)
         .service(request_reseed)
@@ -5008,10 +5010,53 @@ async fn upload(
         .await;
     // M28 插件 Hook：发布成功后分发（异步、失败不影响主流程）
     state.plugins.dispatch_upload(&state, id, auth.id);
+
+    // 0075 聚合组推荐（未显式指定组时）：
+    //   a) pieces_hash 命中已有组 → 直接建议锁定（跨站同源再发布场景）
+    //   b) 否则名称相似度（trgm）> 0.4 的组 → 候选列表
+    let mut group_suggest: serde_json::Value = serde_json::json!(null);
+    if form.group_id.is_none() {
+        let lock: Option<i64> = sqlx::query_scalar(
+            "SELECT t2.group_id FROM torrents t2              WHERE t2.pieces_hash = $1 AND t2.pieces_hash <> '' AND t2.group_id IS NOT NULL LIMIT 1",
+        )
+        .bind(&parsed.pieces_hash_hex)
+        .fetch_optional(&state.repo.db)
+        .await
+        .unwrap_or(None);
+        if let Some(gid) = lock {
+            let gname: String = sqlx::query_scalar("SELECT name FROM torrent_groups WHERE id = $1")
+                .bind(gid)
+                .fetch_one(&state.repo.db)
+                .await
+                .unwrap_or_default();
+            group_suggest = serde_json::json!({ "locked": true, "group_id": gid, "name": gname });
+        } else {
+            let cands: Vec<(i64, String)> = sqlx::query_as(
+                "SELECT g.id, g.name FROM torrent_groups g                  WHERE similarity(g.name, $1) > 0.4                  ORDER BY similarity(g.name, $1) DESC LIMIT 3",
+            )
+            .bind(&name)
+            .fetch_all(&state.repo.db)
+            .await
+            .unwrap_or_default();
+            if !cands.is_empty() {
+                group_suggest = serde_json::json!({ "locked": false, "candidates": cands });
+            }
+        }
+    }
+
+    // 0075 免审积分：自动过审的发布连续 +1（被拒路径在 admin 审核处清零）
+    if auto_approve {
+        let _ = sqlx::query("UPDATE users SET approve_streak = approve_streak + 1 WHERE id = $1")
+            .bind(auth.id)
+            .execute(&state.repo.db)
+            .await;
+    }
+
     Ok(ok(serde_json::json!({
         "id": id,
         "approval_status": approval_status,
         "auto_approved": auto_approve,
+        "group_suggest": group_suggest,
     })))
 }
 
@@ -5157,6 +5202,53 @@ async fn group_attach(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "group_id": gid, "name": name })))
+}
+
+/// 订阅聚合组（0075：新版本入组并过审时推送）
+#[post("/torrents/groups/{group_id}/subscribe")]
+async fn group_subscribe(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let gid = path.into_inner();
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrent_groups WHERE id = $1)")
+            .bind(gid)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+    if !exists {
+        return Err(DomainError::NotFound(gid));
+    }
+    sqlx::query(
+        "INSERT INTO group_subscriptions (user_id, group_id) VALUES ($1, $2)          ON CONFLICT DO NOTHING",
+    )
+    .bind(auth.id)
+    .bind(gid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "subscribed": gid })))
+}
+
+/// 退订聚合组
+#[post("/torrents/groups/{group_id}/unsubscribe")]
+async fn group_unsubscribe(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let gid = path.into_inner();
+    sqlx::query("DELETE FROM group_subscriptions WHERE user_id = $1 AND group_id = $2")
+        .bind(auth.id)
+        .bind(gid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "unsubscribed": gid })))
 }
 
 /// 组详情 + 组内全部过审版本（详情页「同组资源」数据源；未入组返回 group=null）

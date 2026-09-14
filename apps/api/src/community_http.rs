@@ -18,6 +18,9 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(medal_gift)
         .service(medal_wear)
         .service(my_medals)
+        .service(notice_prefs_get)
+        .service(notice_prefs_set)
+        .service(pool_honor)
         // M15 论坛
         .service(forum_list)
         .service(topic_create)
@@ -1752,4 +1755,80 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     let scope = crate::twofa_http::mount_twofa(scope);
     let scope = crate::compat_http::mount_compat(scope);
     cfg.service(crate::openapi_http::mount_openapi(scope));
+}
+
+// ============ 通知偏好 + 站免池荣誉榜（0075） ============
+
+/// 我的通知偏好（缺省键 = 开）。已知事件类见 0075 迁移注释。
+#[get("/me/notice-prefs")]
+async fn notice_prefs_get(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let prefs: serde_json::Value =
+        sqlx::query_scalar("SELECT notice_prefs FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(serde_json::json!({}));
+    Ok(ok(prefs))
+}
+
+#[derive(Deserialize)]
+struct NoticePrefsSetReq {
+    key: String,
+    enabled: bool,
+}
+
+/// 设置单项通知偏好（白名单键，防塞任意 JSON）
+#[post("/me/notice-prefs")]
+async fn notice_prefs_set(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<NoticePrefsSetReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    const KEYS: [&str; 9] = [
+        "hr_prewarn",
+        "hr_violation",
+        "wishlist",
+        "group_new_version",
+        "resurrection",
+        "class_promo",
+        "gift",
+        "comment_reply",
+        "system",
+    ];
+    if !KEYS.contains(&body.key.as_str()) {
+        return Err(DomainError::Validation(format!(
+            "未知通知类 {}（可选：{}）",
+            body.key,
+            KEYS.join("/")
+        )));
+    }
+    sqlx::query(
+        "UPDATE users SET notice_prefs = jsonb_set(notice_prefs, ARRAY[$2], to_jsonb($3::boolean)) WHERE id = $1",
+    )
+    .bind(auth.id)
+    .bind(&body.key)
+    .bind(body.enabled)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(
+        serde_json::json!({ "key": body.key, "enabled": body.enabled }),
+    ))
+}
+
+/// 站免池贡献荣誉榜（0075，AB 池页口径：本月 + 累计，公开可见）
+#[get("/pool/honor")]
+async fn pool_honor(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    let rows: Vec<(i64, String, bool, i64, i64)> = sqlx::query_as(
+        "SELECT id, username, donor, this_month, total FROM v_pool_honor          ORDER BY total DESC LIMIT 50",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
 }
