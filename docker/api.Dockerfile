@@ -1,4 +1,4 @@
-FROM docker.1ms.run/library/rust:1.97-slim AS builder
+FROM docker.1ms.run/library/rust:1.97-slim-bookworm AS builder
 WORKDIR /build
 # Cargo workspace 需要全部成员 manifest —— 拷贝整个 apps + 根清单
 COPY Cargo.toml Cargo.lock ./

@@ -1,4 +1,4 @@
-FROM docker.1ms.run/library/rust:1.97-slim AS builder
+FROM docker.1ms.run/library/rust:1.97-slim-bookworm AS builder
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
 COPY apps ./apps
