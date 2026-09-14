@@ -235,9 +235,10 @@ pub async fn get_torrent(
     };
     // G7 POSTPONED：status=4 的种子只对发布者本人与 staff 开放；
     // staff（viewer.is_staff）或本人（owner_id = viewer.0）时放宽到 approval_status IN (1,4)
+    // 审计修复（P1）：本人对 status=0 待审种子也应可见（上传后马上看详情不再 404）
     let vis = match viewer {
         Some((uid, is_staff)) => format!(
-            "(t.approval_status = 1 OR (t.approval_status = 4 AND ({is_staff} OR t.owner_id = {uid})))"
+            "(t.approval_status = 1 OR ((t.approval_status = 4 OR t.approval_status = 0) AND ({is_staff} OR t.owner_id = {uid})))"
         ),
         None => "t.approval_status = 1".to_string(),
     };

@@ -1126,6 +1126,20 @@ async fn message_send(
     }
     // 接收限制（管理组豁免 —— takemessage.php staffmem 口径）
     if !staff {
+        // 审计修复（P0）：黑名单拦截此前从未实现（注释声称校验却无查询），
+        // 被拉黑者可继续私信目标用户。
+        let blocked: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM friendships f \
+             WHERE f.user_id = $2 AND f.friend_id = $1 AND f.list = 'black')",
+        )
+        .bind(auth.id)
+        .bind(to_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if blocked {
+            return Err(DomainError::Validation("对方不接受你的私信".into()));
+        }
         match accept.as_str() {
             "no" => return Err(DomainError::Validation("对方仅接收管理组私信".into())),
             "friends" => {
@@ -1684,9 +1698,13 @@ async fn staff_answer(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // ② 回写答复原文 + 状态
+    // ② 回写答复原文 + 状态。
+    // 审计修复（P1）：旧实现只写 answered=1 不动 ticket_status，"已答复"的单永远停在
+    // "新"并被列表 ORDER BY ticket_status ASC 置顶。答复即推进到 2=已答复待确认。
     sqlx::query(
-        "UPDATE staffmessages SET answered = 1, answered_by = $2, answer = $3, answered_at = now() WHERE id = $1",
+        "UPDATE staffmessages SET answered = 1, answered_by = $2, answer = $3, answered_at = now(), \
+             ticket_status = CASE WHEN ticket_status < 2 THEN 2 ELSE ticket_status END \
+         WHERE id = $1",
     )
     .bind(body.id)
     .bind(auth.id)
@@ -1972,6 +1990,28 @@ async fn ticket_update(
     if let Some(s) = body.ticket_status {
         if !(0..=3).contains(&s) {
             return Err(DomainError::Validation("ticket_status 需在 0-3".into()));
+        }
+    }
+    // 审计修复（P1）：工单状态机此前无任何流转约束——已答复/关闭的单可随意回 0，
+    // "已答复"单永远停在"新"被置顶。现在：
+    //   0新 → 1处理中 → 2已答复待确认 → 3关闭 单向推进；
+    //   3关闭 仅允许显式重开回 1处理中（不允许回 0，保留处理轨迹）。
+    if let Some(new_s) = body.ticket_status {
+        let cur: Option<i16> =
+            sqlx::query_scalar("SELECT ticket_status FROM staffmessages WHERE id = $1")
+                .bind(body.id)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?
+                .flatten();
+        let Some(cur_s) = cur else {
+            return Err(DomainError::Validation("工单不存在".into()));
+        };
+        let legal = new_s > cur_s || (cur_s == 3 && new_s == 1);
+        if !legal {
+            return Err(DomainError::Validation(format!(
+                "非法状态流转：{cur_s} → {new_s}（工单状态只能单向推进；关闭单仅可重开为处理中）"
+            )));
         }
     }
     let assignee: Option<i64> = match &body.assign {

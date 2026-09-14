@@ -37,6 +37,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(torrent_thanks)
         .service(comments)
         .service(create_comment)
+        .service(delete_comment)
         .service(do_thank)
         .service(do_bookmark)
         .service(edit_torrent)
@@ -421,17 +422,30 @@ pub async fn require_auth(
         }
     }
     // 权威校验（P1 修复）：token 只是凭证，状态与等级以库为准 —— 封禁/降级即时生效
-    let row: Option<(i16, i32)> =
-        sqlx::query_as("SELECT status, class_id FROM users WHERE id = $1")
+    let row: Option<(i16, i32, bool)> =
+        sqlx::query_as("SELECT status, class_id, must_reset_password FROM users WHERE id = $1")
             .bind(claims.sub)
             .fetch_optional(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((status, class_id)) = row else {
+    let Some((status, class_id, must_reset)) = row else {
         return Err(DomainError::Unauthorized);
     };
     if status >= 2 {
         return Err(DomainError::Forbidden); // 封禁账户
+    }
+    // 审计修复（P1）：临时密码强制改密此前仅靠前端跳转，服务端不拦截 ——
+    // 未改密账号可无限期调用全部 API。现在只放行改密/登出/自身信息三条自救路径。
+    if must_reset {
+        let path = req.path();
+        let allowed = matches!(path, "/api/v1/auth/logout")
+            || path.starts_with("/api/v1/me/password")
+            || path == "/api/v1/me";
+        if !allowed {
+            return Err(DomainError::Validation(
+                "账号正在使用临时密码，请先修改密码后再操作".into(),
+            ));
+        }
     }
     Ok(AuthUser {
         id: claims.sub,
@@ -1340,6 +1354,48 @@ async fn create_comment(
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
+/// 审计修复（P1）：评论此前只有创建+列表，作者本人与版主都无法删除（无任何删除端点）。
+/// 作者本人或持 torrent.manage 的 staff 可删；挂审计日志。
+#[delete("/torrents/{id}/comments/{cid}")]
+async fn delete_comment(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<(i64, i64)>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let (torrent_id, comment_id) = path.into_inner();
+    let owner: Option<i64> = sqlx::query_scalar("SELECT user_id FROM comments WHERE id = $1 AND torrent_id = $2")
+        .bind(comment_id)
+        .bind(torrent_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten();
+    let Some(owner_id) = owner else {
+        return Err(DomainError::NotFound(comment_id));
+    };
+    let is_owner = owner_id == auth.id;
+    let is_manager =
+        crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await;
+    if !is_owner && !is_manager {
+        return Err(DomainError::Forbidden);
+    }
+    sqlx::query("DELETE FROM comments WHERE id = $1")
+        .bind(comment_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(
+            Some(auth.id),
+            if is_owner { "comment.delete_own" } else { "comment.delete_staff" },
+            Some(comment_id),
+        )
+        .await;
+    Ok(ok(serde_json::json!({ "deleted": comment_id })))
+}
+
 #[derive(Deserialize)]
 struct ThankBody {
     /// 魔力答谢数额（馒头口径：+1/+10/+100/+500/+1000/+10000；缺省 0 = 免费感谢）
@@ -1961,6 +2017,8 @@ async fn category_create(
     let id: i32 = sqlx::query_scalar("INSERT INTO categories (id, name) VALUES ((SELECT max(id)+1 FROM categories), $1) RETURNING id")
         .bind(&body.name).fetch_one(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 审计修复（P1）：分类增删改此前完全不写审计日志
+    state.repo.audit(Some(auth.id), "category.create", Some(id as i64)).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -1982,6 +2040,7 @@ async fn category_update(
     if n.rows_affected() == 0 {
         return Err(DomainError::NotFound(*path as i64));
     }
+    state.repo.audit(Some(auth.id), "category.update", Some(*path as i64)).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -2006,6 +2065,7 @@ async fn category_delete(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "category.delete", Some(*path as i64)).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -5162,12 +5222,24 @@ pub(crate) async fn build_torrent_bytes(
         .unwrap_or_else(|_| "http://127.0.0.1:7070".into())
         .trim_end_matches('/')
         .to_string();
-    let base_http = setting(&state.repo.db, "announce_url")
-        .await
-        .unwrap_or(env_host);
+    // 审计修复（P0）：历史默认 announce_url 自带尾部 "/announce"（0034 迁移），拼接后
+    // 生成 ".../announce/announce/<passkey>" 双重路径 + 错端口，真实客户端必然 404。
+    // 这里剥掉尾部 /announce 双保险（迁移 0080 已同时纠正站点设定值本身）。
+    let strip_announce = |v: String| -> String {
+        let v = v.trim().trim_end_matches('/').to_string();
+        match v.strip_suffix("/announce") {
+            Some(s) => s.to_string(),
+            None => v,
+        }
+    };
+    let base_http = strip_announce(
+        setting(&state.repo.db, "announce_url")
+            .await
+            .unwrap_or(env_host),
+    );
     let announce = match setting(&state.repo.db, "https_announce_url").await {
         Some(https) if https != base_http => {
-            format!("{https}/announce/{}", user.passkey)
+            format!("{}/announce/{}", strip_announce(https), user.passkey)
         }
         _ => format!("{base_http}/announce/{}", user.passkey),
     };

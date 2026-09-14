@@ -34,22 +34,40 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 /// 开放 API Token 鉴权：返回 (user_id, rate_per_min)。撤销/不存在 → Unauthorized。
+/// 审计修复：①支持 `?apikey=` 查询参数（Prowlarr 等 Torznab 客户端的标准传凭方式）；
+/// ②JOIN users 拒绝封禁账号的 token（封禁后立即失效，与 JWT 路径同口径）。
 pub async fn require_token(
     req: &HttpRequest,
     state: &web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<(i64, i32)> {
+    // 头部优先；兼容 Torznab 客户端习惯的 apikey 查询参数
+    let apikey_from_query = || -> Option<String> {
+        req.uri()
+            .query()
+            .and_then(|qs| {
+                qs.split('&').find_map(|kv| {
+                    let (k, v) = kv.split_once('=')?;
+                    (k == "apikey").then(|| v.to_string())
+                })
+            })
+            .filter(|v| !v.is_empty())
+    };
     let token = req
         .headers()
         .get("authorization")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Token "))
+        .map(|v| v.to_string())
+        .or_else(apikey_from_query)
         .ok_or(DomainError::Unauthorized)?;
+    let token_hash = hash_token(&token);
     let row: Option<(i64, i32)> = sqlx::query_as(
-        "SELECT user_id, rate_per_min FROM api_tokens \
-         WHERE token_hash = $1 AND revoked_at IS NULL \
-           AND (expires_at IS NULL OR expires_at > now())",
+        "SELECT t.user_id, t.rate_per_min FROM api_tokens t \
+         JOIN users u ON u.id = t.user_id AND u.status < 2 \
+         WHERE t.token_hash = $1 AND t.revoked_at IS NULL \
+           AND (t.expires_at IS NULL OR t.expires_at > now())",
     )
-    .bind(hash_token(token))
+    .bind(&token_hash)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -58,7 +76,7 @@ pub async fn require_token(
         return Err(DomainError::Unauthorized);
     };
     // 独立限流：按 token 哈希前 16 位分桶
-    let bucket = &hash_token(token)[..16];
+    let bucket = &token_hash[..16];
     let key = format!("rl:openapi:{bucket}");
     let mut c = state.redis.clone();
     let n: i64 = c.incr(&key, 1).await.unwrap_or(0);

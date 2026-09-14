@@ -980,6 +980,22 @@ async fn admin_medal_add(
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("勋章名不能为空".into()));
     }
+    // 审计修复（P1）：此前负价格/负时长直接穿透到 DB CHECK，报 500 内部错误。
+    if let Some(pr) = body.price {
+        if pr < 0 {
+            return Err(DomainError::Validation("价格不能为负".into()));
+        }
+    }
+    if let Some(d) = body.duration_days {
+        if d < 0 {
+            return Err(DomainError::Validation("有效天数不能为负".into()));
+        }
+    }
+    if let Some(f) = body.bonus_addition_factor {
+        if !(0.0..=10.0).contains(&f) {
+            return Err(DomainError::Validation("加成系数需在 0-10 之间".into()));
+        }
+    }
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO medals (name, description, price, rarity, limited, get_type, duration_days, bonus_addition_factor, category_id, asset_ref) \
          VALUES ($1, $2, $3, $4, COALESCE($5, FALSE), COALESCE($6, 2), $7, $8::numeric, COALESCE($9, 0), $10) RETURNING id",
@@ -2879,34 +2895,36 @@ async fn increment_bulk(
                         )
                         .await?;
                     } else {
-                        let n = sqlx::query(
-                            "UPDATE users SET spark_balance = GREATEST(0, spark_balance + $2) WHERE id = $1",
+                        // 审计修复（P1 账本不变量）：旧实现按原始 amount 落流水、余额却
+                        // GREATEST(0,...) 截断 —— 用户余额 500 扣 1000 时流水记 -1000、
+                        // 余额变 0，sum(ledger) ≠ balance 从此失真。改为 CTE 里锁行取前值，
+                        // 流水按「前值-后值」的真实差额落（截断时 |流水| < |amount|）。
+                        let before_after: Option<(i64, i64)> = sqlx::query_as(
+                            "WITH prev AS (SELECT spark_balance AS b FROM users WHERE id = $1 FOR UPDATE), \
+                              upd AS (UPDATE users SET spark_balance = GREATEST(0, spark_balance + $2) \
+                                      WHERE id = $1 RETURNING spark_balance AS a) \
+                             SELECT prev.b, upd.a FROM prev, upd",
                         )
                         .bind(uid)
                         .bind(body.amount)
+                        .fetch_optional(db)
+                        .await
+                        .map_err(|e| DomainError::Internal(e.into()))?;
+                        let Some((bal_before, bal_after)) = before_after else {
+                            continue;
+                        };
+                        let actual_delta = bal_after - bal_before; // ≤0；截断时比 amount 接近 0
+                        sqlx::query(
+                            "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
+                             VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'increment_bulk', $3, $4)",
+                        )
+                        .bind(uid)
+                        .bind(actual_delta)
+                        .bind(&idem)
+                        .bind(bal_after)
                         .execute(db)
                         .await
-                        .map_err(|e| DomainError::Internal(e.into()))?
-                        .rows_affected();
-                        if n > 0 {
-                            let bal: i64 =
-                                sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
-                                    .bind(uid)
-                                    .fetch_one(db)
-                                    .await
-                                    .unwrap_or(0);
-                            sqlx::query(
-                                "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
-                                 VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'increment_bulk', $3, $4)",
-                            )
-                            .bind(uid)
-                            .bind(body.amount)
-                            .bind(&idem)
-                            .bind(bal)
-                            .execute(db)
-                            .await
-                            .map_err(|e| DomainError::Internal(e.into()))?;
-                        }
+                        .map_err(|e| DomainError::Internal(e.into()))?;
                     }
                     affected += 1;
                 }
@@ -3211,14 +3229,40 @@ async fn admin_job_trigger(
             ("reconcile_snapshots", -1) // 全量纠偏无行数语义
         }
         "funding_settle" => {
-            let n = sqlx::query(
-                "UPDATE fundings SET status = 1, promoted_at = now() WHERE status = 0 AND raised >= goal",
+            // 审计修复（P1）：旧版只置 status=1，不挂促销不发通知 —— 之后 worker 版
+            // WHERE status=0 匹配不到，达标承诺的 free 促销永久丢失。与 worker 同款：
+            // 置状态 + 幂等挂 promotions + 给发起人发达标通知。
+            let reached: Vec<(i64, i64, i32)> = sqlx::query_as(
+                "UPDATE fundings SET status = 1, promoted_at = now() \
+                 WHERE status = 0 AND raised >= goal \
+                 RETURNING id, torrent_id, hours",
             )
-            .execute(&state.repo.db)
+            .fetch_all(&state.repo.db)
             .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected() as i64;
-            ("funding_settle", n)
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            for (fid, tid, hours) in &reached {
+                let _ = sqlx::query(
+                    "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source) \
+                     VALUES ('torrent', $1, 'free', now(), now() + make_interval(hours => $2::int), 'task') \
+                     ON CONFLICT DO NOTHING",
+                )
+                .bind(tid)
+                .bind(*hours as i64)
+                .execute(&state.repo.db)
+                .await;
+                let _ = sqlx::query(
+                    "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+                     SELECT NULL, creator_id, '众筹达标', \
+                            '种子 #' || $1 || ' 的众筹已达标，已挂 ' || $2 || ' 小时免费促销。' \
+                     FROM fundings WHERE id = $3",
+                )
+                .bind(tid)
+                .bind(*hours as i64)
+                .bind(fid)
+                .execute(&state.repo.db)
+                .await;
+            }
+            ("funding_settle", reached.len() as i64)
         }
         other => {
             return Err(DomainError::Validation(format!(

@@ -335,7 +335,7 @@ pub async fn seeding_reward(db: &PgPool, base: i64) -> anyhow::Result<u64> {
             FROM users u
             JOIN snatches s ON s.user_id = u.id AND s.seeding
             JOIN torrents t ON t.id = s.torrent_id
-              AND NOT (s.connectable = 0 AND s.uploaded = 0)
+              AND NOT (s.connectable::int = 0 AND s.uploaded = 0)
             WHERE u.status < 2
         ),
         per_user AS (
@@ -488,6 +488,10 @@ pub async fn consume_announce(
         match process_event(db, &ev, seed_cap).await {
             Ok(Some(torrent_id)) => {
                 applied += 1;
+                let _ = redis::cmd("DEL")
+                    .arg(format!("flux:announce:fail:{id}"))
+                    .query_async::<()>(&mut redis.clone())
+                    .await;
                 last_seen_id = Some(id);
                 touched_users.insert(ev.user);
                 touched_torrents.insert(torrent_id);
@@ -511,8 +515,40 @@ pub async fn consume_announce(
                 last_seen_id = Some(id);
             }
             Err(e) => {
-                // 处理失败：不推进游标，下轮重试（避免丢失计费）
-                tracing::error!(%id, ?e, "事件计费失败，游标暂停等待重试");
+                // 处理失败：不推进游标，下轮重试（避免丢失计费）。
+                // 审计修复（P0，v2）：持久性错误会永久卡死整条流。原实现的连续失败计数是
+                // 函数局部变量——consume_announce 每分钟被独立调用一次，计数每轮归零，
+                // 熔断永远触发不了。改为 Redis 键 flux:announce:fail:{id} 持久化计数：
+                // 同一 ID 连续失败 6 次进死信并推进游标，事件本体留在 DLQ 供人工补偿计费。
+                let fail_key = format!("flux:announce:fail:{id}");
+                let streak: i64 = redis::cmd("INCR")
+                    .arg(&fail_key)
+                    .query_async::<i64>(&mut redis.clone())
+                    .await
+                    .unwrap_or(1);
+                let _ = redis::cmd("EXPIRE")
+                    .arg(&fail_key)
+                    .arg(3600)
+                    .query_async::<()>(&mut redis.clone())
+                    .await;
+                tracing::error!(%id, ?e, streak, "事件计费失败，游标暂停等待重试");
+                if streak >= 6 {
+                    tracing::error!(%id, "同一事件连续 6 次失败，转入死信队列并跳过（flux:announce:dlq）");
+                    let mut conn_dl = redis_dead_letter.clone();
+                    let payload_txt = payload.clone();
+                    let _: Result<(), _> = redis::cmd("RPUSH")
+                        .arg("flux:announce:dlq")
+                        .arg(format!("{id}	{payload_txt}"))
+                        .query_async(&mut conn_dl)
+                        .await;
+                    let _ = redis::cmd("DEL")
+                        .arg(&fail_key)
+                        .query_async::<()>(&mut redis.clone())
+                        .await;
+                    applied += 1;
+                    last_seen_id = Some(id);
+                    continue;
+                }
                 break;
             }
         }
@@ -585,20 +621,31 @@ async fn process_event(
                                   WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, id DESC \
          LIMIT 1",
     )
+    // 同值三占位符 + 三 bind：sqlx 按占位符种类计数发送参数；单占位符多次引用
+    // 会触发 Describe/Bind 计数协商失败（0 参数 Bind，P0 计费瘫痪根因）
+    .bind(torrent_id)
+    .bind(torrent_id)
     .bind(torrent_id)
     .fetch_optional(db)
     .await?;
+    // 审计修复（P0 真根因，PG 日志实锄）：旧 SQL 里 $1 出现 3 次（三个 EXISTS 子查询），
+    // Rust 侧只 bind 1 个参数 —— sqlx Describe/Bind 参数计数协商失败后发出 0 参数 Bind，
+    // "supplies 0 parameters" 每轮必炸，announce 计费自 07-11 起整体瘫痪。改写为 $1 单次引用。
     let global: Option<String> = sqlx::query_scalar(
         "SELECT kind::text FROM promotions p \
          WHERE p.torrent_id IS NULL AND p.starts_at <= now() AND p.ends_at > now() \
            AND (p.scope = 'global' \
-                OR (p.scope = 'official' AND EXISTS (SELECT 1 FROM torrents t WHERE t.id = $1 AND t.official_tag)) \
-                OR (p.scope = 'non_official' AND EXISTS (SELECT 1 FROM torrents t WHERE t.id = $1 AND NOT t.official_tag)) \
-                OR (p.scope = 'category' AND EXISTS (SELECT 1 FROM torrents t WHERE t.id = $1 AND t.category_id = p.category_id))) \
+                OR (p.scope = 'official' AND (SELECT official_tag FROM torrents WHERE id = $1)) \
+                OR (p.scope = 'non_official' AND NOT (SELECT official_tag FROM torrents WHERE id = $2)) \
+                OR (p.scope = 'category' AND p.category_id = (SELECT category_id FROM torrents WHERE id = $3))) \
          ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 \
                                   WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC \
          LIMIT 1",
     )
+    // 同值三占位符 + 三 bind（sqlx 按占位符种类计数；缺 bind 会 0 参数发送）
+    .bind(torrent_id)
+    .bind(torrent_id)
+    .bind(torrent_id)
     .fetch_optional(db)
     .await?;
     let (up_mult, down_mult) = billing_multipliers(kind.as_deref(), global.as_deref());
@@ -608,7 +655,7 @@ async fn process_event(
     // 与促销取更优（乘法叠加：促销 x2 上传对 neutral 也归零，取对用户更优的 0）。
     let voucher: Option<String> = sqlx::query_scalar(
         "SELECT kind FROM user_vouchers \
-         WHERE user_id = $1 AND used_torrent_id = $2 AND used_at IS NULL AND expires_at > now() \
+         WHERE user_id = $1::bigint AND used_torrent_id = $2::bigint AND used_at IS NULL AND expires_at > now() \
          ORDER BY CASE kind WHEN 'neutral' THEN 2 WHEN 'free' THEN 1 ELSE 0 END DESC LIMIT 1",
     )
     .bind(ev.user)
@@ -675,8 +722,12 @@ async fn process_event(
     .bind(!seeding)
     .bind(seeding)
     .bind(ev.event == "completed")
-    .bind(stopped)
+    // 审计修复（P0 真根因）：$10 在 SQL 中是 bigint（时长容忍窗）、$11 是 boolean（stopped），
+    // 旧代码把两者绑反（stopped 在第 10 位、seed_cap 在第 11 位），
+    // Describe 类型与实际 bind 值错位 → "bind message supplies 0 parameters" 持久报错，
+    // announce 计费链路自 07-11 起整体瘫痪。
     .bind(seed_cap)
+    .bind(stopped)
     .bind(ev.conn)
     .execute(&mut *tx)
     .await?;
@@ -776,9 +827,10 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         .bind(&idem)
         .execute(db)
         .await?;
-        sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+        sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \n                 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
             .bind(uid)
             .bind(reward)
+                .bind(&idem)
             .execute(db)
             .await?;
         sqlx::query(
@@ -852,14 +904,27 @@ async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
     )
     .fetch_all(db)
     .await?;
-    // 推送成功后刷新命中愿望的 notified_at（24h 节流）
-    sqlx::query(
+    // 24h 节流推进（审计修复：原第二条独立 UPDATE 引用上一条语句的 CTE `recent`，
+    // 每轮报 relation "recent" does not exist，notified_at 永不推进 → 命中窗口内每小时重发。
+    // 改为与 INSERT 同一语句的 CTE 内完成，插入成功即推进，杜绝"发了信却没标记"的错位）
+    let _ = sqlx::query(
         r#"
+        WITH recent AS (
+            SELECT id, name FROM torrents
+            WHERE approval_status = 1
+              AND approved_at > now() - interval '1 hour'
+              AND approved_at IS NOT NULL
+        ),
+        hits AS (
+            SELECT w.id AS wish_id, w.user_id
+            FROM wishlist w
+            JOIN recent r ON r.name ILIKE '%' || w.keyword || '%'
+            WHERE (w.category_id IS NULL OR w.category_id = (SELECT category_id FROM torrents t WHERE t.id = r.id))
+              AND (w.grade_id IS NULL OR w.grade_id = (SELECT grade_id FROM torrents t WHERE t.id = r.id))
+              AND (w.notified_at IS NULL OR w.notified_at < now() - interval '24 hours')
+        )
         UPDATE wishlist w SET notified_at = now()
-        FROM recent r
-        WHERE r.id IN (SELECT id FROM torrents WHERE approval_status = 1 AND approved_at > now() - interval '1 hour' AND approved_at IS NOT NULL)
-          AND r.name ILIKE '%' || w.keyword || '%'
-          AND (w.notified_at IS NULL OR w.notified_at < now() - interval '24 hours')
+        WHERE w.id IN (SELECT wish_id FROM hits)
         "#,
     )
     .execute(db)
@@ -1064,9 +1129,10 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
         .await?
         .rows_affected();
         if credited > 0 {
-            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \n                 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
                 .bind(uid)
                 .bind(reward)
+                .bind(&idem)
                 .execute(db)
                 .await?;
             let level_name: String =
@@ -1156,7 +1222,7 @@ async fn purge_old_login_events(db: &PgPool) -> anyhow::Result<u64> {
 /// 成就授予（0079 G6，U3D 口径教育站收敛版）：四族指标聚合 → 达标授予 + 火花奖励。
 /// 幂等：PK (user_id, def_id) 天然防重；奖励走幂等键 achievement:{def_code}:{uid}。
 async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
-    let res = sqlx::query(
+    let _res = sqlx::query(
         r#"
         WITH metrics AS (
             SELECT u.id AS user_id,
@@ -1179,19 +1245,36 @@ async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
         INSERT INTO user_achievements (user_id, def_id, metric_value)
         SELECT user_id, def_id, val FROM due
         ON CONFLICT (user_id, def_id) DO NOTHING
-        RETURNING user_id, def_id, code, reward_sparks, metric_value
         "#,
     )
     .fetch_all(db)
     .await?;
-    for row in &res {
-        let (uid, def_id, code, reward, val): (i64, i64, String, i64, i64) = (
-            row.try_get(0)?,
-            row.try_get(1)?,
-            row.try_get(2)?,
-            row.try_get(3)?,
-            row.try_get(4)?,
-        );
+    // RETURNING 只能引用目标表列（code/reward_sparks 属于 achievement_defs）。
+    // 0079 上线以来因 RETURNING 语法错误，成就系统从未授予过 —— 改为插入后反查达标行。
+    let res: Vec<(i64, i64, String, i64, i64)> = sqlx::query_as(
+        r#"
+        SELECT ua.user_id, ua.def_id, d.code, d.reward_sparks, ua.metric_value
+        FROM user_achievements ua
+        JOIN achievement_defs d ON d.id = ua.def_id
+        WHERE (ua.user_id, ua.def_id) IN (
+            SELECT m.user_id, d2.id FROM (
+                SELECT u.id AS user_id,
+                       COALESCE(u.seeding_size, 0) AS seeding_bytes,
+                       (SELECT count(*) FROM resurrections r WHERE r.user_id = u.id AND r.status = 'done') AS rescue_count,
+                       (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS upload_count,
+                       (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count
+                FROM users u WHERE u.status < 2
+            ) m JOIN achievement_defs d2 ON (
+                (d2.metric = 'seeding_bytes' AND m.seeding_bytes >= d2.threshold) OR
+                (d2.metric = 'rescue_count'  AND m.rescue_count  >= d2.threshold) OR
+                (d2.metric = 'upload_count'   AND m.upload_count   >= d2.threshold) OR
+                (d2.metric = 'post_count'     AND m.post_count     >= d2.threshold))
+        )
+        "#,
+    )
+    .fetch_all(db)
+    .await?;
+    for &(uid, def_id, ref code, reward, val) in &res {
         if reward > 0 {
             let idem = format!("achievement:{code}:{uid}");
             sqlx::query(
@@ -1206,9 +1289,14 @@ async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             .bind(&idem)
             .execute(db)
             .await?;
-            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+            // 审计修复（幂等）：UPDATE 与 INSERT 的 NOT EXISTS 同护栏 ——
+            // 否则每小时任务重跑时流水幂等跳过、余额却再加一次（每用户每小时白得 200）
+            sqlx::query(
+                "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1                  AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)",
+            )
                 .bind(uid)
                 .bind(reward)
+                .bind(&idem)
                 .execute(db)
                 .await?;
         }
@@ -1323,8 +1411,9 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
             "SELECT EXISTS(SELECT 1 FROM promotions p \
              WHERE (p.torrent_id = $1 OR p.torrent_id IS NULL) \
                AND p.starts_at <= now() AND p.ends_at > now() \
-               AND (p.kind IN ('free','x2free') OR (p.scope = 'official' AND EXISTS (SELECT 1 FROM torrents t WHERE t.id = $1 AND t.official_tag))))",
+               AND (p.kind IN ('free','x2free') OR (p.scope = 'official' AND (SELECT official_tag FROM torrents WHERE id = $2))))",
         )
+        .bind(torrent_id)
         .bind(torrent_id)
         .fetch_one(db)
         .await
@@ -1402,7 +1491,7 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
               AND uploaded::float8 / downloaded::float8 < $1
         ),
         entered AS (
-            UPDATE users u SET ratio_watch_until = now() + make_interval(days => $2), ratio_warned_at = now()
+            UPDATE users u SET ratio_watch_until = now() + make_interval(days => $2::int), ratio_warned_at = now()
             FROM low WHERE u.id = low.id RETURNING low.id, low.username
         )
         INSERT INTO messages (sender_id, receiver_id, subject, body)
@@ -1526,7 +1615,7 @@ async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
     for (fid, tid, hours) in &reached {
         sqlx::query(
             "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source) \
-             VALUES ('torrent', $1, 'free', now(), now() + make_interval(hours => $2), 'task') \
+             VALUES ('torrent', $1, 'free', now(), now() + make_interval(hours => $2::int), 'task') \
              ON CONFLICT DO NOTHING",
         )
         .bind(tid)
@@ -1573,9 +1662,10 @@ async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
             .bind(&idem)
             .execute(db)
             .await?;
-            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \n                 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
                 .bind(uid)
                 .bind(amount)
+                .bind(&idem)
                 .execute(db)
                 .await?;
             refunds += 1;
