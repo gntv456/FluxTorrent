@@ -34,6 +34,12 @@ pub enum DomainError {
     RateLimited,
     #[error("已感谢过")]
     AlreadyThanked,
+    /// 登录需两步验证：密码已对但未提供验证码（前端应展开 2FA 输入框）
+    #[error("账号已开启两步验证，请填写动态验证码")]
+    TwoFactorRequired,
+    /// 登录两步验证码不正确（已填但校验失败）
+    #[error("两步验证码不正确，请核对验证器当前 6 位数字")]
+    TwoFactorInvalid,
     #[error("种子文件无效: {0}")]
     TorrentInvalid(String),
     #[error("种子重复")]
@@ -55,6 +61,8 @@ impl DomainError {
             DomainError::UsernameTaken => 2007,
             DomainError::Validation(_) => 1002,
             DomainError::FieldErrors(_) => 1002,
+            DomainError::TwoFactorRequired => 2010,
+            DomainError::TwoFactorInvalid => 2011,
             DomainError::InsufficientSpark => 4001,
             DomainError::LedgerConflict => 4002,
             DomainError::RateLimited => 1015,
@@ -77,7 +85,9 @@ impl DomainError {
             | DomainError::TorrentInvalid(_)
             | DomainError::TorrentDuplicate
             | DomainError::Validation(_)
-            | DomainError::FieldErrors(_) => StatusCode::BAD_REQUEST,
+            | DomainError::FieldErrors(_)
+            | DomainError::TwoFactorRequired
+            | DomainError::TwoFactorInvalid => StatusCode::BAD_REQUEST,
             // 429 与 openapi 文档（openapi_http.rs 429 描述）及 scripts/_ratelimit_check.py 口径一致
             DomainError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             DomainError::InsufficientSpark | DomainError::LedgerConflict => StatusCode::CONFLICT,

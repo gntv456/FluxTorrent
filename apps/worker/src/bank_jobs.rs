@@ -227,32 +227,49 @@ pub async fn bank_auto_deduct(
     let mut count = 0u64;
     for (loan_id, user_id, remaining) in loans {
         let mut tx = db.begin().await?;
-        // 先扣活期：RETURNING 的是更新后的余额，实扣额 = 原余额 - 新余额（修复扣全款仍报 0 的通账 bug）
-        let before_after: Option<(i64, i64)> = sqlx::query_as(
-            "UPDATE bank_demand_accounts SET balance = balance - LEAST(balance, $2), updated_at = now() \
-             WHERE user_id = $1 RETURNING (balance + LEAST(balance, $2)) AS before, balance",
+        // 当日幂等闸门：同一贷款同一天只允许扣一次（含活期+余额两段）。
+        // 幂等键与流水共用 auto_deduct:{loan}:{YYYYMMDD}；当日已扣过则整笔跳过。
+        let idem = format!(
+            "auto_deduct:{}:{}",
+            loan_id,
+            chrono::Utc::now().format("%Y%m%d")
+        );
+        let already: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+        )
+        .bind(&idem)
+        .fetch_one(&mut *tx)
+        .await?;
+        if already {
+            tx.rollback().await?;
+            continue;
+        }
+        // 先扣活期：CTE 先锁定并取「更新前」余额再更新，实扣额 = LEAST(前余额, 欠款)。
+        // （RETURNING 里直接算 before 会用更新后的余额重算 LEAST，旧余额>欠款时低报、
+        //   少算的差额又被继续从站内余额扣 → 系统性多扣。）
+        let from_demand: i64 = sqlx::query_scalar(
+            "WITH prev AS (SELECT balance FROM bank_demand_accounts WHERE user_id = $1 FOR UPDATE) \
+             UPDATE bank_demand_accounts a SET balance = a.balance - LEAST((SELECT balance FROM prev), $2), updated_at = now() \
+             WHERE a.user_id = $1 RETURNING LEAST((SELECT balance FROM prev), $2)",
         )
         .bind(user_id)
         .bind(remaining)
         .fetch_optional(&mut *tx)
-        .await?;
-        let from_demand = before_after
-            .map(|(before, after)| before - after)
-            .unwrap_or(0);
+        .await?
+        .unwrap_or(0);
         let left = remaining - from_demand;
         let mut deducted = from_demand;
         if left > 0 {
             if allow_negative {
-                // 负余额口径：直接扣清
+                // 负余额口径：直接扣清（上方幂等闸门已保证当日只扣一次）
                 sqlx::query(
                     "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key) \
-                     SELECT nextval('spark_ledger_id_seq'), $2, -$3, 'bank_auto_deduct', 'bank', $1, \
-                            'auto_deduct:' || $1 || ':' || to_char(now(), 'YYYYMMDD') \
-                     WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = 'auto_deduct:' || $1 || ':' || to_char(now(), 'YYYYMMDD'))",
+                     VALUES (nextval('spark_ledger_id_seq'), $2, -$3, 'bank_auto_deduct', 'bank', $1, $4)",
                 )
                 .bind(loan_id)
                 .bind(user_id)
                 .bind(left)
+                .bind(&idem)
                 .execute(&mut *tx)
                 .await?;
                 sqlx::query("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1")
@@ -270,11 +287,6 @@ pub async fn bank_auto_deduct(
                         .await?;
                 let take = balance.min(left).max(0);
                 if take > 0 {
-                    let idem = format!(
-                        "auto_deduct:{}:{}",
-                        loan_id,
-                        chrono::Utc::now().format("%Y%m%d")
-                    );
                     let exists: bool = sqlx::query_scalar(
                         "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
                     )
@@ -329,7 +341,7 @@ pub async fn bank_auto_deduct(
             .bind(user_id)
             .bind("银行逾期贷款自动扣款通知")
             .bind(format!(
-                "您的贷款已逾期，系统自动扣款 {deducted} 火花（活期 {from_demand}）。剩余欠款 {}。请尽快结清，逾期期间每日加计罚息。",
+                "您的贷款已逾期，系统自动扣款 {deducted} 魔力（活期 {from_demand}）。剩余欠款 {}。请尽快结清，逾期期间每日加计罚息。",
                 (remaining - deducted).max(0)
             ))
             .execute(&mut *tx)
@@ -475,32 +487,58 @@ pub async fn bank_daily(db: &PgPool) {
     let mut fixed_rows = 0u64;
     let mut loan_rows = 0u64;
     let mut deduct_rows = 0u64;
+    // 步骤失败标记：任一核心结算失败则不写健康游标（下一轮 init_bank_day 判
+    // 「今日未结」整轮重跑——各子步骤自带 last_interest_date/幂等键游标，重跑安全）。
+    // 旧口径失败后照写游标，当日利息永久少发且健康页仍显示「今日已结」。
+    let mut failed = false;
     match bank_demand_settle(db).await {
         Ok(n) => demand_rows = n,
-        Err(e) => tracing::error!(?e, "bank_demand_settle"),
+        Err(e) => {
+            tracing::error!(?e, "bank_demand_settle");
+            failed = true;
+        }
     }
     match bank_fixed_daily_settle(db).await {
         Ok(n) => fixed_rows += n,
-        Err(e) => tracing::error!(?e, "bank_fixed_daily_settle"),
+        Err(e) => {
+            tracing::error!(?e, "bank_fixed_daily_settle");
+            failed = true;
+        }
     }
     match bank_fixed_mature(db).await {
         Ok(n) => fixed_rows += n,
-        Err(e) => tracing::error!(?e, "bank_fixed_mature"),
+        Err(e) => {
+            tracing::error!(?e, "bank_fixed_mature");
+            failed = true;
+        }
     }
     match bank_loan_interest(db).await {
         Ok(n) => loan_rows = n,
-        Err(e) => tracing::error!(?e, "bank_loan_interest"),
+        Err(e) => {
+            tracing::error!(?e, "bank_loan_interest");
+            failed = true;
+        }
     }
     match bank_overdue_penalty(db).await {
         Ok(n) => loan_rows += n,
-        Err(e) => tracing::error!(?e, "bank_overdue_penalty"),
+        Err(e) => {
+            tracing::error!(?e, "bank_overdue_penalty");
+            failed = true;
+        }
     }
     match bank_auto_deduct(db, deduct_days, allow_negative).await {
         Ok(n) => deduct_rows = n,
-        Err(e) => tracing::error!(?e, "bank_auto_deduct"),
+        Err(e) => {
+            tracing::error!(?e, "bank_auto_deduct");
+            failed = true;
+        }
     }
     if let Err(e) = bank_due_notify(db, 3).await {
         tracing::error!(?e, "bank_due_notify");
+    }
+    if failed {
+        tracing::error!("bank_daily finished with failures; health cursor NOT advanced, will retry next tick");
+        return;
     }
 
     // 健康游标：当日结算完成时间 + 各任务行数（主键 run_date 天然幂等，重跑刷新计数）。

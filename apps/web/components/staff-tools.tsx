@@ -95,7 +95,7 @@ function toLocalInput(iso: string): string {
 }
 
 export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
-  const { dict, locale } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const t = dict.stafftools;
   const [tab, setTab] = useState<ToolTab>(initialTab ?? "faq");
   // 左侧导航切换 tool 时父组件重渲染但本组件不卸载，useState 不会重新初始化 ——
@@ -711,7 +711,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
         <section className="baozi-panel p-4">
           <h2 className="mb-1 text-base font-bold">已合并到「批量发放」</h2>
           <p className="mb-3 text-xs text-sub">
-            魔力增减与上传量增减已合并为统一的批量发放工具：支持火花 / 上传量 / 邀请 / 补签卡，
+            魔力增减与上传量增减已合并为统一的批量发放工具：支持{currency} / 上传量 / 邀请 / 补签卡，
             可按等级、职务或指定用户批量执行，并群发 PM 通知。
           </p>
           <button

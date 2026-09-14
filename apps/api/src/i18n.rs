@@ -79,6 +79,19 @@ const MESSAGES: &[(i32, &str, &str, &str)] = &[
         "Password reset required",
     ),
     (2003, "无权限", "無權限", "Permission denied"),
+    // 登录两步验证（UX 修复：区分未填/填错，替代旧 1002「参数校验失败」）
+    (
+        2010,
+        "账号已开启两步验证，请填写动态验证码",
+        "帳號已開啟兩步驗證，請填寫動態驗證碼",
+        "This account has 2FA enabled; enter the 6-digit code",
+    ),
+    (
+        2011,
+        "两步验证码不正确，请核对验证器当前 6 位数字",
+        "兩步驗證碼不正確，請核對驗證器當前 6 位數字",
+        "Incorrect 2FA code; check the current 6 digits",
+    ),
     (2004, "凭证无效", "憑證無效", "Invalid credentials"),
     (
         2005,

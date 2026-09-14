@@ -7,6 +7,8 @@ export interface SiteProfile {
   site_type: string;
   pack_name: string | null;
   brand: string;
+  /** 站点货币名（0082）：默认「魔力」，站长后台 site_settings.currency_name 可改 */
+  currency_name?: string;
   categories: { id: number; name: string }[];
   modules: Record<string, boolean>;
 }
@@ -20,6 +22,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
       site_type: "general",
       pack_name: null,
       brand: "",
+      currency_name: "魔力",
       categories: [],
       modules: {},
     };

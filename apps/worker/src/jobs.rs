@@ -375,9 +375,12 @@ pub async fn seeding_reward(db: &PgPool, base: i64) -> anyhow::Result<u64> {
     )
     .execute(db)
     .await?;
-    // 刷新余额快照（权威在流水，快照仅展示）
+    // 刷新余额快照（权威在流水，快照仅展示）。
+    // 行锁串行化：与 API 的「锁行读余额→插流水→改余额」事务互斥，避免聚合快照
+    // 覆写并发事务刚落账的余额（丢失更新）；单事务内先锁后算，聚合与更新一致。
     sqlx::query(
-        "UPDATE users SET spark_balance = COALESCE((             SELECT sum(amount) FROM spark_ledger WHERE user_id = users.id          ), 0)",
+        "UPDATE users SET spark_balance = COALESCE((             SELECT sum(amount) FROM spark_ledger WHERE user_id = users.id          ), 0) \
+         WHERE id IN (SELECT id FROM users FOR UPDATE)",
     )
     .execute(db)
     .await?;
@@ -817,6 +820,9 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
             row.try_get(3)?,
         );
         let idem = format!("resurrection:{rid}");
+        // 奖励链整段包进单事务（含幂等护栏）：CAS 已置 done 后崩溃，
+        // 重启重跑此循环仍能凭幂等键补发，不再永久丢奖励。
+        let mut tx = db.begin().await?;
         sqlx::query(
             r#"
             INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
@@ -827,19 +833,22 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         .bind(uid)
         .bind(reward)
         .bind(&idem)
-        .execute(db)
+        .execute(&mut *tx)
         .await?;
         sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
             .bind(uid)
             .bind(reward)
                 .bind(&idem)
-            .execute(db)
+            .execute(&mut *tx)
             .await?;
         sqlx::query(
-            "INSERT INTO user_vouchers (user_id, kind, source) VALUES ($1, 'free', 'resurrection')",
+            "INSERT INTO user_vouchers (user_id, kind, source) \
+             SELECT $1, 'free', 'resurrection' \
+             WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $2)",
         )
         .bind(uid)
-        .execute(db)
+        .bind(&idem)
+        .execute(&mut *tx)
         .await?;
         // 7 天 free bump（U3D 口径）：全站看见的即时激励
         sqlx::query(
@@ -848,7 +857,7 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
              ON CONFLICT DO NOTHING",
         )
         .bind(tid)
-        .execute(db)
+        .execute(&mut *tx)
         .await?;
         let _ = sqlx::query(
             "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
@@ -856,11 +865,12 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         .bind(uid)
         .bind("复活任务完成")
         .bind(format!(
-            "恭喜！你复活种子 #{tid} 的任务已验收：奖励 {reward} 火花 + 1 枚免费券，\
+            "恭喜！你复活种子 #{tid} 的任务已验收：奖励 {reward} 魔力 + 1 枚免费券，\
              该种子已获得 7 天免费促销。感谢你为保种做出的贡献！"
         ))
-        .execute(db)
+        .execute(&mut *tx)
         .await;
+        tx.commit().await?;
     }
     if !settled.is_empty() {
         tracing::info!(n = settled.len(), "resurrections settled");
@@ -1297,7 +1307,7 @@ async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
     )
     .fetch_all(db)
     .await?;
-    for &(uid, def_id, ref code, reward, val) in &res {
+    for &(uid, def_id, ref code, reward, _val) in &res {
         if reward > 0 {
             let idem = format!("achievement:{code}:{uid}");
             sqlx::query(
@@ -1323,18 +1333,52 @@ async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
                 .execute(db)
                 .await?;
         }
+        let _ = def_id;
+    }
+    if !res.is_empty() {
+        tracing::info!(n = res.len(), "achievements grant pass done");
+    }
+    // 新授予（本轮才落 user_achievements 的行）补发站内信；历史达标行只走上面的
+    // 幂等发奖路径，不重复发信（修复每小时向全部历史达标成就重发通知的轰炸）。
+    let newly: Vec<(i64, String, i64)> = sqlx::query_as(
+        r#"
+        SELECT ua.user_id, d.code, d.reward_sparks
+        FROM user_achievements ua
+        JOIN achievement_defs d ON d.id = ua.def_id
+        WHERE (ua.user_id, ua.def_id) IN (
+            SELECT m.user_id, d2.id FROM (
+                SELECT u.id AS user_id,
+                       COALESCE(u.seeding_size, 0) AS seeding_bytes,
+                       (SELECT count(*) FROM resurrections r WHERE r.user_id = u.id AND r.status = 'done') AS rescue_count,
+                       (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS upload_count,
+                       (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count
+                FROM users u WHERE u.status < 2
+            ) m JOIN achievement_defs d2 ON (
+                (d2.metric = 'seeding_bytes' AND m.seeding_bytes >= d2.threshold) OR
+                (d2.metric = 'rescue_count'  AND m.rescue_count  >= d2.threshold) OR
+                (d2.metric = 'upload_count'   AND m.upload_count   >= d2.threshold) OR
+                (d2.metric = 'post_count'     AND m.post_count     >= d2.threshold))
+          AND NOT EXISTS (
+                SELECT 1 FROM messages msg
+                WHERE msg.receiver_id = ua.user_id
+                  AND msg.subject = '成就达成'
+                  AND msg.body LIKE '%「' || d.code || '」%')
+        "#,
+    )
+    .fetch_all(db)
+    .await?;
+    for &(uid, ref code, reward) in &newly {
         let _ = sqlx::query(
             "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
         )
         .bind(uid)
         .bind("成就达成")
-        .bind(format!("恭喜达成成就「{code}」（指标值 {val}）！奖励 {reward} 火花已入账。"))
+        .bind(format!("恭喜达成成就「{code}」！奖励 {reward} 魔力已入账。"))
         .execute(db)
         .await;
-        let _ = def_id;
     }
-    if !res.is_empty() {
-        tracing::info!(n = res.len(), "achievements granted");
+    if !newly.is_empty() {
+        tracing::info!(n = newly.len(), "achievements granted");
     }
     Ok(res.len() as u64)
 }
@@ -1891,7 +1935,15 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if last_bank_day != Some(site_day) {
                     tracing::info!(?site_day, "bank_daily start");
                     crate::bank_jobs::bank_daily(&db).await;
-                    last_bank_day = Some(site_day);
+                    // 结算失败（游标未写）时保持 last_bank_day 落后，下一分钟 tick 重试整轮；
+                    // 成功时以 bank_settle_runs 的 run_date 为准，避免与库内游标漂移。
+                    let after: Option<chrono::NaiveDate> =
+                        sqlx::query_scalar("SELECT max(run_date) FROM bank_settle_runs")
+                            .fetch_one(&db)
+                            .await
+                            .ok()
+                            .flatten();
+                    last_bank_day = Some(after.unwrap_or(site_day - chrono::Duration::days(1)));
                 }
             }
             _ = hour_tick.tick() => {

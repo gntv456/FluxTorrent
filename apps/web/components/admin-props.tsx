@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/i18n/client";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
@@ -27,13 +29,14 @@ interface UserPropRow {
 }
 
 const KIND_LABEL: Record<string, string> = {
-  upload_credit: "上传量", invite: "邀请", temp_invite: "临时邀请", gift_spark: "火花",
+  upload_credit: "上传量", invite: "邀请", temp_invite: "临时邀请", gift_spark: "CURRENCY",
   custom_title: "头衔卡", rename_card: "改名卡", makeup_card: "补签卡", rainbow_name: "彩虹名",
   rainbow_id: "彩虹ID", avatar_frame: "头像框", animated_avatar: "动态头像",
   vip: "VIP", app_vip: "APP VIP", ad_free: "去广告", charity: "公益",
 };
 
 export function AdminProps() {
+  const { currency } = useI18n();
   const [items, setItems] = useState<ShopItemRow[]>([]);
   const [props, setProps] = useState<UserPropRow[]>([]);
   const [uid, setUid] = useState("");
@@ -86,10 +89,10 @@ export function AdminProps() {
           </label>
           <label className="flex flex-col gap-1 text-xs">类型
             <select value={edit.f.kind} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, kind: e.target.value } })} className={inp}>
-              {Object.entries(KIND_LABEL).map(([k, l]) => <option key={k} value={k}>{l}（{k}）</option>)}
+              {Object.entries(KIND_LABEL).map(([k, l]) => <option key={k} value={k}>{l.replaceAll("CURRENCY", currency)}（{k}）</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs">价格(火花)
+          <label className="flex flex-col gap-1 text-xs">价格({currency})
             <input type="number" value={edit.f.price} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, price: e.target.value } })} className={`${inp} w-24`} />
           </label>
           <label className="flex flex-col gap-1 text-xs">config(JSON)
@@ -101,7 +104,7 @@ export function AdminProps() {
           <button className="baozi-button" disabled={busy || !edit.f.name.trim()} onClick={save}>保存</button>
           {edit.id !== null && <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold" onClick={() => setEdit({ id: null, f: { name: "", kind: "custom_title", price: "0", config: "{}", active: true } })}>取消</button>}
         </div>
-        <p className="mt-2 text-xs text-sub">即时生效类（上传量/火花/邀请）发放直接入账；卡牌/装饰类入背包待用户使用。</p>
+        <p className="mt-2 text-xs text-sub">即时生效类（上传量/{currency}/邀请）发放直接入账；卡牌/装饰类入背包待用户使用。</p>
       </section>
 
       <table className="nexus-table text-xs">
@@ -116,7 +119,7 @@ export function AdminProps() {
             <tr key={it.id} className={it.active ? "" : "opacity-50"}>
               <td className="num">{it.id}</td>
               <td className="font-bold">{it.name}</td>
-              <td>{KIND_LABEL[it.kind] ?? it.kind}</td>
+              <td>{(KIND_LABEL[it.kind] ?? it.kind).replaceAll("CURRENCY", currency)}</td>
               <td className="num">{it.price}</td>
               <td className="max-w-[220px] truncate font-mono">{JSON.stringify(it.config)}</td>
               <td>{it.active ? "上架" : "下架"}</td>
@@ -152,7 +155,7 @@ export function AdminProps() {
                 <td className="num">{p.order_id}</td>
                 <td><a href={`/admin/users/${p.user_id}`} className="font-bold text-link">{p.username}</a></td>
                 <td>{p.item_name}</td>
-                <td>{KIND_LABEL[p.kind] ?? p.kind}</td>
+                <td>{(KIND_LABEL[p.kind] ?? p.kind).replaceAll("CURRENCY", currency)}</td>
                 <td className="num">{p.price}</td>
                 <td className="text-sub">{new Date(p.created_at).toLocaleString()}</td>
                 <td className="text-right">

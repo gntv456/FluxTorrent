@@ -23,3 +23,16 @@ export function fmt(
     vars[k] === undefined ? "" : String(vars[k]),
   );
 }
+
+/**
+ * 站点货币名插值：字典文案中的 {magic} 占位符替换为站点货币名
+ * （默认「魔力」，站长后台 site_settings.currency_name 可改任意名）。
+ * 例：fmtCur("签到成功！+{reward} {magic}", { reward: 10 }, "魔力")
+ */
+export function fmtCur(
+  tpl: string,
+  vars: Record<string, string | number>,
+  currency: string,
+): string {
+  return fmt(tpl, { ...vars, magic: currency });
+}

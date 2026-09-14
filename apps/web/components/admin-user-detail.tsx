@@ -77,7 +77,7 @@ const ITEM_KIND_LABEL: Record<string, string> = {
   upload_credit: "上传量",
   invite: "邀请类",
   temp_invite: "邀请类",
-  gift_spark: "火花",
+  gift_spark: "CURRENCY",
   custom_title: "头衔卡",
   rename_card: "卡牌",
   makeup_card: "卡牌",
@@ -94,7 +94,7 @@ const ITEM_KIND_LABEL: Record<string, string> = {
 export function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { locale, dict } = useI18n();
+  const { locale, dict, currency } = useI18n();
   const classList = (dict.admin as unknown as { classList: [number, string][] }).classList;
   const uid = Number(params.id);
   const [d, setD] = useState<Detail | null>(null);
@@ -369,7 +369,7 @@ export function AdminUserDetailPage() {
 
       {/* 关联数据 tab */}
       <div className="flex flex-wrap gap-2" role="tablist">
-        {([["profile", "资料全景"], ["spark", `火花流水`], ["logins", "登录记录"], ["seeding", "做种/下载"]] as const).map(([k, label]) => (
+        {([["profile", "资料全景"], ["spark", `${currency}流水`], ["logins", "登录记录"], ["seeding", "做种/下载"]] as const).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
             className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${tab === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"}`}>
             {label}
@@ -403,7 +403,7 @@ export function AdminUserDetailPage() {
               <div><dt className="text-sub">上传量</dt><dd>{fmtBytes(d.uploaded)}</dd></div>
               <div><dt className="text-sub">下载量</dt><dd>{fmtBytes(d.downloaded)}</dd></div>
               <div><dt className="text-sub">分享率</dt><dd>{d.downloaded > 0 ? (d.uploaded / d.downloaded).toFixed(3) : "∞"}</dd></div>
-              <div><dt className="text-sub">火花余额</dt><dd>{d.spark_balance.toLocaleString()}</dd></div>
+              <div><dt className="text-sub">{currency}余额</dt><dd>{d.spark_balance.toLocaleString()}</dd></div>
               <div><dt className="text-sub">发布种子</dt><dd>{d.uploads}</dd></div>
               <div><dt className="text-sub">完成下载</dt><dd>{d.downloaded_count}</dd></div>
               <div><dt className="text-sub">评论</dt><dd>{d.comments}</dd></div>
@@ -544,13 +544,13 @@ export function AdminUserDetailPage() {
             {/* 授予道具（含卡牌/装饰类） */}
             {panel === "item" && (
               <div className="cmgmt-form rounded-[var(--r-md)] border border-line p-3">
-                <p className="mb-2 text-xs text-sub">免费发放：上传量/火花/邀请即时生效；化妆卡、改名卡等卡牌道具入背包待用户使用。</p>
+                <p className="mb-2 text-xs text-sub">免费发放：上传量/{currency}/邀请即时生效；化妆卡、改名卡等卡牌道具入背包待用户使用。</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <select value={itemId} onChange={(e) => setItemId(e.target.value)} className="min-h-[40px] max-w-80 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
                     <option value="">选择道具</option>
                     {Object.entries(
                       items.reduce<Record<string, typeof items>>((acc, it) => {
-                        (acc[ITEM_KIND_LABEL[it.kind] ?? it.kind] ??= []).push(it);
+                        (acc[(ITEM_KIND_LABEL[it.kind] ?? it.kind).replaceAll("CURRENCY", currency)] ??= []).push(it);
                         return acc;
                       }, {}),
                     ).map(([kind, list]) => (
@@ -586,7 +586,7 @@ export function AdminUserDetailPage() {
                     <input type="number" value={adj.up} onChange={(e) => setAdj({ ...adj, up: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" /></label>
                   <label className="flex flex-col gap-1 text-xs">下载量增量（字节）
                     <input type="number" value={adj.down} onChange={(e) => setAdj({ ...adj, down: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" /></label>
-                  <label className="flex flex-col gap-1 text-xs">火花增量
+                  <label className="flex flex-col gap-1 text-xs">{currency}增量
                     <input type="number" value={adj.spark} onChange={(e) => setAdj({ ...adj, spark: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" /></label>
                   <label className="flex flex-col gap-1 text-xs">邀请增发/回收
                     <input type="number" value={adj.invite} onChange={(e) => setAdj({ ...adj, invite: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" /></label>

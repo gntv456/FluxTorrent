@@ -40,11 +40,11 @@ function Avatar({ u }: { u: TopRow }) {
   );
 }
 
-function valueHeader(title: string, empty: string, isBytes: boolean): string {
+function valueHeader(title: string, empty: string, isBytes: boolean, currency: string): string {
   if (isBytes) return "大小";
   if (title.includes("做种")) return "时长";
   if (title.includes("后宫")) return "每小时";
-  if (title.includes("魔力")) return "魔力";
+  if (title.includes(currency) || title.includes("魔力")) return currency;
   return "数量";
 }
 
@@ -55,6 +55,7 @@ function Board({
   empty,
   fmt,
   isBytes = false,
+  currency,
 }: {
   icon: string;
   title: string;
@@ -62,6 +63,7 @@ function Board({
   empty: string;
   fmt: (v: number) => string;
   isBytes?: boolean;
+  currency: string;
 }) {
   return (
     <section className="baozi-panel overflow-hidden">
@@ -78,7 +80,7 @@ function Board({
             <tr className="border-b border-[var(--border-soft)] text-[11px] text-[var(--text-faint)]">
               <th className="w-12 py-2 pl-3 text-left font-bold">排名</th>
               <th className="py-2 text-left font-bold">用户</th>
-              <th className="py-2 pr-3 text-right font-bold">{valueHeader(title, empty, isBytes)}</th>
+              <th className="py-2 pr-3 text-right font-bold">{valueHeader(title, empty, isBytes, currency)}</th>
             </tr>
           </thead>
           <tbody>
@@ -117,7 +119,7 @@ function Board({
 }
 
 export default async function TopPage() {
-  const { dict } = await getDict();
+  const { dict, currency } = await getDict();
   const t = dict.top;
   const b = await getTopBoards();
 
@@ -125,12 +127,12 @@ export default async function TopPage() {
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl">{t.title}</h1>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Board icon="💰" title={t.boardBonus} rows={b.bonus} empty={t.empty} fmt={(v) => Math.round(v).toLocaleString("zh-CN")} />
-        <Board icon="⬆️" title={t.boardUploaded} rows={b.uploaded} empty={t.empty} fmt={formatBytes} isBytes />
-        <Board icon="⬇️" title={t.boardDownloaded} rows={b.downloaded} empty={t.empty} fmt={formatBytes} isBytes />
-        <Board icon="⏳" title={t.boardSeedtime} rows={b.seedtime} empty={t.empty} fmt={fmtDuration} />
-        <Board icon="💒" title={t.boardHourly} rows={b.hourly} empty={t.empty} fmt={(v) => v.toFixed(2)} />
-        <Board icon="🌱" title={t.boardTorrents} rows={b.torrents} empty={t.empty} fmt={(v) => Math.round(v).toLocaleString("zh-CN")} />
+        <Board currency={currency} icon="💰" title={t.boardBonus} rows={b.bonus} empty={t.empty} fmt={(v) => Math.round(v).toLocaleString("zh-CN")} />
+        <Board currency={currency} icon="⬆️" title={t.boardUploaded} rows={b.uploaded} empty={t.empty} fmt={formatBytes} isBytes />
+        <Board currency={currency} icon="⬇️" title={t.boardDownloaded} rows={b.downloaded} empty={t.empty} fmt={formatBytes} isBytes />
+        <Board currency={currency} icon="⏳" title={t.boardSeedtime} rows={b.seedtime} empty={t.empty} fmt={fmtDuration} />
+        <Board currency={currency} icon="💒" title={t.boardHourly} rows={b.hourly} empty={t.empty} fmt={(v) => v.toFixed(2)} />
+        <Board currency={currency} icon="🌱" title={t.boardTorrents} rows={b.torrents} empty={t.empty} fmt={(v) => Math.round(v).toLocaleString("zh-CN")} />
       </div>
     </div>
   );

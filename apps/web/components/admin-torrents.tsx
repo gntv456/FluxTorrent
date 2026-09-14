@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/i18n/client";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 /** 后台种子管理 + 拒绝原因字典 + 种子操作记录 + 记录查询（好学站口径）
@@ -68,6 +70,7 @@ function fmtBytes(n: number): string {
 type SubTab = "torrents" | "deny" | "ops" | "spark" | "buys" | "logins";
 
 export function AdminTorrents() {
+  const { currency } = useI18n();
   const [sub, setSub] = useState<SubTab>("torrents");
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -83,7 +86,7 @@ export function AdminTorrents() {
           ["torrents", "种子管理"],
           ["deny", "拒绝原因"],
           ["ops", "种子操作记录"],
-          ["spark", "火花记录"],
+          ["spark", `${currency}记录`],
           ["buys", "种子购买"],
           ["logins", "登录记录"],
         ] as [SubTab, string][]).map(([k, label]) => (
@@ -102,8 +105,8 @@ export function AdminTorrents() {
       {sub === "torrents" && <TorrentList flash={flash} />}
       {sub === "deny" && <DenyReasons flash={flash} />}
       {sub === "ops" && <OpLogs />}
-      {sub === "spark" && <RecordQuery title="火花记录" endpoint="/api/v1/admin/spark-logs" columns={[["username", "用户"], ["amount", "数额"], ["kind", "类型"], ["balance_after", "余额"], ["created_at", "时间"]]} />}
-      {sub === "buys" && <RecordQuery title="种子购买记录" endpoint="/api/v1/admin/torrent-buys" columns={[["username", "用户"], ["kind", "类型"], ["ref_id", "种子ID"], ["amount", "火花"], ["created_at", "时间"]]} />}
+      {sub === "spark" && <RecordQuery title={`${currency}记录`} endpoint="/api/v1/admin/spark-logs" columns={[["username", "用户"], ["amount", "数额"], ["kind", "类型"], ["balance_after", "余额"], ["created_at", "时间"]]} />}
+      {sub === "buys" && <RecordQuery title="种子购买记录" endpoint="/api/v1/admin/torrent-buys" columns={[["username", "用户"], ["kind", "类型"], ["ref_id", "种子ID"], ["amount", currency], ["created_at", "时间"]]} />}
       {sub === "logins" && <LoginLogs />}
     </div>
   );

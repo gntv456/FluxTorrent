@@ -11,15 +11,19 @@ import { useI18n } from "@/i18n/client";
 interface RoleDef { key: string; name: string }
 interface BulkResult { affected: number; targets: number; kind: string; amount: number }
 
-const KINDS: [string, string, string][] = [
-  ["spark", "火花", "正加负减，单次 ±1,000,000"],
-  ["uploaded", "上传量 (GB)", "正加负减，单次 ±10TB"],
-  ["invite", "邀请", "正数增发 / 负数回收配额，单次 ±50；可填临时邀请天数直发 N 天码"],
-  ["resub_card", "补签卡", "入背包待用户使用，单次 1-50"],
-];
+/** 货币名动态化：火花档标签跟随站点 currency_name（默认「魔力」） */
+function kindsOf(currency: string): [string, string, string][] {
+  return [
+    ["spark", currency, "正加负减，单次 ±1,000,000"],
+    ["uploaded", "上传量 (GB)", "正加负减，单次 ±10TB"],
+    ["invite", "邀请", "正数增发 / 负数回收配额，单次 ±50；可填临时邀请天数直发 N 天码"],
+    ["resub_card", "补签卡", "入背包待用户使用，单次 1-50"],
+  ];
+}
 
 export function IncrementBulk() {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
+  const KINDS = kindsOf(currency);
   const classList = (dict.admin as unknown as { classList: [number, string][] }).classList;
   const [kind, setKind] = useState("spark");
   const [amount, setAmount] = useState("100");

@@ -547,9 +547,12 @@ async fn voucher_use(
     body: web::Json<VoucherUseReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 绑定即生效但不置 used_at：worker 计费侧以「used_torrent_id 已绑定 + used_at IS NULL」
+    // 判定生效中的券，下载量过阈值后由核销语句置 used_at。旧版绑定时就写 used_at，
+    // 导致券永远不被计费侧匹配（用户花钱买的权益确定性为 0，真实资损）。
     let n = sqlx::query(
-        "UPDATE user_vouchers SET used_torrent_id = $3, used_at = now() \
-         WHERE id = $1 AND user_id = $2 AND used_at IS NULL AND expires_at > now()",
+        "UPDATE user_vouchers SET used_torrent_id = $3 \
+         WHERE id = $1 AND user_id = $2 AND used_torrent_id IS NULL AND used_at IS NULL AND expires_at > now()",
     )
     .bind(body.voucher_id)
     .bind(auth.id)

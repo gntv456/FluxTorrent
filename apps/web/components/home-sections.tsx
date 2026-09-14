@@ -57,7 +57,7 @@ function fmtBytes(bytes: number): string {
 
 /** 补签卡按钮（0066 修复）：持有数徽标 + 过去 7 天日期选择弹层 + 明确错误提示 */
 function ResubButton({ cards }: { cards: number }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.attResub2 ?? { btn: "补签" } as { btn?: string };
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,7 +104,7 @@ function ResubButton({ cards }: { cards: number }) {
             <p className="mb-3 text-xs text-sub">{dict.attResub2?.note ?? "消耗补签卡，补过去 7 天内漏签"}</p>
             {cards === 0 ? (
               <p className="rounded-[var(--r-md)] bg-sun/20 p-3 text-xs text-ink">
-                暂无可用补签卡：可到<a href="/shop" className="font-bold text-sky">火花商店</a>购买，或等管理发放。
+                暂无可用补签卡：可到<a href="/shop" className="font-bold text-sky">{currency}商店</a>购买，或等管理发放。
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -130,7 +130,7 @@ function ResubButton({ cards }: { cards: number }) {
 }
 
 export function HomeSections() {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.home2;
   const [data, setData] = useState<HomeData | null>(null);
   const [err, setErr] = useState(false);

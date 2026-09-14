@@ -5,7 +5,7 @@ import { getDict } from "@/i18n/server";
 export const dynamic = "force-dynamic";
 
 export default async function MagicPoolPage() {
-  const { dict } = await getDict();
+  const { dict, currency } = await getDict();
   const pool = await getPool();
   const pct = pool ? Math.min(100, Math.round(pool.progress * 100)) : 0;
   const t = dict.magicPool;
@@ -29,7 +29,7 @@ export default async function MagicPoolPage() {
         {pool && (
           <p className="num mt-2 text-center text-sm text-sub">
             {pool.donated.toLocaleString("zh-CN")} /{" "}
-            {pool.goal.toLocaleString("zh-CN")} 火花（{pct}%）
+            {pool.goal.toLocaleString("zh-CN")} {currency}（{pct}%）
           </p>
         )}
         {pool?.promo_started && (
