@@ -45,6 +45,12 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(staff_delete)
         .service(shoutbox_list)
         .service(shoutbox_send)
+        .service(shoutbox_bot_help)
+        .service(shoutbox_bot_exec)
+        .service(ticket_list)
+        .service(ticket_update)
+        .service(leak_list)
+        .service(leak_resolve)
         .service(message_inbox)
         .service(message_sent)
         .service(message_staff)
@@ -218,6 +224,17 @@ async fn medal_gift(
     let Some(price) = price else {
         return Err(DomainError::NotFound(body.medal_id));
     };
+    // 赠送税（0078）：礼物链路抽 gift_tax_bp（缺省 5%）入站免池——
+    // 扣款仍按全额（spend_spark price），勋章照常发放；税在「站点收入」侧记账，
+    // 即 magic_pool/pool_donations（出资人=送礼人），不另记正向流水（防虚增 minted）。
+    let tax_bp: i32 =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'gift_tax_bp'")
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .and_then(|v: String| v.parse().ok())
+            .unwrap_or(500);
+    let tax = crate::economy::gift_tax(price, tax_bp);
     let idem = format!(
         "medal-gift:{}:{}:{}",
         auth.id,
@@ -234,6 +251,25 @@ async fn medal_gift(
         body.medal_id,
     )
     .await?;
+    if tax > 0 {
+        let month = crate::economy::pool_month(chrono::Utc::now());
+        sqlx::query(
+            "INSERT INTO magic_pool (month, donated_total) VALUES ($1, $2) \
+             ON CONFLICT (month) DO UPDATE SET donated_total = magic_pool.donated_total + $2",
+        )
+        .bind(&month)
+        .bind(tax)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query("INSERT INTO pool_donations (user_id, amount, month) VALUES ($1, $2, $3)")
+            .bind(auth.id)
+            .bind(tax)
+            .bind(&month)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     sqlx::query(
         "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
          SELECT $1, $2, 'gift', now() + make_interval(days => m.duration_days) \
@@ -582,6 +618,11 @@ struct TopicRow {
     last_post_at: Option<chrono::DateTime<chrono::Utc>>,
     sticky: bool,
     locked: bool,
+    /// 已读到的楼层 post_id（0078 已读跟踪；NULL=从未读过）
+    read_last_post_id: Option<i64>,
+    /// 是否有未读新回复（last_post 晚于已读位置）
+    #[serde(default)]
+    has_unread: bool,
 }
 
 #[get("/forums/{id}/topics")]
@@ -599,11 +640,16 @@ async fn topic_list(
     let rows = sqlx::query_as::<_, TopicRow>(
         "SELECT t.id, t.forum_id, t.title, u.username, \
             (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) AS replies, t.views, t.last_post_at, \
-            t.sticky, t.locked \
+            t.sticky, t.locked, \
+            (SELECT r.last_post_id FROM topic_reads r WHERE r.user_id = $2 AND r.topic_id = t.id) AS read_last_post_id, \
+            EXISTS(SELECT 1 FROM posts p2 WHERE p2.topic_id = t.id \
+                   AND p2.id > COALESCE((SELECT r2.last_post_id FROM topic_reads r2 \
+                                         WHERE r2.user_id = $2 AND r2.topic_id = t.id), 0)) AS has_unread \
          FROM topics t LEFT JOIN users u ON u.id = t.user_id \
          WHERE t.forum_id = $1 ORDER BY t.sticky DESC, t.id DESC LIMIT 50",
     )
     .bind(fid)
+    .bind(auth.id)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -682,6 +728,23 @@ async fn topic_detail(
                 p.body = "……".to_string();
             }
         }
+    }
+    // 论坛已读（0078，NP readposts 口径）：读到哪楼记哪楼（最大已见 post_id），
+    // 列表页据此算「有新回复」角标。read_at 顺带刷新，供排序。
+    if let Some(last_pid) = posts.last().map(|p| p.id) {
+        sqlx::query(
+            "INSERT INTO topic_reads (user_id, topic_id, last_post_id, read_at) \
+             VALUES ($1, $2, $3, now()) \
+             ON CONFLICT (user_id, topic_id) DO UPDATE \
+             SET last_post_id = GREATEST(topic_reads.last_post_id, EXCLUDED.last_post_id), \
+                 read_at = now()",
+        )
+        .bind(auth.id)
+        .bind(tid)
+        .bind(last_pid)
+        .execute(&state.repo.db)
+        .await
+        .ok();
     }
     Ok(ok(serde_json::json!({
         "topic_id": tid,
@@ -1831,4 +1894,312 @@ async fn pool_honor(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
+}
+
+// ============ 工单体系（0078，U3D Ticket 口径，v3 §27-16） ============
+// staffmessages 工单化：优先级/指派/四态流转，复用 STAFF_MESSAGE 权限与答复链路。
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct TicketRow {
+    id: i64,
+    username: Option<String>,
+    subject: String,
+    priority: i16,
+    assigned_to: Option<String>,
+    ticket_status: i16,
+    created_at: chrono::DateTime<chrono::Utc>,
+    answered_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// 工单列表（staff）：按状态过滤，优先级降序 + 新单在前
+#[get("/stafftickets")]
+async fn ticket_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
+    let status: Option<i16> = q
+        .get("status")
+        .and_then(|s| s.parse::<i16>().ok())
+        .filter(|s| (0..=3).contains(s));
+    let rows = sqlx::query_as::<_, TicketRow>(
+        "SELECT s.id, u.username, s.subject, s.priority, a.username AS assigned_to, \
+                s.ticket_status, s.created_at, s.answered_at \
+         FROM staffmessages s \
+         LEFT JOIN users u ON u.id = s.user_id \
+         LEFT JOIN users a ON a.id = s.assigned_to \
+         WHERE ($1::smallint IS NULL OR s.ticket_status = $1) \
+         ORDER BY s.ticket_status ASC, s.priority DESC, s.id DESC LIMIT 100",
+    )
+    .bind(status)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct TicketUpdateReq {
+    id: i64,
+    /// 0低 1中 2高 3紧急
+    #[serde(default)]
+    priority: Option<i16>,
+    /// 0=新 1=处理中 2=已答复待确认 3=关闭
+    #[serde(default)]
+    ticket_status: Option<i16>,
+    /// 指派给（用户名；空串=取消指派）
+    #[serde(default)]
+    assign: Option<String>,
+}
+
+/// 工单流转：改优先级/状态/指派（任意子集）。答复仍走既有 staff_answer（其顺带置 3）。
+#[post("/stafftickets/update")]
+async fn ticket_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<TicketUpdateReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
+    if let Some(p) = body.priority {
+        if !(0..=3).contains(&p) {
+            return Err(DomainError::Validation("priority 需在 0-3".into()));
+        }
+    }
+    if let Some(s) = body.ticket_status {
+        if !(0..=3).contains(&s) {
+            return Err(DomainError::Validation("ticket_status 需在 0-3".into()));
+        }
+    }
+    let assignee: Option<i64> = match &body.assign {
+        Some(name) if !name.trim().is_empty() => {
+            let uid: Option<i64> =
+                sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND class_id >= 50")
+                    .bind(name.trim())
+                    .fetch_optional(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?
+                    .flatten();
+            let Some(uid) = uid else {
+                return Err(DomainError::Validation(
+                    "指派对象不存在或不是工作人员（class≥50）".into(),
+                ));
+            };
+            Some(uid)
+        }
+        Some(_) => None, // 空串 = 清指派（NULL）
+        None => {
+            // 未传 assign = 不动：取当前值回写（COALESCE 不更新语义）
+            let cur: Option<i64> =
+                sqlx::query_scalar("SELECT assigned_to FROM staffmessages WHERE id = $1")
+                    .bind(body.id)
+                    .fetch_optional(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?
+                    .flatten();
+            cur
+        }
+    };
+    let n = sqlx::query(
+        "UPDATE staffmessages SET \
+            priority = COALESCE($2, priority), \
+            ticket_status = COALESCE($3, ticket_status), \
+            assigned_to = COALESCE($4, assigned_to) \
+         WHERE id = $1",
+    )
+    .bind(body.id)
+    .bind(body.priority)
+    .bind(body.ticket_status)
+    .bind(assignee)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(body.id));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "ticket_update", Some(body.id))
+        .await;
+    Ok(ok(serde_json::json!({ "id": body.id, "updated": n })))
+}
+
+// ============ 泄露事件复核（0078，U3D Leaker 口径：worker 只报告，staff 复核） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct LeakRow {
+    id: i64,
+    kind: String,
+    user_id: i64,
+    username: Option<String>,
+    torrent_id: Option<i64>,
+    detail: serde_json::Value,
+    score: i16,
+    resolved: i16,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// 待复核泄露事件列表（staff）
+#[get("/staff/leaks")]
+async fn leak_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
+    let rows = sqlx::query_as::<_, LeakRow>(
+        "SELECT e.id, e.kind, e.user_id, u.username, e.torrent_id, e.detail, e.score, e.resolved, e.created_at \
+         FROM leak_events e LEFT JOIN users u ON u.id = e.user_id \
+         WHERE e.resolved = 0 ORDER BY e.score DESC, e.created_at DESC LIMIT 100",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct LeakResolveReq {
+    id: i64,
+    /// 1=确认泄露 2=误报
+    verdict: i16,
+}
+
+/// 泄露事件裁决：确认泄露时通知全部 staff（走 staffmessages 分流），误报仅归档
+#[post("/staff/leaks/resolve")]
+async fn leak_resolve(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<LeakResolveReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
+    if ![1, 2].contains(&body.verdict) {
+        return Err(DomainError::Validation("verdict 需为 1（确认）或 2（误报）".into()));
+    }
+    let n = sqlx::query(
+        "UPDATE leak_events SET resolved = $2, resolved_by = $3 WHERE id = $1 AND resolved = 0",
+    )
+    .bind(body.id)
+    .bind(body.verdict)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(body.id));
+    }
+    if body.verdict == 1 {
+        let (uid, kind, detail): (i64, String, serde_json::Value) = sqlx::query_as(
+            "SELECT user_id, kind, detail FROM leak_events WHERE id = $1",
+        )
+        .bind(body.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "INSERT INTO staffmessages (user_id, subject, body, permission) \
+             VALUES ($1, $2, $3, 'security')",
+        )
+        .bind(uid)
+        .bind(format!("泄露事件确认（{}）", kind))
+        .bind(format!(
+            "事件 #{} 已由 staff 复核确认为真实泄露。证据：{}。请按流程处置（重置 passkey / 必要时封号）。",
+            body.id, detail
+        ))
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "leak_resolve", Some(body.id))
+        .await;
+    Ok(ok(serde_json::json!({ "id": body.id, "verdict": body.verdict })))
+}
+
+// ============ 聊天机器人（0078，NerdBot 统计命令系，v3 §27-20） ============
+// shoutbox 里发 /命令 即触发系统账号回话（当前会话内直接返回，不落库系统消息——
+// 避免机器人刷屏；统计命令只读、零风险）。
+
+#[get("/shoutbox/bot")]
+async fn shoutbox_bot_help() -> impl Responder {
+    ok(serde_json::json!({
+        "commands": [
+            { "cmd": "/free",  "desc": "当前生效的免费/双倍促销种子" },
+            { "cmd": "/stats", "desc": "站点实时统计（用户/种子/做种）" },
+            { "cmd": "/me",    "desc": "我的数据摘要（上传/下载/分享率/火花）" },
+            { "cmd": "/help",  "desc": "命令列表" },
+        ]
+    }))
+}
+
+/// 命令分发（GET 供前端在发送 /命令 时调用并展示回话）
+#[get("/shoutbox/bot/exec")]
+async fn shoutbox_bot_exec(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let cmd = q.get("cmd").map(|s| s.trim()).unwrap_or("");
+    let reply = match cmd {
+        "/free" => {
+            let rows: Vec<(i64, String)> = sqlx::query_as(
+                "SELECT t.id, t.name FROM promotions p JOIN torrents t ON t.id = p.torrent_id \
+                 WHERE p.starts_at <= now() AND p.ends_at > now() \
+                   AND p.kind IN ('free','x2free') ORDER BY p.ends_at LIMIT 5",
+            )
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            if rows.is_empty() {
+                "当前没有免费促销的种子。".to_string()
+            } else {
+                format!(
+                    "当前免费：{}",
+                    rows.iter()
+                        .map(|(id, name)| format!("#{} {}", id, name))
+                        .collect::<Vec<_>>()
+                        .join("；")
+                )
+            }
+        }
+        "/stats" => {
+            let (users, torrents, seeding): (i64, i64, i64) = sqlx::query_as(
+                "SELECT (SELECT count(*) FROM users WHERE status < 2), \
+                        (SELECT count(*) FROM torrents), \
+                        (SELECT count(*) FROM snatches WHERE seeding)",
+            )
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            format!(
+                "站点现状：{} 位用户 / {} 个种子 / {} 个做种连接。",
+                users, torrents, seeding
+            )
+        }
+        "/me" => {
+            let (up, down, spark): (i64, i64, i64) = sqlx::query_as(
+                "SELECT uploaded, downloaded, spark_balance FROM users WHERE id = $1",
+            )
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            format!(
+                "你的数据：上传 {:.1} GB / 下载 {:.1} GB / 分享率 {:.2} / 火花 {}。",
+                up as f64 / 1073741824.0,
+                down as f64 / 1073741824.0,
+                if down > 0 { up as f64 / down as f64 } else { 0.0 },
+                spark
+            )
+        }
+        _ => "可用命令：/free /stats /me /help".to_string(),
+    };
+    Ok(ok(serde_json::json!({ "cmd": cmd, "reply": reply })))
 }

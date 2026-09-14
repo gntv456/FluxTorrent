@@ -128,9 +128,35 @@ pub fn pool_promo_window(
     }
 }
 
+// ============ 赠送税（0078：礼物/众筹抽税入站免池，Gazelle 奖池税口径） ============
+
+/// 赠送税额：amount × gift_tax_bp / 10000，向下取整；税率为 0 时免税。
+/// 税基是「用户实付金额」，收款方拿 amount - tax。
+pub fn gift_tax(amount: i64, tax_bp: i32) -> i64 {
+    if amount <= 0 || tax_bp <= 0 {
+        return 0;
+    }
+    (amount as i128 * tax_bp as i128 / 10_000) as i64
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gift_tax_rates() {
+        // 缺省 5%：1000 → 50，到账 950
+        assert_eq!(gift_tax(1000, 500), 50);
+        // 免税
+        assert_eq!(gift_tax(1000, 0), 0);
+        // 向下取整：999 × 5% = 49.95 → 49
+        assert_eq!(gift_tax(999, 500), 49);
+        // 小额不产生税（<1/税率）
+        assert_eq!(gift_tax(19, 500), 0);
+        assert_eq!(gift_tax(20, 500), 1);
+        // 负数防御
+        assert_eq!(gift_tax(-100, 500), 0);
+    }
 
     #[test]
     fn checkin_first_ever() {

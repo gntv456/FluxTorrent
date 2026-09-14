@@ -113,6 +113,10 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(voucher_use)
         .service(spark_flow_report)
         .service(torznab_caps)
+        .service(fundings_list)
+        .service(funding_create)
+        .service(funding_contribute)
+        .service(funding_my)
 }
 
 /// 动账核心：余额充足校验 + 负流水 + 余额快照更新（单事务）。
@@ -1419,4 +1423,251 @@ async fn torznab_caps() -> HttpResponse {
   </categories>
 </torznab:search>"#;
     HttpResponse::Ok().content_type("application/xml").body(xml)
+}
+
+// ============ 定向众筹免费（0078，HDBits Featured 口径，v3 §27-13） ============
+// 某个种子社区凑火花 → 达标自动挂 free×hours；到期未达标全额退款（含税部分一并退）。
+// 赠送税（gift_tax_bp）对众筹同样适用：抽税入站免池，与礼物共用回收通道（v3 §27-22）。
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct FundingRow {
+    id: i64,
+    torrent_id: i64,
+    torrent_name: Option<String>,
+    goal: i64,
+    raised: i64,
+    backers: i64,
+    hours: i32,
+    status: i16,
+    ends_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// 进行中/已完成的众筹列表（新→旧；种子名带出）
+#[get("/fundings")]
+async fn fundings_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<impl Responder> {
+    let status: Option<i16> = q
+        .get("status")
+        .and_then(|s| s.parse::<i16>().ok())
+        .filter(|s| (0..=3).contains(s));
+    let rows = sqlx::query_as::<_, FundingRow>(
+        "SELECT f.id, f.torrent_id, t.name AS torrent_name, f.goal, f.raised, \
+                (SELECT count(*)::bigint FROM funding_contribs c WHERE c.funding_id = f.id) AS backers, \
+                f.hours, f.status, f.ends_at \
+         FROM fundings f LEFT JOIN torrents t ON t.id = f.torrent_id \
+         WHERE ($1::smallint IS NULL OR f.status = $1) \
+         ORDER BY f.status ASC, f.ends_at DESC LIMIT 50",
+    )
+    .bind(status)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct FundingCreateReq {
+    torrent_id: i64,
+    goal: i64,
+    #[serde(default = "default_funding_hours")]
+    hours: i32,
+    #[serde(default = "default_funding_days")]
+    days: i32,
+}
+
+fn default_funding_hours() -> i32 {
+    168
+}
+fn default_funding_days() -> i32 {
+    14
+}
+
+/// 发起众筹（种子发布者或 staff；同种子同时只能有一个进行中的众筹）
+#[post("/fundings")]
+async fn funding_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<FundingCreateReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if body.goal < 1000 {
+        return Err(DomainError::Validation("众筹目标至少 1000 火花".into()));
+    }
+    if !(1..=720).contains(&body.hours) || !(1..=60).contains(&body.days) {
+        return Err(DomainError::Validation(
+            "hours 需在 1-720、days 需在 1-60 之间".into(),
+        ));
+    }
+    let torrent: Option<(i64, i16)> = sqlx::query_as(
+        "SELECT owner_id, approval_status FROM torrents WHERE id = $1",
+    )
+    .bind(body.torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((owner_id, _)) = torrent else {
+        return Err(DomainError::NotFound(body.torrent_id));
+    };
+    if auth.id != owner_id && auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let open: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM fundings WHERE torrent_id = $1 AND status = 0)",
+    )
+    .bind(body.torrent_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if open {
+        return Err(DomainError::Validation("该种子已有进行中的众筹".into()));
+    }
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO fundings (torrent_id, creator_id, goal, hours, ends_at) \
+         VALUES ($1, $2, $3, $4, now() + make_interval(days => $5)) RETURNING id",
+    )
+    .bind(body.torrent_id)
+    .bind(auth.id)
+    .bind(body.goal)
+    .bind(body.hours)
+    .bind(body.days)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state.repo.audit(Some(auth.id), "funding_create", Some(id)).await;
+    Ok(ok(serde_json::json!({ "id": id, "goal": body.goal, "hours": body.hours })))
+}
+
+#[derive(Deserialize)]
+struct FundingContributeReq {
+    funding_id: i64,
+    amount: i64,
+    #[serde(default)]
+    idempotency_key: Option<String>,
+}
+
+/// 参与众筹（一人一项目可追投；扣款走 spend_spark 幂等，税入池、净额计入 raised）。
+/// 退款时按实付全额退（税部分由站免池承担——池子本来就是回收通道）。
+#[post("/fundings/contribute")]
+async fn funding_contribute(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<FundingContributeReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if body.amount <= 0 {
+        return Err(DomainError::Validation("参与金额必须为正".into()));
+    }
+    let f: Option<(i64, i16)> = sqlx::query_as(
+        "SELECT goal, status FROM fundings WHERE id = $1 AND ends_at > now()",
+    )
+    .bind(body.funding_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((goal, status)) = f else {
+        return Err(DomainError::NotFound(body.funding_id));
+    };
+    if status != 0 {
+        return Err(DomainError::Validation("众筹已结束".into()));
+    }
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.is_empty())
+        .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
+    // 税：基点可调（site_settings gift_tax_bp，缺省 500=5%）；0=免税
+    let tax_bp: i32 = sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'gift_tax_bp'")
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .and_then(|v: String| v.parse().ok())
+        .unwrap_or(500);
+    let tax = economy::gift_tax(body.amount, tax_bp);
+    let net = body.amount - tax;
+    crate::economy_http::spend_spark(
+        &state.repo.db,
+        auth.id,
+        body.amount,
+        "funding",
+        &idem,
+        "funding",
+        body.funding_id,
+    )
+    .await?;
+    // 追投：一人一行累计（UNIQUE(funding_id,user_id)）
+    sqlx::query(
+        "INSERT INTO funding_contribs (funding_id, user_id, amount, tax) VALUES ($1, $2, $3, $4) \
+         ON CONFLICT (funding_id, user_id) DO UPDATE \
+         SET amount = funding_contribs.amount + EXCLUDED.amount, \
+             tax = funding_contribs.tax + EXCLUDED.tax, created_at = now()",
+    )
+    .bind(body.funding_id)
+    .bind(auth.id)
+    .bind(body.amount)
+    .bind(tax)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("UPDATE fundings SET raised = raised + $2 WHERE id = $1")
+        .bind(body.funding_id)
+        .bind(net)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 税入站免池（与 pool_donate 同账：magic_pool + pool_donations）。
+    // 账务口径：税不另记 spark_ledger——支出方的 -amount 流水已把含税全额记为回收，
+    // 这里只入池账；若再向某个汇入账户记正流水会虚增 v_spark_flow_monthly 的 minted。
+    if tax > 0 {
+        let month = economy::pool_month(chrono::Utc::now());
+        sqlx::query(
+            "INSERT INTO magic_pool (month, donated_total) VALUES ($1, $2) \
+             ON CONFLICT (month) DO UPDATE SET donated_total = magic_pool.donated_total + $2",
+        )
+        .bind(&month)
+        .bind(tax)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query("INSERT INTO pool_donations (user_id, amount, month) VALUES ($1, $2, $3)")
+            .bind(auth.id)
+            .bind(tax)
+            .bind(&month)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "funding_contribute", Some(body.funding_id))
+        .await;
+    let raised: i64 = sqlx::query_scalar("SELECT raised FROM fundings WHERE id = $1")
+        .bind(body.funding_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "funding_id": body.funding_id, "paid": body.amount, "tax": tax,
+        "raised": raised, "goal": goal, "reached": raised >= goal,
+    })))
+}
+
+/// 我的参与记录
+#[get("/fundings/mine")]
+async fn funding_my(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<(i64, i64, i64, i16, i64)> = sqlx::query_as(
+        "SELECT f.id, c.amount, c.tax, f.status, c.funding_id \
+         FROM funding_contribs c JOIN fundings f ON f.id = c.funding_id \
+         WHERE c.user_id = $1 ORDER BY c.created_at DESC LIMIT 100",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
 }
