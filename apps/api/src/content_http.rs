@@ -375,7 +375,7 @@ async fn offer_promote(
     let Some(tid) = tid else {
         return Err(DomainError::NotFound(body.offer_id));
     };
-    sqlx::query("UPDATE torrents SET approval_status = 1, official_tag = true WHERE id = $1")
+    sqlx::query("UPDATE torrents SET approval_status = 1, official_tag = true, approved_at = now() WHERE id = $1")
         .bind(tid)
         .execute(&state.repo.db)
         .await
