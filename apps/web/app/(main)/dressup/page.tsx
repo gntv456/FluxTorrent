@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
@@ -20,7 +20,9 @@ export default function DressupPage() {
   const { dict, locale } = useI18n();
   const [items, setItems] = useState<Dressup[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  // 幂等键按（用户+商品）在会话内固定：双击/网络重试共用同一键，杜绝双扣
+  const idemRef = useRef<Record<number, string>>({});
+const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -69,7 +71,7 @@ export default function DressupPage() {
     try {
       await api.post("/api/v1/shop/buy", {
         item_id: item.item_id,
-        idempotency_key: `dressup-${item.item_id}-${Date.now()}`,
+        idempotency_key: (idemRef.current[item.item_id] ??= `dressup-${item.item_id}-${crypto.randomUUID()}`),
       });
       setMsg(fmt(dict.dressup.buyOk, { name: item.name, price: item.price }));
       refresh();

@@ -278,8 +278,10 @@ async fn login(
     let user = match user {
         Ok(u) => u,
         Err(e) => {
+            // 未知用户名的失败登录：user_id 记 NULL（0083 起 user_id 可空）。
+            // 旧版写 0 违反外键被静默吞掉，爆破尝试完全不入库。
             let _ = sqlx::query(
-                "INSERT INTO login_events (user_id, ip, ok) VALUES (0, NULLIF($1,'')::inet, false)",
+                "INSERT INTO login_events (user_id, ip, ok) VALUES (NULL, NULLIF($1,'')::inet, false)",
             )
             .bind(&peer_ip)
             .execute(&state.repo.db)
@@ -597,12 +599,22 @@ async fn me_password_change(
         return Err(DomainError::Validation("旧密码不正确".into()));
     }
     let new_hash = domain::hash_password(&body.new_password)?;
-    sqlx::query("UPDATE users SET pass_hash = $2, must_reset_password = false WHERE id = $1")
-        .bind(auth.id)
-        .bind(&new_hash)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 改密同时轮换 passkey：引导期 root 等公开默认 passkey 不应在改密后继续可用
+    let new_passkey = uuid::Uuid::new_v4().simple().to_string();
+    let rotated: Option<String> = sqlx::query_scalar(
+        "UPDATE users SET pass_hash = $2, passkey = $3, must_reset_password = false WHERE id = $1 RETURNING passkey",
+    )
+    .bind(auth.id)
+    .bind(&new_hash)
+    .bind(&new_passkey)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let _ = rotated;
+    state
+        .repo
+        .audit(Some(auth.id), "passkey_rotate_on_password_change", Some(auth.id))
+        .await;
     // 撤销既有 token：nbf 抬到「本次凭证 iat − 1」。require_auth 用 iat<=nbf 判失效，
     // 因此界线为 iat−1 时：本次改密凭证自身已通过认证（不再受检），一切 iat ≤ iat−1
     // 的旧 token 失效；改密后同秒重登的新 token（iat 相同）不受牵连 —— 不误杀合法新登录，
@@ -2515,15 +2527,18 @@ async fn admin_amount_bonus(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let ids: Vec<i64> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE ($1::bigint IS NULL AND status < 2) OR id = $1 FOR UPDATE",
+    let ids: Vec<(i64, i64)> = sqlx::query_as(
+        "SELECT id, spark_balance FROM users WHERE ($1::bigint IS NULL AND status < 2) OR id = $1 FOR UPDATE",
     )
     .bind(body.user_id)
     .fetch_all(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    for uid in &ids {
-        let bal: i64 = sqlx::query_scalar(
+    for (uid, before) in &ids {
+        // 账本权威口径：流水按「实际前后差额」落账（与 increment_bulk 同修复）。
+        // 旧版余额 GREATEST(0,...) 截断但流水记原始 amount，负扣被截断的部分
+        // 会在 worker 小时级 sum(ledger) 重算时被重新兑现（账本撕裂）。
+        let after: i64 = sqlx::query_scalar(
             "UPDATE users SET spark_balance = GREATEST(0, spark_balance + $2) WHERE id = $1 RETURNING spark_balance",
         )
         .bind(uid)
@@ -2531,15 +2546,18 @@ async fn admin_amount_bonus(
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+        let actual_delta = after - before; // 行已 FOR UPDATE，before 即更新前权威值
+        if actual_delta == 0 {
+            continue; // 截断后无实际变动（如余额 0 再负扣）：不落流水，保持 sum(ledger)=balance
+        }
         sqlx::query(
-            "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
-             VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'admin', 'amountbonus', $3, $4, $5)",
+            "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \n             VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'admin', 'amountbonus', $3, $4, $5)",
         )
         .bind(uid)
-        .bind(body.amount)
+        .bind(actual_delta)
         .bind(auth.id)
         .bind(format!("amountbonus-{}-{}", uid, uuid::Uuid::new_v4().simple()))
-        .bind(bal)
+        .bind(after)
         .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2687,7 +2705,7 @@ async fn maxlogin(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::MAXLOGIN_VIEW).await?;
     let rows: Vec<FailedLoginRow> = sqlx::query_as(
-        "SELECT le.id, u.username, host(le.ip) AS ip, le.created_at \
+        "SELECT le.id, COALESCE(u.username, '(未知用户)') AS username, host(le.ip) AS ip, le.created_at \
          FROM login_events le LEFT JOIN users u ON u.id = le.user_id \
          WHERE le.ok = false ORDER BY le.id DESC LIMIT 100",
     )
