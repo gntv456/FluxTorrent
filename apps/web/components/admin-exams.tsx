@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/i18n/client";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
@@ -18,6 +20,7 @@ interface JixiaoTypeRow {
 const EMPTY = { name: "", metrics: "{}", base_pay: "0", min_requirements: "{}", bonus_rules: "{}" };
 
 export function AdminExams() {
+  const { currency } = useI18n();
   const [rows, setRows] = useState<JixiaoTypeRow[]>([]);
   const [edit, setEdit] = useState<{ id: number | null; f: typeof EMPTY }>({ id: null, f: { ...EMPTY } });
   const [msg, setMsg] = useState<string | null>(null);
@@ -68,7 +71,7 @@ export function AdminExams() {
           <label className="flex flex-col gap-1 text-xs">岗位名
             <input value={edit.f.name} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, name: e.target.value } })} className={`${inp.replace("font-mono ", "")} w-36`} />
           </label>
-          <label className="flex flex-col gap-1 text-xs">底薪(火花)
+          <label className="flex flex-col gap-1 text-xs">底薪({currency})
             <input type="number" value={edit.f.base_pay} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, base_pay: e.target.value } })} className={`${inp.replace("font-mono ", "")} w-24`} />
           </label>
           <label className="flex flex-col gap-1 text-xs">指标 metrics

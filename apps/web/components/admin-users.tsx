@@ -53,7 +53,7 @@ function fmtBytes(n: number): string {
 }
 
 export function AdminUsers({ classes }: { classes: [number, string][] }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const [q, setQ] = useState("");
   const [fId, setFId] = useState("");
   const [fClass, setFClass] = useState("");
@@ -361,7 +361,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
             <div><dt className="text-sub">等级</dt><dd>{detail.class_name ?? `LV${detail.class_id}`}</dd></div>
             <div><dt className="text-sub">上传量</dt><dd>{fmtBytes(detail.uploaded)}</dd></div>
             <div><dt className="text-sub">下载量</dt><dd>{fmtBytes(detail.downloaded)}</dd></div>
-            <div><dt className="text-sub">火花</dt><dd>{detail.spark_balance}</dd></div>
+            <div><dt className="text-sub">{currency}</dt><dd>{detail.spark_balance}</dd></div>
             <div><dt className="text-sub">做种中</dt><dd>{detail.seeding}</dd></div>
             <div><dt className="text-sub">下载中</dt><dd>{detail.leeching}</dd></div>
             <div><dt className="text-sub">发布种子</dt><dd>{detail.uploads}</dd></div>
@@ -406,7 +406,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
                   <input type="number" value={adjust.down} onChange={(e) => setAdjust({ ...adjust, down: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" />
                 </label>
                 <label className="flex flex-col gap-1 text-xs">
-                  火花增量
+                  {currency}增量
                   <input type="number" value={adjust.spark} onChange={(e) => setAdjust({ ...adjust, spark: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" />
                 </label>
                 <label className="flex flex-col gap-1 text-xs">

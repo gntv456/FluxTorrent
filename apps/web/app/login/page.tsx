@@ -108,6 +108,10 @@ function LoginForm() {
           dict.errors[err.code] ?? fmt(dict.login.fail, { code: err.code }),
         );
         if (err.code === 2004) setAttempts((n) => n + 1);
+        // 2FA：密码已对但缺/错验证码 —— 展开验证码输入框并聚焦，让用户立刻知道下一步
+        if (err.code === 2010 || err.code === 2011) {
+          setShowTotp(true);
+        }
       } else {
         setError(dict.common.networkError);
       }

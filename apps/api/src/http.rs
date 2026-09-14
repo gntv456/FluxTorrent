@@ -3493,10 +3493,20 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
             .flatten()
             .or(pack.as_ref().map(|p| p.brand.clone()))
             .unwrap_or_default();
+    // 站点货币名（0082）：默认「魔力」，站长可后台改任意名；空值兜底回默认
+    let currency: String =
+        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'currency_name'")
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten()
+            .filter(|v: &String| !v.trim().is_empty())
+            .unwrap_or_else(|| "魔力".to_string());
     Ok(ok(serde_json::json!({
         "site_type": site_type,
         "pack_name": pack.as_ref().map(|p| p.name.clone()),
         "brand": brand,
+        "currency_name": currency,
         "categories": cats.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
         "modules": pack.as_ref().map(|p| p.modules.clone()).unwrap_or(serde_json::json!({})),
     })))

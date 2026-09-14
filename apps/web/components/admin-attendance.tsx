@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/i18n/client";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
@@ -15,6 +17,7 @@ interface AttendanceRow {
 }
 
 export function AdminAttendance() {
+  const { currency } = useI18n();
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [total, setTotal] = useState(0);
   const [uid, setUid] = useState("");
@@ -92,7 +95,7 @@ export function AdminAttendance() {
             <td className="colhead">用户</td>
             <td className="colhead">日期</td>
             <td className="colhead">连续天数</td>
-            <td className="colhead">获得火花</td>
+            <td className="colhead">获得{currency}</td>
             <td className="colhead">类型</td>
           </tr>
         </thead>

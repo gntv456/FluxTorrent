@@ -77,7 +77,7 @@ function ThemeNoFlash() {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { dict, locale } = await getDict();
+  const { dict, locale, currency } = await getDict();
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
@@ -92,7 +92,7 @@ export default async function RootLayout({
       </head>
       <body>
         <ThemeNoFlash />
-        <LocaleProvider dict={dict} locale={locale}>
+        <LocaleProvider dict={dict} locale={locale} currency={currency}>
           {children}
           <ServiceWorkerRegister />
         </LocaleProvider>

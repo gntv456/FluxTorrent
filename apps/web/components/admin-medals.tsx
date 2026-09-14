@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/i18n/client";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
@@ -34,6 +36,7 @@ interface UserMedalRow {
 const GET_TYPE: Record<number, string> = { 1: "兑换", 2: "授予", 3: "合成" };
 
 export function AdminMedals() {
+  const { currency } = useI18n();
   const [rows, setRows] = useState<MedalRow[]>([]);
   const [held, setHeld] = useState<UserMedalRow[]>([]);
   const [heldUid, setHeldUid] = useState("");
@@ -91,7 +94,7 @@ export function AdminMedals() {
               <option value={3}>合成</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs">价格(火花)
+          <label className="flex flex-col gap-1 text-xs">价格({currency})
             <input type="number" value={edit.f.price ?? ""} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, price: e.target.value ? Number(e.target.value) : null } })} className={`${inp} w-24`} />
           </label>
           <label className="flex flex-col gap-1 text-xs">魔力加成(%)

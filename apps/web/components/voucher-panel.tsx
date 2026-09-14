@@ -103,6 +103,8 @@ export function VoucherPanel() {
                   </button>
                 </div>
               </div>
+            ) : v.used_torrent_id ? (
+              <span className="text-xs text-sub">→ #{v.used_torrent_id}</span>
             ) : (
               <button className="btn-primary text-sm" onClick={() => { setUsing(v.id); setMessage(null); setError(null); }}>
                 {dict.vouchers.use}

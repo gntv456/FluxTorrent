@@ -24,7 +24,7 @@ interface MeInfo {
  * 服务端 Header 无法读 localStorage 的 JWT，状态由客户端补齐。
  */
 export function UserBox({ loginLabel }: { loginLabel: string }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const [me, setMe] = useState<MeInfo | null>(null);
   const [spark, setSpark] = useState<number | null>(null);
 
@@ -92,7 +92,7 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
           </div>
           <div className="userbar__meta">
             <span className="bonus-pill">
-              <span>魔力值：</span>
+              <span>{currency}：</span>
               <b className="num">{spark !== null ? Number(spark).toLocaleString() : "…"}</b>
               <a href="/my" className="bonus-hint">
                 [{dict.my.dailyCheckin}]

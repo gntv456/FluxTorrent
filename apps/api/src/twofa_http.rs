@@ -17,6 +17,7 @@ pub fn mount_twofa(scope: actix_web::Scope) -> actix_web::Scope {
         .service(totp_setup)
         .service(totp_enable)
         .service(totp_disable)
+        .service(admin_2fa_clear)
         .service(box_rules)
         .service(tg_bind)
 }
@@ -152,6 +153,59 @@ async fn totp_disable(
     Ok(ok(serde_json::json!({ "disabled": true })))
 }
 
+/// 管理员清除用户 2FA（丢失验证器救援通道）。
+/// 场景：用户丢失验证器 App 且无恢复码 → 账号被 login_totp_check 永久锁死。
+/// 权限：user.resetpass（与重置密码同档：身份核验后由管理员人工放行）+ ensure_outranks。
+#[post("/admin/users/{id}/2fa/clear")]
+async fn admin_2fa_clear(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_RESETPASS).await?;
+    let uid = path.into_inner();
+    // 等级护栏（与 admin_http 同口径）：操作者须严格高于目标用户
+    {
+        let db = &state.repo.db;
+        let target_class: Option<i32> =
+            sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+                .bind(uid)
+                .fetch_optional(db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        let tc = target_class.ok_or(DomainError::NotFound(uid))?;
+        if auth.class_id <= tc {
+            return Err(DomainError::Forbidden);
+        }
+    }
+    let updated = sqlx::query(
+        "UPDATE users SET totp_secret = NULL, totp_enabled = FALSE \
+         WHERE id = $1 AND (totp_enabled OR totp_secret IS NOT NULL)",
+    )
+    .bind(uid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if updated.rows_affected() == 0 {
+        return Err(DomainError::Validation("该用户未开启 2FA".into()));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "2fa.admin_clear", Some(uid))
+        .await;
+    // 通知用户：2FA 已被管理员清除，下次登录仅需密码（建议尽快重新开启）
+    let _ = sqlx::query(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+    )
+    .bind(uid)
+    .bind("两步验证已被管理员重置")
+    .bind("你因丢失验证器申请救援，管理员已清除你的两步验证。下次登录仅需密码，请尽快在控制面板重新开启。")
+    .execute(&state.repo.db)
+    .await;
+    Ok(ok(serde_json::json!({ "cleared": true, "user_id": uid })))
+}
+
 /// 登录路径用：校验用户的 TOTP（login handler 在密码通过后调用）
 pub async fn login_totp_check(db: &sqlx::PgPool, user_id: i64, code: u32) -> DomainResult<()> {
     let b32: Option<String> =
@@ -169,7 +223,13 @@ pub async fn login_totp_check(db: &sqlx::PgPool, user_id: i64, code: u32) -> Dom
             if totp_verify(&raw, code) {
                 Ok(())
             } else {
-                Err(DomainError::Validation("两步验证码不正确".into()))
+                // 专用错误（UX 修复）：旧版挂 Validation(1002) 显示为「参数校验失败」，
+                // 用户不知道是缺两步验证码。区分「没填」与「填错」两种情形。
+                if code == 0 {
+                    Err(DomainError::TwoFactorRequired)
+                } else {
+                    Err(DomainError::TwoFactorInvalid)
+                }
             }
         }
     }
