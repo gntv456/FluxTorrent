@@ -75,6 +75,10 @@ pub struct PeerTable {
 }
 
 const PEER_TIMEOUT: Duration = Duration::from_secs(90);
+/// 0077 分档 TTL（U3D ACTIVE_PEER_TTL 口径）：做种中的 peer 放宽——
+/// interval 1800s 下 90s 一刀切会让挂种大户每 90s 全量重建内存表；
+/// 3720s = 2×interval+120 冗余，断线种子在两个周期内自然除名。
+const SEEDER_TIMEOUT: Duration = Duration::from_secs(3720);
 const MAX_PEERS_RESPONSE: usize = 50;
 
 impl PeerTable {
@@ -236,12 +240,7 @@ impl PeerTable {
     pub fn gc_all(&self) {
         let now = chrono::Utc::now();
         self.swarms.retain(|_, s| {
-            s.peers.retain(|_, p| {
-                now.signed_duration_since(p.last_seen)
-                    .to_std()
-                    .unwrap_or_default()
-                    < PEER_TIMEOUT
-            });
+            s.peers.retain(|_, p| alive(p, &now));
             !s.peers.is_empty()
         });
     }
@@ -250,14 +249,22 @@ impl PeerTable {
     fn gc_swarm(&self, info_hash: &str) {
         let now = chrono::Utc::now();
         if let Some(mut s) = self.swarms.get_mut(info_hash) {
-            s.peers.retain(|_, p| {
-                now.signed_duration_since(p.last_seen)
-                    .to_std()
-                    .unwrap_or_default()
-                    < PEER_TIMEOUT
-            });
+            s.peers.retain(|_, p| alive(p, &now));
         }
     }
+}
+
+/// 0077 分档存活判定：做种 peer 用 SEEDER_TIMEOUT，其余 PEER_TIMEOUT。
+fn alive(p: &Peer, now: &chrono::DateTime<chrono::Utc>) -> bool {
+    let timeout = if p.left == 0 {
+        SEEDER_TIMEOUT
+    } else {
+        PEER_TIMEOUT
+    };
+    now.signed_duration_since(p.last_seen)
+        .to_std()
+        .unwrap_or_default()
+        < timeout
 }
 
 pub fn hex(bytes: &[u8]) -> String {

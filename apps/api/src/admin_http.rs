@@ -211,13 +211,36 @@ async fn review_decide(
         return Err(DomainError::Validation("种子不存在或不在待审状态".into()));
     }
     // 0075 免审积分：过审连击 +1 / 被拒清零（阈值放行在 upload 的 auto_approve 判定）
+    // 0077 被拒禁发：累计 deny_count（阈值校验在 upload 前置）
     let _ = sqlx::query(
-        "UPDATE users u SET approve_streak = CASE WHEN $2 THEN u.approve_streak + 1 ELSE 0 END          FROM torrents t WHERE t.id = $1 AND u.id = t.owner_id",
+        "UPDATE users u SET approve_streak = CASE WHEN $2 THEN u.approve_streak + 1 ELSE 0 END,              deny_count = CASE WHEN $2 THEN u.deny_count ELSE u.deny_count + 1 END          FROM torrents t WHERE t.id = $1 AND u.id = t.owner_id",
     )
     .bind(body.torrent_id)
     .bind(body.approve)
     .execute(&state.repo.db)
     .await;
+    // 0077 自动促销（U3D 口径）：过审时按 position 取第一条命中规则挂促销
+    if body.approve {
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source, created_by)
+            SELECT 'torrent', t.id, r.kind::promotion_kind_enum, now(),
+                   now() + make_interval(hours => r.hours), 'task'::promotion_source, $2
+            FROM torrents t
+            JOIN auto_promo_rules r ON r.enabled
+                 AND (r.name_regex = '' OR t.name ~* r.name_regex)
+                 AND (r.min_size = 0 OR t.size >= r.min_size)
+                 AND (r.max_size = 0 OR t.size < r.max_size)
+                 AND (r.category_id IS NULL OR r.category_id = t.category_id)
+            WHERE t.id = $1
+            ORDER BY r.position LIMIT 1
+            "#,
+        )
+        .bind(body.torrent_id)
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await;
+    }
     // 0075 组级订阅推送：入组种子过审 → 通知组订阅者（每人一信，含通知偏好过滤）
     if body.approve {
         let _ = sqlx::query(

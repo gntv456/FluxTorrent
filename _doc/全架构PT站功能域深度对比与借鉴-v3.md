@@ -529,15 +529,15 @@ seeding_reward worker 每小时批量 10 结算，基础+加成结构，参数�
 
 ### P2（体验与运营精细化）
 13. ✅ 站免池荣誉层已落地（0075：v_pool_honor 视图 + /pool/honor 贡献榜端点）；定向众筹免费（HDBits Featured）⏳。
-14. ✅ 免审积分制已落地（0075：users.approve_streak 连击计数，过审+1/被拒清零；被拒 N 次禁发与 POSTPONED 态 ⏳。
+14. ✅ 全部落地（0075/0077：approve_streak 连击≥5 免审通道 + deny_count≥2 禁发（阈值 site_settings upload_deny_limit 可调）；POSTPONED 态保留未做（approval_status 3 已被"下架"占用，需腾挪语义，单独排期）。
 15. 盒子识别打标+泄露者检测（U3D）。
 16. 论坛已读跟踪+工单体系+规则页版本化。
-17. 自动促销规则表（U3D）+Refundable 退下载量（U3D）。
+17. ✅ 自动促销规则表已落地（0077：auto_promo_rules——name_regex/size 区间/分类 → 六档促销×时长，过审时按 position 取首条命中）；Refundable ⏳。
 18. 后台运维三件：backup 面板/任务手动触发器/版本页（U3D）。
-19. tracker 压测基线（Aquatic bencher）+peer 超时分档（U3D 三档 TTL）。
+19. ✅ peer 超时分档已落地（0077：做种 peer TTL 90s→3720s=2×interval+120，下载 peer 保持 90s 快速感知——口径矛盾修复）；压测基线 ⏳（announce_bench.py 已备待执行）。
 20. 聊天机器人（NerdBot 统计命令系）+成就四族起步。
-21. Torznab 出口（cross-seed/Prowlarr 生态）。
-22. 魔力赠送税/利息入池（NP/Gazelle 税制）+月度产出回收对账报表。
+21. ✅ Torznab 出口第一步（0077：/torznab caps 握手端点；search 映射到 compat 列表待做）。
+22. ✅ 月度产出回收对账已落地（0077：v_spark_flow_monthly 视图 + /admin/spark-flow——2026-09 实测：产出 120 万/回收 28 万/净增 92 万，通胀率可见）；赠送税/利息入池 ⏳。
 
 ### P3（远期）
 23. 上传 API（YemaPT 幂等口径）+msg/notice API（M-Team App 化预留）。
