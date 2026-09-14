@@ -714,6 +714,29 @@ async fn process_event(
     Ok(Some(torrent_id))
 }
 
+/// 盒子/高速做种打标（0077，U3D AutoHighspeedTag 口径）：近 7 天 snatches 上传统计速度
+/// 超 100MB/s 视为高速线路在做种 → torrents.highspeed = true（展示与激励用，不惩罚）。
+async fn highspeed_tag(db: &PgPool) -> anyhow::Result<u64> {
+    let res = sqlx::query(
+        r#"
+        WITH speeds AS (
+            -- 平均上速 = 累计上传 / max(做种秒数, 1h)：对短时突发鲁棒（U3D 用墙钟，我们做种口径更准）
+            SELECT torrent_id, max(uploaded / GREATEST(seeded_seconds::bigint, 3600)) AS bps
+            FROM snatches WHERE uploaded > 0 AND last_seen_at > now() - interval '7 days'
+            GROUP BY torrent_id
+        )
+        UPDATE torrents t SET highspeed = TRUE
+        FROM speeds s WHERE t.id = s.torrent_id AND s.bps > 104857600 AND NOT t.highspeed
+        "#,
+    )
+    .execute(db)
+    .await?;
+    if res.rows_affected() > 0 {
+        tracing::info!(n = res.rows_affected(), "highspeed torrents tagged");
+    }
+    Ok(res.rows_affected())
+}
+
 /// 复活任务自动验收（0073，U3D Graveyard 口径）：领取者补种累计时长 ≥ required_hours
 /// 且当前仍在做种 → 发奖（火花 + 1 枚免费券）+ 种子挂 7 天 free bump + 站内信。
 /// 幂等：状态 CAS（open→done），奖励只随成功转移发放一次。
@@ -1456,6 +1479,7 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if let Err(e) = ratio_watch(&db).await { tracing::error!(?e, "ratio_watch"); }
                 if let Err(e) = dormant_mark(&db).await { tracing::error!(?e, "dormant_mark"); }
                 if let Err(e) = wishlist_notify(&db).await { tracing::error!(?e, "wishlist_notify"); }
+                if let Err(e) = highspeed_tag(&db).await { tracing::error!(?e, "highspeed_tag"); }
                 if let Err(e) = resurrection_settle(&db).await { tracing::error!(?e, "resurrection_settle"); }
             }
             _ = tick10.tick() => {

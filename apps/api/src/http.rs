@@ -4889,7 +4889,28 @@ async fn upload(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(false);
+    // 0077 被拒禁发（NP upload_deny_approval_deny_count 口径）：累计被拒达阈值直接拦
+    let (deny_count, streak): (i32, i32) =
+        sqlx::query_as("SELECT deny_count, approve_streak FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let deny_limit: i32 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'upload_deny_limit'), 2)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(2);
+    if deny_count >= deny_limit {
+        return Err(DomainError::Validation(
+            "因多次发布被拒，上传资格已暂停；请先通过『联系我们』申诉".into(),
+        ));
+    }
+    // 0077 免审通道（NP offer_skip_approved_count 口径）：连续过审 ≥5 的发布者免审
+    let streak_skip = streak >= 5;
     let auto_approve = cat_auto
+        || streak_skip
         || crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_APPROVAL_AUTO).await;
     let approval_status: i16 = if auto_approve { 1 } else { 0 };
     // 聚合组（0069）：显式传入的 group_id 必须存在（防悬挂引用）

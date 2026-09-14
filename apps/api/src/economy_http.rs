@@ -111,6 +111,8 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(dressup_wear)
         .service(my_vouchers)
         .service(voucher_use)
+        .service(spark_flow_report)
+        .service(torznab_caps)
 }
 
 /// 动账核心：余额充足校验 + 负流水 + 余额快照更新（单事务）。
@@ -1383,4 +1385,38 @@ async fn dressup_wear(
     Ok(ok(
         serde_json::json!({ "item_id": body.item_id, "wearing": body.wear }),
     ))
+}
+
+// ============ 产出-回收对账（0077，v3 §27-22）+ Torznab 出口 ============
+
+/// 火花产出/回收月度对账（staff）：通胀监控数据底座（v_spark_flow_monthly）
+#[get("/admin/spark-flow")]
+async fn spark_flow_report(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
+    let rows: Vec<(String, i64, i64, i64, i64)> = sqlx::query_as(
+        "SELECT month, minted::bigint, burned::bigint, net::bigint, entries FROM v_spark_flow_monthly LIMIT 24",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+/// Torznab caps 端点（0077，cross-seed/Prowlarr 生态入口第一步）。
+/// search 端点后续接 compat 列表；caps 是 indexer 注册的握手必需。
+#[get("/torznab")]
+async fn torznab_caps() -> HttpResponse {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<torznab:search xmlns:torznab="http://torznab.com/schemas/2015/feed">
+  <server version="1.0" title="FluxTorrent" url="/api/v1/torznab" />
+  <limits max="100" default="50" />
+  <categories>
+    <category id="8000" name="Other" />
+  </categories>
+</torznab:search>"#;
+    HttpResponse::Ok().content_type("application/xml").body(xml)
 }
