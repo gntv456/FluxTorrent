@@ -307,29 +307,52 @@ pub async fn preserve_exit(db: &PgPool) -> anyhow::Result<u64> {
     Ok(res.rows_affected())
 }
 
-/// 做种收益小时结算（M11：基础火花 + 加成；捐赠者 2x）。
+/// 做种收益小时结算（0074 改造：稀有度衰减 + 时长饱和，NP/U3D 口径融合）。
 /// 每用户每小时一条流水，幂等键 = seeding:{user}:{yyyymmddhh}。
+///
+/// 公式（口径由 `mod tests` 内 mirror/user_hourly 单测锁定）：
+///   每种子加成 = 规则分（濒危 2.0/高龄 1.5/老 1.0/大 0.75/中 0.5/日常 0.25——U3D 可读规则名）
+///             × 稀有度因子 seeders^-0.35（Gazelle BP 口径：人多衰减，防大户垄断热门种）
+///             × 时长饱和因子 1/(1+seedtime_h/2160)（90 天半衰）
+///   每小时 = base + 400/π·atan(Σ加成 × 6/50)（NP arctan 软封顶：渐近 +200/h，底薪不进压缩曲线）。
+/// 反假保种（0071）：回连不可达且从无上传的做种行不计。
 pub async fn seeding_reward(db: &PgPool, base: i64) -> anyhow::Result<u64> {
     let hour = chrono::Utc::now().format("%Y%m%d%H").to_string();
     let res = sqlx::query(
         r#"
-        WITH earners AS (
-            SELECT u.id, u.donor,
-                   count(*) AS seeding_count, COALESCE(sum(t.size),0) AS seeding_size
+        WITH per_torrent AS (
+            SELECT u.id AS user_id, u.donor, t.id AS torrent_id,
+                   CASE
+                     WHEN t.seeders <= 1 AND t.times_completed >= 3 THEN 2.0   -- 濒危保种（U3D Dying）
+                     WHEN now() - t.created_at > interval '365 days' THEN 1.5   -- 高龄种（Legendary）
+                     WHEN now() - t.created_at > interval '180 days' THEN 1.0   -- 老种（Old）
+                     WHEN t.size >= 107374182400 THEN 0.75                      -- 大体积 ≥100GiB
+                     WHEN t.size >= 26843545600 THEN 0.5                        -- 中体积 25-100GiB
+                     ELSE 0.25                                                  -- 日常种
+                   END AS rule_bonus,
+                   GREATEST(t.seeders, 1)::numeric AS seeders_n,
+                   GREATEST(s.seeded_seconds, 0)::numeric / 3600.0 AS seed_hours
             FROM users u
             JOIN snatches s ON s.user_id = u.id AND s.seeding
-            -- 0071 反假保种：回连不可达且从无上传的做种不计收益（真 NAT 用户有真实上传，不受影响）
             JOIN torrents t ON t.id = s.torrent_id
               AND NOT (s.connectable = 0 AND s.uploaded = 0)
             WHERE u.status < 2
-            GROUP BY u.id, u.donor
+        ),
+        per_user AS (
+            SELECT user_id, donor,
+                   sum( rule_bonus
+                        / power(seeders_n, 0.35)
+                        / (1 + seed_hours / 2160.0)
+                      ) AS bonus_raw
+            FROM per_torrent GROUP BY user_id, donor
         ),
         due AS (
-            SELECT id,
-                   ($1 + (seeding_count * 2 + seeding_size / 1099511627776))::bigint
+            -- 底薪不进压缩曲线；加成部分 ×6/50 快速进入 atan 饱和区（渐近 +200/h）
+            SELECT user_id AS id,
+                   ($1::bigint + (400.0 / 3.14159265 * atan(bonus_raw * 6.0 / 50.0))::bigint)
                      * CASE WHEN donor THEN 2 ELSE 1 END AS amount,
-                   'seeding:' || id || ':' || $2 AS idem
-            FROM earners
+                   'seeding:' || user_id || ':' || $2 AS idem
+            FROM per_user
         )
         INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
         SELECT nextval('spark_ledger_id_seq'), id, amount, 'seeding_reward', idem
@@ -766,6 +789,62 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         tracing::info!(n = settled.len(), "resurrections settled");
     }
     Ok(settled.len() as u64)
+}
+
+/// 教材愿望单推送（0074，U3D WishList 教育化）：扫过去 1 小时过审的种子，
+/// 对 wishlist 做 ILIKE/维度匹配；每条愿望 24h 限推一次，**每用户聚合一封信**（防信箱轰炸）。
+async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
+    let res = sqlx::query(
+        r#"
+        WITH recent AS (
+            SELECT id, name FROM torrents
+            WHERE approval_status = 1
+              AND approved_at > now() - interval '1 hour'
+              AND approved_at IS NOT NULL
+        ),
+        hits AS (
+            SELECT w.id AS wish_id, w.user_id, r.id AS torrent_id, r.name AS torrent_name
+            FROM wishlist w
+            JOIN recent r ON r.name ILIKE '%' || w.keyword || '%'
+            WHERE (w.category_id IS NULL OR w.category_id = (SELECT category_id FROM torrents t WHERE t.id = r.id))
+              AND (w.grade_id IS NULL OR w.grade_id = (SELECT grade_id FROM torrents t WHERE t.id = r.id))
+              AND (w.notified_at IS NULL OR w.notified_at < now() - interval '24 hours')
+        ),
+        agg AS (
+            SELECT user_id, string_agg('#' || torrent_id || ' ' || torrent_name, E'
+' ORDER BY torrent_id) AS body,
+                   bool_or(wish_id IS NOT NULL) AS dummy
+            FROM hits GROUP BY user_id
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, user_id, '愿望单命中：你关注的新资源已上架', '你订阅的关键词有新种子过审：
+
+' || body || '
+
+（每条愿望 24 小时内只提醒一次；可在「我的 → 愿望单」管理订阅）'
+        FROM agg
+        WHERE dummy
+        RETURNING 1
+        "#,
+    )
+    .fetch_all(db)
+    .await?;
+    // 推送成功后刷新命中愿望的 notified_at（24h 节流）
+    sqlx::query(
+        r#"
+        UPDATE wishlist w SET notified_at = now()
+        FROM recent r
+        WHERE r.id IN (SELECT id FROM torrents WHERE approval_status = 1 AND approved_at > now() - interval '1 hour' AND approved_at IS NOT NULL)
+          AND r.name ILIKE '%' || w.keyword || '%'
+          AND (w.notified_at IS NULL OR w.notified_at < now() - interval '24 hours')
+        "#,
+    )
+    .execute(db)
+    .await?;
+    if !res.is_empty() {
+        tracing::info!(n = res.len(), "wishlist notifications sent");
+    }
+    Ok(res.len() as u64)
 }
 
 /// 做种里程碑采集（M28 插件数据源）：把达到档位的事件落表，api 侧插件按需消费。
@@ -1376,6 +1455,7 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if let Err(e) = purge_old_login_events(&db).await { tracing::error!(?e, "purge_old_login_events"); }
                 if let Err(e) = ratio_watch(&db).await { tracing::error!(?e, "ratio_watch"); }
                 if let Err(e) = dormant_mark(&db).await { tracing::error!(?e, "dormant_mark"); }
+                if let Err(e) = wishlist_notify(&db).await { tracing::error!(?e, "wishlist_notify"); }
                 if let Err(e) = resurrection_settle(&db).await { tracing::error!(?e, "resurrection_settle"); }
             }
             _ = tick10.tick() => {
@@ -1448,6 +1528,50 @@ fn billing_multipliers(torrent_kind: Option<&str>, global_kind: Option<&str>) ->
 #[cfg(test)]
 mod tests {
     use super::billing_multipliers;
+
+    /// 0074 做种收益公式口径锁定：与 SQL 内 per_torrent/per_user 完全同构的 Rust 镜像。
+    /// 防止有人只改 SQL 不改文档（或反之）；数值变了必须同步注释与「收益说明」前端文案。
+    fn mirror(rule_bonus: f64, seeders: i64, seed_hours: f64) -> f64 {
+        rule_bonus / (seeders.max(1) as f64).powf(0.35) / (1.0 + seed_hours / 2160.0)
+    }
+    fn user_hourly(base: f64, torrents: &[(f64, i64, f64)]) -> f64 {
+        let bonus: f64 = torrents.iter().map(|(b, s, h)| mirror(*b, *s, *h)).sum();
+        base + 400.0 / std::f64::consts::PI * (bonus * 6.0 / 50.0).atan()
+    }
+
+    #[test]
+    fn seeding_formula_rarity_decay() {
+        // 同样种子：1 人做种 vs 10 人做种，收益显著衰减（Gazelle seeders^-0.35）
+        let lone = user_hourly(10.0, &[(0.25, 1, 0.0)]);
+        let crowd = user_hourly(10.0, &[(0.25, 10, 0.0)]);
+        assert!(crowd < lone * 0.85, "crowd={crowd} lone={lone}");
+    }
+
+    #[test]
+    fn seeding_formula_time_saturation() {
+        // 同样种子：新做种 vs 已挂 90 天（2160h），收益约减半（半衰设计）
+        let fresh = user_hourly(10.0, &[(0.25, 1, 0.0)]);
+        let aged = user_hourly(10.0, &[(0.25, 1, 2160.0)]);
+        let ratio = aged / fresh; // 含底薪稀释；纯加成部分约减半
+        assert!((0.75..0.95).contains(&ratio), "ratio={ratio}");
+    }
+
+    #[test]
+    fn seeding_formula_arctan_cap() {
+        // 1000 个濒危种也只有软封顶：趋近 base+200，不线性涨到天上（NP arctan 口径）
+        let many: Vec<(f64, i64, f64)> = (0..1000).map(|_| (2.0, 1, 0.0)).collect();
+        let total = user_hourly(10.0, &many);
+        assert!(total < 10.0 + 210.0, "total={total}");
+        assert!(total > 10.0 + 100.0, "total={total}（应明显超过半程）");
+    }
+
+    #[test]
+    fn seeding_formula_dying_beats_daily() {
+        // 濒危保种（bonus 2.0）时薪高于日常种（0.25）——激励方向正确
+        let dying = user_hourly(10.0, &[(2.0, 1, 0.0)]);
+        let daily = user_hourly(10.0, &[(0.25, 1, 0.0)]);
+        assert!(dying > daily * 1.8);
+    }
 
     #[test]
     fn free_zeroes_download() {

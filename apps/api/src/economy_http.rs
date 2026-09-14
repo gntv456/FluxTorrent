@@ -485,10 +485,34 @@ async fn my_spark(
             .fetch_one(&state.repo.db)
             .await
             .unwrap_or(0);
+    // 0074 收益构成：按规则名分组展示我做种的每档贡献（与 worker seeding_reward 同口径）
+    let rules: Vec<(String, i64)> = sqlx::query_as(
+        r#"
+        SELECT CASE
+                 WHEN t.seeders <= 1 AND t.times_completed >= 3 THEN '濒危保种'
+                 WHEN now() - t.created_at > interval '365 days' THEN '高龄种'
+                 WHEN now() - t.created_at > interval '180 days' THEN '老种'
+                 WHEN t.size >= 107374182400 THEN '大体积种'
+                 WHEN t.size >= 26843545600 THEN '中体积种'
+                 ELSE '日常种'
+               END AS rule,
+               count(*)
+        FROM snatches s JOIN torrents t ON t.id = s.torrent_id
+        WHERE s.user_id = $1 AND s.seeding
+          AND NOT (s.connectable = 0 AND s.uploaded = 0)
+        GROUP BY 1 ORDER BY 2 DESC
+        "#,
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
     Ok(ok(serde_json::json!({
         "balance": balance,
         "seeding_count": seeding_count,
         "hourly_estimate": 10 + seeding_count * 2,
+        "reward_rules": rules,
+        "formula_note": "每小时 = 底薪 10 + 400/π·atan(Σ规则加成×稀有度×饱和 × 6/50)；濒危保种 2.0 / 高龄种 1.5 / 老种 1.0 / 大体积 0.75 / 中体积 0.5 / 日常 0.25，做种人数越多衰减（seeders^-0.35），同一种子做种越久收益递减（90 天半衰）",
     })))
 }
 
