@@ -1817,6 +1817,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     let scope = crate::rss_http::mount_rss(scope);
     let scope = crate::twofa_http::mount_twofa(scope);
     let scope = crate::compat_http::mount_compat(scope);
+    let scope = crate::v4_http::mount_v4(scope);
     cfg.service(crate::openapi_http::mount_openapi(scope));
 }
 

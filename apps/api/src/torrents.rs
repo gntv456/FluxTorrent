@@ -221,12 +221,25 @@ pub async fn list_torrents(
     })
 }
 
-pub async fn get_torrent(db: &PgPool, id: i64, reveal_owner: bool) -> DomainResult<TorrentRow> {
+pub async fn get_torrent(
+    db: &PgPool,
+    id: i64,
+    reveal_owner: bool,
+    viewer: Option<(i64, bool)>, // (user_id, is_staff)：G7 暂缓种仅本人+staff 可见
+) -> DomainResult<TorrentRow> {
     // torrent.view_anonymous：持权者可见匿名种子的真实发布者
     let owner_expr = if reveal_owner {
         "u.username AS owner_name"
     } else {
         "CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name"
+    };
+    // G7 POSTPONED：status=4 的种子只对发布者本人与 staff 开放；
+    // staff（viewer.is_staff）或本人（owner_id = viewer.0）时放宽到 approval_status IN (1,4)
+    let vis = match viewer {
+        Some((uid, is_staff)) => format!(
+            "(t.approval_status = 1 OR (t.approval_status = 4 AND ({is_staff} OR t.owner_id = {uid})))"
+        ),
+        None => "t.approval_status = 1".to_string(),
     };
     let page = sqlx::query_as::<_, TorrentRow>(
         &format!(r#"
@@ -257,7 +270,7 @@ pub async fn get_torrent(db: &PgPool, id: i64, reveal_owner: bool) -> DomainResu
                t.media_info->>'poster' AS poster,
                t.created_at
         FROM torrents t LEFT JOIN users u ON u.id = t.owner_id
-        WHERE t.id = $1 AND t.approval_status = 1
+        WHERE t.id = $1 AND {vis}
         "#)
     )
     .bind(id)

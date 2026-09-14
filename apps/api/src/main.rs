@@ -32,6 +32,7 @@ mod settings_http;
 mod state;
 mod torrents;
 mod twofa_http;
+mod v4_http;
 
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
@@ -124,6 +125,7 @@ async fn main() -> anyhow::Result<()> {
                     .add(("Referrer-Policy", "strict-origin-when-cross-origin")),
             )
             .wrap(actix_web::middleware::from_fn(i18n::locale_mw)) // Accept-Language → task-local（错误消息三语）
+            .wrap(actix_web::middleware::from_fn(v4_http::metrics_mw)) // G3：请求/5xx 计数（/metrics 出口）
             .configure(community_http::configure)
             .default_service(web::to(|req: actix_web::HttpRequest| async move {
                 let locale = req

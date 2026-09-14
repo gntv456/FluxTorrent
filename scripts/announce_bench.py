@@ -56,11 +56,13 @@ async def main_async(args):
     latencies, errors = [], []
     stop_at = time.monotonic() + args.duration
     tasks = []
+    loop = asyncio.get_event_loop()
     for i in range(args.concurrency):
         peer_id = f"-FB{1000 + i:04d}-{'x' * 12}"[:20]
         pk = passkeys[i % len(passkeys)]
-        tasks.append(asyncio.to_thread(
-            _sync_worker, (args.url, pk, info_hash), stop_at, latencies, errors, peer_id
+        # asyncio.to_thread 需要 3.9+；本机 3.8 用 loop.run_in_executor 等价
+        tasks.append(loop.run_in_executor(
+            None, _sync_worker, (args.url, pk, info_hash), stop_at, latencies, errors, peer_id
         ))
     print(f"压测 {args.duration}s · 并发 {args.concurrency} · passkey {len(passkeys)} 个（info_hash {info_hash[:12]}…）")
     await asyncio.gather(*tasks)

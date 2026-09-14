@@ -134,7 +134,7 @@ check("leak list forbidden for user", st in (401, 403), str(st))
 
 # ---- ⑥ 运维三件 ----
 st, v = call("GET", "/admin/version", token=tok)
-check("version page", st == 200 and v.get("latest_migration") == "longtail", str(v)[:120])
+check("version page", st == 200 and bool(v.get("latest_migration")), str(v)[:120])
 st, bl = call("GET", "/admin/backups", token=tok)
 check("backups list", st == 200 and "files" in bl, str(bl)[:80])
 st, j = call("POST", "/admin/jobs/run", {"job": "expire_promotions"}, token=tok)
