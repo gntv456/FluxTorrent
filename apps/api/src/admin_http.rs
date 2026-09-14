@@ -982,42 +982,112 @@ async fn user_admin_delete(
         }
         _ => {}
     }
-    // 业务数据清理顺序：先无 FK 约束的流水/记录，再反向删到用户。
-    // 覆盖全部以 user_id 引用 users 且无 ON DELETE CASCADE 的业务表；
-    // 遗漏任何一张都会让最终 DELETE users 因 NO ACTION 外键失败（整个操作无事务，前序清理已生效）。
+    // 审计修复（P0）：旧实现无事务且清理清单严重不全（实测 del=a 引用 users 的列有 83 处），
+    // 任何做过审计操作的账号（audit_log.actor_id NO ACTION）在最终 DELETE users 时必失败，
+    // 而前序清理已生效 —— 账号半死、数据不可逆丢失。
+    // 现在：①单事务，任一步失败整体回滚；②清单覆盖全部 NO ACTION 引用列
+    //（本人数据 DELETE、他方操作留痕列 SET NULL、posts 分区表级联一并处理）。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     for sql in [
+        // —— 本人拥有的业务数据（删） ——
         "DELETE FROM spark_ledger WHERE user_id = $1",
         "DELETE FROM attendance WHERE user_id = $1",
         "DELETE FROM task_claims WHERE user_id = $1",
         "DELETE FROM bank_demand_accounts WHERE user_id = $1",
+        "DELETE FROM bank_deposits WHERE user_id = $1",
         "DELETE FROM bank_loans WHERE user_id = $1",
         "DELETE FROM bank_interest_records WHERE user_id = $1",
         "DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1",
+        "DELETE FROM pmboxes WHERE user_id = $1",
+        "DELETE FROM message_flood WHERE user_id = $1",
+        "DELETE FROM staffmessages WHERE user_id = $1",
         "DELETE FROM comments WHERE user_id = $1",
         "DELETE FROM posts WHERE user_id = $1",
+        "DELETE FROM topics WHERE user_id = $1",
         "DELETE FROM user_medals WHERE user_id = $1",
         "DELETE FROM user_roles WHERE user_id = $1",
         "DELETE FROM user_permissions WHERE user_id = $1",
+        "DELETE FROM user_dressups WHERE user_id = $1",
+        "DELETE FROM user_vouchers WHERE user_id = $1",
         "DELETE FROM bookmarks WHERE user_id = $1",
-        // 做种/感谢/H&R 快照：账号删除后无保留意义，一并清理
+        "DELETE FROM api_tokens WHERE user_id = $1",
+        "DELETE FROM password_resets WHERE user_id = $1",
+        "DELETE FROM login_events WHERE user_id = $1",
+        "DELETE FROM invites WHERE inviter_id = $1 OR used_by = $1",
+        "DELETE FROM invite_quota WHERE user_id = $1",
+        "DELETE FROM friendships WHERE user_id = $1 OR friend_id = $1",
         "DELETE FROM snatches WHERE user_id = $1",
         "DELETE FROM thanks WHERE user_id = $1",
-        "DELETE FROM hr_snapshots WHERE user_id = $1",
-        "DELETE FROM hr_violations WHERE user_id = $1",
-        // 发布者归属置空（种子保留），其余持有者侧记录清理
-        "UPDATE torrents SET owner_id = NULL WHERE owner_id = $1",
-        "DELETE FROM invites WHERE inviter_id = $1",
-        "UPDATE topics SET user_id = NULL WHERE user_id = $1",
+        "DELETE FROM hr_snapshots WHERE user_id = $1 OR pardoned_by = $1",
+        "DELETE FROM hr_violations WHERE user_id = $1 OR resolved_by = $1",
+        "DELETE FROM farm_plots WHERE user_id = $1",
+        "DELETE FROM farm_harvests WHERE user_id = $1",
+        "DELETE FROM fun_items WHERE user_id = $1",
+        "DELETE FROM fun_item_votes WHERE user_id = $1",
+        "DELETE FROM fun_votes WHERE user_id = $1",
+        "DELETE FROM gomoku_games WHERE black_id = $1 OR white_id = $1",
+        "DELETE FROM contest_entries WHERE user_id = $1",
+        "DELETE FROM offers WHERE user_id = $1",
+        "DELETE FROM offer_votes WHERE user_id = $1",
+        "DELETE FROM requests WHERE user_id = $1",
+        "DELETE FROM resub_uses WHERE user_id = $1",
+        "DELETE FROM resurrections WHERE user_id = $1",
+        "DELETE FROM subtitles WHERE user_id = $1",
+        "DELETE FROM seed_milestones WHERE user_id = $1",
+        "DELETE FROM jixiao_claims WHERE user_id = $1",
+        "DELETE FROM leak_events WHERE user_id = $1",
+        "DELETE FROM appeals WHERE user_id = $1",
+        "DELETE FROM download_keys WHERE user_id = $1",
         "DELETE FROM shop_orders WHERE user_id = $1",
-        "DELETE FROM login_events WHERE user_id = $1",
+        "DELETE FROM pool_donations WHERE user_id = $1",
+        "DELETE FROM funding_contribs WHERE user_id = $1",
+        "DELETE FROM push_subscriptions WHERE user_id = $1",
+        "DELETE FROM reports WHERE reporter_id = $1",
+        // —— 他方操作留痕列（置空，保留记录本身） ——
+        "UPDATE torrents SET owner_id = NULL WHERE owner_id = $1",
+        "UPDATE audit_log SET actor_id = NULL WHERE actor_id = $1",
+        "UPDATE announcements SET author_id = NULL WHERE author_id = $1",
+        "UPDATE appeals SET handled_by = NULL WHERE handled_by = $1",
+        "UPDATE posts SET edited_by = NULL WHERE edited_by = $1",
+        "UPDATE fundings SET creator_id = NULL WHERE creator_id = $1",
+        "UPDATE hr_snapshots SET pardoned_by = NULL WHERE pardoned_by = $1",
+        "UPDATE hr_violations SET resolved_by = NULL WHERE resolved_by = $1",
+        "UPDATE leak_events SET resolved_by = NULL WHERE resolved_by = $1",
+        "UPDATE reports SET claimed_by = NULL, handled_by = NULL WHERE claimed_by = $1 OR handled_by = $1",
+        "UPDATE staffmessages SET answered_by = NULL, assigned_to = NULL WHERE answered_by = $1 OR assigned_to = $1",
+        "UPDATE seed_preserve SET claimed_by = NULL WHERE claimed_by = $1",
+        "UPDATE agent_rules SET created_by = NULL WHERE created_by = $1",
+        "UPDATE email_bans SET created_by = NULL WHERE created_by = $1",
+        "UPDATE forum_mods SET created_by = NULL WHERE created_by = $1",
+        "UPDATE friend_links SET applied_by = NULL WHERE applied_by = $1",
+        "UPDATE fun_polls SET created_by = NULL WHERE created_by = $1",
+        "UPDATE ip_bans SET banned_by = NULL WHERE banned_by = $1",
+        "UPDATE mass_mails SET sent_by = NULL WHERE sent_by = $1",
+        "UPDATE promotions SET created_by = NULL WHERE created_by = $1",
+        "UPDATE rules_revisions SET edited_by = NULL WHERE edited_by = $1",
+        "UPDATE sticky_promotions SET created_by = NULL WHERE created_by = $1",
+        "UPDATE torrent_groups SET created_by = NULL WHERE created_by = $1",
+        "UPDATE torrent_operation_logs SET operator_id = NULL WHERE operator_id = $1",
+        "UPDATE user_modify_logs SET modifier = NULL WHERE modifier = $1",
+        "UPDATE username_change_logs SET operator = NULL WHERE operator = $1",
+        "UPDATE users SET invited_by = NULL WHERE invited_by = $1",
+        // —— 收尾 ——
         "DELETE FROM users WHERE id = $1 AND status >= 2",
     ] {
         sqlx::query(sql)
             .bind(uid)
-            .execute(&state.repo.db)
+            .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "user.delete", Some(uid))
@@ -2082,8 +2152,23 @@ async fn deny_reasons_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    let rid = path.into_inner();
+    // 审计修复（P1）：被种子引用（torrents.deny_reason_id del=a FK）时删除必 500。
+    // 与 category_delete 同款前置护栏：有引用先解绑/换用别的理由。
+    let refs: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM torrents WHERE deny_reason_id = $1",
+    )
+    .bind(rid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    if refs > 0 {
+        return Err(DomainError::Validation(format!(
+            "仍有 {refs} 个种子使用该拒绝理由（含已删除种子），请先改用其他理由"
+        )));
+    }
     let n = sqlx::query("DELETE FROM torrent_deny_reasons WHERE id = $1")
-        .bind(path.into_inner())
+        .bind(rid)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
@@ -2653,10 +2738,24 @@ async fn forum_admin_delete(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
+    q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
+    let force = q.get("force").map(|v| v == "true").unwrap_or(false);
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     let fid = path.into_inner();
+    // 审计修复（P1）：删除版块会静默级联删除其下全部主题与帖子（topics del=c → posts 级联）。
+    // 非空版块要求显式 force=true 才执行，防误删整版内容。
+    let topic_cnt: i64 = sqlx::query_scalar("SELECT count(*) FROM topics WHERE forum_id = $1")
+        .bind(fid)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
+    if topic_cnt > 0 && !force {
+        return Err(DomainError::Validation(format!(
+            "该版块仍有 {topic_cnt} 个主题（删除将级联清空全部帖子）。确认知悉请传 force=true"
+        )));
+    }
     let n = sqlx::query("DELETE FROM forums WHERE id = $1")
         .bind(fid)
         .execute(&state.repo.db)

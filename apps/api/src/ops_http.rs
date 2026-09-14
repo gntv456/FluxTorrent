@@ -112,9 +112,29 @@ async fn jixiao_claim(
         .clone()
         .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m").to_string());
 
+    // 审计修复（P0 无上限铸币）：考核工资必须由 admin 经 /admin/users/{id}/jixiao
+    // 分配岗位后才能领取。旧逻辑任何登录用户可自选任意 type_id 领取（min_requirements
+    // 全站为空使校验空转），每用户每月可扫全部岗位 ≈89,500 火花。
+    let assigned: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM jixiao_claims \
+         WHERE user_id = $1 AND type_id = $2 AND period = $3 \
+           AND metrics_snapshot->>'source' = 'admin')",
+    )
+    .bind(auth.id)
+    .bind(body.type_id)
+    .bind(&period)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    if !assigned {
+        return Err(DomainError::Validation(
+            "本月管理组尚未为你分配该考核岗位，无法领取".into(),
+        ));
+    }
+
     // 幂等：本期已领（UNIQUE 约束兜底 + 先查友好报错）
     let claimed: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND period = $3)",
+        "SELECT EXISTS(SELECT 1 FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND period = $3 AND NOT (metrics_snapshot->>'source' = 'admin'))",
     )
     .bind(auth.id)
     .bind(body.type_id)

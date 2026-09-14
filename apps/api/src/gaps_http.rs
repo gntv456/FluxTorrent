@@ -405,7 +405,7 @@ async fn hr_self_pardon(
     // 赦免（扣费失败仅回 4001，状态已不可逆），且两步非事务，中途失败同样撕裂。
     // spend_spark 自带行锁 + 幂等键，先扣可保证「未付费必不赦免」。
     let idem = format!("hr-self-pardon:{}:{}", auth.id, body.torrent_id);
-    crate::economy_http::spend_spark(
+    let outcome = crate::economy_http::spend_spark(
         &state.repo.db,
         auth.id,
         SELF_PARDON_PRICE,
@@ -415,6 +415,12 @@ async fn hr_self_pardon(
         body.torrent_id,
     )
     .await?;
+    // 审计修复（P0 铸币）：Replayed = 本请求未扣款（幂等键命中的是历史成功扣费）。
+    // 旧逻辑忽略该返回值继续走赦免/退款分支，退款键又拼随机 UUID 每次全新，
+    // 重放请求可无限净赚 20000/次。现在：重放一律拒绝，退款键改为确定性键。
+    if !matches!(outcome, crate::economy_http::SpendOutcome::Spent) {
+        return Err(DomainError::Validation("该违规已处理过，请勿重复提交".into()));
+    }
     let n = sqlx::query(
         "UPDATE hr_snapshots SET status = 'pardoned', pardoned_by = $1, updated_at = now() \
          WHERE user_id = $1 AND torrent_id = $2 AND status = 'violated' \
@@ -426,13 +432,14 @@ async fn hr_self_pardon(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if n.is_none() {
-        // 并发窗口内另一请求已赦免（或本就不存在）：退回本次扣费，避免花 20000 买空气
+        // 并发窗口内另一请求已赦免（或本就不存在）：退回本次扣费，避免花 20000 买空气。
+        // 退款键去掉随机 UUID：同一 (user, torrent) 的退款与扣款一对一，重放不产生新流水。
         crate::economy_http::earn_spark(
             &state.repo.db,
             auth.id,
             SELF_PARDON_PRICE,
             "hr_pardon_refund",
-            &format!("{idem}:refund:{}", uuid::Uuid::new_v4()),
+            &format!("{idem}:refund"),
         )
         .await?;
         return Err(DomainError::Validation("无待免罪的 H&R 违规".into()));

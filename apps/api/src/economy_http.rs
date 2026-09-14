@@ -436,6 +436,65 @@ async fn apply_item_effect(
                 }
             }
         }
+        // 审计修复（P1 花钱买空气）：下列 SKU 此前落入 `_ => {}` 兜底，扣款后无任何效果。
+        // gift_spark：等值火花立即入账（earn 幂等键绑订单号语义 shop:{uid}:{item}）
+        "gift_spark" => {
+            let sparks = config
+                .get("spark")
+                .or_else(|| config.get("sparks"))
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            if sparks > 0 {
+                let item_id = config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
+                let idem = format!(
+                    "shop-gift:{user_id}:{item_id}:{}",
+                    chrono::Utc::now().timestamp()
+                );
+                earn_spark(db, user_id, sparks, "shop", &idem).await?;
+            }
+        }
+        // charity：捐赠入 magic_pool + pool_donations（去向可查，v_pool_honor 可见）。
+        // 金额取 config.spark，缺省按 SKU 价格全额入池（购买即捐赠语义）。
+        "charity" => {
+            let amount = config
+                .get("spark")
+                .or_else(|| config.get("sparks"))
+                .and_then(|v| v.as_i64())
+                .or_else(|| config.get("price").and_then(|v| v.as_i64()))
+                .unwrap_or(0);
+            if amount > 0 {
+                let month = economy::pool_month(chrono::Utc::now());
+                sqlx::query(
+                    "INSERT INTO pool_donations (user_id, amount, month) VALUES ($1, $2, $3)",
+                )
+                .bind(user_id)
+                .bind(amount)
+                .bind(&month)
+                .execute(db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+                sqlx::query(
+                    "INSERT INTO magic_pool (month, donated_total) VALUES ($1, $2) \
+                     ON CONFLICT (month) DO UPDATE SET donated_total = magic_pool.donated_total + $2",
+                )
+                .bind(&month)
+                .bind(amount)
+                .execute(db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            }
+        }
+        // rename_card：入库存（生效走 UserCP 改名消费，见 username_change_logs）
+        "rename_card" | "temp_invite" => {
+            sqlx::query(
+                "INSERT INTO user_vouchers (user_id, kind, source) VALUES ($1, $2, 'shop')",
+            )
+            .bind(user_id)
+            .bind(kind)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
         _ => {} // 其余类型：权益标记后续按需扩展（佩戴/生效周期）
     }
     Ok(())
@@ -772,8 +831,19 @@ async fn bank_withdraw(
     if updated.rows_affected() == 0 {
         return Err(DomainError::LedgerConflict);
     }
+    // 审计修复（P1 撕裂窗口）：状态 CAS 提交后若 earn_spark 失败，本息蒸发且不可重试
+    //（status=1 已锁死，idem withdraw:{id} 未落库）。失败时回滚状态位，保留重试能力。
     let idem = format!("withdraw:{}", id);
-    earn_spark(&state.repo.db, auth.id, payable, "bank_withdraw", &idem).await?;
+    if let Err(e) = earn_spark(&state.repo.db, auth.id, payable, "bank_withdraw", &idem).await {
+        let _ = sqlx::query(
+            "UPDATE bank_deposits SET status = 0, settled_at = NULL, withdrawn_at = NULL \
+             WHERE id = $1 AND status = 1",
+        )
+        .bind(id)
+        .execute(&state.repo.db)
+        .await;
+        return Err(e);
+    }
     Ok(ok(
         serde_json::json!({ "paid": payable, "matured": matured, "penalty": penalty,
             "clawback": clawback,
@@ -868,14 +938,27 @@ async fn demand_withdraw(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let idem = format!("demand_out:{}:{}", auth.id, Uuid::new_v4());
-    earn_spark(
+    // 审计修复（P1 撕裂窗口）：活期扣减提交后 earn_spark 失败 = 钱从活期消失、余额未加。
+    // 失败时把活期余额补回去（单用户路径无并发放大风险，补偿幂等性由行锁保证）。
+    if let Err(e) = earn_spark(
         &state.repo.db,
         auth.id,
         body.amount,
         "bank_demand_out",
         &idem,
     )
-    .await?;
+    .await
+    {
+        let _ = sqlx::query(
+            "UPDATE bank_demand_accounts SET balance = balance + $2, updated_at = now() \
+             WHERE user_id = $1",
+        )
+        .bind(auth.id)
+        .bind(body.amount)
+        .execute(&state.repo.db)
+        .await;
+        return Err(e);
+    }
     Ok(ok(
         serde_json::json!({ "paid": body.amount, "balance_left": row }),
     ))
@@ -1480,7 +1563,17 @@ async fn torznab_search(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
-    crate::openapi_http::require_token(&req, &state).await?;
+    let auth_uid = {
+        // 审计修复（P1）：require_token 现返回 token 所属 user —— enclosure/link 的
+        // passkey 占位符替换为该用户真实 passkey，否则 Prowlarr 拿到 PASSKEY 字面量必 401。
+        let (uid, _) = crate::openapi_http::require_token(&req, &state).await?;
+        let passkey: String = sqlx::query_scalar("SELECT passkey FROM users WHERE id = $1")
+            .bind(uid)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        passkey
+    };
     let keyword = q.get("q").cloned().unwrap_or_default();
     let limit: usize = q
         .get("limit")
@@ -1514,9 +1607,9 @@ async fn torznab_search(
                 concat!(
                     "  <item>\n",
                     "    <title>{}</title>\n",
-                    "    <guid isPermaLink=\"true\">torrent-{}</guid>\n",
+                    "    <guid isPermaLink=\"false\">torrent-{}</guid>\n",
                     "    <link>/api/v1/compat/nexusphp/download.php?id={}</link>\n",
-                    "    <enclosure url=\"/api/v1/compat/nexusphp/download.php?id={}&amp;passkey=PASSKEY\" type=\"application/x-bittorrent\" length=\"{}\" />\n",
+                    "    <enclosure url=\"/api/v1/compat/nexusphp/download.php?id={}&amp;passkey={}\" type=\"application/x-bittorrent\" length=\"{}\" />\n",
                     "    <pubDate>{}</pubDate>\n",
                     "    <size>{}</size>\n",
                     "    <seeders>{}</seeders>\n",
@@ -1525,7 +1618,7 @@ async fn torznab_search(
                     "  </item>\n"
                 ),
                 xml_escape(&t.name),
-                t.id, t.id, t.id, t.size, pub_date, t.size, t.seeders,
+                t.id, t.id, t.id, xml_escape(&auth_uid), t.size, pub_date, t.size, t.seeders,
                 t.seeders + t.leechers,
             )
         })

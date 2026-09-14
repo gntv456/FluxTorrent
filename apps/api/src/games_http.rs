@@ -5,7 +5,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark, spend_spark};
+use crate::economy_http::{earn_spark, spend_spark, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::games::{self, validate_bet, Guess, MAX_PLAYS_PER_HOUR};
 use crate::http::require_auth;
@@ -271,9 +271,12 @@ async fn farm_plant(
     let window = games::market_window_start(now);
     let price = games::market_price(crop.seed_price as i64, window);
 
-    // 买种经统一交易管线扣款（幂等键含用户+槽位+当前分钟）
+    // 买种经统一交易管线扣款（幂等键含用户+槽位+当前分钟）。
+    // 审计修复（P0 铸币）：旧逻辑对 spend_spark 返回的 Replayed 不检查——同槽同分钟内
+    // 第二个请求（换高价作物）不扣款即走到占位失败分支，再按"本次请求的高价"全额退款。
+    // 现在：Replayed 直接拒绝（本请求未付费），退款金额以幂等键对应的实际扣款额为准。
     let idem = format!("farm-plant:{}:{}:{}", auth.id, body.slot, now / 60);
-    spend_spark(
+    let outcome = spend_spark(
         &state.repo.db,
         auth.id,
         price,
@@ -283,6 +286,9 @@ async fn farm_plant(
         crop.id as i64,
     )
     .await?;
+    if !matches!(outcome, SpendOutcome::Spent) {
+        return Err(DomainError::Validation("操作过于频繁，请一分钟后再试".into()));
+    }
 
     let planted = sqlx::query_scalar::<_, i64>(
         r#"INSERT INTO farm_plots (user_id, slot, crop_id, ready_at)
@@ -297,9 +303,20 @@ async fn farm_plant(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if planted.is_none() {
-        // 占位失败（槽位已被占）：退款补偿（幂等）
+        // 占位失败（槽位已被占）：退款补偿。退款额必须取该幂等键的实际扣款额，
+        // 而非本次请求价——两者在本请求 Replayed 已被拒绝的前提下仍可能有差异
+        //（同分钟内首请求是低价作物），按实际扣款退才能保证净 0。
+        let actual: Option<i64> = sqlx::query_scalar(
+            "SELECT amount FROM spark_ledger WHERE idempotency_key = $1 AND user_id = $2 LIMIT 1",
+        )
+        .bind(&idem)
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let refund_amt = actual.unwrap_or(price);
         let refund = format!("farm-refund:{}", idem);
-        earn_spark(&state.repo.db, auth.id, price, "game", &refund).await?;
+        earn_spark(&state.repo.db, auth.id, refund_amt, "game", &refund).await?;
         return Err(DomainError::Validation("该地块已有作物".into()));
     }
     state
