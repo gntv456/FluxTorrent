@@ -109,6 +109,8 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(pool_donate)
         .service(dressup_list)
         .service(dressup_wear)
+        .service(my_vouchers)
+        .service(voucher_use)
 }
 
 /// 动账核心：余额充足校验 + 负流水 + 余额快照更新（单事务）。
@@ -371,9 +373,96 @@ async fn apply_item_effect(
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
         }
+        // 免费券/中性券（0073，Gazelle FL token 口径）：买入库为库存，使用走 /me/vouchers/use
+        "voucher_free" | "voucher_neutral" => {
+            let kind = config
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .unwrap_or("free");
+            sqlx::query(
+                "INSERT INTO user_vouchers (user_id, kind, source) VALUES ($1, $2, 'shop')",
+            )
+            .bind(user_id)
+            .bind(kind)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
         _ => {} // 其余类型：权益标记后续按需扩展（佩戴/生效周期）
     }
     Ok(())
+}
+
+// ============ 免费券/中性券（0073，Gazelle FL token 口径） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct VoucherRow {
+    id: i64,
+    kind: String,
+    source: String,
+    granted_at: chrono::DateTime<chrono::Utc>,
+    expires_at: chrono::DateTime<chrono::Utc>,
+    used_torrent_id: Option<i64>,
+    used_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// 我的券库存（含已用/过期历史，前端按状态分组）
+#[get("/me/vouchers")]
+async fn my_vouchers(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<VoucherRow> = sqlx::query_as(
+        "SELECT id, kind, source, granted_at, expires_at, used_torrent_id, used_at \
+         FROM user_vouchers WHERE user_id = $1 ORDER BY id DESC LIMIT 200",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct VoucherUseReq {
+    voucher_id: i64,
+    torrent_id: i64,
+}
+
+/// 用券：把一张未用未过期的券绑定到种子（CAS 防并发双用）。
+/// 生效在 worker 计费侧：该种该用户的下载增量按 0 计（free）/上下行均 0 计（neutral），
+/// 当累计下载超过种子大小 4% 时核销（Gazelle slop 口径——防买了券只下 1% 就转移给别人用）。
+#[post("/me/vouchers/use")]
+async fn voucher_use(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<VoucherUseReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let n = sqlx::query(
+        "UPDATE user_vouchers SET used_torrent_id = $3, used_at = now() \
+         WHERE id = $1 AND user_id = $2 AND used_at IS NULL AND expires_at > now()",
+    )
+    .bind(body.voucher_id)
+    .bind(auth.id)
+    .bind(body.torrent_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation("券不存在、已使用或已过期".into()));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "voucher.use", Some(body.torrent_id))
+        .await;
+    Ok(ok(serde_json::json!({
+        "voucher_id": body.voucher_id,
+        "torrent_id": body.torrent_id,
+        "note": "已对该种子生效；下载量超过种子大小 4% 后自动核销"
+    })))
 }
 
 // ============ 我的火花（M11） ============

@@ -518,9 +518,9 @@ seeding_reward worker 每小时批量 10 结算，基础+加成结构，参数�
 ### P1（功能域补强，全部有清晰对照物）
 3. **做种收益稀有度+时长饱和**（NP arctan/U3D 规则名化）+ 收益明细页。⏳ 未做
 4. **等级降级线+晋升待遇**（NP 降级线+送邀请表；U3D 组彩色样式）。✅ 晋升待遇已落地（0072：class_rules.promo_sparks 阶梯 200-20000 火花，worker class_auto_adjust 升级即发+系统消息，幂等键防重复）；降级线本就有 demotable 机制（v3 §2.4 对照勘误：worker 降级逻辑与升级同源，非缺口）
-5. **FL 券/中性券上商店**（Gazelle token 4% 核销+tracker 同步）。⏳ 未做
+5. **FL 券/中性券上商店**（Gazelle token 4% 核销+tracker 同步）。✅ 已落地（0073：user_vouchers + 商店上架 2500/5000 火花 + /me/vouchers 用券 + worker 计费叠加与 4% 事务内核销）
 6. **H&R 三件套**：预警 PM（U3D prewarn）+buffer 10% 豁免（U3D）+免罪券（NP 1 万魔力口径→我们 ≥10 万火花）。✅ 全部落地——预警 PM（0072：48h 内到期未达标→站内信，live 实测 gaozhong 收到）；buffer 豁免（下载 <10% 不建快照）；免罪券此前已有（`/me/hr/pardon` 20000 火花自助免罪，v3 §10 勘误：非缺口）
-7. **复活任务制**（U3D Graveyard→我们的保种区+seed_milestones 联动）。⏳ 未做
+7. **复活任务制**（U3D Graveyard→我们的保种区+seed_milestones 联动）。✅ 已落地（0073：/resurrections 领取 + worker 自动验收 → 5000 火花+免费券+7 天 free bump）
 8. **速度作弊扫描**（NP 双阈值+U3D balance 结余，worker cheat_scan 离线任务，读 traffic_ledger）。✅ 已由并行批次落地（0071 `cheat_audit`：Σup−Σdown 差值审计+staff 信箱告警，10min 周期；另有 ratio_watch/multi_ip_check/connectable 回连）
 9. **闲置账号三段清理**（U3D 90 天/Disabled/软删）。✅ 收敛版落地（0072 `dormant_mark`：90 天未登录+无做种+非员工/捐赠者→停用；登录拦截+恢复指引；不做自动删除）
 10. **聚合组补完**：上传自动推荐入组+组级订阅（教材改版通知）。⏳ 未做
