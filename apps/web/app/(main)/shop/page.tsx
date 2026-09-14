@@ -1,5 +1,6 @@
 import { getShopItems } from "@/lib/data";
 import { BuyButton } from "@/components/buy-button";
+import { VoucherPanel } from "@/components/voucher-panel";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 
@@ -42,7 +43,11 @@ export default async function ShopPage() {
               <p className="text-xs text-sub">
                 {item.kind === "upload_credit"
                   ? dict.shop.uploadCredit
-                  : dict.shop.sitePerk}
+                  : item.kind === "voucher_free"
+                    ? dict.shop.voucherFree
+                    : item.kind === "voucher_neutral"
+                      ? dict.shop.voucherNeutral
+                      : dict.shop.sitePerk}
               </p>
               <BuyButton itemId={item.id} name={item.name} price={item.price} />
             </div>
@@ -53,6 +58,9 @@ export default async function ShopPage() {
       <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-xs text-ink">
         {dict.shop.ledgerNote}
       </p>
+
+      {/* 我的券（0073：免费券/中性券库存与使用） */}
+      <VoucherPanel />
     </div>
   );
 }

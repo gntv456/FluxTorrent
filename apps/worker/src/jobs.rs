@@ -580,6 +580,24 @@ async fn process_event(
     .await?;
     let (up_mult, down_mult) = billing_multipliers(kind.as_deref(), global.as_deref());
 
+    // 0073 券倍率叠加：free 券 → 下载计 0；neutral 券 → 上下行均计 0。
+    // 判定口径：本人该种存在绑定中（used_at 仍 NULL）的对应 kind 券。
+    // 与促销取更优（乘法叠加：促销 x2 上传对 neutral 也归零，取对用户更优的 0）。
+    let voucher: Option<String> = sqlx::query_scalar(
+        "SELECT kind FROM user_vouchers \
+         WHERE user_id = $1 AND used_torrent_id = $2 AND used_at IS NULL AND expires_at > now() \
+         ORDER BY CASE kind WHEN 'neutral' THEN 2 WHEN 'free' THEN 1 ELSE 0 END DESC LIMIT 1",
+    )
+    .bind(ev.user)
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await?;
+    let (up_mult, down_mult) = match voucher.as_deref() {
+        Some("neutral") => (0.0, 0.0),
+        Some("free") => (up_mult, 0.0),
+        _ => (up_mult, down_mult),
+    };
+
     // BEP3：ev.up/down 是客户端累计总量 —— 先取出上次上报值换算增量（P0 修复）
     let mut tx = db.begin().await?;
     let last: Option<(i64, i64)> = sqlx::query_as(
@@ -639,6 +657,24 @@ async fn process_event(
     .bind(ev.conn)
     .execute(&mut *tx)
     .await?;
+
+    // 0073 券核销（Gazelle slop 口径）：绑定券的下载量一旦超过种子大小 4% 即消耗该券。
+    // 放在事务内——核销与流量同落，杜绝"下完 5% 券还在"的窗口。
+    sqlx::query(
+        r#"
+        UPDATE user_vouchers v SET used_at = COALESCE(v.used_at, now())
+        FROM snatches s, torrents t
+        WHERE v.user_id = s.user_id AND v.used_torrent_id = s.torrent_id
+          AND s.torrent_id = t.id AND s.user_id = $1 AND s.torrent_id = $2
+          AND v.used_at IS NULL
+          AND s.downloaded > t.size * 104 / 1000   -- 4%（整数近似，宁早不晚）
+        "#,
+    )
+    .bind(ev.user)
+    .bind(torrent_id)
+    .execute(&mut *tx)
+    .await?;
+
     // 仅在有实际增量时落流水（避免零增量噪声）
     if delta_up > 0 || delta_down > 0 {
         sqlx::query(
@@ -653,6 +689,83 @@ async fn process_event(
     }
     tx.commit().await?;
     Ok(Some(torrent_id))
+}
+
+/// 复活任务自动验收（0073，U3D Graveyard 口径）：领取者补种累计时长 ≥ required_hours
+/// 且当前仍在做种 → 发奖（火花 + 1 枚免费券）+ 种子挂 7 天 free bump + 站内信。
+/// 幂等：状态 CAS（open→done），奖励只随成功转移发放一次。
+async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
+    let settled = sqlx::query(
+        r#"
+        WITH done AS (
+            UPDATE resurrections r SET status = 'done', finished_at = now()
+            WHERE r.status = 'open'
+              AND EXISTS (SELECT 1 FROM snatches s
+                          WHERE s.user_id = r.user_id AND s.torrent_id = r.torrent_id
+                            AND s.seeded_seconds >= r.required_hours * 3600 AND s.seeding)
+            RETURNING r.id, r.user_id, r.torrent_id, r.reward_sparks
+        )
+        SELECT d.id, d.user_id, d.torrent_id, d.reward_sparks FROM done d
+        "#,
+    )
+    .fetch_all(db)
+    .await?;
+    for row in &settled {
+        let (rid, uid, tid, reward): (i64, i64, i64, i64) = (
+            row.try_get(0)?,
+            row.try_get(1)?,
+            row.try_get(2)?,
+            row.try_get(3)?,
+        );
+        let idem = format!("resurrection:{rid}");
+        sqlx::query(
+            r#"
+            INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
+            SELECT nextval('spark_ledger_id_seq'), $1, $2, 'resurrection', $3
+            WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)
+            "#,
+        )
+        .bind(uid)
+        .bind(reward)
+        .bind(&idem)
+        .execute(db)
+        .await?;
+        sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+            .bind(uid)
+            .bind(reward)
+            .execute(db)
+            .await?;
+        sqlx::query(
+            "INSERT INTO user_vouchers (user_id, kind, source) VALUES ($1, 'free', 'resurrection')",
+        )
+        .bind(uid)
+        .execute(db)
+        .await?;
+        // 7 天 free bump（U3D 口径）：全站看见的即时激励
+        sqlx::query(
+            "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source) \
+             VALUES ('torrent', $1, 'free', now(), now() + interval '7 days', 'task') \
+             ON CONFLICT DO NOTHING",
+        )
+        .bind(tid)
+        .execute(db)
+        .await?;
+        let _ = sqlx::query(
+            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+        )
+        .bind(uid)
+        .bind("复活任务完成")
+        .bind(format!(
+            "恭喜！你复活种子 #{tid} 的任务已验收：奖励 {reward} 火花 + 1 枚免费券，\
+             该种子已获得 7 天免费促销。感谢你为保种做出的贡献！"
+        ))
+        .execute(db)
+        .await;
+    }
+    if !settled.is_empty() {
+        tracing::info!(n = settled.len(), "resurrections settled");
+    }
+    Ok(settled.len() as u64)
 }
 
 /// 做种里程碑采集（M28 插件数据源）：把达到档位的事件落表，api 侧插件按需消费。
@@ -1263,6 +1376,7 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if let Err(e) = purge_old_login_events(&db).await { tracing::error!(?e, "purge_old_login_events"); }
                 if let Err(e) = ratio_watch(&db).await { tracing::error!(?e, "ratio_watch"); }
                 if let Err(e) = dormant_mark(&db).await { tracing::error!(?e, "dormant_mark"); }
+                if let Err(e) = resurrection_settle(&db).await { tracing::error!(?e, "resurrection_settle"); }
             }
             _ = tick10.tick() => {
                 if first_tick10 { first_tick10 = false; continue; }
