@@ -210,6 +210,33 @@ async fn review_decide(
     if n == 0 {
         return Err(DomainError::Validation("种子不存在或不在待审状态".into()));
     }
+    // 0075 免审积分：过审连击 +1 / 被拒清零（阈值放行在 upload 的 auto_approve 判定）
+    let _ = sqlx::query(
+        "UPDATE users u SET approve_streak = CASE WHEN $2 THEN u.approve_streak + 1 ELSE 0 END          FROM torrents t WHERE t.id = $1 AND u.id = t.owner_id",
+    )
+    .bind(body.torrent_id)
+    .bind(body.approve)
+    .execute(&state.repo.db)
+    .await;
+    // 0075 组级订阅推送：入组种子过审 → 通知组订阅者（每人一信，含通知偏好过滤）
+    if body.approve {
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO messages (sender_id, receiver_id, subject, body)
+            SELECT NULL, gs.user_id, '订阅的聚合组有新版本',
+                   format('你订阅的资源组「%s」有新种子过审：#%s %s。同类资源聚合页见种子详情。',
+                          g.name, t.id, t.name)
+            FROM torrents t
+            JOIN torrent_groups g ON g.id = t.group_id
+            JOIN group_subscriptions gs ON gs.group_id = g.id
+            WHERE t.id = $1
+              AND (u_notice_enabled(gs.user_id, 'group_new_version'))
+            "#,
+        )
+        .bind(body.torrent_id)
+        .execute(&state.repo.db)
+        .await;
+    }
     let action = if body.approve { "approve" } else { "reject" };
     // 种子操作记录（torrent-operation-logs 口径）
     let _ = sqlx::query(

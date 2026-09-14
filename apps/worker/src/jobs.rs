@@ -1054,7 +1054,7 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
                     .unwrap_or_else(|| format!("LV{new_class}"));
             let _ = sqlx::query(
                 "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-                 VALUES (NULL, $1, $2, $3)",
+                 SELECT NULL, $1, $2, $3 WHERE u_notice_enabled($1, 'class_promo')",
             )
             .bind(uid)
             .bind("等级晋升祝贺")
