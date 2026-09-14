@@ -107,12 +107,12 @@ v3 §27 的 25 项中 19 项已落地，剩余 6 项 + 新增 3 项缺口，按�
 | # | 缺口 | v3 出处 | v4 新证据/判断 | 优先级 |
 |---|---|---|---|---|
 | G1 | **PT-Plugin-Plus 收录 PR 提交** | §27-1 | 唯一剩余 P0。PT Mate 的发现（§3N）强化其价值：schema 收录有跨工具溢出效应。材料就绪（`.research/ptpp-config-template/`），纯人工动作 | **P0** |
-| G2 | **announce 压测基线** | §27-19 | Torrust 对照（§1N）后更必要：无 metrics 无压测=容量规划全靠猜。脚本已备（scripts/announce_bench.py） | **P1** |
-| G3 | **Prometheus metrics 出口** | v4 新增（Torrust 对照） | tracker/api 各挂一个 middleware 即可；是 G2 的数据载体 | **P1** |
+| G2 | ~~announce 压测基线~~ ✅ 0079 已出数 | §27-19 | 2138 req/s @32 并发 / p99 13.45ms / 零失败（压测端饱和，tracker 未降级），录于部署指南 §6.1 | 完成 |
+| G3 | ~~Prometheus metrics~~ ✅ 0079 | v4 新增（Torrust 对照） | tracker /metrics 已有（0071）；api /metrics + 请求/5xx 计数中间件 + PG 池 gauge（0079，token 门禁） | 完成 |
 | G4 | **上传 API（幂等口径）** | §27-23 | YemaPT 口径已写进开放API接入指南；教育站刚需弱于影视站（师资发布者少），降半级 | P2 |
-| G5 | **规则页版本化（Wiki 化）** | §27-16 残留 | 教育站规则变更频率低，但"修订可追溯"对社区信任重要 | P2 |
-| G6 | **成就四族起步** | §27-20 残留 | seed_milestones 已有骨架（保种量/救种数/发种数/论坛活跃四族），纯增量 | P2 |
-| G7 | **POSTPONED 审核第四态** | §27-14 残留 | approval_status=3 被"下架"占用，需先腾挪语义再上，工程量小但动核心状态机 | P3 |
+| G5 | ~~规则页版本化~~ ✅ 0079 | §27-16 残留 | rules_revisions 同事务存档 + /admin/rules/{id}/revisions | 完成 |
+| G6 | ~~成就四族~~ ✅ 0079 | §27-20 残留 | achievement_defs 表驱动 9 定义 + worker 授予 + /me/achievements | 完成 |
+| G7 | ~~POSTPONED 第四态~~ ✅ 0079 | §27-14 残留 | approval_status=4 暂缓 + resume 回待审；详情页可见性收紧（本人+staff） | 完成 |
 | G8 | **msg/notice App API + Telegram 绑定** | §27-23/24 | M-Team 口径；依赖 App 化决策，暂缓 | P3 |
 | G9 | **UDP tracker（BEP 15）** | v4 新增（Torrust/Aquatic 对照） | 教育站客户端以 HTTP 为主，性能上限未成为瓶颈前不投入 | P3 |
 
@@ -123,6 +123,11 @@ v3 §27 的 25 项中 19 项已落地，剩余 6 项 + 新增 3 项缺口，按�
 | G17 | **admin 首页净增率常驻曲线** | §4N 实测 | v_spark_flow_monthly 已有数据，缺可视化入口；通胀治理从"月度报表"升级为"常驻仪表" |
 | G18 | **shop 消费目录扩容** | §4N 实测 | 回收率 24% 的主因是 SKU 太少；对照 NP 13 档商品（VIP 月卡/自定义头衔/彩虹 ID/免广告……）应有尽有。纯运营动作+少量商品效果代码 |
 | G19 | **metrics 中间件+时序存储** | §1N | 与 G3 同源；时序库选型先问"PG 能不能做"（timescale 或裸表 5 分钟粒度都够教育站规模）——避坑#10 组件封顶纪律 |
+
+### 已关闭项（v4 批次后追加）
+
+- **Torznab search**（0079 增补）：caps + search 端点全通——q→trgm 搜索→atom，开放 API Token 鉴权，enclosure 指向 download.php passkey 形状。Prowlarr/cross-seed 可直接注册。
+- **G17/G18**（0079）：v_spark_flow_daily 日度对账 + 商店 vip/ad_free/custom_title 权益效果处理器补齐。
 
 ### 已关闭项（v3 → v4 确认）
 

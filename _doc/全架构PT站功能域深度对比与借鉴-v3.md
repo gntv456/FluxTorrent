@@ -534,10 +534,10 @@ seeding_reward worker 每小时批量 10 结算，基础+加成结构，参数�
 16. 论坛已读跟踪+工单体系+规则页版本化。
 17. ✅ 自动促销规则表已落地（0077：auto_promo_rules——name_regex/size 区间/分类 → 六档促销×时长，过审时按 position 取首条命中）；Refundable ⏳。
 18. 后台运维三件：backup 面板/任务手动触发器/版本页（U3D）。
-19. ✅ peer 超时分档已落地（0077：做种 peer TTL 90s→3720s=2×interval+120，下载 peer 保持 90s 快速感知——口径矛盾修复）；压测基线 ⏳（announce_bench.py 已备待执行）。
-20. 聊天机器人（NerdBot 统计命令系）+成就四族起步。
-21. ✅ Torznab 出口第一步（0077：/torznab caps 握手端点；search 映射到 compat 列表待做）。
-22. ✅ 月度产出回收对账已落地（0077：v_spark_flow_monthly 视图 + /admin/spark-flow——2026-09 实测：产出 120 万/回收 28 万/净增 92 万，通胀率可见）；赠送税/利息入池 ⏳。
+19. ✅ peer 超时分档已落地（0077：做种 peer TTL 90s→3720s=2×interval+120，下载 peer 保持 90s 快速感知——口径矛盾修复）；✅ 压测基线已出（0079：2138 req/s @32 并发 / p99 13.45ms / 零失败，录于生产部署指南 §6.1）。
+20. ✅ 全部落地（0078 聊天机器人 /free /stats /me /help；0079 成就四族：achievement_defs 表驱动 9 定义 + worker 每小时授予 + 火花奖励 + /me/achievements）。
+21. ✅ Torznab 出口全部落地（0077 caps + 0079 search 端点：q→trgm 搜索→atom，开放 API Token 鉴权，enclosure 指向 download.php——Prowlarr/cross-seed 可注册）。
+22. ✅ 全部落地（0077 月度对账 v_spark_flow_monthly + /admin/spark-flow；0078 赠送税 gift_tax_bp 5% 基点可调（礼物/众筹双链路入 magic_pool）；0079 日度对账 v_spark_flow_daily + /admin/spark-flow/daily——净增率仪表常驻化）。
 
 ### P3（远期）
 23. 上传 API（YemaPT 幂等口径）+msg/notice API（M-Team App 化预留）。
