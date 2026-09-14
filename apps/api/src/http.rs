@@ -1265,7 +1265,12 @@ async fn detail(
     let auth = require_auth(&req, &state).await?;
     // 持 view_anonymous 权限者可见匿名种子的真实发布者
     let reveal = crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_VIEW_ANONYMOUS).await;
-    let t = torrents::get_torrent(&state.repo.db, path.into_inner(), reveal).await?;
+    // G7：staff 视角传 (uid, true)——暂缓种对 staff 开放
+    let viewer = (
+        auth.id,
+        auth.class_id >= 90,
+    );
+    let t = torrents::get_torrent(&state.repo.db, path.into_inner(), reveal, Some(viewer)).await?;
     Ok(ok(t))
 }
 
@@ -1862,11 +1867,29 @@ async fn rule_update(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE).await?;
+    // G5 规则版本化：同事务内先存档被替换的旧版，再更新
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO rules_revisions (rule_id, title, body, sort, edited_by) \
+         SELECT id, title, body, sort, $2 FROM site_rules WHERE id = $1",
+    )
+    .bind(*path)
+    .bind(auth.id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query("UPDATE site_rules SET title=$2, body=$3, sort=COALESCE($4, sort), updated_at=now() WHERE id=$1")
         .bind(*path).bind(&body.title).bind(&body.body).bind(body.sort)
-        .execute(&state.repo.db).await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    if n.rows_affected() == 0 {
+        .execute(&mut *tx).await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    if n == 0 {
         return Err(DomainError::NotFound(*path as i64));
     }
     state

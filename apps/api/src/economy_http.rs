@@ -394,6 +394,47 @@ async fn apply_item_effect(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
+        // VIP 待遇到期延展（0079 G18：购买日 ≥ 到期日则从今天起算，否则续期——断购不惩罚）
+        "vip" | "app_vip" => {
+            let days = config.get("days").and_then(|v| v.as_i64()).unwrap_or(30);
+            sqlx::query(
+                "UPDATE users SET \
+                    vip_until = GREATEST(COALESCE(vip_until, now()), now()) + make_interval(days => $2), \
+                    donor = TRUE \
+                 WHERE id = $1",
+            )
+            .bind(user_id)
+            .bind(days)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        // 免广告（donor 待遇；NP 口径：15 天档）
+        "ad_free" => {
+            let days = config.get("days").and_then(|v| v.as_i64()).unwrap_or(15);
+            sqlx::query(
+                "UPDATE users SET donor_until = GREATEST(COALESCE(donor_until, now()), now()) + make_interval(days => $2) \
+                 WHERE id = $1",
+            )
+            .bind(user_id)
+            .bind(days)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        // 自定义头衔（NP 5000 魔力口径）：config.title 由商店 SKU 预置；用户可后续在 UserCP 改（同价）
+        "custom_title" => {
+            if let Some(t) = config.get("title").and_then(|v| v.as_str()) {
+                if !t.trim().is_empty() && t.chars().count() <= 30 {
+                    sqlx::query("UPDATE users SET title = $2 WHERE id = $1")
+                        .bind(user_id)
+                        .bind(t.trim())
+                        .execute(db)
+                        .await
+                        .map_err(|e| DomainError::Internal(e.into()))?;
+                }
+            }
+        }
         _ => {} // 其余类型：权益标记后续按需扩展（佩戴/生效周期）
     }
     Ok(())

@@ -1153,6 +1153,81 @@ async fn purge_old_login_events(db: &PgPool) -> anyhow::Result<u64> {
     Ok(res.rows_affected())
 }
 
+/// 成就授予（0079 G6，U3D 口径教育站收敛版）：四族指标聚合 → 达标授予 + 火花奖励。
+/// 幂等：PK (user_id, def_id) 天然防重；奖励走幂等键 achievement:{def_code}:{uid}。
+async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
+    let res = sqlx::query(
+        r#"
+        WITH metrics AS (
+            SELECT u.id AS user_id,
+                   COALESCE(u.seeding_size, 0) AS seeding_bytes,
+                   (SELECT count(*) FROM resurrections r WHERE r.user_id = u.id AND r.status = 'done') AS rescue_count,
+                   (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS upload_count,
+                   (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count
+            FROM users u WHERE u.status < 2
+        ),
+        m AS (
+            SELECT user_id, 'seeding_bytes' AS metric, seeding_bytes AS val FROM metrics
+            UNION ALL SELECT user_id, 'rescue_count', rescue_count FROM metrics
+            UNION ALL SELECT user_id, 'upload_count', upload_count FROM metrics
+            UNION ALL SELECT user_id, 'post_count', post_count FROM metrics
+        ),
+        due AS (
+            SELECT m.user_id, d.id AS def_id, d.code, d.reward_sparks, m.val
+            FROM m JOIN achievement_defs d ON d.metric = m.metric AND m.val >= d.threshold
+        )
+        INSERT INTO user_achievements (user_id, def_id, metric_value)
+        SELECT user_id, def_id, val FROM due
+        ON CONFLICT (user_id, def_id) DO NOTHING
+        RETURNING user_id, def_id, code, reward_sparks, metric_value
+        "#,
+    )
+    .fetch_all(db)
+    .await?;
+    for row in &res {
+        let (uid, def_id, code, reward, val): (i64, i64, String, i64, i64) = (
+            row.try_get(0)?,
+            row.try_get(1)?,
+            row.try_get(2)?,
+            row.try_get(3)?,
+            row.try_get(4)?,
+        );
+        if reward > 0 {
+            let idem = format!("achievement:{code}:{uid}");
+            sqlx::query(
+                r#"
+                INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
+                SELECT nextval('spark_ledger_id_seq'), $1, $2, 'achievement', $3
+                WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)
+                "#,
+            )
+            .bind(uid)
+            .bind(reward)
+            .bind(&idem)
+            .execute(db)
+            .await?;
+            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+                .bind(uid)
+                .bind(reward)
+                .execute(db)
+                .await?;
+        }
+        let _ = sqlx::query(
+            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+        )
+        .bind(uid)
+        .bind("成就达成")
+        .bind(format!("恭喜达成成就「{code}」（指标值 {val}）！奖励 {reward} 火花已入账。"))
+        .execute(db)
+        .await;
+        let _ = def_id;
+    }
+    if !res.is_empty() {
+        tracing::info!(n = res.len(), "achievements granted");
+    }
+    Ok(res.len() as u64)
+}
+
 /// 闲置账号停用（0072，U3D AutoDisableInactiveUsers 口径的教育站收敛版）：
 /// 90 天未登录、无任何做种、非员工（class<90）且非捐赠者 → dormant_at 打标。
 /// 不改 status（保留封禁语义）、不删数据；登录侧拦截 dormant_at 非空者并提示联系管理组。
@@ -1704,6 +1779,7 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 if let Err(e) = resurrection_settle(&db).await { tracing::error!(?e, "resurrection_settle"); }
                 if let Err(e) = funding_settle(&db).await { tracing::error!(?e, "funding_settle"); }
                 if let Err(e) = refundable_settle(&db).await { tracing::error!(?e, "refundable_settle"); }
+                if let Err(e) = achievement_grant(&db).await { tracing::error!(?e, "achievement_grant"); }
             }
             _ = tick10.tick() => {
                 if first_tick10 { first_tick10 = false; continue; }

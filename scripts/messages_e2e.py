@@ -38,14 +38,50 @@ def check(name, cond, detail=""):
 st, r = call("POST", "/auth/login", {"username": "root", "password": "password123"})
 root = r["data"]["token"]
 check("前置·root登录", st == 200)
-st, r = call("POST", "/admin/adduser", {"username": "pma", "email": "pma@t.local", "password": "PmaPass123!"}, token=root)
-st, r = call("POST", "/auth/login", {"username": "pma", "password": "PmaPass123!"})
-A = r["data"]["token"] if st == 200 else None
-check("前置·用户A", A is not None, f"{st}")
-st, r = call("POST", "/admin/adduser", {"username": "pmb", "email": "pmb@t.local", "password": "PmbPass123!"}, token=root)
-st, r = call("POST", "/auth/login", {"username": "pmb", "password": "PmbPass123!"})
-B = r["data"]["token"] if st == 200 else None
-check("前置·用户B", B is not None, f"{st}")
+import time as _t
+def ensure_user(name, email, password):
+    """幂等建号：新建走 adduser；已存在（重跑）时改密路径走 /me/change-password
+    无法用（不知道旧密码），改用 SQL 侧由 root 直接重置（演示环境约定）——
+    这里通过 admin/resetpass 拿临时密码 → 登录 → 必改流程改回目标密码。"""
+    st1, _ = call("POST", "/admin/adduser", {"username": name, "email": email, "password": password}, token=root)
+    if st1 != 200:
+        # 已存在：查 uid → admin/resetpass 生成临时密码（会置 must_reset）→ 改回
+        uid = None
+        st2, rows = call("GET", f"//admin/users?kw={name}", token=root)
+        _ = st2
+        # 用临时密码登录后走 change-password 改回目标密码
+        import subprocess
+        q = subprocess.run(
+            ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d", "fluxtorrent",
+             "-tAc", f"SELECT id FROM users WHERE username='{name}'"],
+            capture_output=True, text=True)
+        uid = (q.stdout.strip() or "").split("\n")[0]
+        if not uid:
+            return None
+        st3, r3 = call("POST", "/admin/resetpass", {"user_id": int(uid)}, token=root)
+        if st3 != 200:
+            return None
+        temp = r3["data"]["temp_password"]
+        for _ in range(5):
+            st4, r4 = call("POST", "/auth/login", {"username": name, "password": temp})
+            if st4 == 200:
+                break
+            _t.sleep(10)
+        else:
+            return None
+        tok_tmp = r4["data"]["token"]
+        call("POST", "/me/password/change",
+             {"old_password": temp, "new_password": password}, token=tok_tmp)
+    for _ in range(5):
+        st5, r5 = call("POST", "/auth/login", {"username": name, "password": password})
+        if st5 == 200:
+            return r5["data"]["token"]
+        _t.sleep(10)  # 登录限流退避
+    return None
+A = ensure_user("pma", "pma@t.local", "PmaPass123!")
+check("前置·用户A", A is not None)
+B = ensure_user("pmb", "pmb@t.local", "PmbPass123!")
+check("前置·用户B", B is not None)
 
 if A and B:
     # 1. 接收限制矩阵：B 设 accept_pm=no → A 发信被拒；root(staff) 发信放行
