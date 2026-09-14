@@ -578,12 +578,14 @@ async fn top_boards(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<
         "",
         "",
     );
+    // 审计修复（P2）：seeding INNER JOIN 在无做种用户时全空导致恒空榜。
+    // 改 LEFT JOIN + HAVING count>0：有做种记录者才进榜，口径与做种收益一致
     let hourly_q = base(
         "(10 + count(*) * 2 + COALESCE(sum(t.size), 0) / 1099511627776.0) \
             * CASE WHEN u.donor THEN 2 ELSE 1 END",
-        "JOIN snatches s ON s.user_id = u.id AND s.seeding JOIN torrents t ON t.id = s.torrent_id",
+        "JOIN snatches s ON s.user_id = u.id AND s.seeding LEFT JOIN torrents t ON t.id = s.torrent_id",
         "",
-        "",
+        "HAVING count(*) > 0",
     );
     let torrents_q = base(
         "count(*)",

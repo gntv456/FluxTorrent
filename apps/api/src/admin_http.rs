@@ -1331,6 +1331,11 @@ async fn user_set_status(
     if n == 0 {
         return Err(DomainError::Validation("用户不存在".into()));
     }
+    // 审计修复（P2）：封禁/禁言须即刻失效 tracker 的 passkey 缓存（≤60s 窗口内被 ban 用户
+    // 仍可 announce）。flags 端点早有同款调用，此处此前遗漏。
+    if body.status >= 1 {
+        crate::http::bump_guard_ver(&state).await;
+    }
     state
         .repo
         .audit(Some(auth.id), "user.set_status", Some(body.user_id))

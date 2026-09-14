@@ -1313,6 +1313,8 @@ async fn checkin_status(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
+        // 审计修复（P2）：补签行 makeup=true 且 streak=0，被 last() 当作最新连签会让首页
+        // 在补签当天显示连签 0。recent 列表仍含补签行（日历要展示），streak 单独查非补签基线。
         "SELECT date, streak, reward FROM attendance WHERE user_id = $1 AND date >= current_date - interval '30 days' ORDER BY date",
     )
     .bind(auth.id)
@@ -1321,7 +1323,16 @@ async fn checkin_status(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive(); // 站点时区 UTC+8
     let checked_today = rows.iter().any(|(d, _, _)| *d == today);
-    let current_streak = rows.last().map(|(_, s, _)| *s).unwrap_or(0);
+    // streak 基线取最后一条非补签行（与签到主流程同口径），补签不重置显示
+    let current_streak: i64 = sqlx::query_scalar(
+        "SELECT streak FROM attendance WHERE user_id = $1 AND NOT makeup ORDER BY date DESC LIMIT 1",
+    )
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .map(|s: i32| s as i64)
+    .unwrap_or(0);
     // 补签卡持有数（未消耗订单；kind 兼容 makeup_card/resub_card，0066）
     let makeup_cards: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM shop_orders o JOIN shop_items i ON i.id = o.item_id \
@@ -1563,6 +1574,19 @@ async fn torznab_search(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
+    // 审计修复（P2）：item link/enclosure 需绝对地址，Prowlarr 等才能直接请求。
+    // PUBLIC_API_URL 未配置时按请求 Host 拼。
+    let api_base = std::env::var("PUBLIC_API_URL")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .unwrap_or_else(|| {
+            req.headers()
+                .get("host")
+                .and_then(|v| v.to_str().ok())
+                .filter(|h| !h.is_empty())
+                .map(|h| format!("http://{h}"))
+                .unwrap_or_else(|| "http://127.0.0.1:8080".into())
+        });
     let auth_uid = {
         // 审计修复（P1）：require_token 现返回 token 所属 user —— enclosure/link 的
         // passkey 占位符替换为该用户真实 passkey，否则 Prowlarr 拿到 PASSKEY 字面量必 401。
@@ -1608,8 +1632,8 @@ async fn torznab_search(
                     "  <item>\n",
                     "    <title>{}</title>\n",
                     "    <guid isPermaLink=\"false\">torrent-{}</guid>\n",
-                    "    <link>/api/v1/compat/nexusphp/download.php?id={}</link>\n",
-                    "    <enclosure url=\"/api/v1/compat/nexusphp/download.php?id={}&amp;passkey={}\" type=\"application/x-bittorrent\" length=\"{}\" />\n",
+                    "    <link>{}/api/v1/compat/nexusphp/download.php?id={}</link>\n",
+                    "    <enclosure url=\"{}/api/v1/compat/nexusphp/download.php?id={}&amp;passkey={}\" type=\"application/x-bittorrent\" length=\"{}\" />\n",
                     "    <pubDate>{}</pubDate>\n",
                     "    <size>{}</size>\n",
                     "    <seeders>{}</seeders>\n",
@@ -1618,7 +1642,7 @@ async fn torznab_search(
                     "  </item>\n"
                 ),
                 xml_escape(&t.name),
-                t.id, t.id, t.id, xml_escape(&auth_uid), t.size, pub_date, t.size, t.seeders,
+                t.id, &api_base, t.id, &api_base, t.id, xml_escape(&auth_uid), t.size, pub_date, t.size, t.seeders,
                 t.seeders + t.leechers,
             )
         })
