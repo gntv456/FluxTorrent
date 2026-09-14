@@ -113,6 +113,7 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(voucher_use)
         .service(spark_flow_report)
         .service(torznab_caps)
+        .service(torznab_search)
         .service(fundings_list)
         .service(funding_create)
         .service(funding_contribute)
@@ -1452,7 +1453,7 @@ async fn spark_flow_report(
 }
 
 /// Torznab caps 端点（0077，cross-seed/Prowlarr 生态入口第一步）。
-/// search 端点后续接 compat 列表；caps 是 indexer 注册的握手必需。
+/// 0079：caps 补真实分类映射 + search 端点落地（映射到既有 torrents 搜索）。
 #[get("/torznab")]
 async fn torznab_caps() -> HttpResponse {
     let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -1461,9 +1462,95 @@ async fn torznab_caps() -> HttpResponse {
   <limits max="100" default="50" />
   <categories>
     <category id="8000" name="Other" />
+    <category id="8001" name="Other/Education" />
   </categories>
+  <search-fields>
+    <field name="q" type="text" />
+  </search-fields>
 </torznab:search>"#;
     HttpResponse::Ok().content_type("application/xml").body(xml)
+}
+
+/// Torznab search（0079）：q=关键字 → 复用 TorrentFilter 的 trgm 搜索，atom 输出。
+/// 鉴权与 compat 层同源：`Authorization: Token <api_token>`（开放 API Token）。
+/// enclosure 指向 download.php（passkey 形状），Prowlarr/cross-seed 拿链接后带 passkey 拉取。
+#[get("/torznab/search")]
+async fn torznab_search(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<HttpResponse> {
+    crate::openapi_http::require_token(&req, &state).await?;
+    let keyword = q.get("q").cloned().unwrap_or_default();
+    let limit: usize = q
+        .get("limit")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(50)
+        .clamp(1, 100);
+    let offset: i64 = q
+        .get("offset")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0)
+        .max(0);
+    let filter = crate::torrents::TorrentFilter {
+        search: (!keyword.trim().is_empty()).then(|| keyword.trim().to_string()),
+        ..Default::default()
+    };
+    let page = crate::torrents::list_torrents(
+        &state.repo.db,
+        &filter,
+        None,
+        offset + limit as i64,
+    )
+    .await?;
+    let items: Vec<_> = page
+        .items
+        .into_iter()
+        .skip(offset as usize)
+        .take(limit)
+        .map(|t| {
+            let pub_date = t.created_at.to_rfc3339();
+            format!(
+                concat!(
+                    "  <item>\n",
+                    "    <title>{}</title>\n",
+                    "    <guid isPermaLink=\"true\">torrent-{}</guid>\n",
+                    "    <link>/api/v1/compat/nexusphp/download.php?id={}</link>\n",
+                    "    <enclosure url=\"/api/v1/compat/nexusphp/download.php?id={}&amp;passkey=PASSKEY\" type=\"application/x-bittorrent\" length=\"{}\" />\n",
+                    "    <pubDate>{}</pubDate>\n",
+                    "    <size>{}</size>\n",
+                    "    <seeders>{}</seeders>\n",
+                    "    <peers>{}</peers>\n",
+                    "    <category id=\"8000\" name=\"Other\" />\n",
+                    "  </item>\n"
+                ),
+                xml_escape(&t.name),
+                t.id, t.id, t.id, t.size, pub_date, t.size, t.seeders,
+                t.seeders + t.leechers,
+            )
+        })
+        .collect();
+    let xml = format!(
+        concat!(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
+            "<rss version=\"2.0\" xmlns:torznab=\"http://torznab.com/schemas/2015/feed\">\n",
+            "<channel>\n",
+            "  <title>FluxTorrent</title>\n",
+            "  <description>FluxTorrent Torznab feed</description>\n",
+            "{}",
+            "</channel>\n",
+            "</rss>\n"
+        ),
+        items.join("")
+    );
+    Ok(HttpResponse::Ok().content_type("application/xml").body(xml))
+}
+
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 // ============ 定向众筹免费（0078，HDBits Featured 口径，v3 §27-13） ============
