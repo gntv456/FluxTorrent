@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { InviteItem } from "@/lib/data";
@@ -22,6 +22,7 @@ export function InviteManager({
   needClass: string;
 }) {
   const { dict } = useI18n();
+  const inviteIdemRef = useRef<string | null>(null);
   const [invites, setInvites] = useState<InviteItem[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -67,7 +68,7 @@ export function InviteManager({
       // 幂等键：每次点击生成新 UUID（与 /shop/buy 同口径，防网络重试双扣款）
       const r = await api.post<{ code: string; replayed?: boolean }>(
         "/api/v1/invites/redeem",
-        { idempotency_key: crypto.randomUUID() },
+        { idempotency_key: (inviteIdemRef.current ??= crypto.randomUUID()) },
       );
       setMsg(r.code ?? replayedText);
       refresh();

@@ -56,7 +56,11 @@ export function SubtitleBoard() {
     try {
       const params = new URLSearchParams();
       if (search.trim()) params.set("search", search.trim());
-      if (langId !== "0") params.set("lang_id", langId);
+      // 后端存的是语言代码（chs/cht/eng…），数字 id 是旧站展示口径：提交前转换
+      if (langId !== "0") {
+        const code = Object.entries(LANG_CODE_TO_ID).find(([, id]) => id === langId)?.[0];
+        if (code) params.set("lang_id", code);
+      }
       if (letter) params.set("letter", letter);
       const qs = params.toString();
       setRows(await api.get<SubtitleRow[]>(`/api/v1/subtitles${qs ? `?${qs}` : ""}`));
@@ -269,7 +273,23 @@ export function SubtitleBoard() {
                   </span>
                 </td>
                 <td>
-                  <a href={`/api/v1/subtitles/${s.id}/download`} className="font-bold">
+                  <a
+                    href={`/api/v1/subtitles/${s.id}/download`}
+                    className="font-bold"
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={async (e) => {
+                      // 端点返回 JSON（file_ref 指向存储）；此处拦截导航改为取引用提示
+                      e.preventDefault();
+                      try {
+                        await api.get(`/api/v1/subtitles/${s.id}/download`);
+                        setMsg(`字幕「${s.title}」已开始下载（引用 #${s.id}）`);
+                        load();
+                      } catch (err) {
+                        setMsg(err instanceof Error ? err.message : "下载失败");
+                      }
+                    }}
+                  >
                     {s.title}
                   </a>
                 </td>

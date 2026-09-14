@@ -24,6 +24,7 @@ pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
         // M17 字幕
         .service(subtitle_upload)
         .service(subtitle_list)
+        .service(subtitle_download)
         // M18 课本
         .service(textbook_list)
         .service(textbook_link)
@@ -479,6 +480,40 @@ async fn subtitle_list(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
+}
+
+/// 字幕下载：计数 +1 并返回文件引用（前端此前链接到不存在的路由，下载链路断裂）。
+/// 文件本体在对象存储/本地卷（file_ref），此处返回引用与元信息由前端拉取。
+#[get("/subtitles/{id}/download")]
+async fn subtitle_download(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let sid = path.into_inner();
+    let row: Option<(String, Option<i64>, String)> = sqlx::query_as(
+        "SELECT file_ref, torrent_id, title FROM subtitles WHERE id = $1",
+    )
+    .bind(sid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((file_ref, torrent_id, title)) = row else {
+        return Err(DomainError::NotFound(sid));
+    };
+    sqlx::query("UPDATE subtitles SET downloads = downloads + 1 WHERE id = $1")
+        .bind(sid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let _ = auth;
+    Ok(ok(serde_json::json!({
+        "id": sid,
+        "title": title,
+        "torrent_id": torrent_id,
+        "file_ref": file_ref,
+    })))
 }
 
 // ============ M18 课本中心 ============
