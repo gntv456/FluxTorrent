@@ -101,6 +101,9 @@ async fn medal_list(
 #[derive(Deserialize)]
 struct MedalBuyReq {
     medal_id: i64,
+    /// 前端生成的幂等键（同一键重试不双扣）；缺省时回退随机键（兼容旧客户端）
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/medals/buy")]
@@ -161,7 +164,11 @@ async fn medal_buy(
             return Err(DomainError::Validation("该勋章已售罄".into()));
         }
     }
-    let idem = format!("medal-buy:{}:{}:{}", auth.id, body.medal_id, Uuid::new_v4());
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.trim().is_empty())
+        .unwrap_or_else(|| format!("medal-buy:{}:{}:{}", auth.id, body.medal_id, Uuid::new_v4()));
     crate::economy_http::spend_spark(
         &state.repo.db,
         auth.id,
@@ -193,6 +200,8 @@ async fn medal_buy(
 struct MedalGiftReq {
     medal_id: i64,
     to_user: String,
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/medals/gift")]
@@ -236,12 +245,52 @@ async fn medal_gift(
             .and_then(|v: String| v.parse().ok())
             .unwrap_or(500);
     let tax = crate::economy::gift_tax(price, tax_bp);
-    let idem = format!(
-        "medal-gift:{}:{}:{}",
-        auth.id,
-        body.medal_id,
-        Uuid::new_v4()
-    );
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.trim().is_empty())
+        .unwrap_or_else(|| {
+            format!("medal-gift:{}:{}:{}", auth.id, body.medal_id, Uuid::new_v4())
+        });
+    // 赠送通道同样受「已拥有/售期/限量」约束（此前 gift 绕过三重检查可超卖限量勋章）
+    let receiver_owned: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM user_medals WHERE user_id = $1 AND medal_id = $2 AND (expires_at IS NULL OR expires_at > now()))",
+    )
+    .bind(to_id)
+    .bind(body.medal_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    if receiver_owned {
+        return Err(DomainError::Validation("对方已拥有该勋章".into()));
+    }
+    let (inventory, inv_used, sale_begin, sale_end): (
+        Option<i32>,
+        i64,
+        Option<chrono::DateTime<chrono::Utc>>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    ) = sqlx::query_as(
+        "SELECT m.inventory, (SELECT count(*) FROM user_medals um WHERE um.medal_id = m.id),                 m.sale_begin_at, m.sale_end_at          FROM medals m WHERE m.id = $1",
+    )
+    .bind(body.medal_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(begin) = sale_begin {
+        if chrono::Utc::now() < begin {
+            return Err(DomainError::Validation("该勋章尚未开售".into()));
+        }
+    }
+    if let Some(end) = sale_end {
+        if chrono::Utc::now() > end {
+            return Err(DomainError::Validation("该勋章已结束销售".into()));
+        }
+    }
+    if let Some(stock) = inventory {
+        if inv_used >= stock as i64 {
+            return Err(DomainError::Validation("该勋章已售罄".into()));
+        }
+    }
     crate::economy_http::spend_spark(
         &state.repo.db,
         auth.id,
