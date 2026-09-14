@@ -4,7 +4,7 @@
 //! 刷流工具（RSS 阅读器/下载器）凭 URL 自动拉新种。
 //! 参数对齐好学站 getrss.php 的常用子集：分类多选/媒介多选/官种/关键字/条数/标题格式/付费。
 
-use actix_web::{get, web, HttpResponse};
+use actix_web::{HttpRequest, get, web, HttpResponse};
 use chrono::{DateTime, Utc};
 
 use crate::state::AppState;
@@ -35,6 +35,7 @@ fn xml_escape(s: &str) -> String {
 /// passkey 即用户身份（BEP3 同源凭证，泄露可自助 rotate —— 与 tracker 一致的暴露面）
 #[get("/rss/{passkey}")]
 async fn rss_feed(
+    req: HttpRequest,
     path: web::Path<String>,
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<RssQuery>,
@@ -89,7 +90,21 @@ async fn rss_feed(
     .await
     .unwrap_or_default();
 
-    let base = std::env::var("PUBLIC_SITE_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+    // 审计修复（P2）：PUBLIC_SITE_URL 未配置时退请求 Host 拼绝对地址，
+    // RSS 阅读器才能跳转（此前 channel link 为空、item link 为相对路径）
+    let base = std::env::var("PUBLIC_SITE_URL")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .unwrap_or_else(|| {
+            let host = req
+                .headers()
+                .get("host")
+                .and_then(|v| v.to_str().ok())
+                .filter(|h| !h.is_empty())
+                .map(|h| format!("http://{h}"))
+                .unwrap_or_else(|| "http://localhost:3000".into());
+            host
+        });
     // 标题格式：linktype=dl（默认）[官种] 标题 [副标题] 大小 发布者；linktype=page 仅标题
     let verbose = q.linktype.as_deref() != Some("page");
     let mut items = String::new();

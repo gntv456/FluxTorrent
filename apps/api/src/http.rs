@@ -4942,8 +4942,9 @@ async fn upload(
 
     // 重复检测（M04：info_hash 唯一）
     let dupe: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents WHERE info_hash = $1)")
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents WHERE info_hash = $1 OR raw_info_hash = $2)")
             .bind(&parsed.info_hash_hex)
+            .bind(&parsed.raw_info_hash_hex)
             .fetch_one(&state.repo.db)
             .await
             .unwrap_or(false);
@@ -5008,10 +5009,11 @@ async fn upload(
         }
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO torrents (info_hash, pieces_hash, group_id, name, small_descr, descr, category_id, medium_id, grade_id, edition_id, owner_id, anonymous, size, numfiles, approval_status, media_info) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id",
+        "INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, group_id, name, small_descr, descr, category_id, medium_id, grade_id, edition_id, owner_id, anonymous, size, numfiles, approval_status, media_info) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id",
     )
     .bind(&parsed.info_hash_hex)
+    .bind(&parsed.raw_info_hash_hex)
     .bind(&parsed.pieces_hash_hex)
     .bind(form.group_id)
     .bind(&name)

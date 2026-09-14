@@ -33,7 +33,8 @@ async fn games_overview() -> impl Responder {
         "bigsmall": { "name": "猜大小", "max_bet": games::MAX_BET,
             "rule": "1-49 小 · 52-100 大 · 50/51 平局返本 · 猜中 2x" },
         "jgg": { "name": "九宫格抽奖", "ticket": games::JGG_TICKET,
-            "prizes": ["谢谢参与 38%", "再来一次 12%", "2x 20%", "3x 12%", "5x 10%", "10x 5.5%", "50x 2%", "100x 0.5%"] },
+            // 审计修复（P2）：展示与实现权重表对齐（旧文案是废弃赔率表，含不存在的 100x 档）
+            "prizes": ["谢谢参与 73.1%", "再来一次 12%", "2x 6%", "3x 5%", "5x 2.5%", "10x 1%", "50x 0.3%"] },
         "farm": { "name": "好学农场", "slots": 6, "market_refresh": "每日 0/4/8/12/16/20 点", "volatility": "±50%" },
         "funvote": { "name": "趣味盒投票", "cost": "1 火花/票", "rule": "一人一票" },
         "rate_limit": format!("每人每小时 {MAX_PLAYS_PER_HOUR} 次"),
@@ -479,7 +480,24 @@ async fn fun_vote(
     body: web::Json<FunVoteReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // 占位（一人一票）
+    // 审计修复（P2 竞态）：旧版先 INSERT 占位、校验失败再 DELETE 回滚——并发下一人的
+    // 合法占位可能被另一人的非法回滚误删。校验全部前置，通过后才落占位。
+    let valid: Option<(serde_json::Value, bool)> =
+        sqlx::query_as("SELECT options, closed FROM fun_polls WHERE id = $1")
+            .bind(body.poll_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((options, closed)) = valid else {
+        return Err(DomainError::Validation("投票不存在".into()));
+    };
+    let n = options.as_array().map(|a| a.len()).unwrap_or(0);
+    if closed {
+        return Err(DomainError::Validation("投票已结束".into()));
+    }
+    if body.option_index < 0 || body.option_index as usize >= n {
+        return Err(DomainError::Validation("选项无效".into()));
+    }
     let voted = sqlx::query(
         "INSERT INTO fun_votes (poll_id, user_id, option_index) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
     )
@@ -491,30 +509,6 @@ async fn fun_vote(
     .map_err(|e| DomainError::Internal(e.into()))?;
     if voted.rows_affected() == 0 {
         return Err(DomainError::Validation("已经投过啦，一人一票".into()));
-    }
-    // 选项合法性（json 数组下标）+ 未关闭
-    let valid: Option<(serde_json::Value, bool)> =
-        sqlx::query_as("SELECT options, closed FROM fun_polls WHERE id = $1")
-            .bind(body.poll_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((options, closed)) = valid else {
-        return Err(DomainError::Validation("投票不存在".into()));
-    };
-    let n = options.as_array().map(|a| a.len()).unwrap_or(0);
-    if closed || body.option_index < 0 || body.option_index as usize >= n {
-        // 回滚占位
-        let _ = sqlx::query("DELETE FROM fun_votes WHERE poll_id = $1 AND user_id = $2")
-            .bind(body.poll_id)
-            .bind(auth.id)
-            .execute(&state.repo.db)
-            .await;
-        return Err(DomainError::Validation(if closed {
-            "投票已结束".into()
-        } else {
-            "选项无效".into()
-        }));
     }
     // 投票 +1 火花（旧站口径），扣款失败回滚占位
     let idem = format!("fun-vote:{}:{}", auth.id, body.poll_id);

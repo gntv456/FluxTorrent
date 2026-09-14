@@ -144,6 +144,9 @@ pub struct ParsedTorrent {
     /// info_hash 会因子典外字段变化（重打包/source）失效；pieces_hash 只由分片内容决定，
     /// 是辅种 / 转种生态识别「同内容」的更鲁棒指纹。缺 pieces 字段时为空串。
     pub pieces_hash_hex: String,
+    /// BEP3 原始字节口径 info_hash（不重排序）：客户端 announce 哈希与此一致。
+    /// info_hash_hex 为规范化重编码口径（历史存量）；双口径见 worker 匹配逻辑。
+    pub raw_info_hash_hex: String,
     pub name: String,
     pub size: i64,
     pub numfiles: i64,
@@ -201,6 +204,16 @@ pub fn parse_torrent(bytes: &[u8]) -> Result<ParsedTorrent, String> {
     let numfiles = files.len() as i64;
 
     let ih = info_hash(info);
+    // 审计修复（P1）：BEP3 客户端按 info 字典「原始字节」计算 announce 哈希，
+    // 规范化重编码在键序非排序的种子上与客户端口径不一致 → worker 静默丢计费。
+    // 这里重扫原始字节定位 info 区间（d...e 配对），对原始字节做 SHA1。
+    let raw_info_hash_hex = raw_info_span(bytes)
+        .map(|span| {
+            let mut h = Sha1::new();
+            h.update(&bytes[span.0..span.1]);
+            hex(h.finalize().as_slice())
+        })
+        .unwrap_or_else(|| hex(&ih));
     // pieces_hash = SHA1(info.pieces 原始字节)：只依赖文件分片内容，不含 announce/private/source
     // 等字典外字段，跨站重打包后仍稳定 —— 辅种/转种工具按它匹配「同内容」（YemaPT 口径）。
     let pieces_hash_hex = info
@@ -214,6 +227,7 @@ pub fn parse_torrent(bytes: &[u8]) -> Result<ParsedTorrent, String> {
         .unwrap_or_default();
     Ok(ParsedTorrent {
         info_hash_hex: hex(&ih),
+        raw_info_hash_hex,
         pieces_hash_hex,
         name,
         size,
@@ -354,5 +368,86 @@ mod tests {
         .unwrap();
         let (root, _) = parse(&out).unwrap();
         assert!(root.get(b"announce-list").is_none());
+    }
+}
+
+
+/// 定位 .torrent 字节中顶层 info 字典的原始区间 [start, end)。
+/// 只处理顶层键（不递归进嵌套 dict/list 的 e），失败返回 None（调用方退规范化口径）。
+fn raw_info_span(bytes: &[u8]) -> Option<(usize, usize)> {
+    let mut pos = 0usize;
+    // 顶层必须以 'd' 开头
+    if bytes.first() != Some(&b'd') {
+        return None;
+    }
+    pos = 1;
+    loop {
+        // 读键：长度前缀:bytes
+        let (key_start, key_end) = match read_string(bytes, pos)? {
+            (s, e) => (s, e),
+        };
+        let key = &bytes[key_start..key_end];
+        pos = key_end;
+        if pos >= bytes.len() {
+            return None;
+        }
+        if key == b"info" && bytes[pos] == b'd' {
+            // 深度配对扫描到匹配的 e
+            let start = pos;
+            let end = scan_dict_end(bytes, pos)?;
+            return Some((start, end));
+        }
+        // 跳过该键的值（任意 bencode 值）
+        pos = skip_value(bytes, pos)?;
+        if pos < bytes.len() && bytes[pos] == b'e' {
+            return None; // 顶层结束仍未遇 info
+        }
+    }
+}
+
+fn read_string(bytes: &[u8], pos: usize) -> Option<(usize, usize)> {
+    let colon = bytes[pos..].iter().position(|&b| b == b':')? + pos;
+    let len: usize = std::str::from_utf8(&bytes[pos..colon]).ok()?.parse().ok()?;
+    let s = colon + 1;
+    let e = s.checked_add(len)?;
+    if e > bytes.len() {
+        return None;
+    }
+    Some((s, e))
+}
+
+fn scan_dict_end(bytes: &[u8], start: usize) -> Option<usize> {
+    // start 指向 'd'
+    let mut pos = start + 1;
+    loop {
+        if pos >= bytes.len() {
+            return None;
+        }
+        match bytes[pos] {
+            b'e' => return Some(pos + 1),
+            b'd' | b'l' => {
+                pos = skip_value(bytes, pos)?;
+            }
+            b'i' => {
+                pos = bytes[pos..].iter().position(|&b| b == b'e')? + pos + 1;
+            }
+            b'0'..=b'9' => {
+                let (s, e) = read_string(bytes, pos)?;
+                pos = e;
+            }
+            _ => return None,
+        }
+    }
+}
+
+fn skip_value(bytes: &[u8], pos: usize) -> Option<usize> {
+    match *bytes.get(pos)? {
+        b'd' | b'l' => scan_dict_end(bytes, pos),
+        b'i' => Some(bytes[pos..].iter().position(|&b| b == b'e')? + pos + 1),
+        b'0'..=b'9' => {
+            let (_, e) = read_string(bytes, pos)?;
+            Some(e)
+        }
+        _ => None,
     }
 }

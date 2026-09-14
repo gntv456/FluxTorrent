@@ -1631,6 +1631,12 @@ async fn staff_messages(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
+    // answered 解析：0/1/true/false → Option<i32>（非法值按未过滤处理，不再裸 400）
+    let answered_i: Option<i32> = q.answered.as_deref().and_then(|v| match v {
+        "0" | "false" => Some(0),
+        "1" | "true" => Some(1),
+        _ => v.parse::<i32>().ok().filter(|n| (0..=1).contains(n)),
+    });
     let rows = sqlx::query_as::<_, StaffMessageRow>(
         "SELECT s.id, u.username, s.subject, s.body, s.answered, a.username AS answered_by, \
                 s.answer, s.answered_at, s.permission, s.created_at \
@@ -1640,7 +1646,7 @@ async fn staff_messages(
          WHERE ($1::int IS NULL OR s.answered = $1) \
          ORDER BY s.answered ASC, s.id DESC LIMIT 100",
     )
-    .bind(q.answered)
+    .bind(answered_i)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1650,7 +1656,9 @@ async fn staff_messages(
 #[derive(Deserialize, Default)]
 #[serde(default)]
 struct StaffMsgQuery {
-    answered: Option<i32>,
+    /// 审计修复（P2 信封）：serde 对 ?answered=false 直接反序列化报裸文本 400（击穿
+    /// JSON 信封）。改为 String 自行解析，支持 0/1/true/false 四种形态。
+    answered: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -1794,13 +1802,60 @@ async fn friend_add(
     if fid == auth.id {
         return Err(DomainError::Validation("不能添加自己".into()));
     }
-    sqlx::query("INSERT INTO friendships (user_id, friend_id, list) VALUES ($1, $2, 'friend') ON CONFLICT DO NOTHING")
+    // 审计修复（P1 隐私）：旧版单方 INSERT 即成好友，可绕过 accept_pm='friends' 屏障。
+    // 新流程：对方拉黑则拒绝；对方已申请我 → 双向转正为好友（接受）；否则写 pending 申请并通知。
+    let blacklisted: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM friendships WHERE user_id = $2 AND friend_id = $1 AND list = 'black')",
+    )
+    .bind(auth.id)
+    .bind(fid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    if blacklisted {
+        return Err(DomainError::Validation("对方拒绝了你的好友申请".into()));
+    }
+    let they_pending: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM friendships WHERE user_id = $2 AND friend_id = $1 AND list = 'pending')",
+    )
+    .bind(auth.id)
+    .bind(fid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    if they_pending {
+        // 对方先申请过我：双向转正
+        sqlx::query("UPDATE friendships SET list = 'friend' WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)")
+            .bind(auth.id)
+            .bind(fid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let _ = sqlx::query(
+            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+        )
+        .bind(fid)
+        .bind("好友申请已通过")
+        .bind(format!("用户 #{} 接受了你的好友申请，你们现在是好友了。", auth.id))
+        .execute(&state.repo.db)
+        .await;
+        return Ok(ok(serde_json::json!({ "friend": body.username, "state": "friend" })));
+    }
+    sqlx::query("INSERT INTO friendships (user_id, friend_id, list) VALUES ($1, $2, 'pending') ON CONFLICT DO NOTHING")
         .bind(auth.id)
         .bind(fid)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "friend": body.username })))
+    let _ = sqlx::query(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+    )
+    .bind(fid)
+    .bind("收到好友申请")
+    .bind(format!("用户 #{} 向你发送了好友申请。添加对方为好友即可接受。", auth.id))
+    .execute(&state.repo.db)
+    .await;
+    Ok(ok(serde_json::json!({ "friend": body.username, "state": "pending" })))
 }
 
 #[get("/friends")]

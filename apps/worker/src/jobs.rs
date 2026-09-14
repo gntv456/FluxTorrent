@@ -604,8 +604,10 @@ async fn process_event(
     seed_cap: i64,
 ) -> anyhow::Result<Option<i64>> {
     // 未知种子的查询失败必须显式报错（重试），不能静默丢弃计费
+    // 审计修复（P1）：announce 哈希是客户端「原始字节」口径；库内 info_hash 为规范化
+    // 重编码口径（键序非排序的种子两者不同，此前静默丢计费）。双口径 OR 匹配。
     let torrent_id: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM torrents WHERE info_hash = $1")
+        sqlx::query_scalar("SELECT id FROM torrents WHERE info_hash = $1 OR raw_info_hash = $1")
             .bind(&ev.hash)
             .fetch_optional(db)
             .await?;
@@ -827,7 +829,7 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         .bind(&idem)
         .execute(db)
         .await?;
-        sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \n                 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
+        sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
             .bind(uid)
             .bind(reward)
                 .bind(&idem)
@@ -1045,24 +1047,45 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
             UPDATE hr_snapshots SET status = 'violated', updated_at = now()
             WHERE status = 'open' AND deadline < now()
             RETURNING user_id, torrent_id, seeded_seconds, required_seconds
+        ),
+        ins AS (
+            INSERT INTO hr_violations (user_id, torrent_id, seeded_seconds, required_seconds)
+            SELECT user_id, torrent_id, seeded_seconds, required_seconds FROM dead
+            ON CONFLICT DO NOTHING
+            RETURNING user_id, torrent_id, seeded_seconds, required_seconds
         )
-        INSERT INTO hr_violations (user_id, torrent_id, seeded_seconds, required_seconds)
-        SELECT user_id, torrent_id, seeded_seconds, required_seconds FROM dead
-        ON CONFLICT DO NOTHING
+        -- 审计修复（P1）：violated 此前只落表+日志零成本躺平。补 PM 告知违规与免罪途径
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, ins.user_id, 'H&R 违规确认',
+               '种子 #' || ins.torrent_id || ' 的 H&R 考察期已结束且未达标（做种 '
+               || round(ins.seeded_seconds / 3600.0, 1) || ' 小时 / 要求 '
+               || round(ins.required_seconds / 3600.0, 1) || ' 小时），已记违规一次。
+               持续做种可自行恢复；也可在「我的 H&R」用 20000 火花自助免罪。累计多次违规将影响下载权限。'
+        FROM ins
         "#,
     )
     .execute(db)
     .await?;
     if violated.rows_affected() > 0 {
         tracing::warn!(n = violated.rows_affected(), "H&R violations detected");
+        // 违规行同步 snatches.hr_flag（/me/hr 与列表角标口径）
+        let _ = sqlx::query(
+            "UPDATE snatches s SET hr_flag = TRUE FROM hr_violations v \
+             WHERE v.user_id = s.user_id AND v.torrent_id = s.torrent_id AND NOT s.hr_flag",
+        )
+        .execute(db)
+        .await;
     }
 
     // 5) hr_flag 刷新（0029 一次性迁移的运行时延续）：完成已超 14 天且做种时长 < 120h。
     //    此前该标记只在迁移里置过一次，运行时无人刷新 —— /me/hr（community_http）口径失真。
     sqlx::query(
-        "UPDATE snatches SET hr_flag = TRUE \
-         WHERE completed_at IS NOT NULL AND seeded_seconds < 432000 \
-           AND completed_at < now() - interval '14 days' AND NOT hr_flag",
+        // 审计修复（P1）：硬编码 14 天/120 小时与 hr_policy 可配口径脱节，逐种取 policy
+        "UPDATE snatches s SET hr_flag = TRUE \
+         FROM torrents t WHERE t.id = s.torrent_id AND s.completed_at IS NOT NULL \
+           AND s.seeded_seconds < COALESCE((t.hr_policy->>'seed_hours')::int, 48) * 3600 \
+           AND s.completed_at < now() - make_interval(days => COALESCE((t.hr_policy->>'days')::int, 14)) \
+           AND NOT s.hr_flag",
     )
     .execute(db)
     .await?;
@@ -1129,7 +1152,7 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
         .await?
         .rows_affected();
         if credited > 0 {
-            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \n                 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
+            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
                 .bind(uid)
                 .bind(reward)
                 .bind(&idem)
@@ -1634,12 +1657,20 @@ async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
         .execute(db)
         .await;
     }
-    // ② 到期未达标 → 退款（事务内：退款流水 + 余额 + 状态）
-    let expired: Vec<(i64, i64)> = sqlx::query_as(
-        "UPDATE fundings SET status = 2 WHERE status = 0 AND ends_at <= now() RETURNING id, creator_id",
+    // ② 到期未达标 → 退款。审计修复（P1 撕裂）：旧版先置 status=2 再退款，进程在两步间
+    // 死掉后该众筹永久退出结算集合（WHERE status=0 匹配不到），未完成的退款丢失。
+    // 新序：CAS 到中间态 3（结算中）→ 逐笔退款 → 全部成功置 2；重启后 3 态重入续退。
+    let mut expired: Vec<(i64, i64)> = sqlx::query_as(
+        "UPDATE fundings SET status = 3 WHERE status = 0 AND ends_at <= now() RETURNING id, creator_id",
     )
     .fetch_all(db)
     .await?;
+    // 上次崩溃残留的 3 态（结算中）重新纳入本轮退款
+    expired.extend(
+        sqlx::query_as::<_, (i64, i64)>("SELECT id, creator_id FROM fundings WHERE status = 3")
+            .fetch_all(db)
+            .await?,
+    );
     let mut refunds = 0u64;
     for (fid, _creator) in &expired {
         let contribs: Vec<(i64, i64)> = sqlx::query_as(
@@ -1662,7 +1693,7 @@ async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
             .bind(&idem)
             .execute(db)
             .await?;
-            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \n                 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
+            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
                 .bind(uid)
                 .bind(amount)
                 .bind(&idem)
@@ -1670,6 +1701,11 @@ async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
                 .await?;
             refunds += 1;
         }
+        // 全部退款成功 → 终态 2（失败时下一轮从 3 态重入续退，幂等键防双退）
+        sqlx::query("UPDATE fundings SET status = 2 WHERE id = $1")
+            .bind(fid)
+            .execute(db)
+            .await?;
         let _ = sqlx::query(
             "INSERT INTO messages (sender_id, receiver_id, subject, body) \
              SELECT NULL, creator_id, '众筹未达标', \
