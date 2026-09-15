@@ -1495,11 +1495,13 @@ async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
                 (d2.metric = 'rescue_count'  AND m.rescue_count  >= d2.threshold) OR
                 (d2.metric = 'upload_count'   AND m.upload_count   >= d2.threshold) OR
                 (d2.metric = 'post_count'     AND m.post_count     >= d2.threshold))
-          AND NOT EXISTS (
-                SELECT 1 FROM messages msg
-                WHERE msg.receiver_id = ua.user_id
-                  AND msg.subject = '成就达成'
-                  AND msg.body LIKE '%「' || d.code || '」%')
+        )
+        AND NOT EXISTS (
+            SELECT 1 FROM messages msg
+            WHERE msg.receiver_id = ua.user_id
+              AND msg.subject = '成就达成'
+              AND msg.body LIKE '%「' || d.code || '」%'
+        )
         "#,
     )
     .fetch_all(db)
