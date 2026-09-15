@@ -211,7 +211,7 @@ const zhCnBase = {
     password: "密码",
     submit: "登录",
     busy: "登录中…",
-    fail: "登录失败（{code}）",
+    fail: "登录失败，请稍后重试",
     reset: "重置",
     advancedOptions: "高级选项",
     twoStepCode: "两步验证",

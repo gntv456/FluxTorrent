@@ -215,7 +215,7 @@ const enBase: Omit<Dict, "security2fa" | "apitokens"> = {
     password: "Password",
     submit: "Sign in",
     busy: "Signing in…",
-    fail: "Sign-in failed ({code})",
+    fail: "Sign-in failed, please try again",
     reset: "Reset",
     advancedOptions: "Advanced options",
     twoStepCode: "Two-step verification",
