@@ -12,7 +12,8 @@ pub struct TorrentRow {
     pub name: String,
     pub small_descr: Option<String>,
     pub category_id: i32,
-    pub medium_id: i32,
+    /// 介质列（0087 起可空，仅为兼容老数据；新数据在 torrent_sections）
+    pub medium_id: Option<i32>,
     pub grade_id: Option<i32>,
     pub edition_id: Option<i32>,
     pub size: i64,
@@ -350,18 +351,23 @@ pub async fn get_torrent_detail(db: &PgPool, id: i64, viewer: i64) -> DomainResu
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let mut row = row.ok_or(DomainError::NotFound(id))?;
-    let secs: Vec<(String, i64, String)> = sqlx::query_as(
-        "SELECT ts.kind, ts.dict_id, d.name FROM torrent_sections ts          JOIN section_dict d ON d.id = ts.dict_id WHERE ts.torrent_id = $1",
+    // 0087：sections 附带维度显示名与排序（section_kinds.label），前端直接渲染
+    let secs: Vec<(String, i64, String, String, i32)> = sqlx::query_as(
+        "SELECT ts.kind, ts.dict_id, d.name, COALESCE(k.label, ts.kind) AS label, COALESCE(k.sort, 999) AS sort \
+         FROM torrent_sections ts \
+         JOIN section_dict d ON d.id = ts.dict_id \
+         LEFT JOIN section_kinds k ON k.kind = ts.kind \
+         WHERE ts.torrent_id = $1 ORDER BY sort, ts.kind",
     )
     .bind(id)
     .fetch_all(db)
     .await
-    .unwrap_or_default();
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let mut m = serde_json::Map::new();
-    for (kind, dict_id, name) in secs {
+    for (kind, dict_id, name, label, sort) in secs {
         m.insert(
             kind,
-            serde_json::json!({ "dict_id": dict_id, "name": name }),
+            serde_json::json!({ "dict_id": dict_id, "name": name, "label": label, "sort": sort }),
         );
     }
     row.sections = serde_json::Value::Object(m);

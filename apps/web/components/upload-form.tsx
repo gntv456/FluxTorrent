@@ -8,38 +8,25 @@ import { fmt } from "@/i18n/config";
 interface ProfileCat { id: number; name: string }
 interface SectionDictRow { id: number; kind: string; name: string; sort: number; mode_id: number | null }
 
-/** 兜底维度标签（/section-dict 不可用时；正常路径标签来自 section_kinds 站方可配置） */
-const SECTION_KINDS: [string, string][] = [
-  ["media", "媒介"],
-  ["grades", "学段"],
-  ["editions", "版本"],
-  ["codec", "编码"],
-  ["audio_codec", "音频编码"],
-  ["standard", "规格"],
-  ["team", "制作组"],
-  ["source", "来源"],
-  ["processing", "处理工艺"],
-];
-
 interface SectionKindMeta { kind: string; label: string; sort: number }
 
-/** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类来自站点档案，支持任意类型 PT 站） */
+/** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类与质量维度全部站点数据驱动） */
 export function UploadForm() {
   const { dict, currency } = useI18n();
-  // 分类以 /site-profile 为准（类型包可切换）；字典仅兜底
+  // 分类/元数据源以 /site-profile 为准（类型包可切换）；字典仅兜底分类
   const [profileCats, setProfileCats] = useState<ProfileCat[] | null>(null);
+  const [metaSources, setMetaSources] = useState<string[]>(["imdb", "douban", "bangumi", "indienova"]);
   useEffect(() => {
-    api.get<{ categories: ProfileCat[] }>("/api/v1/site-profile")
-      .then((p) => setProfileCats(p.categories))
+    api.get<{ categories: ProfileCat[]; metadata_sources?: string[] }>("/api/v1/site-profile")
+      .then((p) => {
+        setProfileCats(p.categories);
+        if (p.metadata_sources) setMetaSources(p.metadata_sources);
+      })
       .catch(() => setProfileCats([]));
   }, []);
   const categories = profileCats
     ? profileCats.map((c) => c.name)
     : dict.torrents.categories.slice(1);
-  const media = dict.torrents.media.slice(1);
-  // grades 字典下标 i 与 grades 表 id（i-1）对齐；0 = 不选择
-  const grades = dict.torrents.grades.slice(1);
-  const editions = dict.upload.editions;
   const fileRef = useRef<HTMLInputElement>(null);
   const nfoRef = useRef<HTMLInputElement>(null);
   const descrRef = useRef<HTMLTextAreaElement>(null);
@@ -50,9 +37,6 @@ export function UploadForm() {
   const [ptgenUrl, setPtgenUrl] = useState("");
   const [ptgenBusy, setPtgenBusy] = useState(false);
   const [categoryId, setCategoryId] = useState(2);
-  const [mediumId, setMediumId] = useState(1);
-  const [gradeId, setGradeId] = useState("");
-  const [editionId, setEditionId] = useState("");
   const [smallDescr, setSmallDescr] = useState("");
   const [descr, setDescr] = useState("");
   const [poster, setPoster] = useState("");
@@ -150,10 +134,6 @@ export function UploadForm() {
       return;
     }
     // 媒介为 NOT NULL 外键（media.id），必须选一项，不能留空
-    if (!mediumId) {
-      setMsg(dict.upload.mediumRequired ?? "请选择媒介");
-      return;
-    }
     setBusy(true);
     setMsg(null);
     try {
@@ -163,14 +143,11 @@ export function UploadForm() {
       if (nfoFile) form.append("nfo", nfoFile);
       const qs = new URLSearchParams({
         category_id: String(categoryId),
-        medium_id: String(mediumId),
         anonymous: String(anonymous),
       });
       if (name.trim()) qs.set("name", name.trim());
       if (imdb.trim()) qs.set("imdb", imdb.trim());
       if (price > 0) qs.set("price", String(Math.min(1_000_000, Math.max(0, price))));
-      if (gradeId) qs.set("grade_id", gradeId);
-      if (editionId) qs.set("edition_id", editionId);
       if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
       if (descr.trim()) qs.set("descr", descr.trim());
       if (poster.trim()) qs.set("poster", poster.trim());
@@ -220,43 +197,18 @@ export function UploadForm() {
     </tr>
   );
 
-  // 质量维度渲染清单：API可用 → 全由 section_kinds/section_dict 驱动；不可用 → 三维静态兜底
-  // legacy 三维（media/grades/editions）落实体列，其余进 sections JSON
-  const kindDefs = (
-    secKinds.length > 0
-      ? secKinds.map((k) => ({ kind: k.kind, label: k.label }))
-      : SECTION_KINDS.map(([kind, label]) => ({ kind, label }))
-  )
-    .map((k) => ({ ...k, opts: (secDict[k.kind] ?? []).map((d) => ({ v: d.id, label: d.name })) }))
-    .map((k) =>
-      k.opts.length === 0 && secKinds.length === 0
-        ? {
-            ...k,
-            opts:
-              k.kind === "media"
-                ? media.map((label, i) => ({ v: i + 1, label }))
-                : k.kind === "grades"
-                  ? grades.map((label, i) => ({ v: i, label }))
-                  : k.kind === "editions"
-                    ? editions.map((label, i) => ({ v: i + 1, label }))
-                    : [],
-          }
-        : k,
-    )
+  // 质量维度渲染清单（0087）：九维全部由 section_kinds/section_dict 驱动，
+  // 统一写 sections JSON（media/grades/editions 也走 torrent_sections）
+  const kindDefs = secKinds
+    .map((k) => ({
+      kind: k.kind,
+      label: k.label,
+      opts: (secDict[k.kind] ?? []).map((d) => ({ v: d.id, label: d.name })),
+    }))
     .filter((k) => k.opts.length > 0);
-  const kindVal = (kind: string) =>
-    kind === "media"
-      ? String(mediumId)
-      : kind === "grades"
-        ? gradeId
-        : kind === "editions"
-          ? editionId
-          : (secVals[kind] ?? "");
+  const kindVal = (kind: string) => secVals[kind] ?? "";
   const setKindVal = (kind: string, v: string) => {
-    if (kind === "media") setMediumId(Number(v));
-    else if (kind === "grades") setGradeId(v);
-    else if (kind === "editions") setEditionId(v);
-    else setSecVals((prev) => ({ ...prev, [kind]: v }));
+    setSecVals((prev) => ({ ...prev, [kind]: v }));
   };
 
   return (
@@ -312,8 +264,9 @@ export function UploadForm() {
               className={fieldCls}
             />,
           )}
-          {row(
-            dict.upload.imdb ?? "IMDb 链接",
+          {metaSources.includes("imdb") &&
+            row(
+              dict.upload.imdb ?? "IMDb 链接",
             <div className="flex flex-col gap-1">
               <input
                 type="url"
@@ -328,15 +281,16 @@ export function UploadForm() {
               </span>
             </div>,
           )}
-          {row(
-            dict.upload.ptgen ?? "PT-Gen",
+          {metaSources.length > 0 &&
+            row(
+              dict.upload.ptgen ?? "PT-Gen",
             <div className="flex flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="url"
                   value={ptgenUrl}
                   onChange={(e) => setPtgenUrl(e.target.value)}
-                  placeholder={dict.upload.ptgenPlaceholder ?? "粘贴 imdb / douban / bangumi / indienova 链接"}
+                  placeholder={dict.upload.ptgenPlaceholder ?? `粘贴 ${metaSources.join(" / ")} 链接`}
                   maxLength={300}
                   className="min-h-[38px] flex-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
                 />

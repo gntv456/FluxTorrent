@@ -150,7 +150,8 @@ export interface TorrentListItem {
   name: string;
   small_descr: string | null;
   category_id: number;
-  medium_id: number;
+  /** 介质列（0087 起可空，新数据在 torrent_sections） */
+  medium_id: number | null;
   grade_id: number | null;
   edition_id: number | null;
   size: number;

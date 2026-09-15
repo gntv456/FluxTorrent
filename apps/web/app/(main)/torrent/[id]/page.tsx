@@ -27,6 +27,8 @@ interface TorrentDetailExt {
   price: number;
   purchased: boolean;
   is_owner: boolean;
+  /** 动态属性（0085/0087）：kind → { dict_id, name, label, sort } */
+  sections?: Record<string, { dict_id: number; name: string; label: string; sort: number }>;
 }
 
 interface FileItem {
@@ -181,8 +183,16 @@ export default async function TorrentDetailPage({
   const promo = promotionBadge(t.promotion);
   const edition = editionName(t.edition_id);
   const grade = t.grade_id !== null ? dict.torrents.grades[t.grade_id + 1] : undefined;
-  const medium = dict.torrents.media[t.medium_id] ?? String(t.medium_id);
+  // 0087：介质列可空（新数据在 sections），老数据仍从字典翻译
+  const medium =
+    t.medium_id !== null ? (dict.torrents.media[t.medium_id] ?? undefined) : undefined;
   const category = dict.torrents.categories[t.category_id] ?? String(t.category_id);
+  // 动态属性（0085/0087）：sections 带维度显示名与排序，直接铺进规格网格
+  const secEntries = Object.entries(ext?.sections ?? {})
+    .map(([kind, v]) => ({ kind, ...v }))
+    .filter((v) => v.name && !(v.kind === "media" && medium));
+  const sectionOf = (kind: string) =>
+    secEntries.find((v) => v.kind === kind)?.name;
   // 促销剩余时间（好学站「x天x时」口径）
   const left = t.promotion_ends_at
     ? (() => {
@@ -322,9 +332,21 @@ export default async function TorrentDetailPage({
         <Spec value={formatBytes(t.size)} label={dict.torrent.size} num />
         <Spec value={ext?.numfiles ?? "—"} label={dict.torrent.numFiles} num />
         <Spec value={category} label={dict.torrent.category} />
-        <Spec value={medium} label={dict.torrent.medium} />
-        <Spec value={grade ?? "—"} label={dict.torrent.grade} />
-        {edition && <Spec value={edition} label={dict.torrent.edition} />}
+        {/* 介质/学段/版本：老数据走列翻译，新数据（列可空）走 sections（0087） */}
+        {(medium || sectionOf("media")) && (
+          <Spec value={medium ?? sectionOf("media")} label={dict.torrent.medium} />
+        )}
+        {(grade || sectionOf("grades")) && (
+          <Spec value={grade ?? sectionOf("grades")} label={dict.torrent.grade} />
+        )}
+        {(edition || sectionOf("editions")) && (
+          <Spec value={edition ?? sectionOf("editions")} label={dict.torrent.edition} />
+        )}
+        {secEntries
+          .filter((v) => !["media", "grades", "editions"].includes(v.kind))
+          .map((v) => (
+            <Spec key={v.kind} value={v.name} label={v.label} />
+          ))}
         {t.rating && <Spec value={t.rating} label={d?.ratingLabel ?? "评分"} num />}
         <Spec
           value={

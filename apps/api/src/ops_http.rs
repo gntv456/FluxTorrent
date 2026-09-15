@@ -492,7 +492,7 @@ struct PreserveRow {
     // 资源库行同构字段（保种区列表复用 TorrentTr 渲染，参考站口径）
     small_descr: Option<String>,
     category_id: i32,
-    medium_id: i32,
+    medium_id: Option<i32>,
     grade_id: Option<i32>,
     edition_id: Option<i32>,
     leechers: i32,

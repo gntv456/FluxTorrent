@@ -1806,15 +1806,14 @@ async fn section_mode_delete(
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
 
-/// 自定义维度字典（0085）：kind 白名单移至 section_kinds 表，站方可自建维度
-/// media/grades/editions 复用 0001 既有三表
-const LEGACY_KINDS: [&str; 3] = ["media", "grades", "editions"];
+/// 自定义维度字典（0085/0087）：kind 白名单 = section_kinds 表，站方可自建维度；
+/// 0087 起 media/grades/editions 字典行也入 section_dict，实体表仅历史存档
+pub(crate) const LEGACY_KINDS: [&str; 3] = ["media", "grades", "editions"];
 
-/// 自定义维度判定（0085）：kind 存在于 section_kinds 且非 legacy 三表维度
+/// 维度存在性判定（0085/0087）：kind 在 section_kinds 中即可用。
+/// 0087 起 media/grades/editions 字典行已迁入 section_dict，九维全走统一通道，
+/// legacy 实体表仅作历史口径存档（介质列保留兼容老数据）。
 pub(crate) async fn is_custom_kind(db: &sqlx::PgPool, kind: &str) -> bool {
-    if LEGACY_KINDS.contains(&kind) {
-        return false;
-    }
     sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)")
         .bind(kind)
         .fetch_one(db)
@@ -1853,15 +1852,7 @@ async fn section_dict_rows(
     db: &sqlx::PgPool,
     kind: Option<&str>,
 ) -> DomainResult<Vec<SectionDictRow>> {
-    let k = kind.unwrap_or("");
-    if LEGACY_KINDS.contains(&k) {
-        let table = k; // 表名来自常量白名单，非用户输入
-        let sql = format!("SELECT id::bigint AS id, '{k}' AS kind, name, sort, NULL::int AS mode_id FROM {table} ORDER BY sort, id");
-        return sqlx::query_as(&sql)
-            .fetch_all(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()));
-    }
+    // 0087：media/grades/editions 字典行已入 section_dict，统一读取（不再回落实体表）
     sqlx::query_as(
         "SELECT id, kind, name, sort, mode_id FROM section_dict \
          WHERE ($1::text IS NULL OR kind = $1) ORDER BY kind, sort, id",
@@ -1893,21 +1884,6 @@ async fn section_dict_add(
     let kind = body.kind.as_str();
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("名称不能为空".into()));
-    }
-    if LEGACY_KINDS.contains(&kind) {
-        let id: i32 = sqlx::query_scalar(&format!(
-            "INSERT INTO {kind} (name, sort) VALUES ($1, COALESCE($2, 0)) RETURNING id"
-        ))
-        .bind(body.name.trim())
-        .bind(body.sort)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        state
-            .repo
-            .audit(Some(auth.id), "section_dict.add", Some(id as i64))
-            .await;
-        return Ok(ok(serde_json::json!({ "id": id })));
     }
     if !is_custom_kind(&state.repo.db, kind).await {
         return Err(DomainError::Validation(
@@ -1942,32 +1918,20 @@ async fn section_dict_update(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
     let id = path.into_inner();
     let kind = body.kind.as_str();
-    let n = if LEGACY_KINDS.contains(&kind) {
-        sqlx::query(&format!(
-            "UPDATE {kind} SET name = $2, sort = COALESCE($3, sort) WHERE id = $1"
-        ))
-        .bind(id as i32)
-        .bind(body.name.trim())
-        .bind(body.sort)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected()
-    } else if is_custom_kind(&state.repo.db, kind).await {
-        sqlx::query(
-            "UPDATE section_dict SET name = $2, sort = COALESCE($3, sort), mode_id = $4 WHERE id = $1",
-        )
-        .bind(id)
-        .bind(body.name.trim())
-        .bind(body.sort)
-        .bind(body.mode_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected()
-    } else {
+    if !is_custom_kind(&state.repo.db, kind).await {
         return Err(DomainError::Validation("未知维度".into()));
-    };
+    }
+    let n = sqlx::query(
+        "UPDATE section_dict SET name = $2, sort = COALESCE($3, sort), mode_id = $4 WHERE id = $1",
+    )
+    .bind(id)
+    .bind(body.name.trim())
+    .bind(body.sort)
+    .bind(body.mode_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(id));
     }
@@ -1989,23 +1953,15 @@ async fn section_dict_delete(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
     let id = path.into_inner();
     let kind = q.kind.clone().unwrap_or_default();
-    let n = if LEGACY_KINDS.contains(&kind.as_str()) {
-        sqlx::query(&format!("DELETE FROM {kind} WHERE id = $1"))
-            .bind(id as i32)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected()
-    } else if is_custom_kind(&state.repo.db, &kind).await {
-        sqlx::query("DELETE FROM section_dict WHERE id = $1")
-            .bind(id)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected()
-    } else {
+    if !is_custom_kind(&state.repo.db, &kind).await {
         return Err(DomainError::Validation("未知维度".into()));
-    };
+    }
+    let n = sqlx::query("DELETE FROM section_dict WHERE id = $1")
+        .bind(id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(id));
     }
