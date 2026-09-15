@@ -104,8 +104,10 @@ function LoginForm() {
       router.push(next);
     } catch (err) {
       if (err instanceof ApiError) {
+        // 展示优先级：字典文案（三语）→ 后端 message（兜底，含具体原因）→ 通用失败
+        // 不再显示「登录失败（数字码）」——用户看不懂错误码，必须给文字原因
         setError(
-          dict.errors[err.code] ?? fmt(dict.login.fail, { code: err.code }),
+          dict.errors[err.code] ?? err.message ?? fmt(dict.login.fail, { code: err.code }),
         );
         if (err.code === 2004) setAttempts((n) => n + 1);
         // 2FA：密码已对但缺/错验证码 —— 展开验证码输入框并聚焦，让用户立刻知道下一步

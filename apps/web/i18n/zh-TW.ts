@@ -213,7 +213,7 @@ const zhTwBase: Omit<Dict, "security2fa" | "apitokens"> = {
     password: "密碼",
     submit: "登入",
     busy: "登入中…",
-    fail: "登入失敗（{code}）",
+    fail: "登入失敗，請稍後重試",
     reset: "重置",
     advancedOptions: "進階選項",
     twoStepCode: "兩步驗證",
