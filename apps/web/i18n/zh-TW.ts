@@ -4,7 +4,7 @@ import type { Dict } from "./zh-CN";
 
 const zhTwBase: Omit<
   Dict,
-  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub" | "homeLayout"
+  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub" | "homeLayout" | "exams" | "achievements" | "resPage"
 > = {
   meta: {
     titleSuffix: "PT",
@@ -50,6 +50,9 @@ const zhTwBase: Omit<
     jixiao: "績效",
     preserve: "保種區",
     upload: "發佈",
+    exams: "我的考核",
+    achievements: "成就牆",
+    resurrections: "復活任務",
     ariaPrimary: "主導航",
     more: "更多",
     discover: "發現",
@@ -2475,5 +2478,49 @@ export const zhTW: Dict = { ...zhTwBase, security2fa: {
     save: "儲存排版", saving: "儲存中…", saved: "已儲存，重新整理首頁生效",
     reset: "恢復預設", resetHint: "已重置為預設排版（需點儲存生效）",
     title: "首頁排版",
+  },
+  exams: {
+    title: "我的考核",
+    subtitle: "新人轉正與週期考核進度，達標自動結算發獎",
+    empty: "暫無考核——新人考核會在註冊後自動派發",
+    colName: "考核",
+    colStatus: "狀態",
+    stOngoing: "進行中",
+    stDone: "已完成",
+    stFailed: "未通過",
+    kindOnboard: "新人轉正",
+    kindPeriodic: "週期考核",
+    periodOnce: "一次性",
+    periodMonthly: "每月",
+    periodQuarterly: "每季",
+    colClaimedAt: "派發時間",
+    colDeadline: "截止時間",
+    colProgress: "目前進度（現值 / 目標）",
+    colReward: "獎勵",
+    mUpload: "上傳增量",
+    mSeedSeconds: "做種時長",
+    mUploads: "發布數",
+    mSubtitles: "字幕數",
+    mDownload: "下載量",
+    mSeedPoints: "做種積分",
+    hoursUnit: "小時",
+  },
+  achievements: {
+    title: "我的成就",
+    subtitle: "保種 / 救種 / 發種 / 論壇四族里程碑，達成自動授予",
+    empty: "暫無成就定義",
+    earned: "已達成",
+    locked: "未達成",
+    progress: "進度",
+    reward: "獎勵",
+    grantedAt: "達成時間",
+    familySeed: "保種",
+    familyRescue: "救種",
+    familyUpload: "發種",
+    familyForum: "論壇",
+    familyOther: "其他",
+  },
+  resPage: {
+    title: "復活任務",
   },
 };

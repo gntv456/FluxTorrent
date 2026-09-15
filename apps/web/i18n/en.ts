@@ -4,7 +4,7 @@ import type { Dict } from "./zh-CN";
 
 const enBase: Omit<
   Dict,
-  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub" | "homeLayout"
+  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub" | "homeLayout" | "exams" | "achievements" | "resPage"
 > = {
   meta: {
     titleSuffix: "FluxTorrent",
@@ -51,6 +51,9 @@ const enBase: Omit<
     jixiao: "KPI",
     preserve: "Preserve",
     upload: "Upload",
+    exams: "My Exams",
+    achievements: "Achievements",
+    resurrections: "Resurrections",
     ariaPrimary: "Primary navigation",
     more: "More",
     discover: "Discover",
@@ -2481,5 +2484,49 @@ export const en: Dict = { ...enBase, security2fa: {
     save: "Save layout", saving: "Saving…", saved: "Saved — refresh the homepage",
     reset: "Reset default", resetHint: "Reset to default layout (click save to apply)",
     title: "Homepage Layout",
+  },
+  exams: {
+    title: "My Exams",
+    subtitle: "Onboarding & periodic exam progress — rewards settle automatically on completion",
+    empty: "No exams yet — onboarding exams are auto-assigned after registration",
+    colName: "Exam",
+    colStatus: "Status",
+    stOngoing: "Ongoing",
+    stDone: "Completed",
+    stFailed: "Failed",
+    kindOnboard: "Onboarding",
+    kindPeriodic: "Periodic",
+    periodOnce: "One-time",
+    periodMonthly: "Monthly",
+    periodQuarterly: "Quarterly",
+    colClaimedAt: "Assigned at",
+    colDeadline: "Deadline",
+    colProgress: "Progress (current / target)",
+    colReward: "Reward",
+    mUpload: "Upload delta",
+    mSeedSeconds: "Seeding time",
+    mUploads: "Uploads",
+    mSubtitles: "Subtitles",
+    mDownload: "Download",
+    mSeedPoints: "Seed points",
+    hoursUnit: "hours",
+  },
+  achievements: {
+    title: "My Achievements",
+    subtitle: "Milestones across seeding / rescue / uploading / forum families",
+    empty: "No achievement definitions yet",
+    earned: "Earned",
+    locked: "Locked",
+    progress: "Progress",
+    reward: "Reward",
+    grantedAt: "Granted at",
+    familySeed: "Seeding",
+    familyRescue: "Rescue",
+    familyUpload: "Uploading",
+    familyForum: "Forum",
+    familyOther: "Other",
+  },
+  resPage: {
+    title: "Resurrections",
   },
 };

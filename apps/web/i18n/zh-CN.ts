@@ -45,6 +45,9 @@ const zhCnBase = {
     jixiao: "绩效",
     preserve: "保种区",
     upload: "发布",
+    exams: "我的考核",
+    achievements: "成就墙",
+    resurrections: "复活任务",
     ariaPrimary: "主导航",
     more: "更多",
     discover: "发现",
@@ -2494,6 +2497,56 @@ export const zhCN = {
     save: "保存排版", saving: "保存中…", saved: "已保存，刷新首页生效",
     reset: "恢复默认", resetHint: "已重置为默认排版（需点保存生效）",
     title: "首页排版",
+  },
+
+  /** 我的考核（/me/exams，0093 考核引擎） */
+  exams: {
+    title: "我的考核",
+    subtitle: "新人转正与周期考核进度，达标自动结算发奖",
+    empty: "暂无考核——新人考核会在注册后自动派发",
+    colName: "考核",
+    colStatus: "状态",
+    stOngoing: "进行中",
+    stDone: "已完成",
+    stFailed: "未通过",
+    kindOnboard: "新人转正",
+    kindPeriodic: "周期考核",
+    periodOnce: "一次性",
+    periodMonthly: "每月",
+    periodQuarterly: "每季",
+    colClaimedAt: "派发时间",
+    colDeadline: "截止时间",
+    colProgress: "当前进度（现值 / 目标）",
+    colReward: "奖励",
+    mUpload: "上传增量",
+    mSeedSeconds: "做种时长",
+    mUploads: "发布数",
+    mSubtitles: "字幕数",
+    mDownload: "下载量",
+    mSeedPoints: "做种积分",
+    hoursUnit: "小时",
+  },
+
+  /** 成就墙（/me/achievements） */
+  achievements: {
+    title: "我的成就",
+    subtitle: "保种 / 救种 / 发种 / 论坛四族里程碑，达成自动授予",
+    empty: "暂无成就定义",
+    earned: "已达成",
+    locked: "未达成",
+    progress: "进度",
+    reward: "奖励",
+    grantedAt: "达成时间",
+    familySeed: "保种",
+    familyRescue: "救种",
+    familyUpload: "发种",
+    familyForum: "论坛",
+    familyOther: "其他",
+  },
+
+  /** 复活任务独立页（/resurrections，面板复用 /preserve 的 ResurrectionPanel） */
+  resPage: {
+    title: "复活任务",
   },
 };
 

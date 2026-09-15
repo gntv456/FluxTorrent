@@ -2089,6 +2089,7 @@ pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow
                 with_lock(&db, "job:class_auto_adjust", class_auto_adjust(&db)).await;
                 with_lock(&db, "job:preserve_seed", preserve_seed(&db)).await;
                 with_lock(&db, "job:task_settle", crate::task_jobs::task_settle(&db)).await;
+                with_lock(&db, "job:exam_assign", crate::task_jobs::exam_assign(&db)).await;
                 // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
                 let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
                 if last_bank_day.is_none() {

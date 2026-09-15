@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
-/** 第八轮 P3-14：任务定义配置（tasks 表 CRUD） */
+/** 任务定义 + 考核配置（tasks 表 CRUD，0093 起 kind/auto_assign/period 支撑考核引擎）
+ *  + 考核记录浏览（/admin/exam-users，对标 NP exam-users） */
 
 interface TaskRow {
   id: number;
@@ -15,9 +16,40 @@ interface TaskRow {
   reward: number;
   penalty: number;
   claim_limit: number | null;
+  kind: string;
+  auto_assign: boolean;
+  period: string;
 }
 
-const EMPTY = { name: "", metric: "{}", starts_at: "", ends_at: "", target_class: "0", reward: "0", penalty: "0", claim_limit: "" };
+interface ExamUserRow {
+  claim_id: number;
+  task_id: number;
+  task_name: string;
+  kind: string;
+  period: string;
+  user_id: number;
+  username: string;
+  status: number;
+  claimed_at: string;
+  settled_at: string | null;
+  reward_paid: number | null;
+}
+
+const EMPTY = {
+  name: "", metric: "{}", starts_at: "", ends_at: "", target_class: "0",
+  reward: "0", penalty: "0", claim_limit: "", kind: "task", auto_assign: false, period: "once",
+};
+
+const KINDS = [
+  { v: "task", label: "普通任务" },
+  { v: "onboard", label: "新人转正考核" },
+  { v: "periodic", label: "周期考核" },
+];
+const PERIODS = [
+  { v: "once", label: "一次性" },
+  { v: "monthly", label: "每月" },
+  { v: "quarterly", label: "每季" },
+];
 
 function toLocalInput(iso: string): string {
   const d = new Date(iso);
@@ -26,6 +58,8 @@ function toLocalInput(iso: string): string {
 
 export function AdminTasks() {
   const [rows, setRows] = useState<TaskRow[]>([]);
+  const [exams, setExams] = useState<ExamUserRow[]>([]);
+  const [examFilter, setExamFilter] = useState({ user_id: "", task_id: "", status: "" });
   const [edit, setEdit] = useState<{ id: number | null; f: typeof EMPTY }>({ id: null, f: { ...EMPTY } });
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -39,7 +73,19 @@ export function AdminTasks() {
       flash(e instanceof ApiError ? e.message : "加载失败");
     }
   }, []);
+
+  const loadExams = useCallback(async () => {
+    const q = new URLSearchParams();
+    if (examFilter.user_id) q.set("user_id", examFilter.user_id);
+    if (examFilter.task_id) q.set("task_id", examFilter.task_id);
+    if (examFilter.status) q.set("status", examFilter.status);
+    try {
+      setExams(await api.get<ExamUserRow[]>(`/api/v1/admin/exam-users${q.size ? `?${q}` : ""}`));
+    } catch { /* 无考核记录 */ }
+  }, [examFilter]);
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadExams(); }, [loadExams]);
 
   async function save() {
     let metric: unknown;
@@ -55,6 +101,9 @@ export function AdminTasks() {
         reward: Number(edit.f.reward) || 0,
         penalty: Number(edit.f.penalty) || 0,
         claim_limit: edit.f.claim_limit ? Number(edit.f.claim_limit) : null,
+        kind: edit.f.kind,
+        auto_assign: edit.f.kind !== "task" ? edit.f.auto_assign : false,
+        period: edit.f.period,
       };
       if (edit.id === null) await api.post("/api/v1/admin/tasks", payload);
       else await api.put(`/api/v1/admin/tasks/${edit.id}`, payload);
@@ -69,14 +118,20 @@ export function AdminTasks() {
   }
 
   const inp = "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
+  const isExam = edit.f.kind !== "task";
 
   return (
     <div className="flex flex-col gap-3">
       {msg && <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
       <section className="baozi-panel cmgmt-form p-4">
-        <h2 className="mb-2 text-base font-bold">{edit.id === null ? "新建任务" : `编辑任务 #${edit.id}`}</h2>
-        <p className="mb-2 text-xs text-sub">可选指标键：upload_delta（上传增量）· download_delta（累计口径）· seed_seconds_delta（做种时长增量，秒，如 120h=432000）· seed_points_delta（旧口径，勿用）· uploads（发布数）· subtitles（字幕数）。至少配一个键，否则任务不可领取；tier 任务按累计口径判定。</p>
+        <h2 className="mb-2 text-base font-bold">{edit.id === null ? "新建任务/考核" : `编辑 #${edit.id}`}</h2>
+        <p className="mb-2 text-xs text-sub">可选指标键：upload_delta（上传增量）· download_delta（累计口径）· seed_seconds_delta（做种时长增量，秒，如 120h=432000）· seed_points_delta（旧口径，勿用）· uploads（发布数）· subtitles（字幕数）。至少配一个键，否则不可领取；tier 任务按累计口径判定。</p>
         <div className="flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1 text-xs">类型
+            <select value={edit.f.kind} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, kind: e.target.value } })} className={inp}>
+              {KINDS.map((k) => <option key={k.v} value={k.v}>{k.label}</option>)}
+            </select>
+          </label>
           <label className="flex flex-col gap-1 text-xs">任务名
             <input value={edit.f.name} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, name: e.target.value } })} className={`${inp} w-36`} />
           </label>
@@ -101,6 +156,19 @@ export function AdminTasks() {
           <label className="flex flex-col gap-1 text-xs">限领次数
             <input type="number" value={edit.f.claim_limit} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, claim_limit: e.target.value } })} placeholder="空=不限" className={`${inp} w-20`} />
           </label>
+          {isExam && (
+            <>
+              <label className="flex flex-col gap-1 text-xs">周期
+                <select value={edit.f.period} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, period: e.target.value } })} className={inp}>
+                  {PERIODS.map((p) => <option key={p.v} value={p.v}>{p.label}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-1 pb-2 text-xs">
+                <input type="checkbox" checked={edit.f.auto_assign} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, auto_assign: e.target.checked } })} />
+                自动派发（onboard=注册 N 天内新人；periodic=达标等级全体）
+              </label>
+            </>
+          )}
           <button className="baozi-button" disabled={busy || !edit.f.name.trim()} onClick={save}>保存</button>
           {edit.id !== null && <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold" onClick={() => setEdit({ id: null, f: { ...EMPTY } })}>取消</button>}
         </div>
@@ -108,8 +176,9 @@ export function AdminTasks() {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">ID</td><td className="colhead">任务</td><td className="colhead">起止</td>
-            <td className="colhead">目标等级</td><td className="colhead">奖励/罚则</td><td className="colhead">限领</td><td className="colhead text-right">操作</td>
+            <td className="colhead">ID</td><td className="colhead">任务</td><td className="colhead">类型</td>
+            <td className="colhead">起止</td><td className="colhead">目标等级</td><td className="colhead">奖励/罚则</td>
+            <td className="colhead">限领</td><td className="colhead">自动派发</td><td className="colhead text-right">操作</td>
           </tr>
         </thead>
         <tbody>
@@ -117,12 +186,19 @@ export function AdminTasks() {
             <tr key={t.id}>
               <td className="num">{t.id}</td>
               <td className="font-bold">{t.name}</td>
+              <td>{KINDS.find((k) => k.v === t.kind)?.label ?? t.kind}{t.kind !== "task" && ` · ${PERIODS.find((p) => p.v === t.period)?.label ?? t.period}`}</td>
               <td className="text-sub">{new Date(t.starts_at).toLocaleDateString()} ~ {new Date(t.ends_at).toLocaleDateString()}</td>
               <td className="num">{t.target_class}</td>
               <td className="num">{t.reward} / {t.penalty}</td>
               <td className="num">{t.claim_limit ?? "—"}</td>
+              <td>{t.kind === "task" ? "—" : t.auto_assign ? "是" : "否"}</td>
               <td className="text-right">
-                <button className="cmgmt-act" onClick={() => setEdit({ id: t.id, f: { name: t.name, metric: JSON.stringify(t.metric), starts_at: toLocalInput(t.starts_at), ends_at: toLocalInput(t.ends_at), target_class: String(t.target_class), reward: String(t.reward), penalty: String(t.penalty), claim_limit: t.claim_limit ? String(t.claim_limit) : "" } })}>编辑</button>
+                <button className="cmgmt-act" onClick={() => setEdit({ id: t.id, f: {
+                  name: t.name, metric: JSON.stringify(t.metric), starts_at: toLocalInput(t.starts_at), ends_at: toLocalInput(t.ends_at),
+                  target_class: String(t.target_class), reward: String(t.reward), penalty: String(t.penalty),
+                  claim_limit: t.claim_limit ? String(t.claim_limit) : "",
+                  kind: t.kind ?? "task", auto_assign: !!t.auto_assign, period: t.period ?? "once",
+                } })}>编辑</button>
                 <button className="cmgmt-act cmgmt-act--danger" disabled={busy}
                   onClick={async () => {
                     try { await api.del(`/api/v1/admin/tasks/${t.id}`); flash("已删除"); await load(); }
@@ -131,9 +207,53 @@ export function AdminTasks() {
               </td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-sub">暂无任务</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={9} className="py-6 text-center text-sub">暂无任务</td></tr>}
         </tbody>
       </table>
+
+      <section className="baozi-panel p-4">
+        <h2 className="mb-2 text-base font-bold">考核记录</h2>
+        <div className="mb-2 flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1 text-xs">UID
+            <input type="number" value={examFilter.user_id} onChange={(e) => setExamFilter({ ...examFilter, user_id: e.target.value })} className={`${inp} w-24`} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">任务ID
+            <input type="number" value={examFilter.task_id} onChange={(e) => setExamFilter({ ...examFilter, task_id: e.target.value })} className={`${inp} w-24`} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">状态
+            <select value={examFilter.status} onChange={(e) => setExamFilter({ ...examFilter, status: e.target.value })} className={inp}>
+              <option value="">全部</option>
+              <option value="0">进行中</option>
+              <option value="1">已完成</option>
+              <option value="2">已失败</option>
+            </select>
+          </label>
+        </div>
+        <div className="baozi-wide-table-scroll">
+          <table className="nexus-table text-xs">
+            <thead>
+              <tr>
+                <td className="colhead">用户</td><td className="colhead">考核</td><td className="colhead">类型</td>
+                <td className="colhead">状态</td><td className="colhead">派发/领取时间</td><td className="colhead">结算时间</td><td className="colhead">实发奖励</td>
+              </tr>
+            </thead>
+            <tbody>
+              {exams.map((e) => (
+                <tr key={e.claim_id}>
+                  <td className="num">{e.user_id} · {e.username}</td>
+                  <td className="font-bold">{e.task_name}</td>
+                  <td>{KINDS.find((k) => k.v === e.kind)?.label ?? e.kind}</td>
+                  <td>{e.status === 0 ? "进行中" : e.status === 1 ? "已完成" : "已失败"}</td>
+                  <td className="text-sub">{new Date(e.claimed_at).toLocaleString()}</td>
+                  <td className="text-sub">{e.settled_at ? new Date(e.settled_at).toLocaleString() : "—"}</td>
+                  <td className="num">{e.reward_paid ?? "—"}</td>
+                </tr>
+              ))}
+              {exams.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-sub">暂无考核记录</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
