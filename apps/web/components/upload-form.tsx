@@ -2,14 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
 interface ProfileCat { id: number; name: string }
 interface SectionDictRow { id: number; kind: string; name: string; sort: number; mode_id: number | null }
 
-/** 第八轮 Section 多维：发布表单新维度（kind → 中文名） */
+/** 兜底维度标签（/section-dict 不可用时；正常路径标签来自 section_kinds 站方可配置） */
 const SECTION_KINDS: [string, string][] = [
+  ["media", "媒介"],
+  ["grades", "学段"],
+  ["editions", "版本"],
   ["codec", "编码"],
   ["audio_codec", "音频编码"],
   ["standard", "规格"],
@@ -17,6 +20,8 @@ const SECTION_KINDS: [string, string][] = [
   ["source", "来源"],
   ["processing", "处理工艺"],
 ];
+
+interface SectionKindMeta { kind: string; label: string; sort: number }
 
 /** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类来自站点档案，支持任意类型 PT 站） */
 export function UploadForm() {
@@ -36,7 +41,13 @@ export function UploadForm() {
   const grades = dict.torrents.grades.slice(1);
   const editions = dict.upload.editions;
   const fileRef = useRef<HTMLInputElement>(null);
+  const nfoRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
+  const [nfoName, setNfoName] = useState("");
+  const [name, setName] = useState("");
+  const [imdb, setImdb] = useState("");
+  const [ptgenUrl, setPtgenUrl] = useState("");
+  const [ptgenBusy, setPtgenBusy] = useState(false);
   const [categoryId, setCategoryId] = useState(2);
   const [mediumId, setMediumId] = useState(1);
   const [gradeId, setGradeId] = useState("");
@@ -47,14 +58,55 @@ export function UploadForm() {
   const [anonymous, setAnonymous] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // 第八轮 Section 多维：字典与所选值（kind → dict_id，可留空）
+  // 标签（NP upload tags 口径）：启用字典多选，官方标签仅 staff（后端同口径校验）
+  const [tagDict, setTagDict] = useState<{ id: number; name: string; kind: string }[]>([]);
+  const [tagSel, setTagSel] = useState<number[]>([]);
+  useEffect(() => {
+    api.get<{ id: number; name: string; kind: string }[] | [number, string, string][]>(
+      "/api/v1/tags-dict",
+    )
+      .then((rows) =>
+        setTagDict(
+          rows.map((r) => (Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r)),
+        ),
+      )
+      .catch(() => setTagDict([]));
+  }, []);
+  // 挑选（促销位）：发布时直接设置单种促销，需 torrent.set_price 权限
+  const [promoKind, setPromoKind] = useState("");
+  const [promoHours, setPromoHours] = useState(48);
+  // 质量维度（0085 可配置）：维度清单与标签来自 section_kinds，站方可自建
   const [secDict, setSecDict] = useState<Record<string, SectionDictRow[]>>({});
+  const [secKinds, setSecKinds] = useState<SectionKindMeta[]>([]);
   const [secVals, setSecVals] = useState<Record<string, string>>({});
   useEffect(() => {
-    api.get<Record<string, SectionDictRow[]>>("/api/v1/section-dict")
-      .then((d) => setSecDict(d))
+    api.get<Record<string, unknown>>("/api/v1/section-dict")
+      .then((d) => {
+        setSecKinds((d.kinds as SectionKindMeta[] | undefined) ?? []);
+        const rest: Record<string, SectionDictRow[]> = {};
+        for (const [k, v] of Object.entries(d)) {
+          if (k !== "kinds" && k !== "modes") rest[k] = v as SectionDictRow[];
+        }
+        setSecDict(rest);
+      })
       .catch(() => setSecDict({}));
   }, []);
+
+  async function genDescr() {
+    const url = ptgenUrl.trim();
+    if (!url || ptgenBusy) return;
+    setPtgenBusy(true);
+    try {
+      const r = await api.get<{ name: string; descr: string }>(
+        `/api/v1/ptgen?url=${encodeURIComponent(url)}`,
+      );
+      setDescr((prev) => (prev.trim() ? `${prev.trim()}\n\n` : "") + r.descr);
+    } catch (e) {
+      setMsg(apiErrorMessage(dict, e));
+    } finally {
+      setPtgenBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,16 +115,25 @@ export function UploadForm() {
       setMsg(dict.upload.chooseFile);
       return;
     }
+    // 媒介为 NOT NULL 外键（media.id），必须选一项，不能留空
+    if (!mediumId) {
+      setMsg(dict.upload.mediumRequired ?? "请选择媒介");
+      return;
+    }
     setBusy(true);
     setMsg(null);
     try {
       const form = new FormData();
       form.append("file", file);
+      const nfoFile = nfoRef.current?.files?.[0];
+      if (nfoFile) form.append("nfo", nfoFile);
       const qs = new URLSearchParams({
         category_id: String(categoryId),
         medium_id: String(mediumId),
         anonymous: String(anonymous),
       });
+      if (name.trim()) qs.set("name", name.trim());
+      if (imdb.trim()) qs.set("imdb", imdb.trim());
       if (gradeId) qs.set("grade_id", gradeId);
       if (editionId) qs.set("edition_id", editionId);
       if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
@@ -83,6 +144,12 @@ export function UploadForm() {
         Object.entries(secVals).filter(([, v]) => v),
       );
       if (Object.keys(sections).length > 0) qs.set("sections", JSON.stringify(sections));
+      // 标签 / 促销（挑选）
+      if (tagSel.length > 0) qs.set("tags", JSON.stringify(tagSel));
+      if (promoKind) {
+        qs.set("promo_kind", promoKind);
+        qs.set("promo_hours", String(Math.min(720, Math.max(1, promoHours || 48))));
+      }
       const base =
         process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
       const res = await fetch(`${base}/api/v1/torrents?${qs}`, {
@@ -118,6 +185,45 @@ export function UploadForm() {
     </tr>
   );
 
+  // 质量维度渲染清单：API可用 → 全由 section_kinds/section_dict 驱动；不可用 → 三维静态兜底
+  // legacy 三维（media/grades/editions）落实体列，其余进 sections JSON
+  const kindDefs = (
+    secKinds.length > 0
+      ? secKinds.map((k) => ({ kind: k.kind, label: k.label }))
+      : SECTION_KINDS.map(([kind, label]) => ({ kind, label }))
+  )
+    .map((k) => ({ ...k, opts: (secDict[k.kind] ?? []).map((d) => ({ v: d.id, label: d.name })) }))
+    .map((k) =>
+      k.opts.length === 0 && secKinds.length === 0
+        ? {
+            ...k,
+            opts:
+              k.kind === "media"
+                ? media.map((label, i) => ({ v: i + 1, label }))
+                : k.kind === "grades"
+                  ? grades.map((label, i) => ({ v: i, label }))
+                  : k.kind === "editions"
+                    ? editions.map((label, i) => ({ v: i + 1, label }))
+                    : [],
+          }
+        : k,
+    )
+    .filter((k) => k.opts.length > 0);
+  const kindVal = (kind: string) =>
+    kind === "media"
+      ? String(mediumId)
+      : kind === "grades"
+        ? gradeId
+        : kind === "editions"
+          ? editionId
+          : (secVals[kind] ?? "");
+  const setKindVal = (kind: string, v: string) => {
+    if (kind === "media") setMediumId(Number(v));
+    else if (kind === "grades") setGradeId(v);
+    else if (kind === "editions") setEditionId(v);
+    else setSecVals((prev) => ({ ...prev, [kind]: v }));
+  };
+
   return (
     <form onSubmit={submit}>
       <table className="nexus-table nexus-form">
@@ -148,6 +254,19 @@ export function UploadForm() {
             </div>,
           )}
           {row(
+            dict.upload.titleName ?? "标题",
+            <div className="flex flex-col gap-1">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={dict.upload.nameHint ?? "不填将使用种子文件名"}
+                maxLength={200}
+                className={fieldCls}
+              />
+            </div>,
+          )}
+          {row(
             dict.upload.smallDescr,
             <input
               type="text"
@@ -157,6 +276,63 @@ export function UploadForm() {
               maxLength={120}
               className={fieldCls}
             />,
+          )}
+          {row(
+            dict.upload.imdb ?? "IMDb 链接",
+            <div className="flex flex-col gap-1">
+              <input
+                type="url"
+                value={imdb}
+                onChange={(e) => setImdb(e.target.value)}
+                placeholder="https://www.imdb.com/title/tt0468569/"
+                maxLength={300}
+                className={fieldCls}
+              />
+              <span className="text-xs text-sub">
+                {dict.upload.imdbHint ?? "来自 IMDb 的条目链接；用于详情页展示与搜索区「IMDb」"}
+              </span>
+            </div>,
+          )}
+          {row(
+            dict.upload.ptgen ?? "PT-Gen",
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="url"
+                  value={ptgenUrl}
+                  onChange={(e) => setPtgenUrl(e.target.value)}
+                  placeholder={dict.upload.ptgenPlaceholder ?? "粘贴 imdb / douban / bangumi / indienova 链接"}
+                  maxLength={300}
+                  className="min-h-[38px] flex-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                />
+                <button
+                  type="button"
+                  disabled={ptgenBusy || !ptgenUrl.trim()}
+                  onClick={genDescr}
+                  className="min-h-[38px] rounded-[10px] border border-[var(--baozi-line)] px-4 text-sm font-bold text-ink hover:border-[var(--baozi-orange)] disabled:opacity-50"
+                >
+                  {ptgenBusy ? (dict.upload.ptgenBusy ?? "生成中…") : (dict.upload.ptgenBtn ?? "生成简介")}
+                </button>
+              </div>
+              <span className="text-xs text-sub">
+                {dict.upload.ptgenHint ?? "自动拉取条目信息追加到下方简介（服务端代理，可重复追加）"}
+              </span>
+            </div>,
+          )}
+          {row(
+            dict.upload.nfo ?? "NFO 文件",
+            <div className="flex flex-col gap-1">
+              <label className="flex min-h-[48px] cursor-pointer items-center justify-center rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--head-b)] px-3 text-sm text-[var(--text-body)] hover:border-[var(--baozi-orange)]">
+                <input
+                  ref={nfoRef}
+                  type="file"
+                  accept=".nfo,text/plain"
+                  className="sr-only"
+                  onChange={(e) => setNfoName(e.target.files?.[0]?.name ?? "")}
+                />
+                {nfoName ? `📄 ${nfoName}` : (dict.upload.nfoHint ?? "可选；经典 NFO 字符画支持（CP437 / UTF-8 均可）")}
+              </label>
+            </div>,
           )}
           {row(
             dict.upload.poster ?? "封面图 URL",
@@ -202,69 +378,99 @@ export function UploadForm() {
               ))}
             </select>,
           )}
-          {row(
-            dict.upload.medium,
-            <select
-              value={mediumId}
-              onChange={(e) => setMediumId(Number(e.target.value))}
-              className={fieldCls}
-            >
-              {media.map((label, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {label}
-                </option>
-              ))}
-            </select>,
-          )}
-          {row(
-            dict.upload.grade,
-            <select
-              value={gradeId}
-              onChange={(e) => setGradeId(e.target.value)}
-              className={fieldCls}
-            >
-              <option value="">{dict.upload.gradeNone}</option>
-              {grades.map((label, i) => (
-                <option key={i} value={i}>
-                  {label}
-                </option>
-              ))}
-            </select>,
-          )}
-          {row(
-            dict.upload.edition,
-            <select
-              value={editionId}
-              onChange={(e) => setEditionId(e.target.value)}
-              className={fieldCls}
-            >
-              <option value="">{dict.upload.editionNone}</option>
-              {editions.map((label, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {label}
-                </option>
-              ))}
-            </select>,
-          )}
-          {SECTION_KINDS.map(([kind, label]) => (
-            (secDict[kind]?.length ?? 0) > 0 &&
+          {kindDefs.length > 0 &&
             row(
-              label,
-              <select
-                value={secVals[kind] ?? ""}
-                onChange={(e) => setSecVals((prev) => ({ ...prev, [kind]: e.target.value }))}
-                className={fieldCls}
-              >
-                <option value="">（不选择）</option>
-                {secDict[kind].map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
+              dict.upload.quality ?? "质量",
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {kindDefs.map(({ kind, label, opts }) => (
+                  <label key={kind} className="flex items-center gap-1 text-sm">
+                    <span className="whitespace-nowrap text-sub">{label}：</span>
+                    <select
+                      value={kindVal(kind)}
+                      onChange={(e) => setKindVal(kind, e.target.value)}
+                      className="min-h-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                    >
+                      <option value="">{dict.upload.gradeNone}</option>
+                      {opts.map((o) => (
+                        <option key={o.v} value={o.v}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 ))}
-              </select>,
-              kind,
-            )
-          ))}
+              </div>,
+            )}
+          {tagDict.filter((t) => t.kind !== "official").length > 0 &&
+            row(
+              dict.upload.tags ?? "标签",
+              <div className="flex flex-col gap-1">
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {tagDict
+                    .filter((t) => t.kind !== "official")
+                    .map((t) => {
+                      const on = tagSel.includes(t.id);
+                      return (
+                        <label key={t.id} className="flex cursor-pointer items-center gap-1.5 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() =>
+                              setTagSel((prev) =>
+                                on ? prev.filter((x) => x !== t.id) : [...prev, t.id],
+                              )
+                            }
+                            className="h-4 w-4 accent-[var(--baozi-orange)]"
+                          />
+                          {t.name}
+                        </label>
+                      );
+                    })}
+                </div>
+                <span className="text-xs text-sub">
+                  {dict.upload.tagsHint ?? "可多选（≤12 个）；发布后可在详情页增删"}
+                </span>
+              </div>,
+            )}
+          {row(
+            dict.upload.promo ?? "促销（挑选）",
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <label className="flex items-center gap-1 text-sm">
+                  <span className="whitespace-nowrap text-sub">{dict.upload.promoKind ?? "促销类型"}：</span>
+                  <select
+                    value={promoKind}
+                    onChange={(e) => setPromoKind(e.target.value)}
+                    className="min-h-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                  >
+                    <option value="">{dict.upload.promoNone ?? "不设置"}</option>
+                    <option value="free">{dict.upload.promoFree ?? "免费"}</option>
+                    <option value="x2">{dict.upload.promoX2 ?? "双倍上传"}</option>
+                    <option value="x2free">{dict.upload.promoX2Free ?? "双倍+免费"}</option>
+                    <option value="half">{dict.upload.promoHalf ?? "半价"}</option>
+                    <option value="x2half">{dict.upload.promoX2Half ?? "双倍+半价"}</option>
+                    <option value="p30">{dict.upload.promoP30 ?? "30% 下载"}</option>
+                  </select>
+                </label>
+                {promoKind && (
+                  <label className="flex items-center gap-1 text-sm">
+                    <span className="whitespace-nowrap text-sub">{dict.upload.promoHours ?? "时长（小时）"}：</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={720}
+                      value={promoHours}
+                      onChange={(e) => setPromoHours(Number(e.target.value))}
+                      className="min-h-[32px] w-24 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                    />
+                  </label>
+                )}
+              </div>
+              <span className="text-xs text-sub">
+                {dict.upload.promoHint ?? "发布者自助促销位，需促销权限；缺省 48 小时（1-720）"}
+              </span>
+            </div>,
+          )}
           {row(
             dict.upload.anonymous,
             <label className="flex cursor-pointer items-center gap-2 text-sm">

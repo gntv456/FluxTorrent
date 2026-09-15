@@ -35,10 +35,22 @@ interface CategoryRow {
   auto_approve?: boolean;
 }
 
-const KINDS: [string, string][] = [
-  ["codec", "Codec"], ["audio_codec", "Audio Codec"], ["standard", "Standard"],
-  ["team", "Team"], ["source", "Source"], ["processing", "Processing"],
-  ["media", "Media"], ["grades", "Grade"], ["editions", "Edition"],
+interface SectionKindMeta {
+  kind: string;
+  label: string;
+  sort: number;
+}
+
+const FALLBACK_KINDS: SectionKindMeta[] = [
+  { kind: "media", label: "媒介", sort: 10 },
+  { kind: "grades", label: "学段", sort: 20 },
+  { kind: "editions", label: "版本", sort: 30 },
+  { kind: "codec", label: "编码", sort: 40 },
+  { kind: "audio_codec", label: "音频编码", sort: 50 },
+  { kind: "standard", label: "规格", sort: 60 },
+  { kind: "team", label: "制作组", sort: 70 },
+  { kind: "source", label: "来源", sort: 80 },
+  { kind: "processing", label: "处理工艺", sort: 90 },
 ];
 
 const FLAGS: [keyof ModeRow, string][] = [
@@ -50,9 +62,12 @@ const FLAGS: [keyof ModeRow, string][] = [
 export function AdminSections() {
   const [modes, setModes] = useState<ModeRow[]>([]);
   const [kind, setKind] = useState("codec");
+  const [kinds, setKinds] = useState<SectionKindMeta[]>([]);
   const [dicts, setDicts] = useState<DictRow[]>([]);
   const [cats, setCats] = useState<CategoryRow[]>([]);
   const [newMode, setNewMode] = useState("");
+  const [newKind, setNewKind] = useState("");
+  const [newKindLabel, setNewKindLabel] = useState("");
   const [dName, setDName] = useState("");
   const [dSort, setDSort] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
@@ -65,6 +80,8 @@ export function AdminSections() {
       setModes(await api.get<ModeRow[]>("/api/v1/admin/section-modes"));
       setDicts(await api.get<DictRow[]>(`/api/v1/admin/section-dict?kind=${kind}`));
       setCats(await api.get<CategoryRow[]>("/api/v1/admin/categories"));
+      const pub = await api.get<Record<string, unknown>>("/api/v1/section-dict");
+      setKinds((pub.kinds as SectionKindMeta[] | undefined) ?? FALLBACK_KINDS);
     } catch (e) {
       flash(e instanceof ApiError ? e.message : "加载失败");
     }
@@ -125,13 +142,48 @@ export function AdminSections() {
         </table>
       </section>
 
+      {/* 维度管理（0085：站方自定义质量维度，NP 自定义 Section 口径） */}
+      <section className="baozi-panel p-4">
+        <h2 className="mb-2 text-base font-bold">维度管理</h2>
+        <p className="mb-3 text-xs text-sub">维度 = 发布表单「质量」行里的一个下拉框（如 编码/分辨率/语种）。新增维度后到下方「维度字典」里维护它的选项；内置三维（媒介/学段/版本）落实体列不可删除。</p>
+        <div className="flex flex-wrap items-end gap-2">
+          <input value={newKind} onChange={(e) => setNewKind(e.target.value)} placeholder="维度标识（如 resolution）" className="min-h-[40px] w-48 rounded-[var(--r-sm)] border border-line px-2 text-sm" />
+          <input value={newKindLabel} onChange={(e) => setNewKindLabel(e.target.value)} placeholder="显示名称（如 分辨率）" className="min-h-[40px] w-36 rounded-[var(--r-sm)] border border-line px-2 text-sm" />
+          <button disabled={busy || !newKind.trim() || !newKindLabel.trim()} className="baozi-button"
+            onClick={() => act(async () => { await api.post("/api/v1/admin/section-kinds", { kind: newKind, label: newKindLabel }); setNewKind(""); setNewKindLabel(""); }, "维度已创建")}>新建维度</button>
+        </div>
+        <table className="nexus-table mt-3 text-xs">
+          <thead>
+            <tr><td className="colhead">标识</td><td className="colhead">显示名称</td><td className="colhead">排序</td><td className="colhead text-right">操作</td></tr>
+          </thead>
+          <tbody>
+            {kinds.map((k) => (
+              <tr key={k.kind}>
+                <td className="font-mono">{k.kind}</td>
+                <td>{k.label}</td>
+                <td className="num">{k.sort}</td>
+                <td className="text-right">
+                  <button className="cmgmt-act" disabled={busy}
+                    onClick={() => {
+                      const nl = window.prompt("新显示名称", k.label);
+                      if (nl && nl !== k.label) act(() => api.put(`/api/v1/admin/section-kinds/${k.kind}`, { kind: k.kind, label: nl, sort: k.sort }), "已保存");
+                    }}>重命名</button>
+                  <button className="cmgmt-act cmgmt-act--danger" disabled={busy}
+                    onClick={() => { if (window.confirm(`删除维度「${k.label}」？其下所有字典选项将被清空`)) act(() => api.del(`/api/v1/admin/section-kinds/${k.kind}`), "已删除"); }}>删除</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
       {/* 维度字典 */}
       <section className="baozi-panel p-4">
         <h2 className="mb-2 text-base font-bold">维度字典</h2>
         <div className="mb-2 flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-xs">维度
             <select value={kind} onChange={(e) => setKind(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
-              {KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              {kinds.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
             </select>
           </label>
           <input value={dName} onChange={(e) => setDName(e.target.value)} placeholder="名称" className="min-h-[40px] w-36 rounded-[var(--r-sm)] border border-line px-2 text-sm" />

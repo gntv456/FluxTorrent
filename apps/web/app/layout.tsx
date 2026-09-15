@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { getDict } from "@/i18n/server";
+import { getSiteProfile } from "@/lib/site-profile";
 import { LocaleProvider } from "@/i18n/client";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { dict } = await getDict();
+  // 品牌名跟随站点设定（site_name，站长后台可改）；默认 FluxTorrent
+  const profile = await getSiteProfile();
+  const brandName = profile.brand || "FluxTorrent";
   return {
-    title: `FluxTorrent · ${dict.meta.titleSuffix}`,
+    title: `${brandName} · ${dict.meta.titleSuffix}`,
     description: dict.meta.description,
     manifest: "/manifest.webmanifest",
     icons: {
