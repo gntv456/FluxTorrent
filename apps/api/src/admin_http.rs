@@ -153,7 +153,7 @@ struct ReviewReq {
     approve: bool,
     #[serde(default)]
     reason: String,
-    /// 拒绝原因字典（torrent_deny_reasons.id；好学站 torrent-deny-reasons 口径）
+    /// 拒绝原因字典（torrent_deny_reasons.id；参考站 torrent-deny-reasons 口径）
     #[serde(default)]
     deny_reason_id: Option<i64>,
 }
@@ -498,7 +498,7 @@ async fn report_release(
     Ok(ok(serde_json::json!({ "released": body.report_id })))
 }
 
-// ============ 用户管理（第五轮：好学站 /nexusphp user/users 口径） ============
+// ============ 用户管理（第五轮：参考站 /nexusphp user/users 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct AdminUserListRow {
@@ -567,7 +567,7 @@ async fn user_admin_list(
     if !(1..=100).contains(&q.per_page) {
         return Err(DomainError::Validation("per_page 取值 1-100".into()));
     }
-    // 白名单排序字段（好学站可排序列：Id/等级/上传量/下载量/添加时间）
+    // 白名单排序字段（参考站可排序列：Id/等级/上传量/下载量/添加时间）
     let order_col = match q.sort.as_str() {
         "id" => "u.id",
         "class" => "u.class_id",
@@ -658,7 +658,7 @@ async fn user_admin_list(
     })))
 }
 
-/// 后台用户详情（好学站 user/users/{id} 详情口径：字段全景 + 统计）
+/// 后台用户详情（参考站 user/users/{id} 详情口径：字段全景 + 统计）
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct AdminUserDetail {
     id: i64,
@@ -685,7 +685,7 @@ struct AdminUserDetail {
     leeching: i64,
     uploads: i64,
     invites_unused: i64,
-    // 详情页全景扩充（好学站 user-profile 口径）
+    // 详情页全景扩充（参考站 user-profile 口径）
     comments: i64,
     downloaded_count: i64,
     medals: i64,
@@ -764,7 +764,7 @@ async fn user_admin_snatches(
     Ok(ok(rows))
 }
 
-/// 详情页授予勋章（好学站用户详情「授予勋章」口径）：管理发放 source='admin'
+/// 详情页授予勋章（参考站用户详情「授予勋章」口径）：管理发放 source='admin'
 #[post("/admin/users/{id}/medal/{medal_id}")]
 async fn user_grant_medal(
     req: HttpRequest,
@@ -802,7 +802,7 @@ async fn user_grant_medal(
     ))
 }
 
-/// 详情页授予道具/卡牌（好学站「授予道具」口径）：把商店道具（含化妆卡/改名卡等卡牌类）免费发放给目标用户。
+/// 详情页授予道具/卡牌（参考站「授予道具」口径）：把商店道具（含化妆卡/改名卡等卡牌类）免费发放给目标用户。
 /// 即时类（上传量/火花/邀请）直接生效；卡牌装饰类入 shop_orders（零元，source=admin）待用户使用。
 #[post("/admin/users/{id}/grant-item/{item_id}")]
 async fn user_grant_item(
@@ -886,7 +886,7 @@ async fn user_grant_item(
     ))
 }
 
-/// 详情页分配考核（好学站「分配考核」口径）：把用户登记为某考核岗位（jixiao_claims，当期）
+/// 详情页分配考核（参考站「分配考核」口径）：把用户登记为某考核岗位（jixiao_claims，当期）
 #[derive(Deserialize)]
 struct AssignJixiaoReq {
     type_id: i64,
@@ -1058,7 +1058,7 @@ pub async fn delete_user_cascade(db: &sqlx::PgPool, uid: i64) -> anyhow::Result<
     Ok(())
 }
 
-/// 详情页删除用户（好学站用户详情「删除」口径）：仅 sysop，且要求先封禁（防误删活跃账号）
+/// 详情页删除用户（参考站用户详情「删除」口径）：仅 sysop，且要求先封禁（防误删活跃账号）
 #[delete("/admin/users/{id}")]
 async fn user_admin_delete(
     req: HttpRequest,
@@ -1095,7 +1095,7 @@ async fn user_admin_delete(
     Ok(ok(serde_json::json!({ "deleted": uid })))
 }
 
-/// 「修改上传量等」（好学站用户详情按钮口径）：delta 语义，正加负减，下限 0
+/// 「修改上传量等」（参考站用户详情按钮口径）：delta 语义，正加负减，下限 0
 #[derive(Deserialize)]
 struct UserAdjustReq {
     user_id: i64,
@@ -2052,7 +2052,7 @@ async fn agent_rules_del(
     Ok(ok(serde_json::json!({ "deleted": body.id })))
 }
 
-// ============ 第五轮：拒绝原因字典（好学站 torrent-deny-reasons 口径） ============
+// ============ 第五轮：拒绝原因字典（参考站 torrent-deny-reasons 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct DenyReasonRow {
@@ -2200,7 +2200,7 @@ async fn deny_reasons_delete(
     Ok(ok(serde_json::json!({ "deleted": n })))
 }
 
-// ============ 第五轮：后台种子管理列表（好学站 torrent/torrents 口径） ============
+// ============ 第五轮：后台种子管理列表（参考站 torrent/torrents 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct AdminTorrentRow {
@@ -2379,7 +2379,7 @@ async fn admin_torrent_list(
     })))
 }
 
-// ============ 第五轮：种子操作记录（好学站 torrent-operation-logs 口径） ============
+// ============ 第五轮：种子操作记录（参考站 torrent-operation-logs 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct TorrentOpRow {
@@ -2392,7 +2392,7 @@ struct TorrentOpRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
-// ============ 第五轮：种子操作记录（好学站 torrent-operation-logs 口径） ============
+// ============ 第五轮：种子操作记录（参考站 torrent-operation-logs 口径） ============
 
 #[derive(Deserialize)]
 struct TorrentOpQ {
@@ -2459,7 +2459,7 @@ async fn torrent_op_logs(
     })))
 }
 
-// ============ 第五轮：记录查询（好学站 火花记录/种子购买/登录记录 口径） ============
+// ============ 第五轮：记录查询（参考站 火花记录/种子购买/登录记录 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct SparkLogRow {

@@ -2,7 +2,7 @@
 //!
 //! NexusPHP 口径：用户专属 token（我们复用 passkey）+ 可选过滤参数；
 //! 刷流工具（RSS 阅读器/下载器）凭 URL 自动拉新种。
-//! 参数对齐好学站 getrss.php 的常用子集：分类多选/媒介多选/官种/关键字/条数/标题格式/付费。
+//! 参数对齐参考站 getrss.php 的常用子集：分类多选/媒介多选/官种/关键字/条数/标题格式/付费。
 
 use actix_web::{HttpRequest, get, web, HttpResponse};
 use chrono::{DateTime, Utc};

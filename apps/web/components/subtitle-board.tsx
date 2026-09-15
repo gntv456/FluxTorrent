@@ -34,7 +34,7 @@ const LANG_ID_TO_LABEL = (id: string) => LANGS.find(([v]) => v === id)?.[1] ?? i
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-/** 字幕区（包子站 subtitles.php 复刻）：
+/** 字幕区（参考站 subtitles.php 复刻）：
  *  标题条（字 字幕区 上传字幕-总上传量）→ 规则卡 → 上传表单（rowhead/rowfollow）
  *  → 语言筛选 + 首字母条 → 语言/标题/添加时间/大小/点击/上传者/举报 七列表格 */
 export function SubtitleBoard() {

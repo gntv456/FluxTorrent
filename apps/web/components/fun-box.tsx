@@ -16,7 +16,7 @@ interface FunItem {
   my_vote: string | null;
 }
 
-/** 趣味盒前台（包子站 fun.php 复刻）：
+/** 趣味盒前台（参考站 fun.php 复刻）：
  *  当前条目（😂好笑/😑无聊投票）+ 更多（历史列表）+ 发布（24h 冷却）
  *  + 作者编辑/删除自己的、staff 禁止/恢复 —— 与旧站 fun.php 动作一一对应 */
 export function FunBox({ embedded = false }: { embedded?: boolean }) {

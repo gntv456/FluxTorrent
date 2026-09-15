@@ -1,4 +1,4 @@
-//! 第八轮 P3：管理套件（好学站后台逐页深挖对照报告落地）。
+//! 第八轮 P3：管理套件（参考站后台逐页深挖对照报告落地）。
 //! 种子批量工作台 / 标签字典 / H&R 总览 / 邀请·签到·改名·修改记录 /
 //! 勋章·道具 CRUD / 用户批量操作 / Section 多维 / 考核·任务配置 / Tracker URL。
 
@@ -21,7 +21,7 @@ async fn staff(
     Ok(auth)
 }
 
-/// 用户修改记录（好学站 UserModifyLog 口径）：管理动作按用户落一条可读摘要
+/// 用户修改记录（参考站 UserModifyLog 口径）：管理动作按用户落一条可读摘要
 pub async fn modify_log(db: &sqlx::PgPool, uid: i64, modifier: Option<i64>, content: &str) {
     let _ =
         sqlx::query("INSERT INTO user_modify_logs (uid, modifier, content) VALUES ($1, $2, $3)")
@@ -42,7 +42,7 @@ fn check_ids(ids: &[i64]) -> DomainResult<()> {
     Ok(())
 }
 
-// ============ P1-1 种子批量工作台（好学站 torrent/torrents 批量动作口径） ============
+// ============ P1-1 种子批量工作台（参考站 torrent/torrents 批量动作口径） ============
 
 #[derive(Deserialize)]
 struct TorrentBatchReq {
@@ -265,7 +265,7 @@ async fn torrent_batch(
     Ok(ok(serde_json::json!({ "affected": n as i64 })))
 }
 
-// ============ P1-2 标签字典（好学站 tags 口径：名称 + 样式属性 + 作用域） ============
+// ============ P1-2 标签字典（参考站 tags 口径：名称 + 样式属性 + 作用域） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct TagDictRow {
@@ -451,7 +451,7 @@ async fn tags_dict_delete(
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
 
-// ============ P1-3 H&R 总览（好学站 user/hit-and-runs 口径） ============
+// ============ P1-3 H&R 总览（参考站 user/hit-and-runs 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct HrRecordRow {
@@ -592,7 +592,7 @@ async fn hr_batch_pardon(
     Ok(ok(serde_json::json!({ "pardoned": pardoned as i64 })))
 }
 
-// ============ P2-4 邀请管理（好学站 user/invites 口径） ============
+// ============ P2-4 邀请管理（参考站 user/invites 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct InviteAdminRow {
@@ -1143,7 +1143,7 @@ struct UserMedalDel {
     medal_id: i64,
 }
 
-/// 回收勋章（好学站 UserMedal 删除口径）
+/// 回收勋章（参考站 UserMedal 删除口径）
 #[post("/admin/user-medals/delete")]
 async fn admin_user_medal_revoke(
     req: HttpRequest,
@@ -1493,6 +1493,11 @@ async fn admin_users_batch(
         };
         if n > 0 {
             updated += n;
+            // 批量封禁同步失效 tracker passkey 缓存（与单用户 user_set_status 同口径；
+            // 旧版漏掉导致被批量封禁用户最长 60s 仍可 announce）
+            if body.action == "status" && body.value >= 1 {
+                crate::http::bump_guard_ver(&state).await;
+            }
             let content = match body.action.as_str() {
                 "status" => format!(
                     "批量状态 → {}{}",
@@ -1801,16 +1806,21 @@ async fn section_mode_delete(
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
 
-pub(crate) const SECTION_KINDS: [&str; 6] = [
-    "codec",
-    "audio_codec",
-    "standard",
-    "team",
-    "source",
-    "processing",
-];
+/// 自定义维度字典（0085）：kind 白名单移至 section_kinds 表，站方可自建维度
 /// media/grades/editions 复用 0001 既有三表
 const LEGACY_KINDS: [&str; 3] = ["media", "grades", "editions"];
+
+/// 自定义维度判定（0085）：kind 存在于 section_kinds 且非 legacy 三表维度
+pub(crate) async fn is_custom_kind(db: &sqlx::PgPool, kind: &str) -> bool {
+    if LEGACY_KINDS.contains(&kind) {
+        return false;
+    }
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)")
+        .bind(kind)
+        .fetch_one(db)
+        .await
+        .unwrap_or(false)
+}
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct SectionDictRow {
@@ -1856,7 +1866,7 @@ async fn section_dict_rows(
         "SELECT id, kind, name, sort, mode_id FROM section_dict \
          WHERE ($1::text IS NULL OR kind = $1) ORDER BY kind, sort, id",
     )
-    .bind(kind.filter(|k| SECTION_KINDS.contains(k)))
+    .bind(kind)
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))
@@ -1899,8 +1909,10 @@ async fn section_dict_add(
             .await;
         return Ok(ok(serde_json::json!({ "id": id })));
     }
-    if !SECTION_KINDS.contains(&kind) {
-        return Err(DomainError::Validation("未知维度".into()));
+    if !is_custom_kind(&state.repo.db, kind).await {
+        return Err(DomainError::Validation(
+            "未知维度：请先在「维度管理」中创建该维度".into(),
+        ));
     }
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO section_dict (kind, name, sort, mode_id) VALUES ($1, $2, COALESCE($3, 0), $4) RETURNING id",
@@ -1941,7 +1953,7 @@ async fn section_dict_update(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
         .rows_affected()
-    } else if SECTION_KINDS.contains(&kind) {
+    } else if is_custom_kind(&state.repo.db, kind).await {
         sqlx::query(
             "UPDATE section_dict SET name = $2, sort = COALESCE($3, sort), mode_id = $4 WHERE id = $1",
         )
@@ -1984,7 +1996,7 @@ async fn section_dict_delete(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?
             .rows_affected()
-    } else if SECTION_KINDS.contains(&kind.as_str()) {
+    } else if is_custom_kind(&state.repo.db, &kind).await {
         sqlx::query("DELETE FROM section_dict WHERE id = $1")
             .bind(id)
             .execute(&state.repo.db)
@@ -2004,6 +2016,164 @@ async fn section_dict_delete(
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
 
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct SectionKindRow {
+    kind: String,
+    label: String,
+    sort: i32,
+}
+
+#[derive(Deserialize)]
+struct SectionKindReq {
+    kind: String,
+    label: String,
+    #[serde(default)]
+    sort: Option<i32>,
+}
+
+/// 质量维度元数据 CRUD（0085，NP 自定义 Section 口径）：
+/// 站方自建维度（如 resolution/语言），字典行挂维度下，发布表单动态渲染
+#[get("/admin/section-kinds")]
+async fn section_kinds_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    let rows: Vec<SectionKindRow> =
+        sqlx::query_as("SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
+}
+
+#[post("/admin/section-kinds")]
+async fn section_kinds_add(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<SectionKindReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    let kind = body.kind.trim().to_lowercase();
+    if !LEGACY_KINDS.contains(&kind.as_str())
+        && !regex_check_kind(&kind)
+    {
+        return Err(DomainError::Validation(
+            "维度标识需为小写字母开头的 [a-z0-9_]（≤32 字符）".into(),
+        ));
+    }
+    if LEGACY_KINDS.contains(&kind.as_str()) {
+        return Err(DomainError::Validation("该维度已内置".into()));
+    }
+    if body.label.trim().is_empty() {
+        return Err(DomainError::Validation("显示名称不能为空".into()));
+    }
+    let dup: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)")
+        .bind(&kind)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if dup {
+        return Err(DomainError::Validation("维度标识已存在".into()));
+    }
+    sqlx::query("INSERT INTO section_kinds (kind, label, sort) VALUES ($1, $2, COALESCE($3, 0))")
+        .bind(&kind)
+        .bind(body.label.trim())
+        .bind(body.sort)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "section_kind.add", None)
+        .await;
+    Ok(ok(serde_json::json!({ "kind": kind })))
+}
+
+#[put("/admin/section-kinds/{kind}")]
+async fn section_kinds_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<String>,
+    body: web::Json<SectionKindReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    let kind = path.into_inner();
+    if body.label.trim().is_empty() {
+        return Err(DomainError::Validation("显示名称不能为空".into()));
+    }
+    let n = sqlx::query("UPDATE section_kinds SET label = $2, sort = COALESCE($3, sort) WHERE kind = $1")
+        .bind(&kind)
+        .bind(body.label.trim())
+        .bind(body.sort)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(0));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "section_kind.update", None)
+        .await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/section-kinds/{kind}")]
+async fn section_kinds_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<String>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    let kind = path.into_inner();
+    if LEGACY_KINDS.contains(&kind.as_str()) {
+        return Err(DomainError::Validation("内置维度不可删除".into()));
+    }
+    // 删除会级联清空字典与种子归属，先挡在用中的维度
+    let used: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM torrent_sections ts JOIN section_dict sd ON sd.id = ts.dict_id \
+         WHERE sd.kind = $1",
+    )
+    .bind(&kind)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if used > 0 {
+        return Err(DomainError::Validation(
+            "该维度下已有种子在用，不能删除".into(),
+        ));
+    }
+    let n = sqlx::query("DELETE FROM section_kinds WHERE kind = $1")
+        .bind(&kind)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(0));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "section_kind.del", None)
+        .await;
+    Ok(ok(serde_json::json!({ "deleted": kind })))
+}
+
+/// 维度标识格式：小写字母开头，[a-z0-9_]，≤32 字符
+fn regex_check_kind(kind: &str) -> bool {
+    let bytes = kind.as_bytes();
+    bytes.len() <= 32
+        && !bytes.is_empty()
+        && bytes[0].is_ascii_lowercase()
+        && bytes.iter().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_')
+}
+
 /// 发布表单/筛选公开读（匿名可读：仅字典名称，与 site-profile 同级）
 #[get("/section-dict")]
 async fn section_dict_public(
@@ -2011,20 +2181,23 @@ async fn section_dict_public(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let mut out = serde_json::Map::new();
-    for kind in LEGACY_KINDS {
-        let rows = section_dict_rows(&state.repo.db, Some(kind)).await?;
+    // 维度清单来自 section_kinds（0085 可配置），预置 9 维已种子化
+    let kinds: Vec<SectionKindRow> =
+        sqlx::query_as("SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    for k in &kinds {
+        let rows = section_dict_rows(&state.repo.db, Some(&k.kind)).await?;
         out.insert(
-            kind.to_string(),
+            k.kind.clone(),
             serde_json::to_value(rows).unwrap_or_default(),
         );
     }
-    for kind in SECTION_KINDS {
-        let rows = section_dict_rows(&state.repo.db, Some(kind)).await?;
-        out.insert(
-            kind.to_string(),
-            serde_json::to_value(rows).unwrap_or_default(),
-        );
-    }
+    out.insert(
+        "kinds".into(),
+        serde_json::to_value(&kinds).unwrap_or_default(),
+    );
     let modes: Vec<SectionModeRow> = sqlx::query_as(
         r#"SELECT m.id, m.name, m.show_source, m.show_medium, m.show_codec, m.show_audio_codec,
                   m.show_standard, m.show_processing, m.show_team,
@@ -2039,6 +2212,21 @@ async fn section_dict_public(
         serde_json::to_value(modes).unwrap_or_default(),
     );
     Ok(ok(serde_json::Value::Object(out)))
+}
+
+/// 发布表单标签公开读（匿名可读：启用中的标签，与 section-dict 同级）
+#[get("/tags-dict")]
+async fn tags_dict_public(
+    _req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let rows: Vec<(i32, String, String)> = sqlx::query_as(
+        "SELECT id, name, kind FROM tag_dict WHERE COALESCE(enabled, TRUE) ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
 }
 
 /// 分类归属模式 + 自动过审开关
@@ -3107,6 +3295,11 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(section_mode_delete)
         .service(section_dict_admin)
         .service(section_dict_public)
+        .service(tags_dict_public)
+        .service(section_kinds_list)
+        .service(section_kinds_add)
+        .service(section_kinds_update)
+        .service(section_kinds_delete)
         .service(section_dict_add)
         .service(section_dict_update)
         .service(section_dict_delete)

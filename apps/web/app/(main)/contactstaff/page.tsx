@@ -3,7 +3,7 @@ import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-/** PM 管理组（包子站 contactstaff.php 复刻） */
+/** PM 管理组（参考站 contactstaff.php 复刻） */
 export default async function ContactStaffPage() {
   const { dict } = await getDict();
   return (

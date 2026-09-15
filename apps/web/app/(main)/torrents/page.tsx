@@ -45,7 +45,7 @@ function withParam(
   return s ? `/torrents?${s}` : "/torrents";
 }
 
-/** 种子页（包子站 torrents.php 复刻）：
+/** 种子页（参考站 torrents.php 复刻）：
  *  搜索盒（范围/关键字/匹配模式/给我搜/高级搜索折叠）+ 分类 chip + 九列 colhead 图标表头表格 */
 export default async function TorrentsPage({
   searchParams,
@@ -91,7 +91,7 @@ export default async function TorrentsPage({
     <div className="flex flex-col gap-3">
       <h1 className="sr-only">{dict.torrents.title}</h1>
 
-      {/* 搜索盒（包子站 torrent-search-box 同构：范围+关键字+匹配模式 / 给我搜 / 高级搜索折叠） */}
+      {/* 搜索盒（参考站 torrent-search-box 同构：范围+关键字+匹配模式 / 给我搜 / 高级搜索折叠） */}
       <form action="/torrents" method="get" className="torrent-search-form">
         <table className="searchbox torrent-search-box">
           <tbody className="torrent-search-box__quick">
@@ -216,7 +216,7 @@ export default async function TorrentsPage({
         {fmt(dict.torrents.total, { n: page.total_estimate })}
       </span>
 
-      {/* 种子九列表格（包子站 colhead 图标表头） */}
+      {/* 种子九列表格（参考站 colhead 图标表头） */}
       {page.items.length === 0 ? (
         <EmptyTorrents />
       ) : (

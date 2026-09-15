@@ -3,7 +3,7 @@ import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-/** 求种区（包子站 viewrequests.php 复刻）：REQUEST CENTER 头 + 六个筛选 + 八列表格 */
+/** 求种区（参考站 viewrequests.php 复刻）：REQUEST CENTER 头 + 六个筛选 + 八列表格 */
 export default async function RequestsPage({
   searchParams,
 }: {

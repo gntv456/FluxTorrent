@@ -1,4 +1,4 @@
-//! GeoIP 离线解析（GeoLite2 mmdb）：登录记录的国家/城市列（好学站 login-logs 口径）。
+//! GeoIP 离线解析（GeoLite2 mmdb）：登录记录的国家/城市列（参考站 login-logs 口径）。
 //!
 //! 数据文件不入仓库（.gitignore），由镜像构建时经 `apps/api/geoip` 进入上下文；
 //! 文件缺失时查询一律返回 None，功能静默降级，不影响其余字段。

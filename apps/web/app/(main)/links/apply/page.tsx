@@ -3,7 +3,7 @@ import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-/** 友情链接申请（包子站 linksmanage.php 复刻） */
+/** 友情链接申请（参考站 linksmanage.php 复刻） */
 export default async function LinkApplyPage() {
   const { dict } = await getDict();
   return (

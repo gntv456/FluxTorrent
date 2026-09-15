@@ -4,7 +4,7 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
-/** 友情链接申请（包子站 linksmanage.php?action=apply 复刻）：rowhead/rowfollow 表格 */
+/** 友情链接申请（参考站 linksmanage.php?action=apply 复刻）：rowhead/rowfollow 表格 */
 export function LinkApply() {
   const { dict } = useI18n();
   const t = dict.linkapply;

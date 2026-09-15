@@ -7,7 +7,7 @@ const zhTwBase: Omit<
   "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub"
 > = {
   meta: {
-    titleSuffix: "好學",
+    titleSuffix: "PT",
     description: "教育資源私有種子社群 —— 種下種子，一起成長",
   },
   common: {
@@ -78,7 +78,7 @@ const zhTwBase: Omit<
     welcomeTitle: "歡迎",
     statsTitle: "站點統計",
     heroTitle: "種下種子，一起成長",
-    heroSubtitle: "好學 —— 教育資源私有種子社群（FluxTorrent 驅動）",
+    heroSubtitle: "教育資源私有種子社群（FluxTorrent 驅動）",
     users: "使用者",
     torrents: "種子",
     dead: "斷種",
@@ -171,6 +171,8 @@ const zhTwBase: Omit<
     download: "下載種子",
     downloading: "下載中…",
     downloadNoauth: "請先登入後再下載",
+    priceHint: "付費種子：首次下載將支付對應魔力，重複下載不再扣費",
+    purchased: "已購",
     downloadFailed: "下載失敗，請先登入",
     emptyTitle: "這裡還空空的，去種下第一顆種子吧",
     sticky: "置頂",
@@ -378,6 +380,16 @@ const zhTwBase: Omit<
     ptgenHint: "自動擷取條目資訊追加到下方簡介（伺服器代理，可重複追加）",
     nfo: "NFO 檔案",
     nfoHint: "可選；經典 NFO 字元畫支援（CP437 / UTF-8 均可）",
+    price: "價格",
+    priceHint: "下載者首次下載時支付，重複下載不再扣費；稅率 30%，稅入當月魔法池",
+    bbColor: "顏色",
+    bbFont: "字體",
+    bbSize: "字號",
+    bbLink: "連結",
+    bbImg: "圖片",
+    bbQuote: "引用",
+    bbCode: "程式碼 / MediaInfo",
+    bbEmoji: "表情",
     success: "發布成功（#{id}），等待管理員審核",
     fail: "發布失敗",
     networkError: "網路異常，請先登入後再發布",
@@ -1335,7 +1347,7 @@ usertools: {
   games: {
     title: "娛樂屋",
     subtitle: "小{magic}，大快樂（理性娛樂）",
-    farmName: "好學農場",
+    farmName: "火花農場",
     farmSub: "種下知識，收穫{magic}",
     rule: "規則：單次下注上限 1000 {magic}，每人每小時最多 60 局。娛樂有度，做種才是正道～",
     bet: "下注",
@@ -1377,7 +1389,7 @@ usertools: {
     },
   },
   farm: {
-    title: "好學農場",
+    title: "火花農場",
     marketRule: "市場價 {time} 刷新（每日 0/4/8/12/16/20 點 · ±50% 波動）",
     loading: "農場載入中…",
     plotEmpty: "空地 #{n}",
@@ -1844,7 +1856,7 @@ usertools: {
     banlog: "封禁記錄",
     disclaimer:
       "本站不儲存任何資源檔案，僅提供種子索引服務；請勿上傳未經授權的內容，下載後請自行評估留存合法性。",
-    copyright: "© {year} 好學 FluxTorrent · 復刻自 NexusPHP 經典版式",
+    copyright: "(c) {site} {date} Powered by FluxTorrent",
     statsUsers: "註冊會員 {n}",
     statsTorrents: "發布種子 {n}",
     statsSeedSize: "做種總量 {n}",

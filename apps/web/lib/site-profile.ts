@@ -9,6 +9,8 @@ export interface SiteProfile {
   brand: string;
   /** 站点货币名（0082）：默认「魔力」，站长后台 site_settings.currency_name 可改 */
   currency_name?: string;
+  /** 建站日期（site_settings.datefounded，页脚版权条用） */
+  founded?: string | null;
   categories: { id: number; name: string }[];
   modules: Record<string, boolean>;
 }
@@ -23,6 +25,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
       pack_name: null,
       brand: "",
       currency_name: "魔力",
+      founded: null,
       categories: [],
       modules: {},
     };

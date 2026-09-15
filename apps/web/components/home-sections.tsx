@@ -7,7 +7,7 @@ import { useI18n } from "@/i18n/client";
 import { ShoutBox } from "@/components/shout-box";
 import { FunBox } from "@/components/fun-box";
 
-/** 首页板块（复刻包子站 index.php）：
+/** 首页板块（复刻参考站 index.php）：
  *  社区新鲜事（头条+列表+公告弹窗）· 签到得魔力日历 · 新增资源统计（30 天堆叠柱状图）
  *  · 站点数据三列 · 幸运大转盘流水 · 免责条款 + 友情链接 */
 

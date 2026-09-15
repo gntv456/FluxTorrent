@@ -4,7 +4,7 @@ import { PollBox, OfferList } from "@/components/community-extra";
 
 export const dynamic = "force-dynamic";
 
-/** 社交名单（包子站 friends.php 同款）：好友 + 黑名单 */
+/** 社交名单（参考站 friends.php 同款）：好友 + 黑名单 */
 export default async function FriendsPage() {
   const { dict } = await getDict();
   const friends = await getFriends();

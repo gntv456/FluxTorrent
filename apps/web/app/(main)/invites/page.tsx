@@ -3,7 +3,7 @@ import { InviteManager } from "@/components/invite-manager";
 
 export const dynamic = "force-dynamic";
 
-/** 邀请管理（包子站 invite.php 同款）：LV3+ 每周 2 枚 */
+/** 邀请管理（参考站 invite.php 同款）：LV3+ 每周 2 枚 */
 export default async function InvitesPage() {
   const { dict } = await getDict();
   return (

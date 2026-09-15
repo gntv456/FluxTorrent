@@ -316,8 +316,18 @@ async fn shop_buy(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 商品效果只在真实扣款时执行一次（幂等重放不重复发效果）
-    if matches!(outcome, crate::economy_http::SpendOutcome::Spent) {
+    // 效果执行（CAS 置位，0085）：首次成功扣款 OR 重试补发（此前 Replayed 直接跳过
+    // 效果分支——扣款成功但效果失败后重试 = 花钱买空气）。置位失败 = 效果已发过，跳过。
+    let _ = outcome;
+    let should_apply: Option<i64> = sqlx::query_scalar(
+        "UPDATE shop_orders SET effect_applied = TRUE          WHERE user_id = $1 AND idempotency_key = $2 AND NOT effect_applied RETURNING id",
+    )
+    .bind(auth.id)
+    .bind(&idem)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if should_apply.is_some() {
         let mut cfg = config.clone();
         cfg["item_id"] = serde_json::json!(body.item_id);
         apply_item_effect(&state.repo.db, auth.id, &kind, &cfg).await?;
@@ -727,7 +737,19 @@ async fn bank_deposit(
     .bind(mode)
     .fetch_one(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| {
+        // 存单落库失败：退款冲销（审计 P1-4——旧版钱已扣无存单且无补偿路径）
+        let db = state.repo.db.clone();
+        let uid = auth.id;
+        let amount = body.amount;
+        let idem2 = format!("deposit_refund:{}", Uuid::new_v4());
+        actix_web::rt::spawn(async move {
+            let _ =
+                crate::economy_http::earn_spark(&db, uid, amount, "bank_deposit_refund", &idem2)
+                    .await;
+        });
+        DomainError::Internal(e.into())
+    })?;
 
     Ok(ok(serde_json::json!({
         "id": id, "amount": body.amount, "term_days": body.term_days,
@@ -900,7 +922,19 @@ async fn demand_deposit(
     .bind(bs.demand_rate_bp)
     .execute(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| {
+        // 活期入账失败：退款冲销（审计 P1-4——钱已扣但活期没涨，无补偿路径）
+        let db = state.repo.db.clone();
+        let uid = auth.id;
+        let amount = body.amount;
+        let idem2 = format!("demand_in_refund:{}", Uuid::new_v4());
+        actix_web::rt::spawn(async move {
+            let _ =
+                crate::economy_http::earn_spark(&db, uid, amount, "bank_demand_in_refund", &idem2)
+                    .await;
+        });
+        DomainError::Internal(e.into())
+    })?;
     Ok(ok(serde_json::json!({ "deposited": body.amount })))
 }
 
@@ -1048,14 +1082,17 @@ async fn loan_apply(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let idem = format!("loan:{}:{}", auth.id, id);
-    earn_spark(
-        &state.repo.db,
-        auth.id,
-        body.amount,
-        "bank_loan_payout",
-        &idem,
-    )
-    .await?;
+    if let Err(e) =
+        earn_spark(&state.repo.db, auth.id, body.amount, "bank_loan_payout", &idem).await
+    {
+        // 放款失败回滚贷款行（审计 P1-3：旧版残留 active 贷款进入计息/逾期/自动扣款
+        // 集合——用户没收到钱却背上了债务）
+        let _ = sqlx::query("DELETE FROM bank_loans WHERE id = $1 AND status = 'active'")
+            .bind(id)
+            .execute(&state.repo.db)
+            .await;
+        return Err(e);
+    }
     Ok(ok(serde_json::json!({
         "id": id, "amount": body.amount, "term_days": body.term_days, "daily_rate_bp": rate,
         "due_in_days": body.term_days,
@@ -1098,14 +1135,30 @@ async fn loan_repay(
         id,
     )
     .await?;
-    sqlx::query(
+    // 销账校验影响行数（审计 P1）：与 worker bank_auto_deduct 并发时贷款可能已被结清。
+    // 首次扣款成功但销账 0 行 = 钱扣了贷款没销，必须退款并报错，不能静默返回成功。
+    let settled = sqlx::query(
         "UPDATE bank_loans SET remaining = 0, accrued_interest = 0, status = 'paid', \
          paid_at = now(), last_interest_date = CURRENT_DATE WHERE id = $1 AND status IN ('active', 'defaulted')",
     )
     .bind(id)
     .execute(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if settled == 0 {
+        let _ = crate::economy_http::earn_spark(
+            &state.repo.db,
+            auth.id,
+            payoff,
+            "bank_loan_repay_refund",
+            &format!("loan_repay_refund:{id}:{}", uuid::Uuid::new_v4().simple()),
+        )
+        .await;
+        return Err(DomainError::Validation(
+            "贷款状态已变更（可能已被系统自动扣款结清），本次还款已退回".into(),
+        ));
+    }
     Ok(ok(serde_json::json!({
         "paid": payoff, "principal": remaining,
         "interest": accrued + today_interest,
@@ -1852,26 +1905,43 @@ async fn funding_contribute(
         body.funding_id,
     )
     .await?;
-    // 追投：一人一行累计（UNIQUE(funding_id,user_id)）
-    sqlx::query(
-        "INSERT INTO funding_contribs (funding_id, user_id, amount, tax) VALUES ($1, $2, $3, $4) \
-         ON CONFLICT (funding_id, user_id) DO UPDATE \
-         SET amount = funding_contribs.amount + EXCLUDED.amount, \
-             tax = funding_contribs.tax + EXCLUDED.tax, created_at = now()",
-    )
-    .bind(body.funding_id)
-    .bind(auth.id)
-    .bind(body.amount)
-    .bind(tax)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("UPDATE fundings SET raised = raised + $2 WHERE id = $1")
+    // 参与记录 + 进度推进（审计 P1-5：旧版三段独立语句，扣款成功但 contribs 落库
+    // 失败时该笔不在退款集合——worker 按 funding_contribs 逐行退，钱有去无回。
+    // 现在两段进同一事务，任一失败整体回滚并冲销扣款。）
+    let contrib_ok = async {
+        let mut tx = state.repo.db.begin().await.map_err(|e| e.to_string())?;
+        sqlx::query(
+            "INSERT INTO funding_contribs (funding_id, user_id, amount, tax) VALUES ($1, $2, $3, $4)              ON CONFLICT (funding_id, user_id) DO UPDATE              SET amount = funding_contribs.amount + EXCLUDED.amount,                  tax = funding_contribs.tax + EXCLUDED.tax, created_at = now()",
+        )
         .bind(body.funding_id)
-        .bind(net)
-        .execute(&state.repo.db)
+        .bind(auth.id)
+        .bind(body.amount)
+        .bind(tax)
+        .execute(&mut *tx)
         .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        .map_err(|e| e.to_string())?;
+        sqlx::query("UPDATE fundings SET raised = raised + $2 WHERE id = $1")
+            .bind(body.funding_id)
+            .bind(net)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
+        tx.commit().await.map_err(|e| e.to_string())
+    }
+    .await;
+    if let Err(why) = contrib_ok {
+        let db = state.repo.db.clone();
+        let uid = auth.id;
+        let amount = body.amount;
+        let idem2 = format!("funding_refund:{}", Uuid::new_v4());
+        actix_web::rt::spawn(async move {
+            let _ =
+                crate::economy_http::earn_spark(&db, uid, amount, "funding_refund", &idem2).await;
+        });
+        return Err(DomainError::Validation(
+            format!("参与记录写入失败，已发起退款冲销：{why}"),
+        ));
+    }
     // 税入站免池（与 pool_donate 同账：magic_pool + pool_donations）。
     // 账务口径：税不另记 spark_ledger——支出方的 -amount 流水已把含税全额记为回收，
     // 这里只入池账；若再向某个汇入账户记正流水会虚增 v_spark_flow_monthly 的 minted。

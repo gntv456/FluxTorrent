@@ -5,7 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { InviteItem } from "@/lib/data";
 
-/** 邀请管理（包子站 invite.php 同款）：我的邀请码 + 生成新邀请 */
+/** 邀请管理（参考站 invite.php 同款）：我的邀请码 + 生成新邀请 */
 export function InviteManager({
   empty,
   issueLabel,

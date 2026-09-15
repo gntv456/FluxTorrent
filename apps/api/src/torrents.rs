@@ -27,7 +27,7 @@ pub struct TorrentRow {
     pub sticky: bool,
     pub owner_name: Option<String>,
     pub promotion: Option<String>,
-    /// 进行中促销的截止时刻（列表展示「剩余时间」，好学站口径）
+    /// 进行中促销的截止时刻（列表展示「剩余时间」，参考站口径）
     pub promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
     /// 媒体评分（media_info.rating，豆瓣/IMDb 口径由录入方决定；首页海报墙展示）
     pub rating: Option<String>,
@@ -46,6 +46,11 @@ pub struct TorrentDetailRow {
     pub bookmark_count: i64,
     pub last_action: Option<chrono::DateTime<chrono::Utc>>,
     pub views: i64,
+    /// 付费下载（0086）：定价（0 = 免费）
+    pub price: i64,
+    /// 当前用户是否已支付（owner 恒免）
+    pub purchased: bool,
+    pub is_owner: bool,
     /// 多维属性（第八轮 Section）：kind → { dict_id, name }
     pub sections: serde_json::Value,
 }
@@ -143,10 +148,10 @@ pub async fn list_torrents_noclamp(
         Some("completed") => format!("{sticky_expr}, t.times_completed DESC, t.id DESC"),
         _ => format!("{sticky_expr}, t.id DESC"),
     };
-    // 第八轮 Section 多维筛选：每个维度一个子查询谓词（kind 白名单 + i64 内插，无注入面）
+    // 第八轮 Section 多维筛选：每个维度一个子查询谓词（kind 以 section_kinds 存在性校验 + i64 内插，无注入面）
     let mut sec_sql = String::new();
     for (kind, dict_id) in &filter.sections {
-        if !crate::admin_p3_http::SECTION_KINDS.contains(&kind.as_str()) {
+        if !crate::admin_p3_http::is_custom_kind(db, kind).await {
             continue;
         }
         sec_sql.push_str(&format!(
@@ -322,10 +327,12 @@ fn items_or_not_found(mut v: Vec<TorrentRow>, id: i64) -> DomainResult<TorrentRo
     }
 }
 
-pub async fn get_torrent_detail(db: &PgPool, id: i64) -> DomainResult<TorrentDetailRow> {
+pub async fn get_torrent_detail(db: &PgPool, id: i64, viewer: i64) -> DomainResult<TorrentDetailRow> {
     let row = sqlx::query_as::<_, TorrentDetailRow>(
         r#"
-        SELECT t.id, t.descr, t.numfiles,
+        SELECT t.id, t.descr, t.numfiles, t.price,
+               (t.owner_id = $2) AS is_owner,
+               EXISTS(SELECT 1 FROM torrent_purchases p WHERE p.torrent_id = t.id AND p.user_id = $2) AS purchased,
                (SELECT count(*) FROM thanks th WHERE th.torrent_id = t.id) AS thanks_count,
                (SELECT count(*) FROM bookmarks b WHERE b.torrent_id = t.id) AS bookmark_count,
                GREATEST(
@@ -338,6 +345,7 @@ pub async fn get_torrent_detail(db: &PgPool, id: i64) -> DomainResult<TorrentDet
         "#,
     )
     .bind(id)
+    .bind(viewer)
     .fetch_optional(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -751,6 +759,92 @@ pub async fn tag_torrent(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
+    Ok(())
+}
+
+/// 付费下载扣费（0086，NP 价格 口径）：下载前调用。
+/// 免费/发布者本人/已购 → 直接放行；否则原子扣款 → 发布者得 (100-税)% → 税入当月魔法池。
+/// 全程单事务，余额不足返回校验错误。
+pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> DomainResult<()> {
+    let row: Option<(i64, Option<i64>)> =
+        sqlx::query_as("SELECT price, owner_id FROM torrents WHERE id = $1 AND approval_status = 1")
+            .bind(torrent_id)
+            .fetch_optional(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((price, owner_id)) = row else {
+        return Err(DomainError::NotFound(torrent_id));
+    };
+    if price <= 0 || owner_id == Some(user_id) {
+        return Ok(());
+    }
+    let purchased: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrent_purchases WHERE user_id = $1 AND torrent_id = $2)")
+            .bind(user_id)
+            .bind(torrent_id)
+            .fetch_one(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    if purchased {
+        return Ok(());
+    }
+    let tax: i32 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'upload_price_tax'), 30)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(30)
+    .clamp(0, 90);
+    let net = price * (100 - tax as i64) / 100;
+    let tax_amount = price - net;
+    let month = chrono::Utc::now().format("%Y-%m").to_string();
+
+    let mut tx = db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 原子扣款：余额不足时 UPDATE 命中 0 行
+    let paid: Option<i64> =
+        sqlx::query_scalar("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1 AND spark_balance >= $2 RETURNING spark_balance")
+            .bind(user_id)
+            .bind(price)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    if paid.is_none() {
+        return Err(DomainError::Validation(format!(
+            "魔力不足：该种子为付费种子（{price} 魔力），请先充值或签到攒魔力"
+        )));
+    }
+    sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+        .bind(owner_id)
+        .bind(net)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if tax_amount > 0 {
+        sqlx::query(
+            "INSERT INTO magic_pool (month, donated_total) VALUES ($1, $2) \
+             ON CONFLICT (month) DO UPDATE SET donated_total = magic_pool.donated_total + $2",
+        )
+        .bind(&month)
+        .bind(tax_amount)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    sqlx::query(
+        "INSERT INTO torrent_purchases (user_id, torrent_id, price) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+    )
+    .bind(user_id)
+    .bind(torrent_id)
+    .bind(price)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(())
 }
 

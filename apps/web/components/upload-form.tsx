@@ -25,7 +25,7 @@ interface SectionKindMeta { kind: string; label: string; sort: number }
 
 /** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类来自站点档案，支持任意类型 PT 站） */
 export function UploadForm() {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   // 分类以 /site-profile 为准（类型包可切换）；字典仅兜底
   const [profileCats, setProfileCats] = useState<ProfileCat[] | null>(null);
   useEffect(() => {
@@ -42,6 +42,7 @@ export function UploadForm() {
   const editions = dict.upload.editions;
   const fileRef = useRef<HTMLInputElement>(null);
   const nfoRef = useRef<HTMLInputElement>(null);
+  const descrRef = useRef<HTMLTextAreaElement>(null);
   const [fileName, setFileName] = useState("");
   const [nfoName, setNfoName] = useState("");
   const [name, setName] = useState("");
@@ -75,6 +76,8 @@ export function UploadForm() {
   // 挑选（促销位）：发布时直接设置单种促销，需 torrent.set_price 权限
   const [promoKind, setPromoKind] = useState("");
   const [promoHours, setPromoHours] = useState(48);
+  // 价格（0086 付费下载）：下载者支付，发布者得 (100-税)%，0 = 免费
+  const [price, setPrice] = useState(0);
   // 质量维度（0085 可配置）：维度清单与标签来自 section_kinds，站方可自建
   const [secDict, setSecDict] = useState<Record<string, SectionDictRow[]>>({});
   const [secKinds, setSecKinds] = useState<SectionKindMeta[]>([]);
@@ -108,6 +111,37 @@ export function UploadForm() {
     }
   }
 
+  // BBCode 工具条（NP bbcode 口径）：包住选区 / 插入
+  function bbWrap(open: string, close: string, ph = "") {
+    const el = descrRef.current;
+    const s = el?.selectionStart ?? descr.length;
+    const e = el?.selectionEnd ?? descr.length;
+    const sel = descr.slice(s, e) || ph;
+    setDescr(descr.slice(0, s) + open + sel + close + descr.slice(e));
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      el.selectionStart = s + open.length;
+      el.selectionEnd = s + open.length + sel.length;
+    });
+  }
+  function bbInsert(txt: string) {
+    const el = descrRef.current;
+    const s = el?.selectionStart ?? descr.length;
+    const e = el?.selectionEnd ?? s;
+    setDescr(descr.slice(0, s) + txt + descr.slice(e));
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      el.selectionStart = el.selectionEnd = s + txt.length;
+    });
+  }
+  const bbBtn =
+    "min-h-[28px] min-w-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1.5 text-xs font-bold text-ink hover:border-[var(--baozi-orange)]";
+  const bbSelect =
+    "min-h-[28px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1 text-xs text-ink outline-none focus:border-[var(--baozi-orange)]";
+  const BB_EMOJIS = ["😄", "😂", "🥰", "😮", "😭", "😅", "😡", "👍", "🙏", "🎉", "🔥", "❤️", "🤔", "💯", "🍺"];
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const file = fileRef.current?.files?.[0];
@@ -134,6 +168,7 @@ export function UploadForm() {
       });
       if (name.trim()) qs.set("name", name.trim());
       if (imdb.trim()) qs.set("imdb", imdb.trim());
+      if (price > 0) qs.set("price", String(Math.min(1_000_000, Math.max(0, price))));
       if (gradeId) qs.set("grade_id", gradeId);
       if (editionId) qs.set("edition_id", editionId);
       if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
@@ -335,6 +370,28 @@ export function UploadForm() {
             </div>,
           )}
           {row(
+            dict.upload.price ?? "价格",
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={1000000}
+                  value={price}
+                  onChange={(e) => setPrice(Number(e.target.value))}
+                  className="min-h-[38px] w-36 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                />
+                <span className="text-sm text-sub">
+                  {currency}（0 = 免费，最大 1000000）
+                </span>
+              </div>
+              <span className="text-xs text-sub">
+                {dict.upload.priceHint ??
+                  "下载者首次下载时支付，重复下载不再扣费；税率 30%，税入当月魔法池"}
+              </span>
+            </div>,
+          )}
+          {row(
             dict.upload.poster ?? "封面图 URL",
             <div className="flex flex-col gap-1">
               <input
@@ -353,15 +410,95 @@ export function UploadForm() {
           {row(
             dict.upload.descr,
             <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-1">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) bbWrap(`[color=${e.target.value}]`, "[/color]");
+                  }}
+                  className={bbSelect}
+                  title={dict.upload.bbColor ?? "颜色"}
+                >
+                  <option value="">{dict.upload.bbColor ?? "颜色"}</option>
+                  <option value="#e02020">🔴 红</option>
+                  <option value="#f59e0b">🟠 橙</option>
+                  <option value="#16a34a">🟢 绿</option>
+                  <option value="#2563eb">🔵 蓝</option>
+                  <option value="#9333ea">🟣 紫</option>
+                  <option value="#6b7280">⚪ 灰</option>
+                </select>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) bbWrap(`[font=${e.target.value}]`, "[/font]");
+                  }}
+                  className={bbSelect}
+                  title={dict.upload.bbFont ?? "字体"}
+                >
+                  <option value="">{dict.upload.bbFont ?? "字体"}</option>
+                  <option value="SimSun">宋体</option>
+                  <option value="KaiTi">楷体</option>
+                  <option value="SimHei">黑体</option>
+                  <option value="serif">Serif</option>
+                  <option value="monospace">等宽</option>
+                </select>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) bbWrap(`[size=${e.target.value}]`, "[/size]");
+                  }}
+                  className={bbSelect}
+                  title={dict.upload.bbSize ?? "字号"}
+                >
+                  <option value="">{dict.upload.bbSize ?? "字号"}</option>
+                  <option value="1">小</option>
+                  <option value="3">中</option>
+                  <option value="5">大</option>
+                </select>
+                <button type="button" className={`${bbBtn} font-black`} onClick={() => bbWrap("[b]", "[/b]")} title="Bold">B</button>
+                <button type="button" className={`${bbBtn} italic`} onClick={() => bbWrap("[i]", "[/i]")} title="Italic">I</button>
+                <button type="button" className={`${bbBtn} underline`} onClick={() => bbWrap("[u]", "[/u]")} title="Underline">U</button>
+                <button type="button" className={`${bbBtn} line-through`} onClick={() => bbWrap("[s]", "[/s]")} title="Strikethrough">S</button>
+                <button type="button" className={bbBtn} onClick={() => bbWrap("[url]", "[/url]", "https://")} title={dict.upload.bbLink ?? "链接"}>🔗</button>
+                <button
+                  type="button"
+                  className={bbBtn}
+                  title={dict.upload.bbImg ?? "图片"}
+                  onClick={() => {
+                    const u = window.prompt(dict.upload.bbImg ?? "图片 URL");
+                    if (u && u.trim()) bbInsert(`[img]${u.trim()}[/img]`);
+                  }}
+                >🖼️</button>
+                <button type="button" className={bbBtn} onClick={() => bbWrap("[quote]", "[/quote]")} title={dict.upload.bbQuote ?? "引用"}>❝</button>
+                <button
+                  type="button"
+                  className={bbBtn}
+                  title={dict.upload.bbCode ?? "代码 / MediaInfo"}
+                  onClick={() => bbWrap("[code]", "[/code]", "MediaInfo / General / Complete name …")}
+                >{"</>"}</button>
+                <details className="relative">
+                  <summary className={`${bbBtn} inline-flex cursor-pointer list-none items-center justify-center`} title={dict.upload.bbEmoji ?? "表情"}>😀</summary>
+                  <div className="absolute z-10 mt-1 flex flex-wrap gap-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] p-2 shadow-[var(--shadow-card)]">
+                    {BB_EMOJIS.map((em) => (
+                      <button key={em} type="button" className="text-lg hover:scale-125" onClick={() => bbInsert(em)}>
+                        {em}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              </div>
               <textarea
+                ref={descrRef}
                 value={descr}
                 onChange={(e) => setDescr(e.target.value)}
                 placeholder={dict.upload.descrPlaceholder}
-                rows={7}
-                maxLength={10000}
+                rows={9}
+                maxLength={30000}
                 className={fieldCls}
               />
-              <span className="text-xs text-sub">{dict.upload.descrHint}</span>
+              <span className="text-xs text-sub">
+                {dict.upload.descrHint}（BBCode：<code>[b][i][color=][size=][url][img][quote][code]</code> 均受支持）
+              </span>
             </div>,
           )}
           {row(

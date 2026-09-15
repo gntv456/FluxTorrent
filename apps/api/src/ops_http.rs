@@ -455,7 +455,7 @@ async fn task_claim(
         )
         .await?;
     }
-    // 指标基线快照（base + delta 结算口径，对齐好学站 UserTaskRecord）
+    // 指标基线快照（base + delta 结算口径，对齐参考站 UserTaskRecord）
     let id: i64 = sqlx::query_scalar(
         r#"
         INSERT INTO task_claims (task_id, user_id, base_uploaded, base_seed_seconds, base_uploads)
@@ -489,7 +489,7 @@ struct PreserveRow {
     size: i64,
     seeders: i32,
     claimed_by: Option<String>,
-    // 资源库行同构字段（保种区列表复用 TorrentTr 渲染，好学站口径）
+    // 资源库行同构字段（保种区列表复用 TorrentTr 渲染，参考站口径）
     small_descr: Option<String>,
     category_id: i32,
     medium_id: i32,

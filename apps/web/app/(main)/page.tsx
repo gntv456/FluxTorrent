@@ -7,7 +7,7 @@ import { LatestPosters } from "@/components/latest-posters";
 
 export const dynamic = "force-dynamic";
 
-/** 首页（包子站 index.php 像素级复刻）：
+/** 首页（参考站 index.php 像素级复刻）：
  *  社区新鲜事 + 签到日历 → 新增资源统计图表 → 站点数据三列 + 幸运大转盘 → 免责/友链 → 最新种子海报墙 */
 export default async function HomePage() {
   const { dict } = await getDict();

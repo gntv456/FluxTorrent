@@ -297,7 +297,7 @@ export async function getTorrents(
   }
 }
 
-// ============ 缺口补齐：任务/银行/邀请/字幕/社交/投票（包子站同款入口） ============
+// ============ 缺口补齐：任务/银行/邀请/字幕/社交/投票（参考站同款入口） ============
 
 export interface TaskItem {
   id: number;

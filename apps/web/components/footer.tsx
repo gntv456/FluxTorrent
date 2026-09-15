@@ -4,9 +4,10 @@ import { getSiteStats, getMenuItems, type SiteStats } from "@/lib/data";
 import { fmt } from "@/i18n/config";
 import { formatBytes } from "@/lib/format";
 import { MenuItemLink } from "@/components/custom-menu";
+import { getSiteProfile } from "@/lib/site-profile";
 
 /**
- * 包子站页脚复刻（参照 ref1-bot.png）：
+ * 页脚：
  * 站点信息 / 快捷导航 / 帮助 三栏卡片 + 运行统计条 + 免责声明 + 版权条。
  * 统计接口需登录，未登录时该条自动隐藏（页面其余部分照常渲染）。
  */
@@ -15,6 +16,11 @@ export async function Footer() {
   const stats = (await getSiteStats()) as SiteStats | null;
   const customLinks = await getMenuItems("footer");
   const year = new Date().getFullYear();
+  // 版权条动态化：站名（site_name）+ 建站日期（datefounded）——通用建站口径，
+  // 不再内嵌任何具体站名；日期缺省退当前年份
+  const profile = await getSiteProfile();
+  const siteName = profile.brand || "FluxTorrent";
+  const foundedDate = profile.founded || String(year);
 
   const links = [
     { href: "/", label: dict.nav.home },
@@ -36,7 +42,7 @@ export async function Footer() {
             </h2>
             <p className="mt-2 flex items-center gap-2 text-sm text-sub">
               <span aria-hidden className="text-xl">
-                🥟
+                🌱
               </span>
               {dict.footer.about}
             </p>
@@ -120,7 +126,7 @@ export async function Footer() {
             {dict.footer.disclaimer}
           </p>
           <p className="mt-1 text-[11px] text-sub">
-            {fmt(dict.footer.copyright, { year })}
+            {fmt(dict.footer.copyright, { site: siteName, date: foundedDate })}
           </p>
         </div>
       </div>

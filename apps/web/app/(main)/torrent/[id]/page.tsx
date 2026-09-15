@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { categoryColor, editionName, formatBytes, promotionBadge } from "@/lib/format";
+import { hasBBCode, renderBBCode } from "@/lib/bbcode";
 import { DownloadButton } from "@/components/download-button";
 import { TorrentSocial } from "@/components/torrent-social";
 import { TorrentManage } from "@/components/torrent-manage";
@@ -23,6 +24,9 @@ interface TorrentDetailExt {
   bookmark_count: number;
   last_action: string | null;
   views: number;
+  price: number;
+  purchased: boolean;
+  is_owner: boolean;
 }
 
 interface FileItem {
@@ -53,8 +57,12 @@ interface GroupInfo {
 }
 
 /** 简介 markdown-lite 渲染：标题/列表/段落（descr 为简单 markdown 文本，无需完整 parser）
+ *  含 BBCode 标签时走 BBCode 渲染器（NP 口径：颜色/字体/字号/引用/代码/图片/链接…）
  *  超长简介默认折叠（馒头/阳光口径：展开按钮在底部） */
 function Descr({ text }: { text: string }) {
+  if (hasBBCode(text)) {
+    return <div className="whitespace-pre-wrap text-sm leading-relaxed">{renderBBCode(text)}</div>;
+  }
   const lines = text.split("\n");
   const out: React.ReactNode[] = [];
   let listBuf: string[] = [];
@@ -261,7 +269,13 @@ export default async function TorrentDetailPage({
 
           {/* 操作行（馒头口径：主下载 + 次级动作横排） */}
           <div className="td-head__actions">
-            <DownloadButton torrentId={t.id} name={t.name} />
+            <DownloadButton
+              torrentId={t.id}
+              name={t.name}
+              price={ext?.price}
+              purchased={ext?.purchased}
+              isOwner={ext?.is_owner}
+            />
             <TorrentSocial torrentId={t.id} />
             <WishlistButton keyword={t.name} />
             {t.seeders === 0 && (

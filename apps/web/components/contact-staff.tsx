@@ -4,7 +4,7 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
-/** PM 管理组（包子站 contactstaff.php 复刻）：
+/** PM 管理组（参考站 contactstaff.php 复刻）：
  *  主题输入 + BBCode 工具栏（B/I/U/URL/IMG/List/QUOTE/Close all + 颜色/字体/字号下拉）
  *  + 正文 textarea + 提交/预览 */
 export function ContactStaff() {

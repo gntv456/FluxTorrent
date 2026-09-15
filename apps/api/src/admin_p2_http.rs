@@ -1,4 +1,4 @@
-//! 第五轮 P2：置顶促销 / 自定义菜单 / 消息模板（好学站 Other 组口径）。
+//! 第五轮 P2：置顶促销 / 自定义菜单 / 消息模板（参考站 Other 组口径）。
 
 use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
@@ -653,7 +653,7 @@ pub fn mount_p2_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_claim_release)
 }
 
-// ============ 第六轮：保种认领后台视图（好学站 user/claims 口径，NP claims 表） ============
+// ============ 第六轮：保种认领后台视图（参考站 user/claims 口径，NP claims 表） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct AdminClaimRow {

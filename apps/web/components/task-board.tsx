@@ -52,7 +52,7 @@ function fmtBytes(n: number): string {
   return `${v >= 100 ? v.toFixed(0) : v.toFixed(2)} ${units[i]}`;
 }
 
-/** 任务系统（包子站 task.php 复刻）：TASK SYSTEM hero + 01 规则 + 02 可领取任务（五档卡）
+/** 任务系统（参考站 task.php 复刻）：TASK SYSTEM hero + 01 规则 + 02 可领取任务（五档卡）
  *  + 03 任务商店 + 06 最新动态 + 07 任务统计 + 08 我的任务记录 */
 export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
   const { dict } = useI18n();

@@ -324,7 +324,7 @@ function LoginShell() {
   );
 }
 
-/** 登录页（设计稿：包子站 2170×1180 artwork 双栏画布复刻） */
+/** 登录页（设计稿：参考站 2170×1180 artwork 双栏画布复刻） */
 export default function LoginPage() {
   return <LoginShell />;
 }

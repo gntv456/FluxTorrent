@@ -20,7 +20,7 @@ interface RequestRow {
 
 const FINISHED_KEYS = ["no", "all", "yes", "ing", "my"] as const;
 
-/** 求种区列表（包子站 viewrequests.php）：
+/** 求种区列表（参考站 viewrequests.php）：
  *  REQUEST CENTER 头部 + 添加求种/查看所有/已解决/未解决/解决中/我发布的 筛选
  *  + 名称/最新出价/原始出价/评论数/应求数/求种者/时间/状态 八列表格 + 搜索 */
 export function RequestBoard({
@@ -72,7 +72,7 @@ export function RequestBoard({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* REQUEST CENTER 头部（包子站 request-center__header 同款斜切装饰） */}
+      {/* REQUEST CENTER 头部（参考站 request-center__header 同款斜切装饰） */}
       <header className="request-center__header">
         <span>
           <small>{t.headSmall}</small>

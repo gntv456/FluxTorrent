@@ -1,5 +1,5 @@
 //! 任务系统结算（0051）：领取时记指标基线，达标发奖、超时失败。
-//! 口径（对齐好学站 UserTaskRecord 的 base + delta）：
+//! 口径（对齐参考站 UserTaskRecord 的 base + delta）：
 //!   upload_delta      = users.uploaded - base_uploaded
 //!   download_delta    = users.downloaded - base_downloaded（仅用于 Master 系列等级任务的总流量口径）
 //!   seed_seconds_delta= sum(snatches.seeded_seconds) - base_seed_seconds（做种时长）

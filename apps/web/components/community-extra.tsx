@@ -5,7 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { OfferItem, PollItem } from "@/lib/data";
 
-/** 趣味投票（包子站 funvote 口径：一人一票，投票 +1 火花） */
+/** 趣味投票（参考站 funvote 口径：一人一票，投票 +1 火花） */
 export function PollBox({ empty }: { empty: string }) {
   const { dict } = useI18n();
   const [polls, setPolls] = useState<PollItem[] | null>(null);
@@ -86,7 +86,7 @@ export function PollBox({ empty }: { empty: string }) {
   );
 }
 
-/** 应求/候选列表（包子站 offers 口径：投票达标晋升为求种） */
+/** 应求/候选列表（参考站 offers 口径：投票达标晋升为求种） */
 export function OfferList({ offers, empty }: { offers: OfferItem[]; empty: string }) {
   if (offers.length === 0) return <p className="py-4 text-center text-sub">{empty}</p>;
   return (

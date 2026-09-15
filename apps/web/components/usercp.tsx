@@ -12,7 +12,7 @@ import { ApiTokens } from "@/components/api-tokens";
 import { NoticePrefsCard } from "@/components/notice-prefs";
 import { WishlistPanel } from "@/components/wishlist";
 
-/** 控制面板 —— 像素级复刻 NexusPHP usercp（包子站）：
+/** 控制面板 —— 像素级复刻 NexusPHP usercp（参考站）：
  *  左侧 ⚙控制面板 六项侧边导航（账户概览/个人资料/网站设定/论坛设定/安全设定）
  *  + 各 tab 的 rowhead/rowfollow 经典表格表单，字段与旧站一一对应。 */
 

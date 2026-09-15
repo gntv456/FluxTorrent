@@ -3,7 +3,7 @@ import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-/** 任务系统（包子站 task.php 复刻）：五档任务卡 + 商店 + 动态 + 统计 + 记录 */
+/** 任务系统（参考站 task.php 复刻）：五档任务卡 + 商店 + 动态 + 统计 + 记录 */
 export default async function TasksPage() {
   const { dict } = await getDict();
   return (
