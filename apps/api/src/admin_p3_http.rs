@@ -94,7 +94,7 @@ async fn torrent_batch(
         "sticky" => {
             let ps = body.pos_state.unwrap_or(1);
             if !(0..=1).contains(&ps) {
-                return Err(DomainError::Validation("pos_state 取值 0/1".into()));
+                return Err(DomainError::Validation("pos_state 取值 0/1/2".into()));
             }
             sqlx::query(
                 "UPDATE torrents SET pos_state = $2, pos_state_until = $3, mtime = now() \

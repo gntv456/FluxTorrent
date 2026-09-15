@@ -10,11 +10,14 @@ const TAG_RE =
   /\[(\/?)(b|i|u|s|color|size|font|url|img|quote|code|center|hr)(?:=([^\]]*))?\]/gi;
 
 const SIZES: Record<string, string> = {
-  "1": "12px",
-  "2": "14px",
-  "3": "17px",
-  "4": "22px",
-  "5": "30px",
+  "1": "10px",
+  "2": "12px",
+  "3": "14px",
+  "4": "16px",
+  "5": "18px",
+  "6": "22px",
+  "7": "27px",
+  "8": "34px",
 };
 
 export function hasBBCode(text: string): boolean {

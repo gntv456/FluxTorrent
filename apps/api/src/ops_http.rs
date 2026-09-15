@@ -405,46 +405,92 @@ async fn task_claim(
     body: web::Json<TaskClaimReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // 任务需在有效期内
-    let window: Option<bool> =
-        sqlx::query_scalar("SELECT now() BETWEEN starts_at AND ends_at FROM tasks WHERE id = $1")
-            .bind(body.task_id)
+
+    // 一次性取任务配置：存在性/时段/限领/报名费/等级门槛/指标
+    let task: Option<(bool, Option<i32>, i64, i32, serde_json::Value)> = sqlx::query_as(
+        "SELECT now() BETWEEN starts_at AND ends_at, claim_limit, fee, target_class, metric \
+         FROM tasks WHERE id = $1",
+    )
+    .bind(body.task_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((in_window, claim_limit, fee, target_class, metric_json)) = task else {
+        return Err(DomainError::NotFound(body.task_id));
+    };
+    if !in_window {
+        return Err(DomainError::Validation("任务不在可领取时段内".into()));
+    }
+    // claim_limit 语义：NULL = 不限领（此前 NULL 误判 404）；0 = 已停止领取；>0 = 名额上限
+    if claim_limit == Some(0) {
+        return Err(DomainError::Validation("该任务已停止领取".into()));
+    }
+    // 目标等级门槛（此前缺失校验：低等级可领高等级任务）
+    let user_class: Option<i32> =
+        sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+            .bind(auth.id)
             .fetch_optional(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    if window != Some(true) {
-        return Err(DomainError::Validation("任务不在可领取时段内".into()));
-    }
-    // 认领人数限流（旧站 23/100 口径 → 数据库计数 + 唯一约束）
-    let limit: Option<i32> = sqlx::query_scalar("SELECT claim_limit FROM tasks WHERE id = $1")
-        .bind(body.task_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .flatten();
-    let Some(limit) = limit else {
-        return Err(DomainError::NotFound(body.task_id));
+    let Some(user_class) = user_class else {
+        return Err(DomainError::NotFound(auth.id));
     };
-    if limit > 0 {
-        let claimed: i64 =
-            sqlx::query_scalar("SELECT count(*) FROM task_claims WHERE task_id = $1")
-                .bind(body.task_id)
-                .fetch_one(&state.repo.db)
-                .await
-                .unwrap_or(0);
-        if claimed >= limit as i64 {
-            return Err(DomainError::Validation("认领名额已满".into()));
-        }
+    if user_class < target_class {
+        return Err(DomainError::Validation("等级未达到该任务的领取门槛".into()));
     }
-    // 报名费（任务配置了 fee 时先扣，凭据 ref 指向任务；重复领取被唯一约束挡住，不会双扣）
-    let fee: i64 = sqlx::query_scalar("SELECT fee FROM tasks WHERE id = $1")
-        .bind(body.task_id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    // 指标有效性：metric 至少含一个已知键；否则认领会悬挂到超时被判失败并扣罚金
+    const KNOWN_METRIC_KEYS: [&str; 6] = [
+        "upload_delta",
+        "download_delta",
+        "seed_points_delta",
+        "seed_seconds_delta",
+        "uploads",
+        "subtitles",
+    ];
+    let has_target = metric_json
+        .as_object()
+        .is_some_and(|o| KNOWN_METRIC_KEYS.iter().any(|k| o.contains_key(*k)));
+    if !has_target {
+        return Err(DomainError::Validation("任务指标配置无效，暂不可领取".into()));
+    }
+
+    // 原子占位：名额校验与插入同语句（此前 count+INSERT 两步存在并发超领窗口）
+    let limit_param: i64 = match claim_limit {
+        Some(l) if l > 0 => i64::from(l),
+        _ => i64::from(i32::MAX), // NULL = 不限领
+    };
+    let claim_id: i64 = sqlx::query_scalar(
+        r#"
+        INSERT INTO task_claims (task_id, user_id, base_uploaded, base_seed_seconds, base_uploads)
+        SELECT $1, $2,
+               u.uploaded,
+               COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0),
+               (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)
+        FROM users u
+        WHERE u.id = $2
+          AND (SELECT count(*) FROM task_claims tc WHERE tc.task_id = $1) < $3
+        RETURNING id
+        "#,
+    )
+    .bind(body.task_id)
+    .bind(auth.id)
+    .bind(limit_param)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| match e {
+        sqlx::Error::Database(db) if db.is_unique_violation() => {
+            DomainError::Validation("已认领过该任务".into())
+        }
+        // 占位未插入只可能是名额满（用户存在性与等级已在前置校验确认）
+        sqlx::Error::RowNotFound => DomainError::Validation("认领名额已满".into()),
+        other => DomainError::Internal(other.into()),
+    })?;
+
+    // 报名费：先占位后扣费，扣费失败回滚占位（此前扣费在前，INSERT 失败会白扣费；
+    // 幂等键 task_fee:{uid}:{task_id} 保证重试不会双扣）
     if fee > 0 {
         let idem = format!("task_fee:{}:{}", auth.id, body.task_id);
-        crate::economy_http::spend_spark(
+        if let Err(e) = crate::economy_http::spend_spark(
             &state.repo.db,
             auth.id,
             fee,
@@ -453,31 +499,17 @@ async fn task_claim(
             "task",
             body.task_id,
         )
-        .await?;
-    }
-    // 指标基线快照（base + delta 结算口径，对齐参考站 UserTaskRecord）
-    let id: i64 = sqlx::query_scalar(
-        r#"
-        INSERT INTO task_claims (task_id, user_id, base_uploaded, base_seed_seconds, base_uploads)
-        SELECT $1, $2,
-               u.uploaded,
-               COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0),
-               (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)
-        FROM users u WHERE u.id = $2
-        RETURNING id
-        "#,
-    )
-    .bind(body.task_id)
-    .bind(auth.id)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::Database(db) if db.is_unique_violation() => {
-            DomainError::Validation("已认领过该任务".into())
+        .await
+        {
+            let _ = sqlx::query("DELETE FROM task_claims WHERE id = $1 AND user_id = $2")
+                .bind(claim_id)
+                .bind(auth.id)
+                .execute(&state.repo.db)
+                .await;
+            return Err(e);
         }
-        other => DomainError::Internal(other.into()),
-    })?;
-    Ok(ok(serde_json::json!({ "claim_id": id })))
+    }
+    Ok(ok(serde_json::json!({ "claim_id": claim_id })))
 }
 
 // ============ M19 保种区 ============

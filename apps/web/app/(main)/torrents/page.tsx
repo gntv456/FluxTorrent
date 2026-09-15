@@ -1,6 +1,6 @@
 import { EmptyTorrents } from "@/components/torrent";
 import { TorrentTr } from "@/components/torrent-table";
-import { paged } from "@/lib/api-client";
+import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
@@ -8,27 +8,16 @@ import type { TorrentListItem } from "@fluxtorrent/domain-types";
 export const dynamic = "force-dynamic";
 
 interface SectionDictRow { id: number; kind: string; name: string; sort: number }
+interface SectionKindMeta { kind: string; label: string; sort: number }
 
-/** 第八轮 Section 多维：筛选下拉字典（匿名接口；失败时隐藏筛选区） */
-async function loadSectionDict(): Promise<Record<string, SectionDictRow[]>> {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+/** 匿名公开接口统一抓取（api.get 自带 SSR 内网直连 API_SERVER_URL；失败时隐藏对应筛选区） */
+async function loadPublic<T>(path: string): Promise<T | null> {
   try {
-    const res = await fetch(`${base}/api/v1/section-dict`, { cache: "no-store" });
-    const j = await res.json();
-    return j?.code === 0 ? (j.data as Record<string, SectionDictRow[]>) : {};
+    return await api.get<T>(path);
   } catch {
-    return {};
+    return null;
   }
 }
-
-const SEC_KINDS: [string, string][] = [
-  ["codec", "编码"],
-  ["audio_codec", "音频编码"],
-  ["standard", "规格"],
-  ["team", "制作组"],
-  ["source", "来源"],
-  ["processing", "处理工艺"],
-];
 
 /** 在现有参数上增量修改，保留其余筛选（修复翻页丢参数） */
 function withParam(
@@ -46,46 +35,70 @@ function withParam(
 }
 
 /** 种子页（参考站 torrents.php 复刻）：
- *  搜索盒（范围/关键字/匹配模式/给我搜/高级搜索折叠）+ 分类 chip + 九列 colhead 图标表头表格 */
+ *  搜索盒（范围/关键字/匹配模式/给我搜/高级搜索折叠）+ 分类 chip + 九列 colhead 图标表头表格
+ *  0088：分类走 site-profile（与后台同步）；高级搜索 = 多选分类 + 排序 + 标签 + 九维动态筛选 */
 export default async function TorrentsPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const sp = await searchParams;
+  const spRaw = await searchParams;
+  // 归一化：重复参数（多选分类 checkbox）→ 逗号串；单值原样
+  const sp: Record<string, string | undefined> = Object.fromEntries(
+    Object.entries(spRaw).map(([k, v]) => [k, Array.isArray(v) ? v.join(",") : v]),
+  );
   const { dict } = await getDict();
-  const secDict = await loadSectionDict();
-  const hasSecDict = SEC_KINDS.some(([k]) => (secDict[k]?.length ?? 0) > 0);
+  const [profile, secDict, tagDict] = await Promise.all([
+    loadPublic<{
+      categories: { id: number; name: string }[];
+      metadata_sources?: string[];
+    }>("/api/v1/site-profile"),
+    loadPublic<Record<string, SectionDictRow[]> & { kinds?: SectionKindMeta[] }>(
+      "/api/v1/section-dict",
+    ),
+    loadPublic<{ id: number; name: string; kind: string }[] | [number, string, string][]>(
+      "/api/v1/tags-dict",
+    ),
+  ]);
+  const kinds: SectionKindMeta[] = secDict?.kinds ?? [];
+  const dimKinds = kinds.filter((k) => (secDict?.[k.kind]?.length ?? 0) > 0);
+  const tags = (tagDict ?? []).map((r) =>
+    Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r,
+  );
+  // 多维筛选参数转发（sec_{kind} → 后端通用解析）：不转发则筛选静默失效
+  const secParams: Record<string, string> = {};
+  for (const [k, v] of Object.entries(sp)) {
+    if (k.startsWith("sec_") && v) secParams[k] = v;
+  }
   // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用
   const page = await paged<TorrentListItem>("/api/v1/torrents", {
     limit: 20,
-    category_id: sp.category_id ? Number(sp.category_id) : undefined,
-    medium_id: sp.medium_id ? Number(sp.medium_id) : undefined,
-    grade_id: sp.grade_id ? Number(sp.grade_id) : undefined,
+    // 多选分类（0088）：后端 category_ids 兼容逗号串
+    category_id: sp.category_id,
     official: sp.official ? sp.official === "1" : undefined,
     include_dead: sp.include_dead === "1",
     search: sp.search,
     sort: sp.sort,
     tag_id: sp.tag_id ? Number(sp.tag_id) : undefined,
-    sec_codec: sp.sec_codec ? Number(sp.sec_codec) : undefined,
-    sec_audio_codec: sp.sec_audio_codec ? Number(sp.sec_audio_codec) : undefined,
-    sec_standard: sp.sec_standard ? Number(sp.sec_standard) : undefined,
-    sec_team: sp.sec_team ? Number(sp.sec_team) : undefined,
-    sec_source: sp.sec_source ? Number(sp.sec_source) : undefined,
-    sec_processing: sp.sec_processing ? Number(sp.sec_processing) : undefined,
     cursor: sp.cursor,
+    ...secParams,
   }).catch(() => ({
     items: [] as TorrentListItem[],
     next_cursor: null,
     total_estimate: 0,
   }));
 
-  // 字典分类/媒介数组按下标对齐：index 0 = 全部，1..n = 对应 id
-  const categories = dict.torrents.categories.map((label, i) => ({
-    id: i === 0 ? undefined : i,
-    label,
-  }));
-  const currentCategory = sp.category_id ? Number(sp.category_id) : undefined;
+  // 分类以 site-profile 为准（后台可改，与站型包同步）；接口失败回落 i18n 字典
+  const categories = (profile?.categories?.length
+    ? profile.categories.map((c) => ({ id: c.id, label: c.name }))
+    : dict.torrents.categories.slice(1).map((label, i) => ({ id: i + 1, label })));
+  // 多选分类：URL 里同名参数（checkbox 多选），解析去重
+  const selectedCats = new Set(
+    (sp.category_id ?? "")
+      .split(",")
+      .filter(Boolean)
+      .map(Number),
+  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -107,7 +120,10 @@ export default async function TorrentsPage({
                         <option value="0">{dict.torrents2.areaTitle}</option>
                         <option value="1">{dict.torrents2.areaDescr}</option>
                         <option value="3">{dict.torrents2.areaUploader}</option>
-                        <option value="4">IMDb</option>
+                        {/* IMDb 范围随站点元数据源显隐（与上传页条目输入同口径） */}
+                        {(!profile || (profile.metadata_sources ?? []).includes("imdb")) && (
+                          <option value="4">IMDb</option>
+                        )}
                       </select>
                     </label>
                     <div className="torrent-search-box__keyword">
@@ -144,20 +160,40 @@ export default async function TorrentsPage({
                         <fieldset>
                           <legend>{dict.torrents2.catLegend}</legend>
                           <div className="torrent-search-box__cat-checks">
-                            {categories.slice(1).map((c) => (
-                              <label key={c.label} className="torrent-search-box__cat-item">
+                            {/* 分类与后台设置同步（0088：site-profile 实时分类，多选） */}
+                            {categories.map((c) => (
+                              <label key={c.id} className="torrent-search-box__cat-item">
                                 <input
                                   type="checkbox"
                                   name="category_id"
                                   value={c.id}
-                                  defaultChecked={
-                                    currentCategory !== undefined && currentCategory === c.id
-                                  }
+                                  defaultChecked={selectedCats.has(c.id)}
                                 />
                                 {c.label}
                               </label>
                             ))}
                           </div>
+                        </fieldset>
+                        <fieldset>
+                          <legend>{dict.torrents2.sort ?? "排序"}</legend>
+                          <label className="torrent-search-box__cat-item">
+                            <select name="sort" defaultValue={sp.sort ?? ""} aria-label={dict.torrents2.sort ?? "排序"}>
+                              <option value="">{dict.torrents2.sortDefault ?? "默认（最新）"}</option>
+                              <option value="seeders">{dict.torrents2.sortSeeders ?? "做种最多"}</option>
+                              <option value="size">{dict.torrents2.sortSize ?? "体积最大"}</option>
+                              <option value="completed">{dict.torrents2.sortCompleted ?? "完成最多"}</option>
+                            </select>
+                          </label>
+                          <label className="torrent-search-box__cat-item">
+                            <select name="tag_id" defaultValue={sp.tag_id ?? ""} aria-label={dict.torrTags2?.title ?? "标签"}>
+                              <option value="">{dict.torrTags2?.title ?? "标签"}</option>
+                              {tags
+                                .filter((t) => t.kind !== "official")
+                                .map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                            </select>
+                          </label>
                         </fieldset>
                         <fieldset>
                           <legend>{dict.torrents2.deadLegend}</legend>
@@ -183,21 +219,19 @@ export default async function TorrentsPage({
                             {dict.torrents2.officialOnly}
                           </label>
                         </fieldset>
-                        {hasSecDict && (
+                        {dimKinds.length > 0 && (
                           <fieldset>
-                            <legend>多维筛选</legend>
+                            <legend>{dict.torrents2.dimLegend ?? "多维筛选"}</legend>
                             <div className="torrent-search-box__cat-checks">
-                              {SEC_KINDS.map(([k, label]) => (
-                                (secDict[k]?.length ?? 0) > 0 && (
-                                  <label key={k} className="torrent-search-box__cat-item">
-                                    <select name={`sec_${k}`} defaultValue={sp[`sec_${k}`] ?? ""} aria-label={label}>
-                                      <option value="">{label}</option>
-                                      {secDict[k].map((d) => (
-                                        <option key={d.id} value={d.id}>{d.name}</option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                )
+                              {dimKinds.map((k) => (
+                                <label key={k.kind} className="torrent-search-box__cat-item">
+                                  <select name={`sec_${k.kind}`} defaultValue={sp[`sec_${k.kind}`] ?? ""} aria-label={k.label}>
+                                    <option value="">{k.label}</option>
+                                    {(secDict?.[k.kind] ?? []).map((d) => (
+                                      <option key={d.id} value={d.id}>{d.name}</option>
+                                    ))}
+                                  </select>
+                                </label>
                               ))}
                             </div>
                           </fieldset>

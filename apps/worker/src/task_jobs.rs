@@ -19,6 +19,8 @@ struct TaskMetric {
     #[serde(default)]
     seed_points_delta: Option<i64>, // 做种积分 = 做种时长秒（1 积分/小时 × 3600 折算前的秒）
     #[serde(default)]
+    seed_seconds_delta: Option<i64>, // 做种时长增量（秒），无折算歧义；tier 累计口径下为绝对值
+    #[serde(default)]
     uploads: Option<i64>,
     #[serde(default)]
     subtitles: Option<i64>,
@@ -114,6 +116,10 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
             has_target = true;
             // 站内 seed_points 近似：做种数 × 100；但任务口径用做种时长更稳（小时 → 折算）
             met &= seed_d >= v * 3600 / 100.max(1);
+        }
+        if let Some(v) = metric.seed_seconds_delta {
+            has_target = true;
+            met &= seed_d >= v; // 秒口径，1 小时 = 3600，无折算歧义
         }
         if let Some(v) = metric.uploads {
             has_target = true;

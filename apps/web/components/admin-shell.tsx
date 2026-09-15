@@ -96,16 +96,29 @@ export function AdminShell({
     tab_key: "ops",
     min_class: 90,
   };
+  // 首页排版（0089）入口：同样恒定注入（后端保存端点要求 SETTINGS_MANAGE=99，
+  // 无权时面板内保存报错；列表仅 sysop 可见，min_class=99）
+  const homeLayoutEntry: PanelEntry = {
+    section: "system",
+    name: dict.homeLayout.title,
+    url: "/admin?tool=homelayout",
+    info: dict.homeLayout.hint,
+    tab_key: "homelayout",
+    min_class: 99,
+  };
   const allEntries = entries.some((e) => e.tab_key === "ops")
     ? entries
     : [...entries, opsEntry];
+  const allEntries2 = allEntries.some((e) => e.tab_key === "homelayout")
+    ? allEntries
+    : [...allEntries, homeLayoutEntry];
 
   const grouped = useMemo(() => {
     const kw = q.trim().toLowerCase();
     return SECTION_ORDER.map((key) => ({
       key,
       label: LABEL[key] ?? key,
-      items: allEntries.filter(
+      items: allEntries2.filter(
         (e) =>
           e.section === key &&
           (!kw || `${e.name}${e.info}${e.tab_key}`.toLowerCase().includes(kw)),

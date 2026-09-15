@@ -13,6 +13,8 @@ export interface SiteProfile {
   founded?: string | null;
   /** 启用的元数据源（0087，site_settings.metadata_sources；控制条目输入/PT-Gen 显隐） */
   metadata_sources?: string[];
+  /** 站点简介（0088，site_settings.site_desc；页脚「站点信息」，空回落字典默认） */
+  site_desc?: string | null;
   categories: { id: number; name: string }[];
   modules: Record<string, boolean>;
 }
@@ -29,6 +31,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
       currency_name: "魔力",
       founded: null,
       metadata_sources: ["imdb", "douban", "bangumi", "indienova"],
+      site_desc: null,
       categories: [],
       modules: {},
     };

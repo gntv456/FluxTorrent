@@ -4,7 +4,7 @@ import type { Dict } from "./zh-CN";
 
 const zhTwBase: Omit<
   Dict,
-  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub"
+  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub" | "homeLayout"
 > = {
   meta: {
     titleSuffix: "PT",
@@ -382,6 +382,17 @@ const zhTwBase: Omit<
     nfoHint: "可選；經典 NFO 字元畫支援（CP437 / UTF-8 均可）",
     price: "價格",
     priceHint: "下載者首次下載時支付，重複下載不再扣費；稅率 30%，稅入當月魔法池",
+    recommend: "推薦（挑選）",
+    pickPos: "置頂位置",
+    pickNone: "不置頂",
+    pickL1: "一級置頂",
+    pickL2: "二級置頂",
+    pickUntil: "置頂截止",
+    recommendMovie: "推薦影片",
+    recommendNone: "普通",
+    recommendNormal: "推薦",
+    recommendClassic: "經典",
+    recommendHint: "置頂與推薦需管理組權限；促銷跟隨站點自動策略，無需在此設置",
     bbColor: "顏色",
     bbFont: "字體",
     bbSize: "字號",
@@ -459,6 +470,12 @@ const zhTwBase: Omit<
     modeExact: "準確",
     searchBtn: "給我搜",
     advanced: "高級搜索",
+    sort: "排序",
+    sortDefault: "預設（最新）",
+    sortSeeders: "做種最多",
+    sortSize: "體積最大",
+    sortCompleted: "完成最多",
+    dimLegend: "多維篩選",
     catLegend: "分類",
     deadLegend: "存活",
     inclDead: "包括斷種",
@@ -2445,4 +2462,18 @@ export const zhTW: Dict = { ...zhTwBase, security2fa: {
   adminrename: adminrenameTw,
   commentdel: commentdelTw,
   groupsub: groupsubTw,
+  homeLayout: {
+    hint: "調整首頁板塊：順序（↑↓）、寬度（1/3、2/3、整行或自動）、顯示/隱藏。儲存後首頁立即生效；空列表儲存或恢復預設 = 官方預設排版。",
+    names: {
+      news: "社區新鮮事", attendance: "簽到日曆", shoutbox: "聊天室", funbox: "趣味盒",
+      resource_stats: "新增資源統計", site_data: "站點資料", lucky_draw: "幸運大轉盤",
+      links: "免責與友鏈", latest: "最新資源海報牆",
+    },
+    spanLabel: "寬度",
+    spanAuto: "自動", span13: "1/3", span23: "2/3", spanFull: "整行",
+    up: "上移", down: "下移", hide: "隱藏", hidden: "未展示板塊",
+    save: "儲存排版", saving: "儲存中…", saved: "已儲存，重新整理首頁生效",
+    reset: "恢復預設", resetHint: "已重置為預設排版（需點儲存生效）",
+    title: "首頁排版",
+  },
 };

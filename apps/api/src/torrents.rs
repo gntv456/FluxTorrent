@@ -73,7 +73,8 @@ pub struct ThankRow {
 
 #[derive(Debug, Default, Serialize)]
 pub struct TorrentFilter {
-    pub category_id: Option<i32>,
+    /// 分类筛选（0088 起支持多选：数组传 ANY 命中；空数组 = 不过滤）
+    pub category_id: Option<Vec<i32>>,
     pub medium_id: Option<i32>,
     pub grade_id: Option<i32>,
     pub edition_id: Option<i32>,
@@ -140,9 +141,9 @@ pub async fn list_torrents_noclamp(
 
     // 排序白名单（防注入）；非 id 排序时退化为 OFFSET 无关的「前 N 截断」：
     // 排序键 + id 组成稳定排序，游标仍按 id 翻页（与默认排序一致，简单可靠）。
-    // 置顶口径（0063 起）：后台批量工作台写 pos_state/pos_state_until，旧列 sticky 仍被
-    // 官种联动使用——两列取「任一生效即置顶」：COALESCE 最大值排序；到期 pos_state 自动回落。
-    let sticky_expr = "(GREATEST(t.sticky::int, CASE WHEN t.pos_state = 1 AND (t.pos_state_until IS NULL OR t.pos_state_until > now()) THEN 1 ELSE 0 END)) DESC";
+    // 置顶口径（0063 起；0089 扩展二级置顶）：pos_state 1=一级 2=二级，pos_state_until 到期自动回落，
+    // 旧列 sticky 仍被官种联动使用——「任一生效即置顶」，一级 > 二级 > 普通置顶。
+    let sticky_expr = "(GREATEST(t.sticky::int, CASE WHEN t.pos_state IN (1, 2) AND (t.pos_state_until IS NULL OR t.pos_state_until > now()) THEN CASE t.pos_state WHEN 1 THEN 2 WHEN 2 THEN 1 ELSE 0 END ELSE 0 END)) DESC";
     let order = match filter.sort.as_deref() {
         Some("seeders") => format!("{sticky_expr}, t.seeders DESC, t.id DESC"),
         Some("size") => format!("{sticky_expr}, t.size DESC, t.id DESC"),
@@ -199,7 +200,7 @@ pub async fn list_torrents_noclamp(
         FROM torrents t
         LEFT JOIN users u ON u.id = t.owner_id
         WHERE (t.approval_status = 1 OR $11::bool)
-          AND ($1::int IS NULL OR t.category_id = $1)
+          AND ($1::int[] IS NULL OR t.category_id = ANY($1))
           AND ($2::int IS NULL OR t.medium_id = $2)
           AND ($3::int IS NULL OR t.grade_id = $3)
           AND ($4::int IS NULL OR t.edition_id = $4)
@@ -214,7 +215,7 @@ pub async fn list_torrents_noclamp(
         "#
     );
     let rows = sqlx::query_as::<_, TorrentRow>(&sql)
-        .bind(filter.category_id)
+        .bind(filter.category_id.clone())
         .bind(filter.medium_id)
         .bind(filter.grade_id)
         .bind(filter.edition_id)
@@ -231,14 +232,14 @@ pub async fn list_torrents_noclamp(
 
     let total: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM torrents t WHERE (t.approval_status = 1 OR $8::bool) \
-         AND ($1::int IS NULL OR t.category_id = $1) AND ($2::int IS NULL OR t.medium_id = $2) \
+         AND ($1::int[] IS NULL OR t.category_id = ANY($1)) AND ($2::int IS NULL OR t.medium_id = $2) \
          AND ($3::int IS NULL OR t.grade_id = $3) AND ($4::int IS NULL OR t.edition_id = $4) \
          AND ($5::bool IS NULL OR t.official_tag = $5) AND ($6::bool OR t.seeders > 0) \
          AND ($7::text IS NULL OR t.name ILIKE $7 ESCAPE chr(92) OR t.small_descr ILIKE $7 ESCAPE chr(92) \
           OR t.descr ILIKE $7 ESCAPE chr(92) \
           OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7 ESCAPE chr(92)))",
     )
-    .bind(filter.category_id)
+    .bind(filter.category_id.clone())
     .bind(filter.medium_id)
     .bind(filter.grade_id)
     .bind(filter.edition_id)

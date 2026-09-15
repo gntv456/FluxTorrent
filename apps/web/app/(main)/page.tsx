@@ -12,10 +12,30 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const { dict } = await getDict();
   let latest: Page<TorrentListItem> | null = null;
+  // 首页排版（0089）：自定义布局显式包含 latest 才渲染海报墙（默认布局恒显示）。
+  // latest 由本 RSC 渲染（需服务端取数），其余板块在 HomeSections 内按配置排布。
+  let layoutRaw: string | undefined;
+  let showLatest = true;
   try {
-    latest = await paged<TorrentListItem>("/api/v1/torrents", { limit: 12 });
+    const home = await api.get<{ home_layout?: string }>("/api/v1/home");
+    layoutRaw = home.home_layout;
+    if (layoutRaw && layoutRaw.trim()) {
+      try {
+        const arr = JSON.parse(layoutRaw) as { key?: string }[];
+        showLatest = Array.isArray(arr) && arr.some((x) => x?.key === "latest");
+      } catch {
+        showLatest = true; // 非法配置回默认：显示
+      }
+    }
   } catch {
-    // 后端未启动时首页降级为空态（本地开发体验）
+    // home 接口失败（未登录之外的异常）按默认渲染
+  }
+  if (showLatest) {
+    try {
+      latest = await paged<TorrentListItem>("/api/v1/torrents", { limit: 12 });
+    } catch {
+      // 后端未启动时首页降级为空态（本地开发体验）
+    }
   }
 
   return (
