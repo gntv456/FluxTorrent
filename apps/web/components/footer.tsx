@@ -40,11 +40,12 @@ export async function Footer() {
             <h2 className="font-display text-sm font-bold text-ink">
               {dict.footer.aboutTitle}
             </h2>
-            <p className="mt-2 flex items-center gap-2 text-sm text-sub">
+            <p className="mt-2 flex items-start gap-2 text-sm text-sub">
               <span aria-hidden className="text-xl">
                 🌱
               </span>
-              {dict.footer.about}
+              {/* 站点简介（0088）：后台 site_settings.site_desc 可配，留空回落字典默认 */}
+              {profile.site_desc || dict.footer.about}
             </p>
           </div>
           <div className="rounded-[var(--r-md)] border border-[var(--baozi-line-soft)] bg-[var(--baozi-paper)] p-4 shadow-[var(--shadow-card)]">

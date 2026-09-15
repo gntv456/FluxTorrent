@@ -1,0 +1,6 @@
+﻿flux-web|Up 44 seconds
+flux-worker|Up 29 seconds
+flux-api|Up 45 seconds (healthy)
+flux-tracker|Up 6 hours (healthy)
+flux-postgres|Up 6 hours (healthy)
+flux-redis|Up 6 hours (healthy)

@@ -1,0 +1,10 @@
+kinds: media(平台),grades(游戏类型),editions(版本),codec(编码),audio_codec(音频编码),standard(规格),source(来源),processing(处理工艺),team(制作组)
+audio_codec: 
+codec: 
+editions: 官方中文,汉化补丁,免安装硬盘版,数字版,重制版
+grades: 动作,角色扮演,策略,射击,竞速,体育,模拟经营,休闲,独立游戏
+media: PC,主机,掌机,手机,街机,模拟器
+processing: 
+source: 
+standard: 
+team: 官方,汉化组,破解组,整合组

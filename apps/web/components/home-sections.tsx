@@ -42,6 +42,81 @@ interface HomeData {
   };
   lucky_draw: { user: string; kind: string; amount: number }[];
   friend_links: { name: string; url: string; title: string | null }[];
+  /** 首页排版（0089）：JSON 数组字符串或空串（空 = 默认布局） */
+  home_layout?: string;
+}
+
+/** 首页板块排版（0089）：
+ *  site_settings.home_layout 由站长在后台编辑——板块键有序数组 + 宽度档（span：
+ *  1=1/3、2=2/3、3=整行、0/缺省=按板块推荐档）。空/非法配置回退 DEFAULT_LAYOUT，
+ *  即原有排版（新鲜事+签到 → 聊天室+趣味盒 → 资源统计 → 站点数据+转盘 → 免责友链）。 */
+export interface HomeLayoutItem {
+  key: string;
+  span: number;
+}
+
+export const HOME_SECTION_KEYS = [
+  "news",
+  "attendance",
+  "shoutbox",
+  "funbox",
+  "resource_stats",
+  "site_data",
+  "lucky_draw",
+  "links",
+  "latest",
+] as const;
+
+export const DEFAULT_HOME_LAYOUT: HomeLayoutItem[] = [
+  { key: "news", span: 0 },
+  { key: "attendance", span: 0 },
+  { key: "shoutbox", span: 0 },
+  { key: "funbox", span: 0 },
+  { key: "resource_stats", span: 3 },
+  { key: "site_data", span: 0 },
+  { key: "lucky_draw", span: 0 },
+  { key: "links", span: 3 },
+];
+
+/** 推荐宽度档：未显式指定 span 的板块按此渲染（保持默认视觉） */
+const RECOMMENDED_SPAN: Record<string, number> = {
+  news: 2,
+  attendance: 1,
+  shoutbox: 2,
+  funbox: 1,
+  resource_stats: 3,
+  site_data: 2,
+  lucky_draw: 1,
+  links: 3,
+  latest: 3,
+};
+
+/** 解析后端 home_layout：结构/键非法整体回退默认（后台保存端点已强校验，
+ *  这里兜底手改库或历史脏数据） */
+export function parseHomeLayout(raw: string | undefined | null): HomeLayoutItem[] {
+  if (!raw || !raw.trim()) return DEFAULT_HOME_LAYOUT;
+  try {
+    const arr = JSON.parse(raw) as { key?: string; span?: number }[];
+    if (!Array.isArray(arr) || arr.length === 0) return DEFAULT_HOME_LAYOUT;
+    const items: HomeLayoutItem[] = [];
+    const seen = new Set<string>();
+    for (const it of arr) {
+      if (!it?.key || typeof it.key !== "string") return DEFAULT_HOME_LAYOUT;
+      if (!(HOME_SECTION_KEYS as readonly string[]).includes(it.key)) return DEFAULT_HOME_LAYOUT;
+      if (seen.has(it.key)) return DEFAULT_HOME_LAYOUT;
+      seen.add(it.key);
+      const span = typeof it.span === "number" && [0, 1, 2, 3].includes(it.span) ? it.span : 0;
+      items.push({ key: it.key, span });
+    }
+    return items;
+  } catch {
+    return DEFAULT_HOME_LAYOUT;
+  }
+}
+
+/** 板块实际宽度档：显式 span 优先，0 = 推荐档 */
+export function effectiveSpan(item: HomeLayoutItem): number {
+  return item.span || RECOMMENDED_SPAN[item.key] || 3;
 }
 
 function fmtBytes(bytes: number): string {
@@ -170,257 +245,281 @@ export function HomeSections() {
   const firstDate = new Date(data.attendance.calendar[0]?.date ?? Date.now());
   const leadingBlanks = (firstDate.getDay() + 6) % 7; // 周一=0
 
-  return (
-    <div className="home-stack">
-      {/* ==== 第一行：社区新鲜事（主） + 签到日历（侧） ==== */}
-      <div className="home-row home-row--top">
-        <section className="baozi-panel home-news">
-          <header className="baozi-panel__head baozi-panel__head--ribbon">
-            <h1>
-              <span aria-hidden="true">📣</span> {t.newsTitle}
-            </h1>
-          </header>
-          <div className="home-news__body">
-            <div className="home-news__poster" aria-hidden="true">
-              {dict.common.brand}
-            </div>
-            <div className="home-news__content">
-              {headline && (
-                <article className="home-news__summary">
-                  <strong>{headline.title}</strong>
-                  <p>{headlineBodyPlain}…</p>
-                  <div className="home-news__summary-footer">
+  const layout = parseHomeLayout(data.home_layout);
+  // 闭包内 TS 判窄失效：固化非空引用供 renderSection 使用
+  const home = data;
+
+  /** 单板块渲染（0089 排版）：key 与后端 HOME_SECTION_KEYS 一一对应 */
+  function renderSection(key: string): React.ReactNode {
+    switch (key) {
+      case "news":
+        return (
+          <section className="baozi-panel home-news">
+            <header className="baozi-panel__head baozi-panel__head--ribbon">
+              <h1>
+                <span aria-hidden="true">📣</span> {t.newsTitle}
+              </h1>
+            </header>
+            <div className="home-news__body">
+              <div className="home-news__poster" aria-hidden="true">
+                {dict.common.brand}
+              </div>
+              <div className="home-news__content">
+                {headline && (
+                  <article className="home-news__summary">
+                    <strong>{headline.title}</strong>
+                    <p>{headlineBodyPlain}…</p>
+                    <div className="home-news__summary-footer">
+                      <button
+                        type="button"
+                        className="baozi-button"
+                        onClick={() => setModal(headline.id)}
+                      >
+                        {t.viewNews}
+                      </button>
+                    </div>
+                  </article>
+                )}
+                <div className="home-news__list" aria-label={t.moreNews}>
+                  {rest.map((n) => (
                     <button
+                      key={n.id}
                       type="button"
-                      className="baozi-button"
-                      onClick={() => setModal(headline.id)}
+                      className="home-news__item"
+                      onClick={() => setModal(n.id)}
                     >
-                      {t.viewNews}
+                      <span className="home-news__badge">{n.badge}</span>
+                      <strong>{n.title}</strong>
+                      <time>{n.date}</time>
                     </button>
-                  </div>
-                </article>
-              )}
-              <div className="home-news__list" aria-label={t.moreNews}>
-                {rest.map((n) => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    className="home-news__item"
-                    onClick={() => setModal(n.id)}
-                  >
-                    <span className="home-news__badge">{n.badge}</span>
-                    <strong>{n.title}</strong>
-                    <time>{n.date}</time>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      case "attendance":
+        return (
+          <aside className="baozi-panel attendance-card">
+            <header className="baozi-panel__head">
+              <h2>
+                <span aria-hidden="true">📅</span> {t.attendanceTitle}
+              </h2>
+              <span className="flex items-center gap-2">
+                {home.attendance.checked_today ? (
+                  <span className="attendance-done">{t.attended}</span>
+                ) : (
+                  <button type="button" className="baozi-button" onClick={checkin} disabled={checkinBusy}>
+                    {checkinBusy ? dict.my.checkinBusy : t.checkinNow}
                   </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <aside className="baozi-panel attendance-card">
-          <header className="baozi-panel__head">
-            <h2>
-              <span aria-hidden="true">📅</span> {t.attendanceTitle}
-            </h2>
-            <span className="flex items-center gap-2">
-              {data.attendance.checked_today ? (
-                <span className="attendance-done">{t.attended}</span>
-              ) : (
-                <button type="button" className="baozi-button" onClick={checkin} disabled={checkinBusy}>
-                  {checkinBusy ? dict.my.checkinBusy : t.checkinNow}
-                </button>
-              )}
-              <ResubButton cards={data.attendance.makeup_cards ?? 0} />
-            </span>
-          </header>
-          {checkinMsg && <p className="attendance-msg">{checkinMsg}</p>}
-          <div className="attendance-card__summary">
-            <div>
-              <strong>{data.attendance.month}</strong>
-              <span>
-                {t.streak} {data.attendance.streak} {dict.usercp.days}
+                )}
+                <ResubButton cards={home.attendance.makeup_cards ?? 0} />
               </span>
-            </div>
-            <div>
-              <strong>{data.attendance.total_days}</strong>
-              <span>{t.totalDays}</span>
-            </div>
-          </div>
-          <div className="attendance-calendar" aria-label={`${data.attendance.month}${t.calendar}`}>
-            {t.weekdays.map((w) => (
-              <span key={w} className="attendance-calendar__weekday">
-                {w}
-              </span>
-            ))}
-            {Array.from({ length: leadingBlanks }).map((_, i) => (
-              <span key={`blank-${i}`} className="attendance-calendar__day is-outside" />
-            ))}
-            {data.attendance.calendar.map((d) => {
-              const todayStr = new Date().toISOString().slice(0, 10);
-              const isToday = d.date === todayStr;
-              const isFuture = d.date > todayStr;
-              const cls = [
-                "attendance-calendar__day",
-                d.done ? "is-done" : isFuture ? "is-future" : "is-missed",
-                isToday ? "is-today" : "",
-              ].join(" ");
-              return (
-                <span
-                  key={d.date}
-                  className={cls}
-                  title={`${d.date} · ${d.done ? `${t.signed} +${d.reward}` : isFuture ? "" : t.unsigned}`}
-                >
-                  <strong>{d.day}</strong>
-                  <small>{d.done ? `+${d.reward}` : isFuture ? "\u00A0" : t.unsignedShort}</small>
+            </header>
+            {checkinMsg && <p className="attendance-msg">{checkinMsg}</p>}
+            <div className="attendance-card__summary">
+              <div>
+                <strong>{home.attendance.month}</strong>
+                <span>
+                  {t.streak} {home.attendance.streak} {dict.usercp.days}
                 </span>
-              );
-            })}
-          </div>
-          <footer className="attendance-card__legend">
-            <span>
-              <i className="is-done" /> {t.legendDone}
-            </span>
-            <span>
-              <i className="is-today" /> {t.legendToday}
-            </span>
-          </footer>
-        </aside>
-      </div>
-
-{/* ==== 聊天室 + 趣味盒（各占一半，移动端上下堆叠） ==== */}
-      <div className="home-duo grid gap-4 lg:grid-cols-2">
-        <ShoutBox />
-        <FunBox embedded />
-      </div>
-
-            {/* ==== 新增资源统计（近 30 天堆叠柱状图 + 摘要） ==== */}
-      <ResourceStatsPanel series={data.resource_stats} t={t} />
-
-      {/* ==== 底部行：站点数据三列（主） + 幸运大转盘（侧） ==== */}
-      <div className="home-row home-row--bottom">
-        <section className="baozi-panel home-site-data">
-          <header className="baozi-panel__head">
+              </div>
+              <div>
+                <strong>{home.attendance.total_days}</strong>
+                <span>{t.totalDays}</span>
+              </div>
+            </div>
+            <div className="attendance-calendar" aria-label={`${home.attendance.month}${t.calendar}`}>
+              {t.weekdays.map((w) => (
+                <span key={w} className="attendance-calendar__weekday">
+                  {w}
+                </span>
+              ))}
+              {Array.from({ length: leadingBlanks }).map((_, i) => (
+                <span key={`blank-${i}`} className="attendance-calendar__day is-outside" />
+              ))}
+              {home.attendance.calendar.map((d) => {
+                const todayStr = new Date().toISOString().slice(0, 10);
+                const isToday = d.date === todayStr;
+                const isFuture = d.date > todayStr;
+                const cls = [
+                  "attendance-calendar__day",
+                  d.done ? "is-done" : isFuture ? "is-future" : "is-missed",
+                  isToday ? "is-today" : "",
+                ].join(" ");
+                return (
+                  <span
+                    key={d.date}
+                    className={cls}
+                    title={`${d.date} · ${d.done ? `${t.signed} +${d.reward}` : isFuture ? "" : t.unsigned}`}
+                  >
+                    <strong>{d.day}</strong>
+                    <small>{d.done ? `+${d.reward}` : isFuture ? "\u00A0" : t.unsignedShort}</small>
+                  </span>
+                );
+              })}
+            </div>
+            <footer className="attendance-card__legend">
+              <span>
+                <i className="is-done" /> {t.legendDone}
+              </span>
+              <span>
+                <i className="is-today" /> {t.legendToday}
+              </span>
+            </footer>
+          </aside>
+        );
+      case "shoutbox":
+        return <ShoutBox />;
+      case "funbox":
+        return <FunBox embedded />;
+      case "resource_stats":
+        return <ResourceStatsPanel series={home.resource_stats} t={t} />;
+      case "site_data":
+        return (
+          <section className="baozi-panel home-site-data">
+            <header className="baozi-panel__head">
+              <h2>
+                <span aria-hidden="true">▦</span> {t.siteDataTitle}
+              </h2>
+              <small>{t.siteDataNote}</small>
+            </header>
+            <div className="home-site-data__grid">
+              <dl className="home-site-data__column">
+                <div className="home-site-data__item is-primary">
+                  <dt>{t.sdTodayUsers}</dt>
+                  <dd className="num">{home.site_data.peers.toLocaleString()}</dd>
+                </div>
+                <div className="home-site-data__item">
+                  <dt>{dict.home.torrents}</dt>
+                  <dd className="num">{home.site_data.torrents.toLocaleString()}</dd>
+                </div>
+                <div className="home-site-data__item">
+                  <dt>{t.sdPeers}</dt>
+                  <dd className="num">{home.site_data.peers.toLocaleString()}</dd>
+                </div>
+                <div className="home-site-data__item">
+                  <dt>{t.sdSeeders}</dt>
+                  <dd className="num">{home.site_data.seeders.toLocaleString()}</dd>
+                </div>
+                <div className="home-site-data__item">
+                  <dt>{t.sdLeechers}</dt>
+                  <dd className="num">{home.site_data.leechers.toLocaleString()}</dd>
+                </div>
+                <div className="home-site-data__item">
+                  <dt>{t.sdTotalDown}</dt>
+                  <dd className="num">{fmtBytes(home.site_data.total_download)}</dd>
+                </div>
+              </dl>
+              <dl className="home-site-data__column">
+                <div className="home-site-data__item is-primary">
+                  <dt>{t.sdUsers}</dt>
+                  <dd className="num">{home.site_data.users.toLocaleString()}</dd>
+                </div>
+                <div className="home-site-data__item is-warning">
+                  <dt>
+                    {t.sdWarned}
+                    <i aria-hidden="true">!</i>
+                  </dt>
+                  <dd className="num">{home.site_data.warned.toLocaleString()}</dd>
+                </div>
+                <div className="home-site-data__item is-danger">
+                  <dt>
+                    {t.sdBanned}
+                    <i aria-hidden="true">×</i>
+                  </dt>
+                  <dd className="num">{home.site_data.banned.toLocaleString()}</dd>
+                </div>
+                <div className="home-site-data__item">
+                  <dt>{t.sdSeedLeechRatio}</dt>
+                  <dd className="num">
+                    {home.site_data.leechers === 0
+                      ? "∞"
+                      : `${((home.site_data.seeders / Math.max(1, home.site_data.leechers)) * 100).toFixed(0)}%`}
+                  </dd>
+                </div>
+                <div className="home-site-data__item">
+                  <dt>{dict.home.seedSize}</dt>
+                  <dd className="num">{fmtBytes(home.site_data.total_size)}</dd>
+                </div>
+                <div className="home-site-data__item">
+                  <dt>{t.sdTotalData}</dt>
+                  <dd className="num">
+                    {fmtBytes(home.site_data.total_upload + home.site_data.total_download)}
+                  </dd>
+                </div>
+              </dl>
+              <dl className="home-site-data__column">
+                <div className="home-site-data__item is-primary">
+                  <dt>{t.sdUnverified}</dt>
+                  <dd className="num">{home.site_data.unverified.toLocaleString()}</dd>
+                </div>
+                <div className="home-site-data__item">
+                  <dt>{t.sdTotalUp}</dt>
+                  <dd className="num">{fmtBytes(home.site_data.total_upload)}</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+        );
+      case "lucky_draw":
+        return (
+          <aside className="baozi-panel home-lucky-draw" aria-label={t.luckyTitle}>
+            <header className="baozi-panel__head">
+              <h2>
+                <span aria-hidden="true">🎰</span> {t.luckyTitle}
+              </h2>
+              <Link href="/games">{t.goDraw}</Link>
+            </header>
+            <ul className="home-lucky-draw__list">
+              {home.lucky_draw.map((l, i) => (
+                <li key={i}>
+                  <b className="rainbow">{l.user}</b> {t.got} {dict.common.spark} {l.amount}
+                </li>
+              ))}
+              {home.lucky_draw.length === 0 && <li className="text-sub">{t.luckyEmpty}</li>}
+            </ul>
+          </aside>
+        );
+      case "links":
+        return (
+          <div className="home-native-modules">
+            <h2>{t.disclaimerTitle}</h2>
+            <p className="home-native-modules__text">{t.disclaimerBody}</p>
             <h2>
-              <span aria-hidden="true">▦</span> {t.siteDataTitle}
+              {t.linksTitle}
+              <small>
+                {" "}
+                - [<Link href="/links/apply">{t.applyLink}</Link>]
+              </small>
             </h2>
-            <small>{t.siteDataNote}</small>
-          </header>
-          <div className="home-site-data__grid">
-            <dl className="home-site-data__column">
-              <div className="home-site-data__item is-primary">
-                <dt>{t.sdTodayUsers}</dt>
-                <dd className="num">{data.site_data.peers.toLocaleString()}</dd>
-              </div>
-              <div className="home-site-data__item">
-                <dt>{dict.home.torrents}</dt>
-                <dd className="num">{data.site_data.torrents.toLocaleString()}</dd>
-              </div>
-              <div className="home-site-data__item">
-                <dt>{t.sdPeers}</dt>
-                <dd className="num">{data.site_data.peers.toLocaleString()}</dd>
-              </div>
-              <div className="home-site-data__item">
-                <dt>{t.sdSeeders}</dt>
-                <dd className="num">{data.site_data.seeders.toLocaleString()}</dd>
-              </div>
-              <div className="home-site-data__item">
-                <dt>{t.sdLeechers}</dt>
-                <dd className="num">{data.site_data.leechers.toLocaleString()}</dd>
-              </div>
-              <div className="home-site-data__item">
-                <dt>{t.sdTotalDown}</dt>
-                <dd className="num">{fmtBytes(data.site_data.total_download)}</dd>
-              </div>
-            </dl>
-            <dl className="home-site-data__column">
-              <div className="home-site-data__item is-primary">
-                <dt>{t.sdUsers}</dt>
-                <dd className="num">{data.site_data.users.toLocaleString()}</dd>
-              </div>
-              <div className="home-site-data__item is-warning">
-                <dt>
-                  {t.sdWarned}
-                  <i aria-hidden="true">!</i>
-                </dt>
-                <dd className="num">{data.site_data.warned.toLocaleString()}</dd>
-              </div>
-              <div className="home-site-data__item is-danger">
-                <dt>
-                  {t.sdBanned}
-                  <i aria-hidden="true">×</i>
-                </dt>
-                <dd className="num">{data.site_data.banned.toLocaleString()}</dd>
-              </div>
-              <div className="home-site-data__item">
-                <dt>{t.sdSeedLeechRatio}</dt>
-                <dd className="num">
-                  {data.site_data.leechers === 0
-                    ? "∞"
-                    : `${((data.site_data.seeders / Math.max(1, data.site_data.leechers)) * 100).toFixed(0)}%`}
-                </dd>
-              </div>
-              <div className="home-site-data__item">
-                <dt>{dict.home.seedSize}</dt>
-                <dd className="num">{fmtBytes(data.site_data.total_size)}</dd>
-              </div>
-              <div className="home-site-data__item">
-                <dt>{t.sdTotalData}</dt>
-                <dd className="num">
-                  {fmtBytes(data.site_data.total_upload + data.site_data.total_download)}
-                </dd>
-              </div>
-            </dl>
-            <dl className="home-site-data__column">
-              <div className="home-site-data__item is-primary">
-                <dt>{t.sdUnverified}</dt>
-                <dd className="num">{data.site_data.unverified.toLocaleString()}</dd>
-              </div>
-              <div className="home-site-data__item">
-                <dt>{t.sdTotalUp}</dt>
-                <dd className="num">{fmtBytes(data.site_data.total_upload)}</dd>
-              </div>
-            </dl>
+            <p className="home-native-modules__text">
+              {home.friend_links.map((l) => (
+                <a key={l.url} href={l.url} title={l.title ?? l.name} target="_blank" rel="noreferrer">
+                  {l.name}
+                </a>
+              ))}
+            </p>
           </div>
-        </section>
+        );
+      default:
+        return null;
+    }
+  }
 
-        <aside className="baozi-panel home-lucky-draw" aria-label={t.luckyTitle}>
-          <header className="baozi-panel__head">
-            <h2>
-              <span aria-hidden="true">🎰</span> {t.luckyTitle}
-            </h2>
-            <Link href="/games">{t.goDraw}</Link>
-          </header>
-          <ul className="home-lucky-draw__list">
-            {data.lucky_draw.map((l, i) => (
-              <li key={i}>
-                <b className="rainbow">{l.user}</b> {t.got} {dict.common.spark} {l.amount}
-              </li>
-            ))}
-            {data.lucky_draw.length === 0 && <li className="text-sub">{t.luckyEmpty}</li>}
-          </ul>
-        </aside>
-      </div>
-
-      {/* ==== 免责条款 + 友情链接 ==== */}
-      <div className="home-native-modules">
-        <h2>{t.disclaimerTitle}</h2>
-        <p className="home-native-modules__text">{t.disclaimerBody}</p>
-        <h2>
-          {t.linksTitle}
-          <small>
-            {" "}
-            - [<Link href="/links/apply">{t.applyLink}</Link>]
-          </small>
-        </h2>
-        <p className="home-native-modules__text">
-          {data.friend_links.map((l) => (
-            <a key={l.url} href={l.url} title={l.title ?? l.name} target="_blank" rel="noreferrer">
-              {l.name}
-            </a>
-          ))}
-        </p>
-      </div>
+  const isCustom = home.home_layout?.trim() ? true : false;
+  return (
+    <div className={isCustom ? "home-stack home-stack--custom" : "home-stack"}>
+      {/* ==== 排版驱动（0089）：按站长配置顺序/宽度渲染；空配置 = 默认布局 ==== */}
+      {layout.map((item) => {
+        const node = renderSection(item.key);
+        if (!node) return null;
+        return (
+          <div key={item.key} className={`home-cell home-cell--span-${effectiveSpan(item)}`}>
+            {node}
+          </div>
+        );
+      })}
 
       {/* ==== 公告弹窗 ==== */}
       {modal !== null && (

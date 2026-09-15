@@ -1,0 +1,18 @@
+﻿ id |   name   
+----+----------
+  1 | PC娓告垙
+  2 | 涓绘満娓告垙
+  3 | 鎺屾満娓告垙
+  4 | 娓告垙姹夊寲
+  5 | MOD
+  6 | 娓告垙闊充箰
+  7 | 鏀荤暐
+(7 rows)
+
+   name    |    value    
+-----------+-------------
+ site_name | FluxTorrent
+ site_type | game
+ site_desc | 
+(3 rows)
+

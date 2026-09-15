@@ -57,11 +57,12 @@ export function UploadForm() {
       )
       .catch(() => setTagDict([]));
   }, []);
-  // 挑选（促销位）：发布时直接设置单种促销，需 torrent.set_price 权限
-  const [promoKind, setPromoKind] = useState("");
-  const [promoHours, setPromoHours] = useState(48);
   // 价格（0086 付费下载）：下载者支付，发布者得 (100-税)%，0 = 免费
   const [price, setPrice] = useState(0);
+  // 推荐位（0089，NP 挑选 口径）：置顶位置/截止 + 推荐影片，需管理组权限
+  const [posState, setPosState] = useState(0);
+  const [posUntil, setPosUntil] = useState("");
+  const [pickType, setPickType] = useState(0);
   // 质量维度（0085 可配置）：维度清单与标签来自 section_kinds，站方可自建
   const [secDict, setSecDict] = useState<Record<string, SectionDictRow[]>>({});
   const [secKinds, setSecKinds] = useState<SectionKindMeta[]>([]);
@@ -124,7 +125,19 @@ export function UploadForm() {
     "min-h-[28px] min-w-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1.5 text-xs font-bold text-ink hover:border-[var(--baozi-orange)]";
   const bbSelect =
     "min-h-[28px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1 text-xs text-ink outline-none focus:border-[var(--baozi-orange)]";
+  // 色板（NP 颜色面板口径）：色块按钮，点击包住选区
+  const BB_COLORS: [string, string][] = [
+    ["#111827", "黑"], ["#6b7280", "灰"], ["#ffffff", "白"], ["#e02020", "红"],
+    ["#a61b29", "深红"], ["#f59e0b", "橙"], ["#fadb14", "黄"], ["#d4a017", "金"],
+    ["#16a34a", "绿"], ["#0d9488", "青绿"], ["#2563eb", "蓝"], ["#4f46e5", "靛"],
+    ["#9333ea", "紫"], ["#eb2f96", "粉"], ["#8b4513", "棕"], ["#0ea5e9", "天蓝"],
+  ];
   const BB_EMOJIS = ["😄", "😂", "🥰", "😮", "😭", "😅", "😡", "👍", "🙏", "🎉", "🔥", "❤️", "🤔", "💯", "🍺"];
+  // 下拉面板通用样式：固定宽度 + 网格（防在窄单元格里竖排成一列）
+  const bbPanel =
+    "absolute z-10 mt-1 grid w-56 gap-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] p-2 shadow-[var(--shadow-card)]";
+  const bbSwatch =
+    "flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] text-[11px] text-ink hover:border-[var(--baozi-orange)]";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -156,14 +169,15 @@ export function UploadForm() {
         Object.entries(secVals).filter(([, v]) => v),
       );
       if (Object.keys(sections).length > 0) qs.set("sections", JSON.stringify(sections));
-      // 标签 / 促销（挑选）
+      // 标签 / 推荐位（挑选）
       if (tagSel.length > 0) qs.set("tags", JSON.stringify(tagSel));
-      if (promoKind) {
-        qs.set("promo_kind", promoKind);
-        qs.set("promo_hours", String(Math.min(720, Math.max(1, promoHours || 48))));
+      if (posState > 0) {
+        qs.set("pos_state", String(posState));
+        if (posUntil) qs.set("pos_state_until", new Date(posUntil).toISOString());
       }
-      const base =
-        process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+      if (pickType > 0) qs.set("pick_type", String(pickType));
+      // 同源相对路径走 Next rewrites 转发（与 api-client 同口径），避免依赖发布端口
+      const base = process.env.NEXT_PUBLIC_API_URL ?? "";
       const res = await fetch(`${base}/api/v1/torrents?${qs}`, {
         method: "POST",
         headers: {
@@ -365,22 +379,29 @@ export function UploadForm() {
             dict.upload.descr,
             <div className="flex flex-col gap-1">
               <div className="flex flex-wrap items-center gap-1">
-                <select
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) bbWrap(`[color=${e.target.value}]`, "[/color]");
-                  }}
-                  className={bbSelect}
-                  title={dict.upload.bbColor ?? "颜色"}
-                >
-                  <option value="">{dict.upload.bbColor ?? "颜色"}</option>
-                  <option value="#e02020">🔴 红</option>
-                  <option value="#f59e0b">🟠 橙</option>
-                  <option value="#16a34a">🟢 绿</option>
-                  <option value="#2563eb">🔵 蓝</option>
-                  <option value="#9333ea">🟣 紫</option>
-                  <option value="#6b7280">⚪ 灰</option>
-                </select>
+                <details className="relative">
+                  <summary className={`${bbBtn} inline-flex cursor-pointer list-none items-center justify-center gap-1`} title={dict.upload.bbColor ?? "颜色"}>
+                    🎨 {dict.upload.bbColor ?? "颜色"}
+                  </summary>
+                  <div className={`${bbPanel} grid-cols-8 w-72`}>
+                    {BB_COLORS.map(([hex, label]) => (
+                      <button
+                        key={hex}
+                        type="button"
+                        title={label}
+                        className={bbSwatch}
+                        style={hex === "#ffffff" ? { background: "#fff" } : { background: hex, color: "#fff" }}
+                        onClick={() => {
+                          bbWrap(`[color=${hex}]`, "[/color]");
+                          const d = document.activeElement?.closest("details");
+                          if (d instanceof HTMLDetailsElement) d.open = false;
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </details>
                 <select
                   value=""
                   onChange={(e) => {
@@ -405,9 +426,11 @@ export function UploadForm() {
                   title={dict.upload.bbSize ?? "字号"}
                 >
                   <option value="">{dict.upload.bbSize ?? "字号"}</option>
-                  <option value="1">小</option>
-                  <option value="3">中</option>
-                  <option value="5">大</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <option key={n} value={n}>
+                      {n} 号
+                    </option>
+                  ))}
                 </select>
                 <button type="button" className={`${bbBtn} font-black`} onClick={() => bbWrap("[b]", "[/b]")} title="Bold">B</button>
                 <button type="button" className={`${bbBtn} italic`} onClick={() => bbWrap("[i]", "[/i]")} title="Italic">I</button>
@@ -432,9 +455,18 @@ export function UploadForm() {
                 >{"</>"}</button>
                 <details className="relative">
                   <summary className={`${bbBtn} inline-flex cursor-pointer list-none items-center justify-center`} title={dict.upload.bbEmoji ?? "表情"}>😀</summary>
-                  <div className="absolute z-10 mt-1 flex flex-wrap gap-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] p-2 shadow-[var(--shadow-card)]">
+                  <div className={`${bbPanel} grid-cols-5`}>
                     {BB_EMOJIS.map((em) => (
-                      <button key={em} type="button" className="text-lg hover:scale-125" onClick={() => bbInsert(em)}>
+                      <button
+                        key={em}
+                        type="button"
+                        className="rounded-[var(--r-sm)] py-1 text-lg hover:bg-[var(--head-b)]"
+                        onClick={() => {
+                          bbInsert(em);
+                          const d = document.activeElement?.closest("details");
+                          if (d instanceof HTMLDetailsElement) d.open = false;
+                        }}
+                      >
                         {em}
                       </button>
                     ))}
@@ -524,41 +556,47 @@ export function UploadForm() {
               </div>,
             )}
           {row(
-            dict.upload.promo ?? "促销（挑选）",
+            dict.upload.recommend ?? "推荐（挑选）",
             <div className="flex flex-col gap-1">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <label className="flex items-center gap-1 text-sm">
-                  <span className="whitespace-nowrap text-sub">{dict.upload.promoKind ?? "促销类型"}：</span>
+                  <span className="whitespace-nowrap text-sub">{dict.upload.pickPos ?? "置顶位置"}：</span>
                   <select
-                    value={promoKind}
-                    onChange={(e) => setPromoKind(e.target.value)}
+                    value={posState}
+                    onChange={(e) => setPosState(Number(e.target.value))}
                     className="min-h-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
                   >
-                    <option value="">{dict.upload.promoNone ?? "不设置"}</option>
-                    <option value="free">{dict.upload.promoFree ?? "免费"}</option>
-                    <option value="x2">{dict.upload.promoX2 ?? "双倍上传"}</option>
-                    <option value="x2free">{dict.upload.promoX2Free ?? "双倍+免费"}</option>
-                    <option value="half">{dict.upload.promoHalf ?? "半价"}</option>
-                    <option value="x2half">{dict.upload.promoX2Half ?? "双倍+半价"}</option>
-                    <option value="p30">{dict.upload.promoP30 ?? "30% 下载"}</option>
+                    <option value="0">{dict.upload.pickNone ?? "不置顶"}</option>
+                    <option value="1">{dict.upload.pickL1 ?? "一级置顶"}</option>
+                    <option value="2">{dict.upload.pickL2 ?? "二级置顶"}</option>
                   </select>
                 </label>
-                {promoKind && (
+                {posState > 0 && (
                   <label className="flex items-center gap-1 text-sm">
-                    <span className="whitespace-nowrap text-sub">{dict.upload.promoHours ?? "时长（小时）"}：</span>
+                    <span className="whitespace-nowrap text-sub">{dict.upload.pickUntil ?? "置顶截止"}：</span>
                     <input
-                      type="number"
-                      min={1}
-                      max={720}
-                      value={promoHours}
-                      onChange={(e) => setPromoHours(Number(e.target.value))}
-                      className="min-h-[32px] w-24 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                      type="datetime-local"
+                      value={posUntil}
+                      onChange={(e) => setPosUntil(e.target.value)}
+                      className="min-h-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
                     />
                   </label>
                 )}
+                <label className="flex items-center gap-1 text-sm">
+                  <span className="whitespace-nowrap text-sub">{dict.upload.recommendMovie ?? "推荐影片"}：</span>
+                  <select
+                    value={pickType}
+                    onChange={(e) => setPickType(Number(e.target.value))}
+                    className="min-h-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                  >
+                    <option value="0">{dict.upload.recommendNone ?? "普通"}</option>
+                    <option value="1">{dict.upload.recommendNormal ?? "推荐"}</option>
+                    <option value="2">{dict.upload.recommendClassic ?? "经典"}</option>
+                  </select>
+                </label>
               </div>
               <span className="text-xs text-sub">
-                {dict.upload.promoHint ?? "发布者自助促销位，需促销权限；缺省 48 小时（1-720）"}
+                {dict.upload.recommendHint ?? "置顶与推荐需管理组权限；促销跟随站点自动策略，无需在此设置"}
               </span>
             </div>,
           )}

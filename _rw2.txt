@@ -1,0 +1,2 @@
+{"code":0,"message":"ok","data":{"brand":"FluxTorrent","categories":[{"id":1,"name":"PC游戏"},{"id":2,"name":"主机游戏"},{"id":3,"name":"掌机游戏"},{"id":4,"name":"游戏汉化"},{"id":5,"name":"MOD"},{"id":6,"name":"游戏音乐"},{"id":7,"name":"攻略"}],"currency_name":"魔力","founded":"2026-09-01","metadata_sources":["imdb","douban","bangumi","indienova"],"modules":{"textbooks":false},"pack_name":"游戏站","site_desc":null,"site_type":"game"},"request_id":"9e58f731-0e0e-4fae-aca6-3d5684a39562"}
+---END---

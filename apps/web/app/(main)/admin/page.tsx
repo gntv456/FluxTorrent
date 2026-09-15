@@ -22,6 +22,7 @@ import { AdminExams } from "@/components/admin-exams";
 import { AdminTasks } from "@/components/admin-tasks";
 import { AdminTrackers } from "@/components/admin-trackers";
 import { AdminOpsPanel } from "@/components/admin-ops";
+import { HomeLayoutEditor } from "@/components/home-layout-editor";
 
 interface Overview {
   pending_reviews: number;
@@ -755,6 +756,14 @@ export default function AdminPage() {
       // 运维三件套（0078）：版本信息 / 备份面板 / 任务手动触发
       case "ops":
         return <AdminOpsPanel />;
+      // 首页排版（0089）：板块顺序/宽度/显隐可视化编辑
+      case "homelayout":
+        return (
+          <section className="baozi-panel p-4">
+            <h2 className="mb-3 font-display text-lg">{dict.homeLayout.title}</h2>
+            <HomeLayoutEditor />
+          </section>
+        );
 
       default:
         if (STAFF_TOOL_TABS.includes(tool as ToolTab)) {

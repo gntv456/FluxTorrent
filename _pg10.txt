@@ -1,0 +1,4 @@
+dims: sec_editions,sec_grades,sec_media,sec_team
+cats: PC游戏</la,主机游戏</la,掌机游戏</la,游戏汉化</la,MOD</lab,游戏音乐</la,攻略</labe
+游戏类型: True
+人教残留: True

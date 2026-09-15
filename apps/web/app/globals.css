@@ -2424,6 +2424,45 @@ a:hover {
   }
 }
 
+/* ==== 首页自定义排版（0089）：home-cell 栅格 ====
+   home-stack 变 3 列 grid；每个板块按 span 占 1/3、2/3 或整行；
+   未配置 home_layout 时渲染结果与原 home-row 视觉一致（news 2/3 + attendance 1/3 等）。 */
+.home-stack.home-stack--custom {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.home-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.home-cell > * {
+  flex: 1 1 auto;
+  width: 100%;
+}
+.home-cell--span-1 {
+  grid-column: span 1;
+}
+.home-cell--span-2 {
+  grid-column: span 2;
+}
+.home-cell--span-3 {
+  grid-column: span 3;
+}
+/* 窄屏退化为单列（与原响应式口径一致） */
+@media (max-width: 1080px) {
+  .home-stack.home-stack--custom {
+    grid-template-columns: 1fr;
+  }
+  .home-cell--span-1,
+  .home-cell--span-2,
+  .home-cell--span-3 {
+    grid-column: auto;
+  }
+}
+
 /* baozi-panel 通用面板：colhead 风标题条 */
 .baozi-panel {
   border: 1px solid var(--baozi-line-soft);

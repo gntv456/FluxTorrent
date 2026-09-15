@@ -1,0 +1,10 @@
+﻿ version |     description      | success 
+---------+----------------------+---------
+      88 | metadata unify       | t
+      87 | p2 hardening         | t
+      86 | torrent price        | t
+      85 | section kinds        | t
+      84 | worker hardening     | t
+      83 | audit fix closedloop | t
+(6 rows)
+

@@ -1,0 +1,7 @@
+﻿flux-api|Up About an hour (healthy)|127.0.0.1:8080->8080/tcp
+flux-web|Up 2 hours|127.0.0.1:3000->3000/tcp
+flux-worker|Up 4 hours|
+flux-tracker|Up 4 hours (healthy)|0.0.0.0:7070->7070/tcp, [::]:7070->7070/tcp
+flux-postgres|Up 4 hours (healthy)|127.0.0.1:5432->5432/tcp
+flux-redis|Up 4 hours (healthy)|127.0.0.1:6379->6379/tcp
+

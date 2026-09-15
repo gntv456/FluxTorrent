@@ -1,0 +1,4 @@
+xueqian_as_option_label: False
+xueqian_in_flight_dict: True
+checkbox_names: 7
+rendered_cats: PC游戏</la,主机游戏</la,掌机游戏</la,游戏汉化</la,MOD</lab,游戏音乐</la,攻略</labe

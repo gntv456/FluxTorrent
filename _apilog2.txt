@@ -1,0 +1,22 @@
+﻿[2m2026-09-15T06:54:22.176275Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation "_sqlx_migrations" already exists, skipping
+[2m2026-09-15T06:54:22.709328Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation "_sqlx_migrations" already exists, skipping
+[2m2026-09-15T06:54:23.208440Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation "_sqlx_migrations" already exists, skipping
+[2m2026-09-15T06:54:23.824485Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation "_sqlx_migrations" already exists, skipping
+[2m2026-09-15T06:54:24.832927Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation "_sqlx_migrations" already exists, skipping
+[2m2026-09-15T06:54:26.633735Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation "_sqlx_migrations" already exists, skipping
+[2m2026-09-15T06:54:30.077591Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation "_sqlx_migrations" already exists, skipping
+docker : Error: migration 88 was previously applied but has been modified
+所在位置 行:445 字符: 1
++ docker logs flux-api --tail 60 > D:\FluxTorrent\_apilog.txt 2>&1; [Sy ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error: migratio...s been modified 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Error: migration 88 was previously applied but has been modified
+Error: migration 88 was previously applied but has been modified
+Error: migration 88 was previously applied but has been modified
+Error: migration 88 was previously applied but has been modified
+Error: migration 88 was previously applied but has been modified
+Error: migration 88 was previously applied but has been modified
+

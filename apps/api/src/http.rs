@@ -139,6 +139,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(gomoku_move)
         .service(gomoku_get)
         .service(home_sections)
+        .service(admin_home_layout_put)
         .service(upload)
         .service(ptgen)
         .service(download)
@@ -1250,7 +1251,6 @@ async fn my_bookmarks(
 
 #[derive(Deserialize)]
 struct ListQuery {
-    category_id: Option<i32>,
     medium_id: Option<i32>,
     grade_id: Option<i32>,
     edition_id: Option<i32>,
@@ -1267,13 +1267,9 @@ struct ListQuery {
     search_mode: Option<i32>,
     sort: Option<String>,
     tag_id: Option<i32>,
-    // 第八轮 Section 多维筛选
-    sec_codec: Option<i64>,
-    sec_audio_codec: Option<i64>,
-    sec_standard: Option<i64>,
-    sec_team: Option<i64>,
-    sec_source: Option<i64>,
-    sec_processing: Option<i64>,
+    /// 分类多选（0088）：接受重复的 category_id 参数或逗号分隔串，均收集为数组
+    #[serde(default)]
+    category_ids: Vec<String>,
     cursor: Option<String>,
     limit: Option<i64>,
 }
@@ -1285,8 +1281,37 @@ async fn list(
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?; // 站点准入收口：资源元数据不对外
+    // 通用多维筛选（0088）：sec_{kind}=dict_id，kind 走 section_kinds 白名单；
+    // 从原始 query string 解析，支持任意站方自建维度（不再写死六个）
+    let mut sections: Vec<(String, i64)> = Vec::new();
+    for pair in req.query_string().split('&') {
+        let Some((k, v)) = pair.split_once('=') else {
+            continue;
+        };
+        let Some(kind) = k.strip_prefix("sec_") else {
+            continue;
+        };
+        if kind.is_empty() || v.is_empty() {
+            continue;
+        }
+        if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind).await {
+            continue;
+        }
+        if let Ok(dict_id) = v.parse::<i64>() {
+            sections.push((kind.to_string(), dict_id));
+        }
+    }
     let filter = torrents::TorrentFilter {
-        category_id: q.category_id,
+        // 多选分类：重复参数或逗号串（category_id=1&category_id=3 / category_id=1,3）均解析
+        category_id: {
+            let ids: Vec<i32> = q
+                .category_ids
+                .iter()
+                .flat_map(|s| s.split(','))
+                .filter_map(|s| s.trim().parse::<i32>().ok())
+                .collect();
+            (!ids.is_empty()).then_some(ids)
+        },
         medium_id: q.medium_id,
         grade_id: q.grade_id,
         edition_id: q.edition_id,
@@ -1301,17 +1326,7 @@ async fn list(
         // 搜索盒口径（此前前端传了但后端不解析，静默失效）
         search_area: q.search_area,
         search_mode: q.search_mode,
-        sections: [
-            ("codec", q.sec_codec),
-            ("audio_codec", q.sec_audio_codec),
-            ("standard", q.sec_standard),
-            ("team", q.sec_team),
-            ("source", q.sec_source),
-            ("processing", q.sec_processing),
-        ]
-        .into_iter()
-        .filter_map(|(k, v)| v.map(|id| (k.to_string(), id)))
-        .collect(),
+        sections,
     };
     let cursor = match q.cursor.as_deref() {
         Some(c) if !c.is_empty() => Some(
@@ -3660,6 +3675,10 @@ struct SiteTypePack {
     categories: serde_json::Value,
     modules: serde_json::Value,
     sort: i32,
+    /// 质量维度种子（0092）：kinds 标签 + dict 选项；apply 时重建，未定义的维度不动
+    #[serde(default)]
+    #[sqlx(default)]
+    sections: Option<serde_json::Value>,
 }
 
 /// 公开：当前站点档案（类型包 + 分类 + 模块开关 + 品牌名），前端布局/导航/上传表单由此驱动
@@ -3721,6 +3740,15 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
         .filter(|s| !s.is_empty())
         .map(str::to_lowercase)
         .collect();
+    // 站点简介（0088）：页脚「站点信息」卡片文案，留空由前端回落字典默认
+    let site_desc: Option<String> =
+        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'site_desc'")
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten()
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
     Ok(ok(serde_json::json!({
         "site_type": site_type,
         "pack_name": pack.as_ref().map(|p| p.name.clone()),
@@ -3728,6 +3756,7 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
         "currency_name": currency,
         "founded": founded,
         "metadata_sources": sources,
+        "site_desc": site_desc,
         "categories": cats.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
         "modules": pack.as_ref().map(|p| p.modules.clone()).unwrap_or(serde_json::json!({})),
     })))
@@ -3756,6 +3785,14 @@ struct ApplyPackBody {
     mode: Option<String>,
 }
 
+/// 维度 kind 合法性（防注入）：小写字母/数字/下划线
+fn is_ascii_kind(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 32
+        && s.bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+}
+
 /// 应用类型包（sysop）：重建分类 + 写 site_type/site_name + 更新课本模块开关
 #[post("/admin/site-type-packs/apply")]
 async fn site_type_pack_apply(
@@ -3770,7 +3807,7 @@ async fn site_type_pack_apply(
         return Err(DomainError::Validation("mode 需为 replace/merge".into()));
     }
     let pack: Option<SiteTypePack> = sqlx::query_as(
-        "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs WHERE code = $1",
+        "SELECT code, name, description, brand, categories, modules, sort, sections FROM site_type_packs WHERE code = $1",
     ).bind(&body.code)
     .fetch_optional(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -3840,6 +3877,73 @@ async fn site_type_pack_apply(
                 "INSERT INTO site_settings (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
             ).bind(format!("module_{k}")).bind(val)
             .execute(&mut *tx).await;
+        }
+    }
+    // 质量维度种子（0092）：包内定义的维度重建标签与选项（references 级联清理旧引用），
+    // 未在包内定义的维度（含站方自建）原样保留
+    if let Some(sections) = pack
+        .sections
+        .as_ref()
+        .and_then(serde_json::Value::as_object)
+    {
+        if let Some(kinds) = sections.get("kinds").and_then(serde_json::Value::as_array) {
+            for k in kinds {
+                let (Some(kind), Some(label)) = (
+                    k.get("kind").and_then(serde_json::Value::as_str),
+                    k.get("label").and_then(serde_json::Value::as_str),
+                ) else {
+                    continue;
+                };
+                if !is_ascii_kind(kind) {
+                    continue;
+                }
+                let sort = k.get("sort").and_then(serde_json::Value::as_i64).unwrap_or(999) as i32;
+                sqlx::query(
+                    "INSERT INTO section_kinds (kind, label, sort) VALUES ($1, $2, $3) \
+                     ON CONFLICT (kind) DO UPDATE SET label = EXCLUDED.label, sort = EXCLUDED.sort",
+                )
+                .bind(kind).bind(label).bind(sort)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            }
+        }
+        if let Some(dict) = sections.get("dict").and_then(serde_json::Value::as_object) {
+            for (kind, names) in dict {
+                if !is_ascii_kind(kind) {
+                    continue;
+                }
+                // 维度可能未在包 kinds 中定义（自定义维度追加选项）：确保存在
+                sqlx::query(
+                    "INSERT INTO section_kinds (kind, label, sort) VALUES ($1, $1, 999) ON CONFLICT (kind) DO NOTHING",
+                )
+                .bind(kind)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+                // 整维替换：旧选项与其 torrent_sections 引用级联清除（显式应用包 = 重建口径）
+                sqlx::query("DELETE FROM section_dict WHERE kind = $1")
+                    .bind(kind)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
+                for (i, name) in names
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default()
+                    .iter()
+                    .enumerate()
+                {
+                    let Some(name) = name.as_str() else { continue };
+                    sqlx::query("INSERT INTO section_dict (kind, name, sort) VALUES ($1, $2, $3)")
+                        .bind(kind)
+                        .bind(name)
+                        .bind((i + 1) as i32)
+                        .execute(&mut *tx)
+                        .await
+                        .map_err(|e| DomainError::Internal(e.into()))?;
+                }
+            }
         }
     }
     tx.commit()
@@ -5108,7 +5212,87 @@ async fn home_sections(
         "friend_links": links.iter().map(|(n, u, t)| serde_json::json!({
             "name": n, "url": u, "title": t,
         })).collect::<Vec<_>>(),
+        // 首页排版（0089）：site_settings.home_layout 原样透传（JSON 数组或空串），
+        // 前端空/非法回退默认布局
+        "home_layout": crate::http::home_layout_raw(&state.repo.db).await,
     })))
+}
+
+/// 读取首页排版配置（0089）：返回原文；库错误/缺行回空串（首页永远可渲染）
+pub async fn home_layout_raw(db: &sqlx::PgPool) -> String {
+    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'home_layout'")
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_default()
+}
+
+/// 首页板块键白名单（0089）：与前端 HomeSections 渲染分支一一对应
+pub const HOME_SECTION_KEYS: &[&str] = &[
+    "news",
+    "attendance",
+    "shoutbox",
+    "funbox",
+    "resource_stats",
+    "site_data",
+    "lucky_draw",
+    "links",
+    "latest",
+];
+
+#[derive(Deserialize)]
+struct HomeLayoutItem {
+    key: String,
+    /// 1/2/3 = 1/3、2/3、整行；缺省 0 由前端按板块推荐档处理
+    #[serde(default)]
+    span: i32,
+}
+
+/// 保存首页排版（sysop，0089）：校验 JSON 结构 + 键白名单 + 去重 + span 白名单，
+/// 规范化后存 site_settings.home_layout。items 传空数组 = 恢复默认排版。
+#[put("/admin/home-layout")]
+async fn admin_home_layout_put(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<Vec<HomeLayoutItem>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    if body.len() > 20 {
+        return Err(DomainError::Validation("板块数量至多 20".into()));
+    }
+    let mut norm: Vec<serde_json::Value> = Vec::new();
+    let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    for it in body.iter() {
+        if !HOME_SECTION_KEYS.contains(&it.key.as_str()) {
+            return Err(DomainError::Validation(format!(
+                "未知板块键 {}（可用：{}）",
+                it.key,
+                HOME_SECTION_KEYS.join("/")
+            )));
+        }
+        if !seen.insert(&it.key) {
+            return Err(DomainError::Validation(format!("板块 {} 重复", it.key)));
+        }
+        if ![0, 1, 2, 3].contains(&it.span) {
+            return Err(DomainError::Validation("span 取值 1/2/3（缺省自动）".into()));
+        }
+        norm.push(serde_json::json!({ "key": it.key, "span": it.span }));
+    }
+    let value = serde_json::to_string(&norm).map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO site_settings (name, value, descr, grp) VALUES ('home_layout', $1, '首页板块排版（JSON 数组，空 = 默认布局）', 'main')          ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
+    )
+    .bind(&value)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "home_layout.update", None)
+        .await;
+    Ok(ok(serde_json::json!({ "saved": norm.len(), "layout": norm })))
 }
 
 // ============ 发布 / 下载（M04 / M05） ============
@@ -5129,12 +5313,6 @@ struct UploadForm {
     /// 海报/封面外链 URL（存 media_info.poster；列表 46px 封面位与首页海报墙共用）
     #[serde(default)]
     poster: Option<String>,
-    /// 发布者直接设置促销（需 torrent.set_price 权限）
-    #[serde(default)]
-    promo_kind: Option<String>,
-    /// 促销时长（小时，1-720，默认 48）
-    #[serde(default)]
-    promo_hours: Option<i32>,
     /// 多维属性（第八轮 Section）：kind → section_dict.id
     /// multipart 场景以 JSON 字符串传递：sections={"codec":1,"team":2}
     #[serde(default)]
@@ -5151,6 +5329,15 @@ struct UploadForm {
     /// 付费下载定价（0086）：0 = 免费，≤ 1,000,000；下载者支付，发布者得 (100-税)%
     #[serde(default)]
     price: Option<i64>,
+    /// 推荐位（0089，NP 挑选 口径）：pos_state 0/1/2 = 不置顶/一级/二级，需管理组
+    #[serde(default)]
+    pos_state: Option<i16>,
+    /// 置顶截止时间（ISO 8601；空 = 永久置顶）
+    #[serde(default)]
+    pos_state_until: Option<String>,
+    /// 推荐影片（0089）：pick_type 0/1/2 = 普通/推荐/经典，需管理组
+    #[serde(default)]
+    pick_type: Option<i16>,
 }
 
 /// CP437 高位区（0x80-0xFF）→ Unicode（DOS 风格 NFO 的事实编码；表由 Python cp437 编解码器生成）
@@ -5543,31 +5730,74 @@ async fn upload(
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
 
-    // 发布者设促销（torrent.set_price）：单种促销 → scope='torrent'（torrent_id 非空）。
-    // 注：0045 的 promotions_scope_shape_check 要求 torrent_id 非空时 scope 必须为 'torrent'，
-    // 旧值 'global' 会触发约束冲突（500）——且各促销子查询均按 torrent_id 分支命中，语义不受影响。
-    if let Some(kind) = form
-        .promo_kind
-        .as_deref()
-        .map(str::trim)
-        .filter(|k| !k.is_empty())
+    // 发种自动促销（0089，NP 促销设置 口径）：管理后台配置默认促销（类型+天数），
+    // 发布即自动套用——促销跟随站点，不再由发布者单独设置。
+    let auto_kind: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'upload_auto_promo_kind'), '')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let auto_days: i32 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'upload_auto_promo_days'), 0)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    let auto_kind = auto_kind.trim().to_lowercase();
+    if !auto_kind.is_empty()
+        && auto_days > 0
+        && ["free", "x2", "x2free", "half", "x2half", "p30"].contains(&auto_kind.as_str())
     {
-        if !crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_SET_PRICE).await {
-            return Err(DomainError::Forbidden);
-        }
-        if !["free", "x2", "x2free", "half", "x2half", "p30"].contains(&kind) {
-            return Err(DomainError::Validation("促销类型无效".into()));
-        }
-        let hours = form.promo_hours.unwrap_or(48).clamp(1, 720);
         sqlx::query(
             "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source, created_by) \
-             VALUES ('torrent', $1, $2::promotion_kind_enum, now(), now() + make_interval(hours => $3), \
+             VALUES ('torrent', $1, $2::promotion_kind_enum, now(), now() + make_interval(days => $3), \
                      'manual'::promotion_source, $4)",
         )
         .bind(id)
-        .bind(kind)
-        .bind(hours)
+        .bind(&auto_kind)
+        .bind(auto_days.clamp(1, 720))
         .bind(auth.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+
+    // 推荐位（0089，NP 挑选 口径）：置顶位置/截止 + 推荐影片，管理组专属；
+    // 发布页人人可见，无权限提交会被此处拦截（与参考站服务端强校验同口径）
+    if form.pos_state.unwrap_or(0) != 0
+        || form.pick_type.unwrap_or(0) != 0
+        || form.pos_state_until.as_deref().map(str::trim).is_some_and(|s| !s.is_empty())
+    {
+        if auth.class_id < 90 {
+            return Err(DomainError::Forbidden); // 置顶/推荐仅管理组
+        }
+        let pos = form.pos_state.unwrap_or(0);
+        if ![0, 1, 2].contains(&pos) {
+            return Err(DomainError::Validation("置顶位置取值 0/1/2".into()));
+        }
+        let pick = form.pick_type.unwrap_or(0);
+        if ![0, 1, 2].contains(&pick) {
+            return Err(DomainError::Validation("推荐影片取值 0/1/2".into()));
+        }
+        let until = form
+            .pos_state_until
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| {
+                chrono::DateTime::parse_from_rfc3339(s)
+                    .map_err(|_| DomainError::Validation("置顶截止时间格式无效".into()))
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+            })
+            .transpose()?;
+        sqlx::query(
+            "UPDATE torrents SET pos_state = $2, pos_state_until = $3, pick_type = $4, mtime = now() WHERE id = $1",
+        )
+        .bind(id)
+        .bind(pos)
+        .bind(until)
+        .bind(pick)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

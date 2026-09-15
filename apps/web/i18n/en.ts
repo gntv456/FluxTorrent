@@ -4,7 +4,7 @@ import type { Dict } from "./zh-CN";
 
 const enBase: Omit<
   Dict,
-  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub"
+  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub" | "homeLayout"
 > = {
   meta: {
     titleSuffix: "FluxTorrent",
@@ -384,6 +384,17 @@ const enBase: Omit<
     nfoHint: "Optional; classic NFO art supported (CP437 / UTF-8)",
     price: "Price",
     priceHint: "Charged on first download only; tax 30% goes to the monthly magic pool",
+    recommend: "Recommend (Placement)",
+    pickPos: "Sticky level",
+    pickNone: "None",
+    pickL1: "Sticky L1",
+    pickL2: "Sticky L2",
+    pickUntil: "Sticky until",
+    recommendMovie: "Recommendation",
+    recommendNone: "Normal",
+    recommendNormal: "Recommended",
+    recommendClassic: "Classic",
+    recommendHint: "Sticky/recommendation requires staff; promotion follows the site's auto policy",
     bbColor: "Color",
     bbFont: "Font",
     bbSize: "Size",
@@ -461,6 +472,12 @@ const enBase: Omit<
     modeExact: "Exact",
     searchBtn: "Search",
     advanced: "Advanced",
+    sort: "Sort",
+    sortDefault: "Default (newest)",
+    sortSeeders: "Most seeders",
+    sortSize: "Largest size",
+    sortCompleted: "Most completed",
+    dimLegend: "Attribute filters",
     catLegend: "Category",
     deadLegend: "Alive",
     inclDead: "Include dead",
@@ -2451,4 +2468,18 @@ export const en: Dict = { ...enBase, security2fa: {
   adminrename: adminrenameEn,
   commentdel: commentdelEn,
   groupsub: groupsubEn,
+  homeLayout: {
+    hint: "Arrange homepage sections: order (↑↓), width (1/3, 2/3, full or auto), show/hide. Takes effect on the homepage immediately after saving; saving an empty list or reset = official default layout.",
+    names: {
+      news: "Community News", attendance: "Check-in Calendar", shoutbox: "Shoutbox", funbox: "Fun Box",
+      resource_stats: "Resource Stats", site_data: "Site Data", lucky_draw: "Lucky Draw",
+      links: "Disclaimer & Links", latest: "Latest Posters",
+    },
+    spanLabel: "Width",
+    spanAuto: "Auto", span13: "1/3", span23: "2/3", spanFull: "Full",
+    up: "Move up", down: "Move down", hide: "Hide", hidden: "Hidden sections",
+    save: "Save layout", saving: "Saving…", saved: "Saved — refresh the homepage",
+    reset: "Reset default", resetHint: "Reset to default layout (click save to apply)",
+    title: "Homepage Layout",
+  },
 };

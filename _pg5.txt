@@ -1,0 +1,7 @@
+len: 92485
+PC_game: False
+xueqian: True
+name_sort: True
+sec_media: False
+name_tag_id: True
+dim_legend: True

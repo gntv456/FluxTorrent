@@ -1,0 +1,10 @@
+﻿docker : psql: error: connection to server on socket "/var/run/postgresql/.s.PG
+SQL.5432" failed: FATAL:  role "postgres" does not exist
+所在位置 行:445 字符: 1
++ docker exec flux-postgres psql -U postgres -d flux -c "SELECT version ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql: error: co... does not exist 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+

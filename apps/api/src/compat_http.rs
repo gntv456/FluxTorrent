@@ -126,7 +126,7 @@ async fn compat_np_torrents(
     let page = q.page.unwrap_or(1).max(1);
     let pagesize = q.pagesize.unwrap_or(30).clamp(1, 50);
     let filter = TorrentFilter {
-        category_id: q.category,
+        category_id: q.category.map(|v| vec![v]),
         search: q.keyword.clone().filter(|k| !k.trim().is_empty()),
         ..TorrentFilter::default()
     };
