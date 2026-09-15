@@ -9,7 +9,7 @@ import { ResurrectionPanel } from "@/components/resurrection-panel";
 
 export const dynamic = "force-dynamic";
 
-/** 保种区（同类站 requireseed.php 复刻）：
+/** 保种区（参考站 requireseed.php 复刻）：
  *  KEEP SHARING hero + 统计六格 + 筛选卡（类型/状态/分类/关键词）+ RSS 卡 + 种子表格 */
 export default async function PreservePage() {
   const { dict } = await getDict();

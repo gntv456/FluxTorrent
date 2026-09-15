@@ -999,7 +999,7 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
           AND NOT EXISTS (SELECT 1 FROM hr_snapshots h WHERE h.user_id = s.user_id AND h.torrent_id = s.torrent_id)
           AND COALESCE(t.hr_policy->>'enabled', 'true')::boolean
           -- 0072 buffer 豁免（U3D hitrun.buffer 口径）：下载量不足种子 10% 视为误触/秒删，不计 H&R
-          AND s.downloaded > t.size / 10
+          AND s.downloaded > t.size * 104 / 1000   -- 与券核销同阈值（≈10.4%）：10%~10.4% 区间不再误判
           AND NOT EXISTS (
               SELECT 1 FROM promotions p
               WHERE (p.torrent_id = s.torrent_id

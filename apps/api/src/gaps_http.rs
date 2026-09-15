@@ -129,13 +129,10 @@ async fn confirm_resend(
     if let Some(uid) = uid {
         state.repo.audit(Some(uid), "confirm.resend", None).await;
     }
-    let smtp = std::env::var("SMTP_URL").unwrap_or_default();
+    // 诚实响应（审计 P2-14）：系统本无邮箱验证环节，旧文案声称"已重新发送"名不副实
+    let _smtp = std::env::var("SMTP_URL").unwrap_or_default();
     Ok(ok(serde_json::json!({
-        "message": if smtp.is_empty() {
-            "如邮箱存在，我们已记录该请求；站点邮件通道未开启，请联系管理员处理"
-        } else {
-            "如邮箱存在，验证邮件已重新发送"
-        }
+        "message": "如邮箱存在，我们已记录该请求；本站暂未启用邮箱验证，注册即生效"
     })))
 }
 
@@ -339,9 +336,26 @@ struct CaptchaVerify {
 /// 注册时带 captcha_id + captcha_answer 校验（见 register 流程注释；当前先供前端展示与校验闭环）。
 #[get("/auth/captcha")]
 async fn captcha_issue(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     _q: web::Query<CaptchaVerify>,
 ) -> DomainResult<impl Responder> {
+    // 防刷限流（审计 P2）：20+20 算术题可脚本化批量取题，30 次/分钟/ISP 按来源 IP
+    let ip = req
+        .peer_addr()
+        .map(|a| a.ip().to_string())
+        .unwrap_or_else(|| "unknown".into());
+    {
+        let mut c = state.redis.clone();
+        let key = format!("rl:captcha:{ip}");
+        let n: i64 = AsyncCommands::incr(&mut c, &key, 1).await.unwrap_or(0);
+        if n == 1 {
+            let _: () = AsyncCommands::expire(&mut c, &key, 60).await.unwrap_or(());
+        }
+        if n > 30 {
+            return Err(DomainError::RateLimited);
+        }
+    }
     use rand::Rng;
     let a: i32 = rand::thread_rng().gen_range(1..=20);
     let b: i32 = rand::thread_rng().gen_range(1..=20);

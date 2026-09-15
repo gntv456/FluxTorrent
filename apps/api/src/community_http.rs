@@ -331,6 +331,19 @@ async fn medal_gift(
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 收件人通知（审计补齐：收礼物却无感知，只能自己去勋章页发现）
+    let _ = sqlx::query(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(auth.id)
+    .bind(to_id)
+    .bind("收到勋章礼物")
+    .bind(format!(
+        "用户 #{} 向你赠送了勋章「#{}」，快去勋章页看看吧！",
+        auth.id, body.medal_id
+    ))
+    .execute(&state.repo.db)
+    .await;
     Ok(ok(
         serde_json::json!({ "to": body.to_user, "medal_id": body.medal_id }),
     ))
