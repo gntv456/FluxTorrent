@@ -924,7 +924,7 @@ function TrackerTab({
             value={s.stylesheet}
             onChange={(e) => patch({ stylesheet: e.target.value })}
           >
-            <option value="BrandPT">BrandPT</option>
+            <option value="FluxTorrent">FluxTorrent</option>
           </select>{" "}
           <span className="uc-note">
             {t.stylesheetMore}
