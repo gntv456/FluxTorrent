@@ -149,6 +149,54 @@ struct ForgotReq {
 /// 申请重置：生成 30 分钟有效 token。
 /// 邮件投递：SMTP 未配置（SMTP_URL 空）时降级为日志输出 token —— 开发态可直接完成闭环；
 /// 生产配 SMTP 后走真实投递（邮件发送在后台线程，不阻塞响应）。
+/// SMTP 真实投递（lettre）：支持 smtps://user:pass@host:port 与 smtp://host:port 两种形状。
+/// 连接失败/投递失败向上返回错误，由调用方记日志——忘记密码响应保持防枚举的统一文案。
+async fn send_reset_mail(
+    smtp_url: &str,
+    from: &str,
+    to: &str,
+    site: &str,
+    link: &str,
+) -> anyhow::Result<()> {
+    use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+
+    let url = url::Url::parse(smtp_url)?;
+    let host = url
+        .host_str()
+        .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
+        .to_string();
+    let port = url.port().unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
+    let builder = if url.scheme() == "smtps" {
+        AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
+    } else {
+        AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&host)
+    }
+    .port(port);
+    let builder = if !url.username().is_empty() {
+        builder.credentials(lettre::transport::smtp::authentication::Credentials::new(
+            url.username().to_string(),
+            url.password().unwrap_or_default().to_string(),
+        ))
+    } else {
+        builder
+    };
+    let mailer = builder.build();
+    let email = Message::builder()
+        .from(from.parse()?)
+        .to(to.parse()?)
+        .subject(format!("[{site}] 密码重置"))
+        .body(format!(
+            "你（或他人）在 {site} 申请了密码重置。
+
+打开以下链接重置（30 分钟内有效，仅可使用一次）：
+{link}
+
+如非本人操作请忽略本邮件。"
+        ))?;
+    mailer.send(email).await?;
+    Ok(())
+}
+
 #[post("/auth/password/forgot")]
 async fn password_forgot(
     state: web::Data<std::sync::Arc<AppState>>,
@@ -191,8 +239,27 @@ async fn password_forgot(
         if smtp.is_empty() {
             tracing::warn!(%token, "SMTP 未配置：重置 token 输出到日志（开发态闭环）");
         } else {
-            // 生产：后台投递（SMTP 细节由部署方在网关/邮件服务实现，此处留出通道）
-            tracing::info!("password reset mail queued for user {uid}");
+            // 真实投递（lettre）：SMTP_URL = smtps://user:pass@host:port 或 smtp://host:port；
+            // 发件人 SMTP_FROM（缺省 no-reply@host）。后台线程发送，失败仅记日志不影响响应。
+            let base = std::env::var("PUBLIC_API_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+            let link = format!("{base}/reset?token={token}");
+            let email_addr = body.email.trim().to_lowercase();
+            let from = std::env::var("SMTP_FROM")
+                .unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
+            let site = sqlx::query_scalar::<_, String>(
+                "SELECT value FROM site_settings WHERE name = 'site_name'",
+            )
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "FluxTorrent".into());
+            actix_web::rt::spawn(async move {
+                match send_reset_mail(&smtp, &from, &email_addr, &site, &link).await {
+                    Ok(_) => tracing::info!(uid, "password reset mail sent to {email_addr}"),
+                    Err(e) => tracing::error!(uid, "password reset mail failed: {e}"),
+                }
+            });
         }
     }
     Ok(ok(serde_json::json!({

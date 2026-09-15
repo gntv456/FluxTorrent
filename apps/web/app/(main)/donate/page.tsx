@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { dateLocale } from "@/i18n/config";
+import { dateLocale, fmt } from "@/i18n/config";
+import { FundingPanel } from "@/components/funding-panel";
 
 interface DonatePlan {
   id: number;
@@ -190,6 +191,9 @@ export default function DonatePage() {
           {vipPlans.map((p) => <PlanCard key={p.id} p={p} />)}
         </div>
       </section>
+
+      {/* 众筹免费（0078）：凑火花挂限时免费 */}
+      <FundingPanel />
 
       {/* 流水 */}
       {ledgerOpen && (

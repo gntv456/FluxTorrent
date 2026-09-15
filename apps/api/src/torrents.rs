@@ -83,6 +83,12 @@ pub struct TorrentFilter {
     /// 第八轮 Section 多维筛选：kind → dict_id（kind 走白名单，dict_id 为整数，拼接安全）
     #[serde(default)]
     pub sections: Vec<(String, i64)>,
+    /// 搜索范围（旧站口径）：0=标题(默认) 1=副标题/简介 3=发布者 4=IMDb
+    #[serde(default)]
+    pub search_area: Option<i32>,
+    /// 匹配模式：0=AND 模糊(默认) 2=精确等值
+    #[serde(default)]
+    pub search_mode: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -101,20 +107,41 @@ pub async fn list_torrents(
     limit: i64,
 ) -> DomainResult<TorrentPage> {
     let limit = limit.clamp(1, MAX_LIMIT);
+    list_torrents_noclamp(db, filter, cursor, limit).await
+}
+
+/// 不做 50 上限钳制的列表查询：仅供 Torznab 等需要 offset+limit>50 深翻页的外部端点，
+/// 调用方必须自行 clamp 防滥用（见 economy_http torznab_search）。
+pub async fn list_torrents_noclamp(
+    db: &PgPool,
+    filter: &TorrentFilter,
+    cursor: Option<i64>,
+    limit: i64,
+) -> DomainResult<TorrentPage> {
+    let limit = limit.max(1);
+    // 匹配模式（旧站 torrents.php 口径）：0/缺省 = AND 模糊；2 = 精确等值（不带通配）
+    let exact = filter.search_mode == Some(2);
     let pattern = filter.search.as_deref().map(|s| {
-        format!(
-            "%{}%",
-            s.replace('\\', "").replace('%', "\\%").replace('_', "\\_")
-        )
+        if exact {
+            s.to_string()
+        } else {
+            format!(
+                "%{}%",
+                s.replace('\\', "").replace('%', "\\%").replace('_', "\\_")
+            )
+        }
     });
 
     // 排序白名单（防注入）；非 id 排序时退化为 OFFSET 无关的「前 N 截断」：
     // 排序键 + id 组成稳定排序，游标仍按 id 翻页（与默认排序一致，简单可靠）。
+    // 置顶口径（0063 起）：后台批量工作台写 pos_state/pos_state_until，旧列 sticky 仍被
+    // 官种联动使用——两列取「任一生效即置顶」：COALESCE 最大值排序；到期 pos_state 自动回落。
+    let sticky_expr = "(GREATEST(t.sticky::int, CASE WHEN t.pos_state = 1 AND (t.pos_state_until IS NULL OR t.pos_state_until > now()) THEN 1 ELSE 0 END)) DESC";
     let order = match filter.sort.as_deref() {
-        Some("seeders") => "t.sticky DESC, t.seeders DESC, t.id DESC",
-        Some("size") => "t.sticky DESC, t.size DESC, t.id DESC",
-        Some("completed") => "t.sticky DESC, t.times_completed DESC, t.id DESC",
-        _ => "t.sticky DESC, t.id DESC",
+        Some("seeders") => format!("{sticky_expr}, t.seeders DESC, t.id DESC"),
+        Some("size") => format!("{sticky_expr}, t.size DESC, t.id DESC"),
+        Some("completed") => format!("{sticky_expr}, t.times_completed DESC, t.id DESC"),
+        _ => format!("{sticky_expr}, t.id DESC"),
     };
     // 第八轮 Section 多维筛选：每个维度一个子查询谓词（kind 白名单 + i64 内插，无注入面）
     let mut sec_sql = String::new();
@@ -126,6 +153,15 @@ pub async fn list_torrents(
             " AND t.id IN (SELECT torrent_id FROM torrent_sections WHERE kind = '{kind}' AND dict_id = {dict_id})"
         ));
     }
+    // 搜索范围分流（旧站口径）：0=标题+全字段(默认) 1=副标题/简介 3=发布者 4=IMDb
+    let esc = if exact { "" } else { " ESCAPE chr(92)" };
+    let search_pred = match filter.search_area.unwrap_or(0) {
+        1 => format!("AND ($7::text IS NULL OR t.small_descr ILIKE $7{esc} OR t.descr ILIKE $7{esc})"),
+        3 => format!("AND ($7::text IS NULL OR u.username ILIKE $7{esc})"),
+        4 => format!("AND ($7::text IS NULL OR t.media_info->>'imdb' ILIKE $7{esc} OR t.descr ILIKE $7{esc})"),
+        _ => format!("AND ($7::text IS NULL OR t.name ILIKE $7{esc}                OR t.small_descr ILIKE $7{esc}                OR t.descr ILIKE $7{esc}                OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7{esc}))"),
+    };
+
     let sql = format!(
         r#"
         SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
@@ -163,10 +199,7 @@ pub async fn list_torrents(
           AND ($4::int IS NULL OR t.edition_id = $4)
           AND ($5::bool IS NULL OR t.official_tag = $5)
           AND ($6::bool OR t.seeders > 0)
-          AND ($7::text IS NULL OR t.name ILIKE $7 ESCAPE chr(92)
-               OR t.small_descr ILIKE $7 ESCAPE chr(92)
-               OR t.descr ILIKE $7 ESCAPE chr(92)
-               OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7 ESCAPE chr(92)))
+          {search_pred}
           AND ($8::bigint IS NULL OR t.id < $8)
           AND ($10::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $10))
           {sec_sql}
@@ -528,11 +561,35 @@ pub async fn delete_torrent(db: &PgPool, torrent_id: i64, actor: (i64, i16)) -> 
     if !is_staff && !(is_owner && approval != 1) {
         return Err(DomainError::Forbidden);
     }
+    // 软删 + 清理关联促销（审计修复：促销残留会被计费/H&R 豁免回查误命中）
+    let mut tx = db.begin().await.map_err(|err| DomainError::Internal(err.into()))?;
     sqlx::query("UPDATE torrents SET approval_status = 3, mtime = now() WHERE id = $1")
         .bind(torrent_id)
-        .execute(db)
+        .execute(&mut *tx)
         .await
         .map_err(|err| DomainError::Internal(err.into()))?;
+    sqlx::query("DELETE FROM promotions WHERE torrent_id = $1")
+        .bind(torrent_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|err| DomainError::Internal(err.into()))?;
+    tx.commit().await.map_err(|err| DomainError::Internal(err.into()))?;
+    Ok(())
+}
+
+/// 恢复软删种子（approval_status 3 → 0 待审）：此前误删后只能直连数据库手工修数。
+pub async fn restore_torrent(db: &PgPool, torrent_id: i64) -> DomainResult<()> {
+    let n = sqlx::query(
+        "UPDATE torrents SET approval_status = 0, mtime = now() WHERE id = $1 AND approval_status = 3",
+    )
+    .bind(torrent_id)
+    .execute(db)
+    .await
+    .map_err(|err| DomainError::Internal(err.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(torrent_id));
+    }
     Ok(())
 }
 

@@ -1616,11 +1616,19 @@ async fn torznab_search(
         search: (!keyword.trim().is_empty()).then(|| keyword.trim().to_string()),
         ..Default::default()
     };
-    let page = crate::torrents::list_torrents(
+    // 翻页修复：list_torrents 内部把 limit clamp 到 50，offset≥50 时
+    // 「取前 50 再 skip(50)」恒空。改为 offset ≤ 200 时按 offset+limit 原值直查
+    // （绕过 clamp 的私有上限：传入的 limit 已在本端点 clamp(1,100)），
+    // 更深翻页按 Torznab 惯例拒绝（Prowlarr 实际只翻到 1000）。
+    let fetch_n = offset + limit as i64;
+    if fetch_n > 1000 {
+        return Err(DomainError::Validation("offset+limit 不得超过 1000".into()));
+    }
+    let page = crate::torrents::list_torrents_noclamp(
         &state.repo.db,
         &filter,
         None,
-        offset + limit as i64,
+        fetch_n,
     )
     .await?;
     let items: Vec<_> = page

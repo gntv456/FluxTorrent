@@ -244,13 +244,16 @@ async fn offer_create(
     body: web::Json<OfferCreateReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let t_exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)")
-        .bind(body.torrent_id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
+    // 仅已过审种子可提名候选（审计修复：旧版可对待审/被拒/软删种子发起，
+    // promote 会直接置 approval_status=1 + official_tag 绕过审核流）
+    let t_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND approval_status = 1)")
+            .bind(body.torrent_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
     if !t_exists {
-        return Err(DomainError::TorrentInvalid("种子不存在".into()));
+        return Err(DomainError::TorrentInvalid("种子不存在或未过审".into()));
     }
     let id: i64 =
         sqlx::query_scalar("INSERT INTO offers (user_id, torrent_id) VALUES ($1, $2) RETURNING id")
@@ -516,6 +519,21 @@ async fn subtitle_download(
     })))
 }
 
+/// 模块开关读取：module_{name} = 'no' 时模块关闭（site_type_packs 只是初始快照，
+/// 运行时权威在 site_settings；此前后端不设防，仅前端隐藏导航，直连 URL 仍全功能可用）。
+async fn module_disabled(db: &sqlx::PgPool, name: &str) -> bool {
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = $1",
+    )
+    .bind(format!("module_{name}"))
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v == "no")
+    .unwrap_or(false)
+}
+
 // ============ M18 课本中心 ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -532,6 +550,9 @@ struct TextbookRow {
 
 #[get("/textbooks")]
 async fn textbook_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    if module_disabled(&state.repo.db, "textbooks").await {
+        return Err(DomainError::NotFound(0)); // 模块已关闭：与前端导航隐藏同口径
+    }
     let rows = sqlx::query_as::<_, TextbookRow>(
         "SELECT tb.id, tb.subject, e.name AS edition, g.name AS grade, tb.volume, tb.publisher, tb.downloads, \
             (SELECT min(t.id) FROM torrents t WHERE t.textbook_id = tb.id AND t.approval_status = 1) AS torrent_id \
@@ -559,6 +580,9 @@ async fn textbook_link(
     body: web::Json<TextbookLinkReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    if module_disabled(&state.repo.db, "textbooks").await {
+        return Err(DomainError::NotFound(0)); // 模块已关闭
+    }
     let updated = sqlx::query("UPDATE torrents SET textbook_id = $2 WHERE id = $1")
         .bind(body.torrent_id)
         .bind(body.textbook_id)

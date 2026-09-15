@@ -56,6 +56,7 @@ export function AdminShell({
 }) {
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
+  const ops = dict.adminops;
   // 徽章优先显示真实等级名（等级体系已扩到 12 级用户层 + 管理职级）
   const classLabel =
     classId !== undefined
@@ -85,18 +86,32 @@ export function AdminShell({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // 运维三件套（0078）入口：面板条目由 DB 种子驱动，可能未含该项——
+  // 面板里恒定补一条「运维」（后端 /admin/version 等按权限校验，无权时面板内报错）
+  const opsEntry: PanelEntry = {
+    section: "system",
+    name: ops.entry,
+    url: "/admin?tool=ops",
+    info: `${ops.versionTitle} / ${ops.backupsTitle} / ${ops.jobsTitle}`,
+    tab_key: "ops",
+    min_class: 90,
+  };
+  const allEntries = entries.some((e) => e.tab_key === "ops")
+    ? entries
+    : [...entries, opsEntry];
+
   const grouped = useMemo(() => {
     const kw = q.trim().toLowerCase();
     return SECTION_ORDER.map((key) => ({
       key,
       label: LABEL[key] ?? key,
-      items: entries.filter(
+      items: allEntries.filter(
         (e) =>
           e.section === key &&
           (!kw || `${e.name}${e.info}${e.tab_key}`.toLowerCase().includes(kw)),
       ),
     })).filter((g) => g.items.length > 0);
-  }, [entries, q, a]);
+  }, [allEntries, q, a]);
 
   const nav = (
     <div className="flex flex-col gap-3">

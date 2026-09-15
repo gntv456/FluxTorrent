@@ -6,6 +6,10 @@ import { TorrentSocial } from "@/components/torrent-social";
 import { TorrentManage } from "@/components/torrent-manage";
 import { SnatchList } from "@/components/snatch-list";
 import { TorrentTags } from "@/components/torrent-tags";
+import { ResurrectButton } from "@/components/resurrect-button";
+import { WishlistButton } from "@/components/wishlist";
+import { CommentDeleteButton } from "@/components/comment-delete-button";
+import { GroupSubscribeButton } from "@/components/group-subscribe-button";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import type { TorrentComment, TorrentListItem } from "@fluxtorrent/domain-types";
@@ -259,6 +263,10 @@ export default async function TorrentDetailPage({
           <div className="td-head__actions">
             <DownloadButton torrentId={t.id} name={t.name} />
             <TorrentSocial torrentId={t.id} />
+            <WishlistButton keyword={t.name} />
+            {t.seeders === 0 && (
+              <ResurrectButton torrentId={t.id} name={t.name} />
+            )}
           </div>
         </div>
 
@@ -350,6 +358,10 @@ export default async function TorrentDetailPage({
       {/* ===== 同组版本（0069 聚合组：同一资源的多个年份/版本/清晰度） ===== */}
       {group?.group && group.items.length > 1 && (
         <Fold title={`${d?.groupTitle ?? "同组版本"}：${group.group.name}`} count={group.items.length}>
+          {/* 组订阅（0075）：新版本过审时通知 */}
+          <div className="mb-2 flex justify-end">
+            <GroupSubscribeButton groupId={group.group.id} />
+          </div>
           <table className="td-files">
             <tbody>
               {group.items.map((g) => (
@@ -430,6 +442,8 @@ export default async function TorrentDetailPage({
               <p className="mt-1 text-[11px] text-sub" title={new Date(c.created_at).toLocaleString(dateLocale(locale))}>
                 {relTime(c.created_at)}
               </p>
+              {/* staff 删评：按钮常显，无权限由后端 403 兜底 */}
+              <CommentDeleteButton torrentId={t.id} commentId={c.id} />
             </div>
             <p className="td-comment__body">{c.body}</p>
           </div>

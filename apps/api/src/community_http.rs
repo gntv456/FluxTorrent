@@ -1155,6 +1155,28 @@ async fn shoutbox_send(
     if body.message.trim().is_empty() || body.message.len() > 300 {
         return Err(DomainError::Validation("发言需 1-300 字".into()));
     }
+    // 禁言位（NP chatpost 口径）：被禁言用户不能在聊天室继续刷屏
+    let can_chat: bool =
+        sqlx::query_scalar("SELECT COALESCE(forumpost, TRUE) FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+    if !can_chat {
+        return Err(DomainError::Validation("你已被禁言".into()));
+    }
+    // 防刷：每用户 10 秒冷却（Redis 计数，首条设 TTL；故障静默放行不影响可用性）
+    {
+        let mut c = state.redis.clone();
+        let key = format!("rl:shout:{}", auth.id);
+        let n: i64 = redis::AsyncCommands::incr(&mut c, &key, 1).await.unwrap_or(0);
+        if n == 1 {
+            let _: () = redis::AsyncCommands::expire(&mut c, &key, 10).await.unwrap_or(());
+        }
+        if n > 1 {
+            return Err(DomainError::RateLimited);
+        }
+    }
     let id: i64 =
         sqlx::query_scalar("INSERT INTO shoutbox (user_id, message) VALUES ($1, $2) RETURNING id")
             .bind(auth.id)
@@ -1824,7 +1846,7 @@ async fn staff_mark(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
     let n = sqlx::query(
-        "UPDATE staffmessages SET answered = 1, answered_by = COALESCE(answered_by, $2), answered_at = COALESCE(answered_at, now()) \
+        "UPDATE staffmessages SET answered = 1, answered_by = COALESCE(answered_by, $2), answered_at = COALESCE(answered_at, now()), ticket_status = CASE WHEN ticket_status < 2 THEN 2 ELSE ticket_status END\
          WHERE id = ANY($1) AND answered = 0",
     )
     .bind(&body.ids)

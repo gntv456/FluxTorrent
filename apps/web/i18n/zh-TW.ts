@@ -2,7 +2,10 @@
 
 import type { Dict } from "./zh-CN";
 
-const zhTwBase: Omit<Dict, "security2fa" | "apitokens"> = {
+const zhTwBase: Omit<
+  Dict,
+  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub"
+> = {
   meta: {
     titleSuffix: "好學",
     description: "教育資源私有種子社群 —— 種下種子，一起成長",
@@ -715,6 +718,7 @@ usertools: {
       tracker: "網站設定",
       forum: "論壇設定",
       security: "安全設定",
+      wishlist: "願望單",
     } as Record<string, string>,
     overview: {
       editProfile: "編輯資料",
@@ -1254,6 +1258,14 @@ usertools: {
     title: "求種區",
     headSmall: "REQUEST CENTER",
     filterNew: "添加求種",
+    formTitle: "求種標題",
+    formDescr: "描述（可選）",
+    formBounty: "懸賞（魔力）",
+    formSubmit: "發布求種",
+    formBusy: "發布中…",
+    formCancel: "取消",
+    formOk: "發布成功！懸賞 {n} 魔力已凍結",
+    formInvalid: "請填寫標題，懸賞須為非負整數",
     filterAll: "查看所有",
     filterYes: "查看已解決",
     filterNo: "查看未解決",
@@ -2197,7 +2209,179 @@ const apitokensTw: Dict["apitokens"] = {
   revoked: "已吊銷",
   neverUsed: "未使用",
   plainOnce: "權杖明文僅此一次顯示，請立即保存：",
-  limit: "每人最多 5 枚有效權杖；用法 Authorization: Token fxo_…",
+  limit: "每人最多 3 枚有效權杖；用法 Authorization: Token fxo_…",
+};
+
+const noticePrefsTw: Dict["noticePrefs"] = {
+  title: "通知偏好",
+  note: "選擇要接收的站內通知類別；關閉後對應事件將不再打擾你。",
+  saved: "已保存",
+  saveFailed: "保存失敗",
+  keys: {
+    hr_prewarn: "H&R 預警",
+    hr_violation: "H&R 違規",
+    wishlist: "願望單命中",
+    group_new_version: "新版本通知",
+    resurrection: "復活完成",
+    class_promo: "等級晉升",
+    gift: "禮物",
+    comment_reply: "評論回覆",
+    system: "系統通知",
+  } as Record<string, string>,
+};
+
+const wishlistTw: Dict["wishlist"] = {
+  title: "我的願望單",
+  note: "留下你想要的教材關鍵詞，有人發布命中時會通知你（上限 20 條）。",
+  addBtn: "加入願望單",
+  added: "已加入願望單",
+  removeBtn: "移出願望單",
+  removed: "已移出",
+  keywordPh: "想要的關鍵詞（如：線性代數 第六版）",
+  empty: "願望單還是空的",
+  addedOk: "已加入願望單，命中時會通知你",
+  addFailed: "加入失敗",
+  hit: "{n} 條",
+};
+
+const fundingTw: Dict["funding"] = {
+  title: "眾籌免費",
+  note: "為心儀的種子湊火花，達標後自動掛限時免費；到期未達標全額退款（含稅部分一併退）。",
+  torrentCol: "種子",
+  goalCol: "目標",
+  raisedCol: "已籌",
+  backersCol: "參與人數",
+  endsCol: "截止",
+  statusCol: "狀態",
+  stActive: "進行中",
+  stReached: "已達成",
+  stRefunded: "已退款",
+  stSettled: "已了結",
+  stOther: "已結束",
+  contributeBtn: "參與眾籌",
+  amountPh: "金額（火花）",
+  contributed: "參與成功：實付 {paid}，項目已籌 {raised} / 目標 {goal}",
+  createBtn: "發起眾籌",
+  createTitle: "發起眾籌",
+  fldTorrent: "種子 ID",
+  fldGoal: "目標（火花，至少 1000）",
+  fldHours: "達標後免費時長（小時，1-720）",
+  fldDays: "眾籌期（天，1-60）",
+  created: "眾籌已發起（#{id}）",
+  mine: "我的參與",
+  mineEmpty: "還沒有參與過眾籌",
+  minePaid: "實付 {paid}（含稅 {tax}）",
+  empty: "當前沒有眾籌項目",
+  actionCol: "操作",
+};
+
+const resurrectTw: Dict["resurrect"] = {
+  title: "復活任務",
+  note: "領取無種死種的復活任務，持續做種達標可獲得 5000 火花 + 1 枚免費券 + 該種 7 天免費。",
+  claimBtn: "認領復活",
+  claimed: "已認領：需累計做種 {hours} 小時，{reward}",
+  claimFailed: "認領失敗",
+  empty: "暫無可領取的復活任務",
+  mine: "我的復活任務",
+  mineEmpty: "還沒有領取過復活任務",
+  colTorrent: "種子",
+  colSize: "大小",
+  colRequired: "要求做種",
+  colSeeded: "已做種",
+  colStatus: "狀態",
+  stOpen: "進行中",
+  stDone: "已完成",
+  stOther: "已結束",
+  seeded: "已做種 {n} 小時",
+  required: "要求 {n} 小時",
+  reward: "5000 火花 + 1 枚免費券 + 7 天免費",
+  deadNote: "該種子已無做種者，認領復活可獲獎勵",
+};
+
+const ticketTw: Dict["ticket"] = {
+  tab: "工單",
+  statusAll: "全部",
+  stNew: "新",
+  stProgress: "處理中",
+  stAnswered: "已答覆待確認",
+  stClosed: "已關閉",
+  priority: "優先級",
+  priorityNames: ["低", "中", "高", "緊急"] as string[],
+  assignedTo: "指派給",
+  unassigned: "未指派",
+  assignPh: "指派給（staff 用戶名）",
+  updateBtn: "更新工單",
+  updated: "工單已更新",
+  reopenBtn: "重開為處理中",
+  setProgress: "置為處理中",
+  setAnswered: "置為已答覆",
+  closeBtn: "關閉工單",
+  empty: "沒有符合條件的工單",
+  statusLabel: "狀態",
+};
+
+const shoutbotTw: Dict["shoutbot"] = {
+  botName: "機器人",
+  commandsHint: "支援命令：{cmds}",
+  replyFailed: "命令執行失敗",
+  unknownCmd: "未知命令，可用：/free /stats /me /help",
+};
+
+const adminopsTw: Dict["adminops"] = {
+  entry: "維運",
+  versionTitle: "版本資訊",
+  versionBatch: "構建批次",
+  versionGit: "Git 版本",
+  versionMigration: "最新遷移",
+  versionDb: "資料庫",
+  versionUsers: "用戶",
+  versionTorrents: "種子",
+  versionPeers: "活躍節點",
+  backupsTitle: "資料庫備份",
+  backupsDir: "備份目錄",
+  backupsFile: "檔案",
+  backupsSize: "大小",
+  backupsEmpty: "暫無備份檔案",
+  backupRun: "立即備份",
+  backupDone: "備份完成：{file}（{size}）",
+  jobsTitle: "任務手動觸發",
+  jobsNote: "即時執行一次常用週期任務（與 worker 同款邏輯的讀側快查版本）。",
+  jobs: [
+    ["expire_promotions", "過期促銷清理"],
+    ["sweep_stale_peers", "清掃失聯節點"],
+    ["reconcile_snapshots", "流量快照糾偏"],
+    ["funding_settle", "眾籌達標結算"],
+  ] as [string, string][],
+  jobRun: "執行",
+  jobDone: "任務 {job} 完成（影響 {n} 行）",
+  runFailed: "執行失敗",
+};
+
+const adminrenameTw: Dict["adminrename"] = {
+  btn: "改名",
+  title: "用戶改名",
+  note: "改名會寫入改名日誌並通知用戶；新用戶名長度 1-32 且不能與他人重複。",
+  new_name: "新用戶名",
+  submit: "確認改名",
+  confirm: "確認將「{old}」改名為「{new}」？",
+  ok: "已改名為 {name}",
+  failed: "改名失敗",
+};
+
+const commentdelTw: Dict["commentdel"] = {
+  btn: "刪除",
+  confirm: "確認刪除該評論？此操作不可復原。",
+  ok: "評論已刪除",
+  failed: "刪除失敗",
+};
+
+const groupsubTw: Dict["groupsub"] = {
+  subscribe: "訂閱該組",
+  subscribed: "已訂閱",
+  unsubscribe: "退訂",
+  ok: "已訂閱，新版本過審時會通知你",
+  unsubOk: "已退訂",
+  failed: "操作失敗",
 };
 
 export const zhTW: Dict = { ...zhTwBase, security2fa: {
@@ -2213,4 +2397,14 @@ export const zhTW: Dict = { ...zhTwBase, security2fa: {
   disabledOk: "兩步驗證已關閉",
 },
   apitokens: apitokensTw,
+  noticePrefs: noticePrefsTw,
+  wishlist: wishlistTw,
+  funding: fundingTw,
+  resurrect: resurrectTw,
+  ticket: ticketTw,
+  shoutbot: shoutbotTw,
+  adminops: adminopsTw,
+  adminrename: adminrenameTw,
+  commentdel: commentdelTw,
+  groupsub: groupsubTw,
 };
