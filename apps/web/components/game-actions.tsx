@@ -6,7 +6,7 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
 function useBet(initial: number) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const [bet, setBet] = useState(initial);
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -42,7 +42,7 @@ function BetInput({
   bet: number;
   setBet: (n: number) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-sub">{dict.games.bet}</span>
@@ -52,17 +52,17 @@ function BetInput({
         max={1000}
         value={bet}
         onChange={(e) => setBet(Number(e.target.value) || 0)}
-        aria-label={dict.games.betLabel}
+        aria-label={dict.games.betLabel.replace("{magic}", currency)}
         className="num min-h-[44px] w-24 rounded-[var(--r-sm)] border border-line px-3 text-right outline-none focus:ring-2 focus:ring-sky/40"
       />
-      <span className="text-sm text-sub">{dict.common.spark}</span>
+      <span className="text-sm text-sub">{dict.common.spark.replace("{magic}", currency)}</span>
     </div>
   );
 }
 
 /** 刮刮乐（M24） */
 export function ScratchCard() {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const { bet, setBet, result, setResult, busy, play } = useBet(100);
   const [face, setFace] = useState<"🎁" | "💥" | "✨">("🎁");
 
@@ -111,7 +111,7 @@ export function ScratchCard() {
 
 /** 猜大小（M24） */
 export function BigSmall() {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const { bet, setBet, result, setResult, busy, play } = useBet(100);
   const [number, setNumber] = useState<number | null>(null);
 
@@ -174,7 +174,7 @@ export function BigSmall() {
 
 /** 九宫格抽奖（M24 jgg 口径）：票价 100，8 格奖池 */
 export function JggCard() {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const [busy, setBusy] = useState(false);
   const [active, setActive] = useState<number | null>(null);
   const [won, setWon] = useState<number | null>(null);

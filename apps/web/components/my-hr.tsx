@@ -17,7 +17,7 @@ interface HrRow {
 
 /** 我的 H&R 表（/me/hr 口径：种子/要求/已做种/截止/状态 + 自助免罪） */
 export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const router = useRouter();
   const t = dict.myhr;
   const dl = locale === "zh-TW" ? "zh-TW" : locale === "en" ? "en-US" : "zh-CN";
@@ -83,9 +83,9 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                       disabled={busyId === r.torrent_id}
                       onClick={() => selfPardon(r.torrent_id)}
                       className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-sky-deep disabled:opacity-50"
-                      title={dict.myhr2.pardonNote}
+                      title={dict.myhr2.pardonNote.replace("{magic}", currency)}
                     >
-                      {dict.myhr2.pardonBtn}
+                      {dict.myhr2.pardonBtn.replace("{magic}", currency)}
                     </button>
                   )}
                 </td>

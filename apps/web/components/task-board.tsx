@@ -55,7 +55,7 @@ function fmtBytes(n: number): string {
 /** 任务系统（参考站 task.php 复刻）：TASK SYSTEM hero + 01 规则 + 02 可领取任务（五档卡）
  *  + 03 任务商店 + 06 最新动态 + 07 任务统计 + 08 我的任务记录 */
 export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.tasks2;
   const [tasks, setTasks] = useState<TaskRow[] | null>(null);
   const [ov, setOv] = useState<TaskOverview | null>(null);
@@ -100,18 +100,18 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
       {/* Hero */}
       <section className="task-hero">
         <div>
-          <span className="task-eyebrow">{dict.common.brand.toUpperCase()} TASK SYSTEM</span>
+          <span className="task-eyebrow">{t.heroEyebrow}</span>
           <h1>{t.title}</h1>
           <p>{t.subtitle}</p>
         </div>
         <div className="task-hero-meta">
           <div>
-            <span>{t.currentSpark}</span>
+            <span>{t.currentSpark.replace("{magic}", currency)}</span>
             <strong className="num">{sparkBalance?.toFixed(1) ?? "—"}</strong>
           </div>
           <div>
             <span>{t.settleMode}</span>
-            <strong>LIVE</strong>
+            <strong>{t.settleLive}</strong>
           </div>
         </div>
       </section>
@@ -139,6 +139,7 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
             <h2>{t.tiersTitle}</h2>
           </div>
           <p>
+            {/* 0094：quota_total 由后端 COALESCE(claim_limit, quota_total) 下发，运营改 claim_limit 即生效 */}
             {t.quota}: {tierTasks.reduce((a, x) => a + x.claimed, 0)} /{" "}
             {tierTasks[0]?.quota_total ?? 200}；{t.vipNote}
           </p>

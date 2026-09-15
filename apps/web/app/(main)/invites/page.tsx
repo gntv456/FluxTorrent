@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 /** 邀请管理（参考站 invite.php 同款）：LV3+ 每周 2 枚 */
 export default async function InvitesPage() {
-  const { dict } = await getDict();
+  const { dict, currency } = await getDict();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline gap-2">
@@ -16,7 +16,7 @@ export default async function InvitesPage() {
         empty={dict.invites.empty}
         issueLabel={dict.invites.issue}
         redeemLabel={dict.invites.redeem}
-        redeemNote={dict.invites.redeemNote}
+        redeemNote={dict.invites.redeemNote.replace("{magic}", currency)}
         replayedText={dict.invites.replayed}
         needClass={dict.invites.needClass}
       />

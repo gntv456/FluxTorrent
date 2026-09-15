@@ -506,6 +506,8 @@ const zhTwBase: Omit<
     subtitle: "完成真實上傳、下載與做種積分目標，解鎖任務商店權益。",
     currentSpark: "當前{magic}",
     settleMode: "結算模式",
+    heroEyebrow: "任務中心",
+    settleLive: "即時",
     rulesTitle: "規則",
     rules: [
       "領取任務前請仔細閱讀規則；領取行為代表同意任務條款。",

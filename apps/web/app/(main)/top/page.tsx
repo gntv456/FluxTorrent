@@ -127,7 +127,7 @@ export default async function TopPage() {
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl">{t.title}</h1>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Board currency={currency} icon="💰" title={t.boardBonus} rows={b.bonus} empty={t.empty} fmt={(v) => Math.round(v).toLocaleString("zh-CN")} />
+        <Board currency={currency} icon="💰" title={t.boardBonus.replace("{magic}", currency)} rows={b.bonus} empty={t.empty} fmt={(v) => Math.round(v).toLocaleString("zh-CN")} />
         <Board currency={currency} icon="⬆️" title={t.boardUploaded} rows={b.uploaded} empty={t.empty} fmt={formatBytes} isBytes />
         <Board currency={currency} icon="⬇️" title={t.boardDownloaded} rows={b.downloaded} empty={t.empty} fmt={formatBytes} isBytes />
         <Board currency={currency} icon="⏳" title={t.boardSeedtime} rows={b.seedtime} empty={t.empty} fmt={fmtDuration} />
