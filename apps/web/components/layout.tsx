@@ -79,6 +79,9 @@ export async function Header() {
     {
       group: dict.nav.growth,
       items: [
+        { href: "/me/exams", label: dict.nav.exams },
+        { href: "/me/achievements", label: dict.nav.achievements },
+        { href: "/resurrections", label: dict.nav.resurrections },
         { href: "/medal-wall", label: dict.nav.medalWall },
         { href: "/avatar-frames", label: dict.nav.frames },
         { href: "/medals", label: dict.nav.medals },
