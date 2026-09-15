@@ -21,7 +21,7 @@ export function InviteManager({
   replayedText: string;
   needClass: string;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const inviteIdemRef = useRef<string | null>(null);
   const [invites, setInvites] = useState<InviteItem[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -103,7 +103,7 @@ export function InviteManager({
             onClick={redeem}
             className="min-h-[44px] rounded-full border border-[var(--baozi-line)] px-5 text-sm text-sky-deep hover:border-[var(--baozi-orange)] hover:text-[var(--baozi-orange)] disabled:opacity-50"
           >
-            {redeemLabel}（{price.toLocaleString()} {dict.common.spark}）
+            {redeemLabel}（{price.toLocaleString()} {dict.common.spark.replace("{magic}", currency)}）
           </button>
         )}
       </div>

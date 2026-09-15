@@ -508,6 +508,8 @@ const enBase: Omit<
     subtitle: "Complete real upload/download and seed-point goals to unlock task shop perks.",
     currentSpark: "{magic}",
     settleMode: "Mode",
+    heroEyebrow: "TASK CENTER",
+    settleLive: "LIVE",
     rulesTitle: "Rules",
     rules: [
       "Read the rules carefully before claiming a task; claiming means you accept the terms.",

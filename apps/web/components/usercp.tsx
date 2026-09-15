@@ -311,7 +311,7 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
 // ============ 账户概览 ============
 
 function OverviewTab({ ov, loading }: { ov: Overview | null; loading: boolean }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.usercp.overview;
   if (loading) return <p className="usercp-loading">{dict.my.loading}</p>;
   if (!ov) return null;
@@ -391,7 +391,7 @@ function OverviewTab({ ov, loading }: { ov: Overview | null; loading: boolean })
               </small>
             </div>
             <div className="uc-metric uc-metric--bonus">
-              <dt><span aria-hidden="true">★</span>{dict.my.balance}</dt>
+              <dt><span aria-hidden="true">★</span>{dict.my.balance.replace("{magic}", currency)}</dt>
               <dd className="num">{ov.spark_balance}</dd>
             </div>
           </dl>
@@ -512,7 +512,7 @@ function OverviewTab({ ov, loading }: { ov: Overview | null; loading: boolean })
               </td>
             </tr>
             <tr>
-              <td className="rowhead">{dict.my.balance}</td>
+              <td className="rowhead">{dict.my.balance.replace("{magic}", currency)}</td>
               <td className="rowfollow">
                 {ov.spark_balance} [<Link href="/shop">{t.use}</Link>]
               </td>
@@ -587,7 +587,7 @@ function PersonalTab({
   s: UserSettings;
   patch: (p: Partial<UserSettings>) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.usercp.personal;
   return (
     <table className="nexus-table nexus-form">
@@ -828,7 +828,7 @@ function TrackerTab({
   s: UserSettings;
   patch: (p: Partial<UserSettings>) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.usercp.tracker;
   const cats = (s.browsecat ?? "").split(",").filter(Boolean);
   const toggleCat = (id: string, on: boolean) => {
@@ -1215,7 +1215,7 @@ function ForumTab({
   s: UserSettings;
   patch: (p: Partial<UserSettings>) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.usercp.forum;
   return (
     <table className="nexus-table nexus-form">
@@ -1314,7 +1314,7 @@ function SecurityTab({
   s: UserSettings;
   patch: (p: Partial<UserSettings>) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.usercp.security;
   const [newPass, setNewPass] = useState("");
   const [newPass2, setNewPass2] = useState("");

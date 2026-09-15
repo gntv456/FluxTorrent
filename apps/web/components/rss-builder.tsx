@@ -15,7 +15,7 @@ const SHOWROWS = [10, 50, 100, 200];
 /** 获取 RSS 页（好学站 getrss.php 复刻）：
  *  检索分类（分类/媒介多选）+ 官种 + 付费 + 标题格式 + 每页条数 + 关键字 → 生成带 passkey 的订阅链接 */
 export function RssBuilder({ loginToView }: { loginToView: string }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.getrss;
   const [info, setInfo] = useState<RssInfo | null>(null);
   const [cats, setCats] = useState<number[]>([]);
@@ -112,7 +112,7 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
             <input type="checkbox" checked={official} onChange={(e) => setOfficial(e.target.checked)} />
           </label>
           <label className="rss-row">
-            <span>{t.paid}</span>
+            <span>{t.paid.replace("{magic}", currency)}</span>
             <select value={paid} onChange={(e) => setPaid(e.target.value as "0" | "1")}>
               <option value="0">{t.paidAll}</option>
               <option value="1">{t.paidFree}</option>

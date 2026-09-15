@@ -501,6 +501,8 @@ const zhCnBase = {
     subtitle: "完成真实上传、下载与做种积分目标，解锁任务商店权益。",
     currentSpark: "当前{magic}",
     settleMode: "结算模式",
+    heroEyebrow: "任务中心",
+    settleLive: "实时",
     rulesTitle: "规则",
     rules: [
       "领取任务前请仔细阅读规则；领取行为代表同意任务条款。",

@@ -17,7 +17,7 @@ struct TaskMetric {
     #[serde(default)]
     download_delta: Option<i64>,
     #[serde(default)]
-    seed_points_delta: Option<i64>, // 做种积分 = 做种时长秒（1 积分/小时 × 3600 折算前的秒）
+    seed_points_delta: Option<i64>, // 做种积分：1 积分 = 1 小时做种（与 class_rules.min_seed_hours 同源）
     #[serde(default)]
     seed_seconds_delta: Option<i64>, // 做种时长增量（秒），无折算歧义；tier 累计口径下为绝对值
     #[serde(default)]
@@ -114,8 +114,11 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
         }
         if let Some(v) = metric.seed_points_delta {
             has_target = true;
-            // 站内 seed_points 近似：做种数 × 100；但任务口径用做种时长更稳（小时 → 折算）
-            met &= seed_d >= v * 3600 / 100.max(1);
+            // 口径厘清（P1-6）：v 的单位是「做种积分」，1 积分 = 1 小时做种时长，
+            // 与 class_rules.min_seed_hours 同源；判定 = 累计做种秒 ≥ v×3600。
+            // 旧公式 v*3600/100（v×36 秒）无站内依据：站内 seed_points = 在做种数×100
+            // （http.rs 口径）与时长无关，旧折算既不对应站内积分也不对应时长，废弃。
+            met &= seed_d >= v.saturating_mul(3600);
         }
         if let Some(v) = metric.seed_seconds_delta {
             has_target = true;
@@ -371,4 +374,20 @@ pub async fn exam_assign(db: &PgPool) -> anyhow::Result<u64> {
         tracing::info!(total, "exam assigned");
     }
     Ok(total as u64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// seed_points 口径（P1-6 厘清）：1 积分 = 1 小时做种 = 3600 秒，
+    /// 与 class_rules.min_seed_hours 同源。旧公式 v*3600/100（v×36 秒）无站内依据，已废弃。
+    #[test]
+    fn seed_points_one_point_per_hour() {
+        let m: TaskMetric =
+            serde_json::from_value(serde_json::json!({ "seed_points_delta": 10 })).unwrap();
+        assert_eq!(m.seed_points_delta, Some(10));
+        // v=10 积分 → 门槛 10×3600=36000 秒（10 小时）
+        assert_eq!(m.seed_points_delta.unwrap().saturating_mul(3600), 36000);
+    }
 }

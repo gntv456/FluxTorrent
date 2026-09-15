@@ -474,7 +474,7 @@ export function HomeSections() {
             <ul className="home-lucky-draw__list">
               {home.lucky_draw.map((l, i) => (
                 <li key={i}>
-                  <b className="rainbow">{l.user}</b> {t.got} {dict.common.spark} {l.amount}
+                  <b className="rainbow">{l.user}</b> {t.got} {dict.common.spark.replace("{magic}", currency)} {l.amount}
                 </li>
               ))}
               {home.lucky_draw.length === 0 && <li className="text-sub">{t.luckyEmpty}</li>}

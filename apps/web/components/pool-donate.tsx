@@ -7,7 +7,7 @@ import { useI18n, apiErrorMessage } from "@/i18n/client";
 
 /** 站免池捐赠表单（M13 众筹触发下月双免）：走 spark 支出管线，成功后刷新进度 */
 export function PoolDonate() {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const router = useRouter();
   const [amount, setAmount] = useState("1000");
   const [msg, setMsg] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export function PoolDonate() {
         value={amount}
         onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))}
         inputMode="numeric"
-        aria-label={t.amountLabel}
+        aria-label={t.amountLabel.replace("{magic}", currency)}
         className="num w-32 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 py-2 text-sm"
       />
       {[1000, 5000, 20000].map((v) => (

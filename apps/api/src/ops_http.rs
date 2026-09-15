@@ -261,6 +261,7 @@ struct TaskRow {
     fee: i64,
     #[sqlx(default)]
     duration_days: i32,
+    /// 0094 废弃：名额统一走 claim_limit；仅为 task-board 兼容下发（值 = claim_limit）
     #[sqlx(default)]
     quota_total: i32,
     #[sqlx(default)]
@@ -280,7 +281,7 @@ async fn task_list(
         "SELECT t.id, t.name, t.metric, t.reward, t.penalty, t.claim_limit, \
             (SELECT count(*) FROM task_claims tc WHERE tc.task_id = t.id)::bigint AS claimed, \
             t.starts_at, t.ends_at, t.tier, t.subtitle, t.fee, t.duration_days, \
-            t.quota_total, t.sort, \
+            COALESCE(t.claim_limit, t.quota_total) AS quota_total, t.sort, \
             EXISTS(SELECT 1 FROM task_claims tc WHERE tc.task_id = t.id AND tc.user_id = $1) AS claimed_by_me \
          FROM tasks t WHERE now() BETWEEN t.starts_at AND t.ends_at \
          ORDER BY t.sort NULLS LAST, t.id",

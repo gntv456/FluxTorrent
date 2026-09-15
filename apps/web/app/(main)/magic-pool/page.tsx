@@ -18,7 +18,7 @@ export default async function MagicPoolPage() {
       </div>
 
       <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-6 shadow-[var(--shadow-card)]">
-        <p className="text-sm text-sub">{t.rule}</p>
+        <p className="text-sm text-sub">{t.rule.replace("{magic}", currency)}</p>
         {/* 彩带进度条（§3.2 品牌元素） */}
         <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-cloud">
           <div

@@ -8,13 +8,13 @@ export const dynamic = "force-dynamic";
 
 /** 魔力商店（mybonus.php 口径）：仅道具区（勋章兑换在 /medals 勋章页，不放商店） */
 export default async function ShopPage() {
-  const { dict, locale } = await getDict();
+  const { dict, currency, locale } = await getDict();
   const items = await getShopItems();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.shop.title}</h1>
-        <span className="text-sm text-sub">{dict.shop.subtitle}</span>
+        <h1 className="font-display text-2xl">{dict.shop.title.replace("{magic}", currency)}</h1>
+        <span className="text-sm text-sub">{dict.shop.subtitle.replace("{magic}", currency)}</span>
       </div>
 
       {/* 道具区 */}
