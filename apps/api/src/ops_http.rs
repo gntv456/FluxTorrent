@@ -362,15 +362,24 @@ async fn task_overview(
         })
         .collect();
 
-    // 我的任务记录
+    // 我的任务记录：含进行中任务的实时进度（current 与 /me/exams、task_settle 同口径）
     let mine: Vec<(
         i64,
         String,
         i16,
         chrono::DateTime<chrono::Utc>,
         Option<chrono::DateTime<chrono::Utc>>,
+        Option<chrono::DateTime<chrono::Utc>>,
+        i64,
+        Option<String>,
+        i64,
+        i64,
+        i64,
+        serde_json::Value,
     )> = sqlx::query_as(
-        "SELECT t.id, t.name, c.status, now(), c.settled_at \
+        "SELECT t.id, t.name, c.status, c.claimed_at, c.settled_at, \
+                (c.claimed_at + (t.duration_days || ' days')::interval) AS deadline, \
+                t.reward, t.tier, c.base_uploaded, c.base_seed_seconds, c.base_uploads, t.metric \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
          WHERE c.user_id = $1 ORDER BY c.id DESC LIMIT 20",
     )
@@ -378,12 +387,36 @@ async fn task_overview(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+
+    // 指标现值一次性取齐（四源与 task_settle/my_exams 一致）
+    let stats: Option<(i64, i64, i64, i64)> = sqlx::query_as(
+        "SELECT u.uploaded, \
+                COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0), \
+                (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), \
+                (SELECT count(*) FROM subtitles sub WHERE sub.user_id = u.id) \
+         FROM users u WHERE u.id = $1",
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (cur_up, cur_seed, cur_uploads, cur_subtitles) = stats.unwrap_or((0, 0, 0, 0));
+
     let mine_json: Vec<serde_json::Value> = mine
         .iter()
-        .map(|(id, name, status, at, settled)| {
+        .map(|(id, name, status, at, settled, deadline, reward, tier, b_up, b_seed, b_uploads, metric)| {
+            let (up, seed, ups) = if tier.is_some() {
+                (cur_up, cur_seed, cur_uploads)
+            } else {
+                (cur_up - b_up, cur_seed - b_seed, cur_uploads - b_uploads)
+            };
             serde_json::json!({
                 "task_id": id, "name": name, "status": status,
                 "claimed_at": at.to_rfc3339(), "settled_at": settled.map(|s| s.to_rfc3339()),
+                "deadline": deadline.map(|d| d.to_rfc3339()),
+                "reward": reward,
+                "metric": metric,
+                "current": { "uploaded": up, "seed_seconds": seed, "uploads": ups, "subtitles": cur_subtitles },
             })
         })
         .collect();

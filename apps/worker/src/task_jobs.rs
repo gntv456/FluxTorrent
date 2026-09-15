@@ -35,6 +35,11 @@ struct OpenClaim {
     penalty: i64,
     duration_days: i32,
     tier: Option<String>,
+    /// 0093：任务类型（task/onboard/periodic），用于完成通知区分转正考核文案
+    #[sqlx(default)]
+    kind: String,
+    #[sqlx(default)]
+    task_name: String,
     metric: serde_json::Value,
     claimed_at: chrono::DateTime<chrono::Utc>,
     base_uploaded: i64,
@@ -46,7 +51,8 @@ struct OpenClaim {
 pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
     let claims: Vec<OpenClaim> = sqlx::query_as(
         "SELECT c.id, c.task_id, c.user_id, t.reward, t.penalty, t.duration_days, t.tier, \
-                t.metric, c.claimed_at, c.base_uploaded, c.base_seed_seconds, c.base_uploads \
+                t.kind, t.name AS task_name, t.metric, c.claimed_at, \
+                c.base_uploaded, c.base_seed_seconds, c.base_uploads \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
          WHERE c.status = 0 LIMIT 500",
     )
@@ -201,15 +207,31 @@ async fn settle_complete(db: &PgPool, c: &OpenClaim) -> anyhow::Result<bool> {
                 .await?;
         }
     }
+    // 完成通知：转正考核（onboard）用专有文案——「转正」语义不落等级
+    // （等级归 class_auto_adjust 管，P1-3 定案：考核通过只做确认 + 发奖，不动 class_id）
+    let (subject, body) = if c.kind == "onboard" {
+        (
+            "转正考核通过",
+            format!(
+                "恭喜！您已完成新人转正考核「{}」，正式成为本站的一员。奖励 {} 火花已发放到您的账户。",
+                c.task_name, c.reward
+            ),
+        )
+    } else {
+        (
+            "任务完成通知",
+            format!(
+                "恭喜！您认领的任务「{}」已完成，奖励 {} 火花已发放到您的账户。",
+                c.task_name, c.reward
+            ),
+        )
+    };
     sqlx::query(
         "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
     )
     .bind(c.user_id)
-    .bind("任务完成通知")
-    .bind(format!(
-        "恭喜！您认领的任务已完成，奖励 {} 火花已发放到您的账户。",
-        c.reward
-    ))
+    .bind(subject)
+    .bind(body)
     .execute(&mut *tx)
     .await?;
     tx.commit().await?;

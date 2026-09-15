@@ -38,7 +38,32 @@ interface TaskOverview {
     failed: number;
     tiers: { tier: string | null; total: number; done: number; pct: number }[];
   };
-  my_records: { task_id: number; name: string; status: number; claimed_at: string; settled_at: string | null }[];
+  my_records: {
+    task_id: number; name: string; status: number; claimed_at: string; settled_at: string | null;
+    deadline?: string | null; reward?: number;
+    metric?: Record<string, number>;
+    current?: { uploaded?: number; seed_seconds?: number; uploads?: number; subtitles?: number };
+  }[];
+}
+
+/** 我的任务区进度单元格：metric 键 → 现值/目标（口径与结算一致；秒键折算小时） */
+function progressCells(
+  metric: Record<string, number> | undefined,
+  current: { uploaded?: number; seed_seconds?: number; uploads?: number; subtitles?: number } | undefined,
+  fmtBytes: (n: number) => string,
+): string {
+  if (!metric || !current) return "—";
+  return Object.entries(metric)
+    .map(([k, v]) => {
+      if (k === "upload_delta") return `${fmtBytes(current.uploaded ?? 0)} / ${fmtBytes(v)}`;
+      if (k === "download_delta") return `${fmtBytes(v)}`;
+      if (k === "seed_seconds_delta" || k === "seed_points_delta")
+        return `${((current.seed_seconds ?? 0) / 3600).toFixed(1)} / ${(v / 3600).toFixed(0)}h`;
+      if (k === "uploads") return `${current.uploads ?? 0} / ${v}`;
+      if (k === "subtitles") return `${current.subtitles ?? 0} / ${v}`;
+      return `${v}`;
+    })
+    .join(" · ");
 }
 
 function fmtBytes(n: number): string {
@@ -341,6 +366,7 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
               <tr>
                 <td className="colhead">{t.hTask}</td>
                 <td className="colhead">{t.hStatus}</td>
+                <td className="colhead">{dict.exams.colProgress}</td>
                 <td className="colhead">{t.hClaimedAt}</td>
                 <td className="colhead">{t.hSettledAt}</td>
               </tr>
@@ -350,13 +376,14 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
                   <td>
                     {r.status === 0 ? t.stOngoing : r.status === 1 ? t.stDone : t.stFailed}
                   </td>
+                  <td className="text-xs">{progressCells(r.metric, r.current, fmtBytes)}</td>
                   <td>{new Date(r.claimed_at).toLocaleString("zh-CN")}</td>
                   <td>{r.settled_at ? new Date(r.settled_at).toLocaleString("zh-CN") : "—"}</td>
                 </tr>
               ))}
               {(ov?.my_records ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-sub">
+                  <td colSpan={5} className="py-6 text-center text-sub">
                     {t.historyEmpty}
                   </td>
                 </tr>
