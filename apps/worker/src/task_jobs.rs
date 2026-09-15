@@ -210,6 +210,8 @@ async fn settle_complete(db: &PgPool, c: &OpenClaim) -> anyhow::Result<bool> {
 /// 失败/超时：status=2；配置了罚金则扣（幂等键 task_penalty:{claim_id}）
 async fn settle_fail(db: &PgPool, c: &OpenClaim) -> anyhow::Result<()> {
     let mut tx = db.begin().await?;
+    // 罚金说明文案按实扣额生成（见下方审计修复注释）；未配置罚金时为空串
+    let mut penalty_note = String::new();
     let updated = sqlx::query(
         "UPDATE task_claims SET status = 2, settled_at = now() WHERE id = $1 AND status = 0",
     )
@@ -254,6 +256,17 @@ async fn settle_fail(db: &PgPool, c: &OpenClaim) -> anyhow::Result<()> {
                     .execute(&mut *tx)
                     .await?;
             }
+            // 审计修复（文案失实）：扣款额按实（take = min(余额, 罚金)）告知；
+            // 旧文案固定写「扣除罚金 {penalty}」，余额不足被部分扣/零扣时与流水对不上。
+            penalty_note = if take < c.penalty {
+                format!(
+                    "，扣除罚金 {} 火花（余额不足，本次仅能扣到 0，未扣足 {} 火花）",
+                    take,
+                    c.penalty - take
+                )
+            } else {
+                format!("，扣除罚金 {} 火花", take)
+            };
         }
     }
     sqlx::query(
@@ -263,12 +276,7 @@ async fn settle_fail(db: &PgPool, c: &OpenClaim) -> anyhow::Result<()> {
     .bind("任务超时通知")
     .bind(format!(
         "您认领的任务已超出完成时限（{} 天），任务标记为失败{}。",
-        c.duration_days,
-        if c.penalty > 0 {
-            format!("，扣除罚金 {} 火花", c.penalty)
-        } else {
-            String::new()
-        }
+        c.duration_days, penalty_note
     ))
     .execute(&mut *tx)
     .await?;

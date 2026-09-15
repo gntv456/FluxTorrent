@@ -2,7 +2,10 @@
 
 import type { Dict } from "./zh-CN";
 
-const enBase: Omit<Dict, "security2fa" | "apitokens"> = {
+const enBase: Omit<
+  Dict,
+  "security2fa" | "apitokens" | "noticePrefs" | "wishlist" | "funding" | "resurrect" | "ticket" | "shoutbot" | "adminops" | "adminrename" | "commentdel" | "groupsub"
+> = {
   meta: {
     titleSuffix: "FluxTorrent",
     description:
@@ -717,6 +720,7 @@ usertools: {
       tracker: "Site",
       forum: "Forum",
       security: "Security",
+      wishlist: "Wishlist",
     } as Record<string, string>,
     overview: {
       editProfile: "Edit profile",
@@ -1256,6 +1260,14 @@ usertools: {
     title: "Requests",
     headSmall: "REQUEST CENTER",
     filterNew: "New request",
+    formTitle: "Title",
+    formDescr: "Description (optional)",
+    formBounty: "Bounty ({magic})",
+    formSubmit: "Submit request",
+    formBusy: "Submitting…",
+    formCancel: "Cancel",
+    formOk: "Request posted! Bounty {n} {magic} frozen",
+    formInvalid: "Title required; bounty must be a non-negative integer",
     filterAll: "All",
     filterYes: "Solved",
     filterNo: "Unsolved",
@@ -2203,7 +2215,179 @@ const apitokensEn: Dict["apitokens"] = {
   revoked: "Revoked",
   neverUsed: "Never used",
   plainOnce: "Plain token shown only once — save it now:",
-  limit: "Up to 5 active tokens; usage Authorization: Token fxo_…",
+  limit: "Up to 3 active tokens; usage Authorization: Token fxo_…",
+};
+
+const noticePrefsEn: Dict["noticePrefs"] = {
+  title: "Notification preferences",
+  note: "Choose which in-site notice categories you receive; disabled events will no longer disturb you.",
+  saved: "Saved",
+  saveFailed: "Save failed",
+  keys: {
+    hr_prewarn: "H&R pre-warning",
+    hr_violation: "H&R violation",
+    wishlist: "Wishlist hit",
+    group_new_version: "New group version",
+    resurrection: "Resurrection done",
+    class_promo: "Class promotion",
+    gift: "Gifts",
+    comment_reply: "Comment replies",
+    system: "System notices",
+  } as Record<string, string>,
+};
+
+const wishlistEn: Dict["wishlist"] = {
+  title: "My wishlist",
+  note: "Leave keywords of textbooks you want; you will be notified when a matching torrent is uploaded (max 20).",
+  addBtn: "Add to wishlist",
+  added: "In wishlist",
+  removeBtn: "Remove",
+  removed: "Removed",
+  keywordPh: "Keyword you want (e.g. Linear Algebra 6th)",
+  empty: "Your wishlist is empty",
+  addedOk: "Added to wishlist; you will be notified on a hit",
+  addFailed: "Failed to add",
+  hit: "{n} items",
+};
+
+const fundingEn: Dict["funding"] = {
+  title: "Crowd funding",
+  note: "Pool sparks for a torrent; when the goal is reached a timed freeleech is applied automatically. If it ends unmet, contributions are refunded in full (tax included).",
+  torrentCol: "Torrent",
+  goalCol: "Goal",
+  raisedCol: "Raised",
+  backersCol: "Backers",
+  endsCol: "Ends",
+  statusCol: "Status",
+  stActive: "Active",
+  stReached: "Reached",
+  stRefunded: "Refunded",
+  stSettled: "Settled",
+  stOther: "Ended",
+  contributeBtn: "Back it",
+  amountPh: "Amount (sparks)",
+  contributed: "Backed: paid {paid}, raised {raised} / goal {goal}",
+  createBtn: "Start a funding",
+  createTitle: "Start a funding",
+  fldTorrent: "Torrent ID",
+  fldGoal: "Goal (sparks, min 1000)",
+  fldHours: "Free hours after reached (1-720)",
+  fldDays: "Funding window (days, 1-60)",
+  created: "Funding started (#{id})",
+  mine: "My contributions",
+  mineEmpty: "You have not backed any funding yet",
+  minePaid: "Paid {paid} (tax {tax})",
+  empty: "No funding projects right now",
+  actionCol: "Actions",
+};
+
+const resurrectEn: Dict["resurrect"] = {
+  title: "Resurrections",
+  note: "Claim a dead torrent and keep seeding; meeting the hours earns 5000 sparks + 1 free voucher + 7 days free on that torrent.",
+  claimBtn: "Claim resurrection",
+  claimed: "Claimed: {hours} seeding hours required, {reward}",
+  claimFailed: "Claim failed",
+  empty: "No resurrections available",
+  mine: "My resurrections",
+  mineEmpty: "You have not claimed any resurrection yet",
+  colTorrent: "Torrent",
+  colSize: "Size",
+  colRequired: "Required",
+  colSeeded: "Seeded",
+  colStatus: "Status",
+  stOpen: "Open",
+  stDone: "Done",
+  stOther: "Ended",
+  seeded: "Seeded {n} h",
+  required: "{n} h required",
+  reward: "5000 sparks + 1 free voucher + 7-day free",
+  deadNote: "No seeders on this torrent; claim a resurrection to earn rewards",
+};
+
+const ticketEn: Dict["ticket"] = {
+  tab: "Tickets",
+  statusAll: "All",
+  stNew: "New",
+  stProgress: "In progress",
+  stAnswered: "Answered",
+  stClosed: "Closed",
+  priority: "Priority",
+  priorityNames: ["Low", "Medium", "High", "Urgent"] as string[],
+  assignedTo: "Assigned to",
+  unassigned: "Unassigned",
+  assignPh: "Assign to (staff username)",
+  updateBtn: "Update ticket",
+  updated: "Ticket updated",
+  reopenBtn: "Reopen as in progress",
+  setProgress: "Mark in progress",
+  setAnswered: "Mark answered",
+  closeBtn: "Close ticket",
+  empty: "No tickets match the filter",
+  statusLabel: "Status",
+};
+
+const shoutbotEn: Dict["shoutbot"] = {
+  botName: "bot",
+  commandsHint: "Commands: {cmds}",
+  replyFailed: "Command failed",
+  unknownCmd: "Unknown command; available: /free /stats /me /help",
+};
+
+const adminopsEn: Dict["adminops"] = {
+  entry: "Ops",
+  versionTitle: "Version",
+  versionBatch: "Build batch",
+  versionGit: "Git revision",
+  versionMigration: "Latest migration",
+  versionDb: "Database",
+  versionUsers: "Users",
+  versionTorrents: "Torrents",
+  versionPeers: "Active peers",
+  backupsTitle: "Database backups",
+  backupsDir: "Backup dir",
+  backupsFile: "File",
+  backupsSize: "Size",
+  backupsEmpty: "No backup files yet",
+  backupRun: "Back up now",
+  backupDone: "Backup done: {file} ({size})",
+  jobsTitle: "Manual job trigger",
+  jobsNote: "Run a periodic job once immediately (read-side quick version of the worker logic).",
+  jobs: [
+    ["expire_promotions", "Expire promotions"],
+    ["sweep_stale_peers", "Sweep stale peers"],
+    ["reconcile_snapshots", "Reconcile snapshots"],
+    ["funding_settle", "Settle fundings"],
+  ] as [string, string][],
+  jobRun: "Run",
+  jobDone: "Job {job} finished ({n} rows affected)",
+  runFailed: "Run failed",
+};
+
+const adminrenameEn: Dict["adminrename"] = {
+  btn: "Rename",
+  title: "Rename user",
+  note: "Renames are logged and the user is notified; new name is 1-32 chars and must be unique.",
+  new_name: "New username",
+  submit: "Rename",
+  confirm: 'Rename "{old}" to "{new}"?',
+  ok: "Renamed to {name}",
+  failed: "Rename failed",
+};
+
+const commentdelEn: Dict["commentdel"] = {
+  btn: "Delete",
+  confirm: "Delete this comment? This cannot be undone.",
+  ok: "Comment deleted",
+  failed: "Delete failed",
+};
+
+const groupsubEn: Dict["groupsub"] = {
+  subscribe: "Subscribe",
+  subscribed: "Subscribed",
+  unsubscribe: "Unsubscribe",
+  ok: "Subscribed; you will be notified when a new version is approved",
+  unsubOk: "Unsubscribed",
+  failed: "Action failed",
 };
 
 export const en: Dict = { ...enBase, security2fa: {
@@ -2219,4 +2403,14 @@ export const en: Dict = { ...enBase, security2fa: {
   disabledOk: "2FA disabled",
 },
   apitokens: apitokensEn,
+  noticePrefs: noticePrefsEn,
+  wishlist: wishlistEn,
+  funding: fundingEn,
+  resurrect: resurrectEn,
+  ticket: ticketEn,
+  shoutbot: shoutbotEn,
+  adminops: adminopsEn,
+  adminrename: adminrenameEn,
+  commentdel: commentdelEn,
+  groupsub: groupsubEn,
 };

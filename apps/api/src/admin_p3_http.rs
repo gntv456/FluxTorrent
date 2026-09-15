@@ -1570,6 +1570,8 @@ async fn admin_template_create(
     body: web::Json<TemplateCreateReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审计修复：消息模板是站点级配置，须 SETTINGS_MANAGE
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let scene = body.scene_key.trim();
     if scene.is_empty() || body.subject.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("场景键/主题/正文必填".into()));
@@ -1615,6 +1617,8 @@ async fn admin_template_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审计修复：消息模板是站点级配置，须 SETTINGS_MANAGE
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let id = path.into_inner();
     let n = sqlx::query("DELETE FROM message_templates WHERE id = $1")
         .bind(id)
@@ -2554,6 +2558,19 @@ async fn admin_user_rename(
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_RESETPASS).await?;
     let uid = path.into_inner();
+    // 等级护栏（审计修复）：改名语义同重置密码，操作者须严格高于目标用户
+    {
+        let target_class: Option<i32> =
+            sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+                .bind(uid)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        let tc = target_class.ok_or(DomainError::NotFound(uid))?;
+        if auth.class_id <= tc {
+            return Err(DomainError::Forbidden);
+        }
+    }
     let new_name = body.new_name.trim();
     if new_name.is_empty() || new_name.len() > 32 {
         return Err(DomainError::Validation("用户名长度 1-32".into()));

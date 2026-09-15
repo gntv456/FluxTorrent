@@ -36,6 +36,13 @@ export function RequestBoard({
   const [search, setSearch] = useState(initialSearch);
   const [rows, setRows] = useState<RequestRow[] | null>(null);
   const [loading, setLoading] = useState(false);
+  // 发布求种表单（此前整站无 POST /requests 入口，求种业务发不出第一步）
+  const [showForm, setShowForm] = useState(false);
+  const [ftTitle, setFtTitle] = useState("");
+  const [ftDescr, setFtDescr] = useState("");
+  const [ftBounty, setFtBounty] = useState("100");
+  const [ftBusy, setFtBusy] = useState(false);
+  const [ftMsg, setFtMsg] = useState<string | null>(null);
 
   const load = useCallback(
     async (fin: string, q: string) => {
@@ -75,9 +82,13 @@ export function RequestBoard({
 
       {/* 六个筛选入口（第一个为 primary 添加求种） */}
       <nav className="request-center__filters" aria-label={t.title}>
-        <a className="request-center__filter request-center__filter--primary" href="/requests?finished=new">
+        <button
+          type="button"
+          className="request-center__filter request-center__filter--primary"
+          onClick={() => setShowForm((v) => !v)}
+        >
           {t.filterNew}
-        </a>
+        </button>
         {(
           [
             ["all", t.filterAll],
@@ -99,6 +110,86 @@ export function RequestBoard({
           </button>
         ))}
       </nav>
+
+      {showForm && (
+        <form
+          className="baozi-panel flex flex-col gap-2 p-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const bounty = Number(ftBounty);
+            if (!ftTitle.trim() || !Number.isFinite(bounty) || bounty < 0) {
+              setFtMsg(t.formInvalid);
+              return;
+            }
+            setFtBusy(true);
+            setFtMsg(null);
+            try {
+              await api.post("/api/v1/requests", {
+                title: ftTitle.trim(),
+                descr: ftDescr.trim() || undefined,
+                bounty,
+              });
+              setFtMsg(t.formOk.replace("{n}", String(bounty)));
+              setFtTitle("");
+              setFtDescr("");
+              setFtBounty("100");
+              load(finished, search);
+            } catch (err) {
+              setFtMsg(err instanceof Error ? err.message : t.formInvalid);
+            } finally {
+              setFtBusy(false);
+            }
+          }}
+        >
+          <label className="flex flex-col gap-1 text-sm">
+            {t.formTitle}
+            <input
+              value={ftTitle}
+              onChange={(e) => setFtTitle(e.target.value)}
+              maxLength={200}
+              required
+              className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            {t.formDescr}
+            <textarea
+              value={ftDescr}
+              onChange={(e) => setFtDescr(e.target.value)}
+              maxLength={2000}
+              rows={3}
+              className="rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            {t.formBounty}
+            <input
+              type="number"
+              min={0}
+              value={ftBounty}
+              onChange={(e) => setFtBounty(e.target.value)}
+              className="min-h-[40px] w-40 rounded-[var(--r-sm)] border border-line bg-cloud px-3"
+            />
+          </label>
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={ftBusy}
+              className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {ftBusy ? t.formBusy : t.formSubmit}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="min-h-[40px] rounded-full border border-line px-4 text-sm"
+            >
+              {t.formCancel}
+            </button>
+            {ftMsg && <span className="text-xs text-sub">{ftMsg}</span>}
+          </div>
+        </form>
+      )}
 
       {/* 八列表格 */}
       <section className="request-center__list" aria-label={t.title}>

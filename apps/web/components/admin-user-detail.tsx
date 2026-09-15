@@ -127,6 +127,9 @@ export function AdminUserDetailPage() {
   const [jixiaoTypeId, setJixiaoTypeId] = useState("");
   const [jixiaoPeriod, setJixiaoPeriod] = useState("");
   const [tmpPass, setTmpPass] = useState<string | null>(null);
+  // 管理员改名（P2-6b）：POST /admin/users/{id}/rename {new_name}
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(null), 3000); };
   const load = useCallback(async () => {
@@ -321,6 +324,22 @@ export function AdminUserDetailPage() {
     finally { setBusy(false); }
   }
 
+  async function submitRename() {
+    const rn = dict.adminrename;
+    const name = newName.trim();
+    if (!name || !d) return;
+    if (!window.confirm(rn.confirm.replace("{old}", d.username).replace("{new}", name))) return;
+    setBusy(true);
+    try {
+      await api.post(`/api/v1/admin/users/${uid}/rename`, { new_name: name });
+      flash(rn.ok.replace("{name}", name));
+      setRenameOpen(false);
+      setNewName("");
+      await load();
+    } catch (e) { flash(e instanceof ApiError ? e.message : rn.failed); }
+    finally { setBusy(false); }
+  }
+
   async function deleteUser() {
     if (!window.confirm(`确认删除用户 ${d?.username}（#${uid}）？仅封禁状态可删，数据不可恢复！`)) return;
     setBusy(true);
@@ -424,6 +443,7 @@ export function AdminUserDetailPage() {
               <button className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${panel === "medal" ? "bg-sky text-white" : "border border-line"}`} onClick={() => { setPanel(panel === "medal" ? "" : "medal"); setAdjust(false); }}>授予勋章</button>
               <button className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${panel === "item" ? "bg-sky text-white" : "border border-line"}`} onClick={() => { setPanel(panel === "item" ? "" : "item"); setAdjust(false); }}>授予道具</button>
               <button className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${panel === "jixiao" ? "bg-sky text-white" : "border border-line"}`} onClick={() => { setPanel(panel === "jixiao" ? "" : "jixiao"); setAdjust(false); }}>分配考核</button>
+              <button className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${renameOpen ? "bg-sky text-white" : "border border-line"}`} onClick={() => { setRenameOpen(!renameOpen); setPanel(""); setAdjust(false); }}>{dict.adminrename.btn}</button>
               <button disabled={busy} onClick={resetPass} className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold">重置密码</button>
               <button disabled={busy} onClick={() => toggle("download_enabled")}
                 className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${d.download_enabled ? "border border-line text-danger" : "bg-mint text-white"}`}>
@@ -560,6 +580,26 @@ export function AdminUserDetailPage() {
                     ))}
                   </select>
                   <button className="baozi-button" disabled={busy || !itemId} onClick={submitItem}>发放</button>
+                </div>
+              </div>
+            )}
+
+            {/* 管理员改名（P2-6b） */}
+            {renameOpen && (
+              <div className="cmgmt-form rounded-[var(--r-md)] border border-line p-3">
+                <p className="mb-2 text-xs text-sub">{dict.adminrename.note}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    maxLength={32}
+                    placeholder={`${d.username} → ?`}
+                    aria-label={dict.adminrename.new_name}
+                    className="min-h-[40px] w-48 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm"
+                  />
+                  <button className="baozi-button" disabled={busy || !newName.trim()} onClick={submitRename}>
+                    {dict.adminrename.submit}
+                  </button>
                 </div>
               </div>
             )}

@@ -906,6 +906,8 @@ async fn user_assign_jixiao(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     let uid = path.into_inner();
+    // 等级护栏（审计修复）：90+ 可给 94/99 登记考核属越权，须严格高于目标
+    ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
     let exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM jixiao_types WHERE id = $1)")
             .bind(body.type_id)
@@ -955,44 +957,11 @@ async fn user_assign_jixiao(
     ))
 }
 
-/// 详情页删除用户（好学站用户详情「删除」口径）：仅 sysop，且要求先封禁（防误删活跃账号）
-#[delete("/admin/users/{id}")]
-async fn user_admin_delete(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_DELETE_DISABLED).await?;
-    let uid = path.into_inner();
-    if uid == auth.id {
-        return Err(DomainError::Validation("不能删除自己".into()));
-    }
-    let status: Option<i16> = sqlx::query_scalar("SELECT status FROM users WHERE id = $1")
-        .bind(uid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    match status {
-        None => return Err(DomainError::NotFound(uid)),
-        Some(s) if s < 2 => {
-            return Err(DomainError::Validation(
-                "仅封禁状态的账号可删除，请先封禁".into(),
-            ));
-        }
-        _ => {}
-    }
-    // 审计修复（P0）：旧实现无事务且清理清单严重不全（实测 del=a 引用 users 的列有 83 处），
-    // 任何做过审计操作的账号（audit_log.actor_id NO ACTION）在最终 DELETE users 时必失败，
-    // 而前序清理已生效 —— 账号半死、数据不可逆丢失。
-    // 现在：①单事务，任一步失败整体回滚；②清单覆盖全部 NO ACTION 引用列
-    //（本人数据 DELETE、他方操作留痕列 SET NULL、posts 分区表级联一并处理）。
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+/// 单事务级联删除一个（已封禁）用户：覆盖全部 NO ACTION 引用列（83 处实测）。
+/// 由 `DELETE /admin/users/{id}` 与批量 `deletedisabled`（http.rs）共用同一权威实现。
+/// 任一步失败整体回滚；返回 anyhow::Result 便于批量调用方收集逐户失败原因。
+pub async fn delete_user_cascade(db: &sqlx::PgPool, uid: i64) -> anyhow::Result<()> {
+    let mut tx = db.begin().await?;
     for sql in [
         // —— 本人拥有的业务数据（删） ——
         "DELETE FROM spark_ledger WHERE user_id = $1",
@@ -1083,11 +1052,42 @@ async fn user_admin_delete(
             .bind(uid)
             .execute(&mut *tx)
             .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            .map_err(|e| anyhow::anyhow!(format!("uid {uid}: {e}")))?;
     }
-    tx.commit()
+    tx.commit().await?;
+    Ok(())
+}
+
+/// 详情页删除用户（好学站用户详情「删除」口径）：仅 sysop，且要求先封禁（防误删活跃账号）
+#[delete("/admin/users/{id}")]
+async fn user_admin_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_DELETE_DISABLED).await?;
+    let uid = path.into_inner();
+    if uid == auth.id {
+        return Err(DomainError::Validation("不能删除自己".into()));
+    }
+    let status: Option<i16> = sqlx::query_scalar("SELECT status FROM users WHERE id = $1")
+        .bind(uid)
+        .fetch_optional(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    match status {
+        None => return Err(DomainError::NotFound(uid)),
+        Some(s) if s < 2 => {
+            return Err(DomainError::Validation(
+                "仅封禁状态的账号可删除，请先封禁".into(),
+            ));
+        }
+        _ => {}
+    }
+    crate::admin_http::delete_user_cascade(&state.repo.db, uid)
+        .await
+        .map_err(|e| DomainError::Validation(e.to_string()))?;
     state
         .repo
         .audit(Some(auth.id), "user.delete", Some(uid))
@@ -1869,8 +1869,10 @@ async fn site_settings_get(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 密文脱敏：旧版全量回值把 SMTP 密码等密文明文泄露给任何 90+。
+    // 口径与新协议 settings/schema 一致——secret 字段只回「已设置」状态。
     let rows: Vec<SiteSettingRow> = sqlx::query_as(
-        "SELECT name, value, updated_at, descr, COALESCE(grp, 'misc') AS grp FROM site_settings ORDER BY grp, name",
+        "SELECT s.name,                 CASE WHEN COALESCE(m.secret, false) THEN '' ELSE s.value END AS value,                 s.updated_at, s.descr, COALESCE(s.grp, 'misc') AS grp          FROM site_settings s LEFT JOIN settings_meta m ON m.name = s.name          ORDER BY s.grp, s.name",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -1992,6 +1994,8 @@ async fn agent_rules_add(
     body: web::Json<AgentRuleReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审计修复：客户端名单/拒绝原因是站点级配置，须 SETTINGS_MANAGE（与面板 min_class=99 一致）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     if !["allow", "deny"].contains(&body.mode.as_str()) {
         return Err(DomainError::Validation("mode 取值 allow/deny".into()));
     }
@@ -2029,6 +2033,8 @@ async fn agent_rules_del(
     body: web::Json<AgentRuleDel>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审计修复：客户端名单/拒绝原因是站点级配置，须 SETTINGS_MANAGE（与面板 min_class=99 一致）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let n = sqlx::query("DELETE FROM agent_rules WHERE id = $1")
         .bind(body.id)
         .execute(&state.repo.db)
@@ -2087,6 +2093,8 @@ async fn deny_reasons_add(
     body: web::Json<DenyReasonReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审计修复：客户端名单/拒绝原因是站点级配置，须 SETTINGS_MANAGE（与面板 min_class=99 一致）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let r = body.reason.trim();
     if r.is_empty() || r.len() > 200 {
         return Err(DomainError::Validation("原因长度 1-200".into()));
@@ -2122,6 +2130,8 @@ async fn deny_reasons_update(
     body: web::Json<DenyReasonPut>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审计修复：客户端名单/拒绝原因是站点级配置，须 SETTINGS_MANAGE（与面板 min_class=99 一致）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     if let Some(r) = body.reason.as_deref() {
         if r.trim().is_empty() || r.len() > 200 {
             return Err(DomainError::Validation("原因长度 1-200".into()));
@@ -2157,6 +2167,8 @@ async fn deny_reasons_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审计修复：客户端名单/拒绝原因是站点级配置，须 SETTINGS_MANAGE（与面板 min_class=99 一致）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let rid = path.into_inner();
     // 审计修复（P1）：被种子引用（torrents.deny_reason_id del=a FK）时删除必 500。
     // 与 category_delete 同款前置护栏：有引用先解绑/换用别的理由。

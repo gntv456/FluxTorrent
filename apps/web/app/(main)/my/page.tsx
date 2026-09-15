@@ -4,7 +4,7 @@ import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-const VALID_TABS: UsercpTab[] = ["overview", "personal", "tracker", "forum", "security"];
+const VALID_TABS: UsercpTab[] = ["overview", "personal", "tracker", "forum", "security", "wishlist"];
 
 /** 控制面板 —— 像素级复刻 NexusPHP usercp：侧边六项导航 + 账户概览/四组设定 */
 export default async function MyPage({

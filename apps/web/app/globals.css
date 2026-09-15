@@ -4565,6 +4565,15 @@ textarea.bbcode {
   justify-content: center;
   color: var(--text-faint);
 }
+/* 机器人回话（0078）：蓝色底与普通消息区分 */
+.shoutbox__bot {
+  background: var(--sky-soft, rgba(56, 132, 255, 0.08));
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.shoutbox__bot b {
+  color: var(--sky, #2f7ad6);
+}
 .shoutbox__msg {
   margin: 0 14px 6px;
   color: var(--danger);

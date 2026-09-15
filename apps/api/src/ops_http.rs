@@ -589,7 +589,7 @@ async fn preserve_list(
             "SELECT \
                 (SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL), \
                 (SELECT count(*) FROM seed_preserve WHERE exited_at IS NOT NULL), \
-                (SELECT count(*) FROM seed_preserve), \
+                (SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL), \
                 (SELECT count(*) FROM seed_preserve WHERE claimed_at > now() - interval '1 day'), \
                 (SELECT count(*) FROM seed_preserve WHERE exited_at > now() - interval '1 day')",
         )
@@ -603,12 +603,19 @@ async fn preserve_list(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
+    // 延续中 = 已被认领且仍在保种区（此前硬编码 0 永远显示 0）
+    let continued: i64 = sqlx::query_scalar::<_, i64>(
+        "SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL AND claimed_by IS NOT NULL",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
 
     Ok(ok(serde_json::json!({
         "items": rows,
         "total": total,
         "stats": {
-            "preserving": preserving, "continued": 0,
+            "preserving": preserving, "continued": continued,
             "official": official, "general": (preserving - official).max(0),
             "today_in": today_in, "today_out": today_out,
         },

@@ -67,6 +67,8 @@ async fn sticky_promos_add(
     body: web::Json<StickyPromoReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     if body.title.trim().is_empty() || body.title.len() > 200 {
         return Err(DomainError::Validation("标题长度 1-200".into()));
     }
@@ -99,6 +101,8 @@ async fn sticky_promos_update(
 ) -> DomainResult<HttpResponse> {
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
+    // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let n = sqlx::query(
         "UPDATE sticky_promotions SET \
             title = COALESCE($2, title), url = COALESCE($3, url), badge = COALESCE($4, badge), \
@@ -133,6 +137,8 @@ async fn sticky_promos_delete(
 ) -> DomainResult<HttpResponse> {
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
+    // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let n = sqlx::query("DELETE FROM sticky_promotions WHERE id = $1")
         .bind(path_id)
         .execute(&state.repo.db)
@@ -240,6 +246,9 @@ async fn menu_settings_update(
     body: web::Json<MenuSettingsReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 写 site_settings 等价于改站点设定：须过 SETTINGS_MANAGE（99 档），
+    // 与 settings_groups_put 同口径；旧版仅 staff() 把 99 档收窄放宽到 90。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     if let Some(en) = body.custom_enabled {
         sqlx::query("UPDATE site_settings SET value = $1, updated_at = now() WHERE name = 'nav.custom_enabled'")
             .bind(if en { "1" } else { "0" })
@@ -356,6 +365,8 @@ async fn menu_items_add(
     body: web::Json<MenuItemReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let label = body.label.as_deref().unwrap_or("").trim().to_string();
     let url = body.url.as_deref().unwrap_or("").trim().to_string();
     let location = body.location.as_deref().unwrap_or("sidebar");
@@ -399,6 +410,8 @@ async fn menu_items_update(
 ) -> DomainResult<HttpResponse> {
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
+    // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     menu_item_validate(&state.repo.db, &body, Some(path_id)).await?;
     let n = sqlx::query(
         "UPDATE menu_items SET \
@@ -438,6 +451,8 @@ async fn menu_items_delete(
 ) -> DomainResult<HttpResponse> {
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
+    // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let children: i64 = sqlx::query_scalar("SELECT count(*) FROM menu_items WHERE parent_id = $1")
         .bind(path_id)
         .fetch_one(&state.repo.db)
@@ -557,6 +572,8 @@ async fn msg_templates_update(
 ) -> DomainResult<HttpResponse> {
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
+    // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let n = sqlx::query(
         "UPDATE message_templates SET \
             subject = COALESCE($2, subject), body = COALESCE($3, body), \

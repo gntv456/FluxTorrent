@@ -9,6 +9,8 @@ import { LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { PushSettings } from "@/components/push-settings";
 import { TwoFactorSetup } from "@/components/twofa-setup";
 import { ApiTokens } from "@/components/api-tokens";
+import { NoticePrefsCard } from "@/components/notice-prefs";
+import { WishlistPanel } from "@/components/wishlist";
 
 /** 控制面板 —— 像素级复刻 NexusPHP usercp（包子站）：
  *  左侧 ⚙控制面板 六项侧边导航（账户概览/个人资料/网站设定/论坛设定/安全设定）
@@ -19,7 +21,8 @@ export type UsercpTab =
   | "personal"
   | "tracker"
   | "forum"
-  | "security";
+  | "security"
+  | "wishlist";
 
 export const USERCP_NAV: { key: UsercpTab; icon: string }[] = [
   { key: "overview", icon: "⌂" },
@@ -27,6 +30,7 @@ export const USERCP_NAV: { key: UsercpTab; icon: string }[] = [
   { key: "tracker", icon: "⚙" },
   { key: "forum", icon: "♧" },
   { key: "security", icon: "⌾" },
+  { key: "wishlist", icon: "☆" },
 ];
 
 // ============ 站点语言 ⇄ 前端 locale 映射 ============
@@ -266,6 +270,8 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
         {err && <p className="usercp-error">{err}</p>}
         {tab === "overview" ? (
           <OverviewTab ov={overview} loading={!overview && !err} />
+        ) : tab === "wishlist" ? (
+          <WishlistPanel />
         ) : settings ? (
           <form
             className="usercp-form"
@@ -1395,6 +1401,13 @@ function SecurityTab({
           <td className="rowhead">{t.pushNotify}</td>
           <td className="rowfollow p-0">
             <PushSettings />
+          </td>
+        </tr>
+        {/* 通知偏好（0075）：站内通知事件类开关 */}
+        <tr>
+          <td className="rowhead nowrap">{dict.noticePrefs.title}</td>
+          <td className="rowfollow p-0">
+            <NoticePrefsCard />
           </td>
         </tr>
         <Row head={t.passkeyLabel}>

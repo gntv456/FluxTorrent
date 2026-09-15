@@ -21,6 +21,7 @@ import { AdminProps } from "@/components/admin-props";
 import { AdminExams } from "@/components/admin-exams";
 import { AdminTasks } from "@/components/admin-tasks";
 import { AdminTrackers } from "@/components/admin-trackers";
+import { AdminOpsPanel } from "@/components/admin-ops";
 
 interface Overview {
   pending_reviews: number;
@@ -751,6 +752,9 @@ export default function AdminPage() {
         return <AdminTasks />;
       case "trackers":
         return <AdminTrackers />;
+      // 运维三件套（0078）：版本信息 / 备份面板 / 任务手动触发
+      case "ops":
+        return <AdminOpsPanel />;
 
       default:
         if (STAFF_TOOL_TABS.includes(tool as ToolTab)) {

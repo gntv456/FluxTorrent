@@ -43,9 +43,10 @@ pub async fn bank_demand_settle(db: &PgPool) -> anyhow::Result<u64> {
 /// 定期每日结息（settle_mode='daily'）：按日利率把利息发到用户余额，到期只还本。
 /// 日利率 = 年化 rate / 365，整数向下取整；幂等靠 last_interest_date 游标 + ledger 幂等键。
 pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
-    // rate 是 NUMERIC，sqlx 不直接解 NUMERIC→f64，取 text 自行解析
-    let rows: Vec<(i64, i64, i64, String, chrono::NaiveDate)> = sqlx::query_as(
-        "SELECT id, user_id, amount, rate::text, COALESCE(last_interest_date, (start_at::date - 1)) \
+    // rate 是 NUMERIC，sqlx 不直接解 NUMERIC→f64，取 text 自行解析；
+    // maturity 一并取回，供循环内把结算终点截断到到期日（防到期后补跑多付利息）
+    let rows: Vec<(i64, i64, i64, String, chrono::NaiveDate, chrono::NaiveDate)> = sqlx::query_as(
+        "SELECT id, user_id, amount, rate::text, COALESCE(last_interest_date, (start_at::date - 1)), maturity_at::date \
          FROM bank_deposits \
          WHERE status = 0 AND settle_mode = 'daily' \
            AND COALESCE(last_interest_date, (start_at::date - 1)) < LEAST(CURRENT_DATE, maturity_at::date) \
@@ -54,10 +55,14 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
     .fetch_all(db)
     .await?;
     let mut count = 0u64;
-    for (id, user_id, amount, rate_text, last_date) in rows {
+    for (id, user_id, amount, rate_text, last_date, maturity) in rows {
         let annual_rate: f64 = rate_text.parse().unwrap_or(0.0);
-        let end = chrono::Utc::now().date_naive();
-        let days = (end - last_date).num_days().max(0);
+        // 审计修复（末日利息）：结算终点截断到 LEAST(今天, maturity)——到期后 worker
+        // 补跑/重试时不再按「今天」多计到期日至补跑日之间的利息（多付部分无法追回）。
+        // （SELECT 侧已用 LEAST 过滤欠结行，此处是对「游标落后跨过到期日」的行兜底。）
+        let today = chrono::Utc::now().date_naive();
+        let end = if maturity < today { maturity } else { today };
+        let days = end.signed_duration_since(last_date).num_days().max(0);
         if days == 0 {
             continue;
         }
@@ -441,11 +446,14 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
 }
 
 /// 到期前提醒：贷款 3 天内到期发一次站内信（当日去重靠消息标题 + due_at 匹配）。
+/// 审计修复（去重失真）：subject 带贷款 id——旧标题全站同一字符串，NOT EXISTS 按
+/// 「该用户当日已有过任意一条到期提醒」去重，多笔贷款同时到期时只提醒第一笔。
+/// 改为 `...提醒 #{loan_id}` 且 NOT EXISTS 匹配同 subject 当日，每笔贷款各自去重。
 pub async fn bank_due_notify(db: &PgPool, days_before: i32) -> anyhow::Result<u64> {
     let res = sqlx::query(
         r#"
         INSERT INTO messages (sender_id, receiver_id, subject, body)
-        SELECT NULL, l.user_id, '银行贷款即将到期提醒',
+        SELECT NULL, l.user_id, '银行贷款即将到期提醒 #' || l.id,
                format('您的贷款（本金 %s 火花）将于 %s 到期，当前应结清 %s 火花（含计提利息），请及时还款以免逾期罚息。',
                       l.amount, to_char(l.due_at, 'YYYY-MM-DD'), l.remaining + l.accrued_interest)
         FROM bank_loans l
@@ -453,7 +461,8 @@ pub async fn bank_due_notify(db: &PgPool, days_before: i32) -> anyhow::Result<u6
           AND l.due_at BETWEEN now() AND now() + ($1 || ' days')::interval
           AND NOT EXISTS (
             SELECT 1 FROM messages m
-            WHERE m.receiver_id = l.user_id AND m.subject = '银行贷款即将到期提醒'
+            WHERE m.receiver_id = l.user_id
+              AND m.subject = '银行贷款即将到期提醒 #' || l.id
               AND m.created_at::date = CURRENT_DATE
           )
         "#,

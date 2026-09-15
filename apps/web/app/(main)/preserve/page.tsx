@@ -5,6 +5,7 @@ import { fmt } from "@/i18n/config";
 import { ClaimButton } from "@/components/claim-button";
 import { TorrentTr } from "@/components/torrent-table";
 import { SeedStatsCard } from "@/components/seed-stats-card";
+import { ResurrectionPanel } from "@/components/resurrection-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,9 @@ export default async function PreservePage() {
 
       {/* 保种统计：持 seed.stats.view 权限者可见（保种员 / 贵宾 / 管理组），无权限自动降级为提示 */}
       <SeedStatsCard />
+
+      {/* 复活任务（0073）：可领取死种列表 + 我的任务 */}
+      <ResurrectionPanel />
 
       {/* 筛选卡 */}
       <section className="baozi-panel preserve-filter-card">

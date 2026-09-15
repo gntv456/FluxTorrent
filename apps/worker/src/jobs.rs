@@ -240,10 +240,15 @@ pub async fn consume_agent_blocks(
 }
 
 /// 促销到期回收（M06：到期自动回收，无残留）。
+/// 审计修复：保留一年历史窗口——hr_enforce 建 H&R 快照时要按 completed_at 时点
+/// 回查「当时是否处于免费窗口」豁免，物理删掉近期促销会让回查失明（误判违规）。
+/// 计费查询全部走 `starts_at <= now() < ends_at` 生效窗口，不受历史保留影响。
 pub async fn expire_promotions(db: &PgPool) -> anyhow::Result<u64> {
-    let res = sqlx::query("DELETE FROM promotions WHERE ends_at <= now()")
-        .execute(db)
-        .await?;
+    let res = sqlx::query(
+        "DELETE FROM promotions WHERE ends_at <= now() - interval '365 days'",
+    )
+    .execute(db)
+    .await?;
     Ok(res.rows_affected())
 }
 
@@ -881,6 +886,10 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
 /// 教材愿望单推送（0074，U3D WishList 教育化）：扫过去 1 小时过审的种子，
 /// 对 wishlist 做 ILIKE/维度匹配；每条愿望 24h 限推一次，**每用户聚合一封信**（防信箱轰炸）。
 async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
+    // 审计修复（原子性）：INSERT 消息与 UPDATE notified_at 包进同一事务——
+    // 两条独立语句中途崩溃会出现「发了信却没标记」（下轮重发）或「标记了却没发信」
+    // （该愿望 24h 内彻底漏推）的错位。事务内两语句同生共死。
+    let mut tx = db.begin().await?;
     let res = sqlx::query(
         r#"
         WITH recent AS (
@@ -914,11 +923,11 @@ async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
         RETURNING 1
         "#,
     )
-    .fetch_all(db)
+    .fetch_all(&mut *tx)
     .await?;
     // 24h 节流推进（审计修复：原第二条独立 UPDATE 引用上一条语句的 CTE `recent`，
     // 每轮报 relation "recent" does not exist，notified_at 永不推进 → 命中窗口内每小时重发。
-    // 改为与 INSERT 同一语句的 CTE 内完成，插入成功即推进，杜绝"发了信却没标记"的错位）
+    // 改为同一事务内重算同构 CTE 后推进，与 INSERT 同生共死，杜绝"发了信却没标记"的错位）
     let _ = sqlx::query(
         r#"
         WITH recent AS (
@@ -939,8 +948,9 @@ async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
         WHERE w.id IN (SELECT wish_id FROM hits)
         "#,
     )
-    .execute(db)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     if !res.is_empty() {
         tracing::info!(n = res.len(), "wishlist notifications sent");
     }
@@ -957,7 +967,9 @@ async fn collect_milestones(db: &PgPool) -> anyhow::Result<u64> {
         FROM snatches s
         CROSS JOIN (VALUES (24), (168), (720), (2160)) AS h(hours)
         WHERE s.seeding
-          AND EXTRACT(EPOCH FROM (now() - s.completed_at))::bigint / 3600 >= h.hours
+          -- 审计修复：档位判定改用累计做种秒数（与 H&R/seeding_reward 同口径）。
+          -- 旧墙钟口径「完成至今的挂机时长」会把只下载不做种的账号也计入里程碑。
+          AND s.seeded_seconds >= h.hours * 3600
           AND s.completed_at IS NOT NULL
         ON CONFLICT (user_id, torrent_id, hours) DO NOTHING
         "#,
@@ -1100,6 +1112,125 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     .execute(db)
     .await?;
     Ok(())
+}
+
+/// H&R 违规处罚执行点（审计修复：hr_enforce 此前只落表+PM 零成本躺平）。
+/// 未解决违规数（hr_violations.resolved_at IS NULL）≥ hr_violation_limit（默认 3）
+///   → users.download_enabled = false + PM 说明自助免罪路径；
+/// 违规数降回阈值以下 → 恢复 download_enabled = true。
+/// 口径取舍（注释存档）：是否「因 H&R 被禁」不引入新列/PM 反查——违规数一旦低于阈值
+/// 就恢复下载，可能顺带恢复因其他原因（如 Ratio Watch 到期处置）被禁的用户。
+/// 取舍理由：Ratio Watch 侧管理组手动恢复是主路径，此处自动恢复保住多数用户的体验；
+/// 若需精确归因，可后续为 users 增加 ban 原因位图。豁免 hr.exempt / 员工不处罚。
+async fn hr_punish(db: &PgPool) -> anyhow::Result<()> {
+    let limit: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'hr_violation_limit'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(3)
+    .clamp(1, 100);
+
+    // ① 超限 → 暂停下载 + PM（仅本轮新被禁的发信，幂等靠 download_enabled 翻转）
+    let punished = sqlx::query(
+        r#"
+        WITH viol AS (
+            SELECT v.user_id, count(*) AS n
+            FROM hr_violations v
+            WHERE v.resolved_at IS NULL
+            GROUP BY v.user_id
+            HAVING count(*) >= $1
+        ),
+        banned AS (
+            UPDATE users u
+            SET download_enabled = FALSE
+            FROM viol
+            WHERE u.id = viol.user_id
+              AND u.status < 2
+              AND u.download_enabled
+              AND NOT user_can(u.id, 'hr.exempt')
+            RETURNING u.id, viol.n
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body)
+        SELECT NULL, b.id, '下载权限暂停：H&R 违规超限',
+               format('您当前有 %s 条未解决的 H&R 违规（阈值 %s），已暂停下载权限。'
+                      '恢复方式：①持续做种达标后违规自动消除；②在「我的 H&R」页用火花自助免罪；'
+                      '③联系管理组申请 Pardon。违规数降回阈值以下后下载权限将自动恢复。',
+                      b.n, $1)
+        FROM banned b
+        "#,
+    )
+    .bind(limit)
+    .execute(db)
+    .await?;
+    if punished.rows_affected() > 0 {
+        tracing::warn!(n = punished.rows_affected(), limit, "H&R 违规超限，已暂停下载权限");
+    }
+
+    // ② 降回阈值以下 → 自动恢复下载。
+    // 口径注释：不区分当初被禁原因（见函数头取舍说明）——违规数低于阈值即恢复，
+    // 极小概率把其他原因禁用的账号一并恢复，换取 H&R 自助闭环不依赖人工。
+    let restored = sqlx::query(
+        r#"
+        UPDATE users u
+        SET download_enabled = TRUE
+        WHERE u.status < 2
+          AND NOT u.download_enabled
+          AND COALESCE((SELECT count(*) FROM hr_violations v
+                        WHERE v.user_id = u.id AND v.resolved_at IS NULL), 0) < $1
+          AND NOT EXISTS (
+              -- Ratio Watch 到期处置仍生效的用户不在此恢复（那边由管理组/观察期自愈管理）
+              SELECT 1 FROM users u2
+              WHERE u2.id = u.id AND u2.ratio_watch_until IS NOT NULL AND u2.ratio_watch_until < now()
+          )
+        "#,
+    )
+    .bind(limit)
+    .execute(db)
+    .await?;
+    if restored.rows_affected() > 0 {
+        tracing::info!(n = restored.rows_affected(), "H&R 违规降回阈值以下，已恢复下载权限");
+    }
+    Ok(())
+}
+
+/// 死种入保种区（审计修复：保种区此前无数据源，页面恒空）。
+/// `seeders=0 AND leechers=0 AND approval_status=1 AND created_at < now() - preserve_dead_days`
+/// 且不在 seed_preserve 表中的种子 INSERT（claimed_by 为 NULL，等待认领）。
+/// preserve_dead_days 默认 7（site_settings，迁移 0084 播种）。
+async fn preserve_seed(db: &PgPool) -> anyhow::Result<u64> {
+    let dead_days: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'preserve_dead_days'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(7)
+    .clamp(1, 365);
+    let res = sqlx::query(
+        r#"
+        INSERT INTO seed_preserve (torrent_id)
+        SELECT t.id
+        FROM torrents t
+        WHERE t.seeders = 0 AND t.leechers = 0
+          AND t.approval_status = 1
+          AND t.created_at < now() - make_interval(days => $1::int)
+          AND NOT EXISTS (SELECT 1 FROM seed_preserve sp WHERE sp.torrent_id = t.id)
+        ON CONFLICT (torrent_id) DO NOTHING
+        "#,
+    )
+    .bind(dead_days as i32)
+    .execute(db)
+    .await?;
+    if res.rows_affected() > 0 {
+        tracing::info!(n = res.rows_affected(), dead_days, "死种入保种区");
+    }
+    Ok(res.rows_affected())
 }
 
 /// 等级自动升降（class_rules）：达标即升（逐级检查），不达标且 demotable 则降至仍满足的最高级。
@@ -1310,6 +1441,10 @@ async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
     for &(uid, def_id, ref code, reward, _val) in &res {
         if reward > 0 {
             let idem = format!("achievement:{code}:{uid}");
+            // 审计修复（原子性）：INSERT 流水与 UPDATE 余额包进同一事务——
+            // 两语句分离时中途崩溃会出现「流水已落、余额未加」（或反之），对账永久撕裂。
+            // 幂等键护栏保持：事务内 NOT EXISTS 防任务重跑双发。
+            let mut tx = db.begin().await?;
             sqlx::query(
                 r#"
                 INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
@@ -1320,18 +1455,20 @@ async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             .bind(uid)
             .bind(reward)
             .bind(&idem)
-            .execute(db)
+            .execute(&mut *tx)
             .await?;
             // 审计修复（幂等）：UPDATE 与 INSERT 的 NOT EXISTS 同护栏 ——
             // 否则每小时任务重跑时流水幂等跳过、余额却再加一次（每用户每小时白得 200）
             sqlx::query(
-                "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1                  AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)",
+                "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \
+                 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)",
             )
-                .bind(uid)
-                .bind(reward)
-                .bind(&idem)
-                .execute(db)
-                .await?;
+            .bind(uid)
+            .bind(reward)
+            .bind(&idem)
+            .execute(&mut *tx)
+            .await?;
+            tx.commit().await?;
         }
         let _ = def_id;
     }
@@ -1473,14 +1610,17 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
 
     let mut first_hits = 0u64;
     for (torrent_id, gap) in rows {
-        // 免费促销豁免（与 hr_enforce 的免费判定同口径）
+        // 免费促销豁免（与 hr_enforce 的免费判定同口径）。
+        // 审计修复：官方范围（scope='official'）促销此前不看 kind 整条豁免——
+        // 官方 x2（上传双倍、下载照计）也会把 up-down gap 洗成「免费」跳过审计。
+        // 收窄为：仅下载侧免费类 kind（free/x2free）豁免（x2free 上传虽双倍，但下载为 0，
+        // 天然产生 gap 且属官方促销口径，整条豁免）；其余 kind（x2/half/x2half/p30）一律不豁免。
         let exempt: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM promotions p \
              WHERE (p.torrent_id = $1 OR p.torrent_id IS NULL) \
                AND p.starts_at <= now() AND p.ends_at > now() \
-               AND (p.kind IN ('free','x2free') OR (p.scope = 'official' AND (SELECT official_tag FROM torrents WHERE id = $2))))",
+               AND p.kind IN ('free','x2free'))",
         )
-        .bind(torrent_id)
         .bind(torrent_id)
         .fetch_one(db)
         .await
@@ -1899,10 +2039,9 @@ async fn refundable_settle(db: &PgPool) -> anyhow::Result<u64> {
     Ok(res.rows_affected())
 }
 
-pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> anyhow::Result<()> {
+pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow::Result<()> {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
     let mut hour_tick = tokio::time::interval(std::time::Duration::from_secs(3600));
-    let mut first_hour = true;
     let mut last_bank_day: Option<chrono::NaiveDate> = None;
     // 0071 反作弊/性能调度
     let mut tick10 = tokio::time::interval(std::time::Duration::from_secs(600));
@@ -1916,17 +2055,38 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
     loop {
         tokio::select! {
             _ = tick.tick() => {
-                if let Err(e) = expire_promotions(&db).await { tracing::error!(?e, "expire_promotions"); }
-                if let Err(e) = magic_pool_promo(&db).await { tracing::error!(?e, "magic_pool_promo"); }
-                if let Err(e) = preserve_exit(&db).await { tracing::error!(?e, "preserve_exit"); }
-                if let Err(e) = consume_announce(&db, &mut redis).await { tracing::error!(?e, "consume_announce"); }
-                if let Err(e) = consume_agent_blocks(&db, &mut redis).await { tracing::error!(?e, "consume_agent_blocks"); }
-                if let Err(e) = backfill_pieces_hash(&db).await { tracing::error!(?e, "backfill_pieces_hash"); }
-                if let Err(e) = sweep_stale_peers(&db).await { tracing::error!(?e, "sweep_stale_peers"); }
-                if let Err(e) = collect_milestones(&db).await { tracing::error!(?e, "collect_milestones"); }
-                if let Err(e) = hr_enforce(&db).await { tracing::error!(?e, "hr_enforce"); }
-                if let Err(e) = class_auto_adjust(&db).await { tracing::error!(?e, "class_auto_adjust"); }
-                if let Err(e) = crate::task_jobs::task_settle(&db).await { tracing::error!(?e, "task_settle"); }
+                // 审计修复（多实例互斥 + 超时）：每个 job 包 advisory lock + 900s 超时。
+                // 多 worker 部署时同 job 只有抢到锁的实例执行（拿不到锁静默跳过本轮）；
+                // 卡死任务 15 分钟后被 timeout 掐掉、连接归还，不会拖垮整个调度循环。
+                // 失败/超时在 with_lock 内统一记日志（含 key），此处无需再逐个 match。
+                with_lock(&db, "job:expire_promotions", expire_promotions(&db)).await;
+                with_lock(&db, "job:magic_pool_promo", magic_pool_promo(&db)).await;
+                with_lock(&db, "job:preserve_exit", preserve_exit(&db)).await;
+                // consume_* 依赖 Redis 游标，天然单游标推进；但多实例并发拉同一段流
+                // 仍会双计——同样入锁。ConnectionManager 是 clone 句柄，clone 后移入闭包；
+                // PgPool 同样 clone（Arc 池句柄，代价可忽略），避免与外层 &db 借用冲突。
+                {
+                    let (db2, mut r) = (db.clone(), redis.clone());
+                    with_lock(&db, "job:consume_announce", async move {
+                        consume_announce(&db2, &mut r).await
+                    })
+                    .await;
+                }
+                {
+                    let (db2, mut r) = (db.clone(), redis.clone());
+                    with_lock(&db, "job:consume_agent_blocks", async move {
+                        consume_agent_blocks(&db2, &mut r).await
+                    })
+                    .await;
+                }
+                with_lock(&db, "job:backfill_pieces_hash", backfill_pieces_hash(&db)).await;
+                with_lock(&db, "job:sweep_stale_peers", sweep_stale_peers(&db)).await;
+                with_lock(&db, "job:collect_milestones", collect_milestones(&db)).await;
+                with_lock(&db, "job:hr_enforce", hr_enforce(&db)).await;
+                with_lock(&db, "job:hr_punish", hr_punish(&db)).await;
+                with_lock(&db, "job:class_auto_adjust", class_auto_adjust(&db)).await;
+                with_lock(&db, "job:preserve_seed", preserve_seed(&db)).await;
+                with_lock(&db, "job:task_settle", crate::task_jobs::task_settle(&db)).await;
                 // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
                 let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
                 if last_bank_day.is_none() {
@@ -1934,7 +2094,13 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 }
                 if last_bank_day != Some(site_day) {
                     tracing::info!(?site_day, "bank_daily start");
-                    crate::bank_jobs::bank_daily(&db).await;
+                    // bank_daily 内部各子步骤自带日期游标/幂等键，锁内重跑安全
+                    let db2 = db.clone();
+                    with_lock(&db, "job:bank_daily", async move {
+                        crate::bank_jobs::bank_daily(&db2).await;
+                        Ok::<(), anyhow::Error>(())
+                    })
+                    .await;
                     // 结算失败（游标未写）时保持 last_bank_day 落后，下一分钟 tick 重试整轮；
                     // 成功时以 bank_settle_runs 的 run_date 为准，避免与库内游标漂移。
                     let after: Option<chrono::NaiveDate> =
@@ -1947,35 +2113,87 @@ pub async fn run_all(db: PgPool, mut redis: redis::aio::ConnectionManager) -> an
                 }
             }
             _ = hour_tick.tick() => {
-                if first_hour { first_hour = false; continue; }
-                if let Err(e) = seeding_reward(&db, 10).await { tracing::error!(?e, "seeding_reward"); }
-                if let Err(e) = purge_old_login_events(&db).await { tracing::error!(?e, "purge_old_login_events"); }
-                if let Err(e) = ratio_watch(&db).await { tracing::error!(?e, "ratio_watch"); }
-                if let Err(e) = dormant_mark(&db).await { tracing::error!(?e, "dormant_mark"); }
-                if let Err(e) = wishlist_notify(&db).await { tracing::error!(?e, "wishlist_notify"); }
-                if let Err(e) = highspeed_tag(&db).await { tracing::error!(?e, "highspeed_tag"); }
-                if let Err(e) = resurrection_settle(&db).await { tracing::error!(?e, "resurrection_settle"); }
-                if let Err(e) = funding_settle(&db).await { tracing::error!(?e, "funding_settle"); }
-                if let Err(e) = refundable_settle(&db).await { tracing::error!(?e, "refundable_settle"); }
-                if let Err(e) = achievement_grant(&db).await { tracing::error!(?e, "achievement_grant"); }
+                // 审计修复：去掉 first_hour 首轮跳过——原逻辑为防启动风暴，但 worker
+                // 频繁重启（崩溃循环/滚动发布）时 hour_interval 每次都从第一 tick 起步，
+                // seeding_reward 可能数小时不被执行。本任务幂等键 = seeding:{user}:{yyyymmddhh}，
+                // 同小时重复执行零副作用；其余 hourly 任务也都自带幂等护栏，首轮直接跑安全。
+                with_lock(&db, "job:seeding_reward", seeding_reward(&db, 10)).await;
+                with_lock(&db, "job:purge_old_login_events", purge_old_login_events(&db)).await;
+                with_lock(&db, "job:ratio_watch", ratio_watch(&db)).await;
+                with_lock(&db, "job:dormant_mark", dormant_mark(&db)).await;
+                with_lock(&db, "job:wishlist_notify", wishlist_notify(&db)).await;
+                with_lock(&db, "job:highspeed_tag", highspeed_tag(&db)).await;
+                with_lock(&db, "job:resurrection_settle", resurrection_settle(&db)).await;
+                with_lock(&db, "job:funding_settle", funding_settle(&db)).await;
+                with_lock(&db, "job:refundable_settle", refundable_settle(&db)).await;
+                with_lock(&db, "job:achievement_grant", achievement_grant(&db)).await;
             }
             _ = tick10.tick() => {
                 if first_tick10 { first_tick10 = false; continue; }
-                if let Err(e) = cheat_audit(&db).await { tracing::error!(?e, "cheat_audit"); }
+                with_lock(&db, "job:cheat_audit", cheat_audit(&db)).await;
             }
             _ = tick30.tick() => {
                 if first_tick30 { first_tick30 = false; continue; }
-                if let Err(e) = multi_ip_check(&db).await { tracing::error!(?e, "multi_ip_check"); }
-                if let Err(e) = leak_scan(&db).await { tracing::error!(?e, "leak_scan"); }
+                with_lock(&db, "job:multi_ip_check", multi_ip_check(&db)).await;
+                with_lock(&db, "job:leak_scan", leak_scan(&db)).await;
             }
             _ = tick6h.tick() => {
                 if first_tick6h { first_tick6h = false; continue; }
-                if let Err(e) = reconcile_snapshots(&db).await { tracing::error!(?e, "reconcile_snapshots"); }
+                with_lock(&db, "job:reconcile_snapshots", reconcile_snapshots(&db)).await;
             }
             _ = tick1d.tick() => {
                 if first_tick1d { first_tick1d = false; continue; }
-                if let Err(e) = ensure_partitions(&db).await { tracing::error!(?e, "ensure_partitions"); }
+                with_lock(&db, "job:ensure_partitions", ensure_partitions(&db)).await;
             }
+        }
+    }
+}
+
+/// 多实例互斥 + per-job 超时（审计修复）。
+/// - 互斥：pg_try_advisory_lock(hashtext(key)) 拿不到（他实例在跑）→ 返回 None 静默跳过本轮；
+/// - 超时：tokio::time::timeout 900s 掐掉卡死任务（超时按失败上报）；
+/// - 连接口径：advisory lock 是会话级，lock/unlock 必须落在同一条连接上——
+///   从 pool acquire 一条专用连接持锁，业务 future 用整个 pool（不占锁连接），
+///   完成后在同一连接 unlock。业务超时被掐后 unlock 仍执行，锁不残留。
+async fn with_lock<F, T>(db: &PgPool, key: &str, fut: F) -> Option<T>
+where
+    F: std::future::Future<Output = anyhow::Result<T>>,
+{
+    let mut conn = match db.acquire().await {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::error!(?e, key, "advisory lock 连接获取失败，跳过本轮");
+            return None;
+        }
+    };
+    let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+        .bind(key)
+        .fetch_one(&mut *conn)
+        .await
+        .unwrap_or(false);
+    if !locked {
+        tracing::debug!(key, "advisory lock 未抢到（他实例执行中），跳过本轮");
+        return None;
+    }
+    // 业务 future 与锁连接解耦：超时只掐业务，不掐持锁连接
+    let outcome = tokio::time::timeout(std::time::Duration::from_secs(900), fut).await;
+    // 同一连接上解锁（连接归还池前必须释放，否则锁随连接泄漏到复用方）
+    let unlock: Result<bool, _> = sqlx::query_scalar("SELECT pg_advisory_unlock(hashtext($1))")
+        .bind(key)
+        .fetch_one(&mut *conn)
+        .await;
+    if let Err(e) = unlock {
+        tracing::error!(?e, key, "advisory unlock 失败（锁将随连接关闭释放）");
+    }
+    match outcome {
+        Ok(Ok(v)) => Some(v),
+        Ok(Err(e)) => {
+            tracing::error!(?e, key, "job 执行失败");
+            None
+        }
+        Err(_) => {
+            tracing::error!(key, "job 超时（900s）被掐断");
+            None
         }
     }
 }

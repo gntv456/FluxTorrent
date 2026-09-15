@@ -42,6 +42,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(do_bookmark)
         .service(edit_torrent)
         .service(delete_torrent)
+        .service(restore_torrent)
         .service(group_attach)
         .service(group_info)
         .service(group_subscribe)
@@ -1190,6 +1191,12 @@ struct ListQuery {
     #[serde(default)]
     include_unapproved: Option<bool>,
     search: Option<String>,
+    /// 搜索范围：0=标题(默认) 1=副标题/简介 3=发布者 4=IMDb
+    #[serde(default)]
+    search_area: Option<i32>,
+    /// 匹配模式：0=AND 模糊(默认) 2=精确
+    #[serde(default)]
+    search_mode: Option<i32>,
     sort: Option<String>,
     tag_id: Option<i32>,
     // 第八轮 Section 多维筛选
@@ -1223,6 +1230,9 @@ async fn list(
         search: q.search.as_deref().map(str::to_string),
         sort: q.sort.as_deref().map(str::to_string),
         tag_id: q.tag_id,
+        // 搜索盒口径（此前前端传了但后端不解析，静默失效）
+        search_area: q.search_area,
+        search_mode: q.search_mode,
         sections: [
             ("codec", q.sec_codec),
             ("audio_codec", q.sec_audio_codec),
@@ -1527,6 +1537,21 @@ async fn edit_torrent(
     ))
 }
 
+/// 恢复软删种子（approval_status 3 → 0 待审）：此前误删后只能直连数据库手工修数
+#[post("/torrents/{id}/restore")]
+async fn restore_torrent(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await?;
+    let id = path.into_inner();
+    torrents::restore_torrent(&state.repo.db, id).await?;
+    state.repo.audit(Some(auth.id), "torrent.restore", Some(id)).await;
+    Ok(ok(serde_json::json!({ "restored": id })))
+}
+
 /// 删除种子（软删 approval_status=3；staff 任意删，作者仅限未过审）
 #[delete("/torrents/{id}")]
 async fn delete_torrent(
@@ -1742,6 +1767,26 @@ async fn report_create(
     if body.reason.trim().is_empty() || body.reason.len() > 500 {
         return Err(DomainError::Validation("举报理由需 1-500 字".into()));
     }
+    // 目标存在性校验（此前任意 ref_id 含不存在对象可无限提交）
+    let target_table = match body.ref_type.as_str() {
+        "torrent" => Some(("torrents", "approval_status = 1")),
+        "comment" => Some(("comments", "true")),
+        "user" => Some(("users", "status < 2")),
+        "subtitle" => Some(("subtitles", "true")),
+        "forum" => Some(("topics", "true")),
+        _ => None,
+    };
+    if let Some((table, extra)) = target_table {
+        let sql = format!("SELECT EXISTS(SELECT 1 FROM {table} WHERE id = $1 AND {extra})");
+        let exists: bool = sqlx::query_scalar(&sql)
+            .bind(body.ref_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+        if !exists {
+            return Err(DomainError::NotFound(body.ref_id));
+        }
+    }
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) VALUES ($1, $2, $3, $4) RETURNING id",
     )
@@ -1766,7 +1811,19 @@ async fn rss_info(
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let base = std::env::var("PUBLIC_API_URL").unwrap_or_else(|_| "http://127.0.0.1:8080".into());
+    // 绝对地址口径与 rss feed 端点一致：PUBLIC_API_URL 优先，缺省回退请求 Host，
+    // 不再硬编 127.0.0.1（生产未配该变量时用户复制的订阅地址必连失败）。
+    let base = match std::env::var("PUBLIC_API_URL") {
+        Ok(u) if !u.trim().is_empty() => u.trim().trim_end_matches('/').to_string(),
+        _ => {
+            let host = req
+                .headers()
+                .get("host")
+                .and_then(|h| h.to_str().ok())
+                .unwrap_or("127.0.0.1:8080");
+            format!("http://{host}")
+        }
+    };
     Ok(ok(serde_json::json!({
         "urls": [
             { "label": "全部种子", "url": format!("{}/api/v1/rss/{}", base, passkey) },
@@ -2795,22 +2852,32 @@ async fn admin_delete_disabled(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_DELETE_DISABLED).await?;
-    let ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM users WHERE status = 2 ORDER BY id")
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let n = ids.len() as i64;
-    if n > 0 {
-        sqlx::query("DELETE FROM users WHERE status = 2")
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    // 审计修复：旧版裸 `DELETE FROM users WHERE status = 2` 单条 SQL——任何被
+    // NO ACTION 引用（如 invites.inviter_id / audit_log.actor_id）的用户会让整条
+    // 语句外键失败 500；部分 CASCADE 则静默丢数据。改为复用权威路径 admin/users/{id}
+    // 的口径：强制走 `DELETE /api/v1/admin/users/{id}` 同一实现（逐个、事务化、83 列清理）。
+    // 这里直接构造内部请求等价物：调用 admin_http 的清理清单不跨模块，故改为
+    // 逐个转发 HTTP 会引入自调用复杂度——最简正确实现：拒绝批量、提示走单删。
+    let ids: Vec<i64> = sqlx::query_scalar(
+        "SELECT id FROM users WHERE status = 2 ORDER BY id LIMIT 500",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut deleted: Vec<i64> = Vec::new();
+    let mut failed: Vec<(i64, String)> = Vec::new();
+    for uid in ids {
+        // 与 user_admin_delete 同款清单式单事务删除（简化为直接执行权威清理序列）
+        match crate::admin_http::delete_user_cascade(&state.repo.db, uid).await {
+            Ok(()) => deleted.push(uid),
+            Err(e) => failed.push((uid, e.to_string())),
+        }
     }
     state
         .repo
         .audit(Some(auth.id), "delete_disabled_users", None)
         .await;
-    Ok(ok(serde_json::json!({ "deleted": n, "ids": ids })))
+    Ok(ok(serde_json::json!({ "deleted": deleted.len(), "ids": deleted, "failed": failed })))
 }
 
 /// 邮箱黑白名单（bannedemails/allowedemails.php 口径）
