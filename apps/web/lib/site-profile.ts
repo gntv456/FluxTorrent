@@ -11,6 +11,8 @@ export interface SiteProfile {
   currency_name?: string;
   /** 建站日期（site_settings.datefounded，页脚版权条用） */
   founded?: string | null;
+  /** 启用的元数据源（0087，site_settings.metadata_sources；控制条目输入/PT-Gen 显隐） */
+  metadata_sources?: string[];
   categories: { id: number; name: string }[];
   modules: Record<string, boolean>;
 }
@@ -26,6 +28,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
       brand: "",
       currency_name: "魔力",
       founded: null,
+      metadata_sources: ["imdb", "douban", "bangumi", "indienova"],
       categories: [],
       modules: {},
     };

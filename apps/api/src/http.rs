@@ -3707,12 +3707,27 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
             .ok()
             .flatten()
             .filter(|v: &String| !v.trim().is_empty());
+    // 元数据源（0087）：csv → 数组，控制上传页条目输入显隐与 PT-Gen 范围
+    let sources_raw: Option<String> =
+        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'metadata_sources'")
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten();
+    let sources: Vec<String> = sources_raw
+        .unwrap_or_else(|| "imdb,douban,bangumi,indienova".into())
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_lowercase)
+        .collect();
     Ok(ok(serde_json::json!({
         "site_type": site_type,
         "pack_name": pack.as_ref().map(|p| p.name.clone()),
         "brand": brand,
         "currency_name": currency,
         "founded": founded,
+        "metadata_sources": sources,
         "categories": cats.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
         "modules": pack.as_ref().map(|p| p.modules.clone()).unwrap_or(serde_json::json!({})),
     })))
@@ -5104,7 +5119,9 @@ struct UploadForm {
     small_descr: Option<String>,
     descr: Option<String>,
     category_id: i32,
-    medium_id: i32,
+    /// 介质列（0087 起可空，仅为兼容老数据；新数据以 torrent_sections.kind='media' 为准）
+    #[serde(default)]
+    medium_id: Option<i32>,
     grade_id: Option<i32>,
     edition_id: Option<i32>,
     #[serde(default)]
@@ -5176,16 +5193,20 @@ async fn ptgen(
     let url = q.url.trim();
     let parsed = url::Url::parse(url).map_err(|_| DomainError::Validation("链接无效".into()))?;
     let host = parsed.host_str().unwrap_or_default().to_lowercase();
-    let allowed = host.ends_with("imdb.com")
-        || host.ends_with("douban.com")
-        || host == "bgm.tv"
-        || host.ends_with(".bgm.tv")
-        || host == "bangumi.tv"
-        || host.ends_with(".bangumi.tv")
-        || host.ends_with("indienova.com");
+    // 站点启用源（0087 metadata_sources）∩ PT-Gen 支持的源：host 后缀映射
+    let enabled: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'metadata_sources'), 'imdb,douban,bangumi,indienova')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_else(|_| "imdb,douban,bangumi,indienova".into());
+    let allowed = enabled.contains("imdb") && host.ends_with("imdb.com")
+        || enabled.contains("douban") && host.ends_with("douban.com")
+        || enabled.contains("bangumi") && (host == "bgm.tv" || host.ends_with(".bgm.tv") || host == "bangumi.tv" || host.ends_with(".bangumi.tv"))
+        || enabled.contains("indienova") && host.ends_with("indienova.com");
     if !allowed {
         return Err(DomainError::Validation(
-            "仅支持 imdb / douban / bangumi / indienova 链接".into(),
+            "链接无效或该元数据源未在本站启用（imdb / douban / bangumi / indienova）".into(),
         ));
     }
     let api = url::Url::parse_with_params("https://ptgen.rachpt.dev/api", &[("url", url)])
@@ -5431,9 +5452,23 @@ async fn upload(
         let map: std::collections::HashMap<String, i64> = serde_json::from_str(json)
             .map_err(|_| DomainError::Validation("sections 需为 JSON 对象".into()))?;
         for (kind, dict_id) in &map {
-            // 0085：维度可由站方自建，白名单改为查 section_kinds（legacy 三维走专用参数，不进 sections）
+            // 0085/0087：维度可由站方自建（含 media/grades/editions），白名单查 section_kinds
             if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind).await {
                 return Err(DomainError::Validation(format!("未知维度 {kind}")));
+            }
+            // 字典归属校验：dict_id 必须属于该 kind（防跨维度错挂）
+            let ok: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM section_dict WHERE id = $2 AND kind = $1)",
+            )
+            .bind(kind)
+            .bind(dict_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            if !ok {
+                return Err(DomainError::Validation(format!(
+                    "维度 {kind} 的字典项 {dict_id} 不存在"
+                )));
             }
             sqlx::query(
                 "INSERT INTO torrent_sections (torrent_id, kind, dict_id) VALUES ($1, $2, $3)                  ON CONFLICT (torrent_id, kind) DO UPDATE SET dict_id = EXCLUDED.dict_id",

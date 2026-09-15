@@ -226,7 +226,7 @@ export interface PreserveItem {
   // 资源库行同构字段（保种区列表复用资源库行渲染）
   small_descr: string | null;
   category_id: number;
-  medium_id: number;
+  medium_id: number | null;
   grade_id: number | null;
   edition_id: number | null;
   leechers: number;
