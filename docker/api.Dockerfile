@@ -5,6 +5,9 @@ COPY Cargo.toml Cargo.lock ./
 COPY apps ./apps
 COPY docker/cargo-config.toml /usr/local/cargo/config.toml
 RUN cargo build --release -p flux-api
+# GeoLite2 离线库不入仓库（.gitignore）；CI 上下文无此目录时补空目录，
+# 保证下方 COPY 可复现——空目录 = geo.rs 找不到 mmdb，GeoIP 字段静默降级为 null
+RUN mkdir -p apps/api/geoip
 
 FROM docker.1ms.run/library/debian:bookworm-slim
 RUN sed -i s/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g /etc/apt/sources.list.d/debian.sources 2>/dev/null; sed -i s/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g /etc/apt/sources.list 2>/dev/null; apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/*
