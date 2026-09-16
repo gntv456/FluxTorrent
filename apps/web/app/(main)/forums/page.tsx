@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getForums } from "@/lib/data";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
+import { ForumSearch } from "@/components/forum-search";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function ForumsPage() {
       {/* 版块卡片流 */}
       <div className="pting-board">
         <header className="pting-board__head">
+          <ForumSearch placeholder={dict.forums2.searchPh} button={dict.forums2.searchBtn} />
           <div>
             <h1>{dict.forums.title}</h1>
             <p>

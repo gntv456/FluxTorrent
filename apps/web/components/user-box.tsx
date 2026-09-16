@@ -15,6 +15,7 @@ interface MeInfo {
   downloaded: number;
   seeding: number;
   leeching: number;
+  unread_messages?: number;
 }
 
 /**
@@ -101,6 +102,7 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
             <nav className="userbar__shortcuts" aria-label={dict.my.center}>
               <a href="/my">{dict.my.center}</a>
               <a href="/my?tab=bookmarks">{dict.my.bookmarksCount}</a>
+              <a href="/my/torrentlist">{dict.mytl.title}</a>
               <a href="/medals">{dict.nav.medals}</a>
               <a href="/tasks">{dict.nav.tasks}</a>
               <a href="/invites">{dict.nav.invites}</a>
@@ -136,7 +138,7 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
           <strong className="num">{me.leeching}</strong>
         </div>
       </div>
-      <UserTools />
+      <UserTools unread={me.unread_messages ?? 0} />
     </>
   );
 }

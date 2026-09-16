@@ -113,6 +113,15 @@ struct NpListQuery {
     keyword: Option<String>,
     #[serde(default)]
     category: Option<i32>,
+    /// 搜索范围（NP 口径 0=标题 1=简介 3=发布者 4=IMDb）：主流工具（PT-Plugin-Plus 等）透传
+    #[serde(default)]
+    search_area: Option<i32>,
+    /// 匹配模式（0=and 2=精确）
+    #[serde(default)]
+    search_mode: Option<i32>,
+    /// IMDb 关键字（设置后等效 search_area=4）
+    #[serde(default)]
+    imdb: Option<String>,
 }
 
 /// 种子列表（NP torrents.php 字段口径，游标分页内部转 page 语义）
@@ -125,9 +134,20 @@ async fn compat_np_torrents(
     let (_uid, _rpm) = require_token(&req, &state).await?;
     let page = q.page.unwrap_or(1).max(1);
     let pagesize = q.pagesize.unwrap_or(30).clamp(1, 50);
+    // IMDb 参数优先（NP 工具惯用 ?imdb=tt123 传法）；否则用显式 search_area
+    let (search, search_area) = if let Some(im) = q.imdb.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+        (Some(im.to_string()), Some(4))
+    } else {
+        (
+            q.keyword.clone().filter(|k| !k.trim().is_empty()),
+            q.search_area,
+        )
+    };
     let filter = TorrentFilter {
         category_id: q.category.map(|v| vec![v]),
-        search: q.keyword.clone().filter(|k| !k.trim().is_empty()),
+        search,
+        search_area,
+        search_mode: q.search_mode,
         ..TorrentFilter::default()
     };
     let p = list_torrents(&state.repo.db, &filter, None, page * pagesize).await?;

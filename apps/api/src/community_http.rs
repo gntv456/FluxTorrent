@@ -23,6 +23,7 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(pool_honor)
         // M15 论坛
         .service(forum_list)
+        .service(forum_search)
         .service(topic_create)
         .service(topic_list)
         .service(topic_detail)
@@ -541,6 +542,48 @@ struct ForumRow {
     can_mod: bool,
 }
 
+#[derive(Deserialize)]
+struct ForumSearchQuery {
+    q: String,
+}
+
+/// 论坛标题搜索（NP 顶栏搜索搜帖口径，最小版）：按可读版块过滤 + 标题 ILIKE。
+#[get("/forums/search")]
+async fn forum_search(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<ForumSearchQuery>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let kw = q.q.trim();
+    if kw.len() < 2 {
+        return Err(DomainError::Validation("关键字至少 2 个字符".into()));
+    }
+    // 转义 LIKE 通配符（与种子搜索同口径）
+    let esc_kw = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    let pattern = format!("%{esc_kw}%");
+    let rows: Vec<(i64, String, i64, String, Option<String>, chrono::DateTime<chrono::Utc>, i64, bool)> = sqlx::query_as(
+        "SELECT t.id, t.title, f.id, f.name, u.username, t.created_at,                 (SELECT count(*) FROM posts p WHERE p.topic_id = t.id), t.locked          FROM topics t          JOIN forums f ON f.id = t.forum_id          LEFT JOIN users u ON u.id = t.user_id          WHERE t.title ILIKE $1            AND (f.minclassread <= $2 OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $3))          ORDER BY t.id DESC LIMIT 30",
+    )
+    .bind(&pattern)
+    .bind(auth.class_id)
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let items: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|(tid, title, fid, fname, author, at, replies, locked)| {
+            serde_json::json!({
+                "topic_id": tid, "title": title, "forum_id": fid, "forum_name": fname,
+                "author": author, "created_at": at.to_rfc3339(),
+                "replies": replies, "locked": locked,
+            })
+        })
+        .collect();
+    Ok(ok(items))
+}
+
 #[get("/forums")]
 async fn forum_list(
     req: HttpRequest,
@@ -681,6 +724,9 @@ struct TopicRow {
     last_post_at: Option<chrono::DateTime<chrono::Utc>>,
     sticky: bool,
     locked: bool,
+    /// 精华帖（0099，NP digest 口径）
+    #[sqlx(default)]
+    digest: bool,
     /// 已读到的楼层 post_id（0078 已读跟踪；NULL=从未读过）
     read_last_post_id: Option<i64>,
     /// 是否有未读新回复（last_post 晚于已读位置）
@@ -703,7 +749,7 @@ async fn topic_list(
     let rows = sqlx::query_as::<_, TopicRow>(
         "SELECT t.id, t.forum_id, t.title, u.username, \
             (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) AS replies, t.views, t.last_post_at, \
-            t.sticky, t.locked, \
+            t.sticky, t.locked, t.digest, \
             (SELECT r.last_post_id FROM topic_reads r WHERE r.user_id = $2 AND r.topic_id = t.id) AS read_last_post_id, \
             EXISTS(SELECT 1 FROM posts p2 WHERE p2.topic_id = t.id \
                    AND p2.id > COALESCE((SELECT r2.last_post_id FROM topic_reads r2 \
@@ -738,11 +784,19 @@ struct PostRow {
     hidden: bool,
 }
 
+#[derive(Deserialize)]
+struct TopicDetailQuery {
+    /// 加载更早楼层：返回 id < before 的最后 200 楼（长帖游标翻页，NP 分页口径）
+    #[serde(default)]
+    before: Option<i64>,
+}
+
 #[get("/forums/topics/{id}")]
 async fn topic_detail(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<TopicDetailQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
@@ -752,15 +806,15 @@ async fn topic_detail(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // NexusPHP 帖子页头部：主题标题 + 所属版块（找不到主题时 404）
-    let meta: Option<(String, i64, Option<String>, Option<i64>, bool, bool)> = sqlx::query_as(
-        "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked \
+    let meta: Option<(String, i64, Option<String>, Option<i64>, bool, bool, bool)> = sqlx::query_as(
+        "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked, t.digest \
          FROM topics t LEFT JOIN forums f ON f.id = t.forum_id WHERE t.id = $1",
     )
     .bind(tid)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((title, fid, forum_name, op_id, sticky, locked)) = meta else {
+    let Some((title, fid, forum_name, op_id, sticky, locked, digest)) = meta else {
         return Err(DomainError::NotFound(tid));
     };
     let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
@@ -770,12 +824,15 @@ async fn topic_detail(
     let mut posts = sqlx::query_as::<_, PostRow>(
         "SELECT p.id, u.username, p.user_id, p.body, p.created_at, p.edited_at, p.edited_by, FALSE AS hidden \
          FROM posts p LEFT JOIN users u ON u.id = p.user_id \
-         WHERE p.topic_id = $1 ORDER BY p.id LIMIT 200",
+         WHERE p.topic_id = $1 AND ($2::bigint IS NULL OR p.id < $2)          ORDER BY p.id DESC LIMIT 200",
     )
     .bind(tid)
+    .bind(q.before)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 游标取的是「最新 200 楼倒序」，回正为升序展示（无游标时同样无副作用）
+    posts.reverse();
     // 受保护版块：2 楼起正文替换为提示（class≥90 / 发帖人本人 / 楼主 / 本版版主放行）
     let protected: bool = sqlx::query_scalar("SELECT protected FROM forums WHERE id = $1")
         .bind(fid)
@@ -816,11 +873,22 @@ async fn topic_detail(
         "forum_name": forum_name,
         "sticky": sticky,
         "locked": locked,
+        "digest": digest,
         "is_op": op_id == Some(auth.id),
         "current_user_id": auth.id,
         "can_write": perm.can_write,
         "can_mod": perm.can_mod,
         "posts": posts,
+        // 长帖游标（NP 分页口径）：本窗口之外还有更早楼层时前端显示「加载更早的回复」
+        "has_more": posts.first().map(|p| p.id > 1).unwrap_or(false)
+            && sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS(SELECT 1 FROM posts WHERE topic_id = $1 AND id < $2)",
+            )
+            .bind(tid)
+            .bind(posts.first().map(|p| p.id).unwrap_or(0))
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false),
     })))
 }
 
@@ -1060,6 +1128,9 @@ struct TopicManageReq {
     sticky: Option<bool>,
     #[serde(default)]
     locked: Option<bool>,
+    /// 精华帖（NP digest 口径）：版主标记，列表/详情加精徽标
+    #[serde(default)]
+    digest: Option<bool>,
     #[serde(default)]
     move_to_forum_id: Option<i64>,
 }
@@ -1116,6 +1187,14 @@ async fn topic_manage(
     if let Some(locked) = body.locked {
         sqlx::query("UPDATE topics SET locked = $1 WHERE id = $2")
             .bind(locked)
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    if let Some(digest) = body.digest {
+        sqlx::query("UPDATE topics SET digest = $1 WHERE id = $2")
+            .bind(digest)
             .bind(tid)
             .execute(&state.repo.db)
             .await

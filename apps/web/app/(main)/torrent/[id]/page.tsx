@@ -6,6 +6,7 @@ import { DownloadButton } from "@/components/download-button";
 import { TorrentSocial } from "@/components/torrent-social";
 import { TorrentManage } from "@/components/torrent-manage";
 import { SnatchList } from "@/components/snatch-list";
+import { FileTree } from "@/components/file-tree";
 import { TorrentTags } from "@/components/torrent-tags";
 import { ResurrectButton } from "@/components/resurrect-button";
 import { WishlistButton } from "@/components/wishlist";
@@ -29,6 +30,8 @@ interface TorrentDetailExt {
   is_owner: boolean;
   /** 动态属性（0085/0087）：kind → { dict_id, name, label, sort } */
   sections?: Record<string, { dict_id: number; name: string; label: string; sort: number }>;
+  /** MediaInfo 全文（发布表单录入，折叠块展示） */
+  mediainfo?: string | null;
 }
 
 interface FileItem {
@@ -384,6 +387,13 @@ export default async function TorrentDetailPage({
         </section>
       )}
 
+      {/* ===== MediaInfo（NP 详情页折叠块口径） ===== */}
+      {ext?.mediainfo && (
+        <Fold title="MediaInfo">
+          <pre className="td-nfo">{ext.mediainfo}</pre>
+        </Fold>
+      )}
+
       {/* ===== NFO ===== */}
       {nfo.nfo && (
         <Fold title="NFO">
@@ -431,16 +441,7 @@ export default async function TorrentDetailPage({
       {/* ===== 文件列表 ===== */}
       {files.length > 0 && (
         <Fold title={dict.torrent.filesTitle} count={files.length}>
-          <table className="td-files">
-            <tbody>
-              {files.map((f) => (
-                <tr key={f.file_index}>
-                  <td className="min-w-0 truncate">{f.path}</td>
-                  <td className="num shrink-0 text-right text-sub">{formatBytes(f.size)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <FileTree files={files} />
         </Fold>
       )}
 

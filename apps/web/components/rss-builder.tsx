@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
@@ -8,6 +9,16 @@ interface RssInfo {
   urls: { label: string; url: string }[];
   passkey: string;
   base: string;
+}
+
+interface ProfileCats {
+  categories?: { id: number; name: string }[];
+}
+
+/** 媒介维度选项（0103：站型化后媒介在 section_dict(kind=media)，id 是 dict_id） */
+interface MediaDictRow {
+  id: number;
+  name: string;
 }
 
 const SHOWROWS = [10, 50, 100, 200];
@@ -24,18 +35,38 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
   const [paid, setPaid] = useState<"0" | "1">("0");
   const [showrows, setShowrows] = useState(50);
   const [linktype, setLinktype] = useState<"dl" | "page">("dl");
-  const [search, setSearch] = useState("");
+  // 种子列表「订阅当前结果」入口预填：?keyword= 带入当前搜索词
+  const sp = useSearchParams();
+  const [search, setSearch] = useState(sp.get("keyword") ?? "");
   const [copied, setCopied] = useState(false);
+  // 0103：分类/媒介跟随站型配置（site-profile + section-dict），不再用 i18n 硬编码字典
+  const [profile, setProfile] = useState<ProfileCats | null>(null);
+  const [mediumOpts, setMediumOpts] = useState<MediaDictRow[]>([]);
 
   useEffect(() => {
     api
       .get<RssInfo>("/api/v1/rss-info")
       .then(setInfo)
       .catch(() => setInfo(null));
+    api
+      .get<ProfileCats>("/api/v1/site-profile")
+      .then(setProfile)
+      .catch(() => setProfile(null));
+    api
+      .get<Record<string, MediaDictRow[]>>("/api/v1/section-dict")
+      .then((d) => setMediumOpts(d.media ?? []))
+      .catch(() => setMediumOpts([]));
   }, []);
 
-  const categories = dict.torrents.categories.slice(1); // 下标即 id：1..n
-  const mediums = dict.torrents.media.slice(1);
+  // 站点配置优先；接口失败回落 i18n 字典（id 对应实体表 media.id，兼容旧口径）
+  const categories =
+    profile?.categories && profile.categories.length > 0
+      ? profile.categories
+      : dict.torrents.categories.slice(1).map((name, i) => ({ id: i + 1, name }));
+  const mediums =
+    mediumOpts.length > 0
+      ? mediumOpts
+      : dict.torrents.media.slice(1).map((name, i) => ({ id: i + 1, name }));
 
   const url = useMemo(() => {
     if (!info) return "";
@@ -78,14 +109,14 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
         <fieldset className="rss-fieldset">
           <legend>{t.catLegend}</legend>
           <div className="rss-checks">
-            {categories.map((label, i) => (
-              <label key={label} className="rss-check">
+            {categories.map((c) => (
+              <label key={c.id} className="rss-check">
                 <input
                   type="checkbox"
-                  checked={cats.includes(i + 1)}
-                  onChange={() => toggle(cats, i + 1, setCats)}
+                  checked={cats.includes(c.id)}
+                  onChange={() => toggle(cats, c.id, setCats)}
                 />
-                {label}
+                {c.name}
               </label>
             ))}
           </div>
@@ -93,14 +124,14 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
         <fieldset className="rss-fieldset">
           <legend>{t.mediumLegend}</legend>
           <div className="rss-checks">
-            {mediums.map((label, i) => (
-              <label key={label} className="rss-check">
+            {mediums.map((m) => (
+              <label key={m.id} className="rss-check">
                 <input
                   type="checkbox"
-                  checked={media.includes(i + 1)}
-                  onChange={() => toggle(media, i + 1, setMedia)}
+                  checked={media.includes(m.id)}
+                  onChange={() => toggle(media, m.id, setMedia)}
                 />
-                {label}
+                {m.name}
               </label>
             ))}
           </div>

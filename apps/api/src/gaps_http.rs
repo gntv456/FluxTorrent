@@ -23,6 +23,7 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         // H&R
         .service(my_hr_status)
         .service(hr_pardon)
+        .service(hr_pardon_batch)
         .service(hr_self_pardon)
         // 申诉
         .service(appeal_create)
@@ -148,7 +149,7 @@ struct ForgotReq {
 /// 生产配 SMTP 后走真实投递（邮件发送在后台线程，不阻塞响应）。
 /// SMTP 真实投递（lettre）：支持 smtps://user:pass@host:port 与 smtp://host:port 两种形状。
 /// 连接失败/投递失败向上返回错误，由调用方记日志——忘记密码响应保持防枚举的统一文案。
-async fn send_reset_mail(
+pub async fn send_reset_mail(
     smtp_url: &str,
     from: &str,
     to: &str,
@@ -192,6 +193,36 @@ async fn send_reset_mail(
         ))?;
     mailer.send(email).await?;
     Ok(())
+}
+
+/// 由 SMTP_URL 构建投递器（smtps://user:pass@host:port 或 smtp://host:port）。
+/// 供忘记密码 / 邀请邮件等发送方共用。
+pub fn build_smtp(
+    smtp_url: &str,
+) -> anyhow::Result<lettre::AsyncSmtpTransport<lettre::Tokio1Executor>> {
+    use lettre::{AsyncSmtpTransport, Tokio1Executor};
+
+    let url = url::Url::parse(smtp_url)?;
+    let host = url
+        .host_str()
+        .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
+        .to_string();
+    let port = url.port().unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
+    let builder = if url.scheme() == "smtps" {
+        AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
+    } else {
+        AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&host)
+    }
+    .port(port);
+    let builder = if !url.username().is_empty() {
+        builder.credentials(lettre::transport::smtp::authentication::Credentials::new(
+            url.username().to_string(),
+            url.password().unwrap_or_default().to_string(),
+        ))
+    } else {
+        builder
+    };
+    Ok(builder.build())
 }
 
 #[post("/auth/password/forgot")]
@@ -466,6 +497,73 @@ async fn hr_pardon(
         .audit(Some(auth.id), "hr.pardon", Some(body.torrent_id))
         .await;
     Ok(ok(serde_json::json!({ "pardoned": true })))
+}
+
+#[derive(Deserialize)]
+struct BatchPardonReq {
+    /// 批量豁免目标：(user_id, torrent_id) 对列表；空数组报错
+    items: Vec<BatchPardonItem>,
+    note: String,
+}
+
+#[derive(Deserialize)]
+struct BatchPardonItem {
+    user_id: i64,
+    torrent_id: i64,
+}
+
+/// H&R 批量赦免（staff）：一次豁免多条违规（NP postmanage 批量口径）。
+/// 单条失败不回滚其他（每对独立 UPDATE），返回成功/跳过明细。
+#[post("/admin/hr/pardon/batch")]
+async fn hr_pardon_batch(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<BatchPardonReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_PARDON).await?;
+    if body.note.trim().is_empty() {
+        return Err(DomainError::Validation("赦免必须填理由".into()));
+    }
+    if body.items.is_empty() || body.items.len() > 500 {
+        return Err(DomainError::Validation("批量豁免条目须在 1~500 之间".into()));
+    }
+    let mut pardoned: Vec<serde_json::Value> = Vec::new();
+    let mut skipped: Vec<serde_json::Value> = Vec::new();
+    for it in &body.items {
+        let n = sqlx::query(
+            "UPDATE hr_snapshots SET status = 'pardoned', pardoned_by = $1, updated_at = now()              WHERE user_id = $2 AND torrent_id = $3 AND status = 'violated'",
+        )
+        .bind(auth.id)
+        .bind(it.user_id)
+        .bind(it.torrent_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+        if n == 0 {
+            skipped.push(serde_json::json!({ "user_id": it.user_id, "torrent_id": it.torrent_id }));
+            continue;
+        }
+        sqlx::query(
+            "UPDATE hr_violations SET resolved_at = now(), resolved_by = $1              WHERE user_id = $2 AND torrent_id = $3 AND resolved_at IS NULL",
+        )
+        .bind(auth.id)
+        .bind(it.user_id)
+        .bind(it.torrent_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        pardoned.push(serde_json::json!({ "user_id": it.user_id, "torrent_id": it.torrent_id }));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "hr.pardon_batch", None)
+        .await;
+    Ok(ok(serde_json::json!({
+        "pardoned": pardoned, "skipped": skipped,
+        "pardoned_count": pardoned.len(), "skipped_count": skipped.len(),
+    })))
 }
 
 #[derive(Deserialize)]

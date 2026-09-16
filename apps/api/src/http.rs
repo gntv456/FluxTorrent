@@ -26,8 +26,12 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(me_settings_get)
         .service(me_settings_put)
         .service(my_torrentlist)
+        .service(user_torrentlist)
         .service(my_bookmarks)
         .service(rotate_passkey)
+        .service(my_login_history)
+        .service(upload_attachment)
+        .service(get_attachment)
         .service(me_password_change)
         .service(user_public_profile)
         .service(list)
@@ -143,9 +147,11 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(upload)
         .service(ptgen)
         .service(download)
-        .service(issue_invite_handler)
-        .service(redeem_invite_handler)
-        .service(list_invites_handler)
+    .service(issue_invite_handler)
+    .service(redeem_invite_handler)
+    .service(list_invites_handler)
+    .service(invites_status_handler)
+    .service(email_invite_handler)
         .service(logout)
 }
 
@@ -307,6 +313,15 @@ async fn login(
         .peer_addr()
         .map(|a| a.ip().to_string())
         .unwrap_or_default();
+    // UA（0096 风控证据）：区分「同一人多设备」与「凭据泄露换客户端」；截断防滥用
+    let ua = req
+        .headers()
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .chars()
+        .take(300)
+        .collect::<String>();
     if ip_banned(&state, &peer_ip).await {
         return Err(DomainError::Validation("IP 已被封禁，请联系管理组".into()));
     }
@@ -325,9 +340,10 @@ async fn login(
             // 未知用户名的失败登录：user_id 记 NULL（0083 起 user_id 可空）。
             // 旧版写 0 违反外键被静默吞掉，爆破尝试完全不入库。
             let _ = sqlx::query(
-                "INSERT INTO login_events (user_id, ip, ok) VALUES (NULL, NULLIF($1,'')::inet, false)",
+                "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES (NULL, NULLIF($1,'')::inet, false, $2, 4)",
             )
             .bind(&peer_ip)
+            .bind(&ua)
             .execute(&state.repo.db)
             .await;
             return Err(e);
@@ -335,25 +351,39 @@ async fn login(
     };
     if !domain::verify_password(&user.pass_hash, &body.password) {
         let _ = sqlx::query(
-            "INSERT INTO login_events (user_id, ip, ok) VALUES ($1, NULLIF($2,'')::inet, false)",
+            "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 1)",
         )
         .bind(user.id)
         .bind(&peer_ip)
+        .bind(&ua)
         .execute(&state.repo.db)
         .await;
         return Err(DomainError::InvalidCredentials);
     }
-    // 2FA（启用者必须带 totp_code）
-    crate::twofa_http::login_totp_check(&state.repo.db, user.id, body.totp_code.unwrap_or(0))
-        .await?;
+    // 2FA（启用者必须带 totp_code）。失败也落登录事件（reason=2：缺码/错码细分看返回错误）
+    if let Err(e) =
+        crate::twofa_http::login_totp_check(&state.repo.db, user.id, body.totp_code.unwrap_or(0))
+            .await
+    {
+        let _ = sqlx::query(
+            "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 2)",
+        )
+        .bind(user.id)
+        .bind(&peer_ip)
+        .bind(&ua)
+        .execute(&state.repo.db)
+        .await;
+        return Err(e);
+    }
     // 0072 闲置停用拦截：dormant_mark（worker 每小时）给 90 天未登录且无做种的非员工账号打标。
     // 拦截放在密码/2FA 之后 —— 不给探测者区分「休眠账号是否存在」的信息差。
     if user.dormant_at.is_some() {
         let _ = sqlx::query(
-            "INSERT INTO login_events (user_id, ip, ok) VALUES ($1, NULLIF($2,'')::inet, false)",
+            "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 3)",
         )
         .bind(user.id)
         .bind(&peer_ip)
+        .bind(&ua)
         .execute(&state.repo.db)
         .await;
         return Err(DomainError::Validation(
@@ -366,10 +396,11 @@ async fn login(
         .map_err(DomainError::Internal)?;
     // 登录事件（控制面板账户概览 30 天活跃趋势；含 IP 供 ipcheck/maxlogin）
     let _ = sqlx::query(
-        "INSERT INTO login_events (user_id, ip, ok) VALUES ($1, NULLIF($2,'')::inet, true)",
+        "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, true, $3, 0)",
     )
     .bind(user.id)
     .bind(&peer_ip)
+    .bind(&ua)
     .execute(&state.repo.db)
     .await;
     // M28 插件 Hook：登录成功后分发
@@ -601,6 +632,14 @@ async fn me(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?
             .flatten();
+    // 未读站内信数（userbar 邮箱图标角标）
+    let unread: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM messages WHERE receiver_id = $1 AND unread = true AND location = 1",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "id": user.id, "username": user.username, "class_id": user.class_id,
         "must_reset_password": user.must_reset_password,
@@ -609,7 +648,233 @@ async fn me(
         "uploads": uploads, "bookmarks": bookmarks,
         "class_name": class_name,
         "avatar_frame_id": frame_id,
+        "unread_messages": unread,
     })))
+}
+
+/// 登录历史（NP usercp security 口径）：最近 20 条，含 UA 与结果细分（0096 起）。
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct LoginEventRow {
+    created_at: chrono::DateTime<chrono::Utc>,
+    ip: Option<String>,
+    ok: bool,
+    #[sqlx(default)]
+    user_agent: String,
+    /// 0=成功 1=密码错误 3=停用账号 4=未知用户名
+    #[sqlx(default)]
+    reason: i16,
+}
+
+#[get("/me/logins")]
+async fn my_login_history(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<LoginEventRow> = sqlx::query_as(
+        "SELECT created_at, host(ip) AS ip, ok, user_agent, reason          FROM login_events WHERE user_id = $1 ORDER BY id DESC LIMIT 20",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+// ============ 附件/图床（0100，NP Pictured 最小落地） ============
+
+const ATTACH_MAX_BYTES: usize = 8 * 1024 * 1024; // 单文件 8MiB
+const ATTACH_MIME_ALLOW: [&str; 7] = [
+    "image/png", "image/jpeg", "image/gif", "image/webp", "image/avif", "application/pdf", "text/plain",
+];
+
+/// 上传附件（multipart 字段 file）。存本地 savedirectory（缺省 ./attachments），
+/// sha256 全站去重（同文件只存一份物理文件）；受 attach_quota_mib 配额约束。
+/// 返回可直接在简介里引用的 /api/v1/attachments/{sha} URL。
+#[post("/attachments")]
+async fn upload_attachment(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    mut payload: actix_multipart::Multipart,
+) -> DomainResult<HttpResponse> {
+    use actix_web::web::Bytes;
+    use futures_util::StreamExt;
+
+    let auth = require_auth(&req, &state).await?;
+    let mut file_bytes: Option<Bytes> = None;
+    let mut filename = String::new();
+    let mut mime = String::new();
+    while let Some(item) = payload.next().await {
+        let mut field = item.map_err(|e| DomainError::Validation(e.to_string()))?;
+        if field.name() == Some("file") {
+            filename = field
+                .content_disposition()
+                .and_then(|d| d.get_filename().map(str::to_string))
+                .unwrap_or_default()
+                .chars()
+                .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
+                .take(120)
+                .collect();
+            mime = field.content_type().map(|m| m.essence_str().to_string()).unwrap_or_default();
+            let mut buf = web::BytesMut::new();
+            while let Some(chunk) = field.next().await {
+                let chunk = chunk.map_err(|e| DomainError::Validation(e.to_string()))?;
+                buf.extend_from_slice(&chunk);
+                if buf.len() > ATTACH_MAX_BYTES {
+                    return Err(DomainError::Validation("附件超过 8MiB 上限".into()));
+                }
+            }
+            file_bytes = Some(buf.freeze());
+        }
+    }
+    let Some(bytes) = file_bytes else {
+        return Err(DomainError::Validation("缺少 file 字段".into()));
+    };
+    if !ATTACH_MIME_ALLOW.contains(&mime.as_str()) {
+        return Err(DomainError::Validation(
+            "仅支持 png/jpeg/gif/webp/avif/pdf/txt".into(),
+        ));
+    }
+    // 真实内容嗅探（不信客户端头）：图片 magic bytes 校验
+    let sniff_ok = match bytes.first() {
+        Some(0x89) => bytes.starts_with(&[0x89, b'P', b'N', b'G']) || mime == "application/pdf",
+        Some(0xFF) => mime == "image/jpeg",
+        Some(b'G') => bytes.starts_with(b"GIF8"),
+        Some(b'R') => bytes.starts_with(b"RIFF") && mime == "image/webp",
+        _ => mime == "text/plain" || mime == "image/avif",
+    };
+    if !sniff_ok {
+        return Err(DomainError::Validation("文件内容与声明类型不符".into()));
+    }
+
+    // 配额（attach_quota_mib，0=不限）：全站去重前先算已用
+    let quota_mib: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'attach_quota_mib')::bigint, 512)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(512);
+    if quota_mib > 0 {
+        let used: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(sum(size), 0) FROM attachments WHERE user_id = $1",
+        )
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
+        if used + bytes.len() as i64 > quota_mib * 1024 * 1024 {
+            return Err(DomainError::Validation(format!(
+                "附件配额不足（已用 {}/{} MiB）",
+                used / 1048576,
+                quota_mib
+            )));
+        }
+    }
+
+    let sha = {
+        use sha3::Digest;
+        let mut h = sha3::Sha3_256::new();
+        h.update(&bytes);
+        let d = h.finalize();
+        d.iter().map(|b| format!("{b:02x}")).collect::<String>()
+    };
+    // 去重：同 sha 已存在 → 直接复用（不重复占配额）
+    let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM attachments WHERE sha256 = $1")
+        .bind(&sha)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if exists.is_none() {
+        let dir: String = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'savedirectory'), './attachments')",
+        )
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or_else(|_| "./attachments".into());
+        let dir = dir.trim_end_matches('/');
+        let sub = format!("{}/{}", &sha[..2], &sha[2..4]);
+        let path = format!("{dir}/{sub}/{sha}");
+        tokio::fs::create_dir_all(format!("{dir}/{sub}"))
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        tokio::fs::write(&path, &bytes)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "INSERT INTO attachments (user_id, sha256, filename, mime, size) VALUES ($1, $2, $3, $4, $5)",
+        )
+        .bind(auth.id)
+        .bind(&sha)
+        .bind(if filename.is_empty() { format!("{sha}.{}", ext_of(&mime)) } else { filename.clone() })
+        .bind(&mime)
+        .bind(bytes.len() as i64)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        state.repo.audit(Some(auth.id), "attachment_upload", None).await;
+    }
+    Ok(ok(serde_json::json!({
+        "sha256": sha,
+        "url": format!("/api/v1/attachments/{sha}"),
+        "size": bytes.len(),
+        "deduplicated": exists.is_some(),
+    })))
+}
+
+fn ext_of(mime: &str) -> &'static str {
+    match mime {
+        "image/png" => "png",
+        "image/jpeg" => "jpg",
+        "image/gif" => "gif",
+        "image/webp" => "webp",
+        "image/avif" => "avif",
+        "application/pdf" => "pdf",
+        _ => "txt",
+    }
+}
+
+/// 附件读取（图床）：按 sha256 寻址（内容寻址不可猜测），mime 回放。
+/// 需登录（防匿名爬图床占带宽）。
+#[get("/attachments/{sha}")]
+async fn get_attachment(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<String>,
+) -> DomainResult<HttpResponse> {
+    require_auth(&req, &state).await?;
+    let sha = path.into_inner();
+    if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(DomainError::Validation("sha256 格式无效".into()));
+    }
+    let row: Option<(String, i64)> =
+        sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")
+            .bind(&sha)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((mime, _size)) = row else {
+        return Err(DomainError::NotFound(0));
+    };
+    let dir: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'savedirectory'), './attachments')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_else(|_| "./attachments".into());
+    let p = format!(
+        "{}/{}/{}/{}",
+        dir.trim_end_matches('/'),
+        &sha[..2],
+        &sha[2..4],
+        sha
+    );
+    let bytes = tokio::fs::read(&p)
+        .await
+        .map_err(|_| DomainError::NotFound(0))?;
+    Ok(HttpResponse::Ok()
+        .content_type(mime)
+        .insert_header((actix_web::http::header::CACHE_CONTROL, "public, max-age=31536000, immutable"))
+        .body(bytes))
 }
 
 #[post("/me/passkey/rotate")]
@@ -790,6 +1055,50 @@ async fn user_public_profile(
         "recent_uploads": uploads,
         "recent_comments": recent_comments,
     })))
+}
+
+/// 他人用户页的种子列表（NP userdetails Torrent History 口径）：
+/// uploads = 公开发布（匿名发布不暴露归属）；seeding = 当前做种（做种列表不含流量明细，NP 默认公开）。
+#[derive(Deserialize)]
+struct UserTorrentlistQuery {
+    #[serde(default)]
+    limit: Option<i64>,
+}
+
+#[get("/users/{id}/torrentlist")]
+async fn user_torrentlist(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    q: web::Query<UserTorrentlistQuery>,
+) -> DomainResult<HttpResponse> {
+    require_auth(&req, &state).await?;
+    let uid = path.into_inner();
+    let limit = q.limit.unwrap_or(50).clamp(1, 100);
+    let uploads: Vec<SnatchRow> = sqlx::query_as(
+        "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
+         false AS seeding, false AS leeching, NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here \
+         FROM torrents t WHERE t.owner_id = $1 AND t.approval_status = 1 AND NOT t.anonymous \
+         ORDER BY t.id DESC LIMIT $2",
+    )
+    .bind(uid)
+    .bind(limit)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let seeding: Vec<SnatchRow> = sqlx::query_as(
+        "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
+         s.completed_at, s.uploaded AS uploaded_here \
+         FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+         WHERE s.user_id = $1 AND s.seeding \
+         ORDER BY s.torrent_id DESC LIMIT $2",
+    )
+    .bind(uid)
+    .bind(limit)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "uploads": uploads, "seeding": seeding })))
 }
 
 #[get("/me/overview")]
@@ -1249,14 +1558,31 @@ async fn my_bookmarks(
 
 // ============ 种子（M02/M03/M07/M10） ============
 
+/// 宽松布尔解析（0093）：查询串里的 `1/0/true/false/yes/no` 均接受。
+/// 此前 `include_dead=1`（旧站 1/0 口径、第三方客户端常用）会让整个 Query 反序列化失败 → 400。
+fn de_bool_lenient<'de, D>(d: D) -> Result<Option<bool>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let v = Option::<String>::deserialize(d)?;
+    Ok(v.map(|s| {
+        matches!(
+            s.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        )
+    }))
+}
+
 #[derive(Deserialize)]
 struct ListQuery {
     medium_id: Option<i32>,
     grade_id: Option<i32>,
     edition_id: Option<i32>,
+    #[serde(default, deserialize_with = "de_bool_lenient")]
     official: Option<bool>,
+    #[serde(default, deserialize_with = "de_bool_lenient")]
     include_dead: Option<bool>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_bool_lenient")]
     include_unapproved: Option<bool>,
     search: Option<String>,
     /// 搜索范围：0=标题(默认) 1=副标题/简介 3=发布者 4=IMDb
@@ -1267,6 +1593,16 @@ struct ListQuery {
     search_mode: Option<i32>,
     sort: Option<String>,
     tag_id: Option<i32>,
+    /// 存活筛选（0102，NP inclbooked/vivisect 口径）：0=全部 1=仅活种 2=仅断种（覆盖 include_dead）
+    #[serde(default)]
+    alive: Option<i16>,
+    /// 种子状态（0102，NP 口径）：seeding=当前做种 leeching=当前下载 completed=完成
+    /// incomplete=未完成 notseeding=未做种（多值逗号串待扩展，先单值）
+    #[serde(default)]
+    status: Option<String>,
+    /// 审核状态（0102）：0=全部 1=通过 2=被拒（含未审需 see_banned，另走 include_unapproved）
+    #[serde(default)]
+    approval: Option<i16>,
     /// 分类多选（0088）：接受重复的 category_id 参数或逗号分隔串，均收集为数组
     #[serde(default)]
     category_ids: Vec<String>,
@@ -1297,8 +1633,11 @@ async fn list(
         if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind).await {
             continue;
         }
-        if let Ok(dict_id) = v.parse::<i64>() {
-            sections.push((kind.to_string(), dict_id));
+        // 多选（0102）：逗号串 / 重复参数均可；同维度多值 = OR（任一命中）
+        for part in v.split(',') {
+            if let Ok(dict_id) = part.trim().parse::<i64>() {
+                sections.push((kind.to_string(), dict_id));
+            }
         }
     }
     let filter = torrents::TorrentFilter {
@@ -1323,6 +1662,10 @@ async fn list(
         search: q.search.as_deref().map(str::to_string),
         sort: q.sort.as_deref().map(str::to_string),
         tag_id: q.tag_id,
+        // 0102 高级搜索三态
+        alive: q.alive,
+        status: q.status.clone().filter(|s| !s.is_empty()),
+        approval: q.approval,
         // 搜索盒口径（此前前端传了但后端不解析，静默失效）
         search_area: q.search_area,
         search_mode: q.search_mode,
@@ -1363,7 +1706,7 @@ async fn list(
             }
         }
         let page =
-            torrents::list_torrents(&state.repo.db, &filter, cursor, q.limit.unwrap_or(20)).await?;
+            torrents::list_torrents_as(&state.repo.db, &filter, cursor, q.limit.unwrap_or(20), auth.id).await?;
         if let Ok(json) = serde_json::to_string(&page) {
             let _: Result<(), _> =
                 redis::AsyncCommands::set_ex(&mut c, cache_key, json, 45u64).await;
@@ -1371,7 +1714,7 @@ async fn list(
         return Ok(ok(page));
     }
     let page =
-        torrents::list_torrents(&state.repo.db, &filter, cursor, q.limit.unwrap_or(20)).await?;
+        torrents::list_torrents_as(&state.repo.db, &filter, cursor, q.limit.unwrap_or(20), auth.id).await?;
     Ok(ok(page))
 }
 
@@ -3879,8 +4222,50 @@ async fn site_type_pack_apply(
             .execute(&mut *tx).await;
         }
     }
-    // 质量维度种子（0092）：包内定义的维度重建标签与选项（references 级联清理旧引用），
-    // 未在包内定义的维度（含站方自建）原样保留
+    // 质量维度种子（0092）：包内定义的维度重建标签与选项（references 级联清理旧引用）。
+    // 0101 修复：切换站型后旧站型的内置维度残留（切音乐站仍见「游戏类型」）——
+    // 内置九维中未被本包定义的维度整体移除（section_kinds 级联清 section_dict 与
+    // torrent_sections 引用）；站方自建维度（不在内置清单）原样保留。
+    let builtin: std::collections::HashSet<String> = [
+        "media", "grades", "editions", "codec", "audio_codec", "standard", "source", "processing", "team",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
+    let mut packed_kinds: std::collections::HashSet<String> = std::collections::HashSet::new();
+    if let Some(sections) = pack
+        .sections
+        .as_ref()
+        .and_then(serde_json::Value::as_object)
+    {
+        if let Some(kinds) = sections.get("kinds").and_then(serde_json::Value::as_array) {
+            for k in kinds {
+                if let Some(kind) = k.get("kind").and_then(serde_json::Value::as_str) {
+                    packed_kinds.insert(kind.to_string());
+                }
+            }
+        }
+    }
+    for kind in &builtin {
+        if !packed_kinds.contains(kind) {
+            // 引用中的维度直接删会级联清 torrent_sections —— 有种子的站点会丢筛选项，
+            // 这里先检查是否被在用：被在用时跳过清理（宁残留不破坏）
+            let in_use: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM torrent_sections WHERE kind = $1",
+            )
+            .bind(kind)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap_or(0);
+            if in_use == 0 {
+                sqlx::query("DELETE FROM section_kinds WHERE kind = $1")
+                    .bind(kind)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
+            }
+        }
+    }
     if let Some(sections) = pack
         .sections
         .as_ref()
@@ -5326,6 +5711,9 @@ struct UploadForm {
     /// IMDb 链接（NP imdbpage 口径）：存 media_info.imdb，搜索区 4 已按此键命中
     #[serde(default)]
     imdb: Option<String>,
+    /// MediaInfo 文本（NP 详情页折叠块口径）：存 media_info.mediainfo，详情页原样展示
+    #[serde(default)]
+    mediainfo: Option<String>,
     /// 付费下载定价（0086）：0 = 免费，≤ 1,000,000；下载者支付，发布者得 (100-税)%
     #[serde(default)]
     price: Option<i64>,
@@ -5540,6 +5928,11 @@ async fn upload(
     }
     if let Some(i) = form.imdb.as_deref().map(str::trim).filter(|i| !i.is_empty()) {
         media_obj.insert("imdb".into(), serde_json::json!(i));
+    }
+    if let Some(mi) = form.mediainfo.as_deref().map(str::trim).filter(|m| !m.is_empty()) {
+        // 截断防滥用（MediaInfo 全文通常 < 64KB）
+        let mi = &mi[..mi.len().min(60_000)];
+        media_obj.insert("mediainfo".into(), serde_json::json!(mi));
     }
     let media_info: Option<serde_json::Value> = if media_obj.is_empty() {
         None
@@ -5943,6 +6336,23 @@ pub(crate) async fn build_torrent_bytes(
     if !announce.starts_with(&format!("{base_http}/")) {
         fallbacks.push(format!("{base_http}/announce/{}", user.passkey));
     }
+    // UDP tracker（BEP15）：TRACKER_UDP_URL 设置（或 PUBLIC_TRACKER_URL 同主机推断）时
+    // 作为追加 tier 下发 —— 客户端优先 UDP，HTTP 作回退。path 段带 passkey，
+    // UDP 侧从 announce 包尾随的 tracker_id 字节还原。
+    let udp_url = std::env::var("TRACKER_UDP_URL").unwrap_or_else(|_| {
+        // 未显式配置时按 HTTP host 推断（http://h:p → udp://h:6969）
+        if base_http.starts_with("http://") || base_http.starts_with("https://") {
+            let host = base_http
+                .trim_start_matches("https://")
+                .trim_start_matches("http://");
+            format!("udp://{host}:6969")
+        } else {
+            String::new()
+        }
+    });
+    if !udp_url.is_empty() {
+        fallbacks.push(format!("{}/{}", udp_url.trim_end_matches('/'), user.passkey));
+    }
     crate::bencode::build_download_torrent(&raw, &announce, &fallbacks)
         .map_err(DomainError::TorrentInvalid)
 }
@@ -6140,6 +6550,77 @@ struct InviteRow {
     status: i16,
     used_by: Option<String>,
     expires_at: chrono::DateTime<chrono::Utc>,
+    /// NP invite.php 口径：发送对象邮箱（邮件邀请才有值）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[sqlx(default)]
+    email: Option<String>,
+    /// 邮件是否已投递（发送失败为 false，用户可重发）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[sqlx(default)]
+    emailed: Option<bool>,
+}
+
+/// 判定用户邀请配额上限（与 issue 消耗路径同一口径）：
+/// INVITES_BONUS 权限（外联员/VIP）4 枚/周；LV3+ 2 枚/周；其余 0（只能魔力兑换）。
+async fn invite_quota_limit(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    auth: &AuthUser,
+) -> i64 {
+    if crate::authz::can(state, auth, crate::authz::perm::INVITES_BONUS).await {
+        4
+    } else if auth.class_id >= 3 {
+        2
+    } else {
+        0
+    }
+}
+
+/// 我的邀请概览（NP invite.php 顶部口径）：配额用量 + 魔力兑换现价 + 剩余额外配额。
+/// 前端据此禁用不可用按钮，而不是点了才吃 403。
+#[get("/invites/status")]
+async fn invites_status_handler(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let limit = invite_quota_limit(&state, &auth).await;
+    let (used, extra): (i32, i32) = sqlx::query_as(
+        "SELECT \
+            COALESCE((SELECT used FROM invite_quota \
+                      WHERE user_id = $1 AND period = date_trunc('week', now())::date), 0), \
+            COALESCE(quota_extra, 0) \
+         FROM users WHERE id = $1",
+    )
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or((0, 0));
+    let price: Option<i64> = sqlx::query_scalar(
+        "SELECT price FROM shop_items WHERE kind = 'invite' AND active = true ORDER BY price LIMIT 1",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let inv_stats: (i64, i64, i64) = sqlx::query_as(
+        "SELECT count(*) FILTER (WHERE status = 0 AND expires_at > now()), \
+                count(*) FILTER (WHERE status = 1), \
+                count(*) FILTER (WHERE status = 0 AND expires_at <= now()) \
+         FROM invites WHERE inviter_id = $1",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (unused, used_count, expired) = inv_stats;
+    Ok(ok(serde_json::json!({
+        "class_id": auth.class_id,
+        "quota_limit": limit,
+        "quota_used": used,
+        "quota_extra": extra,
+        "redeem_price": price,
+        "unused": unused, "used": used_count, "expired": expired,
+    })))
 }
 
 #[get("/invites")]
@@ -6148,8 +6629,11 @@ async fn list_invites_handler(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // status=2（已过期）在下发时即时折算：过期未用的码视为失效（注册侧已拒绝 expires_at > now()）
     let rows = sqlx::query_as::<_, InviteRow>(
-        "SELECT i.id, i.code, i.status, u.username AS used_by, i.expires_at \
+        "SELECT i.id, i.code, \
+                (CASE WHEN i.status = 0 AND i.expires_at <= now() THEN 2 ELSE i.status END)::int2 AS status, \
+                u.username AS used_by, i.expires_at, i.email, i.emailed \
          FROM invites i LEFT JOIN users u ON u.id = i.used_by \
          WHERE i.inviter_id = $1 ORDER BY i.id DESC LIMIT 50",
     )
@@ -6178,14 +6662,12 @@ async fn issue_invite_handler(
     .map_err(|e| DomainError::Internal(e.into()))?;
     if extra.is_none() {
         // 额外配额不够 → 走周配额原子占位（UPDATE 计数行防并发穿透）
-        let quota: i64 =
-            if crate::authz::can(&state, &auth, crate::authz::perm::INVITES_BONUS).await {
-                4
-            } else if auth.class_id >= 3 {
-                2
-            } else {
-                0
-            };
+        let quota = invite_quota_limit(&state, &auth).await;
+        if quota == 0 {
+            return Err(DomainError::Validation(
+                "等级达到 LV3 后才能生成邀请码；也可用魔力兑换（不受等级限制）".into(),
+            ));
+        }
         sqlx::query(
             "INSERT INTO invite_quota (user_id, period, used) VALUES ($1, date_trunc('week', now())::date, 0) ON CONFLICT DO NOTHING",
         )
@@ -6202,7 +6684,9 @@ async fn issue_invite_handler(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         if taken.is_none() {
-            return Err(DomainError::Forbidden);
+            return Err(DomainError::Validation(
+                "本周邀请配额已用完，下周重置；也可用魔力兑换".into(),
+            ));
         }
     }
     let code = crate::domain::new_invite_code();
@@ -6211,6 +6695,119 @@ async fn issue_invite_handler(
     Ok(ok(
         serde_json::json!({ "id": id, "code": code, "expires_at": expires.to_rfc3339() }),
     ))
+}
+
+#[derive(Deserialize)]
+struct EmailInviteReq {
+    invite_id: i64,
+    email: String,
+}
+
+/// 把已有未用邀请码直接发到对方邮箱（NP invite.php「发送」口径）。
+/// SMTP 未配置时返回明确错误（开发态无邮件出口），前端提示改为复制邀请码。
+#[post("/invites/email")]
+async fn email_invite_handler(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<EmailInviteReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let email = body.email.trim().to_lowercase();
+    if !email.contains('@') || email.len() < 5 {
+        return Err(DomainError::Validation("邮箱地址无效".into()));
+    }
+    // 邮箱黑名单（与注册同口径）：无命中行为 allow，命中且非 allow 行才禁
+    let banned: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM email_bans \
+         WHERE mode <> 'allow' \
+           AND (lower($1) = lower(pattern) \
+                OR (pattern LIKE '@%' AND lower($1) LIKE '%' || lower(pattern)) \
+                OR (pattern LIKE '%@' AND lower($1) LIKE lower(pattern) || '%')))",
+    )
+    .bind(&email)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    if banned {
+        return Err(DomainError::Validation("该邮箱地址已被站点禁用".into()));
+    }
+    // 归属 + 状态校验：只能发自己名下未用未过期的码
+    let row: Option<(String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT code, expires_at FROM invites \
+         WHERE id = $1 AND inviter_id = $2 AND status = 0 AND expires_at > now()",
+    )
+    .bind(body.invite_id)
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((code, expires)) = row else {
+        return Err(DomainError::Validation("邀请码不存在或已使用/过期".into()));
+    };
+
+    let smtp = std::env::var("SMTP_URL").unwrap_or_default();
+    if smtp.is_empty() {
+        // 开发态无邮件出口：仍登记发送对象，前端引导用户直接复制邀请码
+        sqlx::query("UPDATE invites SET email = $2 WHERE id = $1")
+            .bind(body.invite_id)
+            .bind(&email)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        return Err(DomainError::Validation(
+            "站点未配置邮件服务（SMTP），请复制邀请码手动发送给对方".into(),
+        ));
+    }
+    let base = std::env::var("PUBLIC_WEB_URL")
+        .or_else(|_| std::env::var("PUBLIC_API_URL"))
+        .unwrap_or_else(|_| "http://localhost:3000".into());
+    let link = format!("{base}/register?invite={code}");
+    let from = std::env::var("SMTP_FROM").unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
+    let site: String = sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'site_name'")
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "FluxTorrent".into());
+    let inviter: String =
+        sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or_else(|_| "某人".into());
+    let hours_left = (expires - chrono::Utc::now()).num_hours().max(1);
+    let mailer = crate::gaps_http::build_smtp(&smtp)?;
+    let letter = lettre::Message::builder()
+        .from(from.parse().map_err(|_| DomainError::Validation("SMTP_FROM 配置无效".into()))?)
+        .to(email.parse().map_err(|_| DomainError::Validation("邮箱地址无效".into()))?)
+        .subject(format!("[{site}] {inviter} 邀请你加入"))
+        .body(format!(
+            "你的好友 {inviter} 邀请你加入 {site}！
+
+打开以下链接注册（邀请码 {hours_left} 小时内有效，仅可使用一次）：
+{link}
+
+邀请码：{code}
+
+如不认识对方请忽略本邮件。"
+        ))
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    use lettre::AsyncTransport as _;
+    mailer
+        .send(letter)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("UPDATE invites SET email = $2, emailed = true WHERE id = $1")
+        .bind(body.invite_id)
+        .bind(&email)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "invite_email", Some(body.invite_id))
+        .await;
+    Ok(ok(serde_json::json!({ "sent": true, "email": email })))
 }
 
 #[derive(Deserialize)]

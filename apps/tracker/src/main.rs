@@ -15,6 +15,7 @@
 //! 绕过 serde Query 反序列化，直接解析原始 query 字节。
 
 mod peers;
+mod udp;
 
 use actix_web::{get, web, App, HttpResponse, HttpServer};
 use dashmap::DashMap;
@@ -26,13 +27,13 @@ use std::time::{Duration, Instant};
 
 use crate::peers::{bencode_announce, hex, percent_decode, Peer};
 
-struct TrackerState {
-    peers: PeerTable,
-    redis: redis::aio::ConnectionManager,
+pub struct TrackerState {
+    pub peers: PeerTable,
+    pub redis: redis::aio::ConnectionManager,
     db: sqlx::PgPool,
     guard: RwLock<GuardInner>,
     cfg: GuardCfg,
-    metrics: Metrics,
+    pub metrics: Metrics,
     /// Redis 故障时的本地降级限流窗口（单进程语义，tracker 单实例）
     local: LocalWindows,
     /// 管理端变更通知（flux:guard:ver 版本轮询）→ 立即刷新防护缓存
@@ -126,7 +127,7 @@ const PASSKEY_TTL: Duration = Duration::from_secs(60);
 const PASSKEY_CACHE_CAP: usize = 50_000;
 
 impl TrackerState {
-    fn guard_read(&self) -> RwLockReadGuard<'_, GuardInner> {
+    pub fn guard_read(&self) -> RwLockReadGuard<'_, GuardInner> {
         self.guard.read().unwrap_or_else(|e| e.into_inner())
     }
 
@@ -215,7 +216,7 @@ impl TrackerState {
     }
 
     /// passkey → (user_id, download_enabled, suspended)，60s 内存缓存
-    async fn resolve_passkey_cached(&self, passkey: &str) -> Option<(i64, bool, bool)> {
+    pub async fn resolve_passkey_cached(&self, passkey: &str) -> Option<(i64, bool, bool)> {
         {
             let g = self.guard_read();
             if let Some((uid, de, su, at)) = g.passkeys.get(passkey) {
@@ -243,15 +244,17 @@ impl TrackerState {
     }
 
     /// ip_bans 命中 → 封禁理由
-    fn ip_banned(&self, ip: &str) -> Option<String> {
+    pub fn ip_banned(&self, ip: &str) -> Option<String> {
         self.guard_read().ip_bans.get(ip).cloned()
     }
 
     /// agent_rules 黑白名单判定（P0-7 交叉验证版）：
     /// deny 命中（UA 或 peer_id 任一命中 deny 规则）即拒；
     /// allow 列表非空时须命中 allow 的 UA **或** peer_id 条件，未命中 allow 也拒。
-    /// 规则未加载时放行（fail-open）。peer_id 传可读形式（lossy）以匹配 -XL0014- 等前缀。
-    fn agent_blocked(&self, agent: Option<&str>, peer_id: &str) -> Option<String> {
+    /// 仅当规则从未成功加载（启动后 DB 一直不可达）才放行；一旦有快照，
+    /// 刷新失败时 refresh_guard 保留旧值，DB 抖动期间名单持续生效（不再 fail-open）。
+    /// peer_id 传可读形式（lossy）以匹配 -XL0014- 等前缀。
+    pub fn agent_blocked(&self, agent: Option<&str>, peer_id: &str) -> Option<String> {
         let rules = self.guard_read().agent_rules.clone()?;
         let a = agent.unwrap_or("");
         let hit = |r: &&AgentRule| {
@@ -289,7 +292,7 @@ impl TrackerState {
     }
 
     /// 每 IP 频率限流。超限返回失败文案。
-    async fn rate_limited_ip(&self, ip: &str) -> Option<&'static str> {
+    pub async fn rate_limited_ip(&self, ip: &str) -> Option<&'static str> {
         let k = format!("rl:ann:ip:{ip}");
         self.rate_over(&k, self.cfg.ip_per_min)
             .await
@@ -297,7 +300,7 @@ impl TrackerState {
     }
 
     /// 每用户频率限流（按 user_id 而非 IP —— NAT 场景按 IP 会误伤）。
-    async fn rate_limited_user(&self, user_id: i64) -> Option<&'static str> {
+    pub async fn rate_limited_user(&self, user_id: i64) -> Option<&'static str> {
         let k = format!("rl:ann:u:{user_id}");
         self.rate_over(&k, self.cfg.user_per_min)
             .await
@@ -305,7 +308,7 @@ impl TrackerState {
     }
 
     /// 全局应急熔断（ANN_RATE_GLOBAL_PER_MIN，0=关闭）：分布式洪水时保护后端不被打垮
-    async fn global_shed(&self) -> bool {
+    pub async fn global_shed(&self) -> bool {
         if self.cfg.global_per_min <= 0 {
             return false;
         }
@@ -314,7 +317,7 @@ impl TrackerState {
     }
 
     /// (interval, min_interval)：min 取 interval 一半，夹在 [30, 3600]
-    fn intervals(&self) -> (i64, i64) {
+    pub fn intervals(&self) -> (i64, i64) {
         let v = self.guard_read().announce_interval;
         (v, (v / 2).clamp(30, 3600))
     }
@@ -503,6 +506,7 @@ async fn announce(
         left,
         &ip,
         state.peers.connectable_of(&key),
+        params.get_str("agent").as_deref().unwrap_or(""),
     )
     .await;
 
@@ -654,7 +658,7 @@ fn bencode_err(msg: &str) -> HttpResponse {
     ))
 }
 
-async fn emit_event(
+pub(crate) async fn emit_event(
     redis: &redis::aio::ConnectionManager,
     info_hash_hex: &str,
     user: i64,
@@ -664,6 +668,7 @@ async fn emit_event(
     left: i64,
     ip: &str,
     conn: i8,
+    agent: &str,
 ) {
     let mut payload = serde_json::json!({
         "user": user, "hash": info_hash_hex, "up": up, "down": down,
@@ -676,6 +681,10 @@ async fn emit_event(
     }
     if conn != peers::CONN_UNTESTED {
         payload["conn"] = serde_json::json!(conn);
+    }
+    // 0098：BT 客户端 UA（下载列表「客户端」列 + 反作弊证据）；截断防事件膨胀
+    if !agent.is_empty() {
+        payload["agent"] = serde_json::json!(&agent[..agent.len().min(200)]);
     }
     xadd(redis, "flux:announce", &payload).await;
 }
@@ -775,6 +784,47 @@ async fn main() -> anyhow::Result<()> {
         ver: AtomicI64::new(0),
     });
 
+    // peer 快照预热（0101）：重启后从 Redis 恢复未超时 peer，缩短做种列表空窗。
+    // 客户端 30min 内重 announce 本就可自愈——恢复失败仅记日志，绝不阻塞启动。
+    {
+        use redis::AsyncCommands;
+        let mut c = redis.clone();
+        match c.get::<_, Option<String>>("flux:tracker:peers").await {
+            Ok(Some(raw)) => match serde_json::from_str::<Vec<(String, Vec<Peer>)>>(&raw) {
+                Ok(snap) => {
+                    let n = state.peers.restore(snap);
+                    tracing::info!(n, "peer table warm-restored from redis");
+                }
+                Err(e) => tracing::warn!(%e, "peer snapshot parse failed, skip warm restore"),
+            },
+            Ok(None) => {}
+            Err(e) => tracing::warn!(%e, "peer snapshot read failed, skip warm restore"),
+        }
+    }
+
+    // peer 快照周期落盘（60s）：tracker 是 SPOF，快照让重启从「全量重建」变「增量补齐」
+    {
+        let st = state.clone();
+        actix_web::rt::spawn(async move {
+            let mut tick = tokio::time::interval(Duration::from_secs(60));
+            loop {
+                tick.tick().await;
+                let snap = st.peers.export();
+                match serde_json::to_string(&snap) {
+                    Ok(raw) => {
+                        let mut c = st.redis.clone();
+                        use redis::AsyncCommands;
+                        // 30min TTL：tracker 长时间下线后旧快照不再有效
+                        if let Err(e) = c.set_ex::<_, _, ()>("flux:tracker:peers", raw, 1800).await {
+                            tracing::warn!(%e, "peer snapshot write failed");
+                        }
+                    }
+                    Err(e) => tracing::warn!(%e, "peer snapshot encode failed"),
+                }
+            }
+        });
+    }
+
     // 管理端变更通知轮询：flux:guard:ver 每 3s 一查（单 GET，可忽略的开销）。
     // API 侧在 ip_bans/agent_rules/挂起/passkey 变更后 INCR 该键 → 立即刷新缓存+清 passkey。
     {
@@ -814,6 +864,19 @@ async fn main() -> anyhow::Result<()> {
                     let reachable = matches!(attempt, Ok(Ok(_)));
                     st.peers.set_connectable(&key, reachable);
                 }
+            }
+        });
+    }
+
+    // UDP tracker（BEP15）：TRACKER_UDP_BIND 未设置（空）则不启用；
+    // 默认 6969。与 HTTP announce 共享 state（peer 表/限流/事件流）。
+    let udp_bind = std::env::var("TRACKER_UDP_BIND").unwrap_or_else(|_| "0.0.0.0:6969".into());
+    if !udp_bind.is_empty() {
+        let udp = std::sync::Arc::new(udp::UdpTracker::new(state.clone()));
+        let ub = udp_bind.clone();
+        actix_web::rt::spawn(async move {
+            if let Err(e) = udp.run(&ub).await {
+                tracing::error!(%e, %ub, "UDP tracker exited");
             }
         });
     }

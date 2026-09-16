@@ -3,23 +3,16 @@ import { InviteManager } from "@/components/invite-manager";
 
 export const dynamic = "force-dynamic";
 
-/** 邀请管理（参考站 invite.php 同款）：LV3+ 每周 2 枚 */
+/** 邀请管理（NP invite.php 口径）：配额概览 + 生成/兑换 + 邮件发送 + 状态列表 */
 export default async function InvitesPage() {
-  const { dict, currency } = await getDict();
+  const { dict } = await getDict();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline gap-2">
         <h1 className="font-display text-2xl">{dict.invites.title}</h1>
         <span className="text-sm text-sub">{dict.invites.subtitle}</span>
       </div>
-      <InviteManager
-        empty={dict.invites.empty}
-        issueLabel={dict.invites.issue}
-        redeemLabel={dict.invites.redeem}
-        redeemNote={dict.invites.redeemNote.replace("{magic}", currency)}
-        replayedText={dict.invites.replayed}
-        needClass={dict.invites.needClass}
-      />
+      <InviteManager />
     </div>
   );
 }
