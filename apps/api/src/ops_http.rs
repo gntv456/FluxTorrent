@@ -13,6 +13,7 @@ pub fn mount_ops(scope: actix_web::Scope) -> actix_web::Scope {
     scope
         // M21 绩效考核
         .service(jixiao_types)
+        .service(jixiao_me)
         .service(jixiao_claim)
         .service(jixiao_my)
         // M22 任务中心
@@ -52,6 +53,92 @@ async fn jixiao_types(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
+}
+
+/// 我的绩效考核总览（NP jixiao.php 口径）：分配给我的岗位 + 本期实时指标 vs 要求 + 达标状态。
+/// 未被分配岗位时 assigned 为空数组（前端展示引导文案，而不是让用户对着全岗位表点领取吃报错）。
+#[get("/jixiao/me")]
+async fn jixiao_me(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let period = chrono::Utc::now().format("%Y-%m").to_string();
+
+    // admin 分配行 = 本月岗位登记（source='admin'）；工资领取行 source 为空
+    let assigned: Vec<(i64, String, i64, serde_json::Value, serde_json::Value)> = sqlx::query_as(
+        "SELECT DISTINCT t.id, t.name, t.base_pay, t.metrics, t.min_requirements \
+         FROM jixiao_claims c JOIN jixiao_types t ON t.id = c.type_id \
+         WHERE c.user_id = $1 AND c.period = $2 AND c.metrics_snapshot->>'source' = 'admin'",
+    )
+    .bind(auth.id)
+    .bind(&period)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    let metrics = compute_metrics(&state.repo.db, auth.id, &period).await?;
+    let claimed: Vec<i64> = sqlx::query_scalar(
+        "SELECT type_id FROM jixiao_claims \
+         WHERE user_id = $1 AND period = $2 AND NOT (metrics_snapshot->>'source' = 'admin')",
+    )
+    .bind(auth.id)
+    .bind(&period)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 达标月数（每 3 个月 +10% 加成的分子）
+    let qualified: Vec<(i64, i64)> = sqlx::query_as(
+        "SELECT type_id, count(*) FROM jixiao_claims \
+         WHERE user_id = $1 AND NOT (metrics_snapshot->>'source' = 'admin') GROUP BY type_id",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    let items: Vec<serde_json::Value> = assigned
+        .iter()
+        .map(|(id, name, base_pay, min_reqs, _m)| {
+            // 逐指标比对：current vs required + 是否达标
+            let checks: Vec<serde_json::Value> = min_reqs
+                .as_object()
+                .map(|reqs| {
+                    reqs.iter()
+                        .filter(|(_, v)| v.as_i64().unwrap_or(0) > 0)
+                        .map(|(k, v)| {
+                            let required = v.as_i64().unwrap_or(0);
+                            let actual = metrics.get(k).and_then(|x| x.as_i64()).unwrap_or(0);
+                            serde_json::json!({
+                                "key": k, "required": required, "current": actual,
+                                "ok": actual >= required,
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            let all_ok = checks.iter().all(|c| c["ok"].as_bool().unwrap_or(false));
+            let months = qualified
+                .iter()
+                .find(|(tid, _)| tid == id)
+                .map(|(_, n)| *n)
+                .unwrap_or(0);
+            let bonus = base_pay / 10 * (months / 3);
+            serde_json::json!({
+                "type_id": id, "name": name, "base_pay": base_pay,
+                "min_requirements": min_reqs,
+                "checks": checks, "all_ok": all_ok,
+                "qualified_months": months, "bonus": bonus,
+                "total": base_pay + bonus,
+                "claimed": claimed.contains(id),
+            })
+        })
+        .collect();
+    Ok(ok(serde_json::json!({
+        "period": period,
+        "metrics": metrics,
+        "assigned": items,
+    })))
 }
 
 /// 指标采集：全部来自系统流水（announce 统计/保种表/操作日志），零手工填报（M21 验收）

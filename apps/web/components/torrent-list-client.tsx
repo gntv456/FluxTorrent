@@ -1,0 +1,95 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { api } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
+import { formatBytes } from "@/lib/format";
+
+interface SnatchRow {
+  torrent_id: number;
+  name: string;
+  size: number;
+  seeders: number;
+  leechers: number;
+  seeding: boolean;
+  leeching: boolean;
+  completed_at: string | null;
+  done: number;
+}
+
+/** 我的种子列表（NP getusertorrentlist 口径）：做种中 / 已完成 / 我的发布 */
+export function TorrentListClient({
+  kind,
+  emptyText,
+}: {
+  kind: "seeding" | "completed" | "uploads";
+  emptyText: string;
+}) {
+  const { dict, locale } = useI18n();
+  const [rows, setRows] = useState<SnatchRow[] | null>(null);
+
+  useEffect(() => {
+    setRows(null);
+    api
+      .get<SnatchRow[]>(`/api/v1/me/torrentlist?kind=${kind}&limit=100`)
+      .then(setRows)
+      .catch(() => setRows([]));
+  }, [kind]);
+
+  if (rows === null) {
+    return <p className="py-6 text-center text-sub">…</p>;
+  }
+  if (rows.length === 0) {
+    return <p className="py-6 text-center text-sub">{emptyText}</p>;
+  }
+  return (
+    <div className="baozi-wide-table-scroll">
+      <table className="nexus-table">
+        <tbody>
+          <tr>
+            <td className="colhead">{dict.mytl.colName}</td>
+            <td className="colhead">{dict.mytl.colSize}</td>
+            <td className="colhead">{dict.mytl.colSeeders}</td>
+            <td className="colhead">{dict.mytl.colLeechers}</td>
+            {kind === "uploads" ? null : (
+              <td className="colhead">{dict.mytl.colDone}</td>
+            )}
+            <td className="colhead">{dict.mytl.colAt}</td>
+          </tr>
+          {rows.map((r) => (
+            <tr key={r.torrent_id}>
+              <td className="max-w-[420px] truncate">
+                <Link
+                  href={`/torrent/${r.torrent_id}`}
+                  className="text-sky-deep hover:underline"
+                  title={r.name}
+                >
+                  {r.name}
+                </Link>
+                {r.seeding && (
+                  <span className="sticker ml-1 bg-mint/30">{dict.mytl.badgeSeeding}</span>
+                )}
+                {r.leeching && (
+                  <span className="sticker ml-1 bg-sun">{dict.mytl.badgeLeeching}</span>
+                )}
+              </td>
+              <td className="num text-xs">{formatBytes(r.size)}</td>
+              <td className="num">{r.seeders}</td>
+              <td className="num">{r.leechers}</td>
+              {kind === "uploads" ? null : (
+                <td className="num text-xs">{formatBytes(r.done)}</td>
+              )}
+              <td className="text-xs text-sub">
+                {r.completed_at
+                  ? new Date(r.completed_at).toLocaleString(dateLocale(locale))
+                  : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

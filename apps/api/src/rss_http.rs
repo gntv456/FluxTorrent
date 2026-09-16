@@ -65,7 +65,10 @@ async fn rss_feed(
          FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          WHERE t.approval_status = 1 \
            AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
-           AND ($2::int[] IS NULL OR t.medium_id = ANY($2)) \
+           AND ($2::int[] IS NULL OR \
+                t.medium_id = ANY($2) \
+                OR EXISTS (SELECT 1 FROM torrent_sections ts \
+                           WHERE ts.torrent_id = t.id AND ts.kind = 'media' AND ts.dict_id = ANY($2))) \
            AND ($3::bool IS NULL OR t.official_tag = $3) \
            AND ($4::text IS NULL OR t.name ILIKE '%' || $4 || '%') \
            AND (NOT $6::bool OR EXISTS ( \

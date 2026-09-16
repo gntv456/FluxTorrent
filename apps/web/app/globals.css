@@ -4237,6 +4237,22 @@ textarea.bbcode {
   height: 18px;
   color: var(--baozi-orange);
 }
+/* 收件箱未读角标：图标右上角红点数字（NP userbar 同款） */
+.userbar-tool__badge {
+  position: absolute;
+  top: -7px;
+  right: -10px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--surface-raised);
+}
 .userbar-tool {
   position: relative;
   display: inline-flex;
@@ -5138,4 +5154,24 @@ textarea.bbcode {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   color: inherit;
+}
+
+/* 高级搜索多维筛选（0102 多选）：维度分组行——维度名置灰在左，选项 checkbox 换行排布 */
+.torrent-search-box__dim-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 2px 0;
+}
+.torrent-search-box__dim-group + .torrent-search-box__dim-group {
+  border-top: 1px dashed var(--baozi-line);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+.torrent-search-box__dim-label {
+  min-width: 4em;
+  color: var(--text-sub, #8a7d6b);
+  font-size: 12px;
+  font-weight: 700;
 }

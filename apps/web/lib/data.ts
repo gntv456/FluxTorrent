@@ -76,6 +76,8 @@ export interface Topic {
   last_post_at: string | null;
   sticky?: boolean;
   locked?: boolean;
+  /** 精华帖（0099 NP digest 口径） */
+  digest?: boolean;
 }
 export interface ForumTopics {
   forum_id: number;
@@ -143,15 +145,23 @@ export interface TopicDetail {
   forum_name: string | null;
   sticky: boolean;
   locked: boolean;
+  /** 精华帖（0099 NP digest 口径） */
+  digest?: boolean;
   is_op: boolean;
   current_user_id?: number | null;
   can_write: boolean;
   can_mod: boolean;
   posts: Post[];
+  /** 本窗口外还有更早楼层（长帖游标）：前端显示「加载更早的回复」 */
+  has_more?: boolean;
 }
-export async function getPosts(topicId: number): Promise<TopicDetail | null> {
+export async function getPosts(
+  topicId: number,
+  before?: number,
+): Promise<TopicDetail | null> {
   try {
-    return await api.get<TopicDetail>(`/api/v1/forums/topics/${topicId}`);
+    const qs = before ? `?before=${before}` : "";
+    return await api.get<TopicDetail>(`/api/v1/forums/topics/${topicId}${qs}`);
   } catch {
     return null;
   }

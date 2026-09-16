@@ -9,14 +9,17 @@ export const dynamic = "force-dynamic";
 
 export default async function TopicPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ before?: string }>;
 }) {
   const { id } = await params;
+  const { before } = await searchParams;
   const topicId = Number(id);
   const { dict, locale } = await getDict();
   if (!Number.isFinite(topicId)) notFound();
-  const detail = await getPosts(topicId);
+  const detail = await getPosts(topicId, before ? Number(before) : undefined);
   if (!detail || detail.posts.length === 0) notFound();
   // 版主「移动到」下拉用：仅 can_mod 时才需要
   const forums = detail.can_mod ? await getForums() : [];
@@ -37,6 +40,7 @@ export default async function TopicPage({
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-2xl">
           {detail.sticky && <span className="mr-1 text-coral">📌</span>}
+          {detail.digest && <span className="mr-1 text-[var(--baozi-orange-dark)]">⭐</span>}
           {detail.locked && <span className="mr-1">🔒</span>}
           {detail.title}
         </h1>
@@ -46,8 +50,18 @@ export default async function TopicPage({
           topicId={topicId}
           sticky={detail.sticky}
           locked={detail.locked}
+          digest={detail.digest ?? false}
           forums={forums.map((f) => ({ id: f.id, name: f.name }))}
         />
+      )}
+      {/* 长帖游标（NP 分页口径）：帖子按 id < before 取上一窗口，链接翻页保 SSR 简单可靠 */}
+      {detail.has_more && detail.posts[0] && (
+        <Link
+          href={`/forums/topic/${topicId}?before=${detail.posts[0].id}`}
+          className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2 text-center text-sm text-sky hover:border-sky"
+        >
+          {dict.forums.loadEarlier}
+        </Link>
       )}
       <table className="nexus-table">
         <tbody>

@@ -9,7 +9,7 @@ use dashmap::DashMap;
 use std::collections::HashMap;
 use std::time::Duration;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct PeerKey {
     /// info_hash 的 hex 编码（40 字符），与 DB/事件流口径一致
     pub info_hash: String,
@@ -22,7 +22,7 @@ pub const CONN_UNTESTED: i8 = -1;
 pub const CONN_DEAD: i8 = 0;
 pub const CONN_OK: i8 = 1;
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[allow(dead_code)] // uploaded/downloaded/user_id 供后续审计扩展读取（all_unreachable 等）
 pub struct Peer {
     pub key: PeerKey,
@@ -84,6 +84,32 @@ const MAX_PEERS_RESPONSE: usize = 50;
 impl PeerTable {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// 全量导出（Redis 快照用）：(info_hash, peers) 列表。
+    /// 大表下 JSON 体积 ≈ 每人 ~200B；10 万 peer ≈ 20MB，60s 周期可接受。
+    pub fn export(&self) -> Vec<(String, Vec<Peer>)> {
+        self.swarms
+            .iter()
+            .map(|s| (s.key().clone(), s.peers.values().cloned().collect()))
+            .collect()
+    }
+
+    /// 快照恢复（启动预热）：客户端 30min 内重 announce 可自愈，预热只为
+    /// 缩短空窗期——只恢复未超时的 peer（按 last_seen + 分档 TTL 判定）。
+    pub fn restore(&self, snap: Vec<(String, Vec<Peer>)>) -> usize {
+        let now = chrono::Utc::now();
+        let mut n = 0;
+        for (_ih, peers) in snap {
+            for p in peers {
+                let ttl = if p.left == 0 { SEEDER_TIMEOUT } else { PEER_TIMEOUT };
+                if now.signed_duration_since(p.last_seen).to_std().unwrap_or_default() < ttl {
+                    self.upsert(p);
+                    n += 1;
+                }
+            }
+        }
+        n
     }
 
     /// 活跃 peer 总数（/metrics 用；近似值——不触发 GC，精确性由各桶惰性 GC 保证）

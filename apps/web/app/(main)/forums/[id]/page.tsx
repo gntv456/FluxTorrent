@@ -55,6 +55,11 @@ export default async function ForumPage({
             {topics.map((t) => (
               <tr key={t.id}>
                 <td>
+                  {t.digest && (
+                    <span aria-label="精华" className="mr-1 text-[var(--baozi-orange-dark)]">
+                      ⭐
+                    </span>
+                  )}
                   {t.sticky && (
                     <span className="mr-1 text-xs font-bold text-coral" title="置顶">
                       📌

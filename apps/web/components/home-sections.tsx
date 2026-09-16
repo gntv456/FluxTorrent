@@ -388,7 +388,7 @@ export function HomeSections() {
               <dl className="home-site-data__column">
                 <div className="home-site-data__item is-primary">
                   <dt>{t.sdTodayUsers}</dt>
-                  <dd className="num">{home.site_data.peers.toLocaleString()}</dd>
+                  <dd className="num">{home.site_data.users.toLocaleString()}</dd>
                 </div>
                 <div className="home-site-data__item">
                   <dt>{dict.home.torrents}</dt>

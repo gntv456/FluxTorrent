@@ -54,6 +54,8 @@ pub struct TorrentDetailRow {
     pub is_owner: bool,
     /// 多维属性（第八轮 Section）：kind → { dict_id, name }
     pub sections: serde_json::Value,
+    /// MediaInfo 全文（media_info.mediainfo；详情页折叠块原样展示）
+    pub mediainfo: Option<String>,
 }
 
 /// 详情页文件列表（files 表；无记录时前端隐藏该区块）
@@ -93,6 +95,15 @@ pub struct TorrentFilter {
     /// 搜索范围（旧站口径）：0=标题(默认) 1=副标题/简介 3=发布者 4=IMDb
     #[serde(default)]
     pub search_area: Option<i32>,
+    /// 存活（0102）：None=默认(仅活种, 兼容 include_dead) Some(0)=全部 Some(1)=仅活种 Some(2)=仅断种
+    #[serde(default)]
+    pub alive: Option<i16>,
+    /// 种子状态（0102，viewer 维度）：seeding/leeching/completed/incomplete/notseeding
+    #[serde(default)]
+    pub status: Option<String>,
+    /// 审核状态（0102）：0=全部 1=通过 2=被拒（需 see_banned 由入口剥离）
+    #[serde(default)]
+    pub approval: Option<i16>,
     /// 匹配模式：0=AND 模糊(默认) 2=精确等值
     #[serde(default)]
     pub search_mode: Option<i32>,
@@ -107,12 +118,29 @@ pub struct TorrentPage {
 
 const MAX_LIMIT: i64 = 50;
 
+fn sort_expr(sticky_expr: &str, col: &str, asc: bool) -> String {
+    let dir = if asc { "ASC" } else { "DESC" };
+    format!("{sticky_expr}, {col} {dir}, t.id {dir}")
+}
+
 pub async fn list_torrents(
     db: &PgPool,
     filter: &TorrentFilter,
     cursor: Option<i64>,
     limit: i64,
 ) -> DomainResult<TorrentPage> {
+    list_torrents_as(db, filter, cursor, limit, 0).await
+}
+
+/// viewer 版本（0102 种子状态筛选需要 snatches.user_id 视角；0 = 无人视角 = 状态筛选空转）
+pub async fn list_torrents_as(
+    db: &PgPool,
+    filter: &TorrentFilter,
+    cursor: Option<i64>,
+    limit: i64,
+    viewer: i64,
+) -> DomainResult<TorrentPage> {
+    let viewer_sql = viewer.to_string();
     let limit = limit.clamp(1, MAX_LIMIT);
     list_torrents_noclamp(db, filter, cursor, limit).await
 }
@@ -126,6 +154,8 @@ pub async fn list_torrents_noclamp(
     limit: i64,
 ) -> DomainResult<TorrentPage> {
     let limit = limit.max(1);
+    let _ = limit;
+    let viewer_sql = "0".to_string();
     // 匹配模式（旧站 torrents.php 口径）：0/缺省 = AND 模糊；2 = 精确等值（不带通配）
     let exact = filter.search_mode == Some(2);
     let pattern = filter.search.as_deref().map(|s| {
@@ -144,30 +174,83 @@ pub async fn list_torrents_noclamp(
     // 置顶口径（0063 起；0089 扩展二级置顶）：pos_state 1=一级 2=二级，pos_state_until 到期自动回落，
     // 旧列 sticky 仍被官种联动使用——「任一生效即置顶」，一级 > 二级 > 普通置顶。
     let sticky_expr = "(GREATEST(t.sticky::int, CASE WHEN t.pos_state IN (1, 2) AND (t.pos_state_until IS NULL OR t.pos_state_until > now()) THEN CASE t.pos_state WHEN 1 THEN 2 WHEN 2 THEN 1 ELSE 0 END ELSE 0 END)) DESC";
-    let order = match filter.sort.as_deref() {
-        Some("seeders") => format!("{sticky_expr}, t.seeders DESC, t.id DESC"),
-        Some("size") => format!("{sticky_expr}, t.size DESC, t.id DESC"),
-        Some("completed") => format!("{sticky_expr}, t.times_completed DESC, t.id DESC"),
+    // 表头排序（NP colhead 口径）：asc 前缀反转方向；comments = 评论数
+    let (key, asc) = match filter.sort.as_deref() {
+        Some(s) if s.ends_with("_asc") => (&s[..s.len() - 4], true),
+        other => (other.unwrap_or(""), false),
+    };
+    let order = match key {
+        "seeders" => sort_expr(&sticky_expr, "t.seeders", asc),
+        "size" => sort_expr(&sticky_expr, "t.size", asc),
+        "completed" => sort_expr(&sticky_expr, "t.times_completed", asc),
+        "comments" => sort_expr(
+            &sticky_expr,
+            "(SELECT count(*) FROM comments c WHERE c.torrent_id = t.id)",
+            asc,
+        ),
         _ => format!("{sticky_expr}, t.id DESC"),
     };
     // 第八轮 Section 多维筛选：每个维度一个子查询谓词（kind 以 section_kinds 存在性校验 + i64 内插，无注入面）
+    // 多维多选（0102）：同维度多值 OR（= ANY），跨维度 AND
     let mut sec_sql = String::new();
-    for (kind, dict_id) in &filter.sections {
-        if !crate::admin_p3_http::is_custom_kind(db, kind).await {
-            continue;
+    {
+        use std::collections::BTreeMap;
+        let mut by_kind: BTreeMap<&str, Vec<i64>> = BTreeMap::new();
+        for (kind, dict_id) in &filter.sections {
+            by_kind.entry(kind).or_default().push(*dict_id);
         }
-        sec_sql.push_str(&format!(
-            " AND t.id IN (SELECT torrent_id FROM torrent_sections WHERE kind = '{kind}' AND dict_id = {dict_id})"
-        ));
+        for (kind, ids) in by_kind {
+            if !crate::admin_p3_http::is_custom_kind(db, kind).await {
+                continue;
+            }
+            let list = ids
+                .iter()
+                .map(|i| i.to_string())
+                .collect::<Vec<_>>()
+                .join(",");
+            sec_sql.push_str(&format!(
+                " AND t.id IN (SELECT torrent_id FROM torrent_sections WHERE kind = '{kind}' AND dict_id = ANY(ARRAY[{list}]::bigint[]))"
+            ));
+        }
     }
     // 搜索范围分流（旧站口径）：0=标题+全字段(默认) 1=副标题/简介 3=发布者 4=IMDb
     let esc = if exact { "" } else { " ESCAPE chr(92)" };
     let search_pred = match filter.search_area.unwrap_or(0) {
-        1 => format!("AND ($7::text IS NULL OR t.small_descr ILIKE $7{esc} OR t.descr ILIKE $7{esc})"),
-        3 => format!("AND ($7::text IS NULL OR u.username ILIKE $7{esc})"),
-        4 => format!("AND ($7::text IS NULL OR t.media_info->>'imdb' ILIKE $7{esc} OR t.descr ILIKE $7{esc})"),
-        _ => format!("AND ($7::text IS NULL OR t.name ILIKE $7{esc}                OR t.small_descr ILIKE $7{esc}                OR t.descr ILIKE $7{esc}                OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7{esc}))"),
+        1 => format!("AND ($6::text IS NULL OR t.small_descr ILIKE $6{esc} OR t.descr ILIKE $6{esc})"),
+        3 => format!("AND ($6::text IS NULL OR u.username ILIKE $6{esc})"),
+        4 => format!("AND ($6::text IS NULL OR t.media_info->>'imdb' ILIKE $6{esc} OR t.descr ILIKE $6{esc})"),
+        _ => format!("AND ($6::text IS NULL OR t.name ILIKE $6{esc}                OR t.small_descr ILIKE $6{esc}                OR t.descr ILIKE $6{esc}                OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $6{esc}))"),
     };
+
+    // 存活三态（0102）：alive 显式给出时覆盖 include_dead（0=全部 1=活种 2=断种）
+    let alive_pred = match filter.alive {
+        Some(0) => String::new(),
+        Some(2) => " AND t.seeders = 0".into(),
+        _ => {
+            if filter.include_dead {
+                String::new()
+            } else {
+                " AND t.seeders > 0".into()
+            }
+        }
+    };
+    // 审核状态（0102）：0=全部 1=通过（默认） 2=被拒（入口已按 see_banned 剥离）
+    let approval_pred: String = match filter.approval {
+        Some(0) | None => " AND t.approval_status = 1".into(),
+        Some(2) => " AND t.approval_status IN (2, 3)".into(),
+        Some(1) => " AND t.approval_status = 1".into(),
+        Some(_) => " AND t.approval_status = 1".into(),
+    };
+    // 种子状态（0102，viewer 维度）：需要 snatches 存在性判断（viewer 由调用方注入 SQL 文本，参数化见 bind）
+    let status_pred = match filter.status.as_deref() {
+        Some("seeding") => " AND EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.seeding)".to_string(),
+        Some("leeching") => " AND EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.leeching)".to_string(),
+        Some("completed") => " AND EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.completed_at IS NOT NULL)".to_string(),
+        Some("incomplete") => " AND EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.completed_at IS NULL AND (s.uploaded > 0 OR s.downloaded > 0))".to_string(),
+        Some("notseeding") => " AND NOT EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.seeding)".to_string(),
+        _ => String::new(),
+    }
+    .replace("{viewer}", &viewer_sql);
 
     let sql = format!(
         r#"
@@ -199,19 +282,21 @@ pub async fn list_torrents_noclamp(
                t.created_at
         FROM torrents t
         LEFT JOIN users u ON u.id = t.owner_id
-        WHERE (t.approval_status = 1 OR $11::bool)
+        WHERE (t.approval_status = 1 OR $10::bool)
           AND ($1::int[] IS NULL OR t.category_id = ANY($1))
           AND ($2::int IS NULL OR t.medium_id = $2)
           AND ($3::int IS NULL OR t.grade_id = $3)
           AND ($4::int IS NULL OR t.edition_id = $4)
           AND ($5::bool IS NULL OR t.official_tag = $5)
-          AND ($6::bool OR t.seeders > 0)
+          {alive_pred}
+          {approval_pred}
+          {status_pred}
           {search_pred}
-          AND ($8::bigint IS NULL OR t.id < $8)
-          AND ($10::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $10))
+          AND ($7::bigint IS NULL OR t.id < $7)
+          AND ($9::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $9))
           {sec_sql}
         ORDER BY {order}
-        LIMIT $9
+        LIMIT $8
         "#
     );
     let rows = sqlx::query_as::<_, TorrentRow>(&sql)
@@ -220,7 +305,6 @@ pub async fn list_torrents_noclamp(
         .bind(filter.grade_id)
         .bind(filter.edition_id)
         .bind(filter.official)
-        .bind(filter.include_dead)
         .bind(&pattern)
         .bind(cursor)
         .bind(limit + 1)
@@ -230,26 +314,30 @@ pub async fn list_torrents_noclamp(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM torrents t WHERE (t.approval_status = 1 OR $8::bool) \
+    // 计数与列表同口径（0093 修复）：此前 count 只用「分类/媒介/学段/版本/官种/死种/标题搜索」，
+    // 多维筛选、标签、搜索范围（副标题/发布者/IMDb）一律不计入 —— 页面会显示「共 N 个」却零行。
+    let count_sql = format!(
+        "SELECT count(*) FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
+         WHERE (t.approval_status = 1 OR $7::bool) \
          AND ($1::int[] IS NULL OR t.category_id = ANY($1)) AND ($2::int IS NULL OR t.medium_id = $2) \
          AND ($3::int IS NULL OR t.grade_id = $3) AND ($4::int IS NULL OR t.edition_id = $4) \
-         AND ($5::bool IS NULL OR t.official_tag = $5) AND ($6::bool OR t.seeders > 0) \
-         AND ($7::text IS NULL OR t.name ILIKE $7 ESCAPE chr(92) OR t.small_descr ILIKE $7 ESCAPE chr(92) \
-          OR t.descr ILIKE $7 ESCAPE chr(92) \
-          OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $7 ESCAPE chr(92)))",
-    )
-    .bind(filter.category_id.clone())
-    .bind(filter.medium_id)
-    .bind(filter.grade_id)
-    .bind(filter.edition_id)
-    .bind(filter.official)
-    .bind(filter.include_dead)
-    .bind(&pattern)
-    .bind(filter.include_unapproved)
-    .fetch_one(db)
-    .await
-    .unwrap_or(0);
+         AND ($5::bool IS NULL OR t.official_tag = $5) {alive_pred} {approval_pred} {status_pred} \
+         {search_pred} \
+         AND ($8::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $8)) \
+         {sec_sql}",
+    );
+    let total: i64 = sqlx::query_scalar(&count_sql)
+        .bind(filter.category_id.clone())
+        .bind(filter.medium_id)
+        .bind(filter.grade_id)
+        .bind(filter.edition_id)
+        .bind(filter.official)
+        .bind(&pattern)
+        .bind(filter.include_unapproved)
+        .bind(filter.tag_id)
+        .fetch_one(db)
+        .await
+        .unwrap_or(0);
 
     let has_more = rows.len() as i64 > limit;
     let items = rows.into_iter().take(limit as usize).collect::<Vec<_>>();
@@ -332,7 +420,7 @@ fn items_or_not_found(mut v: Vec<TorrentRow>, id: i64) -> DomainResult<TorrentRo
 pub async fn get_torrent_detail(db: &PgPool, id: i64, viewer: i64) -> DomainResult<TorrentDetailRow> {
     let row = sqlx::query_as::<_, TorrentDetailRow>(
         r#"
-        SELECT t.id, t.descr, t.numfiles, t.price,
+        SELECT t.id, t.descr, t.numfiles, t.price, t.media_info->>'mediainfo' AS mediainfo,
                (t.owner_id = $2) AS is_owner,
                EXISTS(SELECT 1 FROM torrent_purchases p WHERE p.torrent_id = t.id AND p.user_id = $2) AS purchased,
                (SELECT count(*) FROM thanks th WHERE th.torrent_id = t.id) AS thanks_count,
@@ -341,7 +429,8 @@ pub async fn get_torrent_detail(db: &PgPool, id: i64, viewer: i64) -> DomainResu
                    t.created_at,
                    COALESCE((SELECT max(s.completed_at) FROM snatches s WHERE s.torrent_id = t.id), t.created_at)
                ) AS last_action,
-               (t.times_completed * 2 + 1)::bigint AS views
+               (t.times_completed * 2 + 1)::bigint AS views,
+               '{}'::jsonb AS sections
         FROM torrents t
         WHERE t.id = $1 AND t.approval_status = 1
         "#,
@@ -619,12 +708,16 @@ pub struct SnatchRow {
     pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
     pub seeding: bool,
     pub leeching: bool,
+    /// BT 客户端 UA（0098 viewsnatches「客户端」列）
+    pub agent: String,
+    /// 下载进度，万分比 0-10000（0098；做种恒 10000）
+    pub progress: i32,
 }
 
 pub async fn list_snatches(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<SnatchRow>> {
     sqlx::query_as::<_, SnatchRow>(
         "SELECT s.user_id, u.username, s.uploaded, s.downloaded, s.seeded_seconds, \
-                s.completed_at, s.seeding, s.leeching \
+                s.completed_at, s.seeding, s.leeching, s.agent, s.progress \
          FROM snatches s JOIN users u ON u.id = s.user_id \
          WHERE s.torrent_id = $1 \
          ORDER BY s.completed_at DESC NULLS LAST LIMIT 100",

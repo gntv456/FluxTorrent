@@ -32,15 +32,21 @@ const ICONS = {
 };
 
 /** 快捷工具条（好学站 userbar 口径）：收件箱/发件箱/作弊者/举报信箱/管理组信箱/社交/RSS。
- *  仅图标按钮，4+3 上下两行；RSS 直达获取RSS页（getrss.php 同款）。 */
-export function UserTools() {
+ *  仅图标按钮，4+3 上下两行；RSS 直达获取RSS页（getrss.php 同款）。
+ *  收件箱按钮带未读数角标（NP userbar 邮箱图标同款）。 */
+export function UserTools({ unread = 0 }: { unread?: number }) {
   const { dict } = useI18n();
   const t = dict.usertools;
 
   return (
     <div className="usertools usertools--grid">
       <a className="userbar-tool userbar-tool--icon" href="/messages" title={t.inbox} aria-label={t.inbox}>
-        <Icon {...ICONS.inbox} />
+        <span className="relative inline-flex">
+          <Icon {...ICONS.inbox} />
+          {unread > 0 && (
+            <span className="userbar-tool__badge num">{unread > 99 ? "99+" : unread}</span>
+          )}
+        </span>
       </a>
       <a className="userbar-tool userbar-tool--icon" href="/messages?box=sent" title={t.sentbox} aria-label={t.sentbox}>
         <Icon {...ICONS.sent} />

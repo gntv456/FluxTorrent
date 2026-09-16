@@ -962,9 +962,46 @@ async fn user_assign_jixiao(
 /// 任一步失败整体回滚；返回 anyhow::Result 便于批量调用方收集逐户失败原因。
 pub async fn delete_user_cascade(db: &sqlx::PgPool, uid: i64) -> anyhow::Result<()> {
     let mut tx = db.begin().await?;
+    // ── 软删化（账本纪律与风控追溯，0097）─────────────────────────────
+    // 旧版物理 DELETE spark_ledger / login_events / hr_* / leak_events / snatches：
+    // 违背「一切动账经 ledger 流水」的自家纪律（全局对账视图失真），且作弊者删号
+    // 重注册后无历史证据可查。改为：
+    //   1) users 行保留并匿名化（status=3 软删态；用户名/邮箱随机改写释放唯一索引；
+    //      passkey 作废防 announce 冒用；pass_hash 置不可登录值）+ 撤销全部 JWT。
+    //   2) 账本/风控证据表不再删除：spark_ledger、login_events、hr_snapshots、
+    //      hr_violations、leak_events、snatches、traffic_ledger（cheat_events 本无 FK）。
+    //   3) 社交/娱乐数据维持物理清理（无人引用、无需留痕）。
+    let softened: usize = sqlx::query(
+        r#"
+        UPDATE users SET
+            username = 'deleted-' || id::text || '-' || substr(md5(random()::text), 1, 8),
+            email = 'deleted-' || id::text || '-' || substr(md5(random()::text), 1, 8) || '@deleted.invalid',
+            pass_hash = '!', passkey = 'deleted-' || id::text,
+            title = NULL, avatar_url = NULL, status = 3
+        WHERE id = $1 AND status >= 2
+        "#,
+    )
+    .bind(uid)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| anyhow::anyhow!(format!("uid {uid}: {e}")))?
+    .rows_affected()
+    .try_into()
+    .unwrap_or(0);
+    if softened == 0 {
+        // 竞态：账号已被恢复/删除——按无行处理，幂等返回
+        tx.commit().await?;
+        return Ok(());
+    }
+    sqlx::query(
+        "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, EXTRACT(EPOCH FROM now())::bigint)          ON CONFLICT (user_id) DO UPDATE SET nbf = GREATEST(token_revocations.nbf, EXCLUDED.nbf)",
+    )
+    .bind(uid)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| anyhow::anyhow!(format!("uid {uid}: {e}")))?;
     for sql in [
-        // —— 本人拥有的业务数据（删） ——
-        "DELETE FROM spark_ledger WHERE user_id = $1",
+        // —— 本人拥有的业务数据（删；账本/风控证据除外，见函数头） ——
         "DELETE FROM attendance WHERE user_id = $1",
         "DELETE FROM task_claims WHERE user_id = $1",
         "DELETE FROM bank_demand_accounts WHERE user_id = $1",
@@ -986,14 +1023,10 @@ pub async fn delete_user_cascade(db: &sqlx::PgPool, uid: i64) -> anyhow::Result<
         "DELETE FROM bookmarks WHERE user_id = $1",
         "DELETE FROM api_tokens WHERE user_id = $1",
         "DELETE FROM password_resets WHERE user_id = $1",
-        "DELETE FROM login_events WHERE user_id = $1",
         "DELETE FROM invites WHERE inviter_id = $1 OR used_by = $1",
         "DELETE FROM invite_quota WHERE user_id = $1",
         "DELETE FROM friendships WHERE user_id = $1 OR friend_id = $1",
-        "DELETE FROM snatches WHERE user_id = $1",
         "DELETE FROM thanks WHERE user_id = $1",
-        "DELETE FROM hr_snapshots WHERE user_id = $1 OR pardoned_by = $1",
-        "DELETE FROM hr_violations WHERE user_id = $1 OR resolved_by = $1",
         "DELETE FROM farm_plots WHERE user_id = $1",
         "DELETE FROM farm_harvests WHERE user_id = $1",
         "DELETE FROM fun_items WHERE user_id = $1",
@@ -1009,7 +1042,6 @@ pub async fn delete_user_cascade(db: &sqlx::PgPool, uid: i64) -> anyhow::Result<
         "DELETE FROM subtitles WHERE user_id = $1",
         "DELETE FROM seed_milestones WHERE user_id = $1",
         "DELETE FROM jixiao_claims WHERE user_id = $1",
-        "DELETE FROM leak_events WHERE user_id = $1",
         "DELETE FROM appeals WHERE user_id = $1",
         "DELETE FROM download_keys WHERE user_id = $1",
         "DELETE FROM shop_orders WHERE user_id = $1",
@@ -1045,8 +1077,6 @@ pub async fn delete_user_cascade(db: &sqlx::PgPool, uid: i64) -> anyhow::Result<
         "UPDATE user_modify_logs SET modifier = NULL WHERE modifier = $1",
         "UPDATE username_change_logs SET operator = NULL WHERE operator = $1",
         "UPDATE users SET invited_by = NULL WHERE invited_by = $1",
-        // —— 收尾 ——
-        "DELETE FROM users WHERE id = $1 AND status >= 2",
     ] {
         sqlx::query(sql)
             .bind(uid)

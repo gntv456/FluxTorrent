@@ -165,11 +165,13 @@ export function TopicModActions({
   topicId,
   sticky,
   locked,
+  digest,
   forums,
 }: {
   topicId: number;
   sticky: boolean;
   locked: boolean;
+  digest: boolean;
   forums: { id: number; name: string }[];
 }) {
   const { dict } = useI18n();
@@ -210,6 +212,9 @@ export function TopicModActions({
       </button>
       <button className={btn} disabled={busy} onClick={() => manage({ locked: !locked })}>
         {locked ? "解锁" : "锁定"}
+      </button>
+      <button className={btn} disabled={busy} onClick={() => manage({ digest: !digest })}>
+        {digest ? "取消精华" : "加精"}
       </button>
       <select
         value={moveTo}

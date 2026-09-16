@@ -40,6 +40,41 @@ export function UploadForm() {
   const [smallDescr, setSmallDescr] = useState("");
   const [descr, setDescr] = useState("");
   const [poster, setPoster] = useState("");
+  const [mediainfo, setMediainfo] = useState("");
+  const [attachBusy, setAttachBusy] = useState(false);
+  const [attachMsg, setAttachMsg] = useState<string | null>(null);
+
+  /** 图床上传（0100）：POST /attachments，成功后把 [img]URL[/img] 追加进简介 */
+  async function uploadAttachment(file: File) {
+    setAttachBusy(true);
+    setAttachMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const token = localStorage.getItem("flux.token") ?? "";
+      const res = await fetch("/api/v1/attachments", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const j = (await res.json()) as {
+        data?: { url?: string; deduplicated?: boolean };
+        message?: string;
+      };
+      if (!res.ok || !j.data?.url) throw new Error(j.message ?? "上传失败");
+      const tag = file.type.startsWith("image/")
+        ? `[img]${j.data.url}[/img]`
+        : `[url=${j.data.url}]${file.name}[/url]`;
+      setDescr((prev) => (prev.trim() ? `${prev.trim()}
+
+` : "") + tag);
+      setAttachMsg(j.data.deduplicated ? "秒传成功（服务器已有同文件）" : "上传成功，已插入简介");
+    } catch (e) {
+      setAttachMsg(e instanceof Error ? e.message : "上传失败");
+    } finally {
+      setAttachBusy(false);
+    }
+  }
   const [anonymous, setAnonymous] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -164,6 +199,7 @@ export function UploadForm() {
       if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
       if (descr.trim()) qs.set("descr", descr.trim());
       if (poster.trim()) qs.set("poster", poster.trim());
+      if (mediainfo.trim()) qs.set("mediainfo", mediainfo.trim());
       // 第八轮 Section 多维：非空维度打包成 sections JSON
       const sections = Object.fromEntries(
         Object.entries(secVals).filter(([, v]) => v),
@@ -336,6 +372,39 @@ export function UploadForm() {
                 {nfoName ? `📄 ${nfoName}` : (dict.upload.nfoHint ?? "可选；经典 NFO 字符画支持（CP437 / UTF-8 均可）")}
               </label>
             </div>,
+          )}
+          {row(
+            dict.upload.attachLabel ?? "附件 / 截图",
+            <div className="flex flex-col gap-1">
+              <label className="flex min-h-[44px] cursor-pointer items-center justify-center rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--head-b)] px-3 text-sm text-[var(--text-body)] hover:border-[var(--baozi-orange)]">
+                <input
+                  type="file"
+                  className="sr-only"
+                  accept="image/png,image/jpeg,image/gif,image/webp,image/avif,application/pdf,text/plain"
+                  disabled={attachBusy}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadAttachment(f);
+                    e.currentTarget.value = "";
+                  }}
+                />
+                {attachBusy
+                  ? "上传中…"
+                  : (dict.upload.attachHint ?? "可选；png/jpg/gif/webp/avif/pdf/txt ≤ 8MiB，上传后自动插入简介")}
+              </label>
+              {attachMsg && <p className="text-xs text-sky-deep">{attachMsg}</p>}
+            </div>,
+          )}
+          {row(
+            dict.upload.mediainfoLabel ?? "MediaInfo",
+            <textarea
+              rows={4}
+              value={mediainfo}
+              onChange={(e) => setMediainfo(e.target.value)}
+              placeholder={dict.upload.mediainfoHint ?? "可选；粘贴 MediaInfo 摘要，详情页折叠展示"}
+              className="w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-2 font-mono text-xs"
+              maxLength={60000}
+            />,
           )}
           {row(
             dict.upload.price ?? "价格",

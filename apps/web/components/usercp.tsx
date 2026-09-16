@@ -9,6 +9,7 @@ import { LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { PushSettings } from "@/components/push-settings";
 import { TwoFactorSetup } from "@/components/twofa-setup";
 import { ApiTokens } from "@/components/api-tokens";
+import { LoginHistory } from "@/components/login-history";
 import { NoticePrefsCard } from "@/components/notice-prefs";
 import { WishlistPanel } from "@/components/wishlist";
 
@@ -1401,6 +1402,13 @@ function SecurityTab({
           <td className="rowhead">{t.pushNotify}</td>
           <td className="rowfollow p-0">
             <PushSettings />
+          </td>
+        </tr>
+        {/* 登录历史（NP 口径）：最近 20 条只读，异常登录一眼可见 */}
+        <tr>
+          <td className="rowhead nowrap">{t.loginHistory}</td>
+          <td className="rowfollow p-0">
+            <LoginHistory />
           </td>
         </tr>
         {/* 通知偏好（0075）：站内通知事件类开关 */}

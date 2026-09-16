@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 
 interface TaskRow {
   id: number;
@@ -77,10 +78,23 @@ function fmtBytes(n: number): string {
   return `${v >= 100 ? v.toFixed(0) : v.toFixed(2)} ${units[i]}`;
 }
 
+/** 五档等级 key → 中文档名（与 DB subtitle 对应；NP 站档名即英文，这里展示中文更友好） */
+const TIER_LABELS: Record<string, string> = {
+  master: "骨灰",
+  ultimate: "走火入魔",
+  extreme: "烧糊涂",
+  veteran: "高烧",
+  insane: "中烧",
+};
+function tierLabel(tier: string | null | undefined): string {
+  if (!tier) return "";
+  return TIER_LABELS[tier.toLowerCase()] ?? tier;
+}
+
 /** 任务系统（参考站 task.php 复刻）：TASK SYSTEM hero + 01 规则 + 02 可领取任务（五档卡）
  *  + 03 任务商店 + 06 最新动态 + 07 任务统计 + 08 我的任务记录 */
 export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
-  const { dict, currency } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const t = dict.tasks2;
   const [tasks, setTasks] = useState<TaskRow[] | null>(null);
   const [ov, setOv] = useState<TaskOverview | null>(null);
@@ -173,7 +187,7 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
           {tierTasks.map((task) => (
             <article key={task.id} className={`task-tier-card task-tier-card--${task.tier}`}>
               <header>
-                <h3>{task.name}</h3>
+                <h3>{tierLabel(task.tier)}</h3>
                 <span>{task.subtitle}</span>
               </header>
               <dl>
@@ -269,7 +283,7 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
                 <div>
                   <dt>{t.shopRequire}</dt>
                   <dd>
-                    {s.require_tier.toUpperCase()} × {s.require_count}
+                    {tierLabel(s.require_tier)} × {s.require_count}
                   </dd>
                 </div>
                 <div>
@@ -312,8 +326,8 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
                 <p>
                   <strong>{f.user}</strong> {t.feedAction} {f.task}
                 </p>
-                <time>{new Date(f.at).toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" })}{" "}
-                  {new Date(f.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</time>
+                <time>{new Date(f.at).toLocaleDateString(dateLocale(locale), { month: "2-digit", day: "2-digit" })}{" "}
+                  {new Date(f.at).toLocaleTimeString(dateLocale(locale), { hour: "2-digit", minute: "2-digit" })}</time>
               </div>
             ))}
             {(ov?.feed ?? []).length === 0 && <p className="text-sub">{t.feedEmpty}</p>}
@@ -343,7 +357,7 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
           <div className="task-stats-bars">
             {(ov?.stats.tiers ?? []).map((s) => (
               <div key={s.tier ?? "?"}>
-                <span>{(s.tier ?? "?").charAt(0).toUpperCase() + (s.tier ?? "?").slice(1)}</span>
+                <span>{tierLabel(s.tier)}</span>
                 <progress max={100} value={s.pct} />
                 <b className="num">{s.pct.toFixed(1)}%</b>
               </div>
@@ -377,8 +391,8 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
                     {r.status === 0 ? t.stOngoing : r.status === 1 ? t.stDone : t.stFailed}
                   </td>
                   <td className="text-xs">{progressCells(r.metric, r.current, fmtBytes)}</td>
-                  <td>{new Date(r.claimed_at).toLocaleString("zh-CN")}</td>
-                  <td>{r.settled_at ? new Date(r.settled_at).toLocaleString("zh-CN") : "—"}</td>
+                  <td>{new Date(r.claimed_at).toLocaleString(dateLocale(locale))}</td>
+                  <td>{r.settled_at ? new Date(r.settled_at).toLocaleString(dateLocale(locale)) : "—"}</td>
                 </tr>
               ))}
               {(ov?.my_records ?? []).length === 0 && (

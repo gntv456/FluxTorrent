@@ -19,6 +19,13 @@ async function loadPublic<T>(path: string): Promise<T | null> {
   }
 }
 
+/** 表头排序切换：当前列降序 → 升序（_asc）→ 取消；其他列 → 降序 */
+function toggleSort(cur: string | undefined, key: string): string | undefined {
+  if (cur === key) return `${key}_asc`;
+  if (cur === `${key}_asc`) return undefined;
+  return key;
+}
+
 /** 在现有参数上增量修改，保留其余筛选（修复翻页丢参数） */
 function withParam(
   sp: Record<string, string | undefined>,
@@ -76,8 +83,15 @@ export default async function TorrentsPage({
     // 多选分类（0088）：后端 category_ids 兼容逗号串
     category_id: sp.category_id,
     official: sp.official ? sp.official === "1" : undefined,
-    include_dead: sp.include_dead === "1",
     search: sp.search,
+    // 搜索范围/匹配模式（NP 口径 0=标题 1=简介 3=发布者 4=IMDb；mode 2=精确）：
+    // 落在 URL 却不转发会让下拉选择静默失效
+    search_area: sp.search_area || undefined,
+    search_mode: sp.search_mode || undefined,
+    // 0102 高级搜索三态 + 多维多选（secParams 已是逗号串，后端 ANY 解析）
+    alive: sp.alive || undefined,
+    status: sp.status || undefined,
+    approval: sp.approval || undefined,
     sort: sp.sort,
     tag_id: sp.tag_id ? Number(sp.tag_id) : undefined,
     cursor: sp.cursor,
@@ -116,7 +130,11 @@ export default async function TorrentsPage({
                       <span className="torrent-search-box__visually-hidden">
                         {dict.torrents2.scope}：
                       </span>
-                      <select name="search_area" aria-label={dict.torrents2.scope}>
+                      <select
+                        name="search_area"
+                        defaultValue={sp.search_area ?? "0"}
+                        aria-label={dict.torrents2.scope}
+                      >
                         <option value="0">{dict.torrents2.areaTitle}</option>
                         <option value="1">{dict.torrents2.areaDescr}</option>
                         <option value="3">{dict.torrents2.areaUploader}</option>
@@ -140,7 +158,11 @@ export default async function TorrentsPage({
                       <span className="torrent-search-box__visually-hidden">
                         {dict.torrents2.mode}：
                       </span>
-                      <select name="search_mode" aria-label={dict.torrents2.mode}>
+                      <select
+                        name="search_mode"
+                        defaultValue={sp.search_mode ?? "0"}
+                        aria-label={dict.torrents2.mode}
+                      >
                         <option value="0">{dict.torrents2.modeAnd}</option>
                         <option value="2">{dict.torrents2.modeExact}</option>
                       </select>
@@ -196,16 +218,61 @@ export default async function TorrentsPage({
                           </label>
                         </fieldset>
                         <fieldset>
-                          <legend>{dict.torrents2.deadLegend}</legend>
-                          <label className="torrent-search-box__cat-item">
-                            <input
-                              type="checkbox"
-                              name="include_dead"
-                              value="1"
-                              defaultChecked={sp.include_dead === "1"}
-                            />
-                            {dict.torrents2.inclDead}
-                          </label>
+                          <legend>{dict.torrents2.aliveLegend ?? "存活"}</legend>
+                          {[
+                            { v: "", label: dict.torrents2.aliveAll ?? "全部" },
+                            { v: "2", label: dict.torrents2.aliveDead ?? "包括断种" },
+                            { v: "1", label: dict.torrents2.aliveAliveOnly ?? "仅活种" },
+                          ].map((o) => (
+                            <label key={o.v} className="torrent-search-box__cat-item">
+                              <input
+                                type="radio"
+                                name="alive"
+                                value={o.v}
+                                defaultChecked={(sp.alive ?? "") === o.v}
+                              />
+                              {o.label}
+                            </label>
+                          ))}
+                        </fieldset>
+                        <fieldset>
+                          <legend>{dict.torrents2.statusLegend ?? "种子状态"}</legend>
+                          {[
+                            { v: "", label: dict.torrents2.statusAll ?? "全部" },
+                            { v: "seeding", label: dict.torrents2.stSeeding ?? "当前做种" },
+                            { v: "leeching", label: dict.torrents2.stLeeching ?? "当前下载" },
+                            { v: "completed", label: dict.torrents2.stCompleted ?? "完成种子" },
+                            { v: "incomplete", label: dict.torrents2.stIncomplete ?? "未完成种子" },
+                            { v: "notseeding", label: dict.torrents2.stNotSeeding ?? "未做种种子" },
+                          ].map((o) => (
+                            <label key={o.v} className="torrent-search-box__cat-item">
+                              <input
+                                type="radio"
+                                name="status"
+                                value={o.v}
+                                defaultChecked={(sp.status ?? "") === o.v}
+                              />
+                              {o.label}
+                            </label>
+                          ))}
+                        </fieldset>
+                        <fieldset>
+                          <legend>{dict.torrents2.approvalLegend ?? "审核状态"}</legend>
+                          {[
+                            { v: "", label: dict.torrents2.approvalAll ?? "全部" },
+                            { v: "1", label: dict.torrents2.approvalPassed ?? "通过" },
+                            { v: "2", label: dict.torrents2.approvalRejected ?? "拒绝" },
+                          ].map((o) => (
+                            <label key={o.v} className="torrent-search-box__cat-item">
+                              <input
+                                type="radio"
+                                name="approval"
+                                value={o.v}
+                                defaultChecked={(sp.approval ?? "") === o.v}
+                              />
+                              {o.label}
+                            </label>
+                          ))}
                         </fieldset>
                         <fieldset>
                           <legend>{dict.torrents2.officialLegend}</legend>
@@ -224,14 +291,22 @@ export default async function TorrentsPage({
                             <legend>{dict.torrents2.dimLegend ?? "多维筛选"}</legend>
                             <div className="torrent-search-box__cat-checks">
                               {dimKinds.map((k) => (
-                                <label key={k.kind} className="torrent-search-box__cat-item">
-                                  <select name={`sec_${k.kind}`} defaultValue={sp[`sec_${k.kind}`] ?? ""} aria-label={k.label}>
-                                    <option value="">{k.label}</option>
-                                    {(secDict?.[k.kind] ?? []).map((d) => (
-                                      <option key={d.id} value={d.id}>{d.name}</option>
-                                    ))}
-                                  </select>
-                                </label>
+                                <div key={k.kind} className="torrent-search-box__dim-group">
+                                  <span className="torrent-search-box__dim-label">{k.label}</span>
+                                  {(secDict?.[k.kind] ?? []).map((d) => (
+                                    <label key={d.id} className="torrent-search-box__cat-item">
+                                      <input
+                                        type="checkbox"
+                                        name={`sec_${k.kind}`}
+                                        value={d.id}
+                                        defaultChecked={(sp[`sec_${k.kind}`] ?? "")
+                                          .split(",")
+                                          .includes(String(d.id))}
+                                      />
+                                      {d.name}
+                                    </label>
+                                  ))}
+                                </div>
                               ))}
                             </div>
                           </fieldset>
@@ -263,23 +338,24 @@ export default async function TorrentsPage({
                 <th>
                   <a href={withParam(sp, "sort", undefined)}>{dict.torrents.colTitle}</a>
                 </th>
+                {/* 表头点击排序（NP colhead 口径）：同列再点反转升降序 */}
                 <th className="w-16" title={dict.torrents.colComments}>
-                  💬
+                  <a href={withParam(sp, "sort", toggleSort(sp.sort, "comments"))}>💬</a>
                 </th>
                 <th className="w-20" title={dict.torrents.alive}>
                   ⏱
                 </th>
                 <th className="w-20" title={dict.torrents.colSize}>
-                  💾
+                  <a href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}>💾</a>
                 </th>
                 <th className="w-16" title={dict.torrents.colSeeders}>
-                  🌱
+                  <a href={withParam(sp, "sort", toggleSort(sp.sort, "seeders"))}>🌱</a>
                 </th>
                 <th className="w-16" title={dict.torrents.colLeechers}>
                   ⬇️
                 </th>
                 <th className="w-16" title={dict.torrents.colCompleted}>
-                  ✅
+                  <a href={withParam(sp, "sort", toggleSort(sp.sort, "completed"))}>✅</a>
                 </th>
                 <th className="w-24">{dict.torrents.colActions}</th>
               </tr>
@@ -292,6 +368,16 @@ export default async function TorrentsPage({
           </table>
         </div>
       )}
+
+      {/* RSS 订阅入口（NP 列表头 RSS 图标口径）：携带当前关键字/分类跳转订阅页 */}
+      <div className="flex justify-end">
+        <a
+          href={`/getrss?keyword=${encodeURIComponent(sp.search ?? "")}&cats=${sp.category_id ?? ""}`}
+          className="text-xs text-sky hover:underline"
+        >
+          📡 {dict.getrss.title}
+        </a>
+      </div>
 
       {page.next_cursor && (
         <a

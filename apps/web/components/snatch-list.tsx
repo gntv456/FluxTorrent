@@ -14,6 +14,10 @@ interface SnatchRow {
   completed_at: string | null;
   seeding: boolean;
   leeching: boolean;
+  /** BT 客户端 UA（0098）；截断 200 */
+  agent?: string;
+  /** 下载进度，万分比 0-10000 */
+  progress?: number;
 }
 
 export function SnatchList({ torrentId }: { torrentId: number }) {
@@ -30,6 +34,8 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
     colCompleted: "完成时间",
     stSeeding: "做种中",
     stLeeching: "下载中",
+    colProgress: "进度",
+    colClient: "客户端",
   };
   const [rows, setRows] = useState<SnatchRow[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,9 +67,11 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
       <thead>
         <tr>
           <td className="colhead">{t.colUser}</td>
+          <td className="colhead">{t.colProgress}</td>
           <td className="colhead">{t.colUploaded}</td>
           <td className="colhead">{t.colDownloaded}</td>
           <td className="colhead">{t.colSeeded}</td>
+          <td className="colhead">{t.colClient}</td>
           <td className="colhead">{t.colCompleted}</td>
         </tr>
       </thead>
@@ -81,9 +89,15 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
                 <span className="ml-1 fun-status fun-status--dull">{t.stLeeching}</span>
               )}
             </td>
+            <td className="num" title={`${((r.progress ?? 0) / 100).toFixed(1)}%`}>
+              {r.seeding ? "100%" : `${((r.progress ?? 0) / 100).toFixed(0)}%`}
+            </td>
             <td className="num">{(r.uploaded / 1024 ** 3).toFixed(2)} GB</td>
             <td className="num">{(r.downloaded / 1024 ** 3).toFixed(2)} GB</td>
             <td className="num">{(r.seeded_seconds / 3600).toFixed(1)} h</td>
+            <td className="max-w-[160px] truncate text-xs text-sub" title={r.agent}>
+              {r.agent || "—"}
+            </td>
             <td className="nowrap">
               {r.completed_at ? new Date(r.completed_at).toLocaleString() : "—"}
             </td>
@@ -91,7 +105,7 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
         ))}
         {rows.length === 0 && (
           <tr>
-            <td colSpan={5} className="py-6 text-center text-sub">
+            <td colSpan={7} className="py-6 text-center text-sub">
               {t.empty}
             </td>
           </tr>

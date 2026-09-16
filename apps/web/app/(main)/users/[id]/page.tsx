@@ -39,6 +39,15 @@ interface RecentComment {
   created_at: string;
 }
 
+interface TorrentHistRow {
+  torrent_id: number;
+  name: string;
+  size: number;
+  seeders: number;
+  leechers: number;
+  seeding: boolean;
+}
+
 interface ProfileData {
   profile: Profile;
   recent_uploads: RecentUpload[];
@@ -48,18 +57,31 @@ interface ProfileData {
 /** 用户公开主页（NP userdetails.php 口径）：资料卡 + 分享率 + 近期种子/评论 */
 export default async function UserProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab } = await searchParams;
   const uid = Number(id);
   if (!Number.isFinite(uid)) notFound();
+  // 种子历史 tab（NP userdetails Torrent History 口径）：uploads=公开发布 / seeding=当前做种
+  const wantTorrents = tab === "torrents";
 
   let data: ProfileData;
   try {
     data = await api.get<ProfileData>(`/api/v1/users/${encodeURIComponent(uid)}`);
   } catch {
     notFound();
+  }
+  let torrents: { uploads: TorrentHistRow[]; seeding: TorrentHistRow[] } | null = null;
+  if (wantTorrents) {
+    torrents = await api
+      .get<{ uploads: TorrentHistRow[]; seeding: TorrentHistRow[] }>(
+        `/api/v1/users/${encodeURIComponent(uid)}/torrentlist?limit=100`,
+      )
+      .catch(() => null);
   }
 
   const { dict, locale } = await getDict();
@@ -77,6 +99,10 @@ export default async function UserProfilePage({
     lastSeen: "最近活动",
     recentUploads: "近期发布",
     recentComments: "近期评论",
+    torrentHistory: "种子历史",
+    histUploads: "发布",
+    histSeeding: "做种中",
+    histPublicOnly: "仅公开展示",
     noUploads: "暂无公开种子",
     noComments: "暂无评论",
     donor: "捐赠者",
@@ -170,6 +196,79 @@ export default async function UserProfilePage({
             )}
           </tbody>
         </table>
+      </section>
+
+      {/* 种子历史（NP Torrent History 口径）：入口行 + 展开时 uploads/seeding 两段 */}
+      <section className="nexus-detail">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2">
+          <Link
+            href={`/users/${uid}${wantTorrents ? "" : "?tab=torrents"}`}
+            className="text-sm font-bold text-sky"
+          >
+            {wantTorrents ? "▾ " : "▸ "}
+            {t.torrentHistory}
+          </Link>
+          {wantTorrents && (
+            <span className="text-xs text-sub">
+              {t.histUploads} {torrents?.uploads.length ?? 0} · {t.histSeeding}{" "}
+              {torrents?.seeding.length ?? 0}
+            </span>
+          )}
+        </div>
+        {wantTorrents && (
+          <div className="baozi-wide-table-scroll">
+            <table className="nexus-table">
+              <tbody>
+                <tr>
+                  <td className="colhead">
+                    {t.histUploads}（{t.histPublicOnly}）
+                  </td>
+                  <td className="colhead w-28 text-right">Size</td>
+                </tr>
+                {(torrents?.uploads ?? []).map((u) => (
+                  <tr key={`up-${u.torrent_id}`}>
+                    <td className="max-w-[420px] truncate">
+                      <Link href={`/torrent/${u.torrent_id}`} className="text-sky-deep hover:underline">
+                        {u.name}
+                      </Link>
+                    </td>
+                    <td className="num shrink-0 text-right text-sub">{gb(u.size)}</td>
+                  </tr>
+                ))}
+                {(torrents?.uploads ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={2} className="py-4 text-center text-sub">
+                      {t.noUploads}
+                    </td>
+                  </tr>
+                )}
+                <tr>
+                  <td className="colhead">{t.histSeeding}</td>
+                  <td className="colhead w-28 text-right">S/L</td>
+                </tr>
+                {(torrents?.seeding ?? []).map((u) => (
+                  <tr key={`sd-${u.torrent_id}`}>
+                    <td className="max-w-[420px] truncate">
+                      <Link href={`/torrent/${u.torrent_id}`} className="text-sky-deep hover:underline">
+                        {u.name}
+                      </Link>
+                    </td>
+                    <td className="num shrink-0 text-right text-sub">
+                      {u.seeders} / {u.leechers}
+                    </td>
+                  </tr>
+                ))}
+                {(torrents?.seeding ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={2} className="py-4 text-center text-sub">
+                      {t.noUploads}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* 近期发布 */}

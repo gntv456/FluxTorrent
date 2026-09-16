@@ -408,6 +408,13 @@ struct AnnounceEvent {
     /// tracker 主动回连抽样结果（0071）：-1=未测（缺省/旧事件） 0=不可达 1=可达
     #[serde(default)]
     conn: Option<i16>,
+    /// tracker 收到 announce 的时点（RFC3339）。促销按「事件时点」而非「消费时点」裁决：
+    /// 事件积压（DLQ 重试/worker 停机）时避免免费窗口结束后按原价补计费。
+    #[serde(default)]
+    ts: Option<chrono::DateTime<chrono::Utc>>,
+    /// BT 客户端 UA（0098 下载列表「客户端」列）；截断 200
+    #[serde(default)]
+    agent: String,
 }
 
 /// 消费 announce 事件流（§5.4 链路 ④-⑦）：Redis Stream → 计费流水 + snatches。
@@ -614,28 +621,29 @@ async fn process_event(
     // 未知种子的查询失败必须显式报错（重试），不能静默丢弃计费
     // 审计修复（P1）：announce 哈希是客户端「原始字节」口径；库内 info_hash 为规范化
     // 重编码口径（键序非排序的种子两者不同，此前静默丢计费）。双口径 OR 匹配。
-    let torrent_id: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM torrents WHERE info_hash = $1 OR raw_info_hash = $1")
+    let torrent: Option<(i64, i64)> =
+        sqlx::query_as("SELECT id, COALESCE(size, 0) FROM torrents WHERE info_hash = $1 OR raw_info_hash = $1")
             .bind(&ev.hash)
             .fetch_optional(db)
             .await?;
-    let Some(torrent_id) = torrent_id else {
+    let Some((torrent_id, torrent_size)) = torrent else {
         return Ok(None); // 种子确实不存在：跳过
     };
 
     // 促销快照裁决（§5.4-⑦）——与 API 展示口径一致：同种子多条专属促销取最强档
     // （修复前 ORDER BY id DESC 只认最新一条：先挂 free 后挂 half 时计费取 half、展示取 free）
+    // 裁决时点 = 事件时点 ev.ts（缺省 now）：积压重放时不再按过期后的价目补计费
+    let ev_time = ev.ts.unwrap_or_else(chrono::Utc::now);
     let kind: Option<String> = sqlx::query_scalar(
-        "SELECT kind::text FROM promotions WHERE torrent_id = $1 AND starts_at <= now() AND ends_at > now() \
+        "SELECT kind::text FROM promotions WHERE torrent_id = $1 AND starts_at <= $4 AND ends_at > $4 \
          ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 \
                                   WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, id DESC \
          LIMIT 1",
     )
-    // 同值三占位符 + 三 bind：sqlx 按占位符种类计数发送参数；单占位符多次引用
-    // 会触发 Describe/Bind 计数协商失败（0 参数 Bind，P0 计费瘫痪根因）
     .bind(torrent_id)
     .bind(torrent_id)
     .bind(torrent_id)
+    .bind(ev_time)
     .fetch_optional(db)
     .await?;
     // 审计修复（P0 真根因，PG 日志实锄）：旧 SQL 里 $1 出现 3 次（三个 EXISTS 子查询），
@@ -643,7 +651,7 @@ async fn process_event(
     // "supplies 0 parameters" 每轮必炸，announce 计费自 07-11 起整体瘫痪。改写为 $1 单次引用。
     let global: Option<String> = sqlx::query_scalar(
         "SELECT kind::text FROM promotions p \
-         WHERE p.torrent_id IS NULL AND p.starts_at <= now() AND p.ends_at > now() \
+         WHERE p.torrent_id IS NULL AND p.starts_at <= $4 AND p.ends_at > $4 \
            AND (p.scope = 'global' \
                 OR (p.scope = 'official' AND (SELECT official_tag FROM torrents WHERE id = $1)) \
                 OR (p.scope = 'non_official' AND NOT (SELECT official_tag FROM torrents WHERE id = $2)) \
@@ -656,20 +664,22 @@ async fn process_event(
     .bind(torrent_id)
     .bind(torrent_id)
     .bind(torrent_id)
+    .bind(ev_time)
     .fetch_optional(db)
     .await?;
     let (up_mult, down_mult) = billing_multipliers(kind.as_deref(), global.as_deref());
 
     // 0073 券倍率叠加：free 券 → 下载计 0；neutral 券 → 上下行均计 0。
-    // 判定口径：本人该种存在绑定中（used_at 仍 NULL）的对应 kind 券。
+    // 判定口径：本人该种存在绑定中（used_at 仍 NULL）的对应 kind 券；过期判定同促销用事件时点。
     // 与促销取更优（乘法叠加：促销 x2 上传对 neutral 也归零，取对用户更优的 0）。
     let voucher: Option<String> = sqlx::query_scalar(
         "SELECT kind FROM user_vouchers \
-         WHERE user_id = $1::bigint AND used_torrent_id = $2::bigint AND used_at IS NULL AND expires_at > now() \
+         WHERE user_id = $1::bigint AND used_torrent_id = $2::bigint AND used_at IS NULL AND expires_at > $3 \
          ORDER BY CASE kind WHEN 'neutral' THEN 2 WHEN 'free' THEN 1 ELSE 0 END DESC LIMIT 1",
     )
     .bind(ev.user)
     .bind(torrent_id)
+    .bind(ev_time)
     .fetch_optional(db)
     .await?;
     let (up_mult, down_mult) = match voucher.as_deref() {
@@ -694,13 +704,56 @@ async fn process_event(
     let delta_up = (raw_up as f64 * up_mult) as i64;
     let delta_down = (raw_down as f64 * down_mult) as i64;
 
+    // 实时速度反作弊（NP announce 侧口径）：本次上报增量 ÷ 距上次上报间隔 得均速，
+    // 超物理阈值（默认 2GB/s，site_settings.speed_alarm_bps 可调）→ 记 cheat_events。
+    // 首次上报（无 last 行）算不出间隔，跳过；只记事件不打断计费（离线复核后处置）。
+    if last.is_some() && (raw_up > 0 || raw_down > 0) {
+        let interval: Option<i64> = sqlx::query_scalar(
+            "SELECT EXTRACT(EPOCH FROM (now() - last_seen_at))::bigint \
+             FROM snatches WHERE user_id = $1 AND torrent_id = $2",
+        )
+        .bind(ev.user)
+        .bind(torrent_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .ok()
+        .flatten();
+        if let Some(secs) = interval {
+            if secs >= 30 {
+                let bps = (raw_up.max(raw_down) as f64 / secs as f64) as i64;
+                let threshold: i64 = sqlx::query_scalar(
+                    "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'speed_alarm_bps')::bigint, 2147483648)",
+                )
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap_or(2_147_483_648);
+                if bps > threshold {
+                    // agent 字段沿用 cheat_audit 的 torrent:{id} 约定（speed: 前缀区分来源），reason 带证据
+                    let _ = sqlx::query(
+                        "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
+                         VALUES ($1, $2, $3, $4) \
+                         ON CONFLICT (user_id, agent, reason) DO UPDATE \
+                           SET hits = cheat_events.hits + 1, last_seen = now()",
+                    )
+                    .bind(ev.user)
+                    .bind(format!("speed:{torrent_id}"))
+                    .bind(&ev.ip)
+                    .bind(format!("speed_anomaly {bps}B/s over {secs}s up={raw_up} down={raw_down}"))
+                    .execute(&mut *tx)
+                    .await;
+                    tracing::warn!(user = ev.user, torrent = torrent_id, bps, "speed anomaly recorded");
+                }
+            }
+        }
+    }
+
     let seeding = ev.left == 0;
     // stopped = 客户端退出：与 tracker 侧 remove(peer) 对齐，DB 也不应继续标记在做种/下载
     let stopped = ev.event == "stopped";
     sqlx::query(
         r#"
-        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at, connectable)
-        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $11 THEN FALSE ELSE $7 END, CASE WHEN $11 THEN FALSE ELSE $8 END, CASE WHEN $9 THEN now() ELSE NULL END, now(), COALESCE($12, 1))
+        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at, connectable, agent, progress)
+        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $11 THEN FALSE ELSE $7 END, CASE WHEN $11 THEN FALSE ELSE $8 END, CASE WHEN $9 THEN now() ELSE NULL END, now(), COALESCE($12, 1), $13, $14)
         ON CONFLICT (user_id, torrent_id) DO UPDATE SET
           uploaded = snatches.uploaded + EXCLUDED.uploaded,
           downloaded = snatches.downloaded + EXCLUDED.downloaded,
@@ -720,6 +773,9 @@ async fn process_event(
           ),
           -- connectable（0071）：tracker 回连抽样结果覆盖（NULL=本次未测，保持原值）
           connectable = COALESCE($12, snatches.connectable),
+          -- 客户端 UA / 实时进度（0098，viewsnatches 口径）：每次 announce 覆盖
+          agent = EXCLUDED.agent,
+          progress = EXCLUDED.progress,
           last_seen_at = now()
         "#,
     )
@@ -739,6 +795,13 @@ async fn process_event(
     .bind(seed_cap)
     .bind(stopped)
     .bind(ev.conn)
+    // 0098：UA + 万分比进度（(size-left)/size；做种恒 10000；size 未知为 0）
+    .bind(ev.agent[..ev.agent.len().min(200)].to_string())
+    .bind(if torrent_size > 0 {
+        (((torrent_size - ev.left.max(0)) as f64 / torrent_size as f64) * 10000.0).clamp(0.0, 10000.0) as i32
+    } else {
+        0
+    })
     .execute(&mut *tx)
     .await?;
 
@@ -1381,6 +1444,64 @@ async fn purge_old_login_events(db: &PgPool) -> anyhow::Result<u64> {
         .execute(db)
         .await?;
     Ok(res.rows_affected())
+}
+
+/// 过期邀请落库回收（NP docleanup 口径）：status=0 且过期的邀请码统一置 status=2。
+/// 此前仅展示层 CASE 折算，库内 status 恒 0——按 status 统计的后台口径失真。
+async fn expire_invites(db: &PgPool) -> anyhow::Result<u64> {
+    let res = sqlx::query("UPDATE invites SET status = 2 WHERE status = 0 AND expires_at <= now()")
+        .execute(db)
+        .await?;
+    if res.rows_affected() > 0 {
+        tracing::info!(n = res.rows_affected(), "expired invites recycled");
+    }
+    Ok(res.rows_affected())
+}
+
+/// 一次性凭证清理：download_keys（30 分钟）与 password_resets（30 分钟）过期即删。
+/// password_resets 原本只在手动 POST /admin/docleanup 里清，无人点击则永久堆积。
+async fn purge_expired_tokens(db: &PgPool) -> anyhow::Result<u64> {
+    let a = sqlx::query("DELETE FROM download_keys WHERE expires_at < now()")
+        .execute(db)
+        .await?
+        .rows_affected();
+    let b = sqlx::query("DELETE FROM password_resets WHERE expires_at < now()")
+        .execute(db)
+        .await?
+        .rows_affected();
+    Ok(a + b)
+}
+
+/// announce 死信队列可见性（卫生 P1）：DLQ 只进不出等于变相丢计费。
+/// 有积压时通知管理组信箱（复用 cheat_audit 告警模式），同一批积压只告警一次。
+async fn dlq_watch(
+    db: &PgPool,
+    redis: &mut redis::aio::ConnectionManager,
+) -> anyhow::Result<u64> {
+    use redis::AsyncCommands;
+    let len: i64 = redis.llen("flux:announce:dlq").await.unwrap_or(0);
+    if len == 0 {
+        // 队列清空后复位告警游标，下批积压可再次告警
+        let _: () = redis.del("flux:announce:dlq:alerted").await.unwrap_or(());
+        return Ok(0);
+    }
+    let alerted: i64 = redis.get("flux:announce:dlq:alerted").await.unwrap_or(0);
+    if alerted == 0 {
+        let body = format!(
+            "announce 死信队列当前积压 {len} 条事件（连续失败 6 次进入），计费已跳过。\
+             请排查 flux:announce:dlq 并人工补偿计费。"
+        );
+        let _: Result<_, _> = sqlx::query(
+            "INSERT INTO staffmessages (user_id, subject, body, permission) \
+             SELECT MIN(id), 'announce 死信队列积压告警', $1, 'cheater' FROM users WHERE class_id >= 90",
+        )
+        .bind(body)
+        .execute(db)
+        .await;
+        let _: () = redis.set_ex("flux:announce:dlq:alerted", 1, 24 * 3600).await.unwrap_or(());
+        tracing::warn!(len, "announce DLQ backlog alerted");
+    }
+    Ok(len as u64)
 }
 
 /// 成就授予（0079 G6，U3D 口径教育站收敛版）：四族指标聚合 → 达标授予 + 火花奖励。
@@ -2120,7 +2241,14 @@ pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow
                 // 频繁重启（崩溃循环/滚动发布）时 hour_interval 每次都从第一 tick 起步，
                 // seeding_reward 可能数小时不被执行。本任务幂等键 = seeding:{user}:{yyyymmddhh}，
                 // 同小时重复执行零副作用；其余 hourly 任务也都自带幂等护栏，首轮直接跑安全。
-                with_lock(&db, "job:seeding_reward", seeding_reward(&db, 10)).await;
+                // 时魔底薪走 site_settings.seeding_base_hourly（缺省 10）：调价不再改代码重发
+                let base_hourly: i64 = sqlx::query_scalar(
+                    "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'seeding_base_hourly')::bigint, 10)",
+                )
+                .fetch_one(&db)
+                .await
+                .unwrap_or(10);
+                with_lock(&db, "job:seeding_reward", seeding_reward(&db, base_hourly)).await;
                 with_lock(&db, "job:purge_old_login_events", purge_old_login_events(&db)).await;
                 with_lock(&db, "job:ratio_watch", ratio_watch(&db)).await;
                 with_lock(&db, "job:dormant_mark", dormant_mark(&db)).await;
@@ -2130,6 +2258,17 @@ pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow
                 with_lock(&db, "job:funding_settle", funding_settle(&db)).await;
                 with_lock(&db, "job:refundable_settle", refundable_settle(&db)).await;
                 with_lock(&db, "job:achievement_grant", achievement_grant(&db)).await;
+                // 卫生清理（NP docleanup 口径）：过期邀请落库回收 / 一次性凭证与重置 token 清理
+                with_lock(&db, "job:expire_invites", expire_invites(&db)).await;
+                with_lock(&db, "job:purge_expired_tokens", purge_expired_tokens(&db)).await;
+                // DLQ 可见性：只进不出等于变相丢计费——有积压时通知管理组信箱
+                {
+                    let (db2, mut r) = (db.clone(), redis.clone());
+                    with_lock(&db, "job:dlq_watch", async move {
+                        dlq_watch(&db2, &mut r).await
+                    })
+                    .await;
+                }
             }
             _ = tick10.tick() => {
                 if first_tick10 { first_tick10 = false; continue; }
