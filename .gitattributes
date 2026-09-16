@@ -1,0 +1,11 @@
+# 行尾纪律：迁移文件字节级稳定（sqlx checksum 对行尾敏感）
+# 2026-09-16 事故：core.autocrlf=true 下 6 个迁移本地以 CRLF apply，CI 镜像内是 LF，
+# checksum 漂移 → 官方镜像对存量库启动报 "migration XX was previously applied but has been modified"。
+# 以下规则把 SQL/Dockerfile/sh 锁死 LF，杜绝 Windows checkout 再引入 CRLF。
+*.sql text eol=lf
+*.Dockerfile text eol=lf
+Dockerfile text eol=lf
+*.sh text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
