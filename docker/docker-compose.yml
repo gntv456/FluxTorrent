@@ -1,5 +1,10 @@
 # FluxTorrent Docker Compose（方案 §8.4/§12 一键部署）
 # 用法：cp docker/.env.example .env && docker compose up -d
+#
+# 镜像来源二选一（四个 flux 服务同时定义了 image + build）：
+# - 预构建镜像（推荐，无需本机 Rust/Node 工具链）：docker compose pull && docker compose up -d
+# - 本地源码构建（二次开发/内网）：docker compose up -d --build
+# 镜像地址可经 .env 覆盖（FLUX_IMAGE_PREFIX / FLUX_VERSION），fork 站长可指向自己的 registry。
 
 services:
   postgres:
@@ -34,6 +39,7 @@ services:
     restart: unless-stopped
 
   api:
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/api:${FLUX_VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/api.Dockerfile
@@ -70,6 +76,7 @@ services:
     restart: unless-stopped
 
   worker:
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/worker:${FLUX_VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/worker.Dockerfile
@@ -94,12 +101,15 @@ services:
     restart: unless-stopped
 
   tracker:
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/tracker:${FLUX_VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/tracker.Dockerfile
     container_name: flux-tracker
     environment:
       TRACKER_BIND: 0.0.0.0:7070
+      # UDP tracker 绑定（BEP15 connect/announce/scrape）；置空字符串禁用
+      TRACKER_UDP_BIND: 0.0.0.0:6969
       # 高频请求防护：每用户/每 IP announce 限流（1/min）与 interval 兜底值（秒）
       # 阈值按保种大户口径设置（interval 1800s 时 ≈ 挂种数/30 每分钟）；用户 1800/min 覆盖 5.4 万挂种
       ANN_RATE_USER_PER_MIN: "1800"
@@ -115,6 +125,8 @@ services:
     ports:
       # BT 客户端直连入口，必须公网可达（与 api/web 的 127.0.0.1 收口不同，此为有意暴露）
       - "7070:7070"
+      # UDP tracker（BEP15）：qBittorrent/Transmission 默认优先 UDP；TRACKER_UDP_BIND 置空可停用
+      - "6969:6969/udp"
     healthcheck:
       # 镜像是 debian-slim（无 wget/curl），用 bash /dev/tcp 探测端口连通
       test: ["CMD", "bash", "-c", "timeout 2 bash -c '</dev/tcp/127.0.0.1/7070'"]
@@ -131,6 +143,7 @@ services:
     restart: unless-stopped
 
   web:
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/web:${FLUX_VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/web.Dockerfile

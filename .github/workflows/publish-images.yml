@@ -1,0 +1,71 @@
+# 官方预构建镜像发布 CI（L1：用户 docker compose pull 即升级，无需本机 Rust/Node 工具链）
+# 产物：ghcr.io/<owner>/<repo>/{api,worker,tracker,web}，双 tag：semver + latest
+# 触发：推 semver tag（v*）时构建发布；workflow_dispatch 支持手动指定 ref。
+# 说明：
+# - geoip mmdb 不入仓库（.gitignore），CI 构建的 api 镜像内无 GeoLite2 文件 → GeoIP 功能静默降级（字段为 null），
+#   与本地构建行为一致（apps/api/src/geo.rs 缺失时降级）。
+# - arm64 跨平台构建（QEMU）对 Rust release 编译极慢（1h+），暂只发 linux/amd64。
+# - web 镜像的 NEXT_PUBLIC_API_URL 在 CI 构建时为空（默认同源 /api 反代），部署时经反代路径转发即可。
+name: publish-images
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: '构建的 git ref（默认当前分支头）'
+        default: ''
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api,     dockerfile: docker/api.Dockerfile }
+          - { name: worker,  dockerfile: docker/worker.Dockerfile }
+          - { name: tracker, dockerfile: docker/tracker.Dockerfile }
+          - { name: web,     dockerfile: docker/web.Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: 计算版本号（v 前缀去除）
+        id: tags
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: 提取镜像名（ghcr 要求全小写）
+        id: repo
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}/${{ matrix.name }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.repo.outputs.name }}:${{ steps.tags.outputs.version }}
+            ${{ steps.repo.outputs.name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 总结
+        run: echo "已推送 ${{ steps.repo.outputs.name }} 的 ${{ steps.tags.outputs.version }} 与 latest 双 tag"
