@@ -1,8 +1,6 @@
-import { requireModule } from "@/components/module-gate";
-import FarmPage from "./_inner";
+import { redirect } from "next/navigation";
 
-export default async function FarmPageWrapper() {
-  const gate = await requireModule("farm");
-  if (gate) return gate;
-  return <FarmPage />;
+/** 旧入口 /farm 统一重定向到娱乐屋农场专注页 */
+export default function FarmLegacyPage() {
+  redirect("/games/farm");
 }

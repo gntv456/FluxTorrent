@@ -1,0 +1,17 @@
+# cargo-audit 豁免清单（含理由与到期复查，安全纪律：每项必须写清为什么可接受）
+#
+# RUSTSEC-2026-0258（h2 0.3.27 unbounded empty DATA frames）：
+#   修复版为 h2 >=0.4.16（breaking），而本站 HTTP 层 actix-web 4.15 → actix-http 3.13.x
+#   全系钉死 h2 ^0.3.27（含最新 3.13.6），0.3 线无补丁版。上游未出兼容修复前无法升级。
+#   暴露面评估：h2 仅在 HTTP/2 请求路径生效；本服务部署形态为反代（Nginx/网关）后端、
+#   常规 HTTP/1.1，且 8080 仅绑 127.0.0.1（compose API_BIND 默认），外部不可直连 h2。
+#   到期后复查：actix-http 发布 h2 0.4 兼容版即移除本条升级。
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0258",
+    # RUSTSEC-2023-0071（rsa 0.9.x Marvin 时序侧信道，官方无修复版）：
+    #   rsa 仅用于 JWT RS256 签名验签（本站自签发），无解密/密钥协商路径，
+    #   时序侧信道前提（攻击者可反复触发解密 oracle）不成立。上游 rust-rsa
+    #   尚未发布修复（No fixed upgrade available），与全网 actix-web 生态一致。
+    "RUSTSEC-2023-0071",
+]

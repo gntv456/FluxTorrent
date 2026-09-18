@@ -2971,6 +2971,22 @@ pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow
                 with_lock(&db, "job:preserve_seed", preserve_seed(&db)).await;
                 with_lock(&db, "job:task_settle", crate::task_jobs::task_settle(&db)).await;
                 with_lock(&db, "job:exam_assign", crate::task_jobs::exam_assign(&db)).await;
+                // 论坛抽奖到点开奖（0126）：draw_at 已过且仍 open 的逐个开。
+                // 开奖逻辑（CAS open→drawn + 按人幂等发放）在 sqlx 层面自守，这里独立
+                // 实现一份轻量扫描（worker 不依赖 api crate），锁内重跑安全。
+                {
+                    let due: Vec<i64> = sqlx::query_scalar(
+                        "SELECT topic_id FROM topic_lotteries WHERE status = 'open' AND draw_at <= now() LIMIT 50",
+                    )
+                    .fetch_all(&db)
+                    .await
+                    .unwrap_or_default();
+                    for tid in due {
+                        if let Err(e) = lottery_settle(&db, tid).await {
+                            tracing::warn!(topic_id = tid, error = %e, "lottery_settle failed");
+                        }
+                    }
+                }
                 // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
                 let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
                 if last_bank_day.is_none() {
@@ -3065,11 +3081,117 @@ pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow
 /// - 连接口径：advisory lock 是会话级，lock/unlock 必须落在同一条连接上——
 ///   从 pool acquire 一条专用连接持锁，业务 future 用整个 pool（不占锁连接），
 ///   完成后在同一连接 unlock。业务超时被掐后 unlock 仍执行，锁不残留。
+/// 论坛抽奖开奖（0126，worker 侧）：与 api 的 lottery_draw_core 同一套库表协议——
+/// CAS open→drawn 防双开，中奖发放幂等键 `forum-lottery-win:{tid}:{uid}`（spark_ledger 自守），
+/// 无人参与退回楼主（`forum-lottery-refund:{tid}`）。票费不分成（归入池的是楼主冻结的奖金，
+/// 票费在本实现里是参与门槛而非奖池构成，避免开奖金额与冻结额错位）。
+async fn lottery_settle(db: &PgPool, topic_id: i64) -> anyhow::Result<u64> {
+    let meta: Option<(i32, i64, i64)> = sqlx::query_as(
+        "SELECT winners, prize_per_winner, ticket_spark::bigint FROM topic_lotteries \
+         WHERE topic_id = $1 AND status = 'open'",
+    )
+    .bind(topic_id)
+    .fetch_optional(db)
+    .await?;
+    let Some((winners, prize, _ticket)) = meta else {
+        return Ok(0); // 已开/已取消：幂等静默
+    };
+    let n = sqlx::query("UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = $1 AND status = 'open'")
+        .bind(topic_id)
+        .execute(db)
+        .await?
+        .rows_affected();
+    if n == 0 {
+        return Ok(0); // 并发对手（楼主手动开）赢了对局
+    }
+    let mut tx = db.begin().await?;
+    // 中奖名单：数据库侧 random() 洗牌取前 N（抽签随机性不由应用层承担）
+    let picked: Vec<i64> = sqlx::query_scalar(
+        "UPDATE lottery_entries SET won = TRUE \
+         WHERE topic_id = $1 AND user_id IN ( \
+           SELECT user_id FROM lottery_entries WHERE topic_id = $1 ORDER BY random() LIMIT $2 \
+         ) RETURNING user_id",
+    )
+    .bind(topic_id)
+    .bind(winners)
+    .fetch_all(&mut *tx)
+    .await?;
+    if picked.is_empty() {
+        // 无人参与：奖金池整退楼主
+        let op: i64 = sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
+            .bind(topic_id)
+            .fetch_one(&mut *tx)
+            .await?;
+        let refund = winners as i64 * prize;
+        if refund > 0 {
+            let exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+            )
+            .bind(format!("forum-lottery-refund:{topic_id}"))
+            .fetch_one(&mut *tx)
+            .await?;
+            if !exists {
+                let bal: i64 = sqlx::query_scalar(
+                    "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 RETURNING spark_balance",
+                )
+                .bind(op)
+                .bind(refund)
+                .fetch_one(&mut *tx)
+                .await?;
+                sqlx::query(
+                    "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
+                     VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'forum_lottery_refund', $3, $4)",
+                )
+                .bind(op)
+                .bind(refund)
+                .bind(format!("forum-lottery-refund:{topic_id}"))
+                .bind(bal)
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+        tx.commit().await?;
+        tracing::info!(topic_id, refund, "lottery settled: no entries, refunded");
+        return Ok(0);
+    }
+    // 发放（同事务逐人：幂等键存在则跳过，重跑安全）
+    for uid in &picked {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+        )
+        .bind(format!("forum-lottery-win:{topic_id}:{uid}"))
+        .fetch_one(&mut *tx)
+        .await?;
+        if exists || prize <= 0 {
+            continue;
+        }
+        let bal: i64 = sqlx::query_scalar(
+            "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 RETURNING spark_balance",
+        )
+        .bind(uid)
+        .bind(prize)
+        .fetch_one(&mut *tx)
+        .await?;
+        sqlx::query(
+            "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
+             VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'forum_lottery', $3, $4)",
+        )
+        .bind(uid)
+        .bind(prize)
+        .bind(format!("forum-lottery-win:{topic_id}:{uid}"))
+        .bind(bal)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    tracing::info!(topic_id, winners = picked.len(), prize, "lottery settled");
+    Ok(picked.len() as u64)
+}
+
 async fn with_lock<F, T>(db: &PgPool, key: &str, fut: F) -> Option<T>
 where
     F: std::future::Future<Output = anyhow::Result<T>>,
-{
-    // U1 §5.4 模块守卫：job 声明归属模块则按开关整轮跳过（debug 日志，不动账）；
+{    // U1 §5.4 模块守卫：job 声明归属模块则按开关整轮跳过（debug 日志，不动账）；
     // 核心任务（announce 计费/快照/清理/反作弊）不在表内 = 不受开关影响。
     // 跳过不报错，恢复开启后靠既有幂等键自然补跑。
     if let Some(module) = job_module(key) {

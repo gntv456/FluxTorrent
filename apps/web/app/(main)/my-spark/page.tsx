@@ -34,7 +34,7 @@ const KIND_LABEL: Record<string, string> = {
 
 /** 我的魔力（mybonus.php 口径）：余额卡片 + 收益估算 + 最近流水 */
 export default function MySparkPage() {
-  const { dict, locale } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const t = dict.myspark;
   const [info, setInfo] = useState<SparkInfo | null>(null);
   const [rows, setRows] = useState<LedgerRow[]>([]);
@@ -56,7 +56,7 @@ export default function MySparkPage() {
   if (!loggedIn) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="font-display text-2xl">{t.title}</h1>
+        <h1 className="font-display text-2xl">{t.title.replace("{magic}", currency)}</h1>
         <p className="baozi-panel p-4 text-sm text-sub">{dict.common.pleaseLogin}</p>
       </div>
     );
@@ -67,7 +67,7 @@ export default function MySparkPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">{t.title}</h1>
+      <h1 className="font-display text-2xl">{t.title.replace("{magic}", currency)}</h1>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="baozi-panel p-4">
@@ -88,7 +88,7 @@ export default function MySparkPage() {
         </div>
         <div className="baozi-panel p-4">
           <p className="text-xs text-sub">{t.ruleTitle}</p>
-          <p className="text-xs leading-relaxed text-sub">{t.rule}</p>
+          <p className="text-xs leading-relaxed text-sub">{t.rule.replace("{magic}", currency)}</p>
         </div>
       </div>
 
@@ -97,7 +97,7 @@ export default function MySparkPage() {
           <tr>
             <td className="colhead" colSpan={4}>
               <div className="flex items-baseline justify-between">
-                <h2 className="font-display">{t.ledger}</h2>
+                <h2 className="font-display">{t.ledger.replace("{magic}", currency)}</h2>
                 <span className="text-xs font-normal text-sub">
                   {t.recentIncome} <b className="num text-success">+{income.toLocaleString()}</b> ·{" "}
                   {t.recentSpend} <b className="num text-danger">{spend.toLocaleString()}</b>

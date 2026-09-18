@@ -1,4 +1,12 @@
-//! M24 娱乐玩法域：刮刮乐 + 猜大小（旧站 magic_scratch / bigsmall 口径）。
+//! 娱乐玩法域：刮刮乐 + 猜大小 + 九宫格 + 农场（统一走火花交易管线）。
+//!
+//! **经济定位（产品决策 2026-09-19）**：娱乐玩法一律以**回收魔力**为目的，全部玩法
+//! 期望回报必须 < 1（庄家优势 > 0），不允许出现 EV = 1 的中性玩法，更不允许增发：
+//! - 刮刮乐 EV 0.66、九宫格 EV 0.725（各有单测锁定）；
+//! - 猜大小赢面 49% / 平 2% / 输 49%，赔率必须 < 2.0 否则 EV 恒为 1
+//!   （旧值 2.0：EV = 0.49×2 + 0.02 = 1.0，且「同时押大押小」可零风险对冲），
+//!   现缺省 1.9（EV 0.951），见 `BIGSMALL_WIN_MULT_PERMILLE`；
+//! - 农场收获期望 = 产量/种子价 × (1 + 20% 双倍)，作物表按 0.75 标定 → EV 0.90。
 //! 纪律（§M24 验收）：全部经统一火花交易管线动账，限额风控内置，赔率常量化。
 #![allow(dead_code)]
 
@@ -18,15 +26,63 @@ pub struct ScratchOutcome {
     pub payout: i64,
 }
 
+/// 刮刮乐档位概率（百分比整数）。0109 设置键 `games_scratch_empty_pct/half_pct/one_pct`
+/// 可配前三档，剩余额度按 8:2 分给 2x/10x（与缺省表一致），见 `ScratchOdds::from_parts`。
+pub struct ScratchOdds {
+    pub empty: u32,
+    pub half: u32,
+    pub one: u32,
+    pub two: u32,
+    pub ten: u32,
+}
+
+impl ScratchOdds {
+    /// 缺省档位：45/30/15/8/2（期望回报 0.66，庄家优势 34%）
+    pub const DEFAULT: ScratchOdds = ScratchOdds {
+        empty: 45,
+        half: 30,
+        one: 15,
+        two: 8,
+        ten: 2,
+    };
+
+    /// 由四档可配百分比推导完整档位：10x = 100 - 前三档 - 2x（余数）。
+    /// 越界（前三档之和 ≥100 或余数 <1）时整体回落缺省，避免构造出非法档位导致必中/必空。
+    pub fn from_parts(empty: i64, half: i64, one: i64, two: i64) -> ScratchOdds {
+        let (e, h, o, t) = (empty.max(0), half.max(0), one.max(0), two.max(0));
+        let rest = 100 - e - h - o - t;
+        if rest < 1 {
+            return ScratchOdds::DEFAULT;
+        }
+        ScratchOdds {
+            empty: e as u32,
+            half: h as u32,
+            one: o as u32,
+            two: t as u32,
+            ten: rest as u32,
+        }
+    }
+}
+
 pub fn scratch_play(bet: i64) -> ScratchOutcome {
+    scratch_play_with(bet, &ScratchOdds::DEFAULT)
+}
+
+pub fn scratch_play_with(bet: i64, odds: &ScratchOdds) -> ScratchOutcome {
     let roll: u32 = rand::thread_rng().gen_range(0..100);
-    let multiplier = if roll < 45 {
+    let (e, h, o, t) = (
+        odds.empty,
+        odds.empty + odds.half,
+        odds.empty + odds.half + odds.one,
+        odds.empty + odds.half + odds.one + odds.two,
+    );
+    let multiplier = if roll < e {
         0.0
-    } else if roll < 75 {
+    } else if roll < h {
         0.5
-    } else if roll < 90 {
+    } else if roll < o {
         1.0
-    } else if roll < 98 {
+    } else if roll < t {
         2.0
     } else {
         10.0
@@ -45,6 +101,19 @@ pub enum Guess {
     Big,   // 52-100
 }
 
+/// 猜中赔率（千分比，1000 = 猜中返本不赚）。缺省 1900 = 1.9x。
+///
+/// **为什么不是 2x**：赢面 49%、平局 2%、输面 49%（对称区间），
+/// EV = p_win × 赔率 + p_tie × 1，赔率 2.0 时 EV 恰为 1.0 —— 既不回收魔力，
+/// 且「同时押大押小」可把结果完全对冲成零风险（对站无收益、对玩家无意义）。
+/// 赔率 < 2.0 才能让双向对冲变成稳定负期望，也让玩法回到回收口径。
+pub const BIGSMALL_WIN_MULT_PERMILLE: i64 = 1900;
+
+/// 猜大小期望回报（回收率）：0.49 × 赔率 + 0.02 × 1（平局返本）
+pub fn bigsmall_expected_value(win_mult_permille: i64) -> f64 {
+    0.49 * (win_mult_permille as f64 / 1000.0) + 0.02
+}
+
 #[derive(Debug, PartialEq)]
 pub struct DiceOutcome {
     pub number: u32,
@@ -52,8 +121,12 @@ pub struct DiceOutcome {
     pub payout: i64,
 }
 
-/// 50/51/52 为平局区（返本），猜中赔 2x
+/// 50/51 为平局区（返本），猜中按 `win_mult_permille` 派彩
 pub fn guess_play(bet: i64, guess: Guess) -> DiceOutcome {
+    guess_play_with(bet, guess, BIGSMALL_WIN_MULT_PERMILLE)
+}
+
+pub fn guess_play_with(bet: i64, guess: Guess, win_mult_permille: i64) -> DiceOutcome {
     let number: u32 = rand::thread_rng().gen_range(1..=100);
     let number_region = if number <= 49 {
         Guess::Small
@@ -71,7 +144,11 @@ pub fn guess_play(bet: i64, guess: Guess) -> DiceOutcome {
     DiceOutcome {
         number,
         player_win,
-        payout: if player_win { bet * 2 } else { 0 },
+        payout: if player_win {
+            bet * win_mult_permille.max(0) / 1000
+        } else {
+            0
+        },
     }
 }
 
@@ -85,7 +162,10 @@ pub fn validate_bet(bet: i64) -> Result<(), String> {
     Ok(())
 }
 
-// ============ 好学农场（magic_fram 口径） ============
+// ============ 农场 ============
+// 作物全部为通用幻想系命名（四叶草/星尘豆/云端瓜/月华参/日冕稻），**不绑定任何站型特色**
+// （教育站、影音站、音乐站都用同一套），站长可在后台改名。
+// 产量按「种子价 × 0.75」标定：收获期望 = 0.75 × (1 + 20% 双倍) = 0.90 < 1，回收口径。
 
 /// 市场价波动窗口：默认 4 小时（0109 games farm_market_window_hours 可调，worker
 /// 与 API 各自读取；窗口跨小时数变化只影响新窗口起点，历史价不重算）
@@ -260,10 +340,51 @@ mod tests {
                 assert!(!o.player_win);
             }
             if o.player_win {
-                assert_eq!(o.payout, 200);
+                assert_eq!(o.payout, 190);
             }
         }
     }
+
+    /// 经济纪律（2026-09-19 产品决策）：娱乐玩法一律回收，期望回报必须 < 1。
+    /// 猜大小赢面 49% / 平 2% / 输 49%，赔率 ≥ 2.0 时 EV ≥ 1.0 且可双向零风险对冲 ——
+    /// 这个断言锁死「赔率 < 2.0」，调整赔率必须同步复算本式与经济文档。
+    #[test]
+    fn bigsmall_expected_value_below_one() {
+        let ev = bigsmall_expected_value(BIGSMALL_WIN_MULT_PERMILLE);
+        assert!(ev < 1.0, "猜大小 EV 未回收: {ev}");
+        assert!(
+            (ev - 0.951).abs() < 1e-9,
+            "EV 漂移: {ev}（1.9x 应为 0.951）"
+        );
+        assert!(
+            BIGSMALL_WIN_MULT_PERMILLE < 2000,
+            "赔率必须 < 2000‰，否则 EV ≥ 1 且可对冲套零风险"
+        );
+        // 隐含：赔率越高 EV 越高，2.0 处恰好回到 1.0（不允许）
+        assert!((bigsmall_expected_value(2000) - 1.0).abs() < 1e-9);
+    }
+
+    /// 刮刮乐档位参数化的期望回报仍 < 1（四档可配，10x 取余数）
+    #[test]
+    fn scratch_expected_value_below_one() {
+        let ev = |o: &ScratchOdds| {
+            (o.empty as f64 * 0.0
+                + o.half as f64 * 0.5
+                + o.one as f64 * 1.0
+                + o.two as f64 * 2.0
+                + o.ten as f64 * 10.0)
+                / 100.0
+        };
+        let d = ScratchOdds::DEFAULT;
+        assert_eq!(d.empty + d.half + d.one + d.two + d.ten, 100, "档位必须铺满 100%");
+        assert!((ev(&d) - 0.66).abs() < 1e-9, "缺省 EV 漂移: {}", ev(&d));
+        // 争议配置（前三档吃满）必须回落缺省，不能构造出必中/增发档位
+        let bad = ScratchOdds::from_parts(60, 30, 15, 8);
+        assert_eq!(bad.empty + bad.half + bad.one + bad.two + bad.ten, 100);
+        assert!(ev(&bad) < 1.0, "越界配置未回落，EV={}", ev(&bad));
+    }
+
+    /// 九宫格头奖 50x 的 EV 已由 jgg_expected_value_house_edge 锁定（0.725）。
 
     #[test]
     fn market_price_stable_in_window() {

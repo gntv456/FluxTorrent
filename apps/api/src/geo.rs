@@ -88,6 +88,12 @@ mod tests {
 
     #[test]
     fn geo_lookup_public_ip() {
+        // mmdb 是部署资产不入库（.gitignore；CI 无库）——无库时 lookup 全程走
+        // (None,None,None) 分支，该测试只在库在位时才有意义：条件跳过而非误报失败。
+        if city_reader().is_none() && country_reader().is_none() {
+            eprintln!("skip: GeoLite2 mmdb 不在位（部署资产，CI 环境正常缺省）");
+            return;
+        }
         // 8.8.8.8（Google DNS）在 GeoLite2 中应命中美国
         let (iso, name, _city) = lookup("8.8.8.8");
         assert_eq!(iso.as_deref(), Some("US"));

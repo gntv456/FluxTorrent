@@ -9,7 +9,7 @@ import { FrameShop } from "@/components/plugins";
 
 /** 头像挂件（avatar_frame 插件复刻）：佩戴/更换头像挂件，付费件扣魔力 */
 export default function AvatarFramesPage() {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const [me, setMe] = useState<{ id: number; avatar_frame_id: number | null } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -24,7 +24,7 @@ export default function AvatarFramesPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl">{dict.frames.title}</h1>
-      <p className="text-sm text-sub">{dict.frames.subtitle}</p>
+      <p className="text-sm text-sub">{dict.frames.subtitle.replace("{magic}", currency)}</p>
       {err ? (
         <p className="baozi-panel p-4 text-sm text-sub">{err}</p>
       ) : (

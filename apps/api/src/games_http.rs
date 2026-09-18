@@ -1,6 +1,7 @@
-//! M24 娱乐玩法 HTTP 接口（刮刮乐/猜大小/九宫格 + 好学农场 + 每小时限次）。
+//! M24 娱乐玩法 HTTP 接口（刮刮乐/猜大小/九宫格 + 农场 + 每小时限次）。
+//! 经济定位：四玩法一律**回收魔力**（各自 EV < 1），赔率/概率走代码常量 + 设置键双源。
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -14,6 +15,7 @@ use crate::state::AppState;
 pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
     scope
         .service(games_overview)
+        .service(game_history)
         .service(scratch)
         .service(guess_bigsmall)
         .service(jgg)
@@ -25,20 +27,113 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(fun_vote)
 }
 
+/// 娱乐屋总览（匿名可读规则，登录额外回「我的」）。
+/// 奖池表一律由代码常量生成 —— 修「前端硬编码 100x 与后端 JGG_PRIZES 不符」：
+/// 展示与实现同源，站长调 EV 单测后前端自动跟着变。
 #[get("/games")]
-async fn games_overview() -> impl Responder {
-    ok(serde_json::json!({
-        "scratch": { "name": "刮刮乐", "max_bet": games::MAX_BET,
-            "prizes": ["0.5x (30%)", "1x (15%)", "2x (8%)", "10x (2%)"] },
-        "bigsmall": { "name": "猜大小", "max_bet": games::MAX_BET,
-            "rule": "1-49 小 · 52-100 大 · 50/51 平局返本 · 猜中 2x" },
-        "jgg": { "name": "九宫格抽奖", "ticket": games::JGG_TICKET,
-            // 审计修复（P2）：展示与实现权重表对齐（旧文案是废弃赔率表，含不存在的 100x 档）
-            "prizes": ["谢谢参与 73.1%", "再来一次 12%", "2x 6%", "3x 5%", "5x 2.5%", "10x 1%", "50x 0.3%"] },
+async fn games_overview(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let max_bet = eco_i64(&state, "games_max_bet", games::MAX_BET).await;
+    let max_plays = eco_i64(&state, "games_max_plays_per_hour", MAX_PLAYS_PER_HOUR).await;
+    let odds = scratch_odds(&state).await;
+    let win_mult = bigsmall_mult_permille(&state).await;
+    let jgg_prizes: Vec<_> = games::JGG_PRIZES
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "label": p.label,
+                "weight_permille": p.weight,
+                "payout": p.payout,
+            })
+        })
+        .collect();
+
+    let mut body = serde_json::json!({
+        "max_bet": max_bet,
+        "max_plays_per_hour": max_plays,
+        "scratch": { "name": "刮刮乐", "max_bet": max_bet, "prizes": [
+            { "multiplier": 0.5, "pct": odds.half },
+            { "multiplier": 1.0, "pct": odds.one },
+            { "multiplier": 2.0, "pct": odds.two },
+            { "multiplier": 10.0, "pct": odds.ten }
+        ], "empty_pct": odds.empty },
+        "bigsmall": { "name": "猜大小", "max_bet": max_bet,
+            "win_mult": win_mult as f64 / 1000.0,
+            "expected_value": games::bigsmall_expected_value(win_mult),
+            "rule": "1-49 小 · 52-100 大 · 50/51 平局返本 · 猜中按赔率派彩" },
+        "jgg": { "name": "九宫格抽奖", "ticket": games::JGG_TICKET, "prizes": jgg_prizes },
         "farm": { "name": "农场", "slots": 6, "market_refresh": "每日 0/4/8/12/16/20 点", "volatility": "±50%" },
         "funvote": { "name": "趣味盒投票", "cost": "1 魔力/票", "rule": "一人一票" },
-        "rate_limit": format!("每人每小时 {MAX_PLAYS_PER_HOUR} 次"),
-    }))
+        "rate_limit": format!("每人每小时 {max_plays} 次"),
+    });
+
+    // 登录态补齐：余额 / 今日战绩 / 剩余局数（前端「下注前先看得见」的依赖）
+    if let Ok(auth) = require_auth(&req, &state).await {
+        let balance: i64 = sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .unwrap_or(0);
+        // 今日口径 UTC+8（与签到/统计一致）。sum(bigint) 在 PG 里是 NUMERIC，必须显式转 bigint
+        let today: (i64, i64) = sqlx::query_as(
+            "SELECT COALESCE(sum(amount), 0)::bigint, \
+                    (count(*) FILTER (WHERE amount < 0))::bigint \
+             FROM spark_ledger WHERE user_id = $1 AND kind = 'game' \
+             AND created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')",
+        )
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        body["me"] = serde_json::json!({
+            "balance": balance,
+            "today_net": today.0,
+            "today_plays": today.1,
+            "limit_left": (max_plays - today.1).max(0),
+        });
+    }
+    Ok(ok(body))
+}
+
+/// 我的游戏战绩（最近 N 条流水，来自 spark_ledger —— 不新建表、不本地累积）。
+/// kind='game' 的下注为负、派彩为正；`game` 参数对应 ref_type（scratch/bigsmall/jgg/farm_plant）。
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct GameHistoryRow {
+    ref_type: Option<String>,
+    amount: i64,
+    balance_after: Option<i64>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Deserialize)]
+struct HistoryQuery {
+    game: Option<String>,
+    limit: Option<i64>,
+}
+
+#[get("/games/history")]
+async fn game_history(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<HistoryQuery>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<GameHistoryRow> = sqlx::query_as(
+        "SELECT ref_type, amount, balance_after, created_at FROM spark_ledger \
+         WHERE user_id = $1 AND kind = 'game' \
+           AND ($2::text IS NULL OR ref_type = $2) \
+         ORDER BY id DESC LIMIT $3",
+    )
+    .bind(auth.id)
+    .bind(&q.game)
+    .bind(q.limit.unwrap_or(20).clamp(1, 50))
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
 }
 
 /// 读取游戏经济设置键（0109 参数化；缺省回落代码默认值 T3）
@@ -53,24 +148,93 @@ async fn eco_i64(state: &web::Data<std::sync::Arc<AppState>>, key: &str, default
     .unwrap_or(default)
 }
 
-/// 每小时限次（Redis INCR + EXPIRE；上限走设置键 games_max_plays_per_hour）
-async fn check_rate(
+/// 浮点设置键（赔率类支持小数，如猜大小 1.9x）
+async fn eco_f64(state: &web::Data<std::sync::Arc<AppState>>, key: &str, default: f64) -> f64 {
+    sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = $1)::double precision, $2)",
+    )
+    .bind(key)
+    .bind(default)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(default)
+}
+
+/// 刮刮乐档位（四档可配，10x 取余数；缺省 45/30/15/8/2，与旧实现一致）
+async fn scratch_odds(state: &web::Data<std::sync::Arc<AppState>>) -> games::ScratchOdds {
+    games::ScratchOdds::from_parts(
+        eco_i64(state, "games_scratch_empty_pct", 45).await,
+        eco_i64(state, "games_scratch_half_pct", 30).await,
+        eco_i64(state, "games_scratch_one_pct", 15).await,
+        eco_i64(state, "games_scratch_two_pct", 8).await,
+    )
+}
+
+/// 猜大小赔率（千分比）。倍数设置键缺省 1.9 —— **必须 < 2.0**：
+/// 2.0 时 EV 恰为 1.0（不回收）且可双向零风险对冲，见 games.rs 常量说明。
+async fn bigsmall_mult_permille(state: &web::Data<std::sync::Arc<AppState>>) -> i64 {
+    let mult = eco_f64(state, "games_bigsmall_win_mult", 1.9).await;
+    ((mult * 1000.0).round() as i64).clamp(0, 10_000)
+}
+
+/// 限流作用域：即时赌局与农场**分开计数**。
+/// 农场是慢玩法，一次种满 6 块地不该吃掉 6 次即时下注额度（旧实现共用 `rl:games`）。
+#[derive(Clone, Copy)]
+enum RateScope {
+    Instant,
+    Farm,
+}
+
+impl RateScope {
+    fn redis_key(&self, user_id: i64) -> String {
+        match self {
+            RateScope::Instant => format!("rl:games:{user_id}"),
+            RateScope::Farm => format!("rl:farm:{user_id}"),
+        }
+    }
+    fn setting(&self) -> (&'static str, i64) {
+        match self {
+            RateScope::Instant => ("games_max_plays_per_hour", MAX_PLAYS_PER_HOUR),
+            RateScope::Farm => ("farm_max_plays_per_hour", 30),
+        }
+    }
+}
+
+/// 每小时限次（Redis INCR + EXPIRE；上限走设置键）。
+/// 审计修复（P2-7）：Redis 不可用时**拒绝**（fail-close）——旧实现 `unwrap_or(0)` 会让限流静默失效。
+async fn check_rate_scoped(
     state: &web::Data<std::sync::Arc<AppState>>,
     redis: &redis::aio::ConnectionManager,
     user_id: i64,
+    scope: RateScope,
 ) -> DomainResult<()> {
     use redis::AsyncCommands;
-    let limit = eco_i64(state, "games_max_plays_per_hour", MAX_PLAYS_PER_HOUR).await;
-    let key = format!("rl:games:{user_id}");
+    let (setting, default) = scope.setting();
+    let limit = eco_i64(state, setting, default).await;
+    let key = scope.redis_key(user_id);
     let mut conn = redis.clone();
-    let n: i64 = conn.incr(&key, 1).await.unwrap_or(0);
+    let n: i64 = conn
+        .incr(&key, 1)
+        .await
+        .map_err(|_| DomainError::Internal(anyhow::anyhow!("限流服务不可用")))?;
     if n == 1 {
-        let _: () = conn.expire(&key, 3600).await.unwrap_or(());
+        let _: () = conn
+            .expire(&key, 3600)
+            .await
+            .map_err(|_| DomainError::Internal(anyhow::anyhow!("限流服务不可用")))?;
     }
     if n > limit {
         return Err(DomainError::RateLimited);
     }
     Ok(())
+}
+
+async fn check_rate(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    redis: &redis::aio::ConnectionManager,
+    user_id: i64,
+) -> DomainResult<()> {
+    check_rate_scoped(state, redis, user_id, RateScope::Instant).await
 }
 
 /// 下注校验（上限走设置键 games_max_bet）
@@ -91,6 +255,16 @@ async fn check_bet(
 #[derive(Deserialize)]
 struct BetReq {
     bet: i64,
+    /// 客户端幂等键（审计 P2-8）：网络重试/双击须带同一键，缺省回落随机键保持兼容
+    #[serde(default)]
+    idempotency_key: Option<String>,
+}
+
+fn idem_key(prefix: &str, user_id: i64, client: &Option<String>) -> String {
+    match client {
+        Some(k) if !k.trim().is_empty() && k.len() <= 128 => format!("game-{prefix}:{user_id}:{k}"),
+        _ => format!("game-{prefix}:{}:{}", user_id, Uuid::new_v4()),
+    }
 }
 
 #[post("/games/scratch")]
@@ -103,18 +277,18 @@ async fn scratch(
     check_bet(&state, body.bet).await.map_err(DomainError::Validation)?;
     check_rate(&state, &state.redis, auth.id).await?;
 
-    let idem = format!("game-scratch:{}:{}", auth.id, Uuid::new_v4());
-    spend_spark(
-        &state.repo.db,
-        auth.id,
-        body.bet,
-        "game",
-        &idem,
-        "scratch",
-        0,
-    )
-    .await?;
-    let outcome = games::scratch_play(body.bet);
+    let idem = idem_key("scratch", auth.id, &body.idempotency_key);
+    // 幂等：同一键重复提交（网络重试/双击）不重复扣款，也**不重开一次奖** ——
+    // 否则「首局未中奖 + 重放中奖」= 白赚，是必须堵住的印钞口。
+    if !matches!(
+        spend_spark(&state.repo.db, auth.id, body.bet, "game", &idem, "scratch", 0).await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
+    }
+    // 概率档位读 0109 设置键（缺省回落 45/30/15/8/2）
+    let odds = scratch_odds(&state).await;
+    let outcome = games::scratch_play_with(body.bet, &odds);
     if outcome.payout > 0 {
         let win_idem = format!("game-scratch-win:{}", idem);
         earn_spark(&state.repo.db, auth.id, outcome.payout, "game", &win_idem).await?;
@@ -131,6 +305,9 @@ async fn scratch(
 struct GuessReq {
     bet: i64,
     guess: String, // "small" | "big"
+    /// 客户端幂等键（审计 P2-8）
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/games/bigsmall")]
@@ -148,18 +325,15 @@ async fn guess_bigsmall(
     };
     check_rate(&state, &state.redis, auth.id).await?;
 
-    let idem = format!("game-bs:{}:{}", auth.id, Uuid::new_v4());
-    spend_spark(
-        &state.repo.db,
-        auth.id,
-        body.bet,
-        "game",
-        &idem,
-        "bigsmall",
-        0,
-    )
-    .await?;
-    let outcome = games::guess_play(body.bet, guess);
+    let idem = idem_key("bs", auth.id, &body.idempotency_key);
+    // 幂等（同 scratch）：重放不重开，避免「首局没中 + 重放中了」白赚
+    if !matches!(
+        spend_spark(&state.repo.db, auth.id, body.bet, "game", &idem, "bigsmall", 0).await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
+    }
+    let outcome = games::guess_play_with(body.bet, guess, bigsmall_mult_permille(&state).await);
     if outcome.payout > 0 {
         let win_idem = format!("game-bs-win:{}", idem);
         earn_spark(&state.repo.db, auth.id, outcome.payout, "game", &win_idem).await?;
@@ -176,17 +350,32 @@ async fn guess_bigsmall(
 
 // ============ 九宫格抽奖（jgg 口径） ============
 
+#[derive(Deserialize)]
+struct JggReq {
+    /// 客户端幂等键（审计 P2-8）
+    #[serde(default)]
+    idempotency_key: Option<String>,
+}
+
 #[post("/games/jgg")]
 async fn jgg(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
+    body: Option<web::Json<JggReq>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     check_rate(&state, &state.redis, auth.id).await?;
 
     let ticket = games::JGG_TICKET;
-    let idem = format!("game-jgg:{}:{}", auth.id, Uuid::new_v4());
-    spend_spark(&state.repo.db, auth.id, ticket, "game", &idem, "jgg", 0).await?;
+    let client_idem = body.and_then(|b| b.idempotency_key.clone());
+    let idem = idem_key("jgg", auth.id, &client_idem);
+    // 幂等（同 scratch）：重放不重开
+    if !matches!(
+        spend_spark(&state.repo.db, auth.id, ticket, "game", &idem, "jgg", 0).await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
+    }
     let draw = games::jgg_draw();
     let payout = ticket * draw.prize.payout;
     if payout > 0 {
@@ -203,7 +392,7 @@ async fn jgg(
     })))
 }
 
-// ============ 好学农场（magic_fram 口径） ============
+// ============ 农场 ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct CropRow {
@@ -294,8 +483,9 @@ async fn farm_plant(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     // 审计修复（P1 印钞）：农场种植此前不进 games 限流（对照 scratch/dice/jgg），
-    // 确定性市场价可被脚本以 6 槽 × 高频轮种套取波动收益。统一纳入每小时次数上限。
-    check_rate(&state, &state.redis, auth.id).await?;
+    // 确定性市场价可被脚本以 6 槽 × 高频轮种套取波动收益。现独立计数（rl:farm），
+    // 与即时赌局额度分开 —— 否则种满 6 块地就吃掉 6 次下注额度。
+    check_rate_scoped(&state, &state.redis, auth.id, RateScope::Farm).await?;
     if !(1..=6).contains(&body.slot) {
         return Err(DomainError::Validation("slot 取值 1-6".into()));
     }
@@ -393,8 +583,25 @@ async fn farm_water(
             "该地块无需浇水（未种植或已浇过）".into(),
         ));
     }
+    // 浇水消耗（0109 键 farm_water_spark，缺省 1；为 0 表示免费）。
+    // 先占位后扣费，扣费失败回滚占位（与 fun_vote 同口径，避免白扣或白浇）。
+    let cost = eco_i64(&state, "farm_water_spark", 1).await;
+    if cost > 0 {
+        let idem = format!("farm-water:{}:{}", auth.id, body.slot);
+        if let Err(e) = spend_spark(&state.repo.db, auth.id, cost, "game", &idem, "farm_water", body.slot as i64).await {
+            let _ = sqlx::query(
+                r#"UPDATE farm_plots SET watered = FALSE, ready_at = ready_at + interval '10 minutes'
+                   WHERE user_id = $1 AND slot = $2"#,
+            )
+            .bind(auth.id)
+            .bind(body.slot)
+            .execute(&state.repo.db)
+            .await;
+            return Err(e);
+        }
+    }
     Ok(ok(
-        serde_json::json!({ "watered": true, "accelerated_minutes": 10 }),
+        serde_json::json!({ "watered": true, "accelerated_minutes": 10, "cost": cost }),
     ))
 }
 
@@ -427,7 +634,8 @@ async fn farm_harvest(
         .ok_or(DomainError::Validation("作物不存在".into()))?;
     // 收获量 = base_yield × 收获侧市场因子（±50% 窗口波动；与买种侧因子错开——
     // 见 games::harvest_market_price 注释，消除确定性低买高卖套利）。
-    // 期望收益按作物表档位差全档微亏防刷（知识麦 96/100 … 状元稻 5760/5000 均值口径）。
+    // 回收口径：作物表按「产量 = 种子价 × 0.75」标定，含 20% 双倍后期望回报 0.90 < 1
+    // （0127 迁移统一下发，五档一致；市场 ±50% 只影响单局运气，不改期望）。
     let market = games::harvest_market_price(crop.base_yield as i64, window);
 
     let doubled = games::roll_double();

@@ -7,7 +7,7 @@ import { useI18n } from "@/i18n/client";
 /** 感谢 / 收藏 / 评论表单（M07 社区互动，客户端叶子组件）
  *  魔力答谢按钮组对齐馒头详情页口径（+1/+10/+100/+500/+1000/+10000） */
 export function TorrentSocial({ torrentId }: { torrentId: number }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.tdetail;
   const [thanked, setThanked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
@@ -30,7 +30,7 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
       setThanked(true);
       setMsg(
         r.spark_given > 0
-          ? t.thankSparkOk.replace("{n}", String(r.spark_given))
+          ? t.thankSparkOk.replace("{n}", String(r.spark_given)).replace("{magic}", currency)
           : dict.torrent.thanksOk,
       );
     } catch (e) {

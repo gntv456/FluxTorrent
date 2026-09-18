@@ -17,7 +17,7 @@ export function PoolDonate() {
   async function donate() {
     const n = parseInt(amount, 10);
     if (!Number.isFinite(n) || n <= 0) {
-      setMsg(t.amountInvalid);
+      setMsg(t.amountInvalid.replace("{magic}", currency));
       return;
     }
     setBusy(true);
@@ -60,7 +60,7 @@ export function PoolDonate() {
         onClick={donate}
         className="min-h-[44px] rounded-full bg-coral px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
       >
-        {busy ? t.donating : t.donate}
+        {busy ? t.donating : t.donate.replace("{magic}", currency)}
       </button>
       {msg && (
         <span className="text-xs text-sub" role="status">

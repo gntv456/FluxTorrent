@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
@@ -113,6 +114,51 @@ export function TopicFavoriteButton({
       <span aria-hidden="true">{on ? "⭐" : "☆"}</span>
       {on ? dict.forums.favorited : dict.forums.favorite}
       {n > 0 && <span className="num text-sub">· {n}</span>}
+    </button>
+  );
+}
+
+/** 悬赏采纳按钮（0124）：楼主在任意回复楼层上点「采纳」，赏金发放给答主后整页刷新。 */
+export function BountyAcceptButton({
+  topicId,
+  postId,
+  spark,
+  currency,
+}: {
+  topicId: number;
+  postId: number;
+  spark: number;
+  currency: string;
+}) {
+  const { dict } = useI18n();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  async function accept() {
+    if (busy) return;
+    if (!window.confirm(dict.forums.bountyConfirm.replace("{n}", String(spark)))) return;
+    setBusy(true);
+    try {
+      await api.post("/api/v1/forums/bounty/award", { topic_id: topicId, post_id: postId });
+      router.refresh();
+    } catch {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={accept}
+      disabled={busy}
+      title={dict.forums.bountyAccept}
+      className="inline-flex min-h-[30px] items-center gap-1 rounded-full border border-coral bg-transparent px-3 text-xs font-bold text-coral transition hover:bg-[var(--coral-soft)] disabled:opacity-50"
+    >
+      <span aria-hidden="true">💰</span>
+      {dict.forums.bountyAccept}
+      <span className="num opacity-80">
+        +{spark} {currency}
+      </span>
     </button>
   );
 }

@@ -45,6 +45,14 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(forum_feed)
         // M15 论坛标签（0123：词表复用 tag_dict，只建 topic_tags 关联）
         .service(forum_tags_dict)
+        // M15 论坛悬赏（0124：发帖冻结 → 楼主采纳发放，复用求种悬赏范式）
+        .service(bounty_award)
+        // M15 论坛投票（0125：发帖定选项 → 一人一票 → 楼主可截止，范式照 fun_polls）
+        .service(poll_vote)
+        .service(poll_close)
+        // M15 论坛抽奖（0126：发帖冻结奖金池 → 付费/免费参与 → 到点或手动开奖，jgg 经济范式）
+        .service(lottery_join)
+        .service(lottery_draw)
         // M16 短讯与好友
         .service(message_send)
         .service(message_markread)
@@ -779,6 +787,21 @@ struct TopicCreateReq {
     /// 论坛标签（0123）：tag_dict id 数组，最多 5 个，超出截断；禁用/不存在 id 静默丢弃
     #[serde(default)]
     tags: Vec<i32>,
+    /// 悬赏金额（0124）：topic_type=bounty 时生效，>0 冻结；其余类型忽略（防借普通帖试探字段）
+    #[serde(default)]
+    bounty_spark: Option<i64>,
+    /// 投票选项（0125）：topic_type=poll 时生效，2~10 项非空文本；其余类型忽略
+    #[serde(default)]
+    poll_options: Vec<String>,
+    /// 抽奖参数（0126）：topic_type=lottery 时生效——winners 名额 × prize 魔力 + 票价 + 开奖时限（小时）
+    #[serde(default)]
+    lottery_winners: Option<i32>,
+    #[serde(default)]
+    lottery_prize: Option<i64>,
+    #[serde(default)]
+    lottery_ticket: Option<i64>,
+    #[serde(default)]
+    lottery_hours: Option<i32>,
 }
 
 /// 合法的帖子类型白名单（防止前端塞任意值）
@@ -1025,13 +1048,55 @@ async fn topic_create(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let ttype = normalize_topic_type(body.topic_type.as_deref());
+    // 悬赏（0124）：只有 bounty 类型认金额；1~1,000,000 钳位（0 = 发普通 bounty 帖不冻结，也合法）
+    let bounty = if ttype == "bounty" {
+        match body.bounty_spark {
+            Some(b) if b < 0 => return Err(DomainError::Validation("悬赏金额不能为负".into())),
+            Some(b) => b.min(1_000_000),
+            None => 0,
+        }
+    } else {
+        0
+    };
+    // 投票（0125）：poll 类型必须带 2~10 项非空选项；去重（同文本选项没意义）后定死
+    let poll_options: Vec<String> = if ttype == "poll" {
+        let mut seen = std::collections::HashSet::new();
+        let mut opts: Vec<String> = body
+            .poll_options
+            .iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .filter(|s| seen.insert(s.clone()))
+            .collect();
+        opts.truncate(10);
+        if opts.len() < 2 {
+            return Err(DomainError::Validation("投票帖至少需要 2 个非空选项".into()));
+        }
+        opts
+    } else {
+        Vec::new()
+    };
+    // 抽奖（0126）：lottery 类型参数钳位；奖金池 = winners × prize（发帖时整池冻结）
+    let (lot_winners, lot_prize, lot_ticket, lot_hours) = if ttype == "lottery" {
+        let w = body.lottery_winners.unwrap_or(1).clamp(1, 100);
+        let p = body.lottery_prize.unwrap_or(0).clamp(0, 100_000);
+        let t = body.lottery_ticket.unwrap_or(0).clamp(0, 10_000);
+        let h = body.lottery_hours.unwrap_or(24).clamp(1, 720);
+        if p <= 0 {
+            return Err(DomainError::Validation("抽奖帖必须设置每名中奖人的魔力数".into()));
+        }
+        (w, p, t, h)
+    } else {
+        (1, 0, 0, 24)
+    };
     let topic_id: i64 = sqlx::query_scalar(
-        "INSERT INTO topics (forum_id, user_id, title, topic_type) VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO topics (forum_id, user_id, title, topic_type, bounty_spark) VALUES ($1, $2, $3, $4, $5) RETURNING id",
     )
     .bind(body.forum_id)
     .bind(auth.id)
     .bind(&body.title)
     .bind(ttype)
+    .bind(bounty)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1056,6 +1121,45 @@ async fn topic_create(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
+    // 悬赏冻结（0124）+ 抽奖奖金池冻结（0126）：与建主题同事务（对齐求种 req-bounty 范式）
+    let frozen = bounty + lot_winners as i64 * lot_prize;
+    if frozen > 0 {
+        let idem = format!("forum-bounty:{}:{}", auth.id, topic_id);
+        crate::economy_http::spend_spark_tx(
+            &mut tx,
+            auth.id,
+            frozen,
+            "forum_bounty",
+            &idem,
+            "forum_bounty",
+            topic_id,
+        )
+        .await?;
+    }
+    // 投票选项（0125）：与主题同事务落一行（选项发帖时定死，之后不可增删）
+    if !poll_options.is_empty() {
+        sqlx::query("INSERT INTO topic_polls (topic_id, options) VALUES ($1, $2)")
+            .bind(topic_id)
+            .bind(serde_json::json!(poll_options))
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    // 抽奖参数（0126）：同事务落一行；draw_at 到点由 worker 扫描开奖（或楼主提前手动开）
+    if ttype == "lottery" {
+        sqlx::query(
+            "INSERT INTO topic_lotteries (topic_id, winners, prize_per_winner, ticket_spark, draw_at) \
+             VALUES ($1, $2, $3, $4, now() + make_interval(hours => $5))",
+        )
+        .bind(topic_id)
+        .bind(lot_winners)
+        .bind(lot_prize)
+        .bind(lot_ticket)
+        .bind(lot_hours)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1078,7 +1182,7 @@ async fn topic_create(
         &[],
     )
     .await;
-    Ok(ok(serde_json::json!({ "topic_id": topic_id })))
+    Ok(ok(serde_json::json!({ "topic_id": topic_id, "bounty_frozen": bounty })))
 }
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -1113,9 +1217,11 @@ struct TopicListQuery {
     /// 排序：hot=热度（回复*2 + 点赞 + 浏览*0.1，按距最后回复的小时数衰减）/ 缺省 new
     #[serde(default)]
     sort: Option<String>,
-    /// 按标签筛选（0123）：tag_dict id，只保留带该标签的主题
+    /// 按标签筛选（0123）：tag_dict id，只保留带该标签的主题。
+    /// actix Query 对 i32 的反序列化失败会直接 400，故先收字符串再自行解析，
+    /// 非数字（爬虫乱造的 URL）静默回落全量，不拿 400 打断正常浏览。
     #[serde(default)]
-    tag: Option<i32>,
+    tag: Option<String>,
 }
 
 #[get("/forums/{id}/topics")]
@@ -1147,8 +1253,13 @@ async fn topic_list(
     } else {
         "t.sticky DESC, t.id DESC"
     };
-    // 标签筛选（0123）：EXISTS 谓词拼接（tag 是 i32，无注入面），参数位次随谓词平移
-    let tag_filter = q.tag
+    // 标签筛选（0123）：EXISTS 谓词拼接（tag 解析成 i32 后格式化，无注入面），参数位次随谓词平移
+    let tag_id = q
+        .tag
+        .as_deref()
+        .and_then(|s| s.trim().parse::<i32>().ok())
+        .filter(|v| *v > 0);
+    let tag_filter = tag_id
         .map(|tg| format!(" AND EXISTS(SELECT 1 FROM topic_tags tt WHERE tt.topic_id = t.id AND tt.tag_id = {tg})"))
         .unwrap_or_default();
     let sql = format!(
@@ -1188,7 +1299,7 @@ async fn topic_list(
         "can_create": perm.can_create,
         "can_mod": perm.can_mod,
         "sort": sort,
-        "tag": q.tag,
+        "tag": tag_id,
         "topics": rows,
     })))
 }
@@ -1234,16 +1345,30 @@ async fn topic_detail(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // NexusPHP 帖子页头部：主题标题 + 所属版块（找不到主题时 404）
-    let meta: Option<(String, i64, Option<String>, Option<i64>, bool, bool, bool, String)> =
-        sqlx::query_as(
-            "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked, t.digest, t.topic_type \
+    let meta: Option<(
+        String,
+        i64,
+        Option<String>,
+        Option<i64>,
+        bool,
+        bool,
+        bool,
+        String,
+        i64,
+        String,
+        Option<i64>,
+    )> = sqlx::query_as(
+        "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked, t.digest, t.topic_type, \
+                t.bounty_spark, t.bounty_status, t.bounty_post_id \
          FROM topics t LEFT JOIN forums f ON f.id = t.forum_id WHERE t.id = $1",
-        )
-        .bind(tid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((title, fid, forum_name, op_id, sticky, locked, digest, topic_type)) = meta else {
+    )
+    .bind(tid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((title, fid, forum_name, op_id, sticky, locked, digest, topic_type, bounty_spark, bounty_status, bounty_post_id)) =
+        meta
+    else {
         return Err(DomainError::NotFound(tid));
     };
     let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
@@ -1326,6 +1451,42 @@ async fn topic_detail(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(serde_json::json!([]));
+    // 投票（0125）：选项 + 截止态 + 我的票 + 每项计数（未投也回计数——论坛投票结果公开是常态）
+    let poll: serde_json::Value = sqlx::query_scalar(
+        "SELECT json_build_object('options', tp.options, 'closed', tp.closed, \
+                'my_vote', (SELECT v.option_index FROM poll_votes v \
+                             WHERE v.topic_id = tp.topic_id AND v.user_id = $2), \
+                'total', (SELECT count(*) FROM poll_votes v WHERE v.topic_id = tp.topic_id), \
+                'counts', (SELECT COALESCE(json_agg(json_build_object('index', c.idx, 'votes', c.n)), '[]'::json) \
+                             FROM (SELECT option_index AS idx, count(*) AS n FROM poll_votes \
+                                    WHERE topic_id = tp.topic_id GROUP BY option_index) c)) \
+         FROM topic_polls tp WHERE tp.topic_id = $1",
+    )
+    .bind(tid)
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or(serde_json::Value::Null);
+    // 抽奖（0126）：详情回 lottery{winners,prize,ticket,status,draw_at,entries,won_count,joined,my_won,winners_list}
+    let lottery: serde_json::Value = sqlx::query_scalar(
+        "SELECT json_build_object('winners', tl.winners, 'prize', tl.prize_per_winner, \
+                'ticket', tl.ticket_spark, 'status', tl.status, 'draw_at', tl.draw_at, \
+                'entries', (SELECT count(*) FROM lottery_entries e WHERE e.topic_id = tl.topic_id), \
+                'joined', EXISTS(SELECT 1 FROM lottery_entries e2 WHERE e2.topic_id = tl.topic_id AND e2.user_id = $2), \
+                'my_won', COALESCE((SELECT e3.won FROM lottery_entries e3 WHERE e3.topic_id = tl.topic_id AND e3.user_id = $2), FALSE), \
+                'winner_ids', (SELECT COALESCE(json_agg(json_build_object('id', w.user_id, 'name', u.username)), '[]'::json) \
+                                 FROM (SELECT e4.user_id FROM lottery_entries e4 \
+                                        WHERE e4.topic_id = tl.topic_id AND e4.won ORDER BY e4.user_id) w \
+                                 LEFT JOIN users u ON u.id = w.user_id)) \
+         FROM topic_lotteries tl WHERE tl.topic_id = $1",
+    )
+    .bind(tid)
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or(serde_json::Value::Null);
     Ok(ok(serde_json::json!({
         "topic_id": tid,
         "title": title,
@@ -1335,7 +1496,12 @@ async fn topic_detail(
         "locked": locked,
         "digest": digest,
         "topic_type": topic_type,
+        "bounty_spark": bounty_spark,
+        "bounty_status": bounty_status,
+        "bounty_post_id": bounty_post_id,
         "tags": tags,
+        "poll": poll,
+        "lottery": lottery,
         "favorites": favorites,
         "faved": faved,
         "is_op": op_id == Some(auth.id),
@@ -1978,7 +2144,415 @@ async fn forum_feed(
     Ok(ok(serde_json::json!({ "items": items, "next_before": next_before })))
 }
 
-// ---- 论坛管理操作（版主限本版块 / postmanage 全站） ----
+// ---- 论坛悬赏（0124）：发帖冻结（topic_create 内 spend_spark_tx）→ 楼主采纳发放 ----
+
+#[derive(Deserialize)]
+struct BountyAwardReq {
+    topic_id: i64,
+    post_id: i64,
+}
+
+/// 楼主采纳回复：悬赏发放给答主。约束：
+/// · 仅 topic_type=bounty 且 bounty_status='open'（CAS 防并发双采）；
+/// · 仅楼主本人（版主代采会引发「谁的钱谁做主」纠纷，不做）；
+/// · 不能采楼主首帖（自己给自己发钱）；
+/// · 发放幂等键锚定 topic：`forum-bounty-pay:{topic_id}`（一个悬赏只发一次）。
+#[post("/forums/bounty/award")]
+async fn bounty_award(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<BountyAwardReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let t: Option<(i64, i64, i64, String, String)> = sqlx::query_as(
+        "SELECT id, user_id, bounty_spark, bounty_status, topic_type FROM topics WHERE id = $1",
+    )
+    .bind(body.topic_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((tid, op, spark, bstatus, ttype)) = t else {
+        return Err(DomainError::NotFound(body.topic_id));
+    };
+    if ttype != "bounty" {
+        return Err(DomainError::Validation("该主题不是悬赏帖".into()));
+    }
+    if auth.id != op {
+        return Err(DomainError::Forbidden);
+    }
+    if bstatus != "open" {
+        return Err(DomainError::Validation("悬赏已处理".into()));
+    }
+    // 目标楼必须属于本主题、非楼主首帖
+    let p: Option<i64> = sqlx::query_scalar(
+        "SELECT user_id FROM posts WHERE id = $1 AND topic_id = $2",
+    )
+    .bind(body.post_id)
+    .bind(tid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(answerer) = p else {
+        return Err(DomainError::Validation("目标回复不存在".into()));
+    };
+    if answerer == op {
+        return Err(DomainError::Validation("不能采纳自己的首帖".into()));
+    }
+    // CAS：open → awarded（并发双采只成功一个）
+    let n = sqlx::query(
+        "UPDATE topics SET bounty_status = 'awarded', bounty_post_id = $2 \
+         WHERE id = $1 AND bounty_status = 'open'",
+    )
+    .bind(tid)
+    .bind(body.post_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::LedgerConflict);
+    }
+    // 审计流水（钱以 spark_ledger 为准，此表只留「谁采了谁」）
+    let _ = sqlx::query(
+        "INSERT INTO topic_bounty_awards (topic_id, post_id, answerer_id, awarded_by, spark) \
+         VALUES ($1, $2, $3, $4, $5)",
+    )
+    .bind(tid)
+    .bind(body.post_id)
+    .bind(answerer)
+    .bind(auth.id)
+    .bind(spark)
+    .execute(&state.repo.db)
+    .await;
+    if spark > 0 {
+        let idem = format!("forum-bounty-pay:{}", tid);
+        earn_spark(&state.repo.db, answerer, spark, "forum_bounty", &idem).await?;
+    }
+    // 双向通知：答主拿钱（后端拿不到 site_settings，货币名落默认口径「魔力」，与 economy_http 同约定）
+    notify_user(
+        &state.repo.db,
+        answerer,
+        "悬赏已发放",
+        &format!("您的回复被采纳，获得 {} 魔力悬赏：[/forums/topic/{}]", spark, tid),
+    )
+    .await;
+    state
+        .repo
+        .audit(Some(auth.id), "forum.bounty_award", Some(tid))
+        .await;
+    Ok(ok(serde_json::json!({ "topic_id": tid, "post_id": body.post_id, "spark": spark })))
+}
+
+// ---- 论坛投票（0125）：范式照 fun_polls（0016）——选项 JSONB、一人一票 UNIQUE、ON CONFLICT 幂等 ----
+
+#[derive(Deserialize)]
+struct PollVoteReq {
+    topic_id: i64,
+    option_index: i32,
+}
+
+/// 投一票：登录即可投（版块 can_read 再验一次 forum_access）。
+/// 免费（趣味盒扣 1 魔力是游戏口径，论坛投票是表达渠道）。校验全部前置再落占位（对齐 fun_vote 的竞态修复）。
+#[post("/forums/poll/vote")]
+async fn poll_vote(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PollVoteReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let p: Option<(serde_json::Value, bool, i64)> = sqlx::query_as(
+        "SELECT tp.options, tp.closed, t.forum_id FROM topic_polls tp \
+         JOIN topics t ON t.id = tp.topic_id WHERE tp.topic_id = $1",
+    )
+    .bind(body.topic_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((options, closed, fid)) = p else {
+        return Err(DomainError::NotFound(body.topic_id));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_read {
+        return Err(DomainError::Forbidden);
+    }
+    if closed {
+        return Err(DomainError::Validation("投票已截止".into()));
+    }
+    let n = options.as_array().map(|a| a.len()).unwrap_or(0);
+    if body.option_index < 0 || body.option_index as usize >= n {
+        return Err(DomainError::Validation("选项无效".into()));
+    }
+    let voted = sqlx::query(
+        "INSERT INTO poll_votes (topic_id, user_id, option_index) VALUES ($1, $2, $3) \
+         ON CONFLICT (topic_id, user_id) DO NOTHING",
+    )
+    .bind(body.topic_id)
+    .bind(auth.id)
+    .bind(body.option_index)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if voted == 0 {
+        return Err(DomainError::Validation("已经投过啦，一人一票".into()));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "forum.poll_vote", Some(body.topic_id))
+        .await;
+    Ok(ok(serde_json::json!({ "topic_id": body.topic_id, "option_index": body.option_index })))
+}
+
+#[derive(Deserialize)]
+struct PollCloseReq {
+    topic_id: i64,
+}
+
+/// 楼主提前截止投票（截止后只读结果；与 fun_polls.closed 同语义）。版主亦可截止（治理口径）。
+#[post("/forums/poll/close")]
+async fn poll_close(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PollCloseReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let p: Option<(i64, i64)> = sqlx::query_as(
+        "SELECT t.user_id, t.forum_id FROM topic_polls tp JOIN topics t ON t.id = tp.topic_id \
+         WHERE tp.topic_id = $1",
+    )
+    .bind(body.topic_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((op, fid)) = p else {
+        return Err(DomainError::NotFound(body.topic_id));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if auth.id != op && !perm.can_mod {
+        return Err(DomainError::Forbidden);
+    }
+    let n = sqlx::query("UPDATE topic_polls SET closed = TRUE WHERE topic_id = $1 AND NOT closed")
+        .bind(body.topic_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation("投票已截止".into()));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "forum.poll_close", Some(body.topic_id))
+        .await;
+    Ok(ok(serde_json::json!({ "topic_id": body.topic_id, "closed": true })))
+}
+
+// ---- 论坛抽奖（0126）：发帖冻结奖金池（topic_create）→ 参与 → 开奖 ----
+
+#[derive(Deserialize)]
+struct LotteryJoinReq {
+    topic_id: i64,
+}
+
+/// 参与抽奖：付票价（0=免费）换一个名额。约束：
+/// · 仅 open 且未到 draw_at（到点等 worker 开奖，不接受「补票」）；
+/// · 楼主不能参与自己的抽奖（既当庄又下注必起纠纷）；
+/// · 一人一次（PK 幂等）；票价与占位原子（对齐 fun_vote/jgg 的 spend-then-insert 回滚纪律，此处反过来 insert-then-spend 失败删占位）。
+#[post("/forums/lottery/join")]
+async fn lottery_join(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<LotteryJoinReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let l: Option<(i64, i64, String, chrono::DateTime<chrono::Utc>, i64)> = sqlx::query_as(
+        "SELECT tl.ticket_spark::bigint, t.user_id, tl.status, tl.draw_at, t.forum_id \
+         FROM topic_lotteries tl JOIN topics t ON t.id = tl.topic_id WHERE tl.topic_id = $1",
+    )
+    .bind(body.topic_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((ticket, op, status, draw_at, fid)) = l else {
+        return Err(DomainError::NotFound(body.topic_id));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_read {
+        return Err(DomainError::Forbidden);
+    }
+    if status != "open" {
+        return Err(DomainError::Validation("抽奖不在进行中".into()));
+    }
+    if chrono::Utc::now() >= draw_at {
+        return Err(DomainError::Validation("已到开奖时间，等待开奖".into()));
+    }
+    if op == auth.id {
+        return Err(DomainError::Validation("楼主不能参与自己的抽奖".into()));
+    }
+    let entered = sqlx::query(
+        "INSERT INTO lottery_entries (topic_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+    )
+    .bind(body.topic_id)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if entered == 0 {
+        return Err(DomainError::Validation("已经参与过了".into()));
+    }
+    // 票价（免费则跳过）：扣费失败回滚占位（对齐 fun_vote 纪律）
+    if ticket > 0 {
+        let idem = format!("forum-lottery-ticket:{}:{}", auth.id, body.topic_id);
+        if let Err(e) = crate::economy_http::spend_spark(
+            &state.repo.db,
+            auth.id,
+            ticket,
+            "forum_lottery",
+            &idem,
+            "forum_lottery",
+            body.topic_id,
+        )
+        .await
+        {
+            let _ = sqlx::query("DELETE FROM lottery_entries WHERE topic_id = $1 AND user_id = $2")
+                .bind(body.topic_id)
+                .bind(auth.id)
+                .execute(&state.repo.db)
+                .await;
+            return Err(e);
+        }
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "forum.lottery_join", Some(body.topic_id))
+        .await;
+    Ok(ok(serde_json::json!({ "topic_id": body.topic_id, "ticket": ticket })))
+}
+
+/// 开奖核心（手动入口与 worker 共用）：CAS open→drawn 后随机抽 winners 名，
+/// 每人发 prize_per_winner（幂等键 `forum-lottery-win:{tid}:{uid}`）。
+/// 参与人数不足名额时全中奖（钱不留在池里）；零参与则奖金池退回楼主。
+pub async fn lottery_draw_core(
+    db: &sqlx::PgPool,
+    topic_id: i64,
+) -> DomainResult<serde_json::Value> {
+    let l: Option<(i32, i64, i64, String)> = sqlx::query_as(
+        "SELECT winners, prize_per_winner, ticket_spark::bigint, status FROM topic_lotteries WHERE topic_id = $1",
+    )
+    .bind(topic_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((winners, prize, _ticket, status)) = l else {
+        return Err(DomainError::NotFound(topic_id));
+    };
+    if status != "open" {
+        return Err(DomainError::Validation("抽奖不在进行中".into()));
+    }
+    let n = sqlx::query("UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = $1 AND status = 'open'")
+        .bind(topic_id)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::LedgerConflict);
+    }
+    // 参与者全表捞出来在应用层抽（数量级 ≤ 数百，RANDOM() 洗牌即可）
+    let mut entries: Vec<i64> = sqlx::query_scalar(
+        "SELECT user_id FROM lottery_entries WHERE topic_id = $1",
+    )
+    .bind(topic_id)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if entries.is_empty() {
+        // 无人参与：奖金池退回楼主
+        let op: i64 = sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
+            .bind(topic_id)
+            .fetch_one(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let refund = winners as i64 * prize;
+        if refund > 0 {
+            let _ = earn_spark(
+                db,
+                op,
+                refund,
+                "forum_lottery_refund",
+                &format!("forum-lottery-refund:{topic_id}"),
+            )
+            .await;
+        }
+        return Ok(serde_json::json!({ "topic_id": topic_id, "winners": [], "refunded": refund }));
+    }
+    use rand::seq::SliceRandom;
+    entries.shuffle(&mut rand::thread_rng());
+    let take = (winners as usize).min(entries.len());
+    let picked: Vec<i64> = entries.into_iter().take(take).collect();
+    for uid in &picked {
+        let _ = sqlx::query("UPDATE lottery_entries SET won = TRUE WHERE topic_id = $1 AND user_id = $2")
+            .bind(topic_id)
+            .bind(uid)
+            .execute(db)
+            .await;
+        if prize > 0 {
+            let _ = earn_spark(
+                db,
+                *uid,
+                prize,
+                "forum_lottery",
+                &format!("forum-lottery-win:{topic_id}:{uid}"),
+            )
+            .await;
+            notify_user(
+                db,
+                *uid,
+                "抽奖中奖",
+                &format!("您在 [/forums/topic/{topic_id}] 的抽奖中中奖，获得 {prize} 魔力！"),
+            )
+            .await;
+        }
+    }
+    Ok(serde_json::json!({ "topic_id": topic_id, "winners": picked, "prize": prize }))
+}
+
+#[derive(Deserialize)]
+struct LotteryDrawReq {
+    topic_id: i64,
+}
+
+/// 楼主手动开奖（提前开或到点 worker 没来得及时的兜底）。版主亦可（治理口径，同 poll_close）。
+#[post("/forums/lottery/draw")]
+async fn lottery_draw(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<LotteryDrawReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let l: Option<(i64, i64)> = sqlx::query_as(
+        "SELECT t.user_id, t.forum_id FROM topic_lotteries tl JOIN topics t ON t.id = tl.topic_id \
+         WHERE tl.topic_id = $1",
+    )
+    .bind(body.topic_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((op, fid)) = l else {
+        return Err(DomainError::NotFound(body.topic_id));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if auth.id != op && !perm.can_mod {
+        return Err(DomainError::Forbidden);
+    }
+    let out = lottery_draw_core(&state.repo.db, body.topic_id).await?;
+    state
+        .repo
+        .audit(Some(auth.id), "forum.lottery_draw", Some(body.topic_id))
+        .await;
+    Ok(ok(out))
+}
 
 /// 单帖上下文：(topic_id, forum_id, author_id)
 async fn post_context(db: &sqlx::PgPool, post_id: i64) -> DomainResult<Option<(i64, i64, i64)>> {
@@ -2140,6 +2714,60 @@ async fn topic_delete(
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 悬赏未决退回（0124）：open 状态的悬赏在删主题时退还楼主（已 awarded 的不动——钱已归答主）。
+    // 幂等键与发放错开：`-refund` 后缀，退回与发放都各只发生一次。
+    if let Some(op_id) = op {
+        let bounty_open: Option<i64> = sqlx::query_scalar(
+            "SELECT bounty_spark FROM topics WHERE id = $1 AND topic_type = 'bounty' \
+             AND bounty_status = 'open' AND bounty_spark > 0",
+        )
+        .bind(tid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if let Some(refund) = bounty_open {
+            let _ = earn_spark(
+                &state.repo.db,
+                op_id,
+                refund,
+                "forum_bounty_refund",
+                &format!("forum-bounty-refund:{tid}"),
+            )
+            .await;
+            let _ = sqlx::query(
+                "UPDATE topics SET bounty_status = 'refunded' WHERE id = $1 AND bounty_status = 'open'",
+            )
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await;
+        }
+        // 抽奖未决退回（0126）：open 状态的抽奖在删主题时奖金池退还楼主（drawn 的不动——钱已归中奖人）。
+        // 票价不退（参与者享受了参与过程；与删悬赏帖不追回已发赏金同一不对称口径）。
+        let lot_open: Option<i64> = sqlx::query_scalar(
+            "SELECT winners::bigint * prize_per_winner FROM topic_lotteries \
+             WHERE topic_id = $1 AND status = 'open' AND prize_per_winner > 0",
+        )
+        .bind(tid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if let Some(refund) = lot_open {
+            let _ = earn_spark(
+                &state.repo.db,
+                op_id,
+                refund,
+                "forum_lottery_refund",
+                &format!("forum-lottery-refund:{tid}"),
+            )
+            .await;
+            let _ = sqlx::query(
+                "UPDATE topic_lotteries SET status = 'cancelled' WHERE topic_id = $1 AND status = 'open'",
+            )
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await;
+        }
+    }
     if let Some(op_id) = op {
         let _ = earn_spark(
             &state.repo.db,

@@ -19,7 +19,7 @@ interface OfferItem {
 
 /** 候选区（offers.php 口径）：投票（1 火花/票）达标转官种 */
 export default function OffersPage() {
-  const { dict, locale } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const t = dict.offers2;
   const [rows, setRows] = useState<OfferItem[]>([]);
   const [newTorrentId, setNewTorrentId] = useState("");
@@ -88,7 +88,7 @@ export default function OffersPage() {
           >
             {t.btnCreate}
           </button>
-          <p className="text-xs text-sub">{t.voteNote}</p>
+          <p className="text-xs text-sub">{t.voteNote.replace("{magic}", currency)}</p>
         </div>
       </section>
 

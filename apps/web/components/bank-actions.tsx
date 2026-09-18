@@ -11,7 +11,7 @@ const bp = (b: number) => `${(b / 100).toFixed(2)}%`;
 
 /** 银行系统（火花银行对齐）：活期复利 + 定期 + 贷款 + 资产概览 */
 export function BankCard({ loginToView }: { loginToView: string }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const [ov, setOv] = useState<BankOverview | null>(null);
   const [deposits, setDeposits] = useState<BankDeposit[]>([]);
   const [amount, setAmount] = useState("");
@@ -63,7 +63,7 @@ export function BankCard({ loginToView }: { loginToView: string }) {
       const r = await api.post<{ penalty: number; matured: boolean }>("/api/v1/bank/withdraw", {
         deposit_id: depositId,
       });
-      return r.matured ? "✓" : dict.bank.penaltyTaken.replace("{n}", fmt(r.penalty));
+      return r.matured ? "✓" : dict.bank.penaltyTaken.replace("{n}", fmt(r.penalty)).replace("{magic}", currency);
     });
   const demandIn = () =>
     act(async () => {
@@ -86,7 +86,7 @@ export function BankCard({ loginToView }: { loginToView: string }) {
   const loanRepay = () =>
     act(async () => {
       const r = await api.post<{ paid: number }>("/api/v1/bank/loan/repay", {});
-      return dict.bank.repaid.replace("{n}", fmt(r.paid));
+      return dict.bank.repaid.replace("{n}", fmt(r.paid)).replace("{magic}", currency);
     });
 
   if (ov === null) {
@@ -138,7 +138,7 @@ export function BankCard({ loginToView }: { loginToView: string }) {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label={dict.bank.totalAsset} value={fmt(ov.total_asset)} />
         <Stat label={dict.bank.netAsset} value={fmt(ov.net_asset)} />
-        <Stat label={dict.bank.sparkBalance} value={fmt(ov.spark_balance)} />
+        <Stat label={dict.bank.sparkBalance.replace("{magic}", currency)} value={fmt(ov.spark_balance)} />
         <Stat label={dict.bank.demandBalance} value={fmt(ov.demand.balance)} />
         <Stat
           label={dict.bank.fixedActive}
@@ -186,6 +186,7 @@ export function BankCard({ loginToView }: { loginToView: string }) {
           </div>
           <p className="text-xs text-sub">
             {dict.bank.fixedRule
+              .replace("{magic}", currency)
               .replace("{min}", fmt(ov.limits.min_deposit))
               .replace("{max}", fmt(ov.limits.max_deposit))
               .replace("{p}", bp(ov.limits.penalty_bp))}
@@ -226,7 +227,9 @@ export function BankCard({ loginToView }: { loginToView: string }) {
             </button>
           </div>
           <p className="text-xs text-sub">
-            {dict.bank.demandRule.replace("{min}", fmt(ov.limits.min_demand))}
+            {dict.bank.demandRule
+              .replace("{min}", fmt(ov.limits.min_demand))
+              .replace("{magic}", currency)}
           </p>
         </section>
 
@@ -296,7 +299,8 @@ export function BankCard({ loginToView }: { loginToView: string }) {
               <p className="text-xs text-sub">
                 {dict.bank.loanRule
                   .replace("{min}", fmt(ov.limits.min_loan))
-                  .replace("{max}", fmt(ov.max_loan))}
+                  .replace("{max}", fmt(ov.max_loan))
+                  .replace("{magic}", currency)}
               </p>
             </>
           )}

@@ -1,7 +1,7 @@
 import { getMedals } from "@/lib/data";
 import { MedalActions } from "@/components/medal-actions";
 import { getDict } from "@/i18n/server";
-import { dateLocale, fmt } from "@/i18n/config";
+import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export default async function MedalsPage() {
   const gate = await requireModule("medals");
   if (gate) return gate;
 
-  const { dict, locale } = await getDict();
+  const { dict, locale, currency } = await getDict();
   const medals = await getMedals();
   const t = dict.medals2;
   // 分类分组（0 = 未分组）
@@ -79,13 +79,13 @@ export default async function MedalsPage() {
                 {m.description && <p className="text-xs leading-relaxed text-sub">{m.description}</p>}
                 <p className="num text-xs text-sub">
                   {m.price
-                    ? fmt(dict.medals.sparkPrice, { n: m.price.toLocaleString(dateLocale(locale)) })
+                    ? fmtCur(dict.medals.sparkPrice, { n: m.price.toLocaleString(dateLocale(locale)) }, currency)
                     : dict.medals.notForSale}
                   {m.limited ? ` · ${dict.medals.limited}` : ""}
                 </p>
                 <ul className="medal-meta">
                   <li>
-                    {t.getType}: {m.get_type === 1 ? t.gtExchange : m.get_type === 2 ? t.gtGrant : t.gtSynthesize}
+                    {t.getType}: {m.get_type === 1 ? t.gtExchange.replace("{magic}", currency) : m.get_type === 2 ? t.gtGrant : t.gtSynthesize}
                   </li>
                   <li>
                     {t.duration}:{" "}
@@ -94,7 +94,7 @@ export default async function MedalsPage() {
                   {m.inventory !== null && <li>{fmt(t.inventory, { n: m.inventory })}</li>}
                   {m.bonus_addition_factor > 0 && (
                     <li className="text-[var(--baozi-orange-dark)]">
-                      {fmt(t.bonusAddition, { n: m.bonus_addition_factor })}
+                      {fmtCur(t.bonusAddition, { n: m.bonus_addition_factor }, currency)}
                     </li>
                   )}
                   {m.sale_end_at && (
