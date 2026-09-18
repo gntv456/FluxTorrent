@@ -9,11 +9,21 @@ export const dynamic = "force-dynamic";
 /**
  * 关注流（0121）：我关注的版块/作者的新主题 + 我关注主题的最新回复，
  * 按最后活动时间倒序。`via` 标出这条是靠哪种关注命中的，便于用户理解流里为什么有它。
+ * 分页（0123）：before 游标（末行 last_post_at），SSR 链接翻页与主题页同范式。
  */
-export default async function FeedPage() {
+export default async function FeedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ before?: string }>;
+}) {
+  const { before } = await searchParams;
   const { dict, locale } = await getDict();
   const t = dict.forums;
-  const [items, mine] = await Promise.all([getFeed(50), getMyFollows()]);
+  const [feed, mine] = await Promise.all([
+    getFeed(50, before || undefined),
+    getMyFollows(),
+  ]);
+  const items = feed.items;
   const viaLabel = (v: string) =>
     v === "forum" ? t.viaForum : v === "user" ? t.viaUser : t.viaTopic;
   const viaCount = mine.forums.length + mine.users.length + mine.topics.length;
@@ -106,6 +116,24 @@ export default async function FeedPage() {
             ))}
           </tbody>
         </table>
+      )}
+      {/* 游标翻页（0123）：有下一页才渲染；返回链接在翻页后出现 */}
+      {feed.next_before && (
+        <div className="flex items-center justify-between">
+          {before ? (
+            <Link href="/forums/feed" className="text-sm text-sub hover:text-sky">
+              ← {t.feedFirst}
+            </Link>
+          ) : (
+            <span />
+          )}
+          <Link
+            href={`/forums/feed?before=${encodeURIComponent(feed.next_before)}`}
+            className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2 text-sm text-sky hover:border-sky"
+          >
+            {t.feedMore} →
+          </Link>
+        </div>
       )}
     </div>
   );

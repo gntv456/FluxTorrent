@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTopics } from "@/lib/data";
+import { getTopics, getForumTags } from "@/lib/data";
 import { TopicComposer } from "@/components/forum-composer";
-import { TypeBadge } from "@/components/forum-bits";
+import { TypeBadge, TagChip } from "@/components/forum-bits";
 import { FollowButton } from "@/components/forum-follow";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt } from "@/i18n/config";
@@ -14,19 +14,31 @@ export default async function ForumPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ sort?: string }>;
+  searchParams: Promise<{ sort?: string; tag?: string }>;
 }) {
   const { id } = await params;
-  const { sort: sortRaw } = await searchParams;
+  const { sort: sortRaw, tag: tagRaw } = await searchParams;
   const { dict, locale } = await getDict();
   const forumId = Number(id);
   if (!Number.isFinite(forumId)) notFound();
   // 排序白名单（0116）：hot=热度衰减 / 缺省 new=最新
   const sort = sortRaw === "hot" ? "hot" : "new";
-  const data = await getTopics(forumId, sort);
+  // 标签筛选（0123）：tag=tag_dict id；非法值回落全量
+  const tagNum = Number(tagRaw);
+  const tag = Number.isFinite(tagNum) && tagNum > 0 ? tagNum : undefined;
+  const [data, tagDict] = await Promise.all([getTopics(forumId, sort, tag), getForumTags()]);
   // 版块不存在或无 minclassread 门槛权限（Forbidden）→ 404 口径
   if (!data) notFound();
   const topics = data.topics;
+  const activeTag = tagDict.find((t) => t.id === tag);
+  // 筛选/排序链接共享的 query 基（保持 tag 与 sort 互不丢失）
+  const qs = (over: Record<string, string | undefined>) => {
+    const sp = new URLSearchParams();
+    const merged = { sort, tag: tag ? String(tag) : undefined, ...over };
+    for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
+    const s = sp.toString();
+    return s ? `?${s}` : "";
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -44,7 +56,7 @@ export default async function ForumPage({
           {/* 排序切换：SSR 链接，不引入客户端状态 */}
           <div className="inline-flex overflow-hidden rounded-full border border-line">
             <Link
-              href={`/forums/${forumId}?sort=new`}
+              href={`/forums/${forumId}${qs({ sort: "new" })}`}
               aria-current={sort === "new" ? "true" : undefined}
               className={`px-3 py-1 text-xs font-bold transition ${
                 sort === "new"
@@ -55,7 +67,7 @@ export default async function ForumPage({
               {dict.forums.sortNew}
             </Link>
             <Link
-              href={`/forums/${forumId}?sort=hot`}
+              href={`/forums/${forumId}${qs({ sort: "hot" })}`}
               aria-current={sort === "hot" ? "true" : undefined}
               className={`px-3 py-1 text-xs font-bold transition ${
                 sort === "hot"
@@ -69,6 +81,44 @@ export default async function ForumPage({
           {data.can_create && <TopicComposer forumId={forumId} />}
         </div>
       </div>
+      {/* 标签筛选（0123）：SSR 链接切换，选中项加 outline 高亮；「全部」清除筛选 */}
+      {tagDict.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Link
+            href={`/forums/${forumId}${qs({ tag: undefined })}`}
+            aria-current={!tag ? "true" : undefined}
+            className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
+              !tag ? "border-sky bg-[var(--sky-soft)] text-sky" : "border-line text-sub hover:text-sky"
+            }`}
+          >
+            {dict.forums.tagAll}
+          </Link>
+          {tagDict.map((t) =>
+            tag === t.id ? (
+              <Link
+                key={t.id}
+                href={`/forums/${forumId}${qs({ tag: undefined })}`}
+                aria-current="true"
+                className="rounded-full outline outline-2 outline-offset-1 outline-sky"
+                title={dict.forums.tagClear}
+              >
+                <TagChip tag={t} />
+              </Link>
+            ) : (
+              <Link
+                key={t.id}
+                href={`/forums/${forumId}${qs({ tag: String(t.id) })}`}
+                className="rounded-full opacity-70 transition hover:opacity-100"
+              >
+                <TagChip tag={t} />
+              </Link>
+            ),
+          )}
+        </div>
+      )}
+      {activeTag && topics.length === 0 && (
+        <p className="py-6 text-center text-sm text-sub">{dict.forums.tagNoHit}</p>
+      )}
       {topics.length === 0 ? (
         <p className="py-10 text-center text-sub">{dict.forums.noTopics}</p>
       ) : (
@@ -114,6 +164,9 @@ export default async function ForumPage({
                     }
                     className="mr-1 align-middle"
                   />
+                  {t.tags?.map((tg) => (
+                    <TagChip key={tg.id} tag={tg} className="mr-1 align-middle" />
+                  ))}
                   <Link
                     href={`/forums/topic/${t.id}`}
                     className="font-bold text-ink hover:text-sky"

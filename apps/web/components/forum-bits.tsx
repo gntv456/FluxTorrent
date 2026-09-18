@@ -31,3 +31,41 @@ export function TypeBadge({
     </span>
   );
 }
+
+/** 论坛标签样式（0123）：词表与样式列全部来自 tag_dict（0063 带样式的通用标签字典，
+ *  站长在 admin-tagdict 后台改色即全站生效）。样式列可能为空串（历史数据），空值回落主题默认。 */
+export interface TagChipData {
+  id: number;
+  name: string;
+  kind?: string;
+  bg_color?: string;
+  color?: string;
+  font_size?: string;
+  margin?: string;
+  padding?: string;
+  border_radius?: string;
+}
+
+export function TagChip({
+  tag,
+  className = "",
+}: {
+  tag: TagChipData;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-block font-bold leading-normal ${className}`}
+      style={{
+        background: tag.bg_color || "var(--surface-sunken)",
+        color: tag.color || "var(--ink)",
+        fontSize: tag.font_size || "11px",
+        margin: tag.margin || undefined,
+        padding: tag.padding || "1px 6px",
+        borderRadius: tag.border_radius || "9999px",
+      }}
+    >
+      {tag.name}
+    </span>
+  );
+}

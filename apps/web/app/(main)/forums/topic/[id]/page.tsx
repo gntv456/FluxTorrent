@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getPosts, getForums } from "@/lib/data";
 import { ReplyBox, TopicModActions, PostActions } from "@/components/forum-composer";
 import { MarkdownRenderer } from "@/components/forum-markdown";
-import { TypeBadge } from "@/components/forum-bits";
+import { TypeBadge, TagChip } from "@/components/forum-bits";
 import { PostVoteBar, TopicFavoriteButton } from "@/components/forum-vote";
 import { ReportTopicButton } from "@/components/forum-report";
 import { FollowButton } from "@/components/forum-follow";
@@ -56,6 +56,9 @@ export default async function TopicPage({
             }
             className="mr-2 align-middle"
           />
+          {detail.tags?.map((tg) => (
+            <TagChip key={tg.id} tag={tg} className="mr-1 align-middle" />
+          ))}
           {detail.title}
         </h1>
         {authId > 0 && (

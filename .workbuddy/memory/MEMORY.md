@@ -71,7 +71,11 @@ ls "apps/web/app/(main)/"                            # 4. 前端页面有没有 
 | 站型包 | `site_type_packs` | 11 种 code（education/movie/music/anime/ebook/general/sports/game/software/documentary/lossless），`modules` JSONB 存模块开关 |
 | 任务/勋章/好友/小游戏 | `tasks`·`task_claims` / `medals`·`user_medals` / `friendships` / `games.rs`·`fun_items`·`farm_*`·`gomoku_games` | |
 
-**术语**：站内货币叫 **spark（火花）**，不是"魔力值"。用户表 `users.spark_balance`。
+**术语**：站内货币的**内部标识**是 spark（`users.spark_balance` / `spark_ledger` / `earn_spark` / `gift_spark`），
+代码注释里也用「火花」当领域词。但**用户可见的名字由站长配置**：
+`site_settings.currency_name`（默认 **「魔力」**），前端走 `{magic}` 占位符 →
+`useI18n().currency` / `getDict().currency` + `.replace("{magic}", currency)`。
+**新增用户可见文案一律用 `{magic}`，不要硬编码货币名**（2026-09-18 用户决策：默认态统一「魔力」，见 0122 迁移）。
 
 **存档**：`_doc/落地修正-基于现有代码的增量方案.md` 有完整的复用/新增边界与 0102 迁移脚本草案。
 
@@ -94,4 +98,11 @@ ls "apps/web/app/(main)/"                            # 4. 前端页面有没有 
 - **默认站型 = `general`**（0119 起，原 `education`）；`module_textbooks` 默认 `no`；默认分类 = general 10 类。
 - **曾经的"教育化默认"来源**：`0001`(categories 教育集) / `0025`(site_name/site_title/site_subtitle) / `0034`(SITENAME/SEO) / `0037`(site_type=education) / `0039`(module_textbooks=yes) / `0043? 0110`(刻意保留 education 包品牌)。
 - **`site_type` 仍是运行时可选项**：迁移只把「初装默认」翻转为 general；站长在向导里主动选 education 会被记录、不再被覆盖（迁移只跑一次）。
-- 迁移号：0120 为本轮最后一条（0117 去包子 / 0118 品牌=FluxTorrent / 0119 默认 general / 0120 设定默认中性）。
+- **站内货币名链路（2026-09-18 摸清）**：`site_settings.currency_name`（默认「魔力」）→ `site-profile` →
+  `getDict()` 的 `currency` → 前端 `{magic}` 占位符。**用户可见文案散落在三层**，改默认态要全覆盖：
+  ① 三语字典 `i18n/*.ts`（`{magic}` 占位符）；② **DB 种子数据**里的标签/单位/描述
+  （`shop_items.name` / `settings_meta.{label_zh,unit,hint}` / `site_settings.descr` / `modules.descr` /
+  `fun_polls.question` / `staff_panel_entries.info`，见 0122）；③ **worker 发的系统私信**
+  （`bank_jobs.rs`/`jobs.rs`/`task_jobs.rs`）。另：`messages` 里的历史站内信**有意保留旧词**，不重写历史。
+- 迁移号：**0122** 为本轮最后一条（0117 去包子 / 0118 品牌=FluxTorrent / 0119 默认 general /
+  0120 设定默认中性 / 0122 货币名统一魔力）。0121 是并行会话的论坛关注（`forum_follows`）。

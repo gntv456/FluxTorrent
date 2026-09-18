@@ -1,5 +1,6 @@
 import { api, paged } from "@/lib/api-client";
 import type { TorrentListItem, UserPublic } from "@fluxtorrent/domain-types";
+import type { TagChipData } from "@/components/forum-bits";
 
 export { formatBytes } from "./format";
 
@@ -83,6 +84,8 @@ export interface Topic {
   digest?: boolean;
   /** 帖子类型（0115）：normal|bounty|poll|lottery */
   topic_type?: string;
+  /** 标签（0123）：tag_dict id + 名称 + 样式列（TagChip 直接渲染） */
+  tags?: TagChipData[];
 }
 export interface ForumTopics {
   forum_id: number;
@@ -93,6 +96,8 @@ export interface ForumTopics {
   can_mod: boolean;
   /** 当前排序（0116）：hot|new */
   sort?: string;
+  /** 当前标签筛选（0123）：tag_dict id */
+  tag?: number | null;
   topics: Topic[];
 }
 /** 站点运行统计（/stats 需登录；页脚展示用，未登录返回 null） */
@@ -133,10 +138,14 @@ export async function getMenuItems(location: string): Promise<MenuItem[]> {
 export async function getTopics(
   forumId: number,
   sort?: string,
+  tag?: number,
 ): Promise<ForumTopics | null> {
   try {
-    const qs = sort ? `?sort=${encodeURIComponent(sort)}` : "";
-    return await api.get<ForumTopics>(`/api/v1/forums/${forumId}/topics${qs}`);
+    const qs = new URLSearchParams();
+    if (sort) qs.set("sort", sort);
+    if (tag) qs.set("tag", String(tag));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return await api.get<ForumTopics>(`/api/v1/forums/${forumId}/topics${suffix}`);
   } catch {
     return null;
   }
@@ -166,6 +175,8 @@ export interface TopicDetail {
   digest?: boolean;
   /** 帖子类型（0115）：normal|bounty|poll|lottery */
   topic_type?: string;
+  /** 标签（0123）：头部 TagChip 渲染 */
+  tags?: TagChipData[];
   is_op: boolean;
   current_user_id?: number | null;
   can_write: boolean;
@@ -205,12 +216,19 @@ export interface FeedItem {
   replies: number;
   via: string;
 }
-export async function getFeed(limit = 50): Promise<FeedItem[]> {
+/** 关注流分页游标（0123）：next_before 为空表示没有下一页 */
+export async function getFeed(
+  limit = 50,
+  before?: string,
+): Promise<{ items: FeedItem[]; next_before: string | null }> {
   try {
-    const r = await api.get<{ items: FeedItem[] }>(`/api/v1/forums/feed?limit=${limit}`);
-    return r?.items ?? [];
+    const qs = before ? `?limit=${limit}&before=${encodeURIComponent(before)}` : `?limit=${limit}`;
+    const r = await api.get<{ items: FeedItem[]; next_before: string | null }>(
+      `/api/v1/forums/feed${qs}`,
+    );
+    return { items: r?.items ?? [], next_before: r?.next_before ?? null };
   } catch {
-    return [];
+    return { items: [], next_before: null };
   }
 }
 
@@ -230,6 +248,15 @@ export async function getMyFollows(): Promise<MyFollows> {
     return (await api.get<MyFollows>("/api/v1/follows/mine")) ?? empty;
   } catch {
     return empty;
+  }
+}
+
+/** 论坛标签字典（0123）：公开接口，含 tag_dict 样式列（TagChip 渲染源） */
+export async function getForumTags(): Promise<TagChipData[]> {
+  try {
+    return (await api.get<TagChipData[]>("/api/v1/forums/tags")) ?? [];
+  } catch {
+    return [];
   }
 }
 
