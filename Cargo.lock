@@ -1087,6 +1087,7 @@ dependencies = [
  "jsonwebtoken",
  "lettre",
  "maxminddb",
+ "md-5",
  "p256",
  "rand 0.8.8",
  "redis",

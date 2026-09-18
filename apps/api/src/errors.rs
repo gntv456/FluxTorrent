@@ -44,6 +44,9 @@ pub enum DomainError {
     TorrentInvalid(String),
     #[error("种子重复")]
     TorrentDuplicate,
+    /// 模块未开启（U1 §5.1）：本站未开放该功能，与 403 权限区分（先模块后权限，§5.5）
+    #[error("本站未开放此功能")]
+    ModuleDisabled(String),
     #[error("内部错误")]
     Internal(#[from] anyhow::Error),
 }
@@ -69,6 +72,7 @@ impl DomainError {
             DomainError::AlreadyThanked => 5002,
             DomainError::TorrentInvalid(_) => 3003,
             DomainError::TorrentDuplicate => 3004,
+            DomainError::ModuleDisabled(_) => 4101,
             DomainError::Internal(_) => 1000,
         }
     }
@@ -91,6 +95,8 @@ impl DomainError {
             // 429 与 openapi 文档（openapi_http.rs 429 描述）及 scripts/_ratelimit_check.py 口径一致
             DomainError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             DomainError::InsufficientSpark | DomainError::LedgerConflict => StatusCode::CONFLICT,
+            // 4101 语义上更贴近「资源被移除」；用 403 会与权限混淆、404 会误导前端重试逻辑
+            DomainError::ModuleDisabled(_) => StatusCode::NOT_FOUND,
             DomainError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

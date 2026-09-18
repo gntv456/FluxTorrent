@@ -456,20 +456,21 @@ async fn announce(
     // 执行闭环（0069）：命中事件经 Redis 去重（每 user+agent 1h 一条）后投递 worker 落 cheat_events，
     // 管理组在后台可查 —— 不再是"拒绝即止、无处留痕"。
     let peer_id_readable = String::from_utf8_lossy(&peer_id_raw).into_owned();
-    if let Some(reason) = state.agent_blocked(params.get_str("agent").as_deref(), &peer_id_readable)
-    {
+    // 审计修复（P1）：BT 客户端把 UA 放 HTTP 头而非 query 参数 —— 旧版只读 ?agent=，
+    // agent_rules 的 UA 正则恒不命中、snatches.agent 恒空。改为 UA 头优先、query 兜底。
+    let agent_str = req
+        .headers()
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string)
+        .or_else(|| params.get_str("agent"))
+        .unwrap_or_default();
+    if let Some(reason) = state.agent_blocked(Some(agent_str.as_str()), &peer_id_readable) {
         state
             .metrics
             .announce_agent_blocked
             .fetch_add(1, Ordering::Relaxed);
-        emit_agent_block(
-            &state.redis,
-            user_id,
-            params.get_str("agent").as_deref().unwrap_or(""),
-            &ip,
-            &reason,
-        )
-        .await;
+        emit_agent_block(&state.redis, user_id, &agent_str, &ip, &reason).await;
         return bencode_err(&reason);
     }
 
@@ -506,7 +507,7 @@ async fn announce(
         left,
         &ip,
         state.peers.connectable_of(&key),
-        params.get_str("agent").as_deref().unwrap_or(""),
+        &agent_str,
     )
     .await;
 
@@ -815,7 +816,8 @@ async fn main() -> anyhow::Result<()> {
                         let mut c = st.redis.clone();
                         use redis::AsyncCommands;
                         // 30min TTL：tracker 长时间下线后旧快照不再有效
-                        if let Err(e) = c.set_ex::<_, _, ()>("flux:tracker:peers", raw, 1800).await {
+                        if let Err(e) = c.set_ex::<_, _, ()>("flux:tracker:peers", raw, 1800).await
+                        {
                             tracing::warn!(%e, "peer snapshot write failed");
                         }
                     }

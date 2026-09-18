@@ -371,7 +371,6 @@ mod tests {
     }
 }
 
-
 /// 定位 .torrent 字节中顶层 info 字典的原始区间 [start, end)。
 /// 只处理顶层键（不递归进嵌套 dict/list 的 e），失败返回 None（调用方退规范化口径）。
 fn raw_info_span(bytes: &[u8]) -> Option<(usize, usize)> {

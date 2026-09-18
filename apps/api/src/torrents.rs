@@ -107,6 +107,53 @@ pub struct TorrentFilter {
     /// 匹配模式：0=AND 模糊(默认) 2=精确等值
     #[serde(default)]
     pub search_mode: Option<i32>,
+    // ===== 高级搜索增强（体积/时间/做种数/排除词/优惠/发布者/仅我发布） =====
+    /// 体积下界（字节，含）
+    #[serde(default)]
+    pub size_min: Option<i64>,
+    /// 体积上界（字节，含）
+    #[serde(default)]
+    pub size_max: Option<i64>,
+    /// 发布时间下界（`YYYY-MM-DD`，含当天；入口已校验格式）
+    #[serde(default)]
+    pub date_from: Option<String>,
+    /// 发布时间上界（`YYYY-MM-DD`，含当天）
+    #[serde(default)]
+    pub date_to: Option<String>,
+    /// 做种数下界（含）
+    #[serde(default)]
+    pub min_seeders: Option<i32>,
+    /// 做种数上界（含）
+    #[serde(default)]
+    pub max_seeders: Option<i32>,
+    /// 排除关键字（标题/简介均不得命中，OR 语义：整串作为一个词）
+    #[serde(default)]
+    pub exclude: Option<String>,
+    /// 优惠筛选：free=免费(含 2x 免费) x2=2倍 half=半价 any=任意优惠 none=无优惠
+    #[serde(default)]
+    pub promo: Option<String>,
+    /// 发布者用户名（模糊）
+    #[serde(default)]
+    pub owner: Option<String>,
+    /// 仅显示当前视角用户发布的种子（viewer 维度）
+    #[serde(default)]
+    pub only_mine: bool,
+    // ===== 高级搜索补齐（0118：下载数/完成数区间 + 匿名发布） =====
+    /// 下载数（leechers）下界（含）
+    #[serde(default)]
+    pub min_leechers: Option<i32>,
+    /// 下载数上界（含）
+    #[serde(default)]
+    pub max_leechers: Option<i32>,
+    /// 完成数（times_completed）下界（含）
+    #[serde(default)]
+    pub min_completed: Option<i32>,
+    /// 完成数上界（含）
+    #[serde(default)]
+    pub max_completed: Option<i32>,
+    /// 匿名发布：None=不限 1=仅匿名 2=仅具名（口径同 alive 三态）
+    #[serde(default)]
+    pub anonymous: Option<i16>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -118,11 +165,126 @@ pub struct TorrentPage {
 
 const MAX_LIMIT: i64 = 50;
 
+/// LIKE 通配转义（防用户输入的 `%`/`_` 变成通配符；配合 SQL 侧 `ESCAPE chr(92)`）
+fn esc_like(s: &str) -> String {
+    s.replace('\\', "").replace('%', "\\%").replace('_', "\\_")
+}
+
 fn sort_expr(sticky_expr: &str, col: &str, asc: bool) -> String {
     let dir = if asc { "ASC" } else { "DESC" };
     format!("{sticky_expr}, {col} {dir}, t.id {dir}")
 }
 
+/// 优惠（promotions）命中的统一匹配式：种子级直挂 或 全局/官种/非官种/分类作用域。
+/// 与列表 SELECT 中 promotion 子查询同口径，保证「筛选出的免费种」与徽标显示一致。
+const PROMO_MATCH: &str = "p.starts_at <= now() AND p.ends_at > now() AND (\
+     p.torrent_id = t.id OR (p.torrent_id IS NULL AND (\
+       p.scope = 'global' \
+       OR (p.scope = 'official' AND t.official_tag) \
+       OR (p.scope = 'non_official' AND NOT t.official_tag) \
+       OR (p.scope = 'category' AND t.category_id = p.category_id))))";
+
+/// 追加筛选的占位符槽位。列表与计数两条 SQL 的参数编号各自独立，
+/// 故谓词文本按槽位号生成（同一份语义，两套编号），避免手改编号串号。
+#[derive(Clone, Copy)]
+struct ExtraSlots {
+    size_min: u32,
+    size_max: u32,
+    date_from: u32,
+    date_to: u32,
+    min_seeders: u32,
+    max_seeders: u32,
+    exclude: u32,
+    promo: u32,
+    owner: u32,
+    mine: u32,
+    min_leechers: u32,
+    max_leechers: u32,
+    min_completed: u32,
+    max_completed: u32,
+    anonymous: u32,
+}
+
+/// 高级搜索增强谓词（体积/时间/做种数/排除词/优惠/发布者/仅我发布）。
+/// 全部走参数化绑定（`$n IS NULL OR ...`），无注入面；谓词是否生效由绑定的 None/Some 决定。
+fn extra_preds(s: ExtraSlots) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        " AND (${a}::bigint IS NULL OR t.size >= ${a})",
+        a = s.size_min
+    ));
+    out.push_str(&format!(
+        " AND (${a}::bigint IS NULL OR t.size <= ${a})",
+        a = s.size_max
+    ));
+    // 日期按「日历日」口径比较（避免时区把当天数据挤出去）：下界含当日 00:00，上界含当日 23:59:59
+    out.push_str(&format!(
+        " AND (${a}::date IS NULL OR t.created_at >= ${a}::date)",
+        a = s.date_from
+    ));
+    out.push_str(&format!(
+        " AND (${a}::date IS NULL OR t.created_at < (${a}::date + 1))",
+        a = s.date_to
+    ));
+    out.push_str(&format!(
+        " AND (${a}::int IS NULL OR t.seeders >= ${a})",
+        a = s.min_seeders
+    ));
+    out.push_str(&format!(
+        " AND (${a}::int IS NULL OR t.seeders <= ${a})",
+        a = s.max_seeders
+    ));
+    // 排除词：标题与简介任一命中即排除（pattern 已由调用方转义/加通配）
+    out.push_str(&format!(
+        " AND (${a}::text IS NULL OR (t.name NOT ILIKE ${a} ESCAPE chr(92) \
+           AND COALESCE(t.small_descr, '') NOT ILIKE ${a} ESCAPE chr(92) \
+           AND COALESCE(t.descr, '') NOT ILIKE ${a} ESCAPE chr(92)))",
+        a = s.exclude
+    ));
+    let p = s.promo;
+    out.push_str(&format!(
+        " AND (${p}::text IS NULL \
+           OR (${p} = 'free' AND EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH} AND p.kind::text IN ('free','x2free'))) \
+           OR (${p} = 'x2' AND EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH} AND p.kind::text IN ('x2','x2free','x2half'))) \
+           OR (${p} = 'half' AND EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH} AND p.kind::text IN ('half','x2half'))) \
+           OR (${p} = 'any' AND EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH})) \
+           OR (${p} = 'none' AND NOT EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH})))"
+    ));
+    out.push_str(&format!(
+        " AND (${a}::text IS NULL OR u.username ILIKE ${a} ESCAPE chr(92))",
+        a = s.owner
+    ));
+    out.push_str(&format!(
+        " AND (${a}::bigint IS NULL OR t.owner_id = ${a})",
+        a = s.mine
+    ));
+    // 0118 高级搜索补齐：下载数 / 完成数区间（与做种数同口径，含边界）
+    out.push_str(&format!(
+        " AND (${a}::int IS NULL OR t.leechers >= ${a})",
+        a = s.min_leechers
+    ));
+    out.push_str(&format!(
+        " AND (${a}::int IS NULL OR t.leechers <= ${a})",
+        a = s.max_leechers
+    ));
+    out.push_str(&format!(
+        " AND (${a}::int IS NULL OR t.times_completed >= ${a})",
+        a = s.min_completed
+    ));
+    out.push_str(&format!(
+        " AND (${a}::int IS NULL OR t.times_completed <= ${a})",
+        a = s.max_completed
+    ));
+    // 匿名发布三态：1=仅匿名 2=仅具名（缺省/0 不筛；口径同 alive）
+    out.push_str(&format!(
+        " AND (${a}::int IS NULL OR ${a} = 0 OR (${a} = 1 AND t.anonymous) OR (${a} = 2 AND NOT t.anonymous))",
+        a = s.anonymous
+    ));
+    out
+}
+
+/// 无视角列表（viewer=0）：不携带 snatches 状态筛选语义的通用入口。
+#[allow(dead_code)] // 兼容保留：外部端点已迁移至 list_torrents_noclamp / list_torrents_as
 pub async fn list_torrents(
     db: &PgPool,
     filter: &TorrentFilter,
@@ -140,34 +302,55 @@ pub async fn list_torrents_as(
     limit: i64,
     viewer: i64,
 ) -> DomainResult<TorrentPage> {
-    let viewer_sql = viewer.to_string();
     let limit = limit.clamp(1, MAX_LIMIT);
-    list_torrents_noclamp(db, filter, cursor, limit).await
+    list_torrents_noclamp_as(db, filter, cursor, limit, viewer).await
 }
 
 /// 不做 50 上限钳制的列表查询：仅供 Torznab 等需要 offset+limit>50 深翻页的外部端点，
-/// 调用方必须自行 clamp 防滥用（见 economy_http torznab_search）。
+/// 调用方必须自行 clamp 防滥用（见 economy_http torznab_search）。viewer=0（无状态筛选视角）。
 pub async fn list_torrents_noclamp(
     db: &PgPool,
     filter: &TorrentFilter,
     cursor: Option<i64>,
     limit: i64,
 ) -> DomainResult<TorrentPage> {
+    list_torrents_noclamp_as(db, filter, cursor, limit, 0).await
+}
+
+/// 审计修复（P1）：list_torrents_as 此前把 viewer 转成字符串后丢弃，内部又硬编码
+/// viewer_sql="0"，status=seeding/leeching/... 全部按「无人」匹配恒空。现在把
+/// viewer 一路传到 SQL 构造（i64 内插无注入面）。
+pub async fn list_torrents_noclamp_as(
+    db: &PgPool,
+    filter: &TorrentFilter,
+    cursor: Option<i64>,
+    limit: i64,
+    viewer: i64,
+) -> DomainResult<TorrentPage> {
     let limit = limit.max(1);
-    let _ = limit;
-    let viewer_sql = "0".to_string();
+    let viewer_sql = viewer.to_string();
     // 匹配模式（旧站 torrents.php 口径）：0/缺省 = AND 模糊；2 = 精确等值（不带通配）
     let exact = filter.search_mode == Some(2);
     let pattern = filter.search.as_deref().map(|s| {
         if exact {
             s.to_string()
         } else {
-            format!(
-                "%{}%",
-                s.replace('\\', "").replace('%', "\\%").replace('_', "\\_")
-            )
+            format!("%{}%", esc_like(s))
         }
     });
+    // 排除词/发布者：与关键字同口径（模糊 + 转义）
+    let exclude_pat = filter
+        .exclude
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| format!("%{}%", esc_like(s)));
+    let owner_pat = filter
+        .owner
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| format!("%{}%", esc_like(s)));
 
     // 排序白名单（防注入）；非 id 排序时退化为 OFFSET 无关的「前 N 截断」：
     // 排序键 + id 组成稳定排序，游标仍按 id 翻页（与默认排序一致，简单可靠）。
@@ -181,8 +364,12 @@ pub async fn list_torrents_noclamp(
     };
     let order = match key {
         "seeders" => sort_expr(&sticky_expr, "t.seeders", asc),
+        "leechers" => sort_expr(&sticky_expr, "t.leechers", asc),
         "size" => sort_expr(&sticky_expr, "t.size", asc),
         "completed" => sort_expr(&sticky_expr, "t.times_completed", asc),
+        // 发布时间/名称排序（高级搜索排序扩展；NP「按发布时间/标题」口径）
+        "created" => sort_expr(&sticky_expr, "t.created_at", asc),
+        "name" => sort_expr(&sticky_expr, "t.name", asc),
         "comments" => sort_expr(
             &sticky_expr,
             "(SELECT count(*) FROM comments c WHERE c.torrent_id = t.id)",
@@ -252,6 +439,25 @@ pub async fn list_torrents_noclamp(
     }
     .replace("{viewer}", &viewer_sql);
 
+    // 高级搜索增强：体积/时间/做种数/排除词/优惠/发布者/仅我发布（列表侧编号 $11..$20）
+    // 0118 补齐：下载数/完成数区间 + 匿名发布（列表侧 $21..$25）
+    let extra_sql = extra_preds(ExtraSlots {
+        size_min: 11,
+        size_max: 12,
+        date_from: 13,
+        date_to: 14,
+        min_seeders: 15,
+        max_seeders: 16,
+        exclude: 17,
+        promo: 18,
+        owner: 19,
+        mine: 20,
+        min_leechers: 21,
+        max_leechers: 22,
+        min_completed: 23,
+        max_completed: 24,
+        anonymous: 25,
+    });
     let sql = format!(
         r#"
         SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
@@ -295,6 +501,7 @@ pub async fn list_torrents_noclamp(
           AND ($7::bigint IS NULL OR t.id < $7)
           AND ($9::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $9))
           {sec_sql}
+          {extra_sql}
         ORDER BY {order}
         LIMIT $8
         "#
@@ -310,12 +517,45 @@ pub async fn list_torrents_noclamp(
         .bind(limit + 1)
         .bind(filter.tag_id)
         .bind(filter.include_unapproved)
+        .bind(filter.size_min)
+        .bind(filter.size_max)
+        .bind(filter.date_from.as_deref())
+        .bind(filter.date_to.as_deref())
+        .bind(filter.min_seeders)
+        .bind(filter.max_seeders)
+        .bind(&exclude_pat)
+        .bind(filter.promo.as_deref())
+        .bind(&owner_pat)
+        .bind(filter.only_mine.then_some(viewer))
+        .bind(filter.min_leechers)
+        .bind(filter.max_leechers)
+        .bind(filter.min_completed)
+        .bind(filter.max_completed)
+        .bind(filter.anonymous)
         .fetch_all(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 计数与列表同口径（0093 修复）：此前 count 只用「分类/媒介/学段/版本/官种/死种/标题搜索」，
     // 多维筛选、标签、搜索范围（副标题/发布者/IMDb）一律不计入 —— 页面会显示「共 N 个」却零行。
+    // 计数同口径：额外谓词在计数侧编号 $9..$18（0118 补齐后 $19..$23）
+    let extra_count_sql = extra_preds(ExtraSlots {
+        size_min: 9,
+        size_max: 10,
+        date_from: 11,
+        date_to: 12,
+        min_seeders: 13,
+        max_seeders: 14,
+        exclude: 15,
+        promo: 16,
+        owner: 17,
+        mine: 18,
+        min_leechers: 19,
+        max_leechers: 20,
+        min_completed: 21,
+        max_completed: 22,
+        anonymous: 23,
+    });
     let count_sql = format!(
         "SELECT count(*) FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          WHERE (t.approval_status = 1 OR $7::bool) \
@@ -324,7 +564,7 @@ pub async fn list_torrents_noclamp(
          AND ($5::bool IS NULL OR t.official_tag = $5) {alive_pred} {approval_pred} {status_pred} \
          {search_pred} \
          AND ($8::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $8)) \
-         {sec_sql}",
+         {sec_sql} {extra_count_sql}",
     );
     let total: i64 = sqlx::query_scalar(&count_sql)
         .bind(filter.category_id.clone())
@@ -335,6 +575,21 @@ pub async fn list_torrents_noclamp(
         .bind(&pattern)
         .bind(filter.include_unapproved)
         .bind(filter.tag_id)
+        .bind(filter.size_min)
+        .bind(filter.size_max)
+        .bind(filter.date_from.as_deref())
+        .bind(filter.date_to.as_deref())
+        .bind(filter.min_seeders)
+        .bind(filter.max_seeders)
+        .bind(&exclude_pat)
+        .bind(filter.promo.as_deref())
+        .bind(&owner_pat)
+        .bind(filter.only_mine.then_some(viewer))
+        .bind(filter.min_leechers)
+        .bind(filter.max_leechers)
+        .bind(filter.min_completed)
+        .bind(filter.max_completed)
+        .bind(filter.anonymous)
         .fetch_one(db)
         .await
         .unwrap_or(0);
@@ -417,7 +672,11 @@ fn items_or_not_found(mut v: Vec<TorrentRow>, id: i64) -> DomainResult<TorrentRo
     }
 }
 
-pub async fn get_torrent_detail(db: &PgPool, id: i64, viewer: i64) -> DomainResult<TorrentDetailRow> {
+pub async fn get_torrent_detail(
+    db: &PgPool,
+    id: i64,
+    viewer: i64,
+) -> DomainResult<TorrentDetailRow> {
     let row = sqlx::query_as::<_, TorrentDetailRow>(
         r#"
         SELECT t.id, t.descr, t.numfiles, t.price, t.media_info->>'mediainfo' AS mediainfo,
@@ -666,7 +925,10 @@ pub async fn delete_torrent(db: &PgPool, torrent_id: i64, actor: (i64, i16)) -> 
         return Err(DomainError::Forbidden);
     }
     // 软删 + 清理关联促销（审计修复：促销残留会被计费/H&R 豁免回查误命中）
-    let mut tx = db.begin().await.map_err(|err| DomainError::Internal(err.into()))?;
+    let mut tx = db
+        .begin()
+        .await
+        .map_err(|err| DomainError::Internal(err.into()))?;
     sqlx::query("UPDATE torrents SET approval_status = 3, mtime = now() WHERE id = $1")
         .bind(torrent_id)
         .execute(&mut *tx)
@@ -677,7 +939,9 @@ pub async fn delete_torrent(db: &PgPool, torrent_id: i64, actor: (i64, i16)) -> 
         .execute(&mut *tx)
         .await
         .map_err(|err| DomainError::Internal(err.into()))?;
-    tx.commit().await.map_err(|err| DomainError::Internal(err.into()))?;
+    tx.commit()
+        .await
+        .map_err(|err| DomainError::Internal(err.into()))?;
     Ok(())
 }
 
@@ -865,26 +1129,31 @@ pub async fn tag_torrent(
 /// 付费下载扣费（0086，NP 价格 口径）：下载前调用。
 /// 免费/发布者本人/已购 → 直接放行；否则原子扣款 → 发布者得 (100-税)% → 税入当月魔法池。
 /// 全程单事务，余额不足返回校验错误。
+/// 审计修复（P0 错账）：旧版直接 UPDATE users.spark_balance、不写 spark_ledger ——
+/// 买方扣款与发布者入账都被每小时「余额=流水重算」回滚（下载变免费/收益被抹除），
+/// 且 /admin/spark-logs 完全看不到这类变动。改为流水驱动（幂等键绑定 torrent+user）。
 pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> DomainResult<()> {
-    let row: Option<(i64, Option<i64>)> =
-        sqlx::query_as("SELECT price, owner_id FROM torrents WHERE id = $1 AND approval_status = 1")
-            .bind(torrent_id)
-            .fetch_optional(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(i64, Option<i64>)> = sqlx::query_as(
+        "SELECT price, owner_id FROM torrents WHERE id = $1 AND approval_status = 1",
+    )
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((price, owner_id)) = row else {
         return Err(DomainError::NotFound(torrent_id));
     };
     if price <= 0 || owner_id == Some(user_id) {
         return Ok(());
     }
-    let purchased: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrent_purchases WHERE user_id = $1 AND torrent_id = $2)")
-            .bind(user_id)
-            .bind(torrent_id)
-            .fetch_one(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let purchased: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM torrent_purchases WHERE user_id = $1 AND torrent_id = $2)",
+    )
+    .bind(user_id)
+    .bind(torrent_id)
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if purchased {
         return Ok(());
     }
@@ -903,25 +1172,54 @@ pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> 
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    // 原子扣款：余额不足时 UPDATE 命中 0 行
-    let paid: Option<i64> =
-        sqlx::query_scalar("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1 AND spark_balance >= $2 RETURNING spark_balance")
+    // 余额校验（锁行）：不足直接拦下，不发流水
+    let balance: i64 =
+        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
             .bind(user_id)
-            .bind(price)
-            .fetch_optional(&mut *tx)
+            .fetch_one(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    if paid.is_none() {
+    if balance < price {
         return Err(DomainError::Validation(format!(
             "魔力不足：该种子为付费种子（{price} 魔力），请先充值或签到攒魔力"
         )));
     }
-    sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
-        .bind(owner_id)
+    // 买方扣款流水（幂等键含 torrent：同一种子只扣一次，重放安全）
+    sqlx::query(
+        "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
+         VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'torrent_buy', 'torrent', $3, $4, $5)",
+    )
+    .bind(user_id)
+    .bind(-price)
+    .bind(torrent_id)
+    .bind(format!("torrent-buy:{user_id}:{torrent_id}"))
+    .bind(balance - price)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 发布者入账流水（owner_id 经 torrents FK 保证非空语义；净得 = 价 - 税）
+    if let Some(owner) = owner_id {
+        let obal: i64 =
+            sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+                .bind(owner)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?
+                .unwrap_or(0);
+        sqlx::query(
+            "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
+             VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'torrent_sell', 'torrent', $3, $4, $5)",
+        )
+        .bind(owner)
         .bind(net)
+        .bind(torrent_id)
+        .bind(format!("torrent-sell:{user_id}:{torrent_id}"))
+        .bind(obal + net)
         .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+        let _ = obal; // 余额快照由下方 UPDATE / 小时级重算收敛
+    }
     if tax_amount > 0 {
         sqlx::query(
             "INSERT INTO magic_pool (month, donated_total) VALUES ($1, $2) \

@@ -31,6 +31,8 @@ export const ErrorCode = {
   // 4xxx 经济
   INSUFFICIENT_SPARK: 4001,
   LEDGER_CONFLICT: 4002,
+  // 41xx 模块开关（U1 §5.1：本站未开放该功能，与权限 403 区分）
+  MODULE_DISABLED: 4101,
   // 5xxx 社区
   COMMENT_NOT_FOUND: 5001,
   ALREADY_THANKED: 5002,
@@ -193,3 +195,74 @@ export interface UserPublic {
   downloaded: number;
   created_at: string;
 }
+
+// ============ 模块注册表（U1 §4.3：与迁移 0107 modules 表 / Rust modules.rs key::ALL 三方同步） ============
+
+/** 可选模块键（core 域不设开关；/site-profile 返回 modules: Record<ModuleKey, boolean>） */
+export type ModuleKey =
+  // 社区
+  | "textbooks"
+  | "showcase"
+  | "social"
+  | "forums"
+  | "messages"
+  | "friends"
+  | "offers"
+  | "requests"
+  | "subtitles"
+  | "preserve"
+  | "shoutbox"
+  // 经济
+  | "promo_buy"
+  | "bank"
+  | "shop"
+  | "magic_pool"
+  | "vouchers"
+  | "resurrections"
+  | "wishlist"
+  // 娱乐
+  | "games"
+  | "farm"
+  | "gomoku"
+  | "contests"
+  // 运营
+  | "attendance"
+  | "medals"
+  | "dressup"
+  | "jixiao"
+  | "tasks"
+  | "exams"
+  | "push";
+
+/** 模块开关联合键集合（契约测试用：长度与 Rust key::ALL / 迁移行数一致 = 29） */
+export const MODULE_KEYS: readonly ModuleKey[] = [
+  "textbooks",
+  "showcase",
+  "social",
+  "forums",
+  "messages",
+  "friends",
+  "offers",
+  "requests",
+  "subtitles",
+  "preserve",
+  "shoutbox",
+  "promo_buy",
+  "bank",
+  "shop",
+  "magic_pool",
+  "vouchers",
+  "resurrections",
+  "wishlist",
+  "games",
+  "farm",
+  "gomoku",
+  "contests",
+  "attendance",
+  "medals",
+  "dressup",
+  "jixiao",
+  "tasks",
+  "exams",
+  "push",
+] as const;

@@ -1,11 +1,17 @@
 import { getFriends, getPolls, getOffers } from "@/lib/data";
 import { getDict } from "@/i18n/server";
 import { PollBox, OfferList } from "@/components/community-extra";
+import { FriendsActions } from "@/components/friends-actions";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
-/** 社交名单（参考站 friends.php 同款）：好友 + 黑名单 */
+/** 社交名单（参考站 friends.php 同款）：好友 + 黑名单 + 操作入口（加友/接受/拉黑） */
 export default async function FriendsPage() {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("friends");
+  if (gate) return gate;
+
   const { dict } = await getDict();
   const friends = await getFriends();
   const friendRows = friends.filter((f) => f.list === "friend");
@@ -17,6 +23,10 @@ export default async function FriendsPage() {
           <h1 className="font-display text-2xl">{dict.friends.title}</h1>
           <span className="text-sm text-sub">{dict.friends.subtitle}</span>
         </div>
+        {/* 操作面板：加好友 / 接受申请 / 拉黑（此前只读列表，后端能力无入口） */}
+        <section className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+          <FriendsActions />
+        </section>
         <section className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <h2 className="font-bold">{dict.friends.friends}</h2>
           {friendRows.length === 0 ? (

@@ -41,11 +41,14 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(message_box_upsert)
         .service(contact_staff)
         .service(staff_messages)
+        .service(my_staff_messages)
+        .service(my_ticket_confirm)
         .service(staff_answer)
         .service(staff_mark)
         .service(staff_delete)
         .service(shoutbox_list)
         .service(shoutbox_send)
+        .service(shoutbox_delete)
         .service(shoutbox_bot_help)
         .service(shoutbox_bot_exec)
         .service(ticket_list)
@@ -251,7 +254,12 @@ async fn medal_gift(
         .clone()
         .filter(|k| !k.trim().is_empty())
         .unwrap_or_else(|| {
-            format!("medal-gift:{}:{}:{}", auth.id, body.medal_id, Uuid::new_v4())
+            format!(
+                "medal-gift:{}:{}:{}",
+                auth.id,
+                body.medal_id,
+                Uuid::new_v4()
+            )
         });
     // 赠送通道同样受「已拥有/售期/限量」约束（此前 gift 绕过三重检查可超卖限量勋章）
     let receiver_owned: bool = sqlx::query_scalar(
@@ -560,7 +568,10 @@ async fn forum_search(
         return Err(DomainError::Validation("关键字至少 2 个字符".into()));
     }
     // 转义 LIKE 通配符（与种子搜索同口径）
-    let esc_kw = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    let esc_kw = kw
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_");
     let pattern = format!("%{esc_kw}%");
     let rows: Vec<(i64, String, i64, String, Option<String>, chrono::DateTime<chrono::Utc>, i64, bool)> = sqlx::query_as(
         "SELECT t.id, t.title, f.id, f.name, u.username, t.created_at,                 (SELECT count(*) FROM posts p WHERE p.topic_id = t.id), t.locked          FROM topics t          JOIN forums f ON f.id = t.forum_id          LEFT JOIN users u ON u.id = t.user_id          WHERE t.title ILIKE $1            AND (f.minclassread <= $2 OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $3))          ORDER BY t.id DESC LIMIT 30",
@@ -806,14 +817,15 @@ async fn topic_detail(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // NexusPHP 帖子页头部：主题标题 + 所属版块（找不到主题时 404）
-    let meta: Option<(String, i64, Option<String>, Option<i64>, bool, bool, bool)> = sqlx::query_as(
-        "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked, t.digest \
+    let meta: Option<(String, i64, Option<String>, Option<i64>, bool, bool, bool)> =
+        sqlx::query_as(
+            "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked, t.digest \
          FROM topics t LEFT JOIN forums f ON f.id = t.forum_id WHERE t.id = $1",
-    )
-    .bind(tid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        )
+        .bind(tid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((title, fid, forum_name, op_id, sticky, locked, digest)) = meta else {
         return Err(DomainError::NotFound(tid));
     };
@@ -1042,12 +1054,34 @@ async fn post_delete(
         )
         .await;
     }
+    // 审计修复（P2）：被删帖若是该主题最新回复，last_post_at 残留已删时间——
+    // 版块「最后回复」排序/展示失真。先取被删帖时间，删后回填剩余最新回复
+    // （无回复则回落主题创建时间）。
+    let deleted_at: Option<chrono::DateTime<chrono::Utc>> =
+        sqlx::query_scalar("SELECT created_at FROM posts WHERE id = $1 AND topic_id = $2")
+            .bind(pid)
+            .bind(tid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
     sqlx::query("DELETE FROM posts WHERE id = $1 AND topic_id = $2")
         .bind(pid)
         .bind(tid)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(d) = deleted_at {
+        let _ = sqlx::query(
+            "UPDATE topics t SET last_post_at = COALESCE( \
+                (SELECT max(created_at) FROM posts p WHERE p.topic_id = t.id), t.created_at) \
+             WHERE t.id = $1 AND t.last_post_at = $2",
+        )
+        .bind(tid)
+        .bind(d)
+        .execute(&state.repo.db)
+        .await;
+    }
     state
         .repo
         .audit(Some(auth.id), "forum.post_delete", Some(pid))
@@ -1091,11 +1125,16 @@ async fn topic_delete(
         )
         .await;
     }
-    // 级联回收回帖 +1：主题删除会把全部回帖 CASCADE 掉，逐笔回收回帖奖励保持对称
+    // 级联回收回帖 +1：主题删除会把全部回帖 CASCADE 掉，逐笔回收回帖奖励保持对称。
+    // 审计修复（P1 双重扣分）：楼主首帖也存于 posts（topic_create 落 posts 行），
+    // 旧版把它计为「回帖」再 -1，楼主实扣 -3（发帖 -2 + 首帖按回帖 -1）。
+    // 排除楼主首帖，楼主只按发帖口径 -2。
     let replies: Vec<(i64, i64)> = sqlx::query_as(
-        "SELECT DISTINCT user_id, count(*) OVER (PARTITION BY user_id) FROM posts WHERE topic_id = $1",
+        "SELECT DISTINCT user_id, count(*) OVER (PARTITION BY user_id) FROM posts \
+         WHERE topic_id = $1 AND NOT (user_id = $2 AND id = (SELECT min(id) FROM posts WHERE topic_id = $1))",
     )
     .bind(tid)
+    .bind(op.unwrap_or(0))
     .fetch_all(&state.repo.db)
     .await
     .unwrap_or_default();
@@ -1222,7 +1261,12 @@ struct ShoutRow {
 }
 
 #[get("/shoutbox")]
-async fn shoutbox_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<HttpResponse> {
+async fn shoutbox_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    // 审计修复（P1）：与全站鉴权口径对齐——聊天记录含用户名与发言内容，不应对匿名开放
+    let _auth = require_auth(&req, &state).await?;
     let rows: Vec<ShoutRow> = sqlx::query_as(
         "SELECT sb.id, u.username, sb.message, sb.created_at          FROM shoutbox sb LEFT JOIN users u ON u.id = sb.user_id          ORDER BY sb.id DESC LIMIT 50",
     )
@@ -1261,9 +1305,13 @@ async fn shoutbox_send(
     {
         let mut c = state.redis.clone();
         let key = format!("rl:shout:{}", auth.id);
-        let n: i64 = redis::AsyncCommands::incr(&mut c, &key, 1).await.unwrap_or(0);
+        let n: i64 = redis::AsyncCommands::incr(&mut c, &key, 1)
+            .await
+            .unwrap_or(0);
         if n == 1 {
-            let _: () = redis::AsyncCommands::expire(&mut c, &key, 10).await.unwrap_or(());
+            let _: () = redis::AsyncCommands::expire(&mut c, &key, 10)
+                .await
+                .unwrap_or(());
         }
         if n > 1 {
             return Err(DomainError::RateLimited);
@@ -1277,6 +1325,48 @@ async fn shoutbox_send(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "id": id })))
+}
+
+/// 删除聊天发言（staff：审计修复 P1——此前全后端无 DELETE FROM shoutbox，
+/// 违规发言只能等禁言、无法清除已发内容）。发言本人 2 分钟内也可撤回。
+#[derive(Deserialize)]
+struct ShoutDeleteReq {
+    id: i64,
+}
+
+#[post("/shoutbox/delete")]
+async fn shoutbox_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<ShoutDeleteReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let row: Option<(i64, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as("SELECT user_id, created_at FROM shoutbox WHERE id = $1")
+            .bind(body.id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((uid, at)) = row else {
+        return Err(DomainError::NotFound(body.id));
+    };
+    let is_staff = auth.class_id >= 90;
+    let own_recent = uid == auth.id && (chrono::Utc::now() - at).num_seconds() <= 120;
+    if !is_staff && !own_recent {
+        return Err(DomainError::Forbidden);
+    }
+    sqlx::query("DELETE FROM shoutbox WHERE id = $1")
+        .bind(body.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if is_staff && uid != auth.id {
+        state
+            .repo
+            .audit(Some(auth.id), "shoutbox_delete", Some(body.id))
+            .await;
+    }
+    Ok(ok(serde_json::json!({ "deleted": body.id })))
 }
 
 #[derive(Deserialize)]
@@ -1314,6 +1404,10 @@ async fn message_send(
     let Some((to_id, accept, _to_class)) = target else {
         return Err(DomainError::NotFound(0));
     };
+    // 审计修复（P1）：不能给自己发私信（对照 medal_gift 的同款护栏）
+    if to_id == auth.id {
+        return Err(DomainError::Validation("不能给自己发私信".into()));
+    }
     if body.subject.trim().is_empty() {
         return Err(DomainError::Validation("主题不能为空".into()));
     }
@@ -1846,12 +1940,74 @@ async fn staff_messages(
     Ok(ok(rows))
 }
 
-#[derive(Deserialize, Default)]
-#[serde(default)]
+#[derive(Deserialize)]
 struct StaffMsgQuery {
     /// 审计修复（P2 信封）：serde 对 ?answered=false 直接反序列化报裸文本 400（击穿
     /// JSON 信封）。改为 String 自行解析，支持 0/1/true/false 四种形态。
     answered: Option<String>,
+}
+
+/// 我的工单（用户侧，审计修复 P1）：普通用户此前看不到自己提交的咨询进度——
+/// contactstaff 提交后只能等 PM，状态 2（已答复待确认）也无法自行确认关闭。
+/// 仅返回本人提交的记录（staff 视角走 /stafftickets）。
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct MyTicketRow {
+    id: i64,
+    subject: String,
+    body: String,
+    ticket_status: i16,
+    priority: i16,
+    answer: Option<String>,
+    answered_at: Option<chrono::DateTime<chrono::Utc>>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/me/staffmessages")]
+async fn my_staff_messages(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<MyTicketRow> = sqlx::query_as(
+        "SELECT id, subject, body, ticket_status, priority, answer, answered_at, created_at \
+         FROM staffmessages WHERE user_id = $1 ORDER BY id DESC LIMIT 50",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+/// 用户确认关闭工单（2 已答复待确认 → 3 关闭，闭环补全）：仅来信人本人可关。
+#[derive(Deserialize)]
+struct TicketConfirmReq {
+    id: i64,
+}
+
+#[post("/me/staffmessages/confirm")]
+async fn my_ticket_confirm(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<TicketConfirmReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let n = sqlx::query(
+        "UPDATE staffmessages SET ticket_status = 3 \
+         WHERE id = $1 AND user_id = $2 AND ticket_status = 2",
+    )
+    .bind(body.id)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation(
+            "工单不存在、非本人或尚未答复（仅已答复待确认的工单可确认关闭）".into(),
+        ));
+    }
+    Ok(ok(serde_json::json!({ "id": body.id, "ticket_status": 3 })))
 }
 
 #[derive(Deserialize)]
@@ -2032,7 +2188,9 @@ async fn friend_add(
         .bind(format!("用户 #{} 接受了你的好友申请，你们现在是好友了。", auth.id))
         .execute(&state.repo.db)
         .await;
-        return Ok(ok(serde_json::json!({ "friend": body.username, "state": "friend" })));
+        return Ok(ok(
+            serde_json::json!({ "friend": body.username, "state": "friend" }),
+        ));
     }
     sqlx::query("INSERT INTO friendships (user_id, friend_id, list) VALUES ($1, $2, 'pending') ON CONFLICT DO NOTHING")
         .bind(auth.id)
@@ -2045,10 +2203,15 @@ async fn friend_add(
     )
     .bind(fid)
     .bind("收到好友申请")
-    .bind(format!("用户 #{} 向你发送了好友申请。添加对方为好友即可接受。", auth.id))
+    .bind(format!(
+        "用户 #{} 向你发送了好友申请。添加对方为好友即可接受。",
+        auth.id
+    ))
     .execute(&state.repo.db)
     .await;
-    Ok(ok(serde_json::json!({ "friend": body.username, "state": "pending" })))
+    Ok(ok(
+        serde_json::json!({ "friend": body.username, "state": "pending" }),
+    ))
 }
 
 #[get("/friends")]
@@ -2121,7 +2284,9 @@ async fn friend_action(
             .execute(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-            Ok(ok(serde_json::json!({ "user": body.username, "state": "black" })))
+            Ok(ok(
+                serde_json::json!({ "user": body.username, "state": "black" }),
+            ))
         }
         "unblack" => {
             let n = sqlx::query(
@@ -2133,15 +2298,19 @@ async fn friend_action(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?
             .rows_affected();
-            Ok(ok(serde_json::json!({ "user": body.username, "removed": n })))
+            Ok(ok(
+                serde_json::json!({ "user": body.username, "removed": n }),
+            ))
         }
-        _ => Err(DomainError::Validation("action 需为 black / unblack".into())),
+        _ => Err(DomainError::Validation(
+            "action 需为 black / unblack".into(),
+        )),
     }
 }
 
-/// 主配置：主 scope + 经济路由 + 社区路由（单一 /api/v1 scope）
+/// 主配置：主 scope + 安装向导 + 经济路由 + 社区路由（单一 /api/v1 scope）
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    let scope = crate::economy_http::mount_economy(crate::http::v1_scope());
+    let scope = crate::setup_http::mount_setup(crate::economy_http::mount_economy(crate::http::v1_scope()));
     let scope = mount_community(scope);
     let scope = crate::games_http::mount_games(crate::ops_http::mount_ops(
         crate::content_http::mount_content(scope),
@@ -2350,7 +2519,7 @@ async fn ticket_update(
             };
             Some(uid)
         }
-        Some(_) => None, // 空串 = 清指派（NULL）
+        Some(_) => None, // 空串 = 清指派（置 NULL，见下方 clear_assign）
         None => {
             // 未传 assign = 不动：取当前值回写（COALESCE 不更新语义）
             let cur: Option<i64> =
@@ -2363,21 +2532,41 @@ async fn ticket_update(
             cur
         }
     };
-    let n = sqlx::query(
-        "UPDATE staffmessages SET \
-            priority = COALESCE($2, priority), \
-            ticket_status = COALESCE($3, ticket_status), \
-            assigned_to = COALESCE($4, assigned_to) \
-         WHERE id = $1",
-    )
-    .bind(body.id)
-    .bind(body.priority)
-    .bind(body.ticket_status)
-    .bind(assignee)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
+    // 审计修复（P1）：assign="" 走 COALESCE($4, assigned_to) 会被 NULL 吞回当前值，
+    // 注释宣称的「空串=取消指派」从未生效。显式空串时改用 SET assigned_to = NULL。
+    let clear_assign = matches!(body.assign.as_deref(), Some(s) if s.trim().is_empty());
+    let n = if clear_assign {
+        sqlx::query(
+            "UPDATE staffmessages SET \
+                priority = COALESCE($2, priority), \
+                ticket_status = COALESCE($3, ticket_status), \
+                assigned_to = NULL \
+             WHERE id = $1",
+        )
+        .bind(body.id)
+        .bind(body.priority)
+        .bind(body.ticket_status)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected()
+    } else {
+        sqlx::query(
+            "UPDATE staffmessages SET \
+                priority = COALESCE($2, priority), \
+                ticket_status = COALESCE($3, ticket_status), \
+                assigned_to = COALESCE($4, assigned_to) \
+             WHERE id = $1",
+        )
+        .bind(body.id)
+        .bind(body.priority)
+        .bind(body.ticket_status)
+        .bind(assignee)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected()
+    };
     if n == 0 {
         return Err(DomainError::NotFound(body.id));
     }
@@ -2439,7 +2628,9 @@ async fn leak_resolve(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
     if ![1, 2].contains(&body.verdict) {
-        return Err(DomainError::Validation("verdict 需为 1（确认）或 2（误报）".into()));
+        return Err(DomainError::Validation(
+            "verdict 需为 1（确认）或 2（误报）".into(),
+        ));
     }
     let n = sqlx::query(
         "UPDATE leak_events SET resolved = $2, resolved_by = $3 WHERE id = $1 AND resolved = 0",
@@ -2455,21 +2646,23 @@ async fn leak_resolve(
         return Err(DomainError::NotFound(body.id));
     }
     if body.verdict == 1 {
-        let (uid, kind, detail): (i64, String, serde_json::Value) = sqlx::query_as(
-            "SELECT user_id, kind, detail FROM leak_events WHERE id = $1",
-        )
-        .bind(body.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        let (uid, kind, detail): (i64, String, serde_json::Value) =
+            sqlx::query_as("SELECT user_id, kind, detail FROM leak_events WHERE id = $1")
+                .bind(body.id)
+                .fetch_one(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        // 审计修复（P1 语义错位）：staffmessages.user_id 是「来信人」——旧版 bind 泄露者
+        // 本人，工单列表把被处置对象显示为提交人，且 staff_answer 会把处置意图 PM
+        // 提前发给泄露者。改为以复核 staff 名义立项（subject 内带泄露者 id 供追溯）。
         sqlx::query(
             "INSERT INTO staffmessages (user_id, subject, body, permission) \
              VALUES ($1, $2, $3, 'security')",
         )
-        .bind(uid)
-        .bind(format!("泄露事件确认（{}）", kind))
+        .bind(auth.id)
+        .bind(format!("泄露事件确认（{}，用户 #{}）", kind, uid))
         .bind(format!(
-            "事件 #{} 已由 staff 复核确认为真实泄露。证据：{}。请按流程处置（重置 passkey / 必要时封号）。",
+            "事件 #{} 已由 staff 复核确认为真实泄露（涉及用户 #{uid}）。证据：{}。请按流程处置（重置 passkey / 必要时封号）。",
             body.id, detail
         ))
         .execute(&state.repo.db)
@@ -2480,7 +2673,9 @@ async fn leak_resolve(
         .repo
         .audit(Some(auth.id), "leak_resolve", Some(body.id))
         .await;
-    Ok(ok(serde_json::json!({ "id": body.id, "verdict": body.verdict })))
+    Ok(ok(
+        serde_json::json!({ "id": body.id, "verdict": body.verdict }),
+    ))
 }
 
 // ============ 聊天机器人（0078，NerdBot 统计命令系，v3 §27-20） ============
@@ -2556,7 +2751,11 @@ async fn shoutbox_bot_exec(
                 "你的数据：上传 {:.1} GB / 下载 {:.1} GB / 分享率 {:.2} / 火花 {}。",
                 up as f64 / 1073741824.0,
                 down as f64 / 1073741824.0,
-                if down > 0 { up as f64 / down as f64 } else { 0.0 },
+                if down > 0 {
+                    up as f64 / down as f64
+                } else {
+                    0.0
+                },
                 spark
             )
         }

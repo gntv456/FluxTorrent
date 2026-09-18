@@ -48,6 +48,8 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(agent_rules_list)
         .service(agent_rules_add)
         .service(agent_rules_del)
+        .service(agent_rules_export)
+        .service(agent_rules_import)
         .service(deny_reasons_list)
         .service(deny_reasons_add)
         .service(deny_reasons_update)
@@ -261,6 +263,52 @@ async fn review_decide(
         .await;
     }
     let action = if body.approve { "approve" } else { "reject" };
+    // U2 §12.5 审核结果通知：发布者站内信必达（+邮件尽力），被拒附理由。
+    {
+        let row: Option<(i64, String, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT t.owner_id, t.title, d.label, t.deny_note FROM torrents t \
+             LEFT JOIN torrent_deny_reasons d ON d.id = t.deny_reason_id WHERE t.id = $1",
+        )
+        .bind(body.torrent_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten();
+        if let Some((owner, title, deny_label, deny_note)) = row {
+            let email: Option<String> = sqlx::query_scalar(
+                "SELECT email FROM users WHERE id = $1 AND email <> ''",
+            )
+            .bind(owner)
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten();
+            let (subject, body_text) = if body.approve {
+                (
+                    format!("种子过审：{title}"),
+                    format!(
+                        "你发布的种子已通过审核：#{id} {title}。",
+                        id = body.torrent_id
+                    ),
+                )
+            } else {
+                let why = deny_label
+                    .or(deny_note)
+                    .unwrap_or_else(|| {
+                        let r = body.reason.trim();
+                        if r.is_empty() { "未注明".into() } else { r.to_string() }
+                    });
+                (
+                    format!("种子被拒：{title}"),
+                    format!(
+                        "你发布的种子未通过审核：#{id} {title}\n原因：{why}\n可修改后重新发布。",
+                        id = body.torrent_id
+                    ),
+                )
+            };
+            crate::mailer::notify(&state.repo.db, owner, email, &subject, &body_text).await;
+        }
+    }
     // 种子操作记录（torrent-operation-logs 口径）
     let _ = sqlx::query(
         "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
@@ -935,11 +983,17 @@ async fn user_assign_jixiao(
         return Err(DomainError::Validation("该用户本期已登记此考核岗位".into()));
     }
     sqlx::query(
-        // metrics_snapshot 记 source='admin'：管理端登记与用户侧领取混在同一张表，
-        // 用户侧 /jixiao/my 与达标月数加成（ops_http qualified_months）据此跳过 admin 行——
-        // 「登记岗位」≠「领取工资」，admin 行不应推进 +10% 加成分子
-        "INSERT INTO jixiao_claims (user_id, type_id, period, amount, metrics_snapshot) \
-         VALUES ($1, $2, $3, $4, '{\"source\":\"admin\"}'::jsonb)",
+        // metrics_snapshot 记 source='admin'（0106 单行设计：登记与发放是同一行的
+        // 状态流转，settled_at IS NULL 即未发放）。base_* 基线快照与批量分配
+        // （/admin/jixiao/assign-batch）同口径——compute_metrics / jixiao_settle 的
+        // 差值口径依赖它。
+        "INSERT INTO jixiao_claims \
+            (user_id, type_id, period, amount, metrics_snapshot, base_seed_seconds, base_uploaded, base_uploads) \
+         SELECT $1, $2, $3, $4, '{\"source\":\"admin\"}'::jsonb, \
+                COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = $1), 0)::bigint, \
+                u.uploaded, \
+                (SELECT count(*) FROM torrents tr WHERE tr.owner_id = $1 AND tr.approval_status = 1) \
+         FROM users u WHERE u.id = $1",
     )
     .bind(uid)
     .bind(body.type_id)
@@ -1183,22 +1237,28 @@ async fn user_adjust(
     // 火花调整写流水（余额权威在 spark_ledger；kind=admin，操作者入 ref_id）
     if let Some(delta) = body.spark_delta {
         if delta != 0 {
-            sqlx::query(
-                "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
-                 VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'admin', 'adjust', $3, $4, $5)",
-            )
-            .bind(body.user_id)
-            .bind(delta)
-            .bind(auth.id)
-            .bind(format!(
-                "admin-adjust-{}-{}",
-                body.user_id,
-                uuid::Uuid::new_v4().simple()
-            ))
-            .bind(spark)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            // 审计修复（P0 错账）：流水必须记「实际发生的差额」而非请求 delta——
+            // 余额不足扣成负数时被 clamp 到 0，此前流水仍记请求值，
+            // sum(ledger) 与 balance 永久撕裂（对照 amountbonus / increment-bulk 已修口径）。
+            let actual_delta = spark - spark0;
+            if actual_delta != 0 {
+                sqlx::query(
+                    "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
+                     VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'admin', 'adjust', $3, $4, $5)",
+                )
+                .bind(body.user_id)
+                .bind(actual_delta)
+                .bind(auth.id)
+                .bind(format!(
+                    "admin-adjust-{}-{}",
+                    body.user_id,
+                    uuid::Uuid::new_v4().simple()
+                ))
+                .bind(spark)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            }
         }
     }
     // 增发邀请：直接生成有效邀请码（30 天有效，NP takeinvite 口径）
@@ -1409,6 +1469,14 @@ async fn user_set_class(
     // 不能把他人设为站长（与角色等级无关的结构性约束）
     if body.class_id >= 99 {
         return Err(DomainError::Forbidden);
+    }
+    // 审计修复（P0 越权）：此前允许把下级提到高于操作者自己的等级（93 档可授 98 档），
+    // 改完后自己反被该用户压制。封顶 = 操作者等级 - 1，与 ensure_outranks 口径一致。
+    if body.class_id >= auth.class_id {
+        return Err(DomainError::Validation(format!(
+            "不能把用户提升到不低于自己的等级（{} ≥ {}）",
+            body.class_id, auth.class_id
+        )));
     }
     // 与目标同高或更低不可调整（站长改自己也应被拦）
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
@@ -2056,6 +2124,83 @@ struct AgentRuleDel {
     id: i64,
 }
 
+// ---- U3 §12.3 反作弊规则包导入导出（JSON，站长圈共享） ----
+
+/// 导出全部规则为可分享 JSON（allow/deny 分组）
+#[get("/admin/agentrules/export")]
+async fn agent_rules_export(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    let rows: Vec<(String, String, Option<String>)> = sqlx::query_as(
+        "SELECT mode, pattern, note FROM agent_rules ORDER BY mode, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let rules: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|(mode, pattern, note)| {
+            serde_json::json!({"mode": mode, "pattern": pattern, "note": note})
+        })
+        .collect();
+    Ok(ok(serde_json::json!({
+        "format": "fluxtorrent.agentrules.v1",
+        "count": rules.len(),
+        "rules": rules,
+    })))
+}
+
+/// 导入规则包：合并去重（mode+pattern 相同跳过），返回新增数
+#[derive(Deserialize)]
+struct AgentRuleImportBody {
+    rules: Vec<AgentRuleReq>,
+}
+#[post("/admin/agentrules/import")]
+async fn agent_rules_import(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<AgentRuleImportBody>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    if body.rules.len() > 500 {
+        return Err(DomainError::Validation("单次导入上限 500 条".into()));
+    }
+    let mut added = 0i64;
+    for r in &body.rules {
+        if !["allow", "deny"].contains(&r.mode.as_str()) {
+            continue; // 跳过非法条目，不整体失败
+        }
+        let p = r.pattern.trim();
+        if p.is_empty() || p.len() > 100 {
+            continue;
+        }
+        let n = sqlx::query(
+            "INSERT INTO agent_rules (mode, pattern, note, created_by) \
+             SELECT $1, $2, $3, $4 \
+             WHERE NOT EXISTS (SELECT 1 FROM agent_rules WHERE mode = $1 AND pattern = $2)",
+        )
+        .bind(&r.mode)
+        .bind(p)
+        .bind(&r.note)
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+        added += n as i64;
+    }
+    crate::http::bump_guard_ver(&state).await;
+    state
+        .repo
+        .audit(Some(auth.id), "agentrule.import", Some(added))
+        .await;
+    Ok(ok(serde_json::json!({ "added": added, "skipped": body.rules.len() as i64 - added })))
+}
+
 #[post("/admin/agentrules/delete")]
 async fn agent_rules_del(
     req: HttpRequest,
@@ -2202,13 +2347,11 @@ async fn deny_reasons_delete(
     let rid = path.into_inner();
     // 审计修复（P1）：被种子引用（torrents.deny_reason_id del=a FK）时删除必 500。
     // 与 category_delete 同款前置护栏：有引用先解绑/换用别的理由。
-    let refs: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM torrents WHERE deny_reason_id = $1",
-    )
-    .bind(rid)
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or(0);
+    let refs: i64 = sqlx::query_scalar("SELECT count(*) FROM torrents WHERE deny_reason_id = $1")
+        .bind(rid)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
     if refs > 0 {
         return Err(DomainError::Validation(format!(
             "仍有 {refs} 个种子使用该拒绝理由（含已删除种子），请先改用其他理由"

@@ -239,6 +239,17 @@ async fn open_recent_torrents(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let (_uid, _rpm) = require_token(&req, &state).await?;
+    // U2 §11.6 访客策略：all_private（默认）下公开列表收敛为空——
+    // Token 鉴权「接口调用者」，guest_policy 管「站点公开度」，两层独立。
+    let policy: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'guest_policy'), 'all_private')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_else(|_| "all_private".into());
+    if policy == "all_private" {
+        return Ok(ok(Vec::<serde_json::Value>::new()));
+    }
     let rows: Vec<(i64, String, Option<String>, i64, i64)> = sqlx::query_as(
         "SELECT id, name, small_descr, size, created_epoch \
          FROM (SELECT id, name, small_descr, size, EXTRACT(EPOCH FROM created_at)::bigint AS created_epoch \

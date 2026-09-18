@@ -163,7 +163,9 @@ pub async fn send_reset_mail(
         .host_str()
         .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
         .to_string();
-    let port = url.port().unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
+    let port = url
+        .port()
+        .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
     let builder = if url.scheme() == "smtps" {
         AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
     } else {
@@ -195,6 +197,49 @@ pub async fn send_reset_mail(
     Ok(())
 }
 
+/// 通用 SMTP 投递（U2 §11.4 mailer 收口）：主题+正文由调用方组装，
+/// 连接构建逻辑与 send_reset_mail 同源。
+pub async fn send_generic_mail(
+    smtp_url: &str,
+    from: &str,
+    to: &str,
+    subject: &str,
+    body: &str,
+) -> anyhow::Result<()> {
+    use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+
+    let url = url::Url::parse(smtp_url)?;
+    let host = url
+        .host_str()
+        .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
+        .to_string();
+    let port = url
+        .port()
+        .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
+    let builder = if url.scheme() == "smtps" {
+        AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
+    } else {
+        AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&host)
+    }
+    .port(port);
+    let builder = if !url.username().is_empty() {
+        builder.credentials(lettre::transport::smtp::authentication::Credentials::new(
+            url.username().to_string(),
+            url.password().unwrap_or_default().to_string(),
+        ))
+    } else {
+        builder
+    };
+    let mailer = builder.build();
+    let email = Message::builder()
+        .from(from.parse()?)
+        .to(to.parse()?)
+        .subject(subject.to_string())
+        .body(body.to_string())?;
+    mailer.send(email).await?;
+    Ok(())
+}
+
 /// 由 SMTP_URL 构建投递器（smtps://user:pass@host:port 或 smtp://host:port）。
 /// 供忘记密码 / 邀请邮件等发送方共用。
 pub fn build_smtp(
@@ -207,7 +252,9 @@ pub fn build_smtp(
         .host_str()
         .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
         .to_string();
-    let port = url.port().unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
+    let port = url
+        .port()
+        .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
     let builder = if url.scheme() == "smtps" {
         AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
     } else {
@@ -265,15 +312,27 @@ async fn password_forgot(
 
         let smtp = std::env::var("SMTP_URL").unwrap_or_default();
         if smtp.is_empty() {
-            tracing::warn!(%token, "SMTP 未配置：重置 token 输出到日志（开发态闭环）");
+            // 审计修复（P1 凭据泄露面）：重置 token 明文进日志任何可读日志的人都能接管
+            // 账号。生产（FLUX_DEV≠1）直接拒绝服务并要求配置 SMTP；开发态保留日志闭环。
+            if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
+                tracing::error!(
+                    uid,
+                    "SMTP_URL 未配置且非开发态：拒绝生成密码重置 token（防凭据经日志泄露）"
+                );
+                return Err(DomainError::Internal(anyhow::anyhow!(
+                    "SMTP_URL 未配置：生产环境禁止以日志方式暴露重置 token"
+                )));
+            }
+            tracing::warn!(%token, "SMTP 未配置：重置 token 输出到日志（仅限开发态闭环）");
         } else {
             // 真实投递（lettre）：SMTP_URL = smtps://user:pass@host:port 或 smtp://host:port；
             // 发件人 SMTP_FROM（缺省 no-reply@host）。后台线程发送，失败仅记日志不影响响应。
-            let base = std::env::var("PUBLIC_API_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+            let base =
+                std::env::var("PUBLIC_API_URL").unwrap_or_else(|_| "http://localhost:3000".into());
             let link = format!("{base}/reset?token={token}");
             let email_addr = body.email.trim().to_lowercase();
-            let from = std::env::var("SMTP_FROM")
-                .unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
+            let from =
+                std::env::var("SMTP_FROM").unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
             let site = sqlx::query_scalar::<_, String>(
                 "SELECT value FROM site_settings WHERE name = 'site_name'",
             )
@@ -341,7 +400,17 @@ async fn password_reset(
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    // 撤销该用户全部会话（改密后旧 token 全失效）
+    // 撤销该用户全部会话（改密后旧 token 全失效）。
+    // 审计修复（P1）：此前只写 Redis nbf —— Redis 重启/故障后 24h 内旧 JWT「复活」
+    // （JWT 与密码无关）。补写 DB 权威表 token_revocations（与 logout/改密路径同口径）。
+    sqlx::query(
+        "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, EXTRACT(EPOCH FROM now())::bigint) \
+         ON CONFLICT (user_id) DO UPDATE SET nbf = GREATEST(token_revocations.nbf, EXCLUDED.nbf), updated_at = now()",
+    )
+    .bind(uid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let mut c = state.redis.clone();
     let _: () = AsyncCommands::set_ex(
         &mut c,
@@ -401,21 +470,20 @@ async fn captcha_issue(
     })))
 }
 
-/// 供注册等内部路径校验验证码
+/// 供注册等内部路径校验验证码。
+/// 审计修复（P1 防穷举）：同一 captcha_id 答错即作废 —— 1+20 算术题答案空间仅 2..40，
+/// 旧版答错不删键可对同一 id 平均 ~20 次穷举命中，一次性语义只防答对后重放。
 #[allow(dead_code)] // 注册流程集成点：前端接入验证码后启用
 pub async fn captcha_verify(state: &AppState, id: &str, answer: i32) -> bool {
     let mut c = state.redis.clone();
-    let expect: Option<i32> = AsyncCommands::get(&mut c, format!("captcha:{id}"))
+    let key = format!("captcha:{id}");
+    // GETDEL 原子取删：无论对错都消费，杜绝同 id 反复试错
+    let expect: Option<i32> = redis::cmd("GETDEL")
+        .arg(&key)
+        .query_async(&mut c)
         .await
         .unwrap_or(None);
-    if expect == Some(answer) {
-        let _: () = AsyncCommands::del(&mut c, format!("captcha:{id}"))
-            .await
-            .unwrap_or(());
-        true
-    } else {
-        false
-    }
+    expect == Some(answer)
 }
 
 // ============ H&R 追责 ============
@@ -482,6 +550,14 @@ async fn hr_pardon(
     if n == 0 {
         return Err(DomainError::Validation("无待赦免的 H&R 违规".into()));
     }
+    // 审计修复（P1）：赦免后 snatches.hr_flag 不回清（worker 只会置 TRUE，全库无 FALSE
+    // 路径），列表/详情的 H&R 角标在赦免后仍然残留。此处同步回清（与快照口径一致）。
+    let _ =
+        sqlx::query("UPDATE snatches SET hr_flag = FALSE WHERE user_id = $1 AND torrent_id = $2")
+            .bind(body.user_id)
+            .bind(body.torrent_id)
+            .execute(&state.repo.db)
+            .await;
     sqlx::query(
         "UPDATE hr_violations SET resolved_at = now(), resolved_by = $1 \
          WHERE user_id = $2 AND torrent_id = $3 AND resolved_at IS NULL",
@@ -526,7 +602,9 @@ async fn hr_pardon_batch(
         return Err(DomainError::Validation("赦免必须填理由".into()));
     }
     if body.items.is_empty() || body.items.len() > 500 {
-        return Err(DomainError::Validation("批量豁免条目须在 1~500 之间".into()));
+        return Err(DomainError::Validation(
+            "批量豁免条目须在 1~500 之间".into(),
+        ));
     }
     let mut pardoned: Vec<serde_json::Value> = Vec::new();
     let mut skipped: Vec<serde_json::Value> = Vec::new();
@@ -598,7 +676,9 @@ async fn hr_self_pardon(
     // 旧逻辑忽略该返回值继续走赦免/退款分支，退款键又拼随机 UUID 每次全新，
     // 重放请求可无限净赚 20000/次。现在：重放一律拒绝，退款键改为确定性键。
     if !matches!(outcome, crate::economy_http::SpendOutcome::Spent) {
-        return Err(DomainError::Validation("该违规已处理过，请勿重复提交".into()));
+        return Err(DomainError::Validation(
+            "该违规已处理过，请勿重复提交".into(),
+        ));
     }
     let n = sqlx::query(
         "UPDATE hr_snapshots SET status = 'pardoned', pardoned_by = $1, updated_at = now() \
@@ -649,6 +729,28 @@ struct AppealReq {
     #[serde(default)]
     ref_id: Option<i64>,
     body: String,
+    /// 未登录封禁申诉（P0 修复）专用字段：被申诉的用户名 + 验证码
+    #[serde(default)]
+    username: Option<String>,
+    #[serde(default)]
+    captcha_id: Option<String>,
+    #[serde(default)]
+    captcha_answer: Option<i32>,
+}
+
+/// 封禁申诉的验证码校验（复用注册同款图形验证码，一次性消费）
+async fn captcha_check(
+    state: &AppState,
+    id: &Option<String>,
+    answer: &Option<i32>,
+) -> DomainResult<()> {
+    let (Some(id), Some(answer)) = (id.as_deref(), *answer) else {
+        return Err(DomainError::Validation("请填写图形验证码".into()));
+    };
+    if !captcha_verify(state, id, answer).await {
+        return Err(DomainError::Validation("验证码错误或已过期".into()));
+    }
+    Ok(())
 }
 
 #[post("/appeals")]
@@ -657,7 +759,50 @@ async fn appeal_create(
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<AppealReq>,
 ) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
+    // 已登录用户：常规提交路径。
+    // 审计修复（P0）：封禁申诉的目标人群（status>=2）登录被拒、require_auth 返回 403，
+    // 旧版对该人群完全不可用。现在未携带有效凭证时按「被封申诉」专用分支处理：
+    // 凭用户名 + 预验证码 + 防刷限流即可提交，不签发任何会话（见下方 guest 分支）。
+    let auth = require_auth(&req, &state).await;
+    let user_id = match auth {
+        Ok(a) => a.id,
+        Err(_) => {
+            // 未登录 / 被封（403）/ token 过期：仅允许 ban 申诉，且必须通过验证码
+            if body.kind != "ban" {
+                return Err(DomainError::Unauthorized);
+            }
+            let username = body
+                .username
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| DomainError::Validation("请填写被封的账户用户名".into()))?;
+            captcha_check(&state, &body.captcha_id, &body.captcha_answer).await?;
+            let uid: Option<i64> = sqlx::query_scalar(
+                "SELECT id FROM users WHERE lower(username::text) = lower($1) AND status >= 2",
+            )
+            .bind(username)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            let uid =
+                uid.ok_or_else(|| DomainError::Validation("未找到该用户名的封禁记录".into()))?;
+            // 防刷：每用户名 3 次/小时（未结申诉上限 3 条之外的第二道闸）
+            {
+                use redis::AsyncCommands;
+                let mut c = state.redis.clone();
+                let k = format!("rl:appeal:{uid}");
+                let n: i64 = c.incr(&k, 1).await.unwrap_or(0);
+                if n == 1 {
+                    let _: () = c.expire(&k, 3600).await.unwrap_or(());
+                }
+                if n > 3 {
+                    return Err(DomainError::RateLimited);
+                }
+            }
+            uid
+        }
+    };
     if !["hr", "warn", "ban", "other"].contains(&body.kind.as_str()) {
         return Err(DomainError::Validation(
             "kind 仅支持 hr/warn/ban/other".into(),
@@ -669,7 +814,7 @@ async fn appeal_create(
     // 未结申诉上限 3 条
     let open: i64 =
         sqlx::query_scalar("SELECT count(*) FROM appeals WHERE user_id = $1 AND status = 'open'")
-            .bind(auth.id)
+            .bind(user_id)
             .fetch_one(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
@@ -681,7 +826,7 @@ async fn appeal_create(
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO appeals (user_id, kind, ref_id, body) VALUES ($1, $2, $3, $4) RETURNING id",
     )
-    .bind(auth.id)
+    .bind(user_id)
     .bind(&body.kind)
     .bind(body.ref_id)
     .bind(body.body.trim())

@@ -3,11 +3,16 @@ import { BuyButton } from "@/components/buy-button";
 import { VoucherPanel } from "@/components/voucher-panel";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
 /** 魔力商店（mybonus.php 口径）：仅道具区（勋章兑换在 /medals 勋章页，不放商店） */
 export default async function ShopPage() {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("shop");
+  if (gate) return gate;
+
   const { dict, currency, locale } = await getDict();
   const items = await getShopItems();
   return (

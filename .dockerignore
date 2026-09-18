@@ -6,3 +6,23 @@
 **/tsconfig.tsbuildinfo
 apps/web/.env.local
 docker/.env
+
+# 防构建缓存/上下文膨胀（2026-09-16：build cache 曾膨胀到 378GB 撑爆 C 盘）
+# 根目录测试产物与临时文件（_*.txt/_*.log/_*.json/_*.py 等大量一次性验证文件）
+# 注意：**/_* 会把 apps/web 里合法的 _inner.tsx（模块页守卫的客户端子组件）
+# 一并排除导致容器内 next build 失败 —— 排除规则收紧为根目录与已知测试目录，
+# apps/web 的源码文件永远进构建上下文。
+/_*
+/apps/web/_*
+/apps/api/_*
+/apps/worker/_*
+/packages/_*
+/scripts/_*
+/_*/**
+backups
+target-test
+*.log
+UI参考
+scripts/__pycache__
+.workbuddy
+_apilog*.txt

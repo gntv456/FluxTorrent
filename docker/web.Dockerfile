@@ -1,4 +1,4 @@
-FROM node:20-slim AS builder
+FROM docker.1ms.run/library/node:20-slim AS builder
 WORKDIR /build
 # Corepack 下载 pnpm 二进制也走镜像（默认 registry.npmjs.org 在该网络不可达）
 ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
@@ -18,7 +18,7 @@ ENV API_SERVER_URL=$API_SERVER_URL
 WORKDIR /build/apps/web
 RUN pnpm exec next build
 
-FROM node:20-slim AS runner
+FROM docker.1ms.run/library/node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
 # Next standalone 输出自带最小 node_modules

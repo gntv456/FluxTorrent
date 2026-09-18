@@ -546,7 +546,9 @@ pub async fn bank_daily(db: &PgPool) {
         tracing::error!(?e, "bank_due_notify");
     }
     if failed {
-        tracing::error!("bank_daily finished with failures; health cursor NOT advanced, will retry next tick");
+        tracing::error!(
+            "bank_daily finished with failures; health cursor NOT advanced, will retry next tick"
+        );
         return;
     }
 

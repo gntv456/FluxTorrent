@@ -20,7 +20,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::build_torrent_bytes;
 use crate::openapi_http::require_token;
 use crate::state::AppState;
-use crate::torrents::{list_torrents, TorrentFilter};
+use crate::torrents::{charge_for_download, list_torrents_noclamp, TorrentFilter};
 
 pub fn mount_compat(scope: actix_web::Scope) -> actix_web::Scope {
     scope
@@ -135,14 +135,15 @@ async fn compat_np_torrents(
     let page = q.page.unwrap_or(1).max(1);
     let pagesize = q.pagesize.unwrap_or(30).clamp(1, 50);
     // IMDb 参数优先（NP 工具惯用 ?imdb=tt123 传法）；否则用显式 search_area
-    let (search, search_area) = if let Some(im) = q.imdb.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
-        (Some(im.to_string()), Some(4))
-    } else {
-        (
-            q.keyword.clone().filter(|k| !k.trim().is_empty()),
-            q.search_area,
-        )
-    };
+    let (search, search_area) =
+        if let Some(im) = q.imdb.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+            (Some(im.to_string()), Some(4))
+        } else {
+            (
+                q.keyword.clone().filter(|k| !k.trim().is_empty()),
+                q.search_area,
+            )
+        };
     let filter = TorrentFilter {
         category_id: q.category.map(|v| vec![v]),
         search,
@@ -150,7 +151,9 @@ async fn compat_np_torrents(
         search_mode: q.search_mode,
         ..TorrentFilter::default()
     };
-    let p = list_torrents(&state.repo.db, &filter, None, page * pagesize).await?;
+    // 审计修复（P1）：list_torrents 内部把 limit 钳到 50，page*pagesize 在 page≥2 时
+    // skip 后恒空（第 2 页起拿不到数据）。深翻页走 noclamp 版（调用方已 clamp pagesize≤50）。
+    let p = list_torrents_noclamp(&state.repo.db, &filter, None, page * pagesize).await?;
     let skip = ((page - 1) * pagesize) as usize;
     let items: Vec<_> = p
         .items
@@ -262,6 +265,10 @@ async fn compat_np_download(
     let Some(user_id) = user_id else {
         return Err(DomainError::Unauthorized.into());
     };
+    // 付费种子（0086）与网页下载同口径扣费：兼容端点不得绕过 charge_for_download
+    charge_for_download(&state.repo.db, user_id, q.id)
+        .await
+        .map_err(actix_web::Error::from)?;
     let body = build_torrent_bytes(&state, user_id, q.id).await?;
     Ok(HttpResponse::Ok()
         .content_type("application/x-bittorrent")
@@ -443,6 +450,10 @@ async fn download_key_fetch(
     .bind(&hash)
     .execute(&state.repo.db)
     .await;
+    // 付费种子（0086）与网页下载同口径扣费：凭证下载不得绕过 charge_for_download
+    charge_for_download(&state.repo.db, user_id, torrent_id)
+        .await
+        .map_err(actix_web::Error::from)?;
     let body = build_torrent_bytes(&state, user_id, torrent_id).await?;
     Ok(HttpResponse::Ok()
         .content_type("application/x-bittorrent")

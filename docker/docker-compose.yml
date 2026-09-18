@@ -59,6 +59,16 @@ services:
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}        # RSS 链接前缀（空退 localhost:3000）
       PUBLIC_SITE_NAME: ${PUBLIC_SITE_NAME:-}      # 站点显示名（空退 FluxTorrent）
       SMTP_URL: ${SMTP_URL:-}                      # 邮件发送（空 = 邮件类通知跳过）
+      SMTP_FROM: ${SMTP_FROM:-}                    # 发件人（空退 no-reply@fluxtorrent.local）
+      ANN_METRICS_TOKEN: ${ANN_METRICS_TOKEN:-}    # api /metrics 门禁（空 = 端点 404 隐藏）
+      FLUX_DEV: ${FLUX_DEV:-}                      # 1 = 开发态（CORS 宽松/SMTP 日志闭环）
+      FLUX_BACKUP_DIR: /backups                    # 与 backups 卷挂载对应
+      # 附件对象存储（可选；storage_backend=s3 时生效，读取端自动回落本地卷）
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_KEY: ${S3_KEY:-}
+      S3_SECRET: ${S3_SECRET:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
       RUST_LOG: info
     ports:
       # 生产：仅本机可达，外部流量经 Nginx/Pingora 反代（§5.1 边缘层）
@@ -73,6 +83,11 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    volumes:
+      # 备份目录（admin/backups/run 与 scripts/backup.sh 同卷；宿主 ./backups 持久化）
+      - ../backups:/backups
+      # 本地开发：迁移目录以宿主为准（镜像内迁移滞后时容器可先行），生产可去掉
+      - ../apps/api/migrations:/app/migrations:ro
     restart: unless-stopped
 
   worker:
@@ -119,6 +134,11 @@ services:
       ANN_RATE_GLOBAL_PER_MIN: "0"
       # 指标端点 /metrics：设置非空 token 后启用（抓取端带 X-Metrics-Token 头）；留空=端点返回 404
       ANN_METRICS_TOKEN: "${ANN_METRICS_TOKEN:-}"
+      # UDP tracker 下发开关（api 侧 build_torrent_bytes 读取）：
+      # 私有站 passkey 走 HTTP announce URL path；UDP 标准包不携带身份，仅对
+      # 支持「URL path 填入 tracker_id」扩展约定的客户端可用。默认空 = 只发 HTTP tier；
+      # 需要时设为 udp://host:6969 追加 UDP tier（客户端失败后按 BEP12 降级 HTTP）。
+      TRACKER_UDP_URL: ${TRACKER_UDP_URL:-}
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       RUST_LOG: info

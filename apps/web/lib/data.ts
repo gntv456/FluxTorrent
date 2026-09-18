@@ -266,9 +266,16 @@ export interface PreserveEnvelope {
   page: number;
   per_page: number;
 }
-export async function getPreserve(): Promise<PreserveEnvelope> {
+export async function getPreserve(
+  params?: Record<string, string | undefined>,
+): Promise<PreserveEnvelope> {
   try {
-    return await api.get<PreserveEnvelope>("/api/v1/preserve");
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params ?? {})) {
+      if (v) qs.set(k, v);
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return await api.get<PreserveEnvelope>(`/api/v1/preserve${suffix}`);
   } catch {
     return {
       items: [],

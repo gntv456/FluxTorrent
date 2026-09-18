@@ -153,20 +153,19 @@ impl UdpTracker {
     }
 
     async fn announce(&self, pkt: &[u8], peer: SocketAddr, transaction_id: u32) -> Vec<u8> {
-        // BEP15 announce 包：8 conn + 4 action + 4 tid + 20 info_hash + 20 peer_id
-        //   + 8 downloaded + 8 left + 8 uploaded + 4 event + 4 ip + 4 key + 4 numwant
-        //   + 2 port + 2 扩展（这里借用末尾 2 字节做 tracker_id 长度前缀——非标准但
-        //   不破坏解析：标准客户端按固定头解析，扩展字段忽略）。
-        // 由于 tracker_id 无法内嵌变长字符串，本实现约定：passkey 由客户端放
-        // URL path（udp://host:port/<passkey>/announce），主流客户端将其填入
-        // 「ip 字段之外的自定义扩展」不可行 —— 因此采用「key 字段 = passkey
-        // 哈希」不可逆，也不行。最终方案：每用户静态 32 字节会话预注册不可取。
-        //
-        // 实际可行方案（与多数自建 UDP tracker 一致）：announce 包固定 98 字节，
-        // 额外尾随 passkey ASCII（长度由包长推出）。本站客户端 URL 形如
-        // udp://host:port/passkey，libtorrent 系会把 path 原样放进 tracker_id
-        // —— 我们把 BEP15 的「ip 字段」重用为 0，把 98 字节之后的全部字节
-        // 视为 tracker_id（即 passkey）。见 announce_url 文档。
+        // 标准 BEP15 announce 包（固定 98 字节）：8 conn + 4 action + 4 tid
+        //   + 20 info_hash + 20 peer_id + 8 downloaded + 8 left + 8 uploaded
+        //   + 4 event + 4 ip + 4 key + 4 numwant + 2 port
+        // 审计修复（P1 协议非标）：旧版要求 98 字节之后必须尾随 passkey（客户端把
+        // udp://host:port/<passkey> 的 path 填进 tracker_id）——但 libtorrent/qBittorrent
+        // 等标准实现固定发 98 字节、不附 tracker_id，导致 UDP tier 对标准客户端恒失败。
+        // 新口径（与 NexusPHP 生态一致，私有 tracker 行业惯例）：
+        //   ① 私有站的主通道是 HTTP announce（passkey 在 URL path，BEP3 天然支持）；
+        //   ② UDP announce 无 path 可传 passkey，标准做法是**不在 UDP 上承载计费身份**：
+        //      98 字节标准包 → 无法鉴权 → 明确回错误提示走 HTTP；
+        //      尾随 passkey 的扩展包（本站 .torrent 里 TRACKER_UDP_URL tier 的约定）→ 正常计费。
+        //   这样标准客户端收到明确错误后按 BEP12 降级到 HTTP tier（一次握手开销，
+        //   不再是每次 announce 静默 500/超时）；自研/配置了扩展的客户端走 UDP 全速。
         if pkt.len() < 98 {
             return Self::err_pkt(transaction_id, "announce 包长无效");
         }
@@ -190,23 +189,42 @@ impl UdpTracker {
         let ip = peer.ip().to_string();
 
         // —— 防护链（与 HTTP announce 同源） ——
-        self.state.metrics.announce_total.fetch_add(1, Ordering::Relaxed);
+        self.state
+            .metrics
+            .announce_total
+            .fetch_add(1, Ordering::Relaxed);
         if self.state.global_shed().await {
-            self.state.metrics.announce_global_shed.fetch_add(1, Ordering::Relaxed);
+            self.state
+                .metrics
+                .announce_global_shed
+                .fetch_add(1, Ordering::Relaxed);
             return Self::err_pkt(transaction_id, "tracker 负载保护已触发");
         }
         self.state.refresh_guard().await;
         if let Some(reason) = self.state.ip_banned(&ip) {
-            self.state.metrics.announce_ip_banned.fetch_add(1, Ordering::Relaxed);
+            self.state
+                .metrics
+                .announce_ip_banned
+                .fetch_add(1, Ordering::Relaxed);
             return Self::err_pkt(transaction_id, &format!("IP 已被封禁：{reason}"));
         }
         if let Some(msg) = self.state.rate_limited_ip(&ip).await {
-            self.state.metrics.announce_limited_ip.fetch_add(1, Ordering::Relaxed);
+            self.state
+                .metrics
+                .announce_limited_ip
+                .fetch_add(1, Ordering::Relaxed);
             return Self::err_pkt(transaction_id, msg);
         }
-        // 尾随字节 = tracker_id（客户端把 udp://host:port/<passkey> 的 path 填入）
-        let tracker_id = String::from_utf8_lossy(&pkt[98..]);
+        // 尾随字节 = tracker_id（本站扩展约定：udp://host:port/<passkey> 的 path 段）。
+        // 标准 98 字节包（无尾随）→ 无法识别身份：明确回错让客户端按 BEP12 降级 HTTP。
+        let tracker_id = String::from_utf8_lossy(&pkt[98..]).to_string();
         let passkey = passkey_from_tracker_id(&tracker_id);
+        if passkey.len() < 16 {
+            return Self::err_pkt(
+                transaction_id,
+                "本 tracker 的 UDP 通道需扩展 passkey；请使用 HTTP announce（或联系站方客户端）",
+            );
+        }
         let Some((user_id, download_enabled, suspended)) =
             self.state.resolve_passkey_cached(passkey).await
         else {
@@ -219,12 +237,18 @@ impl UdpTracker {
             return Self::err_pkt(transaction_id, "下载权限已被禁用");
         }
         if let Some(msg) = self.state.rate_limited_user(user_id).await {
-            self.state.metrics.announce_limited_user.fetch_add(1, Ordering::Relaxed);
+            self.state
+                .metrics
+                .announce_limited_user
+                .fetch_add(1, Ordering::Relaxed);
             return Self::err_pkt(transaction_id, msg);
         }
         let peer_id_readable = String::from_utf8_lossy(&peer_id).into_owned();
         if let Some(reason) = self.state.agent_blocked(None, &peer_id_readable) {
-            self.state.metrics.announce_agent_blocked.fetch_add(1, Ordering::Relaxed);
+            self.state
+                .metrics
+                .announce_agent_blocked
+                .fetch_add(1, Ordering::Relaxed);
             return Self::err_pkt(transaction_id, &reason);
         }
 
@@ -301,14 +325,31 @@ impl UdpTracker {
         if !self.check_conn(&peer, conn_id) {
             return Self::err_pkt(transaction_id, "connection_id 无效或过期，请重连");
         }
-        if (pkt.len() - 16) % 20 != 0 {
-            return Self::err_pkt(transaction_id, "scrape info_hash 数量无效");
+        // 剩余字节 = N×20 hash + 尾随 passkey：hash 边界按「20 字节对齐的头部段」推断，
+        // 至少 1 个 hash、至少 16 字节 passkey（passkey 长度 = 剩余长度 mod 20 之外的尾段）
+        if pkt.len() < 16 + 20 + 16 {
+            return Self::err_pkt(transaction_id, "scrape 需附带 info_hash 与 passkey");
         }
-        self.state.metrics.scrape_total.fetch_add(1, Ordering::Relaxed);
-        let mut out = Vec::with_capacity(8 + (pkt.len() - 16) / 20 * 12);
+        self.state
+            .metrics
+            .scrape_total
+            .fetch_add(1, Ordering::Relaxed);
+        // 审计修复（P2 口径对齐）：HTTP scrape 需 passkey 鉴权，UDP 侧此前仅凭
+        // connection_id 即可刮擦（connect 无身份）。要求 hash 块之后尾随 passkey
+        // （与 announce 同约定：整包 = 头16 + N×20 hash + passkey，无尾随即拒绝）。
+        let n_hash = (pkt.len() - 16) / 20;
+        let passkey_raw = String::from_utf8_lossy(&pkt[16 + n_hash * 20..]);
+        let passkey = passkey_from_tracker_id(&passkey_raw);
+        if passkey.len() < 16 {
+            return Self::err_pkt(transaction_id, "scrape 需在 info_hash 列表后附带 passkey");
+        }
+        if self.state.resolve_passkey_cached(passkey).await.is_none() {
+            return Self::err_pkt(transaction_id, "passkey 无效");
+        }
+        let mut out = Vec::with_capacity(8 + n_hash * 12);
         out.extend_from_slice(&SCRAPE_ACTION.to_be_bytes());
         out.extend_from_slice(&transaction_id.to_be_bytes());
-        for chunk in pkt[16..].chunks_exact(20) {
+        for chunk in pkt[16..16 + n_hash * 20].chunks_exact(20) {
             let hexkey = crate::peers::hex(chunk);
             let (s, l) = self.state.peers.counts(&hexkey);
             out.extend_from_slice(&(s as i32).to_be_bytes());
@@ -360,5 +401,20 @@ mod tests {
     fn passkey_extraction() {
         assert_eq!(passkey_from_tracker_id("abc123"), "abc123");
         assert_eq!(passkey_from_tracker_id("passkey=abc123"), "abc123");
+    }
+
+    /// scrape 尾随 passkey 布局：头16 + N×20 hash + passkey。
+    /// 最小合法包 = 16 + 20 + 16；hash 数与 passkey 段长度由整除关系唯一确定。
+    #[test]
+    fn scrape_layout_splits_hash_and_passkey() {
+        let pk: &[u8] = b"0123456789abcdef"; // 16 字节（最小 passkey）
+        let mut pkt = Vec::new();
+        pkt.extend_from_slice(&[0u8; 16]); // conn_id + action + tid
+        pkt.extend_from_slice(&[0xA5u8; 20]); // 1 个 info_hash
+        pkt.extend_from_slice(pk);
+        let n_hash = (pkt.len() - 16) / 20;
+        let tail = &pkt[16 + n_hash * 20..];
+        assert_eq!(n_hash, 1);
+        assert_eq!(tail, pk);
     }
 }

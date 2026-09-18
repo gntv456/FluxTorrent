@@ -95,11 +95,21 @@ export function SettingField({
   const border = error ? "border-danger" : "border-line";
   const inputCls = `${base} ${border} w-full`;
 
+  // 开关类控件（yesno / ≤4 项 enum）无错误时走紧凑布局：去掉独立卡片容器，
+  // 标签与按钮同行 —— 上层用网格多列排布（模块开关一屏可见十几项而非十几屏）
+  const compact =
+    !error &&
+    !askReveal &&
+    (field.type === "yesno" ||
+      (field.type === "enum" &&
+        enumOptions(field.options).length > 0 &&
+        enumOptions(field.options).length <= 4));
+
   let control: React.ReactNode;
   switch (field.type) {
     case "yesno":
       control = (
-        <div className="flex gap-2" role="radiogroup" aria-label={field.label}>
+        <div className="flex gap-1.5" role="radiogroup" aria-label={field.label}>
           {(["yes", "no"] as const).map((v) => {
             const on = value === v;
             return (
@@ -110,7 +120,7 @@ export function SettingField({
                 aria-checked={on}
                 disabled={lock}
                 onClick={() => onChange(v)}
-                className={`min-h-[44px] min-w-[76px] rounded-full px-4 text-sm font-bold ${
+                className={`min-h-[32px] min-w-[56px] rounded-full px-3 text-xs font-bold ${
                   on
                     ? "bg-sky-deep text-white"
                     : "border border-line bg-[var(--surface-card)] text-sub hover:text-ink"
@@ -127,7 +137,7 @@ export function SettingField({
       const opts = enumOptions(field.options);
       control =
         opts.length > 0 && opts.length <= 4 ? (
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={field.label}>
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={field.label}>
             {opts.map((o) => {
               const on = value === o.v;
               return (
@@ -138,7 +148,7 @@ export function SettingField({
                   aria-checked={on}
                   disabled={lock}
                   onClick={() => onChange(o.v)}
-                  className={`min-h-[44px] rounded-full px-4 text-sm font-bold ${
+                  className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${
                     on
                       ? "bg-sky-deep text-white"
                       : "border border-line bg-[var(--surface-card)] text-sub hover:text-ink"
@@ -289,6 +299,44 @@ export function SettingField({
           className={`${inputCls} max-w-2xl`}
         />
       );
+  }
+
+  // 紧凑模式：标签与开关同行（去掉独立卡片容器），由上层网格多列排布
+  if (compact) {
+    return (
+      <div
+        className={`flex items-center gap-2 rounded-[var(--r-sm)] border p-2 ${
+          error ? "border-danger bg-danger/5" : "border-line bg-[var(--surface-card)]"
+        }`}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-bold text-ink" title={field.label}>
+            {field.label}
+            {field.readonly && (
+              <span className="ml-1.5 rounded-full bg-sky-soft px-1.5 py-0.5 text-[10px] font-bold text-sub">
+                {s.readonlyField}
+              </span>
+            )}
+          </p>
+          {field.hint && (
+            <p className="truncate text-[10px] leading-tight text-sub" title={field.hint}>
+              {field.hint}
+            </p>
+          )}
+        </div>
+        {control}
+        {onHistory && (
+          <button
+            type="button"
+            onClick={onHistory}
+            title={s.history}
+            className="shrink-0 text-[10px] font-bold text-sub underline hover:text-ink"
+          >
+            史
+          </button>
+        )}
+      </div>
+    );
   }
 
   return (

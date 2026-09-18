@@ -5,6 +5,7 @@ import { hasBBCode, renderBBCode } from "@/lib/bbcode";
 import { DownloadButton } from "@/components/download-button";
 import { TorrentSocial } from "@/components/torrent-social";
 import { TorrentManage } from "@/components/torrent-manage";
+import { PromoBuyButton } from "@/components/promo-buy-button";
 import { SnatchList } from "@/components/snatch-list";
 import { FileTree } from "@/components/file-tree";
 import { TorrentTags } from "@/components/torrent-tags";
@@ -365,6 +366,7 @@ export default async function TorrentDetailPage({
         <div className="td-tags__body">
           <TorrentTags torrentId={t.id} />
           <div className="td-tags__manage">
+            <PromoBuyButton torrentId={t.id} isOwner={Boolean(ext?.is_owner)} />
             <TorrentManage
               torrentId={t.id}
               name={t.name}

@@ -19,6 +19,7 @@ import { AdminSections } from "@/components/admin-sections";
 import { AdminMedals } from "@/components/admin-medals";
 import { AdminProps } from "@/components/admin-props";
 import { AdminExams } from "@/components/admin-exams";
+import { AdminJixiao } from "@/components/admin-jixiao";
 import { AdminTasks } from "@/components/admin-tasks";
 import { AdminTrackers } from "@/components/admin-trackers";
 import { AdminOpsPanel } from "@/components/admin-ops";
@@ -749,6 +750,8 @@ export default function AdminPage() {
         return <AdminProps />;
       case "exams":
         return <AdminExams />;
+      case "jixiao":
+        return <AdminJixiao />;
       case "tasks":
         return <AdminTasks />;
       case "trackers":

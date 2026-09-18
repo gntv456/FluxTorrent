@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
 interface SubtitleRow {
@@ -48,7 +48,7 @@ export function SubtitleBoard() {
   const [fTitle, setFTitle] = useState("");
   const [fTorrentId, setFTorrentId] = useState("");
   const [fLang, setFLang] = useState("0");
-  const [fFileName, setFFileName] = useState("");
+  const [fFile, setFFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -79,20 +79,38 @@ export function SubtitleBoard() {
   );
 
   async function upload() {
-    if (!fTitle.trim() || fLang === "0") return;
+    if (!fTitle.trim() || fLang === "0" || !fFile) return;
     setBusy(true);
     setMsg(null);
     try {
+      // 真实文件链路（审计修复 P1 空壳）：先 multipart 上传到 attachments 拿 sha256，
+      // 再建字幕记录绑定 attach://<sha>——下载端直接回文件字节，不再只回引用。
+      const form = new FormData();
+      form.append("file", fFile);
+      const token = localStorage.getItem("flux.token");
+      const lang = rawFetchHelpers.lang();
+      const upRes = await fetch(rawFetchHelpers.base() + "/api/v1/attachments", {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(lang ? { "Accept-Language": lang } : {}),
+        },
+        body: form,
+      });
+      const upBody = (await upRes.json()) as { code: number; message?: string; data?: { sha256: string } };
+      if (upBody.code !== 0 || !upBody.data?.sha256) {
+        throw new ApiError(upBody.code, upBody.message ?? "字幕文件上传失败");
+      }
       // lang 存旧站代码（chs/cht/eng…）
       const code = Object.entries(LANG_CODE_TO_ID).find(([, id]) => id === fLang)?.[0] ?? "other";
       await api.post("/api/v1/subtitles", {
         torrent_id: fTorrentId ? Number(fTorrentId) : 0,
         title: fTitle,
         lang: code,
-        file_ref: fFileName ? `local://${fFileName}` : undefined,
+        file_sha: upBody.data.sha256,
       });
       setFTitle("");
-      setFFileName("");
+      setFFile(null);
       setMsg(t.reward);
       load();
     } catch (e) {
@@ -147,7 +165,7 @@ export function SubtitleBoard() {
                 <input
                   type="file"
                   aria-label={t.file}
-                  onChange={(e) => setFFileName(e.target.files?.[0]?.name ?? "")}
+                  onChange={(e) => setFFile(e.target.files?.[0] ?? null)}
                 />
                 <br />
                 {t.fileNote}
@@ -209,7 +227,7 @@ export function SubtitleBoard() {
                     setFTitle("");
                     setFTorrentId("");
                     setFLang("0");
-                    setFFileName("");
+                    setFFile(null);
                   }}
                 />
               </td>
@@ -279,11 +297,23 @@ export function SubtitleBoard() {
                     target="_blank"
                     rel="noreferrer"
                     onClick={async (e) => {
-                      // 端点返回 JSON（file_ref 指向存储）；此处拦截导航改为取引用提示
+                      // 本地附件（attach://sha）端点直接回文件字节：带 Bearer 拉取后
+                      // 触发浏览器保存；外部直链（http ref）后端回 JSON，跳新页由其自行下载
                       e.preventDefault();
                       try {
-                        await api.get(`/api/v1/subtitles/${s.id}/download`);
-                        setMsg(`字幕「${s.title}」已开始下载（引用 #${s.id}）`);
+                        const buf = await api.getBlob(
+                          `/api/v1/subtitles/${s.id}/download`,
+                        );
+                        const ctype = "application/octet-stream";
+                        const name = `${s.title.replace(/[\\/:*?"<>|]/g, "_")}.srt`;
+                        const blob = new Blob([buf], { type: ctype });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = name;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        setMsg(`字幕「${s.title}」已开始下载`);
                         load();
                       } catch (err) {
                         setMsg(err instanceof Error ? err.message : "下载失败");

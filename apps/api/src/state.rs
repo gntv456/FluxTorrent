@@ -13,6 +13,8 @@ pub struct AppState {
     pub jwt: crate::auth::JwtSigner,
     /// M28 插件管理器（编译期装配，运行期启停由插件 enabled() 决定）
     pub plugins: crate::plugins::PluginManager,
+    /// 模块开关缓存（U1 §5.1：TTL 30s + 后台改键主动失效；worker 与 API 共用）
+    pub module_flags: crate::modules::ModuleFlags,
     /// 进程启动时间（stats 页 uptime 口径）
     pub started_at: chrono::DateTime<chrono::Utc>,
 }
@@ -39,6 +41,7 @@ impl AppState {
             redis,
             jwt,
             plugins: crate::plugins::PluginManager::builtin(),
+            module_flags: crate::modules::ModuleFlags::new(),
             started_at: chrono::Utc::now(),
         })
     }

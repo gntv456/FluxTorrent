@@ -1,6 +1,6 @@
 # FluxTorrent
 
-下一代教育类 PT 站点引擎 —— Rust (Actix-web) + Next.js 15 + PostgreSQL 16 + Redis，基于 Monorepo（Turborepo + Cargo workspace）。
+通用 PT 建站系统（11 种预置站型：教育/影视/音乐/动漫/电子书/综合/体育/游戏/软件/纪录片/无损，模块可开关）—— Rust (Actix-web) + Next.js 15 + PostgreSQL 16 + Redis，基于 Monorepo（Turborepo + Cargo workspace）。
 
 > 策划总纲见 `_doc/FluxTorrent 策划方案.md`（技术架构、29 模块 PRD、数据模型、UI 规范、路线图）。
 
