@@ -1162,7 +1162,7 @@ async fn topic_list(
             COALESCE( \
               (SELECT json_agg(json_build_object('id', d.id, 'name', d.name, 'kind', d.kind, \
                      'bg_color', d.bg_color, 'color', d.color, 'font_size', d.font_size, \
-                     'margin', d.margin, 'padding', d.padding, 'border_radius', d.border_radius) \
+                     'margin', d.margin, 'padding', d.padding, 'border_radius', d.border_radius)) \
                  FROM (SELECT td.* FROM tag_dict td JOIN topic_tags tt2 ON tt2.tag_id = td.id \
                         WHERE tt2.topic_id = t.id ORDER BY td.sort, td.id) d), \
               '[]'::json) AS tags \
@@ -1317,7 +1317,7 @@ async fn topic_detail(
         "SELECT COALESCE( \
             (SELECT json_agg(json_build_object('id', d.id, 'name', d.name, 'kind', d.kind, \
                    'bg_color', d.bg_color, 'color', d.color, 'font_size', d.font_size, \
-                   'margin', d.margin, 'padding', d.padding, 'border_radius', d.border_radius) \
+                   'margin', d.margin, 'padding', d.padding, 'border_radius', d.border_radius)) \
                FROM (SELECT td.* FROM tag_dict td JOIN topic_tags tt ON tt.tag_id = td.id \
                       WHERE tt.topic_id = $1 ORDER BY td.sort, td.id) d), \
             '[]'::json)",
