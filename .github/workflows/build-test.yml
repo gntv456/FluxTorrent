@@ -38,7 +38,8 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: apps/web/pnpm-lock.yaml
+          # pnpm workspace：锁文件在仓库根（web 是 workspace 成员，无独立锁文件）
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: tsc 类型检查（0 错误基线）
