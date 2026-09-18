@@ -1491,7 +1491,7 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         SELECT NULL, d.user_id,
                'H&R 预警：请尽快补足做种',
                format('你完成的种子 #%s 距 H&R 考察截止还剩不到 48 小时（截止 %s）。当前累计做种 %s 小时，'
-                      '需 %s 小时。请尽快恢复做种；也可在「我的 H&R」页用火花自助免罪。',
+                      '需 %s 小时。请尽快恢复做种；也可在「我的 H&R」页用魔力自助免罪。',
                       d.torrent_id,
                       to_char(d.deadline AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI'),
                       round(d.seeded_seconds / 3600.0, 1),
@@ -1525,7 +1525,7 @@ async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
                '种子 #' || ins.torrent_id || ' 的 H&R 考察期已结束且未达标（做种 '
                || round(ins.seeded_seconds / 3600.0, 1) || ' 小时 / 要求 '
                || round(ins.required_seconds / 3600.0, 1) || ' 小时），已记违规一次。
-               持续做种可自行恢复；也可在「我的 H&R」用 20000 火花自助免罪。累计多次违规将影响下载权限。'
+               持续做种可自行恢复；也可在「我的 H&R」用 20000 魔力自助免罪。累计多次违规将影响下载权限。'
         FROM ins
         "#,
     )
@@ -1600,7 +1600,7 @@ async fn hr_punish(db: &PgPool) -> anyhow::Result<()> {
         INSERT INTO messages (sender_id, receiver_id, subject, body)
         SELECT NULL, b.id, '下载权限暂停：H&R 违规超限',
                format('您当前有 %s 条未解决的 H&R 违规（阈值 %s），已暂停下载权限。'
-                      '恢复方式：①持续做种达标后违规自动消除；②在「我的 H&R」页用火花自助免罪；'
+                      '恢复方式：①持续做种达标后违规自动消除；②在「我的 H&R」页用魔力自助免罪；'
                       '③联系管理组申请 Pardon。违规数降回阈值以下后下载权限将自动恢复。',
                       b.n, $1)
         FROM banned b
@@ -1762,7 +1762,7 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
             .bind(uid)
             .bind("等级晋升祝贺")
             .bind(format!(
-                "恭喜晋升至「{level_name}」！系统发放晋升奖励 {reward} 火花，已入账。\
+                "恭喜晋升至「{level_name}」！系统发放晋升奖励 {reward} 魔力，已入账。\
                  继续保持做种与分享，更高等级还有更多奖励。"
             ))
             .execute(db)
@@ -2349,7 +2349,7 @@ pub async fn jixiao_settle(db: &PgPool) -> anyhow::Result<u64> {
             .bind(p.user_id)
             .bind("绩效考核工资已发放")
             .bind(format!(
-                "你本期（{}）的「{}」考核已达标，工资 {} 火花（含连续达标加成 {}）已自动发放到账。",
+                "你本期（{}）的「{}」考核已达标，工资 {} 魔力（含连续达标加成 {}）已自动发放到账。",
                 prev, p.name, total, bonus
             ))
             .execute(&mut *tx)
@@ -2771,7 +2771,7 @@ async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
         let _ = sqlx::query(
             "INSERT INTO messages (sender_id, receiver_id, subject, body) \
              SELECT NULL, creator_id, '众筹未达标', \
-                    '种子相关众筹到期未达标，参与者的火花已全额退款（含赠送税部分）。' \
+                    '种子相关众筹到期未达标，参与者的魔力已全额退款（含赠送税部分）。' \
              FROM fundings WHERE id = $1",
         )
         .bind(fid)

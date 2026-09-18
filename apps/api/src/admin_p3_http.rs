@@ -3448,7 +3448,7 @@ async fn increment_bulk(
     // 上限口径沿用旧端点：火花 ±100 万；上传量 ±10TB（GB 换算）；邀请/补签卡 1-50
     match body.kind.as_str() {
         "spark" if body.amount.abs() > 1_000_000 => {
-            return Err(DomainError::Validation("火花单次 ±1,000,000".into()));
+            return Err(DomainError::Validation("魔力单次 ±1,000,000".into()));
         }
         "uploaded" if body.amount.abs() > 10 * 1024 => {
             return Err(DomainError::Validation("上传量单次 ±10TB（GB）".into()));

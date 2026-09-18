@@ -37,8 +37,9 @@ interface SysLogPage { items: SysLogItem[]; total: number; page: number; per_pag
 interface LocationItem { net: string; netmask: number; logins: number; users: number; failed: number; last_seen: string | null }
 interface LocationPage { items: LocationItem[]; total: number; page: number; per_page: number; pages: number }
 
-interface ForumAdminForum { id: number; name: string; descr: string | null; minclassread: number; minclasswrite: number; minclasscreate: number; protected: boolean; topics: number }
-interface ForumAdminData { forums: ForumAdminForum[]; mods: [number, number, string][] }
+interface ForumAdminForum { id: number; name: string; descr: string | null; minclassread: number; minclasswrite: number; minclasscreate: number; protected: boolean; topics: number; category_id?: number | null; category_name?: string | null }
+interface ForumCategory { id: number; name: string; sort: number; visible: boolean }
+interface ForumAdminData { forums: ForumAdminForum[]; mods: [number, number, string][]; categories?: ForumCategory[] }
 interface MenuItemAdmin {
   id: number; location: string; label: string; url: string;
   parent_id: number; target: string; min_class: number; sort: number; enabled: boolean;
@@ -132,6 +133,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [fMw, setFMw] = useState(0);
   const [fMc, setFMc] = useState(0);
   const [fProt, setFProt] = useState(false);
+  const [fCatId, setFCatId] = useState<number | "">("");
+  const [fNewCat, setFNewCat] = useState("");
   const [fModName, setFModName] = useState("");
   const [reports, setReports] = useState<ReportItem[] | null>(null);
   const [rpStatus, setRpStatus] = useState<"pending" | "handling" | "handled" | "all">("pending");
@@ -1358,6 +1361,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
           <table className="nexus-table text-xs">
             <thead><tr>
               <td className="colhead">版块</td>
+              <td className="colhead w-28">分区</td>
               <td className="colhead w-36">门槛 读/回/发</td>
               <td className="colhead w-14">保护</td>
               <td className="colhead w-14">主题</td>
@@ -1373,6 +1377,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                       <Link href={`/forums/${f.id}`} className="font-bold text-sky">{f.name}</Link>
                       {f.descr && <p className="text-sub">{f.descr}</p>}
                     </td>
+                    <td className="text-sub">{f.category_name ?? "—"}</td>
                     <td className="num">{f.minclassread} / {f.minclasswrite} / {f.minclasscreate}</td>
                     <td className="text-center">{f.protected ? "🛡" : "—"}</td>
                     <td className="num">{f.topics}</td>
@@ -1412,7 +1417,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                     <td>
                       <button
                         className="min-h-[28px] rounded-full border border-line px-3 font-bold text-sky"
-                        onClick={() => { setFEditId(f.id); setFName(f.name); setFDescr(f.descr ?? ""); setFMr(f.minclassread); setFMw(f.minclasswrite); setFMc(f.minclasscreate); setFProt(f.protected); }}
+                        onClick={() => { setFEditId(f.id); setFName(f.name); setFDescr(f.descr ?? ""); setFMr(f.minclassread); setFMw(f.minclasswrite); setFMc(f.minclasscreate); setFProt(f.protected); setFCatId(f.category_id ?? ""); }}
                       >编辑</button>
                       <button
                         className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-danger"
@@ -1426,7 +1431,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                 );
               })}
               {(forumData?.forums ?? []).length === 0 && (
-                <tr><td colSpan={6} className="py-4 text-center text-sub">
+                <tr><td colSpan={7} className="py-4 text-center text-sub">
                   {forumData === null ? "Load 失败或无权限" : "暂无版块"}
                 </td></tr>
               )}
@@ -1460,6 +1465,19 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
               <input type="number" min={0} value={fMc} onChange={(e) => setFMc(Number(e.target.value))}
                 className="min-h-[40px] w-24 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
             </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-sub">分区</span>
+              <select
+                value={fCatId}
+                onChange={(e) => setFCatId(e.target.value === "" ? "" : Number(e.target.value))}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              >
+                <option value="">未分组</option>
+                {(forumData?.categories ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </label>
             <label className="flex items-center gap-2 pb-2 text-sm">
               <input type="checkbox" checked={fProt} onChange={(e) => setFProt(e.target.checked)} />
               受保护版块
@@ -1468,23 +1486,60 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
               disabled={busy}
               className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
               onClick={() => guard(async () => {
-                const payload = { name: fName.trim(), descr: fDescr.trim() || null, minclassread: fMr, minclasswrite: fMw, minclasscreate: fMc, protected: fProt };
+                const payload = { name: fName.trim(), descr: fDescr.trim() || null, minclassread: fMr, minclasswrite: fMw, minclasscreate: fMc, protected: fProt, category_id: fCatId === "" ? null : Number(fCatId) };
                 if (fEditId === null) {
                   await api.post("/api/v1/admin/forums", payload);
                 } else {
                   await api.put(`/api/v1/admin/forums/${fEditId}`, payload);
                   setFEditId(null);
                 }
-                setFName(""); setFDescr(""); setFMr(0); setFMw(0); setFMc(0); setFProt(false);
+                setFName(""); setFDescr(""); setFMr(0); setFMw(0); setFMc(0); setFProt(false); setFCatId("");
                 setForumData(await api.get("/api/v1/admin/forums"));
               }, fEditId === null ? "已创建" : "已保存")}
             >{fEditId === null ? "创建" : "保存"}</button>
             {fEditId !== null && (
               <button className="min-h-[40px] rounded-full border border-line px-4 text-sm text-sub"
-                onClick={() => { setFEditId(null); setFName(""); setFDescr(""); setFMr(0); setFMw(0); setFMc(0); setFProt(false); }}>
+                onClick={() => { setFEditId(null); setFName(""); setFDescr(""); setFMr(0); setFMw(0); setFMc(0); setFProt(false); setFCatId(""); }}>
                 取消
               </button>
             )}
+          </div>
+
+          {/* 分区/节点管理（0115）：列表 + 新建 + 删除（删分区不删版块，版块回落未分组） */}
+          <div className="mt-4 border-t border-line pt-4">
+            <h3 className="mb-2 text-sm font-bold">分区管理</h3>
+            <div className="mb-2 flex flex-wrap gap-2">
+              {(forumData?.categories ?? []).map((c) => (
+                <span key={c.id} className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-1 text-xs">
+                  {c.name}
+                  <button
+                    className="font-bold text-danger"
+                    title="删除分区（版块回落未分组）"
+                    onClick={() => guard(async () => {
+                      await api.del(`/api/v1/admin/forum-categories/${c.id}`);
+                      setForumData(await api.get("/api/v1/admin/forums"));
+                    }, "已删除分区")}
+                  >×</button>
+                </span>
+              ))}
+              {(forumData?.categories ?? []).length === 0 && <span className="text-xs text-sub">暂无分区</span>}
+            </div>
+            <div className="flex items-end gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-sub">新分区名</span>
+                <input value={fNewCat} onChange={(e) => setFNewCat(e.target.value)}
+                  className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+              </label>
+              <button
+                disabled={busy || !fNewCat.trim()}
+                className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+                onClick={() => guard(async () => {
+                  await api.post("/api/v1/admin/forum-categories", { name: fNewCat.trim() });
+                  setFNewCat("");
+                  setForumData(await api.get("/api/v1/admin/forums"));
+                }, "已创建分区")}
+              >新建分区</button>
+            </div>
           </div>
         </section>
       )}

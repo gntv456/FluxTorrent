@@ -1345,7 +1345,7 @@ async fn resurrection_claim(
     Ok(ok(serde_json::json!({
         "torrent_id": body.torrent_id,
         "required_hours": hours,
-        "reward": "5000 火花 + 1 枚免费券 + 该种 7 天免费",
+        "reward": "5000 魔力 + 1 枚免费券 + 该种 7 天免费",
         "note": "worker 每小时自动验收：累计做种达标且当前仍在做种即发奖"
     })))
 }

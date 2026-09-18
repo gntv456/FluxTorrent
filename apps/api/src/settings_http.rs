@@ -95,7 +95,7 @@ fn group_label<'a>(key: &'a str) -> &'a str {
         "security" => "安全设定",
         "authority" => "权限设定",
         "tweak" => "次要设定",
-        "bonus" => "火花设定",
+        "bonus" => "魔力设定",
         "account" => "账号设定",
         "torrent" => "种子设定",
         "attachment" => "附件设定",

@@ -54,6 +54,9 @@ export interface Forum {
   latest_topic?: string;
   latest_author?: string;
   latest_at?: string;
+  /** 分区/节点（0115）：首页按分类分组 */
+  category_id?: number | null;
+  category_name?: string | null;
   can_write?: boolean;
   can_create?: boolean;
   can_mod?: boolean;
@@ -78,12 +81,18 @@ export interface Topic {
   locked?: boolean;
   /** 精华帖（0099 NP digest 口径） */
   digest?: boolean;
+  /** 帖子类型（0115）：normal|bounty|poll|lottery */
+  topic_type?: string;
 }
 export interface ForumTopics {
   forum_id: number;
+  /** 版块名（随列表返回，避免为拿标题再打一次 /forums） */
+  forum_name?: string | null;
   can_write: boolean;
   can_create: boolean;
   can_mod: boolean;
+  /** 当前排序（0116）：hot|new */
+  sort?: string;
   topics: Topic[];
 }
 /** 站点运行统计（/stats 需登录；页脚展示用，未登录返回 null） */
@@ -121,9 +130,13 @@ export async function getMenuItems(location: string): Promise<MenuItem[]> {
     return [];
   }
 }
-export async function getTopics(forumId: number): Promise<ForumTopics | null> {
+export async function getTopics(
+  forumId: number,
+  sort?: string,
+): Promise<ForumTopics | null> {
   try {
-    return await api.get<ForumTopics>(`/api/v1/forums/${forumId}/topics`);
+    const qs = sort ? `?sort=${encodeURIComponent(sort)}` : "";
+    return await api.get<ForumTopics>(`/api/v1/forums/${forumId}/topics${qs}`);
   } catch {
     return null;
   }
@@ -137,6 +150,10 @@ export interface Post {
   created_at: string;
   edited_at: string | null;
   edited_by: number | null;
+  /** 点赞数（0116） */
+  likes?: number;
+  /** 当前登录用户是否已赞（0116） */
+  liked_by_me?: boolean;
 }
 export interface TopicDetail {
   topic_id: number;
@@ -147,11 +164,17 @@ export interface TopicDetail {
   locked: boolean;
   /** 精华帖（0099 NP digest 口径） */
   digest?: boolean;
+  /** 帖子类型（0115）：normal|bounty|poll|lottery */
+  topic_type?: string;
   is_op: boolean;
   current_user_id?: number | null;
   can_write: boolean;
   can_mod: boolean;
   posts: Post[];
+  /** 收藏数（0116） */
+  favorites?: number;
+  /** 当前登录用户是否已收藏（0116） */
+  faved?: boolean;
   /** 本窗口外还有更早楼层（长帖游标）：前端显示「加载更早的回复」 */
   has_more?: boolean;
 }
@@ -164,6 +187,49 @@ export async function getPosts(
     return await api.get<TopicDetail>(`/api/v1/forums/topics/${topicId}${qs}`);
   } catch {
     return null;
+  }
+}
+
+/** 关注流条目（0121）：via 表示命中的关注来源 */
+export interface FeedItem {
+  topic_id: number;
+  title: string;
+  forum_id: number;
+  forum_name: string | null;
+  username: string | null;
+  topic_type?: string;
+  last_post_at: string | null;
+  created_at: string;
+  sticky?: boolean;
+  locked?: boolean;
+  replies: number;
+  via: string;
+}
+export async function getFeed(limit = 50): Promise<FeedItem[]> {
+  try {
+    const r = await api.get<{ items: FeedItem[] }>(`/api/v1/forums/feed?limit=${limit}`);
+    return r?.items ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export interface FollowEntry {
+  id: number;
+  name: string;
+  forum_id?: number;
+}
+export interface MyFollows {
+  users: FollowEntry[];
+  forums: FollowEntry[];
+  topics: FollowEntry[];
+}
+export async function getMyFollows(): Promise<MyFollows> {
+  const empty: MyFollows = { users: [], forums: [], topics: [] };
+  try {
+    return (await api.get<MyFollows>("/api/v1/follows/mine")) ?? empty;
+  } catch {
+    return empty;
   }
 }
 

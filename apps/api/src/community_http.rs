@@ -32,6 +32,19 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(post_delete)
         .service(topic_delete)
         .service(topic_manage)
+        // M15 论坛互动（0116 点赞/收藏）
+        .service(post_like)
+        .service(post_unlike)
+        .service(topic_favorite)
+        .service(topic_unfavorite)
+        // M15 论坛关注订阅（0121 用户/版块/主题 + 关注流）
+        .service(follow_create)
+        .service(follow_delete)
+        .service(follow_status)
+        .service(follow_mine)
+        .service(forum_feed)
+        // M15 论坛标签（0123：词表复用 tag_dict，只建 topic_tags 关联）
+        .service(forum_tags_dict)
         // M16 短讯与好友
         .service(message_send)
         .service(message_markread)
@@ -532,6 +545,88 @@ async fn forum_flood_mark(db: &sqlx::PgPool, user_id: i64) {
     .await;
 }
 
+/// 把 Markdown 正文压成纯文本摘要（写入 posts.body_text，供搜索/列表预览）。
+/// 不追求完美解析，够用即可：去代码围栏/标题/引用/列表符号 + 行内强调与链接语法。
+fn strip_markdown(src: &str) -> String {
+    let mut out = String::with_capacity(src.len());
+    let mut in_fence = false;
+    for line in src.lines() {
+        let t = line.trim_start();
+        if t.starts_with("```") || t.starts_with("~~~") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if in_fence {
+            continue; // 代码块内容不进摘要，避免噪音
+        }
+        let mut l = t.trim_start_matches('#').trim_start();
+        while let Some(rest) = l.strip_prefix('>') {
+            l = rest.trim_start();
+        }
+        if let Some(rest) = l
+            .strip_prefix("- ")
+            .or_else(|| l.strip_prefix("* "))
+            .or_else(|| l.strip_prefix("+ "))
+        {
+            l = rest;
+        } else {
+            let digits = l.chars().take_while(|c| c.is_ascii_digit()).count();
+            if digits > 0 {
+                let rest = &l[digits..];
+                if let Some(r2) = rest.strip_prefix(". ").or_else(|| rest.strip_prefix(") ")) {
+                    l = r2;
+                }
+            }
+        }
+        let l = l.trim();
+        if l.is_empty() {
+            continue;
+        }
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(l);
+    }
+    // 行内：![alt](url)/[text](url) 保留文字去 URL
+    let mut s = strip_inline_links(&out);
+    for pat in ["**", "__", "`", "~~", "*", "_"] {
+        s = s.replace(pat, "");
+    }
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn strip_inline_links(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0usize;
+    while i < b.len() {
+        if b[i] == b'!' && b.get(i + 1) == Some(&b'[') {
+            i += 1; // 跳过 ! 保留 [ 交给下面分支
+            continue;
+        }
+        if b[i] == b'[' {
+            if let Some(close) = s[i + 1..].find(']') {
+                let text = &s[i + 1..i + 1 + close];
+                let after = i + 1 + close + 1;
+                if b.get(after) == Some(&b'(') {
+                    if let Some(pc) = s[after + 1..].find(')') {
+                        out.push_str(text);
+                        i = after + 1 + pc + 1;
+                        continue;
+                    }
+                }
+                out.push_str(text);
+                i = after;
+                continue;
+            }
+        }
+        let ch = s[i..].chars().next().unwrap();
+        out.push(ch);
+        i += ch.len_utf8();
+    }
+    out
+}
+
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct ForumRow {
     id: i64,
@@ -545,6 +640,11 @@ struct ForumRow {
     latest_author: Option<String>,
     #[sqlx(default)]
     latest_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// 分区/节点（0115）：首页按分类分组
+    #[sqlx(default)]
+    category_id: Option<i64>,
+    #[sqlx(default)]
+    category_name: Option<String>,
     can_write: bool,
     can_create: bool,
     can_mod: bool,
@@ -601,14 +701,15 @@ async fn forum_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    // 只列本版块门槛允许（minclassread）+ 版主兼任的版块
-    let rows = sqlx::query_as::<_, (i64, String, Option<String>, i64, i64)>(
+    // 只列本版块门槛允许（minclassread）+ 版主兼任的版块；按分类 sort 分组排序（0115）
+    let rows = sqlx::query_as::<_, (i64, String, Option<String>, i64, i64, Option<i64>, Option<String>)>(
         "SELECT f.id, f.name, f.descr, \
             (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics, \
-            (SELECT count(*) FROM posts p JOIN topics t ON t.id = p.topic_id WHERE t.forum_id = f.id) AS posts \
-         FROM forums f \
+            (SELECT count(*) FROM posts p JOIN topics t ON t.id = p.topic_id WHERE t.forum_id = f.id) AS posts, \
+            f.category_id, c.name AS category_name \
+         FROM forums f LEFT JOIN forum_categories c ON c.id = f.category_id \
          WHERE f.minclassread <= $1 OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $2) \
-         ORDER BY f.id",
+         ORDER BY c.sort NULLS LAST, f.id",
     )
     .bind(auth.class_id)
     .bind(auth.id)
@@ -644,7 +745,7 @@ async fn forum_list(
     }
 
     let mut out = Vec::with_capacity(rows.len());
-    for (id, name, descr, topics, posts) in rows {
+    for (id, name, descr, topics, posts, category_id, category_name) in rows {
         let perm = forum_access(&state.repo.db, auth.id, auth.class_id, id).await?;
         let (latest_topic, latest_author, latest_at) =
             latest.get(&id).cloned().unwrap_or((None, None, None));
@@ -657,6 +758,8 @@ async fn forum_list(
             latest_topic,
             latest_author,
             latest_at,
+            category_id,
+            category_name,
             can_write: perm.can_write,
             can_create: perm.can_create,
             can_mod: perm.can_mod,
@@ -670,6 +773,234 @@ struct TopicCreateReq {
     forum_id: i64,
     title: String,
     body: String,
+    /// 帖子类型（0115）：normal|bounty|poll|lottery，缺省 normal；本阶段仅落库，形态逻辑后续迁移
+    #[serde(default)]
+    topic_type: Option<String>,
+    /// 论坛标签（0123）：tag_dict id 数组，最多 5 个，超出截断；禁用/不存在 id 静默丢弃
+    #[serde(default)]
+    tags: Vec<i32>,
+}
+
+/// 合法的帖子类型白名单（防止前端塞任意值）
+fn normalize_topic_type(raw: Option<&str>) -> &'static str {
+    match raw.map(|s| s.trim().to_ascii_lowercase()).as_deref() {
+        Some("bounty") => "bounty",
+        Some("poll") => "poll",
+        Some("lottery") => "lottery",
+        _ => "normal",
+    }
+}
+
+// ---- 论坛通知（Phase1）：复用既有私信 `messages`，不新建通知表 ----
+//
+// 设计取舍：FluxTorrent 已有 `messages`（收件箱 location=1 / 自建文件夹 pmboxes /
+// 未读筛选 / 顶栏 `unread_messages` 红点，见 user-box.tsx）与「勋章礼物 → 插私信」
+// 的既有范式。论坛通知再建一张表 + 一套页面 + 一个红点，只会重复这套设施，
+// 因此统一落 `messages`：`sender_id IS NULL` 即系统通知（区别于真人私信）。
+// 好处：顶栏红点、收件箱、未读筛选、文件夹归类全部零改动生效。
+
+/// 给用户发一条系统通知（不阻塞主流程：失败只丢通知，不能让回帖/点赞 500）。
+async fn notify_user(db: &sqlx::PgPool, to: i64, subject: &str, body: &str) {
+    if to <= 0 {
+        return;
+    }
+    let _ = sqlx::query(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+    )
+    .bind(to)
+    .bind(subject)
+    .bind(body)
+    .execute(db)
+    .await;
+}
+
+/// 从 Markdown 正文里抽出 @提及 的用户名（与 forum-markdown.tsx 的 @ 正则同口径：
+/// 字母/数字/下划线/连字符/中日韩汉字，2..=30 字符）。返回去重后的名字，最多 10 个。
+fn extract_mentions(src: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let chars: Vec<char> = src.chars().collect();
+    let mut i = 0usize;
+    while i < chars.len() {
+        if chars[i] != '@' {
+            i += 1;
+            continue;
+        }
+        // @ 前一个字符若是字母/数字/汉字，说明是邮箱等场景，跳过
+        if i > 0 {
+            let prev = chars[i - 1];
+            if prev.is_alphanumeric() || prev == '_' || prev == '-' {
+                i += 1;
+                continue;
+            }
+        }
+        let mut j = i + 1;
+        while j < chars.len() {
+            let c = chars[j];
+            if c.is_alphanumeric() || c == '_' || c == '-' {
+                j += 1;
+            } else {
+                break;
+            }
+        }
+        let name: String = chars[i + 1..j].iter().collect();
+        let n = name.chars().count();
+        if (2..=30).contains(&n) && !out.iter().any(|x| x.eq_ignore_ascii_case(&name)) {
+            out.push(name);
+        }
+        i = j.max(i + 1);
+    }
+    out.truncate(10);
+    out
+}
+
+/// 给「关注了 target_type/target_id」的所有人发系统通知，`exclude` 用于排除自己/已单独通知过的人。
+/// 关注者可能很多，故批量一次查出来再逐条插；单条插入失败不影响其余（notify_user 本身 best-effort）。
+async fn notify_followers(
+    db: &sqlx::PgPool,
+    target_type: &str,
+    target_id: i64,
+    subject: &str,
+    body: &str,
+    exclude: &[i64],
+) {
+    let rows: Vec<i64> = sqlx::query_scalar(
+        "SELECT user_id FROM follows WHERE target_type = $1 AND target_id = $2 LIMIT 500",
+    )
+    .bind(target_type)
+    .bind(target_id)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    for uid in rows {
+        if exclude.contains(&uid) {
+            continue;
+        }
+        notify_user(db, uid, subject, body).await;
+    }
+}
+
+/// 解析 @提及 到真实用户（精确匹配用户名，避免「张小」误伤「张小三」）。
+/// `exclude` 用于排除自己（自己 @ 自己不发通知）。
+async fn notify_mentions(
+    db: &sqlx::PgPool,
+    text: &str,
+    from: i64,
+    topic_id: i64,
+    topic_title: &str,
+    where_txt: &str,
+    exclude: &[i64],
+) {
+    let names = extract_mentions(text);
+    if names.is_empty() {
+        return;
+    }
+    let rows: Vec<(i64, String)> = sqlx::query_as(
+        "SELECT id, username FROM users WHERE username = ANY($1) AND status < 2",
+    )
+    .bind(&names)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    for (uid, _uname) in rows {
+        if uid == from || exclude.contains(&uid) {
+            continue;
+        }
+        // 幂等：同一人对同一主题的重复提及只提醒一次。
+        // 判重锚定在链接尾部的 `)`，避免 topic/12 误匹配 topic/123；
+        // 用私信存在性判重，避免为通知单独加表/加列。
+        let dup: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM messages WHERE receiver_id = $1 AND sender_id IS NULL \
+             AND subject = '论坛提及' AND body LIKE $2)",
+        )
+        .bind(uid)
+        .bind(format!("%/forums/topic/{})%", topic_id))
+        .fetch_one(db)
+        .await
+        .unwrap_or(false);
+        if dup {
+            continue;
+        }
+        notify_user(
+            db,
+            uid,
+            "论坛提及",
+            &format!(
+                "用户 #{} 在{}提到了你：[{}](/forums/topic/{})",
+                from, where_txt, topic_title, topic_id
+            ),
+        )
+        .await;
+    }
+}
+
+// ---- 论坛标签（0123）：词表复用 tag_dict（带样式的通用标签字典），关联表 topic_tags ----
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct TagChipRow {
+    id: i32,
+    name: String,
+    /// 官方标签（仅 kind=official；论坛打标签不区分权限，仅样式语义）
+    kind: String,
+    /// 以下为 0063 的样式列，前端 TagChip 直接吃
+    #[sqlx(default)]
+    bg_color: String,
+    #[sqlx(default)]
+    color: String,
+    #[sqlx(default)]
+    font_size: String,
+    #[sqlx(default)]
+    margin: String,
+    #[sqlx(default)]
+    padding: String,
+    #[sqlx(default)]
+    border_radius: String,
+}
+
+/// 论坛标签字典（发帖选择器 + TagChip 渲染样式源）：只出启用中的标签。
+/// 公开读——种子页/版块页 SSR 要在登录前渲染标签筛选，与 /tags-dict（种子口径）同级的公开词表。
+#[get("/forums/tags")]
+async fn forum_tags_dict(
+    _req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let rows: Vec<TagChipRow> = sqlx::query_as(
+        "SELECT id, name, kind, bg_color, color, font_size, margin, padding, border_radius \
+         FROM tag_dict WHERE COALESCE(enabled, TRUE) ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
+}
+
+/// 发帖选的标签写入 topic_tags：只收启用中的字典 id（禁用/已删的不写，防私插），
+/// 去重后逐条插入（PK 幂等，量级 ≤5 无需批量）。
+async fn attach_topic_tags(
+    tx: &mut sqlx::PgTransaction<'_>,
+    topic_id: i64,
+    tag_ids: &[i32],
+) -> Result<(), sqlx::Error> {
+    let mut seen = std::collections::HashSet::new();
+    for tid in tag_ids.iter().take(5) {
+        if !seen.insert(*tid) {
+            continue;
+        }
+        let ok: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM tag_dict WHERE id = $1 AND COALESCE(enabled, TRUE))",
+        )
+        .bind(*tid)
+        .fetch_one(&mut **tx)
+        .await?;
+        if !ok {
+            continue;
+        }
+        sqlx::query("INSERT INTO topic_tags (topic_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
+            .bind(topic_id)
+            .bind(*tid)
+            .execute(&mut **tx)
+            .await?;
+    }
+    Ok(())
 }
 
 #[post("/forums/topics")]
@@ -693,19 +1024,23 @@ async fn topic_create(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    let ttype = normalize_topic_type(body.topic_type.as_deref());
     let topic_id: i64 = sqlx::query_scalar(
-        "INSERT INTO topics (forum_id, user_id, title) VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO topics (forum_id, user_id, title, topic_type) VALUES ($1, $2, $3, $4) RETURNING id",
     )
     .bind(body.forum_id)
     .bind(auth.id)
     .bind(&body.title)
+    .bind(ttype)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("INSERT INTO posts (id, topic_id, user_id, body) VALUES (nextval('posts_id_seq'), $1, $2, $3)")
+    let body_text = strip_markdown(&body.body);
+    sqlx::query("INSERT INTO posts (id, topic_id, user_id, body, body_text) VALUES (nextval('posts_id_seq'), $1, $2, $3, $4)")
         .bind(topic_id)
         .bind(auth.id)
         .bind(&body.body)
+        .bind(&body_text)
         .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -714,6 +1049,13 @@ async fn topic_create(
         .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 论坛标签（0123）：发帖时选的 tag_dict id（校验启用后才写，非法 id 静默丢弃不报错——
+    // 发帖主流程不该被一个过期标签 id 卡死）
+    if !body.tags.is_empty() {
+        attach_topic_tags(&mut tx, topic_id, &body.tags)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -721,6 +1063,21 @@ async fn topic_create(
     // 发主题 +2 火花（M11 论坛行为奖励）
     let idem = format!("forum-topic:{}:{}", auth.id, topic_id);
     earn_spark(&state.repo.db, auth.id, 2, "forum", &idem).await?;
+    // 楼主的首帖里 @ 了谁就通知谁
+    notify_mentions(&state.repo.db, &body.body, auth.id, topic_id, &body.title, "主题中", &[]).await;
+    // 关注了作者的人：他发新主题时收到通知（关注版块只进关注流，不发通知，见 0121 注释）
+    notify_followers(
+        &state.repo.db,
+        "user",
+        auth.id,
+        "关注的人发了新主题",
+        &format!(
+            "[{}](/forums/topic/{}) · 来自用户 #{}",
+            body.title, topic_id, auth.id
+        ),
+        &[],
+    )
+    .await;
     Ok(ok(serde_json::json!({ "topic_id": topic_id })))
 }
 
@@ -738,11 +1095,27 @@ struct TopicRow {
     /// 精华帖（0099，NP digest 口径）
     #[sqlx(default)]
     digest: bool,
+    /// 帖子类型（0115）：normal|bounty|poll|lottery
+    #[sqlx(default)]
+    topic_type: String,
     /// 已读到的楼层 post_id（0078 已读跟踪；NULL=从未读过）
     read_last_post_id: Option<i64>,
     /// 是否有未读新回复（last_post 晚于已读位置）
     #[serde(default)]
     has_unread: bool,
+    /// 标签（0123）：json 数组 [{id,name,kind,样式列}]，tag_dict 全量样式随行回
+    #[sqlx(default)]
+    tags: serde_json::Value,
+}
+
+#[derive(Deserialize)]
+struct TopicListQuery {
+    /// 排序：hot=热度（回复*2 + 点赞 + 浏览*0.1，按距最后回复的小时数衰减）/ 缺省 new
+    #[serde(default)]
+    sort: Option<String>,
+    /// 按标签筛选（0123）：tag_dict id，只保留带该标签的主题
+    #[serde(default)]
+    tag: Option<i32>,
 }
 
 #[get("/forums/{id}/topics")]
@@ -750,6 +1123,7 @@ async fn topic_list(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<TopicListQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let fid = path.into_inner();
@@ -757,27 +1131,64 @@ async fn topic_list(
     if !perm.can_read {
         return Err(DomainError::Forbidden);
     }
-    let rows = sqlx::query_as::<_, TopicRow>(
+    // ORDER BY 片段是白名单常量（不含用户输入），不可注入；
+    // 回显值同样取白名单结果，不把原始输入透传给前端。
+    let sort = if q.sort.as_deref() == Some("hot") {
+        "hot"
+    } else {
+        "new"
+    };
+    let order = if sort == "hot" {
+        "t.sticky DESC, \
+         ((SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) * 2 \
+           + (SELECT count(*) FROM post_likes pl WHERE pl.topic_id = t.id) \
+           + t.views * 0.1) \
+          / (1 + EXTRACT(EPOCH FROM (now() - COALESCE(t.last_post_at, t.created_at))) / 86400.0) DESC, t.id DESC"
+    } else {
+        "t.sticky DESC, t.id DESC"
+    };
+    // 标签筛选（0123）：EXISTS 谓词拼接（tag 是 i32，无注入面），参数位次随谓词平移
+    let tag_filter = q.tag
+        .map(|tg| format!(" AND EXISTS(SELECT 1 FROM topic_tags tt WHERE tt.topic_id = t.id AND tt.tag_id = {tg})"))
+        .unwrap_or_default();
+    let sql = format!(
         "SELECT t.id, t.forum_id, t.title, u.username, \
             (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) AS replies, t.views, t.last_post_at, \
-            t.sticky, t.locked, t.digest, \
+            t.sticky, t.locked, t.digest, t.topic_type, \
             (SELECT r.last_post_id FROM topic_reads r WHERE r.user_id = $2 AND r.topic_id = t.id) AS read_last_post_id, \
             EXISTS(SELECT 1 FROM posts p2 WHERE p2.topic_id = t.id \
                    AND p2.id > COALESCE((SELECT r2.last_post_id FROM topic_reads r2 \
-                                         WHERE r2.user_id = $2 AND r2.topic_id = t.id), 0)) AS has_unread \
+                                         WHERE r2.user_id = $2 AND r2.topic_id = t.id), 0)) AS has_unread, \
+            COALESCE( \
+              (SELECT json_agg(json_build_object('id', d.id, 'name', d.name, 'kind', d.kind, \
+                     'bg_color', d.bg_color, 'color', d.color, 'font_size', d.font_size, \
+                     'margin', d.margin, 'padding', d.padding, 'border_radius', d.border_radius) \
+                 FROM (SELECT td.* FROM tag_dict td JOIN topic_tags tt2 ON tt2.tag_id = td.id \
+                        WHERE tt2.topic_id = t.id ORDER BY td.sort, td.id) d), \
+              '[]'::json) AS tags \
          FROM topics t LEFT JOIN users u ON u.id = t.user_id \
-         WHERE t.forum_id = $1 ORDER BY t.sticky DESC, t.id DESC LIMIT 50",
-    )
-    .bind(fid)
-    .bind(auth.id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+         WHERE t.forum_id = $1{tag_filter} ORDER BY {order} LIMIT 50"
+    );
+    let rows = sqlx::query_as::<_, TopicRow>(&sql)
+        .bind(fid)
+        .bind(auth.id)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 版块名随列表一起回（避免前端再打一次 /forums 只为拿标题）
+    let forum_name: Option<String> = sqlx::query_scalar("SELECT name FROM forums WHERE id = $1")
+        .bind(fid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "forum_id": fid,
+        "forum_name": forum_name,
         "can_write": perm.can_write,
         "can_create": perm.can_create,
         "can_mod": perm.can_mod,
+        "sort": sort,
+        "tag": q.tag,
         "topics": rows,
     })))
 }
@@ -791,6 +1202,12 @@ struct PostRow {
     created_at: chrono::DateTime<chrono::Utc>,
     edited_at: Option<chrono::DateTime<chrono::Utc>>,
     edited_by: Option<i64>,
+    /// 点赞数（0116）
+    #[sqlx(default)]
+    likes: i64,
+    /// 当前用户是否已点赞（0116）
+    #[sqlx(default)]
+    liked_by_me: bool,
     #[serde(skip)]
     hidden: bool,
 }
@@ -817,16 +1234,16 @@ async fn topic_detail(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // NexusPHP 帖子页头部：主题标题 + 所属版块（找不到主题时 404）
-    let meta: Option<(String, i64, Option<String>, Option<i64>, bool, bool, bool)> =
+    let meta: Option<(String, i64, Option<String>, Option<i64>, bool, bool, bool, String)> =
         sqlx::query_as(
-            "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked, t.digest \
+            "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked, t.digest, t.topic_type \
          FROM topics t LEFT JOIN forums f ON f.id = t.forum_id WHERE t.id = $1",
         )
         .bind(tid)
         .fetch_optional(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((title, fid, forum_name, op_id, sticky, locked, digest)) = meta else {
+    let Some((title, fid, forum_name, op_id, sticky, locked, digest, topic_type)) = meta else {
         return Err(DomainError::NotFound(tid));
     };
     let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
@@ -834,12 +1251,15 @@ async fn topic_detail(
         return Err(DomainError::Forbidden);
     }
     let mut posts = sqlx::query_as::<_, PostRow>(
-        "SELECT p.id, u.username, p.user_id, p.body, p.created_at, p.edited_at, p.edited_by, FALSE AS hidden \
+        "SELECT p.id, u.username, p.user_id, p.body, p.created_at, p.edited_at, p.edited_by, FALSE AS hidden, \
+            (SELECT count(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likes, \
+            EXISTS(SELECT 1 FROM post_likes pl2 WHERE pl2.post_id = p.id AND pl2.user_id = $3) AS liked_by_me \
          FROM posts p LEFT JOIN users u ON u.id = p.user_id \
          WHERE p.topic_id = $1 AND ($2::bigint IS NULL OR p.id < $2)          ORDER BY p.id DESC LIMIT 200",
     )
     .bind(tid)
     .bind(q.before)
+    .bind(auth.id)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -878,6 +1298,34 @@ async fn topic_detail(
         .await
         .ok();
     }
+    // 收藏态（0116）：主题收藏总数 + 当前用户是否已收藏
+    let favorites: i64 = sqlx::query_scalar("SELECT count(*) FROM topic_favorites WHERE topic_id = $1")
+        .bind(tid)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
+    let faved: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM topic_favorites WHERE topic_id = $1 AND user_id = $2)",
+    )
+    .bind(tid)
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    // 标签（0123）：详情页头部 TagChip 渲染（样式列与列表同源 tag_dict）
+    let tags: serde_json::Value = sqlx::query_scalar(
+        "SELECT COALESCE( \
+            (SELECT json_agg(json_build_object('id', d.id, 'name', d.name, 'kind', d.kind, \
+                   'bg_color', d.bg_color, 'color', d.color, 'font_size', d.font_size, \
+                   'margin', d.margin, 'padding', d.padding, 'border_radius', d.border_radius) \
+               FROM (SELECT td.* FROM tag_dict td JOIN topic_tags tt ON tt.tag_id = td.id \
+                      WHERE tt.topic_id = $1 ORDER BY td.sort, td.id) d), \
+            '[]'::json)",
+    )
+    .bind(tid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(serde_json::json!([]));
     Ok(ok(serde_json::json!({
         "topic_id": tid,
         "title": title,
@@ -886,6 +1334,10 @@ async fn topic_detail(
         "sticky": sticky,
         "locked": locked,
         "digest": digest,
+        "topic_type": topic_type,
+        "tags": tags,
+        "favorites": favorites,
+        "faved": faved,
         "is_op": op_id == Some(auth.id),
         "current_user_id": auth.id,
         "can_write": perm.can_write,
@@ -921,13 +1373,13 @@ async fn post_reply(
     if body.body.trim().is_empty() {
         return Err(DomainError::Validation("回复不能为空".into()));
     }
-    let row: Option<(i64, bool)> =
-        sqlx::query_as("SELECT forum_id, locked FROM topics WHERE id = $1")
+    let row: Option<(i64, bool, i64, String)> =
+        sqlx::query_as("SELECT forum_id, locked, COALESCE(user_id, 0), title FROM topics WHERE id = $1")
             .bind(tid)
             .fetch_optional(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((fid, locked)) = row else {
+    let Some((fid, locked, author, title)) = row else {
         return Err(DomainError::NotFound(tid));
     };
     let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
@@ -938,12 +1390,14 @@ async fn post_reply(
         return Err(DomainError::Validation("主题已锁定".into()));
     }
     forum_flood_check(&state.repo.db, auth.id, auth.class_id).await?;
+    let body_text = strip_markdown(&body.body);
     let post_id: i64 = sqlx::query_scalar(
-        "INSERT INTO posts (id, topic_id, user_id, body) VALUES (nextval('posts_id_seq'), $1, $2, $3) RETURNING id",
+        "INSERT INTO posts (id, topic_id, user_id, body, body_text) VALUES (nextval('posts_id_seq'), $1, $2, $3, $4) RETURNING id",
     )
     .bind(tid)
     .bind(auth.id)
     .bind(&body.body)
+    .bind(&body_text)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -956,7 +1410,572 @@ async fn post_reply(
     // 回帖 +1 火花
     let idem = format!("forum-reply:{}:{}", auth.id, post_id);
     earn_spark(&state.repo.db, auth.id, 1, "forum", &idem).await?;
+    // 通知楼主有新回复（自己回自己不通知）；@提及 排除楼主，避免同一件事两条通知
+    if author != auth.id && author != 0 {
+        notify_user(
+            &state.repo.db,
+            author,
+            "主题收到回复",
+            &format!(
+                "用户 #{} 回复了你的主题：[{}](/forums/topic/{})",
+                auth.id, title, tid
+            ),
+        )
+        .await;
+    }
+    notify_mentions(&state.repo.db, &body.body, auth.id, tid, &title, "回复中", &[author]).await;
+    // 关注了本主题的人：有新回复时通知（楼主已由上面「主题收到回复」通知过，回帖者自己更不必通知）
+    notify_followers(
+        &state.repo.db,
+        "topic",
+        tid,
+        "关注的主题有新回复",
+        &format!(
+            "[{}](/forums/topic/{}) · 来自用户 #{}",
+            title, tid, auth.id
+        ),
+        &[author, auth.id],
+    )
+    .await;
     Ok(ok(serde_json::json!({ "post_id": post_id })))
+}
+
+// ---- 论坛互动：点赞 / 收藏（0116） ----
+
+/// 点赞/取消点赞共用的落库逻辑。
+/// 幂等：post_likes 主键 (user_id, post_id) + ON CONFLICT DO NOTHING。
+/// 火花：仅「非本人作者 + 本次真发生变化 + 点赞方向」时给作者 +1（幂等键 forum-like:{pid}:{fan}），
+/// 取消点赞不回收 —— 因为幂等键去重已堵住 like/unlike 循环刷分，回收反而会算错。
+async fn set_post_like(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    auth: &crate::http::AuthUser,
+    pid: i64,
+    on: bool,
+) -> DomainResult<HttpResponse> {
+    let row: Option<(i64, i64, i64, String)> = sqlx::query_as(
+        "SELECT p.topic_id, t.forum_id, COALESCE(p.user_id, 0), t.title \
+         FROM posts p JOIN topics t ON t.id = p.topic_id WHERE p.id = $1",
+    )
+    .bind(pid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((tid, fid, author, title)) = row else {
+        return Err(DomainError::NotFound(pid));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_read {
+        return Err(DomainError::Forbidden);
+    }
+    let changed = if on {
+        sqlx::query(
+            "INSERT INTO post_likes (user_id, post_id, topic_id) VALUES ($1, $2, $3) \
+             ON CONFLICT (user_id, post_id) DO NOTHING",
+        )
+        .bind(auth.id)
+        .bind(pid)
+        .bind(tid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected()
+            > 0
+    } else {
+        sqlx::query("DELETE FROM post_likes WHERE user_id = $1 AND post_id = $2")
+            .bind(auth.id)
+            .bind(pid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected()
+            > 0
+    };
+    if on && changed && author != auth.id && author != 0 {
+        let idem = format!("forum-like:{}:{}", pid, auth.id);
+        // 通知与火花共用同一幂等键：`changed=true` 只保证「本次真的写入了点赞行」，
+        // 但「取消后再点赞」同样会 changed=true。若不按幂等键判重，
+        // like/unlike 循环就能反复给作者刷通知（火花侧已有幂等键，通知侧漏了）。
+        let already: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
+                .bind(&idem)
+                .fetch_one(&state.repo.db)
+                .await
+                .unwrap_or(false);
+        let _ = earn_spark(&state.repo.db, author, 1, "forum-like", &idem).await;
+        if !already {
+            notify_user(
+                &state.repo.db,
+                author,
+                "帖子被点赞",
+                &format!(
+                    "用户 #{} 赞了你在主题「{}」里的回复：[查看](/forums/topic/{})",
+                    auth.id, title, tid
+                ),
+            )
+            .await;
+        }
+    }
+    let likes: i64 = sqlx::query_scalar("SELECT count(*) FROM post_likes WHERE post_id = $1")
+        .bind(pid)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
+    Ok(ok(serde_json::json!({
+        "post_id": pid,
+        "liked": on,
+        "likes": likes,
+        "changed": changed,
+    })))
+}
+
+#[post("/forums/posts/{id}/like")]
+async fn post_like(
+    req: HttpRequest,
+    path: web::Path<i64>,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let pid = path.into_inner();
+    set_post_like(&state, &auth, pid, true).await
+}
+
+#[delete("/forums/posts/{id}/like")]
+async fn post_unlike(
+    req: HttpRequest,
+    path: web::Path<i64>,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let pid = path.into_inner();
+    set_post_like(&state, &auth, pid, false).await
+}
+
+/// 收藏/取消收藏主题共用的落库逻辑（幂等，主键 (user_id, topic_id)）
+async fn set_topic_favorite(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    auth: &crate::http::AuthUser,
+    tid: i64,
+    on: bool,
+) -> DomainResult<HttpResponse> {
+    let fid: Option<i64> = sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
+        .bind(tid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(fid) = fid else {
+        return Err(DomainError::NotFound(tid));
+    };
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_read {
+        return Err(DomainError::Forbidden);
+    }
+    if on {
+        sqlx::query(
+            "INSERT INTO topic_favorites (user_id, topic_id) VALUES ($1, $2) \
+             ON CONFLICT (user_id, topic_id) DO NOTHING",
+        )
+        .bind(auth.id)
+        .bind(tid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    } else {
+        sqlx::query("DELETE FROM topic_favorites WHERE user_id = $1 AND topic_id = $2")
+            .bind(auth.id)
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    let favorites: i64 = sqlx::query_scalar("SELECT count(*) FROM topic_favorites WHERE topic_id = $1")
+        .bind(tid)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
+    Ok(ok(serde_json::json!({
+        "topic_id": tid,
+        "faved": on,
+        "favorites": favorites,
+    })))
+}
+
+#[post("/forums/topics/{id}/favorite")]
+async fn topic_favorite(
+    req: HttpRequest,
+    path: web::Path<i64>,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let tid = path.into_inner();
+    set_topic_favorite(&state, &auth, tid, true).await
+}
+
+#[delete("/forums/topics/{id}/favorite")]
+async fn topic_unfavorite(
+    req: HttpRequest,
+    path: web::Path<i64>,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let tid = path.into_inner();
+    set_topic_favorite(&state, &auth, tid, false).await
+}
+
+// ---- 论坛关注订阅（0121）：用户 / 版块 / 主题 ----
+//
+// 语义分工（刻意的）：
+//   · 关注**用户** → 他发新主题时给关注者发一条通知（关注某人是明确意图，通知不算打扰）；
+//   · 关注**版块** → 只进「关注流」，不发通知（版块流量大，逐个通知必成刷屏）；
+//   · 关注**主题** → 有人回帖时给关注者发通知（等价于「订阅该主题」，这才是关注主题的意义）。
+// 通知复用既有 `messages`（sender_id IS NULL = 系统通知），不新建通知表。
+
+/// 关注对象白名单，防前端塞任意 type
+fn normalize_follow_type(raw: &str) -> Option<&'static str> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "user" => Some("user"),
+        "forum" => Some("forum"),
+        "topic" => Some("topic"),
+        _ => None,
+    }
+}
+
+#[derive(Deserialize)]
+struct FollowReq {
+    target_type: String,
+    target_id: i64,
+}
+
+/// 校验关注目标存在 + 当前用户对其有可见权限；返回规范化后的 type。
+/// 自关注被拒（否则自己的新主题会通知自己）。
+async fn validate_follow_target(
+    db: &sqlx::PgPool,
+    auth: &crate::http::AuthUser,
+    ttype: &str,
+    tid: i64,
+) -> DomainResult<()> {
+    match ttype {
+        "user" => {
+            if tid == auth.id {
+                return Err(DomainError::Validation("不能关注自己".into()));
+            }
+            let ok: bool =
+                sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND status < 2)")
+                    .bind(tid)
+                    .fetch_one(db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
+            if !ok {
+                return Err(DomainError::NotFound(tid));
+            }
+        }
+        "forum" => {
+            let perm = forum_access(db, auth.id, auth.class_id, tid).await?;
+            if !perm.can_read {
+                return Err(DomainError::NotFound(tid));
+            }
+        }
+        "topic" => {
+            let fid: Option<i64> = sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
+                .bind(tid)
+                .fetch_optional(db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            let Some(fid) = fid else {
+                return Err(DomainError::NotFound(tid));
+            };
+            let perm = forum_access(db, auth.id, auth.class_id, fid).await?;
+            if !perm.can_read {
+                return Err(DomainError::NotFound(tid));
+            }
+        }
+        _ => return Err(DomainError::Validation("非法的关注对象".into())),
+    }
+    Ok(())
+}
+
+#[post("/follows")]
+async fn follow_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<FollowReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let ttype = normalize_follow_type(&body.target_type)
+        .ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?;
+    validate_follow_target(&state.repo.db, &auth, ttype, body.target_id).await?;
+    sqlx::query(
+        "INSERT INTO follows (user_id, target_type, target_id) VALUES ($1, $2, $3) \
+         ON CONFLICT (user_id, target_type, target_id) DO NOTHING",
+    )
+    .bind(auth.id)
+    .bind(ttype)
+    .bind(body.target_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let followers: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM follows WHERE target_type = $1 AND target_id = $2",
+    )
+    .bind(ttype)
+    .bind(body.target_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    Ok(ok(serde_json::json!({
+        "target_type": ttype,
+        "target_id": body.target_id,
+        "following": true,
+        "followers": followers,
+    })))
+}
+
+#[delete("/follows/{ttype}/{tid}")]
+async fn follow_delete(
+    req: HttpRequest,
+    path: web::Path<(String, i64)>,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let (raw_type, tid) = path.into_inner();
+    let ttype =
+        normalize_follow_type(&raw_type).ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?;
+    sqlx::query("DELETE FROM follows WHERE user_id = $1 AND target_type = $2 AND target_id = $3")
+        .bind(auth.id)
+        .bind(ttype)
+        .bind(tid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let followers: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM follows WHERE target_type = $1 AND target_id = $2",
+    )
+    .bind(ttype)
+    .bind(tid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    Ok(ok(serde_json::json!({
+        "target_type": ttype,
+        "target_id": tid,
+        "following": false,
+        "followers": followers,
+    })))
+}
+
+#[derive(Deserialize)]
+struct FollowStatusQuery {
+    target_type: String,
+    target_id: i64,
+}
+
+/// 关注状态。用户页无当前登录者信息，故 `is_self` 也在这里回给前端，由组件决定隐藏按钮。
+#[get("/follows/status")]
+async fn follow_status(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<FollowStatusQuery>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let Some(ttype) = normalize_follow_type(&q.target_type) else {
+        return Err(DomainError::Validation("非法的关注对象".into()));
+    };
+    let following: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM follows WHERE user_id = $1 AND target_type = $2 AND target_id = $3)",
+    )
+    .bind(auth.id)
+    .bind(ttype)
+    .bind(q.target_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    let followers: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM follows WHERE target_type = $1 AND target_id = $2",
+    )
+    .bind(ttype)
+    .bind(q.target_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    Ok(ok(serde_json::json!({
+        "following": following,
+        "followers": followers,
+        "is_self": ttype == "user" && q.target_id == auth.id,
+    })))
+}
+
+#[derive(Deserialize)]
+struct FollowMineQuery {
+    #[serde(default)]
+    target_type: Option<String>,
+}
+
+/// 我的关注列表。只关注用户时返回 username，关注版块返回 name，关注主题返回 title——
+/// 一次 JOIN 三张表反而更绕，改成按 type 分别取再合并（数量级很小）。
+#[get("/follows/mine")]
+async fn follow_mine(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<FollowMineQuery>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let want = match q.target_type.as_deref() {
+        Some(s) => Some(
+            normalize_follow_type(s).ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?,
+        ),
+        None => None,
+    };
+    let mut users: Vec<serde_json::Value> = Vec::new();
+    let mut forums: Vec<serde_json::Value> = Vec::new();
+    let mut topics: Vec<serde_json::Value> = Vec::new();
+
+    if want.is_none() || want == Some("user") {
+        let rows: Vec<(i64, String)> = sqlx::query_as(
+            "SELECT u.id, u.username FROM follows f JOIN users u ON u.id = f.target_id \
+             WHERE f.user_id = $1 AND f.target_type = 'user' ORDER BY f.created_at DESC LIMIT 200",
+        )
+        .bind(auth.id)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        users = rows
+            .into_iter()
+            .map(|(id, username)| serde_json::json!({ "id": id, "name": username }))
+            .collect();
+    }
+    if want.is_none() || want == Some("forum") {
+        let rows: Vec<(i64, String)> = sqlx::query_as(
+            "SELECT fc.id, fc.name FROM follows f JOIN forums fc ON fc.id = f.target_id \
+             WHERE f.user_id = $1 AND f.target_type = 'forum' ORDER BY f.created_at DESC LIMIT 200",
+        )
+        .bind(auth.id)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        forums = rows
+            .into_iter()
+            .map(|(id, name)| serde_json::json!({ "id": id, "name": name }))
+            .collect();
+    }
+    if want.is_none() || want == Some("topic") {
+        let rows: Vec<(i64, String, i64)> = sqlx::query_as(
+            "SELECT t.id, t.title, t.forum_id FROM follows f JOIN topics t ON t.id = f.target_id \
+             WHERE f.user_id = $1 AND f.target_type = 'topic' ORDER BY f.created_at DESC LIMIT 200",
+        )
+        .bind(auth.id)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        topics = rows
+            .into_iter()
+            .map(|(id, title, forum_id)| serde_json::json!({ "id": id, "name": title, "forum_id": forum_id }))
+            .collect();
+    }
+    Ok(ok(serde_json::json!({
+        "users": users, "forums": forums, "topics": topics,
+    })))
+}
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct FeedRow {
+    topic_id: i64,
+    title: String,
+    forum_id: i64,
+    forum_name: Option<String>,
+    username: Option<String>,
+    #[sqlx(default)]
+    topic_type: String,
+    last_post_at: Option<chrono::DateTime<chrono::Utc>>,
+    created_at: chrono::DateTime<chrono::Utc>,
+    #[sqlx(default)]
+    sticky: bool,
+    #[sqlx(default)]
+    locked: bool,
+    replies: i64,
+    /// 命中的关注来源：forum=关注版块 / user=关注作者 / topic=关注主题
+    via: String,
+}
+
+#[derive(Deserialize)]
+struct FeedQuery {
+    #[serde(default)]
+    limit: Option<i64>,
+    /// 游标分页（0123）：只取 activity < before 的行；activity = COALESCE(last_post_at, created_at)
+    #[serde(default)]
+    before: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// 关注流：我关注的版块/用户的新主题 + 我关注主题的最新回复，按最后活动时间倒序。
+/// 权限：逐行复刻 forum_access 的 can_read（`class_id>=90` 放行 / 版主放行 / `class_id>=minclassread`），
+/// 否则用户降级后会在流里看到已无权限版块的标题（越权泄露）。
+#[get("/forums/feed")]
+async fn forum_feed(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<FeedQuery>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let limit = q.limit.unwrap_or(50).clamp(1, 100);
+    // 多取一些（UNION 可能同一主题命中多路），去重后再截到 limit
+    let fetch = (limit * 2).min(200);
+    let rows: Vec<FeedRow> = sqlx::query_as(
+        "SELECT * FROM ( \
+           SELECT t.id AS topic_id, t.title, t.forum_id, fc.name AS forum_name, u.username, \
+                  t.topic_type, t.last_post_at, t.created_at, t.sticky, t.locked, \
+                  (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) AS replies, \
+                  'forum' AS via \
+             FROM follows fl \
+             JOIN topics t ON t.forum_id = fl.target_id \
+             JOIN forums fc ON fc.id = t.forum_id \
+             LEFT JOIN users u ON u.id = t.user_id \
+            WHERE fl.user_id = $1 AND fl.target_type = 'forum' \
+           UNION ALL \
+           SELECT t.id, t.title, t.forum_id, fc.name, u.username, \
+                  t.topic_type, t.last_post_at, t.created_at, t.sticky, t.locked, \
+                  (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id), \
+                  'user' \
+             FROM follows fl \
+             JOIN topics t ON t.user_id = fl.target_id \
+             JOIN forums fc ON fc.id = t.forum_id \
+             LEFT JOIN users u ON u.id = t.user_id \
+            WHERE fl.user_id = $1 AND fl.target_type = 'user' \
+           UNION ALL \
+           SELECT t.id, t.title, t.forum_id, fc.name, u.username, \
+                  t.topic_type, t.last_post_at, t.created_at, t.sticky, t.locked, \
+                  (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id), \
+                  'topic' \
+             FROM follows fl \
+             JOIN topics t ON t.id = fl.target_id \
+             JOIN forums fc ON fc.id = t.forum_id \
+             LEFT JOIN users u ON u.id = t.user_id \
+            WHERE fl.user_id = $1 AND fl.target_type = 'topic' \
+         ) x \
+         WHERE ($4::timestamptz IS NULL OR COALESCE(x.last_post_at, x.created_at) < $4) \
+           AND ($2 >= 90 OR x.forum_id IN ( \
+                 SELECT fc2.id FROM forums fc2 WHERE fc2.minclassread <= $2 \
+             ) OR EXISTS(SELECT 1 FROM forum_mods fm WHERE fm.forum_id = x.forum_id AND fm.user_id = $1)) \
+         ORDER BY x.last_post_at DESC NULLS LAST, x.topic_id DESC LIMIT $3",
+    )
+    .bind(auth.id)
+    .bind(auth.class_id)
+    .bind(fetch)
+    .bind(q.before)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 同一主题可能同时因「关注版块」和「关注作者」命中，按 topic_id 去重（保留首次=最后活动最新的那条）
+    let mut seen = std::collections::HashSet::new();
+    let items: Vec<&FeedRow> = rows
+        .iter()
+        .filter(|r| seen.insert(r.topic_id))
+        .take(limit as usize)
+        .collect();
+    // 下一页游标：末行的最后活动时间（取到 limit 整页才可能有下一页；与主题页 before=post_id 同范式）
+    let next_before = if items.len() as i64 == limit {
+        items.last().and_then(|r| r.last_post_at.or(Some(r.created_at)))
+    } else {
+        None
+    };
+    Ok(ok(serde_json::json!({ "items": items, "next_before": next_before })))
 }
 
 // ---- 论坛管理操作（版主限本版块 / postmanage 全站） ----
@@ -1001,10 +2020,11 @@ async fn post_edit(
         return Err(DomainError::Forbidden);
     }
     let n =
-        sqlx::query("UPDATE posts SET body = $1, edited_at = now(), edited_by = $2 WHERE id = $3")
+        sqlx::query("UPDATE posts SET body = $1, body_text = $4, edited_at = now(), edited_by = $2 WHERE id = $3")
             .bind(body.body.trim())
             .bind(auth.id)
             .bind(pid)
+            .bind(strip_markdown(body.body.trim()))
             .execute(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?
@@ -1071,6 +2091,11 @@ async fn post_delete(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 点赞行无 FK（posts 为分区表，无法对 post_id 建外键）：单帖删除时手动清理，避免孤儿点赞
+    let _ = sqlx::query("DELETE FROM post_likes WHERE post_id = $1")
+        .bind(pid)
+        .execute(&state.repo.db)
+        .await;
     if let Some(d) = deleted_at {
         let _ = sqlx::query(
             "UPDATE topics t SET last_post_at = COALESCE( \
@@ -1153,6 +2178,11 @@ async fn topic_delete(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 关注本主题的行：target_id 无外键（指向 3 张表），必须应用层清理，否则留下悬空关注
+    let _ = sqlx::query("DELETE FROM follows WHERE target_type = 'topic' AND target_id = $1")
+        .bind(tid)
+        .execute(&state.repo.db)
+        .await;
     state
         .repo
         .audit(Some(auth.id), "forum.topic_delete", Some(tid))
@@ -2688,7 +3718,7 @@ async fn shoutbox_bot_help() -> impl Responder {
         "commands": [
             { "cmd": "/free",  "desc": "当前生效的免费/双倍促销种子" },
             { "cmd": "/stats", "desc": "站点实时统计（用户/种子/做种）" },
-            { "cmd": "/me",    "desc": "我的数据摘要（上传/下载/分享率/火花）" },
+            { "cmd": "/me",    "desc": "我的数据摘要（上传/下载/分享率/魔力）" },
             { "cmd": "/help",  "desc": "命令列表" },
         ]
     }))
@@ -2748,7 +3778,7 @@ async fn shoutbox_bot_exec(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
             format!(
-                "你的数据：上传 {:.1} GB / 下载 {:.1} GB / 分享率 {:.2} / 火花 {}。",
+                "你的数据：上传 {:.1} GB / 下载 {:.1} GB / 分享率 {:.2} / 魔力 {}。",
                 up as f64 / 1073741824.0,
                 down as f64 / 1073741824.0,
                 if down > 0 {

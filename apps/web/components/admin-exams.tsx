@@ -22,14 +22,15 @@ interface JixiaoTypeRow {
   assigned_count?: number;
 }
 
-/** 指标目录：key 与后端 JIXIAO_METRIC_KEYS 白名单一一对应 */
-const METRIC_OPTIONS: { key: string; label: string; unit: string; hint: string }[] = [
+/** 指标目录：key 与后端 JIXIAO_METRIC_KEYS 白名单一一对应。
+ *  货币名动态化：spark_delta 的标签/单位跟随站点 currency_name（默认「魔力」）。 */
+const metricOptions = (currency: string): { key: string; label: string; unit: string; hint: string }[] => [
   { key: "uploaded", label: "上传增量", unit: "GB", hint: "考核期内新增上传量" },
   { key: "downloaded", label: "下载增量", unit: "GB", hint: "考核期内新增下载量" },
   { key: "seed_hours", label: "做种时长", unit: "小时", hint: "考核期内累计做种小时数" },
   { key: "avg_seed_hours", label: "平均做种时间", unit: "小时/个", hint: "做种时长 ÷ 期内活跃种子数" },
   { key: "seed_days", label: "做种天数", unit: "天", hint: "考核期内有做种活动的天数" },
-  { key: "spark_delta", label: "火花增量", unit: "火花", hint: "考核期内正向火花流水合计" },
+  { key: "spark_delta", label: `${currency}增量`, unit: currency, hint: `考核期内正向${currency}流水合计` },
   { key: "seed_points_delta", label: "做种积分增量", unit: "积分", hint: "1 积分 = 1 小时做种" },
   { key: "uploads", label: "发种增量", unit: "个", hint: "考核期内新发布种子数" },
   { key: "seed_size_tb", label: "发布/做种体积", unit: "TB", hint: "当前在做种总体积" },
@@ -75,6 +76,7 @@ function jsonToReqs(obj: Record<string, unknown>): ReqRow[] {
 
 export function AdminExams() {
   const { currency } = useI18n();
+  const METRIC_OPTIONS = metricOptions(currency);
   const [rows, setRows] = useState<JixiaoTypeRow[]>([]);
   const [edit, setEdit] = useState<{ id: number | null; f: typeof EMPTY_FORM }>({ id: null, f: { ...EMPTY_FORM, reqs: [...EMPTY_FORM.reqs] } });
   const [msg, setMsg] = useState<string | null>(null);

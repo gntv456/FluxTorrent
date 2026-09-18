@@ -429,11 +429,11 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
             .bind("银行存款到期通知")
             .bind(if daily {
                 format!(
-                    "您的定期存款已到期，本金 {amount} 火花已返还；存期内已按日发放利息共 {paid_interest} 火花。"
+                    "您的定期存款已到期，本金 {amount} 魔力已返还；存期内已按日发放利息共 {paid_interest} 魔力。"
                 )
             } else {
                 format!(
-                    "您的定期存款已到期，本金 {amount} 火花与利息 {interest} 火花已自动返还到您的账户。"
+                    "您的定期存款已到期，本金 {amount} 魔力与利息 {interest} 魔力已自动返还到您的账户。"
                 )
             })
             .execute(&mut *tx)
@@ -454,7 +454,7 @@ pub async fn bank_due_notify(db: &PgPool, days_before: i32) -> anyhow::Result<u6
         r#"
         INSERT INTO messages (sender_id, receiver_id, subject, body)
         SELECT NULL, l.user_id, '银行贷款即将到期提醒 #' || l.id,
-               format('您的贷款（本金 %s 火花）将于 %s 到期，当前应结清 %s 火花（含计提利息），请及时还款以免逾期罚息。',
+               format('您的贷款（本金 %s 魔力）将于 %s 到期，当前应结清 %s 魔力（含计提利息），请及时还款以免逾期罚息。',
                       l.amount, to_char(l.due_at, 'YYYY-MM-DD'), l.remaining + l.accrued_interest)
         FROM bank_loans l
         WHERE l.status = 'active'
