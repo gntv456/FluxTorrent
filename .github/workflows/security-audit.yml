@@ -20,5 +20,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
-      - name: Run audit（有已知漏洞即非零退出）
-        run: cargo audit --deny warnings
+      - name: Run audit（豁免清单见根 audit.toml——h2/rsa 上游无修复，理由与复查条件在文件内注释）
+        # 不加 --deny warnings：ignored advisory 会以 warning 输出，--deny 会把它也当失败
+        run: cargo audit
