@@ -39,3 +39,59 @@
 - **防复发（已落地）**：`~/.docker/daemon.json` builder.gc：20GB 上限 + 7 天未用即回收；项目 .dockerignore 追加 `_*`/`**/_*`/backups/target-test/UI参考 等根目录一次性测试文件。
 - **迁 D 盘**（如仍需要）：Docker Desktop → Settings → Resources → Disk image location 改到 D 盘，会自动搬迁（搬完 C 盘 `%LOCALAPPDATA%/Docker/wsl` 才会真正释放）；WSL 也可 `wsl --export/--import` 手动迁。本次 vhdx 已缩到 14GB，迁移耗时很短，随时可做。
 - 备份：`backups/pgdata-20260916/{fluxtorrent,p2}.dump`（pg_dump -Fc 格式）。
+
+## 已有能力清单（2026-09-17，做新功能前先查，避免重复造轮子）
+
+**教训**：为"社交经营玩法"做了五轮凭空设计，第六轮读代码才发现其中"防伪体系"和"经济模型"FluxTorrent 早已实现；第七轮又发现连《抢救断种》都早已实现（`ops_http.rs` 复活任务）。**根因是调研漏了接口层和前端页面。**
+
+**设计任何新功能前，四步走（缺一不可）：**
+
+```bash
+ls apps/api/migrations/                              # 1. 表有没有
+grep -n "pub async fn" apps/worker/src/jobs.rs       # 2. 定时任务有没有（2521 行）
+grep -rni "<关键词>" apps/api/src/*_http.rs          # 3. 接口有没有 ← 关键，别漏
+ls "apps/web/app/(main)/"                            # 4. 前端页面有没有 ← 关键，别漏
+```
+
+只查表结构会得出"功能不存在"的错误结论——**"功能是否存在"最直接的证据在接口层和页面目录**。
+
+**已验证存在的功能（不要重建）：**
+- **资源抢救/复活**：`ops_http.rs:937`（0073，U3D Graveyard 口径）`GET /resurrections` / `POST /resurrections/claim` / `GET /resurrections/mine`；表 `resurrections`（`torrent_id UNIQUE`/`user_id`/`required_hours`/`reward_sparks`/`status`）；前端 `app/(main)/resurrections/`。已含"不能领自己的种"、CAS 防双领、30 天活动窗、每小时验收、免费券联动
+- **保种认领**：`seed_preserve` + `jobs.rs::preserve_settle` / `preserve_exit`
+- **做种激励**：`jobs.rs::seeding_reward`
+
+**关键已有能力（直接复用，不要重写）：**
+
+| 能力 | 位置 | 要点 |
+|---|---|---|
+| 做种激励 | `jobs.rs::seeding_reward` | 规则分档（濒危2.0/高龄1.5/老1.0/大体积0.75/中0.5/日常0.25）× `seeders^-0.35` × 时长半衰 `1/(1+h/2160)`；arctan 软封顶 `base+400/π·atan(Σ×6/50)`；反假靠 `NOT(connectable=0 AND uploaded=0)` |
+| 保种认领结算 | `jobs.rs::preserve_settle` / `preserve_exit` + `seed_preserve` 表 | 每满 24h 发 `preserve_bonus_per_day`(100)；`seeders>7` 移出+免费 3 天 |
+| 幂等流水账本 | `spark_ledger`（分区表） | `idempotency_key`，分区表无法全局唯一约束，**应用层先查后插**；`kind` 区分来源 |
+| 反作弊事件 | `cheat_events` | user_id/agent/peer_ip/reason/hits |
+| 站型包 | `site_type_packs` | 11 种 code（education/movie/music/anime/ebook/general/sports/game/software/documentary/lossless），`modules` JSONB 存模块开关 |
+| 任务/勋章/好友/小游戏 | `tasks`·`task_claims` / `medals`·`user_medals` / `friendships` / `games.rs`·`fun_items`·`farm_*`·`gomoku_games` | |
+
+**术语**：站内货币叫 **spark（火花）**，不是"魔力值"。用户表 `users.spark_balance`。
+
+**存档**：`_doc/落地修正-基于现有代码的增量方案.md` 有完整的复用/新增边界与 0102 迁移脚本草案。
+
+## 站点身份 / 品牌配置链路（2026-09-18 摸清，改品牌必看）
+
+**站点「叫什么」分散在多处，改默认/去教育化要全覆盖：**
+
+| 位置 | 作用 | 默认值现状 |
+|---|---|---|
+| `site_settings.site_name` | **站点简称 / 前台品牌**（`site-profile` 的 `brand`：site_name 优先，取不到才回落当前站型包 `site_type_packs.brand`） | FluxTorrent（0118 起） |
+| `site_settings.SITENAME` | 全站标题 / 邮件署名 / **RSS 频道名** | FluxTorrent（0120 起；原种子 `好学 FluxTorrent`） |
+| `site_settings.site_title` | 站点副标题 | ''（原种子 `baozi`） |
+| `site_settings.site_subtitle` | 站点口号 | ''（原种子英文口号） |
+| `site_settings.titlekeywords`/`metakeywords`/`metadescription` | SEO | 中性（原种子 `教育,PT,种子` 等） |
+| `site_type_packs.brand` | 各站型包品牌占位（`site-profile` 兜底） | 全部 ''（0118 清空） |
+| `apps/web/public/` → `apps/web/app/manifest.ts` | PWA 安装名（**动态**读 `site_profile.brand`，`force-dynamic`） | 跟随 site_name |
+| `apps/api/src/rss_http.rs` | RSS `<title>`/`<description>`（**0120 起改为读 SITENAME→site_name / site_desc→metadescription**，不再硬编码） | 跟随设定 |
+| `apps/api/src/games_http.rs` | 小游戏展示名（`农场` 原为 `好学农场`） | 中性 |
+
+- **默认站型 = `general`**（0119 起，原 `education`）；`module_textbooks` 默认 `no`；默认分类 = general 10 类。
+- **曾经的"教育化默认"来源**：`0001`(categories 教育集) / `0025`(site_name/site_title/site_subtitle) / `0034`(SITENAME/SEO) / `0037`(site_type=education) / `0039`(module_textbooks=yes) / `0043? 0110`(刻意保留 education 包品牌)。
+- **`site_type` 仍是运行时可选项**：迁移只把「初装默认」翻转为 general；站长在向导里主动选 education 会被记录、不再被覆盖（迁移只跑一次）。
+- 迁移号：0120 为本轮最后一条（0117 去包子 / 0118 品牌=FluxTorrent / 0119 默认 general / 0120 设定默认中性）。
