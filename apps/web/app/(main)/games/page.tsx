@@ -25,7 +25,7 @@ export default async function GamesPage() {
           className="flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-[var(--r-lg)] border border-dashed border-sky bg-sky-soft/50 p-4 text-center transition-transform active:scale-[0.98]"
         >
           <span aria-hidden className="text-4xl">🌾</span>
-          <span className="font-display text-lg">{dict.games.farmName}</span>
+          <span className="font-display text-lg">{dict.games.farmName.replace("{magic}", currency)}</span>
           <span className="text-xs text-sub">{dict.games.farmSub.replace("{magic}", currency)}</span>
         </Link>
       </div>

@@ -35,8 +35,8 @@ async fn games_overview() -> impl Responder {
         "jgg": { "name": "九宫格抽奖", "ticket": games::JGG_TICKET,
             // 审计修复（P2）：展示与实现权重表对齐（旧文案是废弃赔率表，含不存在的 100x 档）
             "prizes": ["谢谢参与 73.1%", "再来一次 12%", "2x 6%", "3x 5%", "5x 2.5%", "10x 1%", "50x 0.3%"] },
-        "farm": { "name": "好学农场", "slots": 6, "market_refresh": "每日 0/4/8/12/16/20 点", "volatility": "±50%" },
-        "funvote": { "name": "趣味盒投票", "cost": "1 火花/票", "rule": "一人一票" },
+        "farm": { "name": "农场", "slots": 6, "market_refresh": "每日 0/4/8/12/16/20 点", "volatility": "±50%" },
+        "funvote": { "name": "趣味盒投票", "cost": "1 魔力/票", "rule": "一人一票" },
         "rate_limit": format!("每人每小时 {MAX_PLAYS_PER_HOUR} 次"),
     }))
 }
@@ -83,7 +83,7 @@ async fn check_bet(
         return Err("下注必须为正数".into());
     }
     if bet > max {
-        return Err(format!("单次下注不能超过 {max} 火花"));
+        return Err(format!("单次下注不能超过 {max} 魔力"));
     }
     Ok(())
 }

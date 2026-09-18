@@ -23,7 +23,12 @@ export function ResurrectButton({ torrentId, name }: { torrentId: number; name: 
         "/api/v1/resurrections/claim",
         { torrent_id: torrentId },
       );
-      setDone(t.claimed.replace("{hours}", String(r.required_hours)).replace("{reward}", t.reward));
+      setDone(
+        t.claimed
+          .replace("{hours}", String(r.required_hours))
+          .replace("{reward}", t.reward)
+          .replaceAll("{magic}", currency),
+      );
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : t.claimFailed);
     } finally {
@@ -40,7 +45,7 @@ export function ResurrectButton({ torrentId, name }: { torrentId: number; name: 
         type="button"
         onClick={claim}
         disabled={busy}
-        title={t.note.replace("火花", currency)}
+        title={t.note.replaceAll("{magic}", currency)}
         className="min-h-[36px] rounded-full border border-[var(--baozi-orange-dark)] px-4 text-xs font-bold text-[var(--baozi-orange-dark)] transition-transform active:scale-[0.97] disabled:opacity-50"
       >
         {`🌱 ${t.claimBtn}`}

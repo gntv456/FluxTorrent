@@ -165,13 +165,31 @@ async fn rss_feed(
             format_size(r.size),
         ));
     }
+    // 频道名/描述跟随站点设定，不再硬编码品牌（通用 PT 建站系统，站点身份由站长在「站点设定」配置）。
+    // SITENAME（NexusPHP 口径=全站标题/RSS 频道名）→ site_name → FluxTorrent；site_desc → metadescription → 通用。
+    let channel_title: String = sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings WHERE name = 'SITENAME'), ''), \
+                         NULLIF((SELECT value FROM site_settings WHERE name = 'site_name'), ''), \
+                         'FluxTorrent')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_else(|_| "FluxTorrent".into());
+    let channel_desc: String = sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings WHERE name = 'site_desc'), ''), \
+                         NULLIF((SELECT value FROM site_settings WHERE name = 'metadescription'), ''), \
+                         '私有种子社区')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_else(|_| "私有种子社区".into());
     let xml = format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
          <rss version=\"2.0\"><channel>\
-         <title>FluxTorrent · 好学 最新种子</title>\
-         <link>{}</link><description>教育资源私有种子社区 RSS</description>\
+         <title>{} 最新种子</title>\
+         <link>{}</link><description>{} RSS</description>\
          <ttl>15</ttl>{}</channel></rss>",
-        base, items
+        xml_escape(&channel_title), base, xml_escape(&channel_desc), items
     );
     HttpResponse::Ok()
         .content_type("application/rss+xml; charset=utf-8")

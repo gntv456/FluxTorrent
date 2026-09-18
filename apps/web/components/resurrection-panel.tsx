@@ -16,7 +16,7 @@ type DeadRow = [number, string, number];
 type MineRow = [number, number, number, string, string, number];
 
 export function ResurrectionPanel() {
-  const { dict, locale } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const t = dict.resurrect;
   const [dead, setDead] = useState<DeadRow[] | null>(null);
   const [mine, setMine] = useState<MineRow[] | null>(null);
@@ -46,7 +46,7 @@ export function ResurrectionPanel() {
 
   async function claim(torrentId: number) {
     if (busy !== null) return;
-    if (!window.confirm(t.note)) return;
+    if (!window.confirm(t.note.replaceAll("{magic}", currency))) return;
     setBusy(torrentId);
     setMsg(null);
     try {
@@ -56,7 +56,8 @@ export function ResurrectionPanel() {
       );
       const text = t.claimed
         .replace("{hours}", String(r.required_hours))
-        .replace("{reward}", t.reward);
+        .replace("{reward}", t.reward)
+        .replaceAll("{magic}", currency);
       setClaimed((c) => ({ ...c, [torrentId]: text }));
       setMsg(text);
       load();
@@ -85,7 +86,7 @@ export function ResurrectionPanel() {
           {t.mine}
         </button>
       </div>
-      <p className="px-4 pb-2 text-xs text-sub">{t.note}</p>
+      <p className="px-4 pb-2 text-xs text-sub">{t.note.replaceAll("{magic}", currency)}</p>
       {msg && (
         <p className="mx-4 mb-2 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink" role="status">
           {msg}

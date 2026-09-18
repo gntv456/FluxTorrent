@@ -80,7 +80,7 @@ pub fn validate_bet(bet: i64) -> Result<(), String> {
         return Err("下注必须为正数".into());
     }
     if bet > MAX_BET {
-        return Err(format!("单次下注不能超过 {MAX_BET} 火花"));
+        return Err(format!("单次下注不能超过 {MAX_BET} 魔力"));
     }
     Ok(())
 }
@@ -163,32 +163,32 @@ pub const JGG_PRIZES: [JggPrize; 8] = [
         payout: 1,
     },
     JggPrize {
-        label: "2x 火花",
+        label: "2x 魔力",
         weight: 60,
         payout: 2,
     },
     JggPrize {
-        label: "3x 火花",
+        label: "3x 魔力",
         weight: 50,
         payout: 3,
     },
     JggPrize {
-        label: "5x 火花",
+        label: "5x 魔力",
         weight: 25,
         payout: 5,
     },
     JggPrize {
-        label: "10x 火花",
+        label: "10x 魔力",
         weight: 10,
         payout: 10,
     },
     JggPrize {
-        label: "20x 火花",
+        label: "20x 魔力",
         weight: 3,
         payout: 20,
     },
     JggPrize {
-        label: "50x 火花",
+        label: "50x 魔力",
         weight: 1,
         payout: 50,
     },

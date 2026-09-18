@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
+import { FollowButton } from "@/components/forum-follow";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 
@@ -141,6 +142,8 @@ export default async function UserProfilePage({
                       {p.donor && (
                         <span className="ml-2 sticker bg-sun text-ink">♥ {t.donor}</span>
                       )}
+                      {/* 关注（0121）：组件自拉状态，is_self 时自行隐藏 */}
+                      <FollowButton targetType="user" targetId={p.id} showCount className="ml-2" />
                     </h1>
                     <p className="text-sm text-sub">
                       {p.class_name ?? `LV${p.class_id}`}

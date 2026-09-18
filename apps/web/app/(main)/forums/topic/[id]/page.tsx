@@ -2,6 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPosts, getForums } from "@/lib/data";
 import { ReplyBox, TopicModActions, PostActions } from "@/components/forum-composer";
+import { MarkdownRenderer } from "@/components/forum-markdown";
+import { TypeBadge } from "@/components/forum-bits";
+import { PostVoteBar, TopicFavoriteButton } from "@/components/forum-vote";
+import { ReportTopicButton } from "@/components/forum-report";
+import { FollowButton } from "@/components/forum-follow";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt } from "@/i18n/config";
 
@@ -42,8 +47,28 @@ export default async function TopicPage({
           {detail.sticky && <span className="mr-1 text-coral">📌</span>}
           {detail.digest && <span className="mr-1 text-[var(--baozi-orange-dark)]">⭐</span>}
           {detail.locked && <span className="mr-1">🔒</span>}
+          <TypeBadge
+            type={detail.topic_type}
+            label={
+              detail.topic_type
+                ? (dict.forums.types as Record<string, string>)[detail.topic_type]
+                : undefined
+            }
+            className="mr-2 align-middle"
+          />
           {detail.title}
         </h1>
+        {authId > 0 && (
+          <>
+            <FollowButton targetType="topic" targetId={topicId} showCount />
+            <TopicFavoriteButton
+              topicId={topicId}
+              faved={detail.faved ?? false}
+              favorites={detail.favorites ?? 0}
+            />
+            <ReportTopicButton topicId={topicId} />
+          </>
+        )}
       </div>
       {detail.can_mod && (
         <TopicModActions
@@ -76,7 +101,7 @@ export default async function TopicPage({
                 </p>
               </td>
               <td className="p-3">
-                <p className="whitespace-pre-wrap text-sm">{p.body}</p>
+                <MarkdownRenderer source={p.body} />
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-sub">
                   <span>
                     {new Date(p.created_at).toLocaleString(dateLocale(locale))}
@@ -85,6 +110,15 @@ export default async function TopicPage({
                     <span className="italic">
                       已由 #{p.edited_by} 编辑于{" "}
                       {new Date(p.edited_at).toLocaleString(dateLocale(locale))}
+                    </span>
+                  )}
+                  {authId > 0 && (
+                    <span className="ml-auto">
+                      <PostVoteBar
+                        postId={p.id}
+                        likes={p.likes ?? 0}
+                        liked={p.liked_by_me ?? false}
+                      />
                     </span>
                   )}
                 </div>

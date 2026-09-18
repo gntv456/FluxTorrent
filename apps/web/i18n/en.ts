@@ -277,6 +277,7 @@ const enBase: Omit<
     sent: "Sent",
     compose: "Compose",
     to: "Recipient username",
+    systemSender: "System notice",
     subject: "Subject",
     body: "Body",
     send: "Send",
@@ -1250,6 +1251,27 @@ usertools: {
     backToForum: "← Back to forums",
     floor: "Floor #{n}",
     loadEarlier: "↑ Load earlier replies",
+    uncategorized: "Uncategorized",
+    types: {
+      bounty: "Bounty",
+      poll: "Poll",
+      lottery: "Lottery",
+    },
+    like: "Like",
+    favorite: "Favorite",
+    favorited: "Favorited",
+    sortHot: "Hot",
+    sortNew: "Newest",
+    report: "Report",
+    follow: "Follow",
+    following: "Following",
+    feedTitle: "Following feed",
+    feedEmpty: "Nothing here yet. Follow a board or an author and their new activity shows up here.",
+    myFollows: "My follows:",
+    via: "Via",
+    viaForum: "Board",
+    viaUser: "Author",
+    viaTopic: "Topic",
   },
   medals: {
     title: "Medal Gallery",
@@ -1550,7 +1572,7 @@ usertools: {
   games: {
     title: "Arcade",
     subtitle: "Little {magic}, big fun (play responsibly)",
-    farmName: "Spark Farm",
+    farmName: "{magic} Farm",
     farmSub: "Plant knowledge, harvest {magic}",
     rule: "Rules: max bet 1000 {magic} per round, 60 rounds per hour. Play in moderation — seeding is the true path!",
     bet: "Bet",
@@ -1592,7 +1614,7 @@ usertools: {
     },
   },
   farm: {
-    title: "Spark Farm",
+    title: "{magic} Farm",
     marketRule:
       "Market refreshes at {time} (daily 0/4/8/12/16/20 · ±50% swing)",
     loading: "Loading farm…",
@@ -2533,7 +2555,7 @@ const wishlistEn: Dict["wishlist"] = {
 
 const fundingEn: Dict["funding"] = {
   title: "Crowd funding",
-  note: "Pool sparks for a torrent; when the goal is reached a timed freeleech is applied automatically. If it ends unmet, contributions are refunded in full (tax included).",
+  note: "Pool {magic} for a torrent; when the goal is reached a timed freeleech is applied automatically. If it ends unmet, contributions are refunded in full (tax included).",
   torrentCol: "Torrent",
   goalCol: "Goal",
   raisedCol: "Raised",
@@ -2546,12 +2568,12 @@ const fundingEn: Dict["funding"] = {
   stSettled: "Settled",
   stOther: "Ended",
   contributeBtn: "Back it",
-  amountPh: "Amount (sparks)",
+  amountPh: "Amount ({magic})",
   contributed: "Backed: paid {paid}, raised {raised} / goal {goal}",
   createBtn: "Start a funding",
   createTitle: "Start a funding",
   fldTorrent: "Torrent ID",
-  fldGoal: "Goal (sparks, min 1000)",
+  fldGoal: "Goal ({magic}, min 1000)",
   fldHours: "Free hours after reached (1-720)",
   fldDays: "Funding window (days, 1-60)",
   created: "Funding started (#{id})",
@@ -2564,7 +2586,7 @@ const fundingEn: Dict["funding"] = {
 
 const resurrectEn: Dict["resurrect"] = {
   title: "Resurrections",
-  note: "Claim a dead torrent and keep seeding; meeting the hours earns 5000 sparks + 1 free voucher + 7 days free on that torrent.",
+  note: "Claim a dead torrent and keep seeding; meeting the hours earns 5000 {magic} + 1 free voucher + 7 days free on that torrent.",
   claimBtn: "Claim resurrection",
   claimed: "Claimed: {hours} seeding hours required, {reward}",
   claimFailed: "Claim failed",
@@ -2581,7 +2603,7 @@ const resurrectEn: Dict["resurrect"] = {
   stOther: "Ended",
   seeded: "Seeded {n} h",
   required: "{n} h required",
-  reward: "5000 sparks + 1 free voucher + 7-day free",
+  reward: "5000 {magic} + 1 free voucher + 7-day free",
   deadNote: "No seeders on this torrent; claim a resurrection to earn rewards",
 };
 

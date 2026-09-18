@@ -213,7 +213,7 @@ async fn settle_complete(db: &PgPool, c: &OpenClaim) -> anyhow::Result<bool> {
         (
             "转正考核通过",
             format!(
-                "恭喜！您已完成新人转正考核「{}」，正式成为本站的一员。奖励 {} 火花已发放到您的账户。",
+                "恭喜！您已完成新人转正考核「{}」，正式成为本站的一员。奖励 {} 魔力已发放到您的账户。",
                 c.task_name, c.reward
             ),
         )
@@ -221,7 +221,7 @@ async fn settle_complete(db: &PgPool, c: &OpenClaim) -> anyhow::Result<bool> {
         (
             "任务完成通知",
             format!(
-                "恭喜！您认领的任务「{}」已完成，奖励 {} 火花已发放到您的账户。",
+                "恭喜！您认领的任务「{}」已完成，奖励 {} 魔力已发放到您的账户。",
                 c.task_name, c.reward
             ),
         )
@@ -291,12 +291,12 @@ async fn settle_fail(db: &PgPool, c: &OpenClaim) -> anyhow::Result<()> {
             // 旧文案固定写「扣除罚金 {penalty}」，余额不足被部分扣/零扣时与流水对不上。
             penalty_note = if take < c.penalty {
                 format!(
-                    "，扣除罚金 {} 火花（余额不足，本次仅能扣到 0，未扣足 {} 火花）",
+                    "，扣除罚金 {} 魔力（余额不足，本次仅能扣到 0，未扣足 {} 魔力）",
                     take,
                     c.penalty - take
                 )
             } else {
-                format!("，扣除罚金 {} 火花", take)
+                format!("，扣除罚金 {} 魔力", take)
             };
         }
     }

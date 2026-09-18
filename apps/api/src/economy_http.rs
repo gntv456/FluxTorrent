@@ -775,13 +775,13 @@ async fn bank_deposit(
     let bs = bank_settings(&state.repo.db).await;
     if body.amount < bs.min_deposit {
         return Err(DomainError::Validation(format!(
-            "定期存款单笔不少于 {} 火花",
+            "定期存款单笔不少于 {} 魔力",
             bs.min_deposit
         )));
     }
     if bs.max_deposit > 0 && body.amount > bs.max_deposit {
         return Err(DomainError::Validation(format!(
-            "定期存款单笔不可超过 {} 火花",
+            "定期存款单笔不可超过 {} 魔力",
             bs.max_deposit
         )));
     }
@@ -985,7 +985,7 @@ async fn demand_deposit(
     let bs = bank_settings(&state.repo.db).await;
     if body.amount < bs.min_demand {
         return Err(DomainError::Validation(format!(
-            "活期单笔存入不少于 {} 火花",
+            "活期单笔存入不少于 {} 魔力",
             bs.min_demand
         )));
     }
@@ -1137,7 +1137,7 @@ async fn loan_apply(
     let bs = bank_settings(&state.repo.db).await;
     if body.amount < bs.min_loan {
         return Err(DomainError::Validation(format!(
-            "贷款金额不少于 {} 火花",
+            "贷款金额不少于 {} 魔力",
             bs.min_loan
         )));
     }
@@ -1148,13 +1148,13 @@ async fn loan_apply(
         .map_err(|e| DomainError::Internal(e.into()))?;
     if balance < 0 {
         return Err(DomainError::Validation(
-            "当前火花为负，暂不可申请贷款".into(),
+            "当前魔力为负，暂不可申请贷款".into(),
         ));
     }
     let max = max_loan_amount(&state.repo.db, auth.id, &bs).await?;
     if body.amount > max {
         return Err(DomainError::Validation(format!(
-            "贷款金额不可超过额度上限 {} 火花（时魔 × {} + {}）",
+            "贷款金额不可超过额度上限 {} 魔力（时魔 × {} + {}）",
             max, bs.loan_ratio, bs.loan_constant
         )));
     }
@@ -1957,7 +1957,7 @@ async fn funding_create(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     if body.goal < 1000 {
-        return Err(DomainError::Validation("众筹目标至少 1000 火花".into()));
+        return Err(DomainError::Validation("众筹目标至少 1000 魔力".into()));
     }
     if !(1..=720).contains(&body.hours) || !(1..=60).contains(&body.days) {
         return Err(DomainError::Validation(

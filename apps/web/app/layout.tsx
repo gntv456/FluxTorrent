@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${brandName} · ${dict.meta.titleSuffix}`,
     description: dict.meta.description,
-    manifest: "/manifest.webmanifest",
+    // manifest 由 app/manifest.ts 运行时生成（品牌跟随 site_profile.brand），Next 自动注入 <link rel="manifest">
     icons: {
       icon: "/icons/icon-192.png",
       apple: "/icons/icon-192.png",

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { MarkdownRenderer } from "@/components/forum-markdown";
 
 interface MessageRow {
   id: number;
@@ -467,7 +468,7 @@ export function MessageCenter() {
           </thead>
           <tbody>
             {rows.map((m) => {
-              const cp = m.counterpart ?? "—";
+              const cp = m.counterpart ?? t.systemSender;
               const time = new Date(m.created_at).toLocaleString(dateLocale(locale));
               const unread = box === "inbox" && (m.unread ?? !m.read_at);
               const status = box === "inbox" ? (unread ? t.unreadTag : t.readTag) : t.sentTag;
@@ -504,7 +505,9 @@ export function MessageCenter() {
                     </button>
                     {openId === m.id && (
                       <div className="mt-2 rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--baozi-cream)] p-2">
-                        <p className="whitespace-pre-wrap text-sm">{m.body}</p>
+                        <div className="text-sm">
+                          <MarkdownRenderer source={m.body} />
+                        </div>
                         <p className="mt-1 text-[11px] text-sub md:hidden">{cp} · {time}</p>
                         <div className="mt-2 flex justify-end gap-2">
                           <button

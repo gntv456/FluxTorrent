@@ -147,7 +147,7 @@ export function FundingPanel() {
           </button>
         </div>
       </div>
-      <p className="text-xs text-sub">{t.note}</p>
+      <p className="text-xs text-sub">{t.note.replaceAll("{magic}", currency)}</p>
 
       {msg && (
         <p className="rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink" role="status">
@@ -196,7 +196,7 @@ export function FundingPanel() {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              {t.fldGoal}
+              {t.fldGoal.replaceAll("{magic}", currency)}
               <input
                 type="number"
                 min={1000}
@@ -285,7 +285,7 @@ export function FundingPanel() {
                         <input
                           type="number"
                           min={1}
-                          placeholder={t.amountPh}
+                          placeholder={t.amountPh.replaceAll("{magic}", currency)}
                           value={amounts[f.id] ?? ""}
                           onChange={(e) => setAmounts((a) => ({ ...a, [f.id]: e.target.value }))}
                           className="min-h-[30px] w-24 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-xs"

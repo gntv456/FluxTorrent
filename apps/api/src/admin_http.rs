@@ -65,6 +65,9 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(forum_admin_delete)
         .service(forum_mod_add)
         .service(forum_mod_remove)
+        .service(forum_category_create)
+        .service(forum_category_update)
+        .service(forum_category_delete)
 }
 
 async fn staff(
@@ -2800,6 +2803,11 @@ struct ForumAdminRow {
     minclasscreate: i32,
     protected: bool,
     topics: i64,
+    /// 分区/节点（0115）
+    #[sqlx(default)]
+    category_id: Option<i64>,
+    #[sqlx(default)]
+    category_name: Option<String>,
 }
 
 #[get("/admin/forums")]
@@ -2811,8 +2819,9 @@ async fn forum_admin_list(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     let rows: Vec<ForumAdminRow> = sqlx::query_as(
         "SELECT f.id, f.name, f.descr, f.minclassread, f.minclasswrite, f.minclasscreate, f.protected, \
-            (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics \
-         FROM forums f ORDER BY f.id",
+            (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics, \
+            f.category_id, c.name AS category_name \
+         FROM forums f LEFT JOIN forum_categories c ON c.id = f.category_id ORDER BY f.id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -2823,7 +2832,111 @@ async fn forum_admin_list(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "forums": rows, "mods": mods })))
+    let categories: Vec<(i64, String, i32, bool)> = sqlx::query_as(
+        "SELECT id, name, sort, visible FROM forum_categories ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(
+        serde_json::json!({ "forums": rows, "mods": mods, "categories": categories }),
+    ))
+}
+
+// ---- 分区/节点管理（0115；与版块同权限档 FORUMS_MANAGE） ----
+
+#[derive(Deserialize)]
+struct CategoryUpsertReq {
+    name: String,
+    #[serde(default)]
+    sort: Option<i32>,
+    #[serde(default)]
+    visible: Option<bool>,
+}
+
+#[post("/admin/forum-categories")]
+async fn forum_category_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<CategoryUpsertReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
+    if body.name.trim().is_empty() {
+        return Err(DomainError::Validation("分区名不能为空".into()));
+    }
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO forum_categories (name, sort, visible) VALUES ($1, $2, $3) RETURNING id",
+    )
+    .bind(body.name.trim())
+    .bind(body.sort.unwrap_or(0))
+    .bind(body.visible.unwrap_or(true))
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "forum.category_create", Some(id))
+        .await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/forum-categories/{id}")]
+async fn forum_category_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+    body: web::Json<CategoryUpsertReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
+    if body.name.trim().is_empty() {
+        return Err(DomainError::Validation("分区名不能为空".into()));
+    }
+    let cid = path.into_inner();
+    let n = sqlx::query("UPDATE forum_categories SET name = $1, sort = $2, visible = $3 WHERE id = $4")
+        .bind(body.name.trim())
+        .bind(body.sort.unwrap_or(0))
+        .bind(body.visible.unwrap_or(true))
+        .bind(cid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(cid));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "forum.category_update", Some(cid))
+        .await;
+    Ok(ok(serde_json::json!({ "id": cid })))
+}
+
+#[delete("/admin/forum-categories/{id}")]
+async fn forum_category_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
+    let cid = path.into_inner();
+    // 删除分区不删版块：版块 category_id 走 ON DELETE SET NULL 回落「未分组」
+    let n = sqlx::query("DELETE FROM forum_categories WHERE id = $1")
+        .bind(cid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(cid));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "forum.category_delete", Some(cid))
+        .await;
+    Ok(ok(serde_json::json!({ "deleted": cid })))
 }
 
 #[derive(Deserialize)]
@@ -2839,6 +2952,9 @@ struct ForumUpsertReq {
     minclasscreate: Option<i32>,
     #[serde(default)]
     protected: Option<bool>,
+    /// 归属分区（0115）；None = 不分组
+    #[serde(default)]
+    category_id: Option<i64>,
 }
 
 fn forum_upsert_check(body: &ForumUpsertReq) -> DomainResult<()> {
@@ -2866,8 +2982,8 @@ async fn forum_admin_create(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::FORUMS_MANAGE).await?;
     forum_upsert_check(&body)?;
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO forums (name, descr, minclassread, minclasswrite, minclasscreate, min_class, protected) \
-         VALUES ($1, $2, $3, $4, $5, $3, $6) RETURNING id",
+        "INSERT INTO forums (name, descr, minclassread, minclasswrite, minclasscreate, min_class, protected, category_id) \
+         VALUES ($1, $2, $3, $4, $5, $3, $6, $7) RETURNING id",
     )
     .bind(body.name.trim())
     .bind(&body.descr)
@@ -2875,6 +2991,7 @@ async fn forum_admin_create(
     .bind(body.minclasswrite.unwrap_or(0))
     .bind(body.minclasscreate.unwrap_or(0))
     .bind(body.protected.unwrap_or(false))
+    .bind(body.category_id)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2899,8 +3016,8 @@ async fn forum_admin_update(
     let n = sqlx::query(
         "UPDATE forums SET name = $1, descr = $2, \
             minclassread = $3, minclasswrite = $4, minclasscreate = $5, \
-            min_class = $3, protected = $6 \
-         WHERE id = $7",
+            min_class = $3, protected = $6, category_id = $7 \
+         WHERE id = $8",
     )
     .bind(body.name.trim())
     .bind(&body.descr)
@@ -2908,6 +3025,7 @@ async fn forum_admin_update(
     .bind(body.minclasswrite.unwrap_or(0))
     .bind(body.minclasscreate.unwrap_or(0))
     .bind(body.protected.unwrap_or(false))
+    .bind(body.category_id)
     .bind(fid)
     .execute(&state.repo.db)
     .await

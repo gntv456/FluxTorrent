@@ -36,7 +36,7 @@ interface FarmData {
 
 /** 好学农场（M24 magic_fram 口径）：市场价每日 6 刷 ±50%，20% 双倍收获 */
 export default function FarmPage() {
-  const { dict, locale } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const [data, setData] = useState<FarmData | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -104,7 +104,7 @@ export default function FarmPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.farm.title}</h1>
+        <h1 className="font-display text-2xl">{dict.farm.title.replace("{magic}", currency)}</h1>
         <span className="text-sm text-sub">
           {fmt(dict.farm.marketRule, { time: nextRefresh })}
         </span>
