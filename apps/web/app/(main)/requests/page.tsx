@@ -1,5 +1,6 @@
 import { RequestBoard } from "@/components/request-board";
 import { getDict } from "@/i18n/server";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,10 @@ export default async function RequestsPage({
 }: {
   searchParams: Promise<{ finished?: string; search?: string }>;
 }) {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("requests");
+  if (gate) return gate;
+
   const { dict } = await getDict();
   const sp = await searchParams;
   return (

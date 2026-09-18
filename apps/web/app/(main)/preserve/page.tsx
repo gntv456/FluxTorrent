@@ -6,14 +6,36 @@ import { ClaimButton } from "@/components/claim-button";
 import { TorrentTr } from "@/components/torrent-table";
 import { SeedStatsCard } from "@/components/seed-stats-card";
 import { ResurrectionPanel } from "@/components/resurrection-panel";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
 /** 保种区（参考站 requireseed.php 复刻）：
  *  KEEP SHARING hero + 统计六格 + 筛选卡（类型/状态/分类/关键词）+ RSS 卡 + 种子表格 */
-export default async function PreservePage() {
+export default async function PreservePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("preserve");
+  if (gate) return gate;
+
   const { dict } = await getDict();
-  const { items, stats, total } = await getPreserve();
+  // 筛选接线（审计修复 P1）：scope/status 表单参数此前后端声明即弃、前端也不透传——
+  // 筛选 UI 双重失效。现在透传到 /preserve。
+  const spRaw = await searchParams;
+  const pick = (k: string): string | undefined => {
+    const v = spRaw[k];
+    const s = Array.isArray(v) ? v[0] : v;
+    return s && s !== "all" && s !== "current" ? s : undefined;
+  };
+  const { items, stats, total } = await getPreserve({
+    scope: pick("scope"),
+    status: pick("status"),
+    category: pick("category"),
+    keyword: pick("keyword"),
+  });
   return (
     <div className="preserve-page">
       {/* Hero */}

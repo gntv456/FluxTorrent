@@ -1,10 +1,10 @@
 //! v4 缺口批次（0079）：api 侧 Prometheus /metrics、火花日度对账、商店权益效果、
 //! 成就四族（worker 侧扫描在 jobs.rs）、POSTPONED 审核第四态、规则页版本化。
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -18,6 +18,23 @@ use crate::state::AppState;
 /// 全进程请求计数（path 维度聚合到方法级，防标签爆炸）
 pub static METRIC_REQUESTS: AtomicU64 = AtomicU64::new(0);
 pub static METRIC_REQUESTS_5XX: AtomicU64 = AtomicU64::new(0);
+/// RED 之 Duration（U5 §12.6）：毫秒桶直方图（50/100/250/500/1000/2500/5000/10000+）
+static LATENCY_BUCKETS_MS: [u64; 8] = [50, 100, 250, 500, 1000, 2500, 5000, 10000];
+static METRIC_LATENCY: [AtomicU64; 8] = [
+    AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
+    AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
+];
+static METRIC_LATENCY_SUM_MS: AtomicU64 = AtomicU64::new(0);
+
+fn record_latency(ms: u64) {
+    METRIC_LATENCY_SUM_MS.fetch_add(ms, Ordering::Relaxed);
+    for (i, b) in LATENCY_BUCKETS_MS.iter().enumerate() {
+        if ms <= *b {
+            METRIC_LATENCY[i].fetch_add(1, Ordering::Relaxed);
+            return;
+        }
+    }
+}
 
 /// 请求计数中间件（from_fn 包装；计数是尽力而为，不影响请求路径）
 pub async fn metrics_mw(
@@ -25,10 +42,12 @@ pub async fn metrics_mw(
     next: Next<impl MessageBody>,
 ) -> actix_web::Result<ServiceResponse<impl MessageBody>> {
     METRIC_REQUESTS.fetch_add(1, Ordering::Relaxed);
+    let started = std::time::Instant::now();
     let res = next.call(req).await?;
     if res.status().as_u16() >= 500 {
         METRIC_REQUESTS_5XX.fetch_add(1, Ordering::Relaxed);
     }
+    record_latency(started.elapsed().as_millis() as u64);
     Ok(res)
 }
 
@@ -49,6 +68,29 @@ async fn api_metrics(req: HttpRequest, state: web::Data<std::sync::Arc<AppState>
     let pool = &state.repo.db;
     let pool_size = pool.size();
     let pool_idle = pool.num_idle();
+    // U1 §12.6：announce 死信队列深度（billing 健康的第一信号；llen O(1)）。
+    // 计费消费游标 lag 在 worker 侧无 API 可读，DLQ 深度 + 下方 stream 长度已覆盖「积压」口径。
+    use redis::AsyncCommands;
+    let mut conn = state.redis.clone();
+    let dlq_depth: i64 = conn.llen("flux:announce:dlq").await.unwrap_or(0);
+    let stream_len: i64 = conn.xlen("flux:announce").await.unwrap_or(0);
+    // RED 直方图（累计桶 → Prometheus cumulative 口径）
+    let mut hist = String::new();
+    for (i, b) in LATENCY_BUCKETS_MS.iter().enumerate() {
+        hist.push_str(&format!(
+            "flux_api_request_duration_bucket{{le=\"{}\"}} {}\n",
+            b,
+            METRIC_LATENCY[i].load(Ordering::Relaxed)
+        ));
+    }
+    hist.push_str(&format!(
+        "flux_api_request_duration_bucket{{le=\"+Inf\"}} {}\n",
+        METRIC_REQUESTS.load(Ordering::Relaxed)
+    ));
+    hist.push_str(&format!(
+        "# HELP flux_api_request_duration_ms_sum Total request duration in ms.\n# TYPE flux_api_request_duration_ms_sum counter\nflux_api_request_duration_ms_sum {}\n",
+        METRIC_LATENCY_SUM_MS.load(Ordering::Relaxed)
+    ));
     let body = format!(
         concat!(
             "# HELP flux_api_requests_total Total requests since start.\n",
@@ -62,13 +104,23 @@ async fn api_metrics(req: HttpRequest, state: web::Data<std::sync::Arc<AppState>
             "flux_api_pool_connections {}\n",
             "# HELP flux_api_pool_idle Idle PG pool connections.\n",
             "# TYPE flux_api_pool_idle gauge\n",
-            "flux_api_pool_idle {}\n"
+            "flux_api_pool_idle {}\n",
+            "# HELP flux_api_announce_dlq_depth Dead-letter queue depth (corrupt announce events).\n",
+            "# TYPE flux_api_announce_dlq_depth gauge\n",
+            "flux_api_announce_dlq_depth {}\n",
+            "# HELP flux_api_announce_stream_len announce Redis Stream total entries (grows until trim).\n",
+            "# TYPE flux_api_announce_stream_len gauge\n",
+            "flux_api_announce_stream_len {}\n",
+            "# TYPE flux_api_request_duration_bucket counter\n",
         ),
         METRIC_REQUESTS.load(Ordering::Relaxed),
         METRIC_REQUESTS_5XX.load(Ordering::Relaxed),
         pool_size,
         pool_idle,
+        dlq_depth,
+        stream_len,
     );
+    let body = body + &hist;
     HttpResponse::Ok().content_type("text/plain").body(body)
 }
 
@@ -162,7 +214,9 @@ async fn review_postpone(
         .repo
         .audit(Some(auth.id), "review.postpone", Some(body.torrent_id))
         .await;
-    Ok(ok(serde_json::json!({ "id": body.torrent_id, "status": 4 })))
+    Ok(ok(
+        serde_json::json!({ "id": body.torrent_id, "status": 4 }),
+    ))
 }
 
 /// 暂缓恢复（staff）：暂缓 → 待审（回到常规审核流；approve/reject 仍走既有 decide）
@@ -189,7 +243,9 @@ async fn review_resume(
         .repo
         .audit(Some(auth.id), "review.resume", Some(body.torrent_id))
         .await;
-    Ok(ok(serde_json::json!({ "id": body.torrent_id, "status": 0 })))
+    Ok(ok(
+        serde_json::json!({ "id": body.torrent_id, "status": 0 }),
+    ))
 }
 
 // ============ G5：规则页版本化（修订历史；Gazelle Wiki revision 口径） ============
@@ -212,16 +268,22 @@ async fn rule_revisions(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE).await?;
-    let rows: Vec<(i64, i32, String, String, Option<String>, chrono::DateTime<chrono::Utc>)> =
-        sqlx::query_as(
-            "SELECT r.id, r.rule_id, r.title, r.body, u.username, r.created_at \
+    let rows: Vec<(
+        i64,
+        i32,
+        String,
+        String,
+        Option<String>,
+        chrono::DateTime<chrono::Utc>,
+    )> = sqlx::query_as(
+        "SELECT r.id, r.rule_id, r.title, r.body, u.username, r.created_at \
              FROM rules_revisions r LEFT JOIN users u ON u.id = r.edited_by \
              WHERE r.rule_id = $1 ORDER BY r.created_at DESC LIMIT 50",
-        )
-        .bind(*path)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    )
+    .bind(*path)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
 

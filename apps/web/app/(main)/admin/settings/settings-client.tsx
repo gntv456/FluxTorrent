@@ -607,20 +607,39 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
             </section>
           ) : activeGroup ? (
             <section className="flex flex-col gap-3">
-              {activeGroup.cards.map((c, i) => (
+              {activeGroup.cards.map((c, i) => {
+                // 开关类字段（yesno/短 enum）紧凑多列；其余保持纵向大卡片
+                const isSwitch = (f: SettingFieldMeta) =>
+                  !errors[f.name] &&
+                  (f.type === "yesno" ||
+                    (f.type === "enum" &&
+                      Array.isArray(f.options) &&
+                      f.options.length > 0 &&
+                      f.options.length <= 4));
+                const switches = c.fields.filter(isSwitch);
+                const rest = c.fields.filter((f) => !isSwitch(f));
+                return (
                 <div
                   key={c.key}
                   className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 shadow-[var(--shadow-card)]"
                 >
                   <h2 className="mb-2 flex items-baseline gap-2 text-sm font-bold text-ink">
-                    {c.key || fmt(dict.settingsAdmin.fieldCount, { n: i + 1 })}
+                    {dict.admin.settingGroups[c.key] ?? c.key}
                     <span className="text-[11px] font-normal text-sub">{c.fields.length}</span>
                   </h2>
-                  <div className="flex flex-col gap-2">
-                    {c.fields.map((f) => renderField(f))}
-                  </div>
+                  {switches.length > 0 && (
+                    <div className="mb-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                      {switches.map((f) => renderField(f))}
+                    </div>
+                  )}
+                  {rest.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      {rest.map((f) => renderField(f))}
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
               {activeGroup.cards.length === 0 && (
                 <p className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-6 text-center text-sm text-sub">
                   {s.searchEmpty}

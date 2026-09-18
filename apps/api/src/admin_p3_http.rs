@@ -573,6 +573,15 @@ async fn hr_batch_pardon(
         .rows_affected();
         if n > 0 {
             pardoned += n;
+            // 审计修复（P1）：同步回清 snatches.hr_flag（与单条 hr_pardon 同口径——
+            // worker 只置 TRUE，不回清会让赦免后角标残留）
+            let _ = sqlx::query(
+                "UPDATE snatches SET hr_flag = FALSE WHERE user_id = $1 AND torrent_id = $2",
+            )
+            .bind(r.user_id)
+            .bind(r.torrent_id)
+            .execute(db)
+            .await;
             sqlx::query(
                 "UPDATE hr_violations SET resolved_at = now(), resolved_by = $1 \
                  WHERE user_id = $2 AND torrent_id = $3 AND resolved_at IS NULL",
@@ -1455,6 +1464,14 @@ async fn admin_users_batch(
     if body.action == "class" && !(1..=98).contains(&body.value) {
         return Err(DomainError::Validation("等级取值 1-98（站长除外）".into()));
     }
+    // 审计修复（P0 越权，与 user_set_class 同病）：批量提级同样不得越过操作者自己，
+    // 否则 93 档管理员可批量把下级提到 98、改完反被压制。
+    if body.action == "class" && body.value >= auth.class_id {
+        return Err(DomainError::Validation(format!(
+            "批量等级不能不低于自己（{} ≥ {}）",
+            body.value, auth.class_id
+        )));
+    }
     let db = &state.repo.db;
     let mut updated: u64 = 0;
     let mut skipped: Vec<i64> = Vec::new();
@@ -2013,9 +2030,7 @@ async fn section_kinds_add(
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
     let kind = body.kind.trim().to_lowercase();
-    if !LEGACY_KINDS.contains(&kind.as_str())
-        && !regex_check_kind(&kind)
-    {
+    if !LEGACY_KINDS.contains(&kind.as_str()) && !regex_check_kind(&kind) {
         return Err(DomainError::Validation(
             "维度标识需为小写字母开头的 [a-z0-9_]（≤32 字符）".into(),
         ));
@@ -2026,11 +2041,12 @@ async fn section_kinds_add(
     if body.label.trim().is_empty() {
         return Err(DomainError::Validation("显示名称不能为空".into()));
     }
-    let dup: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)")
-        .bind(&kind)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let dup: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)")
+            .bind(&kind)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if dup {
         return Err(DomainError::Validation("维度标识已存在".into()));
     }
@@ -2061,14 +2077,16 @@ async fn section_kinds_update(
     if body.label.trim().is_empty() {
         return Err(DomainError::Validation("显示名称不能为空".into()));
     }
-    let n = sqlx::query("UPDATE section_kinds SET label = $2, sort = COALESCE($3, sort) WHERE kind = $1")
-        .bind(&kind)
-        .bind(body.label.trim())
-        .bind(body.sort)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    let n = sqlx::query(
+        "UPDATE section_kinds SET label = $2, sort = COALESCE($3, sort) WHERE kind = $1",
+    )
+    .bind(&kind)
+    .bind(body.label.trim())
+    .bind(body.sort)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(0));
     }
@@ -2127,7 +2145,9 @@ fn regex_check_kind(kind: &str) -> bool {
     bytes.len() <= 32
         && !bytes.is_empty()
         && bytes[0].is_ascii_lowercase()
-        && bytes.iter().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_')
+        && bytes
+            .iter()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_')
 }
 
 /// 发布表单/筛选公开读（匿名可读：仅字典名称，与 site-profile 同级）
@@ -2234,6 +2254,11 @@ struct JixiaoTypeRow {
     base_pay: i64,
     min_requirements: serde_json::Value,
     bonus_rules: serde_json::Value,
+    #[sqlx(default)]
+    description: String,
+    /// 本期登记人数（列表「登记数」列真实数据，旧版硬编码 "—"）
+    #[sqlx(default)]
+    assigned_count: i64,
 }
 
 #[get("/admin/jixiao-types")]
@@ -2242,9 +2267,16 @@ async fn jixiao_types_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
+    let period = (chrono::Utc::now() + chrono::Duration::hours(8))
+        .format("%Y-%m")
+        .to_string();
     let rows: Vec<JixiaoTypeRow> = sqlx::query_as(
-        "SELECT id, name, metrics, base_pay, min_requirements, bonus_rules FROM jixiao_types ORDER BY id",
+        "SELECT t.id, t.name, t.metrics, t.base_pay, t.min_requirements, t.bonus_rules, t.description, \
+                (SELECT count(*) FROM jixiao_claims c \
+                 WHERE c.type_id = t.id AND c.period = $1 AND c.metrics_snapshot->>'source' = 'admin') AS assigned_count \
+         FROM jixiao_types t ORDER BY t.id",
     )
+    .bind(&period)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2262,6 +2294,26 @@ struct JixiaoTypeReq {
     min_requirements: Option<serde_json::Value>,
     #[serde(default)]
     bonus_rules: Option<serde_json::Value>,
+    #[serde(default)]
+    description: Option<String>,
+}
+
+/// 死键防线（0106）：min_requirements/metrics 出现白名单外的键直接拒绝保存。
+/// 旧实现没这层校验，种子数据里 seed_days/seed_hours/seed_size_tb 配进去后
+/// 达标判定永远失败（compute_metrics 不产出这些键）。
+fn jixiao_reject_unknown_keys(body: &JixiaoTypeReq) -> DomainResult<()> {
+    for field in [&body.min_requirements, &body.metrics] {
+        if let Some(v) = field {
+            if let Some(k) = crate::ops_http::jixiao_unknown_metric_key(v) {
+                return Err(DomainError::Validation(format!(
+                    "未知指标键「{k}」，可用键：uploaded/downloaded/uploads/seeding_count/\
+                     seed_size/seed_size_tb/seed_hours/avg_seed_hours/seed_days/\
+                     seed_points_delta/spark_delta/ops"
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 #[post("/admin/jixiao-types")]
@@ -2275,15 +2327,17 @@ async fn jixiao_type_add(
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("岗位名不能为空".into()));
     }
+    jixiao_reject_unknown_keys(&body)?;
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO jixiao_types (name, metrics, base_pay, min_requirements, bonus_rules) \
-         VALUES ($1, COALESCE($2, '{}'::jsonb), COALESCE($3, 0), COALESCE($4, '{}'::jsonb), COALESCE($5, '{}'::jsonb)) RETURNING id",
+        "INSERT INTO jixiao_types (name, metrics, base_pay, min_requirements, bonus_rules, description) \
+         VALUES ($1, COALESCE($2, '{}'::jsonb), COALESCE($3, 0), COALESCE($4, '{}'::jsonb), COALESCE($5, '{}'::jsonb), COALESCE($6, '')) RETURNING id",
     )
     .bind(body.name.trim())
     .bind(body.metrics.clone())
     .bind(body.base_pay)
     .bind(body.min_requirements.clone())
     .bind(body.bonus_rules.clone())
+    .bind(body.description.clone())
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2303,10 +2357,12 @@ async fn jixiao_type_update(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE).await?;
+    jixiao_reject_unknown_keys(&body)?;
     let id = path.into_inner();
     let n = sqlx::query(
         "UPDATE jixiao_types SET name = $2, metrics = COALESCE($3, metrics), base_pay = COALESCE($4, base_pay), \
-           min_requirements = COALESCE($5, min_requirements), bonus_rules = COALESCE($6, bonus_rules) WHERE id = $1",
+           min_requirements = COALESCE($5, min_requirements), bonus_rules = COALESCE($6, bonus_rules), \
+           description = COALESCE($7, description) WHERE id = $1",
     )
     .bind(id)
     .bind(body.name.trim())
@@ -2314,6 +2370,7 @@ async fn jixiao_type_update(
     .bind(body.base_pay)
     .bind(body.min_requirements.clone())
     .bind(body.bonus_rules.clone())
+    .bind(body.description.clone())
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
@@ -2363,6 +2420,225 @@ async fn jixiao_type_delete(
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
 
+// ============ 0106 绩效考核管理端补齐：批量分配 / 全站总览 / 发薪记录 ============
+
+#[derive(Deserialize)]
+struct JixiaoAssignBatchReq {
+    type_id: i64,
+    user_ids: Vec<i64>,
+    /// YYYY-MM；缺省当月（站点时区 UTC+8）
+    #[serde(default)]
+    period: Option<String>,
+}
+
+/// 批量分配考核岗位：给一个岗位一次登记多名用户（工作组口径：主管建组，逐个登记）。
+/// 逐用户校验 ensure_outranks（等级护栏）+ 基线快照（与单人分配同口径）；
+/// 单事务：任一用户失败整体回滚（管理员重试比半成功状态好排查）。
+#[post("/admin/jixiao/assign-batch")]
+async fn jixiao_assign_batch(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<JixiaoAssignBatchReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE).await?;
+    if body.user_ids.is_empty() || body.user_ids.len() > 200 {
+        return Err(DomainError::Validation("user_ids 需为 1~200 个".into()));
+    }
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM jixiao_types WHERE id = $1)")
+            .bind(body.type_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+    if !exists {
+        return Err(DomainError::NotFound(body.type_id));
+    }
+    let period = body.period.clone().unwrap_or_else(|| {
+        (chrono::Utc::now() + chrono::Duration::hours(8))
+            .format("%Y-%m")
+            .to_string()
+    });
+
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut assigned = Vec::new();
+    let mut skipped = Vec::new();
+    for &uid in &body.user_ids {
+        // 等级护栏：与单人分配同口径（操作者等级须严格高于目标）
+        // ensure_outranks 是 admin_http 的私有函数，这里用同语义直查
+        // （class_id 严格大于；查询失败按不越权处理交由错误传播）
+        let target_class: Option<i32> =
+            sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+                .bind(uid)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        let Some(target_class) = target_class else {
+            return Err(DomainError::NotFound(uid));
+        };
+        if auth.class_id <= target_class {
+            return Err(DomainError::Validation(format!(
+                "不能给等级不低于自己的用户（uid={uid}）分配考核"
+            )));
+        }
+        let dup: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND period = $3)",
+        )
+        .bind(uid)
+        .bind(body.type_id)
+        .bind(&period)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(true); // 查询失败按已存在处理，避免重复插入
+        if dup {
+            skipped.push(uid);
+            continue;
+        }
+        // 基线快照（与 /jixiao/me compute_metrics 的行级兜底同源）
+        sqlx::query(
+            "INSERT INTO jixiao_claims \
+                (user_id, type_id, period, amount, metrics_snapshot, base_seed_seconds, base_uploaded, base_uploads) \
+             SELECT $1, $2, $3, 0, '{\"source\":\"admin\"}'::jsonb, \
+                    COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = $1), 0)::bigint, \
+                    u.uploaded, \
+                    (SELECT count(*) FROM torrents tr WHERE tr.owner_id = $1 AND tr.approval_status = 1) \
+             FROM users u WHERE u.id = $1",
+        )
+        .bind(uid)
+        .bind(body.type_id)
+        .bind(&period)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        assigned.push(uid);
+    }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "jixiao.assign_batch", Some(body.type_id))
+        .await;
+    Ok(ok(serde_json::json!({
+        "period": period, "assigned": assigned, "skipped_dup": skipped,
+    })))
+}
+
+/// 全站考核总览（管理端）：按岗位聚合本期登记/达标/发薪情况，附成员明细。
+/// 现状指标实时算（结算前），结算后读 metrics_at_settle 快照。
+#[get("/admin/jixiao/overview")]
+async fn jixiao_overview(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let period = q
+        .get("period")
+        .cloned()
+        .unwrap_or_else(|| (chrono::Utc::now() + chrono::Duration::hours(8)).format("%Y-%m").to_string());
+
+    type Agg = (i64, String, i64, i64, i64, i64, i64, i64);
+    let rows: Vec<Agg> = sqlx::query_as(
+        "SELECT t.id, t.name, t.base_pay, count(c.id) FILTER (WHERE c.metrics_snapshot->>'source' = 'admin'), \
+                count(c.id) FILTER (WHERE c.status = 1), \
+                count(c.id) FILTER (WHERE c.status = 2), \
+                count(c.id) FILTER (WHERE c.status = 0 AND c.settled_at IS NULL), \
+                COALESCE(sum(c.amount) FILTER (WHERE c.status = 1), 0)::bigint \
+         FROM jixiao_types t \
+         LEFT JOIN jixiao_claims c ON c.type_id = t.id AND c.period = $1 \
+         GROUP BY t.id, t.name, t.base_pay ORDER BY t.id",
+    )
+    .bind(&period)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    // 成员明细（仅本期 admin 登记行；每岗位至多 50 行，够管理端下钻）
+    type Member = (i64, i64, String, i16, Option<i64>, Option<i64>, serde_json::Value);
+    let members: Vec<Member> = sqlx::query_as(
+        "SELECT c.type_id, c.user_id, u.username, c.status, c.amount, c.bonus_paid, \
+                COALESCE(c.metrics_at_settle, '{}'::jsonb) \
+         FROM jixiao_claims c JOIN users u ON u.id = c.user_id \
+         WHERE c.period = $1 AND c.metrics_snapshot->>'source' = 'admin' \
+         ORDER BY c.type_id, c.status, u.username LIMIT 500",
+    )
+    .bind(&period)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    let types: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|(id, name, base_pay, assigned, ok, failed, pending, total)| {
+            serde_json::json!({
+                "type_id": id, "name": name, "base_pay": base_pay,
+                "assigned": assigned, "qualified": ok, "failed": failed,
+                "pending": pending, "payroll_total": total,
+            })
+        })
+        .collect();
+    let members_json: Vec<serde_json::Value> = members
+        .iter()
+        .map(|(tid, uid, username, status, amount, bonus, snap)| {
+            serde_json::json!({
+                "type_id": tid, "user_id": uid, "username": username,
+                "status": status, "amount": amount, "bonus": bonus,
+                "metrics_at_settle": snap,
+            })
+        })
+        .collect();
+    Ok(ok(serde_json::json!({
+        "period": period, "types": types, "members": members_json,
+    })))
+}
+
+/// 发薪记录（管理端）：本期已发薪行（status=1），按发放时间倒序。
+#[get("/admin/jixiao/payroll")]
+async fn jixiao_payroll(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let period = q
+        .get("period")
+        .cloned()
+        .unwrap_or_else(|| (chrono::Utc::now() + chrono::Duration::hours(8)).format("%Y-%m").to_string());
+
+    type Row = (i64, i64, String, String, i64, i64, String, chrono::DateTime<chrono::Utc>);
+    let rows: Vec<Row> = sqlx::query_as(
+        "SELECT c.id, c.user_id, u.username, t.name, c.amount, c.bonus_paid, \
+                COALESCE(c.metrics_snapshot->>'settle_by', 'self') AS paid_by, c.settled_at \
+         FROM jixiao_claims c \
+         JOIN users u ON u.id = c.user_id JOIN jixiao_types t ON t.id = c.type_id \
+         WHERE c.period = $1 AND c.status = 1 \
+         ORDER BY c.settled_at DESC NULLS LAST LIMIT 200",
+    )
+    .bind(&period)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    let total: i64 = rows.iter().map(|r| r.4).sum();
+    let list: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|(id, uid, username, tname, amount, bonus, paid_by, at)| {
+            serde_json::json!({
+                "claim_id": id, "user_id": uid, "username": username,
+                "type_name": tname, "amount": amount, "bonus": bonus,
+                "paid_by": paid_by, "settled_at": at,
+            })
+        })
+        .collect();
+    Ok(ok(serde_json::json!({ "period": period, "total": total, "list": list })))
+}
+
 // ============ P3-14 任务定义 CRUD ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -2382,6 +2658,22 @@ struct TaskRow {
     auto_assign: bool,
     #[sqlx(default)]
     period: String,
+    // 以下 6 列为 0093 考核引擎字段，此前仅能改库、后台不可配（本次补齐）
+    /// 考核期限（天）：认领时间 + duration_days = 截止时间，由 /me/exams 实时计算
+    #[sqlx(default)]
+    duration_days: i32,
+    /// 副标题（列表展示用，如「注册后自动派发：做种满 120 小时即转正」）
+    #[sqlx(default)]
+    subtitle: Option<String>,
+    /// 非空 = 累计口径（基线视为 0，直接报现值；空则报增量）
+    #[sqlx(default)]
+    tier: Option<String>,
+    #[sqlx(default)]
+    fee: i64,
+    #[sqlx(default)]
+    quota_total: i32,
+    #[sqlx(default)]
+    sort: i32,
 }
 
 #[get("/admin/tasks")]
@@ -2392,8 +2684,9 @@ async fn tasks_list(
     let _auth = staff(&req, &state).await?;
     let rows: Vec<TaskRow> = sqlx::query_as(
         "SELECT id, name, metric, starts_at, ends_at, target_class, reward, penalty, claim_limit, \
-                kind, auto_assign, period \
-         FROM tasks ORDER BY id DESC",
+                kind, auto_assign, period, \
+                duration_days, subtitle, tier, fee, quota_total, sort \
+         FROM tasks ORDER BY sort, id DESC",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -2423,6 +2716,22 @@ struct TaskReq {
     auto_assign: Option<bool>,
     #[serde(default)]
     period: Option<String>,
+    // 考核内容 / 方式的可配字段（本次补齐，此前这些列只能改库）
+    /// 期限（天）：缺省沿用库内默认 30，不给则 UPSERT 用 COALESCE 保留原值
+    #[serde(default)]
+    duration_days: Option<i32>,
+    /// 副标题：可传空串以清空（前端「清空」用）
+    #[serde(default)]
+    subtitle: Option<String>,
+    /// 非空 = 累计口径；传空串清空
+    #[serde(default)]
+    tier: Option<String>,
+    #[serde(default)]
+    fee: Option<i64>,
+    #[serde(default)]
+    quota_total: Option<i32>,
+    #[serde(default)]
+    sort: Option<i32>,
 }
 
 #[post("/admin/tasks")]
@@ -2440,9 +2749,12 @@ async fn task_add(
     }
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO tasks (name, metric, starts_at, ends_at, target_class, reward, penalty, claim_limit, \
-                            kind, auto_assign, period) \
+                            kind, auto_assign, period, \
+                            duration_days, subtitle, tier, fee, quota_total, sort) \
          VALUES ($1, COALESCE($2, '{}'::jsonb), $3, $4, COALESCE($5, 0), COALESCE($6, 0), COALESCE($7, 0), $8, \
-                 COALESCE($9, 'task'), COALESCE($10, FALSE), COALESCE($11, 'once')) RETURNING id",
+                 COALESCE($9, 'task'), COALESCE($10, FALSE), COALESCE($11, 'once'), \
+                 COALESCE($12, 30), $13, $14, COALESCE($15, 0), COALESCE($16, 200), COALESCE($17, 0)) \
+         RETURNING id",
     )
     .bind(body.name.trim())
     .bind(body.metric.clone())
@@ -2455,6 +2767,12 @@ async fn task_add(
     .bind(body.kind.as_deref().map(str::trim).filter(|k| !k.is_empty()))
     .bind(body.auto_assign)
     .bind(body.period.as_deref().map(str::trim).filter(|p| !p.is_empty()))
+    .bind(body.duration_days)
+    .bind(body.subtitle.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(body.tier.as_deref().map(str::trim).filter(|t| !t.is_empty()))
+    .bind(body.fee)
+    .bind(body.quota_total)
+    .bind(body.sort)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2475,12 +2793,16 @@ async fn task_update(
     if body.ends_at <= body.starts_at {
         return Err(DomainError::Validation("结束时间需晚于开始".into()));
     }
+    // subtitle / tier 直赋（允许清空）：后台表单每次都提交完整对象，故传 None 即为清空意图
     let n = sqlx::query(
         "UPDATE tasks SET name = $2, metric = COALESCE($3, metric), starts_at = $4, ends_at = $5, \
            target_class = COALESCE($6, target_class), reward = COALESCE($7, reward), \
            penalty = COALESCE($8, penalty), claim_limit = $9, \
            kind = COALESCE($10, kind), auto_assign = COALESCE($11, auto_assign), \
-           period = COALESCE($12, period) WHERE id = $1",
+           period = COALESCE($12, period), \
+           duration_days = COALESCE($13, duration_days), subtitle = $14, tier = $15, \
+           fee = COALESCE($16, fee), quota_total = COALESCE($17, quota_total), sort = COALESCE($18, sort) \
+         WHERE id = $1",
     )
     .bind(id)
     .bind(body.name.trim())
@@ -2491,9 +2813,25 @@ async fn task_update(
     .bind(body.reward)
     .bind(body.penalty)
     .bind(body.claim_limit)
-    .bind(body.kind.as_deref().map(str::trim).filter(|k| !k.is_empty()))
+    .bind(
+        body.kind
+            .as_deref()
+            .map(str::trim)
+            .filter(|k| !k.is_empty()),
+    )
     .bind(body.auto_assign)
-    .bind(body.period.as_deref().map(str::trim).filter(|p| !p.is_empty()))
+    .bind(
+        body.period
+            .as_deref()
+            .map(str::trim)
+            .filter(|p| !p.is_empty()),
+    )
+    .bind(body.duration_days)
+    .bind(body.subtitle.clone())
+    .bind(body.tier.clone())
+    .bind(body.fee)
+    .bind(body.quota_total)
+    .bind(body.sort)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
@@ -2545,6 +2883,8 @@ struct ExamUserRow {
     claimed_at: chrono::DateTime<chrono::Utc>,
     settled_at: Option<chrono::DateTime<chrono::Utc>>,
     reward_paid: Option<i64>,
+    /// 0105 豁免标记：非空 = 暂不参与结算（对标 NP exam-users 的 avoid）
+    exempted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// 考核记录浏览：kind IN ('onboard','periodic') 的 task_claims，可按用户/任务/状态筛选
@@ -2558,7 +2898,8 @@ async fn exam_users(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE).await?;
     let rows: Vec<ExamUserRow> = sqlx::query_as(
         "SELECT c.id AS claim_id, t.id AS task_id, t.name AS task_name, t.kind, t.period, \
-                u.id AS user_id, u.username, c.status, c.claimed_at, c.settled_at, c.reward_paid \
+                u.id AS user_id, u.username, c.status, c.claimed_at, c.settled_at, c.reward_paid, \
+                c.exempted_at \
          FROM task_claims c \
          JOIN tasks t ON t.id = c.task_id \
          JOIN users u ON u.id = c.user_id \
@@ -2575,6 +2916,71 @@ async fn exam_users(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
+}
+
+/// 豁免（对标 NP exam-users 的 avoid）：暂不参与考核结算。
+/// 不改 status 枚举（0105）—— task_settle 只扫 status=0，标记列方案下
+/// 恢复后原记录自然回到结算流，无需状态迁移。
+#[post("/admin/exam-users/{claim_id}/exempt")]
+async fn exam_user_exempt(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE).await?;
+    let claim_id = path.into_inner();
+    let n = sqlx::query(
+        "UPDATE task_claims SET exempted_at = now(), exempted_by = $2 \
+         WHERE id = $1 AND status = 0 AND exempted_at IS NULL",
+    )
+    .bind(claim_id)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(claim_id));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "exam_user.exempt", Some(claim_id))
+        .await;
+    Ok(ok(
+        serde_json::json!({ "claim_id": claim_id, "exempted": true }),
+    ))
+}
+
+/// 恢复（对标 NP exam-users 的 recover）：取消豁免，记录回到结算流。
+#[post("/admin/exam-users/{claim_id}/recover")]
+async fn exam_user_recover(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE).await?;
+    let claim_id = path.into_inner();
+    let n = sqlx::query(
+        "UPDATE task_claims SET exempted_at = NULL, exempted_by = NULL \
+         WHERE id = $1 AND exempted_at IS NOT NULL",
+    )
+    .bind(claim_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(claim_id));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "exam_user.recover", Some(claim_id))
+        .await;
+    Ok(ok(
+        serde_json::json!({ "claim_id": claim_id, "exempted": false }),
+    ))
 }
 
 // ============ P3-16 Tracker URL 管理 ============
@@ -3163,8 +3569,19 @@ async fn increment_bulk(
             }
             "uploaded" => {
                 let bytes = body.amount * 1024 * 1024 * 1024;
+                // 审计修复（P0 错账，与 /admin/amountupload 同病）：uploaded 权威在
+                // traffic_ledger，reconcile 会重算 users.uploaded=sum(ledger)，裸 UPDATE
+                // 的手工加量会被对账静默清零。此处同步落差额流水。
                 affected += sqlx::query(
-                    "UPDATE users SET uploaded = GREATEST(0, uploaded + $2) WHERE id = ANY($1)",
+                    "WITH targets AS ( \
+                        SELECT id, uploaded FROM users WHERE id = ANY($1) FOR UPDATE \
+                     ), upd AS ( \
+                        UPDATE users u SET uploaded = GREATEST(0, u.uploaded + $2) \
+                        FROM targets t WHERE u.id = t.id \
+                        RETURNING u.id, GREATEST(0, t.uploaded + $2) - t.uploaded AS delta \
+                     ) \
+                     INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, delta_down, window_start) \
+                     SELECT nextval('traffic_ledger_id_seq'), id, 0, delta, 0, now() FROM upd WHERE delta <> 0",
                 )
                 .bind(chunk)
                 .bind(bytes)
@@ -3335,11 +3752,17 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(jixiao_type_add)
         .service(jixiao_type_update)
         .service(jixiao_type_delete)
+        // 0106 绩效考核管理端补齐
+        .service(jixiao_assign_batch)
+        .service(jixiao_overview)
+        .service(jixiao_payroll)
         .service(tasks_list)
         .service(task_add)
         .service(task_update)
         .service(task_delete)
         .service(exam_users)
+        .service(exam_user_exempt)
+        .service(exam_user_recover)
         .service(tracker_urls_list)
         .service(tracker_url_add)
         .service(tracker_url_update)
@@ -3378,7 +3801,13 @@ async fn admin_backups_list(
     }
     files.sort();
     files.reverse();
-    Ok(ok(serde_json::json!({ "dir": dir, "files": files })))
+    // 恢复 runbook 提示（审计修复 P2：备份有备份无恢复）：恢复是高危整库替换操作，
+    // 不开 HTTP 端点（防误触/防越权），指引走 scripts/restore.sh 的 drill→force 两段流程。
+    Ok(ok(serde_json::json!({
+        "dir": dir,
+        "files": files,
+        "restore_runbook": "scripts/restore.sh <dump> --drill  # 先临时库校验；确认后 --force 整库恢复（自动做安全备份）",
+    })))
 }
 
 /// ① 触发即时备份（同步执行 pg_dump；万级种子约秒级，可接受）
@@ -3409,11 +3838,9 @@ async fn admin_backup_run(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     if !st.status.success() {
-        return Err(DomainError::Internal(anyhow::anyhow!(
-            "pg_dump 失败: {}",
-            String::from_utf8_lossy(&st.stderr)
-        )
-        .into()));
+        return Err(DomainError::Internal(
+            anyhow::anyhow!("pg_dump 失败: {}", String::from_utf8_lossy(&st.stderr)).into(),
+        ));
     }
     let n = st.stdout.len() as u64;
     tokio::fs::write(&out, &st.stdout)

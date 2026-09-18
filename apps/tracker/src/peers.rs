@@ -102,8 +102,17 @@ impl PeerTable {
         let mut n = 0;
         for (_ih, peers) in snap {
             for p in peers {
-                let ttl = if p.left == 0 { SEEDER_TIMEOUT } else { PEER_TIMEOUT };
-                if now.signed_duration_since(p.last_seen).to_std().unwrap_or_default() < ttl {
+                let ttl = if p.left == 0 {
+                    SEEDER_TIMEOUT
+                } else {
+                    PEER_TIMEOUT
+                };
+                if now
+                    .signed_duration_since(p.last_seen)
+                    .to_std()
+                    .unwrap_or_default()
+                    < ttl
+                {
                     self.upsert(p);
                     n += 1;
                 }

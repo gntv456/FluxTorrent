@@ -34,6 +34,12 @@ pub fn mount_ops(scope: actix_web::Scope) -> actix_web::Scope {
 }
 
 // ============ M21 绩效考核 ============
+//
+// 0106 重做（参考各 PT 站工作组考核口径）：
+//   岗位（底薪 + min_requirements 指标）→ 管理组分配成员（admin 登记行）
+//   → 周期（月）考核 → 达标判薪（worker 月末自动结算 + 用户 7 天补领窗口）
+//   → 连续达标加成（每 N 达标月 +P%，N/P 走 site_settings，不再硬编码）
+// 判定只认 min_requirements；metrics 字段仅作展示参考。
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct JixiaoTypeRow {
@@ -42,17 +48,113 @@ struct JixiaoTypeRow {
     base_pay: i64,
     metrics: serde_json::Value,
     min_requirements: serde_json::Value,
+    #[sqlx(default)]
+    description: String,
+}
+
+/// 绩效指标键白名单（防死键：旧实现 seed_days/seed_hours/seed_size_tb 全是
+/// compute_metrics 不产出的死键，配了 required 永远不达标）。
+/// 与 compute_metrics 产出的 key 一一对应，admin 建岗时校验。
+/// 键集对齐 NP Exam 指标口径（上传/下载/平均做种/魔力/做种积分/发布/体积/操作）。
+pub const JIXIAO_METRIC_KEYS: &[&str] = &[
+    "uploaded",           // 上传增量（字节，当月 traffic_ledger 聚合）
+    "downloaded",         // 下载增量（字节）
+    "uploads",            // 发种增量（当月新发布数）
+    "seeding_count",      // 当前做种种子数（现值口径）
+    "seed_size",          // 当前做种体积（字节，现值口径）
+    "seed_size_tb",       // 当前做种体积（TB，现值口径）
+    "seed_hours",         // 当月做种时长（小时，基线差值）
+    "avg_seed_hours",     // 平均做种时长（小时/个：时长差值 ÷ 期内活跃种子数，NP 平均做种口径）
+    "seed_days",          // 当月有做种活动的天数（近似：snatches.last_seen_at 按天去重）
+    "seed_points_delta",  // 做种积分增量（1 积分 = 1 小时做种，与 exam 引擎 task_jobs 同源口径）
+    "spark_delta",        // 火花增量（当月 spark_ledger 正向流水合计）
+    "ops",                // 当月操作数（audit_log 按月）
+];
+
+/// 校验 min_requirements / metrics 里的键是否全部认识；返回首个未知键。
+pub fn jixiao_unknown_metric_key(v: &serde_json::Value) -> Option<String> {
+    v.as_object()?
+        .keys()
+        .find(|k| !JIXIAO_METRIC_KEYS.contains(&k.as_str()))
+        .cloned()
+}
+
+/// 上一期 period（"2026-09" → "2026-08"；站点时区 UTC+8 不影响 YYYY-MM 纯字符串回退）
+pub fn jixiao_prev_period(period: &str) -> Option<String> {
+    let (y, m): (i32, u32) = {
+        let mut it = period.split('-');
+        let y = it.next()?.parse().ok()?;
+        let m = it.next()?.parse().ok()?;
+        (y, m)
+    };
+    if !(1..=12).contains(&m) {
+        return None;
+    }
+    Some(if m == 1 {
+        format!("{:04}-12", y - 1)
+    } else {
+        format!("{y:04}-{:02}", m - 1)
+    })
 }
 
 #[get("/jixiao/types")]
 async fn jixiao_types(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
     let rows = sqlx::query_as::<_, JixiaoTypeRow>(
-        "SELECT id, name, base_pay, metrics, min_requirements FROM jixiao_types ORDER BY id",
+        "SELECT id, name, base_pay, metrics, min_requirements, description FROM jixiao_types ORDER BY id",
     )
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
+}
+
+/// 读取整数型站点设置（缺省取 dft）
+async fn jixiao_setting_i64(db: &sqlx::PgPool, name: &str, dft: i64) -> i64 {
+    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
+        .bind(name)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(dft)
+}
+
+/// 达标加成：每 N 个达标月 +P%。
+/// **岗位级优先（0106 补丁）**：jixiao_types.bonus_rules 存了
+/// `{months_per_step, percent_per_step}`（admin 表单「每 N 月 +M%」）——有值按岗位算；
+/// 缺省/字段非法回落全站 site_settings（jixiao_bonus_months_per_step / _percent_per_step）。
+pub async fn jixiao_bonus(
+    db: &sqlx::PgPool,
+    type_id: i64,
+    base_pay: i64,
+    qualified_months: i64,
+) -> i64 {
+    // 岗位级配置（表单写入；旧数据 bonus_rules='{}' 视为未配置）
+    let rules: Option<serde_json::Value> = sqlx::query_scalar(
+        "SELECT bonus_rules FROM jixiao_types WHERE id = $1",
+    )
+    .bind(type_id)
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten();
+    let (step, pct) = match rules
+        .as_ref()
+        .and_then(|r| r.as_object())
+        .map(|r| {
+            (
+                r.get("months_per_step").and_then(|v| v.as_i64()),
+                r.get("percent_per_step").and_then(|v| v.as_i64()),
+            )
+        }) {
+        Some((Some(step), Some(pct))) if step > 0 && pct >= 0 => (step, pct),
+        _ => (
+            jixiao_setting_i64(db, "jixiao_bonus_months_per_step", 3).await.max(1),
+            jixiao_setting_i64(db, "jixiao_bonus_percent_per_step", 10).await,
+        ),
+    };
+    base_pay * pct / 100 * (qualified_months / step)
 }
 
 /// 我的绩效考核总览（NP jixiao.php 口径）：分配给我的岗位 + 本期实时指标 vs 要求 + 达标状态。
@@ -63,43 +165,75 @@ async fn jixiao_me(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let period = chrono::Utc::now().format("%Y-%m").to_string();
+    // 站点时区（UTC+8）取期号——与 admin 分配/worker 结算的期号口径一致
+    let period = (chrono::Utc::now() + chrono::Duration::hours(8))
+        .format("%Y-%m")
+        .to_string();
+    // 补领：上一期（跨月后窗口天内）未结算的登记行也返回（前端给「补领」按钮）
+    let prev_period = jixiao_prev_period(&period);
+    let days_into_month = {
+        let now_site = chrono::Utc::now() + chrono::Duration::hours(8);
+        now_site.format("%d").to_string().parse::<i64>().unwrap_or(99)
+    };
+    let window = jixiao_setting_i64(&state.repo.db, "jixiao_claim_window_days", 7).await;
+    let claimable_prev = days_into_month <= window;
 
     // admin 分配行 = 本月岗位登记（source='admin'）；工资领取行 source 为空
-    let assigned: Vec<(i64, String, i64, serde_json::Value, serde_json::Value)> = sqlx::query_as(
-        "SELECT DISTINCT t.id, t.name, t.base_pay, t.metrics, t.min_requirements \
-         FROM jixiao_claims c JOIN jixiao_types t ON t.id = c.type_id \
-         WHERE c.user_id = $1 AND c.period = $2 AND c.metrics_snapshot->>'source' = 'admin'",
-    )
+    let assigned: Vec<(i64, String, String, i64, serde_json::Value, serde_json::Value, i16, i64)> =
+        sqlx::query_as(
+            "SELECT t.id, t.name, c.period, t.base_pay, t.metrics, t.min_requirements, c.status, \
+                    (SELECT count(*) FROM jixiao_claims c2 \
+                     WHERE c2.user_id = c.user_id AND c2.type_id = t.id \
+                       AND c2.settled_at IS NOT NULL AND c2.status = 1) \
+             FROM jixiao_claims c JOIN jixiao_types t ON t.id = c.type_id \
+             WHERE c.user_id = $1 AND c.metrics_snapshot->>'source' = 'admin' \
+               AND (c.period = $2 OR ($3 AND c.period = $4 AND c.settled_at IS NULL AND c.status = 0))",
+        )
     .bind(auth.id)
     .bind(&period)
+    .bind(claimable_prev)
+    .bind(prev_period.clone().unwrap_or_default())
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     let metrics = compute_metrics(&state.repo.db, auth.id, &period).await?;
+    // 上期补领行的指标要按上期算（窗口内通常与本期差异很小，但口径必须对）
+    let prev_metrics = if claimable_prev && prev_period.is_some() {
+        compute_metrics(&state.repo.db, auth.id, prev_period.as_deref().unwrap()).await?
+    } else {
+        serde_json::Value::Null
+    };
+    // 单行设计（0106）：本期已发放 = 登记行 settled_at 非空（worker 结算或本人补领）
     let claimed: Vec<i64> = sqlx::query_scalar(
         "SELECT type_id FROM jixiao_claims \
-         WHERE user_id = $1 AND period = $2 AND NOT (metrics_snapshot->>'source' = 'admin')",
+         WHERE user_id = $1 AND period = $2 AND settled_at IS NOT NULL",
     )
     .bind(auth.id)
     .bind(&period)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 达标月数（每 3 个月 +10% 加成的分子）
+    // 达标月数（加成的分子：历史 status=1 的已发薪期数）
     let qualified: Vec<(i64, i64)> = sqlx::query_as(
         "SELECT type_id, count(*) FROM jixiao_claims \
-         WHERE user_id = $1 AND NOT (metrics_snapshot->>'source' = 'admin') GROUP BY type_id",
+         WHERE user_id = $1 AND status = 1 GROUP BY type_id",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    let items: Vec<serde_json::Value> = assigned
-        .iter()
-        .map(|(id, name, base_pay, min_reqs, _m)| {
+    let claim_window = window;
+    let items: Vec<serde_json::Value> = futures_util::future::join_all(
+        assigned.iter().map(|(id, name, row_period, base_pay, _m, min_reqs, status, settled_months)| {
+            let metrics = if row_period == &period { metrics.clone() } else { prev_metrics.clone() };
+            let qualified = &qualified;
+            let claimed = &claimed;
+            let row_period = row_period.clone();
+            let is_current = row_period == period;
+            let db = &state.repo.db;
+            async move {
             // 逐指标比对：current vs required + 是否达标
             let checks: Vec<serde_json::Value> = min_reqs
                 .as_object()
@@ -118,53 +252,121 @@ async fn jixiao_me(
                 })
                 .unwrap_or_default();
             let all_ok = checks.iter().all(|c| c["ok"].as_bool().unwrap_or(false));
-            let months = qualified
-                .iter()
-                .find(|(tid, _)| tid == id)
-                .map(|(_, n)| *n)
-                .unwrap_or(0);
-            let bonus = base_pay / 10 * (months / 3);
+            let months = (*settled_months).max(
+                qualified
+                    .iter()
+                    .find(|(tid, _)| tid == id)
+                    .map(|(_, n)| *n)
+                    .unwrap_or(0),
+            );
+            let bonus = jixiao_bonus(db, *id, *base_pay, months).await;
             serde_json::json!({
                 "type_id": id, "name": name, "base_pay": base_pay,
+                "period": row_period,
+                // 上期补领行：本期 claimed 列表不含它（按期号查），永远 false 由 claimable 表达
+                "claimable_prev": !is_current,
                 "min_requirements": min_reqs,
                 "checks": checks, "all_ok": all_ok,
                 "qualified_months": months, "bonus": bonus,
                 "total": base_pay + bonus,
-                "claimed": claimed.contains(id),
+                "claimed": is_current && claimed.contains(id),
+                "status": status,
             })
-        })
-        .collect();
+            }
+        }),
+    )
+    .await;
     Ok(ok(serde_json::json!({
         "period": period,
         "metrics": metrics,
+        // 月末自动结算 + 补领窗口提示（前端展示用）
+        "claim_window_days": claim_window,
         "assigned": items,
     })))
 }
 
-/// 指标采集：全部来自系统流水（announce 统计/保种表/操作日志），零手工填报（M21 验收）
-async fn compute_metrics(
+/// 指标采集：全部来自系统流水（announce 统计/保种表/操作日志），零手工填报（M21 验收）。
+///
+/// 0106 口径：
+///   做种时长类用「月度基线快照差值」（jixiao_baseline_snapshots，主口径；
+///   快照缺失时用 jixiao_claims 行级 base_* 兜底——admin 分配时记的当刻累计值）
+///   现值类（seeding_count/seed_size/seed_size_tb）不参与差值
+///   ops 修复为按月过滤（旧实现是全历史计数，口径不符）
+pub async fn compute_metrics(
     db: &sqlx::PgPool,
     user_id: i64,
     period: &str, // "2026-09"
 ) -> DomainResult<serde_json::Value> {
-    let record: Option<(i64, i64, i64, i64)> = sqlx::query_as(
-        "SELECT \
-            COALESCE(sum(delta_up),0)::bigint, COALESCE(sum(delta_down),0)::bigint, \
-            COALESCE((SELECT count(DISTINCT torrent_id) FROM snatches WHERE user_id = $1 AND seeding),0)::bigint, \
-            COALESCE((SELECT count(*) FROM audit_log WHERE actor_id = $1),0)::bigint \
+    // ── 期初基线：月度快照优先，缺则行级 base_*（admin 分配时记），再缺则 0 ──
+    // 只需做种时长基线（seed_hours 差值）；流量/发布数直接按 traffic_ledger/torrents
+    // 的当月聚合，不依赖基线。
+    let prev = jixiao_prev_period(period);
+    let mut base_seed: Option<i64> = None;
+    if let Some(p) = &prev {
+        base_seed = sqlx::query_scalar(
+            "SELECT seed_seconds FROM jixiao_baseline_snapshots \
+             WHERE user_id = $1 AND period = $2",
+        )
+        .bind(user_id)
+        .bind(p)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten();
+    }
+    let base_seed: i64 = match base_seed {
+        Some(v) => v,
+        None => sqlx::query_scalar(
+            "SELECT base_seed_seconds FROM jixiao_claims \
+             WHERE user_id = $1 AND period = $2 AND metrics_snapshot->>'source' = 'admin' \
+             ORDER BY id LIMIT 1",
+        )
+        .bind(user_id)
+        .bind(period)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten()
+        .unwrap_or(0),
+    };
+
+    // ── 当月流量（traffic_ledger 按小时窗，月度聚合；基线差值口径对齐） ──
+    let (up_month, down_month): (i64, i64) = sqlx::query_as(
+        "SELECT COALESCE(sum(delta_up),0)::bigint, COALESCE(sum(delta_down),0)::bigint \
          FROM traffic_ledger WHERE user_id = $1 AND to_char(window_start, 'YYYY-MM') = $2",
     )
     .bind(user_id)
     .bind(period)
     .fetch_optional(db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let (up, down, seeding_count, ops) = record.unwrap_or((0, 0, 0, 0));
-    let uploads: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM torrents WHERE owner_id = $1 AND to_char(created_at, 'YYYY-MM') = $2",
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or((0, 0));
+
+    // ── 做种时长：现值 - 期初基线（snatches.seeded_seconds 是 int，显式 ::bigint） ──
+    let seed_seconds_now: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(sum(seeded_seconds), 0)::bigint FROM snatches WHERE user_id = $1",
+    )
+    .bind(user_id)
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+    let seed_hours = ((seed_seconds_now - base_seed).max(0)) / 3600;
+
+    // ── 当月做种活动天数（近似）：snatches.last_seen_at 按天去重 ──
+    let seed_days: i64 = sqlx::query_scalar(
+        "SELECT count(DISTINCT date_trunc('day', s.last_seen_at)) FROM snatches s \
+         WHERE s.user_id = $1 AND to_char(s.last_seen_at, 'YYYY-MM') = $2 AND s.seeding",
     )
     .bind(user_id)
     .bind(period)
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+
+    let seeding_count: i64 = sqlx::query_scalar(
+        "SELECT count(DISTINCT torrent_id) FROM snatches WHERE user_id = $1 AND seeding",
+    )
+    .bind(user_id)
     .fetch_one(db)
     .await
     .unwrap_or(0);
@@ -176,17 +378,80 @@ async fn compute_metrics(
     .fetch_one(db)
     .await
     .unwrap_or(0);
+    let uploads: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM torrents WHERE owner_id = $1 AND to_char(created_at, 'YYYY-MM') = $2",
+    )
+    .bind(user_id)
+    .bind(period)
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+    // ops 修复：按月过滤（旧实现全历史计数，与「当月操作数」考核口径不符）
+    let ops: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM audit_log WHERE actor_id = $1 AND to_char(created_at, 'YYYY-MM') = $2",
+    )
+    .bind(user_id)
+    .bind(period)
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+
+    // 平均做种时长（NP Exam 口径）：时长差值 ÷ 期内有做种活动的种子数（无则 1）
+    let active_seed_torrents: i64 = sqlx::query_scalar(
+        "SELECT count(DISTINCT torrent_id) FROM snatches \
+         WHERE user_id = $1 AND to_char(last_seen_at, 'YYYY-MM') = $2 AND seeding",
+    )
+    .bind(user_id)
+    .bind(period)
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+    let avg_seed_hours = seed_hours / active_seed_torrents.max(1);
+
+    // 火花增量（当月正向流水合计）与做种积分增量（1 积分 = 1 小时，与 exam 引擎同源）
+    let spark_delta: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(sum(amount),0)::bigint FROM spark_ledger \
+         WHERE user_id = $1 AND amount > 0 AND to_char(created_at, 'YYYY-MM') = $2",
+    )
+    .bind(user_id)
+    .bind(period)
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
     Ok(serde_json::json!({
-        "uploaded": up, "downloaded": down, "uploads": uploads,
-        "seeding_count": seeding_count, "seed_size": seed_size, "ops": ops,
+        "uploaded": up_month, "downloaded": down_month, "uploads": uploads,
+        "seeding_count": seeding_count, "seed_size": seed_size,
+        "seed_size_tb": seed_size / 1_099_511_627_776, // 1 TB = 2^40
+        "seed_hours": seed_hours, "seed_days": seed_days, "ops": ops,
+        "avg_seed_hours": avg_seed_hours,
+        "seed_points_delta": seed_hours, // 1 积分 = 1 小时做种（task_jobs.rs P1-6 口径）
+        "spark_delta": spark_delta,
     }))
 }
 
 #[derive(Deserialize)]
 struct ClaimReq {
     type_id: i64,
+    /// YYYY-MM；缺省当月。允许上一期（月末结算后补领窗口内）
     #[serde(default)]
     period: Option<String>,
+}
+
+/// 站点时区（UTC+8）下的今天与 period 月末之间的天数差（正数 = period 已结束 N 天）
+fn days_after_period_end(period: &str) -> i64 {
+    let (y, m): (i32, u32) = {
+        let mut it = period.split('-');
+        let y = it.next().and_then(|v| v.parse().ok()).unwrap_or(2026);
+        let m = it.next().and_then(|v| v.parse().ok()).unwrap_or(1);
+        (y, m)
+    };
+    let (ny, nm) = if m == 12 { (y + 1, 1) } else { (y, m + 1) };
+    use chrono::TimeZone;
+    let month_end = chrono::FixedOffset::east_opt(8 * 3600)
+        .and_then(|tz| tz.with_ymd_and_hms(ny, nm, 1, 0, 0, 0).single())
+        .unwrap_or_else(|| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap()));
+    let now_cst = chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap());
+    (now_cst - month_end).num_days()
 }
 
 #[post("/jixiao/claim")]
@@ -196,10 +461,25 @@ async fn jixiao_claim(
     body: web::Json<ClaimReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let period = body
-        .period
-        .clone()
-        .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m").to_string());
+    let now_period = chrono::Utc::now().format("%Y-%m").to_string();
+    let period = body.period.clone().unwrap_or(now_period.clone());
+
+    // 补领窗口：只能领当月或上月（且上月必须在窗口期内；月末已自动结算过的不可再领）
+    if period != now_period {
+        if Some(period.clone()) != jixiao_prev_period(&now_period) {
+            return Err(DomainError::Validation("只能领取本期或上一期的绩效工资".into()));
+        }
+        let window = jixiao_setting_i64(&state.repo.db, "jixiao_claim_window_days", 7).await;
+        let elapsed = days_after_period_end(&period);
+        if elapsed < 0 {
+            return Err(DomainError::Validation("该期尚未结束".into()));
+        }
+        if elapsed > window {
+            return Err(DomainError::Validation(format!(
+                "补领窗口（{window} 天）已过"
+            )));
+        }
+    }
 
     // 审计修复（P0 无上限铸币）：考核工资必须由 admin 经 /admin/users/{id}/jixiao
     // 分配岗位后才能领取。旧逻辑任何登录用户可自选任意 type_id 领取（min_requirements
@@ -217,13 +497,16 @@ async fn jixiao_claim(
     .unwrap_or(false);
     if !assigned {
         return Err(DomainError::Validation(
-            "本月管理组尚未为你分配该考核岗位，无法领取".into(),
+            "该期管理组尚未为你分配此考核岗位，无法领取".into(),
         ));
     }
 
-    // 幂等：本期已领（UNIQUE 约束兜底 + 先查友好报错）
+    // 幂等：本期已结算（登记行已推进到 status=1）不可再领；
+    // worker 月末自动结算与本人补领是**同一行**的 CAS 互斥（0106 单行设计）
     let claimed: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND period = $3 AND NOT (metrics_snapshot->>'source' = 'admin'))",
+        "SELECT EXISTS(SELECT 1 FROM jixiao_claims \
+         WHERE user_id = $1 AND type_id = $2 AND period = $3 \
+           AND metrics_snapshot->>'source' = 'admin' AND settled_at IS NOT NULL)",
     )
     .bind(auth.id)
     .bind(body.type_id)
@@ -232,7 +515,7 @@ async fn jixiao_claim(
     .await
     .unwrap_or(false);
     if claimed {
-        return Err(DomainError::Validation("本期已领取过工资".into()));
+        return Err(DomainError::Validation("本期工资已发放（自动结算或本人领取）".into()));
     }
 
     let t: Option<(String, i64, serde_json::Value, serde_json::Value)> = sqlx::query_as(
@@ -248,9 +531,8 @@ async fn jixiao_claim(
 
     let metrics = compute_metrics(&state.repo.db, auth.id, &period).await?;
     // 最低要求线校验（低于要求不发基本工资 —— 旧站口径）
-    let m = &metrics;
     for (key, min) in min_reqs.as_object().unwrap_or(&serde_json::Map::new()) {
-        let actual = m.get(key).and_then(|v| v.as_i64()).unwrap_or(0);
+        let actual = metrics.get(key).and_then(|v| v.as_i64()).unwrap_or(0);
         let required = min.as_i64().unwrap_or(0);
         if required > 0 && actual < required {
             return Err(DomainError::Validation(format!(
@@ -258,38 +540,47 @@ async fn jixiao_claim(
             )));
         }
     }
-    // 达标月数加成：每累计 3 个达标月 +10%
+    // 达标月数加成：每累计 N 个达标月 +P%（配置化，旧实现硬编码 /10*(m/3)）
+    // 达标月数（**含本期**：历史 status=1 行数 + 1，本期达标正在领取）。
+    // worker 结算侧同口径（months_before + 1）——首月即计入加成档位。
     let qualified_months: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND NOT (metrics_snapshot->>'source' = 'admin')",
+        "SELECT count(*) FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND status = 1",
     )
     .bind(auth.id)
     .bind(body.type_id)
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(0);
-    let bonus = base_pay / 10 * (qualified_months / 3);
+    .unwrap_or(0)
+        + 1;
+    let bonus = jixiao_bonus(&state.repo.db, body.type_id, base_pay, qualified_months).await;
     let total = base_pay + bonus;
 
+    // 单行设计（0106 修正）：登记与发放是同一行的状态流转——
+    // UNIQUE(user_id, type_id, period) 下不可能同时存在 admin 登记行和用户领取行，
+    // 旧实现「登记行 + 再 INSERT 领取行」必然撞唯一约束（表现为永远「本期已领取过工资」）。
+    // 领取 = 把登记行 CAS 推进到 status=1（与 worker 结算同一互斥口径）。
     let claim_id: i64 = sqlx::query_scalar(
-        "INSERT INTO jixiao_claims (user_id, type_id, period, amount, metrics_snapshot) \
-         VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        "UPDATE jixiao_claims SET status = 1, settled_at = now(), amount = $3, bonus_paid = $4, \
+                metrics_at_settle = $5, \
+                metrics_snapshot = metrics_snapshot || '{\"settle_by\":\"self\"}'::jsonb \
+         WHERE user_id = $1 AND type_id = $2 AND period = $6 \
+           AND metrics_snapshot->>'source' = 'admin' AND settled_at IS NULL AND status = 0 \
+         RETURNING id",
     )
     .bind(auth.id)
     .bind(body.type_id)
-    .bind(&period)
     .bind(total)
+    .bind(bonus)
     .bind(metrics.clone())
-    .fetch_one(&state.repo.db)
+    .bind(&period)
+    .fetch_optional(&state.repo.db)
     .await
-    .map_err(|e| match e {
-        sqlx::Error::Database(db) if db.is_unique_violation() => {
-            DomainError::Validation("本期已领取过工资".into())
-        }
-        other => DomainError::Internal(other.into()),
-    })?;
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .ok_or_else(|| DomainError::Validation("本期已领取过工资或已由系统结算".into()))?;
 
     let idem = format!("jixiao:{}:{}", claim_id, period);
-    earn_spark(&state.repo.db, auth.id, total, "task_reward", &idem).await?;
+    // kind 修正：旧实现误复用 task_reward（报表与任务奖励混同）
+    earn_spark(&state.repo.db, auth.id, total, "jixiao_reward", &idem).await?;
     state
         .repo
         .audit(Some(auth.id), "jixiao_claim", Some(claim_id))
@@ -305,6 +596,13 @@ struct ClaimRow {
     type_name: String,
     period: String,
     amount: i64,
+    #[serde(default)]
+    bonus_paid: i64,
+    #[serde(default)]
+    status: i16,
+    /// 发放来源：worker=月末自动结算 / self=本人领取（展示「自动发放/手动领取」）
+    #[sqlx(default)]
+    source: Option<String>,
     claimed_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -315,9 +613,11 @@ async fn jixiao_my(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows = sqlx::query_as::<_, ClaimRow>(
-        "SELECT c.id, t.name AS type_name, c.period, c.amount, c.claimed_at \
+        "SELECT c.id, t.name AS type_name, c.period, c.amount, c.bonus_paid, c.status, \
+                c.metrics_snapshot->>'settle_by' AS source, c.claimed_at \
          FROM jixiao_claims c JOIN jixiao_types t ON t.id = c.type_id \
-         WHERE c.user_id = $1 AND NOT (c.metrics_snapshot->>'source' = 'admin') ORDER BY c.id DESC LIMIT 20",
+         WHERE c.user_id = $1 AND c.status = 1 \
+         ORDER BY c.settled_at DESC NULLS LAST, c.id DESC LIMIT 20",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)
@@ -549,12 +849,11 @@ async fn task_claim(
         return Err(DomainError::Validation("该任务已停止领取".into()));
     }
     // 目标等级门槛（此前缺失校验：低等级可领高等级任务）
-    let user_class: Option<i32> =
-        sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
-            .bind(auth.id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let user_class: Option<i32> = sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(user_class) = user_class else {
         return Err(DomainError::NotFound(auth.id));
     };
@@ -574,7 +873,9 @@ async fn task_claim(
         .as_object()
         .is_some_and(|o| KNOWN_METRIC_KEYS.iter().any(|k| o.contains_key(*k)));
     if !has_target {
-        return Err(DomainError::Validation("任务指标配置无效，暂不可领取".into()));
+        return Err(DomainError::Validation(
+            "任务指标配置无效，暂不可领取".into(),
+        ));
     }
 
     // 原子占位：名额校验与插入同语句（此前 count+INSERT 两步存在并发超领窗口）
@@ -765,7 +1066,6 @@ struct PreserveRow {
 }
 
 #[derive(Deserialize)]
-#[allow(dead_code)] // 兼容前端传入、后端暂未消费的筛选参数
 struct PreserveQuery {
     /// scope: all/official/general；status: current/active/grace/expired
     #[serde(default)]
@@ -793,6 +1093,30 @@ async fn preserve_list(
         .as_deref()
         .map(|k| crate::http::like_pattern(&k))
         .unwrap_or_else(|| "%".into());
+    // 审计修复（P1）：scope/status 筛选此前声明即弃（#[allow(dead_code)]），前端表单
+    // 提交被静默忽略。接线：scope=official/general 过滤官种位；status 按认领/延续
+    // 状态过滤（current=全部在保、active=已被认领延续、grace=移出宽限中、expired=已移出）。
+    let scope_ok = matches!(q.scope.as_deref(), Some("official") | Some("general"));
+    let official_only = q.scope.as_deref() == Some("official");
+    let general_only = q.scope.as_deref() == Some("general");
+    // status=expired 需要查已移出行——主查询固定 exited_at IS NULL，expired 单独走分支
+    if q.status.as_deref() == Some("expired") {
+        let rows: Vec<(i64, String, i64)> = sqlx::query_as(
+            "SELECT sp.torrent_id, t.name, t.size FROM seed_preserve sp \
+             JOIN torrents t ON t.id = sp.torrent_id \
+             WHERE sp.exited_at IS NOT NULL \
+               AND (NOT $1::bool OR t.official_tag) \
+               AND (NOT $2::bool OR NOT t.official_tag) \
+             ORDER BY sp.exited_at DESC LIMIT 50",
+        )
+        .bind(official_only)
+        .bind(general_only)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        return Ok(ok(rows));
+    }
+    let _ = scope_ok;
 
     let rows = sqlx::query_as::<_, PreserveRow>(
         "SELECT sp.torrent_id, t.name, t.size, t.seeders, u.username AS claimed_by, \
@@ -826,6 +1150,9 @@ async fn preserve_list(
          LEFT JOIN users u ON u.id = sp.claimed_by \
          LEFT JOIN users o ON o.id = t.owner_id \
          WHERE sp.exited_at IS NULL AND t.approval_status = 1 \
+           AND (NOT $5::bool OR t.official_tag) \
+           AND (NOT $6::bool OR NOT t.official_tag) \
+           AND (NOT $7::bool OR sp.claimed_by IS NOT NULL) \
            AND ($1::int IS NULL OR t.category_id = $1) \
            AND t.name ILIKE $2 \
          ORDER BY t.seeders ASC, sp.torrent_id LIMIT $3 OFFSET $4",
@@ -834,6 +1161,9 @@ async fn preserve_list(
     .bind(kw)
     .bind(per)
     .bind(page * per)
+    .bind(official_only)
+    .bind(general_only)
+    .bind(q.status.as_deref() == Some("active"))
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -943,13 +1273,18 @@ async fn resurrection_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?; // 登录可见（未过审不可见由 approval_status 保证）
+                                                   // 审计修复（P2）：旧版 ORDER BY t.created_at ASC 恒取最老的 50 条——新死种永远
+                                                   // 排不进列表（30 天活动排除口径下“最老”几乎全是无人问津的陈种）。改为按
+                                                   // “最近一次有人活跃的时间”倒序：新鲜死种（刚断种、还有救的价值）优先露出。
     let rows: Vec<(i64, String, i64)> = sqlx::query_as(
         "SELECT t.id, t.name, t.size FROM torrents t \
          WHERE t.approval_status = 1 AND t.seeders = 0 \
            AND NOT EXISTS (SELECT 1 FROM snatches s WHERE s.torrent_id = t.id \
                            AND s.last_seen_at > now() - interval '30 days') \
            AND NOT EXISTS (SELECT 1 FROM resurrections r WHERE r.torrent_id = t.id AND r.status = 'open') \
-         ORDER BY t.created_at LIMIT 50",
+         ORDER BY COALESCE((SELECT max(s.last_seen_at) FROM snatches s WHERE s.torrent_id = t.id), \
+                           t.created_at) DESC, t.id DESC \
+         LIMIT 50",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -981,7 +1316,9 @@ async fn resurrection_claim(
     if owner == auth.id {
         return Err(DomainError::Validation("不能领取自己发布的种子".into()));
     }
-    let hours: i64 = sqlx::query_scalar(
+    // value::int 得到的是 INT4，必须读 i32。原为 i64：解码期报 mismatched types，
+    // 又被随后的 unwrap_or(240) 静默吞掉 —— 表现为 resurrection_hours 配置永远不生效、恒为 240。
+    let hours: i32 = sqlx::query_scalar(
         "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'resurrection_hours'), 240)",
     )
     .fetch_one(&state.repo.db)

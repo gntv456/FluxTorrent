@@ -24,7 +24,7 @@ interface TagRow {
 interface ModeRow { id: number; name: string }
 
 const EMPTY: Omit<TagRow, "id"> = {
-  name: "", kind: "plain", bg_color: "", color: "#ffffff", font_size: "12px",
+  name: "", kind: "plain", bg_color: "#3b82f6", color: "#ffffff", font_size: "12px",
   margin: "0 4px 0 0", padding: "1px 4px", border_radius: "2px", sort: 0, enabled: true, mode_id: null,
 };
 
@@ -64,6 +64,8 @@ export function AdminTagDict() {
   }
 
   const inp = "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
+  /** 预览底色：标签透明背景时衬一块中性底，否则暗色主题下白字标签贴着暗底看不见 */
+  const previewShell = "inline-block rounded-[var(--r-sm)] bg-[var(--surface-card)] px-2 py-1";
 
   return (
     <div className="flex flex-col gap-3">
@@ -115,10 +117,10 @@ export function AdminTagDict() {
             <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold" onClick={() => setEdit({ id: null, f: { ...EMPTY } })}>取消</button>
           )}
         </div>
-        {/* 预览 */}
-        {edit.f.name && (
-          <p className="mt-3 flex items-center gap-2 text-xs text-sub">
-            预览：
+        {/* 预览：name 为空时也显示占位字样，样式改了立刻能看到效果 */}
+        <p className="mt-3 flex items-center gap-2 text-xs text-sub">
+          预览：
+          <span className={previewShell}>
             <span style={{
               background: edit.f.bg_color || "transparent",
               color: edit.f.color,
@@ -127,9 +129,9 @@ export function AdminTagDict() {
               padding: edit.f.padding,
               borderRadius: edit.f.border_radius,
               border: edit.f.bg_color ? undefined : "1px solid #ccc",
-            }}>{edit.f.name}</span>
-          </p>
-        )}
+            }}>{edit.f.name || "标签预览"}</span>
+          </span>
+        </p>
       </section>
       <table className="nexus-table text-xs">
         <thead>
@@ -148,16 +150,18 @@ export function AdminTagDict() {
             <tr key={r.id} className={r.enabled ? "" : "opacity-50"}>
               <td className="num">{r.id}</td>
               <td>
-                <span style={{
-                  background: r.bg_color || "transparent",
-                  color: r.color,
-                  fontSize: r.font_size,
-                  padding: r.padding,
-                  margin: r.margin,
-                  borderRadius: r.border_radius,
-                  border: r.bg_color ? undefined : "1px solid #ccc",
-                  display: "inline-block",
-                }}>{r.name}</span>
+                <span className={previewShell}>
+                  <span style={{
+                    background: r.bg_color || "transparent",
+                    color: r.color,
+                    fontSize: r.font_size,
+                    padding: r.padding,
+                    margin: r.margin,
+                    borderRadius: r.border_radius,
+                    border: r.bg_color ? undefined : "1px solid #ccc",
+                    display: "inline-block",
+                  }}>{r.name}</span>
+                </span>
               </td>
               <td>{r.kind === "official" ? "官方" : "普通"}</td>
               <td className="font-mono">{r.bg_color || "—"} / {r.font_size}</td>

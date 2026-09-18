@@ -2,8 +2,13 @@ import { BigSmall, JggCard, ScratchCard } from "@/components/game-actions";
 import { FunBox } from "@/components/fun-box";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
+import { requireModule } from "@/components/module-gate";
 
 export default async function GamesPage() {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("games");
+  if (gate) return gate;
+
   const { dict, currency } = await getDict();
   return (
     <div className="flex flex-col gap-4">

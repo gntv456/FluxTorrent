@@ -3,10 +3,15 @@ import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
 import { TextbookLinkButton } from "@/components/textbook-link-button";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
 export default async function TextbooksPage() {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("textbooks");
+  if (gate) return gate;
+
   const { dict } = await getDict();
   const books = await getTextbooks();
   return (

@@ -19,6 +19,13 @@ interface TaskRow {
   kind: string;
   auto_assign: boolean;
   period: string;
+  /** 以下为 0093 考核引擎字段（本次补齐为可配） */
+  duration_days: number;
+  subtitle: string | null;
+  tier: string | null;
+  fee: number;
+  quota_total: number;
+  sort: number;
 }
 
 interface ExamUserRow {
@@ -33,11 +40,14 @@ interface ExamUserRow {
   claimed_at: string;
   settled_at: string | null;
   reward_paid: number | null;
+  /** 0105 豁免标记：非空 = 暂不参与结算 */
+  exempted_at: string | null;
 }
 
 const EMPTY = {
   name: "", metric: "{}", starts_at: "", ends_at: "", target_class: "0",
   reward: "0", penalty: "0", claim_limit: "", kind: "task", auto_assign: false, period: "once",
+  duration_days: "30", subtitle: "", tier: "", fee: "0", quota_total: "200", sort: "0",
 };
 
 const KINDS = [
@@ -104,12 +114,34 @@ export function AdminTasks() {
         kind: edit.f.kind,
         auto_assign: edit.f.kind !== "task" ? edit.f.auto_assign : false,
         period: edit.f.period,
+        // 考核内容/方式（0093）：期限、副标题、口径、费用、配额、排序
+        duration_days: Number(edit.f.duration_days) || 30,
+        subtitle: edit.f.subtitle.trim() || null,
+        tier: edit.f.tier.trim() || null,
+        fee: Number(edit.f.fee) || 0,
+        quota_total: Number(edit.f.quota_total) || 200,
+        sort: Number(edit.f.sort) || 0,
       };
       if (edit.id === null) await api.post("/api/v1/admin/tasks", payload);
       else await api.put(`/api/v1/admin/tasks/${edit.id}`, payload);
       flash("已保存");
       setEdit({ id: null, f: { ...EMPTY } });
       await load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : "操作失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** 豁免 / 恢复（0105，对标 NP exam-users 的 avoid/recover）：
+   *  豁免后该记录暂不参与结算，恢复后回到结算流。 */
+  async function setExempt(claimId: number, exempt: boolean) {
+    setBusy(true);
+    try {
+      await api.post(`/api/v1/admin/exam-users/${claimId}/${exempt ? "exempt" : "recover"}`);
+      flash(exempt ? "已豁免（该记录暂不参与结算）" : "已恢复");
+      await loadExams();
     } catch (e) {
       flash(e instanceof ApiError ? e.message : "操作失败");
     } finally {
@@ -156,12 +188,30 @@ export function AdminTasks() {
           <label className="flex flex-col gap-1 text-xs">限领次数
             <input type="number" value={edit.f.claim_limit} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, claim_limit: e.target.value } })} placeholder="空=不限" className={`${inp} w-20`} />
           </label>
+          <label className="flex flex-col gap-1 text-xs">副标题
+            <input value={edit.f.subtitle} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, subtitle: e.target.value } })} placeholder="展示在任务名下方" className={`${inp} w-56`} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">费用
+            <input type="number" value={edit.f.fee} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, fee: e.target.value } })} className={`${inp} w-24`} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">配额
+            <input type="number" value={edit.f.quota_total} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, quota_total: e.target.value } })} className={`${inp} w-20`} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">排序
+            <input type="number" value={edit.f.sort} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, sort: e.target.value } })} className={`${inp} w-20`} />
+          </label>
           {isExam && (
             <>
               <label className="flex flex-col gap-1 text-xs">周期
                 <select value={edit.f.period} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, period: e.target.value } })} className={inp}>
                   {PERIODS.map((p) => <option key={p.v} value={p.v}>{p.label}</option>)}
                 </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs">考核期限（天）
+                <input type="number" value={edit.f.duration_days} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, duration_days: e.target.value } })} className={`${inp} w-24`} />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">累计口径 tier
+                <input value={edit.f.tier} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, tier: e.target.value } })} placeholder="空=增量口径" className={`${inp} w-28`} />
               </label>
               <label className="flex items-center gap-1 pb-2 text-xs">
                 <input type="checkbox" checked={edit.f.auto_assign} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, auto_assign: e.target.checked } })} />
@@ -178,7 +228,7 @@ export function AdminTasks() {
           <tr>
             <td className="colhead">ID</td><td className="colhead">任务</td><td className="colhead">类型</td>
             <td className="colhead">起止</td><td className="colhead">目标等级</td><td className="colhead">奖励/罚则</td>
-            <td className="colhead">限领</td><td className="colhead">自动派发</td><td className="colhead text-right">操作</td>
+            <td className="colhead">限领</td><td className="colhead">期限</td><td className="colhead">自动派发</td><td className="colhead text-right">操作</td>
           </tr>
         </thead>
         <tbody>
@@ -191,6 +241,7 @@ export function AdminTasks() {
               <td className="num">{t.target_class}</td>
               <td className="num">{t.reward} / {t.penalty}</td>
               <td className="num">{t.claim_limit ?? "—"}</td>
+              <td className="num">{t.kind === "task" ? "—" : `${t.duration_days} 天`}</td>
               <td>{t.kind === "task" ? "—" : t.auto_assign ? "是" : "否"}</td>
               <td className="text-right">
                 <button className="cmgmt-act" onClick={() => setEdit({ id: t.id, f: {
@@ -198,6 +249,9 @@ export function AdminTasks() {
                   target_class: String(t.target_class), reward: String(t.reward), penalty: String(t.penalty),
                   claim_limit: t.claim_limit ? String(t.claim_limit) : "",
                   kind: t.kind ?? "task", auto_assign: !!t.auto_assign, period: t.period ?? "once",
+                  duration_days: String(t.duration_days ?? 30), subtitle: t.subtitle ?? "",
+                  tier: t.tier ?? "", fee: String(t.fee ?? 0),
+                  quota_total: String(t.quota_total ?? 200), sort: String(t.sort ?? 0),
                 } })}>编辑</button>
                 <button className="cmgmt-act cmgmt-act--danger" disabled={busy}
                   onClick={async () => {
@@ -207,7 +261,7 @@ export function AdminTasks() {
               </td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={9} className="py-6 text-center text-sub">暂无任务</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={10} className="py-6 text-center text-sub">暂无任务</td></tr>}
         </tbody>
       </table>
 
@@ -235,6 +289,7 @@ export function AdminTasks() {
               <tr>
                 <td className="colhead">用户</td><td className="colhead">考核</td><td className="colhead">类型</td>
                 <td className="colhead">状态</td><td className="colhead">派发/领取时间</td><td className="colhead">结算时间</td><td className="colhead">实发奖励</td>
+                <td className="colhead">豁免</td><td className="colhead text-right">操作</td>
               </tr>
             </thead>
             <tbody>
@@ -247,9 +302,19 @@ export function AdminTasks() {
                   <td className="text-sub">{new Date(e.claimed_at).toLocaleString()}</td>
                   <td className="text-sub">{e.settled_at ? new Date(e.settled_at).toLocaleString() : "—"}</td>
                   <td className="num">{e.reward_paid ?? "—"}</td>
+                  <td>{e.exempted_at ? <span className="font-bold text-[var(--baozi-orange-dark)]">已豁免</span> : "—"}</td>
+                  <td className="text-right">
+                    {e.status === 0 && (
+                      e.exempted_at ? (
+                        <button className="cmgmt-act" disabled={busy} onClick={() => setExempt(e.claim_id, false)}>恢复</button>
+                      ) : (
+                        <button className="cmgmt-act cmgmt-act--danger" disabled={busy} onClick={() => setExempt(e.claim_id, true)}>豁免</button>
+                      )
+                    )}
+                  </td>
                 </tr>
               ))}
-              {exams.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-sub">暂无考核记录</td></tr>}
+              {exams.length === 0 && <tr><td colSpan={9} className="py-6 text-center text-sub">暂无考核记录</td></tr>}
             </tbody>
           </table>
         </div>

@@ -2,10 +2,9 @@
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
-use uuid::Uuid;
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark, spend_spark};
+use crate::economy_http::{earn_spark, spend_spark, spend_spark_tx};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -30,6 +29,9 @@ pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
         .service(textbook_link)
         // M20 排行榜
         .service(top_boards)
+        // 0101 用户自购置顶/限时免费
+        .service(promo_plans)
+        .service(promo_buy)
 }
 
 // ============ M17 求种 ============
@@ -56,30 +58,54 @@ async fn request_create(
     if body.bounty < 0 {
         return Err(DomainError::Validation("悬赏不能为负".into()));
     }
-    // 悬赏即时冻结（从余额划走，应种交付时转移给应种人）
-    if body.bounty > 0 {
-        let idem = format!("req-bounty:{}:{}", auth.id, Uuid::new_v4());
-        spend_spark(
-            &state.repo.db,
+    // 悬赏即时冻结（从余额划走，应种交付时转移给应种人）。
+    // 审计修复（P0 吞钱）：扣费与建单此前非原子——INSERT 失败（超长/瞬断）时扣款已提交、
+    // 且幂等键带随机 UUID 不可追回。改为：先建单占坑 → 扣费失败连单回滚（同一事务语义）。
+    let id: i64 = if body.bounty > 0 {
+        let mut tx = state
+            .repo
+            .db
+            .begin()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let id: i64 = sqlx::query_scalar(
+            "INSERT INTO requests (user_id, title, descr, bounty) VALUES ($1, $2, $3, $4) RETURNING id",
+        )
+        .bind(auth.id)
+        .bind(&body.title)
+        .bind(&body.descr)
+        .bind(body.bounty)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        // spend_spark 自带事务（锁行→幂等→扣款→流水）；此处复用同一连接保证原子性
+        let idem = format!("req-bounty:{}:{}", auth.id, id);
+        spend_spark_tx(
+            &mut tx,
             auth.id,
             body.bounty,
-            "pool_donate",
+            "request_bounty",
             &idem,
             "request_bounty",
-            0,
+            id,
         )
         .await?;
-    }
-    let id: i64 = sqlx::query_scalar(
-        "INSERT INTO requests (user_id, title, descr, bounty) VALUES ($1, $2, $3, $4) RETURNING id",
-    )
-    .bind(auth.id)
-    .bind(&body.title)
-    .bind(&body.descr)
-    .bind(body.bounty)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        tx.commit()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        id
+    } else {
+        sqlx::query_scalar(
+            "INSERT INTO requests (user_id, title, descr, bounty) VALUES ($1, $2, $3, $4) RETURNING id",
+        )
+        .bind(auth.id)
+        .bind(&body.title)
+        .bind(&body.descr)
+        .bind(body.bounty)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+    };
     Ok(ok(
         serde_json::json!({ "id": id, "bounty_frozen": body.bounty }),
     ))
@@ -246,12 +272,13 @@ async fn offer_create(
     let auth = require_auth(&req, &state).await?;
     // 仅已过审种子可提名候选（审计修复：旧版可对待审/被拒/软删种子发起，
     // promote 会直接置 approval_status=1 + official_tag 绕过审核流）
-    let t_exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND approval_status = 1)")
-            .bind(body.torrent_id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let t_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND approval_status = 1)",
+    )
+    .bind(body.torrent_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if !t_exists {
         return Err(DomainError::TorrentInvalid("种子不存在或未过审".into()));
     }
@@ -401,6 +428,14 @@ struct SubtitleUploadReq {
     title: String,
     #[serde(default)]
     lang: Option<String>,
+    /// 真实文件的附件 sha256（前端先调 POST /attachments 上传拿到）。
+    /// 审计修复（P1 空壳链路）：旧版 file_ref 是客户端任意字符串或后端伪造的
+    /// s3:// UUID——下载只回 JSON 引用，全链路无文件本体。现统一走 attachments
+    /// 存储（本地 savedirectory 卷 + sha256 内容寻址 + 配额），file_ref 记
+    /// attach://<sha>；历史外部引用（http(s):// 链接）仍按原样展示。
+    #[serde(default)]
+    file_sha: Option<String>,
+    /// 兼容字段：外部字幕站直链（http/https），与本地附件二选一
     #[serde(default)]
     file_ref: Option<String>,
 }
@@ -421,10 +456,39 @@ async fn subtitle_upload(
     } else {
         None
     };
-    let file_ref = body
+    let file_ref = if let Some(sha) = body
+        .file_sha
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()))
+    {
+        // 校验附件归属：必须是本人在 attachments 上传过的文件（防冒用他人 sha）
+        let owned: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM attachments WHERE sha256 = $1 AND user_id = $2)",
+        )
+        .bind(sha)
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if !owned {
+            return Err(DomainError::Validation(
+                "附件未上传或不存在（请先通过上传接口提交字幕文件）".into(),
+            ));
+        }
+        format!("attach://{sha}")
+    } else if let Some(ext) = body
         .file_ref
-        .clone()
-        .unwrap_or_else(|| format!("s3://subtitles/{}", Uuid::new_v4()));
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| s.starts_with("http://") || s.starts_with("https://"))
+    {
+        ext.to_string()
+    } else {
+        return Err(DomainError::Validation(
+            "请上传字幕文件（或提供 http/https 直链）".into(),
+        ));
+    };
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO subtitles (torrent_id, user_id, title, lang, file_ref) VALUES ($1, $2, $3, $4, $5) RETURNING id",
     )
@@ -485,8 +549,9 @@ async fn subtitle_list(
     Ok(ok(rows))
 }
 
-/// 字幕下载：计数 +1 并返回文件引用（前端此前链接到不存在的路由，下载链路断裂）。
-/// 文件本体在对象存储/本地卷（file_ref），此处返回引用与元信息由前端拉取。
+/// 字幕下载：计数 +1；本地附件（attach://sha）直接回文件字节（Content-Disposition
+/// 按 title 命名 .txt/.ass/.srt 兜底），外部直链返回 JSON 引用由前端跳转。
+/// 审计修复（P1 空壳链路）：旧版只回 file_ref JSON——下载按钮点开是引用文本而非文件。
 #[get("/subtitles/{id}/download")]
 async fn subtitle_download(
     req: HttpRequest,
@@ -495,13 +560,12 @@ async fn subtitle_download(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let sid = path.into_inner();
-    let row: Option<(String, Option<i64>, String)> = sqlx::query_as(
-        "SELECT file_ref, torrent_id, title FROM subtitles WHERE id = $1",
-    )
-    .bind(sid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(String, Option<i64>, String)> =
+        sqlx::query_as("SELECT file_ref, torrent_id, title FROM subtitles WHERE id = $1")
+            .bind(sid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((file_ref, torrent_id, title)) = row else {
         return Err(DomainError::NotFound(sid));
     };
@@ -510,6 +574,47 @@ async fn subtitle_download(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(sha) = file_ref.strip_prefix("attach://") {
+        // 与 /attachments/{sha} 同源读取（本地卷内容寻址），但不经 302：直接回字节，
+        // 便于客户端「点开即存文件」；文件名用字幕标题（清洗非法字符）。
+        let row: Option<(String, i64)> =
+            sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")
+                .bind(sha)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        let Some((mime, _size)) = row else {
+            return Err(DomainError::NotFound(sid));
+        };
+        let bytes = crate::storage::get(&state.repo.db, sha)
+            .await
+            .ok_or(DomainError::NotFound(sid))?;
+        let safe_title: String = title
+            .chars()
+            .map(|c| {
+                if c.is_alphanumeric() || " ._-()[]（）【】".contains(c) {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .take(80)
+            .collect::<String>();
+        let ext = if mime == "application/pdf" {
+            "pdf"
+        } else if mime == "text/plain" {
+            "txt"
+        } else {
+            "bin"
+        };
+        return Ok(HttpResponse::Ok()
+            .content_type(mime)
+            .insert_header((
+                actix_web::http::header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{safe_title}.{ext}\""),
+            ))
+            .body(bytes));
+    }
     let _ = auth;
     Ok(ok(serde_json::json!({
         "id": sid,
@@ -522,16 +627,14 @@ async fn subtitle_download(
 /// 模块开关读取：module_{name} = 'no' 时模块关闭（site_type_packs 只是初始快照，
 /// 运行时权威在 site_settings；此前后端不设防，仅前端隐藏导航，直连 URL 仍全功能可用）。
 async fn module_disabled(db: &sqlx::PgPool, name: &str) -> bool {
-    sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = $1",
-    )
-    .bind(format!("module_{name}"))
-    .fetch_optional(db)
-    .await
-    .ok()
-    .flatten()
-    .map(|v| v == "no")
-    .unwrap_or(false)
+    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
+        .bind(format!("module_{name}"))
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
+        .map(|v| v == "no")
+        .unwrap_or(false)
 }
 
 // ============ M18 课本中心 ============
@@ -672,4 +775,194 @@ async fn top_boards(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<
         );
     }
     Ok(ok(serde_json::Value::Object(boards)))
+}
+
+// ============ 用户自购置顶/限时免费（0101，好学站插件口径） ============
+
+/// 价目/开关读取：promo_price.{kind}.{hours}（缺省价见迁移 0101；未定价的档位不可购买）
+async fn promo_price(db: &sqlx::PgPool, kind: &str, hours: i32) -> Option<i64> {
+    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
+        .bind(format!("promo_price.{kind}.{hours}"))
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|v| v.trim().parse::<i64>().ok())
+        .filter(|&p| p > 0)
+}
+
+#[derive(Deserialize)]
+struct PromoBuyReq {
+    torrent_id: i64,
+    /// sticky1 一级置顶 | sticky2 二级置顶 | free 限时免费
+    kind: String,
+    /// 24 | 72（小时；与价目键对齐）
+    hours: i32,
+    #[serde(default)]
+    idempotency_key: Option<String>,
+}
+
+/// 价目表（前端渲染档位；module_promo_buy=no 时返回 disabled）
+#[get("/promo/plans")]
+async fn promo_plans(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let _auth = require_auth(&req, &state).await?;
+    let enabled = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'module_promo_buy'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v != "no")
+    .unwrap_or(true);
+    let mut plans = serde_json::Map::new();
+    for kind in ["sticky1", "sticky2", "free"] {
+        let mut entries = Vec::new();
+        for hours in [24i32, 72i32] {
+            if let Some(price) = promo_price(&state.repo.db, kind, hours).await {
+                entries.push(serde_json::json!({ "hours": hours, "price": price }));
+            }
+        }
+        plans.insert(kind.to_string(), entries.into());
+    }
+    Ok(ok(
+        serde_json::json!({ "enabled": enabled, "plans": plans }),
+    ))
+}
+
+/// 购买：本人种子或 staff 可购；扣费（spark_ledger 流水，幂等键含随机 nonce 由客户端
+/// 提供——每次购买是独立消费行为，重试需带同一键）→ 置顶写 pos_state/pos_state_until
+/// （延长语义：在现有效期内续购则顺延），免费写 promotions（torrent 专属 free）。
+/// 生效校验在写入端完成；列表 sticky_expr 与促销裁决天然消费这些字段（零新查询）。
+#[post("/promo/buy")]
+async fn promo_buy(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PromoBuyReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if !["sticky1", "sticky2", "free"].contains(&body.kind.as_str()) {
+        return Err(DomainError::Validation(
+            "kind 需为 sticky1/sticky2/free".into(),
+        ));
+    }
+    if ![24, 72].contains(&body.hours) {
+        return Err(DomainError::Validation("hours 需为 24 或 72".into()));
+    }
+    let enabled = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'module_promo_buy'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v != "no")
+    .unwrap_or(true);
+    if !enabled {
+        return Err(DomainError::Validation("本功能未开放".into()));
+    }
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.trim().is_empty())
+        .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
+
+    let owner: Option<i64> =
+        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1 AND approval_status = 1")
+            .bind(body.torrent_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(owner) = owner else {
+        return Err(DomainError::NotFound(body.torrent_id));
+    };
+    if owner != auth.id && auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let price = promo_price(&state.repo.db, &body.kind, body.hours)
+        .await
+        .ok_or_else(|| DomainError::Validation("该档位未定价，请联系站方".into()))?;
+
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    spend_spark_tx(
+        &mut tx,
+        auth.id,
+        price,
+        "promo_buy",
+        &idem,
+        "torrent",
+        body.torrent_id,
+    )
+    .await?;
+    let ends: chrono::DateTime<chrono::Utc> =
+        sqlx::query_scalar("SELECT now() + make_interval(hours => $1)")
+            .bind(body.hours)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    match body.kind.as_str() {
+        // 置顶：GREATEST(现有到期, 新到期) 顺延；级别取本次购买档
+        "sticky1" | "sticky2" => {
+            let level = if body.kind == "sticky1" { 1i16 } else { 2i16 };
+            sqlx::query(
+                "UPDATE torrents SET \
+                    pos_state = $2, \
+                    pos_state_until = GREATEST(COALESCE(pos_state_until, now()), now()) + make_interval(hours => $3) \
+                 WHERE id = $1",
+            )
+            .bind(body.torrent_id)
+            .bind(level)
+            .bind(body.hours)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        // 限时免费：专属 torrent 促销（worker 计费裁决/列表角标同一数据源）
+        "free" => {
+            sqlx::query(
+                "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source, created_by) \
+                 VALUES ('torrent', $1, 'free', now(), $2, 'manual', $3)",
+            )
+            .bind(body.torrent_id)
+            .bind(ends)
+            .bind(auth.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        _ => unreachable!(),
+    }
+    sqlx::query(
+        "INSERT INTO promo_purchases (user_id, torrent_id, kind, hours, price, idempotency_key, ends_at) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (idempotency_key) DO NOTHING",
+    )
+    .bind(auth.id)
+    .bind(body.torrent_id)
+    .bind(&body.kind)
+    .bind(body.hours)
+    .bind(price)
+    .bind(&idem)
+    .bind(ends)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "promo_buy", Some(body.torrent_id))
+        .await;
+    Ok(ok(serde_json::json!({
+        "torrent_id": body.torrent_id, "kind": body.kind,
+        "hours": body.hours, "price": price, "ends_at": ends,
+    })))
 }

@@ -101,7 +101,9 @@ function LoginForm() {
       });
       localStorage.setItem("flux.token", resp.token);
       setSessionCookie(resp.token);
-      router.push(next);
+      // 临时密码（P1 修复）：后端只放行改密/登出三条路径，落在业务页只会
+      // 处处报「请先修改密码」——登录成功即引导直达「我的 → 安全」改密。
+      router.push(resp.must_reset_password ? "/my?tab=security" : next);
     } catch (err) {
       if (err instanceof ApiError) {
         // 展示优先级：字典文案（三语）→ 后端 message（兜底，含具体原因）→ 通用失败

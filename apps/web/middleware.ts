@@ -17,6 +17,7 @@ const PUBLIC_PATHS = [
   "/resend",
   "/rules",
   "/faq",
+  "/setup", // 安装向导（U3 §8.3）：冷启动期管理员未登录也要能进入
 ];
 
 function isAsset(pathname: string): boolean {

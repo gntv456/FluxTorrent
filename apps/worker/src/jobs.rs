@@ -198,7 +198,16 @@ pub async fn consume_agent_blocks(
                 applied += 1;
                 last_seen_id = Some(id);
                 if !existed {
-                    // 首次命中 → 管理组信箱自动告警（staffmessages，permission=cheater 分流）
+                    // 首次命中 → 按 agent_hit_action 分级（U5 §12.3）：
+                    // log=仅 staffmessages 告警（现状 T3）/ warn=告警+用户警告信
+                    let action: String = sqlx::query_scalar::<_, String>(
+                        "SELECT value FROM site_settings WHERE name = 'agent_hit_action'",
+                    )
+                    .fetch_optional(db)
+                    .await
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| "log".into());
                     let body = format!(
                         "用户 #{} 的客户端命中黑白名单规则，tracker 已拒绝其 announce。\n客户端：{}\nIP：{}\n原因：{}\n（本条为系统自动告警，累计情况见后台「作弊探测」）",
                         ev.user,
@@ -214,6 +223,20 @@ pub async fn consume_agent_blocks(
                     .bind(body)
                     .execute(db)
                     .await;
+                    if action == "warn" {
+                        let _: Result<_, _> = sqlx::query(
+                            "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+                             VALUES (NULL, $1, '客户端不合规警告', $2)",
+                        )
+                        .bind(ev.user)
+                        .bind(format!(
+                            "您使用的客户端（{}）不符合本站允许名单（原因：{}）。请更换为允许的客户端，否则将无法继续做种/下载。如有疑问请联系管理组。",
+                            if agent.is_empty() { "(空)" } else { &agent },
+                            reason,
+                        ))
+                        .execute(db)
+                        .await;
+                    }
                 }
             }
             Err(e) => {
@@ -244,11 +267,9 @@ pub async fn consume_agent_blocks(
 /// 回查「当时是否处于免费窗口」豁免，物理删掉近期促销会让回查失明（误判违规）。
 /// 计费查询全部走 `starts_at <= now() < ends_at` 生效窗口，不受历史保留影响。
 pub async fn expire_promotions(db: &PgPool) -> anyhow::Result<u64> {
-    let res = sqlx::query(
-        "DELETE FROM promotions WHERE ends_at <= now() - interval '365 days'",
-    )
-    .execute(db)
-    .await?;
+    let res = sqlx::query("DELETE FROM promotions WHERE ends_at <= now() - interval '365 days'")
+        .execute(db)
+        .await?;
     Ok(res.rows_affected())
 }
 
@@ -307,6 +328,48 @@ pub async fn preserve_exit(db: &PgPool) -> anyhow::Result<u64> {
         ON CONFLICT DO NOTHING
         "#,
     )
+    .execute(db)
+    .await?;
+    Ok(res.rows_affected())
+}
+
+/// 保种认领结算（审计修复 P1 闭环补全）：claim 记了 seed_time_begin/uploaded_begin
+/// 基线但无任何结算方——「认领→奖励」断裂为展示层。口径（NP claims 按时长发奖）：
+///   每满 24h 有效保种（结算时点仍在做种）发 preserve_bonus_per_day（缺省 100，
+///   site_settings 可调）；幂等键 = preserve:{torrent_id}:{day_index}（自认领起算的
+///   整天序号），重跑/补跑安全。停做种期间不结算（恢复后在下个整天边界继续），
+/// 时长基线列保留供后台展示 delta。
+pub async fn preserve_settle(db: &PgPool) -> anyhow::Result<u64> {
+    let bonus: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'preserve_bonus_per_day')::bigint, 100)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(100);
+    let res = sqlx::query(
+        r#"
+        WITH due AS (
+            SELECT sp.claimed_by AS user_id, sp.torrent_id,
+                   floor(EXTRACT(EPOCH FROM (now() - sp.claimed_at)) / 86400)::bigint AS day_index
+            FROM seed_preserve sp
+            JOIN snatches s
+              ON s.torrent_id = sp.torrent_id AND s.user_id = sp.claimed_by AND s.seeding
+            WHERE sp.claimed_by IS NOT NULL AND sp.exited_at IS NULL
+        ),
+        fresh AS (
+            SELECT d.* FROM due d
+            WHERE d.day_index >= 1 AND NOT EXISTS (
+                SELECT 1 FROM spark_ledger l
+                WHERE l.idempotency_key = 'preserve:' || d.torrent_id || ':' || d.day_index
+            )
+        )
+        INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key)
+        SELECT nextval('spark_ledger_id_seq'), user_id, $1, 'preserve_reward', 'torrent',
+               torrent_id, 'preserve:' || torrent_id || ':' || day_index
+        FROM fresh
+        "#,
+    )
+    .bind(bonus)
     .execute(db)
     .await?;
     Ok(res.rows_affected())
@@ -383,9 +446,12 @@ pub async fn seeding_reward(db: &PgPool, base: i64) -> anyhow::Result<u64> {
     // 刷新余额快照（权威在流水，快照仅展示）。
     // 行锁串行化：与 API 的「锁行读余额→插流水→改余额」事务互斥，避免聚合快照
     // 覆写并发事务刚落账的余额（丢失更新）；单事务内先锁后算，聚合与更新一致。
+    // 审计修复（P0 锁表）：旧版 `WHERE id IN (SELECT id FROM users FOR UPDATE)` 每小时
+    // 对全表行加锁，与所有写余额的 API 事务互斥（用户量大时持锁秒级）。改为只重算
+    // 本小时流水覆盖到的用户 —— sum(ledger) 结果与其余用户现有快照一致，语义不变。
     sqlx::query(
         "UPDATE users SET spark_balance = COALESCE((             SELECT sum(amount) FROM spark_ledger WHERE user_id = users.id          ), 0) \
-         WHERE id IN (SELECT id FROM users FOR UPDATE)",
+         WHERE id IN (SELECT DISTINCT user_id FROM spark_ledger WHERE created_at > now() - interval '2 hours')",
     )
     .execute(db)
     .await?;
@@ -621,11 +687,12 @@ async fn process_event(
     // 未知种子的查询失败必须显式报错（重试），不能静默丢弃计费
     // 审计修复（P1）：announce 哈希是客户端「原始字节」口径；库内 info_hash 为规范化
     // 重编码口径（键序非排序的种子两者不同，此前静默丢计费）。双口径 OR 匹配。
-    let torrent: Option<(i64, i64)> =
-        sqlx::query_as("SELECT id, COALESCE(size, 0) FROM torrents WHERE info_hash = $1 OR raw_info_hash = $1")
-            .bind(&ev.hash)
-            .fetch_optional(db)
-            .await?;
+    let torrent: Option<(i64, i64)> = sqlx::query_as(
+        "SELECT id, COALESCE(size, 0) FROM torrents WHERE info_hash = $1 OR raw_info_hash = $1",
+    )
+    .bind(&ev.hash)
+    .fetch_optional(db)
+    .await?;
     let Some((torrent_id, torrent_size)) = torrent else {
         return Ok(None); // 种子确实不存在：跳过
     };
@@ -634,14 +701,16 @@ async fn process_event(
     // （修复前 ORDER BY id DESC 只认最新一条：先挂 free 后挂 half 时计费取 half、展示取 free）
     // 裁决时点 = 事件时点 ev.ts（缺省 now）：积压重放时不再按过期后的价目补计费
     let ev_time = ev.ts.unwrap_or_else(chrono::Utc::now);
+    // 审计修复（P0）：专属促销查询旧版把 $1 重复引用三次并 bind 三次 —— PG 扩展协议按
+    // 「最大占位符编号」要求 4 个参数，但未在 SQL 中出现的编号无法推断类型，
+    // Parse 阶段报 "could not determine data type of parameter $2"，每个 announce
+    // 事件重试 6 次进 DLQ，计费链路整体瘫痪。改为 $1/$4 显式引用 + 仅 bind 两个参数。
     let kind: Option<String> = sqlx::query_scalar(
-        "SELECT kind::text FROM promotions WHERE torrent_id = $1 AND starts_at <= $4 AND ends_at > $4 \
+        "SELECT kind::text FROM promotions WHERE torrent_id = $1 AND starts_at <= $2 AND ends_at > $2 \
          ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 \
                                   WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, id DESC \
          LIMIT 1",
     )
-    .bind(torrent_id)
-    .bind(torrent_id)
     .bind(torrent_id)
     .bind(ev_time)
     .fetch_optional(db)
@@ -738,10 +807,17 @@ async fn process_event(
                     .bind(ev.user)
                     .bind(format!("speed:{torrent_id}"))
                     .bind(&ev.ip)
-                    .bind(format!("speed_anomaly {bps}B/s over {secs}s up={raw_up} down={raw_down}"))
+                    .bind(format!(
+                        "speed_anomaly {bps}B/s over {secs}s up={raw_up} down={raw_down}"
+                    ))
                     .execute(&mut *tx)
                     .await;
-                    tracing::warn!(user = ev.user, torrent = torrent_id, bps, "speed anomaly recorded");
+                    tracing::warn!(
+                        user = ev.user,
+                        torrent = torrent_id,
+                        bps,
+                        "speed anomaly recorded"
+                    );
                 }
             }
         }
@@ -870,6 +946,7 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         WITH done AS (
             UPDATE resurrections r SET status = 'done', finished_at = now()
             WHERE r.status = 'open'
+              AND r.team_id IS NULL
               AND EXISTS (SELECT 1 FROM snatches s
                           WHERE s.user_id = r.user_id AND s.torrent_id = r.torrent_id
                             AND s.seeded_seconds >= r.required_hours * 3600 AND s.seeding)
@@ -944,6 +1021,309 @@ async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         tracing::info!(n = settled.len(), "resurrections settled");
     }
     Ok(settled.len() as u64)
+}
+
+/// 组队契约结算（0102 社交层）：团队成员在契约期内的做种增量合计达标 →
+/// 按贡献占比分账 + 写拯救荣誉 + 推进状态。
+///
+/// 与单人复活任务**严格隔离**：resurrection_settle 只处理 `team_id IS NULL` 的行，
+/// 否则队长会按 `r.user_id` 再拿一份全额奖励（双发）。
+///
+/// 判据：团队总增量 ≥ required_hours × 3600，且至少一名成员当前仍在做种。
+/// 贡献口径：snatches 增量（`seeded_seconds - 基线`），与 seed_preserve 同款 —— 精度到单资源，
+/// 杜绝「挂无关种子刷契约贡献」；也不用 spark_ledger 反查（seeding_reward 按用户逐小时聚合、无 ref_id）。
+///
+/// 可靠性：以 `social_team.settled_at IS NULL` 作为「未处理」标记（而非纯状态 CAS），
+/// 配合 spark_ledger 幂等键 `social:team:{team_id}:{uid}` —— 中途崩溃重跑既不丢奖也不重发。
+async fn social_team_settle(db: &PgPool) -> anyhow::Result<u64> {
+    let teams: Vec<(i64, i64, i64, i64, i32)> = sqlx::query_as(
+        r#"
+        SELECT st.id, r.id, r.torrent_id, r.reward_sparks, r.required_hours
+        FROM social_team st
+        JOIN resurrections r ON r.team_id = st.id AND r.status = 'open'
+        WHERE st.status IN (0, 1) AND st.settled_at IS NULL
+          AND EXISTS (
+              SELECT 1 FROM social_team_member m
+              JOIN snatches s ON s.user_id = m.uid AND s.torrent_id = r.torrent_id
+              WHERE m.team_id = st.id AND m.join_status IN (0, 1) AND s.seeding)
+          AND (
+              SELECT COALESCE(sum(GREATEST(COALESCE(s.seeded_seconds, 0)::bigint - m.seed_seconds_begin, 0)), 0)
+              FROM social_team_member m
+              LEFT JOIN snatches s ON s.user_id = m.uid AND s.torrent_id = r.torrent_id
+              WHERE m.team_id = st.id AND m.join_status IN (0, 1)
+          ) >= r.required_hours::bigint * 3600
+        "#,
+    )
+    .fetch_all(db)
+    .await?;
+
+    if teams.is_empty() {
+        return Ok(0);
+    }
+
+    // 信誉参数：完成/失败/退出都由系统判定，不可伪造（队友评价不参与主流程，防互刷）
+    let rep_gain: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_on_fulfilled'), 20)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(20);
+    let rep_min: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_min'), 0)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+    let rep_max: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_max'), 2000)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(2000);
+
+    let mut done = 0u64;
+    for (team_id, rid, tid, reward, _hours) in &teams {
+        let (team_id, rid, tid, reward) = (*team_id, *rid, *tid, *reward);
+        let mut tx = db.begin().await?;
+
+        let members: Vec<(i64, i64)> = sqlx::query_as(
+            "SELECT m.uid, GREATEST(COALESCE(s.seeded_seconds, 0)::bigint - m.seed_seconds_begin, 0) \
+             FROM social_team_member m \
+             LEFT JOIN snatches s ON s.user_id = m.uid AND s.torrent_id = $2 \
+             WHERE m.team_id = $1 AND m.join_status IN (0, 1)",
+        )
+        .bind(team_id)
+        .bind(tid)
+        .fetch_all(&mut *tx)
+        .await?;
+
+        let total: i64 = members.iter().map(|m| m.1).sum();
+        if total <= 0 {
+            continue;
+        }
+
+        // 按增量占比分账；整数除法的余数落在排序末位（贡献最少者）身上，
+        // 保证分配总额恰好等于 reward（实测 5000 → 2777 + 2223）
+        let mut ordered = members.clone();
+        ordered.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        let mut remaining = reward;
+        for (i, (uid, delta)) in ordered.iter().enumerate() {
+            let amount = if i == ordered.len() - 1 {
+                remaining
+            } else {
+                (reward * delta) / total
+            };
+            remaining -= amount;
+            if amount > 0 {
+                let idem = format!("social:team:{team_id}:{uid}");
+                sqlx::query(
+                    "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key) \
+                     SELECT nextval('spark_ledger_id_seq'), $1, $2, 'social_team_reward', $3 \
+                     WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)",
+                )
+                .bind(*uid)
+                .bind(amount)
+                .bind(&idem)
+                .execute(&mut *tx)
+                .await?;
+                sqlx::query(
+                    "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \
+                     AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)",
+                )
+                .bind(*uid)
+                .bind(amount)
+                .bind(&idem)
+                .execute(&mut *tx)
+                .await?;
+            }
+            sqlx::query(
+                "UPDATE social_team_member SET contributed_sec = $3, settled_amount = $4, join_status = 4 \
+                 WHERE team_id = $1 AND uid = $2",
+            )
+            .bind(team_id)
+            .bind(*uid)
+            .bind(delta)
+            .bind(amount)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        // 拯救荣誉（永久留存，不随赛季重置）
+        let uids: Vec<i64> = members.iter().map(|m| m.0).collect();
+        sqlx::query(
+            "INSERT INTO rescue_honor (torrent_id, info_hash, team_id, uids, total_sec, seeders_before, seeders_after) \
+             SELECT $1, t.info_hash, $2, $3, $4, 0, COALESCE(t.seeders, 0) FROM torrents t WHERE t.id = $1",
+        )
+        .bind(tid)
+        .bind(team_id)
+        .bind(&uids)
+        .bind(total)
+        .execute(&mut *tx)
+        .await?;
+
+        // 状态推进：settled_at 是「未处理」标记，必须与发奖同事务置位
+        sqlx::query("UPDATE social_team SET status = 2, settled_at = now() WHERE id = $1")
+            .bind(team_id)
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("UPDATE resurrections SET status = 'done', finished_at = now() WHERE id = $1")
+            .bind(rid)
+            .execute(&mut *tx)
+            .await?;
+
+        for (uid, _) in &members {
+            // 信誉 +（契约完成是系统判定的事实，不可伪造）
+            sqlx::query(
+                "INSERT INTO social_reputation (uid, score, fulfilled_count, updated_at) \
+                 VALUES ($1, 1000 + $2, 1, now()) \
+                 ON CONFLICT (uid) DO UPDATE SET \
+                   score = LEAST($3, GREATEST($4, social_reputation.score + $2)), \
+                   fulfilled_count = social_reputation.fulfilled_count + 1, \
+                   updated_at = now()",
+            )
+            .bind(*uid)
+            .bind(rep_gain)
+            .bind(rep_max)
+            .bind(rep_min)
+            .execute(&mut *tx)
+            .await?;
+            let _ = sqlx::query(
+                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+            )
+            .bind(*uid)
+            .bind("保种协作完成")
+            .bind(format!(
+                "你们小队协作保种的资源 #{tid} 已验收，奖励按贡献分摊到账。感谢你为保种出的力！"
+            ))
+            .execute(&mut *tx)
+            .await;
+        }
+
+        tx.commit().await?;
+        done += 1;
+    }
+
+    if done > 0 {
+        tracing::info!(n = done, "social teams settled");
+    }
+    Ok(done)
+}
+
+/// 组队契约超时失败（0103）：到期仍未达成 → 判失败。
+///
+/// 设计口径（见 `_doc/契约失败流转与信誉.md`）：
+///   * **不连坐**：失败是团队的共同结果，不额外惩罚个别成员；只记一次失败事实（信誉小减）
+///   * 与成功结算互斥：本 job 排在 social_team_settle **之后**执行，恰好卡在期限内达标的仍算成功；
+///     事务内再用 `status IN (0,1) AND settled_at IS NULL` 做 CAS，防止被结算抢先
+///   * 与「中途退出」区分：到期未达标**不算逃跑**，不套用退出惩罚——惩罚只针对主动跑掉的人
+async fn social_team_expire(db: &PgPool) -> anyhow::Result<u64> {
+    let rep_delta: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_on_failed'), -5)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(-5);
+    let rep_min: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_min'), 0)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+    let rep_max: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_max'), 2000)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(2000);
+
+    let due: Vec<i64> = sqlx::query_scalar(
+        "SELECT id FROM social_team \
+         WHERE status IN (0, 1) AND settled_at IS NULL \
+           AND deadline_at IS NOT NULL AND deadline_at < now()",
+    )
+    .fetch_all(db)
+    .await?;
+
+    let mut n = 0u64;
+    for team_id in &due {
+        let mut tx = db.begin().await?;
+        // CAS：与成功结算互斥（结算 job 排在前面，已把 settled_at 置位的队伍在此被跳过）
+        let claimed = sqlx::query(
+            "UPDATE social_team SET status = 3, fail_reason = 'deadline_exceeded', settled_at = now() \
+             WHERE id = $1 AND status IN (0, 1) AND settled_at IS NULL",
+        )
+        .bind(team_id)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+        if claimed == 0 {
+            continue;
+        }
+
+        let tid: Option<i64> =
+            sqlx::query_scalar("SELECT torrent_id FROM resurrections WHERE team_id = $1 LIMIT 1")
+                .bind(team_id)
+                .fetch_optional(&mut *tx)
+                .await?;
+
+        sqlx::query(
+            "UPDATE resurrections SET status = 'expired', finished_at = now() \
+             WHERE team_id = $1 AND status = 'open'",
+        )
+        .bind(team_id)
+        .execute(&mut *tx)
+        .await?;
+
+        let members: Vec<i64> = sqlx::query_scalar(
+            "SELECT uid FROM social_team_member WHERE team_id = $1 AND join_status IN (0, 1)",
+        )
+        .bind(team_id)
+        .fetch_all(&mut *tx)
+        .await?;
+
+        for uid in &members {
+            sqlx::query(
+                "INSERT INTO social_reputation (uid, score, failed_count, updated_at) \
+                 VALUES ($1, 1000 + $2, 1, now()) \
+                 ON CONFLICT (uid) DO UPDATE SET \
+                   score = LEAST($3, GREATEST($4, social_reputation.score + $2)), \
+                   failed_count = social_reputation.failed_count + 1, \
+                   updated_at = now()",
+            )
+            .bind(*uid)
+            .bind(rep_delta)
+            .bind(rep_max)
+            .bind(rep_min)
+            .execute(&mut *tx)
+            .await?;
+
+            // 文案只陈述事实 + 说明已产生的收益不受影响，不指责
+            // （协作失败本就令人沮丧，不该再加羞辱）
+            let body = match tid {
+                Some(t) => format!(
+                    "资源 #{t} 的协作保种未在期限内达标，契约已结束。\
+                     你已产生的做种时长仍计入做种收益，不受影响。"
+                ),
+                None => "协作保种未在期限内达标，契约已结束。".to_string(),
+            };
+            let _ = sqlx::query(
+                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+            )
+            .bind(*uid)
+            .bind("保种协作已到期")
+            .bind(body)
+            .execute(&mut *tx)
+            .await;
+        }
+
+        tx.commit().await?;
+        n += 1;
+    }
+
+    if n > 0 {
+        tracing::info!(n, "social teams expired");
+    }
+    Ok(n)
 }
 
 /// 教材愿望单推送（0074，U3D WishList 教育化）：扫过去 1 小时过审的种子，
@@ -1230,7 +1610,11 @@ async fn hr_punish(db: &PgPool) -> anyhow::Result<()> {
     .execute(db)
     .await?;
     if punished.rows_affected() > 0 {
-        tracing::warn!(n = punished.rows_affected(), limit, "H&R 违规超限，已暂停下载权限");
+        tracing::warn!(
+            n = punished.rows_affected(),
+            limit,
+            "H&R 违规超限，已暂停下载权限"
+        );
     }
 
     // ② 降回阈值以下 → 自动恢复下载。
@@ -1255,7 +1639,10 @@ async fn hr_punish(db: &PgPool) -> anyhow::Result<()> {
     .execute(db)
     .await?;
     if restored.rows_affected() > 0 {
-        tracing::info!(n = restored.rows_affected(), "H&R 违规降回阈值以下，已恢复下载权限");
+        tracing::info!(
+            n = restored.rows_affected(),
+            "H&R 违规降回阈值以下，已恢复下载权限"
+        );
     }
     Ok(())
 }
@@ -1474,10 +1861,7 @@ async fn purge_expired_tokens(db: &PgPool) -> anyhow::Result<u64> {
 
 /// announce 死信队列可见性（卫生 P1）：DLQ 只进不出等于变相丢计费。
 /// 有积压时通知管理组信箱（复用 cheat_audit 告警模式），同一批积压只告警一次。
-async fn dlq_watch(
-    db: &PgPool,
-    redis: &mut redis::aio::ConnectionManager,
-) -> anyhow::Result<u64> {
+async fn dlq_watch(db: &PgPool, redis: &mut redis::aio::ConnectionManager) -> anyhow::Result<u64> {
     use redis::AsyncCommands;
     let len: i64 = redis.llen("flux:announce:dlq").await.unwrap_or(0);
     if len == 0 {
@@ -1498,7 +1882,10 @@ async fn dlq_watch(
         .bind(body)
         .execute(db)
         .await;
-        let _: () = redis.set_ex("flux:announce:dlq:alerted", 1, 24 * 3600).await.unwrap_or(());
+        let _: () = redis
+            .set_ex("flux:announce:dlq:alerted", 1, 24 * 3600)
+            .await
+            .unwrap_or(());
         tracing::warn!(len, "announce DLQ backlog alerted");
     }
     Ok(len as u64)
@@ -1701,6 +2088,337 @@ pub async fn ensure_partitions(db: &PgPool) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// 绩效考核月末结算（0106，参考各 PT 站工作组考核口径）。
+///
+/// 每天 tick 一次，幂等护栏：
+///   * 只处理**上一期**（站点时区 UTC+8 已跨月）`source='admin'` 且 `settled_at IS NULL` 的登记行
+///   * 「settled_at IS NULL 作未处理标记 + 状态推进与发奖同一事务」（social_team_settle 同款，
+///     崩溃整体回滚下轮重来；比旧 resurrection_settle 的「先 CAS 置 done 后发奖」可靠）
+///   * 发薪幂等键 `jixiao:settle:{claim_id}`，先查后插防重复
+///
+/// 结算语义：
+///   * 达标（min_requirements 全部满足）→ status=1 + 发 base_pay+加成（达标月数含本期）
+///   * 未达标 → status=2 + 平实文案 PM（不羞辱：已产生的做种收益不受影响）
+///   * 同轮为下一期落全站活跃用户基线快照（jixiao_baseline_snapshots，
+///     PK(user_id,period) 幂等）——compute_metrics 的 seed_hours 等差值口径依赖它
+///   * 本 job 不检查任何模块开关（已分配的岗位必须能收尾，social 层同款约定）
+///
+/// 注意：用户在补领窗口（jixiao_claim_window_days，默认 7 天）内仍可自领当期
+/// ——worker 结算先到先得，两边都以「settled_at IS NULL + 单事务 CAS」互斥。
+pub async fn jixiao_settle(db: &PgPool) -> anyhow::Result<u64> {
+    // 站点时区（UTC+8）当前月份；只有跨月后上一期才可结算
+    let now_site = chrono::Utc::now() + chrono::Duration::hours(8);
+    let cur: String = now_site.format("%Y-%m").to_string();
+    let prev: String = {
+        let (y, m): (i32, u32) = {
+            let mut it = cur.split('-');
+            let y = it.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+            let m = it.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+            (y, m)
+        };
+        if y == 0 || !(1..=12).contains(&m) {
+            return Ok(0);
+        }
+        if m == 1 {
+            format!("{:04}-12", y - 1)
+        } else {
+            format!("{y:04}-{:02}", m - 1)
+        }
+    };
+
+    // 上一期未结算的 admin 登记行（含用户/岗位信息）
+    #[derive(sqlx::FromRow)]
+    struct Pending {
+        id: i64,
+        user_id: i64,
+        type_id: i64,
+        name: String,
+        base_pay: i64,
+        min_requirements: serde_json::Value,
+        /// 岗位级加成配置（0106：admin 表单写入；缺省回落全站配置）
+        #[sqlx(default)]
+        bonus_rules: serde_json::Value,
+        base_seed_seconds: i64,
+        base_uploaded: i64,
+        base_uploads: i64,
+    }
+    let pending: Vec<Pending> = sqlx::query_as(
+        "SELECT c.id, c.user_id, c.type_id, t.name, t.base_pay, t.min_requirements, t.bonus_rules, \
+                c.base_seed_seconds, c.base_uploaded, c.base_uploads \
+         FROM jixiao_claims c JOIN jixiao_types t ON t.id = c.type_id \
+         WHERE c.period = $1 AND c.metrics_snapshot->>'source' = 'admin' \
+           AND c.settled_at IS NULL AND c.status = 0",
+    )
+    .bind(&prev)
+    .fetch_all(db)
+    .await?;
+    if pending.is_empty() {
+        // 没有登记行也要保证基线快照滚动（新月份第一次 tick 落当期快照）
+        return jixiao_rollover_snapshot(db, &cur).await.map(|_| 0);
+    }
+
+    // 加成参数：全站 site_settings 兜底（岗位级 bonus_rules 优先，逐岗位在循环内取）
+    let site_step: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name='jixiao_bonus_months_per_step'), 3)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(3)
+    .max(1);
+    let site_pct: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name='jixiao_bonus_percent_per_step'), 10)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(10);
+
+    let mut done = 0u64;
+    for p in &pending {
+        let mut tx = db.begin().await?;
+
+        // 用户当前指标（期末值；基线 = 登记行 base_*，期初快照表缺它兜底——
+        // 与 API compute_metrics 同优先级：快照表为主，这里登记行在期内必然存在，
+        // 且结算时快照表写的是「下期」，本期基线只能来自登记行/上期快照）
+        let cur_vals: Option<(i64, i64, i64)> = sqlx::query_as(
+            "SELECT u.uploaded, u.uploaded, \
+                    (SELECT count(*) FROM torrents tr WHERE tr.owner_id = u.id AND tr.approval_status = 1) \
+             FROM users u WHERE u.id = $1",
+        )
+        .bind(p.user_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+        let Some((uploaded_now, _dup, uploads_now)) = cur_vals else {
+            // 用户已删：登记行作废不结算（不扣不发，keep 事实行）
+            sqlx::query("UPDATE jixiao_claims SET status = 3, settled_at = now() WHERE id = $1")
+                .bind(p.id)
+                .execute(&mut *tx)
+                .await?;
+            tx.commit().await?;
+            continue;
+        };
+        let seed_seconds_now: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(sum(seeded_seconds),0)::bigint FROM snatches WHERE user_id = $1",
+        )
+        .bind(p.user_id)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+        let seed_hours = ((seed_seconds_now - p.base_seed_seconds).max(0)) / 3600;
+        let uploads_delta = (uploads_now - p.base_uploads).max(0);
+        let uploaded_delta = (uploaded_now - p.base_uploaded).max(0);
+        let seed_days: i64 = sqlx::query_scalar(
+            "SELECT count(DISTINCT date_trunc('day', s.last_seen_at)) FROM snatches s \
+             WHERE s.user_id = $1 AND to_char(s.last_seen_at, 'YYYY-MM') = $2 AND s.seeding",
+        )
+        .bind(p.user_id)
+        .bind(&prev)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+        let seeding_count: i64 = sqlx::query_scalar(
+            "SELECT count(DISTINCT torrent_id) FROM snatches WHERE user_id = $1 AND seeding",
+        )
+        .bind(p.user_id)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+        let seed_size: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(sum(t.size),0)::bigint FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+             WHERE s.user_id = $1 AND s.seeding",
+        )
+        .bind(p.user_id)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+        let (up_month, down_month): (i64, i64) = sqlx::query_as(
+            "SELECT COALESCE(sum(delta_up),0)::bigint, COALESCE(sum(delta_down),0)::bigint \
+             FROM traffic_ledger WHERE user_id = $1 AND to_char(window_start, 'YYYY-MM') = $2",
+        )
+        .bind(p.user_id)
+        .bind(&prev)
+        .fetch_optional(&mut *tx)
+        .await?
+        .unwrap_or((0, 0));
+        let ops: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM audit_log WHERE actor_id = $1 AND to_char(created_at, 'YYYY-MM') = $2",
+        )
+        .bind(p.user_id)
+        .bind(&prev)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+
+        // 与 API compute_metrics 同键集合（结算快照留全量，判定只读 min_requirements）
+        let metrics = serde_json::json!({
+            "uploaded": up_month.max(uploaded_delta), "downloaded": down_month, "uploads": uploads_delta,
+            "seeding_count": seeding_count, "seed_size": seed_size,
+            "seed_size_tb": seed_size / 1_099_511_627_776,
+            "seed_hours": seed_hours, "seed_days": seed_days, "ops": ops,
+        });
+
+        // 达标判定：min_requirements 全部满足（与 /jixiao/claim 同口径）
+        let mut all_ok = true;
+        if let Some(reqs) = p.min_requirements.as_object() {
+            for (k, v) in reqs {
+                let required = v.as_i64().unwrap_or(0);
+                if required > 0
+                    && metrics.get(k).and_then(|x| x.as_i64()).unwrap_or(0) < required
+                {
+                    all_ok = false;
+                    break;
+                }
+            }
+        }
+
+        if all_ok {
+            // 达标月数（含本期）：历史 status=1 行数 + 1
+            let months_before: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND status = 1",
+            )
+            .bind(p.user_id)
+            .bind(p.type_id)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap_or(0);
+            // 岗位级加成优先（jixiao_types.bonus_rules：admin 表单「每 N 月 +M%」），
+            // 未配置/非法回落全站 site_settings——与 API 侧 jixiao_bonus 同口径
+            let (step, pct) = match p.bonus_rules.as_object().map(|r| {
+                (
+                    r.get("months_per_step").and_then(|v| v.as_i64()),
+                    r.get("percent_per_step").and_then(|v| v.as_i64()),
+                )
+            }) {
+                Some((Some(s), Some(pc))) if s > 0 && pc >= 0 => (s, pc),
+                _ => (site_step, site_pct),
+            };
+            let bonus = p.base_pay * pct / 100 * ((months_before + 1) / step);
+            let total = p.base_pay + bonus;
+
+            // CAS：与用户补领互斥（先到先得）
+            let upd = sqlx::query(
+                "UPDATE jixiao_claims SET status = 1, settled_at = now(), amount = $2, bonus_paid = $3, \
+                        metrics_at_settle = $4, \
+                        metrics_snapshot = metrics_snapshot || '{\"settle_by\":\"worker\"}'::jsonb \
+                 WHERE id = $1 AND settled_at IS NULL AND status = 0",
+            )
+            .bind(p.id)
+            .bind(total)
+            .bind(bonus)
+            .bind(&metrics)
+            .execute(&mut *tx)
+            .await?
+            .rows_affected();
+            if upd == 0 {
+                tx.rollback().await?;
+                continue;
+            }
+            if total > 0 {
+                let idem = format!("jixiao:settle:{}", p.id);
+                let exists: bool = sqlx::query_scalar(
+                    "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+                )
+                .bind(&idem)
+                .fetch_one(&mut *tx)
+                .await?;
+                if !exists {
+                    let balance: i64 =
+                        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+                            .bind(p.user_id)
+                            .fetch_one(&mut *tx)
+                            .await?;
+                    sqlx::query(
+                        "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
+                         VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'jixiao_reward', $3, $4)",
+                    )
+                    .bind(p.user_id)
+                    .bind(total)
+                    .bind(&idem)
+                    .bind(balance + total)
+                    .execute(&mut *tx)
+                    .await?;
+                    sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+                        .bind(p.user_id)
+                        .bind(total)
+                        .execute(&mut *tx)
+                        .await?;
+                }
+            }
+            let _ = sqlx::query(
+                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+            )
+            .bind(p.user_id)
+            .bind("绩效考核工资已发放")
+            .bind(format!(
+                "你本期（{}）的「{}」考核已达标，工资 {} 火花（含连续达标加成 {}）已自动发放到账。",
+                prev, p.name, total, bonus
+            ))
+            .execute(&mut *tx)
+            .await;
+        } else {
+            let upd = sqlx::query(
+                "UPDATE jixiao_claims SET status = 2, settled_at = now(), metrics_at_settle = $2, \
+                        metrics_snapshot = metrics_snapshot || '{\"settle_by\":\"worker\"}'::jsonb \
+                 WHERE id = $1 AND settled_at IS NULL AND status = 0",
+            )
+            .bind(p.id)
+            .bind(&metrics)
+            .execute(&mut *tx)
+            .await?
+            .rows_affected();
+            if upd == 0 {
+                tx.rollback().await?;
+                continue;
+            }
+            // 平实文案（不羞辱纪律：不指责，只陈述事实 + 收益不受影响的说明）
+            let _ = sqlx::query(
+                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+            )
+            .bind(p.user_id)
+            .bind("绩效考核本期未达标")
+            .bind(format!(
+                "你本期（{}）的「{}」考核未达到岗位指标，本期工资未发放。\
+                 你已产生的做种/上传收益不受影响，下期继续。",
+                prev, p.name
+            ))
+            .execute(&mut *tx)
+            .await;
+        }
+
+        tx.commit().await?;
+        done += 1;
+    }
+
+    // 下一期（=当前期）基线快照：结算完毕后滚动
+    jixiao_rollover_snapshot(db, &cur).await?;
+    if done > 0 {
+        tracing::info!(done, period = %prev, "jixiao settled");
+    }
+    Ok(done)
+}
+
+/// 为指定期落全站活跃用户基线快照（幂等：PK 冲突跳过——首个到达的快照即基线，
+/// 重跑不覆盖：期初值必须固定，中途覆盖会让 delta 口径漂移）。
+async fn jixiao_rollover_snapshot(db: &PgPool, period: &str) -> anyhow::Result<u64> {
+    let res = sqlx::query(
+        r#"
+        INSERT INTO jixiao_baseline_snapshots (user_id, period, seed_seconds, uploaded, uploads)
+        SELECT u.id, $1,
+               COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0),
+               u.uploaded,
+               (SELECT count(*) FROM torrents tr WHERE tr.owner_id = u.id AND tr.approval_status = 1)
+        FROM users u
+        WHERE u.status < 2
+          AND (EXISTS(SELECT 1 FROM snatches s2 WHERE s2.user_id = u.id)
+               OR u.uploaded > 0)
+        ON CONFLICT (user_id, period) DO NOTHING
+        "#,
+    )
+    .bind(period)
+    .execute(db)
+    .await?;
+    Ok(res.rows_affected())
+}
+
 /// P0-6 种子级 up/down 差额对账（NP cheaterbox 口径）：
 /// 虚报上传者没有对应真实下载方，同种子 7 天窗口 Σ(delta_up) − Σ(delta_down) 长期为正且巨大。
 /// 免费促销（free/x2free，含全局/官种/分类维度）天然产生差额，豁免。
@@ -1837,25 +2555,63 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
     .await?
     .rows_affected();
 
-    // ② 到期仍跌破：暂停下载 + 通知管理组（管理组可手动恢复 download_enabled）
-    let punished = sqlx::query(
-        r#"
-        WITH expired AS (
-            UPDATE users SET download_enabled = FALSE
-            WHERE status < 2 AND class_id < 90 AND download_enabled
-              AND ratio_watch_until IS NOT NULL AND ratio_watch_until < now()
-              AND downloaded > 0 AND uploaded::float8 / downloaded::float8 < $1
-            RETURNING id, username
-        )
-        INSERT INTO staffmessages (user_id, subject, body, permission)
-        SELECT id, 'Ratio Watch 到期处置', '用户 ' || username || '（#' || id || '）观察期结束仍未恢复分享率，已按规则暂停下载权限，请人工复核。', 'cheater'
-        FROM expired
-        "#,
+    // ② 到期仍跌破：按 ratio_watch_action 分级处置（U5 §12.3：
+    // warn=仅再警告 / limit_download=暂停下载+通知管理组，默认后者=现状 T3）
+    let action: String = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'ratio_watch_action'",
     )
-    .bind(threshold_f)
-    .execute(db)
-    .await?
-    .rows_affected();
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_else(|| "limit_download".into());
+
+    let (punished, notified) = if action == "warn" {
+        let expired: Vec<(i64, String)> = sqlx::query_as(
+            "SELECT id, username FROM users \
+             WHERE status < 2 AND class_id < 90 AND download_enabled \
+               AND ratio_watch_until IS NOT NULL AND ratio_watch_until < now() \
+               AND downloaded > 0 AND uploaded::float8 / downloaded::float8 < $1",
+        )
+        .bind(threshold_f)
+        .fetch_all(db)
+        .await
+        .unwrap_or_default();
+        for (uid, uname) in &expired {
+            let _ = sqlx::query(
+                "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+                 VALUES (NULL, $1, '分享率警告（观察期已满）', $2)",
+            )
+            .bind(uid)
+            .bind(format!(
+                "您好 {uname}，您的观察期已结束但分享率仍未恢复至 {threshold_f:.2}。本次仅提醒；持续未恢复可能影响下载权限。"
+            ))
+            .execute(db)
+            .await;
+        }
+        (expired.len() as u64, 0u64)
+    } else {
+        let punished = sqlx::query(
+            r#"
+            WITH expired AS (
+                UPDATE users SET download_enabled = FALSE
+                WHERE status < 2 AND class_id < 90 AND download_enabled
+                  AND ratio_watch_until IS NOT NULL AND ratio_watch_until < now()
+                  AND downloaded > 0 AND uploaded::float8 / downloaded::float8 < $1
+                RETURNING id, username
+            )
+            INSERT INTO staffmessages (user_id, subject, body, permission)
+            SELECT id, 'Ratio Watch 到期处置', '用户 ' || username || '（#' || id || '）观察期结束仍未恢复分享率，已按规则暂停下载权限，请人工复核。', 'cheater'
+            FROM expired
+            "#,
+        )
+        .bind(threshold_f)
+        .execute(db)
+        .await?
+        .rows_affected();
+        (punished, punished)
+    };
+    let _ = notified;
 
     // ③ 期内恢复：自动解除观察
     let cleared = sqlx::query(
@@ -1980,12 +2736,11 @@ async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
     );
     let mut refunds = 0u64;
     for (fid, _creator) in &expired {
-        let contribs: Vec<(i64, i64)> = sqlx::query_as(
-            "SELECT user_id, amount FROM funding_contribs WHERE funding_id = $1",
-        )
-        .bind(fid)
-        .fetch_all(db)
-        .await?;
+        let contribs: Vec<(i64, i64)> =
+            sqlx::query_as("SELECT user_id, amount FROM funding_contribs WHERE funding_id = $1")
+                .bind(fid)
+                .fetch_all(db)
+                .await?;
         for (uid, amount) in &contribs {
             let idem = format!("funding-refund:{fid}:{uid}");
             sqlx::query(
@@ -2024,7 +2779,12 @@ async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
         .await;
     }
     if !reached.is_empty() || !expired.is_empty() {
-        tracing::info!(reached = reached.len(), expired = expired.len(), refunds, "funding_settle");
+        tracing::info!(
+            reached = reached.len(),
+            expired = expired.len(),
+            refunds,
+            "funding_settle"
+        );
     }
     Ok((reached.len() + expired.len()) as u64)
 }
@@ -2255,6 +3015,14 @@ pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow
                 with_lock(&db, "job:wishlist_notify", wishlist_notify(&db)).await;
                 with_lock(&db, "job:highspeed_tag", highspeed_tag(&db)).await;
                 with_lock(&db, "job:resurrection_settle", resurrection_settle(&db)).await;
+                with_lock(&db, "job:social_team_settle", social_team_settle(&db)).await;
+                // 失败判定必须排在成功结算之后：恰好在期限内达标的队伍应算成功
+                with_lock(&db, "job:social_team_expire", social_team_expire(&db)).await;
+                // 绩效考核月末结算（0106）：挂 hourly 而非 daily——daily tick 首轮被
+                // first_tick1d 跳过、重启后要等 24h 才首跑；hourly 首轮立即执行，
+                // 且本 job 幂等（settled_at 标记 + 发薪幂等键），空扫描是一次索引查询
+                with_lock(&db, "job:jixiao_settle", jixiao_settle(&db)).await;
+                with_lock(&db, "job:preserve_settle", preserve_settle(&db)).await;
                 with_lock(&db, "job:funding_settle", funding_settle(&db)).await;
                 with_lock(&db, "job:refundable_settle", refundable_settle(&db)).await;
                 with_lock(&db, "job:achievement_grant", achievement_grant(&db)).await;
@@ -2301,6 +3069,15 @@ async fn with_lock<F, T>(db: &PgPool, key: &str, fut: F) -> Option<T>
 where
     F: std::future::Future<Output = anyhow::Result<T>>,
 {
+    // U1 §5.4 模块守卫：job 声明归属模块则按开关整轮跳过（debug 日志，不动账）；
+    // 核心任务（announce 计费/快照/清理/反作弊）不在表内 = 不受开关影响。
+    // 跳过不报错，恢复开启后靠既有幂等键自然补跑。
+    if let Some(module) = job_module(key) {
+        if !module_on(db, module).await {
+            tracing::debug!(key, module, "module off, skip job");
+            return None;
+        }
+    }
     let mut conn = match db.acquire().await {
         Ok(c) => c,
         Err(e) => {
@@ -2337,6 +3114,39 @@ where
             tracing::error!(key, "job 超时（900s）被掐断");
             None
         }
+    }
+}
+
+/// U1 §5.4：job key → 模块键映射（与 API 网关表同口径）。
+/// 未列出的 job 属核心层（计费/快照/清理/反作弊/等级），不受模块开关影响。
+fn job_module(job_key: &str) -> Option<&'static str> {
+    Some(match job_key {
+        "job:bank_daily" => "bank",
+        "job:task_settle" => "tasks",
+        "job:exam_assign" => "exams",
+        "job:jixiao_settle" => "jixiao",
+        "job:social_team_settle" | "job:social_team_expire" => "social",
+        "job:preserve_exit" | "job:preserve_settle" | "job:preserve_seed" => "preserve",
+        "job:resurrection_settle" => "resurrections",
+        "job:wishlist_notify" => "wishlist",
+        _ => return None,
+    })
+}
+
+/// 模块开关判定（worker 侧直查，无缓存——每分钟 tick 一次，查询代价可忽略；
+/// 与 API 的 ModuleFlags::default_on 保持同一缺省口径：缺键=教育站形态）。
+async fn module_on(db: &PgPool, module: &str) -> bool {
+    let v: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = $1",
+    )
+    .bind(format!("module_{module}"))
+    .fetch_optional(db)
+    .await
+    .unwrap_or(None);
+    match v {
+        // 显式配置按配置（no = 关）；查询失败/未配置回落默认值（T3 缺省=现状）
+        Some(raw) => raw.trim() == "yes",
+        None => !matches!(module, "showcase" | "social" | "contests"),
     }
 }
 

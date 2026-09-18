@@ -180,8 +180,14 @@ if empty_slot:
     check("农场·未熟拒收", r.get("code") == 1002)
 
 # ============ 7. 内容/运营 ============
+# 课本中心受站型包开关控制（module_textbooks，随 /admin/site-type-packs/apply 切换）：
+# 非教育站型合法关闭（返回 1004），教育站型或未配置时正常返回列表。
+_tb_mod = psql("SELECT value FROM site_settings WHERE name = 'module_textbooks'")
 s, r = call("GET", "/textbooks")
-check("内容·课本中心", r.get("code") == 0)
+if _tb_mod == "no":
+    check("内容·课本中心（站型开关已关，404 为预期口径）", r.get("code") == 1004)
+else:
+    check("内容·课本中心", r.get("code") == 0)
 s, r = call("GET", "/preserve")
 check("内容·保种区", r.get("code") == 0)
 s, r = call("GET", "/requests", token=tok)
@@ -258,6 +264,22 @@ check("申诉·我的列表", r.get("code") == 0)
 _, r = call("POST", "/me/2fa/setup", None, tok)
 _b32 = (r.get("data") or {}).get("secret", "")
 check("2FA·setup", r.get("code") == 0 and bool(_b32))
+
+# ============ 8.5 模块开关（U1 §5.3 四断言抽检：games/bank/forums） ============
+# 关 → API 4101；再开 → API 恢复 200。worker/导航一致性由单元与 e2e-smoke 覆盖。
+try:
+    for mod_key, probe in [("games", "/games"), ("bank", "/bank/overview"), ("forums", "/forums")]:
+        psql(f"UPDATE site_settings SET value='no' WHERE name='module_{mod_key}'")
+        # 绕过 30s 缓存等待：直接重启 api 太重，改为等待 TTL 过期（35s）
+        import time as _t; _t.sleep(35)
+        st, r = call("GET", probe, token=tok)
+        check(f"模块开关·关 {mod_key} → 4101", st == 404 and r.get("code") == 4101, f"({st}/{r.get('code')})")
+        psql(f"UPDATE site_settings SET value='yes' WHERE name='module_{mod_key}'")
+        _t.sleep(35)
+        st, r = call("GET", probe, token=tok)
+        check(f"模块开关·开 {mod_key} → 恢复", st == 200 and r.get("code") == 0, f"({st}/{r.get('code')})")
+except Exception as e:
+    check("模块开关·抽检", False, str(e))
 
 # ============ 9. Web / PWA ============
 for path in ["/", "/torrents", "/games", "/farm", "/dressup", "/my", "/offline",

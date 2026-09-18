@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::dto::ok;
 use crate::economy_http::{earn_spark, spend_spark, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
-use crate::games::{self, validate_bet, Guess, MAX_PLAYS_PER_HOUR};
+use crate::games::{self, Guess, MAX_PLAYS_PER_HOUR};
 use crate::http::require_auth;
 use crate::state::AppState;
 
@@ -41,17 +41,49 @@ async fn games_overview() -> impl Responder {
     }))
 }
 
-/// 每小时限次（Redis INCR + EXPIRE）
-async fn check_rate(redis: &redis::aio::ConnectionManager, user_id: i64) -> DomainResult<()> {
+/// 读取游戏经济设置键（0109 参数化；缺省回落代码默认值 T3）
+async fn eco_i64(state: &web::Data<std::sync::Arc<AppState>>, key: &str, default: i64) -> i64 {
+    sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = $1)::bigint, $2)",
+    )
+    .bind(key)
+    .bind(default)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(default)
+}
+
+/// 每小时限次（Redis INCR + EXPIRE；上限走设置键 games_max_plays_per_hour）
+async fn check_rate(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    redis: &redis::aio::ConnectionManager,
+    user_id: i64,
+) -> DomainResult<()> {
     use redis::AsyncCommands;
+    let limit = eco_i64(state, "games_max_plays_per_hour", MAX_PLAYS_PER_HOUR).await;
     let key = format!("rl:games:{user_id}");
     let mut conn = redis.clone();
     let n: i64 = conn.incr(&key, 1).await.unwrap_or(0);
     if n == 1 {
         let _: () = conn.expire(&key, 3600).await.unwrap_or(());
     }
-    if n > MAX_PLAYS_PER_HOUR {
+    if n > limit {
         return Err(DomainError::RateLimited);
+    }
+    Ok(())
+}
+
+/// 下注校验（上限走设置键 games_max_bet）
+async fn check_bet(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    bet: i64,
+) -> Result<(), String> {
+    let max = eco_i64(state, "games_max_bet", games::MAX_BET).await;
+    if bet <= 0 {
+        return Err("下注必须为正数".into());
+    }
+    if bet > max {
+        return Err(format!("单次下注不能超过 {max} 火花"));
     }
     Ok(())
 }
@@ -68,8 +100,8 @@ async fn scratch(
     body: web::Json<BetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    validate_bet(body.bet).map_err(DomainError::Validation)?;
-    check_rate(&state.redis, auth.id).await?;
+    check_bet(&state, body.bet).await.map_err(DomainError::Validation)?;
+    check_rate(&state, &state.redis, auth.id).await?;
 
     let idem = format!("game-scratch:{}:{}", auth.id, Uuid::new_v4());
     spend_spark(
@@ -108,13 +140,13 @@ async fn guess_bigsmall(
     body: web::Json<GuessReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    validate_bet(body.bet).map_err(DomainError::Validation)?;
+    check_bet(&state, body.bet).await.map_err(DomainError::Validation)?;
     let guess = match body.guess.as_str() {
         "small" => Guess::Small,
         "big" => Guess::Big,
         _ => return Err(DomainError::Validation("guess 仅支持 small/big".into())),
     };
-    check_rate(&state.redis, auth.id).await?;
+    check_rate(&state, &state.redis, auth.id).await?;
 
     let idem = format!("game-bs:{}:{}", auth.id, Uuid::new_v4());
     spend_spark(
@@ -150,7 +182,7 @@ async fn jgg(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    check_rate(&state.redis, auth.id).await?;
+    check_rate(&state, &state.redis, auth.id).await?;
 
     let ticket = games::JGG_TICKET;
     let idem = format!("game-jgg:{}:{}", auth.id, Uuid::new_v4());
@@ -261,6 +293,9 @@ async fn farm_plant(
     body: web::Json<PlantReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 审计修复（P1 印钞）：农场种植此前不进 games 限流（对照 scratch/dice/jgg），
+    // 确定性市场价可被脚本以 6 槽 × 高频轮种套取波动收益。统一纳入每小时次数上限。
+    check_rate(&state, &state.redis, auth.id).await?;
     if !(1..=6).contains(&body.slot) {
         return Err(DomainError::Validation("slot 取值 1-6".into()));
     }
@@ -288,7 +323,9 @@ async fn farm_plant(
     )
     .await?;
     if !matches!(outcome, SpendOutcome::Spent) {
-        return Err(DomainError::Validation("操作过于频繁，请一分钟后再试".into()));
+        return Err(DomainError::Validation(
+            "操作过于频繁，请一分钟后再试".into(),
+        ));
     }
 
     let planted = sqlx::query_scalar::<_, i64>(
@@ -388,11 +425,10 @@ async fn farm_harvest(
     let crop = get_crop(&state.repo.db, crop_id)
         .await?
         .ok_or(DomainError::Validation("作物不存在".into()))?;
-    // 收获量 = base_yield × 市场因子（与买种同一 ±50% 窗口波动）。
-    // 修复前按 seed_price 计价（买卖同价），base_yield 成死数据、每周期恒 +20%；
-    // 修复后产量承载收益：知识麦 80→均值 1.2×80=96（成本 100，微亏防刷），
-    // 高阶作物 4800→均值 5760（成本 5000），收益随档位拉开且受市场波动约束。
-    let market = games::market_price(crop.base_yield as i64, window);
+    // 收获量 = base_yield × 收获侧市场因子（±50% 窗口波动；与买种侧因子错开——
+    // 见 games::harvest_market_price 注释，消除确定性低买高卖套利）。
+    // 期望收益按作物表档位差全档微亏防刷（知识麦 96/100 … 状元稻 5760/5000 均值口径）。
+    let market = games::harvest_market_price(crop.base_yield as i64, window);
 
     let doubled = games::roll_double();
     let amount = if doubled { market * 2 } else { market };

@@ -513,10 +513,17 @@ async fn menu_items_public(
     if user_class < min_visible_class {
         return Ok(ok(Vec::<MenuItemRow>::new()));
     }
+    // U1 §6.2：menu_items.module_key 非空的条目随模块开关过滤——
+    // 无归属（NULL）或模块开启（module_xxx='yes'，未配置键视为关按 T3 需站长显式配置）
+    // 的条目放行。子查询逐行判定，60 行上限下代价可忽略。
     let rows: Vec<MenuItemRow> = sqlx::query_as(
         "SELECT id, location, label, url, parent_id, target, min_class, sort, enabled \
-         FROM menu_items \
-         WHERE enabled AND location = $1 AND min_class <= $2 ORDER BY sort, id LIMIT 60",
+         FROM menu_items m \
+         WHERE enabled AND location = $1 AND min_class <= $2 \
+           AND (m.module_key IS NULL OR COALESCE(( \
+                 SELECT value = 'yes' FROM site_settings s \
+                 WHERE s.name = 'module_' || m.module_key), false)) \
+         ORDER BY sort, id LIMIT 60",
     )
     .bind(&q.location)
     .bind(user_class)

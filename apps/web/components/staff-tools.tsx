@@ -424,18 +424,49 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
           </div>
           <div className="flex flex-wrap gap-2">
             {packs.map((pk) => (
-              <button key={pk.code}
+              <span key={pk.code} className="inline-flex items-center gap-1">
+                <button
                 className="min-h-[40px] rounded-full border border-[var(--baozi-orange)] px-4 text-xs font-bold text-[var(--baozi-orange-dark)] disabled:opacity-50"
                 disabled={busy}
                 title={pk.description ?? ""}
                 onClick={() => {
-                  if (!window.confirm(t.packConfirm.replace("{name}", pk.name))) return;
-                  void guard(async () => {
-                    await api.post("/api/v1/admin/site-type-packs/apply", { code: pk.code, mode: packMode });
-                  }, t.packApplied.replace("{name}", pk.name));
+                  // U2 §8.2 切换向导：先 diff 预览（旧值→新值），确认后才 apply
+                  void (async () => {
+                    let lines: string[] = [];
+                    try {
+                      const d = await api.post<{ changes: { key: string; old: string; new: string }[] }>(
+                        "/api/v1/admin/site-type-packs/diff", { code: pk.code });
+                      lines = d.changes.map((c) => `${c.key}: ${c.old} → ${c.new}`);
+                    } catch { /* diff 失败不阻塞——回落旧确认文案 */ }
+                    const detail = lines.length
+                      ? `将变更 ${lines.length} 项：\n${lines.slice(0, 15).join("\n")}${lines.length > 15 ? "\n…" : ""}`
+                      : "无配置差异（分类重建仍会执行）";
+                    if (!window.confirm(`${t.packConfirm.replace("{name}", pk.name)}\n\n${detail}`)) return;
+                    await guard(async () => {
+                      await api.post("/api/v1/admin/site-type-packs/apply", { code: pk.code, mode: packMode });
+                    }, t.packApplied.replace("{name}", pk.name));
+                  })();
                 }}>
                 {pk.name}
               </button>
+              {/* 自定义站型入口（U5 分发）：另存当前配置为新包 */}
+              <button
+                className="rounded-full border border-line px-3 text-xs text-sub disabled:opacity-50"
+                disabled={busy}
+                title={t.packSaveTip}
+                onClick={() => {
+                  const name = window.prompt(t.packSavePrompt);
+                  if (!name?.trim()) return;
+                  void guard(async () => {
+                    await api.post("/api/v1/admin/site-type-packs/save", {
+                      code: `custom_${name.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_").slice(0, 32)}`,
+                      name: name.trim(),
+                    });
+                  }, t.packSaved);
+                }}>
+                💾
+              </button>
+              </span>
             ))}
           </div>
         </section>

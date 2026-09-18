@@ -120,6 +120,12 @@ const MESSAGES: &[(i32, &str, &str, &str)] = &[
         "流水衝突，請重試",
         "Ledger conflict, please retry",
     ),
+    (
+        4101,
+        "本站未开放此功能",
+        "本站未開放此功能",
+        "This feature is not enabled on this site",
+    ),
     (5002, "已感谢过", "已感謝過", "Already thanked"),
 ];
 

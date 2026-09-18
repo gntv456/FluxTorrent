@@ -25,3 +25,10 @@ apps/api/geoip/*.mmdb
 # 竞品源码克隆（调研用完整仓库，不入库；结论已沉淀 _doc/）
 .np-research/
 target-test/
+
+# 竞品站点实时调研产物（含会话凭据，绝不入库；结论已沉淀 _doc/）
+_panda/
+_panda_cookie.txt
+_ck_copy.db
+_ck_result.txt
+_ck_probe.py

@@ -128,6 +128,58 @@ pub enum SpendOutcome {
     Replayed,
 }
 
+/// spend_spark 的传入事务版本：调用方把扣款与其它写操作并入同一事务
+/// （如求种悬赏冻结与建单原子化）。语义/锁序与 spend_spark 完全一致。
+pub async fn spend_spark_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: i64,
+    amount: i64,
+    kind: &str,
+    idem: &str,
+    ref_type: &str,
+    ref_id: i64,
+) -> DomainResult<SpendOutcome> {
+    let balance: i64 =
+        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+            .bind(user_id)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
+            .bind(idem)
+            .fetch_one(&mut **tx)
+            .await
+            .unwrap_or(false);
+    if exists {
+        return Ok(SpendOutcome::Replayed);
+    }
+    if balance < amount {
+        return Err(DomainError::InsufficientSpark);
+    }
+    sqlx::query(
+        "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
+         VALUES (nextval('spark_ledger_id_seq'), $1, $2, $3, $4, $5, $6, $7)",
+    )
+    .bind(user_id)
+    .bind(-amount)
+    .bind(kind)
+    .bind(ref_type)
+    .bind(ref_id)
+    .bind(idem)
+    .bind(balance - amount)
+    .execute(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1")
+        .bind(user_id)
+        .bind(amount)
+        .execute(&mut **tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(SpendOutcome::Spent)
+}
+
 pub async fn spend_spark(
     db: &PgPool,
     user_id: i64,
@@ -284,6 +336,31 @@ async fn shop_buy(
     let Some((name, kind, price, config)) = item else {
         return Err(DomainError::NotFound(body.item_id));
     };
+
+    // 审计修复（P1 花钱买空气）：唯一性道具（装扮/头衔类）重复购买此前照扣全价、
+    // 效果 ON CONFLICT DO NOTHING —— 已拥有者再买 = 花钱买空气。可叠加类
+    //（邀请/券/上传量/VIP 时长）不在此列。拥有判定与 apply_item_effect 同表。
+    if matches!(
+        kind.as_str(),
+        "avatar_frame" | "animated_avatar" | "rainbow_id" | "rainbow_name"
+    ) {
+        let item_id = config.get("item_id").and_then(|v| v.as_i64());
+        if let Some(iid) = item_id {
+            let owned: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM user_dressups WHERE user_id = $1 AND item_id = $2)",
+            )
+            .bind(auth.id)
+            .bind(iid)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+            if owned {
+                return Err(DomainError::Validation(
+                    "你已拥有该装扮，无需重复购买（装扮类道具不叠加）".into(),
+                ));
+            }
+        }
+    }
 
     // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款
     let idem = body
@@ -674,6 +751,10 @@ async fn my_ledger(
 struct DepositReq {
     amount: i64,
     term_days: i32,
+    /// 客户端幂等键（审计修复 P1：服务端随机键导致网络重试/双击=双扣款。
+    /// 与 shop/funding 同口径：重试必须携带同一键；缺省回退随机键保持兼容）
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/bank/deposit")]
@@ -704,7 +785,12 @@ async fn bank_deposit(
             bs.max_deposit
         )));
     }
-    let idem = format!("deposit:{}:{}", auth.id, Uuid::new_v4());
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.trim().is_empty())
+        .map(|k| format!("deposit:{}:{}", auth.id, k.trim()))
+        .unwrap_or_else(|| format!("deposit:{}:{}", auth.id, Uuid::new_v4()));
     spend_spark(
         &state.repo.db,
         auth.id,
@@ -881,6 +967,9 @@ async fn bank_withdraw(
 #[derive(Deserialize)]
 struct DemandDepositReq {
     amount: i64,
+    /// 客户端幂等键（审计修复 P1：防网络重试双扣；缺省回退随机键保持兼容）
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/bank/demand/deposit")]
@@ -900,7 +989,12 @@ async fn demand_deposit(
             bs.min_demand
         )));
     }
-    let idem = format!("demand_in:{}:{}", auth.id, Uuid::new_v4());
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.trim().is_empty())
+        .map(|k| format!("demand_in:{}:{}", auth.id, k.trim()))
+        .unwrap_or_else(|| format!("demand_in:{}:{}", auth.id, Uuid::new_v4()));
     spend_spark(
         &state.repo.db,
         auth.id,
@@ -941,6 +1035,9 @@ async fn demand_deposit(
 #[derive(Deserialize)]
 struct DemandWithdrawReq {
     amount: i64,
+    /// 客户端幂等键（审计修复 P1：防网络重试双发入账；缺省回退随机键保持兼容）
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/bank/demand/withdraw")]
@@ -974,7 +1071,12 @@ async fn demand_withdraw(
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let idem = format!("demand_out:{}:{}", auth.id, Uuid::new_v4());
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.trim().is_empty())
+        .map(|k| format!("demand_out:{}:{}", auth.id, k.trim()))
+        .unwrap_or_else(|| format!("demand_out:{}:{}", auth.id, Uuid::new_v4()));
     // 审计修复（P1 撕裂窗口）：活期扣减提交后 earn_spark 失败 = 钱从活期消失、余额未加。
     // 失败时把活期余额补回去（单用户路径无并发放大风险，补偿幂等性由行锁保证）。
     if let Err(e) = earn_spark(
@@ -1082,8 +1184,14 @@ async fn loan_apply(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let idem = format!("loan:{}:{}", auth.id, id);
-    if let Err(e) =
-        earn_spark(&state.repo.db, auth.id, body.amount, "bank_loan_payout", &idem).await
+    if let Err(e) = earn_spark(
+        &state.repo.db,
+        auth.id,
+        body.amount,
+        "bank_loan_payout",
+        &idem,
+    )
+    .await
     {
         // 放款失败回滚贷款行（审计 P1-3：旧版残留 active 贷款进入计息/逾期/自动扣款
         // 集合——用户没收到钱却背上了债务）
@@ -1437,6 +1545,9 @@ async fn pool_status(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult
 #[derive(Deserialize)]
 struct DonateReq {
     amount: i64,
+    /// 客户端幂等键（审计修复 P1：防网络重试双扣；缺省回退随机键保持兼容）
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/magic-pool/donate")]
@@ -1450,9 +1561,23 @@ async fn pool_donate(
         return Err(DomainError::Validation("捐赠金额必须为正".into()));
     }
     let month = economy::pool_month(chrono::Utc::now());
-    let idem = format!("donate:{}:{}:{}", auth.id, month, Uuid::new_v4());
-    spend_spark(
-        &state.repo.db,
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.trim().is_empty())
+        .map(|k| format!("donate:{}:{}:{}", auth.id, month, k.trim()))
+        .unwrap_or_else(|| format!("donate:{}:{}:{}", auth.id, month, Uuid::new_v4()));
+    // 审计修复（P1 非原子）：旧版 spend_spark 成功后 magic_pool / pool_donations 两段
+    // INSERT 独立执行，失败即「钱扣了、池账与荣誉榜丢失」。改为单事务：扣款经
+    // spend_spark_tx 与入池、流水三写同生共死，失败整体回滚（对照 funding_contribute）。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    spend_spark_tx(
+        &mut tx,
         auth.id,
         body.amount,
         "pool_donate",
@@ -1461,23 +1586,29 @@ async fn pool_donate(
         0,
     )
     .await?;
-
     sqlx::query(
         "INSERT INTO magic_pool (month, donated_total) VALUES ($1, $2) \
          ON CONFLICT (month) DO UPDATE SET donated_total = magic_pool.donated_total + $2",
     )
     .bind(&month)
     .bind(body.amount)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query("INSERT INTO pool_donations (user_id, amount, month) VALUES ($1, $2, $3)")
         .bind(auth.id)
         .bind(body.amount)
         .bind(&month)
-        .execute(&state.repo.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "pool_donate", Some(body.amount))
+        .await;
     Ok(ok(
         serde_json::json!({ "month": month, "donated": body.amount }),
     ))
@@ -1677,13 +1808,8 @@ async fn torznab_search(
     if fetch_n > 1000 {
         return Err(DomainError::Validation("offset+limit 不得超过 1000".into()));
     }
-    let page = crate::torrents::list_torrents_noclamp(
-        &state.repo.db,
-        &filter,
-        None,
-        fetch_n,
-    )
-    .await?;
+    let page =
+        crate::torrents::list_torrents_noclamp(&state.repo.db, &filter, None, fetch_n).await?;
     let items: Vec<_> = page
         .items
         .into_iter()
@@ -1691,10 +1817,27 @@ async fn torznab_search(
         .take(limit)
         .map(|t| {
             let pub_date = t.created_at.to_rfc3339();
+            // 促销标记（刷流时效性，NP 官方插件口径）：Torznab 标签 + 标题前缀双通道——
+            // Prowlarr 按标签建索引，用户按标题肉眼/过滤规则识别。缺标记 = 免费信息断传。
+            let promo_tag = match t.promotion.as_deref() {
+                Some("free") => "[Free] ",
+                Some("x2free") => "[2xFree] ",
+                Some("half") => "[50%] ",
+                Some("x2half") => "[2x50%] ",
+                Some("x2") => "[2x] ",
+                Some("p30") => "[30%] ",
+                _ => "",
+            };
+            let torznab_tags = match t.promotion.as_deref() {
+                Some(p @ ("free" | "x2free" | "half" | "x2half" | "x2" | "p30")) => {
+                    format!("    <torznab:attr name=\"tags\" value=\"free,{p}\" />\n")
+                }
+                _ => String::new(),
+            };
             format!(
                 concat!(
                     "  <item>\n",
-                    "    <title>{}</title>\n",
+                    "    <title>{}{}</title>\n",
                     "    <guid isPermaLink=\"false\">torrent-{}</guid>\n",
                     "    <link>{}/api/v1/compat/nexusphp/download.php?id={}</link>\n",
                     "    <enclosure url=\"{}/api/v1/compat/nexusphp/download.php?id={}&amp;passkey={}\" type=\"application/x-bittorrent\" length=\"{}\" />\n",
@@ -1703,11 +1846,23 @@ async fn torznab_search(
                     "    <seeders>{}</seeders>\n",
                     "    <peers>{}</peers>\n",
                     "    <category id=\"8000\" name=\"Other\" />\n",
+                    "{}",
                     "  </item>\n"
                 ),
+                promo_tag,
                 xml_escape(&t.name),
-                t.id, &api_base, t.id, &api_base, t.id, xml_escape(&auth_uid), t.size, pub_date, t.size, t.seeders,
+                t.id,
+                &api_base,
+                t.id,
+                &api_base,
+                t.id,
+                xml_escape(&auth_uid),
+                t.size,
+                pub_date,
+                t.size,
+                t.seeders,
                 t.seeders + t.leechers,
+                torznab_tags,
             )
         })
         .collect();
@@ -1809,13 +1964,12 @@ async fn funding_create(
             "hours 需在 1-720、days 需在 1-60 之间".into(),
         ));
     }
-    let torrent: Option<(i64, i16)> = sqlx::query_as(
-        "SELECT owner_id, approval_status FROM torrents WHERE id = $1",
-    )
-    .bind(body.torrent_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let torrent: Option<(i64, i16)> =
+        sqlx::query_as("SELECT owner_id, approval_status FROM torrents WHERE id = $1")
+            .bind(body.torrent_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((owner_id, _)) = torrent else {
         return Err(DomainError::NotFound(body.torrent_id));
     };
@@ -1844,8 +1998,13 @@ async fn funding_create(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "funding_create", Some(id)).await;
-    Ok(ok(serde_json::json!({ "id": id, "goal": body.goal, "hours": body.hours })))
+    state
+        .repo
+        .audit(Some(auth.id), "funding_create", Some(id))
+        .await;
+    Ok(ok(
+        serde_json::json!({ "id": id, "goal": body.goal, "hours": body.hours }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -1868,13 +2027,12 @@ async fn funding_contribute(
     if body.amount <= 0 {
         return Err(DomainError::Validation("参与金额必须为正".into()));
     }
-    let f: Option<(i64, i16)> = sqlx::query_as(
-        "SELECT goal, status FROM fundings WHERE id = $1 AND ends_at > now()",
-    )
-    .bind(body.funding_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let f: Option<(i64, i16)> =
+        sqlx::query_as("SELECT goal, status FROM fundings WHERE id = $1 AND ends_at > now()")
+            .bind(body.funding_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((goal, status)) = f else {
         return Err(DomainError::NotFound(body.funding_id));
     };
@@ -1887,12 +2045,13 @@ async fn funding_contribute(
         .filter(|k| !k.is_empty())
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
     // 税：基点可调（site_settings gift_tax_bp，缺省 500=5%）；0=免税
-    let tax_bp: i32 = sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'gift_tax_bp'")
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .and_then(|v: String| v.parse().ok())
-        .unwrap_or(500);
+    let tax_bp: i32 =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'gift_tax_bp'")
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .and_then(|v: String| v.parse().ok())
+            .unwrap_or(500);
     let tax = economy::gift_tax(body.amount, tax_bp);
     let net = body.amount - tax;
     crate::economy_http::spend_spark(
@@ -1938,9 +2097,9 @@ async fn funding_contribute(
             let _ =
                 crate::economy_http::earn_spark(&db, uid, amount, "funding_refund", &idem2).await;
         });
-        return Err(DomainError::Validation(
-            format!("参与记录写入失败，已发起退款冲销：{why}"),
-        ));
+        return Err(DomainError::Validation(format!(
+            "参与记录写入失败，已发起退款冲销：{why}"
+        )));
     }
     // 税入站免池（与 pool_donate 同账：magic_pool + pool_donations）。
     // 账务口径：税不另记 spark_ledger——支出方的 -amount 流水已把含税全额记为回收，

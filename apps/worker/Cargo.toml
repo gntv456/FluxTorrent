@@ -8,7 +8,9 @@ tokio.workspace = true
 serde.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
-sqlx.workspace = true
+# 覆盖 workspace 声明：追加 mysql（np-import bin 直连 NexusPHP 源库；
+# 主 bin 代码不触达 MySQL 路径，仅二进制多带一份驱动）
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "mysql", "chrono", "uuid", "migrate"] }
 chrono.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
@@ -16,3 +18,9 @@ dotenvy.workspace = true
 redis.workspace = true
 futures-util.workspace = true
 sha1.workspace = true
+# np-import bin（U4 §12.4）直连 NexusPHP 源库（MySQL 只读）：
+# feature 并集编译——mysql 驱动只被本 bin 代码触达
+
+[[bin]]
+name = "np_import"
+path = "src/bin/np_import.rs"

@@ -2,6 +2,7 @@ import { getMedals } from "@/lib/data";
 import { MedalActions } from "@/components/medal-actions";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt } from "@/i18n/config";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,10 @@ const RARITY_LABEL: Record<string, string> = {
 
 /** 勋章殿堂（好学站 medal.php 口径）：按分类分组，卡片含描述/获取方式/有效期/库存/销售期/加成 */
 export default async function MedalsPage() {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("medals");
+  if (gate) return gate;
+
   const { dict, locale } = await getDict();
   const medals = await getMedals();
   const t = dict.medals2;

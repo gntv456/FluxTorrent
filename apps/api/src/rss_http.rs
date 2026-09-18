@@ -4,7 +4,7 @@
 //! 刷流工具（RSS 阅读器/下载器）凭 URL 自动拉新种。
 //! 参数对齐参考站 getrss.php 的常用子集：分类多选/媒介多选/官种/关键字/条数/标题格式/付费。
 
-use actix_web::{HttpRequest, get, web, HttpResponse};
+use actix_web::{get, web, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
 
 use crate::state::AppState;
@@ -21,6 +21,8 @@ struct RssRow {
     size: i64,
     created_at: DateTime<Utc>,
     official_tag: bool,
+    /// 当前生效促销（rss 刷流标记用）：free/x2free/…，NULL = 无
+    promotion: Option<String>,
     #[sqlx(default)]
     owner_name: Option<String>,
 }
@@ -61,6 +63,16 @@ async fn rss_feed(
     let free_only = q.paid == Some(1);
     let rows: Vec<RssRow> = sqlx::query_as(
         "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, t.official_tag, \
+                (SELECT p.kind::text FROM promotions p \
+                  WHERE p.starts_at <= now() AND p.ends_at > now() AND ( \
+                    p.torrent_id = t.id \
+                    OR (p.torrent_id IS NULL AND ( \
+                        p.scope = 'global' \
+                        OR (p.scope = 'official' AND t.official_tag) \
+                        OR (p.scope = 'non_official' AND NOT t.official_tag) \
+                        OR (p.scope = 'category' AND p.category_id = t.category_id)))) \
+                  ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 \
+                                          WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion, \
                 u.username AS owner_name \
          FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          WHERE t.approval_status = 1 \
@@ -108,13 +120,28 @@ async fn rss_feed(
                 .unwrap_or_else(|| "http://localhost:3000".into());
             host
         });
-    // 标题格式：linktype=dl（默认）[官种] 标题 [副标题] 大小 发布者；linktype=page 仅标题
+    // 标题格式：linktype=dl（默认）[促销] [官种] 标题 [副标题] 大小 发布者；linktype=page 仅标题。
+    // 促销标记（刷流时效性关键，NP 官方插件口径）：用户自购/站方挂的 Free 与 2xFree
+    // 必须在 RSS 标题第一时间可见——刷流器按标题关键词过滤，标记缺失 = 免费信息传不到
+    // （NP 二改站的常见缺陷）。标记格式与列表角标一致：Free / 2xFree / 50% / 2x / 2x50%。
+    let promo_tag = |p: &Option<String>| -> String {
+        match p.as_deref() {
+            Some("free") => "[Free] ".into(),
+            Some("x2free") => "[2xFree] ".into(),
+            Some("half") => "[50%] ".into(),
+            Some("x2half") => "[2x50%] ".into(),
+            Some("x2") => "[2x] ".into(),
+            Some("p30") => "[30%] ".into(),
+            _ => String::new(),
+        }
+    };
     let verbose = q.linktype.as_deref() != Some("page");
     let mut items = String::new();
     for r in &rows {
         let title = if verbose {
             format!(
-                "{}{} {} {} · {}",
+                "{}{}{} {} {} · {}",
+                promo_tag(&r.promotion),
                 if r.official_tag { "[官种] " } else { "" },
                 r.name,
                 r.small_descr.clone().unwrap_or_default(),
@@ -122,7 +149,7 @@ async fn rss_feed(
                 r.owner_name.clone().unwrap_or_default(),
             )
         } else {
-            r.name.clone()
+            format!("{}{}", promo_tag(&r.promotion), r.name)
         };
         items.push_str(&format!(
             "<item><title>{}</title><link>{}/torrent/{}</link>\

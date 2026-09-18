@@ -17,10 +17,16 @@ type NavGroup = { group: string; items: NavItem[] };
  * 导航按「核心任务 / 发现 / 经济 / 成长 / 娱乐」四域收纳，桌面发布入口收进一级菜单，移动端走底部 5 Tab。
  */
 export async function Header() {
-  const { dict, locale } = await getDict();
+  const { dict, locale, currency } = await getDict();
   const profile = await getSiteProfile();
-  const textbooksOn = profile.modules.textbooks === true;
+  /** 模块开关（U1 §6.2）：缺键视为开（T3 缺省=现状），与 API 侧 default_on 口径一致 */
+  const mod = (k: string) => profile.modules[k] !== false;
+  const textbooksOn = mod("textbooks");
+  /** 社交层（0102）：由 site_settings.module_social 决定，关闭时导航里不出现入口 */
+  const socialOn = mod("social");
   const brand = profile.brand || dict.common.brand;
+  /** 字典文案里的 {magic} 货币占位符（如 nav.spark「{magic}经济」）在此替换为站点货币名 */
+  const t = (tpl: string) => tpl.replace("{magic}", currency);
 
   // 自定义菜单（location=topbar，nav.custom_enabled 开启时接口才返回非空）：
   // 一级项替换主菜单；带子项的一级项其子项收进「更多 ▾」作为独立分组（nexusphp-menu 生产口径）。
@@ -51,7 +57,7 @@ export async function Header() {
     ? customTops.map((m) => ({ href: m.url, label: m.label }))
     : defaultPrimary;
 
-  // 「更多 ▾」收纳域（自定义生效时替换为自定义子项分组）
+  // 「更多 ▾」收纳域（自定义生效时替换为自定义子项分组；条目按 module 开关过滤 U1 §6.2）
   const groups: NavGroup[] = customActive
     ? customGroups
     : [
@@ -59,53 +65,59 @@ export async function Header() {
       group: dict.nav.discover,
       items: [
         { href: "/torrents?official=1", label: dict.nav.official },
-        { href: "/requests", label: dict.nav.candidates },
-        { href: "/offers", label: dict.nav.offers },
-        { href: "/subtitles", label: dict.nav.subtitles },
-        { href: "/preserve", label: dict.nav.preserve },
+        ...(mod("requests") ? [{ href: "/requests", label: dict.nav.candidates }] : []),
+        ...(mod("offers") ? [{ href: "/offers", label: dict.nav.offers }] : []),
+        ...(mod("subtitles") ? [{ href: "/subtitles", label: dict.nav.subtitles }] : []),
+        ...(mod("preserve") ? [{ href: "/preserve", label: dict.nav.preserve }] : []),
+        ...(socialOn
+          ? [
+              { href: "/endangered", label: dict.nav.endangered },
+              { href: "/teams", label: dict.nav.teams },
+            ]
+          : []),
         ...(textbooksOn ? [{ href: "/textbooks", label: dict.nav.textbooks }] : []),
       ],
     },
     {
-      group: dict.nav.spark,
+      group: t(dict.nav.spark),
       items: [
-        { href: "/shop", label: dict.tabbar.shop },
-        { href: "/bank", label: dict.nav.bank },
-        { href: "/magic-pool", label: dict.nav.magicPool },
-        { href: "/tasks", label: dict.nav.tasks },
-        { href: "/my-spark", label: dict.nav.spark },
+        ...(mod("shop") ? [{ href: "/shop", label: dict.tabbar.shop }] : []),
+        ...(mod("bank") ? [{ href: "/bank", label: dict.nav.bank }] : []),
+        ...(mod("magic_pool") ? [{ href: "/magic-pool", label: dict.nav.magicPool }] : []),
+        ...(mod("tasks") ? [{ href: "/tasks", label: dict.nav.tasks }] : []),
+        { href: "/my-spark", label: t(dict.nav.spark) },
       ],
     },
     {
       group: dict.nav.growth,
       items: [
-        { href: "/me/exams", label: dict.nav.exams },
+        ...(mod("exams") ? [{ href: "/me/exams", label: dict.nav.exams }] : []),
         { href: "/me/achievements", label: dict.nav.achievements },
-        { href: "/resurrections", label: dict.nav.resurrections },
-        { href: "/medal-wall", label: dict.nav.medalWall },
-        { href: "/avatar-frames", label: dict.nav.frames },
-        { href: "/medals", label: dict.nav.medals },
-        { href: "/jixiao", label: dict.nav.jixiao },
+        ...(mod("resurrections") ? [{ href: "/resurrections", label: dict.nav.resurrections }] : []),
+        ...(mod("medals") ? [{ href: "/medal-wall", label: dict.nav.medalWall }] : []),
+        ...(mod("dressup") ? [{ href: "/avatar-frames", label: dict.nav.frames }] : []),
+        ...(mod("medals") ? [{ href: "/medals", label: dict.nav.medals }] : []),
+        ...(mod("jixiao") ? [{ href: "/jixiao", label: dict.nav.jixiao }] : []),
         { href: "/invites", label: dict.nav.invites },
       ],
     },
     {
       group: dict.nav.fun,
       items: [
-        { href: "/games", label: dict.nav.games },
-        { href: "/farm", label: dict.nav.farm },
-        { href: "/gomoku", label: dict.nav.gomoku },
-        { href: "/contests", label: dict.nav.contests },
-        { href: "/friends", label: dict.nav.friends },
+        ...(mod("games") ? [{ href: "/games", label: dict.nav.games }] : []),
+        ...(mod("farm") ? [{ href: "/farm", label: dict.nav.farm }] : []),
+        ...(mod("gomoku") ? [{ href: "/gomoku", label: dict.nav.gomoku }] : []),
+        ...(mod("contests") ? [{ href: "/contests", label: dict.nav.contests }] : []),
+        ...(mod("friends") ? [{ href: "/friends", label: dict.nav.friends }] : []),
       ],
     },
     {
       group: dict.nav.more,
       items: [
-        { href: "/messages", label: dict.nav.messages },
+        ...(mod("messages") ? [{ href: "/messages", label: dict.nav.messages }] : []),
         { href: "/myhr", label: dict.nav.myhr },
         { href: "/faq", label: dict.nav.faq },
-        { href: "/donate", label: dict.nav.donate },
+        ...(mod("magic_pool") ? [{ href: "/donate", label: dict.nav.donate }] : []),
       ],
     },
   ];

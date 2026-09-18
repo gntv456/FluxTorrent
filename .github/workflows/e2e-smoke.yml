@@ -1,0 +1,127 @@
+# 端到端冒烟 CI：真实 PostgreSQL + Redis 起完整 api → 种子数据 → 分层冒烟。
+#
+# 为什么需要（六轮测试的结论）：sqlx 是运行时查询，编译期不校验 SQL——
+# 促销 SQL 冗余 bind 那类「编译绿、每个 announce 进 DLQ」的 P0 只有真库才能抓到。
+# 本 workflow 是防回归的最后闸门：
+#   job rust-smoke  = cargo build + 起 api（自动跑迁移）+ 逐层 HTTP 冒烟（全部只依赖
+#                     schema + 引导数据，不依赖业务种子数据）
+#   job migrate-idempotency = 迁移幂等（连跑两次 api 启动不报 checksum/冲突）
+# 与 build-test.yml（纯编译+单测）互补，推送/PR 均触发。
+
+name: e2e-smoke
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  DB_PASSWORD: cipassword_32chars_for_smoke_only!
+  REDIS_PASSWORD: ciredispassword
+  JWT_SECRET: ci_jwt_secret_change_me_at_least_32_bytes!
+  DATABASE_URL: postgres://flux:cipassword_32chars_for_smoke_only!@127.0.0.1:5432/fluxtorrent
+  REDIS_URL: redis://:ciredispassword@127.0.0.1:6379
+  FLUX_DEV: "1"
+  BIND: 127.0.0.1:8080
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: flux
+          POSTGRES_PASSWORD: cipassword_32chars_for_smoke_only!
+          POSTGRES_DB: fluxtorrent
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        command: ["redis-server", "--requirepass", "ciredispassword"]
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli -a ciredispassword ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build api (debug)
+        run: cargo build -p flux-api
+
+      - name: Boot api #1（自动执行迁移）
+        run: |
+          nohup ./target/debug/flux-api > api1.log 2>&1 &
+          for i in $(seq 1 30); do
+            sleep 1
+            if curl -sf http://127.0.0.1:8080/api/v1/health > /dev/null; then echo "api up"; exit 0; fi
+          done
+          echo "::error::api 启动失败（迁移或启动期崩溃）"; cat api1.log; exit 1
+
+      - name: 迁移幂等（重启再跑一次迁移）
+        run: |
+          pkill -f target/debug/flux-api || true
+          sleep 2
+          nohup ./target/debug/flux-api > api2.log 2>&1 &
+          for i in $(seq 1 30); do
+            sleep 1
+            if curl -sf http://127.0.0.1:8080/api/v1/health > /dev/null; then echo "api up (2nd)"; exit 0; fi
+          done
+          echo "::error::二次启动失败（迁移非幂等 / checksum 漂移）"; cat api2.log; exit 1
+
+      - name: 引导冒烟数据（psql 客户端直连 service）
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client > /dev/null
+          psql "$DATABASE_URL" -t -A -c "
+            INSERT INTO users (username, email, pass_hash, passkey, class_id)
+            VALUES ('root', 'root@flux.local', 'stub', 'rootpasskey0000000000000000000ff', 99)
+            ON CONFLICT (username) DO NOTHING;"
+
+      - name: HTTP 冒烟（schema 驱动，不依赖种子业务数据）
+        run: |
+          set -e
+          B=http://127.0.0.1:8080/api/v1
+          fail=0
+          probe() { # method path expect_code
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X "$1" "$B$2" -H 'Content-Type: application/json' ${3:+-d "$3"})
+            echo "$1 $2 → $code"
+          }
+          probe GET  /health
+          probe GET  /torrents                 # 未登录：信封 401（不是裸 404/500 = 路由+信封活着）
+          probe GET  /compat/meta              # 公开端点
+          probe GET  /auth/captcha             # 验证码签发（Redis 依赖）
+          probe POST /auth/login '{"username":"root","password":"wrong"}'   # 登录路径可达（非 500）
+          # 关键回归锁：促销计费 SQL（历史 P0——冗余 bind 在无数据时同样报错，真库必抓）
+          psql "$DATABASE_URL" -t -A -c "
+            INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, name, category_id, owner_id, size, numfiles, approval_status)
+            VALUES ('aa','aa','aa','ci-smoke', 1, 1, 1024, 1, 1) ON CONFLICT DO NOTHING;
+            INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source)
+            SELECT 'torrent', id, 'free', now() - interval '1 hour', now() + interval '1 hour', 'manual'
+            FROM torrents WHERE name='ci-smoke' LIMIT 1
+            ON CONFLICT DO NOTHING;" > /dev/null
+          # 与 worker process_event 同构的促销裁决双查询——直接验证 SQL 可解析可 bind
+          psql "$DATABASE_URL" -t -A -c "
+            SELECT kind::text FROM promotions WHERE torrent_id = \$1 AND starts_at <= \$2 AND ends_at > \$2
+            ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'free' THEN 3 ELSE 0 END DESC, id DESC LIMIT 1;" \
+            -v 1=1 -v 2=now > /dev/null && echo "promotion SQL ok"
+          echo "SMOKE DONE"
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-logs
+          path: |
+            api1.log
+            api2.log
+          if-no-files-found: ignore

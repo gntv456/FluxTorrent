@@ -3,12 +3,17 @@ import { getForums } from "@/lib/data";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { ForumSearch } from "@/components/forum-search";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
 /** 论坛（pting.club 布局复刻）：左侧兴趣节点栏 + 版块卡片流
  *  每张卡片：版块名/描述/话题数/帖子数 + 最新话题标题预览 */
 export default async function ForumsPage() {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("forums");
+  if (gate) return gate;
+
   const { dict, locale } = await getDict();
   const forums = await getForums();
   return (

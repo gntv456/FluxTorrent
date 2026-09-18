@@ -12,6 +12,9 @@ use crate::domain::{self};
 use crate::dto::ok;
 use crate::economy_http::{spend_spark, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
+use crate::social_http::{
+    endangered_list, team_create, team_join, team_leave, team_list, team_mine,
+};
 use crate::state::AppState;
 use crate::torrents;
 
@@ -48,6 +51,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(set_torrent_price)
         .service(delete_torrent)
         .service(restore_torrent)
+        .service(resubmit_torrent)
         .service(group_attach)
         .service(group_info)
         .service(group_subscribe)
@@ -127,10 +131,14 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(locations)
         .service(donate_state)
         .service(donate_topup)
+        .service(donate_order_status)
+        .service(donate_notify)
         .service(donate_order)
         .service(site_profile)
         .service(site_type_pack_list)
         .service(site_type_pack_apply)
+        .service(site_type_pack_diff)
+        .service(site_type_pack_save)
         .service(massmail_list)
         .service(massmail_send)
         .service(medal_wall)
@@ -147,11 +155,17 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(upload)
         .service(ptgen)
         .service(download)
-    .service(issue_invite_handler)
-    .service(redeem_invite_handler)
-    .service(list_invites_handler)
-    .service(invites_status_handler)
-    .service(email_invite_handler)
+        .service(issue_invite_handler)
+        .service(redeem_invite_handler)
+        .service(list_invites_handler)
+        .service(invites_status_handler)
+        .service(email_invite_handler)
+        .service(endangered_list)
+        .service(team_create)
+        .service(team_join)
+        .service(team_leave)
+        .service(team_list)
+        .service(team_mine)
         .service(logout)
 }
 
@@ -188,6 +202,18 @@ async fn register(
         password: body.password.clone(),
     };
     domain::validate_register(&new_user)?;
+    // 注册模式（U1 §11.5）：invite_only（默认，现状）/ open / email_verify。
+    // open 模式旁路邀请码（inviter 置 NULL，链路其余不变）；email_verify 走
+    // 既有邮箱确认信（confirm/resend 已有），未确认账号登录受限由既有列控制。
+    let reg_mode: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'registration_mode'), 'invite_only')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_else(|_| "invite_only".into());
+    if reg_mode == "invite_only" && body.invite_code.trim().is_empty() {
+        return Err(DomainError::InviteInvalid);
+    }
     // 图形验证码校验（防注册机）
     if body.captcha_id.is_empty()
         || !crate::gaps_http::captcha_verify(&state, &body.captcha_id, body.captcha_answer).await
@@ -234,12 +260,10 @@ async fn register(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let passkey = {
         // 与 repo::create_user 同口径的 passkey 生成
-        let p: String = sqlx::query_scalar(
-            "SELECT encode(gen_random_bytes(20), 'hex')",
-        )
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        let p: String = sqlx::query_scalar("SELECT encode(gen_random_bytes(20), 'hex')")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         p
     };
     let user_id: i64 = sqlx::query_scalar(
@@ -255,35 +279,43 @@ async fn register(
         sqlx::Error::Database(db) if db.is_unique_violation() => DomainError::UsernameTaken,
         other => DomainError::Internal(other.into()),
     })?;
-    let inviter: Option<i64> = sqlx::query_scalar(
-        "UPDATE invites SET status = 1, used_by = $1          WHERE code = $2 AND status = 0 AND expires_at > now()          RETURNING inviter_id",
-    )
-    .bind(user_id)
-    .bind(&body.invite_code)
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some(inviter) = inviter else {
-        // 邀请码无效：整个事务回滚（不再需要补偿 DELETE）
-        let used: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1 AND status = 1)",
+    let inviter: Option<i64> = if reg_mode == "invite_only" {
+        let inv = sqlx::query_scalar(
+            "UPDATE invites SET status = 1, used_by = $1          WHERE code = $2 AND status = 0 AND expires_at > now()          RETURNING inviter_id",
         )
-        .bind(&body.invite_code)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
-        return Err(if used {
-            DomainError::InviteUsed
-        } else {
-            DomainError::InviteInvalid
-        });
-    };
-    sqlx::query("UPDATE users SET invited_by = $2 WHERE id = $1")
         .bind(user_id)
-        .bind(inviter)
-        .execute(&mut *tx)
+        .bind(&body.invite_code)
+        .fetch_optional(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+        let Some(inv) = inv else {
+            // 邀请码无效：整个事务回滚（不再需要补偿 DELETE）
+            let used: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1 AND status = 1)",
+            )
+            .bind(&body.invite_code)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+            return Err(if used {
+                DomainError::InviteUsed
+            } else {
+                DomainError::InviteInvalid
+            });
+        };
+        Some(inv)
+    } else {
+        // open / email_verify：无邀请人（invited_by 保持 NULL）
+        None
+    };
+    if let Some(inviter) = inviter {
+        sqlx::query("UPDATE users SET invited_by = $2 WHERE id = $1")
+            .bind(user_id)
+            .bind(inviter)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -337,8 +369,9 @@ async fn login(
     let user = match user {
         Ok(u) => u,
         Err(e) => {
-            // 未知用户名的失败登录：user_id 记 NULL（0083 起 user_id 可空）。
-            // 旧版写 0 违反外键被静默吞掉，爆破尝试完全不入库。
+            // 封禁账户的密码正确时：不给 403，而是落「密码正确但被封」事件后仍回
+            // 失败口径 —— 防枚举与正常流一致（真实封禁提示走公开 /auth/ban-log）。
+            // 申诉通道见下方 ban_appeal 分支（P0 修复：此前被封用户无任何自助申诉入口）。
             let _ = sqlx::query(
                 "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES (NULL, NULLIF($1,'')::inet, false, $2, 4)",
             )
@@ -487,13 +520,12 @@ pub async fn require_auth(
     // 权威在 token_revocations 表（0085：Redis 重启不再让已撤销 token 复活）；
     // Redis 键保留 24h 作为存量兜底（迁移前撤销线只写了 Redis）。
     {
-        let db_nbf: Option<i64> = sqlx::query_scalar(
-            "SELECT nbf FROM token_revocations WHERE user_id = $1",
-        )
-        .bind(claims.sub)
-        .fetch_optional(&state.repo.db)
-        .await
-        .unwrap_or(None);
+        let db_nbf: Option<i64> =
+            sqlx::query_scalar("SELECT nbf FROM token_revocations WHERE user_id = $1")
+                .bind(claims.sub)
+                .fetch_optional(&state.repo.db)
+                .await
+                .unwrap_or(None);
         let mut c = state.redis.clone();
         let redis_nbf: Option<i64> =
             redis::AsyncCommands::get(&mut c, format!("logout_nbf:{}", claims.sub))
@@ -685,7 +717,13 @@ async fn my_login_history(
 
 const ATTACH_MAX_BYTES: usize = 8 * 1024 * 1024; // 单文件 8MiB
 const ATTACH_MIME_ALLOW: [&str; 7] = [
-    "image/png", "image/jpeg", "image/gif", "image/webp", "image/avif", "application/pdf", "text/plain",
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "image/avif",
+    "application/pdf",
+    "text/plain",
 ];
 
 /// 上传附件（multipart 字段 file）。存本地 savedirectory（缺省 ./attachments），
@@ -715,7 +753,10 @@ async fn upload_attachment(
                 .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
                 .take(120)
                 .collect();
-            mime = field.content_type().map(|m| m.essence_str().to_string()).unwrap_or_default();
+            mime = field
+                .content_type()
+                .map(|m| m.essence_str().to_string())
+                .unwrap_or_default();
             let mut buf = web::BytesMut::new();
             while let Some(chunk) = field.next().await {
                 let chunk = chunk.map_err(|e| DomainError::Validation(e.to_string()))?;
@@ -735,13 +776,15 @@ async fn upload_attachment(
             "仅支持 png/jpeg/gif/webp/avif/pdf/txt".into(),
         ));
     }
-    // 真实内容嗅探（不信客户端头）：图片 magic bytes 校验
+    // 真实内容嗅探（不信客户端头）：图片 magic bytes 校验；
+    // .ass/.ssa 字幕在浏览器常被报为 text/plain——扩展名按文件名判、按文本嗅探放行
+    let declared_txt = mime == "text/plain";
     let sniff_ok = match bytes.first() {
         Some(0x89) => bytes.starts_with(&[0x89, b'P', b'N', b'G']) || mime == "application/pdf",
         Some(0xFF) => mime == "image/jpeg",
         Some(b'G') => bytes.starts_with(b"GIF8"),
         Some(b'R') => bytes.starts_with(b"RIFF") && mime == "image/webp",
-        _ => mime == "text/plain" || mime == "image/avif",
+        _ => declared_txt || mime == "image/avif",
     };
     if !sniff_ok {
         return Err(DomainError::Validation("文件内容与声明类型不符".into()));
@@ -755,13 +798,12 @@ async fn upload_attachment(
     .await
     .unwrap_or(512);
     if quota_mib > 0 {
-        let used: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(sum(size), 0) FROM attachments WHERE user_id = $1",
-        )
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+        let used: i64 =
+            sqlx::query_scalar("SELECT COALESCE(sum(size), 0) FROM attachments WHERE user_id = $1")
+                .bind(auth.id)
+                .fetch_one(&state.repo.db)
+                .await
+                .unwrap_or(0);
         if used + bytes.len() as i64 > quota_mib * 1024 * 1024 {
             return Err(DomainError::Validation(format!(
                 "附件配额不足（已用 {}/{} MiB）",
@@ -785,21 +827,11 @@ async fn upload_attachment(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     if exists.is_none() {
-        let dir: String = sqlx::query_scalar(
-            "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'savedirectory'), './attachments')",
-        )
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or_else(|_| "./attachments".into());
-        let dir = dir.trim_end_matches('/');
-        let sub = format!("{}/{}", &sha[..2], &sha[2..4]);
-        let path = format!("{dir}/{sub}/{sha}");
-        tokio::fs::create_dir_all(format!("{dir}/{sub}"))
+        // 0102 对象存储：按 storage_backend 分发（local 卷 / S3 兼容），目录结构与
+        // 旧实现一致（sha 两级分片），读取端自动双后端回落——迁移期无缝。
+        crate::storage::put(&state.repo.db, &sha, &bytes, &mime)
             .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        tokio::fs::write(&path, &bytes)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            .map_err(|e| DomainError::Internal(e))?;
         sqlx::query(
             "INSERT INTO attachments (user_id, sha256, filename, mime, size) VALUES ($1, $2, $3, $4, $5)",
         )
@@ -811,7 +843,10 @@ async fn upload_attachment(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        state.repo.audit(Some(auth.id), "attachment_upload", None).await;
+        state
+            .repo
+            .audit(Some(auth.id), "attachment_upload", None)
+            .await;
     }
     Ok(ok(serde_json::json!({
         "sha256": sha,
@@ -855,25 +890,15 @@ async fn get_attachment(
     let Some((mime, _size)) = row else {
         return Err(DomainError::NotFound(0));
     };
-    let dir: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'savedirectory'), './attachments')",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or_else(|_| "./attachments".into());
-    let p = format!(
-        "{}/{}/{}/{}",
-        dir.trim_end_matches('/'),
-        &sha[..2],
-        &sha[2..4],
-        sha
-    );
-    let bytes = tokio::fs::read(&p)
+    let bytes = crate::storage::get(&state.repo.db, &sha)
         .await
-        .map_err(|_| DomainError::NotFound(0))?;
+        .ok_or(DomainError::NotFound(0))?;
     Ok(HttpResponse::Ok()
         .content_type(mime)
-        .insert_header((actix_web::http::header::CACHE_CONTROL, "public, max-age=31536000, immutable"))
+        .insert_header((
+            actix_web::http::header::CACHE_CONTROL,
+            "public, max-age=31536000, immutable",
+        ))
         .body(bytes))
 }
 
@@ -941,7 +966,11 @@ async fn me_password_change(
     let _ = rotated;
     state
         .repo
-        .audit(Some(auth.id), "passkey_rotate_on_password_change", Some(auth.id))
+        .audit(
+            Some(auth.id),
+            "passkey_rotate_on_password_change",
+            Some(auth.id),
+        )
         .await;
     // 撤销既有 token：nbf 抬到「本次凭证 iat − 1」。require_auth 用 iat<=nbf 判失效，
     // 因此界线为 iat−1 时：本次改密凭证自身已通过认证（不再受检），一切 iat ≤ iat−1
@@ -1098,7 +1127,9 @@ async fn user_torrentlist(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "uploads": uploads, "seeding": seeding })))
+    Ok(ok(
+        serde_json::json!({ "uploads": uploads, "seeding": seeding }),
+    ))
 }
 
 #[get("/me/overview")]
@@ -1573,10 +1604,29 @@ where
     }))
 }
 
+/// 宽容的数字反序列化（005 修复）：表单里「全部」这类选项会提交 `alive=&tag_id=` 空串，
+/// 而 `Option<i32>` 直接吃空串会解析失败 → 整个 Query 反序列化报错 → 400。
+/// 这里统一把空/空白视为 None，非法值才算错。
+fn de_opt_num_lenient<'de, D, T>(d: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    let v = Option::<String>::deserialize(d)?;
+    match v.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {
+        None => Ok(None),
+        Some(s) => s.parse::<T>().map(Some).map_err(serde::de::Error::custom),
+    }
+}
+
 #[derive(Deserialize)]
 struct ListQuery {
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
     medium_id: Option<i32>,
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
     grade_id: Option<i32>,
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
     edition_id: Option<i32>,
     #[serde(default, deserialize_with = "de_bool_lenient")]
     official: Option<bool>,
@@ -1586,28 +1636,150 @@ struct ListQuery {
     include_unapproved: Option<bool>,
     search: Option<String>,
     /// 搜索范围：0=标题(默认) 1=副标题/简介 3=发布者 4=IMDb
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
     search_area: Option<i32>,
     /// 匹配模式：0=AND 模糊(默认) 2=精确
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
     search_mode: Option<i32>,
     sort: Option<String>,
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
     tag_id: Option<i32>,
     /// 存活筛选（0102，NP inclbooked/vivisect 口径）：0=全部 1=仅活种 2=仅断种（覆盖 include_dead）
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
     alive: Option<i16>,
     /// 种子状态（0102，NP 口径）：seeding=当前做种 leeching=当前下载 completed=完成
     /// incomplete=未完成 notseeding=未做种（多值逗号串待扩展，先单值）
     #[serde(default)]
     status: Option<String>,
     /// 审核状态（0102）：0=全部 1=通过 2=被拒（含未审需 see_banned，另走 include_unapproved）
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
     approval: Option<i16>,
-    /// 分类多选（0088）：接受重复的 category_id 参数或逗号分隔串，均收集为数组
-    #[serde(default)]
+    /// 分类多选（0088）：`category_ids`（原生键，重复参数成 seq）与 `category_id`
+    /// （前端/NP 旧键名，单值或逗号串）统一收集——serde rename_all/alias 对
+    /// query-string 的重复键行为不可靠，这里显式两个键各收一份再合并去重。
+    #[serde(default, deserialize_with = "de_category_ids_lenient")]
     category_ids: Vec<String>,
+    /// category_id 旧键名的旁路收集（与上合并；空则不影响）
+    #[serde(default, skip_serializing, rename = "category_id")]
+    category_id_alias: Option<String>,
     cursor: Option<String>,
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
     limit: Option<i64>,
+    // ===== 高级搜索增强 =====
+    /// 体积区间：支持 `1024`（字节）`500MB` `1.5GB` `2TB` 等带单位写法（见 parse_size）
+    #[serde(default)]
+    size_min: Option<String>,
+    #[serde(default)]
+    size_max: Option<String>,
+    /// 发布时间区间（`YYYY-MM-DD`，按日历日口径，含边界当天）
+    #[serde(default)]
+    date_from: Option<String>,
+    #[serde(default)]
+    date_to: Option<String>,
+    /// 做种数区间（含边界）
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
+    min_seeders: Option<i32>,
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
+    max_seeders: Option<i32>,
+    /// 排除关键字（标题/简介均不得命中）
+    #[serde(default)]
+    exclude: Option<String>,
+    /// 优惠筛选：free / x2 / half / any / none（白名单校验）
+    #[serde(default)]
+    promo: Option<String>,
+    /// 发布者用户名（模糊匹配）
+    #[serde(default)]
+    owner: Option<String>,
+    /// 仅显示我发布的种子
+    #[serde(default, deserialize_with = "de_bool_lenient")]
+    mine: Option<bool>,
+    // ===== 高级搜索补齐（0118）：下载数/完成数区间 + 匿名发布 =====
+    /// 下载数区间（含边界）
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
+    min_leechers: Option<i32>,
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
+    max_leechers: Option<i32>,
+    /// 完成数区间（含边界）
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
+    min_completed: Option<i32>,
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
+    max_completed: Option<i32>,
+    /// 匿名发布：0=全部(默认) 1=仅匿名 2=仅具名
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
+    anonymous: Option<i16>,
+}
+
+/// 日期参数校验（严格 `YYYY-MM-DD`）：非法值直接丢弃——宁可不筛，
+/// 也不让 PG 对烂字符串抛错变成 500。
+fn norm_date(s: Option<String>) -> Option<String> {
+    let s = s?;
+    let s = s.trim();
+    let ok = s.len() == 10
+        && s.as_bytes().iter().enumerate().all(|(i, b)| {
+            if i == 4 || i == 7 {
+                *b == b'-'
+            } else {
+                b.is_ascii_digit()
+            }
+        });
+    ok.then(|| s.to_string())
+}
+
+/// 优惠参数白名单（未知取值丢弃，避免静默返回空列表让用户以为「没数据」）
+fn norm_promo(s: Option<String>) -> Option<String> {
+    let s = s?.trim().to_ascii_lowercase();
+    matches!(s.as_str(), "free" | "x2" | "half" | "any" | "none").then_some(s)
+}
+
+/// 空白即视为未填（表单里清空后仍会提交空串）
+fn norm_text(s: Option<String>) -> Option<String> {
+    s.map(|v| v.trim().to_string()).filter(|v| !v.is_empty())
+}
+
+/// 体积参数解析：`1024`（字节）/ `500MB` / `1.5GB` / `2TB`，KB/MB/GB/TB 与 KiB/GiB 写法均可，
+/// 大小写不敏感。无效值或非正数返回 None（= 不筛，而不是报错）。
+fn parse_size(s: Option<String>) -> Option<i64> {
+    let raw = s?.trim().to_ascii_lowercase();
+    if raw.is_empty() {
+        return None;
+    }
+    let (num, mul) = if let Some(v) = raw.strip_suffix("tb").or_else(|| raw.strip_suffix("tib")) {
+        (v, 1024f64.powi(4))
+    } else if let Some(v) = raw.strip_suffix("gb").or_else(|| raw.strip_suffix("gib")) {
+        (v, 1024f64.powi(3))
+    } else if let Some(v) = raw.strip_suffix("mb").or_else(|| raw.strip_suffix("mib")) {
+        (v, 1024f64.powi(2))
+    } else if let Some(v) = raw.strip_suffix("kb").or_else(|| raw.strip_suffix("kib")) {
+        (v, 1024f64)
+    } else if let Some(v) = raw.strip_suffix('b') {
+        (v, 1f64)
+    } else {
+        (raw.as_str(), 1f64)
+    };
+    let n: f64 = num.trim().parse().ok()?;
+    let bytes = (n * mul).round();
+    (bytes >= 1.0 && n.is_finite() && bytes < i64::MAX as f64).then_some(bytes as i64)
+}
+
+/// category_ids/category_id 的宽松反序列化：seq → 原样；字符串 → 按逗号拆。
+/// （此前用 alias 兼容单值键名，但 serde 对 Vec 字段的裸字符串直接报错 → 前端筛选 400）
+fn de_category_ids_lenient<'de, D>(d: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum OneOrMany {
+        Many(Vec<String>),
+        One(String),
+    }
+    // actix-web Query 的 serde_qs 形状：字段值是「单值或 seq」的直接载荷
+    let v = serde_json::Value::deserialize(d)?;
+    let pick = serde_json::from_value::<OneOrMany>(v).map_err(serde::de::Error::custom)?;
+    Ok(match pick {
+        OneOrMany::Many(v) => v,
+        OneOrMany::One(s) => s.split(',').map(|x| x.trim().to_string()).collect(),
+    })
 }
 
 #[get("/torrents")]
@@ -1617,8 +1789,8 @@ async fn list(
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?; // 站点准入收口：资源元数据不对外
-    // 通用多维筛选（0088）：sec_{kind}=dict_id，kind 走 section_kinds 白名单；
-    // 从原始 query string 解析，支持任意站方自建维度（不再写死六个）
+                                                  // 通用多维筛选（0088）：sec_{kind}=dict_id，kind 走 section_kinds 白名单；
+                                                  // 从原始 query string 解析，支持任意站方自建维度（不再写死六个）
     let mut sections: Vec<(String, i64)> = Vec::new();
     for pair in req.query_string().split('&') {
         let Some((k, v)) = pair.split_once('=') else {
@@ -1641,10 +1813,14 @@ async fn list(
         }
     }
     let filter = torrents::TorrentFilter {
-        // 多选分类：重复参数或逗号串（category_id=1&category_id=3 / category_id=1,3）均解析
+        // 多选分类：重复参数或逗号串（category_id=1&category_id=3 / category_id=1,3）均解析。
+        // 旧键名 category_id 单值也在此合并（category_id_alias 旁路收集）。
         category_id: {
-            let ids: Vec<i32> = q
-                .category_ids
+            let mut raw: Vec<&str> = q.category_ids.iter().map(|s| s.as_str()).collect();
+            if let Some(one) = q.category_id_alias.as_deref() {
+                raw.push(one);
+            }
+            let ids: Vec<i32> = raw
                 .iter()
                 .flat_map(|s| s.split(','))
                 .filter_map(|s| s.trim().parse::<i32>().ok())
@@ -1669,8 +1845,58 @@ async fn list(
         // 搜索盒口径（此前前端传了但后端不解析，静默失效）
         search_area: q.search_area,
         search_mode: q.search_mode,
+        // 高级搜索增强（体积/时间/做种数/排除词/优惠/发布者/仅我发布）
+        size_min: parse_size(q.size_min.clone()),
+        size_max: parse_size(q.size_max.clone()),
+        date_from: norm_date(q.date_from.clone()),
+        date_to: norm_date(q.date_to.clone()),
+        min_seeders: q.min_seeders.filter(|v| *v >= 0),
+        max_seeders: q.max_seeders.filter(|v| *v >= 0),
+        exclude: norm_text(q.exclude.clone()),
+        promo: norm_promo(q.promo.clone()),
+        owner: norm_text(q.owner.clone()),
+        only_mine: q.mine.unwrap_or(false),
+        // 0118 高级搜索补齐（下载数/完成数区间 + 匿名发布；负数丢弃 = 不筛）
+        min_leechers: q.min_leechers.filter(|v| *v >= 0),
+        max_leechers: q.max_leechers.filter(|v| *v >= 0),
+        min_completed: q.min_completed.filter(|v| *v >= 0),
+        max_completed: q.max_completed.filter(|v| *v >= 0),
+        anonymous: q.anonymous.filter(|v| (0..=2).contains(v)),
         sections,
     };
+    // 上下界颠倒时自动对调（用户先填大后填小很常见，直接判空更友好）
+    let mut filter = filter;
+    if let (Some(a), Some(b)) = (filter.size_min, filter.size_max) {
+        if a > b {
+            filter.size_min = Some(b);
+            filter.size_max = Some(a);
+        }
+    }
+    if let (Some(a), Some(b)) = (filter.min_seeders, filter.max_seeders) {
+        if a > b {
+            filter.min_seeders = Some(b);
+            filter.max_seeders = Some(a);
+        }
+    }
+    if let (Some(a), Some(b)) = (filter.date_from.clone(), filter.date_to.clone()) {
+        if a > b {
+            filter.date_from = Some(b);
+            filter.date_to = Some(a);
+        }
+    }
+    // 0118：下载数/完成数区间同样自动对调
+    if let (Some(a), Some(b)) = (filter.min_leechers, filter.max_leechers) {
+        if a > b {
+            filter.min_leechers = Some(b);
+            filter.max_leechers = Some(a);
+        }
+    }
+    if let (Some(a), Some(b)) = (filter.min_completed, filter.max_completed) {
+        if a > b {
+            filter.min_completed = Some(b);
+            filter.max_completed = Some(a);
+        }
+    }
     let cursor = match q.cursor.as_deref() {
         Some(c) if !c.is_empty() => Some(
             c.parse::<i64>()
@@ -1693,6 +1919,26 @@ async fn list(
         && filter.sort.is_none()
         && filter.tag_id.is_none()
         && filter.sections.is_empty()
+        // 状态筛选是用户视角（viewer 的 snatches）：带 status 的请求不得共享首屏缓存
+        && filter.status.is_none()
+        && filter.alive.is_none()
+        // 0105 高级搜索增强：任一条件生效即视为非「首屏等价视图」，不得复用共享缓存
+        && filter.size_min.is_none()
+        && filter.size_max.is_none()
+        && filter.date_from.is_none()
+        && filter.date_to.is_none()
+        && filter.min_seeders.is_none()
+        && filter.max_seeders.is_none()
+        && filter.exclude.is_none()
+        && filter.promo.is_none()
+        && filter.owner.is_none()
+        && !filter.only_mine
+        // 0118 补齐项同口径：任一生效即非首屏等价视图
+        && filter.min_leechers.is_none()
+        && filter.max_leechers.is_none()
+        && filter.min_completed.is_none()
+        && filter.max_completed.is_none()
+        && filter.anonymous.is_none()
         && q.limit.unwrap_or(20) == 20;
     let cache_key = "cache:tlist:first:v1";
     if is_first_screen {
@@ -1705,16 +1951,28 @@ async fn list(
                 return Ok(ok(page));
             }
         }
-        let page =
-            torrents::list_torrents_as(&state.repo.db, &filter, cursor, q.limit.unwrap_or(20), auth.id).await?;
+        let page = torrents::list_torrents_as(
+            &state.repo.db,
+            &filter,
+            cursor,
+            q.limit.unwrap_or(20),
+            auth.id,
+        )
+        .await?;
         if let Ok(json) = serde_json::to_string(&page) {
             let _: Result<(), _> =
                 redis::AsyncCommands::set_ex(&mut c, cache_key, json, 45u64).await;
         }
         return Ok(ok(page));
     }
-    let page =
-        torrents::list_torrents_as(&state.repo.db, &filter, cursor, q.limit.unwrap_or(20), auth.id).await?;
+    let page = torrents::list_torrents_as(
+        &state.repo.db,
+        &filter,
+        cursor,
+        q.limit.unwrap_or(20),
+        auth.id,
+    )
+    .await?;
     Ok(ok(page))
 }
 
@@ -1728,10 +1986,7 @@ async fn detail(
     // 持 view_anonymous 权限者可见匿名种子的真实发布者
     let reveal = crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_VIEW_ANONYMOUS).await;
     // G7：staff 视角传 (uid, true)——暂缓种对 staff 开放
-    let viewer = (
-        auth.id,
-        auth.class_id >= 90,
-    );
+    let viewer = (auth.id, auth.class_id >= 90);
     let t = torrents::get_torrent(&state.repo.db, path.into_inner(), reveal, Some(viewer)).await?;
     Ok(ok(t))
 }
@@ -1812,19 +2067,19 @@ async fn delete_comment(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let (torrent_id, comment_id) = path.into_inner();
-    let owner: Option<i64> = sqlx::query_scalar("SELECT user_id FROM comments WHERE id = $1 AND torrent_id = $2")
-        .bind(comment_id)
-        .bind(torrent_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .flatten();
+    let owner: Option<i64> =
+        sqlx::query_scalar("SELECT user_id FROM comments WHERE id = $1 AND torrent_id = $2")
+            .bind(comment_id)
+            .bind(torrent_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
     let Some(owner_id) = owner else {
         return Err(DomainError::NotFound(comment_id));
     };
     let is_owner = owner_id == auth.id;
-    let is_manager =
-        crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await;
+    let is_manager = crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await;
     if !is_owner && !is_manager {
         return Err(DomainError::Forbidden);
     }
@@ -1837,7 +2092,11 @@ async fn delete_comment(
         .repo
         .audit(
             Some(auth.id),
-            if is_owner { "comment.delete_own" } else { "comment.delete_staff" },
+            if is_owner {
+                "comment.delete_own"
+            } else {
+                "comment.delete_staff"
+            },
             Some(comment_id),
         )
         .await;
@@ -2014,8 +2273,55 @@ async fn restore_torrent(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await?;
     let id = path.into_inner();
     torrents::restore_torrent(&state.repo.db, id).await?;
-    state.repo.audit(Some(auth.id), "torrent.restore", Some(id)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "torrent.restore", Some(id))
+        .await;
     Ok(ok(serde_json::json!({ "restored": id })))
+}
+
+/// 被拒种子修改后重提（U4 §12.5 审核闭环：rejected → pending，保留原 id 与评论区）。
+/// 仅作者本人；清拒绝标记（deny_reason/note），重进审核队列。
+#[post("/torrents/{id}/resubmit")]
+async fn resubmit_torrent(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let id = path.into_inner();
+    let owner: Option<(i64, i16)> =
+        sqlx::query_as("SELECT owner_id, approval_status FROM torrents WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((owner_id, status)) = owner else {
+        return Err(DomainError::NotFound(id));
+    };
+    if owner_id != auth.id {
+        return Err(DomainError::Forbidden);
+    }
+    if status != 2 {
+        return Err(DomainError::Validation("仅被拒种子可重提（当前状态不符）".into()));
+    }
+    let n = sqlx::query(
+        "UPDATE torrents SET approval_status = 0, deny_reason_id = NULL, deny_note = NULL \
+         WHERE id = $1 AND approval_status = 2",
+    )
+    .bind(id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation("状态已变化，请刷新".into()));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "torrent.resubmit", Some(id))
+        .await;
+    Ok(ok(serde_json::json!({ "resubmitted": id })))
 }
 
 /// 删除种子（软删 approval_status=3；staff 任意删，作者仅限未过审）
@@ -2479,7 +2785,9 @@ async fn rule_update(
         .execute(&mut *tx).await
         .map_err(|e| DomainError::Internal(e.into()))?
         .rows_affected();
-    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     if n == 0 {
         return Err(DomainError::NotFound(*path as i64));
     }
@@ -2553,7 +2861,10 @@ async fn category_create(
         .bind(&body.name).fetch_one(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 审计修复（P1）：分类增删改此前完全不写审计日志
-    state.repo.audit(Some(auth.id), "category.create", Some(id as i64)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "category.create", Some(id as i64))
+        .await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -2575,7 +2886,10 @@ async fn category_update(
     if n.rows_affected() == 0 {
         return Err(DomainError::NotFound(*path as i64));
     }
-    state.repo.audit(Some(auth.id), "category.update", Some(*path as i64)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "category.update", Some(*path as i64))
+        .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -2600,7 +2914,10 @@ async fn category_delete(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "category.delete", Some(*path as i64)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "category.delete", Some(*path as i64))
+        .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -3259,11 +3576,28 @@ async fn admin_amount_upload(
     if body.bytes == 0 || body.bytes.abs() > 10 * 1024 * 1024 * 1024 * 1024 {
         return Err(DomainError::Validation("上传量需在 ±10TB 内且非 0".into()));
     }
+    // 审计修复（P0 错账）：uploaded 的权威在 traffic_ledger（worker reconcile 与
+    // /admin/jobs/run:reconcile 会把 users.uploaded 重算为 sum(ledger)），此前裸
+    // UPDATE 不落流水，管理员手工加量在下一次对账时被静默清零。改为同语句内
+    // 落差额流水（torrent_id=0 为人工调账标记；扣成负数时按实际截断差额记账）。
     let n = sqlx::query(
-        "UPDATE users SET uploaded = uploaded + $2 WHERE ($1::bigint IS NULL AND status < 2) OR id = $1",
-    ).bind(body.user_id).bind(body.bytes)
-    .execute(&state.repo.db).await
-    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+        "WITH targets AS ( \
+            SELECT id, uploaded FROM users \
+            WHERE ($1::bigint IS NULL AND status < 2) OR id = $1 FOR UPDATE \
+         ), upd AS ( \
+            UPDATE users u SET uploaded = GREATEST(0, u.uploaded + $2) \
+            FROM targets t WHERE u.id = t.id \
+            RETURNING u.id, GREATEST(0, t.uploaded + $2) - t.uploaded AS delta \
+         ) \
+         INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, delta_down, window_start) \
+         SELECT nextval('traffic_ledger_id_seq'), id, 0, delta, 0, now() FROM upd WHERE delta <> 0",
+    )
+    .bind(body.user_id)
+    .bind(body.bytes)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     state
         .repo
         .audit(Some(auth.id), "amount_upload", body.user_id)
@@ -3289,8 +3623,7 @@ async fn admin_reset_pass(
     // 密码空间小且可预测，配合明文回显存在猜测窗口
     let temp_pass = format!(
         "Tmp@{}",
-        data_encoding::BASE64URL_NOPAD
-            .encode(&rand::random::<[u8; 16]>())
+        data_encoding::BASE64URL_NOPAD.encode(&rand::random::<[u8; 16]>())
     );
     let hash = crate::domain::hash_password(&temp_pass)?;
     let n = sqlx::query(
@@ -3328,12 +3661,11 @@ async fn admin_delete_disabled(
     // 的口径：强制走 `DELETE /api/v1/admin/users/{id}` 同一实现（逐个、事务化、83 列清理）。
     // 这里直接构造内部请求等价物：调用 admin_http 的清理清单不跨模块，故改为
     // 逐个转发 HTTP 会引入自调用复杂度——最简正确实现：拒绝批量、提示走单删。
-    let ids: Vec<i64> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE status = 2 ORDER BY id LIMIT 500",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let ids: Vec<i64> =
+        sqlx::query_scalar("SELECT id FROM users WHERE status = 2 ORDER BY id LIMIT 500")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let mut deleted: Vec<i64> = Vec::new();
     let mut failed: Vec<(i64, String)> = Vec::new();
     for uid in ids {
@@ -3347,7 +3679,9 @@ async fn admin_delete_disabled(
         .repo
         .audit(Some(auth.id), "delete_disabled_users", None)
         .await;
-    Ok(ok(serde_json::json!({ "deleted": deleted.len(), "ids": deleted, "failed": failed })))
+    Ok(ok(
+        serde_json::json!({ "deleted": deleted.len(), "ids": deleted, "failed": failed }),
+    ))
 }
 
 /// 邮箱黑白名单（bannedemails/allowedemails.php 口径）
@@ -3594,8 +3928,11 @@ async fn do_cleanup(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEANUP_RUN).await?;
+    // 审计修复（P0）：旧版删 7 天前过期促销，而 worker expire_promotions 保留 365 天——
+    // hr_enforce 建快照需按 completed_at 时点回查当时促销，物理删掉近期历史会让
+    // H&R 豁免回查失明（免费期完成的下载被误判违规）。与 worker 统一为 365 天。
     let expired_promos =
-        sqlx::query("DELETE FROM promotions WHERE ends_at < now() - interval '7 days'")
+        sqlx::query("DELETE FROM promotions WHERE ends_at < now() - interval '365 days'")
             .execute(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?
@@ -4053,29 +4390,51 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
             .or(pack.as_ref().map(|p| p.brand.clone()))
             .unwrap_or_default();
     // 站点货币名（0082）：默认「魔力」，站长可后台改任意名；空值兜底回默认
-    let currency: String =
-        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'currency_name'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten()
-            .filter(|v: &String| !v.trim().is_empty())
-            .unwrap_or_else(|| "魔力".to_string());
+    let currency: String = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'currency_name'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .filter(|v: &String| !v.trim().is_empty())
+    .unwrap_or_else(|| "魔力".to_string());
     // 建站日期（页脚版权条 "(c) 站名 日期 Powered by FluxTorrent" 用）
-    let founded: Option<String> =
-        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'datefounded'")
-            .fetch_optional(&state.repo.db)
+    let founded: Option<String> = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'datefounded'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .filter(|v: &String| !v.trim().is_empty());
+
+    // 模块开关：site_type_packs.modules 只是站型的**初始快照**，运行时权威在
+    // site_settings.module_*（后台改了开关，导航要跟着变）。以前者打底、后者覆盖。
+    let mut modules = pack
+        .as_ref()
+        .map(|p| p.modules.clone())
+        .unwrap_or_else(|| serde_json::json!({}));
+    let overrides: Vec<(String, String)> =
+        sqlx::query_as("SELECT name, value FROM site_settings WHERE name ~ '^module_'")
+            .fetch_all(&state.repo.db)
             .await
-            .ok()
-            .flatten()
-            .filter(|v: &String| !v.trim().is_empty());
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(obj) = modules.as_object_mut() {
+        for (name, value) in overrides {
+            if let Some(key) = name.strip_prefix("module_") {
+                obj.insert(key.to_string(), serde_json::json!(value == "yes"));
+            }
+        }
+    }
     // 元数据源（0087）：csv → 数组，控制上传页条目输入显隐与 PT-Gen 范围
-    let sources_raw: Option<String> =
-        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'metadata_sources'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten();
+    let sources_raw: Option<String> = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'metadata_sources'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten();
     let sources: Vec<String> = sources_raw
         .unwrap_or_else(|| "imdb,douban,bangumi,indienova".into())
         .split(',')
@@ -4101,7 +4460,7 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
         "metadata_sources": sources,
         "site_desc": site_desc,
         "categories": cats.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
-        "modules": pack.as_ref().map(|p| p.modules.clone()).unwrap_or(serde_json::json!({})),
+        "modules": modules,
     })))
 }
 
@@ -4227,7 +4586,15 @@ async fn site_type_pack_apply(
     // 内置九维中未被本包定义的维度整体移除（section_kinds 级联清 section_dict 与
     // torrent_sections 引用）；站方自建维度（不在内置清单）原样保留。
     let builtin: std::collections::HashSet<String> = [
-        "media", "grades", "editions", "codec", "audio_codec", "standard", "source", "processing", "team",
+        "media",
+        "grades",
+        "editions",
+        "codec",
+        "audio_codec",
+        "standard",
+        "source",
+        "processing",
+        "team",
     ]
     .iter()
     .map(|s| s.to_string())
@@ -4250,13 +4617,12 @@ async fn site_type_pack_apply(
         if !packed_kinds.contains(kind) {
             // 引用中的维度直接删会级联清 torrent_sections —— 有种子的站点会丢筛选项，
             // 这里先检查是否被在用：被在用时跳过清理（宁残留不破坏）
-            let in_use: i64 = sqlx::query_scalar(
-                "SELECT count(*) FROM torrent_sections WHERE kind = $1",
-            )
-            .bind(kind)
-            .fetch_one(&mut *tx)
-            .await
-            .unwrap_or(0);
+            let in_use: i64 =
+                sqlx::query_scalar("SELECT count(*) FROM torrent_sections WHERE kind = $1")
+                    .bind(kind)
+                    .fetch_one(&mut *tx)
+                    .await
+                    .unwrap_or(0);
             if in_use == 0 {
                 sqlx::query("DELETE FROM section_kinds WHERE kind = $1")
                     .bind(kind)
@@ -4282,12 +4648,17 @@ async fn site_type_pack_apply(
                 if !is_ascii_kind(kind) {
                     continue;
                 }
-                let sort = k.get("sort").and_then(serde_json::Value::as_i64).unwrap_or(999) as i32;
+                let sort = k
+                    .get("sort")
+                    .and_then(serde_json::Value::as_i64)
+                    .unwrap_or(999) as i32;
                 sqlx::query(
                     "INSERT INTO section_kinds (kind, label, sort) VALUES ($1, $2, $3) \
                      ON CONFLICT (kind) DO UPDATE SET label = EXCLUDED.label, sort = EXCLUDED.sort",
                 )
-                .bind(kind).bind(label).bind(sort)
+                .bind(kind)
+                .bind(label)
+                .bind(sort)
                 .execute(&mut *tx)
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
@@ -4334,13 +4705,157 @@ async fn site_type_pack_apply(
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // U2（0108）：等级叙事/经济预设/元数据源（apply_pack_extras 过程内含合法键校验）
+    let extras: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT kind, applied FROM apply_pack_extras($1)",
+    )
+    .bind(&pack.code)
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    // 模块开关进程缓存失效（apply 改 module_* 后立即生效，不等 30s TTL）
+    state.module_flags.invalidate().await;
     state
         .repo
         .audit(Some(auth.id), "site_type_pack_apply", None)
         .await;
     Ok(ok(
-        serde_json::json!({ "applied": pack.code, "mode": mode, "categories": added }),
+        serde_json::json!({ "applied": pack.code, "mode": mode, "categories": added, "extras": extras }),
     ))
+}
+
+/// 站型切换 diff 预览（U2 §8.2 向导第二步）：返回 apply 将改动的键旧值→新值，
+/// 不落库。站长确认后才走 apply。
+#[derive(Deserialize)]
+struct PackDiffBody {
+    code: String,
+}
+#[post("/admin/site-type-packs/diff")]
+async fn site_type_pack_diff(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PackDiffBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
+    let pack: Option<SiteTypePack> = sqlx::query_as(
+        "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs WHERE code = $1",
+    ).bind(&body.code)
+    .fetch_optional(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(pack) = pack else {
+        return Err(DomainError::Validation("类型包不存在".into()));
+    };
+    // 当前值快照（site_type/site_name/module_*）
+    let current: Vec<(String, String)> =
+        sqlx::query_as("SELECT name, value FROM site_settings WHERE name IN ('site_type','site_name') OR name LIKE 'module\\_%'")
+            .fetch_all(&state.repo.db)
+            .await
+            .unwrap_or_default();
+    let cur = std::collections::HashMap::<String, String>::from_iter(current);
+    let mut changes: Vec<serde_json::Value> = Vec::new();
+    let mut push = |key: &str, old: Option<&String>, new: &str| {
+        let old_v = old.map(|s| s.as_str()).unwrap_or("(未设置)");
+        if old_v != new {
+            changes.push(serde_json::json!({ "key": key, "old": old_v, "new": new }));
+        }
+    };
+    push("site_type", cur.get("site_type"), &pack.code);
+    push("site_name", cur.get("site_name"), &pack.brand);
+    if let Some(mods) = pack.modules.as_object() {
+        for (k, v) in mods {
+            let setting = format!("module_{k}");
+            let new = if v.as_bool().unwrap_or(false) { "yes" } else { "no" };
+            push(&setting, cur.get(&setting), new);
+        }
+    }
+    Ok(ok(serde_json::json!({
+        "pack": pack.code,
+        "name": pack.name,
+        "changes": changes,
+        "unchanged_modules": cur.len().saturating_sub(changes.len()),
+    })))
+}
+
+/// 自定义站型另存（U2 §7.3 / U5 分发）：读当前站点配置快照存为新包
+/// （code 前缀 custom_），预置包只读——满足「第 12 种站型」。
+#[derive(Deserialize)]
+struct PackSaveBody {
+    code: String,
+    name: String,
+}
+#[post("/admin/site-type-packs/save")]
+async fn site_type_pack_save(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PackSaveBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
+    let code = body.code.trim().to_lowercase();
+    if !code.starts_with("custom_") || code.len() > 40 || !code.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+        return Err(DomainError::Validation(
+            "code 需以 custom_ 开头，仅小写字母/数字/下划线，≤40 字符".into(),
+        ));
+    }
+    if body.name.trim().is_empty() {
+        return Err(DomainError::Validation("name 不能为空".into()));
+    }
+    // 当前配置快照：分类 / 模块开关 / 站名
+    let cats: Vec<serde_json::Value> = sqlx::query_as::<_, (i32, String)>(
+        "SELECT id, name FROM categories ORDER BY id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .into_iter()
+    .map(|(id, name)| serde_json::json!({"id": id, "name": name}))
+    .collect();
+    let mods_rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name LIKE 'module\\_%'",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let modules: serde_json::Map<String, serde_json::Value> = mods_rows
+        .into_iter()
+        .filter_map(|(name, value)| {
+            name.strip_prefix("module_")
+                .map(|k| (k.to_string(), serde_json::json!(value == "yes")))
+        })
+        .collect();
+    let brand: String =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'site_name'")
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+    let sort: i32 =
+        sqlx::query_scalar("SELECT COALESCE(max(sort), 100) + 1 FROM site_type_packs")
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(101);
+    sqlx::query(
+        "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort) \
+         VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6) \
+         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, brand = EXCLUDED.brand, \
+           categories = EXCLUDED.categories, modules = EXCLUDED.modules",
+    )
+    .bind(&code)
+    .bind(body.name.trim())
+    .bind(&brand)
+    .bind(serde_json::Value::Array(cats).to_string())
+    .bind(serde_json::Value::Object(modules).to_string())
+    .bind(sort)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "site_type_pack_save", None)
+        .await;
+    Ok(ok(serde_json::json!({ "saved": code })))
 }
 
 // ---- 捐赠中心（馒头 donate 口径：储值钱包 + 三区套餐 + VIP）----
@@ -4368,13 +4883,6 @@ struct DonateLedgerRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(serde::Serialize)]
-struct DonateState {
-    wallet_usd: f64,
-    vip_until: Option<chrono::DateTime<chrono::Utc>>,
-    plans: Vec<DonatePlan>,
-    ledger: Vec<DonateLedgerRow>,
-}
 
 /// 捐赠中心总览：钱包余额 + VIP 状态 + 套餐 + 我的流水
 #[get("/donate/state")]
@@ -4398,13 +4906,17 @@ async fn donate_state(
     ).bind(auth.id)
     .fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(DonateState {
-        wallet_usd: wallet,
-        vip_until,
-        plans,
-        ledger,
-    }))
+    Ok(ok(serde_json::json!({
+        "wallet_usd": wallet,
+        "vip_until": vip_until,
+        "plans": plans,
+        "ledger": ledger,
+        // U4 §12.1：通道可用性（provider=epay 且凭证齐全；FLUX_DEMO 演示模式恒开）
+        "payment_enabled": crate::payment::gateway_config(&state).await.available()
+            || std::env::var("FLUX_DEMO").unwrap_or_default() == "1",
+    })))
 }
+
 
 #[derive(Deserialize)]
 struct TopupBody {
@@ -4427,28 +4939,92 @@ async fn donate_topup(
     if !["alipay", "wechat"].contains(&body.channel.as_str()) {
         return Err(DomainError::Validation("支付方式需为 alipay/wechat".into()));
     }
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let balance: f64 = sqlx::query_scalar(
-        "UPDATE users SET wallet_usd = wallet_usd + $2, donor = true WHERE id = $1 RETURNING wallet_usd::float8",
-    ).bind(auth.id).bind(body.amount_usd)
-    .fetch_one(&mut *tx).await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // U4 §12.1：真实订单流——按 site_settings 构造网关；未配置（none/缺凭证）拒单。
+    // FLUX_DEMO=1 演示环境保留旧模拟充值（演示数据需要有钱包入账可看）。
+    let gw = crate::payment::gateway_config(&state).await;
+    if !gw.available() {
+        if std::env::var("FLUX_DEMO").unwrap_or_default() == "1" {
+            return crate::payment::demo_topup(&state, auth.id, body.amount_usd, &body.channel)
+                .await
+                .map(|v| ok(v));
+        }
+        return Err(DomainError::Validation(
+            "捐赠通道未开放（站长未配置支付网关）".into(),
+        ));
+    }
+    // 建订单 + 返回跳转 URL（入账只发生在验签通过的回调，此端点不动钱包）
+    let order_no = crate::payment::new_order_no(auth.id);
     sqlx::query(
-        "INSERT INTO donation_ledger (user_id, kind, amount_usd, balance_after, note) VALUES ($1, 'topup', $2, $3, $4)",
-    ).bind(auth.id).bind(body.amount_usd).bind(balance)
-    .bind(format!("模拟支付成功（{}）", body.channel))
-    .execute(&mut *tx).await
+        "INSERT INTO payment_orders (order_no, user_id, amount_usd, channel) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(&order_no)
+    .bind(auth.id)
+    .bind(body.amount_usd)
+    .bind(&body.channel)
+    .execute(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    tx.commit()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "donate_topup", None).await;
-    Ok(ok(serde_json::json!({ "wallet_usd": balance })))
+    let provider = crate::payment::provider_from(&gw);
+    let base = std::env::var("PUBLIC_SITE_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+    let url = provider.pay_url(
+        &order_no,
+        &format!("{:.2}", body.amount_usd),
+        &body.channel,
+        "站点捐赠",
+        &format!("{base}/donate?order={order_no}"),
+        &format!("{base}/api/v1/donate/notify"),
+    );
+    state
+        .repo
+        .audit(Some(auth.id), "donate_topup_order", None)
+        .await;
+    Ok(ok(serde_json::json!({ "order_no": order_no, "pay_url": url })))
+}
+
+/// 捐赠订单状态查询（前端支付回跳后轮询）
+#[get("/donate/order-status")]
+async fn donate_order_status(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let Some(order_no) = q.get("order_no") else {
+        return Err(DomainError::Validation("缺少 order_no".into()));
+    };
+    let st: Option<String> = sqlx::query_scalar(
+        "SELECT status FROM payment_orders WHERE order_no = $1 AND user_id = $2",
+    )
+    .bind(order_no)
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "order_no": order_no, "status": st })))
+}
+
+/// 支付网关异步回调（GET，易支付口径）：验签 → 幂等入账 → 纯文本 "success"
+/// （网关要求响应 success 字面量，不走统一信封）
+#[get("/donate/notify")]
+async fn donate_notify(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> HttpResponse {
+    let _ = req;
+    match crate::payment::settle_notify(&state, &q.into_inner()).await {
+        Ok(_) => HttpResponse::Ok().body("success"),
+        Err(e) => {
+            tracing::warn!(?e, "donate notify rejected");
+            HttpResponse::Ok().body("fail")
+        }
+    }
+}
+
+/// 旧模拟充值逻辑（FLUX_DEMO=1 专用）：移入 payment.rs 兄弟函数，保留演示站能力
+#[allow(dead_code)]
+mod removed_legacy_simulated_topup {
+    // 历史实现已由 payment::demo_topup 替代（编译期占位，防误回滚参考）
 }
 
 #[derive(Deserialize)]
@@ -4610,8 +5186,61 @@ async fn massmail_send(
     .fetch_one(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "massmail_send", None).await;
-    // Dev 环境无 SMTP：落库即视为入队（worker 负责实际投递）
-    Ok(ok(serde_json::json!({ "id": id, "queued": users })))
+    // 审计修复（P1 永不投递）：注释宣称 worker 投递，但 worker 无任何 mass_mails 消费——
+    // 邮件永不发出且响应报 queued 误导操作者。现在当场投递（复用 build_smtp）：
+    // SMTP 配置时逐户发送并回填实发数；未配置时（开发态）明确返回 delivered=0 与
+    // 原因，不再谎报入队。
+    let smtp = std::env::var("SMTP_URL").unwrap_or_default();
+    let from = std::env::var("SMTP_FROM").unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
+    let mut delivered: i64 = 0;
+    let mut mail_err: Option<String> = None;
+    if smtp.is_empty() {
+        mail_err = Some("SMTP_URL 未配置（开发态：邮件未投递，仅留档）".into());
+    } else {
+        match crate::gaps_http::build_smtp(&smtp) {
+            Ok(mailer) => {
+                let emails: Vec<String> = sqlx::query_scalar(
+                    "SELECT email FROM users WHERE status < 2 AND email IS NOT NULL",
+                )
+                .fetch_all(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+                for to in &emails {
+                    let msg = lettre::Message::builder()
+                        .from(from.parse().map_err(|e: lettre::address::AddressError| {
+                            DomainError::Internal(e.into())
+                        })?)
+                        .to(to.parse().map_err(|e: lettre::address::AddressError| {
+                            DomainError::Internal(e.into())
+                        })?)
+                        .subject(body.subject.trim())
+                        .body(body.body.clone())
+                        .map_err(|e| DomainError::Internal(e.into()))?;
+                    use lettre::AsyncTransport;
+                    match mailer.send(msg).await {
+                        Ok(_) => delivered += 1,
+                        Err(e) => {
+                            mail_err = Some(format!("第 {delivered} 封后失败：{e}"));
+                            break;
+                        }
+                    }
+                }
+            }
+            Err(e) => mail_err = Some(format!("SMTP 构建失败：{e}")),
+        }
+    }
+    if delivered > 0 {
+        let _ = sqlx::query("UPDATE mass_mails SET recipients = $2 WHERE id = $1")
+            .bind(id)
+            .bind(delivered as i32)
+            .execute(&state.repo.db)
+            .await;
+    }
+    Ok(ok(serde_json::json!({
+        "id": id, "delivered": delivered,
+        "queued": 0,
+        "note": mail_err.unwrap_or_else(|| "已全部投递".into()),
+    })))
 }
 
 // ============ 插件：勋章墙 / 大赛 / 头像挂件 / 五子棋 ============
@@ -5661,7 +6290,9 @@ async fn admin_home_layout_put(
             return Err(DomainError::Validation(format!("板块 {} 重复", it.key)));
         }
         if ![0, 1, 2, 3].contains(&it.span) {
-            return Err(DomainError::Validation("span 取值 1/2/3（缺省自动）".into()));
+            return Err(DomainError::Validation(
+                "span 取值 1/2/3（缺省自动）".into(),
+            ));
         }
         norm.push(serde_json::json!({ "key": it.key, "span": it.span }));
     }
@@ -5677,7 +6308,9 @@ async fn admin_home_layout_put(
         .repo
         .audit(Some(auth.id), "home_layout.update", None)
         .await;
-    Ok(ok(serde_json::json!({ "saved": norm.len(), "layout": norm })))
+    Ok(ok(
+        serde_json::json!({ "saved": norm.len(), "layout": norm }),
+    ))
 }
 
 // ============ 发布 / 下载（M04 / M05） ============
@@ -5777,7 +6410,11 @@ async fn ptgen(
     .unwrap_or_else(|_| "imdb,douban,bangumi,indienova".into());
     let allowed = enabled.contains("imdb") && host.ends_with("imdb.com")
         || enabled.contains("douban") && host.ends_with("douban.com")
-        || enabled.contains("bangumi") && (host == "bgm.tv" || host.ends_with(".bgm.tv") || host == "bangumi.tv" || host.ends_with(".bangumi.tv"))
+        || enabled.contains("bangumi")
+            && (host == "bgm.tv"
+                || host.ends_with(".bgm.tv")
+                || host == "bangumi.tv"
+                || host.ends_with(".bangumi.tv"))
         || enabled.contains("indienova") && host.ends_with("indienova.com");
     if !allowed {
         return Err(DomainError::Validation(
@@ -5885,7 +6522,9 @@ async fn upload(
             Some("file") => {
                 let mut buf = web::BytesMut::new();
                 while let Some(chunk) = field.next().await {
-                    buf.extend_from_slice(&chunk.map_err(|e| DomainError::Validation(e.to_string()))?);
+                    buf.extend_from_slice(
+                        &chunk.map_err(|e| DomainError::Validation(e.to_string()))?,
+                    );
                 }
                 file_bytes = Some(buf.freeze());
             }
@@ -5893,7 +6532,9 @@ async fn upload(
             Some("nfo") => {
                 let mut buf = web::BytesMut::new();
                 while let Some(chunk) = field.next().await {
-                    buf.extend_from_slice(&chunk.map_err(|e| DomainError::Validation(e.to_string()))?);
+                    buf.extend_from_slice(
+                        &chunk.map_err(|e| DomainError::Validation(e.to_string()))?,
+                    );
                 }
                 nfo_bytes = Some(buf.freeze());
             }
@@ -5905,13 +6546,14 @@ async fn upload(
     let parsed = crate::bencode::parse_torrent(&bytes).map_err(DomainError::TorrentInvalid)?;
 
     // 重复检测（M04：info_hash 唯一）
-    let dupe: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents WHERE info_hash = $1 OR raw_info_hash = $2)")
-            .bind(&parsed.info_hash_hex)
-            .bind(&parsed.raw_info_hash_hex)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let dupe: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM torrents WHERE info_hash = $1 OR raw_info_hash = $2)",
+    )
+    .bind(&parsed.info_hash_hex)
+    .bind(&parsed.raw_info_hash_hex)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if dupe {
         return Err(DomainError::TorrentDuplicate);
     }
@@ -5923,13 +6565,28 @@ async fn upload(
         .unwrap_or(parsed.name.clone());
     // 封面外链 + IMDb 链接 → media_info（JSONB 键合并；搜索区 4 按 imdb 键命中）
     let mut media_obj = serde_json::Map::new();
-    if let Some(u) = form.poster.as_deref().map(str::trim).filter(|u| !u.is_empty()) {
+    if let Some(u) = form
+        .poster
+        .as_deref()
+        .map(str::trim)
+        .filter(|u| !u.is_empty())
+    {
         media_obj.insert("poster".into(), serde_json::json!(u));
     }
-    if let Some(i) = form.imdb.as_deref().map(str::trim).filter(|i| !i.is_empty()) {
+    if let Some(i) = form
+        .imdb
+        .as_deref()
+        .map(str::trim)
+        .filter(|i| !i.is_empty())
+    {
         media_obj.insert("imdb".into(), serde_json::json!(i));
     }
-    if let Some(mi) = form.mediainfo.as_deref().map(str::trim).filter(|m| !m.is_empty()) {
+    if let Some(mi) = form
+        .mediainfo
+        .as_deref()
+        .map(str::trim)
+        .filter(|m| !m.is_empty())
+    {
         // 截断防滥用（MediaInfo 全文通常 < 64KB）
         let mi = &mi[..mi.len().min(60_000)];
         media_obj.insert("mediainfo".into(), serde_json::json!(mi));
@@ -5983,7 +6640,10 @@ async fn upload(
             return Err(DomainError::Validation("聚合组不存在".into()));
         }
     }
-    let nfo_text: Option<String> = nfo_bytes.as_deref().map(decode_nfo).filter(|s| !s.trim().is_empty());
+    let nfo_text: Option<String> = nfo_bytes
+        .as_deref()
+        .map(decode_nfo)
+        .filter(|s| !s.trim().is_empty());
     let price = form.price.unwrap_or(0).clamp(0, 1_000_000);
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, group_id, name, small_descr, descr, category_id, medium_id, grade_id, edition_id, owner_id, anonymous, size, numfiles, approval_status, media_info, nfo, price) \
@@ -6076,13 +6736,12 @@ async fn upload(
         }
         let is_staff = auth.class_id >= 90;
         for tid in &ids {
-            let row: Option<(String, bool)> = sqlx::query_as(
-                "SELECT kind, COALESCE(enabled, TRUE) FROM tag_dict WHERE id = $1",
-            )
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            let row: Option<(String, bool)> =
+                sqlx::query_as("SELECT kind, COALESCE(enabled, TRUE) FROM tag_dict WHERE id = $1")
+                    .bind(tid)
+                    .fetch_optional(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
             let Some((kind, enabled)) = row else {
                 return Err(DomainError::Validation(format!("标签 {tid} 不存在")));
             };
@@ -6092,12 +6751,14 @@ async fn upload(
             if kind == "official" && !is_staff {
                 return Err(DomainError::Forbidden); // 与详情页打标同口径
             }
-            sqlx::query("INSERT INTO tags (torrent_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
-                .bind(id)
-                .bind(tid)
-                .execute(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "INSERT INTO tags (torrent_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            )
+            .bind(id)
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
 
@@ -6160,7 +6821,11 @@ async fn upload(
     // 发布页人人可见，无权限提交会被此处拦截（与参考站服务端强校验同口径）
     if form.pos_state.unwrap_or(0) != 0
         || form.pick_type.unwrap_or(0) != 0
-        || form.pos_state_until.as_deref().map(str::trim).is_some_and(|s| !s.is_empty())
+        || form
+            .pos_state_until
+            .as_deref()
+            .map(str::trim)
+            .is_some_and(|s| !s.is_empty())
     {
         if auth.class_id < 90 {
             return Err(DomainError::Forbidden); // 置顶/推荐仅管理组
@@ -6336,22 +7001,23 @@ pub(crate) async fn build_torrent_bytes(
     if !announce.starts_with(&format!("{base_http}/")) {
         fallbacks.push(format!("{base_http}/announce/{}", user.passkey));
     }
-    // UDP tracker（BEP15）：TRACKER_UDP_URL 设置（或 PUBLIC_TRACKER_URL 同主机推断）时
-    // 作为追加 tier 下发 —— 客户端优先 UDP，HTTP 作回退。path 段带 passkey，
-    // UDP 侧从 announce 包尾随的 tracker_id 字节还原。
-    let udp_url = std::env::var("TRACKER_UDP_URL").unwrap_or_else(|_| {
-        // 未显式配置时按 HTTP host 推断（http://h:p → udp://h:6969）
-        if base_http.starts_with("http://") || base_http.starts_with("https://") {
-            let host = base_http
-                .trim_start_matches("https://")
-                .trim_start_matches("http://");
-            format!("udp://{host}:6969")
-        } else {
-            String::new()
-        }
-    });
+    // UDP tracker（BEP15）：默认不启用。私有站的计费身份靠 passkey 随 URL path 传递——
+    // HTTP announce（BEP3）天然支持；UDP 包格式没有 path，标准客户端（libtorrent/
+    // qBittorrent）不会附带 passkey，UDP tier 只对本站扩展约定的客户端可用。
+    // NexusPHP 系站点全部走 HTTP announce，这也是私有 tracker 的行业惯例。
+    // 需要时显式设 TRACKER_UDP_URL=udp://host:port 追加 tier（客户端失败后按 BEP12
+    // 降级 HTTP 回退，不再默认推断给所有客户端强加一个必然失败的 UDP tier）。
+    let udp_url = std::env::var("TRACKER_UDP_URL")
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+        .unwrap_or_default();
     if !udp_url.is_empty() {
-        fallbacks.push(format!("{}/{}", udp_url.trim_end_matches('/'), user.passkey));
+        fallbacks.push(format!(
+            "{}/{}",
+            udp_url.trim_end_matches('/'),
+            user.passkey
+        ));
     }
     crate::bencode::build_download_torrent(&raw, &announce, &fallbacks)
         .map_err(DomainError::TorrentInvalid)
@@ -6562,10 +7228,7 @@ struct InviteRow {
 
 /// 判定用户邀请配额上限（与 issue 消耗路径同一口径）：
 /// INVITES_BONUS 权限（外联员/VIP）4 枚/周；LV3+ 2 枚/周；其余 0（只能魔力兑换）。
-async fn invite_quota_limit(
-    state: &web::Data<std::sync::Arc<AppState>>,
-    auth: &AuthUser,
-) -> i64 {
+async fn invite_quota_limit(state: &web::Data<std::sync::Arc<AppState>>, auth: &AuthUser) -> i64 {
     if crate::authz::can(state, auth, crate::authz::perm::INVITES_BONUS).await {
         4
     } else if auth.class_id >= 3 {
@@ -6763,23 +7426,28 @@ async fn email_invite_handler(
         .unwrap_or_else(|_| "http://localhost:3000".into());
     let link = format!("{base}/register?invite={code}");
     let from = std::env::var("SMTP_FROM").unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
-    let site: String = sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'site_name'")
-        .fetch_optional(&state.repo.db)
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| "FluxTorrent".into());
-    let inviter: String =
-        sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
+    let site: String =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'site_name'")
+            .fetch_optional(&state.repo.db)
             .await
-            .unwrap_or_else(|_| "某人".into());
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "FluxTorrent".into());
+    let inviter: String = sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or_else(|_| "某人".into());
     let hours_left = (expires - chrono::Utc::now()).num_hours().max(1);
     let mailer = crate::gaps_http::build_smtp(&smtp)?;
     let letter = lettre::Message::builder()
-        .from(from.parse().map_err(|_| DomainError::Validation("SMTP_FROM 配置无效".into()))?)
-        .to(email.parse().map_err(|_| DomainError::Validation("邮箱地址无效".into()))?)
+        .from(
+            from.parse()
+                .map_err(|_| DomainError::Validation("SMTP_FROM 配置无效".into()))?,
+        )
+        .to(email
+            .parse()
+            .map_err(|_| DomainError::Validation("邮箱地址无效".into()))?)
         .subject(format!("[{site}] {inviter} 邀请你加入"))
         .body(format!(
             "你的好友 {inviter} 邀请你加入 {site}！

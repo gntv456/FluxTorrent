@@ -44,6 +44,12 @@ function acceptLanguage(): string | undefined {
   return m ? decodeURIComponent(m[1]) : undefined;
 }
 
+/** 公开内部 helper：组件内需要裸 fetch（multipart 上传等）时复用同一 baseUrl/语言口径 */
+export const rawFetchHelpers = {
+  base: baseUrl,
+  lang: acceptLanguage,
+};
+
 export class ApiError extends Error {
   constructor(
     public readonly code: number,
@@ -83,6 +89,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   const body = (await res.json()) as ApiEnvelope<T>;
   if (body.code !== 0) {
+    // 全局 401（审计修复 P1）：token 过期/被吊销时旧版只抛错，用户停留在
+    // 「僵尸会话」页反复报错。清会话并带回跳地址跳登录页（登录页自身的
+    // 401 与 auth/* 端点除外，避免登录前误跳）。
+    if (
+      body.code === 2001 &&
+      typeof window !== "undefined" &&
+      !path.startsWith("/api/v1/auth/")
+    ) {
+      setSessionCookie(null);
+      localStorage.removeItem("flux.token");
+      const next = encodeURIComponent(
+        window.location.pathname + window.location.search,
+      );
+      window.location.assign(`/login?next=${next}&expired=1`);
+    }
     throw new ApiError(body.code, body.message, body.data);
   }
   return body.data;

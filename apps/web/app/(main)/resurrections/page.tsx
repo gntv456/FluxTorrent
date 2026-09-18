@@ -1,10 +1,15 @@
 import { ResurrectionPanel } from "@/components/resurrection-panel";
 import { getDict } from "@/i18n/server";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
 /** 复活任务独立页（0073）：面板复用（/preserve 内嵌同款），对标 U3D Graveyard */
 export default async function ResurrectionsPage() {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("resurrections");
+  if (gate) return gate;
+
   const { dict } = await getDict();
   return (
     <div className="flex flex-col gap-4">

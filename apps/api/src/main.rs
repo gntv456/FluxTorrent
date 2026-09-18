@@ -22,14 +22,20 @@ mod gaps_http;
 mod geo;
 mod http;
 mod i18n;
+mod mailer;
+mod modules;
 mod openapi_http;
 mod ops_http;
+mod payment;
 mod plugins;
 mod push_http;
 mod repo;
 mod rss_http;
 mod settings_http;
+mod setup_http;
+mod social_http;
 mod state;
+mod storage;
 mod torrents;
 mod twofa_http;
 mod v4_http;
@@ -125,6 +131,8 @@ async fn main() -> anyhow::Result<()> {
                     .add(("Referrer-Policy", "strict-origin-when-cross-origin")),
             )
             .wrap(actix_web::middleware::from_fn(i18n::locale_mw)) // Accept-Language → task-local（错误消息三语）
+            .wrap(actix_web::middleware::from_fn(setup_http::setup_gate_mw)) // U3 安装向导封锁（setup_done 未置位拦业务 API）
+            .wrap(actix_web::middleware::from_fn(modules::module_gate_mw)) // U1 模块网关：可选域 fail-close（4101）
             .wrap(actix_web::middleware::from_fn(v4_http::metrics_mw)) // G3：请求/5xx 计数（/metrics 出口）
             .configure(community_http::configure)
             .default_service(web::to(|req: actix_web::HttpRequest| async move {

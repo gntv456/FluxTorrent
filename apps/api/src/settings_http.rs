@@ -101,6 +101,13 @@ fn group_label<'a>(key: &'a str) -> &'a str {
         "attachment" => "附件设定",
         "advertisement" => "广告设定",
         "misc" => "其他设定",
+        // U1/U5 扩展分区（0107/0109/0112 播种；未列入 DEFAULT_GROUP_ORDER 时排在末尾）
+        "economy" => "经济参数",
+        "anticheat" => "防作弊",
+        "module_community" => "模块开关·社区",
+        "module_economy" => "模块开关·经济",
+        "module_fun" => "模块开关·娱乐",
+        "module_ops" => "模块开关·运营",
         other => other,
     }
 }
@@ -117,6 +124,12 @@ const DEFAULT_GROUP_ORDER: &[&str] = &[
     "torrent",
     "attachment",
     "advertisement",
+    "anticheat",
+    "economy",
+    "module_community",
+    "module_economy",
+    "module_fun",
+    "module_ops",
     "misc",
 ];
 
@@ -538,6 +551,8 @@ async fn invalidate_cache(state: &web::Data<std::sync::Arc<AppState>>, group: &s
     let mut conn = state.redis.clone();
     let _: () = conn.del(format!("settings:{group}")).await.unwrap_or(());
     let _: () = conn.del("settings:all").await.unwrap_or(());
+    // 模块开关（module_*）属 module 组：本进程缓存立即失效（U1 §5.1，最坏竞态由 TTL 兜底）
+    state.module_flags.invalidate().await;
     let _: i64 = conn.publish("settings:changed", group).await.unwrap_or(0);
 }
 

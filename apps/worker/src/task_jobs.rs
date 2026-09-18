@@ -54,7 +54,7 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
                 t.kind, t.name AS task_name, t.metric, c.claimed_at, \
                 c.base_uploaded, c.base_seed_seconds, c.base_uploads \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
-         WHERE c.status = 0 LIMIT 500",
+         WHERE c.status = 0 AND c.exempted_at IS NULL LIMIT 500",
     )
     .fetch_all(db)
     .await?;
@@ -239,7 +239,8 @@ async fn settle_complete(db: &PgPool, c: &OpenClaim) -> anyhow::Result<bool> {
 }
 
 /// 失败/超时：status=2；配置了罚金则扣（幂等键 task_penalty:{claim_id}）
-async fn settle_fail(db: &PgPool, c: &OpenClaim) -> anyhow::Result<()> {    let mut tx = db.begin().await?;
+async fn settle_fail(db: &PgPool, c: &OpenClaim) -> anyhow::Result<()> {
+    let mut tx = db.begin().await?;
     // 罚金说明文案按实扣额生成（见下方审计修复注释）；未配置罚金时为空串
     let mut penalty_note = String::new();
     let updated = sqlx::query(

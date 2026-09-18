@@ -1,10 +1,15 @@
 import { getPool } from "@/lib/data";
 import { PoolDonate } from "@/components/pool-donate";
 import { getDict } from "@/i18n/server";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
 export default async function MagicPoolPage() {
+  // U1 模块页守卫：关闭时渲染统一空态
+  const gate = await requireModule("magic_pool");
+  if (gate) return gate;
+
   const { dict, currency } = await getDict();
   const pool = await getPool();
   const pct = pool ? Math.min(100, Math.round(pool.progress * 100)) : 0;

@@ -1,0 +1,31 @@
+MIT License
+
+Copyright (c) 2026 FluxTorrent Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+补充声明（非许可条款，不修改上方 MIT 许可的任何权利义务）：
+
+1. 本项目是建站系统软件，不对站长利用本系统开展的站点运营行为承担任何责任。
+2. 本项目内置的娱乐玩法（刮刮乐、猜大小等机会类游戏，见 modules 注册表 games 域）
+   使用站内虚拟货币结算。站长启用这些模块前，有责任自行确认并遵守所在司法域
+   关于机会类游戏/网络博彩的法律法规（安装向导含显式合规确认步骤）。
+3. 预置站型不包含成人内容站型；站长通过自定义站型自行配置的内容与本项目无关。
