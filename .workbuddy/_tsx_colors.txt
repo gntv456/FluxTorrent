@@ -1,8 +1,0 @@
-﻿8      hex  0    bg-[# 0    dark: \components\torrent-table.tsx
-5      hex  5    bg-[# 0    dark: \components\staff-tools.tsx
-4      hex  4    bg-[# 0    dark: \app\(main)\my-spark\page.tsx
-2      hex  2    bg-[# 0    dark: \components\upload-form.tsx
-2      hex  2    bg-[# 0    dark: \components\link-apply.tsx
-2      hex  2    bg-[# 0    dark: \app\(main)\donate\page.tsx
-2      hex  0    bg-[# 0    dark: \components\setting-field.tsx
-1      hex  0    bg-[# 0    dark: \components\plugins.tsx
