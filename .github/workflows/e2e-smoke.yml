@@ -18,10 +18,9 @@ on:
 
 env:
   DB_PASSWORD: cipassword_32chars_for_smoke_only!
-  REDIS_PASSWORD: ciredispassword
   JWT_SECRET: ci_jwt_secret_change_me_at_least_32_bytes!
   DATABASE_URL: postgres://flux:cipassword_32chars_for_smoke_only!@127.0.0.1:5432/fluxtorrent
-  REDIS_URL: redis://:ciredispassword@127.0.0.1:6379
+  REDIS_URL: redis://127.0.0.1:6379
   FLUX_DEV: "1"
   BIND: 127.0.0.1:8080
 
@@ -44,10 +43,11 @@ jobs:
       redis:
         image: redis:7-alpine
         # services.command 只接受字符串（GitHub 不支持数组形式），args 用空格分隔
-        command: redis-server --requirepass ciredispassword
+        # CI 网络隔离：冒烟环境不设密码（health-cmd 需无引号透传给 docker CLI）
+        command: redis-server
         ports: ["6379:6379"]
         options: >-
-          --health-cmd 'redis-cli -a ciredispassword ping'
+          --health-cmd redis-cli ping
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
