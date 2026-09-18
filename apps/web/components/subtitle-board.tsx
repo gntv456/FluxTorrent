@@ -38,7 +38,7 @@ const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
  *  标题条（字 字幕区 上传字幕-总上传量）→ 规则卡 → 上传表单（rowhead/rowfollow）
  *  → 语言筛选 + 首字母条 → 语言/标题/添加时间/大小/点击/上传者/举报 七列表格 */
 export function SubtitleBoard() {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.subtitles;
   const [rows, setRows] = useState<SubtitleRow[] | null>(null);
   const [search, setSearch] = useState("");
@@ -111,7 +111,7 @@ export function SubtitleBoard() {
       });
       setFTitle("");
       setFFile(null);
-      setMsg(t.reward);
+      setMsg(t.reward.replace("{magic}", currency));
       load();
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : dict.common.networkError);

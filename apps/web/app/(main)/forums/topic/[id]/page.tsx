@@ -4,7 +4,9 @@ import { getPosts, getForums } from "@/lib/data";
 import { ReplyBox, TopicModActions, PostActions } from "@/components/forum-composer";
 import { MarkdownRenderer } from "@/components/forum-markdown";
 import { TypeBadge, TagChip } from "@/components/forum-bits";
-import { PostVoteBar, TopicFavoriteButton } from "@/components/forum-vote";
+import { PostVoteBar, TopicFavoriteButton, BountyAcceptButton } from "@/components/forum-vote";
+import { PollWidget } from "@/components/forum-poll";
+import { LotteryWidget } from "@/components/forum-lottery";
 import { ReportTopicButton } from "@/components/forum-report";
 import { FollowButton } from "@/components/forum-follow";
 import { getDict } from "@/i18n/server";
@@ -22,7 +24,7 @@ export default async function TopicPage({
   const { id } = await params;
   const { before } = await searchParams;
   const topicId = Number(id);
-  const { dict, locale } = await getDict();
+  const { dict, locale, currency } = await getDict();
   if (!Number.isFinite(topicId)) notFound();
   const detail = await getPosts(topicId, before ? Number(before) : undefined);
   if (!detail || detail.posts.length === 0) notFound();
@@ -73,6 +75,35 @@ export default async function TopicPage({
           </>
         )}
       </div>
+      {/* 悬赏卡（0124）：类型为 bounty 时展示赏金与状态；已采纳时点出中选楼层 */}
+      {detail.topic_type === "bounty" && (detail.bounty_spark ?? 0) > 0 && (
+        <div
+          className={`flex flex-wrap items-center gap-2 rounded-[var(--r-md)] border p-3 text-sm ${
+            detail.bounty_status === "open"
+              ? "border-coral bg-[var(--coral-soft)]"
+              : "border-line bg-[var(--surface-card)]"
+          }`}
+        >
+          <span aria-hidden className="text-lg">
+            💰
+          </span>
+          <span className="font-bold text-ink">
+            {detail.bounty_status === "open"
+              ? dict.forums.bountyOpen
+              : detail.bounty_status === "awarded"
+                ? dict.forums.bountyAwarded
+                : dict.forums.bountyRefunded}
+          </span>
+          <span className="num font-bold text-coral">
+            {detail.bounty_spark} {currency}
+          </span>
+          {detail.bounty_status === "awarded" && detail.bounty_post_id && (
+            <a href={`#p${detail.bounty_post_id}`} className="text-xs text-sky hover:underline">
+              {dict.forums.bountyGoto}
+            </a>
+          )}
+        </div>
+      )}
       {detail.can_mod && (
         <TopicModActions
           topicId={topicId}
@@ -80,6 +111,24 @@ export default async function TopicPage({
           locked={detail.locked}
           digest={detail.digest ?? false}
           forums={forums.map((f) => ({ id: f.id, name: f.name }))}
+        />
+      )}
+      {/* 投票挂件（0125）：poll 类型且有选项数据时渲染；楼主/版主可截止 */}
+      {detail.topic_type === "poll" && detail.poll && detail.poll.options?.length >= 2 && (
+        <PollWidget
+          topicId={topicId}
+          poll={detail.poll}
+          canClose={detail.is_op || detail.can_mod}
+        />
+      )}
+      {/* 抽奖挂件（0126）：lottery 类型且有数据时渲染；楼主/版主可提前开奖 */}
+      {detail.topic_type === "lottery" && detail.lottery && (
+        <LotteryWidget
+          topicId={topicId}
+          lottery={detail.lottery}
+          currency={currency}
+          canDraw={detail.is_op || detail.can_mod}
+          isOp={detail.is_op}
         />
       )}
       {/* 长帖游标（NP 分页口径）：帖子按 id < before 取上一窗口，链接翻页保 SSR 简单可靠 */}
@@ -94,7 +143,7 @@ export default async function TopicPage({
       <table className="nexus-table">
         <tbody>
           {detail.posts.map((p, i) => (
-            <tr key={p.id} className="align-top">
+            <tr key={p.id} id={`p${p.id}`} className="align-top">
               <td className="w-36 border-r border-line bg-[rgba(255,232,197,0.45)] p-3">
                 <span className="font-bold text-sky">
                   {p.username ?? dict.torrent.anonymous}
@@ -115,6 +164,25 @@ export default async function TopicPage({
                       {new Date(p.edited_at).toLocaleString(dateLocale(locale))}
                     </span>
                   )}
+                  {/* 中选楼层标记（0124）：楼主采纳的回复 */}
+                  {detail.bounty_post_id === p.id && (
+                    <span className="rounded-full bg-[var(--coral-soft)] px-2 py-0.5 font-bold text-coral">
+                      ✓ {dict.forums.bountyPicked}
+                    </span>
+                  )}
+                  {/* 悬赏未决 + 我是楼主 + 这层不是首帖：显示采纳按钮 */}
+                  {detail.topic_type === "bounty" &&
+                    detail.bounty_status === "open" &&
+                    detail.is_op &&
+                    i > 0 &&
+                    p.user_id !== authId && (
+                      <BountyAcceptButton
+                        topicId={topicId}
+                        postId={p.id}
+                        spark={detail.bounty_spark ?? 0}
+                        currency={currency}
+                      />
+                    )}
                   {authId > 0 && (
                     <span className="ml-auto">
                       <PostVoteBar

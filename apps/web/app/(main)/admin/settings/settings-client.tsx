@@ -69,7 +69,7 @@ interface ImportApplied {
 }
 
 export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchema | null }) {
-  const { dict, locale } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const s = dict.settingsAdmin;
 
   // 服务端预取时同步推导首屏所需的扁平值 / 分区归属 —— useEffect 不参与 SSR，
@@ -575,7 +575,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
                   : "border border-line bg-[var(--surface-card)] text-sub md:border-0 md:text-ink"
               }`}
             >
-              <span className="whitespace-nowrap">{dict.admin.settingGroups[g.key] ?? g.label}</span>
+              <span className="whitespace-nowrap">{(dict.admin.settingGroups[g.key] ?? g.label).replace("{magic}", currency)}</span>
               <span className="ml-auto text-[10px] font-normal">{g.count}</span>
             </button>
           ))}
@@ -624,7 +624,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
                   className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 shadow-[var(--shadow-card)]"
                 >
                   <h2 className="mb-2 flex items-baseline gap-2 text-sm font-bold text-ink">
-                    {dict.admin.settingGroups[c.key] ?? c.key}
+                    {(dict.admin.settingGroups[c.key] ?? c.key).replace("{magic}", currency)}
                     <span className="text-[11px] font-normal text-sub">{c.fields.length}</span>
                   </h2>
                   {switches.length > 0 && (
@@ -720,7 +720,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
                         <p className="flex flex-wrap items-baseline gap-1.5">
                           <span className="font-mono font-bold text-ink">{d.name}</span>
                           <span className="rounded-full bg-sky-soft px-1.5 py-0.5 text-[10px] text-sub">
-                            {dict.admin.settingGroups[d.group] ?? d.group}
+                            {(dict.admin.settingGroups[d.group] ?? d.group).replace("{magic}", currency)}
                           </span>
                         </p>
                         <p className="mt-0.5 break-all">

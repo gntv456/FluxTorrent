@@ -25,7 +25,7 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
   const [msg, setMsg] = useState<string | null>(null);
 
   async function selfPardon(tid: number) {
-    if (!window.confirm(dict.myhr2.pardonConfirm)) return;
+    if (!window.confirm(dict.myhr2.pardonConfirm.replace("{magic}", currency))) return;
     setBusyId(tid);
     setMsg(null);
     try {

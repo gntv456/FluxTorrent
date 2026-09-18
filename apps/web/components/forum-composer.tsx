@@ -69,6 +69,15 @@ export function TopicComposer({ forumId }: { forumId: number }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState<number[]>([]);
+  // 悬赏（0124）：选了金额即 bounty 类型；金额空 = 普通帖
+  const [bounty, setBounty] = useState("");
+  // 投票（0125）：填了 ≥2 个选项即 poll 类型
+  const [pollOpts, setPollOpts] = useState(["", ""]);
+  // 抽奖（0126）：填了名额+奖金即 lottery 类型
+  const [lotWinners, setLotWinners] = useState("");
+  const [lotPrize, setLotPrize] = useState("");
+  const [lotTicket, setLotTicket] = useState("0");
+  const [lotHours, setLotHours] = useState("24");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -76,12 +85,26 @@ export function TopicComposer({ forumId }: { forumId: number }) {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
+    const bountyNum = Math.floor(Number(bounty));
+    const opts = pollOpts.map((s) => s.trim()).filter(Boolean);
+    const lw = Math.floor(Number(lotWinners));
+    const lp = Math.floor(Number(lotPrize));
+    const lt = Math.floor(Number(lotTicket) || 0);
+    const lh = Math.floor(Number(lotHours) || 24);
+    const isLottery = Number.isFinite(lw) && lw > 0 && Number.isFinite(lp) && lp > 0;
     try {
       const r = await api.post<{ topic_id: number }>("/api/v1/forums/topics", {
         forum_id: forumId,
         title: title.trim(),
         body: body.trim(),
         tags,
+        ...(Number.isFinite(bountyNum) && bountyNum > 0
+          ? { topic_type: "bounty", bounty_spark: bountyNum }
+          : {}),
+        ...(opts.length >= 2 ? { topic_type: "poll", poll_options: opts } : {}),
+        ...(isLottery
+          ? { topic_type: "lottery", lottery_winners: lw, lottery_prize: lp, lottery_ticket: lt, lottery_hours: lh }
+          : {}),
       });
       router.push(`/forums/topic/${r.topic_id}`);
     } catch (err) {
@@ -136,6 +159,76 @@ export function TopicComposer({ forumId }: { forumId: number }) {
           setTags((ts) => (ts.includes(id) ? ts.filter((x) => x !== id) : [...ts, id]))
         }
       />
+      {/* 悬赏（0124）：填金额即悬赏帖，冻结立扣；留空 = 普通帖 */}
+      <label className="flex flex-col gap-1">
+        <span className="text-sm text-sub">{dict.forums.bountyLabel}</span>
+        <input
+          type="number"
+          min={0}
+          max={1000000}
+          value={bounty}
+          onChange={(e) => setBounty(e.target.value)}
+          placeholder={dict.forums.bountyPh}
+          className="min-h-[44px] w-44 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+        />
+      </label>
+      {/* 投票（0125）：≥2 个非空选项即投票帖；选项发帖后定死 */}
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-sub">{dict.forums.pollLabel}</span>
+        <div className="flex flex-col gap-1">
+          {pollOpts.map((v, i) => (
+            <input
+              key={i}
+              value={v}
+              onChange={(e) =>
+                setPollOpts((os) => os.map((x, j) => (j === i ? e.target.value : x)))
+              }
+              maxLength={60}
+              placeholder={`${dict.forums.pollOption} ${i + 1}`}
+              className="min-h-[38px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+            />
+          ))}
+          {pollOpts.length < 10 && (
+            <button
+              type="button"
+              onClick={() => setPollOpts((os) => [...os, ""])}
+              className="self-start rounded-full border border-line px-3 py-1 text-xs font-bold text-sub hover:border-sky hover:text-sky"
+            >
+              + {dict.forums.pollAddOption}
+            </button>
+          )}
+        </div>
+      </div>
+      {/* 抽奖（0126）：填名额+奖金即抽奖帖（奖金池发布时冻结）；票价 0=免费参与 */}
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-sub">{dict.forums.lotLabel}</span>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="number" min={1} max={100} value={lotWinners}
+            onChange={(e) => setLotWinners(e.target.value)}
+            placeholder={dict.forums.lotWinners}
+            className="min-h-[44px] w-28 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+          />
+          <input
+            type="number" min={1} max={100000} value={lotPrize}
+            onChange={(e) => setLotPrize(e.target.value)}
+            placeholder={dict.forums.lotPrize}
+            className="min-h-[44px] w-32 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+          />
+          <input
+            type="number" min={0} max={10000} value={lotTicket}
+            onChange={(e) => setLotTicket(e.target.value)}
+            placeholder={dict.forums.lotTicket}
+            className="min-h-[44px] w-32 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+          />
+          <input
+            type="number" min={1} max={720} value={lotHours}
+            onChange={(e) => setLotHours(e.target.value)}
+            placeholder={dict.forums.lotHours}
+            className="min-h-[44px] w-28 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+          />
+        </div>
+      </div>
       {msg && (
         <p role="alert" className="text-sm text-danger">
           {msg}
@@ -162,8 +255,7 @@ export function TopicComposer({ forumId }: { forumId: number }) {
 }
 
 /** 主题页回复框——对接 POST /forums/topics/{id}/reply */
-export function ReplyBox({ topicId }: { topicId: number }) {
-  const { dict } = useI18n();
+export function ReplyBox({ topicId }: { topicId: number }) {  const { dict } = useI18n();
   const router = useRouter();
   const [body, setBody] = useState("");
   const [msg, setMsg] = useState<string | null>(null);

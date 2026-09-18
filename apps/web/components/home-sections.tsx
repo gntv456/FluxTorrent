@@ -226,7 +226,7 @@ export function HomeSections() {
     setCheckinBusy(true);
     try {
       const r = await api.post<{ reward: number; streak: number }>("/api/v1/attendance/checkin");
-      setCheckinMsg(dict.my.checkinOk.replace("{reward}", String(r.reward)).replace("{streak}", String(r.streak)));
+      setCheckinMsg(dict.my.checkinOk.replace("{reward}", String(r.reward)).replace("{streak}", String(r.streak)).replace("{magic}", currency));
       load();
     } catch {
       setCheckinMsg(dict.home2.checkinFail);

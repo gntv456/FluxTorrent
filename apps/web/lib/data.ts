@@ -175,6 +175,30 @@ export interface TopicDetail {
   digest?: boolean;
   /** 帖子类型（0115）：normal|bounty|poll|lottery */
   topic_type?: string;
+  /** 悬赏（0124）：金额/状态/中选楼层 */
+  bounty_spark?: number;
+  bounty_status?: string;
+  bounty_post_id?: number | null;
+  /** 投票（0125）：topic_type=poll 时非空 */
+  poll?: {
+    options: string[];
+    closed: boolean;
+    my_vote: number | null;
+    total: number;
+    counts: { index: number; votes: number }[];
+  } | null;
+  /** 抽奖（0126）：topic_type=lottery 时非空 */
+  lottery?: {
+    winners: number;
+    prize: number;
+    ticket: number;
+    status: string;
+    draw_at: string;
+    entries: number;
+    joined: boolean;
+    my_won: boolean;
+    winner_ids: { id: number; name: string | null }[];
+  } | null;
   /** 标签（0123）：头部 TagChip 渲染 */
   tags?: TagChipData[];
   is_op: boolean;

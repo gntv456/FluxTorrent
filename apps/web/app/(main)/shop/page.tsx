@@ -61,7 +61,7 @@ export default async function ShopPage() {
       </section>
 
       <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-xs text-ink">
-        {dict.shop.ledgerNote}
+        {dict.shop.ledgerNote.replaceAll("{magic}", currency)}
       </p>
 
       {/* 我的券（0073：免费券/中性券库存与使用） */}
