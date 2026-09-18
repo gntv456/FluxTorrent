@@ -15,6 +15,8 @@ interface MessageRow {
   created_at: string;
   unread?: boolean | null;
   folder?: number | null;
+  /** 系统通知（sender_id IS NULL，0123 视觉区分用）：🔔 徽标 + 禁用回复/转发 */
+  is_system?: boolean | null;
 }
 
 interface PmBox {
@@ -487,7 +489,7 @@ export function MessageCenter() {
                   </td>
                   <td>
                     <span aria-hidden className="mr-1">
-                      {box === "inbox" ? (unread ? "📬" : "📭") : "📤"}
+                      {box === "sent" ? "📤" : m.is_system ? "🔔" : unread ? "📬" : "📭"}
                     </span>
                     <span
                       className={`text-[11px] ${unread ? "font-bold text-[var(--baozi-orange-dark)]" : "text-sub"}`}
@@ -501,6 +503,11 @@ export function MessageCenter() {
                       onClick={() => openMsg(m)}
                       className={`block max-w-full truncate text-left ${unread ? "font-bold text-[var(--baozi-orange-dark)]" : "text-ink"}`}
                     >
+                      {box === "inbox" && m.is_system && (
+                        <span aria-hidden className="mr-1" title={t.systemSender}>
+                          🔔
+                        </span>
+                      )}
                       {m.subject}
                     </button>
                     {openId === m.id && (
@@ -509,22 +516,25 @@ export function MessageCenter() {
                           <MarkdownRenderer source={m.body} />
                         </div>
                         <p className="mt-1 text-[11px] text-sub md:hidden">{cp} · {time}</p>
-                        <div className="mt-2 flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startReply(m)}
-                            className="min-h-[32px] rounded-full border border-[var(--baozi-orange-dark)] px-3 text-xs font-bold text-[var(--baozi-orange-dark)] hover:bg-[var(--baozi-orange)] hover:text-white"
-                          >
-                            ↩ {t.reply}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => startForward(m)}
-                            className="min-h-[32px] rounded-full border border-[var(--baozi-line)] px-3 text-xs font-bold text-sub hover:text-ink"
-                          >
-                            ↪ {t.forward}
-                          </button>
-                        </div>
+                        {/* 系统通知没有对端用户，回复/转发无意义（0123 视觉区分的一部分） */}
+                        {!m.is_system && box === "inbox" && (
+                          <div className="mt-2 flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startReply(m)}
+                              className="min-h-[32px] rounded-full border border-[var(--baozi-orange-dark)] px-3 text-xs font-bold text-[var(--baozi-orange-dark)] hover:bg-[var(--baozi-orange)] hover:text-white"
+                            >
+                              ↩ {t.reply}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startForward(m)}
+                              className="min-h-[32px] rounded-full border border-[var(--baozi-line)] px-3 text-xs font-bold text-sub hover:text-ink"
+                            >
+                              ↪ {t.forward}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </td>

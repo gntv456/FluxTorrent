@@ -2564,6 +2564,9 @@ struct MessageRow {
     unread: Option<bool>,
     #[sqlx(default)]
     folder: Option<i32>,
+    /// 系统通知（sender_id IS NULL）：前端据此做视觉区分（通知带 🔔 徽标、不可回复）
+    #[sqlx(default)]
+    is_system: bool,
 }
 
 /// 收件箱（messages.php location=1 口径）：支持 box=folderid、关键词搜索（主题/正文/两者）与未读筛选
@@ -2577,7 +2580,8 @@ async fn message_inbox(
     // 关键词经 like_pattern 转义（%/_/\）后与原始串绑定：NULL 跳过、非 NULL 模糊匹配
     let pattern = q.search.as_deref().map(crate::http::like_pattern);
     let rows = sqlx::query_as::<_, MessageRow>(
-        "SELECT m.id, u.username AS counterpart, m.subject, m.body, m.read_at, m.created_at, m.unread, m.folder \
+        "SELECT m.id, u.username AS counterpart, m.subject, m.body, m.read_at, m.created_at, m.unread, m.folder, \
+                (m.sender_id IS NULL) AS is_system \
          FROM messages m LEFT JOIN users u ON u.id = m.sender_id \
          WHERE m.receiver_id = $1 AND m.location = 1 \
            AND ($2::int IS NULL OR m.folder = $2) \

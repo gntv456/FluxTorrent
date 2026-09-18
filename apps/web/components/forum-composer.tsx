@@ -1,9 +1,65 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { TagChip, TagChipData } from "@/components/forum-bits";
+
+/** 发主题选标签：字典自取（公开接口 /forums/tags，含 tag_dict 样式列），最多选 5 个 */
+function TagPicker({
+  selected,
+  onToggle,
+}: {
+  selected: number[];
+  onToggle: (id: number) => void;
+}) {
+  const { dict } = useI18n();
+  const [dictRows, setDictRows] = useState<TagChipData[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .get<TagChipData[]>("/api/v1/forums/tags")
+      .then((r) => {
+        if (alive) setDictRows(r ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (dictRows.length === 0) return null;
+  const t = dict.forums;
+  const full = selected.length >= 5;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-sm text-sub">{t.tagPick}</span>
+      <div className="flex flex-wrap gap-1.5">
+        {dictRows.map((d) => {
+          const on = selected.includes(d.id);
+          return (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => onToggle(d.id)}
+              disabled={!on && full}
+              aria-pressed={on}
+              className={`rounded-full transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                on ? "outline outline-2 outline-offset-1 outline-sky" : "opacity-70 hover:opacity-100"
+              }`}
+              title={on ? t.tagOn : t.tagOff}
+            >
+              <TagChip tag={d} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 /** 论坛发主题（需 forum_id）——对接 POST /forums/topics */
 export function TopicComposer({ forumId }: { forumId: number }) {
@@ -12,6 +68,7 @@ export function TopicComposer({ forumId }: { forumId: number }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [tags, setTags] = useState<number[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -24,6 +81,7 @@ export function TopicComposer({ forumId }: { forumId: number }) {
         forum_id: forumId,
         title: title.trim(),
         body: body.trim(),
+        tags,
       });
       router.push(`/forums/topic/${r.topic_id}`);
     } catch (err) {
@@ -72,6 +130,12 @@ export function TopicComposer({ forumId }: { forumId: number }) {
           className="min-h-[100px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2 text-sm outline-none focus:border-sky"
         />
       </label>
+      <TagPicker
+        selected={tags}
+        onToggle={(id) =>
+          setTags((ts) => (ts.includes(id) ? ts.filter((x) => x !== id) : [...ts, id]))
+        }
+      />
       {msg && (
         <p role="alert" className="text-sm text-danger">
           {msg}
