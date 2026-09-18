@@ -43,7 +43,8 @@ jobs:
           --health-retries 10
       redis:
         image: redis:7-alpine
-        command: ["redis-server", "--requirepass", "ciredispassword"]
+        # services.command 只接受字符串（GitHub 不支持数组形式），args 用空格分隔
+        command: redis-server --requirepass ciredispassword
         ports: ["6379:6379"]
         options: >-
           --health-cmd 'redis-cli -a ciredispassword ping'
