@@ -1322,8 +1322,6 @@
  "components\\user-tools.tsx": [],
  "components\\usercp.tsx": [
   148,
-  829,
-  830,
   831,
   832,
   833,
@@ -1332,9 +1330,11 @@
   836,
   837,
   838,
-  967,
-  968,
-  1021
+  839,
+  840,
+  969,
+  970,
+  1023
  ],
  "components\\voucher-panel.tsx": [],
  "components\\wishlist.tsx": [],
