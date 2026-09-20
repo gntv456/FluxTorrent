@@ -15,6 +15,11 @@ pub struct AppState {
     pub plugins: crate::plugins::PluginManager,
     /// 模块开关缓存（U1 §5.1：TTL 30s + 后台改键主动失效；worker 与 API 共用）
     pub module_flags: crate::modules::ModuleFlags,
+    /// 用户状态短缓存（审计 P2：require_auth 此前每请求 2 次 DB 往返——撤销线 + users 行。
+    /// 撤销线保留直查（登出必须即时生效）；users 的 status/class/must_reset 以 5s TTL
+    /// 缓存，封禁/降级最坏延迟 5s 生效，换回每请求一次 round-trip。管理端封禁/降级
+    /// 后调用 UserStatusCache::invalidate 主动失效。）
+    pub user_status_cache: crate::http::UserStatusCache,
     /// 进程启动时间（stats 页 uptime 口径）
     pub started_at: chrono::DateTime<chrono::Utc>,
 }
@@ -42,6 +47,7 @@ impl AppState {
             jwt,
             plugins: crate::plugins::PluginManager::builtin(),
             module_flags: crate::modules::ModuleFlags::new(),
+            user_status_cache: crate::http::UserStatusCache::default(),
             started_at: chrono::Utc::now(),
         })
     }
