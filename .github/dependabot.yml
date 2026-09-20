@@ -1,0 +1,23 @@
+# Dependabot：依赖自动更新 PR（cargo + npm + actions 三生态）
+# 安全补丁类更新会带 security label，配合 security-audit workflow 双保险
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [chore, rust]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [chore, web]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [chore, ci]

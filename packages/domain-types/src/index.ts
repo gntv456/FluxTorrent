@@ -266,3 +266,413 @@ export const MODULE_KEYS: readonly ModuleKey[] = [
   "exams",
   "push",
 ] as const;
+
+
+// ============ 站点实体契约（自 apps/web/lib/data.ts 收编，2026-09-20） ============
+
+/** 论坛标签样式（0123）：词表与样式列全部来自 tag_dict（0063 带样式的通用标签字典）。
+ *  样式列可能为空串（历史数据），空值回落主题默认。 */
+export interface TagChipData {
+  id: number;
+  name: string;
+  kind?: string;
+  bg_color?: string;
+  color?: string;
+  font_size?: string;
+  margin?: string;
+  padding?: string;
+  border_radius?: string;
+}
+
+export interface ShopItem {
+  id: number;
+  name: string;
+  kind: string;
+  price: number;
+}
+
+export interface Medal {
+  id: number;
+  name: string;
+  price: number | null;
+  rarity: string | null;
+  limited: boolean;
+  owned: boolean;
+  wearing: boolean;
+  description: string | null;
+  duration_days: number | null;
+  get_type: number;
+  sale_begin_at: string | null;
+  sale_end_at: string | null;
+  inventory: number | null;
+  bonus_addition_factor: number;
+  category_id: number;
+  category_name: string | null;
+  /** 勋章图片 URL（medals.asset_ref）；空则展示位回落 🏅 */
+  asset_ref: string | null;
+}
+
+export interface Forum {
+  id: number;
+  name: string;
+  descr: string | null;
+  topics: number;
+  posts: number;
+  latest_topic?: string;
+  latest_author?: string;
+  latest_at?: string;
+  /** 分区/节点（0115）：首页按分类分组 */
+  category_id?: number | null;
+  category_name?: string | null;
+  can_write?: boolean;
+  can_create?: boolean;
+  can_mod?: boolean;
+}
+
+export interface Topic {
+  id: number;
+  forum_id: number;
+  title: string;
+  username: string | null;
+  replies: number;
+  views: number;
+  last_post_at: string | null;
+  sticky?: boolean;
+  locked?: boolean;
+  /** 精华帖（0099 NP digest 口径） */
+  digest?: boolean;
+  /** 帖子类型（0115）：normal|bounty|poll|lottery */
+  topic_type?: string;
+  /** 标签（0123）：tag_dict id + 名称 + 样式列（TagChip 直接渲染） */
+  tags?: TagChipData[];
+}
+
+export interface ForumTopics {
+  forum_id: number;
+  /** 版块名（随列表返回，避免为拿标题再打一次 /forums） */
+  forum_name?: string | null;
+  can_write: boolean;
+  can_create: boolean;
+  can_mod: boolean;
+  /** 当前排序（0116）：hot|new */
+  sort?: string;
+  /** 当前标签筛选（0123）：tag_dict id */
+  tag?: number | null;
+  topics: Topic[];
+}
+
+/** 站点运行统计（/stats 需登录；页脚展示用，未登录返回 null） */
+export interface SiteStats {
+  users: number;
+  torrents: number;
+  dead: number;
+  seed_size: number;
+}
+
+/** 自定义菜单项（admin menu_items 公开接口；仅返回启用且当前等级可见项，按 sort, id 排序） */
+export interface MenuItem {
+  id: number;
+  location: string;
+  label: string;
+  url: string;
+  parent_id: number;
+  target: string;
+  min_class: number;
+  sort: number;
+  enabled: boolean;
+}
+
+export interface Post {
+  id: number;
+  username: string | null;
+  user_id: number | null;
+  body: string;
+  created_at: string;
+  edited_at: string | null;
+  edited_by: number | null;
+  /** 点赞数（0116） */
+  likes?: number;
+  /** 当前登录用户是否已赞（0116） */
+  liked_by_me?: boolean;
+  /** 打赏总额/次数（0127） */
+  tips?: number;
+  tip_count?: number;
+}
+
+export interface TopicDetail {
+  topic_id: number;
+  title: string;
+  forum_id: number;
+  forum_name: string | null;
+  sticky: boolean;
+  locked: boolean;
+  /** 精华帖（0099 NP digest 口径） */
+  digest?: boolean;
+  /** 帖子类型（0115）：normal|bounty|poll|lottery */
+  topic_type?: string;
+  /** 悬赏（0124）：金额/状态/中选楼层 */
+  bounty_spark?: number;
+  bounty_status?: string;
+  bounty_post_id?: number | null;
+  /** 投票（0125）：topic_type=poll 时非空 */
+  poll?: {
+    options: string[];
+    closed: boolean;
+    my_vote: number | null;
+    total: number;
+    counts: { index: number; votes: number }[];
+  } | null;
+  /** 抽奖（0126）：topic_type=lottery 时非空 */
+  lottery?: {
+    winners: number;
+    prize: number;
+    ticket: number;
+    status: string;
+    draw_at: string;
+    entries: number;
+    joined: boolean;
+    my_won: boolean;
+    winner_ids: { id: number; name: string | null }[];
+  } | null;
+  /** 标签（0123）：头部 TagChip 渲染 */
+  tags?: TagChipData[];
+  is_op: boolean;
+  current_user_id?: number | null;
+  can_write: boolean;
+  can_mod: boolean;
+  posts: Post[];
+  /** 收藏数（0116） */
+  favorites?: number;
+  /** 当前登录用户是否已收藏（0116） */
+  faved?: boolean;
+  /** 本窗口外还有更早楼层（长帖游标）：前端显示「加载更早的回复」 */
+  has_more?: boolean;
+}
+
+/** 关注流条目（0121）：via 表示命中的关注来源 */
+export interface FeedItem {
+  topic_id: number;
+  title: string;
+  forum_id: number;
+  forum_name: string | null;
+  username: string | null;
+  topic_type?: string;
+  last_post_at: string | null;
+  created_at: string;
+  sticky?: boolean;
+  locked?: boolean;
+  replies: number;
+  via: string;
+}
+
+export interface FollowEntry {
+  id: number;
+  name: string;
+  forum_id?: number;
+}
+
+export interface MyFollows {
+  users: FollowEntry[];
+  forums: FollowEntry[];
+  topics: FollowEntry[];
+}
+
+export interface TopRow {
+  rank: number;
+  username: string;
+  class_name: string;
+  title: string | null;
+  avatar_url: string | null;
+  avatar_frame_css?: string | null;
+  avatar_frame_image?: string | null;
+  val: number;
+}
+
+export interface TopBoards {
+  bonus: TopRow[];
+  uploaded: TopRow[];
+  downloaded: TopRow[];
+  seedtime: TopRow[];
+  hourly: TopRow[];
+  torrents: TopRow[];
+}
+
+export interface Textbook {
+  id: number;
+  subject: string;
+  edition: string;
+  grade: string;
+  volume: string | null;
+  publisher: string | null;
+  downloads: number;
+  torrent_id: number | null;
+}
+
+export interface SeedRequest {
+  id: number;
+  username: string | null;
+  title: string;
+  descr: string | null;
+  bounty: number;
+  status: number;
+  fulfilled_torrent_id: number | null;
+}
+
+export interface PreserveItem {
+  torrent_id: number;
+  name: string;
+  size: number;
+  seeders: number;
+  claimed_by: string | null;
+  // 资源库行同构字段（保种区列表复用资源库行渲染）
+  small_descr: string | null;
+  category_id: number;
+  medium_id: number | null;
+  grade_id: number | null;
+  edition_id: number | null;
+  leechers: number;
+  times_completed: number;
+  comments: number;
+  official: boolean;
+  anonymous: boolean;
+  sticky: boolean;
+  promotion: string | null;
+  promotion_ends_at: string | null;
+  poster: string | null;
+  owner_name: string | null;
+  created_at: string;
+}
+
+export interface PreserveStats {
+  preserving: number;
+  continued: number;
+  official: number;
+  general: number;
+  today_in: number;
+  today_out: number;
+}
+
+export interface PreserveEnvelope {
+  items: PreserveItem[];
+  total: number;
+  stats: PreserveStats;
+  page: number;
+  per_page: number;
+}
+
+export interface Pool {
+  month: string;
+  donated: number;
+  goal: number;
+  progress: number;
+  promo_started: boolean;
+  top_donors: [string, number][];
+}
+
+export interface TaskItem {
+  id: number;
+  name: string;
+  metric: Record<string, unknown>;
+  reward: number;
+  penalty: number;
+  claim_limit: number | null;
+  claimed: number;
+  starts_at: string;
+  ends_at: string;
+}
+
+export interface BankDeposit {
+  id: number;
+  amount: number;
+  term_days: number;
+  interest: number;
+  paid_interest: number;
+  settle_mode: "maturity" | "daily";
+  status: number;
+  maturity_at: string;
+}
+
+export interface BankLoan {
+  id: number;
+  amount: number;
+  daily_rate_bp: number;
+  term_days: number;
+  remaining: number;
+  accrued_interest: number;
+  status: string;
+  due_at: string;
+}
+
+export interface BankOverview {
+  spark_balance: number;
+  demand: { balance: number; daily_rate_bp: number };
+  fixed: { active_total: number; active_count: number };
+  loan: BankLoan | null;
+  total_asset: number;
+  net_asset: number;
+  loan_outstanding: number;
+  max_loan: number;
+  limits: {
+    min_deposit: number;
+    max_deposit: number;
+    min_demand: number;
+    min_loan: number;
+    penalty_bp: number;
+  };
+  site: {
+    demand_total: number;
+    demand_count: number;
+    fixed_active_total: number;
+    fixed_count: number;
+    loan_outstanding_total: number;
+    loan_count: number;
+    today_interest_records: number;
+    settle_healthy: boolean;
+    settle_mode: "maturity" | "daily";
+  };
+  fixed_rates: { term_days: number; annual_rate: number }[];
+  loan_rates: { term_days: number; daily_rate_bp: number }[];
+}
+
+export interface InviteItem {
+  id: number;
+  code: string;
+  status: number;
+  used_by: string | null;
+  expires_at: string;
+}
+
+export interface SubtitleItem {
+  id: number;
+  torrent_id: number | null;
+  username: string | null;
+  title: string;
+  lang: string | null;
+  downloads: number;
+  created_at: string;
+}
+
+export interface FriendItem {
+  username: string;
+  list: string;
+}
+
+export interface OfferItem {
+  id: number;
+  username: string | null;
+  torrent_id: number | null;
+  torrent_name: string | null;
+  votes: number;
+  promoted: boolean;
+  created_at: string;
+}
+
+export interface PollItem {
+  id: number;
+  question: string;
+  options: string[];
+  closed: boolean;
+  my_vote: number | null;
+  total_votes: number;
+  counts: { index: number; votes: number }[];
+}

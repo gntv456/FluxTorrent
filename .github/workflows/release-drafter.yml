@@ -1,0 +1,15 @@
+# Release 草稿自动化：PR 合并 master 后按 release-drafter.yml 分类起草
+name: release-drafter
+on:
+  push:
+    branches: [master]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

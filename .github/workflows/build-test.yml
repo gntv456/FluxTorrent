@@ -51,3 +51,6 @@ jobs:
       # 发版构建才第一次暴露；tsc 通过不代表 next build 通过
       - name: Next build
         run: pnpm exec next build
+      # i18n 防新增门禁（存量基线 i18n_baseline.json；迁移存量后跑 --update 收缩基线）
+      - name: i18n guard
+        run: node ../../scripts/i18n_guard.mjs

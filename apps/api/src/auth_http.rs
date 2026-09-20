@@ -426,15 +426,17 @@ pub async fn login(
     state.plugins.dispatch_login(&state, user.id);
     // 安全加固（P1 XSS 面）：token 同时以 HttpOnly+SameSite=Lax cookie 下发。
     // 兼容期双轨：响应体仍带 token（存量前端 localStorage 口径），前端迁移完成后
-    // 移除。cookie 路径限定 /api/v1，浏览器侧 api 调用自动携带；HttpOnly 使
-    // XSS 无法读取（require_auth 同时接受 Cookie，见 token_from_request）。
+    // 移除。cookie 必须根路径：Next RSC 服务端渲染页面时（/users/1 等）要读
+    // flux_token 转发 Bearer 给 API，而页面请求路径不在 /api/v1 下——浏览器按
+    // Path 属性不会携带该 cookie，服务端 cookies() 读不到 → 401 → notFound()。
+    // HttpOnly 仍使 XSS 无法读取（require_auth 同时接受 Cookie，见 token_from_request）。
     let mut resp = ok(serde_json::json!({
         "token": token,
         "must_reset_password": user.must_reset_password,
         "user": { "id": user.id, "username": user.username, "class_id": user.class_id }
     }));
     let cookie = actix_web::cookie::Cookie::build("flux_token", token)
-        .path("/api/v1")
+        .path("/")
         .max_age(actix_web::cookie::time::Duration::hours(24))
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
@@ -479,7 +481,7 @@ pub async fn logout(
     state.repo.audit(Some(auth.id), "auth.logout", None).await;
     // 同步清除 HttpOnly 会话 cookie（与撤销线配合：即便 token 被复用，cookie 已不存在）
     let clear = actix_web::cookie::Cookie::build("flux_token", "")
-        .path("/api/v1")
+        .path("/")
         .max_age(actix_web::cookie::time::Duration::ZERO)
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
