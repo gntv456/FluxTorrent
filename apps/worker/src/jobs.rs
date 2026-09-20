@@ -378,60 +378,75 @@ pub async fn preserve_settle(db: &PgPool) -> anyhow::Result<u64> {
 /// 做种收益小时结算（0074 改造：稀有度衰减 + 时长饱和，NP/U3D 口径融合）。
 /// 每用户每小时一条流水，幂等键 = seeding:{user}:{yyyymmddhh}。
 ///
-/// 公式（口径由 `mod tests` 内 mirror/user_hourly 单测锁定）：
-///   每种子加成 = 规则分（濒危 2.0/高龄 1.5/老 1.0/大 0.75/中 0.5/日常 0.25——U3D 可读规则名）
-///             × 稀有度因子 seeders^-0.35（Gazelle BP 口径：人多衰减，防大户垄断热门种）
-///             × 时长饱和因子 1/(1+seedtime_h/2160)（90 天半衰）
-///   每小时 = base + 400/π·atan(Σ加成 × 6/50)（NP arctan 软封顶：渐近 +200/h，底薪不进压缩曲线）。
+/// 做种收益结算（每小时一次，全站批量）。
+///
+/// 公式（**公式本体在 DB 函数里**，见迁移 0133，worker/API 共用同一真相源）：
+///   每颗种子 s_i = ( 种子档位分 + 个人做种时长档位分 )
+///                × min(1, log10(1+size_GB)/log10(1+vol_base))   -- 体积对数饱和
+///                × (1 + rarity_k × seeders^-rarity_exp)         -- 稀有度加成
+///                × scale                                        -- 总标定
+///   时魔 = ( base + floor( (2/π)·cap·atan(Σ × curve_k) ) ) × (donor ? donor_mult : 1)
+///
+/// 档位分：
+///   种子维度（第一命中优先）—— 濒危 2.0（seeders≤1 且 完成≥3）/ 高龄 1.5（>365天）/ 老种 1.0（>180天）
+///                            / 大体积 0.75（≥100GiB）/ 中体积 0.5（≥25GiB）/ 日常 0.25
+///   个人做种时长 —— ≥1年 +2.0 / 6-12月 +1.0 / 3-6月 +0.75 / 1-3月 +0.5 / 不足1月 0
+///
+/// 改造要点（2026-09-19，对照 NP/Gazelle/U3D 后）：① 补体积因子堵「堆小种」套利
+/// （旧公式 1000 颗 1MB 能拿 ~205/h，比保 6 颗濒危大种还高）；② 个人做种时长从
+/// 「衰减乘数」改为「加分档位」（三家都奖励长期保种，我们此前方向相反）；
+/// ③ 稀有度从「只惩罚热门」改为「加成独苗」（seeders 大时仍趋近 1）。
+/// 参数全部走 site_settings（`seeding_*`），标签/曲线可热调。标定见迁移注释。
+///
 /// 反假保种（0071）：回连不可达且从无上传的做种行不计。
-pub async fn seeding_reward(db: &PgPool, base: i64) -> anyhow::Result<u64> {
+/// 反假保种（0071）：回连不可达且从无上传的做种行不计。
+/// 数据新鲜度：`last_seen_at` 超过僵尸阈值（max(2h, 2×announce_interval)）的行不计 ——
+/// 客户端崩溃/卸载不会发 stopped 事件，`sweep_stale_peers` 虽会清理标记，但那是另一个 tick
+/// 的任务；结算不该依赖"另一个 job 恰好跑过"，所以这里独立过滤一次（同一阈值函数）。
+pub async fn seeding_reward(db: &PgPool, stale_secs: i64) -> anyhow::Result<u64> {
     let hour = chrono::Utc::now().format("%Y%m%d%H").to_string();
     let res = sqlx::query(
         r#"
-        WITH per_torrent AS (
-            SELECT u.id AS user_id, u.donor, t.id AS torrent_id,
-                   CASE
-                     WHEN t.seeders <= 1 AND t.times_completed >= 3 THEN 2.0   -- 濒危保种（U3D Dying）
-                     WHEN now() - t.created_at > interval '365 days' THEN 1.5   -- 高龄种（Legendary）
-                     WHEN now() - t.created_at > interval '180 days' THEN 1.0   -- 老种（Old）
-                     WHEN t.size >= 107374182400 THEN 0.75                      -- 大体积 ≥100GiB
-                     WHEN t.size >= 26843545600 THEN 0.5                        -- 中体积 25-100GiB
-                     ELSE 0.25                                                  -- 日常种
-                   END AS rule_bonus,
-                   GREATEST(t.seeders, 1)::numeric AS seeders_n,
-                   GREATEST(s.seeded_seconds, 0)::numeric / 3600.0 AS seed_hours
-            FROM users u
-            JOIN snatches s ON s.user_id = u.id AND s.seeding
-            JOIN torrents t ON t.id = s.torrent_id
-              AND NOT (s.connectable::int = 0 AND s.uploaded = 0)
-            WHERE u.status < 2
-        ),
-        per_user AS (
-            SELECT user_id, donor,
-                   sum( rule_bonus
-                        / power(seeders_n, 0.35)
-                        / (1 + seed_hours / 2160.0)
-                      ) AS bonus_raw
-            FROM per_torrent GROUP BY user_id, donor
-        ),
-        due AS (
-            -- 底薪不进压缩曲线；加成部分 ×6/50 快速进入 atan 饱和区（渐近 +200/h）
-            SELECT user_id AS id,
-                   ($1::bigint + (400.0 / 3.14159265 * atan(bonus_raw * 6.0 / 50.0))::bigint)
-                     * CASE WHEN donor THEN 2 ELSE 1 END AS amount,
-                   'seeding:' || user_id || ':' || $2 AS idem
-            FROM per_user
-        )
         INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
-        SELECT nextval('spark_ledger_id_seq'), id, amount, 'seeding_reward', idem
-        FROM due
+        SELECT nextval('spark_ledger_id_seq'), d.id, d.amount, 'seeding_reward', d.idem
+        FROM (
+            -- MATERIALIZED：参数行必须只求值一次。若不显式物化，优化器可能把
+            -- seeding_params() 内联进 nestloop 内层 → 每颗种子读 8 次 site_settings。
+            WITH p AS MATERIALIZED (SELECT * FROM seeding_params()),
+            per_torrent AS (
+                SELECT u.id AS user_id, u.donor,
+                       seeding_torrent_bonus(
+                           t.size,
+                           t.seeders,
+                           (EXTRACT(EPOCH FROM (now() - t.created_at)) / 86400.0)::double precision,
+                           t.times_completed,
+                           (GREATEST(s.seeded_seconds, 0) / 3600.0)::double precision,
+                           p.vol_base, p.rarity_k, p.rarity_exp, p.scale
+                       ) AS b
+                FROM users u
+                JOIN snatches s ON s.user_id = u.id AND s.seeding
+                JOIN torrents t ON t.id = s.torrent_id
+                  AND NOT (s.connectable::int = 0 AND s.uploaded = 0)
+                CROSS JOIN p
+                WHERE u.status < 2
+                  AND s.last_seen_at > now() - ($2::bigint * interval '1 second')
+            ),
+            per_user AS (
+                SELECT user_id, donor, sum(b) AS bonus_raw
+                FROM per_torrent GROUP BY user_id, donor
+            )
+            SELECT pu.user_id AS id,
+                   seeding_hourly(pu.bonus_raw, p.base, p.cap, p.curve_k, p.donor_mult, pu.donor) AS amount,
+                   'seeding:' || pu.user_id || ':' || $1 AS idem
+            FROM per_user pu CROSS JOIN p
+        ) d
         WHERE NOT EXISTS (
-            SELECT 1 FROM spark_ledger l WHERE l.idempotency_key = due.idem
+            SELECT 1 FROM spark_ledger l WHERE l.idempotency_key = d.idem
         )
         "#,
     )
-    .bind(base)
     .bind(&hour)
+    .bind(stale_secs)
     .execute(db)
     .await?;
     // 0072：顺手物化做种体积（ptppUserInfo 的 seedingSize 字段来源；earners 已扫全量做种行）
@@ -1799,11 +1814,10 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// 僵尸做种/下载标记清理：tracker peer 表 90s 超时即除名，但 DB 侧 snatches.seeding/leeching
-/// 原本只在下一次 announce 时被覆盖 —— 客户端崩溃/卸载（无 stopped 事件）的行会永久保持
-/// seeding=true，导致 seeding_reward 空转发钱（live 证据：27 行 last_seen 2 天前仍在领收益）
-/// 与 torrents.seeders 虚高。阈值 = max(2h, 2×announce_interval)，远大于正常重汇报抖动。
-async fn sweep_stale_peers(db: &PgPool) -> anyhow::Result<u64> {
+/// 僵尸 peer 判定阈值（秒）= max(2h, 2×announce_interval)。
+/// 同时用于两处：① `sweep_stale_peers` 清理标记；② `seeding_reward` 结算前的数据新鲜度过滤
+/// （结算是发钱动作，不能依赖"另一个 job 恰好跑过"）。
+async fn stale_peer_threshold_secs(db: &PgPool) -> i64 {
     let interval: i64 = sqlx::query_scalar::<_, String>(
         "SELECT value FROM site_settings WHERE name = 'announce_interval'",
     )
@@ -1814,7 +1828,15 @@ async fn sweep_stale_peers(db: &PgPool) -> anyhow::Result<u64> {
     .and_then(|v| v.parse::<i64>().ok())
     .map(|v| v.clamp(60, 86400))
     .unwrap_or(1800);
-    let threshold_secs = (interval * 2).max(7200);
+    (interval * 2).max(7200)
+}
+
+/// 僵尸做种/下载标记清理：tracker peer 表 90s 超时即除名，但 DB 侧 snatches.seeding/leeching
+/// 原本只在下一次 announce 时被覆盖 —— 客户端崩溃/卸载（无 stopped 事件）的行会永久保持
+/// seeding=true，导致 seeding_reward 空转发钱（live 证据：27 行 last_seen 2 天前仍在领收益）
+/// 与 torrents.seeders 虚高。阈值 = max(2h, 2×announce_interval)，远大于正常重汇报抖动。
+async fn sweep_stale_peers(db: &PgPool) -> anyhow::Result<u64> {
+    let threshold_secs = stale_peer_threshold_secs(db).await;
     let res = sqlx::query(
         "UPDATE snatches SET seeding = FALSE, leeching = FALSE \
          WHERE (seeding OR leeching) AND last_seen_at < now() - ($1::bigint * interval '1 second')",
@@ -2261,9 +2283,7 @@ pub async fn jixiao_settle(db: &PgPool) -> anyhow::Result<u64> {
         if let Some(reqs) = p.min_requirements.as_object() {
             for (k, v) in reqs {
                 let required = v.as_i64().unwrap_or(0);
-                if required > 0
-                    && metrics.get(k).and_then(|x| x.as_i64()).unwrap_or(0) < required
-                {
+                if required > 0 && metrics.get(k).and_then(|x| x.as_i64()).unwrap_or(0) < required {
                     all_ok = false;
                     break;
                 }
@@ -2321,11 +2341,12 @@ pub async fn jixiao_settle(db: &PgPool) -> anyhow::Result<u64> {
                 .fetch_one(&mut *tx)
                 .await?;
                 if !exists {
-                    let balance: i64 =
-                        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-                            .bind(p.user_id)
-                            .fetch_one(&mut *tx)
-                            .await?;
+                    let balance: i64 = sqlx::query_scalar(
+                        "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+                    )
+                    .bind(p.user_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
                     sqlx::query(
                         "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
                          VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'jixiao_reward', $3, $4)",
@@ -2336,11 +2357,13 @@ pub async fn jixiao_settle(db: &PgPool) -> anyhow::Result<u64> {
                     .bind(balance + total)
                     .execute(&mut *tx)
                     .await?;
-                    sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
-                        .bind(p.user_id)
-                        .bind(total)
-                        .execute(&mut *tx)
-                        .await?;
+                    sqlx::query(
+                        "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1",
+                    )
+                    .bind(p.user_id)
+                    .bind(total)
+                    .execute(&mut *tx)
+                    .await?;
                 }
             }
             let _ = sqlx::query(
@@ -2659,6 +2682,72 @@ pub async fn multi_ip_check(db: &PgPool) -> anyhow::Result<u64> {
         n += 1;
     }
     Ok(n)
+}
+
+/// 对账告警（每 6h，先于 reconcile_snapshots 执行）：比对「流水聚合 vs 快照」，
+/// 差异超阈值即 error 告警。reconcile 负责静默收敛快照漂移；本 job 负责「收敛前
+/// 先留证」——付费下载不扣快照、捐赠套餐漏落流水这类「快照与流水背离」的缺陷，
+/// 正是靠静默 reconcile 掩盖的（有流水注入路径绕过快照 = 真实账目差异）。
+/// 注意：演示数据（0018）自带无流水的初始余额/流量，会稳定触发本告警——属真实
+/// 差异信号，执行 0108 清理后消失。
+pub async fn reconcile_diff_alert(db: &PgPool) -> anyhow::Result<()> {
+    let (ledger_spark, snapshot_spark): (i64, i64) = sqlx::query_as(
+        "SELECT \
+           COALESCE((SELECT sum(amount) FROM spark_ledger), 0)::bigint, \
+           COALESCE((SELECT sum(spark_balance) FROM users), 0)::bigint",
+    )
+    .fetch_one(db)
+    .await?;
+    let spark_diff = ledger_spark - snapshot_spark;
+    // 阈值 ±1000：并发窗口内的正常漂移容忍；持续超限 = 存在绕过流水的动账路径
+    if spark_diff.abs() > 1000 {
+        tracing::error!(
+            ledger = ledger_spark,
+            snapshot = snapshot_spark,
+            diff = spark_diff,
+            "对账告警：spark_ledger 合计与 users.spark_balance 合计背离超阈值（存在流水外的余额变动源，请排查）"
+        );
+    }
+    let (ledger_up, snapshot_up, ledger_down, snapshot_down): (i64, i64, i64, i64) =
+        sqlx::query_as(
+            "SELECT \
+               COALESCE((SELECT sum(delta_up) FROM traffic_ledger), 0)::bigint, \
+               COALESCE((SELECT sum(uploaded) FROM users), 0)::bigint, \
+               COALESCE((SELECT sum(delta_down) FROM traffic_ledger), 0)::bigint, \
+               COALESCE((SELECT sum(downloaded) FROM users), 0)::bigint",
+        )
+        .fetch_one(db)
+        .await?;
+    // 阈值 ±10GiB
+    const TRAFFIC_TOLERANCE: i64 = 10 * 1024 * 1024 * 1024;
+    for (name, ledger_v, snapshot_v) in [
+        ("uploaded", ledger_up, snapshot_up),
+        ("downloaded", ledger_down, snapshot_down),
+    ] {
+        let diff = ledger_v - snapshot_v;
+        if diff.abs() > TRAFFIC_TOLERANCE {
+            tracing::error!(
+                field = name,
+                ledger = ledger_v,
+                snapshot = snapshot_v,
+                diff = diff,
+                "对账告警：traffic_ledger 合计与 users 快照背离超阈值（存在流水外的流量变动源，请排查）"
+            );
+        }
+    }
+    let negatives: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM users WHERE spark_balance < 0 OR uploaded < 0 OR downloaded < 0",
+    )
+    .fetch_one(db)
+    .await?;
+    if negatives > 0 {
+        tracing::error!(
+            count = negatives,
+            "对账告警：{} 个用户快照为负值（超花/负流量，请核查动账路径）",
+            negatives
+        );
+    }
+    Ok(())
 }
 
 /// P0-1 兜底纠偏：全量重算 users/torrents 快照（每 6h 一次）。
@@ -3017,14 +3106,11 @@ pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow
                 // 频繁重启（崩溃循环/滚动发布）时 hour_interval 每次都从第一 tick 起步，
                 // seeding_reward 可能数小时不被执行。本任务幂等键 = seeding:{user}:{yyyymmddhh}，
                 // 同小时重复执行零副作用；其余 hourly 任务也都自带幂等护栏，首轮直接跑安全。
-                // 时魔底薪走 site_settings.seeding_base_hourly（缺省 10）：调价不再改代码重发
-                let base_hourly: i64 = sqlx::query_scalar(
-                    "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'seeding_base_hourly')::bigint, 10)",
-                )
-                .fetch_one(&db)
-                .await
-                .unwrap_or(10);
-                with_lock(&db, "job:seeding_reward", seeding_reward(&db, base_hourly)).await;
+                // 时魔参数（底薪/封顶/曲线/体积基准/稀有度/标定）全在 site_settings `seeding_*`，
+                // 由 DB 函数 seeding_params() 统一读取 —— 调价不再改代码重发（迁移 0133）。
+                // 结算前先拿僵尸阈值传给结算 SQL（同 tick 内不依赖 sweep_stale_peers 是否跑过）
+                let stale_secs = stale_peer_threshold_secs(&db).await;
+                with_lock(&db, "job:seeding_reward", seeding_reward(&db, stale_secs)).await;
                 with_lock(&db, "job:purge_old_login_events", purge_old_login_events(&db)).await;
                 with_lock(&db, "job:ratio_watch", ratio_watch(&db)).await;
                 with_lock(&db, "job:dormant_mark", dormant_mark(&db)).await;
@@ -3065,6 +3151,8 @@ pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow
             }
             _ = tick6h.tick() => {
                 if first_tick6h { first_tick6h = false; continue; }
+                // 对账告警必须先于 reconcile_snapshots：收敛会抹掉差异证据
+                with_lock(&db, "job:reconcile_diff_alert", reconcile_diff_alert(&db)).await;
                 with_lock(&db, "job:reconcile_snapshots", reconcile_snapshots(&db)).await;
             }
             _ = tick1d.tick() => {
@@ -3096,11 +3184,13 @@ async fn lottery_settle(db: &PgPool, topic_id: i64) -> anyhow::Result<u64> {
     let Some((winners, prize, _ticket)) = meta else {
         return Ok(0); // 已开/已取消：幂等静默
     };
-    let n = sqlx::query("UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = $1 AND status = 'open'")
-        .bind(topic_id)
-        .execute(db)
-        .await?
-        .rows_affected();
+    let n = sqlx::query(
+        "UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = $1 AND status = 'open'",
+    )
+    .bind(topic_id)
+    .execute(db)
+    .await?
+    .rows_affected();
     if n == 0 {
         return Ok(0); // 并发对手（楼主手动开）赢了对局
     }
@@ -3191,7 +3281,8 @@ async fn lottery_settle(db: &PgPool, topic_id: i64) -> anyhow::Result<u64> {
 async fn with_lock<F, T>(db: &PgPool, key: &str, fut: F) -> Option<T>
 where
     F: std::future::Future<Output = anyhow::Result<T>>,
-{    // U1 §5.4 模块守卫：job 声明归属模块则按开关整轮跳过（debug 日志，不动账）；
+{
+    // U1 §5.4 模块守卫：job 声明归属模块则按开关整轮跳过（debug 日志，不动账）；
     // 核心任务（announce 计费/快照/清理/反作弊）不在表内 = 不受开关影响。
     // 跳过不报错，恢复开启后靠既有幂等键自然补跑。
     if let Some(module) = job_module(key) {
@@ -3258,13 +3349,11 @@ fn job_module(job_key: &str) -> Option<&'static str> {
 /// 模块开关判定（worker 侧直查，无缓存——每分钟 tick 一次，查询代价可忽略；
 /// 与 API 的 ModuleFlags::default_on 保持同一缺省口径：缺键=教育站形态）。
 async fn module_on(db: &PgPool, module: &str) -> bool {
-    let v: Option<String> = sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = $1",
-    )
-    .bind(format!("module_{module}"))
-    .fetch_optional(db)
-    .await
-    .unwrap_or(None);
+    let v: Option<String> = sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1")
+        .bind(format!("module_{module}"))
+        .fetch_optional(db)
+        .await
+        .unwrap_or(None);
     match v {
         // 显式配置按配置（no = 关）；查询失败/未配置回落默认值（T3 缺省=现状）
         Some(raw) => raw.trim() == "yes",
@@ -3323,48 +3412,143 @@ fn billing_multipliers(torrent_kind: Option<&str>, global_kind: Option<&str>) ->
 mod tests {
     use super::billing_multipliers;
 
-    /// 0074 做种收益公式口径锁定：与 SQL 内 per_torrent/per_user 完全同构的 Rust 镜像。
-    /// 防止有人只改 SQL 不改文档（或反之）；数值变了必须同步注释与「收益说明」前端文案。
-    fn mirror(rule_bonus: f64, seeders: i64, seed_hours: f64) -> f64 {
-        rule_bonus / (seeders.max(1) as f64).powf(0.35) / (1.0 + seed_hours / 2160.0)
+    /// 做种收益公式口径锁定：与迁移 0133 的 DB 函数（`seeding_torrent_bonus` / `seeding_hourly`）
+    /// 同构的 Rust 镜像。**公式的唯一权威在 DB**（worker 结算与 API 预估都调它），
+    /// 本镜像用于快速单测；两者一致性由 `_v_seeding.py` 用 180 组参数逐组对账（1e-9 容差）守住。
+    /// 常量必须与迁移 0133 的 site_settings 缺省值一致（vol_base 50 / rarity 0.6,0.35 /
+    /// scale 0.4 / cap 150 / curve_k 0.12）。
+    const VOL_BASE: f64 = 50.0;
+    const RARITY_K: f64 = 0.6;
+    const RARITY_EXP: f64 = 0.35;
+    const SCALE: f64 = 0.4;
+    const CAP: f64 = 150.0;
+    const CURVE_K: f64 = 0.12;
+    const GIB: f64 = 1073741824.0;
+
+    /// 种子维度档位分（第一命中优先）
+    fn rule_seed(size: i64, seeders: i64, age_days: f64, completed: i64) -> f64 {
+        if seeders <= 1 && completed >= 3 {
+            2.0
+        } else if age_days > 365.0 {
+            1.5
+        } else if age_days > 180.0 {
+            1.0
+        } else if size as f64 >= 100.0 * GIB {
+            0.75
+        } else if size as f64 >= 25.0 * GIB {
+            0.5
+        } else {
+            0.25
+        }
     }
-    fn user_hourly(base: f64, torrents: &[(f64, i64, f64)]) -> f64 {
-        let bonus: f64 = torrents.iter().map(|(b, s, h)| mirror(*b, *s, *h)).sum();
-        base + 400.0 / std::f64::consts::PI * (bonus * 6.0 / 50.0).atan()
+
+    /// 个人做种时长档位分（奖励长期保种，替代旧的 1/(1+h/2160) 衰减）
+    fn dur_bonus(personal_hours: f64) -> f64 {
+        if personal_hours >= 8760.0 {
+            2.0
+        } else if personal_hours >= 4320.0 {
+            1.0
+        } else if personal_hours >= 2160.0 {
+            0.75
+        } else if personal_hours >= 720.0 {
+            0.5
+        } else {
+            0.0
+        }
+    }
+
+    fn torrent_bonus(
+        size: i64,
+        seeders: i64,
+        age_days: f64,
+        completed: i64,
+        personal_hours: f64,
+    ) -> f64 {
+        // 与 DB 一致地用自然对数（比值等价，避免 log10/ln 混用造成对账口径分歧）
+        let vol = ((1.0 + size as f64 / GIB).ln() / (1.0 + VOL_BASE).ln()).min(1.0);
+        let rar = 1.0 + RARITY_K * (seeders.max(1) as f64).powf(-RARITY_EXP);
+        (rule_seed(size, seeders, age_days, completed) + dur_bonus(personal_hours))
+            * vol
+            * rar
+            * SCALE
+    }
+
+    /// (size, seeders, age_days, completed, personal_hours) → 每小时魔力（不含 donor 倍数）
+    fn user_hourly(base: f64, torrents: &[(i64, i64, f64, i64, f64)]) -> f64 {
+        let sum: f64 = torrents
+            .iter()
+            .map(|(z, s, a, c, h)| torrent_bonus(*z, *s, *a, *c, *h))
+            .sum();
+        base + (2.0 / std::f64::consts::PI * CAP * (sum * CURVE_K).atan()).floor()
     }
 
     #[test]
-    fn seeding_formula_rarity_decay() {
-        // 同样种子：1 人做种 vs 10 人做种，收益显著衰减（Gazelle seeders^-0.35）
-        let lone = user_hourly(10.0, &[(0.25, 1, 0.0)]);
-        let crowd = user_hourly(10.0, &[(0.25, 10, 0.0)]);
-        assert!(crowd < lone * 0.85, "crowd={crowd} lone={lone}");
+    fn seeding_formula_volume_monotonic_and_saturated() {
+        // 体积单调且在对数基准（50GB）处饱和
+        let g1 = torrent_bonus(1 * GIB as i64, 5, 60.0, 10, 100.0);
+        let g10 = torrent_bonus(10 * GIB as i64, 5, 60.0, 10, 100.0);
+        let g100 = torrent_bonus(100 * GIB as i64, 5, 60.0, 10, 100.0);
+        let t1 = torrent_bonus(1024 * GIB as i64, 5, 60.0, 10, 100.0);
+        assert!(g1 < g10 && g10 < g100, "{g1} {g10} {g100}");
+        assert!((g100 - t1).abs() < 1e-12, "体积应饱和: {g100} vs {t1}");
     }
 
     #[test]
-    fn seeding_formula_time_saturation() {
-        // 同样种子：新做种 vs 已挂 90 天（2160h），收益约减半（半衰设计）
-        let fresh = user_hourly(10.0, &[(0.25, 1, 0.0)]);
-        let aged = user_hourly(10.0, &[(0.25, 1, 2160.0)]);
-        let ratio = aged / fresh; // 含底薪稀释；纯加成部分约减半
-        assert!((0.75..0.95).contains(&ratio), "ratio={ratio}");
+    fn seeding_small_torrent_pile_is_not_profitable() {
+        // 本次改造的核心：堆 1000 颗 1MB 小种只能拿底薪（旧公式可拿到 ~205/h）
+        let pile: Vec<(i64, i64, f64, i64, f64)> = vec![(1048576, 1, 3.0, 0, 1.0); 1000];
+        let pile_hourly = user_hourly(10.0, &pile);
+        let honest: Vec<(i64, i64, f64, i64, f64)> =
+            vec![(100 * GIB as i64, 1, 400.0, 5, 8760.0); 6];
+        let honest_hourly = user_hourly(10.0, &honest);
+        assert!(pile_hourly <= 12.0, "堆小种不应超出底薪: {pile_hourly}");
+        assert!(honest_hourly >= 80.0, "老实保种应拿得多: {honest_hourly}");
+        assert!(
+            honest_hourly >= pile_hourly * 8.0,
+            "{honest_hourly} vs {pile_hourly}"
+        );
+    }
+
+    #[test]
+    fn seeding_personal_time_rewards_loyalty() {
+        // 与旧公式相反的故意改动：挂得越久收益越高（对齐 Gazelle/U3D 的长期保种激励）
+        let short = torrent_bonus(10 * GIB as i64, 5, 60.0, 10, 240.0);
+        let mid = torrent_bonus(10 * GIB as i64, 5, 60.0, 10, 2400.0);
+        let year = torrent_bonus(10 * GIB as i64, 5, 60.0, 10, 8760.0);
+        assert!(short < mid && mid < year, "{short} {mid} {year}");
+    }
+
+    #[test]
+    fn seeding_rarity_bonus_not_penalty() {
+        // 档位隔离（全是"日常种"）：独苗最高，人多趋近 1 而不是趋近 0
+        let lone = torrent_bonus(10 * GIB as i64, 1, 60.0, 0, 100.0);
+        let ten = torrent_bonus(10 * GIB as i64, 10, 60.0, 0, 100.0);
+        let hundred = torrent_bonus(10 * GIB as i64, 100, 60.0, 0, 100.0);
+        assert!(lone > ten && ten > hundred, "{lone} {ten} {hundred}");
+        // 独苗/10 人 = rarity(1)/rarity(10) = 1.6 / 1.2679
+        assert!((lone / ten - 1.6 / (1.0 + 0.6 * 10.0_f64.powf(-0.35))).abs() < 1e-9);
+        // 热门不再被重罚：100 人时仍保留 5 人时的 80% 以上（旧公式 ≈35%）
+        let five = torrent_bonus(10 * GIB as i64, 5, 60.0, 0, 100.0);
+        assert!(hundred / five > 0.80, "{}", hundred / five);
     }
 
     #[test]
     fn seeding_formula_arctan_cap() {
-        // 1000 个濒危种也只有软封顶：趋近 base+200，不线性涨到天上（NP arctan 口径）
-        let many: Vec<(f64, i64, f64)> = (0..1000).map(|_| (2.0, 1, 0.0)).collect();
+        // 1000 颗濒危种也只在软封顶内（渐近 base+150，且 atan 开区间取不到）
+        let many: Vec<(i64, i64, f64, i64, f64)> =
+            vec![(100 * GIB as i64, 1, 400.0, 5, 8760.0); 1000];
         let total = user_hourly(10.0, &many);
-        assert!(total < 10.0 + 210.0, "total={total}");
+        assert!(total < 10.0 + CAP, "total={total}");
         assert!(total > 10.0 + 100.0, "total={total}（应明显超过半程）");
     }
 
     #[test]
     fn seeding_formula_dying_beats_daily() {
-        // 濒危保种（bonus 2.0）时薪高于日常种（0.25）——激励方向正确
-        let dying = user_hourly(10.0, &[(2.0, 1, 0.0)]);
-        let daily = user_hourly(10.0, &[(0.25, 1, 0.0)]);
-        assert!(dying > daily * 1.8);
+        // 濒危保种（档位 2.0）时薪远高于日常种（0.25）——激励方向正确。
+        // 同为 10GB 种子以隔离体积因子：比值应为 2.0/0.25 = 8
+        let dying = torrent_bonus(10 * GIB as i64, 1, 400.0, 5, 100.0);
+        let daily = torrent_bonus(10 * GIB as i64, 1, 10.0, 1, 100.0);
+        assert!(dying > daily * 7.0, "dying={dying} daily={daily}");
     }
 
     #[test]

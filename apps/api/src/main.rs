@@ -30,6 +30,7 @@ mod payment;
 mod plugins;
 mod push_http;
 mod repo;
+mod request_id;
 mod rss_http;
 mod settings_http;
 mod setup_http;
@@ -99,6 +100,40 @@ async fn main() -> anyhow::Result<()> {
             .await?;
     }
 
+    // 演示账号防线（审计 P0）：0018 迁移自带 12 个口令为 password123 的演示账号
+    //（argon2 哈希公开在迁移文件里，任何拿到源码的人都能直接登录——含 class 6 高权限）。
+    // 生产态（非 FLUX_DEV=1）启动时把仍持有该公开哈希的账号口令随机化（幂等：中性化后
+    // 哈希不再匹配，下次启动零行）；演示数据本体建议随后执行 0108 迁移清理逻辑删除。
+    if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
+        const DEMO_PUBLIC_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$XAMwi8WTuzejCBPhdilR6w$xUb/nkW8/iUYTMb+dCPsstkyeldF5LuM2sOIK4m8++c";
+        use rand::Rng;
+        let rnd: String = (0..43)
+            .map(|_| rand::thread_rng().sample(rand::distributions::Alphanumeric) as char)
+            .collect();
+        let new_hash = crate::domain::hash_password(&rnd);
+        match sqlx::query_scalar::<_, i64>(
+            "WITH neutralized AS (\
+               UPDATE users SET pass_hash = $1 WHERE pass_hash = $2 RETURNING 1\
+             ) SELECT count(*) FROM neutralized",
+        )
+        .bind(new_hash.as_deref().unwrap_or(""))
+        .bind(DEMO_PUBLIC_HASH)
+        .fetch_one(&state.repo.db)
+        .await
+        {
+            Ok(n) if n > 0 => {
+                tracing::error!(
+                    count = n,
+                    "检测到 {n} 个账号仍使用 0018 演示数据公开口令（password123），已随机化其口令；请运行 0108 清理逻辑删除演示数据"
+                );
+            }
+            Ok(_) => {}
+            Err(e) => {
+                tracing::warn!("演示账号防线检查失败（不阻塞启动）: {e}");
+            }
+        }
+    }
+
     tracing::info!("flux-api listening on {bind}");
     HttpServer::new(move || {
         App::new()
@@ -111,7 +146,7 @@ async fn main() -> anyhow::Result<()> {
                     "code": 1002,
                     "message": format!("{}: {}", crate::i18n::localized_message(1002, locale), err),
                     "data": null,
-                    "request_id": uuid::Uuid::new_v4().to_string()
+                    "request_id": crate::request_id::current()
                 });
                 // error_handler 需返回 actix_web::Error；InternalError 是标准包裹方式
                 actix_web::error::InternalError::from_response(
@@ -120,7 +155,10 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .into()
             }))
-            .wrap(Logger::default().exclude("/api/v1/health"))
+            // 访问日志（P2 防凭据泄漏）：默认 %r 含完整 query——compat 下载走 ?passkey=、
+            // 凭证下载走 ?token=、开放 API 走 ?apikey=，等价把长期/短期凭据写进 access log。
+            // 自定义格式以 %r 换成 %m %U（method + 不含 query 的 path）；其余与 default 对齐。
+            .wrap(Logger::new("%a \"%m %U\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %T").exclude("/api/v1/health"))
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
             // 安全响应头基线（§5.7）：nosniff / 防点击劫持 / 引用策略
             // （HSTS 由 TLS 终结的反代统一注入；完整 CSP 需 nonce 基建，web 侧已配基础头）
@@ -130,6 +168,7 @@ async fn main() -> anyhow::Result<()> {
                     .add(("X-Frame-Options", "DENY"))
                     .add(("Referrer-Policy", "strict-origin-when-cross-origin")),
             )
+            .wrap(actix_web::middleware::from_fn(request_id::request_id_mw)) // request_id 贯穿（信封/响应头/日志同源）
             .wrap(actix_web::middleware::from_fn(i18n::locale_mw)) // Accept-Language → task-local（错误消息三语）
             .wrap(actix_web::middleware::from_fn(setup_http::setup_gate_mw)) // U3 安装向导封锁（setup_done 未置位拦业务 API）
             .wrap(actix_web::middleware::from_fn(modules::module_gate_mw)) // U1 模块网关：可选域 fail-close（4101）
@@ -144,7 +183,7 @@ async fn main() -> anyhow::Result<()> {
                     .unwrap_or(i18n::Locale::ZhCn);
                 actix_web::HttpResponse::NotFound().json(serde_json::json!({
                     "code": 1004, "message": i18n::endpoint_not_found(locale), "data": null,
-                    "request_id": uuid::Uuid::new_v4().to_string()
+                    "request_id": crate::request_id::current()
                 }))
             }))
     })
