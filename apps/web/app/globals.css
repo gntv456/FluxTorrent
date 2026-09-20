@@ -5147,6 +5147,20 @@ textarea.bbcode {
   flex: none;
 }
 
+/* 佩戴中：金环高亮 + 微抬——单佩戴位语义的视觉锚点（title 里另有「佩戴中」文案） */
+.medalwall-worn {
+  border-color: var(--sun);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sun) 45%, transparent);
+  transform: translateY(-2px);
+}
+
+/* 墙内稀有度角标的紧凑档：墙位小，用类而非 Tailwind !important 覆写
+ * （.medal-rarity 的 padding/字号是 unlayered 自定义 CSS，utility ! 前缀能压但语义脆） */
+.medalwall-rarity.medal-rarity {
+  padding: 1px 6px;
+  font-size: 10px;
+}
+
 .contest-live {
   display: inline-block;
   margin-left: 8px;
