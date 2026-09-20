@@ -2271,6 +2271,7 @@ usertools: {
     packSavePrompt: "新站型包名稱（將保存目前分類/模組開關/站名快照）：",
     packSaved: "自訂站型包已保存",
     packApplied: "已套用「{name}」類型包",
+    packCurrent: "使用中",
     tabBans: "封禁系統",
     tabMail: "批量郵件",
     faqNew: "新增 FAQ",

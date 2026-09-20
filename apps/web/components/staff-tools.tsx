@@ -166,6 +166,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
   const [rules, setRules] = useState<RuleItem[]>([]);
   const [cats, setCats] = useState<CatItem[]>([]);
   const [packs, setPacks] = useState<TypePack[]>([]);
+  // 当前站型 code（site-profile）：类型包列表标亮「使用中」
+  const [curSiteType, setCurSiteType] = useState<string>("");
   const [packMode, setPackMode] = useState<"replace" | "merge">("merge");
   const [bans, setBans] = useState<BanItem[]>([]);
   const [mails, setMails] = useState<MailItem[]>([]);
@@ -264,6 +266,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       api.get<SiteStats | null>("/api/v1/admin/stats").then(setStats).catch(() => setStats(null));
       api.get<AdItem[]>("/api/v1/admin/ads").then(setAds).catch(() => setAds([]));
       api.get<TypePack[]>("/api/v1/admin/site-type-packs").then(setPacks).catch(() => setPacks([]));
+      api.get<{ site_type: string }>("/api/v1/site-profile").then((p) => setCurSiteType(p.site_type ?? "")).catch(() => {});
       api.get<NotConnectRow[]>("/api/v1/admin/notconnectable").then(setNotConnectRows).catch(() => setNotConnectRows([]));
       api.get<UploaderRow[]>("/api/v1/admin/uploaders").then(setUploaderRows).catch(() => setUploaderRows([]));
       api.get<AgentRow[]>("/api/v1/admin/allagents").then(setAgentRows).catch(() => setAgentRows([]));
@@ -426,10 +429,16 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
             <label className="flex items-center gap-1 text-xs"><input type="radio" checked={packMode === "merge"} onChange={() => setPackMode("merge")} />{t.packModeMerge}</label>
           </div>
           <div className="flex flex-wrap gap-2">
-            {packs.map((pk) => (
+            {packs.map((pk) => {
+              const active = pk.code === curSiteType;
+              return (
               <span key={pk.code} className="inline-flex items-center gap-1">
                 <button
-                className="min-h-[40px] rounded-full border border-[var(--baozi-orange)] px-4 text-xs font-bold text-[var(--baozi-orange-dark)] disabled:opacity-50"
+                className={`min-h-[40px] rounded-full border px-4 text-xs font-bold disabled:opacity-50 ${
+                  active
+                    ? "border-[var(--baozi-orange)] bg-[var(--baozi-orange)] text-white"
+                    : "border-[var(--baozi-orange)] text-[var(--baozi-orange-dark)]"
+                }`}
                 disabled={busy}
                 title={pk.description ?? ""}
                 onClick={() => {
@@ -450,7 +459,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                     }, t.packApplied.replace("{name}", pk.name));
                   })();
                 }}>
-                {pk.name}
+                {pk.name}{active ? `（${t.packCurrent}）` : ""}
               </button>
               {/* 自定义站型入口（U5 分发）：另存当前配置为新包 */}
               <button
@@ -470,7 +479,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
                 💾
               </button>
               </span>
-            ))}
+              );
+            })}
           </div>
         </section>
         <section className="baozi-panel p-4">
