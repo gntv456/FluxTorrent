@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
-import { ChipSelect, GameShell, HistoryStrip, PlayHint, ResultFlash } from "@/components/game/game-kit";
+import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
+import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
 import { RunwayOdometer } from "@/components/game/runway";
 
 export interface Overview {

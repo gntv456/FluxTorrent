@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { FunTab, LinksTab } from "@/components/content-manage-tabs";
 
 interface NewsItem {
   id: number;
@@ -37,7 +38,8 @@ interface LinkItem {
 
 type MgmtTab = "news" | "fun" | "links";
 
-/** 内容管理（管理后台扩展）：公告 / 趣味盒 / 友情链接 的发布·编辑·删除·禁止·审核 */
+/** 内容管理（管理后台扩展）：公告 / 趣味盒 / 友情链接 的发布·编辑·删除·禁止·审核。
+ *  趣味盒与友链两个 tab 拆出 content-manage-tabs.tsx（300 门禁）。 */
 export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
   const { dict } = useI18n();
   const t = dict.cmgmt;
@@ -51,10 +53,6 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
   // 公告编辑器
   const [nEdit, setNEdit] = useState<{ id: number | null; title: string; body: string; badge: string }>({
     id: null, title: "", body: "", badge: "公告",
-  });
-  // 趣味盒编辑器
-  const [fEdit, setFEdit] = useState<{ id: number | null; title: string; body: string }>({
-    id: null, title: "", body: "",
   });
 
   const load = useCallback(async () => {
@@ -101,61 +99,6 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
     try {
       await api.del(`/api/v1/admin/news/${id}`);
       flash(t.newsDeleted);
-      load();
-    } catch (e) {
-      flash(e instanceof ApiError ? e.message : dict.common.networkError);
-    }
-  }
-
-  // ---------- 趣味盒 ----------
-  async function saveFun() {
-    if (!fEdit.title.trim()) return;
-    setBusy(true);
-    try {
-      if (fEdit.id === null) {
-        await api.post("/api/v1/fun/items", { title: fEdit.title, body: fEdit.body });
-        flash(t.funCreated);
-      } else {
-        await api.put(`/api/v1/fun/items/${fEdit.id}`, { title: fEdit.title, body: fEdit.body });
-        flash(t.funUpdated);
-      }
-      setFEdit({ id: null, title: "", body: "" });
-      load();
-    } catch (e) {
-      flash(e instanceof ApiError ? e.message : dict.common.networkError);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function funCall(path: string, okMsg: string): Promise<void> {
-    try {
-      await api.call(path);
-      flash(okMsg);
-      load();
-    } catch (e) {
-      flash(e instanceof ApiError ? e.message : dict.common.networkError);
-    }
-  }
-  async function delFun(id: number) {
-    if (!confirm(t.confirmDelete)) return;
-    funCall(`DELETE /api/v1/fun/items/${id}`, t.funDeleted);
-  }
-
-  // ---------- 友链 ----------
-  async function reviewLink(id: number, status: "active" | "hidden" | "pending") {
-    try {
-      await api.put(`/api/v1/admin/links/${id}`, { status });
-      flash(t.linkReviewed);
-      load();
-    } catch (e) {
-      flash(e instanceof ApiError ? e.message : dict.common.networkError);
-    }
-  }
-  async function delLink(id: number) {
-    if (!confirm(t.confirmDelete)) return;
-    try {
-      await api.del(`/api/v1/admin/links/${id}`);
-      flash(t.linkDeleted);
       load();
     } catch (e) {
       flash(e instanceof ApiError ? e.message : dict.common.networkError);
@@ -255,141 +198,11 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
 
       {/* 趣味盒管理 */}
       {tab === "fun" && (
-        <>
-          <section className="baozi-panel p-4">
-            <h2 className="mb-3 text-base font-bold text-ink">
-              {fEdit.id === null ? t.funPublish : t.funEdit}
-            </h2>
-            <div className="cmgmt-form">
-              <label>
-                {t.fldTitle}
-                <input value={fEdit.title} onChange={(e) => setFEdit({ ...fEdit, title: e.target.value })} />
-              </label>
-              <label>
-                {t.fldBody}
-                <textarea rows={5} value={fEdit.body} onChange={(e) => setFEdit({ ...fEdit, body: e.target.value })} />
-              </label>
-              <div className="flex gap-2">
-                <button className="baozi-button" onClick={saveFun} disabled={busy}>
-                  {fEdit.id === null ? t.btnPublish : t.btnSave}
-                </button>
-                {fEdit.id !== null && (
-                  <button
-                    className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
-                    onClick={() => setFEdit({ id: null, title: "", body: "" })}
-                  >
-                    {t.btnCancel}
-                  </button>
-                )}
-              </div>
-            </div>
-          </section>
-          <table className="nexus-table">
-            <tbody>
-              <tr>
-                <td className="colhead">{t.fldTitle}</td>
-                <td className="colhead">{t.funAuthor}</td>
-                <td className="colhead">{t.funVotes}</td>
-                <td className="colhead">{t.funStatus}</td>
-                <td className="colhead text-right">{t.colActions}</td>
-              </tr>
-              {fun.map((f) => (
-                <tr key={f.id}>
-                  <td>{f.title}</td>
-                  <td className="text-sub">{f.username ?? "—"}</td>
-                  <td className="num">
-                    😂 {f.fun_votes ?? 0} / 😑 {f.dull_votes ?? 0}
-                  </td>
-                  <td>
-                    <span className={`fun-status fun-status--${f.status}`}>
-                      {t.funSt[f.status] ?? f.status}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <button className="cmgmt-act" onClick={() => setFEdit({ id: f.id, title: f.title, body: f.body ?? "" })}>
-                      {t.btnEdit}
-                    </button>
-                    {f.status !== "banned" ? (
-                      <button
-                        className="cmgmt-act cmgmt-act--danger"
-                        onClick={() => funCall(`PUT /api/v1/fun/items/${f.id}/status {"status":"banned"}`, t.funBanned)}
-                      >
-                        {t.btnBan}
-                      </button>
-                    ) : (
-                      <button
-                        className="cmgmt-act cmgmt-act--ok"
-                        onClick={() => funCall(`PUT /api/v1/fun/items/${f.id}/status {"status":"normal"}`, t.funRestored)}
-                      >
-                        {t.btnUnban}
-                      </button>
-                    )}
-                    <button className="cmgmt-act cmgmt-act--danger" onClick={() => delFun(f.id)}>
-                      {t.btnDelete}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
+        <FunTab fun={fun} load={load} t={t} />
       )}
 
       {/* 友情链接管理 */}
-      {tab === "links" && (
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">{t.linkName}</td>
-              <td className="colhead">URL</td>
-              <td className="colhead">{t.linkAdmin}</td>
-              <td className="colhead">{t.linkEmail}</td>
-              <td className="colhead">{t.fldStatus}</td>
-              <td className="colhead text-right">{t.colActions}</td>
-            </tr>
-            {links.map((l) => (
-              <tr key={l.id}>
-                <td>
-                  {l.name}
-                  {l.title && <span className="text-sub"> ({l.title})</span>}
-                </td>
-                <td>
-                  <a href={l.url} target="_blank" rel="noreferrer" className="text-xs">
-                    {l.url}
-                  </a>
-                </td>
-                <td className="text-sub">{l.admin_name ?? "—"}</td>
-                <td className="text-sub">{l.email ?? "—"}</td>
-                <td>
-                  <span className={`link-status link-status--${l.status}`}>
-                    {t.linkSt[l.status] ?? l.status}
-                  </span>
-                </td>
-                <td className="text-right">
-                  {l.status === "pending" && (
-                    <button className="cmgmt-act cmgmt-act--ok" onClick={() => reviewLink(l.id, "active")}>
-                      {t.btnApprove}
-                    </button>
-                  )}
-                  {l.status === "active" && (
-                    <button className="cmgmt-act" onClick={() => reviewLink(l.id, "hidden")}>
-                      {t.btnHide}
-                    </button>
-                  )}
-                  {l.status === "hidden" && (
-                    <button className="cmgmt-act cmgmt-act--ok" onClick={() => reviewLink(l.id, "active")}>
-                      {t.btnShow}
-                    </button>
-                  )}
-                  <button className="cmgmt-act cmgmt-act--danger" onClick={() => delLink(l.id)}>
-                    {t.btnDelete}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      {tab === "links" && <LinksTab links={links} load={load} t={t} />}
     </div>
   );
 }

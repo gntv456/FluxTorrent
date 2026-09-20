@@ -3,21 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { dateLocale, fmt } from "@/i18n/config";
+import { dateLocale } from "@/i18n/config";
+import { MineTable, statusLabel, CreateForm } from "@/components/funding-panel-parts";
 
 /** 定向众筹免费（0078，HDBits Featured 口径）
  *  GET /fundings?status= 列表（0 进行中 / 1 已达成 / 2 已退款 / 3 已了结）
  *  POST /fundings {torrent_id, goal, hours, days} 发起（发布者或 staff）
  *  POST /fundings/contribute {funding_id, amount, idempotency_key} 参与
- *  GET /fundings/mine 我的参与（元组：[funding_id, amount, tax, status, funding_id2]） */
+ *  GET /fundings/mine 我的参与（元组：[funding_id, amount, tax, status, funding_id2]）
+ *  （状态标签与「我的参与」表格拆到 funding-panel-parts.tsx） */
 
-const ALL_LABEL: Record<string, string> = {
-  "zh-CN": "全部",
-  "zh-TW": "全部",
-  en: "All",
-};
-
-interface FundingRow {
+export interface FundingRow {
   id: number;
   torrent_id: number;
   torrent_name: string | null;
@@ -29,17 +25,30 @@ interface FundingRow {
   ends_at: string;
 }
 
-type MineRow = [number, number, number, number, number]; // (f.id, c.amount, c.tax, f.status, c.funding_id)
+/** (f.id, c.amount, c.tax, f.status, c.funding_id) */
+export type MineRow = [number, number, number, number, number];
+
+export interface FundingFormState {
+  torrent_id: string;
+  goal: string;
+  hours: string;
+  days: string;
+}
 
 export function FundingPanel() {
   const { dict, locale, currency } = useI18n();
   const t = dict.funding;
+  const ALL_LABEL: Record<string, string> = {
+    "zh-CN": "全部",
+    "zh-TW": "全部",
+    en: "All",
+  };
   const [statusFilter, setStatusFilter] = useState<string>(""); // "" = 全部
   const [rows, setRows] = useState<FundingRow[] | null>(null);
   const [mine, setMine] = useState<MineRow[] | null>(null);
   const [mineOpen, setMineOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ torrent_id: "", goal: "1000", hours: "168", days: "14" });
+  const [form, setForm] = useState<FundingFormState>({ torrent_id: "", goal: "1000", hours: "168", days: "14" });
   const [amounts, setAmounts] = useState<Record<number, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -117,8 +126,7 @@ export function FundingPanel() {
     }
   }
 
-  const statusLabel = (s: number) =>
-    s === 0 ? t.stActive : s === 1 ? t.stReached : s === 2 ? t.stRefunded : s === 3 ? t.stSettled : t.stOther;
+  const statusOf = (s: number) => statusLabel(s, t);
 
   const inputCls =
     "min-h-[38px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky";
@@ -168,71 +176,20 @@ export function FundingPanel() {
                 : "border border-line text-sub"
             }`}
           >
-            {s === "" ? (ALL_LABEL[locale] ?? "全部") : statusLabel(Number(s))}
+            {s === "" ? (ALL_LABEL[locale] ?? "全部") : statusOf(Number(s))}
           </button>
         ))}
       </div>
 
       {/* 发起表单 */}
       {createOpen && (
-        <form
-          className="flex flex-col gap-2 rounded-[var(--r-md)] border border-dashed border-line p-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void create();
-          }}
-        >
-          <p className="text-xs font-bold text-sub">{t.createTitle}</p>
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1 text-xs">
-              {t.fldTorrent}
-              <input
-                type="number"
-                min={1}
-                required
-                value={form.torrent_id}
-                onChange={(e) => setForm({ ...form, torrent_id: e.target.value })}
-                className={`${inputCls} w-28`}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              {t.fldGoal.replaceAll("{magic}", currency)}
-              <input
-                type="number"
-                min={1000}
-                required
-                value={form.goal}
-                onChange={(e) => setForm({ ...form, goal: e.target.value })}
-                className={`${inputCls} w-36`}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              {t.fldHours}
-              <input
-                type="number"
-                min={1}
-                max={720}
-                value={form.hours}
-                onChange={(e) => setForm({ ...form, hours: e.target.value })}
-                className={`${inputCls} w-40`}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              {t.fldDays}
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={form.days}
-                onChange={(e) => setForm({ ...form, days: e.target.value })}
-                className={`${inputCls} w-32`}
-              />
-            </label>
-            <button type="submit" disabled={busy || !form.torrent_id} className="baozi-button min-h-[38px] text-xs disabled:opacity-50">
-              {t.createBtn}
-            </button>
-          </div>
-        </form>
+        <CreateForm
+          form={form}
+          setForm={setForm}
+          busy={busy}
+          inputCls={inputCls}
+          onCreate={() => void create()}
+        />
       )}
 
       {/* 众筹列表 */}
@@ -276,7 +233,7 @@ export function FundingPanel() {
                         f.status === 0 ? "bg-sun/30" : f.status === 1 ? "bg-mint/30" : "bg-sky-soft"
                       }`}
                     >
-                      {statusLabel(f.status)}
+                      {statusOf(f.status)}
                     </span>
                   </td>
                   <td className="rowfollow">
@@ -319,40 +276,7 @@ export function FundingPanel() {
       </div>
 
       {/* 我的参与 */}
-      {mineOpen && (
-        <div>
-          <h3 className="mb-2 text-sm font-bold">{t.mine}</h3>
-          <table className="nexus-table text-xs">
-            <tbody>
-              <tr>
-                <td className="colhead">#</td>
-                <td className="colhead">{t.raisedCol}</td>
-                <td className="colhead w-24">{t.statusCol}</td>
-              </tr>
-              {(mine ?? []).map((m, i) => (
-                <tr key={`${m[0]}-${i}`}>
-                  <td className="rowfollow num">
-                    <a className="text-link" href={`/torrents`}>
-                      #{m[0]}
-                    </a>
-                  </td>
-                  <td className="rowfollow num">
-                    {fmt(t.minePaid, { paid: m[1].toLocaleString(), tax: m[2].toLocaleString() })}
-                  </td>
-                  <td className="rowfollow">{statusLabel(m[3])}</td>
-                </tr>
-              ))}
-              {mine !== null && mine.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="py-4 text-center text-sub">
-                    {t.mineEmpty}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {mineOpen && <MineTable mine={mine} statusOf={statusOf} />}
     </section>
   );
 }

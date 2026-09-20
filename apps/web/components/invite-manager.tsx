@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { dateLocale } from "@/i18n/config";
+import { InviteList, SendEmailDialog } from "@/components/invite-manager-parts";
 
-interface InviteItem {
+export interface InviteItem {
   id: number;
   code: string;
   status: number; // 0 未用 1 已用 2 已过期（后端按 expires_at 折算）
@@ -31,9 +31,10 @@ interface InviteStatus {
  * 邀请管理（NP invite.php 口径）：
  * 配额概览（周配额/额外配额/三种状态计数）+ 生成（等级与配额不足时禁用而非点了报错）
  * + 魔力兑换 + 邀请码列表（复制 / 发送到邮箱 / 重发 / 过期展示）。
+ * （列表表格与发送邮件弹层拆到 invite-manager-parts.tsx）
  */
 export function InviteManager() {
-  const { dict, locale, currency } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.invites;
   const inviteIdemRef = useRef<string | null>(null);
   const [status, setStatus] = useState<InviteStatus | null>(null);
@@ -138,14 +139,6 @@ export function InviteManager() {
     status === null ? 0 : Math.max(0, status.quota_limit - status.quota_used);
   const canIssue = levelOk && (quotaLeft > 0 || (status?.quota_extra ?? 0) > 0);
 
-  const fmtDate = (s: string) =>
-    new Date(s).toLocaleString(dateLocale(locale), {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
   return (
     <div className="flex flex-col gap-4">
       {/* 配额概览卡 */}
@@ -224,121 +217,28 @@ export function InviteManager() {
       {invites === null ? null : invites.length === 0 ? (
         <p className="py-6 text-center text-sub">{t.empty}</p>
       ) : (
-        <div className="baozi-wide-table-scroll">
-          <table className="nexus-table">
-            <tbody>
-              <tr>
-                <td className="colhead">{t.colCode}</td>
-                <td className="colhead">{t.colStatus}</td>
-                <td className="colhead">{t.colSentTo}</td>
-                <td className="colhead">{t.colExpires}</td>
-                <td className="colhead">{t.colAction}</td>
-              </tr>
-              {invites.map((i) => (
-                <tr key={i.id}>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => copyCode(i)}
-                      className="num font-mono text-xs text-sky-deep hover:underline"
-                      title={i.code}
-                    >
-                      {copiedId === i.id ? t.copied : `${i.code.slice(0, 10)}••••`}
-                    </button>
-                  </td>
-                  <td>
-                    <span
-                      className={`sticker ${
-                        i.status === 0
-                          ? "bg-sun text-ink"
-                          : i.status === 1
-                            ? "bg-mint/30 text-ink"
-                            : "bg-cloud text-sub"
-                      }`}
-                    >
-                      {i.status === 0 ? t.unused : i.status === 1 ? t.used : t.expired}
-                    </span>
-                    {i.status === 1 && i.used_by && (
-                      <span className="ml-1 text-xs text-sub">→ {i.used_by}</span>
-                    )}
-                  </td>
-                  <td className="text-xs text-sub">
-                    {i.status === 0 ? (i.email ?? "—") : (i.email ?? "—")}
-                  </td>
-                  <td className="num text-xs text-sub">{fmtDate(i.expires_at)}</td>
-                  <td>
-                    {i.status === 0 && (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="cmgmt-act"
-                          disabled={busyId === i.id}
-                          onClick={() => copyCode(i)}
-                        >
-                          {t.copy}
-                        </button>
-                        <button
-                          type="button"
-                          className="cmgmt-act cmgmt-act--ok"
-                          disabled={busyId === i.id}
-                          onClick={() => {
-                            setSendFor(i);
-                            setSendEmail(i.email ?? "");
-                          }}
-                        >
-                          {i.emailed ? t.resend : t.sendEmail}
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <InviteList
+          invites={invites}
+          copiedId={copiedId}
+          busyId={busyId}
+          onCopy={(inv) => void copyCode(inv)}
+          onSend={(inv) => {
+            setSendFor(inv);
+            setSendEmail(inv.email ?? "");
+          }}
+        />
       )}
 
       {/* 发送邀请邮件弹层 */}
       {sendFor && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => e.target === e.currentTarget && setSendFor(null)}
-        >
-          <div className="w-full max-w-md rounded-[var(--r-lg)] border border-line bg-[var(--baozi-paper)] p-5 shadow-[var(--shadow-card)]">
-            <h2 className="font-display text-lg">{t.sendEmailTitle}</h2>
-            <p className="mt-1 break-all text-xs text-sub">
-              {t.sendEmailNote}
-              <br />
-              {sendFor.code}
-            </p>
-            <input
-              type="email"
-              value={sendEmail}
-              onChange={(e) => setSendEmail(e.target.value)}
-              placeholder={t.emailPlaceholder}
-              className="mt-3 w-full rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-3 py-2 text-sm"
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                className="min-h-[40px] rounded-full px-4 text-sm text-sub hover:text-ink"
-                onClick={() => setSendFor(null)}
-              >
-                {t.cancel}
-              </button>
-              <button
-                type="button"
-                className="min-h-[40px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:opacity-50"
-                disabled={busy || !sendEmail.includes("@")}
-                onClick={sendMail}
-              >
-                {t.send}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SendEmailDialog
+          sendFor={sendFor}
+          sendEmail={sendEmail}
+          setSendEmail={setSendEmail}
+          busy={busy}
+          onClose={() => setSendFor(null)}
+          onSend={sendMail}
+        />
       )}
     </div>
   );

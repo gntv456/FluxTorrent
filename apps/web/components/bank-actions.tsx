@@ -4,12 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { BankDeposit, BankOverview } from "@/lib/data";
+import { Stat, DepositRow } from "@/components/bank-actions-parts";
+import { BankDepositPanel } from "@/components/bank-actions-deposit";
+import { BankLoanPanel } from "@/components/bank-actions-loan";
 
-const TERMS = [7, 30, 90, 180, 365];
+// 银行系统（火花银行对齐）：活期复利 + 定期 + 贷款 + 资产概览。
+// 拆出：资产格/存款行 @/components/bank-actions-parts、
+// 存款面板 @/components/bank-actions-deposit、
+// 贷款面板 @/components/bank-actions-loan。
+
 const fmt = (n: number) => n.toLocaleString();
-const bp = (b: number) => `${(b / 100).toFixed(2)}%`;
 
-/** 银行系统（火花银行对齐）：活期复利 + 定期 + 贷款 + 资产概览 */
 export function BankCard({ loginToView }: { loginToView: string }) {
   const { dict, currency } = useI18n();
   const [ov, setOv] = useState<BankOverview | null>(null);
@@ -101,9 +106,6 @@ export function BankCard({ loginToView }: { loginToView: string }) {
     );
   }
 
-  const daysLeft = (iso: string) =>
-    Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
-
   return (
     <div className="flex flex-col gap-4">
       {msg && (
@@ -149,163 +151,35 @@ export function BankCard({ loginToView }: { loginToView: string }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* 存款服务 */}
-        <section className="flex flex-col gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
-          <h2 className="font-bold">{dict.bank.depositService}</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="number"
-              min={1}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={dict.bank.amountPlaceholder}
-              className="min-h-[44px] w-40 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3"
-            />
-            <select
-              value={term}
-              onChange={(e) => setTerm(Number(e.target.value))}
-              className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
-            >
-              {TERMS.map((t) => {
-                const r = ov.fixed_rates.find((f) => f.term_days === t);
-                return (
-                  <option key={t} value={t}>
-                    {dict.bank.termDays.replace("{n}", String(t))}
-                    {r ? ` · ${(r.annual_rate * 100).toFixed(0)}%` : ""}
-                  </option>
-                );
-              })}
-            </select>
-            <button
-              type="button"
-              disabled={busy || !amount}
-              onClick={deposit}
-              className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:opacity-50"
-            >
-              {dict.bank.deposit}
-            </button>
-          </div>
-          <p className="text-xs text-sub">
-            {dict.bank.fixedRule
-              .replace("{magic}", currency)
-              .replace("{min}", fmt(ov.limits.min_deposit))
-              .replace("{max}", fmt(ov.limits.max_deposit))
-              .replace("{p}", bp(ov.limits.penalty_bp))}
-          </p>
-
-          {/* 活期账户 */}
-          <h3 className="mt-1 text-sm font-bold">{dict.bank.demandTitle}</h3>
-          <div className="flex flex-wrap items-baseline gap-2 text-sm">
-            <span className="num font-bold">{fmt(ov.demand.balance)}</span>
-            <span className="text-sub">
-              {dict.bank.demandRate}: {bp(ov.demand.daily_rate_bp)}/日 · {dict.bank.demandCompound}
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="number"
-              min={1}
-              value={demandAmount}
-              onChange={(e) => setDemandAmount(e.target.value)}
-              placeholder={dict.bank.demandAmount}
-              className="min-h-[44px] w-40 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3"
-            />
-            <button
-              type="button"
-              disabled={busy || !demandAmount}
-              onClick={demandIn}
-              className="min-h-[44px] rounded-full bg-mint/60 px-5 text-sm disabled:opacity-50"
-            >
-              {dict.bank.demandIn}
-            </button>
-            <button
-              type="button"
-              disabled={busy || !demandAmount || ov.demand.balance <= 0}
-              onClick={demandOut}
-              className="min-h-[44px] rounded-full border border-line px-5 text-sm text-sky-deep disabled:opacity-50"
-            >
-              {dict.bank.demandOut}
-            </button>
-          </div>
-          <p className="text-xs text-sub">
-            {dict.bank.demandRule
-              .replace("{min}", fmt(ov.limits.min_demand))
-              .replace("{magic}", currency)}
-          </p>
-        </section>
+        <BankDepositPanel
+          dict={dict}
+          currency={currency}
+          ov={ov}
+          busy={busy}
+          amount={amount}
+          setAmount={setAmount}
+          term={term}
+          setTerm={setTerm}
+          demandAmount={demandAmount}
+          setDemandAmount={setDemandAmount}
+          onDeposit={deposit}
+          onDemandIn={demandIn}
+          onDemandOut={demandOut}
+        />
 
         {/* 贷款服务 */}
-        <section className="flex flex-col gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
-          <h2 className="font-bold">{dict.bank.loanService}</h2>
-          {ov.loan ? (
-            <>
-              <div className="flex flex-wrap items-baseline gap-2 text-sm">
-                <span className="num font-bold">
-                  {dict.bank.loanDebt}: {fmt(ov.loan.remaining + ov.loan.accrued_interest)}
-                </span>
-                <span className="text-sub">
-                  {dict.bank.dueIn.replace("{n}", String(daysLeft(ov.loan.due_at)))} ·{" "}
-                  {bp(ov.loan.daily_rate_bp)}/日
-                </span>
-              </div>
-              <p className="text-xs text-sub">
-                {dict.bank.loanPayoffNote
-                  .replace("{p}", fmt(ov.loan.remaining))
-                  .replace("{i}", fmt(ov.loan.accrued_interest))}
-              </p>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={loanRepay}
-                className="min-h-[44px] rounded-full bg-sun px-5 text-sm text-ink disabled:opacity-50"
-              >
-                {dict.bank.repayAll}
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  value={loanAmount}
-                  onChange={(e) => setLoanAmount(e.target.value)}
-                  placeholder={dict.bank.loanAmount}
-                  className="min-h-[44px] w-36 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3"
-                />
-                <select
-                  value={loanTerm}
-                  onChange={(e) => setLoanTerm(Number(e.target.value))}
-                  className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
-                >
-                  {TERMS.map((t) => {
-                    const r = ov.loan_rates.find((f) => f.term_days === t);
-                    return (
-                      <option key={t} value={t}>
-                        {dict.bank.termDays.replace("{n}", String(t))}
-                        {r ? ` · ${bp(r.daily_rate_bp)}/日` : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-                <button
-                  type="button"
-                  disabled={busy || !loanAmount}
-                  onClick={loanApply}
-                  className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:opacity-50"
-                >
-                  {dict.bank.loanApply}
-                </button>
-              </div>
-              <p className="text-xs text-sub">
-                {dict.bank.loanRule
-                  .replace("{min}", fmt(ov.limits.min_loan))
-                  .replace("{max}", fmt(ov.max_loan))
-                  .replace("{magic}", currency)}
-              </p>
-            </>
-          )}
-          <p className="text-xs text-sub">{dict.bank.loanOverdueNote}</p>
-        </section>
+        <BankLoanPanel
+          dict={dict}
+          currency={currency}
+          ov={ov}
+          busy={busy}
+          loanAmount={loanAmount}
+          setLoanAmount={setLoanAmount}
+          loanTerm={loanTerm}
+          setLoanTerm={setLoanTerm}
+          onLoanApply={loanApply}
+          onLoanRepay={loanRepay}
+        />
       </div>
 
       {/* 定期存款列表 */}
@@ -318,64 +192,5 @@ export function BankCard({ loginToView }: { loginToView: string }) {
       )}
       <p className="text-xs text-sub">{loginToView}</p>
     </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 py-2">
-      <div className="text-xs text-sub">{label}</div>
-      <div className="num text-sm font-bold">{value}</div>
-    </div>
-  );
-}
-
-type Dict = ReturnType<typeof useI18n>["dict"];
-
-function DepositRow({
-  d,
-  dict,
-  busy,
-  onWithdraw,
-}: {
-  d: BankDeposit;
-  dict: Dict;
-  busy: boolean;
-  onWithdraw: (id: number) => void;
-}) {
-  const matured = new Date(d.maturity_at).getTime() <= Date.now();
-  const days = Math.max(
-    0,
-    Math.ceil((new Date(d.maturity_at).getTime() - Date.now()) / 86_400_000),
-  );
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
-      <span className="num font-bold">{d.amount.toLocaleString()}</span>
-      <span className="text-sm text-sub">
-        {dict.bank.termDays.replace("{n}", String(d.term_days))} ·{" "}
-        {d.settle_mode === "daily"
-          ? dict.bank.paidInterest
-            .replace("{n}", d.interest.toLocaleString())
-            .replace("{p}", d.paid_interest.toLocaleString())
-          : `${dict.bank.interest}: ${d.interest.toLocaleString()}`}
-      </span>
-      <span className="text-xs text-sub">
-        {dict.bank.maturity}: {new Date(d.maturity_at).toLocaleDateString()}
-        {d.status === 0 && !matured ? ` · ${dict.bank.daysLeft.replace("{n}", String(days))}` : ""}
-      </span>
-      <span className={`sticker num ${d.status === 0 ? "bg-sun text-ink" : "bg-mint/30 text-ink"}`}>
-        {d.status === 0 ? dict.bank.locked : dict.bank.matured}
-      </span>
-      {d.status === 0 && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onWithdraw(d.id)}
-          className="min-h-[36px] rounded-full border border-line px-4 text-sm text-sky-deep disabled:opacity-50"
-        >
-          {dict.bank.withdraw}
-        </button>
-      )}
-    </li>
   );
 }

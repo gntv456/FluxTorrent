@@ -7,6 +7,7 @@ import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { FundingPanel } from "@/components/funding-panel";
+import { LedgerTable, type LedgerRow } from "./_inner-ledger";
 
 interface DonatePlan {
   id: number;
@@ -15,15 +16,6 @@ interface DonatePlan {
   reward: string | null;
   price_usd: number;
   sort: number;
-}
-
-interface LedgerRow {
-  id: number;
-  kind: "topup" | "order";
-  amount_usd: number;
-  balance_after: number;
-  note: string | null;
-  created_at: string;
 }
 
 interface DonateState {
@@ -37,7 +29,8 @@ interface DonateState {
 
 const QUICK_AMOUNTS = [10, 20, 30, 50, 66];
 
-/** 捐赠中心（馒头 donate 口径）：储值钱包 + 充值 + 三区套餐订购 */
+/** 捐赠中心（馒头 donate 口径）：储值钱包 + 充值 + 三区套餐订购
+ *  （储值流水表格拆到 _inner-ledger.tsx） */
 export default function DonatePage() {
   const { dict, locale } = useI18n();
   const t = dict.donate;
@@ -200,36 +193,7 @@ export default function DonatePage() {
       <FundingPanel />
 
       {/* 流水 */}
-      {ledgerOpen && (
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead" colSpan={4}>
-                <h2 className="font-display">{t.ledgerTitle}</h2>
-              </td>
-            </tr>
-            <tr>
-              <td className="colhead">{t.ledgerKind}</td>
-              <td className="colhead">{t.ledgerAmount}</td>
-              <td className="colhead">{t.balance}</td>
-              <td className="colhead">{t.ledgerAt}</td>
-            </tr>
-            {(st?.ledger ?? []).map((r) => (
-              <tr key={r.id}>
-                <td>{r.kind === "topup" ? t.kindTopup : t.kindOrder}{r.note ? ` · ${r.note}` : ""}</td>
-                <td className={`num font-bold ${r.amount_usd >= 0 ? "text-success" : "text-danger"}`}>
-                  {r.amount_usd >= 0 ? "+" : ""}{r.amount_usd.toFixed(2)}
-                </td>
-                <td className="num">{r.balance_after.toFixed(2)}</td>
-                <td className="text-xs text-sub">{new Date(r.created_at).toLocaleString(dateLocale(locale))}</td>
-              </tr>
-            ))}
-            {(!st || st.ledger.length === 0) && (
-              <tr><td colSpan={4} className="py-6 text-center text-sub">{t.ledgerEmpty}</td></tr>
-            )}
-          </tbody>
-        </table>
-      )}
+      {ledgerOpen && <LedgerTable rows={st?.ledger} />}
 
       {/* 充值弹层 */}
       {topupOpen && (
