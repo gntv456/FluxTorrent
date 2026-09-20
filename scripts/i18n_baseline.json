@@ -1210,15 +1210,15 @@
   61
  ],
  "components\\torrent-actions.tsx": [
-  44,
-  54,
-  88,
-  91,
-  115,
-  116,
-  124,
-  127,
-  130
+  70,
+  80,
+  114,
+  117,
+  141,
+  142,
+  155,
+  158,
+  161
  ],
  "components\\torrent-list-client.tsx": [],
  "components\\torrent-manage.tsx": [
