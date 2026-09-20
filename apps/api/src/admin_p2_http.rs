@@ -738,8 +738,8 @@ async fn admin_claims(
     );
     let rows: Vec<AdminClaimRow> = sqlx::query_as(&sql)
         .bind(crate::http::like_pattern(&q.q))
-        .bind(q.per_page)
-        .bind((q.page.max(1) - 1) * q.per_page)
+        .bind(crate::dto::page_window(q.page, q.per_page).1)
+        .bind(crate::dto::page_window(q.page, q.per_page).0)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

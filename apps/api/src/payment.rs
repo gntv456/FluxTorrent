@@ -7,7 +7,7 @@
 //! - 仅实现「跳转支付」（submit.php?...）形态：最通用、无异步通知服务器要求，
 //!   同步回跳由前端轮询订单状态；异步 notify 端点同样实现（get 请求 + MD5 验签）。
 
-use md5::{Md5, Digest};
+use md5::{Digest, Md5};
 
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
@@ -34,26 +34,50 @@ pub async fn gateway_config(state: &AppState) -> GatewayConfig {
     let get = |k: &str| m.get(k).cloned().unwrap_or_default();
     GatewayConfig {
         provider: get("payment_provider"),
-        gateway_url: get("payment_gateway_url").trim().trim_end_matches('/').to_string(),
+        gateway_url: get("payment_gateway_url")
+            .trim()
+            .trim_end_matches('/')
+            .to_string(),
         pid: get("payment_pid"),
         key: get("payment_key"),
-        currency: { let c = get("payment_currency"); if c.is_empty() { "CNY".into() } else { c } },
+        currency: {
+            let c = get("payment_currency");
+            if c.is_empty() {
+                "CNY".into()
+            } else {
+                c
+            }
+        },
     }
 }
 
 impl GatewayConfig {
     /// 通道可用：provider=epay 且三要素齐全
     pub fn available(&self) -> bool {
-        self.provider == "epay" && !self.gateway_url.is_empty() && !self.pid.is_empty() && !self.key.is_empty()
+        self.provider == "epay"
+            && !self.gateway_url.is_empty()
+            && !self.pid.is_empty()
+            && !self.key.is_empty()
     }
 }
 
 /// 支付网关抽象：新网关实现此 trait 并在 `create_payment_url` 分发。
 pub trait PaymentProvider {
     /// 生成支付跳转 URL（把用户送去网关收银台）
-    fn pay_url(&self, order_no: &str, amount_paid: &str, channel: &str, subject: &str, return_url: &str, notify_url: &str) -> String;
+    fn pay_url(
+        &self,
+        order_no: &str,
+        amount_paid: &str,
+        channel: &str,
+        subject: &str,
+        return_url: &str,
+        notify_url: &str,
+    ) -> String;
     /// 异步通知验签：合法返回网关流水号与实付金额（trade_no, amount_paid, order_no）
-    fn verify_notify(&self, params: &std::collections::HashMap<String, String>) -> Option<NotifyData>;
+    fn verify_notify(
+        &self,
+        params: &std::collections::HashMap<String, String>,
+    ) -> Option<NotifyData>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -95,7 +119,15 @@ pub struct EpayProvider {
 }
 
 impl PaymentProvider for EpayProvider {
-    fn pay_url(&self, order_no: &str, amount_paid: &str, channel: &str, subject: &str, return_url: &str, notify_url: &str) -> String {
+    fn pay_url(
+        &self,
+        order_no: &str,
+        amount_paid: &str,
+        channel: &str,
+        subject: &str,
+        return_url: &str,
+        notify_url: &str,
+    ) -> String {
         let params: Vec<(&str, &str)> = vec![
             ("pid", self.pid.as_str()),
             ("type", channel),
@@ -115,7 +147,10 @@ impl PaymentProvider for EpayProvider {
         format!("{}/submit.php?{}", self.gateway_url, q.join("&"))
     }
 
-    fn verify_notify(&self, params: &std::collections::HashMap<String, String>) -> Option<NotifyData> {
+    fn verify_notify(
+        &self,
+        params: &std::collections::HashMap<String, String>,
+    ) -> Option<NotifyData> {
         // 口径：sign = MD5(升序&拼接(除 sign/sign_type/空值) + key)；trade_status=TRADE_SUCCESS
         let vec: Vec<(String, String)> = params
             .iter()
@@ -139,7 +174,10 @@ impl PaymentProvider for EpayProvider {
             order_no: params.get("out_trade_no")?.clone(),
             trade_no: params.get("trade_no").cloned().unwrap_or_default(),
             amount_paid: params.get("money").cloned().unwrap_or_default(),
-            status_ok: params.get("trade_status").map(|s| s == "TRADE_SUCCESS").unwrap_or(false),
+            status_ok: params
+                .get("trade_status")
+                .map(|s| s == "TRADE_SUCCESS")
+                .unwrap_or(false),
         })
     }
 }
@@ -149,7 +187,9 @@ fn urlencode(s: &str) -> String {
     let mut out = String::new();
     for b in s.bytes() {
         match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
             _ => out.push_str(&format!("%{b:02X}")),
         }
     }
@@ -168,7 +208,11 @@ pub fn provider_from(cfg: &GatewayConfig) -> Box<dyn PaymentProvider + Send + Sy
 
 /// 站内单号（幂等键）：flux-{uid}-{纳秒}（同用户重复点击各生成独立订单，回调按单号幂等）
 pub fn new_order_no(user_id: i64) -> String {
-    format!("flux-{}-{}", user_id, chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default())
+    format!(
+        "flux-{}-{}",
+        user_id,
+        chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default()
+    )
 }
 
 /// 回调统一入口：验签 + 幂等入账（wallet_usd 增加 + donation_ledger + 订单 paid）
@@ -231,7 +275,9 @@ pub async fn settle_notify(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(SettleOutcome::Paid)
 }
 
@@ -275,8 +321,13 @@ pub async fn demo_topup(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(user_id), "donate_topup_demo", None).await;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(user_id), "donate_topup_demo", None)
+        .await;
     Ok(serde_json::json!({ "wallet_usd": balance }))
 }
 
@@ -285,7 +336,11 @@ mod tests {
     use super::*;
 
     fn epay() -> EpayProvider {
-        EpayProvider { gateway_url: "https://pay.example.com".into(), pid: "1001".into(), key: "testkey".into() }
+        EpayProvider {
+            gateway_url: "https://pay.example.com".into(),
+            pid: "1001".into(),
+            key: "testkey".into(),
+        }
     }
 
     /// 签名口径锁定：升序 & 拼接 + 密钥 MD5
@@ -301,7 +356,14 @@ mod tests {
     /// 跳转 URL 形状
     #[test]
     fn pay_url_shape() {
-        let url = epay().pay_url("flux-1-123", "10.00", "alipay", "捐赠", "https://s/ok", "https://s/notify");
+        let url = epay().pay_url(
+            "flux-1-123",
+            "10.00",
+            "alipay",
+            "捐赠",
+            "https://s/ok",
+            "https://s/notify",
+        );
         assert!(url.starts_with("https://pay.example.com/submit.php?"));
         assert!(url.contains("out_trade_no=flux-1-123"));
         assert!(url.contains("sign_type=MD5"));
@@ -313,13 +375,19 @@ mod tests {
     fn verify_notify_cases() {
         let p = epay();
         let base = [
-            ("pid", "1001"), ("trade_no", "E20260918001"), ("out_trade_no", "flux-1-123"),
-            ("type", "alipay"), ("name", "捐赠"), ("money", "10.00"),
+            ("pid", "1001"),
+            ("trade_no", "E20260918001"),
+            ("out_trade_no", "flux-1-123"),
+            ("type", "alipay"),
+            ("name", "捐赠"),
+            ("money", "10.00"),
             ("trade_status", "TRADE_SUCCESS"),
         ];
         let sign = epay_sign(&base, "testkey");
-        let mut m: std::collections::HashMap<String, String> =
-            base.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let mut m: std::collections::HashMap<String, String> = base
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
         m.insert("sign".into(), sign.clone());
         let ok = p.verify_notify(&m).expect("合法签名应通过");
         assert_eq!(ok.order_no, "flux-1-123");
@@ -330,10 +398,26 @@ mod tests {
         assert!(p.verify_notify(&m).is_none(), "篡改金额必须拒绝");
 
         // 状态非成功 → 验签过但 status_ok=false
-        let mut m2: std::collections::HashMap<String, String> =
-            base.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let mut m2: std::collections::HashMap<String, String> = base
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
         m2.insert("trade_status".into(), "WAIT_BUYER_PAY".into());
-        m2.insert("sign".into(), epay_sign(&[("pid","1001"),("trade_no","E20260918001"),("out_trade_no","flux-1-123"),("type","alipay"),("name","捐赠"),("money","10.00"),("trade_status","WAIT_BUYER_PAY")], "testkey"));
+        m2.insert(
+            "sign".into(),
+            epay_sign(
+                &[
+                    ("pid", "1001"),
+                    ("trade_no", "E20260918001"),
+                    ("out_trade_no", "flux-1-123"),
+                    ("type", "alipay"),
+                    ("name", "捐赠"),
+                    ("money", "10.00"),
+                    ("trade_status", "WAIT_BUYER_PAY"),
+                ],
+                "testkey",
+            ),
+        );
         let r = p.verify_notify(&m2).expect("签名本身合法");
         assert!(!r.status_ok);
     }
@@ -341,9 +425,21 @@ mod tests {
     /// 未配置 = 不可用（堵漏语义的配置化延续）
     #[test]
     fn gateway_unavailable_when_unconfigured() {
-        let cfg = GatewayConfig { provider: "none".into(), gateway_url: String::new(), pid: String::new(), key: String::new(), currency: "CNY".into() };
+        let cfg = GatewayConfig {
+            provider: "none".into(),
+            gateway_url: String::new(),
+            pid: String::new(),
+            key: String::new(),
+            currency: "CNY".into(),
+        };
         assert!(!cfg.available());
-        let cfg2 = GatewayConfig { provider: "epay".into(), gateway_url: "https://p".into(), pid: "1".into(), key: String::new(), currency: "CNY".into() };
+        let cfg2 = GatewayConfig {
+            provider: "epay".into(),
+            gateway_url: "https://p".into(),
+            pid: "1".into(),
+            key: String::new(),
+            currency: "CNY".into(),
+        };
         assert!(!cfg2.available(), "缺密钥同样不可用");
     }
 

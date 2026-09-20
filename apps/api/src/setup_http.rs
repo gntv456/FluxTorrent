@@ -67,10 +67,11 @@ async fn setup_status(state: web::Data<std::sync::Arc<AppState>>) -> impl Respon
     .fetch_all(&state.repo.db)
     .await
     .unwrap_or_default();
-    let has_admin: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE class_id = 99)")
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
+    let has_admin: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE class_id = 99)")
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
     ok(serde_json::json!({
         "done": done == "done",
         "has_admin": has_admin,
@@ -107,21 +108,19 @@ async fn setup_finish(
         ));
     }
     // 1) demo 清理（幂等：重复执行零行）
-    let purged: Vec<(String, i64)> =
-        sqlx::query_as("SELECT kind, removed FROM purge_demo_data()")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let purged: Vec<(String, i64)> = sqlx::query_as("SELECT kind, removed FROM purge_demo_data()")
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 2) 站型应用（extras：等级/经济/元数据；分类由既有 apply 端点处理，向导引导先调）
     let mut extras_applied: Vec<(String, i64)> = Vec::new();
     if !body.pack.is_empty() {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM site_type_packs WHERE code = $1)",
-        )
-        .bind(&body.pack)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM site_type_packs WHERE code = $1)")
+                .bind(&body.pack)
+                .fetch_one(&state.repo.db)
+                .await
+                .unwrap_or(false);
         if !exists {
             return Err(DomainError::Validation("站型包不存在".into()));
         }
@@ -155,10 +154,7 @@ async fn setup_finish(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.module_flags.invalidate().await;
-    state
-        .repo
-        .audit(Some(auth.id), "setup_finish", None)
-        .await;
+    state.repo.audit(Some(auth.id), "setup_finish", None).await;
     Ok(ok(serde_json::json!({
         "done": true,
         "purged": purged,

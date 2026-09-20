@@ -41,13 +41,7 @@ pub async fn send_mail(to: &str, subject: &str, body: &str) -> anyhow::Result<()
 }
 
 /// 通知双通道：站内信必达 + 邮件尽力（后台线程）
-pub async fn notify(
-    db: &PgPool,
-    to_user: i64,
-    email: Option<String>,
-    subject: &str,
-    body: &str,
-) {
+pub async fn notify(db: &PgPool, to_user: i64, email: Option<String>, subject: &str, body: &str) {
     if let Err(e) = site_message(db, to_user, subject, body).await {
         tracing::error!(?e, to_user, "site message failed");
     }

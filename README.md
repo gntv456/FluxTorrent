@@ -74,7 +74,7 @@ VALUES (1, '<恰好32位字符的邀请码>', now() + interval '3 days');
 ```bash
 cargo fmt --all --check   # 格式 ✅
 cargo check               # 零警告 ✅
-cargo test                # 53 单测（促销/密码/JWT/Bencode/peer 表/计费倍率/签到/利息/站免池窗口/BEP-7 peers6/snapshot v4v6 分列）✅
+cargo test                # 79 单测（促销/密码/JWT/Bencode/peer 表/计费倍率/签到/利息/站免池窗口/BEP-7 peers6/snapshot v4v6 分列）✅
 pnpm --filter @fluxtorrent/web exec next build   # tsc strict ✅
 ```
 
