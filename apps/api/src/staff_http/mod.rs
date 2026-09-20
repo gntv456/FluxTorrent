@@ -1,0 +1,41 @@
+//! staffpanel 管理工具（hxpt faqmanage/modrules/catmanage 等复刻）。
+//! 按域拆分（300 行门禁）：见各子模块头注释。
+
+// ============ staffpanel 管理工具（hxpt faqmanage/modrules/catmanage/bans/massmail 口径） ============
+
+mod bans;
+mod content;
+mod donate;
+mod donate_notify;
+mod emailbans;
+mod ipcheck;
+mod massmail;
+mod pack_apply;
+mod pack_save;
+mod promo;
+mod promo_set;
+mod rules_cats;
+mod site;
+mod site_db;
+mod sitetype;
+mod stats;
+mod users_ops;
+mod warned;
+
+pub use bans::*;
+pub use content::*;
+pub use donate::*;
+pub use donate_notify::*;
+pub use emailbans::*;
+pub use ipcheck::*;
+pub use massmail::*;
+pub use pack_apply::*;
+pub use pack_save::*;
+pub use promo_set::*;
+pub use rules_cats::*;
+pub use site::*;
+pub use site_db::*;
+pub use sitetype::*;
+pub use stats::*;
+pub use users_ops::*;
+pub use warned::*;
