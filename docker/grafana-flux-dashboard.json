@@ -1,5 +1,5 @@
 {
-  "__comment": "FluxTorrent 预置仪表盘（U5 §12.6）：Prometheus 抓取 /metrics（API_METRICS_TOKEN 头 x-metrics-token），面板覆盖 RED + announce 链路健康。",
+  "__comment": "FluxTorrent 预置仪表盘（U5 §12.6）：Prometheus 抓取 /metrics（ANN_METRICS_TOKEN 头 x-metrics-token），面板覆盖 RED + announce 链路健康。",
   "title": "FluxTorrent 站点健康",
   "refresh": "30s",
   "panels": [

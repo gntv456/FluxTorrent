@@ -15,8 +15,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
+      # 格式门禁（README 质量门禁声称项此前 CI 未跑）
+      - name: Fmt
+        run: cargo fmt --all --check
       - name: Check（0 error 0 warning 基线）
         run: cargo check --workspace --all-targets
       - name: Tests
@@ -44,3 +47,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: tsc 类型检查（0 错误基线）
         run: pnpm exec tsc --noEmit
+      # 构建门禁（P1）：rewrites/standalone 输出/页面构建错误此前推迟到 publish-images
+      # 发版构建才第一次暴露；tsc 通过不代表 next build 通过
+      - name: Next build
+        run: pnpm exec next build

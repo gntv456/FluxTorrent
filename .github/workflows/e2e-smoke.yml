@@ -117,6 +117,28 @@ jobs:
             -v 1=1 -v 2=now > /dev/null && echo "promotion SQL ok"
           echo "SMOKE DONE"
 
+      # PT 生命线：announce → Redis Stream → worker 计费。此前只测 api，这条链路在 CI 裸奔
+      # （依赖根目录手工 py 脚本）。tracker/worker 与 api 同机起，复用同一 PG/Redis。
+      - name: Build tracker & worker (debug)
+        run: cargo build -p flux-tracker -p flux-worker
+
+      - name: Boot tracker & worker
+        run: |
+          DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" TRACKER_BIND="0.0.0.0:7070"             nohup ./target/debug/flux-tracker > tracker.log 2>&1 &
+          for i in $(seq 1 30); do
+            sleep 1
+            if curl -sf "http://127.0.0.1:7070/" > /dev/null 2>&1 || \
+               grep -q "listening\|started\|running" tracker.log 2>/dev/null; then echo "tracker up"; break; fi
+          done
+          DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL"             nohup ./target/debug/flux-worker > worker.log 2>&1 &
+          sleep 3
+          echo "tracker/worker booted"
+
+      - name: Announce→计费 链路冒烟
+        run: |
+          sudo apt-get install -y -qq redis-tools > /dev/null 2>&1 || sudo apt-get install -y -qq redis > /dev/null
+          python3 scripts/ci_announce_billing_check.py
+
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -125,4 +147,6 @@ jobs:
           path: |
             api1.log
             api2.log
+            tracker.log
+            worker.log
           if-no-files-found: ignore
