@@ -122,7 +122,9 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
 
 /// 动账核心：余额充足校验 + 负流水 + 余额快照更新（单事务）。
 /// 幂等键唯一约束（shop_orders/应用层先查）防重复扣款。
-/// 扣款结果：区分真实扣款与幂等重放（调用方据此决定是否执行副作用）
+/// 扣款结果：区分真实扣款与幂等重放（调用方据此决定是否执行副作用）。
+/// must_use：丢弃该返回值继续执行副作用 = 幂等重放印钞口（审计 P0 整类缺陷的根因）。
+#[must_use = "重放（Replayed）时不会再扣款，丢弃返回值继续执行副作用会造成资金凭空入账"]
 pub enum SpendOutcome {
     Spent,
     Replayed,
@@ -145,12 +147,14 @@ pub async fn spend_spark_tx(
             .fetch_one(&mut **tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+    // 幂等检查查询失败必须报错（P2 审计）：unwrap_or(false) 会把「查询失败」当成
+    // 「未消费」——跨请求重放可击穿幂等。fail-close：宁可 5xx 也不冒双扣风险。
     let exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
             .bind(idem)
             .fetch_one(&mut **tx)
             .await
-            .unwrap_or(false);
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if exists {
         return Ok(SpendOutcome::Replayed);
     }
@@ -201,12 +205,13 @@ pub async fn spend_spark(
             .fetch_one(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+    // 幂等检查查询失败必须报错（P2 审计，同 tx 版口径）
     let exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
             .bind(idem)
             .fetch_one(&mut *tx)
             .await
-            .unwrap_or(false);
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if exists {
         return Ok(SpendOutcome::Replayed);
     }
@@ -239,6 +244,55 @@ pub async fn spend_spark(
     Ok(SpendOutcome::Spent)
 }
 
+/// earn_spark 的传入事务版本：调用方把入账与其它写操作并入同一事务（签到/支取/收获）。
+/// 语义/锁序与 earn_spark 完全一致；返回 SpendOutcome 复用「Spent=首次入账 /
+/// Replayed=幂等键已存在」口径，调用方据 Replayed 处理撕裂残留。
+pub async fn earn_spark_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: i64,
+    amount: i64,
+    kind: &str,
+    idem: &str,
+) -> DomainResult<SpendOutcome> {
+    let balance: i64 =
+        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+            .bind(user_id)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    // 幂等检查必须在行锁之后（P0：防并发双入账）
+    // 幂等检查查询失败必须报错（P2 审计）：unwrap_or(false) 会把「查询失败」当成
+    // 「未消费」——跨请求重放可击穿幂等。fail-close：宁可 5xx 也不冒双扣风险。
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
+            .bind(idem)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    if exists {
+        return Ok(SpendOutcome::Replayed);
+    }
+    sqlx::query(
+        "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
+         VALUES (nextval('spark_ledger_id_seq'), $1, $2, $3, $4, $5)",
+    )
+    .bind(user_id)
+    .bind(amount)
+    .bind(kind)
+    .bind(idem)
+    .bind(balance + amount)
+    .execute(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+        .bind(user_id)
+        .bind(amount)
+        .execute(&mut **tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(SpendOutcome::Spent)
+}
+
 /// 入账（签到/利息/奖励）
 pub async fn earn_spark(
     db: &PgPool,
@@ -258,12 +312,13 @@ pub async fn earn_spark(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     // 幂等检查必须在行锁之后（P0：防并发双入账）
+    // 幂等检查查询失败必须报错（P2 审计，同 tx 版口径）
     let exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
             .bind(idem)
             .fetch_one(&mut *tx)
             .await
-            .unwrap_or(false);
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if exists {
         return Ok(());
     }
@@ -362,11 +417,13 @@ async fn shop_buy(
         }
     }
 
-    // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款
+    // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款。
+    // 服务端键必须带 uid 前缀：裸客户端键跨用户碰撞时，B 的消费会被误判为 A 的重放。
     let idem = body
         .idempotency_key
         .clone()
         .filter(|k| !k.is_empty())
+        .map(|k| format!("shop:{}:{}", auth.id, k.trim()))
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
     let outcome = spend_spark(
         &state.repo.db,
@@ -682,34 +739,92 @@ async fn my_spark(
             .fetch_one(&state.repo.db)
             .await
             .unwrap_or(0);
-    // 0074 收益构成：按规则名分组展示我做种的每档贡献（与 worker seeding_reward 同口径）
+    // 与 worker 同口径的僵尸阈值：max(2h, 2×announce_interval)（详见 worker 的 stale_peer_threshold_secs）
+    let announce: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'announce_interval'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .map(|v| v.clamp(60, 86400))
+    .unwrap_or(1800);
+    let stale_secs = (announce * 2).max(7200);
+    // 收益构成：按规则名分组（种子档位 + 做种时长档位两类），与 worker 结算同源。
+    // 0133 后新增「做种时长」维度 —— 玩家能看到"我为什么拿这么多"，这是相对 NP 的体验优势。
     let rules: Vec<(String, i64)> = sqlx::query_as(
         r#"
-        SELECT CASE
-                 WHEN t.seeders <= 1 AND t.times_completed >= 3 THEN '濒危保种'
-                 WHEN now() - t.created_at > interval '365 days' THEN '高龄种'
-                 WHEN now() - t.created_at > interval '180 days' THEN '老种'
-                 WHEN t.size >= 107374182400 THEN '大体积种'
-                 WHEN t.size >= 26843545600 THEN '中体积种'
-                 ELSE '日常种'
-               END AS rule,
-               count(*)
-        FROM snatches s JOIN torrents t ON t.id = s.torrent_id
-        WHERE s.user_id = $1 AND s.seeding
-          AND NOT (s.connectable = 0 AND s.uploaded = 0)
-        GROUP BY 1 ORDER BY 2 DESC
+        SELECT rule, count(*) FROM (
+            SELECT CASE
+                     WHEN t.seeders <= 1 AND t.times_completed >= 3 THEN '濒危保种'
+                     WHEN now() - t.created_at > interval '365 days' THEN '高龄种'
+                     WHEN now() - t.created_at > interval '180 days' THEN '老种'
+                     WHEN t.size >= 107374182400 THEN '大体积种'
+                     WHEN t.size >= 26843545600 THEN '中体积种'
+                     ELSE '日常种'
+                   END AS rule
+            FROM snatches s JOIN torrents t ON t.id = s.torrent_id
+            WHERE s.user_id = $1 AND s.seeding
+              AND NOT (s.connectable = 0 AND s.uploaded = 0)
+              AND s.last_seen_at > now() - ($2::bigint * interval '1 second')
+            UNION ALL
+            SELECT CASE
+                     WHEN s.seeded_seconds >= 31536000 THEN '传奇做种者（≥1年）'
+                     WHEN s.seeded_seconds >= 15552000 THEN '资深做种者（6-12月）'
+                     WHEN s.seeded_seconds >= 7776000 THEN '稳定做种者（3-6月）'
+                     WHEN s.seeded_seconds >= 2592000 THEN '新晋做种者（1-3月）'
+                     ELSE '新做种（<1月）'
+                   END AS rule
+            FROM snatches s
+            WHERE s.user_id = $1 AND s.seeding
+              AND NOT (s.connectable = 0 AND s.uploaded = 0)
+              AND s.last_seen_at > now() - ($2::bigint * interval '1 second')
+        ) x GROUP BY rule ORDER BY count(*) DESC
         "#,
     )
     .bind(auth.id)
+    .bind(stale_secs)
     .fetch_all(&state.repo.db)
     .await
     .unwrap_or_default();
+    // 真实预估（与 worker 结算同一套 DB 函数 + 同一套过滤，迁移 0133）：
+    // 不再是 "10 + 颗数×2" 的粗估。
+    let hourly_estimate: i64 = sqlx::query_scalar(
+        r#"
+        WITH p AS MATERIALIZED (SELECT * FROM seeding_params()),
+        s AS (
+            SELECT sum(seeding_torrent_bonus(
+                       t.size, t.seeders,
+                       (EXTRACT(EPOCH FROM (now() - t.created_at)) / 86400.0)::double precision,
+                       t.times_completed,
+                       (GREATEST(sn.seeded_seconds, 0) / 3600.0)::double precision,
+                       p.vol_base, p.rarity_k, p.rarity_exp, p.scale)) AS bonus_raw,
+                   bool_or(u.donor) AS donor
+            FROM snatches sn
+            JOIN torrents t ON t.id = sn.torrent_id
+            JOIN users u ON u.id = sn.user_id
+            CROSS JOIN p
+            WHERE sn.user_id = $1 AND sn.seeding
+              AND NOT (sn.connectable = 0 AND sn.uploaded = 0)
+              AND sn.last_seen_at > now() - ($2::bigint * interval '1 second')
+        )
+        SELECT seeding_hourly(COALESCE(bonus_raw, 0), p.base, p.cap, p.curve_k, p.donor_mult,
+                              COALESCE(donor, FALSE))
+        FROM s CROSS JOIN p
+        "#,
+    )
+    .bind(auth.id)
+    .bind(stale_secs)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "balance": balance,
         "seeding_count": seeding_count,
-        "hourly_estimate": 10 + seeding_count * 2,
+        "hourly_estimate": hourly_estimate,
         "reward_rules": rules,
-        "formula_note": "每小时 = 底薪 10 + 400/π·atan(Σ规则加成×稀有度×饱和 × 6/50)；濒危保种 2.0 / 高龄种 1.5 / 老种 1.0 / 大体积 0.75 / 中体积 0.5 / 日常 0.25，做种人数越多衰减（seeders^-0.35），同一种子做种越久收益递减（90 天半衰）",
+        "formula_note": "每小时 = 底薪 + (2/π)·封顶·atan(Σ加成 × 曲线系数)，捐赠者整笔翻倍。每颗种子加成 =（种子档位分 + 做种时长档位分）× 体积因子 × 稀有度加成 × 标定系数；种子档位：濒危保种 2.0 / 高龄种 1.5 / 老种 1.0 / 大体积 0.75 / 中体积 0.5 / 日常 0.25；做种时长档位：≥1年 +2.0 / 6-12月 +1.0 / 3-6月 +0.75 / 1-3月 +0.5；体积按对数饱和（≥50GB 记满分，1GB 约 0.18）；稀有度独苗 ×1.6、人多趋近 ×1.0。",
     })))
 }
 
@@ -791,17 +906,6 @@ async fn bank_deposit(
         .filter(|k| !k.trim().is_empty())
         .map(|k| format!("deposit:{}:{}", auth.id, k.trim()))
         .unwrap_or_else(|| format!("deposit:{}:{}", auth.id, Uuid::new_v4()));
-    spend_spark(
-        &state.repo.db,
-        auth.id,
-        body.amount,
-        "bank_deposit",
-        &idem,
-        "bank",
-        0,
-    )
-    .await?;
-
     let interest = maturity_interest(body.amount, body.term_days);
     // 结息模式：daily = 每日结息发到余额（到期只还本）；maturity = 到期一次性
     let mode: String =
@@ -811,6 +915,33 @@ async fn bank_deposit(
             .map_err(|e| DomainError::Internal(e.into()))?
             .unwrap_or_else(|| "maturity".into());
     let mode = if mode == "daily" { "daily" } else { "maturity" };
+    // 单事务（P1 撕裂窗口收口）：扣款与存单落库同生共死。旧版扣款先提交、存单
+    // INSERT 失败只能靠 spawn 退款补偿（随机幂等键），进程崩溃窗口内钱扣了无存单、
+    // 无对账记录。同时幂等重放必须终止（P0）：重放时 spend 不再扣款，若继续落存单
+    // = 免费多得一张存单、到期照付本息（对照 games scratch 的同款闸门）。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if !matches!(
+        spend_spark_tx(
+            &mut tx,
+            auth.id,
+            body.amount,
+            "bank_deposit",
+            &idem,
+            "bank",
+            0,
+        )
+        .await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation(
+            "该笔请求已受理，请勿重复提交".into(),
+        ));
+    }
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO bank_deposits (user_id, amount, term_days, rate, interest, maturity_at, settle_mode) \
          VALUES ($1, $2, $3, $4, $5, now() + ($3 || ' days')::interval, $6) RETURNING id",
@@ -821,21 +952,12 @@ async fn bank_deposit(
     .bind(term_rate(body.term_days))
     .bind(interest)
     .bind(mode)
-    .fetch_one(&state.repo.db)
+    .fetch_one(&mut *tx)
     .await
-    .map_err(|e| {
-        // 存单落库失败：退款冲销（审计 P1-4——旧版钱已扣无存单且无补偿路径）
-        let db = state.repo.db.clone();
-        let uid = auth.id;
-        let amount = body.amount;
-        let idem2 = format!("deposit_refund:{}", Uuid::new_v4());
-        actix_web::rt::spawn(async move {
-            let _ =
-                crate::economy_http::earn_spark(&db, uid, amount, "bank_deposit_refund", &idem2)
-                    .await;
-        });
-        DomainError::Internal(e.into())
-    })?;
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
 
     Ok(ok(serde_json::json!({
         "id": id, "amount": body.amount, "term_days": body.term_days,
@@ -930,31 +1052,36 @@ async fn bank_withdraw(
         ));
     }
 
+    // 单事务（P1 撕裂窗口收口）：销单 CAS 与本息入账同生共死。旧版 CAS 先提交、
+    // earn 失败靠回滚状态位补偿——进程崩溃窗口内 status=1 锁死重试路径 = 本息蒸发。
+    // 锁序对齐 worker bank_fixed_mature（先销单后入账），且共用 withdraw:{id} 幂等键，
+    // 与到期自动兑付天然互斥双付。
+    let idem = format!("withdraw:{}", id);
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let updated = sqlx::query(
         "UPDATE bank_deposits SET status = 1, settled_at = now(), penalty = $2, withdrawn_at = now() \
          WHERE id = $1 AND status = 0",
     )
     .bind(id)
     .bind(penalty)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if updated.rows_affected() == 0 {
         return Err(DomainError::LedgerConflict);
     }
-    // 审计修复（P1 撕裂窗口）：状态 CAS 提交后若 earn_spark 失败，本息蒸发且不可重试
-    //（status=1 已锁死，idem withdraw:{id} 未落库）。失败时回滚状态位，保留重试能力。
-    let idem = format!("withdraw:{}", id);
-    if let Err(e) = earn_spark(&state.repo.db, auth.id, payable, "bank_withdraw", &idem).await {
-        let _ = sqlx::query(
-            "UPDATE bank_deposits SET status = 0, settled_at = NULL, withdrawn_at = NULL \
-             WHERE id = $1 AND status = 1",
-        )
-        .bind(id)
-        .execute(&state.repo.db)
-        .await;
-        return Err(e);
-    }
+    // 撕裂残留兜底：历史上「earn 已落账但状态位被回滚」的存单，此处 Replayed →
+    // 仅补销单（本息已发过，不重复入账），属有意容忍的重放
+    let earn_outcome = earn_spark_tx(&mut tx, auth.id, payable, "bank_withdraw", &idem).await?;
+    let _ = earn_outcome;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(
         serde_json::json!({ "paid": payable, "matured": matured, "penalty": penalty,
             "clawback": clawback,
@@ -995,16 +1122,32 @@ async fn demand_deposit(
         .filter(|k| !k.trim().is_empty())
         .map(|k| format!("demand_in:{}:{}", auth.id, k.trim()))
         .unwrap_or_else(|| format!("demand_in:{}:{}", auth.id, Uuid::new_v4()));
-    spend_spark(
-        &state.repo.db,
-        auth.id,
-        body.amount,
-        "bank_demand_in",
-        &idem,
-        "bank",
-        0,
-    )
-    .await?;
+    // 单事务（P1 撕裂窗口收口）：扣款与活期入账同生共死——旧版扣款先提交、入账失败
+    // 只能靠 spawn 退款补偿（随机幂等键），进程崩溃窗口内钱扣了活期没涨。
+    // 同时幂等重放必须终止（P0）：重放时 spend 不扣款，若继续累加活期余额 = 无中生有。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    if !matches!(
+        spend_spark_tx(
+            &mut tx,
+            auth.id,
+            body.amount,
+            "bank_demand_in",
+            &idem,
+            "bank",
+            0,
+        )
+        .await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation(
+            "该笔请求已受理，请勿重复提交".into(),
+        ));
+    }
     sqlx::query(
         "INSERT INTO bank_demand_accounts (user_id, balance, daily_rate_bp, last_interest_date) \
          VALUES ($1, $2, $3, CURRENT_DATE) \
@@ -1014,21 +1157,12 @@ async fn demand_deposit(
     .bind(auth.id)
     .bind(body.amount)
     .bind(bs.demand_rate_bp)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
-    .map_err(|e| {
-        // 活期入账失败：退款冲销（审计 P1-4——钱已扣但活期没涨，无补偿路径）
-        let db = state.repo.db.clone();
-        let uid = auth.id;
-        let amount = body.amount;
-        let idem2 = format!("demand_in_refund:{}", Uuid::new_v4());
-        actix_web::rt::spawn(async move {
-            let _ =
-                crate::economy_http::earn_spark(&db, uid, amount, "bank_demand_in_refund", &idem2)
-                    .await;
-        });
-        DomainError::Internal(e.into())
-    })?;
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "deposited": body.amount })))
 }
 
@@ -1050,12 +1184,33 @@ async fn demand_withdraw(
     if body.amount <= 0 {
         return Err(DomainError::Validation("支取金额必须为正".into()));
     }
+    // 单事务（P1 撕裂窗口收口）：幂等检查、活期扣减、余额入账同生共死。旧版扣减先
+    // 提交、earn 失败靠补偿 UPDATE 回补——进程崩溃窗口内钱从活期消失且无补偿；
+    // 且幂等检查若后置于扣减，重试会再扣一次活期而入账侧被幂等键拦下 = 资金蒸发。
     let mut tx = state
         .repo
         .db
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    let idem = body
+        .idempotency_key
+        .clone()
+        .filter(|k| !k.trim().is_empty())
+        .map(|k| format!("demand_out:{}:{}", auth.id, k.trim()))
+        .unwrap_or_else(|| format!("demand_out:{}:{}", auth.id, Uuid::new_v4()));
+    // 幂等检查前置到扣减之前（同事务内）：重放请求直接拒绝
+    let replayed: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
+            .bind(&idem)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    if replayed {
+        return Err(DomainError::Validation(
+            "该笔支取已受理，请勿重复提交".into(),
+        ));
+    }
     let row: Option<i64> = sqlx::query_scalar(
         "UPDATE bank_demand_accounts SET balance = balance - $2, updated_at = now() \
          WHERE user_id = $1 AND balance >= $2 RETURNING balance",
@@ -1068,36 +1223,14 @@ async fn demand_withdraw(
     if row.is_none() {
         return Err(DomainError::Validation("活期余额不足".into()));
     }
+    // 上方已在同事务内做过 EXISTS 重放预检，此处必为 Spent；显式丢弃以满足
+    // must_use 契约（Replayed 只可能来自遗留撕裂残留，跳过入账即正确行为）
+    let earn_outcome =
+        earn_spark_tx(&mut tx, auth.id, body.amount, "bank_demand_out", &idem).await?;
+    let _ = earn_outcome;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let idem = body
-        .idempotency_key
-        .clone()
-        .filter(|k| !k.trim().is_empty())
-        .map(|k| format!("demand_out:{}:{}", auth.id, k.trim()))
-        .unwrap_or_else(|| format!("demand_out:{}:{}", auth.id, Uuid::new_v4()));
-    // 审计修复（P1 撕裂窗口）：活期扣减提交后 earn_spark 失败 = 钱从活期消失、余额未加。
-    // 失败时把活期余额补回去（单用户路径无并发放大风险，补偿幂等性由行锁保证）。
-    if let Err(e) = earn_spark(
-        &state.repo.db,
-        auth.id,
-        body.amount,
-        "bank_demand_out",
-        &idem,
-    )
-    .await
-    {
-        let _ = sqlx::query(
-            "UPDATE bank_demand_accounts SET balance = balance + $2, updated_at = now() \
-             WHERE user_id = $1",
-        )
-        .bind(auth.id)
-        .bind(body.amount)
-        .execute(&state.repo.db)
-        .await;
-        return Err(e);
-    }
     Ok(ok(
         serde_json::json!({ "paid": body.amount, "balance_left": row }),
     ))
@@ -1171,6 +1304,15 @@ async fn loan_apply(
         ));
     }
     let rate = loan_rate_bp(body.term_days);
+    // 单事务（P1 撕裂窗口收口）：放款与建贷款行同生共死——旧版 earn 失败靠 DELETE
+    // 补偿回滚贷款行，进程崩溃窗口内残留 active 贷款进入计息/逾期/自动扣款集合
+    //（用户没收到钱却背上了债务）。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO bank_loans (user_id, amount, daily_rate_bp, penalty_rate_bp, term_days, remaining, due_at, last_interest_date) \
          VALUES ($1, $2, $3, $4, $5, $2, now() + ($5 || ' days')::interval, CURRENT_DATE) RETURNING id",
@@ -1180,27 +1322,17 @@ async fn loan_apply(
     .bind(rate)
     .bind(bs.overdue_penalty_bp)
     .bind(body.term_days)
-    .fetch_one(&state.repo.db)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let idem = format!("loan:{}:{}", auth.id, id);
-    if let Err(e) = earn_spark(
-        &state.repo.db,
-        auth.id,
-        body.amount,
-        "bank_loan_payout",
-        &idem,
-    )
-    .await
-    {
-        // 放款失败回滚贷款行（审计 P1-3：旧版残留 active 贷款进入计息/逾期/自动扣款
-        // 集合——用户没收到钱却背上了债务）
-        let _ = sqlx::query("DELETE FROM bank_loans WHERE id = $1 AND status = 'active'")
-            .bind(id)
-            .execute(&state.repo.db)
-            .await;
-        return Err(e);
-    }
+    // 幂等键含新建贷款 id，重放不可达；显式丢弃以满足 must_use 契约
+    let earn_outcome =
+        earn_spark_tx(&mut tx, auth.id, body.amount, "bank_loan_payout", &idem).await?;
+    let _ = earn_outcome;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "id": id, "amount": body.amount, "term_days": body.term_days, "daily_rate_bp": rate,
         "due_in_days": body.term_days,
@@ -1213,13 +1345,28 @@ async fn loan_repay(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 单事务（P1 收口）：旧版 FOR UPDATE 用在 autocommit 连接上——语句结束锁即释放，
+    // payoff 按陈旧应计利息计算；扣款/销账两段提交靠退款补偿。现在锁、算、扣、销同事务。
+    // 锁序先 users 后 loan（与 worker bank_auto_deduct 的 users→loan 一致，防互锁）。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let _user_lock: i64 =
+        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
+            .bind(auth.id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     // 结清额 = 剩余本金 + 计提至今利息（含当日，一次性结清）
     let loan: Option<(i64, i64, i64, i64, chrono::NaiveDate)> = sqlx::query_as(
         "SELECT id, remaining, accrued_interest, daily_rate_bp, last_interest_date \
          FROM bank_loans WHERE user_id = $1 AND status IN ('active', 'defaulted') FOR UPDATE",
     )
     .bind(auth.id)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((id, remaining, accrued, rate_bp, last_date)) = loan else {
@@ -1233,40 +1380,43 @@ async fn loan_repay(
     };
     let payoff = remaining + accrued + today_interest;
     let idem = format!("loan_repay:{}", id);
-    spend_spark(
-        &state.repo.db,
-        auth.id,
-        payoff,
-        "bank_loan_repay",
-        &idem,
-        "bank",
-        id,
-    )
-    .await?;
+    // 幂等重放闸门（#[must_use] 连审）：重放不重复扣款
+    if !matches!(
+        spend_spark_tx(
+            &mut tx,
+            auth.id,
+            payoff,
+            "bank_loan_repay",
+            &idem,
+            "bank",
+            id,
+        )
+        .await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation(
+            "该笔还款已受理，请勿重复提交".into(),
+        ));
+    }
     // 销账校验影响行数（审计 P1）：与 worker bank_auto_deduct 并发时贷款可能已被结清。
-    // 首次扣款成功但销账 0 行 = 钱扣了贷款没销，必须退款并报错，不能静默返回成功。
+    // 单事务下销账 0 行 = 整体回滚（扣款一并撤销），不再需要退款补偿路径。
     let settled = sqlx::query(
         "UPDATE bank_loans SET remaining = 0, accrued_interest = 0, status = 'paid', \
          paid_at = now(), last_interest_date = CURRENT_DATE WHERE id = $1 AND status IN ('active', 'defaulted')",
     )
     .bind(id)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if settled == 0 {
-        let _ = crate::economy_http::earn_spark(
-            &state.repo.db,
-            auth.id,
-            payoff,
-            "bank_loan_repay_refund",
-            &format!("loan_repay_refund:{id}:{}", uuid::Uuid::new_v4().simple()),
-        )
-        .await;
         return Err(DomainError::Validation(
-            "贷款状态已变更（可能已被系统自动扣款结清），本次还款已退回".into(),
+            "贷款状态已变更（可能已被系统自动扣款结清），请刷新后重试".into(),
         ));
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "paid": payoff, "principal": remaining,
         "interest": accrued + today_interest,
@@ -1446,23 +1596,39 @@ async fn checkin(
     };
     let reward = checkin_reward(streak, total_days == 0);
 
-    let inserted = sqlx::query(
-        "INSERT INTO attendance (user_id, date, streak, reward) VALUES ($1, $2, $3, $4) \
-         ON CONFLICT (user_id, date) DO NOTHING",
-    )
-    .bind(auth.id)
-    .bind(today)
-    .bind(streak)
-    .bind(reward.total)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if inserted.rows_affected() == 0 {
-        return Err(DomainError::Validation("今天已经签到过啦".into()));
+    {
+        // 单事务（P1 撕裂窗口收口）：签到行与本日奖励同生共死——旧版 attendance 落库
+        // 成功后 earn 失败，当日奖励永久漏发（重试被「已签到」拦截，幂等键空有设计）。
+        let mut tx = state
+            .repo
+            .db
+            .begin()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let inserted = sqlx::query(
+            "INSERT INTO attendance (user_id, date, streak, reward) VALUES ($1, $2, $3, $4) \
+             ON CONFLICT (user_id, date) DO NOTHING",
+        )
+        .bind(auth.id)
+        .bind(today)
+        .bind(streak)
+        .bind(reward.total)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if inserted.rows_affected() == 0 {
+            return Err(DomainError::Validation("今天已经签到过啦".into()));
+        }
+        let idem = format!("attendance:{}:{}", auth.id, today.format("%Y%m%d"));
+        // 同事务内已由 ON CONFLICT DO NOTHING 保证首签唯一，此处必为 Spent；
+        // 显式丢弃以满足 must_use 契约
+        let earn_outcome =
+            earn_spark_tx(&mut tx, auth.id, reward.total, "attendance", &idem).await?;
+        let _ = earn_outcome;
+        tx.commit()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     }
-
-    let idem = format!("attendance:{}:{}", auth.id, today.format("%Y%m%d"));
-    earn_spark(&state.repo.db, auth.id, reward.total, "attendance", &idem).await?;
 
     Ok(ok(serde_json::json!({
         "streak": reward.streak, "reward": reward.total,
@@ -1576,16 +1742,25 @@ async fn pool_donate(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    spend_spark_tx(
-        &mut tx,
-        auth.id,
-        body.amount,
-        "pool_donate",
-        &idem,
-        "pool",
-        0,
-    )
-    .await?;
+    // 幂等重放必须终止（P0）：重放时 spend 不扣款，继续累加池账/荣誉榜 = 捐赠翻倍，
+    // 还可刷 donated_total 达标触发全站促销。对照 games scratch 的同款闸门。
+    if !matches!(
+        spend_spark_tx(
+            &mut tx,
+            auth.id,
+            body.amount,
+            "pool_donate",
+            &idem,
+            "pool",
+            0,
+        )
+        .await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation(
+            "该笔捐赠已受理，请勿重复提交".into(),
+        ));
+    }
     sqlx::query(
         "INSERT INTO magic_pool (month, donated_total) VALUES ($1, $2) \
          ON CONFLICT (month) DO UPDATE SET donated_total = magic_pool.donated_total + $2",
@@ -1658,15 +1833,17 @@ async fn dressup_wear(
     body: web::Json<WearReq>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let owned: Option<(Option<String>,)> = sqlx::query_as(
-        "SELECT si.config->>'slot' FROM user_dressups ud JOIN shop_items si ON si.id = ud.item_id          WHERE ud.user_id = $1 AND ud.item_id = $2",
+    // 槽位 + 装扮类型一起查：佩戴时按 kind 落到真实展示列（头像框→avatar_frame_id，
+    // 动态头像→avatar_url 覆盖），否则装扮只在 user_dressups 里改标记、页面看不到效果
+    let owned: Option<(Option<String>, String, Option<String>)> = sqlx::query_as(
+        "SELECT si.config->>'slot', si.kind, si.config->>'avatar_url' FROM user_dressups ud JOIN shop_items si ON si.id = ud.item_id          WHERE ud.user_id = $1 AND ud.item_id = $2",
     )
     .bind(auth.id)
     .bind(body.item_id)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((slot,)) = owned else {
+    let Some((slot, kind, effect_url)) = owned else {
         return Err(DomainError::Validation(
             "尚未拥有该装扮（先在商店购买）".into(),
         ));
@@ -1689,6 +1866,44 @@ async fn dressup_wear(
             .execute(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+        // 展示列落地（同槽位互斥）：avatar 槽二选一——
+        //  avatar_frame     → users.avatar_frame_id（四季框/光环同链路，/me 与各页现查现回）
+        //  animated_avatar  → users.avatar_url 覆盖为 config.avatar_url（gif 等动态图）
+        match (kind.as_str(), slot.as_deref()) {
+            ("avatar_frame", Some("avatar")) => {
+                // config.avatar_frame_id 缺省时回落用价格最贵的一帧（管理员发放道具时可不填）
+                let fid: Option<i32> = match effect_url.as_deref().and_then(|s| s.parse().ok()) {
+                    Some(x) => Some(x),
+                    None => sqlx::query_scalar(
+                        "SELECT id FROM avatar_frames ORDER BY price DESC, id DESC LIMIT 1",
+                    )
+                    .fetch_optional(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?
+                    .flatten(),
+                };
+                sqlx::query("UPDATE users SET avatar_frame_id = $2 WHERE id = $1")
+                    .bind(auth.id)
+                    .bind(fid)
+                    .execute(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
+            }
+            ("animated_avatar", Some("avatar")) => {
+                let Some(url) = effect_url.as_deref().filter(|s| !s.is_empty()) else {
+                    return Err(DomainError::Validation(
+                        "该动态头像未配置图片（config.avatar_url），请联系管理员".into(),
+                    ));
+                };
+                sqlx::query("UPDATE users SET avatar_url = $2 WHERE id = $1")
+                    .bind(auth.id)
+                    .bind(url)
+                    .execute(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
+            }
+            _ => {} // 用户名槽（rainbow_*）走样式列，暂无展示列需要落
+        }
     } else {
         sqlx::query("UPDATE user_dressups SET wearing = FALSE WHERE user_id = $1 AND item_id = $2")
             .bind(auth.id)
@@ -1696,6 +1911,20 @@ async fn dressup_wear(
             .execute(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+        // 摘下恢复：动态头像恢复空值（回退首字母/原头像由用户自查），头像框清佩戴
+        if kind == "animated_avatar" && slot.as_deref() == Some("avatar") {
+            sqlx::query("UPDATE users SET avatar_url = NULL WHERE id = $1")
+                .bind(auth.id)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        } else if kind == "avatar_frame" && slot.as_deref() == Some("avatar") {
+            sqlx::query("UPDATE users SET avatar_frame_id = NULL WHERE id = $1")
+                .bind(auth.id)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        }
     }
     state
         .repo
@@ -2039,10 +2268,14 @@ async fn funding_contribute(
     if status != 0 {
         return Err(DomainError::Validation("众筹已结束".into()));
     }
+    // 幂等键必须带 uid 前缀（P0）：裸客户端键会跨用户碰撞——A 占用键 X 后，B 用 X
+    // 参与会被判为重放而不扣款，contribs 照记、到期按全额退款 = 提现通道。
+    // 与 bank/donate/games 全部同口径。
     let idem = body
         .idempotency_key
         .clone()
-        .filter(|k| !k.is_empty())
+        .filter(|k| !k.trim().is_empty())
+        .map(|k| format!("funding:{}:{}", auth.id, k.trim()))
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
     // 税：基点可调（site_settings gift_tax_bp，缺省 500=5%）；0=免税
     let tax_bp: i32 =
@@ -2054,16 +2287,25 @@ async fn funding_contribute(
             .unwrap_or(500);
     let tax = economy::gift_tax(body.amount, tax_bp);
     let net = body.amount - tax;
-    crate::economy_http::spend_spark(
-        &state.repo.db,
-        auth.id,
-        body.amount,
-        "funding",
-        &idem,
-        "funding",
-        body.funding_id,
-    )
-    .await?;
+    // 幂等重放必须终止（P0）：重放时 spend 不扣款，若继续累加 raised/contribs =
+    // 众筹虚增达标白嫖免费促销，到期还能按 contribs 全额退款。
+    if !matches!(
+        crate::economy_http::spend_spark(
+            &state.repo.db,
+            auth.id,
+            body.amount,
+            "funding",
+            &idem,
+            "funding",
+            body.funding_id,
+        )
+        .await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation(
+            "该笔参与已受理，请勿重复提交".into(),
+        ));
+    }
     // 参与记录 + 进度推进（审计 P1-5：旧版三段独立语句，扣款成功但 contribs 落库
     // 失败时该笔不在退款集合——worker 按 funding_contribs 逐行退，钱有去无回。
     // 现在两段进同一事务，任一失败整体回滚并冲销扣款。）

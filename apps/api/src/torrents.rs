@@ -1067,10 +1067,10 @@ pub async fn request_reseed(
     Ok(receivers.len())
 }
 
-/// 种子标签（T-04）：列出字典 + 该种子已打的标签
+/// 种子标签（T-04）：列出字典 + 该种子已打的标签（0138：字典只出种子域 scope=torrent）
 pub async fn list_tags(db: &PgPool, torrent_id: i64) -> DomainResult<serde_json::Value> {
     let dict: Vec<(i32, String, String)> =
-        sqlx::query_as("SELECT id, name, kind FROM tag_dict ORDER BY id")
+        sqlx::query_as("SELECT id, name, kind FROM tag_dict WHERE scope = 'torrent' ORDER BY id")
             .fetch_all(db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1092,7 +1092,8 @@ pub async fn tag_torrent(
     on: bool,
 ) -> DomainResult<()> {
     let row: Option<(Option<i64>, String)> = sqlx::query_as(
-        "SELECT owner_id, kind FROM torrents t JOIN tag_dict d ON d.id = $2 WHERE t.id = $1",
+        "SELECT owner_id, kind FROM torrents t JOIN tag_dict d ON d.id = $2 \
+         WHERE t.id = $1 AND d.scope = 'torrent'",
     )
     .bind(torrent_id)
     .bind(tag_id)
@@ -1197,6 +1198,14 @@ pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> 
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 余额快照同事务扣减（P1）：只写流水不扣快照，余额校验读到的一直是旧值，
+    // 用户可在小时级重算前的窗口内连续超花，重算后快照变负。
+    sqlx::query("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1")
+        .bind(user_id)
+        .bind(price)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 发布者入账流水（owner_id 经 torrents FK 保证非空语义；净得 = 价 - 税）
     if let Some(owner) = owner_id {
         let obal: i64 =
@@ -1218,7 +1227,12 @@ pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> 
         .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        let _ = obal; // 余额快照由下方 UPDATE / 小时级重算收敛
+        sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
+            .bind(owner)
+            .bind(net)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     }
     if tax_amount > 0 {
         sqlx::query(
