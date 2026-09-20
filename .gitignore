@@ -32,3 +32,31 @@ _panda_cookie.txt
 _ck_copy.db
 _ck_result.txt
 _ck_probe.py
+
+# 调试/验证临时产物（跑完即弃；结论沉淀 _doc/，勿入库。仅根目录，不影响 apps/web/_inner.tsx）
+/_*.txt
+/_*.json
+/_*.png
+/_*.py
+/_*.js
+/_*.log
+/_*.html
+/_*.sql
+/_shots/
+__pycache__/
+
+# 设计参考与竞品素材（第三方版权风险，不入库；借鉴结论沉淀 _doc/）
+UI参考/
+hxpt-admin-design/
+design-system/
+
+# 开发代理工作区（会话记忆/调研笔记，个人工作产物不入库）
+.workbuddy/
+.research/
+
+# 审查/调研临时目录（跑完即弃，结论沉淀 _doc/）
+/_audit/
+/_i18n_chk/
+/_ref/
+/_upgrade_test/
+.zcode/plans/

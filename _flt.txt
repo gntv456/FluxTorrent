@@ -1,2 +1,0 @@
-unfiltered: total=0 rows=0
-sec_media=60(PC): total=0 rows=0 names=

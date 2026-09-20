@@ -1,2 +1,0 @@
-﻿0090_site_desc.sql
-0091_auto_promo.sql

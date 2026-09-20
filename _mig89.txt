@@ -1,7 +1,0 @@
-﻿ version | description 
----------+-------------
-      89 | home layout
-      90 | site desc
-      91 | auto promo
-(3 rows)
-

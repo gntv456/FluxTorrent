@@ -1,1 +1,0 @@
-﻿brand,categories,currency_name,founded,metadata_sources,modules,pack_name,site_desc,site_type

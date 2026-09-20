@@ -1,5 +1,0 @@
-﻿css_asset=/_next/static/css/06238856843cc9c2.css
-no_flash_script=True
-new_palette_in_css=True
-night_in_css=True
-old_cream_in_css=False

@@ -1,8 +1,0 @@
-len: 97575
-PC_game: True
-xueqian: True
-sec_media: True
-sec_grades: True
-sec_editions: True
-name_sort: True
-name_tag_id: True

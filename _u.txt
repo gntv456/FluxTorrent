@@ -1,9 +1,0 @@
-﻿ id |  username   | class_id | status 
-----+-------------+----------+--------
-  1 | root        |       99 |      0
-  2 | e2e鏀瑰悕娴嬭瘯 |        1 |      0
-  3 | xuehai      |        3 |      0
-  4 | gaozhong    |        1 |      0
-  5 | chuzhong    |        1 |      0
-(5 rows)
-
