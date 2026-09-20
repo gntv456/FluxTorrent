@@ -15,7 +15,7 @@ import {
   HOME_SECTION_KEYS,
   effectiveSpan,
   type HomeLayoutItem,
-} from "@/components/home-sections";
+} from "@/components/home-layout";
 
 const SPAN_OPTIONS: [number, string][] = [
   [0, "auto"],

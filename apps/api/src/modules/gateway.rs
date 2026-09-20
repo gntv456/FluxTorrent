@@ -1,0 +1,137 @@
+//! API 模块网关（§5.2 的收敛实现：路径前缀 → 模块映射）。
+//! 从 modules.rs 机械外移。
+
+use std::sync::Arc;
+
+use actix_web::web;
+
+use super::key;
+use crate::state::AppState;
+
+/// 路径前缀 → 模块键。命中即按该模块开关拦截。
+/// 维护纪律 D2：新模块端点必须登记在此（契约测试无法枚举路由，靠评审清单把关）。
+fn route_module(path: &str) -> Option<&'static str> {
+    // 较长前缀先匹配（/bank/demand 也归 bank）
+    const TABLE: &[(&str, &str)] = &[
+        // 娱乐
+        ("/api/v1/games", key::GAMES),
+        ("/api/v1/farm", key::FARM),
+        ("/api/v1/gomoku", key::GOMOKU),
+        ("/api/v1/contests", key::CONTESTS),
+        ("/api/v1/fun", key::GAMES), // 趣味投票/娱乐屋条目归 games 口径
+        // 经济
+        ("/api/v1/bank", key::BANK),
+        ("/api/v1/shop", key::SHOP),
+        ("/api/v1/magic-pool", key::MAGIC_POOL),
+        ("/api/v1/pool", key::MAGIC_POOL),
+        ("/api/v1/promo", key::PROMO_BUY),
+        ("/api/v1/donate", key::MAGIC_POOL),
+        ("/api/v1/fundings", key::MAGIC_POOL),
+        ("/api/v1/resurrections", key::RESURRECTIONS),
+        // 社区
+        ("/api/v1/forums", key::FORUMS),
+        ("/api/v1/messages", key::MESSAGES),
+        ("/api/v1/staffmessages", key::MESSAGES),
+        ("/api/v1/friends", key::FRIENDS),
+        ("/api/v1/offers", key::OFFERS),
+        ("/api/v1/requests", key::REQUESTS),
+        ("/api/v1/subtitles", key::SUBTITLES),
+        ("/api/v1/preserve", key::PRESERVE),
+        ("/api/v1/social", key::SOCIAL), // 濒危/组队/赛季（默认关，走 social 键）
+        ("/api/v1/textbooks", key::TEXTBOOKS),
+        ("/api/v1/shoutbox", key::SHOUTBOX),
+        // 运营
+        ("/api/v1/attendance", key::ATTENDANCE),
+        ("/api/v1/medals", key::MEDALS),
+        ("/api/v1/dressup", key::DRESSUP),
+        ("/api/v1/avatar-frames", key::DRESSUP),
+        ("/api/v1/jixiao", key::JIXIAO),
+        ("/api/v1/tasks", key::TASKS),
+        ("/api/v1/push", key::PUSH),
+    ];
+    TABLE
+        .iter()
+        .find(|(p, _)| path == *p || path.starts_with(&format!("{}/", p)))
+        .map(|(_, k)| *k)
+}
+
+/// 精确路径 → 模块键（不适合前缀表达的单点端点）。
+fn exact_route_module(path: &str) -> Option<&'static str> {
+    const TABLE: &[(&str, &str)] = &[
+        ("/api/v1/me/vouchers", key::VOUCHERS),
+        ("/api/v1/me/vouchers/use", key::VOUCHERS),
+        ("/api/v1/wishlist", key::WISHLIST),
+        ("/api/v1/wishlist/remove", key::WISHLIST),
+        ("/api/v1/me/exams", key::EXAMS),
+        ("/api/v1/me/hr", key::EXAMS), // 新人考核(HR)与 exams 同域口径
+        ("/api/v1/me/hr/pardon", key::EXAMS),
+    ];
+    TABLE.iter().find(|(p, _)| path == *p).map(|(_, k)| *k)
+}
+
+/// 模块网关中间件：非 /api/v1 与管理端点直通；业务端点按映射表拦截（fail-close）。
+/// 守卫失败直接以 DomainError 信封短路（4101 三语文案，task-local 由外层 locale_mw 注入）。
+pub async fn module_gate_mw(
+    req: actix_web::dev::ServiceRequest,
+    next: actix_web::middleware::Next<impl actix_web::body::MessageBody>,
+) -> actix_web::Result<
+    actix_web::dev::ServiceResponse<impl actix_web::body::MessageBody>,
+> {
+    let path = req.path();
+    let module_key = if let Some(m) = exact_route_module(path) {
+        Some(m)
+    } else {
+        // 管理端点免检：站长必须始终能进设置中心去「打开」模块（§5.5）
+        if path.starts_with("/api/v1/admin") || !path.starts_with("/api/v1") {
+            None
+        } else {
+            route_module(path)
+        }
+    };
+    if let Some(k) = module_key {
+        let state = req
+            .app_data::<web::Data<Arc<AppState>>>()
+            .cloned()
+            .expect("AppState registered");
+        // 守卫失败 → 提前短路，不进业务 handler
+        if let Err(e) = state.require_module(k).await {
+            return Err(actix_web::Error::from(e));
+        }
+    }
+    next.call(req).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 网关映射表抽验：关键前缀命中、核心/管理端点不受影响
+    #[test]
+    fn gateway_table_keys_valid() {
+        for p in [
+            "/api/v1/games",
+            "/api/v1/farm",
+            "/api/v1/gomoku",
+            "/api/v1/contests",
+            "/api/v1/bank",
+            "/api/v1/shop",
+            "/api/v1/magic-pool",
+            "/api/v1/forums",
+            "/api/v1/textbooks",
+            "/api/v1/jixiao",
+            "/api/v1/shoutbox",
+        ] {
+            assert!(route_module(p).is_some(), "gateway missing {p}");
+        }
+        // 核心层端点不映射任何模块
+        assert!(route_module("/api/v1/torrents").is_none());
+        assert!(route_module("/api/v1/me").is_none());
+        assert!(exact_route_module("/api/v1/me/vouchers").is_some());
+        assert!(exact_route_module("/api/v1/me/spark").is_none());
+        // /bank/demand/deposit 这类更深路径也归 bank
+        assert_eq!(
+            route_module("/api/v1/bank/demand/deposit"),
+            Some(key::BANK)
+        );
+    }
+}
