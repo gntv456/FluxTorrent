@@ -45,6 +45,14 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install
         run: pnpm install --frozen-lockfile
+      # lint 门禁：ESLint 9 扁平配置（next lint 已废弃）；error 阻断、warning 照报
+      # （存量 warning 7 处，与 clippy 同策略：先可视化，逐步收紧为 -W error）
+      - name: Lint
+        run: pnpm lint
+      # 行数门禁：新文件超限挂；存量超限文件只许瘦不许胖（baseline 见
+      # scripts/line_limit_baseline.json；拆分后跑 --update 收缩基线）
+      - name: Line limit guard
+        run: node ../../scripts/line_limit_guard.mjs
       - name: tsc 类型检查（0 错误基线）
         run: pnpm exec tsc --noEmit
       # 构建门禁（P1）：rewrites/standalone 输出/页面构建错误此前推迟到 publish-images

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getDict } from "@/i18n/server";
 
 /** 离线回退页（M26：SW 导航失败时的兜底） */
@@ -10,12 +11,12 @@ export default async function OfflinePage() {
       </span>
       <h1 className="font-display text-2xl">{dict.offline.title}</h1>
       <p className="text-sm text-sub">{dict.offline.subtitle}</p>
-      <a
+      <Link
         href="/"
         className="min-h-[44px] inline-flex items-center rounded-full bg-sky px-6 font-bold text-white"
       >
         {dict.offline.home}
-      </a>
+      </Link>
     </div>
   );
 }

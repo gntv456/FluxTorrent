@@ -319,6 +319,18 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
 function OverviewTab({ ov, loading }: { ov: Overview | null; loading: boolean }) {
   const { dict, currency } = useI18n();
   const t = dict.usercp.overview;
+  // Hooks 必须先于早退（rules-of-hooks）：loading/空态判断移到 hook 之后
+  // 补齐 30 天序列
+  const days = useMemo(() => {
+    const arr: { date: string; count: number }[] = [];
+    const byDate = new Map((ov?.login_trend_30d ?? []).map((d) => [d.date, d.count]));
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      arr.push({ date: d, count: byDate.get(d) ?? 0 });
+    }
+    return arr;
+  }, [ov?.login_trend_30d]);
+
   if (loading) return <p className="usercp-loading">{dict.my.loading}</p>;
   if (!ov) return null;
 
@@ -332,16 +344,6 @@ function OverviewTab({ ov, loading }: { ov: Overview | null; loading: boolean })
         };
 
   const trendMax = Math.max(1, ...ov.login_trend_30d.map((d) => d.count));
-  // 补齐 30 天序列
-  const days = useMemo(() => {
-    const arr: { date: string; count: number }[] = [];
-    const byDate = new Map(ov.login_trend_30d.map((d) => [d.date, d.count]));
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      arr.push({ date: d, count: byDate.get(d) ?? 0 });
-    }
-    return arr;
-  }, [ov.login_trend_30d]);
 
   const seedPct = Math.min(
     100,
