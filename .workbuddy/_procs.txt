@@ -1,6 +1,0 @@
-﻿pid=1572 cpu=1s mem=0MB start=12:37:23
-pid=13620 cpu=1s mem=16MB start=20:34:11
-pid=20268 cpu=212s mem=140MB start=21:50:29
-pid=27904 cpu=1s mem=0MB start=16:12:50
-pid=43284 cpu=4s mem=11MB start=16:12:50
-pid=69256 cpu=5s mem=43MB start=20:34:12
