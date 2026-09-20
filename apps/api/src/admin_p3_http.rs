@@ -1165,7 +1165,9 @@ async fn admin_medal_rarity_add(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE).await?;
     let value = clean_rarity_value(body.value.as_deref().unwrap_or(""));
     if value.is_empty() {
-        return Err(DomainError::Validation("稀有度键不能为空（仅字母/数字/下划线/短横线）".into()));
+        return Err(DomainError::Validation(
+            "稀有度键不能为空（仅字母/数字/下划线/短横线）".into(),
+        ));
     }
     let label = body.label.trim();
     if label.is_empty() {
@@ -1221,7 +1223,11 @@ async fn admin_medal_rarity_update(
         return Err(DomainError::NotFound(0));
     }
     // 改键：把用它的勋章一并迁过去（否则那些勋章会掉到"未收录"外观）
-    let new_value = body.value.as_deref().map(clean_rarity_value).filter(|v| !v.is_empty());
+    let new_value = body
+        .value
+        .as_deref()
+        .map(clean_rarity_value)
+        .filter(|v| !v.is_empty());
     if let Some(ref nv) = new_value {
         if nv != &old {
             let taken: bool =
@@ -1251,7 +1257,9 @@ async fn admin_medal_rarity_update(
                 .execute(&mut *tx)
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
-            tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+            tx.commit()
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
     let key = new_value.unwrap_or(old);

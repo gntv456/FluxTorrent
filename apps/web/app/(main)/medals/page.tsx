@@ -1,7 +1,7 @@
 import { getMedals, getMedalRarities } from "@/lib/data";
 import { MedalActions } from "@/components/medal-actions";
 import { MedalIcon } from "@/components/medal-icon";
-import { medalRarityLabel, medalRarityStyle } from "@/lib/medal-rarity";
+import { MedalRarityChip } from "@/components/medal-rarity-chip";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
@@ -57,11 +57,7 @@ export default async function MedalsPage() {
               >
                 <div className="flex items-center justify-between">
                   <MedalIcon src={m.asset_ref} size={40} title={m.name} />
-                  {m.rarity && (
-                    <span className={`sticker ${medalRarityStyle(rarities, m.rarity)}`}>
-                      {medalRarityLabel(rarities, m.rarity)}
-                    </span>
-                  )}
+                  {m.rarity && <MedalRarityChip list={rarities} value={m.rarity} />}
                 </div>
                 <h3 className="font-display text-lg">{m.name}</h3>
                 {m.description && <p className="text-xs leading-relaxed text-sub">{m.description}</p>}
