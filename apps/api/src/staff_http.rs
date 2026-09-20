@@ -1851,7 +1851,9 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
         .filter(|s| !s.is_empty())
         .map(str::to_lowercase)
         .collect();
-    // 登录页品牌区（0143）：标语 = 站型包默认 → site_settings 覆盖；logo = 站长可配 URL
+    // 登录页品牌区（0143/0145）：site_tagline = 站长覆盖值，空 = 动态跟随当前
+    // 站型包默认（读 site_type JOIN packs.tagline）——设置卡直切站型即刻生效，
+    // 不依赖 apply 向导物化；logo = 站长可配 URL
     let tagline: String = sqlx::query_scalar::<_, String>(
         "SELECT value FROM site_settings WHERE name = 'site_tagline'",
     )
@@ -1863,7 +1865,7 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
     .filter(|v| !v.is_empty())
     .or_else(|| {
         pack.as_ref()
-            .map(|p| p.tagline.clone())
+            .map(|p| p.tagline.trim().to_string())
             .filter(|t| !t.is_empty())
     })
     .unwrap_or_default();
@@ -2002,10 +2004,11 @@ async fn site_type_pack_apply(
     sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_name', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
         .bind(&pack.brand).execute(&mut *tx).await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    // 登录页标语随包切换（0143）：站长后台改过的自定义值会被新包默认覆盖——
-    // 切站型本就是品牌级重置，语义如此；空 tagline 的包清空键回落前端字典
-    sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_tagline', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
-        .bind(&pack.tagline).execute(&mut *tx).await
+    // 登录页标语（0145）：不再物化包默认值——切站型后 site_tagline 保持空（覆盖
+    // 语义），site-profile 动态 JOIN 新站型包默认即刻生效；站长自定义值也被保留，
+    // 不会被下一次 apply 无声重置
+    sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_tagline', '') ON CONFLICT (name) DO UPDATE SET value = '', updated_at = now()")
+        .execute(&mut *tx).await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 模块开关 → 站点设定键（textbooks 等）
     if let Some(mods) = pack.modules.as_object() {
@@ -2275,15 +2278,37 @@ async fn site_type_pack_save(
             .ok()
             .flatten()
             .unwrap_or_default();
+    // 自定义包的默认标语 = 快照时刻的登录页标语（覆盖值优先，空回落当前站型包默认）
+    let pack_default_tagline: Option<String> = sqlx::query_scalar::<_, String>(
+        "SELECT p.tagline FROM site_type_packs p \
+         JOIN site_settings s ON s.name = 'site_type' AND s.value = p.code",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .filter(|t| !t.trim().is_empty());
+    let override_tagline: Option<String> = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'site_tagline'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v.trim().to_string())
+    .filter(|v| !v.is_empty());
+    let tagline = override_tagline
+        .or(pack_default_tagline)
+        .unwrap_or_default();
     let sort: i32 = sqlx::query_scalar("SELECT COALESCE(max(sort), 100) + 1 FROM site_type_packs")
         .fetch_one(&state.repo.db)
         .await
         .unwrap_or(101);
     sqlx::query(
-        "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort) \
-         VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6) \
+        "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort, tagline) \
+         VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6, $7) \
          ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, brand = EXCLUDED.brand, \
-           categories = EXCLUDED.categories, modules = EXCLUDED.modules",
+           categories = EXCLUDED.categories, modules = EXCLUDED.modules, tagline = EXCLUDED.tagline",
     )
     .bind(&code)
     .bind(body.name.trim())
@@ -2291,6 +2316,7 @@ async fn site_type_pack_save(
     .bind(serde_json::Value::Array(cats).to_string())
     .bind(serde_json::Value::Object(modules).to_string())
     .bind(sort)
+    .bind(&tagline)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
