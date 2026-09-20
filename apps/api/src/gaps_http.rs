@@ -441,10 +441,7 @@ async fn captcha_issue(
     _q: web::Query<CaptchaVerify>,
 ) -> DomainResult<impl Responder> {
     // 防刷限流（审计 P2）：20+20 算术题可脚本化批量取题，30 次/分钟/ISP 按来源 IP
-    let ip = req
-        .peer_addr()
-        .map(|a| a.ip().to_string())
-        .unwrap_or_else(|| "unknown".into());
+    let ip = crate::http::client_ip(&req);
     {
         let mut c = state.redis.clone();
         let key = format!("rl:captcha:{ip}");

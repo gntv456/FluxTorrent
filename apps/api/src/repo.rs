@@ -63,7 +63,10 @@ impl Repo {
         Ok(row.map(Into::into))
     }
 
-    /// 邀请码消费：原子 UPDATE 保证一码一用（M01 关键规则）
+    /// 邀请码消费：原子 UPDATE 保证一码一用（M01 关键规则）。
+    /// 尚无代码生效点：注册流程目前内联同语义 SQL（handler 事务内组合其他校验），
+    /// 后续如把注册迁入 repo 层则接线本方法，到时删除本 allow
+    #[allow(dead_code)]
     pub async fn consume_invite(&self, code: &str, new_user_id: i64) -> DomainResult<Option<i64>> {
         let row = sqlx::query_scalar::<_, Option<i64>>(
             "UPDATE invites SET status = 1, used_by = $1 \

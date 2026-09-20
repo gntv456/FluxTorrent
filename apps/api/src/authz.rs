@@ -20,6 +20,8 @@ pub mod perm {
     // 发布
     pub const TORRENT_UPLOAD: &str = "torrent.upload";
     pub const TORRENT_APPROVAL_AUTO: &str = "torrent.approval.auto";
+    /// 尚无代码生效点：付费种子改价端点未实装（价格仅发布时设置），接线时删除本 allow
+    #[allow(dead_code)]
     pub const TORRENT_SET_PRICE: &str = "torrent.set_price";
     pub const TORRENT_VIEW_ANONYMOUS: &str = "torrent.view_anonymous";
     /// 尚无代码生效点（0062 迁移已标 implemented=false）：

@@ -57,9 +57,35 @@ pub mod key {
     /// 全部合法键（契约测试用：与迁移/modules 表、TS ModuleKey 三方一致）
     #[cfg_attr(not(test), allow(dead_code))]
     pub const ALL: &[&str] = &[
-        TEXTBOOKS, SHOWCASE, SOCIAL, FORUMS, MESSAGES, FRIENDS, OFFERS, REQUESTS, SUBTITLES,
-        PRESERVE, SHOUTBOX, PROMO_BUY, BANK, SHOP, MAGIC_POOL, VOUCHERS, RESURRECTIONS, WISHLIST,
-        GAMES, FARM, GOMOKU, CONTESTS, ATTENDANCE, MEDALS, DRESSUP, JIXIAO, TASKS, EXAMS, PUSH,
+        TEXTBOOKS,
+        SHOWCASE,
+        SOCIAL,
+        FORUMS,
+        MESSAGES,
+        FRIENDS,
+        OFFERS,
+        REQUESTS,
+        SUBTITLES,
+        PRESERVE,
+        SHOUTBOX,
+        PROMO_BUY,
+        BANK,
+        SHOP,
+        MAGIC_POOL,
+        VOUCHERS,
+        RESURRECTIONS,
+        WISHLIST,
+        GAMES,
+        FARM,
+        GOMOKU,
+        CONTESTS,
+        ATTENDANCE,
+        MEDALS,
+        DRESSUP,
+        JIXIAO,
+        TASKS,
+        EXAMS,
+        PUSH,
     ];
 }
 
@@ -146,7 +172,7 @@ impl AppState {
 }
 
 /// 便捷守卫函数（handler 内一行调用；当前端点走网关中间件，保留给域内细粒度场景与测试）
-#[cfg_attr(not(test), allow(dead_code))]
+#[allow(dead_code)]
 pub async fn require_module(state: &web::Data<Arc<AppState>>, k: &str) -> DomainResult<()> {
     state.require_module(k).await
 }
@@ -276,7 +302,11 @@ mod tests {
     /// 契约：键数量与 TS ModuleKey 一致（29 键——4 历史 + 25 新增口径，见 0107 注释）
     #[test]
     fn key_count() {
-        assert_eq!(key::ALL.len(), 29, "module key set drifted from migration 0107");
+        assert_eq!(
+            key::ALL.len(),
+            29,
+            "module key set drifted from migration 0107"
+        );
     }
 
     /// 网关映射表抽验：关键前缀命中、核心/管理端点不受影响
@@ -306,5 +336,3 @@ mod tests {
         assert_eq!(route_module("/api/v1/bank/demand/deposit"), Some(key::BANK));
     }
 }
-
-

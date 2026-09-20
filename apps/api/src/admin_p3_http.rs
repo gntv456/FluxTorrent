@@ -4,6 +4,7 @@
 
 use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
+use std::sync::Arc;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -272,6 +273,9 @@ struct TagDictRow {
     id: i32,
     name: String,
     kind: String,
+    /// 作用域（0138）：torrent=种子域 / forum=论坛域
+    #[sqlx(default)]
+    scope: String,
     bg_color: String,
     color: String,
     font_size: String,
@@ -288,6 +292,9 @@ struct TagDictReq {
     name: String,
     #[serde(default)]
     kind: Option<String>,
+    /// 作用域（0138）：缺省 torrent（存量口径），论坛标签选 forum
+    #[serde(default)]
+    scope: Option<String>,
     #[serde(default)]
     bg_color: Option<String>,
     #[serde(default)]
@@ -316,8 +323,8 @@ async fn tags_dict_list(
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
     let rows: Vec<TagDictRow> = sqlx::query_as(
-        "SELECT id, name, kind, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id \
-         FROM tag_dict ORDER BY sort, id",
+        "SELECT id, name, kind, scope, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id \
+         FROM tag_dict ORDER BY scope, sort, id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -350,15 +357,20 @@ async fn tags_dict_add(
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    let scope = match body.scope.as_deref() {
+        Some("forum") => "forum",
+        _ => "torrent",
+    };
     sqlx::query(
-        "INSERT INTO tag_dict (id, name, kind, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id) \
-         VALUES ($1, $2, COALESCE($3, 'plain'), COALESCE($4, ''), COALESCE($5, '#ffffff'), \
-                 COALESCE($6, '12px'), COALESCE($7, '0 4px 0 0'), COALESCE($8, '1px 4px'), \
-                 COALESCE($9, '2px'), COALESCE($10, 0), COALESCE($11, TRUE), $12)",
+        "INSERT INTO tag_dict (id, name, kind, scope, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id) \
+         VALUES ($1, $2, COALESCE($3, 'plain'), $4, COALESCE($5, ''), COALESCE($6, '#ffffff'), \
+                 COALESCE($7, '12px'), COALESCE($8, '0 4px 0 0'), COALESCE($9, '1px 4px'), \
+                 COALESCE($10, '2px'), COALESCE($11, 0), COALESCE($12, TRUE), $13)",
     )
     .bind(next)
     .bind(name)
     .bind(body.kind.clone())
+    .bind(scope)
     .bind(body.bg_color.clone())
     .bind(body.color.clone())
     .bind(body.font_size.clone())
@@ -388,16 +400,21 @@ async fn tags_dict_update(
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
     let id = path.into_inner();
+    let scope = match body.scope.as_deref() {
+        Some("forum") => "forum",
+        _ => "torrent",
+    };
     let n = sqlx::query(
-        "UPDATE tag_dict SET name = $2, kind = COALESCE($3, kind), bg_color = COALESCE($4, bg_color), \
-           color = COALESCE($5, color), font_size = COALESCE($6, font_size), margin = COALESCE($7, margin), \
-           padding = COALESCE($8, padding), border_radius = COALESCE($9, border_radius), \
-           sort = COALESCE($10, sort), enabled = COALESCE($11, enabled), mode_id = $12 \
+        "UPDATE tag_dict SET name = $2, kind = COALESCE($3, kind), scope = $4, \
+           bg_color = COALESCE($5, bg_color), color = COALESCE($6, color), font_size = COALESCE($7, font_size), \
+           margin = COALESCE($8, margin), padding = COALESCE($9, padding), border_radius = COALESCE($10, border_radius), \
+           sort = COALESCE($11, sort), enabled = COALESCE($12, enabled), mode_id = $13 \
          WHERE id = $1",
     )
     .bind(id)
     .bind(body.name.trim())
     .bind(body.kind.clone())
+    .bind(scope)
     .bind(body.bg_color.clone())
     .bind(body.color.clone())
     .bind(body.font_size.clone())
@@ -507,8 +524,8 @@ async fn hr_records(
     )
     .bind(q.uid)
     .bind(q.status.as_deref().filter(|s| !s.is_empty()))
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -651,8 +668,8 @@ async fn admin_invites(
     )
     .bind(q.uid)
     .bind(q.valid)
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -714,8 +731,8 @@ async fn admin_attendance(
     )
     .bind(q.uid)
     .bind(q.makeup)
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -854,8 +871,8 @@ async fn admin_rename_logs(
            ORDER BY l.id DESC LIMIT $2 OFFSET $3"#,
     )
     .bind(q.uid)
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -902,8 +919,8 @@ async fn admin_modify_logs(
            ORDER BY l.id DESC LIMIT $2 OFFSET $3"#,
     )
     .bind(q.uid)
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1129,8 +1146,8 @@ async fn admin_user_medals(
            ORDER BY um.medal_id, um.user_id LIMIT $2 OFFSET $3"#,
     )
     .bind(q.uid)
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1186,6 +1203,181 @@ async fn admin_user_medal_revoke(
 }
 
 // ============ P2-8 道具 CRUD 与用户背包 ============
+
+// ---- 头像框库 CRUD（avatar_frames：佩戴展示的框样式，四季系列同表）----
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct AvatarFrameRow {
+    id: i32,
+    name: String,
+    css: String,
+    #[sqlx(default)]
+    image_url: Option<String>,
+    price: i32,
+    sort: i32,
+    /// 佩戴人数（商店页排序参考；不能物理删佩戴中的框）
+    worn_count: i64,
+}
+
+/// css 净化：只放行 border-color / box-shadow 声明（与前端 avatarFrameStyle 白名单一致，
+/// 防后台误编辑注入无关样式）；全被滤掉时回退默认灰描边，保证框永远可见
+fn sanitize_frame_css(css: &str) -> String {
+    let kept: Vec<String> = css
+        .split(';')
+        .filter_map(|decl| {
+            let (k, v) = decl.split_once(':')?;
+            let (k, v) = (k.trim(), v.trim());
+            (matches!(k, "border-color" | "box-shadow") && !v.is_empty())
+                .then(|| format!("{k}: {v}"))
+        })
+        .collect();
+    if kept.is_empty() {
+        "border-color: #d7dee8; box-shadow: 0 0 0 3px #d7dee8".into()
+    } else {
+        format!("{};", kept.join("; "))
+    }
+}
+
+#[get("/admin/avatar-frames")]
+async fn admin_avatar_frames(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let _auth = staff(&req, &state).await?;
+    let rows: Vec<AvatarFrameRow> = sqlx::query_as(
+        "SELECT f.id, f.name, f.css, f.image_url, f.price, f.sort, \
+                (SELECT count(*) FROM users u WHERE u.avatar_frame_id = f.id)::bigint AS worn_count \
+         FROM avatar_frames f ORDER BY f.sort, f.id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
+}
+
+#[derive(Deserialize)]
+struct AvatarFrameReq {
+    name: String,
+    #[serde(default)]
+    css: Option<String>,
+    /// 框图链接（PNG/GIF 立绘框）；与 css 可共存，同时配置时前端图优先
+    #[serde(default)]
+    image_url: Option<String>,
+    #[serde(default)]
+    price: Option<i32>,
+    #[serde(default)]
+    sort: Option<i32>,
+}
+
+/// 图片链接净化：只收 http(s)/协议相对的 URL，去首尾空白；空串归一为 NULL（清图）
+fn normalize_frame_image(url: Option<&str>) -> Option<String> {
+    let u = url?.trim();
+    if u.is_empty() {
+        return None;
+    }
+    let ok = u.starts_with("https://") || u.starts_with("http://") || u.starts_with("//");
+    ok.then(|| u.to_string())
+}
+
+#[post("/admin/avatar-frames")]
+async fn admin_avatar_frame_add(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<AvatarFrameReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    if body.name.trim().is_empty() {
+        return Err(DomainError::Validation("名称必填".into()));
+    }
+    let css = sanitize_frame_css(body.css.as_deref().unwrap_or(""));
+    let image = normalize_frame_image(body.image_url.as_deref());
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO avatar_frames (name, css, image_url, price, sort) VALUES ($1, $2, $3, COALESCE($4, 0), COALESCE($5, 0)) RETURNING id",
+    )
+    .bind(body.name.trim())
+    .bind(&css)
+    .bind(&image)
+    .bind(body.price)
+    .bind(body.sort.unwrap_or(0))
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "frame.add", Some(id as i64))
+        .await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/avatar-frames/{id}")]
+async fn admin_avatar_frame_update(
+    req: HttpRequest,
+    state: web::Data<Arc<AppState>>,
+    path: web::Path<i32>,
+    body: web::Json<AvatarFrameReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    let id = path.into_inner();
+    if body.name.trim().is_empty() {
+        return Err(DomainError::Validation("名称必填".into()));
+    }
+    let css = sanitize_frame_css(body.css.as_deref().unwrap_or(""));
+    let image = normalize_frame_image(body.image_url.as_deref());
+    let n = sqlx::query(
+        "UPDATE avatar_frames SET name = $2, css = $3, image_url = $4, price = COALESCE($5, price), sort = COALESCE($6, sort) WHERE id = $1",
+    )
+    .bind(id)
+    .bind(body.name.trim())
+    .bind(&css)
+    .bind(&image)
+    .bind(body.price)
+    .bind(body.sort)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(id as i64));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "frame.update", Some(id as i64))
+        .await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/avatar-frames/{id}")]
+async fn admin_avatar_frame_delete(
+    req: HttpRequest,
+    state: web::Data<Arc<AppState>>,
+    path: web::Path<i32>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    let id = path.into_inner();
+    // 佩戴中不允许物理删（users.avatar_frame_id 外键）：先摘下所有佩戴者再删
+    sqlx::query("UPDATE users SET avatar_frame_id = NULL WHERE avatar_frame_id = $1")
+        .bind(id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let n = sqlx::query("DELETE FROM avatar_frames WHERE id = $1")
+        .bind(id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(id as i64));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "frame.del", Some(id as i64))
+        .await;
+    Ok(ok(serde_json::json!({ "deleted": id })))
+}
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct ShopItemRow {
@@ -1369,8 +1561,8 @@ async fn admin_user_props(
            ORDER BY o.id DESC LIMIT $2 OFFSET $3"#,
     )
     .bind(q.uid)
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1515,6 +1707,8 @@ async fn admin_users_batch(
             if body.action == "status" && body.value >= 1 {
                 crate::http::bump_guard_ver(&state).await;
             }
+            // api 侧用户状态短缓存（5s TTL）同步失效
+            state.user_status_cache.invalidate(*uid);
             let content = match body.action.as_str() {
                 "status" => format!(
                     "批量状态 → {}{}",
@@ -2190,14 +2384,15 @@ async fn section_dict_public(
     Ok(ok(serde_json::Value::Object(out)))
 }
 
-/// 发布表单标签公开读（匿名可读：启用中的标签，与 section-dict 同级）
+/// 发布表单标签公开读（匿名可读：启用中的种子域标签，0138 scope=torrent；论坛域走 /forums/tags）
 #[get("/tags-dict")]
 async fn tags_dict_public(
     _req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let rows: Vec<(i32, String, String)> = sqlx::query_as(
-        "SELECT id, name, kind FROM tag_dict WHERE COALESCE(enabled, TRUE) ORDER BY sort, id",
+        "SELECT id, name, kind FROM tag_dict \
+         WHERE COALESCE(enabled, TRUE) AND scope = 'torrent' ORDER BY sort, id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -2538,10 +2733,11 @@ async fn jixiao_overview(
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let period = q
-        .get("period")
-        .cloned()
-        .unwrap_or_else(|| (chrono::Utc::now() + chrono::Duration::hours(8)).format("%Y-%m").to_string());
+    let period = q.get("period").cloned().unwrap_or_else(|| {
+        (chrono::Utc::now() + chrono::Duration::hours(8))
+            .format("%Y-%m")
+            .to_string()
+    });
 
     type Agg = (i64, String, i64, i64, i64, i64, i64, i64);
     let rows: Vec<Agg> = sqlx::query_as(
@@ -2560,7 +2756,15 @@ async fn jixiao_overview(
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 成员明细（仅本期 admin 登记行；每岗位至多 50 行，够管理端下钻）
-    type Member = (i64, i64, String, i16, Option<i64>, Option<i64>, serde_json::Value);
+    type Member = (
+        i64,
+        i64,
+        String,
+        i16,
+        Option<i64>,
+        Option<i64>,
+        serde_json::Value,
+    );
     let members: Vec<Member> = sqlx::query_as(
         "SELECT c.type_id, c.user_id, u.username, c.status, c.amount, c.bonus_paid, \
                 COALESCE(c.metrics_at_settle, '{}'::jsonb) \
@@ -2575,13 +2779,15 @@ async fn jixiao_overview(
 
     let types: Vec<serde_json::Value> = rows
         .iter()
-        .map(|(id, name, base_pay, assigned, ok, failed, pending, total)| {
-            serde_json::json!({
-                "type_id": id, "name": name, "base_pay": base_pay,
-                "assigned": assigned, "qualified": ok, "failed": failed,
-                "pending": pending, "payroll_total": total,
-            })
-        })
+        .map(
+            |(id, name, base_pay, assigned, ok, failed, pending, total)| {
+                serde_json::json!({
+                    "type_id": id, "name": name, "base_pay": base_pay,
+                    "assigned": assigned, "qualified": ok, "failed": failed,
+                    "pending": pending, "payroll_total": total,
+                })
+            },
+        )
         .collect();
     let members_json: Vec<serde_json::Value> = members
         .iter()
@@ -2606,12 +2812,22 @@ async fn jixiao_payroll(
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let period = q
-        .get("period")
-        .cloned()
-        .unwrap_or_else(|| (chrono::Utc::now() + chrono::Duration::hours(8)).format("%Y-%m").to_string());
+    let period = q.get("period").cloned().unwrap_or_else(|| {
+        (chrono::Utc::now() + chrono::Duration::hours(8))
+            .format("%Y-%m")
+            .to_string()
+    });
 
-    type Row = (i64, i64, String, String, i64, i64, String, chrono::DateTime<chrono::Utc>);
+    type Row = (
+        i64,
+        i64,
+        String,
+        String,
+        i64,
+        i64,
+        String,
+        chrono::DateTime<chrono::Utc>,
+    );
     let rows: Vec<Row> = sqlx::query_as(
         "SELECT c.id, c.user_id, u.username, t.name, c.amount, c.bonus_paid, \
                 COALESCE(c.metrics_snapshot->>'settle_by', 'self') AS paid_by, c.settled_at \
@@ -2636,7 +2852,9 @@ async fn jixiao_payroll(
             })
         })
         .collect();
-    Ok(ok(serde_json::json!({ "period": period, "total": total, "list": list })))
+    Ok(ok(
+        serde_json::json!({ "period": period, "total": total, "list": list }),
+    ))
 }
 
 // ============ P3-14 任务定义 CRUD ============
@@ -3723,6 +3941,10 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_shop_item_add)
         .service(admin_shop_item_update)
         .service(admin_shop_item_delete)
+        .service(admin_avatar_frames)
+        .service(admin_avatar_frame_add)
+        .service(admin_avatar_frame_update)
+        .service(admin_avatar_frame_delete)
         .service(admin_user_props)
         .service(admin_user_prop_revoke)
         .service(admin_backups_list)

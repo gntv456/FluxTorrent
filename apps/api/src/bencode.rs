@@ -374,12 +374,11 @@ mod tests {
 /// 定位 .torrent 字节中顶层 info 字典的原始区间 [start, end)。
 /// 只处理顶层键（不递归进嵌套 dict/list 的 e），失败返回 None（调用方退规范化口径）。
 fn raw_info_span(bytes: &[u8]) -> Option<(usize, usize)> {
-    let mut pos = 0usize;
     // 顶层必须以 'd' 开头
     if bytes.first() != Some(&b'd') {
         return None;
     }
-    pos = 1;
+    let mut pos = 1usize;
     loop {
         // 读键：长度前缀:bytes
         let (key_start, key_end) = match read_string(bytes, pos)? {
@@ -431,7 +430,7 @@ fn scan_dict_end(bytes: &[u8], start: usize) -> Option<usize> {
                 pos = bytes[pos..].iter().position(|&b| b == b'e')? + pos + 1;
             }
             b'0'..=b'9' => {
-                let (s, e) = read_string(bytes, pos)?;
+                let (_, e) = read_string(bytes, pos)?;
                 pos = e;
             }
             _ => return None,

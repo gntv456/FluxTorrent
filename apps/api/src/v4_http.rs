@@ -21,8 +21,14 @@ pub static METRIC_REQUESTS_5XX: AtomicU64 = AtomicU64::new(0);
 /// RED 之 Duration（U5 §12.6）：毫秒桶直方图（50/100/250/500/1000/2500/5000/10000+）
 static LATENCY_BUCKETS_MS: [u64; 8] = [50, 100, 250, 500, 1000, 2500, 5000, 10000];
 static METRIC_LATENCY: [AtomicU64; 8] = [
-    AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-    AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
 ];
 static METRIC_LATENCY_SUM_MS: AtomicU64 = AtomicU64::new(0);
 
@@ -53,8 +59,10 @@ pub async fn metrics_mw(
 
 #[get("/metrics")]
 async fn api_metrics(req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>) -> HttpResponse {
-    // 与 tracker /metrics 同款门禁：未配 token 时 404 不暴露
-    let tok = std::env::var("API_METRICS_TOKEN").unwrap_or_default();
+    // 与 tracker /metrics 同款门禁：未配 token 时 404 不暴露。
+    // 统一读 ANN_METRICS_TOKEN（compose/.env.example 一直按此名注入两处），
+    // 此前误读 API_METRICS_TOKEN 导致 compose 配了 token 后 api /metrics 仍 404。
+    let tok = std::env::var("ANN_METRICS_TOKEN").unwrap_or_default();
     if tok.is_empty()
         || req
             .headers()
@@ -249,15 +257,6 @@ async fn review_resume(
 }
 
 // ============ G5：规则页版本化（修订历史；Gazelle Wiki revision 口径） ============
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct RuleRevisionRow {
-    id: i64,
-    rule_id: i32,
-    title: String,
-    edited_by: Option<String>,
-    created_at: chrono::DateTime<chrono::Utc>,
-}
 
 /// 某规则的修订历史（staff；正文含在列表里，供对照）
 #[get("/admin/rules/{id}/revisions")]

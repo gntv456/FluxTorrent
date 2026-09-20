@@ -33,7 +33,7 @@ pub struct TrackerState {
     db: sqlx::PgPool,
     guard: RwLock<GuardInner>,
     cfg: GuardCfg,
-    pub metrics: Metrics,
+    metrics: Metrics,
     /// Redis 故障时的本地降级限流窗口（单进程语义，tracker 单实例）
     local: LocalWindows,
     /// 管理端变更通知（flux:guard:ver 版本轮询）→ 立即刷新防护缓存
@@ -127,7 +127,7 @@ const PASSKEY_TTL: Duration = Duration::from_secs(60);
 const PASSKEY_CACHE_CAP: usize = 50_000;
 
 impl TrackerState {
-    pub fn guard_read(&self) -> RwLockReadGuard<'_, GuardInner> {
+    fn guard_read(&self) -> RwLockReadGuard<'_, GuardInner> {
         self.guard.read().unwrap_or_else(|e| e.into_inner())
     }
 
