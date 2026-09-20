@@ -230,7 +230,8 @@ pub async fn bank_auto_deduct(
     .await?;
 
     let mut count = 0u64;
-    for (loan_id, user_id, remaining) in loans {
+    // 外层 remaining 只是事务外快照（只用于筛选），实际扣款以锁内重读的为准
+    for (loan_id, user_id, _snapshot_remaining) in loans {
         let mut tx = db.begin().await?;
         // 当日幂等闸门：同一贷款同一天只允许扣一次（含活期+余额两段）。
         // 幂等键与流水共用 auto_deduct:{loan}:{YYYYMMDD}；当日已扣过则整笔跳过。
@@ -249,6 +250,19 @@ pub async fn bank_auto_deduct(
             tx.rollback().await?;
             continue;
         }
+        // 锁内重读贷款状态与剩余本金（P1 与手动还款并发）：外层 SELECT 是事务外快照，
+        // 用户并发 loan_repay 结清后仍按陈旧 remaining 扣款且最后更新无 status 过滤
+        // = 已结清贷款被再扣一次。status 非 active/defaulted 直接跳过本笔。
+        let (locked_remaining, locked_status): (i64, String) =
+            sqlx::query_as("SELECT remaining, status FROM bank_loans WHERE id = $1 FOR UPDATE")
+                .bind(loan_id)
+                .fetch_one(&mut *tx)
+                .await?;
+        if locked_status != "active" && locked_status != "defaulted" {
+            tx.rollback().await?;
+            continue;
+        }
+        let remaining = locked_remaining;
         // 先扣活期：CTE 先锁定并取「更新前」余额再更新，实扣额 = LEAST(前余额, 欠款)。
         // （RETURNING 里直接算 before 会用更新后的余额重算 LEAST，旧余额>欠款时低报、
         //   少算的差额又被继续从站内余额扣 → 系统性多扣。）
@@ -327,15 +341,17 @@ pub async fn bank_auto_deduct(
             if new_remaining <= 0 {
                 sqlx::query(
                     "UPDATE bank_loans SET remaining = 0, accrued_interest = 0, status = 'paid', paid_at = now() \
-                     WHERE id = $1",
+                     WHERE id = $1 AND status IN ('active', 'defaulted')",
                 )
                 .bind(loan_id)
                 .execute(&mut *tx)
                 .await?;
             } else {
-                sqlx::query("UPDATE bank_loans SET remaining = $2 WHERE id = $1")
-                    .bind(loan_id)
-                    .bind(new_remaining)
+                sqlx::query(
+                    "UPDATE bank_loans SET remaining = $2 WHERE id = $1 AND status IN ('active', 'defaulted')",
+                )
+                .bind(loan_id)
+                .bind(new_remaining)
                     .execute(&mut *tx)
                     .await?;
             }

@@ -53,6 +53,8 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         // M15 论坛抽奖（0126：发帖冻结奖金池 → 付费/免费参与 → 到点或手动开奖，jgg 经济范式）
         .service(lottery_join)
         .service(lottery_draw)
+        // M15 论坛打赏（0127：楼层打赏 = spend/earn 同额对冲，不抽税）
+        .service(post_tip)
         // M16 短讯与好友
         .service(message_send)
         .service(message_markread)
@@ -104,6 +106,8 @@ struct MedalRow {
     bonus_addition_factor: f64,
     category_id: i32,
     category_name: Option<String>,
+    /// 勋章图片（asset_ref，0001 就有列；此前只在后台接口返回，前台拿不到 → 全站只能画 🏅）
+    asset_ref: Option<String>,
 }
 
 #[get("/medals")]
@@ -114,7 +118,7 @@ async fn medal_list(
     let auth = require_auth(&req, &state).await.ok();
     let uid = auth.map(|a| a.id);
     let rows = sqlx::query_as::<_, MedalRow>(
-        "SELECT m.id, m.name, m.price, m.rarity, m.limited, m.description, m.duration_days, m.get_type,             m.sale_begin_at, m.sale_end_at, m.inventory, m.bonus_addition_factor::float8, m.category_id,             c.name AS category_name,             ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND (um.expires_at IS NULL OR um.expires_at > now()))) AS owned,             ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()))) AS wearing          FROM medals m LEFT JOIN medal_categories c ON c.id = m.category_id ORDER BY m.category_id, m.id",
+        "SELECT m.id, m.name, m.price, m.rarity, m.limited, m.description, m.duration_days, m.get_type,             m.sale_begin_at, m.sale_end_at, m.inventory, m.bonus_addition_factor::float8, m.category_id,             c.name AS category_name, m.asset_ref,             ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND (um.expires_at IS NULL OR um.expires_at > now()))) AS owned,             ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()))) AS wearing          FROM medals m LEFT JOIN medal_categories c ON c.id = m.category_id ORDER BY m.category_id, m.id",
     )
     .bind(uid)
     .fetch_all(&state.repo.db)
@@ -194,16 +198,25 @@ async fn medal_buy(
         .clone()
         .filter(|k| !k.trim().is_empty())
         .unwrap_or_else(|| format!("medal-buy:{}:{}:{}", auth.id, body.medal_id, Uuid::new_v4()));
-    crate::economy_http::spend_spark(
-        &state.repo.db,
-        auth.id,
-        price,
-        "shop",
-        &idem,
-        "medal",
-        body.medal_id,
-    )
-    .await?;
+    // 幂等重放闸门（#[must_use] 连审）：重放时 spend 不再扣款，继续执行会绕过
+    // 上方的拥有/售期/限量三重检查直接走授予分支
+    if !matches!(
+        crate::economy_http::spend_spark(
+            &state.repo.db,
+            auth.id,
+            price,
+            "shop",
+            &idem,
+            "medal",
+            body.medal_id,
+        )
+        .await?,
+        crate::economy_http::SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation(
+            "该笔请求已受理，请勿重复提交".into(),
+        ));
+    }
     // 限时勋章按 duration_days 写 expires_at（0067；NULL = 永久）
     sqlx::query(
         "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
@@ -321,16 +334,25 @@ async fn medal_gift(
             return Err(DomainError::Validation("该勋章已售罄".into()));
         }
     }
-    crate::economy_http::spend_spark(
-        &state.repo.db,
-        auth.id,
-        price,
-        "shop",
-        &idem,
-        "medal_gift",
-        body.medal_id,
-    )
-    .await?;
+    // 幂等重放闸门（P0）：赠送链路是 spend(赠送人) → earn(受赠人) 对冲，重放时
+    // spend 不再扣款而 earn 照发 = 受赠人凭空入账
+    if !matches!(
+        crate::economy_http::spend_spark(
+            &state.repo.db,
+            auth.id,
+            price,
+            "shop",
+            &idem,
+            "medal_gift",
+            body.medal_id,
+        )
+        .await?,
+        crate::economy_http::SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation(
+            "该笔赠送已受理，请勿重复提交".into(),
+        ));
+    }
     if tax > 0 {
         let month = crate::economy::pool_month(chrono::Utc::now());
         sqlx::query(
@@ -663,7 +685,9 @@ struct ForumSearchQuery {
     q: String,
 }
 
-/// 论坛标题搜索（NP 顶栏搜索搜帖口径，最小版）：按可读版块过滤 + 标题 ILIKE。
+/// 论坛搜索（NP 顶栏搜索搜帖口径，Phase3 增强）：标题 OR 正文纯文本（body_text，0115 落列）
+/// 命中正文时带回摘要片段（关键词前后各 ~30 字符，前端高亮用）。
+/// 权限：与列表同套谓词（minclassread / 版主），无权版块的内容搜不到。
 #[get("/forums/search")]
 async fn forum_search(
     req: HttpRequest,
@@ -681,26 +705,80 @@ async fn forum_search(
         .replace("%", "\\%")
         .replace("_", "\\_");
     let pattern = format!("%{esc_kw}%");
-    let rows: Vec<(i64, String, i64, String, Option<String>, chrono::DateTime<chrono::Utc>, i64, bool)> = sqlx::query_as(
-        "SELECT t.id, t.title, f.id, f.name, u.username, t.created_at,                 (SELECT count(*) FROM posts p WHERE p.topic_id = t.id), t.locked          FROM topics t          JOIN forums f ON f.id = t.forum_id          LEFT JOIN users u ON u.id = t.user_id          WHERE t.title ILIKE $1            AND (f.minclassread <= $2 OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $3))          ORDER BY t.id DESC LIMIT 30",
-    )
-    .bind(&pattern)
-    .bind(auth.class_id)
-    .bind(auth.id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 每主题取「标题命中优先，否则正文最早命中」的楼层做片段；t.id 去重保一主题一行
+    let rows: Vec<(i64, String, i64, String, Option<String>, chrono::DateTime<chrono::Utc>, i64, bool, Option<String>)> =
+        sqlx::query_as(
+            "SELECT t.id, t.title, f.id, f.name, u.username, t.created_at, \
+                    (SELECT count(*) FROM posts p WHERE p.topic_id = t.id), t.locked, \
+                    (SELECT left(p2.body_text, 90) FROM posts p2 WHERE p2.topic_id = t.id \
+                      AND p2.body_text ILIKE $1 ORDER BY p2.id LIMIT 1) AS snippet \
+             FROM topics t \
+             JOIN forums f ON f.id = t.forum_id \
+             LEFT JOIN users u ON u.id = t.user_id \
+             WHERE (t.title ILIKE $1 OR EXISTS (SELECT 1 FROM posts p3 WHERE p3.topic_id = t.id AND p3.body_text ILIKE $1)) \
+               AND (f.minclassread <= $2 OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $3)) \
+             ORDER BY t.id DESC LIMIT 30",
+        )
+        .bind(&pattern)
+        .bind(auth.class_id)
+        .bind(auth.id)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let items: Vec<serde_json::Value> = rows
         .iter()
-        .map(|(tid, title, fid, fname, author, at, replies, locked)| {
-            serde_json::json!({
-                "topic_id": tid, "title": title, "forum_id": fid, "forum_name": fname,
-                "author": author, "created_at": at.to_rfc3339(),
-                "replies": replies, "locked": locked,
-            })
-        })
+        .map(
+            |(tid, title, fid, fname, author, at, replies, locked, snippet)| {
+                serde_json::json!({
+                    "topic_id": tid, "title": title, "forum_id": fid, "forum_name": fname,
+                    "author": author, "created_at": at.to_rfc3339(),
+                    "replies": replies, "locked": locked,
+                    "snippet": snippet, "keyword": kw,
+                })
+            },
+        )
         .collect();
     Ok(ok(items))
+}
+
+/// 论坛敏感词（Phase3）：词表存 site_settings.forum_banned_words（换行分隔，无新表），
+/// 发主题/回帖/编辑时命中即 422 拒发。管理面走 settings 通用编辑（staff 已有权限模型）。
+async fn forum_banned_words(db: &sqlx::PgPool) -> Vec<String> {
+    let raw: Option<String> =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'forum_banned_words'")
+            .fetch_optional(db)
+            .await
+            .unwrap_or(None)
+            .flatten();
+    raw.unwrap_or_default()
+        .split(['\n', '\r'])
+        .map(str::trim)
+        .filter(|s| s.len() >= 2)
+        .map(str::to_string)
+        .collect()
+}
+
+/// 命中检测：大小写不敏感（中文无大小写，天然不受影响）；返回第一个命中的词。
+fn hit_banned_word<'a>(text: &str, words: &'a [String]) -> Option<&'a str> {
+    let lower = text.to_lowercase();
+    words
+        .iter()
+        .find(|w| lower.contains(&w.to_lowercase()))
+        .map(String::as_str)
+}
+
+/// 发主题 / 回帖 / 编辑共用的敏感词闸门（Phase3 治理：先挡再落库，不做「发后删」）
+async fn check_banned_words(db: &sqlx::PgPool, text: &str) -> DomainResult<()> {
+    let words = forum_banned_words(db).await;
+    if words.is_empty() {
+        return Ok(());
+    }
+    if let Some(w) = hit_banned_word(text, &words) {
+        return Err(DomainError::Validation(format!(
+            "内容包含敏感词「{w}」，请修改后重发"
+        )));
+    }
+    Ok(())
 }
 
 #[get("/forums")]
@@ -917,13 +995,12 @@ async fn notify_mentions(
     if names.is_empty() {
         return;
     }
-    let rows: Vec<(i64, String)> = sqlx::query_as(
-        "SELECT id, username FROM users WHERE username = ANY($1) AND status < 2",
-    )
-    .bind(&names)
-    .fetch_all(db)
-    .await
-    .unwrap_or_default();
+    let rows: Vec<(i64, String)> =
+        sqlx::query_as("SELECT id, username FROM users WHERE username = ANY($1) AND status < 2")
+            .bind(&names)
+            .fetch_all(db)
+            .await
+            .unwrap_or_default();
     for (uid, _uname) in rows {
         if uid == from || exclude.contains(&uid) {
             continue;
@@ -964,6 +1041,9 @@ struct TagChipRow {
     name: String,
     /// 官方标签（仅 kind=official；论坛打标签不区分权限，仅样式语义）
     kind: String,
+    /// 0138：论坛域标签（scope=forum），种子域标签不再进论坛
+    #[sqlx(default)]
+    scope: String,
     /// 以下为 0063 的样式列，前端 TagChip 直接吃
     #[sqlx(default)]
     bg_color: String,
@@ -979,7 +1059,7 @@ struct TagChipRow {
     border_radius: String,
 }
 
-/// 论坛标签字典（发帖选择器 + TagChip 渲染样式源）：只出启用中的标签。
+/// 论坛标签字典（发帖选择器 + TagChip 渲染样式源）：只出启用中的论坛域标签（0138 scope=forum）。
 /// 公开读——种子页/版块页 SSR 要在登录前渲染标签筛选，与 /tags-dict（种子口径）同级的公开词表。
 #[get("/forums/tags")]
 async fn forum_tags_dict(
@@ -987,8 +1067,8 @@ async fn forum_tags_dict(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let rows: Vec<TagChipRow> = sqlx::query_as(
-        "SELECT id, name, kind, bg_color, color, font_size, margin, padding, border_radius \
-         FROM tag_dict WHERE COALESCE(enabled, TRUE) ORDER BY sort, id",
+        "SELECT id, name, kind, scope, bg_color, color, font_size, margin, padding, border_radius \
+         FROM tag_dict WHERE COALESCE(enabled, TRUE) AND scope = 'forum' ORDER BY sort, id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -996,8 +1076,8 @@ async fn forum_tags_dict(
     Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
 }
 
-/// 发帖选的标签写入 topic_tags：只收启用中的字典 id（禁用/已删的不写，防私插），
-/// 去重后逐条插入（PK 幂等，量级 ≤5 无需批量）。
+/// 发帖选的标签写入 topic_tags：只收启用中的论坛域字典 id（0138 scope=forum；
+/// 禁用/已删/种子域 id 不写，防私插），去重后逐条插入（PK 幂等，量级 ≤5 无需批量）。
 async fn attach_topic_tags(
     tx: &mut sqlx::PgTransaction<'_>,
     topic_id: i64,
@@ -1009,7 +1089,8 @@ async fn attach_topic_tags(
             continue;
         }
         let ok: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM tag_dict WHERE id = $1 AND COALESCE(enabled, TRUE))",
+            "SELECT EXISTS(SELECT 1 FROM tag_dict \
+              WHERE id = $1 AND COALESCE(enabled, TRUE) AND scope = 'forum')",
         )
         .bind(*tid)
         .fetch_one(&mut **tx)
@@ -1017,11 +1098,13 @@ async fn attach_topic_tags(
         if !ok {
             continue;
         }
-        sqlx::query("INSERT INTO topic_tags (topic_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
-            .bind(topic_id)
-            .bind(*tid)
-            .execute(&mut **tx)
-            .await?;
+        sqlx::query(
+            "INSERT INTO topic_tags (topic_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        )
+        .bind(topic_id)
+        .bind(*tid)
+        .execute(&mut **tx)
+        .await?;
     }
     Ok(())
 }
@@ -1036,6 +1119,8 @@ async fn topic_create(
     if body.title.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("标题与正文不能为空".into()));
     }
+    // 敏感词（Phase3）：标题与正文一起过闸
+    check_banned_words(&state.repo.db, &format!("{}\n{}", body.title, body.body)).await?;
     let perm = forum_access(&state.repo.db, auth.id, auth.class_id, body.forum_id).await?;
     if !perm.can_create {
         return Err(DomainError::Forbidden);
@@ -1070,7 +1155,9 @@ async fn topic_create(
             .collect();
         opts.truncate(10);
         if opts.len() < 2 {
-            return Err(DomainError::Validation("投票帖至少需要 2 个非空选项".into()));
+            return Err(DomainError::Validation(
+                "投票帖至少需要 2 个非空选项".into(),
+            ));
         }
         opts
     } else {
@@ -1083,7 +1170,9 @@ async fn topic_create(
         let t = body.lottery_ticket.unwrap_or(0).clamp(0, 10_000);
         let h = body.lottery_hours.unwrap_or(24).clamp(1, 720);
         if p <= 0 {
-            return Err(DomainError::Validation("抽奖帖必须设置每名中奖人的魔力数".into()));
+            return Err(DomainError::Validation(
+                "抽奖帖必须设置每名中奖人的魔力数".into(),
+            ));
         }
         (w, p, t, h)
     } else {
@@ -1125,16 +1214,24 @@ async fn topic_create(
     let frozen = bounty + lot_winners as i64 * lot_prize;
     if frozen > 0 {
         let idem = format!("forum-bounty:{}:{}", auth.id, topic_id);
-        crate::economy_http::spend_spark_tx(
-            &mut tx,
-            auth.id,
-            frozen,
-            "forum_bounty",
-            &idem,
-            "forum_bounty",
-            topic_id,
-        )
-        .await?;
+        // 幂等重放闸门（#[must_use] 连审）：冻结与建主题同事务，重放即整体拒绝
+        if !matches!(
+            crate::economy_http::spend_spark_tx(
+                &mut tx,
+                auth.id,
+                frozen,
+                "forum_bounty",
+                &idem,
+                "forum_bounty",
+                topic_id,
+            )
+            .await?,
+            crate::economy_http::SpendOutcome::Spent
+        ) {
+            return Err(DomainError::Validation(
+                "该笔请求已受理，请勿重复提交".into(),
+            ));
+        }
     }
     // 投票选项（0125）：与主题同事务落一行（选项发帖时定死，之后不可增删）
     if !poll_options.is_empty() {
@@ -1168,7 +1265,16 @@ async fn topic_create(
     let idem = format!("forum-topic:{}:{}", auth.id, topic_id);
     earn_spark(&state.repo.db, auth.id, 2, "forum", &idem).await?;
     // 楼主的首帖里 @ 了谁就通知谁
-    notify_mentions(&state.repo.db, &body.body, auth.id, topic_id, &body.title, "主题中", &[]).await;
+    notify_mentions(
+        &state.repo.db,
+        &body.body,
+        auth.id,
+        topic_id,
+        &body.title,
+        "主题中",
+        &[],
+    )
+    .await;
     // 关注了作者的人：他发新主题时收到通知（关注版块只进关注流，不发通知，见 0121 注释）
     notify_followers(
         &state.repo.db,
@@ -1182,7 +1288,9 @@ async fn topic_create(
         &[],
     )
     .await;
-    Ok(ok(serde_json::json!({ "topic_id": topic_id, "bounty_frozen": bounty })))
+    Ok(ok(
+        serde_json::json!({ "topic_id": topic_id, "bounty_frozen": bounty }),
+    ))
 }
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -1217,7 +1325,8 @@ struct TopicListQuery {
     /// 排序：hot=热度（回复*2 + 点赞 + 浏览*0.1，按距最后回复的小时数衰减）/ 缺省 new
     #[serde(default)]
     sort: Option<String>,
-    /// 按标签筛选（0123）：tag_dict id，只保留带该标签的主题。
+    /// 按标签筛选（0123）：tag_dict id，只保留带该标签的主题。0138：非论坛域
+    /// 标签 id（种子域/不存在）直接视为无此筛选——回显空但不算非法，回落全量。
     /// actix Query 对 i32 的反序列化失败会直接 400，故先收字符串再自行解析，
     /// 非数字（爬虫乱造的 URL）静默回落全量，不拿 400 打断正常浏览。
     #[serde(default)]
@@ -1275,7 +1384,7 @@ async fn topic_list(
                      'bg_color', d.bg_color, 'color', d.color, 'font_size', d.font_size, \
                      'margin', d.margin, 'padding', d.padding, 'border_radius', d.border_radius)) \
                  FROM (SELECT td.* FROM tag_dict td JOIN topic_tags tt2 ON tt2.tag_id = td.id \
-                        WHERE tt2.topic_id = t.id ORDER BY td.sort, td.id) d), \
+                        WHERE tt2.topic_id = t.id AND td.scope = 'forum' ORDER BY td.sort, td.id) d), \
               '[]'::json) AS tags \
          FROM topics t LEFT JOIN users u ON u.id = t.user_id \
          WHERE t.forum_id = $1{tag_filter} ORDER BY {order} LIMIT 50"
@@ -1319,6 +1428,12 @@ struct PostRow {
     /// 当前用户是否已点赞（0116）
     #[sqlx(default)]
     liked_by_me: bool,
+    /// 打赏总额（0127）：该楼收到的魔力总和（次数用 tips 单独计数）
+    #[sqlx(default)]
+    tips: i64,
+    /// 打赏次数（0127）
+    #[sqlx(default)]
+    tip_count: i64,
     #[serde(skip)]
     hidden: bool,
 }
@@ -1366,8 +1481,19 @@ async fn topic_detail(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((title, fid, forum_name, op_id, sticky, locked, digest, topic_type, bounty_spark, bounty_status, bounty_post_id)) =
-        meta
+    let Some((
+        title,
+        fid,
+        forum_name,
+        op_id,
+        sticky,
+        locked,
+        digest,
+        topic_type,
+        bounty_spark,
+        bounty_status,
+        bounty_post_id,
+    )) = meta
     else {
         return Err(DomainError::NotFound(tid));
     };
@@ -1378,7 +1504,9 @@ async fn topic_detail(
     let mut posts = sqlx::query_as::<_, PostRow>(
         "SELECT p.id, u.username, p.user_id, p.body, p.created_at, p.edited_at, p.edited_by, FALSE AS hidden, \
             (SELECT count(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likes, \
-            EXISTS(SELECT 1 FROM post_likes pl2 WHERE pl2.post_id = p.id AND pl2.user_id = $3) AS liked_by_me \
+            EXISTS(SELECT 1 FROM post_likes pl2 WHERE pl2.post_id = p.id AND pl2.user_id = $3) AS liked_by_me, \
+            COALESCE((SELECT sum(t.spark) FROM post_tips t WHERE t.post_id = p.id), 0)::bigint AS tips, \
+            (SELECT count(*) FROM post_tips t2 WHERE t2.post_id = p.id) AS tip_count \
          FROM posts p LEFT JOIN users u ON u.id = p.user_id \
          WHERE p.topic_id = $1 AND ($2::bigint IS NULL OR p.id < $2)          ORDER BY p.id DESC LIMIT 200",
     )
@@ -1424,11 +1552,12 @@ async fn topic_detail(
         .ok();
     }
     // 收藏态（0116）：主题收藏总数 + 当前用户是否已收藏
-    let favorites: i64 = sqlx::query_scalar("SELECT count(*) FROM topic_favorites WHERE topic_id = $1")
-        .bind(tid)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    let favorites: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM topic_favorites WHERE topic_id = $1")
+            .bind(tid)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
     let faved: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM topic_favorites WHERE topic_id = $1 AND user_id = $2)",
     )
@@ -1444,7 +1573,7 @@ async fn topic_detail(
                    'bg_color', d.bg_color, 'color', d.color, 'font_size', d.font_size, \
                    'margin', d.margin, 'padding', d.padding, 'border_radius', d.border_radius)) \
                FROM (SELECT td.* FROM tag_dict td JOIN topic_tags tt ON tt.tag_id = td.id \
-                      WHERE tt.topic_id = $1 ORDER BY td.sort, td.id) d), \
+                      WHERE tt.topic_id = $1 AND td.scope = 'forum' ORDER BY td.sort, td.id) d), \
             '[]'::json)",
     )
     .bind(tid)
@@ -1539,12 +1668,15 @@ async fn post_reply(
     if body.body.trim().is_empty() {
         return Err(DomainError::Validation("回复不能为空".into()));
     }
-    let row: Option<(i64, bool, i64, String)> =
-        sqlx::query_as("SELECT forum_id, locked, COALESCE(user_id, 0), title FROM topics WHERE id = $1")
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    // 敏感词（Phase3）
+    check_banned_words(&state.repo.db, &body.body).await?;
+    let row: Option<(i64, bool, i64, String)> = sqlx::query_as(
+        "SELECT forum_id, locked, COALESCE(user_id, 0), title FROM topics WHERE id = $1",
+    )
+    .bind(tid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((fid, locked, author, title)) = row else {
         return Err(DomainError::NotFound(tid));
     };
@@ -1589,17 +1721,23 @@ async fn post_reply(
         )
         .await;
     }
-    notify_mentions(&state.repo.db, &body.body, auth.id, tid, &title, "回复中", &[author]).await;
+    notify_mentions(
+        &state.repo.db,
+        &body.body,
+        auth.id,
+        tid,
+        &title,
+        "回复中",
+        &[author],
+    )
+    .await;
     // 关注了本主题的人：有新回复时通知（楼主已由上面「主题收到回复」通知过，回帖者自己更不必通知）
     notify_followers(
         &state.repo.db,
         "topic",
         tid,
         "关注的主题有新回复",
-        &format!(
-            "[{}](/forums/topic/{}) · 来自用户 #{}",
-            title, tid, auth.id
-        ),
+        &format!("[{}](/forums/topic/{}) · 来自用户 #{}", title, tid, auth.id),
         &[author, auth.id],
     )
     .await;
@@ -1661,12 +1799,13 @@ async fn set_post_like(
         // 通知与火花共用同一幂等键：`changed=true` 只保证「本次真的写入了点赞行」，
         // 但「取消后再点赞」同样会 changed=true。若不按幂等键判重，
         // like/unlike 循环就能反复给作者刷通知（火花侧已有幂等键，通知侧漏了）。
-        let already: bool =
-            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
-                .bind(&idem)
-                .fetch_one(&state.repo.db)
-                .await
-                .unwrap_or(false);
+        let already: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+        )
+        .bind(&idem)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
         let _ = earn_spark(&state.repo.db, author, 1, "forum-like", &idem).await;
         if !already {
             notify_user(
@@ -1753,11 +1892,12 @@ async fn set_topic_favorite(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
-    let favorites: i64 = sqlx::query_scalar("SELECT count(*) FROM topic_favorites WHERE topic_id = $1")
-        .bind(tid)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    let favorites: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM topic_favorites WHERE topic_id = $1")
+            .bind(tid)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "topic_id": tid,
         "faved": on,
@@ -1824,12 +1964,13 @@ async fn validate_follow_target(
             if tid == auth.id {
                 return Err(DomainError::Validation("不能关注自己".into()));
             }
-            let ok: bool =
-                sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND status < 2)")
-                    .bind(tid)
-                    .fetch_one(db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?;
+            let ok: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND status < 2)",
+            )
+            .bind(tid)
+            .fetch_one(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             if !ok {
                 return Err(DomainError::NotFound(tid));
             }
@@ -1903,8 +2044,8 @@ async fn follow_delete(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let (raw_type, tid) = path.into_inner();
-    let ttype =
-        normalize_follow_type(&raw_type).ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?;
+    let ttype = normalize_follow_type(&raw_type)
+        .ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?;
     sqlx::query("DELETE FROM follows WHERE user_id = $1 AND target_type = $2 AND target_id = $3")
         .bind(auth.id)
         .bind(ttype)
@@ -1986,7 +2127,8 @@ async fn follow_mine(
     let auth = require_auth(&req, &state).await?;
     let want = match q.target_type.as_deref() {
         Some(s) => Some(
-            normalize_follow_type(s).ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?,
+            normalize_follow_type(s)
+                .ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?,
         ),
         None => None,
     };
@@ -2137,11 +2279,15 @@ async fn forum_feed(
         .collect();
     // 下一页游标：末行的最后活动时间（取到 limit 整页才可能有下一页；与主题页 before=post_id 同范式）
     let next_before = if items.len() as i64 == limit {
-        items.last().and_then(|r| r.last_post_at.or(Some(r.created_at)))
+        items
+            .last()
+            .and_then(|r| r.last_post_at.or(Some(r.created_at)))
     } else {
         None
     };
-    Ok(ok(serde_json::json!({ "items": items, "next_before": next_before })))
+    Ok(ok(
+        serde_json::json!({ "items": items, "next_before": next_before }),
+    ))
 }
 
 // ---- 论坛悬赏（0124）：发帖冻结（topic_create 内 spend_spark_tx）→ 楼主采纳发放 ----
@@ -2184,14 +2330,13 @@ async fn bounty_award(
         return Err(DomainError::Validation("悬赏已处理".into()));
     }
     // 目标楼必须属于本主题、非楼主首帖
-    let p: Option<i64> = sqlx::query_scalar(
-        "SELECT user_id FROM posts WHERE id = $1 AND topic_id = $2",
-    )
-    .bind(body.post_id)
-    .bind(tid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let p: Option<i64> =
+        sqlx::query_scalar("SELECT user_id FROM posts WHERE id = $1 AND topic_id = $2")
+            .bind(body.post_id)
+            .bind(tid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(answerer) = p else {
         return Err(DomainError::Validation("目标回复不存在".into()));
     };
@@ -2233,14 +2378,19 @@ async fn bounty_award(
         &state.repo.db,
         answerer,
         "悬赏已发放",
-        &format!("您的回复被采纳，获得 {} 魔力悬赏：[/forums/topic/{}]", spark, tid),
+        &format!(
+            "您的回复被采纳，获得 {} 魔力悬赏：[/forums/topic/{}]",
+            spark, tid
+        ),
     )
     .await;
     state
         .repo
         .audit(Some(auth.id), "forum.bounty_award", Some(tid))
         .await;
-    Ok(ok(serde_json::json!({ "topic_id": tid, "post_id": body.post_id, "spark": spark })))
+    Ok(ok(
+        serde_json::json!({ "topic_id": tid, "post_id": body.post_id, "spark": spark }),
+    ))
 }
 
 // ---- 论坛投票（0125）：范式照 fun_polls（0016）——选项 JSONB、一人一票 UNIQUE、ON CONFLICT 幂等 ----
@@ -2300,7 +2450,9 @@ async fn poll_vote(
         .repo
         .audit(Some(auth.id), "forum.poll_vote", Some(body.topic_id))
         .await;
-    Ok(ok(serde_json::json!({ "topic_id": body.topic_id, "option_index": body.option_index })))
+    Ok(ok(
+        serde_json::json!({ "topic_id": body.topic_id, "option_index": body.option_index }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -2344,7 +2496,9 @@ async fn poll_close(
         .repo
         .audit(Some(auth.id), "forum.poll_close", Some(body.topic_id))
         .await;
-    Ok(ok(serde_json::json!({ "topic_id": body.topic_id, "closed": true })))
+    Ok(ok(
+        serde_json::json!({ "topic_id": body.topic_id, "closed": true }),
+    ))
 }
 
 // ---- 论坛抽奖（0126）：发帖冻结奖金池（topic_create）→ 参与 → 开奖 ----
@@ -2427,7 +2581,9 @@ async fn lottery_join(
         .repo
         .audit(Some(auth.id), "forum.lottery_join", Some(body.topic_id))
         .await;
-    Ok(ok(serde_json::json!({ "topic_id": body.topic_id, "ticket": ticket })))
+    Ok(ok(
+        serde_json::json!({ "topic_id": body.topic_id, "ticket": ticket }),
+    ))
 }
 
 /// 开奖核心（手动入口与 worker 共用）：CAS open→drawn 后随机抽 winners 名，
@@ -2450,23 +2606,24 @@ pub async fn lottery_draw_core(
     if status != "open" {
         return Err(DomainError::Validation("抽奖不在进行中".into()));
     }
-    let n = sqlx::query("UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = $1 AND status = 'open'")
-        .bind(topic_id)
-        .execute(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    let n = sqlx::query(
+        "UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = $1 AND status = 'open'",
+    )
+    .bind(topic_id)
+    .execute(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::LedgerConflict);
     }
     // 参与者全表捞出来在应用层抽（数量级 ≤ 数百，RANDOM() 洗牌即可）
-    let mut entries: Vec<i64> = sqlx::query_scalar(
-        "SELECT user_id FROM lottery_entries WHERE topic_id = $1",
-    )
-    .bind(topic_id)
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut entries: Vec<i64> =
+        sqlx::query_scalar("SELECT user_id FROM lottery_entries WHERE topic_id = $1")
+            .bind(topic_id)
+            .fetch_all(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if entries.is_empty() {
         // 无人参与：奖金池退回楼主
         let op: i64 = sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
@@ -2492,11 +2649,13 @@ pub async fn lottery_draw_core(
     let take = (winners as usize).min(entries.len());
     let picked: Vec<i64> = entries.into_iter().take(take).collect();
     for uid in &picked {
-        let _ = sqlx::query("UPDATE lottery_entries SET won = TRUE WHERE topic_id = $1 AND user_id = $2")
-            .bind(topic_id)
-            .bind(uid)
-            .execute(db)
-            .await;
+        let _ = sqlx::query(
+            "UPDATE lottery_entries SET won = TRUE WHERE topic_id = $1 AND user_id = $2",
+        )
+        .bind(topic_id)
+        .bind(uid)
+        .execute(db)
+        .await;
         if prize > 0 {
             let _ = earn_spark(
                 db,
@@ -2554,6 +2713,142 @@ async fn lottery_draw(
     Ok(ok(out))
 }
 
+// ---- 论坛打赏（0127）：楼层打赏 = spend(打赏人) + earn(作者) 同额对冲，不抽税 ----
+
+#[derive(Deserialize)]
+struct PostTipReq {
+    post_id: i64,
+    spark: i64,
+    #[serde(default)]
+    note: Option<String>,
+}
+
+/// 打赏某楼：任何登录用户可打赏任何非匿名楼的作者。约束：
+/// · 金额 1~100,000 钳位外拒绝；
+/// · 不能打赏自己的楼（自己转自己只是流水噪音）；
+/// · 打赏人余额不足自然被 spend_spark 拒（409）；
+/// · 幂等键 `forum-tip:{from}:{post}:{uuid}`——打赏是主动行为可重复（同一个人可以多次打赏同一楼），
+///   幂等只防网络重试，不防故意多次。
+#[post("/forums/tip")]
+async fn post_tip(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PostTipReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if body.spark <= 0 || body.spark > 100_000 {
+        return Err(DomainError::Validation("打赏金额需在 1~100000 之间".into()));
+    }
+    let note: String = body
+        .note
+        .as_deref()
+        .map(str::trim)
+        .unwrap_or("")
+        .chars()
+        .take(50)
+        .collect();
+    // 目标楼必须存在且属于某主题（匿名楼的 user_id 为 NULL 不可打赏）
+    let p: Option<(i64, Option<i64>, i64)> = sqlx::query_as(
+        "SELECT p.topic_id, p.user_id, t.forum_id FROM posts p JOIN topics t ON t.id = p.topic_id \
+         WHERE p.id = $1",
+    )
+    .bind(body.post_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((topic_id, author, fid)) = p else {
+        return Err(DomainError::NotFound(body.post_id));
+    };
+    let Some(author_id) = author else {
+        return Err(DomainError::Validation("匿名帖不可打赏".into()));
+    };
+    if author_id == auth.id {
+        return Err(DomainError::Validation("不能打赏自己".into()));
+    }
+    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    if !perm.can_read {
+        return Err(DomainError::Forbidden);
+    }
+    let idem = format!("forum-tip:{}:{}:{}", auth.id, body.post_id, Uuid::new_v4());
+    // spend(打赏人) → earn(作者) 对冲；三写（spend/earn/落账）单事务——旧版 earn 失败
+    // 时打赏已扣、作者未入账且 post_tips 无痕。earn 幂等键锚定 spend 的 uuid。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 幂等重放闸门（#[must_use] 连审）：重放时 spend 不再扣款而 earn 照发 = 凭空入账
+    if !matches!(
+        crate::economy_http::spend_spark_tx(
+            &mut tx,
+            auth.id,
+            body.spark,
+            "forum_tip",
+            &idem,
+            "forum_tip",
+            body.post_id,
+        )
+        .await?,
+        crate::economy_http::SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation(
+            "该笔打赏已受理，请勿重复提交".into(),
+        ));
+    }
+    // spend 已闸 Spent，earn 幂等键锚定本次新 spend id，必为 Spent；
+    // 显式丢弃以满足 must_use 契约
+    let earn_outcome = crate::economy_http::earn_spark_tx(
+        &mut tx,
+        author_id,
+        body.spark,
+        "forum_tip",
+        &format!("{idem}:to"),
+    )
+    .await?;
+    let _ = earn_outcome;
+    sqlx::query(
+        "INSERT INTO post_tips (post_id, topic_id, from_user, to_user, spark, note) \
+         VALUES ($1, $2, $3, $4, $5, $6)",
+    )
+    .bind(body.post_id)
+    .bind(topic_id)
+    .bind(auth.id)
+    .bind(author_id)
+    .bind(body.spark)
+    .bind(&note)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    notify_user(
+        &state.repo.db,
+        author_id,
+        "收到打赏",
+        &format!(
+            "用户 #{} 打赏了您在 [/forums/topic/{}] 的回复：{} 魔力{}",
+            auth.id,
+            topic_id,
+            body.spark,
+            if note.is_empty() {
+                String::new()
+            } else {
+                format!("（{note}）")
+            }
+        ),
+    )
+    .await;
+    state
+        .repo
+        .audit(Some(auth.id), "forum.post_tip", Some(body.post_id))
+        .await;
+    Ok(ok(
+        serde_json::json!({ "post_id": body.post_id, "spark": body.spark, "to": author_id }),
+    ))
+}
+
 /// 单帖上下文：(topic_id, forum_id, author_id)
 async fn post_context(db: &sqlx::PgPool, post_id: i64) -> DomainResult<Option<(i64, i64, i64)>> {
     let row: Option<(i64, i64, i64)> = sqlx::query_as(
@@ -2585,6 +2880,8 @@ async fn post_edit(
     if body.body.trim().is_empty() {
         return Err(DomainError::Validation("正文不能为空".into()));
     }
+    // 敏感词（Phase3）：编辑同样过闸（防止先发合规后改敏感词绕过）
+    check_banned_words(&state.repo.db, &body.body).await?;
     let pid = path.into_inner();
     let Some((_tid, fid, author_id)) = post_context(&state.repo.db, pid).await? else {
         return Err(DomainError::NotFound(pid));
@@ -3972,7 +4269,8 @@ async fn friend_action(
 
 /// 主配置：主 scope + 安装向导 + 经济路由 + 社区路由（单一 /api/v1 scope）
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    let scope = crate::setup_http::mount_setup(crate::economy_http::mount_economy(crate::http::v1_scope()));
+    let scope =
+        crate::setup_http::mount_setup(crate::economy_http::mount_economy(crate::http::v1_scope()));
     let scope = mount_community(scope);
     let scope = crate::games_http::mount_games(crate::ops_http::mount_ops(
         crate::content_http::mount_content(scope),

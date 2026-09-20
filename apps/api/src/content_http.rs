@@ -78,18 +78,26 @@ async fn request_create(
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        // spend_spark 自带事务（锁行→幂等→扣款→流水）；此处复用同一连接保证原子性
+        // spend_spark 自带事务（锁行→幂等→扣款→流水）；此处复用同一连接保证原子性。
+        // 幂等键含新建单 id，重放不可达；闸门为 #[must_use] 契约统一口径。
         let idem = format!("req-bounty:{}:{}", auth.id, id);
-        spend_spark_tx(
-            &mut tx,
-            auth.id,
-            body.bounty,
-            "request_bounty",
-            &idem,
-            "request_bounty",
-            id,
-        )
-        .await?;
+        if !matches!(
+            spend_spark_tx(
+                &mut tx,
+                auth.id,
+                body.bounty,
+                "request_bounty",
+                &idem,
+                "request_bounty",
+                id,
+            )
+            .await?,
+            crate::economy_http::SpendOutcome::Spent
+        ) {
+            return Err(DomainError::Validation(
+                "该笔请求已受理，请勿重复提交".into(),
+            ));
+        }
         tx.commit()
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
@@ -711,6 +719,10 @@ struct TopRow {
     class_name: String,
     title: Option<String>,
     avatar_url: Option<String>,
+    #[sqlx(default)]
+    avatar_frame_css: Option<String>,
+    #[sqlx(default)]
+    avatar_frame_image: Option<String>,
     val: f64,
 }
 
@@ -719,7 +731,7 @@ struct TopRow {
 #[get("/top/boards")]
 async fn top_boards(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
     let sel = "row_number() OVER (ORDER BY val DESC) AS rank, u.username, c.name AS class_name, \
-        u.title, u.avatar_url, x.val::float8 AS val";
+        u.title, u.avatar_url, f.css AS avatar_frame_css, f.image_url AS avatar_frame_image, x.val::float8 AS val";
     let base = |agg: &str, joins: &str, extra_where: &str, group_by: &str| -> String {
         format!(
             "SELECT {sel} FROM ( \
@@ -728,7 +740,8 @@ async fn top_boards(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<
                 WHERE u.status < 2 {extra_where} \
                 GROUP BY u.id {group_by} \
                 ORDER BY val DESC LIMIT 10 \
-            ) x JOIN users u ON u.id = x.uid JOIN user_classes c ON c.id = u.class_id"
+            ) x JOIN users u ON u.id = x.uid JOIN user_classes c ON c.id = u.class_id \
+            LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id"
         )
     };
     let bonus_q = base("u.spark_balance", "", "AND u.spark_balance > 0", "");
@@ -864,10 +877,13 @@ async fn promo_buy(
     if !enabled {
         return Err(DomainError::Validation("本功能未开放".into()));
     }
+    // 幂等键必须带 uid 前缀（P0）：裸客户端键跨用户碰撞时，B 的购买会被误判为
+    // A 的重放而不扣款——效果照发（重放闸门在 spend 之后）或静默丢失，二选一都不对。
     let idem = body
         .idempotency_key
         .clone()
         .filter(|k| !k.trim().is_empty())
+        .map(|k| format!("promo:{}:{}", auth.id, k.trim()))
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
 
     let owner: Option<i64> =
@@ -892,16 +908,25 @@ async fn promo_buy(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    spend_spark_tx(
-        &mut tx,
-        auth.id,
-        price,
-        "promo_buy",
-        &idem,
-        "torrent",
-        body.torrent_id,
-    )
-    .await?;
+    // 幂等重放必须终止（P0）：重放时 spend 不扣款，若继续执行则置顶白续 24/72h、
+    // free 白加一条促销 = 印钞口。对照 games scratch 的同款闸门。
+    if !matches!(
+        spend_spark_tx(
+            &mut tx,
+            auth.id,
+            price,
+            "promo_buy",
+            &idem,
+            "torrent",
+            body.torrent_id,
+        )
+        .await?,
+        crate::economy_http::SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation(
+            "该笔购买已受理，请勿重复提交".into(),
+        ));
+    }
     let ends: chrono::DateTime<chrono::Utc> =
         sqlx::query_scalar("SELECT now() + make_interval(hours => $1)")
             .bind(body.hours)

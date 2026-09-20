@@ -6,7 +6,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark, spend_spark, SpendOutcome};
+use crate::economy_http::{earn_spark, earn_spark_tx, spend_spark, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::games::{self, Guess, MAX_PLAYS_PER_HOUR};
 use crate::http::require_auth;
@@ -16,6 +16,7 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
     scope
         .service(games_overview)
         .service(game_history)
+        .service(game_rounds)
         .service(scratch)
         .service(guess_bigsmall)
         .service(jgg)
@@ -92,7 +93,9 @@ async fn games_overview(
             "balance": balance,
             "today_net": today.0,
             "today_plays": today.1,
-            "limit_left": (max_plays - today.1).max(0),
+            // 剩余局数取**限流器本身**的计数（INCR + EXPIRE 3600 的滚动小时窗口），
+            // 不是「今日局数」——两者口径不同，用今日局数推算会与实际限流不符。
+            "limit_left": (max_plays - limit_used(&state, auth.id, false).await.unwrap_or(today.1)).max(0),
         });
     }
     Ok(ok(body))
@@ -136,6 +139,55 @@ async fn game_history(
     Ok(ok(rows))
 }
 
+/// 我的**对局**战绩（一局一条，不是流水条）。
+///
+/// 为什么需要它：即时玩法每局写两条流水（下注为负、派彩为正），直接拿流水画路单会
+/// 一半是负一半是正、局数还翻倍，看起来像「输多赢少」。这里以「下注流水」为主体，
+/// 按幂等键前缀 LEFT JOIN 出该局的派彩，返回 `bet / payout / net`。
+/// 幂等键前缀历史遗留两种写法（`game-bs-win:` 与 `game-<ref_type>-win:`），一并兼容。
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct GameRoundRow {
+    game: String,
+    bet: i64,
+    payout: i64,
+    net: i64,
+    at: chrono::DateTime<chrono::Utc>,
+}
+
+#[get("/games/rounds")]
+async fn game_rounds(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<HistoryQuery>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<GameRoundRow> = sqlx::query_as(
+        "SELECT l.ref_type AS game, \
+                l.amount AS bet, \
+                COALESCE(w.amount, 0) AS payout, \
+                l.amount + COALESCE(w.amount, 0) AS net, \
+                l.created_at AS at \
+         FROM spark_ledger l \
+         LEFT JOIN spark_ledger w \
+           ON w.idempotency_key IN ( \
+                'game-' || l.ref_type || '-win:' || l.idempotency_key, \
+                'game-bs-win:' || l.idempotency_key \
+              ) \
+         WHERE l.user_id = $1 AND l.kind = 'game' AND l.amount < 0 \
+           AND l.ref_type IN ('scratch', 'bigsmall', 'jgg') \
+           AND ($2::text IS NULL OR l.ref_type = $2) \
+           AND l.created_at > now() - interval '90 days' \
+         ORDER BY l.id DESC LIMIT $3",
+    )
+    .bind(auth.id)
+    .bind(&q.game)
+    .bind(q.limit.unwrap_or(20).clamp(1, 50))
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
 /// 读取游戏经济设置键（0109 参数化；缺省回落代码默认值 T3）
 async fn eco_i64(state: &web::Data<std::sync::Arc<AppState>>, key: &str, default: i64) -> i64 {
     sqlx::query_scalar(
@@ -160,21 +212,29 @@ async fn eco_f64(state: &web::Data<std::sync::Arc<AppState>>, key: &str, default
     .unwrap_or(default)
 }
 
-/// 刮刮乐档位（四档可配，10x 取余数；缺省 45/30/15/8/2，与旧实现一致）
+/// 刮刮乐档位（五档可配；10x 留空/合计不为 100 时按余数推导，缺省 45/30/15/8/2）
 async fn scratch_odds(state: &web::Data<std::sync::Arc<AppState>>) -> games::ScratchOdds {
     games::ScratchOdds::from_parts(
         eco_i64(state, "games_scratch_empty_pct", 45).await,
         eco_i64(state, "games_scratch_half_pct", 30).await,
         eco_i64(state, "games_scratch_one_pct", 15).await,
         eco_i64(state, "games_scratch_two_pct", 8).await,
+        eco_i64(state, "games_scratch_ten_pct", 2).await,
     )
+}
+
+/// 农场作物有效期（天；0 = 永不枯萎）
+async fn farm_wither_days(state: &web::Data<std::sync::Arc<AppState>>) -> i64 {
+    eco_i64(state, "farm_wither_days", 5).await.clamp(0, 60)
 }
 
 /// 猜大小赔率（千分比）。倍数设置键缺省 1.9 —— **必须 < 2.0**：
 /// 2.0 时 EV 恰为 1.0（不回收）且可双向零风险对冲，见 games.rs 常量说明。
+/// 上限钳到 1999‰（运行时 EV 防线，P2）：设置键是管理员可写参数，此前上限 10_000‰
+/// 意味着误配/越权写入 ≥2000‰ 即把游戏变成增发开关。
 async fn bigsmall_mult_permille(state: &web::Data<std::sync::Arc<AppState>>) -> i64 {
     let mult = eco_f64(state, "games_bigsmall_win_mult", 1.9).await;
-    ((mult * 1000.0).round() as i64).clamp(0, 10_000)
+    ((mult * 1000.0).round() as i64).clamp(0, 1_999)
 }
 
 /// 限流作用域：即时赌局与农场**分开计数**。
@@ -237,11 +297,25 @@ async fn check_rate(
     check_rate_scoped(state, redis, user_id, RateScope::Instant).await
 }
 
-/// 下注校验（上限走设置键 games_max_bet）
-async fn check_bet(
+/// 读取限流器当前已用次数（只读，不 +1；供前端显示「剩余 N 局」）。
+/// 取不到（Redis 未计数/异常）返回 None，调用方自行回落。
+async fn limit_used(
     state: &web::Data<std::sync::Arc<AppState>>,
-    bet: i64,
-) -> Result<(), String> {
+    user_id: i64,
+    farm: bool,
+) -> Option<i64> {
+    use redis::AsyncCommands;
+    let key = if farm {
+        RateScope::Farm.redis_key(user_id)
+    } else {
+        RateScope::Instant.redis_key(user_id)
+    };
+    let mut conn = state.redis.clone();
+    conn.get::<_, Option<i64>>(&key).await.ok().flatten()
+}
+
+/// 下注校验（上限走设置键 games_max_bet）
+async fn check_bet(state: &web::Data<std::sync::Arc<AppState>>, bet: i64) -> Result<(), String> {
     let max = eco_i64(state, "games_max_bet", games::MAX_BET).await;
     if bet <= 0 {
         return Err("下注必须为正数".into());
@@ -274,14 +348,25 @@ async fn scratch(
     body: web::Json<BetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    check_bet(&state, body.bet).await.map_err(DomainError::Validation)?;
+    check_bet(&state, body.bet)
+        .await
+        .map_err(DomainError::Validation)?;
     check_rate(&state, &state.redis, auth.id).await?;
 
     let idem = idem_key("scratch", auth.id, &body.idempotency_key);
     // 幂等：同一键重复提交（网络重试/双击）不重复扣款，也**不重开一次奖** ——
     // 否则「首局未中奖 + 重放中奖」= 白赚，是必须堵住的印钞口。
     if !matches!(
-        spend_spark(&state.repo.db, auth.id, body.bet, "game", &idem, "scratch", 0).await?,
+        spend_spark(
+            &state.repo.db,
+            auth.id,
+            body.bet,
+            "game",
+            &idem,
+            "scratch",
+            0
+        )
+        .await?,
         SpendOutcome::Spent
     ) {
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
@@ -317,7 +402,9 @@ async fn guess_bigsmall(
     body: web::Json<GuessReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    check_bet(&state, body.bet).await.map_err(DomainError::Validation)?;
+    check_bet(&state, body.bet)
+        .await
+        .map_err(DomainError::Validation)?;
     let guess = match body.guess.as_str() {
         "small" => Guess::Small,
         "big" => Guess::Big,
@@ -328,7 +415,16 @@ async fn guess_bigsmall(
     let idem = idem_key("bs", auth.id, &body.idempotency_key);
     // 幂等（同 scratch）：重放不重开，避免「首局没中 + 重放中了」白赚
     if !matches!(
-        spend_spark(&state.repo.db, auth.id, body.bet, "game", &idem, "bigsmall", 0).await?,
+        spend_spark(
+            &state.repo.db,
+            auth.id,
+            body.bet,
+            "game",
+            &idem,
+            "bigsmall",
+            0
+        )
+        .await?,
         SpendOutcome::Spent
     ) {
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
@@ -364,9 +460,17 @@ async fn jgg(
     body: Option<web::Json<JggReq>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 风控一致性：票价同样受「单次下注上限」约束（旧实现绕过 games_max_bet，
+    // 站长把上限调到 100 以下时仍能抽走 100）。先校验再计数，避免白耗次数。
+    let ticket = games::JGG_TICKET;
+    let max_bet = eco_i64(&state, "games_max_bet", games::MAX_BET).await;
+    if ticket > max_bet {
+        return Err(DomainError::Validation(format!(
+            "票价 {ticket} 超过单次上限 {max_bet}，当前配置下无法开抽"
+        )));
+    }
     check_rate(&state, &state.redis, auth.id).await?;
 
-    let ticket = games::JGG_TICKET;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());
     let idem = idem_key("jgg", auth.id, &client_idem);
     // 幂等（同 scratch）：重放不重开
@@ -413,6 +517,8 @@ struct PlotRow {
     ready_at: chrono::DateTime<chrono::Utc>,
     watered: bool,
     ready: bool,
+    /// 成熟后超过 `farm_wither_days` 天未收获 → 枯萎（收获作废、清空地块）
+    withered: bool,
 }
 
 async fn get_crop(db: &sqlx::PgPool, crop_id: i32) -> DomainResult<Option<CropRow>> {
@@ -449,16 +555,23 @@ async fn farm_overview(
         })
         .collect();
 
+    let wither_days = farm_wither_days(&state).await;
     let plots: Vec<PlotRow> = sqlx::query_as(
         r#"SELECT p.slot, p.crop_id, c.name AS crop_name, p.planted_at, p.ready_at, p.watered,
-            (p.ready_at <= now()) AS ready
+            (p.ready_at <= now()) AS ready,
+            ($2 > 0 AND p.ready_at + make_interval(days => $2::int) < now()) AS withered
          FROM farm_plots p JOIN farm_crops c ON c.id = p.crop_id
          WHERE p.user_id = $1 ORDER BY p.slot"#,
     )
     .bind(auth.id)
+    .bind(wither_days)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+
+    // 农场自己的限流配额（rl:farm，与即时赌局分开计数）——前端显示「今日可操作 N 次」
+    let farm_limit = eco_i64(&state, "farm_max_plays_per_hour", 30).await;
+    let farm_left = (farm_limit - limit_used(&state, auth.id, true).await.unwrap_or(0)).max(0);
 
     Ok(ok(serde_json::json!({
         "window_start": window,
@@ -466,6 +579,9 @@ async fn farm_overview(
         "crops": crops,
         "plots": plots,
         "slots": 6,
+        "wither_days": wither_days,
+        "hour_limit": farm_limit,
+        "hour_left": farm_left,
     })))
 }
 
@@ -569,18 +685,22 @@ async fn farm_water(
     body: web::Json<SlotReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 枯萎地块不能浇水（有效期已过，救不回来）
+    let wither_days = farm_wither_days(&state).await;
     let updated = sqlx::query(
         r#"UPDATE farm_plots SET watered = TRUE, ready_at = ready_at - interval '10 minutes'
-         WHERE user_id = $1 AND slot = $2 AND watered = FALSE"#,
+         WHERE user_id = $1 AND slot = $2 AND watered = FALSE
+           AND ($3 = 0 OR ready_at + make_interval(days => $3::int) >= now())"#,
     )
     .bind(auth.id)
     .bind(body.slot)
+    .bind(wither_days)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if updated.rows_affected() == 0 {
         return Err(DomainError::Validation(
-            "该地块无需浇水（未种植或已浇过）".into(),
+            "该地块无需浇水（未种植 / 已浇过 / 已枯萎）".into(),
         ));
     }
     // 浇水消耗（0109 键 farm_water_spark，缺省 1；为 0 表示免费）。
@@ -588,7 +708,17 @@ async fn farm_water(
     let cost = eco_i64(&state, "farm_water_spark", 1).await;
     if cost > 0 {
         let idem = format!("farm-water:{}:{}", auth.id, body.slot);
-        if let Err(e) = spend_spark(&state.repo.db, auth.id, cost, "game", &idem, "farm_water", body.slot as i64).await {
+        if let Err(e) = spend_spark(
+            &state.repo.db,
+            auth.id,
+            cost,
+            "game",
+            &idem,
+            "farm_water",
+            body.slot as i64,
+        )
+        .await
+        {
             let _ = sqlx::query(
                 r#"UPDATE farm_plots SET watered = FALSE, ready_at = ready_at + interval '10 minutes'
                    WHERE user_id = $1 AND slot = $2"#,
@@ -612,20 +742,61 @@ async fn farm_harvest(
     body: web::Json<SlotReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // 行级锁防重复收获（先 FOR UPDATE 拿到成熟地块）
-    let plot: Option<(i64, i32, i32)> = sqlx::query_as(
-        r#"SELECT p.id, p.crop_id, c.base_yield FROM farm_plots p
-         JOIN farm_crops c ON c.id = p.crop_id
-         WHERE p.user_id = $1 AND p.slot = $2 AND p.ready_at <= now() FOR UPDATE"#,
+    let wither_days = farm_wither_days(&state).await;
+    // 单事务（P1 收口）：地块行锁、入账、清地块、留痕同生共死。旧版 FOR UPDATE 用在
+    // autocommit 连接上锁立即失效（重复收获实际只靠 earn 幂等键兜底），且 earn 与
+    // DELETE/留痕分属多个事务，中途失败会留下「钱发了地还在/地没了账没记」的中间态。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 行级锁防重复收获（先 FOR UPDATE 拿到成熟地块）；`FOR UPDATE OF p` 只锁地块表，
+    // 不锁 crops（否则所有收同一作物的用户会互相串行）
+    let plot: Option<(i64, i32, String, bool)> = sqlx::query_as(
+        r#"SELECT p.id, p.crop_id, c.name AS crop_name,
+             ($3 > 0 AND p.ready_at + make_interval(days => $3::int) < now()) AS withered
+         FROM farm_plots p JOIN farm_crops c ON c.id = p.crop_id
+         WHERE p.user_id = $1 AND p.slot = $2 AND p.ready_at <= now() FOR UPDATE OF p"#,
     )
     .bind(auth.id)
     .bind(body.slot)
-    .fetch_optional(&state.repo.db)
+    .bind(wither_days)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((plot_id, crop_id, _base)) = plot else {
+    let Some((plot_id, crop_id, crop_name, withered)) = plot else {
         return Err(DomainError::Validation("该地块尚未成熟".into()));
     };
+
+    // 枯萎（超过有效期未收）：收获作废（0 魔力），但**清空地块**让玩家能重种。
+    // 记账留痕（amount=0 的收获流水），便于运营统计浪费。
+    if withered {
+        sqlx::query("DELETE FROM farm_plots WHERE id = $1")
+            .bind(plot_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "INSERT INTO farm_harvests (user_id, crop_id, amount, market_price, doubled) VALUES ($1, $2, 0, 0, FALSE)",
+        )
+        .bind(auth.id)
+        .bind(crop_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        tx.commit()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        state
+            .repo
+            .audit(Some(auth.id), "farm.wither", Some(crop_id as i64))
+            .await;
+        return Ok(ok(serde_json::json!({
+            "crop": crop_name, "amount": 0, "market_price": 0, "doubled": false, "withered": true,
+        })));
+    }
 
     let now = chrono::Utc::now().timestamp();
     let window = games::market_window_start(now);
@@ -641,13 +812,15 @@ async fn farm_harvest(
     let doubled = games::roll_double();
     let amount = if doubled { market * 2 } else { market };
 
-    // 收益经统一交易管线入账（幂等键绑定地块，天然防重复收获）
+    // 收益经统一交易管线入账（幂等键绑定地块；与地块锁同事务，双重防重复收获。
+    // 地块已在本事务锁定且即将删除，重放不可达；显式丢弃以满足 must_use 契约）
     let idem = format!("farm-harvest:{}", plot_id);
-    earn_spark(&state.repo.db, auth.id, amount, "game", &idem).await?;
+    let earn_outcome = earn_spark_tx(&mut tx, auth.id, amount, "game", &idem).await?;
+    let _ = earn_outcome;
 
     sqlx::query("DELETE FROM farm_plots WHERE id = $1")
         .bind(plot_id)
-        .execute(&state.repo.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
@@ -658,12 +831,15 @@ async fn farm_harvest(
     .bind(amount)
     .bind(market)
     .bind(doubled)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
 
     Ok(ok(serde_json::json!({
-        "crop": crop.name, "amount": amount, "market_price": market, "doubled": doubled,
+        "crop": crop.name, "amount": amount, "market_price": market, "doubled": doubled, "withered": false,
     })))
 }
 

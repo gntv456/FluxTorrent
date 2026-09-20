@@ -46,12 +46,26 @@ impl ScratchOdds {
         ten: 2,
     };
 
-    /// 由四档可配百分比推导完整档位：10x = 100 - 前三档 - 2x（余数）。
-    /// 越界（前三档之和 ≥100 或余数 <1）时整体回落缺省，避免构造出非法档位导致必中/必空。
-    pub fn from_parts(empty: i64, half: i64, one: i64, two: i64) -> ScratchOdds {
+    /// 由五档可配百分比推导完整档位。规则（保证**总量恒为 100 且 EV 不变**）：
+    /// - 前四档之和 ≥ 100 → 整体回落缺省（防非法配置造出必中/必增发档位）；
+    /// - 10x 档填了正数且与前四档合计正好 100 → 采用站长配置；否则取**余数**（兼容旧的"余数档"行为）；
+    /// - EV 复算 ≥ 1 → 整体回落缺省（P2 运行时防线）：设置键是管理员可写参数，
+    ///   单测只锁死 DEFAULT 常量。余数档设计可被配置放大为增发开关——
+    ///   如 (0,0,0,99,·) → two=99%/ten=1%，EV = 0.99×2 + 0.01×10 = 2.08。
+    pub fn from_parts(empty: i64, half: i64, one: i64, two: i64, ten: i64) -> ScratchOdds {
         let (e, h, o, t) = (empty.max(0), half.max(0), one.max(0), two.max(0));
-        let rest = 100 - e - h - o - t;
-        if rest < 1 {
+        let sum4 = e + h + o + t;
+        if sum4 >= 100 {
+            return ScratchOdds::DEFAULT;
+        }
+        let ten_eff = if ten > 0 && sum4 + ten == 100 {
+            ten
+        } else {
+            100 - sum4
+        };
+        // 半点整数口径：EV(每注) = Σ(概率×倍率) = (h×0.5 + o×1 + t×2 + ten×10) / 100；
+        // 放大 200 倍避免浮点：h + 2o + 4t + 20ten < 200 ⟺ EV < 1
+        if h + 2 * o + 4 * t + 20 * ten_eff >= 200 {
             return ScratchOdds::DEFAULT;
         }
         ScratchOdds {
@@ -59,7 +73,7 @@ impl ScratchOdds {
             half: h as u32,
             one: o as u32,
             two: t as u32,
-            ten: rest as u32,
+            ten: ten_eff as u32,
         }
     }
 }
@@ -376,12 +390,27 @@ mod tests {
                 / 100.0
         };
         let d = ScratchOdds::DEFAULT;
-        assert_eq!(d.empty + d.half + d.one + d.two + d.ten, 100, "档位必须铺满 100%");
+        assert_eq!(
+            d.empty + d.half + d.one + d.two + d.ten,
+            100,
+            "档位必须铺满 100%"
+        );
         assert!((ev(&d) - 0.66).abs() < 1e-9, "缺省 EV 漂移: {}", ev(&d));
-        // 争议配置（前三档吃满）必须回落缺省，不能构造出必中/增发档位
-        let bad = ScratchOdds::from_parts(60, 30, 15, 8);
+        // 争议配置（前四档吃满）必须回落缺省，不能构造出必中/增发档位
+        let bad = ScratchOdds::from_parts(60, 30, 15, 8, 2);
         assert_eq!(bad.empty + bad.half + bad.one + bad.two + bad.ten, 100);
         assert!(ev(&bad) < 1.0, "越界配置未回落，EV={}", ev(&bad));
+        // 10x 档留 0（或与前四档合计不为 100）→ 按余数推导，总量恒 100
+        let auto = ScratchOdds::from_parts(50, 30, 15, 3, 0);
+        assert_eq!(auto.empty + auto.half + auto.one + auto.two + auto.ten, 100);
+        assert_eq!(auto.ten, 2, "余数应为 2");
+        // 站长显式配置 10x 且合计正好 100 → 采用配置值
+        let explicit = ScratchOdds::from_parts(50, 30, 15, 3, 2);
+        assert_eq!(explicit.ten, 2);
+        assert_eq!(
+            explicit.empty + explicit.half + explicit.one + explicit.two + explicit.ten,
+            100
+        );
     }
 
     /// 九宫格头奖 50x 的 EV 已由 jgg_expected_value_house_edge 锁定（0.725）。
