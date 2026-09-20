@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * 站点准入（PT 惯例）：未登录只放行登录页与静态资源，其余一律 302 → /login?next=…。
  * 会话判断用 flux.session 标记 cookie。P1 收敛后真凭证是 HttpOnly flux_token
- * （路径 /api/v1，登录 Set-Cookie 下发），JS 不可读；middleware 只做页面准入。
+ * （根路径 /，登录 Set-Cookie 下发），JS 不可读；middleware 只做页面准入。
  */
 
 const PUBLIC_PATHS = [

@@ -12,13 +12,13 @@ import { LOCALE_COOKIE } from "@/i18n/config";
 
 /** 浏览器侧：登录/登出时同步会话标记 cookie（12h，与 JWT 24h 保守对齐）。
  *  安全收敛（P1）：token 已不再进 localStorage/JS 可读 cookie——登录接口经
- *  Set-Cookie 下发 HttpOnly flux_token（路径 /api/v1），浏览器 fetch 自动携带；
+ *  Set-Cookie 下发 HttpOnly flux_token（根路径 /），浏览器 fetch 自动携带；
  *  flux.session 仅为 middleware 存在性标记；服务端 RSC 需要转发 Bearer 时，
  *  由 Next rewrites 转发的请求同样自动带 flux_token cookie（api 侧
  *  require_auth 已接受 Cookie 凭证，见 token_from_request）。 */
 export const SESSION_COOKIE = "flux.session";
 
-/** 登录态判定（P1 收敛）：token 已 HttpOnly 化（flux_token，路径 /api/v1），
+/** 登录态判定（P1 收敛）：token 已 HttpOnly 化（flux_token，根路径 /），
  *  JS 不可读；浏览器侧以 flux.session 标记 cookie 判断。 */
 export function hasSessionCookie(): boolean {
   if (typeof document === "undefined") return false;

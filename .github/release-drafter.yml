@@ -1,0 +1,24 @@
+# Release Drafter：PR 合并后按 label 自动起草 GitHub Release 草稿
+# （本文件是 drafter 的分类配置；触发 workflow 在 workflows/release-drafter.yml）
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+version-resolver:
+  major:
+    labels: ['breaking']
+  minor:
+    labels: ['feat', 'feature']
+  patch:
+    labels: ['fix', 'chore', 'ci', 'docs']
+  default: patch
+categories:
+  - title: '🚀 新功能'
+    labels: ['feat', 'feature']
+  - title: '🐛 修复'
+    labels: ['fix']
+  - title: '🧰 其他'
+    labels: ['chore', 'ci', 'docs']
+change-template: '- $TITLE (@$AUTHOR) #$NUMBER'
+template: |
+  ## 变更
+
+  $CHANGES

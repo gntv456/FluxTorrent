@@ -32,25 +32,15 @@ export function TypeBadge({
   );
 }
 
-/** 论坛标签样式（0123）：词表与样式列全部来自 tag_dict（0063 带样式的通用标签字典，
- *  站长在 admin-tagdict 后台改色即全站生效）。样式列可能为空串（历史数据），空值回落主题默认。 */
-export interface TagChipData {
-  id: number;
-  name: string;
-  kind?: string;
-  bg_color?: string;
-  color?: string;
-  font_size?: string;
-  margin?: string;
-  padding?: string;
-  border_radius?: string;
-}
+// TagChipData 已收编 @fluxtorrent/domain-types；re-export 保持既有导入路径
+export type { TagChipData } from "@fluxtorrent/domain-types";
+import type { TagChipData as _TCD } from "@fluxtorrent/domain-types";
 
 export function TagChip({
   tag,
   className = "",
 }: {
-  tag: TagChipData;
+  tag: _TCD;
   className?: string;
 }) {
   return (
