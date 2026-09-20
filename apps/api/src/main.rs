@@ -30,6 +30,7 @@ mod openapi_http;
 mod ops_http;
 mod payment;
 mod plugins;
+mod publish_http;
 mod push_http;
 mod repo;
 mod request_id;
