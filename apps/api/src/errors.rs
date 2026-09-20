@@ -144,7 +144,8 @@ impl ResponseError for DomainError {
             "code": self.code(),
             "message": message,
             "data": data,
-            "request_id": uuid::Uuid::new_v4().to_string(),
+            // 贯穿修复（P2）：与响应头/日志同源（request_id_mw task-local）
+            "request_id": crate::request_id::current(),
         }))
     }
 }

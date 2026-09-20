@@ -57,18 +57,18 @@ struct JixiaoTypeRow {
 /// 与 compute_metrics 产出的 key 一一对应，admin 建岗时校验。
 /// 键集对齐 NP Exam 指标口径（上传/下载/平均做种/魔力/做种积分/发布/体积/操作）。
 pub const JIXIAO_METRIC_KEYS: &[&str] = &[
-    "uploaded",           // 上传增量（字节，当月 traffic_ledger 聚合）
-    "downloaded",         // 下载增量（字节）
-    "uploads",            // 发种增量（当月新发布数）
-    "seeding_count",      // 当前做种种子数（现值口径）
-    "seed_size",          // 当前做种体积（字节，现值口径）
-    "seed_size_tb",       // 当前做种体积（TB，现值口径）
-    "seed_hours",         // 当月做种时长（小时，基线差值）
-    "avg_seed_hours",     // 平均做种时长（小时/个：时长差值 ÷ 期内活跃种子数，NP 平均做种口径）
-    "seed_days",          // 当月有做种活动的天数（近似：snatches.last_seen_at 按天去重）
-    "seed_points_delta",  // 做种积分增量（1 积分 = 1 小时做种，与 exam 引擎 task_jobs 同源口径）
-    "spark_delta",        // 火花增量（当月 spark_ledger 正向流水合计）
-    "ops",                // 当月操作数（audit_log 按月）
+    "uploaded",          // 上传增量（字节，当月 traffic_ledger 聚合）
+    "downloaded",        // 下载增量（字节）
+    "uploads",           // 发种增量（当月新发布数）
+    "seeding_count",     // 当前做种种子数（现值口径）
+    "seed_size",         // 当前做种体积（字节，现值口径）
+    "seed_size_tb",      // 当前做种体积（TB，现值口径）
+    "seed_hours",        // 当月做种时长（小时，基线差值）
+    "avg_seed_hours",    // 平均做种时长（小时/个：时长差值 ÷ 期内活跃种子数，NP 平均做种口径）
+    "seed_days",         // 当月有做种活动的天数（近似：snatches.last_seen_at 按天去重）
+    "seed_points_delta", // 做种积分增量（1 积分 = 1 小时做种，与 exam 引擎 task_jobs 同源口径）
+    "spark_delta",       // 火花增量（当月 spark_ledger 正向流水合计）
+    "ops",               // 当月操作数（audit_log 按月）
 ];
 
 /// 校验 min_requirements / metrics 里的键是否全部认识；返回首个未知键。
@@ -131,26 +131,24 @@ pub async fn jixiao_bonus(
     qualified_months: i64,
 ) -> i64 {
     // 岗位级配置（表单写入；旧数据 bonus_rules='{}' 视为未配置）
-    let rules: Option<serde_json::Value> = sqlx::query_scalar(
-        "SELECT bonus_rules FROM jixiao_types WHERE id = $1",
-    )
-    .bind(type_id)
-    .fetch_optional(db)
-    .await
-    .ok()
-    .flatten();
-    let (step, pct) = match rules
-        .as_ref()
-        .and_then(|r| r.as_object())
-        .map(|r| {
-            (
-                r.get("months_per_step").and_then(|v| v.as_i64()),
-                r.get("percent_per_step").and_then(|v| v.as_i64()),
-            )
-        }) {
+    let rules: Option<serde_json::Value> =
+        sqlx::query_scalar("SELECT bonus_rules FROM jixiao_types WHERE id = $1")
+            .bind(type_id)
+            .fetch_optional(db)
+            .await
+            .ok()
+            .flatten();
+    let (step, pct) = match rules.as_ref().and_then(|r| r.as_object()).map(|r| {
+        (
+            r.get("months_per_step").and_then(|v| v.as_i64()),
+            r.get("percent_per_step").and_then(|v| v.as_i64()),
+        )
+    }) {
         Some((Some(step), Some(pct))) if step > 0 && pct >= 0 => (step, pct),
         _ => (
-            jixiao_setting_i64(db, "jixiao_bonus_months_per_step", 3).await.max(1),
+            jixiao_setting_i64(db, "jixiao_bonus_months_per_step", 3)
+                .await
+                .max(1),
             jixiao_setting_i64(db, "jixiao_bonus_percent_per_step", 10).await,
         ),
     };
@@ -173,7 +171,11 @@ async fn jixiao_me(
     let prev_period = jixiao_prev_period(&period);
     let days_into_month = {
         let now_site = chrono::Utc::now() + chrono::Duration::hours(8);
-        now_site.format("%d").to_string().parse::<i64>().unwrap_or(99)
+        now_site
+            .format("%d")
+            .to_string()
+            .parse::<i64>()
+            .unwrap_or(99)
     };
     let window = jixiao_setting_i64(&state.repo.db, "jixiao_claim_window_days", 7).await;
     let claimable_prev = days_into_month <= window;
@@ -225,56 +227,60 @@ async fn jixiao_me(
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     let claim_window = window;
-    let items: Vec<serde_json::Value> = futures_util::future::join_all(
-        assigned.iter().map(|(id, name, row_period, base_pay, _m, min_reqs, status, settled_months)| {
-            let metrics = if row_period == &period { metrics.clone() } else { prev_metrics.clone() };
+    let items: Vec<serde_json::Value> = futures_util::future::join_all(assigned.iter().map(
+        |(id, name, row_period, base_pay, _m, min_reqs, status, settled_months)| {
+            let metrics = if row_period == &period {
+                metrics.clone()
+            } else {
+                prev_metrics.clone()
+            };
             let qualified = &qualified;
             let claimed = &claimed;
             let row_period = row_period.clone();
             let is_current = row_period == period;
             let db = &state.repo.db;
             async move {
-            // 逐指标比对：current vs required + 是否达标
-            let checks: Vec<serde_json::Value> = min_reqs
-                .as_object()
-                .map(|reqs| {
-                    reqs.iter()
-                        .filter(|(_, v)| v.as_i64().unwrap_or(0) > 0)
-                        .map(|(k, v)| {
-                            let required = v.as_i64().unwrap_or(0);
-                            let actual = metrics.get(k).and_then(|x| x.as_i64()).unwrap_or(0);
-                            serde_json::json!({
-                                "key": k, "required": required, "current": actual,
-                                "ok": actual >= required,
+                // 逐指标比对：current vs required + 是否达标
+                let checks: Vec<serde_json::Value> = min_reqs
+                    .as_object()
+                    .map(|reqs| {
+                        reqs.iter()
+                            .filter(|(_, v)| v.as_i64().unwrap_or(0) > 0)
+                            .map(|(k, v)| {
+                                let required = v.as_i64().unwrap_or(0);
+                                let actual = metrics.get(k).and_then(|x| x.as_i64()).unwrap_or(0);
+                                serde_json::json!({
+                                    "key": k, "required": required, "current": actual,
+                                    "ok": actual >= required,
+                                })
                             })
-                        })
-                        .collect()
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let all_ok = checks.iter().all(|c| c["ok"].as_bool().unwrap_or(false));
+                let months = (*settled_months).max(
+                    qualified
+                        .iter()
+                        .find(|(tid, _)| tid == id)
+                        .map(|(_, n)| *n)
+                        .unwrap_or(0),
+                );
+                let bonus = jixiao_bonus(db, *id, *base_pay, months).await;
+                serde_json::json!({
+                    "type_id": id, "name": name, "base_pay": base_pay,
+                    "period": row_period,
+                    // 上期补领行：本期 claimed 列表不含它（按期号查），永远 false 由 claimable 表达
+                    "claimable_prev": !is_current,
+                    "min_requirements": min_reqs,
+                    "checks": checks, "all_ok": all_ok,
+                    "qualified_months": months, "bonus": bonus,
+                    "total": base_pay + bonus,
+                    "claimed": is_current && claimed.contains(id),
+                    "status": status,
                 })
-                .unwrap_or_default();
-            let all_ok = checks.iter().all(|c| c["ok"].as_bool().unwrap_or(false));
-            let months = (*settled_months).max(
-                qualified
-                    .iter()
-                    .find(|(tid, _)| tid == id)
-                    .map(|(_, n)| *n)
-                    .unwrap_or(0),
-            );
-            let bonus = jixiao_bonus(db, *id, *base_pay, months).await;
-            serde_json::json!({
-                "type_id": id, "name": name, "base_pay": base_pay,
-                "period": row_period,
-                // 上期补领行：本期 claimed 列表不含它（按期号查），永远 false 由 claimable 表达
-                "claimable_prev": !is_current,
-                "min_requirements": min_reqs,
-                "checks": checks, "all_ok": all_ok,
-                "qualified_months": months, "bonus": bonus,
-                "total": base_pay + bonus,
-                "claimed": is_current && claimed.contains(id),
-                "status": status,
-            })
             }
-        }),
-    )
+        },
+    ))
     .await;
     Ok(ok(serde_json::json!({
         "period": period,
@@ -449,8 +455,11 @@ fn days_after_period_end(period: &str) -> i64 {
     use chrono::TimeZone;
     let month_end = chrono::FixedOffset::east_opt(8 * 3600)
         .and_then(|tz| tz.with_ymd_and_hms(ny, nm, 1, 0, 0, 0).single())
-        .unwrap_or_else(|| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap()));
-    let now_cst = chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap());
+        .unwrap_or_else(|| {
+            chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap())
+        });
+    let now_cst =
+        chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap());
     (now_cst - month_end).num_days()
 }
 
@@ -467,7 +476,9 @@ async fn jixiao_claim(
     // 补领窗口：只能领当月或上月（且上月必须在窗口期内；月末已自动结算过的不可再领）
     if period != now_period {
         if Some(period.clone()) != jixiao_prev_period(&now_period) {
-            return Err(DomainError::Validation("只能领取本期或上一期的绩效工资".into()));
+            return Err(DomainError::Validation(
+                "只能领取本期或上一期的绩效工资".into(),
+            ));
         }
         let window = jixiao_setting_i64(&state.repo.db, "jixiao_claim_window_days", 7).await;
         let elapsed = days_after_period_end(&period);
@@ -515,7 +526,9 @@ async fn jixiao_claim(
     .await
     .unwrap_or(false);
     if claimed {
-        return Err(DomainError::Validation("本期工资已发放（自动结算或本人领取）".into()));
+        return Err(DomainError::Validation(
+            "本期工资已发放（自动结算或本人领取）".into(),
+        ));
     }
 
     let t: Option<(String, i64, serde_json::Value, serde_json::Value)> = sqlx::query_as(
