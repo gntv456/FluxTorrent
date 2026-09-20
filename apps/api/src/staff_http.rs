@@ -1764,6 +1764,10 @@ struct SiteTypePack {
     #[serde(default)]
     #[sqlx(default)]
     sections: Option<serde_json::Value>,
+    /// 登录页品牌区默认标语（0143）：apply 时写入 site_settings.site_tagline
+    #[serde(default)]
+    #[sqlx(default)]
+    tagline: String,
 }
 
 /// 公开：当前站点档案（类型包 + 分类 + 模块开关 + 品牌名），前端布局/导航/上传表单由此驱动
@@ -1776,7 +1780,7 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
             .map_err(|e| DomainError::Internal(e.into()))?
             .unwrap_or_else(|| "general".into());
     let pack: Option<SiteTypePack> = sqlx::query_as(
-        "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs WHERE code = $1",
+        "SELECT code, name, description, brand, categories, modules, sort, tagline FROM site_type_packs WHERE code = $1",
     ).bind(&site_type)
     .fetch_optional(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1847,6 +1851,30 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
         .filter(|s| !s.is_empty())
         .map(str::to_lowercase)
         .collect();
+    // 登录页品牌区（0143）：标语 = 站型包默认 → site_settings 覆盖；logo = 站长可配 URL
+    let tagline: String = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'site_tagline'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v.trim().to_string())
+    .filter(|v| !v.is_empty())
+    .or_else(|| {
+        pack.as_ref()
+            .map(|p| p.tagline.clone())
+            .filter(|t| !t.is_empty())
+    })
+    .unwrap_or_default();
+    let site_logo: Option<String> =
+        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'site_logo'")
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten()
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
     // 站点简介（0088）：页脚「站点信息」卡片文案，留空由前端回落字典默认
     let site_desc: Option<String> =
         sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'site_desc'")
@@ -1860,6 +1888,8 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
         "site_type": site_type,
         "pack_name": pack.as_ref().map(|p| p.name.clone()),
         "brand": brand,
+        "tagline": tagline,
+        "site_logo": site_logo,
         "currency_name": currency,
         "founded": founded,
         "metadata_sources": sources,
@@ -1878,7 +1908,7 @@ async fn site_type_pack_list(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
     let rows: Vec<SiteTypePack> = sqlx::query_as(
-        "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs ORDER BY sort",
+        "SELECT code, name, description, brand, categories, modules, sort, tagline FROM site_type_packs ORDER BY sort",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
@@ -1914,7 +1944,7 @@ async fn site_type_pack_apply(
         return Err(DomainError::Validation("mode 需为 replace/merge".into()));
     }
     let pack: Option<SiteTypePack> = sqlx::query_as(
-        "SELECT code, name, description, brand, categories, modules, sort, sections FROM site_type_packs WHERE code = $1",
+        "SELECT code, name, description, brand, categories, modules, sort, sections, tagline FROM site_type_packs WHERE code = $1",
     ).bind(&body.code)
     .fetch_optional(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1971,6 +2001,11 @@ async fn site_type_pack_apply(
         .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_name', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
         .bind(&pack.brand).execute(&mut *tx).await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 登录页标语随包切换（0143）：站长后台改过的自定义值会被新包默认覆盖——
+    // 切站型本就是品牌级重置，语义如此；空 tagline 的包清空键回落前端字典
+    sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_tagline', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
+        .bind(&pack.tagline).execute(&mut *tx).await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 模块开关 → 站点设定键（textbooks 等）
     if let Some(mods) = pack.modules.as_object() {

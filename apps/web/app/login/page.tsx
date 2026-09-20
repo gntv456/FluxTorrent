@@ -272,20 +272,62 @@ function LoginLangSwitcher({ current }: { current: Locale }) {
   );
 }
 
+/** 品牌区数据（0143 站型化）：tagline/logo 由站点档案下发（站型包默认 + 后台可覆盖），
+ *  拉取失败回落 i18n 字典（原教育站文案），保证登录页永不因后端故障而空版。 */
+function useSiteBrand() {
+  const { dict } = useI18n();
+  const [brand, setBrand] = useState<{ tagline: string; desc: string; logo: string | null }>({
+    tagline: dict.login.introTagline,
+    desc: dict.login.introDesc,
+    logo: null,
+  });
+  useEffect(() => {
+    let alive = true;
+    api
+      .get<{ tagline?: string; site_logo?: string | null; site_desc?: string | null }>(
+        "/api/v1/site-profile",
+      )
+      .then((p) => {
+        if (!alive) return;
+        setBrand({
+          tagline: p.tagline?.trim() || dict.login.introTagline,
+          desc: p.site_desc?.trim() || dict.login.introDesc,
+          logo: p.site_logo?.trim() || null,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [dict]);
+  return brand;
+}
+
 /** 登录页外壳（双栏画布 + 右上语言行 + 表单卡） */
 function LoginShell() {
   const { dict, locale } = useI18n();
+  const brand = useSiteBrand();
   return (
     <div className="bz-login-page">
       <div className="bz-login-canvas">
-        {/* 左：品牌插画栏（奶油底 + 站标 + 标语） */}
+        {/* 左：品牌插画栏（奶油底 + 站标 + 标语）——站点 logo 优先，缺省占位图形 */}
         <div className="bz-login-intro">
           <div className="bz-login-intro-inner">
-            <span className="bz-login-intro-mascot" aria-hidden>
-              🥟
-            </span>
-            <p className="bz-login-intro-tagline">{dict.login.introTagline}</p>
-            <p className="bz-login-intro-desc">{dict.login.introDesc}</p>
+            {brand.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={brand.logo}
+                alt=""
+                aria-hidden
+                className="bz-login-intro-mascot bz-login-intro-logo"
+              />
+            ) : (
+              <span className="bz-login-intro-mascot" aria-hidden>
+                🥟
+              </span>
+            )}
+            <p className="bz-login-intro-tagline">{brand.tagline}</p>
+            <p className="bz-login-intro-desc">{brand.desc}</p>
           </div>
         </div>
 

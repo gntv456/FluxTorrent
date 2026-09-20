@@ -7,6 +7,10 @@ export interface SiteProfile {
   site_type: string;
   pack_name: string | null;
   brand: string;
+  /** 登录页品牌区标语（0143）：站型包默认 ← site_settings.site_tagline 覆盖；空回落 i18n 字典 */
+  tagline?: string;
+  /** 站点 Logo URL（site_settings.site_logo；空 = 前端回落占位图形） */
+  site_logo?: string | null;
   /** 站点货币名（0082）：默认「魔力」，站长后台 site_settings.currency_name 可改 */
   currency_name?: string;
   /** 建站日期（site_settings.datefounded，页脚版权条用） */
@@ -28,6 +32,8 @@ export async function getSiteProfile(): Promise<SiteProfile> {
       site_type: "general",
       pack_name: null,
       brand: "",
+      tagline: "",
+      site_logo: null,
       currency_name: "魔力",
       founded: null,
       metadata_sources: ["imdb", "douban", "bangumi", "indienova"],
