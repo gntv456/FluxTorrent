@@ -3934,6 +3934,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   top: calc(100% + 6px);
   right: 0;
   z-index: 70;
+  /* 0145：详情页等非表格场景仍用本绝对定位版；列表内由 --fixed 覆写（见下） */
   display: flex;
   flex-direction: column;
   min-width: 128px;
@@ -3958,6 +3959,15 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
+}
+/* 0145 列表内下拉：fixed 定位按按钮视口坐标摆位——逃离 .nexus-table 的
+   overflow:hidden（圆角裁剪）与滚动包裹层的 overflow 裁剪链；
+   种子少时最后一行的菜单不再被表格底边/外框遮挡 */
+.torrents-menu--fixed {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 120;
 }
 .torrents-menu button:hover {
   background: var(--surface-hover);
