@@ -829,18 +829,19 @@
  ],
  "components\\footer.tsx": [],
  "components\\forum-bits.tsx": [],
- "components\\forum-composer.tsx": [
-  350,
-  366,
-  369,
-  372,
-  379,
-  431
- ],
+ "components\\forum-composer.tsx": [],
  "components\\forum-follow.tsx": [],
  "components\\forum-lottery.tsx": [],
  "components\\forum-markdown.tsx": [],
  "components\\forum-poll.tsx": [],
+ "components\\forum-post-actions.tsx": [
+  103,
+  119,
+  122,
+  125,
+  132,
+  184
+ ],
  "components\\forum-report.tsx": [],
  "components\\forum-search.tsx": [],
  "components\\forum-vote.tsx": [],
@@ -920,6 +921,7 @@
  "components\\medal-rarity-chip.tsx": [
   31
  ],
+ "components\\medal-wall.tsx": [],
  "components\\message-center.tsx": [],
  "components\\module-gate.tsx": [
   25,
@@ -1220,6 +1222,7 @@
   158,
   161
  ],
+ "components\\torrent-detail-parts.tsx": [],
  "components\\torrent-list-client.tsx": [],
  "components\\torrent-manage.tsx": [
   28,
@@ -1405,19 +1408,19 @@
   666
  ],
  "app\\(main)\\torrent\\[id]\\page.tsx": [
-  207,
-  215,
-  216,
-  217,
-  264,
-  280,
-  320,
-  329,
-  354,
-  365,
-  408,
-  429,
-  451
+  124,
+  132,
+  133,
+  134,
+  166,
+  182,
+  222,
+  231,
+  256,
+  267,
+  310,
+  331,
+  353
  ],
  "app\\(main)\\top\\page.tsx": [
   20,
