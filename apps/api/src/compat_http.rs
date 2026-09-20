@@ -17,8 +17,8 @@ use sha3::{Digest, Sha3_256};
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::build_torrent_bytes;
 use crate::openapi_http::require_token;
+use crate::publish_http::build_torrent_bytes;
 use crate::state::AppState;
 use crate::torrents::{charge_for_download, list_torrents_noclamp, TorrentFilter};
 
