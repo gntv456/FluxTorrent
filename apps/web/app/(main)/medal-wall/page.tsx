@@ -1,6 +1,6 @@
 import { getDict } from "@/i18n/server";
 import { getMedalRarities } from "@/lib/data";
-import { MedalWall } from "@/components/plugins";
+import { MedalWall } from "@/components/medal-wall";
 import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
