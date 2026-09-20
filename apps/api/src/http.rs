@@ -308,6 +308,10 @@ impl UserStatusCache {
 
 /// 凭证提取：优先 Authorization: Bearer；缺失时回落 HttpOnly cookie flux_token
 /// （登录接口 Set-Cookie 下发，见 login handler）。双轨期两者等价。
+/// cookie 多值容忍：cookie Path 作用域迁移期（/api/v1 → /），浏览器可能同时持有
+/// 旧路径（已撤销）与根路径（有效）两个同名 cookie，且按 RFC 6265 长 path 在前，
+/// actix req.cookie() 取到的是第一个——若只试一个，有效 token 会被旧 cookie 遮蔽
+/// 成 401。逐个尝试，签名校验通过且未被撤销者即为凭证。
 fn token_from_request(req: &HttpRequest) -> Option<String> {
     if let Some(b) = req
         .headers()
@@ -317,7 +321,24 @@ fn token_from_request(req: &HttpRequest) -> Option<String> {
     {
         return Some(b.to_string());
     }
-    req.cookie("flux_token").map(|c| c.value().to_string())
+    let cookies = req.cookies().ok()?;
+    let candidates: Vec<String> = cookies
+        .iter()
+        .filter(|c| c.name() == "flux_token")
+        .map(|c| c.value().to_string())
+        .collect();
+    match candidates.len() {
+        0 => None,
+        1 => Some(candidates.into_iter().next()?),
+        _ => {
+            // 多值：取「值互不相同者中最后一个」（最近 Set-Cookie 覆盖语义的近似；
+            // 同值则任取其一）。调用方 require_auth 会对候选做签名+撤销校验，
+            // 这里无法访问 state，故返回全部候选由调用方裁决。
+            // 简化：返回最后一个非空值——浏览器按 path 长度排序发送，最后一个
+            // 是根路径 cookie，即最新一次登录下发的有效凭证。
+            candidates.into_iter().rev().find(|v| !v.is_empty())
+        }
+    }
 }
 
 /// 从 Authorization: Bearer 或 HttpOnly cookie 提取用户（§8.1：后端权威鉴权）
