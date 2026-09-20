@@ -1,4 +1,6 @@
 //! 仓储层：sqlx 参数化查询（§8.3.1：一律参数化，编译期检查由 CI sqlx prepare 承担）。
+//! 模块化（2026-09-20 repo 分层做实）：单文件 → 目录；auth.rs 收编注册事务，
+//! 后续域（torrents/economy…）按同模式渐进。
 
 use sqlx::PgPool;
 
@@ -169,3 +171,5 @@ impl Repo {
         }
     }
 }
+
+pub mod auth;

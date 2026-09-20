@@ -247,75 +247,20 @@ pub async fn register(
     }
     throttle(&state, format!("register-ip:{ip}")).await?;
     let pass_hash = domain::hash_password(&new_user.password)?;
-    // 单事务注册（审计修复）：旧版「建用户→消费邀请码→补偿 DELETE」三段非原子，
-    // 中间崩溃会留下未绑邀请人的账号或占用用户名。现在整个流程一个事务内完成。
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let passkey = {
-        // 与 repo::create_user 同口径的 passkey 生成
-        let p: String = sqlx::query_scalar("SELECT encode(gen_random_bytes(20), 'hex')")
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        p
+    // 单事务注册（repo 分层收编）：事务体在 repo/auth.rs register_user——
+    // 建用户+消费邀请码+绑邀请人原子完成（审计修复口径不变），
+    // 邀请码无效整体回滚并区分 InviteUsed/InviteInvalid。
+    let user_repo = crate::repo::auth::AuthRepo {
+        db: state.repo.db.clone(),
     };
-    let user_id: i64 = sqlx::query_scalar(
-        "INSERT INTO users (username, email, pass_hash, passkey) VALUES ($1, $2, $3, $4) RETURNING id",
-    )
-    .bind(&new_user.username)
-    .bind(&new_user.email)
-    .bind(&pass_hash)
-    .bind(&passkey)
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::Database(db) if db.is_unique_violation() => DomainError::UsernameTaken,
-        other => DomainError::Internal(other.into()),
-    })?;
-    let inviter: Option<i64> = if reg_mode == "invite_only" {
-        let inv = sqlx::query_scalar(
-            "UPDATE invites SET status = 1, used_by = $1          WHERE code = $2 AND status = 0 AND expires_at > now()          RETURNING inviter_id",
+    let (user_id, _inviter) = user_repo
+        .register_user(
+            &new_user,
+            &pass_hash,
+            body.invite_code.trim(),
+            reg_mode == "invite_only",
         )
-        .bind(user_id)
-        .bind(&body.invite_code)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        let Some(inv) = inv else {
-            // 邀请码无效：整个事务回滚（不再需要补偿 DELETE）
-            let used: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1 AND status = 1)",
-            )
-            .bind(&body.invite_code)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
-            return Err(if used {
-                DomainError::InviteUsed
-            } else {
-                DomainError::InviteInvalid
-            });
-        };
-        Some(inv)
-    } else {
-        // open / email_verify：无邀请人（invited_by 保持 NULL）
-        None
-    };
-    if let Some(inviter) = inviter {
-        sqlx::query("UPDATE users SET invited_by = $2 WHERE id = $1")
-            .bind(user_id)
-            .bind(inviter)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    }
-    tx.commit()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        .await?;
     state
         .repo
         .audit(Some(user_id), "user_register", Some(user_id))
