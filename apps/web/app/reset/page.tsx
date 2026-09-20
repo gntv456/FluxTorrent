@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, setSessionCookie, ApiError } from "@/lib/api-client";
+import { api, setSessionCookie, hasSessionCookie, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
 /** 重置表单（useSearchParams 需 Suspense 包裹） */
@@ -20,9 +20,7 @@ function ResetForm() {
 
   // 兜底：已登录访问重置页直接回资源库
   useEffect(() => {
-    if (typeof window !== "undefined" && localStorage.getItem("flux.token")) {
-      router.replace("/torrents");
-    }
+    if (hasSessionCookie()) router.replace("/torrents");
   }, [router]);
 
   async function submit(e: React.FormEvent) {

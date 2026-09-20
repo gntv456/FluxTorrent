@@ -3,7 +3,7 @@
 ;
 
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 
@@ -33,7 +33,7 @@ export default function OffersPage() {
   useEffect(load, [load]);
 
   useEffect(() => {
-    if (!localStorage.getItem("flux.token")) return;
+    if (!hasSessionCookie()) return;
     api
       .get<{ class_id: number }>("/api/v1/me")
       .then((m) => setIsStaff(m.class_id >= 90))

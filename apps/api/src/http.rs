@@ -431,11 +431,28 @@ async fn login(
     .await;
     // M28 插件 Hook：登录成功后分发
     state.plugins.dispatch_login(&state, user.id);
-    Ok(ok(serde_json::json!({
+    // 安全加固（P1 XSS 面）：token 同时以 HttpOnly+SameSite=Lax cookie 下发。
+    // 兼容期双轨：响应体仍带 token（存量前端 localStorage 口径），前端迁移完成后
+    // 移除。cookie 路径限定 /api/v1，浏览器侧 api 调用自动携带；HttpOnly 使
+    // XSS 无法读取（require_auth 同时接受 Cookie，见 token_from_request）。
+    let mut resp = ok(serde_json::json!({
         "token": token,
         "must_reset_password": user.must_reset_password,
         "user": { "id": user.id, "username": user.username, "class_id": user.class_id }
-    })))
+    }));
+    let cookie = actix_web::cookie::Cookie::build("flux_token", token)
+        .path("/api/v1")
+        .max_age(actix_web::cookie::time::Duration::hours(24))
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .finish()
+        .to_string();
+    use actix_web::http::header::{HeaderName, HeaderValue};
+    resp.headers_mut().insert(
+        HeaderName::from_static("set-cookie"),
+        HeaderValue::from_str(&cookie).expect("cookie 串解析为 HeaderValue 必然成功"),
+    );
+    Ok(resp)
 }
 
 async fn throttle(state: &Arc<AppState>, key: String) -> DomainResult<()> {
@@ -568,18 +585,30 @@ impl UserStatusCache {
     }
 }
 
-/// 从 Authorization: Bearer 提取用户（§8.1：后端权威鉴权）
-pub async fn require_auth(
-    req: &HttpRequest,
-    state: &web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<AuthUser> {
-    let token = req
+/// 凭证提取：优先 Authorization: Bearer；缺失时回落 HttpOnly cookie flux_token
+/// （登录接口 Set-Cookie 下发，见 login handler）。双轨期两者等价。
+fn token_from_request(req: &HttpRequest) -> Option<String> {
+    if let Some(b) = req
         .headers()
         .get("authorization")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
+    {
+        return Some(b.to_string());
+    }
+    req.cookie("flux_token").map(|c| c.value().to_string())
+}
+
+/// 从 Authorization: Bearer 或 HttpOnly cookie 提取用户（§8.1：后端权威鉴权）
+pub async fn require_auth(
+    req: &HttpRequest,
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<AuthUser> {
+    let token = token_from_request(req).ok_or(DomainError::Unauthorized)?;
+    let claims = state
+        .jwt
+        .verify(token.as_str())
         .ok_or(DomainError::Unauthorized)?;
-    let claims = state.jwt.verify(token).ok_or(DomainError::Unauthorized)?;
     // 登出撤销检查：签发时间早于 not-before 的 token 一律拒绝。
     // 权威在 token_revocations 表（0085：Redis 重启不再让已撤销 token 复活）；
     // Redis 键保留 24h 作为存量兜底（迁移前撤销线只写了 Redis）。
@@ -693,7 +722,21 @@ async fn logout(
         tracing::warn!(user_id = auth.id, error = ?e, "登出撤销线 Redis 写入失败（DB 权威仍在，影响为加速缓存缺失）");
     }
     state.repo.audit(Some(auth.id), "auth.logout", None).await;
-    Ok(ok(serde_json::json!({ "ok": true })))
+    // 同步清除 HttpOnly 会话 cookie（与撤销线配合：即便 token 被复用，cookie 已不存在）
+    let clear = actix_web::cookie::Cookie::build("flux_token", "")
+        .path("/api/v1")
+        .max_age(actix_web::cookie::time::Duration::ZERO)
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .finish()
+        .to_string();
+    let mut resp = ok(serde_json::json!({ "ok": true }));
+    use actix_web::http::header::{HeaderName, HeaderValue};
+    resp.headers_mut().insert(
+        HeaderName::from_static("set-cookie"),
+        HeaderValue::from_str(&clear).expect("清 cookie 串解析必然成功"),
+    );
+    Ok(resp)
 }
 
 /// 我的权限清单（前端 admin Tab 渲染过滤用；批量取回避免 N 次 round-trip）

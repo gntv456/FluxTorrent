@@ -1,0 +1,44 @@
+{
+  "__comment": "FluxTorrent 预置仪表盘（U5 §12.6）：Prometheus 抓取 /metrics（ANN_METRICS_TOKEN 头 x-metrics-token），面板覆盖 RED + announce 链路健康。",
+  "title": "FluxTorrent 站点健康",
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "请求速率 (RPS)",
+      "targets": [{ "expr": "rate(flux_api_requests_total[5m])" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "5xx 速率",
+      "targets": [{ "expr": "rate(flux_api_requests_5xx_total[5m])" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "请求延迟 P50/P99",
+      "targets": [
+        { "expr": "histogram_quantile(0.5, rate(flux_api_request_duration_bucket[5m]))" },
+        { "expr": "histogram_quantile(0.99, rate(flux_api_request_duration_bucket[5m]))" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Announce 死信队列深度",
+      "targets": [{ "expr": "flux_api_announce_dlq_depth" }],
+      "description": "非零即计费链路有损坏事件积压，立即排查"
+    },
+    {
+      "type": "timeseries",
+      "title": "Announce Stream 长度",
+      "targets": [{ "expr": "flux_api_announce_stream_len" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "PG 连接池",
+      "targets": [
+        { "expr": "flux_api_pool_connections" },
+        { "expr": "flux_api_pool_idle" }
+      ]
+    }
+  ]
+}

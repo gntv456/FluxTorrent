@@ -98,6 +98,15 @@ jobs:
             echo "$1 $2 → $code"
           }
           probe GET  /health
+          # 鉴权矩阵（匿名列）：受保护资源匿名一律 401/403——任何 200 = 守卫缺失
+          for path in /torrents /me /me/overview /invites /bank/overview /friends /forums /admin/overview /admin/users; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$B$path")
+            echo "anon GET $path → $code"
+            case "$code" in
+              401|403|410|404) ;;       # 拒绝形态（含模块关闭 4101→404、setup 未就绪）
+              *) echo "::error::鉴权矩阵失败：$path 匿名返回 $code（应为 401/403）"; exit 1 ;;
+            esac
+          done
           probe GET  /torrents                 # 未登录：信封 401（不是裸 404/500 = 路由+信封活着）
           probe GET  /compat/meta              # 公开端点
           probe GET  /auth/captcha             # 验证码签发（Redis 依赖）

@@ -18,6 +18,10 @@ services:
     image: postgres:16-alpine
     container_name: flux-postgres
     logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
     environment:
       POSTGRES_USER: flux
       POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
@@ -37,6 +41,10 @@ services:
     image: redis:7-alpine
     container_name: flux-redis
     logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 384m
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     environment:
       # 供 healthcheck 在容器内读密码（无密码 ping 曾造成 NOAUTH 下依旧 healthy 的假阳性）
@@ -57,6 +65,10 @@ services:
       dockerfile: docker/api.Dockerfile
     container_name: flux-api
     logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
     environment:
       BIND: 0.0.0.0:8080
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
@@ -116,6 +128,10 @@ services:
       dockerfile: docker/worker.Dockerfile
     container_name: flux-worker
     logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
     environment:
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
@@ -142,6 +158,10 @@ services:
       dockerfile: docker/tracker.Dockerfile
     container_name: flux-tracker
     logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
     environment:
       TRACKER_BIND: 0.0.0.0:7070
       # UDP tracker 绑定（BEP15 connect/announce/scrape）；置空字符串禁用
@@ -190,6 +210,10 @@ services:
       dockerfile: docker/web.Dockerfile
     container_name: flux-web
     logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
     environment:
       # 浏览器走同源 /api（rewrites 转发），服务端 RSC 直连容器网
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
@@ -200,6 +224,52 @@ services:
       - api
     restart: unless-stopped
 
+  # ============ 监控栈（可选 profile：docker compose --profile monitoring up -d） ============
+  # .env 配好 ANN_METRICS_TOKEN 后 api/tracker 的 /metrics 才可用（留空 = 404）。
+  # Grafana 首次启动自动导入数据源 + 预置仪表盘（provisioning 目录）；
+  # 告警规则在 monitoring/alerts.yml（DLQ 积压 / 5xx 率 / tracker Redis 降级 /
+  # Stream 积压 / 连接池打满五条最低告警，审查报告 go-live 清单第 7 项）。
+
+  # 注：资源限制统一在 services 各自 deploy.resources.limits（compose v2 直接生效）。
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: flux-prometheus
+    profiles: ["monitoring"]
+    logging: *default-logging
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: flux-grafana
+    profiles: ["monitoring"]
+    logging: *default-logging
+    environment:
+      # monitoring profile 未启用时该服务不启动，空默认不影响主栈；
+      # 启用前必须在 .env 设置强密码（grafana 暴露在 127.0.0.1:3001）
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/provisioning/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   pgdata:
   attachments:
+  prometheus-data:
+  grafana-data:

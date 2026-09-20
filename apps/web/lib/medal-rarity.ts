@@ -1,30 +1,68 @@
 /**
- * 勋章稀有度：**唯一真相源**（后台下拉与前台角标配色/中文标签都读这里）。
+ * 勋章稀有度：**词表在库里**（`medal_rarities` 表 + 0143 迁移），后台可增删改名，前台读同一份。
  *
- * 背景：`medals.rarity` 是自由文本，原先只有 `medals/page.tsx` 里两张硬编码 map 认识
- * legendary/epic/rare/common —— 后台表单于是只能让站长盲填英文枚举，填别的值就掉到
- * 「原样显示 + 蓝色兜底」。这里把词表抽出来共用，并保留自定义（站长可新增稀有度）。
+ * 这里只放两样东西：
+ * 1. `MEDAL_RARITY_TONES` —— 允许的配色档（固定 6 档 → tailwind token 类）。
+ *    库里只存档位标识，不存 CSS，避免站长写任意样式类把主题体系打破。
+ * 2. 接口失败时的内置兜底词表（= 改造前前端硬编码的那 4 个值），保证页面不空。
  */
-export const MEDAL_RARITIES = [
-  { value: "legendary", label: "传说", style: "bg-sun text-ink" },
-  { value: "epic", label: "史诗", style: "bg-indigo text-white" },
-  { value: "rare", label: "稀有", style: "bg-sky text-white" },
-  { value: "common", label: "普通", style: "bg-mint text-white" },
+export interface MedalRarity {
+  value: string;
+  label: string;
+  tone: string;
+  sort?: number;
+  /** 后台列表用：当前有多少枚勋章在用 */
+  used?: number;
+}
+
+/** 配色档（值存库；改这里前先确认前端已生成对应 tailwind 类） */
+export const MEDAL_RARITY_TONES = [
+  { value: "gold", label: "金（传说）", style: "bg-sun text-ink" },
+  { value: "coral", label: "橙（热卖）", style: "bg-coral text-white" },
+  { value: "mint", label: "绿（普通）", style: "bg-mint text-white" },
+  { value: "sky", label: "蓝（信息）", style: "bg-sky text-white" },
+  { value: "indigo", label: "靛（史诗）", style: "bg-indigo text-white" },
+  { value: "candy", label: "粉（限定）", style: "bg-candy text-white" },
 ] as const;
 
-/** 自定义 / 未知稀有度的兜底角标样式（不写死告警色，保持蓝色中性） */
+/** 接口拿不到词表时的兜底（与 0143 的种子数据一致） */
+export const DEFAULT_MEDAL_RARITIES: MedalRarity[] = [
+  { value: "legendary", label: "传说", tone: "gold", sort: 10 },
+  { value: "epic", label: "史诗", tone: "indigo", sort: 20 },
+  { value: "rare", label: "稀有", tone: "sky", sort: 30 },
+  { value: "common", label: "普通", tone: "mint", sort: 40 },
+];
+
+/** 词表里没有的稀有度（历史数据 / 站长手改过库）→ 中性蓝，不崩样式 */
 export const MEDAL_RARITY_FALLBACK_STYLE = "bg-sky text-white";
 
-export function medalRarityStyle(rarity?: string | null): string {
-  return MEDAL_RARITIES.find((r) => r.value === rarity)?.style ?? MEDAL_RARITY_FALLBACK_STYLE;
+export function rarityToneStyle(tone?: string | null): string {
+  return MEDAL_RARITY_TONES.find((t) => t.value === tone)?.style ?? MEDAL_RARITY_FALLBACK_STYLE;
 }
 
-/** 已知稀有度给中文名；自定义值原样返回（站长填什么就显示什么） */
-export function medalRarityLabel(rarity?: string | null): string {
-  if (!rarity) return "";
-  return MEDAL_RARITIES.find((r) => r.value === rarity)?.label ?? rarity;
+export function medalRarity(list: MedalRarity[], value?: string | null): MedalRarity | undefined {
+  return value ? list.find((r) => r.value === value) : undefined;
 }
 
-export function isKnownRarity(rarity?: string | null): boolean {
-  return !!rarity && MEDAL_RARITIES.some((r) => r.value === rarity);
+export function medalRarityStyle(list: MedalRarity[], value?: string | null): string {
+  return rarityToneStyle(medalRarity(list, value)?.tone);
+}
+
+/** 词表收录 → 显示名；未收录 → 原样显示键（不隐藏数据，便于站长发现漏配） */
+export function medalRarityLabel(list: MedalRarity[], value?: string | null): string {
+  if (!value) return "";
+  return medalRarity(list, value)?.label ?? value;
+}
+
+export function isKnownRarity(list: MedalRarity[], value?: string | null): boolean {
+  return !!medalRarity(list, value);
+}
+
+/** slug 归一化（与后端 clean_rarity_value 同口径，用于前端即时校验/预览） */
+export function cleanRarityValue(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 32);
 }

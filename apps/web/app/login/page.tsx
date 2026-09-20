@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, setSessionCookie, ApiError } from "@/lib/api-client";
+import { api, setSessionCookie, hasSessionCookie, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt, LOCALES, LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -72,21 +72,12 @@ function LoginForm() {
   const [showTotp, setShowTotp] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
 
-  // middleware 已挡未登录；这里兜底：残留会话 cookie 直接跳回目标页。
-  // 半登录态防护：仅 localStorage 有 token 而 flux.session cookie 已过期（12h vs JWT 24h）
-  // 时不再跳转——否则会与 middleware 的 302 形成回显循环（登录页↔目标页反复横跳）
+  // middleware 已挡未登录；这里兜底：残留会话直接跳回目标页。
+  // P1 收敛后 token 为 HttpOnly（JS 不可读），登录态以 flux.session 标记判定；
+  // session(12h) 早于 flux_token(24h) 过期时由后端 401 → api-client 全局清理跳转。
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!localStorage.getItem("flux.token")) return;
-    const sessionAlive = document.cookie
-      .split("; ")
-      .some((c) => c.startsWith("flux.session=") && c.length > "flux.session=".length);
-    if (sessionAlive) {
-      router.replace(next);
-    } else {
-      // cookie 已失效而 token 残留：清理本地令牌，让用户重新登录
-      localStorage.removeItem("flux.token");
-    }
+    if (hasSessionCookie()) router.replace(next);
   }, [router, next]);
 
   async function submit(e: React.FormEvent) {
@@ -99,8 +90,7 @@ function LoginForm() {
         password,
         totp_code: totp.trim() ? Number(totp.trim()) : undefined,
       });
-      localStorage.setItem("flux.token", resp.token);
-      setSessionCookie(resp.token);
+      setSessionCookie(true);
       // 临时密码（P1 修复）：后端只放行改密/登出三条路径，落在业务页只会
       // 处处报「请先修改密码」——登录成功即引导直达「我的 → 安全」改密。
       router.push(resp.must_reset_password ? "/my?tab=security" : next);

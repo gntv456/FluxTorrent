@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, setSessionCookie } from "@/lib/api-client";
+import { api, setSessionCookie, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { formatBytes, formatRatio, avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { UserTools } from "@/components/user-tools";
@@ -38,7 +38,7 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
   const [sparkText, setSparkText] = useState<string>("…");
 
   useEffect(() => {
-    if (!localStorage.getItem("flux.token")) return;
+    if (!hasSessionCookie()) return;
     api
       .get<MeInfo & { spark_balance?: number }>("/api/v1/me")
       .then((r) => {
@@ -51,10 +51,9 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
           .catch(() => {});
       })
       .catch(() => {
-        // token 失效：清掉本地凭证，回落到登录链接
-        localStorage.removeItem("flux.token");
+        // 会话失效：清标记 cookie，回落到登录链接（flux_token 由后端过期/401 清理）
         localStorage.removeItem("flux.user");
-        setSessionCookie(null);
+        setSessionCookie(false);
       });
   }, []);
 
@@ -68,9 +67,8 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
     } catch {
       // 后端撤销失败也照常清理本地凭证
     }
-    localStorage.removeItem("flux.token");
     localStorage.removeItem("flux.user");
-    setSessionCookie(null);
+    setSessionCookie(false);
     location.href = "/login";
   }
 

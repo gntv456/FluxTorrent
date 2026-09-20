@@ -13,6 +13,7 @@ use crate::state::AppState;
 pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
     scope
         // M14 勋章
+        .service(medal_rarities)
         .service(medal_list)
         .service(medal_buy)
         .service(medal_gift)
@@ -108,6 +109,27 @@ struct MedalRow {
     category_name: Option<String>,
     /// 勋章图片（asset_ref，0001 就有列；此前只在后台接口返回，前台拿不到 → 全站只能画 🏅）
     asset_ref: Option<String>,
+}
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct MedalRarityRow {
+    value: String,
+    label: String,
+    /// 配色档（前端映射到 tailwind token 类）
+    tone: String,
+    sort: i32,
+}
+
+/// 勋章稀有度词表（0143）：前台角标与后台下拉共用；词表主体在后台维护。
+/// 免鉴权——纯展示元数据，且 /medals 页面本身就可能以未登录态渲染。
+#[get("/medal-rarities")]
+async fn medal_rarities(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+    let rows: Vec<MedalRarityRow> =
+        sqlx::query_as("SELECT value, label, tone, sort FROM medal_rarities ORDER BY sort, value")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
 }
 
 #[get("/medals")]

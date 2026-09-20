@@ -26,5 +26,8 @@ COPY --from=builder /build/apps/web/.next/standalone ./
 # server.js 位于 apps/web/ 下，静态资源须相对它放置（/app/apps/web/.next/static、/app/apps/web/public）
 COPY --from=builder /build/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /build/apps/web/public ./apps/web/public
+# 非 root 运行（审计 P1）：node 官方 slim 镜像自带 uid 1000 node 用户
+RUN chown -R node:node /app
+USER node
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
