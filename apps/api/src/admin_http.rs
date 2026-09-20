@@ -278,14 +278,13 @@ async fn review_decide(
         .ok()
         .flatten();
         if let Some((owner, title, deny_label, deny_note)) = row {
-            let email: Option<String> = sqlx::query_scalar(
-                "SELECT email FROM users WHERE id = $1 AND email <> ''",
-            )
-            .bind(owner)
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten();
+            let email: Option<String> =
+                sqlx::query_scalar("SELECT email FROM users WHERE id = $1 AND email <> ''")
+                    .bind(owner)
+                    .fetch_optional(&state.repo.db)
+                    .await
+                    .ok()
+                    .flatten();
             let (subject, body_text) = if body.approve {
                 (
                     format!("种子过审：{title}"),
@@ -295,12 +294,14 @@ async fn review_decide(
                     ),
                 )
             } else {
-                let why = deny_label
-                    .or(deny_note)
-                    .unwrap_or_else(|| {
-                        let r = body.reason.trim();
-                        if r.is_empty() { "未注明".into() } else { r.to_string() }
-                    });
+                let why = deny_label.or(deny_note).unwrap_or_else(|| {
+                    let r = body.reason.trim();
+                    if r.is_empty() {
+                        "未注明".into()
+                    } else {
+                        r.to_string()
+                    }
+                });
                 (
                     format!("种子被拒：{title}"),
                     format!(
@@ -688,8 +689,8 @@ async fn user_admin_list(
         .bind(pattern.clone())
         .bind(q.id)
         .bind(q.class_id)
-        .bind(q.per_page)
-        .bind((q.page.max(1) - 1) * q.per_page)
+        .bind(crate::dto::page_window(q.page, q.per_page).1)
+        .bind(crate::dto::page_window(q.page, q.per_page).0)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1429,6 +1430,8 @@ async fn user_set_status(
     if body.status >= 1 {
         crate::http::bump_guard_ver(&state).await;
     }
+    // api 侧用户状态短缓存（5s TTL）同步失效：封禁/恢复立即生效
+    state.user_status_cache.invalidate(body.user_id);
     state
         .repo
         .audit(Some(auth.id), "user.set_status", Some(body.user_id))
@@ -1493,6 +1496,8 @@ async fn user_set_class(
     if n == 0 {
         return Err(DomainError::Validation("用户不存在或不可调整".into()));
     }
+    // api 侧用户状态短缓存同步失效：等级变更立即影响权限判定
+    state.user_status_cache.invalidate(body.user_id);
     state
         .repo
         .audit(Some(auth.id), "user.set_class", Some(body.user_id))
@@ -2137,12 +2142,11 @@ async fn agent_rules_export(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
-    let rows: Vec<(String, String, Option<String>)> = sqlx::query_as(
-        "SELECT mode, pattern, note FROM agent_rules ORDER BY mode, id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows: Vec<(String, String, Option<String>)> =
+        sqlx::query_as("SELECT mode, pattern, note FROM agent_rules ORDER BY mode, id")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let rules: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|(mode, pattern, note)| {
@@ -2201,7 +2205,9 @@ async fn agent_rules_import(
         .repo
         .audit(Some(auth.id), "agentrule.import", Some(added))
         .await;
-    Ok(ok(serde_json::json!({ "added": added, "skipped": body.rules.len() as i64 - added })))
+    Ok(ok(
+        serde_json::json!({ "added": added, "skipped": body.rules.len() as i64 - added }),
+    ))
 }
 
 #[post("/admin/agentrules/delete")]
@@ -2520,8 +2526,8 @@ async fn admin_torrent_list(
         } else {
             Some(crate::http::like_pattern(&q.q))
         })
-        .bind(q.per_page)
-        .bind((q.page.max(1) - 1) * q.per_page)
+        .bind(crate::dto::page_window(q.page, q.per_page).1)
+        .bind(crate::dto::page_window(q.page, q.per_page).0)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2598,8 +2604,8 @@ async fn torrent_op_logs(
                ORDER BY l.id DESC LIMIT $2 OFFSET $3"#,
         )
         .bind(tid)
-        .bind(q.per_page)
-        .bind((q.page.max(1) - 1) * q.per_page)
+        .bind(crate::dto::page_window(q.page, q.per_page).1)
+        .bind(crate::dto::page_window(q.page, q.per_page).0)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2619,8 +2625,8 @@ async fn torrent_op_logs(
                LEFT JOIN users u ON u.id = l.operator_id
                ORDER BY l.id DESC LIMIT $1 OFFSET $2"#,
         )
-        .bind(q.per_page)
-        .bind((q.page.max(1) - 1) * q.per_page)
+        .bind(crate::dto::page_window(q.page, q.per_page).1)
+        .bind(crate::dto::page_window(q.page, q.per_page).0)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2676,8 +2682,8 @@ async fn admin_spark_logs(
     )
     .bind(&pattern)
     .bind(q.user_id)
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2720,8 +2726,8 @@ async fn admin_torrent_buys(
            ORDER BY l.created_at DESC, l.id DESC LIMIT $2 OFFSET $3"#,
     )
     .bind(pattern)
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2756,8 +2762,8 @@ async fn admin_login_logs(
     )
     .bind(&pattern)
     .bind(q.user_id)
-    .bind(q.per_page)
-    .bind((q.page.max(1) - 1) * q.per_page)
+    .bind(crate::dto::page_window(q.page, q.per_page).1)
+    .bind(crate::dto::page_window(q.page, q.per_page).0)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2832,12 +2838,11 @@ async fn forum_admin_list(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let categories: Vec<(i64, String, i32, bool)> = sqlx::query_as(
-        "SELECT id, name, sort, visible FROM forum_categories ORDER BY sort, id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let categories: Vec<(i64, String, i32, bool)> =
+        sqlx::query_as("SELECT id, name, sort, visible FROM forum_categories ORDER BY sort, id")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(
         serde_json::json!({ "forums": rows, "mods": mods, "categories": categories }),
     ))
@@ -2894,15 +2899,16 @@ async fn forum_category_update(
         return Err(DomainError::Validation("分区名不能为空".into()));
     }
     let cid = path.into_inner();
-    let n = sqlx::query("UPDATE forum_categories SET name = $1, sort = $2, visible = $3 WHERE id = $4")
-        .bind(body.name.trim())
-        .bind(body.sort.unwrap_or(0))
-        .bind(body.visible.unwrap_or(true))
-        .bind(cid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    let n =
+        sqlx::query("UPDATE forum_categories SET name = $1, sort = $2, visible = $3 WHERE id = $4")
+            .bind(body.name.trim())
+            .bind(body.sort.unwrap_or(0))
+            .bind(body.visible.unwrap_or(true))
+            .bind(cid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(cid));
     }

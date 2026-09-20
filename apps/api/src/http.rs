@@ -221,11 +221,7 @@ async fn register(
         return Err(DomainError::Validation("验证码错误或已过期".into()));
     }
     // 注册限流（§5.7）：按来源 IP 每分钟 5 次，防邀请码爆破
-    let ip = req
-        .connection_info()
-        .peer_addr()
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| "unknown".into());
+    let ip = client_ip(&req);
     // IP 封禁强制校验（与登录同口径；封禁名单由管理面维护）
     if ip_banned(&state, &ip).await {
         return Err(DomainError::Validation("IP 已被封禁，请联系管理组".into()));
@@ -341,10 +337,7 @@ async fn login(
     body: web::Json<LoginReq>,
 ) -> DomainResult<impl Responder> {
     // IP 封禁强制校验（ip_bans 此前仅管理面 CRUD，无请求入口拦截）
-    let peer_ip = req
-        .peer_addr()
-        .map(|a| a.ip().to_string())
-        .unwrap_or_default();
+    let peer_ip = client_ip(&req);
     // UA（0096 风控证据）：区分「同一人多设备」与「凭据泄露换客户端」；截断防滥用
     let ua = req
         .headers()
@@ -479,6 +472,36 @@ pub async fn bump_guard_ver(state: &Arc<AppState>) {
     let _: Result<i64, _> = c.incr("flux:guard:ver", 1).await;
 }
 
+/// 解析请求来源 IP（限流 / 封禁 / 风控事件统一口径）。
+/// 默认取 socket 对端；`TRUST_PROXY=1` 时改信 X-Forwarded-For 首值——仅当 api 只能经
+/// 可信反代访问时启用（直连暴露时客户端可伪造 XFF 绕过限流/封禁）。
+/// P1 修复：此前注册/登录/验证码全部直接用 peer_addr（socket 对端），生产经反代后
+/// 全站共享代理 IP——login-ip 限流桶全站共用（误伤 429）、ip_bans 误封整个代理、
+/// login_events 风控记录失真。
+pub fn client_ip(req: &HttpRequest) -> String {
+    static TRUST_PROXY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    let trust =
+        *TRUST_PROXY.get_or_init(|| std::env::var("TRUST_PROXY").ok().as_deref() == Some("1"));
+    if trust {
+        if let Some(xff) = req
+            .headers()
+            .get("x-forwarded-for")
+            .and_then(|v| v.to_str().ok())
+        {
+            // 取链路首值（最接近真实客户端的一段）；反代应追加而非覆盖
+            if let Some(first) = xff.split(',').next() {
+                let ip = first.trim();
+                if !ip.is_empty() {
+                    return ip.to_string();
+                }
+            }
+        }
+    }
+    req.peer_addr()
+        .map(|a| a.ip().to_string())
+        .unwrap_or_else(|| "unknown".into())
+}
+
 /// ip_bans 强制校验：命中返回 true（封禁名单由管理面维护，见 /admin/bans）。
 /// 登录/注册为低频入口，直接查库即可；高频路径（tracker announce）用内存缓存版，
 /// 见 apps/tracker/src/main.rs 的 refresh_guard()/ip_banned()。
@@ -502,6 +525,47 @@ pub struct AuthUser {
     pub class_id: i32,
     /// 本次凭证的签发秒（撤销线语义需要：改密时以它为界作废更早的 token）
     pub iat: i64,
+}
+
+/// 用户状态短缓存（审计 P2）：require_auth 每请求的 users 行查询以 5s TTL 缓存。
+/// TTL 权衡：封禁/降级最坏 5s 延迟生效（撤销线仍每请求直查，登出即时）；
+/// 管理端封禁/降级后调用 invalidate() 主动失效可消除窗口。
+#[derive(Default)]
+pub struct UserStatusCache {
+    inner: std::sync::RwLock<
+        std::collections::HashMap<i64, (Option<(i16, i32, bool)>, std::time::Instant)>,
+    >,
+}
+
+impl UserStatusCache {
+    const TTL: std::time::Duration = std::time::Duration::from_secs(5);
+    const CAP: usize = 10_000;
+
+    fn get(&self, uid: i64) -> Option<Option<(i16, i32, bool)>> {
+        let g = self.inner.read().unwrap_or_else(|e| e.into_inner());
+        g.get(&uid)
+            .filter(|(_, at)| at.elapsed() < Self::TTL)
+            .map(|(v, _)| v.clone())
+    }
+
+    fn put(&self, uid: i64, v: Option<(i16, i32, bool)>) {
+        let mut g = self.inner.write().unwrap_or_else(|e| e.into_inner());
+        if g.len() >= Self::CAP && !g.contains_key(&uid) {
+            // 粗略容量保护：淘汰最旧条目（活跃站上 5s 窗口内远达不到 1 万用户）
+            if let Some(oldest) = g.iter().min_by_key(|(_, (_, at))| *at).map(|(k, _)| *k) {
+                g.remove(&oldest);
+            }
+        }
+        g.insert(uid, (v, std::time::Instant::now()));
+    }
+
+    /// 管理端封禁/降级/解封后调用：立即失效该用户的缓存行
+    pub fn invalidate(&self, uid: i64) {
+        self.inner
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&uid);
+    }
 }
 
 /// 从 Authorization: Bearer 提取用户（§8.1：后端权威鉴权）
@@ -541,13 +605,23 @@ pub async fn require_auth(
             }
         }
     }
-    // 权威校验（P1 修复）：token 只是凭证，状态与等级以库为准 —— 封禁/降级即时生效
-    let row: Option<(i16, i32, bool)> =
-        sqlx::query_as("SELECT status, class_id, must_reset_password FROM users WHERE id = $1")
+    // 权威校验（P1 修复）：token 只是凭证，状态与等级以库为准 —— 封禁/降级即时生效。
+    // 5s TTL 缓存（P2）：省掉每请求一次 users round-trip；管理端封禁/降级后调
+    // UserStatusCache::invalidate 消除窗口，最坏情况延迟 5s 生效。
+    let row: Option<(i16, i32, bool)> = match state.user_status_cache.get(claims.sub) {
+        Some(cached) => cached,
+        None => {
+            let fetched = sqlx::query_as(
+                "SELECT status, class_id, must_reset_password FROM users WHERE id = $1",
+            )
             .bind(claims.sub)
             .fetch_optional(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+            state.user_status_cache.put(claims.sub, fetched.clone());
+            fetched
+        }
+    };
     let Some((status, class_id, must_reset)) = row else {
         return Err(DomainError::Unauthorized);
     };
@@ -599,18 +673,25 @@ async fn logout(
     // 令牌撤销（§5.7）：nbf = 本次凭证 iat —— require_auth 用 iat<=nbf 判死，
     // 因此登出所用的 token 与一切更早签发的立即失效；登出后新登录（iat 严格更大）不受影响。
     // 撤销线 DB 权威（0085）+ Redis 加速缓存
-    let _ = sqlx::query(
+    // 审计修复（P2 吞错）：撤销是安全语义操作，双写（DB 权威 + Redis 加速）失败必须
+    // 留痕——旧版全部静默吞掉，双双失败时 token 仍有效且无任何日志可查。
+    if let Err(e) = sqlx::query(
         "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, $2)          ON CONFLICT (user_id) DO UPDATE SET nbf = GREATEST(token_revocations.nbf, EXCLUDED.nbf), updated_at = now()",
     )
     .bind(auth.id)
     .bind(auth.iat)
     .execute(&state.repo.db)
-    .await;
+    .await
+    {
+        tracing::error!(user_id = auth.id, error = ?e, "登出撤销线 DB 写入失败：token 在 24h 内仍可能通过校验");
+    }
     let mut c = state.redis.clone();
     let key = format!("logout_nbf:{}", auth.id);
-    let _: () = redis::AsyncCommands::set_ex(&mut c, &key, auth.iat, 86400u64)
-        .await
-        .unwrap_or(());
+    let redis_res: Result<(), _> =
+        redis::AsyncCommands::set_ex(&mut c, &key, auth.iat, 86400u64).await;
+    if let Err(e) = redis_res {
+        tracing::warn!(user_id = auth.id, error = ?e, "登出撤销线 Redis 写入失败（DB 权威仍在，影响为加速缓存缺失）");
+    }
     state.repo.audit(Some(auth.id), "auth.logout", None).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
@@ -657,13 +738,27 @@ async fn me(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (uploaded, downloaded, seeding, leeching, uploads, bookmarks, class_name) =
         row.unwrap_or((0, 0, 0, 0, 0, 0, None));
-    let frame_id: Option<i32> =
-        sqlx::query_scalar("SELECT avatar_frame_id FROM users WHERE id = $1")
-            .bind(auth.id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+    // 头像 + 头像框（userbar/个人主页展示）+ 佩戴勋章（用户名角标）一并回传；
+    // css 现查现回（avatar_frames 行少且小，没必要常驻缓存）
+    let deco: Option<(Option<String>, Option<i32>, Option<String>, Option<String>)> = sqlx::query_as(
+        "SELECT u.avatar_url, u.avatar_frame_id, f.css AS frame_css, f.image_url AS frame_image \
+         FROM users u LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id WHERE u.id = $1",
+    )
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (avatar_url, frame_id, frame_css, frame_image) = deco.unwrap_or((None, None, None, None));
+    // 佩戴勋章（与个人主页 worn_medals 同口径，userbar 用户名后角标，最多 3 枚）
+    let worn_medals: Vec<(String, Option<String>)> = sqlx::query_as(
+        "SELECT m.name, m.asset_ref FROM user_medals um JOIN medals m ON m.id = um.medal_id \
+         WHERE um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()) \
+         ORDER BY m.id LIMIT 3",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 未读站内信数（userbar 邮箱图标角标）
     let unread: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM messages WHERE receiver_id = $1 AND unread = true AND location = 1",
@@ -672,6 +767,12 @@ async fn me(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
+    // 在线判定（个人主页 15 分钟口径）依赖 users.last_seen_at，此前全站无写入点
+    // （仅 snatches 侧有），API 活跃即视为在线；写失败不影响本请求
+    let _ = sqlx::query("UPDATE users SET last_seen_at = now() WHERE id = $1")
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await;
     Ok(ok(serde_json::json!({
         "id": user.id, "username": user.username, "class_id": user.class_id,
         "must_reset_password": user.must_reset_password,
@@ -679,7 +780,14 @@ async fn me(
         "seeding": seeding, "leeching": leeching,
         "uploads": uploads, "bookmarks": bookmarks,
         "class_name": class_name,
+        "avatar_url": avatar_url,
         "avatar_frame_id": frame_id,
+        "avatar_frame_css": frame_css,
+        "avatar_frame_image": frame_image,
+        "worn_medals": worn_medals
+            .into_iter()
+            .map(|(name, asset_ref)| serde_json::json!({ "name": name, "asset_ref": asset_ref }))
+            .collect::<Vec<_>>(),
         "unread_messages": unread,
     })))
 }
@@ -1013,6 +1121,10 @@ struct PublicProfile {
     donor: bool,
     created_at: chrono::DateTime<chrono::Utc>,
     last_seen_at: Option<chrono::DateTime<chrono::Utc>>,
+    #[sqlx(default)]
+    avatar_frame_css: Option<String>,
+    #[sqlx(default)]
+    avatar_frame_image: Option<String>,
     seeding: i64,
     leeching: i64,
     uploads: i64,
@@ -1049,12 +1161,14 @@ async fn user_public_profile(
         r#"
         SELECT $1::bigint AS id, u.username, u.title, u.avatar_url, u.class_id, c.name AS class_name,
                u.uploaded, u.downloaded, u.donor, u.created_at, u.last_seen_at,
+               f.css AS avatar_frame_css, f.image_url AS avatar_frame_image,
                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
                (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1 AND NOT t.anonymous) AS uploads,
                (SELECT count(*) FROM comments cm WHERE cm.user_id = u.id) AS comment_count,
                (SELECT count(*) FROM user_medals um WHERE um.user_id = u.id) AS medals
         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
+             LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id
         WHERE u.id = $1 AND u.status < 2
         "#,
     )
@@ -1065,6 +1179,178 @@ async fn user_public_profile(
     let Some(profile) = profile else {
         return Err(DomainError::NotFound(uid));
     };
+    // —— 竞品口径补充（NP userdetails / UNIT3D profile 共性板块）——
+    // 个人档案列（users 表早已有、此前接口未回）：性别是 INT2 代码（0/1/2 → 保密/男/女），
+    // country/isp 是预留的字典 id（尚无关联表，直接回 id 供前端省略展示）。
+    // 在线判定用 COALESCE：last_seen_at 可能为 NULL（从未活动），NULL > x = NULL 解码进 bool 会炸。
+    let extra: Option<(
+        Option<i16>,
+        Option<i32>,
+        Option<i32>,
+        Option<i32>,
+        Option<i32>,
+        Option<String>,
+        Option<String>,
+        bool,
+    )> = sqlx::query_as(
+        "SELECT gender, country, isp, upload_speed, download_speed, info, signature, \
+                    COALESCE(last_seen_at > now() - interval '15 minutes', FALSE) AS online \
+             FROM users WHERE id = $1",
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (gender_code, _country, _isp, up_speed, down_speed, info, signature, online) = extra
+        .map(|(g, c, i, u, d, inf, s, o)| (g, c, i, u, d, inf, s, o))
+        .unwrap_or((None, None, None, None, None, None, None, false));
+    let gender = match gender_code {
+        Some(1) => Some("男".to_string()),
+        Some(2) => Some("女".to_string()),
+        _ => None, // 0/NULL = 保密
+    };
+    // —— 传输与时间板块（观众站口径：实际流量 + 做种/下载时间 + 比率 + 做种体积）——
+    // snatches.uploaded/downloaded = 该用户全站真实流量（含免费/促销不计量部分），口径即 NP「实际」；
+    // snatches 无独立「下载时长」列（NP 的 leechtime）——口径退化为 seed 累计/最近活动跨度不可靠，
+    // 采用「有 leeching 记录起 last_seen_at 累计」不可得，这里回退用 completed_at 到创建的近似不可行，
+    // 故下载时间以 0 展示由 tracker 侧未来补列（见下方 leech_seconds 注释）。
+    let traffic: Option<(i64, i64, i64, i64, i64)> = sqlx::query_as(
+        "SELECT COALESCE(sum(uploaded), 0)::bigint, COALESCE(sum(downloaded), 0)::bigint, \
+                COALESCE(sum(seeded_seconds), 0)::bigint, \
+                COALESCE(sum(CASE WHEN leeching THEN 1 ELSE 0 END), 0)::bigint, \
+                COALESCE((SELECT u2.seeding_size FROM users u2 WHERE u2.id = $1), 0) \
+         FROM snatches WHERE user_id = $1",
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (real_up, real_down, seed_seconds, _, seeding_size) = traffic.unwrap_or((0, 0, 0, 0, 0));
+    // H&R：未解决违规数（观众站「H&R 0」+ 站点 hr_violation_limit 上限口径）
+    let hr: Option<(i64,)> = sqlx::query_as(
+        "SELECT count(*) FROM hr_violations WHERE user_id = $1 AND resolved_at IS NULL",
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let hr_unresolved = hr.map(|(n,)| n).unwrap_or(0);
+    let hr_limit: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((value)::bigint, 3) FROM site_settings WHERE name = 'hr_violation_limit'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .unwrap_or(None)
+    .unwrap_or(3);
+    // 魔力值余额（观众站「爆米花」位；spark_balance 是流水权威快照）+ 本月做种收益
+    let spark: (i64,) = sqlx::query_as("SELECT spark_balance FROM users WHERE id = $1")
+        .bind(uid)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let month_earn: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(sum(amount), 0)::bigint FROM spark_ledger \
+         WHERE user_id = $1 AND amount > 0 AND kind = 'seeding_reward' \
+           AND created_at >= date_trunc('month', now())",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    // 完成种子数（憨憨「完成种子」口径：completed_at 非空的抓取记录）
+    let completed: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM snatches WHERE user_id = $1 AND completed_at IS NOT NULL",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    // 邀请：待使用邀请码数（NP「邀请」字段口径）
+    let invites_pending: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM invites WHERE inviter_id = $1 AND status = 0")
+            .bind(uid)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
+    // 邀请人（脱敏：只回邀请人 id+用户名，不回邮箱）
+    let inviter: Option<(i64, String)> = sqlx::query_as(
+        "SELECT i.id, i.username FROM users u JOIN users i ON i.id = u.invited_by WHERE u.id = $1",
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 客户端信息（NP 连接信息：最近一次上报的 BT 客户端 Agent；snatches 无记录则空）
+    let agent: Option<(String,)> = sqlx::query_as(
+        "SELECT agent FROM snatches WHERE user_id = $1 AND agent <> '' ORDER BY last_seen_at DESC LIMIT 1",
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 佩戴中的勋章（展示位：NP 佩戴勋章图 / UNIT3D achievements）
+    let worn_medals: Vec<(i64, String, Option<String>, Option<String>)> = sqlx::query_as(
+        "SELECT m.id, m.name, m.description, m.asset_ref FROM user_medals um \
+         JOIN medals m ON m.id = um.medal_id \
+         WHERE um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()) \
+         ORDER BY m.id LIMIT 12",
+    )
+    .bind(uid)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 成就数（user_achievements）
+    let achievements: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM user_achievements WHERE user_id = $1")
+            .bind(uid)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
+    // 等级进度（对齐 /me/class-progress 口径：当前值 + 距下一级目标，供前端进度条）。
+    // EXTRACT 返回 NUMERIC、count 返回 INT8——列类型全部显式对齐 i64，防 sqlx 静默解码失败
+    // （此前 .ok() 把解码错误吞成 None，next_class 恒空）。
+    let prog: Option<(i64, i64, i64, i64, i64)> = sqlx::query_as(
+        "SELECT u.class_id::bigint, u.uploaded, \
+                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.completed_at IS NOT NULL)::bigint, \
+                (SELECT COALESCE(sum(s.seeded_seconds), 0) / 3600 FROM snatches s WHERE s.user_id = u.id)::bigint, \
+                EXTRACT(DAY FROM now() - u.created_at)::bigint \
+         FROM users u WHERE u.id = $1",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .ok();
+    let mut next_class: Option<serde_json::Value> = None;
+    if let Some((cur_class, uploaded, dl_count, seed_hours, age_days)) = prog {
+        let rules: Vec<(i32, String, i64, i32, i32, i32)> = sqlx::query_as(
+            "SELECT class_id, name, min_uploaded, min_download_count, min_seed_hours, min_account_age_days \
+             FROM class_rules WHERE class_id > $1 ORDER BY class_id LIMIT 1",
+        )
+        .bind(cur_class)
+        .fetch_all(&state.repo.db)
+        .await
+        .unwrap_or_default();
+        if let Some((cid, cname, need_up, need_dl, need_sh, need_age)) = rules.into_iter().next() {
+            next_class = Some(serde_json::json!({
+                "class_id": cid, "name": cname,
+                "uploaded": uploaded, "uploaded_need": need_up,
+                "download_count": dl_count, "download_count_need": need_dl,
+                "seed_hours": seed_hours, "seed_hours_need": need_sh,
+                "account_age_days": age_days, "account_age_days_need": need_age,
+            }));
+        }
+    }
+    // 近期论坛回帖（社区动态板块；匿名帖不暴露归属）
+    let recent_posts: Vec<(i64, i64, Option<String>, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
+            "SELECT p.id, p.topic_id, left(p.body_text, 80), p.created_at FROM posts p \
+         WHERE p.user_id = $1 AND p.body_text <> '' \
+         ORDER BY p.id DESC LIMIT 5",
+        )
+        .bind(uid)
+        .fetch_all(&state.repo.db)
+        .await
+        .unwrap_or_default();
     let uploads: Vec<RecentUpload> = sqlx::query_as(
         "SELECT id, name, small_descr, size, created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",
     )
@@ -1081,6 +1367,29 @@ async fn user_public_profile(
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "profile": profile,
+        "avatar_frame_css": profile.avatar_frame_css,
+        "avatar_frame_image": profile.avatar_frame_image,
+        "gender": gender, "country": null, "isp": null,
+        "upload_speed": up_speed, "download_speed": down_speed,
+        "info": info, "signature": signature, "online": online,
+        "real_uploaded": real_up, "real_downloaded": real_down,
+        "seed_seconds": seed_seconds, "hr_unresolved": hr_unresolved,
+        "hr_limit": hr_limit, "seeding_size": seeding_size,
+        "spark_balance": spark.0, "month_seed_earn": month_earn,
+        "completed_snatches": completed,
+        "invites_pending": invites_pending,
+        "inviter_id": inviter.as_ref().map(|(i, _)| *i),
+        "inviter_name": inviter.map(|(_, n)| n),
+        "client_agent": agent.map(|(a,)| a),
+        "worn_medals": worn_medals
+            .into_iter()
+            .map(|(id, name, description, asset_ref)| serde_json::json!({
+                "id": id, "name": name, "description": description, "asset_ref": asset_ref
+            }))
+            .collect::<Vec<_>>(),
+        "achievements": achievements,
+        "next_class": next_class,
+        "recent_posts": recent_posts,
         "recent_uploads": uploads,
         "recent_comments": recent_comments,
     })))
@@ -1101,8 +1410,12 @@ async fn user_torrentlist(
     path: web::Path<i64>,
     q: web::Query<UserTorrentlistQuery>,
 ) -> DomainResult<HttpResponse> {
-    require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
     let uid = path.into_inner();
+    // 隐私红线（P1）：做种/下载/完成明细可反推用户下载偏好，仅本人与 staff 可见
+    // （NP userdetails 的普通用户口径）。uploads 本就过滤匿名发布、preserved 是
+    // 保种区的公开认领承诺，保持公开。
+    let reveal = auth.id == uid || auth.class_id >= 90;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
     let uploads: Vec<SnatchRow> = sqlx::query_as(
         "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
@@ -1115,21 +1428,96 @@ async fn user_torrentlist(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let seeding: Vec<SnatchRow> = sqlx::query_as(
-        "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
-         s.completed_at, s.uploaded AS uploaded_here \
-         FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
-         WHERE s.user_id = $1 AND s.seeding \
-         ORDER BY s.torrent_id DESC LIMIT $2",
+    let seeding: Vec<SnatchRow> = if reveal {
+        sqlx::query_as(
+            "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
+             s.completed_at, s.uploaded AS uploaded_here \
+             FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+             WHERE s.user_id = $1 AND s.seeding \
+             ORDER BY s.torrent_id DESC LIMIT $2",
+        )
+        .bind(uid)
+        .bind(limit)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+    } else {
+        Vec::new()
+    };
+    // —— 憨憨式标签页其余四路（NP userdetails 同口径）——
+    // 当前下载：leeching 抓取记录；完成：completed_at 非空；未完成：抓过但未完成且已不在做种/下载
+    let leeching: Vec<SnatchRow> = if reveal {
+        sqlx::query_as(
+            "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
+             s.completed_at, s.uploaded AS uploaded_here \
+             FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+             WHERE s.user_id = $1 AND s.leeching \
+             ORDER BY s.torrent_id DESC LIMIT $2",
+        )
+        .bind(uid)
+        .bind(limit)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+    } else {
+        Vec::new()
+    };
+    let completed: Vec<SnatchRow> = if reveal {
+        sqlx::query_as(
+            "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
+             s.completed_at, s.uploaded AS uploaded_here \
+             FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+             WHERE s.user_id = $1 AND s.completed_at IS NOT NULL \
+             ORDER BY s.completed_at DESC LIMIT $2",
+        )
+        .bind(uid)
+        .bind(limit)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+    } else {
+        Vec::new()
+    };
+    let incomplete: Vec<SnatchRow> = if reveal {
+        sqlx::query_as(
+            "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
+             s.completed_at, s.uploaded AS uploaded_here \
+             FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
+             WHERE s.user_id = $1 AND s.completed_at IS NULL AND NOT s.seeding AND NOT s.leeching \
+             ORDER BY s.last_seen_at DESC LIMIT $2",
+        )
+        .bind(uid)
+        .bind(limit)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+    } else {
+        Vec::new()
+    };
+    // 完成的保种区种子：seed_preserve 中该用户认领且尚未退出的记录
+    // （认领本身公开；snatch 派生字段只对本人/staff 展示）
+    let preserved: Vec<SnatchRow> = sqlx::query_as(
+        "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
+         CASE WHEN $3 THEN s.seeding ELSE false END AS seeding, \
+         CASE WHEN $3 THEN s.leeching ELSE false END AS leeching, \
+         CASE WHEN $3 THEN s.completed_at END AS completed_at, \
+         CASE WHEN $3 THEN s.uploaded ELSE 0 END AS uploaded_here \
+         FROM seed_preserve sp \
+         JOIN torrents t ON t.id = sp.torrent_id \
+         LEFT JOIN snatches s ON s.torrent_id = sp.torrent_id AND s.user_id = $1 \
+         WHERE sp.claimed_by = $1 AND sp.exited_at IS NULL \
+         ORDER BY sp.torrent_id DESC LIMIT $2",
     )
     .bind(uid)
     .bind(limit)
+    .bind(reveal)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(
-        serde_json::json!({ "uploads": uploads, "seeding": seeding }),
-    ))
+    Ok(ok(serde_json::json!({
+        "uploads": uploads, "seeding": seeding, "leeching": leeching,
+        "completed": completed, "incomplete": incomplete, "preserved": preserved,
+    })))
 }
 
 #[get("/me/overview")]
@@ -1144,7 +1532,7 @@ async fn me_overview(
         r#"
         SELECT u.username, u.email, u.uploaded, u.downloaded, u.created_at, u.avatar_url,
                u.parked, u.privacy, u.totp_enabled, u.passkey,
-               u.spark_balance,
+               u.spark_balance, f.css AS avatar_frame_css, f.image_url AS avatar_frame_image,
                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
                (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS uploads,
@@ -1154,6 +1542,7 @@ async fn me_overview(
                (SELECT count(*) FROM user_medals m WHERE m.user_id = u.id) AS medals,
                c.name AS class_name, c.id AS cid
         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
+             LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id
         WHERE u.id = $1
         "#,
     )
@@ -1162,9 +1551,21 @@ async fn me_overview(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .ok_or(DomainError::Unauthorized)?;
+    // 佩戴勋章（userbar 同口径，控制面板资料卡用户名角标）
+    let worn_medals: Vec<(String, Option<String>)> = sqlx::query_as(
+        "SELECT m.name, m.asset_ref FROM user_medals um JOIN medals m ON m.id = um.medal_id \
+         WHERE um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()) \
+         ORDER BY m.id LIMIT 3",
+    )
+    .bind(uid)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let r = &row;
     let get =
         |col: &str| -> serde_json::Value { r.try_get(col).unwrap_or(serde_json::Value::Null) };
+    let get_opt_str =
+        |col: &str| -> Option<String> { r.try_get::<Option<String>, _>(col).ok().flatten() };
     let get_i64 = |col: &str| -> i64 { r.try_get::<i64, _>(col).unwrap_or(0) };
     let get_bool = |col: &str| -> bool { r.try_get::<bool, _>(col).unwrap_or(false) };
     let get_str = |col: &str| -> String { r.try_get::<String, _>(col).unwrap_or_default() };
@@ -1227,7 +1628,13 @@ async fn me_overview(
         "username": get_str("username"),
         "email": get_str("email"),
         "class_name": get("class_name"),
-        "avatar_url": get("avatar_url"),
+        "avatar_url": get_opt_str("avatar_url"),
+        "avatar_frame_css": get_opt_str("avatar_frame_css"),
+        "avatar_frame_image": get_opt_str("avatar_frame_image"),
+        "worn_medals": worn_medals
+            .into_iter()
+            .map(|(name, asset_ref)| serde_json::json!({ "name": name, "asset_ref": asset_ref }))
+            .collect::<Vec<_>>(),
         "created_at": get_ts("created_at"),
         "uploaded": uploaded,
         "downloaded": downloaded,
@@ -2303,7 +2710,9 @@ async fn resubmit_torrent(
         return Err(DomainError::Forbidden);
     }
     if status != 2 {
-        return Err(DomainError::Validation("仅被拒种子可重提（当前状态不符）".into()));
+        return Err(DomainError::Validation(
+            "仅被拒种子可重提（当前状态不符）".into(),
+        ));
     }
     let n = sqlx::query(
         "UPDATE torrents SET approval_status = 0, deny_reason_id = NULL, deny_note = NULL \
@@ -4706,13 +5115,12 @@ async fn site_type_pack_apply(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // U2（0108）：等级叙事/经济预设/元数据源（apply_pack_extras 过程内含合法键校验）
-    let extras: Vec<(String, i64)> = sqlx::query_as(
-        "SELECT kind, applied FROM apply_pack_extras($1)",
-    )
-    .bind(&pack.code)
-    .fetch_all(&state.repo.db)
-    .await
-    .unwrap_or_default();
+    let extras: Vec<(String, i64)> =
+        sqlx::query_as("SELECT kind, applied FROM apply_pack_extras($1)")
+            .bind(&pack.code)
+            .fetch_all(&state.repo.db)
+            .await
+            .unwrap_or_default();
     // 模块开关进程缓存失效（apply 改 module_* 后立即生效，不等 30s TTL）
     state.module_flags.invalidate().await;
     state
@@ -4765,7 +5173,11 @@ async fn site_type_pack_diff(
     if let Some(mods) = pack.modules.as_object() {
         for (k, v) in mods {
             let setting = format!("module_{k}");
-            let new = if v.as_bool().unwrap_or(false) { "yes" } else { "no" };
+            let new = if v.as_bool().unwrap_or(false) {
+                "yes"
+            } else {
+                "no"
+            };
             push(&setting, cur.get(&setting), new);
         }
     }
@@ -4793,7 +5205,10 @@ async fn site_type_pack_save(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
     let code = body.code.trim().to_lowercase();
-    if !code.starts_with("custom_") || code.len() > 40 || !code.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+    if !code.starts_with("custom_")
+        || code.len() > 40
+        || !code.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+    {
         return Err(DomainError::Validation(
             "code 需以 custom_ 开头，仅小写字母/数字/下划线，≤40 字符".into(),
         ));
@@ -4802,21 +5217,19 @@ async fn site_type_pack_save(
         return Err(DomainError::Validation("name 不能为空".into()));
     }
     // 当前配置快照：分类 / 模块开关 / 站名
-    let cats: Vec<serde_json::Value> = sqlx::query_as::<_, (i32, String)>(
-        "SELECT id, name FROM categories ORDER BY id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .into_iter()
-    .map(|(id, name)| serde_json::json!({"id": id, "name": name}))
-    .collect();
-    let mods_rows: Vec<(String, String)> = sqlx::query_as(
-        "SELECT name, value FROM site_settings WHERE name LIKE 'module\\_%'",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .unwrap_or_default();
+    let cats: Vec<serde_json::Value> =
+        sqlx::query_as::<_, (i32, String)>("SELECT id, name FROM categories ORDER BY id")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .into_iter()
+            .map(|(id, name)| serde_json::json!({"id": id, "name": name}))
+            .collect();
+    let mods_rows: Vec<(String, String)> =
+        sqlx::query_as("SELECT name, value FROM site_settings WHERE name LIKE 'module\\_%'")
+            .fetch_all(&state.repo.db)
+            .await
+            .unwrap_or_default();
     let modules: serde_json::Map<String, serde_json::Value> = mods_rows
         .into_iter()
         .filter_map(|(name, value)| {
@@ -4831,11 +5244,10 @@ async fn site_type_pack_save(
             .ok()
             .flatten()
             .unwrap_or_default();
-    let sort: i32 =
-        sqlx::query_scalar("SELECT COALESCE(max(sort), 100) + 1 FROM site_type_packs")
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(101);
+    let sort: i32 = sqlx::query_scalar("SELECT COALESCE(max(sort), 100) + 1 FROM site_type_packs")
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(101);
     sqlx::query(
         "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort) \
          VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6) \
@@ -4883,7 +5295,6 @@ struct DonateLedgerRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
-
 /// 捐赠中心总览：钱包余额 + VIP 状态 + 套餐 + 我的流水
 #[get("/donate/state")]
 async fn donate_state(
@@ -4916,7 +5327,6 @@ async fn donate_state(
             || std::env::var("FLUX_DEMO").unwrap_or_default() == "1",
     })))
 }
-
 
 #[derive(Deserialize)]
 struct TopupBody {
@@ -4978,7 +5388,9 @@ async fn donate_topup(
         .repo
         .audit(Some(auth.id), "donate_topup_order", None)
         .await;
-    Ok(ok(serde_json::json!({ "order_no": order_no, "pay_url": url })))
+    Ok(ok(
+        serde_json::json!({ "order_no": order_no, "pay_url": url }),
+    ))
 }
 
 /// 捐赠订单状态查询（前端支付回跳后轮询）
@@ -5000,7 +5412,9 @@ async fn donate_order_status(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "order_no": order_no, "status": st })))
+    Ok(ok(
+        serde_json::json!({ "order_no": order_no, "status": st }),
+    ))
 }
 
 /// 支付网关异步回调（GET，易支付口径）：验签 → 幂等入账 → 纯文本 "success"
@@ -5074,6 +5488,18 @@ async fn donate_order(
                 .next()
                 .and_then(|w| w.parse().ok())
                 .unwrap_or(0);
+            // 必须落差额流水（P1）：快照权威在 traffic_ledger，reconcile_snapshots 每 6h
+            // 把 users.uploaded 重算为 sum(delta_up)——只 UPDATE 快照不落流水，付费购买的
+            // 上传量会在 6h 内被静默抹掉。对照 shop upload_credit 的双写。
+            sqlx::query(
+                "INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, delta_down, window_start) \
+                 VALUES (nextval('traffic_ledger_id_seq'), $1, 0, $2, 0, now())",
+            )
+            .bind(auth.id)
+            .bind(gb * 1024 * 1024 * 1024)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             sqlx::query("UPDATE users SET uploaded = uploaded + $2 WHERE id = $1")
                 .bind(auth.id)
                 .bind(gb * 1024 * 1024 * 1024)
@@ -5249,6 +5675,8 @@ async fn massmail_send(
 struct MedalWallEntry {
     username: String,
     medal_name: String,
+    /// 勋章图片（有则前端画图，无则回落 🏅）
+    asset_ref: Option<String>,
 }
 
 /// 勋章墙（medal_wall.php 口径）：用户当前「佩戴中」的勋章展示墙
@@ -5256,7 +5684,7 @@ struct MedalWallEntry {
 #[get("/medal-wall")]
 async fn medal_wall(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
     let rows: Vec<MedalWallEntry> = sqlx::query_as(
-        "SELECT u.username, m.name AS medal_name \
+        "SELECT u.username, m.name AS medal_name, m.asset_ref \
          FROM user_medals um JOIN users u ON u.id = um.user_id JOIN medals m ON m.id = um.medal_id \
          WHERE um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()) \
          ORDER BY u.id, m.id LIMIT 200",
@@ -5323,16 +5751,19 @@ struct FrameRow {
     id: i32,
     name: String,
     css: String,
+    #[sqlx(default)]
+    image_url: Option<String>,
     price: i32,
 }
 
 #[get("/avatar-frames")]
 async fn frame_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
-    let rows: Vec<FrameRow> =
-        sqlx::query_as("SELECT id, name, css, price FROM avatar_frames ORDER BY sort, id")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows: Vec<FrameRow> = sqlx::query_as(
+        "SELECT id, name, css, image_url, price FROM avatar_frames ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
 
@@ -5362,7 +5793,9 @@ async fn frame_equip(
             };
             if price > 0 {
                 let idem = format!("frame:{}:{}", auth.id, fid);
-                spend_spark(
+                // 幂等键确定性（frame:{uid}:{fid}）：换戴回已购框架 → Replayed（不重复
+                // 扣款）后仍继续佩戴，这正是「重复佩戴不重复收费」的预期语义，显式丢弃。
+                let outcome = spend_spark(
                     &state.repo.db,
                     auth.id,
                     price as i64,
@@ -5372,6 +5805,7 @@ async fn frame_equip(
                     fid as i64,
                 )
                 .await?;
+                let _ = outcome;
             }
             sqlx::query("UPDATE users SET avatar_frame_id=$2 WHERE id=$1")
                 .bind(auth.id)
@@ -6500,6 +6934,11 @@ fn html_to_text(html: &str) -> String {
     lines.join("\n").trim().to_string()
 }
 
+/// .torrent 本体远小于附件（极端多文件大 piece 也在 MiB 级）；nfo 为纯文本。
+/// 必须在流式循环内拦截：actix 默认 2MB PayloadConfig 只约束 Json 提取器，不约束 Multipart。
+const TORRENT_MAX_BYTES: usize = 4 * 1024 * 1024; // 单文件 4MiB
+const NFO_MAX_BYTES: usize = 1 * 1024 * 1024; // 单文件 1MiB
+
 /// multipart：file=<.torrent> + 表单字段
 #[post("/torrents")]
 async fn upload(
@@ -6525,6 +6964,9 @@ async fn upload(
                     buf.extend_from_slice(
                         &chunk.map_err(|e| DomainError::Validation(e.to_string()))?,
                     );
+                    if buf.len() > TORRENT_MAX_BYTES {
+                        return Err(DomainError::Validation(".torrent 超过 4MiB 上限".into()));
+                    }
                 }
                 file_bytes = Some(buf.freeze());
             }
@@ -6535,6 +6977,9 @@ async fn upload(
                     buf.extend_from_slice(
                         &chunk.map_err(|e| DomainError::Validation(e.to_string()))?,
                     );
+                    if buf.len() > NFO_MAX_BYTES {
+                        return Err(DomainError::Validation("NFO 超过 1MiB 上限".into()));
+                    }
                 }
                 nfo_bytes = Some(buf.freeze());
             }
@@ -6736,12 +7181,14 @@ async fn upload(
         }
         let is_staff = auth.class_id >= 90;
         for tid in &ids {
-            let row: Option<(String, bool)> =
-                sqlx::query_as("SELECT kind, COALESCE(enabled, TRUE) FROM tag_dict WHERE id = $1")
-                    .bind(tid)
-                    .fetch_optional(&state.repo.db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?;
+            let row: Option<(String, bool)> = sqlx::query_as(
+                "SELECT kind, COALESCE(enabled, TRUE) FROM tag_dict \
+                 WHERE id = $1 AND scope = 'torrent'",
+            )
+            .bind(tid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             let Some((kind, enabled)) = row else {
                 return Err(DomainError::Validation(format!("标签 {tid} 不存在")));
             };
@@ -7502,11 +7949,13 @@ async fn redeem_invite_handler(
     let Some((item_id, price)) = item else {
         return Err(DomainError::Validation("商店未开放邀请兑换".into()));
     };
-    // 幂等键必填（与 /shop/buy 同口径）：网络重试携带同一键防双扣款
+    // 幂等键必填（与 /shop/buy 同口径）：网络重试携带同一键防双扣款；
+    // 服务端键带 uid 前缀，防裸客户端键跨用户碰撞误判重放
     let idem = body
         .idempotency_key
         .clone()
         .filter(|k| !k.is_empty())
+        .map(|k| format!("invite_redeem:{}:{}", auth.id, k.trim()))
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
     let outcome = spend_spark(
         &state.repo.db,
