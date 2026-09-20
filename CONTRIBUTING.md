@@ -25,7 +25,7 @@ cargo fmt --all --check     # 格式
 cargo check --workspace --all-targets   # 零警告基线
 cargo test --workspace      # 单测
 pnpm lint                   # ESLint（error 阻断；warning 存量 7 处不阻断）
-node scripts/line_limit_guard.mjs    # 行数门禁（见纪律第 9 条）
+node scripts/line_limit_guard.mjs    # 行数（≤300）与行宽（≤80）门禁（见纪律第 9 条）
 pnpm --filter @fluxtorrent/web exec tsc --noEmit   # 前端类型
 pnpm --filter @fluxtorrent/web exec next build     # 前端构建
 node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
@@ -50,12 +50,14 @@ node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
    里手搓 HttpResponse 绕过 `ok()`/`DomainError`。
 8. **组件内禁止裸 fetch**：前端统一走 `lib/api-client.ts`；凭证是 HttpOnly cookie，
    不要把 token 放进 localStorage 或 JS 可读的 cookie。
-9. **文件行数只许瘦不许胖**：源码软上限 Rust/TS/TSX/JS/MJS/Python 500 行、
-   CSS 3000 行（`scripts/line_limit_guard.mjs` 门禁；例外=迁移/i18n 字典/锁/
-   生成物/domain-types 契约）。新文件超限直接拒；存量超限文件（见
-   `scripts/line_limit_baseline.json`）可以改、鼓励拆分变短，但比基线更长即拒——
-   拆分落地后跑 `node scripts/line_limit_guard.mjs --update` 收缩基线，
-   基线只许变短（重新 --update 前先 review diff）。
+9. **文件行数与行宽只许瘦不许胖**：源码软上限 Rust/TS/TSX/JS/MJS 300 行、
+   Python 500 行、CSS 3000 行；行宽 ≤80 字符（`scripts/line_limit_guard.mjs`
+   门禁；例外=迁移/i18n 字典/锁/生成物/domain-types 契约）。新文件超限或
+   出现超宽行直接拒；存量超限文件（见 `scripts/line_limit_baseline.json`）
+   可以改、鼓励拆分变短，但行数或超宽行数比基线更多即拒——拆分落地后跑
+   `node scripts/line_limit_guard.mjs --update` 收缩基线，基线只许变短
+   （重新 --update 前先 review diff）。Rust 侧 `rustfmt.toml` 已对齐
+   `max_width = 80`，`cargo fmt` 后即行宽合规。
 
 ## 提交规范
 

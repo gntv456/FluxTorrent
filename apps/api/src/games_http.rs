@@ -6,7 +6,9 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark, earn_spark_tx, spend_spark, SpendOutcome};
+use crate::economy_http::{
+    earn_spark, earn_spark_tx, spend_spark, SpendOutcome,
+};
 use crate::errors::{DomainError, DomainResult};
 use crate::games::{self, Guess, MAX_PLAYS_PER_HOUR};
 use crate::http::require_auth;
@@ -37,7 +39,8 @@ async fn games_overview(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let max_bet = eco_i64(&state, "games_max_bet", games::MAX_BET).await;
-    let max_plays = eco_i64(&state, "games_max_plays_per_hour", MAX_PLAYS_PER_HOUR).await;
+    let max_plays =
+        eco_i64(&state, "games_max_plays_per_hour", MAX_PLAYS_PER_HOUR).await;
     let odds = scratch_odds(&state).await;
     let win_mult = bigsmall_mult_permille(&state).await;
     let jgg_prizes: Vec<_> = games::JGG_PRIZES
@@ -72,12 +75,13 @@ async fn games_overview(
 
     // 登录态补齐：余额 / 今日战绩 / 剩余局数（前端「下注前先看得见」的依赖）
     if let Ok(auth) = require_auth(&req, &state).await {
-        let balance: i64 = sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
-            .bind(auth.id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .unwrap_or(0);
+        let balance: i64 =
+            sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
+                .bind(auth.id)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?
+                .unwrap_or(0);
         // 今日口径 UTC+8（与签到/统计一致）。sum(bigint) 在 PG 里是 NUMERIC，必须显式转 bigint
         let today: (i64, i64) = sqlx::query_as(
             "SELECT COALESCE(sum(amount), 0)::bigint, \
@@ -189,7 +193,11 @@ async fn game_rounds(
 }
 
 /// 读取游戏经济设置键（0109 参数化；缺省回落代码默认值 T3）
-async fn eco_i64(state: &web::Data<std::sync::Arc<AppState>>, key: &str, default: i64) -> i64 {
+async fn eco_i64(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    key: &str,
+    default: i64,
+) -> i64 {
     sqlx::query_scalar(
         "SELECT COALESCE((SELECT value FROM site_settings WHERE name = $1)::bigint, $2)",
     )
@@ -201,7 +209,11 @@ async fn eco_i64(state: &web::Data<std::sync::Arc<AppState>>, key: &str, default
 }
 
 /// 浮点设置键（赔率类支持小数，如猜大小 1.9x）
-async fn eco_f64(state: &web::Data<std::sync::Arc<AppState>>, key: &str, default: f64) -> f64 {
+async fn eco_f64(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    key: &str,
+    default: f64,
+) -> f64 {
     sqlx::query_scalar(
         "SELECT COALESCE((SELECT value FROM site_settings WHERE name = $1)::double precision, $2)",
     )
@@ -213,7 +225,9 @@ async fn eco_f64(state: &web::Data<std::sync::Arc<AppState>>, key: &str, default
 }
 
 /// 刮刮乐档位（五档可配；10x 留空/合计不为 100 时按余数推导，缺省 45/30/15/8/2）
-async fn scratch_odds(state: &web::Data<std::sync::Arc<AppState>>) -> games::ScratchOdds {
+async fn scratch_odds(
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> games::ScratchOdds {
     games::ScratchOdds::from_parts(
         eco_i64(state, "games_scratch_empty_pct", 45).await,
         eco_i64(state, "games_scratch_half_pct", 30).await,
@@ -232,7 +246,9 @@ async fn farm_wither_days(state: &web::Data<std::sync::Arc<AppState>>) -> i64 {
 /// 2.0 时 EV 恰为 1.0（不回收）且可双向零风险对冲，见 games.rs 常量说明。
 /// 上限钳到 1999‰（运行时 EV 防线，P2）：设置键是管理员可写参数，此前上限 10_000‰
 /// 意味着误配/越权写入 ≥2000‰ 即把游戏变成增发开关。
-async fn bigsmall_mult_permille(state: &web::Data<std::sync::Arc<AppState>>) -> i64 {
+async fn bigsmall_mult_permille(
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> i64 {
     let mult = eco_f64(state, "games_bigsmall_win_mult", 1.9).await;
     ((mult * 1000.0).round() as i64).clamp(0, 1_999)
 }
@@ -254,7 +270,9 @@ impl RateScope {
     }
     fn setting(&self) -> (&'static str, i64) {
         match self {
-            RateScope::Instant => ("games_max_plays_per_hour", MAX_PLAYS_PER_HOUR),
+            RateScope::Instant => {
+                ("games_max_plays_per_hour", MAX_PLAYS_PER_HOUR)
+            }
             RateScope::Farm => ("farm_max_plays_per_hour", 30),
         }
     }
@@ -273,15 +291,13 @@ async fn check_rate_scoped(
     let limit = eco_i64(state, setting, default).await;
     let key = scope.redis_key(user_id);
     let mut conn = redis.clone();
-    let n: i64 = conn
-        .incr(&key, 1)
-        .await
-        .map_err(|_| DomainError::Internal(anyhow::anyhow!("限流服务不可用")))?;
+    let n: i64 = conn.incr(&key, 1).await.map_err(|_| {
+        DomainError::Internal(anyhow::anyhow!("限流服务不可用"))
+    })?;
     if n == 1 {
-        let _: () = conn
-            .expire(&key, 3600)
-            .await
-            .map_err(|_| DomainError::Internal(anyhow::anyhow!("限流服务不可用")))?;
+        let _: () = conn.expire(&key, 3600).await.map_err(|_| {
+            DomainError::Internal(anyhow::anyhow!("限流服务不可用"))
+        })?;
     }
     if n > limit {
         return Err(DomainError::RateLimited);
@@ -315,7 +331,10 @@ async fn limit_used(
 }
 
 /// 下注校验（上限走设置键 games_max_bet）
-async fn check_bet(state: &web::Data<std::sync::Arc<AppState>>, bet: i64) -> Result<(), String> {
+async fn check_bet(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    bet: i64,
+) -> Result<(), String> {
     let max = eco_i64(state, "games_max_bet", games::MAX_BET).await;
     if bet <= 0 {
         return Err("下注必须为正数".into());
@@ -336,7 +355,9 @@ struct BetReq {
 
 fn idem_key(prefix: &str, user_id: i64, client: &Option<String>) -> String {
     match client {
-        Some(k) if !k.trim().is_empty() && k.len() <= 128 => format!("game-{prefix}:{user_id}:{k}"),
+        Some(k) if !k.trim().is_empty() && k.len() <= 128 => {
+            format!("game-{prefix}:{user_id}:{k}")
+        }
         _ => format!("game-{prefix}:{}:{}", user_id, Uuid::new_v4()),
     }
 }
@@ -376,7 +397,8 @@ async fn scratch(
     let outcome = games::scratch_play_with(body.bet, &odds);
     if outcome.payout > 0 {
         let win_idem = format!("game-scratch-win:{}", idem);
-        earn_spark(&state.repo.db, auth.id, outcome.payout, "game", &win_idem).await?;
+        earn_spark(&state.repo.db, auth.id, outcome.payout, "game", &win_idem)
+            .await?;
     }
     Ok(ok(serde_json::json!({
         "multiplier": outcome.multiplier,
@@ -408,7 +430,11 @@ async fn guess_bigsmall(
     let guess = match body.guess.as_str() {
         "small" => Guess::Small,
         "big" => Guess::Big,
-        _ => return Err(DomainError::Validation("guess 仅支持 small/big".into())),
+        _ => {
+            return Err(DomainError::Validation(
+                "guess 仅支持 small/big".into(),
+            ))
+        }
     };
     check_rate(&state, &state.redis, auth.id).await?;
 
@@ -429,10 +455,15 @@ async fn guess_bigsmall(
     ) {
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
     }
-    let outcome = games::guess_play_with(body.bet, guess, bigsmall_mult_permille(&state).await);
+    let outcome = games::guess_play_with(
+        body.bet,
+        guess,
+        bigsmall_mult_permille(&state).await,
+    );
     if outcome.payout > 0 {
         let win_idem = format!("game-bs-win:{}", idem);
-        earn_spark(&state.repo.db, auth.id, outcome.payout, "game", &win_idem).await?;
+        earn_spark(&state.repo.db, auth.id, outcome.payout, "game", &win_idem)
+            .await?;
     }
     Ok(ok(serde_json::json!({
         "number": outcome.number,
@@ -475,7 +506,8 @@ async fn jgg(
     let idem = idem_key("jgg", auth.id, &client_idem);
     // 幂等（同 scratch）：重放不重开
     if !matches!(
-        spend_spark(&state.repo.db, auth.id, ticket, "game", &idem, "jgg", 0).await?,
+        spend_spark(&state.repo.db, auth.id, ticket, "game", &idem, "jgg", 0)
+            .await?,
         SpendOutcome::Spent
     ) {
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
@@ -521,7 +553,10 @@ struct PlotRow {
     withered: bool,
 }
 
-async fn get_crop(db: &sqlx::PgPool, crop_id: i32) -> DomainResult<Option<CropRow>> {
+async fn get_crop(
+    db: &sqlx::PgPool,
+    crop_id: i32,
+) -> DomainResult<Option<CropRow>> {
     sqlx::query_as(
         "SELECT id, name, seed_price, base_yield, grow_hours, 0::bigint AS market_price FROM farm_crops WHERE id = $1",
     )
@@ -571,7 +606,9 @@ async fn farm_overview(
 
     // 农场自己的限流配额（rl:farm，与即时赌局分开计数）——前端显示「今日可操作 N 次」
     let farm_limit = eco_i64(&state, "farm_max_plays_per_hour", 30).await;
-    let farm_left = (farm_limit - limit_used(&state, auth.id, true).await.unwrap_or(0)).max(0);
+    let farm_left = (farm_limit
+        - limit_used(&state, auth.id, true).await.unwrap_or(0))
+    .max(0);
 
     Ok(ok(serde_json::json!({
         "window_start": window,
@@ -660,7 +697,8 @@ async fn farm_plant(
         .map_err(|e| DomainError::Internal(e.into()))?;
         let refund_amt = actual.unwrap_or(price);
         let refund = format!("farm-refund:{}", idem);
-        earn_spark(&state.repo.db, auth.id, refund_amt, "game", &refund).await?;
+        earn_spark(&state.repo.db, auth.id, refund_amt, "game", &refund)
+            .await?;
         return Err(DomainError::Validation("该地块已有作物".into()));
     }
     state
@@ -815,7 +853,8 @@ async fn farm_harvest(
     // 收益经统一交易管线入账（幂等键绑定地块；与地块锁同事务，双重防重复收获。
     // 地块已在本事务锁定且即将删除，重放不可达；显式丢弃以满足 must_use 契约）
     let idem = format!("farm-harvest:{}", plot_id);
-    let earn_outcome = earn_spark_tx(&mut tx, auth.id, amount, "game", &idem).await?;
+    let earn_outcome =
+        earn_spark_tx(&mut tx, auth.id, amount, "game", &idem).await?;
     let _ = earn_outcome;
 
     sqlx::query("DELETE FROM farm_plots WHERE id = $1")
@@ -943,11 +982,13 @@ async fn fun_vote(
     )
     .await
     {
-        let _ = sqlx::query("DELETE FROM fun_votes WHERE poll_id = $1 AND user_id = $2")
-            .bind(body.poll_id)
-            .bind(auth.id)
-            .execute(&state.repo.db)
-            .await;
+        let _ = sqlx::query(
+            "DELETE FROM fun_votes WHERE poll_id = $1 AND user_id = $2",
+        )
+        .bind(body.poll_id)
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await;
         return Err(e);
     }
     Ok(ok(

@@ -11,7 +11,9 @@ use crate::domain;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::SnatchRow;
-use crate::http::{bump_guard_ver, client_ip, ip_banned, require_auth, throttle};
+use crate::http::{
+    bump_guard_ver, client_ip, ip_banned, require_auth, throttle,
+};
 use crate::state::AppState;
 
 #[derive(serde::Deserialize, Default)]
@@ -217,7 +219,12 @@ pub async fn register(
     }
     // 图形验证码校验（防注册机）
     if body.captcha_id.is_empty()
-        || !crate::gaps_http::captcha_verify(&state, &body.captcha_id, body.captcha_answer).await
+        || !crate::gaps_http::captcha_verify(
+            &state,
+            &body.captcha_id,
+            body.captcha_answer,
+        )
+        .await
     {
         return Err(DomainError::Validation("验证码错误或已过期".into()));
     }
@@ -225,7 +232,9 @@ pub async fn register(
     let ip = client_ip(&req);
     // IP 封禁强制校验（与登录同口径；封禁名单由管理面维护）
     if ip_banned(&state, &ip).await {
-        return Err(DomainError::Validation("IP 已被封禁，请联系管理组".into()));
+        return Err(DomainError::Validation(
+            "IP 已被封禁，请联系管理组".into(),
+        ));
     }
     // 邮箱黑名单（0032 建表后首次接入注册链路）：pattern 三形态匹配——
     // 完整邮箱 / @domain（域名封禁）/ user@（前缀封禁）；allow 行优先豁免
@@ -286,7 +295,9 @@ pub async fn login(
         .take(300)
         .collect::<String>();
     if ip_banned(&state, &peer_ip).await {
-        return Err(DomainError::Validation("IP 已被封禁，请联系管理组".into()));
+        return Err(DomainError::Validation(
+            "IP 已被封禁，请联系管理组".into(),
+        ));
     }
     // 登录限流（§5.7：5 次/分钟/用户名 + 5 次/分钟/IP 双维度——
     // 原实现仅用户名维度，换用户名字典爆破同一账户不受限）
@@ -325,9 +336,12 @@ pub async fn login(
         return Err(DomainError::InvalidCredentials);
     }
     // 2FA（启用者必须带 totp_code）。失败也落登录事件（reason=2：缺码/错码细分看返回错误）
-    if let Err(e) =
-        crate::twofa_http::login_totp_check(&state.repo.db, user.id, body.totp_code.unwrap_or(0))
-            .await
+    if let Err(e) = crate::twofa_http::login_totp_check(
+        &state.repo.db,
+        user.id,
+        body.totp_code.unwrap_or(0),
+    )
+    .await
     {
         let _ = sqlx::query(
             "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 2)",
@@ -351,7 +365,8 @@ pub async fn login(
         .execute(&state.repo.db)
         .await;
         return Err(DomainError::Validation(
-            "账号因长期未登录已被停用，请通过『联系我们』附上用户名申请恢复".into(),
+            "账号因长期未登录已被停用，请通过『联系我们』附上用户名申请恢复"
+                .into(),
         ));
     }
     let token = state
@@ -390,7 +405,8 @@ pub async fn login(
     use actix_web::http::header::{HeaderName, HeaderValue};
     resp.headers_mut().insert(
         HeaderName::from_static("set-cookie"),
-        HeaderValue::from_str(&cookie).expect("cookie 串解析为 HeaderValue 必然成功"),
+        HeaderValue::from_str(&cookie)
+            .expect("cookie 串解析为 HeaderValue 必然成功"),
     );
     Ok(resp)
 }
@@ -460,7 +476,9 @@ pub async fn me_perms(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let keys = crate::authz::user_perm_keys(&state.repo.db, auth.class_id, auth.id).await;
+    let keys =
+        crate::authz::user_perm_keys(&state.repo.db, auth.class_id, auth.id)
+            .await;
     let roles = crate::authz::user_role_keys(&state.repo.db, auth.id).await;
     Ok(ok(serde_json::json!({ "perms": keys, "roles": roles })))
 }
@@ -493,8 +511,15 @@ pub async fn me(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (uploaded, downloaded, seeding, leeching, uploads, bookmarks, class_name) =
-        row.unwrap_or((0, 0, 0, 0, 0, 0, None));
+    let (
+        uploaded,
+        downloaded,
+        seeding,
+        leeching,
+        uploads,
+        bookmarks,
+        class_name,
+    ) = row.unwrap_or((0, 0, 0, 0, 0, 0, None));
     // 头像 + 头像框（userbar/个人主页展示）+ 佩戴勋章（用户名角标）一并回传；
     // css 现查现回（avatar_frames 行少且小，没必要常驻缓存）
     let deco: Option<(Option<String>, Option<i32>, Option<String>, Option<String>)> = sqlx::query_as(
@@ -505,7 +530,8 @@ pub async fn me(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (avatar_url, frame_id, frame_css, frame_image) = deco.unwrap_or((None, None, None, None));
+    let (avatar_url, frame_id, frame_css, frame_image) =
+        deco.unwrap_or((None, None, None, None));
     // 佩戴勋章（与个人主页 worn_medals 同口径，userbar 用户名后角标，最多 3 枚）
     let worn_medals: Vec<(String, Option<String>)> = sqlx::query_as(
         "SELECT m.name, m.asset_ref FROM user_medals um JOIN medals m ON m.id = um.medal_id \
@@ -599,11 +625,12 @@ pub async fn me_password_change(
     if body.new_password == body.old_password {
         return Err(DomainError::Validation("新密码不能与旧密码相同".into()));
     }
-    let (pass_hash,): (String,) = sqlx::query_as("SELECT pass_hash FROM users WHERE id = $1")
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let (pass_hash,): (String,) =
+        sqlx::query_as("SELECT pass_hash FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if !domain::verify_password(&pass_hash, &body.old_password) {
         state
             .repo
@@ -713,7 +740,16 @@ pub async fn user_public_profile(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (gender_code, _country, _isp, up_speed, down_speed, info, signature, online) = extra
+    let (
+        gender_code,
+        _country,
+        _isp,
+        up_speed,
+        down_speed,
+        info,
+        signature,
+        online,
+    ) = extra
         .map(|(g, c, i, u, d, inf, s, o)| (g, c, i, u, d, inf, s, o))
         .unwrap_or((None, None, None, None, None, None, None, false));
     let gender = match gender_code {
@@ -737,7 +773,8 @@ pub async fn user_public_profile(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (real_up, real_down, seed_seconds, _, seeding_size) = traffic.unwrap_or((0, 0, 0, 0, 0));
+    let (real_up, real_down, seed_seconds, _, seeding_size) =
+        traffic.unwrap_or((0, 0, 0, 0, 0));
     // H&R：未解决违规数（观众站「H&R 0」+ 站点 hr_violation_limit 上限口径）
     let hr: Option<(i64,)> = sqlx::query_as(
         "SELECT count(*) FROM hr_violations WHERE user_id = $1 AND resolved_at IS NULL",
@@ -755,11 +792,12 @@ pub async fn user_public_profile(
     .unwrap_or(None)
     .unwrap_or(3);
     // 魔力值余额（观众站「爆米花」位；spark_balance 是流水权威快照）+ 本月做种收益
-    let spark: (i64,) = sqlx::query_as("SELECT spark_balance FROM users WHERE id = $1")
-        .bind(uid)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let spark: (i64,) =
+        sqlx::query_as("SELECT spark_balance FROM users WHERE id = $1")
+            .bind(uid)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let month_earn: i64 = sqlx::query_scalar(
         "SELECT COALESCE(sum(amount), 0)::bigint FROM spark_ledger \
          WHERE user_id = $1 AND amount > 0 AND kind = 'seeding_reward' \
@@ -778,12 +816,13 @@ pub async fn user_public_profile(
     .await
     .unwrap_or(0);
     // 邀请：待使用邀请码数（NP「邀请」字段口径）
-    let invites_pending: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM invites WHERE inviter_id = $1 AND status = 0")
-            .bind(uid)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    let invites_pending: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM invites WHERE inviter_id = $1 AND status = 0",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     // 邀请人（脱敏：只回邀请人 id+用户名，不回邮箱）
     let inviter: Option<(i64, String)> = sqlx::query_as(
         "SELECT i.id, i.username FROM users u JOIN users i ON i.id = u.invited_by WHERE u.id = $1",
@@ -812,12 +851,13 @@ pub async fn user_public_profile(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 成就数（user_achievements）
-    let achievements: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM user_achievements WHERE user_id = $1")
-            .bind(uid)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    let achievements: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM user_achievements WHERE user_id = $1",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     // 等级进度（对齐 /me/class-progress 口径：当前值 + 距下一级目标，供前端进度条）。
     // EXTRACT 返回 NUMERIC、count 返回 INT8——列类型全部显式对齐 i64，防 sqlx 静默解码失败
     // （此前 .ok() 把解码错误吞成 None，next_class 恒空）。
@@ -842,7 +882,9 @@ pub async fn user_public_profile(
         .fetch_all(&state.repo.db)
         .await
         .unwrap_or_default();
-        if let Some((cid, cname, need_up, need_dl, need_sh, need_age)) = rules.into_iter().next() {
+        if let Some((cid, cname, need_up, need_dl, need_sh, need_age)) =
+            rules.into_iter().next()
+        {
             next_class = Some(serde_json::json!({
                 "class_id": cid, "name": cname,
                 "uploaded": uploaded, "uploaded_need": need_up,
@@ -1069,13 +1111,18 @@ pub async fn me_overview(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let r = &row;
-    let get =
-        |col: &str| -> serde_json::Value { r.try_get(col).unwrap_or(serde_json::Value::Null) };
-    let get_opt_str =
-        |col: &str| -> Option<String> { r.try_get::<Option<String>, _>(col).ok().flatten() };
+    let get = |col: &str| -> serde_json::Value {
+        r.try_get(col).unwrap_or(serde_json::Value::Null)
+    };
+    let get_opt_str = |col: &str| -> Option<String> {
+        r.try_get::<Option<String>, _>(col).ok().flatten()
+    };
     let get_i64 = |col: &str| -> i64 { r.try_get::<i64, _>(col).unwrap_or(0) };
-    let get_bool = |col: &str| -> bool { r.try_get::<bool, _>(col).unwrap_or(false) };
-    let get_str = |col: &str| -> String { r.try_get::<String, _>(col).unwrap_or_default() };
+    let get_bool =
+        |col: &str| -> bool { r.try_get::<bool, _>(col).unwrap_or(false) };
+    let get_str = |col: &str| -> String {
+        r.try_get::<String, _>(col).unwrap_or_default()
+    };
     let get_ts = |col: &str| -> Option<String> {
         r.try_get::<chrono::DateTime<chrono::Utc>, _>(col)
             .ok()
@@ -1107,12 +1154,13 @@ pub async fn me_overview(
         .map(|(d, n)| serde_json::json!({ "date": d.format("%Y-%m-%d").to_string(), "count": n }))
         .collect();
     let login_total_30d: i64 = trend.iter().map(|(_, n)| n).sum();
-    let last_login: Option<String> =
-        sqlx::query_scalar("SELECT max(created_at)::text FROM login_events WHERE user_id = $1")
-            .bind(uid)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let last_login: Option<String> = sqlx::query_scalar(
+        "SELECT max(created_at)::text FROM login_events WHERE user_id = $1",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 等级进度：下一等级阈值以 class_rules 为准（worker class_auto_adjust 的升降级权威来源；
     // user_classes.min_uploaded 在 live 数据中全为 0，用它预览会恒显示「已达」）
@@ -1128,7 +1176,8 @@ pub async fn me_overview(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let seeding = get_i64("seeding");
     let seed_points = (seeding as f64) * 100.0;
-    let (next_name, next_req) = next.unwrap_or_else(|| ("Max".into(), uploaded.max(1)));
+    let (next_name, next_req) =
+        next.unwrap_or_else(|| ("Max".into(), uploaded.max(1)));
 
     Ok(ok(serde_json::json!({
         "id": uid,

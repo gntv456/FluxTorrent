@@ -13,7 +13,8 @@ async fn staff(
     state: &web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<crate::http::AuthUser> {
     let auth = require_auth(req, state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL)
+        .await?;
     Ok(auth)
 }
 
@@ -68,7 +69,12 @@ async fn sticky_promos_add(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     if body.title.trim().is_empty() || body.title.len() > 200 {
         return Err(DomainError::Validation("标题长度 1-200".into()));
     }
@@ -102,7 +108,12 @@ async fn sticky_promos_update(
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
     // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE sticky_promotions SET \
             title = COALESCE($2, title), url = COALESCE($3, url), badge = COALESCE($4, badge), \
@@ -138,7 +149,12 @@ async fn sticky_promos_delete(
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
     // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let n = sqlx::query("DELETE FROM sticky_promotions WHERE id = $1")
         .bind(path_id)
         .execute(&state.repo.db)
@@ -200,7 +216,8 @@ async fn menu_settings(db: &sqlx::PgPool) -> (bool, i32) {
     for (k, v) in rows {
         match k.as_str() {
             "nav.custom_enabled" => {
-                enabled = v == "1" || v.eq_ignore_ascii_case("true") || v == "yes"
+                enabled =
+                    v == "1" || v.eq_ignore_ascii_case("true") || v == "yes"
             }
             "nav.min_visible_class" => min_class = v.parse().unwrap_or(0),
             _ => {}
@@ -222,7 +239,8 @@ async fn menu_items_list(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (custom_enabled, min_visible_class) = menu_settings(&state.repo.db).await;
+    let (custom_enabled, min_visible_class) =
+        menu_settings(&state.repo.db).await;
     Ok(ok(serde_json::json!({
         "items": rows,
         "custom_enabled": custom_enabled,
@@ -248,7 +266,12 @@ async fn menu_settings_update(
     let auth = staff(&req, &state).await?;
     // 写 site_settings 等价于改站点设定：须过 SETTINGS_MANAGE（99 档），
     // 与 settings_groups_put 同口径；旧版仅 staff() 把 99 档收窄放宽到 90。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     if let Some(en) = body.custom_enabled {
         sqlx::query("UPDATE site_settings SET value = $1, updated_at = now() WHERE name = 'nav.custom_enabled'")
             .bind(if en { "1" } else { "0" })
@@ -306,7 +329,9 @@ async fn menu_item_validate(
 ) -> DomainResult<()> {
     if let Some(t) = &body.target {
         if !["_self", "_blank"].contains(&t.as_str()) {
-            return Err(DomainError::Validation("target 取值 _self/_blank".into()));
+            return Err(DomainError::Validation(
+                "target 取值 _self/_blank".into(),
+            ));
         }
     }
     if let Some(mc) = body.min_class {
@@ -321,7 +346,9 @@ async fn menu_item_validate(
             }
             if let Some(sid) = self_id {
                 if pid == sid {
-                    return Err(DomainError::Validation("父菜单不能是自己".into()));
+                    return Err(DomainError::Validation(
+                        "父菜单不能是自己".into(),
+                    ));
                 }
                 // 禁止把自己的后代设为父（成环）
                 let child_cnt: i64 = sqlx::query_scalar(
@@ -338,18 +365,23 @@ async fn menu_item_validate(
                     ));
                 }
             }
-            let row: Option<(i64, String)> =
-                sqlx::query_as("SELECT id, location FROM menu_items WHERE id = $1")
-                    .bind(pid)
-                    .fetch_optional(db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?;
+            let row: Option<(i64, String)> = sqlx::query_as(
+                "SELECT id, location FROM menu_items WHERE id = $1",
+            )
+            .bind(pid)
+            .fetch_optional(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             match row {
-                None => return Err(DomainError::Validation("父菜单不存在".into())),
+                None => {
+                    return Err(DomainError::Validation("父菜单不存在".into()))
+                }
                 Some((_, ploc)) => {
                     let loc = body.location.clone().unwrap_or_default();
                     if !loc.is_empty() && ploc != loc {
-                        return Err(DomainError::Validation("父菜单须在同一定位".into()));
+                        return Err(DomainError::Validation(
+                            "父菜单须在同一定位".into(),
+                        ));
                     }
                 }
             }
@@ -366,11 +398,17 @@ async fn menu_items_add(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let label = body.label.as_deref().unwrap_or("").trim().to_string();
     let url = body.url.as_deref().unwrap_or("").trim().to_string();
     let location = body.location.as_deref().unwrap_or("sidebar");
-    if label.is_empty() || label.len() > 50 || url.is_empty() || url.len() > 300 {
+    if label.is_empty() || label.len() > 50 || url.is_empty() || url.len() > 300
+    {
         return Err(DomainError::Validation("名称 1-50，链接 1-300".into()));
     }
     if !["sidebar", "footer", "topbar"].contains(&location) {
@@ -411,7 +449,12 @@ async fn menu_items_update(
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
     // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     menu_item_validate(&state.repo.db, &body, Some(path_id)).await?;
     let n = sqlx::query(
         "UPDATE menu_items SET \
@@ -452,12 +495,19 @@ async fn menu_items_delete(
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
     // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
-    let children: i64 = sqlx::query_scalar("SELECT count(*) FROM menu_items WHERE parent_id = $1")
-        .bind(path_id)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
+    let children: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM menu_items WHERE parent_id = $1",
+    )
+    .bind(path_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if children > 0 {
         return Err(DomainError::Validation(
             "存在子菜单，先删除或移动子菜单".into(),
@@ -501,7 +551,8 @@ async fn menu_items_public(
         ));
     }
     // 全局开关关闭 → 返回空（前端显式回退默认导航，不做静默混淆）
-    let (custom_enabled, min_visible_class) = menu_settings(&state.repo.db).await;
+    let (custom_enabled, min_visible_class) =
+        menu_settings(&state.repo.db).await;
     if !custom_enabled {
         return Ok(ok(Vec::<MenuItemRow>::new()));
     }
@@ -580,7 +631,12 @@ async fn msg_templates_update(
     let path_id = path.into_inner();
     let auth = staff(&req, &state).await?;
     // 审计修复：站点级配置写操作须 SETTINGS_MANAGE（此前仅 staff() 90 档即可改）
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE message_templates SET \
             subject = COALESCE($2, subject), body = COALESCE($3, body), \
@@ -709,9 +765,11 @@ async fn admin_claims(
     let _auth = staff(&req, &state).await?;
     let mut where_parts: Vec<String> = Vec::new();
     match q.state.as_str() {
-        "active" => where_parts.push("sp.exited_at IS NULL AND sp.claimed_by IS NOT NULL".into()),
+        "active" => where_parts
+            .push("sp.exited_at IS NULL AND sp.claimed_by IS NOT NULL".into()),
         "exited" => where_parts.push("sp.exited_at IS NOT NULL".into()),
-        "unclaimed" => where_parts.push("sp.exited_at IS NULL AND sp.claimed_by IS NULL".into()),
+        "unclaimed" => where_parts
+            .push("sp.exited_at IS NULL AND sp.claimed_by IS NULL".into()),
         _ => {}
     }
     if !q.q.trim().is_empty() {

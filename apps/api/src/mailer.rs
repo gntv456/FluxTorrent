@@ -29,7 +29,11 @@ pub async fn site_message(
 }
 
 /// SMTP 投递（复用 gaps_http 的 lettre 形状；from 未配置时跳过）
-pub async fn send_mail(to: &str, subject: &str, body: &str) -> anyhow::Result<()> {
+pub async fn send_mail(
+    to: &str,
+    subject: &str,
+    body: &str,
+) -> anyhow::Result<()> {
     let smtp_url = std::env::var("SMTP_URL").unwrap_or_default();
     let from = std::env::var("SMTP_FROM")
         .unwrap_or_else(|_| std::env::var("smtp_from").unwrap_or_default());
@@ -37,11 +41,18 @@ pub async fn send_mail(to: &str, subject: &str, body: &str) -> anyhow::Result<()
         tracing::info!(to, subject, "SMTP 未配置，邮件降级为日志");
         return Ok(());
     }
-    crate::gaps_http::send_generic_mail(&smtp_url, &from, to, subject, body).await
+    crate::gaps_http::send_generic_mail(&smtp_url, &from, to, subject, body)
+        .await
 }
 
 /// 通知双通道：站内信必达 + 邮件尽力（后台线程）
-pub async fn notify(db: &PgPool, to_user: i64, email: Option<String>, subject: &str, body: &str) {
+pub async fn notify(
+    db: &PgPool,
+    to_user: i64,
+    email: Option<String>,
+    subject: &str,
+    body: &str,
+) {
     if let Err(e) = site_message(db, to_user, subject, body).await {
         tracing::error!(?e, to_user, "site message failed");
     }

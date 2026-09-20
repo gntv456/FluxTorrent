@@ -18,12 +18,18 @@ async fn staff(
     state: &web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<crate::http::AuthUser> {
     let auth = require_auth(req, state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL)
+        .await?;
     Ok(auth)
 }
 
 /// 用户修改记录（参考站 UserModifyLog 口径）：管理动作按用户落一条可读摘要
-pub async fn modify_log(db: &sqlx::PgPool, uid: i64, modifier: Option<i64>, content: &str) {
+pub async fn modify_log(
+    db: &sqlx::PgPool,
+    uid: i64,
+    modifier: Option<i64>,
+    content: &str,
+) {
     let _ =
         sqlx::query("INSERT INTO user_modify_logs (uid, modifier, content) VALUES ($1, $2, $3)")
             .bind(uid)
@@ -38,7 +44,9 @@ fn check_ids(ids: &[i64]) -> DomainResult<()> {
         return Err(DomainError::Validation("缺少目标 ID".into()));
     }
     if ids.len() > MAX_BATCH {
-        return Err(DomainError::Validation(format!("单批最多 {MAX_BATCH} 条")));
+        return Err(DomainError::Validation(format!(
+            "单批最多 {MAX_BATCH} 条"
+        )));
     }
     Ok(())
 }
@@ -77,7 +85,8 @@ struct TorrentBatchReq {
     sections: std::collections::HashMap<String, i64>,
 }
 
-const PROMO_KINDS: [&str; 6] = ["free", "x2", "x2free", "half", "x2half", "p30"];
+const PROMO_KINDS: [&str; 6] =
+    ["free", "x2", "x2free", "half", "x2half", "p30"];
 
 #[post("/admin/torrents/batch")]
 async fn torrent_batch(
@@ -86,7 +95,12 @@ async fn torrent_batch(
     body: web::Json<TorrentBatchReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_MANAGE,
+    )
+    .await?;
     let ids = &body.ids;
     check_ids(ids)?;
     let db = &state.repo.db;
@@ -321,7 +335,12 @@ async fn tags_dict_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let rows: Vec<TagDictRow> = sqlx::query_as(
         "SELECT id, name, kind, scope, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id \
          FROM tag_dict ORDER BY scope, sort, id",
@@ -339,24 +358,32 @@ async fn tags_dict_add(
     body: web::Json<TagDictReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let name = body.name.trim();
     if name.is_empty() {
         return Err(DomainError::Validation("标签名不能为空".into()));
     }
     // tag_dict.name 有唯一约束（0063）：预查重，撞键时给校验错误而非 500
-    let dup: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tag_dict WHERE name = $1)")
-        .bind(name)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
+    let dup: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM tag_dict WHERE name = $1)",
+    )
+    .bind(name)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if dup {
         return Err(DomainError::Validation("同名标签已存在".into()));
     }
-    let next: i32 = sqlx::query_scalar("SELECT COALESCE(max(id), 0) + 1 FROM tag_dict")
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let next: i32 =
+        sqlx::query_scalar("SELECT COALESCE(max(id), 0) + 1 FROM tag_dict")
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let scope = match body.scope.as_deref() {
         Some("forum") => "forum",
         _ => "torrent",
@@ -398,7 +425,12 @@ async fn tags_dict_update(
     body: web::Json<TagDictReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let scope = match body.scope.as_deref() {
         Some("forum") => "forum",
@@ -445,7 +477,12 @@ async fn tags_dict_delete(
     path: web::Path<i32>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     sqlx::query("DELETE FROM tags WHERE tag_id = $1")
         .bind(id)
@@ -505,7 +542,8 @@ async fn hr_records(
     q: web::Query<HrListQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_VIEW).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_VIEW)
+        .await?;
     if !(1..=100).contains(&q.per_page) {
         return Err(DomainError::Validation("per_page 取值 1-100".into()));
     }
@@ -563,7 +601,8 @@ async fn hr_batch_pardon(
     body: web::Json<HrBatchPardonReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_PARDON).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_PARDON)
+        .await?;
     if body.note.trim().is_empty() {
         return Err(DomainError::Validation("豁免必须填理由".into()));
     }
@@ -652,7 +691,8 @@ async fn admin_invites(
     q: web::Query<InviteListQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::INVITE_VIEW).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::INVITE_VIEW)
+        .await?;
     if !(1..=100).contains(&q.per_page) {
         return Err(DomainError::Validation("per_page 取值 1-100".into()));
     }
@@ -718,7 +758,12 @@ async fn admin_attendance(
     q: web::Query<AttendanceQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ATTENDANCE_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::ATTENDANCE_MANAGE,
+    )
+    .await?;
     if !(1..=100).contains(&q.per_page) {
         return Err(DomainError::Validation("per_page 取值 1-100".into()));
     }
@@ -764,12 +809,18 @@ async fn admin_attendance_makeup(
     body: web::Json<MakeupReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ATTENDANCE_MANAGE).await?;
-    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
-        .bind(body.user_id)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::ATTENDANCE_MANAGE,
+    )
+    .await?;
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
+            .bind(body.user_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if !exists {
         return Err(DomainError::NotFound(body.user_id));
     }
@@ -808,7 +859,12 @@ async fn admin_attendance_makeup_delete(
     body: web::Json<MakeupReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ATTENDANCE_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::ATTENDANCE_MANAGE,
+    )
+    .await?;
     let n =
         sqlx::query("DELETE FROM attendance WHERE user_id = $1 AND date = $2 AND makeup = TRUE")
             .bind(body.user_id)
@@ -1002,7 +1058,8 @@ async fn admin_medal_add(
     body: web::Json<MedalReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("勋章名不能为空".into()));
     }
@@ -1019,7 +1076,9 @@ async fn admin_medal_add(
     }
     if let Some(f) = body.bonus_addition_factor {
         if !(0.0..=10.0).contains(&f) {
-            return Err(DomainError::Validation("加成系数需在 0-10 之间".into()));
+            return Err(DomainError::Validation(
+                "加成系数需在 0-10 之间".into(),
+            ));
         }
     }
     let id: i64 = sqlx::query_scalar(
@@ -1051,7 +1110,8 @@ async fn admin_medal_update(
     body: web::Json<MedalReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     let id = path.into_inner();
     let n = sqlx::query(
         "UPDATE medals SET name = $2, description = $3, price = $4, rarity = $5, limited = COALESCE($6, limited), \
@@ -1090,7 +1150,8 @@ async fn admin_medal_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     let id = path.into_inner();
     let n = sqlx::query("DELETE FROM medals WHERE id = $1")
         .bind(id)
@@ -1143,7 +1204,8 @@ async fn admin_medal_rarities(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     let rows: Vec<MedalRarityAdminRow> = sqlx::query_as(
         "SELECT r.value, r.label, r.tone, r.sort, \
                 (SELECT count(*) FROM medals m WHERE m.rarity = r.value)::bigint AS used \
@@ -1162,7 +1224,8 @@ async fn admin_medal_rarity_add(
     body: web::Json<MedalRarityReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     let value = clean_rarity_value(body.value.as_deref().unwrap_or(""));
     if value.is_empty() {
         return Err(DomainError::Validation(
@@ -1173,12 +1236,13 @@ async fn admin_medal_rarity_add(
     if label.is_empty() {
         return Err(DomainError::Validation("显示名不能为空".into()));
     }
-    let dup: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM medal_rarities WHERE value = $1)")
-            .bind(&value)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let dup: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM medal_rarities WHERE value = $1)",
+    )
+    .bind(&value)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if dup {
         return Err(DomainError::Validation(format!("稀有度 {value} 已存在")));
     }
@@ -1207,18 +1271,20 @@ async fn admin_medal_rarity_update(
     body: web::Json<MedalRarityReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     let old = path.into_inner();
     let label = body.label.trim();
     if label.is_empty() {
         return Err(DomainError::Validation("显示名不能为空".into()));
     }
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM medal_rarities WHERE value = $1)")
-            .bind(&old)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM medal_rarities WHERE value = $1)",
+    )
+    .bind(&old)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if !exists {
         return Err(DomainError::NotFound(0));
     }
@@ -1230,14 +1296,17 @@ async fn admin_medal_rarity_update(
         .filter(|v| !v.is_empty());
     if let Some(ref nv) = new_value {
         if nv != &old {
-            let taken: bool =
-                sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM medal_rarities WHERE value = $1)")
-                    .bind(nv)
-                    .fetch_one(&state.repo.db)
-                    .await
-                    .unwrap_or(false);
+            let taken: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM medal_rarities WHERE value = $1)",
+            )
+            .bind(nv)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
             if taken {
-                return Err(DomainError::Validation(format!("稀有度 {nv} 已存在")));
+                return Err(DomainError::Validation(format!(
+                    "稀有度 {nv} 已存在"
+                )));
             }
             let mut tx = state
                 .repo
@@ -1251,12 +1320,14 @@ async fn admin_medal_rarity_update(
                 .execute(&mut *tx)
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
-            sqlx::query("UPDATE medal_rarities SET value = $1 WHERE value = $2")
-                .bind(nv)
-                .bind(&old)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "UPDATE medal_rarities SET value = $1 WHERE value = $2",
+            )
+            .bind(nv)
+            .bind(&old)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             tx.commit()
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
@@ -1288,14 +1359,16 @@ async fn admin_medal_rarity_delete(
     path: web::Path<String>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     let value = path.into_inner();
     // 有勋章在用就不许删：否则那些勋章会变成"未收录"外观（宁可让站长先改勋章）
-    let used: i64 = sqlx::query_scalar("SELECT count(*) FROM medals WHERE rarity = $1")
-        .bind(&value)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    let used: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM medals WHERE rarity = $1")
+            .bind(&value)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
     if used > 0 {
         return Err(DomainError::Validation(format!(
             "仍有 {used} 枚勋章使用该稀有度，请先把它们改成别的稀有度"
@@ -1389,14 +1462,17 @@ async fn admin_user_medal_revoke(
     body: web::Json<UserMedalDel>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE).await?;
-    let n = sqlx::query("DELETE FROM user_medals WHERE user_id = $1 AND medal_id = $2")
-        .bind(body.user_id)
-        .bind(body.medal_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
+    let n = sqlx::query(
+        "DELETE FROM user_medals WHERE user_id = $1 AND medal_id = $2",
+    )
+    .bind(body.user_id)
+    .bind(body.medal_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(body.medal_id));
     }
@@ -1487,7 +1563,9 @@ fn normalize_frame_image(url: Option<&str>) -> Option<String> {
     if u.is_empty() {
         return None;
     }
-    let ok = u.starts_with("https://") || u.starts_with("http://") || u.starts_with("//");
+    let ok = u.starts_with("https://")
+        || u.starts_with("http://")
+        || u.starts_with("//");
     ok.then(|| u.to_string())
 }
 
@@ -1498,7 +1576,8 @@ async fn admin_avatar_frame_add(
     body: web::Json<AvatarFrameReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("名称必填".into()));
     }
@@ -1530,7 +1609,8 @@ async fn admin_avatar_frame_update(
     body: web::Json<AvatarFrameReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     let id = path.into_inner();
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("名称必填".into()));
@@ -1567,14 +1647,17 @@ async fn admin_avatar_frame_delete(
     path: web::Path<i32>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     let id = path.into_inner();
     // 佩戴中不允许物理删（users.avatar_frame_id 外键）：先摘下所有佩戴者再删
-    sqlx::query("UPDATE users SET avatar_frame_id = NULL WHERE avatar_frame_id = $1")
-        .bind(id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE users SET avatar_frame_id = NULL WHERE avatar_frame_id = $1",
+    )
+    .bind(id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query("DELETE FROM avatar_frames WHERE id = $1")
         .bind(id)
         .execute(&state.repo.db)
@@ -1635,7 +1718,8 @@ async fn admin_shop_item_add(
     body: web::Json<ShopItemReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     if body.name.trim().is_empty() || body.kind.trim().is_empty() {
         return Err(DomainError::Validation("名称与类型必填".into()));
     }
@@ -1663,7 +1747,8 @@ async fn admin_shop_item_update(
     body: web::Json<ShopItemReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     let id = path.into_inner();
     let n = sqlx::query(
         "UPDATE shop_items SET name = $2, kind = $3, price = COALESCE($4, price), \
@@ -1696,21 +1781,25 @@ async fn admin_shop_item_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     let id = path.into_inner();
-    let in_use: i64 = sqlx::query_scalar("SELECT count(*) FROM shop_orders WHERE item_id = $1")
-        .bind(id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    let in_use: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM shop_orders WHERE item_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     if in_use > 0 {
         // 有持有/购买记录：只允许下架，不允许删（保留历史）
-        let n = sqlx::query("UPDATE shop_items SET active = FALSE WHERE id = $1")
-            .bind(id)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
+        let n =
+            sqlx::query("UPDATE shop_items SET active = FALSE WHERE id = $1")
+                .bind(id)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?
+                .rows_affected();
         state
             .repo
             .audit(Some(auth.id), "prop.disable", Some(id))
@@ -1798,7 +1887,8 @@ async fn admin_user_prop_revoke(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     let order_id = path.into_inner();
     let row: Option<(i64, String, String)> = sqlx::query_as(
         "SELECT o.user_id, i.kind, i.name FROM shop_orders o \
@@ -1811,7 +1901,8 @@ async fn admin_user_prop_revoke(
     let Some((uid, kind, name)) = row else {
         return Err(DomainError::NotFound(order_id));
     };
-    const INSTANT_KINDS: [&str; 4] = ["upload_credit", "gift_spark", "invite", "temp_invite"];
+    const INSTANT_KINDS: [&str; 4] =
+        ["upload_credit", "gift_spark", "invite", "temp_invite"];
     if INSTANT_KINDS.contains(&kind.as_str()) {
         return Err(DomainError::Validation(
             "即时生效类道具已入账，不可回收".into(),
@@ -1866,7 +1957,9 @@ async fn admin_users_batch(
         return Err(DomainError::Validation("status 取值 0/1/2".into()));
     }
     if body.action == "class" && !(1..=98).contains(&body.value) {
-        return Err(DomainError::Validation("等级取值 1-98（站长除外）".into()));
+        return Err(DomainError::Validation(
+            "等级取值 1-98（站长除外）".into(),
+        ));
     }
     // 审计修复（P0 越权，与 user_set_class 同病）：批量提级同样不得越过操作者自己，
     // 否则 93 档管理员可批量把下级提到 98、改完反被压制。
@@ -1896,20 +1989,24 @@ async fn admin_users_batch(
             continue;
         }
         let n = match body.action.as_str() {
-            "status" => sqlx::query("UPDATE users SET status = $2 WHERE id = $1")
-                .bind(uid)
-                .bind(body.value as i16)
-                .execute(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .rows_affected(),
-            "class" => sqlx::query("UPDATE users SET class_id = $2 WHERE id = $1")
-                .bind(uid)
-                .bind(body.value)
-                .execute(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .rows_affected(),
+            "status" => {
+                sqlx::query("UPDATE users SET status = $2 WHERE id = $1")
+                    .bind(uid)
+                    .bind(body.value as i16)
+                    .execute(db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?
+                    .rows_affected()
+            }
+            "class" => {
+                sqlx::query("UPDATE users SET class_id = $2 WHERE id = $1")
+                    .bind(uid)
+                    .bind(body.value)
+                    .execute(db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?
+                    .rows_affected()
+            }
             _ => 0,
         };
         if n > 0 {
@@ -1963,7 +2060,8 @@ async fn admin_ban_delete_by_ip(
     body: web::Json<BanByIpReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE)
+        .await?;
     let ip = body.ip.trim();
     if ip.is_empty() {
         return Err(DomainError::Validation("IP 不能为空".into()));
@@ -1999,9 +2097,17 @@ async fn admin_template_create(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // 审计修复：消息模板是站点级配置，须 SETTINGS_MANAGE
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let scene = body.scene_key.trim();
-    if scene.is_empty() || body.subject.trim().is_empty() || body.body.trim().is_empty() {
+    if scene.is_empty()
+        || body.subject.trim().is_empty()
+        || body.body.trim().is_empty()
+    {
         return Err(DomainError::Validation("场景键/主题/正文必填".into()));
     }
     if !scene
@@ -2012,12 +2118,13 @@ async fn admin_template_create(
             "场景键仅允许小写字母/数字/下划线".into(),
         ));
     }
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM message_templates WHERE scene_key = $1)")
-            .bind(scene)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM message_templates WHERE scene_key = $1)",
+    )
+    .bind(scene)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if exists {
         return Err(DomainError::Validation("场景键已存在".into()));
     }
@@ -2046,7 +2153,12 @@ async fn admin_template_delete(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // 审计修复：消息模板是站点级配置，须 SETTINGS_MANAGE
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let n = sqlx::query("DELETE FROM message_templates WHERE id = $1")
         .bind(id)
@@ -2124,7 +2236,12 @@ async fn section_mode_add(
     body: web::Json<SectionModeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("模式名不能为空".into()));
     }
@@ -2158,7 +2275,12 @@ async fn section_mode_update(
     body: web::Json<SectionModeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let n = sqlx::query(
         "UPDATE category_modes SET name = $2, show_source = COALESCE($3, show_source), \
@@ -2196,16 +2318,23 @@ async fn section_mode_delete(
     path: web::Path<i32>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     if id == 1 {
         return Err(DomainError::Validation("默认模式不可删除".into()));
     }
-    let used: i64 = sqlx::query_scalar("SELECT count(*) FROM categories WHERE mode_id = $1")
-        .bind(id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    let used: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM categories WHERE mode_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     if used > 0 {
         sqlx::query("UPDATE categories SET mode_id = 1 WHERE mode_id = $1")
             .bind(id)
@@ -2237,11 +2366,13 @@ pub(crate) const LEGACY_KINDS: [&str; 3] = ["media", "grades", "editions"];
 /// 0087 起 media/grades/editions 字典行已迁入 section_dict，九维全走统一通道，
 /// legacy 实体表仅作历史口径存档（介质列保留兼容老数据）。
 pub(crate) async fn is_custom_kind(db: &sqlx::PgPool, kind: &str) -> bool {
-    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)")
-        .bind(kind)
-        .fetch_one(db)
-        .await
-        .unwrap_or(false)
+    sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)",
+    )
+    .bind(kind)
+    .fetch_one(db)
+    .await
+    .unwrap_or(false)
 }
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -2267,7 +2398,8 @@ async fn section_dict_admin(
     q: web::Query<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let rows: Vec<SectionDictRow> = section_dict_rows(&state.repo.db, q.kind.as_deref()).await?;
+    let rows: Vec<SectionDictRow> =
+        section_dict_rows(&state.repo.db, q.kind.as_deref()).await?;
     Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
 }
 
@@ -2303,7 +2435,12 @@ async fn section_dict_add(
     body: web::Json<SectionDictReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let kind = body.kind.as_str();
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("名称不能为空".into()));
@@ -2338,7 +2475,12 @@ async fn section_dict_update(
     body: web::Json<SectionDictReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let kind = body.kind.as_str();
     if !is_custom_kind(&state.repo.db, kind).await {
@@ -2373,7 +2515,12 @@ async fn section_dict_delete(
     q: web::Query<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let kind = q.kind.clone().unwrap_or_default();
     if !is_custom_kind(&state.repo.db, &kind).await {
@@ -2418,12 +2565,18 @@ async fn section_kinds_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
-    let rows: Vec<SectionKindRow> =
-        sqlx::query_as("SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
+    let rows: Vec<SectionKindRow> = sqlx::query_as(
+        "SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
 }
 
@@ -2434,7 +2587,12 @@ async fn section_kinds_add(
     body: web::Json<SectionKindReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let kind = body.kind.trim().to_lowercase();
     if !LEGACY_KINDS.contains(&kind.as_str()) && !regex_check_kind(&kind) {
         return Err(DomainError::Validation(
@@ -2447,12 +2605,13 @@ async fn section_kinds_add(
     if body.label.trim().is_empty() {
         return Err(DomainError::Validation("显示名称不能为空".into()));
     }
-    let dup: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)")
-            .bind(&kind)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let dup: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)",
+    )
+    .bind(&kind)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if dup {
         return Err(DomainError::Validation("维度标识已存在".into()));
     }
@@ -2478,7 +2637,12 @@ async fn section_kinds_update(
     body: web::Json<SectionKindReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let kind = path.into_inner();
     if body.label.trim().is_empty() {
         return Err(DomainError::Validation("显示名称不能为空".into()));
@@ -2510,7 +2674,12 @@ async fn section_kinds_delete(
     path: web::Path<String>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let kind = path.into_inner();
     if LEGACY_KINDS.contains(&kind.as_str()) {
         return Err(DomainError::Validation("内置维度不可删除".into()));
@@ -2564,11 +2733,12 @@ async fn section_dict_public(
 ) -> DomainResult<HttpResponse> {
     let mut out = serde_json::Map::new();
     // 维度清单来自 section_kinds（0085 可配置），预置 9 维已种子化
-    let kinds: Vec<SectionKindRow> =
-        sqlx::query_as("SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let kinds: Vec<SectionKindRow> = sqlx::query_as(
+        "SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     for k in &kinds {
         let rows = section_dict_rows(&state.repo.db, Some(&k.kind)).await?;
         out.insert(
@@ -2629,7 +2799,12 @@ async fn category_flags(
     body: web::Json<CategoryFlagsReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let n = sqlx::query(
         "UPDATE categories SET mode_id = $2, auto_approve = COALESCE($3, auto_approve) WHERE id = $1",
@@ -2730,7 +2905,8 @@ async fn jixiao_type_add(
     body: web::Json<JixiaoTypeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE)
+        .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("岗位名不能为空".into()));
     }
@@ -2763,7 +2939,8 @@ async fn jixiao_type_update(
     body: web::Json<JixiaoTypeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE)
+        .await?;
     jixiao_reject_unknown_keys(&body)?;
     let id = path.into_inner();
     let n = sqlx::query(
@@ -2799,13 +2976,16 @@ async fn jixiao_type_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE)
+        .await?;
     let id = path.into_inner();
-    let used: i64 = sqlx::query_scalar("SELECT count(*) FROM jixiao_claims WHERE type_id = $1")
-        .bind(id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    let used: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM jixiao_claims WHERE type_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     if used > 0 {
         return Err(DomainError::Validation(
             "已有考核登记引用该岗位，不可删除".into(),
@@ -2848,16 +3028,18 @@ async fn jixiao_assign_batch(
     body: web::Json<JixiaoAssignBatchReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE)
+        .await?;
     if body.user_ids.is_empty() || body.user_ids.len() > 200 {
         return Err(DomainError::Validation("user_ids 需为 1~200 个".into()));
     }
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM jixiao_types WHERE id = $1)")
-            .bind(body.type_id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM jixiao_types WHERE id = $1)",
+    )
+    .bind(body.type_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if !exists {
         return Err(DomainError::NotFound(body.type_id));
     }
@@ -3171,7 +3353,8 @@ async fn task_add(
     body: web::Json<TaskReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
+        .await?;
     if body.name.trim().is_empty() || body.ends_at <= body.starts_at {
         return Err(DomainError::Validation(
             "任务名必填且结束时间需晚于开始".into(),
@@ -3218,7 +3401,8 @@ async fn task_update(
     body: web::Json<TaskReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
+        .await?;
     let id = path.into_inner();
     if body.ends_at <= body.starts_at {
         return Err(DomainError::Validation("结束时间需晚于开始".into()));
@@ -3283,7 +3467,8 @@ async fn task_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
+        .await?;
     let id = path.into_inner();
     let n = sqlx::query("DELETE FROM tasks WHERE id = $1")
         .bind(id)
@@ -3325,7 +3510,8 @@ async fn exam_users(
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
+        .await?;
     let rows: Vec<ExamUserRow> = sqlx::query_as(
         "SELECT c.id AS claim_id, t.id AS task_id, t.name AS task_name, t.kind, t.period, \
                 u.id AS user_id, u.username, c.status, c.claimed_at, c.settled_at, c.reward_paid, \
@@ -3358,7 +3544,8 @@ async fn exam_user_exempt(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
+        .await?;
     let claim_id = path.into_inner();
     let n = sqlx::query(
         "UPDATE task_claims SET exempted_at = now(), exempted_by = $2 \
@@ -3390,7 +3577,8 @@ async fn exam_user_recover(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
+        .await?;
     let claim_id = path.into_inner();
     let n = sqlx::query(
         "UPDATE task_claims SET exempted_at = NULL, exempted_by = NULL \
@@ -3458,17 +3646,24 @@ async fn tracker_url_add(
     body: web::Json<TrackerUrlReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TRACKER_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TRACKER_MANAGE,
+    )
+    .await?;
     let url = body.url.trim();
     if !url.starts_with("https://") && !url.starts_with("http://") {
         return Err(DomainError::Validation("URL 需以 http(s):// 开头".into()));
     }
     // 同 URL 不允许重复登记（announce 列表会重复下发同一地址）
-    let dup: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tracker_urls WHERE url = $1)")
-        .bind(url)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
+    let dup: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM tracker_urls WHERE url = $1)",
+    )
+    .bind(url)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if dup {
         return Err(DomainError::Validation("该 Tracker URL 已存在".into()));
     }
@@ -3483,11 +3678,13 @@ async fn tracker_url_add(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if body.is_default.unwrap_or(false) {
-        sqlx::query("UPDATE tracker_urls SET is_default = FALSE WHERE id <> $1")
-            .bind(id)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "UPDATE tracker_urls SET is_default = FALSE WHERE id <> $1",
+        )
+        .bind(id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     state
         .repo
@@ -3504,7 +3701,12 @@ async fn tracker_url_update(
     body: web::Json<TrackerUrlReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TRACKER_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TRACKER_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let n = sqlx::query(
         "UPDATE tracker_urls SET url = $2, is_default = COALESCE($3, is_default), \
@@ -3523,11 +3725,13 @@ async fn tracker_url_update(
         return Err(DomainError::NotFound(id as i64));
     }
     if body.is_default.unwrap_or(false) {
-        sqlx::query("UPDATE tracker_urls SET is_default = FALSE WHERE id <> $1")
-            .bind(id)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "UPDATE tracker_urls SET is_default = FALSE WHERE id <> $1",
+        )
+        .bind(id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     } else if body.is_default == Some(false) {
         // 显式取消默认：不允许，否则站点可能没有默认 announce 地址
         return Err(DomainError::Validation(
@@ -3548,15 +3752,21 @@ async fn tracker_url_delete(
     path: web::Path<i32>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TRACKER_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TRACKER_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     // 删除后至少保留一条启用地址；默认地址不可直接删（先转移默认位再删）
-    let row: Option<(bool, bool)> =
-        sqlx::query_as("SELECT is_default, enabled FROM tracker_urls WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(bool, bool)> = sqlx::query_as(
+        "SELECT is_default, enabled FROM tracker_urls WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((is_default, _enabled)) = row else {
         return Err(DomainError::NotFound(id as i64));
     };
@@ -3565,12 +3775,13 @@ async fn tracker_url_delete(
             "默认地址不可删除，请先把其他地址设为默认".into(),
         ));
     }
-    let left: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM tracker_urls WHERE enabled AND id <> $1")
-            .bind(id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    let left: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM tracker_urls WHERE enabled AND id <> $1",
+    )
+    .bind(id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     if left == 0 {
         return Err(DomainError::Validation(
             "至少保留一条启用的 Tracker 地址".into(),
@@ -3607,7 +3818,12 @@ async fn admin_user_rename(
     body: web::Json<RenameReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_RESETPASS).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_RESETPASS,
+    )
+    .await?;
     let uid = path.into_inner();
     // 等级护栏（审计修复）：改名语义同重置密码，操作者须严格高于目标用户
     {
@@ -3627,24 +3843,26 @@ async fn admin_user_rename(
         return Err(DomainError::Validation("用户名长度 1-32".into()));
     }
     let db = &state.repo.db;
-    let old: Option<String> = sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
-        .bind(uid)
-        .fetch_optional(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let old: Option<String> =
+        sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+            .bind(uid)
+            .fetch_optional(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(old_name) = old else {
         return Err(DomainError::NotFound(uid));
     };
     if old_name == new_name {
         return Ok(ok(serde_json::json!({ "ok": true })));
     }
-    let taken: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND id <> $2)")
-            .bind(new_name)
-            .bind(uid)
-            .fetch_one(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let taken: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND id <> $2)",
+    )
+    .bind(new_name)
+    .bind(uid)
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if taken {
         return Err(DomainError::Validation("用户名已被占用".into()));
     }
@@ -3694,11 +3912,12 @@ async fn roles_dict_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let rows: Vec<RoleDefRow> =
-        sqlx::query_as("SELECT key, name, descr, sort FROM roles ORDER BY sort, key")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows: Vec<RoleDefRow> = sqlx::query_as(
+        "SELECT key, name, descr, sort FROM roles ORDER BY sort, key",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
 }
 
@@ -3719,7 +3938,8 @@ async fn roles_dict_add(
     body: web::Json<RoleDefReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE)
+        .await?;
     let key = body.key.trim();
     if key.is_empty()
         || !key
@@ -3735,11 +3955,12 @@ async fn roles_dict_add(
     }
     // 预查重：roles.key 是主键，裸 INSERT 撞键会以 500 泄漏；
     // rows_affected 判重只对 ON CONFLICT DO NOTHING 生效，普通 INSERT 冲突必然报错
-    let dup: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM roles WHERE key = $1)")
-        .bind(&key)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
+    let dup: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM roles WHERE key = $1)")
+            .bind(&key)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
     if dup {
         return Err(DomainError::Validation("职务已存在".into()));
     }
@@ -3763,7 +3984,8 @@ async fn roles_dict_update(
     body: web::Json<RoleDefReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE)
+        .await?;
     let key = path.into_inner();
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("名称必填".into()));
@@ -3795,13 +4017,16 @@ async fn roles_dict_delete(
     path: web::Path<String>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE)
+        .await?;
     let key = path.into_inner();
-    let holders: i64 = sqlx::query_scalar("SELECT count(*) FROM user_roles WHERE role_key = $1")
-        .bind(&key)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let holders: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM user_roles WHERE role_key = $1",
+    )
+    .bind(&key)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if holders > 0 {
         return Err(DomainError::Validation(format!(
             "仍有 {holders} 人持有该职务，请先撤销全部授予"
@@ -3864,7 +4089,9 @@ async fn increment_bulk(
     // 与旧两个工具的权限口径一致，合并页不收窄也不放宽。
     let perm = match body.kind.as_str() {
         "spark" => crate::authz::perm::USER_AMOUNTBONUS,
-        "uploaded" | "invite" | "resub_card" => crate::authz::perm::USER_AMOUNTUPLOAD,
+        "uploaded" | "invite" | "resub_card" => {
+            crate::authz::perm::USER_AMOUNTUPLOAD
+        }
         _ => {
             return Err(DomainError::Validation(
                 "kind 取值 spark/uploaded/invite/resub_card".into(),
@@ -3881,13 +4108,17 @@ async fn increment_bulk(
             return Err(DomainError::Validation("魔力单次 ±1,000,000".into()));
         }
         "uploaded" if body.amount.abs() > 10 * 1024 => {
-            return Err(DomainError::Validation("上传量单次 ±10TB（GB）".into()));
+            return Err(DomainError::Validation(
+                "上传量单次 ±10TB（GB）".into(),
+            ));
         }
         "invite" if body.amount.abs() > 50 => {
             return Err(DomainError::Validation("邀请单次 ±50".into()));
         }
         "invite" if body.days.is_some_and(|d| !(1..=365).contains(&d)) => {
-            return Err(DomainError::Validation("临时邀请有效期 1-365 天".into()));
+            return Err(DomainError::Validation(
+                "临时邀请有效期 1-365 天".into(),
+            ));
         }
         "invite" if body.days.is_some() && body.amount <= 0 => {
             return Err(DomainError::Validation("临时邀请数量需为正数".into()));
@@ -3897,7 +4128,10 @@ async fn increment_bulk(
         }
         _ => {}
     }
-    if body.user_ids.is_empty() && body.classes.is_empty() && body.roles.is_empty() {
+    if body.user_ids.is_empty()
+        && body.classes.is_empty()
+        && body.roles.is_empty()
+    {
         return Err(DomainError::Validation(
             "需选择目标：等级 / 职务 / 指定用户".into(),
         ));
@@ -3910,11 +4144,13 @@ async fn increment_bulk(
     // 目标集合：指定用户优先（不叠加等级筛选，口径同 NP：receiver 直发）；
     // 否则 classes OR roles，未封禁（status<2）
     let targets: Vec<i64> = if !body.user_ids.is_empty() {
-        sqlx::query_scalar("SELECT id FROM users WHERE id = ANY($1) AND status < 2")
-            .bind(&body.user_ids)
-            .fetch_all(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
+        sqlx::query_scalar(
+            "SELECT id FROM users WHERE id = ANY($1) AND status < 2",
+        )
+        .bind(&body.user_ids)
+        .fetch_all(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
     } else {
         let mut clauses: Vec<String> = Vec::new();
         if !body.classes.is_empty() {
@@ -4024,8 +4260,8 @@ async fn increment_bulk(
                 if let Some(days) = body.days {
                     // 临时邀请（好学 tmp_invites 口径）：直接生成 N 天有效期的邀请码，
                     // 不走 quota_extra——码已在手，到期自动失效（status 由 worker 置 2）
-                    let expires =
-                        chrono::Utc::now() + chrono::Duration::days(days.clamp(1, 365) as i64);
+                    let expires = chrono::Utc::now()
+                        + chrono::Duration::days(days.clamp(1, 365) as i64);
                     for uid in chunk {
                         for _ in 0..body.amount {
                             let code = crate::domain::new_invite_code();
@@ -4094,7 +4330,9 @@ async fn increment_bulk(
         }
 
         // PM 通知（可选）
-        if let (Some(subject), Some(text)) = (body.subject.as_deref(), body.body.as_deref()) {
+        if let (Some(subject), Some(text)) =
+            (body.subject.as_deref(), body.body.as_deref())
+        {
             if !subject.trim().is_empty() && !text.trim().is_empty() {
                 for uid in chunk {
                     sqlx::query(
@@ -4225,8 +4463,14 @@ async fn admin_backups_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
-    let dir = std::env::var("FLUX_BACKUP_DIR").unwrap_or_else(|_| "./backups".into());
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
+    let dir =
+        std::env::var("FLUX_BACKUP_DIR").unwrap_or_else(|_| "./backups".into());
     let mut files: Vec<(String, u64)> = Vec::new();
     if let Ok(rd) = std::fs::read_dir(&dir) {
         for e in rd.flatten() {
@@ -4255,10 +4499,17 @@ async fn admin_backup_run(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let stamp = chrono::Utc::now().format("%Y-%m-%d-%H%M%S");
-    let dir = std::env::var("FLUX_BACKUP_DIR").unwrap_or_else(|_| "./backups".into());
-    std::fs::create_dir_all(&dir).map_err(|e| DomainError::Internal(e.into()))?;
+    let dir =
+        std::env::var("FLUX_BACKUP_DIR").unwrap_or_else(|_| "./backups".into());
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let out = format!("{dir}/fluxtorrent-manual-{stamp}.dump");
     let st = tokio::process::Command::new("docker")
         .args([
@@ -4277,7 +4528,11 @@ async fn admin_backup_run(
         .map_err(|e| DomainError::Internal(e.into()))?;
     if !st.status.success() {
         return Err(DomainError::Internal(
-            anyhow::anyhow!("pg_dump 失败: {}", String::from_utf8_lossy(&st.stderr)).into(),
+            anyhow::anyhow!(
+                "pg_dump 失败: {}",
+                String::from_utf8_lossy(&st.stderr)
+            )
+            .into(),
         ));
     }
     let n = st.stdout.len() as u64;
@@ -4301,7 +4556,8 @@ async fn admin_job_trigger(
     body: web::Json<JobTriggerReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEANUP_RUN).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEANUP_RUN)
+        .await?;
     // 与 worker 周期同款 SQL 的「读侧快查」版本：手动触发给出可观测的行数结果
     let (job, affected): (&str, i64) = match body.job.as_str() {
         "expire_promotions" => {
@@ -4384,7 +4640,8 @@ async fn admin_version(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL)
+        .await?;
     let (users, torrents, peers): (i64, i64, i64) = sqlx::query_as(
         "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM torrents), \
                 (SELECT count(*) FROM snatches WHERE seeding OR leeching)",

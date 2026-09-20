@@ -3,7 +3,9 @@
 //! 站型包/统计面板等 staff 端点集合。
 //! 从 http.rs 机械外移（审查路线图第 4 周「拆上帝文件」第五段）。
 
-use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    delete, get, post, put, web, HttpRequest, HttpResponse, Responder,
+};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -23,7 +25,9 @@ struct FaqRow {
 }
 
 #[get("/faq")]
-async fn faq_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn faq_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let rows: Vec<FaqRow> = sqlx::query_as(
         "SELECT id, category, question, answer, sort FROM faq_items ORDER BY sort, id",
     )
@@ -50,7 +54,8 @@ async fn faq_create(
     body: web::Json<FaqBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE)
+        .await?;
     let id: i32 = sqlx::query_scalar(
         "INSERT INTO faq_items (question, answer, category, sort) VALUES ($1, $2, $3, COALESCE($4, (SELECT max(sort)+1 FROM faq_items))) RETURNING id",
     )
@@ -76,7 +81,8 @@ async fn faq_update(
     body: web::Json<FaqBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE)
+        .await?;
     // sort 用 COALESCE 保留原值：编辑时不传 sort 不应把排序归零
     let n = sqlx::query("UPDATE faq_items SET question=$2, answer=$3, category=$4, sort=COALESCE($5, sort), updated_at=now() WHERE id=$1")
         .bind(*path).bind(&body.question).bind(&body.answer).bind(&body.category).bind(body.sort)
@@ -99,7 +105,8 @@ async fn faq_delete(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE)
+        .await?;
     sqlx::query("DELETE FROM faq_items WHERE id=$1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -123,12 +130,15 @@ struct RuleRow {
 }
 
 #[get("/rules-content")]
-async fn rules_content(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
-    let rows: Vec<RuleRow> =
-        sqlx::query_as("SELECT id, title, body, sort FROM site_rules ORDER BY sort, id")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+async fn rules_content(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let rows: Vec<RuleRow> = sqlx::query_as(
+        "SELECT id, title, body, sort FROM site_rules ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
 
@@ -147,7 +157,8 @@ async fn rule_create(
     body: web::Json<RuleBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE)
+        .await?;
     let id: i32 = sqlx::query_scalar(
         "INSERT INTO site_rules (title, body, sort) VALUES ($1,$2,COALESCE($3,(SELECT max(sort)+1 FROM site_rules))) RETURNING id",
     ).bind(&body.title).bind(&body.body).bind(body.sort)
@@ -168,7 +179,8 @@ async fn rule_update(
     body: web::Json<RuleBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE)
+        .await?;
     // G5 规则版本化：同事务内先存档被替换的旧版，再更新
     let mut tx = state
         .repo
@@ -210,7 +222,8 @@ async fn rule_delete(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE)
+        .await?;
     sqlx::query("DELETE FROM site_rules WHERE id=$1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -245,7 +258,12 @@ async fn category_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let rows: Vec<CatRow> = sqlx::query_as(
         "SELECT c.id, c.name, c.mode_id, c.auto_approve, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
          FROM categories c ORDER BY c.id",
@@ -261,7 +279,12 @@ async fn category_create(
     body: web::Json<CatBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let id: i32 = sqlx::query_scalar("INSERT INTO categories (id, name) VALUES ((SELECT max(id)+1 FROM categories), $1) RETURNING id")
         .bind(&body.name).fetch_one(&state.repo.db).await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -281,7 +304,12 @@ async fn category_update(
     body: web::Json<CatBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let n = sqlx::query("UPDATE categories SET name=$2 WHERE id=$1")
         .bind(*path)
         .bind(&body.name)
@@ -305,14 +333,23 @@ async fn category_delete(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CATEGORIES_MANAGE).await?;
-    let used: i64 = sqlx::query_scalar("SELECT count(*) FROM torrents WHERE category_id=$1")
-        .bind(*path)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
+    let used: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM torrents WHERE category_id=$1",
+    )
+    .bind(*path)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     if used > 0 {
-        return Err(DomainError::Validation("该分类下仍有种子，无法删除".into()));
+        return Err(DomainError::Validation(
+            "该分类下仍有种子，无法删除".into(),
+        ));
     }
     sqlx::query("DELETE FROM categories WHERE id=$1")
         .bind(*path)
@@ -343,7 +380,8 @@ async fn ban_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE)
+        .await?;
     let rows: Vec<IpBanRow> = sqlx::query_as(
         "SELECT b.id, b.ip::text AS ip, b.reason, u.username AS banned_by, b.created_at \
          FROM ip_bans b LEFT JOIN users u ON u.id = b.banned_by ORDER BY b.id DESC",
@@ -368,7 +406,8 @@ async fn ban_create(
     body: web::Json<BanBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE)
+        .await?;
     let ip: std::net::IpAddr = body
         .ip
         .trim()
@@ -392,7 +431,8 @@ async fn ban_delete(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE)
+        .await?;
     sqlx::query("DELETE FROM ip_bans WHERE id=$1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -436,7 +476,9 @@ fn promo_parse(
     chrono::DateTime<chrono::Utc>,
 )> {
     let kind = match kind_in {
-        "free" | "x2" | "x2free" | "half" | "x2half" | "p30" => kind_in.to_string(),
+        "free" | "x2" | "x2free" | "half" | "x2half" | "p30" => {
+            kind_in.to_string()
+        }
         _ => return Err(DomainError::Validation("促销类型无效".into())),
     };
     if ends_at.is_none() && !(1..=720).contains(&hours) {
@@ -475,7 +517,12 @@ async fn freeleech_set(
     body: web::Json<FreeleechBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::FREELEECH_MANAGE,
+    )
+    .await?;
     let (kind, scope, starts_at, ends_at) = promo_parse(
         &body.kind,
         body.scope.as_deref(),
@@ -495,11 +542,12 @@ async fn freeleech_set(
         let Some(cid) = body.category_id else {
             return Err(DomainError::Validation("分类促销需指定分类".into()));
         };
-        let exists: Option<i32> = sqlx::query_scalar("SELECT id FROM categories WHERE id = $1")
-            .bind(cid)
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        let exists: Option<i32> =
+            sqlx::query_scalar("SELECT id FROM categories WHERE id = $1")
+                .bind(cid)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         if exists.is_none() {
             return Err(DomainError::Validation("分类不存在".into()));
         }
@@ -543,7 +591,12 @@ async fn freeleech_clear(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::FREELEECH_MANAGE,
+    )
+    .await?;
     // 清除全部进行中的手动站点级促销（全站/官种/非官种/分类）
     let n = sqlx::query("DELETE FROM promotions WHERE scope IN ('global','official','non_official','category') AND source='manual' AND ends_at > now()")
         .execute(&state.repo.db).await
@@ -564,14 +617,20 @@ async fn freeleech_update(
     body: web::Json<FreeleechBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::FREELEECH_MANAGE,
+    )
+    .await?;
     let pid = path.into_inner();
-    let exists: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM promotions WHERE id = $1 AND source = 'manual'")
-            .bind(pid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM promotions WHERE id = $1 AND source = 'manual'",
+    )
+    .bind(pid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if exists.is_none() {
         return Err(DomainError::Validation("促销不存在或非手动创建".into()));
     }
@@ -586,11 +645,12 @@ async fn freeleech_update(
         let Some(cid) = body.category_id else {
             return Err(DomainError::Validation("分类促销需指定分类".into()));
         };
-        let exists: Option<i32> = sqlx::query_scalar("SELECT id FROM categories WHERE id = $1")
-            .bind(cid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        let exists: Option<i32> =
+            sqlx::query_scalar("SELECT id FROM categories WHERE id = $1")
+                .bind(cid)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         if exists.is_none() {
             return Err(DomainError::Validation("分类不存在".into()));
         }
@@ -619,14 +679,21 @@ async fn freeleech_delete(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::FREELEECH_MANAGE,
+    )
+    .await?;
     let pid = path.into_inner();
-    let n = sqlx::query("DELETE FROM promotions WHERE id = $1 AND source = 'manual'")
-        .bind(pid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    let n = sqlx::query(
+        "DELETE FROM promotions WHERE id = $1 AND source = 'manual'",
+    )
+    .bind(pid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::Validation("促销不存在或非手动创建".into()));
     }
@@ -654,7 +721,12 @@ async fn freeleech_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::FREELEECH_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::FREELEECH_VIEW,
+    )
+    .await?;
     let rows: Vec<SitePromoRow> = sqlx::query_as(
         "SELECT p.id, p.scope::text AS scope, p.kind::text AS kind, p.category_id, c.name AS category_name, p.starts_at, p.ends_at \
          FROM promotions p LEFT JOIN categories c ON c.id = p.category_id \
@@ -681,7 +753,8 @@ async fn staffmess_send(
     body: web::Json<StaffMessBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFFMESS).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFFMESS)
+        .await?;
     if body.subject.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("主题和正文不能为空".into()));
     }
@@ -719,8 +792,12 @@ async fn admin_add_user(
     body: web::Json<AddUserBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_CREATE).await?;
-    if body.username.trim().len() < 2 || !body.email.contains('@') || body.password.len() < 8 {
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_CREATE)
+        .await?;
+    if body.username.trim().len() < 2
+        || !body.email.contains('@')
+        || body.password.len() < 8
+    {
         return Err(DomainError::Validation(
             "用户名≥2字符、邮箱合法、密码≥8位".into(),
         ));
@@ -732,10 +809,12 @@ async fn admin_add_user(
         .await
         .map_err(|_| DomainError::Validation("用户名或邮箱已存在".into()))?;
     // 管理组建的号要求首登改密
-    let _ = sqlx::query("UPDATE users SET must_reset_password = true WHERE id = $1")
-        .bind(uid)
-        .execute(&state.repo.db)
-        .await;
+    let _ = sqlx::query(
+        "UPDATE users SET must_reset_password = true WHERE id = $1",
+    )
+    .bind(uid)
+    .execute(&state.repo.db)
+    .await;
     state
         .repo
         .audit(Some(auth.id), "admin_add_user", Some(uid))
@@ -758,7 +837,12 @@ async fn admin_amount_bonus(
     body: web::Json<AmountBonusBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_AMOUNTBONUS).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_AMOUNTBONUS,
+    )
+    .await?;
     if body.amount == 0 || body.amount.abs() > 1_000_000 {
         return Err(DomainError::Validation(
             "数量需在 ±1,000,000 之间且非 0".into(),
@@ -833,7 +917,8 @@ async fn warned_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN)
+        .await?;
     let rows: Vec<WarnedRow> = sqlx::query_as(
         "SELECT id, username, warned_until, warned_reason FROM users WHERE warned_until > now() ORDER BY warned_until",
     ).fetch_all(&state.repo.db).await
@@ -856,7 +941,8 @@ async fn warn_user(
     body: web::Json<WarnBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN)
+        .await?;
     if !(1..=52).contains(&body.weeks) {
         return Err(DomainError::Validation("警告时长需 1-52 周".into()));
     }
@@ -884,7 +970,8 @@ async fn unwarn_user(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN)
+        .await?;
     let n = sqlx::query("UPDATE users SET warned_until = NULL, warned_reason = NULL WHERE id = $1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -916,7 +1003,8 @@ async fn ipcheck(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::IP_CHECK).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::IP_CHECK)
+        .await?;
     let rows: Vec<IpCheckRow> = sqlx::query_as(
         "SELECT host(ip) AS ip, \
             count(DISTINCT user_id) AS users, \
@@ -948,7 +1036,12 @@ async fn maxlogin(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MAXLOGIN_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::MAXLOGIN_VIEW,
+    )
+    .await?;
     let rows: Vec<FailedLoginRow> = sqlx::query_as(
         "SELECT le.id, COALESCE(u.username, '(未知用户)') AS username, host(le.ip) AS ip, le.created_at \
          FROM login_events le LEFT JOIN users u ON u.id = le.user_id \
@@ -977,9 +1070,16 @@ async fn admin_amount_upload(
     body: web::Json<AmountUploadBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_AMOUNTUPLOAD).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_AMOUNTUPLOAD,
+    )
+    .await?;
     if body.bytes == 0 || body.bytes.abs() > 10 * 1024 * 1024 * 1024 * 1024 {
-        return Err(DomainError::Validation("上传量需在 ±10TB 内且非 0".into()));
+        return Err(DomainError::Validation(
+            "上传量需在 ±10TB 内且非 0".into(),
+        ));
     }
     // 审计修复（P0 错账）：uploaded 的权威在 traffic_ledger（worker reconcile 与
     // /admin/jobs/run:reconcile 会把 users.uploaded 重算为 sum(ledger)），此前裸
@@ -1023,7 +1123,12 @@ async fn admin_reset_pass(
     body: web::Json<ResetPassBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_RESETPASS).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_RESETPASS,
+    )
+    .await?;
     // 临时密码（仅返回一次）：CSPRNG 16 字节 base64——旧版操作者id+纳秒取模
     // 密码空间小且可预测，配合明文回显存在猜测窗口
     let temp_pass = format!(
@@ -1059,23 +1164,30 @@ async fn admin_delete_disabled(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_DELETE_DISABLED).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_DELETE_DISABLED,
+    )
+    .await?;
     // 审计修复：旧版裸 `DELETE FROM users WHERE status = 2` 单条 SQL——任何被
     // NO ACTION 引用（如 invites.inviter_id / audit_log.actor_id）的用户会让整条
     // 语句外键失败 500；部分 CASCADE 则静默丢数据。改为复用权威路径 admin/users/{id}
     // 的口径：强制走 `DELETE /api/v1/admin/users/{id}` 同一实现（逐个、事务化、83 列清理）。
     // 这里直接构造内部请求等价物：调用 admin_http 的清理清单不跨模块，故改为
     // 逐个转发 HTTP 会引入自调用复杂度——最简正确实现：拒绝批量、提示走单删。
-    let ids: Vec<i64> =
-        sqlx::query_scalar("SELECT id FROM users WHERE status = 2 ORDER BY id LIMIT 500")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let ids: Vec<i64> = sqlx::query_scalar(
+        "SELECT id FROM users WHERE status = 2 ORDER BY id LIMIT 500",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let mut deleted: Vec<i64> = Vec::new();
     let mut failed: Vec<(i64, String)> = Vec::new();
     for uid in ids {
         // 与 user_admin_delete 同款清单式单事务删除（简化为直接执行权威清理序列）
-        match crate::admin_http::delete_user_cascade(&state.repo.db, uid).await {
+        match crate::admin_http::delete_user_cascade(&state.repo.db, uid).await
+        {
             Ok(()) => deleted.push(uid),
             Err(e) => failed.push((uid, e.to_string())),
         }
@@ -1106,7 +1218,12 @@ async fn emailban_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EMAILBAN_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::EMAILBAN_MANAGE,
+    )
+    .await?;
     let rows: Vec<EmailBanRow> = sqlx::query_as(
         "SELECT e.id, e.pattern, e.mode, e.note, u.username AS created_by, e.created_at \
          FROM email_bans e LEFT JOIN users u ON u.id = e.created_by ORDER BY e.id DESC",
@@ -1132,8 +1249,15 @@ async fn emailban_create(
     body: web::Json<EmailBanBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EMAILBAN_MANAGE).await?;
-    if !body.pattern.contains('@') && !body.pattern.starts_with('@') && !body.pattern.ends_with('@')
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::EMAILBAN_MANAGE,
+    )
+    .await?;
+    if !body.pattern.contains('@')
+        && !body.pattern.starts_with('@')
+        && !body.pattern.ends_with('@')
     {
         return Err(DomainError::Validation(
             "格式需为邮箱、@domain 或 user@ 通配".into(),
@@ -1162,7 +1286,12 @@ async fn emailban_delete(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EMAILBAN_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::EMAILBAN_MANAGE,
+    )
+    .await?;
     sqlx::query("DELETE FROM email_bans WHERE id=$1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -1188,7 +1317,8 @@ async fn test_ip(
     q: web::Query<TestIpQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TESTIP).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TESTIP)
+        .await?;
     let ip: std::net::IpAddr =
         q.ip.trim()
             .parse()
@@ -1224,7 +1354,8 @@ async fn admin_stats(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STATS_VIEW).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STATS_VIEW)
+        .await?;
     let row: (i64, i64, i64, i64, i64, i64) = sqlx::query_as(
         "SELECT (SELECT count(*) FROM users WHERE status < 2)::bigint, \
                 (SELECT count(*) FROM torrents)::bigint, \
@@ -1236,7 +1367,8 @@ async fn admin_stats(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (users, torrents_n, seeding_n, leeching_n, comments_n, messages_n) = row;
+    let (users, torrents_n, seeding_n, leeching_n, comments_n, messages_n) =
+        row;
     let redis_ok = {
         use redis::AsyncCommands;
         let mut c = state.redis.clone();
@@ -1261,7 +1393,12 @@ async fn seed_stats(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SEED_STATS_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SEED_STATS_VIEW,
+    )
+    .await?;
     let totals: (i64, i64, f64) = sqlx::query_as(
         "SELECT count(DISTINCT s.user_id)::bigint, count(*)::bigint, \
                 COALESCE(avg(s.seeded_seconds) / 3600.0, 0)::float8 \
@@ -1309,7 +1446,8 @@ async fn clear_cache(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEARCACHE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEARCACHE)
+        .await?;
     use redis::AsyncCommands;
     let mut c = state.redis.clone();
     let keys: Vec<String> = c.keys("rl:*").await.unwrap_or_default();
@@ -1332,16 +1470,18 @@ async fn do_cleanup(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEANUP_RUN).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEANUP_RUN)
+        .await?;
     // 审计修复（P0）：旧版删 7 天前过期促销，而 worker expire_promotions 保留 365 天——
     // hr_enforce 建快照需按 completed_at 时点回查当时促销，物理删掉近期历史会让
     // H&R 豁免回查失明（免费期完成的下载被误判违规）。与 worker 统一为 365 天。
-    let expired_promos =
-        sqlx::query("DELETE FROM promotions WHERE ends_at < now() - interval '365 days'")
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
+    let expired_promos = sqlx::query(
+        "DELETE FROM promotions WHERE ends_at < now() - interval '365 days'",
+    )
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     let expired_warns = sqlx::query(
         "UPDATE users SET warned_until = NULL, warned_reason = NULL WHERE warned_until IS NOT NULL AND warned_until < now()",
     ).execute(&state.repo.db).await
@@ -1384,7 +1524,8 @@ async fn ad_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE)
+        .await?;
     let rows: Vec<AdRow> = sqlx::query_as(
         "SELECT id, title, html, position, enabled, sort FROM ads ORDER BY sort, id",
     )
@@ -1415,7 +1556,8 @@ async fn ad_create(
     body: web::Json<AdBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE)
+        .await?;
     if !["header", "footer", "sidebar"].contains(&body.position.as_str()) {
         return Err(DomainError::Validation(
             "广告位需为 header/footer/sidebar".into(),
@@ -1438,7 +1580,8 @@ async fn ad_update(
     body: web::Json<AdBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE)
+        .await?;
     let n = sqlx::query(
         "UPDATE ads SET title=$2, html=$3, position=$4, sort=COALESCE($5::int, sort) WHERE id=$1",
     )
@@ -1468,7 +1611,8 @@ async fn ad_toggle(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE)
+        .await?;
     let n = sqlx::query("UPDATE ads SET enabled = NOT enabled WHERE id=$1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -1492,7 +1636,8 @@ async fn ad_delete(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE)
+        .await?;
     sqlx::query("DELETE FROM ads WHERE id=$1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -1520,7 +1665,12 @@ async fn not_connectable(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::NOTCONNECTABLE_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::NOTCONNECTABLE_VIEW,
+    )
+    .await?;
     let rows: Vec<NotConnectRow> = sqlx::query_as(
         "SELECT u.id, u.username, count(DISTINCT s.torrent_id) AS torrents, u.last_seen_at \
          FROM users u JOIN snatches s ON s.user_id = u.id AND s.connectable = false \
@@ -1546,7 +1696,12 @@ async fn uploaders(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::UPLOADERS_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::UPLOADERS_VIEW,
+    )
+    .await?;
     let rows: Vec<UploaderRow> = sqlx::query_as(
         "SELECT u.id, u.username,                 (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)::bigint AS uploads,                 (SELECT count(*) FROM snatches s JOIN torrents t2 ON t2.id = s.torrent_id                   WHERE s.user_id = u.id AND s.seeding AND t2.owner_id = u.id)::bigint AS seeding,                 COALESCE((SELECT sum(t.size) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), 0)::bigint AS total_size          FROM users u WHERE u.status < 2            AND EXISTS (SELECT 1 FROM torrents t3 WHERE t3.owner_id = u.id AND t3.approval_status = 1)          ORDER BY uploads DESC LIMIT 100",
     ).fetch_all(&state.repo.db).await
@@ -1567,7 +1722,8 @@ async fn all_agents(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::AGENTS_VIEW).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::AGENTS_VIEW)
+        .await?;
     let rows: Vec<AgentRow> = sqlx::query_as(
         "SELECT COALESCE('Transmission/Dev', 'unknown') AS agent, count(*) AS peers \
          FROM snatches WHERE seeding OR leeching GROUP BY 1 ORDER BY peers DESC",
@@ -1594,7 +1750,8 @@ async fn poll_overview(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::POLLS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::POLLS_MANAGE)
+        .await?;
     let rows: Vec<PollOverviewRow> = sqlx::query_as(
         "SELECT p.id, p.question, p.closed, \
                 (SELECT count(*) FROM fun_votes v WHERE v.poll_id = p.id) AS votes, p.created_at \
@@ -1628,15 +1785,18 @@ async fn db_stats(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::DBSTATS_VIEW).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::DBSTATS_VIEW)
+        .await?;
     let conns: Vec<PgConnRow> = sqlx::query_as(
         "SELECT state, count(*)::bigint AS count FROM pg_stat_activity WHERE datname = current_database() GROUP BY state ORDER BY count DESC",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let db_size: i64 = sqlx::query_scalar("SELECT pg_database_size(current_database())::bigint")
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let db_size: i64 = sqlx::query_scalar(
+        "SELECT pg_database_size(current_database())::bigint",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let tables: Vec<TableSizeRow> = sqlx::query_as(
         "SELECT c.relname, pg_total_relation_size(c.oid)::bigint AS total_size, c.reltuples::bigint AS row_estimates          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace          WHERE n.nspname = 'public' AND c.relkind = 'r'          ORDER BY pg_total_relation_size(c.oid) DESC LIMIT 15",
     ).fetch_all(&state.repo.db).await
@@ -1644,11 +1804,12 @@ async fn db_stats(
     let slow_tx: i64 = sqlx::query_scalar(
         "SELECT count(*)::bigint FROM pg_stat_activity WHERE datname = current_database() AND xact_start IS NOT NULL AND now() - xact_start > interval '30 seconds'",
     ).fetch_one(&state.repo.db).await.unwrap_or(0);
-    let dead_tuples: i64 =
-        sqlx::query_scalar("SELECT COALESCE(sum(n_dead_tup), 0)::bigint FROM pg_stat_user_tables")
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    let dead_tuples: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(sum(n_dead_tup), 0)::bigint FROM pg_stat_user_tables",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     let total_conns: i64 = conns.iter().map(|c| c.count).sum();
     Ok(ok(serde_json::json!({
         "engine": "PostgreSQL",
@@ -1688,7 +1849,8 @@ async fn sys_log(
     q: web::Query<SysLogQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SYSLOG_VIEW).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SYSLOG_VIEW)
+        .await?;
     let page = q.page.unwrap_or(1).clamp(1, 1000);
     let per = 30i64;
     let rows: Vec<SysLogRow> = sqlx::query_as(
@@ -1732,7 +1894,12 @@ async fn locations(
     q: web::Query<LocationQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::LOCATIONS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::LOCATIONS_MANAGE,
+    )
+    .await?;
     let page = q.page.unwrap_or(1).clamp(1, 1000);
     let per = 30i64;
     let rows: Vec<LocationRow> = sqlx::query_as(
@@ -1772,32 +1939,37 @@ struct SiteTypePack {
 
 /// 公开：当前站点档案（类型包 + 分类 + 模块开关 + 品牌名），前端布局/导航/上传表单由此驱动
 #[get("/site-profile")]
-async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
-    let site_type: String =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'site_type'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .unwrap_or_else(|| "general".into());
+async fn site_profile(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let site_type: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'site_type'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or_else(|| "general".into());
     let pack: Option<SiteTypePack> = sqlx::query_as(
         "SELECT code, name, description, brand, categories, modules, sort, tagline FROM site_type_packs WHERE code = $1",
     ).bind(&site_type)
     .fetch_optional(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 实际分类以 categories 表为准（类型包只是初始快照，管理组可再编辑）
-    let cats: Vec<(i32, String)> = sqlx::query_as("SELECT id, name FROM categories ORDER BY id")
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let brand: String =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'site_name'")
-            .fetch_optional(&state.repo.db)
+    let cats: Vec<(i32, String)> =
+        sqlx::query_as("SELECT id, name FROM categories ORDER BY id")
+            .fetch_all(&state.repo.db)
             .await
-            .ok()
-            .flatten()
-            .flatten()
-            .or(pack.as_ref().map(|p| p.brand.clone()))
-            .unwrap_or_default();
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let brand: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'site_name'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .flatten()
+    .or(pack.as_ref().map(|p| p.brand.clone()))
+    .unwrap_or_default();
     // 站点货币名（0082）：默认「魔力」，站长可后台改任意名；空值兜底回默认
     let currency: String = sqlx::query_scalar::<_, String>(
         "SELECT value FROM site_settings WHERE name = 'currency_name'",
@@ -1824,11 +1996,12 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
         .as_ref()
         .map(|p| p.modules.clone())
         .unwrap_or_else(|| serde_json::json!({}));
-    let overrides: Vec<(String, String)> =
-        sqlx::query_as("SELECT name, value FROM site_settings WHERE name ~ '^module_'")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let overrides: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name ~ '^module_'",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if let Some(obj) = modules.as_object_mut() {
         for (name, value) in overrides {
             if let Some(key) = name.strip_prefix("module_") {
@@ -1869,23 +2042,25 @@ async fn site_profile(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
             .filter(|t| !t.is_empty())
     })
     .unwrap_or_default();
-    let site_logo: Option<String> =
-        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'site_logo'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten()
-            .map(|v| v.trim().to_string())
-            .filter(|v| !v.is_empty());
+    let site_logo: Option<String> = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'site_logo'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v.trim().to_string())
+    .filter(|v| !v.is_empty());
     // 站点简介（0088）：页脚「站点信息」卡片文案，留空由前端回落字典默认
-    let site_desc: Option<String> =
-        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'site_desc'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten()
-            .map(|v| v.trim().to_string())
-            .filter(|v| !v.is_empty());
+    let site_desc: Option<String> = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'site_desc'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v.trim().to_string())
+    .filter(|v| !v.is_empty());
     Ok(ok(serde_json::json!({
         "site_type": site_type,
         "pack_name": pack.as_ref().map(|p| p.name.clone()),
@@ -1908,7 +2083,12 @@ async fn site_type_pack_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SITEPACKS_MANAGE,
+    )
+    .await?;
     let rows: Vec<SiteTypePack> = sqlx::query_as(
         "SELECT code, name, description, brand, categories, modules, sort, tagline FROM site_type_packs ORDER BY sort",
     ).fetch_all(&state.repo.db).await
@@ -1940,7 +2120,12 @@ async fn site_type_pack_apply(
     body: web::Json<ApplyPackBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SITEPACKS_MANAGE,
+    )
+    .await?;
     let mode = body.mode.as_deref().unwrap_or("replace");
     if !["replace", "merge"].contains(&mode) {
         return Err(DomainError::Validation("mode 需为 replace/merge".into()));
@@ -2042,15 +2227,20 @@ async fn site_type_pack_apply(
     .iter()
     .map(|s| s.to_string())
     .collect();
-    let mut packed_kinds: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut packed_kinds: std::collections::HashSet<String> =
+        std::collections::HashSet::new();
     if let Some(sections) = pack
         .sections
         .as_ref()
         .and_then(serde_json::Value::as_object)
     {
-        if let Some(kinds) = sections.get("kinds").and_then(serde_json::Value::as_array) {
+        if let Some(kinds) =
+            sections.get("kinds").and_then(serde_json::Value::as_array)
+        {
             for k in kinds {
-                if let Some(kind) = k.get("kind").and_then(serde_json::Value::as_str) {
+                if let Some(kind) =
+                    k.get("kind").and_then(serde_json::Value::as_str)
+                {
                     packed_kinds.insert(kind.to_string());
                 }
             }
@@ -2060,12 +2250,13 @@ async fn site_type_pack_apply(
         if !packed_kinds.contains(kind) {
             // 引用中的维度直接删会级联清 torrent_sections —— 有种子的站点会丢筛选项，
             // 这里先检查是否被在用：被在用时跳过清理（宁残留不破坏）
-            let in_use: i64 =
-                sqlx::query_scalar("SELECT count(*) FROM torrent_sections WHERE kind = $1")
-                    .bind(kind)
-                    .fetch_one(&mut *tx)
-                    .await
-                    .unwrap_or(0);
+            let in_use: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM torrent_sections WHERE kind = $1",
+            )
+            .bind(kind)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap_or(0);
             if in_use == 0 {
                 sqlx::query("DELETE FROM section_kinds WHERE kind = $1")
                     .bind(kind)
@@ -2080,7 +2271,9 @@ async fn site_type_pack_apply(
         .as_ref()
         .and_then(serde_json::Value::as_object)
     {
-        if let Some(kinds) = sections.get("kinds").and_then(serde_json::Value::as_array) {
+        if let Some(kinds) =
+            sections.get("kinds").and_then(serde_json::Value::as_array)
+        {
             for k in kinds {
                 let (Some(kind), Some(label)) = (
                     k.get("kind").and_then(serde_json::Value::as_str),
@@ -2107,7 +2300,9 @@ async fn site_type_pack_apply(
                 .map_err(|e| DomainError::Internal(e.into()))?;
             }
         }
-        if let Some(dict) = sections.get("dict").and_then(serde_json::Value::as_object) {
+        if let Some(dict) =
+            sections.get("dict").and_then(serde_json::Value::as_object)
+        {
             for (kind, names) in dict {
                 if !is_ascii_kind(kind) {
                     continue;
@@ -2179,7 +2374,12 @@ async fn site_type_pack_diff(
     body: web::Json<PackDiffBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SITEPACKS_MANAGE,
+    )
+    .await?;
     let pack: Option<SiteTypePack> = sqlx::query_as(
         "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs WHERE code = $1",
     ).bind(&body.code)
@@ -2199,7 +2399,9 @@ async fn site_type_pack_diff(
     let mut push = |key: &str, old: Option<&String>, new: &str| {
         let old_v = old.map(|s| s.as_str()).unwrap_or("(未设置)");
         if old_v != new {
-            changes.push(serde_json::json!({ "key": key, "old": old_v, "new": new }));
+            changes.push(
+                serde_json::json!({ "key": key, "old": old_v, "new": new }),
+            );
         }
     };
     push("site_type", cur.get("site_type"), &pack.code);
@@ -2237,7 +2439,12 @@ async fn site_type_pack_save(
     body: web::Json<PackSaveBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SITEPACKS_MANAGE,
+    )
+    .await?;
     let code = body.code.trim().to_lowercase();
     if !code.starts_with("custom_")
         || code.len() > 40
@@ -2251,19 +2458,21 @@ async fn site_type_pack_save(
         return Err(DomainError::Validation("name 不能为空".into()));
     }
     // 当前配置快照：分类 / 模块开关 / 站名
-    let cats: Vec<serde_json::Value> =
-        sqlx::query_as::<_, (i32, String)>("SELECT id, name FROM categories ORDER BY id")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .into_iter()
-            .map(|(id, name)| serde_json::json!({"id": id, "name": name}))
-            .collect();
-    let mods_rows: Vec<(String, String)> =
-        sqlx::query_as("SELECT name, value FROM site_settings WHERE name LIKE 'module\\_%'")
-            .fetch_all(&state.repo.db)
-            .await
-            .unwrap_or_default();
+    let cats: Vec<serde_json::Value> = sqlx::query_as::<_, (i32, String)>(
+        "SELECT id, name FROM categories ORDER BY id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .into_iter()
+    .map(|(id, name)| serde_json::json!({"id": id, "name": name}))
+    .collect();
+    let mods_rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name LIKE 'module\\_%'",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
     let modules: serde_json::Map<String, serde_json::Value> = mods_rows
         .into_iter()
         .filter_map(|(name, value)| {
@@ -2271,13 +2480,14 @@ async fn site_type_pack_save(
                 .map(|k| (k.to_string(), serde_json::json!(value == "yes")))
         })
         .collect();
-    let brand: String =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'site_name'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten()
-            .unwrap_or_default();
+    let brand: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'site_name'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_default();
     // 自定义包的默认标语 = 快照时刻的登录页标语（覆盖值优先，空回落当前站型包默认）
     let pack_default_tagline: Option<String> = sqlx::query_scalar::<_, String>(
         "SELECT p.tagline FROM site_type_packs p \
@@ -2300,10 +2510,12 @@ async fn site_type_pack_save(
     let tagline = override_tagline
         .or(pack_default_tagline)
         .unwrap_or_default();
-    let sort: i32 = sqlx::query_scalar("SELECT COALESCE(max(sort), 100) + 1 FROM site_type_packs")
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(101);
+    let sort: i32 = sqlx::query_scalar(
+        "SELECT COALESCE(max(sort), 100) + 1 FROM site_type_packs",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(101);
     sqlx::query(
         "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort, tagline) \
          VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6, $7) \
@@ -2360,11 +2572,13 @@ async fn donate_state(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let (wallet, vip_until): (f64, Option<chrono::DateTime<chrono::Utc>>) =
-        sqlx::query_as("SELECT wallet_usd::float8, vip_until FROM users WHERE id = $1")
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query_as(
+            "SELECT wallet_usd::float8, vip_until FROM users WHERE id = $1",
+        )
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let plans: Vec<DonatePlan> = sqlx::query_as(
         "SELECT id, plan_type, title, reward, price_usd::float8, sort FROM donation_plans WHERE enabled ORDER BY sort, id",
     ).fetch_all(&state.repo.db).await
@@ -2404,16 +2618,23 @@ async fn donate_topup(
         return Err(DomainError::Validation("单笔 10 ~ 66 USD".into()));
     }
     if !["alipay", "wechat"].contains(&body.channel.as_str()) {
-        return Err(DomainError::Validation("支付方式需为 alipay/wechat".into()));
+        return Err(DomainError::Validation(
+            "支付方式需为 alipay/wechat".into(),
+        ));
     }
     // U4 §12.1：真实订单流——按 site_settings 构造网关；未配置（none/缺凭证）拒单。
     // FLUX_DEMO=1 演示环境保留旧模拟充值（演示数据需要有钱包入账可看）。
     let gw = crate::payment::gateway_config(&state).await;
     if !gw.available() {
         if std::env::var("FLUX_DEMO").unwrap_or_default() == "1" {
-            return crate::payment::demo_topup(&state, auth.id, body.amount_usd, &body.channel)
-                .await
-                .map(|v| ok(v));
+            return crate::payment::demo_topup(
+                &state,
+                auth.id,
+                body.amount_usd,
+                &body.channel,
+            )
+            .await
+            .map(|v| ok(v));
         }
         return Err(DomainError::Validation(
             "捐赠通道未开放（站长未配置支付网关）".into(),
@@ -2432,7 +2653,8 @@ async fn donate_topup(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let provider = crate::payment::provider_from(&gw);
-    let base = std::env::var("PUBLIC_SITE_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+    let base = std::env::var("PUBLIC_SITE_URL")
+        .unwrap_or_else(|_| "http://localhost:3000".into());
     let url = provider.pay_url(
         &order_no,
         &format!("{:.2}", body.amount_usd),
@@ -2557,19 +2779,23 @@ async fn donate_order(
             .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-            sqlx::query("UPDATE users SET uploaded = uploaded + $2 WHERE id = $1")
-                .bind(auth.id)
-                .bind(gb * 1024 * 1024 * 1024)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "UPDATE users SET uploaded = uploaded + $2 WHERE id = $1",
+            )
+            .bind(auth.id)
+            .bind(gb * 1024 * 1024 * 1024)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
         "quota" => {
-            sqlx::query("UPDATE users SET quota_extra = quota_extra + 10 WHERE id = $1")
-                .bind(auth.id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "UPDATE users SET quota_extra = quota_extra + 10 WHERE id = $1",
+            )
+            .bind(auth.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
         "vip" => {
             let days: i64 = if title.contains("终身") {
@@ -2637,7 +2863,8 @@ async fn massmail_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MASSMAIL).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MASSMAIL)
+        .await?;
     let rows: Vec<MassMailRow> = sqlx::query_as(
         "SELECT m.id, m.subject, m.recipients, m.created_at, u.username AS sender \
          FROM mass_mails m LEFT JOIN users u ON u.id = m.sent_by ORDER BY m.id DESC LIMIT 50",
@@ -2655,14 +2882,16 @@ async fn massmail_send(
     body: web::Json<MassMailBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MASSMAIL).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MASSMAIL)
+        .await?;
     if body.subject.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("主题和正文不能为空".into()));
     }
-    let users: i64 = sqlx::query_scalar("SELECT count(*) FROM users WHERE status < 2")
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    let users: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM users WHERE status < 2")
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
     let id: i32 = sqlx::query_scalar(
         "INSERT INTO mass_mails (subject, body, sent_by, recipients) VALUES ($1,$2,$3,$4) RETURNING id",
     ).bind(body.subject.trim()).bind(&body.body).bind(auth.id).bind(users as i32)
@@ -2674,7 +2903,8 @@ async fn massmail_send(
     // SMTP 配置时逐户发送并回填实发数；未配置时（开发态）明确返回 delivered=0 与
     // 原因，不再谎报入队。
     let smtp = std::env::var("SMTP_URL").unwrap_or_default();
-    let from = std::env::var("SMTP_FROM").unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
+    let from = std::env::var("SMTP_FROM")
+        .unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
     let mut delivered: i64 = 0;
     let mut mail_err: Option<String> = None;
     if smtp.is_empty() {
@@ -2690,12 +2920,16 @@ async fn massmail_send(
                 .map_err(|e| DomainError::Internal(e.into()))?;
                 for to in &emails {
                     let msg = lettre::Message::builder()
-                        .from(from.parse().map_err(|e: lettre::address::AddressError| {
-                            DomainError::Internal(e.into())
-                        })?)
-                        .to(to.parse().map_err(|e: lettre::address::AddressError| {
-                            DomainError::Internal(e.into())
-                        })?)
+                        .from(from.parse().map_err(
+                            |e: lettre::address::AddressError| {
+                                DomainError::Internal(e.into())
+                            },
+                        )?)
+                        .to(to.parse().map_err(
+                            |e: lettre::address::AddressError| {
+                                DomainError::Internal(e.into())
+                            },
+                        )?)
                         .subject(body.subject.trim())
                         .body(body.body.clone())
                         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -2703,7 +2937,8 @@ async fn massmail_send(
                     match mailer.send(msg).await {
                         Ok(_) => delivered += 1,
                         Err(e) => {
-                            mail_err = Some(format!("第 {delivered} 封后失败：{e}"));
+                            mail_err =
+                                Some(format!("第 {delivered} 封后失败：{e}"));
                             break;
                         }
                     }
@@ -2713,11 +2948,12 @@ async fn massmail_send(
         }
     }
     if delivered > 0 {
-        let _ = sqlx::query("UPDATE mass_mails SET recipients = $2 WHERE id = $1")
-            .bind(id)
-            .bind(delivered as i32)
-            .execute(&state.repo.db)
-            .await;
+        let _ =
+            sqlx::query("UPDATE mass_mails SET recipients = $2 WHERE id = $1")
+                .bind(id)
+                .bind(delivered as i32)
+                .execute(&state.repo.db)
+                .await;
     }
     Ok(ok(serde_json::json!({
         "id": id, "delivered": delivered,

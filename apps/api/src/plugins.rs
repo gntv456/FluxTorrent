@@ -43,9 +43,21 @@ pub trait Plugin: Send + Sync {
     /// 登录后 Hook
     fn on_user_login(&self, _state: &AppState, _user_id: i64) {}
     /// 种子发布后 Hook
-    fn on_torrent_upload(&self, _state: &AppState, _torrent_id: i64, _owner_id: i64) {}
+    fn on_torrent_upload(
+        &self,
+        _state: &AppState,
+        _torrent_id: i64,
+        _owner_id: i64,
+    ) {
+    }
     /// 做种里程碑 Hook（worker 周期触发）
-    fn on_seeding_milestone(&self, _state: &AppState, _user_id: i64, _hours: i64) {}
+    fn on_seeding_milestone(
+        &self,
+        _state: &AppState,
+        _user_id: i64,
+        _hours: i64,
+    ) {
+    }
 }
 
 /// 插件管理器：编译期静态装配（Vec<Arc<dyn Plugin>>）。
@@ -74,17 +86,25 @@ impl PluginManager {
             let p = p.clone();
             let st = state.clone();
             tokio::task::spawn_blocking(move || {
-                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    p.on_user_login(&st, user_id)
-                }));
+                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+                    || p.on_user_login(&st, user_id),
+                ));
                 if r.is_err() {
-                    tracing::error!(plugin = p.name(), "login hook panicked (suppressed)");
+                    tracing::error!(
+                        plugin = p.name(),
+                        "login hook panicked (suppressed)"
+                    );
                 }
             });
         }
     }
 
-    pub fn dispatch_upload(&self, state: &Arc<AppState>, torrent_id: i64, owner_id: i64) {
+    pub fn dispatch_upload(
+        &self,
+        state: &Arc<AppState>,
+        torrent_id: i64,
+        owner_id: i64,
+    ) {
         for p in &self.plugins {
             if !p.enabled() {
                 continue;
@@ -92,17 +112,25 @@ impl PluginManager {
             let p = p.clone();
             let st = state.clone();
             tokio::task::spawn_blocking(move || {
-                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    p.on_torrent_upload(&st, torrent_id, owner_id)
-                }));
+                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+                    || p.on_torrent_upload(&st, torrent_id, owner_id),
+                ));
                 if r.is_err() {
-                    tracing::error!(plugin = p.name(), "upload hook panicked (suppressed)");
+                    tracing::error!(
+                        plugin = p.name(),
+                        "upload hook panicked (suppressed)"
+                    );
                 }
             });
         }
     }
 
-    pub fn dispatch_milestone(&self, state: &Arc<AppState>, user_id: i64, hours: i64) {
+    pub fn dispatch_milestone(
+        &self,
+        state: &Arc<AppState>,
+        user_id: i64,
+        hours: i64,
+    ) {
         for p in &self.plugins {
             if !p.enabled() {
                 continue;
@@ -110,11 +138,14 @@ impl PluginManager {
             let p = p.clone();
             let st = state.clone();
             tokio::task::spawn_blocking(move || {
-                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    p.on_seeding_milestone(&st, user_id, hours)
-                }));
+                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+                    || p.on_seeding_milestone(&st, user_id, hours),
+                ));
                 if r.is_err() {
-                    tracing::error!(plugin = p.name(), "milestone hook panicked (suppressed)");
+                    tracing::error!(
+                        plugin = p.name(),
+                        "milestone hook panicked (suppressed)"
+                    );
                 }
             });
         }
@@ -133,7 +164,12 @@ impl Plugin for AutoPinOfficial {
         "auto_pin_official"
     }
 
-    fn on_torrent_upload(&self, state: &AppState, torrent_id: i64, _owner_id: i64) {
+    fn on_torrent_upload(
+        &self,
+        state: &AppState,
+        torrent_id: i64,
+        _owner_id: i64,
+    ) {
         // hook 已在 blocking 线程，借当前 tokio handle 执行异步 SQL
         let db = state.repo.db.clone();
         let rt = tokio::runtime::Handle::current();
@@ -195,7 +231,8 @@ mod tests {
     #[test]
     fn panicked_hook_is_suppressed_and_next_plugin_runs() {
         // 无 AppState 也能构造管理器：直接用裸 Vec 验证分发语义
-        let hit = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let hit =
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let rec = std::sync::Arc::new(Recording { hit: hit.clone() });
         let mgr = PluginManager {
             plugins: vec![Arc::new(Panicky), rec],

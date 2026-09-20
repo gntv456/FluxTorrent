@@ -139,7 +139,10 @@ impl ModuleFlags {
             let guard = self.inner.read().await;
             if let Some((map, at)) = guard.as_ref() {
                 if at.elapsed() < Duration::from_secs(30) {
-                    return map.get(k).copied().unwrap_or_else(|| default_on(k));
+                    return map
+                        .get(k)
+                        .copied()
+                        .unwrap_or_else(|| default_on(k));
                 }
             }
         }
@@ -173,7 +176,10 @@ impl AppState {
 
 /// 便捷守卫函数（handler 内一行调用；当前端点走网关中间件，保留给域内细粒度场景与测试）
 #[allow(dead_code)]
-pub async fn require_module(state: &web::Data<Arc<AppState>>, k: &str) -> DomainResult<()> {
+pub async fn require_module(
+    state: &web::Data<Arc<AppState>>,
+    k: &str,
+) -> DomainResult<()> {
     state.require_module(k).await
 }
 
@@ -251,7 +257,9 @@ fn exact_route_module(path: &str) -> Option<&'static str> {
 pub async fn module_gate_mw(
     req: actix_web::dev::ServiceRequest,
     next: actix_web::middleware::Next<impl actix_web::body::MessageBody>,
-) -> actix_web::Result<actix_web::dev::ServiceResponse<impl actix_web::body::MessageBody>> {
+) -> actix_web::Result<
+    actix_web::dev::ServiceResponse<impl actix_web::body::MessageBody>,
+> {
     let path = req.path();
     let module_key = if let Some(m) = exact_route_module(path) {
         Some(m)
@@ -333,6 +341,9 @@ mod tests {
         assert!(exact_route_module("/api/v1/me/vouchers").is_some());
         assert!(exact_route_module("/api/v1/me/spark").is_none());
         // /bank/demand/deposit 这类更深路径也归 bank
-        assert_eq!(route_module("/api/v1/bank/demand/deposit"), Some(key::BANK));
+        assert_eq!(
+            route_module("/api/v1/bank/demand/deposit"),
+            Some(key::BANK)
+        );
     }
 }

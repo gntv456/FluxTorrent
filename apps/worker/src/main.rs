@@ -11,13 +11,16 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info".into()),
         )
         .init();
 
-    let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://flux:flux@127.0.0.1:5432/fluxtorrent".into());
-    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".into());
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "postgres://flux:flux@127.0.0.1:5432/fluxtorrent".into()
+    });
+    let redis_url = std::env::var("REDIS_URL")
+        .unwrap_or_else(|_| "redis://127.0.0.1:6379".into());
 
     let db = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)

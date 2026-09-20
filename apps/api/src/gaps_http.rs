@@ -121,12 +121,13 @@ async fn confirm_resend(
     if n > 3 {
         return Err(DomainError::RateLimited);
     }
-    let uid: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM users WHERE lower(email::text) = lower($1)")
-            .bind(body.email.trim())
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let uid: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM users WHERE lower(email::text) = lower($1)",
+    )
+    .bind(body.email.trim())
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if let Some(uid) = uid {
         state.repo.audit(Some(uid), "confirm.resend", None).await;
     }
@@ -163,9 +164,9 @@ pub async fn send_reset_mail(
         .host_str()
         .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
         .to_string();
-    let port = url
-        .port()
-        .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
+    let port =
+        url.port()
+            .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
     let builder = if url.scheme() == "smtps" {
         AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
     } else {
@@ -173,10 +174,12 @@ pub async fn send_reset_mail(
     }
     .port(port);
     let builder = if !url.username().is_empty() {
-        builder.credentials(lettre::transport::smtp::authentication::Credentials::new(
-            url.username().to_string(),
-            url.password().unwrap_or_default().to_string(),
-        ))
+        builder.credentials(
+            lettre::transport::smtp::authentication::Credentials::new(
+                url.username().to_string(),
+                url.password().unwrap_or_default().to_string(),
+            ),
+        )
     } else {
         builder
     };
@@ -213,9 +216,9 @@ pub async fn send_generic_mail(
         .host_str()
         .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
         .to_string();
-    let port = url
-        .port()
-        .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
+    let port =
+        url.port()
+            .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
     let builder = if url.scheme() == "smtps" {
         AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
     } else {
@@ -223,10 +226,12 @@ pub async fn send_generic_mail(
     }
     .port(port);
     let builder = if !url.username().is_empty() {
-        builder.credentials(lettre::transport::smtp::authentication::Credentials::new(
-            url.username().to_string(),
-            url.password().unwrap_or_default().to_string(),
-        ))
+        builder.credentials(
+            lettre::transport::smtp::authentication::Credentials::new(
+                url.username().to_string(),
+                url.password().unwrap_or_default().to_string(),
+            ),
+        )
     } else {
         builder
     };
@@ -252,9 +257,9 @@ pub fn build_smtp(
         .host_str()
         .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
         .to_string();
-    let port = url
-        .port()
-        .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
+    let port =
+        url.port()
+            .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
     let builder = if url.scheme() == "smtps" {
         AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
     } else {
@@ -262,10 +267,12 @@ pub fn build_smtp(
     }
     .port(port);
     let builder = if !url.username().is_empty() {
-        builder.credentials(lettre::transport::smtp::authentication::Credentials::new(
-            url.username().to_string(),
-            url.password().unwrap_or_default().to_string(),
-        ))
+        builder.credentials(
+            lettre::transport::smtp::authentication::Credentials::new(
+                url.username().to_string(),
+                url.password().unwrap_or_default().to_string(),
+            ),
+        )
     } else {
         builder
     };
@@ -290,11 +297,12 @@ async fn password_forgot(
         return Err(DomainError::RateLimited);
     }
 
-    let uid: Option<i64> = sqlx::query_scalar("SELECT id FROM users WHERE email = $1")
-        .bind(body.email.trim().to_lowercase())
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let uid: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM users WHERE email = $1")
+            .bind(body.email.trim().to_lowercase())
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 无论命中与否都返回相同响应（防账号枚举）
     if let Some(uid) = uid {
@@ -327,12 +335,12 @@ async fn password_forgot(
         } else {
             // 真实投递（lettre）：SMTP_URL = smtps://user:pass@host:port 或 smtp://host:port；
             // 发件人 SMTP_FROM（缺省 no-reply@host）。后台线程发送，失败仅记日志不影响响应。
-            let base =
-                std::env::var("PUBLIC_API_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+            let base = std::env::var("PUBLIC_API_URL")
+                .unwrap_or_else(|_| "http://localhost:3000".into());
             let link = format!("{base}/reset?token={token}");
             let email_addr = body.email.trim().to_lowercase();
-            let from =
-                std::env::var("SMTP_FROM").unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
+            let from = std::env::var("SMTP_FROM")
+                .unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
             let site = sqlx::query_scalar::<_, String>(
                 "SELECT value FROM site_settings WHERE name = 'site_name'",
             )
@@ -342,9 +350,16 @@ async fn password_forgot(
             .flatten()
             .unwrap_or_else(|| "FluxTorrent".into());
             actix_web::rt::spawn(async move {
-                match send_reset_mail(&smtp, &from, &email_addr, &site, &link).await {
-                    Ok(_) => tracing::info!(uid, "password reset mail sent to {email_addr}"),
-                    Err(e) => tracing::error!(uid, "password reset mail failed: {e}"),
+                match send_reset_mail(&smtp, &from, &email_addr, &site, &link)
+                    .await
+                {
+                    Ok(_) => tracing::info!(
+                        uid,
+                        "password reset mail sent to {email_addr}"
+                    ),
+                    Err(e) => {
+                        tracing::error!(uid, "password reset mail failed: {e}")
+                    }
                 }
             });
         }
@@ -392,11 +407,13 @@ async fn password_reset(
         .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("UPDATE password_resets SET used_at = now() WHERE token_hash = $1")
-        .bind(hash_token(body.token.trim()))
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE password_resets SET used_at = now() WHERE token_hash = $1",
+    )
+    .bind(hash_token(body.token.trim()))
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -447,7 +464,8 @@ async fn captcha_issue(
         let key = format!("rl:captcha:{ip}");
         let n: i64 = AsyncCommands::incr(&mut c, &key, 1).await.unwrap_or(0);
         if n == 1 {
-            let _: () = AsyncCommands::expire(&mut c, &key, 60).await.unwrap_or(());
+            let _: () =
+                AsyncCommands::expire(&mut c, &key, 60).await.unwrap_or(());
         }
         if n > 30 {
             return Err(DomainError::RateLimited);
@@ -458,9 +476,10 @@ async fn captcha_issue(
     let b: i32 = rand::thread_rng().gen_range(1..=20);
     let id = uuid::Uuid::new_v4().to_string();
     let mut c = state.redis.clone();
-    let _: () = AsyncCommands::set_ex(&mut c, format!("captcha:{id}"), a + b, 300)
-        .await
-        .unwrap_or(());
+    let _: () =
+        AsyncCommands::set_ex(&mut c, format!("captcha:{id}"), a + b, 300)
+            .await
+            .unwrap_or(());
     Ok(ok(serde_json::json!({
         "captcha_id": id,
         "question": format!("{a} + {b} = ?"),
@@ -529,7 +548,8 @@ async fn hr_pardon(
     body: web::Json<PardonReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_PARDON).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_PARDON)
+        .await?;
     if body.note.trim().is_empty() {
         return Err(DomainError::Validation("赦免必须填理由".into()));
     }
@@ -594,7 +614,8 @@ async fn hr_pardon_batch(
     body: web::Json<BatchPardonReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_PARDON).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_PARDON)
+        .await?;
     if body.note.trim().is_empty() {
         return Err(DomainError::Validation("赦免必须填理由".into()));
     }
@@ -773,8 +794,11 @@ async fn appeal_create(
                 .as_deref()
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
-                .ok_or_else(|| DomainError::Validation("请填写被封的账户用户名".into()))?;
-            captcha_check(&state, &body.captcha_id, &body.captcha_answer).await?;
+                .ok_or_else(|| {
+                    DomainError::Validation("请填写被封的账户用户名".into())
+                })?;
+            captcha_check(&state, &body.captcha_id, &body.captcha_answer)
+                .await?;
             let uid: Option<i64> = sqlx::query_scalar(
                 "SELECT id FROM users WHERE lower(username::text) = lower($1) AND status >= 2",
             )
@@ -782,8 +806,9 @@ async fn appeal_create(
             .fetch_optional(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-            let uid =
-                uid.ok_or_else(|| DomainError::Validation("未找到该用户名的封禁记录".into()))?;
+            let uid = uid.ok_or_else(|| {
+                DomainError::Validation("未找到该用户名的封禁记录".into())
+            })?;
             // 防刷：每用户名 3 次/小时（未结申诉上限 3 条之外的第二道闸）
             {
                 use redis::AsyncCommands;
@@ -809,12 +834,13 @@ async fn appeal_create(
         return Err(DomainError::Validation("申诉内容至少 10 字".into()));
     }
     // 未结申诉上限 3 条
-    let open: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM appeals WHERE user_id = $1 AND status = 'open'")
-            .bind(user_id)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let open: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM appeals WHERE user_id = $1 AND status = 'open'",
+    )
+    .bind(user_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if open >= 3 {
         return Err(DomainError::Validation(
             "未结申诉上限 3 条，请等待处理".into(),
@@ -888,7 +914,12 @@ async fn appeal_queue(
     q: web::Query<AppealQueueQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::APPEAL_HANDLE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::APPEAL_HANDLE,
+    )
+    .await?;
     let status = q.status.as_deref().unwrap_or("");
     let rows: Vec<AdminAppealRow> = sqlx::query_as(
         "SELECT a.id, u.username, a.kind, a.ref_id, a.body, a.status, a.result_note, a.created_at \
@@ -915,7 +946,12 @@ async fn appeal_handle(
     body: web::Json<AppealHandleReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::APPEAL_HANDLE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::APPEAL_HANDLE,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE appeals SET status = $2, handled_by = $1, handled_at = now(), result_note = $3 \
          WHERE id = $4 AND status = 'open'",
@@ -959,7 +995,8 @@ async fn resub_use(
         .map_err(|_| DomainError::Validation("日期格式 YYYY-MM-DD".into()))?;
     // 只能补过去 7 天内
     let days_ago =
-        ((chrono::Utc::now() + chrono::Duration::hours(8)).date_naive() - date).num_days();
+        ((chrono::Utc::now() + chrono::Duration::hours(8)).date_naive() - date)
+            .num_days();
     if !(1..=7).contains(&days_ago) {
         return Err(DomainError::Validation("只能补过去 7 天内".into()));
     }
@@ -1172,11 +1209,12 @@ async fn wishlist_add(
     if kw.is_empty() || kw.len() > 100 {
         return Err(DomainError::Validation("关键词长度 1-100".into()));
     }
-    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM wishlist WHERE user_id = $1")
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    let count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM wishlist WHERE user_id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
     if count >= 20 {
         return Err(DomainError::Validation(
             "愿望单上限 20 条，请先删除旧的".into(),

@@ -20,12 +20,13 @@ pub enum Backend {
 
 /// 当前启用后端（每请求查库——与 site_settings 热生效口径一致；查询失败回落 local）
 pub async fn current_backend(db: &sqlx::PgPool) -> Backend {
-    let v: Option<String> =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'storage_backend'")
-            .fetch_optional(db)
-            .await
-            .ok()
-            .flatten();
+    let v: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'storage_backend'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten();
     match v.as_deref() {
         Some("s3") => Backend::S3,
         _ => Backend::Local,
@@ -45,7 +46,8 @@ fn s3_cfg() -> Option<(String, String, String, String, String)> {
     let secret = std::env::var("S3_SECRET")
         .ok()
         .filter(|v| !v.trim().is_empty())?;
-    let region = std::env::var("S3_REGION").unwrap_or_else(|_| "us-east-1".into());
+    let region =
+        std::env::var("S3_REGION").unwrap_or_else(|_| "us-east-1".into());
     Some((ep.trim().to_string(), bucket, key, secret, region))
 }
 
@@ -70,7 +72,8 @@ type HmacSha256 = hmac::Hmac<sha2::Sha256>;
 
 fn sign_hmac(key: &[u8], msg: &[u8]) -> Vec<u8> {
     use hmac::Mac;
-    let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(key).expect("hmac key");
+    let mut mac =
+        <HmacSha256 as hmac::Mac>::new_from_slice(key).expect("hmac key");
     mac.update(msg);
     mac.finalize().into_bytes().to_vec()
 }
@@ -84,9 +87,13 @@ fn uri_encode(s: &str, encode_slash: bool) -> String {
     let mut out = String::new();
     for b in s.bytes() {
         match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
-                out.push(b as char)
-            }
+            b'A'..=b'Z'
+            | b'a'..=b'z'
+            | b'0'..=b'9'
+            | b'-'
+            | b'.'
+            | b'_'
+            | b'~' => out.push(b as char),
             b'/' if !encode_slash => out.push('/'),
             _ => out.push_str(&format!("%{b:02X}")),
         }
@@ -95,7 +102,11 @@ fn uri_encode(s: &str, encode_slash: bool) -> String {
 }
 
 /// S3 写入。返回 Ok(true)=已写；Ok(false)=未配置 S3（调用方回落 local）；Err=写入失败。
-pub async fn s3_put(sha: &str, bytes: &[u8], mime: &str) -> anyhow::Result<bool> {
+pub async fn s3_put(
+    sha: &str,
+    bytes: &[u8],
+    mime: &str,
+) -> anyhow::Result<bool> {
     let Some((ep, bucket, key, secret, region)) = s3_cfg() else {
         return Ok(false);
     };
@@ -119,7 +130,8 @@ pub async fn s3_put(sha: &str, bytes: &[u8], mime: &str) -> anyhow::Result<bool>
         sha256_hex(canonical.as_bytes())
     );
 
-    let k_date = sign_hmac(format!("AWS4{secret}").as_bytes(), date_short.as_bytes());
+    let k_date =
+        sign_hmac(format!("AWS4{secret}").as_bytes(), date_short.as_bytes());
     let k_region = sign_hmac(&k_date, region.as_bytes());
     let k_service = sign_hmac(&k_region, b"s3");
     let k_signing = sign_hmac(&k_service, b"aws4_request");
@@ -166,7 +178,8 @@ pub async fn s3_get(sha: &str) -> Option<Vec<u8>> {
         "AWS4-HMAC-SHA256\n{amz_date}\n{scope}\n{}",
         sha256_hex(canonical.as_bytes())
     );
-    let k_date = sign_hmac(format!("AWS4{secret}").as_bytes(), date_short.as_bytes());
+    let k_date =
+        sign_hmac(format!("AWS4{secret}").as_bytes(), date_short.as_bytes());
     let k_region = sign_hmac(&k_date, region.as_bytes());
     let k_service = sign_hmac(&k_region, b"s3");
     let k_signing = sign_hmac(&k_service, b"aws4_request");
@@ -196,7 +209,12 @@ fn hex_of(b: &[u8]) -> String {
 }
 
 /// 统一写入入口：按后端分发（s3 未配置自动回落 local）
-pub async fn put(db: &sqlx::PgPool, sha: &str, bytes: &[u8], mime: &str) -> anyhow::Result<()> {
+pub async fn put(
+    db: &sqlx::PgPool,
+    sha: &str,
+    bytes: &[u8],
+    mime: &str,
+) -> anyhow::Result<()> {
     match current_backend(db).await {
         Backend::S3 if s3_put(sha, bytes, mime).await? => Ok(()),
         _ => {
@@ -217,9 +235,11 @@ pub async fn get(db: &sqlx::PgPool, sha: &str) -> Option<Vec<u8>> {
             Some(b) => Some(b),
             None => tokio::fs::read(local_path(db, sha).await).await.ok(),
         },
-        Backend::Local => match tokio::fs::read(local_path(db, sha).await).await {
-            Ok(b) => Some(b),
-            Err(_) => s3_get(sha).await,
-        },
+        Backend::Local => {
+            match tokio::fs::read(local_path(db, sha).await).await {
+                Ok(b) => Some(b),
+                Err(_) => s3_get(sha).await,
+            }
+        }
     }
 }

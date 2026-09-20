@@ -26,8 +26,10 @@ async fn main() -> Result<()> {
     let stage = std::env::args()
         .nth(1)
         .context("用法: np-import <users|torrents|stats|report>")?;
-    let np_url = std::env::var("NP_DATABASE_URL").context("需设 NP_DATABASE_URL（MySQL，只读）")?;
-    let flux_url = std::env::var("DATABASE_URL").context("需设 DATABASE_URL（目标 PostgreSQL）")?;
+    let np_url = std::env::var("NP_DATABASE_URL")
+        .context("需设 NP_DATABASE_URL（MySQL，只读）")?;
+    let flux_url = std::env::var("DATABASE_URL")
+        .context("需设 DATABASE_URL（目标 PostgreSQL）")?;
 
     let np = sqlx::MySqlPool::connect(&np_url)
         .await
@@ -95,9 +97,20 @@ async fn import_users(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
     Ok(())
 }
 
-async fn import_torrents(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
+async fn import_torrents(
+    np: &sqlx::MySqlPool,
+    flux: &sqlx::PgPool,
+) -> Result<()> {
     // 默认分类映射到 1 号分类（站长可先在本站建好同序分类再重跑覆盖 category_id）
-    let rows: Vec<(i64, String, i64, Option<String>, Option<String>, i64, i64)> = sqlx::query_as(
+    let rows: Vec<(
+        i64,
+        String,
+        i64,
+        Option<String>,
+        Option<String>,
+        i64,
+        i64,
+    )> = sqlx::query_as(
         "SELECT id, info_hash, size, name, descr, owner_id, times_completed \
          FROM torrents WHERE visible != 'no'",
     )
@@ -105,18 +118,20 @@ async fn import_torrents(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()
     .await?;
     let total = rows.len();
     let mut imported = 0u64;
-    for (np_id, info_hash, size, name, descr, owner_id, times_completed) in rows {
+    for (np_id, info_hash, size, name, descr, owner_id, times_completed) in rows
+    {
         let ih = info_hash.to_lowercase();
         if ih.len() != 40 || !ih.bytes().all(|b| b.is_ascii_hexdigit()) {
             tracing::warn!(np_id, "info_hash 非法，跳过");
             continue;
         }
-        let owner: Option<i64> =
-            sqlx::query_scalar("SELECT flux_id FROM np_map_users WHERE np_id = $1")
-                .bind(owner_id)
-                .fetch_optional(flux)
-                .await?
-                .flatten();
+        let owner: Option<i64> = sqlx::query_scalar(
+            "SELECT flux_id FROM np_map_users WHERE np_id = $1",
+        )
+        .bind(owner_id)
+        .fetch_optional(flux)
+        .await?
+        .flatten();
         let n = sqlx::query(
             "INSERT INTO torrents (info_hash, name, small_descr, descr, category_id, medium_id, \
                  owner_id, size, approval_status, times_completed, created_at) \
@@ -143,17 +158,19 @@ async fn import_torrents(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()
 }
 
 async fn import_stats(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
-    let rows: Vec<(i64, i64, i64)> = sqlx::query_as("SELECT id, uploaded, downloaded FROM users")
-        .fetch_all(np)
-        .await?;
+    let rows: Vec<(i64, i64, i64)> =
+        sqlx::query_as("SELECT id, uploaded, downloaded FROM users")
+            .fetch_all(np)
+            .await?;
     let total = rows.len();
     let mut imported = 0u64;
     for (np_id, uploaded, downloaded) in rows {
-        let Some(flux_id) =
-            sqlx::query_scalar::<_, i64>("SELECT flux_id FROM np_map_users WHERE np_id = $1")
-                .bind(np_id)
-                .fetch_optional(flux)
-                .await?
+        let Some(flux_id) = sqlx::query_scalar::<_, i64>(
+            "SELECT flux_id FROM np_map_users WHERE np_id = $1",
+        )
+        .bind(np_id)
+        .fetch_optional(flux)
+        .await?
         else {
             continue;
         };
@@ -177,28 +194,34 @@ async fn import_stats(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
 }
 
 async fn report(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
-    let np_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE status != 2")
-        .fetch_one(np)
-        .await?;
-    let flux_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM np_map_users")
-        .fetch_one(flux)
-        .await?;
-    let np_torrents: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM torrents WHERE visible != 'no'")
+    let np_users: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE status != 2")
             .fetch_one(np)
             .await?;
-    let flux_torrents: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM torrents")
-        .fetch_one(flux)
-        .await?;
+    let flux_users: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM np_map_users")
+            .fetch_one(flux)
+            .await?;
+    let np_torrents: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM torrents WHERE visible != 'no'",
+    )
+    .fetch_one(np)
+    .await?;
+    let flux_torrents: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM torrents")
+            .fetch_one(flux)
+            .await?;
     // info_hash 全量 diff（源有目标无 → 缺失清单前 20 条）
     let missing: Vec<String> = {
-        let src: Vec<String> =
-            sqlx::query_scalar("SELECT LOWER(info_hash) FROM torrents WHERE visible != 'no'")
-                .fetch_all(np)
+        let src: Vec<String> = sqlx::query_scalar(
+            "SELECT LOWER(info_hash) FROM torrents WHERE visible != 'no'",
+        )
+        .fetch_all(np)
+        .await?;
+        let dst: Vec<String> =
+            sqlx::query_scalar("SELECT info_hash FROM torrents")
+                .fetch_all(flux)
                 .await?;
-        let dst: Vec<String> = sqlx::query_scalar("SELECT info_hash FROM torrents")
-            .fetch_all(flux)
-            .await?;
         let set: std::collections::HashSet<String> = dst.into_iter().collect();
         src.into_iter()
             .filter(|h| !set.contains(h))

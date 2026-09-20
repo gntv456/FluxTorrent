@@ -97,7 +97,8 @@ pub async fn ptgen(
 ) -> DomainResult<HttpResponse> {
     let _auth = require_auth(&req, &state).await?;
     let url = q.url.trim();
-    let parsed = url::Url::parse(url).map_err(|_| DomainError::Validation("链接无效".into()))?;
+    let parsed = url::Url::parse(url)
+        .map_err(|_| DomainError::Validation("链接无效".into()))?;
     let host = parsed.host_str().unwrap_or_default().to_lowercase();
     // 站点启用源（0087 metadata_sources）∩ PT-Gen 支持的源：host 后缀映射
     let enabled: String = sqlx::query_scalar(
@@ -119,8 +120,11 @@ pub async fn ptgen(
             "链接无效或该元数据源未在本站启用（imdb / douban / bangumi / indienova）".into(),
         ));
     }
-    let api = url::Url::parse_with_params("https://ptgen.rachpt.dev/api", &[("url", url)])
-        .map_err(|_| DomainError::Validation("链接无效".into()))?;
+    let api = url::Url::parse_with_params(
+        "https://ptgen.rachpt.dev/api",
+        &[("url", url)],
+    )
+    .map_err(|_| DomainError::Validation("链接无效".into()))?;
     let client = reqwest::Client::new();
     let resp = client
         .get(api)
@@ -142,7 +146,9 @@ pub async fn ptgen(
         .get("description")
         .and_then(|v| v.as_str())
         .unwrap_or("");
-    if body.get("success").and_then(|v| v.as_bool()) != Some(true) || html.is_empty() {
+    if body.get("success").and_then(|v| v.as_bool()) != Some(true)
+        || html.is_empty()
+    {
         return Err(DomainError::Validation("PT-Gen 未能解析该链接".into()));
     }
     Ok(ok(serde_json::json!({
@@ -216,20 +222,30 @@ pub async fn upload(
 
     let auth = require_auth(&req, &state).await?;
     // 发种基础权限（默认配给全体用户 class 1；可用于限制上传资格）
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TORRENT_UPLOAD).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_UPLOAD,
+    )
+    .await?;
     let mut file_bytes: Option<Bytes> = None;
     let mut nfo_bytes: Option<Bytes> = None;
     while let Some(item) = payload.next().await {
-        let mut field = item.map_err(|e| DomainError::Validation(e.to_string()))?;
+        let mut field =
+            item.map_err(|e| DomainError::Validation(e.to_string()))?;
         match field.name() {
             Some("file") => {
                 let mut buf = web::BytesMut::new();
                 while let Some(chunk) = field.next().await {
                     buf.extend_from_slice(
-                        &chunk.map_err(|e| DomainError::Validation(e.to_string()))?,
+                        &chunk.map_err(|e| {
+                            DomainError::Validation(e.to_string())
+                        })?,
                     );
                     if buf.len() > TORRENT_MAX_BYTES {
-                        return Err(DomainError::Validation(".torrent 超过 4MiB 上限".into()));
+                        return Err(DomainError::Validation(
+                            ".torrent 超过 4MiB 上限".into(),
+                        ));
                     }
                 }
                 file_bytes = Some(buf.freeze());
@@ -239,10 +255,14 @@ pub async fn upload(
                 let mut buf = web::BytesMut::new();
                 while let Some(chunk) = field.next().await {
                     buf.extend_from_slice(
-                        &chunk.map_err(|e| DomainError::Validation(e.to_string()))?,
+                        &chunk.map_err(|e| {
+                            DomainError::Validation(e.to_string())
+                        })?,
                     );
                     if buf.len() > NFO_MAX_BYTES {
-                        return Err(DomainError::Validation("NFO 超过 1MiB 上限".into()));
+                        return Err(DomainError::Validation(
+                            "NFO 超过 1MiB 上限".into(),
+                        ));
                     }
                 }
                 nfo_bytes = Some(buf.freeze());
@@ -250,9 +270,11 @@ pub async fn upload(
             _ => {}
         }
     }
-    let bytes = file_bytes.ok_or(DomainError::Validation("缺少 .torrent 文件".into()))?;
+    let bytes = file_bytes
+        .ok_or(DomainError::Validation("缺少 .torrent 文件".into()))?;
 
-    let parsed = crate::bencode::parse_torrent(&bytes).map_err(DomainError::TorrentInvalid)?;
+    let parsed = crate::bencode::parse_torrent(&bytes)
+        .map_err(DomainError::TorrentInvalid)?;
 
     // 重复检测（M04：info_hash 唯一）
     let dupe: bool = sqlx::query_scalar(
@@ -315,12 +337,13 @@ pub async fn upload(
     .await
     .unwrap_or(false);
     // 0077 被拒禁发（NP upload_deny_approval_deny_count 口径）：累计被拒达阈值直接拦
-    let (deny_count, streak): (i32, i32) =
-        sqlx::query_as("SELECT deny_count, approve_streak FROM users WHERE id = $1")
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let (deny_count, streak): (i32, i32) = sqlx::query_as(
+        "SELECT deny_count, approve_streak FROM users WHERE id = $1",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let deny_limit: i32 = sqlx::query_scalar(
         "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'upload_deny_limit'), 2)",
     )
@@ -336,15 +359,21 @@ pub async fn upload(
     let streak_skip = streak >= 5;
     let auto_approve = cat_auto
         || streak_skip
-        || crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_APPROVAL_AUTO).await;
+        || crate::authz::can(
+            &state,
+            &auth,
+            crate::authz::perm::TORRENT_APPROVAL_AUTO,
+        )
+        .await;
     let approval_status: i16 = if auto_approve { 1 } else { 0 };
     // 聚合组（0069）：显式传入的 group_id 必须存在（防悬挂引用）
     if let Some(gid) = form.group_id {
-        let g: Option<i64> = sqlx::query_scalar("SELECT id FROM torrent_groups WHERE id = $1")
-            .bind(gid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        let g: Option<i64> =
+            sqlx::query_scalar("SELECT id FROM torrent_groups WHERE id = $1")
+                .bind(gid)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         if g.is_none() {
             return Err(DomainError::Validation("聚合组不存在".into()));
         }
@@ -398,12 +427,17 @@ pub async fn upload(
         .map(str::trim)
         .filter(|j| !j.is_empty())
     {
-        let map: std::collections::HashMap<String, i64> = serde_json::from_str(json)
-            .map_err(|_| DomainError::Validation("sections 需为 JSON 对象".into()))?;
+        let map: std::collections::HashMap<String, i64> =
+            serde_json::from_str(json).map_err(|_| {
+                DomainError::Validation("sections 需为 JSON 对象".into())
+            })?;
         for (kind, dict_id) in &map {
             // 0085/0087：维度可由站方自建（含 media/grades/editions），白名单查 section_kinds
-            if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind).await {
-                return Err(DomainError::Validation(format!("未知维度 {kind}")));
+            if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind).await
+            {
+                return Err(DomainError::Validation(format!(
+                    "未知维度 {kind}"
+                )));
             }
             // 字典归属校验：dict_id 必须属于该 kind（防跨维度错挂）
             let ok: bool = sqlx::query_scalar(
@@ -438,8 +472,9 @@ pub async fn upload(
         .map(str::trim)
         .filter(|j| !j.is_empty())
     {
-        let ids: Vec<i32> = serde_json::from_str(json)
-            .map_err(|_| DomainError::Validation("tags 需为 JSON 数组".into()))?;
+        let ids: Vec<i32> = serde_json::from_str(json).map_err(|_| {
+            DomainError::Validation("tags 需为 JSON 数组".into())
+        })?;
         if ids.len() > 12 {
             return Err(DomainError::Validation("标签最多选择 12 个".into()));
         }
@@ -454,10 +489,14 @@ pub async fn upload(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
             let Some((kind, enabled)) = row else {
-                return Err(DomainError::Validation(format!("标签 {tid} 不存在")));
+                return Err(DomainError::Validation(format!(
+                    "标签 {tid} 不存在"
+                )));
             };
             if !enabled {
-                return Err(DomainError::Validation(format!("标签 {tid} 已停用")));
+                return Err(DomainError::Validation(format!(
+                    "标签 {tid} 已停用"
+                )));
             }
             if kind == "official" && !is_staff {
                 return Err(DomainError::Forbidden); // 与详情页打标同口径
@@ -512,7 +551,8 @@ pub async fn upload(
     let auto_kind = auto_kind.trim().to_lowercase();
     if !auto_kind.is_empty()
         && auto_days > 0
-        && ["free", "x2", "x2free", "half", "x2half", "p30"].contains(&auto_kind.as_str())
+        && ["free", "x2", "x2free", "half", "x2half", "p30"]
+            .contains(&auto_kind.as_str())
     {
         sqlx::query(
             "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source, created_by) \
@@ -556,7 +596,9 @@ pub async fn upload(
             .filter(|s| !s.is_empty())
             .map(|s| {
                 chrono::DateTime::parse_from_rfc3339(s)
-                    .map_err(|_| DomainError::Validation("置顶截止时间格式无效".into()))
+                    .map_err(|_| {
+                        DomainError::Validation("置顶截止时间格式无效".into())
+                    })
                     .map(|dt| dt.with_timezone(&chrono::Utc))
             })
             .transpose()?;
@@ -592,11 +634,13 @@ pub async fn upload(
         .await
         .unwrap_or(None);
         if let Some(gid) = lock {
-            let gname: String = sqlx::query_scalar("SELECT name FROM torrent_groups WHERE id = $1")
-                .bind(gid)
-                .fetch_one(&state.repo.db)
-                .await
-                .unwrap_or_default();
+            let gname: String = sqlx::query_scalar(
+                "SELECT name FROM torrent_groups WHERE id = $1",
+            )
+            .bind(gid)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or_default();
             group_suggest = serde_json::json!({ "locked": true, "group_id": gid, "name": gname });
         } else {
             let cands: Vec<(i64, String)> = sqlx::query_as(
@@ -607,7 +651,8 @@ pub async fn upload(
             .await
             .unwrap_or_default();
             if !cands.is_empty() {
-                group_suggest = serde_json::json!({ "locked": false, "candidates": cands });
+                group_suggest =
+                    serde_json::json!({ "locked": false, "candidates": cands });
             }
         }
     }
@@ -656,13 +701,14 @@ pub async fn build_torrent_bytes(
         .ok_or(DomainError::Unauthorized)?;
     // 下载闸门：与 tracker announce 的 left>0 拦截同口径——被停下载/挂起账号
     // 不应还能提前拿到 .torrent 文件
-    let (download_enabled, suspended): (bool, bool) =
-        sqlx::query_as("SELECT download_enabled, suspended FROM users WHERE id = $1")
-            .bind(user_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .ok_or(DomainError::Unauthorized)?;
+    let (download_enabled, suspended): (bool, bool) = sqlx::query_as(
+        "SELECT download_enabled, suspended FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .ok_or(DomainError::Unauthorized)?;
     if suspended {
         return Err(DomainError::Forbidden);
     }
@@ -673,14 +719,16 @@ pub async fn build_torrent_bytes(
     }
     // info dict 不动 → info_hash 与上传时一致（M05）
     async fn setting(db: &sqlx::PgPool, name: &str) -> Option<String> {
-        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
-            .bind(name)
-            .fetch_optional(db)
-            .await
-            .ok()
-            .flatten()
-            .map(|v| v.trim().trim_end_matches('/').to_string())
-            .filter(|v| !v.is_empty())
+        sqlx::query_scalar::<_, String>(
+            "SELECT value FROM site_settings WHERE name = $1",
+        )
+        .bind(name)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
+        .map(|v| v.trim().trim_end_matches('/').to_string())
+        .filter(|v| !v.is_empty())
     }
     let env_host = std::env::var("PUBLIC_TRACKER_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:7070".into())
@@ -758,11 +806,12 @@ pub async fn group_attach(
     if name.is_empty() || name.len() > 100 {
         return Err(DomainError::Validation("组名需 1-100 字".into()));
     }
-    let owner: Option<i64> = sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
-        .bind(torrent_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let owner: Option<i64> =
+        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+            .bind(torrent_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(owner) = owner else {
         return Err(DomainError::NotFound(torrent_id));
     };
@@ -811,12 +860,13 @@ pub async fn group_subscribe(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let gid = path.into_inner();
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrent_groups WHERE id = $1)")
-            .bind(gid)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM torrent_groups WHERE id = $1)",
+    )
+    .bind(gid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if !exists {
         return Err(DomainError::NotFound(gid));
     }
@@ -840,12 +890,14 @@ pub async fn group_unsubscribe(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let gid = path.into_inner();
-    sqlx::query("DELETE FROM group_subscriptions WHERE user_id = $1 AND group_id = $2")
-        .bind(auth.id)
-        .bind(gid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "DELETE FROM group_subscriptions WHERE user_id = $1 AND group_id = $2",
+    )
+    .bind(auth.id)
+    .bind(gid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "unsubscribed": gid })))
 }
 
@@ -859,21 +911,23 @@ pub async fn group_info(
     // torrents.group_id 可空：fetch_optional 得 Option<Option<i64>>——外层 None=行不存在，
     // 内层 None=未挂组。旧版直接解一层 Option，group_id 为 NULL 时把内层 None 当
     // 行不存在之外还触发 sqlx「unexpected null」解码错（500）。显式双层解构。
-    let group_id: Option<i64> = sqlx::query_scalar("SELECT group_id FROM torrents WHERE id = $1")
-        .bind(torrent_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .flatten();
+    let group_id: Option<i64> =
+        sqlx::query_scalar("SELECT group_id FROM torrents WHERE id = $1")
+            .bind(torrent_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
     let Some(gid) = group_id else {
         return Ok(ok(serde_json::json!({ "group": null })));
     };
-    let row: Option<(String, Option<String>, Option<i32>)> =
-        sqlx::query_as("SELECT name, descr, category_id FROM torrent_groups WHERE id = $1")
-            .bind(gid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(String, Option<String>, Option<i32>)> = sqlx::query_as(
+        "SELECT name, descr, category_id FROM torrent_groups WHERE id = $1",
+    )
+    .bind(gid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((name, descr, category_id)) = row else {
         return Ok(ok(serde_json::json!({ "group": null })));
     };
@@ -914,10 +968,15 @@ pub async fn download(
     // 付费下载（0086）：免费/发布者/已购直接放行，否则扣费（余额不足拦截）
     torrents::charge_for_download(&state.repo.db, auth.id, torrent_id).await?;
     let body = build_torrent_bytes(&state, auth.id, torrent_id).await?;
-    let mut resp = HttpResponse::with_body(actix_web::http::StatusCode::OK, BoxBody::new(body));
+    let mut resp = HttpResponse::with_body(
+        actix_web::http::StatusCode::OK,
+        BoxBody::new(body),
+    );
     resp.headers_mut().insert(
         actix_web::http::header::CONTENT_TYPE,
-        actix_web::http::header::HeaderValue::from_static("application/x-bittorrent"),
+        actix_web::http::header::HeaderValue::from_static(
+            "application/x-bittorrent",
+        ),
     );
     Ok(resp)
 }

@@ -61,15 +61,17 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
 
     let mut done = 0u64;
     for c in claims {
-        let metric: TaskMetric = serde_json::from_value(c.metric.clone()).unwrap_or_default();
+        let metric: TaskMetric =
+            serde_json::from_value(c.metric.clone()).unwrap_or_default();
         let now = chrono::Utc::now();
 
         // 用户当前指标
-        let cur: Option<(i64, i64)> =
-            sqlx::query_as("SELECT uploaded, downloaded FROM users WHERE id = $1")
-                .bind(c.user_id)
-                .fetch_optional(db)
-                .await?;
+        let cur: Option<(i64, i64)> = sqlx::query_as(
+            "SELECT uploaded, downloaded FROM users WHERE id = $1",
+        )
+        .bind(c.user_id)
+        .fetch_optional(db)
+        .await?;
         let Some((uploaded, downloaded)) = cur else {
             continue;
         }; // 用户已删，跳过
@@ -88,12 +90,13 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
         .fetch_one(db)
         .await
         .unwrap_or(0);
-        let subtitles_now: i64 =
-            sqlx::query_scalar("SELECT count(*) FROM subtitles WHERE user_id = $1")
-                .bind(c.user_id)
-                .fetch_one(db)
-                .await
-                .unwrap_or(0);
+        let subtitles_now: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM subtitles WHERE user_id = $1",
+        )
+        .bind(c.user_id)
+        .fetch_one(db)
+        .await
+        .unwrap_or(0);
 
         // 累计口径（tier 任务）：base 视为 0，用现值直接比
         let cumulative = c.tier.is_some();
@@ -139,7 +142,8 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
             met &= subtitles_now >= v;
         }
 
-        let deadline = c.claimed_at + chrono::Duration::days(c.duration_days.max(1) as i64);
+        let deadline = c.claimed_at
+            + chrono::Duration::days(c.duration_days.max(1) as i64);
         if met && has_target {
             if settle_complete(db, &c).await? {
                 done += 1;
@@ -184,11 +188,12 @@ async fn settle_complete(db: &PgPool, c: &OpenClaim) -> anyhow::Result<bool> {
         .fetch_one(&mut *tx)
         .await?;
         if !exists {
-            let balance: i64 =
-                sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-                    .bind(c.user_id)
-                    .fetch_one(&mut *tx)
-                    .await?;
+            let balance: i64 = sqlx::query_scalar(
+                "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+            )
+            .bind(c.user_id)
+            .fetch_one(&mut *tx)
+            .await?;
             sqlx::query(
                 "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
                  VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'task_reward', 'task', $3, $4, $5)",
@@ -262,11 +267,12 @@ async fn settle_fail(db: &PgPool, c: &OpenClaim) -> anyhow::Result<()> {
         .fetch_one(&mut *tx)
         .await?;
         if !exists {
-            let balance: i64 =
-                sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-                    .bind(c.user_id)
-                    .fetch_one(&mut *tx)
-                    .await?;
+            let balance: i64 = sqlx::query_scalar(
+                "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+            )
+            .bind(c.user_id)
+            .fetch_one(&mut *tx)
+            .await?;
             // 罚金只扣到 0，不制造负余额
             let take = balance.min(c.penalty).max(0);
             if take > 0 {
@@ -407,8 +413,10 @@ mod tests {
     /// 与 class_rules.min_seed_hours 同源。旧公式 v*3600/100（v×36 秒）无站内依据，已废弃。
     #[test]
     fn seed_points_one_point_per_hour() {
-        let m: TaskMetric =
-            serde_json::from_value(serde_json::json!({ "seed_points_delta": 10 })).unwrap();
+        let m: TaskMetric = serde_json::from_value(
+            serde_json::json!({ "seed_points_delta": 10 }),
+        )
+        .unwrap();
         assert_eq!(m.seed_points_delta, Some(10));
         // v=10 积分 → 门槛 10×3600=36000 秒（10 小时）
         assert_eq!(m.seed_points_delta.unwrap().saturating_mul(3600), 36000);

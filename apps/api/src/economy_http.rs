@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use crate::dto::ok;
 use crate::economy::{
-    self, checkin_reward, early_penalty, loan_rate_bp, maturity_interest, term_rate,
-    DEMAND_RATE_BP, LOAN_TERMS, VALID_TERMS,
+    self, checkin_reward, early_penalty, loan_rate_bp, maturity_interest,
+    term_rate, DEMAND_RATE_BP, LOAN_TERMS, VALID_TERMS,
 };
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -33,12 +33,14 @@ struct BankSettings {
 
 async fn bank_settings(db: &PgPool) -> BankSettings {
     async fn get(db: &PgPool, name: &str) -> Option<String> {
-        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
-            .bind(name)
-            .fetch_optional(db)
-            .await
-            .ok()
-            .flatten()
+        sqlx::query_scalar::<_, String>(
+            "SELECT value FROM site_settings WHERE name = $1",
+        )
+        .bind(name)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
     }
     BankSettings {
         min_deposit: get(db, "bank_min_deposit")
@@ -141,20 +143,22 @@ pub async fn spend_spark_tx(
     ref_type: &str,
     ref_id: i64,
 ) -> DomainResult<SpendOutcome> {
-    let balance: i64 =
-        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-            .bind(user_id)
-            .fetch_one(&mut **tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let balance: i64 = sqlx::query_scalar(
+        "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+    )
+    .bind(user_id)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 幂等检查查询失败必须报错（P2 审计）：unwrap_or(false) 会把「查询失败」当成
     // 「未消费」——跨请求重放可击穿幂等。fail-close：宁可 5xx 也不冒双扣风险。
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
-            .bind(idem)
-            .fetch_one(&mut **tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+    )
+    .bind(idem)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if exists {
         return Ok(SpendOutcome::Replayed);
     }
@@ -175,12 +179,14 @@ pub async fn spend_spark_tx(
     .execute(&mut **tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1")
-        .bind(user_id)
-        .bind(amount)
-        .execute(&mut **tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1",
+    )
+    .bind(user_id)
+    .bind(amount)
+    .execute(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(SpendOutcome::Spent)
 }
 
@@ -199,19 +205,21 @@ pub async fn spend_spark(
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 幂等检查必须在余额检查之前：已成功扣过的键在余额不足时也应返回重放，
     // 而不是误报「余额不足」（P0：防并发双扣的锁序不变，行锁仍先取）
-    let balance: i64 =
-        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-            .bind(user_id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let balance: i64 = sqlx::query_scalar(
+        "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+    )
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 幂等检查查询失败必须报错（P2 审计，同 tx 版口径）
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
-            .bind(idem)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+    )
+    .bind(idem)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if exists {
         return Ok(SpendOutcome::Replayed);
     }
@@ -232,12 +240,14 @@ pub async fn spend_spark(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1")
-        .bind(user_id)
-        .bind(amount)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1",
+    )
+    .bind(user_id)
+    .bind(amount)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -254,21 +264,23 @@ pub async fn earn_spark_tx(
     kind: &str,
     idem: &str,
 ) -> DomainResult<SpendOutcome> {
-    let balance: i64 =
-        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-            .bind(user_id)
-            .fetch_one(&mut **tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let balance: i64 = sqlx::query_scalar(
+        "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+    )
+    .bind(user_id)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 幂等检查必须在行锁之后（P0：防并发双入账）
     // 幂等检查查询失败必须报错（P2 审计）：unwrap_or(false) 会把「查询失败」当成
     // 「未消费」——跨请求重放可击穿幂等。fail-close：宁可 5xx 也不冒双扣风险。
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
-            .bind(idem)
-            .fetch_one(&mut **tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+    )
+    .bind(idem)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if exists {
         return Ok(SpendOutcome::Replayed);
     }
@@ -284,12 +296,14 @@ pub async fn earn_spark_tx(
     .execute(&mut **tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
-        .bind(user_id)
-        .bind(amount)
-        .execute(&mut **tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1",
+    )
+    .bind(user_id)
+    .bind(amount)
+    .execute(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(SpendOutcome::Spent)
 }
 
@@ -305,20 +319,22 @@ pub async fn earn_spark(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let balance: i64 =
-        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-            .bind(user_id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let balance: i64 = sqlx::query_scalar(
+        "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+    )
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 幂等检查必须在行锁之后（P0：防并发双入账）
     // 幂等检查查询失败必须报错（P2 审计，同 tx 版口径）
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
-            .bind(idem)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+    )
+    .bind(idem)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if exists {
         return Ok(());
     }
@@ -334,12 +350,14 @@ pub async fn earn_spark(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
-        .bind(user_id)
-        .bind(amount)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1",
+    )
+    .bind(user_id)
+    .bind(amount)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -357,7 +375,9 @@ struct ShopItem {
 }
 
 #[get("/shop/items")]
-async fn shop_items(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn shop_items(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let items = sqlx::query_as::<_, ShopItem>(
         "SELECT id, name, kind, price FROM shop_items WHERE active = true ORDER BY price",
     )
@@ -495,16 +515,19 @@ async fn apply_item_effect(
             .execute(db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-            sqlx::query("UPDATE users SET uploaded = uploaded + $2 WHERE id = $1")
-                .bind(user_id)
-                .bind(gb * 1024 * 1024 * 1024)
-                .execute(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "UPDATE users SET uploaded = uploaded + $2 WHERE id = $1",
+            )
+            .bind(user_id)
+            .bind(gb * 1024 * 1024 * 1024)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
         // 装扮（M25）：写入拥有记录（佩戴需显式调 /dressup/wear）
         "avatar_frame" | "animated_avatar" | "rainbow_id" | "rainbow_name" => {
-            let item_id = config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
+            let item_id =
+                config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
             sqlx::query(
                 "INSERT INTO user_dressups (user_id, item_id, source) VALUES ($1, $2, 'buy')                  ON CONFLICT (user_id, item_id) DO NOTHING",
             )
@@ -541,7 +564,8 @@ async fn apply_item_effect(
         }
         // VIP 待遇到期延展（0079 G18：购买日 ≥ 到期日则从今天起算，否则续期——断购不惩罚）
         "vip" | "app_vip" => {
-            let days = config.get("days").and_then(|v| v.as_i64()).unwrap_or(30);
+            let days =
+                config.get("days").and_then(|v| v.as_i64()).unwrap_or(30);
             sqlx::query(
                 "UPDATE users SET \
                     vip_until = GREATEST(COALESCE(vip_until, now()), now()) + make_interval(days => $2), \
@@ -556,7 +580,8 @@ async fn apply_item_effect(
         }
         // 免广告（donor 待遇；NP 口径：15 天档）
         "ad_free" => {
-            let days = config.get("days").and_then(|v| v.as_i64()).unwrap_or(15);
+            let days =
+                config.get("days").and_then(|v| v.as_i64()).unwrap_or(15);
             sqlx::query(
                 "UPDATE users SET donor_until = GREATEST(COALESCE(donor_until, now()), now()) + make_interval(days => $2) \
                  WHERE id = $1",
@@ -589,7 +614,8 @@ async fn apply_item_effect(
                 .and_then(|v| v.as_i64())
                 .unwrap_or(0);
             if sparks > 0 {
-                let item_id = config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
+                let item_id =
+                    config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
                 let idem = format!(
                     "shop-gift:{user_id}:{item_id}:{}",
                     chrono::Utc::now().timestamp()
@@ -727,18 +753,20 @@ async fn my_spark(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let balance: i64 = sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
-    // 收益因子说明（设计稿：1.03x/5x/0.1x 可点击展开）—— 由做种状态推导
-    let seeding_count: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM snatches WHERE user_id = $1 AND seeding")
+    let balance: i64 =
+        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
             .bind(auth.id)
             .fetch_one(&state.repo.db)
             .await
             .unwrap_or(0);
+    // 收益因子说明（设计稿：1.03x/5x/0.1x 可点击展开）—— 由做种状态推导
+    let seeding_count: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM snatches WHERE user_id = $1 AND seeding",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     // 与 worker 同口径的僵尸阈值：max(2h, 2×announce_interval)（详见 worker 的 stale_peer_threshold_secs）
     let announce: i64 = sqlx::query_scalar::<_, String>(
         "SELECT value FROM site_settings WHERE name = 'announce_interval'",
@@ -908,12 +936,13 @@ async fn bank_deposit(
         .unwrap_or_else(|| format!("deposit:{}:{}", auth.id, Uuid::new_v4()));
     let interest = maturity_interest(body.amount, body.term_days);
     // 结息模式：daily = 每日结息发到余额（到期只还本）；maturity = 到期一次性
-    let mode: String =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .unwrap_or_else(|| "maturity".into());
+    let mode: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or_else(|| "maturity".into());
     let mode = if mode == "daily" { "daily" } else { "maturity" };
     // 单事务（P1 撕裂窗口收口）：扣款与存单落库同生共死。旧版扣款先提交、存单
     // INSERT 失败只能靠 spawn 退款补偿（随机幂等键），进程崩溃窗口内钱扣了无存单、
@@ -1023,7 +1052,9 @@ async fn bank_withdraw(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((id, amount, interest, paid_interest, mode, status, maturity_at)) = d else {
+    let Some((id, amount, interest, paid_interest, mode, status, maturity_at)) =
+        d
+    else {
         return Err(DomainError::NotFound(body.deposit_id));
     };
     if status != 0 {
@@ -1077,7 +1108,9 @@ async fn bank_withdraw(
     }
     // 撕裂残留兜底：历史上「earn 已落账但状态位被回滚」的存单，此处 Replayed →
     // 仅补销单（本息已发过，不重复入账），属有意容忍的重放
-    let earn_outcome = earn_spark_tx(&mut tx, auth.id, payable, "bank_withdraw", &idem).await?;
+    let earn_outcome =
+        earn_spark_tx(&mut tx, auth.id, payable, "bank_withdraw", &idem)
+            .await?;
     let _ = earn_outcome;
     tx.commit()
         .await
@@ -1198,14 +1231,17 @@ async fn demand_withdraw(
         .clone()
         .filter(|k| !k.trim().is_empty())
         .map(|k| format!("demand_out:{}:{}", auth.id, k.trim()))
-        .unwrap_or_else(|| format!("demand_out:{}:{}", auth.id, Uuid::new_v4()));
+        .unwrap_or_else(|| {
+            format!("demand_out:{}:{}", auth.id, Uuid::new_v4())
+        });
     // 幂等检查前置到扣减之前（同事务内）：重放请求直接拒绝
-    let replayed: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)")
-            .bind(&idem)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let replayed: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+    )
+    .bind(&idem)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if replayed {
         return Err(DomainError::Validation(
             "该笔支取已受理，请勿重复提交".into(),
@@ -1226,7 +1262,8 @@ async fn demand_withdraw(
     // 上方已在同事务内做过 EXISTS 重放预检，此处必为 Spent；显式丢弃以满足
     // must_use 契约（Replayed 只可能来自遗留撕裂残留，跳过入账即正确行为）
     let earn_outcome =
-        earn_spark_tx(&mut tx, auth.id, body.amount, "bank_demand_out", &idem).await?;
+        earn_spark_tx(&mut tx, auth.id, body.amount, "bank_demand_out", &idem)
+            .await?;
     let _ = earn_outcome;
     tx.commit()
         .await
@@ -1243,7 +1280,11 @@ struct LoanApplyReq {
 }
 
 /// 最大可贷额度 = 时魔/小时 × 系数 + 常数（时魔取自近 1 小时做种收益口径，无则 0）
-async fn max_loan_amount(db: &PgPool, user_id: i64, bs: &BankSettings) -> DomainResult<i64> {
+async fn max_loan_amount(
+    db: &PgPool,
+    user_id: i64,
+    bs: &BankSettings,
+) -> DomainResult<i64> {
     let hourly: Option<i64> = sqlx::query_scalar(
         "SELECT COALESCE(sum(amount), 0)::bigint FROM spark_ledger \
          WHERE user_id = $1 AND kind = 'seeding_reward' AND created_at > now() - interval '1 hour'",
@@ -1274,11 +1315,12 @@ async fn loan_apply(
             bs.min_loan
         )));
     }
-    let balance: i64 = sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let balance: i64 =
+        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if balance < 0 {
         return Err(DomainError::Validation(
             "当前魔力为负，暂不可申请贷款".into(),
@@ -1328,7 +1370,8 @@ async fn loan_apply(
     let idem = format!("loan:{}:{}", auth.id, id);
     // 幂等键含新建贷款 id，重放不可达；显式丢弃以满足 must_use 契约
     let earn_outcome =
-        earn_spark_tx(&mut tx, auth.id, body.amount, "bank_loan_payout", &idem).await?;
+        earn_spark_tx(&mut tx, auth.id, body.amount, "bank_loan_payout", &idem)
+            .await?;
     let _ = earn_outcome;
     tx.commit()
         .await
@@ -1354,12 +1397,13 @@ async fn loan_repay(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let _user_lock: i64 =
-        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-            .bind(auth.id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let _user_lock: i64 = sqlx::query_scalar(
+        "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+    )
+    .bind(auth.id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 结清额 = 剩余本金 + 计提至今利息（含当日，一次性结清）
     let loan: Option<(i64, i64, i64, i64, chrono::NaiveDate)> = sqlx::query_as(
         "SELECT id, remaining, accrued_interest, daily_rate_bp, last_interest_date \
@@ -1478,11 +1522,12 @@ async fn bank_overview(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    let spark: i64 = sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let spark: i64 =
+        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
 
     let loan_outstanding = loan
         .as_ref()
@@ -1512,12 +1557,13 @@ async fn bank_overview(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let settle_mode: String =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .unwrap_or_else(|| "maturity".into());
+    let settle_mode: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or_else(|| "maturity".into());
 
     Ok(ok(serde_json::json!({
         "spark_balance": spark,
@@ -1585,7 +1631,11 @@ async fn checkin(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    let (prev_date, prev_streak, total_days): (Option<chrono::NaiveDate>, i64, i64) = match last {
+    let (prev_date, prev_streak, total_days): (
+        Option<chrono::NaiveDate>,
+        i64,
+        i64,
+    ) = match last {
         Some((d, s, c)) => (Some(d), s as i64, c),
         None => (None, 0, 0),
     };
@@ -1623,7 +1673,8 @@ async fn checkin(
         // 同事务内已由 ON CONFLICT DO NOTHING 保证首签唯一，此处必为 Spent；
         // 显式丢弃以满足 must_use 契约
         let earn_outcome =
-            earn_spark_tx(&mut tx, auth.id, reward.total, "attendance", &idem).await?;
+            earn_spark_tx(&mut tx, auth.id, reward.total, "attendance", &idem)
+                .await?;
         let _ = earn_outcome;
         tx.commit()
             .await
@@ -1682,7 +1733,9 @@ async fn checkin_status(
 // ============ 站免池（M13） ============
 
 #[get("/magic-pool")]
-async fn pool_status(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn pool_status(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let month = economy::pool_month(chrono::Utc::now());
     let row: Option<(String, i64, i64, bool)> = sqlx::query_as(
         "SELECT month, donated_total, goal, promo_started FROM magic_pool WHERE month = $1",
@@ -1732,7 +1785,9 @@ async fn pool_donate(
         .clone()
         .filter(|k| !k.trim().is_empty())
         .map(|k| format!("donate:{}:{}:{}", auth.id, month, k.trim()))
-        .unwrap_or_else(|| format!("donate:{}:{}:{}", auth.id, month, Uuid::new_v4()));
+        .unwrap_or_else(|| {
+            format!("donate:{}:{}:{}", auth.id, month, Uuid::new_v4())
+        });
     // 审计修复（P1 非原子）：旧版 spend_spark 成功后 magic_pool / pool_donations 两段
     // INSERT 独立执行，失败即「钱扣了、池账与荣誉榜丢失」。改为单事务：扣款经
     // spend_spark_tx 与入池、流水三写同生共死，失败整体回滚（对照 funding_contribute）。
@@ -1882,15 +1937,18 @@ async fn dressup_wear(
                     .map_err(|e| DomainError::Internal(e.into()))?
                     .flatten(),
                 };
-                sqlx::query("UPDATE users SET avatar_frame_id = $2 WHERE id = $1")
-                    .bind(auth.id)
-                    .bind(fid)
-                    .execute(&state.repo.db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?;
+                sqlx::query(
+                    "UPDATE users SET avatar_frame_id = $2 WHERE id = $1",
+                )
+                .bind(auth.id)
+                .bind(fid)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
             }
             ("animated_avatar", Some("avatar")) => {
-                let Some(url) = effect_url.as_deref().filter(|s| !s.is_empty()) else {
+                let Some(url) = effect_url.as_deref().filter(|s| !s.is_empty())
+                else {
                     return Err(DomainError::Validation(
                         "该动态头像未配置图片（config.avatar_url），请联系管理员".into(),
                     ));
@@ -1919,11 +1977,13 @@ async fn dressup_wear(
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
         } else if kind == "avatar_frame" && slot.as_deref() == Some("avatar") {
-            sqlx::query("UPDATE users SET avatar_frame_id = NULL WHERE id = $1")
-                .bind(auth.id)
-                .execute(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "UPDATE users SET avatar_frame_id = NULL WHERE id = $1",
+            )
+            .bind(auth.id)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
     state
@@ -1952,7 +2012,12 @@ async fn spark_flow_report(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_VIEW,
+    )
+    .await?;
     let rows: Vec<(String, i64, i64, i64, i64)> = sqlx::query_as(
         "SELECT month, minted::bigint, burned::bigint, net::bigint, entries FROM v_spark_flow_monthly LIMIT 24",
     )
@@ -2007,11 +2072,12 @@ async fn torznab_search(
         // 审计修复（P1）：require_token 现返回 token 所属 user —— enclosure/link 的
         // passkey 占位符替换为该用户真实 passkey，否则 Prowlarr 拿到 PASSKEY 字面量必 401。
         let (uid, _) = crate::openapi_http::require_token(&req, &state).await?;
-        let passkey: String = sqlx::query_scalar("SELECT passkey FROM users WHERE id = $1")
-            .bind(uid)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        let passkey: String =
+            sqlx::query_scalar("SELECT passkey FROM users WHERE id = $1")
+                .bind(uid)
+                .fetch_one(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         passkey
     };
     let keyword = q.get("q").cloned().unwrap_or_default();
@@ -2026,7 +2092,8 @@ async fn torznab_search(
         .unwrap_or(0)
         .max(0);
     let filter = crate::torrents::TorrentFilter {
-        search: (!keyword.trim().is_empty()).then(|| keyword.trim().to_string()),
+        search: (!keyword.trim().is_empty())
+            .then(|| keyword.trim().to_string()),
         ..Default::default()
     };
     // 翻页修复：list_torrents 内部把 limit clamp 到 50，offset≥50 时
@@ -2035,10 +2102,17 @@ async fn torznab_search(
     // 更深翻页按 Torznab 惯例拒绝（Prowlarr 实际只翻到 1000）。
     let fetch_n = offset + limit as i64;
     if fetch_n > 1000 {
-        return Err(DomainError::Validation("offset+limit 不得超过 1000".into()));
+        return Err(DomainError::Validation(
+            "offset+limit 不得超过 1000".into(),
+        ));
     }
-    let page =
-        crate::torrents::list_torrents_noclamp(&state.repo.db, &filter, None, fetch_n).await?;
+    let page = crate::torrents::list_torrents_noclamp(
+        &state.repo.db,
+        &filter,
+        None,
+        fetch_n,
+    )
+    .await?;
     let items: Vec<_> = page
         .items
         .into_iter()
@@ -2193,12 +2267,13 @@ async fn funding_create(
             "hours 需在 1-720、days 需在 1-60 之间".into(),
         ));
     }
-    let torrent: Option<(i64, i16)> =
-        sqlx::query_as("SELECT owner_id, approval_status FROM torrents WHERE id = $1")
-            .bind(body.torrent_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let torrent: Option<(i64, i16)> = sqlx::query_as(
+        "SELECT owner_id, approval_status FROM torrents WHERE id = $1",
+    )
+    .bind(body.torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((owner_id, _)) = torrent else {
         return Err(DomainError::NotFound(body.torrent_id));
     };
@@ -2256,12 +2331,13 @@ async fn funding_contribute(
     if body.amount <= 0 {
         return Err(DomainError::Validation("参与金额必须为正".into()));
     }
-    let f: Option<(i64, i16)> =
-        sqlx::query_as("SELECT goal, status FROM fundings WHERE id = $1 AND ends_at > now()")
-            .bind(body.funding_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let f: Option<(i64, i16)> = sqlx::query_as(
+        "SELECT goal, status FROM fundings WHERE id = $1 AND ends_at > now()",
+    )
+    .bind(body.funding_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((goal, status)) = f else {
         return Err(DomainError::NotFound(body.funding_id));
     };
@@ -2278,13 +2354,14 @@ async fn funding_contribute(
         .map(|k| format!("funding:{}:{}", auth.id, k.trim()))
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
     // 税：基点可调（site_settings gift_tax_bp，缺省 500=5%）；0=免税
-    let tax_bp: i32 =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'gift_tax_bp'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .and_then(|v: String| v.parse().ok())
-            .unwrap_or(500);
+    let tax_bp: i32 = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'gift_tax_bp'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .and_then(|v: String| v.parse().ok())
+    .unwrap_or(500);
     let tax = economy::gift_tax(body.amount, tax_bp);
     let net = body.amount - tax;
     // 幂等重放必须终止（P0）：重放时 spend 不扣款，若继续累加 raised/contribs =
@@ -2336,8 +2413,14 @@ async fn funding_contribute(
         let amount = body.amount;
         let idem2 = format!("funding_refund:{}", Uuid::new_v4());
         actix_web::rt::spawn(async move {
-            let _ =
-                crate::economy_http::earn_spark(&db, uid, amount, "funding_refund", &idem2).await;
+            let _ = crate::economy_http::earn_spark(
+                &db,
+                uid,
+                amount,
+                "funding_refund",
+                &idem2,
+            )
+            .await;
         });
         return Err(DomainError::Validation(format!(
             "参与记录写入失败，已发起退款冲销：{why}"
@@ -2369,11 +2452,12 @@ async fn funding_contribute(
         .repo
         .audit(Some(auth.id), "funding_contribute", Some(body.funding_id))
         .await;
-    let raised: i64 = sqlx::query_scalar("SELECT raised FROM fundings WHERE id = $1")
-        .bind(body.funding_id)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let raised: i64 =
+        sqlx::query_scalar("SELECT raised FROM fundings WHERE id = $1")
+            .bind(body.funding_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "funding_id": body.funding_id, "paid": body.amount, "tax": tax,
         "raised": raised, "goal": goal, "reached": raised >= goal,

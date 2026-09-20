@@ -39,14 +39,17 @@ pub async fn upload_attachment(
     let mut filename = String::new();
     let mut mime = String::new();
     while let Some(item) = payload.next().await {
-        let mut field = item.map_err(|e| DomainError::Validation(e.to_string()))?;
+        let mut field =
+            item.map_err(|e| DomainError::Validation(e.to_string()))?;
         if field.name() == Some("file") {
             filename = field
                 .content_disposition()
                 .and_then(|d| d.get_filename().map(str::to_string))
                 .unwrap_or_default()
                 .chars()
-                .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
+                .filter(|c| {
+                    c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_'
+                })
                 .take(120)
                 .collect();
             mime = field
@@ -55,10 +58,13 @@ pub async fn upload_attachment(
                 .unwrap_or_default();
             let mut buf = web::BytesMut::new();
             while let Some(chunk) = field.next().await {
-                let chunk = chunk.map_err(|e| DomainError::Validation(e.to_string()))?;
+                let chunk = chunk
+                    .map_err(|e| DomainError::Validation(e.to_string()))?;
                 buf.extend_from_slice(&chunk);
                 if buf.len() > ATTACH_MAX_BYTES {
-                    return Err(DomainError::Validation("附件超过 8MiB 上限".into()));
+                    return Err(DomainError::Validation(
+                        "附件超过 8MiB 上限".into(),
+                    ));
                 }
             }
             file_bytes = Some(buf.freeze());
@@ -76,7 +82,10 @@ pub async fn upload_attachment(
     // .ass/.ssa 字幕在浏览器常被报为 text/plain——扩展名按文件名判、按文本嗅探放行
     let declared_txt = mime == "text/plain";
     let sniff_ok = match bytes.first() {
-        Some(0x89) => bytes.starts_with(&[0x89, b'P', b'N', b'G']) || mime == "application/pdf",
+        Some(0x89) => {
+            bytes.starts_with(&[0x89, b'P', b'N', b'G'])
+                || mime == "application/pdf"
+        }
         Some(0xFF) => mime == "image/jpeg",
         Some(b'G') => bytes.starts_with(b"GIF8"),
         Some(b'R') => bytes.starts_with(b"RIFF") && mime == "image/webp",
@@ -94,12 +103,13 @@ pub async fn upload_attachment(
     .await
     .unwrap_or(512);
     if quota_mib > 0 {
-        let used: i64 =
-            sqlx::query_scalar("SELECT COALESCE(sum(size), 0) FROM attachments WHERE user_id = $1")
-                .bind(auth.id)
-                .fetch_one(&state.repo.db)
-                .await
-                .unwrap_or(0);
+        let used: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(sum(size), 0) FROM attachments WHERE user_id = $1",
+        )
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
         if used + bytes.len() as i64 > quota_mib * 1024 * 1024 {
             return Err(DomainError::Validation(format!(
                 "附件配额不足（已用 {}/{} MiB）",
@@ -117,11 +127,12 @@ pub async fn upload_attachment(
         d.iter().map(|b| format!("{b:02x}")).collect::<String>()
     };
     // 去重：同 sha 已存在 → 直接复用（不重复占配额）
-    let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM attachments WHERE sha256 = $1")
-        .bind(&sha)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM attachments WHERE sha256 = $1")
+            .bind(&sha)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if exists.is_none() {
         // 0102 对象存储：按 storage_backend 分发（local 卷 / S3 兼容），目录结构与
         // 旧实现一致（sha 两级分片），读取端自动双后端回落——迁移期无缝。

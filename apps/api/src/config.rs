@@ -39,7 +39,8 @@ fn default_jwt_alg() -> String {
 
 impl AppConfig {
     pub fn from_env() -> anyhow::Result<Self> {
-        let cfg = envy::from_env::<AppConfig>().map_err(|e| anyhow::anyhow!("config: {e}"))?;
+        let cfg = envy::from_env::<AppConfig>()
+            .map_err(|e| anyhow::anyhow!("config: {e}"))?;
         let alg = cfg.jwt_alg.to_ascii_lowercase();
         if alg != "hs256" && alg != "rs256" {
             return Err(anyhow::anyhow!(

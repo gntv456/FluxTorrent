@@ -46,7 +46,8 @@ fn extract_pieces_hash(raw: &[u8]) -> Option<String> {
         match rest.first()? {
             b'i' => {
                 let end = rest.iter().position(|&b| b == b'e')?;
-                let n: i64 = std::str::from_utf8(&rest[1..end]).ok()?.parse().ok()?;
+                let n: i64 =
+                    std::str::from_utf8(&rest[1..end]).ok()?.parse().ok()?;
                 Some((BVal::Int(n), pos + end + 1))
             }
             b'l' => {
@@ -73,7 +74,8 @@ fn extract_pieces_hash(raw: &[u8]) -> Option<String> {
             }
             b if b.is_ascii_digit() => {
                 let colon = rest.iter().position(|&c| c == b':')?;
-                let len: usize = std::str::from_utf8(&rest[..colon]).ok()?.parse().ok()?;
+                let len: usize =
+                    std::str::from_utf8(&rest[..colon]).ok()?.parse().ok()?;
                 let start = pos + colon + 1;
                 let end = start + len;
                 if end > buf.len() {
@@ -123,7 +125,11 @@ pub async fn consume_agent_blocks(
         .unwrap_or(None);
     let from = last_id.clone().unwrap_or_else(|| "-".to_string());
     let reply = match redis
-        .xrange::<_, _, _, redis::streams::StreamRangeReply>("flux:agent_block", &from, "+")
+        .xrange::<_, _, _, redis::streams::StreamRangeReply>(
+            "flux:agent_block",
+            &from,
+            "+",
+        )
         .await
     {
         Ok(r) => r,
@@ -246,7 +252,8 @@ pub async fn consume_agent_blocks(
         }
     }
     if let Some(id) = last_seen_id {
-        let cur: Result<(), redis::RedisError> = redis.set("flux:agentblock:cursor", &id).await;
+        let cur: Result<(), redis::RedisError> =
+            redis.set("flux:agentblock:cursor", &id).await;
         if let Err(e) = cur {
             tracing::error!(?e, "agentblock 游标写入失败（下轮可能重复计数）");
             return Err(e.into());
@@ -267,9 +274,11 @@ pub async fn consume_agent_blocks(
 /// 回查「当时是否处于免费窗口」豁免，物理删掉近期促销会让回查失明（误判违规）。
 /// 计费查询全部走 `starts_at <= now() < ends_at` 生效窗口，不受历史保留影响。
 pub async fn expire_promotions(db: &PgPool) -> anyhow::Result<u64> {
-    let res = sqlx::query("DELETE FROM promotions WHERE ends_at <= now() - interval '365 days'")
-        .execute(db)
-        .await?;
+    let res = sqlx::query(
+        "DELETE FROM promotions WHERE ends_at <= now() - interval '365 days'",
+    )
+    .execute(db)
+    .await?;
     Ok(res.rows_affected())
 }
 
@@ -403,7 +412,10 @@ pub async fn preserve_settle(db: &PgPool) -> anyhow::Result<u64> {
 /// 数据新鲜度：`last_seen_at` 超过僵尸阈值（max(2h, 2×announce_interval)）的行不计 ——
 /// 客户端崩溃/卸载不会发 stopped 事件，`sweep_stale_peers` 虽会清理标记，但那是另一个 tick
 /// 的任务；结算不该依赖"另一个 job 恰好跑过"，所以这里独立过滤一次（同一阈值函数）。
-pub async fn seeding_reward(db: &PgPool, stale_secs: i64) -> anyhow::Result<u64> {
+pub async fn seeding_reward(
+    db: &PgPool,
+    stale_secs: i64,
+) -> anyhow::Result<u64> {
     let hour = chrono::Utc::now().format("%Y%m%d%H").to_string();
     let res = sqlx::query(
         r#"
@@ -508,7 +520,8 @@ pub async fn consume_announce(
     use redis::AsyncCommands;
 
     // 游标消费：从上次处理到的 ID 继续拉取（Redis 键持久化游标，重启不丢事件、不重复计费）
-    let last_id: Option<String> = redis.get("flux:announce:cursor").await.unwrap_or(None);
+    let last_id: Option<String> =
+        redis.get("flux:announce:cursor").await.unwrap_or(None);
     let from = last_id.clone().unwrap_or_else(|| "-".to_string());
 
     // 保种时长累计容忍窗 = 2 × announce_interval（与 tracker 下发口径一致，站点设定缺省 1800）。
@@ -528,7 +541,11 @@ pub async fn consume_announce(
 
     // XRANGE → StreamRangeReply（redis 0.27 类型映射；错误必须可见，不允许静默空消费）
     let reply = match redis
-        .xrange::<_, _, _, redis::streams::StreamRangeReply>("flux:announce", &from, "+")
+        .xrange::<_, _, _, redis::streams::StreamRangeReply>(
+            "flux:announce",
+            &from,
+            "+",
+        )
         .await
     {
         Ok(r) => r,
@@ -543,7 +560,8 @@ pub async fn consume_announce(
     // P0-1 快照增量化：只刷本轮涉及的用户/种子（此前每轮对 users/torrents 全表重算，
     // 万级种子下每分钟两次全表聚合；纠偏由 run_all 的 reconcile_snapshots 周期兜底）
     let mut touched_users: std::collections::BTreeSet<i64> = Default::default();
-    let mut touched_torrents: std::collections::BTreeSet<i64> = Default::default();
+    let mut touched_torrents: std::collections::BTreeSet<i64> =
+        Default::default();
     for entry in reply.ids {
         let id = entry.id;
         // 已处理过的游标本条跳过
@@ -650,7 +668,8 @@ pub async fn consume_announce(
         }
     }
     if let Some(id) = last_seen_id {
-        let cur: Result<(), redis::RedisError> = redis.set("flux:announce:cursor", &id).await;
+        let cur: Result<(), redis::RedisError> =
+            redis.set("flux:announce:cursor", &id).await;
         if let Err(e) = cur {
             // 游标写入失败必须显式报错：静默失败会导致下轮重复计费
             tracing::error!(?e, "游标写入失败（下轮可能重复计费，需人工核对）");
@@ -751,7 +770,8 @@ async fn process_event(
     .bind(ev_time)
     .fetch_optional(db)
     .await?;
-    let (up_mult, down_mult) = billing_multipliers(kind.as_deref(), global.as_deref());
+    let (up_mult, down_mult) =
+        billing_multipliers(kind.as_deref(), global.as_deref());
 
     // 0073 券倍率叠加：free 券 → 下载计 0；neutral 券 → 上下行均计 0。
     // 判定口径：本人该种存在绑定中（used_at 仍 NULL）的对应 kind 券；过期判定同促销用事件时点。
@@ -1275,11 +1295,12 @@ async fn social_team_expire(db: &PgPool) -> anyhow::Result<u64> {
             continue;
         }
 
-        let tid: Option<i64> =
-            sqlx::query_scalar("SELECT torrent_id FROM resurrections WHERE team_id = $1 LIMIT 1")
-                .bind(team_id)
-                .fetch_optional(&mut *tx)
-                .await?;
+        let tid: Option<i64> = sqlx::query_scalar(
+            "SELECT torrent_id FROM resurrections WHERE team_id = $1 LIMIT 1",
+        )
+        .bind(team_id)
+        .fetch_optional(&mut *tx)
+        .await?;
 
         sqlx::query(
             "UPDATE resurrections SET status = 'expired', finished_at = now() \
@@ -1764,12 +1785,13 @@ async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
                 .bind(&idem)
                 .execute(db)
                 .await?;
-            let level_name: String =
-                sqlx::query_scalar("SELECT name FROM class_rules WHERE class_id = $1")
-                    .bind(new_class)
-                    .fetch_optional(db)
-                    .await?
-                    .unwrap_or_else(|| format!("LV{new_class}"));
+            let level_name: String = sqlx::query_scalar(
+                "SELECT name FROM class_rules WHERE class_id = $1",
+            )
+            .bind(new_class)
+            .fetch_optional(db)
+            .await?
+            .unwrap_or_else(|| format!("LV{new_class}"));
             let _ = sqlx::query(
                 "INSERT INTO messages (sender_id, receiver_id, subject, body) \
                  SELECT NULL, $1, $2, $3 WHERE u_notice_enabled($1, 'class_promo')",
@@ -1883,7 +1905,10 @@ async fn purge_expired_tokens(db: &PgPool) -> anyhow::Result<u64> {
 
 /// announce 死信队列可见性（卫生 P1）：DLQ 只进不出等于变相丢计费。
 /// 有积压时通知管理组信箱（复用 cheat_audit 告警模式），同一批积压只告警一次。
-async fn dlq_watch(db: &PgPool, redis: &mut redis::aio::ConnectionManager) -> anyhow::Result<u64> {
+async fn dlq_watch(
+    db: &PgPool,
+    redis: &mut redis::aio::ConnectionManager,
+) -> anyhow::Result<u64> {
     use redis::AsyncCommands;
     let len: i64 = redis.llen("flux:announce:dlq").await.unwrap_or(0);
     if len == 0 {
@@ -1891,7 +1916,8 @@ async fn dlq_watch(db: &PgPool, redis: &mut redis::aio::ConnectionManager) -> an
         let _: () = redis.del("flux:announce:dlq:alerted").await.unwrap_or(());
         return Ok(0);
     }
-    let alerted: i64 = redis.get("flux:announce:dlq:alerted").await.unwrap_or(0);
+    let alerted: i64 =
+        redis.get("flux:announce:dlq:alerted").await.unwrap_or(0);
     if alerted == 0 {
         let body = format!(
             "announce 死信队列当前积压 {len} 条事件（连续失败 6 次进入），计费已跳过。\
@@ -2225,7 +2251,8 @@ pub async fn jixiao_settle(db: &PgPool) -> anyhow::Result<u64> {
         .fetch_one(&mut *tx)
         .await
         .unwrap_or(0);
-        let seed_hours = ((seed_seconds_now - p.base_seed_seconds).max(0)) / 3600;
+        let seed_hours =
+            ((seed_seconds_now - p.base_seed_seconds).max(0)) / 3600;
         let uploads_delta = (uploads_now - p.base_uploads).max(0);
         let uploaded_delta = (uploaded_now - p.base_uploaded).max(0);
         let seed_days: i64 = sqlx::query_scalar(
@@ -2283,7 +2310,10 @@ pub async fn jixiao_settle(db: &PgPool) -> anyhow::Result<u64> {
         if let Some(reqs) = p.min_requirements.as_object() {
             for (k, v) in reqs {
                 let required = v.as_i64().unwrap_or(0);
-                if required > 0 && metrics.get(k).and_then(|x| x.as_i64()).unwrap_or(0) < required {
+                if required > 0
+                    && metrics.get(k).and_then(|x| x.as_i64()).unwrap_or(0)
+                        < required
+                {
                     all_ok = false;
                     break;
                 }
@@ -2421,7 +2451,10 @@ pub async fn jixiao_settle(db: &PgPool) -> anyhow::Result<u64> {
 
 /// 为指定期落全站活跃用户基线快照（幂等：PK 冲突跳过——首个到达的快照即基线，
 /// 重跑不覆盖：期初值必须固定，中途覆盖会让 delta 口径漂移）。
-async fn jixiao_rollover_snapshot(db: &PgPool, period: &str) -> anyhow::Result<u64> {
+async fn jixiao_rollover_snapshot(
+    db: &PgPool,
+    period: &str,
+) -> anyhow::Result<u64> {
     let res = sqlx::query(
         r#"
         INSERT INTO jixiao_baseline_snapshots (user_id, period, seed_seconds, uploaded, uploads)
@@ -2819,9 +2852,11 @@ async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
     .await?;
     // 上次崩溃残留的 3 态（结算中）重新纳入本轮退款
     expired.extend(
-        sqlx::query_as::<_, (i64, i64)>("SELECT id, creator_id FROM fundings WHERE status = 3")
-            .fetch_all(db)
-            .await?,
+        sqlx::query_as::<_, (i64, i64)>(
+            "SELECT id, creator_id FROM fundings WHERE status = 3",
+        )
+        .fetch_all(db)
+        .await?,
     );
     let mut refunds = 0u64;
     for (fid, _creator) in &expired {
@@ -3006,20 +3041,30 @@ async fn refundable_settle(db: &PgPool) -> anyhow::Result<u64> {
     .execute(db)
     .await?;
     if res.rows_affected() > 0 {
-        tracing::info!(n = res.rows_affected(), "refundable_settle: 下载量退还落账");
+        tracing::info!(
+            n = res.rows_affected(),
+            "refundable_settle: 下载量退还落账"
+        );
     }
     Ok(res.rows_affected())
 }
 
-pub async fn run_all(db: PgPool, redis: redis::aio::ConnectionManager) -> anyhow::Result<()> {
+pub async fn run_all(
+    db: PgPool,
+    redis: redis::aio::ConnectionManager,
+) -> anyhow::Result<()> {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
-    let mut hour_tick = tokio::time::interval(std::time::Duration::from_secs(3600));
+    let mut hour_tick =
+        tokio::time::interval(std::time::Duration::from_secs(3600));
     let mut last_bank_day: Option<chrono::NaiveDate> = None;
     // 0071 反作弊/性能调度
     let mut tick10 = tokio::time::interval(std::time::Duration::from_secs(600));
-    let mut tick30 = tokio::time::interval(std::time::Duration::from_secs(1800));
-    let mut tick6h = tokio::time::interval(std::time::Duration::from_secs(6 * 3600));
-    let mut tick1d = tokio::time::interval(std::time::Duration::from_secs(24 * 3600));
+    let mut tick30 =
+        tokio::time::interval(std::time::Duration::from_secs(1800));
+    let mut tick6h =
+        tokio::time::interval(std::time::Duration::from_secs(6 * 3600));
+    let mut tick1d =
+        tokio::time::interval(std::time::Duration::from_secs(24 * 3600));
     let mut first_tick10 = true;
     let mut first_tick30 = true;
     let mut first_tick6h = true;
@@ -3208,10 +3253,11 @@ async fn lottery_settle(db: &PgPool, topic_id: i64) -> anyhow::Result<u64> {
     .await?;
     if picked.is_empty() {
         // 无人参与：奖金池整退楼主
-        let op: i64 = sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
-            .bind(topic_id)
-            .fetch_one(&mut *tx)
-            .await?;
+        let op: i64 =
+            sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
+                .bind(topic_id)
+                .fetch_one(&mut *tx)
+                .await?;
         let refund = winners as i64 * prize;
         if refund > 0 {
             let exists: bool = sqlx::query_scalar(
@@ -3241,7 +3287,11 @@ async fn lottery_settle(db: &PgPool, topic_id: i64) -> anyhow::Result<u64> {
             }
         }
         tx.commit().await?;
-        tracing::info!(topic_id, refund, "lottery settled: no entries, refunded");
+        tracing::info!(
+            topic_id,
+            refund,
+            "lottery settled: no entries, refunded"
+        );
         return Ok(0);
     }
     // 发放（同事务逐人：幂等键存在则跳过，重跑安全）
@@ -3298,22 +3348,25 @@ where
             return None;
         }
     };
-    let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
-        .bind(key)
-        .fetch_one(&mut *conn)
-        .await
-        .unwrap_or(false);
+    let locked: bool =
+        sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+            .bind(key)
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap_or(false);
     if !locked {
         tracing::debug!(key, "advisory lock 未抢到（他实例执行中），跳过本轮");
         return None;
     }
     // 业务 future 与锁连接解耦：超时只掐业务，不掐持锁连接
-    let outcome = tokio::time::timeout(std::time::Duration::from_secs(900), fut).await;
+    let outcome =
+        tokio::time::timeout(std::time::Duration::from_secs(900), fut).await;
     // 同一连接上解锁（连接归还池前必须释放，否则锁随连接泄漏到复用方）
-    let unlock: Result<bool, _> = sqlx::query_scalar("SELECT pg_advisory_unlock(hashtext($1))")
-        .bind(key)
-        .fetch_one(&mut *conn)
-        .await;
+    let unlock: Result<bool, _> =
+        sqlx::query_scalar("SELECT pg_advisory_unlock(hashtext($1))")
+            .bind(key)
+            .fetch_one(&mut *conn)
+            .await;
     if let Err(e) = unlock {
         tracing::error!(?e, key, "advisory unlock 失败（锁将随连接关闭释放）");
     }
@@ -3339,7 +3392,9 @@ fn job_module(job_key: &str) -> Option<&'static str> {
         "job:exam_assign" => "exams",
         "job:jixiao_settle" => "jixiao",
         "job:social_team_settle" | "job:social_team_expire" => "social",
-        "job:preserve_exit" | "job:preserve_settle" | "job:preserve_seed" => "preserve",
+        "job:preserve_exit" | "job:preserve_settle" | "job:preserve_seed" => {
+            "preserve"
+        }
         "job:resurrection_settle" => "resurrections",
         "job:wishlist_notify" => "wishlist",
         _ => return None,
@@ -3349,11 +3404,12 @@ fn job_module(job_key: &str) -> Option<&'static str> {
 /// 模块开关判定（worker 侧直查，无缓存——每分钟 tick 一次，查询代价可忽略；
 /// 与 API 的 ModuleFlags::default_on 保持同一缺省口径：缺键=教育站形态）。
 async fn module_on(db: &PgPool, module: &str) -> bool {
-    let v: Option<String> = sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1")
-        .bind(format!("module_{module}"))
-        .fetch_optional(db)
-        .await
-        .unwrap_or(None);
+    let v: Option<String> =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1")
+            .bind(format!("module_{module}"))
+            .fetch_optional(db)
+            .await
+            .unwrap_or(None);
     match v {
         // 显式配置按配置（no = 关）；查询失败/未配置回落默认值（T3 缺省=现状）
         Some(raw) => raw.trim() == "yes",
@@ -3363,7 +3419,8 @@ async fn module_on(db: &PgPool, module: &str) -> bool {
 
 /// 启动基线：当日（站点时区）已由上一进程结算过则不重跑，取健康游标最近记录日期。
 async fn init_bank_day(db: &PgPool) -> chrono::NaiveDate {
-    let site_today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
+    let site_today =
+        (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
     let last_run: Option<chrono::NaiveDate> =
         sqlx::query_scalar("SELECT max(run_date) FROM bank_settle_runs")
             .fetch_one(db)
@@ -3378,7 +3435,10 @@ async fn init_bank_day(db: &PgPool) -> chrono::NaiveDate {
 }
 
 /// 促销计费倍率（M06 倍率表，与 api domain::PromotionKind::multipliers 同口径）
-fn billing_multipliers(torrent_kind: Option<&str>, global_kind: Option<&str>) -> (f64, f64) {
+fn billing_multipliers(
+    torrent_kind: Option<&str>,
+    global_kind: Option<&str>,
+) -> (f64, f64) {
     let strength = |k: &str| -> u8 {
         match k {
             "p30" => 1,
@@ -3402,7 +3462,9 @@ fn billing_multipliers(torrent_kind: Option<&str>, global_kind: Option<&str>) ->
         }
     };
     let winner = match (torrent_kind, global_kind) {
-        (Some(t), Some(g)) => Some(if strength(t) >= strength(g) { t } else { g }),
+        (Some(t), Some(g)) => {
+            Some(if strength(t) >= strength(g) { t } else { g })
+        }
         (t, g) => t.or(g),
     };
     table(winner)
@@ -3426,7 +3488,12 @@ mod tests {
     const GIB: f64 = 1073741824.0;
 
     /// 种子维度档位分（第一命中优先）
-    fn rule_seed(size: i64, seeders: i64, age_days: f64, completed: i64) -> f64 {
+    fn rule_seed(
+        size: i64,
+        seeders: i64,
+        age_days: f64,
+        completed: i64,
+    ) -> f64 {
         if seeders <= 1 && completed >= 3 {
             2.0
         } else if age_days > 365.0 {
@@ -3465,9 +3532,11 @@ mod tests {
         personal_hours: f64,
     ) -> f64 {
         // 与 DB 一致地用自然对数（比值等价，避免 log10/ln 混用造成对账口径分歧）
-        let vol = ((1.0 + size as f64 / GIB).ln() / (1.0 + VOL_BASE).ln()).min(1.0);
+        let vol =
+            ((1.0 + size as f64 / GIB).ln() / (1.0 + VOL_BASE).ln()).min(1.0);
         let rar = 1.0 + RARITY_K * (seeders.max(1) as f64).powf(-RARITY_EXP);
-        (rule_seed(size, seeders, age_days, completed) + dur_bonus(personal_hours))
+        (rule_seed(size, seeders, age_days, completed)
+            + dur_bonus(personal_hours))
             * vol
             * rar
             * SCALE
@@ -3479,7 +3548,8 @@ mod tests {
             .iter()
             .map(|(z, s, a, c, h)| torrent_bonus(*z, *s, *a, *c, *h))
             .sum();
-        base + (2.0 / std::f64::consts::PI * CAP * (sum * CURVE_K).atan()).floor()
+        base + (2.0 / std::f64::consts::PI * CAP * (sum * CURVE_K).atan())
+            .floor()
     }
 
     #[test]
@@ -3496,7 +3566,8 @@ mod tests {
     #[test]
     fn seeding_small_torrent_pile_is_not_profitable() {
         // 本次改造的核心：堆 1000 颗 1MB 小种只能拿底薪（旧公式可拿到 ~205/h）
-        let pile: Vec<(i64, i64, f64, i64, f64)> = vec![(1048576, 1, 3.0, 0, 1.0); 1000];
+        let pile: Vec<(i64, i64, f64, i64, f64)> =
+            vec![(1048576, 1, 3.0, 0, 1.0); 1000];
         let pile_hourly = user_hourly(10.0, &pile);
         let honest: Vec<(i64, i64, f64, i64, f64)> =
             vec![(100 * GIB as i64, 1, 400.0, 5, 8760.0); 6];
@@ -3526,7 +3597,10 @@ mod tests {
         let hundred = torrent_bonus(10 * GIB as i64, 100, 60.0, 0, 100.0);
         assert!(lone > ten && ten > hundred, "{lone} {ten} {hundred}");
         // 独苗/10 人 = rarity(1)/rarity(10) = 1.6 / 1.2679
-        assert!((lone / ten - 1.6 / (1.0 + 0.6 * 10.0_f64.powf(-0.35))).abs() < 1e-9);
+        assert!(
+            (lone / ten - 1.6 / (1.0 + 0.6 * 10.0_f64.powf(-0.35))).abs()
+                < 1e-9
+        );
         // 热门不再被重罚：100 人时仍保留 5 人时的 80% 以上（旧公式 ≈35%）
         let five = torrent_bonus(10 * GIB as i64, 5, 60.0, 0, 100.0);
         assert!(hundred / five > 0.80, "{}", hundred / five);

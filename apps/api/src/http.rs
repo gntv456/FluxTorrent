@@ -1,7 +1,9 @@
 //! HTTP 接口层：路由 + handlers + 鉴权提取器 + 限流。
 //! 分层约束（§8.3.1）：本层只做协议适配，业务规则在 domain/repo。
 
-use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    delete, get, post, put, web, HttpRequest, HttpResponse, Responder,
+};
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -218,8 +220,9 @@ pub async fn bump_guard_ver(state: &Arc<AppState>) {
 /// login_events 风控记录失真。
 pub fn client_ip(req: &HttpRequest) -> String {
     static TRUST_PROXY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    let trust =
-        *TRUST_PROXY.get_or_init(|| std::env::var("TRUST_PROXY").ok().as_deref() == Some("1"));
+    let trust = *TRUST_PROXY.get_or_init(|| {
+        std::env::var("TRUST_PROXY").ok().as_deref() == Some("1")
+    });
     if trust {
         if let Some(xff) = req
             .headers()
@@ -248,13 +251,15 @@ pub async fn ip_banned(state: &Arc<AppState>, ip: &str) -> bool {
         return false;
     }
     // CIDR 网段封禁支持：ip 列允许 '1.2.3.0/24' 形状，精确 IP 同时匹配单地址与所属网段
-    sqlx::query_scalar::<_, i32>("SELECT 1 FROM ip_bans WHERE $1::inet <<= ip LIMIT 1")
-        .bind(ip)
-        .fetch_optional(&state.repo.db)
-        .await
-        .ok()
-        .flatten()
-        .is_some()
+    sqlx::query_scalar::<_, i32>(
+        "SELECT 1 FROM ip_bans WHERE $1::inet <<= ip LIMIT 1",
+    )
+    .bind(ip)
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .is_some()
 }
 
 #[derive(Debug)]
@@ -271,7 +276,10 @@ pub struct AuthUser {
 #[derive(Default)]
 pub struct UserStatusCache {
     inner: std::sync::RwLock<
-        std::collections::HashMap<i64, (Option<(i16, i32, bool)>, std::time::Instant)>,
+        std::collections::HashMap<
+            i64,
+            (Option<(i16, i32, bool)>, std::time::Instant),
+        >,
     >,
 }
 
@@ -290,7 +298,9 @@ impl UserStatusCache {
         let mut g = self.inner.write().unwrap_or_else(|e| e.into_inner());
         if g.len() >= Self::CAP && !g.contains_key(&uid) {
             // 粗略容量保护：淘汰最旧条目（活跃站上 5s 窗口内远达不到 1 万用户）
-            if let Some(oldest) = g.iter().min_by_key(|(_, (_, at))| *at).map(|(k, _)| *k) {
+            if let Some(oldest) =
+                g.iter().min_by_key(|(_, (_, at))| *at).map(|(k, _)| *k)
+            {
                 g.remove(&oldest);
             }
         }
@@ -355,17 +365,20 @@ pub async fn require_auth(
     // 权威在 token_revocations 表（0085：Redis 重启不再让已撤销 token 复活）；
     // Redis 键保留 24h 作为存量兜底（迁移前撤销线只写了 Redis）。
     {
-        let db_nbf: Option<i64> =
-            sqlx::query_scalar("SELECT nbf FROM token_revocations WHERE user_id = $1")
-                .bind(claims.sub)
-                .fetch_optional(&state.repo.db)
-                .await
-                .unwrap_or(None);
+        let db_nbf: Option<i64> = sqlx::query_scalar(
+            "SELECT nbf FROM token_revocations WHERE user_id = $1",
+        )
+        .bind(claims.sub)
+        .fetch_optional(&state.repo.db)
+        .await
+        .unwrap_or(None);
         let mut c = state.redis.clone();
-        let redis_nbf: Option<i64> =
-            redis::AsyncCommands::get(&mut c, format!("logout_nbf:{}", claims.sub))
-                .await
-                .unwrap_or(None);
+        let redis_nbf: Option<i64> = redis::AsyncCommands::get(
+            &mut c,
+            format!("logout_nbf:{}", claims.sub),
+        )
+        .await
+        .unwrap_or(None);
         let nbf = db_nbf.max(redis_nbf);
         if let Some(nbf) = nbf {
             // <=：撤销线含义为「iat 不晚于 nbf 的凭证全部作废」。登出把 nbf 设为凭证 iat，
@@ -379,7 +392,10 @@ pub async fn require_auth(
     // 权威校验（P1 修复）：token 只是凭证，状态与等级以库为准 —— 封禁/降级即时生效。
     // 5s TTL 缓存（P2）：省掉每请求一次 users round-trip；管理端封禁/降级后调
     // UserStatusCache::invalidate 消除窗口，最坏情况延迟 5s 生效。
-    let row: Option<(i16, i32, bool)> = match state.user_status_cache.get(claims.sub) {
+    let row: Option<(i16, i32, bool)> = match state
+        .user_status_cache
+        .get(claims.sub)
+    {
         Some(cached) => cached,
         None => {
             let fetched = sqlx::query_as(
@@ -551,15 +567,16 @@ async fn stats(
     // TTL 60s 兜底（worker 每 60s 刷快照，口径一致）；Redis 故障直查库（fail-open 不阻断）。
     let key = "cache:stats:v1";
     let mut c = state.redis.clone();
-    let hit: Option<String> = redis::AsyncCommands::get(&mut c, key).await.unwrap_or(None);
+    let hit: Option<String> =
+        redis::AsyncCommands::get(&mut c, key).await.unwrap_or(None);
     if let Some(json) = hit {
-        return Ok(ok(
-            serde_json::from_str::<serde_json::Value>(&json).unwrap_or(serde_json::Value::Null)
-        ));
+        return Ok(ok(serde_json::from_str::<serde_json::Value>(&json)
+            .unwrap_or(serde_json::Value::Null)));
     }
     let val = serde_json::to_value(torrents::site_stats(&state.repo.db).await?)
         .unwrap_or(serde_json::Value::Null);
-    let _: Result<(), _> = redis::AsyncCommands::set_ex(&mut c, key, val.to_string(), 60u64).await;
+    let _: Result<(), _> =
+        redis::AsyncCommands::set_ex(&mut c, key, val.to_string(), 60u64).await;
     Ok(ok(val))
 }
 
@@ -643,7 +660,9 @@ async fn report_create(
         _ => None,
     };
     if let Some((table, extra)) = target_table {
-        let sql = format!("SELECT EXISTS(SELECT 1 FROM {table} WHERE id = $1 AND {extra})");
+        let sql = format!(
+            "SELECT EXISTS(SELECT 1 FROM {table} WHERE id = $1 AND {extra})"
+        );
         let exists: bool = sqlx::query_scalar(&sql)
             .bind(body.ref_id)
             .fetch_one(&state.repo.db)
@@ -672,15 +691,18 @@ async fn rss_info(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let passkey: String = sqlx::query_scalar("SELECT passkey FROM users WHERE id = $1")
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let passkey: String =
+        sqlx::query_scalar("SELECT passkey FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     // 绝对地址口径与 rss feed 端点一致：PUBLIC_API_URL 优先，缺省回退请求 Host，
     // 不再硬编 127.0.0.1（生产未配该变量时用户复制的订阅地址必连失败）。
     let base = match std::env::var("PUBLIC_API_URL") {
-        Ok(u) if !u.trim().is_empty() => u.trim().trim_end_matches('/').to_string(),
+        Ok(u) if !u.trim().is_empty() => {
+            u.trim().trim_end_matches('/').to_string()
+        }
         _ => {
             let host = req
                 .headers()
@@ -877,7 +899,9 @@ struct ContestInfo {
 }
 
 #[get("/contests")]
-async fn contest_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn contest_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let mut rows: Vec<ContestInfo> = sqlx::query_as(
         "SELECT c.id, c.title, c.descr, c.starts_at, c.ends_at, c.is_active, \
             (SELECT count(*) FROM contest_entries e WHERE e.contest_id = c.id) AS entries, \
@@ -923,7 +947,9 @@ struct FrameRow {
 }
 
 #[get("/avatar-frames")]
-async fn frame_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn frame_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let rows: Vec<FrameRow> = sqlx::query_as(
         "SELECT id, name, css, image_url, price FROM avatar_frames ORDER BY sort, id",
     )
@@ -948,12 +974,13 @@ async fn frame_equip(
     let auth = require_auth(&req, &state).await?;
     match body.frame_id {
         Some(fid) => {
-            let price: Option<i32> =
-                sqlx::query_scalar("SELECT price FROM avatar_frames WHERE id=$1")
-                    .bind(fid)
-                    .fetch_optional(&state.repo.db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?;
+            let price: Option<i32> = sqlx::query_scalar(
+                "SELECT price FROM avatar_frames WHERE id=$1",
+            )
+            .bind(fid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             let Some(price) = price else {
                 return Err(DomainError::NotFound(fid as i64));
             };
@@ -1136,7 +1163,11 @@ fn check_gomoku_win(cells: &[char], pos: usize, color: char) -> bool {
             loop {
                 let rr = r as isize + dr * step * sign;
                 let cc = c as isize + dc * step * sign;
-                if rr < 0 || rr >= SIZE as isize || cc < 0 || cc >= SIZE as isize {
+                if rr < 0
+                    || rr >= SIZE as isize
+                    || cc < 0
+                    || cc >= SIZE as isize
+                {
                     break;
                 }
                 if cells[rr as usize * SIZE + cc as usize] != color {
@@ -1363,7 +1394,8 @@ async fn fun_item_create(
     .map_err(|e| DomainError::Internal(e.into()))?;
     if let Some(t) = recent {
         if chrono::Utc::now() - t < chrono::Duration::hours(24)
-            && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE).await
+            && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE)
+                .await
         {
             return Err(DomainError::Validation(
                 "最新一条发布不足 24 小时，请稍后再来".into(),
@@ -1390,15 +1422,19 @@ async fn fun_item_update(
     body: web::Json<FunItemBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let owner: Option<i64> = sqlx::query_scalar("SELECT user_id FROM fun_items WHERE id = $1")
-        .bind(*path)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let owner: Option<i64> =
+        sqlx::query_scalar("SELECT user_id FROM fun_items WHERE id = $1")
+            .bind(*path)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(owner) = owner else {
         return Err(DomainError::NotFound(*path as i64));
     };
-    if owner != auth.id && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE).await {
+    if owner != auth.id
+        && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE)
+            .await
+    {
         return Err(DomainError::Forbidden);
     }
     sqlx::query("UPDATE fun_items SET title = $2, body = $3 WHERE id = $1")
@@ -1425,15 +1461,17 @@ async fn fun_item_set_status(
     body: web::Json<FunStatusBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let allowed = ["normal", "dull", "notfunny", "funny", "veryfunny", "banned"];
+    let allowed =
+        ["normal", "dull", "notfunny", "funny", "veryfunny", "banned"];
     if !allowed.contains(&body.status.as_str()) {
         return Err(DomainError::Validation("非法状态".into()));
     }
-    let owner: Option<i64> = sqlx::query_scalar("SELECT user_id FROM fun_items WHERE id = $1")
-        .bind(*path)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let owner: Option<i64> =
+        sqlx::query_scalar("SELECT user_id FROM fun_items WHERE id = $1")
+            .bind(*path)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(owner) = owner else {
         return Err(DomainError::NotFound(*path as i64));
     };
@@ -1461,15 +1499,19 @@ async fn fun_item_delete(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let owner: Option<i64> = sqlx::query_scalar("SELECT user_id FROM fun_items WHERE id = $1")
-        .bind(*path)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let owner: Option<i64> =
+        sqlx::query_scalar("SELECT user_id FROM fun_items WHERE id = $1")
+            .bind(*path)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(owner) = owner else {
         return Err(DomainError::NotFound(*path as i64));
     };
-    if owner != auth.id && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE).await {
+    if owner != auth.id
+        && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE)
+            .await
+    {
         return Err(DomainError::Forbidden);
     }
     sqlx::query("DELETE FROM fun_items WHERE id = $1")
@@ -1550,7 +1592,8 @@ async fn link_update(
     body: web::Json<LinkAdminBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE)
+        .await?;
     if let Some(st) = &body.status {
         if !["pending", "active", "hidden"].contains(&st.as_str()) {
             return Err(DomainError::Validation("非法状态".into()));
@@ -1585,7 +1628,8 @@ async fn link_delete(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE)
+        .await?;
     sqlx::query("DELETE FROM friend_links WHERE id = $1")
         .bind(*path)
         .execute(&state.repo.db)
@@ -1619,7 +1663,8 @@ async fn link_admin_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE)
+        .await?;
     let rows: Vec<LinkRow> = sqlx::query_as(
         "SELECT id, name, url, title, status, applied_by, admin_name, email, reason \
          FROM friend_links ORDER BY (status = 'pending') DESC, sort, id",
@@ -1684,7 +1729,11 @@ async fn home_sections(
     let month_start = chrono::Datelike::with_day(&today, 1).unwrap_or(today);
     let days_in_month = {
         let next_month = if chrono::Datelike::month(&month_start) == 12 {
-            chrono::NaiveDate::from_ymd_opt(chrono::Datelike::year(&month_start) + 1, 1, 1)
+            chrono::NaiveDate::from_ymd_opt(
+                chrono::Datelike::year(&month_start) + 1,
+                1,
+                1,
+            )
         } else {
             chrono::NaiveDate::from_ymd_opt(
                 chrono::Datelike::year(&month_start),
@@ -1693,7 +1742,8 @@ async fn home_sections(
             )
         }
         .unwrap_or(today);
-        (next_month.pred_opt().unwrap_or(today) - month_start).num_days() as u32 + 1
+        (next_month.pred_opt().unwrap_or(today) - month_start).num_days() as u32
+            + 1
     };
     let calendar: Vec<serde_json::Value> = (0..days_in_month)
         .map(|i| {
@@ -1752,16 +1802,16 @@ async fn home_sections(
     let total30: i64 = daily.iter().map(|(_, o, f)| o + f).sum();
 
     // 站点数据（home-site-data 三列）
-    let (users, torrents_n, peers, seeders, leechers, warned, banned, unverified): (
-        i64,
-        i64,
-        i64,
-        i64,
-        i64,
-        i64,
-        i64,
-        i64,
-    ) = sqlx::query_as(
+    let (
+        users,
+        torrents_n,
+        peers,
+        seeders,
+        leechers,
+        warned,
+        banned,
+        unverified,
+    ): (i64, i64, i64, i64, i64, i64, i64, i64) = sqlx::query_as(
         "SELECT \
             (SELECT count(*) FROM users WHERE status < 2), \
             (SELECT count(*) FROM torrents WHERE approval_status = 1), \
@@ -1797,11 +1847,12 @@ async fn home_sections(
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 友情链接
-    let links: Vec<(String, String, Option<String>)> =
-        sqlx::query_as("SELECT name, url, title FROM friend_links ORDER BY sort")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let links: Vec<(String, String, Option<String>)> = sqlx::query_as(
+        "SELECT name, url, title FROM friend_links ORDER BY sort",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
 
     Ok(ok(serde_json::json!({
         "news": news_json,
@@ -1834,12 +1885,14 @@ async fn home_sections(
 
 /// 读取首页排版配置（0089）：返回原文；库错误/缺行回空串（首页永远可渲染）
 pub async fn home_layout_raw(db: &sqlx::PgPool) -> String {
-    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'home_layout'")
-        .fetch_optional(db)
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_default()
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'home_layout'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_default()
 }
 
 /// 首页板块键白名单（0089）：与前端 HomeSections 渲染分支一一对应
@@ -1872,12 +1925,18 @@ async fn admin_home_layout_put(
     body: web::Json<Vec<HomeLayoutItem>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     if body.len() > 20 {
         return Err(DomainError::Validation("板块数量至多 20".into()));
     }
     let mut norm: Vec<serde_json::Value> = Vec::new();
-    let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let mut seen: std::collections::HashSet<&str> =
+        std::collections::HashSet::new();
     for it in body.iter() {
         if !HOME_SECTION_KEYS.contains(&it.key.as_str()) {
             return Err(DomainError::Validation(format!(
@@ -1887,7 +1946,10 @@ async fn admin_home_layout_put(
             )));
         }
         if !seen.insert(&it.key) {
-            return Err(DomainError::Validation(format!("板块 {} 重复", it.key)));
+            return Err(DomainError::Validation(format!(
+                "板块 {} 重复",
+                it.key
+            )));
         }
         if ![0, 1, 2, 3].contains(&it.span) {
             return Err(DomainError::Validation(
@@ -1896,7 +1958,8 @@ async fn admin_home_layout_put(
         }
         norm.push(serde_json::json!({ "key": it.key, "span": it.span }));
     }
-    let value = serde_json::to_string(&norm).map_err(|e| DomainError::Internal(e.into()))?;
+    let value = serde_json::to_string(&norm)
+        .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
         "INSERT INTO site_settings (name, value, descr, grp) VALUES ('home_layout', $1, '首页板块排版（JSON 数组，空 = 默认布局）', 'main')          ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
     )

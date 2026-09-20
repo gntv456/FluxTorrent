@@ -19,7 +19,8 @@ use crate::state::AppState;
 pub static METRIC_REQUESTS: AtomicU64 = AtomicU64::new(0);
 pub static METRIC_REQUESTS_5XX: AtomicU64 = AtomicU64::new(0);
 /// RED 之 Duration（U5 §12.6）：毫秒桶直方图（50/100/250/500/1000/2500/5000/10000+）
-static LATENCY_BUCKETS_MS: [u64; 8] = [50, 100, 250, 500, 1000, 2500, 5000, 10000];
+static LATENCY_BUCKETS_MS: [u64; 8] =
+    [50, 100, 250, 500, 1000, 2500, 5000, 10000];
 static METRIC_LATENCY: [AtomicU64; 8] = [
     AtomicU64::new(0),
     AtomicU64::new(0),
@@ -58,7 +59,10 @@ pub async fn metrics_mw(
 }
 
 #[get("/metrics")]
-async fn api_metrics(req: HttpRequest, state: web::Data<std::sync::Arc<AppState>>) -> HttpResponse {
+async fn api_metrics(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> HttpResponse {
     // 与 tracker /metrics 同款门禁：未配 token 时 404 不暴露。
     // 统一读 ANN_METRICS_TOKEN（compose/.env.example 一直按此名注入两处），
     // 此前误读 API_METRICS_TOKEN 导致 compose 配了 token 后 api /metrics 仍 404。
@@ -140,7 +144,12 @@ async fn spark_flow_daily(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_VIEW,
+    )
+    .await?;
     let rows: Vec<(chrono::NaiveDate, i64, i64, i64)> = sqlx::query_as(
         "SELECT day, minted::bigint, burned::bigint, net::bigint FROM v_spark_flow_daily",
     )
@@ -204,7 +213,12 @@ async fn review_postpone(
     body: web::Json<PostponeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_MANAGE,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE torrents SET approval_status = 4, deny_note = COALESCE(NULLIF($2,''), deny_note) \
          WHERE id = $1 AND approval_status IN (0, 2)",
@@ -216,7 +230,9 @@ async fn review_postpone(
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if n == 0 {
-        return Err(DomainError::Validation("种子不存在或不在可暂缓状态".into()));
+        return Err(DomainError::Validation(
+            "种子不存在或不在可暂缓状态".into(),
+        ));
     }
     state
         .repo
@@ -235,7 +251,12 @@ async fn review_resume(
     body: web::Json<PostponeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_MANAGE,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE torrents SET approval_status = 0, deny_note = NULL WHERE id = $1 AND approval_status = 4",
     )
@@ -266,7 +287,8 @@ async fn rule_revisions(
     path: web::Path<i32>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE)
+        .await?;
     let rows: Vec<(
         i64,
         i32,

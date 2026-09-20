@@ -26,7 +26,8 @@ pub struct AppState {
 
 impl AppState {
     pub async fn new(cfg: AppConfig) -> anyhow::Result<Self> {
-        let jwt = crate::auth::JwtSigner::from_config(&cfg.jwt_alg, &cfg.jwt_secret)?;
+        let jwt =
+            crate::auth::JwtSigner::from_config(&cfg.jwt_alg, &cfg.jwt_secret)?;
         let db = sqlx::postgres::PgPoolOptions::new()
             .max_connections(cfg.db_pool_size as u32)
             .connect(&cfg.database_url)
@@ -36,10 +37,13 @@ impl AppState {
         // 10s 超时把「连不上」变成启动失败，避免带病挂活。
         let redis = tokio::time::timeout(
             std::time::Duration::from_secs(10),
-            redis::Client::open(cfg.redis_url.as_str())?.get_connection_manager(),
+            redis::Client::open(cfg.redis_url.as_str())?
+                .get_connection_manager(),
         )
         .await
-        .map_err(|_| anyhow::anyhow!("连接 Redis 超时（10s）：{}", cfg.redis_url))??;
+        .map_err(|_| {
+            anyhow::anyhow!("连接 Redis 超时（10s）：{}", cfg.redis_url)
+        })??;
         Ok(Self {
             cfg,
             repo: Repo::new(db),

@@ -66,13 +66,16 @@ async fn totp_setup(
     // 20 字节随机 → base32
     let secret: [u8; 20] = rand::random();
     let b32 = BASE32_NOPAD.encode(&secret);
-    sqlx::query("UPDATE users SET totp_secret = $2, totp_enabled = FALSE WHERE id = $1")
-        .bind(auth.id)
-        .bind(&b32)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let site = std::env::var("PUBLIC_SITE_NAME").unwrap_or_else(|_| "FluxTorrent".into());
+    sqlx::query(
+        "UPDATE users SET totp_secret = $2, totp_enabled = FALSE WHERE id = $1",
+    )
+    .bind(auth.id)
+    .bind(&b32)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let site = std::env::var("PUBLIC_SITE_NAME")
+        .unwrap_or_else(|_| "FluxTorrent".into());
     Ok(ok(serde_json::json!({
         "secret": b32,
         "otpauth_uri": format!("otpauth://totp/{site}:{}?secret={b32}&issuer={site}", auth.id),
@@ -100,7 +103,9 @@ async fn totp_enable(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(b32) = secret else {
-        return Err(DomainError::Validation("请先生成 2FA 密钥（setup）".into()));
+        return Err(DomainError::Validation(
+            "请先生成 2FA 密钥（setup）".into(),
+        ));
     };
     let raw = BASE32_NOPAD
         .decode(b32.as_bytes())
@@ -129,12 +134,13 @@ async fn totp_disable(
     body: web::Json<DisableReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let secret: Option<String> =
-        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = $1 AND totp_enabled")
-            .bind(auth.id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let secret: Option<String> = sqlx::query_scalar(
+        "SELECT totp_secret FROM users WHERE id = $1 AND totp_enabled",
+    )
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(b32) = secret else {
         return Err(DomainError::Validation("2FA 未启用".into()));
     };
@@ -163,7 +169,12 @@ async fn admin_2fa_clear(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_RESETPASS).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_RESETPASS,
+    )
+    .await?;
     let uid = path.into_inner();
     // 等级护栏（与 admin_http 同口径）：操作者须严格高于目标用户
     {
@@ -207,19 +218,24 @@ async fn admin_2fa_clear(
 }
 
 /// 登录路径用：校验用户的 TOTP（login handler 在密码通过后调用）
-pub async fn login_totp_check(db: &sqlx::PgPool, user_id: i64, code: u32) -> DomainResult<()> {
-    let b32: Option<String> =
-        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = $1 AND totp_enabled")
-            .bind(user_id)
-            .fetch_optional(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+pub async fn login_totp_check(
+    db: &sqlx::PgPool,
+    user_id: i64,
+    code: u32,
+) -> DomainResult<()> {
+    let b32: Option<String> = sqlx::query_scalar(
+        "SELECT totp_secret FROM users WHERE id = $1 AND totp_enabled",
+    )
+    .bind(user_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     match b32 {
         None => Ok(()), // 未启用 2FA：直接过
         Some(b32) => {
-            let raw = BASE32_NOPAD
-                .decode(b32.as_bytes())
-                .map_err(|e| DomainError::Internal(anyhow::anyhow!("totp decode: {e}")))?;
+            let raw = BASE32_NOPAD.decode(b32.as_bytes()).map_err(|e| {
+                DomainError::Internal(anyhow::anyhow!("totp decode: {e}"))
+            })?;
             if totp_verify(&raw, code) {
                 Ok(())
             } else {
@@ -267,8 +283,12 @@ async fn tg_bind(
     body: web::Json<TgBindReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if !body.chat_id.chars().all(|c| c.is_ascii_digit()) || body.chat_id.len() < 5 {
-        return Err(DomainError::Validation("Telegram chat_id 应为数字".into()));
+    if !body.chat_id.chars().all(|c| c.is_ascii_digit())
+        || body.chat_id.len() < 5
+    {
+        return Err(DomainError::Validation(
+            "Telegram chat_id 应为数字".into(),
+        ));
     }
     sqlx::query("UPDATE users SET tg_chat_id = $2 WHERE id = $1")
         .bind(auth.id)

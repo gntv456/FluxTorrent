@@ -196,7 +196,8 @@ fn decode_client_key(p256dh_b64: &str) -> anyhow::Result<PublicKey> {
     let raw = b64url()
         .decode(p256dh_b64)
         .map_err(|e| anyhow::anyhow!("base64: {e}"))?;
-    let point = EncodedPoint::from_bytes(raw).map_err(|e| anyhow::anyhow!("sec1 point: {e}"))?;
+    let point = EncodedPoint::from_bytes(raw)
+        .map_err(|e| anyhow::anyhow!("sec1 point: {e}"))?;
     PublicKey::from_encoded_point(&point)
         .into_option()
         .ok_or_else(|| anyhow::anyhow!("非 P-256 公钥"))
@@ -221,7 +222,8 @@ async fn deliver(
     let Some(vapid) = vapid else {
         return PushResult::ServiceError; // 未配置 VAPID：无法投递（订阅管理不受影响）
     };
-    let payload = serde_json::json!({ "title": title, "body": body }).to_string();
+    let payload =
+        serde_json::json!({ "title": title, "body": body }).to_string();
     let body = match encrypt_payload(&payload, p256dh_b64, auth_b64) {
         Ok(b) => b,
         Err(e) => {
@@ -251,7 +253,9 @@ async fn deliver(
         .await;
     match res {
         Ok(r) if r.status().is_success() => PushResult::Delivered,
-        Ok(r) if [404u16, 410].contains(&r.status().as_u16()) => PushResult::Gone,
+        Ok(r) if [404u16, 410].contains(&r.status().as_u16()) => {
+            PushResult::Gone
+        }
         Ok(r) => {
             tracing::warn!(code = r.status().as_u16(), "push service error");
             PushResult::ServiceError
@@ -297,7 +301,8 @@ fn vapid_header(keys: &VapidKeys, endpoint: &str) -> anyhow::Result<String> {
     let claims_b64 = b64url().encode(claims.to_string());
     let signing_input = format!("{header}.{claims_b64}");
     let signing_key = SigningKey::from(&keys.secret);
-    let sig: p256::ecdsa::Signature = signing_key.sign(signing_input.as_bytes());
+    let sig: p256::ecdsa::Signature =
+        signing_key.sign(signing_input.as_bytes());
     let sig_b64 = b64url().encode(sig.to_bytes());
     Ok(format!(
         "vapid t={signing_input}.{sig_b64}, k={}",
@@ -306,7 +311,11 @@ fn vapid_header(keys: &VapidKeys, endpoint: &str) -> anyhow::Result<String> {
 }
 
 /// RFC 8291 §4：ECDH on P-256 + HKDF → CEK/Nonce → aes128gcm 单块加密 + crams 头。
-fn encrypt_payload(plaintext: &str, p256dh_b64: &str, auth_b64: &str) -> anyhow::Result<Vec<u8>> {
+fn encrypt_payload(
+    plaintext: &str,
+    p256dh_b64: &str,
+    auth_b64: &str,
+) -> anyhow::Result<Vec<u8>> {
     let client_pub = decode_client_key(p256dh_b64)?;
     let auth_secret = b64url()
         .decode(auth_b64)

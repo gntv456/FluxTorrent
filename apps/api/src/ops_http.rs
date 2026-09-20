@@ -64,8 +64,8 @@ pub const JIXIAO_METRIC_KEYS: &[&str] = &[
     "seed_size",         // 当前做种体积（字节，现值口径）
     "seed_size_tb",      // 当前做种体积（TB，现值口径）
     "seed_hours",        // 当月做种时长（小时，基线差值）
-    "avg_seed_hours",    // 平均做种时长（小时/个：时长差值 ÷ 期内活跃种子数，NP 平均做种口径）
-    "seed_days",         // 当月有做种活动的天数（近似：snatches.last_seen_at 按天去重）
+    "avg_seed_hours", // 平均做种时长（小时/个：时长差值 ÷ 期内活跃种子数，NP 平均做种口径）
+    "seed_days", // 当月有做种活动的天数（近似：snatches.last_seen_at 按天去重）
     "seed_points_delta", // 做种积分增量（1 积分 = 1 小时做种，与 exam 引擎 task_jobs 同源口径）
     "spark_delta",       // 火花增量（当月 spark_ledger 正向流水合计）
     "ops",               // 当月操作数（audit_log 按月）
@@ -98,7 +98,9 @@ pub fn jixiao_prev_period(period: &str) -> Option<String> {
 }
 
 #[get("/jixiao/types")]
-async fn jixiao_types(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn jixiao_types(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let rows = sqlx::query_as::<_, JixiaoTypeRow>(
         "SELECT id, name, base_pay, metrics, min_requirements, description FROM jixiao_types ORDER BY id",
     )
@@ -110,14 +112,16 @@ async fn jixiao_types(state: web::Data<std::sync::Arc<AppState>>) -> DomainResul
 
 /// 读取整数型站点设置（缺省取 dft）
 async fn jixiao_setting_i64(db: &sqlx::PgPool, name: &str, dft: i64) -> i64 {
-    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
-        .bind(name)
-        .fetch_optional(db)
-        .await
-        .ok()
-        .flatten()
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(dft)
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = $1",
+    )
+    .bind(name)
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(dft)
 }
 
 /// 达标加成：每 N 个达标月 +P%。
@@ -131,27 +135,32 @@ pub async fn jixiao_bonus(
     qualified_months: i64,
 ) -> i64 {
     // 岗位级配置（表单写入；旧数据 bonus_rules='{}' 视为未配置）
-    let rules: Option<serde_json::Value> =
-        sqlx::query_scalar("SELECT bonus_rules FROM jixiao_types WHERE id = $1")
-            .bind(type_id)
-            .fetch_optional(db)
-            .await
-            .ok()
-            .flatten();
-    let (step, pct) = match rules.as_ref().and_then(|r| r.as_object()).map(|r| {
-        (
-            r.get("months_per_step").and_then(|v| v.as_i64()),
-            r.get("percent_per_step").and_then(|v| v.as_i64()),
-        )
-    }) {
-        Some((Some(step), Some(pct))) if step > 0 && pct >= 0 => (step, pct),
-        _ => (
-            jixiao_setting_i64(db, "jixiao_bonus_months_per_step", 3)
-                .await
-                .max(1),
-            jixiao_setting_i64(db, "jixiao_bonus_percent_per_step", 10).await,
-        ),
-    };
+    let rules: Option<serde_json::Value> = sqlx::query_scalar(
+        "SELECT bonus_rules FROM jixiao_types WHERE id = $1",
+    )
+    .bind(type_id)
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten();
+    let (step, pct) =
+        match rules.as_ref().and_then(|r| r.as_object()).map(|r| {
+            (
+                r.get("months_per_step").and_then(|v| v.as_i64()),
+                r.get("percent_per_step").and_then(|v| v.as_i64()),
+            )
+        }) {
+            Some((Some(step), Some(pct))) if step > 0 && pct >= 0 => {
+                (step, pct)
+            }
+            _ => (
+                jixiao_setting_i64(db, "jixiao_bonus_months_per_step", 3)
+                    .await
+                    .max(1),
+                jixiao_setting_i64(db, "jixiao_bonus_percent_per_step", 10)
+                    .await,
+            ),
+        };
     base_pay * pct / 100 * (qualified_months / step)
 }
 
@@ -177,7 +186,8 @@ async fn jixiao_me(
             .parse::<i64>()
             .unwrap_or(99)
     };
-    let window = jixiao_setting_i64(&state.repo.db, "jixiao_claim_window_days", 7).await;
+    let window =
+        jixiao_setting_i64(&state.repo.db, "jixiao_claim_window_days", 7).await;
     let claimable_prev = days_into_month <= window;
 
     // admin 分配行 = 本月岗位登记（source='admin'）；工资领取行 source 为空
@@ -202,7 +212,12 @@ async fn jixiao_me(
     let metrics = compute_metrics(&state.repo.db, auth.id, &period).await?;
     // 上期补领行的指标要按上期算（窗口内通常与本期差异很小，但口径必须对）
     let prev_metrics = if claimable_prev && prev_period.is_some() {
-        compute_metrics(&state.repo.db, auth.id, prev_period.as_deref().unwrap()).await?
+        compute_metrics(
+            &state.repo.db,
+            auth.id,
+            prev_period.as_deref().unwrap(),
+        )
+        .await?
     } else {
         serde_json::Value::Null
     };
@@ -456,10 +471,12 @@ fn days_after_period_end(period: &str) -> i64 {
     let month_end = chrono::FixedOffset::east_opt(8 * 3600)
         .and_then(|tz| tz.with_ymd_and_hms(ny, nm, 1, 0, 0, 0).single())
         .unwrap_or_else(|| {
-            chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap())
+            chrono::Utc::now().with_timezone(
+                &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
+            )
         });
-    let now_cst =
-        chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap());
+    let now_cst = chrono::Utc::now()
+        .with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap());
     (now_cst - month_end).num_days()
 }
 
@@ -480,7 +497,9 @@ async fn jixiao_claim(
                 "只能领取本期或上一期的绩效工资".into(),
             ));
         }
-        let window = jixiao_setting_i64(&state.repo.db, "jixiao_claim_window_days", 7).await;
+        let window =
+            jixiao_setting_i64(&state.repo.db, "jixiao_claim_window_days", 7)
+                .await;
         let elapsed = days_after_period_end(&period);
         if elapsed < 0 {
             return Err(DomainError::Validation("该期尚未结束".into()));
@@ -565,7 +584,9 @@ async fn jixiao_claim(
     .await
     .unwrap_or(0)
         + 1;
-    let bonus = jixiao_bonus(&state.repo.db, body.type_id, base_pay, qualified_months).await;
+    let bonus =
+        jixiao_bonus(&state.repo.db, body.type_id, base_pay, qualified_months)
+            .await;
     let total = base_pay + bonus;
 
     // 单行设计（0106 修正）：登记与发放是同一行的状态流转——
@@ -721,14 +742,15 @@ async fn task_overview(
         .collect();
 
     // 最新动态（领取流）
-    let feed: Vec<(String, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
-        "SELECT u.username, t.name, now() FROM task_claims c \
+    let feed: Vec<(String, String, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
+            "SELECT u.username, t.name, now() FROM task_claims c \
          JOIN users u ON u.id = c.user_id JOIN tasks t ON t.id = c.task_id \
          ORDER BY c.id DESC LIMIT 10",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let feed_json: Vec<serde_json::Value> = feed
         .iter()
         .map(|(u, name, ts)| serde_json::json!({ "user": u, "task": name, "at": ts.to_rfc3339() }))
@@ -800,7 +822,8 @@ async fn task_overview(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (cur_up, cur_seed, cur_uploads, cur_subtitles) = stats.unwrap_or((0, 0, 0, 0));
+    let (cur_up, cur_seed, cur_uploads, cur_subtitles) =
+        stats.unwrap_or((0, 0, 0, 0));
 
     let mine_json: Vec<serde_json::Value> = mine
         .iter()
@@ -851,7 +874,8 @@ async fn task_claim(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((in_window, claim_limit, fee, target_class, metric_json)) = task else {
+    let Some((in_window, claim_limit, fee, target_class, metric_json)) = task
+    else {
         return Err(DomainError::NotFound(body.task_id));
     };
     if !in_window {
@@ -862,16 +886,19 @@ async fn task_claim(
         return Err(DomainError::Validation("该任务已停止领取".into()));
     }
     // 目标等级门槛（此前缺失校验：低等级可领高等级任务）
-    let user_class: Option<i32> = sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
-        .bind(auth.id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let user_class: Option<i32> =
+        sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(user_class) = user_class else {
         return Err(DomainError::NotFound(auth.id));
     };
     if user_class < target_class {
-        return Err(DomainError::Validation("等级未达到该任务的领取门槛".into()));
+        return Err(DomainError::Validation(
+            "等级未达到该任务的领取门槛".into(),
+        ));
     }
     // 指标有效性：metric 至少含一个已知键；否则认领会悬挂到超时被判失败并扣罚金
     const KNOWN_METRIC_KEYS: [&str; 6] = [
@@ -938,11 +965,13 @@ async fn task_claim(
         )
         .await
         {
-            let _ = sqlx::query("DELETE FROM task_claims WHERE id = $1 AND user_id = $2")
-                .bind(claim_id)
-                .bind(auth.id)
-                .execute(&state.repo.db)
-                .await;
+            let _ = sqlx::query(
+                "DELETE FROM task_claims WHERE id = $1 AND user_id = $2",
+            )
+            .bind(claim_id)
+            .bind(auth.id)
+            .execute(&state.repo.db)
+            .await;
             return Err(e);
         }
     }
@@ -1011,24 +1040,25 @@ async fn my_exams(
     let out: Vec<serde_json::Value> = rows
         .iter()
         .map(|r| {
-            let current = stats.map(|(uploaded, seed_secs, uploads, subtitles)| {
-                // 累计口径（tier 任务）：基线视为 0，直接报现值；否则报增量
-                let (up, seed, ups) = if r.tier.is_some() {
-                    (uploaded, seed_secs, uploads)
-                } else {
-                    (
-                        uploaded - r.base_uploaded,
-                        seed_secs - r.base_seed_seconds,
-                        uploads - r.base_uploads,
-                    )
-                };
-                serde_json::json!({
-                    "uploaded": up,
-                    "seed_seconds": seed,
-                    "uploads": ups,
-                    "subtitles": subtitles,
-                })
-            });
+            let current =
+                stats.map(|(uploaded, seed_secs, uploads, subtitles)| {
+                    // 累计口径（tier 任务）：基线视为 0，直接报现值；否则报增量
+                    let (up, seed, ups) = if r.tier.is_some() {
+                        (uploaded, seed_secs, uploads)
+                    } else {
+                        (
+                            uploaded - r.base_uploaded,
+                            seed_secs - r.base_seed_seconds,
+                            uploads - r.base_uploads,
+                        )
+                    };
+                    serde_json::json!({
+                        "uploaded": up,
+                        "seed_seconds": seed,
+                        "uploads": ups,
+                        "subtitles": subtitles,
+                    })
+                });
             serde_json::json!({
                 "task_id": r.task_id,
                 "name": r.name,
@@ -1109,7 +1139,8 @@ async fn preserve_list(
     // 审计修复（P1）：scope/status 筛选此前声明即弃（#[allow(dead_code)]），前端表单
     // 提交被静默忽略。接线：scope=official/general 过滤官种位；status 按认领/延续
     // 状态过滤（current=全部在保、active=已被认领延续、grace=移出宽限中、expired=已移出）。
-    let scope_ok = matches!(q.scope.as_deref(), Some("official") | Some("general"));
+    let scope_ok =
+        matches!(q.scope.as_deref(), Some("official") | Some("general"));
     let official_only = q.scope.as_deref() == Some("official");
     let general_only = q.scope.as_deref() == Some("general");
     // status=expired 需要查已移出行——主查询固定 exited_at IS NULL，expired 单独走分支
@@ -1251,7 +1282,9 @@ async fn preserve_claim(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if updated.rows_affected() == 0 {
-        return Err(DomainError::Validation("该种子已被认领或不在保种区".into()));
+        return Err(DomainError::Validation(
+            "该种子已被认领或不在保种区".into(),
+        ));
     }
     state
         .repo
@@ -1269,7 +1302,12 @@ async fn plugins_overview(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::PLUGINS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::PLUGINS_MANAGE,
+    )
+    .await?;
     Ok(ok(serde_json::json!({
         "plugins": state.plugins.list(),
         "hooks": ["on_user_login", "on_torrent_upload", "on_seeding_milestone"],
@@ -1319,13 +1357,14 @@ async fn resurrection_claim(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     // 领取门槛：不能救自己的种（U3D 口径——自己的死种自己救没有增量价值）
-    let owner: i64 =
-        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1 AND approval_status = 1")
-            .bind(body.torrent_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .ok_or(DomainError::NotFound(body.torrent_id))?;
+    let owner: i64 = sqlx::query_scalar(
+        "SELECT owner_id FROM torrents WHERE id = $1 AND approval_status = 1",
+    )
+    .bind(body.torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .ok_or(DomainError::NotFound(body.torrent_id))?;
     if owner == auth.id {
         return Err(DomainError::Validation("不能领取自己发布的种子".into()));
     }
@@ -1349,7 +1388,9 @@ async fn resurrection_claim(
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if inserted == 0 {
-        return Err(DomainError::Validation("该种子已有进行中的复活任务".into()));
+        return Err(DomainError::Validation(
+            "该种子已有进行中的复活任务".into(),
+        ));
     }
     state
         .repo

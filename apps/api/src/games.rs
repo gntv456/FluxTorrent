@@ -52,7 +52,13 @@ impl ScratchOdds {
     /// - EV 复算 ≥ 1 → 整体回落缺省（P2 运行时防线）：设置键是管理员可写参数，
     ///   单测只锁死 DEFAULT 常量。余数档设计可被配置放大为增发开关——
     ///   如 (0,0,0,99,·) → two=99%/ten=1%，EV = 0.99×2 + 0.01×10 = 2.08。
-    pub fn from_parts(empty: i64, half: i64, one: i64, two: i64, ten: i64) -> ScratchOdds {
+    pub fn from_parts(
+        empty: i64,
+        half: i64,
+        one: i64,
+        two: i64,
+        ten: i64,
+    ) -> ScratchOdds {
         let (e, h, o, t) = (empty.max(0), half.max(0), one.max(0), two.max(0));
         let sum4 = e + h + o + t;
         if sum4 >= 100 {
@@ -140,7 +146,11 @@ pub fn guess_play(bet: i64, guess: Guess) -> DiceOutcome {
     guess_play_with(bet, guess, BIGSMALL_WIN_MULT_PERMILLE)
 }
 
-pub fn guess_play_with(bet: i64, guess: Guess, win_mult_permille: i64) -> DiceOutcome {
+pub fn guess_play_with(
+    bet: i64,
+    guess: Guess,
+    win_mult_permille: i64,
+) -> DiceOutcome {
     let number: u32 = rand::thread_rng().gen_range(1..=100);
     let number_region = if number <= 49 {
         Guess::Small
@@ -402,13 +412,20 @@ mod tests {
         assert!(ev(&bad) < 1.0, "越界配置未回落，EV={}", ev(&bad));
         // 10x 档留 0（或与前四档合计不为 100）→ 按余数推导，总量恒 100
         let auto = ScratchOdds::from_parts(50, 30, 15, 3, 0);
-        assert_eq!(auto.empty + auto.half + auto.one + auto.two + auto.ten, 100);
+        assert_eq!(
+            auto.empty + auto.half + auto.one + auto.two + auto.ten,
+            100
+        );
         assert_eq!(auto.ten, 2, "余数应为 2");
         // 站长显式配置 10x 且合计正好 100 → 采用配置值
         let explicit = ScratchOdds::from_parts(50, 30, 15, 3, 2);
         assert_eq!(explicit.ten, 2);
         assert_eq!(
-            explicit.empty + explicit.half + explicit.one + explicit.two + explicit.ten,
+            explicit.empty
+                + explicit.half
+                + explicit.one
+                + explicit.two
+                + explicit.ten,
             100
         );
     }

@@ -67,7 +67,8 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
             continue;
         }
         // 年化 → 日息，向下取整防超发；与 maturity_interest 全期口径一致
-        let interest = ((amount as f64) * annual_rate * (days as f64) / 365.0).floor() as i64;
+        let interest = ((amount as f64) * annual_rate * (days as f64) / 365.0)
+            .floor() as i64;
         let mut tx = db.begin().await?;
         let updated = sqlx::query(
             "UPDATE bank_deposits SET paid_interest = paid_interest + $2, last_interest_date = $3 \
@@ -92,11 +93,12 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
             .fetch_one(&mut *tx)
             .await?;
             if !exists {
-                let balance: i64 =
-                    sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-                        .bind(user_id)
-                        .fetch_one(&mut *tx)
-                        .await?;
+                let balance: i64 = sqlx::query_scalar(
+                    "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+                )
+                .bind(user_id)
+                .fetch_one(&mut *tx)
+                .await?;
                 sqlx::query(
                     "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
                      VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'bank_fixed_interest', 'bank', $3, $4, $5)",
@@ -253,11 +255,12 @@ pub async fn bank_auto_deduct(
         // 锁内重读贷款状态与剩余本金（P1 与手动还款并发）：外层 SELECT 是事务外快照，
         // 用户并发 loan_repay 结清后仍按陈旧 remaining 扣款且最后更新无 status 过滤
         // = 已结清贷款被再扣一次。status 非 active/defaulted 直接跳过本笔。
-        let (locked_remaining, locked_status): (i64, String) =
-            sqlx::query_as("SELECT remaining, status FROM bank_loans WHERE id = $1 FOR UPDATE")
-                .bind(loan_id)
-                .fetch_one(&mut *tx)
-                .await?;
+        let (locked_remaining, locked_status): (i64, String) = sqlx::query_as(
+            "SELECT remaining, status FROM bank_loans WHERE id = $1 FOR UPDATE",
+        )
+        .bind(loan_id)
+        .fetch_one(&mut *tx)
+        .await?;
         if locked_status != "active" && locked_status != "defaulted" {
             tx.rollback().await?;
             continue;
@@ -299,11 +302,12 @@ pub async fn bank_auto_deduct(
                 deducted += left;
             } else {
                 // 仅扣现有余额（balance_after 快照行锁口径）
-                let balance: i64 =
-                    sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-                        .bind(user_id)
-                        .fetch_one(&mut *tx)
-                        .await?;
+                let balance: i64 = sqlx::query_scalar(
+                    "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+                )
+                .bind(user_id)
+                .fetch_one(&mut *tx)
+                .await?;
                 let take = balance.min(left).max(0);
                 if take > 0 {
                     let exists: bool = sqlx::query_scalar(
@@ -406,11 +410,12 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
         .fetch_one(&mut *tx)
         .await?;
         if !exists {
-            let balance: i64 =
-                sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-                    .bind(user_id)
-                    .fetch_one(&mut *tx)
-                    .await?;
+            let balance: i64 = sqlx::query_scalar(
+                "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+            )
+            .bind(user_id)
+            .fetch_one(&mut *tx)
+            .await?;
             let payable = amount + final_interest;
             sqlx::query(
                 "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
@@ -465,7 +470,10 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
 /// 审计修复（去重失真）：subject 带贷款 id——旧标题全站同一字符串，NOT EXISTS 按
 /// 「该用户当日已有过任意一条到期提醒」去重，多笔贷款同时到期时只提醒第一笔。
 /// 改为 `...提醒 #{loan_id}` 且 NOT EXISTS 匹配同 subject 当日，每笔贷款各自去重。
-pub async fn bank_due_notify(db: &PgPool, days_before: i32) -> anyhow::Result<u64> {
+pub async fn bank_due_notify(
+    db: &PgPool,
+    days_before: i32,
+) -> anyhow::Result<u64> {
     let res = sqlx::query(
         r#"
         INSERT INTO messages (sender_id, receiver_id, subject, body)
@@ -492,12 +500,14 @@ pub async fn bank_due_notify(db: &PgPool, days_before: i32) -> anyhow::Result<u6
 /// 银行每日结算总入口（worker 调用）。写健康游标供前端展示结息状态。
 pub async fn bank_daily(db: &PgPool) {
     async fn setting(db: &PgPool, name: &str) -> Option<String> {
-        sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
-            .bind(name)
-            .fetch_optional(db)
-            .await
-            .ok()
-            .flatten()
+        sqlx::query_scalar::<_, String>(
+            "SELECT value FROM site_settings WHERE name = $1",
+        )
+        .bind(name)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
     }
     let deduct_days: i32 = setting(db, "bank_auto_deduct_days")
         .await

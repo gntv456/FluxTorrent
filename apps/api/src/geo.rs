@@ -7,11 +7,14 @@ use std::sync::OnceLock;
 
 use maxminddb::geoip2;
 
-static CITY_READER: OnceLock<Option<maxminddb::Reader<Vec<u8>>>> = OnceLock::new();
-static COUNTRY_READER: OnceLock<Option<maxminddb::Reader<Vec<u8>>>> = OnceLock::new();
+static CITY_READER: OnceLock<Option<maxminddb::Reader<Vec<u8>>>> =
+    OnceLock::new();
+static COUNTRY_READER: OnceLock<Option<maxminddb::Reader<Vec<u8>>>> =
+    OnceLock::new();
 
 fn resolve(variant: &str) -> Option<String> {
-    if let Ok(p) = std::env::var(format!("GEOIP_{}_DB", variant.to_uppercase())) {
+    if let Ok(p) = std::env::var(format!("GEOIP_{}_DB", variant.to_uppercase()))
+    {
         if !p.is_empty() {
             return Some(p);
         }
@@ -31,13 +34,19 @@ fn resolve(variant: &str) -> Option<String> {
 
 fn city_reader() -> Option<&'static maxminddb::Reader<Vec<u8>>> {
     CITY_READER
-        .get_or_init(|| resolve("city").and_then(|p| maxminddb::Reader::open_readfile(p).ok()))
+        .get_or_init(|| {
+            resolve("city")
+                .and_then(|p| maxminddb::Reader::open_readfile(p).ok())
+        })
         .as_ref()
 }
 
 fn country_reader() -> Option<&'static maxminddb::Reader<Vec<u8>>> {
     COUNTRY_READER
-        .get_or_init(|| resolve("country").and_then(|p| maxminddb::Reader::open_readfile(p).ok()))
+        .get_or_init(|| {
+            resolve("country")
+                .and_then(|p| maxminddb::Reader::open_readfile(p).ok())
+        })
         .as_ref()
 }
 
@@ -61,7 +70,10 @@ pub fn lookup(ip: &str) -> (Option<String>, Option<String>, Option<String>) {
                 let country_iso = city.country.iso_code.map(str::to_string);
                 let country_name = name_of(city.country.names);
                 let city_name = name_of(city.city.names);
-                if country_iso.is_some() || country_name.is_some() || city_name.is_some() {
+                if country_iso.is_some()
+                    || country_name.is_some()
+                    || city_name.is_some()
+                {
                     return (country_iso, country_name, city_name);
                 }
             }
@@ -91,7 +103,9 @@ mod tests {
         // mmdb 是部署资产不入库（.gitignore；CI 无库）——无库时 lookup 全程走
         // (None,None,None) 分支，该测试只在库在位时才有意义：条件跳过而非误报失败。
         if city_reader().is_none() && country_reader().is_none() {
-            eprintln!("skip: GeoLite2 mmdb 不在位（部署资产，CI 环境正常缺省）");
+            eprintln!(
+                "skip: GeoLite2 mmdb 不在位（部署资产，CI 环境正常缺省）"
+            );
             return;
         }
         // 8.8.8.8（Google DNS）在 GeoLite2 中应命中美国
