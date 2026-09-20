@@ -202,12 +202,13 @@ async fn request_fulfill(
     body: web::Json<FulfillReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let r: Option<(i64, i64, i64, i16)> =
-        sqlx::query_as("SELECT id, user_id, bounty, status FROM requests WHERE id = $1")
-            .bind(body.request_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let r: Option<(i64, i64, i64, i16)> = sqlx::query_as(
+        "SELECT id, user_id, bounty, status FROM requests WHERE id = $1",
+    )
+    .bind(body.request_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((id, requester, bounty, status)) = r else {
         return Err(DomainError::NotFound(body.request_id));
     };
@@ -226,13 +227,14 @@ async fn request_fulfill(
     }
     // 应种人必须是该种子的发布者（旧站口径）：防止他人拿别人的 torrent_id
     // 完结求种、把悬赏转入自己账户（原实现任何登录用户可领任意求种的 bounty）
-    let owner_match: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND owner_id = $2)")
-            .bind(body.torrent_id)
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let owner_match: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND owner_id = $2)",
+    )
+    .bind(body.torrent_id)
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if !owner_match {
         return Err(DomainError::Validation(
             "只有该种子的发布者可以应种此求种".into(),
@@ -290,13 +292,14 @@ async fn offer_create(
     if !t_exists {
         return Err(DomainError::TorrentInvalid("种子不存在或未过审".into()));
     }
-    let id: i64 =
-        sqlx::query_scalar("INSERT INTO offers (user_id, torrent_id) VALUES ($1, $2) RETURNING id")
-            .bind(auth.id)
-            .bind(body.torrent_id)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO offers (user_id, torrent_id) VALUES ($1, $2) RETURNING id",
+    )
+    .bind(auth.id)
+    .bind(body.torrent_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -312,7 +315,9 @@ struct OfferRow {
 }
 
 #[get("/offers")]
-async fn offer_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn offer_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let rows = sqlx::query_as::<_, OfferRow>(
         "SELECT o.id, u.username, o.torrent_id, t.name AS torrent_name, o.votes, o.promoted, o.created_at \
          FROM offers o LEFT JOIN users u ON u.id = o.user_id \
@@ -339,12 +344,13 @@ async fn offer_vote(
     let auth = require_auth(&req, &state).await?;
     // 前置校验存在性与转正态（原实现对不存在 offer 先占位→扣款触发 FK 500；
     // 对已转正 offer 扣款→回滚→404，报错语义混乱且浪费一轮账务）
-    let offer_ok: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM offers WHERE id = $1 AND NOT promoted)")
-            .bind(body.offer_id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let offer_ok: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM offers WHERE id = $1 AND NOT promoted)",
+    )
+    .bind(body.offer_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if !offer_ok {
         return Err(DomainError::NotFound(body.offer_id));
     }
@@ -371,18 +377,22 @@ async fn offer_vote(
     )
     .await
     {
-        let _ = sqlx::query("DELETE FROM offer_votes WHERE offer_id = $1 AND user_id = $2")
-            .bind(body.offer_id)
-            .bind(auth.id)
-            .execute(&state.repo.db)
-            .await;
+        let _ = sqlx::query(
+            "DELETE FROM offer_votes WHERE offer_id = $1 AND user_id = $2",
+        )
+        .bind(body.offer_id)
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await;
         return Err(e);
     }
-    let updated = sqlx::query("UPDATE offers SET votes = votes + 1 WHERE id = $1 AND NOT promoted")
-        .bind(body.offer_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let updated = sqlx::query(
+        "UPDATE offers SET votes = votes + 1 WHERE id = $1 AND NOT promoted",
+    )
+    .bind(body.offer_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if updated.rows_affected() == 0 {
         return Err(DomainError::NotFound(body.offer_id));
     }
@@ -402,7 +412,12 @@ async fn offer_promote(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     // 候选转正为管理操作
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::OFFERS_PROMOTE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::OFFERS_PROMOTE,
+    )
+    .await?;
     let tid: Option<i64> = sqlx::query_scalar(
         "UPDATE offers SET promoted = true WHERE id = $1 AND NOT promoted RETURNING torrent_id",
     )
@@ -464,12 +479,10 @@ async fn subtitle_upload(
     } else {
         None
     };
-    let file_ref = if let Some(sha) = body
-        .file_sha
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()))
-    {
+    let file_ref = if let Some(sha) =
+        body.file_sha.as_deref().map(str::trim).filter(|s| {
+            s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
+        }) {
         // 校验附件归属：必须是本人在 attachments 上传过的文件（防冒用他人 sha）
         let owned: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM attachments WHERE sha256 = $1 AND user_id = $2)",
@@ -568,12 +581,13 @@ async fn subtitle_download(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let sid = path.into_inner();
-    let row: Option<(String, Option<i64>, String)> =
-        sqlx::query_as("SELECT file_ref, torrent_id, title FROM subtitles WHERE id = $1")
-            .bind(sid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(String, Option<i64>, String)> = sqlx::query_as(
+        "SELECT file_ref, torrent_id, title FROM subtitles WHERE id = $1",
+    )
+    .bind(sid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((file_ref, torrent_id, title)) = row else {
         return Err(DomainError::NotFound(sid));
     };
@@ -585,12 +599,13 @@ async fn subtitle_download(
     if let Some(sha) = file_ref.strip_prefix("attach://") {
         // 与 /attachments/{sha} 同源读取（本地卷内容寻址），但不经 302：直接回字节，
         // 便于客户端「点开即存文件」；文件名用字幕标题（清洗非法字符）。
-        let row: Option<(String, i64)> =
-            sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")
-                .bind(sha)
-                .fetch_optional(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+        let row: Option<(String, i64)> = sqlx::query_as(
+            "SELECT mime, size FROM attachments WHERE sha256 = $1",
+        )
+        .bind(sha)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
         let Some((mime, _size)) = row else {
             return Err(DomainError::NotFound(sid));
         };
@@ -635,14 +650,16 @@ async fn subtitle_download(
 /// 模块开关读取：module_{name} = 'no' 时模块关闭（site_type_packs 只是初始快照，
 /// 运行时权威在 site_settings；此前后端不设防，仅前端隐藏导航，直连 URL 仍全功能可用）。
 async fn module_disabled(db: &sqlx::PgPool, name: &str) -> bool {
-    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
-        .bind(format!("module_{name}"))
-        .fetch_optional(db)
-        .await
-        .ok()
-        .flatten()
-        .map(|v| v == "no")
-        .unwrap_or(false)
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = $1",
+    )
+    .bind(format!("module_{name}"))
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v == "no")
+    .unwrap_or(false)
 }
 
 // ============ M18 课本中心 ============
@@ -660,7 +677,9 @@ struct TextbookRow {
 }
 
 #[get("/textbooks")]
-async fn textbook_list(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn textbook_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     if module_disabled(&state.repo.db, "textbooks").await {
         return Err(DomainError::NotFound(0)); // 模块已关闭：与前端导航隐藏同口径
     }
@@ -694,12 +713,13 @@ async fn textbook_link(
     if module_disabled(&state.repo.db, "textbooks").await {
         return Err(DomainError::NotFound(0)); // 模块已关闭
     }
-    let updated = sqlx::query("UPDATE torrents SET textbook_id = $2 WHERE id = $1")
-        .bind(body.torrent_id)
-        .bind(body.textbook_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let updated =
+        sqlx::query("UPDATE torrents SET textbook_id = $2 WHERE id = $1")
+            .bind(body.torrent_id)
+            .bind(body.textbook_id)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if updated.rows_affected() == 0 {
         return Err(DomainError::NotFound(body.torrent_id));
     }
@@ -729,10 +749,16 @@ struct TopRow {
 /// 六个榜单统一口径：status<2、每榜 Top10；后宫时魔 = 做种时魔（与 worker 小时结算同式：
 /// 基础10 + 做种数×2 + 做种体积TB，捐赠者×2）
 #[get("/top/boards")]
-async fn top_boards(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn top_boards(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let sel = "row_number() OVER (ORDER BY val DESC) AS rank, u.username, c.name AS class_name, \
         u.title, u.avatar_url, f.css AS avatar_frame_css, f.image_url AS avatar_frame_image, x.val::float8 AS val";
-    let base = |agg: &str, joins: &str, extra_where: &str, group_by: &str| -> String {
+    let base = |agg: &str,
+                joins: &str,
+                extra_where: &str,
+                group_by: &str|
+     -> String {
         format!(
             "SELECT {sel} FROM ( \
                 SELECT u.id AS uid, {agg} AS val \
@@ -794,14 +820,16 @@ async fn top_boards(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<
 
 /// 价目/开关读取：promo_price.{kind}.{hours}（缺省价见迁移 0101；未定价的档位不可购买）
 async fn promo_price(db: &sqlx::PgPool, kind: &str, hours: i32) -> Option<i64> {
-    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
-        .bind(format!("promo_price.{kind}.{hours}"))
-        .fetch_optional(db)
-        .await
-        .ok()
-        .flatten()
-        .and_then(|v| v.trim().parse::<i64>().ok())
-        .filter(|&p| p > 0)
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = $1",
+    )
+    .bind(format!("promo_price.{kind}.{hours}"))
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.trim().parse::<i64>().ok())
+    .filter(|&p| p > 0)
 }
 
 #[derive(Deserialize)]
@@ -835,8 +863,11 @@ async fn promo_plans(
     for kind in ["sticky1", "sticky2", "free"] {
         let mut entries = Vec::new();
         for hours in [24i32, 72i32] {
-            if let Some(price) = promo_price(&state.repo.db, kind, hours).await {
-                entries.push(serde_json::json!({ "hours": hours, "price": price }));
+            if let Some(price) = promo_price(&state.repo.db, kind, hours).await
+            {
+                entries.push(
+                    serde_json::json!({ "hours": hours, "price": price }),
+                );
             }
         }
         plans.insert(kind.to_string(), entries.into());
@@ -886,12 +917,13 @@ async fn promo_buy(
         .map(|k| format!("promo:{}:{}", auth.id, k.trim()))
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
 
-    let owner: Option<i64> =
-        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1 AND approval_status = 1")
-            .bind(body.torrent_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let owner: Option<i64> = sqlx::query_scalar(
+        "SELECT owner_id FROM torrents WHERE id = $1 AND approval_status = 1",
+    )
+    .bind(body.torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(owner) = owner else {
         return Err(DomainError::NotFound(body.torrent_id));
     };
@@ -900,7 +932,9 @@ async fn promo_buy(
     }
     let price = promo_price(&state.repo.db, &body.kind, body.hours)
         .await
-        .ok_or_else(|| DomainError::Validation("该档位未定价，请联系站方".into()))?;
+        .ok_or_else(|| {
+            DomainError::Validation("该档位未定价，请联系站方".into())
+        })?;
 
     let mut tx = state
         .repo

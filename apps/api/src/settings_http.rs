@@ -134,13 +134,16 @@ const DEFAULT_GROUP_ORDER: &[&str] = &[
 ];
 
 /// 分区顺序来自元数据键 settings_group_order；缺失则回退内置顺序
-async fn group_order(state: &web::Data<std::sync::Arc<AppState>>) -> Vec<String> {
-    let raw: Option<String> =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'settings_group_order'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten();
+async fn group_order(
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> Vec<String> {
+    let raw: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'settings_group_order'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten();
     let parsed: Vec<String> = raw
         .unwrap_or_default()
         .split(',')
@@ -175,7 +178,8 @@ fn looks_like_url(s: &str) -> bool {
         .unwrap_or(t);
     let host = rest.split('/').next().unwrap_or("");
     let host_no_port = host.rsplit_once(':').map(|(h, _)| h).unwrap_or(host);
-    !host_no_port.is_empty() && (host_no_port.contains('.') || host_no_port == "localhost")
+    !host_no_port.is_empty()
+        && (host_no_port.contains('.') || host_no_port == "localhost")
 }
 
 fn fmt_num(n: f64) -> String {
@@ -234,7 +238,11 @@ fn validate_field(m: &MetaRow, raw: &str) -> Result<String, String> {
                 .and_then(|o| o.as_array())
                 .map(|a| {
                     a.iter()
-                        .filter_map(|x| x.get("v").and_then(|v| v.as_str()).map(String::from))
+                        .filter_map(|x| {
+                            x.get("v")
+                                .and_then(|v| v.as_str())
+                                .map(String::from)
+                        })
                         .collect()
                 })
                 .unwrap_or_default();
@@ -282,7 +290,10 @@ fn validate_field(m: &MetaRow, raw: &str) -> Result<String, String> {
                         }
                     }
                     "csv_ids" => {
-                        if !v.split(',').all(|p| p.trim().parse::<i64>().is_ok()) {
+                        if !v
+                            .split(',')
+                            .all(|p| p.trim().parse::<i64>().is_ok())
+                        {
                             return Err("须为逗号分隔的数字 ID".into());
                         }
                     }
@@ -368,7 +379,12 @@ async fn settings_schema(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_VIEW,
+    )
+    .await?;
     let order = group_order(&state).await;
     // SQL 已按 (grp, group_key, card_order, name) 排序 → 保序填充即得正确卡片/字段顺序
     let rows: Vec<MetaRow> = sqlx::query_as(&format!(
@@ -435,7 +451,8 @@ async fn settings_schema(
             .map(|i| grouped.remove(i).1)
             .unwrap_or_default();
         let count: usize = cards_vec.iter().map(|(_, f)| f.len()).sum();
-        let writable = cards_vec.iter().any(|(_, f)| f.iter().any(|x| x.writable));
+        let writable =
+            cards_vec.iter().any(|(_, f)| f.iter().any(|x| x.writable));
         let cards: Vec<CardOut> = cards_vec
             .into_iter()
             .map(|(key, fields)| CardOut { key, fields })
@@ -476,14 +493,21 @@ async fn settings_validate(
     body: web::Json<ValidateReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_VIEW,
+    )
+    .await?;
     let name = body.name.trim();
-    let meta: Option<MetaRow> = sqlx::query_as(&format!("{META_SELECT} WHERE s.name = $1"))
-        .bind(name)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let meta = meta.ok_or_else(|| DomainError::Validation(format!("未知设定项 {name}")))?;
+    let meta: Option<MetaRow> =
+        sqlx::query_as(&format!("{META_SELECT} WHERE s.name = $1"))
+            .bind(name)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let meta = meta
+        .ok_or_else(|| DomainError::Validation(format!("未知设定项 {name}")))?;
     match validate_field(&meta, &body.value) {
         Ok(normalized) => Ok(ok(serde_json::json!({
             "valid": true, "name": name, "normalized": normalized,
@@ -516,26 +540,40 @@ fn effects_for(names: &[String]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for n in names {
         match n.as_str() {
-            "announce_url" | "https_announce_url" => {
-                push_unique(&mut out, "Tracker 地址已变更，已发布的旧种子文件需重新下载")
-            }
-            "SITENAME" | "site_name" | "site_title" => {
-                push_unique(&mut out, "站点名称 / 标题变更，全站文案与 RSS 链接将更新")
-            }
-            "BASEURL" => push_unique(&mut out, "站点根 URL 变更，RSS 与邮件内链接同步更新"),
-            "freeleech_until" => push_unique(&mut out, "全站免费窗口变更，对新 announce 立即生效"),
+            "announce_url" | "https_announce_url" => push_unique(
+                &mut out,
+                "Tracker 地址已变更，已发布的旧种子文件需重新下载",
+            ),
+            "SITENAME" | "site_name" | "site_title" => push_unique(
+                &mut out,
+                "站点名称 / 标题变更，全站文案与 RSS 链接将更新",
+            ),
+            "BASEURL" => push_unique(
+                &mut out,
+                "站点根 URL 变更，RSS 与邮件内链接同步更新",
+            ),
+            "freeleech_until" => push_unique(
+                &mut out,
+                "全站免费窗口变更，对新 announce 立即生效",
+            ),
             "destroy_disabled" | "deletepeasant" => {
                 push_unique(&mut out, "危险操作开关已变更，随后台定时任务生效")
             }
             _ => {
-                if n.starts_with("random") || n.ends_with("become") || n.starts_with("expire") {
+                if n.starts_with("random")
+                    || n.ends_with("become")
+                    || n.starts_with("expire")
+                {
                     push_unique(
                         &mut out,
                         "促销规则变更，新发布种子按新规则生效，已生效促销不受影响",
                     );
                 }
                 if n.starts_with("claim_") {
-                    push_unique(&mut out, "保种认领规则变更，进行中的认领不受影响");
+                    push_unique(
+                        &mut out,
+                        "保种认领规则变更，进行中的认领不受影响",
+                    );
                 }
                 if n.starts_with("sticky_") {
                     push_unique(&mut out, "置顶样式变更，列表刷新后生效");
@@ -547,7 +585,10 @@ fn effects_for(names: &[String]) -> Vec<String> {
 }
 
 /// 缓存失效：删分区缓存 + 广播变更（§7.2，不整库 FLUSHALL）
-async fn invalidate_cache(state: &web::Data<std::sync::Arc<AppState>>, group: &str) {
+async fn invalidate_cache(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    group: &str,
+) {
     let mut conn = state.redis.clone();
     let _: () = conn.del(format!("settings:{group}")).await.unwrap_or(());
     let _: () = conn.del("settings:all").await.unwrap_or(());
@@ -563,7 +604,12 @@ async fn settings_groups_put(
     body: web::Json<GroupsPut>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_VIEW,
+    )
+    .await?;
     if body.values.is_empty() {
         return Err(DomainError::Validation("未提供任何修改".into()));
     }
@@ -574,11 +620,12 @@ async fn settings_groups_put(
     }
 
     let names: Vec<String> = body.values.keys().cloned().collect();
-    let metas: Vec<MetaRow> = sqlx::query_as(&format!("{META_SELECT} WHERE s.name = ANY($1)"))
-        .bind(&names)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let metas: Vec<MetaRow> =
+        sqlx::query_as(&format!("{META_SELECT} WHERE s.name = ANY($1)"))
+            .bind(&names)
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let by_name: HashMap<String, MetaRow> =
         metas.into_iter().map(|m| (m.name.clone(), m)).collect();
 
@@ -587,10 +634,9 @@ async fn settings_groups_put(
         return Err(DomainError::Validation(format!("未知设定项 {missing}")));
     }
     // 无任何可写字段 → 403（administrator 只读，§7.1）
-    if !names
-        .iter()
-        .any(|n| !by_name[n].readonly && auth.class_id >= write_min(&by_name[n]))
-    {
+    if !names.iter().any(|n| {
+        !by_name[n].readonly && auth.class_id >= write_min(&by_name[n])
+    }) {
         return Err(DomainError::Forbidden);
     }
 
@@ -634,14 +680,16 @@ async fn settings_groups_put(
     let mut changed: Vec<String> = Vec::new();
     for (name, new) in &pending {
         // 行锁 + 以库中现值为准（并发下避免覆盖他人修改）
-        let current: Option<String> =
-            sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1 FOR UPDATE")
-                .bind(name)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-        let current =
-            current.ok_or_else(|| DomainError::Validation(format!("设定项不存在 {name}")))?;
+        let current: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM site_settings WHERE name = $1 FOR UPDATE",
+        )
+        .bind(name)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let current = current.ok_or_else(|| {
+            DomainError::Validation(format!("设定项不存在 {name}"))
+        })?;
         if current == *new {
             continue;
         }
@@ -754,7 +802,12 @@ async fn settings_history(
     q: web::Query<HistoryQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_VIEW,
+    )
+    .await?;
     let per_page = q.per_page.clamp(1, 100);
     let name = q.name.trim();
     let rows: Vec<HistoryRow> = sqlx::query_as(
@@ -814,10 +867,20 @@ async fn settings_export(
     q: web::Query<ExportQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_VIEW).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_VIEW,
+    )
+    .await?;
     let plaintext = q.plaintext == 1;
     if plaintext {
-        crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+        crate::authz::require_perm(
+            &state,
+            &auth,
+            crate::authz::perm::SETTINGS_MANAGE,
+        )
+        .await?;
     }
     let rows: Vec<MetaRow> = sqlx::query_as(&format!(
         "{META_SELECT} ORDER BY s.grp, m.group_key, m.card_order, s.name"
@@ -830,10 +893,16 @@ async fn settings_export(
     let mut masked: Vec<String> = Vec::new();
     for m in &rows {
         if m.secret && !plaintext {
-            settings.insert(m.name.clone(), serde_json::Value::String(String::new()));
+            settings.insert(
+                m.name.clone(),
+                serde_json::Value::String(String::new()),
+            );
             masked.push(m.name.clone());
         } else {
-            settings.insert(m.name.clone(), serde_json::Value::String(m.value.clone()));
+            settings.insert(
+                m.name.clone(),
+                serde_json::Value::String(m.value.clone()),
+            );
         }
     }
     let count = settings.len();
@@ -867,7 +936,12 @@ async fn settings_import(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     // 导入仅 sysop（§4.3）
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     if body.settings.is_empty() {
         return Err(DomainError::Validation("导入内容为空".into()));
     }
@@ -876,11 +950,12 @@ async fn settings_import(
     }
 
     let names: Vec<String> = body.settings.keys().cloned().collect();
-    let metas: Vec<MetaRow> = sqlx::query_as(&format!("{META_SELECT} WHERE s.name = ANY($1)"))
-        .bind(&names)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let metas: Vec<MetaRow> =
+        sqlx::query_as(&format!("{META_SELECT} WHERE s.name = ANY($1)"))
+            .bind(&names)
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let by_name: HashMap<String, MetaRow> =
         metas.into_iter().map(|m| (m.name.clone(), m)).collect();
 
@@ -906,7 +981,11 @@ async fn settings_import(
         match validate_field(meta, raw) {
             Ok(normalized) => {
                 if normalized != meta.value {
-                    pending.push((name.clone(), meta.value.clone(), normalized));
+                    pending.push((
+                        name.clone(),
+                        meta.value.clone(),
+                        normalized,
+                    ));
                 }
             }
             Err(e) => errors.push((name.clone(), e)),
@@ -930,7 +1009,8 @@ async fn settings_import(
                 })
             })
             .collect();
-        let changed_names: Vec<String> = pending.iter().map(|(n, _, _)| n.clone()).collect();
+        let changed_names: Vec<String> =
+            pending.iter().map(|(n, _, _)| n.clone()).collect();
         return Ok(ok(serde_json::json!({
             "dry_run": true,
             "unknown": unknown,
@@ -951,14 +1031,16 @@ async fn settings_import(
     let mut changed: Vec<String> = Vec::new();
     let mut groups: Vec<String> = Vec::new();
     for (name, _old, new) in &pending {
-        let current: Option<String> =
-            sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1 FOR UPDATE")
-                .bind(name)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-        let current =
-            current.ok_or_else(|| DomainError::Validation(format!("设定项不存在 {name}")))?;
+        let current: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM site_settings WHERE name = $1 FOR UPDATE",
+        )
+        .bind(name)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let current = current.ok_or_else(|| {
+            DomainError::Validation(format!("设定项不存在 {name}"))
+        })?;
         if current == *new {
             continue;
         }

@@ -1,6 +1,8 @@
 //! 社区模块 HTTP 接口（M14 勋章 + M15 论坛 + M16 短讯/好友）。
 
-use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    delete, get, post, put, web, HttpRequest, HttpResponse, Responder,
+};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -166,12 +168,13 @@ async fn medal_buy(
     body: web::Json<MedalBuyReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let price: Option<i64> = sqlx::query_scalar("SELECT price FROM medals WHERE id = $1")
-        .bind(body.medal_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .flatten();
+    let price: Option<i64> =
+        sqlx::query_scalar("SELECT price FROM medals WHERE id = $1")
+            .bind(body.medal_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
     let Some(price) = price else {
         return Err(DomainError::NotFound(body.medal_id)); // 非卖品勋章（如开站勋章）
     };
@@ -221,7 +224,14 @@ async fn medal_buy(
         .idempotency_key
         .clone()
         .filter(|k| !k.trim().is_empty())
-        .unwrap_or_else(|| format!("medal-buy:{}:{}:{}", auth.id, body.medal_id, Uuid::new_v4()));
+        .unwrap_or_else(|| {
+            format!(
+                "medal-buy:{}:{}:{}",
+                auth.id,
+                body.medal_id,
+                Uuid::new_v4()
+            )
+        });
     // 幂等重放闸门（#[must_use] 连审）：重放时 spend 不再扣款，继续执行会绕过
     // 上方的拥有/售期/限量三重检查直接走授予分支
     if !matches!(
@@ -273,13 +283,14 @@ async fn medal_gift(
     body: web::Json<MedalGiftReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let to_id: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND status < 2")
-            .bind(&body.to_user)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+    let to_id: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM users WHERE username = $1 AND status < 2",
+    )
+    .bind(&body.to_user)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .flatten();
     let Some(to_id) = to_id else {
         return Err(DomainError::NotFound(0));
     };
@@ -287,25 +298,27 @@ async fn medal_gift(
         return Err(DomainError::Validation("不能赠送给自己".into()));
     }
     // 购买并直接入对方账户（赠送弹窗流程：一步完成）
-    let price: Option<i64> = sqlx::query_scalar("SELECT price FROM medals WHERE id = $1")
-        .bind(body.medal_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .flatten();
+    let price: Option<i64> =
+        sqlx::query_scalar("SELECT price FROM medals WHERE id = $1")
+            .bind(body.medal_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
     let Some(price) = price else {
         return Err(DomainError::NotFound(body.medal_id));
     };
     // 赠送税（0078）：礼物链路抽 gift_tax_bp（缺省 5%）入站免池——
     // 扣款仍按全额（spend_spark price），勋章照常发放；税在「站点收入」侧记账，
     // 即 magic_pool/pool_donations（出资人=送礼人），不另记正向流水（防虚增 minted）。
-    let tax_bp: i32 =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'gift_tax_bp'")
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .and_then(|v: String| v.parse().ok())
-            .unwrap_or(500);
+    let tax_bp: i32 = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'gift_tax_bp'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .and_then(|v: String| v.parse().ok())
+    .unwrap_or(500);
     let tax = crate::economy::gift_tax(price, tax_bp);
     let idem = body
         .idempotency_key
@@ -550,12 +563,13 @@ async fn forum_access(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 账户级禁言（forumpost='no' 口径）：与等级、版块门槛无关，一律不能发帖回帖
-    let can_post: bool =
-        sqlx::query_scalar("SELECT COALESCE(forumpost, TRUE) FROM users WHERE id = $1")
-            .bind(user_id)
-            .fetch_one(db)
-            .await
-            .unwrap_or(true);
+    let can_post: bool = sqlx::query_scalar(
+        "SELECT COALESCE(forumpost, TRUE) FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_one(db)
+    .await
+    .unwrap_or(true);
     let can_read = is_mod || class_id >= min_read;
     let can_write = can_read && can_post && (is_mod || class_id >= min_write);
     let can_create = can_write && (is_mod || class_id >= min_create);
@@ -568,17 +582,22 @@ async fn forum_access(
 }
 
 /// 发帖 10 秒防刷（postmanage/版主豁免）
-async fn forum_flood_check(db: &sqlx::PgPool, user_id: i64, class_id: i32) -> DomainResult<()> {
+async fn forum_flood_check(
+    db: &sqlx::PgPool,
+    user_id: i64,
+    class_id: i32,
+) -> DomainResult<()> {
     if class_id >= 90 {
         return Ok(());
     }
-    let last: Option<chrono::DateTime<chrono::Utc>> =
-        sqlx::query_scalar("SELECT last_sent_at FROM forum_flood WHERE user_id = $1")
-            .bind(user_id)
-            .fetch_optional(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+    let last: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+        "SELECT last_sent_at FROM forum_flood WHERE user_id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .flatten();
     if let Some(t) = last {
         if (chrono::Utc::now() - t).num_seconds() < 10 {
             return Err(DomainError::Validation(
@@ -627,7 +646,9 @@ fn strip_markdown(src: &str) -> String {
             let digits = l.chars().take_while(|c| c.is_ascii_digit()).count();
             if digits > 0 {
                 let rest = &l[digits..];
-                if let Some(r2) = rest.strip_prefix(". ").or_else(|| rest.strip_prefix(") ")) {
+                if let Some(r2) =
+                    rest.strip_prefix(". ").or_else(|| rest.strip_prefix(") "))
+                {
                     l = r2;
                 }
             }
@@ -768,12 +789,13 @@ async fn forum_search(
 /// 论坛敏感词（Phase3）：词表存 site_settings.forum_banned_words（换行分隔，无新表），
 /// 发主题/回帖/编辑时命中即 422 拒发。管理面走 settings 通用编辑（staff 已有权限模型）。
 async fn forum_banned_words(db: &sqlx::PgPool) -> Vec<String> {
-    let raw: Option<String> =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'forum_banned_words'")
-            .fetch_optional(db)
-            .await
-            .unwrap_or(None)
-            .flatten();
+    let raw: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'forum_banned_words'",
+    )
+    .fetch_optional(db)
+    .await
+    .unwrap_or(None)
+    .flatten();
     raw.unwrap_or_default()
         .split(['\n', '\r'])
         .map(str::trim)
@@ -856,7 +878,8 @@ async fn forum_list(
 
     let mut out = Vec::with_capacity(rows.len());
     for (id, name, descr, topics, posts, category_id, category_name) in rows {
-        let perm = forum_access(&state.repo.db, auth.id, auth.class_id, id).await?;
+        let perm =
+            forum_access(&state.repo.db, auth.id, auth.class_id, id).await?;
         let (latest_topic, latest_author, latest_at) =
             latest.get(&id).cloned().unwrap_or((None, None, None));
         out.push(ForumRow {
@@ -969,7 +992,9 @@ fn extract_mentions(src: &str) -> Vec<String> {
         }
         let name: String = chars[i + 1..j].iter().collect();
         let n = name.chars().count();
-        if (2..=30).contains(&n) && !out.iter().any(|x| x.eq_ignore_ascii_case(&name)) {
+        if (2..=30).contains(&n)
+            && !out.iter().any(|x| x.eq_ignore_ascii_case(&name))
+        {
             out.push(name);
         }
         i = j.max(i + 1);
@@ -1144,8 +1169,14 @@ async fn topic_create(
         return Err(DomainError::Validation("标题与正文不能为空".into()));
     }
     // 敏感词（Phase3）：标题与正文一起过闸
-    check_banned_words(&state.repo.db, &format!("{}\n{}", body.title, body.body)).await?;
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, body.forum_id).await?;
+    check_banned_words(
+        &state.repo.db,
+        &format!("{}\n{}", body.title, body.body),
+    )
+    .await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, body.forum_id)
+            .await?;
     if !perm.can_create {
         return Err(DomainError::Forbidden);
     }
@@ -1160,7 +1191,9 @@ async fn topic_create(
     // 悬赏（0124）：只有 bounty 类型认金额；1~1,000,000 钳位（0 = 发普通 bounty 帖不冻结，也合法）
     let bounty = if ttype == "bounty" {
         match body.bounty_spark {
-            Some(b) if b < 0 => return Err(DomainError::Validation("悬赏金额不能为负".into())),
+            Some(b) if b < 0 => {
+                return Err(DomainError::Validation("悬赏金额不能为负".into()))
+            }
             Some(b) => b.min(1_000_000),
             None => 0,
         }
@@ -1188,7 +1221,8 @@ async fn topic_create(
         Vec::new()
     };
     // 抽奖（0126）：lottery 类型参数钳位；奖金池 = winners × prize（发帖时整池冻结）
-    let (lot_winners, lot_prize, lot_ticket, lot_hours) = if ttype == "lottery" {
+    let (lot_winners, lot_prize, lot_ticket, lot_hours) = if ttype == "lottery"
+    {
         let w = body.lottery_winners.unwrap_or(1).clamp(1, 100);
         let p = body.lottery_prize.unwrap_or(0).clamp(0, 100_000);
         let t = body.lottery_ticket.unwrap_or(0).clamp(0, 10_000);
@@ -1259,12 +1293,14 @@ async fn topic_create(
     }
     // 投票选项（0125）：与主题同事务落一行（选项发帖时定死，之后不可增删）
     if !poll_options.is_empty() {
-        sqlx::query("INSERT INTO topic_polls (topic_id, options) VALUES ($1, $2)")
-            .bind(topic_id)
-            .bind(serde_json::json!(poll_options))
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "INSERT INTO topic_polls (topic_id, options) VALUES ($1, $2)",
+        )
+        .bind(topic_id)
+        .bind(serde_json::json!(poll_options))
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     // 抽奖参数（0126）：同事务落一行；draw_at 到点由 worker 扫描开奖（或楼主提前手动开）
     if ttype == "lottery" {
@@ -1366,7 +1402,8 @@ async fn topic_list(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let fid = path.into_inner();
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_read {
         return Err(DomainError::Forbidden);
     }
@@ -1420,11 +1457,12 @@ async fn topic_list(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 版块名随列表一起回（避免前端再打一次 /forums 只为拿标题）
-    let forum_name: Option<String> = sqlx::query_scalar("SELECT name FROM forums WHERE id = $1")
-        .bind(fid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let forum_name: Option<String> =
+        sqlx::query_scalar("SELECT name FROM forums WHERE id = $1")
+            .bind(fid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "forum_id": fid,
         "forum_name": forum_name,
@@ -1521,7 +1559,8 @@ async fn topic_detail(
     else {
         return Err(DomainError::NotFound(tid));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_read {
         return Err(DomainError::Forbidden);
     }
@@ -1543,11 +1582,12 @@ async fn topic_detail(
     // 游标取的是「最新 200 楼倒序」，回正为升序展示（无游标时同样无副作用）
     posts.reverse();
     // 受保护版块：2 楼起正文替换为提示（class≥90 / 发帖人本人 / 楼主 / 本版版主放行）
-    let protected: bool = sqlx::query_scalar("SELECT protected FROM forums WHERE id = $1")
-        .bind(fid)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
+    let protected: bool =
+        sqlx::query_scalar("SELECT protected FROM forums WHERE id = $1")
+            .bind(fid)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
     if protected {
         let is_op = op_id == Some(auth.id);
         for (i, p) in posts.iter_mut().enumerate() {
@@ -1576,12 +1616,13 @@ async fn topic_detail(
         .ok();
     }
     // 收藏态（0116）：主题收藏总数 + 当前用户是否已收藏
-    let favorites: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM topic_favorites WHERE topic_id = $1")
-            .bind(tid)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    let favorites: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM topic_favorites WHERE topic_id = $1",
+    )
+    .bind(tid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     let faved: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM topic_favorites WHERE topic_id = $1 AND user_id = $2)",
     )
@@ -1704,7 +1745,8 @@ async fn post_reply(
     let Some((fid, locked, author, title)) = row else {
         return Err(DomainError::NotFound(tid));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_write {
         return Err(DomainError::Forbidden);
     }
@@ -1791,7 +1833,8 @@ async fn set_post_like(
     let Some((tid, fid, author, title)) = row else {
         return Err(DomainError::NotFound(pid));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_read {
         return Err(DomainError::Forbidden);
     }
@@ -1809,13 +1852,15 @@ async fn set_post_like(
         .rows_affected()
             > 0
     } else {
-        sqlx::query("DELETE FROM post_likes WHERE user_id = $1 AND post_id = $2")
-            .bind(auth.id)
-            .bind(pid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected()
+        sqlx::query(
+            "DELETE FROM post_likes WHERE user_id = $1 AND post_id = $2",
+        )
+        .bind(auth.id)
+        .bind(pid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected()
             > 0
     };
     if on && changed && author != auth.id && author != 0 {
@@ -1830,7 +1875,8 @@ async fn set_post_like(
         .fetch_one(&state.repo.db)
         .await
         .unwrap_or(false);
-        let _ = earn_spark(&state.repo.db, author, 1, "forum-like", &idem).await;
+        let _ =
+            earn_spark(&state.repo.db, author, 1, "forum-like", &idem).await;
         if !already {
             notify_user(
                 &state.repo.db,
@@ -1844,11 +1890,13 @@ async fn set_post_like(
             .await;
         }
     }
-    let likes: i64 = sqlx::query_scalar("SELECT count(*) FROM post_likes WHERE post_id = $1")
-        .bind(pid)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+    let likes: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM post_likes WHERE post_id = $1",
+    )
+    .bind(pid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "post_id": pid,
         "liked": on,
@@ -1886,15 +1934,17 @@ async fn set_topic_favorite(
     tid: i64,
     on: bool,
 ) -> DomainResult<HttpResponse> {
-    let fid: Option<i64> = sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
-        .bind(tid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let fid: Option<i64> =
+        sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
+            .bind(tid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(fid) = fid else {
         return Err(DomainError::NotFound(tid));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_read {
         return Err(DomainError::Forbidden);
     }
@@ -1909,19 +1959,22 @@ async fn set_topic_favorite(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     } else {
-        sqlx::query("DELETE FROM topic_favorites WHERE user_id = $1 AND topic_id = $2")
-            .bind(auth.id)
-            .bind(tid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "DELETE FROM topic_favorites WHERE user_id = $1 AND topic_id = $2",
+        )
+        .bind(auth.id)
+        .bind(tid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
-    let favorites: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM topic_favorites WHERE topic_id = $1")
-            .bind(tid)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    let favorites: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM topic_favorites WHERE topic_id = $1",
+    )
+    .bind(tid)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "topic_id": tid,
         "faved": on,
@@ -2006,11 +2059,12 @@ async fn validate_follow_target(
             }
         }
         "topic" => {
-            let fid: Option<i64> = sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
-                .bind(tid)
-                .fetch_optional(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            let fid: Option<i64> =
+                sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
+                    .bind(tid)
+                    .fetch_optional(db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
             let Some(fid) = fid else {
                 return Err(DomainError::NotFound(tid));
             };
@@ -2033,7 +2087,8 @@ async fn follow_create(
     let auth = require_auth(&req, &state).await?;
     let ttype = normalize_follow_type(&body.target_type)
         .ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?;
-    validate_follow_target(&state.repo.db, &auth, ttype, body.target_id).await?;
+    validate_follow_target(&state.repo.db, &auth, ttype, body.target_id)
+        .await?;
     sqlx::query(
         "INSERT INTO follows (user_id, target_type, target_id) VALUES ($1, $2, $3) \
          ON CONFLICT (user_id, target_type, target_id) DO NOTHING",
@@ -2149,13 +2204,13 @@ async fn follow_mine(
     q: web::Query<FollowMineQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let want = match q.target_type.as_deref() {
-        Some(s) => Some(
-            normalize_follow_type(s)
-                .ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?,
-        ),
-        None => None,
-    };
+    let want =
+        match q.target_type.as_deref() {
+            Some(s) => Some(normalize_follow_type(s).ok_or_else(|| {
+                DomainError::Validation("非法的关注对象".into())
+            })?),
+            None => None,
+        };
     let mut users: Vec<serde_json::Value> = Vec::new();
     let mut forums: Vec<serde_json::Value> = Vec::new();
     let mut topics: Vec<serde_json::Value> = Vec::new();
@@ -2354,13 +2409,14 @@ async fn bounty_award(
         return Err(DomainError::Validation("悬赏已处理".into()));
     }
     // 目标楼必须属于本主题、非楼主首帖
-    let p: Option<i64> =
-        sqlx::query_scalar("SELECT user_id FROM posts WHERE id = $1 AND topic_id = $2")
-            .bind(body.post_id)
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let p: Option<i64> = sqlx::query_scalar(
+        "SELECT user_id FROM posts WHERE id = $1 AND topic_id = $2",
+    )
+    .bind(body.post_id)
+    .bind(tid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(answerer) = p else {
         return Err(DomainError::Validation("目标回复不存在".into()));
     };
@@ -2395,7 +2451,8 @@ async fn bounty_award(
     .await;
     if spark > 0 {
         let idem = format!("forum-bounty-pay:{}", tid);
-        earn_spark(&state.repo.db, answerer, spark, "forum_bounty", &idem).await?;
+        earn_spark(&state.repo.db, answerer, spark, "forum_bounty", &idem)
+            .await?;
     }
     // 双向通知：答主拿钱（后端拿不到 site_settings，货币名落默认口径「魔力」，与 economy_http 同约定）
     notify_user(
@@ -2445,7 +2502,8 @@ async fn poll_vote(
     let Some((options, closed, fid)) = p else {
         return Err(DomainError::NotFound(body.topic_id));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_read {
         return Err(DomainError::Forbidden);
     }
@@ -2503,7 +2561,8 @@ async fn poll_close(
     let Some((op, fid)) = p else {
         return Err(DomainError::NotFound(body.topic_id));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if auth.id != op && !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
@@ -2554,7 +2613,8 @@ async fn lottery_join(
     let Some((ticket, op, status, draw_at, fid)) = l else {
         return Err(DomainError::NotFound(body.topic_id));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_read {
         return Err(DomainError::Forbidden);
     }
@@ -2581,7 +2641,8 @@ async fn lottery_join(
     }
     // 票价（免费则跳过）：扣费失败回滚占位（对齐 fun_vote 纪律）
     if ticket > 0 {
-        let idem = format!("forum-lottery-ticket:{}:{}", auth.id, body.topic_id);
+        let idem =
+            format!("forum-lottery-ticket:{}:{}", auth.id, body.topic_id);
         if let Err(e) = crate::economy_http::spend_spark(
             &state.repo.db,
             auth.id,
@@ -2642,19 +2703,21 @@ pub async fn lottery_draw_core(
         return Err(DomainError::LedgerConflict);
     }
     // 参与者全表捞出来在应用层抽（数量级 ≤ 数百，RANDOM() 洗牌即可）
-    let mut entries: Vec<i64> =
-        sqlx::query_scalar("SELECT user_id FROM lottery_entries WHERE topic_id = $1")
-            .bind(topic_id)
-            .fetch_all(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut entries: Vec<i64> = sqlx::query_scalar(
+        "SELECT user_id FROM lottery_entries WHERE topic_id = $1",
+    )
+    .bind(topic_id)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if entries.is_empty() {
         // 无人参与：奖金池退回楼主
-        let op: i64 = sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
-            .bind(topic_id)
-            .fetch_one(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        let op: i64 =
+            sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
+                .bind(topic_id)
+                .fetch_one(db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         let refund = winners as i64 * prize;
         if refund > 0 {
             let _ = earn_spark(
@@ -2666,7 +2729,9 @@ pub async fn lottery_draw_core(
             )
             .await;
         }
-        return Ok(serde_json::json!({ "topic_id": topic_id, "winners": [], "refunded": refund }));
+        return Ok(
+            serde_json::json!({ "topic_id": topic_id, "winners": [], "refunded": refund }),
+        );
     }
     use rand::seq::SliceRandom;
     entries.shuffle(&mut rand::thread_rng());
@@ -2698,7 +2763,9 @@ pub async fn lottery_draw_core(
             .await;
         }
     }
-    Ok(serde_json::json!({ "topic_id": topic_id, "winners": picked, "prize": prize }))
+    Ok(
+        serde_json::json!({ "topic_id": topic_id, "winners": picked, "prize": prize }),
+    )
 }
 
 #[derive(Deserialize)]
@@ -2725,7 +2792,8 @@ async fn lottery_draw(
     let Some((op, fid)) = l else {
         return Err(DomainError::NotFound(body.topic_id));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if auth.id != op && !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
@@ -2761,7 +2829,9 @@ async fn post_tip(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     if body.spark <= 0 || body.spark > 100_000 {
-        return Err(DomainError::Validation("打赏金额需在 1~100000 之间".into()));
+        return Err(DomainError::Validation(
+            "打赏金额需在 1~100000 之间".into(),
+        ));
     }
     let note: String = body
         .note
@@ -2789,11 +2859,13 @@ async fn post_tip(
     if author_id == auth.id {
         return Err(DomainError::Validation("不能打赏自己".into()));
     }
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_read {
         return Err(DomainError::Forbidden);
     }
-    let idem = format!("forum-tip:{}:{}:{}", auth.id, body.post_id, Uuid::new_v4());
+    let idem =
+        format!("forum-tip:{}:{}:{}", auth.id, body.post_id, Uuid::new_v4());
     // spend(打赏人) → earn(作者) 对冲；三写（spend/earn/落账）单事务——旧版 earn 失败
     // 时打赏已扣、作者未入账且 post_tips 无痕。earn 幂等键锚定 spend 的 uuid。
     let mut tx = state
@@ -2874,7 +2946,10 @@ async fn post_tip(
 }
 
 /// 单帖上下文：(topic_id, forum_id, author_id)
-async fn post_context(db: &sqlx::PgPool, post_id: i64) -> DomainResult<Option<(i64, i64, i64)>> {
+async fn post_context(
+    db: &sqlx::PgPool,
+    post_id: i64,
+) -> DomainResult<Option<(i64, i64, i64)>> {
     let row: Option<(i64, i64, i64)> = sqlx::query_as(
         "SELECT p.topic_id, t.forum_id, p.user_id FROM posts p \
          JOIN topics t ON t.id = p.topic_id \
@@ -2907,10 +2982,13 @@ async fn post_edit(
     // 敏感词（Phase3）：编辑同样过闸（防止先发合规后改敏感词绕过）
     check_banned_words(&state.repo.db, &body.body).await?;
     let pid = path.into_inner();
-    let Some((_tid, fid, author_id)) = post_context(&state.repo.db, pid).await? else {
+    let Some((_tid, fid, author_id)) =
+        post_context(&state.repo.db, pid).await?
+    else {
         return Err(DomainError::NotFound(pid));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_mod && author_id != auth.id {
         return Err(DomainError::Forbidden);
     }
@@ -2951,10 +3029,12 @@ async fn post_delete(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let pid = path.into_inner();
-    let Some((tid, fid, author_id)) = post_context(&state.repo.db, pid).await? else {
+    let Some((tid, fid, author_id)) = post_context(&state.repo.db, pid).await?
+    else {
         return Err(DomainError::NotFound(pid));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
@@ -2972,14 +3052,15 @@ async fn post_delete(
     // 审计修复（P2）：被删帖若是该主题最新回复，last_post_at 残留已删时间——
     // 版块「最后回复」排序/展示失真。先取被删帖时间，删后回填剩余最新回复
     // （无回复则回落主题创建时间）。
-    let deleted_at: Option<chrono::DateTime<chrono::Utc>> =
-        sqlx::query_scalar("SELECT created_at FROM posts WHERE id = $1 AND topic_id = $2")
-            .bind(pid)
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+    let deleted_at: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+        "SELECT created_at FROM posts WHERE id = $1 AND topic_id = $2",
+    )
+    .bind(pid)
+    .bind(tid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .flatten();
     sqlx::query("DELETE FROM posts WHERE id = $1 AND topic_id = $2")
         .bind(pid)
         .bind(tid)
@@ -3018,23 +3099,26 @@ async fn topic_delete(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
-    let fid: Option<i64> = sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
-        .bind(tid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let fid: Option<i64> =
+        sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
+            .bind(tid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(fid) = fid else {
         return Err(DomainError::NotFound(tid));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
-    let op: Option<i64> = sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
-        .bind(tid)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let op: Option<i64> =
+        sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
+            .bind(tid)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     // 悬赏未决退回（0124）：open 状态的悬赏在删主题时退还楼主（已 awarded 的不动——钱已归答主）。
     // 幂等键与发放错开：`-refund` 后缀，退回与发放都各只发生一次。
     if let Some(op_id) = op {
@@ -3128,10 +3212,12 @@ async fn topic_delete(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 关注本主题的行：target_id 无外键（指向 3 张表），必须应用层清理，否则留下悬空关注
-    let _ = sqlx::query("DELETE FROM follows WHERE target_type = 'topic' AND target_id = $1")
-        .bind(tid)
-        .execute(&state.repo.db)
-        .await;
+    let _ = sqlx::query(
+        "DELETE FROM follows WHERE target_type = 'topic' AND target_id = $1",
+    )
+    .bind(tid)
+    .execute(&state.repo.db)
+    .await;
     state
         .repo
         .audit(Some(auth.id), "forum.topic_delete", Some(tid))
@@ -3162,26 +3248,29 @@ async fn topic_manage(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
-    let fid: Option<i64> = sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
-        .bind(tid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let fid: Option<i64> =
+        sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
+            .bind(tid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(fid) = fid else {
         return Err(DomainError::NotFound(tid));
     };
-    let perm = forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
+    let perm =
+        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
     if !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
     let mut moved = false;
     if let Some(target) = body.move_to_forum_id {
         if target != fid {
-            let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM forums WHERE id = $1")
-                .bind(target)
-                .fetch_optional(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            let exists: Option<i64> =
+                sqlx::query_scalar("SELECT id FROM forums WHERE id = $1")
+                    .bind(target)
+                    .fetch_optional(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
             if exists.is_none() {
                 return Err(DomainError::Validation("目标版块不存在".into()));
             }
@@ -3271,12 +3360,13 @@ async fn shoutbox_send(
         return Err(DomainError::Validation("发言需 1-300 字".into()));
     }
     // 禁言位（NP chatpost 口径）：被禁言用户不能在聊天室继续刷屏
-    let can_chat: bool =
-        sqlx::query_scalar("SELECT COALESCE(forumpost, TRUE) FROM users WHERE id = $1")
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let can_chat: bool = sqlx::query_scalar(
+        "SELECT COALESCE(forumpost, TRUE) FROM users WHERE id = $1",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     if !can_chat {
         return Err(DomainError::Validation("你已被禁言".into()));
     }
@@ -3296,13 +3386,14 @@ async fn shoutbox_send(
             return Err(DomainError::RateLimited);
         }
     }
-    let id: i64 =
-        sqlx::query_scalar("INSERT INTO shoutbox (user_id, message) VALUES ($1, $2) RETURNING id")
-            .bind(auth.id)
-            .bind(body.message.trim())
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO shoutbox (user_id, message) VALUES ($1, $2) RETURNING id",
+    )
+    .bind(auth.id)
+    .bind(body.message.trim())
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -3320,17 +3411,19 @@ async fn shoutbox_delete(
     body: web::Json<ShoutDeleteReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let row: Option<(i64, chrono::DateTime<chrono::Utc>)> =
-        sqlx::query_as("SELECT user_id, created_at FROM shoutbox WHERE id = $1")
-            .bind(body.id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(i64, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT user_id, created_at FROM shoutbox WHERE id = $1",
+    )
+    .bind(body.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((uid, at)) = row else {
         return Err(DomainError::NotFound(body.id));
     };
     let is_staff = auth.class_id >= 90;
-    let own_recent = uid == auth.id && (chrono::Utc::now() - at).num_seconds() <= 120;
+    let own_recent =
+        uid == auth.id && (chrono::Utc::now() - at).num_seconds() <= 120;
     if !is_staff && !own_recent {
         return Err(DomainError::Forbidden);
     }
@@ -3407,7 +3500,11 @@ async fn message_send(
             return Err(DomainError::Validation("对方不接受你的私信".into()));
         }
         match accept.as_str() {
-            "no" => return Err(DomainError::Validation("对方仅接收管理组私信".into())),
+            "no" => {
+                return Err(DomainError::Validation(
+                    "对方仅接收管理组私信".into(),
+                ))
+            }
             "friends" => {
                 let is_friend: bool = sqlx::query_scalar(
                     "SELECT EXISTS(SELECT 1 FROM friendships f WHERE (f.user_id=$1 AND f.friend_id=$2) OR (f.user_id=$2 AND f.friend_id=$1))",
@@ -3418,19 +3515,22 @@ async fn message_send(
                 .await
                 .unwrap_or(false);
                 if !is_friend {
-                    return Err(DomainError::Validation("对方仅接收好友私信".into()));
+                    return Err(DomainError::Validation(
+                        "对方仅接收好友私信".into(),
+                    ));
                 }
             }
             _ => {}
         }
         // 防刷：60s 一条
-        let last: Option<chrono::DateTime<chrono::Utc>> =
-            sqlx::query_scalar("SELECT last_sent_at FROM message_flood WHERE user_id = $1")
-                .bind(auth.id)
-                .fetch_optional(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .flatten();
+        let last: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+            "SELECT last_sent_at FROM message_flood WHERE user_id = $1",
+        )
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten();
         if let Some(t) = last {
             if (chrono::Utc::now() - t).num_seconds() < 60 {
                 return Err(DomainError::Validation(
@@ -3765,12 +3865,14 @@ async fn message_box_upsert(
     // 清空名 = 删除文件夹（连带清掉夹内信件，NexusPHP 口径）
     if name.is_empty() {
         if let Some(bid) = body.id {
-            sqlx::query("DELETE FROM messages WHERE folder = $2 AND receiver_id = $1")
-                .bind(auth.id)
-                .bind(bid)
-                .execute(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "DELETE FROM messages WHERE folder = $2 AND receiver_id = $1",
+            )
+            .bind(auth.id)
+            .bind(bid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             sqlx::query("DELETE FROM pmboxes WHERE id = $2 AND user_id = $1")
                 .bind(auth.id)
                 .bind(bid)
@@ -3785,11 +3887,13 @@ async fn message_box_upsert(
     }
     match body.id {
         None => {
-            let n: i64 = sqlx::query_scalar("SELECT count(*) FROM pmboxes WHERE user_id = $1")
-                .bind(auth.id)
-                .fetch_one(&state.repo.db)
-                .await
-                .unwrap_or(0);
+            let n: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM pmboxes WHERE user_id = $1",
+            )
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
             if n >= 3 {
                 return Err(DomainError::Validation("最多 3 个文件夹".into()));
             }
@@ -3805,14 +3909,16 @@ async fn message_box_upsert(
             Ok(ok(serde_json::json!({ "id": id })))
         }
         Some(bid) => {
-            let n = sqlx::query("UPDATE pmboxes SET name = $3 WHERE id = $2 AND user_id = $1")
-                .bind(auth.id)
-                .bind(bid)
-                .bind(name)
-                .execute(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .rows_affected();
+            let n = sqlx::query(
+                "UPDATE pmboxes SET name = $3 WHERE id = $2 AND user_id = $1",
+            )
+            .bind(auth.id)
+            .bind(bid)
+            .bind(name)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected();
             if n == 0 {
                 return Err(DomainError::NotFound(0));
             }
@@ -3838,13 +3944,14 @@ async fn contact_staff(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     if auth.class_id < 90 {
-        let last: Option<chrono::DateTime<chrono::Utc>> =
-            sqlx::query_scalar("SELECT last_sent_at FROM message_flood WHERE user_id = $1")
-                .bind(auth.id)
-                .fetch_optional(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .flatten();
+        let last: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+            "SELECT last_sent_at FROM message_flood WHERE user_id = $1",
+        )
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten();
         if let Some(t) = last {
             if (chrono::Utc::now() - t).num_seconds() < 60 {
                 return Err(DomainError::Validation(
@@ -3900,7 +4007,12 @@ async fn staff_messages(
     q: web::Query<StaffMsgQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::STAFF_MESSAGE,
+    )
+    .await?;
     // answered 解析：0/1/true/false → Option<i32>（非法值按未过滤处理，不再裸 400）
     let answered_i: Option<i32> = q.answered.as_deref().and_then(|v| match v {
         "0" | "false" => Some(0),
@@ -3987,7 +4099,8 @@ async fn my_ticket_confirm(
     .rows_affected();
     if n == 0 {
         return Err(DomainError::Validation(
-            "工单不存在、非本人或尚未答复（仅已答复待确认的工单可确认关闭）".into(),
+            "工单不存在、非本人或尚未答复（仅已答复待确认的工单可确认关闭）"
+                .into(),
         ));
     }
     Ok(ok(serde_json::json!({ "id": body.id, "ticket_status": 3 })))
@@ -4007,7 +4120,12 @@ async fn staff_answer(
     body: web::Json<AnswerReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::STAFF_MESSAGE,
+    )
+    .await?;
     if body.answer.trim().is_empty() {
         return Err(DomainError::Validation("答复内容不能为空".into()));
     }
@@ -4075,7 +4193,12 @@ async fn staff_mark(
     body: web::Json<StaffMsgActionReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::STAFF_MESSAGE,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE staffmessages SET answered = 1, answered_by = COALESCE(answered_by, $2), answered_at = COALESCE(answered_at, now()), ticket_status = CASE WHEN ticket_status < 2 THEN 2 ELSE ticket_status END\
          WHERE id = ANY($1) AND answered = 0",
@@ -4097,7 +4220,12 @@ async fn staff_delete(
     body: web::Json<StaffMsgActionReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::STAFF_MESSAGE,
+    )
+    .await?;
     let n = sqlx::query("DELETE FROM staffmessages WHERE id = ANY($1)")
         .bind(&body.ids)
         .execute(&state.repo.db)
@@ -4121,13 +4249,14 @@ async fn friend_add(
     body: web::Json<FriendReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let fid: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND status < 2")
-            .bind(&body.username)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+    let fid: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM users WHERE username = $1 AND status < 2",
+    )
+    .bind(&body.username)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .flatten();
     let Some(fid) = fid else {
         return Err(DomainError::NotFound(0));
     };
@@ -4235,13 +4364,14 @@ async fn friend_action(
     body: web::Json<FriendActionReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let fid: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND status < 2")
-            .bind(&body.username)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+    let fid: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM users WHERE username = $1 AND status < 2",
+    )
+    .bind(&body.username)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .flatten();
     let Some(fid) = fid else {
         return Err(DomainError::NotFound(0));
     };
@@ -4293,15 +4423,18 @@ async fn friend_action(
 
 /// 主配置：主 scope + 安装向导 + 经济路由 + 社区路由（单一 /api/v1 scope）
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    let scope =
-        crate::setup_http::mount_setup(crate::economy_http::mount_economy(crate::http::v1_scope()));
+    let scope = crate::setup_http::mount_setup(
+        crate::economy_http::mount_economy(crate::http::v1_scope()),
+    );
     let scope = mount_community(scope);
     let scope = crate::games_http::mount_games(crate::ops_http::mount_ops(
         crate::content_http::mount_content(scope),
     ));
-    let scope = crate::admin_p3_http::mount_p3_tools(crate::admin_p2_http::mount_p2_tools(
-        crate::admin_http::mount_admin(scope),
-    ));
+    let scope = crate::admin_p3_http::mount_p3_tools(
+        crate::admin_p2_http::mount_p2_tools(crate::admin_http::mount_admin(
+            scope,
+        )),
+    );
     let scope = crate::settings_http::mount_settings(scope);
     let scope = crate::push_http::mount_push(scope);
     let scope = crate::gaps_http::mount_gaps(scope);
@@ -4378,7 +4511,9 @@ async fn notice_prefs_set(
 
 /// 站免池贡献荣誉榜（0075，AB 池页口径：本月 + 累计，公开可见）
 #[get("/pool/honor")]
-async fn pool_honor(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn pool_honor(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let rows: Vec<(i64, String, bool, i64, i64)> = sqlx::query_as(
         "SELECT id, username, donor, this_month, total FROM v_pool_honor          ORDER BY total DESC LIMIT 50",
     )
@@ -4411,7 +4546,12 @@ async fn ticket_list(
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::STAFF_MESSAGE,
+    )
+    .await?;
     let status: Option<i16> = q
         .get("status")
         .and_then(|s| s.parse::<i16>().ok())
@@ -4454,7 +4594,12 @@ async fn ticket_update(
     body: web::Json<TicketUpdateReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_MESSAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::STAFF_MESSAGE,
+    )
+    .await?;
     if let Some(p) = body.priority {
         if !(0..=3).contains(&p) {
             return Err(DomainError::Validation("priority 需在 0-3".into()));
@@ -4462,7 +4607,9 @@ async fn ticket_update(
     }
     if let Some(s) = body.ticket_status {
         if !(0..=3).contains(&s) {
-            return Err(DomainError::Validation("ticket_status 需在 0-3".into()));
+            return Err(DomainError::Validation(
+                "ticket_status 需在 0-3".into(),
+            ));
         }
     }
     // 审计修复（P1）：工单状态机此前无任何流转约束——已答复/关闭的单可随意回 0，
@@ -4470,13 +4617,14 @@ async fn ticket_update(
     //   0新 → 1处理中 → 2已答复待确认 → 3关闭 单向推进；
     //   3关闭 仅允许显式重开回 1处理中（不允许回 0，保留处理轨迹）。
     if let Some(new_s) = body.ticket_status {
-        let cur: Option<i16> =
-            sqlx::query_scalar("SELECT ticket_status FROM staffmessages WHERE id = $1")
-                .bind(body.id)
-                .fetch_optional(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .flatten();
+        let cur: Option<i16> = sqlx::query_scalar(
+            "SELECT ticket_status FROM staffmessages WHERE id = $1",
+        )
+        .bind(body.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten();
         let Some(cur_s) = cur else {
             return Err(DomainError::Validation("工单不存在".into()));
         };
@@ -4489,13 +4637,14 @@ async fn ticket_update(
     }
     let assignee: Option<i64> = match &body.assign {
         Some(name) if !name.trim().is_empty() => {
-            let uid: Option<i64> =
-                sqlx::query_scalar("SELECT id FROM users WHERE username = $1 AND class_id >= 50")
-                    .bind(name.trim())
-                    .fetch_optional(&state.repo.db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?
-                    .flatten();
+            let uid: Option<i64> = sqlx::query_scalar(
+                "SELECT id FROM users WHERE username = $1 AND class_id >= 50",
+            )
+            .bind(name.trim())
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
             let Some(uid) = uid else {
                 return Err(DomainError::Validation(
                     "指派对象不存在或不是工作人员（class≥50）".into(),
@@ -4506,19 +4655,21 @@ async fn ticket_update(
         Some(_) => None, // 空串 = 清指派（置 NULL，见下方 clear_assign）
         None => {
             // 未传 assign = 不动：取当前值回写（COALESCE 不更新语义）
-            let cur: Option<i64> =
-                sqlx::query_scalar("SELECT assigned_to FROM staffmessages WHERE id = $1")
-                    .bind(body.id)
-                    .fetch_optional(&state.repo.db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?
-                    .flatten();
+            let cur: Option<i64> = sqlx::query_scalar(
+                "SELECT assigned_to FROM staffmessages WHERE id = $1",
+            )
+            .bind(body.id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
             cur
         }
     };
     // 审计修复（P1）：assign="" 走 COALESCE($4, assigned_to) 会被 NULL 吞回当前值，
     // 注释宣称的「空串=取消指派」从未生效。显式空串时改用 SET assigned_to = NULL。
-    let clear_assign = matches!(body.assign.as_deref(), Some(s) if s.trim().is_empty());
+    let clear_assign =
+        matches!(body.assign.as_deref(), Some(s) if s.trim().is_empty());
     let n = if clear_assign {
         sqlx::query(
             "UPDATE staffmessages SET \
@@ -4583,7 +4734,8 @@ async fn leak_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE)
+        .await?;
     let rows = sqlx::query_as::<_, LeakRow>(
         "SELECT e.id, e.kind, e.user_id, u.username, e.torrent_id, e.detail, e.score, e.resolved, e.created_at \
          FROM leak_events e LEFT JOIN users u ON u.id = e.user_id \
@@ -4610,7 +4762,8 @@ async fn leak_resolve(
     body: web::Json<LeakResolveReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE)
+        .await?;
     if ![1, 2].contains(&body.verdict) {
         return Err(DomainError::Validation(
             "verdict 需为 1（确认）或 2（误报）".into(),
@@ -4631,11 +4784,13 @@ async fn leak_resolve(
     }
     if body.verdict == 1 {
         let (uid, kind, detail): (i64, String, serde_json::Value) =
-            sqlx::query_as("SELECT user_id, kind, detail FROM leak_events WHERE id = $1")
-                .bind(body.id)
-                .fetch_one(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query_as(
+                "SELECT user_id, kind, detail FROM leak_events WHERE id = $1",
+            )
+            .bind(body.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         // 审计修复（P1 语义错位）：staffmessages.user_id 是「来信人」——旧版 bind 泄露者
         // 本人，工单列表把被处置对象显示为提交人，且 staff_answer 会把处置意图 PM
         // 提前发给泄露者。改为以复核 staff 名义立项（subject 内带泄露者 id 供追溯）。

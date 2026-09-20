@@ -41,7 +41,10 @@ impl Repo {
         Self { db }
     }
 
-    pub async fn find_user_by_name(&self, username: &str) -> DomainResult<Option<UserAccount>> {
+    pub async fn find_user_by_name(
+        &self,
+        username: &str,
+    ) -> DomainResult<Option<UserAccount>> {
         let row = sqlx::query_as::<_, UserRow>(
             "SELECT id, username, pass_hash, passkey, class_id, must_reset_password, dormant_at \
              FROM users WHERE username = $1 AND status < 2",
@@ -53,7 +56,10 @@ impl Repo {
         Ok(row.map(Into::into))
     }
 
-    pub async fn find_user_by_id(&self, id: i64) -> DomainResult<Option<UserAccount>> {
+    pub async fn find_user_by_id(
+        &self,
+        id: i64,
+    ) -> DomainResult<Option<UserAccount>> {
         let row = sqlx::query_as::<_, UserRow>(
             "SELECT id, username, pass_hash, passkey, class_id, must_reset_password, dormant_at \
              FROM users WHERE id = $1 AND status < 2",
@@ -69,7 +75,11 @@ impl Repo {
     /// 尚无代码生效点：注册流程目前内联同语义 SQL（handler 事务内组合其他校验），
     /// 后续如把注册迁入 repo 层则接线本方法，到时删除本 allow
     #[allow(dead_code)]
-    pub async fn consume_invite(&self, code: &str, new_user_id: i64) -> DomainResult<Option<i64>> {
+    pub async fn consume_invite(
+        &self,
+        code: &str,
+        new_user_id: i64,
+    ) -> DomainResult<Option<i64>> {
         let row = sqlx::query_scalar::<_, Option<i64>>(
             "UPDATE invites SET status = 1, used_by = $1 \
              WHERE code = $2 AND status = 0 AND expires_at > now() \
@@ -156,7 +166,12 @@ impl Repo {
         Ok(pk)
     }
 
-    pub async fn audit(&self, actor_id: Option<i64>, action: &str, ref_id: Option<i64>) {
+    pub async fn audit(
+        &self,
+        actor_id: Option<i64>,
+        action: &str,
+        ref_id: Option<i64>,
+    ) {
         // 审计日志失败不阻塞业务，但必须记录（§5.7）
         let audit = sqlx::query(
             "INSERT INTO audit_log (id, actor_id, action, ref) VALUES (nextval('audit_log_id_seq'), $1, $2, $3::jsonb)",

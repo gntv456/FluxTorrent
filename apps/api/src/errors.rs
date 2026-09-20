@@ -94,7 +94,9 @@ impl DomainError {
             | DomainError::TwoFactorInvalid => StatusCode::BAD_REQUEST,
             // 429 与 openapi 文档（openapi_http.rs 429 描述）及 scripts/_ratelimit_check.py 口径一致
             DomainError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
-            DomainError::InsufficientSpark | DomainError::LedgerConflict => StatusCode::CONFLICT,
+            DomainError::InsufficientSpark | DomainError::LedgerConflict => {
+                StatusCode::CONFLICT
+            }
             // 4101 语义上更贴近「资源被移除」；用 403 会与权限混淆、404 会误导前端重试逻辑
             DomainError::ModuleDisabled(_) => StatusCode::NOT_FOUND,
             DomainError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -130,7 +132,9 @@ impl ResponseError for DomainError {
                 crate::i18n::localized_message(self.code(), locale),
                 list.len()
             ),
-            _ => crate::i18n::localized_message(self.code(), locale).to_string(),
+            _ => {
+                crate::i18n::localized_message(self.code(), locale).to_string()
+            }
         };
         // 字段级错误随信封 data 返回（前端据此内联红字），其余错误 data 保持 null
         let data = match self {

@@ -18,7 +18,8 @@ use actix_web::http::header::HeaderName;
 use actix_web::middleware::Next;
 use uuid::Uuid;
 
-pub const REQUEST_ID_HEADER: HeaderName = HeaderName::from_static("x-request-id");
+pub const REQUEST_ID_HEADER: HeaderName =
+    HeaderName::from_static("x-request-id");
 /// 入站 request_id 的长度与字符集约束（防日志注入/超长行）
 const INBOUND_MAX_LEN: usize = 64;
 
@@ -79,7 +80,8 @@ mod tests {
                     web::to(|| async {
                         // 信封构造路径能读到同一个 id（task-local 注入验证）
                         let rid = super::current();
-                        HttpResponse::Ok().json(serde_json::json!({ "request_id": rid }))
+                        HttpResponse::Ok()
+                            .json(serde_json::json!({ "request_id": rid }))
                     }),
                 ),
         )
@@ -92,7 +94,8 @@ mod tests {
             .and_then(|v| v.to_str().ok())
             .map(str::to_string);
         let body = test::read_body(res).await;
-        let echoed: serde_json::Value = serde_json::from_slice(&body).expect("json");
+        let echoed: serde_json::Value =
+            serde_json::from_slice(&body).expect("json");
         assert!(header.is_some(), "响应头必须回写 X-Request-Id");
         assert_eq!(
             header.as_deref(),
@@ -106,7 +109,10 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .wrap(actix_web::middleware::from_fn(super::request_id_mw))
-                .route("/ping", web::to(|| async { HttpResponse::Ok().finish() })),
+                .route(
+                    "/ping",
+                    web::to(|| async { HttpResponse::Ok().finish() }),
+                ),
         )
         .await;
         let req = test::TestRequest::get()
@@ -128,7 +134,10 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .wrap(actix_web::middleware::from_fn(super::request_id_mw))
-                .route("/ping", web::to(|| async { HttpResponse::Ok().finish() })),
+                .route(
+                    "/ping",
+                    web::to(|| async { HttpResponse::Ok().finish() }),
+                ),
         )
         .await;
         // 含空格的非法 id 必须被忽略改自生成（换行等控制字符在 HTTP 头解析层已被拒）

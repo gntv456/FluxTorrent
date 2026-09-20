@@ -120,13 +120,20 @@ impl UdpTracker {
             return Some(self.connect(pkt, peer, transaction_id));
         }
         match action {
-            ANNOUNCE_ACTION => Some(self.announce(pkt, peer, transaction_id).await),
+            ANNOUNCE_ACTION => {
+                Some(self.announce(pkt, peer, transaction_id).await)
+            }
             SCRAPE_ACTION => Some(self.scrape(pkt, peer, transaction_id).await),
             _ => Some(Self::err_pkt(transaction_id, "未知 action")),
         }
     }
 
-    fn connect(&self, pkt: &[u8], peer: SocketAddr, transaction_id: u32) -> Vec<u8> {
+    fn connect(
+        &self,
+        pkt: &[u8],
+        peer: SocketAddr,
+        transaction_id: u32,
+    ) -> Vec<u8> {
         if pkt.len() != 16 {
             return Self::err_pkt(transaction_id, "connect 包长无效");
         }
@@ -152,7 +159,12 @@ impl UdpTracker {
         out
     }
 
-    async fn announce(&self, pkt: &[u8], peer: SocketAddr, transaction_id: u32) -> Vec<u8> {
+    async fn announce(
+        &self,
+        pkt: &[u8],
+        peer: SocketAddr,
+        transaction_id: u32,
+    ) -> Vec<u8> {
         // 标准 BEP15 announce 包（固定 98 字节）：8 conn + 4 action + 4 tid
         //   + 20 info_hash + 20 peer_id + 8 downloaded + 8 left + 8 uploaded
         //   + 4 event + 4 ip + 4 key + 4 numwant + 2 port
@@ -171,7 +183,10 @@ impl UdpTracker {
         }
         let conn_id = u64::from_be_bytes(pkt[0..8].try_into().unwrap());
         if !self.check_conn(&peer, conn_id) {
-            return Self::err_pkt(transaction_id, "connection_id 无效或过期，请重连");
+            return Self::err_pkt(
+                transaction_id,
+                "connection_id 无效或过期，请重连",
+            );
         }
         let info_hash: [u8; 20] = pkt[16..36].try_into().unwrap();
         let peer_id: [u8; 20] = pkt[36..56].try_into().unwrap();
@@ -179,7 +194,8 @@ impl UdpTracker {
         let left = i64::from_be_bytes(pkt[64..72].try_into().unwrap());
         let uploaded = i64::from_be_bytes(pkt[72..80].try_into().unwrap());
         let event_u32 = u32::from_be_bytes(pkt[80..84].try_into().unwrap());
-        let numwant = i32::from_be_bytes(pkt[92..96].try_into().unwrap()).max(0) as usize;
+        let numwant =
+            i32::from_be_bytes(pkt[92..96].try_into().unwrap()).max(0) as usize;
         let port = u16::from_be_bytes(pkt[96..98].try_into().unwrap());
         let event = match event_u32 {
             1 => "completed",
@@ -206,7 +222,10 @@ impl UdpTracker {
                 .metrics
                 .announce_ip_banned
                 .fetch_add(1, Ordering::Relaxed);
-            return Self::err_pkt(transaction_id, &format!("IP 已被封禁：{reason}"));
+            return Self::err_pkt(
+                transaction_id,
+                &format!("IP 已被封禁：{reason}"),
+            );
         }
         if let Some(msg) = self.state.rate_limited_ip(&ip).await {
             self.state
@@ -244,7 +263,8 @@ impl UdpTracker {
             return Self::err_pkt(transaction_id, msg);
         }
         let peer_id_readable = String::from_utf8_lossy(&peer_id).into_owned();
-        if let Some(reason) = self.state.agent_blocked(None, &peer_id_readable) {
+        if let Some(reason) = self.state.agent_blocked(None, &peer_id_readable)
+        {
             self.state
                 .metrics
                 .announce_agent_blocked
@@ -298,10 +318,11 @@ impl UdpTracker {
             )
         };
         // compact peers：IPv4 only（本站客户端主体；v6 走 HTTP tracker）
-        let snap = self
-            .state
-            .peers
-            .snapshot(&info_hash_hex, numwant.clamp(1, 200), &key.peer_id);
+        let snap = self.state.peers.snapshot(
+            &info_hash_hex,
+            numwant.clamp(1, 200),
+            &key.peer_id,
+        );
         let mut peers_bytes = Vec::with_capacity(snap.v4.len() * 6);
         for p in &snap.v4 {
             peers_bytes.extend_from_slice(&p.ip);
@@ -320,15 +341,26 @@ impl UdpTracker {
         out
     }
 
-    async fn scrape(&self, pkt: &[u8], peer: SocketAddr, transaction_id: u32) -> Vec<u8> {
+    async fn scrape(
+        &self,
+        pkt: &[u8],
+        peer: SocketAddr,
+        transaction_id: u32,
+    ) -> Vec<u8> {
         let conn_id = u64::from_be_bytes(pkt[0..8].try_into().unwrap());
         if !self.check_conn(&peer, conn_id) {
-            return Self::err_pkt(transaction_id, "connection_id 无效或过期，请重连");
+            return Self::err_pkt(
+                transaction_id,
+                "connection_id 无效或过期，请重连",
+            );
         }
         // 剩余字节 = N×20 hash + 尾随 passkey：hash 边界按「20 字节对齐的头部段」推断，
         // 至少 1 个 hash、至少 16 字节 passkey（passkey 长度 = 剩余长度 mod 20 之外的尾段）
         if pkt.len() < 16 + 20 + 16 {
-            return Self::err_pkt(transaction_id, "scrape 需附带 info_hash 与 passkey");
+            return Self::err_pkt(
+                transaction_id,
+                "scrape 需附带 info_hash 与 passkey",
+            );
         }
         self.state
             .metrics
@@ -341,7 +373,10 @@ impl UdpTracker {
         let passkey_raw = String::from_utf8_lossy(&pkt[16 + n_hash * 20..]);
         let passkey = passkey_from_tracker_id(&passkey_raw);
         if passkey.len() < 16 {
-            return Self::err_pkt(transaction_id, "scrape 需在 info_hash 列表后附带 passkey");
+            return Self::err_pkt(
+                transaction_id,
+                "scrape 需在 info_hash 列表后附带 passkey",
+            );
         }
         if self.state.resolve_passkey_cached(passkey).await.is_none() {
             return Self::err_pkt(transaction_id, "passkey 无效");

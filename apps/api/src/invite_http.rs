@@ -135,7 +135,8 @@ pub async fn issue_invite_handler(
         let quota = invite_quota_limit(&state, &auth).await;
         if quota == 0 {
             return Err(DomainError::Validation(
-                "等级达到 LV3 后才能生成邀请码；也可用魔力兑换（不受等级限制）".into(),
+                "等级达到 LV3 后才能生成邀请码；也可用魔力兑换（不受等级限制）"
+                    .into(),
             ));
         }
         sqlx::query(
@@ -212,7 +213,9 @@ pub async fn email_invite_handler(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((code, expires)) = row else {
-        return Err(DomainError::Validation("邀请码不存在或已使用/过期".into()));
+        return Err(DomainError::Validation(
+            "邀请码不存在或已使用/过期".into(),
+        ));
     };
 
     let smtp = std::env::var("SMTP_URL").unwrap_or_default();
@@ -232,26 +235,28 @@ pub async fn email_invite_handler(
         .or_else(|_| std::env::var("PUBLIC_API_URL"))
         .unwrap_or_else(|_| "http://localhost:3000".into());
     let link = format!("{base}/register?invite={code}");
-    let from = std::env::var("SMTP_FROM").unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
-    let site: String =
-        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = 'site_name'")
-            .fetch_optional(&state.repo.db)
+    let from = std::env::var("SMTP_FROM")
+        .unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
+    let site: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'site_name'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_else(|| "FluxTorrent".into());
+    let inviter: String =
+        sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
             .await
-            .ok()
-            .flatten()
-            .unwrap_or_else(|| "FluxTorrent".into());
-    let inviter: String = sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or_else(|_| "某人".into());
+            .unwrap_or_else(|_| "某人".into());
     let hours_left = (expires - chrono::Utc::now()).num_hours().max(1);
     let mailer = crate::gaps_http::build_smtp(&smtp)?;
     let letter = lettre::Message::builder()
-        .from(
-            from.parse()
-                .map_err(|_| DomainError::Validation("SMTP_FROM 配置无效".into()))?,
-        )
+        .from(from.parse().map_err(|_| {
+            DomainError::Validation("SMTP_FROM 配置无效".into())
+        })?)
         .to(email
             .parse()
             .map_err(|_| DomainError::Validation("邮箱地址无效".into()))?)

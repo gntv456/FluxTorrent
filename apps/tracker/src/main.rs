@@ -149,11 +149,12 @@ impl TrackerState {
             return;
         }
         self.force_refresh.store(false, Ordering::Relaxed);
-        let bans: Option<Vec<(String, String)>> =
-            sqlx::query_as("SELECT host(ip), COALESCE(reason, '') FROM ip_bans")
-                .fetch_all(&self.db)
-                .await
-                .ok();
+        let bans: Option<Vec<(String, String)>> = sqlx::query_as(
+            "SELECT host(ip), COALESCE(reason, '') FROM ip_bans",
+        )
+        .fetch_all(&self.db)
+        .await
+        .ok();
         let rules: Option<Vec<AgentRule>> = sqlx::query_as::<_, (String, String, String)>(
             "SELECT mode, pattern, COALESCE(peer_id_pattern, '') FROM agent_rules",
         )
@@ -216,7 +217,10 @@ impl TrackerState {
     }
 
     /// passkey → (user_id, download_enabled, suspended)，60s 内存缓存
-    pub async fn resolve_passkey_cached(&self, passkey: &str) -> Option<(i64, bool, bool)> {
+    pub async fn resolve_passkey_cached(
+        &self,
+        passkey: &str,
+    ) -> Option<(i64, bool, bool)> {
         {
             let g = self.guard_read();
             if let Some((uid, de, su, at)) = g.passkeys.get(passkey) {
@@ -254,15 +258,21 @@ impl TrackerState {
     /// 仅当规则从未成功加载（启动后 DB 一直不可达）才放行；一旦有快照，
     /// 刷新失败时 refresh_guard 保留旧值，DB 抖动期间名单持续生效（不再 fail-open）。
     /// peer_id 传可读形式（lossy）以匹配 -XL0014- 等前缀。
-    pub fn agent_blocked(&self, agent: Option<&str>, peer_id: &str) -> Option<String> {
+    pub fn agent_blocked(
+        &self,
+        agent: Option<&str>,
+        peer_id: &str,
+    ) -> Option<String> {
         let rules = self.guard_read().agent_rules.clone()?;
         let a = agent.unwrap_or("");
         let hit = |r: &&AgentRule| {
             let agent_ok = r.agent_re.as_ref().is_some_and(|re| re.is_match(a));
-            let peer_ok = r.peer_re.as_ref().is_some_and(|re| re.is_match(peer_id));
+            let peer_ok =
+                r.peer_re.as_ref().is_some_and(|re| re.is_match(peer_id));
             agent_ok || peer_ok
         };
-        let (allows, denies): (Vec<_>, Vec<_>) = rules.iter().partition(|r| !r.deny);
+        let (allows, denies): (Vec<_>, Vec<_>) =
+            rules.iter().partition(|r| !r.deny);
         if denies.iter().any(hit) {
             return Some("客户端被禁止（黑名单），请联系管理组".into());
         }
@@ -300,7 +310,10 @@ impl TrackerState {
     }
 
     /// 每用户频率限流（按 user_id 而非 IP —— NAT 场景按 IP 会误伤）。
-    pub async fn rate_limited_user(&self, user_id: i64) -> Option<&'static str> {
+    pub async fn rate_limited_user(
+        &self,
+        user_id: i64,
+    ) -> Option<&'static str> {
         let k = format!("rl:ann:u:{user_id}");
         self.rate_over(&k, self.cfg.user_per_min)
             .await
@@ -388,7 +401,8 @@ async fn announce(
     let event = params.get_str("event").unwrap_or_default();
     let event = event.as_str();
     // 安全（P2）：不信任客户端自报 IP —— 仅显式配置代理时才采用参数值
-    let trust_param_ip = std::env::var("TRUST_PROXY_IP").unwrap_or_default() == "1";
+    let trust_param_ip =
+        std::env::var("TRUST_PROXY_IP").unwrap_or_default() == "1";
     let ip = if trust_param_ip {
         params
             .get_str("ip")
@@ -428,7 +442,8 @@ async fn announce(
     }
 
     // ① passkey → user_id + 管理开关（内存缓存 60s，命中免查 PG）
-    let Some((user_id, download_enabled, suspended)) = state.resolve_passkey_cached(&passkey).await
+    let Some((user_id, download_enabled, suspended)) =
+        state.resolve_passkey_cached(&passkey).await
     else {
         state
             .metrics
@@ -465,7 +480,9 @@ async fn announce(
         .map(str::to_string)
         .or_else(|| params.get_str("agent"))
         .unwrap_or_default();
-    if let Some(reason) = state.agent_blocked(Some(agent_str.as_str()), &peer_id_readable) {
+    if let Some(reason) =
+        state.agent_blocked(Some(agent_str.as_str()), &peer_id_readable)
+    {
         state
             .metrics
             .announce_agent_blocked
@@ -578,7 +595,10 @@ async fn scrape(
 /// Prometheus 指标端点：ANN_METRICS_TOKEN 未设置时返回 404（不暴露）；
 /// 抓取端需带 X-Metrics-Token 头。监控与告警基线见 生产部署指南「监控与告警」节。
 #[get("/metrics")]
-async fn metrics(state: web::Data<TrackerState>, req: actix_web::HttpRequest) -> HttpResponse {
+async fn metrics(
+    state: web::Data<TrackerState>,
+    req: actix_web::HttpRequest,
+) -> HttpResponse {
     let tok = std::env::var("ANN_METRICS_TOKEN").unwrap_or_default();
     if tok.is_empty()
         || req
@@ -721,7 +741,11 @@ async fn emit_agent_block(
     }
 }
 
-async fn xadd(redis: &redis::aio::ConnectionManager, stream: &str, payload: &serde_json::Value) {
+async fn xadd(
+    redis: &redis::aio::ConnectionManager,
+    stream: &str,
+    payload: &serde_json::Value,
+) {
     let mut cmd = redis::cmd("XADD");
     cmd.arg(stream)
         .arg("*")
@@ -738,14 +762,18 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info".into()),
         )
         .init();
 
-    let bind = std::env::var("TRACKER_BIND").unwrap_or_else(|_| "0.0.0.0:7070".into());
-    let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://flux:fluxdevpass@127.0.0.1:5432/fluxtorrent".into());
-    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".into());
+    let bind =
+        std::env::var("TRACKER_BIND").unwrap_or_else(|_| "0.0.0.0:7070".into());
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "postgres://flux:fluxdevpass@127.0.0.1:5432/fluxtorrent".into()
+    });
+    let redis_url = std::env::var("REDIS_URL")
+        .unwrap_or_else(|_| "redis://127.0.0.1:6379".into());
 
     let db = sqlx::postgres::PgPoolOptions::new()
         .max_connections(8)
@@ -763,7 +791,8 @@ async fn main() -> anyhow::Result<()> {
         ip_per_min: env_i64("ANN_RATE_IP_PER_MIN", 3600),
         // 全局应急熔断：0=关闭；遭分布式洪水时临时设置（如 120000 = 2000r/s 总闸）
         global_per_min: env_i64("ANN_RATE_GLOBAL_PER_MIN", 0),
-        default_interval: env_i64("ANN_INTERVAL_DEFAULT", 1800).clamp(60, 86400),
+        default_interval: env_i64("ANN_INTERVAL_DEFAULT", 1800)
+            .clamp(60, 86400),
     };
     let state = web::Data::new(TrackerState {
         peers: PeerTable::new(),
@@ -791,15 +820,22 @@ async fn main() -> anyhow::Result<()> {
         use redis::AsyncCommands;
         let mut c = redis.clone();
         match c.get::<_, Option<String>>("flux:tracker:peers").await {
-            Ok(Some(raw)) => match serde_json::from_str::<Vec<(String, Vec<Peer>)>>(&raw) {
+            Ok(Some(raw)) => match serde_json::from_str::<
+                Vec<(String, Vec<Peer>)>,
+            >(&raw)
+            {
                 Ok(snap) => {
                     let n = state.peers.restore(snap);
                     tracing::info!(n, "peer table warm-restored from redis");
                 }
-                Err(e) => tracing::warn!(%e, "peer snapshot parse failed, skip warm restore"),
+                Err(e) => {
+                    tracing::warn!(%e, "peer snapshot parse failed, skip warm restore")
+                }
             },
             Ok(None) => {}
-            Err(e) => tracing::warn!(%e, "peer snapshot read failed, skip warm restore"),
+            Err(e) => {
+                tracing::warn!(%e, "peer snapshot read failed, skip warm restore")
+            }
         }
     }
 
@@ -816,7 +852,9 @@ async fn main() -> anyhow::Result<()> {
                         let mut c = st.redis.clone();
                         use redis::AsyncCommands;
                         // 30min TTL：tracker 长时间下线后旧快照不再有效
-                        if let Err(e) = c.set_ex::<_, _, ()>("flux:tracker:peers", raw, 1800).await
+                        if let Err(e) = c
+                            .set_ex::<_, _, ()>("flux:tracker:peers", raw, 1800)
+                            .await
                         {
                             tracing::warn!(%e, "peer snapshot write failed");
                         }
@@ -837,7 +875,9 @@ async fn main() -> anyhow::Result<()> {
             let mut tick = tokio::time::interval(Duration::from_secs(3));
             loop {
                 tick.tick().await;
-                if let Ok(Some(v)) = conn.get::<_, Option<i64>>("flux:guard:ver").await {
+                if let Ok(Some(v)) =
+                    conn.get::<_, Option<i64>>("flux:guard:ver").await
+                {
                     let last = st.ver.swap(v, Ordering::Relaxed);
                     if last != v {
                         st.force_refresh.store(true, Ordering::Relaxed);
@@ -860,7 +900,10 @@ async fn main() -> anyhow::Result<()> {
                 for (key, probe_ip, probe_port) in st.peers.sample_probes(50) {
                     let attempt = tokio::time::timeout(
                         Duration::from_secs(3),
-                        tokio::net::TcpStream::connect((probe_ip.as_str(), probe_port)),
+                        tokio::net::TcpStream::connect((
+                            probe_ip.as_str(),
+                            probe_port,
+                        )),
                     )
                     .await;
                     let reachable = matches!(attempt, Ok(Ok(_)));
@@ -872,7 +915,8 @@ async fn main() -> anyhow::Result<()> {
 
     // UDP tracker（BEP15）：TRACKER_UDP_BIND 未设置（空）则不启用；
     // 默认 6969。与 HTTP announce 共享 state（peer 表/限流/事件流）。
-    let udp_bind = std::env::var("TRACKER_UDP_BIND").unwrap_or_else(|_| "0.0.0.0:6969".into());
+    let udp_bind = std::env::var("TRACKER_UDP_BIND")
+        .unwrap_or_else(|_| "0.0.0.0:6969".into());
     if !udp_bind.is_empty() {
         let udp = std::sync::Arc::new(udp::UdpTracker::new(state.clone()));
         let ub = udp_bind.clone();

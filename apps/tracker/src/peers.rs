@@ -165,7 +165,12 @@ impl PeerTable {
 
     /// 取同一 info_hash 的活跃 peer（排除自己，numwant 上限），v4/v6 分列。
     /// BEP-7：v6 peer 不再被丢弃；只扫本 swarm 桶（P0-3）。
-    pub fn snapshot(&self, info_hash: &str, numwant: usize, exclude: &str) -> Snapshot {
+    pub fn snapshot(
+        &self,
+        info_hash: &str,
+        numwant: usize,
+        exclude: &str,
+    ) -> Snapshot {
         self.gc_swarm(info_hash);
         let limit = numwant.clamp(1, MAX_PEERS_RESPONSE);
         let mut snap = Snapshot::default();
@@ -228,10 +233,16 @@ impl PeerTable {
                     break;
                 }
                 match p.connectable {
-                    CONN_UNTESTED => out.push((p.key.clone(), p.ip.clone(), p.port)),
+                    CONN_UNTESTED => {
+                        out.push((p.key.clone(), p.ip.clone(), p.port))
+                    }
                     _ => {
                         if retriable.len() < n {
-                            retriable.push((p.key.clone(), p.ip.clone(), p.port))
+                            retriable.push((
+                                p.key.clone(),
+                                p.ip.clone(),
+                                p.port,
+                            ))
                         }
                     }
                 }
@@ -338,7 +349,9 @@ pub fn bencode_announce(
     .into_bytes();
     out.extend_from_slice(&peers_bytes);
     if !peers6_bytes.is_empty() {
-        out.extend_from_slice(format!("6:peers6{}:", peers6_bytes.len()).as_bytes());
+        out.extend_from_slice(
+            format!("6:peers6{}:", peers6_bytes.len()).as_bytes(),
+        );
         out.extend_from_slice(&peers6_bytes);
     }
     out.extend_from_slice(b"e");
@@ -489,7 +502,8 @@ mod tests {
             }],
             &[CompactPeer6 {
                 ip: [
-                    0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01,
+                    0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0x01,
                 ],
                 port: 0xC201,
             }],
@@ -499,7 +513,9 @@ mod tests {
         // BEP-7：peers6 紧跟 peers（字节序），18 字节/peer；二进制内容不经 UTF-8 损坏
         assert!(body.windows(6).any(|w| w == [10, 0, 0, 1, 0xC8, 0xD5])); // 51413 = 0xC8D5
         assert!(body.windows(18).any(|w| w[..16]
-            == [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01]
+            == [
+                0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01
+            ]
             && w[16] == 0xC2
             && w[17] == 0x01));
         let s = String::from_utf8_lossy(&body);

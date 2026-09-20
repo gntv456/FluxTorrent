@@ -36,25 +36,29 @@ use crate::state::AppState;
 /// 模块开关：module_social = 'no' 时关闭。
 /// 缺省（未配置）视为关闭 —— 通用程序不应默认暴露社区玩法。
 async fn social_disabled(db: &sqlx::PgPool) -> bool {
-    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = 'module_social'")
-        .fetch_optional(db)
-        .await
-        .ok()
-        .flatten()
-        .map(|v| v == "no")
-        .unwrap_or(true)
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'module_social'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v == "no")
+    .unwrap_or(true)
 }
 
 /// 读取整数型站点设置（缺省取 dft）
 async fn setting_i64(db: &sqlx::PgPool, name: &str, dft: i64) -> i64 {
-    sqlx::query_scalar::<_, String>("SELECT value FROM site_settings WHERE name = $1")
-        .bind(name)
-        .fetch_optional(db)
-        .await
-        .ok()
-        .flatten()
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(dft)
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = $1",
+    )
+    .bind(name)
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(dft)
 }
 
 #[derive(Deserialize)]
@@ -103,8 +107,10 @@ async fn endangered_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = require_auth(&req, &state).await?;
 
-    let endangered_seeders = setting_i64(&state.repo.db, "social_endangered_seeders", 1).await;
-    let health_seeders = setting_i64(&state.repo.db, "social_health_seeders", 7).await;
+    let endangered_seeders =
+        setting_i64(&state.repo.db, "social_endangered_seeders", 1).await;
+    let health_seeders =
+        setting_i64(&state.repo.db, "social_health_seeders", 7).await;
 
     // 模块关闭：返回 enabled=false + 空列表（前端隐藏入口，不报错、不引导）
     if social_disabled(&state.repo.db).await {
@@ -192,13 +198,14 @@ async fn team_create(
     let tid = body.torrent_id;
 
     // 与 resurrections/claim 同口径：须过审，且不能拯救自己发布的种
-    let owner: i64 =
-        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1 AND approval_status = 1")
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .ok_or(DomainError::NotFound(tid))?;
+    let owner: i64 = sqlx::query_scalar(
+        "SELECT owner_id FROM torrents WHERE id = $1 AND approval_status = 1",
+    )
+    .bind(tid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .ok_or(DomainError::NotFound(tid))?;
     if owner == auth.id {
         return Err(DomainError::Validation("不能拯救自己发布的种子".into()));
     }
@@ -213,8 +220,9 @@ async fn team_create(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (seed0, up0) =
-        base.ok_or_else(|| DomainError::Validation("你需要先下载该资源，才能参与保种协作".into()))?;
+    let (seed0, up0) = base.ok_or_else(|| {
+        DomainError::Validation("你需要先下载该资源，才能参与保种协作".into())
+    })?;
 
     // 注意：site_settings.value 经 ::int 得到的是 INT4，必须读 i32（读 i64 会在解码期报
     // mismatched types 并被静默吞掉，导致配置永远不生效）
@@ -266,7 +274,9 @@ async fn team_create(
     .rows_affected();
     if ins == 0 {
         // tx 随作用域 drop，自动回滚
-        return Err(DomainError::Validation("该资源已有进行中的复活任务".into()));
+        return Err(DomainError::Validation(
+            "该资源已有进行中的复活任务".into(),
+        ));
     }
 
     sqlx::query(
@@ -326,7 +336,8 @@ async fn team_join(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (torrent_id, status, size_max, leader) = row.ok_or(DomainError::NotFound(body.team_id))?;
+    let (torrent_id, status, size_max, leader) =
+        row.ok_or(DomainError::NotFound(body.team_id))?;
     if status != 0 && status != 1 {
         return Err(DomainError::Validation("该队伍已结束".into()));
     }
@@ -354,8 +365,9 @@ async fn team_join(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (seed0, up0) =
-        base.ok_or_else(|| DomainError::Validation("你需要先下载该资源，才能参与保种协作".into()))?;
+    let (seed0, up0) = base.ok_or_else(|| {
+        DomainError::Validation("你需要先下载该资源，才能参与保种协作".into())
+    })?;
 
     let ins = sqlx::query(
         "INSERT INTO social_team_member \
@@ -479,7 +491,8 @@ async fn team_leave(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (status, leader) = row.ok_or_else(|| DomainError::Validation("你不在该队伍中".into()))?;
+    let (status, leader) =
+        row.ok_or_else(|| DomainError::Validation("你不在该队伍中".into()))?;
     if status != 0 && status != 1 {
         return Err(DomainError::Validation("该队伍已结束".into()));
     }
@@ -487,7 +500,8 @@ async fn team_leave(
         return Err(DomainError::Validation("队长不能直接退出".into()));
     }
 
-    let delta = setting_i64(&state.repo.db, "social_rep_on_withdrawn", -15).await;
+    let delta =
+        setting_i64(&state.repo.db, "social_rep_on_withdrawn", -15).await;
     let rep_min = setting_i64(&state.repo.db, "social_rep_min", 0).await;
     let rep_max = setting_i64(&state.repo.db, "social_rep_max", 2000).await;
 

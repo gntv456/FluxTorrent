@@ -34,7 +34,10 @@ pub fn checkin_reward(streak_after: i64, is_first_ever: bool) -> CheckInReward {
 
 /// 连签计算：昨天有记录 → 连签+1；否则重置为 1
 #[allow(dead_code)]
-pub fn next_streak(last_date: Option<chrono::NaiveDate>, today: chrono::NaiveDate) -> i64 {
+pub fn next_streak(
+    last_date: Option<chrono::NaiveDate>,
+    today: chrono::NaiveDate,
+) -> i64 {
     match last_date {
         Some(d) if (today - d).num_days() == 1 => 2, // 调用方在此基础上 + 原连签数
         _ => 1,
@@ -62,7 +65,10 @@ pub fn maturity_interest(principal: i64, term_days: i32) -> i64 {
 }
 
 #[allow(dead_code)]
-pub fn maturity_date(start: chrono::DateTime<Utc>, term_days: i32) -> chrono::DateTime<Utc> {
+pub fn maturity_date(
+    start: chrono::DateTime<Utc>,
+    term_days: i32,
+) -> chrono::DateTime<Utc> {
     start + Duration::days(term_days as i64)
 }
 
@@ -121,7 +127,8 @@ pub fn pool_promo_window(
     let day = now.day();
     if (1..=3).contains(&day) {
         let month_start = now.date_naive().and_hms_opt(0, 0, 0)?;
-        let start = chrono::DateTime::from_naive_utc_and_offset(month_start, Utc);
+        let start =
+            chrono::DateTime::from_naive_utc_and_offset(month_start, Utc);
         Some((start, start + Duration::days(3)))
     } else {
         None
@@ -257,11 +264,17 @@ mod tests {
             .unwrap()
             .and_hms_opt(12, 0, 0)
             .unwrap();
-        assert!(pool_promo_window(chrono::DateTime::from_naive_utc_and_offset(d1, Utc)).is_some());
+        assert!(pool_promo_window(
+            chrono::DateTime::from_naive_utc_and_offset(d1, Utc)
+        )
+        .is_some());
         let d5 = chrono::NaiveDate::from_ymd_opt(2026, 10, 5)
             .unwrap()
             .and_hms_opt(12, 0, 0)
             .unwrap();
-        assert!(pool_promo_window(chrono::DateTime::from_naive_utc_and_offset(d5, Utc)).is_none());
+        assert!(pool_promo_window(
+            chrono::DateTime::from_naive_utc_and_offset(d5, Utc)
+        )
+        .is_none());
     }
 }

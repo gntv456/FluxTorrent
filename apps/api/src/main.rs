@@ -63,7 +63,9 @@ fn build_cors() -> actix_cors::Cors {
         if !dev {
             panic!("CORS_ORIGINS 未配置：生产环境禁止宽松 CORS（设 FLUX_DEV=1 跳过开发态检查）");
         }
-        tracing::warn!("CORS_ORIGINS 未配置，使用宽松 CORS（仅限开发态；生产由网关收敛）");
+        tracing::warn!(
+            "CORS_ORIGINS 未配置，使用宽松 CORS（仅限开发态；生产由网关收敛）"
+        );
         return Cors::permissive();
     }
     let mut cors = Cors::default()
@@ -91,7 +93,8 @@ async fn main() -> anyhow::Result<()> {
 
     let cfg = config::AppConfig::from_env()?;
     let bind = cfg.bind.clone();
-    let state = web::Data::new(std::sync::Arc::new(state::AppState::new(cfg).await?));
+    let state =
+        web::Data::new(std::sync::Arc::new(state::AppState::new(cfg).await?));
 
     // 迁移（幂等）。路径解析相对 crate 根，兼容从仓库根或 apps/api 目录启动。
     {
@@ -114,7 +117,10 @@ async fn main() -> anyhow::Result<()> {
         const DEMO_PUBLIC_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$XAMwi8WTuzejCBPhdilR6w$xUb/nkW8/iUYTMb+dCPsstkyeldF5LuM2sOIK4m8++c";
         use rand::Rng;
         let rnd: String = (0..43)
-            .map(|_| rand::thread_rng().sample(rand::distributions::Alphanumeric) as char)
+            .map(|_| {
+                rand::thread_rng().sample(rand::distributions::Alphanumeric)
+                    as char
+            })
             .collect();
         let new_hash = crate::domain::hash_password(&rnd);
         match sqlx::query_scalar::<_, i64>(

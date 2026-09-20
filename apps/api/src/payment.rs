@@ -25,12 +25,14 @@ pub struct GatewayConfig {
 }
 
 pub async fn gateway_config(state: &AppState) -> GatewayConfig {
-    let rows: Vec<(String, String)> =
-        sqlx::query_as("SELECT name, value FROM site_settings WHERE name LIKE 'payment\\_%'")
-            .fetch_all(&state.repo.db)
-            .await
-            .unwrap_or_default();
-    let m: std::collections::HashMap<String, String> = rows.into_iter().collect();
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name LIKE 'payment\\_%'",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let m: std::collections::HashMap<String, String> =
+        rows.into_iter().collect();
     let get = |k: &str| m.get(k).cloned().unwrap_or_default();
     GatewayConfig {
         provider: get("payment_provider"),
@@ -95,11 +97,14 @@ pub struct NotifyData {
 pub fn epay_sign(params: &[(&str, &str)], key: &str) -> String {
     let mut sorted: Vec<(String, String)> = params
         .iter()
-        .filter(|(k, v)| !k.is_empty() && *v != "" && *k != "sign" && *k != "sign_type")
+        .filter(|(k, v)| {
+            !k.is_empty() && *v != "" && *k != "sign" && *k != "sign_type"
+        })
         .map(|(k, v)| (k.to_string(), v.to_string()))
         .collect();
     sorted.sort();
-    let joined: Vec<String> = sorted.iter().map(|(k, v)| format!("{k}={v}")).collect();
+    let joined: Vec<String> =
+        sorted.iter().map(|(k, v)| format!("{k}={v}")).collect();
     let raw = joined.join("&");
     let mut hasher = Md5::new();
     hasher.update(raw.as_bytes());
@@ -154,13 +159,18 @@ impl PaymentProvider for EpayProvider {
         // 口径：sign = MD5(升序&拼接(除 sign/sign_type/空值) + key)；trade_status=TRADE_SUCCESS
         let vec: Vec<(String, String)> = params
             .iter()
-            .filter(|(k, v)| k.as_str() != "sign" && k.as_str() != "sign_type" && !v.is_empty())
+            .filter(|(k, v)| {
+                k.as_str() != "sign"
+                    && k.as_str() != "sign_type"
+                    && !v.is_empty()
+            })
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         let expect = {
             let mut sorted = vec.clone();
             sorted.sort();
-            let joined: Vec<String> = sorted.iter().map(|(k, v)| format!("{k}={v}")).collect();
+            let joined: Vec<String> =
+                sorted.iter().map(|(k, v)| format!("{k}={v}")).collect();
             let raw = joined.join("&");
             let mut hasher = Md5::new();
             hasher.update(raw.as_bytes());
@@ -187,9 +197,13 @@ fn urlencode(s: &str) -> String {
     let mut out = String::new();
     for b in s.bytes() {
         match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char)
-            }
+            b'A'..=b'Z'
+            | b'a'..=b'z'
+            | b'0'..=b'9'
+            | b'-'
+            | b'_'
+            | b'.'
+            | b'~' => out.push(b as char),
             _ => out.push_str(&format!("%{b:02X}")),
         }
     }
@@ -197,7 +211,9 @@ fn urlencode(s: &str) -> String {
 }
 
 /// 按 site_settings 构造当前 Provider
-pub fn provider_from(cfg: &GatewayConfig) -> Box<dyn PaymentProvider + Send + Sync> {
+pub fn provider_from(
+    cfg: &GatewayConfig,
+) -> Box<dyn PaymentProvider + Send + Sync> {
     // 目前唯一实现；新网关在此分发
     Box::new(EpayProvider {
         gateway_url: cfg.gateway_url.clone(),

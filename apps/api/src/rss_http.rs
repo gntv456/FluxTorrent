@@ -46,18 +46,20 @@ async fn rss_feed(
     if passkey.len() != 32 {
         return HttpResponse::BadRequest().body("invalid passkey");
     }
-    let user: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM users WHERE passkey = $1 AND status < 2")
-            .bind(&passkey)
-            .fetch_optional(&state.repo.db)
-            .await
-            .unwrap_or(None);
+    let user: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM users WHERE passkey = $1 AND status < 2",
+    )
+    .bind(&passkey)
+    .fetch_optional(&state.repo.db)
+    .await
+    .unwrap_or(None);
     if user.is_none() {
         return HttpResponse::NotFound().body("unknown passkey");
     }
 
     // 多选分类/媒介：逗号分隔 → 数组（空 = 不过滤）；兼容旧版单值 category
-    let categories = parse_ids(q.categories.as_deref()).or_else(|| q.category.map(|c| vec![c]));
+    let categories = parse_ids(q.categories.as_deref())
+        .or_else(|| q.category.map(|c| vec![c]));
     let mediums = parse_ids(q.mediums.as_deref());
     // paid=1 → 仅免费促销种（当前生效的 torrent 级或 scope 级 free/x2free；修复前参数被静默忽略）
     let free_only = q.paid == Some(1);
@@ -264,12 +266,13 @@ async fn forum_rss_feed(
     if passkey.len() != 32 {
         return HttpResponse::BadRequest().body("invalid passkey");
     }
-    let user: Option<(i64, i32)> =
-        sqlx::query_as("SELECT id, class_id FROM users WHERE passkey = $1 AND status < 2")
-            .bind(&passkey)
-            .fetch_optional(&state.repo.db)
-            .await
-            .unwrap_or(None);
+    let user: Option<(i64, i32)> = sqlx::query_as(
+        "SELECT id, class_id FROM users WHERE passkey = $1 AND status < 2",
+    )
+    .bind(&passkey)
+    .fetch_optional(&state.repo.db)
+    .await
+    .unwrap_or(None);
     let Some((uid, class_id)) = user else {
         return HttpResponse::NotFound().body("unknown passkey");
     };

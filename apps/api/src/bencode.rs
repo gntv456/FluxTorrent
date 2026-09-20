@@ -14,7 +14,9 @@ pub enum Bencode {
 impl Bencode {
     pub fn get(&self, key: &[u8]) -> Option<&Bencode> {
         match self {
-            Bencode::Dict(pairs) => pairs.iter().find(|(k, _)| k == key).map(|(_, v)| v),
+            Bencode::Dict(pairs) => {
+                pairs.iter().find(|(k, _)| k == key).map(|(_, v)| v)
+            }
             _ => None,
         }
     }
@@ -48,7 +50,8 @@ fn parse_one(buf: &[u8], pos: usize) -> Result<(Bencode, usize), String> {
                 .iter()
                 .position(|&b| b == b'e')
                 .ok_or("unterminated int")?;
-            let s = std::str::from_utf8(&rest[1..end]).map_err(|_| "int utf8")?;
+            let s =
+                std::str::from_utf8(&rest[1..end]).map_err(|_| "int utf8")?;
             let n: i64 = s.parse().map_err(|_| "int parse")?;
             Ok((Bencode::Int(n), pos + end + 1))
         }
@@ -78,7 +81,8 @@ fn parse_one(buf: &[u8], pos: usize) -> Result<(Bencode, usize), String> {
             Ok((Bencode::Dict(pairs), p + 1))
         }
         Some(b) if b.is_ascii_digit() => {
-            let colon = rest.iter().position(|&c| c == b':').ok_or("bad string")?;
+            let colon =
+                rest.iter().position(|&c| c == b':').ok_or("bad string")?;
             let len: usize = std::str::from_utf8(&rest[..colon])
                 .map_err(|_| "len utf8")?
                 .parse()
@@ -162,19 +166,22 @@ pub struct ParsedTorrent {
 pub fn parse_torrent(bytes: &[u8]) -> Result<ParsedTorrent, String> {
     let (root, _) = parse(bytes)?;
     let info = root.get(b"info").ok_or("missing info dict")?;
-    let name = std::str::from_utf8(info.get(b"name").and_then(|v| v.as_bytes()).unwrap_or(b""))
-        .unwrap_or("")
-        .to_string();
+    let name = std::str::from_utf8(
+        info.get(b"name").and_then(|v| v.as_bytes()).unwrap_or(b""),
+    )
+    .unwrap_or("")
+    .to_string();
     let piece_length = info
         .get(b"piece length")
         .and_then(|v| v.as_int())
         .unwrap_or(0);
 
     // 计算总大小、文件数与文件清单（files 表数据源）
-    let (size, files) = if let Some(files) = info.get(b"files").and_then(|v| match v {
-        Bencode::List(l) => Some(l),
-        _ => None,
-    }) {
+    let (size, files) = if let Some(files) =
+        info.get(b"files").and_then(|v| match v {
+            Bencode::List(l) => Some(l),
+            _ => None,
+        }) {
         let mut total = 0i64;
         let mut list = Vec::with_capacity(files.len());
         for f in files {
@@ -257,7 +264,8 @@ pub fn build_download_torrent(
         b"announce".to_vec(),
         Bencode::Bytes(announce_url.as_bytes().to_vec()),
     ));
-    let mut tier: Vec<Bencode> = Vec::with_capacity(1 + announce_fallbacks.len());
+    let mut tier: Vec<Bencode> =
+        Vec::with_capacity(1 + announce_fallbacks.len());
     tier.push(Bencode::Bytes(announce_url.as_bytes().to_vec()));
     for u in announce_fallbacks {
         if !u.is_empty() && u != announce_url {
@@ -282,7 +290,8 @@ mod tests {
     use super::*;
 
     fn make_torrent() -> Vec<u8> {
-        let t = b"d4:infod6:lengthi1024e4:name8:test.bin12:piece lengthi16384eee";
+        let t =
+            b"d4:infod6:lengthi1024e4:name8:test.bin12:piece lengthi16384eee";
         t.to_vec()
     }
 
@@ -312,7 +321,10 @@ mod tests {
         )
         .unwrap();
         let (root, _) = parse(&out).unwrap();
-        let ann = std::str::from_utf8(root.get(b"announce").unwrap().as_bytes().unwrap()).unwrap();
+        let ann = std::str::from_utf8(
+            root.get(b"announce").unwrap().as_bytes().unwrap(),
+        )
+        .unwrap();
         assert!(ann.contains("passkey=abc"));
         assert!(
             root.get(b"announce-list").is_none(),
@@ -405,7 +417,8 @@ fn raw_info_span(bytes: &[u8]) -> Option<(usize, usize)> {
 
 fn read_string(bytes: &[u8], pos: usize) -> Option<(usize, usize)> {
     let colon = bytes[pos..].iter().position(|&b| b == b':')? + pos;
-    let len: usize = std::str::from_utf8(&bytes[pos..colon]).ok()?.parse().ok()?;
+    let len: usize =
+        std::str::from_utf8(&bytes[pos..colon]).ok()?.parse().ok()?;
     let s = colon + 1;
     let e = s.checked_add(len)?;
     if e > bytes.len() {

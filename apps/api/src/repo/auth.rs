@@ -27,10 +27,11 @@ impl AuthRepo {
             .begin()
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-        let passkey: String = sqlx::query_scalar("SELECT encode(gen_random_bytes(20), 'hex')")
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        let passkey: String =
+            sqlx::query_scalar("SELECT encode(gen_random_bytes(20), 'hex')")
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         let user_id: i64 = sqlx::query_scalar(
             "INSERT INTO users (username, email, pass_hash, passkey) VALUES ($1, $2, $3, $4) RETURNING id",
         )

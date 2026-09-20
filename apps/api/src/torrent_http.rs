@@ -2,7 +2,9 @@
 //! 编辑/定价/恢复/重提/删除/抓取列表/NFO/求续种/标签。
 //! 从 http.rs 机械外移（审查路线图第 4 周「拆上帝文件」第六段）。
 
-use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    delete, get, post, put, web, HttpRequest, HttpResponse, Responder,
+};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -167,13 +169,21 @@ fn parse_size(s: Option<String>) -> Option<i64> {
     if raw.is_empty() {
         return None;
     }
-    let (num, mul) = if let Some(v) = raw.strip_suffix("tb").or_else(|| raw.strip_suffix("tib")) {
+    let (num, mul) = if let Some(v) =
+        raw.strip_suffix("tb").or_else(|| raw.strip_suffix("tib"))
+    {
         (v, 1024f64.powi(4))
-    } else if let Some(v) = raw.strip_suffix("gb").or_else(|| raw.strip_suffix("gib")) {
+    } else if let Some(v) =
+        raw.strip_suffix("gb").or_else(|| raw.strip_suffix("gib"))
+    {
         (v, 1024f64.powi(3))
-    } else if let Some(v) = raw.strip_suffix("mb").or_else(|| raw.strip_suffix("mib")) {
+    } else if let Some(v) =
+        raw.strip_suffix("mb").or_else(|| raw.strip_suffix("mib"))
+    {
         (v, 1024f64.powi(2))
-    } else if let Some(v) = raw.strip_suffix("kb").or_else(|| raw.strip_suffix("kib")) {
+    } else if let Some(v) =
+        raw.strip_suffix("kb").or_else(|| raw.strip_suffix("kib"))
+    {
         (v, 1024f64)
     } else if let Some(v) = raw.strip_suffix('b') {
         (v, 1f64)
@@ -182,7 +192,8 @@ fn parse_size(s: Option<String>) -> Option<i64> {
     };
     let n: f64 = num.trim().parse().ok()?;
     let bytes = (n * mul).round();
-    (bytes >= 1.0 && n.is_finite() && bytes < i64::MAX as f64).then_some(bytes as i64)
+    (bytes >= 1.0 && n.is_finite() && bytes < i64::MAX as f64)
+        .then_some(bytes as i64)
 }
 
 /// category_ids/category_id 的宽松反序列化：seq → 原样；字符串 → 按逗号拆。
@@ -199,10 +210,13 @@ where
     }
     // actix-web Query 的 serde_qs 形状：字段值是「单值或 seq」的直接载荷
     let v = serde_json::Value::deserialize(d)?;
-    let pick = serde_json::from_value::<OneOrMany>(v).map_err(serde::de::Error::custom)?;
+    let pick = serde_json::from_value::<OneOrMany>(v)
+        .map_err(serde::de::Error::custom)?;
     Ok(match pick {
         OneOrMany::Many(v) => v,
-        OneOrMany::One(s) => s.split(',').map(|x| x.trim().to_string()).collect(),
+        OneOrMany::One(s) => {
+            s.split(',').map(|x| x.trim().to_string()).collect()
+        }
     })
 }
 
@@ -240,7 +254,8 @@ async fn list(
         // 多选分类：重复参数或逗号串（category_id=1&category_id=3 / category_id=1,3）均解析。
         // 旧键名 category_id 单值也在此合并（category_id_alias 旁路收集）。
         category_id: {
-            let mut raw: Vec<&str> = q.category_ids.iter().map(|s| s.as_str()).collect();
+            let mut raw: Vec<&str> =
+                q.category_ids.iter().map(|s| s.as_str()).collect();
             if let Some(one) = q.category_id_alias.as_deref() {
                 raw.push(one);
             }
@@ -258,7 +273,12 @@ async fn list(
         include_dead: q.include_dead.unwrap_or(false),
         // 仅持 see_banned 权限者可查看未过审种子；无权限时参数被静默忽略
         include_unapproved: q.include_unapproved.unwrap_or(false)
-            && crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_SEE_BANNED).await,
+            && crate::authz::can(
+                &state,
+                &auth,
+                crate::authz::perm::TORRENT_SEE_BANNED,
+            )
+            .await,
         search: q.search.as_deref().map(str::to_string),
         sort: q.sort.as_deref().map(str::to_string),
         tag_id: q.tag_id,
@@ -302,7 +322,9 @@ async fn list(
             filter.max_seeders = Some(a);
         }
     }
-    if let (Some(a), Some(b)) = (filter.date_from.clone(), filter.date_to.clone()) {
+    if let (Some(a), Some(b)) =
+        (filter.date_from.clone(), filter.date_to.clone())
+    {
         if a > b {
             filter.date_from = Some(b);
             filter.date_to = Some(a);
@@ -371,7 +393,9 @@ async fn list(
             .await
             .unwrap_or(None);
         if let Some(json) = hit {
-            if let Ok(page) = serde_json::from_str::<torrents::TorrentPage>(&json) {
+            if let Ok(page) =
+                serde_json::from_str::<torrents::TorrentPage>(&json)
+            {
                 return Ok(ok(page));
             }
         }
@@ -385,7 +409,8 @@ async fn list(
         .await?;
         if let Ok(json) = serde_json::to_string(&page) {
             let _: Result<(), _> =
-                redis::AsyncCommands::set_ex(&mut c, cache_key, json, 45u64).await;
+                redis::AsyncCommands::set_ex(&mut c, cache_key, json, 45u64)
+                    .await;
         }
         return Ok(ok(page));
     }
@@ -408,10 +433,21 @@ async fn detail(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     // 持 view_anonymous 权限者可见匿名种子的真实发布者
-    let reveal = crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_VIEW_ANONYMOUS).await;
+    let reveal = crate::authz::can(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_VIEW_ANONYMOUS,
+    )
+    .await;
     // G7：staff 视角传 (uid, true)——暂缓种对 staff 开放
     let viewer = (auth.id, auth.class_id >= 90);
-    let t = torrents::get_torrent(&state.repo.db, path.into_inner(), reveal, Some(viewer)).await?;
+    let t = torrents::get_torrent(
+        &state.repo.db,
+        path.into_inner(),
+        reveal,
+        Some(viewer),
+    )
+    .await?;
     Ok(ok(t))
 }
 
@@ -423,7 +459,12 @@ async fn torrent_detail_ext(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let t = torrents::get_torrent_detail(&state.repo.db, path.into_inner(), auth.id).await?;
+    let t = torrents::get_torrent_detail(
+        &state.repo.db,
+        path.into_inner(),
+        auth.id,
+    )
+    .await?;
     Ok(ok(t))
 }
 
@@ -459,8 +500,12 @@ async fn comments(
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
     require_auth(&req, &state).await?;
-    let items =
-        torrents::list_comments(&state.repo.db, path.into_inner(), q.limit.unwrap_or(20)).await?;
+    let items = torrents::list_comments(
+        &state.repo.db,
+        path.into_inner(),
+        q.limit.unwrap_or(20),
+    )
+    .await?;
     Ok(ok(items))
 }
 
@@ -477,7 +522,13 @@ async fn create_comment(
     body: web::Json<CommentReq>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let id = torrents::add_comment(&state.repo.db, path.into_inner(), auth.id, &body.body).await?;
+    let id = torrents::add_comment(
+        &state.repo.db,
+        path.into_inner(),
+        auth.id,
+        &body.body,
+    )
+    .await?;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -491,19 +542,22 @@ async fn delete_comment(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let (torrent_id, comment_id) = path.into_inner();
-    let owner: Option<i64> =
-        sqlx::query_scalar("SELECT user_id FROM comments WHERE id = $1 AND torrent_id = $2")
-            .bind(comment_id)
-            .bind(torrent_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+    let owner: Option<i64> = sqlx::query_scalar(
+        "SELECT user_id FROM comments WHERE id = $1 AND torrent_id = $2",
+    )
+    .bind(comment_id)
+    .bind(torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .flatten();
     let Some(owner_id) = owner else {
         return Err(DomainError::NotFound(comment_id));
     };
     let is_owner = owner_id == auth.id;
-    let is_manager = crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await;
+    let is_manager =
+        crate::authz::can(&state, &auth, crate::authz::perm::TORRENT_MANAGE)
+            .await;
     if !is_owner && !is_manager {
         return Err(DomainError::Forbidden);
     }
@@ -552,12 +606,13 @@ async fn do_thank(
             ));
         }
         // 给发布者转魔力（匿名也按 owner_id 记账）
-        let owner: Option<i64> = sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+        let owner: Option<i64> =
+            sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+                .bind(tid)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?
+                .flatten();
         if let Some(owner) = owner {
             if owner != auth.id {
                 let idem = format!(
@@ -661,11 +716,12 @@ async fn set_torrent_price(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
-    let owner: Option<i64> = sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
-        .bind(id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let owner: Option<i64> =
+        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(owner_id) = owner else {
         return Err(DomainError::NotFound(id));
     };
@@ -694,7 +750,12 @@ async fn restore_torrent(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TORRENT_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     torrents::restore_torrent(&state.repo.db, id).await?;
     state
@@ -714,12 +775,13 @@ async fn resubmit_torrent(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
-    let owner: Option<(i64, i16)> =
-        sqlx::query_as("SELECT owner_id, approval_status FROM torrents WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let owner: Option<(i64, i16)> = sqlx::query_as(
+        "SELECT owner_id, approval_status FROM torrents WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((owner_id, status)) = owner else {
         return Err(DomainError::NotFound(id));
     };
@@ -759,7 +821,12 @@ async fn delete_torrent(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
-    torrents::delete_torrent(&state.repo.db, id, (auth.id, auth.class_id as i16)).await?;
+    torrents::delete_torrent(
+        &state.repo.db,
+        id,
+        (auth.id, auth.class_id as i16),
+    )
+    .await?;
     state
         .repo
         .audit(Some(auth.id), "torrent.delete", Some(id))
@@ -803,12 +870,14 @@ async fn request_reseed(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
-    let username: String = sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or_else(|_| "user".into());
-    let n = torrents::request_reseed(&state.repo.db, tid, (auth.id, username)).await?;
+    let username: String =
+        sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or_else(|_| "user".into());
+    let n = torrents::request_reseed(&state.repo.db, tid, (auth.id, username))
+        .await?;
     state
         .repo
         .audit(Some(auth.id), "torrent.reseed", Some(tid))
@@ -867,6 +936,7 @@ async fn do_bookmark(
     body: web::Json<BookmarkReq>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    torrents::bookmark(&state.repo.db, path.into_inner(), auth.id, body.on).await?;
+    torrents::bookmark(&state.repo.db, path.into_inner(), auth.id, body.on)
+        .await?;
     Ok(ok(serde_json::json!({ "bookmarked": body.on })))
 }

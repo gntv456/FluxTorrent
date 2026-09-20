@@ -113,7 +113,12 @@ pub mod perm {
 /// `role_key` 为 text 列，含 `'uploader'` 这类非数字值，故 class 分支用
 /// `CASE` + 正则守卫，确保 `::integer` 只在确认是数字时求值
 /// （PG 不保证 `AND` 的求值顺序，直接转换会抛 `invalid input syntax`）。
-pub async fn user_can(db: &PgPool, class_id: i32, user_id: i64, perm: &str) -> bool {
+pub async fn user_can(
+    db: &PgPool,
+    class_id: i32,
+    user_id: i64,
+    perm: &str,
+) -> bool {
     // 判定规则已下沉为 SQL 函数 user_can(uid, perm)（见 0056 迁移），
     // 使 worker 的批量 SQL 与 API 共用同一实现，避免两处规则漂移。
     // class_id 参数保留仅为兼容既有调用方（函数内部自行读 users.class_id）。
@@ -127,7 +132,11 @@ pub async fn user_can(db: &PgPool, class_id: i32, user_id: i64, perm: &str) -> b
 }
 
 /// 便捷判定：从已鉴权用户出发（多数端点用这个）
-pub async fn can(state: &web::Data<Arc<AppState>>, auth: &AuthUser, perm: &str) -> bool {
+pub async fn can(
+    state: &web::Data<Arc<AppState>>,
+    auth: &AuthUser,
+    perm: &str,
+) -> bool {
     user_can(&state.repo.db, auth.class_id, auth.id, perm).await
 }
 
@@ -161,7 +170,11 @@ pub async fn require_perm(
 
 /// 批量判定：一次性取回用户拥有的全部权限键
 /// （前端渲染功能入口时用，避免 N 次 round-trip）
-pub async fn user_perm_keys(db: &PgPool, class_id: i32, user_id: i64) -> Vec<String> {
+pub async fn user_perm_keys(
+    db: &PgPool,
+    class_id: i32,
+    user_id: i64,
+) -> Vec<String> {
     sqlx::query_scalar(
         "SELECT DISTINCT key FROM (
             SELECT rp.permission_key AS key FROM role_permissions rp
@@ -236,17 +249,26 @@ pub async fn grant_role(
 }
 
 /// 撤销职务
-pub async fn revoke_role(db: &PgPool, user_id: i64, role_key: &str) -> Result<u64, sqlx::Error> {
-    let r = sqlx::query("DELETE FROM user_roles WHERE user_id = $1 AND role_key = $2")
-        .bind(user_id)
-        .bind(role_key)
-        .execute(db)
-        .await?;
+pub async fn revoke_role(
+    db: &PgPool,
+    user_id: i64,
+    role_key: &str,
+) -> Result<u64, sqlx::Error> {
+    let r = sqlx::query(
+        "DELETE FROM user_roles WHERE user_id = $1 AND role_key = $2",
+    )
+    .bind(user_id)
+    .bind(role_key)
+    .execute(db)
+    .await?;
     Ok(r.rows_affected())
 }
 
 /// 读取用户的权限级覆盖记录（permission_key → granted）
-pub async fn user_permission_overrides(db: &PgPool, user_id: i64) -> Vec<(String, bool)> {
+pub async fn user_permission_overrides(
+    db: &PgPool,
+    user_id: i64,
+) -> Vec<(String, bool)> {
     sqlx::query_as(
         "SELECT permission_key, granted FROM user_permissions
          WHERE user_id = $1 ORDER BY permission_key",

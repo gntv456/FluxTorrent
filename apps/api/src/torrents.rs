@@ -596,7 +596,8 @@ pub async fn list_torrents_noclamp_as(
 
     let has_more = rows.len() as i64 > limit;
     let items = rows.into_iter().take(limit as usize).collect::<Vec<_>>();
-    let next_cursor = has_more.then(|| items.last().map(|r| r.id.to_string()).unwrap_or_default());
+    let next_cursor = has_more
+        .then(|| items.last().map(|r| r.id.to_string()).unwrap_or_default());
     Ok(TorrentPage {
         items,
         next_cursor,
@@ -664,7 +665,10 @@ pub async fn get_torrent(
     items_or_not_found(page, id)
 }
 
-fn items_or_not_found(mut v: Vec<TorrentRow>, id: i64) -> DomainResult<TorrentRow> {
+fn items_or_not_found(
+    mut v: Vec<TorrentRow>,
+    id: i64,
+) -> DomainResult<TorrentRow> {
     if v.is_empty() {
         Err(DomainError::NotFound(id))
     } else {
@@ -723,7 +727,10 @@ pub async fn get_torrent_detail(
     Ok(row)
 }
 
-pub async fn list_files(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<FileRow>> {
+pub async fn list_files(
+    db: &PgPool,
+    torrent_id: i64,
+) -> DomainResult<Vec<FileRow>> {
     sqlx::query_as::<_, FileRow>(
         "SELECT file_index, path, size FROM files WHERE torrent_id = $1 ORDER BY file_index LIMIT 500",
     )
@@ -733,7 +740,10 @@ pub async fn list_files(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<FileRo
     .map_err(|e| DomainError::Internal(e.into()))
 }
 
-pub async fn list_thanks(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<ThankRow>> {
+pub async fn list_thanks(
+    db: &PgPool,
+    torrent_id: i64,
+) -> DomainResult<Vec<ThankRow>> {
     sqlx::query_as::<_, ThankRow>(
         r#"
         SELECT u.username, th.created_at
@@ -805,7 +815,11 @@ pub async fn add_comment(
     Ok(id)
 }
 
-pub async fn thank(db: &PgPool, torrent_id: i64, user_id: i64) -> DomainResult<()> {
+pub async fn thank(
+    db: &PgPool,
+    torrent_id: i64,
+    user_id: i64,
+) -> DomainResult<()> {
     let res = sqlx::query(
         "INSERT INTO thanks (torrent_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
     )
@@ -820,7 +834,12 @@ pub async fn thank(db: &PgPool, torrent_id: i64, user_id: i64) -> DomainResult<(
     Ok(())
 }
 
-pub async fn bookmark(db: &PgPool, torrent_id: i64, user_id: i64, on: bool) -> DomainResult<()> {
+pub async fn bookmark(
+    db: &PgPool,
+    torrent_id: i64,
+    user_id: i64,
+    on: bool,
+) -> DomainResult<()> {
     if on {
         sqlx::query(
             "INSERT INTO bookmarks (user_id, torrent_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
@@ -831,12 +850,14 @@ pub async fn bookmark(db: &PgPool, torrent_id: i64, user_id: i64, on: bool) -> D
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     } else {
-        sqlx::query("DELETE FROM bookmarks WHERE user_id = $1 AND torrent_id = $2")
-            .bind(user_id)
-            .bind(torrent_id)
-            .execute(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "DELETE FROM bookmarks WHERE user_id = $1 AND torrent_id = $2",
+        )
+        .bind(user_id)
+        .bind(torrent_id)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     Ok(())
 }
@@ -860,12 +881,13 @@ pub async fn edit_torrent(
     editor: (i64, i16), // (user_id, class_id)：作者本人或 staff（>=90）
     e: &TorrentEdit<'_>,
 ) -> DomainResult<()> {
-    let owner: Option<i64> = sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
-        .bind(torrent_id)
-        .fetch_optional(db)
-        .await
-        .map_err(|err| DomainError::Internal(err.into()))?
-        .flatten();
+    let owner: Option<i64> =
+        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+            .bind(torrent_id)
+            .fetch_optional(db)
+            .await
+            .map_err(|err| DomainError::Internal(err.into()))?
+            .flatten();
     let Some(owner_id) = owner else {
         return Err(DomainError::NotFound(torrent_id));
     };
@@ -908,13 +930,18 @@ pub async fn edit_torrent(
 }
 
 /// 种子软删除（NP delete.php 口径）：staff 或作者本人（未过审的可直接删；已过审的作者删除需 staff）
-pub async fn delete_torrent(db: &PgPool, torrent_id: i64, actor: (i64, i16)) -> DomainResult<()> {
-    let row: Option<(Option<i64>, i16)> =
-        sqlx::query_as("SELECT owner_id, approval_status FROM torrents WHERE id = $1")
-            .bind(torrent_id)
-            .fetch_optional(db)
-            .await
-            .map_err(|err| DomainError::Internal(err.into()))?;
+pub async fn delete_torrent(
+    db: &PgPool,
+    torrent_id: i64,
+    actor: (i64, i16),
+) -> DomainResult<()> {
+    let row: Option<(Option<i64>, i16)> = sqlx::query_as(
+        "SELECT owner_id, approval_status FROM torrents WHERE id = $1",
+    )
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|err| DomainError::Internal(err.into()))?;
     let Some((owner_id, approval)) = row else {
         return Err(DomainError::NotFound(torrent_id));
     };
@@ -929,11 +956,13 @@ pub async fn delete_torrent(db: &PgPool, torrent_id: i64, actor: (i64, i16)) -> 
         .begin()
         .await
         .map_err(|err| DomainError::Internal(err.into()))?;
-    sqlx::query("UPDATE torrents SET approval_status = 3, mtime = now() WHERE id = $1")
-        .bind(torrent_id)
-        .execute(&mut *tx)
-        .await
-        .map_err(|err| DomainError::Internal(err.into()))?;
+    sqlx::query(
+        "UPDATE torrents SET approval_status = 3, mtime = now() WHERE id = $1",
+    )
+    .bind(torrent_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|err| DomainError::Internal(err.into()))?;
     sqlx::query("DELETE FROM promotions WHERE torrent_id = $1")
         .bind(torrent_id)
         .execute(&mut *tx)
@@ -978,7 +1007,10 @@ pub struct SnatchRow {
     pub progress: i32,
 }
 
-pub async fn list_snatches(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<SnatchRow>> {
+pub async fn list_snatches(
+    db: &PgPool,
+    torrent_id: i64,
+) -> DomainResult<Vec<SnatchRow>> {
     sqlx::query_as::<_, SnatchRow>(
         "SELECT s.user_id, u.username, s.uploaded, s.downloaded, s.seeded_seconds, \
                 s.completed_at, s.seeding, s.leeching, s.agent, s.progress \
@@ -995,13 +1027,17 @@ pub async fn list_snatches(db: &PgPool, torrent_id: i64) -> DomainResult<Vec<Sna
 /// NFO（NP viewnfo.php 口径）：纯文本返回。
 /// 种子存在但 nfo 为 NULL 时返回 Ok(None)（无 NFO），而非 404——
 /// 修复前 fetch_optional 展平后把「行存在列空」也当 NotFound。
-pub async fn get_nfo(db: &PgPool, torrent_id: i64) -> DomainResult<Option<String>> {
-    let row: Option<Option<String>> =
-        sqlx::query_scalar("SELECT nfo FROM torrents WHERE id = $1 AND approval_status = 1")
-            .bind(torrent_id)
-            .fetch_optional(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+pub async fn get_nfo(
+    db: &PgPool,
+    torrent_id: i64,
+) -> DomainResult<Option<String>> {
+    let row: Option<Option<String>> = sqlx::query_scalar(
+        "SELECT nfo FROM torrents WHERE id = $1 AND approval_status = 1",
+    )
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     row.ok_or(DomainError::NotFound(torrent_id))
 }
 
@@ -1024,7 +1060,9 @@ pub async fn request_reseed(
         return Err(DomainError::NotFound(torrent_id));
     };
     if seeders > 0 {
-        return Err(DomainError::Validation("该种子仍有人做种，无需补种".into()));
+        return Err(DomainError::Validation(
+            "该种子仍有人做种，无需补种".into(),
+        ));
     }
     if let Some(lr) = last_reseed {
         if chrono::Utc::now() - lr < chrono::Duration::seconds(900) {
@@ -1068,18 +1106,22 @@ pub async fn request_reseed(
 }
 
 /// 种子标签（T-04）：列出字典 + 该种子已打的标签（0138：字典只出种子域 scope=torrent）
-pub async fn list_tags(db: &PgPool, torrent_id: i64) -> DomainResult<serde_json::Value> {
+pub async fn list_tags(
+    db: &PgPool,
+    torrent_id: i64,
+) -> DomainResult<serde_json::Value> {
     let dict: Vec<(i32, String, String)> =
         sqlx::query_as("SELECT id, name, kind FROM tag_dict WHERE scope = 'torrent' ORDER BY id")
             .fetch_all(db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    let mine: Vec<i32> =
-        sqlx::query_scalar("SELECT tag_id FROM tags WHERE torrent_id = $1 ORDER BY tag_id")
-            .bind(torrent_id)
-            .fetch_all(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let mine: Vec<i32> = sqlx::query_scalar(
+        "SELECT tag_id FROM tags WHERE torrent_id = $1 ORDER BY tag_id",
+    )
+    .bind(torrent_id)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(serde_json::json!({ "dict": dict, "mine": mine }))
 }
 
@@ -1133,7 +1175,11 @@ pub async fn tag_torrent(
 /// 审计修复（P0 错账）：旧版直接 UPDATE users.spark_balance、不写 spark_ledger ——
 /// 买方扣款与发布者入账都被每小时「余额=流水重算」回滚（下载变免费/收益被抹除），
 /// 且 /admin/spark-logs 完全看不到这类变动。改为流水驱动（幂等键绑定 torrent+user）。
-pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> DomainResult<()> {
+pub async fn charge_for_download(
+    db: &PgPool,
+    user_id: i64,
+    torrent_id: i64,
+) -> DomainResult<()> {
     let row: Option<(i64, Option<i64>)> = sqlx::query_as(
         "SELECT price, owner_id FROM torrents WHERE id = $1 AND approval_status = 1",
     )
@@ -1174,12 +1220,13 @@ pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> 
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 余额校验（锁行）：不足直接拦下，不发流水
-    let balance: i64 =
-        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-            .bind(user_id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let balance: i64 = sqlx::query_scalar(
+        "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+    )
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if balance < price {
         return Err(DomainError::Validation(format!(
             "魔力不足：该种子为付费种子（{price} 魔力），请先充值或签到攒魔力"
@@ -1200,21 +1247,24 @@ pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> 
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 余额快照同事务扣减（P1）：只写流水不扣快照，余额校验读到的一直是旧值，
     // 用户可在小时级重算前的窗口内连续超花，重算后快照变负。
-    sqlx::query("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1")
-        .bind(user_id)
-        .bind(price)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1",
+    )
+    .bind(user_id)
+    .bind(price)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 发布者入账流水（owner_id 经 torrents FK 保证非空语义；净得 = 价 - 税）
     if let Some(owner) = owner_id {
-        let obal: i64 =
-            sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-                .bind(owner)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .unwrap_or(0);
+        let obal: i64 = sqlx::query_scalar(
+            "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+        )
+        .bind(owner)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .unwrap_or(0);
         sqlx::query(
             "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \
              VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'torrent_sell', 'torrent', $3, $4, $5)",
@@ -1227,12 +1277,14 @@ pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> 
         .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
-            .bind(owner)
-            .bind(net)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1",
+        )
+        .bind(owner)
+        .bind(net)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     if tax_amount > 0 {
         sqlx::query(
@@ -1262,15 +1314,17 @@ pub async fn charge_for_download(db: &PgPool, user_id: i64, torrent_id: i64) -> 
 
 /// 站点统计（M10 概览，旧站首页口径）
 pub async fn site_stats(db: &PgPool) -> DomainResult<serde_json::Value> {
-    let users: i64 = sqlx::query_scalar("SELECT count(*) FROM users WHERE status < 2")
-        .fetch_one(db)
-        .await
-        .unwrap_or(0);
-    let torrents: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM torrents WHERE approval_status = 1")
+    let users: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM users WHERE status < 2")
             .fetch_one(db)
             .await
             .unwrap_or(0);
+    let torrents: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM torrents WHERE approval_status = 1",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
     let dead: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM torrents WHERE approval_status = 1 AND seeders = 0",
     )

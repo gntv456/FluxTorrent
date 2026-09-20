@@ -17,7 +17,9 @@ use crate::state::AppState;
 pub async fn setup_gate_mw(
     req: actix_web::dev::ServiceRequest,
     next: actix_web::middleware::Next<impl actix_web::body::MessageBody>,
-) -> actix_web::Result<actix_web::dev::ServiceResponse<impl actix_web::body::MessageBody>> {
+) -> actix_web::Result<
+    actix_web::dev::ServiceResponse<impl actix_web::body::MessageBody>,
+> {
     let path = req.path();
     const ALLOW: &[&str] = &[
         "/api/v1/setup",
@@ -27,7 +29,8 @@ pub async fn setup_gate_mw(
         "/api/v1/compat/meta",
         "/api/v1/metrics",
     ];
-    if !path.starts_with("/api/v1") || ALLOW.iter().any(|p| path.starts_with(p)) {
+    if !path.starts_with("/api/v1") || ALLOW.iter().any(|p| path.starts_with(p))
+    {
         return next.call(req).await;
     }
     let state = req
@@ -54,7 +57,9 @@ pub async fn setup_gate_mw(
 
 /// 向导状态（公开）
 #[get("/setup/status")]
-async fn setup_status(state: web::Data<std::sync::Arc<AppState>>) -> impl Responder {
+async fn setup_status(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> impl Responder {
     let done: String = sqlx::query_scalar(
         "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'setup_done'), '')",
     )
@@ -67,11 +72,12 @@ async fn setup_status(state: web::Data<std::sync::Arc<AppState>>) -> impl Respon
     .fetch_all(&state.repo.db)
     .await
     .unwrap_or_default();
-    let has_admin: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE class_id = 99)")
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
+    let has_admin: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM users WHERE class_id = 99)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
     ok(serde_json::json!({
         "done": done == "done",
         "has_admin": has_admin,
@@ -101,34 +107,42 @@ async fn setup_finish(
     body: web::Json<SetupFinishBody>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SITEPACKS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SITEPACKS_MANAGE,
+    )
+    .await?;
     if !body.games_compliance_ack {
         return Err(DomainError::Validation(
             "需确认已了解娱乐玩法（机会类游戏）的本地合规要求".into(),
         ));
     }
     // 1) demo 清理（幂等：重复执行零行）
-    let purged: Vec<(String, i64)> = sqlx::query_as("SELECT kind, removed FROM purge_demo_data()")
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    // 2) 站型应用（extras：等级/经济/元数据；分类由既有 apply 端点处理，向导引导先调）
-    let mut extras_applied: Vec<(String, i64)> = Vec::new();
-    if !body.pack.is_empty() {
-        let exists: bool =
-            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM site_type_packs WHERE code = $1)")
-                .bind(&body.pack)
-                .fetch_one(&state.repo.db)
-                .await
-                .unwrap_or(false);
-        if !exists {
-            return Err(DomainError::Validation("站型包不存在".into()));
-        }
-        extras_applied = sqlx::query_as("SELECT kind, applied FROM apply_pack_extras($1)")
-            .bind(&body.pack)
+    let purged: Vec<(String, i64)> =
+        sqlx::query_as("SELECT kind, removed FROM purge_demo_data()")
             .fetch_all(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+    // 2) 站型应用（extras：等级/经济/元数据；分类由既有 apply 端点处理，向导引导先调）
+    let mut extras_applied: Vec<(String, i64)> = Vec::new();
+    if !body.pack.is_empty() {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM site_type_packs WHERE code = $1)",
+        )
+        .bind(&body.pack)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if !exists {
+            return Err(DomainError::Validation("站型包不存在".into()));
+        }
+        extras_applied =
+            sqlx::query_as("SELECT kind, applied FROM apply_pack_extras($1)")
+                .bind(&body.pack)
+                .fetch_all(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         let _ = sqlx::query(
             "UPDATE site_settings SET value = $2, updated_at = now() WHERE name = 'site_type'",
         )

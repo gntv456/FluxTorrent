@@ -3,7 +3,9 @@
 //! 组件都无法再凭 `JWT_SECRET` 伪造任意用户 token；缺省仍为 HS256（≥32B）保持开发态兼容。
 //! 切换算法会使全部已签发 token 失效（用户重新登录），需在停机窗口操作。
 
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{
+    decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,14 +33,20 @@ impl JwtSigner {
                 let (priv_pem, pub_pem) = load_or_generate_rs_pem()?;
                 Ok(JwtSigner::Rs {
                     enc: EncodingKey::from_rsa_pem(priv_pem.as_bytes())
-                        .map_err(|e| anyhow::anyhow!("JWT_RS 私钥解析失败: {e}"))?,
+                        .map_err(|e| {
+                            anyhow::anyhow!("JWT_RS 私钥解析失败: {e}")
+                        })?,
                     dec: DecodingKey::from_rsa_pem(pub_pem.as_bytes())
-                        .map_err(|e| anyhow::anyhow!("JWT_RS 公钥解析失败: {e}"))?,
+                        .map_err(|e| {
+                            anyhow::anyhow!("JWT_RS 公钥解析失败: {e}")
+                        })?,
                 })
             }
             _ => {
                 if secret.len() < 32 {
-                    return Err(anyhow::anyhow!("HS256 模式要求 JWT_SECRET ≥32 字节"));
+                    return Err(anyhow::anyhow!(
+                        "HS256 模式要求 JWT_SECRET ≥32 字节"
+                    ));
                 }
                 Ok(JwtSigner::Hs {
                     secret: secret.to_string(),
@@ -47,7 +55,12 @@ impl JwtSigner {
         }
     }
 
-    pub fn issue(&self, user_id: i64, class_id: i32, ttl_hours: i64) -> anyhow::Result<String> {
+    pub fn issue(
+        &self,
+        user_id: i64,
+        class_id: i32,
+        ttl_hours: i64,
+    ) -> anyhow::Result<String> {
         let now = chrono::Utc::now().timestamp();
         let claims = Claims {
             sub: user_id,
@@ -61,7 +74,9 @@ impl JwtSigner {
                 &claims,
                 &EncodingKey::from_secret(secret.as_bytes()),
             ),
-            JwtSigner::Rs { enc, .. } => encode(&Header::new(Algorithm::RS256), &claims, enc),
+            JwtSigner::Rs { enc, .. } => {
+                encode(&Header::new(Algorithm::RS256), &claims, enc)
+            }
         }
         .map_err(|e| anyhow::anyhow!("jwt issue: {e}"))
     }
@@ -90,7 +105,8 @@ fn load_or_generate_rs_pem() -> anyhow::Result<(String, String)> {
     if !env_priv.is_empty() && !env_pub.is_empty() {
         return Ok((env_priv, env_pub));
     }
-    let binding = std::env::var("JWT_RS_KEY_DIR").unwrap_or_else(|_| "data".into());
+    let binding =
+        std::env::var("JWT_RS_KEY_DIR").unwrap_or_else(|_| "data".into());
     let dir = std::path::Path::new(&binding);
     let priv_path = dir.join("jwt_rs_private.pem");
     let pub_path = dir.join("jwt_rs_public.pem");
@@ -127,12 +143,18 @@ mod tests {
 
     #[test]
     fn jwt_roundtrip_hs() {
-        let signer = JwtSigner::from_config("hs256", "0123456789abcdef0123456789abcdef").unwrap();
+        let signer =
+            JwtSigner::from_config("hs256", "0123456789abcdef0123456789abcdef")
+                .unwrap();
         let t = signer.issue(42, 3, 1).unwrap();
         let c = signer.verify(&t).unwrap();
         assert_eq!(c.sub, 42);
         assert_eq!(c.class_id, 3);
-        let bad = JwtSigner::from_config("hs256", "wrong-secret-xxxxxxxxxxxxxxxxxxxxxx").unwrap();
+        let bad = JwtSigner::from_config(
+            "hs256",
+            "wrong-secret-xxxxxxxxxxxxxxxxxxxxxx",
+        )
+        .unwrap();
         assert!(bad.verify(&t).is_none());
     }
 
@@ -144,7 +166,9 @@ mod tests {
         assert_eq!(c.sub, 7);
         assert_eq!(c.class_id, 5);
         // HS256 签发的 token 不能被 RS256 校验（算法混淆防护由 Validation::new(算法) 保证）
-        let hs = JwtSigner::from_config("hs256", "0123456789abcdef0123456789abcdef").unwrap();
+        let hs =
+            JwtSigner::from_config("hs256", "0123456789abcdef0123456789abcdef")
+                .unwrap();
         let hs_token = hs.issue(7, 5, 1).unwrap();
         assert!(signer.verify(&hs_token).is_none());
     }

@@ -20,7 +20,9 @@ use crate::errors::{DomainError, DomainResult};
 use crate::openapi_http::require_token;
 use crate::publish_http::build_torrent_bytes;
 use crate::state::AppState;
-use crate::torrents::{charge_for_download, list_torrents_noclamp, TorrentFilter};
+use crate::torrents::{
+    charge_for_download, list_torrents_noclamp, TorrentFilter,
+};
 
 pub fn mount_compat(scope: actix_web::Scope) -> actix_web::Scope {
     scope
@@ -83,7 +85,16 @@ async fn compat_np_user(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((id, username, uploaded, downloaded, seedbonus, class_id, passkey)) = row else {
+    let Some((
+        id,
+        username,
+        uploaded,
+        downloaded,
+        seedbonus,
+        class_id,
+        passkey,
+    )) = row
+    else {
         return Err(DomainError::Unauthorized);
     };
     let ratio = if downloaded > 0 {
@@ -135,15 +146,16 @@ async fn compat_np_torrents(
     let page = q.page.unwrap_or(1).max(1);
     let pagesize = q.pagesize.unwrap_or(30).clamp(1, 50);
     // IMDb 参数优先（NP 工具惯用 ?imdb=tt123 传法）；否则用显式 search_area
-    let (search, search_area) =
-        if let Some(im) = q.imdb.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
-            (Some(im.to_string()), Some(4))
-        } else {
-            (
-                q.keyword.clone().filter(|k| !k.trim().is_empty()),
-                q.search_area,
-            )
-        };
+    let (search, search_area) = if let Some(im) =
+        q.imdb.as_deref().map(str::trim).filter(|v| !v.is_empty())
+    {
+        (Some(im.to_string()), Some(4))
+    } else {
+        (
+            q.keyword.clone().filter(|k| !k.trim().is_empty()),
+            q.search_area,
+        )
+    };
     let filter = TorrentFilter {
         category_id: q.category.map(|v| vec![v]),
         search,
@@ -153,7 +165,9 @@ async fn compat_np_torrents(
     };
     // 审计修复（P1）：list_torrents 内部把 limit 钳到 50，page*pagesize 在 page≥2 时
     // skip 后恒空（第 2 页起拿不到数据）。深翻页走 noclamp 版（调用方已 clamp pagesize≤50）。
-    let p = list_torrents_noclamp(&state.repo.db, &filter, None, page * pagesize).await?;
+    let p =
+        list_torrents_noclamp(&state.repo.db, &filter, None, page * pagesize)
+            .await?;
     let skip = ((page - 1) * pagesize) as usize;
     let items: Vec<_> = p
         .items
@@ -207,7 +221,17 @@ async fn compat_np_torrent_detail(
         .fetch_optional(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((name, descr, size, seeders, leechers, completed, category, group_id, created)) = row
+    let Some((
+        name,
+        descr,
+        size,
+        seeders,
+        leechers,
+        completed,
+        category,
+        group_id,
+        created,
+    )) = row
     else {
         return Err(DomainError::NotFound(id));
     };
@@ -305,16 +329,26 @@ async fn ptpp_user_info(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((id, name, bonus, uploaded, downloaded, seeding_size, class_id, join_time)) = row
+    let Some((
+        id,
+        name,
+        bonus,
+        uploaded,
+        downloaded,
+        seeding_size,
+        class_id,
+        join_time,
+    )) = row
     else {
         return Err(DomainError::Unauthorized);
     };
-    let class_name: String = sqlx::query_scalar("SELECT name FROM user_classes WHERE id = $1")
-        .bind(class_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .unwrap_or_else(|| "LV0".into());
+    let class_name: String =
+        sqlx::query_scalar("SELECT name FROM user_classes WHERE id = $1")
+            .bind(class_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .unwrap_or_else(|| "LV0".into());
     let (seeding, leeching, invites, unread_messages): (i64, i64, i64, i64) = sqlx::query_as(
         "SELECT \
             (SELECT count(*) FROM snatches WHERE user_id = $1 AND seeding), \
