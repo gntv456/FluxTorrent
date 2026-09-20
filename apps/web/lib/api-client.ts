@@ -10,19 +10,30 @@ import { LOCALE_COOKIE } from "@/i18n/config";
  * 双地址：服务端 RSC 用内网直连（API_SERVER_URL），浏览器用公开地址（NEXT_PUBLIC_API_URL）。
  */
 
-/** 浏览器侧：登录/登出时同步会话 cookie（12h，与 JWT 24h 保守对齐）。
- *  flux.session 是 middleware 存在性标记；flux.token 供 RSC 服务端读取转发 Bearer。 */
+/** 浏览器侧：登录/登出时同步会话标记 cookie（12h，与 JWT 24h 保守对齐）。
+ *  安全收敛（P1）：token 已不再进 localStorage/JS 可读 cookie——登录接口经
+ *  Set-Cookie 下发 HttpOnly flux_token（路径 /api/v1），浏览器 fetch 自动携带；
+ *  flux.session 仅为 middleware 存在性标记；服务端 RSC 需要转发 Bearer 时，
+ *  由 Next rewrites 转发的请求同样自动带 flux_token cookie（api 侧
+ *  require_auth 已接受 Cookie 凭证，见 token_from_request）。 */
 export const SESSION_COOKIE = "flux.session";
-export const TOKEN_COOKIE = "flux.token";
 
-export function setSessionCookie(token: string | null): void {
+/** 登录态判定（P1 收敛）：token 已 HttpOnly 化（flux_token，路径 /api/v1），
+ *  JS 不可读；浏览器侧以 flux.session 标记 cookie 判断。 */
+export function hasSessionCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie
+    .split("; ")
+    .some((c) => c.startsWith("flux.session=") && c.length > "flux.session=".length);
+}
+
+
+export function setSessionCookie(loggedIn: boolean): void {
   if (typeof document === "undefined") return;
-  if (token) {
+  if (loggedIn) {
     document.cookie = `${SESSION_COOKIE}=1; path=/; max-age=43200; samesite=lax`;
-    document.cookie = `${TOKEN_COOKIE}=${token}; path=/; max-age=43200; samesite=lax`;
   } else {
     document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
-    document.cookie = `${TOKEN_COOKIE}=; path=/; max-age=0; samesite=lax`;
   }
 }
 
@@ -62,21 +73,22 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  // 浏览器：localStorage；服务端 RSC：请求 cookie 里的 flux.token（登录时同步写入）
-  let token: string | null = null;
-  if (typeof window !== "undefined") {
-    token = localStorage.getItem("flux.token");
-  } else {
+  // 凭证（P1 收敛）：token 不再进 localStorage。浏览器依赖登录时 Set-Cookie 的
+  // HttpOnly flux_token（同源 rewrites 转发，fetch 默认同源携带 cookie）；
+  // 服务端 RSC 走 API_SERVER_URL 跨源直连，cookie 不随行——改为显式转发
+  // 入站请求的 flux_token。
+  let bearer: string | null = null;
+  if (typeof window === "undefined") {
     const { cookies } = await import("next/headers");
     const store = await cookies();
-    token = store.get("flux.token")?.value ?? null;
+    bearer = store.get("flux_token")?.value ?? null;
   }
   const lang = acceptLanguage();
   const res = await fetch(`${baseUrl()}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
       ...(lang ? { "Accept-Language": lang } : {}),
       ...init?.headers,
     },
@@ -97,8 +109,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       typeof window !== "undefined" &&
       !path.startsWith("/api/v1/auth/")
     ) {
-      setSessionCookie(null);
-      localStorage.removeItem("flux.token");
+      setSessionCookie(false);
       const next = encodeURIComponent(
         window.location.pathname + window.location.search,
       );
@@ -109,13 +120,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data;
 }
 
-/** 二进制下载（携带鉴权） */
+/** 二进制下载（凭证由 HttpOnly cookie 自动携带） */
 async function requestBlob(path: string): Promise<ArrayBuffer> {
-  const token = localStorage.getItem("flux.token");
   const lang = acceptLanguage();
   const res = await fetch(`${baseUrl()}${path}`, {
     headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(lang ? { "Accept-Language": lang } : {}),
     },
   });

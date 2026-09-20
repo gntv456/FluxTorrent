@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 
@@ -37,7 +37,7 @@ export default function MySparkPage() {
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [limit, setLimit] = useState(20);
   const [err, setErr] = useState<string | null>(null);
-  const loggedIn = typeof window !== "undefined" && !!localStorage.getItem("flux.token");
+  const loggedIn = hasSessionCookie();
 
   const load = useCallback(() => {
     api.get<SparkInfo>("/api/v1/me/spark").then(setInfo).catch(() => setInfo(null));

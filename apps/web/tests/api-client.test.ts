@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { api, ApiError, setSessionCookie, TOKEN_COOKIE } from "@/lib/api-client";
+import { api, ApiError, setSessionCookie, hasSessionCookie } from "@/lib/api-client";
 
 /** api-client 单元测试：envelope 解包 / 错误归一 / token 注入 / call spec */
 function mockFetch(overrides: Partial<Response> = {}) {
@@ -50,12 +50,13 @@ describe("api client envelope", () => {
     await expect(api.get("/api/v1/me")).rejects.toMatchObject({ code: 1000 });
   });
 
-  it("localStorage 有 token 时注入 Bearer", async () => {
-    localStorage.setItem("flux.token", "tok123");
+  it("浏览器侧不再注入 Bearer（凭证由 HttpOnly cookie 自动携带）", async () => {
+    // P1 收敛：token 不进 localStorage/JS 可读 cookie——浏览器请求依赖
+    // 同源 cookie（fetch 默认 credentials: same-origin），Authorization 不应出现
     const f = mockFetch();
     await api.get("/api/v1/me");
     const init = f.mock.calls[0][1] as RequestInit;
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok123");
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
   });
 
   it("无 token 时不带 Authorization", async () => {
@@ -92,15 +93,16 @@ describe("api client envelope", () => {
   });
 });
 
-describe("setSessionCookie", () => {
-  it("写 token 时落两个 cookie", () => {
-    setSessionCookie("t");
+describe("setSessionCookie / hasSessionCookie", () => {
+  it("登录态写 flux.session 标记（token 已 HttpOnly 化，不经 JS）", () => {
+    setSessionCookie(true);
     expect(document.cookie).toContain("flux.session=1");
-    expect(document.cookie).toContain(`${TOKEN_COOKIE}=t`);
+    expect(hasSessionCookie()).toBe(true);
   });
-  it("清 token 时 cookie 过期", () => {
-    setSessionCookie("t");
-    setSessionCookie(null);
+  it("登出清标记", () => {
+    setSessionCookie(true);
+    setSessionCookie(false);
     expect(document.cookie).not.toContain("flux.session=1");
+    expect(hasSessionCookie()).toBe(false);
   });
 });

@@ -59,8 +59,7 @@ export default function SetupWizard() {
         username,
         password,
       });
-      localStorage.setItem("flux.token", login.token);
-      setSessionCookie(login.token);
+      setSessionCookie(true);
       const res = await api.post<{ purged: [string, number][]; extras: [string, number][] }>(
         "/api/v1/setup",
         { pack, site_name: siteName, games_compliance_ack: ack },

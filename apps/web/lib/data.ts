@@ -1,6 +1,7 @@
 import { api, paged } from "@/lib/api-client";
 import type { TorrentListItem, UserPublic } from "@fluxtorrent/domain-types";
 import type { TagChipData } from "@/components/forum-bits";
+import { DEFAULT_MEDAL_RARITIES, type MedalRarity } from "@/lib/medal-rarity";
 
 export { formatBytes } from "./format";
 
@@ -45,6 +46,16 @@ export async function getMedals(): Promise<Medal[]> {
     return await api.get<Medal[]>("/api/v1/medals");
   } catch {
     return [];
+  }
+}
+
+/** 勋章稀有度词表（0143）：后台可维护；失败时回落内置兜底，页面不至于空掉 */
+export async function getMedalRarities(): Promise<MedalRarity[]> {
+  try {
+    const rows = await api.get<MedalRarity[]>("/api/v1/medal-rarities");
+    return rows.length > 0 ? rows : DEFAULT_MEDAL_RARITIES;
+  } catch {
+    return DEFAULT_MEDAL_RARITIES;
   }
 }
 

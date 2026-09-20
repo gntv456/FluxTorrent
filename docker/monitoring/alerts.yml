@@ -1,0 +1,55 @@
+groups:
+  - name: flux-core
+    interval: 30s
+    rules:
+      # 计费链路有损坏事件积压（consume 连续失败 6 次进 DLQ；非零 = 正在丢计费）
+      - alert: FluxAnnounceDLQBacklog
+        expr: flux_api_announce_dlq_depth > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "announce 死信队列积压 {{ $value }} 条"
+          description: "计费消费连续失败，事件正在进 DLQ。排查 worker 日志与 Redis Stream。"
+
+      # 5xx 率：1% 且持续 5 分钟
+      - alert: FluxApi5xxRate
+        expr: |
+          sum(rate(flux_api_requests_5xx_total[5m]))
+            / clamp_min(sum(rate(flux_api_requests_total[5m])), 0.001) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "api 5xx 比率 {{ $value | humanizePercentage }} 持续 5 分钟"
+          description: "内部错误率超 1%，检查 request_id 关联的 error 日志。"
+
+      # tracker Redis 降级持续出现（降级时限流/封禁走进程内存，单实例语义，需尽快恢复）
+      - alert: FluxTrackerRedisFallback
+        expr: increase(flux_tracker_redis_fallback_total[10m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "tracker Redis 降级 {{ $value }} 次/10m"
+          description: "tracker 连不上 Redis，防护缓存与限流退化为进程内状态。"
+
+      # 消费积压：Stream 长度持续增长（worker 停转/消费慢于生产）
+      - alert: FluxAnnounceStreamBacklog
+        expr: flux_api_announce_stream_len > 100000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "announce Stream 积压 {{ $value }} 条持续 10 分钟"
+          description: "worker 消费速率落后于 announce 生产速率，检查 worker 是否存活。"
+
+      # 连接池打满（请求排队，接近雪崩前兆）
+      - alert: FluxApiPoolSaturated
+        expr: flux_api_pool_idle == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PG 连接池空闲为 0 持续 5 分钟"
+          description: "所有连接都在忙，新请求开始排队。考虑调大 DB_POOL_SIZE 或排查慢查询。"

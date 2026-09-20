@@ -56,8 +56,7 @@ export default function RegisterPage() {
         username: username.trim(),
         password,
       });
-      localStorage.setItem("flux.token", resp.token);
-      setSessionCookie(resp.token);
+      setSessionCookie(true);
       router.push("/torrents");
     } catch (err) {
       if (err instanceof ApiError) {

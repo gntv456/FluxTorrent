@@ -3,7 +3,7 @@
 ;
 
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { FundingPanel } from "@/components/funding-panel";
@@ -72,7 +72,7 @@ export default function DonatePage() {
     }
   }
 
-  const loggedIn = typeof window !== "undefined" && !!localStorage.getItem("flux.token");
+  const loggedIn = hasSessionCookie();
   if (!loggedIn) {
     return (
       <div className="flex flex-col gap-4">

@@ -3,7 +3,7 @@
 ;
 
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { FrameShop } from "@/components/plugins";
 
@@ -14,7 +14,7 @@ export default function AvatarFramesPage() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!localStorage.getItem("flux.token")) return;
+    if (!hasSessionCookie()) return;
     api
       .get<{ id: number; avatar_frame_id: number | null }>("/api/v1/me")
       .then(setMe)

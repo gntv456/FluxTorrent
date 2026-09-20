@@ -1,4 +1,4 @@
-import { getMedals } from "@/lib/data";
+import { getMedals, getMedalRarities } from "@/lib/data";
 import { MedalActions } from "@/components/medal-actions";
 import { MedalIcon } from "@/components/medal-icon";
 import { medalRarityLabel, medalRarityStyle } from "@/lib/medal-rarity";
@@ -16,6 +16,8 @@ export default async function MedalsPage() {
 
   const { dict, locale, currency } = await getDict();
   const medals = await getMedals();
+  // 稀有度词表（0143，站长可在后台维护）；角标标签与配色都按它渲染
+  const rarities = await getMedalRarities();
   const t = dict.medals2;
   // 分类分组（0 = 未分组）
   const groups = new Map<number, { name: string; items: typeof medals }>();
@@ -56,8 +58,8 @@ export default async function MedalsPage() {
                 <div className="flex items-center justify-between">
                   <MedalIcon src={m.asset_ref} size={40} title={m.name} />
                   {m.rarity && (
-                    <span className={`sticker ${medalRarityStyle(m.rarity)}`}>
-                      {medalRarityLabel(m.rarity)}
+                    <span className={`sticker ${medalRarityStyle(rarities, m.rarity)}`}>
+                      {medalRarityLabel(rarities, m.rarity)}
                     </span>
                   )}
                 </div>

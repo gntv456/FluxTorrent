@@ -51,10 +51,9 @@ export function UploadForm() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const token = localStorage.getItem("flux.token") ?? "";
+      // 凭证由 HttpOnly flux_token cookie 自动携带（P1 收敛，token 不进 JS）
       const res = await fetch("/api/v1/attachments", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
       const j = (await res.json()) as {
@@ -216,9 +215,6 @@ export function UploadForm() {
       const base = process.env.NEXT_PUBLIC_API_URL ?? "";
       const res = await fetch(`${base}/api/v1/torrents?${qs}`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("flux.token") ?? ""}`,
-        },
         body: form,
       });
       const body = await res.json();

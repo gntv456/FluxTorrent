@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
 /** 感谢 / 收藏 / 评论表单（M07 社区互动，客户端叶子组件）
@@ -17,7 +17,7 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
   const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
-    setHasToken(Boolean(localStorage.getItem("flux.token")));
+    setHasToken(hasSessionCookie());
   }, []);
 
   async function thank(amount = 0) {

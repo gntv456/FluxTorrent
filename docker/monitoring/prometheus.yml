@@ -1,0 +1,19 @@
+scrape_interval: 15s
+
+scrape_configs:
+  - job_name: flux-api
+    metrics_path: /api/v1/metrics
+    # ANN_METRICS_TOKEN 与 api/tracker 同源（.env）；留空时 /metrics 404，本 job 抓不到
+    authorization:
+      type: Bearer
+      credentials: ${ANN_METRICS_TOKEN}
+    static_configs:
+      - targets: ["api:8080"]
+
+  - job_name: flux-tracker
+    metrics_path: /metrics
+    authorization:
+      type: Bearer
+      credentials: ${ANN_METRICS_TOKEN}
+    static_configs:
+      - targets: ["tracker:7070"]

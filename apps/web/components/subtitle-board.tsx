@@ -87,12 +87,11 @@ export function SubtitleBoard() {
       // 再建字幕记录绑定 attach://<sha>——下载端直接回文件字节，不再只回引用。
       const form = new FormData();
       form.append("file", fFile);
-      const token = localStorage.getItem("flux.token");
+      // 凭证由 HttpOnly flux_token cookie 自动携带（P1 收敛，token 不再进 JS）
       const lang = rawFetchHelpers.lang();
       const upRes = await fetch(rawFetchHelpers.base() + "/api/v1/attachments", {
         method: "POST",
         headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...(lang ? { "Accept-Language": lang } : {}),
         },
         body: form,
