@@ -2499,7 +2499,14 @@ usertools: {
   medalwall: {
     title: "勋章墙",
     subtitle: "全站用户获得的勋章展示",
-    empty: "还没有用户获得勋章。",
+    empty: "没有匹配的勋章记录。",
+    loading: "正在加载勋章墙…",
+    search: "搜索",
+    searchHint: "搜索用户名或勋章名（至少 2 个字符）",
+    prev: "上一页",
+    count: "{n} 枚",
+    totalUsers: "共 {n} 位用户",
+    wearing: "佩戴中",
   },
   tdetail: {
     sparkReward: "{magic}值奖励",

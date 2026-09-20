@@ -2507,7 +2507,14 @@ usertools: {
   medalwall: {
     title: "Medal Wall",
     subtitle: "Medals earned by all users",
-    empty: "No medals awarded yet.",
+    empty: "No matching medal records.",
+    loading: "Loading medal wall…",
+    search: "Search",
+    searchHint: "Search by username or medal name (2+ chars)",
+    prev: "Previous",
+    count: "{n} medals",
+    totalUsers: "{n} users",
+    wearing: "Wearing",
   },
   tdetail: {
     sparkReward: "{magic} reward",

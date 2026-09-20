@@ -2501,7 +2501,14 @@ usertools: {
   medalwall: {
     title: "勳章牆",
     subtitle: "全站用戶獲得的勳章展示",
-    empty: "還沒有用戶獲得勳章。",
+    empty: "沒有符合的勳章記錄。",
+    loading: "正在載入勳章牆…",
+    search: "搜尋",
+    searchHint: "搜尋使用者名稱或勳章名（至少 2 個字元）",
+    prev: "上一頁",
+    count: "{n} 枚",
+    totalUsers: "共 {n} 位用戶",
+    wearing: "佩戴中",
   },
   tdetail: {
     sparkReward: "{magic}值獎勵",
