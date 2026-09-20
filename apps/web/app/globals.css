@@ -5711,3 +5711,42 @@ textarea.bbcode {
   border-radius: 0;
   box-shadow: none;
 }
+
+/* ============ 勋章稀有度角标（0143 词表） ============
+   独立于 .sticker：后者对「无 data-variant」的贴纸有 unlayered 兜底底色，
+   会把配色 utility 类盖成纸白。这里按 data-tone 直接给 token 底色。 */
+.medal-rarity {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.medal-rarity[data-tone="gold"] {
+  background: var(--sun);
+  color: #6b4e00;
+}
+.medal-rarity[data-tone="coral"] {
+  background: var(--coral);
+  color: #fff;
+}
+.medal-rarity[data-tone="mint"] {
+  background: var(--mint);
+  color: #fff;
+}
+.medal-rarity[data-tone="sky"] {
+  background: var(--sky);
+  color: #fff;
+}
+.medal-rarity[data-tone="indigo"] {
+  background: var(--indigo);
+  color: #fff;
+}
+.medal-rarity[data-tone="candy"] {
+  background: var(--candy);
+  color: #fff;
+}

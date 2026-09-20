@@ -123,7 +123,9 @@ struct MedalRarityRow {
 /// 勋章稀有度词表（0143）：前台角标与后台下拉共用；词表主体在后台维护。
 /// 免鉴权——纯展示元数据，且 /medals 页面本身就可能以未登录态渲染。
 #[get("/medal-rarities")]
-async fn medal_rarities(state: web::Data<std::sync::Arc<AppState>>) -> DomainResult<impl Responder> {
+async fn medal_rarities(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
     let rows: Vec<MedalRarityRow> =
         sqlx::query_as("SELECT value, label, tone, sort FROM medal_rarities ORDER BY sort, value")
             .fetch_all(&state.repo.db)

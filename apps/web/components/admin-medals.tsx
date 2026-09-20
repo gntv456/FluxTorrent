@@ -5,14 +5,12 @@ import { useI18n } from "@/i18n/client";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { MedalIcon, usableAssetUrl } from "@/components/medal-icon";
+import { MedalRarityChip, MedalRarityPreview } from "@/components/medal-rarity-chip";
 import {
   DEFAULT_MEDAL_RARITIES,
   MEDAL_RARITY_TONES,
   cleanRarityValue,
   isKnownRarity,
-  medalRarityLabel,
-  medalRarityStyle,
-  rarityToneStyle,
   type MedalRarity,
 } from "@/lib/medal-rarity";
 
@@ -137,7 +135,7 @@ function RarityDict({
           />
         </label>
         <span className="pb-2">
-          <span className={`sticker ${rarityToneStyle(edit.tone)}`}>{edit.label || "预览"}</span>
+          <MedalRarityPreview label={edit.label} tone={edit.tone} />
         </span>
         <button className="baozi-button" disabled={busy} onClick={save}>
           {edit.key === null ? "新增" : "保存"}
@@ -168,7 +166,7 @@ function RarityDict({
               <td className="font-mono">{r.value}</td>
               <td>{r.label}</td>
               <td>
-                <span className={`sticker ${rarityToneStyle(r.tone)}`}>{r.label}</span>
+                <MedalRarityPreview label={r.label} tone={r.tone} />
               </td>
               <td className="num">{r.sort ?? 0}</td>
               <td className="num">{r.used ?? 0}</td>
@@ -401,13 +399,7 @@ export function AdminMedals() {
               <td className="font-bold">{m.name}{m.limited && <span className="ml-1 rounded-full bg-coral/20 px-1.5 text-[10px] text-danger">限定</span>}</td>
               <td>{GET_TYPE[m.get_type] ?? m.get_type}</td>
               <td>
-                {m.rarity ? (
-                  <span className={`sticker ${medalRarityStyle(rarities, m.rarity)}`}>
-                    {medalRarityLabel(rarities, m.rarity)}
-                  </span>
-                ) : (
-                  "—"
-                )}
+                {m.rarity ? <MedalRarityChip list={rarities} value={m.rarity} /> : "—"}
               </td>
               <td className="num">{m.price ?? "—"}</td>
               <td className="num">{m.bonus_addition_factor ?? 0}</td>

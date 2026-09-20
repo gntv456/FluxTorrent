@@ -4,6 +4,7 @@
 mod admin_http;
 mod admin_p2_http;
 mod admin_p3_http;
+mod attachment_http;
 mod auth;
 mod authz;
 mod bencode;
@@ -22,6 +23,7 @@ mod gaps_http;
 mod geo;
 mod http;
 mod i18n;
+mod invite_http;
 mod mailer;
 mod modules;
 mod openapi_http;

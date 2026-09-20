@@ -15,14 +15,17 @@ export interface MedalRarity {
   used?: number;
 }
 
-/** 配色档（值存库；改这里前先确认前端已生成对应 tailwind 类） */
+/** 配色档（值存库）：**颜色由 globals.css 的 `.medal-rarity[data-tone=…]` 给**，
+ *  这里只维护"合法档位 + 中文名"给后台下拉用。
+ *  注意别改成往组件上挂 `bg-sky` 之类 utility 类再配 `.sticker`——`.sticker:not([data-variant])`
+ *  的兜底底色（unlayered 自定义 CSS）会把它盖掉，实测角标会全白。 */
 export const MEDAL_RARITY_TONES = [
-  { value: "gold", label: "金（传说）", style: "bg-sun text-ink" },
-  { value: "coral", label: "橙（热卖）", style: "bg-coral text-white" },
-  { value: "mint", label: "绿（普通）", style: "bg-mint text-white" },
-  { value: "sky", label: "蓝（信息）", style: "bg-sky text-white" },
-  { value: "indigo", label: "靛（史诗）", style: "bg-indigo text-white" },
-  { value: "candy", label: "粉（限定）", style: "bg-candy text-white" },
+  { value: "gold", label: "金（传说）" },
+  { value: "coral", label: "橙（热卖）" },
+  { value: "mint", label: "绿（普通）" },
+  { value: "sky", label: "蓝（稀有·默认）" },
+  { value: "indigo", label: "靛（史诗）" },
+  { value: "candy", label: "粉（限定）" },
 ] as const;
 
 /** 接口拿不到词表时的兜底（与 0143 的种子数据一致） */
@@ -34,18 +37,15 @@ export const DEFAULT_MEDAL_RARITIES: MedalRarity[] = [
 ];
 
 /** 词表里没有的稀有度（历史数据 / 站长手改过库）→ 中性蓝，不崩样式 */
-export const MEDAL_RARITY_FALLBACK_STYLE = "bg-sky text-white";
+export const MEDAL_RARITY_FALLBACK_TONE = "sky";
 
-export function rarityToneStyle(tone?: string | null): string {
-  return MEDAL_RARITY_TONES.find((t) => t.value === tone)?.style ?? MEDAL_RARITY_FALLBACK_STYLE;
+export function medalRarityTone(list: MedalRarity[], value?: string | null): string {
+  const tone = medalRarity(list, value)?.tone;
+  return MEDAL_RARITY_TONES.some((t) => t.value === tone) ? (tone as string) : MEDAL_RARITY_FALLBACK_TONE;
 }
 
 export function medalRarity(list: MedalRarity[], value?: string | null): MedalRarity | undefined {
   return value ? list.find((r) => r.value === value) : undefined;
-}
-
-export function medalRarityStyle(list: MedalRarity[], value?: string | null): string {
-  return rarityToneStyle(medalRarity(list, value)?.tone);
 }
 
 /** 词表收录 → 显示名；未收录 → 原样显示键（不隐藏数据，便于站长发现漏配） */
