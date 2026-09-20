@@ -3,16 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { MedalIcon } from "@/components/medal-icon";
 
 /** hxpt 插件移植前台：勋章墙 medal_wall / 大赛 contest / 头像挂件 avatar_frame / 五子棋 wuziqi */
 
-interface MedalEntry { username: string; medal_name: string }
+interface MedalEntry { username: string; medal_name: string; asset_ref?: string | null }
 interface Contest {
   id: number; title: string; descr: string | null;
   starts_at: string; ends_at: string; is_active: boolean;
   entries: number; leader: string | null; leader_score: number | null;
 }
-interface Frame { id: number; name: string; css: string; price: number }
+interface Frame { id: number; name: string; css: string; image_url?: string | null; price: number }
 
 // ============ 勋章墙 ============
 
@@ -34,7 +35,9 @@ export function MedalWall() {
     <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
       {rows.map((m, i) => (
         <div key={i} className="baozi-panel flex items-center gap-3 p-3">
-          <span className="medalwall-medal" aria-hidden>🏅</span>
+          <span className="medalwall-medal">
+            <MedalIcon src={m.asset_ref} size={30} title={m.medal_name} />
+          </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-ink">{m.medal_name}</p>
             <p className="truncate text-xs text-sub">{m.username}</p>
@@ -144,7 +147,17 @@ export function FrameShop({ current, onChange }: { current: number | null; onCha
         </div>
         {frames.map((f) => (
           <div key={f.id} className="baozi-panel flex flex-col items-center gap-2 p-4">
-            <span className={`avatar-frame-demo frame-style-${f.id} ${current === f.id ? "frame-on" : ""}`} style={frameStyle(f.css)} aria-hidden>🙂</span>
+            <span
+              className={`avatar-frame-demo frame-style-${f.id} relative ${current === f.id ? "frame-on" : ""}`}
+              style={f.image_url ? undefined : frameStyle(f.css)}
+              aria-hidden
+            >
+              🙂
+              {f.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={f.image_url} alt="" className="pointer-events-none absolute inset-0 z-10 h-full w-full select-none object-fill" />
+              ) : null}
+            </span>
             <p className="text-xs font-bold text-ink">{f.name}</p>
             <p className="text-xs text-sub">{f.price > 0 ? `✨ ${f.price}` : t.free}</p>
             <button className="min-h-[32px] rounded-full bg-sky px-3 text-xs font-bold text-white disabled:opacity-50"

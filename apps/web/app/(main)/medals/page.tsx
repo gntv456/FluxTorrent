@@ -1,24 +1,12 @@
 import { getMedals } from "@/lib/data";
 import { MedalActions } from "@/components/medal-actions";
+import { MedalIcon } from "@/components/medal-icon";
+import { medalRarityLabel, medalRarityStyle } from "@/lib/medal-rarity";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
-
-const RARITY_STYLE: Record<string, string> = {
-  legendary: "bg-sun text-ink",
-  epic: "bg-indigo text-white",
-  rare: "bg-sky text-white",
-  common: "bg-mint text-white",
-};
-
-const RARITY_LABEL: Record<string, string> = {
-  legendary: "传说",
-  epic: "史诗",
-  rare: "稀有",
-  common: "普通",
-};
 
 /** 勋章殿堂（好学站 medal.php 口径）：按分类分组，卡片含描述/获取方式/有效期/库存/销售期/加成 */
 export default async function MedalsPage() {
@@ -66,12 +54,10 @@ export default async function MedalsPage() {
                 className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
               >
                 <div className="flex items-center justify-between">
-                  <span aria-hidden className="text-3xl">
-                    🏅
-                  </span>
+                  <MedalIcon src={m.asset_ref} size={40} title={m.name} />
                   {m.rarity && (
-                    <span className={`sticker ${RARITY_STYLE[m.rarity] ?? "bg-sky text-white"}`}>
-                      {RARITY_LABEL[m.rarity] ?? m.rarity}
+                    <span className={`sticker ${medalRarityStyle(m.rarity)}`}>
+                      {medalRarityLabel(m.rarity)}
                     </span>
                   )}
                 </div>

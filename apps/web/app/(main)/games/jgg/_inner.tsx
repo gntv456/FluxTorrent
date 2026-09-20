@@ -4,17 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
-import { GameShell, HistoryStrip, ResultFlash } from "@/components/game/game-kit";
+import { GameShell, HistoryStrip, PlayHint, ResultFlash } from "@/components/game/game-kit";
 import { JggGrid, type JggPrize } from "@/components/game/jgg-grid";
 
-interface Overview {
+export interface Overview {
   me?: { balance: number; today_net: number; today_plays: number; limit_left: number };
   jgg?: { ticket: number; prizes: JggPrize[] };
 }
 
-interface HistRow {
-  ref_type: string | null;
-  amount: number;
+interface RoundRow {
+  game: string;
+  bet: number;
+  payout: number;
+  net: number;
 }
 
 interface DrawResult {
@@ -25,13 +27,13 @@ interface DrawResult {
 }
 
 /** 九宫格专注页：3×3 灯阵 + 跑马灯 + 翻牌揭晓 */
-export default function JggPage() {
+export default function JggPage({ initialOver }: { initialOver: Overview | null }) {
   const { dict, currency } = useI18n();
   const t = dict.games;
   const tj = dict.games.jgg;
 
-  const [ov, setOv] = useState<Overview | null>(null);
-  const [hist, setHist] = useState<HistRow[]>([]);
+  const [ov, setOv] = useState<Overview | null>(initialOver);
+  const [hist, setHist] = useState<RoundRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<DrawResult | null>(null);
   const [flash, setFlash] = useState<{ kind: "win" | "lose" | "tie" | "jackpot"; text: string } | null>(
@@ -39,6 +41,8 @@ export default function JggPage() {
   );
   const [err, setErr] = useState<string | null>(null);
   const [reduced, setReduced] = useState(false);
+  /** 本次会话已完成的局数（防沉迷软提示用） */
+  const [sessionPlays, setSessionPlays] = useState(0);
   const idem = useRef<string>("");
 
   useEffect(() => {
@@ -52,7 +56,7 @@ export default function JggPage() {
       /* ignore */
     }
     try {
-      setHist(await api.get<HistRow[]>("/api/v1/games/history?game=jgg&limit=10"));
+      setHist(await api.get<RoundRow[]>("/api/v1/games/rounds?game=jgg&limit=10"));
     } catch {
       /* ignore */
     }
@@ -82,7 +86,14 @@ export default function JggPage() {
       });
       setRes(r);
     } catch (e) {
-      setErr(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError);
+      // 1002 用后端具体原因（如「票价超过单次上限」）
+      setErr(
+        e instanceof ApiError
+          ? e.code === 1002
+            ? e.message
+            : (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
+      );
       setBusy(false);
     }
   }
@@ -90,6 +101,7 @@ export default function JggPage() {
   function onLanded() {
     const r = res;
     setBusy(false);
+    setSessionPlays((n) => n + 1);
     if (!r) return;
     const kind: "win" | "lose" | "tie" | "jackpot" =
       r.payout >= ticket * 10 ? "jackpot" : r.payout > ticket ? "win" : r.payout === ticket ? "tie" : "lose";
@@ -115,6 +127,9 @@ export default function JggPage() {
       balance={ov?.me?.balance ?? null}
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
+      notice={
+        <PlayHint sessionPlays={sessionPlays} todayNet={ov?.me?.today_net ?? null} />
+      }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
           <JggGrid
@@ -158,7 +173,7 @@ export default function JggPage() {
       side={
         <div className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
-          <HistoryStrip items={hist} />
+          <HistoryStrip rounds={hist} />
         </div>
       }
     />

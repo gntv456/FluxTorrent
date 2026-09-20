@@ -1,5 +1,5 @@
 import { getTopBoards, TopRow } from "@/lib/data";
-import { formatBytes } from "@/lib/format";
+import { formatBytes, avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -23,19 +23,28 @@ function fmtDuration(hours: number): string {
 }
 
 function Avatar({ u }: { u: TopRow }) {
+  // 框图优先，否则 CSS 描边；容器 relative 供叠层定位
+  const style = u.avatar_frame_image ? undefined : avatarFrameStyle(u.avatar_frame_css);
   if (u.avatar_url) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={u.avatar_url}
-        alt=""
-        className="h-8 w-8 shrink-0 rounded-full border border-[var(--baozi-line)] object-cover"
-      />
+      <span className="relative inline-flex h-8 w-8 shrink-0" style={style}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={u.avatar_url}
+          alt=""
+          className="h-8 w-8 rounded-full border border-[var(--baozi-line)] object-cover"
+        />
+        <FrameImageOverlay url={u.avatar_frame_image} />
+      </span>
     );
   }
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--baozi-orange)]/15 text-sm font-black text-[var(--baozi-orange-dark)]">
+    <span
+      className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--baozi-orange)]/15 text-sm font-black text-[var(--baozi-orange-dark)]"
+      style={style}
+    >
       {u.username.slice(0, 1).toUpperCase()}
+      <FrameImageOverlay url={u.avatar_frame_image} />
     </span>
   );
 }

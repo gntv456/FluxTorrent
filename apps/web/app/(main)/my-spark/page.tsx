@@ -9,6 +9,8 @@ interface SparkInfo {
   balance: number;
   seeding_count: number;
   hourly_estimate: number;
+  /** 收益构成：[规则名, 颗数]（worker 同源口径） */
+  reward_rules?: [string, number][];
 }
 
 interface LedgerRow {
@@ -18,18 +20,13 @@ interface LedgerRow {
   created_at: string;
 }
 
-const KIND_LABEL: Record<string, string> = {
+/** 仅补字典里没有的 kind；主映射用 `dict.my.kinds`（用户中心同一份，一处维护、三语齐备） */
+const KIND_FALLBACK: Record<string, string> = {
   seeding: "做种收益",
-  download: "下载消耗",
-  shop: "商店消费",
-  task: "任务奖励",
-  attendance: "签到",
-  bank: "银行",
-  subtitle: "字幕奖励",
-  forum: "论坛奖励",
-  admin: "管理员发放",
-  grant: "发放",
   hourly: "小时结算",
+  grant: "发放",
+  admin: "管理员发放",
+  bank: "银行",
 };
 
 /** 我的魔力（mybonus.php 口径）：余额卡片 + 收益估算 + 最近流水 */
@@ -92,6 +89,22 @@ export default function MySparkPage() {
         </div>
       </div>
 
+      {info?.reward_rules && info.reward_rules.length > 0 && (
+        <div className="baozi-panel flex flex-col gap-2 p-4">
+          <p className="text-xs text-sub">{t.rewardRules}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {info.reward_rules.map(([name, cnt], i) => (
+              <span
+                key={i}
+                className="rounded-full bg-sky-soft px-2.5 py-1 text-[11px] font-bold text-ink"
+              >
+                {name} ×{cnt}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <table className="nexus-table">
         <tbody>
           <tr>
@@ -113,7 +126,7 @@ export default function MySparkPage() {
           </tr>
           {rows.map((r, i) => (
             <tr key={i}>
-              <td>{KIND_LABEL[r.kind] ?? r.kind}</td>
+              <td>{dict.my.kinds[r.kind] ?? KIND_FALLBACK[r.kind] ?? r.kind}</td>
               <td className={`num font-bold ${r.amount >= 0 ? "text-success" : "text-danger"}`}>
                 {r.amount >= 0 ? "+" : ""}{r.amount.toLocaleString()}
               </td>

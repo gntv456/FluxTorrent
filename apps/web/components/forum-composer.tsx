@@ -108,9 +108,8 @@ export function TopicComposer({ forumId }: { forumId: number }) {
       });
       router.push(`/forums/topic/${r.topic_id}`);
     } catch (err) {
-      setMsg(
-        err instanceof ApiError ? (dict.errors[err.code] ?? err.message) : dict.common.networkError,
-      );
+      // 后端校验消息（如敏感词提示「内容包含敏感词…」）比字典的通用 1002 文案更有用，优先透传
+      setMsg(err instanceof ApiError && err.message ? err.message : dict.common.networkError);
       setBusy(false);
     }
   }

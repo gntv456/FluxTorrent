@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
 /** 帖子点赞条（0116）：乐观更新，失败回滚。颜色取主题 token，明暗自适应。 */
@@ -114,6 +114,64 @@ export function TopicFavoriteButton({
       <span aria-hidden="true">{on ? "⭐" : "☆"}</span>
       {on ? dict.forums.favorited : dict.forums.favorite}
       {n > 0 && <span className="num text-sub">· {n}</span>}
+    </button>
+  );
+}
+
+/** 打赏按钮（0127）：楼层上「请作者喝一杯」，弹 prompt 输金额；对冲转账（spend+earn 同额）。
+ *  只对非本人的楼渲染（自己转自己是流水噪音）；登录由父层 authId>0 保证。 */
+export function PostTipButton({
+  postId,
+  tips,
+  tipCount,
+  currency,
+}: {
+  postId: number;
+  tips: number;
+  tipCount: number;
+  currency: string;
+}) {
+  const { dict } = useI18n();
+  const [total, setTotal] = useState(tips);
+  const [n, setN] = useState(tipCount);
+  const [busy, setBusy] = useState(false);
+
+  async function tip() {
+    if (busy) return;
+    const raw = window.prompt(dict.forums.tipPrompt.replace("{magic}", currency));
+    if (!raw) return;
+    const amt = Math.floor(Number(raw));
+    if (!Number.isFinite(amt) || amt <= 0) {
+      window.alert(dict.forums.tipInvalid);
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post("/api/v1/forums/tip", { post_id: postId, spark: amt });
+      setTotal((t) => t + amt);
+      setN((x) => x + 1);
+    } catch (e) {
+      window.alert(e instanceof ApiError ? e.message : dict.common.networkError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={tip}
+      disabled={busy}
+      title={dict.forums.tipTitle}
+      className="inline-flex min-h-[28px] items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition disabled:opacity-50 border-line text-sub hover:border-[var(--baozi-orange)] hover:text-[var(--baozi-orange-dark)]"
+    >
+      <span aria-hidden="true">☕</span>
+      {dict.forums.tipTitle}
+      {n > 0 && (
+        <span className="num opacity-80">
+          {total} {currency} · {n}
+        </span>
+      )}
     </button>
   );
 }

@@ -1178,6 +1178,28 @@ a:hover {
   border-radius: 50%;
   background: linear-gradient(145deg, var(--baozi-orange-bright), var(--baozi-orange));
   box-shadow: inset 0 0 0 3px var(--hairline-strong);
+  overflow: hidden;
+}
+/* 头像框佩戴态：框 css（border-color/box-shadow）由内联 style 覆盖，
+   内描边换外描边避免被 overflow 裁掉 */
+.userbar__avatar[style] {
+  box-shadow: none;
+}
+
+/* 用户名后的佩戴勋章角标（userbar / 个人主页共用） */
+.medal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--baozi-line);
+  background: var(--baozi-paper);
+  color: var(--baozi-orange-dark);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 .userbar__welcome {
   display: flex;
@@ -2101,6 +2123,11 @@ a:hover {
   font-size: 22px;
   font-weight: 800;
   box-shadow: 0 2px 8px rgba(70, 110, 165, 0.25);
+}
+/* 佩戴头像框时：框样式落在 __avatar 容器上（内联 style 覆盖其 border/阴影） */
+.uc-profile-card__avatar {
+  display: inline-flex;
+  border-radius: 50%;
 }
 .uc-profile-card h2 {
   margin: 0;
@@ -5418,4 +5445,269 @@ textarea.bbcode {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   color: inherit;
+}
+
+/* ============ 用户详情页：个人中心卡片化布局（Hero 身份卡 + 指标磁贴 + 双列卡片网格） ============
+   结构参考 NexusPHP 定制站 userdetails 的 .ud-* 版式：首屏只给身份 + 5 个核心指标，
+   明细按域切进卡片，资料行用虚线分隔取代整块两列表格。配色全部走 Aurora token，随主题换肤。 */
+.up-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  background: linear-gradient(135deg, var(--surface-card) 0%, var(--surface-cloud) 100%);
+  box-shadow: var(--shadow-card);
+}
+.up-hero__avatar {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.up-hero__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.up-hero__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.up-hero__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.up-hero__class {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--sky-soft);
+  color: var(--text-brand);
+  font-size: 13px;
+  font-weight: 700;
+}
+.up-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+.up-hero__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.up-hero__meta i {
+  color: var(--text-brand);
+  font-style: normal;
+}
+/* 指标磁贴：宽屏自适应铺满，窄屏自动降列 */
+.up-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.up-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+.up-stat__icon {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-sm);
+  background: var(--sky-soft);
+  color: var(--text-brand);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.up-stat__value {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+.up-stat__label {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* 卡片网格：双列，gap 14；卡片按内容自然高度（align-items:start，不为对齐拉高） */
+.up-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.up-card {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.up-card--full {
+  grid-column: 1 / -1;
+}
+/* 首屏定席：左列「账号信息」→「下一级进度」上下叠放，右列「传输与做种」横跨两行，
+   把左侧短卡片下方的空档填掉（换顺序做不到——第二行会从本行最高卡片底下才开始）。 */
+.up-card--slot-tl {
+  grid-column: 1;
+  grid-row: 1;
+}
+.up-card--slot-bl {
+  grid-column: 1;
+  grid-row: 2;
+}
+.up-card--slot-r2 {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  /* 网格是 align-items:start（避免整行被最高的卡拉高），跨行卡单独特例撑满两行，
+     否则右列会留出与左列高差相等的那条缝 */
+  align-self: stretch;
+}
+.up-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(90deg, var(--head-a), var(--head-b));
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 800;
+}
+.up-card__title i {
+  color: var(--text-brand);
+  font-style: normal;
+  font-size: 14px;
+}
+.up-card__body {
+  padding: 4px 16px 10px;
+}
+/* 资料行：标签定宽 132 + 虚线分隔（替代整块表格的横向割裂感） */
+.up-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.up-row:last-child {
+  border-bottom: 0;
+}
+.up-row__label {
+  flex: 0 0 132px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding-top: 1px;
+}
+.up-row__label i {
+  width: 14px;
+  text-align: center;
+  color: var(--text-fainter);
+  font-style: normal;
+  font-size: 12px;
+}
+.up-row__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-body-deep);
+  font-size: 13.5px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+.up-row__value a {
+  color: var(--text-brand);
+}
+.up-row__value a:hover {
+  text-decoration: underline;
+}
+/* 勋章墙：横向滚动，避免长列表撑破卡片 */
+.up-medals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0;
+}
+.up-note {
+  padding: 12px 16px;
+  border: 1px dashed var(--border-deep);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .up-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* 单列时取消首屏定席，回到自然流式排列（否则会撑出一个不存在的第二列） */
+  .up-card--slot-tl,
+  .up-card--slot-bl,
+  .up-card--slot-r2 {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .up-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .up-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .up-row__label {
+    flex-basis: auto;
+  }
+}
+
+/* 指标磁贴的语义色变体（上传绿 / 下载橙 / 魔力黄），仍走 token，随主题换肤 */
+.up-stat__icon--up {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.up-stat__icon--down {
+  color: var(--coral);
+  background: var(--coral-soft);
+}
+.up-stat__icon--spark {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+/* 卡片内嵌表格去掉自身外框，避免出现「框中框」 */
+.up-card__body .nexus-table {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }

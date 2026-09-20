@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { api, setSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { formatBytes, formatRatio } from "@/lib/format";
+import { formatBytes, formatRatio, avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { UserTools } from "@/components/user-tools";
+import { MedalIcon } from "@/components/medal-icon";
 
 /** /me 返回口径（http.rs me handler）+ spark_balance */
 interface MeInfo {
+  id: number;
   username: string;
   class_id?: number;
   class_name?: string | null;
@@ -16,6 +18,10 @@ interface MeInfo {
   seeding: number;
   leeching: number;
   unread_messages?: number;
+  avatar_url?: string | null;
+  avatar_frame_css?: string | null;
+  avatar_frame_image?: string | null;
+  worn_medals?: { name: string; asset_ref?: string | null }[];
 }
 
 /**
@@ -28,6 +34,8 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
   const { dict, currency } = useI18n();
   const [me, setMe] = useState<MeInfo | null>(null);
   const [spark, setSpark] = useState<number | null>(null);
+  // 魔力数字格式化放到挂载后（容器与浏览器的 ICU 分组符不同，直渲会触发 React 418 水合不匹配）
+  const [sparkText, setSparkText] = useState<string>("…");
 
   useEffect(() => {
     if (!localStorage.getItem("flux.token")) return;
@@ -49,6 +57,10 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
         setSessionCookie(null);
       });
   }, []);
+
+  useEffect(() => {
+    if (spark !== null) setSparkText(Number(spark).toLocaleString());
+  }, [spark]);
 
   async function logout() {
     try {
@@ -76,16 +88,28 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
   return (
     <>
       <div className="userbar__identity">
-        {/* 装饰性头像（用户名链接已在旁侧）：aria-hidden 时须移出 tab 序列 */}
-        <a href="/my" aria-hidden tabIndex={-1} className="userbar__avatar" title={me.username}>
-          {me.username.slice(0, 1).toUpperCase()}
+        {/* 头像与用户名进个人公开主页（/users/{id}）；控制面板入口在下拉快捷栏。
+            框形态二选一：image_url 立绘框图叠层优先，否则 CSS 描边 */}
+        <a href={`/users/${me.id}`} aria-hidden tabIndex={-1} className="userbar__avatar relative" style={me.avatar_frame_image ? undefined : avatarFrameStyle(me.avatar_frame_css)} title={me.username}>
+          {me.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={me.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+          ) : (
+            me.username.slice(0, 1).toUpperCase()
+          )}
+          <FrameImageOverlay url={me.avatar_frame_image} />
         </a>
         <div className="min-w-0">
           <div className="userbar__welcome">
             <span>{dict.my.welcomeBack}</span>
-            <a href="/my" className="userbar__name">
+            <a href={`/users/${me.id}`} className="userbar__name">
               {me.username}
             </a>
+            {(me.worn_medals ?? []).map((m) => (
+              <span key={m.name} className="medal-chip" title={m.name}>
+                <MedalIcon src={m.asset_ref} size={14} title={m.name} />
+              </span>
+            ))}
             {me.class_name && <span className="sticker">{me.class_name}</span>}
             <button type="button" onClick={logout} className="text-xs text-sub hover:text-sky">
               {dict.my.logout}
@@ -94,7 +118,7 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
           <div className="userbar__meta">
             <span className="bonus-pill">
               <span>{currency}：</span>
-              <b className="num">{spark !== null ? Number(spark).toLocaleString() : "…"}</b>
+              <b className="num">{sparkText}</b>
               <a href="/my" className="bonus-hint">
                 [{dict.my.dailyCheckin}]
               </a>
