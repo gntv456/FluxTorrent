@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPosts, getForums } from "@/lib/data";
-import { ReplyBox, TopicModActions, PostActions } from "@/components/forum-composer";
+import { ReplyBox, TopicModActions, PostActions } from "@/components/forum-post-actions";
 import { MarkdownRenderer } from "@/components/forum-markdown";
 import { TypeBadge, TagChip } from "@/components/forum-bits";
 import { PostVoteBar, TopicFavoriteButton, BountyAcceptButton, PostTipButton } from "@/components/forum-vote";
