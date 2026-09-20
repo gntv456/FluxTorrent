@@ -6,10 +6,18 @@
 # - 本地源码构建（二次开发/内网）：docker compose up -d --build
 # 镜像地址可经 .env 覆盖（FLUX_IMAGE_PREFIX / FLUX_VERSION），fork 站长可指向自己的 registry。
 
+# 日志轮转（运维 P1）：默认 json-file 无上限，tracker 高频日志可撑爆宿主磁盘
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: flux-postgres
+    logging: *default-logging
     environment:
       POSTGRES_USER: flux
       POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
@@ -28,11 +36,15 @@ services:
   redis:
     image: redis:7-alpine
     container_name: flux-redis
+    logging: *default-logging
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    environment:
+      # 供 healthcheck 在容器内读密码（无密码 ping 曾造成 NOAUTH 下依旧 healthy 的假阳性）
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
     ports:
       - "127.0.0.1:6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -44,6 +56,7 @@ services:
       context: ..
       dockerfile: docker/api.Dockerfile
     container_name: flux-api
+    logging: *default-logging
     environment:
       BIND: 0.0.0.0:8080
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
@@ -61,6 +74,9 @@ services:
       SMTP_URL: ${SMTP_URL:-}                      # 邮件发送（空 = 邮件类通知跳过）
       SMTP_FROM: ${SMTP_FROM:-}                    # 发件人（空退 no-reply@fluxtorrent.local）
       ANN_METRICS_TOKEN: ${ANN_METRICS_TOKEN:-}    # api /metrics 门禁（空 = 端点 404 隐藏）
+      # 反代模式（P1）：api 经 Nginx/Pingora 等反代对外时设 1，限流/封禁/登录事件改信
+      # X-Forwarded-For 首值；api 直连暴露时必须留空（否则客户端可伪造头绕过风控）
+      TRUST_PROXY: ${TRUST_PROXY:-}
       FLUX_DEV: ${FLUX_DEV:-}                      # 1 = 开发态（CORS 宽松/SMTP 日志闭环）
       FLUX_BACKUP_DIR: /backups                    # 与 backups 卷挂载对应
       # 附件对象存储（可选；storage_backend=s3 时生效，读取端自动回落本地卷）
@@ -88,6 +104,9 @@ services:
       - ../backups:/backups
       # 本地开发：迁移目录以宿主为准（镜像内迁移滞后时容器可先行），生产可去掉
       - ../apps/api/migrations:/app/migrations:ro
+      # 附件持久化（P0）：api 落盘 savedirectory=./attachments（storage.rs），不挂卷
+      # 的话 compose pull && up -d 重建容器即丢全部用户附件
+      - attachments:/app/attachments
     restart: unless-stopped
 
   worker:
@@ -96,6 +115,7 @@ services:
       context: ..
       dockerfile: docker/worker.Dockerfile
     container_name: flux-worker
+    logging: *default-logging
     environment:
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
@@ -121,6 +141,7 @@ services:
       context: ..
       dockerfile: docker/tracker.Dockerfile
     container_name: flux-tracker
+    logging: *default-logging
     environment:
       TRACKER_BIND: 0.0.0.0:7070
       # UDP tracker 绑定（BEP15 connect/announce/scrape）；置空字符串禁用
@@ -168,6 +189,7 @@ services:
       context: ..
       dockerfile: docker/web.Dockerfile
     container_name: flux-web
+    logging: *default-logging
     environment:
       # 浏览器走同源 /api（rewrites 转发），服务端 RSC 直连容器网
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
@@ -180,3 +202,4 @@ services:
 
 volumes:
   pgdata:
+  attachments:
