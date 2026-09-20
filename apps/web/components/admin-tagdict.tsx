@@ -10,6 +10,8 @@ interface TagRow {
   id: number;
   name: string;
   kind: string;
+  /** 作用域（0138）：torrent=种子域 / forum=论坛域 */
+  scope?: string;
   bg_color: string;
   color: string;
   font_size: string;
@@ -24,7 +26,7 @@ interface TagRow {
 interface ModeRow { id: number; name: string }
 
 const EMPTY: Omit<TagRow, "id"> = {
-  name: "", kind: "plain", bg_color: "#3b82f6", color: "#ffffff", font_size: "12px",
+  name: "", kind: "plain", scope: "torrent", bg_color: "#3b82f6", color: "#ffffff", font_size: "12px",
   margin: "0 4px 0 0", padding: "1px 4px", border_radius: "2px", sort: 0, enabled: true, mode_id: null,
 };
 
@@ -80,6 +82,12 @@ export function AdminTagDict() {
             <select value={edit.f.kind} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, kind: e.target.value } })} className={inp}>
               <option value="plain">普通</option>
               <option value="official">官方</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs">作用域
+            <select value={edit.f.scope ?? "torrent"} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, scope: e.target.value } })} className={inp}>
+              <option value="torrent">种子</option>
+              <option value="forum">论坛</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs">背景色
@@ -139,8 +147,9 @@ export function AdminTagDict() {
             <td className="colhead">ID</td>
             <td className="colhead">预览</td>
             <td className="colhead">类型</td>
-            <td className="colhead">样式</td>
             <td className="colhead">作用域</td>
+            <td className="colhead">样式</td>
+            <td className="colhead">模式</td>
             <td className="colhead">状态</td>
             <td className="colhead text-right">操作</td>
           </tr>
@@ -164,6 +173,7 @@ export function AdminTagDict() {
                 </span>
               </td>
               <td>{r.kind === "official" ? "官方" : "普通"}</td>
+              <td>{r.scope === "forum" ? "论坛" : "种子"}</td>
               <td className="font-mono">{r.bg_color || "—"} / {r.font_size}</td>
               <td>{r.mode_id ? (modes.find((m) => m.id === r.mode_id)?.name ?? `#${r.mode_id}`) : "全部"}</td>
               <td>{r.enabled ? "启用" : "停用"}</td>
@@ -177,7 +187,7 @@ export function AdminTagDict() {
               </td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-sub">暂无标签</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={8} className="py-6 text-center text-sub">暂无标签</td></tr>}
         </tbody>
       </table>
     </div>

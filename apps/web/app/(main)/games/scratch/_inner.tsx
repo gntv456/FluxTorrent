@@ -4,29 +4,31 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
-import { ChipSelect, GameShell, HistoryStrip, ResultFlash } from "@/components/game/game-kit";
+import { ChipSelect, GameShell, HistoryStrip, PlayHint, ResultFlash } from "@/components/game/game-kit";
 import { ScratchCanvas } from "@/components/game/scratch-canvas";
 import { scratchPoolText, type ScratchPrize } from "@/lib/games";
 
-interface Overview {
+export interface Overview {
   max_bet: number;
   me?: { balance: number; today_net: number; today_plays: number; limit_left: number };
   scratch?: { prizes: ScratchPrize[]; empty_pct: number };
 }
 
-interface HistRow {
-  ref_type: string | null;
-  amount: number;
+interface RoundRow {
+  game: string;
+  bet: number;
+  payout: number;
+  net: number;
 }
 
 /** 刮刮乐专注页：买卡 → 真刮 → 刮开过半自动开完 → 揭晓 */
-export default function ScratchPage() {
+export default function ScratchPage({ initialOver }: { initialOver: Overview | null }) {
   const { dict, currency } = useI18n();
   const t = dict.games;
   const ts = dict.games.scratch;
 
-  const [ov, setOv] = useState<Overview | null>(null);
-  const [hist, setHist] = useState<HistRow[]>([]);
+  const [ov, setOv] = useState<Overview | null>(initialOver);
+  const [hist, setHist] = useState<RoundRow[]>([]);
   const [bet, setBet] = useState(100);
   const [phase, setPhase] = useState<"idle" | "buying" | "scratchable" | "done">("idle");
   const [outcome, setOutcome] = useState<{ multiplier: number; payout: number; net: number } | null>(
@@ -40,11 +42,23 @@ export default function ScratchPage() {
   const [round, setRound] = useState(0);
   const [err, setErr] = useState<string | null>(null);
   const [reduced, setReduced] = useState(false);
+  /** 本次会话已完成的局数（防沉迷软提示用） */
+  const [sessionPlays, setSessionPlays] = useState(0);
   const idem = useRef<string>("");
 
   useEffect(() => {
     setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
+
+  // 切后台 / 切走页面：已买卡就自动开完。
+  // 结果在买卡那一刻就由服务端定了，不能让用户回来对着半刮的卡（钱已扣、奖已开）。
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "hidden" && phase === "scratchable") setAutoReveal(true);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [phase]);
 
   const loadMeta = useCallback(async () => {
     try {
@@ -53,7 +67,7 @@ export default function ScratchPage() {
       /* 顶栏数据取不到不影响玩，缺省用设置上限 */
     }
     try {
-      setHist(await api.get<HistRow[]>("/api/v1/games/history?game=scratch&limit=10"));
+      setHist(await api.get<RoundRow[]>("/api/v1/games/rounds?game=scratch&limit=10"));
     } catch {
       /* 忽略 */
     }
@@ -85,7 +99,14 @@ export default function ScratchPage() {
       setPhase("scratchable");
       if (reduced) setAutoReveal(true);
     } catch (e) {
-      setErr(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError);
+      // 1002 是校验类错误：字典里的「参数校验失败」太笼统，直接用后端的具体原因
+      setErr(
+        e instanceof ApiError
+          ? e.code === 1002
+            ? e.message
+            : (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
+      );
       setPhase("idle");
     }
   }
@@ -93,6 +114,7 @@ export default function ScratchPage() {
   function onRevealed() {
     const o = outcome;
     setPhase("done");
+    setSessionPlays((n) => n + 1);
     if (!o) return;
     const kind: "win" | "lose" | "tie" | "jackpot" =
       o.multiplier >= 2 ? "jackpot" : o.net > 0 ? "win" : o.net === 0 ? "tie" : "lose";
@@ -136,6 +158,9 @@ export default function ScratchPage() {
       balance={ov?.me?.balance ?? null}
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
+      notice={
+        <PlayHint sessionPlays={sessionPlays} todayNet={ov?.me?.today_net ?? null} />
+      }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
           <div className="relative h-[170px] w-full max-w-[300px] overflow-hidden rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]">
@@ -193,7 +218,7 @@ export default function ScratchPage() {
       side={
         <div className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
-          <HistoryStrip items={hist} />
+          <HistoryStrip rounds={hist} />
           <p className="mt-3 text-[11px] text-sub">
             {scratchPoolText(ov?.scratch?.prizes, ts.poolLabel) || ts.pool}
           </p>

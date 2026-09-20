@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
+import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { useI18n } from "@/i18n/client";
 import { LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { PushSettings } from "@/components/push-settings";
+import { MedalIcon } from "@/components/medal-icon";
 import { TwoFactorSetup } from "@/components/twofa-setup";
 import { ApiTokens } from "@/components/api-tokens";
 import { LoginHistory } from "@/components/login-history";
@@ -110,6 +112,9 @@ interface Overview {
   email: string;
   class_name: string | null;
   avatar_url: string | null;
+  avatar_frame_css?: string | null;
+  avatar_frame_image?: string | null;
+  worn_medals?: { name: string; asset_ref?: string | null }[];
   created_at: string | null;
   uploaded: number;
   downloaded: number;
@@ -347,16 +352,27 @@ function OverviewTab({ ov, loading }: { ov: Overview | null; loading: boolean })
     <div className="usercp-dashboard">
       {/* 资料卡 */}
       <section className="uc-profile-card">
-        <span className="uc-profile-card__avatar">
+        <span
+          className="uc-profile-card__avatar relative"
+          style={ov.avatar_frame_image ? undefined : avatarFrameStyle(ov.avatar_frame_css)}
+        >
           {ov.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={ov.avatar_url} alt="" />
           ) : (
             <i className="uc-avatar-fallback">{ov.username.slice(0, 1).toUpperCase()}</i>
           )}
+          <FrameImageOverlay url={ov.avatar_frame_image} />
         </span>
         <div>
-          <h2>{ov.username}</h2>
+          <h2>
+            {ov.username}
+            {(ov.worn_medals ?? []).slice(0, 3).map((m) => (
+              <span key={m.name} className="medal-chip ml-1 align-middle" title={m.name}>
+                <MedalIcon src={m.asset_ref} size={14} title={m.name} />
+              </span>
+            ))}
+          </h2>
           <p>
             {t.joined}
             {new Date(ov.created_at ?? "").toLocaleString("zh-CN")}

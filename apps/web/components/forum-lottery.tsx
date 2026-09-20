@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -40,6 +40,11 @@ export function LotteryWidget({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // 时间格式化放到挂载后（SSR 与容器的 ICU/时区可能不同，直接渲染会 418 水合不匹配）
+  const [drawAtText, setDrawAtText] = useState("");
+  useEffect(() => {
+    setDrawAtText(new Date(lottery.draw_at).toLocaleString(dateLocale(locale)));
+  }, [lottery.draw_at, locale]);
 
   async function join() {
     if (busy) return;
@@ -66,7 +71,6 @@ export function LotteryWidget({
   }
 
   const open = lottery.status === "open";
-  const drawAt = new Date(lottery.draw_at);
 
   return (
     <div className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4">
@@ -92,7 +96,7 @@ export function LotteryWidget({
         </span>
         {open && (
           <span className="text-xs text-sub">
-            {dict.forums.lotDrawAt} {drawAt.toLocaleString(dateLocale(locale))}
+            {dict.forums.lotDrawAt} {drawAtText}
           </span>
         )}
       </div>

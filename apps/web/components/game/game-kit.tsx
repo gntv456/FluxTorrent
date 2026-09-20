@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/client";
 
@@ -8,15 +9,18 @@ import { useI18n } from "@/i18n/client";
  * 四个玩法专注页共用：外壳 / 余额条 / 筹码 / 结果飘字 / 战绩条。
  */
 
-/** 余额条：余额 + 今日净收 + 剩余局数（下注前先看得见，防沉迷设计的一部分） */
+/** 余额条：余额 + 今日净收 + 剩余次数（下注前先看得见，防沉迷设计的一部分）。
+ *  `limitText` 覆盖默认文案 —— 农场用的是它自己的限流配额（rl:farm），口径不同。 */
 export function BalanceBar({
   balance,
   todayNet,
   limitLeft,
+  limitText,
 }: {
   balance: number | null;
   todayNet: number | null;
   limitLeft: number | null;
+  limitText?: string;
 }) {
   const { dict, currency } = useI18n();
   const t = dict.games;
@@ -44,7 +48,7 @@ export function BalanceBar({
         </b>
       </span>
       <span className="flex items-baseline gap-1 text-xs text-sub">
-        {t.limitLeft.replace("{n}", limitLeft === null ? "—" : String(limitLeft))}
+        {limitText ?? t.limitLeft.replace("{n}", limitLeft === null ? "—" : String(limitLeft))}
       </span>
     </div>
   );
@@ -58,6 +62,7 @@ export function GameShell({
   balance,
   todayNet,
   limitLeft,
+  notice,
   stage,
   controls,
   side,
@@ -69,6 +74,8 @@ export function GameShell({
   balance: number | null;
   todayNet: number | null;
   limitLeft: number | null;
+  /** 提示条（防沉迷等），渲染在余额条下方 */
+  notice?: React.ReactNode;
   stage: React.ReactNode;
   controls?: React.ReactNode;
   side?: React.ReactNode;
@@ -90,6 +97,7 @@ export function GameShell({
         {subtitle && <span className="text-sm text-sub">{subtitle}</span>}
       </div>
       <BalanceBar balance={balance} todayNet={todayNet} limitLeft={limitLeft} />
+      {notice}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col items-center gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-raised)] p-5 shadow-[var(--shadow-card)]">
@@ -100,6 +108,40 @@ export function GameShell({
         {side && <div className="flex flex-col gap-4">{side}</div>}
       </div>
       {foot}
+    </div>
+  );
+}
+
+/** 防沉迷软提示（策划案 §8.3）：连打多局 / 今日净输偏大时给一句提醒，可关掉，**不阻断**。 */
+export function PlayHint({
+  sessionPlays,
+  todayNet,
+}: {
+  /** 本次会话已完成的局数 */
+  sessionPlays: number;
+  todayNet: number | null;
+}) {
+  const { dict } = useI18n();
+  const t = dict.games;
+  const [dismissed, setDismissed] = useState(false);
+  const many = sessionPlays >= 20;
+  const losing = todayNet !== null && todayNet <= -5000;
+  if (dismissed || (!many && !losing)) return null;
+  const parts = [
+    many ? t.hintMany.replace("{n}", String(sessionPlays)) : null,
+    losing ? t.hintLose.replace("{n}", String(-(todayNet ?? 0))).replace("{magic}", "") : null,
+  ].filter(Boolean);
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-[var(--r-md)] bg-sun-soft px-3 py-2 text-xs font-bold text-ink">
+      <span aria-hidden>🧘</span>
+      <span className="flex-1">{parts.join(" · ")}</span>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        className="min-h-[32px] rounded-full border border-[var(--border-deep)] px-3 text-[11px] font-bold"
+      >
+        {t.hintOk}
+      </button>
     </div>
   );
 }
@@ -182,33 +224,80 @@ export function ResultFlash({
   );
 }
 
-/** 战绩条：来自 spark_ledger（/games/history），刷新不丢、跨设备一致 */
+/** 轻量浮层提示：固定视口下方居中，动作反馈不会因为页面长而跑出视野。
+ *  `key` 变化即重播进入动画；`role=status` + `aria-live` 保证读屏可闻。 */
+export function GameToast({
+  message,
+  onDone,
+  durationMs = 3200,
+}: {
+  message: { kind: "win" | "lose" | "tie" | "jackpot"; text: string } | null;
+  onDone: () => void;
+  durationMs?: number;
+}) {
+  useEffect(() => {
+    if (!message) return;
+    const id = window.setTimeout(onDone, durationMs);
+    return () => window.clearTimeout(id);
+  }, [message, onDone, durationMs]);
+
+  if (!message) return null;
+  const tone =
+    message.kind === "jackpot"
+      ? "bg-sun text-ink"
+      : message.kind === "win"
+        ? "bg-mint text-white"
+        : message.kind === "tie"
+          ? "bg-[var(--surface-card)] text-ink border border-[var(--border-deep)]"
+          : "bg-[var(--surface-sunken)] text-sub border border-line";
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4"
+    >
+      <p
+        key={message.text}
+        className={`animate-[fly_.24s_ease-out] max-w-[92vw] rounded-full px-4 py-2.5 text-sm font-bold shadow-[var(--shadow-hover)] ${tone}`}
+      >
+        {message.text}
+      </p>
+    </div>
+  );
+}
+
+/** 战绩条：**按局**渲染（`GET /games/rounds`，一局一条 net）。
+ *  直接用流水会一半负一半正、局数还翻倍，看起来像「输多赢少」——那是流水不是战绩。 */
 export function HistoryStrip({
-  items,
+  rounds,
   empty,
 }: {
-  items: { ref_type: string | null; amount: number }[];
+  rounds: { net: number; game?: string }[];
   empty?: string;
 }) {
   const { dict } = useI18n();
-  if (items.length === 0) {
+  if (rounds.length === 0) {
     return <p className="py-2 text-center text-xs text-sub">{empty ?? dict.games.historyEmpty}</p>;
   }
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {items.map((h, i) => {
-        const win = h.amount > 0;
-        const jack = h.amount >= 500;
+      {rounds.map((r, i) => {
+        const big = r.net >= 500;
+        const win = r.net > 0;
+        const tie = r.net === 0;
         return (
           <span
             key={i}
-            title={`${h.ref_type ?? "game"} ${h.amount > 0 ? "+" : ""}${h.amount}`}
+            title={`${r.game ?? "game"} ${r.net > 0 ? "+" : ""}${r.net}`}
+            aria-label={`${r.net > 0 ? "+" : ""}${r.net}`}
             className={`inline-block h-4 w-4 rounded-full ${
-              jack
+              big
                 ? "bg-sun"
                 : win
                   ? "bg-mint"
-                  : "border border-[var(--border-deep)] bg-[var(--surface-sunken)]"
+                  : tie
+                    ? "bg-[var(--surface-sunken)] ring-1 ring-[var(--border-deep)]"
+                    : "border border-[var(--border-deep)] bg-[var(--surface-card)]"
             }`}
           />
         );

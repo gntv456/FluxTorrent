@@ -1,3 +1,4 @@
+import type React from "react";
 import type { TorrentListItem, UserPublic } from "@fluxtorrent/domain-types";
 
 /** 体积人性化（§8.2：金额/流量整数最小单位，前端负责格式化） */
@@ -84,3 +85,39 @@ export function promotionBadge(
 export function podName(user: Pick<UserPublic, "class_name">): string {
   return user.class_name;
 }
+
+/**
+ * 头像框 CSS 白名单解析：avatar_frames.css 只放行 border-color / box-shadow
+ * 两个声明（与 plugins.tsx frameStyle 同一口径，服务端存的 css 是可信内容，
+ * 白名单是防历史脏数据/未来后台误编辑）。套在圆形头像容器的 style 上。
+ */
+export function avatarFrameStyle(css: string | null | undefined): React.CSSProperties {
+  const style: Record<string, string> = {};
+  if (!css) return style;
+  for (const decl of css.split(";")) {
+    const [k, v] = decl.split(":").map((s) => s?.trim());
+    if (k && v && ["border-color", "box-shadow"].includes(k)) style[k] = v;
+  }
+  return style as React.CSSProperties;
+}
+
+/**
+ * 头像框图片叠层（0140）：框有 image_url（PNG/GIF 立绘框）时在头像容器内
+ * 绝对定位铺满叠一层框图，不挡点击（pointer-events:none）。
+ * 用法：头像容器需要 relative；<FrameImageOverlay url={f.avatar_frame_image} />。
+ * 与 CSS 描边形态互斥由调用方决定：有图时通常不再套 avatarFrameStyle。
+ */
+export function FrameImageOverlay({ url }: { url: string | null | undefined }) {
+  if (!url) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt=""
+      aria-hidden
+      draggable={false}
+      className="pointer-events-none absolute inset-0 z-10 h-full w-full select-none object-fill"
+    />
+  );
+}
+

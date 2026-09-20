@@ -4,7 +4,7 @@ import { getPosts, getForums } from "@/lib/data";
 import { ReplyBox, TopicModActions, PostActions } from "@/components/forum-composer";
 import { MarkdownRenderer } from "@/components/forum-markdown";
 import { TypeBadge, TagChip } from "@/components/forum-bits";
-import { PostVoteBar, TopicFavoriteButton, BountyAcceptButton } from "@/components/forum-vote";
+import { PostVoteBar, TopicFavoriteButton, BountyAcceptButton, PostTipButton } from "@/components/forum-vote";
 import { PollWidget } from "@/components/forum-poll";
 import { LotteryWidget } from "@/components/forum-lottery";
 import { ReportTopicButton } from "@/components/forum-report";
@@ -184,7 +184,16 @@ export default async function TopicPage({
                       />
                     )}
                   {authId > 0 && (
-                    <span className="ml-auto">
+                    <span className="ml-auto flex items-center gap-2">
+                      {/* 打赏（0127）：非本人的楼都可打赏（匿名楼 user_id 为空不渲染） */}
+                      {p.user_id && p.user_id !== authId && (
+                        <PostTipButton
+                          postId={p.id}
+                          tips={p.tips ?? 0}
+                          tipCount={p.tip_count ?? 0}
+                          currency={currency}
+                        />
+                      )}
                       <PostVoteBar
                         postId={p.id}
                         likes={p.likes ?? 0}

@@ -37,6 +37,8 @@ export interface Medal {
   bonus_addition_factor: number;
   category_id: number;
   category_name: string | null;
+  /** 勋章图片 URL（medals.asset_ref）；空则展示位回落 🏅 */
+  asset_ref: string | null;
 }
 export async function getMedals(): Promise<Medal[]> {
   try {
@@ -163,6 +165,9 @@ export interface Post {
   likes?: number;
   /** 当前登录用户是否已赞（0116） */
   liked_by_me?: boolean;
+  /** 打赏总额/次数（0127） */
+  tips?: number;
+  tip_count?: number;
 }
 export interface TopicDetail {
   topic_id: number;
@@ -290,6 +295,8 @@ export interface TopRow {
   class_name: string;
   title: string | null;
   avatar_url: string | null;
+  avatar_frame_css?: string | null;
+  avatar_frame_image?: string | null;
   val: number;
 }
 export interface TopBoards {

@@ -15,9 +15,26 @@ interface Hit {
   created_at: string;
   replies: number;
   locked: boolean;
+  /** 命中正文时的摘要片段（Phase3 搜索增强）；标题命中时为 null */
+  snippet?: string | null;
+  keyword?: string;
 }
 
-/** 论坛标题搜索（NP 顶栏搜帖口径）：GET /forums/search，结果内联展示 */
+/** 摘要片段里的关键词加粗（大小写不敏感，中文原样命中） */
+function Highlight({ text, kw }: { text: string; kw?: string }) {
+  if (!kw || kw.length < 2) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(kw.toLowerCase());
+  if (idx < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <strong className="font-bold text-coral">{text.slice(idx, idx + kw.length)}</strong>
+      {text.slice(idx + kw.length)}
+    </>
+  );
+}
+
+/** 论坛搜索（NP 顶栏搜帖口径，Phase3 增强：标题 + 正文）：GET /forums/search，结果内联展示 */
 export function ForumSearch({ placeholder, button }: { placeholder: string; button: string }) {
   const { dict, locale } = useI18n();
   const [q, setQ] = useState("");
@@ -65,6 +82,11 @@ export function ForumSearch({ placeholder, button }: { placeholder: string; butt
                       {h.locked ? "🔒 " : ""}
                       {h.title}
                     </Link>
+                    {h.snippet && (
+                      <p className="mt-0.5 line-clamp-1 text-xs text-sub">
+                        <Highlight text={`…${h.snippet}…`} kw={h.keyword} />
+                      </p>
+                    )}
                     <p className="text-xs text-sub">
                       {h.author ?? dict.torrent.anonymous} ·{" "}
                       {dict.forums.replies.replace("{n}", String(h.replies))} ·{" "}

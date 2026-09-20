@@ -44,6 +44,14 @@ export function JggGrid({
   const [landed, setLanded] = useState(false);
   const timer = useRef<number | null>(null);
 
+  // 开抽瞬间清掉上一局的高亮/中奖态（否则新一局开始前上次的中奖格还亮着）
+  useEffect(() => {
+    if (busy) {
+      setLanded(false);
+      setLit(null);
+    }
+  }, [busy]);
+
   useEffect(() => {
     if (resultIndex === null) return;
     setLanded(false);

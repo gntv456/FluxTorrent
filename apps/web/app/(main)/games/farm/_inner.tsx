@@ -4,28 +4,44 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
-import { BalanceBar, ResultFlash } from "@/components/game/game-kit";
+import { BalanceBar, GameToast } from "@/components/game/game-kit";
 import { FarmPlot, MarketCard, type Crop, type Plot } from "@/components/game/farm-field";
 import Link from "next/link";
 
-interface FarmData {
+export interface FarmData {
   window_start: number;
   next_refresh: number;
   crops: Crop[];
   plots: Plot[];
   slots: number;
+  /** 农场自己的限流配额（rl:farm，与即时赌局分开计数） */
+  hour_limit?: number;
+  hour_left?: number;
+  /** 作物有效期（天，0 = 永不枯萎） */
+  wither_days?: number;
+}
+
+export interface MeData {
+  balance: number;
+  today_net: number;
+  today_plays: number;
+  limit_left: number;
 }
 
 /** 农场专注页：六块田 + 图鉴式行情（旧 /farm 已重定向到此） */
-export default function FarmPage() {
+export default function FarmPage({
+  initialFarm,
+  initialMe,
+}: {
+  initialFarm: FarmData | null;
+  initialMe: MeData | null;
+}) {
   const { dict, locale, currency } = useI18n();
   const tf = dict.farm;
   const tg = dict.games;
 
-  const [data, setData] = useState<FarmData | null>(null);
-  const [me, setMe] = useState<{ balance: number; today_net: number; limit_left: number } | null>(
-    null,
-  );
+  const [data, setData] = useState<FarmData | null>(initialFarm);
+  const [me, setMe] = useState<MeData | null>(initialMe);
   const [now, setNow] = useState<number | null>(null);
   const [msg, setMsg] = useState<{ kind: "win" | "lose" | "tie" | "jackpot"; text: string } | null>(
     null,
@@ -48,9 +64,7 @@ export default function FarmPage() {
 
   const loadMe = useCallback(async () => {
     try {
-      const r = await api.get<{ me?: { balance: number; today_net: number; limit_left: number } }>(
-        "/api/v1/games",
-      );
+      const r = await api.get<{ me?: MeData }>("/api/v1/games");
       setMe(r.me ?? null);
     } catch {
       /* ignore */
@@ -70,11 +84,22 @@ export default function FarmPage() {
     return () => window.clearInterval(id);
   }, []);
 
+  // 市场窗口到点**自动刷新**（行情价与地块状态一起更新，不用手动 F5）
+  useEffect(() => {
+    if (!data) return;
+    const ms = data.next_refresh * 1000 - Date.now() + 1500;
+    const id = window.setTimeout(() => {
+      void refresh();
+      void loadMe();
+    }, Math.max(1000, ms));
+    return () => window.clearTimeout(id);
+  }, [data, refresh, loadMe]);
+
   async function act(
     path: string,
     body: unknown,
     ok: (d: never) => string,
-    kindOf?: (d: never) => "win" | "jackpot",
+    kindOf?: (d: never) => "win" | "lose" | "jackpot",
   ) {
     setBusy(true);
     setErr(null);
@@ -86,9 +111,12 @@ export default function FarmPage() {
       await refresh();
       void loadMe();
     } catch (e) {
+      // 1002 用后端具体原因（「该地块已有作物」「尚未成熟」等）
       setErr(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? e.code === 1002
+            ? e.message
+            : (dict.errors[e.code] ?? e.message)
           : dict.common.networkError,
       );
     } finally {
@@ -105,12 +133,51 @@ export default function FarmPage() {
   const plots = Array.from({ length: data.slots }, (_, i) =>
     data.plots.find((p) => p.slot === i + 1),
   );
-  const nextRefresh = new Date(data.next_refresh * 1000).toLocaleTimeString(dateLocale(locale), {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const refreshIn = now === null ? "" : fmt(tf.refreshIn, { t: leftText(data.next_refresh * 1000 - now) });
+  // 时间文案一律等客户端挂载后再算：容器时区（UTC）与浏览器时区不同，
+  // 在 SSR 阶段格式化绝对时间会造成 hydration 文本不匹配（React #418）。
+  const nextRefresh =
+    now === null
+      ? ""
+      : new Date(data.next_refresh * 1000).toLocaleTimeString(dateLocale(locale), {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+  const refreshIn =
+    now === null ? "" : fmt(tf.refreshIn, { t: leftText(data.next_refresh * 1000 - now) });
   const firstEmpty = plots.findIndex((p) => !p) + 1;
+  const readyPlots = plots.filter((p) => p && p.ready && !p.withered);
+
+  /** 一键收获：逐块调同一 harvest 端点（后端幂等 + 行锁，重复点也安全）；
+   *  单块失败不中断其余（例如某块刚好被并发收走）。 */
+  async function harvestAll() {
+    if (busy || readyPlots.length === 0) return;
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    let total = 0;
+    let doubled = 0;
+    let failed = 0;
+    for (const p of readyPlots) {
+      try {
+        const r = await api.post<{ amount: number; doubled: boolean }>("/api/v1/farm/harvest", {
+          slot: p!.slot,
+        });
+        total += r.amount;
+        if (r.doubled) doubled++;
+      } catch {
+        failed++;
+      }
+    }
+    setMsg({
+      kind: doubled > 0 ? "jackpot" : "win",
+      text: `${fmtCur(tf.harvestAllOk, { n: total, c: readyPlots.length - failed }, currency)}${
+        doubled > 0 ? ` ${tf.doubled}` : ""
+      }${failed > 0 ? ` · ${tf.harvestAllFail.replace("{n}", String(failed))}` : ""}`,
+    });
+    setBusy(false);
+    await refresh();
+    void loadMe();
+  }
 
   function plant(cropId: number) {
     const slot = picking ?? firstEmpty;
@@ -144,22 +211,48 @@ export default function FarmPage() {
         </Link>
         <h1 className="font-display text-2xl">🌾 {tf.title.replace("{magic}", currency)}</h1>
         <span className="text-sm text-sub">
-          {fmt(tf.marketRule, { time: nextRefresh })} · {refreshIn}
+          {fmt(tf.marketRule, { time: nextRefresh })}
+          {refreshIn && ` · ${refreshIn}`}
         </span>
       </div>
 
       <BalanceBar
         balance={me?.balance ?? null}
         todayNet={me?.today_net ?? null}
-        limitLeft={me?.limit_left ?? null}
+        limitLeft={data.hour_left ?? null}
+        limitText={
+          data.hour_left === undefined
+            ? undefined
+            : tf.hourLeft.replace("{n}", String(data.hour_left))
+        }
       />
+
+      {/* 错误放在顶部（长页面里底部提示会跑出视野） */}
+      {err && (
+        <p className="rounded-[var(--r-md)] bg-coral-soft px-3 py-2 text-xs font-bold text-ink">
+          {err}
+        </p>
+      )}
 
       <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-base">{tf.myField}</h2>
-          <span className="text-xs text-sub">
-            {picking ? fmt(tf.picking, { n: picking }) : tf.plotHint}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {readyPlots.length > 1 && (
+              <button
+                type="button"
+                onClick={harvestAll}
+                disabled={busy}
+                className="min-h-[34px] rounded-full bg-mint px-3 text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
+              >
+                {tf.harvestAll.replace("{n}", String(readyPlots.length))}
+              </button>
+            )}
+            <span className="text-xs text-sub">
+              {picking ? fmt(tf.picking, { n: picking }) : tf.plotHint}
+              {data.wither_days ? ` · ${fmt(tf.witherNote, { n: data.wither_days })}` : ""}
+            </span>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {plots.map((p, i) => (
@@ -170,25 +263,44 @@ export default function FarmPage() {
               crop={data.crops.find((c) => c.id === p?.crop_id)}
               now={now}
               busy={busy}
+              picking={picking === i + 1}
               onPlant={(s) => setPicking(s)}
               onWater={(s) =>
-                void act("/farm/water", { slot: s }, () => tf.waterOk)
+                void act("/farm/water", { slot: s }, (d) =>
+                  fmtCur(
+                    tf.waterOk,
+                    { n: (d as unknown as { cost?: number }).cost ?? 0 },
+                    currency,
+                  ),
+                )
               }
               onHarvest={(s) =>
                 void act(
                   "/farm/harvest",
                   { slot: s },
-                  (d) =>
-                    fmtCur(
-                      tf.harvestOk,
-                      {
-                        crop: (d as unknown as { crop: string }).crop,
-                        amount: (d as unknown as { amount: number }).amount,
-                        doubled: (d as unknown as { doubled: boolean }).doubled ? tf.doubled : "",
-                      },
-                      currency,
-                    ),
-                  (d) => ((d as unknown as { doubled: boolean }).doubled ? "jackpot" : "win"),
+                  (d) => {
+                    const r = d as unknown as {
+                      withered?: boolean;
+                      crop: string;
+                      amount: number;
+                      doubled: boolean;
+                    };
+                    return r.withered
+                      ? fmtCur(tf.witheredOk, { crop: r.crop }, currency)
+                      : fmtCur(
+                          tf.harvestOk,
+                          {
+                            crop: r.crop,
+                            amount: r.amount,
+                            doubled: r.doubled ? tf.doubled : "",
+                          },
+                          currency,
+                        );
+                  },
+                  (d) => {
+                    const r = d as unknown as { withered?: boolean; doubled?: boolean };
+                    return r.withered ? "lose" : r.doubled ? "jackpot" : "win";
+                  },
                 )
               }
               t={tf as unknown as Record<string, string>}
@@ -211,8 +323,8 @@ export default function FarmPage() {
         </div>
       </section>
 
-      <ResultFlash kind={msg?.kind ?? null} text={msg?.text ?? null} />
-      {err && <p className="text-xs text-danger">{err}</p>}
+      {/* 动作反馈走浮层：田地与行情都很长，固定在视口下方的提示不会跑出视野 */}
+      <GameToast message={msg} onDone={() => setMsg(null)} />
     </div>
   );
 }
