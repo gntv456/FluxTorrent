@@ -1,0 +1,185 @@
+//! HTTP 接口层：路由 + handlers + 鉴权提取器 + 限流。
+//! 分层约束（§8.3.1）：本层只做协议适配，业务规则在 domain/repo。
+//! 分层约束（§8.3.1）：本层只做协议适配，业务规则在 domain/repo。
+//! 按域拆分（300 行门禁）：鉴权/限流设施在 auth_infra.rs，me 杂项与统计/
+//! 举报/RSS 在 misc_handlers.rs，插件四件套（勋章墙/大赛/挂件/五子棋）在
+//! plugins.rs，公告/趣味盒/友链在 news_fun.rs，首页板块在 home.rs；
+//! v1_scope 路由注册留在此（引用 crate::xxx_http 与子模块）。
+
+mod auth_infra;
+mod frames_gomoku;
+mod fun_links;
+mod home;
+mod home_layout;
+mod links;
+mod misc_handlers;
+mod news_fun;
+mod plugins;
+
+pub use auth_infra::*;
+pub use frames_gomoku::*;
+pub use fun_links::*;
+pub use home::*;
+pub use home_layout::*;
+pub use links::*;
+pub use misc_handlers::*;
+pub use news_fun::*;
+pub use plugins::*;
+
+// auth 模块经 state.jwt 使用（0071 RS256 化后 http 层不再直接调用）
+
+use crate::social_http::{
+    endangered_list, team_create, team_join, team_leave, team_list, team_mine,
+};
+use actix_web::web;
+
+pub fn v1_scope() -> actix_web::Scope {
+    web::scope("/api/v1")
+        .service(health)
+        .service(crate::auth_http::register)
+        .service(crate::auth_http::login)
+        .service(crate::auth_http::me)
+        .service(crate::auth_http::me_perms)
+        .service(crate::auth_http::me_overview)
+        .service(crate::auth_http::me_settings_get)
+        .service(crate::auth_http::me_settings_put)
+        .service(my_torrentlist)
+        .service(crate::auth_http::user_torrentlist)
+        .service(my_bookmarks)
+        .service(crate::auth_http::rotate_passkey)
+        .service(crate::auth_http::my_login_history)
+        .service(crate::attachment_http::upload_attachment)
+        .service(crate::attachment_http::get_attachment)
+        .service(crate::auth_http::me_password_change)
+        .service(crate::auth_http::user_public_profile)
+        .service(crate::torrent_http::list)
+        .service(crate::torrent_http::detail)
+        .service(crate::torrent_http::torrent_detail_ext)
+        .service(crate::torrent_http::torrent_files)
+        .service(crate::torrent_http::torrent_thanks)
+        .service(crate::torrent_http::comments)
+        .service(crate::torrent_http::create_comment)
+        .service(crate::torrent_http::delete_comment)
+        .service(crate::torrent_http::do_thank)
+        .service(crate::torrent_http::do_bookmark)
+        .service(crate::torrent_http::edit_torrent)
+        .service(crate::torrent_http::set_torrent_price)
+        .service(crate::torrent_http::delete_torrent)
+        .service(crate::torrent_http::restore_torrent)
+        .service(crate::torrent_http::resubmit_torrent)
+        .service(crate::publish_http::group_attach)
+        .service(crate::publish_http::group_info)
+        .service(crate::publish_http::group_subscribe)
+        .service(crate::publish_http::group_unsubscribe)
+        .service(crate::torrent_http::torrent_snatches)
+        .service(crate::torrent_http::torrent_nfo)
+        .service(crate::torrent_http::request_reseed)
+        .service(crate::torrent_http::torrent_tags)
+        .service(crate::torrent_http::torrent_tag_put)
+        .service(stats)
+        .service(cheat_events_list)
+        .service(report_create)
+        .service(rss_info)
+        .service(news_create)
+        .service(news_update)
+        .service(news_delete)
+        .service(fun_items)
+        .service(fun_item_vote)
+        .service(fun_item_create)
+        .service(fun_item_update)
+        .service(fun_item_set_status)
+        .service(fun_item_delete)
+        .service(link_apply)
+        .service(link_admin_list)
+        .service(link_update)
+        .service(link_delete)
+        .service(crate::staff_http::faq_list)
+        .service(crate::staff_http::faq_create)
+        .service(crate::staff_http::faq_update)
+        .service(crate::staff_http::faq_delete)
+        .service(crate::staff_http::rules_content)
+        .service(crate::staff_http::rule_create)
+        .service(crate::staff_http::rule_update)
+        .service(crate::staff_http::rule_delete)
+        .service(crate::staff_http::category_list)
+        .service(crate::staff_http::category_create)
+        .service(crate::staff_http::category_update)
+        .service(crate::staff_http::category_delete)
+        .service(crate::staff_http::ban_list)
+        .service(crate::staff_http::ban_create)
+        .service(crate::staff_http::ban_delete)
+        .service(crate::staff_http::freeleech_set)
+        .service(crate::staff_http::freeleech_clear)
+        .service(crate::staff_http::freeleech_update)
+        .service(crate::staff_http::freeleech_delete)
+        .service(crate::staff_http::freeleech_list)
+        .service(crate::staff_http::staffmess_send)
+        .service(crate::staff_http::admin_add_user)
+        .service(crate::staff_http::admin_amount_bonus)
+        .service(crate::staff_http::warned_list)
+        .service(crate::staff_http::warn_user)
+        .service(crate::staff_http::unwarn_user)
+        .service(crate::staff_http::ipcheck)
+        .service(crate::staff_http::maxlogin)
+        .service(crate::staff_http::admin_amount_upload)
+        .service(crate::staff_http::admin_reset_pass)
+        .service(crate::staff_http::admin_delete_disabled)
+        .service(crate::staff_http::emailban_list)
+        .service(crate::staff_http::emailban_create)
+        .service(crate::staff_http::emailban_delete)
+        .service(crate::staff_http::test_ip)
+        .service(crate::staff_http::admin_stats)
+        .service(crate::staff_http::clear_cache)
+        .service(crate::staff_http::seed_stats)
+        .service(crate::staff_http::do_cleanup)
+        .service(crate::staff_http::ad_list)
+        .service(crate::staff_http::ad_create)
+        .service(crate::staff_http::ad_update)
+        .service(crate::staff_http::ad_toggle)
+        .service(crate::staff_http::ad_delete)
+        .service(crate::staff_http::not_connectable)
+        .service(crate::staff_http::uploaders)
+        .service(crate::staff_http::all_agents)
+        .service(crate::staff_http::poll_overview)
+        .service(crate::staff_http::db_stats)
+        .service(crate::staff_http::sys_log)
+        .service(crate::staff_http::locations)
+        .service(crate::staff_http::donate_state)
+        .service(crate::staff_http::donate_topup)
+        .service(crate::staff_http::donate_order_status)
+        .service(crate::staff_http::donate_notify)
+        .service(crate::staff_http::donate_order)
+        .service(crate::staff_http::site_profile)
+        .service(crate::staff_http::site_type_pack_list)
+        .service(crate::staff_http::site_type_pack_apply)
+        .service(crate::staff_http::site_type_pack_diff)
+        .service(crate::staff_http::site_type_pack_save)
+        .service(crate::staff_http::massmail_list)
+        .service(crate::staff_http::massmail_send)
+        .service(medal_wall)
+        .service(contest_list)
+        .service(contest_join)
+        .service(frame_list)
+        .service(frame_equip)
+        .service(gomoku_create)
+        .service(gomoku_join)
+        .service(gomoku_move)
+        .service(gomoku_get)
+        .service(home_sections)
+        .service(admin_home_layout_put)
+        .service(crate::publish_http::upload)
+        .service(crate::publish_http::ptgen)
+        .service(crate::publish_http::download)
+        .service(crate::invite_http::issue_invite_handler)
+        .service(crate::invite_http::redeem_invite_handler)
+        .service(crate::invite_http::list_invites_handler)
+        .service(crate::invite_http::invites_status_handler)
+        .service(crate::invite_http::email_invite_handler)
+        .service(endangered_list)
+        .service(team_create)
+        .service(team_join)
+        .service(team_leave)
+        .service(team_list)
+        .service(team_mine)
+        .service(crate::auth_http::logout)
+}
