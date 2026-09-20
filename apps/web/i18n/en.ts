@@ -2277,6 +2277,7 @@ usertools: {
     packSavePrompt: "New pack name (snapshots current categories/module switches/site name):",
     packSaved: "Custom type pack saved",
     packApplied: "Applied \"{name}\" type pack",
+    packCurrent: "Active",
     tabBans: "Ban System",
     tabMail: "Mass Mail",
     faqNew: "New FAQ",
