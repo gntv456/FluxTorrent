@@ -1386,6 +1386,17 @@ a:hover {
   filter: drop-shadow(0 10px 18px rgba(26, 95, 208, 0.18));
 }
 
+/* 站点 logo 图片模式（0143）：与 emoji 吉祥物同视觉位，尺寸受控 + 圆角 */
+img.bz-login-intro-mascot.bz-login-intro-logo {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 8px;
+  box-sizing: border-box;
+}
+
 .bz-login-intro-tagline {
   font-family: var(--font-display);
   color: var(--text-heading);
@@ -1857,6 +1868,10 @@ a:hover {
 
   .bz-login-intro-mascot {
     font-size: 64px;
+  }
+  img.bz-login-intro-mascot.bz-login-intro-logo {
+    width: 76px;
+    height: 76px;
   }
 
   .bz-login-lang-row {
