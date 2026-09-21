@@ -60,3 +60,4 @@ design-system/
 /_ref/
 /_upgrade_test/
 .zcode/plans/
+.wide-tmp/
