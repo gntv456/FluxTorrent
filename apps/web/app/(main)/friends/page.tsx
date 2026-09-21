@@ -1,4 +1,5 @@
 import { getFriends, getPolls, getOffers } from "@/lib/data";
+import { PANEL_MD } from "@/lib/ui-classes";
 import { getDict } from "@/i18n/server";
 import { PollBox, OfferList } from "@/components/community-extra";
 import { FriendsActions } from "@/components/friends-actions";
@@ -24,10 +25,10 @@ export default async function FriendsPage() {
           <span className="text-sm text-sub">{dict.friends.subtitle}</span>
         </div>
         {/* 操作面板：加好友 / 接受申请 / 拉黑（此前只读列表，后端能力无入口） */}
-        <section className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+        <section className={PANEL_MD}>
           <FriendsActions />
         </section>
-        <section className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+        <section className={PANEL_MD}>
           <h2 className="font-bold">{dict.friends.friends}</h2>
           {friendRows.length === 0 ? (
             <p className="py-4 text-center text-sub">
@@ -45,7 +46,7 @@ export default async function FriendsPage() {
             </ul>
           )}
         </section>
-        <section className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+        <section className={PANEL_MD}>
           <h2 className="font-bold">{dict.friends.blocklist}</h2>
           {blackRows.length === 0 ? (
             <p className="py-4 text-center text-sub">

@@ -1,18 +1,22 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
-/** 权限配置面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
- *  角色权限矩阵 + 用户级权限分配（对标 NexusPHP 角色插件）。 */
+import { RoleMatrix } from "./staff-tools-perm-matrix";
 
-interface RoleDef {
+/** 权限配置面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
+ *  角色权限矩阵 + 用户级权限分配（对标 NexusPHP 角色插件）。
+ *  角色权限矩阵拆至 ./staff-tools-perm-matrix.tsx。 */
+
+export interface RoleDef {
   key: string;
   name: string;
   descr: string | null;
 }
-interface PermDef {
+export interface PermDef {
   key: string;
   name: string;
   category: string;
@@ -29,7 +33,7 @@ interface PermGrant {
   role_key: string;
   permission_key: string;
 }
-interface PermMatrixData {
+export interface PermMatrixData {
   permissions: PermDef[];
   roles: PermRole[];
   grants: PermGrant[];
@@ -41,6 +45,15 @@ interface UserPermData {
   effective: string[];
   overrides: { permission_key: string; granted: boolean }[];
 }
+
+// 用户级权限区：输入框 / 加载按钮 / 三态操作按钮底色
+const UP_INPUT =
+  "min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line " +
+  "bg-cloud px-3 text-sm outline-none focus:border-sky";
+const UP_LOAD_BTN =
+  "min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold " +
+  "text-white disabled:opacity-50";
+const NOT_IMPL_TAG = "ml-1 rounded-full bg-sun/40 px-1.5 text-[10px] text-ink";
 
 export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
   const { dict } = useI18n();
@@ -79,162 +92,13 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <section className="baozi-panel p-4">
-        <h2 className="mb-2 text-base font-bold">角色权限矩阵</h2>
-        <p className="mb-3 text-xs text-sub">
-          勾选即生效（仅站长可改）。等级为累进式，勾选低档会同时作用于更高档；职务权限仅对持有该职务的用户生效。
-          标「未接入」的权限项当前代码尚无对应业务端点，配置后不会产生实际效果。
-        </p>
-        <div className="baozi-wide-table-scroll">
-          <table className="nexus-table text-xs">
-            <thead>
-              <tr>
-                <td className="colhead" style={{ minWidth: 210 }}>
-                  权限
-                </td>
-                {(permData?.roles ?? []).map((r) => (
-                  <td
-                    key={`${r.role_type}:${r.role_key}`}
-                    className="colhead text-center"
-                    style={{ minWidth: 70 }}
-                  >
-                    <span className="block">
-                      {{
-                        "1": "全体用户",
-                        "20": "贵宾 VIP",
-                        "90": "管理组",
-                        "93": "总版主及以上",
-                        "98": "维护开发员及以上",
-                        "99": "站长",
-                      }[r.role_key] ?? r.name}
-                    </span>
-                    <span className="block text-[10px] font-normal">
-                      {r.role_type === "class" ? `L${r.role_key}+` : "职务"}
-                    </span>
-                  </td>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(
-                (permData?.permissions ?? []).reduce<Record<string, PermDef[]>>(
-                  (m, x) => {
-                    (m[x.category] ||= []).push(x);
-                    return m;
-                  },
-                  {},
-                ),
-              ).map(([cat, items]) => (
-                <Fragment key={cat}>
-                  <tr>
-                    <td
-                      colSpan={1 + (permData?.roles ?? []).length}
-                      className="bg-sky-soft font-bold"
-                    >
-                      {{
-                        content: "内容",
-                        user: "用户",
-                        site: "运营",
-                        system: "系统",
-                        upload: "发布",
-                        repost: "转载",
-                        seed: "保种",
-                        liaison: "外联",
-                      }[cat] ?? cat}
-                    </td>
-                  </tr>
-                  {items.map((p) => (
-                    <tr key={p.key}>
-                      <td className="rowfollow">
-                        <span className="font-bold">{p.name}</span>
-                        {!p.implemented && (
-                          <span
-                            className="ml-1 rounded-full bg-sun/40 px-1.5 text-[10px] text-ink"
-                            title="当前代码尚无对应业务端点，配置后不产生实际效果"
-                          >
-                            未接入
-                          </span>
-                        )}
-                        <span className="block font-mono text-[10px] text-sub">
-                          {p.key}
-                        </span>
-                      </td>
-                      {(permData?.roles ?? []).map((r) => {
-                        const on = (permData?.grants ?? []).some(
-                          (g) =>
-                            g.role_type === r.role_type &&
-                            g.role_key === r.role_key &&
-                            g.permission_key === p.key,
-                        );
-                        return (
-                          <td
-                            key={`${r.role_type}:${r.role_key}:${p.key}`}
-                            className="rowfollow text-center"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={on}
-                              disabled={busy}
-                              onChange={(e) =>
-                                guard(
-                                  async () => {
-                                    await api.put(
-                                      "/api/v1/admin/permission-matrix",
-                                      {
-                                        items: [
-                                          {
-                                            role_type: r.role_type,
-                                            role_key: r.role_key,
-                                            permission_key: p.key,
-                                            granted: e.target.checked,
-                                          },
-                                        ],
-                                      },
-                                    );
-                                    setPermData((prev) => {
-                                      if (!prev) return prev;
-                                      const grants = e.target.checked
-                                        ? [
-                                            ...prev.grants,
-                                            {
-                                              role_type: r.role_type,
-                                              role_key: r.role_key,
-                                              permission_key: p.key,
-                                            },
-                                          ]
-                                        : prev.grants.filter(
-                                            (g) =>
-                                              !(
-                                                g.role_type === r.role_type &&
-                                                g.role_key === r.role_key &&
-                                                g.permission_key === p.key
-                                              ),
-                                          );
-                                      return { ...prev, grants };
-                                    });
-                                  },
-                                  e.target.checked ? "已授权" : "已取消",
-                                )
-                              }
-                            />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </Fragment>
-              ))}
-              {(permData?.permissions ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={8} className="py-4 text-center text-sub">
-                    权限清单为空（迁移 0054 未应用？）
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <RoleMatrix
+        permData={permData}
+        roleDefs={roleDefs}
+        busy={busy}
+        setPermData={setPermData}
+        guard={guard}
+      />
 
       <section className="baozi-panel p-4">
         <h2 className="mb-2 text-base font-bold">用户级权限分配</h2>
@@ -248,17 +112,18 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
             <input
               value={upUserId}
               onChange={(e) => setUpUserId(e.target.value)}
-              className="min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              className={UP_INPUT}
             />
           </label>
           <button
             disabled={busy || !upUserId.trim()}
-            className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+            className={UP_LOAD_BTN}
             onClick={() =>
               guard(async () => {
                 setUpData(
                   await api.get<UserPermData>(
-                    `/api/v1/admin/user-permissions?user_id=${encodeURIComponent(upUserId.trim())}`,
+                    `/api/v1/admin/user-permissions` +
+                      `?user_id=${encodeURIComponent(upUserId.trim())}`,
                   ),
                 );
               }, "已加载")
@@ -309,13 +174,15 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                     <button
                       key={label}
                       disabled={busy}
-                      className={`mr-1 min-h-[28px] rounded-full border px-3 font-bold disabled:opacity-50 ${
-                        (g === null && !ov) ||
+                      className={
+                        "mr-1 min-h-[28px] rounded-full border px-3 " +
+                        "font-bold disabled:opacity-50 " +
+                        ((g === null && !ov) ||
                         (g === true && ov?.granted === true) ||
                         (g === false && ov?.granted === false)
                           ? "border-sky bg-sky text-white"
-                          : "border-line"
-                      }`}
+                          : "border-line")
+                      }
                       onClick={() =>
                         guard(async () => {
                           await api.put("/api/v1/admin/user-permissions", {
@@ -325,7 +192,8 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                           });
                           setUpData(
                             await api.get<UserPermData>(
-                              `/api/v1/admin/user-permissions?user_id=${upData.user_id}`,
+                              `/api/v1/admin/user-permissions` +
+                                `?user_id=${upData.user_id}`,
                             ),
                           );
                         }, "已更新")
@@ -339,9 +207,7 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                       <td className="rowfollow">
                         <span className="font-bold">{p.name}</span>
                         {!p.implemented && (
-                          <span className="ml-1 rounded-full bg-sun/40 px-1.5 text-[10px] text-ink">
-                            未接入
-                          </span>
+                          <span className={NOT_IMPL_TAG}>未接入</span>
                         )}
                         <span className="block font-mono text-[10px] text-sub">
                           {p.key}

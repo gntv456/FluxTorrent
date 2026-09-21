@@ -6,11 +6,17 @@ import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { useI18n } from "@/i18n/client";
 import { MedalIcon } from "@/components/medal-icon";
 import type { Overview } from "@/components/usercp";
+import {
+  MoreInfoTable,
+  RecentTopics,
+  SummaryRow,
+} from "@/components/usercp-overview-panels";
 
-/** 账户概览面板（从 usercp.tsx 按域拆出，300 行门禁）：
+/** 账户概览面板（从 usercp.tsx 按域拆出，295 行门禁）：
  *  资料卡 / 分享率 / 30 天登录趋势 / 摘要行 / 更多账户信息 / 最近阅读。 */
 interface OverviewProps { ov: Overview | null; loading: boolean }
 
+type Dict = ReturnType<typeof useI18n>["dict"];
 
 function fmtBytes(bytes: number): string {
   const units = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -71,53 +77,13 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
       <ProfileCard ov={ov} t={t} dict={dict} />
 
       {/* 分享率概况 */}
-      <section className="uc-ratio-card" aria-label={t.ratioCard}>
-        <div className="uc-ratio-card__content">
-          <header className="uc-ratio-card__header">
-            <span className="uc-ratio-card__label">{t.ratio}</span>
-            {ratioText.status && (
-              <em className="uc-ratio-card__status">{ratioText.status}</em>
-            )}
-          </header>
-          <strong className="uc-ratio-card__value">{ratioText.main}</strong>
-          {ratioText.hint && (
-            <p className="uc-ratio-card__hint">{ratioText.hint}</p>
-          )}
-          <dl className="uc-ratio-card__metrics">
-            <div className="uc-metric uc-metric--upload">
-              <dt>
-                <span aria-hidden="true">⇧</span>
-                {t.uploaded}
-              </dt>
-              <dd className="num">{fmtBytes(ov.uploaded)}</dd>
-            </div>
-            <div className="uc-metric uc-metric--download">
-              <dt>
-                <span aria-hidden="true">⇩</span>
-                {t.downloaded}
-              </dt>
-              <dd className="num">{fmtBytes(ov.downloaded)}</dd>
-            </div>
-            <div className="uc-metric uc-metric--active">
-              <dt>
-                <span aria-hidden="true">⌁</span>
-                {t.active}
-              </dt>
-              <dd className="num">{ov.seeding + ov.leeching}</dd>
-              <small>
-                {t.seeding} {ov.seeding} · {t.leeching} {ov.leeching}
-              </small>
-            </div>
-            <div className="uc-metric uc-metric--bonus">
-              <dt>
-                <span aria-hidden="true">★</span>
-                {dict.my.balance.replace("{magic}", currency)}
-              </dt>
-              <dd className="num">{ov.spark_balance}</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
+      <RatioCard
+        ov={ov}
+        t={t}
+        ratioText={ratioText}
+        dict={dict}
+        currency={currency}
+      />
 
       {/* 登录活跃趋势（30 天柱状图） */}
       <section className="uc-trend-card">
@@ -143,7 +109,7 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
       </section>
 
       {/* 摘要行：等级进度 / 最近登录 / 邀请配额 / 成就勋章 / 登录活动 */}
-      <SummaryRow ov={ov} t={t} dict={dict} />
+      <SummaryRow ov={ov} t={t} dict={dict} seedPct={seedPct} />
 
       {/* 更多账户信息（经典 rowhead/rowfollow 表格） */}
       <MoreInfoTable ov={ov} t={t} dict={dict} currency={currency} />
@@ -154,7 +120,7 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
   );
 }
 
-/** 资料卡（头像 + 佩戴勋章，从 OverviewTab 拆出，行数门禁 295） */
+/** 资料卡（头像 + 佩戴勋章） */
 function ProfileCard({
   ov,
   t,
@@ -162,7 +128,7 @@ function ProfileCard({
 }: {
   ov: Overview;
   t: Record<string, string>;
-  dict: ReturnType<typeof useI18n>["dict"];
+  dict: Dict;
 }) {
   return (
     <section className="uc-profile-card">
@@ -208,174 +174,66 @@ function ProfileCard({
   );
 }
 
-      {/* 摘要行：等级进度 / 最近登录 / 邀请配额 / 成就勋章 / 登录活动 */}
-      <div className="uc-summary-row">
-        <section className="uc-level-card">
-          <h3>{t.levelTitle}</h3>
-          <strong>{ov.class_name ?? "—"}</strong>
-          <div>
-            <i style={{ width: `${seedPct}%` }} />
-          </div>
-          <p>
-            {t.seedPoints} {ov.seed_points.toFixed(1)} /{" "}
-            {ov.next_class.required.toLocaleString()}，{t.nextClass}{" "}
-            {ov.next_class.name} {t.still}
-            {(ov.next_class.required - ov.seed_points).toFixed(1)}
-          </p>
-        </section>
-        <section>
-          <h3>{t.lastLoginTitle}</h3>
-          <strong>
-            {ov.last_login
-              ? ov.last_login.replace("T", " ").slice(0, 19)
-              : "—"}
-          </strong>
-          <p>Web</p>
-          <Link href="/my?tab=security">{t.checkSecurity} ›</Link>
-        </section>
-        <section>
-          <h3>{t.inviteTitle}</h3>
-          <strong>
-            {ov.invites_pending} {t.inviteUnit}
-          </strong>
-          <p>
-            {t.invited} {ov.invites_pending + ov.invites_used} ·{" "}
-            {t.registered}
-            {ov.invites_used}
-          </p>
-          <Link href="/invites">{t.manageInvites} ›</Link>
-        </section>
-        <section>
-          <h3>{t.medalTitle}</h3>
-          <strong>{ov.medals} {t.medalUnit}</strong>
-          <p>{ov.medals > 0 ? "" : t.noMedal}</p>
-          <Link href="/medals">{t.viewMedals} ›</Link>
-        </section>
-        <section>
-          <h3>{t.loginActivityTitle}</h3>
-          <strong>{ov.login_total_30d} {t.times}</strong>
-          <p>
-            {t.last30d} · {ov.totp_enabled ? t.twofaOn : t.twofaOff} ·{" "}
-            {dict.usercp.security.passkeyLabel} {ov.passkey.slice(0, 4)}••••
-          </p>
-          <Link href="/my?tab=security">{t.accountSecurity} ›</Link>
-        </section>
-      </div>
-
-      {/* 更多账户信息（经典 rowhead/rowfollow 表格） */}
-      <MoreInfoTable ov={ov} t={t} dict={dict} currency={currency} />
-
-      {/* 最近阅读主题 */}
-      <RecentTopics t={t} />
-    </div>
-  );
-}
-
-/** 更多账户信息（经典 rowhead/rowfollow 表格，从 OverviewTab 拆出） */
-function MoreInfoTable({
+/** 分享率概况卡 */
+function RatioCard({
   ov,
   t,
+  ratioText,
   dict,
   currency,
 }: {
   ov: Overview;
   t: Record<string, string>;
-  dict: ReturnType<typeof useI18n>["dict"];
+  ratioText: { main: string; status: string; hint: string };
+  dict: Dict;
   currency: string;
 }) {
   return (
-    <details className="uc-more" open>
-      <summary>{t.moreTitle}</summary>
-      <table className="nexus-table nexus-form">
-        <tbody>
-          <tr>
-            <td className="rowhead">{t.joinDate}</td>
-            <td className="rowfollow">
-              {new Date(ov.created_at ?? "").toLocaleString("zh-CN")}（
-              {daysSince(ov.created_at)}
-              {dict.usercp.days2}）
-            </td>
-          </tr>
-          <tr>
-            <td className="rowhead">{t.email}</td>
-            <td className="rowfollow">{ov.email}</td>
-          </tr>
-          <tr>
-            <td className="rowhead">{t.ip}</td>
-            <td className="rowfollow">
-              <span className="uc-hidden-text">
-                {ov.passkey ? "127.0.0.1" : "—"}
-              </span>
-            </td>
-          </tr>
-          <tr>
-            <td className="rowhead">{t.passkeyRow}</td>
-            <td className="rowfollow">
-              <span className="uc-hidden-text">{ov.passkey}</span>
-            </td>
-          </tr>
-          <tr>
-            <td className="rowhead">{t.inviteRow}</td>
-            <td className="rowfollow">
-              {ov.invites_pending} [<Link href="/invites">{t.send}</Link>]
-            </td>
-          </tr>
-          <tr>
-            <td className="rowhead">
+    <section className="uc-ratio-card" aria-label={t.ratioCard}>
+      <div className="uc-ratio-card__content">
+        <header className="uc-ratio-card__header">
+          <span className="uc-ratio-card__label">{t.ratio}</span>
+          {ratioText.status && (
+            <em className="uc-ratio-card__status">{ratioText.status}</em>
+          )}
+        </header>
+        <strong className="uc-ratio-card__value">{ratioText.main}</strong>
+        {ratioText.hint && (
+          <p className="uc-ratio-card__hint">{ratioText.hint}</p>
+        )}
+        <dl className="uc-ratio-card__metrics">
+          <div className="uc-metric uc-metric--upload">
+            <dt>
+              <span aria-hidden="true">⇧</span>
+              {t.uploaded}
+            </dt>
+            <dd className="num">{fmtBytes(ov.uploaded)}</dd>
+          </div>
+          <div className="uc-metric uc-metric--download">
+            <dt>
+              <span aria-hidden="true">⇩</span>
+              {t.downloaded}
+            </dt>
+            <dd className="num">{fmtBytes(ov.downloaded)}</dd>
+          </div>
+          <div className="uc-metric uc-metric--active">
+            <dt>
+              <span aria-hidden="true">⌁</span>
+              {t.active}
+            </dt>
+            <dd className="num">{ov.seeding + ov.leeching}</dd>
+            <small>
+              {t.seeding} {ov.seeding} · {t.leeching} {ov.leeching}
+            </small>
+          </div>
+          <div className="uc-metric uc-metric--bonus">
+            <dt>
+              <span aria-hidden="true">★</span>
               {dict.my.balance.replace("{magic}", currency)}
-            </td>
-            <td className="rowfollow">
-              {ov.spark_balance} [<Link href="/shop">{t.use}</Link>]
-            </td>
-          </tr>
-          <tr>
-            <td className="rowhead">{t.commentsRow}</td>
-            <td className="rowfollow">
-              {ov.comments}[
-              <Link href={`/users/${ov.id}#comments`}>{t.view}</Link>]
-            </td>
-          </tr>
-          <tr>
-            <td className="rowhead">{t.tokenRow}</td>
-            <td className="rowfollow">
-              <Link href="/my?tab=security" className="sticker">
-                {t.create}
-              </Link>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </details>
-  );
-}
-
-/** 最近阅读主题表头（从 OverviewTab 尾部拆出，行数门禁 295） */
-function RecentTopics({ t }: { t: Record<string, string> }) {
-  return (
-    <section className="uc-recent-topics">
-      <h2>{t.recentTopics}</h2>
-      <div className="uc-recent-topics__wrap">
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead" style={{ width: "80%" }}>
-                {t.colTopic}
-              </td>
-              <td className="colhead" style={{ textAlign: "center" }}>
-                {t.colRepliesViews}
-              </td>
-              <td className="colhead" style={{ textAlign: "center" }}>
-                {t.colStarter}
-              </td>
-              <td
-                className="colhead"
-                style={{ width: "20%", textAlign: "center" }}
-              >
-                {t.colLastPost}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            </dt>
+            <dd className="num">{ov.spark_balance}</dd>
+          </div>
+        </dl>
       </div>
     </section>
   );

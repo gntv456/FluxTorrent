@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 /**
  * 后台用户详情·管理操作面板（从 components/admin-user-detail.tsx 按域拆出）：
  * AdminActions 管理操作按钮墙 + 展开式管理表单。状态留在
@@ -19,7 +21,7 @@ const OFF_CLS = "border border-line";
 
 /** 圆角描边小按钮（普通/danger 文案用） */
 const PLAIN_BTN_CLS =
-  "min-h-[36px] rounded-full border border-line px-4 text-xs font-bold";
+  BTN_SM_BOLD;
 const DANGER_BTN_CLS = `${PLAIN_BTN_CLS} text-danger`;
 
 /** 下载/挂起切换按钮的两种态样式 */

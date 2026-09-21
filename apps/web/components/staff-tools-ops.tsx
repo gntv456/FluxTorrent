@@ -1,12 +1,16 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { ToolTab } from "@/components/staff-tools";
+import { StaffOpsForms } from "./staff-tools-ops-forms";
 
 /** 运营域面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
- *  种子促销（promo）/ 批量私信（staffmess）/ 添加用户（adduser）。 */
+ *  种子促销（promo）/ 批量私信（staffmess）/ 添加用户（adduser）。
+ *  私信/建号表单拆至 ./staff-tools-ops-forms.tsx。 */
 
 interface CatItem {
   id: number;
@@ -31,6 +35,27 @@ function toLocalInput(iso: string): string {
     .slice(0, 16);
 }
 
+/** 促销范围列文案（含分类名） */
+function scopeLabel(
+  t: ReturnType<typeof useI18n>["dict"]["stafftools"],
+  p: SitePromo,
+) {
+  if (p.scope === "global") return t.scopeGlobal;
+  if (p.scope === "official") return t.scopeOfficial;
+  if (p.scope === "non_official") return t.scopeNonOfficial;
+  if (p.scope === "category")
+    return `${t.scopeCategory} · ${p.category_name ?? `#${p.category_id}`}`;
+  return p.scope;
+}
+
+/** 促销行编辑/删除小按钮 */
+const EDIT_BTN_CLS =
+  "min-h-[28px] rounded-full border border-line px-3 text-xs " +
+  "font-bold text-sky";
+const DEL_BTN_CLS =
+  "min-h-[28px] rounded-full border border-line px-3 text-xs " +
+  "font-bold text-danger";
+
 export function StaffOpsPanel({
   tab,
   flash,
@@ -52,12 +77,6 @@ export function StaffOpsPanel({
   const [promoEnd, setPromoEnd] = useState("");
   const [promoKind, setPromoKind] = useState("free");
   const [promoHours, setPromoHours] = useState(24);
-  const [smSubject, setSmSubject] = useState("");
-  const [smBody, setSmBody] = useState("");
-  const [smMinClass, setSmMinClass] = useState("");
-  const [auName, setAuName] = useState("");
-  const [auEmail, setAuEmail] = useState("");
-  const [auPass, setAuPass] = useState("");
 
   const load = useCallback(async () => {
     api
@@ -213,7 +232,7 @@ export function StaffOpsPanel({
                   {promoEditId === null ? t.promoBtnSet : "保存修改"}
                 </button>
                 <button
-                  className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                  className={BTN_SM_BOLD}
                   disabled={busy || promo.length === 0}
                   onClick={() =>
                     guard(async () => {
@@ -243,17 +262,7 @@ export function StaffOpsPanel({
                     key={p.id}
                     className={promoEditId === p.id ? "bg-sky-soft" : ""}
                   >
-                    <td className="font-bold">
-                      {p.scope === "global"
-                        ? t.scopeGlobal
-                        : p.scope === "official"
-                          ? t.scopeOfficial
-                          : p.scope === "non_official"
-                            ? t.scopeNonOfficial
-                            : p.scope === "category"
-                              ? `${t.scopeCategory} · ${p.category_name ?? `#${p.category_id}`}`
-                              : p.scope}
-                    </td>
+                    <td className="font-bold">{scopeLabel(t, p)}</td>
                     <td className="font-bold">{p.kind}</td>
                     <td className="text-xs text-sub">
                       {new Date(p.starts_at).toLocaleString("zh-CN")}
@@ -263,7 +272,7 @@ export function StaffOpsPanel({
                     </td>
                     <td>
                       <button
-                        className="min-h-[28px] rounded-full border border-line px-3 text-xs font-bold text-sky"
+                        className={EDIT_BTN_CLS}
                         onClick={() => {
                           if (promoEditId === p.id) {
                             setPromoEditId(null);
@@ -282,7 +291,7 @@ export function StaffOpsPanel({
                         {promoEditId === p.id ? "取消" : "编辑"}
                       </button>
                       <button
-                        className="ml-1 min-h-[28px] rounded-full border border-line px-3 text-xs font-bold text-danger"
+                        className={`ml-1 ${DEL_BTN_CLS}`}
                         onClick={() =>
                           guard(async () => {
                             await api.del(`/api/v1/admin/freeleech/${p.id}`);
@@ -307,113 +316,9 @@ export function StaffOpsPanel({
         </>
       )}
 
-      {/* 批量私信（staffmess） */}
-      {tab === "staffmess" && (
-        <section className="baozi-panel p-4">
-          <h2 className="mb-3 text-base font-bold text-ink">{t.smNew}</h2>
-          <div className="cmgmt-form">
-            <label>
-              {t.fldSubject}
-              <input
-                value={smSubject}
-                onChange={(e) => setSmSubject(e.target.value)}
-              />
-            </label>
-            <label>
-              {t.fldBody}
-              <textarea
-                rows={5}
-                value={smBody}
-                onChange={(e) => setSmBody(e.target.value)}
-              />
-            </label>
-            <label>
-              {t.smMinClass}
-              <select
-                value={smMinClass}
-                onChange={(e) => setSmMinClass(e.target.value)}
-              >
-                <option value="">{t.smAllUsers}</option>
-                <option value="10">Power User+</option>
-                <option value="50">Elite+</option>
-                <option value="90">管理组</option>
-              </select>
-            </label>
-            <button
-              className="baozi-button self-start"
-              disabled={busy || !smSubject.trim() || !smBody.trim()}
-              onClick={() =>
-                guard(async () => {
-                  await api.post("/api/v1/admin/staffmess", {
-                    subject: smSubject,
-                    body: smBody,
-                    min_class: smMinClass ? Number(smMinClass) : null,
-                  });
-                  setSmSubject("");
-                  setSmBody("");
-                }, t.smSent)
-              }
-            >
-              {t.btnSend}
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* 添加用户（adduser） */}
-      {tab === "adduser" && (
-        <section className="baozi-panel p-4">
-          <h2 className="mb-3 text-base font-bold text-ink">{t.auNew}</h2>
-          <div className="cmgmt-form">
-            <label>
-              {t.auUsername}
-              <input
-                value={auName}
-                onChange={(e) => setAuName(e.target.value)}
-              />
-            </label>
-            <label>
-              {t.auEmail}
-              <input
-                type="email"
-                value={auEmail}
-                onChange={(e) => setAuEmail(e.target.value)}
-              />
-            </label>
-            <label>
-              {t.auPassword}
-              <input
-                type="password"
-                value={auPass}
-                onChange={(e) => setAuPass(e.target.value)}
-              />
-            </label>
-            <button
-              className="baozi-button self-start"
-              disabled={
-                busy ||
-                !auName.trim() ||
-                !auEmail.includes("@") ||
-                auPass.length < 8
-              }
-              onClick={() =>
-                guard(async () => {
-                  await api.post("/api/v1/admin/adduser", {
-                    username: auName,
-                    email: auEmail,
-                    password: auPass,
-                  });
-                  setAuName("");
-                  setAuEmail("");
-                  setAuPass("");
-                }, t.auCreated)
-              }
-            >
-              {t.auBtnCreate}
-            </button>
-            <p className="text-xs text-sub">{t.auNote}</p>
-          </div>
-        </section>
+      {/* 批量私信/添加用户（拆至 ./staff-tools-ops-forms.tsx） */}
+      {(tab === "staffmess" || tab === "adduser") && (
+        <StaffOpsForms tab={tab} busy={busy} guard={guard} />
       )}
     </>
   );

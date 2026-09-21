@@ -4,39 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { ToolTab } from "@/components/staff-tools";
+import { StaffSecPanels } from "./staff-tools-security-panels";
+import type {
+  BanItem,
+  EmailBan,
+  MailItem,
+} from "./staff-tools-security-shared";
 
 /** 安全域面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
- *  封禁系统（bans）/ 批量邮件（mail）/ 邮箱黑白名单（emailbans）/ IP 测试（testip）。 */
-
-interface BanItem {
-  id: number;
-  ip: string;
-  reason: string | null;
-  banned_by: string | null;
-  created_at: string;
-}
-interface MailItem {
-  id: number;
-  subject: string;
-  recipients: number;
-  created_at: string;
-  sender: string | null;
-}
-interface EmailBan {
-  id: number;
-  pattern: string;
-  mode: string;
-  note: string | null;
-  created_by: string | null;
-  created_at: string;
-}
-interface TestIpResult {
-  ip: string;
-  banned: boolean;
-  reason: string | null;
-  by: string | null;
-  seen_users: string[];
-}
+ *  封禁系统（bans）/ 批量邮件（mail）/ 邮箱黑白名单（emailbans）/ IP 测试（testip）。
+ *  黑白名单与 IP 测试拆至 ./staff-tools-security-panels.tsx；
+ *  类型拆至 ./staff-tools-security-shared.ts。 */
 
 export function StaffSecurityPanel({
   tab,
@@ -50,17 +28,12 @@ export function StaffSecurityPanel({
   const [bans, setBans] = useState<BanItem[]>([]);
   const [mails, setMails] = useState<MailItem[]>([]);
   const [emailBans, setEmailBans] = useState<EmailBan[]>([]);
-  const [testIpResult, setTestIpResult] = useState<TestIpResult | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [banIp, setBanIp] = useState("");
   const [banReason, setBanReason] = useState("");
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
-  const [ebPattern, setEbPattern] = useState("");
-  const [ebMode, setEbMode] = useState("ban");
-  const [ebNote, setEbNote] = useState("");
-  const [testIpQuery, setTestIpQuery] = useState("");
 
   const load = useCallback(async () => {
     api
@@ -242,173 +215,15 @@ export function StaffSecurityPanel({
         </>
       )}
 
-      {/* 邮箱黑白名单（bannedemails/allowedemails） */}
-      {tab === "emailbans" && (
-        <>
-          <section className="baozi-panel p-4">
-            <h2 className="mb-3 text-base font-bold text-ink">{t.ebNew}</h2>
-            <div className="cmgmt-form">
-              <label>
-                {t.ebPattern}
-                <input
-                  value={ebPattern}
-                  onChange={(e) => setEbPattern(e.target.value)}
-                  placeholder="@spam.example / user@ / a@b.com"
-                />
-              </label>
-              <label>
-                {t.ebMode}
-                <select
-                  value={ebMode}
-                  onChange={(e) => setEbMode(e.target.value)}
-                >
-                  <option value="ban">{t.ebModeBan}</option>
-                  <option value="allow">{t.ebModeAllow}</option>
-                </select>
-              </label>
-              <label>
-                {t.ebNote}
-                <input
-                  value={ebNote}
-                  onChange={(e) => setEbNote(e.target.value)}
-                />
-              </label>
-              <button
-                className="baozi-button self-start"
-                disabled={busy || !ebPattern.trim()}
-                onClick={() =>
-                  guard(async () => {
-                    await api.post("/api/v1/admin/emailbans", {
-                      pattern: ebPattern,
-                      mode: ebMode,
-                      note: ebNote || null,
-                    });
-                    setEbPattern("");
-                    setEbNote("");
-                  }, t.saved)
-                }
-              >
-                {t.btnSave}
-              </button>
-            </div>
-          </section>
-          <table className="nexus-table">
-            <tbody>
-              <tr>
-                <td className="colhead">{t.ebPattern}</td>
-                <td className="colhead">{t.ebMode}</td>
-                <td className="colhead">{t.ebNote}</td>
-                <td className="colhead text-right">{dict.cmgmt.colActions}</td>
-              </tr>
-              {emailBans.map((e) => (
-                <tr key={e.id}>
-                  <td className="font-mono">{e.pattern}</td>
-                  <td>{e.mode === "ban" ? t.ebModeBan : t.ebModeAllow}</td>
-                  <td>{e.note ?? "—"}</td>
-                  <td className="text-right">
-                    <button
-                      className="cmgmt-act cmgmt-act--danger"
-                      onClick={() =>
-                        guard(async () => {
-                          await api.del(`/api/v1/admin/emailbans/${e.id}`);
-                        }, t.deleted)
-                      }
-                    >
-                      {dict.cmgmt.btnDelete}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {emailBans.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-6 text-center text-sub">
-                    {t.ebEmpty}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </>
-      )}
-
-      {/* IP 测试（testip） */}
-      {tab === "testip" && (
-        <section className="baozi-panel p-4">
-          <h2 className="mb-3 text-base font-bold text-ink">{t.tiTitle}</h2>
-          <div className="cmgmt-form">
-            <label>
-              {t.fldIp}
-              <input
-                value={testIpQuery}
-                onChange={(e) => setTestIpQuery(e.target.value)}
-                placeholder="203.0.113.10"
-              />
-            </label>
-            <button
-              className="baozi-button self-start"
-              disabled={busy || !testIpQuery.trim()}
-              onClick={() =>
-                void (async () => {
-                  setBusy(true);
-                  try {
-                    const r = await api.get<TestIpResult>(
-                      `/api/v1/admin/testip?ip=${encodeURIComponent(testIpQuery.trim())}`,
-                    );
-                    setTestIpResult(r);
-                  } catch (e) {
-                    flash(
-                      e instanceof ApiError
-                        ? e.message
-                        : dict.common.networkError,
-                    );
-                  } finally {
-                    setBusy(false);
-                  }
-                })()
-              }
-            >
-              {t.tiBtn}
-            </button>
-          </div>
-          {testIpResult && (
-            <table className="nexus-table mt-3">
-              <tbody>
-                <tr>
-                  <td className="rowhead">{t.fldIp}</td>
-                  <td className="rowfollow font-mono">{testIpResult.ip}</td>
-                </tr>
-                <tr>
-                  <td className="rowhead">{t.tiBanned}</td>
-                  <td className="rowfollow">
-                    {testIpResult.banned ? `⛔ ${t.tiYes}` : `✅ ${t.tiNo}`}
-                  </td>
-                </tr>
-                {testIpResult.banned && (
-                  <>
-                    <tr>
-                      <td className="rowhead">{t.fldReason}</td>
-                      <td className="rowfollow">
-                        {testIpResult.reason ?? "—"}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="rowhead">{t.banBy}</td>
-                      <td className="rowfollow">{testIpResult.by ?? "—"}</td>
-                    </tr>
-                  </>
-                )}
-                <tr>
-                  <td className="rowhead">{t.tiSeenUsers}</td>
-                  <td className="rowfollow">
-                    {testIpResult.seen_users.length > 0
-                      ? testIpResult.seen_users.join(", ")
-                      : "—"}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          )}
-        </section>
+      {/* 邮箱黑白名单/IP 测试（拆至 panels 文件） */}
+      {(tab === "emailbans" || tab === "testip") && (
+        <StaffSecPanels
+          tab={tab}
+          emailBans={emailBans}
+          busy={busy}
+          guard={guard}
+          flash={flash}
+        />
       )}
     </>
   );

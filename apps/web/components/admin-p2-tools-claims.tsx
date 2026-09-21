@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_GHOST, INPUT_CARD, INPUT_GROW } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
@@ -64,7 +66,7 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
             setState(e.target.value);
             setPage(1);
           }}
-          className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+          className={INPUT_CARD}
         >
           <option value="all">全部</option>
           <option value="active">认领中</option>
@@ -75,7 +77,7 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="种子名 / 认领人"
-          className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2"
+          className={INPUT_GROW}
         />
       </div>
       <table className="nexus-table">
@@ -143,7 +145,7 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+            className={BTN_SM_GHOST}
           >
             上一页
           </button>
@@ -151,7 +153,7 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
           <button
             disabled={rows.length < 20}
             onClick={() => setPage(page + 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+            className={BTN_SM_GHOST}
           >
             下一页
           </button>

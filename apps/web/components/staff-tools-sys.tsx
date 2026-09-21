@@ -4,59 +4,24 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { ToolTab } from "@/components/staff-tools";
+import { AgentRulesPanel } from "./staff-tools-sys-agentrules";
+import type {
+  AgentRule,
+  DbStats,
+  LocationPage,
+  SysLogPage,
+} from "./staff-tools-sys-shared";
+import { PAGE_BTN_CLS } from "./staff-tools-sys-shared";
 
 /** 系统观测面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
  *  数据库状态（dbstats）/ 系统日志（syslog）/ 位置管理（locations）/
- *  客户端黑白名单（agentrules）。 */
+ *  客户端黑白名单（agentrules）。
+ *  黑白名单拆至 ./staff-tools-sys-agentrules.tsx；类型拆至
+ *  ./staff-tools-sys-shared.ts。 */
 
-interface PgConn {
-  state: string;
-  count: number;
-}
-interface TableSize {
-  relname: string;
-  total_size: number;
-  row_estimates: number;
-}
-interface DbStats {
-  engine: string;
-  database: string;
-  connections: PgConn[];
-  total_connections: number;
-  database_size: number;
-  slow_transactions: number;
-  dead_tuples: number;
-  tables: TableSize[];
-}
-interface SysLogItem {
-  id: number;
-  actor: string | null;
-  action: string;
-  ref_json: unknown;
-  ip: string | null;
-  created_at: string;
-}
-interface SysLogPage {
-  items: SysLogItem[];
-  total: number;
-  page: number;
-  per_page: number;
-  pages: number;
-}
-interface LocationItem {
-  net: string;
-  netmask: number;
-  logins: number;
-  users: number;
-  failed: number;
-  last_seen: string | null;
-}
-interface LocationPage {
-  items: LocationItem[];
-  total: number;
-  page: number;
-  per_page: number;
-  pages: number;
+/** 慢事务计数配色 */
+function slowCls(n: number) {
+  return `num text-2xl font-bold ${n > 0 ? "text-danger" : "text-success"}`;
 }
 
 export function StaffSysPanel({
@@ -74,21 +39,7 @@ export function StaffSysPanel({
   const [logData, setLogData] = useState<SysLogPage | null>(null);
   const [locPage, setLocPage] = useState(1);
   const [locData, setLocData] = useState<LocationPage | null>(null);
-  const [agentRules, setAgentRules] = useState<
-    | {
-        id: number;
-        mode: string;
-        pattern: string;
-        note: string | null;
-        created_by: string | null;
-        created_at: string;
-      }[]
-    | null
-  >(null);
-  const [arMode, setArMode] = useState("deny");
-  const [arPattern, setArPattern] = useState("");
-  const [arNote, setArNote] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [agentRules, setAgentRules] = useState<AgentRule[] | null>(null);
 
   // 系统日志/位置管理：按需分页加载
   useEffect(() => {
@@ -111,19 +62,6 @@ export function StaffSysPanel({
       .then(setLocData)
       .catch(() => setLocData(null));
   }, [locPage]);
-
-  async function guard(fn: () => Promise<void>, ok: string) {
-    setBusy(true);
-    try {
-      await fn();
-      flash(ok);
-      setAgentRules(await api.get("/api/v1/admin/agentrules"));
-    } catch (e) {
-      flash(e instanceof ApiError ? e.message : dict.common.networkError);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <>
@@ -151,9 +89,7 @@ export function StaffSysPanel({
             </div>
             <div className="baozi-panel p-4">
               <p className="text-xs text-sub">{t.dsSlow}</p>
-              <p
-                className={`num text-2xl font-bold ${dbStats.slow_transactions > 0 ? "text-danger" : "text-success"}`}
-              >
+              <p className={slowCls(dbStats.slow_transactions)}>
                 {dbStats.slow_transactions}
               </p>
             </div>
@@ -256,7 +192,7 @@ export function StaffSysPanel({
           {logData && logData.pages > 1 && (
             <div className="flex items-center justify-between">
               <button
-                className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-40"
+                className={PAGE_BTN_CLS}
                 disabled={logPage <= 1}
                 onClick={() => setLogPage((p) => p - 1)}
               >
@@ -266,7 +202,7 @@ export function StaffSysPanel({
                 {logData.page} / {logData.pages}（{logData.total}）
               </span>
               <button
-                className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-40"
+                className={PAGE_BTN_CLS}
                 disabled={logPage >= logData.pages}
                 onClick={() => setLogPage((p) => p + 1)}
               >
@@ -323,7 +259,7 @@ export function StaffSysPanel({
           {locData && locData.pages > 1 && (
             <div className="flex items-center justify-between">
               <button
-                className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-40"
+                className={PAGE_BTN_CLS}
                 disabled={locPage <= 1}
                 onClick={() => setLocPage((p) => p - 1)}
               >
@@ -333,7 +269,7 @@ export function StaffSysPanel({
                 {locData.page} / {locData.pages}（{locData.total}）
               </span>
               <button
-                className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-40"
+                className={PAGE_BTN_CLS}
                 disabled={locPage >= locData.pages}
                 onClick={() => setLocPage((p) => p + 1)}
               >
@@ -344,137 +280,14 @@ export function StaffSysPanel({
         </>
       )}
 
-      {/* 客户端黑白名单（G-06） */}
+      {/* 客户端黑白名单（拆至 ./staff-tools-sys-agentrules.tsx） */}
       {tab === "agentrules" && (
-        <section className="baozi-panel p-4">
-          <h2 className="mb-3 text-base font-bold text-ink">
-            {dict.agentRules2?.title ?? "客户端黑白名单"}
-          </h2>
-          <div className="cmgmt-form">
-            <label>
-              {dict.agentRules2?.mode ?? "类型"}
-              <select
-                value={arMode}
-                onChange={(e) => setArMode(e.target.value)}
-              >
-                <option value="deny">
-                  {dict.agentRules2?.deny ?? "黑名单"}
-                </option>
-                <option value="allow">
-                  {dict.agentRules2?.allow ?? "白名单"}
-                </option>
-              </select>
-            </label>
-            <label>
-              {dict.agentRules2?.pattern ?? "匹配串"}
-              <input
-                value={arPattern}
-                onChange={(e) => setArPattern(e.target.value)}
-                placeholder="Transmission/3"
-              />
-            </label>
-            <label>
-              {dict.agentRules2?.note ?? "备注"}
-              <input
-                value={arNote}
-                onChange={(e) => setArNote(e.target.value)}
-              />
-            </label>
-            <button
-              className="baozi-button self-start"
-              disabled={busy || !arPattern.trim()}
-              onClick={() =>
-                guard(async () => {
-                  await api.post("/api/v1/admin/agentrules", {
-                    mode: arMode,
-                    pattern: arPattern.trim(),
-                    note: arNote.trim() || null,
-                  });
-                  setArPattern("");
-                  setArNote("");
-                }, dict.agentRules2?.add ?? "已添加")
-              }
-            >
-              {dict.agentRules2?.add ?? "添加规则"}
-            </button>
-            <p className="text-xs text-sub">
-              {arMode === "deny"
-                ? (dict.agentRules2?.modeDenyNote ?? "")
-                : (dict.agentRules2?.modeAllowNote ?? "")}
-            </p>
-          </div>
-          {agentRules === null ? (
-            <button
-              className="baozi-button mt-3"
-              onClick={async () => {
-                try {
-                  setAgentRules(await api.get("/api/v1/admin/agentrules"));
-                } catch {
-                  setAgentRules([]);
-                }
-              }}
-            >
-              Load
-            </button>
-          ) : (
-            <table className="nexus-table mt-3 text-xs">
-              <thead>
-                <tr>
-                  <td className="colhead">
-                    {dict.agentRules2?.mode ?? "类型"}
-                  </td>
-                  <td className="colhead">
-                    {dict.agentRules2?.pattern ?? "匹配串"}
-                  </td>
-                  <td className="colhead">
-                    {dict.agentRules2?.note ?? "备注"}
-                  </td>
-                  <td className="colhead" />
-                </tr>
-              </thead>
-              <tbody>
-                {agentRules.map((r) => (
-                  <tr key={r.id}>
-                    <td>
-                      <span
-                        className={`fun-status ${r.mode === "deny" ? "fun-status--banned" : "fun-status--normal"}`}
-                      >
-                        {r.mode === "deny"
-                          ? (dict.agentRules2?.deny ?? "黑")
-                          : (dict.agentRules2?.allow ?? "白")}
-                      </span>
-                    </td>
-                    <td>
-                      <code>{r.pattern}</code>
-                    </td>
-                    <td className="text-sub">{r.note ?? "—"}</td>
-                    <td>
-                      <button
-                        className="min-h-[28px] rounded-full border border-line px-3 font-bold text-danger"
-                        onClick={() =>
-                          guard(async () => {
-                            await api.post("/api/v1/admin/agentrules/delete", {
-                              id: r.id,
-                            });
-                          }, "OK")
-                        }
-                      >
-                        {dict.agentRules2?.del ?? "删除"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {agentRules.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-4 text-center text-sub">
-                      {dict.agentRules2?.empty ?? "暂无规则"}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </section>
+        <AgentRulesPanel
+          agentRules={agentRules}
+          setAgentRules={setAgentRules}
+          busy={false}
+          flash={flash}
+        />
       )}
     </>
   );

@@ -4,30 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import { ContentManage } from "@/components/content-manage";
 import { StaffTools, type ToolTab } from "@/components/staff-tools";
-import { AdminUsers } from "@/components/admin-users";
-import { AdminTorrents } from "@/components/admin-torrents";
-import { AdminP2Tools } from "@/components/admin-p2-tools";
 import { AdminShell, type PanelEntry } from "@/components/admin-shell";
-import { AdminHr } from "@/components/admin-hr";
-import { AdminInvites } from "@/components/admin-invites";
-import { AdminUserLogs } from "@/components/admin-userlogs";
-import { AdminAttendance } from "@/components/admin-attendance";
-import { AdminTagDict } from "@/components/admin-tagdict";
-import { AdminSections } from "@/components/admin-sections";
-import { AdminMedals } from "@/components/admin-medals";
-import { AdminProps } from "@/components/admin-props";
-import { AdminExams } from "@/components/admin-exams";
-import { AdminJixiao } from "@/components/admin-jixiao";
-import { AdminTasks } from "@/components/admin-tasks";
-import { AdminTrackers } from "@/components/admin-trackers";
-import { AdminOpsPanel } from "@/components/admin-ops";
-import { HomeLayoutEditor } from "@/components/home-layout-editor";
 import { AdminOverviewPanel } from "./_parts/admin-overview-panel";
 import { AppealsPanel, ReviewsPanel } from "./_parts/admin-queue-panels";
-import { ClearCachePanel, FreeleechPanel } from "./_parts/admin-freeleech";
 import { AuditListPanel, CheatersPanel } from "./_parts/admin-tool-panels";
+import {
+  renderSimpleTool,
+  STAFF_TOOL_TABS,
+} from "./_parts/admin-tool-switch";
 import {
   LEGACY_TOOL,
   type AppealRow,
@@ -38,14 +23,19 @@ import {
   type StatsData,
 } from "./_parts/admin-shared";
 
-/** 由 staff-tools 承载的工具页签（tab_key 与 ToolTab 同名） */
-const STAFF_TOOL_TABS: ToolTab[] = [
-  "faq", "rules", "cats", "bans", "mail", "promo", "staffmess", "adduser",
-  "incrementbulk", "warned", "ipcheck", "maxlogin", "resetpass", "deldisabled",
-  "emailbans", "testip", "stats", "cleanup", "ads", "notconnect", "uploaders",
-  "agents", "polls", "dbstats", "syslog", "locations", "hrpardon", "plugins",
-  "agentrules", "forums", "reports", "menu", "roles", "perm", "seedstats",
-];
+const MSG_CLS =
+  "mb-3 rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink";
+
+/** ApiError → dict.errors[code] ?? message，否则 actionFailed */
+function errText(
+  e: unknown,
+  a: Record<string, string>,
+  dict: ReturnType<typeof useI18n>["dict"],
+): string {
+  return e instanceof ApiError
+    ? (dict.errors[e.code] ?? e.message)
+    : a.actionFailed;
+}
 
 /**
  * 管理后台（staffpanel + 管理系统）。
@@ -90,8 +80,14 @@ export default function AdminPage() {
         api.get<Overview>("/api/v1/admin/overview"),
         api.get<PendingTorrent[]>("/api/v1/admin/reviews"),
         api.get<AuditRow[]>("/api/v1/admin/audit"),
-        api.get<{ entries: PanelEntry[]; role: string; class_id?: number }>("/api/v1/admin/staffpanel"),
-        api.get<AppealRow[]>("/api/v1/admin/appeals").catch(() => [] as AppealRow[]),
+        api.get<{
+          entries: PanelEntry[];
+          role: string;
+          class_id?: number;
+        }>("/api/v1/admin/staffpanel"),
+        api
+          .get<AppealRow[]>("/api/v1/admin/appeals")
+          .catch(() => [] as AppealRow[]),
         api.get<StatsData>("/api/v1/admin/stats").catch(() => null),
       ]);
       setOv(ovr);
@@ -103,7 +99,11 @@ export default function AdminPage() {
       setAppeals(aps);
       setStats(sts);
     } catch (e) {
-      setMsg(e instanceof ApiError && e.code === 2003 ? a.needAdmin : dict.common.loadFailed);
+      setMsg(
+        e instanceof ApiError && e.code === 2003
+          ? a.needAdmin
+          : dict.common.loadFailed,
+      );
     }
   }, [a, dict]);
 
@@ -120,7 +120,11 @@ export default function AdminPage() {
         return;
       }
       setTool(t);
-      window.history.replaceState(null, "", `/admin?tool=${encodeURIComponent(t)}`);
+      window.history.replaceState(
+        null,
+        "",
+        `/admin?tool=${encodeURIComponent(t)}`,
+      );
     },
     [entries],
   );
@@ -129,11 +133,19 @@ export default function AdminPage() {
     const reason = approve ? "" : (prompt(a.rejectReason) ?? "");
     if (!approve && !reason) return;
     try {
-      await api.post("/api/v1/admin/reviews/decide", { torrent_id: torrentId, approve, reason });
-      setMsg(approve ? fmt(a.approved, { id: torrentId }) : fmt(a.rejected, { id: torrentId }));
+      await api.post("/api/v1/admin/reviews/decide", {
+        torrent_id: torrentId,
+        approve,
+        reason,
+      });
+      setMsg(
+        approve
+          ? fmt(a.approved, { id: torrentId })
+          : fmt(a.rejected, { id: torrentId }),
+      );
       load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
+      setMsg(errText(e, a, dict));
     }
   }
 
@@ -146,11 +158,15 @@ export default function AdminPage() {
       ) ?? "";
     if (!accept && !note.trim()) return;
     try {
-      await api.post("/api/v1/admin/appeals/handle", { appeal_id: id, accept, note });
+      await api.post("/api/v1/admin/appeals/handle", {
+        appeal_id: id,
+        accept,
+        note,
+      });
       setMsg(fmt(a.appealHandled, { id }));
       load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
+      setMsg(errText(e, a, dict));
     }
   }
 
@@ -187,65 +203,14 @@ export default function AdminPage() {
       case "audit":
         return <AuditListPanel audit={audit} />;
 
-      case "users":
-        return <AdminUsers classes={dict.admin.classList} />;
-      case "torrents":
-        return <AdminTorrents />;
-      case "content":
-        return (
-          <section className="nexus-detail">
-            <h2 className="mb-3 text-base font-bold text-ink">{a.sectionContent ?? "内容"}</h2>
-            <ContentManage />
-          </section>
-        );
-      case "freeleech":
-        return <FreeleechPanel />;
-      case "clearcache":
-        return <ClearCachePanel />;
-      case "p2tools":
-        return <AdminP2Tools />;
-      // 第八轮 P3 套件（好学站后台逐页深挖落地）
-      case "hr":
-        return <AdminHr />;
-      case "invites":
-        return <AdminInvites />;
-      case "userlogs":
-        return <AdminUserLogs />;
-      case "attendance":
-        return <AdminAttendance />;
-      case "tagdict":
-        return <AdminTagDict />;
-      case "sections":
-        return <AdminSections />;
-      case "medals":
-        return <AdminMedals />;
-      case "props":
-        return <AdminProps />;
-      case "exams":
-        return <AdminExams />;
-      case "jixiao":
-        return <AdminJixiao />;
-      case "tasks":
-        return <AdminTasks />;
-      case "trackers":
-        return <AdminTrackers />;
-      // 运维三件套（0078）：版本信息 / 备份面板 / 任务手动触发
-      case "ops":
-        return <AdminOpsPanel />;
-      // 首页排版（0089）：板块顺序/宽度/显隐可视化编辑
-      case "homelayout":
-        return (
-          <section className="baozi-panel p-4">
-            <h2 className="mb-3 font-display text-lg">{dict.homeLayout.title}</h2>
-            <HomeLayoutEditor />
-          </section>
-        );
-
-      default:
+      default: {
+        const simple = renderSimpleTool(tool, a, dict);
+        if (simple !== undefined) return simple;
         if (STAFF_TOOL_TABS.includes(tool as ToolTab)) {
           return <StaffTools initialTab={tool as ToolTab} />;
         }
         return <p className="py-8 text-center text-sub">{a.panelEmpty}</p>;
+      }
     }
   }
 
@@ -258,7 +223,9 @@ export default function AdminPage() {
       role={role}
       classId={classId}
     >
-      {msg && <p className="mb-3 rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
+      {msg && (
+        <p className={MSG_CLS}>{msg}</p>
+      )}
       {renderTool()}
     </AdminShell>
   );

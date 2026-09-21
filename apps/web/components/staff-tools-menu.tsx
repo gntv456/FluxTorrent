@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_MD_SKY, INPUT_CLOUD } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -112,7 +114,7 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">位置</span>
           <select value={mLoc} onChange={(e) => setMLoc(e.target.value)}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky">
+            className={INPUT_CLOUD}>
             <option value="topbar">顶栏</option>
             <option value="sidebar">侧栏</option>
             <option value="footer">页脚</option>
@@ -121,7 +123,7 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">名称</span>
           <input value={mLabel} onChange={(e) => setMLabel(e.target.value)} maxLength={50}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            className={INPUT_CLOUD} />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">链接</span>
@@ -131,7 +133,7 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">父项</span>
           <select value={mParent} onChange={(e) => setMParent(Number(e.target.value))}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky">
+            className={INPUT_CLOUD}>
             <option value={0}>（一级）</option>
             {(menuData?.items ?? []).filter((x) => x.location === mLoc && x.parent_id === 0 && x.id !== mEditId).map((x) => (
               <option key={x.id} value={x.id}>{x.label}</option>
@@ -141,7 +143,7 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">打开方式</span>
           <select value={mTarget} onChange={(e) => setMTarget(e.target.value)}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky">
+            className={INPUT_CLOUD}>
             <option value="_self">当前页</option>
             <option value="_blank">新窗口</option>
           </select>
@@ -162,7 +164,7 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
         </label>
         <button
           disabled={busy}
-          className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+          className={BTN_MD_SKY}
           onClick={() => guard(async () => {
             const payload = {
               location: mLoc, label: mLabel.trim(), url: mUrl.trim(),

@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_MD_FLAT } from "@/lib/ui-classes";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
@@ -64,7 +66,7 @@ export function PollWidget({
   }
 
   return (
-    <div className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4">
+    <div className={PANEL_MD_FLAT}>
       <div className="mb-2 flex items-center justify-between">
         <span className="font-bold text-ink">
           📊 {dict.forums.pollTitle}

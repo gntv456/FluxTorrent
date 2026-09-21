@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { api } from "@/lib/api-client";
 
 import type { RoleDef } from "./staff-tools-roles";
@@ -33,7 +35,7 @@ const ROLE_INPUT =
   "bg-cloud px-2 text-sm";
 // 次级描边按钮（新增/编辑表单的取消 / 新增职务虚线按钮共用）
 const BTN_OUTLINE_S =
-  "min-h-[36px] rounded-full border border-line px-4 text-xs font-bold";
+  BTN_SM_BOLD;
 
 export function RoleDictSection({
   roleDefs,

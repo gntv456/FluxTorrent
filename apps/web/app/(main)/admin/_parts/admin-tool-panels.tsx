@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_LG } from "@/lib/ui-classes";
+
 /**
  * 管理后台工具页（从 app/(main)/admin/page.tsx 按域拆出）：
  * CheatersPanel 作弊探测、AuditListPanel 审计日志。
@@ -86,7 +88,7 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
   const { dict, locale } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
   return (
-    <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+    <section className={PANEL_LG}>
       <ul className="flex flex-col divide-y divide-line text-sm">
         {audit.map((row) => (
           <li key={row.id} className="flex items-center justify-between py-2">

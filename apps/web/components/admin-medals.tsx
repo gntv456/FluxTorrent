@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD, BTN_XS_GHOST } from "@/lib/ui-classes";
+
 import { useI18n } from "@/i18n/client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -16,37 +18,28 @@ import {
   MedalImagePreview,
   RarityDict,
 } from "@/components/admin-medals-rarity";
+import { MedalHeldPanel } from "./admin-medals-held";
+import type { MedalRow, UserMedalRow } from "./admin-medals-shared";
+import { GET_TYPE } from "./admin-medals-shared";
 
 /** 第八轮 P2-7：勋章管理（好学站 system/medals 简化口径）
  *  字典 CRUD + 全站持有浏览 + 回收（授予入口在用户详情页）。
- *  稀有度词表编辑与图片预览拆出 admin-medals-rarity.tsx（300 门禁）。 */
+ *  稀有度词表编辑与图片预览拆出 admin-medals-rarity.tsx；
+ *  持有浏览拆至 ./admin-medals-held.tsx；类型拆至
+ *  ./admin-medals-shared.ts（300 门禁）。 */
 
-interface MedalRow {
-  id: number;
-  name: string;
-  description: string | null;
-  price: number | null;
-  rarity: string | null;
-  limited: boolean;
-  get_type: number;
-  duration_days: number | null;
-  bonus_addition_factor: number | null;
-  category_id: number;
-  asset_ref: string | null;
-  held_count: number;
-}
-
-interface UserMedalRow {
-  user_id: number;
-  username: string;
-  medal_id: number;
-  medal_name: string;
-  source: string;
-  wearing: boolean;
-  granted_at: string | null;
-}
-
-const GET_TYPE: Record<number, string> = { 1: "兑换", 2: "授予", 3: "合成" };
+/** 勋章图片行容器 */
+const ASSET_BAR_CLS =
+  "mb-3 flex flex-wrap items-center gap-3 border-b border-line pb-3";
+/** 清除图片小按钮 */
+const CLEAR_BTN_CLS =
+  BTN_XS_GHOST;
+/** 圆角描边小按钮（取消） */
+const PLAIN_BTN_CLS =
+  BTN_SM_BOLD;
+/** 「限定」徽标 */
+const LIMITED_CHIP_CLS =
+  "ml-1 rounded-full bg-coral/20 px-1.5 text-[10px] text-danger";
 
 export function AdminMedals() {
   const { currency } = useI18n();
@@ -123,7 +116,8 @@ export function AdminMedals() {
   }
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
+    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+    "px-2 text-sm outline-none focus:border-sky";
 
   return (
     <div className="flex flex-col gap-3">
@@ -138,7 +132,7 @@ export function AdminMedals() {
           {edit.id === null ? "新建勋章" : `编辑勋章 #${edit.id}`}
         </h2>
         {/* 勋章图片（medals.asset_ref）：此前后端能存、表单没入口 → 全站只能画 🏅 */}
-        <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-line pb-3">
+        <div className={ASSET_BAR_CLS}>
           <label className="flex flex-col gap-1 text-xs">
             勋章图片 URL
             <input
@@ -157,7 +151,7 @@ export function AdminMedals() {
           {edit.f.asset_ref ? (
             <button
               type="button"
-              className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold"
+              className={CLEAR_BTN_CLS}
               onClick={() =>
                 setEdit({ ...edit, f: { ...edit.f, asset_ref: null } })
               }
@@ -339,10 +333,7 @@ export function AdminMedals() {
             保存
           </button>
           {edit.id !== null && (
-            <button
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
-              onClick={resetForm}
-            >
+            <button className={PLAIN_BTN_CLS} onClick={resetForm}>
               取消
             </button>
           )}
@@ -373,11 +364,7 @@ export function AdminMedals() {
               </td>
               <td className="font-bold">
                 {m.name}
-                {m.limited && (
-                  <span className="ml-1 rounded-full bg-coral/20 px-1.5 text-[10px] text-danger">
-                    限定
-                  </span>
-                )}
+                {m.limited && <span className={LIMITED_CHIP_CLS}>限定</span>}
               </td>
               <td>{GET_TYPE[m.get_type] ?? m.get_type}</td>
               <td>
@@ -431,72 +418,15 @@ export function AdminMedals() {
 
       <RarityDict rows={rarities} onChanged={load} flash={flash} />
 
-      <section className="baozi-panel p-4">
-        <div className="mb-2 flex items-end gap-2">
-          <h3 className="text-sm font-bold">持有浏览 / 回收</h3>
-          <input
-            value={heldUid}
-            onChange={(e) => setHeldUid(e.target.value)}
-            placeholder="按用户 UID 过滤"
-            className="min-h-[32px] w-40 rounded-full border border-line px-3 text-xs"
-          />
-        </div>
-        <table className="nexus-table text-xs">
-          <thead>
-            <tr>
-              <td className="colhead">用户</td>
-              <td className="colhead">勋章</td>
-              <td className="colhead">来源</td>
-              <td className="colhead">佩戴</td>
-              <td className="colhead text-right">操作</td>
-            </tr>
-          </thead>
-          <tbody>
-            {held.map((h) => (
-              <tr key={`${h.user_id}-${h.medal_id}`}>
-                <td>
-                  <a
-                    href={`/admin/users/${h.user_id}`}
-                    className="font-bold text-link"
-                  >
-                    {h.username}
-                  </a>
-                </td>
-                <td>{h.medal_name}</td>
-                <td>{h.source}</td>
-                <td>{h.wearing ? "佩戴中" : "—"}</td>
-                <td className="text-right">
-                  <button
-                    className="cmgmt-act cmgmt-act--danger"
-                    disabled={busy}
-                    onClick={async () => {
-                      try {
-                        await api.post("/api/v1/admin/user-medals/delete", {
-                          user_id: h.user_id,
-                          medal_id: h.medal_id,
-                        });
-                        flash("已回收");
-                        await load();
-                      } catch (e) {
-                        flash(e instanceof ApiError ? e.message : "回收失败");
-                      }
-                    }}
-                  >
-                    回收
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {held.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-4 text-center text-sub">
-                  暂无持有记录
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
+      {/* 持有浏览/回收（拆至 ./admin-medals-held.tsx） */}
+      <MedalHeldPanel
+        held={held}
+        heldUid={heldUid}
+        setHeldUid={setHeldUid}
+        busy={busy}
+        flash={flash}
+        load={load}
+      />
     </div>
   );
 }

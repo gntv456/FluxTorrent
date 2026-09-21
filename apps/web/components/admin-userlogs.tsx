@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_GHOST, CELL_CARD_SUB, INPUT_W32 } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
@@ -81,7 +83,7 @@ export function AdminUserLogs() {
                 setSub(k);
                 setPage(1);
               }}
-              className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"}`}
+              className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : CELL_CARD_SUB}`}
             >
               {l}
             </button>
@@ -96,7 +98,7 @@ export function AdminUserLogs() {
               setPage(1);
             }}
             placeholder="留空看全部"
-            className="min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line px-2"
+            className={INPUT_W32}
           />
         </label>
       </div>
@@ -188,7 +190,7 @@ export function AdminUserLogs() {
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+            className={BTN_SM_GHOST}
           >
             上一页
           </button>

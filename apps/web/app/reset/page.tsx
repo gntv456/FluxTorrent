@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_LG_SKY, INPUT_LG } from "@/lib/ui-classes";
+
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -57,7 +59,7 @@ function ResetForm() {
   }
 
   const inputCls =
-    "min-h-[44px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 outline-none focus:ring-2 focus:ring-sky/40";
+    INPUT_LG;
 
   if (!token) {
     return (
@@ -120,7 +122,7 @@ function ResetForm() {
       <button
         type="submit"
         disabled={busy}
-        className="min-h-[44px] rounded-full bg-sky font-bold text-white active:scale-[0.97] disabled:opacity-50"
+        className={BTN_LG_SKY}
       >
         {busy ? dict.reset.busy : dict.reset.submit}
       </button>

@@ -1,71 +1,21 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { ExamUsersPanel } from "@/components/admin-tasks-exams";
+import { TasksTable } from "./admin-tasks-table";
+import type { TaskRow } from "./admin-tasks-shared";
+import { EMPTY, KINDS, PERIODS } from "./admin-tasks-shared";
 
 /** 任务定义 + 考核配置（tasks 表 CRUD，0093 起 kind/auto_assign/period 支撑考核引擎）。
- *  考核记录浏览拆出 admin-tasks-exams.tsx（300 门禁）。 */
+ *  考核记录浏览拆出 admin-tasks-exams.tsx；列表拆至 ./admin-tasks-table.tsx；
+ *  类型与常量拆至 ./admin-tasks-shared.ts（300 门禁）。 */
 
-interface TaskRow {
-  id: number;
-  name: string;
-  metric: Record<string, unknown>;
-  starts_at: string;
-  ends_at: string;
-  target_class: number;
-  reward: number;
-  penalty: number;
-  claim_limit: number | null;
-  kind: string;
-  auto_assign: boolean;
-  period: string;
-  /** 以下为 0093 考核引擎字段（本次补齐为可配） */
-  duration_days: number;
-  subtitle: string | null;
-  tier: string | null;
-  fee: number;
-  quota_total: number;
-  sort: number;
-}
-
-const EMPTY = {
-  name: "",
-  metric: "{}",
-  starts_at: "",
-  ends_at: "",
-  target_class: "0",
-  reward: "0",
-  penalty: "0",
-  claim_limit: "",
-  kind: "task",
-  auto_assign: false,
-  period: "once",
-  duration_days: "30",
-  subtitle: "",
-  tier: "",
-  fee: "0",
-  quota_total: "200",
-  sort: "0",
-};
-
-const KINDS = [
-  { v: "task", label: "普通任务" },
-  { v: "onboard", label: "新人转正考核" },
-  { v: "periodic", label: "周期考核" },
-];
-const PERIODS = [
-  { v: "once", label: "一次性" },
-  { v: "monthly", label: "每月" },
-  { v: "quarterly", label: "每季" },
-];
-
-function toLocalInput(iso: string): string {
-  const d = new Date(iso);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-}
+/** 圆角描边小按钮（取消编辑） */
+const PLAIN_BTN_CLS =
+  BTN_SM_BOLD;
 
 export function AdminTasks() {
   const [rows, setRows] = useState<TaskRow[]>([]);
@@ -140,7 +90,8 @@ export function AdminTasks() {
   }
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
+    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+    "px-2 text-sm outline-none focus:border-sky";
   const isExam = edit.f.kind !== "task";
 
   return (
@@ -393,7 +344,7 @@ export function AdminTasks() {
           </button>
           {edit.id !== null && (
             <button
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              className={PLAIN_BTN_CLS}
               onClick={() => setEdit({ id: null, f: { ...EMPTY } })}
             >
               取消
@@ -401,101 +352,14 @@ export function AdminTasks() {
           )}
         </div>
       </section>
-      <table className="nexus-table text-xs">
-        <thead>
-          <tr>
-            <td className="colhead">ID</td>
-            <td className="colhead">任务</td>
-            <td className="colhead">类型</td>
-            <td className="colhead">起止</td>
-            <td className="colhead">目标等级</td>
-            <td className="colhead">奖励/罚则</td>
-            <td className="colhead">限领</td>
-            <td className="colhead">期限</td>
-            <td className="colhead">自动派发</td>
-            <td className="colhead text-right">操作</td>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((t) => (
-            <tr key={t.id}>
-              <td className="num">{t.id}</td>
-              <td className="font-bold">{t.name}</td>
-              <td>
-                {KINDS.find((k) => k.v === t.kind)?.label ?? t.kind}
-                {t.kind !== "task" &&
-                  ` · ${PERIODS.find((p) => p.v === t.period)?.label ?? t.period}`}
-              </td>
-              <td className="text-sub">
-                {new Date(t.starts_at).toLocaleDateString()} ~{" "}
-                {new Date(t.ends_at).toLocaleDateString()}
-              </td>
-              <td className="num">{t.target_class}</td>
-              <td className="num">
-                {t.reward} / {t.penalty}
-              </td>
-              <td className="num">{t.claim_limit ?? "—"}</td>
-              <td className="num">
-                {t.kind === "task" ? "—" : `${t.duration_days} 天`}
-              </td>
-              <td>{t.kind === "task" ? "—" : t.auto_assign ? "是" : "否"}</td>
-              <td className="text-right">
-                <button
-                  className="cmgmt-act"
-                  onClick={() =>
-                    setEdit({
-                      id: t.id,
-                      f: {
-                        name: t.name,
-                        metric: JSON.stringify(t.metric),
-                        starts_at: toLocalInput(t.starts_at),
-                        ends_at: toLocalInput(t.ends_at),
-                        target_class: String(t.target_class),
-                        reward: String(t.reward),
-                        penalty: String(t.penalty),
-                        claim_limit: t.claim_limit ? String(t.claim_limit) : "",
-                        kind: t.kind ?? "task",
-                        auto_assign: !!t.auto_assign,
-                        period: t.period ?? "once",
-                        duration_days: String(t.duration_days ?? 30),
-                        subtitle: t.subtitle ?? "",
-                        tier: t.tier ?? "",
-                        fee: String(t.fee ?? 0),
-                        quota_total: String(t.quota_total ?? 200),
-                        sort: String(t.sort ?? 0),
-                      },
-                    })
-                  }
-                >
-                  编辑
-                </button>
-                <button
-                  className="cmgmt-act cmgmt-act--danger"
-                  disabled={busy}
-                  onClick={async () => {
-                    try {
-                      await api.del(`/api/v1/admin/tasks/${t.id}`);
-                      flash("已删除");
-                      await load();
-                    } catch (e) {
-                      flash(e instanceof ApiError ? e.message : "删除失败");
-                    }
-                  }}
-                >
-                  删除
-                </button>
-              </td>
-            </tr>
-          ))}
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={10} className="py-6 text-center text-sub">
-                暂无任务
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      {/* 任务定义表（拆至 ./admin-tasks-table.tsx） */}
+      <TasksTable
+        rows={rows}
+        busy={busy}
+        flash={flash}
+        load={load}
+        setEdit={setEdit}
+      />
 
       <ExamUsersPanel flash={flash} />
     </div>

@@ -2,66 +2,23 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { SectionCatsPanel, SectionDictPanel } from "./admin-sections-dict";
+import type {
+  CategoryRow,
+  DictRow,
+  ModeRow,
+  SectionKindMeta,
+} from "./admin-sections-shared";
+import {
+  FALLBACK_KINDS,
+  FIELD_INPUT_CLS,
+  FLAGS,
+} from "./admin-sections-shared";
 
 /** 第八轮 P3-12：维度管理（好学站 Section 组口径）
- *  分类模式（维度开关 + 归属分类 + 自动过审）+ 七维字典 CRUD */
-
-interface ModeRow {
-  id: number;
-  name: string;
-  show_source: boolean;
-  show_medium: boolean;
-  show_codec: boolean;
-  show_audio_codec: boolean;
-  show_standard: boolean;
-  show_processing: boolean;
-  show_team: boolean;
-  categories: number;
-}
-
-interface DictRow {
-  id: number;
-  kind: string;
-  name: string;
-  sort: number;
-  mode_id: number | null;
-}
-
-interface CategoryRow {
-  id: number;
-  name: string;
-  torrents: number;
-  mode_id: number | null;
-  auto_approve?: boolean;
-}
-
-interface SectionKindMeta {
-  kind: string;
-  label: string;
-  sort: number;
-}
-
-const FALLBACK_KINDS: SectionKindMeta[] = [
-  { kind: "media", label: "媒介", sort: 10 },
-  { kind: "grades", label: "学段", sort: 20 },
-  { kind: "editions", label: "版本", sort: 30 },
-  { kind: "codec", label: "编码", sort: 40 },
-  { kind: "audio_codec", label: "音频编码", sort: 50 },
-  { kind: "standard", label: "规格", sort: 60 },
-  { kind: "team", label: "制作组", sort: 70 },
-  { kind: "source", label: "来源", sort: 80 },
-  { kind: "processing", label: "处理工艺", sort: 90 },
-];
-
-const FLAGS: [keyof ModeRow, string][] = [
-  ["show_source", "Source"],
-  ["show_medium", "Media"],
-  ["show_codec", "Codec"],
-  ["show_audio_codec", "Audio"],
-  ["show_standard", "Standard"],
-  ["show_processing", "Processing"],
-  ["show_team", "Team"],
-];
+ *  分类模式（维度开关 + 归属分类 + 自动过审）+ 七维字典 CRUD。
+ *  字典/分类归属拆至 ./admin-sections-dict.tsx；
+ *  类型与常量拆至 ./admin-sections-shared.ts。 */
 
 export function AdminSections() {
   const [modes, setModes] = useState<ModeRow[]>([]);
@@ -140,7 +97,7 @@ export function AdminSections() {
             value={newMode}
             onChange={(e) => setNewMode(e.target.value)}
             placeholder="新模式名称"
-            className="min-h-[40px] w-40 rounded-[var(--r-sm)] border border-line px-2 text-sm"
+            className={`w-40 ${FIELD_INPUT_CLS}`}
           />
           <button
             disabled={busy || !newMode.trim()}
@@ -232,13 +189,13 @@ export function AdminSections() {
             value={newKind}
             onChange={(e) => setNewKind(e.target.value)}
             placeholder="维度标识（如 resolution）"
-            className="min-h-[40px] w-48 rounded-[var(--r-sm)] border border-line px-2 text-sm"
+            className={`w-48 ${FIELD_INPUT_CLS}`}
           />
           <input
             value={newKindLabel}
             onChange={(e) => setNewKindLabel(e.target.value)}
             placeholder="显示名称（如 分辨率）"
-            className="min-h-[40px] w-36 rounded-[var(--r-sm)] border border-line px-2 text-sm"
+            className={`w-36 ${FIELD_INPUT_CLS}`}
           />
           <button
             disabled={busy || !newKind.trim() || !newKindLabel.trim()}
@@ -328,184 +285,22 @@ export function AdminSections() {
         </table>
       </section>
 
-      {/* 维度字典 */}
-      <section className="baozi-panel p-4">
-        <h2 className="mb-2 text-base font-bold">维度字典</h2>
-        <div className="mb-2 flex flex-wrap items-end gap-2">
-          <label className="flex flex-col gap-1 text-xs">
-            维度
-            <select
-              value={kind}
-              onChange={(e) => setKind(e.target.value)}
-              className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
-            >
-              {kinds.map((k) => (
-                <option key={k.kind} value={k.kind}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <input
-            value={dName}
-            onChange={(e) => setDName(e.target.value)}
-            placeholder="名称"
-            className="min-h-[40px] w-36 rounded-[var(--r-sm)] border border-line px-2 text-sm"
-          />
-          <input
-            type="number"
-            value={dSort}
-            onChange={(e) => setDSort(Number(e.target.value))}
-            placeholder="排序"
-            className="min-h-[40px] w-20 rounded-[var(--r-sm)] border border-line px-2 text-sm"
-          />
-          <button
-            disabled={busy || !dName.trim()}
-            className="baozi-button"
-            onClick={() =>
-              act(async () => {
-                await api.post("/api/v1/admin/section-dict", {
-                  kind,
-                  name: dName,
-                  sort: dSort,
-                });
-                setDName("");
-              }, "已添加")
-            }
-          >
-            添加
-          </button>
-        </div>
-        <table className="nexus-table text-xs">
-          <thead>
-            <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">名称</td>
-              <td className="colhead">排序</td>
-              <td className="colhead text-right">操作</td>
-            </tr>
-          </thead>
-          <tbody>
-            {dicts.map((d) => (
-              <tr key={d.id}>
-                <td className="num">{d.id}</td>
-                <td>{d.name}</td>
-                <td className="num">{d.sort}</td>
-                <td className="text-right">
-                  <button
-                    className="cmgmt-act"
-                    disabled={busy}
-                    onClick={() => {
-                      const nn = window.prompt("新名称", d.name);
-                      if (nn && nn !== d.name)
-                        act(
-                          () =>
-                            api.put(`/api/v1/admin/section-dict/${d.id}`, {
-                              kind,
-                              name: nn,
-                              sort: d.sort,
-                            }),
-                          "已保存",
-                        );
-                    }}
-                  >
-                    重命名
-                  </button>
-                  <button
-                    className="cmgmt-act cmgmt-act--danger"
-                    disabled={busy}
-                    onClick={() =>
-                      act(
-                        () =>
-                          api.del(
-                            `/api/v1/admin/section-dict/${d.id}?kind=${kind}`,
-                          ),
-                        "已删除",
-                      )
-                    }
-                  >
-                    删除
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {dicts.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-6 text-center text-sub">
-                  暂无字典项
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
+      {/* 维度字典（拆至 ./admin-sections-dict.tsx） */}
+      <SectionDictPanel
+        kind={kind}
+        setKind={setKind}
+        kinds={kinds}
+        dicts={dicts}
+        dName={dName}
+        setDName={setDName}
+        dSort={dSort}
+        setDSort={setDSort}
+        busy={busy}
+        act={act}
+      />
 
-      {/* 分类归属与自动过审 */}
-      <section className="baozi-panel p-4">
-        <h2 className="mb-2 text-base font-bold">分类归属模式 / 自动过审</h2>
-        <p className="mb-3 text-xs text-sub">
-          「自动过审」打开后，发布到该分类的种子直接过审（Auto Approval Settings
-          口径）。
-        </p>
-        <table className="nexus-table text-xs">
-          <thead>
-            <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">分类</td>
-              <td className="colhead">种子数</td>
-              <td className="colhead">归属模式</td>
-              <td className="colhead">自动过审</td>
-            </tr>
-          </thead>
-          <tbody>
-            {cats.map((c) => (
-              <tr key={c.id}>
-                <td className="num">{c.id}</td>
-                <td className="font-bold">{c.name}</td>
-                <td className="num">{c.torrents}</td>
-                <td>
-                  <select
-                    value={c.mode_id ?? 1}
-                    disabled={busy}
-                    className="min-h-[32px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-1"
-                    onChange={(e) =>
-                      act(
-                        () =>
-                          api.put(`/api/v1/admin/categories/${c.id}/flags`, {
-                            mode_id: Number(e.target.value),
-                          }),
-                        "已保存",
-                      )
-                    }
-                  >
-                    {modes.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="text-center">
-                  <input
-                    type="checkbox"
-                    disabled={busy}
-                    checked={Boolean(c.auto_approve)}
-                    onChange={(e) =>
-                      act(
-                        () =>
-                          api.put(`/api/v1/admin/categories/${c.id}/flags`, {
-                            auto_approve: e.target.checked,
-                          }),
-                        e.target.checked ? "已开启自动过审" : "已关闭自动过审",
-                      )
-                    }
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      {/* 分类归属/自动过审（拆至 ./admin-sections-dict.tsx） */}
+      <SectionCatsPanel cats={cats} modes={modes} busy={busy} act={act} />
     </div>
   );
 }

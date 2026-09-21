@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 ;
 
 import { useCallback, useEffect, useState } from "react";
@@ -131,7 +133,7 @@ export default function DonatePage() {
               {t.btnTopup}
             </button>
             <button
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              className={BTN_SM_BOLD}
               onClick={() => setLedgerOpen((v) => !v)}
             >
               {t.btnLedger}

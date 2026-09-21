@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_GHOST } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -9,11 +11,13 @@ import {
   type AdminUserDetail,
 } from "@/components/admin-users-detail";
 import { UsersBatchBar, UsersTable } from "@/components/admin-users-list";
+import { UsersFilterBar } from "@/components/admin-users-filters";
+import { UsersPager } from "@/components/admin-users-pager";
 
 /** 第五轮：后台用户管理（好学站 /nexusphp user/users 口径）
  * 五维筛选（ID/等级/状态/启用/下载权限/挂起）+ 排序 + 分页 + 详情 + 数值调整 + 开关。
  * 用户详情面板拆出 admin-users-detail.tsx、列表与批量操作拆出
- * admin-users-list.tsx（300 门禁）。 */
+ * admin-users-list.tsx、筛选面板拆出 admin-users-filters.tsx（300 门禁）。 */
 interface AdminUserRow {
   id: number;
   username: string;
@@ -35,6 +39,9 @@ interface UsersPage {
   page: number;
   per_page: number;
 }
+
+// 分页按钮
+const PAGE_BTN = BTN_SM_GHOST;
 
 export function AdminUsers({ classes }: { classes: [number, string][] }) {
   const { dict, currency } = useI18n();
@@ -176,11 +183,11 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
       action === "status" && value > 0
         ? (window.prompt("批量操作理由（可选）") ?? undefined)
         : undefined;
-    if (
-      !window.confirm(
-        `确认对 ${ids.length} 个用户执行「${action === "status" ? ["恢复正常", "禁言", "封禁"][value] : `等级改为 ${value}`}」？`,
-      )
-    )
+    const actLabel =
+      action === "status"
+        ? ["恢复正常", "禁言", "封禁"][value]
+        : `等级改为 ${value}`;
+    if (!window.confirm(`确认对 ${ids.length} 个用户执行「${actLabel}」？`))
       return;
     setBusy(true);
     try {
@@ -188,9 +195,9 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         "/api/v1/admin/users/batch",
         { action, ids, value, reason },
       );
-      flash(
-        `已更新 ${r.updated} 个用户${r.skipped.length > 0 ? `，跳过（等级不足）${r.skipped.length} 个` : ""}`,
-      );
+      const skipNote =
+        r.skipped.length > 0 ? `，跳过（等级不足）${r.skipped.length} 个` : "";
+      flash(`已更新 ${r.updated} 个用户${skipNote}`);
       await load();
     } catch (e) {
       flash(e instanceof ApiError ? e.message : "操作失败");
@@ -224,101 +231,23 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
       )}
 
       {/* 筛选条件（好学站「筛选条件」面板口径） */}
-      <section className="baozi-panel grid grid-cols-2 gap-3 p-4 md:grid-cols-4">
-        <label className="flex flex-col gap-1 text-xs">
-          ID
-          <input
-            value={fId}
-            onChange={(e) => setFId(e.target.value)}
-            placeholder="UID"
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          等级
-          <select
-            value={fClass}
-            onChange={(e) => setFClass(e.target.value)}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
-          >
-            <option value="">所有</option>
-            {classes.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          状态
-          <select
-            value={fStatus}
-            onChange={(e) => setFStatus(e.target.value)}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
-          >
-            <option value="">所有</option>
-            <option value="1">正常</option>
-            <option value="2">禁言</option>
-            <option value="3">封禁</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          启用
-          <select
-            value={fEnabled}
-            onChange={(e) => setFEnabled(e.target.value)}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
-          >
-            <option value="">所有</option>
-            <option value="yes">是</option>
-            <option value="no">否</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          下载权限
-          <select
-            value={fDownload}
-            onChange={(e) => setFDownload(e.target.value)}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
-          >
-            <option value="">所有</option>
-            <option value="yes">有</option>
-            <option value="no">无</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          挂起
-          <select
-            value={fSuspended}
-            onChange={(e) => setFSuspended(e.target.value)}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
-          >
-            <option value="">所有</option>
-            <option value="yes">是</option>
-            <option value="no">否</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs md:col-span-2">
-          搜索
-          <div className="flex gap-2">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="用户名 / 邮箱"
-              className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2"
-            />
-            <button
-              onClick={() => {
-                setPage(1);
-                load();
-              }}
-              className="min-h-[40px] rounded-full bg-sky px-4 text-xs font-bold text-white"
-            >
-              搜索
-            </button>
-          </div>
-        </label>
-      </section>
+      <UsersFilterBar
+        classes={classes}
+        values={{ q, fId, fClass, fStatus, fEnabled, fDownload, fSuspended }}
+        set={(k, v) => {
+          if (k === "q") setQ(v);
+          else if (k === "fId") setFId(v);
+          else if (k === "fClass") setFClass(v);
+          else if (k === "fStatus") setFStatus(v);
+          else if (k === "fEnabled") setFEnabled(v);
+          else if (k === "fDownload") setFDownload(v);
+          else setFSuspended(v);
+        }}
+        onSearch={() => {
+          setPage(1);
+          load();
+        }}
+      />
 
       {/* 批量操作（第八轮 P2-9） */}
       <UsersBatchBar
@@ -334,28 +263,12 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
       <UsersTable data={data} sel={sel} setSel={setSel} sortBtn={sortBtn} />
 
       {/* 分页 */}
-      <div className="flex items-center justify-between text-sm text-sub">
-        <span>共 {data?.total ?? 0} 条</span>
-        <div className="flex items-center gap-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
-          >
-            上一页
-          </button>
-          <span>
-            {data?.page ?? 1} / {totalPages}
-          </span>
-          <button
-            disabled={page >= totalPages}
-            onClick={() => setPage(page + 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
-          >
-            下一页
-          </button>
-        </div>
-      </div>
+      <UsersPager
+        data={data}
+        page={page}
+        totalPages={totalPages}
+        setPage={setPage}
+      />
 
       {/* 用户详情（好学站用户详情页口径：字段全景 + 管理动作） */}
       {detail && (
@@ -363,7 +276,13 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
           detail={detail}
           onClose={() => setDetail(null)}
           onAdjust={() =>
-            setAdjust({ up: "0", down: "0", spark: "0", invite: "0", note: "" })
+            setAdjust({
+              up: "0",
+              down: "0",
+              spark: "0",
+              invite: "0",
+              note: "",
+            })
           }
           submitAdjust={submitAdjust}
           toggleFlag={toggleFlag}

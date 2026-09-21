@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD, INPUT_MD } from "@/lib/ui-classes";
+
 /** 用户详情面板（从 admin-users.tsx 按域拆出，300 门禁）：
  *  好学站用户详情页口径——字段全景 + 管理动作（数值调整 / 下载权限 / 挂起）。 */
 
@@ -185,7 +187,7 @@ export function UserDetailPanel({
                 type="number"
                 value={adjust.up}
                 onChange={(e) => setAdjust({ ...adjust, up: e.target.value })}
-                className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+                className={INPUT_MD}
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
@@ -194,7 +196,7 @@ export function UserDetailPanel({
                 type="number"
                 value={adjust.down}
                 onChange={(e) => setAdjust({ ...adjust, down: e.target.value })}
-                className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+                className={INPUT_MD}
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
@@ -205,7 +207,7 @@ export function UserDetailPanel({
                 onChange={(e) =>
                   setAdjust({ ...adjust, spark: e.target.value })
                 }
-                className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+                className={INPUT_MD}
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
@@ -216,7 +218,7 @@ export function UserDetailPanel({
                 onChange={(e) =>
                   setAdjust({ ...adjust, invite: e.target.value })
                 }
-                className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+                className={INPUT_MD}
               />
             </label>
           </div>
@@ -225,7 +227,7 @@ export function UserDetailPanel({
             <input
               value={adjust.note}
               onChange={(e) => setAdjust({ ...adjust, note: e.target.value })}
-              className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+              className={INPUT_MD}
             />
           </label>
           <div className="mt-2 flex gap-2">
@@ -237,7 +239,7 @@ export function UserDetailPanel({
               提交调整
             </button>
             <button
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              className={BTN_SM_BOLD}
               onClick={() => setAdjust(null)}
             >
               取消

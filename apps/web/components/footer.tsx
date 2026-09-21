@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PANEL_BAOZI } from "@/lib/ui-classes";
 import { getDict } from "@/i18n/server";
 import { getSiteStats, getMenuItems, type SiteStats } from "@/lib/data";
 import { fmt } from "@/i18n/config";
@@ -36,7 +37,7 @@ export async function Footer() {
       <div className="mx-auto w-full max-w-[1536px] px-4 pt-6 md:px-6">
         {/* 三栏信息卡片 */}
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-[var(--r-md)] border border-[var(--baozi-line-soft)] bg-[var(--baozi-paper)] p-4 shadow-[var(--shadow-card)]">
+          <div className={PANEL_BAOZI}>
             <h2 className="font-display text-sm font-bold text-ink">
               {dict.footer.aboutTitle}
             </h2>
@@ -48,7 +49,7 @@ export async function Footer() {
               {profile.site_desc || dict.footer.about}
             </p>
           </div>
-          <div className="rounded-[var(--r-md)] border border-[var(--baozi-line-soft)] bg-[var(--baozi-paper)] p-4 shadow-[var(--shadow-card)]">
+          <div className={PANEL_BAOZI}>
             <h2 className="font-display text-sm font-bold text-ink">
               {dict.footer.linksTitle}
             </h2>
@@ -74,7 +75,7 @@ export async function Footer() {
               ))}
             </ul>
           </div>
-          <div className="rounded-[var(--r-md)] border border-[var(--baozi-line-soft)] bg-[var(--baozi-paper)] p-4 shadow-[var(--shadow-card)]">
+          <div className={PANEL_BAOZI}>
             <h2 className="font-display text-sm font-bold text-ink">
               {dict.footer.helpTitle}
             </h2>

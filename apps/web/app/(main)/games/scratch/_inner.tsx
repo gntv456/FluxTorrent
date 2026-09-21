@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_LG, PANEL_LG_COL } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -222,7 +224,7 @@ export default function ScratchPage({
         </div>
       }
       controls={
-        <div className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+        <div className={PANEL_LG_COL}>
           <ChipSelect
             value={bet}
             onChange={setBet}
@@ -252,7 +254,7 @@ export default function ScratchPage({
         </div>
       }
       side={
-        <div className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+        <div className={PANEL_LG}>
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
           <HistoryStrip rounds={hist} />
           <p className="mt-3 text-[11px] text-sub">

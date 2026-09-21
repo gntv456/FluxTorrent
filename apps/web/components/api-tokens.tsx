@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_SKY } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
@@ -91,7 +93,7 @@ export function ApiTokens() {
           type="button"
           disabled={busy || !name.trim()}
           onClick={issue}
-          className="min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white disabled:opacity-50"
+          className={BTN_SM_SKY}
         >
           {t.issue}
         </button>

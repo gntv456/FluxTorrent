@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_GHOST, INPUT_GROW } from "@/lib/ui-classes";
+
 /**
  * 后台种子管理·登录记录子表（从 components/admin-torrents.tsx 按域拆出）：
  * LoginLogs 登录记录表格 + 一键封/解封 IP（testip 查询封禁态，
@@ -96,7 +98,7 @@ export function LoginLogs() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="按用户名 / IP 搜索"
-          className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2"
+          className={INPUT_GROW}
         />
       </div>
       <table className="nexus-table">
@@ -158,7 +160,7 @@ export function LoginLogs() {
         <button
           disabled={page <= 1}
           onClick={() => setPage(page - 1)}
-          className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          className={BTN_SM_GHOST}
         >
           上一页
         </button>
@@ -168,7 +170,7 @@ export function LoginLogs() {
         <button
           disabled={!data || data.rows.length < 20}
           onClick={() => setPage(page + 1)}
-          className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          className={BTN_SM_GHOST}
         >
           下一页
         </button>

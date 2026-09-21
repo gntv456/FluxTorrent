@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_MD_FLAT } from "@/lib/ui-classes";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
@@ -73,7 +75,7 @@ export function LotteryWidget({
   const open = lottery.status === "open";
 
   return (
-    <div className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4">
+    <div className={PANEL_MD_FLAT}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span className="font-bold text-ink">
           🎁 {dict.forums.lotTitle}

@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_GHOST } from "@/lib/ui-classes";
+
 /**
  * 后台种子管理·批量工作台（从 components/admin-torrents.tsx 按域拆出）：
  * TorrentList 筛选条件 + 批量工具条（置顶/优惠/推荐/标签/H&R/改分类/删除）
@@ -17,9 +19,20 @@ import {
   type DenyReason,
   type TagRow,
 } from "./admin-torrents-shared";
+import { BatchBar } from "./admin-torrents-batch-bar";
 
+/** 搜索按钮（实底天蓝） */
+const SKY_BTN_CLS =
+  "min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white";
+/** 分页描边小按钮 */
+const PAGE_BTN_CLS =
+  BTN_SM_GHOST;
+/** 种子名搜索输入框 */
+const Q_INPUT_CLS =
+  "min-h-[36px] w-40 rounded-[var(--r-sm)] border border-line px-2";
 const sel_input =
-  "min-h-[36px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2 text-xs";
+  "min-h-[36px] rounded-[var(--r-sm)] border border-line " +
+  "bg-[var(--surface-card)] px-2 text-xs";
 
 export function TorrentList({ flash }: { flash: (m: string) => void }) {
   const [q, setQ] = useState("");
@@ -128,8 +141,10 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
     let reason = "";
     if (!approve) {
       const reasons: DenyReason[] = await api.get("/api/v1/admin/deny-reasons");
+      const list = reasons.map((r) => `${r.id}. ${r.reason}`).join("\\n");
       const choice = prompt(
-        `拒绝原因（输入编号，可留空后手填理由）：\n${reasons.map((r) => `${r.id}. ${r.reason}`).join("\n")}\n或直接输入自定义理由文字`,
+        `拒绝原因（输入编号，可留空后手填理由）：\\n${list}\\n` +
+          "或直接输入自定义理由文字",
       );
       if (!choice) return;
       const asNum = Number(choice);
@@ -161,7 +176,7 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="种子名"
-            className="min-h-[36px] w-40 rounded-[var(--r-sm)] border border-line px-2"
+            className={Q_INPUT_CLS}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
@@ -240,188 +255,32 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
             setPage(1);
             load();
           }}
-          className="min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white"
+          className={SKY_BTN_CLS}
         >
           搜索
         </button>
       </section>
 
-      {/* 批量工具条 */}
-      <section className="baozi-panel flex flex-wrap items-end gap-3 p-3">
-        <p className="w-full text-xs font-bold text-sub">
-          批量操作（已选 {sel.size} 个，勾选下方列表后执行；单批最多 500）
-        </p>
-        <label className="flex flex-col gap-1 text-xs">
-          置顶截止
-          <input
-            type="datetime-local"
-            value={posUntil}
-            onChange={(e) => setPosUntil(e.target.value)}
-            className={sel_input}
-          />
-        </label>
-        <button
-          disabled={busy}
-          onClick={() =>
-            batch("sticky", {
-              pos_state: 1,
-              pos_state_until: posUntil
-                ? new Date(posUntil).toISOString()
-                : null,
-            })
-          }
-          className="min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white disabled:opacity-50"
-        >
-          置顶
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => batch("sticky", { pos_state: 0 })}
-          className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
-        >
-          取消置顶
-        </button>
-        <label className="flex flex-col gap-1 text-xs">
-          促销类型
-          <select
-            value={promoKind}
-            onChange={(e) => setPromoKind(e.target.value)}
-            className={sel_input}
-          >
-            {Object.entries(PROMO_LABEL).map(([k, l]) => (
-              <option key={k} value={k}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          时长(h)
-          <input
-            type="number"
-            value={promoHours}
-            onChange={(e) => setPromoHours(e.target.value)}
-            className={`${sel_input} w-16`}
-          />
-        </label>
-        <button
-          disabled={busy}
-          onClick={() =>
-            batch("promo", {
-              promo_kind: promoKind,
-              promo_until: new Date(
-                Date.now() + (Number(promoHours) || 48) * 3600e3,
-              ).toISOString(),
-            })
-          }
-          className="min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white disabled:opacity-50"
-        >
-          设促销
-        </button>
-        <label className="flex flex-col gap-1 text-xs">
-          推荐
-          <select
-            value={pickType}
-            onChange={(e) => setPickType(e.target.value)}
-            className={sel_input}
-          >
-            <option value="0">取消</option>
-            <option value="1">推荐</option>
-            <option value="2">经典</option>
-          </select>
-        </label>
-        <button
-          disabled={busy}
-          onClick={() => batch("recommend", { pick_type: Number(pickType) })}
-          className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
-        >
-          设推荐
-        </button>
-        <label className="flex flex-wrap items-center gap-1 pb-1 text-xs">
-          标签
-          {tags
-            .filter((t) => t.enabled)
-            .map((t) => (
-              <label key={t.id} className="flex items-center gap-0.5">
-                <input
-                  type="checkbox"
-                  checked={tagIds.has(t.id)}
-                  onChange={(e) =>
-                    setTagIds((prev) => {
-                      const n = new Set(prev);
-                      if (e.target.checked) n.add(t.id);
-                      else n.delete(t.id);
-                      return n;
-                    })
-                  }
-                />
-                {t.name}
-              </label>
-            ))}
-        </label>
-        <button
-          disabled={busy || tagIds.size === 0}
-          onClick={() => batch("set_tags", { tag_ids: [...tagIds] })}
-          className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
-        >
-          设置标签
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => batch("clear_tags", { tag_ids: [...tagIds] })}
-          className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
-        >
-          清除标签
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => batch("hr")}
-          className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
-        >
-          标记H&R
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => batch("unhr")}
-          className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
-        >
-          取消H&R
-        </button>
-        <label className="flex flex-col gap-1 text-xs">
-          改分类
-          <select
-            value={batchCat}
-            onChange={(e) => setBatchCat(e.target.value)}
-            className={sel_input}
-          >
-            <option value="">（不改）</option>
-            {cats.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          disabled={busy || !batchCat}
-          onClick={() =>
-            batch("change_category", { category_id: Number(batchCat) })
-          }
-          className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
-        >
-          改分类
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => {
-            if (window.confirm(`确认删除所选 ${sel.size} 个种子？（软删除）`))
-              batch("delete");
-          }}
-          className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white disabled:opacity-50"
-        >
-          删除已选
-        </button>
-      </section>
+      {/* 批量工具条（拆至 ./admin-torrents-batch-bar.tsx） */}
+      <BatchBar
+        busy={busy}
+        selCount={sel.size}
+        tags={tags}
+        cats={cats}
+        posUntil={posUntil}
+        setPosUntil={setPosUntil}
+        promoKind={promoKind}
+        setPromoKind={setPromoKind}
+        promoHours={promoHours}
+        setPromoHours={setPromoHours}
+        pickType={pickType}
+        setPickType={setPickType}
+        tagIds={tagIds}
+        setTagIds={setTagIds}
+        batchCat={batchCat}
+        setBatchCat={setBatchCat}
+        batch={batch}
+      />
 
       {/* 列表 */}
       <table className="nexus-table">
@@ -547,7 +406,7 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+            className={PAGE_BTN_CLS}
           >
             上一页
           </button>
@@ -555,7 +414,7 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
           <button
             disabled={!data || data.rows.length < 20}
             onClick={() => setPage(page + 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+            className={PAGE_BTN_CLS}
           >
             下一页
           </button>

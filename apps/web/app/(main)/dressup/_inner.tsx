@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_LG } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState, useRef } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -108,7 +110,7 @@ export default function DressupPage() {
         return (
           <section
             key={slot}
-            className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
+            className={PANEL_LG}
           >
             <h2 className="mb-3 font-display text-lg">
               {dict.dressup.slots[slot] ?? slot}

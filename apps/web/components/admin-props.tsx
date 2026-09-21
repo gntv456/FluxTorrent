@@ -1,122 +1,47 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { useI18n } from "@/i18n/client";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { FramesPanel } from "@/components/admin-props-frames";
+import { PropsPanel } from "./admin-props-user-bag";
+import type {
+  EditState,
+  FrameRow,
+  ShopItemRow,
+  UserPropRow,
+} from "./admin-props-shared";
+import {
+  cfgField,
+  KIND_FIELDS,
+  KIND_LABEL,
+  setCfgField,
+} from "./admin-props-shared";
 
 /** 第八轮 P2-8：道具管理（好学站 prop/props + prop/user-props 口径）
  *  道具 CRUD（上下架）+ 用户背包浏览与回收；头像框库拆出
- *  admin-props-frames.tsx（300 门禁）。 */
+ *  admin-props-frames.tsx；类型/常量拆至 ./admin-props-shared.ts；
+ *  用户背包拆至 ./admin-props-user-bag.tsx（300 门禁）。 */
 
-interface ShopItemRow {
-  id: number;
-  name: string;
-  kind: string;
-  price: number;
-  config: Record<string, unknown>;
-  active: boolean;
-}
-
-interface UserPropRow {
-  order_id: number;
-  user_id: number;
-  username: string;
-  item_id: number;
-  item_name: string;
-  kind: string;
-  price: number;
-  created_at: string;
-}
-
-interface FrameRow {
-  id: number;
-  name: string;
-  css: string;
-  image_url: string | null;
-  price: number;
-  sort: number;
-  worn_count: number;
-}
-
-const KIND_LABEL: Record<string, string> = {
-  upload_credit: "上传量",
-  invite: "邀请",
-  temp_invite: "临时邀请",
-  gift_spark: "CURRENCY",
-  custom_title: "头衔卡",
-  rename_card: "改名卡",
-  makeup_card: "补签卡",
-  rainbow_name: "彩虹名",
-  rainbow_id: "彩虹ID",
-  avatar_frame: "头像框",
-  animated_avatar: "动态头像",
-  vip: "VIP",
-  app_vip: "APP VIP",
-  ad_free: "去广告",
-  charity: "公益",
+const EMPTY_EDIT: EditState = {
+  id: null,
+  f: {
+    name: "",
+    kind: "custom_title",
+    price: "0",
+    config: "{}",
+    active: true,
+  },
 };
 
-/** 每种类型暴露的结构化 config 字段（自动拼装；装扮类的 slot/dressup 在 save 时自动补）。
- *  options: "frames" = 头像框库下拉；否则为 [值, 文案] 数组。wide = 占满一行。 */
-interface KindField {
-  key: string;
-  label: string;
-  num?: boolean;
-  wide?: boolean;
-  ph?: string;
-  options?: [string, string][] | "frames";
-}
-
-const KIND_FIELDS: Record<string, KindField[]> = {
-  upload_credit: [{ key: "gb", label: "上传量(GB)", num: true, ph: "10" }],
-  gift_spark: [{ key: "spark", label: `CURRENCY 数量`, num: true, ph: "5000" }],
-  charity: [
-    { key: "spark", label: "捐赠 CURRENCY 数（空=按价格全额）", num: true },
-  ],
-  custom_title: [
-    { key: "title", label: "头衔文字", wide: true, ph: "种田大户" },
-  ],
-  avatar_frame: [
-    { key: "avatar_url", label: "关联头像框（佩戴时生效）", options: "frames" },
-  ],
-  animated_avatar: [
-    {
-      key: "avatar_url",
-      label: "头像图片 URL（GIF 动图）",
-      wide: true,
-      ph: "https://…/cat.gif",
-    },
-  ],
-  vip: [{ key: "days", label: "时长(天)", num: true, ph: "30" }],
-  app_vip: [{ key: "days", label: "时长(天)", num: true, ph: "30" }],
-  ad_free: [{ key: "days", label: "时长(天)", num: true, ph: "15" }],
-  voucher_free: [{ key: "kind", label: "券种", options: [["free", "免费券"]] }],
-  voucher_neutral: [
-    { key: "kind", label: "券种", options: [["neutral", "中性券"]] },
-  ],
-  // invite / temp_invite / rename_card / makeup_card / rainbow_* 无额外字段
-};
-
-/** config JSON ↔ 结构化字段互转（容错：解析失败返回空对象，不炸表单） */
-function cfgField(configJson: string): Record<string, string> {
-  try {
-    const o = JSON.parse(configJson || "{}");
-    return Object.fromEntries(
-      Object.entries(o).map(([k, v]) => [k, String(v ?? "")]),
-    );
-  } catch {
-    return {};
-  }
-}
-
-function setCfgField(configJson: string, key: string, value: string): string {
-  const o = cfgField(configJson);
-  if (value === "") delete o[key];
-  else o[key] = value;
-  return JSON.stringify(o);
-}
+/** 圆角描边小按钮 */
+const PLAIN_BTN_CLS =
+  BTN_SM_BOLD;
+/** wide 字段占满一行的附加样式 */
+const WIDE_CLS = "flex-1";
 
 export function AdminProps() {
   const { currency } = useI18n();
@@ -124,25 +49,7 @@ export function AdminProps() {
   const [props, setProps] = useState<UserPropRow[]>([]);
   const [frames, setFrames] = useState<FrameRow[]>([]);
   const [uid, setUid] = useState("");
-  const [edit, setEdit] = useState<{
-    id: number | null;
-    f: {
-      name: string;
-      kind: string;
-      price: string;
-      config: string;
-      active: boolean;
-    };
-  }>({
-    id: null,
-    f: {
-      name: "",
-      kind: "custom_title",
-      price: "0",
-      config: "{}",
-      active: true,
-    },
-  });
+  const [edit, setEdit] = useState<EditState>(EMPTY_EDIT);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -209,16 +116,7 @@ export function AdminProps() {
       if (edit.id === null) await api.post("/api/v1/admin/shop-items", payload);
       else await api.put(`/api/v1/admin/shop-items/${edit.id}`, payload);
       flash("已保存");
-      setEdit({
-        id: null,
-        f: {
-          name: "",
-          kind: "custom_title",
-          price: "0",
-          config: "{}",
-          active: true,
-        },
-      });
+      setEdit(EMPTY_EDIT);
       await load();
     } catch (e) {
       flash(e instanceof ApiError ? e.message : "操作失败");
@@ -228,7 +126,8 @@ export function AdminProps() {
   }
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
+    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+    "px-2 text-sm outline-none focus:border-sky";
 
   return (
     <div className="flex flex-col gap-3">
@@ -285,7 +184,7 @@ export function AdminProps() {
           {KIND_FIELDS[edit.f.kind]?.map((fd) => (
             <label
               key={fd.key}
-              className={`flex flex-col gap-1 text-xs ${fd.wide ? "flex-1" : ""}`}
+              className={`flex flex-col gap-1 text-xs ${fd.wide ? WIDE_CLS : ""}`.trim()}
             >
               {fd.label.replace("CURRENCY", currency)}
               {fd.options ? (
@@ -337,7 +236,13 @@ export function AdminProps() {
                       },
                     })
                   }
-                  className={`${inp} ${fd.wide ? "min-w-[200px]" : "w-36"} ${fd.num ? "" : "font-mono"}`}
+                  className={[
+                    inp,
+                    fd.wide ? "min-w-[200px]" : "w-36",
+                    fd.num ? "" : "font-mono",
+                  ]
+                    .join(" ")
+                    .trim()}
                 />
               )}
             </label>
@@ -372,19 +277,8 @@ export function AdminProps() {
           </button>
           {edit.id !== null && (
             <button
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
-              onClick={() =>
-                setEdit({
-                  id: null,
-                  f: {
-                    name: "",
-                    kind: "custom_title",
-                    price: "0",
-                    config: "{}",
-                    active: true,
-                  },
-                })
-              }
+              className={PLAIN_BTN_CLS}
+              onClick={() => setEdit(EMPTY_EDIT)}
             >
               取消
             </button>
@@ -478,91 +372,15 @@ export function AdminProps() {
         </tbody>
       </table>
 
-      <section className="baozi-panel p-4">
-        <div className="mb-2 flex items-end gap-2">
-          <h3 className="text-sm font-bold">用户背包（购买 + 发放）</h3>
-          <input
-            value={uid}
-            onChange={(e) => setUid(e.target.value)}
-            placeholder="按用户 UID 过滤"
-            className="min-h-[32px] w-40 rounded-full border border-line px-3 text-xs"
-          />
-        </div>
-        <table className="nexus-table text-xs">
-          <thead>
-            <tr>
-              <td className="colhead">单号</td>
-              <td className="colhead">用户</td>
-              <td className="colhead">道具</td>
-              <td className="colhead">类型</td>
-              <td className="colhead">价格</td>
-              <td className="colhead">时间</td>
-              <td className="colhead text-right">操作</td>
-            </tr>
-          </thead>
-          <tbody>
-            {props.map((p) => (
-              <tr key={p.order_id}>
-                <td className="num">{p.order_id}</td>
-                <td>
-                  <a
-                    href={`/admin/users/${p.user_id}`}
-                    className="font-bold text-link"
-                  >
-                    {p.username}
-                  </a>
-                </td>
-                <td>{p.item_name}</td>
-                <td>
-                  {(KIND_LABEL[p.kind] ?? p.kind).replaceAll(
-                    "CURRENCY",
-                    currency,
-                  )}
-                </td>
-                <td className="num">{p.price}</td>
-                <td className="text-sub">
-                  {new Date(p.created_at).toLocaleString()}
-                </td>
-                <td className="text-right">
-                  {[
-                    "upload_credit",
-                    "gift_spark",
-                    "invite",
-                    "temp_invite",
-                  ].includes(p.kind) ? (
-                    <span className="text-sub">即时生效</span>
-                  ) : (
-                    <button
-                      className="cmgmt-act cmgmt-act--danger"
-                      disabled={busy}
-                      onClick={async () => {
-                        try {
-                          await api.del(
-                            `/api/v1/admin/user-props/${p.order_id}`,
-                          );
-                          flash("已回收");
-                          await load();
-                        } catch (e) {
-                          flash(e instanceof ApiError ? e.message : "回收失败");
-                        }
-                      }}
-                    >
-                      回收
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {props.length === 0 && (
-              <tr>
-                <td colSpan={7} className="py-4 text-center text-sub">
-                  暂无持有记录
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
+      <PropsPanel
+        props={props}
+        currency={currency}
+        uid={uid}
+        setUid={setUid}
+        busy={busy}
+        flash={flash}
+        load={load}
+      />
     </div>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
@@ -170,7 +172,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
               创建
             </button>
             <button
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              className={BTN_SM_BOLD}
               onClick={() => setCreating(null)}
             >
               取消
@@ -205,7 +207,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
               保存
             </button>
             <button
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              className={BTN_SM_BOLD}
               onClick={() => setEditing(null)}
             >
               取消

@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD, CELL_CARD_SUB } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -139,7 +141,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
             className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${
               tab === k
                 ? "bg-sky text-white"
-                : "border border-line bg-[var(--surface-card)] text-sub"
+                : CELL_CARD_SUB
             }`}
           >
             {label}
@@ -196,7 +198,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
                 </button>
                 {nEdit.id !== null && (
                   <button
-                    className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                    className={BTN_SM_BOLD}
                     onClick={() =>
                       setNEdit({ id: null, title: "", body: "", badge: "公告" })
                     }

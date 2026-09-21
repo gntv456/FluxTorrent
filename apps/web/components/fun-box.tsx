@@ -1,10 +1,18 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
-interface FunItem {
+import { FunHistory } from "./fun-box-history";
+import { FunPublishForm } from "./fun-box-publish";
+
+// 编辑表单的取消按钮
+const CANCEL_BTN = BTN_SM_BOLD;
+
+export interface FunItem {
   id: number;
   username: string | null;
   title: string;
@@ -18,7 +26,9 @@ interface FunItem {
 
 /** 趣味盒前台（参考站 fun.php 复刻）：
  *  当前条目（😂好笑/😑无聊投票）+ 更多（历史列表）+ 发布（24h 冷却）
- *  + 作者编辑/删除自己的、staff 禁止/恢复 —— 与旧站 fun.php 动作一一对应 */
+ *  + 作者编辑/删除自己的、staff 禁止/恢复 —— 与旧站 fun.php 动作一一对应。
+ *  历史列表拆至 ./fun-box-history.tsx；
+ *  发布表单拆至 ./fun-box-publish.tsx。 */
 export function FunBox({ embedded = false }: { embedded?: boolean }) {
   const { dict } = useI18n();
   const t = dict.funbox;
@@ -133,33 +143,14 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
 
       {/* 发布表单 */}
       {publishing && (
-        <div className="funbox__publish cmgmt-form">
-          <label>
-            {t.fldTitle}
-            <input
-              value={pTitle}
-              onChange={(e) => setPTitle(e.target.value)}
-              maxLength={255}
-            />
-          </label>
-          <label>
-            {t.fldBody}
-            <textarea
-              rows={4}
-              value={pBody}
-              onChange={(e) => setPBody(e.target.value)}
-            />
-          </label>
-          <p className="funbox__note">{t.cooldownNote}</p>
-          <button
-            type="button"
-            className="baozi-button"
-            disabled={busy || !pTitle.trim()}
-            onClick={publish}
-          >
-            {t.submit}
-          </button>
-        </div>
+        <FunPublishForm
+          busy={busy}
+          pTitle={pTitle}
+          setPTitle={setPTitle}
+          pBody={pBody}
+          setPBody={setPBody}
+          publish={publish}
+        />
       )}
 
       {/* 当前条目 */}
@@ -198,7 +189,7 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
                 </button>
                 <button
                   type="button"
-                  className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                  className={CANCEL_BTN}
                   onClick={() => setEditing(null)}
                 >
                   {dict.cmgmt.btnCancel}
@@ -277,64 +268,13 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
         </article>
       )}
 
-      {/* 更多（历史列表） */}
-      {history.length > 0 && (
-        <>
-          <button
-            type="button"
-            className="funbox__more-toggle"
-            onClick={() => setShowMore((v) => !v)}
-          >
-            {showMore ? "▴ " + t.collapse : `▾ ${t.more} (${history.length})`}
-          </button>
-          {showMore && (
-            <ul className="funbox__history">
-              {history.map((h) => (
-                <li
-                  key={h.id}
-                  className={h.status === "banned" ? "is-banned" : undefined}
-                >
-                  <div className="funbox__history-main">
-                    <strong>{h.title}</strong>
-                    <span className="funbox__history-meta">
-                      {h.username ?? "—"} ·{" "}
-                      {new Date(h.added).toLocaleDateString("zh-CN")} · 😂{" "}
-                      {h.fun_votes ?? 0} / 😑 {h.dull_votes ?? 0}
-                      {h.status === "banned" && ` · ${t.bannedTag}`}
-                    </span>
-                  </div>
-                  <div className="funbox__acts">
-                    {h.status === "banned" ? (
-                      <button
-                        type="button"
-                        className="cmgmt-act cmgmt-act--ok"
-                        onClick={() => setStatus(h.id, "normal")}
-                      >
-                        {t.restore}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="cmgmt-act cmgmt-act--danger"
-                        onClick={() => setStatus(h.id, "banned")}
-                      >
-                        {t.ban}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="cmgmt-act cmgmt-act--danger"
-                      onClick={() => remove(h.id)}
-                    >
-                      {t.delete}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
+      <FunHistory
+        history={history}
+        showMore={showMore}
+        setShowMore={setShowMore}
+        setStatus={setStatus}
+        remove={remove}
+      />
     </section>
   );
 }

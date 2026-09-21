@@ -1,5 +1,7 @@
 "use client";
 
+import { CELL_CARD_SUB } from "@/lib/ui-classes";
+
 import { useState } from "react";
 
 /** 第五轮 P2：置顶促销 / 自定义菜单 / 消息模板（好学站 Other 组口径）。
@@ -46,7 +48,7 @@ export function AdminP2Tools() {
             role="tab"
             aria-selected={sub === k}
             onClick={() => setSub(k)}
-            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"}`}
+            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : CELL_CARD_SUB}`}
           >
             {label}
           </button>

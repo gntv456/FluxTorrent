@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_CENTER } from "@/lib/ui-classes";
+
 /**
  * 站点设定分组导航 + 卡片表单（从 app/(main)/admin/settings/settings-client.tsx
  * 按域拆出）：SettingsGroupNav 左侧分区导航、SettingsSearchResults 搜索命中列表、
@@ -91,7 +93,7 @@ export function SettingsSearchResults({
         {fmt(s.searchHit, { n: matches.length })}
       </p>
       {matches.length === 0 && (
-        <p className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-6 text-center text-sm text-sub">
+        <p className={PANEL_CENTER}>
           {s.searchEmpty}
         </p>
       )}
@@ -154,7 +156,7 @@ export function SettingsGroupCards({
         );
       })}
       {cards.length === 0 && (
-        <p className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-6 text-center text-sm text-sub">
+        <p className={PANEL_CENTER}>
           {s.searchEmpty}
         </p>
       )}

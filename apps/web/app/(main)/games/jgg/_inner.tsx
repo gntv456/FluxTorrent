@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_LG } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -176,7 +178,7 @@ export default function JggPage({
         </div>
       }
       controls={
-        <div className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+        <div className={PANEL_LG}>
           <h2 className="mb-2 font-display text-base">{tj.prizePool}</h2>
           <div className="flex flex-wrap gap-1.5">
             {prizes.map((p, i) => (
@@ -198,7 +200,7 @@ export default function JggPage({
         </div>
       }
       side={
-        <div className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+        <div className={PANEL_LG}>
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
           <HistoryStrip rounds={hist} />
         </div>

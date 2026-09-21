@@ -1,4 +1,5 @@
 import { getPool } from "@/lib/data";
+import { PANEL_LG } from "@/lib/ui-classes";
 import { PoolDonate } from "@/components/pool-donate";
 import { getDict } from "@/i18n/server";
 import { requireModule } from "@/components/module-gate";
@@ -46,7 +47,7 @@ export default async function MagicPoolPage() {
       </section>
 
       {pool && pool.top_donors.length > 0 && (
-        <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+        <section className={PANEL_LG}>
           <h2 className="mb-2 font-display text-lg">{t.donors}</h2>
           <ol className="flex flex-col gap-1 text-sm">
             {pool.top_donors.map(([name, amount], i) => (

@@ -1,5 +1,7 @@
 "use client";
 
+import { INPUT_BAOZI } from "@/lib/ui-classes";
+
 import { useI18n } from "@/i18n/client";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
 import type {
@@ -91,7 +93,7 @@ export function UploadQualityBlock({
                 <select
                   value={kindVal(kind)}
                   onChange={(e) => setKindVal(kind, e.target.value)}
-                  className="min-h-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                  className={INPUT_BAOZI}
                 >
                   <option value="">{dict.upload.gradeNone}</option>
                   {opts.map((o) => (
@@ -151,7 +153,7 @@ export function UploadQualityBlock({
               <select
                 value={posState}
                 onChange={(e) => setPosState(Number(e.target.value))}
-                className="min-h-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                className={INPUT_BAOZI}
               >
                 <option value="0">{dict.upload.pickNone ?? "不置顶"}</option>
                 <option value="1">{dict.upload.pickL1 ?? "一级置顶"}</option>
@@ -167,7 +169,7 @@ export function UploadQualityBlock({
                   type="datetime-local"
                   value={posUntil}
                   onChange={(e) => setPosUntil(e.target.value)}
-                  className="min-h-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                  className={INPUT_BAOZI}
                 />
               </label>
             )}
@@ -178,7 +180,7 @@ export function UploadQualityBlock({
               <select
                 value={pickType}
                 onChange={(e) => setPickType(Number(e.target.value))}
-                className="min-h-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                className={INPUT_BAOZI}
               >
                 <option value="0">{dict.upload.recommendNone ?? "普通"}</option>
                 <option value="1">

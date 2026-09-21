@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_MD_SKY, BTN_SM_GHOST, INPUT_CARD, INPUT_MD, INPUT_W32 } from "@/lib/ui-classes";
+
 import { useI18n } from "@/i18n/client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -89,7 +91,7 @@ export function AdminAttendance() {
               setPage(1);
             }}
             placeholder="留空看全部"
-            className="min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line px-2"
+            className={INPUT_W32}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
@@ -100,7 +102,7 @@ export function AdminAttendance() {
               setMakeup(e.target.value);
               setPage(1);
             }}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+            className={INPUT_CARD}
           >
             <option value="">全部</option>
             <option value="false">正常签到</option>
@@ -125,13 +127,13 @@ export function AdminAttendance() {
             type="date"
             value={mkDate}
             onChange={(e) => setMkDate(e.target.value)}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+            className={INPUT_MD}
           />
         </label>
         <button
           disabled={busy}
           onClick={makeupSubmit}
-          className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+          className={BTN_MD_SKY}
         >
           补签
         </button>
@@ -187,7 +189,7 @@ export function AdminAttendance() {
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+            className={BTN_SM_GHOST}
           >
             上一页
           </button>
@@ -195,7 +197,7 @@ export function AdminAttendance() {
           <button
             disabled={rows.length < 20}
             onClick={() => setPage(page + 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+            className={BTN_SM_GHOST}
           >
             下一页
           </button>

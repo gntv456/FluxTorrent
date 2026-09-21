@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_MD_SKY, INPUT_CLOUD } from "@/lib/ui-classes";
+
 /**
  * 管理后台促销状态面板（从 app/(main)/admin/page.tsx 按域拆出，
  * 后并回 ./_parts/admin-tool-panels.tsx 家族）：FreeleechPanel 对应
@@ -92,7 +94,7 @@ export function FreeleechPanel() {
   }
 
   const inputCls =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky";
+    INPUT_CLOUD;
 
   return (
     <section className="baozi-panel p-4">
@@ -208,7 +210,7 @@ export function FreeleechPanel() {
         <button
           disabled={busy}
           onClick={create}
-          className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+          className={BTN_MD_SKY}
         >
           生效
         </button>
@@ -257,7 +259,7 @@ export function ClearCachePanel() {
       <button
         disabled={busy}
         onClick={run}
-        className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+        className={BTN_MD_SKY}
       >
         立即清除
       </button>

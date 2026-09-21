@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_MD_FLAT } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -165,7 +167,7 @@ export function InviteManager() {
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4"
+            className={PANEL_MD_FLAT}
           >
             <p className="text-xs text-sub">{s.label}</p>
             <p className="mt-1 num text-lg font-bold">{s.value ?? "—"}</p>

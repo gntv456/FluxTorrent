@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_CENTER } from "@/lib/ui-classes";
+
 /**
  * 站点设定（方案 §5）：从 /admin 页签升级为独立路由 /admin/settings。
  * 左侧 12 分区导航 + 字段搜索，右侧按卡片分组渲染类型化字段；
@@ -234,7 +236,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
             <SettingsGroupCards cards={activeGroup.cards} renderField={renderField} />
           ) : (
             !schema && (
-              <p className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-6 text-center text-sm text-sub">
+              <p className={PANEL_CENTER}>
                 {s.loadFailed}
               </p>
             )

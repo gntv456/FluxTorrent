@@ -1,40 +1,23 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { ToolTab } from "@/components/staff-tools";
+import { StaffCatsPanel } from "./staff-tools-content-cats";
+import type {
+  CatItem,
+  FaqItem,
+  RuleItem,
+  TypePack,
+} from "./staff-tools-content-shared";
 
 /** 内容域面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
- *  FAQ 管理（faq）/ 规则管理（rules）/ 分类管理（cats，含类型包切换）。 */
-
-interface FaqItem {
-  id: number;
-  category: string;
-  question: string;
-  answer: string;
-  sort: number;
-}
-interface RuleItem {
-  id: number;
-  title: string;
-  body: string;
-  sort: number;
-}
-interface CatItem {
-  id: number;
-  name: string;
-  torrents: number;
-}
-interface TypePack {
-  code: string;
-  name: string;
-  description: string | null;
-  brand: string;
-  categories: { id: number; name: string }[];
-  modules: Record<string, boolean>;
-  sort: number;
-}
+ *  FAQ 管理（faq）/ 规则管理（rules）/ 分类管理（cats，含类型包切换）。
+ *  分类/类型包拆至 ./staff-tools-content-cats.tsx；
+ *  类型拆至 ./staff-tools-content-shared.ts。 */
 
 export function StaffContentPanel({
   tab,
@@ -160,7 +143,7 @@ export function StaffContentPanel({
                 </button>
                 {faqEdit.id !== null && (
                   <button
-                    className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                    className={BTN_SM_BOLD}
                     onClick={() =>
                       setFaqEdit({ id: null, question: "", answer: "" })
                     }
@@ -262,7 +245,7 @@ export function StaffContentPanel({
                 </button>
                 {ruleEdit.id !== null && (
                   <button
-                    className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                    className={BTN_SM_BOLD}
                     onClick={() =>
                       setRuleEdit({ id: null, title: "", body: "" })
                     }
@@ -309,191 +292,19 @@ export function StaffContentPanel({
         </>
       )}
 
-      {/* 分类管理 */}
+      {/* 分类管理（拆至 ./staff-tools-content-cats.tsx） */}
       {tab === "cats" && (
-        <>
-          <section className="baozi-panel p-4">
-            <h2 className="mb-3 text-base font-bold text-ink">{t.packTitle}</h2>
-            <p className="mb-3 text-xs text-sub">{t.packNote}</p>
-            <div className="mb-2 flex items-center gap-3">
-              <span className="text-xs font-bold text-sub">{t.packMode}</span>
-              <label className="flex items-center gap-1 text-xs">
-                <input
-                  type="radio"
-                  checked={packMode === "replace"}
-                  onChange={() => setPackMode("replace")}
-                />
-                {t.packModeReplace}
-              </label>
-              <label className="flex items-center gap-1 text-xs">
-                <input
-                  type="radio"
-                  checked={packMode === "merge"}
-                  onChange={() => setPackMode("merge")}
-                />
-                {t.packModeMerge}
-              </label>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {packs.map((pk) => {
-                const active = pk.code === curSiteType;
-                return (
-                  <span
-                    key={pk.code}
-                    className="inline-flex items-center gap-1"
-                  >
-                    <button
-                      className={`min-h-[40px] rounded-full border px-4 text-xs font-bold disabled:opacity-50 ${
-                        active
-                          ? "border-[var(--baozi-orange)] bg-[var(--baozi-orange)] text-white"
-                          : "border-[var(--baozi-orange)] text-[var(--baozi-orange-dark)]"
-                      }`}
-                      disabled={busy}
-                      title={pk.description ?? ""}
-                      onClick={() => {
-                        // U2 §8.2 切换向导：先 diff 预览（旧值→新值），确认后才 apply
-                        void (async () => {
-                          let lines: string[] = [];
-                          try {
-                            const d = await api.post<{
-                              changes: {
-                                key: string;
-                                old: string;
-                                new: string;
-                              }[];
-                            }>("/api/v1/admin/site-type-packs/diff", {
-                              code: pk.code,
-                            });
-                            lines = d.changes.map(
-                              (c) => `${c.key}: ${c.old} → ${c.new}`,
-                            );
-                          } catch {
-                            /* diff 失败不阻塞——回落旧确认文案 */
-                          }
-                          const detail = lines.length
-                            ? `将变更 ${lines.length} 项：\n${lines.slice(0, 15).join("\n")}${lines.length > 15 ? "\n…" : ""}`
-                            : "无配置差异（分类重建仍会执行）";
-                          if (
-                            !window.confirm(
-                              `${t.packConfirm.replace("{name}", pk.name)}\n\n${detail}`,
-                            )
-                          )
-                            return;
-                          await guard(
-                            async () => {
-                              await api.post(
-                                "/api/v1/admin/site-type-packs/apply",
-                                { code: pk.code, mode: packMode },
-                              );
-                            },
-                            t.packApplied.replace("{name}", pk.name),
-                          );
-                        })();
-                      }}
-                    >
-                      {pk.name}
-                      {active ? `（${t.packCurrent}）` : ""}
-                    </button>
-                    {/* 自定义站型入口（U5 分发）：另存当前配置为新包 */}
-                    <button
-                      className="rounded-full border border-line px-3 text-xs text-sub disabled:opacity-50"
-                      disabled={busy}
-                      title={t.packSaveTip}
-                      onClick={() => {
-                        const name = window.prompt(t.packSavePrompt);
-                        if (!name?.trim()) return;
-                        void guard(async () => {
-                          await api.post("/api/v1/admin/site-type-packs/save", {
-                            code: `custom_${name
-                              .trim()
-                              .toLowerCase()
-                              .replace(/[^a-z0-9_]+/g, "_")
-                              .slice(0, 32)}`,
-                            name: name.trim(),
-                          });
-                        }, t.packSaved);
-                      }}
-                    >
-                      💾
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-          </section>
-          <section className="baozi-panel p-4">
-            <h2 className="mb-3 text-base font-bold text-ink">{t.tabCats}</h2>
-            <div className="cmgmt-form">
-              <label>
-                {t.fldCatName}
-                <input
-                  value={catName}
-                  onChange={(e) => setCatName(e.target.value)}
-                />
-              </label>
-              <button
-                className="baozi-button self-start"
-                disabled={busy || !catName.trim()}
-                onClick={() =>
-                  guard(async () => {
-                    await api.post("/api/v1/admin/categories", {
-                      name: catName,
-                    });
-                    setCatName("");
-                  }, t.saved)
-                }
-              >
-                {t.btnAddCat}
-              </button>
-            </div>
-            <table className="nexus-table mt-3">
-              <tbody>
-                <tr>
-                  <td className="colhead">#</td>
-                  <td className="colhead">{t.fldCatName}</td>
-                  <td className="colhead">{t.catTorrents}</td>
-                  <td className="colhead text-right">
-                    {dict.cmgmt.colActions}
-                  </td>
-                </tr>
-                {cats.map((c) => (
-                  <tr key={c.id}>
-                    <td className="num">{c.id}</td>
-                    <td>{c.name}</td>
-                    <td className="num">{c.torrents}</td>
-                    <td className="text-right">
-                      <button
-                        className="cmgmt-act"
-                        onClick={() => {
-                          const nn = prompt(t.renamePrompt, c.name);
-                          if (nn && nn !== c.name)
-                            void guard(async () => {
-                              await api.put(
-                                `/api/v1/admin/categories/${c.id}`,
-                                { name: nn },
-                              );
-                            }, t.saved);
-                        }}
-                      >
-                        {dict.cmgmt.btnEdit}
-                      </button>
-                      <button
-                        className="cmgmt-act cmgmt-act--danger"
-                        onClick={() =>
-                          guard(async () => {
-                            await api.del(`/api/v1/admin/categories/${c.id}`);
-                          }, t.deleted)
-                        }
-                      >
-                        {dict.cmgmt.btnDelete}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        </>
+        <StaffCatsPanel
+          packs={packs}
+          cats={cats}
+          curSiteType={curSiteType}
+          packMode={packMode}
+          setPackMode={setPackMode}
+          catName={catName}
+          setCatName={setCatName}
+          busy={busy}
+          guard={guard}
+        />
       )}
     </>
   );

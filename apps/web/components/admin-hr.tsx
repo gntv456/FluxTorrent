@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_GHOST, INPUT_CARD, INPUT_MD, INPUT_W32 } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
@@ -122,7 +124,7 @@ export function AdminHr() {
               setPage(1);
             }}
             placeholder="留空看全部"
-            className="min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line px-2"
+            className={INPUT_W32}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
@@ -133,7 +135,7 @@ export function AdminHr() {
               setStatus(e.target.value);
               setPage(1);
             }}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+            className={INPUT_CARD}
           >
             {STATUS.map(([v, l]) => (
               <option key={v} value={v}>
@@ -148,7 +150,7 @@ export function AdminHr() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="例：故障日补偿"
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+            className={INPUT_MD}
           />
         </label>
         <button
@@ -250,7 +252,7 @@ export function AdminHr() {
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+            className={BTN_SM_GHOST}
           >
             上一页
           </button>
@@ -258,7 +260,7 @@ export function AdminHr() {
           <button
             disabled={rows.length < 20}
             onClick={() => setPage(page + 1)}
-            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+            className={BTN_SM_GHOST}
           >
             下一页
           </button>

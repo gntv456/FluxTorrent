@@ -1,62 +1,33 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { ToolTab } from "@/components/staff-tools";
+import { StaffSiteLists } from "./staff-tools-site-lists";
+import type {
+  AdItem,
+  AgentRow,
+  CleanupResult,
+  NotConnectRow,
+  PollRow,
+  SiteStats,
+  UploaderRow,
+} from "./staff-tools-site-shared";
 
 /** 站点域面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
- *  统计（stats）/ 清理（cleanup）/ 广告（ads）/ 无法连接用户（notconnect）/
- *  上传者（uploaders）/ 客户端（agents）/ 投票（polls）/ 插件（plugins）。 */
+ *  统计（stats）/ 清理（cleanup）/ 广告（ads）/ 插件（plugins）。
+ *  只读列表（notconnect/uploaders/agents/polls）拆至
+ *  ./staff-tools-site-lists.tsx；类型拆至 ./staff-tools-site-shared.ts。 */
 
-interface SiteStats {
-  users: number;
-  torrents: number;
-  seeding: number;
-  leeching: number;
-  comments: number;
-  messages: number;
-  redis: string;
-  db: string;
-  uptime_secs: number;
-}
-interface CleanupResult {
-  expired_promotions: number;
-  expired_warnings: number;
-  old_login_events: number;
-  old_password_resets: number;
-}
-interface AdItem {
-  id: number;
-  title: string;
-  html: string;
-  position: string;
-  enabled: boolean;
-  sort: number;
-}
-interface NotConnectRow {
-  id: number;
-  username: string;
-  torrents: number;
-  last_seen_at: string | null;
-}
-interface UploaderRow {
-  id: number;
-  username: string;
-  uploads: number;
-  seeding: number;
-  total_size: number;
-}
-interface AgentRow {
-  agent: string;
-  peers: number;
-}
-interface PollRow {
-  id: number;
-  question: string;
-  closed: boolean;
-  votes: number;
-  created_at: string;
+/** 圆角描边小按钮 */
+const PLAIN_BTN_CLS =
+  BTN_SM_BOLD;
+/** Redis 状态文案配色 */
+function redisCls(v: string) {
+  return `text-lg font-bold ${v === "up" ? "text-success" : "text-danger"}`;
 }
 
 export function StaffSitePanel({
@@ -153,9 +124,7 @@ export function StaffSitePanel({
           ))}
           <div className="baozi-panel p-4">
             <p className="text-xs text-sub">{t.stRedis}</p>
-            <p
-              className={`text-lg font-bold ${stats.redis === "up" ? "text-success" : "text-danger"}`}
-            >
+            <p className={redisCls(stats.redis)}>
               {stats.redis === "up" ? "✅ up" : "⛔ down"}
             </p>
           </div>
@@ -312,7 +281,7 @@ export function StaffSitePanel({
                 </button>
                 {adEdit.id !== null && (
                   <button
-                    className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                    className={PLAIN_BTN_CLS}
                     onClick={() =>
                       setAdEdit({
                         id: null,
@@ -390,124 +359,18 @@ export function StaffSitePanel({
         </>
       )}
 
-      {/* 无法连接的用户（notconnectable） */}
-      {tab === "notconnect" && (
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">{t.mlUser}</td>
-              <td className="colhead">{t.ncTorrents}</td>
-              <td className="colhead">{t.ncLastSeen}</td>
-            </tr>
-            {notConnectRows.map((r) => (
-              <tr key={r.id}>
-                <td className="num">{r.id}</td>
-                <td>{r.username}</td>
-                <td className="num">{r.torrents}</td>
-                <td className="text-xs text-sub">
-                  {r.last_seen_at
-                    ? new Date(r.last_seen_at).toLocaleString("zh-CN")
-                    : "—"}
-                </td>
-              </tr>
-            ))}
-            {notConnectRows.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-6 text-center text-sub">
-                  {t.ncEmpty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      )}
-
-      {/* 上传者（uploaders） */}
-      {tab === "uploaders" && (
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">{t.mlUser}</td>
-              <td className="colhead">{t.ulpUploads}</td>
-              <td className="colhead">{t.stSeeding}</td>
-              <td className="colhead">{t.ulpSize}</td>
-            </tr>
-            {uploaderRows.map((r) => (
-              <tr key={r.id}>
-                <td className="num">{r.id}</td>
-                <td>{r.username}</td>
-                <td className="num">{r.uploads}</td>
-                <td className="num">{r.seeding}</td>
-                <td className="num">
-                  {(r.total_size / 1024 ** 3).toFixed(2)} GB
-                </td>
-              </tr>
-            ))}
-            {uploaderRows.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-6 text-center text-sub">
-                  {t.ulpEmpty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      )}
-
-      {/* 全部客户端（allagents） */}
-      {tab === "agents" && (
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">{t.agAgent}</td>
-              <td className="colhead">{t.agPeers}</td>
-            </tr>
-            {agentRows.map((r) => (
-              <tr key={r.agent}>
-                <td className="font-mono">{r.agent}</td>
-                <td className="num">{r.peers}</td>
-              </tr>
-            ))}
-            {agentRows.length === 0 && (
-              <tr>
-                <td colSpan={2} className="py-6 text-center text-sub">
-                  {t.agEmpty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      )}
-
-      {/* 投票总览（polloverview） */}
-      {tab === "polls" && (
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">{t.plQuestion}</td>
-              <td className="colhead">{t.plVotes}</td>
-              <td className="colhead">{t.plStatus}</td>
-            </tr>
-            {pollRows.map((p) => (
-              <tr key={p.id}>
-                <td className="num">{p.id}</td>
-                <td>{p.question}</td>
-                <td className="num">{p.votes}</td>
-                <td>{p.closed ? t.plClosed : t.plOpen}</td>
-              </tr>
-            ))}
-            {pollRows.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-6 text-center text-sub">
-                  {t.plEmpty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* 只读列表（拆至 ./staff-tools-site-lists.tsx） */}
+      {(tab === "notconnect" ||
+        tab === "uploaders" ||
+        tab === "agents" ||
+        tab === "polls") && (
+        <StaffSiteLists
+          tab={tab}
+          notConnectRows={notConnectRows}
+          uploaderRows={uploaderRows}
+          agentRows={agentRows}
+          pollRows={pollRows}
+        />
       )}
 
       {/* 插件清单（M28 只读：启停由插件配置决定） */}

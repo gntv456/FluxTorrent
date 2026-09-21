@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_MD } from "@/lib/ui-classes";
+
 ;
 
 import { useCallback, useEffect, useState } from "react";
@@ -135,7 +137,7 @@ export default function JixiaoPage() {
           {me.assigned.map((p) => (
             <article
               key={p.type_id}
-              className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
+              className={PANEL_MD}
             >
               <header className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-display text-lg">
