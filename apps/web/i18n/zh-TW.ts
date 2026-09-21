@@ -1887,6 +1887,8 @@ usertools: {
     moreInfo: "更多資料",
     noClient: "暫無用戶端記錄",
     noMedals: "暫未佩戴勳章",
+    subtitleWorks: "字幕作品",
+    subtitleDownloads: "下載",
   },
   donate: {
     title: "捐贈",

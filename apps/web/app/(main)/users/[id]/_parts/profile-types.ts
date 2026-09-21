@@ -93,6 +93,9 @@ export interface ProfileData {
   recent_posts: [number, number, string, string][];
   recent_uploads: RecentUpload[];
   recent_comments: RecentComment[];
+  /** 字幕作品摘要（0146 P2-2：公开归属的过审字幕；匿名上传不计入） */
+  subtitle_count: number;
+  subtitle_downloads: number;
 }
 
 export type TorrentLists = {

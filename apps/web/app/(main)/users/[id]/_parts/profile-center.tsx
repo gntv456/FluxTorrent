@@ -213,6 +213,13 @@ export function CenterGrid({
         <Row label={t.tabPosts} icon="◈">
           <span className="num">{data.recent_posts.length}</span>
         </Row>
+        {data.subtitle_count > 0 && (
+          <Row label={t.subtitleWorks} icon="╬">
+            <span className="num">
+              {`${data.subtitle_count} · ${t.subtitleDownloads} ${data.subtitle_downloads}`}
+            </span>
+          </Row>
+        )}
       </Card>
 
       {/* —— 佩戴勋章（展示位，整行：与上方双列错开，避免留出半格空位） —— */}
