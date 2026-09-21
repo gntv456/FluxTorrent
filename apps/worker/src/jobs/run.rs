@@ -131,6 +131,10 @@ pub async fn run_all(
                 with_lock(&db, "job:funding_settle", funding_settle(&db)).await;
                 with_lock(&db, "job:refundable_settle", refundable_settle(&db)).await;
                 with_lock(&db, "job:achievement_grant", achievement_grant(&db)).await;
+                // 0148 字幕工作流：认领超时回池 + 交稿超时自动验收（幂等：CAS + 幂等键）
+                with_lock(&db, "job:subreq_sweep", subreq_sweep(&db)).await;
+                // 0148 金字幕评选：月初生成上月候选（幂等：UNIQUE(period, subtitle_id)）
+                with_lock(&db, "job:subawards", subawards_build(&db)).await;
                 // 卫生清理（NP docleanup 口径）：过期邀请落库回收 / 一次性凭证与重置 token 清理
                 with_lock(&db, "job:expire_invites", expire_invites(&db)).await;
                 with_lock(&db, "job:purge_expired_tokens", purge_expired_tokens(&db)).await;

@@ -14,6 +14,7 @@ import {
   loadLangDict,
   SubtitleListTable,
 } from "@/components/subtitle-board-table";
+import { SubtitleAwardsBoard } from "@/components/subtitle-awards-board";
 import { SubtitleRequestPanel } from "@/components/subtitle-request-panel";
 import { SubtitleUploadForm } from "@/components/subtitle-upload-form";
 
@@ -38,6 +39,7 @@ export function SubtitleBoard({
   const [search, setSearch] = useState("");
   const [langCode, setLangCode] = useState("");
   const [letter, setLetter] = useState("");
+  const [aiFilter, setAiFilter] = useState("");
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(50);
   // 上传表单
@@ -60,6 +62,7 @@ export function SubtitleBoard({
       if (search.trim()) params.set("search", search.trim());
       if (langCode) params.set("lang_id", langCode);
       if (letter) params.set("letter", letter);
+      if (aiFilter) params.set("ai", aiFilter);
       if (fixedTorrentId) {
         params.set("torrent_id", String(fixedTorrentId));
       }
@@ -79,7 +82,7 @@ export function SubtitleBoard({
       setRows([]);
       setTotal(0);
     }
-  }, [search, langCode, letter, page, perPage, fixedTorrentId]);
+  }, [search, langCode, letter, aiFilter, page, perPage, fixedTorrentId]);
 
   useEffect(() => {
     load();
@@ -145,7 +148,7 @@ export function SubtitleBoard({
         }}
       />
 
-      {/* 搜索：关键词 + 语言下拉 + 每页 */}
+      {/* 搜索：关键词 + 语言下拉 + AI 筛选 + 每页 */}
       <form
         className="subtitles-search-form"
         onSubmit={(e) => e.preventDefault()}
@@ -188,6 +191,18 @@ export function SubtitleBoard({
               {n}
             </option>
           ))}
+        </select>
+        <select
+          value={aiFilter}
+          onChange={(e) => {
+            setAiFilter(e.target.value);
+            setPage(1);
+          }}
+          aria-label={t.aiFilterLabel}
+        >
+          <option value="">{t.aiFilterAll}</option>
+          <option value="no">{t.aiFilterHuman}</option>
+          <option value="only">{t.aiFilterOnly}</option>
         </select>
       </form>
 
@@ -246,13 +261,21 @@ export function SubtitleBoard({
         </nav>
       )}
 
-      {/* 求字幕悬赏（pots） */}
+      {/* 求字幕悬赏（pots）+ 评选榜（0148） */}
       {!fixedTorrentId && (
-        <SubtitleRequestPanel
-          langs={langs}
-          onMsg={setMsg}
-          reloadKey={reloadKey}
-        />
+        <>
+          <SubtitleRequestPanel
+            langs={langs}
+            onMsg={setMsg}
+            reloadKey={reloadKey}
+          />
+          <section className="mt-6">
+            <h2 className="mb-2 text-base font-bold">
+              {t.awardTitle ?? "Golden"}
+            </h2>
+            <SubtitleAwardsBoard />
+          </section>
+        </>
       )}
     </div>
   );

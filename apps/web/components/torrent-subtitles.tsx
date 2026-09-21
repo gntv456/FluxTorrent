@@ -15,11 +15,18 @@ import {
 } from "@/components/subtitle-board-table";
 import { uploadAttachment } from "@/components/subtitle-request-panel";
 
-/** 种子详情页字幕面板（0146 P0-6：最大流量入口）。
- *  列该种子字幕（语言/标题/大小/点击/上传者/时间）+ 快捷上传（带 torrent_id）。
+/** 种子详情页字幕面板（0146 P0-6 → 0148 C1 IMDB 合并）。
+ *  两组：「本种子字幕」（torrent_id 命中）+「本片字幕」（同 imdb_id 的
+ *  其他版本，C1 自动合并）；快捷上传（带 torrent_id）。
  *  空态「暂无字幕」；面板始终渲染（模块开关已由页面 requireModule 与 API 网关把守）。 */
 
-export function TorrentSubtitles({ torrentId }: { torrentId: number }) {
+export function TorrentSubtitles({
+  torrentId,
+  imdbId,
+}: {
+  torrentId: number;
+  imdbId?: string | null;
+}) {
   const { dict } = useI18n();
   const t = dict.subtitles;
   const [rows, setRows] = useState<SubtitleRow[] | null>(null);
@@ -33,14 +40,21 @@ export function TorrentSubtitles({ torrentId }: { torrentId: number }) {
 
   const load = useCallback(async () => {
     try {
+      const params = new URLSearchParams({
+        torrent_id: String(torrentId),
+        per_page: "100",
+      });
+      if (imdbId) params.set("imdb", imdbId);
       const resp = await api.get<SubtitleListResp | SubtitleRow[]>(
-        `/api/v1/subtitles?torrent_id=${torrentId}&per_page=100`,
+        `/api/v1/subtitles?${params.toString()}`,
       );
-      setRows(Array.isArray(resp) ? resp : resp.items);
+      const all = Array.isArray(resp) ? resp : resp.items;
+      // imdb 合并查询会把同片其他版本一并带回：本种子 = torrent_id 命中
+      setRows(all);
     } catch {
       setRows([]);
     }
-  }, [torrentId]);
+  }, [torrentId, imdbId]);
 
   useEffect(() => {
     load();
@@ -118,6 +132,22 @@ export function TorrentSubtitles({ torrentId }: { torrentId: number }) {
                   >
                     {s.title}
                   </a>
+                  {/* C1 合并标记：非本种子的同片字幕注明来源 */}
+                  {s.torrent_id !== torrentId && (
+                    <span
+                      className="ml-1 text-[11px] text-sub"
+                      title={t.fromSameFilm ?? "same film"}
+                    >
+                      {t.sameFilmBadge ?? "same film"}
+                    </span>
+                  )}
+                  {s.ai_state && s.ai_state !== "human" && (
+                    <span className="ml-1 text-[11px] text-sub">
+                      {s.ai_state === "ai_proofread"
+                        ? (t.aiBadgeProof ?? "MT✓")
+                        : (t.aiBadgePure ?? "MT")}
+                    </span>
+                  )}
                 </td>
                 <td className="num text-center">{fmtKB(s.size ?? 0)}</td>
                 <td className="num text-center">{s.downloads}</td>
@@ -207,15 +237,17 @@ function LangSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { dict: langDict } = useI18n();
+  const s = dict_safe(langDict.subtitles);
   const [langs, setLangs] = useState<
     { code: string; name: string; flag: string }[]
   >([
-    { code: "chs", name: "简体中文", flag: "🇨🇳" },
-    { code: "cht", name: "繁體中文", flag: "🇹🇼" },
-    { code: "eng", name: "English", flag: "🇬🇧" },
-    { code: "jpn", name: "日本語", flag: "🇯🇵" },
-    { code: "kor", name: "한국어", flag: "🇰🇷" },
-    { code: "other", name: "其他", flag: "🌐" },
+    { code: "chs", name: s.langChs, flag: "🇨🇳" },
+    { code: "cht", name: s.langCht, flag: "🇹🇼" },
+    { code: "eng", name: s.langEng, flag: "🇬🇧" },
+    { code: "jpn", name: s.langJpn, flag: "🇯🇵" },
+    { code: "kor", name: s.langKor, flag: "🇰🇷" },
+    { code: "other", name: s.langOther, flag: "🌐" },
   ]);
   useEffect(() => {
     import("@/components/subtitle-board-table")
@@ -225,8 +257,6 @@ function LangSelect({
       })
       .catch(() => {});
   }, []);
-  const { dict: langDict } = useI18n();
-  const s = dict_safe(langDict.subtitles);
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{s}</option>

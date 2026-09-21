@@ -172,6 +172,8 @@ export interface TorrentListItem {
   rating: string | null;
   /** 海报图 URL（media_info.poster；缺省 null 时前端用生成式海报兜底） */
   poster: string | null;
+  /** IMDB id（0148：种子页字幕面板按此合并同片字幕；缺省 null） */
+  imdb_id: string | null;
   owner_name: string | null;
   created_at: string;
 }

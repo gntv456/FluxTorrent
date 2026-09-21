@@ -39,4 +39,5 @@ aes-gcm = "0.10"
 p256 = { version = "0.13", features = ["ecdh"] }
 rsa = "0.9"
 ammonia.workspace = true
+regex.workspace = true
 lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }

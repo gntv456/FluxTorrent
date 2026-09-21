@@ -157,9 +157,19 @@ pub async fn upload(
         .map(decode_nfo)
         .filter(|s| !s.trim().is_empty());
     let price = form.price.unwrap_or(0).clamp(0, 1_000_000);
+    // 0148 C1：descr/name 里的 IMDB 引用自动提取（tt1234567，大小写不敏感）
+    let imdb_id: Option<String> = form
+        .descr
+        .as_deref()
+        .and_then(extract_imdb)
+        .or_else(|| extract_imdb(&name));
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, group_id, name, small_descr, descr, category_id, medium_id, grade_id, edition_id, owner_id, anonymous, size, numfiles, approval_status, media_info, nfo, price) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING id",
+        "INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, \
+         group_id, name, small_descr, descr, category_id, medium_id, \
+         grade_id, edition_id, owner_id, anonymous, size, numfiles, \
+         approval_status, media_info, nfo, price, imdb_id) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, \
+         $14, $15, $16, $17, $18, $19, $20) RETURNING id",
     )
     .bind(&parsed.info_hash_hex)
     .bind(&parsed.raw_info_hash_hex)
@@ -180,6 +190,7 @@ pub async fn upload(
     .bind(media_info)
     .bind(nfo_text)
     .bind(price)
+    .bind(imdb_id)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| {
@@ -269,4 +280,18 @@ pub async fn upload(
         "auto_approved": auto_approve,
         "group_suggest": group_suggest,
     })))
+}
+
+/// descr/名称里的 IMDB id 提取（0148 C1）：tt1234567 / tt12345678，
+/// 大小写不敏感；统一大写存储（TT…）与 subtitles.imdb_id / ?imdb= 对齐。
+/// manage.rs 编辑 descr 后复用（crate 出口）。
+pub(crate) fn extract_imdb_pub(text: &str) -> Option<String> {
+    extract_imdb(text)
+}
+
+fn extract_imdb(text: &str) -> Option<String> {
+    let re = regex::Regex::new(r"(?i)\b(tt[0-9]{7,8})\b").ok()?;
+    re.captures(text)
+        .and_then(|c| c.get(1))
+        .map(|m| m.as_str().to_ascii_uppercase())
 }
