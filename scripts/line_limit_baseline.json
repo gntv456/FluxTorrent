@@ -201,8 +201,6 @@
  "apps/web/components/game/game-kit.tsx::wide": 12,
  "apps/web/components/game/jgg-grid.tsx::wide": 6,
  "apps/web/components/game/runway.tsx::wide": 5,
- "apps/web/app/globals.css": 5792,
- "apps/web/app/globals.css::wide": 53,
  "apps/web/app/layout.tsx::wide": 8,
  "apps/web/app/manifest.ts::wide": 5,
  "apps/web/app/setup/page.tsx::wide": 19,
