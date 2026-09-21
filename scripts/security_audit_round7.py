@@ -34,15 +34,18 @@ def call(method, path, body=None, token=None, headers=None):
 
 def check(name, cond, detail=""):
     results.append((name, cond))
-    print(("PASS " if cond else "FAIL ") + name + (f"  {detail}" if detail else ""))
+    print(("PASS " if cond else "FAIL ") + name + (
+        f"  {detail}" if detail else ""))
 
 # --- 前置 ---
-st, r = call("POST", "/auth/login", {"username": "root", "password": "password123"})
+st, r = call("POST", "/auth/login", {"username": "root",
+    "password": "password123"})
 check("前置·root登录", st == 200 and r.get("data", {}).get("token"))
 root_tok = r["data"]["token"]
 
 SEC_USER, SEC_PW = "qasec7", "Qasec7Pass123!"
-st, r = call("POST", "/admin/adduser", {"username": SEC_USER, "email": "qasec7@test.local", "password": SEC_PW}, token=root_tok)
+st, r = call("POST", "/admin/adduser", {"username": SEC_USER,
+    "email": "qasec7@test.local", "password": SEC_PW}, token=root_tok)
 # 已存在（上次探测建的）也算就绪
 check("前置·root创建普通用户", st == 200 or st == 400, f"got {st}")
 st, r = call("POST", "/auth/login", {"username": SEC_USER, "password": SEC_PW})
@@ -50,9 +53,12 @@ check("前置·普通用户登录", st == 200, f"got {st}")
 user_tok = r["data"]["token"] if st == 200 else None
 
 ADMIN_GET = [
-    "/admin/overview", "/admin/users", "/admin/claims?state=active", "/admin/settings/schema",
-    "/admin/audit?limit=5", "/admin/appeals", "/admin/torrents", "/admin/staffpanel",
-    "/admin/reports", "/admin/cheaters", "/admin/dbstats", "/admin/syslog?limit=5",
+    "/admin/overview", "/admin/users", "/admin/claims?state=active",
+        "/admin/settings/schema",
+    "/admin/audit?limit=5", "/admin/appeals", "/admin/torrents",
+        "/admin/staffpanel",
+    "/admin/reports", "/admin/cheaters", "/admin/dbstats",
+        "/admin/syslog?limit=5",
     "/admin/login-logs?limit=5", "/admin/spark-logs?limit=5",
 ]
 ADMIN_POST = [
@@ -61,7 +67,8 @@ ADMIN_POST = [
     ("/admin/claims/release", "POST", {"torrent_id": 1, "reason": "sec-probe"}),
     ("/admin/freeleech", "POST", {"kind": "free", "hours": 1}),
     ("/admin/resetpass", "POST", {"user_id": 2}),
-    ("/admin/hr/pardon", "POST", {"torrent_id": 1, "user_id": 2, "note": "sec-probe"}),
+    ("/admin/hr/pardon", "POST", {"torrent_id": 1, "user_id": 2,
+        "note": "sec-probe"}),
 ]
 
 # --- 1. 无认证 ---
@@ -82,7 +89,8 @@ if user_tok:
         check(f"普通用户·{m} {p} 拒绝", st in (401, 403), f"got {st}")
 
     st, _ = call("GET", "/admin/overview", token=user_tok,
-                 headers={"X-Role": "sysop", "X-User-Id": "1", "X-Forwarded-For": "127.0.0.1"})
+                 headers={"X-Role": "sysop", "X-User-Id": "1",
+                     "X-Forwarded-For": "127.0.0.1"})
     check("伪造头·X-Role/X-User-Id 不提权", st in (401, 403), f"got {st}")
 
     # IDOR：普通用户调管理面用户详情 / 编辑别人种子
@@ -101,8 +109,9 @@ else:
 def b64u(b): return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
 
 parts = root_tok.split(".")
-none_tok = b64u(json.dumps({"alg": "none", "typ": "JWT"}).encode()) + "." + \
-           b64u(json.dumps({"sub": "1", "class_id": 99, "iat": 9999999999, "exp": 9999999999}).encode()) + "."
+none_tok = b64u(json.dumps({"alg": "none", "typ": "JWT"}).encode(
+    )) + "." +            b64u(json.dumps({"sub": "1", "class_id": 99,
+        "iat": 9999999999, "exp": 9999999999}).encode()) + "."
 st, _ = call("GET", "/me", token=none_tok)
 check("JWT·alg=none 被拒", st in (401, 403), f"got {st}")
 
@@ -114,7 +123,8 @@ try:
     pad = parts[1] + "=" * (-len(parts[1]) % 4)
     payload = json.loads(base64.urlsafe_b64decode(pad))
     payload["class_id"] = 99
-    forged = parts[0] + "." + b64u(json.dumps(payload).encode()) + "." + parts[2]
+    forged = parts[0] + "." + b64u(json.dumps(payload).encode()) + "." + parts[
+        2]
     st, _ = call("GET", "/admin/overview", token=forged)
     check("JWT·改payload提权被拒", st in (401, 403), f"got {st}")
 except Exception as e:
@@ -126,8 +136,10 @@ except Exception as e:
 # --- 4. SQL 注入探针（参数化查询应返回 200/400 而非 500 + SQL 错误泄漏） ---
 probes = [
     ("/torrents?search=" + urllib.parse.quote("' OR '1'='1"), root_tok),
-    ("/torrents?search=" + urllib.parse.quote("'; DROP TABLE users; --"), root_tok),
-    ("/torrents?search=" + urllib.parse.quote("1' UNION SELECT pass_hash FROM users--"), root_tok),
+    ("/torrents?search=" + urllib.parse.quote("'; DROP TABLE users; --"),
+        root_tok),
+    ("/torrents?search=" + urllib.parse.quote(
+        "1' UNION SELECT pass_hash FROM users--"), root_tok),
     ("/forums?search=" + urllib.parse.quote("1 UNION SELECT 1"), root_tok),
     ("/admin/claims?search=" + urllib.parse.quote("' OR 1=1"), root_tok),
     ("/admin/users?search=" + urllib.parse.quote("'; --"), root_tok),
@@ -135,18 +147,22 @@ probes = [
 for p, tok in probes:
     st, r = call("GET", p, token=tok)
     blob = json.dumps(r).lower()
-    leaked = ("sqlstate" in blob) or ("syntax error" in blob) or ("db error" in blob) or ("postgres" in blob and st >= 500)
-    check(f"注入·{urllib.parse.unquote(p)[:60]} 安全", st in (200, 400, 422) and not leaked, f"status={st}")
+    leaked = ("sqlstate" in blob) or ("syntax error" in blob) or (
+        "db error" in blob) or ("postgres" in blob and st >= 500)
+    check(f"注入·{urllib.parse.unquote(p)[:60]} 安全", st in (200, 400,
+        422) and not leaked, f"status={st}")
 
 # --- 4b. 种子内容未鉴权外泄（修复验证）：无 token 直读详情扩展/文件/感谢/评论 ---
-for p in ["/torrents/1/detail", "/torrents/1/files", "/torrents/1/thanks", "/torrents/1/comments", "/torrents/1"]:
+for p in ["/torrents/1/detail", "/torrents/1/files", "/torrents/1/thanks",
+    "/torrents/1/comments", "/torrents/1"]:
     st, _ = call("GET", p)
     check(f"未鉴权·GET {p} 拒绝", st in (401, 403), f"got {st}")
 
 # --- 5. 登录爆破限流：throttle 先行 INCR，超限表现为 HTTP 400 + code=1015 ---
 codes = []
 for i in range(8):
-    st, r = call("POST", "/auth/login", {"username": "ratelimit_probe_u", "password": "wrong"})
+    st, r = call("POST", "/auth/login", {"username": "ratelimit_probe_u",
+        "password": "wrong"})
     codes.append((st, r.get("code")))
     if r.get("code") == 1015:
         break

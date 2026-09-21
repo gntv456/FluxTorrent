@@ -8,7 +8,8 @@ import urllib.error
 BASE = "http://127.0.0.1:8080/api/v1"
 
 def call(body):
-    req = urllib.request.Request(BASE + "/auth/login", method="POST", data=json.dumps(body).encode())
+    req = urllib.request.Request(BASE + "/auth/login", method="POST",
+        data=json.dumps(body).encode())
     req.add_header("Content-Type", "application/json")
     try:
         with urllib.request.urlopen(req, timeout=10) as r:

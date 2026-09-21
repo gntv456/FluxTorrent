@@ -27,9 +27,11 @@ def call(method, path, body=None, token=None):
 
 def check(name, cond, detail=""):
     results.append((name, cond))
-    print(("PASS " if cond else "FAIL ") + name + (f"  {detail}" if detail else ""))
+    print(("PASS " if cond else "FAIL ") + name + (
+        f"  {detail}" if detail else ""))
 
-st, r = call("POST", "/auth/login", {"username": "root", "password": "password123"})
+st, r = call("POST", "/auth/login", {"username": "root",
+    "password": "password123"})
 tok = r["data"]["token"]
 check("前置·root登录", st == 200)
 
@@ -40,8 +42,10 @@ S = before["data"]
 # ---- 1. 46 字段批量翻转 → 保存 → 重拉比对 ----
 flip = {}
 # bool 类全翻
-for k in ["parked", "delete_pm", "save_pm", "comment_pm", "notify_topic_reply", "notify_hr",
-          "show_description", "show_imdb", "show_comment", "show_ad", "append_sticky", "append_new",
+for k in ["parked", "delete_pm", "save_pm", "comment_pm", "notify_topic_reply",
+    "notify_hr",
+          "show_description", "show_imdb", "show_comment", "show_ad",
+              "append_sticky", "append_new",
           "append_picked", "small_descr", "dl_icon", "bm_icon", "show_com_num",
           "view_avatars", "view_signatures", "tt_last_post"]:
     flip[k] = not S[k]
@@ -51,7 +55,8 @@ enum_alt = {
     "fontsize": {"small": "medium", "medium": "large", "large": "small"},
     "time_type": {"timeadded": "timealive", "timealive": "timeadded"},
     "tooltip": {"minorimdb": "off", "medianimdb": "off", "off": "minorimdb"},
-    "append_promotion": {"highlight": "word", "word": "icon", "icon": "off", "off": "highlight"},
+    "append_promotion": {"highlight": "word", "word": "icon", "icon": "off",
+        "off": "highlight"},
     "show_last_com": {"yes": "no", "no": "yes"},
     "click_topic": {"firstpage": "lastpage", "lastpage": "firstpage"},
     "privacy": {"normal": "low", "low": "strong", "strong": "normal"},
@@ -59,7 +64,8 @@ enum_alt = {
 for k, alt in enum_alt.items():
     flip[k] = alt[S[k]]
 # 数值类 ±1（范围 -1..200）
-for k in ["pm_per_page", "torrents_per_page", "incl_dead", "sp_state", "incl_bookmarked",
+for k in ["pm_per_page", "torrents_per_page", "incl_dead", "sp_state",
+    "incl_bookmarked",
           "topics_per_page", "posts_per_page"]:
     flip[k] = (S[k] + 1) if S[k] < 200 else S[k] - 1
 # 文本类改内容
@@ -82,7 +88,9 @@ st, after = call("GET", "/me/settings", token=tok)
 A = after["data"]
 mismatch = [k for k in flip if A.get(k) != flip[k]]
 check("重拉全量比对(改的字段全部落盘)", not mismatch, f"mismatch={mismatch[:6]}")
-untouched_keys = [k for k in S if k not in flip and k != "site_language" and A.get(k) != S[k]]
+untouched_keys = [
+    k for k in S if k not in flip and k != "site_language" and A.get(k) != S[
+        k]]
 check("未改字段不被误伤", not untouched_keys, f"changed={untouched_keys[:6]}")
 
 # ---- 2. 非法值拒绝（后端权威校验） ----
@@ -111,27 +119,33 @@ check("复原原值", not diff, f"diff={diff[:6]}")
 st, r = call("POST", "/me/passkey/rotate", {}, token=tok)
 check("passkey轮换", st == 200 and len(r["data"]["passkey"]) == 32, f"got {st}")
 # 4b. 改密：错误旧密码拒绝
-st, r = call("POST", "/me/password/change", {"old_password": "wrong-old", "new_password": "NewPass99x!"}, token=tok)
+st, r = call("POST", "/me/password/change", {"old_password": "wrong-old",
+    "new_password": "NewPass99x!"}, token=tok)
 check("改密·旧密码错误被拒", st == 400, f"got {st}")
 # 4c. 改密：新旧相同拒绝
-st, r = call("POST", "/me/password/change", {"old_password": "password123", "new_password": "password123"}, token=tok)
+st, r = call("POST", "/me/password/change", {"old_password": "password123",
+    "new_password": "password123"}, token=tok)
 check("改密·新旧相同被拒", st == 400, f"got {st}")
 # 4d. 改密：短密码拒绝
-st, r = call("POST", "/me/password/change", {"old_password": "password123", "new_password": "short"}, token=tok)
+st, r = call("POST", "/me/password/change", {"old_password": "password123",
+    "new_password": "short"}, token=tok)
 check("改密·短密码被拒", st == 400, f"got {st}")
 # 4e. 改密成功 → 旧 token 失效 → 新密码可登录 → 改回
 #     限流注意：同用户名 60s 内 >5 次登录会 1015 —— 全程最多 5 次登录的预算在这里花掉，
 #     一旦被限就等整窗口；改密撤销线以本次凭证 iat 为界，改密后立刻重登不受影响（iat>nbf）。
-st, r = call("POST", "/me/password/change", {"old_password": "password123", "new_password": "E2ePass77#q"}, token=tok)
+st, r = call("POST", "/me/password/change", {"old_password": "password123",
+    "new_password": "E2ePass77#q"}, token=tok)
 check("改密·成功", st == 200, f"got {st} {str(r)[:80]}")
 # 撤销线语义（nbf=改密凭证iat-1）：改密所用的那张 token 自身存活（iat==nbf+1），
 # 一切**更早签发**的凭证必须失效。顺序很关键：先拿早凭证，再改密，再验早凭证 ——
 # 若改密后再登录，新凭证 iat 必然 > nbf，验证无意义。
 time.sleep(2)
-st, r = call("POST", "/auth/login", {"username": "root", "password": "E2ePass77#q"})
+st, r = call("POST", "/auth/login", {"username": "root",
+    "password": "E2ePass77#q"})
 tok_old = r["data"]["token"]
 time.sleep(2)
-st, r = call("POST", "/me/password/change", {"old_password": "E2ePass77#q", "new_password": "password123"}, token=tok_old)
+st, r = call("POST", "/me/password/change", {"old_password": "E2ePass77#q",
+    "new_password": "password123"}, token=tok_old)
 check("改密·成功(把密码改回)", st == 200, f"got {st}")
 time.sleep(2)
 st, r = call("GET", "/me", token=tok)
@@ -145,7 +159,8 @@ check("改密·复原原密码", True)
 # 4f. 2FA setup 链路：登一次拿新 token（限流就等窗口）
 def login_retry(pw, tries=4):
     for i in range(tries):
-        st, r = call("POST", "/auth/login", {"username": "root", "password": pw})
+        st, r = call("POST", "/auth/login", {"username": "root",
+            "password": pw})
         if st == 200:
             return r["data"]["token"]
         time.sleep(65)
@@ -153,7 +168,8 @@ def login_retry(pw, tries=4):
 
 tok = login_retry("password123")
 st, r = call("POST", "/me/2fa/setup", {}, token=tok)
-check("2FA·setup发secret", st == 200 and ("secret" in json.dumps(r) or "otpauth" in json.dumps(r)), f"got {st}")
+check("2FA·setup发secret", st == 200 and ("secret" in json.dumps(
+    r) or "otpauth" in json.dumps(r)), f"got {st}")
 
 fails = [n for n, c in results if not c]
 print(f"\n===== 控制面板 E2E：{len(results)-len(fails)}/{len(results)} PASS =====")

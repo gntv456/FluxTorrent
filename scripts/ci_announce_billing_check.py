@@ -26,7 +26,8 @@ failures = []
 
 
 def check(name, cond, detail=""):
-    print(("PASS " if cond else "FAIL ") + name + (f"  {detail}" if detail else ""))
+    print(("PASS " if cond else "FAIL ") + name + (
+        f"  {detail}" if detail else ""))
     if not cond:
         failures.append(name)
 
@@ -41,7 +42,8 @@ try:
     url = (f"{TR}/announce/{PASSKEY}?info_hash={IH}&peer_id={PEER_ID}"
            f"&port=6881&uploaded=1024&downloaded=0&left=0&compact=1&numwant=5")
     status, body = http_get(url)
-    check("announce·200+bencode", status == 200 and body.startswith(b"d"), body[:80])
+    check("announce·200+bencode", status == 200 and body.startswith(b"d"),
+        body[:80])
     check("announce·interval下发", b"interval" in body, body[:120])
 except Exception as e:
     check("announce·200+bencode", False, str(e)[:120])
@@ -72,14 +74,16 @@ seen_event = False
 try:
     for _ in range(20):
         out = redis_cmd("XRANGE", "flux:announce", "-", "+")
-        if PEER_ID in out and IH.replace("%", "").lower() in out.lower().replace("\\x", ""):
+        if PEER_ID in out and IH.replace("%", "").lower() in out.lower(
+            ).replace("\\x", ""):
             # redis-cli 转义形态多变：退化为宽匹配（peer_id 唯一前缀已足够）
             pass
         if PEER_ID in out:
             seen_event = True
             break
         time.sleep(0.5)
-    check("stream·事件可见", seen_event, "flux:announce 内含 peer_id" if seen_event else "10s 内未见事件")
+    check("stream·事件可见", seen_event,
+        "flux:announce 内含 peer_id" if seen_event else "10s 内未见事件")
 except Exception as e:
     check("stream·事件可见", False, str(e)[:120])
 
@@ -95,7 +99,8 @@ if seen_event:
             if cursor_now and cursor_now != cursor_before:
                 consumed = True
                 break
-        check("worker·游标前进", consumed, f"{cursor_before!r} → {redis_cmd('GET', 'flux:announce:cursor')!r}")
+        check("worker·游标前进", consumed,
+            f"{cursor_before!r} → {redis_cmd('GET', 'flux:announce:cursor')!r}")
         dlq_len = redis_cmd("LLEN", "flux:announce:dlq")
         check("worker·DLQ为空", dlq_len == "0", f"dlq_len={dlq_len}")
     except Exception as e:
@@ -109,5 +114,7 @@ try:
 except Exception as e:
     check("api·health", False, str(e)[:120])
 
-print(f"\n===== announce→计费 链路：{len([1]) * 0 or ''}{failures and 'FAIL ' + str(failures) or 'ALL PASS'} =====")
+print(
+    "\n===== announce→计费 链路：{len([1]) * 0 or ''}{failures and 'FAIL ' +"
+        "str(failures) or 'ALL PASS'} =====")
 sys.exit(1 if failures else 0)

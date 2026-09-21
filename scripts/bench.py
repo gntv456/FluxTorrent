@@ -30,7 +30,8 @@ def login_token():
     req = urllib.request.Request(
         BASE_API + "/auth/login",
         method="POST",
-        data=json.dumps({"username": "uploader", "password": "password123"}).encode(),
+        data=json.dumps({"username": "uploader",
+            "password": "password123"}).encode(),
         headers={"Content-Type": "application/json"},
     )
     with urllib.request.urlopen(req) as r:
@@ -43,7 +44,8 @@ TOKEN = login_token()
 def bench_passkey():
     """取一个真实 passkey（announce 鉴权需要）；取不到则退化占位。"""
     p = subprocess.run(
-        ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d", "fluxtorrent", "-t", "-c",
+        ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
+            "fluxtorrent", "-t", "-c",
          "SELECT passkey FROM users WHERE username='uploader';"],
         capture_output=True, text=True,
     )
@@ -63,7 +65,8 @@ def worker(scenario):
     if scenario == "announce":
         ih = "%01" * 20
         url = (f"{TRACKER}/announce/{PASSKEY}?info_hash={ih}"
-               "&peer_id=-test0001-test0001&port=6881&uploaded=0&downloaded=0&left=0&event=stopped&compact=1")
+               "&peer_id=-test0001-test0001&port=6881&uploaded=0"
+               "&downloaded=0&left=0&event=stopped&compact=1")
         headers = {}
     elif scenario == "torrents":
         url = BASE_API + "/torrents?limit=20"
@@ -78,7 +81,8 @@ def worker(scenario):
             if scenario == "login":
                 req = urllib.request.Request(
                     url, method="POST",
-                    data=json.dumps({"username": "uploader", "password": "password123"}).encode(),
+                    data=json.dumps({"username": "uploader",
+                        "password": "password123"}).encode(),
                     headers=headers,
                 )
             else:
@@ -98,7 +102,8 @@ def run(scenario):
     latencies = []
     errors = 0
     stop_at = time.time() + DURATION
-    threads = [threading.Thread(target=worker, args=(scenario,), daemon=True) for _ in range(CONCURRENCY)]
+    threads = [threading.Thread(target=worker, args=(scenario,),
+        daemon=True) for _ in range(CONCURRENCY)]
     t0 = time.time()
     for t in threads:
         t.start()
