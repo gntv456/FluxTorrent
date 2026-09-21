@@ -1,7 +1,7 @@
 //! me 登录历史（M01）：GET /me/logins。
 //! 从 auth_http.rs 按域拆出。
 
-use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, web, HttpRequest, HttpResponse};
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};

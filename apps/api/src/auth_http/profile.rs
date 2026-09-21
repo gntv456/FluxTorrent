@@ -2,36 +2,13 @@
 //! 从 auth_http.rs 按域拆出。
 
 use actix_web::{get, web, HttpRequest, HttpResponse};
-use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 
-use super::login_types::PasswordChangeReq;
-
 use super::profile_types::{PublicProfile, RecentComment, RecentUpload};
 use crate::state::AppState;
-
-#[derive(Deserialize)]
-struct LoginReq {
-    username: String,
-    password: String,
-    #[serde(default)]
-    totp_code: Option<u32>,
-}
-
-#[derive(Deserialize)]
-struct RegisterReq {
-    username: String,
-    email: String,
-    password: String,
-    invite_code: String,
-    #[serde(default)]
-    captcha_id: String,
-    #[serde(default)]
-    captcha_answer: i32,
-}
 
 #[get("/users/{id}")]
 pub async fn user_public_profile(

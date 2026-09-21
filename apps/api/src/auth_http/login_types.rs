@@ -4,12 +4,6 @@
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-pub(super) struct PasswordChangeReq {
-    pub(super) old_password: String,
-    pub(super) new_password: String,
-}
-
-#[derive(Deserialize)]
 pub(super) struct LoginReq {
     pub(super) username: String,
     pub(super) password: String,
