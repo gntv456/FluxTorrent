@@ -16,7 +16,8 @@ pub(super) async fn eco_i64(
     default: i64,
 ) -> i64 {
     sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = $1)::bigint, $2)",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         $1)::bigint, $2)",
     )
     .bind(key)
     .bind(default)
@@ -32,7 +33,8 @@ pub(super) async fn eco_f64(
     default: f64,
 ) -> f64 {
     sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = $1)::double precision, $2)",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         $1)::double precision, $2)",
     )
     .bind(key)
     .bind(default)

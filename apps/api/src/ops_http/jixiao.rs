@@ -78,7 +78,8 @@ pub(super) async fn jixiao_types(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let rows = sqlx::query_as::<_, JixiaoTypeRow>(
-        "SELECT id, name, base_pay, metrics, min_requirements, description FROM jixiao_types ORDER BY id",
+        "SELECT id, name, base_pay, metrics, min_requirements, \
+         description FROM jixiao_types ORDER BY id",
     )
     .fetch_all(&state.repo.db)
     .await

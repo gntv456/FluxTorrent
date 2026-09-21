@@ -15,7 +15,8 @@ pub async fn my_login_history(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<LoginEventRow> = sqlx::query_as(
-        "SELECT created_at, host(ip) AS ip, ok, user_agent, reason          FROM login_events WHERE user_id = $1 ORDER BY id DESC LIMIT 20",
+        "SELECT created_at, host(ip) AS ip, ok, user_agent, \
+         reason FROM login_events WHERE user_id = $1 ORDER BY id DESC LIMIT 20",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)

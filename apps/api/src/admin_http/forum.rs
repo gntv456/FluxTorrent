@@ -49,16 +49,19 @@ async fn forum_admin_list(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let mods: Vec<(i64, i64, String)> = sqlx::query_as(
-        "SELECT fm.forum_id, u.id, u.username FROM forum_mods fm JOIN users u ON u.id = fm.user_id ORDER BY fm.forum_id",
+                "SELECT fm.forum_id, u.id, \
+         u.username FROM forum_mods fm JOIN users u ON u.id = fm.user_id ORDER BY fm.forum_id",
     )
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let categories: Vec<(i64, String, i32, bool)> =
-        sqlx::query_as("SELECT id, name, sort, visible FROM forum_categories ORDER BY sort, id")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let categories: Vec<(i64, String, i32, bool)> = sqlx::query_as(
+        "SELECT id, name, sort, \
+         visible FROM forum_categories ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(
         serde_json::json!({ "forums": rows, "mods": mods, "categories": categories }),
     ))
@@ -92,7 +95,8 @@ async fn forum_category_create(
         return Err(DomainError::Validation("分区名不能为空".into()));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO forum_categories (name, sort, visible) VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO forum_categories (name, sort, visible) VALUES \
+         ($1, $2, $3) RETURNING id",
     )
     .bind(body.name.trim())
     .bind(body.sort.unwrap_or(0))
@@ -125,16 +129,18 @@ async fn forum_category_update(
         return Err(DomainError::Validation("分区名不能为空".into()));
     }
     let cid = path.into_inner();
-    let n =
-        sqlx::query("UPDATE forum_categories SET name = $1, sort = $2, visible = $3 WHERE id = $4")
-            .bind(body.name.trim())
-            .bind(body.sort.unwrap_or(0))
-            .bind(body.visible.unwrap_or(true))
-            .bind(cid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
+    let n = sqlx::query(
+        "UPDATE forum_categories SET name = $1, sort = $2, \
+         visible = $3 WHERE id = $4",
+    )
+    .bind(body.name.trim())
+    .bind(body.sort.unwrap_or(0))
+    .bind(body.visible.unwrap_or(true))
+    .bind(cid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(cid));
     }

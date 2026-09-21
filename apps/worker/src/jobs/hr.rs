@@ -42,14 +42,16 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
 
     // 2) 刷新累计做种秒数（快照口径：snatches.seeded_seconds）
     sqlx::query(
-        "UPDATE hr_snapshots h SET seeded_seconds = s.seeded_seconds, updated_at = now()          FROM snatches s          WHERE s.user_id = h.user_id AND s.torrent_id = h.torrent_id AND h.status = 'open'",
+                "UPDATE hr_snapshots h SET seeded_seconds = s.seeded_seconds, \
+         updated_at = now() FROM snatches s WHERE s.user_id = h.user_id AND s.torrent_id = h.torrent_id AND h.status = 'open'",
     )
     .execute(db)
     .await?;
 
     // 3) 达标即 satisfied
     sqlx::query(
-        "UPDATE hr_snapshots SET status = 'satisfied', updated_at = now()          WHERE status = 'open' AND seeded_seconds >= required_seconds",
+                "UPDATE hr_snapshots SET status = 'satisfied', \
+         updated_at = now() WHERE status = 'open' AND seeded_seconds >= required_seconds",
     )
     .execute(db)
     .await?;

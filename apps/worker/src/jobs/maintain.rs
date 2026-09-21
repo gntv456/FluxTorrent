@@ -26,7 +26,8 @@ pub async fn ensure_partitions(db: &PgPool) -> anyhow::Result<()> {
                 .unwrap_or(start);
             let name = format!("{}_{}", tbl, start.format("%Y_%m"));
             sqlx::query(&format!(
-                "CREATE TABLE IF NOT EXISTS {} PARTITION OF {} FOR VALUES FROM ('{}') TO ('{}')",
+                "CREATE TABLE IF NOT EXISTS {} PARTITION OF {} \
+                 FOR VALUES FROM ('{}') TO ('{}')",
                 name,
                 tbl,
                 start.format("%Y-%m-%d"),

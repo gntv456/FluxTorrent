@@ -73,7 +73,8 @@ pub async fn appeal_create(
             captcha_check(&state, &body.captcha_id, &body.captcha_answer)
                 .await?;
             let uid: Option<i64> = sqlx::query_scalar(
-                "SELECT id FROM users WHERE lower(username::text) = lower($1) AND status >= 2",
+                "SELECT id FROM users WHERE \
+                 lower(username::text) = lower($1) AND status >= 2",
             )
             .bind(username)
             .fetch_optional(&state.repo.db)
@@ -119,7 +120,8 @@ pub async fn appeal_create(
         ));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO appeals (user_id, kind, ref_id, body) VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO appeals (user_id, kind, ref_id, body) VALUES ($1, \
+         $2, $3, $4) RETURNING id",
     )
     .bind(user_id)
     .bind(&body.kind)

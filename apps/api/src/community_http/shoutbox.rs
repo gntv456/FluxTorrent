@@ -32,7 +32,8 @@ async fn shoutbox_list(
     // 审计修复（P1）：与全站鉴权口径对齐——聊天记录含用户名与发言内容，不应对匿名开放
     let _auth = require_auth(&req, &state).await?;
     let rows: Vec<ShoutRow> = sqlx::query_as(
-        "SELECT sb.id, u.username, sb.message, sb.created_at          FROM shoutbox sb LEFT JOIN users u ON u.id = sb.user_id          ORDER BY sb.id DESC LIMIT 50",
+                "SELECT sb.id, u.username, sb.message, \
+         sb.created_at FROM shoutbox sb LEFT JOIN users u ON u.id = sb.user_id ORDER BY sb.id DESC LIMIT 50",
     )
     .fetch_all(&state.repo.db)
     .await

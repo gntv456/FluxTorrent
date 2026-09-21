@@ -203,11 +203,14 @@ pub async fn set_user_permission(
 ) -> Result<(), sqlx::Error> {
     match granted {
         None => {
-            sqlx::query("DELETE FROM user_permissions WHERE user_id = $1 AND permission_key = $2")
-                .bind(user_id)
-                .bind(permission_key)
-                .execute(db)
-                .await?;
+            sqlx::query(
+                "DELETE FROM user_permissions WHERE \
+             user_id = $1 AND permission_key = $2",
+            )
+            .bind(user_id)
+            .bind(permission_key)
+            .execute(db)
+            .await?;
         }
         Some(g) => {
             sqlx::query(

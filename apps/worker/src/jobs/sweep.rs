@@ -38,18 +38,24 @@ pub(crate) async fn sweep_stale_peers(db: &PgPool) -> anyhow::Result<u64> {
 
 /// 登录事件留存清理：IP 属个人信息，90 天后删除（每小时一次，幂等）。
 pub(crate) async fn purge_old_login_events(db: &PgPool) -> anyhow::Result<u64> {
-    let res = sqlx::query("DELETE FROM login_events WHERE created_at < now() - interval '90 days'")
-        .execute(db)
-        .await?;
+    let res = sqlx::query(
+        "DELETE FROM login_events WHERE created_at < \
+     now() - interval '90 days'",
+    )
+    .execute(db)
+    .await?;
     Ok(res.rows_affected())
 }
 
 /// 过期邀请落库回收（NP docleanup 口径）：status=0 且过期的邀请码统一置 status=2。
 /// 此前仅展示层 CASE 折算，库内 status 恒 0——按 status 统计的后台口径失真。
 pub(crate) async fn expire_invites(db: &PgPool) -> anyhow::Result<u64> {
-    let res = sqlx::query("UPDATE invites SET status = 2 WHERE status = 0 AND expires_at <= now()")
-        .execute(db)
-        .await?;
+    let res = sqlx::query(
+        "UPDATE invites SET status = 2 WHERE status = 0 \
+     AND expires_at <= now()",
+    )
+    .execute(db)
+    .await?;
     if res.rows_affected() > 0 {
         tracing::info!(n = res.rows_affected(), "expired invites recycled");
     }

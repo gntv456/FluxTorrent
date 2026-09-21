@@ -40,7 +40,8 @@ async fn friend_add(
     // 审计修复（P1 隐私）：旧版单方 INSERT 即成好友，可绕过 accept_pm='friends' 屏障。
     // 新流程：对方拉黑则拒绝；对方已申请我 → 双向转正为好友（接受）；否则写 pending 申请并通知。
     let blacklisted: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM friendships WHERE user_id = $2 AND friend_id = $1 AND list = 'black')",
+        "SELECT EXISTS(SELECT 1 FROM friendships WHERE user_id = $2 \
+         AND friend_id = $1 AND list = 'black')",
     )
     .bind(auth.id)
     .bind(fid)
@@ -51,7 +52,8 @@ async fn friend_add(
         return Err(DomainError::Validation("对方拒绝了你的好友申请".into()));
     }
     let they_pending: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM friendships WHERE user_id = $2 AND friend_id = $1 AND list = 'pending')",
+        "SELECT EXISTS(SELECT 1 FROM friendships WHERE user_id = $2 \
+         AND friend_id = $1 AND list = 'pending')",
     )
     .bind(auth.id)
     .bind(fid)
@@ -60,32 +62,41 @@ async fn friend_add(
     .unwrap_or(false);
     if they_pending {
         // 对方先申请过我：双向转正
-        sqlx::query("UPDATE friendships SET list = 'friend' WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)")
+        sqlx::query("UPDATE friendships SET list = 'friend' WHERE \
+         (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)")
             .bind(auth.id)
             .bind(fid)
             .execute(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         let _ = sqlx::query(
-            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+            "INSERT INTO messages (sender_id, receiver_id, \
+             subject, body) VALUES (NULL, $1, $2, $3)",
         )
         .bind(fid)
         .bind("好友申请已通过")
-        .bind(format!("用户 #{} 接受了你的好友申请，你们现在是好友了。", auth.id))
+        .bind(format!(
+            "用户 #{} 接受了你的好友申请，你们现在是好友了。",
+            auth.id
+        ))
         .execute(&state.repo.db)
         .await;
         return Ok(ok(
             serde_json::json!({ "friend": body.username, "state": "friend" }),
         ));
     }
-    sqlx::query("INSERT INTO friendships (user_id, friend_id, list) VALUES ($1, $2, 'pending') ON CONFLICT DO NOTHING")
-        .bind(auth.id)
-        .bind(fid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO friendships (user_id, friend_id, list) VALUES \
+     ($1, $2, 'pending') ON CONFLICT DO NOTHING",
+    )
+    .bind(auth.id)
+    .bind(fid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         VALUES (NULL, $1, $2, $3)",
     )
     .bind(fid)
     .bind("收到好友申请")
@@ -164,7 +175,8 @@ async fn friend_action(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
             sqlx::query(
-                "DELETE FROM friendships WHERE user_id = $1 AND friend_id = $2 AND list = 'pending'",
+                "DELETE FROM friendships WHERE user_id = $1 \
+                 AND friend_id = $2 AND list = 'pending'",
             )
             .bind(auth.id)
             .bind(fid)
@@ -177,7 +189,8 @@ async fn friend_action(
         }
         "unblack" => {
             let n = sqlx::query(
-                "DELETE FROM friendships WHERE user_id = $1 AND friend_id = $2 AND list = 'black'",
+                "DELETE FROM friendships WHERE user_id = $1 \
+                 AND friend_id = $2 AND list = 'black'",
             )
             .bind(auth.id)
             .bind(fid)

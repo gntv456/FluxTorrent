@@ -44,7 +44,8 @@ pub async fn group_attach(
     {
         Some(g) => g,
         None => sqlx::query_scalar(
-            "INSERT INTO torrent_groups (name, descr, created_by) VALUES ($1, $2, $3) RETURNING id",
+            "INSERT INTO torrent_groups (name, descr, created_by) \
+             VALUES ($1, $2, $3) RETURNING id",
         )
         .bind(name)
         .bind(
@@ -87,7 +88,8 @@ pub async fn group_subscribe(
         return Err(DomainError::NotFound(gid));
     }
     sqlx::query(
-        "INSERT INTO group_subscriptions (user_id, group_id) VALUES ($1, $2)          ON CONFLICT DO NOTHING",
+        "INSERT INTO group_subscriptions (user_id, group_id) VALUES \
+         ($1, $2) ON CONFLICT DO NOTHING",
     )
     .bind(auth.id)
     .bind(gid)

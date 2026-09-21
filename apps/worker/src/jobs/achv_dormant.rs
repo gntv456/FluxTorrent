@@ -128,11 +128,14 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
     .await?;
     for &(uid, ref code, reward) in &newly {
         let _ = sqlx::query(
-            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+            "INSERT INTO messages (sender_id, receiver_id, \
+             subject, body) VALUES (NULL, $1, $2, $3)",
         )
         .bind(uid)
         .bind("成就达成")
-        .bind(format!("恭喜达成成就「{code}」！奖励 {reward} 魔力已入账。"))
+        .bind(format!(
+            "恭喜达成成就「{code}」！奖励 {reward} 魔力已入账。"
+        ))
         .execute(db)
         .await;
     }

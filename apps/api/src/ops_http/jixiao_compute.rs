@@ -64,7 +64,8 @@ pub async fn compute_metrics(
 
     // ── 做种时长：现值 - 期初基线（snatches.seeded_seconds 是 int，显式 ::bigint） ──
     let seed_seconds_now: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(sum(seeded_seconds), 0)::bigint FROM snatches WHERE user_id = $1",
+        "SELECT COALESCE(sum(seeded_seconds), 0)::bigint FROM snatches \
+         WHERE user_id = $1",
     )
     .bind(user_id)
     .fetch_one(db)
@@ -84,7 +85,8 @@ pub async fn compute_metrics(
     .unwrap_or(0);
 
     let seeding_count: i64 = sqlx::query_scalar(
-        "SELECT count(DISTINCT torrent_id) FROM snatches WHERE user_id = $1 AND seeding",
+        "SELECT count(DISTINCT torrent_id) FROM snatches WHERE user_id \
+         = $1 AND seeding",
     )
     .bind(user_id)
     .fetch_one(db)
@@ -99,7 +101,8 @@ pub async fn compute_metrics(
     .await
     .unwrap_or(0);
     let uploads: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM torrents WHERE owner_id = $1 AND to_char(created_at, 'YYYY-MM') = $2",
+        "SELECT count(*) FROM torrents WHERE owner_id = $1 AND \
+         to_char(created_at, 'YYYY-MM') = $2",
     )
     .bind(user_id)
     .bind(period)
@@ -108,7 +111,8 @@ pub async fn compute_metrics(
     .unwrap_or(0);
     // ops 修复：按月过滤（旧实现全历史计数，与「当月操作数」考核口径不符）
     let ops: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM audit_log WHERE actor_id = $1 AND to_char(created_at, 'YYYY-MM') = $2",
+        "SELECT count(*) FROM audit_log WHERE actor_id = $1 AND \
+         to_char(created_at, 'YYYY-MM') = $2",
     )
     .bind(user_id)
     .bind(period)

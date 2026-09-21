@@ -29,7 +29,8 @@ async fn tracker_urls_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let rows: Vec<TrackerUrlRow> = sqlx::query_as(
-        "SELECT id, url, is_default, enabled, priority, updated_at FROM tracker_urls ORDER BY priority, id",
+        "SELECT id, url, is_default, enabled, priority, \
+         updated_at FROM tracker_urls ORDER BY priority, id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -77,7 +78,9 @@ async fn tracker_url_add(
         return Err(DomainError::Validation("该 Tracker URL 已存在".into()));
     }
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO tracker_urls (url, is_default, enabled, priority) VALUES ($1, COALESCE($2, FALSE), COALESCE($3, TRUE), COALESCE($4, 0)) RETURNING id",
+        "INSERT INTO tracker_urls (url, is_default, enabled, priority) \
+         VALUES ($1, COALESCE($2, FALSE), COALESCE($3, TRUE), COALESCE($4, 0)) \
+         RETURNING id",
     )
     .bind(url)
     .bind(body.is_default)

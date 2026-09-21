@@ -159,11 +159,13 @@ async fn push_test(
             PushResult::Delivered | PushResult::ServiceError => delivered += 1,
             PushResult::Gone => {
                 gone += 1;
-                let _ =
-                    sqlx::query("UPDATE push_subscriptions SET expired_at = now() WHERE id = $1")
-                        .bind(s.id)
-                        .execute(&state.repo.db)
-                        .await;
+                let _ = sqlx::query(
+                    "UPDATE push_subscriptions \
+                     SET expired_at = now() WHERE id = $1",
+                )
+                .bind(s.id)
+                .execute(&state.repo.db)
+                .await;
             }
         }
     }

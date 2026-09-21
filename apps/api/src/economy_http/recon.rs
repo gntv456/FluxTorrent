@@ -26,7 +26,8 @@ async fn spark_flow_report(
     )
     .await?;
     let rows: Vec<(String, i64, i64, i64, i64)> = sqlx::query_as(
-        "SELECT month, minted::bigint, burned::bigint, net::bigint, entries FROM v_spark_flow_monthly LIMIT 24",
+        "SELECT month, minted::bigint, burned::bigint, net::bigint, \
+         entries FROM v_spark_flow_monthly LIMIT 24",
     )
     .fetch_all(&state.repo.db)
     .await

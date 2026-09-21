@@ -48,11 +48,13 @@ struct MedalRarityRow {
 async fn medal_rarities(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
-    let rows: Vec<MedalRarityRow> =
-        sqlx::query_as("SELECT value, label, tone, sort FROM medal_rarities ORDER BY sort, value")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows: Vec<MedalRarityRow> = sqlx::query_as(
+        "SELECT value, label, tone, \
+         sort FROM medal_rarities ORDER BY sort, value",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
 
@@ -64,7 +66,13 @@ async fn medal_list(
     let auth = require_auth(&req, &state).await.ok();
     let uid = auth.map(|a| a.id);
     let rows = sqlx::query_as::<_, MedalRow>(
-        "SELECT m.id, m.name, m.price, m.rarity, m.limited, m.description, m.duration_days, m.get_type,             m.sale_begin_at, m.sale_end_at, m.inventory, m.bonus_addition_factor::float8, m.category_id,             c.name AS category_name, m.asset_ref,             ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND (um.expires_at IS NULL OR um.expires_at > now()))) AS owned,             ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()))) AS wearing          FROM medals m LEFT JOIN medal_categories c ON c.id = m.category_id ORDER BY m.category_id, m.id",
+                "SELECT m.id, m.name, m.price, m.rarity, m.limited, \
+         m.description, m.duration_days, m.get_type, m.sale_begin_at, \
+         m.sale_end_at, m.inventory, m.bonus_addition_factor::float8, \
+         m.category_id, c.name AS category_name, m.asset_ref, \
+         ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND (um.expires_at IS NULL OR um.expires_at > now()))) AS owned, \
+         ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()))) AS wearing FROM medals m LEFT JOIN medal_categories c ON c.id = m.category_id ORDER BY m.category_id, \
+         m.id",
     )
     .bind(uid)
     .fetch_all(&state.repo.db)
@@ -100,7 +108,8 @@ async fn medal_wear(
         .map_err(|e| DomainError::Internal(e.into()))?;
     if let Some(mid) = body.medal_id {
         let updated = sqlx::query(
-            "UPDATE user_medals SET wearing = true WHERE user_id = $1 AND medal_id = $2",
+            "UPDATE user_medals SET wearing = true WHERE user_id = \
+             $1 AND medal_id = $2",
         )
         .bind(auth.id)
         .bind(mid)
@@ -128,7 +137,8 @@ async fn my_medals(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<(i64, String, bool)> = sqlx::query_as(
-        "SELECT m.id, m.name, um.wearing FROM user_medals um JOIN medals m ON m.id = um.medal_id WHERE um.user_id = $1 AND (um.expires_at IS NULL OR um.expires_at > now()) ORDER BY m.id",
+                "SELECT m.id, m.name, \
+         um.wearing FROM user_medals um JOIN medals m ON m.id = um.medal_id WHERE um.user_id = $1 AND (um.expires_at IS NULL OR um.expires_at > now()) ORDER BY m.id",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)

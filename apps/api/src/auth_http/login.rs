@@ -49,7 +49,9 @@ pub async fn login(
             // 失败口径 —— 防枚举与正常流一致（真实封禁提示走公开 /auth/ban-log）。
             // 申诉通道见下方 ban_appeal 分支（P0 修复：此前被封用户无任何自助申诉入口）。
             let _ = sqlx::query(
-                "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES (NULL, NULLIF($1,'')::inet, false, $2, 4)",
+                "INSERT INTO login_events (user_id, ip, ok, \
+                 user_agent, reason) VALUES (NULL, NULLIF($1,'')::inet, false, \
+                 $2, 4)",
             )
             .bind(&peer_ip)
             .bind(&ua)
@@ -60,7 +62,8 @@ pub async fn login(
     };
     if !domain::verify_password(&user.pass_hash, &body.password) {
         let _ = sqlx::query(
-            "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 1)",
+                        "INSERT INTO login_events (user_id, ip, ok, \
+             user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 1)",
         )
         .bind(user.id)
         .bind(&peer_ip)
@@ -78,7 +81,8 @@ pub async fn login(
     .await
     {
         let _ = sqlx::query(
-            "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 2)",
+                        "INSERT INTO login_events (user_id, ip, ok, \
+             user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 2)",
         )
         .bind(user.id)
         .bind(&peer_ip)
@@ -91,7 +95,8 @@ pub async fn login(
     // 拦截放在密码/2FA 之后 —— 不给探测者区分「休眠账号是否存在」的信息差。
     if user.dormant_at.is_some() {
         let _ = sqlx::query(
-            "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 3)",
+                        "INSERT INTO login_events (user_id, ip, ok, \
+             user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 3)",
         )
         .bind(user.id)
         .bind(&peer_ip)
@@ -109,7 +114,8 @@ pub async fn login(
         .map_err(DomainError::Internal)?;
     // 登录事件（控制面板账户概览 30 天活跃趋势；含 IP 供 ipcheck/maxlogin）
     let _ = sqlx::query(
-        "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, true, $3, 0)",
+        "INSERT INTO login_events (user_id, ip, ok, user_agent, \
+         reason) VALUES ($1, NULLIF($2,'')::inet, true, $3, 0)",
     )
     .bind(user.id)
     .bind(&peer_ip)

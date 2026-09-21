@@ -124,7 +124,8 @@ pub async fn test_ip(
             .map_err(|_| DomainError::Validation("IP 格式无效".into()))?;
     let ip_text = ip.to_string();
     let hit: Option<(String, Option<String>, String)> = sqlx::query_as(
-        "SELECT host(ip), reason, COALESCE(u.username, 'system') FROM ip_bans b LEFT JOIN users u ON u.id = b.banned_by WHERE ip = $1::inet",
+                "SELECT host(ip), reason, \
+         COALESCE(u.username, 'system') FROM ip_bans b LEFT JOIN users u ON u.id = b.banned_by WHERE ip = $1::inet",
     ).bind(&ip_text)
     .fetch_optional(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;

@@ -20,7 +20,8 @@ pub async fn ad_list(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE)
         .await?;
     let rows: Vec<AdRow> = sqlx::query_as(
-        "SELECT id, title, html, position, enabled, sort FROM ads ORDER BY sort, id",
+        "SELECT id, title, html, position, enabled, \
+         sort FROM ads ORDER BY sort, id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -57,9 +58,15 @@ pub async fn ad_create(
         ));
     }
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO ads (title, html, position, sort) VALUES ($1, $2, $3, COALESCE($4::int, 0)) RETURNING id",
-    ).bind(body.title.trim()).bind(&body.html).bind(&body.position).bind(body.sort)
-    .fetch_one(&state.repo.db).await
+        "INSERT INTO ads (title, html, position, sort) VALUES ($1, $2, \
+         $3, COALESCE($4::int, 0)) RETURNING id",
+    )
+    .bind(body.title.trim())
+    .bind(&body.html)
+    .bind(&body.position)
+    .bind(body.sort)
+    .fetch_one(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "ad_create", None).await;
     Ok(ok(serde_json::json!({ "id": id })))
@@ -76,7 +83,8 @@ pub async fn ad_update(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::ADS_MANAGE)
         .await?;
     let n = sqlx::query(
-        "UPDATE ads SET title=$2, html=$3, position=$4, sort=COALESCE($5::int, sort) WHERE id=$1",
+        "UPDATE ads SET title=$2, html=$3, position=$4, \
+         sort=COALESCE($5::int, sort) WHERE id=$1",
     )
     .bind(*path)
     .bind(body.title.trim())
@@ -196,7 +204,10 @@ pub async fn uploaders(
     )
     .await?;
     let rows: Vec<UploaderRow> = sqlx::query_as(
-        "SELECT u.id, u.username,                 (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)::bigint AS uploads,                 (SELECT count(*) FROM snatches s JOIN torrents t2 ON t2.id = s.torrent_id                   WHERE s.user_id = u.id AND s.seeding AND t2.owner_id = u.id)::bigint AS seeding,                 COALESCE((SELECT sum(t.size) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), 0)::bigint AS total_size          FROM users u WHERE u.status < 2            AND EXISTS (SELECT 1 FROM torrents t3 WHERE t3.owner_id = u.id AND t3.approval_status = 1)          ORDER BY uploads DESC LIMIT 100",
+                "SELECT u.id, u.username, \
+         (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)::bigint AS uploads, \
+         (SELECT count(*) FROM snatches s JOIN torrents t2 ON t2.id = s.torrent_id WHERE s.user_id = u.id AND s.seeding AND t2.owner_id = u.id)::bigint AS seeding, \
+         COALESCE((SELECT sum(t.size) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), 0)::bigint AS total_size FROM users u WHERE u.status < 2 AND EXISTS (SELECT 1 FROM torrents t3 WHERE t3.owner_id = u.id AND t3.approval_status = 1) ORDER BY uploads DESC LIMIT 100",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))

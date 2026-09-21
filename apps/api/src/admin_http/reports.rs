@@ -95,7 +95,8 @@ async fn report_resolve(
     }
     // 取举报人与对象（供 PM）
     let info: Option<(i64, String, i64)> = sqlx::query_as(
-        "SELECT reporter_id, ref_type, ref_id FROM reports WHERE id = $1 AND status IN (0, 2)",
+        "SELECT reporter_id, ref_type, \
+         ref_id FROM reports WHERE id = $1 AND status IN (0, 2)",
     )
     .bind(body.report_id)
     .fetch_optional(&state.repo.db)
@@ -133,7 +134,8 @@ async fn report_resolve(
         pm.push_str(body.note.trim());
     }
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         VALUES ($1, $2, $3, $4)",
     )
     .bind(auth.id)
     .bind(reporter_id)

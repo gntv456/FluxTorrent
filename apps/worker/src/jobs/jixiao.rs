@@ -60,14 +60,16 @@ pub async fn jixiao_settle(db: &PgPool) -> anyhow::Result<u64> {
 
     // 加成参数：全站 site_settings 兜底（岗位级 bonus_rules 优先，逐岗位在循环内取）
     let site_step: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name='jixiao_bonus_months_per_step'), 3)",
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name='jixiao_bonus_months_per_step'), 3)",
     )
     .fetch_one(db)
     .await
     .unwrap_or(3)
     .max(1);
     let site_pct: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name='jixiao_bonus_percent_per_step'), 10)",
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name='jixiao_bonus_percent_per_step'), 10)",
     )
     .fetch_one(db)
     .await

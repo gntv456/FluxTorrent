@@ -99,7 +99,8 @@ pub async fn user_public_profile(
         traffic.unwrap_or((0, 0, 0, 0, 0));
     // H&R：未解决违规数（观众站「H&R 0」+ 站点 hr_violation_limit 上限口径）
     let hr: Option<(i64,)> = sqlx::query_as(
-        "SELECT count(*) FROM hr_violations WHERE user_id = $1 AND resolved_at IS NULL",
+        "SELECT count(*) FROM hr_violations WHERE user_id = $1 AND \
+         resolved_at IS NULL",
     )
     .bind(uid)
     .fetch_optional(&state.repo.db)
@@ -107,7 +108,8 @@ pub async fn user_public_profile(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let hr_unresolved = hr.map(|(n,)| n).unwrap_or(0);
     let hr_limit: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((value)::bigint, 3) FROM site_settings WHERE name = 'hr_violation_limit'",
+        "SELECT COALESCE((value)::bigint, 3) FROM site_settings WHERE \
+         name = 'hr_violation_limit'",
     )
     .fetch_optional(&state.repo.db)
     .await
@@ -131,7 +133,8 @@ pub async fn user_public_profile(
     .unwrap_or(0);
     // 完成种子数（憨憨「完成种子」口径：completed_at 非空的抓取记录）
     let completed: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM snatches WHERE user_id = $1 AND completed_at IS NOT NULL",
+        "SELECT count(*) FROM snatches WHERE user_id = $1 AND \
+         completed_at IS NOT NULL",
     )
     .bind(uid)
     .fetch_one(&state.repo.db)
@@ -147,7 +150,8 @@ pub async fn user_public_profile(
     .unwrap_or(0);
     // 邀请人（脱敏：只回邀请人 id+用户名，不回邮箱）
     let inviter: Option<(i64, String)> = sqlx::query_as(
-        "SELECT i.id, i.username FROM users u JOIN users i ON i.id = u.invited_by WHERE u.id = $1",
+                "SELECT i.id, \
+         i.username FROM users u JOIN users i ON i.id = u.invited_by WHERE u.id = $1",
     )
     .bind(uid)
     .fetch_optional(&state.repo.db)
@@ -155,7 +159,8 @@ pub async fn user_public_profile(
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 客户端信息（NP 连接信息：最近一次上报的 BT 客户端 Agent；snatches 无记录则空）
     let agent: Option<(String,)> = sqlx::query_as(
-        "SELECT agent FROM snatches WHERE user_id = $1 AND agent <> '' ORDER BY last_seen_at DESC LIMIT 1",
+        "SELECT agent FROM snatches WHERE user_id = $1 AND agent <> '' \
+         ORDER BY last_seen_at DESC LIMIT 1",
     )
     .bind(uid)
     .fetch_optional(&state.repo.db)
@@ -228,14 +233,16 @@ pub async fn user_public_profile(
         .await
         .unwrap_or_default();
     let uploads: Vec<RecentUpload> = sqlx::query_as(
-        "SELECT id, name, small_descr, size, created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",
+                "SELECT id, name, small_descr, size, \
+         created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",
     )
     .bind(uid)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let recent_comments: Vec<RecentComment> = sqlx::query_as(
-        "SELECT torrent_id, body, created_at FROM comments WHERE user_id = $1 ORDER BY id DESC LIMIT 10",
+        "SELECT torrent_id, body, \
+         created_at FROM comments WHERE user_id = $1 ORDER BY id DESC LIMIT 10",
     )
     .bind(uid)
     .fetch_all(&state.repo.db)

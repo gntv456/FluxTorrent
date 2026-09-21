@@ -80,7 +80,8 @@ async fn admin_user_rename(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
-        "INSERT INTO username_change_logs (uid, old_name, new_name, operator) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO username_change_logs (uid, old_name, new_name, \
+         operator) VALUES ($1, $2, $3, $4)",
     )
     .bind(uid)
     .bind(&old_name)

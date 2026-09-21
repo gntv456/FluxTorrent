@@ -23,7 +23,8 @@ async fn checkin(
 
     // 幂等：今日已签直接返回
     let already: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM attendance WHERE user_id = $1 AND date = $2)",
+        "SELECT EXISTS(SELECT 1 FROM attendance WHERE user_id = $1 AND \
+         date = $2)",
     )
     .bind(auth.id)
     .bind(today)
@@ -110,7 +111,8 @@ async fn checkin_status(
     let rows: Vec<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
         // 审计修复（P2）：补签行 makeup=true 且 streak=0，被 last() 当作最新连签会让首页
         // 在补签当天显示连签 0。recent 列表仍含补签行（日历要展示），streak 单独查非补签基线。
-        "SELECT date, streak, reward FROM attendance WHERE user_id = $1 AND date >= current_date - interval '30 days' ORDER BY date",
+                "SELECT date, streak, \
+         reward FROM attendance WHERE user_id = $1 AND date >= current_date - interval '30 days' ORDER BY date",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)
@@ -120,7 +122,8 @@ async fn checkin_status(
     let checked_today = rows.iter().any(|(d, _, _)| *d == today);
     // streak 基线取最后一条非补签行（与签到主流程同口径），补签不重置显示
     let current_streak: i64 = sqlx::query_scalar(
-        "SELECT streak FROM attendance WHERE user_id = $1 AND NOT makeup ORDER BY date DESC LIMIT 1",
+        "SELECT streak FROM attendance WHERE user_id = $1 AND NOT \
+         makeup ORDER BY date DESC LIMIT 1",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)

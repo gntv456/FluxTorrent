@@ -122,7 +122,8 @@ pub async fn admin_amount_bonus(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let ids: Vec<(i64, i64)> = sqlx::query_as(
-        "SELECT id, spark_balance FROM users WHERE ($1::bigint IS NULL AND status < 2) OR id = $1 FOR UPDATE",
+                "SELECT id, \
+         spark_balance FROM users WHERE ($1::bigint IS NULL AND status < 2) OR id = $1 FOR UPDATE",
     )
     .bind(body.user_id)
     .fetch_all(&mut *tx)
@@ -133,7 +134,8 @@ pub async fn admin_amount_bonus(
         // 旧版余额 GREATEST(0,...) 截断但流水记原始 amount，负扣被截断的部分
         // 会在 worker 小时级 sum(ledger) 重算时被重新兑现（账本撕裂）。
         let after: i64 = sqlx::query_scalar(
-            "UPDATE users SET spark_balance = GREATEST(0, spark_balance + $2) WHERE id = $1 RETURNING spark_balance",
+            "UPDATE users SET spark_balance = GREATEST(0, \
+             spark_balance + $2) WHERE id = $1 RETURNING spark_balance",
         )
         .bind(uid)
         .bind(body.amount)
@@ -145,12 +147,19 @@ pub async fn admin_amount_bonus(
             continue; // 截断后无实际变动（如余额 0 再负扣）：不落流水，保持 sum(ledger)=balance
         }
         sqlx::query(
-            "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key, balance_after) \n             VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'admin', 'amountbonus', $3, $4, $5)",
+            "INSERT INTO spark_ledger (id, user_id, amount, kind, \
+             ref_type, ref_id, idempotency_key, balance_after) \n VALUES \
+             (nextval('spark_ledger_id_seq'), $1, $2, 'admin', 'amountbonus', \
+             $3, $4, $5)",
         )
         .bind(uid)
         .bind(actual_delta)
         .bind(auth.id)
-        .bind(format!("amountbonus-{}-{}", uid, uuid::Uuid::new_v4().simple()))
+        .bind(format!(
+            "amountbonus-{}-{}",
+            uid,
+            uuid::Uuid::new_v4().simple()
+        ))
         .bind(after)
         .execute(&mut *tx)
         .await

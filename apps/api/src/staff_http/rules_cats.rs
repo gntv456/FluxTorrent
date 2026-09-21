@@ -42,7 +42,8 @@ pub async fn rule_create(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::RULES_MANAGE)
         .await?;
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO site_rules (title, body, sort) VALUES ($1,$2,COALESCE($3,(SELECT max(sort)+1 FROM site_rules))) RETURNING id",
+                "INSERT INTO site_rules (title, body, sort) VALUES \
+         ($1,$2,COALESCE($3,(SELECT max(sort)+1 FROM site_rules))) RETURNING id",
     ).bind(&body.title).bind(&body.body).bind(body.sort)
     .fetch_one(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -79,11 +80,18 @@ pub async fn rule_update(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let n = sqlx::query("UPDATE site_rules SET title=$2, body=$3, sort=COALESCE($4, sort), updated_at=now() WHERE id=$1")
-        .bind(*path).bind(&body.title).bind(&body.body).bind(body.sort)
-        .execute(&mut *tx).await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    let n = sqlx::query(
+        "UPDATE site_rules SET title=$2, body=$3, \
+     sort=COALESCE($4, sort), updated_at=now() WHERE id=$1",
+    )
+    .bind(*path)
+    .bind(&body.title)
+    .bind(&body.body)
+    .bind(body.sort)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -167,9 +175,14 @@ pub async fn category_create(
         crate::authz::perm::CATEGORIES_MANAGE,
     )
     .await?;
-    let id: i32 = sqlx::query_scalar("INSERT INTO categories (id, name) VALUES ((SELECT max(id)+1 FROM categories), $1) RETURNING id")
-        .bind(&body.name).fetch_one(&state.repo.db).await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO categories (id, name) \
+     VALUES ((SELECT max(id)+1 FROM categories), $1) RETURNING id",
+    )
+    .bind(&body.name)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 审计修复（P1）：分类增删改此前完全不写审计日志
     state
         .repo

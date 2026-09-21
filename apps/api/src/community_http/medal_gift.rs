@@ -76,7 +76,8 @@ async fn medal_gift(
         });
     // 赠送通道同样受「已拥有/售期/限量」约束（此前 gift 绕过三重检查可超卖限量勋章）
     let receiver_owned: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM user_medals WHERE user_id = $1 AND medal_id = $2 AND (expires_at IS NULL OR expires_at > now()))",
+        "SELECT EXISTS(SELECT 1 FROM user_medals WHERE user_id = $1 \
+         AND medal_id = $2 AND (expires_at IS NULL OR expires_at > now()))",
     )
     .bind(to_id)
     .bind(body.medal_id)
@@ -92,7 +93,9 @@ async fn medal_gift(
         Option<chrono::DateTime<chrono::Utc>>,
         Option<chrono::DateTime<chrono::Utc>>,
     ) = sqlx::query_as(
-        "SELECT m.inventory, (SELECT count(*) FROM user_medals um WHERE um.medal_id = m.id),                 m.sale_begin_at, m.sale_end_at          FROM medals m WHERE m.id = $1",
+        "SELECT m.inventory, \
+         (SELECT count(*) FROM user_medals um WHERE um.medal_id = m.id), \
+         m.sale_begin_at, m.sale_end_at FROM medals m WHERE m.id = $1",
     )
     .bind(body.medal_id)
     .fetch_one(&state.repo.db)
@@ -143,13 +146,16 @@ async fn medal_gift(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        sqlx::query("INSERT INTO pool_donations (user_id, amount, month) VALUES ($1, $2, $3)")
-            .bind(auth.id)
-            .bind(tax)
-            .bind(&month)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "INSERT INTO pool_donations (user_id, amount, \
+         month) VALUES ($1, $2, $3)",
+        )
+        .bind(auth.id)
+        .bind(tax)
+        .bind(&month)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     sqlx::query(
         "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
@@ -164,7 +170,8 @@ async fn medal_gift(
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 收件人通知（审计补齐：收礼物却无感知，只能自己去勋章页发现）
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         VALUES ($1, $2, $3, $4)",
     )
     .bind(auth.id)
     .bind(to_id)

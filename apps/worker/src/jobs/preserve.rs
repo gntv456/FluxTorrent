@@ -32,7 +32,8 @@ pub async fn preserve_exit(db: &PgPool) -> anyhow::Result<u64> {
 /// 时长基线列保留供后台展示 delta。
 pub async fn preserve_settle(db: &PgPool) -> anyhow::Result<u64> {
     let bonus: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'preserve_bonus_per_day')::bigint, 100)",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'preserve_bonus_per_day')::bigint, 100)",
     )
     .fetch_one(db)
     .await

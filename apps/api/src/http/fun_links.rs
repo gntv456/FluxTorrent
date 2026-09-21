@@ -74,7 +74,8 @@ pub async fn fun_item_vote(
         return Err(DomainError::Validation("投票只能是 fun 或 dull".into()));
     }
     let inserted = sqlx::query(
-        "INSERT INTO fun_item_votes (fun_id, user_id, vote) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        "INSERT INTO fun_item_votes (fun_id, user_id, vote) VALUES \
+         ($1, $2, $3) ON CONFLICT DO NOTHING",
     )
     .bind(body.fun_id)
     .bind(auth.id)
@@ -107,7 +108,8 @@ pub async fn fun_item_create(
         return Err(DomainError::Validation("标题不能为空".into()));
     }
     let recent: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
-        "SELECT max(added) FROM fun_items WHERE status NOT IN ('banned','dull')",
+        "SELECT max(added) FROM fun_items WHERE status NOT IN \
+         ('banned','dull')",
     )
     .fetch_one(&state.repo.db)
     .await
@@ -123,7 +125,8 @@ pub async fn fun_item_create(
         }
     }
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO fun_items (user_id, title, body) VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO fun_items (user_id, title, body) VALUES ($1, $2, \
+         $3) RETURNING id",
     )
     .bind(auth.id)
     .bind(body.title.trim())

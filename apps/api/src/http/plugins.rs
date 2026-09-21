@@ -212,7 +212,8 @@ pub async fn contest_join(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let inserted = sqlx::query(
-        "INSERT INTO contest_entries (contest_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        "INSERT INTO contest_entries (contest_id, user_id) VALUES ($1, \
+         $2) ON CONFLICT DO NOTHING",
     )
     .bind(*path)
     .bind(auth.id)

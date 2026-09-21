@@ -23,8 +23,15 @@ pub async fn home_sections(
     let uid = auth.id;
 
     // 公告（home-news）：最新一条为头条 + 其余为列表
-    let news: Vec<(i32, String, String, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
-        "SELECT id, title, body, badge, created_at FROM announcements ORDER BY id DESC LIMIT 8",
+    let news: Vec<(
+        i32,
+        String,
+        String,
+        String,
+        chrono::DateTime<chrono::Utc>,
+    )> = sqlx::query_as(
+        "SELECT id, title, body, badge, \
+         created_at FROM announcements ORDER BY id DESC LIMIT 8",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -53,7 +60,8 @@ pub async fn home_sections(
     .await
     .unwrap_or(0);
     let att: Vec<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
-        "SELECT date, streak, reward FROM attendance WHERE user_id = $1 ORDER BY date",
+        "SELECT date, streak, \
+         reward FROM attendance WHERE user_id = $1 ORDER BY date",
     )
     .bind(uid)
     .fetch_all(&state.repo.db)

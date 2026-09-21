@@ -86,7 +86,8 @@ async fn section_dict_add(
         ));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO section_dict (kind, name, sort, mode_id) VALUES ($1, $2, COALESCE($3, 0), $4) RETURNING id",
+        "INSERT INTO section_dict (kind, name, sort, mode_id) VALUES \
+         ($1, $2, COALESCE($3, 0), $4) RETURNING id",
     )
     .bind(kind)
     .bind(body.name.trim())
@@ -122,7 +123,8 @@ async fn section_dict_update(
         return Err(DomainError::Validation("未知维度".into()));
     }
     let n = sqlx::query(
-        "UPDATE section_dict SET name = $2, sort = COALESCE($3, sort), mode_id = $4 WHERE id = $1",
+        "UPDATE section_dict SET name = $2, sort = COALESCE($3, sort), \
+         mode_id = $4 WHERE id = $1",
     )
     .bind(id)
     .bind(body.name.trim())

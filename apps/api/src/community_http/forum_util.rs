@@ -62,7 +62,8 @@ pub(crate) async fn notify_user(
         return;
     }
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         VALUES (NULL, $1, $2, $3)",
     )
     .bind(to)
     .bind(subject)
@@ -123,7 +124,8 @@ pub(crate) async fn notify_followers(
     exclude: &[i64],
 ) {
     let rows: Vec<i64> = sqlx::query_scalar(
-        "SELECT user_id FROM follows WHERE target_type = $1 AND target_id = $2 LIMIT 500",
+        "SELECT user_id FROM follows WHERE target_type = $1 AND \
+         target_id = $2 LIMIT 500",
     )
     .bind(target_type)
     .bind(target_id)
@@ -153,12 +155,14 @@ pub(crate) async fn notify_mentions(
     if names.is_empty() {
         return;
     }
-    let rows: Vec<(i64, String)> =
-        sqlx::query_as("SELECT id, username FROM users WHERE username = ANY($1) AND status < 2")
-            .bind(&names)
-            .fetch_all(db)
-            .await
-            .unwrap_or_default();
+    let rows: Vec<(i64, String)> = sqlx::query_as(
+        "SELECT id, \
+         username FROM users WHERE username = ANY($1) AND status < 2",
+    )
+    .bind(&names)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
     for (uid, _uname) in rows {
         if uid == from || exclude.contains(&uid) {
             continue;
@@ -257,7 +261,8 @@ pub(crate) async fn attach_topic_tags(
             continue;
         }
         sqlx::query(
-            "INSERT INTO topic_tags (topic_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            "INSERT INTO topic_tags (topic_id, tag_id) VALUES ($1, \
+             $2) ON CONFLICT DO NOTHING",
         )
         .bind(topic_id)
         .bind(*tid)

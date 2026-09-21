@@ -17,7 +17,8 @@ pub(super) async fn offer_create(
     // 仅已过审种子可提名候选（审计修复：旧版可对待审/被拒/软删种子发起，
     // promote 会直接置 approval_status=1 + official_tag 绕过审核流）
     let t_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND approval_status = 1)",
+        "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND \
+         approval_status = 1)",
     )
     .bind(body.torrent_id)
     .fetch_one(&state.repo.db)
@@ -89,12 +90,15 @@ pub(super) async fn offer_vote(
         return Err(DomainError::NotFound(body.offer_id));
     }
     // 先占位投票记录（原子判重，防重放刷票）
-    let voted = sqlx::query("INSERT INTO offer_votes (offer_id, user_id, cost) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING")
-        .bind(body.offer_id)
-        .bind(auth.id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let voted = sqlx::query(
+        "INSERT INTO offer_votes (offer_id, user_id, \
+     cost) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING",
+    )
+    .bind(body.offer_id)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if voted.rows_affected() == 0 {
         return Err(DomainError::Validation("已投过票啦".into()));
     }
@@ -153,7 +157,8 @@ pub(super) async fn offer_promote(
     )
     .await?;
     let tid: Option<i64> = sqlx::query_scalar(
-        "UPDATE offers SET promoted = true WHERE id = $1 AND NOT promoted RETURNING torrent_id",
+        "UPDATE offers SET promoted = true WHERE id = $1 AND NOT \
+         promoted RETURNING torrent_id",
     )
     .bind(body.offer_id)
     .fetch_optional(&state.repo.db)
@@ -163,11 +168,14 @@ pub(super) async fn offer_promote(
     let Some(tid) = tid else {
         return Err(DomainError::NotFound(body.offer_id));
     };
-    sqlx::query("UPDATE torrents SET approval_status = 1, official_tag = true, approved_at = now() WHERE id = $1")
-        .bind(tid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE torrents SET approval_status = 1, \
+     official_tag = true, approved_at = now() WHERE id = $1",
+    )
+    .bind(tid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "offer_promote", Some(tid))

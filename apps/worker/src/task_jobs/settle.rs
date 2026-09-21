@@ -80,14 +80,16 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
         }; // 用户已删，跳过
 
         let seed_seconds: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(sum(seeded_seconds), 0) FROM snatches WHERE user_id = $1",
+            "SELECT COALESCE(sum(seeded_seconds), 0) FROM snatches \
+             WHERE user_id = $1",
         )
         .bind(c.user_id)
         .fetch_one(db)
         .await
         .unwrap_or(0);
         let uploads_now: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM torrents WHERE owner_id = $1 AND approval_status = 1",
+            "SELECT count(*) FROM torrents WHERE owner_id = $1 AND \
+             approval_status = 1",
         )
         .bind(c.user_id)
         .fetch_one(db)

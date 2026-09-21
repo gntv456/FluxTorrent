@@ -31,7 +31,8 @@ async fn post_reply(
     // 敏感词（Phase3）
     check_banned_words(&state.repo.db, &body.body).await?;
     let row: Option<(i64, bool, i64, String)> = sqlx::query_as(
-        "SELECT forum_id, locked, COALESCE(user_id, 0), title FROM topics WHERE id = $1",
+        "SELECT forum_id, locked, COALESCE(user_id, 0), \
+         title FROM topics WHERE id = $1",
     )
     .bind(tid)
     .fetch_optional(&state.repo.db)
@@ -51,7 +52,8 @@ async fn post_reply(
     forum_flood_check(&state.repo.db, auth.id, auth.class_id).await?;
     let body_text = strip_markdown(&body.body);
     let post_id: i64 = sqlx::query_scalar(
-        "INSERT INTO posts (id, topic_id, user_id, body, body_text) VALUES (nextval('posts_id_seq'), $1, $2, $3, $4) RETURNING id",
+        "INSERT INTO posts (id, topic_id, user_id, body, body_text) \
+         VALUES (nextval('posts_id_seq'), $1, $2, $3, $4) RETURNING id",
     )
     .bind(tid)
     .bind(auth.id)

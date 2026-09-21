@@ -20,7 +20,8 @@ pub async fn warned_list(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN)
         .await?;
     let rows: Vec<WarnedRow> = sqlx::query_as(
-        "SELECT id, username, warned_until, warned_reason FROM users WHERE warned_until > now() ORDER BY warned_until",
+                "SELECT id, username, warned_until, \
+         warned_reason FROM users WHERE warned_until > now() ORDER BY warned_until",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
@@ -47,10 +48,16 @@ pub async fn warn_user(
         return Err(DomainError::Validation("警告时长需 1-52 周".into()));
     }
     let n = sqlx::query(
-        "UPDATE users SET warned_until = now() + make_interval(weeks => $2), warned_reason = $3 WHERE id = $1 AND status < 2",
-    ).bind(body.user_id).bind(body.weeks).bind(&body.reason)
-    .execute(&state.repo.db).await
-    .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+        "UPDATE users SET warned_until = now() + make_interval(weeks \
+         => $2), warned_reason = $3 WHERE id = $1 AND status < 2",
+    )
+    .bind(body.user_id)
+    .bind(body.weeks)
+    .bind(&body.reason)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(body.user_id));
     }
@@ -72,12 +79,15 @@ pub async fn unwarn_user(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN)
         .await?;
-    let n = sqlx::query("UPDATE users SET warned_until = NULL, warned_reason = NULL WHERE id = $1")
-        .bind(*path)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    let n = sqlx::query(
+        "UPDATE users SET warned_until = NULL, \
+     warned_reason = NULL WHERE id = $1",
+    )
+    .bind(*path)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(*path));
     }

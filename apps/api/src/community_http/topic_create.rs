@@ -136,7 +136,8 @@ async fn topic_create(
         (1, 0, 0, 24)
     };
     let topic_id: i64 = sqlx::query_scalar(
-        "INSERT INTO topics (forum_id, user_id, title, topic_type, bounty_spark) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        "INSERT INTO topics (forum_id, user_id, title, topic_type, \
+         bounty_spark) VALUES ($1, $2, $3, $4, $5) RETURNING id",
     )
     .bind(body.forum_id)
     .bind(auth.id)
@@ -147,14 +148,17 @@ async fn topic_create(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let body_text = strip_markdown(&body.body);
-    sqlx::query("INSERT INTO posts (id, topic_id, user_id, body, body_text) VALUES (nextval('posts_id_seq'), $1, $2, $3, $4)")
-        .bind(topic_id)
-        .bind(auth.id)
-        .bind(&body.body)
-        .bind(&body_text)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO posts (id, topic_id, user_id, body, \
+     body_text) VALUES (nextval('posts_id_seq'), $1, $2, $3, $4)",
+    )
+    .bind(topic_id)
+    .bind(auth.id)
+    .bind(&body.body)
+    .bind(&body_text)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query("UPDATE topics SET last_post_at = now() WHERE id = $1")
         .bind(topic_id)
         .execute(&mut *tx)

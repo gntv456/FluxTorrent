@@ -62,7 +62,8 @@ pub(super) async fn resurrection_claim(
     // value::int 得到的是 INT4，必须读 i32。原为 i64：解码期报 mismatched types，
     // 又被随后的 unwrap_or(240) 静默吞掉 —— 表现为 resurrection_hours 配置永远不生效、恒为 240。
     let hours: i32 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'resurrection_hours'), 240)",
+        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE \
+         name = 'resurrection_hours'), 240)",
     )
     .fetch_one(&state.repo.db)
     .await

@@ -28,7 +28,8 @@ async fn spark_flow_daily(
     )
     .await?;
     let rows: Vec<(chrono::NaiveDate, i64, i64, i64)> = sqlx::query_as(
-        "SELECT day, minted::bigint, burned::bigint, net::bigint FROM v_spark_flow_daily",
+        "SELECT day, minted::bigint, burned::bigint, \
+         net::bigint FROM v_spark_flow_daily",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -135,7 +136,8 @@ async fn review_resume(
     )
     .await?;
     let n = sqlx::query(
-        "UPDATE torrents SET approval_status = 0, deny_note = NULL WHERE id = $1 AND approval_status = 4",
+        "UPDATE torrents SET approval_status = 0, \
+         deny_note = NULL WHERE id = $1 AND approval_status = 4",
     )
     .bind(body.torrent_id)
     .execute(&state.repo.db)

@@ -36,7 +36,8 @@ pub async fn forum_access(
         can_mod: false,
     };
     let row: Option<(i32, i32, i32)> = sqlx::query_as(
-        "SELECT minclassread, minclasswrite, minclasscreate FROM forums WHERE id = $1",
+        "SELECT minclassread, minclasswrite, \
+         minclasscreate FROM forums WHERE id = $1",
     )
     .bind(forum_id)
     .fetch_optional(db)
@@ -56,7 +57,8 @@ pub async fn forum_access(
     }
     // 版主：本版块全放行（任命不需要等级）
     let is_mod: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM forum_mods WHERE forum_id = $1 AND user_id = $2)",
+        "SELECT EXISTS(SELECT 1 FROM forum_mods WHERE forum_id = $1 \
+         AND user_id = $2)",
     )
     .bind(forum_id)
     .bind(user_id)

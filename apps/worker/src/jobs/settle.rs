@@ -45,7 +45,8 @@ pub(crate) async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
     // 死掉后该众筹永久退出结算集合（WHERE status=0 匹配不到），未完成的退款丢失。
     // 新序：CAS 到中间态 3（结算中）→ 逐笔退款 → 全部成功置 2；重启后 3 态重入续退。
     let mut expired: Vec<(i64, i64)> = sqlx::query_as(
-        "UPDATE fundings SET status = 3 WHERE status = 0 AND ends_at <= now() RETURNING id, creator_id",
+        "UPDATE fundings SET status = 3 WHERE status = 0 AND ends_at \
+         <= now() RETURNING id, creator_id",
     )
     .fetch_all(db)
     .await?;
@@ -59,11 +60,13 @@ pub(crate) async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
     );
     let mut refunds = 0u64;
     for (fid, _creator) in &expired {
-        let contribs: Vec<(i64, i64)> =
-            sqlx::query_as("SELECT user_id, amount FROM funding_contribs WHERE funding_id = $1")
-                .bind(fid)
-                .fetch_all(db)
-                .await?;
+        let contribs: Vec<(i64, i64)> = sqlx::query_as(
+            "SELECT user_id, \
+             amount FROM funding_contribs WHERE funding_id = $1",
+        )
+        .bind(fid)
+        .fetch_all(db)
+        .await?;
         for (uid, amount) in &contribs {
             let idem = format!("funding-refund:{fid}:{uid}");
             sqlx::query(
@@ -78,12 +81,16 @@ pub(crate) async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
             .bind(&idem)
             .execute(db)
             .await?;
-            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
-                .bind(uid)
-                .bind(amount)
-                .bind(&idem)
-                .execute(db)
-                .await?;
+            sqlx::query(
+                "UPDATE users SET spark_balance = \
+             spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM \
+             spark_ledger WHERE idempotency_key = $3)",
+            )
+            .bind(uid)
+            .bind(amount)
+            .bind(&idem)
+            .execute(db)
+            .await?;
             refunds += 1;
         }
         // 全部退款成功 → 终态 2（失败时下一轮从 3 态重入续退，幂等键防双退）

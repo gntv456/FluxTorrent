@@ -105,7 +105,9 @@ async fn review_decide(
     // 0075 免审积分：过审连击 +1 / 被拒清零（阈值放行在 upload 的 auto_approve 判定）
     // 0077 被拒禁发：累计 deny_count（阈值校验在 upload 前置）
     let _ = sqlx::query(
-        "UPDATE users u SET approve_streak = CASE WHEN $2 THEN u.approve_streak + 1 ELSE 0 END,              deny_count = CASE WHEN $2 THEN u.deny_count ELSE u.deny_count + 1 END          FROM torrents t WHERE t.id = $1 AND u.id = t.owner_id",
+                "UPDATE users u SET approve_streak = CASE WHEN $2 THEN \
+         u.approve_streak + 1 ELSE 0 END, \
+         deny_count = CASE WHEN $2 THEN u.deny_count ELSE u.deny_count + 1 END FROM torrents t WHERE t.id = $1 AND u.id = t.owner_id",
     )
     .bind(body.torrent_id)
     .bind(body.approve)

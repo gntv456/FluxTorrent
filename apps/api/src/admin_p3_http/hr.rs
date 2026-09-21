@@ -137,7 +137,8 @@ async fn hr_batch_pardon(
             // 审计修复（P1）：同步回清 snatches.hr_flag（与单条 hr_pardon 同口径——
             // worker 只置 TRUE，不回清会让赦免后角标残留）
             let _ = sqlx::query(
-                "UPDATE snatches SET hr_flag = FALSE WHERE user_id = $1 AND torrent_id = $2",
+                "UPDATE snatches SET hr_flag = FALSE WHERE \
+                 user_id = $1 AND torrent_id = $2",
             )
             .bind(r.user_id)
             .bind(r.torrent_id)

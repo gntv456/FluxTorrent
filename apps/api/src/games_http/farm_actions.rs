@@ -76,7 +76,8 @@ pub(super) async fn farm_plant(
         // 而非本次请求价——两者在本请求 Replayed 已被拒绝的前提下仍可能有差异
         //（同分钟内首请求是低价作物），按实际扣款退才能保证净 0。
         let actual: Option<i64> = sqlx::query_scalar(
-            "SELECT amount FROM spark_ledger WHERE idempotency_key = $1 AND user_id = $2 LIMIT 1",
+            "SELECT amount FROM spark_ledger WHERE idempotency_key \
+             = $1 AND user_id = $2 LIMIT 1",
         )
         .bind(&idem)
         .bind(auth.id)
@@ -205,7 +206,8 @@ pub(super) async fn farm_harvest(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         sqlx::query(
-            "INSERT INTO farm_harvests (user_id, crop_id, amount, market_price, doubled) VALUES ($1, $2, 0, 0, FALSE)",
+            "INSERT INTO farm_harvests (user_id, crop_id, amount, \
+             market_price, doubled) VALUES ($1, $2, 0, 0, FALSE)",
         )
         .bind(auth.id)
         .bind(crop_id)
@@ -251,7 +253,8 @@ pub(super) async fn farm_harvest(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
-        "INSERT INTO farm_harvests (user_id, crop_id, amount, market_price, doubled) VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO farm_harvests (user_id, crop_id, amount, \
+         market_price, doubled) VALUES ($1, $2, $3, $4, $5)",
     )
     .bind(auth.id)
     .bind(crop_id)

@@ -59,7 +59,8 @@ async fn user_adjust(
     let spark = ((spark0 as i128 + body.spark_delta.unwrap_or(0) as i128)
         .max(0)) as i64;
     sqlx::query(
-        "UPDATE users SET uploaded = $2, downloaded = $3, spark_balance = $4 WHERE id = $1",
+        "UPDATE users SET uploaded = $2, downloaded = $3, \
+         spark_balance = $4 WHERE id = $1",
     )
     .bind(body.user_id)
     .bind(up)
@@ -102,7 +103,9 @@ async fn user_adjust(
             for _ in 0..grant.min(50) {
                 let code = uuid::Uuid::new_v4().simple().to_string();
                 sqlx::query(
-                    "INSERT INTO invites (inviter_id, code, expires_at) VALUES ($1, $2, now() + interval '30 days')",
+                    "INSERT INTO invites (inviter_id, \
+                     code, expires_at) VALUES ($1, $2, now() + interval '30 \
+                     days')",
                 )
                 .bind(body.user_id)
                 .bind(&code)

@@ -23,9 +23,12 @@ pub async fn site_profile(
     .map_err(|e| DomainError::Internal(e.into()))?
     .unwrap_or_else(|| "general".into());
     let pack: Option<SiteTypePack> = sqlx::query_as(
-        "SELECT code, name, description, brand, categories, modules, sort, tagline FROM site_type_packs WHERE code = $1",
-    ).bind(&site_type)
-    .fetch_optional(&state.repo.db).await
+        "SELECT code, name, description, brand, categories, modules, \
+         sort, tagline FROM site_type_packs WHERE code = $1",
+    )
+    .bind(&site_type)
+    .fetch_optional(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 实际分类以 categories 表为准（类型包只是初始快照，管理组可再编辑）
     let cats: Vec<(i32, String)> =
@@ -163,8 +166,11 @@ pub async fn site_type_pack_list(
     )
     .await?;
     let rows: Vec<SiteTypePack> = sqlx::query_as(
-        "SELECT code, name, description, brand, categories, modules, sort, tagline FROM site_type_packs ORDER BY sort",
-    ).fetch_all(&state.repo.db).await
+        "SELECT code, name, description, brand, categories, modules, \
+         sort, tagline FROM site_type_packs ORDER BY sort",
+    )
+    .fetch_all(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }

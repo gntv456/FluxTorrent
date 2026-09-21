@@ -162,12 +162,14 @@ async fn user_grant_item(
     let auth = staff(&req, &state).await?;
     let (uid, item_id) = path.into_inner();
     ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
-    let item: Option<(String, String, serde_json::Value)> =
-        sqlx::query_as("SELECT name, kind, config FROM shop_items WHERE id = $1 AND active = true")
-            .bind(item_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let item: Option<(String, String, serde_json::Value)> = sqlx::query_as(
+        "SELECT name, kind, \
+         config FROM shop_items WHERE id = $1 AND active = true",
+    )
+    .bind(item_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((name, kind, config)) = item else {
         return Err(DomainError::NotFound(item_id));
     };

@@ -60,7 +60,8 @@ async fn notice_prefs_set(
         )));
     }
     sqlx::query(
-        "UPDATE users SET notice_prefs = jsonb_set(notice_prefs, ARRAY[$2], to_jsonb($3::boolean)) WHERE id = $1",
+        "UPDATE users SET notice_prefs = jsonb_set(notice_prefs, \
+         ARRAY[$2], to_jsonb($3::boolean)) WHERE id = $1",
     )
     .bind(auth.id)
     .bind(&body.key)
@@ -79,7 +80,8 @@ async fn pool_honor(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let rows: Vec<(i64, String, bool, i64, i64)> = sqlx::query_as(
-        "SELECT id, username, donor, this_month, total FROM v_pool_honor          ORDER BY total DESC LIMIT 50",
+        "SELECT id, username, donor, this_month, \
+         total FROM v_pool_honor ORDER BY total DESC LIMIT 50",
     )
     .fetch_all(&state.repo.db)
     .await

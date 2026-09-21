@@ -24,7 +24,8 @@ pub(crate) async fn settle_complete(
     if c.reward > 0 {
         let idem = format!("task_settle:{}", c.id);
         let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE \
+             idempotency_key = $1)",
         )
         .bind(&idem)
         .fetch_one(&mut *tx)
@@ -47,11 +48,14 @@ pub(crate) async fn settle_complete(
             .bind(balance + c.reward)
             .execute(&mut *tx)
             .await?;
-            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
-                .bind(c.user_id)
-                .bind(c.reward)
-                .execute(&mut *tx)
-                .await?;
+            sqlx::query(
+                "UPDATE users SET spark_balance = \
+             spark_balance + $2 WHERE id = $1",
+            )
+            .bind(c.user_id)
+            .bind(c.reward)
+            .execute(&mut *tx)
+            .await?;
         }
     }
     // 完成通知：转正考核（onboard）用专有文案——「转正」语义不落等级
@@ -74,7 +78,8 @@ pub(crate) async fn settle_complete(
         )
     };
     sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         VALUES (NULL, $1, $2, $3)",
     )
     .bind(c.user_id)
     .bind(subject)
@@ -94,7 +99,8 @@ pub(crate) async fn settle_fail(
     // 罚金说明文案按实扣额生成（见下方审计修复注释）；未配置罚金时为空串
     let mut penalty_note = String::new();
     let updated = sqlx::query(
-        "UPDATE task_claims SET status = 2, settled_at = now() WHERE id = $1 AND status = 0",
+        "UPDATE task_claims SET status = 2, \
+         settled_at = now() WHERE id = $1 AND status = 0",
     )
     .bind(c.id)
     .execute(&mut *tx)
@@ -106,7 +112,8 @@ pub(crate) async fn settle_fail(
     if c.penalty > 0 {
         let idem = format!("task_penalty:{}", c.id);
         let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE \
+             idempotency_key = $1)",
         )
         .bind(&idem)
         .fetch_one(&mut *tx)
@@ -132,11 +139,14 @@ pub(crate) async fn settle_fail(
                 .bind(balance - take)
                 .execute(&mut *tx)
                 .await?;
-                sqlx::query("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1")
-                    .bind(c.user_id)
-                    .bind(take)
-                    .execute(&mut *tx)
-                    .await?;
+                sqlx::query(
+                    "UPDATE users SET spark_balance = \
+                 spark_balance - $2 WHERE id = $1",
+                )
+                .bind(c.user_id)
+                .bind(take)
+                .execute(&mut *tx)
+                .await?;
             }
             // 审计修复（文案失实）：扣款额按实（take = min(余额, 罚金)）告知；
             // 旧文案固定写「扣除罚金 {penalty}」，余额不足被部分扣/零扣时与流水对不上。
@@ -152,7 +162,8 @@ pub(crate) async fn settle_fail(
         }
     }
     sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         VALUES (NULL, $1, $2, $3)",
     )
     .bind(c.user_id)
     .bind("任务超时通知")

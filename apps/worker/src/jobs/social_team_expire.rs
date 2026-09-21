@@ -12,19 +12,22 @@ use sqlx::PgPool;
 ///   * 与「中途退出」区分：到期未达标**不算逃跑**，不套用退出惩罚——惩罚只针对主动跑掉的人
 pub(crate) async fn social_team_expire(db: &PgPool) -> anyhow::Result<u64> {
     let rep_delta: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_on_failed'), -5)",
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'social_rep_on_failed'), -5)",
     )
     .fetch_one(db)
     .await
     .unwrap_or(-5);
     let rep_min: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_min'), 0)",
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'social_rep_min'), 0)",
     )
     .fetch_one(db)
     .await
     .unwrap_or(0);
     let rep_max: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_max'), 2000)",
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'social_rep_max'), 2000)",
     )
     .fetch_one(db)
     .await
@@ -70,7 +73,8 @@ pub(crate) async fn social_team_expire(db: &PgPool) -> anyhow::Result<u64> {
         .await?;
 
         let members: Vec<i64> = sqlx::query_scalar(
-            "SELECT uid FROM social_team_member WHERE team_id = $1 AND join_status IN (0, 1)",
+            "SELECT uid FROM social_team_member WHERE team_id = $1 \
+             AND join_status IN (0, 1)",
         )
         .bind(team_id)
         .fetch_all(&mut *tx)
@@ -102,7 +106,8 @@ pub(crate) async fn social_team_expire(db: &PgPool) -> anyhow::Result<u64> {
                 None => "协作保种未在期限内达标，契约已结束。".to_string(),
             };
             let _ = sqlx::query(
-                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+                "INSERT INTO messages (sender_id, receiver_id, \
+                 subject, body) VALUES (NULL, $1, $2, $3)",
             )
             .bind(*uid)
             .bind("保种协作已到期")

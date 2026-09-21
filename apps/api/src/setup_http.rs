@@ -38,7 +38,8 @@ pub async fn setup_gate_mw(
         .cloned()
         .expect("AppState registered");
     let done: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'setup_done'), '')",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'setup_done'), '')",
     )
     .fetch_one(&state.repo.db)
     .await
@@ -61,13 +62,15 @@ async fn setup_status(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> impl Responder {
     let done: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'setup_done'), '')",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'setup_done'), '')",
     )
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or_default();
     let packs: Vec<(String, String, String)> = sqlx::query_as(
-        "SELECT code, name, COALESCE(description, '') FROM site_type_packs ORDER BY sort",
+        "SELECT code, name, \
+         COALESCE(description, '') FROM site_type_packs ORDER BY sort",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -144,7 +147,8 @@ async fn setup_finish(
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
         let _ = sqlx::query(
-            "UPDATE site_settings SET value = $2, updated_at = now() WHERE name = 'site_type'",
+            "UPDATE site_settings SET value = $2, \
+             updated_at = now() WHERE name = 'site_type'",
         )
         .bind(&body.pack)
         .execute(&state.repo.db)
@@ -153,7 +157,8 @@ async fn setup_finish(
     // 3) 站名（可选）
     if !body.site_name.trim().is_empty() {
         let _ = sqlx::query(
-            "UPDATE site_settings SET value = $2, updated_at = now() WHERE name = 'site_name'",
+            "UPDATE site_settings SET value = $2, \
+             updated_at = now() WHERE name = 'site_name'",
         )
         .bind(body.site_name.trim())
         .execute(&state.repo.db)

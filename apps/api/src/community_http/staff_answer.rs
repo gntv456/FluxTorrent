@@ -32,12 +32,14 @@ async fn staff_answer(
     if body.answer.trim().is_empty() {
         return Err(DomainError::Validation("答复内容不能为空".into()));
     }
-    let orig: Option<(i64, String)> =
-        sqlx::query_as("SELECT user_id, subject FROM staffmessages WHERE id = $1 AND answered = 0")
-            .bind(body.id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let orig: Option<(i64, String)> = sqlx::query_as(
+        "SELECT user_id, \
+         subject FROM staffmessages WHERE id = $1 AND answered = 0",
+    )
+    .bind(body.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((uid, subject)) = orig else {
         return Err(DomainError::Validation("来信不存在或已答复".into()));
     };

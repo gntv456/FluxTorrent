@@ -46,7 +46,8 @@ async fn contact_staff(
         return Err(DomainError::Validation("主题与正文不能为空".into()));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO staffmessages (user_id, subject, body) VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO staffmessages (user_id, subject, body) VALUES \
+         ($1, $2, $3) RETURNING id",
     )
     .bind(auth.id)
     .bind(body.subject.trim())

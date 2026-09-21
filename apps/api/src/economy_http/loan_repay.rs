@@ -126,16 +126,22 @@ async fn bank_overview(
     let bs = bank_settings(&state.repo.db).await;
 
     let demand: DemandRow = sqlx::query_as(
-        "SELECT balance, daily_rate_bp, last_interest_date FROM bank_demand_accounts WHERE user_id = $1",
+        "SELECT balance, daily_rate_bp, \
+         last_interest_date FROM bank_demand_accounts WHERE user_id = $1",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
-    .unwrap_or(DemandRow { balance: 0, daily_rate_bp: bs.demand_rate_bp, last_interest_date: None });
+    .unwrap_or(DemandRow {
+        balance: 0,
+        daily_rate_bp: bs.demand_rate_bp,
+        last_interest_date: None,
+    });
 
     let fixed: Option<(i64, i64)> = sqlx::query_as::<_, (i64, i64)>(
-        "SELECT COALESCE(sum(amount), 0)::bigint, count(*) FROM bank_deposits WHERE user_id = $1 AND status = 0",
+        "SELECT COALESCE(sum(amount), 0)::bigint, \
+         count(*) FROM bank_deposits WHERE user_id = $1 AND status = 0",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)

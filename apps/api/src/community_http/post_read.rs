@@ -159,7 +159,8 @@ async fn topic_detail(
     .await
     .unwrap_or(0);
     let faved: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM topic_favorites WHERE topic_id = $1 AND user_id = $2)",
+        "SELECT EXISTS(SELECT 1 FROM topic_favorites WHERE topic_id = \
+         $1 AND user_id = $2)",
     )
     .bind(tid)
     .bind(auth.id)
@@ -241,7 +242,8 @@ async fn topic_detail(
         // 长帖游标（NP 分页口径）：本窗口之外还有更早楼层时前端显示「加载更早的回复」
         "has_more": posts.first().map(|p| p.id > 1).unwrap_or(false)
             && sqlx::query_scalar::<_, bool>(
-                "SELECT EXISTS(SELECT 1 FROM posts WHERE topic_id = $1 AND id < $2)",
+                                "SELECT EXISTS(SELECT 1 FROM posts WHERE \
+                 topic_id = $1 AND id < $2)",
             )
             .bind(tid)
             .bind(posts.first().map(|p| p.id).unwrap_or(0))

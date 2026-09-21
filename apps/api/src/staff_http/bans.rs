@@ -52,9 +52,15 @@ pub async fn ban_create(
         .map_err(|_| DomainError::Validation("IP 格式无效".into()))?;
     let ip_text = ip.to_string();
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO ip_bans (ip, reason, banned_by) VALUES ($1::inet, $2, $3) ON CONFLICT (ip) DO UPDATE SET reason = EXCLUDED.reason RETURNING id",
-    ).bind(ip_text).bind(&body.reason).bind(auth.id)
-    .fetch_one(&state.repo.db).await
+        "INSERT INTO ip_bans (ip, reason, banned_by) VALUES ($1::inet, \
+         $2, $3) ON CONFLICT (ip) DO UPDATE SET reason = EXCLUDED.reason \
+         RETURNING id",
+    )
+    .bind(ip_text)
+    .bind(&body.reason)
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "ip_ban", None).await;
     bump_guard_ver(&state).await;

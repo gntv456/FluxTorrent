@@ -76,7 +76,8 @@ async fn team_create(
     // 注意：site_settings.value 经 ::int 得到的是 INT4，必须读 i32（读 i64 会在解码期报
     // mismatched types 并被静默吞掉，导致配置永远不生效）
     let hours: i32 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'resurrection_hours'), 240)",
+        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE \
+         name = 'resurrection_hours'), 240)",
     )
     .fetch_one(&state.repo.db)
     .await
@@ -84,7 +85,8 @@ async fn team_create(
     let size_max = body.team_size_max.unwrap_or(5).clamp(2, 10);
     // 契约期限：到期未达标由 worker 的 social_team_expire 判失败（见 0103 迁移）
     let days: i32 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'social_team_default_days'), 14)",
+        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE \
+         name = 'social_team_default_days'), 14)",
     )
     .fetch_one(&state.repo.db)
     .await
@@ -195,7 +197,8 @@ async fn team_join(
     }
 
     let cnt: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM social_team_member WHERE team_id = $1 AND join_status IN (0, 1)",
+        "SELECT count(*) FROM social_team_member WHERE team_id = $1 \
+         AND join_status IN (0, 1)",
     )
     .bind(body.team_id)
     .fetch_one(&state.repo.db)

@@ -91,7 +91,8 @@ async fn admin_medal_rarity_add(
         return Err(DomainError::Validation(format!("稀有度 {value} 已存在")));
     }
     sqlx::query(
-        "INSERT INTO medal_rarities (value, label, tone, sort) VALUES ($1, $2, COALESCE($3, 'sky'), COALESCE($4, 100))",
+        "INSERT INTO medal_rarities (value, label, tone, sort) VALUES \
+         ($1, $2, COALESCE($3, 'sky'), COALESCE($4, 100))",
     )
     .bind(&value)
     .bind(label)

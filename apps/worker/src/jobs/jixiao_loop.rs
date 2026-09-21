@@ -28,15 +28,19 @@ pub(crate) async fn jixiao_settle_loop(
         .await?;
         let Some((uploaded_now, _dup, uploads_now)) = cur_vals else {
             // 用户已删：登记行作废不结算（不扣不发，keep 事实行）
-            sqlx::query("UPDATE jixiao_claims SET status = 3, settled_at = now() WHERE id = $1")
-                .bind(p.id)
-                .execute(&mut *tx)
-                .await?;
+            sqlx::query(
+                "UPDATE jixiao_claims SET status = 3, \
+             settled_at = now() WHERE id = $1",
+            )
+            .bind(p.id)
+            .execute(&mut *tx)
+            .await?;
             tx.commit().await?;
             continue;
         };
         let seed_seconds_now: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(sum(seeded_seconds),0)::bigint FROM snatches WHERE user_id = $1",
+            "SELECT COALESCE(sum(seeded_seconds),0)::bigint FROM \
+             snatches WHERE user_id = $1",
         )
         .bind(p.user_id)
         .fetch_one(&mut *tx)
@@ -56,7 +60,8 @@ pub(crate) async fn jixiao_settle_loop(
         .await
         .unwrap_or(0);
         let seeding_count: i64 = sqlx::query_scalar(
-            "SELECT count(DISTINCT torrent_id) FROM snatches WHERE user_id = $1 AND seeding",
+            "SELECT count(DISTINCT torrent_id) FROM snatches WHERE \
+             user_id = $1 AND seeding",
         )
         .bind(p.user_id)
         .fetch_one(&mut *tx)
@@ -80,7 +85,8 @@ pub(crate) async fn jixiao_settle_loop(
         .await?
         .unwrap_or((0, 0));
         let ops: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM audit_log WHERE actor_id = $1 AND to_char(created_at, 'YYYY-MM') = $2",
+            "SELECT count(*) FROM audit_log WHERE actor_id = $1 \
+             AND to_char(created_at, 'YYYY-MM') = $2",
         )
         .bind(p.user_id)
         .bind(&prev)
@@ -114,7 +120,8 @@ pub(crate) async fn jixiao_settle_loop(
         if all_ok {
             // 达标月数（含本期）：历史 status=1 行数 + 1
             let months_before: i64 = sqlx::query_scalar(
-                "SELECT count(*) FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND status = 1",
+                "SELECT count(*) FROM jixiao_claims WHERE \
+                 user_id = $1 AND type_id = $2 AND status = 1",
             )
             .bind(p.user_id)
             .bind(p.type_id)
@@ -156,14 +163,16 @@ pub(crate) async fn jixiao_settle_loop(
             if total > 0 {
                 let idem = format!("jixiao:settle:{}", p.id);
                 let exists: bool = sqlx::query_scalar(
-                    "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+                    "SELECT EXISTS(SELECT 1 FROM \
+                     spark_ledger WHERE idempotency_key = $1)",
                 )
                 .bind(&idem)
                 .fetch_one(&mut *tx)
                 .await?;
                 if !exists {
                     let balance: i64 = sqlx::query_scalar(
-                        "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+                        "SELECT spark_balance FROM \
+                         users WHERE id = $1 FOR UPDATE",
                     )
                     .bind(p.user_id)
                     .fetch_one(&mut *tx)
@@ -179,7 +188,8 @@ pub(crate) async fn jixiao_settle_loop(
                     .execute(&mut *tx)
                     .await?;
                     sqlx::query(
-                        "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1",
+                        "UPDATE users SET \
+                         spark_balance = spark_balance + $2 WHERE id = $1",
                     )
                     .bind(p.user_id)
                     .bind(total)
@@ -188,7 +198,8 @@ pub(crate) async fn jixiao_settle_loop(
                 }
             }
             let _ = sqlx::query(
-                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+                                "INSERT INTO messages (sender_id, receiver_id, \
+                 subject, body) VALUES (NULL, $1, $2, $3)",
             )
             .bind(p.user_id)
             .bind("绩效考核工资已发放")
@@ -215,7 +226,8 @@ pub(crate) async fn jixiao_settle_loop(
             }
             // 平实文案（不羞辱纪律：不指责，只陈述事实 + 收益不受影响的说明）
             let _ = sqlx::query(
-                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+                "INSERT INTO messages (sender_id, receiver_id, \
+                 subject, body) VALUES (NULL, $1, $2, $3)",
             )
             .bind(p.user_id)
             .bind("绩效考核本期未达标")

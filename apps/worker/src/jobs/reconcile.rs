@@ -55,7 +55,8 @@ pub async fn reconcile_diff_alert(db: &PgPool) -> anyhow::Result<()> {
         }
     }
     let negatives: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM users WHERE spark_balance < 0 OR uploaded < 0 OR downloaded < 0",
+        "SELECT count(*) FROM users WHERE spark_balance < 0 OR \
+         uploaded < 0 OR downloaded < 0",
     )
     .fetch_one(db)
     .await?;

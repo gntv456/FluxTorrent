@@ -49,9 +49,12 @@ pub async fn donate_order(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let plan: Option<(String, String, Option<String>, f64)> = sqlx::query_as(
-        "SELECT plan_type, title, reward, price_usd::float8 FROM donation_plans WHERE id = $1 AND enabled",
-    ).bind(body.plan_id)
-    .fetch_optional(&state.repo.db).await
+        "SELECT plan_type, title, reward, \
+         price_usd::float8 FROM donation_plans WHERE id = $1 AND enabled",
+    )
+    .bind(body.plan_id)
+    .fetch_optional(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((plan_type, title, reward, price)) = plan else {
         return Err(DomainError::NotFound(body.plan_id as i64));
@@ -63,9 +66,13 @@ pub async fn donate_order(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let balance: Option<f64> = sqlx::query_scalar(
-        "UPDATE users SET wallet_usd = wallet_usd - $2 WHERE id = $1 AND wallet_usd >= $2 RETURNING wallet_usd::float8",
-    ).bind(auth.id).bind(price)
-    .fetch_optional(&mut *tx).await
+        "UPDATE users SET wallet_usd = wallet_usd - $2 WHERE id = $1 \
+         AND wallet_usd >= $2 RETURNING wallet_usd::float8",
+    )
+    .bind(auth.id)
+    .bind(price)
+    .fetch_optional(&mut *tx)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(balance) = balance else {
         return Err(DomainError::Validation(format!(
@@ -121,9 +128,14 @@ pub async fn donate_order(
                 30
             };
             sqlx::query(
-                "UPDATE users SET vip_until = GREATEST(COALESCE(vip_until, now()), now()) + make_interval(days => $2::int) WHERE id = $1",
-            ).bind(auth.id).bind(days)
-            .execute(&mut *tx).await
+                "UPDATE users SET vip_until = \
+                 GREATEST(COALESCE(vip_until, now()), now()) + \
+                 make_interval(days => $2::int) WHERE id = $1",
+            )
+            .bind(auth.id)
+            .bind(days)
+            .execute(&mut *tx)
+            .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
         _ => {}
@@ -131,16 +143,26 @@ pub async fn donate_order(
     // 附赠邀请 1（invite_quota 是 (user_id, period) 结构：当天无行则插入 used=0）
     if reward.as_deref().unwrap_or("").contains("邀请") {
         sqlx::query(
-            "INSERT INTO invite_quota (user_id, period, used) VALUES ($1, current_date, 0)              ON CONFLICT (user_id, period) DO NOTHING",
+            "INSERT INTO invite_quota (user_id, period, used) \
+             VALUES ($1, current_date, 0) ON CONFLICT (user_id, period) DO \
+             NOTHING",
         )
         .bind(auth.id)
-        .execute(&mut *tx).await
+        .execute(&mut *tx)
+        .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
     sqlx::query(
-        "INSERT INTO donation_ledger (user_id, kind, amount_usd, balance_after, plan_id, note) VALUES ($1, 'order', -$2, $3, $4, $5)",
-    ).bind(auth.id).bind(price).bind(balance).bind(body.plan_id).bind(&title)
-    .execute(&mut *tx).await
+        "INSERT INTO donation_ledger (user_id, kind, amount_usd, \
+         balance_after, plan_id, note) VALUES ($1, 'order', -$2, $3, $4, $5)",
+    )
+    .bind(auth.id)
+    .bind(price)
+    .bind(balance)
+    .bind(body.plan_id)
+    .bind(&title)
+    .execute(&mut *tx)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit()
         .await

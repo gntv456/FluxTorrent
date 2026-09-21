@@ -61,7 +61,8 @@ async fn admin_template_create(
         return Err(DomainError::Validation("场景键已存在".into()));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO message_templates (scene_key, subject, body, note) VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO message_templates (scene_key, subject, body, \
+         note) VALUES ($1, $2, $3, $4) RETURNING id",
     )
     .bind(scene)
     .bind(body.subject.trim())

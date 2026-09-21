@@ -67,7 +67,8 @@ async fn leak_resolve(
         ));
     }
     let n = sqlx::query(
-        "UPDATE leak_events SET resolved = $2, resolved_by = $3 WHERE id = $1 AND resolved = 0",
+        "UPDATE leak_events SET resolved = $2, \
+         resolved_by = $3 WHERE id = $1 AND resolved = 0",
     )
     .bind(body.id)
     .bind(body.verdict)
@@ -177,7 +178,8 @@ async fn shoutbox_bot_exec(
         }
         "/me" => {
             let (up, down, spark): (i64, i64, i64) = sqlx::query_as(
-                "SELECT uploaded, downloaded, spark_balance FROM users WHERE id = $1",
+                "SELECT uploaded, downloaded, \
+                 spark_balance FROM users WHERE id = $1",
             )
             .bind(auth.id)
             .fetch_one(&state.repo.db)

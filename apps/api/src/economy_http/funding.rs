@@ -100,7 +100,8 @@ async fn funding_create(
         return Err(DomainError::Forbidden);
     }
     let open: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM fundings WHERE torrent_id = $1 AND status = 0)",
+        "SELECT EXISTS(SELECT 1 FROM fundings WHERE torrent_id = $1 \
+         AND status = 0)",
     )
     .bind(body.torrent_id)
     .fetch_one(&state.repo.db)

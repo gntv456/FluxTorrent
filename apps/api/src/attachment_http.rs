@@ -97,7 +97,8 @@ pub async fn upload_attachment(
 
     // 配额（attach_quota_mib，0=不限）：全站去重前先算已用
     let quota_mib: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'attach_quota_mib')::bigint, 512)",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'attach_quota_mib')::bigint, 512)",
     )
     .fetch_one(&state.repo.db)
     .await
@@ -140,11 +141,16 @@ pub async fn upload_attachment(
             .await
             .map_err(|e| DomainError::Internal(e))?;
         sqlx::query(
-            "INSERT INTO attachments (user_id, sha256, filename, mime, size) VALUES ($1, $2, $3, $4, $5)",
+            "INSERT INTO attachments (user_id, sha256, filename, \
+             mime, size) VALUES ($1, $2, $3, $4, $5)",
         )
         .bind(auth.id)
         .bind(&sha)
-        .bind(if filename.is_empty() { format!("{sha}.{}", ext_of(&mime)) } else { filename.clone() })
+        .bind(if filename.is_empty() {
+            format!("{sha}.{}", ext_of(&mime))
+        } else {
+            filename.clone()
+        })
         .bind(&mime)
         .bind(bytes.len() as i64)
         .execute(&state.repo.db)

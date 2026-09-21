@@ -27,7 +27,8 @@ pub async fn register(
     // open 模式旁路邀请码（inviter 置 NULL，链路其余不变）；email_verify 走
     // 既有邮箱确认信（confirm/resend 已有），未确认账号登录受限由既有列控制。
     let reg_mode: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'registration_mode'), 'invite_only')",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'registration_mode'), 'invite_only')",
     )
     .fetch_one(&state.repo.db)
     .await

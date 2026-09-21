@@ -55,7 +55,8 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
         }
         let agent = format!("torrent:{torrent_id}");
         let existed: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM cheat_events WHERE user_id = 0 AND agent = $1 AND reason = 'torrent_gap_audit')",
+            "SELECT EXISTS(SELECT 1 FROM cheat_events WHERE \
+             user_id = 0 AND agent = $1 AND reason = 'torrent_gap_audit')",
         )
         .bind(&agent)
         .fetch_one(db)

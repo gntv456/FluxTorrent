@@ -59,7 +59,8 @@ pub async fn me_password_change(
     // 改密同时轮换 passkey：引导期 root 等公开默认 passkey 不应在改密后继续可用
     let new_passkey = uuid::Uuid::new_v4().simple().to_string();
     let rotated: Option<String> = sqlx::query_scalar(
-        "UPDATE users SET pass_hash = $2, passkey = $3, must_reset_password = false WHERE id = $1 RETURNING passkey",
+        "UPDATE users SET pass_hash = $2, passkey = $3, \
+         must_reset_password = false WHERE id = $1 RETURNING passkey",
     )
     .bind(auth.id)
     .bind(&new_hash)
@@ -81,7 +82,9 @@ pub async fn me_password_change(
     // 的旧 token 失效；改密后同秒重登的新 token（iat 相同）不受牵连 —— 不误杀合法新登录，
     // 而真正的旧凭证（改密所用的那张）即便 iat 同秒也已在本次请求中消耗，语义无损。
     let _ = sqlx::query(
-        "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, $2)          ON CONFLICT (user_id) DO UPDATE SET nbf = GREATEST(token_revocations.nbf, EXCLUDED.nbf), updated_at = now()",
+        "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, $2) \
+         ON CONFLICT (user_id) DO UPDATE SET nbf = \
+         GREATEST(token_revocations.nbf, EXCLUDED.nbf), updated_at = now()",
     )
     .bind(auth.id)
     .bind(auth.iat - 1)

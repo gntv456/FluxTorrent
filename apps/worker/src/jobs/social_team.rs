@@ -43,19 +43,22 @@ pub(crate) async fn social_team_settle(db: &PgPool) -> anyhow::Result<u64> {
 
     // 信誉参数：完成/失败/退出都由系统判定，不可伪造（队友评价不参与主流程，防互刷）
     let rep_gain: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_on_fulfilled'), 20)",
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'social_rep_on_fulfilled'), 20)",
     )
     .fetch_one(db)
     .await
     .unwrap_or(20);
     let rep_min: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_min'), 0)",
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'social_rep_min'), 0)",
     )
     .fetch_one(db)
     .await
     .unwrap_or(0);
     let rep_max: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name = 'social_rep_max'), 2000)",
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'social_rep_max'), 2000)",
     )
     .fetch_one(db)
     .await
@@ -142,14 +145,20 @@ pub(crate) async fn social_team_settle(db: &PgPool) -> anyhow::Result<u64> {
         .await?;
 
         // 状态推进：settled_at 是「未处理」标记，必须与发奖同事务置位
-        sqlx::query("UPDATE social_team SET status = 2, settled_at = now() WHERE id = $1")
-            .bind(team_id)
-            .execute(&mut *tx)
-            .await?;
-        sqlx::query("UPDATE resurrections SET status = 'done', finished_at = now() WHERE id = $1")
-            .bind(rid)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query(
+            "UPDATE social_team SET status = 2, \
+         settled_at = now() WHERE id = $1",
+        )
+        .bind(team_id)
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query(
+            "UPDATE resurrections SET status = 'done', \
+         finished_at = now() WHERE id = $1",
+        )
+        .bind(rid)
+        .execute(&mut *tx)
+        .await?;
 
         for (uid, _) in &members {
             // 信誉 +（契约完成是系统判定的事实，不可伪造）
@@ -168,7 +177,8 @@ pub(crate) async fn social_team_settle(db: &PgPool) -> anyhow::Result<u64> {
             .execute(&mut *tx)
             .await?;
             let _ = sqlx::query(
-                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+                                "INSERT INTO messages (sender_id, receiver_id, \
+                 subject, body) VALUES (NULL, $1, $2, $3)",
             )
             .bind(*uid)
             .bind("保种协作完成")

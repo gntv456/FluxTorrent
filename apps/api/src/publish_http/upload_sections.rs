@@ -36,27 +36,31 @@ pub(super) async fn store_sections_tags(
             }
             // 字典归属校验：dict_id 必须属于该 kind（防跨维度错挂）
             let ok: bool = sqlx::query_scalar(
-                    "SELECT EXISTS(SELECT 1 FROM section_dict WHERE id = $2 AND kind = $1)",
-                )
-                .bind(kind)
-                .bind(dict_id)
-                .fetch_one(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+                "SELECT EXISTS(SELECT 1 FROM \
+                     section_dict WHERE id = $2 AND kind = $1)",
+            )
+            .bind(kind)
+            .bind(dict_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             if !ok {
                 return Err(DomainError::Validation(format!(
                     "维度 {kind} 的字典项 {dict_id} 不存在"
                 )));
             }
             sqlx::query(
-                    "INSERT INTO torrent_sections (torrent_id, kind, dict_id) VALUES ($1, $2, $3)                  ON CONFLICT (torrent_id, kind) DO UPDATE SET dict_id = EXCLUDED.dict_id",
-                )
-                .bind(id)
-                .bind(kind)
-                .bind(dict_id)
-                .execute(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+                "INSERT INTO torrent_sections \
+                     (torrent_id, kind, dict_id) VALUES ($1, $2, $3) ON \
+                     CONFLICT (torrent_id, kind) DO UPDATE SET dict_id = \
+                     EXCLUDED.dict_id",
+            )
+            .bind(id)
+            .bind(kind)
+            .bind(dict_id)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
 
@@ -97,13 +101,14 @@ pub(super) async fn store_sections_tags(
                 return Err(DomainError::Forbidden); // 与详情页打标同口径
             }
             sqlx::query(
-                    "INSERT INTO tags (torrent_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-                )
-                .bind(id)
-                .bind(tid)
-                .execute(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+                "INSERT INTO tags (torrent_id, tag_id) \
+                     VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            )
+            .bind(id)
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
     Ok(())

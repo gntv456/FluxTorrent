@@ -100,12 +100,15 @@ async fn poll_close(
     if auth.id != op && !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
-    let n = sqlx::query("UPDATE topic_polls SET closed = TRUE WHERE topic_id = $1 AND NOT closed")
-        .bind(body.topic_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    let n = sqlx::query(
+        "UPDATE topic_polls SET closed = TRUE WHERE \
+     topic_id = $1 AND NOT closed",
+    )
+    .bind(body.topic_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::Validation("投票已截止".into()));
     }

@@ -13,7 +13,8 @@ use super::staff;
 
 pub async fn menu_settings(db: &sqlx::PgPool) -> (bool, i32) {
     let rows: Vec<(String, String)> = sqlx::query_as(
-        "SELECT name, value FROM site_settings WHERE name IN ('nav.custom_enabled','nav.min_visible_class')",
+                "SELECT name, \
+         value FROM site_settings WHERE name IN ('nav.custom_enabled','nav.min_visible_class')",
     )
     .fetch_all(db)
     .await
@@ -80,11 +81,14 @@ pub async fn menu_settings_update(
     )
     .await?;
     if let Some(en) = body.custom_enabled {
-        sqlx::query("UPDATE site_settings SET value = $1, updated_at = now() WHERE name = 'nav.custom_enabled'")
-            .bind(if en { "1" } else { "0" })
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "UPDATE site_settings SET value = $1, \
+         updated_at = now() WHERE name = 'nav.custom_enabled'",
+        )
+        .bind(if en { "1" } else { "0" })
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     if let Some(mc) = body.min_visible_class {
         if !(0..=99).contains(&mc) {
@@ -92,11 +96,14 @@ pub async fn menu_settings_update(
                 "min_visible_class 取值 0-99".into(),
             ));
         }
-        sqlx::query("UPDATE site_settings SET value = $1, updated_at = now() WHERE name = 'nav.min_visible_class'")
-            .bind(mc.to_string())
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "UPDATE site_settings SET value = $1, \
+         updated_at = now() WHERE name = 'nav.min_visible_class'",
+        )
+        .bind(mc.to_string())
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     state
         .repo
@@ -159,7 +166,10 @@ pub async fn menu_item_validate(
                 }
                 // 禁止把自己的后代设为父（成环）
                 let child_cnt: i64 = sqlx::query_scalar(
-                    "WITH RECURSIVE sub AS (                         SELECT id FROM menu_items WHERE parent_id = $1                         UNION ALL SELECT m.id FROM menu_items m JOIN sub s ON m.parent_id = s.id                      ) SELECT count(*) FROM sub WHERE id = $2",
+                                        "WITH RECURSIVE sub AS ( SELECT id \
+                     FROM menu_items WHERE parent_id = $1 UNION ALL SELECT m.id \
+                     FROM menu_items m JOIN sub s ON m.parent_id = s.id ) \
+                     SELECT count(*) FROM sub WHERE id = $2",
                 )
                 .bind(sid)
                 .bind(pid)

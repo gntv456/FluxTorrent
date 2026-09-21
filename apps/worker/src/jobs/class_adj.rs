@@ -98,12 +98,16 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
         .await?
         .rows_affected();
         if credited > 0 {
-            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
-                .bind(uid)
-                .bind(reward)
-                .bind(&idem)
-                .execute(db)
-                .await?;
+            sqlx::query(
+                "UPDATE users SET spark_balance = \
+             spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM \
+             spark_ledger WHERE idempotency_key = $3)",
+            )
+            .bind(uid)
+            .bind(reward)
+            .bind(&idem)
+            .execute(db)
+            .await?;
             let level_name: String = sqlx::query_scalar(
                 "SELECT name FROM class_rules WHERE class_id = $1",
             )

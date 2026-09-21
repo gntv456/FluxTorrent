@@ -68,12 +68,16 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         .bind(&idem)
         .execute(&mut *tx)
         .await?;
-        sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)")
-            .bind(uid)
-            .bind(reward)
-                .bind(&idem)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query(
+            "UPDATE users SET spark_balance = spark_balance + \
+         $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE \
+         idempotency_key = $3)",
+        )
+        .bind(uid)
+        .bind(reward)
+        .bind(&idem)
+        .execute(&mut *tx)
+        .await?;
         sqlx::query(
             "INSERT INTO user_vouchers (user_id, kind, source) \
              SELECT $1, 'free', 'resurrection' \
@@ -93,7 +97,8 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         .execute(&mut *tx)
         .await?;
         let _ = sqlx::query(
-            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+                        "INSERT INTO messages (sender_id, receiver_id, \
+             subject, body) VALUES (NULL, $1, $2, $3)",
         )
         .bind(uid)
         .bind("复活任务完成")

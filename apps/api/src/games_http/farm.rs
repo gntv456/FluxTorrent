@@ -17,7 +17,8 @@ pub(super) async fn get_crop(
     crop_id: i32,
 ) -> DomainResult<Option<CropRow>> {
     sqlx::query_as(
-        "SELECT id, name, seed_price, base_yield, grow_hours, 0::bigint AS market_price FROM farm_crops WHERE id = $1",
+        "SELECT id, name, seed_price, base_yield, grow_hours, \
+         0::bigint AS market_price FROM farm_crops WHERE id = $1",
     )
     .bind(crop_id)
     .fetch_optional(db)
@@ -36,7 +37,8 @@ pub(super) async fn farm_overview(
     let window = games::market_window_start(now);
 
     let crops: Vec<CropRow> = sqlx::query_as(
-        "SELECT id, name, seed_price, base_yield, grow_hours, 0::bigint AS market_price FROM farm_crops ORDER BY id",
+        "SELECT id, name, seed_price, base_yield, grow_hours, \
+         0::bigint AS market_price FROM farm_crops ORDER BY id",
     )
     .fetch_all(&state.repo.db)
     .await

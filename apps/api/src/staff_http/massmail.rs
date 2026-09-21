@@ -47,9 +47,15 @@ pub async fn massmail_send(
             .await
             .unwrap_or(0);
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO mass_mails (subject, body, sent_by, recipients) VALUES ($1,$2,$3,$4) RETURNING id",
-    ).bind(body.subject.trim()).bind(&body.body).bind(auth.id).bind(users as i32)
-    .fetch_one(&state.repo.db).await
+        "INSERT INTO mass_mails (subject, body, sent_by, recipients) \
+         VALUES ($1,$2,$3,$4) RETURNING id",
+    )
+    .bind(body.subject.trim())
+    .bind(&body.body)
+    .bind(auth.id)
+    .bind(users as i32)
+    .fetch_one(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "massmail_send", None).await;
     // 审计修复（P1 永不投递）：注释宣称 worker 投递，但 worker 无任何 mass_mails 消费——
@@ -67,7 +73,8 @@ pub async fn massmail_send(
         match crate::gaps_http::build_smtp(&smtp) {
             Ok(mailer) => {
                 let emails: Vec<String> = sqlx::query_scalar(
-                    "SELECT email FROM users WHERE status < 2 AND email IS NOT NULL",
+                    "SELECT email FROM users WHERE status \
+                     < 2 AND email IS NOT NULL",
                 )
                 .fetch_all(&state.repo.db)
                 .await

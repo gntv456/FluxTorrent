@@ -105,7 +105,8 @@ async fn admin_avatar_frame_add(
     let css = sanitize_frame_css(body.css.as_deref().unwrap_or(""));
     let image = normalize_frame_image(body.image_url.as_deref());
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO avatar_frames (name, css, image_url, price, sort) VALUES ($1, $2, $3, COALESCE($4, 0), COALESCE($5, 0)) RETURNING id",
+        "INSERT INTO avatar_frames (name, css, image_url, price, sort) \
+         VALUES ($1, $2, $3, COALESCE($4, 0), COALESCE($5, 0)) RETURNING id",
     )
     .bind(body.name.trim())
     .bind(&css)
@@ -139,7 +140,8 @@ async fn admin_avatar_frame_update(
     let css = sanitize_frame_css(body.css.as_deref().unwrap_or(""));
     let image = normalize_frame_image(body.image_url.as_deref());
     let n = sqlx::query(
-        "UPDATE avatar_frames SET name = $2, css = $3, image_url = $4, price = COALESCE($5, price), sort = COALESCE($6, sort) WHERE id = $1",
+        "UPDATE avatar_frames SET name = $2, css = $3, image_url = $4, \
+         price = COALESCE($5, price), sort = COALESCE($6, sort) WHERE id = $1",
     )
     .bind(id)
     .bind(body.name.trim())

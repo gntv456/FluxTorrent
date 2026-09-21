@@ -68,7 +68,8 @@ async fn permission_matrix(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let grants: Vec<PermGrantRow> = sqlx::query_as(
-        "SELECT role_type, role_key, permission_key FROM role_permissions WHERE granted",
+        "SELECT role_type, role_key, \
+         permission_key FROM role_permissions WHERE granted",
     )
     .fetch_all(&state.repo.db)
     .await

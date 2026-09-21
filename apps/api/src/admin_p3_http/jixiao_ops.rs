@@ -79,7 +79,8 @@ async fn jixiao_assign_batch(
             )));
         }
         let dup: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND period = $3)",
+            "SELECT EXISTS(SELECT 1 FROM jixiao_claims WHERE \
+             user_id = $1 AND type_id = $2 AND period = $3)",
         )
         .bind(uid)
         .bind(body.type_id)

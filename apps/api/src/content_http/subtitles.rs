@@ -23,39 +23,40 @@ pub(super) async fn subtitle_upload(
     } else {
         None
     };
-    let file_ref = if let Some(sha) =
-        body.file_sha.as_deref().map(str::trim).filter(|s| {
+    let file_ref =
+        if let Some(sha) = body.file_sha.as_deref().map(str::trim).filter(|s| {
             s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
         }) {
-        // 校验附件归属：必须是本人在 attachments 上传过的文件（防冒用他人 sha）
-        let owned: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM attachments WHERE sha256 = $1 AND user_id = $2)",
-        )
-        .bind(sha)
-        .bind(auth.id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
-        if !owned {
+            // 校验附件归属：必须是本人在 attachments 上传过的文件（防冒用他人 sha）
+            let owned: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM attachments WHERE sha256 \
+             = $1 AND user_id = $2)",
+            )
+            .bind(sha)
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+            if !owned {
+                return Err(DomainError::Validation(
+                    "附件未上传或不存在（请先通过上传接口提交字幕文件）".into(),
+                ));
+            }
+            format!("attach://{sha}")
+        } else if let Some(ext) =
+            body.file_ref.as_deref().map(str::trim).filter(|s| {
+                s.starts_with("http://") || s.starts_with("https://")
+            })
+        {
+            ext.to_string()
+        } else {
             return Err(DomainError::Validation(
-                "附件未上传或不存在（请先通过上传接口提交字幕文件）".into(),
+                "请上传字幕文件（或提供 http/https 直链）".into(),
             ));
-        }
-        format!("attach://{sha}")
-    } else if let Some(ext) = body
-        .file_ref
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| s.starts_with("http://") || s.starts_with("https://"))
-    {
-        ext.to_string()
-    } else {
-        return Err(DomainError::Validation(
-            "请上传字幕文件（或提供 http/https 直链）".into(),
-        ));
-    };
+        };
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO subtitles (torrent_id, user_id, title, lang, file_ref) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        "INSERT INTO subtitles (torrent_id, user_id, title, lang, \
+         file_ref) VALUES ($1, $2, $3, $4, $5) RETURNING id",
     )
     .bind(torrent_id)
     .bind(auth.id)
