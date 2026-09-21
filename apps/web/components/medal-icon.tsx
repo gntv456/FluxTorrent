@@ -20,7 +20,12 @@ export function MedalIcon({
       <span
         aria-hidden
         className={`inline-flex items-center justify-center ${className}`}
-        style={{ width: size, height: size, fontSize: size * 0.82, lineHeight: 1 }}
+        style={{
+          width: size,
+          height: size,
+          fontSize: size * 0.82,
+          lineHeight: 1,
+        }}
       >
         🏅
       </span>

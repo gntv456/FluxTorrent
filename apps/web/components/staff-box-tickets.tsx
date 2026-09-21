@@ -50,7 +50,9 @@ export function TicketPanel({
             type="button"
             onClick={() => setTicketStatus(s)}
             className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${
-              ticketStatus === s ? "text-[var(--baozi-orange-dark)] underline" : "text-sub"
+              ticketStatus === s
+                ? "text-[var(--baozi-orange-dark)] underline"
+                : "text-sub"
             }`}
           >
             {s === "" ? tk.statusAll : ticketStatusLabel(tk, Number(s))}
@@ -58,7 +60,10 @@ export function TicketPanel({
         ))}
       </div>
       {ticketMsg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink" role="status">
+        <p
+          className="rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink"
+          role="status"
+        >
           {ticketMsg}
         </p>
       )}
@@ -135,7 +140,9 @@ export function TicketPanel({
               {tk.priority}
               <select
                 value={ticketForm.priority}
-                onChange={(e) => setTicketForm({ ...ticketForm, priority: e.target.value })}
+                onChange={(e) =>
+                  setTicketForm({ ...ticketForm, priority: e.target.value })
+                }
                 className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-cloud px-2"
               >
                 <option value="">—</option>
@@ -150,7 +157,12 @@ export function TicketPanel({
               {tk.statusLabel}
               <select
                 value={ticketForm.ticket_status}
-                onChange={(e) => setTicketForm({ ...ticketForm, ticket_status: e.target.value })}
+                onChange={(e) =>
+                  setTicketForm({
+                    ...ticketForm,
+                    ticket_status: e.target.value,
+                  })
+                }
                 className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-cloud px-2"
               >
                 <option value="">—</option>
@@ -164,7 +176,9 @@ export function TicketPanel({
               <input
                 type="text"
                 value={ticketForm.assign}
-                onChange={(e) => setTicketForm({ ...ticketForm, assign: e.target.value })}
+                onChange={(e) =>
+                  setTicketForm({ ...ticketForm, assign: e.target.value })
+                }
                 placeholder={tk.assignPh}
                 className="min-h-[36px] w-48 rounded-[var(--r-sm)] border border-line bg-cloud px-2"
               />

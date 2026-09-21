@@ -49,7 +49,9 @@ export function useSettingsTransfer({
       const r = await api.get<ExportPayload>(
         `/api/v1/admin/settings/export${exportPlain ? "?plaintext=1" : ""}`,
       );
-      const blob = new Blob([JSON.stringify(r, null, 2)], { type: "application/json" });
+      const blob = new Blob([JSON.stringify(r, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -67,14 +69,18 @@ export function useSettingsTransfer({
   /** 兼容「导出文件原样导入」与「仅 settings 映射」两种输入。
    *  `plaintext` 标记原样透传后端，决定密文空值是"保持不变"还是"字面还原"：
    *  明文快照里空密钥应当被还原为空，掩码快照里空密钥应当保持原值。 */
-  function parseImport(raw: string): { settings: Record<string, string>; plaintext: boolean } | null {
+  function parseImport(
+    raw: string,
+  ): { settings: Record<string, string>; plaintext: boolean } | null {
     try {
       const j = JSON.parse(raw);
       const hasWrap = j && typeof j === "object" && "settings" in j;
       const settings = hasWrap ? j.settings : j;
       if (!settings || typeof settings !== "object") return null;
       const out: Record<string, string> = {};
-      for (const [k, v] of Object.entries(settings as Record<string, unknown>)) {
+      for (const [k, v] of Object.entries(
+        settings as Record<string, unknown>,
+      )) {
         out[k] = v == null ? "" : String(v);
       }
       return { settings: out, plaintext: hasWrap && j.plaintext === true };
@@ -117,7 +123,11 @@ export function useSettingsTransfer({
         plaintext: parsed.plaintext,
         confirm: true,
       });
-      onToast({ ok: true, text: fmt(s.imported, { n: r.applied }), effects: r.effects });
+      onToast({
+        ok: true,
+        text: fmt(s.imported, { n: r.applied }),
+        effects: r.effects,
+      });
       setImportOpen(false);
       setImportText("");
       setImportDiff(null);

@@ -91,7 +91,9 @@ export function podName(user: Pick<UserPublic, "class_name">): string {
  * 两个声明（与 plugins.tsx frameStyle 同一口径，服务端存的 css 是可信内容，
  * 白名单是防历史脏数据/未来后台误编辑）。套在圆形头像容器的 style 上。
  */
-export function avatarFrameStyle(css: string | null | undefined): React.CSSProperties {
+export function avatarFrameStyle(
+  css: string | null | undefined,
+): React.CSSProperties {
   const style: Record<string, string> = {};
   if (!css) return style;
   for (const decl of css.split(";")) {
@@ -120,4 +122,3 @@ export function FrameImageOverlay({ url }: { url: string | null | undefined }) {
     />
   );
 }
-

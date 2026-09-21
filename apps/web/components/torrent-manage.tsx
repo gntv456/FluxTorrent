@@ -69,8 +69,16 @@ export function TorrentManage({
     setBusy(true);
     setMsg(null);
     try {
-      const r = await api.post<{ notified: number }>(`/api/v1/torrents/${torrentId}/reseed`, {});
-      setMsg((dict.reseed2?.ok ?? "已通知 {n} 位下载者").replace("{n}", String(r.notified)));
+      const r = await api.post<{ notified: number }>(
+        `/api/v1/torrents/${torrentId}/reseed`,
+        {},
+      );
+      setMsg(
+        (dict.reseed2?.ok ?? "已通知 {n} 位下载者").replace(
+          "{n}",
+          String(r.notified),
+        ),
+      );
     } catch (e) {
       setMsg(apiErrorMessage(dict, e));
     } finally {
@@ -109,7 +117,10 @@ export function TorrentManage({
             disabled={busy}
             onClick={reseed}
             className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-sun disabled:opacity-50"
-            title={dict.reseed2?.note ?? "向所有完成下载的用户发送补种请求（15 分钟限频）"}
+            title={
+              dict.reseed2?.note ??
+              "向所有完成下载的用户发送补种请求（15 分钟限频）"
+            }
           >
             🔄 {dict.reseed2?.btn ?? "请求补种"}
           </button>
@@ -152,7 +163,11 @@ export function TorrentManage({
             />
           </label>
           <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={fAnon} onChange={(e) => setFAnon(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={fAnon}
+              onChange={(e) => setFAnon(e.target.checked)}
+            />
             {t.fieldAnonymous}
           </label>
           <button

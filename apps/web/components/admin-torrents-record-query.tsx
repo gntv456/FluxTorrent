@@ -22,25 +22,39 @@ export function RecordQuery({
 }) {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<{ rows: RecordRow[]; page: number } | null>(null);
+  const [data, setData] = useState<{ rows: RecordRow[]; page: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (q.trim()) params.set("q", q.trim());
     params.set("page", String(page));
-    api.get<{ rows: RecordRow[]; page: number } | null>(`${endpoint}?${params.toString()}`).then(setData).catch(() => setData(null));
+    api
+      .get<{ rows: RecordRow[]; page: number } | null>(
+        `${endpoint}?${params.toString()}`,
+      )
+      .then(setData)
+      .catch(() => setData(null));
   }, [q, page, endpoint]);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`${title}：按用户名搜索`} className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={`${title}：按用户名搜索`}
+          className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2"
+        />
       </div>
       <table className="nexus-table">
         <thead>
           <tr>
             {columns.map(([k, label]) => (
-              <td key={k} className="colhead">{label}</td>
+              <td key={k} className="colhead">
+                {label}
+              </td>
             ))}
           </tr>
         </thead>
@@ -66,9 +80,21 @@ export function RecordQuery({
         </tbody>
       </table>
       <div className="flex items-center justify-end gap-2 text-sm text-sub">
-        <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40">上一页</button>
+        <button
+          disabled={page <= 1}
+          onClick={() => setPage(page - 1)}
+          className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+        >
+          上一页
+        </button>
         <span>第 {data?.page ?? 1} 页</span>
-        <button disabled={!data || data.rows.length < 20} onClick={() => setPage(page + 1)} className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40">下一页</button>
+        <button
+          disabled={!data || data.rows.length < 20}
+          onClick={() => setPage(page + 1)}
+          className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+        >
+          下一页
+        </button>
       </div>
     </div>
   );

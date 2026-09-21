@@ -34,7 +34,12 @@ export function AttendanceCard({
           {home.attendance.checked_today ? (
             <span className="attendance-done">{t.attended}</span>
           ) : (
-            <button type="button" className="baozi-button" onClick={checkin} disabled={checkinBusy}>
+            <button
+              type="button"
+              className="baozi-button"
+              onClick={checkin}
+              disabled={checkinBusy}
+            >
               {checkinBusy ? dict.my.checkinBusy : t.checkinNow}
             </button>
           )}
@@ -54,14 +59,20 @@ export function AttendanceCard({
           <span>{t.totalDays}</span>
         </div>
       </div>
-      <div className="attendance-calendar" aria-label={`${home.attendance.month}${t.calendar}`}>
+      <div
+        className="attendance-calendar"
+        aria-label={`${home.attendance.month}${t.calendar}`}
+      >
         {t.weekdays.map((w) => (
           <span key={w} className="attendance-calendar__weekday">
             {w}
           </span>
         ))}
         {Array.from({ length: leadingBlanks }).map((_, i) => (
-          <span key={`blank-${i}`} className="attendance-calendar__day is-outside" />
+          <span
+            key={`blank-${i}`}
+            className="attendance-calendar__day is-outside"
+          />
         ))}
         {home.attendance.calendar.map((d) => {
           const todayStr = new Date().toISOString().slice(0, 10);
@@ -79,7 +90,13 @@ export function AttendanceCard({
               title={`${d.date} · ${d.done ? `${t.signed} +${d.reward}` : isFuture ? "" : t.unsigned}`}
             >
               <strong>{d.day}</strong>
-              <small>{d.done ? `+${d.reward}` : isFuture ? "\u00A0" : t.unsignedShort}</small>
+              <small>
+                {d.done
+                  ? `+${d.reward}`
+                  : isFuture
+                    ? "\u00A0"
+                    : t.unsignedShort}
+              </small>
             </span>
           );
         })}

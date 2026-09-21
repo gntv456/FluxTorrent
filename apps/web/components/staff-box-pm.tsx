@@ -30,7 +30,9 @@ export function PmList({
             onClick={() => onToggleOpen(m.id)}
           >
             <span className="min-w-0 flex-1">
-              <b className="text-[var(--baozi-orange-dark)]">{m.counterpart ?? "Staff"}</b>
+              <b className="text-[var(--baozi-orange-dark)]">
+                {m.counterpart ?? "Staff"}
+              </b>
               <span className="ml-2 text-sm font-bold">{m.subject}</span>
             </span>
             <time className="shrink-0 text-xs text-[var(--text-faint)]">
@@ -77,9 +79,14 @@ export function PmReplyForm({
     <section className="baozi-panel">
       <header className="baozi-panel__head">
         <h2>
-          ↩ {dict.messages.reply} · {replyTo.counterpart ?? "Staff"} — {replyTo.subject}
+          ↩ {dict.messages.reply} · {replyTo.counterpart ?? "Staff"} —{" "}
+          {replyTo.subject}
         </h2>
-        <button type="button" className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold" onClick={onClose}>
+        <button
+          type="button"
+          className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold"
+          onClick={onClose}
+        >
           ✕
         </button>
       </header>
@@ -96,7 +103,11 @@ export function PmReplyForm({
           onChange={(e) => setReplyBody(e.target.value)}
           className="min-h-[44px] w-full rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 py-2 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
         />
-        <button type="submit" className="baozi-button self-start disabled:opacity-50" disabled={busy || !replyBody.trim()}>
+        <button
+          type="submit"
+          className="baozi-button self-start disabled:opacity-50"
+          disabled={busy || !replyBody.trim()}
+        >
           {dict.messages.send}
         </button>
       </form>

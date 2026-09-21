@@ -6,8 +6,17 @@
 
 import { api } from "@/lib/api-client";
 
-export interface SectionDictRow { id: number; kind: string; name: string; sort: number }
-export interface SectionKindMeta { kind: string; label: string; sort: number }
+export interface SectionDictRow {
+  id: number;
+  kind: string;
+  name: string;
+  sort: number;
+}
+export interface SectionKindMeta {
+  kind: string;
+  label: string;
+  sort: number;
+}
 
 /** 归一化后的种子页查询参数（重复参数合并为逗号串） */
 export type TorrentsSP = Record<string, string | undefined>;
@@ -22,7 +31,10 @@ export async function loadPublic<T>(path: string): Promise<T | null> {
 }
 
 /** 表头排序切换：当前列降序 → 升序（_asc）→ 取消；其他列 → 降序 */
-export function toggleSort(cur: string | undefined, key: string): string | undefined {
+export function toggleSort(
+  cur: string | undefined,
+  key: string,
+): string | undefined {
   if (cur === key) return `${key}_asc`;
   if (cur === `${key}_asc`) return undefined;
   return key;

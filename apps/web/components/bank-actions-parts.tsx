@@ -41,15 +41,19 @@ export function DepositRow({
         {dict.bank.termDays.replace("{n}", String(d.term_days))} ·{" "}
         {d.settle_mode === "daily"
           ? dict.bank.paidInterest
-            .replace("{n}", d.interest.toLocaleString())
-            .replace("{p}", d.paid_interest.toLocaleString())
+              .replace("{n}", d.interest.toLocaleString())
+              .replace("{p}", d.paid_interest.toLocaleString())
           : `${dict.bank.interest}: ${d.interest.toLocaleString()}`}
       </span>
       <span className="text-xs text-sub">
         {dict.bank.maturity}: {new Date(d.maturity_at).toLocaleDateString()}
-        {d.status === 0 && !matured ? ` · ${dict.bank.daysLeft.replace("{n}", String(days))}` : ""}
+        {d.status === 0 && !matured
+          ? ` · ${dict.bank.daysLeft.replace("{n}", String(days))}`
+          : ""}
       </span>
-      <span className={`sticker num ${d.status === 0 ? "bg-sun text-ink" : "bg-mint/30 text-ink"}`}>
+      <span
+        className={`sticker num ${d.status === 0 ? "bg-sun text-ink" : "bg-mint/30 text-ink"}`}
+      >
         {d.status === 0 ? dict.bank.locked : dict.bank.matured}
       </span>
       {d.status === 0 && (

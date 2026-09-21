@@ -3,7 +3,9 @@ import { render } from "@testing-library/react";
 import { hasBBCode, renderBBCode } from "../lib/bbcode";
 
 function renderText(text: string): string {
-  return render(<div data-testid="bb">{renderBBCode(text)}</div>).getByTestId("bb").textContent;
+  return render(<div data-testid="bb">{renderBBCode(text)}</div>).getByTestId(
+    "bb",
+  ).textContent;
 }
 
 describe("bbcode renderer", () => {
@@ -21,9 +23,13 @@ describe("bbcode renderer", () => {
   });
 
   it("rejects javascript: urls in [url] and [img]", () => {
-    const html = render(<div>{renderBBCode("[url=javascript:alert(1)]x[/url]")}</div>).container;
+    const html = render(
+      <div>{renderBBCode("[url=javascript:alert(1)]x[/url]")}</div>,
+    ).container;
     expect(html.querySelector("a[href='javascript:alert(1)']")).toBeNull();
-    const html2 = render(<div>{renderBBCode("[img]javascript:alert(1)[/img]")}</div>).container;
+    const html2 = render(
+      <div>{renderBBCode("[img]javascript:alert(1)[/img]")}</div>,
+    ).container;
     expect(html2.querySelector("img")).toBeNull();
   });
 

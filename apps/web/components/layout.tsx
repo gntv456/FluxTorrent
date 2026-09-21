@@ -61,66 +61,106 @@ export async function Header() {
   const groups: NavGroup[] = customActive
     ? customGroups
     : [
-    {
-      group: dict.nav.discover,
-      items: [
-        { href: "/torrents?official=1", label: dict.nav.official },
-        ...(mod("requests") ? [{ href: "/requests", label: dict.nav.candidates }] : []),
-        ...(mod("offers") ? [{ href: "/offers", label: dict.nav.offers }] : []),
-        ...(mod("subtitles") ? [{ href: "/subtitles", label: dict.nav.subtitles }] : []),
-        ...(mod("preserve") ? [{ href: "/preserve", label: dict.nav.preserve }] : []),
-        ...(socialOn
-          ? [
-              { href: "/endangered", label: dict.nav.endangered },
-              { href: "/teams", label: dict.nav.teams },
-            ]
-          : []),
-        ...(textbooksOn ? [{ href: "/textbooks", label: dict.nav.textbooks }] : []),
-      ],
-    },
-    {
-      group: t(dict.nav.spark),
-      items: [
-        ...(mod("shop") ? [{ href: "/shop", label: dict.tabbar.shop }] : []),
-        ...(mod("bank") ? [{ href: "/bank", label: dict.nav.bank }] : []),
-        ...(mod("magic_pool") ? [{ href: "/magic-pool", label: dict.nav.magicPool }] : []),
-        ...(mod("tasks") ? [{ href: "/tasks", label: dict.nav.tasks }] : []),
-        { href: "/my-spark", label: t(dict.nav.spark) },
-      ],
-    },
-    {
-      group: dict.nav.growth,
-      items: [
-        ...(mod("exams") ? [{ href: "/me/exams", label: dict.nav.exams }] : []),
-        { href: "/me/achievements", label: dict.nav.achievements },
-        ...(mod("resurrections") ? [{ href: "/resurrections", label: dict.nav.resurrections }] : []),
-        ...(mod("medals") ? [{ href: "/medal-wall", label: dict.nav.medalWall }] : []),
-        ...(mod("dressup") ? [{ href: "/avatar-frames", label: dict.nav.frames }] : []),
-        ...(mod("medals") ? [{ href: "/medals", label: dict.nav.medals }] : []),
-        ...(mod("jixiao") ? [{ href: "/jixiao", label: dict.nav.jixiao }] : []),
-        { href: "/invites", label: dict.nav.invites },
-      ],
-    },
-    {
-      group: dict.nav.fun,
-      items: [
-        ...(mod("games") ? [{ href: "/games", label: dict.nav.games }] : []),
-        ...(mod("farm") ? [{ href: "/farm", label: dict.nav.farm }] : []),
-        ...(mod("gomoku") ? [{ href: "/gomoku", label: dict.nav.gomoku }] : []),
-        ...(mod("contests") ? [{ href: "/contests", label: dict.nav.contests }] : []),
-        ...(mod("friends") ? [{ href: "/friends", label: dict.nav.friends }] : []),
-      ],
-    },
-    {
-      group: dict.nav.more,
-      items: [
-        ...(mod("messages") ? [{ href: "/messages", label: dict.nav.messages }] : []),
-        { href: "/myhr", label: dict.nav.myhr },
-        { href: "/faq", label: dict.nav.faq },
-        ...(mod("magic_pool") ? [{ href: "/donate", label: dict.nav.donate }] : []),
-      ],
-    },
-  ];
+        {
+          group: dict.nav.discover,
+          items: [
+            { href: "/torrents?official=1", label: dict.nav.official },
+            ...(mod("requests")
+              ? [{ href: "/requests", label: dict.nav.candidates }]
+              : []),
+            ...(mod("offers")
+              ? [{ href: "/offers", label: dict.nav.offers }]
+              : []),
+            ...(mod("subtitles")
+              ? [{ href: "/subtitles", label: dict.nav.subtitles }]
+              : []),
+            ...(mod("preserve")
+              ? [{ href: "/preserve", label: dict.nav.preserve }]
+              : []),
+            ...(socialOn
+              ? [
+                  { href: "/endangered", label: dict.nav.endangered },
+                  { href: "/teams", label: dict.nav.teams },
+                ]
+              : []),
+            ...(textbooksOn
+              ? [{ href: "/textbooks", label: dict.nav.textbooks }]
+              : []),
+          ],
+        },
+        {
+          group: t(dict.nav.spark),
+          items: [
+            ...(mod("shop")
+              ? [{ href: "/shop", label: dict.tabbar.shop }]
+              : []),
+            ...(mod("bank") ? [{ href: "/bank", label: dict.nav.bank }] : []),
+            ...(mod("magic_pool")
+              ? [{ href: "/magic-pool", label: dict.nav.magicPool }]
+              : []),
+            ...(mod("tasks")
+              ? [{ href: "/tasks", label: dict.nav.tasks }]
+              : []),
+            { href: "/my-spark", label: t(dict.nav.spark) },
+          ],
+        },
+        {
+          group: dict.nav.growth,
+          items: [
+            ...(mod("exams")
+              ? [{ href: "/me/exams", label: dict.nav.exams }]
+              : []),
+            { href: "/me/achievements", label: dict.nav.achievements },
+            ...(mod("resurrections")
+              ? [{ href: "/resurrections", label: dict.nav.resurrections }]
+              : []),
+            ...(mod("medals")
+              ? [{ href: "/medal-wall", label: dict.nav.medalWall }]
+              : []),
+            ...(mod("dressup")
+              ? [{ href: "/avatar-frames", label: dict.nav.frames }]
+              : []),
+            ...(mod("medals")
+              ? [{ href: "/medals", label: dict.nav.medals }]
+              : []),
+            ...(mod("jixiao")
+              ? [{ href: "/jixiao", label: dict.nav.jixiao }]
+              : []),
+            { href: "/invites", label: dict.nav.invites },
+          ],
+        },
+        {
+          group: dict.nav.fun,
+          items: [
+            ...(mod("games")
+              ? [{ href: "/games", label: dict.nav.games }]
+              : []),
+            ...(mod("farm") ? [{ href: "/farm", label: dict.nav.farm }] : []),
+            ...(mod("gomoku")
+              ? [{ href: "/gomoku", label: dict.nav.gomoku }]
+              : []),
+            ...(mod("contests")
+              ? [{ href: "/contests", label: dict.nav.contests }]
+              : []),
+            ...(mod("friends")
+              ? [{ href: "/friends", label: dict.nav.friends }]
+              : []),
+          ],
+        },
+        {
+          group: dict.nav.more,
+          items: [
+            ...(mod("messages")
+              ? [{ href: "/messages", label: dict.nav.messages }]
+              : []),
+            { href: "/myhr", label: dict.nav.myhr },
+            { href: "/faq", label: dict.nav.faq },
+            ...(mod("magic_pool")
+              ? [{ href: "/donate", label: dict.nav.donate }]
+              : []),
+          ],
+        },
+      ];
 
   return (
     <header className="border-b border-line bg-[var(--baozi-bg)]">
@@ -133,7 +173,12 @@ export async function Header() {
           <span className="font-display text-2xl text-ink">{brand}</span>
         </Link>
         <div className="min-w-0 flex-1">
-          <MainMenu items={primary} groups={groups} moreLabel={`${dict.nav.more} ▾`} ariaLabel={dict.nav.ariaPrimary} />
+          <MainMenu
+            items={primary}
+            groups={groups}
+            moreLabel={`${dict.nav.more} ▾`}
+            ariaLabel={dict.nav.ariaPrimary}
+          />
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />

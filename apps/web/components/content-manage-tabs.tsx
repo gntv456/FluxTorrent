@@ -40,17 +40,29 @@ export function FunTab({
   load: () => void;
   t: ReturnType<typeof useI18n>["dict"]["cmgmt"];
 }) {
-  const [fEdit, setFEdit] = useState<{ id: number | null; title: string; body: string }>({
-    id: null, title: "", body: "",
+  const [fEdit, setFEdit] = useState<{
+    id: number | null;
+    title: string;
+    body: string;
+  }>({
+    id: null,
+    title: "",
+    body: "",
   });
 
   async function saveFun() {
     if (!fEdit.title.trim()) return;
     try {
       if (fEdit.id === null) {
-        await api.post("/api/v1/fun/items", { title: fEdit.title, body: fEdit.body });
+        await api.post("/api/v1/fun/items", {
+          title: fEdit.title,
+          body: fEdit.body,
+        });
       } else {
-        await api.put(`/api/v1/fun/items/${fEdit.id}`, { title: fEdit.title, body: fEdit.body });
+        await api.put(`/api/v1/fun/items/${fEdit.id}`, {
+          title: fEdit.title,
+          body: fEdit.body,
+        });
       }
       setFEdit({ id: null, title: "", body: "" });
       load();
@@ -68,11 +80,18 @@ export function FunTab({
         <div className="cmgmt-form">
           <label>
             {t.fldTitle}
-            <input value={fEdit.title} onChange={(e) => setFEdit({ ...fEdit, title: e.target.value })} />
+            <input
+              value={fEdit.title}
+              onChange={(e) => setFEdit({ ...fEdit, title: e.target.value })}
+            />
           </label>
           <label>
             {t.fldBody}
-            <textarea rows={5} value={fEdit.body} onChange={(e) => setFEdit({ ...fEdit, body: e.target.value })} />
+            <textarea
+              rows={5}
+              value={fEdit.body}
+              onChange={(e) => setFEdit({ ...fEdit, body: e.target.value })}
+            />
           </label>
           <div className="flex gap-2">
             <button className="baozi-button" onClick={saveFun}>
@@ -111,7 +130,12 @@ export function FunTab({
                 </span>
               </td>
               <td className="text-right">
-                <button className="cmgmt-act" onClick={() => setFEdit({ id: f.id, title: f.title, body: f.body ?? "" })}>
+                <button
+                  className="cmgmt-act"
+                  onClick={() =>
+                    setFEdit({ id: f.id, title: f.title, body: f.body ?? "" })
+                  }
+                >
                   {t.btnEdit}
                 </button>
                 {f.status !== "banned" ? (
@@ -119,7 +143,9 @@ export function FunTab({
                     className="cmgmt-act cmgmt-act--danger"
                     onClick={() =>
                       api
-                        .call(`PUT /api/v1/fun/items/${f.id}/status {"status":"banned"}`)
+                        .call(
+                          `PUT /api/v1/fun/items/${f.id}/status {"status":"banned"}`,
+                        )
                         .then(load)
                         .catch(() => {})
                     }
@@ -131,7 +157,9 @@ export function FunTab({
                     className="cmgmt-act cmgmt-act--ok"
                     onClick={() =>
                       api
-                        .call(`PUT /api/v1/fun/items/${f.id}/status {"status":"normal"}`)
+                        .call(
+                          `PUT /api/v1/fun/items/${f.id}/status {"status":"normal"}`,
+                        )
                         .then(load)
                         .catch(() => {})
                     }
@@ -170,7 +198,10 @@ export function LinksTab({
   load: () => void;
   t: ReturnType<typeof useI18n>["dict"]["cmgmt"];
 }) {
-  async function reviewLink(id: number, status: "active" | "hidden" | "pending") {
+  async function reviewLink(
+    id: number,
+    status: "active" | "hidden" | "pending",
+  ) {
     try {
       await api.put(`/api/v1/admin/links/${id}`, { status });
       load();
@@ -196,7 +227,12 @@ export function LinksTab({
               {l.title && <span className="text-sub"> ({l.title})</span>}
             </td>
             <td>
-              <a href={l.url} target="_blank" rel="noreferrer" className="text-xs">
+              <a
+                href={l.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs"
+              >
                 {l.url}
               </a>
             </td>
@@ -209,17 +245,26 @@ export function LinksTab({
             </td>
             <td className="text-right">
               {l.status === "pending" && (
-                <button className="cmgmt-act cmgmt-act--ok" onClick={() => reviewLink(l.id, "active")}>
+                <button
+                  className="cmgmt-act cmgmt-act--ok"
+                  onClick={() => reviewLink(l.id, "active")}
+                >
                   {t.btnApprove}
                 </button>
               )}
               {l.status === "active" && (
-                <button className="cmgmt-act" onClick={() => reviewLink(l.id, "hidden")}>
+                <button
+                  className="cmgmt-act"
+                  onClick={() => reviewLink(l.id, "hidden")}
+                >
                   {t.btnHide}
                 </button>
               )}
               {l.status === "hidden" && (
-                <button className="cmgmt-act cmgmt-act--ok" onClick={() => reviewLink(l.id, "active")}>
+                <button
+                  className="cmgmt-act cmgmt-act--ok"
+                  onClick={() => reviewLink(l.id, "active")}
+                >
                   {t.btnShow}
                 </button>
               )}

@@ -16,7 +16,12 @@ interface InviteRow {
   expires_at: string;
 }
 
-const STATUS_LABEL: Record<number, string> = { 0: "未用", 1: "已用", 2: "过期", 3: "撤销" };
+const STATUS_LABEL: Record<number, string> = {
+  0: "未用",
+  1: "已用",
+  2: "过期",
+  3: "撤销",
+};
 
 export function AdminInvites() {
   const [rows, setRows] = useState<InviteRow[]>([]);
@@ -31,7 +36,9 @@ export function AdminInvites() {
     if (uid.trim()) p.set("uid", uid.trim());
     if (valid !== "") p.set("valid", valid);
     try {
-      const r = await api.get<{ rows: InviteRow[]; total: number }>(`/api/v1/admin/invites?${p}`);
+      const r = await api.get<{ rows: InviteRow[]; total: number }>(
+        `/api/v1/admin/invites?${p}`,
+      );
       setRows(r.rows);
       setTotal(r.total);
     } catch (e) {
@@ -39,19 +46,40 @@ export function AdminInvites() {
     }
   }, [uid, valid, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <div className="flex flex-col gap-3">
-      {msg && <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
+      {msg && (
+        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+          {msg}
+        </p>
+      )}
       <section className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
           发邀者 UID
-          <input value={uid} onChange={(e) => { setUid(e.target.value); setPage(1); }} placeholder="留空看全部" className="min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line px-2" />
+          <input
+            value={uid}
+            onChange={(e) => {
+              setUid(e.target.value);
+              setPage(1);
+            }}
+            placeholder="留空看全部"
+            className="min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line px-2"
+          />
         </label>
         <label className="flex flex-col gap-1 text-xs">
           状态
-          <select value={valid} onChange={(e) => { setValid(e.target.value); setPage(1); }} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+          <select
+            value={valid}
+            onChange={(e) => {
+              setValid(e.target.value);
+              setPage(1);
+            }}
+            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+          >
             <option value="">全部</option>
             <option value="0">未用</option>
             <option value="1">已用</option>
@@ -75,22 +103,57 @@ export function AdminInvites() {
           {rows.map((r) => (
             <tr key={r.id}>
               <td className="num">{r.id}</td>
-              <td><a href={`/admin/users/${r.inviter_id}`} className="font-bold text-link">{r.inviter}</a></td>
+              <td>
+                <a
+                  href={`/admin/users/${r.inviter_id}`}
+                  className="font-bold text-link"
+                >
+                  {r.inviter}
+                </a>
+              </td>
               <td className="font-mono">{r.code.slice(0, 8)}…</td>
               <td>{STATUS_LABEL[r.status] ?? r.status}</td>
-              <td>{r.used_by ? <a href={`/admin/users/${r.used_by}`} className="text-link">{r.used_by_name ?? `#${r.used_by}`}</a> : "—"}</td>
-              <td className="text-sub">{new Date(r.expires_at).toLocaleDateString()}</td>
+              <td>
+                {r.used_by ? (
+                  <a href={`/admin/users/${r.used_by}`} className="text-link">
+                    {r.used_by_name ?? `#${r.used_by}`}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td className="text-sub">
+                {new Date(r.expires_at).toLocaleDateString()}
+              </td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-sub">暂无邀请码</td></tr>}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={6} className="py-6 text-center text-sub">
+                暂无邀请码
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
       <div className="flex items-center justify-between text-sm text-sub">
         <span>共 {total} 条</span>
         <div className="flex gap-2">
-          <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40">上一页</button>
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          >
+            上一页
+          </button>
           <span>第 {page} 页</span>
-          <button disabled={rows.length < 20} onClick={() => setPage(page + 1)} className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40">下一页</button>
+          <button
+            disabled={rows.length < 20}
+            onClick={() => setPage(page + 1)}
+            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          >
+            下一页
+          </button>
         </div>
       </div>
     </div>

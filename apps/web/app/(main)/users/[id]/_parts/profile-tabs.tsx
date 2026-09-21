@@ -39,7 +39,10 @@ export function TorrentListTable({
           {rows.map((u) => (
             <tr key={u.torrent_id}>
               <td className="max-w-[420px] truncate">
-                <Link href={`/torrent/${u.torrent_id}`} className="text-sky-deep hover:underline">
+                <Link
+                  href={`/torrent/${u.torrent_id}`}
+                  className="text-sky-deep hover:underline"
+                >
                   {u.name}
                 </Link>
               </td>
@@ -83,7 +86,10 @@ export function PostsTab({
           {data.recent_posts.map(([pid, topicId, body, at]) => (
             <tr key={pid}>
               <td>
-                <Link href={`/forums/topic/${topicId}`} className="text-xs font-bold text-sky">
+                <Link
+                  href={`/forums/topic/${topicId}`}
+                  className="text-xs font-bold text-sky"
+                >
                   #{topicId}
                 </Link>
                 <p className="text-sm">{body}</p>
@@ -125,7 +131,10 @@ export function CommentsTab({
           {data.recent_comments.map((c, i) => (
             <tr key={i}>
               <td>
-                <Link href={`/torrent/${c.torrent_id}`} className="text-xs font-bold text-sky">
+                <Link
+                  href={`/torrent/${c.torrent_id}`}
+                  className="text-xs font-bold text-sky"
+                >
                   #{c.torrent_id}
                 </Link>
                 <p className="text-sm whitespace-pre-wrap">{c.body}</p>

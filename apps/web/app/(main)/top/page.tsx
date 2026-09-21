@@ -24,7 +24,9 @@ function fmtDuration(hours: number): string {
 
 function Avatar({ u }: { u: TopRow }) {
   // 框图优先，否则 CSS 描边；容器 relative 供叠层定位
-  const style = u.avatar_frame_image ? undefined : avatarFrameStyle(u.avatar_frame_css);
+  const style = u.avatar_frame_image
+    ? undefined
+    : avatarFrameStyle(u.avatar_frame_css);
   if (u.avatar_url) {
     return (
       <span className="relative inline-flex h-8 w-8 shrink-0" style={style}>
@@ -49,7 +51,12 @@ function Avatar({ u }: { u: TopRow }) {
   );
 }
 
-function valueHeader(title: string, empty: string, isBytes: boolean, currency: string): string {
+function valueHeader(
+  title: string,
+  empty: string,
+  isBytes: boolean,
+  currency: string,
+): string {
   if (isBytes) return "大小";
   if (title.includes("做种")) return "时长";
   if (title.includes("后宫")) return "每小时";
@@ -89,7 +96,9 @@ function Board({
             <tr className="border-b border-[var(--border-soft)] text-[11px] text-[var(--text-faint)]">
               <th className="w-12 py-2 pl-3 text-left font-bold">排名</th>
               <th className="py-2 text-left font-bold">用户</th>
-              <th className="py-2 pr-3 text-right font-bold">{valueHeader(title, empty, isBytes, currency)}</th>
+              <th className="py-2 pr-3 text-right font-bold">
+                {valueHeader(title, empty, isBytes, currency)}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -97,10 +106,18 @@ function Board({
               <tr
                 key={`${u.rank}-${u.username}`}
                 className={`border-b border-dashed border-[var(--border-soft)] last:border-0 ${
-                  u.rank === 1 ? "bg-[var(--promo-free-bg)]/60" : u.rank === 2 ? "bg-[var(--baozi-cream)]" : u.rank === 3 ? "bg-[var(--promo-x2-bg)]/40" : ""
+                  u.rank === 1
+                    ? "bg-[var(--promo-free-bg)]/60"
+                    : u.rank === 2
+                      ? "bg-[var(--baozi-cream)]"
+                      : u.rank === 3
+                        ? "bg-[var(--promo-x2-bg)]/40"
+                        : ""
                 }`}
               >
-                <td className="py-2 pl-3 text-sm font-bold text-[var(--text-faint)]">{medal(u.rank)}</td>
+                <td className="py-2 pl-3 text-sm font-bold text-[var(--text-faint)]">
+                  {medal(u.rank)}
+                </td>
                 <td className="min-w-0 py-2">
                   <div className="flex items-center gap-2">
                     <Avatar u={u} />
@@ -117,7 +134,9 @@ function Board({
                     </div>
                   </div>
                 </td>
-                <td className="py-2 pr-3 text-right text-sm font-bold text-ink">{fmt(u.val)}</td>
+                <td className="py-2 pr-3 text-right text-sm font-bold text-ink">
+                  {fmt(u.val)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -136,12 +155,56 @@ export default async function TopPage() {
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl">{t.title}</h1>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Board currency={currency} icon="💰" title={t.boardBonus.replace("{magic}", currency)} rows={b.bonus} empty={t.empty} fmt={(v) => Math.round(v).toLocaleString("zh-CN")} />
-        <Board currency={currency} icon="⬆️" title={t.boardUploaded} rows={b.uploaded} empty={t.empty} fmt={formatBytes} isBytes />
-        <Board currency={currency} icon="⬇️" title={t.boardDownloaded} rows={b.downloaded} empty={t.empty} fmt={formatBytes} isBytes />
-        <Board currency={currency} icon="⏳" title={t.boardSeedtime} rows={b.seedtime} empty={t.empty} fmt={fmtDuration} />
-        <Board currency={currency} icon="💒" title={t.boardHourly} rows={b.hourly} empty={t.empty} fmt={(v) => v.toFixed(2)} />
-        <Board currency={currency} icon="🌱" title={t.boardTorrents} rows={b.torrents} empty={t.empty} fmt={(v) => Math.round(v).toLocaleString("zh-CN")} />
+        <Board
+          currency={currency}
+          icon="💰"
+          title={t.boardBonus.replace("{magic}", currency)}
+          rows={b.bonus}
+          empty={t.empty}
+          fmt={(v) => Math.round(v).toLocaleString("zh-CN")}
+        />
+        <Board
+          currency={currency}
+          icon="⬆️"
+          title={t.boardUploaded}
+          rows={b.uploaded}
+          empty={t.empty}
+          fmt={formatBytes}
+          isBytes
+        />
+        <Board
+          currency={currency}
+          icon="⬇️"
+          title={t.boardDownloaded}
+          rows={b.downloaded}
+          empty={t.empty}
+          fmt={formatBytes}
+          isBytes
+        />
+        <Board
+          currency={currency}
+          icon="⏳"
+          title={t.boardSeedtime}
+          rows={b.seedtime}
+          empty={t.empty}
+          fmt={fmtDuration}
+        />
+        <Board
+          currency={currency}
+          icon="💒"
+          title={t.boardHourly}
+          rows={b.hourly}
+          empty={t.empty}
+          fmt={(v) => v.toFixed(2)}
+        />
+        <Board
+          currency={currency}
+          icon="🌱"
+          title={t.boardTorrents}
+          rows={b.torrents}
+          empty={t.empty}
+          fmt={(v) => Math.round(v).toLocaleString("zh-CN")}
+        />
       </div>
     </div>
   );

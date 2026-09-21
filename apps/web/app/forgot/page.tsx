@@ -17,9 +17,12 @@ export default function ForgotPage() {
     setBusy(true);
     setMsg(null);
     try {
-      const r = await api.post<{ message: string }>("/api/v1/auth/password/forgot", {
-        email: email.trim(),
-      });
+      const r = await api.post<{ message: string }>(
+        "/api/v1/auth/password/forgot",
+        {
+          email: email.trim(),
+        },
+      );
       setMsg(r.message);
     } catch (err) {
       if (err instanceof ApiError) {

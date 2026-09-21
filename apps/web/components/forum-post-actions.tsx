@@ -29,7 +29,9 @@ export function ReplyBox({ topicId }: { topicId: number }) {
       router.refresh();
     } catch (err) {
       setMsg(
-        err instanceof ApiError ? (dict.errors[err.code] ?? err.message) : dict.common.networkError,
+        err instanceof ApiError
+          ? (dict.errors[err.code] ?? err.message)
+          : dict.common.networkError,
       );
     } finally {
       setBusy(false);
@@ -115,13 +117,25 @@ export function TopicModActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <button className={btn} disabled={busy} onClick={() => manage({ sticky: !sticky })}>
+      <button
+        className={btn}
+        disabled={busy}
+        onClick={() => manage({ sticky: !sticky })}
+      >
         {sticky ? "取消置顶" : "置顶"}
       </button>
-      <button className={btn} disabled={busy} onClick={() => manage({ locked: !locked })}>
+      <button
+        className={btn}
+        disabled={busy}
+        onClick={() => manage({ locked: !locked })}
+      >
         {locked ? "解锁" : "锁定"}
       </button>
-      <button className={btn} disabled={busy} onClick={() => manage({ digest: !digest })}>
+      <button
+        className={btn}
+        disabled={busy}
+        onClick={() => manage({ digest: !digest })}
+      >
         {digest ? "取消精华" : "加精"}
       </button>
       <select
@@ -137,7 +151,11 @@ export function TopicModActions({
         ))}
       </select>
       {moveTo && (
-        <button className={btn} disabled={busy} onClick={() => manage({ move_to_forum_id: Number(moveTo) })}>
+        <button
+          className={btn}
+          disabled={busy}
+          onClick={() => manage({ move_to_forum_id: Number(moveTo) })}
+        >
           确认移动
         </button>
       )}
@@ -153,7 +171,17 @@ export function TopicModActions({
 }
 
 /** 帖子操作：作者本人可编辑；版主/postmanage 可编辑+删他人帖（编辑自动 PM 通知） */
-export function PostActions({ postId, canMod, isSelf, initialBody }: { postId: number; canMod: boolean; isSelf: boolean; initialBody?: string }) {
+export function PostActions({
+  postId,
+  canMod,
+  isSelf,
+  initialBody,
+}: {
+  postId: number;
+  canMod: boolean;
+  isSelf: boolean;
+  initialBody?: string;
+}) {
   const { dict } = useI18n();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -202,9 +230,17 @@ export function PostActions({ postId, canMod, isSelf, initialBody }: { postId: n
           maxLength={5000}
           className="min-h-[80px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2 text-sm outline-none focus:border-sky"
         />
-        {msg && <p role="alert" className="text-xs text-danger">{msg}</p>}
+        {msg && (
+          <p role="alert" className="text-xs text-danger">
+            {msg}
+          </p>
+        )}
         <div className="flex gap-2">
-          <button className="min-h-[30px] rounded-full bg-sky px-3 text-xs font-bold text-white disabled:opacity-50" disabled={busy} onClick={save}>
+          <button
+            className="min-h-[30px] rounded-full bg-sky px-3 text-xs font-bold text-white disabled:opacity-50"
+            disabled={busy}
+            onClick={save}
+          >
             保存
           </button>
           <button className={btn} onClick={() => setEditing(false)}>
@@ -221,7 +257,11 @@ export function PostActions({ postId, canMod, isSelf, initialBody }: { postId: n
         编辑
       </button>
       {canMod && !isSelf && (
-        <button className="min-h-[30px] rounded-full border border-line px-3 text-xs font-bold text-danger disabled:opacity-50" disabled={busy} onClick={del}>
+        <button
+          className="min-h-[30px] rounded-full border border-line px-3 text-xs font-bold text-danger disabled:opacity-50"
+          disabled={busy}
+          onClick={del}
+        >
           删除
         </button>
       )}

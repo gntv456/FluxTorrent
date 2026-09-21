@@ -29,7 +29,11 @@ export function ProfileHero({
           // eslint-disable-next-line @next/next/no-img-element
           <span
             className="relative inline-flex h-full w-full"
-            style={data.avatar_frame_image ? undefined : avatarFrameStyle(data.avatar_frame_css)}
+            style={
+              data.avatar_frame_image
+                ? undefined
+                : avatarFrameStyle(data.avatar_frame_css)
+            }
           >
             <img src={p.avatar_url} alt={p.username} />
             <FrameImageOverlay url={data.avatar_frame_image} />
@@ -38,7 +42,11 @@ export function ProfileHero({
           <span
             aria-hidden
             className="relative flex h-full w-full items-center justify-center text-4xl text-sub"
-            style={data.avatar_frame_image ? undefined : avatarFrameStyle(data.avatar_frame_css)}
+            style={
+              data.avatar_frame_image
+                ? undefined
+                : avatarFrameStyle(data.avatar_frame_css)
+            }
           >
             👤
             <FrameImageOverlay url={data.avatar_frame_image} />
@@ -47,7 +55,9 @@ export function ProfileHero({
       </div>
       <div className="up-hero__main">
         <div className="up-hero__name">
-          <h1 className="font-display text-2xl text-[var(--text-strong)]">{p.username}</h1>
+          <h1 className="font-display text-2xl text-[var(--text-strong)]">
+            {p.username}
+          </h1>
           {data.worn_medals.slice(0, 3).map((m) => (
             <span key={m.id} className="medal-chip align-middle" title={m.name}>
               <MedalIcon src={m.asset_ref} size={14} title={m.name} />
@@ -55,14 +65,18 @@ export function ProfileHero({
           ))}
           <span
             className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-              data.online ? "bg-[var(--mint-soft)] text-mint" : "bg-[var(--surface-sunken)] text-sub"
+              data.online
+                ? "bg-[var(--mint-soft)] text-mint"
+                : "bg-[var(--surface-sunken)] text-sub"
             }`}
             title={data.online ? t.online : t.offline}
           >
             {/* 单表达式拼好整段文本：SSR 与水合的文本节点划分一致，避免 418 */}
             {`● ${data.online ? t.online : t.offline}`}
           </span>
-          {p.donor && <span className="sticker bg-sun text-ink">{`♥ ${t.donor}`}</span>}
+          {p.donor && (
+            <span className="sticker bg-sun text-ink">{`♥ ${t.donor}`}</span>
+          )}
         </div>
         {/* 等级/头衔 + 关注（0121）：FollowButton 自拉状态，is_self 时自行隐藏 */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-sub">
@@ -91,13 +105,22 @@ export function ProfileHero({
 export function StatTiles({
   statTiles,
 }: {
-  statTiles: { key: string; icon: string; mod?: string; label: string; value: string }[];
+  statTiles: {
+    key: string;
+    icon: string;
+    mod?: string;
+    label: string;
+    value: string;
+  }[];
 }) {
   return (
     <section className="up-stats">
       {statTiles.map((s) => (
         <div key={s.key} className="up-stat">
-          <span className={`up-stat__icon${s.mod ? ` up-stat__icon--${s.mod}` : ""}`} aria-hidden>
+          <span
+            className={`up-stat__icon${s.mod ? ` up-stat__icon--${s.mod}` : ""}`}
+            aria-hidden
+          >
             {s.icon}
           </span>
           <div className="min-w-0">

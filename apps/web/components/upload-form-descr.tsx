@@ -50,12 +50,40 @@ export function UploadDescrBlock({
     "min-h-[28px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1 text-xs text-ink outline-none focus:border-[var(--baozi-orange)]";
   // 色板（NP 颜色面板口径）：色块按钮，点击包住选区
   const BB_COLORS: [string, string][] = [
-    ["#111827", "黑"], ["#6b7280", "灰"], ["#ffffff", "白"], ["#e02020", "红"],
-    ["#a61b29", "深红"], ["#f59e0b", "橙"], ["#fadb14", "黄"], ["#d4a017", "金"],
-    ["#16a34a", "绿"], ["#0d9488", "青绿"], ["#2563eb", "蓝"], ["#4f46e5", "靛"],
-    ["#9333ea", "紫"], ["#eb2f96", "粉"], ["#8b4513", "棕"], ["#0ea5e9", "天蓝"],
+    ["#111827", "黑"],
+    ["#6b7280", "灰"],
+    ["#ffffff", "白"],
+    ["#e02020", "红"],
+    ["#a61b29", "深红"],
+    ["#f59e0b", "橙"],
+    ["#fadb14", "黄"],
+    ["#d4a017", "金"],
+    ["#16a34a", "绿"],
+    ["#0d9488", "青绿"],
+    ["#2563eb", "蓝"],
+    ["#4f46e5", "靛"],
+    ["#9333ea", "紫"],
+    ["#eb2f96", "粉"],
+    ["#8b4513", "棕"],
+    ["#0ea5e9", "天蓝"],
   ];
-  const BB_EMOJIS = ["😄", "😂", "🥰", "😮", "😭", "😅", "😡", "👍", "🙏", "🎉", "🔥", "❤️", "🤔", "💯", "🍺"];
+  const BB_EMOJIS = [
+    "😄",
+    "😂",
+    "🥰",
+    "😮",
+    "😭",
+    "😅",
+    "😡",
+    "👍",
+    "🙏",
+    "🎉",
+    "🔥",
+    "❤️",
+    "🤔",
+    "💯",
+    "🍺",
+  ];
   // 下拉面板通用样式：固定宽度 + 网格（防在窄单元格里竖排成一列）
   const bbPanel =
     "absolute z-10 mt-1 grid w-56 gap-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] p-2 shadow-[var(--shadow-card)]";
@@ -67,7 +95,10 @@ export function UploadDescrBlock({
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-1">
           <details className="relative">
-            <summary className={`${bbBtn} inline-flex cursor-pointer list-none items-center justify-center gap-1`} title={dict.upload.bbColor ?? "颜色"}>
+            <summary
+              className={`${bbBtn} inline-flex cursor-pointer list-none items-center justify-center gap-1`}
+              title={dict.upload.bbColor ?? "颜色"}
+            >
               🎨 {dict.upload.bbColor ?? "颜色"}
             </summary>
             <div className={`${bbPanel} grid-cols-8 w-72`}>
@@ -77,7 +108,11 @@ export function UploadDescrBlock({
                   type="button"
                   title={label}
                   className={bbSwatch}
-                  style={hex === "#ffffff" ? { background: "#fff" } : { background: hex, color: "#fff" }}
+                  style={
+                    hex === "#ffffff"
+                      ? { background: "#fff" }
+                      : { background: hex, color: "#fff" }
+                  }
                   onClick={() => {
                     bbWrap(`[color=${hex}]`, "[/color]");
                     const d = document.activeElement?.closest("details");
@@ -119,11 +154,46 @@ export function UploadDescrBlock({
               </option>
             ))}
           </select>
-          <button type="button" className={`${bbBtn} font-black`} onClick={() => bbWrap("[b]", "[/b]")} title="Bold">B</button>
-          <button type="button" className={`${bbBtn} italic`} onClick={() => bbWrap("[i]", "[/i]")} title="Italic">I</button>
-          <button type="button" className={`${bbBtn} underline`} onClick={() => bbWrap("[u]", "[/u]")} title="Underline">U</button>
-          <button type="button" className={`${bbBtn} line-through`} onClick={() => bbWrap("[s]", "[/s]")} title="Strikethrough">S</button>
-          <button type="button" className={bbBtn} onClick={() => bbWrap("[url]", "[/url]", "https://")} title={dict.upload.bbLink ?? "链接"}>🔗</button>
+          <button
+            type="button"
+            className={`${bbBtn} font-black`}
+            onClick={() => bbWrap("[b]", "[/b]")}
+            title="Bold"
+          >
+            B
+          </button>
+          <button
+            type="button"
+            className={`${bbBtn} italic`}
+            onClick={() => bbWrap("[i]", "[/i]")}
+            title="Italic"
+          >
+            I
+          </button>
+          <button
+            type="button"
+            className={`${bbBtn} underline`}
+            onClick={() => bbWrap("[u]", "[/u]")}
+            title="Underline"
+          >
+            U
+          </button>
+          <button
+            type="button"
+            className={`${bbBtn} line-through`}
+            onClick={() => bbWrap("[s]", "[/s]")}
+            title="Strikethrough"
+          >
+            S
+          </button>
+          <button
+            type="button"
+            className={bbBtn}
+            onClick={() => bbWrap("[url]", "[/url]", "https://")}
+            title={dict.upload.bbLink ?? "链接"}
+          >
+            🔗
+          </button>
           <button
             type="button"
             className={bbBtn}
@@ -132,16 +202,38 @@ export function UploadDescrBlock({
               const u = window.prompt(dict.upload.bbImg ?? "图片 URL");
               if (u && u.trim()) bbInsert(`[img]${u.trim()}[/img]`);
             }}
-          >🖼️</button>
-          <button type="button" className={bbBtn} onClick={() => bbWrap("[quote]", "[/quote]")} title={dict.upload.bbQuote ?? "引用"}>❝</button>
+          >
+            🖼️
+          </button>
+          <button
+            type="button"
+            className={bbBtn}
+            onClick={() => bbWrap("[quote]", "[/quote]")}
+            title={dict.upload.bbQuote ?? "引用"}
+          >
+            ❝
+          </button>
           <button
             type="button"
             className={bbBtn}
             title={dict.upload.bbCode ?? "代码 / MediaInfo"}
-            onClick={() => bbWrap("[code]", "[/code]", "MediaInfo / General / Complete name …")}
-          >{"</>"}</button>
+            onClick={() =>
+              bbWrap(
+                "[code]",
+                "[/code]",
+                "MediaInfo / General / Complete name …",
+              )
+            }
+          >
+            {"</>"}
+          </button>
           <details className="relative">
-            <summary className={`${bbBtn} inline-flex cursor-pointer list-none items-center justify-center`} title={dict.upload.bbEmoji ?? "表情"}>😀</summary>
+            <summary
+              className={`${bbBtn} inline-flex cursor-pointer list-none items-center justify-center`}
+              title={dict.upload.bbEmoji ?? "表情"}
+            >
+              😀
+            </summary>
             <div className={`${bbPanel} grid-cols-5`}>
               {BB_EMOJIS.map((em) => (
                 <button
@@ -170,7 +262,8 @@ export function UploadDescrBlock({
           className={fieldCls}
         />
         <span className="text-xs text-sub">
-          {dict.upload.descrHint}（BBCode：<code>[b][i][color=][size=][url][img][quote][code]</code> 均受支持）
+          {dict.upload.descrHint}（BBCode：
+          <code>[b][i][color=][size=][url][img][quote][code]</code> 均受支持）
         </span>
       </div>
     </FormRow>

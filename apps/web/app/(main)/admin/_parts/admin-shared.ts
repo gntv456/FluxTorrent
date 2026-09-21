@@ -40,8 +40,15 @@ export interface AuditRow {
 }
 
 export interface StatsData {
-  users: number; torrents: number; seeding: number; leeching: number;
-  comments: number; messages: number; redis: string; db: string; uptime_secs: number;
+  users: number;
+  torrents: number;
+  seeding: number;
+  leeching: number;
+  comments: number;
+  messages: number;
+  redis: string;
+  db: string;
+  uptime_secs: number;
 }
 
 export interface CheaterRow {

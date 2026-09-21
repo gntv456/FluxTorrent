@@ -1,10 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPosts, getForums } from "@/lib/data";
-import { ReplyBox, TopicModActions, PostActions } from "@/components/forum-post-actions";
+import {
+  ReplyBox,
+  TopicModActions,
+  PostActions,
+} from "@/components/forum-post-actions";
 import { MarkdownRenderer } from "@/components/forum-markdown";
 import { TypeBadge, TagChip } from "@/components/forum-bits";
-import { PostVoteBar, TopicFavoriteButton, BountyAcceptButton, PostTipButton } from "@/components/forum-vote";
+import {
+  PostVoteBar,
+  TopicFavoriteButton,
+  BountyAcceptButton,
+  PostTipButton,
+} from "@/components/forum-vote";
 import { PollWidget } from "@/components/forum-poll";
 import { LotteryWidget } from "@/components/forum-lottery";
 import { ReportTopicButton } from "@/components/forum-report";
@@ -39,7 +48,10 @@ export default async function TopicPage({
           {dict.forums.backToForums}
         </Link>
         {detail.forum_name && (
-          <Link href={`/forums/${detail.forum_id}`} className="text-sm text-sub hover:text-sky">
+          <Link
+            href={`/forums/${detail.forum_id}`}
+            className="text-sm text-sub hover:text-sky"
+          >
             » {detail.forum_name}
           </Link>
         )}
@@ -47,13 +59,17 @@ export default async function TopicPage({
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-2xl">
           {detail.sticky && <span className="mr-1 text-coral">📌</span>}
-          {detail.digest && <span className="mr-1 text-[var(--baozi-orange-dark)]">⭐</span>}
+          {detail.digest && (
+            <span className="mr-1 text-[var(--baozi-orange-dark)]">⭐</span>
+          )}
           {detail.locked && <span className="mr-1">🔒</span>}
           <TypeBadge
             type={detail.topic_type}
             label={
               detail.topic_type
-                ? (dict.forums.types as Record<string, string>)[detail.topic_type]
+                ? (dict.forums.types as Record<string, string>)[
+                    detail.topic_type
+                  ]
                 : undefined
             }
             className="mr-2 align-middle"
@@ -98,7 +114,10 @@ export default async function TopicPage({
             {detail.bounty_spark} {currency}
           </span>
           {detail.bounty_status === "awarded" && detail.bounty_post_id && (
-            <a href={`#p${detail.bounty_post_id}`} className="text-xs text-sky hover:underline">
+            <a
+              href={`#p${detail.bounty_post_id}`}
+              className="text-xs text-sky hover:underline"
+            >
               {dict.forums.bountyGoto}
             </a>
           )}
@@ -114,13 +133,15 @@ export default async function TopicPage({
         />
       )}
       {/* 投票挂件（0125）：poll 类型且有选项数据时渲染；楼主/版主可截止 */}
-      {detail.topic_type === "poll" && detail.poll && detail.poll.options?.length >= 2 && (
-        <PollWidget
-          topicId={topicId}
-          poll={detail.poll}
-          canClose={detail.is_op || detail.can_mod}
-        />
-      )}
+      {detail.topic_type === "poll" &&
+        detail.poll &&
+        detail.poll.options?.length >= 2 && (
+          <PollWidget
+            topicId={topicId}
+            poll={detail.poll}
+            canClose={detail.is_op || detail.can_mod}
+          />
+        )}
       {/* 抽奖挂件（0126）：lottery 类型且有数据时渲染；楼主/版主可提前开奖 */}
       {detail.topic_type === "lottery" && detail.lottery && (
         <LotteryWidget
@@ -202,14 +223,15 @@ export default async function TopicPage({
                     </span>
                   )}
                 </div>
-                {(detail.can_mod || p.user_id === authId) && p.body !== "……" && (
-                  <PostActions
-                    postId={p.id}
-                    canMod={detail.can_mod}
-                    isSelf={p.user_id === authId}
-                    initialBody={p.body}
-                  />
-                )}
+                {(detail.can_mod || p.user_id === authId) &&
+                  p.body !== "……" && (
+                    <PostActions
+                      postId={p.id}
+                      canMod={detail.can_mod}
+                      isSelf={p.user_id === authId}
+                      initialBody={p.body}
+                    />
+                  )}
               </td>
             </tr>
           ))}

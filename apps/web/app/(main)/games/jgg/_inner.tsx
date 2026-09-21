@@ -9,7 +9,12 @@ import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
 import { JggGrid, type JggPrize } from "@/components/game/jgg-grid";
 
 export interface Overview {
-  me?: { balance: number; today_net: number; today_plays: number; limit_left: number };
+  me?: {
+    balance: number;
+    today_net: number;
+    today_plays: number;
+    limit_left: number;
+  };
   jgg?: { ticket: number; prizes: JggPrize[] };
 }
 
@@ -28,7 +33,11 @@ interface DrawResult {
 }
 
 /** 九宫格专注页：3×3 灯阵 + 跑马灯 + 翻牌揭晓 */
-export default function JggPage({ initialOver }: { initialOver: Overview | null }) {
+export default function JggPage({
+  initialOver,
+}: {
+  initialOver: Overview | null;
+}) {
   const { dict, currency } = useI18n();
   const t = dict.games;
   const tj = dict.games.jgg;
@@ -37,9 +46,10 @@ export default function JggPage({ initialOver }: { initialOver: Overview | null 
   const [hist, setHist] = useState<RoundRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<DrawResult | null>(null);
-  const [flash, setFlash] = useState<{ kind: "win" | "lose" | "tie" | "jackpot"; text: string } | null>(
-    null,
-  );
+  const [flash, setFlash] = useState<{
+    kind: "win" | "lose" | "tie" | "jackpot";
+    text: string;
+  } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [reduced, setReduced] = useState(false);
   /** 本次会话已完成的局数（防沉迷软提示用） */
@@ -57,7 +67,9 @@ export default function JggPage({ initialOver }: { initialOver: Overview | null 
       /* ignore */
     }
     try {
-      setHist(await api.get<RoundRow[]>("/api/v1/games/rounds?game=jgg&limit=10"));
+      setHist(
+        await api.get<RoundRow[]>("/api/v1/games/rounds?game=jgg&limit=10"),
+      );
     } catch {
       /* ignore */
     }
@@ -80,7 +92,9 @@ export default function JggPage({ initialOver }: { initialOver: Overview | null 
     setFlash(null);
     setRes(null);
     idem.current =
-      typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : String(Date.now());
     try {
       const r = await api.post<DrawResult>("/api/v1/games/jgg", {
         idempotency_key: idem.current,
@@ -105,7 +119,13 @@ export default function JggPage({ initialOver }: { initialOver: Overview | null 
     setSessionPlays((n) => n + 1);
     if (!r) return;
     const kind: "win" | "lose" | "tie" | "jackpot" =
-      r.payout >= ticket * 10 ? "jackpot" : r.payout > ticket ? "win" : r.payout === ticket ? "tie" : "lose";
+      r.payout >= ticket * 10
+        ? "jackpot"
+        : r.payout > ticket
+          ? "win"
+          : r.payout === ticket
+            ? "tie"
+            : "lose";
     setFlash({
       kind,
       text:
@@ -129,7 +149,10 @@ export default function JggPage({ initialOver }: { initialOver: Overview | null 
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
       notice={
-        <PlayHint sessionPlays={sessionPlays} todayNet={ov?.me?.today_net ?? null} />
+        <PlayHint
+          sessionPlays={sessionPlays}
+          todayNet={ov?.me?.today_net ?? null}
+        />
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
@@ -145,7 +168,10 @@ export default function JggPage({ initialOver }: { initialOver: Overview | null 
             goLabel={tj.go}
             drawingLabel={tj.drawing}
           />
-          <ResultFlash kind={flash?.kind ?? null} text={flash?.text ?? (busy ? tj.drawing : null)} />
+          <ResultFlash
+            kind={flash?.kind ?? null}
+            text={flash?.text ?? (busy ? tj.drawing : null)}
+          />
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>
       }

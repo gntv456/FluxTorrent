@@ -6,7 +6,13 @@ import { useI18n } from "@/i18n/client";
 
 /** 认领复活任务（0073，U3D Graveyard 口径）：POST /resurrections/claim {torrent_id}
  *  后端约束：不能领自己发的种；一种同时只能有一个进行中的复活任务。 */
-export function ResurrectButton({ torrentId, name }: { torrentId: number; name: string }) {
+export function ResurrectButton({
+  torrentId,
+  name,
+}: {
+  torrentId: number;
+  name: string;
+}) {
   const { dict, currency } = useI18n();
   const t = dict.resurrect;
   const [busy, setBusy] = useState(false);
@@ -37,7 +43,11 @@ export function ResurrectButton({ torrentId, name }: { torrentId: number; name: 
   }
 
   if (done) {
-    return <span className="text-xs font-bold text-mint" title={name}>{done}</span>;
+    return (
+      <span className="text-xs font-bold text-mint" title={name}>
+        {done}
+      </span>
+    );
   }
   return (
     <span className="inline-flex flex-col items-start">

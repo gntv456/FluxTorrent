@@ -39,7 +39,9 @@ export function PushSettings() {
     setBusy(true);
     try {
       const reg = await navigator.serviceWorker.ready;
-      const vapid = await api.get<{ public_key: string }>("/api/v1/push/vapid-key");
+      const vapid = await api.get<{ public_key: string }>(
+        "/api/v1/push/vapid-key",
+      );
       const key = urlB64ToBufferSource(vapid.public_key);
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,

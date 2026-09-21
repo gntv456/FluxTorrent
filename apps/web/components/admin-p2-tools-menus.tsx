@@ -23,7 +23,11 @@ const LOCATIONS: [string, string][] = [
 
 export function MenuItems({ flash }: { flash: (m: string) => void }) {
   const [rows, setRows] = useState<MenuItem[]>([]);
-  const [edit, setEdit] = useState<{ location: string; label: string; url: string }>({
+  const [edit, setEdit] = useState<{
+    location: string;
+    label: string;
+    url: string;
+  }>({
     location: "sidebar",
     label: "",
     url: "",
@@ -62,7 +66,10 @@ export function MenuItems({ flash }: { flash: (m: string) => void }) {
         <h2 className="mb-2 text-base font-bold text-ink">新增自定义菜单</h2>
         <label>
           位置
-          <select value={edit.location} onChange={(e) => setEdit({ ...edit, location: e.target.value })}>
+          <select
+            value={edit.location}
+            onChange={(e) => setEdit({ ...edit, location: e.target.value })}
+          >
             {LOCATIONS.map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
@@ -72,13 +79,24 @@ export function MenuItems({ flash }: { flash: (m: string) => void }) {
         </label>
         <label>
           名称
-          <input value={edit.label} onChange={(e) => setEdit({ ...edit, label: e.target.value })} />
+          <input
+            value={edit.label}
+            onChange={(e) => setEdit({ ...edit, label: e.target.value })}
+          />
         </label>
         <label>
           链接
-          <input value={edit.url} onChange={(e) => setEdit({ ...edit, url: e.target.value })} placeholder="https://..." />
+          <input
+            value={edit.url}
+            onChange={(e) => setEdit({ ...edit, url: e.target.value })}
+            placeholder="https://..."
+          />
         </label>
-        <button className="baozi-button" disabled={busy || !edit.label.trim() || !edit.url.trim()} onClick={save}>
+        <button
+          className="baozi-button"
+          disabled={busy || !edit.label.trim() || !edit.url.trim()}
+          onClick={save}
+        >
           保存
         </button>
       </section>
@@ -98,7 +116,9 @@ export function MenuItems({ flash }: { flash: (m: string) => void }) {
           {rows.map((r) => (
             <tr key={r.id}>
               <td>{r.id}</td>
-              <td>{LOCATIONS.find(([v]) => v === r.location)?.[1] ?? r.location}</td>
+              <td>
+                {LOCATIONS.find(([v]) => v === r.location)?.[1] ?? r.location}
+              </td>
               <td>{r.label}</td>
               <td className="max-w-[200px] truncate text-xs">{r.url}</td>
               <td>{r.sort}</td>
@@ -108,7 +128,9 @@ export function MenuItems({ flash }: { flash: (m: string) => void }) {
                   className="cmgmt-act"
                   onClick={async () => {
                     try {
-                      await api.put(`/api/v1/admin/menu-items/${r.id}`, { enabled: !r.enabled });
+                      await api.put(`/api/v1/admin/menu-items/${r.id}`, {
+                        enabled: !r.enabled,
+                      });
                       flash(r.enabled ? "已停用" : "已启用");
                       load();
                     } catch {

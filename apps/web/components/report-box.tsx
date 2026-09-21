@@ -76,17 +76,24 @@ export function ReportBox() {
   }
 
   const typeLabel = (k: string) =>
-    k === "torrent" ? u.rtTorrent
-    : k === "user" ? u.rtUser
-    : k === "comment" ? u.rtComment
-    : k === "subtitle" ? u.rtSubtitle
-    : k === "forum" ? u.rtForum
-    : k;
+    k === "torrent"
+      ? u.rtTorrent
+      : k === "user"
+        ? u.rtUser
+        : k === "comment"
+          ? u.rtComment
+          : k === "subtitle"
+            ? u.rtSubtitle
+            : k === "forum"
+              ? u.rtForum
+              : k;
 
   const targetLink = (r: ReportRow) =>
-    r.ref_type === "torrent" ? `/torrent/${r.ref_id}`
-    : r.ref_type === "user" ? `/users/${r.ref_id}`
-    : null;
+    r.ref_type === "torrent"
+      ? `/torrent/${r.ref_id}`
+      : r.ref_type === "user"
+        ? `/users/${r.ref_id}`
+        : null;
 
   const inputCls =
     "min-h-[44px] w-full rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]";
@@ -106,8 +113,9 @@ export function ReportBox() {
         {/* 管理组：待处理队列 */}
         {noPerm ? (
           <p className="funbox__empty">{t.noPerm}</p>
-        ) : rows !== null && (
-          rows.length === 0 ? (
+        ) : (
+          rows !== null &&
+          (rows.length === 0 ? (
             <p className="funbox__empty">{t.queueEmpty}</p>
           ) : (
             <div className="overflow-x-auto">
@@ -124,20 +132,28 @@ export function ReportBox() {
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.id} className="border-b border-dashed border-[var(--border-soft)]">
+                    <tr
+                      key={r.id}
+                      className="border-b border-dashed border-[var(--border-soft)]"
+                    >
                       <td className={td}>#{r.reporter_id}</td>
                       <td className={td}>{typeLabel(r.ref_type)}</td>
                       <td className={td}>
                         {targetLink(r) ? (
                           <a className="hover:underline" href={targetLink(r)!}>
-                            {r.ref_type === "user" ? u.rtUser : u.rtTorrent} #{r.ref_id}
+                            {r.ref_type === "user" ? u.rtUser : u.rtTorrent} #
+                            {r.ref_id}
                           </a>
                         ) : (
                           `#${r.ref_id}`
                         )}
                       </td>
-                      <td className={`${td} max-w-[280px] break-words`}>{r.reason}</td>
-                      <td className={`${td} whitespace-nowrap text-xs text-[var(--text-faint)]`}>
+                      <td className={`${td} max-w-[280px] break-words`}>
+                        {r.reason}
+                      </td>
+                      <td
+                        className={`${td} whitespace-nowrap text-xs text-[var(--text-faint)]`}
+                      >
                         {new Date(r.created_at).toLocaleString(locale)}
                       </td>
                       <td className={td}>
@@ -155,7 +171,7 @@ export function ReportBox() {
                 </tbody>
               </table>
             </div>
-          )
+          ))
         )}
 
         {msg && <p className="funbox__msg">{msg}</p>}
@@ -178,7 +194,11 @@ export function ReportBox() {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               {u.reportType}
-              <select className={inputCls} value={refType} onChange={(e) => setRefType(e.target.value)}>
+              <select
+                className={inputCls}
+                value={refType}
+                onChange={(e) => setRefType(e.target.value)}
+              >
                 <option value="torrent">{u.rtTorrent}</option>
                 <option value="comment">{u.rtComment}</option>
                 <option value="user">{u.rtUser}</option>
@@ -188,14 +208,28 @@ export function ReportBox() {
             </label>
             <label className="flex flex-col gap-1 text-sm">
               {u.reportId}
-              <input className={inputCls} inputMode="numeric" value={refId} onChange={(e) => setRefId(e.target.value.replace(/\D/g, ""))} />
+              <input
+                className={inputCls}
+                inputMode="numeric"
+                value={refId}
+                onChange={(e) => setRefId(e.target.value.replace(/\D/g, ""))}
+              />
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm">
             {u.reportReason}
-            <textarea rows={3} className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <textarea
+              rows={3}
+              className={inputCls}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
           </label>
-          <button type="submit" className="baozi-button self-start disabled:opacity-50" disabled={busy || !refId || !reason.trim()}>
+          <button
+            type="submit"
+            className="baozi-button self-start disabled:opacity-50"
+            disabled={busy || !refId || !reason.trim()}
+          >
             {u.reportSubmit}
           </button>
         </form>

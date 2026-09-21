@@ -28,8 +28,12 @@ export function PostVoteBar({
     setN((x) => x + (next ? 1 : -1));
     try {
       const r = next
-        ? await api.post<{ likes: number; liked: boolean }>(`/api/v1/forums/posts/${postId}/like`)
-        : await api.del<{ likes: number; liked: boolean }>(`/api/v1/forums/posts/${postId}/like`);
+        ? await api.post<{ likes: number; liked: boolean }>(
+            `/api/v1/forums/posts/${postId}/like`,
+          )
+        : await api.del<{ likes: number; liked: boolean }>(
+            `/api/v1/forums/posts/${postId}/like`,
+          );
       if (r) {
         setOn(r.liked);
         setN(r.likes);
@@ -84,8 +88,12 @@ export function TopicFavoriteButton({
     setN((x) => x + (next ? 1 : -1));
     try {
       const r = next
-        ? await api.post<{ favorites: number; faved: boolean }>(`/api/v1/forums/topics/${topicId}/favorite`)
-        : await api.del<{ favorites: number; faved: boolean }>(`/api/v1/forums/topics/${topicId}/favorite`);
+        ? await api.post<{ favorites: number; faved: boolean }>(
+            `/api/v1/forums/topics/${topicId}/favorite`,
+          )
+        : await api.del<{ favorites: number; faved: boolean }>(
+            `/api/v1/forums/topics/${topicId}/favorite`,
+          );
       if (r) {
         setOn(r.faved);
         setN(r.favorites);
@@ -138,7 +146,9 @@ export function PostTipButton({
 
   async function tip() {
     if (busy) return;
-    const raw = window.prompt(dict.forums.tipPrompt.replace("{magic}", currency));
+    const raw = window.prompt(
+      dict.forums.tipPrompt.replace("{magic}", currency),
+    );
     if (!raw) return;
     const amt = Math.floor(Number(raw));
     if (!Number.isFinite(amt) || amt <= 0) {
@@ -151,7 +161,9 @@ export function PostTipButton({
       setTotal((t) => t + amt);
       setN((x) => x + 1);
     } catch (e) {
-      window.alert(e instanceof ApiError ? e.message : dict.common.networkError);
+      window.alert(
+        e instanceof ApiError ? e.message : dict.common.networkError,
+      );
     } finally {
       setBusy(false);
     }
@@ -194,10 +206,16 @@ export function BountyAcceptButton({
 
   async function accept() {
     if (busy) return;
-    if (!window.confirm(dict.forums.bountyConfirm.replace("{n}", String(spark)))) return;
+    if (
+      !window.confirm(dict.forums.bountyConfirm.replace("{n}", String(spark)))
+    )
+      return;
     setBusy(true);
     try {
-      await api.post("/api/v1/forums/bounty/award", { topic_id: topicId, post_id: postId });
+      await api.post("/api/v1/forums/bounty/award", {
+        topic_id: topicId,
+        post_id: postId,
+      });
       router.refresh();
     } catch {
       setBusy(false);

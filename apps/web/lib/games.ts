@@ -15,7 +15,10 @@ export interface JggPrizeView {
 }
 
 /** 刮刮乐奖池文案：`奖池 0.5x(30%) · 1x(15%) · ...` */
-export function scratchPoolText(prizes: ScratchPrize[] | undefined, label: string): string {
+export function scratchPoolText(
+  prizes: ScratchPrize[] | undefined,
+  label: string,
+): string {
   if (!prizes?.length) return "";
   return `${label} ${prizes
     .map((p) => `${p.multiplier}x(${p.pct}%)`)
@@ -24,5 +27,7 @@ export function scratchPoolText(prizes: ScratchPrize[] | undefined, label: strin
 
 /** 赔率显示：千分比 → 1.9 / 2 / 0.5（去掉多余小数） */
 export function fmtMult(mult: number): string {
-  return Number.isInteger(mult) ? String(mult) : mult.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  return Number.isInteger(mult)
+    ? String(mult)
+    : mult.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }

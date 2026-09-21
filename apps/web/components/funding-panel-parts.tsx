@@ -57,7 +57,10 @@ export function MineTable({
                 </a>
               </td>
               <td className="rowfollow num">
-                {fmt(t.minePaid, { paid: m[1].toLocaleString(), tax: m[2].toLocaleString() })}
+                {fmt(t.minePaid, {
+                  paid: m[1].toLocaleString(),
+                  tax: m[2].toLocaleString(),
+                })}
               </td>
               <td className="rowfollow">{statusOf(m[3])}</td>
             </tr>

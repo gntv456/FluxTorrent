@@ -76,7 +76,9 @@ export function DeskTable({
           <th>{dict.messages.subject}</th>
           <th className="w-24">{t.from ?? "来信人"}</th>
           <th className="hidden w-40 md:table-cell">{dict.messages.timeCol}</th>
-          {deskTab === 1 && <th className="w-24">{t.answeredBy ?? "答复人"}</th>}
+          {deskTab === 1 && (
+            <th className="w-24">{t.answeredBy ?? "答复人"}</th>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -91,12 +93,16 @@ export function DeskTable({
             </td>
             <td>
               <details>
-                <summary className="cursor-pointer font-bold">{m.subject}</summary>
+                <summary className="cursor-pointer font-bold">
+                  {m.subject}
+                </summary>
                 <p className="mt-2 whitespace-pre-wrap rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--baozi-cream)] p-2 text-sm">
                   {m.body}
                 </p>
                 {m.answer && (
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-sub">↩ {m.answer}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-sub">
+                    ↩ {m.answer}
+                  </p>
                 )}
                 {deskTab === 0 && (
                   <div className="mt-2 flex flex-col gap-2">
@@ -107,12 +113,16 @@ export function DeskTable({
                         setAnsweringId(m.id);
                         setAnswerText(e.target.value);
                       }}
-                      placeholder={t.answerPh ?? "输入答复，将私信发给来信人并回写工单"}
+                      placeholder={
+                        t.answerPh ?? "输入答复，将私信发给来信人并回写工单"
+                      }
                       className="min-h-[70px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 py-2 text-sm"
                     />
                     <button
                       type="button"
-                      disabled={busy || (answeringId === m.id && !answerText.trim())}
+                      disabled={
+                        busy || (answeringId === m.id && !answerText.trim())
+                      }
                       onClick={() => onSendAnswer(m.id)}
                       className="min-h-[36px] w-fit rounded-full bg-sky-deep px-4 text-xs font-bold text-white disabled:opacity-50"
                     >
@@ -126,7 +136,9 @@ export function DeskTable({
             <td className="hidden text-[11px] text-sub md:table-cell">
               {new Date(m.created_at).toLocaleString(dateLocale(locale))}
             </td>
-            {deskTab === 1 && <td className="text-[11px]">{m.answered_by ?? "—"}</td>}
+            {deskTab === 1 && (
+              <td className="text-[11px]">{m.answered_by ?? "—"}</td>
+            )}
           </tr>
         ))}
         {deskRows !== null && deskRows.length === 0 && (

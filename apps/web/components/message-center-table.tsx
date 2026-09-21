@@ -63,7 +63,9 @@ export function MessageTable({
           </th>
           <th className="w-16">{t.readCol}</th>
           <th>{t.subject}</th>
-          <th className="hidden sm:table-cell">{box === "inbox" ? t.fromCol : t.toCol}</th>
+          <th className="hidden sm:table-cell">
+            {box === "inbox" ? t.fromCol : t.toCol}
+          </th>
           <th className="hidden w-44 md:table-cell">{t.timeCol}</th>
           <th className="w-16 text-right">{t.actionCol}</th>
         </tr>
@@ -71,9 +73,12 @@ export function MessageTable({
       <tbody>
         {rows.map((m) => {
           const cp = m.counterpart ?? t.systemSender;
-          const time = new Date(m.created_at).toLocaleString(dateLocale(locale));
+          const time = new Date(m.created_at).toLocaleString(
+            dateLocale(locale),
+          );
           const unread = box === "inbox" && (m.unread ?? !m.read_at);
-          const status = box === "inbox" ? (unread ? t.unreadTag : t.readTag) : t.sentTag;
+          const status =
+            box === "inbox" ? (unread ? t.unreadTag : t.readTag) : t.sentTag;
           return (
             <tr key={m.id}>
               <td>
@@ -85,7 +90,13 @@ export function MessageTable({
               </td>
               <td>
                 <span aria-hidden className="mr-1">
-                  {box === "sent" ? "📤" : m.is_system ? "🔔" : unread ? "📬" : "📭"}
+                  {box === "sent"
+                    ? "📤"
+                    : m.is_system
+                      ? "🔔"
+                      : unread
+                        ? "📬"
+                        : "📭"}
                 </span>
                 <span
                   className={`text-[11px] ${unread ? "font-bold text-[var(--baozi-orange-dark)]" : "text-sub"}`}
@@ -111,7 +122,9 @@ export function MessageTable({
                     <div className="text-sm">
                       <MarkdownRenderer source={m.body} />
                     </div>
-                    <p className="mt-1 text-[11px] text-sub md:hidden">{cp} · {time}</p>
+                    <p className="mt-1 text-[11px] text-sub md:hidden">
+                      {cp} · {time}
+                    </p>
                     {/* 系统通知没有对端用户，回复/转发无意义（0123 视觉区分的一部分） */}
                     {!m.is_system && box === "inbox" && (
                       <div className="mt-2 flex justify-end gap-2">
@@ -135,7 +148,9 @@ export function MessageTable({
                 )}
               </td>
               <td className="hidden text-sky sm:table-cell">{cp}</td>
-              <td className="hidden text-[11px] text-sub md:table-cell">{time}</td>
+              <td className="hidden text-[11px] text-sub md:table-cell">
+                {time}
+              </td>
               <td className="text-right">
                 <button
                   type="button"

@@ -23,7 +23,10 @@ export default async function MedalsPage() {
   const groups = new Map<number, { name: string; items: typeof medals }>();
   for (const m of medals) {
     const key = m.category_id;
-    const g = groups.get(key) ?? { name: m.category_name ?? t.uncategorized, items: [] };
+    const g = groups.get(key) ?? {
+      name: m.category_name ?? t.uncategorized,
+      items: [],
+    };
     g.items.push(m);
     groups.set(key, g);
   }
@@ -57,37 +60,68 @@ export default async function MedalsPage() {
               >
                 <div className="flex items-center justify-between">
                   <MedalIcon src={m.asset_ref} size={40} title={m.name} />
-                  {m.rarity && <MedalRarityChip list={rarities} value={m.rarity} />}
+                  {m.rarity && (
+                    <MedalRarityChip list={rarities} value={m.rarity} />
+                  )}
                 </div>
                 <h3 className="font-display text-lg">{m.name}</h3>
-                {m.description && <p className="text-xs leading-relaxed text-sub">{m.description}</p>}
+                {m.description && (
+                  <p className="text-xs leading-relaxed text-sub">
+                    {m.description}
+                  </p>
+                )}
                 <p className="num text-xs text-sub">
                   {m.price
-                    ? fmtCur(dict.medals.sparkPrice, { n: m.price.toLocaleString(dateLocale(locale)) }, currency)
+                    ? fmtCur(
+                        dict.medals.sparkPrice,
+                        { n: m.price.toLocaleString(dateLocale(locale)) },
+                        currency,
+                      )
                     : dict.medals.notForSale}
                   {m.limited ? ` · ${dict.medals.limited}` : ""}
                 </p>
                 <ul className="medal-meta">
                   <li>
-                    {t.getType}: {m.get_type === 1 ? t.gtExchange.replace("{magic}", currency) : m.get_type === 2 ? t.gtGrant : t.gtSynthesize}
+                    {t.getType}:{" "}
+                    {m.get_type === 1
+                      ? t.gtExchange.replace("{magic}", currency)
+                      : m.get_type === 2
+                        ? t.gtGrant
+                        : t.gtSynthesize}
                   </li>
                   <li>
                     {t.duration}:{" "}
-                    {m.duration_days === null || m.duration_days === 0 ? t.permanent : fmt(t.days, { n: m.duration_days })}
+                    {m.duration_days === null || m.duration_days === 0
+                      ? t.permanent
+                      : fmt(t.days, { n: m.duration_days })}
                   </li>
-                  {m.inventory !== null && <li>{fmt(t.inventory, { n: m.inventory })}</li>}
+                  {m.inventory !== null && (
+                    <li>{fmt(t.inventory, { n: m.inventory })}</li>
+                  )}
                   {m.bonus_addition_factor > 0 && (
                     <li className="text-[var(--baozi-orange-dark)]">
-                      {fmtCur(t.bonusAddition, { n: m.bonus_addition_factor }, currency)}
+                      {fmtCur(
+                        t.bonusAddition,
+                        { n: m.bonus_addition_factor },
+                        currency,
+                      )}
                     </li>
                   )}
                   {m.sale_end_at && (
                     <li>
-                      {t.saleUntil} {new Date(m.sale_end_at).toLocaleDateString(dateLocale(locale))}
+                      {t.saleUntil}{" "}
+                      {new Date(m.sale_end_at).toLocaleDateString(
+                        dateLocale(locale),
+                      )}
                     </li>
                   )}
                 </ul>
-                <MedalActions medalId={m.id} owned={m.owned} wearing={m.wearing} price={m.price} />
+                <MedalActions
+                  medalId={m.id}
+                  owned={m.owned}
+                  wearing={m.wearing}
+                  price={m.price}
+                />
               </div>
             ))}
           </div>

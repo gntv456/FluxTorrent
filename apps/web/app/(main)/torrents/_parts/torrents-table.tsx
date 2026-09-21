@@ -31,26 +31,38 @@ export function TorrentsTable({
             <th className="w-12">{t.colType}</th>
             <th className="w-16" aria-label="封面" />
             <th>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "name"))}>{t.colTitle}</a>
+              <a href={withParam(sp, "sort", toggleSort(sp.sort, "name"))}>
+                {t.colTitle}
+              </a>
             </th>
             {/* 表头点击排序（NP colhead 口径）：同列再点反转升降序 */}
             <th className="w-16" title={t.colComments}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "comments"))}>💬</a>
+              <a href={withParam(sp, "sort", toggleSort(sp.sort, "comments"))}>
+                💬
+              </a>
             </th>
             <th className="w-20" title={t.alive}>
               ⏱
             </th>
             <th className="w-20" title={t.colSize}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}>💾</a>
+              <a href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}>
+                💾
+              </a>
             </th>
             <th className="w-16" title={t.colSeeders}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "seeders"))}>🌱</a>
+              <a href={withParam(sp, "sort", toggleSort(sp.sort, "seeders"))}>
+                🌱
+              </a>
             </th>
             <th className="w-16" title={t.colLeechers}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "leechers"))}>⬇️</a>
+              <a href={withParam(sp, "sort", toggleSort(sp.sort, "leechers"))}>
+                ⬇️
+              </a>
             </th>
             <th className="w-16" title={t.colCompleted}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "completed"))}>✅</a>
+              <a href={withParam(sp, "sort", toggleSort(sp.sort, "completed"))}>
+                ✅
+              </a>
             </th>
             <th className="w-24">{t.colActions}</th>
           </tr>

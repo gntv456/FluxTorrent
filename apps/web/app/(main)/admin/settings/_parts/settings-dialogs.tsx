@@ -45,7 +45,9 @@ export function SettingsHistoryDrawer({
             {s.close}
           </button>
         </div>
-        {rows.length === 0 && <p className="py-6 text-center text-sm text-sub">{s.historyEmpty}</p>}
+        {rows.length === 0 && (
+          <p className="py-6 text-center text-sm text-sub">{s.historyEmpty}</p>
+        )}
         <ul className="flex flex-col divide-y divide-line">
           {rows.map((r) => (
             <li key={r.id} className="py-2 text-xs">
@@ -67,7 +69,9 @@ export function SettingsHistoryDrawer({
                   <span className="shrink-0 rounded-full bg-mint/15 px-2 py-0.5 text-[10px] font-bold text-ink">
                     {s.historyNew}
                   </span>
-                  <span className="font-mono font-bold text-ink">{r.detail?.new ?? "—"}</span>
+                  <span className="font-mono font-bold text-ink">
+                    {r.detail?.new ?? "—"}
+                  </span>
                 </p>
                 {r.detail?.via === "import" && (
                   <span className="self-start rounded-full bg-sky-soft px-2 py-0.5 text-[10px] font-bold text-sub">
@@ -170,15 +174,24 @@ export function SettingsImportDialog({
                 {diff.map((d) => (
                   <li key={d.name} className="p-2 text-[11px]">
                     <p className="flex flex-wrap items-baseline gap-1.5">
-                      <span className="font-mono font-bold text-ink">{d.name}</span>
+                      <span className="font-mono font-bold text-ink">
+                        {d.name}
+                      </span>
                       <span className="rounded-full bg-sky-soft px-1.5 py-0.5 text-[10px] text-sub">
-                        {(dict.admin.settingGroups[d.group] ?? d.group).replace("{magic}", currency)}
+                        {(dict.admin.settingGroups[d.group] ?? d.group).replace(
+                          "{magic}",
+                          currency,
+                        )}
                       </span>
                     </p>
                     <p className="mt-0.5 break-all">
-                      <span className="font-mono text-danger line-through">{d.old || "—"}</span>
+                      <span className="font-mono text-danger line-through">
+                        {d.old || "—"}
+                      </span>
                       <span className="mx-1 text-sky">→</span>
-                      <span className="font-mono font-bold text-ink">{d.new || "—"}</span>
+                      <span className="font-mono font-bold text-ink">
+                        {d.new || "—"}
+                      </span>
                     </p>
                   </li>
                 ))}

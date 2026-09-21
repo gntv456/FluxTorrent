@@ -52,7 +52,9 @@ function TagPicker({
               disabled={!on && full}
               aria-pressed={on}
               className={`rounded-full transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                on ? "outline outline-2 outline-offset-1 outline-sky" : "opacity-70 hover:opacity-100"
+                on
+                  ? "outline outline-2 outline-offset-1 outline-sky"
+                  : "opacity-70 hover:opacity-100"
               }`}
               title={on ? t.tagOn : t.tagOff}
             >
@@ -95,7 +97,8 @@ export function TopicComposer({ forumId }: { forumId: number }) {
     const lp = Math.floor(Number(lotPrize));
     const lt = Math.floor(Number(lotTicket) || 0);
     const lh = Math.floor(Number(lotHours) || 24);
-    const isLottery = Number.isFinite(lw) && lw > 0 && Number.isFinite(lp) && lp > 0;
+    const isLottery =
+      Number.isFinite(lw) && lw > 0 && Number.isFinite(lp) && lp > 0;
     try {
       const r = await api.post<{ topic_id: number }>("/api/v1/forums/topics", {
         forum_id: forumId,
@@ -107,13 +110,23 @@ export function TopicComposer({ forumId }: { forumId: number }) {
           : {}),
         ...(opts.length >= 2 ? { topic_type: "poll", poll_options: opts } : {}),
         ...(isLottery
-          ? { topic_type: "lottery", lottery_winners: lw, lottery_prize: lp, lottery_ticket: lt, lottery_hours: lh }
+          ? {
+              topic_type: "lottery",
+              lottery_winners: lw,
+              lottery_prize: lp,
+              lottery_ticket: lt,
+              lottery_hours: lh,
+            }
           : {}),
       });
       router.push(`/forums/topic/${r.topic_id}`);
     } catch (err) {
       // 后端校验消息（如敏感词提示「内容包含敏感词…」）比字典的通用 1002 文案更有用，优先透传
-      setMsg(err instanceof ApiError && err.message ? err.message : dict.common.networkError);
+      setMsg(
+        err instanceof ApiError && err.message
+          ? err.message
+          : dict.common.networkError,
+      );
       setBusy(false);
     }
   }
@@ -159,7 +172,9 @@ export function TopicComposer({ forumId }: { forumId: number }) {
       <TagPicker
         selected={tags}
         onToggle={(id) =>
-          setTags((ts) => (ts.includes(id) ? ts.filter((x) => x !== id) : [...ts, id]))
+          setTags((ts) =>
+            ts.includes(id) ? ts.filter((x) => x !== id) : [...ts, id],
+          )
         }
       />
       {/* 悬赏（0124）：填金额即悬赏帖，冻结立扣；留空 = 普通帖 */}
@@ -184,7 +199,9 @@ export function TopicComposer({ forumId }: { forumId: number }) {
               key={i}
               value={v}
               onChange={(e) =>
-                setPollOpts((os) => os.map((x, j) => (j === i ? e.target.value : x)))
+                setPollOpts((os) =>
+                  os.map((x, j) => (j === i ? e.target.value : x)),
+                )
               }
               maxLength={60}
               placeholder={`${dict.forums.pollOption} ${i + 1}`}
@@ -207,25 +224,37 @@ export function TopicComposer({ forumId }: { forumId: number }) {
         <span className="text-sm text-sub">{dict.forums.lotLabel}</span>
         <div className="flex flex-wrap gap-2">
           <input
-            type="number" min={1} max={100} value={lotWinners}
+            type="number"
+            min={1}
+            max={100}
+            value={lotWinners}
             onChange={(e) => setLotWinners(e.target.value)}
             placeholder={dict.forums.lotWinners}
             className="min-h-[44px] w-28 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
           />
           <input
-            type="number" min={1} max={100000} value={lotPrize}
+            type="number"
+            min={1}
+            max={100000}
+            value={lotPrize}
             onChange={(e) => setLotPrize(e.target.value)}
             placeholder={dict.forums.lotPrize}
             className="min-h-[44px] w-32 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
           />
           <input
-            type="number" min={0} max={10000} value={lotTicket}
+            type="number"
+            min={0}
+            max={10000}
+            value={lotTicket}
             onChange={(e) => setLotTicket(e.target.value)}
             placeholder={dict.forums.lotTicket}
             className="min-h-[44px] w-32 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
           />
           <input
-            type="number" min={1} max={720} value={lotHours}
+            type="number"
+            min={1}
+            max={720}
+            value={lotHours}
             onChange={(e) => setLotHours(e.target.value)}
             placeholder={dict.forums.lotHours}
             className="min-h-[44px] w-28 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"

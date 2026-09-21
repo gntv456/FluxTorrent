@@ -36,7 +36,9 @@ export function ClaimButton({
             await api.post("/api/v1/preserve/claim", { torrent_id: torrentId });
             setDone(true);
           } catch (e) {
-            setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+            setMsg(
+              e instanceof ApiError ? e.message : dict.common.networkError,
+            );
           } finally {
             setBusy(false);
           }

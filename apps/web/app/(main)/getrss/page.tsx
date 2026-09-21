@@ -12,7 +12,9 @@ export default async function GetRssPage() {
         <h1 className="font-display text-2xl">{dict.getrss.title}</h1>
         <span className="text-sm text-sub">{dict.getrss.subtitle}</span>
       </div>
-      <RssBuilder loginToView={dict.my.loginToView.replace("{magic}", currency)} />
+      <RssBuilder
+        loginToView={dict.my.loginToView.replace("{magic}", currency)}
+      />
     </div>
   );
 }

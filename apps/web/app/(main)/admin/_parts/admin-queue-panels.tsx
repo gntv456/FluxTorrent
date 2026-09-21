@@ -27,8 +27,11 @@ export function ReviewsPanel({
             <div className="flex-1">
               <p className="text-sm font-bold">{t.name}</p>
               <p className="text-xs text-sub">
-                #{t.id} · {fmt(a.uploader, { name: t.owner_id ?? dict.torrent.anonymous })} ·{" "}
-                {(t.size / 1024 / 1024 / 1024).toFixed(2)}GB
+                #{t.id} ·{" "}
+                {fmt(a.uploader, {
+                  name: t.owner_id ?? dict.torrent.anonymous,
+                })}{" "}
+                · {(t.size / 1024 / 1024 / 1024).toFixed(2)}GB
               </p>
             </div>
             <button
@@ -79,7 +82,9 @@ export function AppealsPanel({
                 {ap.status !== "open" && (
                   <span
                     className={`ml-1 rounded-full px-2 py-0.5 text-[10px] ${
-                      ap.status === "accepted" ? "bg-mint/30" : "bg-coral/20 text-danger"
+                      ap.status === "accepted"
+                        ? "bg-mint/30"
+                        : "bg-coral/20 text-danger"
                     }`}
                   >
                     {ap.status === "accepted"
@@ -90,7 +95,9 @@ export function AppealsPanel({
               </p>
               <p className="text-xs text-sub">
                 {ap.body}
-                {ap.result_note ? ` · ${a.appealNoteLabel}: ${ap.result_note}` : ""}
+                {ap.result_note
+                  ? ` · ${a.appealNoteLabel}: ${ap.result_note}`
+                  : ""}
               </p>
             </div>
             {ap.status === "open" && (
@@ -112,7 +119,9 @@ export function AppealsPanel({
           </li>
         ))}
         {appeals.length === 0 && (
-          <li className="py-6 text-center text-sub">{a.appealEmpty ?? "暂无申诉"}</li>
+          <li className="py-6 text-center text-sub">
+            {a.appealEmpty ?? "暂无申诉"}
+          </li>
         )}
       </ul>
     </section>

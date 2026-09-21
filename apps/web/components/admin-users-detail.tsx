@@ -88,20 +88,66 @@ export function UserDetailPanel({
         </button>
       </div>
       <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:grid-cols-3">
-        <div><dt className="text-sub">邮箱</dt><dd>{detail.email}</dd></div>
-        <div><dt className="text-sub">Passkey</dt><dd className="font-mono text-xs">{detail.passkey.slice(0, 10)}…</dd></div>
-        <div><dt className="text-sub">等级</dt><dd>{detail.class_name ?? `LV${detail.class_id}`}</dd></div>
-        <div><dt className="text-sub">上传量</dt><dd>{fmtBytes(detail.uploaded)}</dd></div>
-        <div><dt className="text-sub">下载量</dt><dd>{fmtBytes(detail.downloaded)}</dd></div>
-        <div><dt className="text-sub">{currency}</dt><dd>{detail.spark_balance}</dd></div>
-        <div><dt className="text-sub">做种中</dt><dd>{detail.seeding}</dd></div>
-        <div><dt className="text-sub">下载中</dt><dd>{detail.leeching}</dd></div>
-        <div><dt className="text-sub">发布种子</dt><dd>{detail.uploads}</dd></div>
-        <div><dt className="text-sub">未用邀请</dt><dd>{detail.invites_unused}</dd></div>
-        <div><dt className="text-sub">邀请人</dt><dd>{detail.inviter_name ?? "—"}</dd></div>
-        <div><dt className="text-sub">两步验证</dt><dd>{detail.totp_enabled ? "已开启" : "未开启"}</dd></div>
-        <div><dt className="text-sub">添加时间</dt><dd>{new Date(detail.created_at).toLocaleString()}</dd></div>
-        <div><dt className="text-sub">最后访问</dt><dd>{detail.last_seen_at ? new Date(detail.last_seen_at).toLocaleString() : "—"}</dd></div>
+        <div>
+          <dt className="text-sub">邮箱</dt>
+          <dd>{detail.email}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">Passkey</dt>
+          <dd className="font-mono text-xs">{detail.passkey.slice(0, 10)}…</dd>
+        </div>
+        <div>
+          <dt className="text-sub">等级</dt>
+          <dd>{detail.class_name ?? `LV${detail.class_id}`}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">上传量</dt>
+          <dd>{fmtBytes(detail.uploaded)}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">下载量</dt>
+          <dd>{fmtBytes(detail.downloaded)}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">{currency}</dt>
+          <dd>{detail.spark_balance}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">做种中</dt>
+          <dd>{detail.seeding}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">下载中</dt>
+          <dd>{detail.leeching}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">发布种子</dt>
+          <dd>{detail.uploads}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">未用邀请</dt>
+          <dd>{detail.invites_unused}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">邀请人</dt>
+          <dd>{detail.inviter_name ?? "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">两步验证</dt>
+          <dd>{detail.totp_enabled ? "已开启" : "未开启"}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">添加时间</dt>
+          <dd>{new Date(detail.created_at).toLocaleString()}</dd>
+        </div>
+        <div>
+          <dt className="text-sub">最后访问</dt>
+          <dd>
+            {detail.last_seen_at
+              ? new Date(detail.last_seen_at).toLocaleString()
+              : "—"}
+          </dd>
+        </div>
       </dl>
 
       <div className="flex flex-wrap gap-2">
@@ -111,7 +157,9 @@ export function UserDetailPanel({
         <button
           className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${detail.download_enabled ? "border border-line text-danger" : "bg-mint text-white"}`}
           disabled={busy}
-          onClick={() => toggleFlag(detail.id, "download_enabled", !detail.download_enabled)}
+          onClick={() =>
+            toggleFlag(detail.id, "download_enabled", !detail.download_enabled)
+          }
         >
           {detail.download_enabled ? "禁用下载权限" : "恢复下载权限"}
         </button>
@@ -127,34 +175,71 @@ export function UserDetailPanel({
       {/* 数值调整表单（delta 语义） */}
       {adjust && (
         <div className="cmgmt-form rounded-[var(--r-md)] border border-line p-3">
-          <p className="mb-2 text-xs text-sub">正数增加、负数减少（下限 0）；邀请正数增发、负数回收。</p>
+          <p className="mb-2 text-xs text-sub">
+            正数增加、负数减少（下限 0）；邀请正数增发、负数回收。
+          </p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             <label className="flex flex-col gap-1 text-xs">
               上传量增量（字节）
-              <input type="number" value={adjust.up} onChange={(e) => setAdjust({ ...adjust, up: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" />
+              <input
+                type="number"
+                value={adjust.up}
+                onChange={(e) => setAdjust({ ...adjust, up: e.target.value })}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+              />
             </label>
             <label className="flex flex-col gap-1 text-xs">
               下载量增量（字节）
-              <input type="number" value={adjust.down} onChange={(e) => setAdjust({ ...adjust, down: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" />
+              <input
+                type="number"
+                value={adjust.down}
+                onChange={(e) => setAdjust({ ...adjust, down: e.target.value })}
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+              />
             </label>
             <label className="flex flex-col gap-1 text-xs">
               {currency}增量
-              <input type="number" value={adjust.spark} onChange={(e) => setAdjust({ ...adjust, spark: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" />
+              <input
+                type="number"
+                value={adjust.spark}
+                onChange={(e) =>
+                  setAdjust({ ...adjust, spark: e.target.value })
+                }
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+              />
             </label>
             <label className="flex flex-col gap-1 text-xs">
               邀请增发/回收
-              <input type="number" value={adjust.invite} onChange={(e) => setAdjust({ ...adjust, invite: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" />
+              <input
+                type="number"
+                value={adjust.invite}
+                onChange={(e) =>
+                  setAdjust({ ...adjust, invite: e.target.value })
+                }
+                className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+              />
             </label>
           </div>
           <label className="mt-2 flex flex-col gap-1 text-xs">
             备注（入审计）
-            <input value={adjust.note} onChange={(e) => setAdjust({ ...adjust, note: e.target.value })} className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" />
+            <input
+              value={adjust.note}
+              onChange={(e) => setAdjust({ ...adjust, note: e.target.value })}
+              className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+            />
           </label>
           <div className="mt-2 flex gap-2">
-            <button className="baozi-button" disabled={busy} onClick={submitAdjust}>
+            <button
+              className="baozi-button"
+              disabled={busy}
+              onClick={submitAdjust}
+            >
               提交调整
             </button>
-            <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold" onClick={() => setAdjust(null)}>
+            <button
+              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              onClick={() => setAdjust(null)}
+            >
               取消
             </button>
           </div>

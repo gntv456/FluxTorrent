@@ -153,7 +153,9 @@ export function AdminShell({
                   {n > 0 && (
                     <span
                       className={`shrink-0 rounded-full px-1.5 text-[11px] ${
-                        active ? "bg-white/25 text-white" : "bg-coral/20 text-danger"
+                        active
+                          ? "bg-white/25 text-white"
+                          : "bg-coral/20 text-danger"
                       }`}
                     >
                       {n}

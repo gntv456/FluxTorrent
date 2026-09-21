@@ -1,7 +1,5 @@
 "use client";
 
-;
-
 import { useEffect, useState } from "react";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -18,7 +16,9 @@ export default function GomokuPage() {
     api
       .get<{ id: number }>("/api/v1/me")
       .then((r) => setMe(r.id))
-      .catch((e) => setErr(e instanceof ApiError ? e.message : dict.common.loadFailed));
+      .catch((e) =>
+        setErr(e instanceof ApiError ? e.message : dict.common.loadFailed),
+      );
   }, [dict]);
 
   return (
@@ -27,7 +27,9 @@ export default function GomokuPage() {
       {err ? (
         <p className="baozi-panel p-4 text-sm text-sub">{err}</p>
       ) : me === null ? (
-        <p className="baozi-panel p-4 text-sm text-sub">{dict.common.pleaseLogin}</p>
+        <p className="baozi-panel p-4 text-sm text-sub">
+          {dict.common.pleaseLogin}
+        </p>
       ) : (
         <GomokuBoard meId={me} />
       )}

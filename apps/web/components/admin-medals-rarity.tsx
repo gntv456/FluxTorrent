@@ -32,7 +32,13 @@ export function RarityDict({
   onChanged: () => Promise<void> | void;
   flash: (m: string) => void;
 }) {
-  const blank = { key: null as string | null, value: "", label: "", tone: "sky", sort: 100 };
+  const blank = {
+    key: null as string | null,
+    value: "",
+    label: "",
+    tone: "sky",
+    sort: 100,
+  };
   const [edit, setEdit] = useState(blank);
   const [busy, setBusy] = useState(false);
 
@@ -50,12 +56,15 @@ export function RarityDict({
           sort: edit.sort,
         });
       } else {
-        await api.put(`/api/v1/admin/medal-rarities/${encodeURIComponent(edit.key)}`, {
-          value,
-          label: edit.label.trim(),
-          tone: edit.tone,
-          sort: edit.sort,
-        });
+        await api.put(
+          `/api/v1/admin/medal-rarities/${encodeURIComponent(edit.key)}`,
+          {
+            value,
+            label: edit.label.trim(),
+            tone: edit.tone,
+            sort: edit.sort,
+          },
+        );
       }
       flash("已保存");
       setEdit(blank);
@@ -71,10 +80,13 @@ export function RarityDict({
     <section className="baozi-panel p-4">
       <div className="mb-2 flex flex-wrap items-baseline gap-2">
         <h3 className="text-sm font-bold">稀有度词表</h3>
-        <span className="text-[11px] text-sub">这里的「键」就是勋章上存的值；改键会同步迁移已用它的勋章</span>
+        <span className="text-[11px] text-sub">
+          这里的「键」就是勋章上存的值；改键会同步迁移已用它的勋章
+        </span>
       </div>
       <div className="mb-3 flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs">键
+        <label className="flex flex-col gap-1 text-xs">
+          键
           <input
             value={edit.value}
             onChange={(e) => setEdit({ ...edit, value: e.target.value })}
@@ -82,7 +94,8 @@ export function RarityDict({
             className={`${RARITY_INP} w-32`}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs">显示名
+        <label className="flex flex-col gap-1 text-xs">
+          显示名
           <input
             value={edit.label}
             onChange={(e) => setEdit({ ...edit, label: e.target.value })}
@@ -90,7 +103,8 @@ export function RarityDict({
             className={`${RARITY_INP} w-28`}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs">配色
+        <label className="flex flex-col gap-1 text-xs">
+          配色
           <select
             value={edit.tone}
             onChange={(e) => setEdit({ ...edit, tone: e.target.value })}
@@ -103,7 +117,8 @@ export function RarityDict({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs">排序
+        <label className="flex flex-col gap-1 text-xs">
+          排序
           <input
             type="number"
             value={edit.sort}
@@ -151,7 +166,13 @@ export function RarityDict({
                 <button
                   className="cmgmt-act"
                   onClick={() =>
-                    setEdit({ key: r.value, value: r.value, label: r.label, tone: r.tone, sort: r.sort ?? 100 })
+                    setEdit({
+                      key: r.value,
+                      value: r.value,
+                      label: r.label,
+                      tone: r.tone,
+                      sort: r.sort ?? 100,
+                    })
                   }
                 >
                   编辑
@@ -159,10 +180,16 @@ export function RarityDict({
                 <button
                   className="cmgmt-act cmgmt-act--danger"
                   disabled={busy || (r.used ?? 0) > 0}
-                  title={(r.used ?? 0) > 0 ? `仍有 ${r.used} 枚勋章在用，先改掉它们` : "删除"}
+                  title={
+                    (r.used ?? 0) > 0
+                      ? `仍有 ${r.used} 枚勋章在用，先改掉它们`
+                      : "删除"
+                  }
                   onClick={async () => {
                     try {
-                      await api.del(`/api/v1/admin/medal-rarities/${encodeURIComponent(r.value)}`);
+                      await api.del(
+                        `/api/v1/admin/medal-rarities/${encodeURIComponent(r.value)}`,
+                      );
                       flash("已删除");
                       await onChanged();
                     } catch (e) {
@@ -195,11 +222,17 @@ export function MedalImagePreview({ src }: { src?: string | null }) {
   useEffect(() => {
     setErr(false);
   }, [url]);
-  if (!url) return <span className="pb-1 text-[11px] text-sub">未设置图片，展示位回落 🏅</span>;
+  if (!url)
+    return (
+      <span className="pb-1 text-[11px] text-sub">
+        未设置图片，展示位回落 🏅
+      </span>
+    );
   if (err)
     return (
       <span className="max-w-xs pb-1 text-[11px] text-danger">
-        图片加载失败：站内图床地址（/api/v1/attachments/…）需要登录才能取图，请改填外链 https 地址
+        图片加载失败：站内图床地址（/api/v1/attachments/…）需要登录才能取图，请改填外链
+        https 地址
       </span>
     );
   return (

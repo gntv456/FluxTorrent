@@ -4,7 +4,10 @@
  * 留在 torrents-adv-groups.tsx。
  */
 
-import { chipLabel as ctxAdvChip, type AdvGroupsCtx } from "./torrents-adv-groups";
+import {
+  chipLabel as ctxAdvChip,
+  type AdvGroupsCtx,
+} from "./torrents-adv-groups";
 
 export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
   const { dict, sp, tags, secDict, dimKinds } = ctx;
@@ -38,7 +41,13 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
                     ["2", t2.anonNamed],
                   ] as [string, string][]
                 ).map(([v, label]) =>
-                  ctxAdvChip("anonymous", v, label, (sp.anonymous ?? "0") === v, "radio"),
+                  ctxAdvChip(
+                    "anonymous",
+                    v,
+                    label,
+                    (sp.anonymous ?? "0") === v,
+                    "radio",
+                  ),
                 )}
               </div>
             </div>
@@ -60,7 +69,13 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
                   ["notseeding", t2.stNotSeeding],
                 ] as [string, string][]
               ).map(([v, label]) =>
-                ctxAdvChip("status", v, label, (sp.status ?? "") === v, "radio"),
+                ctxAdvChip(
+                  "status",
+                  v,
+                  label,
+                  (sp.status ?? "") === v,
+                  "radio",
+                ),
               )}
             </div>
           </section>
@@ -71,7 +86,12 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
               <h2 className="tsb-card__title">{t2.otherLegend}</h2>
             </header>
             <div className="tsb-chips">
-              {ctxAdvChip("official", "1", t2.officialOnly, sp.official === "1")}
+              {ctxAdvChip(
+                "official",
+                "1",
+                t2.officialOnly,
+                sp.official === "1",
+              )}
               {ctxAdvChip("mine", "1", t2.mineOnly, sp.mine === "1")}
             </div>
           </section>
@@ -104,12 +124,18 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
             </header>
             <label className="tsb-row">
               <span className="tsb-row__label">{t2.tagLabel}</span>
-              <select name="tag_id" defaultValue={sp.tag_id ?? ""} className="tsb-select">
+              <select
+                name="tag_id"
+                defaultValue={sp.tag_id ?? ""}
+                className="tsb-select"
+              >
                 <option value="">{t2.tagAny}</option>
                 {tags
                   .filter((t) => t.kind !== "official")
                   .map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
                   ))}
               </select>
             </label>
@@ -121,7 +147,11 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
             </header>
             <label className="tsb-row">
               <span className="tsb-row__label">{t2.sort}</span>
-              <select name="sort" defaultValue={sp.sort ?? ""} className="tsb-select">
+              <select
+                name="sort"
+                defaultValue={sp.sort ?? ""}
+                className="tsb-select"
+              >
                 <option value="">{t2.sortDefault}</option>
                 <option value="seeders">{t2.sortSeeders}</option>
                 <option value="leechers">{t2.sortLeechers}</option>
@@ -150,7 +180,9 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
                       `sec_${k.kind}`,
                       String(d.id),
                       d.name,
-                      (sp[`sec_${k.kind}`] ?? "").split(",").includes(String(d.id)),
+                      (sp[`sec_${k.kind}`] ?? "")
+                        .split(",")
+                        .includes(String(d.id)),
                     ),
                   )}
                 </div>

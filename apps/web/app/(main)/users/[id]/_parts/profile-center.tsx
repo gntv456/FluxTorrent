@@ -28,7 +28,11 @@ export function CenterGrid({
   realRatio: string;
   gb: (n: number) => string;
   seedDur: (s: number) => string;
-  prog: (cur: number, need: number, fmt: (n: number) => string) => { pct: number; text: string };
+  prog: (
+    cur: number,
+    need: number,
+    fmt: (n: number) => string,
+  ) => { pct: number; text: string };
 }) {
   const p = data.profile;
   const nc = data.next_class;
@@ -89,10 +93,32 @@ export function CenterGrid({
             <p className="mb-2 text-xs font-bold text-sub">{`→ ${nc.name}`}</p>
             <div className="flex flex-col gap-2 pb-2">
               {[
-                { label: t.upProgress, ...prog(nc.uploaded, nc.uploaded_need, (n) => gb(n)) },
-                { label: t.dlProgress, ...prog(nc.download_count, nc.download_count_need, (n) => String(n)) },
-                { label: t.seedProgress, ...prog(nc.seed_hours, nc.seed_hours_need, (n) => `${n} ${t.hours}`) },
-                { label: t.ageProgress, ...prog(nc.account_age_days, nc.account_age_days_need, (n) => `${n} ${t.days}`) },
+                {
+                  label: t.upProgress,
+                  ...prog(nc.uploaded, nc.uploaded_need, (n) => gb(n)),
+                },
+                {
+                  label: t.dlProgress,
+                  ...prog(nc.download_count, nc.download_count_need, (n) =>
+                    String(n),
+                  ),
+                },
+                {
+                  label: t.seedProgress,
+                  ...prog(
+                    nc.seed_hours,
+                    nc.seed_hours_need,
+                    (n) => `${n} ${t.hours}`,
+                  ),
+                },
+                {
+                  label: t.ageProgress,
+                  ...prog(
+                    nc.account_age_days,
+                    nc.account_age_days_need,
+                    (n) => `${n} ${t.days}`,
+                  ),
+                },
               ].map((r) => (
                 <div key={r.label} className="flex items-center gap-2 text-xs">
                   <span className="w-16 shrink-0 text-sub">{r.label}</span>
@@ -140,12 +166,16 @@ export function CenterGrid({
           <span className="num">{seedDur(data.seed_seconds)}</span>
         </Row>
         <Row label={t.hrField} icon="▲">
-          <span className={`num ${data.hr_unresolved > 0 ? "font-bold text-coral" : ""}`}>
+          <span
+            className={`num ${data.hr_unresolved > 0 ? "font-bold text-coral" : ""}`}
+          >
             {`${data.hr_unresolved} / ${data.hr_limit}`}
           </span>
         </Row>
         <Row label={t.sparkField} icon="✦">
-          <span className="num">{Number(data.spark_balance).toLocaleString("en-US")}</span>
+          <span className="num">
+            {Number(data.spark_balance).toLocaleString("en-US")}
+          </span>
         </Row>
         <Row label={t.seedEarnField} icon="★">
           <span className="num">
@@ -235,9 +265,13 @@ export function CenterGrid({
                   <Link href={`/torrent/${u.id}`} className="font-bold">
                     {u.name}
                   </Link>
-                  {u.small_descr && <p className="text-xs text-sub">{u.small_descr}</p>}
+                  {u.small_descr && (
+                    <p className="text-xs text-sub">{u.small_descr}</p>
+                  )}
                 </td>
-                <td className="num shrink-0 text-right text-sub">{gb(u.size)}</td>
+                <td className="num shrink-0 text-right text-sub">
+                  {gb(u.size)}
+                </td>
               </tr>
             ))}
             {data.recent_uploads.length === 0 && (

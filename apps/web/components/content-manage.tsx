@@ -51,8 +51,16 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
   const [busy, setBusy] = useState(false);
 
   // 公告编辑器
-  const [nEdit, setNEdit] = useState<{ id: number | null; title: string; body: string; badge: string }>({
-    id: null, title: "", body: "", badge: "公告",
+  const [nEdit, setNEdit] = useState<{
+    id: number | null;
+    title: string;
+    body: string;
+    badge: string;
+  }>({
+    id: null,
+    title: "",
+    body: "",
+    badge: "公告",
   });
 
   const load = useCallback(async () => {
@@ -80,10 +88,18 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
     setBusy(true);
     try {
       if (nEdit.id === null) {
-        await api.post("/api/v1/admin/news", { title: nEdit.title, body: nEdit.body, badge: nEdit.badge });
+        await api.post("/api/v1/admin/news", {
+          title: nEdit.title,
+          body: nEdit.body,
+          badge: nEdit.badge,
+        });
         flash(t.newsCreated);
       } else {
-        await api.put(`/api/v1/admin/news/${nEdit.id}`, { title: nEdit.title, body: nEdit.body, badge: nEdit.badge });
+        await api.put(`/api/v1/admin/news/${nEdit.id}`, {
+          title: nEdit.title,
+          body: nEdit.body,
+          badge: nEdit.badge,
+        });
         flash(t.newsUpdated);
       }
       setNEdit({ id: null, title: "", body: "", badge: "公告" });
@@ -121,14 +137,20 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
             aria-selected={tab === k}
             onClick={() => setTab(k)}
             className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${
-              tab === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"
+              tab === k
+                ? "bg-sky text-white"
+                : "border border-line bg-[var(--surface-card)] text-sub"
             }`}
           >
             {label}
           </button>
         ))}
       </div>
-      {msg && <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
+      {msg && (
+        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+          {msg}
+        </p>
+      )}
 
       {/* 公告管理 */}
       {tab === "news" && (
@@ -140,24 +162,44 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
             <div className="cmgmt-form">
               <label>
                 {t.fldTitle}
-                <input value={nEdit.title} onChange={(e) => setNEdit({ ...nEdit, title: e.target.value })} />
+                <input
+                  value={nEdit.title}
+                  onChange={(e) =>
+                    setNEdit({ ...nEdit, title: e.target.value })
+                  }
+                />
               </label>
               <label>
                 {t.fldBadge}
-                <input value={nEdit.badge} onChange={(e) => setNEdit({ ...nEdit, badge: e.target.value })} />
+                <input
+                  value={nEdit.badge}
+                  onChange={(e) =>
+                    setNEdit({ ...nEdit, badge: e.target.value })
+                  }
+                />
               </label>
               <label>
                 {t.fldBody}
-                <textarea rows={6} value={nEdit.body} onChange={(e) => setNEdit({ ...nEdit, body: e.target.value })} />
+                <textarea
+                  rows={6}
+                  value={nEdit.body}
+                  onChange={(e) => setNEdit({ ...nEdit, body: e.target.value })}
+                />
               </label>
               <div className="flex gap-2">
-                <button className="baozi-button" onClick={saveNews} disabled={busy}>
+                <button
+                  className="baozi-button"
+                  onClick={saveNews}
+                  disabled={busy}
+                >
                   {nEdit.id === null ? t.btnPublish : t.btnSave}
                 </button>
                 {nEdit.id !== null && (
                   <button
                     className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
-                    onClick={() => setNEdit({ id: null, title: "", body: "", badge: "公告" })}
+                    onClick={() =>
+                      setNEdit({ id: null, title: "", body: "", badge: "公告" })
+                    }
                   >
                     {t.btnCancel}
                   </button>
@@ -181,11 +223,21 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
                   <td className="text-right">
                     <button
                       className="cmgmt-act"
-                      onClick={() => setNEdit({ id: n.id, title: n.title, body: n.body, badge: n.badge })}
+                      onClick={() =>
+                        setNEdit({
+                          id: n.id,
+                          title: n.title,
+                          body: n.body,
+                          badge: n.badge,
+                        })
+                      }
                     >
                       {t.btnEdit}
                     </button>
-                    <button className="cmgmt-act cmgmt-act--danger" onClick={() => delNews(n.id)}>
+                    <button
+                      className="cmgmt-act cmgmt-act--danger"
+                      onClick={() => delNews(n.id)}
+                    >
                       {t.btnDelete}
                     </button>
                   </td>
@@ -197,9 +249,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
       )}
 
       {/* 趣味盒管理 */}
-      {tab === "fun" && (
-        <FunTab fun={fun} load={load} t={t} />
-      )}
+      {tab === "fun" && <FunTab fun={fun} load={load} t={t} />}
 
       {/* 友情链接管理 */}
       {tab === "links" && <LinksTab links={links} load={load} t={t} />}

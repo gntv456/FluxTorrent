@@ -39,22 +39,36 @@ export const DEFAULT_MEDAL_RARITIES: MedalRarity[] = [
 /** 词表里没有的稀有度（历史数据 / 站长手改过库）→ 中性蓝，不崩样式 */
 export const MEDAL_RARITY_FALLBACK_TONE = "sky";
 
-export function medalRarityTone(list: MedalRarity[], value?: string | null): string {
+export function medalRarityTone(
+  list: MedalRarity[],
+  value?: string | null,
+): string {
   const tone = medalRarity(list, value)?.tone;
-  return MEDAL_RARITY_TONES.some((t) => t.value === tone) ? (tone as string) : MEDAL_RARITY_FALLBACK_TONE;
+  return MEDAL_RARITY_TONES.some((t) => t.value === tone)
+    ? (tone as string)
+    : MEDAL_RARITY_FALLBACK_TONE;
 }
 
-export function medalRarity(list: MedalRarity[], value?: string | null): MedalRarity | undefined {
+export function medalRarity(
+  list: MedalRarity[],
+  value?: string | null,
+): MedalRarity | undefined {
   return value ? list.find((r) => r.value === value) : undefined;
 }
 
 /** 词表收录 → 显示名；未收录 → 原样显示键（不隐藏数据，便于站长发现漏配） */
-export function medalRarityLabel(list: MedalRarity[], value?: string | null): string {
+export function medalRarityLabel(
+  list: MedalRarity[],
+  value?: string | null,
+): string {
   if (!value) return "";
   return medalRarity(list, value)?.label ?? value;
 }
 
-export function isKnownRarity(list: MedalRarity[], value?: string | null): boolean {
+export function isKnownRarity(
+  list: MedalRarity[],
+  value?: string | null,
+): boolean {
   return !!medalRarity(list, value);
 }
 

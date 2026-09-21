@@ -28,7 +28,10 @@ export default async function TorrentsPage({
   const spRaw = await searchParams;
   // 归一化：重复参数（多选分类 checkbox）→ 逗号串；单值原样
   const sp: Record<string, string | undefined> = Object.fromEntries(
-    Object.entries(spRaw).map(([k, v]) => [k, Array.isArray(v) ? v.join(",") : v]),
+    Object.entries(spRaw).map(([k, v]) => [
+      k,
+      Array.isArray(v) ? v.join(",") : v,
+    ]),
   );
   const { dict } = await getDict();
   const [profile, secDict, tagDict] = await Promise.all([
@@ -36,12 +39,12 @@ export default async function TorrentsPage({
       categories: { id: number; name: string }[];
       metadata_sources?: string[];
     }>("/api/v1/site-profile"),
-    loadPublic<Record<string, SectionDictRow[]> & { kinds?: SectionKindMeta[] }>(
-      "/api/v1/section-dict",
-    ),
-    loadPublic<{ id: number; name: string; kind: string }[] | [number, string, string][]>(
-      "/api/v1/tags-dict",
-    ),
+    loadPublic<
+      Record<string, SectionDictRow[]> & { kinds?: SectionKindMeta[] }
+    >("/api/v1/section-dict"),
+    loadPublic<
+      { id: number; name: string; kind: string }[] | [number, string, string][]
+    >("/api/v1/tags-dict"),
   ]);
   const kinds: SectionKindMeta[] = secDict?.kinds ?? [];
   const dimKinds = kinds.filter((k) => (secDict?.[k.kind]?.length ?? 0) > 0);
@@ -96,15 +99,14 @@ export default async function TorrentsPage({
   }));
 
   // 分类以 site-profile 为准（后台可改，与站型包同步）；接口失败回落 i18n 字典
-  const categories = (profile?.categories?.length
+  const categories = profile?.categories?.length
     ? profile.categories.map((c) => ({ id: c.id, label: c.name }))
-    : dict.torrents.categories.slice(1).map((label, i) => ({ id: i + 1, label })));
+    : dict.torrents.categories
+        .slice(1)
+        .map((label, i) => ({ id: i + 1, label }));
   // 多选分类：URL 里同名参数（checkbox 多选），解析去重
   const selectedCats = new Set(
-    (sp.category_id ?? "")
-      .split(",")
-      .filter(Boolean)
-      .map(Number),
+    (sp.category_id ?? "").split(",").filter(Boolean).map(Number),
   );
 
   // ===== 已选条件摘要（每个 chip 可单独移除；「排序」不算筛选条件） =====
@@ -120,7 +122,8 @@ export default async function TorrentsPage({
   const advancedOpen = chips.length > 0;
   const nonSearchChips = chips.filter((c) => c.key !== "search").length;
   // IMDb 范围随站点元数据源显隐（与上传页条目输入同口径）
-  const showImdb = !profile || (profile.metadata_sources ?? []).includes("imdb");
+  const showImdb =
+    !profile || (profile.metadata_sources ?? []).includes("imdb");
 
   return (
     <div className="flex flex-col gap-3">

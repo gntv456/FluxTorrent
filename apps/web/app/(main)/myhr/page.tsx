@@ -25,7 +25,9 @@ export default async function MyHrPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl">{dict.myhr.title}</h1>
-      <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{dict.myhr.rule}</p>
+      <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+        {dict.myhr.rule}
+      </p>
       <MyHrTable rows={rows} locale={locale} />
     </div>
   );

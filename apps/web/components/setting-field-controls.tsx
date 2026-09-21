@@ -57,7 +57,11 @@ export function useFieldControl({
   switch (field.type) {
     case "yesno":
       control = (
-        <div className="flex gap-1.5" role="radiogroup" aria-label={field.label}>
+        <div
+          className="flex gap-1.5"
+          role="radiogroup"
+          aria-label={field.label}
+        >
           {(["yes", "no"] as const).map((v) => {
             const on = value === v;
             return (
@@ -85,7 +89,11 @@ export function useFieldControl({
       const opts = enumOptions(field.options);
       control =
         opts.length > 0 && opts.length <= 4 ? (
-          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={field.label}>
+          <div
+            className="flex flex-wrap gap-1.5"
+            role="radiogroup"
+            aria-label={field.label}
+          >
             {opts.map((o) => {
               const on = value === o.v;
               return (

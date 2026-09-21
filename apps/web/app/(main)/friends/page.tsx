@@ -30,12 +30,16 @@ export default async function FriendsPage() {
         <section className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <h2 className="font-bold">{dict.friends.friends}</h2>
           {friendRows.length === 0 ? (
-            <p className="py-4 text-center text-sub">{dict.friends.emptyFriends}</p>
+            <p className="py-4 text-center text-sub">
+              {dict.friends.emptyFriends}
+            </p>
           ) : (
             <ul className="mt-2 flex flex-wrap gap-2">
               {friendRows.map((f) => (
                 <li key={f.username}>
-                  <span className="sticker bg-sky-soft text-ink">{f.username}</span>
+                  <span className="sticker bg-sky-soft text-ink">
+                    {f.username}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -44,12 +48,16 @@ export default async function FriendsPage() {
         <section className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <h2 className="font-bold">{dict.friends.blocklist}</h2>
           {blackRows.length === 0 ? (
-            <p className="py-4 text-center text-sub">{dict.friends.emptyBlack}</p>
+            <p className="py-4 text-center text-sub">
+              {dict.friends.emptyBlack}
+            </p>
           ) : (
             <ul className="mt-2 flex flex-wrap gap-2">
               {blackRows.map((f) => (
                 <li key={f.username}>
-                  <span className="sticker bg-cloud text-sub">{f.username}</span>
+                  <span className="sticker bg-cloud text-sub">
+                    {f.username}
+                  </span>
                 </li>
               ))}
             </ul>

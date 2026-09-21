@@ -79,11 +79,16 @@ export function SettingField({
     return (
       <div
         className={`flex items-center gap-2 rounded-[var(--r-sm)] border p-2 ${
-          error ? "border-danger bg-danger/5" : "border-line bg-[var(--surface-card)]"
+          error
+            ? "border-danger bg-danger/5"
+            : "border-line bg-[var(--surface-card)]"
         }`}
       >
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-bold text-ink" title={field.label}>
+          <p
+            className="truncate text-xs font-bold text-ink"
+            title={field.label}
+          >
             {field.label}
             {field.readonly && (
               <span className="ml-1.5 rounded-full bg-sky-soft px-1.5 py-0.5 text-[10px] font-bold text-sub">
@@ -92,7 +97,10 @@ export function SettingField({
             )}
           </p>
           {field.hint && (
-            <p className="truncate text-[10px] leading-tight text-sub" title={field.hint}>
+            <p
+              className="truncate text-[10px] leading-tight text-sub"
+              title={field.hint}
+            >
               {field.hint}
             </p>
           )}
@@ -115,7 +123,9 @@ export function SettingField({
   return (
     <div
       className={`rounded-[var(--r-sm)] border p-3 ${
-        error ? "border-danger bg-danger/5" : "border-line bg-[var(--surface-card)]"
+        error
+          ? "border-danger bg-danger/5"
+          : "border-line bg-[var(--surface-card)]"
       }`}
     >
       <div className="flex flex-wrap items-baseline gap-2">
@@ -163,7 +173,9 @@ export function SettingField({
           </button>
         </div>
       )}
-      {field.hint && <p className="mt-1.5 text-[11px] leading-snug text-sub">{field.hint}</p>}
+      {field.hint && (
+        <p className="mt-1.5 text-[11px] leading-snug text-sub">{field.hint}</p>
+      )}
       {field.type === "pair" && (
         <p className="mt-1.5 text-[11px] leading-snug text-sub">{s.pairHint}</p>
       )}
@@ -172,7 +184,9 @@ export function SettingField({
           {field.configured ? s.secretSet : s.unset} · {s.secretKeep}
         </p>
       )}
-      {error && <p className="mt-1.5 text-[11px] font-bold text-danger">{error}</p>}
+      {error && (
+        <p className="mt-1.5 text-[11px] font-bold text-danger">{error}</p>
+      )}
     </div>
   );
 }

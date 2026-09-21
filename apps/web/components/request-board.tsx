@@ -39,21 +39,18 @@ export function RequestBoard({
   // 发布求种表单（此前整站无 POST /requests 入口，求种业务发不出第一步）
   const [showForm, setShowForm] = useState(false);
 
-  const load = useCallback(
-    async (fin: string, q: string) => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({ finished: fin });
-        if (q.trim()) params.set("search", q.trim());
-        setRows(await api.get<RequestRow[]>(`/api/v1/requests?${params}`));
-      } catch {
-        setRows([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const load = useCallback(async (fin: string, q: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ finished: fin });
+      if (q.trim()) params.set("search", q.trim());
+      setRows(await api.get<RequestRow[]>(`/api/v1/requests?${params}`));
+    } catch {
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     load(finished, search);
@@ -115,7 +112,11 @@ export function RequestBoard({
 
       {/* 八列表格 */}
       <section className="request-center__list" aria-label={t.title}>
-        <div className="baozi-wide-table-scroll" role="region" aria-label="scrollable table">
+        <div
+          className="baozi-wide-table-scroll"
+          role="region"
+          aria-label="scrollable table"
+        >
           <table className="nexus-table request-center__table">
             <thead>
               <tr>
@@ -133,13 +134,20 @@ export function RequestBoard({
               {(rows ?? []).map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <a className="request-center__name" href={`/requests/${r.id}`}>
+                    <a
+                      className="request-center__name"
+                      href={`/requests/${r.id}`}
+                    >
                       {r.title}
                     </a>
-                    {r.descr && <p className="request-center__descr">{r.descr}</p>}
+                    {r.descr && (
+                      <p className="request-center__descr">{r.descr}</p>
+                    )}
                   </td>
                   <td className="request-center__reward">
-                    <strong className="num">{r.latest_bounty.toLocaleString()}</strong>
+                    <strong className="num">
+                      {r.latest_bounty.toLocaleString()}
+                    </strong>
                   </td>
                   <td className="num">{r.bounty.toLocaleString()}</td>
                   <td className="num">{r.comments}</td>
@@ -147,7 +155,10 @@ export function RequestBoard({
                   <td>
                     <span className="nowrap">{r.username ?? "—"}</span>
                   </td>
-                  <td className="nowrap" title={new Date(r.created_at).toLocaleString("zh-CN")}>
+                  <td
+                    className="nowrap"
+                    title={new Date(r.created_at).toLocaleString("zh-CN")}
+                  >
                     {timeAgo(r.created_at)}
                   </td>
                   <td>
@@ -160,7 +171,9 @@ export function RequestBoard({
                       </a>
                     ) : (
                       <span className="flex items-center gap-1">
-                        <span className="request-status is-progress">{t.pending}</span>
+                        <span className="request-status is-progress">
+                          {t.pending}
+                        </span>
                         <button
                           type="button"
                           className="min-h-[28px] rounded-full border border-line px-2 text-[11px] font-bold text-sky-deep"
@@ -179,7 +192,10 @@ export function RequestBoard({
                               });
                               load(finished, search);
                             } catch (e) {
-                              alert(t.fulfillFailed + (e instanceof Error ? e.message : ""));
+                              alert(
+                                t.fulfillFailed +
+                                  (e instanceof Error ? e.message : ""),
+                              );
                             }
                           }}
                         >

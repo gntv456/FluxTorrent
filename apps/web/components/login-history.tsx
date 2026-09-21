@@ -27,15 +27,20 @@ export function LoginHistory() {
   }, []);
 
   if (rows === null) return <p className="text-xs text-sub">…</p>;
-  if (rows.length === 0) return <p className="text-xs text-sub">{t.loginsEmpty}</p>;
+  if (rows.length === 0)
+    return <p className="text-xs text-sub">{t.loginsEmpty}</p>;
   const reasonLabel = (r: number, ok: boolean) => {
     if (ok) return t.loginOk;
     return (
-      { 1: t.loginBadPw, 2: t.loginBad2fa, 3: t.loginDormant, 4: t.loginUnknown } as Record<
-        number,
-        string
-      >
-    )[r] ?? t.loginFailed;
+      (
+        {
+          1: t.loginBadPw,
+          2: t.loginBad2fa,
+          3: t.loginDormant,
+          4: t.loginUnknown,
+        } as Record<number, string>
+      )[r] ?? t.loginFailed
+    );
   };
   return (
     <div className="baozi-wide-table-scroll">
@@ -53,10 +58,15 @@ export function LoginHistory() {
                 {new Date(r.created_at).toLocaleString(dateLocale(locale))}
               </td>
               <td className="num text-xs">{r.ip ?? "—"}</td>
-              <td className={`text-xs ${r.ok ? "text-emerald-600" : "text-coral"}`}>
+              <td
+                className={`text-xs ${r.ok ? "text-emerald-600" : "text-coral"}`}
+              >
                 {reasonLabel(r.reason, r.ok)}
               </td>
-              <td className="max-w-[280px] truncate text-xs text-sub" title={r.user_agent}>
+              <td
+                className="max-w-[280px] truncate text-xs text-sub"
+                title={r.user_agent}
+              >
                 {r.user_agent || "—"}
               </td>
             </tr>

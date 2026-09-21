@@ -11,7 +11,12 @@ import { RunwayOdometer } from "@/components/game/runway";
 export interface Overview {
   max_bet: number;
   bigsmall?: { win_mult: number; expected_value: number };
-  me?: { balance: number; today_net: number; today_plays: number; limit_left: number };
+  me?: {
+    balance: number;
+    today_net: number;
+    today_plays: number;
+    limit_left: number;
+  };
 }
 
 interface RoundRow {
@@ -32,7 +37,11 @@ interface GuessResult {
 const SPIN_MS = 1750;
 
 /** 猜大小专注页：跑道减速定格 + 路单 */
-export default function BigSmallPage({ initialOver }: { initialOver: Overview | null }) {
+export default function BigSmallPage({
+  initialOver,
+}: {
+  initialOver: Overview | null;
+}) {
   const { dict, currency } = useI18n();
   const t = dict.games;
   const tg = dict.games.bigsmall;
@@ -43,7 +52,10 @@ export default function BigSmallPage({ initialOver }: { initialOver: Overview | 
   const [busy, setBusy] = useState(false);
   const [num, setNum] = useState<number | null>(null);
   const [res, setRes] = useState<GuessResult | null>(null);
-  const [flash, setFlash] = useState<{ kind: "win" | "lose" | "tie"; text: string } | null>(null);
+  const [flash, setFlash] = useState<{
+    kind: "win" | "lose" | "tie";
+    text: string;
+  } | null>(null);
   const [streak, setStreak] = useState(0);
   /** 本次会话已完成的局数（防沉迷软提示用） */
   const [sessionPlays, setSessionPlays] = useState(0);
@@ -63,7 +75,11 @@ export default function BigSmallPage({ initialOver }: { initialOver: Overview | 
       /* ignore */
     }
     try {
-      setHist(await api.get<RoundRow[]>("/api/v1/games/rounds?game=bigsmall&limit=20"));
+      setHist(
+        await api.get<RoundRow[]>(
+          "/api/v1/games/rounds?game=bigsmall&limit=20",
+        ),
+      );
     } catch {
       /* ignore */
     }
@@ -73,7 +89,12 @@ export default function BigSmallPage({ initialOver }: { initialOver: Overview | 
     void loadMeta();
   }, [loadMeta]);
 
-  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) window.clearTimeout(timer.current);
+    },
+    [],
+  );
 
   const maxBet = ov?.max_bet ?? 1000;
   // 赔率由后端下发（< 2.0，回收口径），不在前端写死
@@ -98,7 +119,9 @@ export default function BigSmallPage({ initialOver }: { initialOver: Overview | 
     setRes(null);
     setNum(null);
     idem.current =
-      typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : String(Date.now());
     try {
       const r = await api.post<GuessResult>("/api/v1/games/bigsmall", {
         bet,
@@ -145,19 +168,34 @@ export default function BigSmallPage({ initialOver }: { initialOver: Overview | 
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
       notice={
-        <PlayHint sessionPlays={sessionPlays} todayNet={ov?.me?.today_net ?? null} />
+        <PlayHint
+          sessionPlays={sessionPlays}
+          todayNet={ov?.me?.today_net ?? null}
+        />
       }
       stage={
         <div className="flex w-full flex-col items-center gap-2">
           <RunwayOdometer number={num} spinning={busy} reduced={reduced} />
-          <ResultFlash kind={flash?.kind ?? null} text={flash?.text ?? (busy ? tg.pending : null)} />
-          {streak >= 3 && <p className="text-xs font-bold text-[var(--warning)]">{tg.streak}</p>}
+          <ResultFlash
+            kind={flash?.kind ?? null}
+            text={flash?.text ?? (busy ? tg.pending : null)}
+          />
+          {streak >= 3 && (
+            <p className="text-xs font-bold text-[var(--warning)]">
+              {tg.streak}
+            </p>
+          )}
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>
       }
       controls={
         <div className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
-          <ChipSelect value={bet} onChange={setBet} maxBet={maxBet} disabled={busy} />
+          <ChipSelect
+            value={bet}
+            onChange={setBet}
+            maxBet={maxBet}
+            disabled={busy}
+          />
           <div className="flex gap-2">
             <button
               type="button"

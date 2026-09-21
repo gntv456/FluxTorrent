@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, setSessionCookie, hasSessionCookie, ApiError } from "@/lib/api-client";
+import {
+  api,
+  setSessionCookie,
+  hasSessionCookie,
+  ApiError,
+} from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
@@ -95,7 +100,9 @@ export function LoginForm() {
         // 展示优先级：字典文案（三语）→ 后端 message（兜底，含具体原因）→ 通用失败
         // 不再显示「登录失败（数字码）」——用户看不懂错误码，必须给文字原因
         setError(
-          dict.errors[err.code] ?? err.message ?? fmt(dict.login.fail, { code: err.code }),
+          dict.errors[err.code] ??
+            err.message ??
+            fmt(dict.login.fail, { code: err.code }),
         );
         if (err.code === 2004) setAttempts((n) => n + 1);
         // 2FA：密码已对但缺/错验证码 —— 展开验证码输入框并聚焦，让用户立刻知道下一步
@@ -235,7 +242,12 @@ export function LoginForm() {
 
       {/* 其他登录方式（虚线上分隔的方法 chips） */}
       <div className="bz-methods" aria-label={dict.login.ssoLabel}>
-        <button type="button" className="bz-method" disabled title={dict.login.passkeySoon}>
+        <button
+          type="button"
+          className="bz-method"
+          disabled
+          title={dict.login.passkeySoon}
+        >
           <IconFinger />
           <span>{dict.login.passkey}</span>
         </button>

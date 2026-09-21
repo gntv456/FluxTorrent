@@ -25,7 +25,9 @@ export function ForumTab({
             size={10}
             className="uc-num-input"
             value={s.topics_per_page}
-            onChange={(e) => patch({ topics_per_page: Number(e.target.value) || 0 })}
+            onChange={(e) =>
+              patch({ topics_per_page: Number(e.target.value) || 0 })
+            }
           />
           {t.zeroDefault}
         </Row>
@@ -35,7 +37,9 @@ export function ForumTab({
             size={10}
             className="uc-num-input"
             value={s.posts_per_page}
-            onChange={(e) => patch({ posts_per_page: Number(e.target.value) || 0 })}
+            onChange={(e) =>
+              patch({ posts_per_page: Number(e.target.value) || 0 })
+            }
           />{" "}
           {t.zeroDefault}
         </Row>

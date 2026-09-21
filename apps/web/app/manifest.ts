@@ -25,13 +25,35 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
-      { src: "/icons/maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
-      { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      {
+        src: "/icons/maskable-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/icons/maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
     ],
     shortcuts: [
-      { name: "资源库", url: "/torrents", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
-      { name: "每日签到", url: "/my", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
-      { name: "发布资源", url: "/upload", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+      {
+        name: "资源库",
+        url: "/torrents",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+      },
+      {
+        name: "每日签到",
+        url: "/my",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+      },
+      {
+        name: "发布资源",
+        url: "/upload",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+      },
     ],
   };
 }

@@ -21,9 +21,21 @@ export function LinkApply() {
     setBusy(true);
     setMsg(null);
     try {
-      await api.post("/api/v1/links/apply", { name, url, title, admin, email, reason });
+      await api.post("/api/v1/links/apply", {
+        name,
+        url,
+        title,
+        admin,
+        email,
+        reason,
+      });
       setMsg(t.ok);
-      setName(""); setUrl(""); setTitle(""); setAdmin(""); setEmail(""); setReason("");
+      setName("");
+      setUrl("");
+      setTitle("");
+      setAdmin("");
+      setEmail("");
+      setReason("");
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
     } finally {
@@ -85,7 +97,12 @@ export function LinkApply() {
           </tr>
           <tr>
             <td className="toolbox" colSpan={2} align="center">
-              <input type="submit" className="baozi-button" value={t.submit} disabled={busy} />
+              <input
+                type="submit"
+                className="baozi-button"
+                value={t.submit}
+                disabled={busy}
+              />
               <input
                 type="reset"
                 className="min-h-[34px] ml-3 rounded-full border-0 bg-brand-soft px-4 text-xs font-bold text-[var(--text-brand)]"

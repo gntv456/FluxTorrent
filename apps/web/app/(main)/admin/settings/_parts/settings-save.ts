@@ -42,7 +42,9 @@ export function useSettingsSave({
   // 未保存计数
   const dirty = useMemo(
     () =>
-      Object.entries(edited).filter(([k, v]) => v !== (original[k] ?? "")).map(([k]) => k),
+      Object.entries(edited)
+        .filter(([k, v]) => v !== (original[k] ?? ""))
+        .map(([k]) => k),
     [edited, original],
   );
   const dirtyRef = useRef(0);
@@ -97,7 +99,11 @@ export function useSettingsSave({
           saved += r.saved;
           effects.push(...r.effects);
         } catch (e) {
-          if (e instanceof ApiError && e.code === 1002 && Array.isArray(e.data)) {
+          if (
+            e instanceof ApiError &&
+            e.code === 1002 &&
+            Array.isArray(e.data)
+          ) {
             for (const item of e.data as { field: string; error: string }[]) {
               errs[item.field] = item.error;
             }
@@ -108,7 +114,10 @@ export function useSettingsSave({
       }
       if (Object.keys(errs).length > 0) {
         setErrors(errs);
-        onToast({ ok: false, text: fmt(invalidMsg, { n: Object.keys(errs).length }) });
+        onToast({
+          ok: false,
+          text: fmt(invalidMsg, { n: Object.keys(errs).length }),
+        });
       } else {
         onToast({ ok: true, text: fmt(savedMsg, { n: saved }), effects });
         setLastSaved(new Date());
@@ -119,7 +128,18 @@ export function useSettingsSave({
     } finally {
       setSaving(false);
     }
-  }, [dirty, saving, editable, fieldGroup, edited, dict, invalidMsg, savedMsg, reload, onToast]);
+  }, [
+    dirty,
+    saving,
+    editable,
+    fieldGroup,
+    edited,
+    dict,
+    invalidMsg,
+    savedMsg,
+    reload,
+    onToast,
+  ]);
 
   saveAllRef.current = saveAll;
 

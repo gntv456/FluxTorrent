@@ -48,7 +48,11 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
         onClick={async () => {
           setBusy(true);
           try {
-            setRows(await api.get<SnatchRow[]>(`/api/v1/torrents/${torrentId}/snatches`));
+            setRows(
+              await api.get<SnatchRow[]>(
+                `/api/v1/torrents/${torrentId}/snatches`,
+              ),
+            );
           } catch {
             setRows([]);
           } finally {
@@ -83,19 +87,29 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
                 {r.username}
               </a>
               {r.seeding && (
-                <span className="ml-1 fun-status fun-status--normal">{t.stSeeding}</span>
+                <span className="ml-1 fun-status fun-status--normal">
+                  {t.stSeeding}
+                </span>
               )}
               {r.leeching && (
-                <span className="ml-1 fun-status fun-status--dull">{t.stLeeching}</span>
+                <span className="ml-1 fun-status fun-status--dull">
+                  {t.stLeeching}
+                </span>
               )}
             </td>
-            <td className="num" title={`${((r.progress ?? 0) / 100).toFixed(1)}%`}>
+            <td
+              className="num"
+              title={`${((r.progress ?? 0) / 100).toFixed(1)}%`}
+            >
               {r.seeding ? "100%" : `${((r.progress ?? 0) / 100).toFixed(0)}%`}
             </td>
             <td className="num">{(r.uploaded / 1024 ** 3).toFixed(2)} GB</td>
             <td className="num">{(r.downloaded / 1024 ** 3).toFixed(2)} GB</td>
             <td className="num">{(r.seeded_seconds / 3600).toFixed(1)} h</td>
-            <td className="max-w-[160px] truncate text-xs text-sub" title={r.agent}>
+            <td
+              className="max-w-[160px] truncate text-xs text-sub"
+              title={r.agent}
+            >
               {r.agent || "—"}
             </td>
             <td className="nowrap">

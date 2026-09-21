@@ -85,14 +85,18 @@ export function SiteDataCard({
           <div className="home-site-data__item">
             <dt>{t.sdTotalData}</dt>
             <dd className="num">
-              {fmtBytes(home.site_data.total_upload + home.site_data.total_download)}
+              {fmtBytes(
+                home.site_data.total_upload + home.site_data.total_download,
+              )}
             </dd>
           </div>
         </dl>
         <dl className="home-site-data__column">
           <div className="home-site-data__item is-primary">
             <dt>{t.sdUnverified}</dt>
-            <dd className="num">{home.site_data.unverified.toLocaleString()}</dd>
+            <dd className="num">
+              {home.site_data.unverified.toLocaleString()}
+            </dd>
           </div>
           <div className="home-site-data__item">
             <dt>{t.sdTotalUp}</dt>

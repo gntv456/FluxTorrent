@@ -26,7 +26,10 @@ export default async function ForumPage({
   // 标签筛选（0123）：tag=tag_dict id；非法值回落全量
   const tagNum = Number(tagRaw);
   const tag = Number.isFinite(tagNum) && tagNum > 0 ? tagNum : undefined;
-  const [data, tagDict] = await Promise.all([getTopics(forumId, sort, tag), getForumTags()]);
+  const [data, tagDict] = await Promise.all([
+    getTopics(forumId, sort, tag),
+    getForumTags(),
+  ]);
   // 版块不存在或无 minclassread 门槛权限（Forbidden）→ 404 口径
   if (!data) notFound();
   const topics = data.topics;
@@ -88,7 +91,9 @@ export default async function ForumPage({
             href={`/forums/${forumId}${qs({ tag: undefined })}`}
             aria-current={!tag ? "true" : undefined}
             className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
-              !tag ? "border-sky bg-[var(--sky-soft)] text-sky" : "border-line text-sub hover:text-sky"
+              !tag
+                ? "border-sky bg-[var(--sky-soft)] text-sky"
+                : "border-line text-sub hover:text-sky"
             }`}
           >
             {dict.forums.tagAll}
@@ -117,7 +122,9 @@ export default async function ForumPage({
         </div>
       )}
       {activeTag && topics.length === 0 && (
-        <p className="py-6 text-center text-sm text-sub">{dict.forums.tagNoHit}</p>
+        <p className="py-6 text-center text-sm text-sub">
+          {dict.forums.tagNoHit}
+        </p>
       )}
       {topics.length === 0 ? (
         <p className="py-10 text-center text-sub">{dict.forums.noTopics}</p>
@@ -127,9 +134,13 @@ export default async function ForumPage({
             <tr>
               <td className="colhead">{dict.forums.topicTitleFallback}</td>
               <td className="colhead w-32">{dict.forums.author}</td>
-              <td className="colhead w-16 text-right">{dict.forums.replies.replace("{n}", "").trim() || dict.forums.replies}</td>
+              <td className="colhead w-16 text-right">
+                {dict.forums.replies.replace("{n}", "").trim() ||
+                  dict.forums.replies}
+              </td>
               <td className="colhead hidden w-20 text-right sm:table-cell">
-                {dict.forums.views.replace("{n}", "").trim() || dict.forums.views}
+                {dict.forums.views.replace("{n}", "").trim() ||
+                  dict.forums.views}
               </td>
               <td className="colhead hidden w-28 text-right sm:table-cell">
                 {dict.forums.lastPost}
@@ -141,12 +152,18 @@ export default async function ForumPage({
               <tr key={t.id}>
                 <td>
                   {t.digest && (
-                    <span aria-label="精华" className="mr-1 text-[var(--baozi-orange-dark)]">
+                    <span
+                      aria-label="精华"
+                      className="mr-1 text-[var(--baozi-orange-dark)]"
+                    >
                       ⭐
                     </span>
                   )}
                   {t.sticky && (
-                    <span className="mr-1 text-xs font-bold text-coral" title="置顶">
+                    <span
+                      className="mr-1 text-xs font-bold text-coral"
+                      title="置顶"
+                    >
                       📌
                     </span>
                   )}
@@ -159,13 +176,19 @@ export default async function ForumPage({
                     type={t.topic_type}
                     label={
                       t.topic_type
-                        ? (dict.forums.types as Record<string, string>)[t.topic_type]
+                        ? (dict.forums.types as Record<string, string>)[
+                            t.topic_type
+                          ]
                         : undefined
                     }
                     className="mr-1 align-middle"
                   />
                   {t.tags?.map((tg) => (
-                    <TagChip key={tg.id} tag={tg} className="mr-1 align-middle" />
+                    <TagChip
+                      key={tg.id}
+                      tag={tg}
+                      className="mr-1 align-middle"
+                    />
                   ))}
                   <Link
                     href={`/forums/topic/${t.id}`}

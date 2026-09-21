@@ -26,14 +26,19 @@ export function MainMenu({
 
   const isActive = (href: string) => {
     const path = href.split("?")[0];
-    return path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
+    return path === "/"
+      ? pathname === "/"
+      : pathname === path || pathname.startsWith(`${path}/`);
   };
-  const moreActive = (groups ?? []).some((g) => g.items.some((i) => isActive(i.href)));
+  const moreActive = (groups ?? []).some((g) =>
+    g.items.some((i) => isActive(i.href)),
+  );
 
   useEffect(() => {
     if (!moreOpen) return;
     const onDoc = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+      if (moreRef.current && !moreRef.current.contains(e.target as Node))
+        setMoreOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMoreOpen(false);
@@ -63,7 +68,11 @@ export function MainMenu({
                   {n.label}
                 </a>
               ) : (
-                <Link href={n.href} className="mainmenu-link" data-active={isActive(n.href) ? "true" : undefined}>
+                <Link
+                  href={n.href}
+                  className="mainmenu-link"
+                  data-active={isActive(n.href) ? "true" : undefined}
+                >
                   {n.label}
                 </Link>
               )}

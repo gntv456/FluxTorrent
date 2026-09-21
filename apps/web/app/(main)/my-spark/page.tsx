@@ -40,8 +40,12 @@ export default function MySparkPage() {
   const loggedIn = hasSessionCookie();
 
   const load = useCallback(() => {
-    api.get<SparkInfo>("/api/v1/me/spark").then(setInfo).catch(() => setInfo(null));
-    api.get<LedgerRow[]>(`/api/v1/me/spark/ledger?limit=${limit}`)
+    api
+      .get<SparkInfo>("/api/v1/me/spark")
+      .then(setInfo)
+      .catch(() => setInfo(null));
+    api
+      .get<LedgerRow[]>(`/api/v1/me/spark/ledger?limit=${limit}`)
       .then(setRows)
       .catch((e) => {
         setErr(e instanceof ApiError ? e.message : dict.common.loadFailed);
@@ -53,18 +57,28 @@ export default function MySparkPage() {
   if (!loggedIn) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="font-display text-2xl">{t.title.replace("{magic}", currency)}</h1>
-        <p className="baozi-panel p-4 text-sm text-sub">{dict.common.pleaseLogin}</p>
+        <h1 className="font-display text-2xl">
+          {t.title.replace("{magic}", currency)}
+        </h1>
+        <p className="baozi-panel p-4 text-sm text-sub">
+          {dict.common.pleaseLogin}
+        </p>
       </div>
     );
   }
 
-  const income = rows.filter((r) => r.amount > 0).reduce((s, r) => s + r.amount, 0);
-  const spend = rows.filter((r) => r.amount < 0).reduce((s, r) => s + r.amount, 0);
+  const income = rows
+    .filter((r) => r.amount > 0)
+    .reduce((s, r) => s + r.amount, 0);
+  const spend = rows
+    .filter((r) => r.amount < 0)
+    .reduce((s, r) => s + r.amount, 0);
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">{t.title.replace("{magic}", currency)}</h1>
+      <h1 className="font-display text-2xl">
+        {t.title.replace("{magic}", currency)}
+      </h1>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="baozi-panel p-4">
@@ -81,11 +95,15 @@ export default function MySparkPage() {
         </div>
         <div className="baozi-panel p-4">
           <p className="text-xs text-sub">{t.seedingCount}</p>
-          <p className="num text-2xl font-bold text-ink">{info ? info.seeding_count : "…"}</p>
+          <p className="num text-2xl font-bold text-ink">
+            {info ? info.seeding_count : "…"}
+          </p>
         </div>
         <div className="baozi-panel p-4">
           <p className="text-xs text-sub">{t.ruleTitle}</p>
-          <p className="text-xs leading-relaxed text-sub">{t.rule.replace("{magic}", currency)}</p>
+          <p className="text-xs leading-relaxed text-sub">
+            {t.rule.replace("{magic}", currency)}
+          </p>
         </div>
       </div>
 
@@ -110,10 +128,14 @@ export default function MySparkPage() {
           <tr>
             <td className="colhead" colSpan={4}>
               <div className="flex items-baseline justify-between">
-                <h2 className="font-display">{t.ledger.replace("{magic}", currency)}</h2>
+                <h2 className="font-display">
+                  {t.ledger.replace("{magic}", currency)}
+                </h2>
                 <span className="text-xs font-normal text-sub">
-                  {t.recentIncome} <b className="num text-success">+{income.toLocaleString()}</b> ·{" "}
-                  {t.recentSpend} <b className="num text-danger">{spend.toLocaleString()}</b>
+                  {t.recentIncome}{" "}
+                  <b className="num text-success">+{income.toLocaleString()}</b>{" "}
+                  · {t.recentSpend}{" "}
+                  <b className="num text-danger">{spend.toLocaleString()}</b>
                 </span>
               </div>
             </td>
@@ -126,11 +148,18 @@ export default function MySparkPage() {
           </tr>
           {rows.map((r, i) => (
             <tr key={i}>
-              <td>{dict.my.kinds[r.kind] ?? KIND_FALLBACK[r.kind] ?? r.kind}</td>
-              <td className={`num font-bold ${r.amount >= 0 ? "text-success" : "text-danger"}`}>
-                {r.amount >= 0 ? "+" : ""}{r.amount.toLocaleString()}
+              <td>
+                {dict.my.kinds[r.kind] ?? KIND_FALLBACK[r.kind] ?? r.kind}
               </td>
-              <td className="num">{r.balance_after?.toLocaleString() ?? "—"}</td>
+              <td
+                className={`num font-bold ${r.amount >= 0 ? "text-success" : "text-danger"}`}
+              >
+                {r.amount >= 0 ? "+" : ""}
+                {r.amount.toLocaleString()}
+              </td>
+              <td className="num">
+                {r.balance_after?.toLocaleString() ?? "—"}
+              </td>
               <td className="text-xs text-sub">
                 {new Date(r.created_at).toLocaleString(dateLocale(locale))}
               </td>

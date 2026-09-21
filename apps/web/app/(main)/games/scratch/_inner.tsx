@@ -11,7 +11,12 @@ import { scratchPoolText, type ScratchPrize } from "@/lib/games";
 
 export interface Overview {
   max_bet: number;
-  me?: { balance: number; today_net: number; today_plays: number; limit_left: number };
+  me?: {
+    balance: number;
+    today_net: number;
+    today_plays: number;
+    limit_left: number;
+  };
   scratch?: { prizes: ScratchPrize[]; empty_pct: number };
 }
 
@@ -23,7 +28,11 @@ interface RoundRow {
 }
 
 /** 刮刮乐专注页：买卡 → 真刮 → 刮开过半自动开完 → 揭晓 */
-export default function ScratchPage({ initialOver }: { initialOver: Overview | null }) {
+export default function ScratchPage({
+  initialOver,
+}: {
+  initialOver: Overview | null;
+}) {
   const { dict, currency } = useI18n();
   const t = dict.games;
   const ts = dict.games.scratch;
@@ -31,14 +40,19 @@ export default function ScratchPage({ initialOver }: { initialOver: Overview | n
   const [ov, setOv] = useState<Overview | null>(initialOver);
   const [hist, setHist] = useState<RoundRow[]>([]);
   const [bet, setBet] = useState(100);
-  const [phase, setPhase] = useState<"idle" | "buying" | "scratchable" | "done">("idle");
-  const [outcome, setOutcome] = useState<{ multiplier: number; payout: number; net: number } | null>(
-    null,
-  );
+  const [phase, setPhase] = useState<
+    "idle" | "buying" | "scratchable" | "done"
+  >("idle");
+  const [outcome, setOutcome] = useState<{
+    multiplier: number;
+    payout: number;
+    net: number;
+  } | null>(null);
   const [pct, setPct] = useState(0);
-  const [flash, setFlash] = useState<{ kind: "win" | "lose" | "tie" | "jackpot"; text: string } | null>(
-    null,
-  );
+  const [flash, setFlash] = useState<{
+    kind: "win" | "lose" | "tie" | "jackpot";
+    text: string;
+  } | null>(null);
   const [autoReveal, setAutoReveal] = useState(false);
   const [round, setRound] = useState(0);
   const [err, setErr] = useState<string | null>(null);
@@ -55,7 +69,8 @@ export default function ScratchPage({ initialOver }: { initialOver: Overview | n
   // 结果在买卡那一刻就由服务端定了，不能让用户回来对着半刮的卡（钱已扣、奖已开）。
   useEffect(() => {
     const onVis = () => {
-      if (document.visibilityState === "hidden" && phase === "scratchable") setAutoReveal(true);
+      if (document.visibilityState === "hidden" && phase === "scratchable")
+        setAutoReveal(true);
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
@@ -68,7 +83,9 @@ export default function ScratchPage({ initialOver }: { initialOver: Overview | n
       /* 顶栏数据取不到不影响玩，缺省用设置上限 */
     }
     try {
-      setHist(await api.get<RoundRow[]>("/api/v1/games/rounds?game=scratch&limit=10"));
+      setHist(
+        await api.get<RoundRow[]>("/api/v1/games/rounds?game=scratch&limit=10"),
+      );
     } catch {
       /* 忽略 */
     }
@@ -91,10 +108,11 @@ export default function ScratchPage({ initialOver }: { initialOver: Overview | n
         ? crypto.randomUUID()
         : String(Date.now());
     try {
-      const r = await api.post<{ multiplier: number; payout: number; net: number }>(
-        "/api/v1/games/scratch",
-        { bet, idempotency_key: idem.current },
-      );
+      const r = await api.post<{
+        multiplier: number;
+        payout: number;
+        net: number;
+      }>("/api/v1/games/scratch", { bet, idempotency_key: idem.current });
       setOutcome(r);
       setRound((n) => n + 1);
       setPhase("scratchable");
@@ -118,7 +136,13 @@ export default function ScratchPage({ initialOver }: { initialOver: Overview | n
     setSessionPlays((n) => n + 1);
     if (!o) return;
     const kind: "win" | "lose" | "tie" | "jackpot" =
-      o.multiplier >= 2 ? "jackpot" : o.net > 0 ? "win" : o.net === 0 ? "tie" : "lose";
+      o.multiplier >= 2
+        ? "jackpot"
+        : o.net > 0
+          ? "win"
+          : o.net === 0
+            ? "tie"
+            : "lose";
     setFlash({
       kind,
       text:
@@ -134,8 +158,10 @@ export default function ScratchPage({ initialOver }: { initialOver: Overview | n
   }
 
   const prizeFace = () => {
-    if (phase === "buying") return <span className="text-sm text-sub">{ts.buying}</span>;
-    if (!outcome) return <span className="num text-4xl font-black text-sub">??</span>;
+    if (phase === "buying")
+      return <span className="text-sm text-sub">{ts.buying}</span>;
+    if (!outcome)
+      return <span className="num text-4xl font-black text-sub">??</span>;
     const big = outcome.multiplier >= 2;
     return (
       <div className="flex flex-col items-center">
@@ -145,7 +171,9 @@ export default function ScratchPage({ initialOver }: { initialOver: Overview | n
           {outcome.multiplier === 0 ? "0" : `${outcome.multiplier}x`}
         </span>
         <span className="text-xs text-sub">
-          {outcome.multiplier === 0 ? ts.thanks : `${ts.payout} ${outcome.payout}`}
+          {outcome.multiplier === 0
+            ? ts.thanks
+            : `${ts.payout} ${outcome.payout}`}
         </span>
       </div>
     );
@@ -160,12 +188,17 @@ export default function ScratchPage({ initialOver }: { initialOver: Overview | n
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
       notice={
-        <PlayHint sessionPlays={sessionPlays} todayNet={ov?.me?.today_net ?? null} />
+        <PlayHint
+          sessionPlays={sessionPlays}
+          todayNet={ov?.me?.today_net ?? null}
+        />
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
           <div className="relative h-[170px] w-full max-w-[300px] overflow-hidden rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]">
-            <div className="flex h-full flex-col items-center justify-center">{prizeFace()}</div>
+            <div className="flex h-full flex-col items-center justify-center">
+              {prizeFace()}
+            </div>
             <ScratchCanvas
               key={round}
               armed={phase === "scratchable"}
@@ -203,7 +236,9 @@ export default function ScratchPage({ initialOver }: { initialOver: Overview | n
               disabled={phase === "buying" || phase === "scratchable"}
               className="min-h-[48px] flex-1 rounded-full bg-coral px-6 font-black text-white active:scale-[0.97] disabled:opacity-50"
             >
-              {phase === "buying" ? ts.buying : ts.buy.replace("{n}", String(bet))}
+              {phase === "buying"
+                ? ts.buying
+                : ts.buy.replace("{n}", String(bet))}
             </button>
             <button
               type="button"

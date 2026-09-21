@@ -10,20 +10,49 @@ import type { SubtitleRow } from "@/components/subtitle-board-shared";
 
 /** NexusPHP 字幕语言表（value 与旧站 sel_lang 一致） */
 export const LANGS: [string, string][] = [
-  ["1", "Bulgarian"], ["2", "Croatian"], ["3", "Czech"], ["4", "Danish"],
-  ["5", "Dutch"], ["6", "English"], ["7", "Estonian"], ["8", "Finnish"],
-  ["9", "French"], ["10", "German"], ["11", "Greek"], ["12", "Hebrew"],
-  ["13", "Hungarian"], ["14", "Italian"], ["15", "日本語"], ["16", "한국어"],
-  ["17", "Norwegian"], ["18", "Other"], ["19", "Polish"], ["20", "Portuguese"],
-  ["21", "Romanian"], ["22", "Russian"], ["23", "Serbian"], ["24", "Slovak"],
-  ["25", "简体中文"], ["26", "Spanish"], ["27", "Swedish"], ["28", "繁體中文"],
-  ["29", "Turkish"], ["30", "Slovenian"], ["31", "Thai"],
+  ["1", "Bulgarian"],
+  ["2", "Croatian"],
+  ["3", "Czech"],
+  ["4", "Danish"],
+  ["5", "Dutch"],
+  ["6", "English"],
+  ["7", "Estonian"],
+  ["8", "Finnish"],
+  ["9", "French"],
+  ["10", "German"],
+  ["11", "Greek"],
+  ["12", "Hebrew"],
+  ["13", "Hungarian"],
+  ["14", "Italian"],
+  ["15", "日本語"],
+  ["16", "한국어"],
+  ["17", "Norwegian"],
+  ["18", "Other"],
+  ["19", "Polish"],
+  ["20", "Portuguese"],
+  ["21", "Romanian"],
+  ["22", "Russian"],
+  ["23", "Serbian"],
+  ["24", "Slovak"],
+  ["25", "简体中文"],
+  ["26", "Spanish"],
+  ["27", "Swedish"],
+  ["28", "繁體中文"],
+  ["29", "Turkish"],
+  ["30", "Slovenian"],
+  ["31", "Thai"],
 ];
 /** lang 存储值（chs/cht/eng…）→ 旧站数字 id 映射 */
 export const LANG_CODE_TO_ID: Record<string, string> = {
-  chs: "25", cht: "28", eng: "6", jpn: "15", kor: "16", other: "18",
+  chs: "25",
+  cht: "28",
+  eng: "6",
+  jpn: "15",
+  kor: "16",
+  other: "18",
 };
-const LANG_ID_TO_LABEL = (id: string) => LANGS.find(([v]) => v === id)?.[1] ?? id;
+const LANG_ID_TO_LABEL = (id: string) =>
+  LANGS.find(([v]) => v === id)?.[1] ?? id;
 
 export const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -79,7 +108,10 @@ export function SubtitleListTable({
   const { dict } = useI18n();
   const t = dict.subtitles;
   return (
-    <div className="baozi-wide-table-scroll subtitles-table-scroll" role="region">
+    <div
+      className="baozi-wide-table-scroll subtitles-table-scroll"
+      role="region"
+    >
       <table className="nexus-table subtitles-list-table">
         <tbody>
           <tr>
@@ -131,7 +163,10 @@ export function SubtitleListTable({
                   {s.title}
                 </a>
               </td>
-              <td className="nowrap text-center" title={new Date(s.created_at).toLocaleString("zh-CN")}>
+              <td
+                className="nowrap text-center"
+                title={new Date(s.created_at).toLocaleString("zh-CN")}
+              >
                 {timeAgo(s.created_at)}
               </td>
               <td className="num text-center">{fmtKB(s.size ?? 0)}</td>
@@ -156,7 +191,11 @@ export function SubtitleListTable({
                       });
                       onMsg(t.reportOk ?? "举报已提交，感谢反馈");
                     } catch (e) {
-                      onMsg(e instanceof Error ? e.message : (t.reportFail ?? "举报失败"));
+                      onMsg(
+                        e instanceof Error
+                          ? e.message
+                          : (t.reportFail ?? "举报失败"),
+                      );
                     }
                   }}
                 >

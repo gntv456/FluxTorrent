@@ -83,7 +83,15 @@ export function ShoutBox() {
           );
           replySeq.current += 1;
           setBotReplies((list) =>
-            [...list, { key: replySeq.current, cmd: r.cmd, reply: r.reply, at: new Date().toISOString() }].slice(-10),
+            [
+              ...list,
+              {
+                key: replySeq.current,
+                cmd: r.cmd,
+                reply: r.reply,
+                at: new Date().toISOString(),
+              },
+            ].slice(-10),
           );
         } catch (e) {
           setMsg(e instanceof ApiError ? e.message : tb.replyFailed);
@@ -98,7 +106,10 @@ export function ShoutBox() {
   }
 
   const timeStr = (iso: string) =>
-    new Date(iso).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+    new Date(iso).toLocaleTimeString("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
     <section className="baozi-panel shoutbox">
@@ -109,13 +120,16 @@ export function ShoutBox() {
         <small>{t.note}</small>
       </header>
       <ul className="shoutbox__list">
-        {(items ?? []).slice().reverse().map((s) => (
-          <li key={s.id}>
-            <b className="rainbow">{s.username ?? "?"}</b>
-            <span className="shoutbox__text">{s.message}</span>
-            <time>{timeStr(s.created_at)}</time>
-          </li>
-        ))}
+        {(items ?? [])
+          .slice()
+          .reverse()
+          .map((s) => (
+            <li key={s.id}>
+              <b className="rainbow">{s.username ?? "?"}</b>
+              <span className="shoutbox__text">{s.message}</span>
+              <time>{timeStr(s.created_at)}</time>
+            </li>
+          ))}
         {botReplies.map((r) => (
           <li key={`bot-${r.key}`} className="shoutbox__bot">
             <b className="text-sky">🤖 {tb.botName}</b>
@@ -157,7 +171,11 @@ export function ShoutBox() {
           placeholder={botHint || t.placeholder}
           aria-label={t.title}
         />
-        <button type="submit" className="baozi-button" disabled={busy || !text.trim()}>
+        <button
+          type="submit"
+          className="baozi-button"
+          disabled={busy || !text.trim()}
+        >
           {t.send}
         </button>
       </form>

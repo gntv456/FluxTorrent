@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { api, setSessionCookie, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { formatBytes, formatRatio, avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
+import {
+  formatBytes,
+  formatRatio,
+  avatarFrameStyle,
+  FrameImageOverlay,
+} from "@/lib/format";
 import { UserTools } from "@/components/user-tools";
 import { MedalIcon } from "@/components/medal-icon";
 
@@ -88,10 +93,25 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
       <div className="userbar__identity">
         {/* 头像与用户名进个人公开主页（/users/{id}）；控制面板入口在下拉快捷栏。
             框形态二选一：image_url 立绘框图叠层优先，否则 CSS 描边 */}
-        <a href={`/users/${me.id}`} aria-hidden tabIndex={-1} className="userbar__avatar relative" style={me.avatar_frame_image ? undefined : avatarFrameStyle(me.avatar_frame_css)} title={me.username}>
+        <a
+          href={`/users/${me.id}`}
+          aria-hidden
+          tabIndex={-1}
+          className="userbar__avatar relative"
+          style={
+            me.avatar_frame_image
+              ? undefined
+              : avatarFrameStyle(me.avatar_frame_css)
+          }
+          title={me.username}
+        >
           {me.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={me.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+            <img
+              src={me.avatar_url}
+              alt=""
+              className="h-full w-full rounded-full object-cover"
+            />
           ) : (
             me.username.slice(0, 1).toUpperCase()
           )}
@@ -109,7 +129,11 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
               </span>
             ))}
             {me.class_name && <span className="sticker">{me.class_name}</span>}
-            <button type="button" onClick={logout} className="text-xs text-sub hover:text-sky">
+            <button
+              type="button"
+              onClick={logout}
+              className="text-xs text-sub hover:text-sky"
+            >
               {dict.my.logout}
             </button>
           </div>
@@ -130,10 +154,13 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
               <a href="/invites">{dict.nav.invites}</a>
               <a href="/jixiao">{dict.nav.jixiao}</a>
               {me.class_id !== undefined && me.class_id >= 90 && (
-                  <a href="/admin" className="font-bold text-[var(--baozi-orange-dark)]">
-                    {dict.admin.panelTitle}
-                  </a>
-                )}
+                <a
+                  href="/admin"
+                  className="font-bold text-[var(--baozi-orange-dark)]"
+                >
+                  {dict.admin.panelTitle}
+                </a>
+              )}
             </nav>
           </div>
         </div>
@@ -149,7 +176,9 @@ export function UserBox({ loginLabel }: { loginLabel: string }) {
         </div>
         <div className="userstat">
           <span>{dict.my.downloaded}</span>
-          <strong className="num leech-arrow">{formatBytes(me.downloaded)}</strong>
+          <strong className="num leech-arrow">
+            {formatBytes(me.downloaded)}
+          </strong>
         </div>
         <div className="userstat">
           <span>{dict.my.seedingCount}</span>

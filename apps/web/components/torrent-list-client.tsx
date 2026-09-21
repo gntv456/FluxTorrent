@@ -69,10 +69,14 @@ export function TorrentListClient({
                   {r.name}
                 </Link>
                 {r.seeding && (
-                  <span className="sticker ml-1 bg-mint/30">{dict.mytl.badgeSeeding}</span>
+                  <span className="sticker ml-1 bg-mint/30">
+                    {dict.mytl.badgeSeeding}
+                  </span>
                 )}
                 {r.leeching && (
-                  <span className="sticker ml-1 bg-sun">{dict.mytl.badgeLeeching}</span>
+                  <span className="sticker ml-1 bg-sun">
+                    {dict.mytl.badgeLeeching}
+                  </span>
                 )}
               </td>
               <td className="num text-xs">{formatBytes(r.size)}</td>

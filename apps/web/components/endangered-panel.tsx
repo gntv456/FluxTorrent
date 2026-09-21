@@ -105,11 +105,16 @@ export function EndangeredPanel() {
     <section className="baozi-panel preserve-list-card">
       <div className="preserve-list-card__heading">
         <h2>⚠️ {t.title}</h2>
-        <span className="text-xs text-sub">{fmt(t.totalLine, { n: data.total })}</span>
+        <span className="text-xs text-sub">
+          {fmt(t.totalLine, { n: data.total })}
+        </span>
       </div>
       <p className="px-4 pb-2 text-xs text-sub">{t.note}</p>
       {msg && (
-        <p className="mx-4 mb-2 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink" role="status">
+        <p
+          className="mx-4 mb-2 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink"
+          role="status"
+        >
           {msg}
         </p>
       )}
@@ -129,7 +134,10 @@ export function EndangeredPanel() {
             {data.list.map((it) => (
               <tr key={it.torrent_id}>
                 <td>
-                  <Link href={`/torrent/${it.torrent_id}`} className="text-link">
+                  <Link
+                    href={`/torrent/${it.torrent_id}`}
+                    className="text-link"
+                  >
                     {it.name}
                   </Link>
                 </td>
@@ -137,14 +145,20 @@ export function EndangeredPanel() {
                   {it.seeders}
                 </td>
                 <td className="num text-sub">{formatBytes(it.size)}</td>
-                <td className="num text-sub">{fmt(t.days, { n: Math.floor(it.age_days) })}</td>
+                <td className="num text-sub">
+                  {fmt(t.days, { n: Math.floor(it.age_days) })}
+                </td>
                 <td>
                   {it.rescue_open ? (
-                    <span className="text-xs font-bold text-mint">{t.rescueOpen}</span>
+                    <span className="text-xs font-bold text-mint">
+                      {t.rescueOpen}
+                    </span>
                   ) : (
                     <div className="flex flex-col items-start gap-1">
                       <span className="text-xs text-sub">
-                        {fmt(t.healthGap, { n: Math.max(data.health_seeders - it.seeders, 0) })}
+                        {fmt(t.healthGap, {
+                          n: Math.max(data.health_seeders - it.seeders, 0),
+                        })}
                       </span>
                       <button
                         type="button"

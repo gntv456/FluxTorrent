@@ -1,7 +1,5 @@
 "use client";
 
-;
-
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -28,7 +26,10 @@ export default function OffersPage() {
   const [isStaff, setIsStaff] = useState(false);
 
   const load = useCallback(() => {
-    api.get<OfferItem[]>("/api/v1/offers").then(setRows).catch(() => setRows([]));
+    api
+      .get<OfferItem[]>("/api/v1/offers")
+      .then(setRows)
+      .catch(() => setRows([]));
   }, []);
   useEffect(load, [load]);
 
@@ -63,7 +64,11 @@ export default function OffersPage() {
         <h1 className="font-display text-2xl">{t.title}</h1>
         <span className="text-sm text-sub">{t.subtitle}</span>
       </div>
-      {msg && <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
+      {msg && (
+        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+          {msg}
+        </p>
+      )}
 
       <section className="baozi-panel p-4">
         <h2 className="mb-3 text-base font-bold text-ink">{t.newOffer}</h2>
@@ -72,7 +77,9 @@ export default function OffersPage() {
             {t.torrentId}
             <input
               value={newTorrentId}
-              onChange={(e) => setNewTorrentId(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) =>
+                setNewTorrentId(e.target.value.replace(/\D/g, ""))
+              }
               placeholder="#"
             />
           </label>
@@ -81,14 +88,18 @@ export default function OffersPage() {
             disabled={busy || !newTorrentId}
             onClick={() =>
               guard(async () => {
-                await api.post("/api/v1/offers", { torrent_id: Number(newTorrentId) });
+                await api.post("/api/v1/offers", {
+                  torrent_id: Number(newTorrentId),
+                });
                 setNewTorrentId("");
               }, t.created)
             }
           >
             {t.btnCreate}
           </button>
-          <p className="text-xs text-sub">{t.voteNote.replace("{magic}", currency)}</p>
+          <p className="text-xs text-sub">
+            {t.voteNote.replace("{magic}", currency)}
+          </p>
         </div>
       </section>
 
@@ -131,7 +142,9 @@ export default function OffersPage() {
                     disabled={busy}
                     onClick={() =>
                       guard(async () => {
-                        await api.post("/api/v1/offers/promote", { offer_id: o.id });
+                        await api.post("/api/v1/offers/promote", {
+                          offer_id: o.id,
+                        });
                       }, t.promoted)
                     }
                   >

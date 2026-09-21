@@ -36,7 +36,9 @@ export function VoucherPanel() {
     void load();
   }, [load]);
 
-  const open = vouchers.filter((v) => !v.used_at && new Date(v.expires_at) > new Date());
+  const open = vouchers.filter(
+    (v) => !v.used_at && new Date(v.expires_at) > new Date(),
+  );
   const history = vouchers.filter((v) => !open.includes(v));
 
   async function use(id: number) {
@@ -47,7 +49,10 @@ export function VoucherPanel() {
     }
     setError(null);
     try {
-      await api.post("/api/v1/me/vouchers/use", { voucher_id: id, torrent_id: tid });
+      await api.post("/api/v1/me/vouchers/use", {
+        voucher_id: id,
+        torrent_id: tid,
+      });
       setMessage(dict.vouchers.used.replace("{id}", String(tid)));
       setUsing(null);
       setTorrentId("");
@@ -70,7 +75,9 @@ export function VoucherPanel() {
       </table>
       {message && <p className="text-xs text-emerald-600">{message}</p>}
       {error && <p className="text-xs text-red-500">{error}</p>}
-      {open.length === 0 && <p className="text-sm text-sub">{dict.vouchers.empty}</p>}
+      {open.length === 0 && (
+        <p className="text-sm text-sub">{dict.vouchers.empty}</p>
+      )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {open.map((v) => (
           <div
@@ -79,10 +86,13 @@ export function VoucherPanel() {
           >
             <div className="flex items-center justify-between">
               <span className="font-bold">
-                {v.kind === "free" ? dict.vouchers.freeKind : dict.vouchers.neutralKind}
+                {v.kind === "free"
+                  ? dict.vouchers.freeKind
+                  : dict.vouchers.neutralKind}
               </span>
               <span className="text-xs text-sub">
-                {dict.vouchers.expires} {new Date(v.expires_at).toLocaleDateString()}
+                {dict.vouchers.expires}{" "}
+                {new Date(v.expires_at).toLocaleDateString()}
               </span>
             </div>
             {using === v.id ? (
@@ -95,10 +105,16 @@ export function VoucherPanel() {
                   inputMode="numeric"
                 />
                 <div className="flex gap-2">
-                  <button className="btn-primary text-sm" onClick={() => void use(v.id)}>
+                  <button
+                    className="btn-primary text-sm"
+                    onClick={() => void use(v.id)}
+                  >
                     {dict.vouchers.confirm}
                   </button>
-                  <button className="btn-ghost text-sm" onClick={() => setUsing(null)}>
+                  <button
+                    className="btn-ghost text-sm"
+                    onClick={() => setUsing(null)}
+                  >
                     {dict.vouchers.cancel}
                   </button>
                 </div>
@@ -106,7 +122,14 @@ export function VoucherPanel() {
             ) : v.used_torrent_id ? (
               <span className="text-xs text-sub">→ #{v.used_torrent_id}</span>
             ) : (
-              <button className="btn-primary text-sm" onClick={() => { setUsing(v.id); setMessage(null); setError(null); }}>
+              <button
+                className="btn-primary text-sm"
+                onClick={() => {
+                  setUsing(v.id);
+                  setMessage(null);
+                  setError(null);
+                }}
+              >
                 {dict.vouchers.use}
               </button>
             )}
@@ -115,13 +138,20 @@ export function VoucherPanel() {
       </div>
       {history.length > 0 && (
         <details className="rounded border border-line p-3">
-          <summary className="cursor-pointer text-sm text-sub">{dict.vouchers.history}</summary>
+          <summary className="cursor-pointer text-sm text-sub">
+            {dict.vouchers.history}
+          </summary>
           <ul className="mt-2 flex flex-col gap-1 text-xs text-sub">
             {history.slice(0, 30).map((v) => (
               <li key={v.id}>
-                #{v.id} {v.kind === "free" ? dict.vouchers.freeKind : dict.vouchers.neutralKind}
+                #{v.id}{" "}
+                {v.kind === "free"
+                  ? dict.vouchers.freeKind
+                  : dict.vouchers.neutralKind}
                 {v.used_torrent_id ? ` → #${v.used_torrent_id}` : ""}{" "}
-                {v.used_at ? `(${new Date(v.used_at).toLocaleDateString()})` : ""}
+                {v.used_at
+                  ? `(${new Date(v.used_at).toLocaleDateString()})`
+                  : ""}
               </li>
             ))}
           </ul>

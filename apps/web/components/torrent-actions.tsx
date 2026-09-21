@@ -21,7 +21,9 @@ export function TorrentActions({
   const { dict } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
@@ -46,7 +48,8 @@ export function TorrentActions({
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -77,7 +80,8 @@ export function TorrentActions({
   }
 
   async function remove() {
-    if (!window.confirm(dict.torrents.deleteConfirm ?? "确认删除该种子？")) return;
+    if (!window.confirm(dict.torrents.deleteConfirm ?? "确认删除该种子？"))
+      return;
     setBusy(true);
     try {
       await api.del(`/api/v1/torrents/${torrentId}`);
@@ -151,13 +155,24 @@ export function TorrentActions({
           role="menu"
           style={{ top: menuPos.top, right: menuPos.right }}
         >
-          <button type="button" role="menuitem" disabled={busy} onClick={bookmark}>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={bookmark}
+          >
             ☆ {dict.torrents.bookmark ?? "收藏"}
           </button>
           <button type="button" role="menuitem" onClick={edit}>
             ✎ {dict.torrents.edit ?? "编辑"}
           </button>
-          <button type="button" role="menuitem" className="danger" disabled={busy} onClick={remove}>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            disabled={busy}
+            onClick={remove}
+          >
             🗑 {dict.torrents.delete ?? "删除"}
           </button>
         </span>

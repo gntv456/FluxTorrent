@@ -55,15 +55,33 @@ function frameNode(f: Frame, key: string): ReactNode {
     case "s":
       return <s key={key}>{f.children}</s>;
     case "color":
-      return <span key={key} style={{ color: f.param.trim() || undefined }}>{f.children}</span>;
+      return (
+        <span key={key} style={{ color: f.param.trim() || undefined }}>
+          {f.children}
+        </span>
+      );
     case "size":
-      return <span key={key} style={{ fontSize: safeSize(f.param) }}>{f.children}</span>;
+      return (
+        <span key={key} style={{ fontSize: safeSize(f.param) }}>
+          {f.children}
+        </span>
+      );
     case "font":
-      return <span key={key} style={{ fontFamily: f.param.trim() || undefined }}>{f.children}</span>;
+      return (
+        <span key={key} style={{ fontFamily: f.param.trim() || undefined }}>
+          {f.children}
+        </span>
+      );
     case "url": {
       const u = safeUrl(f.param || text);
       return u ? (
-        <a key={key} href={u} target="_blank" rel="noreferrer noopener" className="text-sky hover:underline break-all">
+        <a
+          key={key}
+          href={u}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="text-sky hover:underline break-all"
+        >
           {f.children}
         </a>
       ) : (
@@ -73,21 +91,40 @@ function frameNode(f: Frame, key: string): ReactNode {
     case "img": {
       const u = safeUrl(text);
       return u ? (
-        <img key={key} src={u} alt="" className="my-1 max-w-full rounded-[var(--r-sm)]" />
+        <img
+          key={key}
+          src={u}
+          alt=""
+          className="my-1 max-w-full rounded-[var(--r-sm)]"
+        />
       ) : (
         <span key={key}>[img]</span>
       );
     }
     case "quote":
       return (
-        <blockquote key={key} className="my-2 border-l-4 border-[var(--baozi-line)] bg-[var(--head-b)] px-3 py-2 text-sub">
+        <blockquote
+          key={key}
+          className="my-2 border-l-4 border-[var(--baozi-line)] bg-[var(--head-b)] px-3 py-2 text-sub"
+        >
           {f.children}
         </blockquote>
       );
     case "center":
-      return <div key={key} className="text-center">{f.children}</div>;
+      return (
+        <div key={key} className="text-center">
+          {f.children}
+        </div>
+      );
     case "code":
-      return <pre key={key} className="td-nfo my-2 overflow-x-auto rounded-[var(--r-sm)] bg-[var(--head-b)] p-3 text-xs">{text}</pre>;
+      return (
+        <pre
+          key={key}
+          className="td-nfo my-2 overflow-x-auto rounded-[var(--r-sm)] bg-[var(--head-b)] p-3 text-xs"
+        >
+          {text}
+        </pre>
+      );
     default:
       return <span key={key}>{f.children}</span>;
   }
@@ -110,7 +147,9 @@ function renderBBCodeImpl(text: string): ReactNode[] {
     const [full, closing, tagRaw, param] = m;
     const tag = tagRaw.toLowerCase();
     if (tag === "hr") {
-      cur().push(<hr key={`e${key++}`} className="my-2 border-[var(--baozi-line)]" />);
+      cur().push(
+        <hr key={`e${key++}`} className="my-2 border-[var(--baozi-line)]" />,
+      );
       last = m.index + full.length;
       continue;
     }
@@ -121,7 +160,10 @@ function renderBBCodeImpl(text: string): ReactNode[] {
         if (end !== -1) {
           const raw = text.slice(m.index + full.length, end);
           cur().push(
-            <pre key={`e${key++}`} className="td-nfo my-2 overflow-x-auto rounded-[var(--r-sm)] bg-[var(--head-b)] p-3 text-xs">
+            <pre
+              key={`e${key++}`}
+              className="td-nfo my-2 overflow-x-auto rounded-[var(--r-sm)] bg-[var(--head-b)] p-3 text-xs"
+            >
               {raw}
             </pre>,
           );

@@ -19,7 +19,11 @@ interface StickyPromo {
 
 export function StickyPromos({ flash }: { flash: (m: string) => void }) {
   const [rows, setRows] = useState<StickyPromo[]>([]);
-  const [edit, setEdit] = useState<{ title: string; url: string; badge: string }>({
+  const [edit, setEdit] = useState<{
+    title: string;
+    url: string;
+    badge: string;
+  }>({
     title: "",
     url: "",
     badge: "",
@@ -59,20 +63,37 @@ export function StickyPromos({ flash }: { flash: (m: string) => void }) {
   return (
     <div className="flex flex-col gap-3">
       <section className="baozi-panel cmgmt-form p-4">
-        <h2 className="mb-2 text-base font-bold text-ink">新增置顶促销（首页公告条）</h2>
+        <h2 className="mb-2 text-base font-bold text-ink">
+          新增置顶促销（首页公告条）
+        </h2>
         <label>
           标题
-          <input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
+          <input
+            value={edit.title}
+            onChange={(e) => setEdit({ ...edit, title: e.target.value })}
+          />
         </label>
         <label>
           链接（可选）
-          <input value={edit.url} onChange={(e) => setEdit({ ...edit, url: e.target.value })} placeholder="/torrents?official=1" />
+          <input
+            value={edit.url}
+            onChange={(e) => setEdit({ ...edit, url: e.target.value })}
+            placeholder="/torrents?official=1"
+          />
         </label>
         <label>
           角标（可选）
-          <input value={edit.badge} onChange={(e) => setEdit({ ...edit, badge: e.target.value })} placeholder="活动" />
+          <input
+            value={edit.badge}
+            onChange={(e) => setEdit({ ...edit, badge: e.target.value })}
+            placeholder="活动"
+          />
         </label>
-        <button className="baozi-button" disabled={busy || !edit.title.trim()} onClick={save}>
+        <button
+          className="baozi-button"
+          disabled={busy || !edit.title.trim()}
+          onClick={save}
+        >
           保存（默认 7 天有效）
         </button>
       </section>
@@ -91,10 +112,19 @@ export function StickyPromos({ flash }: { flash: (m: string) => void }) {
           {rows.map((r) => (
             <tr key={r.id}>
               <td>{r.id}</td>
-              <td>{r.url ? <a className="text-link" href={r.url}>{r.title}</a> : r.title}</td>
+              <td>
+                {r.url ? (
+                  <a className="text-link" href={r.url}>
+                    {r.title}
+                  </a>
+                ) : (
+                  r.title
+                )}
+              </td>
               <td>{r.badge ?? "—"}</td>
               <td className="text-xs">
-                {new Date(r.starts_at).toLocaleDateString()} ~ {new Date(r.ends_at).toLocaleDateString()}
+                {new Date(r.starts_at).toLocaleDateString()} ~{" "}
+                {new Date(r.ends_at).toLocaleDateString()}
               </td>
               <td>{r.enabled ? "是" : "否"}</td>
               <td className="text-right">
@@ -102,7 +132,10 @@ export function StickyPromos({ flash }: { flash: (m: string) => void }) {
                   className="cmgmt-act"
                   onClick={async () => {
                     try {
-                      await api.put(`/api/v1/admin/sticky-promos/${r.id}`, { title: r.title, enabled: !r.enabled });
+                      await api.put(`/api/v1/admin/sticky-promos/${r.id}`, {
+                        title: r.title,
+                        enabled: !r.enabled,
+                      });
                       flash(r.enabled ? "已停用" : "已启用");
                       load();
                     } catch {

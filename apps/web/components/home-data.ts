@@ -4,7 +4,13 @@ import type { Dict } from "@/i18n/zh-CN";
  *  HomeData 接口 + 字节格式化；各板块部件文件共用，避免运行时循环依赖。 */
 
 export interface HomeData {
-  news: { id: number; title: string; body: string; badge: string; date: string }[];
+  news: {
+    id: number;
+    title: string;
+    body: string;
+    badge: string;
+    date: string;
+  }[];
   attendance: {
     month: string;
     streak: number;
@@ -17,7 +23,12 @@ export interface HomeData {
     today: number;
     avg7: number;
     total30: number;
-    series: { date: string; ordinary: number; official: number; total: number }[];
+    series: {
+      date: string;
+      ordinary: number;
+      official: number;
+      total: number;
+    }[];
   };
   site_data: {
     users: number;

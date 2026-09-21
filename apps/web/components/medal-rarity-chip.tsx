@@ -1,4 +1,9 @@
-import { MEDAL_RARITY_TONES, medalRarityLabel, medalRarityTone, type MedalRarity } from "@/lib/medal-rarity";
+import {
+  MEDAL_RARITY_TONES,
+  medalRarityLabel,
+  medalRarityTone,
+  type MedalRarity,
+} from "@/lib/medal-rarity";
 
 /**
  * 稀有度角标：颜色由 globals.css 的 `.medal-rarity[data-tone=…]` 决定（走 token，随主题换肤）。
@@ -17,14 +22,23 @@ export function MedalRarityChip({
 }) {
   if (!value) return null;
   return (
-    <span className={`medal-rarity ${className}`.trim()} data-tone={medalRarityTone(list, value)}>
+    <span
+      className={`medal-rarity ${className}`.trim()}
+      data-tone={medalRarityTone(list, value)}
+    >
       {medalRarityLabel(list, value)}
     </span>
   );
 }
 
 /** 词表编辑处的即时预览（用未保存的 label/tone 渲染） */
-export function MedalRarityPreview({ label, tone }: { label: string; tone: string }) {
+export function MedalRarityPreview({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: string;
+}) {
   const safe = MEDAL_RARITY_TONES.some((t) => t.value === tone) ? tone : "sky";
   return (
     <span className="medal-rarity" data-tone={safe}>

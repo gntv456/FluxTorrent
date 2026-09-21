@@ -30,7 +30,11 @@ function posterArt(seed: number): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-function PosterCard({ item, doubanLabel, noRatingLabel }: {
+function PosterCard({
+  item,
+  doubanLabel,
+  noRatingLabel,
+}: {
   item: PosterItem;
   doubanLabel: string;
   noRatingLabel: string;
@@ -57,7 +61,9 @@ function PosterCard({ item, doubanLabel, noRatingLabel }: {
           {item.name}
         </p>
         <p className="mt-1 text-[12px] font-bold text-[#f5c518]">
-          {hasRating ? `★ ${doubanLabel} ${ratingNum.toFixed(1)}` : noRatingLabel}
+          {hasRating
+            ? `★ ${doubanLabel} ${ratingNum.toFixed(1)}`
+            : noRatingLabel}
         </p>
       </div>
     </Link>
@@ -73,7 +79,11 @@ export function LatestPosters({ items }: { items: PosterItem[] }) {
     <div className="poster-marquee-wrap overflow-x-hidden">
       <div
         className="poster-marquee flex w-max items-stretch gap-3 px-1 py-2"
-        style={{ "--marquee-duration": `${Math.max(items.length * 5, 20)}s` } as React.CSSProperties}
+        style={
+          {
+            "--marquee-duration": `${Math.max(items.length * 5, 20)}s`,
+          } as React.CSSProperties
+        }
       >
         {loop.map((t, i) => (
           <PosterCard

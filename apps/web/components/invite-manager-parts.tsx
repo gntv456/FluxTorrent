@@ -63,7 +63,11 @@ export function InviteList({
                         : "bg-cloud text-sub"
                   }`}
                 >
-                  {i.status === 0 ? t.unused : i.status === 1 ? t.used : t.expired}
+                  {i.status === 0
+                    ? t.unused
+                    : i.status === 1
+                      ? t.used
+                      : t.expired}
                 </span>
                 {i.status === 1 && i.used_by && (
                   <span className="ml-1 text-xs text-sub">→ {i.used_by}</span>

@@ -47,7 +47,11 @@ function LoginLangSwitcher({ current }: { current: Locale }) {
  *  拉取失败回落 i18n 字典（原教育站文案），保证登录页永不因后端故障而空版。 */
 function useSiteBrand() {
   const { dict } = useI18n();
-  const [brand, setBrand] = useState<{ tagline: string; desc: string; logo: string | null }>({
+  const [brand, setBrand] = useState<{
+    tagline: string;
+    desc: string;
+    logo: string | null;
+  }>({
     tagline: dict.login.introTagline,
     desc: dict.login.introDesc,
     logo: null,
@@ -55,9 +59,11 @@ function useSiteBrand() {
   useEffect(() => {
     let alive = true;
     api
-      .get<{ tagline?: string; site_logo?: string | null; site_desc?: string | null }>(
-        "/api/v1/site-profile",
-      )
+      .get<{
+        tagline?: string;
+        site_logo?: string | null;
+        site_desc?: string | null;
+      }>("/api/v1/site-profile")
       .then((p) => {
         if (!alive) return;
         setBrand({

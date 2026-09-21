@@ -9,7 +9,11 @@ import { hasBBCode, renderBBCode } from "@/lib/bbcode";
  *  超长简介默认折叠（馒头/阳光口径：展开按钮在底部） */
 export function Descr({ text }: { text: string }) {
   if (hasBBCode(text)) {
-    return <div className="whitespace-pre-wrap text-sm leading-relaxed">{renderBBCode(text)}</div>;
+    return (
+      <div className="whitespace-pre-wrap text-sm leading-relaxed">
+        {renderBBCode(text)}
+      </div>
+    );
   }
   const lines = text.split("\n");
   const out: React.ReactNode[] = [];
@@ -54,7 +58,15 @@ export function Descr({ text }: { text: string }) {
 }
 
 /** 规格网格单元（阳光站口径：数值 + 下方灰字说明） */
-export function Spec({ value, label, num }: { value: React.ReactNode; label: string; num?: boolean }) {
+export function Spec({
+  value,
+  label,
+  num,
+}: {
+  value: React.ReactNode;
+  label: string;
+  num?: boolean;
+}) {
   return (
     <div className="td-spec">
       <b className={num ? "num" : undefined}>{value}</b>
@@ -79,7 +91,9 @@ export function Fold({
     <details className="td-fold" open={open}>
       <summary>
         <h2>{title}</h2>
-        {count !== undefined && <span className="td-fold__count num">{count}</span>}
+        {count !== undefined && (
+          <span className="td-fold__count num">{count}</span>
+        )}
         <span className="td-fold__chev" aria-hidden />
       </summary>
       <div className="td-fold__body">{children}</div>
@@ -99,7 +113,10 @@ export function PosterBlock({
 }) {
   return (
     <div className="td-head__poster">
-      <span className="td-head__cat" style={{ background: categoryColor(categoryId) }}>
+      <span
+        className="td-head__cat"
+        style={{ background: categoryColor(categoryId) }}
+      >
         {category}
       </span>
       {poster ? (

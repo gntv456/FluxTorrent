@@ -6,7 +6,11 @@
  */
 
 import type { Dict } from "@/i18n/zh-CN";
-import type { SectionDictRow, SectionKindMeta, TorrentsSP } from "./torrents-utils";
+import type {
+  SectionDictRow,
+  SectionKindMeta,
+  TorrentsSP,
+} from "./torrents-utils";
 import type { TorrentChip } from "./torrents-chips";
 import { TorrentsAdvGroups } from "./torrents-adv-groups";
 import { TorrentsAdvGroupsTail } from "./torrents-adv-groups-tail";
@@ -23,11 +27,7 @@ export interface TorrentsSearchBoxProps {
   advancedOpen: boolean;
   nonSearchChips: number;
   showImdb: boolean;
-  withParam: (
-    sp: TorrentsSP,
-    key: string,
-    value: string | undefined,
-  ) => string;
+  withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
 }
 
 export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
@@ -53,7 +53,11 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
       <div className="tsb-bar">
         <label className="tsb-field tsb-field--scope">
           <span className="tsb-field__label">{t2.scope}</span>
-          <select name="search_area" defaultValue={sp.search_area ?? "0"} aria-label={t2.scope}>
+          <select
+            name="search_area"
+            defaultValue={sp.search_area ?? "0"}
+            aria-label={t2.scope}
+          >
             <option value="0">{t2.areaTitle}</option>
             <option value="1">{t2.areaDescr}</option>
             <option value="3">{t2.areaUploader}</option>
@@ -72,7 +76,11 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
         />
         <label className="tsb-field tsb-field--mode">
           <span className="tsb-field__label">{t2.mode}</span>
-          <select name="search_mode" defaultValue={sp.search_mode ?? "0"} aria-label={t2.mode}>
+          <select
+            name="search_mode"
+            defaultValue={sp.search_mode ?? "0"}
+            aria-label={t2.mode}
+          >
             <option value="0">{t2.modeAnd}</option>
             <option value="2">{t2.modeExact}</option>
           </select>
@@ -88,22 +96,35 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
           <span className="tsb-active__title">{t2.activeTitle}</span>
           <div className="tsb-active__list">
             {chips.map((c) => (
-              <a key={c.key} href={c.href} className="tsb-active__chip" title={t2.removeFilter}>
+              <a
+                key={c.key}
+                href={c.href}
+                className="tsb-active__chip"
+                title={t2.removeFilter}
+              >
                 <span>{c.text}</span>
-                <span className="tsb-active__x" aria-hidden="true">×</span>
+                <span className="tsb-active__x" aria-hidden="true">
+                  ×
+                </span>
               </a>
             ))}
           </div>
-          <a href="/torrents" className="tsb-active__clear">{t2.clearAll}</a>
+          <a href="/torrents" className="tsb-active__clear">
+            {t2.clearAll}
+          </a>
         </div>
       )}
 
       {/* ── 高级搜索（原生 details 折叠；有筛选条件时默认展开；0118 分组重排） ── */}
       <details className="tsb-adv" open={advancedOpen}>
         <summary className="tsb-adv__summary">
-          <span className="tsb-adv__icon" aria-hidden="true">⚙</span>
+          <span className="tsb-adv__icon" aria-hidden="true">
+            ⚙
+          </span>
           <span>{t2.advanced}</span>
-          {nonSearchChips > 0 && <span className="tsb-adv__badge">{nonSearchChips}</span>}
+          {nonSearchChips > 0 && (
+            <span className="tsb-adv__badge">{nonSearchChips}</span>
+          )}
           <span className="tsb-chevron" aria-hidden="true" />
         </summary>
         <div className="tsb-adv__body">
@@ -133,8 +154,12 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
 
           {/* 面板操作条 */}
           <div className="tsb-actions">
-            <a href="/torrents" className="tsb-reset">{t2.advReset}</a>
-            <button type="submit" className="baozi-button">{t2.advApply}</button>
+            <a href="/torrents" className="tsb-reset">
+              {t2.advReset}
+            </a>
+            <button type="submit" className="baozi-button">
+              {t2.advApply}
+            </button>
           </div>
         </div>
       </details>

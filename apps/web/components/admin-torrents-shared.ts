@@ -48,8 +48,16 @@ export interface RecordRow {
   [k: string]: unknown;
 }
 
-export interface TagRow { id: number; name: string; kind: string; enabled: boolean }
-export interface CatRow { id: number; name: string }
+export interface TagRow {
+  id: number;
+  name: string;
+  kind: string;
+  enabled: boolean;
+}
+export interface CatRow {
+  id: number;
+  name: string;
+}
 
 export interface LoginRow {
   id: number;
@@ -64,7 +72,12 @@ export interface LoginRow {
 
 export const APPROVAL = ["待审", "通过", "拒绝", "已删除"];
 export const PROMO_LABEL: Record<string, string> = {
-  free: "免费", x2: "双倍", x2free: "2xFree", half: "半价", x2half: "2x半价", p30: "30%",
+  free: "免费",
+  x2: "双倍",
+  x2free: "2xFree",
+  half: "半价",
+  x2half: "2x半价",
+  p30: "30%",
 };
 
 export function fmtBytes(n: number): string {

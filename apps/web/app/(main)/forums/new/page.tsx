@@ -31,9 +31,13 @@ export default async function NewTopicPage() {
               >
                 <span>
                   <span className="font-bold text-ink">{f.name}</span>
-                  {f.descr && <span className="ml-2 text-sm text-sub">{f.descr}</span>}
+                  {f.descr && (
+                    <span className="ml-2 text-sm text-sub">{f.descr}</span>
+                  )}
                 </span>
-                <span className="text-sm text-sky">{dict.forums.newTopic} →</span>
+                <span className="text-sm text-sky">
+                  {dict.forums.newTopic} →
+                </span>
               </Link>
             </li>
           ))}

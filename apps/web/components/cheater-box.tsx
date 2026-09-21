@@ -83,15 +83,24 @@ export function CheaterBox() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={`${r.user_id}-${r.torrent_id ?? "x"}`} className="border-b border-dashed border-[var(--border-soft)]">
+                <tr
+                  key={`${r.user_id}-${r.torrent_id ?? "x"}`}
+                  className="border-b border-dashed border-[var(--border-soft)]"
+                >
                   <td className={td}>
-                    <a className="font-bold text-[var(--baozi-orange-dark)] hover:underline" href={`/users/${r.user_id}`}>
+                    <a
+                      className="font-bold text-[var(--baozi-orange-dark)] hover:underline"
+                      href={`/users/${r.user_id}`}
+                    >
                       {r.username}
                     </a>
                   </td>
                   <td className={`${td} max-w-[320px] truncate`}>
                     {r.torrent_id ? (
-                      <a className="hover:underline" href={`/torrent/${r.torrent_id}`}>
+                      <a
+                        className="hover:underline"
+                        href={`/torrent/${r.torrent_id}`}
+                      >
                         {r.name ?? `#${r.torrent_id}`}
                       </a>
                     ) : (
@@ -100,7 +109,9 @@ export function CheaterBox() {
                   </td>
                   <td className={td}>{fmtSpeed(r.upspeed)}</td>
                   <td className={td}>{fmtBytes(r.uploaded_delta)}</td>
-                  <td className={`${td} whitespace-nowrap text-xs text-[var(--text-faint)]`}>
+                  <td
+                    className={`${td} whitespace-nowrap text-xs text-[var(--text-faint)]`}
+                  >
                     {new Date(r.announced_at).toLocaleString(locale)}
                   </td>
                 </tr>

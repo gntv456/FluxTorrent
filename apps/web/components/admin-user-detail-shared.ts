@@ -38,9 +38,29 @@ export interface Detail {
   attendance_days: number;
 }
 
-export interface SparkRow { id: number; username: string; amount: number; kind: string; balance_after: number; created_at: string }
-export interface LoginRow { id: number; username: string; ip: string; ok: boolean; created_at: string }
-export interface SeedRow { torrent_id: number; name: string; size: number; seeded_seconds: number; seeding: boolean; hr_flag: boolean }
+export interface SparkRow {
+  id: number;
+  username: string;
+  amount: number;
+  kind: string;
+  balance_after: number;
+  created_at: string;
+}
+export interface LoginRow {
+  id: number;
+  username: string;
+  ip: string;
+  ok: boolean;
+  created_at: string;
+}
+export interface SeedRow {
+  torrent_id: number;
+  name: string;
+  size: number;
+  seeded_seconds: number;
+  seeding: boolean;
+  hr_flag: boolean;
+}
 
 export const STATUS_LABELS = ["正常", "禁言", "封禁"];
 export const PER_PAGE = 15;

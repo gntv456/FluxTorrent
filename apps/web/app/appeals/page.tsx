@@ -80,7 +80,9 @@ export default function AppealsPage() {
       if (guest) refreshCaptcha();
     } catch (e2) {
       setMsg(
-        e2 instanceof ApiError ? (dict.errors[e2.code] ?? e2.message) : dict.common.networkError,
+        e2 instanceof ApiError
+          ? (dict.errors[e2.code] ?? e2.message)
+          : dict.common.networkError,
       );
       if (guest) refreshCaptcha();
     } finally {
@@ -126,12 +128,16 @@ export default function AppealsPage() {
             ))}
           </select>
           {guest ? (
-            <span className="text-[11px] text-sub">{dict.appeals.guestKindLocked}</span>
+            <span className="text-[11px] text-sub">
+              {dict.appeals.guestKindLocked}
+            </span>
           ) : null}
         </label>
         {guest ? (
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-sub">{dict.appeals.bannedUsername}</span>
+            <span className="text-sm text-sub">
+              {dict.appeals.bannedUsername}
+            </span>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -203,8 +209,12 @@ export default function AppealsPage() {
       {!guest ? (
         <section className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
           <h2 className="font-display text-lg">{dict.appeals.myRecords}</h2>
-          {rows === null && <p className="py-2 text-sm text-sub">{dict.appeals.loading}</p>}
-          {rows?.length === 0 && <p className="py-2 text-sm text-sub">{dict.appeals.empty}</p>}
+          {rows === null && (
+            <p className="py-2 text-sm text-sub">{dict.appeals.loading}</p>
+          )}
+          {rows?.length === 0 && (
+            <p className="py-2 text-sm text-sub">{dict.appeals.empty}</p>
+          )}
           {rows && rows.length > 0 && (
             <ul className="flex flex-col divide-y divide-line">
               {rows.map((r) => (
@@ -215,10 +225,14 @@ export default function AppealsPage() {
                     </span>
                     <span
                       className={`sticker ${
-                        r.status === "open" ? "bg-sun text-ink" : "bg-mint text-white"
+                        r.status === "open"
+                          ? "bg-sun text-ink"
+                          : "bg-mint text-white"
                       }`}
                     >
-                      {r.status === "open" ? dict.appeals.statusOpen : dict.appeals.statusDone}
+                      {r.status === "open"
+                        ? dict.appeals.statusOpen
+                        : dict.appeals.statusDone}
                     </span>
                   </div>
                   <p className="mt-1 text-sm whitespace-pre-wrap">{r.body}</p>

@@ -59,46 +59,71 @@ export function BankCard({ loginToView }: { loginToView: string }) {
 
   const deposit = () =>
     act(async () => {
-      await api.post("/api/v1/bank/deposit", { amount: Number(amount), term_days: term });
+      await api.post("/api/v1/bank/deposit", {
+        amount: Number(amount),
+        term_days: term,
+      });
       setAmount("");
       return "✓";
     });
   const withdraw = (depositId: number) =>
     act(async () => {
-      const r = await api.post<{ penalty: number; matured: boolean }>("/api/v1/bank/withdraw", {
-        deposit_id: depositId,
-      });
-      return r.matured ? "✓" : dict.bank.penaltyTaken.replace("{n}", fmt(r.penalty)).replace("{magic}", currency);
+      const r = await api.post<{ penalty: number; matured: boolean }>(
+        "/api/v1/bank/withdraw",
+        {
+          deposit_id: depositId,
+        },
+      );
+      return r.matured
+        ? "✓"
+        : dict.bank.penaltyTaken
+            .replace("{n}", fmt(r.penalty))
+            .replace("{magic}", currency);
     });
   const demandIn = () =>
     act(async () => {
-      await api.post("/api/v1/bank/demand/deposit", { amount: Number(demandAmount) });
+      await api.post("/api/v1/bank/demand/deposit", {
+        amount: Number(demandAmount),
+      });
       setDemandAmount("");
       return "✓";
     });
   const demandOut = () =>
     act(async () => {
-      await api.post("/api/v1/bank/demand/withdraw", { amount: Number(demandAmount) });
+      await api.post("/api/v1/bank/demand/withdraw", {
+        amount: Number(demandAmount),
+      });
       setDemandAmount("");
       return "✓";
     });
   const loanApply = () =>
     act(async () => {
-      await api.post("/api/v1/bank/loan/apply", { amount: Number(loanAmount), term_days: loanTerm });
+      await api.post("/api/v1/bank/loan/apply", {
+        amount: Number(loanAmount),
+        term_days: loanTerm,
+      });
       setLoanAmount("");
       return "✓";
     });
   const loanRepay = () =>
     act(async () => {
       const r = await api.post<{ paid: number }>("/api/v1/bank/loan/repay", {});
-      return dict.bank.repaid.replace("{n}", fmt(r.paid)).replace("{magic}", currency);
+      return dict.bank.repaid
+        .replace("{n}", fmt(r.paid))
+        .replace("{magic}", currency);
     });
 
   if (ov === null) {
     return deposits.length > 0 ? (
       <ul className="flex flex-col gap-2">
         {deposits.map((d) => (
-          <DepositRow key={d.id} d={d} dict={dict} busy={busy} onWithdraw={withdraw} />
+          <DepositRow
+            key={d.id}
+            d={d}
+            dict={dict}
+            busy={busy}
+            onWithdraw={withdraw}
+          />
         ))}
       </ul>
     ) : (
@@ -109,7 +134,10 @@ export function BankCard({ loginToView }: { loginToView: string }) {
   return (
     <div className="flex flex-col gap-4">
       {msg && (
-        <p role="alert" className="rounded-[var(--r-sm)] bg-mint/20 px-3 py-2 text-sm text-sky-deep">
+        <p
+          role="alert"
+          className="rounded-[var(--r-sm)] bg-mint/20 px-3 py-2 text-sm text-sky-deep"
+        >
           {msg}
         </p>
       )}
@@ -118,13 +146,16 @@ export function BankCard({ loginToView }: { loginToView: string }) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2 text-xs text-sub shadow-[var(--shadow-card)]">
         <span className="font-bold text-ink">{dict.bank.siteOverview}</span>
         <span>
-          {dict.bank.siteDemand}: {fmt(ov.site.demand_total)}（{ov.site.demand_count}）
+          {dict.bank.siteDemand}: {fmt(ov.site.demand_total)}（
+          {ov.site.demand_count}）
         </span>
         <span>
-          {dict.bank.siteFixed}: {fmt(ov.site.fixed_active_total)}（{ov.site.fixed_count}）
+          {dict.bank.siteFixed}: {fmt(ov.site.fixed_active_total)}（
+          {ov.site.fixed_count}）
         </span>
         <span>
-          {dict.bank.siteLoan}: {fmt(ov.site.loan_outstanding_total)}（{ov.site.loan_count}）
+          {dict.bank.siteLoan}: {fmt(ov.site.loan_outstanding_total)}（
+          {ov.site.loan_count}）
         </span>
         <span>
           {dict.bank.siteTodayRecords}: {fmt(ov.site.today_interest_records)}
@@ -132,7 +163,9 @@ export function BankCard({ loginToView }: { loginToView: string }) {
         <span
           className={`ml-auto sticker ${ov.site.settle_healthy ? "bg-mint/40 text-ink" : "bg-sun/70 text-ink"}`}
         >
-          {ov.site.settle_healthy ? dict.bank.settleOk : dict.bank.settlePending}
+          {ov.site.settle_healthy
+            ? dict.bank.settleOk
+            : dict.bank.settlePending}
         </span>
       </div>
 
@@ -140,7 +173,10 @@ export function BankCard({ loginToView }: { loginToView: string }) {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label={dict.bank.totalAsset} value={fmt(ov.total_asset)} />
         <Stat label={dict.bank.netAsset} value={fmt(ov.net_asset)} />
-        <Stat label={dict.bank.sparkBalance.replace("{magic}", currency)} value={fmt(ov.spark_balance)} />
+        <Stat
+          label={dict.bank.sparkBalance.replace("{magic}", currency)}
+          value={fmt(ov.spark_balance)}
+        />
         <Stat label={dict.bank.demandBalance} value={fmt(ov.demand.balance)} />
         <Stat
           label={dict.bank.fixedActive}
@@ -186,7 +222,13 @@ export function BankCard({ loginToView }: { loginToView: string }) {
       {deposits.length > 0 && (
         <ul className="flex flex-col gap-2">
           {deposits.map((d) => (
-            <DepositRow key={d.id} d={d} dict={dict} busy={busy} onWithdraw={withdraw} />
+            <DepositRow
+              key={d.id}
+              d={d}
+              dict={dict}
+              busy={busy}
+              onWithdraw={withdraw}
+            />
           ))}
         </ul>
       )}

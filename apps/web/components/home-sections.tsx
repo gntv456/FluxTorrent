@@ -9,10 +9,7 @@ import { FunBox } from "@/components/fun-box";
 import { AttendanceCard } from "@/components/home-attendance";
 import { SiteDataCard } from "@/components/home-site-data";
 import { ResourceStatsPanel } from "@/components/home-resource-stats";
-import {
-  effectiveSpan,
-  parseHomeLayout,
-} from "@/components/home-layout";
+import { effectiveSpan, parseHomeLayout } from "@/components/home-layout";
 import type { HomeData } from "@/components/home-data";
 
 /** 首页板块（复刻参考站 index.php）：
@@ -43,8 +40,15 @@ export function HomeSections() {
     if (checkinBusy) return;
     setCheckinBusy(true);
     try {
-      const r = await api.post<{ reward: number; streak: number }>("/api/v1/attendance/checkin");
-      setCheckinMsg(dict.my.checkinOk.replace("{reward}", String(r.reward)).replace("{streak}", String(r.streak)).replace("{magic}", currency));
+      const r = await api.post<{ reward: number; streak: number }>(
+        "/api/v1/attendance/checkin",
+      );
+      setCheckinMsg(
+        dict.my.checkinOk
+          .replace("{reward}", String(r.reward))
+          .replace("{streak}", String(r.streak))
+          .replace("{magic}", currency),
+      );
       load();
     } catch {
       setCheckinMsg(dict.home2.checkinFail);
@@ -57,7 +61,8 @@ export function HomeSections() {
   if (!data) return <p className="text-sm text-sub">{dict.my.loading}</p>;
 
   const [headline, ...rest] = data.news;
-  const headlineBodyPlain = headline?.body.replace(/<[^>]+>/g, "").slice(0, 160) ?? "";
+  const headlineBodyPlain =
+    headline?.body.replace(/<[^>]+>/g, "").slice(0, 160) ?? "";
 
   const layout = parseHomeLayout(data.home_layout);
   // 闭包内 TS 判窄失效：固化非空引用供 renderSection 使用
@@ -133,7 +138,10 @@ export function HomeSections() {
         return <SiteDataCard home={home} t={t} dict={dict} />;
       case "lucky_draw":
         return (
-          <aside className="baozi-panel home-lucky-draw" aria-label={t.luckyTitle}>
+          <aside
+            className="baozi-panel home-lucky-draw"
+            aria-label={t.luckyTitle}
+          >
             <header className="baozi-panel__head">
               <h2>
                 <span aria-hidden="true">🎰</span> {t.luckyTitle}
@@ -143,10 +151,13 @@ export function HomeSections() {
             <ul className="home-lucky-draw__list">
               {home.lucky_draw.map((l, i) => (
                 <li key={i}>
-                  <b className="rainbow">{l.user}</b> {t.got} {dict.common.spark.replace("{magic}", currency)} {l.amount}
+                  <b className="rainbow">{l.user}</b> {t.got}{" "}
+                  {dict.common.spark.replace("{magic}", currency)} {l.amount}
                 </li>
               ))}
-              {home.lucky_draw.length === 0 && <li className="text-sub">{t.luckyEmpty}</li>}
+              {home.lucky_draw.length === 0 && (
+                <li className="text-sub">{t.luckyEmpty}</li>
+              )}
             </ul>
           </aside>
         );
@@ -164,7 +175,13 @@ export function HomeSections() {
             </h2>
             <p className="home-native-modules__text">
               {home.friend_links.map((l) => (
-                <a key={l.url} href={l.url} title={l.title ?? l.name} target="_blank" rel="noreferrer">
+                <a
+                  key={l.url}
+                  href={l.url}
+                  title={l.title ?? l.name}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   {l.name}
                 </a>
               ))}
@@ -184,7 +201,10 @@ export function HomeSections() {
         const node = renderSection(item.key);
         if (!node) return null;
         return (
-          <div key={item.key} className={`home-cell home-cell--span-${effectiveSpan(item)}`}>
+          <div
+            key={item.key}
+            className={`home-cell home-cell--span-${effectiveSpan(item)}`}
+          >
             {node}
           </div>
         );

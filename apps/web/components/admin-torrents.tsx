@@ -27,14 +27,16 @@ export function AdminTorrents() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2" role="tablist">
-        {([
-          ["torrents", "种子管理"],
-          ["deny", "拒绝原因"],
-          ["ops", "种子操作记录"],
-          ["spark", `${currency}记录`],
-          ["buys", "种子购买"],
-          ["logins", "登录记录"],
-        ] as [SubTab, string][]).map(([k, label]) => (
+        {(
+          [
+            ["torrents", "种子管理"],
+            ["deny", "拒绝原因"],
+            ["ops", "种子操作记录"],
+            ["spark", `${currency}记录`],
+            ["buys", "种子购买"],
+            ["logins", "登录记录"],
+          ] as [SubTab, string][]
+        ).map(([k, label]) => (
           <button
             key={k}
             role="tab"
@@ -46,12 +48,40 @@ export function AdminTorrents() {
           </button>
         ))}
       </div>
-      {msg && <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
+      {msg && (
+        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+          {msg}
+        </p>
+      )}
       {sub === "torrents" && <TorrentList flash={flash} />}
       {sub === "deny" && <DenyReasons flash={flash} />}
       {sub === "ops" && <OpLogs />}
-      {sub === "spark" && <RecordQuery title={`${currency}记录`} endpoint="/api/v1/admin/spark-logs" columns={[["username", "用户"], ["amount", "数额"], ["kind", "类型"], ["balance_after", "余额"], ["created_at", "时间"]]} />}
-      {sub === "buys" && <RecordQuery title="种子购买记录" endpoint="/api/v1/admin/torrent-buys" columns={[["username", "用户"], ["kind", "类型"], ["ref_id", "种子ID"], ["amount", currency], ["created_at", "时间"]]} />}
+      {sub === "spark" && (
+        <RecordQuery
+          title={`${currency}记录`}
+          endpoint="/api/v1/admin/spark-logs"
+          columns={[
+            ["username", "用户"],
+            ["amount", "数额"],
+            ["kind", "类型"],
+            ["balance_after", "余额"],
+            ["created_at", "时间"],
+          ]}
+        />
+      )}
+      {sub === "buys" && (
+        <RecordQuery
+          title="种子购买记录"
+          endpoint="/api/v1/admin/torrent-buys"
+          columns={[
+            ["username", "用户"],
+            ["kind", "类型"],
+            ["ref_id", "种子ID"],
+            ["amount", currency],
+            ["created_at", "时间"],
+          ]}
+        />
+      )}
       {sub === "logins" && <LoginLogs />}
     </div>
   );

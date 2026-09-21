@@ -108,7 +108,10 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
         </div>
         <div className="task-card-grid">
           {tierTasks.map((task) => (
-            <article key={task.id} className={`task-tier-card task-tier-card--${task.tier}`}>
+            <article
+              key={task.id}
+              className={`task-tier-card task-tier-card--${task.tier}`}
+            >
               <header>
                 <h3>{tierLabel(task.tier)}</h3>
                 <span>{task.subtitle}</span>
@@ -116,15 +119,21 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
               <dl>
                 <div>
                   <dt>{t.realUpload}</dt>
-                  <dd className="num">{fmtBytes(task.metric.upload_delta ?? 0)}</dd>
+                  <dd className="num">
+                    {fmtBytes(task.metric.upload_delta ?? 0)}
+                  </dd>
                 </div>
                 <div>
                   <dt>{t.realDownload}</dt>
-                  <dd className="num">{fmtBytes(task.metric.download_delta ?? 0)}</dd>
+                  <dd className="num">
+                    {fmtBytes(task.metric.download_delta ?? 0)}
+                  </dd>
                 </div>
                 <div>
                   <dt>{t.seedPoints}</dt>
-                  <dd className="num">{(task.metric.seed_points_delta ?? 0).toLocaleString()}</dd>
+                  <dd className="num">
+                    {(task.metric.seed_points_delta ?? 0).toLocaleString()}
+                  </dd>
                 </div>
                 <div>
                   <dt>{t.duration}</dt>
@@ -226,7 +235,12 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
                   <dd className="num">{s.stock}</dd>
                 </div>
               </dl>
-              <button type="button" className="baozi-button" disabled title={t.shopDisabled}>
+              <button
+                type="button"
+                className="baozi-button"
+                disabled
+                title={t.shopDisabled}
+              >
                 {t.shopBuy}
               </button>
             </article>

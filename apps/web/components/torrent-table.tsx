@@ -118,15 +118,25 @@ async function TorrentTr({
               📌
             </span>
           )}
-          <Link href={`/torrent/${id}`} className="torrents-name" title={t.name}>
+          <Link
+            href={`/torrent/${id}`}
+            className="torrents-name"
+            title={t.name}
+          >
             <b>{t.name}</b>
           </Link>
-          {isNew && <span className="torrents-new">{dict.torrents.newTag ?? "新"}</span>}
+          {isNew && (
+            <span className="torrents-new">{dict.torrents.newTag ?? "新"}</span>
+          )}
           {/* 促销状态 + 剩余时间：紧跟种子名（好学站口径） */}
           {promo && (
             <span
               className={`torrents-promo${promo.key === "free" ? " torrents-promo--free" : ""}`}
-              title={left ? `${dict.promotion[promo.key]} · ${left}` : dict.promotion[promo.key]}
+              title={
+                left
+                  ? `${dict.promotion[promo.key]} · ${left}`
+                  : dict.promotion[promo.key]
+              }
             >
               {dict.promotion[promo.key]}
             </span>
@@ -145,8 +155,14 @@ async function TorrentTr({
         {/* 第三行：标签在前、发布者在后（好学站标签色块 + 上传者口径） */}
         <div className="torrents-meta">
           <span className="torrents-tags">
-            {t.official && <span className="torrents-tag torrents-tag--official">官方</span>}
-            {t.sticky && <span className="torrents-tag torrents-tag--sticky">{dict.torrent.sticky}</span>}
+            {t.official && (
+              <span className="torrents-tag torrents-tag--official">官方</span>
+            )}
+            {t.sticky && (
+              <span className="torrents-tag torrents-tag--sticky">
+                {dict.torrent.sticky}
+              </span>
+            )}
           </span>
           {t.anonymous ? (
             <span className="text-sub">{dict.torrent.anonymous}</span>
@@ -169,7 +185,10 @@ async function TorrentTr({
       {extra}
       {/* 行为列：下载 + ⋮ 下拉（收藏/编辑/删除，好学站 staff 菜单口径） */}
       <td className="torrents-td-actions">
-        <TorrentActions torrentId={id} downloadLabel={dict.torrents.download ?? "下载本种"} />
+        <TorrentActions
+          torrentId={id}
+          downloadLabel={dict.torrents.download ?? "下载本种"}
+        />
       </td>
     </tr>
   );

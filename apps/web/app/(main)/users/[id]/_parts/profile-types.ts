@@ -69,7 +69,12 @@ export interface ProfileData {
   inviter_name: string | null;
   inviter_id: number | null;
   client_agent: string | null;
-  worn_medals: { id: number; name: string; description: string | null; asset_ref: string | null }[];
+  worn_medals: {
+    id: number;
+    name: string;
+    description: string | null;
+    asset_ref: string | null;
+  }[];
   avatar_frame_css: string | null;
   avatar_frame_image: string | null;
   achievements: number;

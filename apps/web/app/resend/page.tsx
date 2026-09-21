@@ -17,13 +17,18 @@ export default function ResendPage() {
     setBusy(true);
     setMsg(null);
     try {
-      const r = await api.post<{ message: string }>("/api/v1/auth/confirm/resend", {
-        email: email.trim(),
-      });
+      const r = await api.post<{ message: string }>(
+        "/api/v1/auth/confirm/resend",
+        {
+          email: email.trim(),
+        },
+      );
       setMsg(r.message);
     } catch (err) {
       setMsg(
-        err instanceof ApiError ? (dict.errors[err.code] ?? err.message) : dict.common.networkError,
+        err instanceof ApiError
+          ? (dict.errors[err.code] ?? err.message)
+          : dict.common.networkError,
       );
     } finally {
       setBusy(false);

@@ -47,7 +47,9 @@ const RECOMMENDED_SPAN: Record<string, number> = {
 
 /** 解析后端 home_layout：结构/键非法整体回退默认（后台保存端点已强校验，
  *  这里兜底手改库或历史脏数据） */
-export function parseHomeLayout(raw: string | undefined | null): HomeLayoutItem[] {
+export function parseHomeLayout(
+  raw: string | undefined | null,
+): HomeLayoutItem[] {
   if (!raw || !raw.trim()) return DEFAULT_HOME_LAYOUT;
   try {
     const arr = JSON.parse(raw) as { key?: string; span?: number }[];
@@ -56,10 +58,14 @@ export function parseHomeLayout(raw: string | undefined | null): HomeLayoutItem[
     const seen = new Set<string>();
     for (const it of arr) {
       if (!it?.key || typeof it.key !== "string") return DEFAULT_HOME_LAYOUT;
-      if (!(HOME_SECTION_KEYS as readonly string[]).includes(it.key)) return DEFAULT_HOME_LAYOUT;
+      if (!(HOME_SECTION_KEYS as readonly string[]).includes(it.key))
+        return DEFAULT_HOME_LAYOUT;
       if (seen.has(it.key)) return DEFAULT_HOME_LAYOUT;
       seen.add(it.key);
-      const span = typeof it.span === "number" && [0, 1, 2, 3].includes(it.span) ? it.span : 0;
+      const span =
+        typeof it.span === "number" && [0, 1, 2, 3].includes(it.span)
+          ? it.span
+          : 0;
       items.push({ key: it.key, span });
     }
     return items;

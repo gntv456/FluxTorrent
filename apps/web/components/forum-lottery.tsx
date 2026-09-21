@@ -79,7 +79,9 @@ export function LotteryWidget({
           🎁 {dict.forums.lotTitle}
           {!open && (
             <span className="ml-2 rounded-full bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] text-sub">
-              {lottery.status === "drawn" ? dict.forums.lotDrawn : dict.forums.lotCancelled}
+              {lottery.status === "drawn"
+                ? dict.forums.lotDrawn
+                : dict.forums.lotCancelled}
             </span>
           )}
         </span>
@@ -146,10 +148,17 @@ export function LotteryWidget({
       )}
       {lottery.status === "drawn" && lottery.my_won && (
         <p className="mt-2 rounded-[var(--r-sm)] bg-[var(--coral-soft)] px-3 py-1.5 text-sm font-bold text-coral">
-          🎉 {dict.forums.lotYouWon.replace("{p}", String(lottery.prize)).replace("{magic}", currency)}
+          🎉{" "}
+          {dict.forums.lotYouWon
+            .replace("{p}", String(lottery.prize))
+            .replace("{magic}", currency)}
         </p>
       )}
-      {err && <p role="alert" className="mt-2 text-xs text-danger">{err}</p>}
+      {err && (
+        <p role="alert" className="mt-2 text-xs text-danger">
+          {err}
+        </p>
+      )}
     </div>
   );
 }

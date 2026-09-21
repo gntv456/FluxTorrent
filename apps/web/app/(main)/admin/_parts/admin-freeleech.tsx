@@ -64,7 +64,11 @@ export function FreeleechPanel() {
       setMsg("促销已生效");
       load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
+      setMsg(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : a.actionFailed,
+      );
     } finally {
       setBusy(false);
     }
@@ -77,7 +81,11 @@ export function FreeleechPanel() {
       setMsg("已取消");
       load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
+      setMsg(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : a.actionFailed,
+      );
     } finally {
       setBusy(false);
     }
@@ -92,7 +100,11 @@ export function FreeleechPanel() {
       <p className="mb-3 text-xs text-sub">
         对全站或指定范围种子设置免费 / 双倍 / 半价状态，到期自动失效。
       </p>
-      {msg && <p className="mb-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs">{msg}</p>}
+      {msg && (
+        <p className="mb-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs">
+          {msg}
+        </p>
+      )}
       <div className="baozi-wide-table-scroll">
         <table className="nexus-table text-xs">
           <thead>
@@ -145,17 +157,29 @@ export function FreeleechPanel() {
       <div className="mt-4 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">类型</span>
-          <select value={kind} onChange={(e) => setKind(e.target.value)} className={inputCls}>
+          <select
+            value={kind}
+            onChange={(e) => setKind(e.target.value)}
+            className={inputCls}
+          >
             {PROMO_KINDS.map(([k, label]) => (
-              <option key={k} value={k}>{label}</option>
+              <option key={k} value={k}>
+                {label}
+              </option>
             ))}
           </select>
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">范围</span>
-          <select value={scope} onChange={(e) => setScope(e.target.value)} className={inputCls}>
+          <select
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+            className={inputCls}
+          >
             {PROMO_SCOPES.map(([s, label]) => (
-              <option key={s} value={s}>{label}</option>
+              <option key={s} value={s}>
+                {label}
+              </option>
             ))}
           </select>
         </label>
@@ -203,10 +227,17 @@ export function ClearCachePanel() {
   async function run() {
     setBusy(true);
     try {
-      const r = await api.post<{ cleared: number }>("/api/v1/admin/clearcache", {});
+      const r = await api.post<{ cleared: number }>(
+        "/api/v1/admin/clearcache",
+        {},
+      );
       setMsg(`已清除 ${r.cleared} 个缓存键`);
     } catch (e) {
-      setMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : a.actionFailed);
+      setMsg(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : a.actionFailed,
+      );
     } finally {
       setBusy(false);
     }
@@ -218,7 +249,11 @@ export function ClearCachePanel() {
       <p className="mb-3 text-xs text-sub">
         清除运行期缓存键（限流计数等）。不影响数据库数据，站点会自动重建缓存。
       </p>
-      {msg && <p className="mb-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs">{msg}</p>}
+      {msg && (
+        <p className="mb-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs">
+          {msg}
+        </p>
+      )}
       <button
         disabled={busy}
         onClick={run}

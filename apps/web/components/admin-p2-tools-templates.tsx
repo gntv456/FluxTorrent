@@ -17,11 +17,23 @@ interface MessageTemplate {
 
 export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
   const [rows, setRows] = useState<MessageTemplate[]>([]);
-  const [editing, setEditing] = useState<{ id: number; subject: string; body: string } | null>(null);
-  const [preview, setPreview] = useState<{ subject: string; body: string } | null>(null);
+  const [editing, setEditing] = useState<{
+    id: number;
+    subject: string;
+    body: string;
+  } | null>(null);
+  const [preview, setPreview] = useState<{
+    subject: string;
+    body: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   // 第八轮 P2-11：新增模板
-  const [creating, setCreating] = useState<{ scene_key: string; subject: string; body: string; note: string } | null>(null);
+  const [creating, setCreating] = useState<{
+    scene_key: string;
+    subject: string;
+    body: string;
+    note: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -74,10 +86,18 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
 
   const doPreview = async (sceneKey: string) => {
     try {
-      const r = await api.post<{ subject: string; body: string }>("/api/v1/admin/message-templates/preview", {
-        scene_key: sceneKey,
-        vars: { username: "示例用户", torrent_name: "示例种子", reason: "重复发布", count: "2" },
-      });
+      const r = await api.post<{ subject: string; body: string }>(
+        "/api/v1/admin/message-templates/preview",
+        {
+          scene_key: sceneKey,
+          vars: {
+            username: "示例用户",
+            torrent_name: "示例种子",
+            reason: "重复发布",
+            count: "2",
+          },
+        },
+      );
       setPreview(r);
     } catch (e) {
       flash(e instanceof ApiError ? e.message : "预览失败");
@@ -89,7 +109,9 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
       <div className="flex justify-end">
         <button
           className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white"
-          onClick={() => setCreating({ scene_key: "", subject: "", body: "", note: "" })}
+          onClick={() =>
+            setCreating({ scene_key: "", subject: "", body: "", note: "" })
+          }
         >
           ＋ 新增模板
         </button>
@@ -99,25 +121,58 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
           <h2 className="mb-2 text-base font-bold text-ink">新增模板</h2>
           <label>
             场景键（小写字母/数字/下划线，如 contest_win）
-            <input value={creating.scene_key} onChange={(e) => setCreating({ ...creating, scene_key: e.target.value })} />
+            <input
+              value={creating.scene_key}
+              onChange={(e) =>
+                setCreating({ ...creating, scene_key: e.target.value })
+              }
+            />
           </label>
           <label>
             主题
-            <input value={creating.subject} onChange={(e) => setCreating({ ...creating, subject: e.target.value })} />
+            <input
+              value={creating.subject}
+              onChange={(e) =>
+                setCreating({ ...creating, subject: e.target.value })
+              }
+            />
           </label>
           <label>
             正文（支持 {"{{username}}"} 等占位符）
-            <textarea rows={5} value={creating.body} onChange={(e) => setCreating({ ...creating, body: e.target.value })} />
+            <textarea
+              rows={5}
+              value={creating.body}
+              onChange={(e) =>
+                setCreating({ ...creating, body: e.target.value })
+              }
+            />
           </label>
           <label>
             说明（可选）
-            <input value={creating.note} onChange={(e) => setCreating({ ...creating, note: e.target.value })} />
+            <input
+              value={creating.note}
+              onChange={(e) =>
+                setCreating({ ...creating, note: e.target.value })
+              }
+            />
           </label>
           <div className="flex gap-2">
-            <button className="baozi-button" disabled={busy || !creating.scene_key.trim() || !creating.subject.trim() || !creating.body.trim()} onClick={create}>
+            <button
+              className="baozi-button"
+              disabled={
+                busy ||
+                !creating.scene_key.trim() ||
+                !creating.subject.trim() ||
+                !creating.body.trim()
+              }
+              onClick={create}
+            >
               创建
             </button>
-            <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold" onClick={() => setCreating(null)}>
+            <button
+              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              onClick={() => setCreating(null)}
+            >
               取消
             </button>
           </div>
@@ -125,20 +180,34 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
       )}
       {editing && (
         <section className="baozi-panel cmgmt-form p-4">
-          <h2 className="mb-2 text-base font-bold text-ink">编辑模板 #{editing.id}</h2>
+          <h2 className="mb-2 text-base font-bold text-ink">
+            编辑模板 #{editing.id}
+          </h2>
           <label>
             主题
-            <input value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} />
+            <input
+              value={editing.subject}
+              onChange={(e) =>
+                setEditing({ ...editing, subject: e.target.value })
+              }
+            />
           </label>
           <label>
             正文（支持 {"{{username}}"} 等占位符）
-            <textarea rows={5} value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })} />
+            <textarea
+              rows={5}
+              value={editing.body}
+              onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+            />
           </label>
           <div className="flex gap-2">
             <button className="baozi-button" disabled={busy} onClick={save}>
               保存
             </button>
-            <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold" onClick={() => setEditing(null)}>
+            <button
+              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              onClick={() => setEditing(null)}
+            >
               取消
             </button>
           </div>
@@ -148,7 +217,10 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
         <section className="baozi-panel p-4 text-sm">
           <div className="mb-1 flex items-center justify-between">
             <b>预览</b>
-            <button className="min-h-[32px] rounded-full border border-line px-3 text-xs" onClick={() => setPreview(null)}>
+            <button
+              className="min-h-[32px] rounded-full border border-line px-3 text-xs"
+              onClick={() => setPreview(null)}
+            >
               关闭
             </button>
           </div>
@@ -172,17 +244,26 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
               <td>{r.subject}</td>
               <td className="text-xs text-sub">{r.note ?? "—"}</td>
               <td className="text-right">
-                <button className="cmgmt-act" onClick={() => setEditing({ id: r.id, subject: r.subject, body: r.body })}>
+                <button
+                  className="cmgmt-act"
+                  onClick={() =>
+                    setEditing({ id: r.id, subject: r.subject, body: r.body })
+                  }
+                >
                   编辑
                 </button>
-                <button className="cmgmt-act" onClick={() => doPreview(r.scene_key)}>
+                <button
+                  className="cmgmt-act"
+                  onClick={() => doPreview(r.scene_key)}
+                >
                   预览
                 </button>
                 <button
                   className="cmgmt-act cmgmt-act--danger"
                   disabled={busy}
                   onClick={async () => {
-                    if (!window.confirm(`确认删除模板「${r.scene_key}」？`)) return;
+                    if (!window.confirm(`确认删除模板「${r.scene_key}」？`))
+                      return;
                     try {
                       await api.del(`/api/v1/admin/message-templates/${r.id}`);
                       flash("模板已删除");

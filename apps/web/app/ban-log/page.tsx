@@ -32,7 +32,9 @@ export default function BanLogPage() {
       );
     } catch (err) {
       setMsg(
-        err instanceof ApiError ? (dict.errors[err.code] ?? err.message) : dict.common.networkError,
+        err instanceof ApiError
+          ? (dict.errors[err.code] ?? err.message)
+          : dict.common.networkError,
       );
     } finally {
       setBusy(false);
@@ -40,7 +42,11 @@ export default function BanLogPage() {
   }
 
   const statusLabel = (s: number) =>
-    s === 2 ? dict.banlog.banned : s === 1 ? dict.banlog.muted : dict.banlog.normal;
+    s === 2
+      ? dict.banlog.banned
+      : s === 1
+        ? dict.banlog.muted
+        : dict.banlog.normal;
 
   return (
     <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-12">

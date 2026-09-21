@@ -7,7 +7,9 @@ import { api } from "@/lib/api-client";
  *  seed.stats.view——站点做种总览与 Top 保种用户。 */
 
 interface SeedStats {
-  seeders: number; seeding_torrents: number; avg_seed_hours: number;
+  seeders: number;
+  seeding_torrents: number;
+  avg_seed_hours: number;
   top_by_count: { user_id: number; username: string; seeding: number }[];
   top_by_hours: { user_id: number; username: string; hours: number }[];
 }
@@ -16,14 +18,18 @@ export function StaffSeedStatsPanel() {
   const [seedStats, setSeedStats] = useState<SeedStats | null>(null);
 
   useEffect(() => {
-    api.get<SeedStats>("/api/v1/seed-stats").then(setSeedStats).catch(() => setSeedStats(null));
+    api
+      .get<SeedStats>("/api/v1/seed-stats")
+      .then(setSeedStats)
+      .catch(() => setSeedStats(null));
   }, []);
 
   return (
     <section className="baozi-panel p-4">
       <h2 className="mb-2 text-base font-bold">保种统计</h2>
       <p className="mb-3 text-xs text-sub">
-        站点做种总览与 Top 保种用户。持有「保种统计」权限者可见（保种员 / 贵宾 / 管理组）。
+        站点做种总览与 Top 保种用户。持有「保种统计」权限者可见（保种员 / 贵宾 /
+        管理组）。
       </p>
       {seedStats ? (
         <>
@@ -60,13 +66,22 @@ export function StaffSeedStatsPanel() {
                     <tr key={r.user_id}>
                       <td className="rowfollow num">{i + 1}</td>
                       <td className="rowfollow">
-                        <a href={`/user/${r.user_id}`} className="hover:text-sky">{r.username}</a>
+                        <a
+                          href={`/user/${r.user_id}`}
+                          className="hover:text-sky"
+                        >
+                          {r.username}
+                        </a>
                       </td>
                       <td className="rowfollow num">{r.seeding}</td>
                     </tr>
                   ))}
                   {seedStats.top_by_count.length === 0 && (
-                    <tr><td colSpan={3} className="py-3 text-center text-sub">暂无数据</td></tr>
+                    <tr>
+                      <td colSpan={3} className="py-3 text-center text-sub">
+                        暂无数据
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -86,13 +101,22 @@ export function StaffSeedStatsPanel() {
                     <tr key={r.user_id}>
                       <td className="rowfollow num">{i + 1}</td>
                       <td className="rowfollow">
-                        <a href={`/user/${r.user_id}`} className="hover:text-sky">{r.username}</a>
+                        <a
+                          href={`/user/${r.user_id}`}
+                          className="hover:text-sky"
+                        >
+                          {r.username}
+                        </a>
                       </td>
                       <td className="rowfollow num">{r.hours}</td>
                     </tr>
                   ))}
                   {seedStats.top_by_hours.length === 0 && (
-                    <tr><td colSpan={3} className="py-3 text-center text-sub">暂无数据</td></tr>
+                    <tr>
+                      <td colSpan={3} className="py-3 text-center text-sub">
+                        暂无数据
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -100,7 +124,9 @@ export function StaffSeedStatsPanel() {
           </div>
         </>
       ) : (
-        <p className="py-4 text-center text-sub">加载失败或无「保种统计」权限</p>
+        <p className="py-4 text-center text-sub">
+          加载失败或无「保种统计」权限
+        </p>
       )}
     </section>
   );

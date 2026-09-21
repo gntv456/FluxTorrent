@@ -28,7 +28,11 @@ export function Card({
   slot?: keyof typeof SLOT_CLASS;
   children: ReactNode;
 }) {
-  const cls = ["up-card", full ? "up-card--full" : "", slot ? SLOT_CLASS[slot] : ""]
+  const cls = [
+    "up-card",
+    full ? "up-card--full" : "",
+    slot ? SLOT_CLASS[slot] : "",
+  ]
     .filter(Boolean)
     .join(" ");
   return (
@@ -43,7 +47,15 @@ export function Card({
 }
 
 /** 资料行：标签定宽 + 虚线分隔（替代原两列表格的一整块） */
-export function Row({ label, icon, children }: { label: string; icon?: string; children: ReactNode }) {
+export function Row({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon?: string;
+  children: ReactNode;
+}) {
   return (
     <div className="up-row">
       <div className="up-row__label">
