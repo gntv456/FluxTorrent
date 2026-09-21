@@ -11,22 +11,32 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
         WITH metrics AS (
             SELECT u.id AS user_id,
                    COALESCE(u.seeding_size, 0) AS seeding_bytes,
-                   (SELECT count(*) FROM resurrections r WHERE r.user_id = u.id AND r.status = 'done') AS rescue_count,
-                   (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS upload_count,
-                   (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
-                   (SELECT count(*) FROM subtitles sb WHERE sb.user_id = u.id AND sb.deleted_at IS NULL AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
+                   (SELECT count(*) FROM resurrections r
+                      WHERE r.user_id = u.id
+                        AND r.status = 'done') AS rescue_count,
+                   (SELECT count(*) FROM torrents t
+                      WHERE t.owner_id = u.id
+                        AND t.approval_status = 1) AS upload_count,
+                   (SELECT count(*) FROM posts p
+                      WHERE p.user_id = u.id) AS post_count,
+                   (SELECT count(*) FROM subtitles sb
+                      WHERE sb.user_id = u.id AND sb.deleted_at IS NULL
+                        AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
             FROM users u WHERE u.status < 2
         ),
         m AS (
-            SELECT user_id, 'seeding_bytes' AS metric, seeding_bytes AS val FROM metrics
+            SELECT user_id, 'seeding_bytes' AS metric,
+                    seeding_bytes AS val FROM metrics
             UNION ALL SELECT user_id, 'rescue_count', rescue_count FROM metrics
             UNION ALL SELECT user_id, 'upload_count', upload_count FROM metrics
             UNION ALL SELECT user_id, 'post_count', post_count FROM metrics
-            UNION ALL SELECT user_id, 'subtitle_count', subtitle_count FROM metrics
+            UNION ALL SELECT user_id, 'subtitle_count',
+                      subtitle_count FROM metrics
         ),
         due AS (
             SELECT m.user_id, d.id AS def_id, d.code, d.reward_sparks, m.val
-            FROM m JOIN achievement_defs d ON d.metric = m.metric AND m.val >= d.threshold
+            FROM m JOIN achievement_defs d
+              ON d.metric = m.metric AND m.val >= d.threshold
         )
         INSERT INTO user_achievements (user_id, def_id, metric_value)
         SELECT user_id, def_id, val FROM due
@@ -46,17 +56,29 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             SELECT m.user_id, d2.id FROM (
                 SELECT u.id AS user_id,
                        COALESCE(u.seeding_size, 0) AS seeding_bytes,
-                       (SELECT count(*) FROM resurrections r WHERE r.user_id = u.id AND r.status = 'done') AS rescue_count,
-                       (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS upload_count,
-                       (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
-                       (SELECT count(*) FROM subtitles sb WHERE sb.user_id = u.id AND sb.deleted_at IS NULL AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
+                       (SELECT count(*) FROM resurrections r
+                      WHERE r.user_id = u.id
+                        AND r.status = 'done') AS rescue_count,
+                       (SELECT count(*) FROM torrents t
+                      WHERE t.owner_id = u.id
+                        AND t.approval_status = 1) AS upload_count,
+                       (SELECT count(*) FROM posts p
+                      WHERE p.user_id = u.id) AS post_count,
+                       (SELECT count(*) FROM subtitles sb
+                      WHERE sb.user_id = u.id AND sb.deleted_at IS NULL
+                        AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
                 FROM users u WHERE u.status < 2
             ) m JOIN achievement_defs d2 ON (
-                (d2.metric = 'seeding_bytes' AND m.seeding_bytes >= d2.threshold) OR
-                (d2.metric = 'rescue_count'  AND m.rescue_count  >= d2.threshold) OR
-                (d2.metric = 'upload_count'   AND m.upload_count   >= d2.threshold) OR
-                (d2.metric = 'post_count'     AND m.post_count     >= d2.threshold) OR
-                (d2.metric = 'subtitle_count' AND m.subtitle_count >= d2.threshold))
+                (d2.metric = 'seeding_bytes'
+                  AND m.seeding_bytes >= d2.threshold) OR
+                (d2.metric = 'rescue_count'
+                  AND m.rescue_count >= d2.threshold) OR
+                (d2.metric = 'upload_count'
+                  AND m.upload_count >= d2.threshold) OR
+                (d2.metric = 'post_count'
+                  AND m.post_count >= d2.threshold) OR
+                (d2.metric = 'subtitle_count'
+                  AND m.subtitle_count >= d2.threshold))
         )
         "#,
     )
@@ -71,9 +93,11 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             let mut tx = db.begin().await?;
             sqlx::query(
                 r#"
-                INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
+                INSERT INTO spark_ledger
+                    (id, user_id, amount, kind, idempotency_key)
                 SELECT nextval('spark_ledger_id_seq'), $1, $2, 'achievement', $3
-                WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)
+                WHERE NOT EXISTS (SELECT 1 FROM spark_ledger
+                  WHERE idempotency_key = $3)
                 "#,
             )
             .bind(uid)
@@ -84,8 +108,10 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             // 审计修复（幂等）：UPDATE 与 INSERT 的 NOT EXISTS 同护栏 ——
             // 否则每小时任务重跑时流水幂等跳过、余额却再加一次（每用户每小时白得 200）
             sqlx::query(
-                "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \
-                 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)",
+                "UPDATE users SET spark_balance = spark_balance + $2 \
+                 WHERE id = $1 \
+                 AND NOT EXISTS (SELECT 1 FROM spark_ledger
+                  WHERE idempotency_key = $3)",
             )
             .bind(uid)
             .bind(reward)
@@ -110,17 +136,29 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             SELECT m.user_id, d2.id FROM (
                 SELECT u.id AS user_id,
                        COALESCE(u.seeding_size, 0) AS seeding_bytes,
-                       (SELECT count(*) FROM resurrections r WHERE r.user_id = u.id AND r.status = 'done') AS rescue_count,
-                       (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS upload_count,
-                       (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
-                       (SELECT count(*) FROM subtitles sb WHERE sb.user_id = u.id AND sb.deleted_at IS NULL AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
+                       (SELECT count(*) FROM resurrections r
+                      WHERE r.user_id = u.id
+                        AND r.status = 'done') AS rescue_count,
+                       (SELECT count(*) FROM torrents t
+                      WHERE t.owner_id = u.id
+                        AND t.approval_status = 1) AS upload_count,
+                       (SELECT count(*) FROM posts p
+                      WHERE p.user_id = u.id) AS post_count,
+                       (SELECT count(*) FROM subtitles sb
+                      WHERE sb.user_id = u.id AND sb.deleted_at IS NULL
+                        AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
                 FROM users u WHERE u.status < 2
             ) m JOIN achievement_defs d2 ON (
-                (d2.metric = 'seeding_bytes' AND m.seeding_bytes >= d2.threshold) OR
-                (d2.metric = 'rescue_count'  AND m.rescue_count  >= d2.threshold) OR
-                (d2.metric = 'upload_count'   AND m.upload_count   >= d2.threshold) OR
-                (d2.metric = 'post_count'     AND m.post_count     >= d2.threshold) OR
-                (d2.metric = 'subtitle_count' AND m.subtitle_count >= d2.threshold))
+                (d2.metric = 'seeding_bytes'
+                  AND m.seeding_bytes >= d2.threshold) OR
+                (d2.metric = 'rescue_count'
+                  AND m.rescue_count >= d2.threshold) OR
+                (d2.metric = 'upload_count'
+                  AND m.upload_count >= d2.threshold) OR
+                (d2.metric = 'post_count'
+                  AND m.post_count >= d2.threshold) OR
+                (d2.metric = 'subtitle_count'
+                  AND m.subtitle_count >= d2.threshold))
         )
         AND NOT EXISTS (
             SELECT 1 FROM messages msg
@@ -161,8 +199,10 @@ pub(crate) async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
         UPDATE users u SET dormant_at = now()
         WHERE u.class_id < 90 AND NOT u.donor AND u.dormant_at IS NULL
           AND u.created_at < now() - interval '90 days'
-          AND COALESCE(u.last_seen_at, u.created_at) < now() - interval '90 days'
-          AND NOT EXISTS (SELECT 1 FROM snatches s WHERE s.user_id = u.id AND s.seeding)
+          AND COALESCE(u.last_seen_at, u.created_at)
+            < now() - interval '90 days'
+          AND NOT EXISTS (SELECT 1 FROM snatches s
+                           WHERE s.user_id = u.id AND s.seeding)
         "#,
     )
     .execute(db)

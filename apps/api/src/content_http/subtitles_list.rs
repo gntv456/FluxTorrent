@@ -1,12 +1,11 @@
 //! 字幕列表与下载（0146：分页信封、真实 size、评分、匿名脱敏、扩展名修正）。
 //! 上传链路在 subtitles.rs；元数据治理在 subtitles_meta.rs。
 
-use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, web, Responder};
 
 use super::subtitles_util::subtitle_bad_threshold;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::require_auth;
 use crate::state::AppState;
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -28,6 +27,10 @@ struct SubtitleRow {
     /// 上传者 id（anon 行照常返回，前端按本人判定编辑/删除入口）
     user_id: i64,
     verified: bool,
+    /// 0148 C0/C6：三态口径——纯 AI（machine && proofreader 空）/
+    /// AI+人工校对（machine && proofreader 非空）/ 纯人工
+    machine_translated: bool,
+    proofreader: Option<String>,
 }
 
 /// 字幕列表（包子站 subtitles.php 口径 + 0146）：
@@ -40,10 +43,29 @@ pub(super) async fn subtitle_list(
 ) -> DomainResult<impl Responder> {
     let search = q
         .get("search")
-        .map(|s| crate::http::like_pattern(&s))
+        .map(|s| crate::http::like_pattern(s))
         .unwrap_or_else(|| "%".into());
     let lang = q.get("lang_id").filter(|s| s.as_str() != "0").cloned();
     let letter = q.get("letter").filter(|s| !s.is_empty()).cloned();
+    // C0：AI 筛选——ai=only 只看纯 AI；ai=no 只看人工（含 AI+人工校对）
+    let ai_filter = match q.get("ai").map(String::as_str) {
+        Some("only") => "AND s.machine_translated",
+        Some("no") => "AND NOT s.machine_translated",
+        _ => "",
+    };
+    // C1：imdb 合并查询——同 imdb 的其他种子的字幕也算「本片字幕」。
+    // 只留 [TT + 7~8 位数字]（与迁移/上传侧提取同口径），防 $-参数化后
+    // 仍被拼进 match 排序分支（F1：注入面归零）。
+    let imdb: Option<String> = q
+        .get("imdb")
+        .and_then(|s| {
+            let t = s.trim().to_ascii_uppercase();
+            let d = t.strip_prefix("TT").unwrap_or(&t);
+            (t.len() == 2 + d.len()
+                && (d.len() == 7 || d.len() == 8)
+                && d.chars().all(|c| c.is_ascii_digit()))
+            .then_some(t)
+        });
     let torrent_id: Option<i64> = q
         .get("torrent_id")
         .and_then(|s| s.parse::<i64>().ok())
@@ -70,9 +92,8 @@ pub(super) async fn subtitle_list(
             "(s.rating_sum::float / NULLIF(s.rating_count,0))".to_string()
         }
         // P1-4 匹配分排序（OpenSubtitles 加权收敛版）：torrent 命中 100 >
-        // release_name 归一化相等 80 > verified 20 > 下载数兜底。IMDB+语言
-        // 需 media_info->>'imdb_id' 数据源，全站尚无该录入链路，落地后在此
-        // 追加 +50 档（方案 §5 第 3 条）。
+        // release_name 归一化相等 80 > imdb+语言同片 50 > verified 20 >
+        // 下载数兜底。0148 C1 补 IMDB 档（imdb 参数命中时 +50）。
         Some("match") => {
             let sub = sqlx::query_scalar::<_, Option<String>>(
                 "SELECT lower(regexp_replace(name, '[^a-zA-Z0-9]', '', 'g')) \
@@ -83,32 +104,55 @@ pub(super) async fn subtitle_list(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?
             .flatten();
-            match (torrent_id, sub) {
-                (Some(tid), Some(sub)) => format!(
-                    "(CASE WHEN s.torrent_id = {tid} THEN 100 \
-                     WHEN s.release_name = '{sub}' THEN 80 \
-                     ELSE 0 END + CASE WHEN s.verified THEN 20 ELSE 0 END \
-                     + s.downloads)"
+            let imdb_hit = match &imdb {
+                Some(v) => format!(
+                    " WHEN s.imdb_id = '{}' THEN 50",
+                    v.replace('\'', "''")
                 ),
-                (Some(tid), None) => format!(
-                    "(CASE WHEN s.torrent_id = {tid} THEN 100 ELSE 0 END \
+                None => String::new(),
+            };
+            let rel_arm = match sub.as_deref() {
+                Some(s) if !s.is_empty() => format!(
+                    " WHEN s.release_name = '{}' THEN 80",
+                    s.replace('\'', "''")
+                ),
+                _ => String::new(),
+            };
+            match torrent_id {
+                Some(tid) => format!(
+                    "(CASE WHEN s.torrent_id = {tid} THEN 100{imdb_hit}\
+                     {rel_arm} ELSE 0 END \
                      + CASE WHEN s.verified THEN 20 ELSE 0 END + s.downloads)"
                 ),
-                _ => "(CASE WHEN s.verified THEN 20 ELSE 0 END + s.downloads)"
-                    .to_string(),
+                None => format!(
+                    "(CASE{imdb_hit} ELSE 0 END \
+                     + CASE WHEN s.verified THEN 20 ELSE 0 END + s.downloads)"
+                ),
             }
         }
         _ => "s.created_at".to_string(),
     };
+    // C0/C6：AI 降权附加层——纯 AI（machine 且无人工校对）在所有排序下
+    // 都排人工之后；AI+人工校对（ai_proofread）等同人工档
+    let ai_demote = "(CASE WHEN s.machine_translated AND \
+         COALESCE(s.proofreader, '') = '' THEN 1 ELSE 0 END)";
     let threshold = subtitle_bad_threshold(&state.repo.db).await?;
-    // 谓词只拼一份：count 与列表同谓词（A7 验收点）
-    let predicates = "\
+    // 谓词只拼一份：count 与列表同谓词（A7 验收点）。
+    // 0148：$5/$6 同传时为「本种子字幕 ∪ 同片字幕」（种子页 C1 合并口径）：
+    //   imdb 未传（$6 NULL）→ 仅 torrent_id 过滤（原有行为不变）
+    //   imdb 传了 → torrent_id 命中 OR imdb 命中
+    // ai_filter 为格式化拼接（值均为字面量）。
+    let predicates = format!(
+        "\
          s.deleted_at IS NULL AND s.status = 1 \
          AND (s.bad_reports < $4 OR $4 <= 0) \
          AND s.title ILIKE $1 \
          AND ($2::text IS NULL OR s.lang = $2) \
          AND ($3::text IS NULL OR s.title ILIKE $3 || '%') \
-         AND ($5::bigint IS NULL OR s.torrent_id = $5)";
+         AND ($6::text IS NULL AND ($5::bigint IS NULL OR s.torrent_id = $5) \
+              OR $6::text IS NOT NULL AND ($5::bigint IS NULL OR s.torrent_id \
+              = $5 OR s.imdb_id = $6)){ai_filter}"
+    );
     let total: i64 = sqlx::query_scalar(
         &format!("SELECT count(*) FROM subtitles s WHERE {predicates}"),
     )
@@ -117,6 +161,7 @@ pub(super) async fn subtitle_list(
     .bind(&letter)
     .bind(threshold)
     .bind(torrent_id)
+    .bind(&imdb)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -124,10 +169,12 @@ pub(super) async fn subtitle_list(
         &format!(
             "SELECT s.id, s.torrent_id, u.username, s.title, s.lang, \
              s.lang_id, s.downloads, s.created_at, s.size, s.ext, s.anon, \
-             s.rating_sum, s.rating_count, s.user_id, s.verified \
+             s.rating_sum, s.rating_count, s.user_id, s.verified, \
+             s.machine_translated, s.proofreader \
              FROM subtitles s LEFT JOIN users u ON u.id = s.user_id \
-             WHERE {predicates} ORDER BY {sort} {order}, s.id DESC \
-             OFFSET $6 LIMIT $7"
+             WHERE {predicates} ORDER BY {ai_demote} ASC, {sort} {order}, \
+             s.id DESC \
+             OFFSET $7 LIMIT $8"
         ),
     )
     .bind(&search)
@@ -135,6 +182,7 @@ pub(super) async fn subtitle_list(
     .bind(&letter)
     .bind(threshold)
     .bind(torrent_id)
+    .bind(&imdb)
     .bind((page - 1) * per_page)
     .bind(per_page)
     .fetch_all(&state.repo.db)
@@ -164,6 +212,18 @@ pub(super) async fn subtitle_list(
                 "rating_count": r.rating_count,
                 // 本人判定用（anon 行 username 已脱敏但 id 保留给编辑/删除入口）
                 "user_id": r.user_id, "verified": r.verified,
+                // 0148 C0/C6：ai 三态（human / ai_proofread / ai）
+                "ai_state": if r.machine_translated {
+                    if r.proofreader.as_deref().map(str::trim).unwrap_or(
+                        "",
+                    ).is_empty() {
+                        "ai"
+                    } else {
+                        "ai_proofread"
+                    }
+                } else {
+                    "human"
+                },
             })
         })
         .collect();
@@ -171,122 +231,3 @@ pub(super) async fn subtitle_list(
         "items": rows, "total": total, "page": page, "per_page": per_page,
     })))
 }
-
-/// 字幕下载：计数 +1；本地附件直接回文件字节。0146：扩展名按 mime + 落库 ext
-/// 决定（字幕格式直通，兜底 .srt 而非 .bin），文件名带语言代码。
-#[get("/subtitles/{id}/download")]
-pub(super) async fn subtitle_download(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let sid = path.into_inner();
-    let row: Option<(
-        String,
-        Option<i64>,
-        String,
-        Option<String>,
-        Option<String>,
-    )> = sqlx::query_as(
-        "SELECT file_ref, torrent_id, title, lang, ext FROM subtitles \
-         WHERE id = $1 AND deleted_at IS NULL AND status = 1",
-    )
-    .bind(sid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((file_ref, torrent_id, title, lang, sub_ext)) = row else {
-        return Err(DomainError::NotFound(sid));
-    };
-    sqlx::query("UPDATE subtitles SET downloads = downloads + 1 WHERE id = $1")
-        .bind(sid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    if let Some(sha) = file_ref.strip_prefix("attach://") {
-        let row: Option<(String, i64)> = sqlx::query_as(
-            "SELECT mime, size FROM attachments WHERE sha256 = $1",
-        )
-        .bind(sha)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        let Some((mime, _size)) = row else {
-            return Err(DomainError::NotFound(sid));
-        };
-        let bytes = crate::storage::get(&state.repo.db, sha)
-            .await
-            .ok_or(DomainError::NotFound(sid))?;
-        let safe_title = safe_filename(&title);
-        // 扩展名优先级：落库 ext（上传时按文件名判定）> mime 常见映射 > .srt
-        let ext = sub_ext
-            .filter(|e| !e.is_empty())
-            .unwrap_or_else(|| match mime.as_str() {
-                "application/pdf" => "pdf".into(),
-                _ => "srt".into(),
-            });
-        let name = match lang.as_deref() {
-            Some(code) if !code.is_empty() => {
-                format!("{safe_title}.{code}.{ext}")
-            }
-            _ => format!("{safe_title}.{ext}"),
-        };
-        return Ok(HttpResponse::Ok()
-            .content_type(mime)
-            .insert_header((
-                actix_web::http::header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{name}\""),
-            ))
-            .body(bytes));
-    }
-    let _ = auth;
-    Ok(ok(serde_json::json!({
-        "id": sid,
-        "title": title,
-        "torrent_id": torrent_id,
-        "file_ref": file_ref,
-    })))
-}
-
-/// 下载文件名清洗（与旧链路口径一致：字母数字 + 常见标点，截 80 字符）
-fn safe_filename(title: &str) -> String {
-    title
-        .chars()
-        .map(|c| {
-            if c.is_alphanumeric() || " ._-()[]（）【】".contains(c) {
-                c
-            } else {
-                '_'
-            }
-        })
-        .take(80)
-        .collect::<String>()
-}
-
-// ============ 语言字典（P1-2） ============
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct SubtitleLangRow {
-    id: i16,
-    code: String,
-    name: String,
-    flag: Option<String>,
-    position: i32,
-}
-
-/// 语言字典（公开；替代前端 31 项硬编码）
-#[get("/subtitles/langs")]
-pub(super) async fn subtitle_langs(
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<impl actix_web::Responder> {
-    let rows: Vec<SubtitleLangRow> = sqlx::query_as(
-        "SELECT id, code, name, flag, position FROM subtitle_langs ORDER \
-         BY position, id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
-}
-

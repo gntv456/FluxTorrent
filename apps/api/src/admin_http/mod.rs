@@ -60,6 +60,10 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(forum_category_create)
         .service(forum_category_update)
         .service(forum_category_delete)
+        // 0148 金字幕评选（候选/授金）
+        .service(awards_candidates)
+        .service(awards_build)
+        .service(awards_grant)
 }
 
 mod agent_rules;
@@ -75,6 +79,7 @@ mod reports;
 mod review;
 mod roles;
 mod site;
+mod subtitle_awards;
 mod torrents;
 mod user_del;
 mod user_detail;
@@ -95,6 +100,7 @@ pub use reports::*;
 pub use review::*;
 pub use roles::*;
 pub use site::*;
+pub use subtitle_awards::*;
 pub use torrents::*;
 pub use user_del::*;
 pub use user_detail::*;

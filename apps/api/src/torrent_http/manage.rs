@@ -44,6 +44,19 @@ async fn edit_torrent(
         .repo
         .audit(Some(auth.id), "torrent.edit", Some(tid))
         .await;
+    // 0148 C1：编辑 descr 后重提取 IMDB（descr 提取得到才覆盖，否则保留旧值）
+    if let Some(d) = body.descr.as_deref() {
+        if let Some(imdb) = crate::publish_http::extract_imdb_pub(d) {
+            let _ = sqlx::query(
+                "UPDATE torrents SET imdb_id = $2 WHERE id = $1 AND \
+                 (imdb_id IS NULL OR imdb_id <> $2)",
+            )
+            .bind(tid)
+            .bind(&imdb)
+            .execute(&state.repo.db)
+            .await;
+        }
+    }
     Ok(ok(
         serde_json::json!({ "edited": true, "note": "已回退待审核" }),
     ))

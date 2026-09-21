@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use super::subtitles_util::trim_opt;
 use crate::dto::ok;
-use crate::economy_http::{earn_spark, spend_spark, spend_spark_tx};
+use crate::economy_http::{spend_spark, spend_spark_tx};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -21,6 +21,31 @@ struct SubtitleReqCreateReq {
     descr: Option<String>,
     #[serde(default)]
     bounty: i64,
+    /// C4：交付时给种子挂限时免费（站方出，source=subtitle）
+    #[serde(default)]
+    offer_free: bool,
+    #[serde(default = "default_free_days")]
+    free_days: i32,
+}
+
+fn default_free_days() -> i32 {
+    30
+}
+
+/// 认领请求体（C2/C3；crew 可选）
+#[derive(Deserialize)]
+pub(super) struct SubReqClaimBody {
+    #[serde(default)]
+    pub(super) crew: Option<Vec<SubReqCrew>>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct SubReqCrew {
+    pub(super) user_id: i64,
+    /// 1-100，合计 ≤100；余量归主认领人
+    pub(super) share: i64,
+    /// 翻译/校对/时间轴/后期（自由文本，≤20 字）
+    pub(super) role: String,
 }
 
 /// 发起求字幕：初始 bounty 即时冻结（spend_spark_tx 同事务，含建单回滚语义）
@@ -46,7 +71,8 @@ pub(super) async fn subtitle_request_create(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO subtitle_requests (user_id, torrent_id, lang, descr, \
-         bounty, contributors) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+         bounty, contributors, offer_free, free_days) VALUES ($1, $2, $3, \
+         $4, $5, $6, $7, $8) RETURNING id",
     )
     .bind(auth.id)
     .bind(body.torrent_id.filter(|v| *v > 0))
@@ -58,6 +84,8 @@ pub(super) async fn subtitle_request_create(
     } else {
         serde_json::json!([])
     })
+    .bind(body.offer_free)
+    .bind(body.free_days.clamp(1, 90))
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -101,25 +129,46 @@ struct SubtitleReqRow {
     status: i16,
     fulfilled_subtitle_id: Option<i64>,
     created_at: chrono::DateTime<chrono::Utc>,
+    /// 0148 工作流字段
+    claimed_by: Option<i64>,
+    deadline_at: Option<chrono::DateTime<chrono::Utc>>,
+    deliver_at: Option<chrono::DateTime<chrono::Utc>>,
+    offer_free: bool,
+    free_days: i32,
+    crew: serde_json::Value,
 }
 
-/// 求字幕列表（status=open 进行中默认；all 全部）
+/// 求字幕列表（status=open 进行中默认；all 全部；claimed 我认领的）
 #[get("/subtitles/requests")]
 pub(super) async fn subtitle_request_list(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl actix_web::Responder> {
+    let me = require_auth(&req, &state).await.ok();
     let status = q.get("status").map(String::as_str).unwrap_or("open");
     let cond = match status {
-        "all" => "TRUE",
-        _ => "r.status = 0",
+        "all" => "TRUE".to_string(),
+        "mine" => match me {
+            Some(ref a) => format!("r.user_id = {}", a.id),
+            None => "FALSE".to_string(),
+        },
+        "claimed" => match me {
+            Some(ref a) => {
+                format!("r.claimed_by = {} OR r.status = 4", a.id)
+            }
+            None => "FALSE".to_string(),
+        },
+        _ => "r.status = 0".to_string(),
     };
     let rows: Vec<SubtitleReqRow> = sqlx::query_as(
         &format!(
             "SELECT r.id, u.username, r.torrent_id, r.lang, r.descr, \
              r.bounty, r.contributors, r.status, r.fulfilled_subtitle_id, \
-             r.created_at FROM subtitle_requests r LEFT JOIN users u ON \
-             u.id = r.user_id WHERE {cond} ORDER BY r.id DESC LIMIT 100"
+             r.created_at, r.claimed_by, r.deadline_at, r.deliver_at, \
+             r.offer_free, r.free_days, r.crew FROM subtitle_requests r \
+             LEFT JOIN users u ON u.id = r.user_id WHERE {cond} ORDER BY \
+             r.id DESC LIMIT 100"
         ),
     )
     .fetch_all(&state.repo.db)
@@ -180,61 +229,3 @@ pub(super) async fn subtitle_request_contribute(
     Ok(ok(serde_json::json!({ "id": rid, "bounty": bounty })))
 }
 
-#[derive(Deserialize)]
-struct FulfillSubReq {
-    subtitle_id: i64,
-}
-
-/// 译者交付：字幕须为本人上传 → status 0→1（CAS）→ 整池一次性结算给译者。
-/// 幂等键 `subtitle-bounty-pay:{req_id}`（重复结算只发一次，A11）。
-#[post("/subtitles/requests/{id}/fulfill")]
-pub(super) async fn subtitle_request_fulfill(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-    body: web::Json<FulfillSubReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let rid = path.into_inner();
-    let sub: Option<i64> = sqlx::query_scalar(
-        "SELECT user_id FROM subtitles WHERE id = $1 AND deleted_at IS NULL \
-         AND status = 1",
-    )
-    .bind(body.subtitle_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some(sub_owner) = sub else {
-        return Err(DomainError::NotFound(body.subtitle_id));
-    };
-    if sub_owner != auth.id {
-        return Err(DomainError::Validation(
-            "只有该字幕的上传者可以认领交付".into(),
-        ));
-    }
-    // CAS：0 → 1（并发双交付只成功一个）
-    let paid: i64 = sqlx::query_scalar(
-        "UPDATE subtitle_requests SET status = 1, fulfilled_subtitle_id = \
-         $2, paid_at = now() WHERE id = $1 AND status = 0 RETURNING bounty",
-    )
-    .bind(rid)
-    .bind(body.subtitle_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .ok_or(DomainError::Validation("该求字幕已处理".into()))?;
-    if paid > 0 {
-        let idem = format!("subtitle-bounty-pay:{rid}");
-        earn_spark(
-            &state.repo.db,
-            auth.id,
-            paid,
-            "subtitle_bounty",
-            &idem,
-        )
-        .await?;
-    }
-    Ok(ok(serde_json::json!({
-        "request_id": rid, "bounty_paid": paid,
-    })))
-}

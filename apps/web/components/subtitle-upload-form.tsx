@@ -36,12 +36,15 @@ export function SubtitleUploadForm({
   const [fSource, setFSource] = useState("");
   const [fAuthor, setFAuthor] = useState("");
   const [fAnon, setFAnon] = useState(false);
+  // 0148 C0/C6：AI 生成标记 + AI 初翻人工校对（proofreader 非空 = 机✓ 三态）
+  const [fAi, setFAi] = useState(false);
+  const [fAiProof, setFAiProof] = useState(false);
+  const [fProofreader, setFProofreader] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busyLocal, setBusyLocal] = useState(false);
   const sourceOptions =
     kind === "lyric" ? (t.lyricSources ?? []) : (t.sources ?? []);
   const accept = kind === "lyric" ? LYRIC_EXTS : SUB_EXTS;
-
   async function upload() {
     if (!fTitle.trim() || !fLang || !fFile) return;
     if (fFile.size > 8 * 1024 * 1024) {
@@ -61,6 +64,10 @@ export function SubtitleUploadForm({
         source: fSource || undefined,
         author_name: fAuthor || undefined,
         anon: fAnon,
+        machine_translated: fAi,
+        proofreader: fAi && fAiProof
+          ? fProofreader || (t.proofreadMarked ?? "proofread")
+          : undefined,
       });
       setFTitle("");
       setFFile(null);
@@ -216,6 +223,44 @@ export function SubtitleUploadForm({
               </td>
             </tr>
             <tr>
+              <td className="rowhead">{t.aiLabel}</td>
+              <td className="rowfollow">
+                <label className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={fAi}
+                    onChange={(e) => {
+                      setFAi(e.target.checked);
+                      if (!e.target.checked) setFAiProof(false);
+                    }}
+                  />
+                  {t.aiNote}
+                </label>
+                {fAi && (
+                  <>
+                    <br />
+                    <label className="flex items-center gap-1">
+                      <input
+                        type="checkbox"
+                        checked={fAiProof}
+                        onChange={(e) => setFAiProof(e.target.checked)}
+                      />
+                      {t.aiProofLabel}
+                    </label>
+                    {fAiProof && (
+                      <input
+                        type="text"
+                        className="uc-input-wide mt-1"
+                        placeholder={t.proofreaderPh}
+                        value={fProofreader}
+                        onChange={(e) => setFProofreader(e.target.value)}
+                      />
+                    )}
+                  </>
+                )}
+              </td>
+            </tr>
+            <tr>
               <td className="toolbox" colSpan={2} align="center">
                 <input
                   type="submit"
@@ -238,6 +283,9 @@ export function SubtitleUploadForm({
                     setFSource("");
                     setFAuthor("");
                     setFAnon(false);
+                    setFAi(false);
+                    setFAiProof(false);
+                    setFProofreader("");
                   }}
                 />
               </td>

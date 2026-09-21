@@ -32,6 +32,8 @@ pub struct TorrentRow {
     pub rating: Option<String>,
     /// 海报图 URL（media_info.poster；缺省时前端用生成式海报兜底）
     pub poster: Option<String>,
+    /// IMDB id（0148 C1：种子页字幕面板按此合并同片字幕）
+    pub imdb_id: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 

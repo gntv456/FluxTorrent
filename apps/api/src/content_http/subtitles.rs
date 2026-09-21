@@ -58,14 +58,26 @@ pub(super) async fn subtitle_upload(
         }
         _ => None,
     };
+    // 0148 C1：挂了种子 → 回填种子 imdb_id（同片合并的行级冗余）
+    let imdb_id: Option<String> = match torrent_id {
+        Some(tid) => sqlx::query_scalar(
+            "SELECT imdb_id FROM torrents WHERE id = $1",
+        )
+        .bind(tid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten(),
+        None => None,
+    };
     let status: i16 = if moderation { 0 } else { 1 };
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO subtitles (torrent_id, user_id, title, lang, lang_id, \
          file_ref, size, ext, fps, machine_translated, hearing_impaired, \
          foreign_parts_only, source, producer, proofreader, author_name, \
-         release_name, anon, status) \
+         release_name, anon, status, imdb_id) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, \
-         $14, $15, $16, $17, $18, $19) RETURNING id",
+         $14, $15, $16, $17, $18, $19, $20) RETURNING id",
     )
     .bind(torrent_id)
     .bind(auth.id)
@@ -86,6 +98,7 @@ pub(super) async fn subtitle_upload(
     .bind(release_name)
     .bind(meta.anon)
     .bind(status)
+    .bind(imdb_id)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

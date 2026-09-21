@@ -230,8 +230,8 @@ export default async function TorrentDetailPage({
         </Fold>
       )}
 
-      {/* ===== 字幕面板（0146 P0-6：种子页是字幕最大流量入口；模块关闭时 API 404 化为空列表） ===== */}
-      <TorrentSubtitles torrentId={t.id} />
+      {/* ===== 字幕面板（0146 P0-6 + 0148 C1 同片 IMDB 合并；模块关闭时空列表） ===== */}
+      <TorrentSubtitles torrentId={t.id} imdbId={t.imdb_id ?? null} />
 
       {/* ===== 下载/做种记录 ===== */}
       <Fold title={dict.snatches2?.title ?? "下载记录"} open>

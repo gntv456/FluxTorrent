@@ -116,6 +116,22 @@ pub async fn site_profile(
         .ok()
         .flatten()
         .unwrap_or_else(|| ("subtitle".into(), "字幕".into()));
+    // 字幕工作流子开关（0148）：workflow=认领流程 / award=评选 /
+    // ai_badge=AI 角标。前端按此显隐认领按钮/评选榜入口/AI 标记
+    let sub_flags: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name IN \
+         ('subtitle_workflow', 'subtitle_award', 'subtitle_ai_badge')",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let flag = |k: &str, d: &str| -> String {
+        sub_flags
+            .iter()
+            .find(|(n, _)| n == k)
+            .map(|(_, v)| v.clone())
+            .unwrap_or_else(|| d.to_string())
+    };
     // 登录页品牌区（0143/0145）：site_tagline = 站长覆盖值，空 = 动态跟随当前
     // 站型包默认（读 site_type JOIN packs.tagline）——设置卡直切站型即刻生效，
     // 不依赖 apply 向导物化；logo = 站长可配 URL
@@ -162,6 +178,9 @@ pub async fn site_profile(
         "currency_name": currency,
         "subtitle_kind": sub_kind,
         "subtitle_label": sub_label,
+        "subtitle_workflow": flag("subtitle_workflow", "0") == "1",
+        "subtitle_award": flag("subtitle_award", "0") == "1",
+        "subtitle_ai_badge": flag("subtitle_ai_badge", "1") != "0",
         "founded": founded,
         "metadata_sources": sources,
         "site_desc": site_desc,

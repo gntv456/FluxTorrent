@@ -5,8 +5,8 @@ import { api, ApiError, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { SubtitleRequestRow } from "@/components/subtitle-board-shared";
 
-/** 求字幕悬赏（pots，0146 P2-1）：发起 + 入池列表。
- *  从 subtitle-board.tsx 按域拆出（300 行门禁）。 */
+/** 求字幕悬赏 + 工作流（0146 pots → 0148 认领/交稿/验收/协作/free）。
+ *  从 subtitle-board.tsx 按域拆出（300 行门禁）；附件上传共用件在尾部。 */
 
 type LangItem = { code: string; name: string; flag: string };
 
@@ -26,7 +26,11 @@ export function SubtitleRequestPanel({
   const [reqs, setReqs] = useState<SubtitleRequestRow[]>([]);
   const [rLang, setRLang] = useState("");
   const [rBounty, setRBounty] = useState("");
+  const [rFree, setRFree] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [me, setMe] = useState<{ id: number } | null>(null);
+  // 工作流开关（site-profile 暴露；关 = NP 直交付口径）
+  const [wfOn, setWfOn] = useState(false);
 
   const loadReqs = useCallback(async () => {
     try {
@@ -42,6 +46,16 @@ export function SubtitleRequestPanel({
 
   useEffect(() => {
     loadReqs();
+    api
+      .get<{ id: number }>("/api/v1/me")
+      .then(setMe)
+      .catch(() => setMe(null));
+    fetch("/api/v1/site-profile")
+      .then((r) => r.json())
+      .then((b: { data?: { subtitle_workflow?: boolean } }) =>
+        setWfOn(!!b.data?.subtitle_workflow),
+      )
+      .catch(() => {});
   }, [loadReqs, reloadKey]);
 
   async function createReq() {
@@ -52,9 +66,11 @@ export function SubtitleRequestPanel({
         lang: rLang,
         torrent_id: fixedTorrentId ?? undefined,
         bounty: rBounty ? Number(rBounty) : 0,
+        offer_free: rFree,
       });
       setRLang("");
       setRBounty("");
+      setRFree(false);
       onMsg(t.reqOk?.replace("{magic}", currency) ?? "request created");
       loadReqs();
     } catch (e) {
@@ -73,6 +89,48 @@ export function SubtitleRequestPanel({
       await api.post(`/api/v1/subtitles/requests/${id}/contribute`, {
         amount: Number(v.replace(/\D/g, "")) || 0,
       });
+      loadReqs();
+    } catch (e) {
+      onMsg(e instanceof Error ? e.message : "failed");
+    }
+  }
+
+  /** 工作流动作（0148）：认领（可带协作者）/弃单/交稿/发起人验收 */
+  async function wfAction(
+    act: "claim" | "abandon" | "deliver" | "accept",
+    r: SubtitleRequestRow,
+  ) {
+    try {
+      if (act === "claim") {
+        const crewRaw = window.prompt(
+          t.crewPh ?? "crew (uid:share:role, comma, empty=none)",
+        );
+        const crew = (crewRaw ?? "")
+          .split(/[,，]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((s) => {
+            const [uid, share, role] = s.split(":");
+            return {
+              user_id: Number(uid),
+              share: Number(share),
+              role: role || (t.crewRoleDefault ?? "translate"),
+            };
+          });
+        await api.post(`/api/v1/subtitles/requests/${r.id}/claim`, {
+          crew: crew.length ? crew : undefined,
+        });
+      } else if (act === "deliver") {
+        const sid = window.prompt(t.deliverPh ?? "subtitle id");
+        if (!sid) return;
+        await api.post(`/api/v1/subtitles/requests/${r.id}/deliver`, {
+          subtitle_id: Number(sid.replace(/\D/g, "")),
+        });
+      } else {
+        if (!window.confirm(t.acceptConfirm ?? "accept?")) return;
+        await api.post(`/api/v1/subtitles/requests/${r.id}/accept`, {});
+      }
+      onMsg(t.wfDone?.replace("{act}", act) ?? "done");
       loadReqs();
     } catch (e) {
       onMsg(e instanceof Error ? e.message : "failed");
@@ -108,6 +166,14 @@ export function SubtitleRequestPanel({
           onChange={(e) => setRBounty(e.target.value.replace(/\D/g, ""))}
           placeholder={t.reqBountyPh?.replace("{magic}", currency)}
         />
+        <label className="flex items-center gap-1 text-sm">
+          <input
+            type="checkbox"
+            checked={rFree}
+            onChange={(e) => setRFree(e.target.checked)}
+          />
+          {t.offerFreeLabel}
+        </label>
         <button type="submit" className="btn" disabled={busy}>
           {t.reqBtn}
         </button>
@@ -120,6 +186,9 @@ export function SubtitleRequestPanel({
               <td className="text-sub">{r.username ?? "—"}</td>
               <td className="num">
                 {r.bounty} {currency}
+                {r.offer_free && (
+                  <span className="ml-1 text-[11px] text-mint">Free</span>
+                )}
               </td>
               <td>
                 <button
@@ -129,6 +198,42 @@ export function SubtitleRequestPanel({
                 >
                   {t.contributeBtn}
                 </button>
+                {wfOn && r.status === 0 && (
+                  <button
+                    type="button"
+                    className="btn2 ml-1"
+                    onClick={() => void wfAction("claim", r)}
+                  >
+                    {t.claimBtn}
+                  </button>
+                )}
+                {wfOn && r.status === 3 && r.claimed_by === me?.id && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn2 ml-1"
+                      onClick={() => void wfAction("deliver", r)}
+                    >
+                      {t.deliverBtn}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn2 ml-1"
+                      onClick={() => void wfAction("abandon", r)}
+                    >
+                      {t.abandonBtn}
+                    </button>
+                  </>
+                )}
+                {wfOn && r.status === 4 && r.username && (
+                  <button
+                    type="button"
+                    className="btn2 ml-1"
+                    onClick={() => void wfAction("accept", r)}
+                  >
+                    {t.acceptBtn}
+                  </button>
+                )}
               </td>
             </tr>
           ))}

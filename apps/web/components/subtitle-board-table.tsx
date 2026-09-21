@@ -4,70 +4,29 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { SubtitleRow } from "@/components/subtitle-board-shared";
+import {
+  flagText,
+  fmtKB,
+  langLabelOf,
+  loadLangDict,
+  timeAgo,
+} from "@/components/subtitle-board-format";
+
+export {
+  boldRule,
+  flagText,
+  fmtKB,
+  langLabelOf,
+  langOptions,
+  loadLangDict,
+  timeAgo,
+  LETTERS,
+} from "@/components/subtitle-board-format";
 
 /** 字幕列表子面板（从 components/subtitle-board.tsx 按域拆出）：
  *  七列表格（语言/标题/添加时间/大小/点击/上传者/举报）+ 语言映射与
  *  展示工具（旗帜/KB/相对时间/规则加粗）。主组件与筛选/上传留在原文件。
  *  0146：语言读字典接口、大小真实值、评分列、分页条、坏字幕标记。 */
-
-/** 语言字典（GET /subtitles/langs；模块开着的站点启动时拉一次缓存于此） */
-let langDict: { code: string; name: string; flag: string }[] | null = null;
-export async function loadLangDict(): Promise<
-  { code: string; name: string; flag: string }[]
-> {
-  if (langDict) return langDict;
-  try {
-    const rows = await api.get<
-      { code: string; name: string; flag: string | null }[]
-    >("/api/v1/subtitles/langs");
-    langDict = rows.map((r) => ({
-      code: r.code,
-      name: r.name,
-      flag: r.flag ?? "🌐",
-    }));
-  } catch {
-    langDict = [];
-  }
-  return langDict;
-}
-/** 列表筛选下拉用（id 语义已废，直接回 code/name/flag） */
-export const langOptions = loadLangDict;
-
-export const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-export function langLabelOf(lang: string | null): string {
-  if (!lang) return "Other";
-  return langDict?.find((l) => l.code === lang)?.name ?? lang;
-}
-export function flagText(lang: string | null): string {
-  if (!lang) return "🌐";
-  return langDict?.find((l) => l.code === lang)?.flag ?? "🌐";
-}
-export function fmtKB(bytes: number): string {
-  if (!bytes) return "—";
-  const kb = bytes / 1024;
-  return `${kb.toFixed(2)} KB`;
-}
-export function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h${m % 60}m`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}d${h % 24}h`;
-  const mo = Math.floor(d / 30);
-  return `${mo}mo${d % 30}d`;
-}
-/** 规则文本加粗关键部分（同步/标题/合集/Vobsub/proper） */
-export function boldRule(r: string): string {
-  return r
-    .replace("字幕必须与视频文件同步", "<b>字幕必须与视频文件同步</b>")
-    .replace("标题", "<b>标题</b>")
-    .replace(/\&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/\*&lt;/g, "*<");
-}
 
 /** 字幕列表（七列）：本地附件走 BLOB 下载，外部直链跳新页；举报走 prompt。
  *  0147 行内治理：评分（1-10 下拉）、本人/管理编辑（标题/语言/匿名）、删除。 */
@@ -161,6 +120,28 @@ export function SubtitleListTable({
                     ✓
                   </span>
                 )}
+                {s.award_rank === 1 && (
+                  <span
+                    className="ml-1 text-[11px]"
+                    title={t.goldTip ?? "gold"}
+                  >
+                    👑
+                  </span>
+                )}
+                {s.ai_state && s.ai_state !== "human" && (
+                  <span
+                    className="ml-1 text-[11px] text-sub"
+                    title={
+                      s.ai_state === "ai_proofread"
+                        ? (t.aiProofreadTip ?? "AI + proofread")
+                        : (t.aiTip ?? "AI")
+                    }
+                  >
+                    {s.ai_state === "ai_proofread"
+                      ? (t.aiBadgeProof ?? "MT✓")
+                      : (t.aiBadgePure ?? "MT")}
+                  </span>
+                )}
                 {typeof s.rating === "number" && s.rating > 0 && (
                   <span className="ml-1 text-[11px] text-sub">
                     ★ {s.rating}
@@ -169,7 +150,9 @@ export function SubtitleListTable({
                 )}
                 {me && (
                   <select
-                    className="ml-1 border-0 bg-transparent text-[11px] text-sub"
+                    className={
+                      "ml-1 border-0 bg-transparent text-[11px] text-sub"
+                    }
                     aria-label={t.voteLabel}
                     defaultValue=""
                     onChange={async (e) => {

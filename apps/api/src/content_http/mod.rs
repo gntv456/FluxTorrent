@@ -7,6 +7,12 @@ mod offers;
 mod promo;
 mod requests;
 mod subtitles;
+mod subtitles_awards;
+mod subtitles_close;
+mod subtitles_dl;
+mod subtitles_flow;
+mod subtitles_fulfill;
+mod subtitles_govern;
 mod subtitles_list;
 mod subtitles_meta;
 mod subtitles_requests;
@@ -17,6 +23,12 @@ use offers::*;
 use promo::*;
 use requests::*;
 use subtitles::*;
+use subtitles_awards::*;
+use subtitles_close::*;
+use subtitles_dl::*;
+use subtitles_flow::*;
+use subtitles_fulfill::*;
+use subtitles_govern::*;
 use subtitles_list::*;
 use subtitles_meta::*;
 use subtitles_requests::*;
@@ -46,6 +58,13 @@ pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
         .service(subtitle_request_list)
         .service(subtitle_request_contribute)
         .service(subtitle_request_fulfill)
+        // 0148 字幕工作流（认领/弃单/交稿/验收/协作确认 + 评选榜）
+        .service(subtitle_request_claim)
+        .service(subtitle_request_abandon)
+        .service(subtitle_request_deliver)
+        .service(subtitle_request_accept)
+        .service(subtitle_request_crew_accept)
+        .service(subtitle_awards_board)
         // M18 课本
         .service(textbook_list)
         .service(textbook_link)
@@ -69,4 +88,12 @@ pub(super) async fn module_disabled(db: &sqlx::PgPool, name: &str) -> bool {
     .flatten()
     .map(|v| v == "no")
     .unwrap_or(false)
+}
+
+/// 评选候选生成（admin 手动补跑与 worker 共用；build_candidates 的 crate 出口）
+pub async fn subtitles_awards_build(
+    db: &sqlx::PgPool,
+    period: &str,
+) -> anyhow::Result<usize> {
+    subtitles_awards::build_candidates(db, period).await
 }
