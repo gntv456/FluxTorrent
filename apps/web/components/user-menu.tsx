@@ -10,6 +10,7 @@ import {
   FrameImageOverlay,
 } from "@/lib/format";
 import { UserTools } from "@/components/user-tools";
+import { UserCheckin } from "@/components/user-checkin";
 import { MedalIcon } from "@/components/medal-icon";
 
 /** /me 返回口径（http.rs me handler）+ spark_balance */
@@ -65,6 +66,13 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
   useEffect(() => {
     if (spark !== null) setSparkText(Number(spark).toLocaleString());
   }, [spark]);
+
+  const refreshSpark = () => {
+    api
+      .get<{ balance: number }>("/api/v1/me/spark")
+      .then((b) => setSpark(b.balance))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -191,9 +199,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
                   <span>{currency}：</span>
                   <b className="num">{sparkText}</b>
                 </a>
-                <a href="/my" className="usermenu__checkin">
-                  [{t.dailyCheckin}]
-                </a>
+                <UserCheckin onDone={refreshSpark} />
               </div>
             </div>
             <button

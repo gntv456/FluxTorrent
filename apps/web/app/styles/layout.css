@@ -329,12 +329,28 @@
   margin-top: 4px;
 }
 .usermenu__checkin {
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
+  cursor: pointer;
 }
-.usermenu__checkin:hover {
+.usermenu__checkin:hover:not(:disabled) {
   color: var(--baozi-orange);
+  border-color: var(--baozi-line);
+}
+.usermenu__checkin:disabled {
+  cursor: default;
+  color: var(--success);
+}
+.usermenu__checkmsg {
+  margin: 2px 0 0;
+  color: var(--success);
+  font-size: 11.5px;
+  font-weight: 700;
 }
 .usermenu__logout {
   align-self: flex-start;
