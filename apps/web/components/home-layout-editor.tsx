@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_MD_SKY } from "@/lib/ui-classes";
+
 /**
  * 首页排版编辑器（0089）：站长可视化调整首页板块——顺序（上移/下移）、
  * 宽度档（1/3、2/3、整行/自动）、显示/隐藏（从列表移除后可从「未展示」加回）。
@@ -191,7 +193,7 @@ export function HomeLayoutEditor() {
           type="button"
           onClick={save}
           disabled={busy}
-          className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+          className={BTN_MD_SKY}
         >
           {busy ? t.saving : t.save}
         </button>

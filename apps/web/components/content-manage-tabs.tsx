@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -99,7 +101,7 @@ export function FunTab({
             </button>
             {fEdit.id !== null && (
               <button
-                className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                className={BTN_SM_BOLD}
                 onClick={() => setFEdit({ id: null, title: "", body: "" })}
               >
                 {t.btnCancel}

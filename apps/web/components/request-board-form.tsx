@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_MD_SKY } from "@/lib/ui-classes";
+
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -87,7 +89,7 @@ export function RequestForm({
         <button
           type="submit"
           disabled={ftBusy}
-          className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
+          className={BTN_MD_SKY}
         >
           {ftBusy ? t.formBusy : t.formSubmit}
         </button>

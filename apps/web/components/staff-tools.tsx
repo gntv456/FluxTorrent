@@ -1,5 +1,7 @@
 "use client";
 
+import { CELL_CARD_SUB } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -173,7 +175,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
             role="tab"
             aria-selected={tab === k}
             onClick={() => setTab(k)}
-            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${tab === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"}`}
+            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${tab === k ? "bg-sky text-white" : CELL_CARD_SUB}`}
           >
             {label}
           </button>

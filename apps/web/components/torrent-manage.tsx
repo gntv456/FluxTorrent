@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_DANGER } from "@/lib/ui-classes";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
@@ -129,7 +131,7 @@ export function TorrentManage({
           type="button"
           disabled={busy}
           onClick={del}
-          className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-danger disabled:opacity-50"
+          className={BTN_SM_DANGER}
         >
           🗑 {t.del}
         </button>

@@ -1,5 +1,7 @@
 "use client";
 
+import { CELL_CARD_SUB } from "@/lib/ui-classes";
+
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { dateLocale } from "@/i18n/config";
@@ -34,7 +36,7 @@ const BADGE_PLAIN = "rounded-full px-2 py-0.5 text-xs";
 const BADGE_DANGER_TXT = `${BADGE_DANGER} text-danger`;
 // tab 按钮两种形态（选中高亮 / 未选中描边）
 const TAB_BTN = "min-h-[40px] rounded-full px-4 text-sm font-bold";
-const TAB_BTN_OFF = "border border-line bg-[var(--surface-card)] text-sub";
+const TAB_BTN_OFF = CELL_CARD_SUB;
 // 临时密码提示条样式
 const TMP_PASS_CLS =
   "rounded-[var(--r-md)] bg-sky-soft p-3 font-mono text-sm text-ink";

@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
+
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
@@ -176,7 +178,7 @@ export function FramesPanel({
           </button>
           {frameEdit.id !== null && (
             <button
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              className={BTN_SM_BOLD}
               onClick={() => setFrameEdit({ id: null, f: { ...emptyFrame } })}
             >
               取消

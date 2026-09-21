@@ -4,20 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
-interface MyTicket {
-  id: number;
-  subject: string;
-  ticket_status: number; // 0新 1处理中 2已答复待确认 3关闭
-  answer: string | null;
-  answered_at: string | null;
-  created_at: string;
-}
+import { MyTickets, type MyTicket } from "./contact-staff-tickets";
+import { COLORS, FONTS } from "./contact-staff-tickets";
 
 /** PM 管理组（参考站 contactstaff.php 复刻）：
  *  主题输入 + BBCode 工具栏（B/I/U/URL/IMG/List/QUOTE/Close all + 颜色/字体/字号下拉）
- *  + 正文 textarea + 提交/预览 + 我的工单进度（含「确认关闭」闭环） */
+ *  + 正文 textarea + 提交/预览 + 我的工单进度（含「确认关闭」闭环）。
+ *  我的工单进度表拆至 ./contact-staff-tickets.tsx（300 门禁）。 */
 export function ContactStaff() {
-  const { dict, locale } = useI18n();
+  const { dict } = useI18n();
   const t = dict.contactstaff;
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -180,43 +175,7 @@ export function ContactStaff() {
                     }}
                   >
                     <option value="">{t.color}</option>
-                    {[
-                      "Black",
-                      "Sienna",
-                      "Dark Olive Green",
-                      "Dark Green",
-                      "Navy",
-                      "Indigo",
-                      "Dark Slate Gray",
-                      "Dark Red",
-                      "Dark Orange",
-                      "Olive",
-                      "Green",
-                      "Teal",
-                      "Blue",
-                      "Slate Gray",
-                      "Dim Gray",
-                      "Red",
-                      "Sandy Brown",
-                      "Yellow Green",
-                      "Sea Green",
-                      "Royal Blue",
-                      "Purple",
-                      "Gray",
-                      "Magenta",
-                      "Orange",
-                      "Yellow",
-                      "Lime",
-                      "Cyan",
-                      "Deep Sky Blue",
-                      "Pink",
-                      "Wheat",
-                      "Lemon Chiffon",
-                      "Pale Green",
-                      "Light Blue",
-                      "Plum",
-                      "White",
-                    ].map((c) => (
+                    {COLORS.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -233,25 +192,7 @@ export function ContactStaff() {
                     }}
                   >
                     <option value="">{t.font}</option>
-                    {[
-                      "Arial",
-                      "Arial Black",
-                      "Book Antiqua",
-                      "Century Gothic",
-                      "Comic Sans MS",
-                      "Courier New",
-                      "Garamond",
-                      "Georgia",
-                      "Impact",
-                      "Lucida Console",
-                      "Microsoft Sans Serif",
-                      "Palatino Linotype",
-                      "System",
-                      "Tahoma",
-                      "Times New Roman",
-                      "Trebuchet MS",
-                      "Verdana",
-                    ].map((f) => (
+                    {FONTS.map((f) => (
                       <option key={f} value={f}>
                         {f}
                       </option>
@@ -316,57 +257,7 @@ export function ContactStaff() {
         </table>
       </form>
 
-      {/* 我的工单（审计修复 P1 闭环补全）：提交后可见进度；已答复可确认关闭 */}
-      <section className="contactstaff-wrap" aria-label={t.myTickets}>
-        <h2>{t.myTickets}</h2>
-        {tickets === null && (
-          <p className="contactstaff-hint">{t.loading ?? "…"}</p>
-        )}
-        {tickets?.length === 0 && (
-          <p className="contactstaff-hint">{t.noTickets}</p>
-        )}
-        {tickets && tickets.length > 0 && (
-          <table className="nexus-table">
-            <tbody>
-              {tickets.map((tk) => (
-                <tr key={tk.id}>
-                  <td className="rowhead">{tk.subject}</td>
-                  <td className="rowfollow">
-                    <span className="sticker">
-                      {[t.stNew, t.stProcessing, t.stAnswered, t.stClosed][
-                        tk.ticket_status
-                      ] ?? tk.ticket_status}
-                    </span>
-                    <p className="contactstaff-hint">
-                      {new Date(tk.created_at).toLocaleString(
-                        locale === "zh-CN"
-                          ? "zh-CN"
-                          : locale === "zh-TW"
-                            ? "zh-TW"
-                            : "en-US",
-                      )}
-                    </p>
-                    {tk.answer && (
-                      <blockquote className="contactstaff-preview">
-                        <b>{t.replyLabel}</b>
-                        <p>{tk.answer}</p>
-                      </blockquote>
-                    )}
-                    {tk.ticket_status === 2 && (
-                      <input
-                        type="button"
-                        className="btn"
-                        value={t.confirmClose}
-                        onClick={() => void confirmTicket(tk.id)}
-                      />
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+      <MyTickets tickets={tickets} onConfirm={confirmTicket} />
     </div>
   );
 }

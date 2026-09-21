@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_XS_GHOST } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
@@ -77,7 +79,7 @@ export function ResurrectionPanel() {
         <h2>🌱 {t.title}</h2>
         <button
           type="button"
-          className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold"
+          className={BTN_XS_GHOST}
           onClick={() => {
             setMineOpen((v) => !v);
             if (!mineOpen) void loadMine();

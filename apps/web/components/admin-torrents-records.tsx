@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD, BTN_SM_GHOST, INPUT_GROW } from "@/lib/ui-classes";
+
 /**
  * 后台种子管理·记录类子表（从 components/admin-torrents.tsx 按域拆出）：
  * DenyReasons 拒绝原因字典、OpLogs 种子操作记录。
@@ -88,7 +90,7 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
           </button>
           {edit.id !== null && (
             <button
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+              className={BTN_SM_BOLD}
               onClick={() => setEdit({ id: null, reason: "", sort: 0 })}
             >
               取消
@@ -191,7 +193,7 @@ export function OpLogs() {
           value={tid}
           onChange={(e) => setTid(e.target.value)}
           placeholder="按种子 ID 过滤（留空看全部）"
-          className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2"
+          className={INPUT_GROW}
         />
       </div>
       <table className="nexus-table">
@@ -228,7 +230,7 @@ export function OpLogs() {
         <button
           disabled={page <= 1}
           onClick={() => setPage(page - 1)}
-          className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          className={BTN_SM_GHOST}
         >
           上一页
         </button>
@@ -238,7 +240,7 @@ export function OpLogs() {
         <button
           disabled={!data || data.rows.length < 20}
           onClick={() => setPage(page + 1)}
-          className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          className={BTN_SM_GHOST}
         >
           下一页
         </button>

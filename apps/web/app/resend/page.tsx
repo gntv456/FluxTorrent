@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_LG_SKY, INPUT_LG } from "@/lib/ui-classes";
+
 import { useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
@@ -51,7 +53,7 @@ export default function ResendPage() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
-            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 outline-none focus:ring-2 focus:ring-sky/40"
+            className={INPUT_LG}
           />
         </label>
         {msg && (
@@ -62,7 +64,7 @@ export default function ResendPage() {
         <button
           type="submit"
           disabled={busy}
-          className="min-h-[44px] rounded-full bg-sky font-bold text-white active:scale-[0.97] disabled:opacity-50"
+          className={BTN_LG_SKY}
         >
           {busy ? dict.resend.busy : dict.resend.submit}
         </button>

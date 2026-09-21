@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_GHOST } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -152,7 +154,7 @@ export function MedalWall({ rarities }: { rarities: MedalRarity[] }) {
             <button
               disabled={page <= 1}
               onClick={() => setPage(page - 1)}
-              className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+              className={BTN_SM_GHOST}
             >
               {t.prev}
             </button>
@@ -162,7 +164,7 @@ export function MedalWall({ rarities }: { rarities: MedalRarity[] }) {
             <button
               disabled={page >= totalPages}
               onClick={() => setPage(page + 1)}
-              className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+              className={BTN_SM_GHOST}
             >
               {dict.common.nextPage}
             </button>

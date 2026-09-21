@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_DANGER, BTN_SM_SKY } from "@/lib/ui-classes";
+
 import { fmtBytes } from "@/components/admin-users-detail";
 
 /** 用户列表与批量操作面板（从 admin-users.tsx 按域拆出，300 门禁）：
@@ -59,7 +61,7 @@ export function UsersBatchBar({
       <button
         disabled={busy || sel.size === 0}
         onClick={() => batch("status", 2)}
-        className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-danger disabled:opacity-50"
+        className={BTN_SM_DANGER}
       >
         批量封禁
       </button>
@@ -83,7 +85,7 @@ export function UsersBatchBar({
       <button
         disabled={busy || sel.size === 0 || !batchClass}
         onClick={() => batch("class", Number(batchClass))}
-        className="min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white disabled:opacity-50"
+        className={BTN_SM_SKY}
       >
         执行
       </button>

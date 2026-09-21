@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_BOLD, INPUT_MD } from "@/lib/ui-classes";
+
 /**
  * 后台用户详情·管理操作面板（从 components/admin-user-detail-actions.tsx
  * 按域拆出）：等级修改 / 分配角色 / 分配权限 / 授予勋章 / 授予道具 /
@@ -13,11 +15,9 @@ import { CATEGORY_LABEL, ITEM_KIND_LABEL } from "./admin-user-detail-shared";
 /** 展开面板卡片容器 */
 const PANEL_BOX_CLS = "cmgmt-form rounded-[var(--r-md)] border border-line p-3";
 /** 纯描边输入框（datetime/month/number/note） */
-const PLAIN_FIELD_CLS =
-  "min-h-[40px] rounded-[var(--r-sm)] border border-line px-2";
+const PLAIN_FIELD_CLS = INPUT_MD;
 /** 圆角描边小按钮（普通/danger） */
-const PLAIN_BTN_CLS =
-  "min-h-[36px] rounded-full border border-line px-4 text-xs font-bold";
+const PLAIN_BTN_CLS = BTN_SM_BOLD;
 const DANGER_BTN_CLS = `${PLAIN_BTN_CLS} text-danger`;
 /** 新增职务折叠框 */
 const DETAILS_BOX_CLS =

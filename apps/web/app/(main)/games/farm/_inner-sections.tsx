@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_LG } from "@/lib/ui-classes";
+
 import { fmt, fmtCur } from "@/i18n/config";
 import {
   FarmPlot,
@@ -47,7 +49,7 @@ export function MyFieldSection({
   act: Act;
 }) {
   return (
-    <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+    <section className={PANEL_LG}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-base">{tf.myField}</h2>
         <div className="flex flex-wrap items-center gap-2">
@@ -140,7 +142,7 @@ export function MarketSection({
   tf: Record<string, string>;
 }) {
   return (
-    <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+    <section className={PANEL_LG}>
       <h2 className="mb-3 font-display text-base">{tf.market}</h2>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {crops.map((c) => (

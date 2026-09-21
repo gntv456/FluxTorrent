@@ -74,7 +74,9 @@ export function FrameShop({
       <div className={FRAME_GRID}>
         <div className={FRAME_CARD}>
           <span
-            className={`avatar-frame-demo ${current === null ? "frame-on" : ""}`}
+            className={
+              "avatar-frame-demo " + `${current === null ? "frame-on" : ""}`
+            }
             aria-hidden
           >
             🙂

@@ -1,5 +1,7 @@
 "use client";
 
+import { CELL_CARD_SUB } from "@/lib/ui-classes";
+
 import { useI18n } from "@/i18n/client";
 
 import { useState } from "react";
@@ -42,7 +44,7 @@ export function AdminTorrents() {
             role="tab"
             aria-selected={sub === k}
             onClick={() => setSub(k)}
-            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : "border border-line bg-[var(--surface-card)] text-sub"}`}
+            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : CELL_CARD_SUB}`}
           >
             {label}
           </button>

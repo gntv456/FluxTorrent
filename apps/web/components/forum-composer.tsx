@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_LG_COL } from "@/lib/ui-classes";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
@@ -146,7 +148,7 @@ export function TopicComposer({ forumId }: { forumId: number }) {
   return (
     <form
       onSubmit={submit}
-      className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
+      className={PANEL_LG_COL}
     >
       <label className="flex flex-col gap-1">
         <span className="text-sm text-sub">{dict.forums.topicTitle}</span>

@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_DANGER } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -114,7 +116,7 @@ export function PushSettings() {
                   {t.btnTest}
                 </button>
                 <button
-                  className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-danger disabled:opacity-50"
+                  className={BTN_SM_DANGER}
                   disabled={busy}
                   onClick={unsubscribe}
                 >

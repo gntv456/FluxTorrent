@@ -1,5 +1,7 @@
 "use client";
 
+import { INPUT_CLOUD } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -75,7 +77,7 @@ export function IncrementBulk() {
     }
   }
 
-  const inp = "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky";
+  const inp = INPUT_CLOUD;
 
   return (
     <div className="flex flex-col gap-3">

@@ -5,10 +5,13 @@ import { useI18n } from "@/i18n/client";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
+import { Payroll, PayrollTab } from "./admin-jixiao-payroll";
+
 /** 0106 绩效考核管理端补齐：
  *  岗位总览（本期登记/达标/发薪聚合 + 成员明细）
  *  + 批量分配（一个岗位一次登记多名用户，工作组口径）
- *  + 发薪记录（status=1 行 + 发放方式 worker/self） */
+ *  + 发薪记录（status=1 行 + 发放方式 worker/self）。
+ *  发薪记录 tab 拆至 ./admin-jixiao-payroll.tsx。 */
 
 interface OverviewType {
   type_id: number;
@@ -35,23 +38,6 @@ interface Overview {
   period: string;
   types: OverviewType[];
   members: OverviewMember[];
-}
-
-interface PayrollRow {
-  claim_id: number;
-  user_id: number;
-  username: string;
-  type_name: string;
-  amount: number;
-  bonus: number;
-  paid_by: string;
-  settled_at: string;
-}
-
-interface Payroll {
-  period: string;
-  total: number;
-  list: PayrollRow[];
 }
 
 const STATUS_LABEL: Record<number, string> = {
@@ -109,9 +95,10 @@ export function AdminJixiao() {
         "/api/v1/admin/jixiao/assign-batch",
         { type_id: Number(form.type_id), user_ids: ids },
       );
-      flash(
-        `已分配 ${r.assigned.length} 人${r.skipped_dup.length ? `，跳过（本期已登记）${r.skipped_dup.length} 人` : ""}`,
-      );
+      const skip = r.skipped_dup.length
+        ? `，跳过（本期已登记）${r.skipped_dup.length} 人`
+        : "";
+      flash(`已分配 ${r.assigned.length} 人${skip}`);
       setForm({ type_id: form.type_id, user_ids: "" });
       await load();
     } catch (e) {
@@ -122,7 +109,8 @@ export function AdminJixiao() {
   }
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 font-mono text-sm outline-none focus:border-sky";
+    "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
+    "bg-cloud px-2 font-mono text-sm outline-none focus:border-sky";
   const typeName = (tid: number) =>
     types.find((t) => t.id === tid)?.name ?? `#${tid}`;
 
@@ -143,7 +131,10 @@ export function AdminJixiao() {
         ).map(([k, label]) => (
           <button
             key={k}
-            className={`min-h-[32px] rounded-full px-4 text-xs font-bold ${tab === k ? "bg-sky text-cloud" : "border border-line"}`}
+            className={
+              "min-h-[32px] rounded-full px-4 text-xs font-bold " +
+              `${tab === k ? "bg-sky text-cloud" : "border border-line"}`
+            }
             onClick={() => setTab(k)}
           >
             {label}
@@ -278,59 +269,7 @@ export function AdminJixiao() {
         </section>
       )}
 
-      {tab === "payroll" && pay && (
-        <>
-          <p className="text-xs text-sub">
-            本期发薪总额：
-            <strong className="text-ink">
-              {pay.total.toLocaleString()} {currency}
-            </strong>
-            （paid_by：worker=月末自动结算，self=本人领取）
-          </p>
-          <table className="nexus-table text-xs">
-            <thead>
-              <tr>
-                <td className="colhead">领取ID</td>
-                <td className="colhead">用户</td>
-                <td className="colhead">岗位</td>
-                <td className="colhead">工资</td>
-                <td className="colhead">加成</td>
-                <td className="colhead">方式</td>
-                <td className="colhead">时间</td>
-              </tr>
-            </thead>
-            <tbody>
-              {pay.list.map((r) => (
-                <tr key={r.claim_id}>
-                  <td className="num">{r.claim_id}</td>
-                  <td>
-                    <a
-                      className="text-sky underline"
-                      href={`/users/${r.user_id}`}
-                    >
-                      {r.username}
-                    </a>
-                  </td>
-                  <td>{r.type_name}</td>
-                  <td className="num">{r.amount.toLocaleString()}</td>
-                  <td className="num">{r.bonus.toLocaleString()}</td>
-                  <td>{r.paid_by}</td>
-                  <td className="text-sub">
-                    {new Date(r.settled_at).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-              {pay.list.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-sub">
-                    本期暂无发薪
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </>
-      )}
+      {tab === "payroll" && pay && <PayrollTab pay={pay} />}
     </div>
   );
 }

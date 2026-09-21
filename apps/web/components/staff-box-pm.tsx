@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_XS_GHOST } from "@/lib/ui-classes";
+
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type { MessageRow } from "@/components/staff-box-desk";
@@ -84,7 +86,7 @@ export function PmReplyForm({
         </h2>
         <button
           type="button"
-          className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold"
+          className={BTN_XS_GHOST}
           onClick={onClose}
         >
           ✕

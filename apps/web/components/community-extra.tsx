@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_MD } from "@/lib/ui-classes";
+
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -46,7 +48,7 @@ export function PollBox({ empty }: { empty: string }) {
         return (
           <div
             key={p.id}
-            className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
+            className={PANEL_MD}
           >
             <h3 className="font-bold">{p.question}</h3>
             <ul className="mt-2 flex flex-col gap-1.5">

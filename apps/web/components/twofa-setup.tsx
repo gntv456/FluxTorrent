@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_DANGER } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
@@ -166,7 +168,7 @@ export function TwoFactorSetup() {
             type="button"
             disabled={busy}
             onClick={disable}
-            className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-danger disabled:opacity-50"
+            className={BTN_SM_DANGER}
           >
             {t.disable}
           </button>

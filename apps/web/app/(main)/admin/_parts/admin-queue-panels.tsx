@@ -1,5 +1,7 @@
 "use client";
 
+import { PANEL_LG } from "@/lib/ui-classes";
+
 /**
  * 管理后台待办队列面板（从 app/(main)/admin/page.tsx 按域拆出）：
  * 待审种子审核（ReviewsPanel）与申诉处理（AppealsPanel）。
@@ -20,7 +22,7 @@ export function ReviewsPanel({
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
   return (
-    <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+    <section className={PANEL_LG}>
       <ul className="flex flex-col divide-y divide-line">
         {reviews.map((t) => (
           <li key={t.id} className="flex items-center gap-3 py-2">
@@ -66,7 +68,7 @@ export function AppealsPanel({
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
   return (
-    <section className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
+    <section className={PANEL_LG}>
       <ul className="flex flex-col divide-y divide-line">
         {appeals.map((ap) => (
           <li key={ap.id} className="flex items-center gap-3 py-2">

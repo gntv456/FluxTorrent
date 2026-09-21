@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_SM_GHOST, INPUT_GROW } from "@/lib/ui-classes";
+
 /**
  * 后台种子管理·通用记录查询（从 components/admin-torrents.tsx 按域拆出）：
  * RecordQuery 按用户名搜索 + 任意列配置的分页表格（火花/购买记录共用）。
@@ -45,7 +47,7 @@ export function RecordQuery({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={`${title}：按用户名搜索`}
-          className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2"
+          className={INPUT_GROW}
         />
       </div>
       <table className="nexus-table">
@@ -83,7 +85,7 @@ export function RecordQuery({
         <button
           disabled={page <= 1}
           onClick={() => setPage(page - 1)}
-          className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          className={BTN_SM_GHOST}
         >
           上一页
         </button>
@@ -91,7 +93,7 @@ export function RecordQuery({
         <button
           disabled={!data || data.rows.length < 20}
           onClick={() => setPage(page + 1)}
-          className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          className={BTN_SM_GHOST}
         >
           下一页
         </button>

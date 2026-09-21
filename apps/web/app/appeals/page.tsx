@@ -1,5 +1,7 @@
 "use client";
 
+import { BTN_LG_SKY, PANEL_LG_COL } from "@/lib/ui-classes";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
@@ -106,7 +108,7 @@ export default function AppealsPage() {
 
       <form
         onSubmit={submit}
-        className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
+        className={PANEL_LG_COL}
       >
         {guest ? (
           <p className="rounded-[var(--r-sm)] bg-cloud p-2 text-xs text-sub">
@@ -200,7 +202,7 @@ export default function AppealsPage() {
         <button
           type="submit"
           disabled={busy}
-          className="min-h-[44px] rounded-full bg-sky font-bold text-white active:scale-[0.97] disabled:opacity-50"
+          className={BTN_LG_SKY}
         >
           {busy ? dict.appeals.busy : dict.appeals.submit}
         </button>
