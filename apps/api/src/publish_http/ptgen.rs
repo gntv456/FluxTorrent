@@ -100,7 +100,8 @@ pub async fn ptgen(
     let host = parsed.host_str().unwrap_or_default().to_lowercase();
     // 站点启用源（0087 metadata_sources）∩ PT-Gen 支持的源：host 后缀映射
     let enabled: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'metadata_sources'), 'imdb,douban,bangumi,indienova')",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'metadata_sources'), 'imdb,douban,bangumi,indienova')",
     )
     .fetch_one(&state.repo.db)
     .await

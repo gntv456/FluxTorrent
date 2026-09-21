@@ -19,7 +19,8 @@ pub async fn frame_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let rows: Vec<FrameRow> = sqlx::query_as(
-        "SELECT id, name, css, image_url, price FROM avatar_frames ORDER BY sort, id",
+        "SELECT id, name, css, image_url, \
+         price FROM avatar_frames ORDER BY sort, id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -106,7 +107,8 @@ pub async fn gomoku_create(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO gomoku_games (black_id, board) VALUES ($1, '') RETURNING id",
+        "INSERT INTO gomoku_games (black_id, board) VALUES ($1, '') \
+         RETURNING id",
     )
     .bind(auth.id)
     .fetch_one(&state.repo.db)
@@ -123,9 +125,13 @@ pub async fn gomoku_join(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let n = sqlx::query(
-        "UPDATE gomoku_games SET white_id=$2, updated_at=now() WHERE id=$1 AND white_id IS NULL AND black_id <> $2",
-    ).bind(*path).bind(auth.id)
-    .execute(&state.repo.db).await
+        "UPDATE gomoku_games SET white_id=$2, \
+         updated_at=now() WHERE id=$1 AND white_id IS NULL AND black_id <> $2",
+    )
+    .bind(*path)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if n.rows_affected() == 0 {
         return Err(DomainError::Validation("对局不存在或已有对手".into()));
@@ -149,13 +155,15 @@ pub async fn gomoku_move(
     if !(0..225).contains(&body.pos) {
         return Err(DomainError::Validation("落点越界".into()));
     }
-    let g: Option<(i64, Option<i64>, String, String, Option<i64>)> = sqlx::query_as(
-        "SELECT black_id, white_id, board, turn, winner_id FROM gomoku_games WHERE id=$1",
-    )
-    .bind(*path)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let g: Option<(i64, Option<i64>, String, String, Option<i64>)> =
+        sqlx::query_as(
+            "SELECT black_id, white_id, board, turn, \
+         winner_id FROM gomoku_games WHERE id=$1",
+        )
+        .bind(*path)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((black, white, board, turn, winner)) = g else {
         return Err(DomainError::NotFound(*path as i64));
     };
@@ -188,7 +196,8 @@ pub async fn gomoku_move(
     let won = check_gomoku_win(&cells, body.pos as usize, my_color);
     let winner_id = if won { Some(auth.id) } else { None };
     sqlx::query(
-        "UPDATE gomoku_games SET board=$2, turn=$3, winner_id=$4, updated_at=now() WHERE id=$1",
+        "UPDATE gomoku_games SET board=$2, turn=$3, winner_id=$4, \
+         updated_at=now() WHERE id=$1",
     )
     .bind(*path)
     .bind(&new_board)
@@ -208,7 +217,8 @@ pub async fn gomoku_get(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let g: Option<GomokuGame> = sqlx::query_as(
-        "SELECT id, black_id, white_id, board, turn, winner_id FROM gomoku_games WHERE id=$1",
+        "SELECT id, black_id, white_id, board, turn, \
+         winner_id FROM gomoku_games WHERE id=$1",
     )
     .bind(*path)
     .fetch_optional(&state.repo.db)

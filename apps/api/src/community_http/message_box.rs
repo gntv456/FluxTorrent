@@ -64,7 +64,8 @@ async fn message_delete(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
-        "UPDATE messages SET location = 0 WHERE receiver_id = $1 AND id = ANY($2) AND location = 1",
+        "UPDATE messages SET location = 0 WHERE receiver_id = $1 AND \
+         id = ANY($2) AND location = 1",
     )
     .bind(auth.id)
     .bind(&body.ids)
@@ -72,18 +73,22 @@ async fn message_delete(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
-        "UPDATE messages SET saved = 0 WHERE sender_id = $1 AND id = ANY($2) AND saved = 1",
+        "UPDATE messages SET saved = 0 WHERE sender_id = $1 AND id = \
+         ANY($2) AND saved = 1",
     )
     .bind(auth.id)
     .bind(&body.ids)
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("DELETE FROM messages WHERE id = ANY($1) AND location = 0 AND saved = 0")
-        .bind(&body.ids)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "DELETE FROM messages WHERE id = ANY($1) AND location = 0 \
+     AND saved = 0",
+    )
+    .bind(&body.ids)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -109,7 +114,8 @@ async fn message_move(
     }
     if let Some(f) = body.folder {
         let owned: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM pmboxes WHERE id = $1 AND user_id = $2)",
+            "SELECT EXISTS(SELECT 1 FROM pmboxes WHERE id = $1 AND \
+             user_id = $2)",
         )
         .bind(f)
         .bind(auth.id)
@@ -121,7 +127,8 @@ async fn message_move(
         }
     }
     let n = sqlx::query(
-        "UPDATE messages SET folder = $2 WHERE receiver_id = $1 AND id = ANY($3) AND location = 1",
+        "UPDATE messages SET folder = $2 WHERE receiver_id = $1 AND id \
+         = ANY($3) AND location = 1",
     )
     .bind(auth.id)
     .bind(body.folder)

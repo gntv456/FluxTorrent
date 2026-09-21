@@ -28,7 +28,8 @@ async fn shop_items(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let items = sqlx::query_as::<_, ShopItem>(
-        "SELECT id, name, kind, price FROM shop_items WHERE active = true ORDER BY price",
+        "SELECT id, name, kind, \
+         price FROM shop_items WHERE active = true ORDER BY price",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -50,13 +51,15 @@ async fn shop_buy(
     body: web::Json<BuyReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let item: Option<(String, String, i64, serde_json::Value)> = sqlx::query_as(
-        "SELECT name, kind, price, config FROM shop_items WHERE id = $1 AND active = true",
-    )
-    .bind(body.item_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let item: Option<(String, String, i64, serde_json::Value)> =
+        sqlx::query_as(
+            "SELECT name, kind, price, \
+         config FROM shop_items WHERE id = $1 AND active = true",
+        )
+        .bind(body.item_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((name, kind, price, config)) = item else {
         return Err(DomainError::NotFound(body.item_id));
     };
@@ -71,7 +74,8 @@ async fn shop_buy(
         let item_id = config.get("item_id").and_then(|v| v.as_i64());
         if let Some(iid) = item_id {
             let owned: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM user_dressups WHERE user_id = $1 AND item_id = $2)",
+                "SELECT EXISTS(SELECT 1 FROM user_dressups \
+                 WHERE user_id = $1 AND item_id = $2)",
             )
             .bind(auth.id)
             .bind(iid)
@@ -123,7 +127,8 @@ async fn shop_buy(
     // 效果分支——扣款成功但效果失败后重试 = 花钱买空气）。置位失败 = 效果已发过，跳过。
     let _ = outcome;
     let should_apply: Option<i64> = sqlx::query_scalar(
-        "UPDATE shop_orders SET effect_applied = TRUE          WHERE user_id = $1 AND idempotency_key = $2 AND NOT effect_applied RETURNING id",
+        "UPDATE shop_orders SET effect_applied = TRUE WHERE user_id = \
+         $1 AND idempotency_key = $2 AND NOT effect_applied RETURNING id",
     )
     .bind(auth.id)
     .bind(&idem)

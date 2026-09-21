@@ -43,7 +43,8 @@ async fn forum_rss_feed(
     let fids: Vec<i64> = match parse_ids(q.forums.as_deref()) {
         Some(v) => v.into_iter().map(|x| x as i64).collect(),
         None => vec![sqlx::query_scalar(
-            "SELECT COALESCE((SELECT min(id) FROM forums WHERE name LIKE '公告%'), 1)",
+            "SELECT COALESCE((SELECT min(id) FROM forums WHERE \
+             name LIKE '公告%'), 1)",
         )
         .fetch_one(&state.repo.db)
         .await

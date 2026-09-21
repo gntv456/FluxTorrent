@@ -17,7 +17,8 @@ pub async fn charge_for_download(
     torrent_id: i64,
 ) -> DomainResult<()> {
     let row: Option<(i64, Option<i64>)> = sqlx::query_as(
-        "SELECT price, owner_id FROM torrents WHERE id = $1 AND approval_status = 1",
+        "SELECT price, \
+         owner_id FROM torrents WHERE id = $1 AND approval_status = 1",
     )
     .bind(torrent_id)
     .fetch_optional(db)
@@ -30,7 +31,8 @@ pub async fn charge_for_download(
         return Ok(());
     }
     let purchased: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM torrent_purchases WHERE user_id = $1 AND torrent_id = $2)",
+        "SELECT EXISTS(SELECT 1 FROM torrent_purchases WHERE user_id = \
+         $1 AND torrent_id = $2)",
     )
     .bind(user_id)
     .bind(torrent_id)
@@ -41,7 +43,8 @@ pub async fn charge_for_download(
         return Ok(());
     }
     let tax: i32 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'upload_price_tax'), 30)",
+        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE \
+         name = 'upload_price_tax'), 30)",
     )
     .fetch_one(db)
     .await
@@ -134,7 +137,8 @@ pub async fn charge_for_download(
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
     sqlx::query(
-        "INSERT INTO torrent_purchases (user_id, torrent_id, price) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        "INSERT INTO torrent_purchases (user_id, torrent_id, price) \
+         VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
     )
     .bind(user_id)
     .bind(torrent_id)
@@ -162,7 +166,8 @@ pub async fn site_stats(db: &PgPool) -> DomainResult<serde_json::Value> {
     .await
     .unwrap_or(0);
     let dead: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM torrents WHERE approval_status = 1 AND seeders = 0",
+        "SELECT count(*) FROM torrents WHERE approval_status = 1 AND \
+         seeders = 0",
     )
     .fetch_one(db)
     .await

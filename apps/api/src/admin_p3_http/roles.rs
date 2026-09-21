@@ -78,14 +78,17 @@ async fn roles_dict_add(
     if dup {
         return Err(DomainError::Validation("职务已存在".into()));
     }
-    sqlx::query("INSERT INTO roles (key, name, descr, sort) VALUES ($1, $2, $3, COALESCE($4, 0))")
-        .bind(key)
-        .bind(body.name.trim())
-        .bind(body.descr.clone())
-        .bind(body.sort)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO roles (key, name, descr, sort) VALUES ($1, \
+     $2, $3, COALESCE($4, 0))",
+    )
+    .bind(key)
+    .bind(body.name.trim())
+    .bind(body.descr.clone())
+    .bind(body.sort)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "roles.add", None).await;
     Ok(ok(serde_json::json!({ "key": key })))
 }
@@ -106,7 +109,8 @@ async fn roles_dict_update(
     }
     // key 不可改（user_roles/role_permissions 外键引用它）；改名连带刷新权限缓存
     let n = sqlx::query(
-        "UPDATE roles SET name = $2, descr = $3, sort = COALESCE($4, sort) WHERE key = $1",
+        "UPDATE roles SET name = $2, descr = $3, \
+         sort = COALESCE($4, sort) WHERE key = $1",
     )
     .bind(&key)
     .bind(body.name.trim())

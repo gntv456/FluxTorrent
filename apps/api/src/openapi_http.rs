@@ -93,7 +93,8 @@ pub async fn require_token(
     let uid2 = uid;
     tokio::spawn(async move {
         let _ = sqlx::query(
-            "UPDATE api_tokens SET last_used_at = now() WHERE user_id = $1 AND token_hash = $2",
+            "UPDATE api_tokens SET last_used_at = now() WHERE \
+             user_id = $1 AND token_hash = $2",
         )
         .bind(uid2)
         .execute(&db)
@@ -164,7 +165,8 @@ async fn token_issue(
     }
     // 每人最多 3 枚有效 token（YemaPT 口径：少而精，泄露面可控）
     let active: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM api_tokens WHERE user_id = $1 AND revoked_at IS NULL",
+        "SELECT count(*) FROM api_tokens WHERE user_id = $1 AND \
+         revoked_at IS NULL",
     )
     .bind(auth.id)
     .fetch_one(&state.repo.db)

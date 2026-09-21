@@ -19,31 +19,34 @@ pub(super) async fn store_files_promo(
     // 文件清单入 files 表（修复前从不写入：新种的文件列表/按文件名搜索永远为空）
     for (idx, (path, len)) in parsed.files.iter().enumerate() {
         sqlx::query(
-                "INSERT INTO files (torrent_id, file_index, path, size) VALUES ($1, $2, $3, $4)",
-            )
-            .bind(id)
-            .bind(idx as i32)
-            .bind(path)
-            .bind(len)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            "INSERT INTO files (torrent_id, file_index, \
+                 path, size) VALUES ($1, $2, $3, $4)",
+        )
+        .bind(id)
+        .bind(idx as i32)
+        .bind(path)
+        .bind(len)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
 
     // 发种自动促销（0089，NP 促销设置 口径）：管理后台配置默认促销（类型+天数），
     // 发布即自动套用——促销跟随站点，不再由发布者单独设置。
     let auto_kind: String = sqlx::query_scalar(
-            "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'upload_auto_promo_kind'), '')",
-        )
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or_default();
+        "SELECT COALESCE((SELECT value FROM site_settings \
+             WHERE name = 'upload_auto_promo_kind'), '')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_default();
     let auto_days: i32 = sqlx::query_scalar(
-            "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'upload_auto_promo_days'), 0)",
-        )
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0);
+        "SELECT COALESCE((SELECT value::int FROM site_settings \
+             WHERE name = 'upload_auto_promo_days'), 0)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     let auto_kind = auto_kind.trim().to_lowercase();
     if !auto_kind.is_empty()
         && auto_days > 0
@@ -99,15 +102,17 @@ pub(super) async fn store_files_promo(
             })
             .transpose()?;
         sqlx::query(
-                "UPDATE torrents SET pos_state = $2, pos_state_until = $3, pick_type = $4, mtime = now() WHERE id = $1",
-            )
-            .bind(id)
-            .bind(pos)
-            .bind(until)
-            .bind(pick)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            "UPDATE torrents SET pos_state = $2, \
+                 pos_state_until = $3, pick_type = $4, \
+                 mtime = now() WHERE id = $1",
+        )
+        .bind(id)
+        .bind(pos)
+        .bind(until)
+        .bind(pick)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
 
     state

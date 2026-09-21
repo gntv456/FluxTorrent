@@ -174,14 +174,21 @@ impl Plugin for AutoPinOfficial {
         let db = state.repo.db.clone();
         let rt = tokio::runtime::Handle::current();
         let n = rt.block_on(async move {
-            match sqlx::query("UPDATE torrents SET sticky = TRUE WHERE id = $1 AND official_tag")
-                .bind(torrent_id)
-                .execute(&db)
-                .await
+            match sqlx::query(
+                "UPDATE torrents SET sticky = TRUE \
+             WHERE id = $1 AND official_tag",
+            )
+            .bind(torrent_id)
+            .execute(&db)
+            .await
             {
                 Ok(r) => r.rows_affected(),
                 Err(e) => {
-                    tracing::error!(plugin = "auto_pin_official", ?e, "pin update failed");
+                    tracing::error!(
+                        plugin = "auto_pin_official",
+                        ?e,
+                        "pin update failed"
+                    );
                     0
                 }
             }

@@ -71,7 +71,8 @@ pub async fn invites_status_handler(
     .map_err(|e| DomainError::Internal(e.into()))?
     .unwrap_or((0, 0));
     let price: Option<i64> = sqlx::query_scalar(
-        "SELECT price FROM shop_items WHERE kind = 'invite' AND active = true ORDER BY price LIMIT 1",
+        "SELECT price FROM shop_items WHERE kind = 'invite' AND active \
+         = true ORDER BY price LIMIT 1",
     )
     .fetch_optional(&state.repo.db)
     .await
@@ -128,7 +129,8 @@ pub async fn issue_invite_handler(
     // quota_extra（捐赠/管理发放的额外配额）优先于周配额消耗（0066 修复：此前只加不扣，
     // 用户永远领不到这部分额外邀请）。
     let extra: Option<i32> = sqlx::query_scalar(
-        "UPDATE users SET quota_extra = quota_extra - 1 WHERE id = $1 AND quota_extra > 0 RETURNING quota_extra",
+        "UPDATE users SET quota_extra = quota_extra - 1 WHERE id = $1 \
+         AND quota_extra > 0 RETURNING quota_extra",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -144,14 +146,18 @@ pub async fn issue_invite_handler(
             ));
         }
         sqlx::query(
-            "INSERT INTO invite_quota (user_id, period, used) VALUES ($1, date_trunc('week', now())::date, 0) ON CONFLICT DO NOTHING",
+            "INSERT INTO invite_quota (user_id, period, used) \
+             VALUES ($1, date_trunc('week', now())::date, 0) ON CONFLICT DO \
+             NOTHING",
         )
         .bind(auth.id)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         let taken: Option<i32> = sqlx::query_scalar(
-            "UPDATE invite_quota SET used = used + 1 WHERE user_id = $1 AND period = date_trunc('week', now())::date AND used < $2 RETURNING used",
+            "UPDATE invite_quota SET used = used + 1 WHERE user_id \
+             = $1 AND period = date_trunc('week', now())::date AND used < $2 \
+             RETURNING used",
         )
         .bind(auth.id)
         .bind(quota)
@@ -188,7 +194,8 @@ pub async fn redeem_invite_handler(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let item: Option<(i64, i64)> = sqlx::query_as(
-        "SELECT id, price FROM shop_items WHERE kind = 'invite' AND active = true ORDER BY price LIMIT 1",
+                "SELECT id, \
+         price FROM shop_items WHERE kind = 'invite' AND active = true ORDER BY price LIMIT 1",
     )
     .fetch_optional(&state.repo.db)
     .await

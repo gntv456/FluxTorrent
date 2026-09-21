@@ -46,7 +46,9 @@ pub async fn delete_user_cascade(
         return Ok(());
     }
     sqlx::query(
-        "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, EXTRACT(EPOCH FROM now())::bigint)          ON CONFLICT (user_id) DO UPDATE SET nbf = GREATEST(token_revocations.nbf, EXCLUDED.nbf)",
+                "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, \
+         EXTRACT(EPOCH FROM now())::bigint) ON CONFLICT (user_id) DO UPDATE SET \
+         nbf = GREATEST(token_revocations.nbf, EXCLUDED.nbf)",
     )
     .bind(uid)
     .execute(&mut *tx)
@@ -111,8 +113,10 @@ pub async fn delete_user_cascade(
         "UPDATE hr_snapshots SET pardoned_by = NULL WHERE pardoned_by = $1",
         "UPDATE hr_violations SET resolved_by = NULL WHERE resolved_by = $1",
         "UPDATE leak_events SET resolved_by = NULL WHERE resolved_by = $1",
-        "UPDATE reports SET claimed_by = NULL, handled_by = NULL WHERE claimed_by = $1 OR handled_by = $1",
-        "UPDATE staffmessages SET answered_by = NULL, assigned_to = NULL WHERE answered_by = $1 OR assigned_to = $1",
+        "UPDATE reports SET claimed_by = NULL, \
+         handled_by = NULL WHERE claimed_by = $1 OR handled_by = $1",
+        "UPDATE staffmessages SET answered_by = NULL, \
+         assigned_to = NULL WHERE answered_by = $1 OR assigned_to = $1",
         "UPDATE seed_preserve SET claimed_by = NULL WHERE claimed_by = $1",
         "UPDATE agent_rules SET created_by = NULL WHERE created_by = $1",
         "UPDATE email_bans SET created_by = NULL WHERE created_by = $1",
@@ -125,7 +129,8 @@ pub async fn delete_user_cascade(
         "UPDATE rules_revisions SET edited_by = NULL WHERE edited_by = $1",
         "UPDATE sticky_promotions SET created_by = NULL WHERE created_by = $1",
         "UPDATE torrent_groups SET created_by = NULL WHERE created_by = $1",
-        "UPDATE torrent_operation_logs SET operator_id = NULL WHERE operator_id = $1",
+        "UPDATE torrent_operation_logs SET operator_id = NULL WHERE \
+         operator_id = $1",
         "UPDATE user_modify_logs SET modifier = NULL WHERE modifier = $1",
         "UPDATE username_change_logs SET operator = NULL WHERE operator = $1",
         "UPDATE users SET invited_by = NULL WHERE invited_by = $1",

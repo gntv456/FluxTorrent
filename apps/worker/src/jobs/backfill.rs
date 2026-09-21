@@ -18,7 +18,8 @@ pub async fn backfill_pieces_hash(db: &PgPool) -> anyhow::Result<u64> {
     for (id, raw) in rows {
         if let Some(hash) = extract_pieces_hash(&raw) {
             sqlx::query(
-                "UPDATE torrents SET pieces_hash = $1 WHERE id = $2 AND pieces_hash IS NULL",
+                "UPDATE torrents SET pieces_hash = $1 WHERE id \
+                 = $2 AND pieces_hash IS NULL",
             )
             .bind(hash)
             .bind(id)
@@ -28,7 +29,8 @@ pub async fn backfill_pieces_hash(db: &PgPool) -> anyhow::Result<u64> {
         } else {
             // 缺 pieces 字段的畸形种：写空串占位，避免每轮重复扫描
             sqlx::query(
-                "UPDATE torrents SET pieces_hash = '' WHERE id = $1 AND pieces_hash IS NULL",
+                "UPDATE torrents SET pieces_hash = '' WHERE id \
+                 = $1 AND pieces_hash IS NULL",
             )
             .bind(id)
             .execute(db)

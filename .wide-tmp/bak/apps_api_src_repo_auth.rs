@@ -1,0 +1,89 @@
+//! 仓储模块目录（repo 分层做实第一步，2026-09-20）：
+//! repo.rs 保留鉴权/用户基础方法；多语句业务事务逐步收编为各域仓储方法。
+//! 收编顺序按审查建议：register 事务（本文件）→ 其余按域渐进。
+
+use sqlx::PgPool;
+
+use crate::domain::NewUser;
+use crate::errors::{DomainError, DomainResult};
+
+pub struct AuthRepo {
+    pub db: PgPool,
+}
+
+impl AuthRepo {
+    /// 注册事务（自 auth_http::register 收编）：建用户 + 消费邀请码 + 绑邀请人
+    /// 单事务（审计修复口径原样保留——中间崩溃不留未绑邀请人的账号）。
+    /// 返回 (user_id, inviter)；邀请码无效时整体回滚并返回 InviteUsed/InviteInvalid。
+    pub async fn register_user(
+        &self,
+        new_user: &NewUser,
+        pass_hash: &str,
+        invite_code: &str,
+        invite_only: bool,
+    ) -> DomainResult<(i64, Option<i64>)> {
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let passkey: String =
+            sqlx::query_scalar("SELECT encode(gen_random_bytes(20), 'hex')")
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        let user_id: i64 = sqlx::query_scalar(
+            "INSERT INTO users (username, email, pass_hash, passkey) VALUES ($1, $2, $3, $4) RETURNING id",
+        )
+        .bind(&new_user.username)
+        .bind(&new_user.email)
+        .bind(pass_hash)
+        .bind(&passkey)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::Database(db) if db.is_unique_violation() => DomainError::UsernameTaken,
+            other => DomainError::Internal(other.into()),
+        })?;
+        let inviter: Option<i64> = if invite_only {
+            let inv = sqlx::query_scalar(
+                "UPDATE invites SET status = 1, used_by = $1          WHERE code = $2 AND status = 0 AND expires_at > now()          RETURNING inviter_id",
+            )
+            .bind(user_id)
+            .bind(invite_code)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            let Some(inv) = inv else {
+                // 邀请码无效：先区分已用/无效再回滚（区分查询走池连接，事务随后 drop 回滚）
+                let used: bool = sqlx::query_scalar(
+                    "SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1 AND status = 1)",
+                )
+                .bind(invite_code)
+                .fetch_one(&self.db)
+                .await
+                .unwrap_or(false);
+                return Err(if used {
+                    DomainError::InviteUsed
+                } else {
+                    DomainError::InviteInvalid
+                });
+            };
+            Some(inv)
+        } else {
+            None
+        };
+        if let Some(inviter) = inviter {
+            sqlx::query("UPDATE users SET invited_by = $2 WHERE id = $1")
+                .bind(user_id)
+                .bind(inviter)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        tx.commit()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        Ok((user_id, inviter))
+    }
+}

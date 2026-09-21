@@ -54,7 +54,8 @@ async fn totp_setup(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let enabled: Option<String> = sqlx::query_scalar(
-        "SELECT totp_secret FROM users WHERE id = $1 AND totp_secret IS NOT NULL AND totp_enabled",
+        "SELECT totp_secret FROM users WHERE id = $1 AND totp_secret \
+         IS NOT NULL AND totp_enabled",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -98,7 +99,8 @@ async fn totp_enable(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let secret: Option<String> = sqlx::query_scalar(
-        "SELECT totp_secret FROM users WHERE id = $1 AND totp_secret IS NOT NULL AND NOT totp_enabled",
+        "SELECT totp_secret FROM users WHERE id = $1 AND totp_secret \
+         IS NOT NULL AND NOT totp_enabled",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -152,11 +154,14 @@ async fn totp_disable(
     if !totp_verify(&raw, body.code) {
         return Err(DomainError::Validation("验证码不正确".into()));
     }
-    sqlx::query("UPDATE users SET totp_secret = NULL, totp_enabled = FALSE WHERE id = $1")
-        .bind(auth.id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE users SET totp_secret = NULL, \
+     totp_enabled = FALSE WHERE id = $1",
+    )
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "2fa.disable", None).await;
     Ok(ok(serde_json::json!({ "disabled": true })))
 }

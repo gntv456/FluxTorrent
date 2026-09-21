@@ -35,7 +35,8 @@ async fn message_send(
     let staff = auth.class_id >= 90;
 
     let target: Option<(i64, String, i32)> = sqlx::query_as(
-        "SELECT id, accept_pm, class_id FROM users WHERE username = $1 AND status < 2",
+        "SELECT id, accept_pm, \
+         class_id FROM users WHERE username = $1 AND status < 2",
     )
     .bind(&body.to)
     .fetch_optional(&state.repo.db)
@@ -75,7 +76,9 @@ async fn message_send(
             }
             "friends" => {
                 let is_friend: bool = sqlx::query_scalar(
-                    "SELECT EXISTS(SELECT 1 FROM friendships f WHERE (f.user_id=$1 AND f.friend_id=$2) OR (f.user_id=$2 AND f.friend_id=$1))",
+                    "SELECT EXISTS(SELECT 1 FROM \
+                     friendships f WHERE (f.user_id=$1 AND f.friend_id=$2) OR \
+                     (f.user_id=$2 AND f.friend_id=$1))",
                 )
                 .bind(auth.id)
                 .bind(to_id)
@@ -113,7 +116,8 @@ async fn message_send(
     let mut text = body.body.clone();
     if let Some(rid) = body.reply_to {
         let orig: Option<(String, String)> = sqlx::query_as(
-            "SELECT subject, body FROM messages WHERE id = $1 AND (receiver_id = $2 OR sender_id = $2)",
+                        "SELECT subject, \
+             body FROM messages WHERE id = $1 AND (receiver_id = $2 OR sender_id = $2)",
         )
         .bind(rid)
         .bind(auth.id)
@@ -134,7 +138,8 @@ async fn message_send(
     }
     if let Some(fid) = body.forward_of {
         let orig: Option<(String, String)> = sqlx::query_as(
-            "SELECT subject, body FROM messages WHERE id = $1 AND (receiver_id = $2 OR sender_id = $2)",
+                        "SELECT subject, \
+             body FROM messages WHERE id = $1 AND (receiver_id = $2 OR sender_id = $2)",
         )
         .bind(fid)
         .bind(auth.id)

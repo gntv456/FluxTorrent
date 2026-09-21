@@ -120,7 +120,8 @@ pub async fn delete_torrent(
 /// 恢复软删种子（approval_status 3 → 0 待审）：此前误删后只能直连数据库手工修数。
 pub async fn restore_torrent(db: &PgPool, torrent_id: i64) -> DomainResult<()> {
     let n = sqlx::query(
-        "UPDATE torrents SET approval_status = 0, mtime = now() WHERE id = $1 AND approval_status = 3",
+        "UPDATE torrents SET approval_status = 0, \
+         mtime = now() WHERE id = $1 AND approval_status = 3",
     )
     .bind(torrent_id)
     .execute(db)

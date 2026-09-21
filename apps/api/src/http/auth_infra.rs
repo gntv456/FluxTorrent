@@ -234,23 +234,22 @@ pub async fn require_auth(
     // 权威校验（P1 修复）：token 只是凭证，状态与等级以库为准 —— 封禁/降级即时生效。
     // 5s TTL 缓存（P2）：省掉每请求一次 users round-trip；管理端封禁/降级后调
     // UserStatusCache::invalidate 消除窗口，最坏情况延迟 5s 生效。
-    let row: Option<(i16, i32, bool)> = match state
-        .user_status_cache
-        .get(claims.sub)
-    {
-        Some(cached) => cached,
-        None => {
-            let fetched = sqlx::query_as(
-                "SELECT status, class_id, must_reset_password FROM users WHERE id = $1",
-            )
-            .bind(claims.sub)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            state.user_status_cache.put(claims.sub, fetched.clone());
-            fetched
-        }
-    };
+    let row: Option<(i16, i32, bool)> =
+        match state.user_status_cache.get(claims.sub) {
+            Some(cached) => cached,
+            None => {
+                let fetched = sqlx::query_as(
+                    "SELECT status, class_id, \
+                 must_reset_password FROM users WHERE id = $1",
+                )
+                .bind(claims.sub)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+                state.user_status_cache.put(claims.sub, fetched.clone());
+                fetched
+            }
+        };
     let Some((status, class_id, must_reset)) = row else {
         return Err(DomainError::Unauthorized);
     };

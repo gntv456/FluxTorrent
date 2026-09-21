@@ -57,7 +57,8 @@ async fn admin_user_medals(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM user_medals um WHERE ($1::bigint IS NULL OR um.user_id = $1)",
+        "SELECT count(*) FROM user_medals um WHERE ($1::bigint IS NULL \
+         OR um.user_id = $1)",
     )
     .bind(q.uid)
     .fetch_one(&state.repo.db)

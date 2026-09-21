@@ -26,16 +26,20 @@ pub async fn site_type_pack_diff(
     )
     .await?;
     let pack: Option<SiteTypePack> = sqlx::query_as(
-        "SELECT code, name, description, brand, categories, modules, sort FROM site_type_packs WHERE code = $1",
-    ).bind(&body.code)
-    .fetch_optional(&state.repo.db).await
+        "SELECT code, name, description, brand, categories, modules, \
+         sort FROM site_type_packs WHERE code = $1",
+    )
+    .bind(&body.code)
+    .fetch_optional(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(pack) = pack else {
         return Err(DomainError::Validation("类型包不存在".into()));
     };
     // 当前值快照（site_type/site_name/module_*）
     let current: Vec<(String, String)> =
-        sqlx::query_as("SELECT name, value FROM site_settings WHERE name IN ('site_type','site_name') OR name LIKE 'module\\_%'")
+                sqlx::query_as("SELECT name, \
+         value FROM site_settings WHERE name IN ('site_type','site_name') OR name LIKE 'module\\_%'")
             .fetch_all(&state.repo.db)
             .await
             .unwrap_or_default();

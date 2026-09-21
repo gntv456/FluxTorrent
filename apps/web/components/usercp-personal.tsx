@@ -9,27 +9,124 @@ import type { UserSettings } from "@/components/usercp";
 
 // 旧站口径的选项表（值与 NexusPHP 一致）
 const BANDWIDTH = [
-  "64kbps", "128kbps", "256kbps", "512kbps", "768kbps", "1Mbps", "1.5Mbps",
-  "2Mbps", "3Mbps", "4Mbps", "5Mbps", "6Mbps", "7Mbps", "8Mbps", "9Mbps",
-  "10Mbps", "48Mbps", "100Mbit",
+  "64kbps",
+  "128kbps",
+  "256kbps",
+  "512kbps",
+  "768kbps",
+  "1Mbps",
+  "1.5Mbps",
+  "2Mbps",
+  "3Mbps",
+  "4Mbps",
+  "5Mbps",
+  "6Mbps",
+  "7Mbps",
+  "8Mbps",
+  "9Mbps",
+  "10Mbps",
+  "48Mbps",
+  "100Mbit",
 ];
-const ISPS = ["中国电信", "中国网通", "中国铁通", "中国移动", "中国联通", "中国教育网", "Other"];
+const ISPS = [
+  "中国电信",
+  "中国网通",
+  "中国铁通",
+  "中国移动",
+  "中国联通",
+  "中国教育网",
+  "Other",
+];
 const COUNTRIES = [
-  "Sweden", "United States of America", "Russia", "Finland", "Canada", "France",
-  "Germany", "Algeria", "Angola", "Argentina", "Australia", "Austria", "Bahamas",
-  "Bangladesh", "Barbados", "Belgium", "Brazil", "Bulgaria", "Cambodia", "Chile",
-  "China", "Colombia", "Congo", "Costa Rica", "Croatia", "Cuba", "Czech Republic",
-  "Denmark", "Dominican Republic", "Ecuador", "Egypt", "Estonia", "Greece",
-  "Guatemala", "Honduras", "Hungary", "Iceland", "India", "Ireland", "Israel",
-  "Italy", "Jamaica", "Japan", "Kiribati", "Laos", "Latvia", "Lebanon",
-  "Lithuania", "Luxembourg", "Malaysia", "Mexico", "Nauru", "Netherlands",
-  "Netherlands Antilles", "New Zealand", "Nigeria", "North Korea", "Norway",
-  "Pakistan", "Paraguay", "Peru", "Philippines", "Poland", "Portugal",
-  "Puerto Rico", "Romania", "Senegal", "Serbia", "Seychelles", "Singapore",
-  "Slovenia", "South Africa", "South Korea", "Spain", "Switzerland", "Thailand",
-  "Togo", "Trinidad & Tobago", "Turkey", "Turkmenistan", "Ukraine",
-  "United Kingdom", "Uruguay", "Uzbekistan", "Vanuatu", "Venezuela", "Vietnam",
-  "Western Samoa", "Yugoslavia",
+  "Sweden",
+  "United States of America",
+  "Russia",
+  "Finland",
+  "Canada",
+  "France",
+  "Germany",
+  "Algeria",
+  "Angola",
+  "Argentina",
+  "Australia",
+  "Austria",
+  "Bahamas",
+  "Bangladesh",
+  "Barbados",
+  "Belgium",
+  "Brazil",
+  "Bulgaria",
+  "Cambodia",
+  "Chile",
+  "China",
+  "Colombia",
+  "Congo",
+  "Costa Rica",
+  "Croatia",
+  "Cuba",
+  "Czech Republic",
+  "Denmark",
+  "Dominican Republic",
+  "Ecuador",
+  "Egypt",
+  "Estonia",
+  "Greece",
+  "Guatemala",
+  "Honduras",
+  "Hungary",
+  "Iceland",
+  "India",
+  "Ireland",
+  "Israel",
+  "Italy",
+  "Jamaica",
+  "Japan",
+  "Kiribati",
+  "Laos",
+  "Latvia",
+  "Lebanon",
+  "Lithuania",
+  "Luxembourg",
+  "Malaysia",
+  "Mexico",
+  "Nauru",
+  "Netherlands",
+  "Netherlands Antilles",
+  "New Zealand",
+  "Nigeria",
+  "North Korea",
+  "Norway",
+  "Pakistan",
+  "Paraguay",
+  "Peru",
+  "Philippines",
+  "Poland",
+  "Portugal",
+  "Puerto Rico",
+  "Romania",
+  "Senegal",
+  "Serbia",
+  "Seychelles",
+  "Singapore",
+  "Slovenia",
+  "South Africa",
+  "South Korea",
+  "Spain",
+  "Switzerland",
+  "Thailand",
+  "Togo",
+  "Trinidad & Tobago",
+  "Turkey",
+  "Turkmenistan",
+  "Ukraine",
+  "United Kingdom",
+  "Uruguay",
+  "Uzbekistan",
+  "Vanuatu",
+  "Venezuela",
+  "Vietnam",
+  "Western Samoa",
+  "Yugoslavia",
 ];
 
 export function PersonalTab({
@@ -164,10 +261,7 @@ export function PersonalTab({
           </label>
         </Row>
         <Row head={t.trackerUrl}>
-          <select
-            value={s.country >= 0 ? "0" : "0"}
-            onChange={() => undefined}
-          >
+          <select value={s.country >= 0 ? "0" : "0"} onChange={() => undefined}>
             <option value="0">---- {t.notSelected} ----</option>
             <option value="1">{t.trackerAnnounceFallback}</option>
           </select>
@@ -216,7 +310,10 @@ export function PersonalTab({
             ))}
           </select>{" "}
           <b>{t.isp}</b>:{" "}
-          <select value={String(s.isp)} onChange={(e) => patch({ isp: Number(e.target.value) })}>
+          <select
+            value={String(s.isp)}
+            onChange={(e) => patch({ isp: Number(e.target.value) })}
+          >
             <option value="0">---- {t.notSelected} ----</option>
             {ISPS.map((c, i) => (
               <option key={c} value={i === 6 ? 20 : i + 1}>

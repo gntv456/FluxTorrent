@@ -65,7 +65,9 @@ pub async fn run_all(
                 // 实现一份轻量扫描（worker 不依赖 api crate），锁内重跑安全。
                 {
                     let due: Vec<i64> = sqlx::query_scalar(
-                        "SELECT topic_id FROM topic_lotteries WHERE status = 'open' AND draw_at <= now() LIMIT 50",
+                                                "SELECT topic_id FROM \
+                         topic_lotteries WHERE status = 'open' AND draw_at <= \
+                         now() LIMIT 50",
                     )
                     .fetch_all(&db)
                     .await
@@ -93,7 +95,8 @@ pub async fn run_all(
                     // 结算失败（游标未写）时保持 last_bank_day 落后，下一分钟 tick 重试整轮；
                     // 成功时以 bank_settle_runs 的 run_date 为准，避免与库内游标漂移。
                     let after: Option<chrono::NaiveDate> =
-                        sqlx::query_scalar("SELECT max(run_date) FROM bank_settle_runs")
+                                                sqlx::query_scalar("SELECT \
+                         max(run_date) FROM bank_settle_runs")
                             .fetch_one(&db)
                             .await
                             .ok()
@@ -188,7 +191,8 @@ pub(crate) async fn lottery_settle(
         return Ok(0); // 已开/已取消：幂等静默
     };
     let n = sqlx::query(
-        "UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = $1 AND status = 'open'",
+        "UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = \
+         $1 AND status = 'open'",
     )
     .bind(topic_id)
     .execute(db)
@@ -219,14 +223,16 @@ pub(crate) async fn lottery_settle(
         let refund = winners as i64 * prize;
         if refund > 0 {
             let exists: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+                "SELECT EXISTS(SELECT 1 FROM spark_ledger \
+                 WHERE idempotency_key = $1)",
             )
             .bind(format!("forum-lottery-refund:{topic_id}"))
             .fetch_one(&mut *tx)
             .await?;
             if !exists {
                 let bal: i64 = sqlx::query_scalar(
-                    "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 RETURNING spark_balance",
+                    "UPDATE users SET spark_balance = \
+                     spark_balance + $2 WHERE id = $1 RETURNING spark_balance",
                 )
                 .bind(op)
                 .bind(refund)
@@ -255,7 +261,8 @@ pub(crate) async fn lottery_settle(
     // 发放（同事务逐人：幂等键存在则跳过，重跑安全）
     for uid in &picked {
         let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE \
+             idempotency_key = $1)",
         )
         .bind(format!("forum-lottery-win:{topic_id}:{uid}"))
         .fetch_one(&mut *tx)
@@ -264,7 +271,8 @@ pub(crate) async fn lottery_settle(
             continue;
         }
         let bal: i64 = sqlx::query_scalar(
-            "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 RETURNING spark_balance",
+            "UPDATE users SET spark_balance = spark_balance + $2 \
+             WHERE id = $1 RETURNING spark_balance",
         )
         .bind(uid)
         .bind(prize)

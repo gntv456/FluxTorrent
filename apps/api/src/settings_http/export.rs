@@ -220,12 +220,15 @@ pub(super) async fn settings_import(
         if current == *new {
             continue;
         }
-        sqlx::query("UPDATE site_settings SET value = $2, updated_at = now() WHERE name = $1")
-            .bind(name)
-            .bind(new)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "UPDATE site_settings SET value = $2, \
+         updated_at = now() WHERE name = $1",
+        )
+        .bind(name)
+        .bind(new)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
         let meta = &by_name[name];
         let (audit_old, audit_new) = if meta.secret {
             ("已设置".to_string(), "已更新".to_string())

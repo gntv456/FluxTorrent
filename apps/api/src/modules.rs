@@ -117,14 +117,18 @@ impl ModuleFlags {
     async fn load(db: &sqlx::PgPool) -> HashMap<String, bool> {
         let mut m = HashMap::new();
         let rows: Vec<(String, String)> = match sqlx::query_as(
-            "SELECT name, value FROM site_settings WHERE name LIKE 'module\\_%'",
+            "SELECT name, \
+             value FROM site_settings WHERE name LIKE 'module\\_%'",
         )
         .fetch_all(db)
         .await
         {
             Ok(r) => r,
             Err(e) => {
-                tracing::warn!(?e, "module flags load failed, falling back to defaults");
+                tracing::warn!(
+                    ?e,
+                    "module flags load failed, falling back to defaults"
+                );
                 return m;
             }
         };

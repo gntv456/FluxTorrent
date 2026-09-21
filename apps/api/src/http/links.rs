@@ -39,7 +39,9 @@ pub async fn link_apply(
         return Err(DomainError::Validation("申请理由至少 20 字".into()));
     }
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO friend_links (name, url, title, status, applied_by, admin_name, email, reason)          VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7) RETURNING id",
+        "INSERT INTO friend_links (name, url, title, status, \
+         applied_by, admin_name, email, reason) VALUES ($1, $2, $3, 'pending', \
+         $4, $5, $6, $7) RETURNING id",
     )
     .bind(body.name.trim())
     .bind(body.url.trim())

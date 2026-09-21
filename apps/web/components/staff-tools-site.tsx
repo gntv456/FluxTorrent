@@ -9,19 +9,69 @@ import type { ToolTab } from "@/components/staff-tools";
  *  统计（stats）/ 清理（cleanup）/ 广告（ads）/ 无法连接用户（notconnect）/
  *  上传者（uploaders）/ 客户端（agents）/ 投票（polls）/ 插件（plugins）。 */
 
-interface SiteStats { users: number; torrents: number; seeding: number; leeching: number; comments: number; messages: number; redis: string; db: string; uptime_secs: number }
-interface CleanupResult { expired_promotions: number; expired_warnings: number; old_login_events: number; old_password_resets: number }
-interface AdItem { id: number; title: string; html: string; position: string; enabled: boolean; sort: number }
-interface NotConnectRow { id: number; username: string; torrents: number; last_seen_at: string | null }
-interface UploaderRow { id: number; username: string; uploads: number; seeding: number; total_size: number }
-interface AgentRow { agent: string; peers: number }
-interface PollRow { id: number; question: string; closed: boolean; votes: number; created_at: string }
+interface SiteStats {
+  users: number;
+  torrents: number;
+  seeding: number;
+  leeching: number;
+  comments: number;
+  messages: number;
+  redis: string;
+  db: string;
+  uptime_secs: number;
+}
+interface CleanupResult {
+  expired_promotions: number;
+  expired_warnings: number;
+  old_login_events: number;
+  old_password_resets: number;
+}
+interface AdItem {
+  id: number;
+  title: string;
+  html: string;
+  position: string;
+  enabled: boolean;
+  sort: number;
+}
+interface NotConnectRow {
+  id: number;
+  username: string;
+  torrents: number;
+  last_seen_at: string | null;
+}
+interface UploaderRow {
+  id: number;
+  username: string;
+  uploads: number;
+  seeding: number;
+  total_size: number;
+}
+interface AgentRow {
+  agent: string;
+  peers: number;
+}
+interface PollRow {
+  id: number;
+  question: string;
+  closed: boolean;
+  votes: number;
+  created_at: string;
+}
 
-export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string) => void }) {
+export function StaffSitePanel({
+  tab,
+  flash,
+}: {
+  tab: ToolTab;
+  flash: (m: string) => void;
+}) {
   const { dict } = useI18n();
   const t = dict.stafftools;
   const [stats, setStats] = useState<SiteStats | null>(null);
-  const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(
+    null,
+  );
   const [ads, setAds] = useState<AdItem[]>([]);
   const [notConnectRows, setNotConnectRows] = useState<NotConnectRow[]>([]);
   const [uploaderRows, setUploaderRows] = useState<UploaderRow[]>([]);
@@ -29,23 +79,54 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
   const [pollRows, setPollRows] = useState<PollRow[]>([]);
   const [pluginList, setPluginList] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
-  const [adEdit, setAdEdit] = useState<{ id: number | null; title: string; html: string; position: string }>({ id: null, title: "", html: "", position: "header" });
+  const [adEdit, setAdEdit] = useState<{
+    id: number | null;
+    title: string;
+    html: string;
+    position: string;
+  }>({ id: null, title: "", html: "", position: "header" });
 
   const load = useCallback(async () => {
-    api.get<SiteStats | null>("/api/v1/admin/stats").then(setStats).catch(() => setStats(null));
-    api.get<AdItem[]>("/api/v1/admin/ads").then(setAds).catch(() => setAds([]));
-    api.get<NotConnectRow[]>("/api/v1/admin/notconnectable").then(setNotConnectRows).catch(() => setNotConnectRows([]));
-    api.get<UploaderRow[]>("/api/v1/admin/uploaders").then(setUploaderRows).catch(() => setUploaderRows([]));
-    api.get<AgentRow[]>("/api/v1/admin/allagents").then(setAgentRows).catch(() => setAgentRows([]));
-    api.get<PollRow[]>("/api/v1/admin/polloverview").then(setPollRows).catch(() => setPollRows([]));
+    api
+      .get<SiteStats | null>("/api/v1/admin/stats")
+      .then(setStats)
+      .catch(() => setStats(null));
+    api
+      .get<AdItem[]>("/api/v1/admin/ads")
+      .then(setAds)
+      .catch(() => setAds([]));
+    api
+      .get<NotConnectRow[]>("/api/v1/admin/notconnectable")
+      .then(setNotConnectRows)
+      .catch(() => setNotConnectRows([]));
+    api
+      .get<UploaderRow[]>("/api/v1/admin/uploaders")
+      .then(setUploaderRows)
+      .catch(() => setUploaderRows([]));
+    api
+      .get<AgentRow[]>("/api/v1/admin/allagents")
+      .then(setAgentRows)
+      .catch(() => setAgentRows([]));
+    api
+      .get<PollRow[]>("/api/v1/admin/polloverview")
+      .then(setPollRows)
+      .catch(() => setPollRows([]));
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function guard(fn: () => Promise<void>, ok: string) {
     setBusy(true);
-    try { await fn(); flash(ok); await load(); }
-    catch (e) { flash(e instanceof ApiError ? e.message : dict.common.networkError); }
-    finally { setBusy(false); }
+    try {
+      await fn();
+      flash(ok);
+      await load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : dict.common.networkError);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -53,22 +134,37 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
       {/* 统计（stats） */}
       {tab === "stats" && stats && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {([
-            [t.stUsers, stats.users], [t.stTorrents, stats.torrents], [t.stSeeding, stats.seeding],
-            [t.stLeeching, stats.leeching], [t.stComments, stats.comments], [t.stMessages, stats.messages],
-          ] as [string, number][]).map(([label, v]) => (
+          {(
+            [
+              [t.stUsers, stats.users],
+              [t.stTorrents, stats.torrents],
+              [t.stSeeding, stats.seeding],
+              [t.stLeeching, stats.leeching],
+              [t.stComments, stats.comments],
+              [t.stMessages, stats.messages],
+            ] as [string, number][]
+          ).map(([label, v]) => (
             <div key={label} className="baozi-panel p-4">
               <p className="text-xs text-sub">{label}</p>
-              <p className="num text-2xl font-bold text-ink">{v.toLocaleString("zh-CN")}</p>
+              <p className="num text-2xl font-bold text-ink">
+                {v.toLocaleString("zh-CN")}
+              </p>
             </div>
           ))}
           <div className="baozi-panel p-4">
             <p className="text-xs text-sub">{t.stRedis}</p>
-            <p className={`text-lg font-bold ${stats.redis === "up" ? "text-success" : "text-danger"}`}>{stats.redis === "up" ? "✅ up" : "⛔ down"}</p>
+            <p
+              className={`text-lg font-bold ${stats.redis === "up" ? "text-success" : "text-danger"}`}
+            >
+              {stats.redis === "up" ? "✅ up" : "⛔ down"}
+            </p>
           </div>
           <div className="baozi-panel p-4">
             <p className="text-xs text-sub">{t.stUptime}</p>
-            <p className="num text-lg font-bold text-ink">{Math.floor(stats.uptime_secs / 3600)}h {Math.floor((stats.uptime_secs % 3600) / 60)}m</p>
+            <p className="num text-lg font-bold text-ink">
+              {Math.floor(stats.uptime_secs / 3600)}h{" "}
+              {Math.floor((stats.uptime_secs % 3600) / 60)}m
+            </p>
           </div>
         </div>
       )}
@@ -79,27 +175,65 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
           <section className="baozi-panel flex flex-col gap-3 p-4">
             <h2 className="text-base font-bold text-ink">{t.ccTitle}</h2>
             <p className="text-xs text-sub">{t.ccNote}</p>
-            <button className="baozi-button self-start" disabled={busy}
-              onClick={() => guard(async () => {
-                const r = await api.post<{ cleared: number }>("/api/v1/admin/clearcache");
-                flash(t.ccDone.replace("{n}", String(r.cleared)));
-              }, "")}>{t.ccBtn}</button>
+            <button
+              className="baozi-button self-start"
+              disabled={busy}
+              onClick={() =>
+                guard(async () => {
+                  const r = await api.post<{ cleared: number }>(
+                    "/api/v1/admin/clearcache",
+                  );
+                  flash(t.ccDone.replace("{n}", String(r.cleared)));
+                }, "")
+              }
+            >
+              {t.ccBtn}
+            </button>
           </section>
           <section className="baozi-panel flex flex-col gap-3 p-4">
             <h2 className="text-base font-bold text-ink">{t.dcuTitle}</h2>
             <p className="text-xs text-sub">{t.dcuNote}</p>
-            <button className="baozi-button self-start" disabled={busy}
-              onClick={() => guard(async () => {
-                const r = await api.post<CleanupResult>("/api/v1/admin/docleanup");
-                setCleanupResult(r);
-              }, t.dcuDone)}>{t.dcuBtn}</button>
+            <button
+              className="baozi-button self-start"
+              disabled={busy}
+              onClick={() =>
+                guard(async () => {
+                  const r = await api.post<CleanupResult>(
+                    "/api/v1/admin/docleanup",
+                  );
+                  setCleanupResult(r);
+                }, t.dcuDone)
+              }
+            >
+              {t.dcuBtn}
+            </button>
             {cleanupResult && (
               <table className="nexus-table">
                 <tbody>
-                  <tr><td className="rowhead">{t.dcuPromos}</td><td className="rowfollow num">{cleanupResult.expired_promotions}</td></tr>
-                  <tr><td className="rowhead">{t.dcuWarns}</td><td className="rowfollow num">{cleanupResult.expired_warnings}</td></tr>
-                  <tr><td className="rowhead">{t.dcuLogins}</td><td className="rowfollow num">{cleanupResult.old_login_events}</td></tr>
-                  <tr><td className="rowhead">{t.dcuResets}</td><td className="rowfollow num">{cleanupResult.old_password_resets}</td></tr>
+                  <tr>
+                    <td className="rowhead">{t.dcuPromos}</td>
+                    <td className="rowfollow num">
+                      {cleanupResult.expired_promotions}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="rowhead">{t.dcuWarns}</td>
+                    <td className="rowfollow num">
+                      {cleanupResult.expired_warnings}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="rowhead">{t.dcuLogins}</td>
+                    <td className="rowfollow num">
+                      {cleanupResult.old_login_events}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="rowhead">{t.dcuResets}</td>
+                    <td className="rowfollow num">
+                      {cleanupResult.old_password_resets}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             )}
@@ -111,48 +245,146 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
       {tab === "ads" && (
         <>
           <section className="baozi-panel p-4">
-            <h2 className="mb-3 text-base font-bold text-ink">{adEdit.id === null ? t.adsNew : t.adsEdit}</h2>
+            <h2 className="mb-3 text-base font-bold text-ink">
+              {adEdit.id === null ? t.adsNew : t.adsEdit}
+            </h2>
             <div className="cmgmt-form">
-              <label>{dict.cmgmt.fldTitle}<input value={adEdit.title} onChange={(e) => setAdEdit({ ...adEdit, title: e.target.value })} /></label>
-              <label>{t.adsHtml}<textarea rows={3} value={adEdit.html} onChange={(e) => setAdEdit({ ...adEdit, html: e.target.value })} /></label>
+              <label>
+                {dict.cmgmt.fldTitle}
+                <input
+                  value={adEdit.title}
+                  onChange={(e) =>
+                    setAdEdit({ ...adEdit, title: e.target.value })
+                  }
+                />
+              </label>
+              <label>
+                {t.adsHtml}
+                <textarea
+                  rows={3}
+                  value={adEdit.html}
+                  onChange={(e) =>
+                    setAdEdit({ ...adEdit, html: e.target.value })
+                  }
+                />
+              </label>
               <label>
                 {t.adsPosition}
-                <select value={adEdit.position} onChange={(e) => setAdEdit({ ...adEdit, position: e.target.value })}>
+                <select
+                  value={adEdit.position}
+                  onChange={(e) =>
+                    setAdEdit({ ...adEdit, position: e.target.value })
+                  }
+                >
                   <option value="header">Header</option>
                   <option value="footer">Footer</option>
                   <option value="sidebar">Sidebar</option>
                 </select>
               </label>
               <div className="flex gap-2">
-                <button className="baozi-button" disabled={busy || !adEdit.title.trim() || !adEdit.html.trim()}
-                  onClick={() => guard(async () => {
-                    if (adEdit.id === null) await api.post("/api/v1/admin/ads", { title: adEdit.title, html: adEdit.html, position: adEdit.position });
-                    else await api.put(`/api/v1/admin/ads/${adEdit.id}`, { title: adEdit.title, html: adEdit.html, position: adEdit.position });
-                    setAdEdit({ id: null, title: "", html: "", position: "header" });
-                  }, t.saved)}>{t.btnSave}</button>
+                <button
+                  className="baozi-button"
+                  disabled={busy || !adEdit.title.trim() || !adEdit.html.trim()}
+                  onClick={() =>
+                    guard(async () => {
+                      if (adEdit.id === null)
+                        await api.post("/api/v1/admin/ads", {
+                          title: adEdit.title,
+                          html: adEdit.html,
+                          position: adEdit.position,
+                        });
+                      else
+                        await api.put(`/api/v1/admin/ads/${adEdit.id}`, {
+                          title: adEdit.title,
+                          html: adEdit.html,
+                          position: adEdit.position,
+                        });
+                      setAdEdit({
+                        id: null,
+                        title: "",
+                        html: "",
+                        position: "header",
+                      });
+                    }, t.saved)
+                  }
+                >
+                  {t.btnSave}
+                </button>
                 {adEdit.id !== null && (
-                  <button className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
-                    onClick={() => setAdEdit({ id: null, title: "", html: "", position: "header" })}>{dict.cmgmt.btnCancel}</button>
+                  <button
+                    className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold"
+                    onClick={() =>
+                      setAdEdit({
+                        id: null,
+                        title: "",
+                        html: "",
+                        position: "header",
+                      })
+                    }
+                  >
+                    {dict.cmgmt.btnCancel}
+                  </button>
                 )}
               </div>
             </div>
           </section>
           <table className="nexus-table">
             <tbody>
-              <tr><td className="colhead">{dict.cmgmt.fldTitle}</td><td className="colhead">{t.adsPosition}</td><td className="colhead">{t.adsEnabled}</td><td className="colhead text-right">{dict.cmgmt.colActions}</td></tr>
+              <tr>
+                <td className="colhead">{dict.cmgmt.fldTitle}</td>
+                <td className="colhead">{t.adsPosition}</td>
+                <td className="colhead">{t.adsEnabled}</td>
+                <td className="colhead text-right">{dict.cmgmt.colActions}</td>
+              </tr>
               {ads.map((a) => (
                 <tr key={a.id}>
                   <td>{a.title}</td>
                   <td className="text-xs">{a.position}</td>
                   <td>{a.enabled ? "✅" : "⛔"}</td>
                   <td className="text-right">
-                    <button className="cmgmt-act" onClick={() => setAdEdit({ id: a.id, title: a.title, html: a.html, position: a.position })}>{dict.cmgmt.btnEdit}</button>
-                    <button className="cmgmt-act" onClick={() => guard(async () => { await api.put(`/api/v1/admin/ads/${a.id}/toggle`); }, t.saved)}>{t.adsToggle}</button>
-                    <button className="cmgmt-act cmgmt-act--danger" onClick={() => guard(async () => { await api.del(`/api/v1/admin/ads/${a.id}`); }, t.deleted)}>{dict.cmgmt.btnDelete}</button>
+                    <button
+                      className="cmgmt-act"
+                      onClick={() =>
+                        setAdEdit({
+                          id: a.id,
+                          title: a.title,
+                          html: a.html,
+                          position: a.position,
+                        })
+                      }
+                    >
+                      {dict.cmgmt.btnEdit}
+                    </button>
+                    <button
+                      className="cmgmt-act"
+                      onClick={() =>
+                        guard(async () => {
+                          await api.put(`/api/v1/admin/ads/${a.id}/toggle`);
+                        }, t.saved)
+                      }
+                    >
+                      {t.adsToggle}
+                    </button>
+                    <button
+                      className="cmgmt-act cmgmt-act--danger"
+                      onClick={() =>
+                        guard(async () => {
+                          await api.del(`/api/v1/admin/ads/${a.id}`);
+                        }, t.deleted)
+                      }
+                    >
+                      {dict.cmgmt.btnDelete}
+                    </button>
                   </td>
                 </tr>
               ))}
-              {ads.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-sub">{t.adsEmpty}</td></tr>}
+              {ads.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-sub">
+                    {t.adsEmpty}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </>
@@ -162,16 +394,31 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
       {tab === "notconnect" && (
         <table className="nexus-table">
           <tbody>
-            <tr><td className="colhead">ID</td><td className="colhead">{t.mlUser}</td><td className="colhead">{t.ncTorrents}</td><td className="colhead">{t.ncLastSeen}</td></tr>
+            <tr>
+              <td className="colhead">ID</td>
+              <td className="colhead">{t.mlUser}</td>
+              <td className="colhead">{t.ncTorrents}</td>
+              <td className="colhead">{t.ncLastSeen}</td>
+            </tr>
             {notConnectRows.map((r) => (
               <tr key={r.id}>
                 <td className="num">{r.id}</td>
                 <td>{r.username}</td>
                 <td className="num">{r.torrents}</td>
-                <td className="text-xs text-sub">{r.last_seen_at ? new Date(r.last_seen_at).toLocaleString("zh-CN") : "—"}</td>
+                <td className="text-xs text-sub">
+                  {r.last_seen_at
+                    ? new Date(r.last_seen_at).toLocaleString("zh-CN")
+                    : "—"}
+                </td>
               </tr>
             ))}
-            {notConnectRows.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-sub">{t.ncEmpty}</td></tr>}
+            {notConnectRows.length === 0 && (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-sub">
+                  {t.ncEmpty}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       )}
@@ -180,17 +427,31 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
       {tab === "uploaders" && (
         <table className="nexus-table">
           <tbody>
-            <tr><td className="colhead">ID</td><td className="colhead">{t.mlUser}</td><td className="colhead">{t.ulpUploads}</td><td className="colhead">{t.stSeeding}</td><td className="colhead">{t.ulpSize}</td></tr>
+            <tr>
+              <td className="colhead">ID</td>
+              <td className="colhead">{t.mlUser}</td>
+              <td className="colhead">{t.ulpUploads}</td>
+              <td className="colhead">{t.stSeeding}</td>
+              <td className="colhead">{t.ulpSize}</td>
+            </tr>
             {uploaderRows.map((r) => (
               <tr key={r.id}>
                 <td className="num">{r.id}</td>
                 <td>{r.username}</td>
                 <td className="num">{r.uploads}</td>
                 <td className="num">{r.seeding}</td>
-                <td className="num">{(r.total_size / 1024 ** 3).toFixed(2)} GB</td>
+                <td className="num">
+                  {(r.total_size / 1024 ** 3).toFixed(2)} GB
+                </td>
               </tr>
             ))}
-            {uploaderRows.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-sub">{t.ulpEmpty}</td></tr>}
+            {uploaderRows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-sub">
+                  {t.ulpEmpty}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       )}
@@ -199,14 +460,23 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
       {tab === "agents" && (
         <table className="nexus-table">
           <tbody>
-            <tr><td className="colhead">{t.agAgent}</td><td className="colhead">{t.agPeers}</td></tr>
+            <tr>
+              <td className="colhead">{t.agAgent}</td>
+              <td className="colhead">{t.agPeers}</td>
+            </tr>
             {agentRows.map((r) => (
               <tr key={r.agent}>
                 <td className="font-mono">{r.agent}</td>
                 <td className="num">{r.peers}</td>
               </tr>
             ))}
-            {agentRows.length === 0 && <tr><td colSpan={2} className="py-6 text-center text-sub">{t.agEmpty}</td></tr>}
+            {agentRows.length === 0 && (
+              <tr>
+                <td colSpan={2} className="py-6 text-center text-sub">
+                  {t.agEmpty}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       )}
@@ -215,7 +485,12 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
       {tab === "polls" && (
         <table className="nexus-table">
           <tbody>
-            <tr><td className="colhead">ID</td><td className="colhead">{t.plQuestion}</td><td className="colhead">{t.plVotes}</td><td className="colhead">{t.plStatus}</td></tr>
+            <tr>
+              <td className="colhead">ID</td>
+              <td className="colhead">{t.plQuestion}</td>
+              <td className="colhead">{t.plVotes}</td>
+              <td className="colhead">{t.plStatus}</td>
+            </tr>
             {pollRows.map((p) => (
               <tr key={p.id}>
                 <td className="num">{p.id}</td>
@@ -224,7 +499,13 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
                 <td>{p.closed ? t.plClosed : t.plOpen}</td>
               </tr>
             ))}
-            {pollRows.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-sub">{t.plEmpty}</td></tr>}
+            {pollRows.length === 0 && (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-sub">
+                  {t.plEmpty}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       )}
@@ -232,14 +513,25 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
       {/* 插件清单（M28 只读：启停由插件配置决定） */}
       {tab === "plugins" && (
         <section className="baozi-panel p-4">
-          <h2 className="mb-3 text-base font-bold text-ink">{t.pluginsTitle ?? "插件清单"}</h2>
+          <h2 className="mb-3 text-base font-bold text-ink">
+            {t.pluginsTitle ?? "插件清单"}
+          </h2>
           {pluginList === null ? (
-            <button className="baozi-button" onClick={async () => {
-              try {
-                const r = await api.get<{ plugins: string[] }>("/api/v1/admin/plugins");
-                setPluginList(r.plugins);
-              } catch { setPluginList([]); }
-            }}>{t.pluginsLoad ?? "加载"}</button>
+            <button
+              className="baozi-button"
+              onClick={async () => {
+                try {
+                  const r = await api.get<{ plugins: string[] }>(
+                    "/api/v1/admin/plugins",
+                  );
+                  setPluginList(r.plugins);
+                } catch {
+                  setPluginList([]);
+                }
+              }}
+            >
+              {t.pluginsLoad ?? "加载"}
+            </button>
           ) : (
             <ul className="flex flex-col gap-1 text-sm">
               {pluginList.map((pl) => (
@@ -248,10 +540,14 @@ export function StaffSitePanel({ tab, flash }: { tab: ToolTab; flash: (m: string
                   <code className="text-xs">{pl}</code>
                 </li>
               ))}
-              {pluginList.length === 0 && <li className="text-sub">{t.pluginsEmpty ?? "无插件"}</li>}
+              {pluginList.length === 0 && (
+                <li className="text-sub">{t.pluginsEmpty ?? "无插件"}</li>
+              )}
             </ul>
           )}
-          <p className="mt-2 text-xs text-sub">{t.pluginsNote ?? "插件启停由服务端配置决定，此处为只读清单"}</p>
+          <p className="mt-2 text-xs text-sub">
+            {t.pluginsNote ?? "插件启停由服务端配置决定，此处为只读清单"}
+          </p>
         </section>
       )}
     </>

@@ -31,9 +31,12 @@ pub async fn site_type_pack_apply(
         return Err(DomainError::Validation("mode 需为 replace/merge".into()));
     }
     let pack: Option<SiteTypePack> = sqlx::query_as(
-        "SELECT code, name, description, brand, categories, modules, sort, sections, tagline FROM site_type_packs WHERE code = $1",
-    ).bind(&body.code)
-    .fetch_optional(&state.repo.db).await
+        "SELECT code, name, description, brand, categories, modules, \
+         sort, sections, tagline FROM site_type_packs WHERE code = $1",
+    )
+    .bind(&body.code)
+    .fetch_optional(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(pack) = pack else {
         return Err(DomainError::Validation("类型包不存在".into()));
@@ -78,23 +81,36 @@ pub async fn site_type_pack_apply(
             continue;
         }
         let _ = sqlx::query(
-            "INSERT INTO categories (id, name) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
-        ).bind(id).bind(&name)
-        .execute(&mut *tx).await;
+            "INSERT INTO categories (id, name) VALUES ($1, $2) ON \
+             CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
+        )
+        .bind(id)
+        .bind(&name)
+        .execute(&mut *tx)
+        .await;
     }
     // site_type + 品牌默认
-    sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_type', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
+    sqlx::query("INSERT INTO site_settings (name, value) VALUES \
+     ('site_type', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, \
+     updated_at = now()")
         .bind(&pack.code).execute(&mut *tx).await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_name', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()")
+    sqlx::query("INSERT INTO site_settings (name, value) VALUES \
+     ('site_name', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, \
+     updated_at = now()")
         .bind(&pack.brand).execute(&mut *tx).await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 登录页标语（0145）：不再物化包默认值——切站型后 site_tagline 保持空（覆盖
     // 语义），site-profile 动态 JOIN 新站型包默认即刻生效；站长自定义值也被保留，
     // 不会被下一次 apply 无声重置
-    sqlx::query("INSERT INTO site_settings (name, value) VALUES ('site_tagline', '') ON CONFLICT (name) DO UPDATE SET value = '', updated_at = now()")
-        .execute(&mut *tx).await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO site_settings (name, value) VALUES \
+     ('site_tagline', '') ON CONFLICT (name) DO UPDATE SET value = '', \
+     updated_at = now()",
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 模块开关 → 站点设定键（textbooks 等）
     if let Some(mods) = pack.modules.as_object() {
         for (k, v) in mods {
@@ -104,9 +120,14 @@ pub async fn site_type_pack_apply(
                 "no"
             };
             let _ = sqlx::query(
-                "INSERT INTO site_settings (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
-            ).bind(format!("module_{k}")).bind(val)
-            .execute(&mut *tx).await;
+                "INSERT INTO site_settings (name, value) \
+                 VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = \
+                 EXCLUDED.value, updated_at = now()",
+            )
+            .bind(format!("module_{k}"))
+            .bind(val)
+            .execute(&mut *tx)
+            .await;
         }
     }
     // 质量维度种子（0092）：包内定义的维度重建标签与选项（references 级联清理旧引用）。
@@ -209,7 +230,9 @@ pub async fn site_type_pack_apply(
                 }
                 // 维度可能未在包 kinds 中定义（自定义维度追加选项）：确保存在
                 sqlx::query(
-                    "INSERT INTO section_kinds (kind, label, sort) VALUES ($1, $1, 999) ON CONFLICT (kind) DO NOTHING",
+                    "INSERT INTO section_kinds (kind, \
+                     label, sort) VALUES ($1, $1, 999) ON CONFLICT (kind) DO \
+                     NOTHING",
                 )
                 .bind(kind)
                 .execute(&mut *tx)
@@ -229,13 +252,16 @@ pub async fn site_type_pack_apply(
                     .enumerate()
                 {
                     let Some(name) = name.as_str() else { continue };
-                    sqlx::query("INSERT INTO section_dict (kind, name, sort) VALUES ($1, $2, $3)")
-                        .bind(kind)
-                        .bind(name)
-                        .bind((i + 1) as i32)
-                        .execute(&mut *tx)
-                        .await
-                        .map_err(|e| DomainError::Internal(e.into()))?;
+                    sqlx::query(
+                        "INSERT INTO section_dict \
+                     (kind, name, sort) VALUES ($1, $2, $3)",
+                    )
+                    .bind(kind)
+                    .bind(name)
+                    .bind((i + 1) as i32)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
                 }
             }
         }

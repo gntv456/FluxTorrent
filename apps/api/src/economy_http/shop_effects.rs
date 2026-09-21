@@ -39,7 +39,9 @@ pub async fn apply_item_effect(
             let item_id =
                 config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
             sqlx::query(
-                "INSERT INTO user_dressups (user_id, item_id, source) VALUES ($1, $2, 'buy')                  ON CONFLICT (user_id, item_id) DO NOTHING",
+                "INSERT INTO user_dressups (user_id, item_id, \
+                 source) VALUES ($1, $2, 'buy') ON CONFLICT (user_id, item_id) \
+                 DO NOTHING",
             )
             .bind(user_id)
             .bind(item_id)
@@ -50,12 +52,15 @@ pub async fn apply_item_effect(
         // 邀请：直接发一枚 72h 有效邀请码
         "invite" => {
             let code = crate::domain::new_invite_code();
-            sqlx::query("INSERT INTO invites (inviter_id, code, expires_at) VALUES ($1, $2, now() + interval '72 hours')")
-                .bind(user_id)
-                .bind(&code)
-                .execute(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "INSERT INTO invites (inviter_id, code, \
+             expires_at) VALUES ($1, $2, now() + interval '72 hours')",
+            )
+            .bind(user_id)
+            .bind(&code)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
         // 免费券/中性券（0073，Gazelle FL token 口径）：买入库为库存，使用走 /me/vouchers/use
         "voucher_free" | "voucher_neutral" => {
@@ -64,7 +69,8 @@ pub async fn apply_item_effect(
                 .and_then(|v| v.as_str())
                 .unwrap_or("free");
             sqlx::query(
-                "INSERT INTO user_vouchers (user_id, kind, source) VALUES ($1, $2, 'shop')",
+                "INSERT INTO user_vouchers (user_id, kind, \
+                 source) VALUES ($1, $2, 'shop')",
             )
             .bind(user_id)
             .bind(kind)
@@ -145,7 +151,8 @@ pub async fn apply_item_effect(
             if amount > 0 {
                 let month = economy::pool_month(chrono::Utc::now());
                 sqlx::query(
-                    "INSERT INTO pool_donations (user_id, amount, month) VALUES ($1, $2, $3)",
+                    "INSERT INTO pool_donations (user_id, \
+                     amount, month) VALUES ($1, $2, $3)",
                 )
                 .bind(user_id)
                 .bind(amount)
@@ -167,7 +174,8 @@ pub async fn apply_item_effect(
         // rename_card：入库存（生效走 UserCP 改名消费，见 username_change_logs）
         "rename_card" | "temp_invite" => {
             sqlx::query(
-                "INSERT INTO user_vouchers (user_id, kind, source) VALUES ($1, $2, 'shop')",
+                "INSERT INTO user_vouchers (user_id, kind, \
+                 source) VALUES ($1, $2, 'shop')",
             )
             .bind(user_id)
             .bind(kind)

@@ -17,7 +17,9 @@ pub(super) async fn fun_polls(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<FunPollRow> = sqlx::query_as(
-        "SELECT p.id, p.question, p.options, p.closed,             (SELECT v.option_index FROM fun_votes v WHERE v.poll_id = p.id AND v.user_id = $1) AS my_vote,             (SELECT count(*) FROM fun_votes v WHERE v.poll_id = p.id) AS total          FROM fun_polls p WHERE NOT p.closed ORDER BY p.id LIMIT 20",
+                "SELECT p.id, p.question, p.options, p.closed, \
+         (SELECT v.option_index FROM fun_votes v WHERE v.poll_id = p.id AND v.user_id = $1) AS my_vote, \
+         (SELECT count(*) FROM fun_votes v WHERE v.poll_id = p.id) AS total FROM fun_polls p WHERE NOT p.closed ORDER BY p.id LIMIT 20",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)
@@ -27,7 +29,8 @@ pub(super) async fn fun_polls(
     let mut out = Vec::with_capacity(rows.len());
     for r in rows {
         let counts: Vec<(i32, i64)> = sqlx::query_as(
-            "SELECT option_index, count(*) FROM fun_votes WHERE poll_id = $1 GROUP BY option_index",
+            "SELECT option_index, \
+             count(*) FROM fun_votes WHERE poll_id = $1 GROUP BY option_index",
         )
         .bind(r.id)
         .fetch_all(&state.repo.db)
@@ -74,7 +77,8 @@ pub(super) async fn fun_vote(
         return Err(DomainError::Validation("选项无效".into()));
     }
     let voted = sqlx::query(
-        "INSERT INTO fun_votes (poll_id, user_id, option_index) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        "INSERT INTO fun_votes (poll_id, user_id, option_index) VALUES \
+         ($1, $2, $3) ON CONFLICT DO NOTHING",
     )
     .bind(body.poll_id)
     .bind(auth.id)

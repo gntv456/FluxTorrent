@@ -9,7 +9,8 @@ use sqlx::PgPool;
 /// 派发即发 PM 通知（P1-4：静默派发用户不知情）。复用 claim 的基线快照列。
 pub async fn exam_assign(db: &PgPool) -> anyhow::Result<u64> {
     let onboard_days: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings WHERE name='exam_onboard_days'), 30)",
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name='exam_onboard_days'), 30)",
     )
     .fetch_one(db)
     .await

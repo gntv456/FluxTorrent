@@ -86,7 +86,9 @@ pub async fn admin_home_layout_put(
     let value = serde_json::to_string(&norm)
         .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
-        "INSERT INTO site_settings (name, value, descr, grp) VALUES ('home_layout', $1, '首页板块排版（JSON 数组，空 = 默认布局）', 'main')          ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
+                "INSERT INTO site_settings (name, value, descr, grp) VALUES \
+         ('home_layout', $1, '首页板块排版（JSON 数组，空 = 默认布局）', 'main') ON CONFLICT \
+         (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
     )
     .bind(&value)
     .execute(&state.repo.db)

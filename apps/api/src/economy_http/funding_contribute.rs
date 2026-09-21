@@ -81,7 +81,11 @@ async fn funding_contribute(
     let contrib_ok = async {
         let mut tx = state.repo.db.begin().await.map_err(|e| e.to_string())?;
         sqlx::query(
-            "INSERT INTO funding_contribs (funding_id, user_id, amount, tax) VALUES ($1, $2, $3, $4)              ON CONFLICT (funding_id, user_id) DO UPDATE              SET amount = funding_contribs.amount + EXCLUDED.amount,                  tax = funding_contribs.tax + EXCLUDED.tax, created_at = now()",
+            "INSERT INTO funding_contribs (funding_id, user_id, \
+             amount, tax) VALUES ($1, $2, $3, $4) ON CONFLICT (funding_id, \
+             user_id) DO UPDATE SET amount = funding_contribs.amount + \
+             EXCLUDED.amount, tax = funding_contribs.tax + EXCLUDED.tax, \
+             created_at = now()",
         )
         .bind(body.funding_id)
         .bind(auth.id)
@@ -132,13 +136,16 @@ async fn funding_contribute(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        sqlx::query("INSERT INTO pool_donations (user_id, amount, month) VALUES ($1, $2, $3)")
-            .bind(auth.id)
-            .bind(tax)
-            .bind(&month)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "INSERT INTO pool_donations (user_id, amount, \
+         month) VALUES ($1, $2, $3)",
+        )
+        .bind(auth.id)
+        .bind(tax)
+        .bind(&month)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     state
         .repo

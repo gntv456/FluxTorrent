@@ -144,7 +144,9 @@ async fn increment_bulk(
                         for _ in 0..body.amount {
                             let code = crate::domain::new_invite_code();
                             sqlx::query(
-                                "INSERT INTO invites (inviter_id, code, expires_at) VALUES ($1, $2, $3)",
+                                "INSERT INTO \
+                                 invites (inviter_id, code, expires_at) VALUES \
+                                 ($1, $2, $3)",
                             )
                             .bind(uid)
                             .bind(&code)
@@ -158,7 +160,8 @@ async fn increment_bulk(
                 } else {
                     // 普通发放：正数增发 quota_extra；负数回收（下限 0），与单用户 adjust 口径一致
                     affected += sqlx::query(
-                        "UPDATE users SET quota_extra = GREATEST(0, quota_extra + $2) WHERE id = ANY($1)",
+                        "UPDATE users SET quota_extra \
+                         = GREATEST(0, quota_extra + $2) WHERE id = ANY($1)",
                     )
                     .bind(chunk)
                     .bind(body.amount)
@@ -173,7 +176,9 @@ async fn increment_bulk(
                 // 道具字典种子 kind=makeup_card；gaps_http 补签流程引用 resub_card（历史不一致），
                 // 此处两种都认，优先 makeup_card
                 let item: Option<(i64, serde_json::Value)> = sqlx::query_as(
-                    "SELECT id, config FROM shop_items WHERE kind IN ('makeup_card','resub_card') AND active = true ORDER BY kind = 'makeup_card' DESC, id LIMIT 1",
+                                        "SELECT id, \
+                     config FROM shop_items WHERE kind IN ('makeup_card','resub_card') AND active = true ORDER BY kind = 'makeup_card' DESC, \
+                     id LIMIT 1",
                 )
                 .fetch_optional(db)
                 .await
@@ -214,7 +219,9 @@ async fn increment_bulk(
             if !subject.trim().is_empty() && !text.trim().is_empty() {
                 for uid in chunk {
                     sqlx::query(
-                        "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)",
+                        "INSERT INTO messages \
+                         (sender_id, receiver_id, subject, body) VALUES ($1, \
+                         $2, $3, $4)",
                     )
                     .bind(sender_id)
                     .bind(uid)

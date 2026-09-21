@@ -23,7 +23,8 @@ async fn pool_status(
 ) -> DomainResult<impl Responder> {
     let month = economy::pool_month(chrono::Utc::now());
     let row: Option<(String, i64, i64, bool)> = sqlx::query_as(
-        "SELECT month, donated_total, goal, promo_started FROM magic_pool WHERE month = $1",
+        "SELECT month, donated_total, goal, \
+         promo_started FROM magic_pool WHERE month = $1",
     )
     .bind(&month)
     .fetch_optional(&state.repo.db)
@@ -110,13 +111,16 @@ async fn pool_donate(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("INSERT INTO pool_donations (user_id, amount, month) VALUES ($1, $2, $3)")
-        .bind(auth.id)
-        .bind(body.amount)
-        .bind(&month)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO pool_donations (user_id, amount, month) \
+     VALUES ($1, $2, $3)",
+    )
+    .bind(auth.id)
+    .bind(body.amount)
+    .bind(&month)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

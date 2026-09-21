@@ -40,23 +40,26 @@ async fn post_edit(
     if !perm.can_mod && author_id != auth.id {
         return Err(DomainError::Forbidden);
     }
-    let n =
-        sqlx::query("UPDATE posts SET body = $1, body_text = $4, edited_at = now(), edited_by = $2 WHERE id = $3")
-            .bind(body.body.trim())
-            .bind(auth.id)
-            .bind(pid)
-            .bind(strip_markdown(body.body.trim()))
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
+    let n = sqlx::query(
+        "UPDATE posts SET body = $1, body_text = $4, \
+         edited_at = now(), edited_by = $2 WHERE id = $3",
+    )
+    .bind(body.body.trim())
+    .bind(auth.id)
+    .bind(pid)
+    .bind(strip_markdown(body.body.trim()))
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(pid));
     }
     // 管理员/版主编辑他人帖：自动 PM 通知作者（forums.php:426 口径）
     if author_id != auth.id {
         let _ = sqlx::query(
-            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)",
+            "INSERT INTO messages (sender_id, receiver_id, \
+             subject, body) VALUES ($1, $2, $3, $4)",
         )
         .bind(auth.id)
         .bind(author_id)
@@ -188,7 +191,8 @@ async fn topic_delete(
             )
             .await;
             let _ = sqlx::query(
-                "UPDATE topics SET bounty_status = 'refunded' WHERE id = $1 AND bounty_status = 'open'",
+                "UPDATE topics SET bounty_status = 'refunded' \
+                 WHERE id = $1 AND bounty_status = 'open'",
             )
             .bind(tid)
             .execute(&state.repo.db)
@@ -214,7 +218,8 @@ async fn topic_delete(
             )
             .await;
             let _ = sqlx::query(
-                "UPDATE topic_lotteries SET status = 'cancelled' WHERE topic_id = $1 AND status = 'open'",
+                "UPDATE topic_lotteries SET status = \
+                 'cancelled' WHERE topic_id = $1 AND status = 'open'",
             )
             .bind(tid)
             .execute(&state.repo.db)

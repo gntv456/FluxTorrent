@@ -66,7 +66,8 @@ async fn agent_rules_add(
         return Err(DomainError::Validation("pattern 长度 1-100".into()));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO agent_rules (mode, pattern, note, created_by) VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO agent_rules (mode, pattern, note, created_by) \
+         VALUES ($1, $2, $3, $4) RETURNING id",
     )
     .bind(&body.mode)
     .bind(p)

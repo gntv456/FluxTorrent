@@ -20,7 +20,8 @@ pub async fn db_stats(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::DBSTATS_VIEW)
         .await?;
     let conns: Vec<PgConnRow> = sqlx::query_as(
-        "SELECT state, count(*)::bigint AS count FROM pg_stat_activity WHERE datname = current_database() GROUP BY state ORDER BY count DESC",
+                "SELECT state, \
+         count(*)::bigint AS count FROM pg_stat_activity WHERE datname = current_database() GROUP BY state ORDER BY count DESC",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let db_size: i64 = sqlx::query_scalar(
@@ -30,11 +31,15 @@ pub async fn db_stats(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let tables: Vec<TableSizeRow> = sqlx::query_as(
-        "SELECT c.relname, pg_total_relation_size(c.oid)::bigint AS total_size, c.reltuples::bigint AS row_estimates          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace          WHERE n.nspname = 'public' AND c.relkind = 'r'          ORDER BY pg_total_relation_size(c.oid) DESC LIMIT 15",
+                "SELECT c.relname, \
+         pg_total_relation_size(c.oid)::bigint AS total_size, \
+         c.reltuples::bigint AS row_estimates FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r' ORDER BY pg_total_relation_size(c.oid) DESC LIMIT 15",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let slow_tx: i64 = sqlx::query_scalar(
-        "SELECT count(*)::bigint FROM pg_stat_activity WHERE datname = current_database() AND xact_start IS NOT NULL AND now() - xact_start > interval '30 seconds'",
+                "SELECT count(*)::bigint FROM pg_stat_activity WHERE datname = \
+         current_database() AND xact_start IS NOT NULL AND now() - xact_start > \
+         interval '30 seconds'",
     ).fetch_one(&state.repo.db).await.unwrap_or(0);
     let dead_tuples: i64 = sqlx::query_scalar(
         "SELECT COALESCE(sum(n_dead_tup), 0)::bigint FROM pg_stat_user_tables",
@@ -86,15 +91,21 @@ pub async fn sys_log(
     let page = q.page.unwrap_or(1).clamp(1, 1000);
     let per = 30i64;
     let rows: Vec<SysLogRow> = sqlx::query_as(
-        "SELECT l.id, u.username AS actor, l.action, l.ref AS ref_json, host(l.ip) AS ip, l.created_at          FROM audit_log l LEFT JOIN users u ON u.id = l.actor_id          WHERE ($1::text IS NULL OR l.action ILIKE '%' || $1 || '%')          ORDER BY l.id DESC LIMIT $2 OFFSET $3",
+                "SELECT l.id, u.username AS actor, l.action, \
+         l.ref AS ref_json, host(l.ip) AS ip, \
+         l.created_at FROM audit_log l LEFT JOIN users u ON u.id = l.actor_id WHERE ($1::text IS NULL OR l.action ILIKE '%' || $1 || '%') ORDER BY l.id DESC LIMIT $2 OFFSET $3",
     ).bind(q.q.as_deref().map(str::trim).filter(|s| !s.is_empty()))
     .bind(per).bind((page - 1) * per)
     .fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM audit_log l WHERE ($1::text IS NULL OR l.action ILIKE '%' || $1 || '%')",
-    ).bind(q.q.as_deref().map(str::trim).filter(|s| !s.is_empty()))
-    .fetch_one(&state.repo.db).await.unwrap_or(0);
+        "SELECT count(*) FROM audit_log l WHERE ($1::text IS NULL OR \
+         l.action ILIKE '%' || $1 || '%')",
+    )
+    .bind(q.q.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "items": rows, "total": total, "page": page, "per_page": per,
         "pages": (total + per - 1) / per,
@@ -135,13 +146,20 @@ pub async fn locations(
     let page = q.page.unwrap_or(1).clamp(1, 1000);
     let per = 30i64;
     let rows: Vec<LocationRow> = sqlx::query_as(
-        "SELECT host(n.net) AS net, masklen(n.net) AS netmask, n.logins, n.users, n.failed, n.last_seen FROM (             SELECT (CASE family(ip) WHEN 4 THEN network(set_masklen(ip, 24)) ELSE network(set_masklen(ip, 64)) END) AS net,                    count(*)::bigint AS logins,                    count(DISTINCT user_id)::bigint AS users,                    count(*) FILTER (WHERE NOT ok)::bigint AS failed,                    max(created_at) AS last_seen             FROM login_events             WHERE ip IS NOT NULL             GROUP BY 1          ) n ORDER BY n.last_seen DESC NULLS LAST LIMIT $1 OFFSET $2",
+                "SELECT host(n.net) AS net, masklen(n.net) AS netmask, \
+         n.logins, n.users, n.failed, \
+         n.last_seen FROM ( SELECT (CASE family(ip) WHEN 4 THEN network(set_masklen(ip, 24)) ELSE network(set_masklen(ip, 64)) END) AS net, count(*)::bigint AS logins, count(DISTINCT user_id)::bigint AS users, count(*) FILTER (WHERE NOT ok)::bigint AS failed, max(created_at) AS last_seen FROM login_events WHERE ip IS NOT NULL GROUP BY 1 ) n ORDER BY n.last_seen DESC NULLS LAST LIMIT $1 OFFSET $2",
     ).bind(per).bind((page - 1) * per)
     .fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM (             SELECT (CASE family(ip) WHEN 4 THEN network(set_masklen(ip, 24)) ELSE network(set_masklen(ip, 64)) END)             FROM login_events WHERE ip IS NOT NULL GROUP BY 1          ) t",
-    ).fetch_one(&state.repo.db).await.unwrap_or(0);
+        "SELECT count(*) FROM ( SELECT (CASE family(ip) WHEN 4 THEN \
+         network(set_masklen(ip, 24)) ELSE network(set_masklen(ip, 64)) END) \
+         FROM login_events WHERE ip IS NOT NULL GROUP BY 1 ) t",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "items": rows, "total": total, "page": page, "per_page": per,
         "pages": (total + per - 1) / per,

@@ -95,7 +95,8 @@ impl Repo {
             None => {
                 // 区分无效/已用（M01 错误码 2005/2006）
                 let used: bool = sqlx::query_scalar(
-                    "SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1 AND status = 1)",
+                    "SELECT EXISTS(SELECT 1 FROM invites \
+                     WHERE code = $1 AND status = 1)",
                 )
                 .bind(code)
                 .fetch_one(&self.db)
@@ -144,7 +145,8 @@ impl Repo {
         expires_at: chrono::DateTime<chrono::Utc>,
     ) -> DomainResult<i64> {
         let id: i64 = sqlx::query_scalar(
-            "INSERT INTO invites (inviter_id, code, expires_at) VALUES ($1, $2, $3) RETURNING id",
+            "INSERT INTO invites (inviter_id, code, expires_at) \
+             VALUES ($1, $2, $3) RETURNING id",
         )
         .bind(inviter_id)
         .bind(code)
@@ -174,7 +176,8 @@ impl Repo {
     ) {
         // 审计日志失败不阻塞业务，但必须记录（§5.7）
         let audit = sqlx::query(
-            "INSERT INTO audit_log (id, actor_id, action, ref) VALUES (nextval('audit_log_id_seq'), $1, $2, $3::jsonb)",
+            "INSERT INTO audit_log (id, actor_id, action, ref) \
+             VALUES (nextval('audit_log_id_seq'), $1, $2, $3::jsonb)",
         )
         .bind(actor_id)
         .bind(action)

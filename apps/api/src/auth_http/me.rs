@@ -83,7 +83,8 @@ pub async fn me(
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 未读站内信数（userbar 邮箱图标角标）
     let unread: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM messages WHERE receiver_id = $1 AND unread = true AND location = 1",
+        "SELECT count(*) FROM messages WHERE receiver_id = $1 AND \
+         unread = true AND location = 1",
     )
     .bind(auth.id)
     .fetch_one(&state.repo.db)

@@ -100,7 +100,8 @@ async fn admin_torrent_list(
         Some("no") => Some(false),
         _ => None,
     };
-    let promo_exists = r#"(SELECT count(*) FROM promotions p WHERE p.starts_at <= now() AND p.ends_at > now() AND p.torrent_id = t.id) > 0"#;
+    let promo_exists = r#"(SELECT count(*) FROM promotions p WHERE \
+     p.starts_at <= now() AND p.ends_at > now() AND p.torrent_id = t.id) > 0"#;
     let where_sql = r#"(CASE WHEN $1 = 1 THEN t.approval_status = 0 WHEN $1 = 2 THEN t.approval_status = 1 WHEN $1 = 3 THEN t.approval_status = 2 WHEN $1 = 4 THEN t.approval_status = 1 AND t.seeders = 0 ELSE TRUE END)
            AND ($2::int IS NULL OR t.category_id = $2)
            AND ($3::bigint IS NULL OR t.owner_id = $3)

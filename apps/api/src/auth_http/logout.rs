@@ -20,7 +20,9 @@ pub async fn logout(
     // 审计修复（P2 吞错）：撤销是安全语义操作，双写（DB 权威 + Redis 加速）失败必须
     // 留痕——旧版全部静默吞掉，双双失败时 token 仍有效且无任何日志可查。
     if let Err(e) = sqlx::query(
-        "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, $2)          ON CONFLICT (user_id) DO UPDATE SET nbf = GREATEST(token_revocations.nbf, EXCLUDED.nbf), updated_at = now()",
+        "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, $2) \
+         ON CONFLICT (user_id) DO UPDATE SET nbf = \
+         GREATEST(token_revocations.nbf, EXCLUDED.nbf), updated_at = now()",
     )
     .bind(auth.id)
     .bind(auth.iat)

@@ -17,7 +17,8 @@ pub async fn msg_templates_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let rows: Vec<MessageTemplateRow> = sqlx::query_as(
-        "SELECT id, scene_key, subject, body, note, updated_at FROM message_templates ORDER BY id",
+        "SELECT id, scene_key, subject, body, note, \
+         updated_at FROM message_templates ORDER BY id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -91,7 +92,8 @@ pub async fn msg_templates_preview(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let row: Option<MessageTemplateRow> = sqlx::query_as(
-        "SELECT id, scene_key, subject, body, note, updated_at FROM message_templates WHERE scene_key = $1",
+        "SELECT id, scene_key, subject, body, note, \
+         updated_at FROM message_templates WHERE scene_key = $1",
     )
     .bind(body.scene_key.trim())
     .fetch_optional(&state.repo.db)

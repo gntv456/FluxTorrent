@@ -26,13 +26,15 @@ pub async fn modify_log(
     modifier: Option<i64>,
     content: &str,
 ) {
-    let _ =
-        sqlx::query("INSERT INTO user_modify_logs (uid, modifier, content) VALUES ($1, $2, $3)")
-            .bind(uid)
-            .bind(modifier)
-            .bind(content)
-            .execute(db)
-            .await;
+    let _ = sqlx::query(
+        "INSERT INTO user_modify_logs (uid, modifier, \
+         content) VALUES ($1, $2, $3)",
+    )
+    .bind(uid)
+    .bind(modifier)
+    .bind(content)
+    .execute(db)
+    .await;
 }
 
 pub(crate) fn check_ids(ids: &[i64]) -> DomainResult<()> {

@@ -27,11 +27,16 @@ pub async fn donate_state(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let plans: Vec<DonatePlan> = sqlx::query_as(
-        "SELECT id, plan_type, title, reward, price_usd::float8, sort FROM donation_plans WHERE enabled ORDER BY sort, id",
-    ).fetch_all(&state.repo.db).await
+        "SELECT id, plan_type, title, reward, price_usd::float8, \
+         sort FROM donation_plans WHERE enabled ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let ledger: Vec<DonateLedgerRow> = sqlx::query_as(
-        "SELECT id, kind, amount_usd::float8, balance_after::float8, note, created_at          FROM donation_ledger WHERE user_id = $1 ORDER BY id DESC LIMIT 30",
+                "SELECT id, kind, amount_usd::float8, balance_after::float8, \
+         note, \
+         created_at FROM donation_ledger WHERE user_id = $1 ORDER BY id DESC LIMIT 30",
     ).bind(auth.id)
     .fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -90,7 +95,8 @@ pub async fn donate_topup(
     // 建订单 + 返回跳转 URL（入账只发生在验签通过的回调，此端点不动钱包）
     let order_no = crate::payment::new_order_no(auth.id);
     sqlx::query(
-        "INSERT INTO payment_orders (order_no, user_id, amount_usd, channel) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO payment_orders (order_no, user_id, amount_usd, \
+         channel) VALUES ($1, $2, $3, $4)",
     )
     .bind(&order_no)
     .bind(auth.id)
@@ -131,7 +137,8 @@ pub async fn donate_order_status(
         return Err(DomainError::Validation("缺少 order_no".into()));
     };
     let st: Option<String> = sqlx::query_scalar(
-        "SELECT status FROM payment_orders WHERE order_no = $1 AND user_id = $2",
+        "SELECT status FROM payment_orders WHERE order_no = $1 AND \
+         user_id = $2",
     )
     .bind(order_no)
     .bind(auth.id)

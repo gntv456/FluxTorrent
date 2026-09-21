@@ -85,13 +85,16 @@ async fn section_kinds_add(
     if dup {
         return Err(DomainError::Validation("维度标识已存在".into()));
     }
-    sqlx::query("INSERT INTO section_kinds (kind, label, sort) VALUES ($1, $2, COALESCE($3, 0))")
-        .bind(&kind)
-        .bind(body.label.trim())
-        .bind(body.sort)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO section_kinds (kind, label, sort) VALUES ($1, \
+     $2, COALESCE($3, 0))",
+    )
+    .bind(&kind)
+    .bind(body.label.trim())
+    .bind(body.sort)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "section_kind.add", None)
@@ -118,7 +121,8 @@ async fn section_kinds_update(
         return Err(DomainError::Validation("显示名称不能为空".into()));
     }
     let n = sqlx::query(
-        "UPDATE section_kinds SET label = $2, sort = COALESCE($3, sort) WHERE kind = $1",
+        "UPDATE section_kinds SET label = $2, \
+         sort = COALESCE($3, sort) WHERE kind = $1",
     )
     .bind(&kind)
     .bind(body.label.trim())

@@ -195,13 +195,16 @@ async fn forum_mod_add(
     let Some(uid) = uid else {
         return Err(DomainError::NotFound(0));
     };
-    sqlx::query("INSERT INTO forum_mods (forum_id, user_id, created_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING")
-        .bind(fid)
-        .bind(uid)
-        .bind(auth.id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "INSERT INTO forum_mods (forum_id, user_id, created_by) \
+     VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+    )
+    .bind(fid)
+    .bind(uid)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "forum.mod_add", Some(uid))

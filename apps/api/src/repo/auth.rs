@@ -33,7 +33,8 @@ impl AuthRepo {
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
         let user_id: i64 = sqlx::query_scalar(
-            "INSERT INTO users (username, email, pass_hash, passkey) VALUES ($1, $2, $3, $4) RETURNING id",
+            "INSERT INTO users (username, email, pass_hash, \
+             passkey) VALUES ($1, $2, $3, $4) RETURNING id",
         )
         .bind(&new_user.username)
         .bind(&new_user.email)
@@ -42,12 +43,15 @@ impl AuthRepo {
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| match e {
-            sqlx::Error::Database(db) if db.is_unique_violation() => DomainError::UsernameTaken,
+            sqlx::Error::Database(db) if db.is_unique_violation() => {
+                DomainError::UsernameTaken
+            }
             other => DomainError::Internal(other.into()),
         })?;
         let inviter: Option<i64> = if invite_only {
             let inv = sqlx::query_scalar(
-                "UPDATE invites SET status = 1, used_by = $1          WHERE code = $2 AND status = 0 AND expires_at > now()          RETURNING inviter_id",
+                                "UPDATE invites SET status = 1, \
+                 used_by = $1 WHERE code = $2 AND status = 0 AND expires_at > now() RETURNING inviter_id",
             )
             .bind(user_id)
             .bind(invite_code)
@@ -57,7 +61,8 @@ impl AuthRepo {
             let Some(inv) = inv else {
                 // 邀请码无效：先区分已用/无效再回滚（区分查询走池连接，事务随后 drop 回滚）
                 let used: bool = sqlx::query_scalar(
-                    "SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1 AND status = 1)",
+                    "SELECT EXISTS(SELECT 1 FROM invites \
+                     WHERE code = $1 AND status = 1)",
                 )
                 .bind(invite_code)
                 .fetch_one(&self.db)

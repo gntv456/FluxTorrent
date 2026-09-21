@@ -148,14 +148,16 @@ async fn admin_attendance_makeup_delete(
         crate::authz::perm::ATTENDANCE_MANAGE,
     )
     .await?;
-    let n =
-        sqlx::query("DELETE FROM attendance WHERE user_id = $1 AND date = $2 AND makeup = TRUE")
-            .bind(body.user_id)
-            .bind(body.date)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
+    let n = sqlx::query(
+        "DELETE FROM attendance WHERE user_id = $1 AND \
+         date = $2 AND makeup = TRUE",
+    )
+    .bind(body.user_id)
+    .bind(body.date)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::Validation("无对应补签记录".into()));
     }

@@ -73,7 +73,8 @@ pub async fn consume_agent_blocks(
         };
         // 首次命中判定先于写入（tracker 侧已 1h 去重，这里的额外查询可忽略不计）
         let existed: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM cheat_events WHERE user_id = $1 AND agent = $2 AND reason = $3)",
+            "SELECT EXISTS(SELECT 1 FROM cheat_events WHERE \
+             user_id = $1 AND agent = $2 AND reason = $3)",
         )
         .bind(ev.user)
         .bind(&agent)
@@ -99,7 +100,8 @@ pub async fn consume_agent_blocks(
                     // 首次命中 → 按 agent_hit_action 分级（U5 §12.3）：
                     // log=仅 staffmessages 告警（现状 T3）/ warn=告警+用户警告信
                     let action: String = sqlx::query_scalar::<_, String>(
-                        "SELECT value FROM site_settings WHERE name = 'agent_hit_action'",
+                        "SELECT value FROM \
+                         site_settings WHERE name = 'agent_hit_action'",
                     )
                     .fetch_optional(db)
                     .await

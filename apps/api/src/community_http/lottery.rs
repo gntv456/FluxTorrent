@@ -53,7 +53,8 @@ async fn lottery_join(
         return Err(DomainError::Validation("楼主不能参与自己的抽奖".into()));
     }
     let entered = sqlx::query(
-        "INSERT INTO lottery_entries (topic_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        "INSERT INTO lottery_entries (topic_id, user_id) VALUES ($1, \
+         $2) ON CONFLICT DO NOTHING",
     )
     .bind(body.topic_id)
     .bind(auth.id)
@@ -79,11 +80,14 @@ async fn lottery_join(
         )
         .await
         {
-            let _ = sqlx::query("DELETE FROM lottery_entries WHERE topic_id = $1 AND user_id = $2")
-                .bind(body.topic_id)
-                .bind(auth.id)
-                .execute(&state.repo.db)
-                .await;
+            let _ = sqlx::query(
+                "DELETE FROM lottery_entries WHERE \
+             topic_id = $1 AND user_id = $2",
+            )
+            .bind(body.topic_id)
+            .bind(auth.id)
+            .execute(&state.repo.db)
+            .await;
             return Err(e);
         }
     }
@@ -104,7 +108,8 @@ pub async fn lottery_draw_core(
     topic_id: i64,
 ) -> DomainResult<serde_json::Value> {
     let l: Option<(i32, i64, i64, String)> = sqlx::query_as(
-        "SELECT winners, prize_per_winner, ticket_spark::bigint, status FROM topic_lotteries WHERE topic_id = $1",
+        "SELECT winners, prize_per_winner, ticket_spark::bigint, \
+         status FROM topic_lotteries WHERE topic_id = $1",
     )
     .bind(topic_id)
     .fetch_optional(db)
@@ -117,7 +122,8 @@ pub async fn lottery_draw_core(
         return Err(DomainError::Validation("抽奖不在进行中".into()));
     }
     let n = sqlx::query(
-        "UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = $1 AND status = 'open'",
+        "UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = \
+         $1 AND status = 'open'",
     )
     .bind(topic_id)
     .execute(db)
@@ -164,7 +170,8 @@ pub async fn lottery_draw_core(
     let picked: Vec<i64> = entries.into_iter().take(take).collect();
     for uid in &picked {
         let _ = sqlx::query(
-            "UPDATE lottery_entries SET won = TRUE WHERE topic_id = $1 AND user_id = $2",
+            "UPDATE lottery_entries SET won = TRUE WHERE topic_id \
+             = $1 AND user_id = $2",
         )
         .bind(topic_id)
         .bind(uid)

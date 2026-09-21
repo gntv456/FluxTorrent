@@ -25,7 +25,8 @@ pub async fn faq_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let rows: Vec<FaqRow> = sqlx::query_as(
-        "SELECT id, category, question, answer, sort FROM faq_items ORDER BY sort, id",
+        "SELECT id, category, question, answer, \
+         sort FROM faq_items ORDER BY sort, id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -53,7 +54,9 @@ pub async fn faq_create(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE)
         .await?;
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO faq_items (question, answer, category, sort) VALUES ($1, $2, $3, COALESCE($4, (SELECT max(sort)+1 FROM faq_items))) RETURNING id",
+                "INSERT INTO faq_items (question, answer, category, sort) \
+         VALUES ($1, $2, $3, COALESCE($4, (SELECT max(sort)+1 FROM faq_items))) \
+         RETURNING id",
     )
     .bind(&body.question)
     .bind(&body.answer)
@@ -80,10 +83,18 @@ pub async fn faq_update(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::FAQ_MANAGE)
         .await?;
     // sort 用 COALESCE 保留原值：编辑时不传 sort 不应把排序归零
-    let n = sqlx::query("UPDATE faq_items SET question=$2, answer=$3, category=$4, sort=COALESCE($5, sort), updated_at=now() WHERE id=$1")
-        .bind(*path).bind(&body.question).bind(&body.answer).bind(&body.category).bind(body.sort)
-        .execute(&state.repo.db).await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let n = sqlx::query(
+        "UPDATE faq_items SET question=$2, answer=$3, \
+     category=$4, sort=COALESCE($5, sort), updated_at=now() WHERE id=$1",
+    )
+    .bind(*path)
+    .bind(&body.question)
+    .bind(&body.answer)
+    .bind(&body.category)
+    .bind(body.sort)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if n.rows_affected() == 0 {
         return Err(DomainError::NotFound(*path as i64));
     }

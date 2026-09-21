@@ -80,7 +80,8 @@ pub async fn upload(
 
     // 重复检测（M04：info_hash 唯一）
     let dupe: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM torrents WHERE info_hash = $1 OR raw_info_hash = $2)",
+        "SELECT EXISTS(SELECT 1 FROM torrents WHERE info_hash = $1 OR \
+         raw_info_hash = $2)",
     )
     .bind(&parsed.info_hash_hex)
     .bind(&parsed.raw_info_hash_hex)
@@ -101,7 +102,8 @@ pub async fn upload(
     // 发布员职务 / 免审核权限 → 发布即通过（torrent.approval.auto）；
     // 第八轮：命中「自动过审」分类同样免审（categories.auto_approve）
     let cat_auto: bool = sqlx::query_scalar(
-        "SELECT COALESCE(bool_or(auto_approve), FALSE) FROM categories WHERE id = $1",
+        "SELECT COALESCE(bool_or(auto_approve), FALSE) FROM categories \
+         WHERE id = $1",
     )
     .bind(form.category_id)
     .fetch_one(&state.repo.db)
@@ -116,7 +118,8 @@ pub async fn upload(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let deny_limit: i32 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE name = 'upload_deny_limit'), 2)",
+        "SELECT COALESCE((SELECT value::int FROM site_settings WHERE \
+         name = 'upload_deny_limit'), 2)",
     )
     .fetch_one(&state.repo.db)
     .await
@@ -216,7 +219,9 @@ pub async fn upload(
     let mut group_suggest: serde_json::Value = serde_json::json!(null);
     if form.group_id.is_none() {
         let lock: Option<i64> = sqlx::query_scalar(
-            "SELECT t2.group_id FROM torrents t2              WHERE t2.pieces_hash = $1 AND t2.pieces_hash <> '' AND t2.group_id IS NOT NULL LIMIT 1",
+            "SELECT t2.group_id FROM torrents t2 WHERE \
+             t2.pieces_hash = $1 AND t2.pieces_hash <> '' AND t2.group_id IS \
+             NOT NULL LIMIT 1",
         )
         .bind(&parsed.pieces_hash_hex)
         .fetch_optional(&state.repo.db)
@@ -233,7 +238,8 @@ pub async fn upload(
             group_suggest = serde_json::json!({ "locked": true, "group_id": gid, "name": gname });
         } else {
             let cands: Vec<(i64, String)> = sqlx::query_as(
-                "SELECT g.id, g.name FROM torrent_groups g                  WHERE similarity(g.name, $1) > 0.4                  ORDER BY similarity(g.name, $1) DESC LIMIT 3",
+                                "SELECT g.id, \
+                 g.name FROM torrent_groups g WHERE similarity(g.name, $1) > 0.4 ORDER BY similarity(g.name, $1) DESC LIMIT 3",
             )
             .bind(&name)
             .fetch_all(&state.repo.db)
@@ -248,10 +254,13 @@ pub async fn upload(
 
     // 0075 免审积分：自动过审的发布连续 +1（被拒路径在 admin 审核处清零）
     if auto_approve {
-        let _ = sqlx::query("UPDATE users SET approve_streak = approve_streak + 1 WHERE id = $1")
-            .bind(auth.id)
-            .execute(&state.repo.db)
-            .await;
+        let _ = sqlx::query(
+            "UPDATE users SET approve_streak = \
+         approve_streak + 1 WHERE id = $1",
+        )
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await;
     }
 
     Ok(ok(serde_json::json!({

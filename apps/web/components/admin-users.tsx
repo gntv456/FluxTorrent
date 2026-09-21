@@ -76,12 +76,26 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
     params.set("page", String(page));
     params.set("per_page", "20");
     try {
-      setData(await api.get<UsersPage>(`/api/v1/admin/users?${params.toString()}`));
+      setData(
+        await api.get<UsersPage>(`/api/v1/admin/users?${params.toString()}`),
+      );
       setSel(new Set());
     } catch (e) {
       flash(e instanceof ApiError ? e.message : dict.common.loadFailed);
     }
-  }, [q, fId, fClass, fStatus, fEnabled, fDownload, fSuspended, sort, desc, page, dict]);
+  }, [
+    q,
+    fId,
+    fClass,
+    fStatus,
+    fEnabled,
+    fDownload,
+    fSuspended,
+    sort,
+    desc,
+    page,
+    dict,
+  ]);
 
   useEffect(() => {
     load();
@@ -119,11 +133,26 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
     }
   };
 
-  const toggleFlag = async (userId: number, flag: "download_enabled" | "suspended", value: boolean) => {
+  const toggleFlag = async (
+    userId: number,
+    flag: "download_enabled" | "suspended",
+    value: boolean,
+  ) => {
     setBusy(true);
     try {
-      await api.put("/api/v1/admin/users/flags", { user_id: userId, [flag]: value });
-      flash(flag === "suspended" ? (value ? "已挂起" : "已解除挂起") : value ? "已恢复下载权限" : "已禁用下载权限");
+      await api.put("/api/v1/admin/users/flags", {
+        user_id: userId,
+        [flag]: value,
+      });
+      flash(
+        flag === "suspended"
+          ? value
+            ? "已挂起"
+            : "已解除挂起"
+          : value
+            ? "已恢复下载权限"
+            : "已禁用下载权限",
+      );
       await openDetail(userId);
       await load();
     } catch (e) {
@@ -133,17 +162,35 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
     }
   };
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1;
+  const totalPages = data
+    ? Math.max(1, Math.ceil(data.total / data.per_page))
+    : 1;
 
   async function batch(action: "status" | "class", value: number) {
     const ids = [...sel];
-    if (ids.length === 0) { flash("请先勾选用户"); return; }
-    const reason = action === "status" && value > 0 ? (window.prompt("批量操作理由（可选）") ?? undefined) : undefined;
-    if (!window.confirm(`确认对 ${ids.length} 个用户执行「${action === "status" ? ["恢复正常", "禁言", "封禁"][value] : `等级改为 ${value}`}」？`)) return;
+    if (ids.length === 0) {
+      flash("请先勾选用户");
+      return;
+    }
+    const reason =
+      action === "status" && value > 0
+        ? (window.prompt("批量操作理由（可选）") ?? undefined)
+        : undefined;
+    if (
+      !window.confirm(
+        `确认对 ${ids.length} 个用户执行「${action === "status" ? ["恢复正常", "禁言", "封禁"][value] : `等级改为 ${value}`}」？`,
+      )
+    )
+      return;
     setBusy(true);
     try {
-      const r = await api.post<{ updated: number; skipped: number[] }>("/api/v1/admin/users/batch", { action, ids, value, reason });
-      flash(`已更新 ${r.updated} 个用户${r.skipped.length > 0 ? `，跳过（等级不足）${r.skipped.length} 个` : ""}`);
+      const r = await api.post<{ updated: number; skipped: number[] }>(
+        "/api/v1/admin/users/batch",
+        { action, ids, value, reason },
+      );
+      flash(
+        `已更新 ${r.updated} 个用户${r.skipped.length > 0 ? `，跳过（等级不足）${r.skipped.length} 个` : ""}`,
+      );
       await load();
     } catch (e) {
       flash(e instanceof ApiError ? e.message : "操作失败");
@@ -170,26 +217,45 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {msg && <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
+      {msg && (
+        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+          {msg}
+        </p>
+      )}
 
       {/* 筛选条件（好学站「筛选条件」面板口径） */}
       <section className="baozi-panel grid grid-cols-2 gap-3 p-4 md:grid-cols-4">
         <label className="flex flex-col gap-1 text-xs">
           ID
-          <input value={fId} onChange={(e) => setFId(e.target.value)} placeholder="UID" className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2" />
+          <input
+            value={fId}
+            onChange={(e) => setFId(e.target.value)}
+            placeholder="UID"
+            className="min-h-[40px] rounded-[var(--r-sm)] border border-line px-2"
+          />
         </label>
         <label className="flex flex-col gap-1 text-xs">
           等级
-          <select value={fClass} onChange={(e) => setFClass(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+          <select
+            value={fClass}
+            onChange={(e) => setFClass(e.target.value)}
+            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+          >
             <option value="">所有</option>
             {classes.map(([id, label]) => (
-              <option key={id} value={id}>{label}</option>
+              <option key={id} value={id}>
+                {label}
+              </option>
             ))}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
           状态
-          <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+          <select
+            value={fStatus}
+            onChange={(e) => setFStatus(e.target.value)}
+            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+          >
             <option value="">所有</option>
             <option value="1">正常</option>
             <option value="2">禁言</option>
@@ -198,7 +264,11 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         </label>
         <label className="flex flex-col gap-1 text-xs">
           启用
-          <select value={fEnabled} onChange={(e) => setFEnabled(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+          <select
+            value={fEnabled}
+            onChange={(e) => setFEnabled(e.target.value)}
+            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+          >
             <option value="">所有</option>
             <option value="yes">是</option>
             <option value="no">否</option>
@@ -206,7 +276,11 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         </label>
         <label className="flex flex-col gap-1 text-xs">
           下载权限
-          <select value={fDownload} onChange={(e) => setFDownload(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+          <select
+            value={fDownload}
+            onChange={(e) => setFDownload(e.target.value)}
+            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+          >
             <option value="">所有</option>
             <option value="yes">有</option>
             <option value="no">无</option>
@@ -214,7 +288,11 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         </label>
         <label className="flex flex-col gap-1 text-xs">
           挂起
-          <select value={fSuspended} onChange={(e) => setFSuspended(e.target.value)} className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2">
+          <select
+            value={fSuspended}
+            onChange={(e) => setFSuspended(e.target.value)}
+            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+          >
             <option value="">所有</option>
             <option value="yes">是</option>
             <option value="no">否</option>
@@ -223,7 +301,12 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         <label className="flex flex-col gap-1 text-xs md:col-span-2">
           搜索
           <div className="flex gap-2">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="用户名 / 邮箱" className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="用户名 / 邮箱"
+              className="min-h-[40px] flex-1 rounded-[var(--r-sm)] border border-line px-2"
+            />
             <button
               onClick={() => {
                 setPage(1);
@@ -254,13 +337,21 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
       <div className="flex items-center justify-between text-sm text-sub">
         <span>共 {data?.total ?? 0} 条</span>
         <div className="flex items-center gap-2">
-          <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          >
             上一页
           </button>
           <span>
             {data?.page ?? 1} / {totalPages}
           </span>
-          <button disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40">
+          <button
+            disabled={page >= totalPages}
+            onClick={() => setPage(page + 1)}
+            className="min-h-[36px] rounded-full border border-line px-3 disabled:opacity-40"
+          >
             下一页
           </button>
         </div>

@@ -51,7 +51,8 @@ export function ContactStaff() {
     const el = document.getElementById("pm-body") as HTMLTextAreaElement | null;
     if (!el) return;
     const { selectionStart: s, selectionEnd: e, value } = el;
-    const next = value.slice(0, s) + before + value.slice(s, e) + after + value.slice(e);
+    const next =
+      value.slice(0, s) + before + value.slice(s, e) + after + value.slice(e);
     setBody(next);
     requestAnimationFrame(() => {
       el.focus();
@@ -111,26 +112,61 @@ export function ContactStaff() {
               <td className="rowhead">{t.bodyLabel}</td>
               <td className="rowfollow">
                 {/* BBCode 工具栏 */}
-                <div className="bbcode-toolbar" role="toolbar" aria-label="BBCode">
-                  <button type="button" className="codebuttons" style={{ fontWeight: "bold" }} onClick={() => wrap("[b]", "[/b]")}>
+                <div
+                  className="bbcode-toolbar"
+                  role="toolbar"
+                  aria-label="BBCode"
+                >
+                  <button
+                    type="button"
+                    className="codebuttons"
+                    style={{ fontWeight: "bold" }}
+                    onClick={() => wrap("[b]", "[/b]")}
+                  >
                     B
                   </button>
-                  <button type="button" className="codebuttons" style={{ fontStyle: "italic" }} onClick={() => wrap("[i]", "[/i]")}>
+                  <button
+                    type="button"
+                    className="codebuttons"
+                    style={{ fontStyle: "italic" }}
+                    onClick={() => wrap("[i]", "[/i]")}
+                  >
                     I
                   </button>
-                  <button type="button" className="codebuttons" style={{ textDecoration: "underline" }} onClick={() => wrap("[u]", "[/u]")}>
+                  <button
+                    type="button"
+                    className="codebuttons"
+                    style={{ textDecoration: "underline" }}
+                    onClick={() => wrap("[u]", "[/u]")}
+                  >
                     U
                   </button>
-                  <button type="button" className="codebuttons" onClick={() => wrap("[url]", "[/url]")}>
+                  <button
+                    type="button"
+                    className="codebuttons"
+                    onClick={() => wrap("[url]", "[/url]")}
+                  >
                     URL
                   </button>
-                  <button type="button" className="codebuttons" onClick={() => wrap("[img]", "[/img]")}>
+                  <button
+                    type="button"
+                    className="codebuttons"
+                    onClick={() => wrap("[img]", "[/img]")}
+                  >
                     IMG
                   </button>
-                  <button type="button" className="codebuttons" onClick={() => wrap("[list][*]", "[/list]")}>
+                  <button
+                    type="button"
+                    className="codebuttons"
+                    onClick={() => wrap("[list][*]", "[/list]")}
+                  >
                     List
                   </button>
-                  <button type="button" className="codebuttons" onClick={() => wrap("[quote]", "[/quote]")}>
+                  <button
+                    type="button"
+                    className="codebuttons"
+                    onClick={() => wrap("[quote]", "[/quote]")}
+                  >
                     QUOTE
                   </button>
                   <select
@@ -138,12 +174,49 @@ export function ContactStaff() {
                     aria-label={t.color}
                     defaultValue=""
                     onChange={(e) => {
-                      if (e.target.value) wrap(`[color=${e.target.value}]`, "[/color]");
+                      if (e.target.value)
+                        wrap(`[color=${e.target.value}]`, "[/color]");
                       e.target.value = "";
                     }}
                   >
                     <option value="">{t.color}</option>
-                    {["Black", "Sienna", "Dark Olive Green", "Dark Green", "Navy", "Indigo", "Dark Slate Gray", "Dark Red", "Dark Orange", "Olive", "Green", "Teal", "Blue", "Slate Gray", "Dim Gray", "Red", "Sandy Brown", "Yellow Green", "Sea Green", "Royal Blue", "Purple", "Gray", "Magenta", "Orange", "Yellow", "Lime", "Cyan", "Deep Sky Blue", "Pink", "Wheat", "Lemon Chiffon", "Pale Green", "Light Blue", "Plum", "White"].map((c) => (
+                    {[
+                      "Black",
+                      "Sienna",
+                      "Dark Olive Green",
+                      "Dark Green",
+                      "Navy",
+                      "Indigo",
+                      "Dark Slate Gray",
+                      "Dark Red",
+                      "Dark Orange",
+                      "Olive",
+                      "Green",
+                      "Teal",
+                      "Blue",
+                      "Slate Gray",
+                      "Dim Gray",
+                      "Red",
+                      "Sandy Brown",
+                      "Yellow Green",
+                      "Sea Green",
+                      "Royal Blue",
+                      "Purple",
+                      "Gray",
+                      "Magenta",
+                      "Orange",
+                      "Yellow",
+                      "Lime",
+                      "Cyan",
+                      "Deep Sky Blue",
+                      "Pink",
+                      "Wheat",
+                      "Lemon Chiffon",
+                      "Pale Green",
+                      "Light Blue",
+                      "Plum",
+                      "White",
+                    ].map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -154,12 +227,31 @@ export function ContactStaff() {
                     aria-label={t.font}
                     defaultValue=""
                     onChange={(e) => {
-                      if (e.target.value) wrap(`[font=${e.target.value}]`, "[/font]");
+                      if (e.target.value)
+                        wrap(`[font=${e.target.value}]`, "[/font]");
                       e.target.value = "";
                     }}
                   >
                     <option value="">{t.font}</option>
-                    {["Arial", "Arial Black", "Book Antiqua", "Century Gothic", "Comic Sans MS", "Courier New", "Garamond", "Georgia", "Impact", "Lucida Console", "Microsoft Sans Serif", "Palatino Linotype", "System", "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana"].map((f) => (
+                    {[
+                      "Arial",
+                      "Arial Black",
+                      "Book Antiqua",
+                      "Century Gothic",
+                      "Comic Sans MS",
+                      "Courier New",
+                      "Garamond",
+                      "Georgia",
+                      "Impact",
+                      "Lucida Console",
+                      "Microsoft Sans Serif",
+                      "Palatino Linotype",
+                      "System",
+                      "Tahoma",
+                      "Times New Roman",
+                      "Trebuchet MS",
+                      "Verdana",
+                    ].map((f) => (
                       <option key={f} value={f}>
                         {f}
                       </option>
@@ -170,7 +262,8 @@ export function ContactStaff() {
                     aria-label={t.size}
                     defaultValue=""
                     onChange={(e) => {
-                      if (e.target.value) wrap(`[size=${e.target.value}]`, "[/size]");
+                      if (e.target.value)
+                        wrap(`[size=${e.target.value}]`, "[/size]");
                       e.target.value = "";
                     }}
                   >
@@ -202,7 +295,12 @@ export function ContactStaff() {
                 )}
 
                 <div className="contactstaff-actions">
-                  <input type="submit" className="btn" value={t.submit} disabled={busy} />
+                  <input
+                    type="submit"
+                    className="btn"
+                    value={t.submit}
+                    disabled={busy}
+                  />
                   <input
                     type="button"
                     className="btn2"
@@ -221,8 +319,12 @@ export function ContactStaff() {
       {/* 我的工单（审计修复 P1 闭环补全）：提交后可见进度；已答复可确认关闭 */}
       <section className="contactstaff-wrap" aria-label={t.myTickets}>
         <h2>{t.myTickets}</h2>
-        {tickets === null && <p className="contactstaff-hint">{t.loading ?? "…"}</p>}
-        {tickets?.length === 0 && <p className="contactstaff-hint">{t.noTickets}</p>}
+        {tickets === null && (
+          <p className="contactstaff-hint">{t.loading ?? "…"}</p>
+        )}
+        {tickets?.length === 0 && (
+          <p className="contactstaff-hint">{t.noTickets}</p>
+        )}
         {tickets && tickets.length > 0 && (
           <table className="nexus-table">
             <tbody>
@@ -231,15 +333,18 @@ export function ContactStaff() {
                   <td className="rowhead">{tk.subject}</td>
                   <td className="rowfollow">
                     <span className="sticker">
-                      {[
-                        t.stNew,
-                        t.stProcessing,
-                        t.stAnswered,
-                        t.stClosed,
-                      ][tk.ticket_status] ?? tk.ticket_status}
+                      {[t.stNew, t.stProcessing, t.stAnswered, t.stClosed][
+                        tk.ticket_status
+                      ] ?? tk.ticket_status}
                     </span>
                     <p className="contactstaff-hint">
-                      {new Date(tk.created_at).toLocaleString(locale === "zh-CN" ? "zh-CN" : locale === "zh-TW" ? "zh-TW" : "en-US")}
+                      {new Date(tk.created_at).toLocaleString(
+                        locale === "zh-CN"
+                          ? "zh-CN"
+                          : locale === "zh-TW"
+                            ? "zh-TW"
+                            : "en-US",
+                      )}
                     </p>
                     {tk.answer && (
                       <blockquote className="contactstaff-preview">

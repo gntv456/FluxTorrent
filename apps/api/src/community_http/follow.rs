@@ -39,7 +39,8 @@ async fn validate_follow_target(
                 return Err(DomainError::Validation("不能关注自己".into()));
             }
             let ok: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND status < 2)",
+                "SELECT EXISTS(SELECT 1 FROM users WHERE id = \
+                 $1 AND status < 2)",
             )
             .bind(tid)
             .fetch_one(db)
@@ -97,7 +98,8 @@ async fn follow_create(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let followers: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM follows WHERE target_type = $1 AND target_id = $2",
+        "SELECT count(*) FROM follows WHERE target_type = $1 AND \
+         target_id = $2",
     )
     .bind(ttype)
     .bind(body.target_id)
@@ -122,15 +124,19 @@ async fn follow_delete(
     let (raw_type, tid) = path.into_inner();
     let ttype = normalize_follow_type(&raw_type)
         .ok_or_else(|| DomainError::Validation("非法的关注对象".into()))?;
-    sqlx::query("DELETE FROM follows WHERE user_id = $1 AND target_type = $2 AND target_id = $3")
-        .bind(auth.id)
-        .bind(ttype)
-        .bind(tid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "DELETE FROM follows WHERE user_id = $1 AND target_type = \
+     $2 AND target_id = $3",
+    )
+    .bind(auth.id)
+    .bind(ttype)
+    .bind(tid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let followers: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM follows WHERE target_type = $1 AND target_id = $2",
+        "SELECT count(*) FROM follows WHERE target_type = $1 AND \
+         target_id = $2",
     )
     .bind(ttype)
     .bind(tid)
@@ -163,7 +169,8 @@ async fn follow_status(
         return Err(DomainError::Validation("非法的关注对象".into()));
     };
     let following: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM follows WHERE user_id = $1 AND target_type = $2 AND target_id = $3)",
+        "SELECT EXISTS(SELECT 1 FROM follows WHERE user_id = $1 AND \
+         target_type = $2 AND target_id = $3)",
     )
     .bind(auth.id)
     .bind(ttype)
@@ -172,7 +179,8 @@ async fn follow_status(
     .await
     .unwrap_or(false);
     let followers: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM follows WHERE target_type = $1 AND target_id = $2",
+        "SELECT count(*) FROM follows WHERE target_type = $1 AND \
+         target_id = $2",
     )
     .bind(ttype)
     .bind(q.target_id)

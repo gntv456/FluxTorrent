@@ -146,21 +146,26 @@ pub async fn do_cleanup(
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     let expired_warns = sqlx::query(
-        "UPDATE users SET warned_until = NULL, warned_reason = NULL WHERE warned_until IS NOT NULL AND warned_until < now()",
+                "UPDATE users SET warned_until = NULL, \
+         warned_reason = NULL WHERE warned_until IS NOT NULL AND warned_until < now()",
     ).execute(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
-    let old_logins =
-        sqlx::query("DELETE FROM login_events WHERE created_at < now() - interval '90 days'")
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
-    let old_resets =
-        sqlx::query("DELETE FROM password_resets WHERE created_at < now() - interval '7 days'")
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
+    let old_logins = sqlx::query(
+        "DELETE FROM login_events WHERE created_at < now() \
+         - interval '90 days'",
+    )
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    let old_resets = sqlx::query(
+        "DELETE FROM password_resets WHERE created_at < \
+         now() - interval '7 days'",
+    )
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     state.repo.audit(Some(auth.id), "do_cleanup", None).await;
     Ok(ok(serde_json::json!({
         "expired_promotions": expired_promos,

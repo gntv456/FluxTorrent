@@ -32,7 +32,8 @@ pub(super) async fn request_create(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         let id: i64 = sqlx::query_scalar(
-            "INSERT INTO requests (user_id, title, descr, bounty) VALUES ($1, $2, $3, $4) RETURNING id",
+            "INSERT INTO requests (user_id, title, descr, bounty) \
+             VALUES ($1, $2, $3, $4) RETURNING id",
         )
         .bind(auth.id)
         .bind(&body.title)
@@ -67,7 +68,8 @@ pub(super) async fn request_create(
         id
     } else {
         sqlx::query_scalar(
-            "INSERT INTO requests (user_id, title, descr, bounty) VALUES ($1, $2, $3, $4) RETURNING id",
+            "INSERT INTO requests (user_id, title, descr, bounty) \
+             VALUES ($1, $2, $3, $4) RETURNING id",
         )
         .bind(auth.id)
         .bind(&body.title)
@@ -179,7 +181,8 @@ pub(super) async fn request_fulfill(
         return Err(DomainError::Validation("该求种已处理".into()));
     }
     let t_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND approval_status = 1)",
+        "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND \
+         approval_status = 1)",
     )
     .bind(body.torrent_id)
     .fetch_one(&state.repo.db)
@@ -204,7 +207,8 @@ pub(super) async fn request_fulfill(
         ));
     }
     let updated = sqlx::query(
-        "UPDATE requests SET status = 1, fulfilled_torrent_id = $2 WHERE id = $1 AND status = 0",
+        "UPDATE requests SET status = 1, \
+         fulfilled_torrent_id = $2 WHERE id = $1 AND status = 0",
     )
     .bind(id)
     .bind(body.torrent_id)

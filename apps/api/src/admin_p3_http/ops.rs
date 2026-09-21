@@ -128,7 +128,8 @@ async fn admin_job_trigger(
         }
         "sweep_stale_peers" => {
             let n: i64 = sqlx::query_scalar(
-                "SELECT count(*) FROM snatches WHERE (seeding OR leeching) AND last_seen_at < now() - interval '90 minutes'",
+                "SELECT count(*) FROM snatches WHERE (seeding \
+                 OR leeching) AND last_seen_at < now() - interval '90 minutes'",
             )
             .fetch_one(&state.repo.db)
             .await
@@ -208,7 +209,8 @@ async fn admin_version(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let latest_migration: String = sqlx::query_scalar(
-        "SELECT description FROM _sqlx_migrations ORDER BY version DESC LIMIT 1",
+        "SELECT description FROM _sqlx_migrations ORDER BY version \
+         DESC LIMIT 1",
     )
     .fetch_one(&state.repo.db)
     .await

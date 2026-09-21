@@ -58,7 +58,8 @@ fn object_key(sha: &str) -> String {
 /// 本地卷路径（savedirectory 缺省 ./attachments）
 pub async fn local_path(db: &sqlx::PgPool, sha: &str) -> String {
     let dir: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'savedirectory'), './attachments')",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'savedirectory'), './attachments')",
     )
     .fetch_one(db)
     .await

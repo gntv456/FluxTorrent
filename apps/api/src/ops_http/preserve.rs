@@ -120,7 +120,8 @@ pub(super) async fn preserve_list(
     .unwrap_or(0);
     // 延续中 = 已被认领且仍在保种区（此前硬编码 0 永远显示 0）
     let continued: i64 = sqlx::query_scalar::<_, i64>(
-        "SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL AND claimed_by IS NOT NULL",
+        "SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL \
+         AND claimed_by IS NOT NULL",
     )
     .fetch_one(&state.repo.db)
     .await

@@ -65,13 +65,15 @@ pub async fn request_reseed(
     torrent_id: i64,
     requester: (i64, String),
 ) -> DomainResult<usize> {
-    let row: Option<(i32, Option<chrono::DateTime<chrono::Utc>>, String)> = sqlx::query_as(
-        "SELECT seeders, last_reseed, name FROM torrents WHERE id = $1 AND approval_status = 1",
-    )
-    .bind(torrent_id)
-    .fetch_optional(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(i32, Option<chrono::DateTime<chrono::Utc>>, String)> =
+        sqlx::query_as(
+            "SELECT seeders, last_reseed, \
+         name FROM torrents WHERE id = $1 AND approval_status = 1",
+        )
+        .bind(torrent_id)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((seeders, last_reseed, name)) = row else {
         return Err(DomainError::NotFound(torrent_id));
     };
@@ -103,7 +105,8 @@ pub async fn request_reseed(
     );
     for uid in &receivers {
         sqlx::query(
-            "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES ($1, $2, $3, $4)",
+            "INSERT INTO messages (sender_id, receiver_id, \
+             subject, body) VALUES ($1, $2, $3, $4)",
         )
         .bind(requester.0)
         .bind(uid)
@@ -126,11 +129,13 @@ pub async fn list_tags(
     db: &PgPool,
     torrent_id: i64,
 ) -> DomainResult<serde_json::Value> {
-    let dict: Vec<(i32, String, String)> =
-        sqlx::query_as("SELECT id, name, kind FROM tag_dict WHERE scope = 'torrent' ORDER BY id")
-            .fetch_all(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let dict: Vec<(i32, String, String)> = sqlx::query_as(
+        "SELECT id, name, \
+         kind FROM tag_dict WHERE scope = 'torrent' ORDER BY id",
+    )
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let mine: Vec<i32> = sqlx::query_scalar(
         "SELECT tag_id FROM tags WHERE torrent_id = $1 ORDER BY tag_id",
     )
@@ -168,12 +173,15 @@ pub async fn tag_torrent(
         return Err(DomainError::Forbidden); // 官种/官方标签仅 staff
     }
     if on {
-        sqlx::query("INSERT INTO tags (torrent_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
-            .bind(torrent_id)
-            .bind(tag_id)
-            .execute(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "INSERT INTO tags (torrent_id, tag_id) VALUES ($1, \
+         $2) ON CONFLICT DO NOTHING",
+        )
+        .bind(torrent_id)
+        .bind(tag_id)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     } else {
         sqlx::query("DELETE FROM tags WHERE torrent_id = $1 AND tag_id = $2")
             .bind(torrent_id)

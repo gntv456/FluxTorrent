@@ -76,12 +76,14 @@ pub async fn hr_pardon(
     }
     // 审计修复（P1）：赦免后 snatches.hr_flag 不回清（worker 只会置 TRUE，全库无 FALSE
     // 路径），列表/详情的 H&R 角标在赦免后仍然残留。此处同步回清（与快照口径一致）。
-    let _ =
-        sqlx::query("UPDATE snatches SET hr_flag = FALSE WHERE user_id = $1 AND torrent_id = $2")
-            .bind(body.user_id)
-            .bind(body.torrent_id)
-            .execute(&state.repo.db)
-            .await;
+    let _ = sqlx::query(
+        "UPDATE snatches SET hr_flag = FALSE WHERE user_id \
+         = $1 AND torrent_id = $2",
+    )
+    .bind(body.user_id)
+    .bind(body.torrent_id)
+    .execute(&state.repo.db)
+    .await;
     sqlx::query(
         "UPDATE hr_violations SET resolved_at = now(), resolved_by = $1 \
          WHERE user_id = $2 AND torrent_id = $3 AND resolved_at IS NULL",
@@ -135,7 +137,9 @@ pub async fn hr_pardon_batch(
     let mut skipped: Vec<serde_json::Value> = Vec::new();
     for it in &body.items {
         let n = sqlx::query(
-            "UPDATE hr_snapshots SET status = 'pardoned', pardoned_by = $1, updated_at = now()              WHERE user_id = $2 AND torrent_id = $3 AND status = 'violated'",
+                        "UPDATE hr_snapshots SET status = 'pardoned', \
+             pardoned_by = $1, \
+             updated_at = now() WHERE user_id = $2 AND torrent_id = $3 AND status = 'violated'",
         )
         .bind(auth.id)
         .bind(it.user_id)
@@ -149,7 +153,8 @@ pub async fn hr_pardon_batch(
             continue;
         }
         sqlx::query(
-            "UPDATE hr_violations SET resolved_at = now(), resolved_by = $1              WHERE user_id = $2 AND torrent_id = $3 AND resolved_at IS NULL",
+                        "UPDATE hr_violations SET resolved_at = now(), \
+             resolved_by = $1 WHERE user_id = $2 AND torrent_id = $3 AND resolved_at IS NULL",
         )
         .bind(auth.id)
         .bind(it.user_id)

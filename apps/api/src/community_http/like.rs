@@ -69,7 +69,8 @@ async fn set_post_like(
         // 但「取消后再点赞」同样会 changed=true。若不按幂等键判重，
         // like/unlike 循环就能反复给作者刷通知（火花侧已有幂等键，通知侧漏了）。
         let already: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE \
+             idempotency_key = $1)",
         )
         .bind(&idem)
         .fetch_one(&state.repo.db)

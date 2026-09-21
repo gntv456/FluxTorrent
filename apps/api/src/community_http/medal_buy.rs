@@ -37,7 +37,8 @@ async fn medal_buy(
     };
     // 已拥有直接拒绝（防重复扣款）
     let owned: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM user_medals WHERE user_id = $1 AND medal_id = $2 AND (expires_at IS NULL OR expires_at > now()))",
+        "SELECT EXISTS(SELECT 1 FROM user_medals WHERE user_id = $1 \
+         AND medal_id = $2 AND (expires_at IS NULL OR expires_at > now()))",
     )
     .bind(auth.id)
     .bind(body.medal_id)

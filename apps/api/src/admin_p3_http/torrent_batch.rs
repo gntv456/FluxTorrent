@@ -68,7 +68,9 @@ async fn torrent_batch(
         "sticky" => {
             let ps = body.pos_state.unwrap_or(1);
             if !(0..=1).contains(&ps) {
-                return Err(DomainError::Validation("pos_state 取值 0/1/2".into()));
+                return Err(DomainError::Validation(
+                    "pos_state 取值 0/1/2".into(),
+                ));
             }
             sqlx::query(
                 "UPDATE torrents SET pos_state = $2, pos_state_until = $3, mtime = now() \
@@ -87,11 +89,12 @@ async fn torrent_batch(
             if !PROMO_KINDS.contains(&kind) {
                 return Err(DomainError::Validation("未知促销类型".into()));
             }
-            let until = body
-                .promo_until
-                .unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::hours(48));
+            let until = body.promo_until.unwrap_or_else(|| {
+                chrono::Utc::now() + chrono::Duration::hours(48)
+            });
             sqlx::query(
-                "DELETE FROM promotions WHERE scope = 'torrent' AND torrent_id = ANY($1) AND source = 'manual'",
+                "DELETE FROM promotions WHERE scope = \
+                 'torrent' AND torrent_id = ANY($1) AND source = 'manual'",
             )
             .bind(&id_arr)
             .execute(db)
@@ -114,15 +117,20 @@ async fn torrent_batch(
         "recommend" => {
             let pt = body.pick_type.unwrap_or(0);
             if !(0..=2).contains(&pt) {
-                return Err(DomainError::Validation("pick_type 取值 0/1/2".into()));
+                return Err(DomainError::Validation(
+                    "pick_type 取值 0/1/2".into(),
+                ));
             }
-            sqlx::query("UPDATE torrents SET pick_type = $2, mtime = now() WHERE id = ANY($1)")
-                .bind(&id_arr)
-                .bind(pt)
-                .execute(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .rows_affected()
+            sqlx::query(
+                "UPDATE torrents SET pick_type = $2, \
+             mtime = now() WHERE id = ANY($1)",
+            )
+            .bind(&id_arr)
+            .bind(pt)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected()
         }
         "set_tags" => {
             if body.tag_ids.is_empty() {
@@ -156,17 +164,20 @@ async fn torrent_batch(
         .rows_affected(),
         "hr" | "unhr" => {
             let on = body.action == "hr";
-            sqlx::query("UPDATE torrents SET hr_policy = $2, mtime = now() WHERE id = ANY($1)")
-                .bind(&id_arr)
-                .bind(if on {
-                    serde_json::json!({ "on": true })
-                } else {
-                    serde_json::Value::Null
-                })
-                .execute(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .rows_affected()
+            sqlx::query(
+                "UPDATE torrents SET hr_policy = $2, \
+             mtime = now() WHERE id = ANY($1)",
+            )
+            .bind(&id_arr)
+            .bind(if on {
+                serde_json::json!({ "on": true })
+            } else {
+                serde_json::Value::Null
+            })
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected()
         }
         "change_category" => sqlx::query(
             "UPDATE torrents SET \
@@ -206,14 +217,15 @@ async fn torrent_batch(
             }
             n
         }
-        "delete" => {
-            sqlx::query("UPDATE torrents SET approval_status = 3, mtime = now() WHERE id = ANY($1)")
-                .bind(&id_arr)
-                .execute(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .rows_affected()
-        }
+        "delete" => sqlx::query(
+            "UPDATE torrents SET approval_status = 3, \
+             mtime = now() WHERE id = ANY($1)",
+        )
+        .bind(&id_arr)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected(),
         _ => return Err(DomainError::Validation("未知批量动作".into())),
     };
     // 操作记录：每种动作写一条汇总（detail 带 ids），列表页可按种子过滤

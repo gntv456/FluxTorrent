@@ -53,7 +53,8 @@ pub async fn resub_use(
     }
     // 已签过则拒绝
     let signed: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM attendance WHERE user_id = $1 AND date = $2)",
+        "SELECT EXISTS(SELECT 1 FROM attendance WHERE user_id = $1 AND \
+         date = $2)",
     )
     .bind(auth.id)
     .bind(date)
@@ -81,7 +82,8 @@ pub async fn resub_use(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
-        "INSERT INTO resub_uses (user_id, target_date, idempotency_key) VALUES ($1, $2, $3)",
+        "INSERT INTO resub_uses (user_id, target_date, \
+         idempotency_key) VALUES ($1, $2, $3)",
     )
     .bind(auth.id)
     .bind(date)
@@ -215,7 +217,8 @@ pub async fn wishlist_list(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<WishRow> = sqlx::query_as(
-        "SELECT id, keyword, category_id, grade_id, created_at FROM wishlist          WHERE user_id = $1 ORDER BY id DESC LIMIT 100",
+                "SELECT id, keyword, category_id, grade_id, \
+         created_at FROM wishlist WHERE user_id = $1 ORDER BY id DESC LIMIT 100",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)
@@ -256,7 +259,10 @@ pub async fn wishlist_add(
         ));
     }
     sqlx::query(
-        "INSERT INTO wishlist (user_id, keyword, category_id, grade_id) VALUES ($1, $2, $3, $4)          ON CONFLICT (user_id, keyword) DO UPDATE SET category_id = EXCLUDED.category_id, grade_id = EXCLUDED.grade_id",
+        "INSERT INTO wishlist (user_id, keyword, category_id, \
+         grade_id) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, keyword) DO \
+         UPDATE SET category_id = EXCLUDED.category_id, \
+         grade_id = EXCLUDED.grade_id",
     )
     .bind(auth.id)
     .bind(kw)

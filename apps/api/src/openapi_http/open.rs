@@ -19,7 +19,8 @@ pub(super) async fn open_recent_torrents(
     // U2 §11.6 访客策略：all_private（默认）下公开列表收敛为空——
     // Token 鉴权「接口调用者」，guest_policy 管「站点公开度」，两层独立。
     let policy: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'guest_policy'), 'all_private')",
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'guest_policy'), 'all_private')",
     )
     .fetch_one(&state.repo.db)
     .await

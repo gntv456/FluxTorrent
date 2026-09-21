@@ -232,7 +232,8 @@ pub async fn report_create(
         }
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) \
+         VALUES ($1, $2, $3, $4) RETURNING id",
     )
     .bind(auth.id)
     .bind(&body.ref_type)

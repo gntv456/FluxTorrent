@@ -97,9 +97,15 @@ pub async fn freeleech_clear(
     )
     .await?;
     // 清除全部进行中的手动站点级促销（全站/官种/非官种/分类）
-    let n = sqlx::query("DELETE FROM promotions WHERE scope IN ('global','official','non_official','category') AND source='manual' AND ends_at > now()")
-        .execute(&state.repo.db).await
-        .map_err(|e| DomainError::Internal(e.into()))?.rows_affected();
+    let n = sqlx::query(
+        "DELETE FROM promotions WHERE scope IN \
+     ('global','official','non_official','category') AND source='manual' AND \
+     ends_at > now()",
+    )
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     state
         .repo
         .audit(Some(auth.id), "freeleech_clear", None)
@@ -153,15 +159,33 @@ pub async fn freeleech_update(
         if exists.is_none() {
             return Err(DomainError::Validation("分类不存在".into()));
         }
-        sqlx::query("UPDATE promotions SET scope='category', category_id=$1, kind=$2::promotion_kind_enum, starts_at=$3, ends_at=$4 WHERE id=$5")
-            .bind(cid).bind(&kind).bind(starts_at).bind(ends_at).bind(pid)
-            .execute(&state.repo.db).await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "UPDATE promotions SET scope='category', \
+         category_id=$1, kind=$2::promotion_kind_enum, starts_at=$3, \
+         ends_at=$4 WHERE id=$5",
+        )
+        .bind(cid)
+        .bind(&kind)
+        .bind(starts_at)
+        .bind(ends_at)
+        .bind(pid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     } else {
-        sqlx::query("UPDATE promotions SET scope=$1::promotion_scope, category_id=NULL, kind=$2::promotion_kind_enum, starts_at=$3, ends_at=$4 WHERE id=$5")
-            .bind(&scope).bind(&kind).bind(starts_at).bind(ends_at).bind(pid)
-            .execute(&state.repo.db).await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "UPDATE promotions SET scope=$1::promotion_scope, \
+         category_id=NULL, kind=$2::promotion_kind_enum, starts_at=$3, \
+         ends_at=$4 WHERE id=$5",
+        )
+        .bind(&scope)
+        .bind(&kind)
+        .bind(starts_at)
+        .bind(ends_at)
+        .bind(pid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     state
         .repo

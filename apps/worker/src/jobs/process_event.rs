@@ -17,7 +17,8 @@ pub(crate) async fn process_event(
     // 审计修复（P1）：announce 哈希是客户端「原始字节」口径；库内 info_hash 为规范化
     // 重编码口径（键序非排序的种子两者不同，此前静默丢计费）。双口径 OR 匹配。
     let torrent: Option<(i64, i64)> = sqlx::query_as(
-        "SELECT id, COALESCE(size, 0) FROM torrents WHERE info_hash = $1 OR raw_info_hash = $1",
+                "SELECT id, \
+         COALESCE(size, 0) FROM torrents WHERE info_hash = $1 OR raw_info_hash = $1",
     )
     .bind(&ev.hash)
     .fetch_optional(db)
@@ -90,7 +91,8 @@ pub(crate) async fn process_event(
     // BEP3：ev.up/down 是客户端累计总量 —— 先取出上次上报值换算增量（P0 修复）
     let mut tx = db.begin().await?;
     let last: Option<(i64, i64)> = sqlx::query_as(
-        "SELECT last_up, last_down FROM snatches WHERE user_id = $1 AND torrent_id = $2 FOR UPDATE",
+                "SELECT last_up, \
+         last_down FROM snatches WHERE user_id = $1 AND torrent_id = $2 FOR UPDATE",
     )
     .bind(ev.user)
     .bind(torrent_id)
@@ -121,7 +123,9 @@ pub(crate) async fn process_event(
             if secs >= 30 {
                 let bps = (raw_up.max(raw_down) as f64 / secs as f64) as i64;
                 let threshold: i64 = sqlx::query_scalar(
-                    "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'speed_alarm_bps')::bigint, 2147483648)",
+                    "SELECT COALESCE((SELECT value FROM \
+                     site_settings WHERE name = 'speed_alarm_bps')::bigint, \
+                     2147483648)",
                 )
                 .fetch_one(&mut *tx)
                 .await
@@ -231,7 +235,9 @@ pub(crate) async fn process_event(
     // 仅在有实际增量时落流水（避免零增量噪声）
     if delta_up > 0 || delta_down > 0 {
         sqlx::query(
-            "INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, delta_down, window_start)          VALUES (nextval('traffic_ledger_id_seq'), $1, $2, $3, $4, now())",
+            "INSERT INTO traffic_ledger (id, user_id, torrent_id, \
+             delta_up, delta_down, window_start) VALUES \
+             (nextval('traffic_ledger_id_seq'), $1, $2, $3, $4, now())",
         )
         .bind(ev.user)
         .bind(torrent_id)

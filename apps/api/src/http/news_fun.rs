@@ -42,11 +42,17 @@ pub async fn news_create(
         return Err(DomainError::Validation("标题和正文不能为空".into()));
     }
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO announcements (title, body, badge, author_id, sort)          VALUES ($1, $2, $3, $4, (SELECT COALESCE(max(sort),0)+10 FROM announcements)) RETURNING id",
+        "INSERT INTO announcements (title, body, badge, author_id, \
+         sort) VALUES ($1, $2, $3, $4, (SELECT COALESCE(max(sort),0)+10 FROM \
+         announcements)) RETURNING id",
     )
     .bind(body.title.trim())
     .bind(&body.body)
-    .bind(if body.badge.trim().is_empty() { "公告" } else { body.badge.trim() })
+    .bind(if body.badge.trim().is_empty() {
+        "公告"
+    } else {
+        body.badge.trim()
+    })
     .bind(auth.id)
     .fetch_one(&state.repo.db)
     .await
@@ -72,19 +78,21 @@ pub async fn news_update(
         ],
     )
     .await?;
-    let updated =
-        sqlx::query("UPDATE announcements SET title = $2, body = $3, badge = $4 WHERE id = $1")
-            .bind(*path)
-            .bind(body.title.trim())
-            .bind(&body.body)
-            .bind(if body.badge.trim().is_empty() {
-                "公告"
-            } else {
-                body.badge.trim()
-            })
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let updated = sqlx::query(
+        "UPDATE announcements SET title = $2, body = $3, \
+         badge = $4 WHERE id = $1",
+    )
+    .bind(*path)
+    .bind(body.title.trim())
+    .bind(&body.body)
+    .bind(if body.badge.trim().is_empty() {
+        "公告"
+    } else {
+        body.badge.trim()
+    })
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if updated.rows_affected() == 0 {
         return Err(DomainError::NotFound(*path));
     }

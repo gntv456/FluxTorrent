@@ -148,7 +148,8 @@ pub async fn admin_reset_pass(
     );
     let hash = crate::domain::hash_password(&temp_pass)?;
     let n = sqlx::query(
-        "UPDATE users SET pass_hash=$2, must_reset_password=true WHERE id=$1 AND status<3",
+        "UPDATE users SET pass_hash=$2, \
+         must_reset_password=true WHERE id=$1 AND status<3",
     )
     .bind(body.user_id)
     .bind(&hash)

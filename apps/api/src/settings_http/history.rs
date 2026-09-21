@@ -66,7 +66,8 @@ pub(super) async fn settings_history(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM audit_log WHERE action = 'setting:update' AND ref->>'setting' = $1",
+        "SELECT count(*) FROM audit_log WHERE action = \
+         'setting:update' AND ref->>'setting' = $1",
     )
     .bind(name)
     .fetch_one(&state.repo.db)

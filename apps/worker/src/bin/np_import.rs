@@ -40,7 +40,8 @@ async fn main() -> Result<()> {
 
     // 映射表（首次使用自动建）
     sqlx::query(
-        "CREATE TABLE IF NOT EXISTS np_map_users (np_id BIGINT PRIMARY KEY, flux_id BIGINT NOT NULL UNIQUE)",
+        "CREATE TABLE IF NOT EXISTS np_map_users (np_id BIGINT PRIMARY \
+         KEY, flux_id BIGINT NOT NULL UNIQUE)",
     )
     .execute(&flux)
     .await?;
@@ -57,7 +58,8 @@ async fn main() -> Result<()> {
 
 async fn import_users(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
     let rows: Vec<(i64, String, String, String, String)> = sqlx::query_as(
-        "SELECT id, username, email, pass_hash, passkey FROM users WHERE status != 2", // 2=banned 留站长手工定夺
+        "SELECT id, username, email, pass_hash, \
+         passkey FROM users WHERE status != 2", // 2=banned 留站长手工定夺
     )
     .fetch_all(np)
     .await?;

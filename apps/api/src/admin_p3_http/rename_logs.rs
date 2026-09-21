@@ -60,7 +60,8 @@ async fn admin_rename_logs(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM username_change_logs WHERE ($1::bigint IS NULL OR uid = $1)",
+        "SELECT count(*) FROM username_change_logs WHERE ($1::bigint \
+         IS NULL OR uid = $1)",
     )
     .bind(q.uid)
     .fetch_one(&state.repo.db)
@@ -108,7 +109,8 @@ async fn admin_modify_logs(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM user_modify_logs WHERE ($1::bigint IS NULL OR uid = $1)",
+        "SELECT count(*) FROM user_modify_logs WHERE ($1::bigint IS \
+         NULL OR uid = $1)",
     )
     .bind(q.uid)
     .fetch_one(&state.repo.db)

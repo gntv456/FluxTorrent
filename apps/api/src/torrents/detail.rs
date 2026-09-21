@@ -137,7 +137,8 @@ pub async fn list_files(
     torrent_id: i64,
 ) -> DomainResult<Vec<FileRow>> {
     sqlx::query_as::<_, FileRow>(
-        "SELECT file_index, path, size FROM files WHERE torrent_id = $1 ORDER BY file_index LIMIT 500",
+        "SELECT file_index, path, \
+         size FROM files WHERE torrent_id = $1 ORDER BY file_index LIMIT 500",
     )
     .bind(torrent_id)
     .fetch_all(db)
@@ -196,7 +197,8 @@ pub async fn add_comment(
     body: &str,
 ) -> DomainResult<i64> {
     let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND approval_status = 1)",
+        "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND \
+         approval_status = 1)",
     )
     .bind(torrent_id)
     .fetch_one(db)
@@ -209,7 +211,8 @@ pub async fn add_comment(
         return Err(DomainError::Validation("评论不能为空".into()));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO comments (torrent_id, user_id, body) VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO comments (torrent_id, user_id, body) VALUES ($1, \
+         $2, $3) RETURNING id",
     )
     .bind(torrent_id)
     .bind(user_id)
@@ -226,7 +229,8 @@ pub async fn thank(
     user_id: i64,
 ) -> DomainResult<()> {
     let res = sqlx::query(
-        "INSERT INTO thanks (torrent_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        "INSERT INTO thanks (torrent_id, user_id) VALUES ($1, $2) ON \
+         CONFLICT DO NOTHING",
     )
     .bind(torrent_id)
     .bind(user_id)
@@ -247,7 +251,8 @@ pub async fn bookmark(
 ) -> DomainResult<()> {
     if on {
         sqlx::query(
-            "INSERT INTO bookmarks (user_id, torrent_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            "INSERT INTO bookmarks (user_id, torrent_id) VALUES \
+             ($1, $2) ON CONFLICT DO NOTHING",
         )
         .bind(user_id)
         .bind(torrent_id)

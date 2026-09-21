@@ -82,13 +82,15 @@ pub(super) async fn jixiao_claim(
         ));
     }
 
-    let t: Option<(String, i64, serde_json::Value, serde_json::Value)> = sqlx::query_as(
-        "SELECT name, base_pay, metrics, min_requirements FROM jixiao_types WHERE id = $1",
-    )
-    .bind(body.type_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let t: Option<(String, i64, serde_json::Value, serde_json::Value)> =
+        sqlx::query_as(
+            "SELECT name, base_pay, metrics, \
+         min_requirements FROM jixiao_types WHERE id = $1",
+        )
+        .bind(body.type_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((name, base_pay, _metrics, min_reqs)) = t else {
         return Err(DomainError::NotFound(body.type_id));
     };
@@ -108,7 +110,8 @@ pub(super) async fn jixiao_claim(
     // 达标月数（**含本期**：历史 status=1 行数 + 1，本期达标正在领取）。
     // worker 结算侧同口径（months_before + 1）——首月即计入加成档位。
     let qualified_months: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM jixiao_claims WHERE user_id = $1 AND type_id = $2 AND status = 1",
+        "SELECT count(*) FROM jixiao_claims WHERE user_id = $1 AND \
+         type_id = $2 AND status = 1",
     )
     .bind(auth.id)
     .bind(body.type_id)

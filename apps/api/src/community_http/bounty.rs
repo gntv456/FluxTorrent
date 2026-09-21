@@ -30,7 +30,8 @@ async fn bounty_award(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let t: Option<(i64, i64, i64, String, String)> = sqlx::query_as(
-        "SELECT id, user_id, bounty_spark, bounty_status, topic_type FROM topics WHERE id = $1",
+        "SELECT id, user_id, bounty_spark, bounty_status, \
+         topic_type FROM topics WHERE id = $1",
     )
     .bind(body.topic_id)
     .fetch_optional(&state.repo.db)

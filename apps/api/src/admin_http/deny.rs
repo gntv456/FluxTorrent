@@ -24,7 +24,8 @@ async fn deny_reasons_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let rows: Vec<DenyReasonRow> = sqlx::query_as(
-        "SELECT id, sort, reason, enabled FROM torrent_deny_reasons ORDER BY sort, id",
+        "SELECT id, sort, reason, \
+         enabled FROM torrent_deny_reasons ORDER BY sort, id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -60,7 +61,8 @@ async fn deny_reasons_add(
         return Err(DomainError::Validation("原因长度 1-200".into()));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO torrent_deny_reasons (reason, sort, enabled) VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO torrent_deny_reasons (reason, sort, enabled) \
+         VALUES ($1, $2, $3) RETURNING id",
     )
     .bind(r)
     .bind(body.sort.unwrap_or(0))

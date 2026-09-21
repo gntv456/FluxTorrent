@@ -27,7 +27,8 @@ async fn admin_shop_items(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let rows: Vec<ShopItemRow> = sqlx::query_as(
-        "SELECT id, name, kind, price, config, active FROM shop_items ORDER BY kind, id",
+        "SELECT id, name, kind, price, config, \
+         active FROM shop_items ORDER BY kind, id",
     )
     .fetch_all(&state.repo.db)
     .await

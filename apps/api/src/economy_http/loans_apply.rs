@@ -49,7 +49,8 @@ async fn loan_apply(
         )));
     }
     let active: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM bank_loans WHERE user_id = $1 AND status IN ('active', 'defaulted'))",
+        "SELECT EXISTS(SELECT 1 FROM bank_loans WHERE user_id = $1 AND \
+         status IN ('active', 'defaulted'))",
     )
     .bind(auth.id)
     .fetch_one(&state.repo.db)

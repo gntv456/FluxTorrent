@@ -86,7 +86,8 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
         if interest > 0 {
             let idem = format!("fixed_daily:{}:{}", id, end.format("%Y%m%d"));
             let exists: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+                "SELECT EXISTS(SELECT 1 FROM spark_ledger \
+                 WHERE idempotency_key = $1)",
             )
             .bind(&idem)
             .fetch_one(&mut *tx)
@@ -109,11 +110,14 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
                 .bind(balance + interest)
                 .execute(&mut *tx)
                 .await?;
-                sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
-                    .bind(user_id)
-                    .bind(interest)
-                    .execute(&mut *tx)
-                    .await?;
+                sqlx::query(
+                    "UPDATE users SET spark_balance = \
+                 spark_balance + $2 WHERE id = $1",
+                )
+                .bind(user_id)
+                .bind(interest)
+                .execute(&mut *tx)
+                .await?;
                 sqlx::query(
                     "INSERT INTO bank_interest_records (user_id, kind, reference_id, amount, rate_bp) \
                      VALUES ($1, 'fixed', $2, $3, 0)",
@@ -146,7 +150,8 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
         let final_interest = if daily { 0 } else { interest };
         let mut tx = db.begin().await?;
         let updated = sqlx::query(
-            "UPDATE bank_deposits SET status = 1, settled_at = now() WHERE id = $1 AND status = 0",
+            "UPDATE bank_deposits SET status = 1, \
+             settled_at = now() WHERE id = $1 AND status = 0",
         )
         .bind(id)
         .execute(&mut *tx)
@@ -157,7 +162,8 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
         }
         let idem = format!("withdraw:{}", id);
         let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE \
+             idempotency_key = $1)",
         )
         .bind(&idem)
         .fetch_one(&mut *tx)
@@ -180,11 +186,14 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
             .bind(balance + payable)
             .execute(&mut *tx)
             .await?;
-            sqlx::query("UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1")
-                .bind(user_id)
-                .bind(payable)
-                .execute(&mut *tx)
-                .await?;
+            sqlx::query(
+                "UPDATE users SET spark_balance = \
+             spark_balance + $2 WHERE id = $1",
+            )
+            .bind(user_id)
+            .bind(payable)
+            .execute(&mut *tx)
+            .await?;
             if final_interest > 0 {
                 sqlx::query(
                     "INSERT INTO bank_interest_records (user_id, kind, reference_id, amount, rate_bp) \
@@ -197,7 +206,8 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
                 .await?;
             }
             sqlx::query(
-                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+                                "INSERT INTO messages (sender_id, receiver_id, \
+                 subject, body) VALUES (NULL, $1, $2, $3)",
             )
             .bind(user_id)
             .bind("银行存款到期通知")

@@ -113,7 +113,8 @@ pub async fn bank_auto_deduct(
             chrono::Utc::now().format("%Y%m%d")
         );
         let already: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE \
+             idempotency_key = $1)",
         )
         .bind(&idem)
         .fetch_one(&mut *tx)
@@ -164,11 +165,14 @@ pub async fn bank_auto_deduct(
                 .bind(&idem)
                 .execute(&mut *tx)
                 .await?;
-                sqlx::query("UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1")
-                    .bind(user_id)
-                    .bind(left)
-                    .execute(&mut *tx)
-                    .await?;
+                sqlx::query(
+                    "UPDATE users SET spark_balance = \
+                 spark_balance - $2 WHERE id = $1",
+                )
+                .bind(user_id)
+                .bind(left)
+                .execute(&mut *tx)
+                .await?;
                 deducted += left;
             } else {
                 // 仅扣现有余额（balance_after 快照行锁口径）
@@ -181,7 +185,8 @@ pub async fn bank_auto_deduct(
                 let take = balance.min(left).max(0);
                 if take > 0 {
                     let exists: bool = sqlx::query_scalar(
-                        "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+                        "SELECT EXISTS(SELECT 1 FROM \
+                         spark_ledger WHERE idempotency_key = $1)",
                     )
                     .bind(&idem)
                     .fetch_one(&mut *tx)
@@ -199,7 +204,8 @@ pub async fn bank_auto_deduct(
                         .execute(&mut *tx)
                         .await?;
                         sqlx::query(
-                            "UPDATE users SET spark_balance = spark_balance - $2 WHERE id = $1",
+                            "UPDATE users SET \
+                             spark_balance = spark_balance - $2 WHERE id = $1",
                         )
                         .bind(user_id)
                         .bind(take)
@@ -222,16 +228,18 @@ pub async fn bank_auto_deduct(
                 .await?;
             } else {
                 sqlx::query(
-                    "UPDATE bank_loans SET remaining = $2 WHERE id = $1 AND status IN ('active', 'defaulted')",
+                    "UPDATE bank_loans SET remaining = $2 \
+                     WHERE id = $1 AND status IN ('active', 'defaulted')",
                 )
                 .bind(loan_id)
                 .bind(new_remaining)
-                    .execute(&mut *tx)
-                    .await?;
+                .execute(&mut *tx)
+                .await?;
             }
             // 扣款站内信
             sqlx::query(
-                "INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (NULL, $1, $2, $3)",
+                                "INSERT INTO messages (sender_id, receiver_id, \
+                 subject, body) VALUES (NULL, $1, $2, $3)",
             )
             .bind(user_id)
             .bind("银行逾期贷款自动扣款通知")

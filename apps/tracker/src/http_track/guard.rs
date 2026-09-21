@@ -30,7 +30,8 @@ impl TrackerState {
         .await
         .ok();
         let rules: Option<Vec<AgentRule>> = sqlx::query_as::<_, (String, String, String)>(
-            "SELECT mode, pattern, COALESCE(peer_id_pattern, '') FROM agent_rules",
+                        "SELECT mode, pattern, \
+             COALESCE(peer_id_pattern, '') FROM agent_rules",
         )
         .fetch_all(&self.db)
         .await
@@ -103,13 +104,15 @@ impl TrackerState {
                 }
             }
         }
-        let row: Option<(i64, bool, bool)> = sqlx::query_as::<_, (i64, bool, bool)>(
-            "SELECT id, download_enabled, suspended FROM users WHERE passkey = $1 AND status < 2",
-        )
-        .bind(passkey)
-        .fetch_one(&self.db)
-        .await
-        .ok();
+        let row: Option<(i64, bool, bool)> =
+            sqlx::query_as::<_, (i64, bool, bool)>(
+                "SELECT id, download_enabled, \
+             suspended FROM users WHERE passkey = $1 AND status < 2",
+            )
+            .bind(passkey)
+            .fetch_one(&self.db)
+            .await
+            .ok();
         if let Some(v) = &row {
             let mut g = self.guard_write();
             if g.passkeys.len() >= PASSKEY_CACHE_CAP {

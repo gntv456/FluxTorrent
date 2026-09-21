@@ -8,24 +8,38 @@ import { useI18n } from "@/i18n/client";
  *  角色权限矩阵 + 用户级权限分配（对标 NexusPHP 角色插件）。 */
 
 interface RoleDef {
-  key: string; name: string; descr: string | null;
+  key: string;
+  name: string;
+  descr: string | null;
 }
 interface PermDef {
-  key: string; name: string; category: string; descr: string | null;
+  key: string;
+  name: string;
+  category: string;
+  descr: string | null;
   implemented: boolean;
 }
 interface PermRole {
-  role_type: string; role_key: string; name: string;
+  role_type: string;
+  role_key: string;
+  name: string;
 }
 interface PermGrant {
-  role_type: string; role_key: string; permission_key: string;
+  role_type: string;
+  role_key: string;
+  permission_key: string;
 }
 interface PermMatrixData {
-  permissions: PermDef[]; roles: PermRole[]; grants: PermGrant[];
+  permissions: PermDef[];
+  roles: PermRole[];
+  grants: PermGrant[];
 }
 interface UserPermData {
-  user_id: number; class_id: number; roles: string[];
-  effective: string[]; overrides: { permission_key: string; granted: boolean }[];
+  user_id: number;
+  class_id: number;
+  roles: string[];
+  effective: string[];
+  overrides: { permission_key: string; granted: boolean }[];
 }
 
 export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
@@ -37,16 +51,30 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    api.get<PermMatrixData>("/api/v1/admin/permission-matrix").then(setPermData).catch(() => setPermData(null));
-    api.get<RoleDef[]>("/api/v1/admin/roles").then(setRoleDefs).catch(() => setRoleDefs([]));
+    api
+      .get<PermMatrixData>("/api/v1/admin/permission-matrix")
+      .then(setPermData)
+      .catch(() => setPermData(null));
+    api
+      .get<RoleDef[]>("/api/v1/admin/roles")
+      .then(setRoleDefs)
+      .catch(() => setRoleDefs([]));
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function guard(fn: () => Promise<void>, ok: string) {
     setBusy(true);
-    try { await fn(); flash(ok); await load(); }
-    catch (e) { flash(e instanceof ApiError ? e.message : dict.common.networkError); }
-    finally { setBusy(false); }
+    try {
+      await fn();
+      flash(ok);
+      await load();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : dict.common.networkError);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -61,7 +89,9 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
           <table className="nexus-table text-xs">
             <thead>
               <tr>
-                <td className="colhead" style={{ minWidth: 210 }}>权限</td>
+                <td className="colhead" style={{ minWidth: 210 }}>
+                  权限
+                </td>
                 {(permData?.roles ?? []).map((r) => (
                   <td
                     key={`${r.role_type}:${r.role_key}`}
@@ -70,8 +100,12 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                   >
                     <span className="block">
                       {{
-                        "1": "全体用户", "20": "贵宾 VIP", "90": "管理组",
-                        "93": "总版主及以上", "98": "维护开发员及以上", "99": "站长",
+                        "1": "全体用户",
+                        "20": "贵宾 VIP",
+                        "90": "管理组",
+                        "93": "总版主及以上",
+                        "98": "维护开发员及以上",
+                        "99": "站长",
                       }[r.role_key] ?? r.name}
                     </span>
                     <span className="block text-[10px] font-normal">
@@ -83,10 +117,13 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
             </thead>
             <tbody>
               {Object.entries(
-                (permData?.permissions ?? []).reduce<Record<string, PermDef[]>>((m, x) => {
-                  (m[x.category] ||= []).push(x);
-                  return m;
-                }, {}),
+                (permData?.permissions ?? []).reduce<Record<string, PermDef[]>>(
+                  (m, x) => {
+                    (m[x.category] ||= []).push(x);
+                    return m;
+                  },
+                  {},
+                ),
               ).map(([cat, items]) => (
                 <Fragment key={cat}>
                   <tr>
@@ -94,8 +131,16 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                       colSpan={1 + (permData?.roles ?? []).length}
                       className="bg-sky-soft font-bold"
                     >
-                      {{ content: "内容", user: "用户", site: "运营", system: "系统",
-                         upload: "发布", repost: "转载", seed: "保种", liaison: "外联" }[cat] ?? cat}
+                      {{
+                        content: "内容",
+                        user: "用户",
+                        site: "运营",
+                        system: "系统",
+                        upload: "发布",
+                        repost: "转载",
+                        seed: "保种",
+                        liaison: "外联",
+                      }[cat] ?? cat}
                     </td>
                   </tr>
                   {items.map((p) => (
@@ -110,7 +155,9 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                             未接入
                           </span>
                         )}
-                        <span className="block font-mono text-[10px] text-sub">{p.key}</span>
+                        <span className="block font-mono text-[10px] text-sub">
+                          {p.key}
+                        </span>
                       </td>
                       {(permData?.roles ?? []).map((r) => {
                         const on = (permData?.grants ?? []).some(
@@ -129,32 +176,45 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                               checked={on}
                               disabled={busy}
                               onChange={(e) =>
-                                guard(async () => {
-                                  await api.put("/api/v1/admin/permission-matrix", {
-                                    items: [{
-                                      role_type: r.role_type,
-                                      role_key: r.role_key,
-                                      permission_key: p.key,
-                                      granted: e.target.checked,
-                                    }],
-                                  });
-                                  setPermData((prev) => {
-                                    if (!prev) return prev;
-                                    const grants = e.target.checked
-                                      ? [...prev.grants, {
-                                          role_type: r.role_type,
-                                          role_key: r.role_key,
-                                          permission_key: p.key,
-                                        }]
-                                      : prev.grants.filter(
-                                          (g) =>
-                                            !(g.role_type === r.role_type &&
-                                              g.role_key === r.role_key &&
-                                              g.permission_key === p.key),
-                                        );
-                                    return { ...prev, grants };
-                                  });
-                                }, e.target.checked ? "已授权" : "已取消")
+                                guard(
+                                  async () => {
+                                    await api.put(
+                                      "/api/v1/admin/permission-matrix",
+                                      {
+                                        items: [
+                                          {
+                                            role_type: r.role_type,
+                                            role_key: r.role_key,
+                                            permission_key: p.key,
+                                            granted: e.target.checked,
+                                          },
+                                        ],
+                                      },
+                                    );
+                                    setPermData((prev) => {
+                                      if (!prev) return prev;
+                                      const grants = e.target.checked
+                                        ? [
+                                            ...prev.grants,
+                                            {
+                                              role_type: r.role_type,
+                                              role_key: r.role_key,
+                                              permission_key: p.key,
+                                            },
+                                          ]
+                                        : prev.grants.filter(
+                                            (g) =>
+                                              !(
+                                                g.role_type === r.role_type &&
+                                                g.role_key === r.role_key &&
+                                                g.permission_key === p.key
+                                              ),
+                                          );
+                                      return { ...prev, grants };
+                                    });
+                                  },
+                                  e.target.checked ? "已授权" : "已取消",
+                                )
                               }
                             />
                           </td>
@@ -194,13 +254,15 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
           <button
             disabled={busy || !upUserId.trim()}
             className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white disabled:opacity-50"
-            onClick={() => guard(async () => {
-              setUpData(
-                await api.get<UserPermData>(
-                  `/api/v1/admin/user-permissions?user_id=${encodeURIComponent(upUserId.trim())}`,
-                ),
-              );
-            }, "已加载")}
+            onClick={() =>
+              guard(async () => {
+                setUpData(
+                  await api.get<UserPermData>(
+                    `/api/v1/admin/user-permissions?user_id=${encodeURIComponent(upUserId.trim())}`,
+                  ),
+                );
+              }, "已加载")
+            }
           >
             加载
           </button>
@@ -221,18 +283,28 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
             <table className="nexus-table text-xs">
               <thead>
                 <tr>
-                  <td className="colhead" style={{ minWidth: 200 }}>权限</td>
+                  <td className="colhead" style={{ minWidth: 200 }}>
+                    权限
+                  </td>
                   <td className="colhead w-28">当前状态</td>
-                  <td className="colhead" style={{ minWidth: 220 }}>用户级设置</td>
+                  <td className="colhead" style={{ minWidth: 220 }}>
+                    用户级设置
+                  </td>
                 </tr>
               </thead>
               <tbody>
                 {(permData?.permissions ?? []).map((p) => {
-                  const ov = upData.overrides.find((o) => o.permission_key === p.key);
+                  const ov = upData.overrides.find(
+                    (o) => o.permission_key === p.key,
+                  );
                   const eff = upData.effective.includes(p.key);
                   const state = ov
-                    ? (ov.granted ? "单独授予" : "单独拒绝")
-                    : (eff ? "角色继承（有）" : "无");
+                    ? ov.granted
+                      ? "单独授予"
+                      : "单独拒绝"
+                    : eff
+                      ? "角色继承（有）"
+                      : "无";
                   const btn = (label: string, g: boolean | null) => (
                     <button
                       key={label}
@@ -244,18 +316,20 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                           ? "border-sky bg-sky text-white"
                           : "border-line"
                       }`}
-                      onClick={() => guard(async () => {
-                        await api.put("/api/v1/admin/user-permissions", {
-                          user_id: upData.user_id,
-                          permission_key: p.key,
-                          granted: g,
-                        });
-                        setUpData(
-                          await api.get<UserPermData>(
-                            `/api/v1/admin/user-permissions?user_id=${upData.user_id}`,
-                          ),
-                        );
-                      }, "已更新")}
+                      onClick={() =>
+                        guard(async () => {
+                          await api.put("/api/v1/admin/user-permissions", {
+                            user_id: upData.user_id,
+                            permission_key: p.key,
+                            granted: g,
+                          });
+                          setUpData(
+                            await api.get<UserPermData>(
+                              `/api/v1/admin/user-permissions?user_id=${upData.user_id}`,
+                            ),
+                          );
+                        }, "已更新")
+                      }
                     >
                       {label}
                     </button>
@@ -269,7 +343,9 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                             未接入
                           </span>
                         )}
-                        <span className="block font-mono text-[10px] text-sub">{p.key}</span>
+                        <span className="block font-mono text-[10px] text-sub">
+                          {p.key}
+                        </span>
                       </td>
                       <td className="rowfollow text-sub">{state}</td>
                       <td className="rowfollow">
