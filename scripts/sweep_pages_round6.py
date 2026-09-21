@@ -8,24 +8,31 @@ WEB = "http://127.0.0.1:3000"
 BASE = "http://127.0.0.1:8080/api/v1"
 
 PAGES = [
-    "/", "/torrents", "/torrents?official=1", "/upload", "/forums", "/requests", "/offers",
-    "/preserve", "/games", "/top", "/messages", "/medals", "/tasks", "/bank", "/invites",
+    "/", "/torrents", "/torrents?official=1", "/upload", "/forums",
+        "/requests", "/offers",
+    "/preserve", "/games", "/top", "/messages", "/medals", "/tasks", "/bank",
+        "/invites",
     "/subtitles", "/friends", "/textbooks", "/magic-pool", "/myhr", "/contests",
-    "/medal-wall", "/avatar-frames", "/gomoku", "/faq", "/donate", "/shop", "/dressup",
-    "/farm", "/jixiao", "/my", "/my?tab=bookmarks", "/admin", "/login", "/register",
-    "/rules", "/appeals", "/ban-log", "/forgot", "/resend", "/reset", "/offline",
+    "/medal-wall", "/avatar-frames", "/gomoku", "/faq", "/donate", "/shop",
+        "/dressup",
+    "/farm", "/jixiao", "/my", "/my?tab=bookmarks", "/admin", "/login",
+        "/register",
+    "/rules", "/appeals", "/ban-log", "/forgot", "/resend", "/reset",
+        "/offline",
 ]
 
 results = []
 
 def check(name, cond, detail=""):
     results.append((name, cond))
-    print(("PASS " if cond else "FAIL ") + name + (" " + str(detail) if not cond and detail else ""))
+    print(("PASS " if cond else "FAIL ") + name + (" " + str(
+        detail) if not cond and detail else ""))
 
 # 登录拿 token + cookie
 req = urllib.request.Request(BASE + "/auth/login", method="POST")
 req.add_header("Content-Type", "application/json")
-with urllib.request.urlopen(req, json.dumps({"username": "root", "password": "password123"}).encode(), timeout=10) as r:
+with urllib.request.urlopen(req, json.dumps({"username": "root",
+    "password": "password123"}).encode(), timeout=10) as r:
     token = json.loads(r.read())["data"]["token"]
 
 cookie = f"flux.session=1; flux.token={token}"

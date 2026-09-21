@@ -44,7 +44,8 @@ def check(name, cond, detail=""):
 import time
 def login(name):
     for _ in range(6):
-        st, r = call("POST", "/auth/login", {"username": name, "password": "password123"})
+        st, r = call("POST", "/auth/login", {"username": name,
+            "password": "password123"})
         if st == 200:
             return r["token"]
         time.sleep(12)  # 登录限流（429）退避重试
@@ -65,31 +66,40 @@ t0 = fresh[0] if fresh else (torrents["items"][0]["id"] if reused else None)
 check("torrent pick", t0 is not None, str(torrents)[:100])
 if t0 and not reused:
     # 目标 1500，先筹 1400（税后 1330 < 1500 未达标），再补 200（税后 1520 ≥ 1500 达标）
-    st, f = call("POST", "/fundings", {"torrent_id": t0, "goal": 1500, "days": 3},
+    st, f = call("POST", "/fundings", {"torrent_id": t0, "goal": 1500,
+        "days": 3},
                  token=tok2)
     check("funding create", st == 200, str(f))
     fid = f["id"] if isinstance(f, dict) and "id" in f else None
     if fid:
         st, c = call("POST", "/fundings/contribute",
-                     {"funding_id": fid, "amount": 1400, "idempotency_key": f"e2e78a{fid}"},
+                     {"funding_id": fid, "amount": 1400,
+                         "idempotency_key": f"e2e78a{fid}"},
                      token=tok2)
-        check("contribute 1400 (tax 70)", st == 200 and c.get("tax") == 70, str(c))
+        check("contribute 1400 (tax 70)", st == 200 and c.get("tax") == 70,
+            str(c))
         check("not reached yet", c.get("reached") is False, str(c))
         st, c2 = call("POST", "/fundings/contribute",
-                      {"funding_id": fid, "amount": 200, "idempotency_key": f"e2e78b{fid}"},
+                      {"funding_id": fid, "amount": 200,
+                          "idempotency_key": f"e2e78b{fid}"},
                       token=tok2)
-        check("contribute 200 (tax 10)", st == 200 and c2.get("tax") == 10, str(c2))
+        check("contribute 200 (tax 10)", st == 200 and c2.get("tax") == 10,
+            str(c2))
         check("reached", c2.get("reached") is True, str(c2))
-        st, j = call("POST", "/admin/jobs/run", {"job": "funding_settle"}, token=tok)
-        check("job trigger funding_settle", st == 200 and j.get("affected", 0) >= 0, str(j))
+        st, j = call("POST", "/admin/jobs/run", {"job": "funding_settle"},
+            token=tok)
+        check("job trigger funding_settle", st == 200 and j.get("affected",
+            0) >= 0, str(j))
 elif reused:
     check("funding reused (already promoted)",
-          any(d["torrent_id"] == t0 and d["status"] == 1 for d in done), str(done)[:120])
+          any(d["torrent_id"] == t0 and d["status"] == 1 for d in done), str(
+              done)[:120])
 st, mine = call("GET", "/fundings/mine", token=tok2)
 check("fundings/mine", st == 200 and len(mine) >= 1, str(mine)[:80])
 
 # ---- ② 工单流转 ----
-st, t = call("POST", "/stafftickets/update", {"id": 999999, "priority": 2}, token=tok)
+st, t = call("POST", "/stafftickets/update", {"id": 999999, "priority": 2},
+    token=tok)
 check("ticket update 404 on missing", st in (404, 400), str(t))
 st, tl = call("GET", "/stafftickets", token=tok)
 check("ticket list", st == 200 and isinstance(tl, list), str(tl)[:80])
@@ -103,18 +113,22 @@ if fid_forum:
     st, tps = call("GET", f"/forums/{fid_forum}/topics", token=tok2)
     topics = tps.get("topics", [])
     check("topic list has_unread field", st == 200 and topics and
-          all("has_unread" in t and "read_last_post_id" in t for t in topics), str(tps)[:80])
+          all(
+              "has_unread" in t and "read_last_post_id" in t for t in topics),
+                  str(tps)[:80])
     if topics:
         # 选一个有帖子的主题（replies≥0 都可能有主楼；空主题跳过）
         tid_read = next((t["id"] for t in topics), None)
         st, td = call("GET", f"/forums/topics/{tid_read}", token=tok2)
-        check("topic detail 200 + marks read", st == 200 and "posts" in td, str(td)[:80])
+        check("topic detail 200 + marks read", st == 200 and "posts" in td,
+            str(td)[:80])
         st, tps2 = call("GET", f"/forums/{fid_forum}/topics", token=tok2)
         row = next((t for t in tps2["topics"] if t["id"] == tid_read), None)
         # 空主题（无帖）不产生已读行——只有看过带帖主题才应清除角标
         has_posts = bool(td.get("posts"))
         check("has_unread cleared after read",
-              row is not None and (not has_posts or row["has_unread"] is False), str(row))
+              row is not None and (not has_posts or row[
+                  "has_unread"] is False), str(row))
 
 # ---- ④ 聊天机器人 ----
 st, b = call("GET", "/shoutbox/bot", token=tok2)
@@ -134,22 +148,26 @@ check("leak list forbidden for user", st in (401, 403), str(st))
 
 # ---- ⑥ 运维三件 ----
 st, v = call("GET", "/admin/version", token=tok)
-check("version page", st == 200 and bool(v.get("latest_migration")), str(v)[:120])
+check("version page", st == 200 and bool(v.get("latest_migration")), str(v)[
+    :120])
 st, bl = call("GET", "/admin/backups", token=tok)
 check("backups list", st == 200 and "files" in bl, str(bl)[:80])
 st, j = call("POST", "/admin/jobs/run", {"job": "expire_promotions"}, token=tok)
-check("job trigger expire_promotions", st == 200 and j.get("job") == "expire_promotions", str(j))
+check("job trigger expire_promotions", st == 200 and j.get(
+    "job") == "expire_promotions", str(j))
 st, j = call("POST", "/admin/jobs/run", {"job": "bogus"}, token=tok)
 check("job trigger rejects unknown", st == 400, str(st))
 
 # ---- ⑦ 赠送税口径（库内直查：众筹税已入池） ----
 import subprocess
 q = subprocess.run(
-    ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d", "fluxtorrent",
+    ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
+        "fluxtorrent",
      "-tc", "SELECT COALESCE(sum(amount),0) FROM pool_donations"],
     capture_output=True, text=True)
 total = int(q.stdout.strip() or 0)
-check("gift tax pooled (>=80 sparks)", total >= 80, f"pool_donations total={total}")
+check("gift tax pooled (>=80 sparks)", total >= 80,
+    f"pool_donations total={total}")
 
 print(f"\n===== 0078 E2E: {PASS} PASS / {FAIL} FAIL =====")
 sys.exit(1 if FAIL else 0)

@@ -5,8 +5,10 @@ import os
 import subprocess
 
 rows = subprocess.run(
-    ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d", "fluxtorrent", "-t", "-A", "-c",
-     "SELECT version, encode(checksum,'hex') FROM _sqlx_migrations ORDER BY version"],
+    ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
+        "fluxtorrent", "-t", "-A", "-c",
+     "SELECT version, encode(checksum,'hex') FROM _sqlx_migrations ORDER BY"
+         "version"],
     capture_output=True, text=True).stdout.strip().splitlines()
 db = {}
 for r in rows:

@@ -46,7 +46,8 @@ def check(name, ok, detail=""):
 
 def psql(sql):
     p = subprocess.run(
-        ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d", "fluxtorrent", "-t", "-A", "-c", sql],
+        ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
+            "fluxtorrent", "-t", "-A", "-c", sql],
         capture_output=True, text=True,
     )
     return p.stdout.strip()
@@ -70,29 +71,38 @@ def udp_probe(hostport=b"127.0.0.1", port=6969):
 
 
 # ---------- 会话 ----------
-s, r = call("POST", "/auth/login", {"username": "root", "password": "password123"})
+s, r = call("POST", "/auth/login", {"username": "root",
+    "password": "password123"})
 tok = (r.get("data") or {}).get("token")
 check("登录", bool(tok))
 
 # ---------- A. 付费种子链路 ----------
 price_tid = psql(
     "SELECT id FROM torrents WHERE price > 0 AND approval_status = 1 "
-    "AND owner_id IS NOT NULL AND owner_id <> (SELECT id FROM users WHERE username='root') "
+    "AND owner_id IS NOT NULL AND owner_id <> (SELECT id FROM users WHERE"
+        "username='root')"
     "ORDER BY id LIMIT 1"
 )
 if price_tid:
     tid = int(price_tid)
     price = int(psql(f"SELECT price FROM torrents WHERE id = {tid}"))
-    psql("UPDATE users SET spark_balance = 100000 WHERE username='root' AND spark_balance < 50000")
+    psql(
+        "UPDATE users SET spark_balance = 100000 WHERE username='root' AND"
+            "spark_balance < 50000")
     bal0 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
 
     s, blob = call("GET", f"/torrents/{tid}/download", token=tok, raw=True)
     ok_dl = s == 200 and blob[:1] == b"d"
     bal1 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
-    check("A1 网页下载付费种子·扣费", ok_dl and bal0 - bal1 == price, f"价 {price} 实扣 {bal0 - bal1}")
+    check("A1 网页下载付费种子·扣费", ok_dl and bal0 - bal1 == price,
+        f"价 {price} 实扣 {bal0 - bal1}")
 
-    buy = psql(f"SELECT count(*) FROM spark_ledger WHERE idempotency_key = 'torrent-buy:1:{tid}'")
-    sell = psql(f"SELECT count(*) FROM spark_ledger WHERE idempotency_key LIKE 'torrent-sell:%:{tid}'")
+    buy = psql(
+        "SELECT count(*) FROM spark_ledger WHERE idempotency_key ="
+            "'torrent-buy:1:{tid}'")
+    sell = psql(
+        "SELECT count(*) FROM spark_ledger WHERE idempotency_key LIKE"
+            "'torrent-sell:%:{tid}'")
     check("A2 买方流水(torrent-buy)", buy == "1")
     check("A3 卖方流水(torrent-sell)", sell == "1")
 
@@ -105,29 +115,38 @@ if price_tid:
     passkey = psql("SELECT passkey FROM users WHERE username='root'")
     tid2 = psql(
         f"SELECT id FROM torrents WHERE price > 0 AND approval_status = 1 "
-        f"AND owner_id <> 1 AND id NOT IN (SELECT torrent_id FROM torrent_purchases WHERE user_id = 1) "
+        "AND owner_id <> 1 AND id NOT IN (SELECT torrent_id FROM"
+            "torrent_purchases WHERE user_id = 1)"
         f"AND id <> {tid} ORDER BY id LIMIT 1"
     )
     if tid2:
         price2 = int(psql(f"SELECT price FROM torrents WHERE id = {tid2}"))
         b0 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
-        s, blob = call("GET", f"/compat/nexusphp/download.php?id={tid2}&passkey={passkey}", raw=True)
+        s, blob = call("GET",
+            f"/compat/nexusphp/download.php?id={tid2}&passkey={passkey}",
+                raw=True)
         b1 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
-        check("A5 NP兼容端点同口径扣费", s == 200 and b0 - b1 == price2, f"价 {price2} 实扣 {b0 - b1}")
+        check("A5 NP兼容端点同口径扣费", s == 200 and b0 - b1 == price2,
+            f"价 {price2} 实扣 {b0 - b1}")
         # 临时凭证同样扣费
         tid3 = psql(
             f"SELECT id FROM torrents WHERE price > 0 AND approval_status = 1 "
-            f"AND owner_id <> 1 AND id NOT IN (SELECT torrent_id FROM torrent_purchases WHERE user_id = 1) "
+            "AND owner_id <> 1 AND id NOT IN (SELECT torrent_id FROM"
+                "torrent_purchases WHERE user_id = 1)"
             f"ORDER BY id LIMIT 1"
         )
         if tid3:
             price3 = int(psql(f"SELECT price FROM torrents WHERE id = {tid3}"))
-            c0 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
-            s, r2 = call("POST", "/downloads/keys", {"torrent_id": int(tid3)}, token=tok)
+            c0 = int(psql(
+                "SELECT spark_balance FROM users WHERE username='root'"))
+            s, r2 = call("POST", "/downloads/keys", {"torrent_id": int(tid3)},
+                token=tok)
             key = (r2.get("data") or {}).get("key")
             if key:
-                s, blob = call("GET", f"/downloads/{tid3}?token={key}", raw=True)
-                c1 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
+                s, blob = call("GET", f"/downloads/{tid3}?token={key}",
+                    raw=True)
+                c1 = int(psql(
+                    "SELECT spark_balance FROM users WHERE username='root'"))
                 check("A6 临时凭证端点同口径扣费", s == 200 and c0 - c1 == price3)
             else:
                 check("A6 临时凭证端点同口径扣费", False, "签发凭证失败")
@@ -138,19 +157,25 @@ else:
 
 # ---------- B. 列表筛选契约 ----------
 # 注意：列表默认仅活种（seeders>0），而测试库种子普遍无做种——筛选探针须带 alive=0
-cat_rows = psql("SELECT category_id, count(*) FROM torrents WHERE approval_status = 1 GROUP BY 1 ORDER BY 2 DESC LIMIT 1")
+cat_rows = psql(
+    "SELECT category_id, count(*) FROM torrents WHERE approval_status = 1"
+        "GROUP BY 1 ORDER BY 2 DESC LIMIT 1")
 if cat_rows:
     lo = int(cat_rows.split("|")[0])
-    s, r = call("GET", f"/torrents?limit=50&alive=0&category_id={lo}", token=tok)
+    s, r = call("GET", f"/torrents?limit=50&alive=0&category_id={lo}",
+        token=tok)
     items = (r.get("data") or {}).get("items") or []
     all_cats_ok = all(i.get("category_id") == lo for i in items)
-    check("B1 category_id(前端键名)生效", r.get("code") == 0 and len(items) > 0 and all_cats_ok,
+    check("B1 category_id(前端键名)生效", r.get("code") == 0 and len(
+        items) > 0 and all_cats_ok,
           f"cat={lo} {len(items)} 行")
     # 逗号多选：5,3 两类行数应等于各类单独行数之和
     if lo == 5:
-        s, r = call("GET", "/torrents?limit=50&alive=0&category_id=5,3", token=tok)
+        s, r = call("GET", "/torrents?limit=50&alive=0&category_id=5,3",
+            token=tok)
         n_multi = len((r.get("data") or {}).get("items") or [])
-        s, r = call("GET", "/torrents?limit=50&alive=0&category_id=3", token=tok)
+        s, r = call("GET", "/torrents?limit=50&alive=0&category_id=3",
+            token=tok)
         n3 = len((r.get("data") or {}).get("items") or [])
         check("B1b category_id 逗号多选(OR)", n_multi == len(items) + n3,
               f"5+3={len(items)}+{n3}={n_multi}")
@@ -170,7 +195,8 @@ check("B3 status 视角查询不空且合法", r.get("code") == 0)
 # ---------- C. 求种悬赏原子性 ----------
 psql("UPDATE users SET spark_balance = 5 WHERE username='root'")
 b0 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
-s, r = call("POST", "/requests", {"title": "e2e-原子性探针-余额不足", "bounty": 9999}, token=tok)
+s, r = call("POST", "/requests", {"title": "e2e-原子性探针-余额不足", "bounty": 9999},
+    token=tok)
 req_cnt = psql("SELECT count(*) FROM requests WHERE title = 'e2e-原子性探针-余额不足'")
 b1 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
 check("C1 余额不足建单失败且分文不扣", r.get("code") != 0 and req_cnt == "0" and b1 == b0,
@@ -188,21 +214,30 @@ def cap_answer(question):
 # ---------- D. 封禁申诉游客通道 ----------
 # 造一个临时被封账号（跑完即清）
 psql("DELETE FROM users WHERE username = 'e2e_banned_probe'")
-psql("INSERT INTO users (username, email, pass_hash, passkey, class_id, status) "
-     "VALUES ('e2e_banned_probe', 'p@p.local', 'x', 'e2ebannedprobe000000000000000001', 1, 2)")
+psql(
+    "INSERT INTO users (username, email, pass_hash, passkey, class_id, status) "
+     "VALUES ('e2e_banned_probe', 'p@p.local', 'x',"
+         "'e2ebannedprobe000000000000000001', 1, 2)")
 s, r = call("GET", "/auth/captcha")
 cap = r.get("data") or {}
 ans = cap_answer(cap.get("question", ""))
 s, r = call("POST", "/appeals", {
-    "kind": "ban", "username": "e2e_banned_probe", "body": "e2e 游客封禁申诉链路探针" + "x" * 5,
+    "kind": "ban", "username": "e2e_banned_probe",
+        "body": "e2e 游客封禁申诉链路探针" + "x" * 5,
     "captcha_id": cap.get("captcha_id"), "captcha_answer": ans,
 })
-aid = psql("SELECT count(*) FROM appeals WHERE user_id = (SELECT id FROM users WHERE username='e2e_banned_probe')")
-check("D1 游客(未登录)被封申诉入库", r.get("code") == 0 and aid == "1", f"code={r.get('code')}")
+aid = psql(
+    "SELECT count(*) FROM appeals WHERE user_id = (SELECT id FROM users WHERE"
+        "username='e2e_banned_probe')")
+check("D1 游客(未登录)被封申诉入库", r.get("code") == 0 and aid == "1",
+    f"code={r.get('code')}")
 # 未带验证码被拒
-s, r = call("POST", "/appeals", {"kind": "ban", "username": "e2e_banned_probe", "body": "y" * 20})
+s, r = call("POST", "/appeals", {"kind": "ban", "username": "e2e_banned_probe",
+    "body": "y" * 20})
 check("D2 无验证码的游客申诉被拒", r.get("code") != 0)
-psql("DELETE FROM appeals WHERE user_id = (SELECT id FROM users WHERE username='e2e_banned_probe')")
+psql(
+    "DELETE FROM appeals WHERE user_id = (SELECT id FROM users WHERE"
+        "username='e2e_banned_probe')")
 psql("DELETE FROM users WHERE username = 'e2e_banned_probe'")
 
 # ---------- E. 验证码防穷举 ----------
@@ -223,19 +258,30 @@ check("E1 同一验证码答错后立即作废", r.get("code") != 0)
 
 # ---------- G. 银行客户端幂等键 ----------
 key = "e2e-idem-probe-1"
-s, r1_ = call("POST", "/bank/demand/deposit", {"amount": 1000, "idempotency_key": key}, token=tok)
+s, r1_ = call("POST", "/bank/demand/deposit", {"amount": 1000,
+    "idempotency_key": key}, token=tok)
 b0 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
-s, r2_ = call("POST", "/bank/demand/deposit", {"amount": 1000, "idempotency_key": key}, token=tok)
+s, r2_ = call("POST", "/bank/demand/deposit", {"amount": 1000,
+    "idempotency_key": key}, token=tok)
 b1 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
-led = psql(f"SELECT count(*) FROM spark_ledger WHERE idempotency_key LIKE 'demand_in:1:{key}'")
-check("G1 同幂等键重试不双扣", b0 - b1 == 0 and led == "1", f"bal {b0}→{b1} ledger={led}")
+led = psql(
+    "SELECT count(*) FROM spark_ledger WHERE idempotency_key LIKE"
+        "'demand_in:1:{key}'")
+check("G1 同幂等键重试不双扣", b0 - b1 == 0 and led == "1",
+    f"bal {b0}→{b1} ledger={led}")
 # 清理：把探针存款退回（直接清活期行与流水，保持环境干净）
-psql(f"DELETE FROM spark_ledger WHERE idempotency_key LIKE 'demand_in:1:{key}' OR idempotency_key LIKE 'demand_in_refund:%{key}%'")
-psql("UPDATE bank_demand_accounts SET balance = GREATEST(balance - 1000, 0) WHERE user_id = 1")
+psql(
+    "DELETE FROM spark_ledger WHERE idempotency_key LIKE 'demand_in:1:{key}'"
+        "OR idempotency_key LIKE 'demand_in_refund:%{key}%'")
+psql(
+    "UPDATE bank_demand_accounts SET balance = GREATEST(balance - 1000, 0)"
+        "WHERE user_id = 1")
 psql("UPDATE users SET spark_balance = 100000 WHERE username='root'")
 
 # ---------- F. 结算 job 幂等键（存在性证据，不强制刚跑过） ----------
-sr = psql("SELECT count(DISTINCT idempotency_key) FROM spark_ledger WHERE kind = 'seeding_reward'")
+sr = psql(
+    "SELECT count(DISTINCT idempotency_key) FROM spark_ledger WHERE kind ="
+        "'seeding_reward'")
 check("F1 做种收益流水存在(worker 正常)", sr != "0", f"{sr} 条")
 
 # ---------- H. UDP 标准包明确报错 ----------
@@ -243,19 +289,22 @@ import socket
 import struct as _struct
 _udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 _udp.settimeout(3)
-_udp.sendto(_struct.pack(">QII", 0x41727109807A, 0, 0xABCD), ("127.0.0.1", 6969))
+_udp.sendto(_struct.pack(">QII", 0x41727109807A, 0, 0xABCD), ("127.0.0.1",
+    6969))
 try:
     _d, _ = _udp.recvfrom(2048)
     _cid = _struct.unpack(">Q", _d[8:16])[0]
     # 标准 98 字节 announce（同一 socket：connection_id 绑定 (ip,port) 会话）
-    _ann = (_struct.pack(">Q", _cid) + _struct.pack(">II", 1, 0xBEEF) + b"\xA5" * 20 + b"\x50" * 20
+    _ann = (_struct.pack(">Q", _cid) + _struct.pack(">II", 1,
+        0xBEEF) + b"\xA5" * 20 + b"\x50" * 20
             + _struct.pack(">qqq", 0, 0, 0) + _struct.pack(">iiii", 0, 0, 0, 50)
             + _struct.pack(">H", 12345) + b"\x00\x00")
     _udp.sendto(_ann, ("127.0.0.1", 6969))
     _d, _ = _udp.recvfrom(2048)
     _a2, _ = _struct.unpack(">II", _d[:8])
     _msg = _d[8:].decode("utf-8", "ignore")
-    check("H1 标准UDP包收到明确错误(引导降级HTTP)", _a2 == 3 and ("HTTP" in _msg or "passkey" in _msg or "扩展" in _msg), _msg[:40])
+    check("H1 标准UDP包收到明确错误(引导降级HTTP)", _a2 == 3 and (
+        "HTTP" in _msg or "passkey" in _msg or "扩展" in _msg), _msg[:40])
 except socket.timeout:
     check("H1 标准UDP包收到明确错误(引导降级HTTP)", False, "超时无响应")
 finally:

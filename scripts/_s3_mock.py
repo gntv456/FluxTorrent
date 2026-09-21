@@ -25,7 +25,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def _record(self):
         with open(LOG, "a", encoding="utf-8") as f:
-            f.write(f"{self.command} {self.path} {self.headers.get('x-amz-date', '')}\n")
+            f.write(
+                "{self.command} {self.path} {self.headers.get('x-amz-date',"
+                    "'')}\n")
 
     def _sig_ok(self):
         auth = self.headers.get("Authorization", "")
@@ -76,4 +78,5 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"s3-mock on :{PORT} data={DATA}")
-    http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    http.server.ThreadingHTTPServer(("127.0.0.1", PORT),
+        Handler).serve_forever()

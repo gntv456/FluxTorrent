@@ -18,13 +18,15 @@ def call(method, path, body=None, token=None):
 
 def check(name, cond, detail=""):
     results.append((name, cond, detail))
-    print(("PASS " if cond else "FAIL ") + name + (" " + detail if detail and not cond else ""))
+    print(("PASS " if cond else "FAIL ") + name + (
+        " " + detail if detail and not cond else ""))
 
 r = call("POST", "/auth/login", {"username": "root", "password": "password123"})
 tok = r["data"]["token"]
 
 # 1. 新增置顶促销
-r = call("POST", "/admin/sticky-promos", {"title": "e2e开站促销", "url": "/torrents?official=1", "badge": "活动"}, tok)
+r = call("POST", "/admin/sticky-promos", {"title": "e2e开站促销",
+    "url": "/torrents?official=1", "badge": "活动"}, tok)
 promo_id = r["data"]["id"]
 check("P2·置顶促销新增", r["code"] == 0 and promo_id > 0, str(r))
 
@@ -34,13 +36,15 @@ titles = [x["title"] for x in r["data"]]
 check("P2·置顶促销前台可见", "e2e开站促销" in titles, str(titles))
 
 # 3. 停用后前台不可见
-r = call("PUT", f"/admin/sticky-promos/{promo_id}", {"title": "e2e开站促销", "enabled": False}, tok)
+r = call("PUT", f"/admin/sticky-promos/{promo_id}", {"title": "e2e开站促销",
+    "enabled": False}, tok)
 r = call("GET", "/sticky-promos")
 titles2 = [x["title"] for x in r["data"]]
 check("P2·置顶促销停用生效", "e2e开站促销" not in titles2, str(titles2))
 
 # 4. 新增菜单项
-r = call("POST", "/admin/menu-items", {"location": "sidebar", "label": "E2E外部链接", "url": "https://example.com"}, tok)
+r = call("POST", "/admin/menu-items", {"location": "sidebar",
+    "label": "E2E外部链接", "url": "https://example.com"}, tok)
 menu_id = r["data"]["id"]
 check("P2·自定义菜单新增", r["code"] == 0 and menu_id > 0, str(r))
 
@@ -61,14 +65,17 @@ except urllib.error.HTTPError:
 # 7. 消息模板列表（4 条预置）
 r = call("GET", "/admin/message-templates", None, tok)
 keys = [x["scene_key"] for x in r["data"]]
-check("P2·消息模板预置4条", set(keys) >= {"review_reject", "review_approve", "hr_warn", "invite_grant"}, str(keys))
+check("P2·消息模板预置4条", set(keys) >= {"review_reject", "review_approve",
+    "hr_warn", "invite_grant"}, str(keys))
 
 # 8. 模板预览变量替换
 r = call("POST", "/admin/message-templates/preview",
-            {"scene_key": "review_reject", "vars": {"username": "张三", "torrent_name": "测试种子", "reason": "重复发布"}}, tok)
+            {"scene_key": "review_reject", "vars": {"username": "张三",
+                "torrent_name": "测试种子", "reason": "重复发布"}}, tok)
 d = r["data"]
 ok_sub = "张三" in d["subject"] or "种子" in d["subject"]
-ok_body = "张三" in d["body"] and "测试种子" in d["body"] and "重复发布" in d["body"] and "{{" not in d["body"]
+ok_body = "张三" in d["body"] and "测试种子" in d["body"] and "重复发布" in d[
+    "body"] and "{{" not in d["body"]
 check("P2·模板预览占位符替换", r["code"] == 0 and ok_body, str(d))
 
 # 9. 模板编辑保存
