@@ -336,6 +336,46 @@
   min-height: 38px;
 }
 
+/* 高级搜索触发器：「给我搜」右侧的小齿轮按钮（点击开合 details，JS 在
+   torrents-adv-gear.tsx）；原 summary 仍保留可点击 */
+.tsb-adv-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text-sub, #8a7d6b);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+.tsb-adv-btn:hover,
+.tsb-adv-toggle:focus-visible ~ * .tsb-adv-btn {
+  border-color: var(--baozi-orange);
+  color: var(--baozi-orange);
+}
+.tsb-adv-btn__icon {
+  font-size: 15px;
+  line-height: 1;
+}
+.tsb-adv-btn__badge {
+  margin-left: 4px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--baozi-orange);
+  color: #fff;
+  font-size: 10px;
+  line-height: 15px;
+  text-align: center;
+}
+
 /* 已选条件摘要条 */
 .tsb-active {
   display: flex;

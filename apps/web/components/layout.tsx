@@ -3,9 +3,10 @@ import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { UserBox } from "@/components/user-box";
+import { UserMenu } from "@/components/user-menu";
 import { MainMenu } from "@/components/main-menu";
 import { CustomMenu } from "@/components/custom-menu";
+import { Icon } from "@/components/icons";
 import { getMenuItems } from "@/lib/data";
 
 /** 导航项（Seedlight §3）：href + label；group 用于「更多 ▾」下拉分组。 */
@@ -13,8 +14,8 @@ type NavItem = { href: string; label: string };
 type NavGroup = { group: string; items: NavItem[] };
 
 /**
- * Seedlight 页头：单行导航条（logo 居左 + 一级/更多菜单居中 + 主题/语言切换居右）+ userbar。
- * 导航按「核心任务 / 发现 / 经济 / 成长 / 娱乐」四域收纳，桌面发布入口收进一级菜单，移动端走底部 5 Tab。
+ * Seedlight 页头：单行导航条（logo 居左 + 一级/更多菜单居中 + 主题/语言/头像弹窗居右）。
+ * 用户栏（userbar）已收进头像弹窗（0147，好学 CuteTop 口径）——导航条整条吸顶。
  */
 export async function Header() {
   const { dict, locale, currency } = await getDict();
@@ -163,36 +164,33 @@ export async function Header() {
       ];
 
   return (
-    <header className="border-b border-line bg-[var(--baozi-bg)]">
-      {/* 1) 单行导航条：品牌（logo）居左 + 一级/更多菜单 + 主题/语言切换居右（菜单换行时允许整条长高） */}
-      <div className="mx-auto flex min-h-[72px] w-full max-w-[1536px] items-center gap-3 px-4 py-2 md:gap-5 md:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span aria-hidden className="text-3xl">
-            🦉
-          </span>
-          <span className="font-display text-2xl text-ink">{brand}</span>
-        </Link>
-        <div className="min-w-0 flex-1">
-          <MainMenu
-            items={primary}
-            groups={groups}
-            moreLabel={`${dict.nav.more} ▾`}
-            ariaLabel={dict.nav.ariaPrimary}
-          />
+    <>
+      <header className="tide-header border-b border-line">
+        {/* 单行导航条：品牌（logo）居左 + 一级/更多菜单 + 主题/语言/头像弹窗居右 */}
+        <div className="mx-auto flex min-h-[72px] w-full max-w-[1536px] items-center gap-3 px-4 py-2 md:gap-5 md:px-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
+            {/* 品牌标记：Tide 图标（原为猫头鹰 emoji）—— 颜色跟随 --sky，浅色/夜间自适应 */}
+            <Icon name="seed" size={30} className="shrink-0 text-[var(--sky)]" />
+            <span className="font-display text-2xl text-ink">{brand}</span>
+          </Link>
+          <div className="min-w-0 flex-1">
+            <MainMenu
+              items={primary}
+              groups={groups}
+              moreLabel={`${dict.nav.more} ▾`}
+              ariaLabel={dict.nav.ariaPrimary}
+            />
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
+            <LocaleSwitcher current={locale} />
+            {/* 头像弹窗（0147）：点击头像展开用户下拉（摘要/数据/快捷/信箱） */}
+            <UserMenu loginLabel={dict.common.login} />
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <ThemeToggle />
-          <LocaleSwitcher current={locale} />
-        </div>
-      </div>
+      </header>
       {/* 自定义菜单（location=topbar）已在上方替换主菜单一级项，无独立行 */}
-      {/* 3) 用户信息条（登录态客户端补齐） */}
-      <div className="mx-auto w-full max-w-[1536px] px-6 pb-3 pt-2">
-        <div className="userbar">
-          <UserBox loginLabel={dict.common.login} />
-        </div>
-      </div>
-    </header>
+    </>
   );
 }
 
@@ -200,11 +198,24 @@ export async function Header() {
 export async function MobileTabBar() {
   const { dict } = await getDict();
   const tabs = [
-    { href: "/", label: dict.tabbar.home, icon: "🏠" },
-    { href: "/torrents", label: dict.tabbar.search, icon: "🔍" },
-    { href: "/upload", label: dict.tabbar.publish, icon: "＋", center: true },
-    { href: "/messages", label: dict.nav.tabbarMessages, icon: "💬" },
-    { href: "/my", label: dict.tabbar.my, icon: "👤" },
+    { href: "/", label: dict.tabbar.home, icon: <Icon name="home" size={23} /> },
+    {
+      href: "/torrents",
+      label: dict.tabbar.search,
+      icon: <Icon name="search" size={23} />,
+    },
+    {
+      href: "/upload",
+      label: dict.tabbar.publish,
+      icon: <Icon name="plus" size={26} strokeWidth={2} />,
+      center: true,
+    },
+    {
+      href: "/messages",
+      label: dict.nav.tabbarMessages,
+      icon: <Icon name="messages" size={23} />,
+    },
+    { href: "/my", label: dict.tabbar.my, icon: <Icon name="user" size={23} /> },
   ];
   return (
     <nav
@@ -222,8 +233,8 @@ export async function MobileTabBar() {
           >
             <span
               aria-hidden
-              className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-[var(--baozi-paper)] text-2xl leading-none text-white shadow-[0_8px_20px_var(--accent-shadow)]"
-              style={{ background: "var(--grad-aurora)" }}
+              className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-[var(--baozi-paper)] leading-none text-white shadow-[0_8px_20px_var(--accent-shadow)]"
+              style={{ background: "var(--tide-sea, var(--sky))" }}
             >
               {t.icon}
             </span>
@@ -235,7 +246,10 @@ export async function MobileTabBar() {
             href={t.href}
             className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[11px] text-sub active:text-sky"
           >
-            <span aria-hidden className="text-[24px] leading-none">
+            <span
+              aria-hidden
+              className="flex items-center justify-center leading-none"
+            >
               {t.icon}
             </span>
             {t.label}

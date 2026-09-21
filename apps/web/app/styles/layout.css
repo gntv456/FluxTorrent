@@ -129,6 +129,204 @@
   color: var(--text-brand);
 }
 
+/* ============ 头像弹窗（usermenu，0147 好学 CuteTop 口径） ============ */
+.usermenu {
+  position: relative;
+}
+.usermenu-login {
+  /* 未登录态：登录链接沿用主菜单链接样式 */
+}
+.usermenu__trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+.usermenu__trigger:hover {
+  border-color: var(--baozi-line);
+  background: var(--surface-raised);
+}
+.usermenu__avatar {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-on-accent);
+  font-size: 16px;
+  font-weight: 800;
+  border-radius: 50%;
+  background: linear-gradient(145deg,
+    var(--baozi-orange-bright),
+    var(--baozi-orange));
+  box-shadow: inset 0 0 0 3px var(--hairline-strong);
+  overflow: hidden;
+}
+.usermenu__avatar[style] {
+  box-shadow: none;
+}
+.usermenu__caret {
+  color: var(--text-sub, #8a7d6b);
+  font-size: 11px;
+}
+.usermenu__dot {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+.usermenu__drop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 70;
+  display: flex;
+  width: min(560px, calc(100vw - 32px));
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--baozi-paper);
+  box-shadow: var(--shadow-card);
+}
+/* 摘要区：大头像 + 名字行 + {magic} + 退出 */
+.usermenu__summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.usermenu__avatar-lg {
+  display: flex;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-on-accent);
+  font-size: 22px;
+  font-weight: 800;
+  border-radius: 50%;
+  background: linear-gradient(145deg,
+    var(--baozi-orange-bright),
+    var(--baozi-orange));
+  box-shadow: inset 0 0 0 3px var(--hairline-strong);
+  overflow: hidden;
+}
+.usermenu__avatar-lg[style] {
+  box-shadow: none;
+}
+.usermenu__summary-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.usermenu__name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.usermenu__name {
+  color: var(--baozi-orange-dark);
+  font-size: 17px;
+  font-weight: 800;
+}
+.usermenu__name:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.usermenu__subline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.usermenu__checkin {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.usermenu__checkin:hover {
+  color: var(--baozi-orange);
+}
+.usermenu__logout {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border: 1px solid var(--border-deep);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.usermenu__logout:hover {
+  color: #e5484d;
+  border-color: #e5484d;
+}
+/* 数据条：复用 .userstat 票券格（userbar 时代样式），排成一行五格 */
+.usermenu__stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.usermenu__stats .userstat {
+  text-decoration: none;
+}
+/* 快捷链接行（好学 CuteTop primary links 口径） */
+.usermenu__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: linear-gradient(180deg,
+    var(--surface-raised),
+    var(--surface-sunken));
+}
+.usermenu__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: var(--text-body);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.usermenu__links a:hover {
+  color: var(--baozi-orange);
+  background: var(--chip-veil);
+}
+/* 信箱工具行（收件箱未读/发件箱/作弊者/举报/管理组/社交/RSS） */
+.usermenu__tools {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px dashed var(--border-soft);
+  padding-top: 8px;
+}
+.usermenu__tools .usertools {
+  padding: 0;
+}
+
 /* ============ 用户信息条（userbar：欢迎 + 魔力 + 票券统计） ============ */
 .userbar {
   display: flex;

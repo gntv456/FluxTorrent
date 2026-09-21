@@ -14,6 +14,7 @@ import type {
 import type { TorrentChip } from "./torrents-chips";
 import { TorrentsAdvGroups } from "./torrents-adv-groups";
 import { TorrentsAdvGroupsTail } from "./torrents-adv-groups-tail";
+import { AdvGear } from "./torrents-adv-gear";
 
 export interface TorrentsSearchBoxProps {
   dict: Dict;
@@ -88,6 +89,9 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
         <button type="submit" className="baozi-button tsb-submit">
           {t2.searchBtn}
         </button>
+        {/* 高级搜索触发器：紧跟「给我搜」之后的小齿轮按钮（好学站口径），
+            点击开合下方 details 面板（client 组件内 document.getElementById） */}
+        <AdvGear label={t2.advanced} badge={nonSearchChips} />
       </div>
 
       {/* ── 已选条件摘要（可单个移除） ── */}
@@ -115,9 +119,10 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
         </div>
       )}
 
-      {/* ── 高级搜索（原生 details 折叠；有筛选条件时默认展开；0118 分组重排） ── */}
-      <details className="tsb-adv" open={advancedOpen}>
-        <summary className="tsb-adv__summary">
+      {/* ── 高级搜索（原生 details 折叠；齿轮按钮/summary 均可开合；
+            有筛选条件时默认展开；0118 分组重排） ── */}
+      <details className="tsb-adv" id="tsb-adv" open={advancedOpen}>
+        <summary className="tsb-adv__summary" title={t2.advanced}>
           <span className="tsb-adv__icon" aria-hidden="true">
             ⚙
           </span>
