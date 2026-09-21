@@ -179,7 +179,13 @@ export function InviteManager() {
           type="button"
           disabled={busy || !canIssue}
           onClick={issue}
-          title={!levelOk ? t.needClass : quotaLeft === 0 ? t.issueDisabledQuota : undefined}
+          title={
+            !levelOk
+              ? t.needClass
+              : quotaLeft === 0
+                ? t.issueDisabledQuota
+                : undefined
+          }
           className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {issueLabelWith(t.issue, levelOk, quotaLeft)}
@@ -203,12 +209,18 @@ export function InviteManager() {
       )}
       {!levelOk && <p className="text-xs text-sub">{t.needClass}</p>}
       {msg && (
-        <p role="alert" className="num break-all rounded-[var(--r-md)] bg-mint/30 p-3 text-sm text-ink">
+        <p
+          role="alert"
+          className="num break-all rounded-[var(--r-md)] bg-mint/30 p-3 text-sm text-ink"
+        >
           {msg}
         </p>
       )}
       {err && (
-        <p role="alert" className="rounded-[var(--r-md)] bg-sun/30 p-3 text-sm text-ink">
+        <p
+          role="alert"
+          className="rounded-[var(--r-md)] bg-sun/30 p-3 text-sm text-ink"
+        >
           {err}
         </p>
       )}
@@ -246,7 +258,8 @@ export function InviteManager() {
   /** 生成按钮文案：等级不足/配额用尽时给禁用态提示，而非报错 */
   function issueLabelWith(base: string, lvOk: boolean, left: number): string {
     if (!lvOk) return t.issueDisabledLevel;
-    if (left === 0 && (status?.quota_extra ?? 0) === 0) return t.issueDisabledQuota;
+    if (left === 0 && (status?.quota_extra ?? 0) === 0)
+      return t.issueDisabledQuota;
     return base;
   }
 }

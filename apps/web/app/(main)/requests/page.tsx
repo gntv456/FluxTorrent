@@ -19,7 +19,10 @@ export default async function RequestsPage({
   return (
     <div className="flex flex-col gap-4">
       <h1 className="sr-only">{dict.requests.title}</h1>
-      <RequestBoard initialFinished={sp.finished ?? "no"} initialSearch={sp.search ?? ""} />
+      <RequestBoard
+        initialFinished={sp.finished ?? "no"}
+        initialSearch={sp.search ?? ""}
+      />
     </div>
   );
 }

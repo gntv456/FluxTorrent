@@ -35,16 +35,28 @@ export function LedgerTable({ rows }: { rows: LedgerRow[] | undefined }) {
         </tr>
         {(rows ?? []).map((r) => (
           <tr key={r.id}>
-            <td>{r.kind === "topup" ? t.kindTopup : t.kindOrder}{r.note ? ` · ${r.note}` : ""}</td>
-            <td className={`num font-bold ${r.amount_usd >= 0 ? "text-success" : "text-danger"}`}>
-              {r.amount_usd >= 0 ? "+" : ""}{r.amount_usd.toFixed(2)}
+            <td>
+              {r.kind === "topup" ? t.kindTopup : t.kindOrder}
+              {r.note ? ` · ${r.note}` : ""}
+            </td>
+            <td
+              className={`num font-bold ${r.amount_usd >= 0 ? "text-success" : "text-danger"}`}
+            >
+              {r.amount_usd >= 0 ? "+" : ""}
+              {r.amount_usd.toFixed(2)}
             </td>
             <td className="num">{r.balance_after.toFixed(2)}</td>
-            <td className="text-xs text-sub">{new Date(r.created_at).toLocaleString(dateLocale(locale))}</td>
+            <td className="text-xs text-sub">
+              {new Date(r.created_at).toLocaleString(dateLocale(locale))}
+            </td>
           </tr>
         ))}
         {(!rows || rows.length === 0) && (
-          <tr><td colSpan={4} className="py-6 text-center text-sub">{t.ledgerEmpty}</td></tr>
+          <tr>
+            <td colSpan={4} className="py-6 text-center text-sub">
+              {t.ledgerEmpty}
+            </td>
+          </tr>
         )}
       </tbody>
     </table>

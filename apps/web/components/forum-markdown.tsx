@@ -24,7 +24,10 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
     const key = `${keyBase}-i${i++}`;
     if (raw.startsWith("`")) {
       nodes.push(
-        <code key={key} className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-[0.85em]">
+        <code
+          key={key}
+          className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-[0.85em]"
+        >
           {raw.slice(1, -1)}
         </code>,
       );
@@ -72,20 +75,47 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
 }
 
 function heading(level: number, children: React.ReactNode, key: string) {
-  const cls = level <= 2 ? "mt-4 mb-2 font-display text-xl text-ink" : "mt-3 mb-1.5 font-display text-base text-ink";
+  const cls =
+    level <= 2
+      ? "mt-4 mb-2 font-display text-xl text-ink"
+      : "mt-3 mb-1.5 font-display text-base text-ink";
   switch (level) {
     case 1:
-      return <h1 key={key} className={cls}>{children}</h1>;
+      return (
+        <h1 key={key} className={cls}>
+          {children}
+        </h1>
+      );
     case 2:
-      return <h2 key={key} className={cls}>{children}</h2>;
+      return (
+        <h2 key={key} className={cls}>
+          {children}
+        </h2>
+      );
     case 3:
-      return <h3 key={key} className={cls}>{children}</h3>;
+      return (
+        <h3 key={key} className={cls}>
+          {children}
+        </h3>
+      );
     case 4:
-      return <h4 key={key} className={cls}>{children}</h4>;
+      return (
+        <h4 key={key} className={cls}>
+          {children}
+        </h4>
+      );
     case 5:
-      return <h5 key={key} className={cls}>{children}</h5>;
+      return (
+        <h5 key={key} className={cls}>
+          {children}
+        </h5>
+      );
     default:
-      return <h6 key={key} className={cls}>{children}</h6>;
+      return (
+        <h6 key={key} className={cls}>
+          {children}
+        </h6>
+      );
   }
 }
 
@@ -117,7 +147,10 @@ function parseBlocks(src: string): React.ReactNode[] {
       i++; // 跳过结束围栏
       const key = `b${k++}`;
       out.push(
-        <pre key={key} className="my-3 overflow-x-auto rounded-[var(--r-sm)] bg-[var(--surface-sunken)] p-3 text-xs">
+        <pre
+          key={key}
+          className="my-3 overflow-x-auto rounded-[var(--r-sm)] bg-[var(--surface-sunken)] p-3 text-xs"
+        >
           <code className="font-mono">{buf.join("\n")}</code>
         </pre>,
       );
@@ -149,7 +182,10 @@ function parseBlocks(src: string): React.ReactNode[] {
         i++;
       }
       out.push(
-        <blockquote key={`b${k++}`} className="my-3 border-l-4 border-line pl-3 text-sub">
+        <blockquote
+          key={`b${k++}`}
+          className="my-3 border-l-4 border-line pl-3 text-sub"
+        >
           {renderInline(buf.join(" "), `b${k}`)}
         </blockquote>,
       );
@@ -208,7 +244,10 @@ function parseBlocks(src: string): React.ReactNode[] {
     if (buf.length) {
       const key = `b${k++}`;
       out.push(
-        <p key={key} className="my-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed">
+        <p
+          key={key}
+          className="my-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed"
+        >
           {buf.map((t, j) => (
             <React.Fragment key={j}>
               {j > 0 && <br />}

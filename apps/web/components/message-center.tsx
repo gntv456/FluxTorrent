@@ -9,10 +9,7 @@ import {
   type PmBox,
 } from "@/components/message-center-table";
 import { ComposeForm, BoxManager } from "@/components/message-center-compose";
-import {
-  ToolbarSwitcher,
-  BulkBar,
-} from "@/components/message-center-toolbar";
+import { ToolbarSwitcher, BulkBar } from "@/components/message-center-toolbar";
 
 // 站内消息中心（messages.php 全功能口径）：
 // 收件箱/发件箱/自建文件夹 · 搜索 · 未读筛选 · 批量已读/删除/移动 ·
@@ -64,7 +61,9 @@ export function MessageCenter() {
       .then(setRows)
       .catch((e) =>
         setErr(
-          e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.loadFailed,
+          e instanceof ApiError
+            ? (dict.errors[e.code] ?? e.message)
+            : dict.common.loadFailed,
         ),
       );
     api
@@ -134,14 +133,19 @@ export function MessageCenter() {
       setBox("sent");
     } catch (e2) {
       setMsg(
-        e2 instanceof ApiError ? (dict.errors[e2.code] ?? e2.message) : dict.common.networkError,
+        e2 instanceof ApiError
+          ? (dict.errors[e2.code] ?? e2.message)
+          : dict.common.networkError,
       );
     } finally {
       setBusy(false);
     }
   }
 
-  async function bulk(action: "markread" | "delete" | "move", target?: number | null) {
+  async function bulk(
+    action: "markread" | "delete" | "move",
+    target?: number | null,
+  ) {
     if (selected.length === 0) return;
     setBusy(true);
     try {
@@ -150,7 +154,10 @@ export function MessageCenter() {
       } else if (action === "delete") {
         await api.post("/api/v1/messages/delete", { ids: selected });
       } else {
-        await api.post("/api/v1/messages/move", { ids: selected, folder: target ?? null });
+        await api.post("/api/v1/messages/move", {
+          ids: selected,
+          folder: target ?? null,
+        });
       }
       load();
     } catch (e) {

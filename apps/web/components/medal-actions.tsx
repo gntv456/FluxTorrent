@@ -84,7 +84,9 @@ export function MedalActions({
       <button
         onClick={() => wear(!isWearing)}
         className={`min-h-[44px] rounded-full px-3 text-sm font-bold active:scale-[0.97] ${
-          isWearing ? "bg-mint text-white" : "border border-line bg-cloud text-ink"
+          isWearing
+            ? "bg-mint text-white"
+            : "border border-line bg-cloud text-ink"
         }`}
       >
         {isWearing ? dict.medals.wearing : dict.medals.wear}

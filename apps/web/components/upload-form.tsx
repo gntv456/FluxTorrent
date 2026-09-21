@@ -9,9 +9,22 @@ import { UploadFilesBlock } from "@/components/upload-form-files";
 import { UploadDescrBlock } from "@/components/upload-form-descr";
 import { UploadQualityBlock } from "@/components/upload-form-quality";
 
-export interface ProfileCat { id: number; name: string }
-export interface SectionDictRow { id: number; kind: string; name: string; sort: number; mode_id: number | null }
-export interface SectionKindMeta { kind: string; label: string; sort: number }
+export interface ProfileCat {
+  id: number;
+  name: string;
+}
+export interface SectionDictRow {
+  id: number;
+  kind: string;
+  name: string;
+  sort: number;
+  mode_id: number | null;
+}
+export interface SectionKindMeta {
+  kind: string;
+  label: string;
+  sort: number;
+}
 
 /** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类与质量维度全部站点数据驱动）。
  *  按域拆出（300 行门禁）：upload-form-parts.tsx（共用行/样式）、
@@ -22,9 +35,17 @@ export function UploadForm() {
   const { dict, currency } = useI18n();
   // 分类/元数据源以 /site-profile 为准（类型包可切换）；字典仅兜底分类
   const [profileCats, setProfileCats] = useState<ProfileCat[] | null>(null);
-  const [metaSources, setMetaSources] = useState<string[]>(["imdb", "douban", "bangumi", "indienova"]);
+  const [metaSources, setMetaSources] = useState<string[]>([
+    "imdb",
+    "douban",
+    "bangumi",
+    "indienova",
+  ]);
   useEffect(() => {
-    api.get<{ categories: ProfileCat[]; metadata_sources?: string[] }>("/api/v1/site-profile")
+    api
+      .get<{ categories: ProfileCat[]; metadata_sources?: string[] }>(
+        "/api/v1/site-profile",
+      )
       .then((p) => {
         setProfileCats(p.categories);
         if (p.metadata_sources) setMetaSources(p.metadata_sources);
@@ -51,15 +72,21 @@ export function UploadForm() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // 标签（NP upload tags 口径）：启用字典多选，官方标签仅 staff（后端同口径校验）
-  const [tagDict, setTagDict] = useState<{ id: number; name: string; kind: string }[]>([]);
+  const [tagDict, setTagDict] = useState<
+    { id: number; name: string; kind: string }[]
+  >([]);
   const [tagSel, setTagSel] = useState<number[]>([]);
   useEffect(() => {
-    api.get<{ id: number; name: string; kind: string }[] | [number, string, string][]>(
-      "/api/v1/tags-dict",
-    )
+    api
+      .get<
+        | { id: number; name: string; kind: string }[]
+        | [number, string, string][]
+      >("/api/v1/tags-dict")
       .then((rows) =>
         setTagDict(
-          rows.map((r) => (Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r)),
+          rows.map((r) =>
+            Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r,
+          ),
         ),
       )
       .catch(() => setTagDict([]));
@@ -75,7 +102,8 @@ export function UploadForm() {
   const [secKinds, setSecKinds] = useState<SectionKindMeta[]>([]);
   const [secVals, setSecVals] = useState<Record<string, string>>({});
   useEffect(() => {
-    api.get<Record<string, unknown>>("/api/v1/section-dict")
+    api
+      .get<Record<string, unknown>>("/api/v1/section-dict")
       .then((d) => {
         setSecKinds((d.kinds as SectionKindMeta[] | undefined) ?? []);
         const rest: Record<string, SectionDictRow[]> = {};
@@ -108,7 +136,8 @@ export function UploadForm() {
       });
       if (name.trim()) qs.set("name", name.trim());
       if (imdb.trim()) qs.set("imdb", imdb.trim());
-      if (price > 0) qs.set("price", String(Math.min(1_000_000, Math.max(0, price))));
+      if (price > 0)
+        qs.set("price", String(Math.min(1_000_000, Math.max(0, price))));
       if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
       if (descr.trim()) qs.set("descr", descr.trim());
       if (poster.trim()) qs.set("poster", poster.trim());
@@ -117,12 +146,14 @@ export function UploadForm() {
       const sections = Object.fromEntries(
         Object.entries(secVals).filter(([, v]) => v),
       );
-      if (Object.keys(sections).length > 0) qs.set("sections", JSON.stringify(sections));
+      if (Object.keys(sections).length > 0)
+        qs.set("sections", JSON.stringify(sections));
       // 标签 / 推荐位（挑选）
       if (tagSel.length > 0) qs.set("tags", JSON.stringify(tagSel));
       if (posState > 0) {
         qs.set("pos_state", String(posState));
-        if (posUntil) qs.set("pos_state_until", new Date(posUntil).toISOString());
+        if (posUntil)
+          qs.set("pos_state_until", new Date(posUntil).toISOString());
       }
       if (pickType > 0) qs.set("pick_type", String(pickType));
       // 同源相对路径走 Next rewrites 转发（与 api-client 同口径），避免依赖发布端口

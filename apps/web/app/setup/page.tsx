@@ -24,7 +24,9 @@ interface Status {
 export default function SetupWizard() {
   const { dict } = useI18n();
   // setup 域文案（三语字典 setup 键；缺键回落中文兜底——向导页面在 i18n 域注册前可用）
-  const setupDict = (dict as unknown as Record<string, Record<string, string> | undefined>).setup;
+  const setupDict = (
+    dict as unknown as Record<string, Record<string, string> | undefined>
+  ).setup;
   const t = (k: string, fallback: string) => setupDict?.[k] ?? fallback;
 
   const [status, setStatus] = useState<Status | null>(null);
@@ -46,7 +48,9 @@ export default function SetupWizard() {
         setStatus(s);
         if (s.done) setStep(3);
       })
-      .catch(() => setError(t("loadFailed", "无法加载向导状态，请确认 API 可达")));
+      .catch(() =>
+        setError(t("loadFailed", "无法加载向导状态，请确认 API 可达")),
+      );
   }, []);
 
   async function finish() {
@@ -60,10 +64,14 @@ export default function SetupWizard() {
         password,
       });
       setSessionCookie(true);
-      const res = await api.post<{ purged: [string, number][]; extras: [string, number][] }>(
-        "/api/v1/setup",
-        { pack, site_name: siteName, games_compliance_ack: ack },
-      );
+      const res = await api.post<{
+        purged: [string, number][];
+        extras: [string, number][];
+      }>("/api/v1/setup", {
+        pack,
+        site_name: siteName,
+        games_compliance_ack: ack,
+      });
       const purged = res.purged?.map(([k, n]) => `${k}:${n}`).join(" ") ?? "";
       setResult(t("done", "安装完成") + (purged ? `（清理 ${purged}）` : ""));
       setStatus((s) => (s ? { ...s, done: true } : s));
@@ -94,7 +102,9 @@ export default function SetupWizard() {
           <li
             key={n}
             className={`flex items-center gap-1 rounded-full px-3 py-1 ${
-              step === n ? "bg-[var(--accent)] text-[var(--accent-contrast)]" : "bg-[var(--panel)] text-muted"
+              step === n
+                ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                : "bg-[var(--panel)] text-muted"
             }`}
           >
             {n}. {t(`step${n}`, ["选择站型", "站点信息", "合规确认"][n - 1])}
@@ -123,7 +133,9 @@ export default function SetupWizard() {
             >
               <div className="font-medium">{p.name}</div>
               <div className="mt-1 text-xs text-muted">{p.description}</div>
-              <div className="mt-2 font-mono text-[10px] text-muted">{p.code}</div>
+              <div className="mt-2 font-mono text-[10px] text-muted">
+                {p.code}
+              </div>
             </button>
           ))}
         </div>
@@ -142,22 +154,40 @@ export default function SetupWizard() {
           </label>
           {!status?.has_admin && (
             <p className="rounded-md border border-warn/40 bg-warn/10 px-3 py-2 text-xs">
-              {t("noAdmin", "检测到尚无管理员账号：请先用引导 SQL 建立 root（class 99）后再完成向导，或直接在下方登录已有管理员。")}
+              {t(
+                "noAdmin",
+                "检测到尚无管理员账号：请先用引导 SQL 建立 root（class 99）后再完成向导，或直接在下方登录已有管理员。",
+              )}
             </p>
           )}
           <label className="block text-sm">
             <span className="text-muted">{t("adminUser", "管理员用户名")}</span>
-            <input className={`mt-1 ${inputCls}`} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
+            <input
+              className={`mt-1 ${inputCls}`}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+            />
           </label>
           <label className="block text-sm">
             <span className="text-muted">{t("adminPass", "管理员密码")}</span>
-            <input type="password" className={`mt-1 ${inputCls}`} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+            <input
+              type="password"
+              className={`mt-1 ${inputCls}`}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
           </label>
           <div className="flex gap-2">
             <button className={`${btn}`} onClick={() => setStep(1)}>
               {t("prev", "上一步")}
             </button>
-            <button className={btn} disabled={!username || !password} onClick={() => setStep(3)}>
+            <button
+              className={btn}
+              disabled={!username || !password}
+              onClick={() => setStep(3)}
+            >
               {t("next", "下一步")}
             </button>
           </div>
@@ -187,13 +217,23 @@ export default function SetupWizard() {
             </span>
           </label>
           {result && (
-            <p className="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm">✅ {result}</p>
+            <p className="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm">
+              ✅ {result}
+            </p>
           )}
           <div className="flex gap-2">
-            <button className={btn} onClick={() => setStep(2)} disabled={status?.done}>
+            <button
+              className={btn}
+              onClick={() => setStep(2)}
+              disabled={status?.done}
+            >
               {t("prev", "上一步")}
             </button>
-            <button className={btn} disabled={!ack || busy || status?.done} onClick={finish}>
+            <button
+              className={btn}
+              disabled={!ack || busy || status?.done}
+              onClick={finish}
+            >
               {busy ? t("working", "执行中…") : t("finish", "完成安装")}
             </button>
           </div>

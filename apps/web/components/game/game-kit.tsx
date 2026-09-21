@@ -49,7 +49,11 @@ export function BalanceBar({
         </b>
       </span>
       <span className="flex items-baseline gap-1 text-xs text-sub">
-        {limitText ?? t.limitLeft.replace("{n}", limitLeft === null ? "—" : String(limitLeft))}
+        {limitText ??
+          t.limitLeft.replace(
+            "{n}",
+            limitLeft === null ? "—" : String(limitLeft),
+          )}
       </span>
     </div>
   );
@@ -130,7 +134,11 @@ export function PlayHint({
   if (dismissed || (!many && !losing)) return null;
   const parts = [
     many ? t.hintMany.replace("{n}", String(sessionPlays)) : null,
-    losing ? t.hintLose.replace("{n}", String(-(todayNet ?? 0))).replace("{magic}", "") : null,
+    losing
+      ? t.hintLose
+          .replace("{n}", String(-(todayNet ?? 0)))
+          .replace("{magic}", "")
+      : null,
   ].filter(Boolean);
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-[var(--r-md)] bg-sun-soft px-3 py-2 text-xs font-bold text-ink">
@@ -189,7 +197,9 @@ export function ChipSelect({
         max={maxBet}
         value={value}
         disabled={disabled}
-        onChange={(e) => onChange(Math.max(1, Math.min(maxBet, Number(e.target.value) || 1)))}
+        onChange={(e) =>
+          onChange(Math.max(1, Math.min(maxBet, Number(e.target.value) || 1)))
+        }
         aria-label={t.betLabel.replace("{magic}", currency)}
         className="num min-h-[40px] w-24 rounded-full border border-line bg-[var(--surface-card)] px-3 text-right font-bold outline-none focus:ring-2 focus:ring-sky/40"
       />

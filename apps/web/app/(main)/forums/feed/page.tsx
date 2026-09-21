@@ -79,13 +79,17 @@ export default async function FeedPage({
             {items.map((it) => (
               <tr key={it.topic_id}>
                 <td>
-                  {it.sticky && <span className="mr-1 text-xs text-coral">📌</span>}
+                  {it.sticky && (
+                    <span className="mr-1 text-xs text-coral">📌</span>
+                  )}
                   {it.locked && <span className="mr-1 text-xs">🔒</span>}
                   <TypeBadge
                     type={it.topic_type}
                     label={
                       it.topic_type
-                        ? (dict.forums.types as Record<string, string>)[it.topic_type]
+                        ? (dict.forums.types as Record<string, string>)[
+                            it.topic_type
+                          ]
                         : undefined
                     }
                     className="mr-1 align-middle"
@@ -105,11 +109,15 @@ export default async function FeedPage({
                     </Link>
                   )}
                 </td>
-                <td className="hidden text-xs text-sub sm:table-cell">{viaLabel(it.via)}</td>
+                <td className="hidden text-xs text-sub sm:table-cell">
+                  {viaLabel(it.via)}
+                </td>
                 <td className="text-sub">{it.username ?? "—"}</td>
                 <td className="num text-right text-sub">
                   {it.last_post_at
-                    ? new Date(it.last_post_at).toLocaleDateString(dateLocale(locale))
+                    ? new Date(it.last_post_at).toLocaleDateString(
+                        dateLocale(locale),
+                      )
                     : "—"}
                 </td>
               </tr>
@@ -121,7 +129,10 @@ export default async function FeedPage({
       {feed.next_before && (
         <div className="flex items-center justify-between">
           {before ? (
-            <Link href="/forums/feed" className="text-sm text-sub hover:text-sky">
+            <Link
+              href="/forums/feed"
+              className="text-sm text-sub hover:text-sky"
+            >
               ← {t.feedFirst}
             </Link>
           ) : (

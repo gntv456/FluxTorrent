@@ -1,8 +1,4 @@
-import type {
-  ApiEnvelope,
-  Page,
-  PageParams,
-} from "@fluxtorrent/domain-types";
+import type { ApiEnvelope, Page, PageParams } from "@fluxtorrent/domain-types";
 import { LOCALE_COOKIE } from "@/i18n/config";
 
 /**
@@ -24,9 +20,10 @@ export function hasSessionCookie(): boolean {
   if (typeof document === "undefined") return false;
   return document.cookie
     .split("; ")
-    .some((c) => c.startsWith("flux.session=") && c.length > "flux.session=".length);
+    .some(
+      (c) => c.startsWith("flux.session=") && c.length > "flux.session=".length,
+    );
 }
-
 
 export function setSessionCookie(loggedIn: boolean): void {
   if (typeof document === "undefined") return;

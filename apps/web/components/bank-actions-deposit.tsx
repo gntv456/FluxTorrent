@@ -91,7 +91,8 @@ export function BankDepositPanel({
       <div className="flex flex-wrap items-baseline gap-2 text-sm">
         <span className="num font-bold">{fmt(ov.demand.balance)}</span>
         <span className="text-sub">
-          {dict.bank.demandRate}: {bp(ov.demand.daily_rate_bp)}/日 · {dict.bank.demandCompound}
+          {dict.bank.demandRate}: {bp(ov.demand.daily_rate_bp)}/日 ·{" "}
+          {dict.bank.demandCompound}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2">

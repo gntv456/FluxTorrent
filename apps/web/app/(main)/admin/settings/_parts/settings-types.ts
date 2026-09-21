@@ -8,7 +8,13 @@ export interface HistoryRow {
   action: string;
   actor: string | null;
   actor_id: number | null;
-  detail: { setting?: string; group?: string; old?: string; new?: string; via?: string } | null;
+  detail: {
+    setting?: string;
+    group?: string;
+    old?: string;
+    new?: string;
+    via?: string;
+  } | null;
   created_at: string;
 }
 

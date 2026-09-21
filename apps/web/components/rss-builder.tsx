@@ -62,7 +62,9 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
   const categories =
     profile?.categories && profile.categories.length > 0
       ? profile.categories
-      : dict.torrents.categories.slice(1).map((name, i) => ({ id: i + 1, name }));
+      : dict.torrents.categories
+          .slice(1)
+          .map((name, i) => ({ id: i + 1, name }));
   const mediums =
     mediumOpts.length > 0
       ? mediumOpts
@@ -84,7 +86,18 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
     if (search.trim()) qs.set("search", search.trim());
     const s = qs.toString();
     return `${info.base}${info.passkey}${s ? `?${s}` : ""}`;
-  }, [info, cats, media, official, paid, showrows, linktype, search, categories.length, mediums.length]);
+  }, [
+    info,
+    cats,
+    media,
+    official,
+    paid,
+    showrows,
+    linktype,
+    search,
+    categories.length,
+    mediums.length,
+  ]);
 
   function toggle(list: number[], id: number, set: (v: number[]) => void) {
     set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -140,25 +153,38 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
         <div className="rss-rows">
           <label className="rss-row">
             <span>{t.officialOnly}</span>
-            <input type="checkbox" checked={official} onChange={(e) => setOfficial(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={official}
+              onChange={(e) => setOfficial(e.target.checked)}
+            />
           </label>
           <label className="rss-row">
             <span>{t.paid.replace("{magic}", currency)}</span>
-            <select value={paid} onChange={(e) => setPaid(e.target.value as "0" | "1")}>
+            <select
+              value={paid}
+              onChange={(e) => setPaid(e.target.value as "0" | "1")}
+            >
               <option value="0">{t.paidAll}</option>
               <option value="1">{t.paidFree}</option>
             </select>
           </label>
           <label className="rss-row">
             <span>{t.titleFormat}</span>
-            <select value={linktype} onChange={(e) => setLinktype(e.target.value as "dl" | "page")}>
+            <select
+              value={linktype}
+              onChange={(e) => setLinktype(e.target.value as "dl" | "page")}
+            >
               <option value="dl">{t.titleFull}</option>
               <option value="page">{t.titlePlain}</option>
             </select>
           </label>
           <label className="rss-row">
             <span>{t.showrows}</span>
-            <select value={showrows} onChange={(e) => setShowrows(Number(e.target.value))}>
+            <select
+              value={showrows}
+              onChange={(e) => setShowrows(Number(e.target.value))}
+            >
               {SHOWROWS.map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -184,7 +210,12 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
         <h2 className="rss-card__title">{t.resultTitle}</h2>
         <p className="rss-hint">{t.securityNote}</p>
         <div className="rss-url-row">
-          <input type="text" readOnly value={url} onFocus={(e) => e.target.select()} />
+          <input
+            type="text"
+            readOnly
+            value={url}
+            onFocus={(e) => e.target.select()}
+          />
           <button type="button" onClick={copy} className="rss-copy">
             {copied ? t.copied : t.copy}
           </button>
@@ -193,7 +224,12 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
           {info.urls.map((u) => (
             <label key={u.url} className="rss-preset">
               <span>{u.label}</span>
-              <input type="text" readOnly value={u.url} onFocus={(e) => e.target.select()} />
+              <input
+                type="text"
+                readOnly
+                value={u.url}
+                onFocus={(e) => e.target.select()}
+              />
             </label>
           ))}
         </div>

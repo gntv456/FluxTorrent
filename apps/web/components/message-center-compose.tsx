@@ -38,11 +38,18 @@ export function ComposeForm({
   onCancel: () => void;
 }) {
   return (
-    <form onSubmit={onSend} className="nexus-table flex flex-col gap-2 !border-0 p-0">
+    <form
+      onSubmit={onSend}
+      className="nexus-table flex flex-col gap-2 !border-0 p-0"
+    >
       <thead>
         <tr>
           <td className="colhead">
-            {forwardOf ? t.forwardTitle : replyTo ? t.replyTitle : t.composeTitle}
+            {forwardOf
+              ? t.forwardTitle
+              : replyTo
+                ? t.replyTitle
+                : t.composeTitle}
           </td>
         </tr>
       </thead>

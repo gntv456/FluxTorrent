@@ -18,7 +18,9 @@ const THEME_CHROME: Record<Theme, string> = {
 };
 
 function applyChromeColor(theme: Theme) {
-  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  let meta = document.querySelector<HTMLMetaElement>(
+    'meta[name="theme-color"]',
+  );
   if (!meta) {
     meta = document.createElement("meta");
     meta.name = "theme-color";

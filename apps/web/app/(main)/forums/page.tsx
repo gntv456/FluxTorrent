@@ -49,7 +49,10 @@ export default async function ForumsPage() {
       {/* 版块卡片流（按分类分组） */}
       <div className="pting-board">
         <header className="pting-board__head">
-          <ForumSearch placeholder={dict.forums2.searchPh} button={dict.forums2.searchBtn} />
+          <ForumSearch
+            placeholder={dict.forums2.searchPh}
+            button={dict.forums2.searchBtn}
+          />
           <div>
             <h1>{dict.forums.title}</h1>
             <p>
@@ -70,9 +73,16 @@ export default async function ForumsPage() {
         </header>
 
         {groups.map((g) => (
-          <section key={g.name} id={`cat-${encodeURIComponent(g.name)}`} className="mt-6">
+          <section
+            key={g.name}
+            id={`cat-${encodeURIComponent(g.name)}`}
+            className="mt-6"
+          >
             <h2 className="mb-3 flex items-center gap-2 font-display text-lg text-ink">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky" aria-hidden="true" />
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full bg-sky"
+                aria-hidden="true"
+              />
               {g.name}
               <span className="text-xs font-normal text-sub">
                 {g.items.length} {dict.forums2.topicsUnit}
@@ -82,17 +92,26 @@ export default async function ForumsPage() {
               {g.items.map((f) => (
                 <article key={f.id} className="pting-card">
                   <header>
-                    <Link href={`/forums/${f.id}`} className="pting-card__title">
+                    <Link
+                      href={`/forums/${f.id}`}
+                      className="pting-card__title"
+                    >
                       {f.name}
                     </Link>
                     <span className="pting-card__count num">
-                      {f.topics} {dict.forums2.topicsUnit} · {f.posts} {dict.forums2.postsUnit}
+                      {f.topics} {dict.forums2.topicsUnit} · {f.posts}{" "}
+                      {dict.forums2.postsUnit}
                     </span>
                   </header>
                   {f.descr && <p className="pting-card__descr">{f.descr}</p>}
                   <footer className="pting-card__latest">
-                    <span className="pting-card__latest-label">{dict.forums2.latest}</span>
-                    <Link href={`/forums/${f.id}`} className="pting-card__latest-title">
+                    <span className="pting-card__latest-label">
+                      {dict.forums2.latest}
+                    </span>
+                    <Link
+                      href={`/forums/${f.id}`}
+                      className="pting-card__latest-title"
+                    >
                       {f.latest_topic ?? `${dict.forums2.goBoard} →`}
                     </Link>
                     {f.latest_author && (

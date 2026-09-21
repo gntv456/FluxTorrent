@@ -39,12 +39,16 @@ export function SubtitleBoard() {
       if (search.trim()) params.set("search", search.trim());
       // 后端存的是语言代码（chs/cht/eng…），数字 id 是旧站展示口径：提交前转换
       if (langId !== "0") {
-        const code = Object.entries(LANG_CODE_TO_ID).find(([, id]) => id === langId)?.[0];
+        const code = Object.entries(LANG_CODE_TO_ID).find(
+          ([, id]) => id === langId,
+        )?.[0];
         if (code) params.set("lang_id", code);
       }
       if (letter) params.set("letter", letter);
       const qs = params.toString();
-      setRows(await api.get<SubtitleRow[]>(`/api/v1/subtitles${qs ? `?${qs}` : ""}`));
+      setRows(
+        await api.get<SubtitleRow[]>(`/api/v1/subtitles${qs ? `?${qs}` : ""}`),
+      );
     } catch {
       setRows([]);
     }
@@ -70,19 +74,28 @@ export function SubtitleBoard() {
       form.append("file", fFile);
       // 凭证由 HttpOnly flux_token cookie 自动携带（P1 收敛，token 不再进 JS）
       const lang = rawFetchHelpers.lang();
-      const upRes = await fetch(rawFetchHelpers.base() + "/api/v1/attachments", {
-        method: "POST",
-        headers: {
-          ...(lang ? { "Accept-Language": lang } : {}),
+      const upRes = await fetch(
+        rawFetchHelpers.base() + "/api/v1/attachments",
+        {
+          method: "POST",
+          headers: {
+            ...(lang ? { "Accept-Language": lang } : {}),
+          },
+          body: form,
         },
-        body: form,
-      });
-      const upBody = (await upRes.json()) as { code: number; message?: string; data?: { sha256: string } };
+      );
+      const upBody = (await upRes.json()) as {
+        code: number;
+        message?: string;
+        data?: { sha256: string };
+      };
       if (upBody.code !== 0 || !upBody.data?.sha256) {
         throw new ApiError(upBody.code, upBody.message ?? "字幕文件上传失败");
       }
       // lang 存旧站代码（chs/cht/eng…）
-      const code = Object.entries(LANG_CODE_TO_ID).find(([, id]) => id === fLang)?.[0] ?? "other";
+      const code =
+        Object.entries(LANG_CODE_TO_ID).find(([, id]) => id === fLang)?.[0] ??
+        "other";
       await api.post("/api/v1/subtitles", {
         torrent_id: fTorrentId ? Number(fTorrentId) : 0,
         title: fTitle,
@@ -161,7 +174,9 @@ export function SubtitleBoard() {
                   type="text"
                   className="uc-input-wide"
                   value={fTorrentId}
-                  onChange={(e) => setFTorrentId(e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) =>
+                    setFTorrentId(e.target.value.replace(/\D/g, ""))
+                  }
                 />
                 <br />
                 {t.torrentIdNote}
@@ -186,7 +201,10 @@ export function SubtitleBoard() {
                 <span className="req-star">*</span>
               </td>
               <td className="rowfollow">
-                <select value={fLang} onChange={(e) => setFLang(e.target.value)}>
+                <select
+                  value={fLang}
+                  onChange={(e) => setFLang(e.target.value)}
+                >
                   <option value="0">{t.langSelect}</option>
                   {LANGS.map(([v, label]) => (
                     <option key={v} value={v}>
@@ -198,7 +216,12 @@ export function SubtitleBoard() {
             </tr>
             <tr>
               <td className="toolbox" colSpan={2} align="center">
-                <input type="submit" className="btn" value={t.uploadBtn} disabled={busy} />
+                <input
+                  type="submit"
+                  className="btn"
+                  value={t.uploadBtn}
+                  disabled={busy}
+                />
                 <input
                   type="reset"
                   className="btn2"
@@ -218,7 +241,10 @@ export function SubtitleBoard() {
       </form>
 
       {/* 搜索：关键词 + 语言下拉 */}
-      <form className="subtitles-search-form" onSubmit={(e) => e.preventDefault()}>
+      <form
+        className="subtitles-search-form"
+        onSubmit={(e) => e.preventDefault()}
+      >
         <label htmlFor="subtitles-search">{t.searchLabel}</label>
         <input
           id="subtitles-search"
@@ -226,7 +252,11 @@ export function SubtitleBoard() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select value={langId} onChange={(e) => setLangId(e.target.value)} aria-label={t.lang}>
+        <select
+          value={langId}
+          onChange={(e) => setLangId(e.target.value)}
+          aria-label={t.lang}
+        >
           <option value="0">{t.allLangs}</option>
           {LANGS.map(([v, label]) => (
             <option key={v} value={v}>

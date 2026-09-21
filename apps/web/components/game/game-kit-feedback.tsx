@@ -86,7 +86,11 @@ export function HistoryStrip({
 }) {
   const { dict } = useI18n();
   if (rounds.length === 0) {
-    return <p className="py-2 text-center text-xs text-sub">{empty ?? dict.games.historyEmpty}</p>;
+    return (
+      <p className="py-2 text-center text-xs text-sub">
+        {empty ?? dict.games.historyEmpty}
+      </p>
+    );
   }
   return (
     <div className="flex flex-wrap items-center gap-1.5">

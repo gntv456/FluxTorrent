@@ -1,7 +1,12 @@
 "use client";
 
 import { fmt, fmtCur } from "@/i18n/config";
-import { FarmPlot, MarketCard, type Crop, type Plot } from "@/components/game/farm-field";
+import {
+  FarmPlot,
+  MarketCard,
+  type Crop,
+  type Plot,
+} from "@/components/game/farm-field";
 import type { FarmData } from "./_inner";
 
 /** 农场专注页分区件（从 games/farm/_inner.tsx 按域拆出）：
@@ -58,7 +63,9 @@ export function MyFieldSection({
           )}
           <span className="text-xs text-sub">
             {picking ? fmt(tf.picking, { n: picking }) : tf.plotHint}
-            {data.wither_days ? ` · ${fmt(tf.witherNote, { n: data.wither_days })}` : ""}
+            {data.wither_days
+              ? ` · ${fmt(tf.witherNote, { n: data.wither_days })}`
+              : ""}
           </span>
         </div>
       </div>
@@ -106,7 +113,10 @@ export function MyFieldSection({
                       );
                 },
                 (d) => {
-                  const r = d as unknown as { withered?: boolean; doubled?: boolean };
+                  const r = d as unknown as {
+                    withered?: boolean;
+                    doubled?: boolean;
+                  };
                   return r.withered ? "lose" : r.doubled ? "jackpot" : "win";
                 },
               )

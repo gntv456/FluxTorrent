@@ -18,23 +18,29 @@ function useFlash() {
     setTimeout(() => setMsg(null), 3000);
   };
   const node = msg ? (
-    <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>
+    <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+      {msg}
+    </p>
   ) : null;
   return { flash, node };
 }
 
 export function AdminP2Tools() {
-  const [sub, setSub] = useState<"promos" | "menus" | "templates" | "claims">("promos");
+  const [sub, setSub] = useState<"promos" | "menus" | "templates" | "claims">(
+    "promos",
+  );
   const { flash, node } = useFlash();
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2" role="tablist">
-        {([
-          ["promos", "置顶促销"],
-          ["menus", "自定义菜单"],
-          ["templates", "消息模板"],
-          ["claims", "保种认领"],
-        ] as [typeof sub, string][]).map(([k, label]) => (
+        {(
+          [
+            ["promos", "置顶促销"],
+            ["menus", "自定义菜单"],
+            ["templates", "消息模板"],
+            ["claims", "保种认领"],
+          ] as [typeof sub, string][]
+        ).map(([k, label]) => (
           <button
             key={k}
             role="tab"

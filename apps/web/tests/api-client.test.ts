@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { api, ApiError, setSessionCookie, hasSessionCookie } from "@/lib/api-client";
+import {
+  api,
+  ApiError,
+  setSessionCookie,
+  hasSessionCookie,
+} from "@/lib/api-client";
 
 /** api-client 单元测试：envelope 解包 / 错误归一 / token 注入 / call spec */
 function mockFetch(overrides: Partial<Response> = {}) {
@@ -32,7 +37,8 @@ describe("api client envelope", () => {
 
   it("code!=0 抛 ApiError 携带业务码", async () => {
     mockFetch({
-      json: () => Promise.resolve({ code: 2001, message: "未认证", data: null }),
+      json: () =>
+        Promise.resolve({ code: 2001, message: "未认证", data: null }),
     });
     await expect(api.get("/api/v1/me")).rejects.toMatchObject({
       code: 2001,
@@ -56,14 +62,18 @@ describe("api client envelope", () => {
     const f = mockFetch();
     await api.get("/api/v1/me");
     const init = f.mock.calls[0][1] as RequestInit;
-    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+    expect(
+      (init.headers as Record<string, string>).Authorization,
+    ).toBeUndefined();
   });
 
   it("无 token 时不带 Authorization", async () => {
     const f = mockFetch();
     await api.get("/api/v1/site-profile");
     const init = f.mock.calls[0][1] as RequestInit;
-    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+    expect(
+      (init.headers as Record<string, string>).Authorization,
+    ).toBeUndefined();
   });
 
   it("post 序列化 body 且 method 正确", async () => {
@@ -89,7 +99,9 @@ describe("api client envelope", () => {
   });
 
   it("call spec 非法格式同步抛 1002", () => {
-    expect(() => api.call("NOTAMETHOD /x")).toThrowError(expect.objectContaining({ code: 1002 }));
+    expect(() => api.call("NOTAMETHOD /x")).toThrowError(
+      expect.objectContaining({ code: 1002 }),
+    );
   });
 });
 

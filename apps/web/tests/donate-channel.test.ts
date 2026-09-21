@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
  * 后端 donate_state.payment_enabled = gateway.available() || FLUX_DEMO。
  */
 
-function shouldShowChannelClosed(payment_enabled: boolean | undefined): boolean {
+function shouldShowChannelClosed(
+  payment_enabled: boolean | undefined,
+): boolean {
   // 与 _inner.tsx 一致：严格 false 才显示（undefined = 旧版 API 兼容，视为开通）
   return payment_enabled === false;
 }

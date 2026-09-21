@@ -12,7 +12,9 @@ import { SettingsClient } from "./settings-client";
 export default async function AdminSettingsPage() {
   let initialSchema: SettingsSchema | null = null;
   try {
-    initialSchema = await api.get<SettingsSchema>("/api/v1/admin/settings/schema");
+    initialSchema = await api.get<SettingsSchema>(
+      "/api/v1/admin/settings/schema",
+    );
   } catch {
     // 预取失败（未登录 / 权限不足 / 服务异常）：交给客户端组件回退重试并提示
     initialSchema = null;

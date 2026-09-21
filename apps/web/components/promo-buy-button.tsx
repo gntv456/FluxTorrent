@@ -83,7 +83,11 @@ export function PromoBuyButton({
       setOkMsg(t.ok);
       router.refresh();
     } catch (err) {
-      setMsg(err instanceof ApiError ? err.message : (dict.common.networkError ?? "失败"));
+      setMsg(
+        err instanceof ApiError
+          ? err.message
+          : (dict.common.networkError ?? "失败"),
+      );
     } finally {
       setBusy(false);
     }

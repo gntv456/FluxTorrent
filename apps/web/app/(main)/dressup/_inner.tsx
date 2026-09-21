@@ -1,7 +1,5 @@
 "use client";
 
-;
-
 import { useCallback, useEffect, useState, useRef } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -24,7 +22,7 @@ export default function DressupPage() {
   const [msg, setMsg] = useState<string | null>(null);
   // 幂等键按（用户+商品）在会话内固定：双击/网络重试共用同一键，杜绝双扣
   const idemRef = useRef<Record<number, string>>({});
-const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -73,9 +71,16 @@ const [busy, setBusy] = useState(false);
     try {
       await api.post("/api/v1/shop/buy", {
         item_id: item.item_id,
-        idempotency_key: (idemRef.current[item.item_id] ??= `dressup-${item.item_id}-${crypto.randomUUID()}`),
+        idempotency_key: (idemRef.current[item.item_id] ??=
+          `dressup-${item.item_id}-${crypto.randomUUID()}`),
       });
-      setMsg(fmtCur(dict.dressup.buyOk, { name: item.name, price: item.price }, currency));
+      setMsg(
+        fmtCur(
+          dict.dressup.buyOk,
+          { name: item.name, price: item.price },
+          currency,
+        ),
+      );
       refresh();
     } catch (e) {
       setMsg(
@@ -140,9 +145,13 @@ const [busy, setBusy] = useState(false);
                       {dict.dressup.kinds[d.kind] ?? d.kind} ·{" "}
                       {d.owned
                         ? dict.dressup.owned
-                        : fmtCur(dict.dressup.price, {
-                            n: d.price.toLocaleString(dateLocale(locale)),
-                          }, currency)}
+                        : fmtCur(
+                            dict.dressup.price,
+                            {
+                              n: d.price.toLocaleString(dateLocale(locale)),
+                            },
+                            currency,
+                          )}
                     </p>
                   </div>
                   {d.owned ? (

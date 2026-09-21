@@ -196,7 +196,9 @@ export function WishlistPanel() {
         <p className="py-6 text-center text-sub">{t.empty}</p>
       )}
       {rows !== null && (
-        <p className="text-right text-xs text-sub">{t.hit.replace("{n}", String(count))}</p>
+        <p className="text-right text-xs text-sub">
+          {t.hit.replace("{n}", String(count))}
+        </p>
       )}
     </div>
   );

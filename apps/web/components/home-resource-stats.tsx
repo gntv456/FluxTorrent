@@ -40,22 +40,43 @@ export function ResourceStatsPanel({
         </div>
         <div className="home-resource-stats__legend">
           <span>
-            <i className="legend-swatch legend-swatch--ordinary" aria-hidden="true" />{" "}
+            <i
+              className="legend-swatch legend-swatch--ordinary"
+              aria-hidden="true"
+            />{" "}
             {t.statsOrdinary}
           </span>
           <span>
-            <i className="legend-swatch legend-swatch--official" aria-hidden="true" /> {t.statsOfficial}
+            <i
+              className="legend-swatch legend-swatch--official"
+              aria-hidden="true"
+            />{" "}
+            {t.statsOfficial}
           </span>
         </div>
       </div>
       <figure className="home-resource-stats__figure">
-        <div className="home-resource-stats__chart" role="img" aria-label={t.statsChartAria}>
+        <div
+          className="home-resource-stats__chart"
+          role="img"
+          aria-label={t.statsChartAria}
+        >
           {series.series.map((d) => (
-            <div key={d.date} className="rs-bar" title={`${d.date}：${t.statsOrdinary} ${d.ordinary}，${t.statsOfficial} ${d.official}，${t.statsTotalShort} ${d.total}`}>
+            <div
+              key={d.date}
+              className="rs-bar"
+              title={`${d.date}：${t.statsOrdinary} ${d.ordinary}，${t.statsOfficial} ${d.official}，${t.statsTotalShort} ${d.total}`}
+            >
               {d.official > 0 && (
-                <i className="rs-bar__official" style={{ flexGrow: d.official / max }} />
+                <i
+                  className="rs-bar__official"
+                  style={{ flexGrow: d.official / max }}
+                />
               )}
-              <i className="rs-bar__ordinary" style={{ flexGrow: d.ordinary / max }} />
+              <i
+                className="rs-bar__ordinary"
+                style={{ flexGrow: d.ordinary / max }}
+              />
             </div>
           ))}
         </div>

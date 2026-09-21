@@ -62,8 +62,15 @@ export function AdminOpsPanel() {
     setBusy("backup");
     setMsg(null);
     try {
-      const r = await api.post<{ file: string; bytes: number }>("/api/v1/admin/backups/run", {});
-      setMsg(t.backupDone.replace("{file}", r.file).replace("{size}", fmtBytes(r.bytes)));
+      const r = await api.post<{ file: string; bytes: number }>(
+        "/api/v1/admin/backups/run",
+        {},
+      );
+      setMsg(
+        t.backupDone
+          .replace("{file}", r.file)
+          .replace("{size}", fmtBytes(r.bytes)),
+      );
       load();
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : t.runFailed);
@@ -77,8 +84,13 @@ export function AdminOpsPanel() {
     setBusy(job);
     setMsg(null);
     try {
-      const r = await api.post<{ job: string; affected: number }>("/api/v1/admin/jobs/run", { job });
-      setMsg(t.jobDone.replace("{job}", r.job).replace("{n}", String(r.affected)));
+      const r = await api.post<{ job: string; affected: number }>(
+        "/api/v1/admin/jobs/run",
+        { job },
+      );
+      setMsg(
+        t.jobDone.replace("{job}", r.job).replace("{n}", String(r.affected)),
+      );
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : t.runFailed);
     } finally {
@@ -106,18 +118,27 @@ export function AdminOpsPanel() {
               </div>
               <div className="md:col-span-2">
                 <dt className="text-xs text-sub">{t.versionMigration}</dt>
-                <dd className="font-mono text-xs">{ver.latest_migration || "—"}</dd>
+                <dd className="font-mono text-xs">
+                  {ver.latest_migration || "—"}
+                </dd>
               </div>
             </dl>
             <div className="flex flex-wrap gap-x-5 text-xs text-sub">
               <span>
-                {t.versionDb}：{t.versionUsers} <b className="num text-ink">{ver.db.users.toLocaleString()}</b>
+                {t.versionDb}：{t.versionUsers}{" "}
+                <b className="num text-ink">{ver.db.users.toLocaleString()}</b>
               </span>
               <span>
-                {t.versionTorrents} <b className="num text-ink">{ver.db.torrents.toLocaleString()}</b>
+                {t.versionTorrents}{" "}
+                <b className="num text-ink">
+                  {ver.db.torrents.toLocaleString()}
+                </b>
               </span>
               <span>
-                {t.versionPeers} <b className="num text-ink">{ver.db.active_peers.toLocaleString()}</b>
+                {t.versionPeers}{" "}
+                <b className="num text-ink">
+                  {ver.db.active_peers.toLocaleString()}
+                </b>
               </span>
             </div>
           </>
@@ -177,7 +198,10 @@ export function AdminOpsPanel() {
         <p className="text-xs text-sub">{t.jobsNote}</p>
         <ul className="flex flex-col divide-y divide-line text-sm">
           {t.jobs.map(([job, label]) => (
-            <li key={job} className="flex items-center justify-between gap-2 py-2">
+            <li
+              key={job}
+              className="flex items-center justify-between gap-2 py-2"
+            >
               <span>
                 <b>{label}</b>
                 <code className="ml-2 font-mono text-xs text-sub">{job}</code>
@@ -196,7 +220,10 @@ export function AdminOpsPanel() {
       </div>
 
       {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink" role="status">
+        <p
+          className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink"
+          role="status"
+        >
           {fmt(msg, {})}
         </p>
       )}

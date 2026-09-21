@@ -44,7 +44,8 @@ export function HomeLayoutEditor() {
         try {
           const arr = JSON.parse(raw) as HomeLayoutItem[];
           setItems(
-            HOME_SECTION_KEYS.filter((k) => arr.some((a) => a.key === k)).length === 0
+            HOME_SECTION_KEYS.filter((k) => arr.some((a) => a.key === k))
+              .length === 0
               ? DEFAULT_HOME_LAYOUT.map((x) => ({ ...x }))
               : arr.map((a) => ({ key: a.key, span: a.span ?? 0 })),
           );
@@ -72,7 +73,10 @@ export function HomeLayoutEditor() {
   }
 
   function setSpan(idx: number, span: number) {
-    setItems((prev) => prev?.map((it, i) => (i === idx ? { ...it, span } : it)) ?? prev);
+    setItems(
+      (prev) =>
+        prev?.map((it, i) => (i === idx ? { ...it, span } : it)) ?? prev,
+    );
   }
 
   function remove(key: string) {
@@ -125,7 +129,13 @@ export function HomeLayoutEditor() {
             >
               {SPAN_OPTIONS.map(([v, label]) => (
                 <option key={v} value={v}>
-                  {label === "auto" ? t.spanAuto : label === "1/3" ? t.span13 : label === "2/3" ? t.span23 : t.spanFull}
+                  {label === "auto"
+                    ? t.spanAuto
+                    : label === "1/3"
+                      ? t.span13
+                      : label === "2/3"
+                        ? t.span23
+                        : t.spanFull}
                 </option>
               ))}
             </select>

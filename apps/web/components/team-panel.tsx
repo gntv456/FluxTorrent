@@ -106,7 +106,8 @@ export function TeamPanel() {
   }
 
   const enabled = data?.enabled ?? false;
-  const fmtTime = (s: string | null) => (s ? new Date(s).toLocaleString(dateLocale(locale)) : "-");
+  const fmtTime = (s: string | null) =>
+    s ? new Date(s).toLocaleString(dateLocale(locale)) : "-";
 
   if (data && !enabled) {
     return (
@@ -122,7 +123,10 @@ export function TeamPanel() {
   return (
     <div className="flex flex-col gap-4">
       {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink" role="status">
+        <p
+          className="rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink"
+          role="status"
+        >
           {msg}
         </p>
       )}
@@ -140,7 +144,9 @@ export function TeamPanel() {
                 <th>{t.colTorrent}</th>
                 <th className="w-28">{t.colLeader}</th>
                 <th className="w-20 text-center">{t.colMembers}</th>
-                <th className="w-20 text-center">{dict.endangered.colSeeders}</th>
+                <th className="w-20 text-center">
+                  {dict.endangered.colSeeders}
+                </th>
                 <th className="w-44">{t.colDeadline}</th>
                 <th className="w-24">{t.colAction}</th>
               </tr>
@@ -149,7 +155,10 @@ export function TeamPanel() {
               {(data?.list ?? []).map((row) => (
                 <tr key={row.team_id}>
                   <td>
-                    <Link href={`/torrent/${row.torrent_id}`} className="text-link">
+                    <Link
+                      href={`/torrent/${row.torrent_id}`}
+                      className="text-link"
+                    >
                       {row.torrent_name}
                     </Link>
                   </td>
@@ -158,10 +167,14 @@ export function TeamPanel() {
                     {row.member_count}/{row.team_size_max}
                   </td>
                   <td className="num text-center">{row.seeders}</td>
-                  <td className="text-xs text-sub">{fmtTime(row.deadline_at)}</td>
+                  <td className="text-xs text-sub">
+                    {fmtTime(row.deadline_at)}
+                  </td>
                   <td>
                     {row.joined ? (
-                      <span className="text-xs font-bold text-mint">{t.joined}</span>
+                      <span className="text-xs font-bold text-mint">
+                        {t.joined}
+                      </span>
                     ) : row.member_count >= row.team_size_max ? (
                       <span className="text-xs text-sub">{t.full}</span>
                     ) : (
@@ -195,17 +208,30 @@ export function TeamPanel() {
         </div>
 
         {(mine?.list ?? []).map((team) => {
-          const active = team.members.filter((m) => m.join_status === 1 || m.join_status === 0);
-          const totalDelta = active.reduce((sum, m) => sum + Math.max(m.delta_seconds, 0), 0);
+          const active = team.members.filter(
+            (m) => m.join_status === 1 || m.join_status === 0,
+          );
+          const totalDelta = active.reduce(
+            (sum, m) => sum + Math.max(m.delta_seconds, 0),
+            0,
+          );
           return (
-            <div key={team.team_id} className="mx-4 mb-3 rounded-[var(--r-md)] border border-line p-3">
+            <div
+              key={team.team_id}
+              className="mx-4 mb-3 rounded-[var(--r-md)] border border-line p-3"
+            >
               <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
                 {team.torrent_id ? (
-                  <Link href={`/torrent/${team.torrent_id}`} className="text-link font-bold">
+                  <Link
+                    href={`/torrent/${team.torrent_id}`}
+                    className="text-link font-bold"
+                  >
                     {team.torrent_name}
                   </Link>
                 ) : (
-                  <span className="font-bold">{team.torrent_name ?? `#${team.team_id}`}</span>
+                  <span className="font-bold">
+                    {team.torrent_name ?? `#${team.team_id}`}
+                  </span>
                 )}
                 <span className="text-xs text-sub">
                   {t.memberCount.replace("{n}", String(active.length))}
@@ -252,7 +278,9 @@ export function TeamPanel() {
           );
         })}
         {mine !== null && (mine.list ?? []).length === 0 && (
-          <p className="px-4 py-6 text-center text-xs text-sub">{t.mineEmpty}</p>
+          <p className="px-4 py-6 text-center text-xs text-sub">
+            {t.mineEmpty}
+          </p>
         )}
       </section>
     </div>

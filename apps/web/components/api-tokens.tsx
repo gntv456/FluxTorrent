@@ -124,7 +124,11 @@ export function ApiTokens() {
                 <td className="rowfollow">
                   <b>{r.name}</b>
                   <span className="ml-1 text-sub">
-                    {r.revoked_at ? `（${t.revoked}）` : r.last_used_at ? "" : `（${t.neverUsed}）`}
+                    {r.revoked_at
+                      ? `（${t.revoked}）`
+                      : r.last_used_at
+                        ? ""
+                        : `（${t.neverUsed}）`}
                   </span>
                 </td>
                 <td className="rowfollow num">{r.rate_per_min}</td>

@@ -25,7 +25,8 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
   const [msg, setMsg] = useState<string | null>(null);
 
   async function selfPardon(tid: number) {
-    if (!window.confirm(dict.myhr2.pardonConfirm.replace("{magic}", currency))) return;
+    if (!window.confirm(dict.myhr2.pardonConfirm.replace("{magic}", currency)))
+      return;
     setBusyId(tid);
     setMsg(null);
     try {
@@ -67,13 +68,21 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                 </td>
                 <td>
                   {r.status === "violated" ? (
-                    <span className="fun-status fun-status--banned">{t.stFlagged}</span>
+                    <span className="fun-status fun-status--banned">
+                      {t.stFlagged}
+                    </span>
                   ) : r.status === "satisfied" ? (
-                    <span className="fun-status fun-status--normal">{t.stOk}</span>
+                    <span className="fun-status fun-status--normal">
+                      {t.stOk}
+                    </span>
                   ) : r.status === "pardoned" ? (
-                    <span className="fun-status fun-status--normal">{dict.myhr2.stPardoned}</span>
+                    <span className="fun-status fun-status--normal">
+                      {dict.myhr2.stPardoned}
+                    </span>
                   ) : (
-                    <span className="fun-status fun-status--dull">{t.stPending}</span>
+                    <span className="fun-status fun-status--dull">
+                      {t.stPending}
+                    </span>
                   )}
                 </td>
                 <td>

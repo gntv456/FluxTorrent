@@ -28,14 +28,22 @@ function Highlight({ text, kw }: { text: string; kw?: string }) {
   return (
     <>
       {text.slice(0, idx)}
-      <strong className="font-bold text-coral">{text.slice(idx, idx + kw.length)}</strong>
+      <strong className="font-bold text-coral">
+        {text.slice(idx, idx + kw.length)}
+      </strong>
       {text.slice(idx + kw.length)}
     </>
   );
 }
 
 /** 论坛搜索（NP 顶栏搜帖口径，Phase3 增强：标题 + 正文）：GET /forums/search，结果内联展示 */
-export function ForumSearch({ placeholder, button }: { placeholder: string; button: string }) {
+export function ForumSearch({
+  placeholder,
+  button,
+}: {
+  placeholder: string;
+  button: string;
+}) {
   const { dict, locale } = useI18n();
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
@@ -46,7 +54,11 @@ export function ForumSearch({ placeholder, button }: { placeholder: string; butt
     if (q.trim().length < 2) return;
     setBusy(true);
     try {
-      setHits(await api.get<Hit[]>(`/api/v1/forums/search?q=${encodeURIComponent(q.trim())}`));
+      setHits(
+        await api.get<Hit[]>(
+          `/api/v1/forums/search?q=${encodeURIComponent(q.trim())}`,
+        ),
+      );
     } catch {
       setHits([]);
     } finally {
@@ -78,7 +90,10 @@ export function ForumSearch({ placeholder, button }: { placeholder: string; butt
               {hits.map((h) => (
                 <tr key={h.topic_id}>
                   <td className="max-w-[360px] truncate">
-                    <Link href={`/forums/topic/${h.topic_id}`} className="text-sky-deep hover:underline">
+                    <Link
+                      href={`/forums/topic/${h.topic_id}`}
+                      className="text-sky-deep hover:underline"
+                    >
                       {h.locked ? "🔒 " : ""}
                       {h.title}
                     </Link>
@@ -90,7 +105,9 @@ export function ForumSearch({ placeholder, button }: { placeholder: string; butt
                     <p className="text-xs text-sub">
                       {h.author ?? dict.torrent.anonymous} ·{" "}
                       {dict.forums.replies.replace("{n}", String(h.replies))} ·{" "}
-                      {new Date(h.created_at).toLocaleDateString(dateLocale(locale))}
+                      {new Date(h.created_at).toLocaleDateString(
+                        dateLocale(locale),
+                      )}
                     </p>
                   </td>
                   <td className="shrink-0 text-xs text-sub">{h.forum_name}</td>
@@ -98,7 +115,9 @@ export function ForumSearch({ placeholder, button }: { placeholder: string; butt
               ))}
               {hits.length === 0 && (
                 <tr>
-                  <td className="py-4 text-center text-sm text-sub">{dict.forums2.searchEmpty}</td>
+                  <td className="py-4 text-center text-sm text-sub">
+                    {dict.forums2.searchEmpty}
+                  </td>
                 </tr>
               )}
             </tbody>

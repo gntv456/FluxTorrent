@@ -4,7 +4,11 @@
  */
 
 import type { Dict } from "@/i18n/zh-CN";
-import type { SectionDictRow, SectionKindMeta, TorrentsSP } from "./torrents-utils";
+import type {
+  SectionDictRow,
+  SectionKindMeta,
+  TorrentsSP,
+} from "./torrents-utils";
 
 export interface TorrentChip {
   key: string;
@@ -19,11 +23,7 @@ export function buildTorrentChips(opts: {
   tags: { id: number; name: string; kind: string }[];
   secDict: Record<string, SectionDictRow[]> | null;
   dimKinds: SectionKindMeta[];
-  withParam: (
-    sp: TorrentsSP,
-    key: string,
-    value: string | undefined,
-  ) => string;
+  withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
 }): TorrentChip[] {
   const { sp, dict, categories, tags, secDict, dimKinds, withParam } = opts;
   const t2 = dict.torrents2;
@@ -39,7 +39,10 @@ export function buildTorrentChips(opts: {
   };
   if (sp.search) chip("search", `${t2.keywordPh}：${sp.search}`);
   if (sp.search_area && sp.search_area !== "0") {
-    chip("search_area", `${t2.scope}：${areaLabels[sp.search_area] ?? sp.search_area}`);
+    chip(
+      "search_area",
+      `${t2.scope}：${areaLabels[sp.search_area] ?? sp.search_area}`,
+    );
   }
   if (sp.search_mode === "2") chip("search_mode", t2.modeExact);
   if (sp.category_id) {
@@ -63,8 +66,10 @@ export function buildTorrentChips(opts: {
     };
     chip("status", `${t2.statusLegend}：${stLabels[sp.status] ?? sp.status}`);
   }
-  if (sp.approval === "1") chip("approval", `${t2.approvalLegend}：${t2.approvalPassed}`);
-  if (sp.approval === "2") chip("approval", `${t2.approvalLegend}：${t2.approvalRejected}`);
+  if (sp.approval === "1")
+    chip("approval", `${t2.approvalLegend}：${t2.approvalPassed}`);
+  if (sp.approval === "2")
+    chip("approval", `${t2.approvalLegend}：${t2.approvalRejected}`);
   if (sp.official === "1") chip("official", t2.officialOnly);
   if (sp.mine === "1") chip("mine", t2.mineOnly);
   if (sp.tag_id) {
@@ -83,12 +88,18 @@ export function buildTorrentChips(opts: {
   }
   if (sp.size_min) chip("size_min", `${t2.sizeLegend} ≥ ${sp.size_min}`);
   if (sp.size_max) chip("size_max", `${t2.sizeLegend} ≤ ${sp.size_max}`);
-  if (sp.min_seeders) chip("min_seeders", `${t2.seedersLegend} ≥ ${sp.min_seeders}`);
-  if (sp.max_seeders) chip("max_seeders", `${t2.seedersLegend} ≤ ${sp.max_seeders}`);
-  if (sp.min_leechers) chip("min_leechers", `${t2.leechersLegend} ≥ ${sp.min_leechers}`);
-  if (sp.max_leechers) chip("max_leechers", `${t2.leechersLegend} ≤ ${sp.max_leechers}`);
-  if (sp.min_completed) chip("min_completed", `${t2.completedLegend} ≥ ${sp.min_completed}`);
-  if (sp.max_completed) chip("max_completed", `${t2.completedLegend} ≤ ${sp.max_completed}`);
+  if (sp.min_seeders)
+    chip("min_seeders", `${t2.seedersLegend} ≥ ${sp.min_seeders}`);
+  if (sp.max_seeders)
+    chip("max_seeders", `${t2.seedersLegend} ≤ ${sp.max_seeders}`);
+  if (sp.min_leechers)
+    chip("min_leechers", `${t2.leechersLegend} ≥ ${sp.min_leechers}`);
+  if (sp.max_leechers)
+    chip("max_leechers", `${t2.leechersLegend} ≤ ${sp.max_leechers}`);
+  if (sp.min_completed)
+    chip("min_completed", `${t2.completedLegend} ≥ ${sp.min_completed}`);
+  if (sp.max_completed)
+    chip("max_completed", `${t2.completedLegend} ≤ ${sp.max_completed}`);
   if (sp.date_from) chip("date_from", `${t2.dateLegend} ≥ ${sp.date_from}`);
   if (sp.date_to) chip("date_to", `${t2.dateLegend} ≤ ${sp.date_to}`);
   if (sp.owner) chip("owner", `${t2.ownerLegend}：${sp.owner}`);
@@ -101,7 +112,11 @@ export function buildTorrentChips(opts: {
     const names = raw
       .split(",")
       .filter(Boolean)
-      .map((id) => (secDict?.[k.kind] ?? []).find((d) => String(d.id) === id)?.name ?? id);
+      .map(
+        (id) =>
+          (secDict?.[k.kind] ?? []).find((d) => String(d.id) === id)?.name ??
+          id,
+      );
     chip(`sec_${k.kind}`, `${k.label}：${names.join("、")}`);
   }
   return chips;

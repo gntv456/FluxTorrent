@@ -73,7 +73,8 @@ export function JggGrid({
         return;
       }
       const remain = target - step;
-      const delay = remain <= 1 ? 400 : remain <= 3 ? 240 : remain <= 6 ? 160 : 90;
+      const delay =
+        remain <= 1 ? 400 : remain <= 3 ? 240 : remain <= 6 ? 160 : 90;
       timer.current = window.setTimeout(tick, delay);
     };
     tick();
@@ -123,10 +124,14 @@ export function JggGrid({
                       : "border-line bg-[var(--surface-card)]"
               }`}
             >
-              <span className={`num text-sm font-black ${jack ? "text-[var(--warning)]" : ""}`}>
+              <span
+                className={`num text-sm font-black ${jack ? "text-[var(--warning)]" : ""}`}
+              >
                 {p.payout === 0 ? "—" : p.payout === 1 ? "↺" : `×${p.payout}`}
               </span>
-              <span className="mt-0.5 text-[10px] leading-tight text-sub">{p.label}</span>
+              <span className="mt-0.5 text-[10px] leading-tight text-sub">
+                {p.label}
+              </span>
             </div>
           );
         })}

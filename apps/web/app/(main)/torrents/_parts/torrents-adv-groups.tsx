@@ -5,7 +5,11 @@
  */
 
 import type { Dict } from "@/i18n/zh-CN";
-import type { SectionDictRow, SectionKindMeta, TorrentsSP } from "./torrents-utils";
+import type {
+  SectionDictRow,
+  SectionKindMeta,
+  TorrentsSP,
+} from "./torrents-utils";
 
 /** 高级分组共享的渲染上下文（由搜索盒传入） */
 export interface AdvGroupsCtx {
@@ -56,7 +60,9 @@ export function rangeInputs(
         placeholder={minPh}
         aria-label={`${legend} ${minPh}`}
       />
-      <span className="tsb-range__sep" aria-hidden="true">–</span>
+      <span className="tsb-range__sep" aria-hidden="true">
+        –
+      </span>
       <input
         className="tsb-num"
         name={`${name}_max`}
@@ -94,7 +100,12 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
             </header>
             <div className="tsb-chips tsb-chips--scroll">
               {categories.map((c) =>
-                chipLabel("category_id", String(c.id), c.label, selectedCats.has(c.id)),
+                chipLabel(
+                  "category_id",
+                  String(c.id),
+                  c.label,
+                  selectedCats.has(c.id),
+                ),
               )}
             </div>
           </section>
@@ -130,7 +141,13 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
                   ["2", t2.approvalRejected],
                 ] as [string, string][]
               ).map(([v, label]) =>
-                chipLabel("approval", v, label, (sp.approval ?? "") === v, "radio"),
+                chipLabel(
+                  "approval",
+                  v,
+                  label,
+                  (sp.approval ?? "") === v,
+                  "radio",
+                ),
               )}
             </div>
           </section>

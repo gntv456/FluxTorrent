@@ -53,7 +53,11 @@ export function FriendsActions() {
       setMsg(okText ?? t.ok);
       await load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : (dict.common.networkError ?? "失败"));
+      setMsg(
+        e instanceof ApiError
+          ? e.message
+          : (dict.common.networkError ?? "失败"),
+      );
     } finally {
       setBusy(false);
     }
@@ -80,7 +84,12 @@ export function FriendsActions() {
           type="button"
           disabled={busy || !addName.trim()}
           className="min-h-[36px] rounded-full bg-sky px-3 text-xs font-bold text-white disabled:opacity-50"
-          onClick={() => void act("/api/v1/friends", { username: addName.trim(), action: "add" })}
+          onClick={() =>
+            void act("/api/v1/friends", {
+              username: addName.trim(),
+              action: "add",
+            })
+          }
         >
           {t.addBtn}
         </button>
@@ -98,7 +107,10 @@ export function FriendsActions() {
           disabled={busy || !blackName.trim()}
           className="min-h-[36px] rounded-full bg-line px-3 text-xs font-bold text-ink disabled:opacity-50"
           onClick={() =>
-            void act("/api/v1/friends/action", { username: blackName.trim(), action: "black" })
+            void act("/api/v1/friends/action", {
+              username: blackName.trim(),
+              action: "black",
+            })
           }
         >
           {t.blackBtn}
@@ -116,10 +128,10 @@ export function FriendsActions() {
                 className="font-bold text-sky"
                 disabled={busy}
                 onClick={() =>
-                  void act(
-                    "/api/v1/friends/action",
-                    { username: b.username, action: "unblack" },
-                  )
+                  void act("/api/v1/friends/action", {
+                    username: b.username,
+                    action: "unblack",
+                  })
                 }
               >
                 ✕
@@ -140,7 +152,10 @@ export function FriendsActions() {
                 disabled={busy}
                 className="min-h-[28px] rounded-full bg-mint px-2 text-xs font-bold text-white"
                 onClick={() =>
-                  void act("/api/v1/friends", { username: r.username, action: "accept" })
+                  void act("/api/v1/friends", {
+                    username: r.username,
+                    action: "accept",
+                  })
                 }
               >
                 {t.accept}

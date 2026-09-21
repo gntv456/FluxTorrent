@@ -66,7 +66,9 @@ export function DownloadButton({
         </span>
       )}
       {(price ?? 0) > 0 && purchased && !isOwner && (
-        <span className="text-xs text-sub">{dict.torrent.purchased ?? "已购"}</span>
+        <span className="text-xs text-sub">
+          {dict.torrent.purchased ?? "已购"}
+        </span>
       )}
     </span>
   );

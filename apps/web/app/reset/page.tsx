@@ -3,7 +3,12 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, setSessionCookie, hasSessionCookie, ApiError } from "@/lib/api-client";
+import {
+  api,
+  setSessionCookie,
+  hasSessionCookie,
+  ApiError,
+} from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
 /** 重置表单（useSearchParams 需 Suspense 包裹） */

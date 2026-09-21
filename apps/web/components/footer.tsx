@@ -115,7 +115,10 @@ export async function Footer() {
               🌱 {fmt(dict.footer.statsTorrents, { n: stats.torrents })}
             </span>
             <span>
-              📦 {fmt(dict.footer.statsSeedSize, { n: formatBytes(stats.seed_size) })}
+              📦{" "}
+              {fmt(dict.footer.statsSeedSize, {
+                n: formatBytes(stats.seed_size),
+              })}
             </span>
             <span>💀 {fmt(dict.footer.deadTorrents, { n: stats.dead })}</span>
           </div>

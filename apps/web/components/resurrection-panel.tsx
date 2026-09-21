@@ -86,9 +86,14 @@ export function ResurrectionPanel() {
           {t.mine}
         </button>
       </div>
-      <p className="px-4 pb-2 text-xs text-sub">{t.note.replaceAll("{magic}", currency)}</p>
+      <p className="px-4 pb-2 text-xs text-sub">
+        {t.note.replaceAll("{magic}", currency)}
+      </p>
       {msg && (
-        <p className="mx-4 mb-2 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink" role="status">
+        <p
+          className="mx-4 mb-2 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink"
+          role="status"
+        >
           {msg}
         </p>
       )}
@@ -99,7 +104,9 @@ export function ResurrectionPanel() {
             <tr>
               <th>{t.colTorrent}</th>
               <th className="w-24">{t.colSize}</th>
-              <td className="colhead w-24">{dict.torrents.colActions ?? "操作"}</td>
+              <td className="colhead w-24">
+                {dict.torrents.colActions ?? "操作"}
+              </td>
             </tr>
           </thead>
           <tbody>
@@ -113,7 +120,9 @@ export function ResurrectionPanel() {
                 <td className="num text-sub">{formatBytes(size)}</td>
                 <td className="text-right">
                   {claimed[id] ? (
-                    <span className="text-xs font-bold text-mint">{claimed[id]}</span>
+                    <span className="text-xs font-bold text-mint">
+                      {claimed[id]}
+                    </span>
                   ) : (
                     <button
                       type="button"
@@ -160,7 +169,9 @@ export function ResurrectionPanel() {
                     </span>
                   </td>
                   <td className="num">{fmt(t.required, { n: m[2] })}</td>
-                  <td className="num">{fmt(t.seeded, { n: Math.floor(m[5] / 3600) })}</td>
+                  <td className="num">
+                    {fmt(t.seeded, { n: Math.floor(m[5] / 3600) })}
+                  </td>
                   <td>{statusLabel(m[4])}</td>
                 </tr>
               ))}

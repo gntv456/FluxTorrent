@@ -61,7 +61,9 @@ export function CheatersPanel({
                   {(row.uploaded_delta / 1024 ** 3).toFixed(2)} GB
                 </td>
                 <td className="rowfollow text-xs text-sub">
-                  {new Date(row.announced_at).toLocaleString(dateLocale(locale))}
+                  {new Date(row.announced_at).toLocaleString(
+                    dateLocale(locale),
+                  )}
                 </td>
               </tr>
             ))}

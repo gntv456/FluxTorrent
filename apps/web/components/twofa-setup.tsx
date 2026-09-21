@@ -22,7 +22,10 @@ export function TwoFactorSetup() {
 
   // enabled 状态三态：null=未知（无专用查询接口，enable/setup 报错即未启用）
   const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [setup, setSetup] = useState<{ secret: string; otpauth_uri: string } | null>(null);
+  const [setup, setSetup] = useState<{
+    secret: string;
+    otpauth_uri: string;
+  } | null>(null);
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,7 +34,10 @@ export function TwoFactorSetup() {
     setBusy(true);
     setMsg(null);
     try {
-      const r = await api.post<{ secret: string; otpauth_uri: string }>("/api/v1/me/2fa/setup", {});
+      const r = await api.post<{ secret: string; otpauth_uri: string }>(
+        "/api/v1/me/2fa/setup",
+        {},
+      );
       setSetup(r);
     } catch (e) {
       // 已启用的用户 setup 会报"2FA 已启用"
@@ -94,7 +100,11 @@ export function TwoFactorSetup() {
   return (
     <div className="flex flex-col gap-2 text-sm">
       <p>
-        {enabled === null ? t.statusLoading : enabled ? `✅ ${t.statusOn}` : `⚪ ${t.statusOff}`}
+        {enabled === null
+          ? t.statusLoading
+          : enabled
+            ? `✅ ${t.statusOn}`
+            : `⚪ ${t.statusOff}`}
       </p>
 
       {!enabled && !setup && (
@@ -114,11 +124,15 @@ export function TwoFactorSetup() {
           <code className="num break-all rounded-[var(--r-sm)] bg-cloud px-2 py-1 text-xs">
             {setup.secret}
           </code>
-          <code className="break-all text-[10px] text-sub">{setup.otpauth_uri}</code>
+          <code className="break-all text-[10px] text-sub">
+            {setup.otpauth_uri}
+          </code>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <input
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(e) =>
+                setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
               inputMode="numeric"
               placeholder={t.codeLabel}
               aria-label={t.codeLabel}
@@ -140,7 +154,9 @@ export function TwoFactorSetup() {
         <div className="flex flex-wrap items-center gap-2">
           <input
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) =>
+              setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
             inputMode="numeric"
             placeholder={t.codeLabel}
             aria-label={t.codeLabel}

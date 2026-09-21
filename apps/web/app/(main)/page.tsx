@@ -13,7 +13,12 @@ export default async function HomePage() {
   const { dict } = await getDict();
   let latest: Page<TorrentListItem> | null = null;
   // 置顶促销公告条（0041 sticky_promotions 的前台消费端；空/失败静默隐藏）
-  let promos: { id: number; title: string; url: string | null; badge: string | null }[] = [];
+  let promos: {
+    id: number;
+    title: string;
+    url: string | null;
+    badge: string | null;
+  }[] = [];
   try {
     promos = await api.get<
       { id: number; title: string; url: string | null; badge: string | null }[]

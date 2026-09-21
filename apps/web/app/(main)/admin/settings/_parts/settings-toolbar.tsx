@@ -41,8 +41,11 @@ export function SettingsToolbar({
         <div>
           <h1 className="font-display text-xl">{s.title}</h1>
           <p className="text-[11px] text-sub">
-            {schema ? `${schema.group_count} 分区 · ${schema.field_count} 字段` : "…"}
-            {lastSaved && ` · ${fmt(s.lastSaved, { time: lastSaved.toLocaleTimeString(dateLocale(locale)) })}`}
+            {schema
+              ? `${schema.group_count} 分区 · ${schema.field_count} 字段`
+              : "…"}
+            {lastSaved &&
+              ` · ${fmt(s.lastSaved, { time: lastSaved.toLocaleTimeString(dateLocale(locale)) })}`}
           </p>
         </div>
         <span className="flex-1" />
@@ -83,7 +86,8 @@ export function SettingsToolbar({
         {dirtyCount > 0 && (
           <>
             <span className="rounded-full bg-sun/40 px-3 py-1 text-[11px] font-bold text-ink">
-              {fmt(dict.settingsAdmin.unsavedTitle, { n: dirtyCount })} · {dirtyCount}
+              {fmt(dict.settingsAdmin.unsavedTitle, { n: dirtyCount })} ·{" "}
+              {dirtyCount}
             </span>
             <button
               type="button"
@@ -147,12 +151,16 @@ export function SettingsToolbar({
       {toast && (
         <div
           className={`rounded-[var(--r-md)] border p-3 text-sm ${
-            toast.ok ? "border-mint/40 bg-mint/10 text-ink" : "border-danger/40 bg-danger/5 text-ink"
+            toast.ok
+              ? "border-mint/40 bg-mint/10 text-ink"
+              : "border-danger/40 bg-danger/5 text-ink"
           }`}
           role="status"
         >
           <p className="font-bold">{toast.text}</p>
-          {toast.ok && <p className="mt-0.5 text-[11px] text-sub">{s.cacheHint}</p>}
+          {toast.ok && (
+            <p className="mt-0.5 text-[11px] text-sub">{s.cacheHint}</p>
+          )}
           {toast.effects && toast.effects.length > 0 && (
             <ul className="mt-2 list-disc pl-5 text-[11px] text-sub">
               {toast.effects.map((e) => (

@@ -8,7 +8,11 @@
 
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import type { SettingCard, SettingFieldMeta, SettingsSchema } from "@/components/setting-field";
+import type {
+  SettingCard,
+  SettingFieldMeta,
+  SettingsSchema,
+} from "@/components/setting-field";
 
 /** 左导航（≤768px 变横向滚动 Chip 条）：分区切换 + 深链 ?group= 写入 */
 export function SettingsGroupNav({
@@ -58,7 +62,12 @@ export function SettingsGroupNav({
               : "border border-line bg-[var(--surface-card)] text-sub md:border-0 md:text-ink"
           }`}
         >
-          <span className="whitespace-nowrap">{(dict.admin.settingGroups[g.key] ?? g.label).replace("{magic}", currency)}</span>
+          <span className="whitespace-nowrap">
+            {(dict.admin.settingGroups[g.key] ?? g.label).replace(
+              "{magic}",
+              currency,
+            )}
+          </span>
           <span className="ml-auto text-[10px] font-normal">{g.count}</span>
         </button>
       ))}
@@ -78,7 +87,9 @@ export function SettingsSearchResults({
   const s = dict.settingsAdmin;
   return (
     <section className="flex flex-col gap-3">
-      <p className="text-xs text-sub">{fmt(s.searchHit, { n: matches.length })}</p>
+      <p className="text-xs text-sub">
+        {fmt(s.searchHit, { n: matches.length })}
+      </p>
       {matches.length === 0 && (
         <p className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-6 text-center text-sm text-sub">
           {s.searchEmpty}
@@ -121,8 +132,13 @@ export function SettingsGroupCards({
             className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 shadow-[var(--shadow-card)]"
           >
             <h2 className="mb-2 flex items-baseline gap-2 text-sm font-bold text-ink">
-              {(dict.admin.settingGroups[c.key] ?? c.key).replace("{magic}", currency)}
-              <span className="text-[11px] font-normal text-sub">{c.fields.length}</span>
+              {(dict.admin.settingGroups[c.key] ?? c.key).replace(
+                "{magic}",
+                currency,
+              )}
+              <span className="text-[11px] font-normal text-sub">
+                {c.fields.length}
+              </span>
             </h2>
             {switches.length > 0 && (
               <div className="mb-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">

@@ -22,12 +22,7 @@ import { SecurityTab } from "@/components/usercp-security";
  *  （安全设定）；共用表格行在 usercp-row.tsx。 */
 
 export type UsercpTab =
-  | "overview"
-  | "personal"
-  | "tracker"
-  | "forum"
-  | "security"
-  | "wishlist";
+  "overview" | "personal" | "tracker" | "forum" | "security" | "wishlist";
 
 export const USERCP_NAV: { key: UsercpTab; icon: string }[] = [
   { key: "overview", icon: "⌂" },
@@ -214,7 +209,9 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
         {USERCP_NAV.map((n) => (
           <Link
             key={n.key}
-            href={n.key === "overview" ? "/my?tab=overview" : `/my?tab=${n.key}`}
+            href={
+              n.key === "overview" ? "/my?tab=overview" : `/my?tab=${n.key}`
+            }
             data-active={tab === n.key ? "true" : undefined}
             onClick={(e) => {
               e.preventDefault();
@@ -251,11 +248,7 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
                 <tr>
                   <td className="rowhead">{t.saveRow}</td>
                   <td className="rowfollow">
-                    <input
-                      type="submit"
-                      value={t.saveBtn}
-                      disabled={saving}
-                    />
+                    <input type="submit" value={t.saveBtn} disabled={saving} />
                     {saved && <span className="usercp-saved">{t.savedOk}</span>}
                   </td>
                 </tr>

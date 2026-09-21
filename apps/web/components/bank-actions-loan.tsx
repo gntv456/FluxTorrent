@@ -43,11 +43,12 @@ export function BankLoanPanel({
         <>
           <div className="flex flex-wrap items-baseline gap-2 text-sm">
             <span className="num font-bold">
-              {dict.bank.loanDebt}: {fmt(ov.loan.remaining + ov.loan.accrued_interest)}
+              {dict.bank.loanDebt}:{" "}
+              {fmt(ov.loan.remaining + ov.loan.accrued_interest)}
             </span>
             <span className="text-sub">
-              {dict.bank.dueIn.replace("{n}", String(daysLeft(ov.loan.due_at)))} ·{" "}
-              {bp(ov.loan.daily_rate_bp)}/日
+              {dict.bank.dueIn.replace("{n}", String(daysLeft(ov.loan.due_at)))}{" "}
+              · {bp(ov.loan.daily_rate_bp)}/日
             </span>
           </div>
           <p className="text-xs text-sub">

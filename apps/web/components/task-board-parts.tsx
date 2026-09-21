@@ -33,7 +33,14 @@ export interface TaskRow {
 }
 
 export interface TaskOverview {
-  shop: { name: string; span: string; require_tier: string; require_count: number; cost: number; stock: number }[];
+  shop: {
+    name: string;
+    span: string;
+    require_tier: string;
+    require_count: number;
+    cost: number;
+    stock: number;
+  }[];
   feed: { user: string; task: string; at: string }[];
   stats: {
     ongoing: number;
@@ -42,23 +49,41 @@ export interface TaskOverview {
     tiers: { tier: string | null; total: number; done: number; pct: number }[];
   };
   my_records: {
-    task_id: number; name: string; status: number; claimed_at: string; settled_at: string | null;
-    deadline?: string | null; reward?: number;
+    task_id: number;
+    name: string;
+    status: number;
+    claimed_at: string;
+    settled_at: string | null;
+    deadline?: string | null;
+    reward?: number;
     metric?: Record<string, number>;
-    current?: { uploaded?: number; seed_seconds?: number; uploads?: number; subtitles?: number };
+    current?: {
+      uploaded?: number;
+      seed_seconds?: number;
+      uploads?: number;
+      subtitles?: number;
+    };
   }[];
 }
 
 /** 我的任务区进度单元格：metric 键 → 现值/目标（口径与结算一致；秒键折算小时） */
 function progressCells(
   metric: Record<string, number> | undefined,
-  current: { uploaded?: number; seed_seconds?: number; uploads?: number; subtitles?: number } | undefined,
+  current:
+    | {
+        uploaded?: number;
+        seed_seconds?: number;
+        uploads?: number;
+        subtitles?: number;
+      }
+    | undefined,
   fmtBytes: (n: number) => string,
 ): string {
   if (!metric || !current) return "—";
   return Object.entries(metric)
     .map(([k, v]) => {
-      if (k === "upload_delta") return `${fmtBytes(current.uploaded ?? 0)} / ${fmtBytes(v)}`;
+      if (k === "upload_delta")
+        return `${fmtBytes(current.uploaded ?? 0)} / ${fmtBytes(v)}`;
       if (k === "download_delta") return `${fmtBytes(v)}`;
       if (k === "seed_seconds_delta" || k === "seed_points_delta")
         return `${((current.seed_seconds ?? 0) / 3600).toFixed(1)} / ${(v / 3600).toFixed(0)}h`;
@@ -112,11 +137,21 @@ export function TaskDashboard({ ov }: { ov: TaskOverview | null }) {
               <p>
                 <strong>{f.user}</strong> {t.feedAction} {f.task}
               </p>
-              <time>{new Date(f.at).toLocaleDateString(dateLocale(locale), { month: "2-digit", day: "2-digit" })}{" "}
-                {new Date(f.at).toLocaleTimeString(dateLocale(locale), { hour: "2-digit", minute: "2-digit" })}</time>
+              <time>
+                {new Date(f.at).toLocaleDateString(dateLocale(locale), {
+                  month: "2-digit",
+                  day: "2-digit",
+                })}{" "}
+                {new Date(f.at).toLocaleTimeString(dateLocale(locale), {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </time>
             </div>
           ))}
-          {(ov?.feed ?? []).length === 0 && <p className="text-sub">{t.feedEmpty}</p>}
+          {(ov?.feed ?? []).length === 0 && (
+            <p className="text-sub">{t.feedEmpty}</p>
+          )}
         </div>
       </section>
       <section className="task-panel">
@@ -180,11 +215,23 @@ export function TaskHistory({ ov }: { ov: TaskOverview | null }) {
               <tr key={i}>
                 <td>{r.name}</td>
                 <td>
-                  {r.status === 0 ? t.stOngoing : r.status === 1 ? t.stDone : t.stFailed}
+                  {r.status === 0
+                    ? t.stOngoing
+                    : r.status === 1
+                      ? t.stDone
+                      : t.stFailed}
                 </td>
-                <td className="text-xs">{progressCells(r.metric, r.current, fmtBytes)}</td>
-                <td>{new Date(r.claimed_at).toLocaleString(dateLocale(locale))}</td>
-                <td>{r.settled_at ? new Date(r.settled_at).toLocaleString(dateLocale(locale)) : "—"}</td>
+                <td className="text-xs">
+                  {progressCells(r.metric, r.current, fmtBytes)}
+                </td>
+                <td>
+                  {new Date(r.claimed_at).toLocaleString(dateLocale(locale))}
+                </td>
+                <td>
+                  {r.settled_at
+                    ? new Date(r.settled_at).toLocaleString(dateLocale(locale))
+                    : "—"}
+                </td>
               </tr>
             ))}
             {(ov?.my_records ?? []).length === 0 && (

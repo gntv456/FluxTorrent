@@ -45,9 +45,10 @@ export default function FarmPage({
   const [data, setData] = useState<FarmData | null>(initialFarm);
   const [me, setMe] = useState<MeData | null>(initialMe);
   const [now, setNow] = useState<number | null>(null);
-  const [msg, setMsg] = useState<{ kind: "win" | "lose" | "tie" | "jackpot"; text: string } | null>(
-    null,
-  );
+  const [msg, setMsg] = useState<{
+    kind: "win" | "lose" | "tie" | "jackpot";
+    text: string;
+  } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState<number | null>(null);
@@ -90,10 +91,13 @@ export default function FarmPage({
   useEffect(() => {
     if (!data) return;
     const ms = data.next_refresh * 1000 - Date.now() + 1500;
-    const id = window.setTimeout(() => {
-      void refresh();
-      void loadMe();
-    }, Math.max(1000, ms));
+    const id = window.setTimeout(
+      () => {
+        void refresh();
+        void loadMe();
+      },
+      Math.max(1000, ms),
+    );
     return () => window.clearTimeout(id);
   }, [data, refresh, loadMe]);
 
@@ -108,7 +112,10 @@ export default function FarmPage({
     setMsg(null);
     try {
       const r = await api.post<Record<string, never>>(`/api/v1${path}`, body);
-      setMsg({ kind: kindOf ? kindOf(r as never) : "win", text: ok(r as never) });
+      setMsg({
+        kind: kindOf ? kindOf(r as never) : "win",
+        text: ok(r as never),
+      });
       setPicking(null);
       await refresh();
       void loadMe();
@@ -140,12 +147,17 @@ export default function FarmPage({
   const nextRefresh =
     now === null
       ? ""
-      : new Date(data.next_refresh * 1000).toLocaleTimeString(dateLocale(locale), {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+      : new Date(data.next_refresh * 1000).toLocaleTimeString(
+          dateLocale(locale),
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+          },
+        );
   const refreshIn =
-    now === null ? "" : fmt(tf.refreshIn, { t: leftText(data.next_refresh * 1000 - now) });
+    now === null
+      ? ""
+      : fmt(tf.refreshIn, { t: leftText(data.next_refresh * 1000 - now) });
   const firstEmpty = plots.findIndex((p) => !p) + 1;
   const readyPlots = plots.filter((p) => p && p.ready && !p.withered);
 
@@ -161,9 +173,12 @@ export default function FarmPage({
     let failed = 0;
     for (const p of readyPlots) {
       try {
-        const r = await api.post<{ amount: number; doubled: boolean }>("/api/v1/farm/harvest", {
-          slot: p!.slot,
-        });
+        const r = await api.post<{ amount: number; doubled: boolean }>(
+          "/api/v1/farm/harvest",
+          {
+            slot: p!.slot,
+          },
+        );
         total += r.amount;
         if (r.doubled) doubled++;
       } catch {
@@ -187,18 +202,15 @@ export default function FarmPage({
       setErr(tf.full);
       return;
     }
-    void act(
-      "/farm/plant",
-      { slot, crop_id: cropId },
-      (d) =>
-        fmtCur(
-          tf.plantOk,
-          {
-            crop: (d as unknown as { crop: string }).crop,
-            cost: (d as unknown as { cost: number }).cost,
-          },
-          currency,
-        ),
+    void act("/farm/plant", { slot, crop_id: cropId }, (d) =>
+      fmtCur(
+        tf.plantOk,
+        {
+          crop: (d as unknown as { crop: string }).crop,
+          cost: (d as unknown as { cost: number }).cost,
+        },
+        currency,
+      ),
     );
   }
 
@@ -211,7 +223,9 @@ export default function FarmPage({
         >
           ← {tg.back}
         </Link>
-        <h1 className="font-display text-2xl">🌾 {tf.title.replace("{magic}", currency)}</h1>
+        <h1 className="font-display text-2xl">
+          🌾 {tf.title.replace("{magic}", currency)}
+        </h1>
         <span className="text-sm text-sub">
           {fmt(tf.marketRule, { time: nextRefresh })}
           {refreshIn && ` · ${refreshIn}`}

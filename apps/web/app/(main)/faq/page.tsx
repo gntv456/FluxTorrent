@@ -34,7 +34,9 @@ export default async function FaqPage() {
           <tbody>
             <tr>
               <td className="colhead" colSpan={2}>
-                <h2 className="font-display">{cat === "default" ? dict.faq.defaultCat : cat}</h2>
+                <h2 className="font-display">
+                  {cat === "default" ? dict.faq.defaultCat : cat}
+                </h2>
               </td>
             </tr>
             {list.map((f) => (

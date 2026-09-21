@@ -30,12 +30,16 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
       setThanked(true);
       setMsg(
         r.spark_given > 0
-          ? t.thankSparkOk.replace("{n}", String(r.spark_given)).replace("{magic}", currency)
+          ? t.thankSparkOk
+              .replace("{n}", String(r.spark_given))
+              .replace("{magic}", currency)
           : dict.torrent.thanksOk,
       );
     } catch (e) {
       setMsg(
-        e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError,
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
       );
     } finally {
       setBusy(false);
@@ -50,7 +54,9 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
       setMsg(on ? dict.torrent.bookmarkOk : dict.torrent.unbookmarkOk);
     } catch (e) {
       setMsg(
-        e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError,
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
       );
     }
   }
@@ -70,7 +76,9 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
       setTimeout(() => location.reload(), 600);
     } catch (e) {
       setMsg(
-        e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError,
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
       );
     } finally {
       setBusy(false);

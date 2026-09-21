@@ -7,7 +7,13 @@
 
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
-import type { AppealRow, AuditRow, Overview, PendingTorrent, StatsData } from "./admin-shared";
+import type {
+  AppealRow,
+  AuditRow,
+  Overview,
+  PendingTorrent,
+  StatsData,
+} from "./admin-shared";
 
 export function AdminOverviewPanel({
   ov,
@@ -29,22 +35,47 @@ export function AdminOverviewPanel({
   const openAppeals = appeals.filter((x) => x.status === "open").length;
   const uptimeH = stats ? Math.max(1, Math.round(stats.uptime_secs / 3600)) : 0;
   const queue = [
-    { label: a.pendingReviews, v: reviews.length, to: "reviews", warn: reviews.length > 0 },
-    { label: a.openReports, v: ov?.open_reports ?? 0, to: "reports", warn: (ov?.open_reports ?? 0) > 0 },
-    { label: "待处理申诉", v: openAppeals, to: "appeals", warn: openAppeals > 0 },
-    { label: "作弊探测", v: null as number | null, to: "cheaters", warn: false },
+    {
+      label: a.pendingReviews,
+      v: reviews.length,
+      to: "reviews",
+      warn: reviews.length > 0,
+    },
+    {
+      label: a.openReports,
+      v: ov?.open_reports ?? 0,
+      to: "reports",
+      warn: (ov?.open_reports ?? 0) > 0,
+    },
+    {
+      label: "待处理申诉",
+      v: openAppeals,
+      to: "appeals",
+      warn: openAppeals > 0,
+    },
+    {
+      label: "作弊探测",
+      v: null as number | null,
+      to: "cheaters",
+      warn: false,
+    },
   ];
   const site = stats
     ? ([
-        [a.users, stats.users], ["种子", stats.torrents],
-        ["做种中", stats.seeding], ["下载中", stats.leeching],
-        ["评论", stats.comments], ["站内信", stats.messages],
+        [a.users, stats.users],
+        ["种子", stats.torrents],
+        ["做种中", stats.seeding],
+        ["下载中", stats.leeching],
+        ["评论", stats.comments],
+        ["站内信", stats.messages],
       ] as [string, number][])
     : [];
   return (
     <section className="flex flex-col gap-4">
       <div>
-        <h2 className="mb-2 text-sm font-bold text-[var(--text-brand)]">待办队列</h2>
+        <h2 className="mb-2 text-sm font-bold text-[var(--text-brand)]">
+          待办队列
+        </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           {queue.map((s) => (
             <button
@@ -56,7 +87,9 @@ export function AdminOverviewPanel({
               }`}
             >
               <p className="text-xs text-sub">{s.label}</p>
-              <p className={`num mt-1 text-2xl ${s.warn ? "text-danger" : "text-sky"}`}>
+              <p
+                className={`num mt-1 text-2xl ${s.warn ? "text-danger" : "text-sky"}`}
+              >
                 {s.v ?? "—"}
               </p>
             </button>
@@ -66,7 +99,9 @@ export function AdminOverviewPanel({
 
       {stats && (
         <div>
-          <h2 className="mb-2 text-sm font-bold text-[var(--text-brand)]">站点数据</h2>
+          <h2 className="mb-2 text-sm font-bold text-[var(--text-brand)]">
+            站点数据
+          </h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
             {site.map(([label, v]) => (
               <div
@@ -74,7 +109,9 @@ export function AdminOverviewPanel({
                 className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 text-center"
               >
                 <p className="text-xs text-sub">{label}</p>
-                <p className="num mt-1 text-xl text-ink">{v.toLocaleString()}</p>
+                <p className="num mt-1 text-xl text-ink">
+                  {v.toLocaleString()}
+                </p>
               </div>
             ))}
           </div>
@@ -106,7 +143,10 @@ export function AdminOverviewPanel({
         <div className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4">
           <ul className="flex flex-col divide-y divide-line text-sm">
             {audit.slice(0, 6).map((row) => (
-              <li key={row.id} className="flex items-center justify-between py-2">
+              <li
+                key={row.id}
+                className="flex items-center justify-between py-2"
+              >
                 <span className="font-mono text-xs">{row.action}</span>
                 <span className="text-xs text-sub">
                   {fmt(a.actor, { id: row.actor_id ?? "-" })} ·{" "}

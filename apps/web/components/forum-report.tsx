@@ -72,7 +72,9 @@ export function ReportTopicButton({ topicId }: { topicId: number }) {
             >
               {dict.usertools.reportSubmit}
             </button>
-            <span className="num text-[11px] text-sub">{reason.length}/500</span>
+            <span className="num text-[11px] text-sub">
+              {reason.length}/500
+            </span>
           </span>
         </span>
       )}

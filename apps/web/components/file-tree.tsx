@@ -59,7 +59,9 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
           {groups[0].files.map((f) => (
             <tr key={f.file_index}>
               <td className="min-w-0 truncate">{f.path}</td>
-              <td className="num shrink-0 text-right text-sub">{formatBytes(f.size)}</td>
+              <td className="num shrink-0 text-right text-sub">
+                {formatBytes(f.size)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -96,8 +98,12 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
               {!isCollapsed &&
                 g.files.map((f) => (
                   <tr key={f.file_index}>
-                    <td className="min-w-0 truncate pl-6">{f.path.slice(g.dir.length + 1) || f.path}</td>
-                    <td className="num shrink-0 text-right text-sub">{formatBytes(f.size)}</td>
+                    <td className="min-w-0 truncate pl-6">
+                      {f.path.slice(g.dir.length + 1) || f.path}
+                    </td>
+                    <td className="num shrink-0 text-right text-sub">
+                      {formatBytes(f.size)}
+                    </td>
                   </tr>
                 ))}
             </>

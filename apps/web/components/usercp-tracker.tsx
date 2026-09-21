@@ -33,7 +33,9 @@ export function TrackerTab({
   const t = dict.usercp.tracker;
   const cats = (s.browsecat ?? "").split(",").filter(Boolean);
   const toggleCat = (id: string, on: boolean) => {
-    const next = on ? [...new Set([...cats, id])] : cats.filter((c) => c !== id);
+    const next = on
+      ? [...new Set([...cats, id])]
+      : cats.filter((c) => c !== id);
     patch({ browsecat: next.join(",") });
   };
   return (
@@ -76,7 +78,9 @@ export function TrackerTab({
                       <br />
                       <select
                         value={String(s.incl_dead)}
-                        onChange={(e) => patch({ incl_dead: Number(e.target.value) })}
+                        onChange={(e) =>
+                          patch({ incl_dead: Number(e.target.value) })
+                        }
                       >
                         <option value="0">{t.deadBoth}</option>
                         <option value="1">{t.deadAlive}</option>
@@ -88,7 +92,9 @@ export function TrackerTab({
                       <br />
                       <select
                         value={String(s.sp_state)}
-                        onChange={(e) => patch({ sp_state: Number(e.target.value) })}
+                        onChange={(e) =>
+                          patch({ sp_state: Number(e.target.value) })
+                        }
                       >
                         <option value="0">{t.promoAll}</option>
                         <option value="1">{t.promoNormal}</option>
@@ -163,7 +169,9 @@ export function TrackerTab({
             size={5}
             className="uc-num-input"
             value={s.pm_per_page}
-            onChange={(e) => patch({ pm_per_page: Number(e.target.value) || 0 })}
+            onChange={(e) =>
+              patch({ pm_per_page: Number(e.target.value) || 0 })
+            }
           />
           {t.pmPerPageSuffix}
         </Row>
@@ -234,4 +242,3 @@ export function TrackerTab({
     </table>
   );
 }
-

@@ -88,7 +88,11 @@ export default async function RootLayout({
         {/* Seedlight 展示字体：站酷快乐体（仅 H1/品牌/等级名，小面积使用）。
             preconnect + display=swap：字体未就绪时标题先以回退栈渲染，不阻塞首屏。 */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap"

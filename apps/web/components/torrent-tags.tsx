@@ -12,9 +12,7 @@ interface TagDictRow {
 
 /** 兼容 API 历史形态：dict 行可能序列化为 [id, name, kind] 元组 */
 function normTagRow(r: TagDictRow | [number, string, string]): TagDictRow {
-  return Array.isArray(r)
-    ? { id: r[0], name: r[1], kind: r[2] }
-    : r;
+  return Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r;
 }
 
 /** 种子标签（T-04）：作者/staff 打标，官种/官方标签仅 staff；点击切换 */
@@ -30,9 +28,10 @@ export function TorrentTags({ torrentId }: { torrentId: number }) {
 
   const load = useCallback(async () => {
     try {
-      const r = await api.get<{ dict: (TagDictRow | [number, string, string])[]; mine: number[] }>(
-        `/api/v1/torrents/${torrentId}/tags`,
-      );
+      const r = await api.get<{
+        dict: (TagDictRow | [number, string, string])[];
+        mine: number[];
+      }>(`/api/v1/torrents/${torrentId}/tags`);
       setDictRows(r.dict.map(normTagRow));
       setMine(r.mine);
     } catch {
@@ -47,7 +46,10 @@ export function TorrentTags({ torrentId }: { torrentId: number }) {
   async function toggle(tagId: number, on: boolean) {
     setMsg(null);
     try {
-      await api.put(`/api/v1/torrents/${torrentId}/tags`, { tag_id: tagId, on: !on });
+      await api.put(`/api/v1/torrents/${torrentId}/tags`, {
+        tag_id: tagId,
+        on: !on,
+      });
       setMine((m) => (on ? m.filter((x) => x !== tagId) : [...m, tagId]));
     } catch (e) {
       setMsg(apiErrorMessage(dict, e));
@@ -62,8 +64,15 @@ export function TorrentTags({ torrentId }: { torrentId: number }) {
         const on = mine.includes(d.id);
         const official = d.kind === "official";
         // 列表口径的彩色轮换（官方类固定靛蓝，普通标签按位轮换品牌色）
-        const palette = ["torrents-tag--sky", "torrents-tag--mint", "torrents-tag--sun", "torrents-tag--candy"];
-        const colorCls = official ? "torrents-tag--official" : palette[i % palette.length];
+        const palette = [
+          "torrents-tag--sky",
+          "torrents-tag--mint",
+          "torrents-tag--sun",
+          "torrents-tag--candy",
+        ];
+        const colorCls = official
+          ? "torrents-tag--official"
+          : palette[i % palette.length];
         return (
           <button
             key={d.id}

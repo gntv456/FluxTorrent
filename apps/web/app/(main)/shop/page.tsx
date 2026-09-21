@@ -18,8 +18,12 @@ export default async function ShopPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.shop.title.replace("{magic}", currency)}</h1>
-        <span className="text-sm text-sub">{dict.shop.subtitle.replace("{magic}", currency)}</span>
+        <h1 className="font-display text-2xl">
+          {dict.shop.title.replace("{magic}", currency)}
+        </h1>
+        <span className="text-sm text-sub">
+          {dict.shop.subtitle.replace("{magic}", currency)}
+        </span>
       </div>
 
       {/* 道具区 */}

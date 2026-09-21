@@ -41,7 +41,10 @@ export function PollWidget({
     setBusy(true);
     setErr(null);
     try {
-      await api.post("/api/v1/forums/poll/vote", { topic_id: topicId, option_index: idx });
+      await api.post("/api/v1/forums/poll/vote", {
+        topic_id: topicId,
+        option_index: idx,
+      });
       router.refresh();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : dict.common.networkError);
@@ -94,7 +97,10 @@ export function PollWidget({
             );
           }
           return (
-            <div key={idx} className="relative overflow-hidden rounded-[var(--r-sm)] border border-line">
+            <div
+              key={idx}
+              className="relative overflow-hidden rounded-[var(--r-sm)] border border-line"
+            >
               <div
                 className={`absolute inset-y-0 left-0 ${mine ? "bg-[var(--sky-soft)]" : "bg-[var(--surface-sunken)]"}`}
                 style={{ width: `${pct}%` }}
@@ -113,7 +119,11 @@ export function PollWidget({
           );
         })}
       </div>
-      {err && <p role="alert" className="mt-2 text-xs text-danger">{err}</p>}
+      {err && (
+        <p role="alert" className="mt-2 text-xs text-danger">
+          {err}
+        </p>
+      )}
       {canClose && !poll.closed && (
         <button
           type="button"

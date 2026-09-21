@@ -138,7 +138,9 @@ export default function RegisterPage() {
               type="text"
               inputMode="numeric"
               value={captchaAnswer}
-              onChange={(e) => setCaptchaAnswer(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) =>
+                setCaptchaAnswer(e.target.value.replace(/\D/g, ""))
+              }
               required
               placeholder={dict.register.captchaAnswer}
               className={`${inputCls} min-w-0 flex-1`}

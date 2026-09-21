@@ -54,7 +54,11 @@ export function SecurityTab({
       setNewPass("");
       setNewPass2("");
     } catch (e) {
-      setPwMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError);
+      setPwMsg(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
+      );
     } finally {
       setPwBusy(false);
     }
@@ -65,11 +69,18 @@ export function SecurityTab({
     setPkBusy(true);
     setPkMsg(null);
     try {
-      const r = await api.post<{ passkey: string }>("/api/v1/me/passkey/rotate", {});
+      const r = await api.post<{ passkey: string }>(
+        "/api/v1/me/passkey/rotate",
+        {},
+      );
       setPkResult(r.passkey);
       setPkMsg(dict.my.passkeyRotated);
     } catch (e) {
-      setPkMsg(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.networkError);
+      setPkMsg(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
+      );
     } finally {
       setPkBusy(false);
     }
@@ -125,12 +136,8 @@ export function SecurityTab({
             <NoticePrefsCard />
           </td>
         </tr>
-        <Row head={t.passkeyLabel}>
-          {t.passkeyHint}
-        </Row>
-        <Row head={t.tgBind}>
-          {t.tgBindHint}
-        </Row>
+        <Row head={t.passkeyLabel}>{t.passkeyHint}</Row>
+        <Row head={t.tgBind}>{t.tgBindHint}</Row>
         <tr>
           <td className="rowhead">{dict.apitokens.title}</td>
           <td className="rowfollow p-0">
