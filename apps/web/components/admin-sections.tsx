@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SectionKindsPanel } from "./admin-sections-kinds";
 import { api, ApiError } from "@/lib/api-client";
 import { SectionCatsPanel, SectionDictPanel } from "./admin-sections-dict";
 import type {
@@ -79,228 +80,133 @@ export function AdminSections() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
-          {msg}
-        </p>
-      )}
-
-      {/* 分类模式 */}
-      <section className="baozi-panel p-4">
-        <h2 className="mb-2 text-base font-bold">分类模式</h2>
-        <p className="mb-3 text-xs text-sub">
-          每个分类归属一个模式；模式内的开关决定发布表单与筛选启用哪些子维度。
-        </p>
-        <div className="flex flex-wrap items-end gap-2">
-          <input
-            value={newMode}
-            onChange={(e) => setNewMode(e.target.value)}
-            placeholder="新模式名称"
-            className={`w-40 ${FIELD_INPUT_CLS}`}
-          />
-          <button
-            disabled={busy || !newMode.trim()}
-            className="baozi-button"
-            onClick={() =>
-              act(async () => {
-                await api.post("/api/v1/admin/section-modes", {
-                  name: newMode,
-                });
-                setNewMode("");
-              }, "已创建")
-            }
-          >
-            新建模式
-          </button>
-        </div>
-        <table className="nexus-table mt-3 text-xs">
-          <thead>
-            <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">名称</td>
-              {FLAGS.map(([k, l]) => (
-                <td key={k} className="colhead">
-                  {l}
-                </td>
-              ))}
-              <td className="colhead">分类数</td>
-              <td className="colhead text-right">操作</td>
-            </tr>
-          </thead>
-          <tbody>
-            {modes.map((m) => (
-              <tr key={m.id}>
-                <td className="num">{m.id}</td>
-                <td className="font-bold">{m.name}</td>
-                {FLAGS.map(([k]) => (
-                  <td key={k} className="text-center">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(m[k])}
-                      disabled={busy}
-                      onChange={(e) =>
-                        act(
-                          () =>
-                            api.put(`/api/v1/admin/section-modes/${m.id}`, {
-                              name: m.name,
-                              [k]: e.target.checked,
-                            }),
-                          "已保存",
-                        )
-                      }
-                    />
-                  </td>
-                ))}
-                <td className="num">{m.categories}</td>
-                <td className="text-right">
-                  {m.id !== 1 && (
-                    <button
-                      className="cmgmt-act cmgmt-act--danger"
-                      disabled={busy}
-                      onClick={() =>
-                        act(
-                          () => api.del(`/api/v1/admin/section-modes/${m.id}`),
-                          "已删除（归属分类已回退默认模式）",
-                        )
-                      }
-                    >
-                      删除
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      {/* 维度管理（0085：站方自定义质量维度，NP 自定义 Section 口径） */}
-      <section className="baozi-panel p-4">
-        <h2 className="mb-2 text-base font-bold">维度管理</h2>
-        <p className="mb-3 text-xs text-sub">
-          维度 = 发布表单「质量」行里的一个下拉框（如
-          编码/分辨率/语种）。新增维度后到下方「维度字典」里维护它的选项。
-          <b>发布页「质量」与高级搜索「多维筛选」只显示有选项的维度</b>
-          ——无选项的维度会自动隐藏，添加选项后立即出现。
-        </p>
-        <div className="flex flex-wrap items-end gap-2">
-          <input
-            value={newKind}
-            onChange={(e) => setNewKind(e.target.value)}
-            placeholder="维度标识（如 resolution）"
-            className={`w-48 ${FIELD_INPUT_CLS}`}
-          />
-          <input
-            value={newKindLabel}
-            onChange={(e) => setNewKindLabel(e.target.value)}
-            placeholder="显示名称（如 分辨率）"
-            className={`w-36 ${FIELD_INPUT_CLS}`}
-          />
-          <button
-            disabled={busy || !newKind.trim() || !newKindLabel.trim()}
-            className="baozi-button"
-            onClick={() =>
-              act(async () => {
-                await api.post("/api/v1/admin/section-kinds", {
-                  kind: newKind,
-                  label: newKindLabel,
-                });
-                setNewKind("");
-                setNewKindLabel("");
-              }, "维度已创建")
-            }
-          >
-            新建维度
-          </button>
-        </div>
-        <table className="nexus-table mt-3 text-xs">
-          <thead>
-            <tr>
-              <td className="colhead">标识</td>
-              <td className="colhead">显示名称</td>
-              <td className="colhead">选项数</td>
-              <td className="colhead">排序</td>
-              <td className="colhead text-right">操作</td>
-            </tr>
-          </thead>
-          <tbody>
-            {kinds.map((k) => {
-              const n = kindCounts[k.kind] ?? 0;
-              return (
-                <tr key={k.kind}>
-                  <td className="font-mono">{k.kind}</td>
-                  <td>{k.label}</td>
-                  <td className="num">
-                    {n > 0 ? (
-                      n
-                    ) : (
-                      <span className="text-sub">0（发布页/搜索不显示）</span>
-                    )}
-                  </td>
-                  <td className="num">{k.sort}</td>
-                  <td className="text-right">
-                    <button
-                      className="cmgmt-act"
-                      disabled={busy}
-                      onClick={() => {
-                        const nl = window.prompt("新显示名称", k.label);
-                        if (nl && nl !== k.label)
-                          act(
-                            () =>
-                              api.put(`/api/v1/admin/section-kinds/${k.kind}`, {
-                                kind: k.kind,
-                                label: nl,
-                                sort: k.sort,
-                              }),
-                            "已保存",
-                          );
-                      }}
-                    >
-                      重命名
-                    </button>
-                    <button
-                      className="cmgmt-act cmgmt-act--danger"
-                      disabled={busy}
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `删除维度「${k.label}」？其下所有字典选项将被清空`,
-                          )
-                        )
-                          act(
-                            () =>
-                              api.del(`/api/v1/admin/section-kinds/${k.kind}`),
-                            "已删除",
-                          );
-                      }}
-                    >
-                      删除
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </section>
-
-      {/* 维度字典（拆至 ./admin-sections-dict.tsx） */}
-      <SectionDictPanel
-        kind={kind}
-        setKind={setKind}
+    <>
+      <SectionKindsPanel
         kinds={kinds}
-        dicts={dicts}
-        dName={dName}
-        setDName={setDName}
-        dSort={dSort}
-        setDSort={setDSort}
+        kindCounts={kindCounts}
+        newKind={newKind}
+        setNewKind={setNewKind}
+        newKindLabel={newKindLabel}
+        setNewKindLabel={setNewKindLabel}
         busy={busy}
         act={act}
       />
+      <div className="flex flex-col gap-3">
+        {msg && (
+          <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+            {msg}
+          </p>
+        )}
 
-      {/* 分类归属/自动过审（拆至 ./admin-sections-dict.tsx） */}
-      <SectionCatsPanel cats={cats} modes={modes} busy={busy} act={act} />
-    </div>
+        {/* 分类模式 */}
+        <section className="baozi-panel p-4">
+          <h2 className="mb-2 text-base font-bold">分类模式</h2>
+          <p className="mb-3 text-xs text-sub">
+            每个分类归属一个模式；模式内的开关决定发布表单与筛选启用哪些子维度。
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <input
+              value={newMode}
+              onChange={(e) => setNewMode(e.target.value)}
+              placeholder="新模式名称"
+              className={`w-40 ${FIELD_INPUT_CLS}`}
+            />
+            <button
+              disabled={busy || !newMode.trim()}
+              className="baozi-button"
+              onClick={() =>
+                act(async () => {
+                  await api.post("/api/v1/admin/section-modes", {
+                    name: newMode,
+                  });
+                  setNewMode("");
+                }, "已创建")
+              }
+            >
+              新建模式
+            </button>
+          </div>
+          <table className="nexus-table mt-3 text-xs">
+            <thead>
+              <tr>
+                <td className="colhead">ID</td>
+                <td className="colhead">名称</td>
+                {FLAGS.map(([k, l]) => (
+                  <td key={k} className="colhead">
+                    {l}
+                  </td>
+                ))}
+                <td className="colhead">分类数</td>
+                <td className="colhead text-right">操作</td>
+              </tr>
+            </thead>
+            <tbody>
+              {modes.map((m) => (
+                <tr key={m.id}>
+                  <td className="num">{m.id}</td>
+                  <td className="font-bold">{m.name}</td>
+                  {FLAGS.map(([k]) => (
+                    <td key={k} className="text-center">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(m[k])}
+                        disabled={busy}
+                        onChange={(e) =>
+                          act(
+                            () =>
+                              api.put(`/api/v1/admin/section-modes/${m.id}`, {
+                                name: m.name,
+                                [k]: e.target.checked,
+                              }),
+                            "已保存",
+                          )
+                        }
+                      />
+                    </td>
+                  ))}
+                  <td className="num">{m.categories}</td>
+                  <td className="text-right">
+                    {m.id !== 1 && (
+                      <button
+                        className="cmgmt-act cmgmt-act--danger"
+                        disabled={busy}
+                        onClick={() =>
+                          act(
+                            () =>
+                              api.del(`/api/v1/admin/section-modes/${m.id}`),
+                            "已删除（归属分类已回退默认模式）",
+                          )
+                        }
+                      >
+                        删除
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        {/* 维度管理（0085：站方自定义质量维度，NP 自定义 Section 口径） */}
+
+        {/* 维度字典（拆至 ./admin-sections-dict.tsx） */}
+        <SectionDictPanel
+          kind={kind}
+          setKind={setKind}
+          kinds={kinds}
+          dicts={dicts}
+          dName={dName}
+          setDName={setDName}
+          dSort={dSort}
+          setDSort={setDSort}
+          busy={busy}
+          act={act}
+        />
+
+        {/* 分类归属/自动过审（拆至 ./admin-sections-dict.tsx） */}
+        <SectionCatsPanel cats={cats} modes={modes} busy={busy} act={act} />
+      </div>
+    </>
   );
 }
