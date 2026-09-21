@@ -276,6 +276,13 @@ pub async fn site_type_pack_apply(
             .fetch_all(&state.repo.db)
             .await
             .unwrap_or_default();
+    // 字幕区口径（0146）：music/lossless → lyric（lrc 白名单/隐藏 FPS），其余 → subtitle。
+    // 与 module_* 同为「apply = 重置站型默认」语义——kind 决定上传校验规则，
+    // 站长切站型后若白名单仍是旧口径会导致上传全部被拒
+    let _ = sqlx::query("SELECT apply_subtitle_kind($1)")
+        .bind(&pack.code)
+        .execute(&state.repo.db)
+        .await;
     // 模块开关进程缓存失效（apply 改 module_* 后立即生效，不等 30s TTL）
     state.module_flags.invalidate().await;
     state

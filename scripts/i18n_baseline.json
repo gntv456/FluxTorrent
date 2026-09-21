@@ -854,6 +854,7 @@
  ],
  "components\\home-sections.tsx": [],
  "components\\home-site-data.tsx": [],
+ "components\\icons.tsx": [],
  "components\\increment-bulk.tsx": [
   19,
   20,
@@ -907,6 +908,7 @@
   25,
   28
  ],
+ "components\\motion.tsx": [],
  "components\\my-hr.tsx": [],
  "components\\notice-prefs.tsx": [],
  "components\\plugins-frames.tsx": [],
@@ -940,6 +942,12 @@
   110
  ],
  "components\\rss-builder.tsx": [],
+ "components\\scroll-buttons.tsx": [
+  65,
+  66,
+  76,
+  77
+ ],
  "components\\seed-stats-card.tsx": [
   47,
   55,
@@ -1213,26 +1221,12 @@
   202
  ],
  "components\\subtitle-board-table.tsx": [
-  27,
-  37,
-  40,
-  65,
-  66,
-  68,
-  80,
-  82,
-  84,
-  86,
-  91,
-  92,
-  156,
-  159,
-  192,
-  197
+  64,
+  65
  ],
- "components\\subtitle-board.tsx": [
-  93
- ],
+ "components\\subtitle-board.tsx": [],
+ "components\\subtitle-request-panel.tsx": [],
+ "components\\subtitle-upload-form.tsx": [],
  "components\\task-board-parts.tsx": [
   110,
   111,
@@ -1249,8 +1243,8 @@
   14
  ],
  "components\\theme-toggle.tsx": [
-  62,
-  63
+  63,
+  64
  ],
  "components\\torrent-actions.tsx": [
   73,
@@ -1293,11 +1287,17 @@
   127
  ],
  "components\\torrent-social.tsx": [],
+ "components\\torrent-subtitles.tsx": [
+  213,
+  214,
+  216,
+  218
+ ],
  "components\\torrent-table.tsx": [
-  41,
-  129,
-  159,
-  190
+  42,
+  130,
+  160,
+  191
  ],
  "components\\torrent-tags.tsx": [
   22,
@@ -1453,8 +1453,8 @@
  "app\\offline\\page.tsx": [],
  "app\\login\\login-form.tsx": [],
  "app\\login\\login-view.tsx": [
-  17,
-  18
+  18,
+  19
  ],
  "app\\login\\page.tsx": [],
  "app\\forgot\\page.tsx": [],
@@ -1494,16 +1494,16 @@
  "app\\(main)\\torrents\\_parts\\torrents-adv-groups.tsx": [],
  "app\\(main)\\torrents\\_parts\\torrents-search-box.tsx": [],
  "app\\(main)\\torrents\\_parts\\torrents-table.tsx": [
-  32
+  33
  ],
  "app\\(main)\\torrent\\[id]\\page.tsx": [
-  96,
-  104,
-  107,
+  97,
+  105,
   108,
-  162,
-  176,
-  233
+  109,
+  163,
+  177,
+  237
  ],
  "app\\(main)\\top\\page.tsx": [
   20,
@@ -1527,7 +1527,7 @@
  "app\\(main)\\requests\\page.tsx": [],
  "app\\(main)\\reports\\page.tsx": [],
  "app\\(main)\\preserve\\page.tsx": [
-  163
+  164
  ],
  "app\\(main)\\offers\\page.tsx": [],
  "app\\(main)\\offers\\_inner.tsx": [],
@@ -1571,9 +1571,9 @@
  "app\\(main)\\friends\\page.tsx": [],
  "app\\(main)\\forums\\page.tsx": [],
  "app\\(main)\\forums\\[id]\\page.tsx": [
-  156,
-  165,
-  171
+  157,
+  168,
+  176
  ],
  "app\\(main)\\forums\\topic\\[id]\\page.tsx": [],
  "app\\(main)\\forums\\new\\page.tsx": [],

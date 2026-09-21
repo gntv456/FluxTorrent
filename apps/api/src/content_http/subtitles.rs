@@ -1,12 +1,21 @@
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
-use serde::Deserialize;
+//! M17 字幕区核心链路（上传/列表/下载 + 0146 治理加固）。
+//! 元数据 CRUD、评分举报、语言字典在 subtitles_meta.rs；共用辅助/请求体在
+//! subtitles_util.rs（300 行门禁按域拆分）。
 
+use actix_web::{post, web, HttpRequest, HttpResponse};
+
+use super::subtitles_util::{
+    normalize_release, subtitle_ext_whitelist, subtitle_setting,
+    SubtitleUploadMeta, SubtitleUploadReq,
+};
 use crate::dto::ok;
 use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
+/// 上传（0146 加固）：体积上限 + 扩展名白名单（按 kind）+ sha 查重防刷火花 +
+/// 元数据落库 + 审核态判定。历史直链（http/https）不受体积/白名单校验。
 #[post("/subtitles")]
 pub(super) async fn subtitle_upload(
     req: HttpRequest,
@@ -23,191 +32,205 @@ pub(super) async fn subtitle_upload(
     } else {
         None
     };
-    let file_ref =
-        if let Some(sha) = body.file_sha.as_deref().map(str::trim).filter(|s| {
-            s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
-        }) {
-            // 校验附件归属：必须是本人在 attachments 上传过的文件（防冒用他人 sha）
-            let owned: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM attachments WHERE sha256 \
-             = $1 AND user_id = $2)",
+    // 审核开关（0146）：开 → status=0 待审；关 → 发布即生效（NP 口径）
+    let moderation =
+        subtitle_setting(&state.repo.db, "subtitle_moderation", "0").await?
+            == "1";
+    let (file_ref, size, ext) = resolve_file(
+        &state, &auth, &body, torrent_id,
+    )
+    .await?;
+    let meta = SubtitleUploadMeta::validate(&body)?;
+    let release_name = resolve_release(
+        &state, torrent_id, meta.release_name.as_deref(),
+    )
+    .await?;
+    // lang → lang_id（0146 字典表；旧 lang 字符串同步写，读端双轨过渡）
+    let lang_id: Option<i16> = match body.lang.as_deref().map(str::trim) {
+        Some(code) if !code.is_empty() && code != "0" => {
+            sqlx::query_scalar::<_, i16>(
+                "SELECT id FROM subtitle_langs WHERE code = $1",
             )
-            .bind(sha)
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
+            .bind(code)
+            .fetch_optional(&state.repo.db)
             .await
-            .unwrap_or(false);
-            if !owned {
-                return Err(DomainError::Validation(
-                    "附件未上传或不存在（请先通过上传接口提交字幕文件）".into(),
-                ));
-            }
-            format!("attach://{sha}")
-        } else if let Some(ext) =
-            body.file_ref.as_deref().map(str::trim).filter(|s| {
-                s.starts_with("http://") || s.starts_with("https://")
-            })
-        {
-            ext.to_string()
-        } else {
-            return Err(DomainError::Validation(
-                "请上传字幕文件（或提供 http/https 直链）".into(),
-            ));
-        };
+            .map_err(|e| DomainError::Internal(e.into()))?
+        }
+        _ => None,
+    };
+    let status: i16 = if moderation { 0 } else { 1 };
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO subtitles (torrent_id, user_id, title, lang, \
-         file_ref) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        "INSERT INTO subtitles (torrent_id, user_id, title, lang, lang_id, \
+         file_ref, size, ext, fps, machine_translated, hearing_impaired, \
+         foreign_parts_only, source, producer, proofreader, author_name, \
+         release_name, anon, status) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, \
+         $14, $15, $16, $17, $18, $19) RETURNING id",
     )
     .bind(torrent_id)
     .bind(auth.id)
-    .bind(&body.title)
+    .bind(body.title.trim())
     .bind(&body.lang)
+    .bind(lang_id)
     .bind(&file_ref)
+    .bind(size)
+    .bind(&ext)
+    .bind(meta.fps)
+    .bind(meta.machine_translated)
+    .bind(meta.hearing_impaired)
+    .bind(meta.foreign_parts_only)
+    .bind(&meta.source)
+    .bind(&meta.producer)
+    .bind(&meta.proofreader)
+    .bind(&meta.author_name)
+    .bind(release_name)
+    .bind(meta.anon)
+    .bind(status)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 发字幕 +5 火花（旧站口径）
     let idem = format!("subtitle:{}:{}", auth.id, id);
     earn_spark(&state.repo.db, auth.id, 5, "subtitle", &idem).await?;
-    Ok(ok(serde_json::json!({ "id": id, "reward": 5 })))
+    announce_upload(&state, &auth, &meta, body.title.trim()).await;
+    Ok(ok(serde_json::json!({ "id": id, "reward": 5, "status": status })))
 }
 
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct SubtitleRow {
-    id: i64,
+/// 文件三件套解析：attach://sha（体积/白名单/查重全链）或外部直链
+async fn resolve_file(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    auth: &crate::http::AuthUser,
+    body: &SubtitleUploadReq,
     torrent_id: Option<i64>,
-    username: Option<String>,
-    title: String,
-    lang: Option<String>,
-    downloads: i32,
-    created_at: chrono::DateTime<chrono::Utc>,
-    /// 文件大小（字节；无真实文件时为 0）
-    #[sqlx(default)]
-    size: Option<i64>,
-}
-
-/// 字幕列表（包子站 subtitles.php 口径）：search 关键词 + lang 语言 + letter 首字母筛选
-#[get("/subtitles")]
-pub(super) async fn subtitle_list(
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
-) -> DomainResult<impl Responder> {
-    let search = q
-        .get("search")
-        .map(|s| crate::http::like_pattern(&s))
-        .unwrap_or_else(|| "%".into());
-    let lang = q.get("lang_id").filter(|s| s.as_str() != "0").cloned();
-    let letter = q.get("letter").filter(|s| !s.is_empty()).cloned();
-    let rows = sqlx::query_as::<_, SubtitleRow>(
-        "SELECT s.id, s.torrent_id, u.username, s.title, s.lang, s.downloads, s.created_at, 0::bigint AS size \
-         FROM subtitles s LEFT JOIN users u ON u.id = s.user_id \
-         WHERE s.title ILIKE $1 \
-           AND ($2::text IS NULL OR s.lang = $2) \
-           AND ($3::text IS NULL OR s.title ILIKE $3 || '%') \
-         ORDER BY s.id DESC LIMIT 50",
-    )
-    .bind(search)
-    .bind(lang)
-    .bind(letter)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
-}
-
-/// 字幕下载：计数 +1；本地附件（attach://sha）直接回文件字节（Content-Disposition
-/// 按 title 命名 .txt/.ass/.srt 兜底），外部直链返回 JSON 引用由前端跳转。
-/// 审计修复（P1 空壳链路）：旧版只回 file_ref JSON——下载按钮点开是引用文本而非文件。
-#[get("/subtitles/{id}/download")]
-pub(super) async fn subtitle_download(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let sid = path.into_inner();
-    let row: Option<(String, Option<i64>, String)> = sqlx::query_as(
-        "SELECT file_ref, torrent_id, title FROM subtitles WHERE id = $1",
-    )
-    .bind(sid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((file_ref, torrent_id, title)) = row else {
-        return Err(DomainError::NotFound(sid));
-    };
-    sqlx::query("UPDATE subtitles SET downloads = downloads + 1 WHERE id = $1")
-        .bind(sid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    if let Some(sha) = file_ref.strip_prefix("attach://") {
-        // 与 /attachments/{sha} 同源读取（本地卷内容寻址），但不经 302：直接回字节，
-        // 便于客户端「点开即存文件」；文件名用字幕标题（清洗非法字符）。
-        let row: Option<(String, i64)> = sqlx::query_as(
-            "SELECT mime, size FROM attachments WHERE sha256 = $1",
+) -> DomainResult<(String, i64, Option<String>)> {
+    let _ = torrent_id;
+    if let Some(sha) = body.file_sha.as_deref().map(str::trim).filter(|s| {
+        s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
+    }) {
+        // 校验附件归属：必须是本人在 attachments 上传过的文件（防冒用他人 sha）
+        let owned: Option<(i64, String)> = sqlx::query_as(
+            "SELECT size, filename FROM attachments WHERE sha256 = $1 \
+             AND user_id = $2",
         )
         .bind(sha)
+        .bind(auth.id)
         .fetch_optional(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        let Some((mime, _size)) = row else {
-            return Err(DomainError::NotFound(sid));
+        let Some((fsize, fname)) = owned else {
+            return Err(DomainError::Validation(
+                "附件未上传或不存在（请先通过上传接口提交字幕文件）".into(),
+            ));
         };
-        let bytes = crate::storage::get(&state.repo.db, sha)
-            .await
-            .ok_or(DomainError::NotFound(sid))?;
-        let safe_title: String = title
-            .chars()
-            .map(|c| {
-                if c.is_alphanumeric() || " ._-()[]（）【】".contains(c) {
-                    c
-                } else {
-                    '_'
-                }
-            })
-            .take(80)
-            .collect::<String>();
-        let ext = if mime == "application/pdf" {
-            "pdf"
-        } else if mime == "text/plain" {
-            "txt"
-        } else {
-            "bin"
-        };
-        return Ok(HttpResponse::Ok()
-            .content_type(mime)
-            .insert_header((
-                actix_web::http::header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{safe_title}.{ext}\""),
-            ))
-            .body(bytes));
+        // P0-2 体积上限（maxsubsize 接线；默认 1MB）
+        let limit: i64 = subtitle_setting(
+            &state.repo.db,
+            "maxsubsize",
+            "1048576",
+        )
+        .await?
+        .parse()
+        .unwrap_or(1048576);
+        if fsize > limit {
+            return Err(DomainError::Validation(format!(
+                "字幕体积超限（{fsize} > {limit} 字节）"
+            )));
+        }
+        // P0-3 扩展名白名单：按 kind 取（lyric 允许 lrc，影视禁 lrc）
+        let file_ext = fname
+            .rsplit('.')
+            .next()
+            .map(|e| e.to_ascii_lowercase())
+            .filter(|_| fname.contains('.'));
+        let whitelist = subtitle_ext_whitelist(&state.repo.db).await?;
+        if let Some(e) = file_ext.as_ref() {
+            if !whitelist.contains(e) {
+                return Err(DomainError::Validation(format!(
+                    "不允许的扩展名 .{e}（允许：{}）",
+                    whitelist.join("/")
+                )));
+            }
+        }
+        // P0-4 sha 查重：同文件已挂在未删字幕下 → 拒绝（防重复 +5 火花）
+        let dup: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM subtitles WHERE file_ref = $1 \
+             AND deleted_at IS NULL)",
+        )
+        .bind(format!("attach://{sha}"))
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if dup {
+            return Err(DomainError::Validation(
+                "该字幕已存在（相同文件）".into(),
+            ));
+        }
+        Ok((format!("attach://{sha}"), fsize, file_ext))
+    } else if let Some(link) = body
+        .file_ref
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| s.starts_with("http://") || s.starts_with("https://"))
+    {
+        Ok((link.to_string(), 0, None))
+    } else {
+        Err(DomainError::Validation(
+            "请上传字幕文件（或提供 http/https 直链）".into(),
+        ))
     }
-    let _ = auth;
-    Ok(ok(serde_json::json!({
-        "id": sid,
-        "title": title,
-        "torrent_id": torrent_id,
-        "file_ref": file_ref,
-    })))
 }
 
-// ============ M18 课本中心 ============
+/// release_name：优先客户端提供，缺省用种子名归一化
+async fn resolve_release(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    torrent_id: Option<i64>,
+    provided: Option<&str>,
+) -> DomainResult<Option<String>> {
+    if let Some(rn) = provided.map(str::trim).filter(|s| !s.is_empty()) {
+        return Ok(Some(normalize_release(rn)));
+    }
+    match torrent_id {
+        Some(tid) => {
+            sqlx::query_scalar::<_, String>(
+                "SELECT name FROM torrents WHERE id = $1",
+            )
+            .bind(tid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .map(|n| normalize_release(&n))
+            .map_or(Ok(None), |v| Ok(Some(v)))
+        }
+        None => Ok(None),
+    }
+}
 
-#[derive(Deserialize)]
-struct SubtitleUploadReq {
-    torrent_id: i64,
-    title: String,
-    #[serde(default)]
-    lang: Option<String>,
-    /// 真实文件的附件 sha256（前端先调 POST /attachments 上传拿到）。
-    /// 审计修复（P1 空壳链路）：旧版 file_ref 是客户端任意字符串或后端伪造的
-    /// s3:// UUID——下载只回 JSON 引用，全链路无文件本体。现统一走 attachments
-    /// 存储（本地 savedirectory 卷 + sha256 内容寻址 + 配额），file_ref 记
-    /// attach://<sha>；历史外部引用（http(s):// 链接）仍按原样展示。
-    #[serde(default)]
-    file_sha: Option<String>,
-    /// 兼容字段：外部字幕站直链（http/https），与本地附件二选一
-    #[serde(default)]
-    file_ref: Option<String>,
+/// 公告联动（P2-3）：shoutbox 系统消息（匿名则「一位匿名用户」）。
+/// 失败静默——公告不可用不应阻断上传主链路
+async fn announce_upload(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    auth: &crate::http::AuthUser,
+    meta: &SubtitleUploadMeta,
+    title: &str,
+) {
+    let display = if meta.anon {
+        "一位匿名用户".to_string()
+    } else if let Some(name) = &meta.author_name {
+        name.clone()
+    } else {
+        sqlx::query_scalar::<_, String>(
+            "SELECT username FROM users WHERE id = $1",
+        )
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or_else(|_| "用户".into())
+    };
+    let _ = sqlx::query(
+        "INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)",
+    )
+    .bind(auth.id)
+    .bind(format!("{display} 上传了字幕「{title}」"))
+    .execute(&state.repo.db)
+    .await;
 }

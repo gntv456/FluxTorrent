@@ -19,6 +19,10 @@ export interface SiteProfile {
   metadata_sources?: string[];
   /** 站点简介（0088，site_settings.site_desc；页脚「站点信息」，空回落字典默认） */
   site_desc?: string | null;
+  /** 字幕区口径（0146）：lyric = 歌词站（lrc 白名单/隐藏 FPS/歌词文案） */
+  subtitle_kind?: string;
+  /** 字幕区显示名（0146；默认「字幕」，音乐站「歌词」） */
+  subtitle_label?: string;
   categories: { id: number; name: string }[];
   modules: Record<string, boolean>;
 }
@@ -38,6 +42,8 @@ export async function getSiteProfile(): Promise<SiteProfile> {
       founded: null,
       metadata_sources: ["imdb", "douban", "bangumi", "indienova"],
       site_desc: null,
+      subtitle_kind: "subtitle",
+      subtitle_label: "字幕",
       categories: [],
       modules: {},
     };

@@ -140,9 +140,62 @@ async fn report_resolve(
     .bind(auth.id)
     .bind(reporter_id)
     .bind(subject)
-    .bind(pm)
+    .bind(&pm)
     .execute(&state.repo.db)
     .await;
+    // 字幕举报奖惩闭环（0146 P1-8，NP 口径：成立 → 举报者 +50、上传者 −100、
+    // 删字幕；dismiss 不动账）。幂等键锚定举报单：重复处理不会二次动账。
+    if action == "act" && ref_type == "subtitle" {
+        let uploader: Option<i64> = sqlx::query_scalar(
+            "SELECT user_id FROM subtitles WHERE id = $1 AND deleted_at \
+             IS NULL",
+        )
+        .bind(ref_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let n = sqlx::query(
+            "UPDATE subtitles SET deleted_at = now(), moderated_by = $1, \
+             moderated_at = now() WHERE id = $2 AND deleted_at IS NULL",
+        )
+        .bind(auth.id)
+        .bind(ref_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+        if n > 0 {
+            let rid = body.report_id;
+            let reward_idem =
+                format!("subtitle-report-reward:{rid}");
+            crate::economy_http::earn_spark(
+                &state.repo.db,
+                reporter_id,
+                50,
+                "subtitle_report",
+                &reward_idem,
+            )
+            .await?;
+            if let Some(uploader) = uploader {
+                if uploader != reporter_id {
+                    let fine_idem =
+                        format!("subtitle-report-fine:{}", body.report_id);
+                    // 余额不足扣不满也无妨：spend_spark 会报 InsufficientSpark，
+                    // 悬赏已发、字幕已删，罚金失败不阻断举报结案
+                    let _ = crate::economy_http::spend_spark(
+                        &state.repo.db,
+                        uploader,
+                        100,
+                        "subtitle_violation",
+                        &fine_idem,
+                        "subtitle",
+                        ref_id,
+                    )
+                    .await;
+                }
+            }
+        }
+    }
     state
         .repo
         .audit(Some(auth.id), "report.resolve", Some(body.report_id))

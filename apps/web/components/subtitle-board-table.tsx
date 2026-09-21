@@ -6,68 +6,41 @@ import type { SubtitleRow } from "@/components/subtitle-board-shared";
 
 /** 字幕列表子面板（从 components/subtitle-board.tsx 按域拆出）：
  *  七列表格（语言/标题/添加时间/大小/点击/上传者/举报）+ 语言映射与
- *  展示工具（旗帜/KB/相对时间/规则加粗）。主组件与筛选/上传留在原文件。 */
+ *  展示工具（旗帜/KB/相对时间/规则加粗）。主组件与筛选/上传留在原文件。
+ *  0146：语言读字典接口、大小真实值、评分列、分页条、坏字幕标记。 */
 
-/** NexusPHP 字幕语言表（value 与旧站 sel_lang 一致） */
-export const LANGS: [string, string][] = [
-  ["1", "Bulgarian"],
-  ["2", "Croatian"],
-  ["3", "Czech"],
-  ["4", "Danish"],
-  ["5", "Dutch"],
-  ["6", "English"],
-  ["7", "Estonian"],
-  ["8", "Finnish"],
-  ["9", "French"],
-  ["10", "German"],
-  ["11", "Greek"],
-  ["12", "Hebrew"],
-  ["13", "Hungarian"],
-  ["14", "Italian"],
-  ["15", "日本語"],
-  ["16", "한국어"],
-  ["17", "Norwegian"],
-  ["18", "Other"],
-  ["19", "Polish"],
-  ["20", "Portuguese"],
-  ["21", "Romanian"],
-  ["22", "Russian"],
-  ["23", "Serbian"],
-  ["24", "Slovak"],
-  ["25", "简体中文"],
-  ["26", "Spanish"],
-  ["27", "Swedish"],
-  ["28", "繁體中文"],
-  ["29", "Turkish"],
-  ["30", "Slovenian"],
-  ["31", "Thai"],
-];
-/** lang 存储值（chs/cht/eng…）→ 旧站数字 id 映射 */
-export const LANG_CODE_TO_ID: Record<string, string> = {
-  chs: "25",
-  cht: "28",
-  eng: "6",
-  jpn: "15",
-  kor: "16",
-  other: "18",
-};
-const LANG_ID_TO_LABEL = (id: string) =>
-  LANGS.find(([v]) => v === id)?.[1] ?? id;
+/** 语言字典（GET /subtitles/langs；模块开着的站点启动时拉一次缓存于此） */
+let langDict: { code: string; name: string; flag: string }[] | null = null;
+export async function loadLangDict(): Promise<
+  { code: string; name: string; flag: string }[]
+> {
+  if (langDict) return langDict;
+  try {
+    const rows = await api.get<
+      { code: string; name: string; flag: string | null }[]
+    >("/api/v1/subtitles/langs");
+    langDict = rows.map((r) => ({
+      code: r.code,
+      name: r.name,
+      flag: r.flag ?? "🌐",
+    }));
+  } catch {
+    langDict = [];
+  }
+  return langDict;
+}
+/** 列表筛选下拉用（id 语义已废，直接回 code/name/flag） */
+export const langOptions = loadLangDict;
 
 export const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 export function langLabelOf(lang: string | null): string {
   if (!lang) return "Other";
-  return LANG_ID_TO_LABEL(LANG_CODE_TO_ID[lang] ?? "18");
+  return langDict?.find((l) => l.code === lang)?.name ?? lang;
 }
-function flagText(lang: string | null): string {
-  const label = langLabelOf(lang);
-  if (label === "简体中文") return "🇨🇳";
-  if (label === "繁體中文") return "🇹🇼";
-  if (label === "English") return "🇬🇧";
-  if (label === "日本語") return "🇯🇵";
-  if (label === "한국어") return "🇰🇷";
-  return "🌐";
+export function flagText(lang: string | null): string {
+  if (!lang) return "🌐";
+  return langDict?.find((l) => l.code === lang)?.flag ?? "🌐";
 }
 export function fmtKB(bytes: number): string {
   if (!bytes) return "—";
@@ -77,13 +50,13 @@ export function fmtKB(bytes: number): string {
 export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 60) return `${m}分钟`;
+  if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}时${m % 60}分`;
+  if (h < 24) return `${h}h${m % 60}m`;
   const d = Math.floor(h / 24);
-  if (d < 30) return `${d}天${h % 24}时`;
+  if (d < 30) return `${d}d${h % 24}h`;
   const mo = Math.floor(d / 30);
-  return `${mo}月${d % 30}天`;
+  return `${mo}mo${d % 30}d`;
 }
 /** 规则文本加粗关键部分（同步/标题/合集/Vobsub/proper） */
 export function boldRule(r: string): string {
@@ -137,31 +110,41 @@ export function SubtitleListTable({
                   target="_blank"
                   rel="noreferrer"
                   onClick={async (e) => {
-                    // 本地附件（attach://sha）端点直接回文件字节：带 Bearer 拉取后
-                    // 触发浏览器保存；外部直链（http ref）后端回 JSON，跳新页由其自行下载
+                    // 本地附件端点直接回文件字节：带凭证拉取后触发保存；
+                    // 外部直链后端回 JSON，跳新页由其自行下载
                     e.preventDefault();
                     try {
                       const buf = await api.getBlob(
                         `/api/v1/subtitles/${s.id}/download`,
                       );
-                      const ctype = "application/octet-stream";
-                      const name = `${s.title.replace(/[\\/:*?"<>|]/g, "_")}.srt`;
-                      const blob = new Blob([buf], { type: ctype });
+                      const ext = s.ext || "srt";
+                      const safe =
+                        s.title.replace(/[\\/:*?"<>|]/g, "_");
+                      const name = `${safe}.${ext}`;
+                      const blob = new Blob([buf], {
+                        type: "application/octet-stream",
+                      });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
                       a.download = name;
                       a.click();
                       URL.revokeObjectURL(url);
-                      onMsg(`字幕「${s.title}」已开始下载`);
+                      onMsg(t.downloadOk?.replace("{title}", s.title));
                       onReload();
                     } catch (err) {
-                      onMsg(err instanceof Error ? err.message : "下载失败");
+                      onMsg(err instanceof Error ? err.message : "fail");
                     }
                   }}
                 >
                   {s.title}
                 </a>
+                {typeof s.rating === "number" && s.rating > 0 && (
+                  <span className="ml-1 text-[11px] text-sub">
+                    ★ {s.rating}
+                    {s.rating_count ? `(${s.rating_count})` : ""}
+                  </span>
+                )}
               </td>
               <td
                 className="nowrap text-center"
@@ -172,7 +155,9 @@ export function SubtitleListTable({
               <td className="num text-center">{fmtKB(s.size ?? 0)}</td>
               <td className="num text-center">{s.downloads}</td>
               <td className="text-center">
-                <span className="nowrap">{s.username ?? t.noAccount}</span>
+                <span className="nowrap">
+                  {s.username ?? t.noAccount}
+                </span>
               </td>
               <td className="text-center">
                 <button
@@ -181,20 +166,24 @@ export function SubtitleListTable({
                   title={t.reportTitle}
                   aria-label={t.reportTitle}
                   onClick={async () => {
-                    const reason = window.prompt(t.reportTitle);
-                    if (!reason?.trim()) return;
+                    if (
+                      !window.confirm(
+                        t.badMarkConfirm,
+                      )
+                    )
+                      return;
                     try {
-                      await api.post("/api/v1/reports", {
-                        ref_type: "subtitle",
-                        ref_id: s.id,
-                        reason: reason.trim(),
-                      });
-                      onMsg(t.reportOk ?? "举报已提交，感谢反馈");
+                      await api.post(
+                        `/api/v1/subtitles/${s.id}/report`,
+                        {},
+                      );
+                      onMsg(t.reportOk);
+                      onReload();
                     } catch (e) {
                       onMsg(
                         e instanceof Error
                           ? e.message
-                          : (t.reportFail ?? "举报失败"),
+                          : t.reportFail,
                       );
                     }
                   }}
