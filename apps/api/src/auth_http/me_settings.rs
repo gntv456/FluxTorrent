@@ -2,80 +2,12 @@
 //! 从 auth_http.rs 按域拆出。
 
 use actix_web::{get, web, HttpRequest, Responder};
-use serde::Deserialize;
 use sqlx::Row;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
-
-#[derive(Deserialize)]
-struct UserTorrentlistQuery {
-    #[serde(default)]
-    limit: Option<i64>,
-}
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct RecentComment {
-    torrent_id: i64,
-    body: String,
-    created_at: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct RecentUpload {
-    id: i64,
-    name: String,
-    small_descr: Option<String>,
-    size: i64,
-    created_at: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct PublicProfile {
-    id: i64,
-    username: String,
-    title: Option<String>,
-    avatar_url: Option<String>,
-    class_id: i32,
-    class_name: Option<String>,
-    uploaded: i64,
-    downloaded: i64,
-    donor: bool,
-    created_at: chrono::DateTime<chrono::Utc>,
-    last_seen_at: Option<chrono::DateTime<chrono::Utc>>,
-    #[sqlx(default)]
-    avatar_frame_css: Option<String>,
-    #[sqlx(default)]
-    avatar_frame_image: Option<String>,
-    seeding: i64,
-    leeching: i64,
-    uploads: i64,
-    #[serde(rename = "comments")]
-    comment_count: i64,
-    medals: i64,
-}
-
-#[derive(Deserialize)]
-struct LoginReq {
-    username: String,
-    password: String,
-    #[serde(default)]
-    totp_code: Option<u32>,
-}
-
-#[derive(Deserialize)]
-struct RegisterReq {
-    username: String,
-    email: String,
-    password: String,
-    invite_code: String,
-    #[serde(default)]
-    captcha_id: String,
-    #[serde(default)]
-    captcha_answer: i32,
-}
 
 #[get("/me/overview")]
 pub async fn me_overview(

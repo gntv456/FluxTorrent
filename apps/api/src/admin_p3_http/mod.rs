@@ -1,0 +1,67 @@
+//! 第八轮 P3：管理套件（参考站后台逐页深挖对照报告落地）。
+//! 按域拆分（300 行门禁）：见各子模块头注释。
+//! 种子批量工作台 / 标签字典 / H&R 总览 / 邀请·签到·改名·修改记录 /
+//! 勋章·道具 CRUD / 用户批量操作 / Section 多维 / 考核·任务配置 / Tracker URL / 后台运维。
+
+mod attendance;
+mod ban_ip;
+mod exam_users;
+mod frames;
+mod hr;
+mod increment_bulk;
+mod increment_targets;
+mod invites;
+mod jixiao_ops;
+mod jixiao_types;
+mod medal_rarities;
+mod medal_users;
+mod medals;
+mod meta;
+mod mount;
+mod ops;
+mod rename_logs;
+mod roles;
+mod section_dict;
+mod section_kinds;
+mod section_public;
+mod sections;
+mod shop;
+mod tags;
+mod tasks;
+mod templates;
+mod torrent_batch;
+mod tracker_urls;
+mod user_props;
+mod user_rename;
+mod users_batch;
+
+pub use attendance::*;
+pub use ban_ip::*;
+pub use exam_users::*;
+pub use frames::*;
+pub use hr::*;
+pub use increment_bulk::*;
+pub use invites::*;
+pub use jixiao_ops::*;
+pub use jixiao_types::*;
+pub use medal_rarities::*;
+pub use medal_users::*;
+pub use medals::*;
+pub use meta::*;
+pub use mount::*;
+pub use ops::*;
+pub use rename_logs::*;
+pub use roles::*;
+pub use section_dict::*;
+pub use section_kinds::*;
+pub use section_public::*;
+pub use sections::*;
+pub use shop::*;
+pub use tags::*;
+pub use tasks::*;
+pub use templates::*;
+pub use torrent_batch::*;
+pub use tracker_urls::*;
+pub use user_props::*;
+pub use user_rename::*;
+pub use users_batch::*;
