@@ -25,6 +25,9 @@ struct SubtitleRow {
     anon: bool,
     rating_sum: i32,
     rating_count: i32,
+    /// 上传者 id（anon 行照常返回，前端按本人判定编辑/删除入口）
+    user_id: i64,
+    verified: bool,
 }
 
 /// 字幕列表（包子站 subtitles.php 口径 + 0146）：
@@ -121,7 +124,7 @@ pub(super) async fn subtitle_list(
         &format!(
             "SELECT s.id, s.torrent_id, u.username, s.title, s.lang, \
              s.lang_id, s.downloads, s.created_at, s.size, s.ext, s.anon, \
-             s.rating_sum, s.rating_count \
+             s.rating_sum, s.rating_count, s.user_id, s.verified \
              FROM subtitles s LEFT JOIN users u ON u.id = s.user_id \
              WHERE {predicates} ORDER BY {sort} {order}, s.id DESC \
              OFFSET $6 LIMIT $7"
@@ -159,6 +162,8 @@ pub(super) async fn subtitle_list(
                 "downloads": r.downloads, "created_at": r.created_at,
                 "size": r.size, "ext": r.ext, "rating": rating,
                 "rating_count": r.rating_count,
+                // 本人判定用（anon 行 username 已脱敏但 id 保留给编辑/删除入口）
+                "user_id": r.user_id, "verified": r.verified,
             })
         })
         .collect();

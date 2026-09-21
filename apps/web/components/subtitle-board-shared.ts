@@ -13,6 +13,9 @@ export interface SubtitleRow {
   rating?: number | null;
   rating_count?: number;
   created_at: string;
+  /** 上传者 id（anon 行也有；前端判定编辑/删除入口） */
+  user_id?: number;
+  verified?: boolean;
 }
 
 /** 列表响应（0146 分页信封；旧数组形态兼容到 items） */

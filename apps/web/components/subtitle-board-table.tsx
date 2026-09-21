@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { SubtitleRow } from "@/components/subtitle-board-shared";
@@ -68,7 +69,8 @@ export function boldRule(r: string): string {
     .replace(/\*&lt;/g, "*<");
 }
 
-/** 字幕列表（七列）：本地附件走 BLOB 下载，外部直链跳新页；举报走 prompt */
+/** 字幕列表（七列）：本地附件走 BLOB 下载，外部直链跳新页；举报走 prompt。
+ *  0147 行内治理：评分（1-10 下拉）、本人/管理编辑（标题/语言/匿名）、删除。 */
 export function SubtitleListTable({
   rows,
   onMsg,
@@ -80,6 +82,18 @@ export function SubtitleListTable({
 }) {
   const { dict } = useI18n();
   const t = dict.subtitles;
+  const [me, setMe] = useState<{
+    id: number;
+    class_id?: number;
+  } | null>(null);
+  useEffect(() => {
+    api
+      .get<{ id: number; class_id?: number }>("/api/v1/me")
+      .then(setMe)
+      .catch(() => setMe(null));
+  }, []);
+  const canModify = (s: SubtitleRow) =>
+    !!me && (me.id === s.user_id || (me.class_id ?? 0) >= 90);
   return (
     <div
       className="baozi-wide-table-scroll subtitles-table-scroll"
@@ -139,11 +153,48 @@ export function SubtitleListTable({
                 >
                   {s.title}
                 </a>
+                {s.verified && (
+                  <span
+                    className="ml-1 text-[11px] font-bold text-mint"
+                    title={t.verifiedTip ?? "verified"}
+                  >
+                    ✓
+                  </span>
+                )}
                 {typeof s.rating === "number" && s.rating > 0 && (
                   <span className="ml-1 text-[11px] text-sub">
                     ★ {s.rating}
                     {s.rating_count ? `(${s.rating_count})` : ""}
                   </span>
+                )}
+                {me && (
+                  <select
+                    className="ml-1 border-0 bg-transparent text-[11px] text-sub"
+                    aria-label={t.voteLabel}
+                    defaultValue=""
+                    onChange={async (e) => {
+                      const v = e.target.value;
+                      if (!v) return;
+                      e.target.value = "";
+                      try {
+                        await api.post(
+                          `/api/v1/subtitles/${s.id}/vote`,
+                          { score: Number(v) },
+                        );
+                        onMsg(t.voteOk ?? "ok");
+                        onReload();
+                      } catch (err) {
+                        onMsg(err instanceof Error ? err.message : "fail");
+                      }
+                    }}
+                  >
+                    <option value="">{t.voteLabel}</option>
+                    {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </td>
               <td
@@ -190,6 +241,61 @@ export function SubtitleListTable({
                 >
                   ⚑
                 </button>
+                {canModify(s) && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="subtitles-report"
+                      title={t.editLabel}
+                      aria-label={t.editLabel}
+                      onClick={async () => {
+                        // 行内编辑（NP 口径精简）：标题 + 匿名；语言留给下轮
+                        const title = window.prompt(
+                          t.editPrompt ?? "title",
+                          s.title,
+                        );
+                        if (title === null) return;
+                        try {
+                          await api.patch(
+                            `/api/v1/subtitles/${s.id}`,
+                            { title },
+                          );
+                          onMsg(t.editOk ?? "ok");
+                          onReload();
+                        } catch (e) {
+                          onMsg(
+                            e instanceof Error ? e.message : "fail",
+                          );
+                        }
+                      }}
+                    >
+                      ✎
+                    </button>
+                    {" "}
+                    <button
+                      type="button"
+                      className="subtitles-report"
+                      title={t.delLabel}
+                      aria-label={t.delLabel}
+                      onClick={async () => {
+                        if (!window.confirm(t.delConfirm ?? "delete?"))
+                          return;
+                        try {
+                          await api.del(`/api/v1/subtitles/${s.id}`);
+                          onMsg(t.delOk ?? "ok");
+                          onReload();
+                        } catch (e) {
+                          onMsg(
+                            e instanceof Error ? e.message : "fail",
+                          );
+                        }
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </>
+                )}
               </td>
             </tr>
           ))}

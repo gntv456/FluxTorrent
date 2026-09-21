@@ -24,6 +24,8 @@ async fn can_modify(
 #[derive(Deserialize, Default)]
 struct SubtitlePatchReq {
     #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
     lang: Option<String>,
     #[serde(default)]
     fps: Option<f64>,
@@ -89,23 +91,29 @@ pub(super) async fn subtitle_patch(
         Some(_) => return Err(DomainError::Forbidden),
         None => false,
     };
+    // 标题可编辑（0147 行内编辑入口）：空串视为不改（COALESCE 语义）
+    let title = trim_opt(&body.title);
+    if body.title.as_deref().map(str::trim) == Some("") {
+        return Err(DomainError::Validation("标题不能为空".into()));
+    }
     let sql = if verified_set {
-        "UPDATE subtitles SET lang = COALESCE($2, lang), lang_id = \
-         COALESCE($3, lang_id), fps = COALESCE($4, fps), source = \
-         COALESCE($5, source), producer = COALESCE($6, producer), \
-         proofreader = COALESCE($7, proofreader), author_name = \
-         COALESCE($8, author_name), anon = COALESCE($9, anon), verified \
-         = $10 WHERE id = $1 AND deleted_at IS NULL"
+        "UPDATE subtitles SET title = COALESCE($2, title), lang = \
+         COALESCE($3, lang), lang_id = COALESCE($4, lang_id), fps = \
+         COALESCE($5, fps), source = COALESCE($6, source), producer = \
+         COALESCE($7, producer), proofreader = COALESCE($8, proofreader), \
+         author_name = COALESCE($9, author_name), anon = COALESCE($10, \
+         anon), verified = $11 WHERE id = $1 AND deleted_at IS NULL"
     } else {
-        "UPDATE subtitles SET lang = COALESCE($2, lang), lang_id = \
-         COALESCE($3, lang_id), fps = COALESCE($4, fps), source = \
-         COALESCE($5, source), producer = COALESCE($6, producer), \
-         proofreader = COALESCE($7, proofreader), author_name = \
-         COALESCE($8, author_name), anon = COALESCE($9, anon) WHERE id \
-         = $1 AND deleted_at IS NULL"
+        "UPDATE subtitles SET title = COALESCE($2, title), lang = \
+         COALESCE($3, lang), lang_id = COALESCE($4, lang_id), fps = \
+         COALESCE($5, fps), source = COALESCE($6, source), producer = \
+         COALESCE($7, producer), proofreader = COALESCE($8, proofreader), \
+         author_name = COALESCE($9, author_name), anon = COALESCE($10, \
+         anon) WHERE id = $1 AND deleted_at IS NULL"
     };
     let n = sqlx::query(sql)
         .bind(sid)
+        .bind(title)
         .bind(trim_opt(&body.lang))
         .bind(lang_id)
         .bind(body.fps)

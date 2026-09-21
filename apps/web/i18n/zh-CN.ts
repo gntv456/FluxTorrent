@@ -1575,6 +1575,15 @@ usertools: {
       "5.禁止在歌词文件内塞广告或下载信息。",
       "6.上传不合格歌词将被删除并扣 {magic}；举报成立奖励 {magic}。",
     ] as string[],
+    voteLabel: "评分",
+    voteOk: "评分已提交",
+    editLabel: "编辑字幕",
+    editPrompt: "新标题（留空取消）",
+    editOk: "字幕已更新",
+    delLabel: "删除字幕",
+    delConfirm: "确定删除该字幕？此操作不可撤销。",
+    delOk: "字幕已删除",
+    verifiedTip: "管理认证",
   },
 
   friends: {

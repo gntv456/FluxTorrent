@@ -1578,6 +1578,15 @@ usertools: {
       "5.禁止在歌詞文件內塞廣告或下載信息。",
       "6.上傳不合格歌詞將被刪除並扣 {magic}；舉報成立獎勵 {magic}。",
     ] as string[],
+    voteLabel: "評分",
+    voteOk: "評分已提交",
+    editLabel: "編輯字幕",
+    editPrompt: "新標題（留空取消）",
+    editOk: "字幕已更新",
+    delLabel: "刪除字幕",
+    delConfirm: "確定刪除該字幕？此操作不可撤銷。",
+    delOk: "字幕已刪除",
+    verifiedTip: "管理認證",
   },
 
   friends: {
