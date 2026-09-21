@@ -1653,5 +1653,8 @@
   "app\\(main)\\admin\\settings\\_parts\\settings-panels.tsx": [],
   "app\\(main)\\admin\\settings\\_parts\\settings-toolbar.tsx": [
     45
+  ],
+  "components\\user-checkin.tsx": [
+    44
   ]
 }
