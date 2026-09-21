@@ -119,9 +119,13 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
         </div>
       )}
 
-      {/* ── 高级搜索（原生 details 折叠；齿轮按钮/summary 均可开合；
-            有筛选条件时默认展开；0118 分组重排） ── */}
-      <details className="tsb-adv" id="tsb-adv" open={advancedOpen}>
+      {/* ── 高级搜索面板（0147：触发入口只剩常驻行的齿轮按钮，原 summary
+            整行隐藏——details 仅作开合容器；有筛选条件时默认展开） ── */}
+      <details
+        className="tsb-adv tsb-adv--gear"
+        id="tsb-adv"
+        open={advancedOpen}
+      >
         <summary className="tsb-adv__summary" title={t2.advanced}>
           <span className="tsb-adv__icon" aria-hidden="true">
             ⚙
@@ -130,7 +134,6 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
           {nonSearchChips > 0 && (
             <span className="tsb-adv__badge">{nonSearchChips}</span>
           )}
-          <span className="tsb-chevron" aria-hidden="true" />
         </summary>
         <div className="tsb-adv__body">
           <p className="tsb-adv__hint">{t2.advHint}</p>
