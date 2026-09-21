@@ -9,6 +9,7 @@ import { MedalIcon } from "@/components/medal-icon";
 import type { Locale } from "@/i18n/config";
 import { dateLocale } from "@/i18n/config";
 import { Card, Row } from "./profile-card";
+import { MoreInfoCard } from "./profile-moreinfo";
 import type { ProfileData } from "./profile-types";
 
 export function CenterGrid({
@@ -203,40 +204,7 @@ export function CenterGrid({
       </Card>
 
       {/* —— 更多资料 —— */}
-      <Card title={t.moreInfo} icon="◍">
-        <Row label={t.uploads} icon="☰">
-          <span className="num">{p.uploads}</span>
-        </Row>
-        <Row label={t.comments} icon="✎">
-          <span className="num">{p.comments}</span>
-        </Row>
-        <Row label={t.tabPosts} icon="◈">
-          <span className="num">{data.recent_posts.length}</span>
-        </Row>
-        {data.subtitle_count > 0 && (
-          <Row label={t.subtitleWorks} icon="╬">
-            <span className="num">
-              {`${data.subtitle_count} · ${t.subtitleDownloads} ` +
-                `${data.subtitle_downloads}`}
-            </span>
-          </Row>
-        )}
-        {data.subtitle_cert && (
-          <Row label={t.subtitleCertLabel} icon="✎">
-            <span
-              className={
-                data.subtitle_cert === "gold"
-                  ? "font-bold text-amber-500"
-                  : "font-bold text-mint"
-              }
-            >
-              {data.subtitle_cert === "gold"
-                ? (t.subtitleCertGold ?? "gold")
-                : (t.subtitleCertName ?? "certified")}
-            </span>
-          </Row>
-        )}
-      </Card>
+      <MoreInfoCard data={data} t={t} />
 
       {/* —— 佩戴勋章（展示位，整行：与上方双列错开，避免留出半格空位） —— */}
       <Card title={t.wornMedals} icon="✪" full>
@@ -310,3 +278,4 @@ export function CenterGrid({
     </div>
   );
 }
+

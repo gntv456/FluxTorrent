@@ -46,19 +46,18 @@ pub(super) async fn subtitle_request_fulfill(
     // CAS：0 → 1（并发双交付只成功一个）。
     // (赏金池, crew, offer_free, free_days, torrent_id)
     type FulfillRow = (i64, serde_json::Value, bool, i32, Option<i64>);
-    let row: FulfillRow =
-        sqlx::query_scalar::<_, FulfillRow>(
-            "UPDATE subtitle_requests SET status = 1, fulfilled_subtitle_id \
-             = $2, paid_at = now() WHERE id = $1 AND status = 0 RETURNING \
-             bounty, crew, offer_free, free_days, torrent_id",
-        )
-        .bind(rid)
-        .bind(body.subtitle_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .ok_or(DomainError::Validation("该求字幕已处理".into()))?;
-    let (bounty, crew, offer_free, free_days, torrent_id) = row;
+    let row: Option<FulfillRow> = sqlx::query_as::<_, FulfillRow>(
+        "UPDATE subtitle_requests SET status = 1, fulfilled_subtitle_id \
+         = $2, paid_at = now() WHERE id = $1 AND status = 0 RETURNING \
+         bounty, crew, offer_free, free_days, torrent_id",
+    )
+    .bind(rid)
+    .bind(body.subtitle_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (bounty, crew, offer_free, free_days, torrent_id) =
+        row.ok_or(DomainError::Validation("该求字幕已处理".into()))?;
     let mut paid = super::subtitles_close::settle_crew(
         &state.repo.db,
         rid,

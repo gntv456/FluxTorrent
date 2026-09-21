@@ -221,17 +221,8 @@ pub async fn user_public_profile(
             }));
         }
     }
-    // 近期论坛回帖（社区动态板块；匿名帖不暴露归属）
-    let recent_posts: Vec<(i64, i64, Option<String>, chrono::DateTime<chrono::Utc>)> =
-        sqlx::query_as(
-            "SELECT p.id, p.topic_id, left(p.body_text, 80), p.created_at FROM posts p \
-         WHERE p.user_id = $1 AND p.body_text <> '' \
-         ORDER BY p.id DESC LIMIT 5",
-        )
-        .bind(uid)
-        .fetch_all(&state.repo.db)
-        .await
-        .unwrap_or_default();
+    // 近期论坛回帖（社区动态板块；匿名帖不暴露归属；helper 见文件尾）
+    let recent_posts = super::profile_helpers::recent_posts_of(&state.repo.db, uid).await;
     let uploads: Vec<RecentUpload> = sqlx::query_as(
                 "SELECT id, name, small_descr, size, \
          created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",
@@ -260,16 +251,8 @@ pub async fn user_public_profile(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (subtitle_count, subtitle_downloads) =
         sub_stats.unwrap_or((0, 0));
-    // 字幕身份（0149）：gold 优先于 certified；anon 上传与身份无关（按人）
-    let cert_tier: Option<String> = sqlx::query_scalar(
-        "SELECT tier FROM user_subtitle_certs WHERE user_id = $1 AND \
-         revoked_at IS NULL ORDER BY CASE tier WHEN 'gold' THEN 0 ELSE 1 END \
-         LIMIT 1",
-    )
-    .bind(uid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .unwrap_or(None);
+    // 字幕身份（0149）：gold 优先于 certified（helper 见文件尾）
+    let cert_tier = super::profile_helpers::subtitle_cert_tier(&state.repo.db, uid).await;
     Ok(ok(serde_json::json!({
         "profile": profile,
         "avatar_frame_css": profile.avatar_frame_css,
