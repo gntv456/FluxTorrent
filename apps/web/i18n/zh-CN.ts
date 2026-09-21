@@ -1884,6 +1884,8 @@ usertools: {
     moreInfo: "更多资料",
     noClient: "暂无客户端记录",
     noMedals: "暂未佩戴勋章",
+    subtitleWorks: "字幕作品",
+    subtitleDownloads: "下载",
   },
   donate: {
     title: "捐赠",

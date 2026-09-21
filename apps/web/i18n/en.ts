@@ -1890,6 +1890,8 @@ usertools: {
     moreInfo: "More Info",
     noClient: "No client recorded",
     noMedals: "No medals worn",
+    subtitleWorks: "Subtitles",
+    subtitleDownloads: "downloads",
   },
   donate: {
     title: "Donate",

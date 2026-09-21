@@ -61,10 +61,41 @@ pub(super) async fn subtitle_list(
         "DESC"
     };
     let sort = match q.get("sort").map(String::as_str) {
-        Some("downloads") => "s.downloads",
-        Some("size") => "s.size",
-        Some("rating") => "(s.rating_sum::float / NULLIF(s.rating_count,0))",
-        _ => "s.created_at",
+        Some("downloads") => "s.downloads".to_string(),
+        Some("size") => "s.size".to_string(),
+        Some("rating") => {
+            "(s.rating_sum::float / NULLIF(s.rating_count,0))".to_string()
+        }
+        // P1-4 匹配分排序（OpenSubtitles 加权收敛版）：torrent 命中 100 >
+        // release_name 归一化相等 80 > verified 20 > 下载数兜底。IMDB+语言
+        // 需 media_info->>'imdb_id' 数据源，全站尚无该录入链路，落地后在此
+        // 追加 +50 档（方案 §5 第 3 条）。
+        Some("match") => {
+            let sub = sqlx::query_scalar::<_, Option<String>>(
+                "SELECT lower(regexp_replace(name, '[^a-zA-Z0-9]', '', 'g')) \
+                 FROM torrents WHERE id = $1",
+            )
+            .bind(torrent_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
+            match (torrent_id, sub) {
+                (Some(tid), Some(sub)) => format!(
+                    "(CASE WHEN s.torrent_id = {tid} THEN 100 \
+                     WHEN s.release_name = '{sub}' THEN 80 \
+                     ELSE 0 END + CASE WHEN s.verified THEN 20 ELSE 0 END \
+                     + s.downloads)"
+                ),
+                (Some(tid), None) => format!(
+                    "(CASE WHEN s.torrent_id = {tid} THEN 100 ELSE 0 END \
+                     + CASE WHEN s.verified THEN 20 ELSE 0 END + s.downloads)"
+                ),
+                _ => "(CASE WHEN s.verified THEN 20 ELSE 0 END + s.downloads)"
+                    .to_string(),
+            }
+        }
+        _ => "s.created_at".to_string(),
     };
     let threshold = subtitle_bad_threshold(&state.repo.db).await?;
     // 谓词只拼一份：count 与列表同谓词（A7 验收点）

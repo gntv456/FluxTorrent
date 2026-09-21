@@ -13,7 +13,8 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
                    COALESCE(u.seeding_size, 0) AS seeding_bytes,
                    (SELECT count(*) FROM resurrections r WHERE r.user_id = u.id AND r.status = 'done') AS rescue_count,
                    (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS upload_count,
-                   (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count
+                   (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
+                   (SELECT count(*) FROM subtitles sb WHERE sb.user_id = u.id AND sb.deleted_at IS NULL AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
             FROM users u WHERE u.status < 2
         ),
         m AS (
@@ -21,6 +22,7 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             UNION ALL SELECT user_id, 'rescue_count', rescue_count FROM metrics
             UNION ALL SELECT user_id, 'upload_count', upload_count FROM metrics
             UNION ALL SELECT user_id, 'post_count', post_count FROM metrics
+            UNION ALL SELECT user_id, 'subtitle_count', subtitle_count FROM metrics
         ),
         due AS (
             SELECT m.user_id, d.id AS def_id, d.code, d.reward_sparks, m.val
@@ -46,13 +48,15 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
                        COALESCE(u.seeding_size, 0) AS seeding_bytes,
                        (SELECT count(*) FROM resurrections r WHERE r.user_id = u.id AND r.status = 'done') AS rescue_count,
                        (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS upload_count,
-                       (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count
+                       (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
+                       (SELECT count(*) FROM subtitles sb WHERE sb.user_id = u.id AND sb.deleted_at IS NULL AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
                 FROM users u WHERE u.status < 2
             ) m JOIN achievement_defs d2 ON (
                 (d2.metric = 'seeding_bytes' AND m.seeding_bytes >= d2.threshold) OR
                 (d2.metric = 'rescue_count'  AND m.rescue_count  >= d2.threshold) OR
                 (d2.metric = 'upload_count'   AND m.upload_count   >= d2.threshold) OR
-                (d2.metric = 'post_count'     AND m.post_count     >= d2.threshold))
+                (d2.metric = 'post_count'     AND m.post_count     >= d2.threshold) OR
+                (d2.metric = 'subtitle_count' AND m.subtitle_count >= d2.threshold))
         )
         "#,
     )
@@ -108,13 +112,15 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
                        COALESCE(u.seeding_size, 0) AS seeding_bytes,
                        (SELECT count(*) FROM resurrections r WHERE r.user_id = u.id AND r.status = 'done') AS rescue_count,
                        (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS upload_count,
-                       (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count
+                       (SELECT count(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
+                       (SELECT count(*) FROM subtitles sb WHERE sb.user_id = u.id AND sb.deleted_at IS NULL AND sb.status = 1 AND NOT sb.anon) AS subtitle_count
                 FROM users u WHERE u.status < 2
             ) m JOIN achievement_defs d2 ON (
                 (d2.metric = 'seeding_bytes' AND m.seeding_bytes >= d2.threshold) OR
                 (d2.metric = 'rescue_count'  AND m.rescue_count  >= d2.threshold) OR
                 (d2.metric = 'upload_count'   AND m.upload_count   >= d2.threshold) OR
-                (d2.metric = 'post_count'     AND m.post_count     >= d2.threshold))
+                (d2.metric = 'post_count'     AND m.post_count     >= d2.threshold) OR
+                (d2.metric = 'subtitle_count' AND m.subtitle_count >= d2.threshold))
         )
         AND NOT EXISTS (
             SELECT 1 FROM messages msg
