@@ -153,6 +153,17 @@ export function TorrentSubtitles({
                 <td className="num text-center">{s.downloads}</td>
                 <td className="text-center text-sub">
                   {s.username ?? (t.anonLabel ?? "anon")}
+                  {s.cert_tier && (
+                    <span
+                      className={
+                        s.cert_tier === "gold"
+                          ? "ml-1 text-[11px] font-bold text-amber-500"
+                          : "ml-1 text-[11px] font-bold text-mint"
+                      }
+                    >
+                      {s.cert_tier === "gold" ? "✎★" : "✎"}
+                    </span>
+                  )}
                 </td>
                 <td
                   className="nowrap text-center text-sub"
@@ -238,16 +249,17 @@ function LangSelect({
   onChange: (v: string) => void;
 }) {
   const { dict: langDict } = useI18n();
-  const s = dict_safe(langDict.subtitles);
+  const t = langDict.subtitles;
+  const s = dict_safe(t);
   const [langs, setLangs] = useState<
     { code: string; name: string; flag: string }[]
   >([
-    { code: "chs", name: s.langChs, flag: "🇨🇳" },
-    { code: "cht", name: s.langCht, flag: "🇹🇼" },
-    { code: "eng", name: s.langEng, flag: "🇬🇧" },
-    { code: "jpn", name: s.langJpn, flag: "🇯🇵" },
-    { code: "kor", name: s.langKor, flag: "🇰🇷" },
-    { code: "other", name: s.langOther, flag: "🌐" },
+    { code: "chs", name: t.langChs, flag: "🇨🇳" },
+    { code: "cht", name: t.langCht, flag: "🇹🇼" },
+    { code: "eng", name: t.langEng, flag: "🇬🇧" },
+    { code: "jpn", name: t.langJpn, flag: "🇯🇵" },
+    { code: "kor", name: t.langKor, flag: "🇰🇷" },
+    { code: "other", name: t.langOther, flag: "🌐" },
   ]);
   useEffect(() => {
     import("@/components/subtitle-board-table")

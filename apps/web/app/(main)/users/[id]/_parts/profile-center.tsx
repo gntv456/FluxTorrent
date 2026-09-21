@@ -216,7 +216,23 @@ export function CenterGrid({
         {data.subtitle_count > 0 && (
           <Row label={t.subtitleWorks} icon="╬">
             <span className="num">
-              {`${data.subtitle_count} · ${t.subtitleDownloads} ${data.subtitle_downloads}`}
+              {`${data.subtitle_count} · ${t.subtitleDownloads} ` +
+                `${data.subtitle_downloads}`}
+            </span>
+          </Row>
+        )}
+        {data.subtitle_cert && (
+          <Row label={t.subtitleCertLabel} icon="✎">
+            <span
+              className={
+                data.subtitle_cert === "gold"
+                  ? "font-bold text-amber-500"
+                  : "font-bold text-mint"
+              }
+            >
+              {data.subtitle_cert === "gold"
+                ? (t.subtitleCertGold ?? "gold")
+                : (t.subtitleCertName ?? "certified")}
             </span>
           </Row>
         )}

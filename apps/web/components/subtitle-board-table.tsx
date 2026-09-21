@@ -191,6 +191,22 @@ export function SubtitleListTable({
               <td className="text-center">
                 <span className="nowrap">
                   {s.username ?? t.noAccount}
+                  {s.cert_tier && (
+                    <span
+                      className={
+                        s.cert_tier === "gold"
+                          ? "ml-1 text-[11px] font-bold text-amber-500"
+                          : "ml-1 text-[11px] font-bold text-mint"
+                      }
+                      title={
+                        s.cert_tier === "gold"
+                          ? (t.certGoldTip ?? "gold")
+                          : (t.certTip ?? "certified")
+                      }
+                    >
+                      {s.cert_tier === "gold" ? "✎★" : "✎"}
+                    </span>
+                  )}
                 </span>
               </td>
               <td className="text-center">

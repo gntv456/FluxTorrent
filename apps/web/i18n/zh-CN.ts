@@ -1584,6 +1584,8 @@ usertools: {
     delConfirm: "确定删除该字幕？此操作不可撤销。",
     delOk: "字幕已删除",
     verifiedTip: "管理认证",
+    certTip: "认证字幕人",
+    certGoldTip: "金字幕人（评选获奖）",
     aiLabel: "AI 生成",
     aiNote: "本字幕由 AI 生成（机翻）；AI 初翻 + 人工校对请同时勾选下一项",
     aiProofLabel: "已人工校对",
@@ -1931,6 +1933,9 @@ usertools: {
     noMedals: "暂未佩戴勋章",
     subtitleWorks: "字幕作品",
     subtitleDownloads: "下载",
+    subtitleCertLabel: "字幕身份",
+    subtitleCertName: "认证字幕人",
+    subtitleCertGold: "金字幕人",
   },
   donate: {
     title: "捐赠",

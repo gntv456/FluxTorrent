@@ -260,6 +260,16 @@ pub async fn user_public_profile(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (subtitle_count, subtitle_downloads) =
         sub_stats.unwrap_or((0, 0));
+    // 字幕身份（0149）：gold 优先于 certified；anon 上传与身份无关（按人）
+    let cert_tier: Option<String> = sqlx::query_scalar(
+        "SELECT tier FROM user_subtitle_certs WHERE user_id = $1 AND \
+         revoked_at IS NULL ORDER BY CASE tier WHEN 'gold' THEN 0 ELSE 1 END \
+         LIMIT 1",
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .unwrap_or(None);
     Ok(ok(serde_json::json!({
         "profile": profile,
         "avatar_frame_css": profile.avatar_frame_css,
@@ -289,5 +299,6 @@ pub async fn user_public_profile(
         "recent_comments": recent_comments,
         "subtitle_count": subtitle_count,
         "subtitle_downloads": subtitle_downloads,
+        "subtitle_cert": cert_tier,
     })))
 }

@@ -64,6 +64,10 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(awards_candidates)
         .service(awards_build)
         .service(awards_grant)
+        // 0149 认证字幕人（授予/撤销/列表）
+        .service(certs_grant)
+        .service(certs_revoke)
+        .service(certs_list)
 }
 
 mod agent_rules;
@@ -80,6 +84,7 @@ mod review;
 mod roles;
 mod site;
 mod subtitle_awards;
+mod subtitle_certs;
 mod torrents;
 mod user_del;
 mod user_detail;
@@ -101,6 +106,7 @@ pub use review::*;
 pub use roles::*;
 pub use site::*;
 pub use subtitle_awards::*;
+pub use subtitle_certs::*;
 pub use torrents::*;
 pub use user_del::*;
 pub use user_detail::*;
