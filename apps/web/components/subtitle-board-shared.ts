@@ -20,6 +20,8 @@ export interface SubtitleRow {
   ai_state?: "human" | "ai" | "ai_proofread";
   /** 金字幕获奖名次（1/2/3；0/缺省 = 无） */
   award_rank?: number;
+  /** 0149：上传者字幕身份（certified / gold；null = 无） */
+  cert_tier?: "certified" | "gold" | null;
 }
 
 /** 列表响应（0146 分页信封；旧数组形态兼容到 items） */

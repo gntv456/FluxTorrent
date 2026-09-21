@@ -25,6 +25,7 @@ mod run;
 mod seeding;
 mod settle;
 mod settle_periodic;
+mod subtitle_cert;
 mod subtitle_flow;
 mod sweep;
 
@@ -51,6 +52,7 @@ pub(crate) use run::*;
 pub(crate) use seeding::*;
 pub(crate) use settle::*;
 pub(crate) use settle_periodic::*;
+pub(crate) use subtitle_cert::*;
 pub(crate) use subtitle_flow::*;
 pub(crate) use sweep::*;
 

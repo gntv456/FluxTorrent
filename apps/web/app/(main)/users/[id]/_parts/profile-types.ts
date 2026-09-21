@@ -96,6 +96,8 @@ export interface ProfileData {
   /** 字幕作品摘要（0146 P2-2：公开归属的过审字幕；匿名上传不计入） */
   subtitle_count: number;
   subtitle_downloads: number;
+  /** 字幕身份（0149：certified / gold；null = 无） */
+  subtitle_cert: "certified" | "gold" | null;
 }
 
 export type TorrentLists = {

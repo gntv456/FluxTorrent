@@ -1589,6 +1589,8 @@ usertools: {
     delConfirm: "Delete this subtitle? This cannot be undone.",
     delOk: "Subtitle deleted",
     verifiedTip: "Verified",
+    certTip: "Certified subtitler",
+    certGoldTip: "Golden subtitler (award winner)",
     aiLabel: "AI-generated",
     aiNote: "This subtitle is AI/machine translated; check the next box if human-proofread",
     aiProofLabel: "Human proofread",
@@ -1937,6 +1939,9 @@ usertools: {
     noMedals: "No medals worn",
     subtitleWorks: "Subtitles",
     subtitleDownloads: "downloads",
+    subtitleCertLabel: "Subtitler badge",
+    subtitleCertName: "Certified subtitler",
+    subtitleCertGold: "Golden subtitler",
   },
   donate: {
     title: "Donate",

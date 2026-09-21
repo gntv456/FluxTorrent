@@ -131,10 +131,11 @@ pub async fn run_all(
                 with_lock(&db, "job:funding_settle", funding_settle(&db)).await;
                 with_lock(&db, "job:refundable_settle", refundable_settle(&db)).await;
                 with_lock(&db, "job:achievement_grant", achievement_grant(&db)).await;
-                // 0148 字幕工作流：认领超时回池 + 交稿超时自动验收（幂等：CAS + 幂等键）
+                // 0148 字幕工作流：认领超时回池 + 交稿超时自动验收 + 月度评选候选
+                // 0149 认证字幕人：三阈值复扫（均幂等：CAS/UNIQUE/PK + 仅撤 auto 行）
                 with_lock(&db, "job:subreq_sweep", subreq_sweep(&db)).await;
-                // 0148 金字幕评选：月初生成上月候选（幂等：UNIQUE(period, subtitle_id)）
                 with_lock(&db, "job:subawards", subawards_build(&db)).await;
+                with_lock(&db, "job:subcert_sweep", subcert_sweep(&db)).await;
                 // 卫生清理（NP docleanup 口径）：过期邀请落库回收 / 一次性凭证与重置 token 清理
                 with_lock(&db, "job:expire_invites", expire_invites(&db)).await;
                 with_lock(&db, "job:purge_expired_tokens", purge_expired_tokens(&db)).await;
@@ -169,7 +170,6 @@ pub async fn run_all(
         }
     }
 }
-
 /// 多实例互斥 + per-job 超时（审计修复）。
 /// - 互斥：pg_try_advisory_lock(hashtext(key)) 拿不到（他实例在跑）→ 返回 None 静默跳过本轮；
 /// - 超时：tokio::time::timeout 900s 掐掉卡死任务（超时按失败上报）；

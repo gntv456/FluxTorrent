@@ -31,6 +31,8 @@ struct SubtitleRow {
     /// AI+人工校对（machine && proofreader 非空）/ 纯人工
     machine_translated: bool,
     proofreader: Option<String>,
+    /// 0149：上传者身份（gold 优先于 certified；NULL = 无）
+    cert_tier: Option<String>,
 }
 
 /// 字幕列表（包子站 subtitles.php 口径 + 0146）：
@@ -170,8 +172,13 @@ pub(super) async fn subtitle_list(
             "SELECT s.id, s.torrent_id, u.username, s.title, s.lang, \
              s.lang_id, s.downloads, s.created_at, s.size, s.ext, s.anon, \
              s.rating_sum, s.rating_count, s.user_id, s.verified, \
-             s.machine_translated, s.proofreader \
+             s.machine_translated, s.proofreader, cert.cert_tier \
              FROM subtitles s LEFT JOIN users u ON u.id = s.user_id \
+             LEFT JOIN LATERAL ( \
+                 SELECT c.tier AS cert_tier FROM user_subtitle_certs c \
+                 WHERE c.user_id = s.user_id AND c.revoked_at IS NULL \
+                 ORDER BY CASE c.tier WHEN 'gold' THEN 0 ELSE 1 END LIMIT 1 \
+             ) cert ON TRUE \
              WHERE {predicates} ORDER BY {ai_demote} ASC, {sort} {order}, \
              s.id DESC \
              OFFSET $7 LIMIT $8"
@@ -212,6 +219,8 @@ pub(super) async fn subtitle_list(
                 "rating_count": r.rating_count,
                 // 本人判定用（anon 行 username 已脱敏但 id 保留给编辑/删除入口）
                 "user_id": r.user_id, "verified": r.verified,
+                // 0149：上传者身份徽章（certified / gold）
+                "cert_tier": r.cert_tier,
                 // 0148 C0/C6：ai 三态（human / ai_proofread / ai）
                 "ai_state": if r.machine_translated {
                     if r.proofreader.as_deref().map(str::trim).unwrap_or(
