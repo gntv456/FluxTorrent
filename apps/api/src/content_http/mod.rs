@@ -7,12 +7,19 @@ mod offers;
 mod promo;
 mod requests;
 mod subtitles;
+mod subtitles_list;
+mod subtitles_meta;
+mod subtitles_requests;
+mod subtitles_util;
 
 use misc::*;
 use offers::*;
 use promo::*;
 use requests::*;
 use subtitles::*;
+use subtitles_list::*;
+use subtitles_meta::*;
+use subtitles_requests::*;
 
 pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
     scope
@@ -25,10 +32,20 @@ pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
         .service(offer_list)
         .service(offer_vote)
         .service(offer_promote)
-        // M17 字幕
+        // M17 字幕（0146 治理加固 + 元数据/评分/求字幕悬赏；全部落
+        // /api/v1/subtitles 前缀下由模块网关统一拦截）
         .service(subtitle_upload)
         .service(subtitle_list)
         .service(subtitle_download)
+        .service(subtitle_patch)
+        .service(subtitle_delete)
+        .service(subtitle_vote)
+        .service(subtitle_report)
+        .service(subtitle_langs)
+        .service(subtitle_request_create)
+        .service(subtitle_request_list)
+        .service(subtitle_request_contribute)
+        .service(subtitle_request_fulfill)
         // M18 课本
         .service(textbook_list)
         .service(textbook_link)

@@ -1,117 +1,112 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, ApiError, rawFetchHelpers } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import type { SubtitleRow } from "@/components/subtitle-board-shared";
+import type {
+  SubtitleListResp,
+  SubtitleRow,
+} from "@/components/subtitle-board-shared";
 import {
-  LANGS,
-  LANG_CODE_TO_ID,
   LETTERS,
   fmtKB,
   boldRule,
+  loadLangDict,
   SubtitleListTable,
 } from "@/components/subtitle-board-table";
+import { SubtitleRequestPanel } from "@/components/subtitle-request-panel";
+import { SubtitleUploadForm } from "@/components/subtitle-upload-form";
 
-// 字幕区（参考站 subtitles.php 复刻）：
-// 标题条（字 字幕区 上传字幕-总上传量）→ 规则卡 → 上传表单（rowhead/rowfollow）
-// → 语言筛选 + 首字母条 → 语言/标题/添加时间/大小/点击/上传者/举报 七列表格。
-// 语言映射/展示工具/七列列表已按域拆出 @/components/subtitle-board-table。
+// 字幕区（参考站 subtitles.php 复刻 + 0146 治理）：
+// 标题条 → 规则卡（按 kind 切影视/歌词两套）→ 上传表单（元数据 + kind 显隐）
+// → 筛选条 → 分页列表（评分/真实大小/坏字幕标记）→ 求字幕悬赏（pots）。
 
-export function SubtitleBoard() {
-  const { dict, currency } = useI18n();
+const PER_PAGES = [25, 50, 100];
+
+export function SubtitleBoard({
+  fixedTorrentId,
+}: { fixedTorrentId?: number }) {
+  const { dict } = useI18n();
   const t = dict.subtitles;
-  const [rows, setRows] = useState<SubtitleRow[] | null>(null);
+  const [kind, setKind] = useState<"subtitle" | "lyric">("subtitle");
+  const [langs, setLangs] = useState<
+    { code: string; name: string; flag: string }[]
+  >([]);
+  const [rows, setRows] = useState<SubtitleRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalSize, setTotalSize] = useState(0);
   const [search, setSearch] = useState("");
-  const [langId, setLangId] = useState("0");
+  const [langCode, setLangCode] = useState("");
   const [letter, setLetter] = useState("");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(50);
   // 上传表单
-  const [fTitle, setFTitle] = useState("");
-  const [fTorrentId, setFTorrentId] = useState("");
-  const [fLang, setFLang] = useState("0");
-  const [fFile, setFFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    loadLangDict().then(setLangs);
+    fetch("/api/v1/site-profile")
+      .then((r) => r.json())
+      .then((b: { data?: { subtitle_kind?: string } }) => {
+        if (b.data?.subtitle_kind === "lyric") setKind("lyric");
+      })
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (search.trim()) params.set("search", search.trim());
-      // 后端存的是语言代码（chs/cht/eng…），数字 id 是旧站展示口径：提交前转换
-      if (langId !== "0") {
-        const code = Object.entries(LANG_CODE_TO_ID).find(
-          ([, id]) => id === langId,
-        )?.[0];
-        if (code) params.set("lang_id", code);
-      }
+      if (langCode) params.set("lang_id", langCode);
       if (letter) params.set("letter", letter);
-      const qs = params.toString();
-      setRows(
-        await api.get<SubtitleRow[]>(`/api/v1/subtitles${qs ? `?${qs}` : ""}`),
+      if (fixedTorrentId) {
+        params.set("torrent_id", String(fixedTorrentId));
+      }
+      params.set("page", String(page));
+      params.set("per_page", String(perPage));
+      const resp = await api.get<SubtitleListResp | SubtitleRow[]>(
+        `/api/v1/subtitles?${params.toString()}`,
       );
+      if (Array.isArray(resp)) {
+        setRows(resp);
+        setTotal(resp.length);
+      } else {
+        setRows(resp.items);
+        setTotal(resp.total);
+      }
     } catch {
       setRows([]);
+      setTotal(0);
     }
-  }, [search, langId, letter]);
+  }, [search, langCode, letter, page, perPage, fixedTorrentId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const totalSize = useMemo(
-    () => (rows ?? []).reduce((acc, r) => acc + (r.size ?? 0), 0),
-    [rows],
-  );
+  useEffect(() => {
+    // 页头总上传量（全量口径，不受筛选影响）
+    api
+      .get<SubtitleListResp>("/api/v1/subtitles?per_page=100")
+      .then((r) =>
+        setTotalSize(
+          (r.items ?? []).reduce((acc, x) => acc + (x.size ?? 0), 0),
+        ),
+      )
+      .catch(() => {});
+  }, [msg, reloadKey]);
 
-  async function upload() {
-    if (!fTitle.trim() || fLang === "0" || !fFile) return;
-    setBusy(true);
-    setMsg(null);
-    try {
-      // 真实文件链路（审计修复 P1 空壳）：先 multipart 上传到 attachments 拿 sha256，
-      // 再建字幕记录绑定 attach://<sha>——下载端直接回文件字节，不再只回引用。
-      const form = new FormData();
-      form.append("file", fFile);
-      // 凭证由 HttpOnly flux_token cookie 自动携带（P1 收敛，token 不再进 JS）
-      const lang = rawFetchHelpers.lang();
-      const upRes = await fetch(
-        rawFetchHelpers.base() + "/api/v1/attachments",
-        {
-          method: "POST",
-          headers: {
-            ...(lang ? { "Accept-Language": lang } : {}),
-          },
-          body: form,
-        },
-      );
-      const upBody = (await upRes.json()) as {
-        code: number;
-        message?: string;
-        data?: { sha256: string };
-      };
-      if (upBody.code !== 0 || !upBody.data?.sha256) {
-        throw new ApiError(upBody.code, upBody.message ?? "字幕文件上传失败");
-      }
-      // lang 存旧站代码（chs/cht/eng…）
-      const code =
-        Object.entries(LANG_CODE_TO_ID).find(([, id]) => id === fLang)?.[0] ??
-        "other";
-      await api.post("/api/v1/subtitles", {
-        torrent_id: fTorrentId ? Number(fTorrentId) : 0,
-        title: fTitle,
-        lang: code,
-        file_sha: upBody.data.sha256,
-      });
-      setFTitle("");
-      setFFile(null);
-      setMsg(t.reward.replace("{magic}", currency));
-      load();
-    } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const rules = kind === "lyric" ? (t.lyricRules ?? t.rules) : t.rules;
+
+  const pages = Math.max(1, Math.ceil(total / perPage));
+  const pageWin = useMemo(() => {
+    const arr: number[] = [];
+    const lo = Math.max(1, page - 2);
+    const hi = Math.min(pages, lo + 4);
+    for (let i = lo; i <= hi; i++) arr.push(i);
+    return arr;
+  }, [page, pages]);
 
   return (
     <div className="subtitles-wrap">
@@ -126,11 +121,11 @@ export function SubtitleBoard() {
         </small>
       </header>
 
-      {/* 规则卡 */}
+      {/* 规则卡（kind 两套） */}
       <section className="subtitles-rules">
         <h2>{t.rulesTitle}</h2>
         <ul>
-          {t.rules.map((r) => (
+          {rules.map((r) => (
             <li key={r} dangerouslySetInnerHTML={{ __html: boldRule(r) }} />
           ))}
         </ul>
@@ -139,108 +134,18 @@ export function SubtitleBoard() {
         </p>
       </section>
 
-      {/* 上传表单（rowhead/rowfollow 经典表格） */}
-      <form
-        className="subtitles-upload-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void upload();
+      <SubtitleUploadForm
+        kind={kind}
+        langs={langs}
+        fixedTorrentId={fixedTorrentId}
+        onMsg={setMsg}
+        onUploaded={() => {
+          load();
+          setReloadKey((k) => k + 1);
         }}
-      >
-        <table className="nexus-table nexus-form subtitles-upload-table">
-          <tbody>
-            <tr>
-              <td className="rowhead">
-                {t.file}
-                <span className="req-star">*</span>
-              </td>
-              <td className="rowfollow">
-                <input
-                  type="file"
-                  aria-label={t.file}
-                  onChange={(e) => setFFile(e.target.files?.[0] ?? null)}
-                />
-                <br />
-                {t.fileNote}
-              </td>
-            </tr>
-            <tr>
-              <td className="rowhead">
-                {t.torrentId}
-                <span className="req-star">*</span>
-              </td>
-              <td className="rowfollow">
-                <input
-                  type="text"
-                  className="uc-input-wide"
-                  value={fTorrentId}
-                  onChange={(e) =>
-                    setFTorrentId(e.target.value.replace(/\D/g, ""))
-                  }
-                />
-                <br />
-                {t.torrentIdNote}
-              </td>
-            </tr>
-            <tr>
-              <td className="rowhead">{t.titleLabel}</td>
-              <td className="rowfollow">
-                <input
-                  type="text"
-                  className="uc-input-wide"
-                  value={fTitle}
-                  onChange={(e) => setFTitle(e.target.value)}
-                />
-                <br />
-                {t.titleNote}
-              </td>
-            </tr>
-            <tr>
-              <td className="rowhead">
-                {t.lang}
-                <span className="req-star">*</span>
-              </td>
-              <td className="rowfollow">
-                <select
-                  value={fLang}
-                  onChange={(e) => setFLang(e.target.value)}
-                >
-                  <option value="0">{t.langSelect}</option>
-                  {LANGS.map(([v, label]) => (
-                    <option key={v} value={v}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </td>
-            </tr>
-            <tr>
-              <td className="toolbox" colSpan={2} align="center">
-                <input
-                  type="submit"
-                  className="btn"
-                  value={t.uploadBtn}
-                  disabled={busy}
-                />
-                <input
-                  type="reset"
-                  className="btn2"
-                  value={t.resetBtn}
-                  onClick={() => {
-                    setFTitle("");
-                    setFTorrentId("");
-                    setFLang("0");
-                    setFFile(null);
-                  }}
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        {msg && <p className="subtitles-msg">{msg}</p>}
-      </form>
+      />
 
-      {/* 搜索：关键词 + 语言下拉 */}
+      {/* 搜索：关键词 + 语言下拉 + 每页 */}
       <form
         className="subtitles-search-form"
         onSubmit={(e) => e.preventDefault()}
@@ -250,17 +155,37 @@ export function SubtitleBoard() {
           id="subtitles-search"
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
         />
         <select
-          value={langId}
-          onChange={(e) => setLangId(e.target.value)}
+          value={langCode}
+          onChange={(e) => {
+            setLangCode(e.target.value);
+            setPage(1);
+          }}
           aria-label={t.lang}
         >
-          <option value="0">{t.allLangs}</option>
-          {LANGS.map(([v, label]) => (
-            <option key={v} value={v}>
-              {label}
+          <option value="">{t.allLangs}</option>
+          {langs.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.flag} {l.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={perPage}
+          onChange={(e) => {
+            setPerPage(Number(e.target.value));
+            setPage(1);
+          }}
+          aria-label={t.perPageLabel}
+        >
+          {PER_PAGES.map((n) => (
+            <option key={n} value={n}>
+              {n}
             </option>
           ))}
         </select>
@@ -273,7 +198,10 @@ export function SubtitleBoard() {
             key={l}
             type="button"
             data-active={letter === l ? "true" : undefined}
-            onClick={() => setLetter(letter === l ? "" : l)}
+            onClick={() => {
+              setLetter(letter === l ? "" : l);
+              setPage(1);
+            }}
           >
             {l}
           </button>
@@ -281,10 +209,51 @@ export function SubtitleBoard() {
       </nav>
 
       {/* 字幕列表（七列） */}
-      {rows !== null && (
-        <SubtitleListTable rows={rows} onMsg={setMsg} onReload={load} />
+      <SubtitleListTable rows={rows} onMsg={setMsg} onReload={load} />
+
+      {/* 分页条（A7：count 同谓词，翻页不重叠） */}
+      {pages > 1 && (
+        <nav className="mt-2 flex items-center justify-center gap-2 text-sm">
+          <button
+            type="button"
+            className="btn2"
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+          >
+            ‹
+          </button>
+          {pageWin.map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={p === page ? "btn" : "btn2"}
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="btn2"
+            disabled={page >= pages}
+            onClick={() => setPage(page + 1)}
+          >
+            ›
+          </button>
+          <span className="text-sub">
+            {total} · {page}/{pages}
+          </span>
+        </nav>
       )}
-      <p className="text-xs text-sub">1 - {rows?.length ?? 0}</p>
+
+      {/* 求字幕悬赏（pots） */}
+      {!fixedTorrentId && (
+        <SubtitleRequestPanel
+          langs={langs}
+          onMsg={setMsg}
+          reloadKey={reloadKey}
+        />
+      )}
     </div>
   );
 }

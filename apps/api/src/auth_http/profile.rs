@@ -248,6 +248,18 @@ pub async fn user_public_profile(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 字幕作品摘要（0146 P2-2：数量 + 下载总数 + 署名；匿名上传不计入公开归属）
+    let sub_stats: Option<(i64, i64)> = sqlx::query_as(
+        "SELECT count(*), COALESCE(sum(downloads), 0)::bigint FROM \
+         subtitles WHERE user_id = $1 AND deleted_at IS NULL AND status = 1 \
+         AND NOT anon",
+    )
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (subtitle_count, subtitle_downloads) =
+        sub_stats.unwrap_or((0, 0));
     Ok(ok(serde_json::json!({
         "profile": profile,
         "avatar_frame_css": profile.avatar_frame_css,
@@ -275,5 +287,7 @@ pub async fn user_public_profile(
         "recent_posts": recent_posts,
         "recent_uploads": uploads,
         "recent_comments": recent_comments,
+        "subtitle_count": subtitle_count,
+        "subtitle_downloads": subtitle_downloads,
     })))
 }

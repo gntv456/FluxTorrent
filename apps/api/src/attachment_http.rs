@@ -12,7 +12,7 @@ use crate::state::AppState;
 // ============ 附件/图床（0100，NP Pictured 最小落地） ============
 
 const ATTACH_MAX_BYTES: usize = 8 * 1024 * 1024; // 单文件 8MiB
-const ATTACH_MIME_ALLOW: [&str; 7] = [
+const ATTACH_MIME_ALLOW: [&str; 8] = [
     "image/png",
     "image/jpeg",
     "image/gif",
@@ -20,6 +20,8 @@ const ATTACH_MIME_ALLOW: [&str; 7] = [
     "image/avif",
     "application/pdf",
     "text/plain",
+    // 0146 字幕链路：字幕包（zip/rar/7z）走附件存储；解包校验在字幕端白名单把关
+    "application/zip",
 ];
 
 /// 上传附件（multipart 字段 file）。存本地 savedirectory（缺省 ./attachments），
@@ -79,7 +81,8 @@ pub async fn upload_attachment(
         ));
     }
     // 真实内容嗅探（不信客户端头）：图片 magic bytes 校验；
-    // .ass/.ssa 字幕在浏览器常被报为 text/plain——扩展名按文件名判、按文本嗅探放行
+    // .ass/.ssa 字幕在浏览器常被报为 text/plain——扩展名按文件名判、按文本嗅探放行；
+    // zip 类字幕包按 PK 头嗅探（0146）
     let declared_txt = mime == "text/plain";
     let sniff_ok = match bytes.first() {
         Some(0x89) => {
@@ -89,6 +92,7 @@ pub async fn upload_attachment(
         Some(0xFF) => mime == "image/jpeg",
         Some(b'G') => bytes.starts_with(b"GIF8"),
         Some(b'R') => bytes.starts_with(b"RIFF") && mime == "image/webp",
+        Some(b'P') => bytes.starts_with(b"PK") && mime == "application/zip",
         _ => declared_txt || mime == "image/avif",
     };
     if !sniff_ok {

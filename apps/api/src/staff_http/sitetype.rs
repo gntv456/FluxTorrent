@@ -100,6 +100,22 @@ pub async fn site_profile(
         .filter(|s| !s.is_empty())
         .map(str::to_lowercase)
         .collect();
+    // 字幕区口径（0146）：kind=lyric 时前端切歌词文案/格式；label 为显示名
+    let (sub_kind, sub_label): (String, String) =
+        sqlx::query_as::<_, (String, String)>(
+            "SELECT \
+             COALESCE(MAX(value) FILTER (WHERE name = 'subtitle_kind'), \
+             'subtitle'), \
+             COALESCE(MAX(value) FILTER (WHERE name = 'subtitle_label'), \
+             '字幕') \
+             FROM site_settings WHERE name IN ('subtitle_kind', \
+             'subtitle_label')",
+        )
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| ("subtitle".into(), "字幕".into()));
     // 登录页品牌区（0143/0145）：site_tagline = 站长覆盖值，空 = 动态跟随当前
     // 站型包默认（读 site_type JOIN packs.tagline）——设置卡直切站型即刻生效，
     // 不依赖 apply 向导物化；logo = 站长可配 URL
@@ -144,6 +160,8 @@ pub async fn site_profile(
         "tagline": tagline,
         "site_logo": site_logo,
         "currency_name": currency,
+        "subtitle_kind": sub_kind,
+        "subtitle_label": sub_label,
         "founded": founded,
         "metadata_sources": sources,
         "site_desc": site_desc,

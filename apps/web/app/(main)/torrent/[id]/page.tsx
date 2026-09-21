@@ -8,6 +8,7 @@ import { FileTree } from "@/components/file-tree";
 import { TorrentTags } from "@/components/torrent-tags";
 import { Descr, Spec, Fold } from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
+import { TorrentSubtitles } from "@/components/torrent-subtitles";
 import {
   Comments,
   GroupVersions,
@@ -228,6 +229,9 @@ export default async function TorrentDetailPage({
           <FileTree files={files} />
         </Fold>
       )}
+
+      {/* ===== 字幕面板（0146 P0-6：种子页是字幕最大流量入口；模块关闭时 API 404 化为空列表） ===== */}
+      <TorrentSubtitles torrentId={t.id} />
 
       {/* ===== 下载/做种记录 ===== */}
       <Fold title={dict.snatches2?.title ?? "下载记录"} open>
