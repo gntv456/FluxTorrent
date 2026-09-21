@@ -355,8 +355,7 @@
   cursor: pointer;
   user-select: none;
 }
-.tsb-adv-btn:hover,
-.tsb-adv-toggle:focus-visible ~ * .tsb-adv-btn {
+.tsb-adv-btn:hover {
   border-color: var(--baozi-orange);
   color: var(--baozi-orange);
 }
@@ -428,6 +427,21 @@
 }
 
 /* 高级搜索（折叠） */
+/* 0147：summary 行整行隐藏（触发入口收进常驻行齿轮按钮），保留 DOM
+   以维持 details 的原生开合语义与无 JS 回退（CSS 关掉时仍可点） */
+.tsb-adv--gear > .tsb-adv__summary {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.tsb-adv--gear[open] {
+  /* 无 summary 头后面板直接顶格 */
+  padding-top: 0;
+}
+
 .tsb-adv__summary {
   display: inline-flex;
   align-items: center;
