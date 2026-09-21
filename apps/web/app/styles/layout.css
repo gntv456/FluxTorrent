@@ -129,6 +129,77 @@
   color: var(--text-brand);
 }
 
+/* ============ 语言下拉（langmenu，0148） ============ */
+.langmenu {
+  position: relative;
+}
+.langmenu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-sub, #8a7d6b);
+  cursor: pointer;
+}
+.langmenu__trigger:hover {
+  border-color: var(--baozi-line);
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+.langmenu__current {
+  font-size: 12px;
+  font-weight: 800;
+}
+.langmenu__caret {
+  font-size: 10px;
+}
+.langmenu__drop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 70;
+  display: flex;
+  min-width: 132px;
+  flex-direction: column;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--baozi-paper);
+  box-shadow: var(--shadow-card);
+}
+.langmenu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-body);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.langmenu__item:hover {
+  background: var(--chip-veil);
+  color: var(--baozi-orange);
+}
+.langmenu__item[data-active="true"] {
+  color: var(--baozi-orange-dark);
+  background: var(--brand-soft);
+}
+.langmenu__check {
+  color: var(--baozi-orange);
+  font-weight: 900;
+}
+
 /* ============ 头像弹窗（usermenu，0147 好学 CuteTop 口径） ============ */
 .usermenu {
   position: relative;
