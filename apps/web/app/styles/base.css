@@ -1,0 +1,1034 @@
+/* ===== FluxTorrent 全局样式 · 设计令牌（Aurora 六色/夜间主题）+ 全局基础（焦点环/滚动条/按钮/表格/种子详情） =====
+   （从 globals.css 按域拆出；本文件是 @import 链的一环，顺序不可调换） */
+@import "tailwindcss";
+/* FluxTorrent 全局样式 —— Seedlight「流光种子」Aurora token
+体系（design-system/FluxTorrent-UI设计方案.html）。
+   纪律（§7.6-1）：全站禁止硬编码色值，一律使用下列 CSS 变量。
+   主题机制：<html data-theme="baozi | baozi-night"> 切换（沿用旧键名，用户已存的偏好不丢）；
+   换新主题 = 追加一个 [data-theme] 块覆盖全部变量。
+   兼容层：--baozi-* 旧变量名继续存在（映射到 Aurora 语义色），30+ 组件零改动换肤。 */
+
+:root,
+[data-theme="baozi"] {
+  color-scheme: light;
+  /* ===== Aurora 品牌六色（Seedlight §2） ===== */
+  --sky: #2fa8ff;
+  --sky-deep: #1e8ae8;
+  --sky-soft: #e8f4ff;
+  --sun: #ffc93c;
+  --sun-soft: #fff4d6;
+  --coral: #ff7a59;
+  --coral-soft: #ffe9e2;
+  --mint: #2fbf9b;
+  --mint-soft: #dff7f0;
+  --candy: #ff8fc7;
+  --candy-soft: #ffe9f4;
+  --indigo: #5b6bf5;
+  --indigo-soft: #eaebff;
+  /* ===== 中性 ===== */
+  --cloud: #f5faff;
+  --cream: #fffdf6;
+  --ink: #1f2a44;
+  --sub: #6b7a99;
+  --line: #e3edf7;
+  /* ===== 渐变与彩带 ===== */
+  --grad-aurora: linear-gradient(135deg, #2fa8ff 0%, #5b6bf5 48%, #ff8fc7 100%);
+  --grad-rainbow:linear-gradient(90deg,  #ffc93c,  #ff7a59,  #ff8fc7,  #5b6bf5,
+    #2fa8ff);
+  --ribbon: var(--grad-rainbow);
+  --brand-glow: #5b6bf5;
+  --brand-soft: var(--indigo-soft);
+  /* ===== 表面 ===== */
+  --surface-page: #f5faff;
+  --surface-cloud: #eef5fd;
+  --surface-card: #ffffff;
+  --surface-raised: #fbfdff;
+  --surface-hover: #eef5fe;
+  --surface-sunken: #eaf3fd;
+  --surface-cream: #fffdf6;
+  --head-a: #e8f4ff;
+  --head-b: #f8fbff;
+  /* ===== 文本 ===== */
+  --text-strong: #1f2a44;
+  --text-heading: #141d33;
+  --text-body: #40506e;
+  --text-body-deep: #35435e;
+  --text-brand: #1e8ae8;
+  --text-muted: #6b7a99;
+  --text-faint: #8493ad;
+  --text-fainter: #a3b1c6;
+  --text-on-accent: #fff;
+  /* ===== 边框 ===== */
+  --border-soft: #e3edf7;
+  --border-deep: #bcd7ef;
+  --border-strong: #7fb0d9;
+  /* ===== 状态 ===== */
+  --success: #2fbf9b;
+  --success-bright: #3dd2ab;
+  --success-soft: #dff7f0;
+  --success-border: #a9e5d4;
+  --warning: #e8a80c;
+  --warning-soft: #fff4d6;
+  --warning-border: #f0dca0;
+  --danger: #ff6b6b;
+  --danger-soft: #ffe9e2;
+  --danger-border: #ffc7ba;
+  --info: #1e8ae8;
+  --muted-soft: #eef2f8;
+  --accent-purple: #5b6bf5;
+  /* ===== 圆角（按钮统一胶囊 999，见 .btn 类） ===== */
+  --r-xl: 24px;
+  --r-lg: 20px;
+  --r-md: 14px;
+  --r-sm: 10px;
+  /* ===== 阴影 ===== */
+  --shadow-card: 0 8px 24px rgba(31, 42, 68, 0.08);
+  --shadow-hover: 0 12px 32px rgba(47, 168, 255, 0.16);
+  /* ===== 表面层（派生半透明层，禁止在组件里硬编码 rgba 白色） ===== */
+  --row-veil: rgba(255, 255, 255, 0.94);
+  --row-veil-soft: rgba(255, 255, 255, 0.84);
+  --row-veil-mist: rgba(255, 255, 255, 0.72);
+  --chip-veil: rgba(252, 254, 255, 0.9);
+  --chip-veil-thin: rgba(252, 254, 255, 0.66);
+  --label-veil: rgba(232, 244, 255, 0.45);
+  --label-veil-deep: rgba(232, 244, 255, 0.78);
+  --hairline: rgba(255, 255, 255, 0.5);
+  --hairline-soft: rgba(255, 255, 255, 0.38);
+  --hairline-strong: rgba(255, 255, 255, 0.78);
+  --focus-ring: rgba(47, 168, 255, 0.22);
+  --focus-ring-soft: rgba(47, 168, 255, 0.14);
+  --on-accent-glass: rgba(255, 255, 255, 0.2);
+  --brand-glow-veil: rgba(91, 107, 245, 0.1);
+  --accent-shadow: rgba(91, 107, 245, 0.28);
+  --accent-shadow-soft: rgba(91, 107, 245, 0.18);
+  --accent-rule: rgba(47, 168, 255, 0.5);
+  /* ===== 字体：蜡笔字仅标题（童趣但不幼稚）；正文现代无衬线 ===== */
+  --font-display: "ZCOOL KuaiLe", "STKaiti", "KaiTi", "Noto Sans SC",
+    sans-serif;
+  --font-body:
+    "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+  /* ===== 兼容层：--baozi-* → Aurora 语义映射（30+ 组件零改动） ===== */
+  --baozi-bg: var(--surface-page);
+  --baozi-paper: var(--surface-card);
+  --baozi-cream: var(--surface-cream);
+  --baozi-line: #9ec8ee;
+  --baozi-line-soft: var(--line);
+  --baozi-orange: var(--sky);
+  --baozi-orange-bright: #5cb8ff;
+  --baozi-orange-dark: var(--sky-deep);
+  --baozi-green: var(--mint);
+  --baozi-blue: var(--info);
+  --baozi-ink: var(--ink);
+}
+
+/* ===== 夜间主题：Aurora Night（Seedlight §9）—— 深夜蓝底，品牌六色提亮 +8% ===== */
+[data-theme="baozi-night"] {
+  color-scheme: dark;
+  /* 品牌六色（提亮） */
+  --sky: #47b3ff;
+  --sky-deep: #6cc0ff;
+  --sky-soft: #12233c;
+  --sun: #ffd35f;
+  --sun-soft: #33290f;
+  --coral: #ff9072;
+  --coral-soft: #38160f;
+  --mint: #43cda8;
+  --mint-soft: #0d2a22;
+  --candy: #ffa3d3;
+  --candy-soft: #35101f;
+  --indigo: #7d8aff;
+  --indigo-soft: #1d2145;
+  /* 中性 */
+  --cloud: #0b101f;
+  --cream: #1a2036;
+  --ink: #e8eef9;
+  --sub: #93a2bf;
+  --line: #262f4a;
+  /* 渐变 */
+  --grad-aurora: linear-gradient(135deg, #47b3ff 0%, #7d8aff 48%, #ffa3d3 100%);
+  --grad-rainbow:linear-gradient(90deg,  #ffd35f,  #ff9072,  #ffa3d3,  #7d8aff,
+    #47b3ff);
+  --ribbon: var(--grad-rainbow);
+  --brand-glow: #7d8aff;
+  --brand-soft: var(--indigo-soft);
+  /* 表面 */
+  --surface-page: #0f1424;
+  --surface-cloud: #0b101f;
+  --surface-card: #1a2036;
+  --surface-raised: #212945;
+  --surface-hover: #232c4a;
+  --surface-sunken: #161d33;
+  --surface-cream: #1c2340;
+  --head-a: #1e2a4d;
+  --head-b: #1a2036;
+  /* 文本 */
+  --text-strong: #e8eef9;
+  --text-heading: #f4f7fd;
+  --text-body: #c6d1e6;
+  --text-body-deep: #b4c1da;
+  --text-brand: #6cc0ff;
+  --text-muted: #93a2bf;
+  --text-faint: #76849f;
+  --text-fainter: #5c6a84;
+  --text-on-accent: #fff;
+  /* 边框 */
+  --border-soft: #262f4a;
+  --border-deep: #3a4670;
+  --border-strong: #5b6ca0;
+  /* 状态 */
+  --success: #43cda8;
+  --success-bright: #58dcb8;
+  --success-soft: #0d2a22;
+  --success-border: #1d4a3a;
+  --warning: #ffd35f;
+  --warning-soft: #33290f;
+  --warning-border: #66551c;
+  --danger: #ff8f82;
+  --danger-soft: #38160f;
+  --danger-border: #6b2c26;
+  --info: #6cc0ff;
+  --muted-soft: #232c4a;
+  --accent-purple: #9aa8ff;
+  /* 阴影：暗色加深 */
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
+  /* 表面层（夜间改深色半透明，组件代码零改动换肤） */
+  --row-veil: rgba(26, 32, 54, 0.94);
+  --row-veil-soft: rgba(33, 41, 69, 0.84);
+  --row-veil-mist: rgba(33, 41, 69, 0.72);
+  --chip-veil: rgba(33, 41, 69, 0.9);
+  --chip-veil-thin: rgba(33, 41, 69, 0.66);
+  --label-veil: rgba(30, 42, 77, 0.45);
+  --label-veil-deep: rgba(30, 42, 77, 0.78);
+  --hairline: rgba(151, 170, 210, 0.16);
+  --hairline-soft: rgba(151, 170, 210, 0.1);
+  --hairline-strong: rgba(151, 170, 210, 0.24);
+  --focus-ring: rgba(103, 176, 255, 0.4);
+  --focus-ring-soft: rgba(103, 176, 255, 0.24);
+  --on-accent-glass: rgba(255, 255, 255, 0.14);
+  --brand-glow-veil: rgba(125, 138, 255, 0.1);
+  --accent-shadow: rgba(125, 138, 255, 0.3);
+  --accent-shadow-soft: rgba(125, 138, 255, 0.2);
+  --accent-rule: rgba(103, 176, 255, 0.45);
+  /* 兼容层 */
+  --baozi-bg: var(--surface-page);
+  --baozi-paper: var(--surface-card);
+  --baozi-cream: var(--surface-cream);
+  --baozi-line: #46609a;
+  --baozi-line-soft: var(--line);
+  --baozi-orange: var(--sky);
+  --baozi-orange-bright: #6cc0ff;
+  --baozi-orange-dark: #7fc6ff;
+  --baozi-green: var(--mint);
+  --baozi-blue: var(--info);
+  --baozi-ink: var(--ink);
+}
+
+/* Tailwind v4 主题映射 */
+@theme inline {
+  --color-sky: var(--sky);
+  --color-sun: var(--sun);
+  --color-coral: var(--coral);
+  --color-mint: var(--mint);
+  --color-candy: var(--candy);
+  --color-indigo: var(--indigo);
+  --color-sky-soft: var(--sky-soft);
+  --color-sun-soft: var(--sun-soft);
+  --color-coral-soft: var(--coral-soft);
+  --color-mint-soft: var(--mint-soft);
+  --color-candy-soft: var(--candy-soft);
+  --color-indigo-soft: var(--indigo-soft);
+  --color-cloud: var(--cloud);
+  --color-ink: var(--ink);
+  --color-sub: var(--sub);
+  --color-line: var(--line);
+  --color-sky-deep: var(--sky-deep);
+  --color-cream: var(--cream);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-glow: var(--brand-glow);
+  --radius-xl: var(--r-xl);
+  --radius-lg: var(--r-lg);
+  --radius-md: var(--r-md);
+  --radius-sm: var(--r-sm);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+html {
+  background: var(--cloud);
+  /* 站内锚点/返回顶部平滑滚动；reduced-motion 用户由下方媒体查询关掉 */
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ===== 全局键盘可达性：focus-visible 统一焦点环（鼠标点击不打扰） ===== */
+:focus-visible {
+  outline: 2px solid var(--baozi-orange);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.nexus-table :focus-visible,
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline-offset: 1px;
+}
+
+/* ===== 选中文本：品牌蓝底白字（默认浏览器蓝在夜间主题下突兀） ===== */
+::selection {
+  background: var(--baozi-orange);
+  color: var(--text-on-accent);
+}
+
+/* ===== 细滚动条（Chromium/WebKit；Firefox 走 scrollbar-width/color） ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-deep) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: var(--border-deep);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+  background-clip: content-box;
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(1100px 560px at 82% -8%, var(--brand-glow-veil),
+    transparent 60%), 
+    radial-gradient(900px 480px at -8% 18%, var(--focus-ring-soft),
+    transparent 62%), 
+    var(--baozi-bg);
+  background-attachment: fixed;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  /* 长文页（规则/NFO/帖子）阅读更稳；表格数字列由 .num 兜底 */
+  text-underline-offset: 3px;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+}
+
+/* 链接：包子深橙、无下划线（theme.css .theme-baozipt a） */
+a {
+  color: var(--baozi-orange-dark);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--baozi-orange);
+}
+
+/* 数字表格对齐（统计数字 tabular-nums） */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+/* 贴纸徽章（Seedlight §4）：白描边 + 内阴影 + 微旋转 −2°，如真实贴纸。
+   默认中性；语义变体由运营标签选用（free=薄荷 / 2x=珊瑚 / new=糖果 / official=靛 / hr=灰蓝 / premium=暖阳） 
+   */
+.sticker {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9px;
+  border: 2px solid #fff;
+  background: var(--indigo);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+  box-shadow:
+    0 2px 6px rgba(31, 42, 68, 0.18),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.12);
+  transform: rotate(-2deg);
+}
+[data-theme="baozi-night"] .sticker {
+  border-color: var(--surface-card);
+}
+.sticker.s-free,
+.sticker[data-variant="free"] {
+  background: var(--mint);
+}
+.sticker.s-two,
+.sticker[data-variant="two"] {
+  background: var(--coral);
+}
+.sticker.s-new,
+.sticker[data-variant="new"] {
+  background: var(--candy);
+}
+.sticker.s-official,
+.sticker[data-variant="official"] {
+  background: var(--indigo);
+}
+.sticker.s-hr,
+.sticker[data-variant="hr"] {
+  background: #7c8aa5;
+}
+.sticker.s-premium,
+.sticker[data-variant="premium"] {
+  background: var(--sun);
+  color: #6b4e00;
+}
+/* 旧调用（纯文本贴纸，无 variant）保持低调样式，不与语义贴纸抢戏 */
+.sticker:not(
+  [data-variant],
+  .s-free,
+  .s-two,
+  .s-new,
+  .s-official,
+  .s-hr,
+  .s-premium,
+) {
+  border-width: 1px;
+  border-color: var(--baozi-line);
+  background: var(--baozi-paper);
+  color: var(--baozi-orange-dark);
+  box-shadow: none;
+  transform: none;
+}
+
+/* ===== Seedlight 主按钮（极光渐变胶囊，§4）：按语义挂 .btn-primary/.btn-aurora ===== */
+.btn-aurora,
+.btn-primary-aurora {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--grad-aurora);
+  color: var(--text-on-accent);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 18px var(--accent-shadow);
+  transition: transform 0.15s ease-out, box-shadow 0.2s ease-out,
+    filter 0.15s ease-out;
+}
+.btn-aurora:hover,
+.btn-primary-aurora:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 8px 22px var(--accent-shadow);
+}
+.btn-aurora:active,
+.btn-primary-aurora:active {
+  transform: scale(0.96);
+}
+
+/* ===== 彩虹彩带进度（§4 品牌心跳线）：进度/横幅分隔，3s 位移动画 ===== */
+.ribbon-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--grad-rainbow);
+  background-size: 200% 100%;
+  animation: ribbon-slide 3s linear infinite;
+}
+@keyframes ribbon-slide {
+  to {
+    background-position: 200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-bar {
+    animation: none;
+  }
+}
+
+/* ============ NexusPHP 经典表格（.colhead 渐变表头 + rowfollow 行） ============ */
+.nexus-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--baozi-paper);
+  border: 1px solid var(--baozi-line-soft);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.nexus-table th,
+.nexus-table thead td {
+  color: var(--text-brand);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--baozi-line-soft);
+  background: linear-gradient(90deg, var(--head-a), var(--head-b));
+}
+.nexus-table tbody td {
+  padding: 7px 10px;
+  color: var(--text-body-deep);
+  border-bottom: 1px solid var(--line);
+  background: var(--row-veil);
+}
+.nexus-table tbody tr:hover td {
+  background: var(--surface-hover);
+}
+.nexus-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ============ NexusPHP 表单表格（rowhead 标签列 + rowfollow 值列） ============ */
+.nexus-form td.rowhead {
+  width: 132px;
+  padding: 10px 12px;
+  color: var(--text-body-deep);
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: top;
+  background: var(--surface-sunken);
+}
+.nexus-form td.rowfollow {
+  padding: 10px 12px;
+  background: var(--surface-card);
+}
+.nexus-form tbody tr:hover td.rowfollow {
+  background: var(--surface-hover);
+}
+
+/* ============ 种子详情页（NexusPHP 详情块：colhead 表头 + label/value 行） ============ */
+.nexus-detail {
+  overflow: hidden;
+}
+.nexus-detail .nexus-table {
+  box-shadow: none;
+}
+.nexus-detail thead td.colhead {
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 800;
+}
+.nexus-detail__title {
+  background: linear-gradient(100deg, var(--head-a), var(--surface-card) 72%);
+}
+.nexus-detail__label {
+  width: 132px;
+  color: var(--text-brand);
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: top;
+  background: var(--label-veil);
+}
+.nexus-detail tbody td {
+  vertical-align: top;
+}
+
+/* 评论区（NexusPHP 外观）：作者列窄底奶色 + 正文列宽，与详情 label/value 一致 */
+.nexus-comment td:first-child {
+  width: 132px;
+  background: var(--surface-sunken);
+}
+.nexus-comment td:last-child {
+  background: var(--surface-card);
+}
+.nexus-comment:hover td {
+  background: var(--surface-hover);
+}
+
+/* ============ 种子详情页（馒头 M-Team + 阳光 SunnyPT 版式融合） ============ */
+/* 面包屑（阳光口径） */
+.td-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.td-crumbs a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.td-crumbs a:hover {
+  color: var(--text-brand);
+  text-decoration: underline;
+}
+.td-crumbs__id {
+  margin-left: auto;
+  font-family: var(--font-body);
+  letter-spacing: 0.02em;
+}
+
+/* 海报头：左海报 + 中主信息/操作 + 右状态卡；窄屏纵向堆叠 */
+.td-head {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) auto;
+  gap: 20px;
+  padding: 20px;
+  position: relative;
+}
+.td-head__poster {
+  position: relative;
+}
+.td-head__cat {
+  position: absolute;
+  z-index: 1;
+  left: -6px;
+  top: 10px;
+  padding: 2px 10px;
+  border-radius: 0 999px 999px 0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  max-width: 190px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 6px rgba(31, 42, 68, 0.18);
+}
+.td-head__img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-md);
+  object-fit: cover;
+  border: 1px solid var(--baozi-line-soft);
+  background: var(--surface-sunken);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.td-head__poster:hover .td-head__img {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+.td-head__img--fallback {
+  font-size: 42px;
+}
+.td-head__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.td-head__name {
+  font-size: 22px;
+  line-height: 1.35;
+  word-break: break-all;
+}
+.td-head__sub {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.td-head__chain {
+  color: var(--text-brand);
+  font-weight: 600;
+}
+.td-head__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.td-head__left {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--danger);
+}
+.td-anon-sticker {
+  background: var(--muted-soft);
+  color: var(--text-muted);
+}
+.td-head__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap-x: 18px;
+  gap-y: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.td-head__meta b {
+  color: var(--text-body-deep);
+}
+.td-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.td-head__actions > div {
+  flex: 1 1 320px;
+}
+/* 状态卡（阳光口径：三色统计列） */
+.td-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 128px;
+  align-self: stretch;
+  justify-content: center;
+}
+.td-stats__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: transform 0.12s ease;
+}
+.td-stats__row:hover {
+  transform: translateX(-2px);
+}
+.td-stats__row b {
+  font-size: 16px;
+}
+.td-stats__row--seed {
+  background: var(--success-soft);
+}
+.td-stats__row--seed b {
+  color: var(--success);
+}
+.td-stats__row--leech {
+  background: var(--coral-soft);
+}
+.td-stats__row--leech b {
+  color: var(--coral);
+}
+.td-stats__row--done {
+  background: var(--sky-soft);
+}
+.td-stats__row--done b {
+  color: var(--sky-deep);
+}
+.td-stats__health {
+  margin-top: 2px;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.td-stats__health--alive {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.td-stats__health--dead {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+@media (max-width: 900px) {
+  .td-head {
+    grid-template-columns: 130px minmax(0, 1fr);
+  }
+  .td-stats {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .td-stats__row {
+    flex: 1 1 100px;
+  }
+  .td-stats__health {
+    flex: 1 1 100%;
+  }
+}
+@media (max-width: 560px) {
+  .td-head {
+    grid-template-columns: 96px minmax(0, 1fr);
+    padding: 14px;
+  }
+  .td-head__name {
+    font-size: 17px;
+  }
+}
+
+/* 规格网格（阳光口径：数值 + 灰字说明） */
+.td-specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 2px;
+  padding: 14px 16px;
+}
+.td-spec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  min-width: 0;
+  transition: background 0.12s ease;
+}
+.td-spec:hover {
+  background: var(--surface-hover);
+}
+.td-spec b {
+  font-size: 15px;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+.td-spec span {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* 区块标题 */
+.td-sec-title {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(100deg, var(--head-a), var(--surface-card) 72%);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+/* 标签区（标签 + 右侧管理操作同排） */
+.td-tags__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px 14px;
+}
+.td-tagcloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* 标签芯片：与资源库列表 torrents-tag 同口径（小方角色块） */
+.td-tag {
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+  cursor: pointer;
+  transition: filter 0.12s ease, background 0.12s ease;
+}
+.td-tag:hover {
+  filter: brightness(1.06);
+}
+.td-tag--on {
+  background: var(--sky);
+  color: #fff;
+}
+.td-tag--on-official {
+  background: var(--indigo);
+  color: #fff;
+}
+.td-tag--off {
+  background: var(--muted-soft);
+  color: var(--text-muted);
+}
+.td-tags__manage {
+  margin-left: auto;
+}
+@media (max-width: 700px) {
+  .td-tags__manage {
+    margin-left: 0;
+  }
+}
+
+/* 简介区 */
+.td-descr__body {
+  padding: 14px 16px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* NFO */
+.td-nfo {
+  max-height: 320px;
+  overflow: auto;
+  border-radius: var(--r-sm);
+  background: var(--ink);
+  color: var(--cloud);
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.45;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+/* 文件列表 */
+.td-files {
+  width: 100%;
+  table-layout: fixed;
+  max-height: 300px;
+  overflow-y: auto;
+  display: block;
+  font-size: 13px;
+}
+.td-files td {
+  padding: 4px 12px;
+}
+.td-files tr:hover td {
+  background: var(--surface-hover);
+}
+
+/* 折叠分区（馒头口径） */
+.td-fold {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow 0.15s ease;
+}
+.td-fold[open] {
+  box-shadow: var(--shadow-hover);
+}
+.td-fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  background: linear-gradient(100deg, var(--head-a), var(--surface-card) 72%);
+}
+.td-fold > summary:hover {
+  background: linear-gradient(100deg, var(--head-a), var(--surface-hover) 72%);
+}
+.td-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.td-fold > summary h2 {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.td-fold__count {
+  font-size: 12px;
+  color: var(--text-brand);
+}
+.td-fold__chev {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-faint);
+  border-bottom: 2px solid var(--text-faint);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.td-fold[open] > summary .td-fold__chev {
+  transform: rotate(225deg);
+}
+.td-fold__body {
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* 感谢者（馒头口径：头像 + 用户名 chip） */
+.td-thanker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-body-deep);
+  transition: background 0.12s ease;
+}
+.td-thanker:hover {
+  background: var(--surface-hover);
+}
+.td-thanker__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--grad-aurora);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* 评论区（阳光口径：左作者侧栏 + 右正文） */
+.td-comments {
+  padding-bottom: 6px;
+}
+.td-comment {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  border-top: 1px solid var(--line);
+}
+.td-comment:first-of-type {
+  border-top: none;
+}
+.td-comment__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--surface-sunken);
+}
+.td-comment__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--grad-aurora);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+.td-comment__body {
+  padding: 12px 16px;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+@media (max-width: 560px) {
+  .td-comment {
+    grid-template-columns: 1fr;
+  }
+  .td-comment__side {
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 4px;
+  }
+}
+
+.td-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
