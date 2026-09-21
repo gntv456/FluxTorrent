@@ -1580,6 +1580,15 @@ usertools: {
       "5. No ads or download links inside lyric files.",
       "6. Invalid uploads are removed and fined {magic}; upheld reports earn {magic}.",
     ] as string[],
+    voteLabel: "Rate",
+    voteOk: "Rating submitted",
+    editLabel: "Edit subtitle",
+    editPrompt: "New title (empty to cancel)",
+    editOk: "Subtitle updated",
+    delLabel: "Delete subtitle",
+    delConfirm: "Delete this subtitle? This cannot be undone.",
+    delOk: "Subtitle deleted",
+    verifiedTip: "Verified",
   },
 
   friends: {
