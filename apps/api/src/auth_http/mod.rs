@@ -15,6 +15,7 @@ mod me_security;
 mod me_settings;
 mod me_settings_kv;
 mod profile;
+mod profile_helpers;
 mod profile_types;
 mod register;
 mod user_torrentlist;
