@@ -14,6 +14,7 @@ import {
   AdminActionPanels,
   TAB_BTN_CLS,
 } from "./admin-user-detail-actions-forms";
+import { AdminActionPanelsMore } from "./admin-user-detail-actions-forms-more";
 
 /** 面板切换按钮（激活/默认）样式 */
 const ON_CLS = "bg-sky text-white";
@@ -267,6 +268,7 @@ export function AdminActions(props: AdminActionsProps) {
       </div>
 
       <AdminActionPanels {...props} />
+      <AdminActionPanelsMore {...props} />
     </section>
   );
 }

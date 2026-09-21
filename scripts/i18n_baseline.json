@@ -26,6 +26,16 @@
   149,
   172
  ],
+ "components\\admin-exams-form.tsx": [
+  25,
+  63,
+  71,
+  144,
+  145,
+  147,
+  161,
+  163
+ ],
  "components\\admin-exams-table.tsx": [
   45,
   46,
@@ -40,17 +50,9 @@
   98
  ],
  "components\\admin-exams.tsx": [
-  48,
-  92,
-  96,
-  115,
-  153,
-  161,
-  234,
-  235,
-  237,
-  251,
-  253
+  46,
+  90,
+  94
  ],
  "components\\admin-hr.tsx": [
   27,
@@ -134,6 +136,15 @@
   232,
   244
  ],
+ "components\\admin-medals-form.tsx": [
+  45,
+  112,
+  113,
+  114,
+  186,
+  193,
+  207
+ ],
  "components\\admin-medals-held.tsx": [
   35,
   39,
@@ -168,29 +179,22 @@
   244
  ],
  "components\\admin-medals.tsx": [
-  96,
-  108,
-  112,
-  132,
-  199,
+  95,
+  107,
+  111,
+  150,
+  151,
+  152,
+  153,
+  154,
+  155,
+  156,
+  157,
+  158,
+  170,
+  182,
   200,
-  201,
-  275,
-  282,
-  296,
-  347,
-  348,
-  349,
-  350,
-  351,
-  352,
-  353,
-  354,
-  355,
-  367,
-  379,
-  397,
-  400
+  203
  ],
  "components\\admin-ops.tsx": [],
  "components\\admin-p2-tools-claims.tsx": [
@@ -276,6 +280,10 @@
   42,
   43
  ],
+ "components\\admin-props-form.tsx": [
+  32,
+  98
+ ],
  "components\\admin-props-frames.tsx": [
   67,
   71,
@@ -292,6 +300,14 @@
   252,
   255
  ],
+ "components\\admin-props-table.tsx": [
+  29,
+  30,
+  31,
+  33,
+  34,
+  52
+ ],
  "components\\admin-props-user-bag.tsx": [
   38,
   42,
@@ -307,20 +323,12 @@
   99
  ],
  "components\\admin-props.tsx": [
-  72,
-  84,
-  118,
-  122,
-  142,
-  208,
-  300,
-  301,
-  302,
-  304,
-  305,
-  323,
-  352,
-  356
+  74,
+  86,
+  120,
+  124,
+  154,
+  157
  ],
  "components\\admin-sections-dict.tsx": [
   42,
@@ -341,32 +349,34 @@
   197,
   219
  ],
+ "components\\admin-sections-kinds.tsx": [
+  29,
+  33,
+  40,
+  46,
+  60,
+  69,
+  70,
+  71,
+  72,
+  73,
+  87,
+  96,
+  105,
+  117,
+  123
+ ],
  "components\\admin-sections.tsx": [
-  61,
-  75,
-  91,
-  99,
+  62,
+  76,
+  103,
   111,
-  121,
-  127,
-  128,
-  149,
-  164,
-  180,
-  184,
-  191,
-  197,
-  211,
-  220,
-  221,
-  222,
-  223,
-  224,
-  238,
-  247,
-  256,
-  268,
-  274
+  123,
+  133,
+  139,
+  140,
+  161,
+  177
  ],
  "components\\admin-shell.tsx": [
   28,
@@ -446,6 +456,12 @@
   148,
   149
  ],
+ "components\\admin-tasks-form.tsx": [
+  22,
+  142,
+  153,
+  235
+ ],
  "components\\admin-tasks-table.tsx": [
   54,
   55,
@@ -466,11 +482,7 @@
   51,
   55,
   82,
-  86,
-  106,
-  226,
-  237,
-  319
+  86
  ],
  "components\\admin-torrents-batch-bar.tsx": [
   145,
@@ -480,51 +492,31 @@
   232
  ],
  "components\\admin-torrents-list.tsx": [
-  105,
-  114,
-  117,
-  126,
-  127,
-  128,
-  129,
-  130,
-  131,
+  106,
+  115,
+  118,
   132,
   133,
-  134,
-  146,
-  147,
-  162,
-  165,
-  178,
+  148,
+  151,
+  164,
+  184,
+  185,
+  186,
+  187,
+  188,
   198,
   199,
   200,
-  201,
-  202,
+  210,
+  211,
   212,
-  213,
-  214,
+  222,
+  223,
   224,
-  225,
-  226,
-  236,
-  237,
-  238,
-  248,
-  249,
-  250,
-  291,
-  292,
-  293,
-  294,
-  295,
-  296,
-  297,
-  298,
-  300,
-  366,
-  368
+  234,
+  235,
+  236
  ],
  "components\\admin-torrents-login-logs.tsx": [
   65,
@@ -567,6 +559,19 @@
   206,
   207
  ],
+ "components\\admin-torrents-table.tsx": [
+  25,
+  26,
+  27,
+  28,
+  29,
+  30,
+  31,
+  32,
+  34,
+  97,
+  99
+ ],
  "components\\admin-torrents.tsx": [
   34,
   35,
@@ -600,27 +605,29 @@
   212,
   215
  ],
+ "components\\admin-user-detail-actions-forms-more.tsx": [
+  28,
+  37,
+  41,
+  64,
+  65,
+  66,
+  91,
+  122,
+  193,
+  205
+ ],
  "components\\admin-user-detail-actions-forms.tsx": [
-  123,
-  146,
-  153,
-  165,
-  206,
-  249,
-  258,
-  262,
-  285,
-  286,
-  287,
-  312,
-  343,
-  414,
-  426
+  124,
+  147,
+  154,
+  166,
+  207
  ],
  "components\\admin-user-detail-actions.tsx": [
-  124,
-  213,
-  220
+  125,
+  214,
+  221
  ],
  "components\\admin-user-detail-panels.tsx": [
   30,
@@ -985,6 +992,7 @@
   104,
   108
  ],
+ "components\\staff-tools-content-rules.tsx": [],
  "components\\staff-tools-content.tsx": [],
  "components\\staff-tools-forums-cats.tsx": [
   42,
@@ -1051,17 +1059,18 @@
  "components\\staff-tools-ops-forms.tsx": [
   60
  ],
- "components\\staff-tools-ops.tsx": [
-  174,
-  175,
-  176,
-  177,
-  179,
-  228,
-  232,
-  291,
-  299
+ "components\\staff-tools-ops-promo.tsx": [
+  141,
+  142,
+  143,
+  144,
+  146,
+  195,
+  199,
+  258,
+  266
  ],
+ "components\\staff-tools-ops.tsx": [],
  "components\\staff-tools-perm-matrix.tsx": [
   16,
   17,
@@ -1160,12 +1169,13 @@
   95,
   96
  ],
+ "components\\staff-tools-site-ads.tsx": [],
  "components\\staff-tools-site-lists.tsx": [],
  "components\\staff-tools-site.tsx": [
-  380,
-  396,
-  407,
-  412
+  242,
+  258,
+  269,
+  274
  ],
  "components\\staff-tools-sys-agentrules.tsx": [
   60,

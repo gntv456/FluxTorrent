@@ -88,3 +88,20 @@ export function fmtBytes(n: number): string {
 }
 
 export type SubTab = "torrents" | "deny" | "ops" | "spark" | "buys" | "logins";
+
+/** 批量动作 → 中文名（批量工具条确认文案用） */
+export function actionLabel(a: string): string {
+  return (
+    {
+      sticky: "置顶",
+      promo: "设置促销",
+      recommend: "推荐",
+      set_tags: "打标",
+      clear_tags: "清除标签",
+      hr: "标记H&R",
+      unhr: "取消H&R",
+      change_category: "改分类",
+      delete: "删除",
+    }[a] ?? a
+  );
+}

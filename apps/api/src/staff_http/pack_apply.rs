@@ -3,8 +3,8 @@
 
 use super::sitetype::SiteTypePack;
 use actix_web::{post, web, HttpRequest, Responder};
-use serde::Deserialize;
 
+use super::pack_types::{is_ascii_kind, ApplyPackBody};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -285,20 +285,4 @@ pub async fn site_type_pack_apply(
     Ok(ok(
         serde_json::json!({ "applied": pack.code, "mode": mode, "categories": added, "extras": extras }),
     ))
-}
-
-#[derive(Deserialize)]
-pub(super) struct ApplyPackBody {
-    pub(super) code: String,
-    /// replace = 清空现有分类重建；merge = 保留现有，仅追加新分类
-    #[serde(default)]
-    pub(super) mode: Option<String>,
-}
-
-/// 维度 kind 合法性（防注入）：小写字母/数字/下划线
-pub(super) fn is_ascii_kind(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 32
-        && s.bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
 }

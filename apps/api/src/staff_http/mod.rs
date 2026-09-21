@@ -12,6 +12,7 @@ mod ipcheck;
 mod massmail;
 mod pack_apply;
 mod pack_save;
+mod pack_types;
 mod promo;
 mod promo_set;
 mod rules_cats;
