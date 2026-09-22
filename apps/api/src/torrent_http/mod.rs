@@ -5,13 +5,22 @@
 //! 按域拆分（300 行门禁）：列表与只读详情在 list.rs，评论区写操作与
 //! 感谢/收藏/求续种在 interact.rs，编辑/定价/恢复/删除/标签管理在 manage.rs。
 
+mod aggregate;
+mod batch;
+mod comments_like;
 mod detail;
 mod interact;
 mod list;
+mod magnet;
 mod manage;
+mod peers;
 mod query;
 
+pub use aggregate::*;
+pub use batch::*;
 pub use detail::*;
 pub use interact::*;
 pub use list::*;
+pub use magnet::*;
 pub use manage::*;
+pub use peers::*;

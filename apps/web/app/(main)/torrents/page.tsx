@@ -5,9 +5,15 @@ import { fmt } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { TorrentsSearchBox } from "./_parts/torrents-search-box";
 import { TorrentsTable } from "./_parts/torrents-table";
+import { TorrentCards, TorrentPosters } from "./_parts/torrents-cards";
+import { TorrentsViewSwitch } from "./_parts/torrents-view-switch";
+import { TorrentsHotkeys } from "./_parts/torrents-hotkeys";
+import { TorrentHoverPreview } from "@/components/torrent-hover-preview";
 import { buildTorrentChips } from "./_parts/torrents-chips";
 import {
   loadPublic,
+  parsePageSize,
+  parseView,
   toggleSort,
   withParam,
   type SectionDictRow,
@@ -34,6 +40,9 @@ export default async function TorrentsPage({
     ]),
   );
   const { dict } = await getDict();
+  // 列表形态（方案阶段二）：视图与每页条数都走 URL，未知值回落默认（table / 20）
+  const view = parseView(sp.view);
+  const pageSize = parsePageSize(sp.limit);
   const [profile, secDict, tagDict] = await Promise.all([
     loadPublic<{
       categories: { id: number; name: string }[];
@@ -57,8 +66,11 @@ export default async function TorrentsPage({
     if (k.startsWith("sec_") && v) secParams[k] = v;
   }
   // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用
+  // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用；
+  // 但要把「失败」与「确实没有结果」区分开（方案 P0-6：此前两者都渲染成空态）
+  let loadFailed = false;
   const page = await paged<TorrentListItem>("/api/v1/torrents", {
-    limit: 20,
+    limit: pageSize,
     // 多选分类（0088）：后端 category_ids 兼容逗号串
     category_id: sp.category_id,
     official: sp.official ? sp.official === "1" : undefined,
@@ -85,6 +97,7 @@ export default async function TorrentsPage({
     promo: sp.promo || undefined,
     owner: sp.owner || undefined,
     mine: sp.mine || undefined,
+    bookmarked: sp.bookmarked || undefined,
     // 0118 补齐（下载数/完成数区间 / 匿名发布 / 排序视图）
     min_leechers: sp.min_leechers || undefined,
     max_leechers: sp.max_leechers || undefined,
@@ -92,11 +105,14 @@ export default async function TorrentsPage({
     max_completed: sp.max_completed || undefined,
     anonymous: sp.anonymous || undefined,
     ...secParams,
-  }).catch(() => ({
-    items: [] as TorrentListItem[],
-    next_cursor: null,
-    total_estimate: 0,
-  }));
+  }).catch(() => {
+    loadFailed = true;
+    return {
+      items: [] as TorrentListItem[],
+      next_cursor: null,
+      total_estimate: 0,
+    };
+  });
 
   // 分类以 site-profile 为准（后台可改，与站型包同步）；接口失败回落 i18n 字典
   const categories = profile?.categories?.length
@@ -145,13 +161,42 @@ export default async function TorrentsPage({
         withParam={withParam}
       />
 
-      <span className="num text-xs text-sub">
-        {fmt(dict.torrents.total, { n: page.total_estimate })}
-      </span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="num text-xs text-sub">
+          {fmt(dict.torrents.total, { n: page.total_estimate })}
+        </span>
+        <TorrentsViewSwitch
+          dict={dict}
+          sp={sp}
+          view={view}
+          pageSize={pageSize}
+          withParam={withParam}
+        />
+      </div>
+      {/* 键盘快捷键（/ 搜索、j/k 移动、Enter 打开）：挂载后短暂提示，8s 自动消失 */}
+      <TorrentsHotkeys />
+      {/* 列表 hover 预览卡（阶段三）：事件委托整页生效 */}
+      <TorrentHoverPreview />
 
-      {/* 种子九列表格（参考站 colhead 图标表头） */}
+      {/* 三种形态共享同一份数据：表格（信息密度）/ 卡片（浏览）/ 海报墙（视觉） */}
       {page.items.length === 0 ? (
-        <EmptyTorrents />
+        loadFailed ? (
+          <p className="py-8 text-center text-sm text-sub" role="status">
+            {dict.common.loadFailed}
+            <a
+              href={withParam(sp, "cursor", undefined)}
+              className="ml-2 text-sky underline"
+            >
+              {dict.common.retry}
+            </a>
+          </p>
+        ) : (
+          <EmptyTorrents />
+        )
+      ) : view === "card" ? (
+        <TorrentCards items={page.items} dict={dict} />
+      ) : view === "poster" ? (
+        <TorrentPosters items={page.items} dict={dict} />
       ) : (
         <TorrentsTable
           dict={dict}

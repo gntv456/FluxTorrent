@@ -6,26 +6,18 @@ use sqlx::PgPool;
 use crate::errors::DomainResult;
 
 use super::list_noclamp_as::list_torrents_noclamp_as;
-use super::types::{TorrentFilter, TorrentPage, MAX_LIMIT};
+use super::promo;
+use super::types::{ListCursor, TorrentFilter, TorrentPage, MAX_LIMIT};
 
 /// LIKE 通配转义（防用户输入的 `%`/`_` 变成通配符；配合 SQL 侧 `ESCAPE chr(92)`）
 pub(super) fn esc_like(s: &str) -> String {
     s.replace('\\', "").replace('%', "\\%").replace('_', "\\_")
 }
 
-pub(super) fn sort_expr(sticky_expr: &str, col: &str, asc: bool) -> String {
-    let dir = if asc { "ASC" } else { "DESC" };
-    format!("{sticky_expr}, {col} {dir}, t.id {dir}")
-}
+// 旧 sort_expr 已随批次二删除：排序/游标构造移入 list_noclamp_as（keyset 与 ORDER BY 同源）。
 
-/// 优惠（promotions）命中的统一匹配式：种子级直挂 或 全局/官种/非官种/分类作用域。
-/// 与列表 SELECT 中 promotion 子查询同口径，保证「筛选出的免费种」与徽标显示一致。
-const PROMO_MATCH: &str = "p.starts_at <= now() AND p.ends_at > now() AND (\
-     p.torrent_id = t.id OR (p.torrent_id IS NULL AND (\
-       p.scope = 'global' \
-       OR (p.scope = 'official' AND t.official_tag) \
-       OR (p.scope = 'non_official' AND NOT t.official_tag) \
-       OR (p.scope = 'category' AND t.category_id = p.category_id))))";
+// 促销命中口径已收口到 `super::promo`（唯一来源）：列表 SELECT、计数谓词、RSS、兼容层
+// 全部引用它，避免「徽标显示免费但按免费筛不出来」这类三处漂移（2026-09-22 方案 P0-5）。
 
 /// 追加筛选的占位符槽位。列表与计数两条 SQL 的参数编号各自独立，
 /// 故谓词文本按槽位号生成（同一份语义，两套编号），避免手改编号串号。
@@ -85,13 +77,25 @@ pub(super) fn extra_preds(s: ExtraSlots) -> String {
         a = s.exclude
     ));
     let p = s.promo;
+    let (promo_free, promo_x2, promo_half, promo_any) = (
+        promo::exists_clause(Some("'free','x2free'")),
+        promo::exists_clause(Some("'x2','x2free','x2half'")),
+        promo::exists_clause(Some("'half','x2half'")),
+        promo::exists_clause(None),
+    );
+    // 阶段三筛选粒度：promo 支持多选（逗号串，query.rs norm_promo_multi 归一）。
+    // 单值口径不变（free/x2/half/any/none 五档任一）；多值时各档 OR（语义：
+    // 「免费或 2x」= 命中任一所选档位）。`$p` 绑定的是归一后的逗号串。
     out.push_str(&format!(
         " AND (${p}::text IS NULL \
-           OR (${p} = 'free' AND EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH} AND p.kind::text IN ('free','x2free'))) \
-           OR (${p} = 'x2' AND EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH} AND p.kind::text IN ('x2','x2free','x2half'))) \
-           OR (${p} = 'half' AND EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH} AND p.kind::text IN ('half','x2half'))) \
-           OR (${p} = 'any' AND EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH})) \
-           OR (${p} = 'none' AND NOT EXISTS(SELECT 1 FROM promotions p WHERE {PROMO_MATCH})))"
+           OR (${p} = 'any' AND {promo_any}) \
+           OR (${p} = 'none' AND NOT {promo_any}) \
+           OR (strpos(${p}, 'free') > 0 AND (${p} LIKE 'free,%' OR ${p} LIKE '%,free' \
+               OR ${p} LIKE '%,free,%' OR ${p} = 'free') AND {promo_free}) \
+           OR (strpos(${p}, 'x2') > 0 AND (${p} LIKE 'x2,%' OR ${p} LIKE '%,x2' \
+               OR ${p} LIKE '%,x2,%' OR ${p} = 'x2') AND {promo_x2}) \
+           OR (strpos(${p}, 'half') > 0 AND (${p} LIKE 'half,%' OR ${p} LIKE '%,half' \
+               OR ${p} LIKE '%,half,%' OR ${p} = 'half') AND {promo_half}))"
     ));
     out.push_str(&format!(
         " AND (${a}::text IS NULL OR u.username ILIKE ${a} ESCAPE chr(92))",
@@ -131,7 +135,7 @@ pub(super) fn extra_preds(s: ExtraSlots) -> String {
 pub async fn list_torrents(
     db: &PgPool,
     filter: &TorrentFilter,
-    cursor: Option<i64>,
+    cursor: Option<ListCursor>,
     limit: i64,
 ) -> DomainResult<TorrentPage> {
     list_torrents_as(db, filter, cursor, limit, 0).await
@@ -141,7 +145,7 @@ pub async fn list_torrents(
 pub async fn list_torrents_as(
     db: &PgPool,
     filter: &TorrentFilter,
-    cursor: Option<i64>,
+    cursor: Option<ListCursor>,
     limit: i64,
     viewer: i64,
 ) -> DomainResult<TorrentPage> {

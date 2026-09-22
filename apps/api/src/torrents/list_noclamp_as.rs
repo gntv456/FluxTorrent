@@ -1,8 +1,10 @@
 //! 免钳制列表核心（M02 管理面）：noclamp_as 直查（含全部谓词构造）。
 //! 从 torrents/list_noclamp.rs 按域拆出。
 
-use super::list::{esc_like, extra_preds, sort_expr, ExtraSlots};
-use super::types::{TorrentFilter, TorrentPage, TorrentRow};
+use super::cursor;
+use super::list::{esc_like, extra_preds, ExtraSlots};
+use super::promo;
+use super::types::{ListCursor, TorrentFilter, TorrentPage, TorrentRow};
 use crate::errors::{DomainError, DomainResult};
 use sqlx::PgPool;
 /// 审计修复（P1）：list_torrents_as 此前把 viewer 转成字符串后丢弃，内部又硬编码
@@ -11,7 +13,7 @@ use sqlx::PgPool;
 pub async fn list_torrents_noclamp_as(
     db: &PgPool,
     filter: &TorrentFilter,
-    cursor: Option<i64>,
+    cursor: Option<ListCursor>,
     limit: i64,
     viewer: i64,
 ) -> DomainResult<TorrentPage> {
@@ -40,31 +42,18 @@ pub async fn list_torrents_noclamp_as(
         .filter(|s| !s.is_empty())
         .map(|s| format!("%{}%", esc_like(s)));
 
-    // 排序白名单（防注入）；非 id 排序时退化为 OFFSET 无关的「前 N 截断」：
-    // 排序键 + id 组成稳定排序，游标仍按 id 翻页（与默认排序一致，简单可靠）。
     // 置顶口径（0063 起；0089 扩展二级置顶）：pos_state 1=一级 2=二级，pos_state_until 到期自动回落，
     // 旧列 sticky 仍被官种联动使用——「任一生效即置顶」，一级 > 二级 > 普通置顶。
-    let sticky_expr = "(GREATEST(t.sticky::int, CASE WHEN t.pos_state IN (1, 2) AND (t.pos_state_until IS NULL OR t.pos_state_until > now()) THEN CASE t.pos_state WHEN 1 THEN 2 WHEN 2 THEN 1 ELSE 0 END ELSE 0 END)) DESC";
+    // 拆出无方向的 sticky_calc：游标谓词要比较它的值，SELECT 也要输出它（sticky_rank）。
+    let sticky_calc = "(GREATEST(t.sticky::int, CASE WHEN t.pos_state IN (1, 2) AND (t.pos_state_until IS NULL OR t.pos_state_until > now()) THEN CASE t.pos_state WHEN 1 THEN 2 WHEN 2 THEN 1 ELSE 0 END ELSE 0 END))";
+    let sticky_expr = format!("{sticky_calc} DESC");
     // 表头排序（NP colhead 口径）：asc 前缀反转方向；comments = 评论数
     let (key, asc) = match filter.sort.as_deref() {
         Some(s) if s.ends_with("_asc") => (&s[..s.len() - 4], true),
         other => (other.unwrap_or(""), false),
     };
-    let order = match key {
-        "seeders" => sort_expr(&sticky_expr, "t.seeders", asc),
-        "leechers" => sort_expr(&sticky_expr, "t.leechers", asc),
-        "size" => sort_expr(&sticky_expr, "t.size", asc),
-        "completed" => sort_expr(&sticky_expr, "t.times_completed", asc),
-        // 发布时间/名称排序（高级搜索排序扩展；NP「按发布时间/标题」口径）
-        "created" => sort_expr(&sticky_expr, "t.created_at", asc),
-        "name" => sort_expr(&sticky_expr, "t.name", asc),
-        "comments" => sort_expr(
-            &sticky_expr,
-            "(SELECT count(*) FROM comments c WHERE c.torrent_id = t.id)",
-            asc,
-        ),
-        _ => format!("{sticky_expr}, t.id DESC"),
-    };
+    // 用户显式排序不掺置顶 + 二元 keyset 游标：构造细节见 cursor.rs
+    let (order, cursor_col) = cursor::sort_of(key, asc, &sticky_expr);
     // 第八轮 Section 多维筛选：每个维度一个子查询谓词（kind 以 section_kinds 存在性校验 + i64 内插，无注入面）
     // 多维多选（0102）：同维度多值 OR（= ANY），跨维度 AND
     let mut sec_sql = String::new();
@@ -116,16 +105,14 @@ pub async fn list_torrents_noclamp_as(
         Some(1) => " AND t.approval_status = 1".into(),
         Some(_) => " AND t.approval_status = 1".into(),
     };
-    // 种子状态（0102，viewer 维度）：需要 snatches 存在性判断（viewer 由调用方注入 SQL 文本，参数化见 bind）
-    let status_pred = match filter.status.as_deref() {
-        Some("seeding") => " AND EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.seeding)".to_string(),
-        Some("leeching") => " AND EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.leeching)".to_string(),
-        Some("completed") => " AND EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.completed_at IS NOT NULL)".to_string(),
-        Some("incomplete") => " AND EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.completed_at IS NULL AND (s.uploaded > 0 OR s.downloaded > 0))".to_string(),
-        Some("notseeding") => " AND NOT EXISTS(SELECT 1 FROM snatches s WHERE s.torrent_id = t.id AND s.user_id = {viewer} AND s.seeding)".to_string(),
-        _ => String::new(),
-    }
-    .replace("{viewer}", &viewer_sql);
+    // 种子状态 + 书签（viewer 维度谓词，阶段三筛选粒度收编 viewer_preds）
+    let status_pred =
+        super::viewer_preds::status_pred(filter.status.as_deref(), &viewer_sql);
+    let bookmark_pred = if filter.bookmarked {
+        super::viewer_preds::bookmark_pred(&viewer_sql)
+    } else {
+        String::new()
+    };
 
     // 高级搜索增强：体积/时间/做种数/排除词/优惠/发布者/仅我发布（列表侧编号 $11..$20）
     // 0118 补齐：下载数/完成数区间 + 匿名发布（列表侧 $21..$25）
@@ -146,6 +133,17 @@ pub async fn list_torrents_noclamp_as(
         max_completed: 24,
         anonymous: 25,
     });
+    // 促销两列（kind + 到期）：一次 LATERAL 取「命中的最高优先级促销」，
+    // 替代此前两条除 SELECT 列外完全相同的 correlated 子查询（方案 P0-5，每行省一次 promotions 扫描）。
+    let promo_lateral = promo::lateral_latest();
+    // 游标谓词（方案批次二）：$7 = 游标 id，$26 = 排序键值（文本进、按列 cast 比较）。
+    // 二元 keyset「(排序列, id)」与 ORDER BY 完全同序，非默认排序翻页不再丢行；
+    // 旧格式游标（val=None，历史链接）sortval 为 NULL → 退化为回到第一页。
+    let sortval = cursor.as_ref().and_then(|c| c.val.clone());
+    let cursor_pred = match cursor.as_ref() {
+        Some(_) => cursor::predicate(&cursor_col, asc, sticky_calc),
+        None => String::new(),
+    };
     let sql = format!(
         r#"
         SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
@@ -153,30 +151,16 @@ pub async fn list_torrents_noclamp_as(
                (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments,
                t.official_tag, t.anonymous, t.approval_status, t.sticky,
                CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name,
-               (SELECT p.kind::text FROM promotions p
-                  WHERE p.starts_at <= now() AND p.ends_at > now() AND (
-                    p.torrent_id = t.id
-                    OR (p.torrent_id IS NULL AND (
-                        p.scope = 'global'
-                        OR (p.scope = 'official' AND t.official_tag)
-                        OR (p.scope = 'non_official' AND NOT t.official_tag)
-                        OR (p.scope = 'category' AND t.category_id = p.category_id))))
-                  ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion,
-               (SELECT p.ends_at FROM promotions p
-                  WHERE p.starts_at <= now() AND p.ends_at > now() AND (
-                    p.torrent_id = t.id
-                    OR (p.torrent_id IS NULL AND (
-                        p.scope = 'global'
-                        OR (p.scope = 'official' AND t.official_tag)
-                        OR (p.scope = 'non_official' AND NOT t.official_tag)
-                        OR (p.scope = 'category' AND t.category_id = p.category_id))))
-                  ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion_ends_at,
+               pr.promotion,
+               pr.promotion_ends_at,
                t.media_info->>'rating' AS rating,
                t.media_info->>'poster' AS poster,
                t.imdb_id,
-               t.created_at
+               t.created_at,
+               {sticky_calc} AS sticky_rank
         FROM torrents t
         LEFT JOIN users u ON u.id = t.owner_id
+        {promo_lateral}
         WHERE (t.approval_status = 1 OR $10::bool)
           AND ($1::int[] IS NULL OR t.category_id = ANY($1))
           AND ($2::int IS NULL OR t.medium_id = $2)
@@ -186,8 +170,9 @@ pub async fn list_torrents_noclamp_as(
           {alive_pred}
           {approval_pred}
           {status_pred}
+          {bookmark_pred}
           {search_pred}
-          AND ($7::bigint IS NULL OR t.id < $7)
+         {cursor_pred}
           AND ($9::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $9))
           {sec_sql}
           {extra_sql}
@@ -202,7 +187,7 @@ pub async fn list_torrents_noclamp_as(
         .bind(filter.edition_id)
         .bind(filter.official)
         .bind(&pattern)
-        .bind(cursor)
+        .bind(cursor.as_ref().map(|c| c.id))
         .bind(limit + 1)
         .bind(filter.tag_id)
         .bind(filter.include_unapproved)
@@ -221,6 +206,7 @@ pub async fn list_torrents_noclamp_as(
         .bind(filter.min_completed)
         .bind(filter.max_completed)
         .bind(filter.anonymous)
+        .bind(sortval)
         .fetch_all(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -245,15 +231,19 @@ pub async fn list_torrents_noclamp_as(
         max_completed: 22,
         anonymous: 23,
     });
+    // 计数降级（方案 P0-3）：此前每次列表请求都对「筛选后全量集合」做精确 count(*)，
+    // 搜索/深筛选下是一次无上界聚合。现在封顶采样：内层 LIMIT 10001，
+    // 筛选后 ≤10000 条时仍为精确值，超过则计到 10000（前端展示「约」口径）——
+    // 把 count 的代价上界从 O(筛选集) 压到 O(10001 行扫描)。
     let count_sql = format!(
-        "SELECT count(*) FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
+        "SELECT count(*) FROM (SELECT 1 FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          WHERE (t.approval_status = 1 OR $7::bool) \
          AND ($1::int[] IS NULL OR t.category_id = ANY($1)) AND ($2::int IS NULL OR t.medium_id = $2) \
          AND ($3::int IS NULL OR t.grade_id = $3) AND ($4::int IS NULL OR t.edition_id = $4) \
          AND ($5::bool IS NULL OR t.official_tag = $5) {alive_pred} {approval_pred} {status_pred} \
-         {search_pred} \
+         {bookmark_pred} {search_pred} \
          AND ($8::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $8)) \
-         {sec_sql} {extra_count_sql}",
+         {sec_sql} {extra_count_sql} LIMIT 10001) sub",
     );
     let total: i64 = sqlx::query_scalar(&count_sql)
         .bind(filter.category_id.clone())
@@ -285,8 +275,13 @@ pub async fn list_torrents_noclamp_as(
 
     let has_more = rows.len() as i64 > limit;
     let items = rows.into_iter().take(limit as usize).collect::<Vec<_>>();
-    let next_cursor = has_more
-        .then(|| items.last().map(|r| r.id.to_string()).unwrap_or_default());
+    // 游标编码「排序键值 + id」：下一页谓词与 ORDER BY 完全同序，翻页不丢行（方案批次二）
+    let next_cursor = has_more.then(|| {
+        items
+            .last()
+            .map(|r| cursor::encode_next(&cursor_col, r))
+            .unwrap_or_default()
+    });
     Ok(TorrentPage {
         items,
         next_cursor,
