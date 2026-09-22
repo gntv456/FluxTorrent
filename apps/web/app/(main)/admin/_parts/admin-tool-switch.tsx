@@ -19,6 +19,7 @@ import { AdminAttendance } from "@/components/admin-attendance";
 import { AdminTagDict } from "@/components/admin-tagdict";
 import { AdminSections } from "@/components/admin-sections";
 import { AdminMedals } from "@/components/admin-medals";
+import { AdminSubtitlesAwards } from "@/components/admin-subtitles-awards";
 import { AdminProps } from "@/components/admin-props";
 import { AdminExams } from "@/components/admin-exams";
 import { AdminJixiao } from "@/components/admin-jixiao";
@@ -78,6 +79,9 @@ export function renderSimpleTool(
       return <AdminSections />;
     case "medals":
       return <AdminMedals />;
+    // 金字幕评选管理（0150）：候选/授金
+    case "subawards":
+      return <AdminSubtitlesAwards />;
     case "props":
       return <AdminProps />;
     case "exams":

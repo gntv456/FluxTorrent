@@ -16,6 +16,7 @@ export function TorrentManage({
   descr,
   anonymous,
   seeders,
+  imdbId,
 }: {
   torrentId: number;
   name: string;
@@ -23,6 +24,7 @@ export function TorrentManage({
   descr: string | null;
   anonymous: boolean;
   seeders?: number;
+  imdbId?: string | null;
 }) {
   const { dict } = useI18n();
   const router = useRouter();
@@ -44,6 +46,7 @@ export function TorrentManage({
   const [fSub, setFSub] = useState(smallDescr ?? "");
   const [fDescr, setFDescr] = useState(descr ?? "");
   const [fAnon, setFAnon] = useState(anonymous);
+  const [fImdb, setFImdb] = useState(imdbId ?? "");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -56,6 +59,7 @@ export function TorrentManage({
         small_descr: fSub.trim(),
         descr: fDescr,
         anonymous: fAnon,
+        imdb_id: fImdb.trim() || "",
       });
       setMsg(t.saved);
       setOpen(false);
@@ -163,6 +167,23 @@ export function TorrentManage({
               rows={6}
               className="rounded-[var(--r-sm)] border border-line px-2 py-1 text-sm"
             />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            {t.fieldImdb ?? "IMDB"}
+            <input
+              value={fImdb}
+              placeholder="tt1234567"
+              onChange={(e) =>
+                setFImdb(
+                  e.target.value.replace(/[^tT0-9]/g, "").slice(0, 10),
+                )
+              }
+              className="w-40 rounded-[var(--r-sm)] border
+                border-line px-2 py-1 text-sm"
+            />
+            <span className="text-[11px] text-sub">
+              {t.fieldImdbNote ?? "填 tt 编号；种子页字幕按同片合并"}
+            </span>
           </label>
           <label className="flex items-center gap-2 text-xs">
             <input

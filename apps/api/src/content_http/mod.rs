@@ -9,6 +9,7 @@ mod requests;
 mod subtitles;
 mod subtitles_awards;
 mod subtitles_close;
+mod subtitles_detail;
 mod subtitles_dl;
 mod subtitles_flow;
 mod subtitles_fulfill;
@@ -25,6 +26,7 @@ use requests::*;
 use subtitles::*;
 use subtitles_awards::*;
 use subtitles_close::*;
+use subtitles_detail::*;
 use subtitles_dl::*;
 use subtitles_flow::*;
 use subtitles_fulfill::*;
@@ -49,6 +51,7 @@ pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
         .service(subtitle_upload)
         .service(subtitle_list)
         .service(subtitle_download)
+        .service(subtitle_detail)
         .service(subtitle_patch)
         .service(subtitle_delete)
         .service(subtitle_vote)

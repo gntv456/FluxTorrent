@@ -224,7 +224,12 @@ export function SubtitleBoard({
       </nav>
 
       {/* 字幕列表（七列） */}
-      <SubtitleListTable rows={rows} onMsg={setMsg} onReload={load} />
+      <SubtitleListTable
+        rows={rows}
+        onMsg={setMsg}
+        onReload={load}
+        langs={langs}
+      />
 
       {/* 分页条（A7：count 同谓词，翻页不重叠） */}
       {pages > 1 && (

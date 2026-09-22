@@ -20,6 +20,23 @@ async fn edit_torrent(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
+    // 0150：IMDB 直填暂存（TorrentEdit.imdb_id 是 &str，借本地变量）
+    let imdb_norm: Option<String> = body
+        .imdb_id
+        .as_deref()
+        .map(str::trim)
+        .and_then(|s| {
+            // 空串 = 清空；非空统一大写后校验 TT+7~8 位；非法回落 None
+            let up = s.to_ascii_uppercase();
+            let valid = up.len() >= 9
+                && up.starts_with("TT")
+                && up[2..].chars().all(|c| c.is_ascii_digit());
+            if s.is_empty() || valid {
+                Some(up)
+            } else {
+                None
+            }
+        });
     torrents::edit_torrent(
         &state.repo.db,
         tid,
@@ -37,6 +54,7 @@ async fn edit_torrent(
             medium_id: body.medium_id,
             grade_id: body.grade_id,
             edition_id: body.edition_id,
+            imdb_id: imdb_norm.as_deref(),
         },
     )
     .await?;
