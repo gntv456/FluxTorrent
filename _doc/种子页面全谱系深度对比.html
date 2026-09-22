@@ -35,7 +35,7 @@ body{margin:0;background:var(--bg);color:var(--body);font-family:var(--font-body
     radial-gradient(760px 320px at 12% -10%,rgba(0,117,222,.10),transparent 70%),
     radial-gradient(520px 260px at 88% 8%,rgba(83,58,253,.07),transparent 72%);}
 .hero-inner{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,.85fr);
-  gap:48px;align-items:end}
+  gap:48px;align-items:end;max-width:1180px;margin:0 auto;padding:0 24px}
 .eyebrow{margin:0 0 16px;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--accent);font-weight:700}
 .hero h1{margin:0 0 18px;font-family:var(--font-display);
@@ -54,8 +54,8 @@ body{margin:0;background:var(--bg);color:var(--body);font-family:var(--font-body
 .m-label{display:block;margin-top:8px;font-size:12.5px;color:var(--muted)}
 
 /* 布局 + 目录 */
-.layout{display:grid;grid-template-columns:236px minmax(0,1fr);gap:40px;
-  max-width:1180px;margin:0 auto;padding:0 24px 96px}
+.layout{display:grid;grid-template-columns:236px minmax(0,1fr);gap:44px;
+  max-width:1180px;margin:0 auto;padding:40px 24px 96px;align-items:start}
 .toc{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 48px);
   overflow:auto;padding:8px 0 24px}
 .toc__title{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;
@@ -65,7 +65,7 @@ body{margin:0;background:var(--bg);color:var(--body);font-family:var(--font-body
   border-left:2px solid transparent;transition:.18s}
 .toc a:hover{background:var(--surface);color:var(--text)}
 .toc a.is-active{color:var(--accent);background:var(--accent-soft);border-left-color:var(--accent);font-weight:600}
-.wrap{max-width:none;margin:0}
+.wrap{max-width:none;margin:0;min-width:0}
 
 /* 章节卡片 */
 .block-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
@@ -78,9 +78,10 @@ body{margin:0;background:var(--bg);color:var(--body);font-family:var(--font-body
 .block-card h3:first-of-type{margin-top:8px}
 .block-card h4{margin:24px 0 10px;font-size:15px;font-weight:700;color:var(--accent);
   letter-spacing:.01em}
-.block-card p{margin:12px 0;color:var(--body)}
+.block-card p{margin:12px 0;color:var(--body);overflow-wrap:anywhere}
 .block-card ul,.block-card ol{margin:12px 0;padding-left:0;list-style:none}
-.block-card li{position:relative;margin:10px 0;padding-left:18px;color:var(--body)}
+.block-card li{position:relative;margin:10px 0;padding-left:18px;color:var(--body);
+  overflow-wrap:anywhere;min-width:0}
 .block-card ul>li::before{content:"";position:absolute;left:2px;top:.72em;width:5px;height:5px;
   border-radius:50%;background:var(--accent-line)}
 .block-card ol{counter-reset:num}
@@ -94,7 +95,7 @@ a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-
 a:hover{border-bottom-color:var(--accent)}
 code{background:var(--accent-soft);color:#0b5fa5;border:1px solid rgba(0,117,222,.12);
   padding:1px 5px;border-radius:5px;font-family:var(--font-mono);font-size:.86em;
-  word-break:break-word}
+  word-break:break-word;overflow-wrap:anywhere}
 pre{background:#fbfcfd;border:1px solid var(--line);border-radius:var(--radius-sm);
   padding:16px;overflow:auto}
 pre code{background:none;border:0;padding:0;color:var(--text)}
@@ -167,7 +168,7 @@ footer{color:var(--faint);font-size:12.5px;padding:8px 0 0;border-top:1px solid 
     </div>
   </div>
 </header>
-<aside class="toc"><p class="toc__title">目录</p><a href="#s0" data-target="s0">0. 结论先行（10 条）</a><a href="#s1" data-target="s1">1. 参评全景：26 个项目一览</a><a href="#s2" data-target="s2">2. 逐派系深入剖析</a><a href="#s3" data-target="s3">3. 横向能力矩阵</a><a href="#s4" data-target="s4">4. 十大专题对比</a><a href="#s5" data-target="s5">5. FluxTorrent 种子页差距清单（按性价比排序）</a><a href="#s6" data-target="s6">6. 一句话结论</a></aside><main class="wrap">
+<div class="layout"><aside class="toc"><p class="toc__title">目录</p><a href="#s0" data-target="s0">0. 结论先行（10 条）</a><a href="#s1" data-target="s1">1. 参评全景：26 个项目一览</a><a href="#s2" data-target="s2">2. 逐派系深入剖析</a><a href="#s3" data-target="s3">3. 横向能力矩阵</a><a href="#s4" data-target="s4">4. 十大专题对比</a><a href="#s5" data-target="s5">5. FluxTorrent 种子页差距清单（按性价比排序）</a><a href="#s6" data-target="s6">6. 一句话结论</a></aside><main class="wrap">
 <section id="s0" class="reveal block-card">
 <blockquote><p>范围：PT / BT 索引站的种子列表页（browse / torrents / search）与种子详情页（details / show）。不含上传页、用户页、管理后台。</p><p>参评：26 个项目/站点，覆盖 NexusPHP 系、UNIT3D、Gazelle 系及其闭源分支、老牌 PHP 派、新一代编译型、JS 系、闭源自研大站、以及本仓库 FluxTorrent。</p><p>基准：FluxTorrent 代码快照 2026-09-22（<code>apps/web/app/(main)/torrents/</code>、<code>apps/web/app/(main)/torrent/[id]/</code>）。</p><p>证据分级：<code>[实证]</code> = 抓到源码/官方文档/适配代码原文；<code>[业内]</code> = 多篇文章或社区交叉一致；<code>[推断]</code> = 基于间接证据推演；<code>[未获取]</code> = 检索未命中，未编造。</p><p>素材来源：<code>_doc/_素材-新一代与老牌PHP系.md</code>、<code>_doc/_素材-闭源自研大站.md</code>（子代理一手抓取，含原文标注）。</p></blockquote>
 </section>
@@ -307,6 +308,7 @@ footer{color:var(--faint);font-size:12.5px;padding:8px 0 0;border-top:1px solid 
 </section>
 <footer>由 WorkBuddy 资料库生成</footer>
 </main>
+</div>
 <script>
 (function () {
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
