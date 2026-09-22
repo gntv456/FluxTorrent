@@ -1,0 +1,24 @@
+/* 列表 hover 预览卡（六维阶段三）：fixed 定位跟随锚点，300px 宽 */
+.thov {
+  position: fixed;
+  z-index: 90;
+  width: 300px;
+  padding: 10px 14px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.14));
+  border-radius: 10px;
+  background: var(--card, #fff);
+  box-shadow: 0 8px 24px -12px rgba(16, 24, 40, 0.2);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.thov__loading { color: var(--muted, #6b7280); }
+.thov__promo { font-weight: 700; color: var(--sky, #0075de); }
+.thov__descr { color: var(--muted, #6b7280); }
+.thov__stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.thov__owner { color: var(--muted, #6b7280); }
+@media (prefers-reduced-motion: reduce) {
+  .thov { transition: none; }
+}
