@@ -23,37 +23,7 @@
   46
  ],
  "lib\\ui-classes.ts": [],
- "components\\admin-exams-shared.ts": [
-  26,
-  28,
-  32,
-  34,
-  38,
-  39,
-  40,
-  44,
-  45,
-  46,
-  50,
-  51,
-  52,
-  56,
-  58,
-  62,
-  63,
-  64,
-  68,
-  69,
-  70,
-  74,
-  76,
-  80,
-  81,
-  82,
-  86,
-  87,
-  88
- ],
+ "components\\admin-exams-shared.ts": [],
  "components\\admin-medals-shared.ts": [],
  "components\\admin-props-shared.ts": [
   50,
@@ -221,17 +191,17 @@
   163
  ],
  "components\\admin-exams-table.tsx": [
-  45,
-  46,
   47,
   48,
   49,
   50,
-  62,
-  78,
-  81,
-  95,
-  98
+  51,
+  52,
+  64,
+  80,
+  83,
+  97,
+  100
  ],
  "components\\admin-exams.tsx": [
   46,
@@ -624,27 +594,8 @@
   146,
   147
  ],
- "components\\admin-tasks-form.tsx": [
-  26,
-  146,
-  157,
-  239
- ],
- "components\\admin-tasks-table.tsx": [
-  58,
-  59,
-  60,
-  61,
-  62,
-  63,
-  64,
-  65,
-  66,
-  93,
-  95,
-  132,
-  135
- ],
+ "components\\admin-tasks-form.tsx": [],
+ "components\\admin-tasks-table.tsx": [],
  "components\\admin-tasks.tsx": [
   38,
   51,
