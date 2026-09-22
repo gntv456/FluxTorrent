@@ -222,7 +222,8 @@ pub async fn user_public_profile(
         }
     }
     // 近期论坛回帖（社区动态板块；匿名帖不暴露归属；helper 见文件尾）
-    let recent_posts = super::profile_helpers::recent_posts_of(&state.repo.db, uid).await;
+    let recent_posts =
+        super::profile_helpers::recent_posts_of(&state.repo.db, uid).await;
     let uploads: Vec<RecentUpload> = sqlx::query_as(
                 "SELECT id, name, small_descr, size, \
          created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",
@@ -249,10 +250,10 @@ pub async fn user_public_profile(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (subtitle_count, subtitle_downloads) =
-        sub_stats.unwrap_or((0, 0));
+    let (subtitle_count, subtitle_downloads) = sub_stats.unwrap_or((0, 0));
     // 字幕身份（0149）：gold 优先于 certified（helper 见文件尾）
-    let cert_tier = super::profile_helpers::subtitle_cert_tier(&state.repo.db, uid).await;
+    let cert_tier =
+        super::profile_helpers::subtitle_cert_tier(&state.repo.db, uid).await;
     Ok(ok(serde_json::json!({
         "profile": profile,
         "avatar_frame_css": profile.avatar_frame_css,

@@ -43,9 +43,7 @@ pub(super) async fn subtitle_request_accept(
         torrent_id,
     )) = row
     else {
-        return Err(DomainError::Validation(
-            "该求字幕不在待验收状态".into(),
-        ));
+        return Err(DomainError::Validation("该求字幕不在待验收状态".into()));
     };
     if !staff && auth.id != req_owner {
         return Err(DomainError::Forbidden);
@@ -66,14 +64,8 @@ pub(super) async fn subtitle_request_accept(
         return Err(DomainError::Validation("该求字幕已被处理".into()));
     }
     // 分账（C3）：份额乘法后按人发（floor，尾差给主认领人）
-    let mut paid = settle_crew(
-        &state.repo.db,
-        rid,
-        bounty,
-        claimer,
-        &crew,
-    )
-    .await?;
+    let mut paid =
+        settle_crew(&state.repo.db, rid, bounty, claimer, &crew).await?;
     // free 联动（C4）：结算即给种子挂限时免费（source=subtitle 可追责回收）
     if offer_free {
         if let Some(tid) = torrent_id {
@@ -167,9 +159,7 @@ pub(super) async fn subtitle_request_crew_accept(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(mut crew) = crew else {
-        return Err(DomainError::Validation(
-            "该求字幕不在协作状态".into(),
-        ));
+        return Err(DomainError::Validation("该求字幕不在协作状态".into()));
     };
     let Some(list) = crew.as_array_mut() else {
         return Ok(ok(serde_json::json!({ "id": rid, "crew": crew })));
@@ -184,9 +174,7 @@ pub(super) async fn subtitle_request_crew_accept(
         }
     }
     if !hit {
-        return Err(DomainError::Validation(
-            "你没有该求字幕的协作邀请".into(),
-        ));
+        return Err(DomainError::Validation("你没有该求字幕的协作邀请".into()));
     }
     sqlx::query("UPDATE subtitle_requests SET crew = $2 WHERE id = $1")
         .bind(rid)

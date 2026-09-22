@@ -12,10 +12,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 /// 本人或 staff（class ≥ 90）可操作
-async fn can_modify(
-    auth: &crate::http::AuthUser,
-    sub_user_id: i64,
-) -> bool {
+async fn can_modify(auth: &crate::http::AuthUser, sub_user_id: i64) -> bool {
     auth.id == sub_user_id || auth.class_id >= 90
 }
 
@@ -71,9 +68,7 @@ pub(super) async fn subtitle_patch(
     }
     if let Some(fps) = body.fps {
         if !(0.0..=240.0).contains(&fps) {
-            return Err(DomainError::Validation(
-                "FPS 需在 0-240 之间".into(),
-            ));
+            return Err(DomainError::Validation("FPS 需在 0-240 之间".into()));
         }
     }
     let lang_id: Option<i16> = match body.lang.as_deref().map(str::trim) {

@@ -52,11 +52,12 @@ pub(super) async fn subtitle_download(
             .ok_or(DomainError::NotFound(sid))?;
         let safe_title = safe_filename(&title);
         // 扩展名优先级：落库 ext（上传时按文件名判定）> mime 常见映射 > .srt
-        let ext = sub_ext
-            .filter(|e| !e.is_empty())
-            .unwrap_or_else(|| match mime.as_str() {
-                "application/pdf" => "pdf".into(),
-                _ => "srt".into(),
+        let ext =
+            sub_ext.filter(|e| !e.is_empty()).unwrap_or_else(|| {
+                match mime.as_str() {
+                    "application/pdf" => "pdf".into(),
+                    _ => "srt".into(),
+                }
             });
         let name = match lang.as_deref() {
             Some(code) if !code.is_empty() => {
@@ -121,4 +122,3 @@ pub(super) async fn subtitle_langs(
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
-

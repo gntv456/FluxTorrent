@@ -161,16 +161,14 @@ pub(super) async fn subtitle_request_list(
         },
         _ => "r.status = 0".to_string(),
     };
-    let rows: Vec<SubtitleReqRow> = sqlx::query_as(
-        &format!(
-            "SELECT r.id, u.username, r.torrent_id, r.lang, r.descr, \
+    let rows: Vec<SubtitleReqRow> = sqlx::query_as(&format!(
+        "SELECT r.id, u.username, r.torrent_id, r.lang, r.descr, \
              r.bounty, r.contributors, r.status, r.fulfilled_subtitle_id, \
              r.created_at, r.claimed_by, r.deadline_at, r.deliver_at, \
              r.offer_free, r.free_days, r.crew FROM subtitle_requests r \
              LEFT JOIN users u ON u.id = r.user_id WHERE {cond} ORDER BY \
              r.id DESC LIMIT 100"
-        ),
-    )
+    ))
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -214,8 +212,7 @@ pub(super) async fn subtitle_request_contribute(
         .map(|a| {
             a.iter()
                 .filter(|m| {
-                    m.get("user_id").and_then(|v| v.as_i64())
-                        == Some(auth.id)
+                    m.get("user_id").and_then(|v| v.as_i64()) == Some(auth.id)
                 })
                 .count()
         })
@@ -265,4 +262,3 @@ pub(super) async fn subtitle_request_contribute(
     };
     Ok(ok(serde_json::json!({ "id": rid, "bounty": bounty })))
 }
-

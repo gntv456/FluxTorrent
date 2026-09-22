@@ -36,15 +36,12 @@ pub(super) async fn subtitle_upload(
     let moderation =
         subtitle_setting(&state.repo.db, "subtitle_moderation", "0").await?
             == "1";
-    let (file_ref, size, ext) = resolve_file(
-        &state, &auth, &body, torrent_id,
-    )
-    .await?;
+    let (file_ref, size, ext) =
+        resolve_file(&state, &auth, &body, torrent_id).await?;
     let meta = SubtitleUploadMeta::validate(&body)?;
-    let release_name = resolve_release(
-        &state, torrent_id, meta.release_name.as_deref(),
-    )
-    .await?;
+    let release_name =
+        resolve_release(&state, torrent_id, meta.release_name.as_deref())
+            .await?;
     // lang → lang_id（0146 字典表；旧 lang 字符串同步写，读端双轨过渡）
     let lang_id: Option<i16> = match body.lang.as_deref().map(str::trim) {
         Some(code) if !code.is_empty() && code != "0" => {
@@ -60,14 +57,14 @@ pub(super) async fn subtitle_upload(
     };
     // 0148 C1：挂了种子 → 回填种子 imdb_id（同片合并的行级冗余）
     let imdb_id: Option<String> = match torrent_id {
-        Some(tid) => sqlx::query_scalar(
-            "SELECT imdb_id FROM torrents WHERE id = $1",
-        )
-        .bind(tid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .flatten(),
+        Some(tid) => {
+            sqlx::query_scalar("SELECT imdb_id FROM torrents WHERE id = $1")
+                .bind(tid)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?
+                .flatten()
+        }
         None => None,
     };
     let status: i16 = if moderation { 0 } else { 1 };
@@ -106,7 +103,9 @@ pub(super) async fn subtitle_upload(
     let idem = format!("subtitle:{}:{}", auth.id, id);
     earn_spark(&state.repo.db, auth.id, 5, "subtitle", &idem).await?;
     announce_upload(&state, &auth, &meta, body.title.trim()).await;
-    Ok(ok(serde_json::json!({ "id": id, "reward": 5, "status": status })))
+    Ok(ok(
+        serde_json::json!({ "id": id, "reward": 5, "status": status }),
+    ))
 }
 
 /// 文件三件套解析：attach://sha（体积/白名单/查重全链）或外部直链
@@ -117,9 +116,11 @@ async fn resolve_file(
     torrent_id: Option<i64>,
 ) -> DomainResult<(String, i64, Option<String>)> {
     let _ = torrent_id;
-    if let Some(sha) = body.file_sha.as_deref().map(str::trim).filter(|s| {
-        s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
-    }) {
+    if let Some(sha) =
+        body.file_sha.as_deref().map(str::trim).filter(|s| {
+            s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
+        })
+    {
         // 校验附件归属：必须是本人在 attachments 上传过的文件（防冒用他人 sha）
         let owned: Option<(i64, String)> = sqlx::query_as(
             "SELECT size, filename FROM attachments WHERE sha256 = $1 \
@@ -136,14 +137,11 @@ async fn resolve_file(
             ));
         };
         // P0-2 体积上限（maxsubsize 接线；默认 1MB）
-        let limit: i64 = subtitle_setting(
-            &state.repo.db,
-            "maxsubsize",
-            "1048576",
-        )
-        .await?
-        .parse()
-        .unwrap_or(1048576);
+        let limit: i64 =
+            subtitle_setting(&state.repo.db, "maxsubsize", "1048576")
+                .await?
+                .parse()
+                .unwrap_or(1048576);
         if fsize > limit {
             return Err(DomainError::Validation(format!(
                 "字幕体积超限（{fsize} > {limit} 字节）"
@@ -203,17 +201,15 @@ async fn resolve_release(
         return Ok(Some(normalize_release(rn)));
     }
     match torrent_id {
-        Some(tid) => {
-            sqlx::query_scalar::<_, String>(
-                "SELECT name FROM torrents WHERE id = $1",
-            )
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .map(|n| normalize_release(&n))
-            .map_or(Ok(None), |v| Ok(Some(v)))
-        }
+        Some(tid) => sqlx::query_scalar::<_, String>(
+            "SELECT name FROM torrents WHERE id = $1",
+        )
+        .bind(tid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .map(|n| normalize_release(&n))
+        .map_or(Ok(None), |v| Ok(Some(v))),
         None => Ok(None),
     }
 }
@@ -239,11 +235,10 @@ async fn announce_upload(
         .await
         .unwrap_or_else(|_| "用户".into())
     };
-    let _ = sqlx::query(
-        "INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)",
-    )
-    .bind(auth.id)
-    .bind(format!("{display} 上传了字幕「{title}」"))
-    .execute(&state.repo.db)
-    .await;
+    let _ =
+        sqlx::query("INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)")
+            .bind(auth.id)
+            .bind(format!("{display} 上传了字幕「{title}」"))
+            .execute(&state.repo.db)
+            .await;
 }
