@@ -1,0 +1,34 @@
+/* 评论点赞按钮（0155；紧凑写法守 3000 行门禁；基础声明见 0156 段合并选择器） */
+.td-comment { position: relative; }
+.td-comment__like { display: inline-flex; align-items: center; gap: 4px; }
+.td-comment__like--on {
+  border-color: var(--coral, #c0392b); color: var(--coral, #c0392b);
+}
+.td-comment__like:disabled { opacity: 0.5; }
+
+/* 评论嵌套回复（0156；紧凑守 3000 行） */
+.td-comment--reply {
+  margin-left: 40px; border-left: 2px solid var(--line, rgba(0, 0, 0, 0.14));
+}
+.td-comment__replyto {
+  display: block; margin-bottom: 2px; font-size: 12px; font-weight: 600;
+  color: var(--sky, #0075de);
+}
+.td-comment__ops { position: absolute; display: flex;
+  right: 4px; bottom: 6px; gap: 6px; }
+.td-comment__replybtn, .td-comment__like { min-height: 28px; padding: 0 10px;
+  font-size: 12px; border: 1px solid var(--line, rgba(0,0,0,.14));
+  border-radius: 999px; background: transparent;
+  color: var(--muted, #6b7280); cursor: pointer; }
+.td-comment__like { position: static; }
+.td-reply-banner {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  padding: 0 12px; min-height: 44px; border-radius: 999px; font-size: 12px;
+  background: var(--accent-soft, rgba(0, 117, 222, 0.1));
+  color: var(--sky, #0075de);
+}
+.td-reply-banner__x { border: none; background: transparent; color: inherit;
+  font-size: 16px; cursor: pointer; line-height: 1; }
+
+/* 所属合集徽标行（0157；挂在评论样式文件同层页面域） */
+.td-collections__list { display: flex; flex-wrap: wrap; gap: 8px; }
