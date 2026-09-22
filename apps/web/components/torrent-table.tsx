@@ -5,6 +5,7 @@ import { editionName, formatBytes, promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
+import { Icon } from "@/components/icons";
 
 /** 保种区行（/preserve 下发的同构行：id 键为 torrent_id） */
 type PreserveRowAlias = PreserveItem;
@@ -105,7 +106,7 @@ async function TorrentTr({
               className="torrents-cover torrents-cover--fallback"
               style={{ background: catColor(t.category_id) }}
             >
-              🎬
+              <Icon name="disc" size={20} />
             </span>
           )}
         </Link>
@@ -115,7 +116,7 @@ async function TorrentTr({
         <div className="torrents-title">
           {t.sticky && (
             <span className="torrents-pin" title={dict.torrent.sticky}>
-              📌
+              <Icon name="pin" size={13} />
             </span>
           )}
           <Link

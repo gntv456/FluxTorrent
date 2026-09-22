@@ -1,6 +1,7 @@
 "use client";
 
 import { BTN_LG_SKY, INPUT_LG } from "@/lib/ui-classes";
+import { Icon } from "@/components/icons";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -77,9 +78,7 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-12">
-      <span aria-hidden className="text-[80px] leading-none">
-        🦉
-      </span>
+      <Icon name="seed" size={72} className="text-[var(--sky)]" />
       <h1 className="font-display text-3xl">{dict.register.title}</h1>
       <p className="-mt-4 text-sm text-sub">{dict.register.subtitle}</p>
       <form onSubmit={submit} className="flex w-full flex-col gap-3">

@@ -7,6 +7,7 @@ import { TorrentTr } from "@/components/torrent-table";
 import { SeedStatsCard } from "@/components/seed-stats-card";
 import { ResurrectionPanel } from "@/components/resurrection-panel";
 import { requireModule } from "@/components/module-gate";
+import { Icon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -163,10 +164,14 @@ export default async function PreservePage({
                 <th className="w-16" aria-label="封面" />
                 <th>{dict.torrents.colTitle}</th>
                 <th className="w-16" title={dict.torrents.colComments}>
-                  💬
+                  <Icon
+                    name="messages"
+                    size={15}
+                    className="inline align-[-3px]"
+                  />
                 </th>
                 <th className="w-20" title={dict.torrents.alive}>
-                  ⏱
+                  <Icon name="clock" size={15} className="inline align-[-3px]" />
                 </th>
                 <th className="w-20" title={dict.torrents.colSize}>
                   💾

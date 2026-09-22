@@ -1,3 +1,12 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# pnpm 12 在 --frozen-lockfile 下对「未审阅的依赖 build scripts」是硬报错
+# （ERR_PNPM_IGNORED_BUILDS，strictDepBuilds 默认 true），缓存失效后会导致 web 镜像无法构建。
+# ⚠️ pnpm v11 起移除了 onlyBuiltDependencies / ignoredBuiltDependencies /
+# neverBuiltDependencies，统一改为 allowBuilds 映射（包匹配 → 是否允许执行脚本）。
+# unrs-resolver 的 postinstall 仅用于下载平台二进制（ESLint 9 解析器链引入），
+# 本项目不需要其原生产物，显式标记 false = 已审阅且不允许执行，安装即可正常完成。
+allowBuilds:
+  unrs-resolver: false

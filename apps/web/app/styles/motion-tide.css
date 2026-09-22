@@ -1,0 +1,350 @@
+/* ===== FluxTorrent · TIDE 动效层（P4） =====
+   原则（方案 §06）：
+   1) 动效服务「信息的出现顺序」，不是装饰噪音 —— 一处编排好的入场 > 满屏微交互；
+   2) 优先 CSS-only；只有「滚动进场」与「顶栏吸顶态」需要 JS（components/motion.tsx）；
+   3) **渐进增强**：元素默认可见，只有 JS 就绪后才加隐藏类再揭示 ——
+      脚本失败/禁用时页面照常可读，绝不出现"内容消失"；
+   4) 全量尊重 prefers-reduced-motion（末尾统一降级）；
+   5) 只动 transform / opacity / box-shadow，不触发重排；长列表不逐行动画。
+
+   与 P2 的分工：P2 的 tide-shimmer 是骨架屏自身的必要组成，本文件不重复定义。 */
+
+/* ============================================================
+   一、keyframes
+   ============================================================ */
+@keyframes tide-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tide-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes tide-slide-x {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* 进度条/上传中的等距流光（横向位移背景，不触发重排） */
+@keyframes tide-flow {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 32px 0;
+  }
+}
+/* 勋章/成就卡 hover 时的斜向高光 */
+@keyframes tide-sheen {
+  from {
+    transform: skewX(-18deg) translateX(0);
+  }
+  to {
+    transform: skewX(-18deg) translateX(320%);
+  }
+}
+/* 在线/做种中的呼吸点 */
+@keyframes tide-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+/* 人数/数字变化时的微弹 */
+@keyframes tide-bump {
+  0% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+/* 底部浮层提示滑入 */
+@keyframes tide-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ============================================================
+   二、首屏入场编排（CSS-only，自动生效，无需改页面）
+   只作用于「首页板块容器」这一层：最多 6 档延迟，之后统一下落。
+   ============================================================ */
+.home-stack > *,
+.home-row > *,
+.home-duo > * {
+  animation: tide-rise 0.52s var(--tide-ease-out) both;
+}
+.home-stack > *:nth-child(1),
+.home-row > *:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.home-stack > *:nth-child(2),
+.home-row > *:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.home-stack > *:nth-child(3),
+.home-row > *:nth-child(3) {
+  animation-delay: 0.14s;
+}
+.home-stack > *:nth-child(4),
+.home-row > *:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.home-stack > *:nth-child(5),
+.home-row > *:nth-child(5) {
+  animation-delay: 0.26s;
+}
+.home-stack > *:nth-child(n + 6),
+.home-row > *:nth-child(n + 6) {
+  animation-delay: 0.32s;
+}
+
+/* ============================================================
+   三、工具类（页面/组件按需使用，不自动生效）
+   ============================================================ */
+.rise {
+  animation: tide-rise 0.6s var(--tide-ease-out) both;
+}
+.fade-in {
+  animation: tide-fade 0.5s var(--tide-ease-out) both;
+}
+.slide-in {
+  animation: tide-slide-x 0.55s var(--tide-ease-out) both;
+}
+.rise-1 {
+  animation-delay: 0.06s;
+}
+.rise-2 {
+  animation-delay: 0.12s;
+}
+.rise-3 {
+  animation-delay: 0.18s;
+}
+.rise-4 {
+  animation-delay: 0.24s;
+}
+.rise-5 {
+  animation-delay: 0.3s;
+}
+.rise-6 {
+  animation-delay: 0.36s;
+}
+
+/* ============================================================
+   四、滚动进场（由 components/motion.tsx 挂类）
+   ⚠️ 关键设计：**元素始终可见，绝不预隐藏**。
+   进入视口时播放一次「上浮淡入」。这样即使观察器因边界情形（页高≈视口、
+   元素贴在文档末尾、滚动受限）没触发，最坏结果也只是「没有动画」，
+   绝不会出现内容消失。
+   ============================================================ */
+.tide-reveal.is-in {
+  animation: tide-rise 0.55s var(--tide-ease-out) both;
+}
+
+/* ============================================================
+   五、顶栏吸顶态（由 motion.tsx 在滚动后加 .is-stuck）
+   ============================================================ */
+.tide-header.is-stuck {
+  box-shadow: 0 8px 22px -16px rgba(14, 27, 42, 0.4);
+}
+
+/* ============================================================
+   六、微交互（组件按需挂类）
+   ============================================================ */
+
+/* 卡片微抬：transform + 阴影，不动布局 */
+.tide-lift {
+  transition:
+    transform 0.2s var(--tide-ease-out),
+    box-shadow 0.2s var(--tide-ease-out),
+    border-color 0.2s var(--tide-ease);
+}
+.tide-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--border-deep);
+}
+
+/* 图标按钮：描边点亮 + 微抬 */
+.tide-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  transition: all 0.18s var(--tide-ease);
+}
+.tide-icon-btn:hover {
+  border-color: var(--tide-foam);
+  background: var(--sky-soft);
+  color: var(--tide-deep);
+  transform: translateY(-1px);
+}
+.tide-icon-btn:active {
+  transform: scale(0.94);
+}
+
+/* 在线/做种中呼吸点（给 <span class="tide-pulse" /> 用） */
+.tide-pulse {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tide-signal);
+  animation: tide-pulse 1.8s ease-in-out infinite;
+}
+
+/* 斜向高光扫过：勋章 / 成就卡 hover */
+.tide-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.tide-sheen::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: -60%;
+  width: 40%;
+  height: 180%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.65),
+    transparent
+  );
+  transform: skewX(-18deg) translateX(0);
+  opacity: 0;
+  pointer-events: none;
+}
+.tide-sheen:hover::after {
+  opacity: 1;
+  animation: tide-sheen 0.72s var(--tide-ease-out);
+}
+
+/* 数字变化微弹（配合客户端计数） */
+.tide-bump {
+  animation: tide-bump 0.4s var(--tide-ease-out);
+}
+
+/* 进度条：填充流光（仅"进行中"使用） */
+.tide-progress {
+  position: relative;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+}
+.tide-progress__fill {
+  height: 100%;
+  border-radius: 999px;
+  background-image: linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0.35) 25%,
+      transparent 25% 50%,
+      rgba(255, 255, 255, 0.35) 50% 75%,
+      transparent 75%
+    ),
+    linear-gradient(90deg, var(--tide-deep), var(--tide-surf));
+  background-size:
+    32px 100%,
+    100% 100%;
+  transition: width 0.7s var(--tide-ease-out);
+  animation: tide-flow 0.9s linear infinite;
+}
+
+/* 文本链接：下划线从中间展开 */
+.tide-underline {
+  position: relative;
+}
+.tide-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: var(--tide-sea);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.24s var(--tide-ease-out);
+}
+.tide-underline:hover::after {
+  transform: scaleX(1);
+}
+
+/* 浮层提示滑入（配合 .tide-toast 使用） */
+.tide-toast {
+  animation: tide-toast-in 0.26s var(--tide-ease-out) both;
+}
+
+/* 涨跌指示：颜色 + 符号双通道（无障碍：不靠颜色单独传达） */
+.tide-up {
+  color: var(--tide-up);
+}
+.tide-down {
+  color: var(--tide-down);
+}
+
+/* ============================================================
+   七、prefers-reduced-motion：位移与循环动画全部关闭
+   （颜色/边框过渡保留，避免界面"生硬跳变"）
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .home-stack > *,
+  .home-row > *,
+  .home-duo > *,
+  .rise,
+  .fade-in,
+  .slide-in,
+  .tide-toast,
+  .tide-bump {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .tide-reveal.is-in {
+    animation: none !important;
+  }
+  .tide-sheen::after,
+  .tide-pulse,
+  .tide-progress__fill {
+    animation: none !important;
+  }
+  .tide-lift:hover,
+  .tide-icon-btn:hover {
+    transform: none !important;
+  }
+}

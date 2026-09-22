@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTopics, getForumTags } from "@/lib/data";
 import { TopicComposer } from "@/components/forum-composer";
 import { TypeBadge, TagChip } from "@/components/forum-bits";
+import { Icon } from "@/components/icons";
 import { FollowButton } from "@/components/forum-follow";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt } from "@/i18n/config";
@@ -57,7 +58,9 @@ export default async function ForumPage({
         <div className="flex items-center gap-2">
           <FollowButton targetType="forum" targetId={forumId} showCount />
           {/* 排序切换：SSR 链接，不引入客户端状态 */}
-          <div className="inline-flex overflow-hidden rounded-full border border-line">
+          <div className={
+            "inline-flex overflow-hidden rounded-full border border-line"
+          }>
             <Link
               href={`/forums/${forumId}${qs({ sort: "new" })}`}
               aria-current={sort === "new" ? "true" : undefined}
@@ -91,6 +94,7 @@ export default async function ForumPage({
             href={`/forums/${forumId}${qs({ tag: undefined })}`}
             aria-current={!tag ? "true" : undefined}
             className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
+
               !tag
                 ? "border-sky bg-[var(--sky-soft)] text-sky"
                 : "border-line text-sub hover:text-sky"
@@ -104,7 +108,9 @@ export default async function ForumPage({
                 key={t.id}
                 href={`/forums/${forumId}${qs({ tag: undefined })}`}
                 aria-current="true"
-                className="rounded-full outline outline-2 outline-offset-1 outline-sky"
+                className={
+            "rounded-full outline outline-2 outline-offset-1 outline-sky"
+          }
                 title={dict.forums.tagClear}
               >
                 <TagChip tag={t} />
@@ -113,7 +119,9 @@ export default async function ForumPage({
               <Link
                 key={t.id}
                 href={`/forums/${forumId}${qs({ tag: String(t.id) })}`}
-                className="rounded-full opacity-70 transition hover:opacity-100"
+                className={
+            "rounded-full opacity-70 transition hover:opacity-100"
+          }
               >
                 <TagChip tag={t} />
               </Link>
@@ -160,17 +168,20 @@ export default async function ForumPage({
                     </span>
                   )}
                   {t.sticky && (
-                    <span
-                      className="mr-1 text-xs font-bold text-coral"
+                    <Icon
+                      name="pin"
+                      size={13}
+                      className="mr-1 inline align-[-2px] font-bold text-coral"
                       title="置顶"
-                    >
-                      📌
-                    </span>
+                    />
                   )}
                   {t.locked && (
-                    <span className="mr-1 text-xs" title="已锁定">
-                      🔒
-                    </span>
+                    <Icon
+                      name="lock"
+                      size={13}
+                      className="mr-1 inline align-[-2px]"
+                      title="已锁定"
+                    />
                   )}
                   <TypeBadge
                     type={t.topic_type}
