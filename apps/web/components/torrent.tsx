@@ -7,6 +7,7 @@ import {
   promotionBadge,
 } from "@/lib/format";
 import { getDict } from "@/i18n/server";
+import { Icon } from "@/components/icons";
 import { dateLocale } from "@/i18n/config";
 
 /**
@@ -88,9 +89,7 @@ export async function EmptyTorrents() {
   const { dict } = await getDict();
   return (
     <div className="flex flex-col items-center gap-3 py-16 text-center">
-      <span aria-hidden className="text-[80px] leading-none">
-        🦉
-      </span>
+      <Icon name="seed" size={72} className="text-[var(--sky)]" />
       <h2 className="font-display text-xl text-ink">
         {dict.torrent.emptyTitle}
       </h2>

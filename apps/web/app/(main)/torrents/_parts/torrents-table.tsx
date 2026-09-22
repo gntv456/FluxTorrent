@@ -5,6 +5,7 @@
  */
 
 import { TorrentTr } from "@/components/torrent-table";
+import { Icon } from "@/components/icons";
 import type { Dict } from "@/i18n/zh-CN";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { TorrentsSP } from "./torrents-utils";
@@ -19,12 +20,20 @@ export function TorrentsTable({
   dict: Dict;
   sp: TorrentsSP;
   items: TorrentListItem[];
-  withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
+  withParam: (
+    sp: TorrentsSP,
+    key: string,
+    value: string | undefined,
+  ) => string;
   toggleSort: (cur: string | undefined, key: string) => string | undefined;
 }) {
   const t = dict.torrents;
   return (
-    <div className="baozi-wide-table-scroll" role="region" aria-label={t.title}>
+    <div
+        className="baozi-wide-table-scroll"
+        role="region"
+        aria-label={t.title}
+      >
       <table className="nexus-table torrents-table">
         <thead>
           <tr>
@@ -37,12 +46,15 @@ export function TorrentsTable({
             </th>
             {/* 表头点击排序（NP colhead 口径）：同列再点反转升降序 */}
             <th className="w-16" title={t.colComments}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "comments"))}>
-                💬
+              <a
+                href={withParam(sp, "sort", toggleSort(sp.sort, "comments"))}
+                className="inline-flex"
+              >
+                <Icon name="messages" size={15} />
               </a>
             </th>
             <th className="w-20" title={t.alive}>
-              ⏱
+              <Icon name="clock" size={15} className="inline align-[-3px]" />
             </th>
             <th className="w-20" title={t.colSize}>
               <a href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}>
@@ -60,7 +72,9 @@ export function TorrentsTable({
               </a>
             </th>
             <th className="w-16" title={t.colCompleted}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "completed"))}>
+              <a
+            href={withParam(sp, "sort", toggleSort(sp.sort, "completed"))}
+          >
                 ✅
               </a>
             </th>

@@ -1,5 +1,6 @@
 import { categoryColor } from "@/lib/format";
 import { hasBBCode, renderBBCode } from "@/lib/bbcode";
+import { Icon } from "@/components/icons";
 
 /** 种子详情页展示件（从 app/(main)/torrent/[id]/page.tsx 按域拆出）：
  *  Descr 简介渲染、Spec 规格网格单元、Fold 折叠分区。数据装载留在 page.tsx。 */
@@ -127,7 +128,7 @@ export function PosterBlock({
           className="td-head__img td-head__img--fallback"
           style={{ background: categoryColor(categoryId) }}
         >
-          🎬
+          <Icon name="disc" size={34} />
         </span>
       )}
     </div>

@@ -85,18 +85,9 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        {/* Seedlight 展示字体：站酷快乐体（仅 H1/品牌/等级名，小面积使用）。
-            preconnect + display=swap：字体未就绪时标题先以回退栈渲染，不阻塞首屏。 */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap"
-        />
+        {/* TIDE 字体（P5）：已改为**自托管**（见 app/styles/fonts-tide.css + public/fonts/），
+            不再请求 Google Fonts —— 保留 unicode-range 分片，浏览器按需加载，
+            首访体积不变但彻底摆脱外网依赖；回退链（Songti SC / SimSun）仍是衬线。 */}
       </head>
       <body>
         <ThemeNoFlash />

@@ -7,6 +7,7 @@
 import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { FollowButton } from "@/components/forum-follow";
 import { MedalIcon } from "@/components/medal-icon";
+import { Icon } from "@/components/icons";
 import type { Locale } from "@/i18n/config";
 import { dateLocale } from "@/i18n/config";
 import type { ProfileData } from "./profile-types";
@@ -41,14 +42,16 @@ export function ProfileHero({
         ) : (
           <span
             aria-hidden
-            className="relative flex h-full w-full items-center justify-center text-4xl text-sub"
+            className={
+              "relative flex h-full w-full items-center justify-center text-sub"
+            }
             style={
               data.avatar_frame_image
                 ? undefined
                 : avatarFrameStyle(data.avatar_frame_css)
             }
           >
-            👤
+            <Icon name="user" size={34} />
             <FrameImageOverlay url={data.avatar_frame_image} />
           </span>
         )}

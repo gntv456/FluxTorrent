@@ -8,6 +8,7 @@ import {
 } from "@/components/forum-post-actions";
 import { MarkdownRenderer } from "@/components/forum-markdown";
 import { TypeBadge, TagChip } from "@/components/forum-bits";
+import { Icon } from "@/components/icons";
 import {
   PostVoteBar,
   TopicFavoriteButton,
@@ -58,11 +59,25 @@ export default async function TopicPage({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-2xl">
-          {detail.sticky && <span className="mr-1 text-coral">📌</span>}
-          {detail.digest && (
-            <span className="mr-1 text-[var(--baozi-orange-dark)]">⭐</span>
+          {detail.sticky && (
+            <Icon
+              name="pin"
+              size={15}
+              className="mr-1 inline align-[-3px] text-coral"
+            />
           )}
-          {detail.locked && <span className="mr-1">🔒</span>}
+          {detail.digest && (
+            <Icon
+              name="star"
+              size={15}
+              className={
+                "mr-1 inline align-[-3px] text-[var(--baozi-orange-dark)]"
+              }
+            />
+          )}
+          {detail.locked && (
+            <Icon name="lock" size={15} className="mr-1 inline align-[-3px]" />
+          )}
           <TypeBadge
             type={detail.topic_type}
             label={

@@ -61,3 +61,6 @@ design-system/
 /_upgrade_test/
 .zcode/plans/
 .wide-tmp/
+
+# 附件本地卷（savedirectory 缺省 ./attachments；运行时产物不入库）
+attachments/

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { Icon } from "@/components/icons";
 
 interface Shout {
   id: number;
@@ -115,7 +116,12 @@ export function ShoutBox() {
     <section className="baozi-panel shoutbox">
       <header className="baozi-panel__head">
         <h2>
-          <span aria-hidden="true">💬</span> {t.title}
+          <Icon
+            name="messages"
+            size={16}
+            className="mr-1 inline align-[-3px] text-[var(--sky)]"
+          />{" "}
+          {t.title}
         </h2>
         <small>{t.note}</small>
       </header>

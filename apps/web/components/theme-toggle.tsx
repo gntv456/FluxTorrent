@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/icons";
 
 /** 主题切换（客户端）：读写 <html data-theme> + localStorage。
  *  初值由 layout 里的 no-flash 内联脚本在首绘前设定（localStorage > 系统偏好），
@@ -65,9 +66,13 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       className={`flex h-9 min-h-[44px] w-9 items-center justify-center rounded-[10px] border border-line bg-[var(--surface-raised)] text-base transition-colors hover:border-[var(--baozi-orange)] hover:text-[var(--baozi-orange)] ${className}`}
     >
       {/* mounted 前不渲染图标，避免 SSR/客户端不一致 */}
-      <span aria-hidden className="leading-none">
-        {mounted && theme === "baozi-night" ? "🌙" : "☀️"}
-      </span>
+      {mounted ? (
+        <Icon
+          name={theme === "baozi-night" ? "moon" : "sun"}
+          size={17}
+          className="leading-none"
+        />
+      ) : null}
     </button>
   );
 }

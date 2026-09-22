@@ -4,6 +4,14 @@
    - styles/layout.css  海报墙/顶栏导航/用户条/登录画布/控制面板/首页板块
    - styles/pages.css   求种/字幕/种子列表/保种/PM/任务/工具条/内容管理与杂项 */
 @import "tailwindcss";
+/* TIDE 字体自托管（P5 增强）：@font-face 注册越早，首屏字体越快开始加载。
+   全部 woff2 落在 public/fonts/，保留原始 unicode-range 分片 → 浏览器仍按需加载，
+   首访体积与用 Google Fonts 时相同，但**不再依赖外网**。 */
+@import "./styles/fonts-tide.css";
 @import "./styles/base.css";
 @import "./styles/layout.css";
 @import "./styles/pages.css";
+/* TIDE「潮汐」主题 · P1 令牌层（必须在链末：同特异性后出现者胜） */
+@import "./styles/theme-tide.css";
+/* TIDE 动效层（P4）：排在令牌层之后，保证 reduced-motion 降级分支能压住前面的动画声明 */
+@import "./styles/motion-tide.css";

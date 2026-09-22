@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-sp-mode="scroll">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>种子页面全谱系深度对比</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/plus-jakarta-sans@5.1.0/700.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5.3.0/chinese-simplified-700.css">
+<style>
+:root{
+  --accent:#0075de; --accent-soft:rgba(0,117,222,.10); --accent-line:rgba(0,117,222,.28);
+  --accent2:#533afd;
+  --bg:#f7f7f6; --panel:#ffffff; --surface:#f1f3f5;
+  --text:#171a1f; --body:rgba(0,0,0,.88); --muted:#646b77; --faint:#8b929e;
+  --line:rgba(0,0,0,.09); --line-soft:rgba(0,0,0,.055);
+  --radius:14px; --radius-sm:8px;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px -12px rgba(16,24,40,.14);
+  --font-display:"Plus Jakarta Sans","Noto Serif SC",Georgia,serif;
+  --font-body:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--body);font-family:var(--font-body);
+  font-size:15.5px;line-height:1.75;-webkit-font-smoothing:antialiased;letter-spacing:.002em}
+
+/* 顶部阅读进度 */
+.progress{position:sticky;top:0;left:0;height:2px;width:100%;z-index:60;background:transparent}
+.progress__bar{height:2px;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+
+/* Hero：非对称左文右数据 */
+.hero{padding:88px 0 56px;border-bottom:1px solid var(--line);
+  background:
+    radial-gradient(760px 320px at 12% -10%,rgba(0,117,222,.10),transparent 70%),
+    radial-gradient(520px 260px at 88% 8%,rgba(83,58,253,.07),transparent 72%);}
+.hero-inner{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,.85fr);
+  gap:48px;align-items:end}
+.eyebrow{margin:0 0 16px;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.hero h1{margin:0 0 18px;font-family:var(--font-display);
+  font-size:clamp(34px,5.2vw,58px);line-height:1.08;font-weight:700;
+  letter-spacing:-.032em;color:var(--text)}
+.hero-sum{margin:0;max-width:44em;font-size:clamp(15px,1.6vw,17.5px);line-height:1.7;color:var(--muted)}
+.hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.hero-tags span{font-size:12.5px;padding:5px 11px;border-radius:999px;
+  background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+.hero-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.metric{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow)}
+.metric:first-child{grid-column:1/-1}
+.m-num{display:block;font-family:var(--font-display);font-size:40px;line-height:1;
+  font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.m-label{display:block;margin-top:8px;font-size:12.5px;color:var(--muted)}
+
+/* 布局 + 目录 */
+.layout{display:grid;grid-template-columns:236px minmax(0,1fr);gap:40px;
+  max-width:1180px;margin:0 auto;padding:0 24px 96px}
+.toc{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 48px);
+  overflow:auto;padding:8px 0 24px}
+.toc__title{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--faint);font-weight:700;margin:0 0 12px}
+.toc a{display:block;padding:7px 12px;margin:2px 0;border-radius:var(--radius-sm);
+  color:var(--muted);text-decoration:none;font-size:13px;line-height:1.45;
+  border-left:2px solid transparent;transition:.18s}
+.toc a:hover{background:var(--surface);color:var(--text)}
+.toc a.is-active{color:var(--accent);background:var(--accent-soft);border-left-color:var(--accent);font-weight:600}
+.wrap{max-width:none;margin:0}
+
+/* 章节卡片 */
+.block-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:32px 34px;margin:0 0 32px;box-shadow:var(--shadow)}
+.block-card h2{margin:0 0 20px;font-family:var(--font-display);
+  font-size:clamp(23px,2.6vw,31px);line-height:1.24;font-weight:700;letter-spacing:-.022em;
+  color:var(--text);padding-bottom:16px;border-bottom:1px solid var(--line-soft)}
+.block-card h3{margin:34px 0 14px;font-family:var(--font-display);font-size:20px;
+  font-weight:700;letter-spacing:-.012em;color:var(--text)}
+.block-card h3:first-of-type{margin-top:8px}
+.block-card h4{margin:24px 0 10px;font-size:15px;font-weight:700;color:var(--accent);
+  letter-spacing:.01em}
+.block-card p{margin:12px 0;color:var(--body)}
+.block-card ul,.block-card ol{margin:12px 0;padding-left:0;list-style:none}
+.block-card li{position:relative;margin:10px 0;padding-left:18px;color:var(--body)}
+.block-card ul>li::before{content:"";position:absolute;left:2px;top:.72em;width:5px;height:5px;
+  border-radius:50%;background:var(--accent-line)}
+.block-card ol{counter-reset:num}
+.block-card ol>li{padding-left:44px;min-height:30px}
+.block-card ol>li::before{counter-increment:num;content:counter(num);
+  position:absolute;left:0;top:1px;width:28px;height:28px;border-radius:var(--radius-sm);
+  background:var(--accent-soft);color:var(--accent);font-family:var(--font-display);
+  font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  font-variant-numeric:tabular-nums}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-line)}
+a:hover{border-bottom-color:var(--accent)}
+code{background:var(--accent-soft);color:#0b5fa5;border:1px solid rgba(0,117,222,.12);
+  padding:1px 5px;border-radius:5px;font-family:var(--font-mono);font-size:.86em;
+  word-break:break-word}
+pre{background:#fbfcfd;border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:16px;overflow:auto}
+pre code{background:none;border:0;padding:0;color:var(--text)}
+
+/* 引用与表格 */
+blockquote{margin:0;padding:18px 22px;border-left:3px solid var(--accent);
+  background:var(--surface);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--muted)}
+blockquote p{margin:8px 0}
+blockquote p:first-child{margin-top:0}
+blockquote p:last-child{margin-bottom:0}
+.table-wrap{overflow-x:auto;margin:18px 0;border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--panel)}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
+th,td{padding:11px 14px;border-bottom:1px solid var(--line-soft);text-align:left;
+  vertical-align:top;line-height:1.55}
+th{position:sticky;top:0;background:var(--surface);color:var(--text);font-weight:700;
+  font-size:12.5px;white-space:nowrap;z-index:2;border-bottom:1px solid var(--line)}
+tbody tr:nth-child(even){background:rgba(0,0,0,.016)}
+tbody tr:hover{background:var(--accent-soft)}
+td code{font-size:12px}
+
+/* 矩阵等级标记 */
+td .dot{display:inline-flex;align-items:center;justify-content:center;min-width:22px;
+  height:22px;padding:0 6px;border-radius:6px;font-size:12.5px;line-height:1}
+.dot--full{background:rgba(29,158,117,.14);color:#0f6e56}
+.dot--part{background:rgba(186,117,23,.14);color:#854f0b}
+.dot--none{background:rgba(0,0,0,.05);color:#8b929e}
+.dot--unknown{background:rgba(83,58,253,.10);color:#4b3bb5}
+
+/* 入场动效 */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .62s cubic-bezier(.2,0,0,1),transform .62s cubic-bezier(.2,0,0,1)}
+.reveal.in{opacity:1;transform:none}
+footer{color:var(--faint);font-size:12.5px;padding:8px 0 0;border-top:1px solid var(--line);margin-top:8px}
+
+@media (max-width:1080px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:0;padding:0 20px 72px}
+  .toc{display:none}
+  .hero{padding:64px 0 40px}
+  .hero-inner{grid-template-columns:minmax(0,1fr);gap:32px;padding:0 20px}
+  .block-card{padding:24px 20px;margin-bottom:24px}
+}
+@media (max-width:640px){
+  .hero-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .m-num{font-size:32px}
+  .block-card ol>li{padding-left:36px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+}
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress__bar" id="pb"></div></div>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-main">
+      <p class="eyebrow">PT / BT 站点 · 竞品页面调研</p>
+      <h1>种子页面<br>全谱系深度对比</h1>
+      <p class="hero-sum">种子列表页（browse / torrents / search）与种子详情页（details / show）的横向拆解：26 个项目 / 站点，从 NexusPHP、UNIT3D、Gazelle 到闭源大站与新一代编译型，逐项比到能力矩阵与死因复盘。</p>
+      <div class="hero-tags">
+        <span>NexusPHP 系</span><span>UNIT3D</span><span>Gazelle 系</span><span>闭源自研大站</span>
+        <span>老牌 PHP</span><span>新一代编译型</span><span>JS 系</span><span>FluxTorrent</span>
+      </div>
+    </div>
+    <div class="hero-metrics">
+      <div class="metric"><span class="m-num" data-count="26">26</span><span class="m-label">参评项目 / 站点</span></div>
+      <div class="metric"><span class="m-num" data-count="36">36</span><span class="m-label">能力矩阵检查项</span></div>
+      <div class="metric"><span class="m-num" data-count="10">10</span><span class="m-label">先行结论</span></div>
+    </div>
+  </div>
+</header>
+<aside class="toc"><p class="toc__title">目录</p><a href="#s0" data-target="s0">0. 结论先行（10 条）</a><a href="#s1" data-target="s1">1. 参评全景：26 个项目一览</a><a href="#s2" data-target="s2">2. 逐派系深入剖析</a><a href="#s3" data-target="s3">3. 横向能力矩阵</a><a href="#s4" data-target="s4">4. 十大专题对比</a><a href="#s5" data-target="s5">5. FluxTorrent 种子页差距清单（按性价比排序）</a><a href="#s6" data-target="s6">6. 一句话结论</a></aside><main class="wrap">
+<section id="s0" class="reveal block-card">
+<blockquote><p>范围：PT / BT 索引站的种子列表页（browse / torrents / search）与种子详情页（details / show）。不含上传页、用户页、管理后台。</p><p>参评：26 个项目/站点，覆盖 NexusPHP 系、UNIT3D、Gazelle 系及其闭源分支、老牌 PHP 派、新一代编译型、JS 系、闭源自研大站、以及本仓库 FluxTorrent。</p><p>基准：FluxTorrent 代码快照 2026-09-22（<code>apps/web/app/(main)/torrents/</code>、<code>apps/web/app/(main)/torrent/[id]/</code>）。</p><p>证据分级：<code>[实证]</code> = 抓到源码/官方文档/适配代码原文；<code>[业内]</code> = 多篇文章或社区交叉一致；<code>[推断]</code> = 基于间接证据推演；<code>[未获取]</code> = 检索未命中，未编造。</p><p>素材来源：<code>_doc/_素材-新一代与老牌PHP系.md</code>、<code>_doc/_素材-闭源自研大站.md</code>（子代理一手抓取，含原文标注）。</p></blockquote>
+</section>
+<section id="s1" class="reveal block-card">
+<h2>0. 结论先行（10 条）</h2>
+<ol><li>种子页面的能力天花板在 NexusPHP 与 UNIT3D，不在&quot;新项目&quot;。 2010 年的 U-232 就已经有 poster / NFO / 字幕 / 评分 / 标签 / 免费种 / YouTube 预告 <code>[实证]</code>；2024 年的 Torrust Index 的 API torrent 对象连 poster 字段都没有 <code>[实证]</code>。技术栈新 ≠ 页面强。</li><li>列表页的真正分水岭是&quot;视图 + 筛选可分享 + 实时性&quot;：UNIT3D 是唯一同时做到四视图（list/card/group/poster）、全部筛选 <code>#[Url]</code> 持久化、<code>wire:model.live</code> 无刷新搜索的项目 <code>[实证]</code>。</li><li>详情页的真正分水岭是&quot;聚合模型 + 外部元数据&quot;：Gazelle 的 Torrent Group、PTP 的 Collections、BTN 的 show/season/episode、MAM 的 series —— 闭源大站全部把&quot;作品&quot;放在&quot;种子&quot;之上，开源站（除 Gazelle）几乎全是扁平一行一种 <code>[实证/业内]</code>。</li><li>华语系的护城河是促销与元数据密度：NP 的 <code>sp_state</code> 多级促销 + 倒计时 + NFO + MediaInfo + PT-Gen 简介 + 同 IMDb 副本聚合，是国际站普遍没有的 <code>[实证]</code>。</li><li>华语系的最大短板是&quot;页面形态停在 2008&quot;：原生无海报墙、无批量下载、无实时筛选、无官方 JSON API（第三方只能爬 <code>table.torrents</code> / <code>td.rowfollow</code> 的 DOM）<code>[实证]</code>。这些&quot;现代化&quot;体验全靠 PT-Plugin-Plus / PTool 之类的用户脚本补 <code>[业内]</code>。</li><li>Gazelle 的 Group 聚合是唯一被闭源大站（PTP/BTN/GGn/MAM）集体验证过的结构，代价是列表页交互停留在表单提交 + Sphinx 语法，UX 最旧 <code>[实证]</code>。</li><li>新一代编译型两极分化：Arcadia 的 master/title/edition 四级模型在结构上最接近 Gazelle（甚至更通用）<code>[实证]</code>，Torrust 则是&quot;架构现代、页面极简&quot;，详情页 Tab 化但无海报/NFO/MediaInfo <code>[实证]</code>。</li><li>JS 系（MongoDB 系）曾最接近 NP 密度（meanTorrent 2017 就有 TMDB 自动拉元数据 + 截图 + 字幕面板 + 合集 + HnR）<code>[实证]</code>，但整派已失败（停止开源 + 高危漏洞 + 站点回迁 NP）<code>[业内]</code>。</li><li>DOM 契约是隐性资产：<code>details.php?id=</code>、<code>table.torrents</code>、<code>.pro_free</code> 这套事实标准让一套油猴脚本通吃几十个华语站 <code>[实证]</code>；自研站不提供等价契约 = 脚本生态零覆盖。</li><li>FluxTorrent 现状：筛选维度已超过 NP 原生（体积/日期/种子数/下载数/完成数区间 + 多维 sec_ 动态维度 + chips 摘要），但页面形态仍是&quot;单视图表格 + 提交式搜索 + 游标翻页&quot;，且详情页缺 5 个高频能力（磁力、peers、书签、相似推荐、截图画廊），列表页缺 4 个（多视图、批量下载、每页条数、行内进度）。 详见 §5。</li></ol>
+</section>
+<section id="s2" class="reveal block-card">
+<h2>1. 参评全景：26 个项目一览</h2>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>项目 / 站点</th><th>派系</th><th>技术栈</th><th>现状</th><th>列表页</th><th>详情页</th><th>总判定</th></tr></thead><tbody><tr><td>1</td><td>NexusPHP 主线</td><td>华语 PHP</td><td>PHP（1.10+ 过程式 + Laravel 双轨）+ MySQL</td><td>上游停更、分支活跃</td><td>中</td><td>强</td><td>强</td></tr><tr><td>2</td><td>华语大站魔改（M-Team / HDSky / 柠檬 / 观众 / U2 / BYR）</td><td>华语 PHP</td><td>同左 + Vue（M-Team 新版）</td><td>在役</td><td>中（+脚本增强）</td><td>强</td><td>强</td></tr><tr><td>3</td><td>mTorrent（M-Team API 侧形态）</td><td>华语 PHP</td><td>JSON API + SPA</td><td>在役</td><td>中</td><td>强</td><td>中强</td></tr><tr><td>4</td><td>TorrentPier</td><td>论坛耦合</td><td>PHP（torrent→topic 模型）</td><td>2026-05 停更</td><td>弱</td><td>弱中</td><td>弱</td></tr><tr><td>5</td><td>Discuz-PT</td><td>论坛耦合</td><td>PHP 论坛插件</td><td>遗存</td><td>弱</td><td>弱</td><td>弱（无成熟实现）</td></tr><tr><td>6</td><td>UNIT3D</td><td>国际现代 PHP</td><td>Laravel + Livewire + Alpine + Meilisearch</td><td>活跃（≈2.2k star）</td><td>强（最强）</td><td>强</td><td>最强</td></tr><tr><td>7</td><td>Gazelle / OPS-REDO</td><td>国际 PHP</td><td>PHP + Twig + Sphinx/Manticore + Ocelot</td><td>活跃（债重）</td><td>中（聚合强、UX 旧）</td><td>强（Group 模型）</td><td>强</td></tr><tr><td>8</td><td>PTP（Gazelle fork）</td><td>闭源</td><td>自研</td><td>在役</td><td>强（Cover Flow）</td><td>极强</td><td>极强</td></tr><tr><td>9</td><td>BTN（Gazelle fork）</td><td>闭源</td><td>自研</td><td>在役</td><td>中</td><td>强（show/season/ep）</td><td>强</td></tr><tr><td>10</td><td>GGn（Gazelle fork）</td><td>闭源</td><td>自研</td><td>在役</td><td>中</td><td>强</td><td>强</td></tr><tr><td>11</td><td>MAM</td><td>闭源</td><td>自研</td><td>在役</td><td>中</td><td>强（样章试听）</td><td>强</td></tr><tr><td>12</td><td>AnimeBytes</td><td>闭源</td><td>自研（Gazelle 变体）</td><td>在役</td><td>中</td><td>强</td><td>强</td></tr><tr><td>13</td><td>HDBits</td><td>闭源</td><td>自研</td><td>在役</td><td>中</td><td>强</td><td>强</td></tr><tr><td>14</td><td>IPTorrents / TorrentLeech</td><td>闭源</td><td>自研</td><td>在役</td><td>中（IPT 海报墙）</td><td>中</td><td>中</td></tr><tr><td>15</td><td>U-232（V3/V4）</td><td>老牌 PHP</td><td>PHP + Memcache</td><td>停更（2010 级）</td><td>中</td><td>中（字段意外齐全）</td><td>中</td></tr><tr><td>16</td><td>XBTIT / BTiT</td><td>老牌 PHP</td><td>PHP + bTemplate</td><td>实质停滞</td><td>中</td><td>中</td><td>中</td></tr><tr><td>17</td><td>TBDev / TBSource</td><td>老牌 PHP</td><td>PHP（NP 祖源）</td><td>2010 停更</td><td>中</td><td>中</td><td>中</td></tr><tr><td>18</td><td>TorrentTrader</td><td>老牌 PHP</td><td>PHP</td><td>灭绝</td><td>中（[推断]）</td><td>中（[推断]）</td><td>中</td></tr><tr><td>19</td><td>Torrust Index</td><td>新一代</td><td>Rust + Nuxt/Vue3</td><td>活跃</td><td>中（交互现代）</td><td>弱</td><td>弱中</td></tr><tr><td>20</td><td>Arcadia</td><td>新一代</td><td>Rust(actix) + Vue3 + PrimeVue</td><td>活跃（早期）</td><td>中</td><td>中强（模型强）</td><td>中强</td></tr><tr><td>21</td><td>NyaaPantsu</td><td>新一代（公开站）</td><td>Go + 模板</td><td>2017 后停更</td><td>中</td><td>中</td><td>中（天然无 PT 能力）</td></tr><tr><td>22</td><td>meanTorrent</td><td>JS 系</td><td>MEAN（MongoDB）</td><td>已死</td><td>中强</td><td>强</td><td>强（但已失败）</td></tr><tr><td>23</td><td>rartracker</td><td>JS 系</td><td>AngularJS + PHP</td><td>停更</td><td>中</td><td>中</td><td>中</td></tr><tr><td>24</td><td>sqtracker</td><td>JS 系</td><td>Node + React + Mongo</td><td>停更</td><td>中</td><td>中（[未获取]细节）</td><td>中</td></tr><tr><td>25</td><td>YemaPT / TNode</td><td>现代闭源</td><td>SPA（YemaPT: Ant Design）</td><td>活跃</td><td>未获取到</td><td>未获取到</td><td>—</td></tr><tr><td>26</td><td>FluxTorrent（本仓库）</td><td>新一代</td><td>Rust actix + Next.js 15 + PG16</td><td>开发中</td><td>中（筛选强/形态旧）</td><td>中强</td><td>中强</td></tr></tbody></table></div>
+</section>
+<section id="s3" class="reveal block-card">
+<h2>2. 逐派系深入剖析</h2>
+<h3>2.1 NexusPHP 系（主线 + 华语大站魔改 + mTorrent）</h3>
+<h4>列表页（<code>public/torrents.php</code>，经典版为 <code>browse.php</code>）<code>[实证]</code></h4>
+<ul><li>筛选：关键词 <code>search</code> + <code>search_area</code>（0 标题/副标题、1 描述、3 上传者、4 IMDb）+ <code>search_mode</code>；分类/来源/媒介/编码/标准/处理/团队/音轨多组多选框（<code>cat/sou/med/cod/sta/pro/tea/aud</code> + 编号）；<code>incldead</code>（0 含死种 / 1 活 / 2 死）；<code>spstate</code>（0 全部 · 1 普通 · 2 免费 · 3 2x 上传 · 4 双免 · 5 半 Down · 7 30%Down）；<code>inclbookmarked</code>；<code>approval_status</code>；区间 <code>size_begin/end</code>、<code>seeders_*</code>、<code>leechers_*</code>、<code>times_completed_*</code>、<code>added_begin/end</code>；标签 <code>tag_id</code>。</li><li>排序：<code>sort</code> 1–9（name / numfiles / comments / added / size / times_completed / seeders / leechers / owner）+ <code>type</code> asc/desc；默认 <code>ORDER BY pos_state DESC, id DESC</code>（置顶优先）。</li><li>视图：源码只有 <code>torrenttable()</code> 一种表格渲染，无海报墙/卡片视图切换。用户看到的&quot;封面模式&quot;是 PT-Plugin-Plus 的插件层增强，非原生。</li><li>分页：<code>pageSize</code>（GET，上限 100）。无批量下载（DOM 层由用户脚本实现）。</li><li>RSS：<code>torrentrss.php?passkey=...</code>，参数含 <code>rows(1-50)</code>、<code>icat</code>、<code>ismalldescr/isize/iuplder</code>、<code>inclbookmarked</code>、<code>paid</code>、<code>sticky</code>、<code>linktype=dl</code>，输出标准 RSS 2.0 + <code>&lt;enclosure&gt;</code>，缓存 300s —— 原生订阅能力比绝大多数竞品都完整。</li><li>DOM 契约（第三方依赖）：<code>table.torrents:last</code>、<code>td.rowfollow</code>、<code>a[href*=download.php]</code>、<code>a[href*=details.php?id=]</code>；促销徽章 <code>.pro_free/.free_bg/font.free</code>、<code>pro_free2up</code>、<code>pro_2up</code>、<code>pro_50pctdown2up</code>、<code>pro_30pctdown</code>、<code>pro_50pctdown</code>；H&amp;R <code>span.tags.tjz</code>。</li></ul>
+<h4>详情页（<code>public/details.php</code>）<code>[实证]</code></h4>
+<ul><li>区块：IMDb 海报（<code>#posterimdb</code>，点击放大）→ BBCode 简介（<code>#kdescr</code>）→ NFO（<code>#knfo</code>，权限 <code>viewnfo</code>）→ MediaInfo/BDInfo（<code>enable_technical_info</code> 开关，由 <code>TechnicalInformation</code> 类渲染）→ 文件列表（<code>viewfilelist()</code> AJAX 填充 <code>#filelist</code>，逐文件大小由前端拉取）→ torrent hash（<code>hex_esc(info_hash)</code>）→ 同 IMDb 副本（<code>#kothercopy</code>，折叠）→ peer 列表（<code>viewpeerlist()</code> AJAX）→ 评论（每页 10 + 快速回复）。</li><li>互动：感谢 <code>#thanksbutton</code>、魔力奖励 <code>ul.magic li</code>、书签 <code>#bookmark0</code>、举报 <code>report.php?torrent=</code>、编辑 <code>edit.php?id=</code>、审核弹窗 <code>/web/torrent-approval-page?torrent_id=</code>。</li><li>状态提示：H&amp;R 图与促销副文本拼在标题里（<code>get_torrent_promotion_append_sub</code>，含倒计时）；<code>?uploaded</code>/<code>?existed</code> 提示&quot;已下载过/已存在&quot;。</li><li>原生不生成 magnet，只暴露 info_hash（磁力由前端脚本补）。</li></ul>
+<h4>华语大站魔改（ptool <code>site/tpl</code> 硬证据）<code>[实证]</code></h4>
+<div class="table-wrap"><table><thead><tr><th>站</th><th>免费标记选择器</th><th>进度选择器</th><th>特殊</th></tr></thead><tbody><tr><td>M-Team（mteam）</td><td>默认（未自定义）</td><td>默认</td><td><code>TorrentsExtraUrls:[&quot;adult.php&quot;,&quot;music.php&quot;]</code>；<code>BrushExcludes:[&quot;[原盤首發]&quot;]</code>；<code>FlowControlInterval:30</code></td></tr><tr><td>柠檬（lemonhd）</td><td><code>div:contains(&quot;免費&quot;)</code></td><td>—</td><td><code>TorrentsUrl:&quot;torrents_new.php&quot;</code></td></tr><tr><td>观众（audiences）</td><td>默认</td><td>—</td><td>综合站，WEB/动漫向</td></tr><tr><td>U2（动漫花园）</td><td><code>img.arrowdown + b:contains(&quot;0.00X&quot;)</code></td><td><code>.leechhlc_current,.snatchhlc_finish,.seedhlc_current,.seedhlc_ever_inenough</code></td><td>进度四态（下载中/完成/做种中/曾做种）</td></tr><tr><td>北邮人（byr）</td><td><code>.pro_free, .pro_free2up</code></td><td>—</td><td><code>Insecure:true</code></td></tr></tbody></table></div>
+<p>→ 信号：同一个&quot;免费&quot;语义在华语站有至少 4 种互不兼容的 DOM 实现。谁定义了稳定契约，谁就拥有脚本生态。</p>
+<h4>mTorrent（M-Team API 侧形态，反推）<code>[实证]</code></h4>
+<ul><li>JSON API 而非页面爬取：<code>POST /api/torrent/search</code> → 每项含 <code>id/name/smallDescr/size/createdDate/category</code> + 嵌套 <code>status{seeders, leechers, timesCompleted, discount, discountEndTime, promotionRule}</code></li><li>促销 <code>discount</code> 映射：<code>FREE / 2XFREE / PERCENT_50 / PERCENT_30 / PERCENT_70 / 2XUP / _2X_PERCENT_50</code>，叠加 <code>promotionRule</code> 临时起止算最终折扣与倒计时</li><li>下载需先 <code>POST /api/torrent/genDlToken</code> 换签名直链（<code>api/rss/dlv2?sign=...</code>）；无原生 magnet</li></ul>
+<h4>优势 / 劣势</h4>
+<p>优势：① 促销/折扣模型最精细（多级 + 倒计时 + 临时叠加规则）② 元数据富度行业领先（NFO + MediaInfo/BDInfo + PT-Gen + 同 IMDb 副本 + 字幕区 + H&amp;R 免罪）③ DOM 事实标准 → 工具生态默认适配 ④ 原生 RSS 完整。 劣势：① 无多视图、无批量下载、无实时筛选（全靠脚本补）② 无官方 JSON 搜索 API（除 M-Team）③ 服务端渲染表格 + <code>klappe_*</code> 折叠，UX 停留在 2008 ④ CVE 记录 31 条（含 6 条 CVSS 9.8 SQL 注入），根因是逐文件拼 SQL + 无统一鉴权 <code>[实证]</code>。</p>
+</section>
+<section id="s4" class="reveal block-card">
+<h3>2.2 UNIT3D（当前页面能力天花板）</h3>
+<h4>列表页 —— Livewire <code>TorrentSearch</code> <code>[实证]</code></h4>
+<ul><li>实时无刷新：搜索框与全部筛选器 <code>wire:model.live</code>，输入即查，无需提交/刷新。</li><li>四视图：<code>list / card / group / poster</code>（<code>&lt;select wire:model.live="view"&gt;</code>），并按用户设置 <code>torrent_layout</code>（1=card、2=group、3=poster）自动选默认。</li><li>筛选（全部 <code>#[Url(history:true)]</code> 持久化）：分类、类型、分辨率、流派、地区/发行商、原始语言、年份区间、大小区间（带乘数）、健康度 alive/dying/dead/graveyard、免费 <code>free[]</code>（0/25/50/75/100）、doubleup、featured、internal、personalRelease、bookmarked、wished、notDownloaded、downloaded、seeding/leeching/incomplete、Trumpable、Refundable、Highspeed、关键词、上传者、IMDb/TMDB/TVDB/MAL 外部 ID。无 anonymous 筛选、无 做种数区间。</li><li>排序：<code>name / rating / size / seeders / leechers / times_completed / created_at / bumped_at</code>（海报/分组视图白名单收窄）。</li><li>分页：<code>perPage</code> 25（card/poster 24），可选 25/50/75/100，<code>WithPagination</code> + <code>links()</code>（非无限滚动）。</li><li>卡片交互：卡上直接下载按钮，显示做种/下载/完成数、评分、流派、上传者、`<code>；列表行免费图标含 </code>fl_until<code> 到期 </code>diffForHumans()` 倒计时 tooltip。</li><li>引擎：<code>TorrentSearchFiltersDTO</code> 双路输出 → 默认走 Meilisearch（普通用户也能全文+过滤），仅 staff 强制 SQL 时才查 <code>description</code>/<code>mediainfo</code>。API 与 Web 复用同一套 DTO。</li></ul>
+<h4>详情页 —— <code>show.blade.php</code> 按 meta 类型 <code>@include</code> <code>[实证]</code></h4>
+<p><code>movie-meta/tv-meta/game-meta/no-meta</code> → 标题 → <code>general</code> → <code>buttons</code> →（staff）<code>tools</code> →（modo）<code>audits/reports/downloads</code> → <code>mediainfo</code> → <code>bdinfo</code> → <code>description</code> → <code>subtitles</code> → <code>extra-meta</code> → <code>comments</code></p>
+<ul><li>MediaInfo 解析到专业级：Alpine 折叠面板解析 General/Video（含 HDR 判定 DV5/7/8、HDR10+）/Audio/Subtitles/Encode settings + Copy 按钮；NFO 以 dialog 呈现。</li><li>字幕区独立 block（movie/tv）；文件列表 &quot;Show Files&quot; dialog。</li><li>交互组件全 Livewire：<code>thank-button</code>、<code>bookmark-button</code>、playlist dialog、reseed 请求（seeders≤2 且你有活跃下载）、FL token 使用（Alpine 二次确认，0 种再确认）、tip 打赏、trumpable 骷髅标记、Bump 图标。</li><li>Similar：按 TMDB movie/tv id 取 TMDB 推荐，非 Meilisearch（→ 非影视类目相似弱）。</li><li>Peers：做种/下载数链接到独立 peers 页（客户端/进度/ETA）。</li><li>管理：<code>tools</code>（编辑/删除）、<code>reports</code>（举报 + 未处理数）、<code>audits</code>。</li><li>无文件时按 <code>config(&#x27;torrent.magnet&#x27;)</code> 生成 magnet。</li></ul>
+<h4>优势 / 劣势</h4>
+<p>优势：① 唯一做到&quot;实时筛选 + 四视图 + URL 可分享&quot;三者合一 ② MediaInfo 解析专业度最高 ③ 详情页交互组件化（感谢/书签/FL token/playlist/reseed 即时可用）④ Meilisearch 搜索体验 ⑤ 促销到期 tooltip 让&quot;还剩多久&quot;可读。 劣势：① 无原生批量多选/zip 下载（这点甚至不如用户脚本补的 NP）② 无列自定义、无 compact 视图 ③ Similar 依赖 TMDB，音乐/游戏类目失效 ④ Livewire 全栈耦合，复杂查询下前后端边界模糊、性能开销大 <code>[业内]</code> ⑤ 运维组件膨胀（Meili + Redis + Reverb + Supervisor + 队列）⑥ H&amp;R warned 提示未在详情页清晰呈现 <code>[推断]</code>。</p>
+</section>
+<section id="s5" class="reveal block-card">
+<h3>2.3 Gazelle 系（OPS/RED 主线 + PTP/BTN/GGn 闭源分支）</h3>
+<h4>列表页（<code>browse.php</code> / <code>sections/torrents/</code>）<code>[实证]</code></h4>
+<ul><li>筛选：<code>taglist</code>（支持 <code>!tag</code> 排除、Any/All）、<code>artistname</code>、<code>groupname</code>、年份（支持 <code>2005-2009</code> 区间）、<code>releasetype</code>、<code>media</code>、<code>format</code>、<code>encoding</code>、<code>haslog</code>（100%/99%/\&lt;100%/无）、<code>hascue</code>、<code>scene</code>、<code>vanityhouse</code>、<code>freetorrent</code>（Free/Neutral/Either/Normal）、<code>filter_cat[]</code> 多选、<code>filelist</code>、<code>description</code>、<code>remastertitle/year</code>、<code>recordlabel</code>、<code>cataloguenumber</code>。</li><li>无 列表内 <code>downloaded</code>/<code>bookmarked</code>/<code>language</code> 筛选（走独立 <code>bookmarks.php</code> 等页）。</li><li>视图：普通表格；开启 CoverArt 选项时 group 行内联缩略图（<code>ImageProxy::tgroupThumbnail</code>）。无独立 gallery/海报墙模式（PTP 的 Cover Flow 是 fork 自研增强）。</li><li>Group 聚合是核心：默认 <code>group_results=1</code>，一个 TGroup 一行，展开显示多 edition/torrent 版本；<code>DisableGrouping2</code> 设置或 <code>group_results</code> 复选框可切。</li><li>排序：<code>time / year / size / snatched / seeders / leechers / random</code>。</li><li>高级搜索：SphinxQL 语法（<code>!</code> 否定、<code>SPH_BOOL_AND/OR</code>、字段分隔符、<code>filelist</code> 用 <code>&quot;term&quot;~20</code> 邻近短语）。</li><li>可书签：<code>setdefault/cleardefault</code> 把整段 query string 存为用户 <code>DefaultSearch</code> 选项。</li><li>查询实现：<code>Search\Torrent</code> 主查询 <code>group_by groupid</code> + 聚合；命中 torrent 级全文时发第二遍 Sphinx 查询按 torrent id 精筛；仅属性时退回 PHP 端 <code>filter_torrent_internal</code> 逐种校验。</li></ul>
+<h4>详情页（<code>details.php</code> 渲染 tgroup）<code>[实证]</code></h4>
+<ul><li>组级：封面、艺术家/年份/发行类型、标签（可点筛选）、BBCode 描述、collage 汇总、相似推荐（<code>similarVote</code>，基于标签投票而非 ML）、request 及 bounty 投票。</li><li>单 torrent 行：format/encoding/media、size、seeders、snatches、freeleech、View log（Logchecker 计分）、scene；展开含上传者、<code>Request re-seed</code>、查看下载者/做种者/peers/contents/reports。</li><li>文件列表是真实文件树（<code>View contents</code> AJAX 拉 <code>torrent-&gt;fileList</code>，非 BBCode 折叠），并检测文件夹冲突。</li><li>音乐站不强调 MediaInfo/NFO（以 Logchecker 日志分为核心），电影 fork 才补。</li></ul>
+<h4>闭源分支的页面级增强 <code>[业内]</code></h4>
+<div class="table-wrap"><table><thead><tr><th>站</th><th>招牌页面能力</th></tr></thead><tbody><tr><td>PTP</td><td>Cover Flow（iTunes 式海报横向流）；详情页按 SD/HD/UHD/Others 分组多版本；Collections 主题合集（约 144 个）；Golden Popcorn（双倍 bonus 标记）；trumping（举报劣质/死种占位）；导演/演员独立页；筛选含 IMDb 评分/PTP 评分/Metacritic/字幕/容器/codec/source</td></tr><tr><td>BTN</td><td>show / season / episode 三级模型；整季打包与单集同属一个 show；新集订阅通知；ratioless（只考核做种时长）</td></tr><tr><td>GGn</td><td>游戏条目聚合多版本/更新/GameDOX/OST；DRM-Free 显式标签 <code>[实证：GGn News]</code>；trumping 与 duplicates 合并规则 <code>[实证]</code>；平台覆盖 NES→Switch + Mac/移动</td></tr><tr><td>MAM</td><td>电子书：文件格式 / DRM / narrator（旁白） / author 结构化字段 <code>[实证：MamIndexer 解析 author_info/narrator_info]</code>；样章试读/在线试听；series 聚合；图书评分 + 书评</td></tr><tr><td>AnimeBytes</td><td>anime 元数据 + MAL/AniDB 关联、字幕组维度、多版本、seedbox 指示器、Creative 分类 <code>[推断/未确认]</code></td></tr></tbody></table></div>
+<h4>优势 / 劣势</h4>
+<p>优势：① Group 聚合模型被 PTP/BTN/GGn/MAM 集体验证，是唯一跨内容类型成立的结构 ② Sphinx 高级语法 + 二次精筛，百万级库检索稳 ③ 真实文件树 + Logchecker 日志分 + scene 检测，垂直专业性最强 ④ 筛选 URL 完全可书签/可存默认 ⑤ 相似推荐轻量可解释 ⑥ request 赏金与 group 直连。 劣势：① 无独立海报墙视图（除 PTP fork）② 列表无 downloaded/bookmarked/language 筛选 ③ 无免费倒计时 UI（FL 只是状态徽标）④ MediaInfo/NFO 非一等公民（音乐取向）⑤ 表单提交式搜索、非实时 ⑥ 遗留 PHP 过程式 + Twig，扩展成本高于 Livewire。</p>
+</section>
+<section id="s6" class="reveal block-card">
+<h3>2.4 论坛耦合派（TorrentPier / Discuz-PT）</h3>
+<ul><li>TorrentPier：核心是 torrent → topic（一个种子 = 一个论坛主题，.torrent 作为首帖附件）；下载进度/健康度由 <code>bb_bt_tracker</code> / <code>bb_bt_tracker_snap</code> 的 peer 记录算出 <code>[实证]</code>；3.0 引入 <code>tracker_status</code>、语义 URL <code>/threads/slug.id</code>、Twig <code>[实证]</code>。 优势：评论区天然复用论坛楼层；下载/做种状态精确（peer 级）。 劣势：种子与帖子强耦合 → 富元数据（MediaInfo、NFO 折叠、相似副本、H&amp;R 倒计时）几乎不可做；项目已于 2026-05 停止维护 <code>[实证]</code>。</li><li>Discuz-PT：「种子 = 带附件的帖子」。未获取到占据主流的公开实现 <code>[未获取]</code>，华语主流并非 Discuz 系。</li></ul>
+<blockquote><p>对我们的意义：这一派是&quot;反例收藏品&quot;——证明了把种子绑到帖子/主题上，会永久丧失结构化元数据的空间。</p></blockquote>
+</section>
+<section id="s7" class="reveal block-card">
+<h3>2.5 老牌 PHP 派（U-232 / XBTIT / TBDev / TorrentTrader）</h3>
+<p>U-232 <code>details.php</code> 实际 SELECT 字段（2010 级，逐条） <code>[实证]</code>： <code>seeders/leechers/banned/thanks/info_hash/checked_by/filename/search_text/LENGTH(nfo)/name/comments/owner/save_as/visible/size/added/views/hits/id/type/**poster**/url/numfiles/times_completed/anonymous/points/allow_comments/description/nuked/nukereason/last_reseed/vip/category/**subs**/username/newgenre/release_group/**free**/**youtube**/**tags**/rating_sum/num_ratings</code></p>
+<p>配套页面：<code>filelist.php</code>、<code>peerlist.php</code>、<code>viewnfo.php</code>、<code>report.php</code>、<code>multidetails.php</code>、<code>subtitles.php</code>、<code>uploadsub.php</code>、<code>thanks.php</code>。</p>
+<ul><li>XBTIT / BTiT：<code>torrents.php</code> / <code>details.php</code> / <code>comment.php</code> / <code>peers.php</code> / <code>thumbnail.php</code>（2010 前后已有截图缩略图） / <code>thanks.php</code> <code>[实证]</code>。</li><li>TBDev/TBSource：NP 祖源，功能清单与 U-232 同源 <code>[推断]</code>。</li><li>TorrentTrader：未抓到源码细节 <code>[未获取]</code>。</li></ul>
+<h4>优势 / 劣势</h4>
+<p>优势：反直觉但重要——2010 年已具备海报、NFO、截图、字幕、评分、标签、免费种、YouTube 预告、peer 列表、举报。今天很多&quot;现代重写&quot;项目（Torrust）反而没有这些。 劣势：① UX 停留在 2010（表格 + 表单提交 + 整页刷新）② hack 式扩展生态（XBTIT 要求升级后 reapply hacks）→ 无法升级 ③ 无自动元数据、无 API、无响应式。</p>
+</section>
+<section id="s8" class="reveal block-card">
+<h3>2.6 新一代编译型（Torrust / Arcadia / NyaaPantsu）</h3>
+<h4>Torrust Index（Rust + Nuxt/Vue3）<code>[实证]</code></h4>
+<ul><li>列表页：<code>pages/torrents.vue</code>，顶部 <code>Default / Table</code> 两种视图切换；搜索框 + <code>TorrustSelect</code> 多选分类 + 多选标签（带搜索）；排序 UI 仅 4 项（Uploaded 新→旧 / 旧→新、Seeders 高→低、Leechers 高→低，API 另有 name/size 未在 UI 开放）；分页 <code>Pagination.vue</code> 每页 20/50/100 可选（默认 50，写入 URL <code>?pageSize=</code>）。</li><li>详情页：Tab 化 —— <code>TorrentDescriptionTab</code>（Markdown，内嵌 PNG 经后端代理 + 配额）、<code>TorrentFilesTab</code>、<code>TorrentTrackersTab</code>、<code>TorrentCommentTab</code>、<code>TorrentCreatedByTab</code>、<code>TorrentCreationDateTab</code>、<code>TorrentEncodingTab</code>、<code>CanonicalInfoHashGroup</code>（多 info_hash 格式归组，现代亮点）、<code>TorrentActionCard</code>（下载 + 带个人 announce 的 .torrent）。</li><li>致命缺失：API 的 torrent 对象字段为 <code>title/description/category_id/file_size/seeders/leechers/files/info_hash/uploader</code> —— 没有 poster/cover 字段，没有 NFO、MediaInfo、截图独立区块。</li><li>判定：弱。 列表交互尚可（标签多选、视图切换、每页可配），详情页空。价值在架构（Rust 性能、API 化），不在页面富度。</li></ul>
+<h4>Arcadia（Rust actix + Vue3 + PrimeVue）<code>[实证]</code></h4>
+<ul><li><code>master groups / title groups / edition groups / torrents</code> 四级分组 + <code>Collections</code> 聚合 + <code>series/authors</code>。</li><li>内容模型极丰富：电影（长片/短片）、剧集（季/集跟踪）、音乐（专辑/EP/单曲/原声/混音）、书籍（含 manga/comics/VN）、软件、游戏、期刊。</li><li>image and icons first（海报/封面是原生概念，与 Torrust 相反）+ Visual layout configuration（信息密度可配）。</li><li>论坛/审核标注 WIP。</li><li>判定：中—强。 模型层最接近（甚至超越）Gazelle/UNIT3D，UI 完整度仍在早期。</li></ul>
+<h4>NyaaPantsu（Go，公开站）<code>[实证]</code></h4>
+<ul><li>列表：分类下拉 + 子分类（如 English-translated）、搜索（正则/排除运算符）、按用户筛选、按种子数排序。</li><li>详情：文件列表、描述、.torrent、磁力、评论、Trusted/Remake 行染色。</li><li>天然缺失全部 PT 维度：无促销、无魔力/积分、无等级/邀请、无比例强制、无 HnR、无海报/NFO 体系（因为它是公开站）。</li><li>判定：中。 作为公开索引合格，作为 PT 参照无意义（缺的正是 PT 的灵魂）。</li></ul>
+<h4>该派总结论</h4>
+<blockquote><p>&quot;新一代&quot;内部严重分化。Torrust 是「架构新、内涵空」——详情页不如 2010 年的 U-232；Arcadia 是「模型强、UI 早期」；NyaaPantsu 天然出局。真正在页面功能密度上逼近 NP/U3D 的只有 Arcadia（模型层）与已死的 meanTorrent（功能层）。</p><p>与 NP/U3D 的 4 个差距维度：① 海报/媒体资产体系 ② 元数据组织与分组 ③ PT 经济与治理（促销/魔力/HnR/邀请/举报审核）④ 现代 UX（这一项反而新一代赢）。</p></blockquote>
+</section>
+<section id="s9" class="reveal block-card">
+<h3>2.7 JS 系（meanTorrent / sqtracker / rartracker）—— 功能做对了，架构做错了</h3>
+<ul><li>meanTorrent（MEAN.js，2017） <code>[实证]</code>：发种时填 TMDB ID 自动拉取电影元数据（海报/简介）；种子可绑多个 attr tag 用于搜索筛选；评论全 Markdown；上传者/管理员可上传编辑截图；独立字幕面板；电影合集 collections；VIP 属性种；resources group；HnR；积分/邀请；IRC 公告；论坛；聊天；请求系统；RSS；多语言。 判定：强（2017 即接近 NP/U3D 密度），唯一短板是 AngularJS 技术栈偏老。 但整派已失败：停止开源 + 高危信息暴露漏洞 + 衍生站 PTDream+ 于 2019-07 宣布回迁 NexusPHP <code>[业内]</code>。</li><li>rartracker（AngularJS + PHP）：响应式 Bootstrap，bonus/leeches bonus/种时/请求系统/RSS/多语言。判定：中—强。</li><li>sqtracker（Node + React + Mongo + Docker）：截图含 Home/Torrent/Upload/Categories/Profile。判定：中。</li></ul>
+<blockquote><p>教训：MongoDB 弱事务 vs PT 计费强一致天然冲突 + 单维护者 = 单点故障。功能密度不是存活的充分条件。</p></blockquote>
+</section>
+<section id="s10" class="reveal block-card">
+<h3>2.8 闭源自研大站：共同做对而开源站普遍缺失的 8 件事</h3>
+<ol><li>元数据与技术信息分栏：PTP/GGn/AB 把 IMDb/MC/演职员/平台（内容元数据）与码率/音轨/封装（技术信息）分区块；开源默认模板常混排。</li><li>条目级聚合模型：作品条目 &gt; 种子条目（PTP 单电影多版本、BTN show/season/ep、GGn 游戏条目、MAM series）。</li><li>外部评分/资料库打通：IMDb / Metacritic / MAL / AniDB / 豆瓣聚合。</li><li>列表页即见的激励标记体系：Golden Popcorn、personal freeleech、VIP、内部组徽标。</li><li>页面内闭环的社区质量门禁：offers 投票（HDB 上传需 15 票）、trump、tickets、staff review —— 开源站多靠论坛，不在页面内闭环。</li><li>追更/通知/日历流：BTN 新集通知、TL 的 TV Guide。</li><li>富媒体预览：MAM 样章试听、GGn 截图画廊、PTP Cover Flow。</li><li>内部组 / seedbox 激励可视化。</li></ol>
+<p>它们没做的（开源站反而更强）：可自托管与可审计；油猴脚本生态反哺 UI（PT 种子海报墙、universal-torrent-gallery 说明闭源默认 UI 在此偏弱）；开放 RSS/API 与自动化友好度；中文本地化与华语生态成熟度。</p>
+</section>
+<section id="s11" class="reveal block-card">
+<h3>2.9 FluxTorrent 现状（基准）</h3>
+<p>列表页（<code>apps/web/app/(main)/torrents/page.tsx</code>）</p>
+<ul><li>已实现：常驻搜索行（关键字 + 范围 + 匹配模式）+ 折叠高级面板（按语义分组：基础 / 数值与时间 / 发布者与状态 / 标签与排序 / 多维 <code>sec_*</code>）；已选条件 chips 摘要条可逐个移除（体验优于 NP 与 Gazelle）；分类多选；<code>alive</code> 三态、<code>status</code>、<code>approval</code>、<code>promo</code>、<code>mine</code>、<code>owner</code>、<code>anonymous</code>、<code>official</code>、<code>tag_id</code>、<code>exclude</code>；体积/日期/种子数/下载数/完成数区间；排序 6 列（name/comments/size/seeders/leechers/completed，同列再点反转）；封面列；RSS 入口（携带 keyword + cats）；游标翻页（<code>next_cursor</code>）。</li><li>未实现：单一表格视图（无卡片/海报墙/紧凑切换）；提交式 SSR 搜索（非实时）；固定每页 20（不可配）；无批量下载/多选；无列自定义；无行内用户下载进度条（<code>torrent-table.tsx</code> 无 progress 相关代码）；sort 无时间字段入口（表头未挂 added）。</li></ul>
+<p>详情页（<code>apps/web/app/(main)/torrent/[id]/page.tsx</code>）</p>
+<ul><li>已实现：面包屑；海报头（poster + 主信息 + 促销徽章 + 做种/下载数 + <code>DownloadButton</code> + 状态卡）；规格网格（大小/文件数/分类/介质/学段/版本/动态 sections/评分/info_hash）；标签行 + <code>PromoBuyButton</code> + <code>TorrentManage</code>（编辑/删除）；简介；MediaInfo 折叠；NFO 折叠；同组版本 GroupVersions；真实文件树 FileTree（含 size）；字幕面板（同 IMDb 合并）；下载/做种记录 SnatchList；感谢者；评论。</li><li>未实现/弱：无磁力链接（<code>download-button.tsx</code> 无 magnet）；无 peers 列表（只有 SnatchList）；无书签/收藏 UI（<code>bookmark_count</code> 只在类型里出现，页面未渲染）；无相似推荐；无截图画廊；评论无点赞/嵌套/排序；无 FL token / reseed 请求按钮；无 series/collection 聚合（只有平坦 group）；H&amp;R 提示未进详情页（独立 <code>/myhr</code> 页）。</li></ul>
+</section>
+<section id="s12" class="reveal block-card">
+<h2>3. 横向能力矩阵</h2>
+<p>图例：<code>●</code> 完整 / <code>◐</code> 部分或需插件/外部组件 / <code>○</code> 缺失 / <code>？</code> 未确认</p>
+<h3>3.1 列表页（开源组）</h3>
+<div class="table-wrap"><table><thead><tr><th>能力</th><th>NP 主线</th><th>华语大站(魔改)</th><th>UNIT3D</th><th>Gazelle(OPS)</th><th>U-232/老牌</th><th>Torrust</th><th>Arcadia</th><th>Nyaa</th><th>meanTorrent</th><th>FluxTorrent</th></tr></thead><tbody><tr><td>L1 多视图（表格/卡片/海报墙）</td><td>○</td><td>◐（脚本补）</td><td>● 四视图</td><td>○（仅内联封面）</td><td>○</td><td>◐（2 种）</td><td>◐</td><td>○</td><td>◐</td><td>○</td></tr><tr><td>L2 筛选可分享/持久化 URL</td><td>●</td><td>●</td><td>●（#[Url]）</td><td>●（DefaultSearch）</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td></tr><tr><td>L3 实时无刷新筛选</td><td>○</td><td>○</td><td>●</td><td>○</td><td>○</td><td>●</td><td>●</td><td>○</td><td>◐</td><td>○</td></tr><tr><td>L4 促销筛选 + 倒计时</td><td>● 多级</td><td>●（含 0.00X/免費 变体）</td><td>●（含 tooltip 倒计时）</td><td>◐（仅 freetorrent 状态）</td><td>◐（free 字段）</td><td>○</td><td>？</td><td>—</td><td>◐</td><td>◐（promo 单选 + 详情倒计时）</td></tr><tr><td>L5 健康度筛选（活/死/濒危/墓地）</td><td>◐（incldead）</td><td>◐</td><td>●（4 态）</td><td>◐</td><td>○</td><td>○</td><td>？</td><td>○</td><td>○</td><td>◐（alive 三态）</td></tr><tr><td>L6 已下载/未下载/我做种中</td><td>○</td><td>◐（U2 进度四态）</td><td>●</td><td>○（独立页）</td><td>○</td><td>○</td><td>？</td><td>—</td><td>◐</td><td>◐（status/mine）</td></tr><tr><td>L7 书签/心愿单筛选</td><td>●</td><td>●</td><td>●（bookmarked/wished）</td><td>○（独立页）</td><td>○</td><td>○</td><td>？</td><td>—</td><td>○</td><td>○（字段有/UI 无）</td></tr><tr><td>L8 数值区间（体积/时间/种子/完成）</td><td>●</td><td>●</td><td>●</td><td>◐（年份区间）</td><td>○</td><td>○</td><td>？</td><td>○</td><td>○</td><td>●</td></tr><tr><td>L9 标签 + 排除词/搜索语法</td><td>◐</td><td>◐</td><td>●</td><td>●（!tag + SphinxQL）</td><td>◐</td><td>●（标签多选）</td><td>●</td><td>◐</td><td>●</td><td>◐（tag 单选 + exclude）</td></tr><tr><td>L10 上传者/内部组/匿名</td><td>◐</td><td>◐</td><td>●（owner/internal/personal/anon 缺）</td><td>◐</td><td>◐</td><td>○</td><td>？</td><td>●（按用户）</td><td>◐</td><td>◐（owner/anonymous/official）</td></tr><tr><td>L11 排序字段数</td><td>9</td><td>9</td><td>8</td><td>7（含 random）</td><td>少</td><td>4（UI）</td><td>？</td><td>少</td><td>少</td><td>6</td></tr><tr><td>L12 每页条数可配</td><td>●（≤100）</td><td>●</td><td>●（25/50/75/100）</td><td>●</td><td>●</td><td>●（20/50/100）</td><td>？</td><td>●</td><td>●</td><td>○（固定 20）</td></tr><tr><td>L13 批量下载/多选</td><td>○</td><td>◐（脚本）</td><td>○</td><td>○</td><td>○</td><td>○</td><td>？</td><td>○</td><td>○</td><td>○</td></tr><tr><td>L14 行内封面</td><td>◐（部分站）</td><td>◐</td><td>●</td><td>◐（CoverArt 选项）</td><td>◐（poster 字段）</td><td>○</td><td>●</td><td>○</td><td>●</td><td>◐（封面列）</td></tr><tr><td>L15 行内用户下载进度</td><td>◐（脚本/部分站）</td><td>●（U2 四态）</td><td>●（seeding/leeching/incomplete）</td><td>○</td><td>○</td><td>○</td><td>？</td><td>—</td><td>◐</td><td>○</td></tr><tr><td>L16 列自定义</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>●（layout config）</td><td>○</td><td>○</td><td>○</td></tr><tr><td>L17 RSS 携带筛选</td><td>●（最完整）</td><td>●</td><td>◐（独立源）</td><td>◐</td><td>◐</td><td>○</td><td>？</td><td>●</td><td>●</td><td>◐（keyword + cats）</td></tr><tr><td>L18 移动端响应式</td><td>○</td><td>◐</td><td>●</td><td>○</td><td>○</td><td>●</td><td>●</td><td>◐</td><td>●</td><td>●</td></tr></tbody></table></div>
+<h3>3.2 列表页（闭源组）</h3>
+<div class="table-wrap"><table><thead><tr><th>能力</th><th>PTP</th><th>BTN</th><th>GGn</th><th>MAM</th><th>AB</th><th>HDB</th><th>IPT</th><th>TL</th></tr></thead><tbody><tr><td>L1 多视图</td><td>● Cover Flow</td><td>◐（series 入口）</td><td>◐</td><td>◐</td><td>◐</td><td>◐</td><td>●（海报墙）[业内]</td><td>○（极简列表）</td></tr><tr><td>L3 实时</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>L4 促销</td><td>●</td><td>●（ratioless）</td><td>●</td><td>●（personal FL）</td><td>●</td><td>●（browse.php 直出 FL）[实证]</td><td>●</td><td>●（&gt;14GB/合集免费）[实证]</td></tr><tr><td>L6 我做种/已下载</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td></tr><tr><td>L8 数值/评分区间</td><td>●（含 IMDb/MC 评分区间）[业内]</td><td>◐</td><td>◐（平台）</td><td>●（语言/格式/类型）</td><td>●</td><td>◐</td><td>◐</td><td>◐</td></tr><tr><td>L7 书签/追更</td><td>●</td><td>●（订阅新集）</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●（TV Guide）[实证]</td></tr><tr><td>L17 RSS</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td></tr></tbody></table></div>
+<h3>3.3 详情页（开源组）</h3>
+<div class="table-wrap"><table><thead><tr><th>能力</th><th>NP 主线</th><th>华语大站</th><th>UNIT3D</th><th>Gazelle(OPS)</th><th>U-232/老牌</th><th>Torrust</th><th>Arcadia</th><th>meanTorrent</th><th>FluxTorrent</th></tr></thead><tbody><tr><td>D1 海报</td><td>●（IMDb）</td><td>●</td><td>●</td><td>●（CoverArt）</td><td>●（poster 字段）</td><td>○（无字段）</td><td>●</td><td>●（TMDB）</td><td>●</td></tr><tr><td>D2 外部元数据自动拉取</td><td>◐（PT-Gen）</td><td>●（PT-Gen/豆瓣）</td><td>●（TMDB/IMDB/TVDB/MAL）</td><td>◐</td><td>○</td><td>○</td><td>◐</td><td>●（TMDB）</td><td>◐（imdb\_id + rating，自动拉取待确认）</td></tr><tr><td>D3 MediaInfo / NFO</td><td>● 两者</td><td>●</td><td>●（解析到 HDR/音轨）</td><td>◐（Logchecker 分）</td><td>●（NFO）</td><td>○</td><td>？</td><td>◐</td><td>● 两者</td></tr><tr><td>D4 真实文件树（含大小）</td><td>◐（AJAX 前端拉大小）</td><td>◐</td><td>●</td><td>●（真实树 + 冲突检测）</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●（FileTree + size）</td></tr><tr><td>D5 截图/画廊</td><td>◐（部分站）</td><td>◐</td><td>◐</td><td>◐（GGn fork 强）</td><td>●（thumbnail.php）</td><td>○</td><td>●</td><td>●</td><td>○</td></tr><tr><td>D6 字幕区</td><td>●</td><td>●</td><td>●</td><td>○（音乐）</td><td>●（subs）</td><td>○</td><td>？</td><td>●</td><td>●（0146/0148）</td></tr><tr><td>D7 聚合（group/series/collection）</td><td>◐（同 IMDb 副本）</td><td>◐</td><td>◐</td><td>●（TGroup 核心）</td><td>○</td><td>◐（CanonicalInfoHashGroup）</td><td>●（四级）</td><td>●（合集）</td><td>◐（GroupVersions 平坦组）</td></tr><tr><td>D8 相似推荐</td><td>◐（同 IMDb）</td><td>◐</td><td>●（TMDB）</td><td>●（标签投票）</td><td>○</td><td>○</td><td>？</td><td>◐</td><td>○</td></tr><tr><td>D9 peers 列表（客户端/进度）</td><td>●（AJAX）</td><td>●</td><td>●（独立 peers 页）</td><td>●</td><td>●</td><td>○</td><td>？</td><td>◐</td><td>○（仅 SnatchList 记录）</td></tr><tr><td>D10 下载/做种记录</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>○</td><td>？</td><td>●</td><td>●（SnatchList）</td></tr><tr><td>D11 评论（点赞/嵌套/排序）</td><td>◐（分页）</td><td>◐</td><td>●</td><td>●</td><td>◐</td><td>◐</td><td>？</td><td>●</td><td>◐（平铺）</td></tr><tr><td>D12 感谢 / 评分</td><td>●</td><td>●</td><td>●</td><td>◐</td><td>●（rating\_sum）</td><td>○</td><td>？</td><td>●</td><td>◐（感谢者 ✅ / 评分显示）</td></tr><tr><td>D13 书签 / 收藏 / 播放列表</td><td>●</td><td>●</td><td>●（bookmark + playlist）</td><td>●</td><td>○</td><td>○</td><td>？</td><td>◐</td><td>○（字段有 / UI 无）</td></tr><tr><td>D14 促销倒计时 + H&amp;R 提示</td><td>●</td><td>●</td><td>●（倒计时）／H&amp;R <code>[推断]</code></td><td>○（无倒计时）</td><td>◐</td><td>○</td><td>？</td><td>●</td><td>◐（倒计时 ✅ / H&amp;R 未进详情页）</td></tr><tr><td>D15 reseed 请求 / FL token</td><td>○</td><td>○</td><td>● 两者</td><td>●（re-seed + FL token）</td><td>◐</td><td>○</td><td>？</td><td>◐</td><td>○</td></tr><tr><td>D16 举报/审核/管理入口</td><td>●</td><td>●</td><td>●（reports/audits/tools）</td><td>●</td><td>●</td><td>○</td><td>WIP</td><td>●</td><td>●（TorrentManage + /reports）</td></tr><tr><td>D17 磁力链接</td><td>○（脚本补）</td><td>○</td><td>●</td><td>◐</td><td>◐</td><td>●</td><td>●</td><td>●</td><td>○</td></tr><tr><td>D18 富媒体预览（样章/预告/视频）</td><td>◐</td><td>◐</td><td>◐</td><td>—</td><td>●（youtube）</td><td>○</td><td>？</td><td>◐</td><td>○</td></tr></tbody></table></div>
+<h3>3.4 详情页（闭源组）</h3>
+<div class="table-wrap"><table><thead><tr><th>能力</th><th>PTP</th><th>BTN</th><th>GGn</th><th>MAM</th><th>AB</th><th>HDB</th></tr></thead><tbody><tr><td>D7 聚合模型</td><td>单电影多版本（SD/HD/UHD）+ Collections</td><td>show/season/episode 三级</td><td>游戏条目（含 OST/GameDOX）</td><td>series 聚合</td><td>anime 条目 + 字幕组</td><td>原盘/重编码分组 <code>[推断]</code></td></tr><tr><td>D2 外部元数据</td><td>IMDb + Metacritic + 演职员独立页</td><td>TVDB/MAL 系 <code>[推断]</code></td><td>平台/类型</td><td>author/narrator/DRM 结构化 <code>[实证]</code></td><td>MAL/AniDB <code>[推断]</code></td><td>IMDb <code>[推断]</code></td></tr><tr><td>D18 富媒体预览</td><td>Cover Flow</td><td>剧集</td><td>截图画廊 + 评测外链</td><td>样章试读/在线试听</td><td>—</td><td>—</td></tr><tr><td>质量门禁（页面内）</td><td>trumping / staff review <code>[推断]</code></td><td>—</td><td>trumping + duplicates <code>[实证]</code></td><td>—</td><td>—</td><td>offers 15 票 <code>[业内]</code></td></tr><tr><td>激励标记</td><td>Golden Popcorn</td><td>—</td><td>DRM-Free 标签 <code>[实证]</code></td><td>personal FL / VIP <code>[实证]</code></td><td>seedbox 指示器 <code>[推断]</code></td><td>内部组徽标</td></tr></tbody></table></div>
+</section>
+<section id="s13" class="reveal block-card">
+<h2>4. 十大专题对比</h2>
+<h3>4.1 视图模式：为什么&quot;海报墙&quot;是分水岭</h3>
+<ul><li>只有 UNIT3D（4 视图） 与 PTP（Cover Flow）、IPT（海报墙） 把海报墙做成一等公民；NP/Gazelle 原生都没有，靠用户脚本补。</li><li>Torrust 有 2 视图但无海报数据 → 视图切换形同虚设。</li><li>结论：海报墙的前提是 poster 是数据模型的一等字段，不是 CSS 布局问题。FluxTorrent 已有 <code>t.poster</code> 与封面列 → 缺的只是视图切换与卡片/海报组件，成本低于多数竞品。</li></ul>
+<h3>4.2 筛选：维度数量 vs 交互质量</h3>
+<ul><li>维度最全：UNIT3D（25+ 个 <code>#[Url]</code> 属性）。</li><li>维度最&quot;懂行&quot;：NP（促销七态 + 团队/音轨/处理/标准等影视向维度）、Gazelle（log/cue/scene/vanityhouse 等音乐向维度）。</li><li>语法最强：Gazelle（SphinxQL + <code>!tag</code> + 邻近短语）。</li><li>UX 最好：UNIT3D（实时 + chips 式移除 + URL 可分享）。</li><li>FluxTorrent：维度数量已接近 UNIT3D（含 NP 没有的多维 <code>sec_*</code> 动态维度与 chips 摘要），但交互是提交式 → &quot;有维度但不顺手&quot;，是最高性价比的改进点。</li></ul>
+<h3>4.3 聚合模型：作品 &gt; 种子</h3>
+<div class="table-wrap"><table><thead><tr><th>模型</th><th>代表</th><th>适合</th></tr></thead><tbody><tr><td>扁平</td><td>NP、UNIT3D（部分）、老牌、我们</td><td>通用/混合站，实现最简单</td></tr><tr><td>Group（TGroup）</td><td>Gazelle、PTP、BTN、GGn</td><td>音乐/影视/游戏/书</td></tr><tr><td>四级（master/title/edition/torrent）</td><td>Arcadia</td><td>通用且最细，维护成本高</td></tr><tr><td>CanonicalInfoHashGroup</td><td>Torrust</td><td>只解决&quot;同内容不同 hash&quot;，不解决&quot;多版本&quot;</td></tr><tr><td>Collections / Series</td><td>PTP / MAM / BTN</td><td>发现与策展</td></tr></tbody></table></div>
+<p>建议：通用站不必上四级，但至少要有 Group（同作品多版本）+ Collection（策展合集） 两层。FluxTorrent 已有 <code>torrent_groups</code>（0069）+ 详情页 <code>GroupVersions</code>，缺 collection 与 series。</p>
+<h3>4.4 海报与媒体资产体系</h3>
+<ul><li>一等公民：NP（IMDb 海报 + 简介首图）、UNIT3D（TMDB meta）、Gazelle（CoverArt）、Arcadia（image-first）、PTP/GGn/MAM。</li><li>缺失：Torrust（无 poster 字段）、Nyaa（公开站）。</li><li>差异化：MAM 样章试听、GGn 截图画廊、PTP Cover Flow。</li><li>我们的缺口：有 poster、有 MediaInfo/NFO/字幕，缺截图画廊与预览（详情页无 screenshots 表/组件）。</li></ul>
+<h3>4.5 促销与经济治理的可读性</h3>
+<ul><li>NP 的 <code>sp_state</code> 七态 + 标题内倒计时是最精细的；M-Team 用 <code>discount + promotionRule</code> 叠加算最终折扣（API 层）。</li><li>UNIT3D 把到期时间做成 tooltip（<code>fl_until.diffForHumans()</code>）——&quot;还剩多久&quot;比&quot;是否免费&quot;更能驱动行为。</li><li>Gazelle 最弱：FL 只是徽标，无倒计时。</li><li>我们：<code>promotion_ends_at</code> → 详情页算&quot;x天x时&quot; <code>[实证：torrent/[id]/page.tsx:91-99]</code>，列表页徽章有；建议补列表行 hover 倒计时（对齐 UNIT3D）。</li></ul>
+<h3>4.6 实时性代价</h3>
+<p>UNIT3D 的 <code>wire:model.live</code> 换来体验，代价是 Livewire 全栈耦合 + 复杂查询性能开销 <code>[业内]</code>。 我们（Next.js SSR + Rust API）的正确路线不是照抄 Livewire，而是：URL 状态 + 客户端软导航（router.replace + 局部 Suspense），做到&quot;输入即筛选&quot;但业务逻辑仍在 API。这样既拿到体验，又不把查询逻辑写进页面组件。</p>
+<h3>4.7 分页与性能</h3>
+<div class="table-wrap"><table><thead><tr><th>形态</th><th>代表</th><th>评价</th></tr></thead><tbody><tr><td>游标（cursor）</td><td>我们</td><td>深分页稳，但丢了&quot;跳页&quot;与&quot;总数精确&quot;（我们 <code>total_estimate</code> 是估算）</td></tr><tr><td>Laravel 分页（offset）</td><td>UNIT3D、NP</td><td>可跳页、有总数，深分页慢（<code>count(*)</code> 是经典坑）</td></tr><tr><td>无限滚动</td><td>多数 SPA</td><td>体验好，但 URL 状态与 SEO 差</td></tr><tr><td>明确不提供总数</td><td>YemaPT（文档写明&quot;不提供总数接口&quot;，要求按 id 去重）<code>[实证]</code></td><td>极端务实</td></tr></tbody></table></div>
+<p>建议：保留游标（架构优势），补每页条数可配（20/50/100）与首屏总数缓存（对齐 YemaPT 的务实口径：总数可缓存 60s，不追求实时精确）。</p>
+<h3>4.8 DOM 契约与脚本生态（隐性护城河）</h3>
+<p>NP 的 <code>table.torrents</code> / <code>td.rowfollow</code> / <code>.pro_free</code> / <code>details.php?id=</code> 是一套事实标准，让 PT-Plugin-Plus、PTool 一套 schema 通吃几十站 <code>[实证]</code>。 我们已有 <code>/compat/nexusphp/*</code> 兼容层（迁移 0069 后落地）<code>[实证]</code>。下一步：把列表页/详情页的语义选择器也稳定下来（如给表格加 <code>table.torrents</code>、行加 <code>data-torrent-id</code>、促销加 <code>pro_free</code> 类），让脚本作者零成本适配。</p>
+<h3>4.9 移动端</h3>
+<ul><li>只有新一代（Torrust/Arcadia/sqtracker/meanTorrent）与我们（Tailwind 响应式）原生友好。</li><li>NP/Gazelle/老牌/多数闭源站：桌面表格在手机上只能用横向滚动。</li><li>这是我们的结构性优势，但海报墙卡片视图在移动端收益最大，与 4.1 联动。</li></ul>
+<h3>4.10 别踩的坑（死因复盘）</h3>
+<div class="table-wrap"><table><thead><tr><th>坑</th><th>出处</th><th>我们怎么防</th></tr></thead><tbody><tr><td>hack 式扩展生态（升级要 reapply hacks）</td><td>XBTIT <code>[实证]</code></td><td>插件契约化，禁止 patch core</td></tr><tr><td>重写半途人消失</td><td>TBSource BrokenWings <code>[实证]</code></td><td>增量交付，禁止 big-bang rewrite</td></tr><tr><td>MongoDB 弱事务 vs 计费强一致</td><td>JS 系集体失败 <code>[业内]</code></td><td>已用 PG + 流水账本，坚持</td></tr><tr><td>单维护者单点故障</td><td>meanTorrent <code>[业内]</code></td><td>经济系统与契约的文档化</td></tr><tr><td>逐文件拼 SQL → 31 条 CVE</td><td>NP <code>[实证]</code></td><td>sqlx 参数化已免疫，盯住 <code>dangerouslySetInnerHTML</code>（简介/NFO 渲染处）</td></tr><tr><td>种子绑帖子 → 丧失元数据空间</td><td>TorrentPier / Discuz-PT <code>[实证]</code></td><td>保持种子为独立聚合根</td></tr></tbody></table></div>
+</section>
+<section id="s14" class="reveal block-card">
+<h2>5. FluxTorrent 种子页差距清单（按性价比排序）</h2>
+<div class="table-wrap"><table><thead><tr><th>优先级</th><th>缺口</th><th>领先参照</th><th>我们的前置条件</th><th>成本</th></tr></thead><tbody><tr><td>P0</td><td>列表页多视图（表格 / 卡片 / 海报墙）</td><td>UNIT3D、PTP、IPT</td><td><code>t.poster</code> 已有</td><td>中（纯前端组件 + 一个 <code>view</code> URL 参数）</td></tr><tr><td>P0</td><td>筛选实时化（URL 状态 + 软导航）</td><td>UNIT3D</td><td>sp 已全在 URL</td><td>中（改成客户端组件 + <code>router.replace</code>，业务逻辑仍在 API）</td></tr><tr><td>P0</td><td>每页条数可配（20/50/100）</td><td>几乎全部竞品</td><td><code>limit: 20</code> 硬编码</td><td>低</td></tr><tr><td>P0</td><td>详情页磁力链接</td><td>UNIT3D/Torrust/Gazelle</td><td>有 info_hash + passkey announce</td><td>低</td></tr><tr><td>P1</td><td>peers 列表（客户端/进度/ETA）</td><td>NP/UNIT3D/Gazelle</td><td>tracker 有 peer 数据</td><td>中</td></tr><tr><td>P1</td><td>书签/收藏按钮 + 列表 <code>bookmarked</code> 筛选</td><td>UNIT3D/NP</td><td><code>bookmark_count</code> 类型已有</td><td>低—中</td></tr><tr><td>P1</td><td>批量下载 / 多选</td><td>用户脚本补的 NP；UNIT3D 也没有</td><td>需 zip 打包端点</td><td>中（可先做&quot;批量复制下载链接&quot;低成本版）</td></tr><tr><td>P1</td><td>列表行促销 hover 倒计时</td><td>UNIT3D（<code>fl_until</code> tooltip）</td><td><code>promotion_ends_at</code> 已有</td><td>低</td></tr><tr><td>P1</td><td>截图画廊 / 预览图</td><td>GGn/meanTorrent/PTP</td><td>需 screenshots 表与上传入口</td><td>中—高</td></tr><tr><td>P2</td><td>相似推荐</td><td>UNIT3D（TMDB）/ Gazelle（标签投票）</td><td>可先用同分类 + 同标签 + 同 IMDb 的低成本实现</td><td>中</td></tr><tr><td>P2</td><td>Collection / Series 聚合层</td><td>PTP / MAM / BTN</td><td>已有 <code>torrent_groups</code></td><td>中</td></tr><tr><td>P2</td><td>评论点赞 / 嵌套 / 排序</td><td>UNIT3D / Gazelle</td><td>评论表已有</td><td>中</td></tr><tr><td>P2</td><td>reseed 请求 + FL token 按钮</td><td>UNIT3D / Gazelle</td><td>已有 <code>/resurrections</code>、<code>promotions</code></td><td>中</td></tr><tr><td>P2</td><td>语义 DOM 契约（<code>table.torrents</code> / <code>data-torrent-id</code> / <code>pro_free</code>）</td><td>NP 生态</td><td>纯加 class</td><td>低（生态收益极高）</td></tr><tr><td>P3</td><td>列自定义 / 信息密度配置</td><td>Arcadia（layout config）</td><td>—</td><td>中</td></tr><tr><td>P3</td><td>追更通知 / 日历流</td><td>BTN / TL</td><td>需订阅与推送基建</td><td>高</td></tr></tbody></table></div>
+<p>已领先、不要动的优势：筛选维度覆盖（含动态 <code>sec_*</code> 多维 + chips 摘要可逐个移除）、游标分页的深分页稳定性、响应式移动端、MediaInfo/NFO/字幕三位一体、真实文件树、同组版本聚合、促销倒计时&quot;x天x时&quot;口径、<code>/compat/nexusphp</code> 兼容层。</p>
+</section>
+<section id="s15" class="reveal block-card">
+<h2>6. 一句话结论</h2>
+<blockquote><p>抄 UNIT3D 的「四视图 + 实时筛选 + URL 持久化 + 促销倒计时 tooltip」交互壳；</p><p>抄 Gazelle 的「Group 聚合 + 真实文件树 + 筛选可存默认」结构骨；</p><p>抄 NP 的「多级促销 + 元数据密度 + DOM 契约」生态位；</p><p>抄 PTP/MAM/BTN 的「作品级聚合 + 富媒体预览 + 内容/技术信息分栏」呈现层；</p><p>以 Torrust 为戒（架构新≠页面强，poster 必须是一等字段）、以 TorrentPier/Discuz 为戒（种子别绑帖子）、以 XBTIT/meanTorrent 为戒（hack 生态与弱事务都是死路）。</p><p>我们的最短路径不是补&quot;功能&quot;，而是补&quot;形态&quot;：同样的筛选能力，换上多视图 + 实时化 + 每页可配，体验就能从「2010 年表格」跳到「2024 年 UNIT3D 级」，而后端一行 SQL 都不用改。</p></blockquote>
+</section>
+<section id="s16" class="reveal block-card">
+<p>整理：2026-09-22 · 证据来自各项目 GitHub 源码/官方文档、ptool <code>site/tpl</code> 适配代码、U-232 <code>details.php</code> SELECT 原文、GreasyFork 脚本、以及本仓库代码快照。闭源大站部分以 <code>[业内]/[推断]</code> 为主，已在文中逐条标注。</p>
+</section>
+<footer>由 WorkBuddy 资料库生成</footer>
+</main>
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var els = document.querySelectorAll('.reveal');
+  if (reduce || !('IntersectionObserver' in window)) {
+    els.forEach(function (el) { el.classList.add('in'); });
+    return;
+  }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12 });
+  els.forEach(function (el) { io.observe(el); });
+})();
+</script>
+<script>
+(function () {
+  if (!document.querySelector('.mermaid') || window.__mermaidLoaded) return;
+  window.__mermaidLoaded = true;
+  function fallback() {
+    document.querySelectorAll('.mermaid').forEach(function (el) {
+      if (el.getAttribute('data-mermaid-done')) return;
+      var pre = document.createElement('pre'), code = document.createElement('code');
+      code.textContent = el.getAttribute('data-mermaid-src') || el.textContent;
+      pre.appendChild(code); el.replaceWith(pre);
+    });
+  }
+  window.__mermaidFallback = fallback;
+  var s = document.createElement('script');
+  s.type = 'module';
+  s.textContent =
+    'import("https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs").then(function(mod){'
+    +   'var mermaid = mod.default;'
+    +   'var cs = getComputedStyle(document.documentElement);'
+    +   'function v(n,d){return (cs.getPropertyValue(n).trim()||d);}'
+    +   'mermaid.initialize({startOnLoad:false,theme:"base",themeVariables:{'
+    +     'primaryColor:v("--panel","#ffffff"),primaryBorderColor:v("--accent","#0075de"),'
+    +     'primaryTextColor:v("--text","#171a1f"),secondaryColor:v("--accent2","#0075de"),'
+    +     'tertiaryColor:v("--bg","#f7f7f6"),lineColor:v("--accent2","#0075de"),'
+    +     'textColor:v("--text","#171a1f"),mainBkg:v("--panel","#ffffff"),'
+    +     'nodeBorder:v("--accent","#0075de"),clusterBkg:v("--bg","#f7f7f6"),'
+    +     'clusterBorder:v("--accent","#0075de"),edgeLabelBackground:v("--panel","#ffffff"),'
+    +     'fontFamily:"-apple-system, PingFang SC, Microsoft YaHei, Segoe UI, sans-serif"}});'
+    +   'document.querySelectorAll(".mermaid").forEach(function(el){el.textContent=el.getAttribute("data-mermaid-src")||el.textContent;});'
+    +   'return mermaid.run({querySelector:".mermaid"});'
+    + '}).then(function(){'
+    +   'document.querySelectorAll(".mermaid").forEach(function(el){el.setAttribute("data-mermaid-done","1");});'
+    + '}).catch(function(){window.__mermaidFallback&&window.__mermaidFallback();});';
+  document.body.appendChild(s);
+  setTimeout(fallback, 8000);  // CDN 长时间无响应也退回代码块
+})();
+</script>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var cards = document.querySelectorAll('.block-card');
+  if (reduce || !('IntersectionObserver' in window)) {
+    cards.forEach(function(c){ c.classList.add('in'); });
+  } else {
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {rootMargin:'0px 0px -8% 0px', threshold:0.06});
+    cards.forEach(function(c){ io.observe(c); });
+  }
+  var bar = document.getElementById('pb');
+  function prog(){
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  addEventListener('scroll', prog, {passive:true}); prog();
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  if ('IntersectionObserver' in window && links.length) {
+    var obs = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (!e.isIntersecting) return;
+        links.forEach(function(a){ a.classList.toggle('is-active', a.dataset.target === e.target.id); });
+      });
+    }, {rootMargin:'-15% 0px -70% 0px'});
+    document.querySelectorAll('main section[id]').forEach(function(s){ obs.observe(s); });
+  }
+
+  var map = {'●':'dot--full','◐':'dot--part','○':'dot--none','？':'dot--unknown','?':'dot--unknown'};
+  document.querySelectorAll('td').forEach(function(td){
+    var t = td.textContent.trim();
+    if (t.length > 3 || !map[t[0]]) return;
+    var s = document.createElement('span');
+    s.className = 'dot ' + map[t[0]];
+    s.textContent = t[0];
+    td.textContent = '';
+    td.appendChild(s);
+  });
+
+  var nums = document.querySelectorAll('.m-num[data-count]');
+  function count(el){
+    var target = parseInt(el.dataset.count, 10), start = null, dur = 900;
+    function step(ts){
+      if (start === null) start = ts;
+      var p = Math.min((ts - start) / dur, 1);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  if (reduce || !('IntersectionObserver' in window)) { nums.forEach(count); }
+  else {
+    var nio = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ count(e.target); nio.unobserve(e.target); } });
+    }, {threshold:0.4});
+    nums.forEach(function(n){ nio.observe(n); });
+  }
+})();
+</script>
+</body>
+</html>

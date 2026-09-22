@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getFeed, getMyFollows } from "@/lib/data";
 import { TypeBadge } from "@/components/forum-bits";
+import { Icon } from "@/components/icons";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 
@@ -80,9 +81,19 @@ export default async function FeedPage({
               <tr key={it.topic_id}>
                 <td>
                   {it.sticky && (
-                    <span className="mr-1 text-xs text-coral">📌</span>
+                    <Icon
+                      name="pin"
+                      size={13}
+                      className="mr-1 inline align-[-2px] text-coral"
+                    />
                   )}
-                  {it.locked && <span className="mr-1 text-xs">🔒</span>}
+                  {it.locked && (
+                    <Icon
+                      name="lock"
+                      size={13}
+                      className="mr-1 inline align-[-2px]"
+                    />
+                  )}
                   <TypeBadge
                     type={it.topic_type}
                     label={

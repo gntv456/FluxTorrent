@@ -1,0 +1,722 @@
+/* ===== FluxTorrent · TIDE「潮汐」主题 · P1 令牌层 =====
+   产出范围（严格）：
+     ✅ 色彩 / 表面 / 文本 / 边框 / 状态 / 圆角 / 阴影 / 半透明派生层
+     ✅ --baozi-* 兼容层（30+ 组件零改动换肤）
+     ✅ 补齐原主题未定义的 3 个变量（--text-sub / --baozi-coral / --baozi-sub）
+     ✅ 促销行高亮变量重映射
+     ❌ 不含结构增强类（.btn / .colhead / .pager / .tab / .toast / 骨架）→ P2
+     ❌ 不含字体栈变更（--font-*）→ P5
+     ❌ 不含 keyframes / 动效类 → P4
+
+   机制：挂在 globals.css 的 @import 链最后一环。与 base.css 的
+   `:root, [data-theme="baozi"]` 同特异性、后出现 → 变量覆盖生效；
+   base.css 的 `@theme inline` 引用这些变量，故 `bg-sky` 等 Tailwind
+   utility 与 `--baozi-*` 兼容层自动跟随，无需改任何组件与页面。
+
+   语义位重映射（读代码时对照，变量名不变、语义位换色）：
+     sky→主品牌蓝 / indigo→深海军蓝（去紫）/ candy→信号青
+     sun→琥珀（促销）/ coral→砖红（危险）/ mint→深松绿（成功）
+
+   纪律：本文件只写 `[data-theme="baozi"]`（浅色），
+   绝不触碰 `baozi-night` —— 夜间主题保持原样，回归必测。
+   ============================================================ */
+
+:root,
+[data-theme="baozi"] {
+  color-scheme: light;
+
+  /* ===== 品牌蓝阶 ===== */
+  --sky: #0f62c4; /* 主交互蓝 */
+  --sky-deep: #0a3d6b; /* 深海军：主文本/表头/实心按钮 */
+  --sky-soft: #e3edf9; /* 浅蓝底：chip / 选中态 */
+  --sun: #b4790a; /* 琥珀：促销、2x */
+  --sun-soft: #fbf0da;
+  --coral: #c0392b; /* 砖红：危险 */
+  --coral-soft: #fbeae7;
+  --mint: #147d5f; /* 深松绿：成功、保种达标 */
+  --mint-soft: #dff1eb;
+  --candy: #0091a8; /* 信号青：在线/做种中 */
+  --candy-soft: #ddf2f5;
+  --indigo: #0a3d6b; /* 次品牌：深蓝（原紫位归位） */
+  --indigo-soft: #e3edf9;
+
+  /* ===== 中性 ===== */
+  --cloud: #f6f8fc;
+  --cream: #fbfcfe;
+  --ink: #0e1b2a;
+  --sub: #5a6b85;
+  --line: #e1e8f2;
+
+  /* ===== 渐变（去彩虹，改单色蓝渐层） ===== */
+  --grad-aurora: linear-gradient(135deg, #0a3d6b 0%, #0f62c4 55%, #2e86e0 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #0a3d6b,
+    #0f62c4,
+    #2e86e0,
+    #0091a8,
+    #7fb6f0
+  );
+  --ribbon: var(--grad-rainbow);
+  --brand-glow: #0f62c4;
+  --brand-soft: var(--sky-soft);
+
+  /* ===== 表面 ===== */
+  --surface-page: #f6f8fc;
+  --surface-cloud: #eef3fa;
+  --surface-card: #ffffff;
+  --surface-raised: #fbfcfe;
+  --surface-hover: #f1f6fc;
+  --surface-sunken: #edf2f9;
+  --surface-cream: #fbfcfe;
+  --head-a: #e9f0f9;
+  --head-b: #f8fafd;
+
+  /* ===== 文本 ===== */
+  --text-strong: #0e1b2a;
+  --text-heading: #08131f;
+  --text-body: #33445c;
+  --text-body-deep: #26364c;
+  --text-brand: #0a3d6b;
+  --text-muted: #5a6b85;
+  --text-faint: #7c8aa0;
+  --text-fainter: #9aa7ba;
+  --text-on-accent: #ffffff;
+
+  /* ===== 边框 ===== */
+  --border-soft: #e1e8f2;
+  --border-deep: #c3d2e4;
+  --border-strong: #7fb6f0;
+
+  /* ===== 状态 ===== */
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --info: #0f62c4;
+  --muted-soft: #eff3f8;
+  --accent-purple: #0a3d6b;
+
+  /* ===== 圆角：24/20/14/10 → 18/14/10/6 ===== */
+  --r-xl: 18px;
+  --r-lg: 14px;
+  --r-md: 10px;
+  --r-sm: 6px;
+
+  /* ===== 阴影：低扩散冷调，靠 hairline 分层 ===== */
+  --shadow-card: 0 1px 2px rgba(14, 27, 42, 0.04),
+    0 10px 24px -12px rgba(14, 27, 42, 0.12);
+  --shadow-hover: 0 2px 4px rgba(14, 27, 42, 0.06),
+    0 16px 32px -14px rgba(10, 61, 107, 0.22);
+
+  /* ===== 半透明派生层 ===== */
+  --row-veil: rgba(255, 255, 255, 0.96);
+  --row-veil-soft: rgba(255, 255, 255, 0.88);
+  --row-veil-mist: rgba(255, 255, 255, 0.76);
+  --chip-veil: rgba(251, 252, 254, 0.92);
+  --chip-veil-thin: rgba(251, 252, 254, 0.7);
+  --label-veil: rgba(233, 240, 249, 0.5);
+  --label-veil-deep: rgba(233, 240, 249, 0.82);
+  --hairline: rgba(255, 255, 255, 0.55);
+  --hairline-soft: rgba(255, 255, 255, 0.4);
+  --hairline-strong: rgba(255, 255, 255, 0.82);
+  --focus-ring: rgba(15, 98, 196, 0.18);
+  --focus-ring-soft: rgba(15, 98, 196, 0.12);
+  --on-accent-glass: rgba(255, 255, 255, 0.18);
+  --brand-glow-veil: rgba(15, 98, 196, 0.08);
+  --accent-shadow: rgba(15, 98, 196, 0.24);
+  --accent-shadow-soft: rgba(15, 98, 196, 0.16);
+  --accent-rule: rgba(15, 98, 196, 0.45);
+
+  /* ===== 补齐：原主题未定义，导致 15 处落到旧 fallback 硬编码 ===== */
+  --text-sub: #5a6b85; /* pages.css 11 处 var(--text-sub,#8a7d6b) */
+  --baozi-coral: var(--danger); /* layout.css:1019 未定义 */
+  --baozi-sub: var(--text-muted); /* layout.css:1024,1036 未定义 */
+
+  /* ===== 兼容层：--baozi-* → Tide 语义（30+ 组件零改动） ===== */
+  --baozi-bg: var(--surface-page);
+  --baozi-paper: var(--surface-card);
+  --baozi-cream: var(--surface-cream);
+  --baozi-line: #c3d2e4;
+  --baozi-line-soft: var(--line);
+  --baozi-orange: var(--sky);
+  --baozi-orange-bright: #2e86e0;
+  --baozi-orange-dark: var(--sky-deep);
+  --baozi-green: var(--mint);
+  --baozi-blue: var(--info);
+  --baozi-ink: var(--ink);
+
+  /* ===== 促销行高亮（pages.css 定义，此处重映射为蓝/琥珀） ===== */
+  --promo-free-bg: #e7f0fb;
+  --promo-x2-bg: #fbf1dc;
+
+  /* ===== Tide 专有令牌（P2/P4 使用，P1 仅声明不消费） ===== */
+  --tide-abyss: #062a47;
+  --tide-deep: #0a3d6b;
+  --tide-sea: #0f62c4;
+  --tide-surf: #2e86e0;
+  --tide-foam: #7fb6f0;
+  --tide-mist: #d7e6f7;
+  --tide-haze: #eef4fb;
+  --tide-signal: #0091a8;
+  --tide-up: #c8322c; /* 涨（中国习惯：红涨） */
+  --tide-down: #12805c; /* 跌（绿跌） */
+  --tide-grid: rgba(15, 98, 196, 0.07);
+  --tide-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --tide-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================
+   P2 结构增强层
+   范围（严格）：补齐「在用但无 CSS 定义」的通用类 + 顶栏 shell + 表格标尺。
+   不含：字体栈（P5）、keyframes/滚入动画（P4）、i18n 文案。
+   ============================================================ */
+
+/* ---------- 2.1 通用按钮：.btn / .btn-primary / .btn-ghost 当前无定义 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--border-deep);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-body-deep);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color 0.16s var(--tide-ease),
+    border-color 0.16s var(--tide-ease),
+    color 0.16s var(--tide-ease),
+    box-shadow 0.16s var(--tide-ease),
+    transform 0.12s var(--tide-ease);
+}
+.btn:hover {
+  border-color: var(--tide-surf);
+  color: var(--tide-deep);
+  background: var(--surface-hover);
+}
+.btn:active {
+  transform: scale(0.985);
+}
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  border-color: transparent;
+  background: var(--tide-sea);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(10, 61, 107, 0.2);
+}
+.btn-primary:hover {
+  background: var(--tide-surf);
+  color: #fff;
+}
+/* hover 时一层高光横向掠过（纯 CSS，不依赖 JS） */
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 80%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.6s var(--tide-ease-out);
+  pointer-events: none;
+}
+.btn-primary:hover::after {
+  transform: translateX(120%);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+.btn-ghost:hover {
+  background: var(--surface-hover);
+  color: var(--tide-deep);
+  border-color: transparent;
+}
+
+.btn-danger {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.btn-danger:hover {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
+
+/* .btn2 只对 input.btn2 定义过；<button className="btn2"> 落裸样式，这里兜底 */
+button.btn2 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--border-deep);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text-body-deep);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.16s var(--tide-ease),
+    border-color 0.16s var(--tide-ease),
+    color 0.16s var(--tide-ease);
+}
+button.btn2:hover {
+  border-color: var(--tide-surf);
+  background: var(--surface-hover);
+  color: var(--tide-deep);
+}
+
+/* 主按钮形态统一：极光胶囊 → 细圆角实心（渐变已由 P1 变量改为蓝阶） */
+[data-theme="baozi"] .btn-aurora,
+[data-theme="baozi"] .btn-primary-aurora,
+[data-theme="baozi"] .baozi-button,
+[data-theme="baozi"] .bz-submit,
+[data-theme="baozi"] .request-center__filter--primary,
+[data-theme="baozi"] .donate-plan button,
+[data-theme="baozi"] .usercp-form input[type="submit"] {
+  border-radius: 8px;
+  letter-spacing: 0.01em;
+}
+[data-theme="baozi"] .bz-submit {
+  letter-spacing: 0.32em;
+  font-weight: 700;
+}
+
+/* ---------- 2.2 表头：裸 .colhead 无样式（9 处引用） ---------- */
+.colhead {
+  padding: 9px 12px;
+  background: linear-gradient(180deg, #f4f8fd, var(--surface-raised));
+  border-bottom: 1px solid var(--border-deep);
+  color: var(--text-brand);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ---------- 2.3 分页器 ---------- */
+.tide-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.tide-pager__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-body);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color 0.16s var(--tide-ease),
+    border-color 0.16s var(--tide-ease),
+    color 0.16s var(--tide-ease);
+}
+.tide-pager__btn:hover:not(:disabled) {
+  border-color: var(--tide-foam);
+  background: var(--surface-hover);
+  color: var(--tide-deep);
+}
+.tide-pager__btn[aria-current="page"],
+.tide-pager__btn[aria-current="true"] {
+  border-color: transparent;
+  background: var(--tide-deep);
+  color: #fff;
+}
+.tide-pager__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------- 2.4 Tab（统一口径，替代 5+ 处复制粘贴的串） ---------- */
+.tide-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--surface-sunken);
+}
+.tide-tab {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.16s var(--tide-ease),
+    color 0.16s var(--tide-ease);
+}
+.tide-tab:hover {
+  color: var(--tide-deep);
+}
+.tide-tab[aria-selected="true"],
+.tide-tab[data-active="true"] {
+  background: var(--surface-card);
+  color: var(--tide-deep);
+  box-shadow: 0 1px 2px rgba(14, 27, 42, 0.08);
+}
+
+/* ---------- 2.5 Toast / flash 条（统一 6 种写法） ---------- */
+.tide-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--info);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-body-deep);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-hover);
+}
+.tide-toast[data-tone="ok"] {
+  border-left-color: var(--success);
+}
+.tide-toast[data-tone="warn"] {
+  border-left-color: var(--warning);
+}
+.tide-toast[data-tone="err"] {
+  border-left-color: var(--danger);
+}
+
+/* ---------- 2.6 骨架屏（原 .bz-form-skeleton 只有空壳高度，无动画） ---------- */
+.tide-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-sunken);
+}
+.tide-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.78),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: tide-shimmer 1.4s var(--tide-ease) infinite;
+}
+@keyframes tide-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ---------- 2.7 顶栏 shell（sticky + 毛玻璃；由 .tide-header 承载） ---------- */
+.tide-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px) saturate(1.1);
+  border-bottom: 1px solid var(--border-soft);
+}
+@supports not (backdrop-filter: blur(4px)) {
+  .tide-header {
+    background: var(--surface-card);
+  }
+}
+/* 底边一条渐隐蓝线（制图刻度感） */
+.tide-header::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--tide-foam) 18%,
+    var(--tide-foam) 82%,
+    transparent
+  );
+  opacity: 0.45;
+  pointer-events: none;
+}
+.tide-header .mainmenu-link {
+  border-radius: 8px;
+  border-color: transparent;
+  background: transparent;
+  font-weight: 600;
+}
+.tide-header .mainmenu-link:hover {
+  background: var(--surface-hover);
+  color: var(--tide-deep);
+  transform: translateY(-1px);
+}
+/* 激活态：顶部 2px 标尺 + 浅蓝底（取代极光渐变实心块） */
+.tide-header .mainmenu-link[data-active="true"] {
+  position: relative;
+  background: var(--sky-soft);
+  color: var(--tide-deep);
+  border-color: transparent;
+  box-shadow: none;
+  font-weight: 700;
+}
+.tide-header .mainmenu-link[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--tide-sea);
+}
+.tide-header .mainmenu-drop {
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-hover);
+}
+.tide-header .mainmenu-drop__link:hover,
+.tide-header .mainmenu-drop__link[data-active="true"] {
+  background: var(--sky-soft);
+  color: var(--tide-deep);
+}
+
+/* ---------- 2.8 表格：行 hover 左侧标尺 + 数据等宽 + 表头强化 ---------- */
+[data-theme="baozi"] .nexus-table th,
+[data-theme="baozi"] .nexus-table thead td {
+  background: linear-gradient(180deg, #f4f8fd, var(--surface-raised));
+  border-bottom: 1px solid var(--border-deep);
+  letter-spacing: 0.04em;
+}
+[data-theme="baozi"] .nexus-table tbody tr:hover td:first-child {
+  box-shadow: inset 2px 0 0 var(--tide-sea);
+}
+[data-theme="baozi"] .nx-num,
+[data-theme="baozi"] .nexus-table td {
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="baozi"] .nexus-table tbody td {
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* ---------- 2.9 面板标题条：去掉斜纹，左竖线 + 细底边 ---------- */
+[data-theme="baozi"] .baozi-panel__head {
+  position: relative;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border-soft);
+}
+[data-theme="baozi"] .baozi-panel__head::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--grad-aurora);
+}
+[data-theme="baozi"] .baozi-panel__head--ribbon::after {
+  display: none;
+}
+
+/* ---------- 2.10 卡片 / 面板：hairline 分层（低扩散阴影 + 边框提亮） ---------- */
+[data-theme="baozi"] .baozi-panel,
+[data-theme="baozi"] .nexus-table,
+[data-theme="baozi"] .up-card,
+[data-theme="baozi"] .tsb-card,
+[data-theme="baozi"] .pting-card,
+[data-theme="baozi"] .rss-card,
+[data-theme="baozi"] .userbar {
+  transition:
+    border-color 0.18s var(--tide-ease),
+    box-shadow 0.18s var(--tide-ease);
+}
+[data-theme="baozi"] .up-card:hover,
+[data-theme="baozi"] .tsb-card:hover,
+[data-theme="baozi"] .pting-card:hover {
+  border-color: var(--border-deep);
+}
+
+/* ---------- 2.11 贴纸归正（去掉 rotate(-2deg) 与白描边） ---------- */
+[data-theme="baozi"] .sticker {
+  transform: none;
+  border-width: 1px;
+  border-color: var(--border-deep);
+  border-radius: 5px;
+  box-shadow: none;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 2.12 滚动条 / 选中态 / 焦点环（冷调收敛） ---------- */
+[data-theme="baozi"] ::-webkit-scrollbar-thumb {
+  background: #c9d7e8;
+  border-radius: 999px;
+}
+[data-theme="baozi"] ::-webkit-scrollbar-thumb:hover {
+  background: #aec3dc;
+}
+[data-theme="baozi"] ::selection {
+  background: rgba(15, 98, 196, 0.16);
+  color: var(--text-heading);
+}
+[data-theme="baozi"] :focus-visible {
+  outline: 2px solid var(--tide-sea);
+  outline-offset: 2px;
+}
+
+/* ---------- 2.13 表单控件：统一圆角与 focus 环（不动高度，避免布局位移） ---------- */
+[data-theme="baozi"] .bz-field input,
+[data-theme="baozi"] .tsb-input,
+[data-theme="baozi"] .tsb-select,
+[data-theme="baozi"] .tsb-num,
+[data-theme="baozi"] .cmgmt-form input,
+[data-theme="baozi"] .cmgmt-form textarea,
+[data-theme="baozi"] .usertools-form input,
+[data-theme="baozi"] .usertools-form select,
+[data-theme="baozi"] .rss-row select,
+[data-theme="baozi"] .rss-row input {
+  border-radius: 8px;
+}
+[data-theme="baozi"] .bz-field input:focus {
+  border-color: var(--tide-sea);
+  box-shadow: 0 0 0 3px var(--focus-ring-soft);
+}
+
+/* ---------- 2.14 无障碍兜底：骨架动画尊重 reduced-motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .tide-skeleton::after,
+  .btn-primary::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ============================================================
+   P3 图标层：把 emoji 换成 SVG 后的对比度与对齐收口
+   （图标本身在 components/icons.tsx，此处只处理「图标落在色块上」的场景）
+   ============================================================ */
+
+/* 封面回退：底色是分类色，图标改走白色以保证对比度（原 emoji 自带彩色） */
+.torrents-cover--fallback,
+.td-head__img--fallback {
+  color: #fff;
+  opacity: 0.92;
+}
+
+/* 论坛列表/主题标题里与文字混排的语义图标（置顶/精华/锁定）：
+   用 inline + 负向 vertical-align 对齐到中文基线，避免撑高行盒 */
+.torrents-pin {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: -2px;
+}
+.torrents-pin svg {
+  display: block;
+}
+
+/* ============================================================
+   P5 字体层
+   ------------------------------------------------------------
+   设计意图：西文标题走 Bricolage Grotesque（有性格的现代无衬线），
+   中文**自动回落**到 Noto Serif SC（衬线）—— 因为 Bricolage 不含中文字形，
+   混排时中文必然落到第二顺位，于是天然实现「西文 grotesque + 中文衬线」的组合。
+   加载失败/被墙时的回退链（Songti SC / SimSun）**仍然是衬线**，
+   所以即便 Google Fonts 不可达，设计方向依旧成立（只是字面细节不同）。
+   数据（体积/比率/统计）走 IBM Plex Mono —— mono 无中文字形，故只用于纯数字场景。
+   ============================================================ */
+:root,
+[data-theme="baozi"] {
+  --font-display: "Bricolage Grotesque", "Noto Serif SC", "Songti SC",
+    "Source Han Serif SC", "SimSun", "Noto Sans SC", sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "Source Han Serif SC", "SimSun",
+    serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+}
+
+/* 标题层：统一走 display 栈（中文即衬线），衬线视觉重量偏轻，补一点字距 */
+[data-theme="baozi"] .baozi-panel__head h1,
+[data-theme="baozi"] .baozi-panel__head h2,
+[data-theme="baozi"] .up-card__title,
+[data-theme="baozi"] h1.font-display,
+[data-theme="baozi"] h2.font-display,
+[data-theme="baozi"] h3.font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.012em;
+}
+
+/* 品牌名：字号大、衬线更紧凑，字距略收 */
+[data-theme="baozi"] header .font-display {
+  letter-spacing: 0.004em;
+}
+
+/* 表单表头/统计标签这类小字号标题保持无衬线，避免小字衬线发虚 */
+[data-theme="baozi"] .nexus-table th,
+[data-theme="baozi"] .nexus-table thead td,
+[data-theme="baozi"] .colhead,
+[data-theme="baozi"] button,
+[data-theme="baozi"] .btn,
+[data-theme="baozi"] .mainmenu-link {
+  font-family: var(--font-body);
+}
+
+/* 数据层：纯数字场景（用户页指标、排行榜数值等）走等宽，数字逐位对齐 */
+[data-theme="baozi"] .up-stat__value,
+[data-theme="baozi"] .tide-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* 供组件按需使用的工具类（纯数字/ID/hash/时间） */
+.tide-num {
+  font-variant-numeric: tabular-nums;
+}
