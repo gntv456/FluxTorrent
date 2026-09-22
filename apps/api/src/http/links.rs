@@ -106,6 +106,8 @@ pub async fn link_update(
         return Err(DomainError::NotFound(*path));
     }
     state.repo.audit(Some(auth.id), "link_update", None).await;
+    // 首页共享缓存写失效（0152）：友链进 /home 共享段
+    super::home::invalidate_home_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -124,6 +126,7 @@ pub async fn link_delete(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "link_delete", None).await;
+    super::home::invalidate_home_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 

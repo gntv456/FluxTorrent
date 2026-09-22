@@ -65,20 +65,17 @@ async fn rss_feed(
     let mediums = parse_ids(q.mediums.as_deref());
     // paid=1 → 仅免费促销种（当前生效的 torrent 级或 scope 级 free/x2free；修复前参数被静默忽略）
     let free_only = q.paid == Some(1);
-    let rows: Vec<RssRow> = sqlx::query_as(
+    // 促销口径与列表/筛选谓词共用同一份实现（crate::torrents::promo）：
+    // 此前 RSS 自己内联了一份命中条件 + 优先级 CASE，与主列表口径会各自漂移。
+    let promo_lateral = crate::torrents::promo::lateral_latest();
+    let free_clause =
+        crate::torrents::promo::exists_clause(Some("'free','x2free'"));
+    let sql = format!(
         "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, t.official_tag, \
-                (SELECT p.kind::text FROM promotions p \
-                  WHERE p.starts_at <= now() AND p.ends_at > now() AND ( \
-                    p.torrent_id = t.id \
-                    OR (p.torrent_id IS NULL AND ( \
-                        p.scope = 'global' \
-                        OR (p.scope = 'official' AND t.official_tag) \
-                        OR (p.scope = 'non_official' AND NOT t.official_tag) \
-                        OR (p.scope = 'category' AND p.category_id = t.category_id)))) \
-                  ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 \
-                                          WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion, \
+                pr.promotion, \
                 u.username AS owner_name \
          FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
+         {promo_lateral} \
          WHERE t.approval_status = 1 \
            AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
            AND ($2::int[] IS NULL OR \
@@ -87,27 +84,19 @@ async fn rss_feed(
                            WHERE ts.torrent_id = t.id AND ts.kind = 'media' AND ts.dict_id = ANY($2))) \
            AND ($3::bool IS NULL OR t.official_tag = $3) \
            AND ($4::text IS NULL OR t.name ILIKE '%' || $4 || '%') \
-           AND (NOT $6::bool OR EXISTS ( \
-                SELECT 1 FROM promotions p \
-                WHERE p.starts_at <= now() AND p.ends_at > now() \
-                  AND (p.torrent_id = t.id \
-                       OR (p.torrent_id IS NULL AND ( \
-                            p.scope = 'global' \
-                            OR (p.scope = 'official' AND t.official_tag) \
-                            OR (p.scope = 'non_official' AND NOT t.official_tag) \
-                            OR (p.scope = 'category' AND p.category_id = t.category_id)))) \
-                  AND p.kind::text IN ('free','x2free'))) \
-         ORDER BY t.id DESC LIMIT $5",
-    )
-    .bind(categories.as_deref())
-    .bind(mediums.as_deref())
-    .bind(q.official)
-    .bind(q.search.as_deref().filter(|s| !s.is_empty()))
-    .bind(q.showrows.unwrap_or(50).clamp(1, 200))
-    .bind(free_only)
-    .fetch_all(&state.repo.db)
-    .await
-    .unwrap_or_default();
+           AND (NOT $6::bool OR {free_clause}) \
+         ORDER BY t.id DESC LIMIT $5"
+    );
+    let rows: Vec<RssRow> = sqlx::query_as(&sql)
+        .bind(categories.as_deref())
+        .bind(mediums.as_deref())
+        .bind(q.official)
+        .bind(q.search.as_deref().filter(|s| !s.is_empty()))
+        .bind(q.showrows.unwrap_or(50).clamp(1, 200))
+        .bind(free_only)
+        .fetch_all(&state.repo.db)
+        .await
+        .unwrap_or_default();
 
     // 审计修复（P2）：PUBLIC_SITE_URL 未配置时退请求 Host 拼绝对地址，
     // RSS 阅读器才能跳转（此前 channel link 为空、item link 为相对路径）

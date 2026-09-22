@@ -13,7 +13,23 @@ use super::auth_infra::require_auth;
 
 // ============ 首页（复刻包子站 index.php 五大板块） ============
 
-/// 首页汇总：公告 + 签到日历 + 30 天新增资源统计 + 站点数据 + 娱乐流水
+use redis::AsyncCommands;
+
+/// 首页共享段 Redis 缓存键（0152）：公告/资源统计/站点数据/娱乐流水/友链/排版。
+/// 写失效式（Gazelle 范式）：管理端 news/links/home_layout/promos 写操作 DEL 本键，
+/// TTL 300s 兜底覆盖种子发布（资源统计）与游戏流水这类无写入口的慢变化。
+pub const HOME_SHARED_CACHE_KEY: &str = "cache:home:shared:v1";
+
+/// 供管理端写路径主动失效（写失效式缓存，Gazelle 范式）
+pub async fn invalidate_home_cache(state: &AppState) {
+    let mut c = state.redis.clone();
+    let _: Result<(), _> = c.del(HOME_SHARED_CACHE_KEY).await;
+}
+
+/// 首页汇总：共享段（缓存 300s + 写失效）+ 个人段（签到日历，逐用户实时）。
+/// 首页对比调研 0152：此前每次访问打 10+ 条实时 SQL，是全参评项目中唯一零缓存的首页；
+/// 拆分口径对齐 UNIT3D「凡带 per-user 态的查询绕开共享缓存」——签到日历/补签卡
+/// 留在个人段，其余六段进共享缓存。Redis 故障 fail-open 直查库。
 #[get("/home")]
 pub async fn home_sections(
     req: HttpRequest,
@@ -22,18 +38,52 @@ pub async fn home_sections(
     let auth = require_auth(&req, &state).await?;
     let uid = auth.id;
 
+    // ---- 共享段：读缓存（fail-open）----
+    let mut c = state.redis.clone();
+    let hit: Option<String> = AsyncCommands::get(&mut c, HOME_SHARED_CACHE_KEY)
+        .await
+        .unwrap_or(None);
+    let shared: serde_json::Value = match hit
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+    {
+        Some(v) => v,
+        None => {
+            let v = home_shared_fresh(&state).await?;
+            if let Ok(s) = serde_json::to_string(&v) {
+                let _: Result<(), _> = AsyncCommands::set_ex(
+                    &mut c,
+                    HOME_SHARED_CACHE_KEY,
+                    s,
+                    300u64,
+                )
+                .await;
+            }
+            v
+        }
+    };
+
+    // ---- 个人段：签到日历（per-user，永不进共享缓存）----
+    let attendance = attendance_json(&state.repo.db, uid).await?;
+
+    let mut out = shared;
+    out["attendance"] = attendance;
+    Ok(ok(out))
+}
+
+/// 首页共享段全量重算（缓存未命中时）：公告 + 30 天资源统计 + 站点数据 + 娱乐流水 + 友链 + 排版
+async fn home_shared_fresh(
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<serde_json::Value> {
+    let db = &state.repo.db;
+
     // 公告（home-news）：最新一条为头条 + 其余为列表
-    let news: Vec<(
-        i32,
-        String,
-        String,
-        String,
-        chrono::DateTime<chrono::Utc>,
-    )> = sqlx::query_as(
+    #[rustfmt::skip]
+    let news: Vec<(i32, String, String, String, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
         "SELECT id, title, body, badge, \
          created_at FROM announcements ORDER BY id DESC LIMIT 8",
     )
-    .fetch_all(&state.repo.db)
+    .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let news_json: Vec<serde_json::Value> = news
@@ -48,15 +98,148 @@ pub async fn home_sections(
             })
         })
         .collect();
+    // 公告未读感知（0152，NP last_home 口径）：个人已读水位 = 共享段最新公告 id，
+    // 由前端拉 me.news_seen 对比；这里附 latest_news_id 免去前端再解析一遍
+    let latest_news_id: i32 =
+        news.first().map(|(id, _, _, _, _)| *id).unwrap_or(0);
 
-    // 签到日历（attendance-card）：当月逐日 + 连签/累计 + 补签卡持有数（0066）
+    // 签到日历已拆至个人段 attendance_json（per-user 不进共享缓存，0066/0152）
+
+    // 30 天新增资源统计（home-resource-stats）：普通 vs 官种
+    let daily: Vec<(chrono::NaiveDate, i64, i64)> = sqlx::query_as(
+        "SELECT created_at::date AS d, \
+                count(*) FILTER (WHERE NOT official_tag) AS ordinary, \
+                count(*) FILTER (WHERE official_tag) AS official \
+         FROM torrents WHERE approval_status = 1 \
+              AND created_at > now() - interval '30 days' \
+         GROUP BY d ORDER BY d",
+    )
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 站点时区 UTC+8（与 /attendance、/checkin 同口径；容器 TZ=UTC 时 Local 会让
+    // 首页日历在北京 0-8 点窗口显示「昨日未签」）
+    let today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
+    let _ = today; // 日历构造已随签到段移入 attendance_json
+
+    let by_day: std::collections::HashMap<chrono::NaiveDate, (i64, i64)> =
+        daily.iter().map(|(d, o, f)| (*d, (*o, *f))).collect();
+    let series: Vec<serde_json::Value> = (0..30)
+        .rev()
+        .map(|i| {
+            let d = today - chrono::Duration::days(i);
+            let (o, f) = by_day.get(&d).cloned().unwrap_or((0, 0));
+            serde_json::json!({
+                "date": d.format("%Y-%m-%d").to_string(),
+                "ordinary": o, "official": f, "total": o + f,
+            })
+        })
+        .collect();
+    let today_count = by_day.get(&today).map(|(o, f)| o + f).unwrap_or(0);
+    let last7: Vec<i64> = (1..=7)
+        .map(|i| {
+            by_day
+                .get(&(today - chrono::Duration::days(i)))
+                .map(|(o, f)| o + f)
+                .unwrap_or(0)
+        })
+        .collect();
+    let avg7 = if last7.is_empty() {
+        0.0
+    } else {
+        last7.iter().sum::<i64>() as f64 / last7.len() as f64
+    };
+    let total30: i64 = daily.iter().map(|(_, o, f)| o + f).sum();
+
+    // 站点数据（home-site-data 三列）
+    #[rustfmt::skip]
+    let (users, torrents_n, peers, seeders, leechers, warned, banned, unverified): (
+        i64, i64, i64, i64, i64, i64, i64, i64,
+    ) = sqlx::query_as(
+        "SELECT \
+            (SELECT count(*) FROM users WHERE status < 2), \
+            (SELECT count(*) FROM torrents WHERE approval_status = 1), \
+            (SELECT count(*) FROM snatches WHERE seeding OR leeching), \
+            (SELECT count(*) FROM snatches WHERE seeding), \
+            (SELECT count(*) FROM snatches WHERE leeching), \
+            (SELECT count(*) FROM users WHERE status = 1), \
+            (SELECT count(*) FROM users WHERE status >= 2), \
+            (SELECT count(*) FROM users WHERE must_reset_password)",
+    )
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (up_sum, down_sum, size_sum): (i64, i64, i64) = sqlx::query_as(
+        "SELECT \
+            (SELECT COALESCE(sum(uploaded),0)::bigint FROM users), \
+            (SELECT COALESCE(sum(downloaded),0)::bigint FROM users), \
+            (SELECT COALESCE(sum(size),0)::bigint FROM torrents \
+             WHERE approval_status = 1)",
+    )
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    // 娱乐流水（幸运大转盘 → 以 spark_ledger 游戏类流水近似）
+    let lucky: Vec<(String, String, i64)> = sqlx::query_as(
+        "SELECT u.username, l.kind, l.amount FROM spark_ledger l \
+         JOIN users u ON u.id = l.user_id \
+         WHERE l.kind LIKE '%game%' OR l.kind LIKE '%vote%' \
+         ORDER BY l.created_at DESC LIMIT 15",
+    )
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    // 友情链接
+    let links: Vec<(String, String, Option<String>)> = sqlx::query_as(
+        "SELECT name, url, title FROM friend_links ORDER BY sort",
+    )
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    Ok(serde_json::json!({
+        "news": news_json,
+        "latest_news_id": latest_news_id,
+        "resource_stats": {
+            "today": today_count, "avg7": (avg7 * 10.0).round() / 10.0,
+            "total30": total30, "series": series,
+        },
+        "site_data": {
+            "users": users, "torrents": torrents_n, "peers": peers,
+            "seeders": seeders, "leechers": leechers,
+            "warned": warned, "banned": banned, "unverified": unverified,
+            "total_upload": up_sum, "total_download": down_sum,
+            "total_size": size_sum,
+        },
+        "lucky_draw": lucky.iter().map(|(u, k, a)| serde_json::json!({
+            "user": u, "kind": k, "amount": a,
+        })).collect::<Vec<_>>(),
+        "friend_links": links.iter().map(|(n, u, t)| serde_json::json!({
+            "name": n, "url": u, "title": t,
+        })).collect::<Vec<_>>(),
+        // 首页排版（0089）：site_settings.home_layout 原样透传（JSON 数组或空串），
+        // 前端空/非法回退默认布局
+        "home_layout": crate::http::home_layout_raw(db).await,
+    }))
+}
+
+/// 签到日历个人段（0152 拆出）：当月逐日 + 连签/累计 + 补签卡。
+/// per-user 数据永不进共享缓存（UNIT3D 范式），每次实时算。
+async fn attendance_json(
+    db: &sqlx::PgPool,
+    uid: i64,
+) -> DomainResult<serde_json::Value> {
     let makeup_cards: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM shop_orders o JOIN shop_items i ON i.id = o.item_id \
+        "SELECT count(*) FROM shop_orders o \
+         JOIN shop_items i ON i.id = o.item_id \
          WHERE o.user_id = $1 AND i.kind IN ('makeup_card','resub_card') \
-           AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.idempotency_key = concat('resub:', o.id))",
+           AND NOT EXISTS (SELECT 1 FROM resub_uses r \
+                WHERE r.idempotency_key = concat('resub:', o.id))",
     )
     .bind(uid)
-    .fetch_one(&state.repo.db)
+    .fetch_one(db)
     .await
     .unwrap_or(0);
     let att: Vec<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
@@ -64,7 +247,7 @@ pub async fn home_sections(
          reward FROM attendance WHERE user_id = $1 ORDER BY date",
     )
     .bind(uid)
-    .fetch_all(&state.repo.db)
+    .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 站点时区 UTC+8（与 /attendance、/checkin 同口径；容器 TZ=UTC 时 Local 会让
@@ -104,125 +287,10 @@ pub async fn home_sections(
     let streak = att.iter().rev().next().map(|(_, s, _)| *s).unwrap_or(0);
     let total_days = att.len() as i32;
     let checked_today = att.iter().any(|(d, _, _)| *d == today);
-
-    // 30 天新增资源统计（home-resource-stats）：普通 vs 官种
-    let daily: Vec<(chrono::NaiveDate, i64, i64)> = sqlx::query_as(
-        "SELECT created_at::date AS d, \
-                count(*) FILTER (WHERE NOT official_tag) AS ordinary, \
-                count(*) FILTER (WHERE official_tag) AS official \
-         FROM torrents WHERE approval_status = 1 AND created_at > now() - interval '30 days' \
-         GROUP BY d ORDER BY d",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let by_day: std::collections::HashMap<chrono::NaiveDate, (i64, i64)> =
-        daily.iter().map(|(d, o, f)| (*d, (*o, *f))).collect();
-    let series: Vec<serde_json::Value> = (0..30)
-        .rev()
-        .map(|i| {
-            let d = today - chrono::Duration::days(i);
-            let (o, f) = by_day.get(&d).cloned().unwrap_or((0, 0));
-            serde_json::json!({
-                "date": d.format("%Y-%m-%d").to_string(),
-                "ordinary": o, "official": f, "total": o + f,
-            })
-        })
-        .collect();
-    let today_count = by_day.get(&today).map(|(o, f)| o + f).unwrap_or(0);
-    let last7: Vec<i64> = (1..=7)
-        .map(|i| {
-            by_day
-                .get(&(today - chrono::Duration::days(i)))
-                .map(|(o, f)| o + f)
-                .unwrap_or(0)
-        })
-        .collect();
-    let avg7 = if last7.is_empty() {
-        0.0
-    } else {
-        last7.iter().sum::<i64>() as f64 / last7.len() as f64
-    };
-    let total30: i64 = daily.iter().map(|(_, o, f)| o + f).sum();
-
-    // 站点数据（home-site-data 三列）
-    let (
-        users,
-        torrents_n,
-        peers,
-        seeders,
-        leechers,
-        warned,
-        banned,
-        unverified,
-    ): (i64, i64, i64, i64, i64, i64, i64, i64) = sqlx::query_as(
-        "SELECT \
-            (SELECT count(*) FROM users WHERE status < 2), \
-            (SELECT count(*) FROM torrents WHERE approval_status = 1), \
-            (SELECT count(*) FROM snatches WHERE seeding OR leeching), \
-            (SELECT count(*) FROM snatches WHERE seeding), \
-            (SELECT count(*) FROM snatches WHERE leeching), \
-            (SELECT count(*) FROM users WHERE status = 1), \
-            (SELECT count(*) FROM users WHERE status >= 2), \
-            (SELECT count(*) FROM users WHERE must_reset_password)",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let (up_sum, down_sum, size_sum): (i64, i64, i64) = sqlx::query_as(
-        "SELECT \
-            (SELECT COALESCE(sum(uploaded),0)::bigint FROM users), \
-            (SELECT COALESCE(sum(downloaded),0)::bigint FROM users), \
-            (SELECT COALESCE(sum(size),0)::bigint FROM torrents WHERE approval_status = 1)",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-
-    // 娱乐流水（幸运大转盘 → 以 spark_ledger 游戏类流水近似）
-    let lucky: Vec<(String, String, i64)> = sqlx::query_as(
-        "SELECT u.username, l.kind, l.amount FROM spark_ledger l \
-         JOIN users u ON u.id = l.user_id \
-         WHERE l.kind LIKE '%game%' OR l.kind LIKE '%vote%' \
-         ORDER BY l.created_at DESC LIMIT 15",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-
-    // 友情链接
-    let links: Vec<(String, String, Option<String>)> = sqlx::query_as(
-        "SELECT name, url, title FROM friend_links ORDER BY sort",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-
-    Ok(ok(serde_json::json!({
-        "news": news_json,
-        "attendance": {
-            "month": today.format("%Y年%m月").to_string(),
-            "streak": streak, "total_days": total_days, "checked_today": checked_today,
-            "calendar": calendar, "makeup_cards": makeup_cards,
-        },
-        "resource_stats": {
-            "today": today_count, "avg7": (avg7 * 10.0).round() / 10.0,
-            "total30": total30, "series": series,
-        },
-        "site_data": {
-            "users": users, "torrents": torrents_n, "peers": peers,
-            "seeders": seeders, "leechers": leechers,
-            "warned": warned, "banned": banned, "unverified": unverified,
-            "total_upload": up_sum, "total_download": down_sum, "total_size": size_sum,
-        },
-        "lucky_draw": lucky.iter().map(|(u, k, a)| serde_json::json!({
-            "user": u, "kind": k, "amount": a,
-        })).collect::<Vec<_>>(),
-        "friend_links": links.iter().map(|(n, u, t)| serde_json::json!({
-            "name": n, "url": u, "title": t,
-        })).collect::<Vec<_>>(),
-        // 首页排版（0089）：site_settings.home_layout 原样透传（JSON 数组或空串），
-        // 前端空/非法回退默认布局
-        "home_layout": crate::http::home_layout_raw(&state.repo.db).await,
-    })))
+    Ok(serde_json::json!({
+        "month": today.format("%Y年%m月").to_string(),
+        "streak": streak, "total_days": total_days,
+        "checked_today": checked_today,
+        "calendar": calendar, "makeup_cards": makeup_cards,
+    }))
 }
