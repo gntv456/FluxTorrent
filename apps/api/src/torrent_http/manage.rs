@@ -21,11 +21,8 @@ async fn edit_torrent(
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
     // 0150：IMDB 直填暂存（TorrentEdit.imdb_id 是 &str，借本地变量）
-    let imdb_norm: Option<String> = body
-        .imdb_id
-        .as_deref()
-        .map(str::trim)
-        .and_then(|s| {
+    let imdb_norm: Option<String> =
+        body.imdb_id.as_deref().map(str::trim).and_then(|s| {
             // 空串 = 清空；非空统一大写后校验 TT+7~8 位；非法回落 None
             let up = s.to_ascii_uppercase();
             let valid = up.len() >= 9
@@ -62,6 +59,8 @@ async fn edit_torrent(
         .repo
         .audit(Some(auth.id), "torrent.edit", Some(tid))
         .await;
+    // 2.5 详情对象缓存：编辑即失效（descr/分类等共享段字段变了）
+    super::aggregate::invalidate_tdetail_cache(&state, tid).await;
     // 0148 C1：编辑 descr 后重提取 IMDB（descr 提取得到才覆盖，否则保留旧值）
     if let Some(d) = body.descr.as_deref() {
         if let Some(imdb) = crate::publish_http::extract_imdb_pub(d) {
@@ -118,6 +117,7 @@ async fn set_torrent_price(
         .repo
         .audit(Some(auth.id), "torrent.price_set", Some(id))
         .await;
+    super::aggregate::invalidate_tdetail_cache(&state, id).await;
     Ok(ok(serde_json::json!({ "price": price })))
 }
 
@@ -141,6 +141,7 @@ async fn restore_torrent(
         .repo
         .audit(Some(auth.id), "torrent.restore", Some(id))
         .await;
+    super::aggregate::invalidate_tdetail_cache(&state, id).await;
     Ok(ok(serde_json::json!({ "restored": id })))
 }
 
@@ -188,6 +189,7 @@ async fn resubmit_torrent(
         .repo
         .audit(Some(auth.id), "torrent.resubmit", Some(id))
         .await;
+    super::aggregate::invalidate_tdetail_cache(&state, id).await;
     Ok(ok(serde_json::json!({ "resubmitted": id })))
 }
 
@@ -210,5 +212,6 @@ async fn delete_torrent(
         .repo
         .audit(Some(auth.id), "torrent.delete", Some(id))
         .await;
+    super::aggregate::invalidate_tdetail_cache(&state, id).await;
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
