@@ -11,6 +11,10 @@
 @import "./styles/base.css";
 @import "./styles/layout.css";
 @import "./styles/pages.css";
+/* 评论域样式（0156 从 pages.css 拆出：点赞/回复/嵌套缩进） */
+@import "./styles/comments.css";
+/* 列表 hover 预览卡（阶段三） */
+@import "./styles/hover-card.css";
 /* TIDE「潮汐」主题 · P1 令牌层（必须在链末：同特异性后出现者胜） */
 @import "./styles/theme-tide.css";
 /* TIDE 动效层（P4）：排在令牌层之后，保证 reduced-motion 降级分支能压住前面的动画声明 */
