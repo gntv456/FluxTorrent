@@ -45,17 +45,23 @@ export const EMPTY = {
   sort: "0",
 };
 
-export const KINDS = [
-  { v: "task", label: "普通任务" },
-  { v: "onboard", label: "新人转正考核" },
-  { v: "periodic", label: "周期考核" },
-];
+/** 任务种类 / 周期的取值键。显示名在 i18n `adminTasks.kinds` / `.periods`
+ *  （三语），由 `kindList()` / `periodList()` 拼回原 `{v, label}` 形状 ——
+ *  消费方的 `.find((k) => k.v === ...)` 逻辑因此不用改。 */
+export const KIND_KEYS = ["task", "onboard", "periodic"] as const;
+export const PERIOD_KEYS = ["once", "monthly", "quarterly"] as const;
 
-export const PERIODS = [
-  { v: "once", label: "一次性" },
-  { v: "monthly", label: "每月" },
-  { v: "quarterly", label: "每季" },
-];
+type Labelled<V extends string> = { v: V; label: string };
+const build = <V extends string>(
+  keys: readonly V[],
+  labels: Record<string, string> | undefined,
+): Labelled<V>[] =>
+  keys.map((v) => ({ v, label: labels?.[v] ?? v }));
+
+export const kindList = (labels?: Record<string, string>) =>
+  build(KIND_KEYS, labels);
+export const periodList = (labels?: Record<string, string>) =>
+  build(PERIOD_KEYS, labels);
 
 export function toLocalInput(iso: string): string {
   const d = new Date(iso);

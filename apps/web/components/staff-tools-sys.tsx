@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import type { ToolTab } from "@/components/staff-tools";
 import { AgentRulesPanel } from "./staff-tools-sys-agentrules";
 import type {
@@ -31,7 +32,7 @@ export function StaffSysPanel({
   tab: ToolTab;
   flash: (m: string) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.stafftools;
   const [dbStats, setDbStats] = useState<DbStats | null>(null);
   const [logPage, setLogPage] = useState(1);
@@ -136,7 +137,7 @@ export function StaffSysPanel({
           <p className="text-xs text-sub">
             {t.dsDead.replace(
               "{n}",
-              dbStats.dead_tuples.toLocaleString("zh-CN"),
+              dbStats.dead_tuples.toLocaleString(dateLocale(locale)),
             )}
           </p>
         </>
@@ -176,7 +177,7 @@ export function StaffSysPanel({
                   <td className="font-mono text-xs">{r.action}</td>
                   <td className="font-mono text-xs">{r.ip ?? "—"}</td>
                   <td className="text-xs text-sub">
-                    {new Date(r.created_at).toLocaleString("zh-CN")}
+                    {new Date(r.created_at).toLocaleString(dateLocale(locale))}
                   </td>
                 </tr>
               ))}
@@ -242,7 +243,7 @@ export function StaffSysPanel({
                   </td>
                   <td className="text-xs text-sub">
                     {r.last_seen
-                      ? new Date(r.last_seen).toLocaleString("zh-CN")
+                      ? new Date(r.last_seen).toLocaleString(dateLocale(locale))
                       : "—"}
                   </td>
                 </tr>

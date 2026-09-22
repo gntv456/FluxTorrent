@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import type { ToolTab } from "@/components/staff-tools";
 import {
   DelDisabledSection,
@@ -41,7 +42,7 @@ export function StaffUsersPanel({
   tab: ToolTab;
   flash: (m: string) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.stafftools;
   const [warned, setWarned] = useState<WarnedUser[]>([]);
   const [ipRows, setIpRows] = useState<IpCheckRow[]>([]);
@@ -138,7 +139,7 @@ export function StaffUsersPanel({
               <tr>
                 <td className="colhead">ID</td>
                 <td className="colhead">
-                  {t.banBy === "操作人" ? "用户" : t.banBy}
+                  {t.warnUserCol}
                 </td>
                 <td className="colhead">{t.warnUntil}</td>
                 <td className="colhead">{t.fldReason}</td>
@@ -150,7 +151,9 @@ export function StaffUsersPanel({
                   <td>{w.username}</td>
                   <td className="text-xs text-sub">
                     {w.warned_until
-                      ? new Date(w.warned_until).toLocaleString("zh-CN")
+                      ? new Date(w.warned_until).toLocaleString(
+                          dateLocale(locale),
+                        )
                       : "—"}
                   </td>
                   <td>{w.warned_reason ?? "—"}</td>
@@ -197,7 +200,7 @@ export function StaffUsersPanel({
                 <td>{r.usernames ?? "—"}</td>
                 <td className="text-xs text-sub">
                   {r.last_seen
-                    ? new Date(r.last_seen).toLocaleString("zh-CN")
+                    ? new Date(r.last_seen).toLocaleString(dateLocale(locale))
                     : "—"}
                 </td>
               </tr>
@@ -224,10 +227,10 @@ export function StaffUsersPanel({
             </tr>
             {failRows.map((r) => (
               <tr key={r.id}>
-                <td>{r.username ?? "（未知用户）"}</td>
+                <td>{r.username ?? t.unknownUser}</td>
                 <td className="font-mono">{r.ip ?? "—"}</td>
                 <td className="text-xs text-sub">
-                  {new Date(r.created_at).toLocaleString("zh-CN")}
+                  {new Date(r.created_at).toLocaleString(dateLocale(locale))}
                 </td>
               </tr>
             ))}

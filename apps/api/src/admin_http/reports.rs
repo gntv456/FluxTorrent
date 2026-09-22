@@ -166,8 +166,7 @@ async fn report_resolve(
         .rows_affected();
         if n > 0 {
             let rid = body.report_id;
-            let reward_idem =
-                format!("subtitle-report-reward:{rid}");
+            let reward_idem = format!("subtitle-report-reward:{rid}");
             crate::economy_http::earn_spark(
                 &state.repo.db,
                 reporter_id,

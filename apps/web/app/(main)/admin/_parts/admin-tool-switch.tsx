@@ -29,9 +29,15 @@ import { AdminOpsPanel } from "@/components/admin-ops";
 import { HomeLayoutEditor } from "@/components/home-layout-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
 
-/** 由 staff-tools 承载的工具页签（tab_key 与 ToolTab 同名） */
+/** 由 staff-tools 承载的工具页签（tab_key 与 ToolTab 同名）
+ *
+ *  ⚠️ 这份清单、`staff-tools.tsx` 的 ToolTab 联合类型、以及 DB
+ *  `staff_panel_entries.tab_key` 三者必须一致，否则 `?tool=X` 会落进
+ *  `panelEmpty` 空面板且无任何报错。改完请跑 `_admin_nav_align.py` 对差集。
+ *  `promo` 已移除：其面板（OpsPromoTab）早被 FreeleechPanel 取代且从未渲染，
+ *  旧书签由 admin-shared 的 LEGACY_TOOL 映射到 freeleech。 */
 export const STAFF_TOOL_TABS: ToolTab[] = [
-  "faq", "rules", "cats", "bans", "mail", "promo", "staffmess", "adduser",
+  "faq", "rules", "cats", "bans", "mail", "staffmess", "adduser",
   "incrementbulk", "warned", "ipcheck", "maxlogin", "resetpass", "deldisabled",
   "emailbans", "testip", "stats", "cleanup", "ads", "notconnect", "uploaders",
   "agents", "polls", "dbstats", "syslog", "locations", "hrpardon", "plugins",
@@ -53,7 +59,7 @@ export function renderSimpleTool(
       return (
         <section className="nexus-detail">
           <h2 className="mb-3 text-base font-bold text-ink">
-            {a.sectionContent ?? "内容"}
+            {a.sectionContent ?? "content"}
           </h2>
           <ContentManage />
         </section>

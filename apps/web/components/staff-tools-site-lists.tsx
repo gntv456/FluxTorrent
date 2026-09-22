@@ -7,6 +7,7 @@
  */
 
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import type { AgentRow, PollRow } from "./staff-tools-site-shared";
 
 interface SiteListsProps {
@@ -35,7 +36,7 @@ export function StaffSiteLists({
   agentRows,
   pollRows,
 }: SiteListsProps) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.stafftools;
   return (
     <>
@@ -56,7 +57,9 @@ export function StaffSiteLists({
                 <td className="num">{r.torrents}</td>
                 <td className="text-xs text-sub">
                   {r.last_seen_at
-                    ? new Date(r.last_seen_at).toLocaleString("zh-CN")
+                    ? new Date(r.last_seen_at).toLocaleString(
+                        dateLocale(locale),
+                      )
                     : "—"}
                 </td>
               </tr>

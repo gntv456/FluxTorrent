@@ -152,6 +152,11 @@ pub async fn ad_delete(
 }
 
 /// 无法连接的用户（notconnectable.php 口径）
+///
+/// `snatches.connectable` 是 **smallint**（-1 未测 / 0 不可达 / 1 可达，
+/// 见 `apps/tracker/src/peers/model.rs`），不是 boolean。此前写成
+/// `= false` 会直接抛 `operator does not exist: smallint = boolean`
+/// 导致该端点 500、从未跑通。口径与 `economy_http/voucher_use.rs` 一致。
 #[derive(serde::Serialize, sqlx::FromRow)]
 struct NotConnectRow {
     id: i64,
@@ -174,7 +179,7 @@ pub async fn not_connectable(
     .await?;
     let rows: Vec<NotConnectRow> = sqlx::query_as(
         "SELECT u.id, u.username, count(DISTINCT s.torrent_id) AS torrents, u.last_seen_at \
-         FROM users u JOIN snatches s ON s.user_id = u.id AND s.connectable = false \
+         FROM users u JOIN snatches s ON s.user_id = u.id AND s.connectable = 0 \
          WHERE u.status < 2 GROUP BY u.id, u.username, u.last_seen_at ORDER BY torrents DESC LIMIT 100",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;

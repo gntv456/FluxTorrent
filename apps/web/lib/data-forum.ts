@@ -6,17 +6,45 @@ import { api } from "@/lib/api-client";
 import type { TagChipData } from "@/components/forum-bits";
 import type {
   Forum,
+  ForumCategory,
   ForumTopics,
   SiteStats,
   TopicDetail,
   FeedItem,
   MyFollows,
   TopBoards,
+  BoardBrief,
 } from "@fluxtorrent/domain-types";
 
-export async function getForums(): Promise<Forum[]> {
+/** 论坛索引：分区列表 + 版块列表。
+ *  分区**含空分区**，前台据此渲染分组与空态占位——
+ *  旧版从版块列表反推分组，导致新建的空分区在前台整块消失。 */
+export async function getForumIndex(): Promise<{
+  categories: ForumCategory[];
+  forums: Forum[];
+}> {
   try {
-    return await api.get<Forum[]>("/api/v1/forums");
+    const r = await api.get<{
+      categories: ForumCategory[];
+      forums: Forum[];
+    }>("/api/v1/forums");
+    return { categories: r?.categories ?? [], forums: r?.forums ?? [] };
+  } catch {
+    return { categories: [], forums: [] };
+  }
+}
+
+export async function getForums(): Promise<Forum[]> {
+  return (await getForumIndex()).forums;
+}
+
+/** 全站可读版块精简列表（「移动主题到…」下拉的数据源）。
+ *
+ *  比 `getForums()` 合适：后端单条 SQL，不走 `forum_access()` 逐版块判定
+ *  （`/forums` 是 1+N 次查询），也不返回 latest 系与 posts 这些下拉用不到的字段。 */
+export async function getBoards(): Promise<BoardBrief[]> {
+  try {
+    return (await api.get<BoardBrief[]>("/api/v1/forums/boards")) ?? [];
   } catch {
     return [];
   }

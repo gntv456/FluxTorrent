@@ -8,6 +8,7 @@
 
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import type { CatItem, TypePack } from "./staff-tools-content-shared";
 
 interface CatsPanelProps {
@@ -101,11 +102,11 @@ export function StaffCatsPanel({
                       } catch {
                         /* diff 失败不阻塞——回落旧确认文案 */
                       }
-                      const head = `将变更 ${lines.length} 项：\n`;
+                      const head = fmt(t.packDiffHead, { n: lines.length });
                       const more = lines.length > 15 ? "\n…" : "";
                       const detail = lines.length
                         ? head + lines.slice(0, 15).join("\n") + more
-                        : "无配置差异（分类重建仍会执行）";
+                        : t.packNoDiff;
                       const msg = `${t.packConfirm.replace(
                         "{name}",
                         pk.name,

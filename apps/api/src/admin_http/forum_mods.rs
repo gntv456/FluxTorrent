@@ -5,39 +5,30 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
+use super::forum_check::{
+    current_gates, ensure_category_exists, forum_upsert_check,
+};
 use super::guard::staff;
 
 #[derive(Deserialize)]
-struct ForumUpsertReq {
-    name: String,
+pub(crate) struct ForumUpsertReq {
+    pub(crate) name: String,
     #[serde(default)]
-    descr: Option<String>,
+    pub(crate) descr: Option<String>,
     #[serde(default)]
-    minclassread: Option<i32>,
+    pub(crate) minclassread: Option<i32>,
     #[serde(default)]
-    minclasswrite: Option<i32>,
+    pub(crate) minclasswrite: Option<i32>,
     #[serde(default)]
-    minclasscreate: Option<i32>,
+    pub(crate) minclasscreate: Option<i32>,
     #[serde(default)]
-    protected: Option<bool>,
+    pub(crate) protected: Option<bool>,
     /// 归属分区（0115）；None = 不分组
     #[serde(default)]
-    category_id: Option<i64>,
-}
-
-fn forum_upsert_check(body: &ForumUpsertReq) -> DomainResult<()> {
-    if body.name.trim().is_empty() {
-        return Err(DomainError::Validation("版块名不能为空".into()));
-    }
-    let mr = body.minclassread.unwrap_or(0);
-    let mw = body.minclasswrite.unwrap_or(0);
-    let mc = body.minclasscreate.unwrap_or(0);
-    if !(mr <= mw && mw <= mc) {
-        return Err(DomainError::Validation(
-            "三档门槛需满足 读 ≤ 回 ≤ 发".into(),
-        ));
-    }
-    Ok(())
+    pub(crate) category_id: Option<i64>,
+    /// 分区内排序（0154）
+    #[serde(default)]
+    pub(crate) sort: Option<i32>,
 }
 
 #[post("/admin/forums")]
@@ -53,18 +44,21 @@ async fn forum_admin_create(
         crate::authz::perm::FORUMS_MANAGE,
     )
     .await?;
-    forum_upsert_check(&body)?;
+    let name = forum_upsert_check(&body)?;
+    ensure_category_exists(&state.repo.db, body.category_id).await?;
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO forums (name, descr, minclassread, minclasswrite, minclasscreate, min_class, protected, category_id) \
-         VALUES ($1, $2, $3, $4, $5, $3, $6, $7) RETURNING id",
+        "INSERT INTO forums (name, descr, minclassread, minclasswrite, \
+            minclasscreate, min_class, protected, category_id, sort) \
+         VALUES ($1, $2, $3, $4, $5, $3, $6, $7, $8) RETURNING id",
     )
-    .bind(body.name.trim())
+    .bind(&name)
     .bind(&body.descr)
     .bind(body.minclassread.unwrap_or(0))
     .bind(body.minclasswrite.unwrap_or(0))
     .bind(body.minclasscreate.unwrap_or(0))
     .bind(body.protected.unwrap_or(false))
     .bind(body.category_id)
+    .bind(body.sort.unwrap_or(0))
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -89,21 +83,44 @@ async fn forum_admin_update(
         crate::authz::perm::FORUMS_MANAGE,
     )
     .await?;
-    forum_upsert_check(&body)?;
+    let name = forum_upsert_check(&body)?;
     let fid = path.into_inner();
+    ensure_category_exists(&state.repo.db, body.category_id).await?;
+    let (mr, mw, mc) = (
+        body.minclassread.unwrap_or(0),
+        body.minclasswrite.unwrap_or(0),
+        body.minclasscreate.unwrap_or(0),
+    );
+    // 防「静默放宽权限」：编辑表单若不回填，会把三档门槛写成 0/0/0
+    //（0 = 所有人可读/回/发）。这里留一条可追溯的审计。
+    if let Some((br, bw, bc)) = current_gates(&state.repo.db, fid).await? {
+        let was_open = (mr, mw, mc) == (0, 0, 0);
+        if (br, bw, bc) != (0, 0, 0) && was_open {
+            tracing::warn!(
+                forum_id = fid,
+                actor = auth.id,
+                "版块三档门槛被清空为 0/0/0（权限放宽），请核对是否有意为之"
+            );
+            state
+                .repo
+                .audit(Some(auth.id), "forum.gates_cleared", Some(fid))
+                .await;
+        }
+    }
     let n = sqlx::query(
         "UPDATE forums SET name = $1, descr = $2, \
             minclassread = $3, minclasswrite = $4, minclasscreate = $5, \
-            min_class = $3, protected = $6, category_id = $7 \
-         WHERE id = $8",
+            min_class = $3, protected = $6, category_id = $7, sort = $8 \
+         WHERE id = $9",
     )
-    .bind(body.name.trim())
+    .bind(&name)
     .bind(&body.descr)
-    .bind(body.minclassread.unwrap_or(0))
-    .bind(body.minclasswrite.unwrap_or(0))
-    .bind(body.minclasscreate.unwrap_or(0))
+    .bind(mr)
+    .bind(mw)
+    .bind(mc)
     .bind(body.protected.unwrap_or(false))
     .bind(body.category_id)
+    .bind(body.sort.unwrap_or(0))
     .bind(fid)
     .execute(&state.repo.db)
     .await

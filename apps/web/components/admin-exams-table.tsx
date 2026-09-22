@@ -7,6 +7,7 @@
  */
 
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
 import type { JixiaoTypeRow } from "./admin-exams-shared";
 import { GB, GB_KEYS, metricOptions } from "./admin-exams-shared";
 
@@ -27,7 +28,8 @@ export function ExamsTable({
   load,
   startEdit,
 }: ExamsTableProps) {
-  const METRIC_OPTIONS = metricOptions(currency);
+  const { dict } = useI18n();
+  const METRIC_OPTIONS = metricOptions(currency, dict.adminExams.metrics);
   const metricLabel = (k: string) =>
     METRIC_OPTIONS.find((m) => m.key === k)?.label ?? k;
   const metricUnit = (k: string) =>

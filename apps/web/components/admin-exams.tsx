@@ -25,8 +25,8 @@ import {
 
 /** 「+ 添加指标」小按钮 */
 export function AdminExams() {
-  const { currency } = useI18n();
-  const METRIC_OPTIONS = metricOptions(currency);
+  const { currency, dict } = useI18n();
+  const METRIC_OPTIONS = metricOptions(currency, dict.adminExams.metrics);
   const [rows, setRows] = useState<JixiaoTypeRow[]>([]);
   const [edit, setEdit] = useState<{ id: number | null; f: typeof EMPTY_FORM }>(
     { id: null, f: { ...EMPTY_FORM, reqs: [...EMPTY_FORM.reqs] } },

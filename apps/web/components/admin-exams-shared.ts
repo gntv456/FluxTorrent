@@ -17,77 +17,36 @@ export interface JixiaoTypeRow {
 }
 
 /** 指标目录：key 与后端 JIXIAO_METRIC_KEYS 白名单一一对应。
- *  货币名动态化：spark_delta 的标签/单位跟随站点 currency_name（默认「魔力」）。 */
+ *  显示名/单位/说明在 i18n `adminExams.metrics`（三语）；`{magic}` 占位符
+ *  在此处替换为站点货币名（与全站 fmtCur 约定一致）。
+ *  `labels` 缺省时回落指标 key 本身（不会渲染成空白）。 */
+export const METRIC_KEYS = [
+  "uploaded", "downloaded", "seed_hours", "avg_seed_hours", "seed_days",
+  "spark_delta", "seed_points_delta", "uploads", "seed_size_tb",
+  "seeding_count", "ops",
+] as const;
+
+export interface MetricMeta {
+  key: string;
+  label: string;
+  unit: string;
+  hint: string;
+}
+
 export const metricOptions = (
   currency: string,
-): { key: string; label: string; unit: string; hint: string }[] => [
-  {
-    key: "uploaded",
-    label: "上传增量",
-    unit: "GB",
-    hint: "考核期内新增上传量",
-  },
-  {
-    key: "downloaded",
-    label: "下载增量",
-    unit: "GB",
-    hint: "考核期内新增下载量",
-  },
-  {
-    key: "seed_hours",
-    label: "做种时长",
-    unit: "小时",
-    hint: "考核期内累计做种小时数",
-  },
-  {
-    key: "avg_seed_hours",
-    label: "平均做种时间",
-    unit: "小时/个",
-    hint: "做种时长 ÷ 期内活跃种子数",
-  },
-  {
-    key: "seed_days",
-    label: "做种天数",
-    unit: "天",
-    hint: "考核期内有做种活动的天数",
-  },
-  {
-    key: "spark_delta",
-    label: `${currency}增量`,
-    unit: currency,
-    hint: `考核期内正向${currency}流水合计`,
-  },
-  {
-    key: "seed_points_delta",
-    label: "做种积分增量",
-    unit: "积分",
-    hint: "1 积分 = 1 小时做种",
-  },
-  {
-    key: "uploads",
-    label: "发种增量",
-    unit: "个",
-    hint: "考核期内新发布种子数",
-  },
-  {
-    key: "seed_size_tb",
-    label: "发布/做种体积",
-    unit: "TB",
-    hint: "当前在做种总体积",
-  },
-  {
-    key: "seeding_count",
-    label: "做种数量",
-    unit: "个",
-    hint: "当前在做种种子数",
-  },
-  {
-    key: "ops",
-    label: "审核/操作数量",
-    unit: "次",
-    hint: "考核期内管理操作数（audit_log）",
-  },
-];
+  labels?: Record<string, { label: string; unit: string; hint: string }>,
+): MetricMeta[] =>
+  METRIC_KEYS.map((key) => {
+    const m = labels?.[key];
+    const sub = (s: string) => s.replace(/\{magic\}/g, currency);
+    return {
+      key,
+      label: sub(m?.label ?? key),
+      unit: sub(m?.unit ?? ""),
+      hint: sub(m?.hint ?? ""),
+    };
+  });
 
 /** 上传/下载指标在后端按字节存，表单用 GB 填写；seed_size_tb 本身就是 TB */
 export const GB_KEYS = new Set(["uploaded", "downloaded"]);

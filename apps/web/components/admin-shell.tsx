@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/client";
 
 /** 管理面板条目（后端 /admin/staffpanel 返回，已按 min_class 过滤） */
@@ -23,19 +23,19 @@ export const SECTION_ORDER = [
   "system",
 ] as const;
 
-const ROLE_LABEL: Record<string, string> = {
-  sysop: "SysOp",
-  administrator: "管理员",
-  moderator: "版主",
-};
-
 /**
  * 管理后台外壳：左侧常驻职能导航 + 右侧内容区 + 顶部全局搜索。
  *
- * 替代原先的「四组药丸带 + 32 个平铺按钮」：
  * - 分组维度是职能（section），权限只作过滤（min_class），无权条目后端已剔除
  * - 待办数字常驻导航，切到任何页面都可见
  * - Ctrl/⌘ + K 聚焦搜索，实时过滤导航
+ * - **导航是管理端唯一入口**：面板内部曾另有一行 35 个药丸按钮，二者同屏重复
+ *   （药丸行占 184px），已删除。
+ *
+ * 导航文案：`name` / `info` 存在 DB（`staff_panel_entries`），DB 值即
+ * **zh-CN 的权威文案**；`en` / `zh-TW` 由 i18n 的 `adminNav[tab_key]` 覆盖，
+ * 取不到时回落 DB 值 —— 这样新增工具只在 DB 插一行也能立刻可用（显示中文），
+ * 不会渲染成空白。见 i18n/*.ts 的 adminNav 段。
  */
 export function AdminShell({
   entries,
@@ -57,22 +57,32 @@ export function AdminShell({
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
   const ops = dict.adminops;
+  const nav = dict.adminNav as unknown as Record<
+    string,
+    { label: string; tip: string } | undefined
+  >;
   // 徽章优先显示真实等级名（等级体系已扩到 12 级用户层 + 管理职级）
   const classLabel =
     classId !== undefined
       ? dict.admin.classList.find(([id]) => id === classId)?.[1]
       : undefined;
+  const ROLE_LABEL: Record<string, string> = {
+    sysop: a.roleSysop,
+    administrator: a.roleAdmin,
+    moderator: a.roleModerator,
+  };
   const [q, setQ] = useState("");
   const [navOpen, setNavOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  /** 分组标题：i18n 缺失时回落 section key（英文），不留中文兜底 */
   const LABEL: Record<string, string> = {
-    dashboard: a.sectionDashboard ?? "工作台",
-    moderation: a.sectionModeration ?? "审核队列",
-    users: a.sectionUsers ?? "用户",
-    content: a.sectionContent ?? "内容",
-    ops: a.sectionOps ?? "运营",
-    system: a.sectionSystem ?? "系统",
+    dashboard: a.sectionDashboard ?? "dashboard",
+    moderation: a.sectionModeration ?? "moderation",
+    users: a.sectionUsers ?? "users",
+    content: a.sectionContent ?? "content",
+    ops: a.sectionOps ?? "ops",
+    system: a.sectionSystem ?? "system",
   };
 
   useEffect(() => {
@@ -85,6 +95,10 @@ export function AdminShell({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  /** 导航文案：i18n 优先，回落 DB 文案（DB 即 zh-CN 权威值） */
+  const labelOf = (e: PanelEntry) => nav[e.tab_key]?.label ?? e.name;
+  const tipOf = (e: PanelEntry) => nav[e.tab_key]?.tip ?? e.info;
 
   // 运维三件套（0078）入口：面板条目由 DB 种子驱动，可能未含该项——
   // 面板里恒定补一条「运维」（后端 /admin/version 等按权限校验，无权时面板内报错）
@@ -106,27 +120,28 @@ export function AdminShell({
     tab_key: "homelayout",
     min_class: 99,
   };
-  const allEntries = entries.some((e) => e.tab_key === "ops")
+  const withOps = entries.some((e) => e.tab_key === "ops")
     ? entries
     : [...entries, opsEntry];
-  const allEntries2 = allEntries.some((e) => e.tab_key === "homelayout")
-    ? allEntries
-    : [...allEntries, homeLayoutEntry];
+  const allEntries = withOps.some((e) => e.tab_key === "homelayout")
+    ? withOps
+    : [...withOps, homeLayoutEntry];
 
-  const grouped = useMemo(() => {
-    const kw = q.trim().toLowerCase();
-    return SECTION_ORDER.map((key) => ({
-      key,
-      label: LABEL[key] ?? key,
-      items: allEntries2.filter(
-        (e) =>
-          e.section === key &&
-          (!kw || `${e.name}${e.info}${e.tab_key}`.toLowerCase().includes(kw)),
-      ),
-    })).filter((g) => g.items.length > 0);
-  }, [allEntries, q, a]);
+  // 59 条过滤，成本可忽略；不用 useMemo —— 它的依赖（labelOf/tipOf/LABEL
+  // 都随渲染重建）只会带来 useEffect 依赖陈旧的风险，换不来实际收益。
+  const kw = q.trim().toLowerCase();
+  const grouped = SECTION_ORDER.map((key) => ({
+    key,
+    label: LABEL[key] ?? key,
+    items: allEntries.filter(
+      (e) =>
+        e.section === key &&
+        (!kw ||
+          `${labelOf(e)}${tipOf(e)}${e.tab_key}`.toLowerCase().includes(kw)),
+    ),
+  })).filter((g) => g.items.length > 0);
 
-  const nav = (
+  const navBody = (
     <div className="flex flex-col gap-3">
       {grouped.map((g) => (
         <div key={g.key}>
@@ -142,14 +157,14 @@ export function AdminShell({
                     onTool(e.tab_key);
                     setNavOpen(false);
                   }}
-                  title={e.info}
+                  title={tipOf(e)}
                   className={`flex min-h-[34px] items-center justify-between gap-2 rounded-[var(--r-md)] px-2 text-left text-[13px] transition ${
                     active
                       ? "bg-sky font-bold text-white"
                       : "text-sub hover:bg-[var(--surface-raised)]"
                   }`}
                 >
-                  <span className="truncate">{e.name}</span>
+                  <span className="truncate">{labelOf(e)}</span>
                   {n > 0 && (
                     <span
                       className={`shrink-0 rounded-full px-1.5 text-[11px] ${
@@ -168,7 +183,7 @@ export function AdminShell({
         </div>
       ))}
       {grouped.length === 0 && (
-        <p className="px-2 text-xs text-sub">没有匹配的工具</p>
+        <p className="px-2 text-xs text-sub">{a.navEmpty}</p>
       )}
     </div>
   );
@@ -182,14 +197,18 @@ export function AdminShell({
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="搜索工具…（Ctrl/⌘ + K）"
-            aria-label="搜索管理工具"
+            placeholder={a.navSearchPlaceholder}
+            aria-label={a.navSearchLabel}
             className="min-h-[38px] w-full rounded-[var(--r-md)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
           />
         </div>
         <span
           className="shrink-0 rounded-full bg-sky-soft px-3 py-1 text-xs font-bold text-sky"
-          title={ROLE_LABEL[role] ? `系统角色：${ROLE_LABEL[role]}` : undefined}
+          title={
+            ROLE_LABEL[role]
+              ? a.roleTitle.replace("{role}", ROLE_LABEL[role]!)
+              : undefined
+          }
         >
           {classLabel ? `${classId} ${classLabel}` : (ROLE_LABEL[role] ?? role)}
         </span>
@@ -198,23 +217,23 @@ export function AdminShell({
           aria-expanded={navOpen}
           className="min-h-[38px] rounded-[var(--r-md)] border border-line px-3 text-sm font-bold lg:hidden"
         >
-          导航
+          {a.navToggle}
         </button>
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <nav
-          aria-label="管理功能导航"
+          aria-label={a.navAriaLabel}
           className="hidden w-[200px] shrink-0 lg:block lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:self-start lg:overflow-y-auto lg:pr-1"
         >
-          {nav}
+          {navBody}
         </nav>
         {navOpen && (
           <nav
-            aria-label="管理功能导航"
+            aria-label={a.navAriaLabel}
             className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-2 lg:hidden"
           >
-            {nav}
+            {navBody}
           </nav>
         )}
         <div className="min-w-0 flex-1">{children}</div>

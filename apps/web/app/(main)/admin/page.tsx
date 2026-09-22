@@ -60,11 +60,28 @@ export default function AdminPage() {
   const [msg, setMsg] = useState<string | null>(null);
 
   // 初始工具：读 URL ?tool=，并把历史命名映射到新 tab_key（旧书签不失效）
+  //
+  // ⚠️ `tool` 的初始值是 "overview"，URL 派生的值要在本 effect 之后才写入。
+  // 下面「按需拉取」的 effect 依赖 tool —— 若不加 toolReady 闸门，它会在首轮
+  // 以 tool="overview" 抢先拉一次 audit/stats，`?tool=faq` 就白拉了。
+  const [toolReady, setToolReady] = useState(false);
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("tool");
-    if (!raw) return;
-    setTool(LEGACY_TOOL[raw] ?? raw);
+    if (raw) setTool(LEGACY_TOOL[raw] ?? raw);
+    setToolReady(true);
   }, []);
+
+  /** 深链兜底：DB 中 url 不以 `/admin?tool=` 开头的条目（站点设定 → /admin/settings、
+   *  论坛结构 → /admin/forums）在 handleTool 里走整页跳转，但**直接加载**
+   *  `?tool=settings` 会绕过 handleTool、落进 panelEmpty 空面板。拿到导航条目后
+   *  补一次同样的跳转（replace 不留历史，避免后退回到空面板）。 */
+  useEffect(() => {
+    if (entries.length === 0) return;
+    const e = entries.find((x) => x.tab_key === tool);
+    if (e && !e.url.startsWith("/admin?tool=")) {
+      window.location.replace(e.url);
+    }
+  }, [entries, tool]);
 
   const loadCheaters = useCallback(async () => {
     try {
@@ -74,12 +91,14 @@ export default function AdminPage() {
     }
   }, []);
 
+  /** 核心四件：导航条目 + 徽章计数来源。
+   *  徽章常驻左侧导航（reviews / reports / appeals），所以这四个任何工具页都需要。
+   *  概览与审计的明细（audit / stats）**不在这里**，见下面的按需 effect。 */
   const load = useCallback(async () => {
     try {
-      const [ovr, rev, aud, pnl, aps, sts] = await Promise.all([
+      const [ovr, rev, pnl, aps] = await Promise.all([
         api.get<Overview>("/api/v1/admin/overview"),
         api.get<PendingTorrent[]>("/api/v1/admin/reviews"),
-        api.get<AuditRow[]>("/api/v1/admin/audit"),
         api.get<{
           entries: PanelEntry[];
           role: string;
@@ -88,16 +107,13 @@ export default function AdminPage() {
         api
           .get<AppealRow[]>("/api/v1/admin/appeals")
           .catch(() => [] as AppealRow[]),
-        api.get<StatsData>("/api/v1/admin/stats").catch(() => null),
       ]);
       setOv(ovr);
       setReviews(rev);
-      setAudit(aud);
       setEntries(pnl.entries);
       setRole(pnl.role);
       setClassId(pnl.class_id);
       setAppeals(aps);
-      setStats(sts);
     } catch (e) {
       setMsg(
         e instanceof ApiError && e.code === 2003
@@ -106,6 +122,18 @@ export default function AdminPage() {
       );
     }
   }, [a, dict]);
+
+  /** 概览/审计的明细按需拉取。
+   *  此前 audit 与 stats 在 load() 里**无条件**拉，导致每个工具页多两个请求
+   *  （实测 ?tool=faq 共 13 个端点，其中这 2 个与该工具无关）。
+   *  `toolReady` 是必须的：否则首轮 tool 还是默认的 "overview"，会白拉一次。 */
+  useEffect(() => {
+    if (!toolReady) return;
+    if (tool !== "overview" && tool !== "audit") return;
+    api.get<AuditRow[]>("/api/v1/admin/audit").then(setAudit).catch(() => {});
+    if (tool !== "overview") return;
+    api.get<StatsData>("/api/v1/admin/stats").then(setStats).catch(() => {});
+  }, [tool, toolReady]);
 
   useEffect(() => {
     load();
@@ -153,8 +181,8 @@ export default function AdminPage() {
     const note =
       prompt(
         accept
-          ? (a.appealAcceptNote ?? "通过说明（可选）")
-          : (a.appealRejectNote ?? "驳回理由（必填）"),
+          ? (a.appealAcceptNote ?? "accept-note")
+          : (a.appealRejectNote ?? "reject-reason"),
       ) ?? "";
     if (!accept && !note.trim()) return;
     try {
