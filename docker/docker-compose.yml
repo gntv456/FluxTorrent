@@ -26,6 +26,16 @@ services:
       POSTGRES_USER: flux
       POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
       POSTGRES_DB: fluxtorrent
+    # 性能观测基线（六维强化方案 P0-7）：此前仓库没有任何慢查询日志/语句统计，
+    # 所有性能目标都只能靠体感。pg_stat_statements 记录全量语句级耗时，
+    # log_min_duration_statement 把 ≥300ms 的语句写进容器日志（json-file 10MB×3 轮转）。
+    # 采集脚本：scripts/perf_baseline.py（产出 _doc/性能基线-*.md）。
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c pg_stat_statements.max=5000
+      -c log_min_duration_statement=300ms
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
