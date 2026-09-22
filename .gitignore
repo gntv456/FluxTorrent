@@ -64,3 +64,5 @@ design-system/
 
 # 附件本地卷（savedirectory 缺省 ./attachments；运行时产物不入库）
 attachments/
+_shot*/
+_adminshot*/
