@@ -121,6 +121,9 @@ pub(super) struct ListQuery {
     /// 匿名发布：0=全部(默认) 1=仅匿名 2=仅具名
     #[serde(default, deserialize_with = "de_opt_num_lenient")]
     pub(super) anonymous: Option<i16>,
+    /// 仅看我书签收藏的种（阶段三筛选粒度；1/true 生效）
+    #[serde(default, deserialize_with = "de_bool_lenient")]
+    pub(super) bookmarked: Option<bool>,
 }
 
 /// 日期参数校验（严格 `YYYY-MM-DD`）：非法值直接丢弃——宁可不筛，
@@ -139,10 +142,33 @@ pub(super) fn norm_date(s: Option<String>) -> Option<String> {
     ok.then(|| s.to_string())
 }
 
-/// 优惠参数白名单（未知取值丢弃，避免静默返回空列表让用户以为「没数据」）
+/// 优惠参数白名单（未知取值丢弃，避免静默返回空列表让用户以为「没数据」）。
+/// 阶段三起支持多选：`free,x2` 这类逗号串——逐项校验白名单（free/x2/half/any/none），
+/// 全非法丢弃；any/none 与具体档位语义互斥，归一时剔除（保序去重）。
 pub(super) fn norm_promo(s: Option<String>) -> Option<String> {
     let s = s?.trim().to_ascii_lowercase();
-    matches!(s.as_str(), "free" | "x2" | "half" | "any" | "none").then_some(s)
+    if !s.contains(',') {
+        return matches!(s.as_str(), "free" | "x2" | "half" | "any" | "none")
+            .then_some(s);
+    }
+    let mut seen: Vec<&str> = Vec::new();
+    let mut has_specific = false;
+    for part in s.split(',') {
+        let v = part.trim();
+        match v {
+            "free" | "x2" | "half" => {
+                has_specific = true;
+                if !seen.contains(&v) {
+                    seen.push(v);
+                }
+            }
+            _ => {}
+        }
+    }
+    (!seen.is_empty() && has_specific)
+        .then(|| seen.join(","))
+        .or(Some("any".into()))
+        .filter(|out| !out.is_empty())
 }
 
 /// 空白即视为未填（表单里清空后仍会提交空串）
@@ -208,4 +234,58 @@ where
             s.split(',').map(|x| x.trim().to_string()).collect()
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::norm_promo;
+
+    /// 单值白名单口径不变（阶段三多选改造的回归护栏）
+    #[test]
+    fn promo_single_values_pass_through() {
+        for v in ["free", "x2", "half", "any", "none"] {
+            assert_eq!(
+                norm_promo(Some(v.into())).as_deref(),
+                Some(v),
+                "单值 {v} 应原样通过"
+            );
+        }
+    }
+
+    /// 未知单值仍被丢弃（不能静默变空列表之外的语义）
+    #[test]
+    fn promo_unknown_dropped() {
+        assert_eq!(norm_promo(Some("weird".into())), None);
+        assert_eq!(norm_promo(Some("".into())), None);
+        assert_eq!(norm_promo(None), None);
+    }
+
+    /// 多选：合法档位保序去重；any/none 与具体档互斥被剔除
+    #[test]
+    fn promo_multi_select_normalized() {
+        assert_eq!(
+            norm_promo(Some("free,x2".into())).as_deref(),
+            Some("free,x2")
+        );
+        // 乱序 + 重复 + 混入 any/none/垃圾
+        assert_eq!(
+            norm_promo(Some("x2, free, any, x2, junk, none".into())).as_deref(),
+            Some("x2,free")
+        );
+        // 大写与空格
+        assert_eq!(
+            norm_promo(Some(" FREE , Half ".into())).as_deref(),
+            Some("free,half")
+        );
+    }
+
+    /// 多选里没有任何具体档位（只剩 any/none/垃圾）→ 回落 any（= 任意优惠）
+    #[test]
+    fn promo_multi_only_any_falls_back() {
+        assert_eq!(norm_promo(Some("any,none".into())).as_deref(), Some("any"));
+        assert_eq!(
+            norm_promo(Some("junk,junk".into())).as_deref(),
+            Some("any")
+        );
+    }
 }
