@@ -23,7 +23,7 @@ pub struct TorrentEdit<'a> {
 pub async fn edit_torrent(
     db: &PgPool,
     torrent_id: i64,
-    editor: (i64, i16), // (user_id, class_id)：作者本人或 staff（>=90）
+    editor: (i64, i16), // (user_id, class_id)
     e: &TorrentEdit<'_>,
 ) -> DomainResult<()> {
     let owner: Option<i64> =
@@ -36,8 +36,13 @@ pub async fn edit_torrent(
     let Some(owner_id) = owner else {
         return Err(DomainError::NotFound(torrent_id));
     };
-    if editor.1 < 90 && owner_id != editor.0 {
-        return Err(DomainError::Forbidden);
+    // 0159 阈值化：作者本人恒可编辑自己的；管他人的按站点设定
+    // torrent_edit_class（缺省 94 管理员）
+    if owner_id != editor.0 {
+        let threshold = super::manage_perm::edit_threshold(db).await;
+        if editor.1 < threshold {
+            return Err(DomainError::Forbidden);
+        }
     }
     let n = sqlx::query(
         r#"
@@ -92,10 +97,12 @@ pub async fn delete_torrent(
     let Some((owner_id, approval)) = row else {
         return Err(DomainError::NotFound(torrent_id));
     };
-    let is_staff = actor.1 >= 90;
     let is_owner = owner_id == Some(actor.0);
-    // staff 任意删；作者只能删自己未过审（pending/rejected）的种子
-    if !is_staff && !(is_owner && approval != 1) {
+    // 0159 阈值化：删他人的按站点设定 torrent_delete_class（缺省 94 管理员）；
+    // 作者只能删自己未过审（pending/rejected）的种子
+    let can_manage = super::manage_perm::delete_threshold(db).await;
+    let staff_ok = actor.1 >= can_manage;
+    if !staff_ok && !(is_owner && approval != 1) {
         return Err(DomainError::Forbidden);
     }
     // 软删 + 清理关联促销（审计修复：促销残留会被计费/H&R 豁免回查误命中）
