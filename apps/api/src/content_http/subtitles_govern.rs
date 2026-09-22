@@ -4,8 +4,8 @@
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
-use crate::dto::ok;
 use super::subtitles_util::subtitle_bad_threshold;
+use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;

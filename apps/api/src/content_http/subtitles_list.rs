@@ -58,16 +58,14 @@ pub(super) async fn subtitle_list(
     // C1：imdb 合并查询——同 imdb 的其他种子的字幕也算「本片字幕」。
     // 只留 [TT + 7~8 位数字]（与迁移/上传侧提取同口径），防 $-参数化后
     // 仍被拼进 match 排序分支（F1：注入面归零）。
-    let imdb: Option<String> = q
-        .get("imdb")
-        .and_then(|s| {
-            let t = s.trim().to_ascii_uppercase();
-            let d = t.strip_prefix("TT").unwrap_or(&t);
-            (t.len() == 2 + d.len()
-                && (d.len() == 7 || d.len() == 8)
-                && d.chars().all(|c| c.is_ascii_digit()))
-            .then_some(t)
-        });
+    let imdb: Option<String> = q.get("imdb").and_then(|s| {
+        let t = s.trim().to_ascii_uppercase();
+        let d = t.strip_prefix("TT").unwrap_or(&t);
+        (t.len() == 2 + d.len()
+            && (d.len() == 7 || d.len() == 8)
+            && d.chars().all(|c| c.is_ascii_digit()))
+        .then_some(t)
+    });
     let torrent_id: Option<i64> = q
         .get("torrent_id")
         .and_then(|s| s.parse::<i64>().ok())
@@ -155,9 +153,9 @@ pub(super) async fn subtitle_list(
               OR $6::text IS NOT NULL AND ($5::bigint IS NULL OR s.torrent_id \
               = $5 OR s.imdb_id = $6)){ai_filter}"
     );
-    let total: i64 = sqlx::query_scalar(
-        &format!("SELECT count(*) FROM subtitles s WHERE {predicates}"),
-    )
+    let total: i64 = sqlx::query_scalar(&format!(
+        "SELECT count(*) FROM subtitles s WHERE {predicates}"
+    ))
     .bind(&search)
     .bind(&lang)
     .bind(&letter)
@@ -167,9 +165,8 @@ pub(super) async fn subtitle_list(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let rows: Vec<SubtitleRow> = sqlx::query_as(
-        &format!(
-            "SELECT s.id, s.torrent_id, u.username, s.title, s.lang, \
+    let rows: Vec<SubtitleRow> = sqlx::query_as(&format!(
+        "SELECT s.id, s.torrent_id, u.username, s.title, s.lang, \
              s.lang_id, s.downloads, s.created_at, s.size, s.ext, s.anon, \
              s.rating_sum, s.rating_count, s.user_id, s.verified, \
              s.machine_translated, s.proofreader, cert.cert_tier \
@@ -182,8 +179,7 @@ pub(super) async fn subtitle_list(
              WHERE {predicates} ORDER BY {ai_demote} ASC, {sort} {order}, \
              s.id DESC \
              OFFSET $7 LIMIT $8"
-        ),
-    )
+    ))
     .bind(&search)
     .bind(&lang)
     .bind(&letter)
@@ -199,8 +195,7 @@ pub(super) async fn subtitle_list(
     let rows: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|mut r| {
-            let name =
-                if r.anon { None } else { r.username.take() };
+            let name = if r.anon { None } else { r.username.take() };
             let rating = if r.rating_count > 0 {
                 // 1-10 均分保留一位小数（sum/count 四舍五入到 0.1）
                 serde_json::json!(

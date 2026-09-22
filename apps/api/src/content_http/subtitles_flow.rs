@@ -133,9 +133,7 @@ pub(super) async fn subtitle_request_claim(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((owner_id, bounty)) = row else {
-        return Err(DomainError::Validation(
-            "该求字幕不存在或已被认领".into(),
-        ));
+        return Err(DomainError::Validation("该求字幕不存在或已被认领".into()));
     };
     if owner_id == auth.id {
         // 回滚：发起人不能认领自己的单（防自薅悬赏入自己账）
@@ -146,9 +144,7 @@ pub(super) async fn subtitle_request_claim(
         .bind(rid)
         .execute(&state.repo.db)
         .await;
-        return Err(DomainError::Validation(
-            "不能认领自己发起的求字幕".into(),
-        ));
+        return Err(DomainError::Validation("不能认领自己发起的求字幕".into()));
     }
     // 通知：发起人 + 被 crew 邀请者
     let _ = sqlx::query(

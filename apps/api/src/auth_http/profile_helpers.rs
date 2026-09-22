@@ -1,6 +1,5 @@
 //! 公开主页查询 helpers（从 profile.rs 拆出，300 行门禁）。
 
-
 /// 字幕身份查询（0149）：gold 优先于 certified；revoked 行不计
 pub(super) async fn subtitle_cert_tier(
     db: &sqlx::PgPool,

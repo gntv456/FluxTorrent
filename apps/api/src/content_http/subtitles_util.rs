@@ -59,13 +59,9 @@ pub(super) struct SubtitleUploadMeta {
 }
 
 impl SubtitleUploadMeta {
-    pub(super) fn validate(
-        body: &SubtitleUploadReq,
-    ) -> DomainResult<Self> {
+    pub(super) fn validate(body: &SubtitleUploadReq) -> DomainResult<Self> {
         if body.title.trim().len() > 200 {
-            return Err(DomainError::Validation(
-                "标题过长（≤200 字）".into(),
-            ));
+            return Err(DomainError::Validation("标题过长（≤200 字）".into()));
         }
         if let Some(fps) = body.fps {
             if !(0.0..=240.0).contains(&fps) {
@@ -102,13 +98,12 @@ pub(super) async fn subtitle_setting(
     name: &str,
     default: &str,
 ) -> DomainResult<String> {
-    let v: Option<String> = sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = $1",
-    )
-    .bind(name)
-    .fetch_optional(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let v: Option<String> =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1")
+            .bind(name)
+            .fetch_optional(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(v.filter(|v| !v.trim().is_empty())
         .unwrap_or_else(|| default.to_string()))
 }

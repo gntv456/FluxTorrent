@@ -84,34 +84,28 @@ pub(super) async fn subtitle_detail(
         return Err(DomainError::NotFound(sid));
     };
     // 修订版链：父版本（本行是修订）+ 子版本（别人修订了本行）
-    type ChainRow = (
-        i64,
-        String,
-        Option<String>,
-        chrono::DateTime<chrono::Utc>,
-    );
+    type ChainRow =
+        (i64, String, Option<String>, chrono::DateTime<chrono::Utc>);
     // 修订版链：本行 parent_id 直接给出父；children 反查（递归到孙辈）。
     // 注：parents 只需一级（0146 的 parent_id 语义是「本字幕修订自谁」，
     // 不递归祖先——历史数据无多级链，递归留数据结构余量但按一级取）。
-    let parents: Vec<ChainRow> =
-        sqlx::query_as(
-            "SELECT s2.id, s2.title, s2.lang, s2.created_at FROM subtitles \
+    let parents: Vec<ChainRow> = sqlx::query_as(
+        "SELECT s2.id, s2.title, s2.lang, s2.created_at FROM subtitles \
              s2 WHERE s2.id = $1 AND s2.deleted_at IS NULL",
-        )
-        .bind(r.parent_id.filter(|p| *p > 0))
-        .fetch_all(&state.repo.db)
-        .await
-        .unwrap_or_default();
-    let children: Vec<ChainRow> =
-        sqlx::query_as(
-            "SELECT s2.id, s2.title, s2.lang, s2.created_at FROM subtitles \
+    )
+    .bind(r.parent_id.filter(|p| *p > 0))
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let children: Vec<ChainRow> = sqlx::query_as(
+        "SELECT s2.id, s2.title, s2.lang, s2.created_at FROM subtitles \
              s2 WHERE s2.parent_id = $1 AND s2.deleted_at IS NULL \
              ORDER BY s2.created_at ASC",
-        )
-        .bind(sid)
-        .fetch_all(&state.repo.db)
-        .await
-        .unwrap_or_default();
+    )
+    .bind(sid)
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
     let rating = if r.rating_count > 0 {
         serde_json::json!(
             (r.rating_sum as f64 / r.rating_count as f64 * 10.0).round() / 10.0
