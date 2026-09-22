@@ -89,9 +89,11 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             let idem = format!("achievement:{code}:{uid}");
             // 审计修复（原子性）：INSERT 流水与 UPDATE 余额包进同一事务——
             // 两语句分离时中途崩溃会出现「流水已落、余额未加」（或反之），对账永久撕裂。
-            // 幂等键护栏保持：事务内 NOT EXISTS 防任务重跑双发。
+            // 幂等护栏只在 INSERT 上判断：事务内已插入的行对本事务可见，
+            // UPDATE 再带同款 NOT EXISTS 会恒 0 行 → 整体回滚 → 奖励静默
+            // 丢失（链路缺陷 #10 同款）。INSERT 未插入 = 已发过，跳过余额。
             let mut tx = db.begin().await?;
-            sqlx::query(
+            let inserted = sqlx::query(
                 r#"
                 INSERT INTO spark_ledger
                     (id, user_id, amount, kind, idempotency_key)
@@ -104,20 +106,19 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
             .bind(reward)
             .bind(&idem)
             .execute(&mut *tx)
-            .await?;
-            // 审计修复（幂等）：UPDATE 与 INSERT 的 NOT EXISTS 同护栏 ——
-            // 否则每小时任务重跑时流水幂等跳过、余额却再加一次（每用户每小时白得 200）
-            sqlx::query(
-                "UPDATE users SET spark_balance = spark_balance + $2 \
-                 WHERE id = $1 \
-                 AND NOT EXISTS (SELECT 1 FROM spark_ledger
-                  WHERE idempotency_key = $3)",
-            )
-            .bind(uid)
-            .bind(reward)
-            .bind(&idem)
-            .execute(&mut *tx)
-            .await?;
+            .await?
+            .rows_affected()
+                > 0;
+            if inserted {
+                sqlx::query(
+                    "UPDATE users SET spark_balance = spark_balance + $2 \
+                     WHERE id = $1",
+                )
+                .bind(uid)
+                .bind(reward)
+                .execute(&mut *tx)
+                .await?;
+            }
             tx.commit().await?;
         }
         let _ = def_id;

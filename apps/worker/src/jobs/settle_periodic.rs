@@ -55,8 +55,11 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         let idem = format!("resurrection:{rid}");
         // 奖励链整段包进单事务（含幂等护栏）：CAS 已置 done 后崩溃，
         // 重启重跑此循环仍能凭幂等键补发，不再永久丢奖励。
+        // 幂等护栏只在 INSERT 上判断：事务内已插入的行对本事务可见，
+        // UPDATE/赠券再带同款 NOT EXISTS 会恒不命中 → 整体回滚 → 奖励
+        // 静默丢失（链路缺陷 #10 同款）。
         let mut tx = db.begin().await?;
-        sqlx::query(
+        let inserted = sqlx::query(
             r#"
             INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
             SELECT nextval('spark_ledger_id_seq'), $1, $2, 'resurrection', $3
@@ -67,26 +70,26 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         .bind(reward)
         .bind(&idem)
         .execute(&mut *tx)
-        .await?;
-        sqlx::query(
-            "UPDATE users SET spark_balance = spark_balance + \
-         $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE \
-         idempotency_key = $3)",
-        )
-        .bind(uid)
-        .bind(reward)
-        .bind(&idem)
-        .execute(&mut *tx)
-        .await?;
-        sqlx::query(
-            "INSERT INTO user_vouchers (user_id, kind, source) \
-             SELECT $1, 'free', 'resurrection' \
-             WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $2)",
-        )
-        .bind(uid)
-        .bind(&idem)
-        .execute(&mut *tx)
-        .await?;
+        .await?
+        .rows_affected()
+            > 0;
+        if inserted {
+            sqlx::query(
+                "UPDATE users SET spark_balance = spark_balance + $2 \
+                 WHERE id = $1",
+            )
+            .bind(uid)
+            .bind(reward)
+            .execute(&mut *tx)
+            .await?;
+            sqlx::query(
+                "INSERT INTO user_vouchers (user_id, kind, source) \
+                 VALUES ($1, 'free', 'resurrection')",
+            )
+            .bind(uid)
+            .execute(&mut *tx)
+            .await?;
+        }
         // 7 天 free bump（U3D 口径）：全站看见的即时激励
         sqlx::query(
             "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source) \
