@@ -4,6 +4,7 @@
 mod admin_http;
 mod admin_p2_http;
 mod admin_p3_http;
+mod archive;
 mod attachment_http;
 mod auth;
 mod auth_http;

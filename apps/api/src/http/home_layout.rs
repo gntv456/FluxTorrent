@@ -98,6 +98,8 @@ pub async fn admin_home_layout_put(
         .repo
         .audit(Some(auth.id), "home_layout.update", None)
         .await;
+    // 首页共享缓存写失效（0152）：排版进 /home 共享段
+    super::home::invalidate_home_cache(&state).await;
     Ok(ok(
         serde_json::json!({ "saved": norm.len(), "layout": norm }),
     ))

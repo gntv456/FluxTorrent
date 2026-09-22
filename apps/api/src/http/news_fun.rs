@@ -58,6 +58,8 @@ pub async fn news_create(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth.id), "news_create", None).await;
+    // 首页共享缓存写失效（0152）：公告进 /home 共享段
+    super::home::invalidate_home_cache(&state).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -97,6 +99,7 @@ pub async fn news_update(
         return Err(DomainError::NotFound(*path));
     }
     state.repo.audit(Some(auth.id), "news_update", None).await;
+    super::home::invalidate_home_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -125,5 +128,6 @@ pub async fn news_delete(
         return Err(DomainError::NotFound(*path));
     }
     state.repo.audit(Some(auth.id), "news_delete", None).await;
+    super::home::invalidate_home_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
