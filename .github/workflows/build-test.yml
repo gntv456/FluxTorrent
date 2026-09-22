@@ -55,6 +55,10 @@ jobs:
         run: node ../../scripts/line_limit_guard.mjs
       - name: tsc 类型检查（0 错误基线）
         run: pnpm exec tsc --noEmit
+      # 契约漂移门禁（六维强化方案 P0-7）：errors.rs 错误码 ↔ domain-types ErrorCode、
+      # promo.rs KIND_RANK ↔ PromotionKind；后端加码/改枚举而前端契约未跟 → 红灯
+      - name: Type drift guard
+        run: node ../../scripts/check_type_drift.mjs
       # 构建门禁（P1）：rewrites/standalone 输出/页面构建错误此前推迟到 publish-images
       # 发版构建才第一次暴露；tsc 通过不代表 next build 通过
       - name: Next build

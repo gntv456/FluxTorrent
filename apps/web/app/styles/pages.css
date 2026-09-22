@@ -2841,3 +2841,137 @@ ange-dark); }
   background: var(--candy);
   color: #fff;
 }
+
+/* ===== 列表键盘快捷键（阶段二「最顺手」）：提示条 + 高亮态 =====
+   可导航单元 = [data-torrent-id]（表格行 / 卡片 li / 海报墙 li 都带该属性，
+   同时也是给用户脚本用的 DOM 语义契约）。 */
+.tsb-hotkeys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--muted, #6b7280);
+}
+.tsb-hotkeys kbd {
+  padding: 0 5px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface-card, #f4f4f5);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+.torrents-table tbody tr.is-kbd-active > td {
+  background: var(--sky-soft, rgba(0, 117, 222, 0.08));
+}
+li[data-torrent-id].is-kbd-active > a,
+li[data-torrent-id].is-kbd-active > article {
+  outline: 2px solid var(--sky, #0075de);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* ===== 详情页「当前在线」peer 面板（阶段二：补齐竞品对比里唯一缺失的能力）===== */
+.td-peers__sum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--muted, #6b7280);
+}
+.td-peers__table td,
+.td-peers__table th {
+  font-size: 12.5px;
+}
+.td-peers__client {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+}
+.td-peers__tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(15, 110, 86, 0.14);
+  color: #0f6e56;
+  font-size: 10.5px;
+}
+.td-peers tr.is-self > td {
+  background: var(--sky-soft, rgba(0, 117, 222, 0.08));
+}
+
+/* ===== 列表页批量下载（阶段三）：选择框 + 批量操作条 ===== */
+.torrents-td-ck {
+  width: 32px;
+  text-align: center;
+}
+input.batch-ck,
+input.batch-all {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--sky, #0075de);
+  cursor: pointer;
+  vertical-align: middle;
+}
+.tsb-batch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  border-radius: 10px;
+  background: var(--sky-soft, rgba(0, 117, 222, 0.08));
+  font-size: 13px;
+}
+.tsb-batch__n {
+  font-weight: 600;
+}
+.tsb-batch__go,
+.tsb-batch__clear {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.tsb-batch__go {
+  border: 1px solid var(--sky, #0075de);
+  background: var(--sky, #0075de);
+  color: #fff;
+}
+.tsb-batch__go:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.tsb-batch__clear {
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.14));
+  background: transparent;
+  color: inherit;
+}
+.tsb-batch__msg {
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+}
+
+/* 详情页下载/磁力按钮（2.4 磁力缺口；从 download-button 抽出，守 80 列） */
+.td-dl-btn {
+  display: inline-flex; align-items: center; min-height: 44px;
+  padding: 0 24px; border: none; border-radius: 999px;
+  background: var(--coral, #c0392b); color: #fff;
+  font-weight: 700; cursor: pointer;
+}
+.td-dl-btn:active { transform: scale(0.97); }
+.td-dl-btn:disabled { opacity: 0.5; }
+.td-dl-btn--magnet {
+  padding: 0 16px; font-size: 14px; color: inherit;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.14));
+  border-radius: 999px; background: var(--card, #fff);
+}
+.td-dl-price {
+  display: inline-flex; align-items: center; min-height: 28px;
+  padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: var(--baozi-orange, #f60); color: #fff;
+}
