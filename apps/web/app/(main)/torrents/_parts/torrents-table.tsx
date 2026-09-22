@@ -5,6 +5,7 @@
  */
 
 import { TorrentTr } from "@/components/torrent-table";
+import { BatchCheckAll, TorrentBatchBar } from "@/components/torrent-batch";
 import { Icon } from "@/components/icons";
 import type { Dict } from "@/i18n/zh-CN";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
@@ -29,7 +30,10 @@ export function TorrentsTable({
 }) {
   const t = dict.torrents;
   return (
-    <div
+    <>
+      {/* 批量下载（阶段三）：选中行后出现操作条；仅表格视图提供多选 */}
+      <TorrentBatchBar />
+      <div
         className="baozi-wide-table-scroll"
         role="region"
         aria-label={t.title}
@@ -37,6 +41,9 @@ export function TorrentsTable({
       <table className="nexus-table torrents-table">
         <thead>
           <tr>
+            <th className="w-8">
+              <BatchCheckAll />
+            </th>
             <th className="w-12">{t.colType}</th>
             <th className="w-16" aria-label="封面" />
             <th>
@@ -83,10 +90,11 @@ export function TorrentsTable({
         </thead>
         <tbody>
           {items.map((t) => (
-            <TorrentTr key={t.id} t={t} />
+            <TorrentTr key={t.id} t={t} selectable />
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }

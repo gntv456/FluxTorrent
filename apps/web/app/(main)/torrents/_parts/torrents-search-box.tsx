@@ -101,7 +101,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
           <div className="tsb-active__list">
             {chips.map((c) => (
               <a
-                key={c.key}
+                key={c.id}
                 href={c.href}
                 className="tsb-active__chip"
                 title={t2.removeFilter}

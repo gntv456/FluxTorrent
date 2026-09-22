@@ -5,6 +5,7 @@ import { editionName, formatBytes, promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
+import { BatchCheckbox } from "@/components/torrent-batch";
 import { Icon } from "@/components/icons";
 
 /** 保种区行（/preserve 下发的同构行：id 键为 torrent_id） */
@@ -26,6 +27,30 @@ function promoRowBg(promo: string | null | undefined): string | undefined {
   if (promo === "free" || promo === "x2free") return "var(--promo-free-bg)";
   if (promo === "x2" || promo === "x2half") return "var(--promo-x2-bg)";
   return undefined;
+}
+
+/** NP 口径行级语义类（DOM 契约，六维阶段三）：油猴脚本/爬虫按类定位行状态。
+ *  pro_free/pro_2x/pro_50%/pro_free2up 与 NexusPHP torrents.php 同名同义；
+ *  叠加时取「免」优先（与促销徽标 KIND_RANK 的高优先级一致）。 */
+function promoSemanticClass(
+  promo: string | null | undefined,
+): string | undefined {
+  switch (promo) {
+    case "x2free":
+      return "pro_free pro_2up";
+    case "free":
+      return "pro_free";
+    case "x2half":
+      return "pro_50pct pro_2up";
+    case "x2":
+      return "pro_2up";
+    case "half":
+      return "pro_50pct";
+    case "p30":
+      return "pro_30pct";
+    default:
+      return undefined;
+  }
 }
 
 function catColor(id: number): string {
@@ -52,10 +77,13 @@ function remaining(end: string | null | undefined, now: number): string | null {
 async function TorrentTr({
   t,
   extra,
+  selectable,
 }: {
   t: TorrentListItem | PreserveRowAlias;
   /** 行尾附加列（保种区的认领人/认领按钮）；渲染在数字列后、行为列前 */
   extra?: React.ReactNode;
+  /** 列表页批量下载：首列渲染选择框（表格视图专用，保种区等复用方不传） */
+  selectable?: boolean;
 }) {
   const { dict, locale } = await getDict();
   const id = "torrent_id" in t ? t.torrent_id : t.id;
@@ -78,9 +106,27 @@ async function TorrentTr({
   const left = remaining(t.promotion_ends_at, now);
   const rowBg = promoRowBg(t.promotion);
   const subtitle = t.small_descr || "";
+  // DOM 契约（NP 口径）：pro_* 促销态 + 断种/官种行级标记
+  const semanticCls = [
+    promoSemanticClass(t.promotion),
+    t.seeders === 0 ? "torrent-dead" : undefined,
+    t.official ? "torrent-official" : undefined,
+    t.sticky ? "torrent-sticky" : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <tr style={rowBg ? { background: rowBg } : undefined}>
+    <tr
+      data-torrent-id={id}
+      className={semanticCls || undefined}
+      style={rowBg ? { background: rowBg } : undefined}
+    >
+      {selectable && (
+        <td className="torrents-td-ck">
+          <BatchCheckbox id={id} />
+        </td>
+      )}
       {/* 类型 */}
       <td className="torrents-td-cat">
         <span
@@ -195,4 +241,4 @@ async function TorrentTr({
   );
 }
 
-export { TorrentTr, catColor };
+export { TorrentTr, catColor, promoSemanticClass };

@@ -5,15 +5,21 @@
 //! charge.rs；全部 pub use re-export，crate::torrents::xxx 路径不变。
 
 mod charge;
+mod comments;
+mod cursor;
 mod detail;
 mod interact;
 mod list;
 mod list_noclamp;
 mod list_noclamp_as;
 mod manage;
+mod manage_perm;
+pub(crate) mod promo;
 mod types;
+mod viewer_preds;
 
 pub use charge::*;
+pub use comments::*;
 pub use detail::*;
 pub use interact::*;
 pub use list::*;

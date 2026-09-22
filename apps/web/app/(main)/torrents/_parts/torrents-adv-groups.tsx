@@ -152,7 +152,8 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
             </div>
           </section>
 
-          {/* 优惠 */}
+          {/* 优惠（阶段三筛选粒度：free/x2/half 多选 checkbox；
+              any/none 是互斥单选语义，单独一档 radio） */}
           <section className="tsb-card">
             <header className="tsb-card__head">
               <h2 className="tsb-card__title">{t2.promoLegend}</h2>
@@ -160,16 +161,28 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
             <div className="tsb-chips">
               {(
                 [
-                  ["", t2.promoAny],
                   ["free", t2.promoFree],
                   ["x2", t2.promoX2],
                   ["half", t2.promoHalf],
+                ] as [string, string][]
+              ).map(([v, label]) =>
+                chipLabel(
+                  "promo",
+                  v,
+                  label,
+                  (sp.promo ?? "").split(",").includes(v),
+                ),
+              )}
+              {(
+                [
+                  ["", t2.promoAny],
                   ["none", t2.promoNone],
                 ] as [string, string][]
               ).map(([v, label]) =>
                 chipLabel("promo", v, label, (sp.promo ?? "") === v, "radio"),
               )}
             </div>
+            <p className="tsb-hint">{t2.promoMultiHint}</p>
           </section>
         </div>
       </div>

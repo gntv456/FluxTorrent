@@ -97,6 +97,7 @@ async fn list(
         min_completed: q.min_completed.filter(|v| *v >= 0),
         max_completed: q.max_completed.filter(|v| *v >= 0),
         anonymous: q.anonymous.filter(|v| (0..=2).contains(v)),
+        bookmarked: q.bookmarked.unwrap_or(false),
         sections,
     };
     // 上下界颠倒时自动对调（用户先填大后填小很常见，直接判空更友好）
@@ -134,10 +135,12 @@ async fn list(
             filter.max_completed = Some(a);
         }
     }
+    // 游标（方案批次二）：「排序键值 + id」的 keyset，与 ORDER BY 同序——
+    // 修复此前只比 id 导致的「非默认排序翻页丢行」。旧格式（纯数字）兼容解析。
     let cursor = match q.cursor.as_deref() {
         Some(c) if !c.is_empty() => Some(
-            c.parse::<i64>()
-                .map_err(|_| DomainError::Validation("cursor 无效".into()))?,
+            torrents::ListCursor::parse(c)
+                .ok_or(DomainError::Validation("cursor 无效".into()))?,
         ),
         _ => None,
     };
@@ -204,6 +207,51 @@ async fn list(
                     .await;
         }
         return Ok(ok(page));
+    }
+    // 扩展共享缓存（方案 P0-3）：此前只有「纯净首屏」走缓存，分类浏览/搜索/排序/翻页
+    // 等主路径全部穿透。凡不含用户视角语义（status=snatches 视角、mine=按 viewer 过滤）的
+    // 请求，其结果对所有登录用户字节一致（owner 匿名化在 SQL 层完成、include_unapproved
+    // 已按权限归一进 filter），可按「filter+cursor+limit」哈希共享。TTL 20s 兜底，
+    // Redis 故障/序列化失败一律直查。
+    let viewer_scoped = filter.status.is_some() || filter.only_mine;
+    if !viewer_scoped {
+        if let Ok(canonical) =
+            serde_json::to_string(&(&filter, &cursor, q.limit.unwrap_or(20)))
+        {
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            std::hash::Hash::hash(&canonical, &mut hasher);
+            let shared_key = format!(
+                "cache:tlist:v2:{:016x}",
+                std::hash::Hasher::finish(&hasher)
+            );
+            let mut c = state.redis.clone();
+            let hit: Option<String> =
+                redis::AsyncCommands::get(&mut c, &shared_key)
+                    .await
+                    .unwrap_or(None);
+            if let Some(json) = hit {
+                if let Ok(page) =
+                    serde_json::from_str::<torrents::TorrentPage>(&json)
+                {
+                    return Ok(ok(page));
+                }
+            }
+            let page = torrents::list_torrents_as(
+                &state.repo.db,
+                &filter,
+                cursor,
+                q.limit.unwrap_or(20),
+                auth.id,
+            )
+            .await?;
+            if let Ok(json) = serde_json::to_string(&page) {
+                let _: Result<(), _> = redis::AsyncCommands::set_ex(
+                    &mut c, shared_key, json, 20u64,
+                )
+                .await;
+            }
+            return Ok(ok(page));
+        }
     }
     let page = torrents::list_torrents_as(
         &state.repo.db,

@@ -86,11 +86,12 @@ async fn comments(
     path: web::Path<i64>,
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
-    require_auth(&req, &state).await?;
-    let items = torrents::list_comments(
+    let auth = require_auth(&req, &state).await?;
+    let items = torrents::list_comments_as(
         &state.repo.db,
         path.into_inner(),
         q.limit.unwrap_or(20),
+        auth.id,
     )
     .await?;
     Ok(ok(items))
@@ -99,6 +100,9 @@ async fn comments(
 #[derive(Deserialize)]
 pub(super) struct CommentReq {
     pub(super) body: String,
+    /// 嵌套回复（0156）：被回复的评论 id；缺省 = 顶层评论
+    #[serde(default)]
+    pub(super) parent_id: Option<i64>,
 }
 
 /// 下载/做种记录（NP viewsnatches.php）

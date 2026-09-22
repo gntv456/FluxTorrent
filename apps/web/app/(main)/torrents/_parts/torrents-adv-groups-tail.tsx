@@ -80,7 +80,7 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
             </div>
           </section>
 
-          {/* 官种 / 仅我 */}
+          {/* 官种 / 仅我 / 书签（阶段三筛选粒度补书签） */}
           <section className="tsb-card">
             <header className="tsb-card__head">
               <h2 className="tsb-card__title">{t2.otherLegend}</h2>
@@ -93,6 +93,12 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
                 sp.official === "1",
               )}
               {ctxAdvChip("mine", "1", t2.mineOnly, sp.mine === "1")}
+              {ctxAdvChip(
+                "bookmarked",
+                "1",
+                t2.bookmarkedOnly,
+                sp.bookmarked === "1",
+              )}
             </div>
           </section>
 

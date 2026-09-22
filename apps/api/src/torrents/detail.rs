@@ -1,14 +1,11 @@
 //! 种子详情与文件（M03）：get/detail/files/thanks。
 //! 从 torrents.rs 按域拆出。
 
-use serde::Serialize;
 use sqlx::PgPool;
 
 use crate::errors::{DomainError, DomainResult};
 
-use super::types::{
-    FileRow, ThankRow, TorrentDetailRow, TorrentRow, MAX_LIMIT,
-};
+use super::types::{FileRow, ThankRow, TorrentDetailRow, TorrentRow};
 
 pub async fn get_torrent(
     db: &PgPool,
@@ -87,6 +84,11 @@ pub async fn get_torrent_detail(
     id: i64,
     viewer: i64,
 ) -> DomainResult<TorrentDetailRow> {
+    // 可见性与 get_torrent 同口径（2026-09-22 对齐修复）：过审 1 全员可见；
+    // 待审 0/暂缓 4 仅 owner 与 staff——否则「编辑打回待审后 staff 的 aggregate
+    // 立刻 404（主行可见、扩展块不可见的口径劈叉）」。
+    // viewer 解析 owner（is_owner）但不能判定 staff，这里放宽到 owner；staff 态
+    // 由 SQL 内 EXISTS 子查询判定（user_status 权威行 class_id >= 90）。
     let row = sqlx::query_as::<_, TorrentDetailRow>(
         r#"
         SELECT t.id, t.descr, t.numfiles, t.price, t.media_info->>'mediainfo' AS mediainfo,
@@ -101,7 +103,13 @@ pub async fn get_torrent_detail(
                (t.times_completed * 2 + 1)::bigint AS views,
                '{}'::jsonb AS sections
         FROM torrents t
-        WHERE t.id = $1 AND t.approval_status = 1
+        WHERE t.id = $1 AND (
+            t.approval_status = 1
+            OR ((t.approval_status = 0 OR t.approval_status = 4)
+                AND (t.owner_id = $2
+                     OR EXISTS(SELECT 1 FROM users su
+                         WHERE su.id = $2 AND su.class_id >= 90)))
+        )
         "#,
     )
     .bind(id)
@@ -163,65 +171,6 @@ pub async fn list_thanks(
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))
-}
-
-#[derive(Debug, Serialize, sqlx::FromRow)]
-pub struct CommentRow {
-    pub id: i64,
-    pub torrent_id: i64,
-    pub username: Option<String>,
-    pub body: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-}
-
-pub async fn list_comments(
-    db: &PgPool,
-    torrent_id: i64,
-    limit: i64,
-) -> DomainResult<Vec<CommentRow>> {
-    sqlx::query_as::<_, CommentRow>(
-        "SELECT c.id, c.torrent_id, u.username, c.body, c.created_at \
-         FROM comments c LEFT JOIN users u ON u.id = c.user_id \
-         WHERE c.torrent_id = $1 ORDER BY c.id DESC LIMIT $2",
-    )
-    .bind(torrent_id)
-    .bind(limit.clamp(1, MAX_LIMIT))
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))
-}
-
-pub async fn add_comment(
-    db: &PgPool,
-    torrent_id: i64,
-    user_id: i64,
-    body: &str,
-) -> DomainResult<i64> {
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND \
-         approval_status = 1)",
-    )
-    .bind(torrent_id)
-    .fetch_one(db)
-    .await
-    .unwrap_or(false);
-    if !exists {
-        return Err(DomainError::NotFound(torrent_id));
-    }
-    if body.trim().is_empty() {
-        return Err(DomainError::Validation("评论不能为空".into()));
-    }
-    let id: i64 = sqlx::query_scalar(
-        "INSERT INTO comments (torrent_id, user_id, body) VALUES ($1, \
-         $2, $3) RETURNING id",
-    )
-    .bind(torrent_id)
-    .bind(user_id)
-    .bind(body)
-    .fetch_one(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(id)
 }
 
 pub async fn thank(
