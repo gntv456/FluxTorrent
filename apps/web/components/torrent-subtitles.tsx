@@ -37,8 +37,12 @@ export function TorrentSubtitles({
   const [fAnon, setFAnon] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** 拉取失败（与「确实没有字幕」区分开，见 load 内注释） */
+  const [err, setErr] = useState(false);
 
   const load = useCallback(async () => {
+    // 三态（方案 P0-6）：此前失败与「确实没有字幕」都落到空表，用户无法区分是接口挂了还是本来没有
+    setErr(false);
     try {
       const params = new URLSearchParams({
         torrent_id: String(torrentId),
@@ -52,6 +56,7 @@ export function TorrentSubtitles({
       // imdb 合并查询会把同片其他版本一并带回：本种子 = torrent_id 命中
       setRows(all);
     } catch {
+      setErr(true);
       setRows([]);
     }
   }, [torrentId, imdbId]);
@@ -90,7 +95,14 @@ export function TorrentSubtitles({
         {t.panelTitle ?? "Subtitles"}
         {rows !== null && rows.length > 0 ? ` (${rows.length})` : ""}
       </h2>
-      {rows === null ? (
+      {err ? (
+        <p className="py-4 text-center text-sub" role="status">
+          {dict.common.loadFailed}
+          <button type="button" className="ml-2 underline" onClick={load}>
+            {dict.common.retry}
+          </button>
+        </p>
+      ) : rows === null ? (
         <p className="py-4 text-center text-sub">…</p>
       ) : (
         <table className="nexus-table subtitles-list-table">
