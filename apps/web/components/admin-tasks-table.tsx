@@ -92,7 +92,9 @@ export function TasksTable({
             </td>
             <td className="num">{t.claim_limit ?? "—"}</td>
             <td className="num">
-              {t.kind === "task" ? "—" : fmt(d.daysUnit, { n: t.duration_days })}
+              {t.kind === "task"
+                ? "—"
+                : fmt(d.daysUnit, { n: t.duration_days })}
             </td>
             <td>
               {t.kind === "task"
