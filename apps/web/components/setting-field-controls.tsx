@@ -13,15 +13,40 @@ export interface EnumOption {
   l: string;
 }
 
-/** enum 的 options 是 [{v,l}] 数组；文本类字段的 options 是 {rule} 对象 */
+/** enum 的 options 兼容三种存量形态（0159 修复：候选栏空白根因）：
+ *  1) [{v,l}] 规范形态（本组件原先唯一支持的）
+ *  2) {"options": ["a","b"]} —— 迁移里包了一层的字符串数组（registration_mode 等）
+ *  3) {"key": "中文说明"} —— map 形态（bank_fixed_settle_mode）；
+ *  裸字符串数组 ["a","b"] 也认。文本类字段的 {rule} 对象仍返回 []。 */
 export function enumOptions(options: unknown): EnumOption[] {
-  if (!Array.isArray(options)) return [];
-  return options
-    .filter(
-      (o): o is { v: string; l: string } =>
-        !!o && typeof o === "object" && "v" in o,
-    )
-    .map((o) => ({ v: String(o.v), l: String(o.l ?? o.v) }));
+  let list: unknown = options;
+  if (!!options && typeof options === "object" && !Array.isArray(options)) {
+    const obj = options as Record<string, unknown>;
+    if (Array.isArray(obj.options)) {
+      list = obj.options; // 形态 2
+    } else {
+      // 形态 3：map（key=值，value=说明）
+      const keys = Object.keys(obj).filter((k) => k !== "rule");
+      if (keys.length > 0) {
+        return keys.map((k) => ({
+          v: k,
+          l: String(obj[k] ?? k),
+        }));
+      }
+      return [];
+    }
+  }
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((o) => {
+      if (typeof o === "string") return { v: o, l: o };
+      if (!!o && typeof o === "object" && "v" in o) {
+        const rec = o as { v: unknown; l?: unknown };
+        return { v: String(rec.v), l: String(rec.l ?? rec.v) };
+      }
+      return null;
+    })
+    .filter((o): o is EnumOption => o !== null);
 }
 
 /** 控件统一规格：44px 触控高度、聚焦光晕、错误态红描边 */
