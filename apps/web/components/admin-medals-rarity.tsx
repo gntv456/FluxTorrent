@@ -7,10 +7,11 @@ import { api, ApiError } from "@/lib/api-client";
 import { usableAssetUrl } from "@/components/medal-icon";
 import { MedalRarityPreview } from "@/components/medal-rarity-chip";
 import {
-  MEDAL_RARITY_TONES,
+  toneList,
   cleanRarityValue,
   type MedalRarity,
 } from "@/lib/medal-rarity";
+import { useI18n } from "@/i18n/client";
 
 /** 勋章管理的稀有度与预览部件（从 admin-medals.tsx 按域拆出）：
  *  RarityDict 稀有度词表编辑 + MedalImagePreview 图片预览。 */
@@ -34,6 +35,8 @@ export function RarityDict({
   onChanged: () => Promise<void> | void;
   flash: (m: string) => void;
 }) {
+  const { dict } = useI18n();
+  const TONES = toneList(dict.medalRarity.tones);
   const blank = {
     key: null as string | null,
     value: "",
@@ -112,7 +115,7 @@ export function RarityDict({
             onChange={(e) => setEdit({ ...edit, tone: e.target.value })}
             className={RARITY_INP}
           >
-            {MEDAL_RARITY_TONES.map((t) => (
+            {TONES.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>

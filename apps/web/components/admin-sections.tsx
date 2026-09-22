@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useI18n } from "@/i18n/client";
 import { SectionKindsPanel } from "./admin-sections-kinds";
 import { api, ApiError } from "@/lib/api-client";
 import { SectionCatsPanel, SectionDictPanel } from "./admin-sections-dict";
@@ -11,7 +12,7 @@ import type {
   SectionKindMeta,
 } from "./admin-sections-shared";
 import {
-  FALLBACK_KINDS,
+  fallbackKinds,
   FIELD_INPUT_CLS,
   FLAGS,
 } from "./admin-sections-shared";
@@ -22,6 +23,7 @@ import {
  *  类型与常量拆至 ./admin-sections-shared.ts。 */
 
 export function AdminSections() {
+  const { dict } = useI18n();
   const [modes, setModes] = useState<ModeRow[]>([]);
   const [kind, setKind] = useState("codec");
   const [kinds, setKinds] = useState<SectionKindMeta[]>([]);
@@ -51,7 +53,10 @@ export function AdminSections() {
       const pub = await api.get<Record<string, unknown>>(
         "/api/v1/section-dict",
       );
-      setKinds((pub.kinds as SectionKindMeta[] | undefined) ?? FALLBACK_KINDS);
+      setKinds(
+        (pub.kinds as SectionKindMeta[] | undefined) ??
+          fallbackKinds(dict.adminSections.kinds),
+      );
       const counts: Record<string, number> = {};
       for (const [k, v] of Object.entries(pub)) {
         if (k !== "kinds" && k !== "modes" && Array.isArray(v))
@@ -61,7 +66,7 @@ export function AdminSections() {
     } catch (e) {
       flash(e instanceof ApiError ? e.message : "加载失败");
     }
-  }, [kind]);
+  }, [kind, dict.adminSections.kinds]);
   useEffect(() => {
     load();
   }, [load]);

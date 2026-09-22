@@ -42,7 +42,10 @@ export function SettingsToolbar({
           <h1 className="font-display text-xl">{s.title}</h1>
           <p className="text-[11px] text-sub">
             {schema
-              ? `${schema.group_count} 分区 · ${schema.field_count} 字段`
+              ? fmt(s.groupFieldCount, {
+                  g: schema.group_count,
+                  f: schema.field_count,
+                })
               : "…"}
             {lastSaved &&
               ` · ${fmt(s.lastSaved, { time: lastSaved.toLocaleTimeString(dateLocale(locale)) })}`}

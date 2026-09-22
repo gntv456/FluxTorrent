@@ -17,8 +17,8 @@ export function ExamsForm(props: {
   busy: boolean;
 }) {
   const { edit, setEdit, save, busy } = props;
-  const { currency } = useI18n();
-  const METRIC_OPTIONS = metricOptions(currency);
+  const { currency, dict } = useI18n();
+  const METRIC_OPTIONS = metricOptions(currency, dict.adminExams.metrics);
   return (
     <section className="baozi-panel cmgmt-form p-4">
       <h2 className="mb-2 text-base font-bold">

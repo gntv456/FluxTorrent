@@ -28,17 +28,14 @@ async fn certs_grant(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     if !["certified", "gold"].contains(&body.tier.as_str()) {
-        return Err(DomainError::Validation(
-            "tier 需为 certified/gold".into(),
-        ));
+        return Err(DomainError::Validation("tier 需为 certified/gold".into()));
     }
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)",
-    )
-    .bind(body.user_id)
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or(false);
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
+            .bind(body.user_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
     if !exists {
         return Err(DomainError::NotFound(body.user_id));
     }
@@ -82,9 +79,7 @@ async fn certs_revoke(
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if n == 0 {
-        return Err(DomainError::Validation(
-            "该用户没有此身份或已撤销".into(),
-        ));
+        return Err(DomainError::Validation("该用户没有此身份或已撤销".into()));
     }
     state
         .repo

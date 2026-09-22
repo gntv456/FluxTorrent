@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import type { ToolTab } from "@/components/staff-tools";
 import { StaffSecPanels } from "./staff-tools-security-panels";
 import type {
@@ -23,7 +24,7 @@ export function StaffSecurityPanel({
   tab: ToolTab;
   flash: (m: string) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.stafftools;
   const [bans, setBans] = useState<BanItem[]>([]);
   const [mails, setMails] = useState<MailItem[]>([]);
@@ -199,7 +200,7 @@ export function StaffSecurityPanel({
                   <td className="num">{m.recipients}</td>
                   <td>{m.sender ?? "—"}</td>
                   <td className="text-xs text-sub">
-                    {new Date(m.created_at).toLocaleString("zh-CN")}
+                    {new Date(m.created_at).toLocaleString(dateLocale(locale))}
                   </td>
                 </tr>
               ))}

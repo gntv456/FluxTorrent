@@ -1,7 +1,9 @@
 "use client";
 
 import { BTN_SM_BOLD as PLAIN_BTN_CLS, INPUT_CLOUD } from "@/lib/ui-classes";
-import { EMPTY, KINDS, PERIODS } from "./admin-tasks-shared";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
+import { EMPTY, kindList, periodList } from "./admin-tasks-shared";
 
 const inp = INPUT_CLOUD;
 
@@ -15,23 +17,20 @@ export function TasksForm(props: {
   busy: boolean;
 }) {
   const { edit, setEdit, save, busy } = props;
+  const { dict } = useI18n();
+  const t = dict.adminTasks;
   const isExam = edit.f.kind !== "task";
   return (
     <section className="baozi-panel cmgmt-form p-4">
       <h2 className="mb-2 text-base font-bold">
-        {edit.id === null ? "新建任务/考核" : `编辑 #${edit.id}`}
+        {edit.id === null
+          ? t.formTitleNew
+          : fmt(t.formTitleEdit, { id: edit.id })}
       </h2>
-      <p className="mb-2 text-xs text-sub">
-        可选指标键：upload_delta（上传增量，字节）·
-        download_delta（累计口径，字节）·
-        seed_seconds_delta（做种时长增量，秒，如 120h=432000）·
-        seed_points_delta（做种积分，1 积分=1 小时做种）· uploads（发布数）·
-        subtitles（字幕数）。至少配一个键，否则不可领取；tier
-        任务按累计口径判定。
-      </p>
+      <p className="mb-2 text-xs text-sub">{t.metricHint}</p>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
-          类型
+          {t.fldKind}
           <select
             value={edit.f.kind}
             onChange={(e) =>
@@ -39,7 +38,7 @@ export function TasksForm(props: {
             }
             className={inp}
           >
-            {KINDS.map((k) => (
+            {kindList(t.kinds).map((k) => (
               <option key={k.v} value={k.v}>
                 {k.label}
               </option>
@@ -47,7 +46,7 @@ export function TasksForm(props: {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          任务名
+          {t.fldName}
           <input
             value={edit.f.name}
             onChange={(e) =>
@@ -57,7 +56,7 @@ export function TasksForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          指标 metric
+          {t.fldMetric}
           <input
             value={edit.f.metric}
             onChange={(e) =>
@@ -68,7 +67,7 @@ export function TasksForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          开始
+          {t.fldStart}
           <input
             type="datetime-local"
             value={edit.f.starts_at}
@@ -82,7 +81,7 @@ export function TasksForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          结束
+          {t.fldEnd}
           <input
             type="datetime-local"
             value={edit.f.ends_at}
@@ -93,7 +92,7 @@ export function TasksForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          目标等级
+          {t.fldTargetClass}
           <input
             type="number"
             value={edit.f.target_class}
@@ -107,7 +106,7 @@ export function TasksForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          奖励
+          {t.fldReward}
           <input
             type="number"
             value={edit.f.reward}
@@ -118,7 +117,7 @@ export function TasksForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          罚则
+          {t.fldPenalty}
           <input
             type="number"
             value={edit.f.penalty}
@@ -129,7 +128,7 @@ export function TasksForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          限领次数
+          {t.fldClaimLimit}
           <input
             type="number"
             value={edit.f.claim_limit}
@@ -139,23 +138,23 @@ export function TasksForm(props: {
                 f: { ...edit.f, claim_limit: e.target.value },
               })
             }
-            placeholder="空=不限"
+            placeholder={t.claimLimitPh}
             className={`${inp} w-20`}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          副标题
+          {t.fldSubtitle}
           <input
             value={edit.f.subtitle}
             onChange={(e) =>
               setEdit({ ...edit, f: { ...edit.f, subtitle: e.target.value } })
             }
-            placeholder="展示在任务名下方"
+            placeholder={t.subtitlePh}
             className={`${inp} w-56`}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          费用
+          {t.fldFee}
           <input
             type="number"
             value={edit.f.fee}
@@ -166,7 +165,7 @@ export function TasksForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          配额
+          {t.fldQuota}
           <input
             type="number"
             value={edit.f.quota_total}
@@ -180,7 +179,7 @@ export function TasksForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          排序
+          {t.fldSort}
           <input
             type="number"
             value={edit.f.sort}
@@ -193,7 +192,7 @@ export function TasksForm(props: {
         {isExam && (
           <>
             <label className="flex flex-col gap-1 text-xs">
-              周期
+              {t.fldPeriod}
               <select
                 value={edit.f.period}
                 onChange={(e) =>
@@ -204,7 +203,7 @@ export function TasksForm(props: {
                 }
                 className={inp}
               >
-                {PERIODS.map((p) => (
+                {periodList(t.periods).map((p) => (
                   <option key={p.v} value={p.v}>
                     {p.label}
                   </option>
@@ -212,7 +211,7 @@ export function TasksForm(props: {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              考核期限（天）
+              {t.fldDuration}
               <input
                 type="number"
                 value={edit.f.duration_days}
@@ -226,13 +225,13 @@ export function TasksForm(props: {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              累计口径 tier
+              {t.fldTier}
               <input
                 value={edit.f.tier}
                 onChange={(e) =>
                   setEdit({ ...edit, f: { ...edit.f, tier: e.target.value } })
                 }
-                placeholder="空=增量口径"
+                placeholder={t.tierPh}
                 className={`${inp} w-28`}
               />
             </label>
@@ -247,7 +246,7 @@ export function TasksForm(props: {
                   })
                 }
               />
-              自动派发（onboard=注册 N 天内新人；periodic=达标等级全体）
+              {t.fldAutoAssign}
             </label>
           </>
         )}
@@ -256,14 +255,14 @@ export function TasksForm(props: {
           disabled={busy || !edit.f.name.trim()}
           onClick={save}
         >
-          保存
+          {t.saveBtn}
         </button>
         {edit.id !== null && (
           <button
             className={PLAIN_BTN_CLS}
             onClick={() => setEdit({ id: null, f: { ...EMPTY } })}
           >
-            取消
+            {t.cancelBtn}
           </button>
         )}
       </div>

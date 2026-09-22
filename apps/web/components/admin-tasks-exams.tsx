@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { kindList } from "./admin-tasks-shared";
 
 /** 考核记录面板（从 admin-tasks.tsx 按域拆出，300 门禁）：
  *  /admin/exam-users 浏览（对标 NP exam-users）+ 0105 豁免/恢复。 */
@@ -22,13 +24,9 @@ interface ExamUserRow {
   exempted_at: string | null;
 }
 
-const KINDS = [
-  { v: "task", label: "普通任务" },
-  { v: "onboard", label: "新人转正考核" },
-  { v: "periodic", label: "周期考核" },
-];
-
 export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
+  const { dict } = useI18n();
+  const KINDS = kindList(dict.adminTasks.kinds);
   const [exams, setExams] = useState<ExamUserRow[]>([]);
   const [examFilter, setExamFilter] = useState({
     user_id: "",

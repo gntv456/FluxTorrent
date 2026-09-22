@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 import { RoleMatrix } from "./staff-tools-perm-matrix";
 
@@ -57,6 +58,7 @@ const NOT_IMPL_TAG = "ml-1 rounded-full bg-sun/40 px-1.5 text-[10px] text-ink";
 
 export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
   const { dict } = useI18n();
+  const t = dict.adminPerm;
   const [permData, setPermData] = useState<PermMatrixData | null>(null);
   const [upUserId, setUpUserId] = useState("");
   const [upData, setUpData] = useState<UserPermData | null>(null);
@@ -101,14 +103,12 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
       />
 
       <section className="baozi-panel p-4">
-        <h2 className="mb-2 text-base font-bold">用户级权限分配</h2>
-        <p className="mb-3 text-xs text-sub">
-          在角色权限之上对单个用户逐项调整。用户级设置优先于角色：可单独授予、单独拒绝，或清除覆盖回归角色判定。
-        </p>
+        <h2 className="mb-2 text-base font-bold">{t.userTitle}</h2>
+        <p className="mb-3 text-xs text-sub">{t.userIntro}</p>
 
         <div className="mb-3 flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-sub">用户 ID</span>
+            <span className="text-xs text-sub">{t.fldUserId}</span>
             <input
               value={upUserId}
               onChange={(e) => setUpUserId(e.target.value)}
@@ -126,19 +126,21 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                       `?user_id=${encodeURIComponent(upUserId.trim())}`,
                   ),
                 );
-              }, "已加载")
+              }, t.loaded)
             }
           >
-            加载
+            {t.loadBtn}
           </button>
           {upData && (
             <span className="pb-2 text-xs text-sub">
-              #{upData.user_id} · 等级 {upData.class_id}
+              {fmt(t.userMeta, { id: upData.user_id, cls: upData.class_id })}
               {upData.roles.length > 0
-                ? ` · 职务：${upData.roles
-                    .map((k) => roleDefs.find((d) => d.key === k)?.name ?? k)
-                    .join("、")}`
-                : " · 无职务"}
+                ? fmt(t.userRoles, {
+                    roles: upData.roles
+                      .map((k) => roleDefs.find((d) => d.key === k)?.name ?? k)
+                      .join("、"),
+                  })
+                : t.noRoles}
             </span>
           )}
         </div>
@@ -149,11 +151,11 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
               <thead>
                 <tr>
                   <td className="colhead" style={{ minWidth: 200 }}>
-                    权限
+                    {t.colPerm}
                   </td>
-                  <td className="colhead w-28">当前状态</td>
+                  <td className="colhead w-28">{t.colState}</td>
                   <td className="colhead" style={{ minWidth: 220 }}>
-                    用户级设置
+                    {t.colOverride}
                   </td>
                 </tr>
               </thead>
@@ -165,11 +167,11 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                   const eff = upData.effective.includes(p.key);
                   const state = ov
                     ? ov.granted
-                      ? "单独授予"
-                      : "单独拒绝"
+                      ? t.stateGrant
+                      : t.stateDeny
                     : eff
-                      ? "角色继承（有）"
-                      : "无";
+                      ? t.stateInherit
+                      : t.stateNone;
                   const btn = (label: string, g: boolean | null) => (
                     <button
                       key={label}
@@ -196,7 +198,7 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                                 `?user_id=${upData.user_id}`,
                             ),
                           );
-                        }, "已更新")
+                        }, t.updated)
                       }
                     >
                       {label}
@@ -207,7 +209,7 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                       <td className="rowfollow">
                         <span className="font-bold">{p.name}</span>
                         {!p.implemented && (
-                          <span className={NOT_IMPL_TAG}>未接入</span>
+                          <span className={NOT_IMPL_TAG}>{t.notImpl}</span>
                         )}
                         <span className="block font-mono text-[10px] text-sub">
                           {p.key}
@@ -215,9 +217,9 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                       </td>
                       <td className="rowfollow text-sub">{state}</td>
                       <td className="rowfollow">
-                        {btn("继承", null)}
-                        {btn("授予", true)}
-                        {btn("拒绝", false)}
+                        {btn(t.btnInherit, null)}
+                        {btn(t.btnGrant, true)}
+                        {btn(t.btnDeny, false)}
                       </td>
                     </tr>
                   );

@@ -37,6 +37,7 @@ const BTN_SKY =
 
 export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
   const { dict, locale } = useI18n();
+  const t = dict.adminRoles;
   const [roleDefs, setRoleDefs] = useState<RoleDef[]>([]);
   const [roleEdit, setRoleEdit] = useState<{
     key: string;
@@ -80,10 +81,8 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
 
   return (
     <section className="baozi-panel p-4">
-      <h2 className="mb-2 text-base font-bold">职务管理</h2>
-      <p className="mb-3 text-xs text-sub">
-        职务与等级正交，一人可兼任多个，权限取并集。授予与撤销都要求操作者等级严格高于目标用户；职务字典的新增/编辑/删除仅站长。
-      </p>
+      <h2 className="mb-2 text-base font-bold">{t.title}</h2>
+      <p className="mb-3 text-xs text-sub">{t.intro}</p>
 
       <RoleDictSection
         roleDefs={roleDefs}
@@ -96,11 +95,11 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
 
       <div className="mb-2 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-sub">按用户 ID 过滤</span>
+          <span className="text-xs text-sub">{t.filterLabel}</span>
           <input
             value={rFilter}
             onChange={(e) => setRFilter(e.target.value)}
-            placeholder="留空显示全部"
+            placeholder={t.filterPh}
             className={`${INPUT_CLS} w-40`}
           />
         </label>
@@ -115,10 +114,10 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
               setUserRoles(
                 await api.get<UserRoleRow[]>(`/api/v1/admin/user-roles${q}`),
               );
-            }, "已刷新")
+            }, t.refreshed)
           }
         >
-          刷新
+          {t.refreshBtn}
         </button>
       </div>
 
@@ -126,11 +125,11 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead w-20">用户</td>
-              <td className="colhead w-24">职务</td>
-              <td className="colhead w-20">授予人</td>
-              <td className="colhead">授予时间</td>
-              <td className="colhead">到期</td>
+              <td className="colhead w-20">{t.colUser}</td>
+              <td className="colhead w-24">{t.colRole}</td>
+              <td className="colhead w-20">{t.colGrantor}</td>
+              <td className="colhead">{t.colGrantedAt}</td>
+              <td className="colhead">{t.colExpires}</td>
               <td className="colhead w-20" />
             </tr>
           </thead>
@@ -157,7 +156,7 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
                       ? new Date(r.expires_at).toLocaleString(
                           dateLocale(locale),
                         )
-                      : "永久"}
+                      : t.forever}
                   </td>
                   <td className="rowfollow">
                     <button
@@ -177,10 +176,10 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
                               "/api/v1/admin/user-roles",
                             ),
                           );
-                        }, "已撤销")
+                        }, t.revoked)
                       }
                     >
-                      撤销
+                      {t.revokeBtn}
                     </button>
                   </td>
                 </tr>
@@ -188,7 +187,7 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
             {userRoles.length === 0 && (
               <tr>
                 <td colSpan={6} className="py-4 text-center text-sub">
-                  暂无职务授予记录
+                  {t.empty}
                 </td>
               </tr>
             )}
@@ -197,9 +196,9 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-end gap-2">
-        <h3 className="w-full text-sm font-bold">授予职务</h3>
+        <h3 className="w-full text-sm font-bold">{t.grantTitle}</h3>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-sub">用户 ID</span>
+          <span className="text-xs text-sub">{t.fldUserId}</span>
           <input
             value={rUserId}
             onChange={(e) => setRUserId(e.target.value)}
@@ -207,7 +206,7 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-sub">职务</span>
+          <span className="text-xs text-sub">{t.fldRole}</span>
           <select
             value={rRoleKey}
             onChange={(e) => setRRoleKey(e.target.value)}
@@ -221,11 +220,11 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-sub">到期（可选，RFC3339）</span>
+          <span className="text-xs text-sub">{t.fldExpires}</span>
           <input
             value={rExpires}
             onChange={(e) => setRExpires(e.target.value)}
-            placeholder="留空为永久"
+            placeholder={t.expiresPh}
             className={`${INPUT_CLS} w-56`}
           />
         </label>
@@ -245,10 +244,10 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
               );
               setRUserId("");
               setRExpires("");
-            }, "已授予")
+            }, t.granted)
           }
         >
-          授予
+          {t.grantBtn}
         </button>
       </div>
     </section>

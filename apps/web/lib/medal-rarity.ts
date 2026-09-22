@@ -15,18 +15,21 @@ export interface MedalRarity {
   used?: number;
 }
 
-/** 配色档（值存库）：**颜色由 globals.css 的 `.medal-rarity[data-tone=…]` 给**，
- *  这里只维护"合法档位 + 中文名"给后台下拉用。
+/** 配色档取值键（值存库）：**颜色由 globals.css 的 `.medal-rarity[data-tone=…]` 给**，
+ *  这里只维护"合法档位"供校验；显示名在 i18n `medalRarity.tones`（三语），
+ *  由 `toneList()` 拼成后台下拉要的 `[{value,label}]`。
  *  注意别改成往组件上挂 `bg-sky` 之类 utility 类再配 `.sticker`——`.sticker:not([data-variant])`
  *  的兜底底色（unlayered 自定义 CSS）会把它盖掉，实测角标会全白。 */
-export const MEDAL_RARITY_TONES = [
-  { value: "gold", label: "金（传说）" },
-  { value: "coral", label: "橙（热卖）" },
-  { value: "mint", label: "绿（普通）" },
-  { value: "sky", label: "蓝（稀有·默认）" },
-  { value: "indigo", label: "靛（史诗）" },
-  { value: "candy", label: "粉（限定）" },
+export const TONE_KEYS = [
+  "gold", "coral", "mint", "sky", "indigo", "candy",
 ] as const;
+
+/** 合法档位值（纯值判断用：`MEDAL_RARITY_TONES.includes(tone)`） */
+export const MEDAL_RARITY_TONES: readonly string[] = TONE_KEYS;
+
+/** 后台下拉伸成 `[{value,label}]`；labels 缺省时回落档位键本身 */
+export const toneList = (labels?: Record<string, string>) =>
+  TONE_KEYS.map((v) => ({ value: v, label: labels?.[v] ?? v }));
 
 /** 接口拿不到词表时的兜底（与 0143 的种子数据一致） */
 export const DEFAULT_MEDAL_RARITIES: MedalRarity[] = [
@@ -44,7 +47,7 @@ export function medalRarityTone(
   value?: string | null,
 ): string {
   const tone = medalRarity(list, value)?.tone;
-  return MEDAL_RARITY_TONES.some((t) => t.value === tone)
+  return MEDAL_RARITY_TONES.includes(tone as string)
     ? (tone as string)
     : MEDAL_RARITY_FALLBACK_TONE;
 }

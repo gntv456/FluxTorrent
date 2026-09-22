@@ -11,29 +11,18 @@ import { BTN_MD_SKY, INPUT_CLOUD } from "@/lib/ui-classes";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { dateLocale } from "@/i18n/config";
+import { dateLocale, fmt } from "@/i18n/config";
 import type { PromoRow } from "./admin-shared";
 
-const PROMO_KINDS: [string, string][] = [
-  ["free", "免费下载"],
-  ["x2", "双倍上传"],
-  ["x2free", "免费 + 双倍"],
-  ["half", "半价下载"],
-  ["x2half", "半价 + 双倍"],
-  ["p30", "30% 下载"],
-];
-
-const PROMO_SCOPES: [string, string][] = [
-  ["global", "全站"],
-  ["official", "官方种"],
-  ["non_official", "非官方种"],
-  ["category", "指定分类"],
-];
+/** 促销取值键（显示名在 i18n adminPromo.kinds / .scopes，取不到回落原值） */
+const PROMO_KIND_KEYS = ["free", "x2", "x2free", "half", "x2half", "p30"];
+const PROMO_SCOPE_KEYS = ["global", "official", "non_official", "category"];
 
 /** 促销状态（freeleech）管理：对应 /admin/freeleech 的增删查 */
 export function FreeleechPanel() {
   const { dict, locale } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
+  const t = dict.adminPromo;
   const [rows, setRows] = useState<PromoRow[]>([]);
   const [kind, setKind] = useState("free");
   const [scope, setScope] = useState("global");
@@ -63,7 +52,7 @@ export function FreeleechPanel() {
         hours,
         ...(scope === "category" ? { category_id: Number(categoryId) } : {}),
       });
-      setMsg("促销已生效");
+      setMsg(t.applied);
       load();
     } catch (e) {
       setMsg(
@@ -80,7 +69,7 @@ export function FreeleechPanel() {
     setBusy(true);
     try {
       await api.del(`/api/v1/admin/freeleech/${id}`);
-      setMsg("已取消");
+      setMsg(t.removed);
       load();
     } catch (e) {
       setMsg(
@@ -98,10 +87,8 @@ export function FreeleechPanel() {
 
   return (
     <section className="baozi-panel p-4">
-      <h2 className="mb-2 text-base font-bold">促销状态</h2>
-      <p className="mb-3 text-xs text-sub">
-        对全站或指定范围种子设置免费 / 双倍 / 半价状态，到期自动失效。
-      </p>
+      <h2 className="mb-2 text-base font-bold">{t.title}</h2>
+      <p className="mb-3 text-xs text-sub">{t.intro}</p>
       {msg && (
         <p className="mb-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs">
           {msg}
@@ -111,10 +98,10 @@ export function FreeleechPanel() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead w-24">类型</td>
-              <td className="colhead w-28">范围</td>
-              <td className="colhead">开始</td>
-              <td className="colhead">结束</td>
+              <td className="colhead w-24">{t.colKind}</td>
+              <td className="colhead w-28">{t.colScope}</td>
+              <td className="colhead">{t.colStart}</td>
+              <td className="colhead">{t.colEnd}</td>
               <td className="colhead w-20" />
             </tr>
           </thead>
@@ -122,10 +109,10 @@ export function FreeleechPanel() {
             {rows.map((r) => (
               <tr key={r.id}>
                 <td className="rowfollow">
-                  {PROMO_KINDS.find(([k]) => k === r.kind)?.[1] ?? r.kind}
+                  {t.kinds[r.kind] ?? r.kind}
                 </td>
                 <td className="rowfollow">
-                  {PROMO_SCOPES.find(([s]) => s === r.scope)?.[1] ?? r.scope}
+                  {t.scopes[r.scope] ?? r.scope}
                   {r.category_name ? ` · ${r.category_name}` : ""}
                 </td>
                 <td className="rowfollow text-xs text-sub">
@@ -140,7 +127,7 @@ export function FreeleechPanel() {
                     onClick={() => remove(r.id)}
                     className="min-h-[28px] rounded-full border border-line px-3 font-bold text-danger disabled:opacity-50"
                   >
-                    取消
+                    {t.removeBtn}
                   </button>
                 </td>
               </tr>
@@ -148,7 +135,7 @@ export function FreeleechPanel() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={5} className="py-4 text-center text-sub">
-                  当前没有进行中的促销
+                  {t.empty}
                 </td>
               </tr>
             )}
@@ -158,36 +145,36 @@ export function FreeleechPanel() {
 
       <div className="mt-4 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-sub">类型</span>
+          <span className="text-xs text-sub">{t.fldKind}</span>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
             className={inputCls}
           >
-            {PROMO_KINDS.map(([k, label]) => (
+            {PROMO_KIND_KEYS.map((k) => (
               <option key={k} value={k}>
-                {label}
+                {t.kinds[k] ?? k}
               </option>
             ))}
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-sub">范围</span>
+          <span className="text-xs text-sub">{t.fldScope}</span>
           <select
             value={scope}
             onChange={(e) => setScope(e.target.value)}
             className={inputCls}
           >
-            {PROMO_SCOPES.map(([s, label]) => (
+            {PROMO_SCOPE_KEYS.map((s) => (
               <option key={s} value={s}>
-                {label}
+                {t.scopes[s] ?? s}
               </option>
             ))}
           </select>
         </label>
         {scope === "category" && (
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-sub">分类 ID</span>
+            <span className="text-xs text-sub">{t.fldCategory}</span>
             <input
               type="number"
               value={categoryId}
@@ -197,7 +184,7 @@ export function FreeleechPanel() {
           </label>
         )}
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-sub">时长（小时）</span>
+          <span className="text-xs text-sub">{t.fldHours}</span>
           <input
             type="number"
             min={1}
@@ -212,7 +199,7 @@ export function FreeleechPanel() {
           onClick={create}
           className={BTN_MD_SKY}
         >
-          生效
+          {t.applyBtn}
         </button>
       </div>
     </section>
@@ -223,6 +210,7 @@ export function FreeleechPanel() {
 export function ClearCachePanel() {
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
+  const t = dict.adminPromo;
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -233,7 +221,7 @@ export function ClearCachePanel() {
         "/api/v1/admin/clearcache",
         {},
       );
-      setMsg(`已清除 ${r.cleared} 个缓存键`);
+      setMsg(fmt(t.cacheCleared, { n: r.cleared }));
     } catch (e) {
       setMsg(
         e instanceof ApiError
@@ -247,10 +235,8 @@ export function ClearCachePanel() {
 
   return (
     <section className="baozi-panel p-4">
-      <h2 className="mb-2 text-base font-bold">清除缓存</h2>
-      <p className="mb-3 text-xs text-sub">
-        清除运行期缓存键（限流计数等）。不影响数据库数据，站点会自动重建缓存。
-      </p>
+      <h2 className="mb-2 text-base font-bold">{t.cacheTitle}</h2>
+      <p className="mb-3 text-xs text-sub">{t.cacheIntro}</p>
       {msg && (
         <p className="mb-3 rounded-[var(--r-md)] bg-sky-soft p-2 text-xs">
           {msg}
@@ -261,7 +247,7 @@ export function ClearCachePanel() {
         onClick={run}
         className={BTN_MD_SKY}
       >
-        立即清除
+        {t.cacheBtn}
       </button>
     </section>
   );

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 import type { PermDef, PermMatrixData, RoleDef } from "./staff-tools-perm";
 
@@ -10,26 +12,10 @@ import type { PermDef, PermMatrixData, RoleDef } from "./staff-tools-perm";
  *  等级为累进式，勾选低档会同时作用于更高档；
  *  职务权限仅对持有该职务的用户生效。 */
 
-// 「未接入」徽标 / 权限类别分组表头映射
+// 「未接入」徽标
 const NOT_IMPL_TAG = "ml-1 rounded-full bg-sun/40 px-1.5 text-[10px] text-ink";
-const ROLE_HEAD_LABELS: Record<string, string> = {
-  "1": "全体用户",
-  "20": "贵宾 VIP",
-  "90": "管理组",
-  "93": "总版主及以上",
-  "98": "维护开发员及以上",
-  "99": "站长",
-};
-const CAT_LABELS: Record<string, string> = {
-  content: "内容",
-  user: "用户",
-  site: "运营",
-  system: "系统",
-  upload: "发布",
-  repost: "转载",
-  seed: "保种",
-  liaison: "外联",
-};
+// 角色列表头 / 权限类别的显示名在 i18n（adminPerm.roleHeads / adminPerm.cats）；
+// 取不到时回落后端下发的 name / 原始 key。
 
 export function RoleMatrix({
   permData,
@@ -44,19 +30,18 @@ export function RoleMatrix({
   setPermData: React.Dispatch<React.SetStateAction<PermMatrixData | null>>;
   guard: (fn: () => Promise<void>, ok: string) => void;
 }) {
+  const { dict } = useI18n();
+  const t = dict.adminPerm;
   return (
     <section className="baozi-panel p-4">
-      <h2 className="mb-2 text-base font-bold">角色权限矩阵</h2>
-      <p className="mb-3 text-xs text-sub">
-        勾选即生效（仅站长可改）。等级为累进式，勾选低档会同时作用于更高档；职务权限仅对持有该职务的用户生效。
-        标「未接入」的权限项当前代码尚无对应业务端点，配置后不会产生实际效果。
-      </p>
+      <h2 className="mb-2 text-base font-bold">{t.matrixTitle}</h2>
+      <p className="mb-3 text-xs text-sub">{t.matrixIntro}</p>
       <div className="baozi-wide-table-scroll">
         <table className="nexus-table text-xs">
           <thead>
             <tr>
               <td className="colhead" style={{ minWidth: 210 }}>
-                权限
+                {t.colPerm}
               </td>
               {(permData?.roles ?? []).map((r) => (
                 <td
@@ -65,10 +50,12 @@ export function RoleMatrix({
                   style={{ minWidth: 70 }}
                 >
                   <span className="block">
-                    {ROLE_HEAD_LABELS[r.role_key] ?? r.name}
+                    {t.roleHeads[r.role_key] ?? r.name}
                   </span>
                   <span className="block text-[10px] font-normal">
-                    {r.role_type === "class" ? `L${r.role_key}+` : "职务"}
+                    {r.role_type === "class"
+                      ? fmt(t.roleIsClass, { key: r.role_key })
+                      : t.roleIsRole}
                   </span>
                 </td>
               ))}
@@ -90,7 +77,7 @@ export function RoleMatrix({
                     colSpan={1 + (permData?.roles ?? []).length}
                     className="bg-sky-soft font-bold"
                   >
-                    {CAT_LABELS[cat] ?? cat}
+                    {t.cats[cat] ?? cat}
                   </td>
                 </tr>
                 {items.map((p) => (
@@ -100,9 +87,9 @@ export function RoleMatrix({
                       {!p.implemented && (
                         <span
                           className={NOT_IMPL_TAG}
-                          title="当前代码尚无对应业务端点，配置后不产生实际效果"
+                          title={t.notImplTip}
                         >
-                          未接入
+                          {t.notImpl}
                         </span>
                       )}
                       <span className="block font-mono text-[10px] text-sub">
@@ -163,7 +150,7 @@ export function RoleMatrix({
                                     return { ...prev, grants };
                                   });
                                 },
-                                e.target.checked ? "已授权" : "已取消",
+                                e.target.checked ? t.granted : t.revoked,
                               )
                             }
                           />
@@ -177,7 +164,7 @@ export function RoleMatrix({
             {(permData?.permissions ?? []).length === 0 && (
               <tr>
                 <td colSpan={8} className="py-4 text-center text-sub">
-                  权限清单为空（迁移 0054 未应用？）
+                  {t.permEmpty}
                 </td>
               </tr>
             )}

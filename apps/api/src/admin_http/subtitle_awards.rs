@@ -66,13 +66,12 @@ async fn awards_build(
             .enumerate()
             .all(|(i, c)| c.is_ascii_digit() || (i == 4 && c == '-'))
     {
-        return Err(DomainError::Validation(
-            "period 需为 YYYY-MM".into(),
-        ));
+        return Err(DomainError::Validation("period 需为 YYYY-MM".into()));
     }
-    let n = crate::content_http::subtitles_awards_build(&state.repo.db, &period)
-        .await
-        .map_err(DomainError::Internal)?;
+    let n =
+        crate::content_http::subtitles_awards_build(&state.repo.db, &period)
+            .await
+            .map_err(DomainError::Internal)?;
     state
         .repo
         .audit(Some(auth.id), "subawards.build", None)
@@ -83,10 +82,7 @@ async fn awards_build(
 fn default_period() -> String {
     // 上个自然月（YYYY-MM，UTC 口径）：format 到当月 1 号再回退一天取年月
     let now = chrono::Utc::now();
-    let first = format!(
-        "{}-01",
-        now.format("%Y-%m")
-    );
+    let first = format!("{}-01", now.format("%Y-%m"));
     let prev = chrono::NaiveDate::parse_from_str(&first, "%Y-%m-%d")
         .map(|d| d.pred_opt().unwrap_or(d))
         .unwrap_or(now.date_naive());
@@ -123,9 +119,7 @@ async fn awards_grant(
     let mut results = Vec::new();
     for g in &body.grants {
         if !(1..=3).contains(&g.rank) {
-            return Err(DomainError::Validation(
-                "rank 需为 1/2/3".into(),
-            ));
+            return Err(DomainError::Validation("rank 需为 1/2/3".into()));
         }
         let row: Option<(i64, i64, String)> = sqlx::query_as(
             "UPDATE subtitle_awards SET rank = $2 WHERE id = $1 AND period \
@@ -148,10 +142,7 @@ async fn awards_grant(
             2 => 2000,
             _ => 1000,
         };
-        let idem = format!(
-            "sub-award:{}:{}:{}",
-            body.period, uid, g.rank
-        );
+        let idem = format!("sub-award:{}:{}:{}", body.period, uid, g.rank);
         crate::economy_http::earn_spark(
             &state.repo.db,
             uid,
@@ -202,16 +193,15 @@ async fn awards_grant(
         }));
     }
     // 揭晓公告（shoutbox；系统口径挂在发起管理名下——user_id NOT NULL）
-    let _ = sqlx::query(
-        "INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)",
-    )
-    .bind(auth.id)
-    .bind(format!(
-        "「{}」期金字字幕评选已揭晓！详见字幕区评选榜。",
-        body.period
-    ))
-    .execute(&state.repo.db)
-    .await;
+    let _ =
+        sqlx::query("INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)")
+            .bind(auth.id)
+            .bind(format!(
+                "「{}」期金字字幕评选已揭晓！详见字幕区评选榜。",
+                body.period
+            ))
+            .execute(&state.repo.db)
+            .await;
     state
         .repo
         .audit(Some(auth.id), "subawards.grant", None)

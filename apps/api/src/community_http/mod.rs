@@ -78,6 +78,7 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(pool_honor)
         // M15 论坛
         .service(forum_list)
+        .service(forum_boards)
         .service(forum_search)
         .service(topic_create)
         .service(topic_list)
@@ -87,6 +88,7 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(post_delete)
         .service(topic_delete)
         .service(topic_manage)
+        .service(topic_manage_batch)
         // M15 论坛互动（0116 点赞/收藏）
         .service(post_like)
         .service(post_unlike)

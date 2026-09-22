@@ -90,8 +90,8 @@ export function AppealsPanel({
                     }`}
                   >
                     {ap.status === "accepted"
-                      ? (a.appealAccepted ?? "已通过")
-                      : (a.appealRejected ?? "已驳回")}
+                      ? a.appealAccepted
+                      : a.appealRejected}
                   </span>
                 )}
               </p>
@@ -108,13 +108,13 @@ export function AppealsPanel({
                   onClick={() => onHandle(ap.id, true)}
                   className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white"
                 >
-                  {a.appealAccept ?? "通过"}
+                  {a.appealAccept}
                 </button>
                 <button
                   onClick={() => onHandle(ap.id, false)}
                   className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-danger"
                 >
-                  {a.appealReject ?? "驳回"}
+                  {a.appealReject}
                 </button>
               </span>
             )}
@@ -122,7 +122,7 @@ export function AppealsPanel({
         ))}
         {appeals.length === 0 && (
           <li className="py-6 text-center text-sub">
-            {a.appealEmpty ?? "暂无申诉"}
+            {a.appealEmpty}
           </li>
         )}
       </ul>

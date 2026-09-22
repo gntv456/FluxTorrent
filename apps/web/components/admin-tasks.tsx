@@ -8,7 +8,7 @@ import { ExamUsersPanel } from "@/components/admin-tasks-exams";
 import { TasksTable } from "./admin-tasks-table";
 import { TasksForm } from "./admin-tasks-form";
 import type { TaskRow } from "./admin-tasks-shared";
-import { EMPTY, KINDS, PERIODS } from "./admin-tasks-shared";
+import { EMPTY } from "./admin-tasks-shared";
 
 /** 任务定义 + 考核配置（tasks 表 CRUD，0093 起 kind/auto_assign/period 支撑考核引擎）。
  *  考核记录浏览拆出 admin-tasks-exams.tsx；列表拆至 ./admin-tasks-table.tsx；

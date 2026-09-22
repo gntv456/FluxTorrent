@@ -28,8 +28,12 @@ export interface UserMedalRow {
   granted_at: string | null;
 }
 
-export const GET_TYPE: Record<number, string> = {
-  1: "兑换",
-  2: "授予",
-  3: "合成",
-};
+/** 获取方式取值键；显示名在 i18n `adminMedals.getType`（三语），
+ *  由 `getTypeLabels()` 拼回原 `Record<number,string>` 形状 —— 消费方的
+ *  `GET_TYPE[m.get_type] ?? m.get_type` 写法不用改。 */
+export const GET_TYPE_KEYS = [1, 2, 3] as const;
+
+export const getTypeLabels = (labels?: Record<string, string>) =>
+  Object.fromEntries(
+    GET_TYPE_KEYS.map((k) => [k, labels?.[String(k)] ?? String(k)]),
+  ) as Record<number, string>;

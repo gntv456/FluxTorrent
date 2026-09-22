@@ -39,7 +39,7 @@ export function MedalRarityPreview({
   label: string;
   tone: string;
 }) {
-  const safe = MEDAL_RARITY_TONES.some((t) => t.value === tone) ? tone : "sky";
+  const safe = MEDAL_RARITY_TONES.includes(tone) ? tone : "sky";
   return (
     <span className="medal-rarity" data-tone={safe}>
       {label || "预览"}

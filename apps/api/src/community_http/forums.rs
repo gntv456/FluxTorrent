@@ -94,24 +94,82 @@ async fn forum_search(
     Ok(ok(items))
 }
 
+/// 分区行（前台索引用）。具名结构体，不用元组——元组会被序列化成数组的数组，
+/// 前端按字段取值会静默拿到 undefined。
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct ForumCatRow {
+    id: i64,
+    name: String,
+    sort: i32,
+    visible: bool,
+    /// 该分区下**当前用户可读**的版块数（与 forums 列表同套谓词，避免计数与列表不一致）
+    forums: i64,
+}
+
+/// 版块精简行（移动主题下拉用）
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct BoardBrief {
+    id: i64,
+    name: String,
+    category_name: Option<String>,
+}
+
 #[get("/forums")]
 async fn forum_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    // 只列本版块门槛允许（minclassread）+ 版主兼任的版块；按分类 sort 分组排序（0115）
-    let rows = sqlx::query_as::<_, (i64, String, Option<String>, i64, i64, Option<i64>, Option<String>)>(
-        "SELECT f.id, f.name, f.descr, \
-            (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics, \
-            (SELECT count(*) FROM posts p JOIN topics t ON t.id = p.topic_id WHERE t.forum_id = f.id) AS posts, \
-            f.category_id, c.name AS category_name \
-         FROM forums f LEFT JOIN forum_categories c ON c.id = f.category_id \
-         WHERE f.minclassread <= $1 OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $2) \
-         ORDER BY c.sort NULLS LAST, f.id",
+    let is_staff = auth.class_id >= 93;
+    // 分区列表：**含空分区**。前台据此渲染分组与空态占位——
+    // 若像旧版那样从版块列表反推分组，新建的空分区在前台会整块消失。
+    let cats: Vec<ForumCatRow> = sqlx::query_as(
+        "SELECT c.id, c.name, c.sort, c.visible, \
+            (SELECT count(*) FROM forums f \
+              WHERE f.category_id = c.id \
+                AND (f.minclassread <= $1 OR EXISTS ( \
+                  SELECT 1 FROM forum_mods fm \
+                   WHERE fm.forum_id = f.id AND fm.user_id = $2))) AS forums \
+         FROM forum_categories c \
+         WHERE c.visible = TRUE OR $3 \
+         ORDER BY c.sort, c.id",
     )
     .bind(auth.class_id)
     .bind(auth.id)
+    .bind(is_staff)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    // 版块列表：只列本版块门槛允许（minclassread）+ 版主兼任的版块；
+    // 按 分区 sort → 版块 sort → id 排序，保证同一分区内聚。
+    let rows = sqlx::query_as::<
+        _,
+        (
+            i64,
+            String,
+            Option<String>,
+            i64,
+            i64,
+            Option<i64>,
+            Option<String>,
+        ),
+    >(
+        "SELECT f.id, f.name, f.descr, \
+            (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics, \
+            (SELECT count(*) FROM posts p JOIN topics t ON t.id = p.topic_id \
+              WHERE t.forum_id = f.id) AS posts, \
+            f.category_id, c.name AS category_name \
+         FROM forums f LEFT JOIN forum_categories c ON c.id = f.category_id \
+         WHERE (f.minclassread <= $1 OR EXISTS ( \
+                 SELECT 1 FROM forum_mods fm \
+                  WHERE fm.forum_id = f.id AND fm.user_id = $2)) \
+           AND (c.id IS NULL OR c.visible = TRUE OR $3) \
+         ORDER BY c.sort NULLS LAST, c.id NULLS LAST, f.sort, f.id",
+    )
+    .bind(auth.class_id)
+    .bind(auth.id)
+    .bind(is_staff)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -165,5 +223,32 @@ async fn forum_list(
             can_mod: perm.can_mod,
         });
     }
-    Ok(ok(out))
+    Ok(ok(serde_json::json!({ "categories": cats, "forums": out })))
+}
+
+/// 全站版块精简列表（「移动主题到…」下拉的数据源）。
+/// 口径与 forum_list 的版块过滤一致：只回当前用户可读的版块，不泄漏隐藏版块名。
+#[get("/forums/boards")]
+async fn forum_boards(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let is_staff = auth.class_id >= 93;
+    let rows: Vec<BoardBrief> = sqlx::query_as(
+        "SELECT f.id, f.name, c.name AS category_name \
+         FROM forums f LEFT JOIN forum_categories c ON c.id = f.category_id \
+         WHERE (f.minclassread <= $1 OR EXISTS ( \
+                 SELECT 1 FROM forum_mods fm \
+                  WHERE fm.forum_id = f.id AND fm.user_id = $2)) \
+           AND (c.id IS NULL OR c.visible = TRUE OR $3) \
+         ORDER BY c.sort NULLS LAST, c.id NULLS LAST, f.sort, f.id",
+    )
+    .bind(auth.class_id)
+    .bind(auth.id)
+    .bind(is_staff)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
 }

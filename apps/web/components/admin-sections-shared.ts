@@ -38,17 +38,21 @@ export interface SectionKindMeta {
   sort: number;
 }
 
-export const FALLBACK_KINDS: SectionKindMeta[] = [
-  { kind: "media", label: "媒介", sort: 10 },
-  { kind: "grades", label: "学段", sort: 20 },
-  { kind: "editions", label: "版本", sort: 30 },
-  { kind: "codec", label: "编码", sort: 40 },
-  { kind: "audio_codec", label: "音频编码", sort: 50 },
-  { kind: "standard", label: "规格", sort: 60 },
-  { kind: "team", label: "制作组", sort: 70 },
-  { kind: "source", label: "来源", sort: 80 },
-  { kind: "processing", label: "处理工艺", sort: 90 },
-];
+/** 兜底维度表：取值键在 `KIND_KEYS`，显示名在 i18n `adminSections.kinds`（三语），
+ *  由 `fallbackKinds()` 拼回原 `SectionKindMeta[]` 形状（sort 保持 10/20/…/90）。 */
+export const KIND_KEYS = [
+  "media", "grades", "editions", "codec", "audio_codec",
+  "standard", "team", "source", "processing",
+] as const;
+
+export const fallbackKinds = (
+  labels?: Record<string, string>,
+): SectionKindMeta[] =>
+  KIND_KEYS.map((kind, i) => ({
+    kind,
+    label: labels?.[kind] ?? kind,
+    sort: (i + 1) * 10,
+  }));
 
 export const FLAGS: [keyof ModeRow, string][] = [
   ["show_source", "Source"],

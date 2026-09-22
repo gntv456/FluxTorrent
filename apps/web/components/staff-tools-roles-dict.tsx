@@ -3,6 +3,8 @@
 import { BTN_SM_BOLD } from "@/lib/ui-classes";
 
 import { api } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 import type { RoleDef } from "./staff-tools-roles";
 
@@ -52,6 +54,8 @@ export function RoleDictSection({
   busy: boolean;
   guard: (fn: () => Promise<void>, ok: string) => void;
 }) {
+  const { dict } = useI18n();
+  const t = dict.adminRoles;
   return (
     <div className="mb-4 flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
@@ -64,7 +68,7 @@ export function RoleDictSection({
               <span className="flex gap-1">
                 <button
                   className={ROLE_CARD_BTN_EDIT}
-                  title="编辑职务（仅站长）"
+                  title={t.editTip}
                   onClick={() => {
                     setRoleEdit({
                       key: r.key,
@@ -74,34 +78,30 @@ export function RoleDictSection({
                     });
                   }}
                 >
-                  编辑
+                  {t.editBtn}
                 </button>
                 <button
                   className={ROLE_CARD_BTN_DEL}
-                  title="删除职务（需先撤销全部授予；仅站长）"
+                  title={t.delTip}
                   onClick={() =>
                     guard(async () => {
-                      if (
-                        !window.confirm(
-                          `确认删除职务「${r.name}」？需先撤销全部授予。`,
-                        )
-                      )
+                      if (!window.confirm(fmt(t.delConfirm, { name: r.name })))
                         return;
                       await api.del(`/api/v1/admin/roles/${r.key}`);
                       setRoleDefs(
                         await api.get<RoleDef[]>("/api/v1/admin/roles"),
                       );
-                    }, "已删除")
+                    }, t.deleted)
                   }
                 >
-                  删除
+                  {t.delBtn}
                 </button>
               </span>
             </p>
           </div>
         ))}
         {roleDefs.length === 0 && (
-          <p className="text-xs text-sub">职务字典为空（迁移 0054 未应用？）</p>
+          <p className="text-xs text-sub">{t.dictEmpty}</p>
         )}
       </div>
 
@@ -110,36 +110,36 @@ export function RoleDictSection({
         <div className={ROLE_FORM_BOX}>
           <h3 className="mb-2 text-sm font-bold">
             {roleEdit.mode === "new"
-              ? "新增职务"
-              : `编辑职务 ${roleEdit.key}（key 不可改）`}
+              ? t.newTitle
+              : fmt(t.editTitle, { key: roleEdit.key })}
           </h3>
           <div className="flex flex-wrap items-end gap-2">
             {roleEdit.mode === "new" && (
               <label className="flex flex-col gap-1 text-xs">
-                Key（小写/下划线）
+                {t.fldKey}
                 <input
                   value={roleEdit.key}
                   onChange={(e) =>
                     setRoleEdit({ ...roleEdit, key: e.target.value })
                   }
-                  placeholder="translator"
+                  placeholder={t.keyPh}
                   className={`${ROLE_INPUT} w-40`}
                 />
               </label>
             )}
             <label className="flex flex-col gap-1 text-xs">
-              名称
+              {t.fldName}
               <input
                 value={roleEdit.name}
                 onChange={(e) =>
                   setRoleEdit({ ...roleEdit, name: e.target.value })
                 }
-                placeholder="翻译员"
+                placeholder={t.namePh}
                 className={`${ROLE_INPUT} w-32`}
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              说明（可选）
+              {t.fldDescr}
               <input
                 value={roleEdit.descr}
                 onChange={(e) =>
@@ -172,19 +172,17 @@ export function RoleDictSection({
                   }
                   setRoleDefs(await api.get<RoleDef[]>("/api/v1/admin/roles"));
                   setRoleEdit(null);
-                }, "已保存")
+                }, t.saved)
               }
             >
-              保存
+              {t.saveBtn}
             </button>
             <button className={BTN_OUTLINE_S} onClick={() => setRoleEdit(null)}>
-              取消
+              {t.cancelBtn}
             </button>
           </div>
           {roleEdit.mode === "new" && (
-            <p className="mt-2 text-xs text-sub">
-              新建后到「权限配置」为其勾选权限，再到下方给用户授予。
-            </p>
+            <p className="mt-2 text-xs text-sub">{t.nextStepHint}</p>
           )}
         </div>
       )}
@@ -195,7 +193,7 @@ export function RoleDictSection({
             setRoleEdit({ key: "", name: "", descr: "", mode: "new" })
           }
         >
-          ＋ 新增职务（仅站长）
+          {t.newBtn}
         </button>
       )}
     </div>

@@ -35,6 +35,8 @@ export function AgentRulesPanel({
   flash,
 }: AgentRulesProps) {
   const { dict } = useI18n();
+  // agentRules2 三语字典齐全，无需中文兜底（见 i18n/*.ts）
+  const ar = dict.agentRules2;
   const [arMode, setArMode] = useState("deny");
   const [arPattern, setArPattern] = useState("");
   const [arNote, setArNote] = useState("");
@@ -56,19 +58,17 @@ export function AgentRulesPanel({
 
   return (
     <section className="baozi-panel p-4">
-      <h2 className="mb-3 text-base font-bold text-ink">
-        {dict.agentRules2?.title ?? "客户端黑白名单"}
-      </h2>
+      <h2 className="mb-3 text-base font-bold text-ink">{ar.title}</h2>
       <div className="cmgmt-form">
         <label>
-          {dict.agentRules2?.mode ?? "类型"}
+          {ar.mode}
           <select value={arMode} onChange={(e) => setArMode(e.target.value)}>
-            <option value="deny">{dict.agentRules2?.deny ?? "黑名单"}</option>
-            <option value="allow">{dict.agentRules2?.allow ?? "白名单"}</option>
+            <option value="deny">{ar.deny}</option>
+            <option value="allow">{ar.allow}</option>
           </select>
         </label>
         <label>
-          {dict.agentRules2?.pattern ?? "匹配串"}
+          {ar.pattern}
           <input
             value={arPattern}
             onChange={(e) => setArPattern(e.target.value)}
@@ -76,7 +76,7 @@ export function AgentRulesPanel({
           />
         </label>
         <label>
-          {dict.agentRules2?.note ?? "备注"}
+          {ar.note}
           <input value={arNote} onChange={(e) => setArNote(e.target.value)} />
         </label>
         <button
@@ -91,15 +91,13 @@ export function AgentRulesPanel({
               });
               setArPattern("");
               setArNote("");
-            }, dict.agentRules2?.add ?? "已添加")
+            }, ar.add)
           }
         >
-          {dict.agentRules2?.add ?? "添加规则"}
+          {ar.add}
         </button>
         <p className="text-xs text-sub">
-          {arMode === "deny"
-            ? (dict.agentRules2?.modeDenyNote ?? "")
-            : (dict.agentRules2?.modeAllowNote ?? "")}
+          {arMode === "deny" ? ar.modeDenyNote : ar.modeAllowNote}
         </p>
       </div>
       {agentRules === null ? (
@@ -113,17 +111,15 @@ export function AgentRulesPanel({
             }
           }}
         >
-          Load
+          {ar.loadBtn}
         </button>
       ) : (
         <table className="nexus-table mt-3 text-xs">
           <thead>
             <tr>
-              <td className="colhead">{dict.agentRules2?.mode ?? "类型"}</td>
-              <td className="colhead">
-                {dict.agentRules2?.pattern ?? "匹配串"}
-              </td>
-              <td className="colhead">{dict.agentRules2?.note ?? "备注"}</td>
+              <td className="colhead">{ar.mode}</td>
+              <td className="colhead">{ar.pattern}</td>
+              <td className="colhead">{ar.note}</td>
               <td className="colhead" />
             </tr>
           </thead>
@@ -132,9 +128,7 @@ export function AgentRulesPanel({
               <tr key={r.id}>
                 <td>
                   <span className={modeCls(r.mode)}>
-                    {r.mode === "deny"
-                      ? (dict.agentRules2?.deny ?? "黑")
-                      : (dict.agentRules2?.allow ?? "白")}
+                    {r.mode === "deny" ? ar.deny : ar.allow}
                   </span>
                 </td>
                 <td>
@@ -149,10 +143,10 @@ export function AgentRulesPanel({
                         await api.post("/api/v1/admin/agentrules/delete", {
                           id: r.id,
                         });
-                      }, "OK")
+                      }, ar.deleted)
                     }
                   >
-                    {dict.agentRules2?.del ?? "删除"}
+                    {ar.del}
                   </button>
                 </td>
               </tr>
@@ -160,7 +154,7 @@ export function AgentRulesPanel({
             {agentRules.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-4 text-center text-sub">
-                  {dict.agentRules2?.empty ?? "暂无规则"}
+                  {ar.empty}
                 </td>
               </tr>
             )}

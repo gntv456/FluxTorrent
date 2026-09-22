@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTopics, getForumTags } from "@/lib/data";
+import { getTopics, getForumTags, getBoards } from "@/lib/data";
 import { TopicComposer } from "@/components/forum-composer";
-import { TypeBadge, TagChip } from "@/components/forum-bits";
-import { Icon } from "@/components/icons";
+import { TagChip } from "@/components/forum-bits";
+import { ForumTopicList } from "@/components/forum-topic-list";
 import { FollowButton } from "@/components/forum-follow";
 import { getDict } from "@/i18n/server";
-import { dateLocale, fmt } from "@/i18n/config";
+import { fmt } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +33,9 @@ export default async function ForumPage({
   ]);
   // 版块不存在或无 minclassread 门槛权限（Forbidden）→ 404 口径
   if (!data) notFound();
+  // 版主「移动到」下拉的数据源：仅 can_mod 时才拉。
+  // 用 /forums/boards（单条 SQL）而非 /forums（逐版块 forum_access，1+N 次查询）。
+  const allForums = data.can_mod ? await getBoards() : [];
   const topics = data.topics;
   const activeTag = tagDict.find((t) => t.id === tag);
   // 筛选/排序链接共享的 query 基（保持 tag 与 sort 互不丢失）
@@ -93,8 +96,8 @@ export default async function ForumPage({
           <Link
             href={`/forums/${forumId}${qs({ tag: undefined })}`}
             aria-current={!tag ? "true" : undefined}
-            className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
-
+            className={`rounded-full border px-2.5 py-0.5 text-[11px] \
+font-bold ${
               !tag
                 ? "border-sky bg-[var(--sky-soft)] text-sky"
                 : "border-line text-sub hover:text-sky"
@@ -109,8 +112,9 @@ export default async function ForumPage({
                 href={`/forums/${forumId}${qs({ tag: undefined })}`}
                 aria-current="true"
                 className={
-            "rounded-full outline outline-2 outline-offset-1 outline-sky"
-          }
+                  "rounded-full outline outline-2 outline-offset-1 " +
+                  "outline-sky"
+                }
                 title={dict.forums.tagClear}
               >
                 <TagChip tag={t} />
@@ -120,8 +124,8 @@ export default async function ForumPage({
                 key={t.id}
                 href={`/forums/${forumId}${qs({ tag: String(t.id) })}`}
                 className={
-            "rounded-full opacity-70 transition hover:opacity-100"
-          }
+                  "rounded-full opacity-70 transition hover:opacity-100"
+                }
               >
                 <TagChip tag={t} />
               </Link>
@@ -137,93 +141,11 @@ export default async function ForumPage({
       {topics.length === 0 ? (
         <p className="py-10 text-center text-sub">{dict.forums.noTopics}</p>
       ) : (
-        <table className="nexus-table">
-          <thead>
-            <tr>
-              <td className="colhead">{dict.forums.topicTitleFallback}</td>
-              <td className="colhead w-32">{dict.forums.author}</td>
-              <td className="colhead w-16 text-right">
-                {dict.forums.replies.replace("{n}", "").trim() ||
-                  dict.forums.replies}
-              </td>
-              <td className="colhead hidden w-20 text-right sm:table-cell">
-                {dict.forums.views.replace("{n}", "").trim() ||
-                  dict.forums.views}
-              </td>
-              <td className="colhead hidden w-28 text-right sm:table-cell">
-                {dict.forums.lastPost}
-              </td>
-            </tr>
-          </thead>
-          <tbody>
-            {topics.map((t) => (
-              <tr key={t.id}>
-                <td>
-                  {t.digest && (
-                    <span
-                      aria-label="精华"
-                      className="mr-1 text-[var(--baozi-orange-dark)]"
-                    >
-                      ⭐
-                    </span>
-                  )}
-                  {t.sticky && (
-                    <Icon
-                      name="pin"
-                      size={13}
-                      className="mr-1 inline align-[-2px] font-bold text-coral"
-                      title="置顶"
-                    />
-                  )}
-                  {t.locked && (
-                    <Icon
-                      name="lock"
-                      size={13}
-                      className="mr-1 inline align-[-2px]"
-                      title="已锁定"
-                    />
-                  )}
-                  <TypeBadge
-                    type={t.topic_type}
-                    label={
-                      t.topic_type
-                        ? (dict.forums.types as Record<string, string>)[
-                            t.topic_type
-                          ]
-                        : undefined
-                    }
-                    className="mr-1 align-middle"
-                  />
-                  {t.tags?.map((tg) => (
-                    <TagChip
-                      key={tg.id}
-                      tag={tg}
-                      className="mr-1 align-middle"
-                    />
-                  ))}
-                  <Link
-                    href={`/forums/topic/${t.id}`}
-                    className="font-bold text-ink hover:text-sky"
-                  >
-                    {t.title}
-                  </Link>
-                </td>
-                <td className="text-sub">{t.username ?? "—"}</td>
-                <td className="num text-right">{Math.max(t.replies, 0)}</td>
-                <td className="num hidden text-right sm:table-cell">
-                  {t.views}
-                </td>
-                <td className="num hidden text-right text-sub sm:table-cell">
-                  {t.last_post_at
-                    ? new Date(t.last_post_at).toLocaleDateString(
-                        dateLocale(locale),
-                      )
-                    : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ForumTopicList
+          topics={topics}
+          canMod={data.can_mod}
+          forums={allForums}
+        />
       )}
     </div>
   );

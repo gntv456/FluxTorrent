@@ -7,8 +7,10 @@
  */
 
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import type { TaskRow } from "./admin-tasks-shared";
-import { KINDS, PERIODS, toLocalInput } from "./admin-tasks-shared";
+import { kindList, periodList, toLocalInput } from "./admin-tasks-shared";
 
 interface TasksTableProps {
   rows: TaskRow[];
@@ -46,20 +48,24 @@ export function TasksTable({
   load,
   setEdit,
 }: TasksTableProps) {
+  const { dict } = useI18n();
+  const d = dict.adminTasks;
+  const KINDS = kindList(dict.adminTasks.kinds);
+  const PERIODS = periodList(dict.adminTasks.periods);
   return (
     <table className="nexus-table text-xs">
       <thead>
         <tr>
-          <td className="colhead">ID</td>
-          <td className="colhead">任务</td>
-          <td className="colhead">类型</td>
-          <td className="colhead">起止</td>
-          <td className="colhead">目标等级</td>
-          <td className="colhead">奖励/罚则</td>
-          <td className="colhead">限领</td>
-          <td className="colhead">期限</td>
-          <td className="colhead">自动派发</td>
-          <td className="colhead text-right">操作</td>
+          <td className="colhead">{d.colId}</td>
+          <td className="colhead">{d.colTask}</td>
+          <td className="colhead">{d.colKind}</td>
+          <td className="colhead">{d.colRange}</td>
+          <td className="colhead">{d.colTargetClass}</td>
+          <td className="colhead">{d.colReward}</td>
+          <td className="colhead">{d.colClaimLimit}</td>
+          <td className="colhead">{d.colWindow}</td>
+          <td className="colhead">{d.colAutoAssign}</td>
+          <td className="colhead text-right">{d.colActions}</td>
         </tr>
       </thead>
       <tbody>
@@ -86,9 +92,15 @@ export function TasksTable({
             </td>
             <td className="num">{t.claim_limit ?? "—"}</td>
             <td className="num">
-              {t.kind === "task" ? "—" : `${t.duration_days} 天`}
+              {t.kind === "task" ? "—" : fmt(d.daysUnit, { n: t.duration_days })}
             </td>
-            <td>{t.kind === "task" ? "—" : t.auto_assign ? "是" : "否"}</td>
+            <td>
+              {t.kind === "task"
+                ? "—"
+                : t.auto_assign
+                  ? d.yes
+                  : d.no}
+            </td>
             <td className="text-right">
               <button
                 className="cmgmt-act"
@@ -117,7 +129,7 @@ export function TasksTable({
                   })
                 }
               >
-                编辑
+                {d.editBtn}
               </button>
               <button
                 className="cmgmt-act cmgmt-act--danger"
@@ -125,14 +137,14 @@ export function TasksTable({
                 onClick={async () => {
                   try {
                     await api.del(`/api/v1/admin/tasks/${t.id}`);
-                    flash("已删除");
+                    flash(d.deleted);
                     await load();
                   } catch (e) {
-                    flash(e instanceof ApiError ? e.message : "删除失败");
+                    flash(e instanceof ApiError ? e.message : d.delFail);
                   }
                 }}
               >
-                删除
+                {d.delBtn}
               </button>
             </td>
           </tr>
@@ -140,7 +152,7 @@ export function TasksTable({
         {rows.length === 0 && (
           <tr>
             <td colSpan={10} className="py-6 text-center text-sub">
-              暂无任务
+              {d.empty}
             </td>
           </tr>
         )}

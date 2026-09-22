@@ -5,6 +5,7 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import type { ToolTab } from "@/components/staff-tools";
 import { StaffSiteLists } from "./staff-tools-site-lists";
 import { SiteAdsTab } from "./staff-tools-site-ads";
@@ -37,7 +38,7 @@ export function StaffSitePanel({
   tab: ToolTab;
   flash: (m: string) => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.stafftools;
   const [stats, setStats] = useState<SiteStats | null>(null);
   const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(
@@ -118,7 +119,7 @@ export function StaffSitePanel({
             <div key={label} className="baozi-panel p-4">
               <p className="text-xs text-sub">{label}</p>
               <p className="num text-2xl font-bold text-ink">
-                {v.toLocaleString("zh-CN")}
+                {v.toLocaleString(dateLocale(locale))}
               </p>
             </div>
           ))}
@@ -239,7 +240,7 @@ export function StaffSitePanel({
       {tab === "plugins" && (
         <section className="baozi-panel p-4">
           <h2 className="mb-3 text-base font-bold text-ink">
-            {t.pluginsTitle ?? "插件清单"}
+            {t.pluginsTitle}
           </h2>
           {pluginList === null ? (
             <button
@@ -255,7 +256,7 @@ export function StaffSitePanel({
                 }
               }}
             >
-              {t.pluginsLoad ?? "加载"}
+              {t.pluginsLoad}
             </button>
           ) : (
             <ul className="flex flex-col gap-1 text-sm">
@@ -266,12 +267,12 @@ export function StaffSitePanel({
                 </li>
               ))}
               {pluginList.length === 0 && (
-                <li className="text-sub">{t.pluginsEmpty ?? "无插件"}</li>
+                <li className="text-sub">{t.pluginsEmpty}</li>
               )}
             </ul>
           )}
           <p className="mt-2 text-xs text-sub">
-            {t.pluginsNote ?? "插件启停由服务端配置决定，此处为只读清单"}
+            {t.pluginsNote}
           </p>
         </section>
       )}

@@ -57,7 +57,7 @@ export function StaffOpsForms({ tab, busy, guard }: OpsFormsProps) {
                 <option value="">{t.smAllUsers}</option>
                 <option value="10">Power User+</option>
                 <option value="50">Elite+</option>
-                <option value="90">管理组</option>
+                <option value="90">{t.smStaffGroup}</option>
               </select>
             </label>
             <button

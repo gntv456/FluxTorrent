@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale, fmt } from "@/i18n/config";
 
 /** 举报处理面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
  *  reports.php 口径——列表 + 处置/驳回 + PM 通知举报人。 */
@@ -24,7 +25,8 @@ interface ReportItem {
 }
 
 export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
+  const t = dict.adminReports;
   const [reports, setReports] = useState<ReportItem[] | null>(null);
   const [rpStatus, setRpStatus] = useState<
     "pending" | "handling" | "handled" | "all"
@@ -58,14 +60,14 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
   return (
     <section className="baozi-panel p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-bold">举报处理</h2>
+        <h2 className="text-base font-bold">{t.title}</h2>
         <div className="flex gap-2">
           {(
             [
-              ["pending", "待处理"],
-              ["handling", "处理中"],
-              ["handled", "已处理"],
-              ["all", "全部"],
+              ["pending", t.tabPending],
+              ["handling", t.tabHandling],
+              ["handled", t.tabHandled],
+              ["all", t.tabAll],
             ] as const
           ).map(([k, label]) => (
             <button
@@ -79,7 +81,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
         </div>
       </div>
       <label className="mb-3 flex items-center gap-2 text-xs text-sub">
-        处置备注（随 PM 发给举报人，可空）
+        {t.noteLabel}
         <input
           value={rpNote}
           onChange={(e) => setRpNote(e.target.value)}
@@ -90,11 +92,11 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
         <thead>
           <tr>
             <td className="colhead w-12">#</td>
-            <td className="colhead">被举报对象</td>
-            <td className="colhead w-24">举报人</td>
-            <td className="colhead">理由</td>
-            <td className="colhead w-36">时间</td>
-            <td className="colhead w-40">处置</td>
+            <td className="colhead">{t.colTarget}</td>
+            <td className="colhead w-24">{t.colReporter}</td>
+            <td className="colhead">{t.colReason}</td>
+            <td className="colhead w-36">{t.colTime}</td>
+            <td className="colhead w-40">{t.colAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -115,25 +117,29 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                     href={`/torrents/${r.ref_id}`}
                     className="ml-1 text-sky"
                   >
-                    查看
+                    {t.view}
                   </Link>
                 )}
               </td>
               <td>{r.reporter_name ?? `#${r.reporter_id}`}</td>
               <td className="max-w-[280px] break-words">{r.reason}</td>
               <td className="text-sub">
-                {new Date(r.created_at).toLocaleString("zh-CN")}
+                {new Date(r.created_at).toLocaleString(dateLocale(locale))}
                 {r.status === 2 && r.claimed_name && (
                   <p className="text-[11px] text-sky">
-                    {r.claimed_name} 处理中
+                    {fmt(t.claimedBy, { name: r.claimed_name })}
                   </p>
                 )}
                 {r.status === 1 && r.handled_name && (
                   <p className="text-[11px]">
-                    {r.handled_name} 处理于{" "}
-                    {r.handled_at
-                      ? new Date(r.handled_at).toLocaleString("zh-CN")
-                      : "—"}
+                    {fmt(t.handledBy, {
+                      name: r.handled_name,
+                      at: r.handled_at
+                        ? new Date(r.handled_at).toLocaleString(
+                            dateLocale(locale),
+                          )
+                        : "—",
+                    })}
                   </p>
                 )}
               </td>
@@ -148,10 +154,10 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                             await api.post("/api/v1/admin/reports/claim", {
                               report_id: r.id,
                             });
-                          }, "已认领，处理中")
+                          }, t.claimed)
                         }
                       >
-                        认领
+                        {t.claimBtn}
                       </button>
                     )}
                     <button
@@ -164,10 +170,10 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                             note: rpNote.trim(),
                           });
                           setRpNote("");
-                        }, "已处置并通知举报人")
+                        }, t.acted)
                       }
                     >
-                      处置
+                      {t.actBtn}
                     </button>
                     <button
                       className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-sub"
@@ -179,10 +185,10 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                             note: rpNote.trim(),
                           });
                           setRpNote("");
-                        }, "已驳回并通知举报人")
+                        }, t.dismissed)
                       }
                     >
-                      驳回
+                      {t.dismissBtn}
                     </button>
                     {r.status === 2 && (
                       <button
@@ -192,15 +198,15 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                             await api.post("/api/v1/admin/reports/release", {
                               report_id: r.id,
                             });
-                          }, "已释放回队列")
+                          }, t.released)
                         }
                       >
-                        释放
+                        {t.releaseBtn}
                       </button>
                     )}
                   </>
                 ) : (
-                  <span className="text-sub">已处理</span>
+                  <span className="text-sub">{t.done}</span>
                 )}
               </td>
             </tr>
@@ -208,7 +214,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
           {(reports ?? []).length === 0 && (
             <tr>
               <td colSpan={6} className="py-6 text-center text-sub">
-                {reports === null ? "加载失败或无权限" : "暂无举报"}
+                {reports === null ? t.loadFail : t.empty}
               </td>
             </tr>
           )}

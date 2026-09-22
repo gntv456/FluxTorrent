@@ -21,7 +21,7 @@ import {
 import { MedalHeldPanel } from "./admin-medals-held";
 import type { MedalRow, UserMedalRow } from "./admin-medals-shared";
 import { MedalForm } from "./admin-medals-form";
-import { GET_TYPE } from "./admin-medals-shared";
+import { getTypeLabels } from "./admin-medals-shared";
 
 /** 第八轮 P2-7：勋章管理（好学站 system/medals 简化口径）
  *  字典 CRUD + 全站持有浏览 + 回收（授予入口在用户详情页）。
@@ -41,7 +41,8 @@ const LIMITED_CHIP_CLS =
   "ml-1 rounded-full bg-coral/20 px-1.5 text-[10px] text-danger";
 
 export function AdminMedals() {
-  const { currency } = useI18n();
+  const { currency, dict } = useI18n();
+  const GET_TYPE = getTypeLabels(dict.adminMedals.getType);
   const [rows, setRows] = useState<MedalRow[]>([]);
   const [held, setHeld] = useState<UserMedalRow[]>([]);
   const [heldUid, setHeldUid] = useState("");
