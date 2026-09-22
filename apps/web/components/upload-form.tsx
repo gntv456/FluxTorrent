@@ -166,10 +166,13 @@ export function UploadForm() {
       if (body.code !== 0) {
         setMsg(dict.errors[body.code] ?? body.message ?? dict.upload.fail);
       } else {
-        setMsg(fmt(dict.upload.success, { id: body.data.id }));
-        if (fileRef.current) fileRef.current.value = "";
-        setFileName("");
-        setDescr("");
+        // 发布成功直接进详情页预览（0159 用户反馈）：仅提示不跳转时用户
+        // 不知道去哪看；待审种对本人可见（get_torrent 口径）
+        const newId = body.data.id;
+        setMsg(fmt(dict.upload.success, { id: newId }));
+        setTimeout(() => {
+          window.location.href = `/torrent/${newId}`;
+        }, 900);
       }
     } catch {
       setMsg(dict.upload.networkError);

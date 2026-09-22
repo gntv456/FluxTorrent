@@ -5,10 +5,11 @@ import { TorrentManage } from "@/components/torrent-manage";
 import { PromoBuyButton } from "@/components/promo-buy-button";
 import { SnatchList } from "@/components/snatch-list";
 import { FileTree } from "@/components/file-tree";
-import { TorrentTags } from "@/components/torrent-tags";
+import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
 import { Descr, Spec, Fold } from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
 import { TorrentSubtitles } from "@/components/torrent-subtitles";
+import { TorrentPeers } from "@/components/torrent-peers";
 import {
   Comments,
   GroupVersions,
@@ -31,6 +32,17 @@ interface FileItem {
   size: number;
 }
 
+/** GET /torrents/{id}/aggregate 响应（批次三 BFF；契约收录进 domain-types 待后续批次） */
+interface Aggregate {
+  torrent: TorrentListItem;
+  detail: TorrentDetailExt;
+  files: FileItem[];
+  thanks: ThankItem[];
+  comments: TorrentComment[];
+  nfo: string | null;
+  tags: TagPayload;
+}
+
 export default async function TorrentDetailPage({
   params,
 }: {
@@ -39,35 +51,32 @@ export default async function TorrentDetailPage({
   const { id } = await params;
   const tid = Number(id);
   if (!Number.isFinite(tid)) notFound();
-  let t: TorrentListItem;
+  // 详情页首屏（方案批次三）：一次 /aggregate 带回七块数据，RTT 6 → 1。
+  // 后端对只读辅助块失败降级为空、torrent/detail 失败才 404，语义与旧版等价。
+  // group（publish 模块）下一批并入；subtitles 仍由客户端组件拉取；snatches 懒加载不变。
+  const enc = encodeURIComponent(tid);
+  let agg: Aggregate;
   try {
-    t = await api.get<TorrentListItem>(
-      `/api/v1/torrents/${encodeURIComponent(tid)}`,
-    );
+    agg = await api.get<Aggregate>(`/api/v1/torrents/${enc}/aggregate`);
   } catch {
     notFound();
   }
-  // 扩展数据与评论加载失败不阻塞详情页
-  const enc = encodeURIComponent(tid);
-  const [ext, files, thanks, comments, group] = await Promise.all([
-    api.get<TorrentDetailExt>(`/api/v1/torrents/${enc}/detail`).catch(
-      () => null,
-    ),
-    api
-      .get<FileItem[]>(`/api/v1/torrents/${enc}/files`)
-      .catch(() => [] as FileItem[]),
-    api
-      .get<ThankItem[]>(`/api/v1/torrents/${enc}/thanks`)
-      .catch(() => [] as ThankItem[]),
-    api
-      .get<TorrentComment[]>(`/api/v1/torrents/${enc}/comments`)
-      .catch(() => [] as TorrentComment[]),
-    // 聚合组（0069）：无组/接口失败时静默降级
-    api.get<GroupInfo>(`/api/v1/torrents/${enc}/group`).catch(() => null),
-  ]);
-  const nfo = await api
-    .get<{ nfo: string | null }>(`/api/v1/torrents/${enc}/nfo`)
-    .catch(() => ({ nfo: null }));
+  const t = agg.torrent;
+  const ext = agg.detail;
+  const files = agg.files;
+  const thanks = agg.thanks;
+  const comments = agg.comments;
+  const nfo = { nfo: agg.nfo };
+  // 聚合组（0069）：无组/接口失败时静默降级
+  const group = await api
+    .get<GroupInfo>(`/api/v1/torrents/${enc}/group`)
+    .catch(() => null);
+  // 所属合集（0157）：一种可入多个合集/系列
+  const inCollections = await api
+    .get<{ id: number; kind: string; name: string }[]>(
+      `/api/v1/torrents/${enc}/collections`,
+    )
+    .catch(() => []);
 
   const { dict, locale } = await getDict();
   const d = dict.tdetail;
@@ -219,9 +228,36 @@ export default async function TorrentDetailPage({
         </Fold>
       )}
 
+      {/* ===== 当前在线（tracker swarm 快照：做种/下载者明细，非 staff IP 已脱敏） ===== */}
+      <Fold title={dict.torrents.peersTitle}>
+        <TorrentPeers torrentId={t.id} />
+      </Fold>
+
       {/* ===== 同组版本（0069 聚合组） ===== */}
       {group?.group && group.items.length > 1 && (
         <GroupVersions group={group} dict={dict} />
+      )}
+
+      {/* ===== 所属合集（0157 阶段三聚合层） ===== */}
+      {inCollections.length > 0 && (
+        <section className="td-collections nexus-detail">
+          <h2 className="td-sec-title">{dict.collections.inTitle}</h2>
+          <div className="td-collections__list">
+            {inCollections.map((c) => (
+              <a
+                key={c.id}
+                href={`/collections/${c.id}`}
+                className={`sticker ${
+                  c.kind === "series"
+                    ? "bg-indigo text-white"
+                    : "bg-sun text-ink"
+                }`}
+              >
+                {c.name}
+              </a>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* ===== 文件列表 ===== */}

@@ -3,6 +3,8 @@
 //! upload.rs，聚合组在 group.rs，.torrent 生成下载在 download.rs。
 //! 路由注册沿用 http.rs 的 crate::publish_http::fn 引用（glob re-export）。
 
+mod collections;
+mod descr_image;
 mod download;
 mod group;
 mod ptgen;
@@ -10,6 +12,7 @@ mod upload;
 mod upload_files_promo;
 mod upload_sections;
 
+pub use collections::*;
 pub use download::*;
 pub use group::*;
 pub use ptgen::*;

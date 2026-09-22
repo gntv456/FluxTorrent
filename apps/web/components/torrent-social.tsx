@@ -3,9 +3,15 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import {
+  REPLY_EVENT,
+  type ReplyTarget,
+} from "@/components/comment-reply-button";
 
 /** 感谢 / 收藏 / 评论表单（M07 社区互动，客户端叶子组件）
- *  魔力答谢按钮组对齐馒头详情页口径（+1/+10/+100/+500/+1000/+10000） */
+ *  魔力答谢按钮组对齐馒头详情页口径（+1/+10/+100/+500/+1000/+10000）
+ *  0156 嵌套回复：监听回复按钮的 flux:comment-reply 事件设置目标，
+ *  发表时随 body 带 parent_id 提交，提交/取消后自清 */
 export function TorrentSocial({ torrentId }: { torrentId: number }) {
   const { dict, currency } = useI18n();
   const t = dict.tdetail;
@@ -15,10 +21,22 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hasToken, setHasToken] = useState(false);
+  // 回复目标（0156）：跨种子事件忽略（详情页只有一种子，防御性校验）
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
 
   useEffect(() => {
     setHasToken(hasSessionCookie());
-  }, []);
+    const onReply = (e: Event) => {
+      const d = (e as CustomEvent<ReplyTarget>).detail;
+      if (d?.torrentId === torrentId) setReplyTo(d);
+    };
+    window.addEventListener(REPLY_EVENT, onReply);
+    return () => window.removeEventListener(REPLY_EVENT, onReply);
+  }, [torrentId]);
+
+  function clearReply() {
+    setReplyTo(null);
+  }
 
   async function thank(amount = 0) {
     setBusy(true);
@@ -69,9 +87,11 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
     try {
       await api.post(`/api/v1/torrents/${torrentId}/comments`, {
         body: comment,
+        parent_id: replyTo?.targetId,
       });
       setMsg(dict.torrent.commentOk);
       setComment("");
+      clearReply();
       // RSC 页面整页刷新以带出最新评论列表
       setTimeout(() => location.reload(), 600);
     } catch (e) {
@@ -106,7 +126,23 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
           {bookmarked ? dict.torrent.bookmarked : dict.torrent.bookmark}
         </button>
         <form onSubmit={submitComment} className="flex min-w-0 flex-1 gap-2">
+          {replyTo && (
+            <span className="td-reply-banner">
+              <span>
+                {dict.torrent.replyTo.replace("{user}", replyTo.targetUser)}
+              </span>
+              <button
+                type="button"
+                onClick={clearReply}
+                aria-label={dict.torrent.replyCancel}
+                className="td-reply-banner__x"
+              >
+                ×
+              </button>
+            </span>
+          )}
           <input
+            id="td-comment-input"
             type="text"
             value={comment}
             onChange={(e) => setComment(e.target.value)}

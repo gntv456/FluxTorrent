@@ -2,6 +2,8 @@ import { formatBytes } from "@/lib/format";
 import { Fold } from "@/components/torrent-detail-parts";
 import { GroupSubscribeButton } from "@/components/group-subscribe-button";
 import { CommentDeleteButton } from "@/components/comment-delete-button";
+import { CommentLikeButton } from "@/components/comment-like-button";
+import { CommentReplyButton } from "@/components/comment-reply-button";
 import { dateLocale, type Locale } from "@/i18n/config";
 import type { Dict } from "@/i18n/server";
 import type { TorrentComment } from "@fluxtorrent/domain-types";
@@ -136,7 +138,8 @@ export function Thankers({
   );
 }
 
-/** 评论区（staff 删评按钮常显，无权限由后端 403 兜底） */
+/** 评论区（staff 删评按钮常显，无权限由后端 403 兜底；
+ *  0156 嵌套回复：回复挂根楼层、组内缩进一层平铺 + 「回复 @xxx」标注） */
 export function Comments({
   comments,
   torrentId,
@@ -156,7 +159,10 @@ export function Comments({
         {dict.torrent.commentsTitle.replace("{n}", String(comments.length))}
       </h2>
       {comments.map((c) => (
-        <div key={c.id} className="td-comment">
+        <div
+          key={c.id}
+          className={`td-comment ${c.parent_id ? "td-comment--reply" : ""}`}
+        >
           <div className="td-comment__side">
             <span className="td-comment__avatar" aria-hidden>
               {(c.username ?? "?").slice(0, 1).toUpperCase()}
@@ -173,7 +179,29 @@ export function Comments({
             {/* staff 删评：按钮常显，无权限由后端 403 兜底 */}
             <CommentDeleteButton torrentId={torrentId} commentId={c.id} />
           </div>
-          <p className="td-comment__body">{c.body}</p>
+          <p className="td-comment__body">
+            {c.reply_to_user && (
+              <span className="td-comment__replyto">
+                {dict.torrent.replyTo.replace("{user}", c.reply_to_user)}
+              </span>
+            )}
+            {c.body}
+          </p>
+          <div className="td-comment__ops">
+            <CommentReplyButton
+              target={{
+                torrentId,
+                targetId: c.parent_id ?? c.id,
+                targetUser: c.username ?? "",
+              }}
+            />
+            <CommentLikeButton
+              torrentId={torrentId}
+              commentId={c.id}
+              initialLikes={c.likes ?? 0}
+              initialLiked={Boolean(c.liked_by_me)}
+            />
+          </div>
         </div>
       ))}
       {comments.length === 0 && (

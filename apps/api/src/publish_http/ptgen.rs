@@ -210,14 +210,19 @@ pub(super) const NFO_MAX_BYTES: usize = 1 * 1024 * 1024; // 单文件 1MiB
 
 /// 组装 media 信息 JSON（poster/imdb/mediainfo 三可选键；空则 None）。
 /// 从 upload 主链路外提（拆分时纯搬移）。
+/// 0159 用户反馈：未填封面 URL 时回落「简介里第一张图」（NP/UNIT3D 同口径）。
 pub(super) fn build_media_info(form: &UploadForm) -> Option<serde_json::Value> {
     let mut media_obj = serde_json::Map::new();
-    if let Some(u) = form
+    let poster = form
         .poster
         .as_deref()
         .map(str::trim)
         .filter(|u| !u.is_empty())
-    {
+        .map(str::to_string)
+        .or_else(|| {
+            super::descr_image::first_descr_image(form.descr.as_deref())
+        });
+    if let Some(u) = poster {
         media_obj.insert("poster".into(), serde_json::json!(u));
     }
     if let Some(i) = form

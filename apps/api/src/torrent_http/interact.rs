@@ -22,11 +22,12 @@ async fn create_comment(
     body: web::Json<CommentReq>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let id = torrents::add_comment(
+    let id = torrents::add_comment_as(
         &state.repo.db,
         path.into_inner(),
         auth.id,
         &body.body,
+        body.parent_id,
     )
     .await?;
     Ok(ok(serde_json::json!({ "id": id })))
@@ -79,6 +80,44 @@ async fn delete_comment(
         )
         .await;
     Ok(ok(serde_json::json!({ "deleted": comment_id })))
+}
+
+/// 评论点赞切换（0155 评论增强）：已赞 → 取消；未赞 → 点赞。
+/// 不许赞自己的评论（错误信息友好，竞品通行口径）；并发幂等由 PK 兜底。
+#[post("/torrents/{id}/comments/{cid}/like")]
+async fn toggle_comment_like(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<(i64, i64)>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let (torrent_id, comment_id) = path.into_inner();
+    let author: Option<i64> = sqlx::query_scalar(
+        "SELECT user_id FROM comments WHERE id = $1 AND torrent_id = $2",
+    )
+    .bind(comment_id)
+    .bind(torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .flatten();
+    let Some(author_id) = author else {
+        return Err(DomainError::NotFound(comment_id));
+    };
+    if author_id == auth.id {
+        return Err(DomainError::Validation("不能给自己的评论点赞".into()));
+    }
+    let db = &state.repo.db;
+    let liked =
+        super::comments_like::toggle_like(db, comment_id, auth.id).await?;
+    let likes: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM comment_likes WHERE comment_id = $1",
+    )
+    .bind(comment_id)
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "liked": liked, "likes": likes })))
 }
 
 #[derive(Deserialize)]
