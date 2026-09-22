@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-sp-mode="scroll">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>种子页六维强化方案 · 最强 / 最精细 / 性能最好 / 最顺手 / 体验最好 / 维护方便</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/plus-jakarta-sans@5.1.0/700.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5.3.0/chinese-simplified-700.css">
+<style>
+:root{
+  --accent:#0075de; --accent-soft:rgba(0,117,222,.10); --accent-line:rgba(0,117,222,.28);
+  --accent2:#533afd; --danger:#c0392b; --warn:#a86400; --ok:#0f6e56;
+  --bg:#f7f7f6; --panel:#fff; --surface:#f1f3f5;
+  --text:#171a1f; --body:rgba(0,0,0,.88); --muted:#646b77; --faint:#8b929e;
+  --line:rgba(0,0,0,.09); --line-soft:rgba(0,0,0,.055);
+  --radius:14px; --radius-sm:8px;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px -12px rgba(16,24,40,.14);
+  --font-display:"Plus Jakarta Sans","Noto Serif SC",Georgia,serif;
+  --font-body:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--body);font-family:var(--font-body);
+  font-size:15.5px;line-height:1.75;-webkit-font-smoothing:antialiased}
+.progress{position:sticky;top:0;height:2px;z-index:60;background:transparent}
+.progress__bar{height:2px;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.hero{padding:84px 0 52px;border-bottom:1px solid var(--line);
+  background:radial-gradient(760px 320px at 10% -12%,rgba(0,117,222,.10),transparent 70%),
+    radial-gradient(520px 260px at 90% 6%,rgba(83,58,253,.07),transparent 72%)}
+.hero-inner{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,.85fr);
+  gap:48px;align-items:end;max-width:1180px;margin:0 auto;padding:0 24px}
+.eyebrow{margin:0 0 16px;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.hero h1{margin:0 0 18px;font-family:var(--font-display);font-size:clamp(32px,4.8vw,54px);
+  line-height:1.1;font-weight:700;letter-spacing:-.03em;color:var(--text)}
+.hero-sum{margin:0;max-width:44em;font-size:clamp(15px,1.6vw,17px);line-height:1.7;color:var(--muted)}
+.hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.hero-tags span{font-size:12.5px;padding:5px 11px;border-radius:999px;background:var(--panel);
+  border:1px solid var(--line);color:var(--muted)}
+.hero-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.metric{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow)}
+.metric:first-child{grid-column:1/-1}
+.m-num{display:block;font-family:var(--font-display);font-size:38px;line-height:1;
+  font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.m-label{display:block;margin-top:8px;font-size:12.5px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:228px minmax(0,1fr);gap:44px;
+  max-width:1180px;margin:0 auto;padding:40px 24px 96px;align-items:start}
+.toc{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 48px);overflow:auto}
+.toc__title{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);
+  font-weight:700;margin:0 0 12px}
+.toc a{display:block;padding:7px 12px;margin:2px 0;border-radius:var(--radius-sm);color:var(--muted);
+  text-decoration:none;font-size:13px;line-height:1.45;border-left:2px solid transparent;transition:.18s}
+.toc a:hover{background:var(--surface);color:var(--text)}
+.toc a.is-active{color:var(--accent);background:var(--accent-soft);border-left-color:var(--accent);font-weight:600}
+main{min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:32px 34px;margin:0 0 32px;box-shadow:var(--shadow);overflow-wrap:anywhere}
+.card h2{margin:0 0 20px;font-family:var(--font-display);font-size:clamp(22px,2.5vw,30px);
+  line-height:1.24;font-weight:700;letter-spacing:-.022em;color:var(--text);
+  padding-bottom:16px;border-bottom:1px solid var(--line-soft)}
+.card h3{margin:34px 0 12px;font-family:var(--font-display);font-size:19px;font-weight:700;
+  letter-spacing:-.012em;color:var(--text)}
+.card h3:first-of-type{margin-top:6px}
+.card h4{margin:22px 0 8px;font-size:14.5px;font-weight:700;color:var(--accent)}
+.card p{margin:12px 0}
+.card ul,.card ol{margin:12px 0;padding-left:0;list-style:none}
+.card li{position:relative;margin:9px 0;padding-left:18px}
+.card ul>li::before{content:"";position:absolute;left:2px;top:.72em;width:5px;height:5px;
+  border-radius:50%;background:var(--accent-line)}
+.card ol{counter-reset:num}
+.card ol>li{padding-left:42px;min-height:28px}
+.card ol>li::before{counter-increment:num;content:counter(num);position:absolute;left:0;top:2px;
+  width:26px;height:26px;border-radius:var(--radius-sm);background:var(--accent-soft);color:var(--accent);
+  font-family:var(--font-display);font-size:13.5px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;font-variant-numeric:tabular-nums}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-line)}
+code{background:var(--accent-soft);color:#0b5fa5;border:1px solid rgba(0,117,222,.12);
+  padding:1px 5px;border-radius:5px;font-family:var(--font-mono);font-size:.85em;
+  word-break:break-word;overflow-wrap:anywhere}
+.callout{margin:18px 0;padding:16px 20px;border-left:3px solid var(--accent);background:var(--surface);
+  border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.callout p{margin:6px 0}
+.callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+.callout strong{color:var(--text)}
+.callout--warn{border-left-color:var(--warn);background:rgba(168,100,0,.06)}
+.callout--ok{border-left-color:var(--ok);background:rgba(15,110,86,.06)}
+.table-wrap{overflow-x:auto;margin:18px 0;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--panel)}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
+th,td{padding:11px 14px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top;line-height:1.55}
+th{position:sticky;top:0;background:var(--surface);color:var(--text);font-weight:700;font-size:12.5px;
+  white-space:nowrap;z-index:2;border-bottom:1px solid var(--line)}
+tbody tr:nth-child(even){background:rgba(0,0,0,.016)}
+tbody tr:hover{background:var(--accent-soft)}
+td code{font-size:11.5px}
+.sev{display:inline-flex;align-items:center;justify-content:center;min-width:34px;padding:2px 8px;
+  border-radius:6px;font-size:11.5px;font-weight:700}
+.sev--hi{background:rgba(192,57,43,.12);color:#a02b20}
+.sev--mid{background:rgba(168,100,0,.13);color:#8a5300}
+.sev--low{background:rgba(0,0,0,.05);color:#6b7280}
+.goals{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:18px 0}
+.goal{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:18px}
+.goal h4{margin:0 0 6px;font-size:14.5px;color:var(--accent)}
+.goal p{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.phase{border:1px solid var(--line);border-radius:var(--radius-sm);padding:22px 24px;margin:20px 0;
+  background:var(--panel)}
+.phase__head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding-bottom:12px;
+  border-bottom:1px solid var(--line-soft);margin-bottom:14px}
+.phase__tag{font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:4px 12px}
+.phase__title{margin:0;font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--text)}
+.phase__goal{margin:0;font-size:13px;color:var(--muted);margin-left:auto}
+.check{list-style:none;padding:0;margin:10px 0}
+.check li{position:relative;padding-left:30px;margin:8px 0}
+.check li::before{content:"";position:absolute;left:2px;top:.32em;width:15px;height:15px;
+  border:1.5px solid var(--accent-line);border-radius:4px;background:#fff}
+.dod{background:var(--surface);border-radius:var(--radius-sm);padding:14px 18px;margin-top:14px;
+  font-size:13px;color:var(--muted)}
+.dod strong{color:var(--text)}
+.tl{border-left:2px solid var(--accent-line);margin:20px 0 20px 8px;padding-left:22px}
+.tl__item{position:relative;margin:0 0 20px}
+.tl__item::before{content:"";position:absolute;left:-29px;top:.42em;width:11px;height:11px;border-radius:50%;
+  background:var(--accent);border:3px solid var(--bg)}
+.tl__item h4{margin:0 0 4px}
+.tl__item p{margin:2px 0;font-size:13.5px;color:var(--muted)}
+footer{color:var(--faint);font-size:12.5px;padding:20px 0 0;border-top:1px solid var(--line)}
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .6s cubic-bezier(.2,0,0,1),transform .6s cubic-bezier(.2,0,0,1)}
+.reveal.in{opacity:1;transform:none}
+@media (max-width:1080px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:0;padding:32px 20px 72px}
+  .toc{display:none}
+  .hero{padding:60px 0 36px}
+  .hero-inner{grid-template-columns:minmax(0,1fr);gap:30px;padding:0 20px}
+  .card{padding:24px 20px;margin-bottom:24px}
+}
+@media (max-width:640px){
+  .m-num{font-size:30px}
+  .card ol>li{padding-left:34px}
+  .goals{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+}
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress__bar" id="pb"></div></div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div>
+      <p class="eyebrow">FluxTorrent · 种子页强化方案</p>
+      <h1>六个形容词，<br>翻译成能验收的指标</h1>
+      <p class="hero-sum">「最强、最精细、性能最好、最顺手、体验最好、维护方便」只有落成可测的数字、可点的文件、可跑的门禁才有意义。本方案基于对当前代码的三路审计（后端查询链路 / 前端体验 / 工程运维），把六个目标拆成 3 个阶段、26 个动作，每一条都写明改哪里、怎么证明改好了。</p>
+      <div class="hero-tags">
+        <span>索引与 keyset 分页</span><span>详情页 BFF 合并</span><span>促销口径收口</span>
+        <span>三视图列表</span><span>实时筛选</span><span>磁力 · peers · 书签</span>
+        <span>契约漂移门禁</span><span>cargo-chef 分层构建</span>
+      </div>
+    </div>
+    <div class="hero-metrics">
+      <div class="metric"><span class="m-num" data-count="10">10</span><span class="m-label">详情页 HTTP 端点（可压到 3）</span></div>
+      <div class="metric"><span class="m-num" data-count="16">16</span><span class="m-label">详情页 SQL 来往（目标 ≤4）</span></div>
+      <div class="metric"><span class="m-num" data-count="3">3</span><span class="m-label">促销 SQL 实现份数（目标 1）</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<aside class="toc">
+  <p class="toc__title">目录</p>
+  <a href="#s0" data-target="s0">0. 先把六个词定义清楚</a>
+  <a href="#s1" data-target="s1">1. 现状体检（带证据）</a>
+  <a href="#s2" data-target="s2">2. 阶段一 · 正确性与地基</a>
+  <a href="#s3" data-target="s3">3. 阶段二 · 形态与体验</a>
+  <a href="#s4" data-target="s4">4. 阶段三 · 精细与生态</a>
+  <a href="#s5" data-target="s5">5. 验收门禁与度量表</a>
+  <a href="#s6" data-target="s6">6. 不做清单（控范围）</a>
+</aside>
+
+<main>
+
+<section id="s0" class="reveal card">
+<h2>0. 先把六个词定义清楚</h2>
+<p>没有指标的目标只是口号。下面这张表是本方案的总纲——<strong>每条动作最终都要能对回这里的某一格</strong>。</p>
+<div class="goals">
+  <div class="goal"><h4>最强</h4><p>能力覆盖面不输任何竞品：列表 3 视图、筛选维度对齐 UNIT3D、详情页有 peers / 磁力 / 书签 / 相似 / 聚合。</p></div>
+  <div class="goal"><h4>最精细</h4><p>筛选粒度到字段级：促销多选、健康度四态、体积/时间/种子/下载/完成数区间、动态维度、chips 逐项可移除。</p></div>
+  <div class="goal"><h4>性能最好</h4><p>排序查询走索引（EXPLAIN 无 Sort）、详情页 SQL ≤4 条、热门页命中缓存 &gt;90%、列表 P95 &lt;120ms。</p></div>
+  <div class="goal"><h4>最顺手</h4><p>任何操作 &lt;100ms 内有反馈，翻页不丢行，批量/快捷键/hover 预览可用，键盘可达。</p></div>
+  <div class="goal"><h4>体验最好</h4><p>三态（加载/空/错误）齐备，移动端零横向溢出，图片不抖，首屏可交互。</p></div>
+  <div class="goal"><h4>维护方便</h4><p>同一语义只有一份实现、关键谓词有单测、契约漂移自动拦截、改一行 Rust 不全量重编译。</p></div>
+</div>
+<div class="callout callout--warn">
+  <p><strong>第 0 步（必须先做）：建立性能基线。</strong>仓库当前<b>没有</b>慢查询日志、<code>pg_stat_statements</code>、EXPLAIN 脚本、压测脚本（审计 §5 全项「未找到」）。没有基线就无法证明「性能最好」，也无法在改造后证明没有退化——所以基线采集是本方案的第一件事，不是最后一件。</p>
+</div>
+</section>
+
+<section id="s1" class="reveal card">
+<h2>1. 现状体检（三张表，全部带代码证据）</h2>
+
+<h3>1.1 性能与正确性</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>严重度</th><th>问题</th><th>证据</th><th>后果</th></tr></thead>
+<tbody>
+<tr><td><span class="sev sev--hi">高</span></td><td>非默认排序的游标分页会丢行：翻页用 <code>t.id &lt; cursor</code>，但排序键是「置顶 + 排序列 + id」</td><td><code>torrents/list_noclamp_as.rs:190</code>（游标）vs <code>:53-67</code>（ORDER BY）；代码注释自述「退化为前 N 截断」</td><td>按做种数排序时，id 更大但排得更前的种子永远不出现</td></tr>
+<tr><td><span class="sev sev--hi">高</span></td><td>ORDER BY 首列 <code>sticky_expr</code> 是 GREATEST/CASE 计算列 → 任何索引都无法服务排序</td><td><code>list_noclamp_as.rs:47</code></td><td>seeders/size/completed/created/name 排序每次都全筛选集 Sort</td></tr>
+<tr><td><span class="sev sev--hi">高</span></td><td><code>files</code> 表没有 <code>torrent_id</code> 索引（只有 path 的 trgm 索引）</td><td>迁移 grep：仅 <code>0019_search_trgm.sql:9</code>；<code>torrent_http/detail.rs:140-142</code> 按 torrent_id 查</td><td>每打开一个详情页对全站文件表顺序扫描</td></tr>
+<tr><td><span class="sev sev--hi">高</span></td><td>详情页 10 个端点 / 约 14–16 条 SQL，几乎全部零读缓存</td><td>前端 <code>app/(main)/torrent/[id]/page.tsx:44-70</code> + 三个水合后再发的组件；读缓存仅 <code>torrent_http/list.rs:180,203</code>（列表纯净首屏）与 <code>misc_handlers.rs:127-138</code></td><td>单次详情页 10 次 RTT、DB 压力随并发线性增长</td></tr>
+<tr><td><span class="sev sev--hi">高</span></td><td>精确 <code>count(*)</code> 每次列表请求必跑，且列表缓存只覆盖「无筛选无搜索默认排序」</td><td><code>list_noclamp_as.rs:248-284</code>；缓存命中条件 <code>torrent_http/list.rs:147-179</code></td><td>分类浏览/搜索等主路径无缓存 + 每次多做一次全量聚合</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>促销命中 SQL 有三份实现：常量 <code>PROMO_MATCH</code>、列表 SELECT 内联（且重复写了两遍）、RSS 自己一份</td><td><code>torrents/list.rs:23-28</code>、<code>list_noclamp_as.rs:156-173</code>、<code>rss_http.rs:70-99</code></td><td>改促销作用域要改三处，易出现「列表显示免费但筛不出来」</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td><code>thanks</code> 表无 <code>torrent_id</code> 索引</td><td>迁移 grep 无命中；<code>torrent_http/detail.rs:154-159</code></td><td>每详情页一次顺序扫描</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>缺排序索引：<code>(seeders,id)</code> / <code>(size,id)</code> / <code>(times_completed,id)</code> 均不存在</td><td>迁移 grep 仅 <code>0001_init.sql:115-119</code> 等，无排序列复合索引</td><td>排序永远 Sort 节点</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>1.2 体验与形态</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>严重度</th><th>问题</th><th>证据</th><th>后果</th></tr></thead>
+<tbody>
+<tr><td><span class="sev sev--hi">高</span></td><td>多选筛选的 chips 移除会清空整组：分类/多维各只生成一个 chip，删 key 而非删值</td><td><code>torrents-chips.ts:48-56,109-120</code> + <code>torrents-utils.ts:51</code></td><td>选了 3 个分类，点任意 chip 全清空</td></tr>
+<tr><td><span class="sev sev--hi">高</span></td><td>详情页缺 5 个高频能力：磁力、peers 列表、书签/收藏、相似推荐、截图画廊</td><td>竞品对比 §5；<code>download-button.tsx</code> 无 magnet；<code>bookmark_count</code> 仅存在于类型</td><td>与 UNIT3D/PTP 的差距集中在这五项</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>列表只有一种表格视图；每页固定 20 不可调</td><td><code>torrents-table.tsx</code> 单视图；<code>torrent_http/list.rs:179,197,212</code> 硬编码 20，<code>torrents/types.rs:166</code> 上限 50</td><td>海报墙/卡片缺失，重度用户无法调页大小</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>排序/翻页/筛选全是整页 SSR 跳转，无 pending 指示</td><td><code>torrents-table.tsx:43</code>、<code>page.tsx:175-182</code>、<code>page.tsx:17 force-dynamic</code></td><td>慢网下像「点了没反应」</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>三态不全：tags 静默不渲染、subtitles 错误与空态不可区分</td><td><code>torrent-tags.tsx:59</code>、<code>torrent-subtitles.tsx:55</code></td><td>出错时用户以为本来没数据</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>每次列表加载重拉 3 份低频字典（site-profile / section-dict / tags-dict），<code>cache:"no-store"</code></td><td><code>page.tsx:37-48</code> + <code>lib/api-client.ts:92</code></td><td>每次导航多 3 次 API</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>详情页 nfo 串行在 <code>Promise.all</code> 之后，多一次 RTT</td><td><code>[id]/page.tsx:68-70</code></td><td>首屏被最慢的串行请求拖住</td></tr>
+<tr><td><span class="sev sev--low">低</span></td><td>详情海报用原始 <code>&lt;img&gt;</code>，无 <code>loading</code>/<code>decoding</code>/优化器</td><td><code>torrent-detail-parts.tsx:125</code></td><td>首屏 eager 拉外链图</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>1.3 可维护性与运维</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>严重度</th><th>问题</th><th>证据</th><th>后果</th></tr></thead>
+<tbody>
+<tr><td><span class="sev sev--hi">高</span></td><td>列表/计数核心谓词零 Rust 单测（<code>torrents/</code> 下无 tests）</td><td><code>torrents/list_noclamp_as.rs</code>、<code>torrents/list.rs:53-127</code>；CI <code>.github/workflows/build-test.yml:26</code> 只跑 workspace 现有测试</td><td>筛选 bug 只能靠慢速 e2e 或线上发现</td></tr>
+<tr><td><span class="sev sev--hi">高</span></td><td>改一行 Rust 就全 workspace 重编译：Dockerfile 无 cargo-chef 依赖分层</td><td><code>docker/api.Dockerfile:4-7</code></td><td>迭代周期被镜像构建时间绑架</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>前后端契约手写同步，注释声称的「CI openapi drift 校验」实际不存在</td><td><code>packages/domain-types/package.json:7-13</code>、<code>index.ts:4</code>；workflows 无 drift 任务</td><td>后端加字段前端静默不报错</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>详情页响应模型（<code>TorrentDetailRow</code> 全家桶）未进共享契约</td><td><code>torrents/types.rs:41-59</code> 无对应 TS 类型</td><td>核心页契约漂移风险最高</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td><code>site_settings</code> 每请求直查库，无通用缓存（只有 module_flags 30s / user_status 5s）</td><td><code>state.rs:6-25</code></td><td>高频配置项放大 PG 读</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>web vitest 已写但未进 CI 门禁；无 playwright</td><td><code>apps/web/package.json:10</code> vs <code>build-test.yml:31-64</code></td><td>前端回归靠手点</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>迁移在事务内执行 → 不能 <code>CREATE INDEX CONCURRENTLY</code>；大表建索引阻塞写</td><td><code>main.rs:106-109</code>；<code>0142_missing_hot_indexes.sql:14-17</code> 注释明写</td><td>升级窗口需人工挑低峰</td></tr>
+<tr><td><span class="sev sev--mid">中</span></td><td>worker 健康检查被禁用，异常卡死无告警</td><td><code>docker/docker-compose.yml:140-142</code></td><td>后台作业静默停摆</td></tr>
+<tr><td><span class="sev sev--low">低</span></td><td>无 ADR（架构决策记录）机制，关键取舍散落在注释与审查报告</td><td><code>_doc/</code> 无 adr 命名文件</td><td>新人难追溯「为什么这样写」</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<p><strong>一句话体检结论：</strong>架构代际是领先的（Redis Stream 异步计费、sqlx 参数化、动态维度 sections、NP 兼容层），但<b>种子页这一层的「最后一公里」欠账集中</b>——排序无索引、翻页会丢行、详情页 10 个端点无缓存、促销逻辑三份实现、关键查询没有测试。这五个问题都不需要重构架构，属于「同一套架构内把工做细」。</p>
+</div>
+</section>
+
+<section id="s2" class="reveal card">
+<h2>2. 阶段一 · 正确性与地基</h2>
+<p>目标：<b>先把错的改对、把慢的根因拔掉</b>。这一阶段不新增任何用户可见功能，但所有后续阶段都建在它上面。</p>
+
+<div class="phase">
+  <div class="phase__head">
+    <span class="phase__tag">P0 · 动作 1</span>
+    <h3 class="phase__title" style="margin:0">补齐三个缺失索引（最高性价比）</h3>
+    <p class="phase__goal">成本 1 条迁移 · 收益：消除两次全表扫描</p>
+  </div>
+  <p><code>files(torrent_id)</code>、<code>thanks(torrent_id)</code>，以及为排序准备的复合索引。受「迁移在事务内执行」约束（<code>0142</code> 注释），不能 <code>CONCURRENTLY</code>，因此分两步：先在低峰窗口建，或在迁移前用带外脚本预建。</p>
+  <div class="dod"><strong>验收：</strong>对 <code>/torrents/{id}/files</code> 与 <code>/thanks</code> 各做一次 <code>EXPLAIN (ANALYZE)</code>，计划里必须出现 <code>Index Scan</code> 而非 <code>Seq Scan</code>；前后耗时数字记入基线表。</div>
+</div>
+
+<div class="phase">
+  <div class="phase__head">
+    <span class="phase__tag">P0 · 动作 2</span>
+    <h3 class="phase__title" style="margin:0">修游标分页：keyset 与 ORDER BY 对齐</h3>
+    <p class="phase__goal">成本 1 处 SQL + 1 处游标编解码 · 收益：修正确性 bug</p>
+  </div>
+  <p>当前翻页只比 <code>t.id</code>，而排序键是「置顶 + 排序列 + id」。改法：游标携带 <code>(sticky_rank, sort_value, id)</code> 三元组，谓词改为字典序比较 <code>(a,b,c) &lt; ($1,$2,$3)</code>；同时把 <code>sticky_expr</code> 从计算列改名为<b>物化列</b> <code>sticky_rank smallint</code>（由置顶变更处与 worker 维护，到期回落），这样排序与索引才能真正对齐。</p>
+  <div class="dod"><strong>验收：</strong>写一组「全部种子按 seeders 排序，逐页抓取直到结束」的测试，断言累计抓取的 id 集合 == 一次性全量查询的 id 集合，且无重复、无遗漏。这条测试进 CI。</div>
+</div>
+
+<div class="phase">
+  <div class="phase__head">
+    <span class="phase__tag">P0 · 动作 3</span>
+    <h3 class="phase__title" style="margin:0">排序走索引 + count 降级</h3>
+    <p class="phase__goal">成本 1 条迁移 + 1 处 SQL · 收益：列表页最贵的两处开销</p>
+  </div>
+  <ul>
+    <li>为常用排序建复合索引：<code>(sticky_rank DESC, seeders DESC, id DESC)</code>、<code>(sticky_rank DESC, size DESC, id DESC)</code>、<code>(sticky_rank DESC, created_at DESC, id DESC)</code>、<code>(sticky_rank DESC, times_completed DESC, id DESC)</code>。</li>
+    <li><code>count(*)</code> 三档降级：首页/无筛选 → 沿用缓存；带筛选 → 优先用估算（<code>reltuples</code> 或对采样集算）；仅当用户滑到末页或点「精确总数」时才做精确 count。</li>
+    <li>把「列表缓存」从「只有纯净首屏」扩到 <code>(filter_hash, sort, cursor)</code> 维度，短 TTL（15–30s），写路径按 <code>torrent:*</code> 前缀失效。</li>
+  </ul>
+  <div class="dod"><strong>验收：</strong>五种排序各跑 <code>EXPLAIN (ANALYZE, BUFFERS)</code>，计划中不得出现 <code>Sort</code> 节点（除 comments 排序）；列表 P95 与基线对比不劣化，目标 &lt;120ms。</div>
+</div>
+
+<div class="phase">
+  <div class="phase__head">
+    <span class="phase__tag">P0 · 动作 4</span>
+    <h3 class="phase__title" style="margin:0">详情页合并为 BFF 聚合端点</h3>
+    <p class="phase__goal">成本 1 个 handler + 前端改一处 · 收益：10 次 RTT → 3 次</p>
+  </div>
+  <p>新增 <code>GET /api/v1/torrents/{id}/aggregate</code>，把详情页首屏需要的数据（种子主体 + 详情扩展 + 文件列表 + 感谢计数与首屏 + 评论首屏 + 分组 + NFO + 标签）在<b>一次请求内并行折叠</b>；字幕与下载记录保持独立（它们依赖模块开关与懒加载）。顺带消除 comments/thanks 计数在两处重复聚合的问题。</p>
+  <div class="dod"><strong>验收：</strong>详情页首屏 HTTP 请求数 ≤3（文档 + 聚合 + 静态资源）；<code>nfo</code> 不再串行；首屏 TTFB 数字进基线表。</div>
+</div>
+
+<div class="phase">
+  <div class="phase__head">
+    <span class="phase__tag">P0 · 动作 5</span>
+    <h3 class="phase__title" style="margin:0">促销口径收口成唯一来源</h3>
+    <p class="phase__goal">成本 1 个 SQL 片段模块 · 收益：消灭一类漂移 bug</p>
+  </div>
+  <p>把「促销命中 + 优先级排序」抽成<b>唯一的 SQL 片段构造函数</b>（一处定义 kind 优先级与 scope 展开），列表 SELECT、count、RSS、compat 层全部引用它；同时把列表里重复两遍的 <code>promotion</code> / <code>promotion_ends_at</code> 子查询合并为一次 <code>LATERAL</code> 取两列。</p>
+  <div class="dod"><strong>验收：</strong>全仓 grep 促销优先级 <code>CASE p.kind</code> 只应出现在一处；RSS 与网页对同一筛选集合返回的种子集合一致（加一条对照测试）。</div>
+</div>
+
+<div class="phase">
+  <div class="phase__head">
+    <span class="phase__tag">P0 · 动作 6</span>
+    <h3 class="phase__title" style="margin:0">修 chips 逐项移除 + 三态补齐 + 等待态</h3>
+    <p class="phase__goal">成本 3 处前端小改 · 收益：用户体感立刻变好</p>
+  </div>
+  <ul>
+    <li>多选参数（分类、<code>sec_*</code>、未来的促销多选）每个值生成独立 chip，移除时<b>只删该值</b>，串空则删 key（改 <code>withParam</code> 增加「删值」语义）。</li>
+    <li>补三态：<code>torrent-tags</code> 不再静默 <code>return null</code>；<code>torrent-subtitles</code> 区分空与错误并给重试；列表接口失败不再降级成「无数据」而是显示错误态与重试。</li>
+    <li>排序/翻页/筛选加 <code>useTransition</code> 或路由 pending，保证 &lt;100ms 内有视觉反馈（骨架/进度条/链接态）。</li>
+  </ul>
+  <div class="dod"><strong>验收：</strong>手工回归「选 3 个分类 → 逐一点掉 chip」应逐个减少；断网/500 时三个客户端组件都出现明确错误提示而非空白。</div>
+</div>
+
+<div class="phase">
+  <div class="phase__head">
+    <span class="phase__tag">P0 · 动作 7</span>
+    <h3 class="phase__title" style="margin:0">地基：基线 + 单测 + 契约门禁</h3>
+    <p class="phase__goal">成本 3 项工程配置 · 收益：让后面所有阶段可被验证</p>
+  </div>
+  <ul>
+    <li><b>观测基线</b>：开启 <code>pg_stat_statements</code> 与慢查询日志（<code>log_min_duration_statement</code>），加一个 <code>scripts/explain_torrent.sh</code> 一键输出列表/详情关键查询的执行计划，产物入 <code>_doc/性能基线.md</code>。</li>
+    <li><b>单测</b>：为 <code>extra_preds</code> / 列表谓词 / 计数谓词写 Rust 单测（覆盖每个筛选维度单用 + 组合 + 边界），并把 web 的 vitest 接进 CI（<code>build-test.yml</code> 加一步）。</li>
+    <li><b>契约</b>：给 <code>domain-types</code> 加最小 drift 校验任务（对比 Rust 枚举/错误码/关键 DTO 字段名），并把 <code>TorrentDetailRow</code> 补进共享契约。</li>
+  </ul>
+  <div class="dod"><strong>验收：</strong>CI 里能看到 4 项新门禁；任意改一个筛选谓词若破坏语义，单测必须红；后端改字段名而不改 TS，drift 任务必须红。</div>
+</div>
+</section>
+
+<section id="s3" class="reveal card">
+<h2>3. 阶段二 · 形态与体验</h2>
+<p>目标：<b>把「有维度但不顺手」变成「顺手得像 UNIT3D」</b>。这一阶段几乎全是前端形态改造 + 缓存层，后端查询不再动刀。</p>
+
+<div class="timeline tl">
+  <div class="tl__item">
+    <h4>2.1 列表三视图：表格 / 卡片 / 海报墙</h4>
+    <p>数据侧 <code>t.poster</code> 已经在列表查询里返回（<code>list_noclamp_as.rs:175</code>），所以这是纯前端与 URL 状态改造：新增 <code>view</code> 参数（<code>table|card|poster</code>），海报墙走非对称网格 + 懒加载 + 骨架占位。视图偏好记入用户设置。</p>
+  </div>
+  <div class="tl__item">
+    <h4>2.2 筛选实时化：URL 状态 + 软导航</h4>
+    <p>保持「所有筛选在 URL」这个已有优势，把提交式表单换成客户端组件 + <code>router.replace</code>（带 debounce），业务逻辑仍在 API 侧。不引入 Livewire 式全栈耦合。</p>
+  </div>
+  <div class="tl__item">
+    <h4>2.3 每页条数可配 + 无限滚动可选</h4>
+    <p>默认 20 / 上限 50 从硬编码移入 <code>site_settings</code>（运营可调），前端提供 20/50/100 选项。</p>
+  </div>
+  <div class="tl__item">
+    <h4>2.4 详情页五个缺口：磁力 / peers / 书签 / 相似 / 截图</h4>
+    <p><b>磁力</b>：有 info_hash + passkey announce，成本最低，先做。<br>
+    <b>书签</b>：<code>bookmark_count</code> 字段已在类型里，只差 UI 与列表筛选项。<br>
+    <b>peers 列表</b>：实时 peer 只在 tracker 进程内存（<code>apps/tracker/src/peers/table.rs</code>），API 无桥接——需要新增「tracker 暴露 swarm 快照（Redis key 或内部 HTTP）→ API 查询」链路，属于<b>新基建</b>，放在本阶段末尾。<br>
+    <b>相似推荐</b>：先用零新基建的口径（同分类 + 同标签 + 同 IMDb）上线，后续再评估向量/外部元数据。<br>
+    <b>截图</b>：需要 screenshots 表 + 上传入口 + 画廊组件。</p>
+  </div>
+  <div class="tl__item">
+    <h4>2.5 缓存层补全</h4>
+    <p>详情页静态部分（简介/文件/MediaInfo/NFO/标签/分组）按 <code>torrent:{id}:*</code> 做 30s 缓存 + 写失效；字典类（site-profile / section-dict / tags-dict）用 <code>unstable_cache</code> 长 TTL；<code>site_settings</code> 加通用 TTL 缓存（参照 module_flags 的 30s 模式）。</p>
+  </div>
+  <div class="tl__item">
+    <h4>2.6 图片与首屏</h4>
+    <p>海报/封面接入 <code>next/image</code>（或至少补 <code>width/height</code> + <code>decoding="async"</code> + 首屏 <code>priority</code>），列表卡片图走固定比例容器防抖。</p>
+  </div>
+</div>
+<div class="dod"><strong>阶段产出定义：</strong>列表页支持三视图切换且偏好落库；任一筛选操作页面不整刷；详情页有磁力与书签；热门详情页缓存命中率 &gt;90%（Prometheus 加一个 cache hit/miss 计数器）。</div>
+</section>
+
+<section id="s4" class="reveal card">
+<h2>4. 阶段三 · 精细与生态</h2>
+<p>目标：<b>把「能用」推到「最强最精细」，并把运维代价压下来</b>。</p>
+<ul>
+  <li><b>筛选粒度对齐竞品</b>：促销改多选、健康度扩四态（含濒危/墓地口径）、补「我做种中 / 我下载中 / 未下载」、书签与心愿筛选项。</li>
+  <li><b>列表行内的信息密度</b>：促销倒计时 hover、用户自己的下载进度条、内部组/官种徽标（对齐 UNIT3D 与华语站 U2 的进度四态）。</li>
+  <li><b>聚合层</b>：从「同组版本」扩展到 Collection（策展合集）与 Series（系列），让「作品」真正成为一等公民。</li>
+  <li><b>评论增强</b>：点赞、排序、嵌套回复（当前是平铺）。</li>
+  <li><b>批量与键盘</b>：多选批量下载（先做「批量复制下载链接」低成本版）、快捷键（<code>/</code> 聚焦搜索、<code>j/k</code> 移动、<code>d</code> 下载）、hover 预览卡片。</li>
+  <li><b>DOM 语义契约</b>：给列表加稳定的语义类（<code>table.torrents</code> / <code>data-torrent-id</code> / <code>pro_free</code>），让油猴脚本生态零成本适配——这是竞品调研里被打分最高的一条隐性资产。</li>
+  <li><b>构建提速</b>：<code>docker/api.Dockerfile</code> 引入 cargo-chef 分层（依赖层与代码层分离），把「改一行 Rust」的镜像重建从全量重编译降到只编业务 crate。</li>
+  <li><b>观测与压测</b>：列表/详情加直方图指标（P50/P95/P99）、慢查询 Top N 面板、<code>scripts/bench_torrent.py</code> 并发压测脚本进 CI（只跑冒烟档）。</li>
+  <li><b>运维堵漏</b>：worker 健康检查（写一个 <code>/healthz</code> 或心跳 key）、迁移前 LF/checksum 预检、ADR 目录（<code>_doc/adr/NNN-*.md</code>）把本次关键取舍记录下来。</li>
+</ul>
+<div class="dod"><strong>阶段产出定义：</strong>列表信息密度达到 UNIT3D 同级；详情页五大缺口全部补齐（peers 视新基建进度）；发布一版 ghcr 镜像用 cargo-chef 后，实测镜像构建时间显著下降并记入文档。</div>
+</section>
+
+<section id="s5" class="reveal card">
+<h2>5. 验收门禁与度量表</h2>
+<h3>5.1 每个阶段都要跑的门禁</h3>
+<ul class="check">
+  <li><code>cargo fmt --check</code> + <code>cargo check</code> + <code>cargo test --workspace</code>（现有）</li>
+  <li><b>新增</b>：种子查询谓词单测（阶段一起）</li>
+  <li><b>新增</b>：<code>EXPLAIN</code> 断言脚本——关键查询计划中不得出现 <code>Seq Scan</code>（files/thanks）与 <code>Sort</code>（列表排序）</li>
+  <li><b>新增</b>：契约 drift 校验（domain-types ↔ Rust）</li>
+  <li><b>新增</b>：web vitest 接入 CI（现有测试，只是没跑）</li>
+  <li>既有：<code>pnpm lint</code> / <code>tsc --noEmit</code> / <code>line_limit_guard</code>（300 行门禁）/ <code>i18n_guard</code></li>
+  <li>人工：三端（1440/820/390）无横向溢出、控制台 0 error</li>
+</ul>
+
+<h3>5.2 度量表（现状 → 目标）</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>指标</th><th>现状</th><th>目标</th><th>如何测</th></tr></thead>
+<tbody>
+<tr><td>详情页 HTTP 端点数</td><td>10</td><td>≤3</td><td>浏览器网络面板计数</td></tr>
+<tr><td>详情页 SQL 来往</td><td>14–16</td><td>≤4</td><td><code>pg_stat_statements</code> 差值</td></tr>
+<tr><td>files / thanks 查询计划</td><td>Seq Scan</td><td>Index Scan</td><td><code>EXPLAIN (ANALYZE)</code></td></tr>
+<tr><td>排序查询计划</td><td>Sort 节点</td><td>无 Sort</td><td>同上，五种排序各一</td></tr>
+<tr><td>翻页正确性</td><td>非默认排序丢行</td><td>零丢失零重复</td><td>逐页抓取集合比对（进 CI）</td></tr>
+<tr><td>列表 P95</td><td>未测（无基线）</td><td>&lt;120ms</td><td>压测脚本 + metrics 直方图</td></tr>
+<tr><td>热门详情页缓存命中率</td><td>0（无缓存）</td><td>&gt;90%</td><td>Prometheus 计数器</td></tr>
+<tr><td>促销 SQL 实现份数</td><td>3</td><td>1</td><td>grep <code>CASE p.kind</code></td></tr>
+<tr><td>核心查询单测覆盖</td><td>0</td><td>每个筛选维度 ≥1 用例</td><td><code>cargo test</code></td></tr>
+<tr><td>镜像增量构建</td><td>改一行全量重编译</td><td>只编业务 crate</td><td>cargo-chef 前后各记一次耗时</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout callout--ok">
+<p><strong>交付节奏建议：</strong>阶段一单独一次发布（纯修错与地基，风险可控、收益立刻可感）；阶段二按「列表形态 / 详情缺口 / 缓存」拆 2–3 次发布；阶段三按能力块各自独立发布。每一阶段结束都把度量表的数字重新填一遍，只认数字，不认体感。</p>
+</div>
+</section>
+
+<section id="s6" class="reveal card">
+<h2>6. 不做清单（控范围）</h2>
+<p>「最强」的反面是范围失控。以下明确<b>不做</b>或<b>延后</b>，理由写清：</p>
+<ul>
+  <li><b>不引入第二套运行时</b>（不上 Livewire 式全栈耦合、不引入 SPA 框架）：理由见竞品调研——双轨并存是 NP 最大的技术债源。</li>
+  <li><b>不引入外部搜索引擎</b>（Meilisearch/ES）作为主搜：pg_trgm + GIN 在十万级够用，等到出现明确的搜索质量投诉再评估，且必须保留 pg_trgm 兜底。</li>
+  <li><b>不做向量相似推荐</b>作为第一步：先用零基建口径（同分类/标签/IMDb）验证用户是否真的用，再决定是否上重武器。</li>
+  <li><b>不把计费逻辑移回同步路径</b>：任何「实时性」优化都不得让 announce 重新直写 DB。</li>
+  <li><b>不做 big-bang 重写</b>：所有改造必须可在单次发布内回滚。</li>
+  <li><b>不抄 hack 式插件生态</b>：需要扩展点就做契约化模块，不走 XBTIT 那种「升级要重打补丁」的路。</li>
+</ul>
+<footer>
+  FluxTorrent · 种子页六维强化方案 · 2026-09-22 · 证据来自后端查询链路 / 前端体验 / 工程运维三路代码审计（file:line 已逐条标注），未实测项已明确标为「未测」。
+</footer>
+</section>
+
+</main>
+</div>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var cards = document.querySelectorAll('.card');
+  if (reduce || !('IntersectionObserver' in window)) {
+    cards.forEach(function(c){ c.classList.add('in'); });
+  } else {
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {rootMargin:'0px 0px -8% 0px', threshold:0.05});
+    cards.forEach(function(c){ io.observe(c); });
+  }
+  var bar = document.getElementById('pb');
+  function prog(){
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  addEventListener('scroll', prog, {passive:true}); prog();
+  var links = [].slice.call(document.querySelectorAll('.toc a'));
+  if ('IntersectionObserver' in window && links.length) {
+    var obs = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (!e.isIntersecting) return;
+        links.forEach(function(a){ a.classList.toggle('is-active', a.dataset.target === e.target.id); });
+      });
+    }, {rootMargin:'-15% 0px -70% 0px'});
+    document.querySelectorAll('main section[id]').forEach(function(s){ obs.observe(s); });
+  }
+  var nums = document.querySelectorAll('.m-num[data-count]');
+  function count(el){
+    var target = parseInt(el.dataset.count, 10), start = null, dur = 900;
+    function step(ts){
+      if (start === null) start = ts;
+      var p = Math.min((ts - start) / dur, 1);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  if (reduce || !('IntersectionObserver' in window)) { nums.forEach(count); }
+  else {
+    var nio = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ count(e.target); nio.unobserve(e.target); } });
+    }, {threshold:0.4});
+    nums.forEach(function(n){ nio.observe(n); });
+  }
+})();
+</script>
+</body>
+</html>
