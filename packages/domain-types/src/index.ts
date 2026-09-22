@@ -178,13 +178,21 @@ export interface TorrentListItem {
   created_at: string;
 }
 
-/** 种子评论（M07） */
+/** 种子评论（M07；0155 点赞 + 0156 嵌套回复） */
 export interface TorrentComment {
   id: number;
   torrent_id: number;
   username: string | null;
   body: string;
   created_at: string;
+  /** 点赞数 */
+  likes?: number;
+  /** 当前用户是否已赞 */
+  liked_by_me?: boolean;
+  /** 指向根评论 id；顶层评论为 null */
+  parent_id?: number | null;
+  /** 被回复人用户名（「回复 @xxx」显示） */
+  reply_to_user?: string | null;
 }
 
 export interface UserPublic {
@@ -329,6 +337,28 @@ export interface Forum {
   can_write?: boolean;
   can_create?: boolean;
   can_mod?: boolean;
+}
+
+/** 论坛分区/节点（0115 建表；0154 起前台/后台均返回，且含空分区）。
+ *  ⚠️ 后端一度用 Rust 元组返回，序列化成「数组的数组」→ 前端按字段取值恒 undefined。 */
+export interface ForumCategory {
+  id: number;
+  name: string;
+  sort: number;
+  /** 前台可见性；false 时非 staff 看不到该分区及其版块 */
+  visible: boolean;
+  /** 当前视角下该分区可读的版块数（与 forums 列表同套谓词） */
+  forums: number;
+}
+
+/** 版块精简项（`GET /forums/boards`）：只给「移动主题到…」下拉用。
+ *
+ *  与 `Forum` 的区别：单条 SQL 搞定、不含 `forum_access()` 逐版块判定，
+ *  也不带 latest_* / posts。可读性与分区可见性的过滤口径与 `/forums` 一致。 */
+export interface BoardBrief {
+  id: number;
+  name: string;
+  category_name: string | null;
 }
 
 export interface Topic {
