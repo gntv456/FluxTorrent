@@ -38,7 +38,7 @@ pub(super) async fn subtitle_request_claim(
     // （abandon 端点只发通知不拦，禁令在此处真正生效；staff 不受限）。
     if auth.class_id < 90 {
         let recent: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM audit_log WHERE user_id = $1 AND action = \
+            "SELECT count(*) FROM audit_log WHERE actor_id = $1 AND action = \
              'subreq.abandon' AND created_at > now() - interval '30 days'",
         )
         .bind(auth.id)
@@ -216,7 +216,7 @@ pub(super) async fn subtitle_request_abandon(
         .audit(Some(auth.id), "subreq.abandon", Some(rid))
         .await;
     let recent: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM audit_log WHERE user_id = $1 AND action = \
+        "SELECT count(*) FROM audit_log WHERE actor_id = $1 AND action = \
          'subreq.abandon' AND created_at > now() - interval '30 days'",
     )
     .bind(auth.id)

@@ -158,7 +158,7 @@ peer_id = b"-e2e01-" + bytes([0x51] * 12)
 
 def announce(up_bytes, down_bytes, left=0, event=""):
     q = (f"/announce/{pk}?info_hash=%{{ih}}&peer_id=%{{pid}}&port=51411"
-         "&uploaded={up_bytes}&downloaded={down_bytes}&left={left}"
+         f"&uploaded={up_bytes}&downloaded={down_bytes}&left={left}"
          "&numwant=0&compact=1")
     q = q.replace("%{ih}", urllib.request.quote(bytes.fromhex(ih), safe=""))
     q = q.replace("%{pid}", urllib.request.quote(peer_id, safe=""))
@@ -179,8 +179,8 @@ deadline = time.time() + 130
 tl1 = tl0
 while time.time() < deadline:
     tl1 = psql(
-        "SELECT count(*) FROM traffic_ledger WHERE user_id=1 AND"
-            "torrent_id={tid}")
+        "SELECT count(*) FROM traffic_ledger WHERE user_id=1 AND "
+            f"torrent_id={tid}")
     if tl1 != "0":
         break
     time.sleep(10)
@@ -188,12 +188,12 @@ check("3c announce→Redis→worker 落 traffic_ledger", tl1 != "0",
     f"ledger行 {tl0}→{tl1}")
 
 row = psql(
-    "SELECT delta_up FROM traffic_ledger WHERE user_id=1 AND torrent_id={tid}"
+    f"SELECT delta_up FROM traffic_ledger WHERE user_id=1 AND torrent_id={tid} "
         "ORDER BY id DESC LIMIT 1")
 check("3d 计费增量正确(512MiB)", row == str(512 * 1024 * 1024), f"delta_up={row}")
 sn = psql(
-    "SELECT completed_at IS NOT NULL FROM snatches WHERE user_id=1 AND"
-        "torrent_id={tid}")
+    "SELECT completed_at IS NOT NULL FROM snatches WHERE user_id=1 AND "
+        f"torrent_id={tid}")
 check("3e snatch 完成态记录", sn == "t", f"completed={sn}")
 
 # ---------- 4. 促销计费（free） ----------
@@ -201,10 +201,10 @@ check("3e snatch 完成态记录", sn == "t", f"completed={sn}")
 ins = psql(
     "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at,"
         "source)"
-           "VALUES ('torrent', {tid}, 'free', now() - interval '1 minute',"
+           f"VALUES ('torrent', {tid}, 'free', now() - interval '1 minute',"
                "now() + interval '1 hour', 'manual') RETURNING id")
 promo_active = psql(
-    "SELECT count(*) FROM promotions WHERE torrent_id={tid} AND kind='free'"
+    f"SELECT count(*) FROM promotions WHERE torrent_id={tid} AND kind='free'"
         "AND starts_at<=now() AND ends_at>now()")
 check("4a-前置 促销行已入库且当前生效", ins != "" and promo_active == "1",
     f"insert返回={ins} active={promo_active}")
@@ -217,8 +217,8 @@ deadline = time.time() + 130
 tl_cnt1 = tl_cnt0
 while time.time() < deadline:
     tl_cnt1 = psql(
-        "SELECT count(*) FROM traffic_ledger WHERE user_id=1 AND"
-            "torrent_id={tid}")
+        "SELECT count(*) FROM traffic_ledger WHERE user_id=1 AND "
+            f"torrent_id={tid}")
     if tl_cnt1 != tl_cnt0:
         break
     time.sleep(10)
@@ -226,7 +226,7 @@ sn_down = psql(
     f"SELECT downloaded FROM snatches WHERE user_id=1 AND torrent_id={tid}")
 new = psql(
     "SELECT delta_down FROM traffic_ledger WHERE user_id=1 AND"
-        "torrent_id={tid} ORDER BY id DESC LIMIT 1")
+        f"torrent_id={tid} ORDER BY id DESC LIMIT 1")
 # free 生效的判定：要么新增流水行且 delta_down=0（伴随非零 delta_up 时才会成行），
 # 要么无新行（双增量为 0）但 snatch.downloaded 已累计原始值 —— 两者皆证明 down_mult=0
 free_ok = (tl_cnt1 != tl_cnt0 and new == "0") or (
@@ -238,8 +238,8 @@ check("4a free 窗口下载增量计 0", free_ok,
 announce(0, 0, event="stopped")
 time.sleep(1)
 psql(
-    "DELETE FROM promotions WHERE torrent_id={tid} AND starts_at > now() -"
-        "interval '10 minutes'")
+    f"DELETE FROM promotions WHERE torrent_id={tid} AND starts_at > "
+        "now() - interval '10 minutes'")
 psql(f"DELETE FROM snatches WHERE user_id=1 AND torrent_id={tid}")
 psql(f"DELETE FROM traffic_ledger WHERE user_id=1 AND torrent_id={tid}")
 psql(f"DELETE FROM torrents WHERE id={tid}")

@@ -104,8 +104,14 @@ async fn staff_mark(
         crate::authz::perm::STAFF_MESSAGE,
     )
     .await?;
+    // 审计修复（P1）：原单行 SQL 的续行反斜杠丢失，"END" 与 "WHERE" 粘连
+    // （ENDWHERE）导致语法错 500。折行展开修复。
     let n = sqlx::query(
-        "UPDATE staffmessages SET answered = 1, answered_by = COALESCE(answered_by, $2), answered_at = COALESCE(answered_at, now()), ticket_status = CASE WHEN ticket_status < 2 THEN 2 ELSE ticket_status END\
+        "UPDATE staffmessages SET answered = 1, \
+         answered_by = COALESCE(answered_by, $2), \
+         answered_at = COALESCE(answered_at, now()), \
+         ticket_status = CASE WHEN ticket_status < 2 THEN 2 \
+         ELSE ticket_status END \
          WHERE id = ANY($1) AND answered = 0",
     )
     .bind(&body.ids)

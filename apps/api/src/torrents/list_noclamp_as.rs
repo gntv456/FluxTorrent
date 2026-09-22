@@ -173,6 +173,7 @@ pub async fn list_torrents_noclamp_as(
                   ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion_ends_at,
                t.media_info->>'rating' AS rating,
                t.media_info->>'poster' AS poster,
+               t.imdb_id,
                t.created_at
         FROM torrents t
         LEFT JOIN users u ON u.id = t.owner_id
