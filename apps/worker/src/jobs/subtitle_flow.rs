@@ -4,7 +4,10 @@
 
 use sqlx::PgPool;
 
-/// 幂等发火花（事务内流水+余额同护栏；与 achievement_grant 同口径）
+/// 幂等发火花（事务内流水+余额同护栏；与 achievement_grant 同口径）。
+/// 幂等护栏只在本事务 INSERT 上判断：事务内已插入的行对本事务可见，
+/// 若 UPDATE 仍带同款 NOT EXISTS 会恒 0 行 → 整体回滚 → 支付静默丢失
+/// （链路缺陷 #10：自动验收赏金从未入账）。INSERT 未插入 = 已发过，跳过。
 async fn spark_award(
     db: &PgPool,
     uid: i64,
@@ -14,10 +17,14 @@ async fn spark_award(
 ) {
     let mut tx = match db.begin().await {
         Ok(t) => t,
-        Err(_) => return,
+        Err(e) => {
+            tracing::warn!(error = %e, idem, "spark_award begin failed");
+            return;
+        }
     };
-    let ok1 = sqlx::query(
-        "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key) \
+    let inserted = sqlx::query(
+        "INSERT INTO spark_ledger \
+         (id, user_id, amount, kind, idempotency_key) \
          SELECT nextval('spark_ledger_id_seq'), $1, $2, $3, $4 \
          WHERE NOT EXISTS (SELECT 1 FROM spark_ledger \
          WHERE idempotency_key = $4)",
@@ -29,20 +36,27 @@ async fn spark_award(
     .execute(&mut *tx)
     .await
     .map(|r| r.rows_affected() > 0)
-    .unwrap_or(false);
-    let ok2 = sqlx::query(
-        "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1 \
-         AND NOT EXISTS (SELECT 1 FROM spark_ledger \
-         WHERE idempotency_key = $3)",
+    .unwrap_or_else(|e| {
+        tracing::warn!(error = %e, idem, "spark_award insert failed");
+        false
+    });
+    if !inserted {
+        let _ = tx.rollback().await;
+        return;
+    }
+    let balanced = sqlx::query(
+        "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1",
     )
     .bind(uid)
     .bind(amount)
-    .bind(idem)
     .execute(&mut *tx)
     .await
     .map(|r| r.rows_affected() > 0)
-    .unwrap_or(false);
-    if ok1 && ok2 {
+    .unwrap_or_else(|e| {
+        tracing::warn!(error = %e, idem, "spark_award balance failed");
+        false
+    });
+    if balanced {
         let _ = tx.commit().await;
     } else {
         let _ = tx.rollback().await;

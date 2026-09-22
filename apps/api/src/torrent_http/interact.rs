@@ -161,6 +161,9 @@ pub(super) struct TorrentEditReq {
     pub(super) grade_id: Option<i32>,
     #[serde(default)]
     pub(super) edition_id: Option<i32>,
+    /// IMDB id（0150：后台/编辑表单直填；非法形态会被 manage 层过滤为 None）
+    #[serde(default)]
+    pub(super) imdb_id: Option<String>,
 }
 
 /// 请求补种（NP takereseed.php：死种 → PM 全体完成者，900s 限频）

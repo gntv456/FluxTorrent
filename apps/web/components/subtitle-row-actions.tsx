@@ -1,25 +1,30 @@
 "use client";
 
+import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { SubtitleRow } from "@/components/subtitle-board-shared";
+import { SubtitleEditDialog } from "@/components/subtitle-edit-dialog";
 
 /** 字幕行操作列（从 subtitle-board-table.tsx 拆出，300 行门禁）：
- *  举报 ⚑ + 本人/管理可见的 ✎ 编辑 / ✕ 删除。canModify 判定随 props 注入。 */
+ *  举报 ⚑ + 本人/管理可见的 ✎ 编辑（0150 起弹全元数据表单）/ ✕ 删除。 */
 
 export function SubtitleRowActions({
   s,
   canModify,
   onMsg,
   onReload,
+  langs,
 }: {
   s: SubtitleRow;
   canModify: boolean;
   onMsg: (m: string) => void;
   onReload: () => void;
+  langs?: { code: string; name: string; flag: string }[];
 }) {
   const { dict } = useI18n();
   const t = dict.subtitles;
+  const [editing, setEditing] = useState(false);
   return (
     <td className="text-center">
       <button
@@ -60,26 +65,7 @@ export function SubtitleRowActions({
             className="subtitles-report"
             title={t.editLabel}
             aria-label={t.editLabel}
-            onClick={async () => {
-              // 行内编辑（NP 口径精简）：标题；语言留给下轮
-              const title = window.prompt(
-                t.editPrompt ?? "title",
-                s.title,
-              );
-              if (title === null) return;
-              try {
-                await api.patch(
-                  `/api/v1/subtitles/${s.id}`,
-                  { title },
-                );
-                onMsg(t.editOk ?? "ok");
-                onReload();
-              } catch (e) {
-                onMsg(
-                  e instanceof Error ? e.message : "fail",
-                );
-              }
-            }}
+            onClick={() => setEditing(true)}
           >
             ✎
           </button>
@@ -105,6 +91,28 @@ export function SubtitleRowActions({
           >
             ✕
           </button>
+          {editing && (
+            <SubtitleEditDialog
+              sid={s.id}
+              langs={langs}
+              initial={{
+                title: s.title,
+                fps: "",
+                source: "",
+                producer: "",
+                proofreader: "",
+                author_name: "",
+                machine_translated: s.ai_state !== "human",
+                lang: s.lang ?? "",
+              }}
+              onClose={() => setEditing(false)}
+              onSaved={() => {
+                setEditing(false);
+                onMsg(t.editOk ?? "ok");
+                onReload();
+              }}
+            />
+          )}
         </>
       )}
     </td>

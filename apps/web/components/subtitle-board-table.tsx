@@ -38,10 +38,12 @@ export function SubtitleListTable({
   rows,
   onMsg,
   onReload,
+  langs,
 }: {
   rows: SubtitleRow[];
   onMsg: (m: string) => void;
   onReload: () => void;
+  langs?: { code: string; name: string; flag: string }[];
 }) {
   const { dict } = useI18n();
   const t = dict.subtitles;
@@ -82,8 +84,19 @@ export function SubtitleListTable({
               </td>
               <td>
                 <a
-                  href={`/api/v1/subtitles/${s.id}/download`}
+                  href={`/subtitles/${s.id}`}
                   className="font-bold"
+                  onClick={(e) => {
+                    // 修饰键（新窗/命令）放行默认导航；普通点击由 Next 接管
+                    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+                  }}
+                >
+                  {s.title}
+                </a>
+                <a
+                  href={`/api/v1/subtitles/${s.id}/download`}
+                  className="ml-1.5 text-xs text-sub"
+                  title={t.downloadTitle ?? "download"}
                   target="_blank"
                   rel="noreferrer"
                   onClick={async (e) => {
@@ -114,7 +127,7 @@ export function SubtitleListTable({
                     }
                   }}
                 >
-                  {s.title}
+                  ⬇
                 </a>
                 {s.verified && (
                   <span
@@ -194,6 +207,7 @@ export function SubtitleListTable({
                 canModify={canModify(s)}
                 onMsg={onMsg}
                 onReload={onReload}
+                langs={langs}
               />
             </tr>
           ))}

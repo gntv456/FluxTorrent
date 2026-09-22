@@ -16,6 +16,8 @@ pub struct TorrentEdit<'a> {
     pub medium_id: Option<i32>,
     pub grade_id: Option<i32>,
     pub edition_id: Option<i32>,
+    /// IMDB id（0150：后台/编辑表单直填；TT+7~8 位数字，空串清空）
+    pub imdb_id: Option<&'a str>,
 }
 
 pub async fn edit_torrent(
@@ -48,6 +50,7 @@ pub async fn edit_torrent(
             medium_id = COALESCE($7, medium_id),
             grade_id = COALESCE($8, grade_id),
             edition_id = COALESCE($9, edition_id),
+            imdb_id = COALESCE($10, imdb_id),
             approval_status = 0,
             mtime = now()
         WHERE id = $1
@@ -62,6 +65,7 @@ pub async fn edit_torrent(
     .bind(e.medium_id)
     .bind(e.grade_id)
     .bind(e.edition_id)
+    .bind(e.imdb_id)
     .execute(db)
     .await
     .map_err(|err| DomainError::Internal(err.into()))?

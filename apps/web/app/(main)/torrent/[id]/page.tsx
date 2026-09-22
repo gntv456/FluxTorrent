@@ -189,6 +189,7 @@ export default async function TorrentDetailPage({
               descr={ext?.descr ?? null}
               anonymous={t.anonymous}
               seeders={t.seeders}
+              imdbId={t.imdb_id ?? null}
             />
           </div>
         </div>
