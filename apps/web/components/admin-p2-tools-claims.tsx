@@ -4,6 +4,8 @@ import { BTN_SM_GHOST, INPUT_CARD, INPUT_GROW } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { dateLocale, fmt } from "@/i18n/config";
 
 /** 保种认领面板（从 admin-p2-tools.tsx 按域拆出，300 门禁）：
  *  认领记录浏览（状态/关键词筛选 + 分页）与移出保种区。 */
@@ -20,9 +22,9 @@ interface ClaimRow {
   exit_reason: string | null;
 }
 
-function fmtDeltaSec(sec: number): string {
-  if (sec <= 0) return "0 小时";
-  return `${(sec / 3600).toFixed(1)} 小时`;
+function fmtDeltaSec(sec: number, unit: string): string {
+  if (sec <= 0) return `0 ${unit}`;
+  return `${(sec / 3600).toFixed(1)} ${unit}`;
 }
 
 function fmtBytes(n: number): string {
@@ -32,6 +34,9 @@ function fmtBytes(n: number): string {
 }
 
 export function Claims({ flash }: { flash: (m: string) => void }) {
+  const { dict, locale } = useI18n();
+  const at = dict.adminClaims;
+  const c = dict.common;
   const [rows, setRows] = useState<ClaimRow[]>([]);
   const [state, setState] = useState("all");
   const [q, setQ] = useState("");
@@ -68,29 +73,29 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
           }}
           className={INPUT_CARD}
         >
-          <option value="all">全部</option>
-          <option value="active">认领中</option>
-          <option value="unclaimed">待认领</option>
-          <option value="exited">已移出</option>
+          <option value="all">{at.optAll}</option>
+          <option value="active">{at.optActive}</option>
+          <option value="unclaimed">{at.optUnclaimed}</option>
+          <option value="exited">{at.optExited}</option>
         </select>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="种子名 / 认领人"
+          placeholder={at.qPh}
           className={INPUT_GROW}
         />
       </div>
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">种子</td>
-            <td className="colhead">做种数</td>
-            <td className="colhead">认领人</td>
-            <td className="colhead">认领时间</td>
-            <td className="colhead">认领以来做种</td>
-            <td className="colhead">认领以来上传</td>
-            <td className="colhead">状态</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thTorrent}</td>
+            <td className="colhead">{at.thSeeders}</td>
+            <td className="colhead">{at.thClaimedBy}</td>
+            <td className="colhead">{at.thClaimedAt}</td>
+            <td className="colhead">{at.thSeedSince}</td>
+            <td className="colhead">{at.thUploadSince}</td>
+            <td className="colhead">{at.thStatus}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -104,16 +109,22 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
               <td>{r.seeders}</td>
               <td>{r.claimed_by ?? "—"}</td>
               <td className="text-xs">
-                {r.claimed_at ? new Date(r.claimed_at).toLocaleString() : "—"}
+                {r.claimed_at
+                  ? new Date(r.claimed_at).toLocaleString(dateLocale(locale))
+                  : "—"}
               </td>
-              <td>{r.claimed_by ? fmtDeltaSec(r.seed_time_delta) : "—"}</td>
+              <td>
+                {r.claimed_by
+                  ? fmtDeltaSec(r.seed_time_delta, at.hoursUnit)
+                  : "—"}
+              </td>
               <td>{r.claimed_by ? fmtBytes(r.uploaded_delta) : "—"}</td>
               <td className="text-xs">
                 {r.exited_at
-                  ? `已移出（${r.exit_reason ?? "manual"}）`
+                  ? fmt(at.exitedWith, { reason: r.exit_reason ?? "manual" })
                   : r.claimed_by
-                    ? "认领中"
-                    : "待认领"}
+                    ? at.claiming
+                    : at.waiting}
               </td>
               <td className="text-right">
                 {!r.exited_at && (
@@ -124,14 +135,14 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
                         await api.post("/api/v1/admin/claims/release", {
                           torrent_id: r.torrent_id,
                         });
-                        flash(`已移出 #${r.torrent_id}`);
+                        flash(fmt(at.released, { id: r.torrent_id }));
                         load();
                       } catch (e) {
-                        flash(e instanceof ApiError ? e.message : "操作失败");
+                        flash(e instanceof ApiError ? e.message : at.opFail);
                       }
                     }}
                   >
-                    移出保种区
+                    {at.release}
                   </button>
                 )}
               </td>
@@ -140,22 +151,22 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
         </tbody>
       </table>
       <div className="flex items-center justify-between text-sm text-sub">
-        <span>共 {total} 条</span>
+        <span>{fmt(c.totalItems, { n: total })}</span>
         <div className="flex gap-2">
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
             className={BTN_SM_GHOST}
           >
-            上一页
+            {c.prevPage}
           </button>
-          <span>第 {page} 页</span>
+          <span>{fmt(c.pageX, { n: page })}</span>
           <button
             disabled={rows.length < 20}
             onClick={() => setPage(page + 1)}
             className={BTN_SM_GHOST}
           >
-            下一页
+            {c.nextPage}
           </button>
         </div>
       </div>

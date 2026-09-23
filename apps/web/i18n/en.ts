@@ -2758,6 +2758,19 @@ usertools: {
       audio_codec: "Audio codec", standard: "Standard", team: "Team",
       source: "Source", processing: "Processing",
     } as Record<string, string>,
+    // Dimension dictionary + category modes (admin-sections-dict)
+    dictTitle: "Dimension dictionary", fKind: "Dimension",
+    phName: "Name", phSort: "Sort",
+    added: "Added", add: "Add", saved: "Saved", deleted: "Deleted",
+    thId: "ID", thName: "Name", thSort: "Sort", thAction: "Actions",
+    renamePrompt: "New name", rename: "Rename", del: "Delete",
+    empty: "No dictionary entries yet",
+    catsTitle: "Category modes / auto approval",
+    catsHint:
+      "When auto approval is on, torrents published to that category are approved instantly (Auto Approval Settings model).",
+    thCats: "Category", thTorrents: "Torrents", thMode: "Mode",
+    thAuto: "Auto approval", autoOn: "Auto approval enabled",
+    autoOff: "Auto approval disabled",
   },
   /** User detail page: action flashes & confirms (admin-user-detail-*) */
   userDetail: {
@@ -2990,6 +3003,50 @@ usertools: {
     adjustBtn: "Adjust upload etc.",
     dlDisableBtn: "Disable downloads", dlEnableBtn: "Restore downloads",
     suspendBtn: "Suspend account", unsuspendBtn: "Unsuspend",
+    // Filter bar (admin-users-filters)
+    fId: "ID", fClass: "Class", fStatus: "Status", fEnabled: "Enabled",
+    fDownload: "Download", fSuspended: "Suspended", fSearch: "Search",
+    optAll: "All", optYes: "Yes", optNo: "No", optHas: "Has", optNot: "None",
+    stNormal: "Normal", stMuted: "Muted", stBanned: "Banned",
+    qPh: "Username / email", search: "Search",
+  },
+  /** Preserve claims (admin-p2-tools-claims) */
+  adminClaims: {
+    optAll: "All", optActive: "Claimed", optUnclaimed: "Unclaimed",
+    optExited: "Exited", qPh: "Torrent name / claimer",
+    thTorrent: "Torrent", thSeeders: "Seeders", thClaimedBy: "Claimed by",
+    thClaimedAt: "Claimed at", thSeedSince: "Seeding since claim",
+    thUploadSince: "Uploaded since claim", thStatus: "Status",
+    thAction: "Actions",
+    exitedWith: "Exited ({reason})", claiming: "Claimed",
+    waiting: "Unclaimed",
+    released: "Released #{id}", opFail: "Action failed",
+    release: "Remove from preserve", hoursUnit: "h",
+  },
+  /** Invite admin (admin-invites) */
+  adminInvites: {
+    statusLabels: {
+      "0": "Unused", "1": "Used", "2": "Expired", "3": "Revoked",
+    } as Record<string, string>,
+    loadFail: "Load failed", fUid: "Inviter UID", qAll: "Empty = all",
+    fStatus: "Status", optAll: "All",
+    thId: "ID", thInviter: "Inviter", thCode: "Invite code",
+    thStatus: "Status", thUsedBy: "Registered user",
+    thExpires: "Expires", empty: "No invite codes yet",
+  },
+  /** Custom menu items (admin-p2-tools-menus) */
+  adminMenus: {
+    locLabels: {
+      sidebar: "Sidebar", footer: "Footer", topbar: "Top bar",
+    } as Record<string, string>,
+    added: "Menu item added", opFail: "Action failed",
+    newTitle: "New custom menu item", fLoc: "Location", fName: "Name",
+    fUrl: "URL", save: "Save",
+    thId: "ID", thLoc: "Location", thName: "Name", thUrl: "URL",
+    thSort: "Sort", thEnabled: "Enabled", thAction: "Actions",
+    yes: "Yes", no: "No", enable: "Enable", disable: "Disable",
+    toggled: "Enabled", untoggled: "Disabled",
+    deleted: "Deleted", delFail: "Delete failed", del: "Delete",
   },
   medalRarity: {
     tones: {
