@@ -2706,6 +2706,22 @@ usertools: {
   /** 勋章管理：获取方式（admin-medals 系） */
   adminMedals: {
     getType: { 1: "兑换", 2: "授予", 3: "合成" } as Record<string, string>,
+    // 勋章表单 + 列表（admin-medals / admin-medals-form）
+    formNew: "新建勋章", formEdit: "编辑勋章 #{id}",
+    fAsset: "勋章图片 URL", clearAsset: "清除图片",
+    fName: "名称", fDescr: "说明", fGetType: "获取方式",
+    fPrice: "价格({magic})", fBonus: "魔力加成(%)",
+    fDuration: "有效期(天,空=永久)", fRarity: "稀有度",
+    rarityUnset: "未设置", rarityCustom: "自定义…",
+    fRarityCustom: "自定义稀有度", phRarityCustom: "如 super-rare",
+    fGroup: "分组", limited: "限定", save: "保存", cancel: "取消",
+    loadFail: "加载失败", saved: "已保存", opFail: "操作失败",
+    deleted: "已删除", delFail: "删除失败",
+    thId: "ID", thIcon: "图标", thName: "名称", thGetType: "获取",
+    thRarity: "稀有度", thPrice: "价格", thBonus: "加成%",
+    thDuration: "有效期", thHeld: "持有数", thAction: "操作",
+    limitedChip: "限定", forever: "永久",
+    edit: "编辑", del: "删除", empty: "暂无勋章",
   },
   /** 考核岗位：指标目录（key 与后端 JIXIAO_METRIC_KEYS 白名单对应）。
    *  {magic} 占位符由 metricOptions() 替换为站点货币名。 */
@@ -2780,6 +2796,17 @@ usertools: {
       "「自动过审」打开后，发布到该分类的种子直接过审（Auto Approval Settings 口径）。",
     thCats: "分类", thTorrents: "种子数", thMode: "归属模式",
     thAuto: "自动过审", autoOn: "已开启自动过审", autoOff: "已关闭自动过审",
+    // 介质类型 kinds 区（admin-sections-kinds）
+    kindsTitle: "维度管理",
+    kindsHint:
+      "维度 = 发布表单「质量」行里的一个下拉框（如编码/分辨率/语种）。新增维度后到下方「维度字典」里维护它的选项。发布页「质量」与高级搜索「多维筛选」只显示有选项的维度——无选项的维度会自动隐藏，添加选项后立即出现。",
+    phKind: "维度标识（如 resolution）",
+    phKindLabel: "显示名称（如 分辨率）",
+    kindCreated: "维度已创建", createKind: "新建维度",
+    thKindKey: "标识", thKindLabel: "显示名称", thCount: "选项数",
+    zeroHint: "0（发布页/搜索不显示）",
+    renameKindPrompt: "新显示名称",
+    delKindConfirm: "删除维度「{name}」？其下所有字典选项将被清空",
   },
   /** 用户详情页：管理动作 flash 与确认文案（admin-user-detail-*） */
   userDetail: {
@@ -2998,6 +3025,13 @@ usertools: {
     optAll: "所有", optYes: "是", optNo: "否", optHas: "有", optNot: "无",
     stNormal: "正常", stMuted: "禁言", stBanned: "封禁",
     qPh: "用户名 / 邮箱", search: "搜索",
+    // 列表与批量操作（admin-users-list）
+    batchHint: "批量操作（已选 {n} 个；只能操作等级低于自己的用户）",
+    batchNormal: "批量恢复正常", batchMute: "批量禁言", batchBan: "批量封禁",
+    batchClassLabel: "批量改等级", pickClass: "（选择等级）", run: "执行",
+    thUsername: "用户名", thEmail: "邮箱", thStatus: "状态",
+    thDownload: "下载权限", thSuspended: "挂起", thAction: "操作",
+    detail: "详情",
   },
   /** 保种认领（admin-p2-tools-claims） */
   adminClaims: {
@@ -3033,6 +3067,19 @@ usertools: {
     yes: "是", no: "否", enable: "启用", disable: "停用",
     toggled: "已启用", untoggled: "已停用",
     deleted: "已删除", delFail: "删除失败", del: "删除",
+  },
+  /** Tracker URL 管理（admin-trackers） */
+  adminTrackers: {
+    loadFail: "加载失败", saved: "已保存", opFail: "操作失败",
+    deleted: "已删除", delFail: "删除失败",
+    formNew: "新增 Tracker URL", formEdit: "编辑 #{id}",
+    hint: "默认地址用于新种子 announce 注入；备用地址供下载端容灾切换。",
+    fPriority: "优先级", isDefault: "默认", enabled: "启用",
+    save: "保存", cancel: "取消",
+    thId: "ID", thUrl: "URL", thDefault: "默认", thEnabled: "启用",
+    thPriority: "优先级", thUpdated: "更新时间", thAction: "操作",
+    on: "启用", off: "停用", edit: "编辑", del: "删除",
+    empty: "暂无 Tracker 地址",
   },
   /** 勋章稀有度配色档（值存库，主词表在 medal_rarities 表；此处是后台下拉显示名） */
   medalRarity: {

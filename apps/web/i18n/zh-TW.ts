@@ -2693,6 +2693,22 @@ usertools: {
   /** 勳章管理：取得方式（admin-medals 系） */
   adminMedals: {
     getType: { 1: "兌換", 2: "授予", 3: "合成" } as Record<string, string>,
+    // 勳章表單 + 列表（admin-medals / admin-medals-form）
+    formNew: "新增勳章", formEdit: "編輯勳章 #{id}",
+    fAsset: "勳章圖片 URL", clearAsset: "清除圖片",
+    fName: "名稱", fDescr: "說明", fGetType: "取得方式",
+    fPrice: "價格({magic})", fBonus: "魔力加成(%)",
+    fDuration: "有效期(天,空=永久)", fRarity: "稀有度",
+    rarityUnset: "未設定", rarityCustom: "自訂…",
+    fRarityCustom: "自訂稀有度", phRarityCustom: "如 super-rare",
+    fGroup: "分組", limited: "限定", save: "儲存", cancel: "取消",
+    loadFail: "載入失敗", saved: "已儲存", opFail: "操作失敗",
+    deleted: "已刪除", delFail: "刪除失敗",
+    thId: "ID", thIcon: "圖示", thName: "名稱", thGetType: "取得",
+    thRarity: "稀有度", thPrice: "價格", thBonus: "加成%",
+    thDuration: "有效期", thHeld: "持有數", thAction: "操作",
+    limitedChip: "限定", forever: "永久",
+    edit: "編輯", del: "刪除", empty: "暫無勳章",
   },
   /** 考核崗位：指標目錄（key 與後端 JIXIAO_METRIC_KEYS 白名單對應） */
   adminExams: {
@@ -2766,6 +2782,17 @@ usertools: {
       "「自動過審」開啟後，發布到該分類的種子直接過審（Auto Approval Settings 口徑）。",
     thCats: "分類", thTorrents: "種子數", thMode: "歸屬模式",
     thAuto: "自動過審", autoOn: "已開啟自動過審", autoOff: "已關閉自動過審",
+    // 介質類型 kinds 區（admin-sections-kinds）
+    kindsTitle: "維度管理",
+    kindsHint:
+      "維度 = 發布表單「質量」行裡的一個下拉框（如編碼/解析度/語種）。新增維度後到下方「維度字典」裡維護它的選項。發布頁「質量」與進階搜尋「多維篩選」只顯示有選項的維度——無選項的維度會自動隱藏，新增選項後立即出現。",
+    phKind: "維度標識（如 resolution）",
+    phKindLabel: "顯示名稱（如 解析度）",
+    kindCreated: "維度已建立", createKind: "新建維度",
+    thKindKey: "標識", thKindLabel: "顯示名稱", thCount: "選項數",
+    zeroHint: "0（發布頁/搜尋不顯示）",
+    renameKindPrompt: "新顯示名稱",
+    delKindConfirm: "刪除維度「{name}」？其下所有字典選項將被清空",
   },
   /** 使用者詳情頁：管理動作 flash 與確認文案（admin-user-detail-*） */
   userDetail: {
@@ -2983,6 +3010,13 @@ usertools: {
     optAll: "所有", optYes: "是", optNo: "否", optHas: "有", optNot: "無",
     stNormal: "正常", stMuted: "禁言", stBanned: "封禁",
     qPh: "使用者名稱 / 信箱", search: "搜尋",
+    // 列表與批量操作（admin-users-list）
+    batchHint: "批量操作（已選 {n} 個；只能操作等級低於自己的使用者）",
+    batchNormal: "批量恢復正常", batchMute: "批量禁言", batchBan: "批量封禁",
+    batchClassLabel: "批量改等級", pickClass: "（選擇等級）", run: "執行",
+    thUsername: "使用者名稱", thEmail: "信箱", thStatus: "狀態",
+    thDownload: "下載權限", thSuspended: "停權", thAction: "操作",
+    detail: "詳情",
   },
   /** 保種認領（admin-p2-tools-claims） */
   adminClaims: {
@@ -3018,6 +3052,19 @@ usertools: {
     yes: "是", no: "否", enable: "啟用", disable: "停用",
     toggled: "已啟用", untoggled: "已停用",
     deleted: "已刪除", delFail: "刪除失敗", del: "刪除",
+  },
+  /** Tracker URL 管理（admin-trackers） */
+  adminTrackers: {
+    loadFail: "載入失敗", saved: "已儲存", opFail: "操作失敗",
+    deleted: "已刪除", delFail: "刪除失敗",
+    formNew: "新增 Tracker URL", formEdit: "編輯 #{id}",
+    hint: "預設地址用於新種子 announce 注入；備用地址供下載端容災切換。",
+    fPriority: "優先級", isDefault: "預設", enabled: "啟用",
+    save: "儲存", cancel: "取消",
+    thId: "ID", thUrl: "URL", thDefault: "預設", thEnabled: "啟用",
+    thPriority: "優先級", thUpdated: "更新時間", thAction: "操作",
+    on: "啟用", off: "停用", edit: "編輯", del: "刪除",
+    empty: "暫無 Tracker 地址",
   },
   medalRarity: {
     tones: {

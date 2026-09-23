@@ -42,7 +42,8 @@ const LIMITED_CHIP_CLS =
 
 export function AdminMedals() {
   const { currency, dict } = useI18n();
-  const GET_TYPE = getTypeLabels(dict.adminMedals.getType);
+  const at = dict.adminMedals;
+  const GET_TYPE = getTypeLabels(at.getType);
   const [rows, setRows] = useState<MedalRow[]>([]);
   const [held, setHeld] = useState<UserMedalRow[]>([]);
   const [heldUid, setHeldUid] = useState("");
@@ -93,7 +94,7 @@ export function AdminMedals() {
       );
       setHeld(Array.isArray(r) ? r : r.rows);
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "加载失败");
+      flash(e instanceof ApiError ? e.message : at.loadFail);
     }
   }, [heldUid]);
   useEffect(() => {
@@ -105,11 +106,11 @@ export function AdminMedals() {
     try {
       if (edit.id === null) await api.post("/api/v1/admin/medals", edit.f);
       else await api.put(`/api/v1/admin/medals/${edit.id}`, edit.f);
-      flash("已保存");
+      flash(at.saved);
       resetForm();
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -147,16 +148,16 @@ export function AdminMedals() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">图标</td>
-              <td className="colhead">名称</td>
-              <td className="colhead">获取</td>
-              <td className="colhead">稀有度</td>
-              <td className="colhead">价格</td>
-              <td className="colhead">加成%</td>
-              <td className="colhead">有效期</td>
-              <td className="colhead">持有数</td>
-              <td className="colhead text-right">操作</td>
+              <td className="colhead">{at.thId}</td>
+              <td className="colhead">{at.thIcon}</td>
+              <td className="colhead">{at.thName}</td>
+              <td className="colhead">{at.thGetType}</td>
+              <td className="colhead">{at.thRarity}</td>
+              <td className="colhead">{at.thPrice}</td>
+              <td className="colhead">{at.thBonus}</td>
+              <td className="colhead">{at.thDuration}</td>
+              <td className="colhead">{at.thHeld}</td>
+              <td className="colhead text-right">{at.thAction}</td>
             </tr>
           </thead>
           <tbody>
@@ -168,7 +169,11 @@ export function AdminMedals() {
                 </td>
                 <td className="font-bold">
                   {m.name}
-                  {m.limited && <span className={LIMITED_CHIP_CLS}>限定</span>}
+                  {m.limited && (
+                    <span className={LIMITED_CHIP_CLS}>
+                      {at.limitedChip}
+                    </span>
+                  )}
                 </td>
                 <td>{GET_TYPE[m.get_type] ?? m.get_type}</td>
                 <td>
@@ -180,7 +185,7 @@ export function AdminMedals() {
                 </td>
                 <td className="num">{m.price ?? "—"}</td>
                 <td className="num">{m.bonus_addition_factor ?? 0}</td>
-                <td className="num">{m.duration_days ?? "永久"}</td>
+                <td className="num">{m.duration_days ?? at.forever}</td>
                 <td className="num">{m.held_count}</td>
                 <td className="text-right">
                   <button
@@ -190,7 +195,7 @@ export function AdminMedals() {
                       setCustomRarity(false);
                     }}
                   >
-                    编辑
+                    {at.edit}
                   </button>
                   <button
                     className="cmgmt-act cmgmt-act--danger"
@@ -198,14 +203,14 @@ export function AdminMedals() {
                     onClick={async () => {
                       try {
                         await api.del(`/api/v1/admin/medals/${m.id}`);
-                        flash("已删除");
+                        flash(at.deleted);
                         await load();
                       } catch (e) {
-                        flash(e instanceof ApiError ? e.message : "删除失败");
+                        flash(e instanceof ApiError ? e.message : at.delFail);
                       }
                     }}
                   >
-                    删除
+                    {at.del}
                   </button>
                 </td>
               </tr>
@@ -213,7 +218,7 @@ export function AdminMedals() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={10} className="py-6 text-center text-sub">
-                  暂无勋章
+                  {at.empty}
                 </td>
               </tr>
             )}
