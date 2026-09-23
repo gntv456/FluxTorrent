@@ -748,14 +748,20 @@
   vertical-align: middle;
 }
 .torrents-cat-block {
-  display: inline-block;
-  width: 28px;
-  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
   border-radius: 6px;
   border: 1px solid var(--baozi-line-soft);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
-/* 封面列（好学站 46px 外链图；无图回退类型色块 + 🎬） */
+/* 封面列（竖版海报 2:3；无图回退类型色块 + 🎬） */
 .torrents-td-cover {
   padding: 6px 2px !important;
   vertical-align: middle;
@@ -765,7 +771,7 @@
   align-items: center;
   justify-content: center;
   width: 46px;
-  height: 46px;
+  height: 69px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--baozi-line-soft);

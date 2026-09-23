@@ -127,14 +127,16 @@ async function TorrentTr({
           <BatchCheckbox id={id} />
         </td>
       )}
-      {/* 类型 */}
+      {/* 类型（色块 + 分类名首字；40px 对齐好学 catsprites 观感） */}
       <td className="torrents-td-cat">
         <span
           aria-hidden
           className="torrents-cat-block"
           style={{ background: catColor(t.category_id) }}
           title={dict.torrents.categories[t.category_id] ?? ""}
-        />
+        >
+          {(dict.torrents.categories[t.category_id] ?? "?").slice(0, 1)}
+        </span>
       </td>
       {/* 封面（好学站 46px 外链图；无图回退类型色块底 + 🎬） */}
       <td className="torrents-td-cover">
@@ -173,7 +175,7 @@ async function TorrentTr({
             <b>{t.name}</b>
           </Link>
           {isNew && (
-            <span className="torrents-new">{dict.torrents.newTag ?? "新"}</span>
+            <span className="torrents-new">{dict.torrents.newTag}</span>
           )}
           {/* 促销状态 + 剩余时间：紧跟种子名（好学站口径） */}
           {promo && (
@@ -261,10 +263,7 @@ async function TorrentTr({
       {extra}
       {/* 行为列：下载 + ⋮ 下拉（收藏/编辑/删除，好学站 staff 菜单口径） */}
       <td className="torrents-td-actions">
-        <TorrentActions
-          torrentId={id}
-          downloadLabel={dict.torrents.download ?? "下载本种"}
-        />
+        <TorrentActions torrentId={id} downloadLabel={dict.torrents.download} />
       </td>
     </tr>
   );
