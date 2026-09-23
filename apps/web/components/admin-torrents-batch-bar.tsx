@@ -7,7 +7,8 @@
  */
 
 import type { CatRow, TagRow } from "./admin-torrents-shared";
-import { PROMO_LABEL } from "./admin-torrents-shared";
+import { promoLabels } from "./admin-torrents-shared";
+import { useI18n } from "@/i18n/client";
 
 interface BatchBarProps {
   busy: boolean;
@@ -65,6 +66,8 @@ export function BatchBar(props: BatchBarProps) {
     setBatchCat,
     batch,
   } = props;
+  const { dict } = useI18n();
+  const PROMO_LABEL = promoLabels(dict.adminTorrents.promo);
   return (
     <section className="baozi-panel flex flex-wrap items-end gap-3 p-3">
       <p className="w-full text-xs font-bold text-sub">

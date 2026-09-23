@@ -1,7 +1,8 @@
 "use client";
 
 /** 道具管理·列表表格（从 admin-props.tsx 按域拆出）。 */
-import { KIND_LABEL } from "./admin-props-shared";
+import { kindLabelMap } from "./admin-props-shared";
+import { useI18n } from "@/i18n/client";
 import type { ShopItemRow } from "./admin-props-shared";
 
 /** 编辑表单载荷（价格/配置在表单里是字符串） */
@@ -21,6 +22,8 @@ export function PropsTable(props: {
   onDel: (id: number) => void;
 }) {
   const { items, currency, busy, onEdit, onDel } = props;
+  const { dict } = useI18n();
+  const KIND_LABEL = kindLabelMap(dict.adminProps.kindLabel);
   return (
     <table className="nexus-table text-xs">
       <thead>

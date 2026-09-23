@@ -4,6 +4,8 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 /** 消息模板面板（从 admin-p2-tools.tsx 按域拆出，300 门禁）：
  *  场景键模板的增删改 + 变量占位预览（第八轮 P2-11 支持新增）。 */
@@ -18,6 +20,8 @@ interface MessageTemplate {
 }
 
 export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
+  const { dict } = useI18n();
+  const at = dict.adminTemplates;
   const [rows, setRows] = useState<MessageTemplate[]>([]);
   const [editing, setEditing] = useState<{
     id: number;
@@ -56,11 +60,11 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
         subject: editing.subject,
         body: editing.body,
       });
-      flash("模板已保存");
+      flash(at.saved);
       setEditing(null);
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -76,11 +80,11 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
         body: creating.body.trim(),
         note: creating.note.trim() || undefined,
       });
-      flash("模板已创建");
+      flash(at.created);
       setCreating(null);
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -93,16 +97,16 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
         {
           scene_key: sceneKey,
           vars: {
-            username: "示例用户",
-            torrent_name: "示例种子",
-            reason: "重复发布",
+            username: at.pvUser,
+            torrent_name: at.pvTorrent,
+            reason: at.pvReason,
             count: "2",
           },
         },
       );
       setPreview(r);
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "预览失败");
+      flash(e instanceof ApiError ? e.message : at.previewFail);
     }
   };
 
@@ -115,14 +119,14 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
             setCreating({ scene_key: "", subject: "", body: "", note: "" })
           }
         >
-          ＋ 新增模板
+          {at.newBtn}
         </button>
       </div>
       {creating && (
         <section className="baozi-panel cmgmt-form p-4">
-          <h2 className="mb-2 text-base font-bold text-ink">新增模板</h2>
+          <h2 className="mb-2 text-base font-bold text-ink">{at.newTitle}</h2>
           <label>
-            场景键（小写字母/数字/下划线，如 contest_win）
+            {at.fSceneKey}
             <input
               value={creating.scene_key}
               onChange={(e) =>
@@ -131,7 +135,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
             />
           </label>
           <label>
-            主题
+            {at.fSubject}
             <input
               value={creating.subject}
               onChange={(e) =>
@@ -140,7 +144,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
             />
           </label>
           <label>
-            正文（支持 {"{{username}}"} 等占位符）
+            {at.fBody}
             <textarea
               rows={5}
               value={creating.body}
@@ -150,7 +154,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
             />
           </label>
           <label>
-            说明（可选）
+            {at.fNote}
             <input
               value={creating.note}
               onChange={(e) =>
@@ -169,13 +173,13 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
               }
               onClick={create}
             >
-              创建
+              {at.create}
             </button>
             <button
               className={BTN_SM_BOLD}
               onClick={() => setCreating(null)}
             >
-              取消
+              {at.cancel}
             </button>
           </div>
         </section>
@@ -183,10 +187,10 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
       {editing && (
         <section className="baozi-panel cmgmt-form p-4">
           <h2 className="mb-2 text-base font-bold text-ink">
-            编辑模板 #{editing.id}
+            {fmt(at.editTitle, { id: editing.id })}
           </h2>
           <label>
-            主题
+            {at.fSubject}
             <input
               value={editing.subject}
               onChange={(e) =>
@@ -195,7 +199,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
             />
           </label>
           <label>
-            正文（支持 {"{{username}}"} 等占位符）
+            {at.fBody}
             <textarea
               rows={5}
               value={editing.body}
@@ -204,13 +208,13 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
           </label>
           <div className="flex gap-2">
             <button className="baozi-button" disabled={busy} onClick={save}>
-              保存
+              {at.save}
             </button>
             <button
               className={BTN_SM_BOLD}
               onClick={() => setEditing(null)}
             >
-              取消
+              {at.cancel}
             </button>
           </div>
         </section>
@@ -218,12 +222,12 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
       {preview && (
         <section className="baozi-panel p-4 text-sm">
           <div className="mb-1 flex items-center justify-between">
-            <b>预览</b>
+            <b>{at.preview}</b>
             <button
               className="min-h-[32px] rounded-full border border-line px-3 text-xs"
               onClick={() => setPreview(null)}
             >
-              关闭
+              {at.close}
             </button>
           </div>
           <p className="font-bold">{preview.subject}</p>
@@ -233,10 +237,10 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">场景键</td>
-            <td className="colhead">主题</td>
-            <td className="colhead">说明</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thSceneKey}</td>
+            <td className="colhead">{at.thSubject}</td>
+            <td className="colhead">{at.thNote}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -252,30 +256,30 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
                     setEditing({ id: r.id, subject: r.subject, body: r.body })
                   }
                 >
-                  编辑
+                  {at.edit}
                 </button>
                 <button
                   className="cmgmt-act"
                   onClick={() => doPreview(r.scene_key)}
                 >
-                  预览
+                  {at.preview}
                 </button>
                 <button
                   className="cmgmt-act cmgmt-act--danger"
                   disabled={busy}
                   onClick={async () => {
-                    if (!window.confirm(`确认删除模板「${r.scene_key}」？`))
+                    if (!window.confirm(fmt(at.delConfirm, { key: r.scene_key })))
                       return;
                     try {
                       await api.del(`/api/v1/admin/message-templates/${r.id}`);
-                      flash("模板已删除");
+                      flash(at.deleted);
                       await load();
                     } catch (e) {
-                      flash(e instanceof ApiError ? e.message : "删除失败");
+                      flash(e instanceof ApiError ? e.message : at.delFail);
                     }
                   }}
                 >
-                  删除
+                  {at.del}
                 </button>
               </td>
             </tr>

@@ -70,15 +70,17 @@ export interface LoginRow {
   created_at: string;
 }
 
-export const APPROVAL = ["待审", "通过", "拒绝", "已删除"];
-export const PROMO_LABEL: Record<string, string> = {
-  free: "免费",
-  x2: "双倍",
-  x2free: "2xFree",
-  half: "半价",
-  x2half: "2x半价",
-  p30: "30%",
-};
+/** 审批状态显示名（按 approval_status 作下标）；三语在 i18n `adminTorrents.approval` */
+export const approvalList = (labels?: string[]): string[] => labels ?? [];
+
+export const promoLabels = (
+  labels?: Record<string, string>,
+): Record<string, string> => labels ?? {};
+
+/** 批量动作 → 显示名（批量工具条确认文案用）；三语在 `adminTorrents.actions` */
+export function actionLabel(a: string, labels?: Record<string, string>) {
+  return labels?.[a] ?? a;
+}
 
 export function fmtBytes(n: number): string {
   if (n >= 1099511627776) return `${(n / 1099511627776).toFixed(2)} TB`;
@@ -88,20 +90,3 @@ export function fmtBytes(n: number): string {
 }
 
 export type SubTab = "torrents" | "deny" | "ops" | "spark" | "buys" | "logins";
-
-/** 批量动作 → 中文名（批量工具条确认文案用） */
-export function actionLabel(a: string): string {
-  return (
-    {
-      sticky: "置顶",
-      promo: "设置促销",
-      recommend: "推荐",
-      set_tags: "打标",
-      clear_tags: "清除标签",
-      hr: "标记H&R",
-      unhr: "取消H&R",
-      change_category: "改分类",
-      delete: "删除",
-    }[a] ?? a
-  );
-}

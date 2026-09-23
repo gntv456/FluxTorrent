@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
@@ -40,15 +41,9 @@ interface Overview {
   members: OverviewMember[];
 }
 
-const STATUS_LABEL: Record<number, string> = {
-  0: "进行中",
-  1: "已发薪",
-  2: "未达标",
-  3: "已撤销",
-};
-
 export function AdminJixiao() {
-  const { currency } = useI18n();
+  const { dict } = useI18n();
+  const at = dict.adminJixiao;
   const [tab, setTab] = useState<"overview" | "assign" | "payroll">("overview");
   const [ov, setOv] = useState<Overview | null>(null);
   const [pay, setPay] = useState<Payroll | null>(null);
@@ -73,8 +68,9 @@ export function AdminJixiao() {
       setPay(p);
       setTypes(t);
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "加载失败");
+      flash(e instanceof ApiError ? e.message : at.loadFail);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     load();
@@ -86,7 +82,7 @@ export function AdminJixiao() {
       .map((s) => Number(s.trim()))
       .filter((n) => n > 0);
     if (!form.type_id || ids.length === 0) {
-      flash("请选择岗位并填写用户 ID");
+      flash(at.pickTypeAndUsers);
       return;
     }
     setBusy(true);
@@ -96,13 +92,13 @@ export function AdminJixiao() {
         { type_id: Number(form.type_id), user_ids: ids },
       );
       const skip = r.skipped_dup.length
-        ? `，跳过（本期已登记）${r.skipped_dup.length} 人`
+        ? fmt(at.skippedDup, { n: r.skipped_dup.length })
         : "";
-      flash(`已分配 ${r.assigned.length} 人${skip}`);
+      flash(fmt(at.assignedMsg, { n: r.assigned.length }) + skip);
       setForm({ type_id: form.type_id, user_ids: "" });
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "分配失败");
+      flash(e instanceof ApiError ? e.message : at.assignFail);
     } finally {
       setBusy(false);
     }
@@ -124,9 +120,9 @@ export function AdminJixiao() {
       <div className="flex gap-2">
         {(
           [
-            ["overview", "考核总览"],
-            ["assign", "批量分配"],
-            ["payroll", "发薪记录"],
+            ["overview", at.tabOverview],
+            ["assign", at.tabAssign],
+            ["payroll", at.tabPayroll],
           ] as const
         ).map(([k, label]) => (
           <button
@@ -142,7 +138,7 @@ export function AdminJixiao() {
         ))}
         {ov && (
           <span className="ml-auto self-center text-xs text-sub">
-            本期 {ov.period}
+            {fmt(at.periodLabel, { period: ov.period })}
           </span>
         )}
       </div>
@@ -152,13 +148,13 @@ export function AdminJixiao() {
           <table className="nexus-table text-xs">
             <thead>
               <tr>
-                <td className="colhead">岗位</td>
-                <td className="colhead">底薪</td>
-                <td className="colhead">登记</td>
-                <td className="colhead">达标</td>
-                <td className="colhead">未达标</td>
-                <td className="colhead">待结算</td>
-                <td className="colhead">发薪总额</td>
+                <td className="colhead">{at.thType}</td>
+                <td className="colhead">{at.thBasePay}</td>
+                <td className="colhead">{at.thAssigned}</td>
+                <td className="colhead">{at.thQualified}</td>
+                <td className="colhead">{at.thFailed}</td>
+                <td className="colhead">{at.thPending}</td>
+                <td className="colhead">{at.thPayrollTotal}</td>
               </tr>
             </thead>
             <tbody>
@@ -176,7 +172,7 @@ export function AdminJixiao() {
               {ov.types.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-6 text-center text-sub">
-                    暂无岗位
+                    {at.typesEmpty}
                   </td>
                 </tr>
               )}
@@ -185,12 +181,12 @@ export function AdminJixiao() {
           <table className="nexus-table text-xs">
             <thead>
               <tr>
-                <td className="colhead">岗位</td>
-                <td className="colhead">用户</td>
-                <td className="colhead">状态</td>
-                <td className="colhead">工资</td>
-                <td className="colhead">加成</td>
-                <td className="colhead">结算指标快照</td>
+                <td className="colhead">{at.thType}</td>
+                <td className="colhead">{at.thUser}</td>
+                <td className="colhead">{at.thStatus}</td>
+                <td className="colhead">{at.thPay}</td>
+                <td className="colhead">{at.thBonus}</td>
+                <td className="colhead">{at.thMetrics}</td>
               </tr>
             </thead>
             <tbody>
@@ -205,20 +201,22 @@ export function AdminJixiao() {
                       {m.username}
                     </a>
                   </td>
-                  <td>{STATUS_LABEL[m.status] ?? m.status}</td>
+                  <td>
+                    {at.statusLabels[String(m.status)] ?? m.status}
+                  </td>
                   <td className="num">{m.amount ?? "—"}</td>
                   <td className="num">{m.bonus ?? "—"}</td>
                   <td className="max-w-[320px] truncate font-mono text-sub">
                     {Object.keys(m.metrics_at_settle).length
                       ? JSON.stringify(m.metrics_at_settle)
-                      : "未结算"}
+                      : at.notSettled}
                   </td>
                 </tr>
               ))}
               {ov.members.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-6 text-center text-sub">
-                    本期暂无登记
+                    {at.membersEmpty}
                   </td>
                 </tr>
               )}
@@ -229,19 +227,17 @@ export function AdminJixiao() {
 
       {tab === "assign" && (
         <section className="baozi-panel cmgmt-form p-4">
-          <h2 className="mb-2 text-base font-bold">批量分配考核岗位</h2>
-          <p className="mb-2 text-xs text-sub">
-            把一个岗位登记给多名用户（工作组口径：主管建组）。已登记的自动跳过；分配即记录基线，月末由系统自动结算。
-          </p>
+          <h2 className="mb-2 text-base font-bold">{at.assignTitle}</h2>
+          <p className="mb-2 text-xs text-sub">{at.assignHint}</p>
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1 text-xs">
-              岗位
+              {at.labelType}
               <select
                 value={form.type_id}
                 onChange={(e) => setForm({ ...form, type_id: e.target.value })}
                 className={`${inp.replace("font-mono ", "")} w-40`}
               >
-                <option value="">— 选择 —</option>
+                <option value="">{at.selectOne}</option>
                 {types.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -250,7 +246,7 @@ export function AdminJixiao() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              用户 ID（逗号/换行分隔）
+              {at.labelUserIds}
               <input
                 value={form.user_ids}
                 onChange={(e) => setForm({ ...form, user_ids: e.target.value })}
@@ -263,7 +259,7 @@ export function AdminJixiao() {
               disabled={busy}
               onClick={assignBatch}
             >
-              分配
+              {at.assign}
             </button>
           </div>
         </section>

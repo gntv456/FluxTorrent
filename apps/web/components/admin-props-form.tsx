@@ -8,8 +8,8 @@ import type { FrameRow } from "./admin-props-shared";
 import {
   cfgField,
   setCfgField,
-  KIND_FIELDS,
-  KIND_LABEL,
+  kindFields,
+  kindLabelMap,
   type EditState,
 } from "./admin-props-shared";
 
@@ -25,7 +25,9 @@ export function PropsForm(props: {
   frames: FrameRow[];
 }) {
   const { edit, setEdit, save, busy, frames } = props;
-  const { currency } = useI18n();
+  const { currency, dict } = useI18n();
+  const KIND_LABEL = kindLabelMap(dict.adminProps.kindLabel);
+  const KIND_FIELDS = kindFields(dict.adminProps.fields, dict.adminProps.opts);
   return (
     <section className="baozi-panel cmgmt-form p-4">
       <h2 className="mb-2 text-base font-bold">

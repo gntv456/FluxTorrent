@@ -1,6 +1,8 @@
 "use client";
 
 import { BTN_SM_BOLD, INPUT_MD } from "@/lib/ui-classes";
+import { useI18n } from "@/i18n/client";
+import { dateLocale, fmt } from "@/i18n/config";
 
 /** 用户详情面板（从 admin-users.tsx 按域拆出，300 门禁）：
  *  好学站用户详情页口径——字段全景 + 管理动作（数值调整 / 下载权限 / 挂起）。 */
@@ -76,22 +78,25 @@ export function UserDetailPanel({
   busy: boolean;
   currency: string;
 }) {
+  const { dict, locale } = useI18n();
+  const u = dict.userDetail;
+  const a = dict.adminUsers;
   return (
     <section className="baozi-panel flex flex-col gap-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-bold text-ink">
-          用户详情 · {detail.username}（#{detail.id}）
+          {fmt(a.detailTitle, { name: detail.username, id: detail.id })}
         </h2>
         <button
           className="min-h-[36px] rounded-full border border-line px-3 text-xs"
           onClick={onClose}
         >
-          关闭
+          {a.close}
         </button>
       </div>
       <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:grid-cols-3">
         <div>
-          <dt className="text-sub">邮箱</dt>
+          <dt className="text-sub">{u.email}</dt>
           <dd>{detail.email}</dd>
         </div>
         <div>
@@ -99,15 +104,15 @@ export function UserDetailPanel({
           <dd className="font-mono text-xs">{detail.passkey.slice(0, 10)}…</dd>
         </div>
         <div>
-          <dt className="text-sub">等级</dt>
+          <dt className="text-sub">{a.klass}</dt>
           <dd>{detail.class_name ?? `LV${detail.class_id}`}</dd>
         </div>
         <div>
-          <dt className="text-sub">上传量</dt>
+          <dt className="text-sub">{u.uploaded}</dt>
           <dd>{fmtBytes(detail.uploaded)}</dd>
         </div>
         <div>
-          <dt className="text-sub">下载量</dt>
+          <dt className="text-sub">{u.downloaded}</dt>
           <dd>{fmtBytes(detail.downloaded)}</dd>
         </div>
         <div>
@@ -115,38 +120,42 @@ export function UserDetailPanel({
           <dd>{detail.spark_balance}</dd>
         </div>
         <div>
-          <dt className="text-sub">做种中</dt>
+          <dt className="text-sub">{u.seedingNow}</dt>
           <dd>{detail.seeding}</dd>
         </div>
         <div>
-          <dt className="text-sub">下载中</dt>
+          <dt className="text-sub">{u.leechingNow}</dt>
           <dd>{detail.leeching}</dd>
         </div>
         <div>
-          <dt className="text-sub">发布种子</dt>
+          <dt className="text-sub">{u.uploadsCount}</dt>
           <dd>{detail.uploads}</dd>
         </div>
         <div>
-          <dt className="text-sub">未用邀请</dt>
+          <dt className="text-sub">{u.invitesUnused}</dt>
           <dd>{detail.invites_unused}</dd>
         </div>
         <div>
-          <dt className="text-sub">邀请人</dt>
+          <dt className="text-sub">{u.inviter}</dt>
           <dd>{detail.inviter_name ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-sub">两步验证</dt>
-          <dd>{detail.totp_enabled ? "已开启" : "未开启"}</dd>
+          <dt className="text-sub">{u.twoFa}</dt>
+          <dd>{detail.totp_enabled ? u.totpOn : u.totpOff}</dd>
         </div>
         <div>
-          <dt className="text-sub">添加时间</dt>
-          <dd>{new Date(detail.created_at).toLocaleString()}</dd>
+          <dt className="text-sub">{u.createdAt}</dt>
+          <dd>
+            {new Date(detail.created_at).toLocaleString(dateLocale(locale))}
+          </dd>
         </div>
         <div>
-          <dt className="text-sub">最后访问</dt>
+          <dt className="text-sub">{u.lastSeen}</dt>
           <dd>
             {detail.last_seen_at
-              ? new Date(detail.last_seen_at).toLocaleString()
+              ? new Date(detail.last_seen_at).toLocaleString(
+                  dateLocale(locale),
+                )
               : "—"}
           </dd>
         </div>
@@ -154,7 +163,7 @@ export function UserDetailPanel({
 
       <div className="flex flex-wrap gap-2">
         <button className="baozi-button" onClick={onAdjust}>
-          修改上传量等
+          {a.adjustBtn}
         </button>
         <button
           className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${detail.download_enabled ? "border border-line text-danger" : "bg-mint text-white"}`}
@@ -163,26 +172,24 @@ export function UserDetailPanel({
             toggleFlag(detail.id, "download_enabled", !detail.download_enabled)
           }
         >
-          {detail.download_enabled ? "禁用下载权限" : "恢复下载权限"}
+          {detail.download_enabled ? a.dlDisableBtn : a.dlEnableBtn}
         </button>
         <button
           className={`min-h-[36px] rounded-full px-4 text-xs font-bold ${detail.suspended ? "bg-mint text-white" : "border border-line text-danger"}`}
           disabled={busy}
           onClick={() => toggleFlag(detail.id, "suspended", !detail.suspended)}
         >
-          {detail.suspended ? "解除挂起" : "挂起账号"}
+          {detail.suspended ? a.unsuspendBtn : a.suspendBtn}
         </button>
       </div>
 
       {/* 数值调整表单（delta 语义） */}
       {adjust && (
         <div className="cmgmt-form rounded-[var(--r-md)] border border-line p-3">
-          <p className="mb-2 text-xs text-sub">
-            正数增加、负数减少（下限 0）；邀请正数增发、负数回收。
-          </p>
+          <p className="mb-2 text-xs text-sub">{u.adjustHint}</p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             <label className="flex flex-col gap-1 text-xs">
-              上传量增量（字节）
+              {u.adjUp}
               <input
                 type="number"
                 value={adjust.up}
@@ -191,7 +198,7 @@ export function UserDetailPanel({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              下载量增量（字节）
+              {u.adjDown}
               <input
                 type="number"
                 value={adjust.down}
@@ -200,7 +207,7 @@ export function UserDetailPanel({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              {currency}增量
+              {fmt(u.adjSpark, { magic: currency })}
               <input
                 type="number"
                 value={adjust.spark}
@@ -211,7 +218,7 @@ export function UserDetailPanel({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              邀请增发/回收
+              {u.adjInvite}
               <input
                 type="number"
                 value={adjust.invite}
@@ -223,7 +230,7 @@ export function UserDetailPanel({
             </label>
           </div>
           <label className="mt-2 flex flex-col gap-1 text-xs">
-            备注（入审计）
+            {u.adjNote}
             <input
               value={adjust.note}
               onChange={(e) => setAdjust({ ...adjust, note: e.target.value })}
@@ -236,13 +243,13 @@ export function UserDetailPanel({
               disabled={busy}
               onClick={submitAdjust}
             >
-              提交调整
+              {u.adjustSubmit}
             </button>
             <button
               className={BTN_SM_BOLD}
               onClick={() => setAdjust(null)}
             >
-              取消
+              {dict.common.cancel}
             </button>
           </div>
         </div>

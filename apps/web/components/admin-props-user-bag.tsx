@@ -7,7 +7,8 @@
 
 import { api, ApiError } from "@/lib/api-client";
 import type { UserPropRow } from "./admin-props-shared";
-import { KIND_LABEL } from "./admin-props-shared";
+import { kindLabelMap } from "./admin-props-shared";
+import { useI18n } from "@/i18n/client";
 
 /** UID 过滤输入框样式 */
 const UID_FILTER_CLS =
@@ -32,6 +33,8 @@ export function PropsPanel({
   flash,
   load,
 }: PropsPanelProps) {
+  const { dict } = useI18n();
+  const KIND_LABEL = kindLabelMap(dict.adminProps.kindLabel);
   return (
     <section className="baozi-panel p-4">
       <div className="mb-2 flex items-end gap-2">

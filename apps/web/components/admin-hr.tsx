@@ -4,6 +4,8 @@ import { BTN_SM_GHOST, INPUT_CARD, INPUT_MD, INPUT_W32 } from "@/lib/ui-classes"
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { dateLocale, fmt } from "@/i18n/config";
 
 /** 第八轮 P1-3：H&R 后台总览（好学站 user/hit-and-runs 口径）
  *  hr_snapshots 全量浏览 + 批量豁免（violated/open → pardoned） */
@@ -23,19 +25,16 @@ interface HrRow {
   updated_at: string;
 }
 
-const STATUS: [string, string][] = [
-  ["", "全部"],
-  ["open", "考察中"],
-  ["satisfied", "已达标"],
-  ["violated", "已违规"],
-  ["pardoned", "已豁免"],
-];
+const STATUS_KEYS = ["", "open", "satisfied", "violated", "pardoned"];
 
 function fmtHours(sec: number): string {
   return `${(sec / 3600).toFixed(1)}h`;
 }
 
 export function AdminHr() {
+  const { dict, locale } = useI18n();
+  const at = dict.adminHr;
+  const c = dict.common;
   const [rows, setRows] = useState<HrRow[]>([]);
   const [total, setTotal] = useState(0);
   const [uid, setUid] = useState("");
@@ -63,8 +62,9 @@ export function AdminHr() {
       setTotal(r.total);
       setSel(new Set());
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "加载失败");
+      flash(e instanceof ApiError ? e.message : dict.adminHr.loadFail);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid, status, page]);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export function AdminHr() {
   async function batchPardon() {
     if (sel.size === 0) return;
     if (!note.trim()) {
-      flash("豁免必须填理由");
+      flash(at.pardonNeedNote);
       return;
     }
     setBusy(true);
@@ -97,11 +97,11 @@ export function AdminHr() {
         "/api/v1/admin/hr/batch-pardon",
         { records, note },
       );
-      flash(`已豁免 ${r.pardoned} 条`);
+      flash(fmt(at.pardonedMsg, { n: r.pardoned }));
       setNote("");
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -116,19 +116,19 @@ export function AdminHr() {
       )}
       <section className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
-          用户 UID
+          {at.fUid}
           <input
             value={uid}
             onChange={(e) => {
               setUid(e.target.value);
               setPage(1);
             }}
-            placeholder="留空看全部"
+            placeholder={at.qAll}
             className={INPUT_W32}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          状态
+          {at.fStatus}
           <select
             value={status}
             onChange={(e) => {
@@ -137,19 +137,19 @@ export function AdminHr() {
             }}
             className={INPUT_CARD}
           >
-            {STATUS.map(([v, l]) => (
+            {STATUS_KEYS.map((v) => (
               <option key={v} value={v}>
-                {l}
+                {v === "" ? at.optAll : at.statusLabels[v]}
               </option>
             ))}
           </select>
         </label>
         <label className="flex flex-1 flex-col gap-1 text-xs">
-          批量豁免理由（必填，随 PM 通知）
+          {at.fNote}
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="例：故障日补偿"
+            placeholder={at.qNote}
             className={INPUT_MD}
           />
         </label>
@@ -158,21 +158,21 @@ export function AdminHr() {
           onClick={batchPardon}
           className="min-h-[40px] rounded-full bg-mint px-5 text-sm font-bold text-white disabled:opacity-50"
         >
-          豁免所选（{sel.size}）
+          {fmt(at.pardonBtn, { n: sel.size })}
         </button>
       </section>
       <table className="nexus-table text-xs">
         <thead>
           <tr>
             <td className="colhead w-10"></td>
-            <td className="colhead">用户</td>
-            <td className="colhead">种子</td>
-            <td className="colhead">上传/下载</td>
-            <td className="colhead">分享率</td>
-            <td className="colhead">已做种/要求</td>
-            <td className="colhead">还需做种</td>
-            <td className="colhead">截止</td>
-            <td className="colhead">状态</td>
+            <td className="colhead">{at.thUser}</td>
+            <td className="colhead">{at.thTorrent}</td>
+            <td className="colhead">{at.thUpDown}</td>
+            <td className="colhead">{at.thRatio}</td>
+            <td className="colhead">{at.thSeededReq}</td>
+            <td className="colhead">{at.thRemain}</td>
+            <td className="colhead">{at.thDeadline}</td>
+            <td className="colhead">{at.thStatus}</td>
           </tr>
         </thead>
         <tbody>
@@ -222,17 +222,17 @@ export function AdminHr() {
                   : "—"}
               </td>
               <td className="text-sub">
-                {new Date(r.deadline).toLocaleDateString()}
+                {new Date(r.deadline).toLocaleDateString(dateLocale(locale))}
               </td>
               <td>
-                {r.status === "open" ? (
-                  "考察中"
-                ) : r.status === "satisfied" ? (
-                  "已达标"
-                ) : r.status === "violated" ? (
-                  <span className="text-danger">已违规</span>
+                {r.status === "violated" ? (
+                  <span className="text-danger">
+                    {at.statusLabels.violated}
+                  </span>
+                ) : r.status === "pardoned" && r.pardoned_name ? (
+                  fmt(at.pardonedBy, { name: r.pardoned_name })
                 ) : (
-                  `已豁免${r.pardoned_name ? `(${r.pardoned_name})` : ""}`
+                  at.statusLabels[r.status]
                 )}
               </td>
             </tr>
@@ -240,29 +240,29 @@ export function AdminHr() {
           {rows.length === 0 && (
             <tr>
               <td colSpan={9} className="py-6 text-center text-sub">
-                暂无 H&R 记录
+                {at.empty}
               </td>
             </tr>
           )}
         </tbody>
       </table>
       <div className="flex items-center justify-between text-sm text-sub">
-        <span>共 {total} 条</span>
+        <span>{fmt(c.totalItems, { n: total })}</span>
         <div className="flex gap-2">
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
             className={BTN_SM_GHOST}
           >
-            上一页
+            {c.prevPage}
           </button>
-          <span>第 {page} 页</span>
+          <span>{fmt(c.pageX, { n: page })}</span>
           <button
             disabled={rows.length < 20}
             onClick={() => setPage(page + 1)}
             className={BTN_SM_GHOST}
           >
-            下一页
+            {c.nextPage}
           </button>
         </div>
       </div>

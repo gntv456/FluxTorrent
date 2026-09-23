@@ -10,10 +10,10 @@ import { BTN_SM_GHOST } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import {
-  APPROVAL,
   actionLabel,
-  PROMO_LABEL,
   fmtBytes,
   type AdminTorrentRow,
   type CatRow,
@@ -36,6 +36,9 @@ const sel_input =
   "bg-[var(--surface-card)] px-2 text-xs";
 
 export function TorrentList({ flash }: { flash: (m: string) => void }) {
+  const { dict } = useI18n();
+  const at = dict.adminTorrents;
+  const c = dict.common;
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [owner, setOwner] = useState("");
@@ -103,7 +106,7 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
   const ids = [...sel];
   async function batch(action: string, extra: Record<string, unknown> = {}) {
     if (ids.length === 0) {
-      flash("请先勾选种子");
+      flash(at.pickFirst);
       return;
     }
     setBusy(true);
@@ -112,10 +115,11 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
         "/api/v1/admin/torrents/batch",
         { action, ids, ...extra },
       );
-      flash(`已${actionLabel(action)} ${r.affected} 个种子`);
+      const al = actionLabel(action, at.actions);
+      flash(fmt(at.actionApplied, { action: al, n: r.affected }));
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -127,11 +131,8 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
     let reason = "";
     if (!approve) {
       const reasons: DenyReason[] = await api.get("/api/v1/admin/deny-reasons");
-      const list = reasons.map((r) => `${r.id}. ${r.reason}`).join("\\n");
-      const choice = prompt(
-        `拒绝原因（输入编号，可留空后手填理由）：\\n${list}\\n` +
-          "或直接输入自定义理由文字",
-      );
+      const list = reasons.map((r) => `${r.id}. ${r.reason}`).join("\n");
+      const choice = prompt(fmt(at.denyPrompt, { list }));
       if (!choice) return;
       const asNum = Number(choice);
       if (asNum > 0 && reasons.some((r) => r.id === asNum))
@@ -145,10 +146,12 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
         reason,
         deny_reason_id,
       });
-      flash(approve ? `已通过种子 #${id}` : `已拒绝种子 #${id}`);
+      flash(
+        fmt(approve ? at.approvedMsg : at.rejectedMsg, { id }),
+      );
       load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     }
   };
 
@@ -157,16 +160,16 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
       {/* 筛选条件 */}
       <section className="baozi-panel flex flex-wrap items-end gap-2 p-3">
         <label className="flex flex-col gap-1 text-xs">
-          名称
+          {at.fName}
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="种子名"
+            placeholder={at.qName}
             className={Q_INPUT_CLS}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          发布者
+          {at.fOwner}
           <input
             value={owner}
             onChange={(e) => setOwner(e.target.value)}
@@ -175,65 +178,65 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          状态
+          {at.fStatus}
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className={sel_input}
           >
-            <option value="">全部</option>
-            <option value="1">待审</option>
-            <option value="2">通过</option>
-            <option value="3">拒绝</option>
-            <option value="4">死种</option>
+            <option value="">{at.optAll}</option>
+            <option value="1">{at.optPending}</option>
+            <option value="2">{at.optApproved}</option>
+            <option value="3">{at.optRejected}</option>
+            <option value="4">{at.optDead}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          置顶
+          {at.fPos}
           <select
             value={pos}
             onChange={(e) => setPos(e.target.value)}
             className={sel_input}
           >
-            <option value="">全部</option>
-            <option value="1">置顶中</option>
-            <option value="0">未置顶</option>
+            <option value="">{at.optAll}</option>
+            <option value="1">{at.optPosYes}</option>
+            <option value="0">{at.optPosNo}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          促销
+          {at.fPromo}
           <select
             value={promo}
             onChange={(e) => setPromo(e.target.value)}
             className={sel_input}
           >
-            <option value="">全部</option>
-            <option value="yes">促销中</option>
-            <option value="no">无促销</option>
+            <option value="">{at.optAll}</option>
+            <option value="yes">{at.optPromoYes}</option>
+            <option value="no">{at.optPromoNo}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          推荐
+          {at.fPick}
           <select
             value={pick}
             onChange={(e) => setPick(e.target.value)}
             className={sel_input}
           >
-            <option value="">全部</option>
-            <option value="1">推荐</option>
-            <option value="2">经典</option>
+            <option value="">{at.optAll}</option>
+            <option value="1">{at.optPickRec}</option>
+            <option value="2">{at.optPickClassic}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          H&R
+          {at.fHr}
           <select
             value={hr}
             onChange={(e) => setHr(e.target.value)}
             className={sel_input}
           >
-            <option value="">全部</option>
-            <option value="yes">标记</option>
-            <option value="no">未标记</option>
+            <option value="">{at.optAll}</option>
+            <option value="yes">{at.optHrYes}</option>
+            <option value="no">{at.optHrNo}</option>
           </select>
         </label>
         <button
@@ -243,7 +246,7 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
           }}
           className={SKY_BTN_CLS}
         >
-          搜索
+          {at.search}
         </button>
       </section>
 
@@ -271,22 +274,22 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
       {/* 列表（表格拆至 ./admin-torrents-table.tsx） */}
       <TorrentTable data={data} sel={sel} setSel={setSel} decide={decide} />
       <div className="flex items-center justify-between text-sm text-sub">
-        <span>共 {total} 条</span>
+        <span>{fmt(c.totalItems, { n: total })}</span>
         <div className="flex gap-2">
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
             className={PAGE_BTN_CLS}
           >
-            上一页
+            {c.prevPage}
           </button>
-          <span>第 {data?.page ?? 1} 页</span>
+          <span>{fmt(c.pageX, { n: data?.page ?? 1 })}</span>
           <button
             disabled={!data || data.rows.length < 20}
             onClick={() => setPage(page + 1)}
             className={PAGE_BTN_CLS}
           >
-            下一页
+            {c.nextPage}
           </button>
         </div>
       </div>

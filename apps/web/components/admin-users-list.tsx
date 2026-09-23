@@ -3,6 +3,8 @@
 import { BTN_SM_DANGER, BTN_SM_SKY } from "@/lib/ui-classes";
 
 import { fmtBytes } from "@/components/admin-users-detail";
+import { statusLabels } from "./admin-user-detail-shared";
+import { useI18n } from "@/i18n/client";
 
 /** 用户列表与批量操作面板（从 admin-users.tsx 按域拆出，300 门禁）：
  *  用户表格（多选/排序）/ 批量操作条 / 分页条。数据与动作留在 admin-users.tsx。 */
@@ -22,7 +24,6 @@ interface AdminUserRow {
   last_seen_at: string | null;
 }
 
-const STATUS_LABELS = ["正常", "禁言", "封禁"];
 
 export function UsersBatchBar({
   sel,
@@ -112,6 +113,8 @@ export function UsersTable({
   setSel: React.Dispatch<React.SetStateAction<Set<number>>>;
   sortBtn: (key: string, label: string) => React.ReactNode;
 }) {
+  const { dict } = useI18n();
+  const STATUS_LABELS = statusLabels(dict.userDetail.statusLabels);
   return (
     <table className="nexus-table">
       <thead>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
 
 import {
   PER_PAGE,
@@ -23,15 +24,16 @@ import {
 
 /** 加载用户详情本体。 */
 export function useDetailLoad(uid: number) {
+  const { dict } = useI18n();
   const [d, setD] = useState<Detail | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
       setD(await api.get<Detail>(`/api/v1/admin/users/${uid}`));
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : "加载失败");
+      setMsg(e instanceof ApiError ? e.message : dict.userDetail.loadFail);
     }
-  }, [uid]);
+  }, [uid, dict.userDetail.loadFail]);
   useEffect(() => {
     load();
   }, [load]);

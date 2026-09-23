@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import { BTN_SM_BOLD, INPUT_CLOUD } from "@/lib/ui-classes";
 import { type ReqRow, EMPTY_FORM, metricOptions } from "./admin-exams-shared";
 
@@ -18,19 +19,22 @@ export function ExamsForm(props: {
 }) {
   const { edit, setEdit, save, busy } = props;
   const { currency, dict } = useI18n();
+  const t = dict.adminExams;
   const METRIC_OPTIONS = metricOptions(currency, dict.adminExams.metrics);
   return (
     <section className="baozi-panel cmgmt-form p-4">
       <h2 className="mb-2 text-base font-bold">
-        {edit.id === null ? "新建考核岗位" : `编辑考核岗位 #${edit.id}`}
+        {edit.id === null
+          ? t.formTitleNew
+          : fmt(t.formTitleEdit, { id: edit.id })}
       </h2>
       <p className="mb-3 text-xs text-sub">
-        登记入口在「绩效考核」面板批量分配，或用户详情页单人分配；这里维护岗位、指标门槛与加成。
+        {t.intro}
       </p>
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
-          岗位名
+          {t.fldName}
           <input
             value={edit.f.name}
             onChange={(e) =>
@@ -40,7 +44,7 @@ export function ExamsForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          底薪({currency})
+          {fmt(t.fldBasePay, { magic: currency })}
           <input
             type="number"
             value={edit.f.base_pay}
@@ -51,7 +55,7 @@ export function ExamsForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          岗位说明
+          {t.fldDescr}
           <input
             value={edit.f.description}
             onChange={(e) =>
@@ -60,7 +64,7 @@ export function ExamsForm(props: {
                 f: { ...edit.f, description: e.target.value },
               })
             }
-            placeholder="展示给成员的岗位职责（可空）"
+            placeholder={t.descrPh}
             className={`${inp} w-56`}
           />
         </label>
@@ -68,7 +72,7 @@ export function ExamsForm(props: {
 
       {/* 达标门槛：结构化行（指标下拉 + 数值），多行之间是 AND */}
       <div className="mt-3">
-        <p className="mb-1 text-xs font-bold">达标门槛（全部满足才算达标）</p>
+        <p className="mb-1 text-xs font-bold">{t.reqsTitle}</p>
         <div className="flex flex-col gap-2">
           {edit.f.reqs.map((r, i) => {
             const opt = METRIC_OPTIONS.find((m) => m.key === r.key);
@@ -116,7 +120,7 @@ export function ExamsForm(props: {
                     })
                   }
                 >
-                  删除
+                  {t.delRowBtn}
                 </button>
               </div>
             );
@@ -135,16 +139,16 @@ export function ExamsForm(props: {
             })
           }
         >
-          + 添加指标
+          {t.addMetricBtn}
         </button>
       </div>
 
       {/* 加成规则：小白化（每 N 个达标月 +M%） */}
       <div className="mt-3 flex flex-wrap items-end gap-2">
-        <p className="w-full text-xs font-bold">连续达标加成</p>
-        <span className="pb-2 text-xs text-sub">每</span>
+        <p className="w-full text-xs font-bold">{t.bonusTitle}</p>
+        <span className="pb-2 text-xs text-sub">{t.bonusEvery}</span>
         <label className="flex flex-col gap-1 text-xs">
-          <span className="sr-only">档位月数</span>
+          <span className="sr-only">{t.bonusMonthsSr}</span>
           <input
             type="number"
             min="1"
@@ -158,9 +162,9 @@ export function ExamsForm(props: {
             className={`${inp} w-16`}
           />
         </label>
-        <span className="pb-2 text-xs text-sub">个达标月，工资加</span>
+        <span className="pb-2 text-xs text-sub">{t.bonusMonthsMid}</span>
         <label className="flex flex-col gap-1 text-xs">
-          <span className="sr-only">加成百分比</span>
+          <span className="sr-only">{t.bonusPctSr}</span>
           <input
             type="number"
             min="0"
@@ -172,9 +176,7 @@ export function ExamsForm(props: {
             className={`${inp} w-16`}
           />
         </label>
-        <span className="pb-2 text-xs text-sub">
-          %（此岗位结算即按此比例；留空或 0 则用全站默认）
-        </span>
+        <span className="pb-2 text-xs text-sub">{t.bonusPctTail}</span>
       </div>
 
       <div className="mt-3 flex gap-2">
@@ -183,7 +185,7 @@ export function ExamsForm(props: {
           disabled={busy || !edit.f.name.trim()}
           onClick={save}
         >
-          保存
+          {t.saveBtn}
         </button>
         {edit.id !== null && (
           <button
@@ -195,7 +197,7 @@ export function ExamsForm(props: {
               })
             }
           >
-            取消
+            {t.cancelBtn}
           </button>
         )}
       </div>

@@ -26,6 +26,7 @@ interface ExamUserRow {
 
 export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
   const { dict } = useI18n();
+  const t = dict.adminTasks;
   const KINDS = kindList(dict.adminTasks.kinds);
   const [exams, setExams] = useState<ExamUserRow[]>([]);
   const [examFilter, setExamFilter] = useState({
@@ -65,10 +66,10 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
       await api.post(
         `/api/v1/admin/exam-users/${claimId}/${exempt ? "exempt" : "recover"}`,
       );
-      flash(exempt ? "已豁免（该记录暂不参与结算）" : "已恢复");
+      flash(exempt ? t.exemptedMsg : t.recoveredMsg);
       await loadExams();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : t.actionFail);
     } finally {
       setBusy(false);
     }
@@ -76,7 +77,7 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
 
   return (
     <section className="baozi-panel p-4">
-      <h2 className="mb-2 text-base font-bold">考核记录</h2>
+      <h2 className="mb-2 text-base font-bold">{t.examsTitle}</h2>
       <div className="mb-2 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
           UID
@@ -90,7 +91,7 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          任务ID
+          {t.fldTaskId}
           <input
             type="number"
             value={examFilter.task_id}
@@ -101,7 +102,7 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          状态
+          {t.fldStatus}
           <select
             value={examFilter.status}
             onChange={(e) =>
@@ -109,10 +110,10 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
             }
             className={inp}
           >
-            <option value="">全部</option>
-            <option value="0">进行中</option>
-            <option value="1">已完成</option>
-            <option value="2">已失败</option>
+            <option value="">{t.stAll}</option>
+            <option value="0">{t.stOngoing}</option>
+            <option value="1">{t.stDone}</option>
+            <option value="2">{t.stFailed}</option>
           </select>
         </label>
       </div>
@@ -120,15 +121,15 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">用户</td>
-              <td className="colhead">考核</td>
-              <td className="colhead">类型</td>
-              <td className="colhead">状态</td>
-              <td className="colhead">派发/领取时间</td>
-              <td className="colhead">结算时间</td>
-              <td className="colhead">实发奖励</td>
-              <td className="colhead">豁免</td>
-              <td className="colhead text-right">操作</td>
+              <td className="colhead">{t.colUser}</td>
+              <td className="colhead">{t.colExam}</td>
+              <td className="colhead">{t.colKind}</td>
+              <td className="colhead">{t.colStatus}</td>
+              <td className="colhead">{t.colAssignTime}</td>
+              <td className="colhead">{t.colSettleTime}</td>
+              <td className="colhead">{t.colRewardPaid}</td>
+              <td className="colhead">{t.colExempt}</td>
+              <td className="colhead text-right">{t.colActions}</td>
             </tr>
           </thead>
           <tbody>
@@ -141,10 +142,10 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
                 <td>{KINDS.find((k) => k.v === e.kind)?.label ?? e.kind}</td>
                 <td>
                   {e.status === 0
-                    ? "进行中"
+                    ? t.stOngoing
                     : e.status === 1
-                      ? "已完成"
-                      : "已失败"}
+                      ? t.stDone
+                      : t.stFailed}
                 </td>
                 <td className="text-sub">
                   {new Date(e.claimed_at).toLocaleString()}
@@ -156,7 +157,7 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
                 <td>
                   {e.exempted_at ? (
                     <span className="font-bold text-[var(--baozi-orange-dark)]">
-                      已豁免
+                      {t.exempted}
                     </span>
                   ) : (
                     "—"
@@ -170,7 +171,7 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
                         disabled={busy}
                         onClick={() => setExempt(e.claim_id, false)}
                       >
-                        恢复
+                        {t.recoverBtn}
                       </button>
                     ) : (
                       <button
@@ -178,7 +179,7 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
                         disabled={busy}
                         onClick={() => setExempt(e.claim_id, true)}
                       >
-                        豁免
+                        {t.exemptBtn}
                       </button>
                     ))}
                 </td>
@@ -187,7 +188,7 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
             {exams.length === 0 && (
               <tr>
                 <td colSpan={9} className="py-6 text-center text-sub">
-                  暂无考核记录
+                  {t.examsEmpty}
                 </td>
               </tr>
             )}

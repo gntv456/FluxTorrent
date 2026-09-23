@@ -2,30 +2,31 @@
 
 import type { AdminPanelsProps } from "./admin-user-detail-actions-forms";
 import {
-  FIELD_CLS,
-  PANEL_BOX_CLS,
-  PLAIN_BTN_CLS,
-  PLAIN_FIELD_CLS,
+  FIELD_CLS, PANEL_BOX_CLS, PLAIN_BTN_CLS, PLAIN_FIELD_CLS,
 } from "./admin-user-detail-actions-forms";
-import { CATEGORY_LABEL, ITEM_KIND_LABEL } from "./admin-user-detail-shared";
+import { categoryLabels, itemKindLabels } from "./admin-user-detail-shared";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 /** 用户详情操作面板·下半（perm/medal/item/rename/jixiao/adjust）。
  *  从 admin-user-detail-actions-forms.tsx 按域拆出；props 同源共享。 */
 export function AdminActionPanelsMore(props: AdminPanelsProps) {
+  const { dict: i18nDict } = useI18n();
+  const u = i18nDict.userDetail;
+  const CL = categoryLabels(i18nDict.userDetail.categoryLabels),
+    IKL = itemKindLabels(i18nDict.userDetail.itemKindLabels);
   const { d, busy, currency, dict, panel, adjust, setAdj } = props;
   return (
     <>
       {/* 分配权限 */}
       {panel === "perm" && (
         <div className={`${PANEL_BOX_CLS} flex flex-col gap-2`}>
-          <p className="text-xs text-sub">
-            覆盖角色判定：授予 = 额外允许；拒绝 = 显式禁止。
-          </p>
+          <p className="text-xs text-sub">{u.permHint}</p>
           {props.permData && (
             <p className="text-xs text-sub">
-              生效权限 {props.permData.effective.length} 项
+              {fmt(u.effectiveCount, { n: props.permData.effective.length })}
               {props.permData.overrides.length > 0 &&
-                `（含 ${props.permData.overrides.length} 项个人覆盖）`}
+                fmt(u.withOverrides, { n: props.permData.overrides.length })}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2">
@@ -34,17 +35,17 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               onChange={(e) => props.setPermKey(e.target.value)}
               className={`max-w-96 ${FIELD_CLS}`}
             >
-              <option value="">选择权限</option>
+              <option value="">{u.pickPerm}</option>
               {Object.entries(
                 props.perms.reduce<Record<string, typeof props.perms>>(
                   (acc, p) => {
-                    (acc[p.category ?? "其他"] ??= []).push(p);
+                    (acc[p.category ?? u.otherCat] ??= []).push(p);
                     return acc;
                   },
                   {},
                 ),
               ).map(([cat, list]) => (
-                <optgroup key={cat} label={CATEGORY_LABEL[cat] ?? cat}>
+                <optgroup key={cat} label={CL[cat] ?? cat}>
                   {list.map((p) => (
                     <option key={p.key} value={p.key}>
                       {p.name ?? p.key}
@@ -61,16 +62,16 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               }
               className={FIELD_CLS}
             >
-              <option value="">授予/拒绝</option>
-              <option value="1">授予（额外允许）</option>
-              <option value="0">拒绝（显式禁止）</option>
+              <option value="">{u.pickGrant}</option>
+              <option value="1">{u.grantAllow}</option>
+              <option value="0">{u.grantDeny}</option>
             </select>
             <button
               className="baozi-button"
               disabled={busy || !props.permKey || !props.permGrant}
               onClick={props.onSubmitPerm}
             >
-              提交
+              {u.submit}
             </button>
           </div>
         </div>
@@ -80,7 +81,7 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
       {panel === "medal" && (
         <div className={PANEL_BOX_CLS}>
           <p className="mb-2 text-xs text-sub">
-            管理发放（source=admin），已拥有 {d.medals} 枚。
+            {fmt(u.medalHint, { n: d.medals })}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -88,7 +89,7 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               onChange={(e) => props.setMedalId(e.target.value)}
               className={`max-w-72 ${FIELD_CLS}`}
             >
-              <option value="">选择勋章</option>
+              <option value="">{u.pickMedal}</option>
               {props.medals.map((m) => (
                 <option key={m.id} value={m.id}>
                   #{m.id} {m.name}
@@ -100,7 +101,7 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               disabled={busy || !props.medalId}
               onClick={props.onSubmitMedal}
             >
-              授予
+              {u.medalGrant}
             </button>
           </div>
         </div>
@@ -110,8 +111,7 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
       {panel === "item" && (
         <div className={PANEL_BOX_CLS}>
           <p className="mb-2 text-xs text-sub">
-            免费发放：上传量/{currency}
-            /邀请即时生效；化妆卡、改名卡等卡牌道具入背包待用户使用。
+            {fmt(u.itemHint, { magic: currency })}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -119,12 +119,12 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               onChange={(e) => props.setItemId(e.target.value)}
               className={`max-w-80 ${FIELD_CLS}`}
             >
-              <option value="">选择道具</option>
+              <option value="">{u.pickItem}</option>
               {Object.entries(
                 props.items.reduce<Record<string, typeof props.items>>(
                   (acc, it) => {
                     (acc[
-                      (ITEM_KIND_LABEL[it.kind] ?? it.kind).replaceAll(
+                      (IKL[it.kind] ?? it.kind).replaceAll(
                         "CURRENCY",
                         currency,
                       )
@@ -148,7 +148,7 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               disabled={busy || !props.itemId}
               onClick={props.onSubmitItem}
             >
-              发放
+              {u.grantItem}
             </button>
           </div>
         </div>
@@ -181,16 +181,14 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
       {/* 分配考核 */}
       {panel === "jixiao" && (
         <div className={PANEL_BOX_CLS}>
-          <p className="mb-2 text-xs text-sub">
-            登记为考核岗位后按系统流水自动核算绩效；期间留空默认当月。
-          </p>
+          <p className="mb-2 text-xs text-sub">{u.jixiaoHint}</p>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={props.jixiaoTypeId}
               onChange={(e) => props.setJixiaoTypeId(e.target.value)}
               className={FIELD_CLS}
             >
-              <option value="">选择考核岗位</option>
+              <option value="">{u.pickJixiao}</option>
               {props.jixiaoTypes.map((j) => (
                 <option key={j.id} value={j.id}>
                   #{j.id} {j.name}
@@ -202,26 +200,24 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               value={props.jixiaoPeriod}
               onChange={(e) => props.setJixiaoPeriod(e.target.value)}
               className={PLAIN_FIELD_CLS}
-              title="考核期间（默认当月）"
+              title={u.jixiaoPeriodTitle}
             />
             <button
               className="baozi-button"
               disabled={busy || !props.jixiaoTypeId}
               onClick={props.onSubmitJixiao}
             >
-              登记
+              {u.register}
             </button>
           </div>
         </div>
       )}
       {adjust && (
         <div className={PANEL_BOX_CLS}>
-          <p className="mb-2 text-xs text-sub">
-            正数增加、负数减少（下限 0）；邀请正数增发、负数回收。
-          </p>
+          <p className="mb-2 text-xs text-sub">{u.adjustHint}</p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             <label className="flex flex-col gap-1 text-xs">
-              上传量增量（字节）
+              {u.adjUp}
               <input
                 type="number"
                 value={props.adj.up}
@@ -232,7 +228,7 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              下载量增量（字节）
+              {u.adjDown}
               <input
                 type="number"
                 value={props.adj.down}
@@ -243,7 +239,7 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              {currency}增量
+              {fmt(u.adjSpark, { magic: currency })}
               <input
                 type="number"
                 value={props.adj.spark}
@@ -254,7 +250,7 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              邀请增发/回收
+              {u.adjInvite}
               <input
                 type="number"
                 value={props.adj.invite}
@@ -266,7 +262,7 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
             </label>
           </div>
           <label className="mt-2 flex flex-col gap-1 text-xs">
-            备注（入审计）
+            {u.adjNote}
             <input
               value={props.adj.note}
               onChange={(e) =>
@@ -281,13 +277,13 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               disabled={busy}
               onClick={props.onSubmitAdjust}
             >
-              提交调整
+              {u.adjustSubmit}
             </button>
             <button
               className={PLAIN_BTN_CLS}
               onClick={() => props.setAdjust(false)}
             >
-              取消
+              {i18nDict.common.cancel}
             </button>
           </div>
         </div>

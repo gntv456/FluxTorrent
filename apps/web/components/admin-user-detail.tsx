@@ -19,7 +19,7 @@ import {
   SeedingPanel,
   SparkPanel,
 } from "./admin-user-detail-panels";
-import { STATUS_LABELS } from "./admin-user-detail-shared";
+import { statusLabels } from "./admin-user-detail-shared";
 
 /** 后台用户详情（好学站 Filament UserResource 的 user-profile 口径）：
  *  字段全景 + 管理动作 + 关联数据 tab（火花流水 / 登录记录 / 做种列表）。
@@ -45,6 +45,7 @@ export function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { locale, dict, currency } = useI18n();
+  const STATUS_LABELS = statusLabels(dict.userDetail.statusLabels);
   const classList = (dict.admin as unknown as { classList: [number, string][] })
     .classList;
   const uid = Number(params.id);

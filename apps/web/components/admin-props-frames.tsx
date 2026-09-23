@@ -5,6 +5,8 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 /** 头像框库面板（从 admin-props.tsx 按域拆出，300 门禁）：
  *  头像框 CRUD（CSS 描边 / 框图链接双形态）表单 + 列表。 */
@@ -28,6 +30,9 @@ export function FramesPanel({
   currency: string;
   load: () => Promise<void>;
 }) {
+  const { dict } = useI18n();
+  const at = dict.adminProps;
+  const c = dict.common;
   const emptyFrame = {
     name: "",
     css: "border-color:#2fa878; box-shadow: 0 0 0 2px rgba(47,168,120,.5), 0 0 12px rgba(47,168,120,.85);",
@@ -64,11 +69,11 @@ export function FramesPanel({
         await api.post("/api/v1/admin/avatar-frames", payload);
       else
         await api.put(`/api/v1/admin/avatar-frames/${frameEdit.id}`, payload);
-      flash("头像框已保存");
+      flash(at.frameSaved);
       setFrameEdit({ id: null, f: { ...emptyFrame } });
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -85,11 +90,13 @@ export function FramesPanel({
       {/* 头像框库 CRUD：双形态——CSS 描边（白名单净化）/ 框图链接（叠层渲染，优先） */}
       <section className="baozi-panel cmgmt-form p-4">
         <h2 className="mb-2 text-base font-bold">
-          {frameEdit.id === null ? "新建头像框" : `编辑头像框 #${frameEdit.id}`}
+          {frameEdit.id === null
+            ? at.frameNew
+            : fmt(at.frameEdit, { id: frameEdit.id })}
         </h2>
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-xs">
-            名称
+            {at.fName}
             <input
               value={frameEdit.f.name}
               onChange={(e) =>
@@ -102,7 +109,7 @@ export function FramesPanel({
             />
           </label>
           <label className="flex flex-col gap-1 text-xs">
-            价格({currency})
+            {fmt(at.fPrice, { magic: currency })}
             <input
               type="number"
               value={frameEdit.f.price}
@@ -116,7 +123,7 @@ export function FramesPanel({
             />
           </label>
           <label className="flex flex-col gap-1 text-xs">
-            排序
+            {at.fSort}
             <input
               type="number"
               value={frameEdit.f.sort}
@@ -130,7 +137,7 @@ export function FramesPanel({
             />
           </label>
           <label className="flex flex-1 flex-col gap-1 text-xs">
-            css（仅 border-color / box-shadow）
+            {at.fCss}
             <input
               value={frameEdit.f.css}
               onChange={(e) =>
@@ -143,7 +150,7 @@ export function FramesPanel({
             />
           </label>
           <label className="flex flex-1 flex-col gap-1 text-xs">
-            框图链接（可选，PNG/GIF，配置后优先于 css）
+            {at.fImage}
             <input
               value={frameEdit.f.image}
               onChange={(e) =>
@@ -152,7 +159,7 @@ export function FramesPanel({
                   f: { ...frameEdit.f, image: e.target.value },
                 })
               }
-              placeholder="https://…/frame.png（清空则移除）"
+              placeholder={at.imgPh}
               className={`${inp} min-w-[220px] font-mono`}
             />
           </label>
@@ -174,34 +181,31 @@ export function FramesPanel({
             disabled={busy || !frameEdit.f.name.trim()}
             onClick={saveFrame}
           >
-            保存
+            {at.save}
           </button>
           {frameEdit.id !== null && (
             <button
               className={BTN_SM_BOLD}
               onClick={() => setFrameEdit({ id: null, f: { ...emptyFrame } })}
             >
-              取消
+              {c.cancel}
             </button>
           )}
         </div>
-        <p className="mt-2 text-xs text-sub">
-          CSS 款示例色：春 #f4a7bb / 夏 #2fa878 / 秋 #d99419 / 冬
-          #8fc3e8；框图需透明底圆形素材。删除框会先自动摘下所有佩戴者。
-        </p>
+        <p className="mt-2 text-xs text-sub">{at.cssHint}</p>
       </section>
 
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">ID</td>
-            <td className="colhead">预览</td>
-            <td className="colhead">名称</td>
-            <td className="colhead">价格</td>
-            <td className="colhead">排序</td>
-            <td className="colhead">佩戴人数</td>
-            <td className="colhead">样式</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thId}</td>
+            <td className="colhead">{at.thPreview}</td>
+            <td className="colhead">{at.thName}</td>
+            <td className="colhead">{at.thPrice}</td>
+            <td className="colhead">{at.thSort}</td>
+            <td className="colhead">{at.thWorn}</td>
+            <td className="colhead">{at.thStyle}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -223,7 +227,7 @@ export function FramesPanel({
               <td className="num">{f.sort}</td>
               <td className="num">{f.worn_count}</td>
               <td className="max-w-[220px] truncate font-mono">
-                {f.image_url ? `图: ${f.image_url}` : f.css}
+                {f.image_url ? `${at.imgPrefix} ${f.image_url}` : f.css}
               </td>
               <td className="text-right">
                 <button
@@ -241,7 +245,7 @@ export function FramesPanel({
                     })
                   }
                 >
-                  编辑
+                  {at.edit}
                 </button>
                 <button
                   className="cmgmt-act cmgmt-act--danger"
@@ -249,14 +253,14 @@ export function FramesPanel({
                   onClick={async () => {
                     try {
                       await api.del(`/api/v1/admin/avatar-frames/${f.id}`);
-                      flash("已删除（佩戴者已自动摘下）");
+                      flash(at.frameDeleted);
                       await load();
                     } catch (e) {
-                      flash(e instanceof ApiError ? e.message : "删除失败");
+                      flash(e instanceof ApiError ? e.message : at.delFail);
                     }
                   }}
                 >
-                  删除
+                  {at.del}
                 </button>
               </td>
             </tr>
@@ -264,7 +268,7 @@ export function FramesPanel({
           {frames.length === 0 && (
             <tr>
               <td colSpan={8} className="py-6 text-center text-sub">
-                暂无头像框
+                {at.framesEmpty}
               </td>
             </tr>
           )}

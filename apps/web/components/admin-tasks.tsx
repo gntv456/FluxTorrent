@@ -4,6 +4,7 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
 import { ExamUsersPanel } from "@/components/admin-tasks-exams";
 import { TasksTable } from "./admin-tasks-table";
 import { TasksForm } from "./admin-tasks-form";
@@ -18,6 +19,8 @@ import { EMPTY } from "./admin-tasks-shared";
 const PLAIN_BTN_CLS = BTN_SM_BOLD;
 
 export function AdminTasks() {
+  const { dict } = useI18n();
+  const t = dict.adminTasks;
   const [rows, setRows] = useState<TaskRow[]>([]);
   const [edit, setEdit] = useState<{ id: number | null; f: typeof EMPTY }>({
     id: null,
@@ -35,9 +38,9 @@ export function AdminTasks() {
     try {
       setRows(await api.get<TaskRow[]>("/api/v1/admin/tasks"));
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "加载失败");
+      flash(e instanceof ApiError ? e.message : t.loadFail);
     }
-  }, []);
+  }, [t.loadFail]);
 
   useEffect(() => {
     load();
@@ -48,11 +51,11 @@ export function AdminTasks() {
     try {
       metric = JSON.parse(edit.f.metric || "{}");
     } catch {
-      flash("metric 需为合法 JSON");
+      flash(t.metricBadJson);
       return;
     }
     if (!edit.f.starts_at || !edit.f.ends_at) {
-      flash("起止时间必填");
+      flash(t.rangeRequired);
       return;
     }
     setBusy(true);
@@ -79,11 +82,11 @@ export function AdminTasks() {
       };
       if (edit.id === null) await api.post("/api/v1/admin/tasks", payload);
       else await api.put(`/api/v1/admin/tasks/${edit.id}`, payload);
-      flash("已保存");
+      flash(t.saved);
       setEdit({ id: null, f: { ...EMPTY } });
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : t.actionFail);
     } finally {
       setBusy(false);
     }
