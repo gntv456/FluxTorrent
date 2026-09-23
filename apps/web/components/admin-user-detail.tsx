@@ -4,7 +4,7 @@ import { CELL_CARD_SUB } from "@/lib/ui-classes";
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { dateLocale } from "@/i18n/config";
+import { dateLocale, fmt } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 import { AdminActions } from "./admin-user-detail-actions";
 import { useAdminUserActions } from "./admin-user-detail-actions-hook";
@@ -89,7 +89,11 @@ export function AdminUserDetailPage() {
   });
 
   if (!d)
-    return <p className="py-8 text-center text-sub">{msg ?? "加载中…"}</p>;
+    return (
+      <p className="py-8 text-center text-sub">
+        {msg ?? dict.userDetail.loading}
+      </p>
+    );
 
   const dt = (s: string | null) =>
     s ? new Date(s).toLocaleString(dateLocale(locale)) : "—";
@@ -118,22 +122,32 @@ export function AdminUserDetailPage() {
               {STATUS_LABELS[d.status] ?? d.status}
             </span>
           )}
-          {d.suspended && <span className={BADGE_DANGER_TXT}>挂起</span>}
+          {d.suspended && (
+            <span className={BADGE_DANGER_TXT}>
+              {dict.userDetail.badgeSuspended}
+            </span>
+          )}
           {!d.download_enabled && (
-            <span className={BADGE_DANGER_TXT}>禁下载</span>
+            <span className={BADGE_DANGER_TXT}>
+              {dict.userDetail.badgeNoDl}
+            </span>
           )}
           {d.parked && (
-            <span className={`${BADGE_PLAIN} bg-sky-soft`}>泊车</span>
+            <span className={`${BADGE_PLAIN} bg-sky-soft`}>
+              {dict.userDetail.badgeParked}
+            </span>
           )}
           {d.donor && (
-            <span className={`${BADGE_PLAIN} bg-mint/30`}>捐赠者</span>
+            <span className={`${BADGE_PLAIN} bg-mint/30`}>
+              {dict.userDetail.badgeDonor}
+            </span>
           )}
         </div>
         <button
           onClick={() => router.push("/admin?tool=users")}
           className="min-h-[36px] rounded-full border border-line px-4 text-xs"
         >
-          返回用户列表
+          {dict.userDetail.backToUsers}
         </button>
       </div>
 
@@ -141,10 +155,10 @@ export function AdminUserDetailPage() {
       <div className="flex flex-wrap gap-2" role="tablist">
         {(
           [
-            ["profile", "资料全景"],
-            ["spark", `${currency}流水`],
-            ["logins", "登录记录"],
-            ["seeding", "做种/下载"],
+            ["profile", dict.userDetail.tabProfile],
+            ["spark", fmt(dict.userDetail.tabSpark, { magic: currency })],
+            ["logins", dict.userDetail.tabLogins],
+            ["seeding", dict.userDetail.tabSeeding],
           ] as const
         ).map(([k, label]) => (
           <button
@@ -166,7 +180,7 @@ export function AdminUserDetailPage() {
           <ProfilePanels d={d} currency={currency} dt={dt} />
           {actions.tmpPass && (
             <p className={TMP_PASS_CLS}>
-              临时密码（仅显示一次）：{actions.tmpPass}，用户首登需改密。
+              {fmt(dict.userDetail.tmpPass, { pass: actions.tmpPass })}
             </p>
           )}
           <AdminActions

@@ -2713,6 +2713,12 @@ usertools: {
     thDuration: "Duration", thHeld: "Held", thAction: "Actions",
     limitedChip: "Limited", forever: "Forever",
     edit: "Edit", del: "Delete", empty: "No medals yet",
+    // Held browse / recall (admin-medals-held)
+    heldTitle: "Held browse / recall", qUid: "Filter by user UID",
+    thUser: "User", thMedal: "Medal", thSource: "Source",
+    thWearing: "Worn", wearing: "Wearing", revoked: "Recalled",
+    revoke: "Recall", revokeFail: "Recall failed",
+    heldEmpty: "No holdings yet",
   },
   /** Exam positions: metric catalogue ({magic} = site currency name) */
   adminExams: {
@@ -2893,6 +2899,34 @@ usertools: {
     adjUp: "Upload delta (bytes)", adjDown: "Download delta (bytes)",
     adjSpark: "{magic} delta", adjInvite: "Invite issue/recall",
     adjNote: "Note (audited)", adjustSubmit: "Submit adjustment",
+    // Action button wall (admin-user-detail-actions)
+    actionsTitle: "Admin actions", btnAdjust: "Adjust upload etc.",
+    btnClass: "Change class", btnRole: "Assign role",
+    btnPerm: "Grant permission", btnMedal: "Grant medal",
+    btnItem: "Grant item", btnJixiao: "Assign review",
+    btnResetPass: "Reset password",
+    btnDlDisable: "Disable downloads", btnDlEnable: "Restore downloads",
+    btnUnsuspend: "Unsuspend", btnSuspend: "Suspend account",
+    btnUnmute: "Unmute", btnUnban: "Unban",
+    btnMute: "Mute", btnBan: "Ban", btnDeleteUser: "Delete user",
+    // Expanded forms (admin-user-detail-actions-forms)
+    classHint:
+      "Current {cur}; only the owner can change it and it cannot be set to owner.",
+    pickClass: "Pick new class",
+    roleHint: "Roles can be held together; expires automatically (optional).",
+    pickRole: "Pick role", roleExpTitle: "Expiry (optional)",
+    grant: "Assign", revokeRole: "Revoke",
+    newRoleSummary: "＋ New role (create here when missing)",
+    fRoleKey: "Key (lowercase/underscore)", fRoleName: "Name",
+    fRoleDescr: "Description (optional)", create: "Create",
+    // Detail page header (admin-user-detail)
+    loading: "Loading…", badgeSuspended: "Suspended",
+    badgeNoDl: "DL off", badgeParked: "Parked", badgeDonor: "Donor",
+    backToUsers: "Back to users",
+    tabProfile: "Profile", tabSpark: "{magic} ledger",
+    tabLogins: "Logins", tabSeeding: "Seeding/Downloads",
+    tmpPass:
+      "Temporary password (shown once): {pass}. The user must change it on first login.",
   },
   /** Props (admin-props): kind names + per-kind config fields.
    *  Placeholder follows the domain convention CURRENCY (replaced with the
@@ -3133,12 +3167,25 @@ usertools: {
   adminUserlogs: {
     tabRename: "Rename log", tabModify: "Modify log",
     loadFail: "Load failed",
+    // Sticky promos (admin-p2-tools-promos)
     fUid: "User UID", qAll: "Empty = all",
     thId: "ID", thUser: "User", thOldName: "Old name",
     thNewName: "New name", thOperator: "Operator", thTime: "Time",
     thContent: "Changes",
     renameEmpty: "No rename records yet",
     modifyEmpty: "No modification records yet",
+  },
+  /** Sticky promos (admin-p2-tools-promos) */
+  adminPromos: {
+    added: "Sticky promo added", opFail: "Action failed",
+    newTitle: "New sticky promo (homepage banner)",
+    fTitle: "Title", fUrl: "URL (optional)", fBadge: "Badge (optional)",
+    save7: "Save (7 days by default)",
+    thId: "ID", thTitle: "Title", thBadge: "Badge", thRange: "Range",
+    thEnabled: "Enabled", thAction: "Actions",
+    yes: "Yes", no: "No", enable: "Enable", disable: "Disable",
+    toggled: "Enabled", untoggled: "Disabled",
+    deleted: "Deleted", delFail: "Delete failed", del: "Delete",
   },
   medalRarity: {
     tones: {
