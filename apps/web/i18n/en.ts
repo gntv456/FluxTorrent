@@ -1453,6 +1453,7 @@ usertools: {
   bank: {
     title: "Magic Bank",
     subtitle: "Compounding demand · tiered fixed · collateral loans",
+    emptyDeposits: "No fixed deposits yet.",
     depositService: "Deposits",
     deposit: "Deposit",
     withdraw: "Withdraw",

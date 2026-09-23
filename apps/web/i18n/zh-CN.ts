@@ -1447,6 +1447,7 @@ usertools: {
   bank: {
     title: "魔力银行",
     subtitle: "活期复利 · 定期分档 · 抵押贷款",
+    emptyDeposits: "暂无定期存款。",
     depositService: "存款服务",
     deposit: "存入",
     withdraw: "支取",
