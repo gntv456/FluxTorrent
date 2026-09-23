@@ -9,6 +9,7 @@
 import type { CatRow, TagRow } from "./admin-torrents-shared";
 import { promoLabels } from "./admin-torrents-shared";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 interface BatchBarProps {
   busy: boolean;
@@ -67,14 +68,15 @@ export function BatchBar(props: BatchBarProps) {
     batch,
   } = props;
   const { dict } = useI18n();
-  const PROMO_LABEL = promoLabels(dict.adminTorrents.promo);
+  const at = dict.adminTorrents;
+  const PROMO_LABEL = promoLabels(at.promo);
   return (
     <section className="baozi-panel flex flex-wrap items-end gap-3 p-3">
       <p className="w-full text-xs font-bold text-sub">
-        批量操作（已选 {selCount} 个，勾选下方列表后执行；单批最多 500）
+        {fmt(at.batchHint, { n: selCount })}
       </p>
       <label className="flex flex-col gap-1 text-xs">
-        置顶截止
+        {at.fPosUntil}
         <input
           type="datetime-local"
           value={posUntil}
@@ -92,17 +94,17 @@ export function BatchBar(props: BatchBarProps) {
         }
         className={SKY_BTN}
       >
-        置顶
+        {at.actions.sticky}
       </button>
       <button
         disabled={busy}
         onClick={() => batch("sticky", { pos_state: 0 })}
         className={OUTLINE_BTN}
       >
-        取消置顶
+        {at.unsticky}
       </button>
       <label className="flex flex-col gap-1 text-xs">
-        促销类型
+        {at.fPromoKind}
         <select
           value={promoKind}
           onChange={(e) => setPromoKind(e.target.value)}
@@ -116,7 +118,7 @@ export function BatchBar(props: BatchBarProps) {
         </select>
       </label>
       <label className="flex flex-col gap-1 text-xs">
-        时长(h)
+        {at.fHours}
         <input
           type="number"
           value={promoHours}
@@ -136,18 +138,18 @@ export function BatchBar(props: BatchBarProps) {
         }
         className={SKY_BTN}
       >
-        设促销
+        {at.setPromo}
       </button>
       <label className="flex flex-col gap-1 text-xs">
-        推荐
+        {at.fPick}
         <select
           value={pickType}
           onChange={(e) => setPickType(e.target.value)}
           className={BATCH_INPUT_CLS}
         >
-          <option value="0">取消</option>
-          <option value="1">推荐</option>
-          <option value="2">经典</option>
+          <option value="0">{at.pickNone}</option>
+          <option value="1">{at.optPickRec}</option>
+          <option value="2">{at.optPickClassic}</option>
         </select>
       </label>
       <button
@@ -155,10 +157,10 @@ export function BatchBar(props: BatchBarProps) {
         onClick={() => batch("recommend", { pick_type: Number(pickType) })}
         className={OUTLINE_BTN}
       >
-        设推荐
+        {at.setPick}
       </button>
       <label className="flex flex-wrap items-center gap-1 pb-1 text-xs">
-        标签
+        {at.fTags}
         {tags
           .filter((t) => t.enabled)
           .map((t) => (
@@ -182,37 +184,37 @@ export function BatchBar(props: BatchBarProps) {
         onClick={() => batch("set_tags", { tag_ids: [...tagIds] })}
         className={OUTLINE_BTN}
       >
-        设置标签
+        {at.setTags}
       </button>
       <button
         disabled={busy}
         onClick={() => batch("clear_tags", { tag_ids: [...tagIds] })}
         className={OUTLINE_BTN}
       >
-        清除标签
+        {at.actions.clear_tags}
       </button>
       <button
         disabled={busy}
         onClick={() => batch("hr")}
         className={OUTLINE_BTN}
       >
-        标记H&R
+        {at.actions.hr}
       </button>
       <button
         disabled={busy}
         onClick={() => batch("unhr")}
         className={OUTLINE_BTN}
       >
-        取消H&R
+        {at.actions.unhr}
       </button>
       <label className="flex flex-col gap-1 text-xs">
-        改分类
+        {at.actions.change_category}
         <select
           value={batchCat}
           onChange={(e) => setBatchCat(e.target.value)}
           className={BATCH_INPUT_CLS}
         >
-          <option value="">（不改）</option>
+          <option value="">{at.catKeep}</option>
           {cats.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -227,17 +229,17 @@ export function BatchBar(props: BatchBarProps) {
         }
         className={OUTLINE_BTN}
       >
-        改分类
+        {at.actions.change_category}
       </button>
       <button
         disabled={busy}
         onClick={() => {
-          if (window.confirm(`确认删除所选 ${selCount} 个种子？（软删除）`))
+          if (window.confirm(fmt(at.delConfirm, { n: selCount })))
             batch("delete");
         }}
         className={CORAL_BTN}
       >
-        删除已选
+        {at.delSelected}
       </button>
     </section>
   );

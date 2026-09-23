@@ -11,11 +11,15 @@ import { BTN_SM_BOLD, BTN_SM_GHOST, INPUT_GROW } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import type { DenyReason, TorrentOpRow } from "./admin-torrents-shared";
 
 // ============ 拒绝原因（既有） ============
 
 export function DenyReasons({ flash }: { flash: (m: string) => void }) {
+  const { dict } = useI18n();
+  const at = dict.adminTorrents;
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<DenyReason[]>([]);
   const [edit, setEdit] = useState<{
@@ -49,11 +53,11 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
           reason: edit.reason,
           sort: edit.sort,
         });
-      flash("已保存");
+      flash(at.saved);
       setEdit({ id: null, reason: "", sort: 0 });
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -63,17 +67,17 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
     <div className="flex flex-col gap-3">
       <section className="baozi-panel cmgmt-form p-4">
         <h2 className="mb-2 text-base font-bold text-ink">
-          {edit.id === null ? "新增拒绝原因" : `编辑 #${edit.id}`}
+          {edit.id === null ? at.denyNew : fmt(at.denyEdit, { id: edit.id })}
         </h2>
         <label>
-          原因文本
+          {at.fReason}
           <input
             value={edit.reason}
             onChange={(e) => setEdit({ ...edit, reason: e.target.value })}
           />
         </label>
         <label>
-          排序
+          {at.fSort}
           <input
             type="number"
             value={edit.sort}
@@ -86,14 +90,14 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
             disabled={busy || !edit.reason.trim()}
             onClick={save}
           >
-            保存
+            {at.save}
           </button>
           {edit.id !== null && (
             <button
               className={BTN_SM_BOLD}
               onClick={() => setEdit({ id: null, reason: "", sort: 0 })}
             >
-              取消
+              {at.cancel}
             </button>
           )}
         </div>
@@ -102,10 +106,10 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
         <thead>
           <tr>
             <td className="colhead">ID</td>
-            <td className="colhead">排序</td>
-            <td className="colhead">原因</td>
-            <td className="colhead">启用</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thSort}</td>
+            <td className="colhead">{at.thReason}</td>
+            <td className="colhead">{at.thEnabled}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -114,7 +118,7 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
               <td>{r.id}</td>
               <td>{r.sort}</td>
               <td>{r.reason}</td>
-              <td>{r.enabled ? "是" : "否"}</td>
+              <td>{r.enabled ? at.yes : at.no}</td>
               <td className="text-right">
                 <button
                   className="cmgmt-act"
@@ -122,7 +126,7 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
                     setEdit({ id: r.id, reason: r.reason, sort: r.sort })
                   }
                 >
-                  编辑
+                  {at.edit}
                 </button>
                 <button
                   className="cmgmt-act"
@@ -131,28 +135,28 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
                       await api.put(`/api/v1/admin/deny-reasons/${r.id}`, {
                         enabled: !r.enabled,
                       });
-                      flash(r.enabled ? "已停用" : "已启用");
+                      flash(r.enabled ? at.disabledMsg : at.enabledMsg);
                       load();
                     } catch {
-                      flash("操作失败");
+                      flash(at.opFail);
                     }
                   }}
                 >
-                  {r.enabled ? "停用" : "启用"}
+                  {r.enabled ? at.disable : at.enable}
                 </button>
                 <button
                   className="cmgmt-act cmgmt-act--danger"
                   onClick={async () => {
                     try {
                       await api.del(`/api/v1/admin/deny-reasons/${r.id}`);
-                      flash("已删除");
+                      flash(at.deleted);
                       load();
                     } catch {
-                      flash("删除失败");
+                      flash(at.delFail);
                     }
                   }}
                 >
-                  删除
+                  {at.del}
                 </button>
               </td>
             </tr>
@@ -166,6 +170,9 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
 // ============ 种子操作记录（既有） ============
 
 export function OpLogs() {
+  const { dict } = useI18n();
+  const at = dict.adminTorrents;
+  const c = dict.common;
   const [tid, setTid] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{
@@ -192,7 +199,7 @@ export function OpLogs() {
         <input
           value={tid}
           onChange={(e) => setTid(e.target.value)}
-          placeholder="按种子 ID 过滤（留空看全部）"
+          placeholder={at.qTid}
           className={INPUT_GROW}
         />
       </div>
@@ -200,11 +207,11 @@ export function OpLogs() {
         <thead>
           <tr>
             <td className="colhead">ID</td>
-            <td className="colhead">种子</td>
-            <td className="colhead">操作人</td>
-            <td className="colhead">动作</td>
-            <td className="colhead">详情</td>
-            <td className="colhead">时间</td>
+            <td className="colhead">{at.thTorrent}</td>
+            <td className="colhead">{at.thOperator}</td>
+            <td className="colhead">{at.thOp}</td>
+            <td className="colhead">{at.thDetail}</td>
+            <td className="colhead">{at.thTime}</td>
           </tr>
         </thead>
         <tbody>
@@ -232,17 +239,20 @@ export function OpLogs() {
           onClick={() => setPage(page - 1)}
           className={BTN_SM_GHOST}
         >
-          上一页
+          {c.prevPage}
         </button>
         <span>
-          第 {data?.page ?? 1} 页 / 共 {data?.total ?? 0} 条
+          {fmt(at.pageInfo, {
+            page: data?.page ?? 1,
+            total: data?.total ?? 0,
+          })}
         </span>
         <button
           disabled={!data || data.rows.length < 20}
           onClick={() => setPage(page + 1)}
           className={BTN_SM_GHOST}
         >
-          下一页
+          {c.nextPage}
         </button>
       </div>
     </div>

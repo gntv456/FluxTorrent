@@ -10,11 +10,16 @@ import { BTN_SM_GHOST, INPUT_GROW } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import type { LoginRow } from "./admin-torrents-shared";
 
 // ============ 登录记录（含一键封/解封 IP，好学站 login-logs 口径） ============
 
 export function LoginLogs() {
+  const { dict } = useI18n();
+  const at = dict.adminTorrents;
+  const c = dict.common;
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{
@@ -62,27 +67,27 @@ export function LoginLogs() {
   }, [data]);
 
   async function banIp(ip: string) {
-    const reason = prompt(`封禁 ${ip} 的理由：`);
+    const reason = prompt(fmt(at.banPrompt, { ip }));
     if (!reason) return;
     try {
       await api.post("/api/v1/admin/bans", { ip, reason });
-      flash(`已封禁 ${ip}`);
+      flash(fmt(at.bannedMsg, { ip }));
       setBanned((prev) => new Set(prev).add(ip));
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     }
   }
   async function unbanIp(ip: string) {
     try {
       await api.post("/api/v1/admin/bans/by-ip/delete", { ip });
-      flash(`已解封 ${ip}`);
+      flash(fmt(at.unbannedMsg, { ip }));
       setBanned((prev) => {
         const n = new Set(prev);
         n.delete(ip);
         return n;
       });
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     }
   }
 
@@ -97,19 +102,19 @@ export function LoginLogs() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="按用户名 / IP 搜索"
+          placeholder={at.qLogin}
           className={INPUT_GROW}
         />
       </div>
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">用户</td>
+            <td className="colhead">{at.thUser}</td>
             <td className="colhead">IP</td>
-            <td className="colhead">国家/城市</td>
-            <td className="colhead">结果</td>
-            <td className="colhead">时间</td>
-            <td className="colhead">IP 操作</td>
+            <td className="colhead">{at.thGeo}</td>
+            <td className="colhead">{at.thResult}</td>
+            <td className="colhead">{at.thTime}</td>
+            <td className="colhead">{at.thIpAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -121,11 +126,11 @@ export function LoginLogs() {
                 {r.country_name || r.country ? (
                   `${r.country_name ?? r.country}${r.city ? ` · ${r.city}` : ""}`
                 ) : (
-                  <span className="text-sub">内网/未知</span>
+                  <span className="text-sub">{at.lanUnknown}</span>
                 )}
               </td>
               <td className={r.ok ? "text-mint" : "text-danger"}>
-                {r.ok ? "成功" : "失败"}
+                {r.ok ? at.okMsg : at.failMsg}
               </td>
               <td className="text-xs text-sub">
                 {new Date(r.created_at).toLocaleString()}
@@ -134,14 +139,14 @@ export function LoginLogs() {
                 {r.ip &&
                   (banned.has(r.ip) ? (
                     <button className="cmgmt-act" onClick={() => unbanIp(r.ip)}>
-                      解封 IP
+                      {at.unbanIp}
                     </button>
                   ) : (
                     <button
                       className="cmgmt-act cmgmt-act--danger"
                       onClick={() => banIp(r.ip)}
                     >
-                      封禁 IP
+                      {at.banIp}
                     </button>
                   ))}
               </td>
@@ -150,7 +155,7 @@ export function LoginLogs() {
           {data?.rows.length === 0 && (
             <tr>
               <td colSpan={6} className="py-6 text-center text-sub">
-                暂无登录记录
+                {at.loginEmpty}
               </td>
             </tr>
           )}
@@ -162,17 +167,20 @@ export function LoginLogs() {
           onClick={() => setPage(page - 1)}
           className={BTN_SM_GHOST}
         >
-          上一页
+          {c.prevPage}
         </button>
         <span>
-          第 {data?.page ?? 1} 页 / 共 {data?.total ?? 0} 条
+          {fmt(at.pageInfo, {
+            page: data?.page ?? 1,
+            total: data?.total ?? 0,
+          })}
         </span>
         <button
           disabled={!data || data.rows.length < 20}
           onClick={() => setPage(page + 1)}
           className={BTN_SM_GHOST}
         >
-          下一页
+          {c.nextPage}
         </button>
       </div>
     </div>

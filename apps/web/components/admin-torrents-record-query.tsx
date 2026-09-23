@@ -9,6 +9,8 @@ import { BTN_SM_GHOST, INPUT_GROW } from "@/lib/ui-classes";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import type { RecordRow } from "./admin-torrents-shared";
 
 // ============ 通用记录查询（火花/购买，既有） ============
@@ -22,6 +24,9 @@ export function RecordQuery({
   endpoint: string;
   columns: [string, string][];
 }) {
+  const { dict } = useI18n();
+  const at = dict.adminTorrents;
+  const c = dict.common;
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ rows: RecordRow[]; page: number } | null>(
@@ -46,7 +51,7 @@ export function RecordQuery({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={`${title}：按用户名搜索`}
+          placeholder={fmt(at.qRecord, { title })}
           className={INPUT_GROW}
         />
       </div>
@@ -71,8 +76,8 @@ export function RecordQuery({
                       ? new Date(v).toLocaleString()
                       : k === "ok"
                         ? v
-                          ? "成功"
-                          : "失败"
+                          ? at.okMsg
+                          : at.failMsg
                         : String(v ?? "—")}
                   </td>
                 );
@@ -87,15 +92,15 @@ export function RecordQuery({
           onClick={() => setPage(page - 1)}
           className={BTN_SM_GHOST}
         >
-          上一页
+          {c.prevPage}
         </button>
-        <span>第 {data?.page ?? 1} 页</span>
+        <span>{fmt(at.pageNum, { n: data?.page ?? 1 })}</span>
         <button
           disabled={!data || data.rows.length < 20}
           onClick={() => setPage(page + 1)}
           className={BTN_SM_GHOST}
         >
-          下一页
+          {c.nextPage}
         </button>
       </div>
     </div>

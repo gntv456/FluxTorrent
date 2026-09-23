@@ -3,6 +3,7 @@
 import { CELL_CARD_SUB } from "@/lib/ui-classes";
 
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 import { useState } from "react";
 import { TorrentList } from "./admin-torrents-list";
@@ -17,7 +18,8 @@ import type { SubTab } from "./admin-torrents-shared";
  *  登录记录拆至 ./admin-torrents-login-logs.tsx；记录查询拆至 ./admin-torrents-record-query.tsx；
  *  类型与常量拆至 ./admin-torrents-shared.ts。 */
 export function AdminTorrents() {
-  const { currency } = useI18n();
+  const { currency, dict } = useI18n();
+  const at = dict.adminTorrents;
   const [sub, setSub] = useState<SubTab>("torrents");
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -31,12 +33,12 @@ export function AdminTorrents() {
       <div className="flex flex-wrap gap-2" role="tablist">
         {(
           [
-            ["torrents", "种子管理"],
-            ["deny", "拒绝原因"],
-            ["ops", "种子操作记录"],
-            ["spark", `${currency}记录`],
-            ["buys", "种子购买"],
-            ["logins", "登录记录"],
+            ["torrents", at.tabTorrents],
+            ["deny", at.tabDeny],
+            ["ops", at.tabOps],
+            ["spark", fmt(at.tabSpark, { magic: currency })],
+            ["buys", at.tabBuys],
+            ["logins", at.tabLogins],
           ] as [SubTab, string][]
         ).map(([k, label]) => (
           <button
@@ -60,27 +62,27 @@ export function AdminTorrents() {
       {sub === "ops" && <OpLogs />}
       {sub === "spark" && (
         <RecordQuery
-          title={`${currency}记录`}
+          title={fmt(at.tabSpark, { magic: currency })}
           endpoint="/api/v1/admin/spark-logs"
           columns={[
-            ["username", "用户"],
-            ["amount", "数额"],
-            ["kind", "类型"],
-            ["balance_after", "余额"],
-            ["created_at", "时间"],
+            ["username", at.thUser],
+            ["amount", at.thAmount],
+            ["kind", at.thKind],
+            ["balance_after", at.thBalance],
+            ["created_at", at.thTime],
           ]}
         />
       )}
       {sub === "buys" && (
         <RecordQuery
-          title="种子购买记录"
+          title={at.buysTitle}
           endpoint="/api/v1/admin/torrent-buys"
           columns={[
-            ["username", "用户"],
-            ["kind", "类型"],
-            ["ref_id", "种子ID"],
+            ["username", at.thUser],
+            ["kind", at.thKind],
+            ["ref_id", at.thTorrentId],
             ["amount", currency],
-            ["created_at", "时间"],
+            ["created_at", at.thTime],
           ]}
         />
       )}

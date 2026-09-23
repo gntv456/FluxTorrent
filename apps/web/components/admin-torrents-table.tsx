@@ -18,24 +18,25 @@ export function TorrentTable(props: {
 }) {
   const { data, sel, setSel, decide } = props;
   const { dict } = useI18n();
-  const APPROVAL = approvalList(dict.adminTorrents.approval);
-  const PROMO_LABEL = promoLabels(dict.adminTorrents.promo);
+  const at = dict.adminTorrents;
+  const APPROVAL = approvalList(at.approval);
+  const PROMO_LABEL = promoLabels(at.promo);
   return (
     <table className="nexus-table">
       <thead>
         <tr>
           <td className="colhead w-10"></td>
           <td className="colhead">ID</td>
-          <td className="colhead">名称</td>
-          <td className="colhead">发布者</td>
-          <td className="colhead">大小</td>
-          <td className="colhead">做种/下载</td>
-          <td className="colhead">状态</td>
-          <td className="colhead">置顶</td>
-          <td className="colhead">促销</td>
-          <td className="colhead">推荐</td>
+          <td className="colhead">{at.fName}</td>
+          <td className="colhead">{at.fOwner}</td>
+          <td className="colhead">{at.thSize}</td>
+          <td className="colhead">{at.thSeeders}</td>
+          <td className="colhead">{at.fStatus}</td>
+          <td className="colhead">{at.fPos}</td>
+          <td className="colhead">{at.fPromo}</td>
+          <td className="colhead">{at.fPick}</td>
           <td className="colhead">H&R</td>
-          <td className="colhead">操作</td>
+          <td className="colhead">{at.thAction}</td>
         </tr>
       </thead>
       <tbody>
@@ -75,7 +76,7 @@ export function TorrentTable(props: {
             <td>
               {t.pos_state === 1 ? (
                 <span className="text-sky">
-                  置顶
+                  {at.fPos}
                   {t.pos_state_until
                     ? `·${new Date(t.pos_state_until).toLocaleDateString()}`
                     : ""}
@@ -98,9 +99,9 @@ export function TorrentTable(props: {
             </td>
             <td>
               {t.pick_type === 1 ? (
-                <span className="text-danger">推荐</span>
+                <span className="text-danger">{at.optPickRec}</span>
               ) : t.pick_type === 2 ? (
-                <span className="text-sun">经典</span>
+                <span className="text-sun">{at.optPickClassic}</span>
               ) : (
                 "—"
               )}
@@ -113,13 +114,13 @@ export function TorrentTable(props: {
                     className="cmgmt-act"
                     onClick={() => decide(t.id, true)}
                   >
-                    通过
+                    {APPROVAL[1]}
                   </button>
                   <button
                     className="cmgmt-act cmgmt-act--danger"
                     onClick={() => decide(t.id, false)}
                   >
-                    拒绝
+                    {APPROVAL[2]}
                   </button>
                 </>
               )}
@@ -129,7 +130,7 @@ export function TorrentTable(props: {
         {data?.rows.length === 0 && (
           <tr>
             <td colSpan={12} className="py-6 text-center text-sub">
-              没有匹配的种子
+              {at.tableEmpty}
             </td>
           </tr>
         )}
