@@ -10,7 +10,7 @@ import {
 } from "./torrents-adv-groups";
 
 export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
-  const { dict, sp, tags, secDict, dimKinds } = ctx;
+  const { dict, sp, tags, tagGroups, secDict, dimKinds } = ctx;
   const t2 = dict.torrents2;
   return (
     <>
@@ -128,21 +128,47 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
             <header className="tsb-card__head">
               <h2 className="tsb-card__title">{t2.tagLabel}</h2>
             </header>
-            {/* 0159 P1：标签多选 chips + any/all 匹配模式（与 promo 多选同交互） */}
-            <div className="tsb-chips tsb-chips--scroll">
-              {tags
-                .filter((t) => t.kind !== "official")
-                .map((t) =>
-                  ctxAdvChip(
-                    "tag_ids",
-                    String(t.id),
-                    t.name,
-                    (sp.tag_ids ?? sp.tag_id ?? "")
-                      .split(",")
-                      .includes(String(t.id)),
-                  ),
-                )}
-            </div>
+            {/* 0159 P1：标签多选 chips + any/all 匹配模式（与 promo 多选同交互）；
+                0160 P2：按组分区（属性/内容），无组信息退化平铺 */}
+            {(["attribute", "content"] as const)
+              .filter((g) =>
+                tags.some(
+                  (t, i) =>
+                    t.kind !== "official" &&
+                    (tagGroups?.[i] ?? "attribute") === g,
+                ),
+              )
+              .map((g) => (
+                <div
+                  key={g}
+                  className="tsb-chips tsb-chips--scroll"
+                  data-tag-group={g}
+                >
+                  {(tagGroups ?? []).some((x) => x === "content") && (
+                    <span className="tsb-chip__grouplabel">
+                      {g === "attribute"
+                        ? (t2.tagGroupAttr ?? "属性")
+                        : (t2.tagGroupContent ?? "内容")}
+                    </span>
+                  )}
+                  {tags
+                    .filter(
+                      (t, i) =>
+                        t.kind !== "official" &&
+                        (tagGroups?.[i] ?? "attribute") === g,
+                    )
+                    .map((t) =>
+                      ctxAdvChip(
+                        "tag_ids",
+                        String(t.id),
+                        t.name,
+                        (sp.tag_ids ?? sp.tag_id ?? "")
+                          .split(",")
+                          .includes(String(t.id)),
+                      ),
+                    )}
+                </div>
+              ))}
             <div className="tsb-chips">
               {(
                 [

@@ -72,24 +72,41 @@ export function UploadForm() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // 标签（NP upload tags 口径）：启用字典多选，官方标签仅 staff（后端同口径校验）
+  // 0160 P2：groups 平行数组（与 dict 下标对齐）用于按组分区
   const [tagDict, setTagDict] = useState<
     { id: number; name: string; kind: string }[]
   >([]);
+  const [tagGroups, setTagGroups] = useState<string[]>([]);
   const [tagSel, setTagSel] = useState<number[]>([]);
   useEffect(() => {
     api
       .get<
+        | {
+            tags:
+              | { id: number; name: string; kind: string }[]
+              | [number, string, string][];
+            groups?: string[];
+          }
         | { id: number; name: string; kind: string }[]
         | [number, string, string][]
       >("/api/v1/tags-dict")
-      .then((rows) =>
+      .then((r) => {
+        // 0160 起返回 { tags, groups }；旧形态（裸数组）兼容
+        const rows = Array.isArray(r) ? r : (r.tags ?? []);
+        const groups = Array.isArray(r) ? [] : (r.groups ?? []);
         setTagDict(
-          rows.map((r) =>
-            Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r,
+          rows.map((row) =>
+            Array.isArray(row)
+              ? { id: row[0], name: row[1], kind: row[2] }
+              : row,
           ),
-        ),
-      )
-      .catch(() => setTagDict([]));
+        );
+        setTagGroups(groups);
+      })
+      .catch(() => {
+        setTagDict([]);
+        setTagGroups([]);
+      });
   }, []);
   // 价格（0086 付费下载）：下载者支付，发布者得 (100-税)%，0 = 免费
   const [price, setPrice] = useState(0);
@@ -232,6 +249,7 @@ export function UploadForm() {
             secVals={secVals}
             setSecVals={setSecVals}
             tagDict={tagDict}
+            tagGroups={tagGroups}
             tagSel={tagSel}
             setTagSel={setTagSel}
             posState={posState}

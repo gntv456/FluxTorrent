@@ -21,6 +21,8 @@ export interface TorrentsSearchBoxProps {
   sp: TorrentsSP;
   categories: { id: number; label: string }[];
   tags: { id: number; name: string; kind: string }[];
+  /** 平行数组（0160 P2）：与 tags 下标对齐 'attribute'|'content'；缺省全 attribute */
+  tagGroups?: string[];
   secDict: Record<string, SectionDictRow[]> | null;
   dimKinds: SectionKindMeta[];
   selectedCats: Set<number>;
@@ -37,6 +39,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
     sp,
     categories,
     tags,
+    tagGroups,
     secDict,
     dimKinds,
     selectedCats,
@@ -154,6 +157,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
             sp={sp}
             categories={categories}
             tags={tags}
+            tagGroups={tagGroups}
             secDict={secDict}
             dimKinds={dimKinds}
             selectedCats={selectedCats}

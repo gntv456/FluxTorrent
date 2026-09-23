@@ -29,6 +29,12 @@ struct TagDictRow {
     sort: i32,
     enabled: bool,
     mode_id: Option<i32>,
+    /// 分组（0160 P2）：attribute=属性类 / content=内容类
+    #[sqlx(default)]
+    tag_group: String,
+    /// 层级（0160 P2）：global=通用层（跨站型共享） / pack=站型层
+    #[sqlx(default)]
+    scope_layer: String,
     /// 使用计数（0159 P1 治理）：种子引用数（含未过审）
     torrent_usage: i64,
     /// 使用计数（0159 P1 治理）：论坛主题引用数
@@ -61,6 +67,12 @@ struct TagDictReq {
     enabled: Option<bool>,
     #[serde(default)]
     mode_id: Option<i32>,
+    /// 分组（0160 P2）：attribute/content，缺省 attribute
+    #[serde(default)]
+    tag_group: Option<String>,
+    /// 层级（0160 P2）：global/pack，缺省 pack（新词默认站型层，通用层只放运营裁决的六件套）
+    #[serde(default)]
+    scope_layer: Option<String>,
 }
 
 #[get("/admin/tags-dict")]
@@ -76,7 +88,7 @@ async fn tags_dict_list(
     )
     .await?;
     let rows: Vec<TagDictRow> = sqlx::query_as(
-        "SELECT d.id, d.name, d.kind, d.scope, d.bg_color, d.color, d.font_size, d.margin, d.padding, d.border_radius, d.sort, d.enabled, d.mode_id, \
+        "SELECT d.id, d.name, d.kind, d.scope, d.bg_color, d.color, d.font_size, d.margin, d.padding, d.border_radius, d.sort, d.enabled, d.mode_id, d.tag_group, d.scope_layer, \
          (SELECT count(*) FROM tags tg WHERE tg.tag_id = d.id) AS torrent_usage, \
          (SELECT count(*) FROM topic_tags tt WHERE tt.tag_id = d.id) AS forum_usage \
          FROM tag_dict d ORDER BY d.scope, d.sort, d.id",
@@ -120,11 +132,20 @@ async fn tags_dict_add(
         Some("forum") => "forum",
         _ => "torrent",
     };
+    // 0160 P2：分组/层级白名单归一（非法值回落默认，CHECK 约束兜底）
+    let tag_group = match body.tag_group.as_deref() {
+        Some("content") => "content",
+        _ => "attribute",
+    };
+    let scope_layer = match body.scope_layer.as_deref() {
+        Some("global") => "global",
+        _ => "pack",
+    };
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO tag_dict (name, kind, scope, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id) \
+        "INSERT INTO tag_dict (name, kind, scope, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id, tag_group, scope_layer) \
          VALUES ($1, COALESCE($2, 'plain'), $3, COALESCE($4, ''), COALESCE($5, '#ffffff'), \
                  COALESCE($6, '12px'), COALESCE($7, '0 4px 0 0'), COALESCE($8, '1px 4px'), \
-                 COALESCE($9, '2px'), COALESCE($10, 0), COALESCE($11, TRUE), $12) \
+                 COALESCE($9, '2px'), COALESCE($10, 0), COALESCE($11, TRUE), $12, $13, $14) \
          RETURNING id",
     )
     .bind(name)
@@ -139,6 +160,8 @@ async fn tags_dict_add(
     .bind(body.sort)
     .bind(body.enabled)
     .bind(body.mode_id)
+    .bind(tag_group)
+    .bind(scope_layer)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -168,11 +191,21 @@ async fn tags_dict_update(
         Some("forum") => "forum",
         _ => "torrent",
     };
+    // 0160 P2：分组/层级白名单归一（非法值回落默认，CHECK 约束兜底）
+    let tag_group = match body.tag_group.as_deref() {
+        Some("content") => "content",
+        _ => "attribute",
+    };
+    let scope_layer = match body.scope_layer.as_deref() {
+        Some("global") => "global",
+        _ => "pack",
+    };
     let n = sqlx::query(
         "UPDATE tag_dict SET name = $2, kind = COALESCE($3, kind), scope = $4, \
            bg_color = COALESCE($5, bg_color), color = COALESCE($6, color), font_size = COALESCE($7, font_size), \
            margin = COALESCE($8, margin), padding = COALESCE($9, padding), border_radius = COALESCE($10, border_radius), \
-           sort = COALESCE($11, sort), enabled = COALESCE($12, enabled), mode_id = $13 \
+           sort = COALESCE($11, sort), enabled = COALESCE($12, enabled), mode_id = $13, \
+           tag_group = $14, scope_layer = $15 \
          WHERE id = $1",
     )
     .bind(id)
@@ -188,6 +221,8 @@ async fn tags_dict_update(
     .bind(body.sort)
     .bind(body.enabled)
     .bind(body.mode_id)
+    .bind(tag_group)
+    .bind(scope_layer)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?

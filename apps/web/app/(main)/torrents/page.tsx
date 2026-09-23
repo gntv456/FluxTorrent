@@ -52,14 +52,26 @@ export default async function TorrentsPage({
       Record<string, SectionDictRow[]> & { kinds?: SectionKindMeta[] }
     >("/api/v1/section-dict"),
     loadPublic<
-      { id: number; name: string; kind: string }[] | [number, string, string][]
+      | {
+          tags:
+            | { id: number; name: string; kind: string }[]
+            | [number, string, string][];
+          groups?: string[];
+        }
+      | { id: number; name: string; kind: string }[]
+      | [number, string, string][]
     >("/api/v1/tags-dict"),
   ]);
   const kinds: SectionKindMeta[] = secDict?.kinds ?? [];
   const dimKinds = kinds.filter((k) => (secDict?.[k.kind]?.length ?? 0) > 0);
-  const tags = (tagDict ?? []).map((r) =>
+  // 0160 起返回 { tags, groups }；旧形态（裸数组）兼容
+  const tagRows = tagDict && !Array.isArray(tagDict) ? tagDict.tags : (tagDict ?? []);
+  const tags = (tagRows ?? []).map((r) =>
     Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r,
   );
+  // 平行组别数组（0160 P2）：筛选面板按 attribute/content 分两行渲染
+  const tagGroups =
+    tagDict && !Array.isArray(tagDict) ? (tagDict.groups ?? []) : [];
   // 多维筛选参数转发（sec_{kind} → 后端通用解析）：不转发则筛选静默失效
   const secParams: Record<string, string> = {};
   for (const [k, v] of Object.entries(sp)) {
@@ -153,6 +165,7 @@ export default async function TorrentsPage({
         sp={sp}
         categories={categories}
         tags={tags}
+        tagGroups={tagGroups}
         secDict={secDict}
         dimKinds={dimKinds}
         selectedCats={selectedCats}

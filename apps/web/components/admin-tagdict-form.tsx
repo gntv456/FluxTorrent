@@ -88,6 +88,28 @@ export function TagEditForm({
             <option value="forum">论坛</option>
           </select>
         </Field>
+        {/* 0160 P2：分组（发布/筛选按组分区）+ 层级（global 不随站型重建） */}
+        <Field label="分组">
+          <select
+            value={edit.f.tag_group ?? "attribute"}
+            onChange={(e) => set("tag_group", e.target.value)}
+            className={INP}
+          >
+            <option value="attribute">属性</option>
+            <option value="content">内容</option>
+          </select>
+        </Field>
+        <Field label="层级">
+          <select
+            value={edit.f.scope_layer ?? "pack"}
+            onChange={(e) => set("scope_layer", e.target.value)}
+            className={INP}
+            title="通用层跨站型共享（六件套）；站型层随类型包 apply 重建"
+          >
+            <option value="global">通用</option>
+            <option value="pack">站型</option>
+          </select>
+        </Field>
         <Field label="背景色">
           <input
             value={edit.f.bg_color}

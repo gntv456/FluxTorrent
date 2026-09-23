@@ -24,6 +24,7 @@ export function UploadQualityBlock({
   secVals,
   setSecVals,
   tagDict,
+  tagGroups,
   tagSel,
   setTagSel,
   posState,
@@ -42,6 +43,8 @@ export function UploadQualityBlock({
   secVals: Record<string, string>;
   setSecVals: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   tagDict: { id: number; name: string; kind: string }[];
+  /** 平行数组（0160 P2）：与 tagDict 下标对齐，'attribute' | 'content'；缺省全 attribute */
+  tagGroups?: string[];
   tagSel: number[];
   setTagSel: React.Dispatch<React.SetStateAction<number[]>>;
   posState: number;
@@ -110,33 +113,56 @@ export function UploadQualityBlock({
       {tagDict.filter((t) => t.kind !== "official").length > 0 && (
         <FormRow label={dict.upload.tags ?? "标签"}>
           <div className="flex flex-col gap-1">
-            <div className="flex flex-wrap gap-x-4 gap-y-2">
-              {tagDict
-                .filter((t) => t.kind !== "official")
-                .map((t) => {
-                  const on = tagSel.includes(t.id);
-                  return (
-                    <label
-                      key={t.id}
-                      className="flex cursor-pointer items-center gap-1.5 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={on}
-                        onChange={() =>
-                          setTagSel((prev) =>
-                            on
-                              ? prev.filter((x) => x !== t.id)
-                              : [...prev, t.id],
-                          )
-                        }
-                        className="h-4 w-4 accent-[var(--baozi-orange)]"
-                      />
-                      {t.name}
-                    </label>
-                  );
-                })}
-            </div>
+            {/* 0160 P2：按组分区（属性类 / 内容类），无组信息时退化为平铺 */}
+            {(["attribute", "content"] as const)
+              .filter((g) =>
+                tagDict.some(
+                  (t, i) =>
+                    t.kind !== "official" &&
+                    (tagGroups?.[i] ?? "attribute") === g,
+                ),
+              )
+              .map((g) => (
+                <div key={g} className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {(tagGroups ?? []).some((x) => x === "content") && (
+                    <span className="text-xs font-bold text-sub">
+                      {g === "attribute"
+                        ? (dict.upload.tagGroupAttr ?? "属性")
+                        : (dict.upload.tagGroupContent ?? "内容")}
+                      ：
+                    </span>
+                  )}
+                  {tagDict
+                    .filter(
+                      (t, i) =>
+                        t.kind !== "official" &&
+                        (tagGroups?.[i] ?? "attribute") === g,
+                    )
+                    .map((t) => {
+                      const on = tagSel.includes(t.id);
+                      return (
+                        <label
+                          key={t.id}
+                          className="flex cursor-pointer items-center gap-1.5 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() =>
+                              setTagSel((prev) =>
+                                on
+                                  ? prev.filter((x) => x !== t.id)
+                                  : [...prev, t.id],
+                              )
+                            }
+                            className="h-4 w-4 accent-[var(--baozi-orange)]"
+                          />
+                          {t.name}
+                        </label>
+                      );
+                    })}
+                </div>
+              ))}
             <span className="text-xs text-sub">
               {dict.upload.tagsHint ?? "可多选（≤12 个）；发布后可在详情页增删"}
             </span>
