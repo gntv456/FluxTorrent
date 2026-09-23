@@ -3209,6 +3209,39 @@ usertools: {
     toggled: "Enabled", untoggled: "Disabled",
     deleted: "Deleted", delFail: "Delete failed", del: "Delete",
   },
+  /** Tag dictionary admin: main table + create/edit form
+   * (admin-tagdict / admin-tagdict-form) */
+  adminTagdict: {
+    // Main table (admin-tagdict)
+    loadFail: "Load failed", saved: "Saved", opFail: "Operation failed",
+    thPreview: "Preview", thKind: "Kind", thScope: "Scope",
+    thLayer: "Layer", thUsage: "Usage", thStyle: "Style",
+    thMode: "Mode", thStatus: "Status", thAction: "Actions",
+    kindOfficial: "Official", kindNormal: "Normal",
+    scopeForum: "Forum", scopeTorrent: "Torrent",
+    layerGlobal: "Global", layerSite: "Site",
+    tipGlobalLayer: "Global layer (shared across site types)",
+    tipSiteLayer: "Site layer (rebuilt with type pack)",
+    tipUsage: "Torrent refs / forum topic refs",
+    allModes: "All", enabled: "Enabled", disabled: "Disabled",
+    edit: "Edit", deleted: "Deleted", delFail: "Delete failed",
+    del: "Delete",
+    empty: "No tags yet",
+    // Create/edit form (admin-tagdict-form)
+    formNew: "New tag", formEdit: "Edit tag #{id}",
+    fName: "Name", fKind: "Kind", fScope: "Scope", fGroup: "Group",
+    fLayer: "Layer",
+    fBgColor: "Background", fColor: "Text color", fFontSize: "Font size",
+    fMargin: "Margin", fPadding: "Padding", fRadius: "Radius",
+    fMode: "Scope mode", fSort: "Sort",
+    optAttribute: "Attribute", optContent: "Content",
+    layerHint:
+      "Global layer is shared across site types; " +
+      "site layer is rebuilt on pack apply",
+    optAllModes: "All modes",
+    save: "Save", cancel: "Cancel",
+    previewLabel: "Preview:", previewPh: "tag preview",
+  },
   medalRarity: {
     tones: {
       gold: "Gold (legendary)", coral: "Orange (hot)", mint: "Green (common)",

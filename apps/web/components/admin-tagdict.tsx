@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 import { TagEditForm } from "./admin-tagdict-form";
 import {
@@ -20,6 +22,8 @@ export { EMPTY, PREVIEW_SHELL } from "./admin-tagdict-shared";
 export type { TagRow, ModeRow } from "./admin-tagdict-shared";
 
 export function AdminTagDict() {
+  const { dict } = useI18n();
+  const at = dict.adminTagdict;
   const [rows, setRows] = useState<TagRow[]>([]);
   const [modes, setModes] = useState<ModeRow[]>([]);
   const [edit, setEdit] = useState<{ id: number | null; f: typeof EMPTY }>({
@@ -39,7 +43,7 @@ export function AdminTagDict() {
       setRows(await api.get<TagRow[]>("/api/v1/admin/tags-dict"));
       setModes(await api.get<ModeRow[]>("/api/v1/admin/section-modes"));
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "加载失败");
+      flash(e instanceof ApiError ? e.message : at.loadFail);
     }
   }, []);
   useEffect(() => {
@@ -52,11 +56,11 @@ export function AdminTagDict() {
     try {
       if (edit.id === null) await api.post("/api/v1/admin/tags-dict", edit.f);
       else await api.put(`/api/v1/admin/tags-dict/${edit.id}`, edit.f);
-      flash("已保存");
+      flash(at.saved);
       setEdit({ id: null, f: { ...EMPTY } });
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -80,15 +84,15 @@ export function AdminTagDict() {
         <thead>
           <tr>
             <td className="colhead">ID</td>
-            <td className="colhead">预览</td>
-            <td className="colhead">类型</td>
-            <td className="colhead">作用域</td>
-            <td className="colhead">层级</td>
-            <td className="colhead">引用</td>
-            <td className="colhead">样式</td>
-            <td className="colhead">模式</td>
-            <td className="colhead">状态</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thPreview}</td>
+            <td className="colhead">{at.thKind}</td>
+            <td className="colhead">{at.thScope}</td>
+            <td className="colhead">{at.thLayer}</td>
+            <td className="colhead">{at.thUsage}</td>
+            <td className="colhead">{at.thStyle}</td>
+            <td className="colhead">{at.thMode}</td>
+            <td className="colhead">{at.thStatus}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -113,13 +117,27 @@ export function AdminTagDict() {
                   </span>
                 </span>
               </td>
-              <td>{r.kind === "official" ? "官方" : "普通"}</td>
-              <td>{r.scope === "forum" ? "论坛" : "种子"}</td>
-              <td title={r.scope_layer === "global" ? "通用层（跨站型共享）" : "站型层（随类型包重建）"}>
-                {r.scope === "forum" ? "—" : (r.scope_layer === "global" ? "通用" : "站型")}
+              <td>
+                {r.kind === "official" ? at.kindOfficial : at.kindNormal}
+              </td>
+              <td>
+                {r.scope === "forum" ? at.scopeForum : at.scopeTorrent}
+              </td>
+              <td
+                title={
+                  r.scope_layer === "global"
+                    ? at.tipGlobalLayer
+                    : at.tipSiteLayer
+                }
+              >
+                {r.scope === "forum"
+                  ? "—"
+                  : r.scope_layer === "global"
+                    ? at.layerGlobal
+                    : at.layerSite}
               </td>
               {/* 引用计数（0159 P1 治理）：僵尸标签（0 引用）一目了然 */}
-              <td className="num" title="种子引用 / 论坛主题引用">
+              <td className="num" title={at.tipUsage}>
                 {r.scope === "forum"
                   ? (r.forum_usage ?? 0)
                   : (r.torrent_usage ?? 0)}
@@ -131,15 +149,15 @@ export function AdminTagDict() {
                 {r.mode_id
                   ? (modes.find((m) => m.id === r.mode_id)?.name ??
                     `#${r.mode_id}`)
-                  : "全部"}
+                  : at.allModes}
               </td>
-              <td>{r.enabled ? "启用" : "停用"}</td>
+              <td>{r.enabled ? at.enabled : at.disabled}</td>
               <td className="text-right">
                 <button
                   className="cmgmt-act"
                   onClick={() => setEdit({ id: r.id, f: { ...r } })}
                 >
-                  编辑
+                  {at.edit}
                 </button>
                 <button
                   className="cmgmt-act cmgmt-act--danger"
@@ -147,14 +165,14 @@ export function AdminTagDict() {
                   onClick={async () => {
                     try {
                       await api.del(`/api/v1/admin/tags-dict/${r.id}`);
-                      flash("已删除");
+                      flash(at.deleted);
                       await load();
                     } catch (e) {
-                      flash(e instanceof ApiError ? e.message : "删除失败");
+                      flash(e instanceof ApiError ? e.message : at.delFail);
                     }
                   }}
                 >
-                  删除
+                  {at.del}
                 </button>
               </td>
             </tr>
@@ -162,7 +180,7 @@ export function AdminTagDict() {
           {rows.length === 0 && (
             <tr>
               <td colSpan={10} className="py-6 text-center text-sub">
-                暂无标签
+                {at.empty}
               </td>
             </tr>
           )}
