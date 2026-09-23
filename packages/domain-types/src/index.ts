@@ -440,6 +440,26 @@ export interface Post {
   /** 打赏总额/次数（0127） */
   tips?: number;
   tip_count?: number;
+  /** 作者公开信息（楼层左栏 2026-09-23）：头像 URL */
+  avatar_url?: string | null;
+  /** 等级名（user_classes.name） */
+  class_name?: string | null;
+  /** 入站时间（users.created_at，注册时间） */
+  author_joined_at?: string | null;
+  /** 佩戴中的勋章（含稀有度供染色） */
+  worn_medals?: {
+    name: string;
+    asset_ref: string | null;
+    rarity: string | null;
+  }[] | null;
+  /** 楼中楼（0163）：所属顶层楼 id（顶层楼自身为 NULL） */
+  root_id?: number | null;
+  /** 直接回复的目标楼层 id（顶层楼为 NULL） */
+  parent_id?: number | null;
+  /** 被回复楼层作者名（渲染「回复 @xxx」） */
+  reply_to_name?: string | null;
+  /** 该顶层楼的楼中楼（随主楼返回，时间正序；仅顶层楼非空） */
+  replies?: Post[] | null;
 }
 
 export interface TopicDetail {
@@ -646,6 +666,30 @@ export interface BankLoan {
   accrued_interest: number;
   status: string;
   due_at: string;
+}
+
+/** 贷款历史行（含进行中；paid_at/status 供前端区分态） */
+export interface BankLoanHistoryItem {
+  id: number;
+  amount: number;
+  daily_rate_bp: number;
+  term_days: number;
+  remaining: number;
+  accrued_interest: number;
+  status: "active" | "defaulted" | "paid";
+  due_at: string;
+  paid_at: string | null;
+  created_at: string;
+}
+
+/** 利息流水行（kind: demand 活期 / fixed 定期 / loan 贷款计提） */
+export interface BankInterestRecord {
+  id: number;
+  kind: "demand" | "fixed" | "loan";
+  reference_id: number;
+  amount: number;
+  rate_bp: number;
+  calc_date: string;
 }
 
 export interface BankOverview {

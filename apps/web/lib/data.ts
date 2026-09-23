@@ -30,6 +30,8 @@ import type {
   TaskItem,
   BankDeposit,
   BankLoan,
+  BankLoanHistoryItem,
+  BankInterestRecord,
   BankOverview,
   InviteItem,
   SubtitleItem,
@@ -61,6 +63,8 @@ export type {
   TaskItem,
   BankDeposit,
   BankLoan,
+  BankLoanHistoryItem,
+  BankInterestRecord,
   BankOverview,
   InviteItem,
   SubtitleItem,
@@ -75,6 +79,17 @@ export * from "./data-forum";
 export * from "./data-content";
 
 // ============ 本域：站点/商店/勋章/导航菜单 ============
+
+/** 当前登录用户的魔力余额（商店余额条用）。未登录或取数失败返回 null——
+ *  商店在匿名/异常下照常可用，只是不做「余额不足」预判（交后端校验）。 */
+export async function getMySpark(): Promise<number | null> {
+  try {
+    const me = await api.get<{ spark_balance?: number }>("/api/v1/me");
+    return typeof me.spark_balance === "number" ? me.spark_balance : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function getShopItems(): Promise<ShopItem[]> {
   try {

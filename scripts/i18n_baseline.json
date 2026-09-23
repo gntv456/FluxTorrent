@@ -200,7 +200,7 @@
  ],
  "components\\bank-actions-deposit.tsx": [],
  "components\\bank-actions-loan.tsx": [
-  89
+  121
  ],
  "components\\bank-actions-parts.tsx": [],
  "components\\bank-actions.tsx": [],
@@ -254,12 +254,12 @@
  ],
  "components\\forum-poll.tsx": [],
  "components\\forum-post-actions.tsx": [
-  105,
-  125,
-  132,
-  139,
-  146,
-  212
+  44,
+  64,
+  71,
+  78,
+  85,
+  151
  ],
  "components\\forum-report.tsx": [],
  "components\\forum-search.tsx": [],

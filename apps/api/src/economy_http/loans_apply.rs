@@ -8,7 +8,7 @@ use crate::economy::{loan_rate_bp, LOAN_TERMS};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
-use actix_web::{post, web, HttpRequest, HttpResponse};
+use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 #[post("/bank/loan/apply")]
@@ -102,4 +102,37 @@ async fn loan_apply(
 pub(super) struct LoanApplyReq {
     pub(super) amount: i64,
     pub(super) term_days: i32,
+}
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct LoanHistoryRow {
+    id: i64,
+    amount: i64,
+    daily_rate_bp: i32,
+    term_days: i32,
+    remaining: i64,
+    accrued_interest: i64,
+    status: String,
+    due_at: chrono::DateTime<chrono::Utc>,
+    paid_at: Option<chrono::DateTime<chrono::Utc>>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// 贷款历史（进行中 + 已结清，近 50 笔）。定存有 /bank/deposits 对应物。
+#[get("/bank/loans")]
+async fn loan_history(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl actix_web::Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let rows = sqlx::query_as::<_, LoanHistoryRow>(
+        "SELECT id, amount, daily_rate_bp, term_days, remaining, accrued_interest, \
+         status, due_at, paid_at, created_at FROM bank_loans \
+         WHERE user_id = $1 ORDER BY id DESC LIMIT 50",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
 }
