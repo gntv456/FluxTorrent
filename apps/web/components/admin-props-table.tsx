@@ -23,18 +23,19 @@ export function PropsTable(props: {
 }) {
   const { items, currency, busy, onEdit, onDel } = props;
   const { dict } = useI18n();
-  const KIND_LABEL = kindLabelMap(dict.adminProps.kindLabel);
+  const at = dict.adminProps;
+  const KIND_LABEL = kindLabelMap(at.kindLabel);
   return (
     <table className="nexus-table text-xs">
       <thead>
         <tr>
-          <td className="colhead">ID</td>
-          <td className="colhead">名称</td>
-          <td className="colhead">类型</td>
-          <td className="colhead">价格</td>
-          <td className="colhead">config</td>
-          <td className="colhead">状态</td>
-          <td className="colhead text-right">操作</td>
+          <td className="colhead">{at.thId}</td>
+          <td className="colhead">{at.thName}</td>
+          <td className="colhead">{at.thKind}</td>
+          <td className="colhead">{at.thPrice}</td>
+          <td className="colhead">{at.thConfig}</td>
+          <td className="colhead">{at.thStatus}</td>
+          <td className="colhead text-right">{at.thAction}</td>
         </tr>
       </thead>
       <tbody>
@@ -52,7 +53,7 @@ export function PropsTable(props: {
             <td className="max-w-[220px] truncate font-mono">
               {JSON.stringify(it.config)}
             </td>
-            <td>{it.active ? "上架" : "下架"}</td>
+            <td>{it.active ? at.listed : at.unlisted}</td>
             <td className="text-right">
               <button
                 className="cmgmt-act"
@@ -66,14 +67,14 @@ export function PropsTable(props: {
                   })
                 }
               >
-                编辑
+                {at.edit}
               </button>
               <button
                 className="cmgmt-act cmgmt-act--danger"
                 disabled={busy}
                 onClick={() => onDel(it.id)}
               >
-                删除/下架
+                {at.delOrUnlist}
               </button>
             </td>
           </tr>
@@ -81,7 +82,7 @@ export function PropsTable(props: {
         {items.length === 0 && (
           <tr>
             <td colSpan={7} className="py-6 text-center text-sub">
-              暂无道具
+              {at.tableEmpty}
             </td>
           </tr>
         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { CELL_CARD_SUB } from "@/lib/ui-classes";
+import { useI18n } from "@/i18n/client";
 
 import { useState } from "react";
 
@@ -32,6 +33,7 @@ export function AdminP2Tools() {
     "promos",
   );
   const { flash, node } = useFlash();
+  const at = useI18n().dict.adminP2Tools;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2" role="tablist">

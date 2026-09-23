@@ -1632,8 +1632,8 @@ usertools: {
     editPrompt: "新標題（留空取消）",
     editOk: "字幕已更新",
     delLabel: "刪除字幕",
-    delConfirm: "確定刪除該字幕？此操作不可撤銷。",
     delOk: "字幕已刪除",
+    delConfirm: "確定刪除該字幕？此操作不可撤銷。",
     verifiedTip: "管理認證",
     certTip: "認證字幕人",
     certGoldTip: "金字幕人（評選獲獎）",
@@ -2899,7 +2899,7 @@ usertools: {
     grant: "分配", revokeRole: "收回",
     newRoleSummary: "＋ 新增職務（需要新角色時在此建立）",
     fRoleKey: "Key（小寫/底線）", fRoleName: "名稱",
-    fRoleDescr: "說明（可選）", create: "建立",
+    fRoleDescr: "說明（可選）", create: "建立", phRoleName: "翻譯員",
     // 詳情頁頭（admin-user-detail）
     loading: "載入中…", badgeSuspended: "停權", badgeNoDl: "禁下載",
     badgeParked: "泊車", badgeDonor: "捐贈者",
@@ -2946,6 +2946,8 @@ usertools: {
     imgPrefix: "圖: ", framesEmpty: "暫無頭像框",
     thAction: "操作", edit: "編輯", del: "刪除", save: "儲存",
     opFail: "操作失敗", delFail: "刪除失敗",
+    /** 道具列表行刪除成功（與頭像框的 frameDeleted 區分） */
+    delOk: "已刪除",
     // 使用者背包（admin-props-user-bag）
     bagTitle: "使用者背包（購買 + 發放）", qUid: "按使用者 UID 過濾",
     thOrder: "單號", bagUser: "使用者", thItem: "道具", thKind: "類型",
@@ -2959,6 +2961,14 @@ usertools: {
     fConfig: "config(JSON，專家模式可直接改)", active: "上架",
     formHint:
       "即時生效類（上傳量/{magic}/邀請）發放直接入帳；卡牌/裝飾類入背包待使用者使用。装扮類會自動補 slot/dressup，無需手填。",
+    // 列表表格 + 頂層訊息（admin-props-table / admin-props）
+    thConfig: "config", thStatus: "狀態",
+    listed: "上架", unlisted: "下架", delOrUnlist: "刪除/下架",
+    tableEmpty: "暫無道具",
+    deleted: "已刪除",
+    propsLoadFail: "載入失敗", cfgBadJson: "config 需為合法 JSON",
+    disabledWithHeld: "已有持有記錄，已改為下架",
+    badgePh: "活動",
   },
   /** 後台種子管理：審核狀態 / 促銷標籤 / 批量動作 */
   adminTorrents: {
@@ -3000,6 +3010,11 @@ usertools: {
     loadFail: "載入失敗", assignFail: "分配失敗",
     pickTypeAndUsers: "請選擇崗位並填寫使用者 ID",
     assignedMsg: "已分配 {n} 人", skippedDup: "，跳過（本期已登記）{n} 人",
+    // 發薪記錄（admin-jixiao-payroll）
+    payrollTotalLabel: "本期發薪總額：",
+    paidNote: "（paid_by：worker=月末自動結算，self=本人領取）",
+    thClaimId: "領取ID", thPayrollUser: "使用者", thPayrollType: "崗位",
+    thWay: "方式", thPayTime: "時間", payrollEmpty: "本期暫無發薪",
   },
   /** 訊息模板管理（admin-p2-tools-templates）。fBody 含 {{username}} 字面量，
    *  直接渲染、不經 fmt（fmt 會把 {username} 當佔位符吞掉）。 */
@@ -3134,11 +3149,17 @@ usertools: {
     thContent: "修改內容",
     renameEmpty: "暫無改名記錄", modifyEmpty: "暫無修改記錄",
   },
+  /** P2 工具子 tab（admin-p2-tools） */
+  adminP2Tools: {
+    tabPromos: "置頂促銷", tabMenus: "自訂選單",
+    tabTemplates: "訊息模板", tabClaims: "保種認領",
+  },
   /** 置頂促銷（admin-p2-tools-promos） */
   adminPromos: {
     added: "已新增置頂促銷", opFail: "操作失敗",
     newTitle: "新增置頂促銷（首頁公告條）",
     fTitle: "標題", fUrl: "連結（可選）", fBadge: "角標（可選）",
+    badgePh: "活動",
     save7: "儲存（預設 7 天有效）",
     thId: "ID", thTitle: "標題", thBadge: "角標", thRange: "起止",
     thEnabled: "啟用", thAction: "操作",

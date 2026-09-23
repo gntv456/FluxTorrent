@@ -2913,7 +2913,7 @@ usertools: {
     grant: "分配", revokeRole: "收回",
     newRoleSummary: "＋ 新增职务（需要新角色时在此创建）",
     fRoleKey: "Key（小写/下划线）", fRoleName: "名称",
-    fRoleDescr: "说明（可选）", create: "创建",
+    fRoleDescr: "说明（可选）", create: "创建", phRoleName: "翻译员",
     // 详情页头（admin-user-detail）
     loading: "加载中…", badgeSuspended: "挂起", badgeNoDl: "禁下载",
     badgeParked: "泊车", badgeDonor: "捐赠者",
@@ -2961,6 +2961,8 @@ usertools: {
     imgPrefix: "图: ", framesEmpty: "暂无头像框",
     thAction: "操作", edit: "编辑", del: "删除", save: "保存",
     opFail: "操作失败", delFail: "删除失败",
+    /** 道具列表行删除成功（admin-props 的 onDel；与头像框的 frameDeleted 区分） */
+    delOk: "已删除",
     // 用户背包（admin-props-user-bag）
     bagTitle: "用户背包（购买 + 发放）", qUid: "按用户 UID 过滤",
     thOrder: "单号", bagUser: "用户", thItem: "道具", thKind: "类型",
@@ -2974,6 +2976,14 @@ usertools: {
     fConfig: "config(JSON，专家模式可直接改)", active: "上架",
     formHint:
       "即时生效类（上传量/{magic}/邀请）发放直接入账；卡牌/装饰类入背包待用户使用。装扮类会自动补 slot/dressup，无需手填。",
+    // 列表表格 + 顶层消息（admin-props-table / admin-props）
+    thConfig: "config", thStatus: "状态",
+    listed: "上架", unlisted: "下架", delOrUnlist: "删除/下架",
+    tableEmpty: "暂无道具",
+    deleted: "已删除",
+    propsLoadFail: "加载失败", cfgBadJson: "config 需为合法 JSON",
+    disabledWithHeld: "已有持有记录，已改为下架",
+    badgePh: "活动",
   },
   /** 后台种子管理：审批状态 / 促销标签 / 批量动作 */
   adminTorrents: {
@@ -3015,6 +3025,11 @@ usertools: {
     loadFail: "加载失败", assignFail: "分配失败",
     pickTypeAndUsers: "请选择岗位并填写用户 ID",
     assignedMsg: "已分配 {n} 人", skippedDup: "，跳过（本期已登记）{n} 人",
+    // 发薪记录（admin-jixiao-payroll）
+    payrollTotalLabel: "本期发薪总额：",
+    paidNote: "（paid_by：worker=月末自动结算，self=本人领取）",
+    thClaimId: "领取ID", thPayrollUser: "用户", thPayrollType: "岗位",
+    thWay: "方式", thPayTime: "时间", payrollEmpty: "本期暂无发薪",
   },
   /** 消息模板管理（admin-p2-tools-templates）。fBody 含 {{username}} 字面量，
    *  直接渲染、不经 fmt（fmt 会把 {username} 当占位符吞掉）。 */
@@ -3149,11 +3164,17 @@ usertools: {
     thContent: "修改内容",
     renameEmpty: "暂无改名记录", modifyEmpty: "暂无修改记录",
   },
+  /** P2 工具子 tab（admin-p2-tools） */
+  adminP2Tools: {
+    tabPromos: "置顶促销", tabMenus: "自定义菜单",
+    tabTemplates: "消息模板", tabClaims: "保种认领",
+  },
   /** 置顶促销（admin-p2-tools-promos） */
   adminPromos: {
     added: "已新增置顶促销", opFail: "操作失败",
     newTitle: "新增置顶促销（首页公告条）",
     fTitle: "标题", fUrl: "链接（可选）", fBadge: "角标（可选）",
+    badgePh: "活动",
     save7: "保存（默认 7 天有效）",
     thId: "ID", thTitle: "标题", thBadge: "角标", thRange: "起止",
     thEnabled: "启用", thAction: "操作",

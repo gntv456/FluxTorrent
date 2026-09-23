@@ -1634,8 +1634,8 @@ usertools: {
     editPrompt: "New title (empty to cancel)",
     editOk: "Subtitle updated",
     delLabel: "Delete subtitle",
-    delConfirm: "Delete this subtitle? This cannot be undone.",
     delOk: "Subtitle deleted",
+    delConfirm: "Delete this subtitle? This cannot be undone.",
     verifiedTip: "Verified",
     certTip: "Certified subtitler",
     certGoldTip: "Golden subtitler (award winner)",
@@ -2919,6 +2919,7 @@ usertools: {
     newRoleSummary: "＋ New role (create here when missing)",
     fRoleKey: "Key (lowercase/underscore)", fRoleName: "Name",
     fRoleDescr: "Description (optional)", create: "Create",
+    phRoleName: "Translator",
     // Detail page header (admin-user-detail)
     loading: "Loading…", badgeSuspended: "Suspended",
     badgeNoDl: "DL off", badgeParked: "Parked", badgeDonor: "Donor",
@@ -2970,6 +2971,8 @@ usertools: {
     imgPrefix: "img: ", framesEmpty: "No avatar frames yet",
     thAction: "Actions", edit: "Edit", del: "Delete", save: "Save",
     opFail: "Action failed", delFail: "Delete failed",
+    /** Shop-item row deleted (distinct from avatar-frame frameDeleted) */
+    delOk: "Deleted",
     // User bag (admin-props-user-bag)
     bagTitle: "User bag (purchased + granted)", qUid: "Filter by user UID",
     thOrder: "Order", bagUser: "User", thItem: "Item", thKind: "Kind",
@@ -2983,6 +2986,14 @@ usertools: {
     fConfig: "config (JSON, expert mode editable)", active: "Listed",
     formHint:
       "Instant-effect items (upload credit/{magic}/invites) credit the account directly; card/decoration items go to the bag for the user to use. Dress-up items get slot/dressup filled automatically.",
+    // List table + top-level messages (admin-props-table / admin-props)
+    thConfig: "config", thStatus: "Status",
+    listed: "Listed", unlisted: "Unlisted", delOrUnlist: "Delete / unlist",
+    tableEmpty: "No items yet",
+    deleted: "Deleted",
+    propsLoadFail: "Load failed", cfgBadJson: "config must be valid JSON",
+    disabledWithHeld: "Has holdings; unlisted instead",
+    badgePh: "Event",
   },
   /** Admin torrents: approval states / promo labels / bulk actions */
   adminTorrents: {
@@ -3027,6 +3038,12 @@ usertools: {
     pickTypeAndUsers: "Pick a position and enter user IDs",
     assignedMsg: "Assigned {n} users",
     skippedDup: ", skipped (already registered) {n}",
+    // Payroll (admin-jixiao-payroll)
+    payrollTotalLabel: "Total paid this period:",
+    paidNote:
+      "(paid_by: worker = auto settlement at month end, self = claimed by user)",
+    thClaimId: "Claim ID", thPayrollUser: "User", thPayrollType: "Position",
+    thWay: "Method", thPayTime: "Time", payrollEmpty: "No payroll this period",
   },
   /** Message templates (admin-p2-tools-templates). fBody contains the literal
    *  {{username}} — render directly, never pass through fmt (it would eat
@@ -3175,11 +3192,17 @@ usertools: {
     renameEmpty: "No rename records yet",
     modifyEmpty: "No modification records yet",
   },
+  /** P2 tools sub-tabs (admin-p2-tools) */
+  adminP2Tools: {
+    tabPromos: "Sticky promos", tabMenus: "Custom menus",
+    tabTemplates: "Message templates", tabClaims: "Preserve claims",
+  },
   /** Sticky promos (admin-p2-tools-promos) */
   adminPromos: {
     added: "Sticky promo added", opFail: "Action failed",
     newTitle: "New sticky promo (homepage banner)",
     fTitle: "Title", fUrl: "URL (optional)", fBadge: "Badge (optional)",
+    badgePh: "Event",
     save7: "Save (7 days by default)",
     thId: "ID", thTitle: "Title", thBadge: "Badge", thRange: "Range",
     thEnabled: "Enabled", thAction: "Actions",
