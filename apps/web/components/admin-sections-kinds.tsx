@@ -3,6 +3,8 @@
 /** 版块管理·介质类型 kinds 区（从 admin-sections.tsx 按域拆出）。 */
 import { api } from "@/lib/api-client";
 import { type SectionKindMeta, FIELD_INPUT_CLS } from "./admin-sections-shared";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 export function SectionKindsPanel(props: {
   kinds: SectionKindMeta[];
@@ -24,26 +26,22 @@ export function SectionKindsPanel(props: {
     busy,
     act,
   } = props;
+  const at = useI18n().dict.adminSections;
   return (
     <section className="baozi-panel p-4">
-      <h2 className="mb-2 text-base font-bold">维度管理</h2>
-      <p className="mb-3 text-xs text-sub">
-        维度 = 发布表单「质量」行里的一个下拉框（如
-        编码/分辨率/语种）。新增维度后到下方「维度字典」里维护它的选项。
-        <b>发布页「质量」与高级搜索「多维筛选」只显示有选项的维度</b>
-        ——无选项的维度会自动隐藏，添加选项后立即出现。
-      </p>
+      <h2 className="mb-2 text-base font-bold">{at.kindsTitle}</h2>
+      <p className="mb-3 text-xs text-sub">{at.kindsHint}</p>
       <div className="flex flex-wrap items-end gap-2">
         <input
           value={newKind}
           onChange={(e) => setNewKind(e.target.value)}
-          placeholder="维度标识（如 resolution）"
+          placeholder={at.phKind}
           className={`w-48 ${FIELD_INPUT_CLS}`}
         />
         <input
           value={newKindLabel}
           onChange={(e) => setNewKindLabel(e.target.value)}
-          placeholder="显示名称（如 分辨率）"
+          placeholder={at.phKindLabel}
           className={`w-36 ${FIELD_INPUT_CLS}`}
         />
         <button
@@ -57,20 +55,20 @@ export function SectionKindsPanel(props: {
               });
               setNewKind("");
               setNewKindLabel("");
-            }, "维度已创建")
+            }, at.kindCreated)
           }
         >
-          新建维度
+          {at.createKind}
         </button>
       </div>
       <table className="nexus-table mt-3 text-xs">
         <thead>
           <tr>
-            <td className="colhead">标识</td>
-            <td className="colhead">显示名称</td>
-            <td className="colhead">选项数</td>
-            <td className="colhead">排序</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thKindKey}</td>
+            <td className="colhead">{at.thKindLabel}</td>
+            <td className="colhead">{at.thCount}</td>
+            <td className="colhead">{at.thSort}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -84,7 +82,7 @@ export function SectionKindsPanel(props: {
                   {n > 0 ? (
                     n
                   ) : (
-                    <span className="text-sub">0（发布页/搜索不显示）</span>
+                    <span className="text-sub">{at.zeroHint}</span>
                   )}
                 </td>
                 <td className="num">{k.sort}</td>
@@ -93,7 +91,7 @@ export function SectionKindsPanel(props: {
                     className="cmgmt-act"
                     disabled={busy}
                     onClick={() => {
-                      const nl = window.prompt("新显示名称", k.label);
+                      const nl = window.prompt(at.renameKindPrompt, k.label);
                       if (nl && nl !== k.label)
                         act(
                           () =>
@@ -102,11 +100,11 @@ export function SectionKindsPanel(props: {
                               label: nl,
                               sort: k.sort,
                             }),
-                          "已保存",
+                          at.saved,
                         );
                     }}
                   >
-                    重命名
+                    {at.rename}
                   </button>
                   <button
                     className="cmgmt-act cmgmt-act--danger"
@@ -114,17 +112,17 @@ export function SectionKindsPanel(props: {
                     onClick={() => {
                       if (
                         window.confirm(
-                          `删除维度「${k.label}」？其下所有字典选项将被清空`,
+                          fmt(at.delKindConfirm, { name: k.label }),
                         )
                       )
                         act(
                           () =>
                             api.del(`/api/v1/admin/section-kinds/${k.kind}`),
-                          "已删除",
+                          at.deleted,
                         );
                     }}
                   >
-                    删除
+                    {at.del}
                   </button>
                 </td>
               </tr>

@@ -3,6 +3,8 @@
 import type { MedalRarity } from "@/lib/medal-rarity";
 import type { MedalRow } from "./admin-medals-shared";
 import { CUSTOM_RARITY, MedalImagePreview } from "./admin-medals-rarity";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 /** 勋章新建/编辑表单（从 admin-medals.tsx 按域拆出）。 */
 export function MedalForm(props: {
@@ -36,18 +38,22 @@ export function MedalForm(props: {
     inp,
     currency,
   } = props;
+  const { dict } = useI18n();
+  const at = dict.adminMedals;
   const ASSET_BAR_CLS = props.asetBar;
   const CLEAR_BTN_CLS = props.clearBtn;
   const PLAIN_BTN_CLS = props.plainBtn;
   return (
     <section className="baozi-panel cmgmt-form p-4">
       <h2 className="mb-2 text-base font-bold">
-        {edit.id === null ? "新建勋章" : `编辑勋章 #${edit.id}`}
+        {edit.id === null
+          ? at.formNew
+          : fmt(at.formEdit, { id: edit.id })}
       </h2>
       {/* 勋章图片（medals.asset_ref）：此前后端能存、表单没入口 → 全站只能画 🏅 */}
       <div className={ASSET_BAR_CLS}>
         <label className="flex flex-col gap-1 text-xs">
-          勋章图片 URL
+          {at.fAsset}
           <input
             value={edit.f.asset_ref ?? ""}
             onChange={(e) =>
@@ -69,13 +75,13 @@ export function MedalForm(props: {
               setEdit({ ...edit, f: { ...edit.f, asset_ref: null } })
             }
           >
-            清除图片
+            {at.clearAsset}
           </button>
         ) : null}
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
-          名称
+          {at.fName}
           <input
             value={edit.f.name ?? ""}
             onChange={(e) =>
@@ -85,7 +91,7 @@ export function MedalForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          说明
+          {at.fDescr}
           <input
             value={edit.f.description ?? ""}
             onChange={(e) =>
@@ -98,7 +104,7 @@ export function MedalForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          获取方式
+          {at.fGetType}
           <select
             value={edit.f.get_type ?? 2}
             onChange={(e) =>
@@ -109,13 +115,13 @@ export function MedalForm(props: {
             }
             className={inp}
           >
-            <option value={1}>兑换</option>
-            <option value={2}>授予</option>
-            <option value={3}>合成</option>
+            <option value={1}>{at.getType["1"]}</option>
+            <option value={2}>{at.getType["2"]}</option>
+            <option value={3}>{at.getType["3"]}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          价格({currency})
+          {fmt(at.fPrice, { magic: currency })}
           <input
             type="number"
             value={edit.f.price ?? ""}
@@ -132,7 +138,7 @@ export function MedalForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          魔力加成(%)
+          {at.fBonus}
           <input
             type="number"
             value={edit.f.bonus_addition_factor ?? ""}
@@ -151,7 +157,7 @@ export function MedalForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          有效期(天,空=永久)
+          {at.fDuration}
           <input
             type="number"
             value={edit.f.duration_days ?? ""}
@@ -168,7 +174,7 @@ export function MedalForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          稀有度
+          {at.fRarity}
           <select
             value={rarityIsCustom ? CUSTOM_RARITY : (edit.f.rarity ?? "")}
             onChange={(e) => {
@@ -183,19 +189,19 @@ export function MedalForm(props: {
             }}
             className={inp}
           >
-            <option value="">未设置</option>
+            <option value="">{at.rarityUnset}</option>
             {rarities.map((r) => (
               <option
                 key={r.value}
                 value={r.value}
               >{`${r.label}（${r.value}）`}</option>
             ))}
-            <option value={CUSTOM_RARITY}>自定义…</option>
+            <option value={CUSTOM_RARITY}>{at.rarityCustom}</option>
           </select>
         </label>
         {rarityIsCustom && (
           <label className="flex flex-col gap-1 text-xs">
-            自定义稀有度
+            {at.fRarityCustom}
             <input
               value={edit.f.rarity ?? ""}
               onChange={(e) =>
@@ -204,13 +210,13 @@ export function MedalForm(props: {
                   f: { ...edit.f, rarity: e.target.value || null },
                 })
               }
-              placeholder="如 super-rare"
+              placeholder={at.phRarityCustom}
               className={`${inp} w-32`}
             />
           </label>
         )}
         <label className="flex flex-col gap-1 text-xs">
-          分组
+          {at.fGroup}
           <input
             type="number"
             value={edit.f.category_id ?? 0}
@@ -234,18 +240,18 @@ export function MedalForm(props: {
               })
             }
           />
-          限定
+          {at.limited}
         </label>
         <button
           className="baozi-button"
           disabled={busy || !String(edit.f.name ?? "").trim()}
           onClick={save}
         >
-          保存
+          {at.save}
         </button>
         {edit.id !== null && (
           <button className={PLAIN_BTN_CLS} onClick={resetForm}>
-            取消
+            {at.cancel}
           </button>
         )}
       </div>

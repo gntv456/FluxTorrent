@@ -4,6 +4,8 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { dateLocale, fmt } from "@/i18n/config";
 
 /** 第八轮 P3-16：Tracker URL 管理（NexusPHP tracker_urls 口径）
  *  多 announce 地址：默认位 / 启用 / 优先级 */
@@ -18,6 +20,8 @@ interface TrackerUrlRow {
 }
 
 export function AdminTrackers() {
+  const { dict, locale } = useI18n();
+  const at = dict.adminTrackers;
   const [rows, setRows] = useState<TrackerUrlRow[]>([]);
   const [edit, setEdit] = useState<{
     id: number | null;
@@ -38,8 +42,9 @@ export function AdminTrackers() {
     try {
       setRows(await api.get<TrackerUrlRow[]>("/api/v1/admin/tracker-urls"));
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "加载失败");
+      flash(e instanceof ApiError ? e.message : dict.adminTrackers.loadFail);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     load();
@@ -57,14 +62,14 @@ export function AdminTrackers() {
       if (edit.id === null)
         await api.post("/api/v1/admin/tracker-urls", payload);
       else await api.put(`/api/v1/admin/tracker-urls/${edit.id}`, payload);
-      flash("已保存");
+      flash(at.saved);
       setEdit({
         id: null,
         f: { url: "", is_default: false, enabled: true, priority: "0" },
       });
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -82,11 +87,11 @@ export function AdminTrackers() {
       )}
       <section className="baozi-panel cmgmt-form p-4">
         <h2 className="mb-2 text-base font-bold">
-          {edit.id === null ? "新增 Tracker URL" : `编辑 #${edit.id}`}
+          {edit.id === null
+            ? at.formNew
+            : fmt(at.formEdit, { id: edit.id })}
         </h2>
-        <p className="mb-2 text-xs text-sub">
-          默认地址用于新种子 announce 注入；备用地址供下载端容灾切换。
-        </p>
+        <p className="mb-2 text-xs text-sub">{at.hint}</p>
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-1 flex-col gap-1 text-xs">
             URL
@@ -100,7 +105,7 @@ export function AdminTrackers() {
             />
           </label>
           <label className="flex flex-col gap-1 text-xs">
-            优先级
+            {at.fPriority}
             <input
               type="number"
               value={edit.f.priority}
@@ -121,7 +126,7 @@ export function AdminTrackers() {
                 })
               }
             />
-            默认
+            {at.isDefault}
           </label>
           <label className="flex items-center gap-1 pb-2 text-xs">
             <input
@@ -134,14 +139,14 @@ export function AdminTrackers() {
                 })
               }
             />
-            启用
+            {at.enabled}
           </label>
           <button
             className="baozi-button"
             disabled={busy || !edit.f.url.trim()}
             onClick={save}
           >
-            保存
+            {at.save}
           </button>
           {edit.id !== null && (
             <button
@@ -158,7 +163,7 @@ export function AdminTrackers() {
                 })
               }
             >
-              取消
+              {at.cancel}
             </button>
           )}
         </div>
@@ -166,13 +171,13 @@ export function AdminTrackers() {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">ID</td>
-            <td className="colhead">URL</td>
-            <td className="colhead">默认</td>
-            <td className="colhead">启用</td>
-            <td className="colhead">优先级</td>
-            <td className="colhead">更新时间</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thId}</td>
+            <td className="colhead">{at.thUrl}</td>
+            <td className="colhead">{at.thDefault}</td>
+            <td className="colhead">{at.thEnabled}</td>
+            <td className="colhead">{at.thPriority}</td>
+            <td className="colhead">{at.thUpdated}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -181,10 +186,10 @@ export function AdminTrackers() {
               <td className="num">{r.id}</td>
               <td className="font-mono">{r.url}</td>
               <td className="text-center">{r.is_default ? "✅" : "—"}</td>
-              <td>{r.enabled ? "启用" : "停用"}</td>
+              <td>{r.enabled ? at.on : at.off}</td>
               <td className="num">{r.priority}</td>
               <td className="text-sub">
-                {new Date(r.updated_at).toLocaleString()}
+                {new Date(r.updated_at).toLocaleString(dateLocale(locale))}
               </td>
               <td className="text-right">
                 <button
@@ -201,7 +206,7 @@ export function AdminTrackers() {
                     })
                   }
                 >
-                  编辑
+                  {at.edit}
                 </button>
                 <button
                   className="cmgmt-act cmgmt-act--danger"
@@ -209,14 +214,14 @@ export function AdminTrackers() {
                   onClick={async () => {
                     try {
                       await api.del(`/api/v1/admin/tracker-urls/${r.id}`);
-                      flash("已删除");
+                      flash(at.deleted);
                       await load();
                     } catch (e) {
-                      flash(e instanceof ApiError ? e.message : "删除失败");
+                      flash(e instanceof ApiError ? e.message : at.delFail);
                     }
                   }}
                 >
-                  删除
+                  {at.del}
                 </button>
               </td>
             </tr>
@@ -224,7 +229,7 @@ export function AdminTrackers() {
           {rows.length === 0 && (
             <tr>
               <td colSpan={7} className="py-6 text-center text-sub">
-                暂无 Tracker 地址
+                {at.empty}
               </td>
             </tr>
           )}

@@ -40,40 +40,41 @@ export function UsersBatchBar({
   batchClass: string;
   setBatchClass: React.Dispatch<React.SetStateAction<string>>;
 }) {
+  const at = useI18n().dict.adminUsers;
   return (
     <section className="baozi-panel flex flex-wrap items-end gap-2 p-3">
       <p className="w-full text-xs font-bold text-sub">
-        批量操作（已选 {sel.size} 个；只能操作等级低于自己的用户）
+        {at.batchHint.replace("{n}", String(sel.size))}
       </p>
       <button
         disabled={busy || sel.size === 0}
         onClick={() => batch("status", 0)}
         className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white disabled:opacity-50"
       >
-        批量恢复正常
+        {at.batchNormal}
       </button>
       <button
         disabled={busy || sel.size === 0}
         onClick={() => batch("status", 1)}
         className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
       >
-        批量禁言
+        {at.batchMute}
       </button>
       <button
         disabled={busy || sel.size === 0}
         onClick={() => batch("status", 2)}
         className={BTN_SM_DANGER}
       >
-        批量封禁
+        {at.batchBan}
       </button>
       <label className="flex flex-col gap-1 text-xs">
-        批量改等级
+        {at.batchClassLabel}
         <select
           value={batchClass}
           onChange={(e) => setBatchClass(e.target.value)}
           className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
         >
-          <option value="">（选择等级）</option>
+          <option value="">{at.pickClass}</option>
           {classes
             .filter(([id]) => id > 0 && id < 99)
             .map(([id, label]) => (
@@ -88,7 +89,7 @@ export function UsersBatchBar({
         onClick={() => batch("class", Number(batchClass))}
         className={BTN_SM_SKY}
       >
-        执行
+        {at.run}
       </button>
     </section>
   );
@@ -114,7 +115,9 @@ export function UsersTable({
   sortBtn: (key: string, label: string) => React.ReactNode;
 }) {
   const { dict } = useI18n();
-  const STATUS_LABELS = statusLabels(dict.userDetail.statusLabels);
+  const au = dict.adminUsers;
+  const ud = dict.userDetail;
+  const STATUS_LABELS = statusLabels(ud.statusLabels);
   return (
     <table className="nexus-table">
       <thead>
@@ -134,16 +137,22 @@ export function UsersTable({
             />
           </td>
           <td className="colhead">{sortBtn("id", "Id")}</td>
-          <td className="colhead">用户名</td>
-          <td className="colhead">邮箱</td>
-          <td className="colhead">{sortBtn("class", "等级")}</td>
-          <td className="colhead">{sortBtn("uploaded", "上传量")}</td>
-          <td className="colhead">{sortBtn("downloaded", "下载量")}</td>
-          <td className="colhead">状态</td>
-          <td className="colhead">下载权限</td>
-          <td className="colhead">挂起</td>
-          <td className="colhead">{sortBtn("created", "添加时间")}</td>
-          <td className="colhead">操作</td>
+          <td className="colhead">{au.thUsername}</td>
+          <td className="colhead">{au.thEmail}</td>
+          <td className="colhead">{sortBtn("class", au.fClass)}</td>
+          <td className="colhead">
+            {sortBtn("uploaded", ud.uploaded)}
+          </td>
+          <td className="colhead">
+            {sortBtn("downloaded", ud.downloaded)}
+          </td>
+          <td className="colhead">{au.thStatus}</td>
+          <td className="colhead">{au.thDownload}</td>
+          <td className="colhead">{au.thSuspended}</td>
+          <td className="colhead">
+            {sortBtn("created", ud.createdAt)}
+          </td>
+          <td className="colhead">{au.thAction}</td>
         </tr>
       </thead>
       <tbody>
@@ -178,7 +187,13 @@ export function UsersTable({
             <td>{u.class_name ?? `LV${u.class_id}`}</td>
             <td>{fmtBytes(u.uploaded)}</td>
             <td>{fmtBytes(u.downloaded)}</td>
-            <td>{u.status >= 2 ? "封禁" : u.status === 1 ? "禁言" : "正常"}</td>
+            <td>
+              {u.status >= 2
+                ? au.stBanned
+                : u.status === 1
+                  ? au.stMuted
+                  : au.stNormal}
+            </td>
             <td>{u.download_enabled ? "yes" : "no"}</td>
             <td>{u.suspended ? "yes" : "no"}</td>
             <td className="text-xs">
@@ -186,7 +201,7 @@ export function UsersTable({
             </td>
             <td>
               <a className="cmgmt-act" href={`/admin/users/${u.id}`}>
-                详情
+                {au.detail}
               </a>
             </td>
           </tr>

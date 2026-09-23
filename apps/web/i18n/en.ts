@@ -2697,6 +2697,22 @@ usertools: {
   /** Medals: how obtained */
   adminMedals: {
     getType: { 1: "Purchased", 2: "Granted", 3: "Crafted" } as Record<string, string>,
+    // Medal form + list (admin-medals / admin-medals-form)
+    formNew: "New medal", formEdit: "Edit medal #{id}",
+    fAsset: "Medal image URL", clearAsset: "Clear image",
+    fName: "Name", fDescr: "Description", fGetType: "Obtained via",
+    fPrice: "Price ({magic})", fBonus: "Magic bonus (%)",
+    fDuration: "Duration (days, empty = permanent)", fRarity: "Rarity",
+    rarityUnset: "Unset", rarityCustom: "Custom…",
+    fRarityCustom: "Custom rarity", phRarityCustom: "e.g. super-rare",
+    fGroup: "Group", limited: "Limited", save: "Save", cancel: "Cancel",
+    loadFail: "Load failed", saved: "Saved", opFail: "Action failed",
+    deleted: "Deleted", delFail: "Delete failed",
+    thId: "ID", thIcon: "Icon", thName: "Name", thGetType: "Via",
+    thRarity: "Rarity", thPrice: "Price", thBonus: "Bonus%",
+    thDuration: "Duration", thHeld: "Held", thAction: "Actions",
+    limitedChip: "Limited", forever: "Forever",
+    edit: "Edit", del: "Delete", empty: "No medals yet",
   },
   /** Exam positions: metric catalogue ({magic} = site currency name) */
   adminExams: {
@@ -2771,6 +2787,18 @@ usertools: {
     thCats: "Category", thTorrents: "Torrents", thMode: "Mode",
     thAuto: "Auto approval", autoOn: "Auto approval enabled",
     autoOff: "Auto approval disabled",
+    // Dimension kinds area (admin-sections-kinds)
+    kindsTitle: "Dimensions",
+    kindsHint:
+      "A dimension is one dropdown in the publish form quality row (codec/resolution/language etc.). After adding one, maintain its options in the dimension dictionary below. The publish form quality row and advanced search only show dimensions that have options — empty ones are hidden and appear as soon as an option is added.",
+    phKind: "Dimension key (e.g. resolution)",
+    phKindLabel: "Display name (e.g. Resolution)",
+    kindCreated: "Dimension created", createKind: "Create dimension",
+    thKindKey: "Key", thKindLabel: "Display name", thCount: "Options",
+    zeroHint: "0 (hidden on publish/search)",
+    renameKindPrompt: "New display name",
+    delKindConfirm:
+      'Delete dimension "{name}"? All its dictionary options will be cleared',
   },
   /** User detail page: action flashes & confirms (admin-user-detail-*) */
   userDetail: {
@@ -3009,6 +3037,15 @@ usertools: {
     optAll: "All", optYes: "Yes", optNo: "No", optHas: "Has", optNot: "None",
     stNormal: "Normal", stMuted: "Muted", stBanned: "Banned",
     qPh: "Username / email", search: "Search",
+    // List & batch bar (admin-users-list)
+    batchHint:
+      "Batch actions ({n} selected; you can only affect users below your class)",
+    batchNormal: "Batch restore", batchMute: "Batch mute",
+    batchBan: "Batch ban", batchClassLabel: "Batch change class",
+    pickClass: "(pick class)", run: "Run",
+    thUsername: "Username", thEmail: "Email", thStatus: "Status",
+    thDownload: "Download", thSuspended: "Suspended",
+    thAction: "Actions", detail: "Detail",
   },
   /** Preserve claims (admin-p2-tools-claims) */
   adminClaims: {
@@ -3047,6 +3084,20 @@ usertools: {
     yes: "Yes", no: "No", enable: "Enable", disable: "Disable",
     toggled: "Enabled", untoggled: "Disabled",
     deleted: "Deleted", delFail: "Delete failed", del: "Delete",
+  },
+  /** Tracker URL admin (admin-trackers) */
+  adminTrackers: {
+    loadFail: "Load failed", saved: "Saved", opFail: "Action failed",
+    deleted: "Deleted", delFail: "Delete failed",
+    formNew: "New tracker URL", formEdit: "Edit #{id}",
+    hint:
+      "The default URL is injected into new torrents announce lists; backup URLs are for downloader failover.",
+    fPriority: "Priority", isDefault: "Default", enabled: "Enabled",
+    save: "Save", cancel: "Cancel",
+    thId: "ID", thUrl: "URL", thDefault: "Default", thEnabled: "Enabled",
+    thPriority: "Priority", thUpdated: "Updated", thAction: "Actions",
+    on: "On", off: "Off", edit: "Edit", del: "Delete",
+    empty: "No tracker URLs yet",
   },
   medalRarity: {
     tones: {
