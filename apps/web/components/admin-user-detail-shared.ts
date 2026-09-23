@@ -62,7 +62,9 @@ export interface SeedRow {
   hr_flag: boolean;
 }
 
-export const STATUS_LABELS = ["正常", "禁言", "封禁"];
+/** 用户状态显示名（按 status 作下标）；三语在 i18n `userDetail.statusLabels` */
+export const statusLabels = (labels?: string[]): string[] => labels ?? [];
+
 export const PER_PAGE = 15;
 
 export function fmtBytes(n: number): string {
@@ -71,38 +73,20 @@ export function fmtBytes(n: number): string {
   if (n >= 1048576) return `${(n / 1048576).toFixed(2)} MB`;
   return `${(n / 1024).toFixed(2)} KB`;
 }
-export const fmtHours = (sec: number) => `${Math.floor(sec / 3600)} 小时`;
+/** 单位由调用方传 i18n `userDetail.hoursUnit`；缺省 "h"（语言中性） */
+export const fmtHours = (sec: number, unit = "h") =>
+  `${Math.floor(sec / 3600)} ${unit}`;
 
-/** 权限分类 → 中文标签（与后端 permissions.category 对应） */
-export const CATEGORY_LABEL: Record<string, string> = {
-  content: "内容管理",
-  liaison: "外联",
-  repost: "转载",
-  seed: "做种与 H&R",
-  user: "用户管理",
-  system: "系统",
-  site: "站点管理",
-  upload: "发布管理",
-};
+/** 权限分类 → 显示名（与后端 permissions.category 对应）；
+ *  三语在 i18n `userDetail.categoryLabels`，取不到回落原 key。 */
+export const categoryLabels = (
+  labels?: Record<string, string>,
+): Record<string, string> => labels ?? {};
 
-/** 道具 kind → 中文标签（下拉分组用） */
-export const ITEM_KIND_LABEL: Record<string, string> = {
-  upload_credit: "上传量",
-  invite: "邀请类",
-  temp_invite: "邀请类",
-  gift_spark: "CURRENCY",
-  custom_title: "头衔卡",
-  rename_card: "卡牌",
-  makeup_card: "卡牌",
-  rainbow_name: "卡牌",
-  rainbow_id: "卡牌",
-  avatar_frame: "装饰",
-  animated_avatar: "装饰",
-  vip: "VIP",
-  app_vip: "VIP",
-  ad_free: "特权",
-  charity: "公益",
-};
+/** 道具 kind → 显示名（下拉分组用）；三语在 `userDetail.itemKindLabels` */
+export const itemKindLabels = (
+  labels?: Record<string, string>,
+): Record<string, string> => labels ?? {};
 
 /** 后台详情 tab 键（资料全景 / 火花流水 / 登录记录 / 做种下载） */
 export type DetailTab = "profile" | "spark" | "logins" | "seeding";

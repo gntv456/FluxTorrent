@@ -10,7 +10,11 @@ import { BTN_SM_BOLD, INPUT_MD } from "@/lib/ui-classes";
  */
 
 import type { Detail } from "./admin-user-detail-shared";
-import { CATEGORY_LABEL, ITEM_KIND_LABEL } from "./admin-user-detail-shared";
+import {
+  categoryLabels,
+  itemKindLabels,
+} from "./admin-user-detail-shared";
+import { useI18n } from "@/i18n/client";
 
 /** 展开面板卡片容器 */
 export const PANEL_BOX_CLS =
@@ -104,6 +108,9 @@ export interface AdminPanelsProps {
 }
 
 export function AdminActionPanels(props: AdminPanelsProps) {
+  const { dict: i18nDict } = useI18n();
+  const CATEGORY_LABEL = categoryLabels(i18nDict.userDetail.categoryLabels);
+  const ITEM_KIND_LABEL = itemKindLabels(i18nDict.userDetail.itemKindLabels);
   const { d, busy, currency, classList, dict, panel, adjust, setAdjust } =
     props;
   return (

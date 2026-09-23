@@ -12,6 +12,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import type { Detail } from "./admin-user-detail-shared";
 import { useAdminUserActions2 } from "./admin-user-detail-actions-hook2";
 
@@ -63,6 +64,7 @@ export function useAdminUserActions({
 }) {
   const router = useRouter();
   const { dict } = useI18n();
+  const t = dict.userDetail;
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [tmpPass, setTmpPass] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export function useAdminUserActions({
     try {
       await task();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : t.actionFail);
     } finally {
       setBusy(false);
     }
@@ -95,7 +97,7 @@ export function useAdminUserActions({
           invite_grant: Number(adj.invite) || 0,
           note: adj.note || undefined,
         });
-        flash("已调整");
+        flash(t.adjusted);
         setAdjust(false);
         await load();
       }),
@@ -113,11 +115,11 @@ export function useAdminUserActions({
         flash(
           flag === "suspended"
             ? d.suspended
-              ? "已解除挂起"
-              : "已挂起"
+              ? t.unsuspended
+              : t.suspended
             : d.download_enabled
-              ? "已禁用下载权限"
-              : "已恢复下载权限",
+              ? t.downloadDisabled
+              : t.downloadEnabled,
         );
         await load();
       }),
@@ -129,7 +131,7 @@ export function useAdminUserActions({
       run(async () => {
         const reason =
           next > 0
-            ? (prompt(next === 2 ? "禁言理由（必填）" : "封禁理由（必填）") ??
+            ? (prompt(next === 2 ? t.muteReason : t.banReason) ??
               "")
             : "";
         if (next > 0 && !reason.trim()) return;
@@ -138,7 +140,7 @@ export function useAdminUserActions({
           status: next,
           reason,
         });
-        flash(next === 0 ? "已恢复正常" : next === 2 ? "已禁言" : "已封禁");
+        flash(next === 0 ? t.restored : next === 2 ? t.muted : t.banned);
         await load();
       }),
     [uid, flash, load],
@@ -152,7 +154,7 @@ export function useAdminUserActions({
           user_id: uid,
           class_id: Number(values.classId),
         });
-        flash("等级已修改");
+        flash(t.classChanged);
         setPanel("");
         await load();
       }),
@@ -169,10 +171,10 @@ export function useAdminUserActions({
             role_key: values.roleKey,
             expires_at: values.roleExp || undefined,
           });
-          flash("角色已分配");
+          flash(t.roleAssigned);
         } else {
           await api.del(`/api/v1/admin/user-roles/${uid}/${values.roleKey}`);
-          flash("角色已收回");
+          flash(t.roleRevoked);
         }
         setPanel("");
       }),
@@ -188,7 +190,7 @@ export function useAdminUserActions({
           permission_key: values.permKey,
           granted: values.permGrant === "1", // true=额外授予 / false=显式拒绝
         });
-        flash(values.permGrant === "1" ? "权限已授予" : "权限已拒绝");
+        flash(values.permGrant === "1" ? t.permGranted : t.permDenied);
         setPanel("");
       }),
     [values.permKey, values.permGrant, uid, flash, setPanel],
@@ -202,7 +204,7 @@ export function useAdminUserActions({
           `/api/v1/admin/users/${uid}/medal/${values.medalId}`,
           {},
         );
-        flash("勋章已授予");
+        flash(t.medalGranted);
         setPanel("");
         await load();
       }),
@@ -217,7 +219,7 @@ export function useAdminUserActions({
           `/api/v1/admin/users/${uid}/grant-item/${values.itemId}`,
           {},
         );
-        flash(`已发放「${r.name}」（${r.kind}）`);
+        flash(fmt(t.itemGranted, { name: r.name, kind: r.kind }));
         setPanel("");
         await load();
       }),
@@ -232,7 +234,7 @@ export function useAdminUserActions({
           type_id: Number(values.jixiaoTypeId),
           period: values.jixiaoPeriod || undefined,
         });
-        flash("考核岗位已登记");
+        flash(t.examPositionSet);
         setPanel("");
       }),
     [values.jixiaoTypeId, values.jixiaoPeriod, uid, flash, setPanel],

@@ -26,6 +26,7 @@ import {
 /** 「+ 添加指标」小按钮 */
 export function AdminExams() {
   const { currency, dict } = useI18n();
+  const t = dict.adminExams;
   const METRIC_OPTIONS = metricOptions(currency, dict.adminExams.metrics);
   const [rows, setRows] = useState<JixiaoTypeRow[]>([]);
   const [edit, setEdit] = useState<{ id: number | null; f: typeof EMPTY_FORM }>(
@@ -43,9 +44,9 @@ export function AdminExams() {
     try {
       setRows(await api.get<JixiaoTypeRow[]>("/api/v1/admin/jixiao-types"));
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "加载失败");
+      flash(e instanceof ApiError ? e.message : t.loadFail);
     }
-  }, []);
+  }, [t.loadFail]);
   useEffect(() => {
     load();
   }, [load]);
@@ -87,11 +88,11 @@ export function AdminExams() {
       if (edit.id === null)
         await api.post("/api/v1/admin/jixiao-types", payload);
       else await api.put(`/api/v1/admin/jixiao-types/${edit.id}`, payload);
-      flash("已保存");
+      flash(t.saved);
       setEdit({ id: null, f: { ...EMPTY_FORM, reqs: [...EMPTY_FORM.reqs] } });
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : t.actionFail);
     } finally {
       setBusy(false);
     }

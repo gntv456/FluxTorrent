@@ -9,6 +9,7 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import type { ActionFormValues } from "./admin-user-detail-actions-hook";
 import type { Detail } from "./admin-user-detail-shared";
 
@@ -43,6 +44,7 @@ export function useAdminUserActions2({
 }) {
   const router = useRouter();
   const { dict } = useI18n();
+  const t = dict.userDetail;
 
   const submitNewRole = useCallback(
     () =>
@@ -53,7 +55,7 @@ export function useAdminUserActions2({
           name: values.newRole.name,
           descr: values.newRole.descr || undefined,
         });
-        flash(`职务「${values.newRole.name}」已创建`);
+        flash(fmt(t.roleCreated, { name: values.newRole.name }));
         setNewRole({ key: "", name: "", descr: "" });
         const list = await api.get<{ key: string; name: string }[]>(
           "/api/v1/admin/roles",
@@ -98,7 +100,7 @@ export function useAdminUserActions2({
       run(async () => {
         if (
           !window.confirm(
-            `确认重置 ${d?.username} 的密码？将生成一次性临时密码。`,
+            fmt(t.resetPwdConfirm, { name: d?.username ?? "" }),
           )
         )
           return;
@@ -116,12 +118,12 @@ export function useAdminUserActions2({
       run(async () => {
         if (
           !window.confirm(
-            `确认删除用户 ${d?.username}（#${uid}）？仅封禁状态可删，数据不可恢复！`,
+            fmt(t.delUserConfirm, { name: d?.username ?? "", id: uid }),
           )
         )
           return;
         await api.del(`/api/v1/admin/users/${uid}`);
-        flash("用户已删除，返回列表…");
+        flash(t.userDeleted);
         setTimeout(() => router.push("/admin?tool=users"), 800);
       }),
     [d, uid, flash, router],

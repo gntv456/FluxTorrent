@@ -1,11 +1,12 @@
 "use client";
 
 import {
-  APPROVAL,
-  PROMO_LABEL,
+  approvalList,
+  promoLabels,
   fmtBytes,
   type AdminTorrentRow,
 } from "./admin-torrents-shared";
+import { useI18n } from "@/i18n/client";
 
 /** 种子批量工作台·列表表格（从 admin-torrents-list.tsx 按域拆出）。 */
 export function TorrentTable(props: {
@@ -16,6 +17,9 @@ export function TorrentTable(props: {
   hr?: boolean;
 }) {
   const { data, sel, setSel, decide } = props;
+  const { dict } = useI18n();
+  const APPROVAL = approvalList(dict.adminTorrents.approval);
+  const PROMO_LABEL = promoLabels(dict.adminTorrents.promo);
   return (
     <table className="nexus-table">
       <thead>

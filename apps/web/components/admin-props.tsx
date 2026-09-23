@@ -17,8 +17,6 @@ import type {
 } from "./admin-props-shared";
 import {
   cfgField,
-  KIND_FIELDS,
-  KIND_LABEL,
   setCfgField,
 } from "./admin-props-shared";
 
