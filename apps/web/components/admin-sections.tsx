@@ -134,14 +134,14 @@ export function AdminSections() {
             <thead>
               <tr>
                 <td className="colhead">ID</td>
-                <td className="colhead">名称</td>
+                <td className="colhead">{at.thName}</td>
                 {FLAGS.map(([k, l]) => (
                   <td key={k} className="colhead">
                     {l}
                   </td>
                 ))}
                 <td className="colhead">{at.thCategories}</td>
-                <td className="colhead text-right">操作</td>
+                <td className="colhead text-right">{at.thAction}</td>
               </tr>
             </thead>
             <tbody>

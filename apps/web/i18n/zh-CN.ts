@@ -2980,10 +2980,9 @@ usertools: {
     thConfig: "config", thStatus: "状态",
     listed: "上架", unlisted: "下架", delOrUnlist: "删除/下架",
     tableEmpty: "暂无道具",
-    deleted: "已删除",
+    deleted: "已删除", saved: "已保存",
     propsLoadFail: "加载失败", cfgBadJson: "config 需为合法 JSON",
     disabledWithHeld: "已有持有记录，已改为下架",
-    badgePh: "活动",
   },
   /** 后台种子管理：审批状态 / 促销标签 / 批量动作 */
   adminTorrents: {

@@ -214,7 +214,7 @@ export function AdminActionPanels(props: AdminPanelsProps) {
                   onChange={(e) =>
                     props.setNewRole({ ...props.newRole, name: e.target.value })
                   }
-                  placeholder="翻译员"
+                  placeholder={u.phRoleName}
                   className={`w-32 ${PLAIN_FIELD_CLS}`}
                 />
               </label>

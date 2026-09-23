@@ -2965,10 +2965,9 @@ usertools: {
     thConfig: "config", thStatus: "狀態",
     listed: "上架", unlisted: "下架", delOrUnlist: "刪除/下架",
     tableEmpty: "暫無道具",
-    deleted: "已刪除",
+    deleted: "已刪除", saved: "已儲存",
     propsLoadFail: "載入失敗", cfgBadJson: "config 需為合法 JSON",
     disabledWithHeld: "已有持有記錄，已改為下架",
-    badgePh: "活動",
   },
   /** 後台種子管理：審核狀態 / 促銷標籤 / 批量動作 */
   adminTorrents: {
