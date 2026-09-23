@@ -170,12 +170,29 @@ pub(super) async fn offer_promote(
     };
     sqlx::query(
         "UPDATE torrents SET approval_status = 1, \
-     official_tag = true, approved_at = now() WHERE id = $1",
+     approved_at = now() WHERE id = $1",
     )
     .bind(tid)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 0159：官种口径收口——转正不再裸写 official_tag 列，改打 official-kind
+    // 标签（当前字典=「官种」），列由 sync_official_tag 派生，两种筛选口径恒一致
+    let official_tag_ids: Vec<i32> = sqlx::query_scalar(
+        "SELECT id FROM tag_dict \
+         WHERE kind = 'official' AND scope = 'torrent' \
+         ORDER BY id LIMIT 1",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    crate::torrents::apply_torrent_tags(
+        &state.repo.db,
+        tid,
+        &official_tag_ids,
+        (auth.id, auth.class_id as i16),
+    )
+    .await?;
     state
         .repo
         .audit(Some(auth.id), "offer_promote", Some(tid))

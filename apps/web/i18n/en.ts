@@ -571,6 +571,9 @@ const enBase: Omit<
     advHint: "Narrow torrents by category, size, date, status and promotion beyond keywords",
     tagLabel: "Tag",
     tagAny: "All tags",
+    tagMatchAny: "Match any",
+    tagMatchAll: "Match all",
+    tagMultiHint: "Multi-select; \"Match any\" = has any tag, \"Match all\" = has every tag",
     catAll: "Select all",
     catClear: "Clear",
     sortLeechers: "Most leechers",
@@ -2088,9 +2091,9 @@ usertools: {
   torrTags2: {
     showAll: "All tags",
     hideAll: "Collapse",
+    addTag: "+ Add tag",
     title: "Tags",
     needStaff: "Official tags are staff-only",
-    filterRow: ["All tags", "Official", "Free", "Guanzhong", "Collection", "Answers"] as string[],
   },
   agentRules2: {
     tab: "Agent rules",

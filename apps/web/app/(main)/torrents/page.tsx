@@ -84,7 +84,9 @@ export default async function TorrentsPage({
     status: sp.status || undefined,
     approval: sp.approval || undefined,
     sort: sp.sort,
-    tag_id: sp.tag_id ? Number(sp.tag_id) : undefined,
+    // 标签多选（0159 P1）：tag_ids 逗号串优先，旧单值 tag_id 兜底（后端合并解析）
+    tag_ids: sp.tag_ids || sp.tag_id || undefined,
+    tag_mode: sp.tag_mode || undefined,
     cursor: sp.cursor,
     // 0105 高级搜索增强（体积带单位串 / 日期 YYYY-MM-DD / 数值区间 / 优惠 / 发布者 / 仅我）
     size_min: sp.size_min || undefined,

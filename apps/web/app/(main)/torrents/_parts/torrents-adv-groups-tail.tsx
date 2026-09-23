@@ -128,23 +128,38 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
             <header className="tsb-card__head">
               <h2 className="tsb-card__title">{t2.tagLabel}</h2>
             </header>
-            <label className="tsb-row">
-              <span className="tsb-row__label">{t2.tagLabel}</span>
-              <select
-                name="tag_id"
-                defaultValue={sp.tag_id ?? ""}
-                className="tsb-select"
-              >
-                <option value="">{t2.tagAny}</option>
-                {tags
-                  .filter((t) => t.kind !== "official")
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
+            {/* 0159 P1：标签多选 chips + any/all 匹配模式（与 promo 多选同交互） */}
+            <div className="tsb-chips tsb-chips--scroll">
+              {tags
+                .filter((t) => t.kind !== "official")
+                .map((t) =>
+                  ctxAdvChip(
+                    "tag_ids",
+                    String(t.id),
+                    t.name,
+                    (sp.tag_ids ?? sp.tag_id ?? "")
+                      .split(",")
+                      .includes(String(t.id)),
+                  ),
+                )}
+            </div>
+            <div className="tsb-chips">
+              {(
+                [
+                  ["any", t2.tagMatchAny],
+                  ["all", t2.tagMatchAll],
+                ] as [string, string][]
+              ).map(([v, label]) =>
+                ctxAdvChip(
+                  "tag_mode",
+                  v,
+                  label,
+                  (sp.tag_mode ?? "any") === v,
+                  "radio",
+                ),
+              )}
+            </div>
+            <p className="tsb-hint">{t2.tagMultiHint}</p>
           </section>
 
           <section className="tsb-card">

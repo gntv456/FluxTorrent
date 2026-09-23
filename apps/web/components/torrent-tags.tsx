@@ -8,10 +8,13 @@ interface TagDictRow {
   id: number;
   name: string;
   kind: string;
+  /** 0159 P1：字典样式列（详情页已选标签消费；旧元组形态缺省回落轮换色） */
+  bg_color?: string;
+  color?: string;
 }
 
 /** 兼容 API 历史形态：dict 行可能序列化为 [id, name, kind] 元组 */
-function normTagRow(r: TagDictRow | [number, string, string]): TagDictRow {
+export function normTagRow(r: TagDictRow | [number, string, string]): TagDictRow {
   return Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r;
 }
 
@@ -34,6 +37,7 @@ export function TorrentTags({
   const t = dict.torrTags2 ?? {
     title: "标签",
     needStaff: "官方标签仅管理组可打",
+    addTag: "+ 加标签",
   };
   const [dictRows, setDictRows] = useState<TagDictRow[]>(() =>
     initial ? initial.dict.map(normTagRow) : [],
@@ -123,7 +127,7 @@ export function TorrentTags({
           className="td-tag td-tag--off"
           onClick={() => setExpanded(true)}
         >
-          {t.showAll}
+          {t.addTag ?? t.showAll}
         </button>
         {msg && (
           <span className="text-[11px] text-sub" role="status">
@@ -139,7 +143,8 @@ export function TorrentTags({
       {rows.map((d, i) => {
         const on = mine.includes(d.id);
         const official = d.kind === "official";
-        // 列表口径的彩色轮换（官方类固定靛蓝，普通标签按位轮换品牌色）
+        // 0159 P1：渲染统一——字典配了 bg_color 时用字典色（与论坛 TagChip 同口径），
+        // 未配色回落既有列表口径的彩色轮换（官方类固定靛蓝，普通标签按位轮换品牌色）
         const palette = [
           "torrents-tag--sky",
           "torrents-tag--mint",
@@ -156,6 +161,14 @@ export function TorrentTags({
             onClick={() => toggle(d.id, on)}
             title={official ? t.needStaff : d.name}
             className={`td-tag ${colorCls} ${on ? "" : "td-tag--off"}`}
+            style={
+              d.bg_color
+                ? {
+                    background: on ? d.bg_color : undefined,
+                    color: on ? d.color || undefined : undefined,
+                  }
+                : undefined
+            }
           >
             {d.name}
           </button>

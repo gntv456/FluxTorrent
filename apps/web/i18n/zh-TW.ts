@@ -569,6 +569,9 @@ const zhTwBase: Omit<
     advHint: "在關鍵字之外，按分類、體積、時間、狀態、優惠等條件精確定位置種子",
     tagLabel: "標籤",
     tagAny: "全部標籤",
+    tagMatchAny: "任一命中",
+    tagMatchAll: "全部命中",
+    tagMultiHint: "可多選；「任一命中」=含任一標籤，「全部命中」=同時含所有標籤",
     catAll: "全選",
     catClear: "清空",
     sortLeechers: "下載最多",
@@ -2085,9 +2088,9 @@ usertools: {
   torrTags2: {
     showAll: "全部標籤",
     hideAll: "收起",
+    addTag: "+ 加標籤",
     title: "標籤",
     needStaff: "官方標籤僅管理組可打",
-    filterRow: ["全部標籤", "官方", "免費", "官種", "合集", "帶答案"] as string[],
   },
   agentRules2: {
     tab: "客戶端名單",

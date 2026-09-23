@@ -6,9 +6,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import type { TagPayload } from "@/components/torrent-tags";
+import { normTagRow } from "@/components/torrent-tags";
 
 /** 种子作者/管理操作（NP edit.php/delete.php 口径）：
- *  编辑（名称/副标题/简介/匿名）→ 回退待审；删除（软删，作者仅限未过审，staff 任意） */
+ *  编辑（名称/副标题/简介/匿名/标签整组）→ 回退待审；删除（软删，作者仅限未过审，staff 任意） */
 export function TorrentManage({
   torrentId,
   name,
@@ -17,6 +19,8 @@ export function TorrentManage({
   anonymous,
   seeders,
   imdbId,
+  tagDict,
+  tagMine,
 }: {
   torrentId: number;
   name: string;
@@ -25,6 +29,9 @@ export function TorrentManage({
   anonymous: boolean;
   seeders?: number;
   imdbId?: string | null;
+  /** 标签字典与已选（0159 P1：详情页 aggregate 已带回，编辑表单免二次请求） */
+  tagDict?: TagPayload["dict"];
+  tagMine?: number[];
 }) {
   const { dict } = useI18n();
   const router = useRouter();
@@ -47,6 +54,14 @@ export function TorrentManage({
   const [fDescr, setFDescr] = useState(descr ?? "");
   const [fAnon, setFAnon] = useState(anonymous);
   const [fImdb, setFImdb] = useState(imdbId ?? "");
+  // 标签整组编辑（0159 P1）：与发布表单同交互——普通标签 checkbox；
+  // official 类不出现（详情页 toggle 走 staff 口径，这里不重复实现权限分支）
+  const dictRows = (tagDict ?? []).map(normTagRow);
+  const [fTags, setFTags] = useState<number[]>(() =>
+    (tagMine ?? []).filter((id) =>
+      dictRows.some((d) => d.id === id && d.kind !== "official"),
+    ),
+  );
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -60,6 +75,14 @@ export function TorrentManage({
         descr: fDescr,
         anonymous: fAnon,
         imdb_id: fImdb.trim() || "",
+        // 标签整组提交（official 类保留不动：前端只编辑普通标签，
+        // 后端 DELETE+apply 会把 official 一并清掉，所以这里带上原 official 集）
+        tag_ids: [
+          ...fTags,
+          ...(tagMine ?? []).filter((id) =>
+            dictRows.some((d) => d.id === id && d.kind === "official"),
+          ),
+        ],
       });
       setMsg(t.saved);
       setOpen(false);
@@ -193,6 +216,45 @@ export function TorrentManage({
             />
             {t.fieldAnonymous}
           </label>
+          {/* 标签编辑（0159 P1）：普通标签 checkbox 整组提交 */}
+          {dictRows.some((d) => d.kind !== "official") && (
+            <fieldset className="flex flex-col gap-1 text-xs">
+              <legend>{dict.torrTags2?.title ?? "标签"}</legend>
+              <div className="flex flex-wrap gap-1.5">
+                {dictRows
+                  .filter((d) => d.kind !== "official")
+                  .map((d) => (
+                    <label
+                      key={d.id}
+                      className={`td-tag torrents-tag--user ${fTags.includes(d.id) ? "" : "td-tag--off"}`}
+                      style={{
+                        background: fTags.includes(d.id)
+                          ? d.bg_color || "var(--sky)"
+                          : undefined,
+                        color: fTags.includes(d.id)
+                          ? d.color || "#fff"
+                          : undefined,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={fTags.includes(d.id)}
+                        onChange={(e) =>
+                          setFTags((prev) =>
+                            e.target.checked
+                              ? [...prev, d.id]
+                              : prev.filter((x) => x !== d.id),
+                          )
+                        }
+                      />
+                      {d.name}
+                    </label>
+                  ))}
+              </div>
+            </fieldset>
+          )}
           <button
             type="button"
             disabled={busy}

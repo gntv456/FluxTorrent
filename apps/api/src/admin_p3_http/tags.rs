@@ -29,6 +29,10 @@ struct TagDictRow {
     sort: i32,
     enabled: bool,
     mode_id: Option<i32>,
+    /// 使用计数（0159 P1 治理）：种子引用数（含未过审）
+    torrent_usage: i64,
+    /// 使用计数（0159 P1 治理）：论坛主题引用数
+    forum_usage: i64,
 }
 
 #[derive(Deserialize)]
@@ -72,8 +76,10 @@ async fn tags_dict_list(
     )
     .await?;
     let rows: Vec<TagDictRow> = sqlx::query_as(
-        "SELECT id, name, kind, scope, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id \
-         FROM tag_dict ORDER BY scope, sort, id",
+        "SELECT d.id, d.name, d.kind, d.scope, d.bg_color, d.color, d.font_size, d.margin, d.padding, d.border_radius, d.sort, d.enabled, d.mode_id, \
+         (SELECT count(*) FROM tags tg WHERE tg.tag_id = d.id) AS torrent_usage, \
+         (SELECT count(*) FROM topic_tags tt WHERE tt.tag_id = d.id) AS forum_usage \
+         FROM tag_dict d ORDER BY d.scope, d.sort, d.id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -109,22 +115,18 @@ async fn tags_dict_add(
     if dup {
         return Err(DomainError::Validation("同名标签已存在".into()));
     }
-    let next: i32 =
-        sqlx::query_scalar("SELECT COALESCE(max(id), 0) + 1 FROM tag_dict")
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    // 0159：id 改由 sequence 分配（迁移已 setval 到 max），消除并发撞 PK
     let scope = match body.scope.as_deref() {
         Some("forum") => "forum",
         _ => "torrent",
     };
-    sqlx::query(
-        "INSERT INTO tag_dict (id, name, kind, scope, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id) \
-         VALUES ($1, $2, COALESCE($3, 'plain'), $4, COALESCE($5, ''), COALESCE($6, '#ffffff'), \
-                 COALESCE($7, '12px'), COALESCE($8, '0 4px 0 0'), COALESCE($9, '1px 4px'), \
-                 COALESCE($10, '2px'), COALESCE($11, 0), COALESCE($12, TRUE), $13)",
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO tag_dict (name, kind, scope, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id) \
+         VALUES ($1, COALESCE($2, 'plain'), $3, COALESCE($4, ''), COALESCE($5, '#ffffff'), \
+                 COALESCE($6, '12px'), COALESCE($7, '0 4px 0 0'), COALESCE($8, '1px 4px'), \
+                 COALESCE($9, '2px'), COALESCE($10, 0), COALESCE($11, TRUE), $12) \
+         RETURNING id",
     )
-    .bind(next)
     .bind(name)
     .bind(body.kind.clone())
     .bind(scope)
@@ -137,14 +139,14 @@ async fn tags_dict_add(
     .bind(body.sort)
     .bind(body.enabled)
     .bind(body.mode_id)
-    .execute(&state.repo.db)
+    .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "tagdict.add", Some(next as i64))
+        .audit(Some(auth.id), "tagdict.add", Some(id as i64))
         .await;
-    Ok(ok(serde_json::json!({ "id": next })))
+    Ok(ok(serde_json::json!({ "id": id })))
 }
 
 #[put("/admin/tags-dict/{id}")]

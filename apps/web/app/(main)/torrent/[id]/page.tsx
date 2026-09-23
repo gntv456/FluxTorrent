@@ -185,7 +185,7 @@ export default async function TorrentDetailPage({
       <section className="td-tags nexus-detail">
         <h2 className="td-sec-title">{dict.torrTags2?.title ?? "标签"}</h2>
         <div className="td-tags__body">
-          <TorrentTags torrentId={t.id} />
+          <TorrentTags torrentId={t.id} initial={agg.tags} />
           <div className="td-tags__manage">
             <PromoBuyButton
               torrentId={t.id}
@@ -199,6 +199,8 @@ export default async function TorrentDetailPage({
               anonymous={t.anonymous}
               seeders={t.seeders}
               imdbId={t.imdb_id ?? null}
+              tagDict={agg.tags.dict}
+              tagMine={agg.tags.mine}
             />
           </div>
         </div>

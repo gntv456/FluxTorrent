@@ -80,9 +80,32 @@ export function buildTorrentChips(opts: {
   if (sp.official === "1") chip("official", t2.officialOnly);
   if (sp.mine === "1") chip("mine", t2.mineOnly);
   if (sp.bookmarked === "1") chip("bookmarked", t2.bookmarkedOnly);
-  if (sp.tag_id) {
-    const t = tags.find((x) => String(x.id) === sp.tag_id);
-    chip("tag_id", `${t2.tagLabel}：${t?.name ?? sp.tag_id}`);
+  // 0159 P1：标签多选——每个已选标签各一个 chip，移除只去掉该标签；
+  // 兼容旧单值 tag_id（拆入同逻辑）；all 模式追加一个模式 chip
+  {
+    const rawTag = sp.tag_ids ?? sp.tag_id ?? "";
+    const tagName = (id: string) =>
+      tags.find((x) => String(x.id) === id)?.name ?? `#${id}`;
+    for (const id of rawTag.split(",").filter(Boolean)) {
+      chips.push({
+        id: `tag:${id}`,
+        key: rawTag === sp.tag_id ? "tag_id" : "tag_ids",
+        text: `${t2.tagLabel}：${tagName(id)}`,
+        href: withoutValue(
+          sp,
+          rawTag === sp.tag_id ? "tag_id" : "tag_ids",
+          id,
+        ),
+      });
+    }
+    if (rawTag && sp.tag_mode === "all") {
+      chips.push({
+        id: "tag_mode",
+        key: "tag_mode",
+        text: `${t2.tagLabel}：${t2.tagMatchAll}`,
+        href: withParam(sp, "tag_mode", undefined),
+      });
+    }
   }
   if (sp.promo) {
     const prLabels: Record<string, string> = {

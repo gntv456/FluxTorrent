@@ -55,6 +55,34 @@ async fn edit_torrent(
         },
     )
     .await?;
+    // 标签整组编辑（0159 P1）：Some([...]) = 同步为该组（先清后打），
+    // Some([]) = 清空，None = 不动。校验/官种联动与发布、详情页同源。
+    if let Some(tag_ids) = &body.tag_ids {
+        let owner: Option<i64> =
+            sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+                .bind(tid)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        if owner.is_none() {
+            return Err(DomainError::NotFound(tid));
+        }
+        if auth.class_id < 90 && owner != Some(auth.id) {
+            return Err(DomainError::Forbidden);
+        }
+        sqlx::query("DELETE FROM tags WHERE torrent_id = $1")
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        torrents::apply_torrent_tags(
+            &state.repo.db,
+            tid,
+            tag_ids,
+            (auth.id, auth.class_id as i16),
+        )
+        .await?;
+    }
     state
         .repo
         .audit(Some(auth.id), "torrent.edit", Some(tid))

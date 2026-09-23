@@ -56,8 +56,15 @@ pub(super) struct ListQuery {
     #[serde(default, deserialize_with = "de_opt_num_lenient")]
     pub(super) search_mode: Option<i32>,
     pub(super) sort: Option<String>,
+    /// 标签筛选（T-04）：tag_dict.id，命中 tags 关联（旧单值键；多选见 tag_ids）
     #[serde(default, deserialize_with = "de_opt_num_lenient")]
     pub(super) tag_id: Option<i32>,
+    /// 标签多选（0159 P1）：`tag_ids=1,3` 或重复参数；空/全非法 = 不筛
+    #[serde(default, deserialize_with = "de_tag_ids_lenient")]
+    pub(super) tag_ids: Vec<String>,
+    /// 标签多选匹配模式：any=任一命中(默认) all=全部命中
+    #[serde(default)]
+    pub(super) tag_mode: Option<String>,
     /// 存活筛选（0102，NP inclbooked/vivisect 口径）：0=全部 1=仅活种 2=仅断种（覆盖 include_dead）
     #[serde(default, deserialize_with = "de_opt_num_lenient")]
     pub(super) alive: Option<i16>,
@@ -169,6 +176,54 @@ pub(super) fn norm_promo(s: Option<String>) -> Option<String> {
         .then(|| seen.join(","))
         .or(Some("any".into()))
         .filter(|out| !out.is_empty())
+}
+
+/// tag_ids 的宽松反序列化：seq → 原样；字符串 → 按逗号拆（与 category_ids 同套路）
+pub(super) fn de_tag_ids_lenient<'de, D>(
+    d: D,
+) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum OneOrMany {
+        Many(Vec<String>),
+        One(String),
+    }
+    let v = serde_json::Value::deserialize(d)?;
+    let pick = serde_json::from_value::<OneOrMany>(v)
+        .map_err(serde::de::Error::custom)?;
+    Ok(match pick {
+        OneOrMany::Many(v) => v,
+        OneOrMany::One(s) => {
+            s.split(',').map(|x| x.trim().to_string()).collect()
+        }
+    })
+}
+
+/// 标签参数归一（0159 P1）：tag_id（旧单值）与 tag_ids（多选/重复参数）合并，
+/// 保序去重；tag_mode 只认 any/all，缺省 any。
+pub(super) fn norm_tags(
+    tag_id: Option<i32>,
+    tag_ids: &[String],
+    tag_mode: Option<&str>,
+) -> (Option<Vec<i32>>, bool) {
+    let mut ids: Vec<i32> = Vec::new();
+    if let Some(one) = tag_id {
+        ids.push(one);
+    }
+    for part in tag_ids {
+        for piece in part.split(',') {
+            if let Ok(v) = piece.trim().parse::<i32>() {
+                if !ids.contains(&v) {
+                    ids.push(v);
+                }
+            }
+        }
+    }
+    let all = matches!(tag_mode, Some("all"));
+    ((!ids.is_empty()).then_some(ids), all)
 }
 
 /// 空白即视为未填（表单里清空后仍会提交空串）
