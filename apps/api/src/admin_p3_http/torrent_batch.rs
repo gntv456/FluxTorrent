@@ -136,17 +136,18 @@ async fn torrent_batch(
             if body.tag_ids.is_empty() {
                 return Err(DomainError::Validation("缺少标签".into()));
             }
-            sqlx::query(
-                "INSERT INTO tags (torrent_id, tag_id) \
-                 SELECT t.id, tg FROM torrents t, unnest($2::int[]) tg \
-                 WHERE t.id = ANY($1) ON CONFLICT DO NOTHING",
-            )
-            .bind(&id_arr)
-            .bind(&body.tag_ids)
-            .execute(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected()
+            // 0159：批量打标与发布/详情同口径（scope/enabled/official 校验，
+            // official_tag 物化列联动）——此前直插绕过全部校验
+            for tid in &id_arr {
+                crate::torrents::apply_torrent_tags(
+                    db,
+                    *tid,
+                    &body.tag_ids,
+                    (auth.id, auth.class_id as i16),
+                )
+                .await?;
+            }
+            id_arr.len() as u64
         }
         "clear_tags" => sqlx::query(
             "DELETE FROM tags WHERE torrent_id = ANY($1) \

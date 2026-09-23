@@ -203,6 +203,10 @@ pub(super) struct TorrentEditReq {
     /// IMDB id（0150：后台/编辑表单直填；非法形态会被 manage 层过滤为 None）
     #[serde(default)]
     pub(super) imdb_id: Option<String>,
+    /// 标签（0159 P1）：编辑表单整组提交；Some([]) = 清空全部标签，
+    /// None = 不动（编辑入口与详情页 toggle / 发布同走 apply_torrent_tags）
+    #[serde(default)]
+    pub(super) tag_ids: Option<Vec<i32>>,
 }
 
 /// 请求补种（NP takereseed.php：死种 → PM 全体完成者，900s 限频）

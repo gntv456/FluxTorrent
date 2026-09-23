@@ -39,6 +39,10 @@ pub struct TorrentRow {
     /// 详情等其它用本行的查询不选该列 → sqlx(default) 落 0，互不影响。
     #[sqlx(default)]
     pub sticky_rank: i32,
+    /// 行内标签徽标（0159 P1）：随行 json_agg 的 [{id,name,kind,bg_color,color}]，
+    /// 按 sort DESC, id 排序；其它查询不选该列 → sqlx(default) 落空数组
+    #[sqlx(default)]
+    pub tags: serde_json::Value,
 }
 
 /// 列表游标（方案批次二）：id 之外携带排序键值，修复「非默认排序翻页丢行」。
@@ -138,8 +142,11 @@ pub struct TorrentFilter {
     pub search: Option<String>,
     /// 列表排序（旧站 torrents.php 口径）：created（默认）/ seeders / size / completed
     pub sort: Option<String>,
-    /// 标签筛选（T-04）：tag_dict.id，命中 tags 关联
-    pub tag_id: Option<i32>,
+    /// 标签筛选（0159 P1 起多选）：tag_dict.id 数组，any=任一命中 / all=全部命中；
+    /// 旧单值 tag_id 在入口并入此数组（any 语义）
+    pub tag_ids: Option<Vec<i32>>,
+    /// 多选匹配模式：true = all（每个标签都要命中）；false/缺省 = any
+    pub tag_all: bool,
     /// 第八轮 Section 多维筛选：kind → dict_id（kind 走白名单，dict_id 为整数，拼接安全）
     #[serde(default)]
     pub sections: Vec<(String, i64)>,

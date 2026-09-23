@@ -15,6 +15,10 @@ export interface TagRow {
   sort: number;
   enabled: boolean;
   mode_id: number | null;
+  /** 使用计数（0159 P1 治理）：种子引用数（后端子查询，缺省 0 兼容旧形态） */
+  torrent_usage?: number;
+  /** 使用计数（0159 P1 治理）：论坛主题引用数 */
+  forum_usage?: number;
 }
 
 export interface ModeRow {

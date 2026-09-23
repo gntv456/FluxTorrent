@@ -565,6 +565,9 @@ const zhCnBase = {
     advHint: "在关键字之外，按分类、体积、时间、状态、优惠等条件精确定位种子",
     tagLabel: "标签",
     tagAny: "全部标签",
+    tagMatchAny: "任一命中",
+    tagMatchAll: "全部命中",
+    tagMultiHint: "可多选；「任一命中」=含任一标签，「全部命中」=同时含所有标签",
     catAll: "全选",
     catClear: "清空",
     sortLeechers: "下载最多",
@@ -2082,10 +2085,10 @@ usertools: {
   torrTags2: {
     showAll: "全部标签",
     hideAll: "收起",
+    addTag: "+ 加标签",
 
     title: "标签",
     needStaff: "官方标签仅管理组可打",
-    filterRow: ["全部标签", "官方", "免费", "官种", "合集", "带答案"] as string[],
   },
   agentRules2: {
     tab: "客户端名单",

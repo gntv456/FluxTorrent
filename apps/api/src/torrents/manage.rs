@@ -129,10 +129,12 @@ pub async fn list_tags(
     db: &PgPool,
     torrent_id: i64,
 ) -> DomainResult<serde_json::Value> {
-    let dict: Vec<(i32, String, String)> = sqlx::query_as(
-        "SELECT id, name, \
-         kind FROM tag_dict WHERE scope = 'torrent' ORDER BY id",
-    )
+    let dict: Vec<(i32, String, String, Option<String>, Option<String>)> =
+        sqlx::query_as(
+            "SELECT id, name, \
+         kind, nullif(bg_color, ''), nullif(color, '') \
+         FROM tag_dict WHERE scope = 'torrent' ORDER BY id",
+        )
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -143,7 +145,16 @@ pub async fn list_tags(
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(serde_json::json!({ "dict": dict, "mine": mine }))
+    // dict 行带样式列（0159 P1 渲染统一）：旧客户端按元组取前三项仍兼容，
+    // 新客户端读 bg_color/color（nullif 空串→null，未配色回落默认）
+    let dict_json: Vec<serde_json::Value> = dict
+        .into_iter()
+        .map(|(id, name, kind, bg, color)| {
+            serde_json::json!({ "id": id, "name": name, "kind": kind,
+                                "bg_color": bg, "color": color })
+        })
+        .collect();
+    Ok(serde_json::json!({ "dict": dict_json, "mine": mine }))
 }
 
 /// 打/去标签（作者或 staff；官种标签仅 staff 可打）
@@ -190,5 +201,69 @@ pub async fn tag_torrent(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
+    sync_official_tag(db, torrent_id).await?;
+    Ok(())
+}
+
+/// 统一打标入口（0159 标签 P0）：发布 / 详情页 / 管理批量共用。
+/// 校验口径与 tag_torrent 一致（存在 + enabled + scope=torrent + official
+/// 仅 staff），官方标签联动 official_tag 物化列——三个入口不再各写各的。
+pub async fn apply_torrent_tags(
+    db: &PgPool,
+    torrent_id: i64,
+    tag_ids: &[i32],
+    actor: (i64, i16),
+) -> DomainResult<()> {
+    if tag_ids.len() > 12 {
+        return Err(DomainError::Validation("标签最多选择 12 个".into()));
+    }
+    let is_staff = actor.1 >= 90;
+    for tid in tag_ids {
+        let row: Option<(String, bool)> = sqlx::query_as(
+            "SELECT kind, COALESCE(enabled, TRUE) FROM tag_dict \
+             WHERE id = $1 AND scope = 'torrent'",
+        )
+        .bind(tid)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let Some((kind, enabled)) = row else {
+            return Err(DomainError::Validation(format!("标签 {tid} 不存在")));
+        };
+        if !enabled {
+            return Err(DomainError::Validation(format!("标签 {tid} 已停用")));
+        }
+        if kind == "official" && !is_staff {
+            return Err(DomainError::Forbidden); // 官种/官方标签仅 staff
+        }
+        sqlx::query(
+            "INSERT INTO tags (torrent_id, tag_id) VALUES ($1, $2) \
+             ON CONFLICT DO NOTHING",
+        )
+        .bind(torrent_id)
+        .bind(tid)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    sync_official_tag(db, torrent_id).await?;
+    Ok(())
+}
+
+/// official_tag 物化列同步（0159）：列=「挂有 official-kind 标签」的纯派生值，
+/// 任何写 tags 的路径收口后调这里，杜绝列与关联表漂移（0044 双口径事故根因）。
+/// official-kind 标签缺失时列回落 false——回落即「免费」促销口径外的促销
+/// 判定不变，仅官种语义跟随标签。
+async fn sync_official_tag(db: &PgPool, torrent_id: i64) -> DomainResult<()> {
+    sqlx::query(
+        "UPDATE torrents SET official_tag = EXISTS ( \
+           SELECT 1 FROM tags tg JOIN tag_dict d ON d.id = tg.tag_id \
+           WHERE tg.torrent_id = $1 AND d.kind = 'official') \
+         WHERE id = $1",
+    )
+    .bind(torrent_id)
+    .execute(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(())
 }

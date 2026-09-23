@@ -64,7 +64,8 @@ pub(super) async fn store_sections_tags(
         }
     }
 
-    // 标签（NP upload.php tags 口径）：发布时直接打标；启用字典校验 + 官方标签仅 staff
+    // 标签（NP upload.php tags 口径）：发布时直接打标；统一走 apply_torrent_tags
+    // （0159：校验 + official_tag 联动三入口同源，官种物化列不再漂移）
     if let Some(json) = form
         .tags
         .as_deref()
@@ -74,42 +75,13 @@ pub(super) async fn store_sections_tags(
         let ids: Vec<i32> = serde_json::from_str(json).map_err(|_| {
             DomainError::Validation("tags 需为 JSON 数组".into())
         })?;
-        if ids.len() > 12 {
-            return Err(DomainError::Validation("标签最多选择 12 个".into()));
-        }
-        let is_staff = auth.class_id >= 90;
-        for tid in &ids {
-            let row: Option<(String, bool)> = sqlx::query_as(
-                "SELECT kind, COALESCE(enabled, TRUE) FROM tag_dict \
-                     WHERE id = $1 AND scope = 'torrent'",
-            )
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            let Some((kind, enabled)) = row else {
-                return Err(DomainError::Validation(format!(
-                    "标签 {tid} 不存在"
-                )));
-            };
-            if !enabled {
-                return Err(DomainError::Validation(format!(
-                    "标签 {tid} 已停用"
-                )));
-            }
-            if kind == "official" && !is_staff {
-                return Err(DomainError::Forbidden); // 与详情页打标同口径
-            }
-            sqlx::query(
-                "INSERT INTO tags (torrent_id, tag_id) \
-                     VALUES ($1, $2) ON CONFLICT DO NOTHING",
-            )
-            .bind(id)
-            .bind(tid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        }
+        crate::torrents::apply_torrent_tags(
+            &state.repo.db,
+            id,
+            &ids,
+            (auth.id, auth.class_id as i16),
+        )
+        .await?;
     }
     Ok(())
 }

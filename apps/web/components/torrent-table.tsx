@@ -210,6 +210,35 @@ async function TorrentTr({
                 {dict.torrent.sticky}
               </span>
             )}
+            {/* 用户标签徽标（0159 P1）：随行回显 ≤3 个 + 溢出计数，
+                消费字典样式列（与论坛 TagChip 同口径） */}
+            {(t.tags ?? []).slice(0, 3).map((b) => (
+              <span
+                key={b.id}
+                className="torrents-tag torrents-tag--user"
+                style={
+                  b.bg_color
+                    ? {
+                        background: b.bg_color,
+                        color: b.color || undefined,
+                      }
+                    : undefined
+                }
+              >
+                {b.name}
+              </span>
+            ))}
+            {(t.tags?.length ?? 0) > 3 && (
+              <span
+                className="torrents-tag torrents-tag--user torrents-tag--more"
+                title={(t.tags ?? [])
+                  .slice(3)
+                  .map((b) => b.name)
+                  .join(" / ")}
+              >
+                +{t.tags!.length - 3}
+              </span>
+            )}
           </span>
           {t.anonymous ? (
             <span className="text-sub">{dict.torrent.anonymous}</span>

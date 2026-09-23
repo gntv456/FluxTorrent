@@ -21,6 +21,13 @@ async fn list(
                                                   // 通用多维筛选（0088）：sec_{kind}=dict_id，kind 走 section_kinds 白名单；
                                                   // 从原始 query string 解析，支持任意站方自建维度（不再写死六个）
     let mut sections: Vec<(String, i64)> = Vec::new();
+    // 标签多选（0159 P1）：norm_tags 在 filter 构造块里赋值；声明在此因
+    // struct 字面量内不能先解构再引用同名字段
+    let (tag_ids, tag_all) = super::query::norm_tags(
+        q.tag_id,
+        &q.tag_ids,
+        q.tag_mode.as_deref(),
+    );
     for pair in req.query_string().split('&') {
         let Some((k, v)) = pair.split_once('=') else {
             continue;
@@ -72,7 +79,9 @@ async fn list(
             .await,
         search: q.search.as_deref().map(str::to_string),
         sort: q.sort.as_deref().map(str::to_string),
-        tag_id: q.tag_id,
+        // 标签多选（0159 P1）：旧单值 tag_id 并入 tag_ids；tag_mode 只认 any/all
+        tag_ids,
+        tag_all,
         // 0102 高级搜索三态
         alive: q.alive,
         status: q.status.clone().filter(|s| !s.is_empty()),
@@ -157,7 +166,7 @@ async fn list(
         && !filter.include_unapproved
         && filter.search.is_none()
         && filter.sort.is_none()
-        && filter.tag_id.is_none()
+        && filter.tag_ids.is_none()
         && filter.sections.is_empty()
         // 状态筛选是用户视角（viewer 的 snatches）：带 status 的请求不得共享首屏缓存
         && filter.status.is_none()

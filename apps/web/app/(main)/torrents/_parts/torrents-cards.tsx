@@ -85,7 +85,8 @@ function PromoBadges({ t, dict }: { t: TorrentListItem; dict: Dict }) {
     (t.promotion as TorrentListItem["promotion"]) ?? null,
   );
   const isNew = Date.now() - new Date(t.created_at).getTime() < 3 * 86400000;
-  if (!promo && !isNew && !t.official) return null;
+  const userTags = t.tags ?? [];
+  if (!promo && !isNew && !t.official && userTags.length === 0) return null;
   const promoCls =
     promo && promo.key === "free"
       ? "torrents-promo torrents-promo--free"
@@ -102,6 +103,28 @@ function PromoBadges({ t, dict }: { t: TorrentListItem; dict: Dict }) {
       )}
       {isNew && (
         <span className="torrents-new">{dict.torrents.newTag ?? "新"}</span>
+      )}
+      {/* 用户标签徽标（0159 P1）：与表格行同口径，消费字典样式列 */}
+      {userTags.slice(0, 3).map((b) => (
+        <span
+          key={b.id}
+          className="torrents-tag torrents-tag--user"
+          style={
+            b.bg_color
+              ? { background: b.bg_color, color: b.color || undefined }
+              : undefined
+          }
+        >
+          {b.name}
+        </span>
+      ))}
+      {userTags.length > 3 && (
+        <span
+          className="torrents-tag torrents-tag--user torrents-tag--more"
+          title={userTags.slice(3).map((b) => b.name).join(" / ")}
+        >
+          +{userTags.length - 3}
+        </span>
       )}
     </span>
   );

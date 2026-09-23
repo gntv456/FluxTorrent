@@ -176,6 +176,17 @@ export interface TorrentListItem {
   imdb_id: string | null;
   owner_name: string | null;
   created_at: string;
+  /** 行内标签徽标（0159 P1）：随行 json_agg，按字典 sort DESC, id 排序；旧数据缺省 */
+  tags?: TagBadge[];
+}
+
+/** 列表行标签徽标（0159 P1：种子行回显——筛选与展示不再断裂） */
+export interface TagBadge {
+  id: number;
+  name: string;
+  kind: string;
+  bg_color: string;
+  color: string;
 }
 
 /** 种子评论（M07；0155 点赞 + 0156 嵌套回复） */
@@ -573,6 +584,8 @@ export interface PreserveItem {
   poster: string | null;
   owner_name: string | null;
   created_at: string;
+  /** 行内标签徽标（0159 P1）：保种区行同构复用；该接口暂不返回 → 恒空 */
+  tags?: TagBadge[];
 }
 
 export interface PreserveStats {

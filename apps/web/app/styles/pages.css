@@ -835,6 +835,20 @@
   font-weight: 700;
   line-height: 1.7;
 }
+/* 用户标签徽标（0159 P1）：列表行/卡片回显——字典未配色时中性灰底，
+   配了色由 inline style 覆盖（与论坛 TagChip 同口径） */
+.torrents-tag--user {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--fill-2, #eef1f4);
+  color: var(--text-sub, #5a6b7b);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.7;
+}
+.torrents-tag--more {
+  cursor: help;
+}
 /* 详情页标签复用列表口径的彩色轮换（普通标签按位取色，选中即上色） */
 .torrents-tag--sky {
   padding: 0 6px;

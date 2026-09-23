@@ -83,6 +83,7 @@ export function AdminTagDict() {
             <td className="colhead">预览</td>
             <td className="colhead">类型</td>
             <td className="colhead">作用域</td>
+            <td className="colhead">引用</td>
             <td className="colhead">样式</td>
             <td className="colhead">模式</td>
             <td className="colhead">状态</td>
@@ -113,6 +114,12 @@ export function AdminTagDict() {
               </td>
               <td>{r.kind === "official" ? "官方" : "普通"}</td>
               <td>{r.scope === "forum" ? "论坛" : "种子"}</td>
+              {/* 引用计数（0159 P1 治理）：僵尸标签（0 引用）一目了然 */}
+              <td className="num" title="种子引用 / 论坛主题引用">
+                {r.scope === "forum"
+                  ? (r.forum_usage ?? 0)
+                  : (r.torrent_usage ?? 0)}
+              </td>
               <td className="font-mono">
                 {r.bg_color || "—"} / {r.font_size}
               </td>
@@ -150,7 +157,7 @@ export function AdminTagDict() {
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={8} className="py-6 text-center text-sub">
+              <td colSpan={9} className="py-6 text-center text-sub">
                 暂无标签
               </td>
             </tr>

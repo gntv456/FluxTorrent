@@ -54,6 +54,18 @@ pub async fn list_torrents_noclamp_as(
     };
     // 用户显式排序不掺置顶 + 二元 keyset 游标：构造细节见 cursor.rs
     let (order, cursor_col) = cursor::sort_of(key, asc, &sticky_expr);
+    // 标签筛选（0159 P1 多选）：any = 单谓词 = ANY（复用 idx_tags_tag）；
+    // all = 命中去重后等于标签数（聚合子查询，仍走索引）
+    let tag_pred = match (&filter.tag_ids, filter.tag_all) {
+        (None, _) => String::new(),
+        (Some(_), false) => {
+            " AND t.id IN (SELECT torrent_id FROM tags WHERE tag_id = ANY($9::int[]))".into()
+        }
+        (Some(ids), true) => format!(
+            " AND (SELECT count(DISTINCT tag_id) FROM tags WHERE torrent_id = t.id AND tag_id = ANY($9::int[])) = {}",
+            ids.len()
+        ),
+    };
     // 第八轮 Section 多维筛选：每个维度一个子查询谓词（kind 以 section_kinds 存在性校验 + i64 内插，无注入面）
     // 多维多选（0102）：同维度多值 OR（= ANY），跨维度 AND
     let mut sec_sql = String::new();
@@ -157,6 +169,12 @@ pub async fn list_torrents_noclamp_as(
                t.media_info->>'poster' AS poster,
                t.imdb_id,
                t.created_at,
+               (SELECT COALESCE(json_agg(json_build_object( \
+                    'id', d.id, 'name', d.name, 'kind', d.kind, \
+                    'bg_color', d.bg_color, 'color', d.color) \
+                    ORDER BY d.sort DESC, d.id), '[]'::json) \
+                FROM tags tg JOIN tag_dict d ON d.id = tg.tag_id \
+                WHERE tg.torrent_id = t.id) AS tags,
                {sticky_calc} AS sticky_rank
         FROM torrents t
         LEFT JOIN users u ON u.id = t.owner_id
@@ -173,7 +191,7 @@ pub async fn list_torrents_noclamp_as(
           {bookmark_pred}
           {search_pred}
          {cursor_pred}
-          AND ($9::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $9))
+          {tag_pred}
           {sec_sql}
           {extra_sql}
         ORDER BY {order}
@@ -189,7 +207,7 @@ pub async fn list_torrents_noclamp_as(
         .bind(&pattern)
         .bind(cursor.as_ref().map(|c| c.id))
         .bind(limit + 1)
-        .bind(filter.tag_id)
+        .bind(filter.tag_ids.clone())
         .bind(filter.include_unapproved)
         .bind(filter.size_min)
         .bind(filter.size_max)
@@ -242,7 +260,7 @@ pub async fn list_torrents_noclamp_as(
          AND ($3::int IS NULL OR t.grade_id = $3) AND ($4::int IS NULL OR t.edition_id = $4) \
          AND ($5::bool IS NULL OR t.official_tag = $5) {alive_pred} {approval_pred} {status_pred} \
          {bookmark_pred} {search_pred} \
-         AND ($8::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $8)) \
+         {tag_pred} \
          {sec_sql} {extra_count_sql} LIMIT 10001) sub",
     );
     let total: i64 = sqlx::query_scalar(&count_sql)
@@ -253,7 +271,7 @@ pub async fn list_torrents_noclamp_as(
         .bind(filter.official)
         .bind(&pattern)
         .bind(filter.include_unapproved)
-        .bind(filter.tag_id)
+        .bind(filter.tag_ids.clone())
         .bind(filter.size_min)
         .bind(filter.size_max)
         .bind(filter.date_from.as_deref())
