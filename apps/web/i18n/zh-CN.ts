@@ -2807,6 +2807,13 @@ usertools: {
     zeroHint: "0（发布页/搜索不显示）",
     renameKindPrompt: "新显示名称",
     delKindConfirm: "删除维度「{name}」？其下所有字典选项将被清空",
+    // 分类模式（admin-sections）
+    modesTitle: "分类模式",
+    modesHint: "每个分类归属一个模式；模式内的开关决定发布表单与筛选启用哪些子维度。",
+    phMode: "新模式名称", modeCreated: "已创建", createMode: "新建模式",
+    thCategories: "分类数",
+    modeDeleted: "已删除（归属分类已回退默认模式）",
+    loadFail: "加载失败", opFail: "操作失败",
   },
   /** 用户详情页：管理动作 flash 与确认文案（admin-user-detail-*） */
   userDetail: {
@@ -2924,6 +2931,19 @@ usertools: {
     imgPrefix: "图: ", framesEmpty: "暂无头像框",
     thAction: "操作", edit: "编辑", del: "删除", save: "保存",
     opFail: "操作失败", delFail: "删除失败",
+    // 用户背包（admin-props-user-bag）
+    bagTitle: "用户背包（购买 + 发放）", qUid: "按用户 UID 过滤",
+    thOrder: "单号", bagUser: "用户", thItem: "道具", thKind: "类型",
+    bagPrice: "价格", bagTime: "时间",
+    instant: "即时生效", revoked: "已回收", revoke: "回收",
+    revokeFail: "回收失败", bagEmpty: "暂无持有记录",
+    // 新建/编辑表单（admin-props-form）
+    formNew: "新建道具", formEdit: "编辑道具 #{id}",
+    fKind: "类型",
+    cfgNone: "（不选）",
+    fConfig: "config(JSON，专家模式可直接改)", active: "上架",
+    formHint:
+      "即时生效类（上传量/{magic}/邀请）发放直接入账；卡牌/装饰类入背包待用户使用。装扮类会自动补 slot/dressup，无需手填。",
   },
   /** 后台种子管理：审批状态 / 促销标签 / 批量动作 */
   adminTorrents: {
@@ -3032,6 +3052,14 @@ usertools: {
     thUsername: "用户名", thEmail: "邮箱", thStatus: "状态",
     thDownload: "下载权限", thSuspended: "挂起", thAction: "操作",
     detail: "详情",
+    // admin-users.tsx 批量与开关
+    adjustedMsg: "已调整用户 #{id}",
+    stNormalAct: "恢复正常", stMuteAct: "禁言", stBanAct: "封禁",
+    classTo: "等级改为 {n}", batchReason: "批量操作理由（可选）",
+    batchConfirm: "确认对 {n} 个用户执行「{act}」？",
+    pickFirstUser: "请先勾选用户",
+    skipNote: "，跳过（等级不足）{n} 个",
+    updatedMsg: "已更新 {n} 个用户", opFail: "操作失败",
   },
   /** 保种认领（admin-p2-tools-claims） */
   adminClaims: {
@@ -3080,6 +3108,15 @@ usertools: {
     thPriority: "优先级", thUpdated: "更新时间", thAction: "操作",
     on: "启用", off: "停用", edit: "编辑", del: "删除",
     empty: "暂无 Tracker 地址",
+  },
+  /** 用户记录（admin-userlogs）：改名 + 资料修改 */
+  adminUserlogs: {
+    tabRename: "改名记录", tabModify: "修改记录", loadFail: "加载失败",
+    fUid: "用户 UID", qAll: "留空看全部",
+    thId: "ID", thUser: "用户", thOldName: "旧用户名",
+    thNewName: "新用户名", thOperator: "操作者", thTime: "时间",
+    thContent: "修改内容",
+    renameEmpty: "暂无改名记录", modifyEmpty: "暂无修改记录",
   },
   /** 勋章稀有度配色档（值存库，主词表在 medal_rarities 表；此处是后台下拉显示名） */
   medalRarity: {

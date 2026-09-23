@@ -5,6 +5,7 @@ import { BTN_SM_GHOST } from "@/lib/ui-classes";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import {
   UserDetailPanel,
   type AdjustState,
@@ -45,6 +46,8 @@ const PAGE_BTN = BTN_SM_GHOST;
 
 export function AdminUsers({ classes }: { classes: [number, string][] }) {
   const { dict, currency } = useI18n();
+  const at = dict.adminUsers;
+  const ud = dict.userDetail;
   const [q, setQ] = useState("");
   const [fId, setFId] = useState("");
   const [fClass, setFClass] = useState("");
@@ -129,7 +132,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         invite_grant: Number(adjust.invite) || 0,
         note: adjust.note || undefined,
       });
-      flash(`已调整用户 #${detail.id}`);
+      flash(fmt(at.adjustedMsg, { id: detail.id }));
       setAdjust(null);
       await openDetail(detail.id);
       await load();
@@ -154,11 +157,11 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
       flash(
         flag === "suspended"
           ? value
-            ? "已挂起"
-            : "已解除挂起"
+            ? ud.suspended
+            : ud.unsuspended
           : value
-            ? "已恢复下载权限"
-            : "已禁用下载权限",
+            ? ud.downloadEnabled
+            : ud.downloadDisabled,
       );
       await openDetail(userId);
       await load();
@@ -176,18 +179,18 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   async function batch(action: "status" | "class", value: number) {
     const ids = [...sel];
     if (ids.length === 0) {
-      flash("请先勾选用户");
+      flash(at.pickFirstUser);
       return;
     }
     const reason =
       action === "status" && value > 0
-        ? (window.prompt("批量操作理由（可选）") ?? undefined)
+        ? (window.prompt(at.batchReason) ?? undefined)
         : undefined;
     const actLabel =
       action === "status"
-        ? ["恢复正常", "禁言", "封禁"][value]
-        : `等级改为 ${value}`;
-    if (!window.confirm(`确认对 ${ids.length} 个用户执行「${actLabel}」？`))
+        ? [at.stNormalAct, at.stMuteAct, at.stBanAct][value]
+        : fmt(at.classTo, { n: value });
+    if (!window.confirm(fmt(at.batchConfirm, { n: ids.length, act: actLabel })))
       return;
     setBusy(true);
     try {
@@ -196,11 +199,13 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         { action, ids, value, reason },
       );
       const skipNote =
-        r.skipped.length > 0 ? `，跳过（等级不足）${r.skipped.length} 个` : "";
-      flash(`已更新 ${r.updated} 个用户${skipNote}`);
+        r.skipped.length > 0
+          ? fmt(at.skipNote, { n: r.skipped.length })
+          : "";
+      flash(fmt(at.updatedMsg, { n: r.updated }) + skipNote);
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }

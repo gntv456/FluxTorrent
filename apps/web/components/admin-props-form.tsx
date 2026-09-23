@@ -3,6 +3,7 @@
 import { EMPTY_EDIT } from "./admin-props";
 
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import { BTN_SM_BOLD as PLAIN_BTN_CLS, INPUT_CLOUD } from "@/lib/ui-classes";
 import type { FrameRow } from "./admin-props-shared";
 import {
@@ -26,16 +27,19 @@ export function PropsForm(props: {
 }) {
   const { edit, setEdit, save, busy, frames } = props;
   const { currency, dict } = useI18n();
-  const KIND_LABEL = kindLabelMap(dict.adminProps.kindLabel);
-  const KIND_FIELDS = kindFields(dict.adminProps.fields, dict.adminProps.opts);
+  const at = dict.adminProps;
+  const KIND_LABEL = kindLabelMap(at.kindLabel);
+  const KIND_FIELDS = kindFields(at.fields, at.opts);
   return (
     <section className="baozi-panel cmgmt-form p-4">
       <h2 className="mb-2 text-base font-bold">
-        {edit.id === null ? "新建道具" : `编辑道具 #${edit.id}`}
+        {edit.id === null
+          ? at.formNew
+          : fmt(at.formEdit, { id: edit.id })}
       </h2>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
-          名称
+          {at.fName}
           <input
             value={edit.f.name}
             onChange={(e) =>
@@ -45,7 +49,7 @@ export function PropsForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          类型
+          {at.fKind}
           <select
             value={edit.f.kind}
             onChange={(e) =>
@@ -61,7 +65,7 @@ export function PropsForm(props: {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          价格({currency})
+          {fmt(at.fPrice, { magic: currency })}
           <input
             type="number"
             value={edit.f.price}
@@ -97,7 +101,7 @@ export function PropsForm(props: {
                 }
                 className={`${inp} ${fd.wide ? "min-w-[140px]" : "w-40"}`}
               >
-                <option value="">（不选）</option>
+                <option value="">{at.cfgNone}</option>
                 {fd.options === "frames"
                   ? frames.map((fr) => (
                       <option key={fr.id} value={String(fr.id)}>
@@ -141,7 +145,7 @@ export function PropsForm(props: {
         ))}
 
         <label className="flex flex-col gap-1 text-xs">
-          config(JSON，专家模式可直接改)
+          {at.fConfig}
           <input
             value={edit.f.config}
             onChange={(e) =>
@@ -161,25 +165,23 @@ export function PropsForm(props: {
               })
             }
           />
-          上架
+          {at.active}
         </label>
         <button
           className="baozi-button"
           disabled={busy || !edit.f.name.trim()}
           onClick={save}
         >
-          保存
+          {at.save}
         </button>
         {edit.id !== null && (
           <button className={PLAIN_BTN_CLS} onClick={() => setEdit(EMPTY_EDIT)}>
-            取消
+            {dict.common.cancel}
           </button>
         )}
       </div>
       <p className="mt-2 text-xs text-sub">
-        即时生效类（上传量/{currency}
-        /邀请）发放直接入账；卡牌/装饰类入背包待用户使用。装扮类会自动补
-        slot/dressup，无需手填。
+        {fmt(at.formHint, { magic: currency })}
       </p>
     </section>
   );

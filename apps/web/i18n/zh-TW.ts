@@ -2793,6 +2793,13 @@ usertools: {
     zeroHint: "0（發布頁/搜尋不顯示）",
     renameKindPrompt: "新顯示名稱",
     delKindConfirm: "刪除維度「{name}」？其下所有字典選項將被清空",
+    // 分類模式（admin-sections）
+    modesTitle: "分類模式",
+    modesHint: "每個分類歸屬一個模式；模式內的開關決定發布表單與篩選啟用哪些子維度。",
+    phMode: "新模式名稱", modeCreated: "已建立", createMode: "新建模式",
+    thCategories: "分類數",
+    modeDeleted: "已刪除（歸屬分類已回退預設模式）",
+    loadFail: "載入失敗", opFail: "操作失敗",
   },
   /** 使用者詳情頁：管理動作 flash 與確認文案（admin-user-detail-*） */
   userDetail: {
@@ -2909,6 +2916,19 @@ usertools: {
     imgPrefix: "圖: ", framesEmpty: "暫無頭像框",
     thAction: "操作", edit: "編輯", del: "刪除", save: "儲存",
     opFail: "操作失敗", delFail: "刪除失敗",
+    // 使用者背包（admin-props-user-bag）
+    bagTitle: "使用者背包（購買 + 發放）", qUid: "按使用者 UID 過濾",
+    thOrder: "單號", bagUser: "使用者", thItem: "道具", thKind: "類型",
+    bagPrice: "價格", bagTime: "時間",
+    instant: "即時生效", revoked: "已回收", revoke: "回收",
+    revokeFail: "回收失敗", bagEmpty: "暫無持有記錄",
+    // 新增/編輯表單（admin-props-form）
+    formNew: "新增道具", formEdit: "編輯道具 #{id}",
+    fKind: "類型",
+    cfgNone: "（不選）",
+    fConfig: "config(JSON，專家模式可直接改)", active: "上架",
+    formHint:
+      "即時生效類（上傳量/{magic}/邀請）發放直接入帳；卡牌/裝飾類入背包待使用者使用。装扮類會自動補 slot/dressup，無需手填。",
   },
   /** 後台種子管理：審核狀態 / 促銷標籤 / 批量動作 */
   adminTorrents: {
@@ -3017,6 +3037,14 @@ usertools: {
     thUsername: "使用者名稱", thEmail: "信箱", thStatus: "狀態",
     thDownload: "下載權限", thSuspended: "停權", thAction: "操作",
     detail: "詳情",
+    // admin-users.tsx 批量與開關
+    adjustedMsg: "已調整使用者 #{id}",
+    stNormalAct: "恢復正常", stMuteAct: "禁言", stBanAct: "封禁",
+    classTo: "等級改為 {n}", batchReason: "批量操作理由（可選）",
+    batchConfirm: "確認對 {n} 個使用者執行「{act}」？",
+    pickFirstUser: "請先勾選使用者",
+    skipNote: "，跳過（等級不足）{n} 個",
+    updatedMsg: "已更新 {n} 個使用者", opFail: "操作失敗",
   },
   /** 保種認領（admin-p2-tools-claims） */
   adminClaims: {
@@ -3065,6 +3093,15 @@ usertools: {
     thPriority: "優先級", thUpdated: "更新時間", thAction: "操作",
     on: "啟用", off: "停用", edit: "編輯", del: "刪除",
     empty: "暫無 Tracker 地址",
+  },
+  /** 使用者記錄（admin-userlogs）：改名 + 資料修改 */
+  adminUserlogs: {
+    tabRename: "改名記錄", tabModify: "修改記錄", loadFail: "載入失敗",
+    fUid: "使用者 UID", qAll: "留空看全部",
+    thId: "ID", thUser: "使用者", thOldName: "舊使用者名稱",
+    thNewName: "新使用者名稱", thOperator: "操作者", thTime: "時間",
+    thContent: "修改內容",
+    renameEmpty: "暫無改名記錄", modifyEmpty: "暫無修改記錄",
   },
   medalRarity: {
     tones: {

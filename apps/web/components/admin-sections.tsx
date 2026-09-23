@@ -24,6 +24,7 @@ import {
 
 export function AdminSections() {
   const { dict } = useI18n();
+  const at = dict.adminSections;
   const [modes, setModes] = useState<ModeRow[]>([]);
   const [kind, setKind] = useState("codec");
   const [kinds, setKinds] = useState<SectionKindMeta[]>([]);
@@ -64,7 +65,7 @@ export function AdminSections() {
       }
       setKindCounts(counts);
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "加载失败");
+      flash(e instanceof ApiError ? e.message : at.loadFail);
     }
   }, [kind, dict.adminSections.kinds]);
   useEffect(() => {
@@ -78,7 +79,7 @@ export function AdminSections() {
       flash(okMsg);
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -105,15 +106,13 @@ export function AdminSections() {
 
         {/* 分类模式 */}
         <section className="baozi-panel p-4">
-          <h2 className="mb-2 text-base font-bold">分类模式</h2>
-          <p className="mb-3 text-xs text-sub">
-            每个分类归属一个模式；模式内的开关决定发布表单与筛选启用哪些子维度。
-          </p>
+          <h2 className="mb-2 text-base font-bold">{at.modesTitle}</h2>
+          <p className="mb-3 text-xs text-sub">{at.modesHint}</p>
           <div className="flex flex-wrap items-end gap-2">
             <input
               value={newMode}
               onChange={(e) => setNewMode(e.target.value)}
-              placeholder="新模式名称"
+              placeholder={at.phMode}
               className={`w-40 ${FIELD_INPUT_CLS}`}
             />
             <button
@@ -125,10 +124,10 @@ export function AdminSections() {
                     name: newMode,
                   });
                   setNewMode("");
-                }, "已创建")
+                }, at.modeCreated)
               }
             >
-              新建模式
+              {at.createMode}
             </button>
           </div>
           <table className="nexus-table mt-3 text-xs">
@@ -141,7 +140,7 @@ export function AdminSections() {
                     {l}
                   </td>
                 ))}
-                <td className="colhead">分类数</td>
+                <td className="colhead">{at.thCategories}</td>
                 <td className="colhead text-right">操作</td>
               </tr>
             </thead>
@@ -163,7 +162,7 @@ export function AdminSections() {
                                 name: m.name,
                                 [k]: e.target.checked,
                               }),
-                            "已保存",
+                            at.saved,
                           )
                         }
                       />
@@ -179,11 +178,11 @@ export function AdminSections() {
                           act(
                             () =>
                               api.del(`/api/v1/admin/section-modes/${m.id}`),
-                            "已删除（归属分类已回退默认模式）",
+                            at.modeDeleted,
                           )
                         }
                       >
-                        删除
+                        {at.del}
                       </button>
                     )}
                   </td>

@@ -9,6 +9,7 @@ import { api, ApiError } from "@/lib/api-client";
 import type { UserPropRow } from "./admin-props-shared";
 import { kindLabelMap } from "./admin-props-shared";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 
 /** UID 过滤输入框样式 */
 const UID_FILTER_CLS =
@@ -33,29 +34,30 @@ export function PropsPanel({
   flash,
   load,
 }: PropsPanelProps) {
-  const { dict } = useI18n();
-  const KIND_LABEL = kindLabelMap(dict.adminProps.kindLabel);
+  const { dict, locale } = useI18n();
+  const at = dict.adminProps;
+  const KIND_LABEL = kindLabelMap(at.kindLabel);
   return (
     <section className="baozi-panel p-4">
       <div className="mb-2 flex items-end gap-2">
-        <h3 className="text-sm font-bold">用户背包（购买 + 发放）</h3>
+        <h3 className="text-sm font-bold">{at.bagTitle}</h3>
         <input
           value={uid}
           onChange={(e) => setUid(e.target.value)}
-          placeholder="按用户 UID 过滤"
+          placeholder={at.qUid}
           className={UID_FILTER_CLS}
         />
       </div>
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">单号</td>
-            <td className="colhead">用户</td>
-            <td className="colhead">道具</td>
-            <td className="colhead">类型</td>
-            <td className="colhead">价格</td>
-            <td className="colhead">时间</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thOrder}</td>
+            <td className="colhead">{at.bagUser}</td>
+            <td className="colhead">{at.thItem}</td>
+            <td className="colhead">{at.thKind}</td>
+            <td className="colhead">{at.bagPrice}</td>
+            <td className="colhead">{at.bagTime}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -79,7 +81,7 @@ export function PropsPanel({
               </td>
               <td className="num">{p.price}</td>
               <td className="text-sub">
-                {new Date(p.created_at).toLocaleString()}
+                {new Date(p.created_at).toLocaleString(dateLocale(locale))}
               </td>
               <td className="text-right">
                 {[
@@ -88,7 +90,7 @@ export function PropsPanel({
                   "invite",
                   "temp_invite",
                 ].includes(p.kind) ? (
-                  <span className="text-sub">即时生效</span>
+                  <span className="text-sub">{at.instant}</span>
                 ) : (
                   <button
                     className="cmgmt-act cmgmt-act--danger"
@@ -96,14 +98,14 @@ export function PropsPanel({
                     onClick={async () => {
                       try {
                         await api.del(`/api/v1/admin/user-props/${p.order_id}`);
-                        flash("已回收");
+                        flash(at.revoked);
                         await load();
                       } catch (e) {
-                        flash(e instanceof ApiError ? e.message : "回收失败");
+                        flash(e instanceof ApiError ? e.message : at.revokeFail);
                       }
                     }}
                   >
-                    回收
+                    {at.revoke}
                   </button>
                 )}
               </td>
@@ -112,7 +114,7 @@ export function PropsPanel({
           {props.length === 0 && (
             <tr>
               <td colSpan={7} className="py-4 text-center text-sub">
-                暂无持有记录
+                {at.bagEmpty}
               </td>
             </tr>
           )}
