@@ -3003,6 +3003,45 @@ usertools: {
     optPromoYes: "促销中", optPromoNo: "无促销",
     optPickRec: "推荐", optPickClassic: "经典",
     optHrYes: "标记", optHrNo: "未标记", search: "搜索",
+    // 拒绝原因 + 操作记录（admin-torrents-records）
+    saved: "已保存",
+    denyNew: "新增拒绝原因", denyEdit: "编辑 #{id}",
+    fReason: "原因文本", fSort: "排序",
+    save: "保存", cancel: "取消",
+    thSort: "排序", thReason: "原因", thEnabled: "启用", thAction: "操作",
+    yes: "是", no: "否", enabledMsg: "已启用", disabledMsg: "已停用",
+    enable: "启用", disable: "停用",
+    edit: "编辑", deleted: "已删除", delFail: "删除失败", del: "删除",
+    qTid: "按种子 ID 过滤（留空看全部）",
+    thTorrent: "种子", thOperator: "操作人", thOp: "动作",
+    thDetail: "详情", thTime: "时间",
+    pageInfo: "第 {page} 页 / 共 {total} 条",
+    // 批量工具条（admin-torrents-batch-bar）
+    batchHint:
+      "批量操作（已选 {n} 个，勾选下方列表后执行；单批最多 500）",
+    fPosUntil: "置顶截止", unsticky: "取消置顶",
+    fPromoKind: "促销类型", fHours: "时长(h)", setPromo: "设促销",
+    pickNone: "取消", setPick: "设推荐", fTags: "标签",
+    setTags: "设置标签", catKeep: "（不改）",
+    delConfirm: "确认删除所选 {n} 个种子？（软删除）",
+    delSelected: "删除已选",
+    // 子页签 + 记录查询（admin-torrents / admin-torrents-record-query）
+    tabTorrents: "种子管理", tabDeny: "拒绝原因",
+    tabOps: "种子操作记录", tabSpark: "{magic}记录",
+    tabBuys: "种子购买", tabLogins: "登录记录",
+    thAmount: "数额", thKind: "类型", thBalance: "余额",
+    thTorrentId: "种子ID", buysTitle: "种子购买记录",
+    // 登录记录（admin-torrents-login-logs）
+    banPrompt: "封禁 {ip} 的理由：", bannedMsg: "已封禁 {ip}",
+    unbannedMsg: "已解封 {ip}", qLogin: "按用户名 / IP 搜索",
+    thUser: "用户", thGeo: "国家/城市", thResult: "结果",
+    thIpAction: "IP 操作", lanUnknown: "内网/未知",
+    okMsg: "成功", failMsg: "失败",
+    unbanIp: "解封 IP", banIp: "封禁 IP", loginEmpty: "暂无登录记录",
+    // 批量工作台表格（admin-torrents-table）
+    thSize: "大小", thSeeders: "做种/下载",
+    tableEmpty: "没有匹配的种子", pageNum: "第 {n} 页",
+    qRecord: "{title}：按用户名搜索",
   },
   /** 绩效考核管理（admin-jixiao） */
   adminJixiao: {

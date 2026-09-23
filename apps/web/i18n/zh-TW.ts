@@ -2988,6 +2988,45 @@ usertools: {
     optPromoYes: "促銷中", optPromoNo: "無促銷",
     optPickRec: "推薦", optPickClassic: "經典",
     optHrYes: "標記", optHrNo: "未標記", search: "搜尋",
+    // 拒絕原因 + 操作記錄（admin-torrents-records）
+    saved: "已儲存",
+    denyNew: "新增拒絕原因", denyEdit: "編輯 #{id}",
+    fReason: "原因文字", fSort: "排序",
+    save: "儲存", cancel: "取消",
+    thSort: "排序", thReason: "原因", thEnabled: "啟用", thAction: "操作",
+    yes: "是", no: "否", enabledMsg: "已啟用", disabledMsg: "已停用",
+    enable: "啟用", disable: "停用",
+    edit: "編輯", deleted: "已刪除", delFail: "刪除失敗", del: "刪除",
+    qTid: "按種子 ID 過濾（留空看全部）",
+    thTorrent: "種子", thOperator: "操作人", thOp: "動作",
+    thDetail: "詳情", thTime: "時間",
+    pageInfo: "第 {page} 頁 / 共 {total} 條",
+    // 批量工具條（admin-torrents-batch-bar）
+    batchHint:
+      "批量操作（已選 {n} 個，勾選下方列表後執行；單批最多 500）",
+    fPosUntil: "置頂截止", unsticky: "取消置頂",
+    fPromoKind: "促銷類型", fHours: "時長(h)", setPromo: "設促銷",
+    pickNone: "取消", setPick: "設推薦", fTags: "標籤",
+    setTags: "設定標籤", catKeep: "（不更改）",
+    delConfirm: "確認刪除所選 {n} 個種子？（軟刪除）",
+    delSelected: "刪除已選",
+    // 子頁籤 + 記錄查詢（admin-torrents / admin-torrents-record-query）
+    tabTorrents: "種子管理", tabDeny: "拒絕原因",
+    tabOps: "種子操作記錄", tabSpark: "{magic}記錄",
+    tabBuys: "種子購買", tabLogins: "登入記錄",
+    thAmount: "數額", thKind: "類型", thBalance: "餘額",
+    thTorrentId: "種子ID", buysTitle: "種子購買記錄",
+    // 登入記錄（admin-torrents-login-logs）
+    banPrompt: "封禁 {ip} 的理由：", bannedMsg: "已封禁 {ip}",
+    unbannedMsg: "已解封 {ip}", qLogin: "按使用者名稱 / IP 搜尋",
+    thUser: "使用者", thGeo: "國家/城市", thResult: "結果",
+    thIpAction: "IP 操作", lanUnknown: "內網/未知",
+    okMsg: "成功", failMsg: "失敗",
+    unbanIp: "解封 IP", banIp: "封禁 IP", loginEmpty: "暫無登入記錄",
+    // 批量工作台表格（admin-torrents-table）
+    thSize: "大小", thSeeders: "做種/下載",
+    tableEmpty: "沒有符合的種子", pageNum: "第 {n} 頁",
+    qRecord: "{title}：按使用者名稱搜尋",
   },
   /** 績效考核管理（admin-jixiao） */
   adminJixiao: {

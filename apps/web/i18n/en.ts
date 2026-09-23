@@ -3013,6 +3013,47 @@ usertools: {
     optPromoYes: "On promo", optPromoNo: "No promo",
     optPickRec: "Featured", optPickClassic: "Classic",
     optHrYes: "Marked", optHrNo: "Unmarked", search: "Search",
+    // Deny reasons + op logs (admin-torrents-records)
+    saved: "Saved",
+    denyNew: "New deny reason", denyEdit: "Edit #{id}",
+    fReason: "Reason text", fSort: "Sort",
+    save: "Save", cancel: "Cancel",
+    thSort: "Sort", thReason: "Reason", thEnabled: "Enabled",
+    thAction: "Actions",
+    yes: "Yes", no: "No", enabledMsg: "Enabled", disabledMsg: "Disabled",
+    enable: "Enable", disable: "Disable",
+    edit: "Edit", deleted: "Deleted", delFail: "Delete failed",
+    del: "Delete",
+    qTid: "Filter by torrent ID (empty = all)",
+    thTorrent: "Torrent", thOperator: "Operator", thOp: "Action",
+    thDetail: "Detail", thTime: "Time",
+    pageInfo: "Page {page} / {total} items",
+    // Batch toolbar (admin-torrents-batch-bar)
+    batchHint:
+      "Bulk actions ({n} selected; tick rows below then apply; max 500)",
+    fPosUntil: "Sticky until", unsticky: "Unsticky",
+    fPromoKind: "Promo kind", fHours: "Hours", setPromo: "Set promo",
+    pickNone: "None", setPick: "Set pick", fTags: "Tags",
+    setTags: "Apply tags", catKeep: "(no change)",
+    delConfirm: "Delete {n} selected torrents? (soft delete)",
+    delSelected: "Delete selected",
+    // Sub tabs + record query
+    tabTorrents: "Torrents", tabDeny: "Deny reasons",
+    tabOps: "Torrent op logs", tabSpark: "{magic} logs",
+    tabBuys: "Torrent buys", tabLogins: "Login logs",
+    thAmount: "Amount", thKind: "Kind", thBalance: "Balance",
+    thTorrentId: "Torrent ID", buysTitle: "Torrent purchase logs",
+    // Login logs (admin-torrents-login-logs)
+    banPrompt: "Reason for banning {ip}:", bannedMsg: "Banned {ip}",
+    unbannedMsg: "Unbanned {ip}", qLogin: "Search username / IP",
+    thUser: "User", thGeo: "Country/City", thResult: "Result",
+    thIpAction: "IP actions", lanUnknown: "LAN/Unknown",
+    okMsg: "Success", failMsg: "Failed",
+    unbanIp: "Unban IP", banIp: "Ban IP", loginEmpty: "No login logs",
+    // Bulk workbench table (admin-torrents-table)
+    thSize: "Size", thSeeders: "Seed/Leech",
+    tableEmpty: "No matching torrents", pageNum: "Page {n}",
+    qRecord: "{title}: search by username",
   },
   /** Performance review admin (admin-jixiao) */
   adminJixiao: {
