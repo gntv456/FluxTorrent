@@ -79,9 +79,10 @@ async fn notice_prefs_set(
 async fn pool_honor(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
+    // SUM() 出来是 NUMERIC：query_as 元组按 i64 解码会 22P02 类 500，显式 cast
     let rows: Vec<(i64, String, bool, i64, i64)> = sqlx::query_as(
-        "SELECT id, username, donor, this_month, \
-         total FROM v_pool_honor ORDER BY total DESC LIMIT 50",
+        "SELECT id, username, donor, this_month::bigint, \
+         total::bigint FROM v_pool_honor ORDER BY total DESC LIMIT 50",
     )
     .fetch_all(&state.repo.db)
     .await

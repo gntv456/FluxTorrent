@@ -27,11 +27,9 @@ impl AuthRepo {
             .begin()
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-        let passkey: String =
-            sqlx::query_scalar("SELECT encode(gen_random_bytes(20), 'hex')")
-                .fetch_one(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+        // passkey 列是 CHAR(32)：gen_random_bytes(20)→hex 是 40 位必溢出。
+        // 与 update_passkey 的 new_passkey()（32 位小写字母数字）对齐。
+        let passkey = crate::domain::new_passkey();
         let user_id: i64 = sqlx::query_scalar(
             "INSERT INTO users (username, email, pass_hash, \
              passkey) VALUES ($1, $2, $3, $4) RETURNING id",
