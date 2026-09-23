@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 
 /** 0106 绩效考核管理端·发薪记录（从 components/admin-jixiao.tsx 按域拆出）：
  *  status=1 行 + 发放方式 worker/self（月末自动结算 / 本人领取）。 */
@@ -23,26 +24,27 @@ export interface Payroll {
 }
 
 export function PayrollTab({ pay }: { pay: Payroll }) {
-  const { currency } = useI18n();
+  const { currency, dict, locale } = useI18n();
+  const at = dict.adminJixiao;
   return (
     <>
       <p className="text-xs text-sub">
-        本期发薪总额：
+        {at.payrollTotalLabel}
         <strong className="text-ink">
           {pay.total.toLocaleString()} {currency}
         </strong>
-        （paid_by：worker=月末自动结算，self=本人领取）
+        {at.paidNote}
       </p>
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">领取ID</td>
-            <td className="colhead">用户</td>
-            <td className="colhead">岗位</td>
-            <td className="colhead">工资</td>
-            <td className="colhead">加成</td>
-            <td className="colhead">方式</td>
-            <td className="colhead">时间</td>
+            <td className="colhead">{at.thClaimId}</td>
+            <td className="colhead">{at.thPayrollUser}</td>
+            <td className="colhead">{at.thPayrollType}</td>
+            <td className="colhead">{at.thPay}</td>
+            <td className="colhead">{at.thBonus}</td>
+            <td className="colhead">{at.thWay}</td>
+            <td className="colhead">{at.thPayTime}</td>
           </tr>
         </thead>
         <tbody>
@@ -59,14 +61,14 @@ export function PayrollTab({ pay }: { pay: Payroll }) {
               <td className="num">{r.bonus.toLocaleString()}</td>
               <td>{r.paid_by}</td>
               <td className="text-sub">
-                {new Date(r.settled_at).toLocaleString()}
+                {new Date(r.settled_at).toLocaleString(dateLocale(locale))}
               </td>
             </tr>
           ))}
           {pay.list.length === 0 && (
             <tr>
               <td colSpan={7} className="py-6 text-center text-sub">
-                本期暂无发薪
+                {at.payrollEmpty}
               </td>
             </tr>
           )}

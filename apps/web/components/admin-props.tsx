@@ -44,7 +44,8 @@ const WIDE_CLS = "flex-1";
 import { PropsTable, type PropsEditForm } from "./admin-props-table";
 
 export function AdminProps() {
-  const { currency } = useI18n();
+  const { currency, dict } = useI18n();
+  const at = dict.adminProps;
   const [items, setItems] = useState<ShopItemRow[]>([]);
   const [props, setProps] = useState<UserPropRow[]>([]);
   const [frames, setFrames] = useState<FrameRow[]>([]);
@@ -69,7 +70,7 @@ export function AdminProps() {
       setProps(Array.isArray(r) ? r : r.rows);
       setFrames(await api.get<FrameRow[]>("/api/v1/admin/avatar-frames"));
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "加载失败");
+      flash(e instanceof ApiError ? e.message : at.propsLoadFail);
     }
   }, [uid]);
   useEffect(() => {
@@ -81,7 +82,7 @@ export function AdminProps() {
     try {
       config = JSON.parse(edit.f.config || "{}");
     } catch {
-      flash("config 需为合法 JSON");
+      flash(at.cfgBadJson);
       return;
     }
     // 装扮类自动补 slot/dressup（结构化字段只管效果键，槽位口径不该让站长手填）
@@ -149,10 +150,10 @@ export function AdminProps() {
               deleted?: number;
               disabled?: boolean;
             }>(`/api/v1/admin/shop-items/${id}`);
-            flash(r?.disabled ? "已有持有记录，已改为下架" : "已删除");
+            flash(r?.disabled ? at.disabledWithHeld : at.deleted);
             await load();
           } catch (e) {
-            flash(e instanceof ApiError ? e.message : "删除失败");
+            flash(e instanceof ApiError ? e.message : at.delFail);
           }
         }}
       />

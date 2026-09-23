@@ -114,7 +114,9 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
         <button
-          className="min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white"
+          className={
+            "min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white"
+          }
           onClick={() =>
             setCreating({ scene_key: "", subject: "", body: "", note: "" })
           }
@@ -224,7 +226,9 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
           <div className="mb-1 flex items-center justify-between">
             <b>{at.preview}</b>
             <button
-              className="min-h-[32px] rounded-full border border-line px-3 text-xs"
+              className={
+                "min-h-[32px] rounded-full border border-line px-3 text-xs"
+              }
               onClick={() => setPreview(null)}
             >
               {at.close}
@@ -268,7 +272,11 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
                   className="cmgmt-act cmgmt-act--danger"
                   disabled={busy}
                   onClick={async () => {
-                    if (!window.confirm(fmt(at.delConfirm, { key: r.scene_key })))
+                    if (
+                      !window.confirm(
+                        fmt(at.delConfirm, { key: r.scene_key }),
+                      )
+                    )
                       return;
                     try {
                       await api.del(`/api/v1/admin/message-templates/${r.id}`);
