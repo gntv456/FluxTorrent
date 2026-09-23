@@ -2799,6 +2799,14 @@ usertools: {
     renameKindPrompt: "New display name",
     delKindConfirm:
       'Delete dimension "{name}"? All its dictionary options will be cleared',
+    // Category modes (admin-sections)
+    modesTitle: "Category modes",
+    modesHint:
+      "Each category belongs to one mode; the switches inside a mode decide which sub-dimensions the publish form and filters enable.",
+    phMode: "New mode name", modeCreated: "Created",
+    createMode: "New mode", thCategories: "Categories",
+    modeDeleted: "Deleted (categories fell back to the default mode)",
+    loadFail: "Load failed", opFail: "Action failed",
   },
   /** User detail page: action flashes & confirms (admin-user-detail-*) */
   userDetail: {
@@ -2928,6 +2936,19 @@ usertools: {
     imgPrefix: "img: ", framesEmpty: "No avatar frames yet",
     thAction: "Actions", edit: "Edit", del: "Delete", save: "Save",
     opFail: "Action failed", delFail: "Delete failed",
+    // User bag (admin-props-user-bag)
+    bagTitle: "User bag (purchased + granted)", qUid: "Filter by user UID",
+    thOrder: "Order", bagUser: "User", thItem: "Item", thKind: "Kind",
+    bagPrice: "Price", bagTime: "Time",
+    instant: "Instant effect", revoked: "Recalled", revoke: "Recall",
+    revokeFail: "Recall failed", bagEmpty: "No holdings yet",
+    // Create/edit form (admin-props-form)
+    formNew: "New item", formEdit: "Edit item #{id}",
+    fKind: "Kind",
+    cfgNone: "(none)",
+    fConfig: "config (JSON, expert mode editable)", active: "Listed",
+    formHint:
+      "Instant-effect items (upload credit/{magic}/invites) credit the account directly; card/decoration items go to the bag for the user to use. Dress-up items get slot/dressup filled automatically.",
   },
   /** Admin torrents: approval states / promo labels / bulk actions */
   adminTorrents: {
@@ -3046,6 +3067,15 @@ usertools: {
     thUsername: "Username", thEmail: "Email", thStatus: "Status",
     thDownload: "Download", thSuspended: "Suspended",
     thAction: "Actions", detail: "Detail",
+    // admin-users.tsx batch & flags
+    adjustedMsg: "User #{id} adjusted",
+    stNormalAct: "Restore", stMuteAct: "Mute", stBanAct: "Ban",
+    classTo: "Class changed to {n}",
+    batchReason: "Batch reason (optional)",
+    batchConfirm: "Apply \"{act}\" to {n} users?",
+    pickFirstUser: "Select users first",
+    skipNote: ", skipped (insufficient class) {n}",
+    updatedMsg: "{n} users updated", opFail: "Action failed",
   },
   /** Preserve claims (admin-p2-tools-claims) */
   adminClaims: {
@@ -3098,6 +3128,17 @@ usertools: {
     thPriority: "Priority", thUpdated: "Updated", thAction: "Actions",
     on: "On", off: "Off", edit: "Edit", del: "Delete",
     empty: "No tracker URLs yet",
+  },
+  /** User logs (admin-userlogs): renames + profile modifications */
+  adminUserlogs: {
+    tabRename: "Rename log", tabModify: "Modify log",
+    loadFail: "Load failed",
+    fUid: "User UID", qAll: "Empty = all",
+    thId: "ID", thUser: "User", thOldName: "Old name",
+    thNewName: "New name", thOperator: "Operator", thTime: "Time",
+    thContent: "Changes",
+    renameEmpty: "No rename records yet",
+    modifyEmpty: "No modification records yet",
   },
   medalRarity: {
     tones: {
