@@ -15,6 +15,7 @@ import {
   TAB_BTN_CLS,
 } from "./admin-user-detail-actions-forms";
 import { AdminActionPanelsMore } from "./admin-user-detail-actions-forms-more";
+import { useI18n } from "@/i18n/client";
 
 /** 面板切换按钮（激活/默认）样式 */
 const ON_CLS = "bg-sky text-white";
@@ -120,9 +121,10 @@ export interface AdminActionsProps {
 
 export function AdminActions(props: AdminActionsProps) {
   const { d, busy, dict, panel, setPanel, adjust, setAdjust } = props;
+  const u = useI18n().dict.userDetail;
   return (
     <section className="baozi-panel flex flex-col gap-3 p-4">
-      <h2 className="text-base font-bold text-ink">管理操作</h2>
+      <h2 className="text-base font-bold text-ink">{u.actionsTitle}</h2>
       <div className="flex flex-wrap gap-2">
         <button
           className="baozi-button"
@@ -131,7 +133,7 @@ export function AdminActions(props: AdminActionsProps) {
             setPanel("");
           }}
         >
-          修改上传量等
+          {u.btnAdjust}
         </button>
         <button
           className={`${TAB_BTN_CLS}${panel === "class" ? ON_CLS : OFF_CLS}`}
@@ -140,7 +142,7 @@ export function AdminActions(props: AdminActionsProps) {
             setAdjust(false);
           }}
         >
-          等级修改
+          {u.btnClass}
         </button>
         <button
           className={`${TAB_BTN_CLS}${panel === "role" ? ON_CLS : OFF_CLS}`}
@@ -149,7 +151,7 @@ export function AdminActions(props: AdminActionsProps) {
             setAdjust(false);
           }}
         >
-          分配角色
+          {u.btnRole}
         </button>
         <button
           className={`${TAB_BTN_CLS}${panel === "perm" ? ON_CLS : OFF_CLS}`}
@@ -158,7 +160,7 @@ export function AdminActions(props: AdminActionsProps) {
             setAdjust(false);
           }}
         >
-          分配权限
+          {u.btnPerm}
         </button>
         <button
           className={`${TAB_BTN_CLS}${panel === "medal" ? ON_CLS : OFF_CLS}`}
@@ -167,7 +169,7 @@ export function AdminActions(props: AdminActionsProps) {
             setAdjust(false);
           }}
         >
-          授予勋章
+          {u.btnMedal}
         </button>
         <button
           className={`${TAB_BTN_CLS}${panel === "item" ? ON_CLS : OFF_CLS}`}
@@ -176,7 +178,7 @@ export function AdminActions(props: AdminActionsProps) {
             setAdjust(false);
           }}
         >
-          授予道具
+          {u.btnItem}
         </button>
         <button
           className={`${TAB_BTN_CLS}${panel === "jixiao" ? ON_CLS : OFF_CLS}`}
@@ -185,7 +187,7 @@ export function AdminActions(props: AdminActionsProps) {
             setAdjust(false);
           }}
         >
-          分配考核
+          {u.btnJixiao}
         </button>
         <button
           className={`${TAB_BTN_CLS}${props.renameOpen ? ON_CLS : OFF_CLS}`}
@@ -202,7 +204,7 @@ export function AdminActions(props: AdminActionsProps) {
           onClick={props.onResetPass}
           className={PLAIN_BTN_CLS}
         >
-          重置密码
+          {u.btnResetPass}
         </button>
         <button
           disabled={busy}
@@ -211,14 +213,14 @@ export function AdminActions(props: AdminActionsProps) {
             d.download_enabled ? DL_BTN_CLS : `${TAB_BTN_CLS}${MINT_CLS}`
           }
         >
-          {d.download_enabled ? "禁用下载权限" : "恢复下载权限"}
+          {d.download_enabled ? u.btnDlDisable : u.btnDlEnable}
         </button>
         <button
           disabled={busy}
           onClick={() => props.onToggle("suspended")}
           className={`${TAB_BTN_CLS}${d.suspended ? MINT_CLS : DANGER_CLS}`}
         >
-          {d.suspended ? "解除挂起" : "挂起账号"}
+          {d.suspended ? u.btnUnsuspend : u.btnSuspend}
         </button>
         {d.status === 1 && (
           <button
@@ -226,7 +228,7 @@ export function AdminActions(props: AdminActionsProps) {
             onClick={() => props.onChangeStatus(0)}
             className={SOLID_MINT_CLS}
           >
-            解除禁言
+            {u.btnUnmute}
           </button>
         )}
         {d.status === 2 && (
@@ -235,7 +237,7 @@ export function AdminActions(props: AdminActionsProps) {
             onClick={() => props.onChangeStatus(0)}
             className={SOLID_MINT_CLS}
           >
-            解除封禁
+            {u.btnUnban}
           </button>
         )}
         {d.status === 0 && (
@@ -244,7 +246,7 @@ export function AdminActions(props: AdminActionsProps) {
             onClick={() => props.onChangeStatus(1)}
             className={DANGER_BTN_CLS}
           >
-            禁言
+            {u.btnMute}
           </button>
         )}
         {d.status < 2 && (
@@ -253,7 +255,7 @@ export function AdminActions(props: AdminActionsProps) {
             onClick={() => props.onChangeStatus(2)}
             className={DANGER_BTN_CLS}
           >
-            封禁
+            {u.btnBan}
           </button>
         )}
         {d.status >= 2 && (
@@ -262,7 +264,7 @@ export function AdminActions(props: AdminActionsProps) {
             onClick={props.onDeleteUser}
             className={SOLID_CORAL_CLS}
           >
-            删除用户
+            {u.btnDeleteUser}
           </button>
         )}
       </div>

@@ -2722,6 +2722,11 @@ usertools: {
     thDuration: "有效期", thHeld: "持有数", thAction: "操作",
     limitedChip: "限定", forever: "永久",
     edit: "编辑", del: "删除", empty: "暂无勋章",
+    // 持有浏览 / 回收（admin-medals-held）
+    heldTitle: "持有浏览 / 回收", qUid: "按用户 UID 过滤",
+    thUser: "用户", thMedal: "勋章", thSource: "来源", thWearing: "佩戴",
+    wearing: "佩戴中", revoked: "已回收", revoke: "回收",
+    revokeFail: "回收失败", heldEmpty: "暂无持有记录",
   },
   /** 考核岗位：指标目录（key 与后端 JIXIAO_METRIC_KEYS 白名单对应）。
    *  {magic} 占位符由 metricOptions() 替换为站点货币名。 */
@@ -2891,6 +2896,31 @@ usertools: {
     adjUp: "上传量增量（字节）", adjDown: "下载量增量（字节）",
     adjSpark: "{magic}增量", adjInvite: "邀请增发/回收",
     adjNote: "备注（入审计）", adjustSubmit: "提交调整",
+    // 管理操作按钮墙（admin-user-detail-actions）
+    actionsTitle: "管理操作", btnAdjust: "修改上传量等",
+    btnClass: "等级修改", btnRole: "分配角色", btnPerm: "分配权限",
+    btnMedal: "授予勋章", btnItem: "授予道具", btnJixiao: "分配考核",
+    btnResetPass: "重置密码",
+    btnDlDisable: "禁用下载权限", btnDlEnable: "恢复下载权限",
+    btnUnsuspend: "解除挂起", btnSuspend: "挂起账号",
+    btnUnmute: "解除禁言", btnUnban: "解除封禁",
+    btnMute: "禁言", btnBan: "封禁", btnDeleteUser: "删除用户",
+    // 展开表单（admin-user-detail-actions-forms）
+    classHint: "当前 {cur}；仅站长可改，且不可设为站长。",
+    pickClass: "选择新等级",
+    roleHint: "职务可兼任；到期自动失效（可选）。",
+    pickRole: "选择职务", roleExpTitle: "到期时间（可选）",
+    grant: "分配", revokeRole: "收回",
+    newRoleSummary: "＋ 新增职务（需要新角色时在此创建）",
+    fRoleKey: "Key（小写/下划线）", fRoleName: "名称",
+    fRoleDescr: "说明（可选）", create: "创建",
+    // 详情页头（admin-user-detail）
+    loading: "加载中…", badgeSuspended: "挂起", badgeNoDl: "禁下载",
+    badgeParked: "泊车", badgeDonor: "捐赠者",
+    backToUsers: "返回用户列表",
+    tabProfile: "资料全景", tabSpark: "{magic}流水",
+    tabLogins: "登录记录", tabSeeding: "做种/下载",
+    tmpPass: "临时密码（仅显示一次）：{pass}，用户首登需改密。",
   },
   /** 道具管理（admin-props 系）：种类名 + 各类结构化字段。
    *  占位符沿用本域既有约定 CURRENCY（消费方渲染时 replaceAll 为货币名）。 */
@@ -3112,11 +3142,24 @@ usertools: {
   /** 用户记录（admin-userlogs）：改名 + 资料修改 */
   adminUserlogs: {
     tabRename: "改名记录", tabModify: "修改记录", loadFail: "加载失败",
+    // 置顶促销（admin-p2-tools-promos）
     fUid: "用户 UID", qAll: "留空看全部",
     thId: "ID", thUser: "用户", thOldName: "旧用户名",
     thNewName: "新用户名", thOperator: "操作者", thTime: "时间",
     thContent: "修改内容",
     renameEmpty: "暂无改名记录", modifyEmpty: "暂无修改记录",
+  },
+  /** 置顶促销（admin-p2-tools-promos） */
+  adminPromos: {
+    added: "已新增置顶促销", opFail: "操作失败",
+    newTitle: "新增置顶促销（首页公告条）",
+    fTitle: "标题", fUrl: "链接（可选）", fBadge: "角标（可选）",
+    save7: "保存（默认 7 天有效）",
+    thId: "ID", thTitle: "标题", thBadge: "角标", thRange: "起止",
+    thEnabled: "启用", thAction: "操作",
+    yes: "是", no: "否", enable: "启用", disable: "停用",
+    toggled: "已启用", untoggled: "已停用",
+    deleted: "已删除", delFail: "删除失败", del: "删除",
   },
   /** 勋章稀有度配色档（值存库，主词表在 medal_rarities 表；此处是后台下拉显示名） */
   medalRarity: {

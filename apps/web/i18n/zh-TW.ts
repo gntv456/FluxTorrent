@@ -2709,6 +2709,11 @@ usertools: {
     thDuration: "有效期", thHeld: "持有數", thAction: "操作",
     limitedChip: "限定", forever: "永久",
     edit: "編輯", del: "刪除", empty: "暫無勳章",
+    // 持有瀏覽 / 回收（admin-medals-held）
+    heldTitle: "持有瀏覽 / 回收", qUid: "按使用者 UID 過濾",
+    thUser: "使用者", thMedal: "勳章", thSource: "來源", thWearing: "佩戴",
+    wearing: "佩戴中", revoked: "已回收", revoke: "回收",
+    revokeFail: "回收失敗", heldEmpty: "暫無持有記錄",
   },
   /** 考核崗位：指標目錄（key 與後端 JIXIAO_METRIC_KEYS 白名單對應） */
   adminExams: {
@@ -2877,6 +2882,31 @@ usertools: {
     adjUp: "上傳量增量（位元組）", adjDown: "下載量增量（位元組）",
     adjSpark: "{magic}增量", adjInvite: "邀請增發/回收",
     adjNote: "備註（入審計）", adjustSubmit: "提交調整",
+    // 管理操作按鈕牆（admin-user-detail-actions）
+    actionsTitle: "管理操作", btnAdjust: "修改上傳量等",
+    btnClass: "等級修改", btnRole: "分配角色", btnPerm: "分配權限",
+    btnMedal: "授予勳章", btnItem: "授予道具", btnJixiao: "分配考核",
+    btnResetPass: "重設密碼",
+    btnDlDisable: "停用下載權限", btnDlEnable: "恢復下載權限",
+    btnUnsuspend: "解除停權", btnSuspend: "停權帳號",
+    btnUnmute: "解除禁言", btnUnban: "解除封禁",
+    btnMute: "禁言", btnBan: "封禁", btnDeleteUser: "刪除使用者",
+    // 展開表單（admin-user-detail-actions-forms）
+    classHint: "目前 {cur}；僅站長可改，且不可設為站長。",
+    pickClass: "選擇新等級",
+    roleHint: "職務可兼任；到期自動失效（可選）。",
+    pickRole: "選擇職務", roleExpTitle: "到期時間（可選）",
+    grant: "分配", revokeRole: "收回",
+    newRoleSummary: "＋ 新增職務（需要新角色時在此建立）",
+    fRoleKey: "Key（小寫/底線）", fRoleName: "名稱",
+    fRoleDescr: "說明（可選）", create: "建立",
+    // 詳情頁頭（admin-user-detail）
+    loading: "載入中…", badgeSuspended: "停權", badgeNoDl: "禁下載",
+    badgeParked: "泊車", badgeDonor: "捐贈者",
+    backToUsers: "返回使用者列表",
+    tabProfile: "資料全景", tabSpark: "{magic}流水",
+    tabLogins: "登入記錄", tabSeeding: "做種/下載",
+    tmpPass: "臨時密碼（僅顯示一次）：{pass}，使用者首登需改密。",
   },
   /** 道具管理（admin-props 系）：種類名 + 各類結構化欄位。 */
   adminProps: {
@@ -3097,11 +3127,24 @@ usertools: {
   /** 使用者記錄（admin-userlogs）：改名 + 資料修改 */
   adminUserlogs: {
     tabRename: "改名記錄", tabModify: "修改記錄", loadFail: "載入失敗",
+    // 置頂促銷（admin-p2-tools-promos）
     fUid: "使用者 UID", qAll: "留空看全部",
     thId: "ID", thUser: "使用者", thOldName: "舊使用者名稱",
     thNewName: "新使用者名稱", thOperator: "操作者", thTime: "時間",
     thContent: "修改內容",
     renameEmpty: "暫無改名記錄", modifyEmpty: "暫無修改記錄",
+  },
+  /** 置頂促銷（admin-p2-tools-promos） */
+  adminPromos: {
+    added: "已新增置頂促銷", opFail: "操作失敗",
+    newTitle: "新增置頂促銷（首頁公告條）",
+    fTitle: "標題", fUrl: "連結（可選）", fBadge: "角標（可選）",
+    save7: "儲存（預設 7 天有效）",
+    thId: "ID", thTitle: "標題", thBadge: "角標", thRange: "起止",
+    thEnabled: "啟用", thAction: "操作",
+    yes: "是", no: "否", enable: "啟用", disable: "停用",
+    toggled: "已啟用", untoggled: "已停用",
+    deleted: "已刪除", delFail: "刪除失敗", del: "刪除",
   },
   medalRarity: {
     tones: {

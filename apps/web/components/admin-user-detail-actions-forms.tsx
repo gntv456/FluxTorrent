@@ -15,6 +15,7 @@ import {
   itemKindLabels,
 } from "./admin-user-detail-shared";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 /** 展开面板卡片容器 */
 export const PANEL_BOX_CLS =
@@ -109,6 +110,7 @@ export interface AdminPanelsProps {
 
 export function AdminActionPanels(props: AdminPanelsProps) {
   const { dict: i18nDict } = useI18n();
+  const u = i18nDict.userDetail;
   const CATEGORY_LABEL = categoryLabels(i18nDict.userDetail.categoryLabels);
   const ITEM_KIND_LABEL = itemKindLabels(i18nDict.userDetail.itemKindLabels);
   const { d, busy, currency, classList, dict, panel, adjust, setAdjust } =
@@ -119,8 +121,9 @@ export function AdminActionPanels(props: AdminPanelsProps) {
       {panel === "class" && (
         <div className={PANEL_BOX_CLS}>
           <p className="mb-2 text-xs text-sub">
-            当前 {d.class_name ?? `LV${d.class_id}`}
-            ；仅站长可改，且不可设为站长。
+            {fmt(u.classHint, {
+              cur: d.class_name ?? `LV${d.class_id}`,
+            })}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -128,7 +131,7 @@ export function AdminActionPanels(props: AdminPanelsProps) {
               onChange={(e) => props.setClassId(e.target.value)}
               className={FIELD_CLS}
             >
-              <option value="">选择新等级</option>
+              <option value="">{u.pickClass}</option>
               {classList.map(([id, label]) =>
                 id < 99 ? (
                   <option key={id} value={id}>
@@ -142,7 +145,7 @@ export function AdminActionPanels(props: AdminPanelsProps) {
               disabled={busy || !props.classId}
               onClick={props.onSubmitClass}
             >
-              提交
+              {u.submit}
             </button>
           </div>
         </div>
@@ -151,14 +154,14 @@ export function AdminActionPanels(props: AdminPanelsProps) {
       {/* 分配角色 */}
       {panel === "role" && (
         <div className={`${PANEL_BOX_CLS} flex flex-col gap-3`}>
-          <p className="text-xs text-sub">职务可兼任；到期自动失效（可选）。</p>
+          <p className="text-xs text-sub">{u.roleHint}</p>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={props.roleKey}
               onChange={(e) => props.setRoleKey(e.target.value)}
               className={FIELD_CLS}
             >
-              <option value="">选择职务</option>
+              <option value="">{u.pickRole}</option>
               {props.roles.map((r) => (
                 <option key={r.key} value={r.key}>
                   {r.name}
@@ -170,31 +173,31 @@ export function AdminActionPanels(props: AdminPanelsProps) {
               value={props.roleExp}
               onChange={(e) => props.setRoleExp(e.target.value)}
               className={PLAIN_FIELD_CLS}
-              title="到期时间（可选）"
+              title={u.roleExpTitle}
             />
             <button
               className="baozi-button"
               disabled={busy || !props.roleKey}
               onClick={() => props.onSubmitRole(true)}
             >
-              分配
+              {u.grant}
             </button>
             <button
               className={DANGER_BTN_CLS}
               disabled={busy || !props.roleKey}
               onClick={() => props.onSubmitRole(false)}
             >
-              收回
+              {u.revokeRole}
             </button>
           </div>
           {/* 新增职务（sysop）：分配前发现缺角色可直接建 */}
           <details className={DETAILS_BOX_CLS}>
             <summary className="cursor-pointer text-xs font-bold text-sub">
-              ＋ 新增职务（需要新角色时在此创建）
+              {u.newRoleSummary}
             </summary>
             <div className="mt-2 flex flex-wrap items-end gap-2">
               <label className="flex flex-col gap-1 text-xs">
-                Key（小写/下划线）
+                {u.fRoleKey}
                 <input
                   value={props.newRole.key}
                   onChange={(e) =>
@@ -205,7 +208,7 @@ export function AdminActionPanels(props: AdminPanelsProps) {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs">
-                名称
+                {u.fRoleName}
                 <input
                   value={props.newRole.name}
                   onChange={(e) =>
@@ -216,7 +219,7 @@ export function AdminActionPanels(props: AdminPanelsProps) {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs">
-                说明（可选）
+                {u.fRoleDescr}
                 <input
                   value={props.newRole.descr}
                   onChange={(e) =>
@@ -237,7 +240,7 @@ export function AdminActionPanels(props: AdminPanelsProps) {
                 }
                 onClick={props.onSubmitNewRole}
               >
-                创建
+                {u.create}
               </button>
             </div>
           </details>

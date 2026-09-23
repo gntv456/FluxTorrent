@@ -7,6 +7,7 @@
 
 import { api, ApiError } from "@/lib/api-client";
 import type { UserMedalRow } from "./admin-medals-shared";
+import { useI18n } from "@/i18n/client";
 
 interface HeldPanelProps {
   held: UserMedalRow[];
@@ -29,25 +30,26 @@ export function MedalHeldPanel({
   flash,
   load,
 }: HeldPanelProps) {
+  const at = useI18n().dict.adminMedals;
   return (
     <section className="baozi-panel p-4">
       <div className="mb-2 flex items-end gap-2">
-        <h3 className="text-sm font-bold">持有浏览 / 回收</h3>
+        <h3 className="text-sm font-bold">{at.heldTitle}</h3>
         <input
           value={heldUid}
           onChange={(e) => setHeldUid(e.target.value)}
-          placeholder="按用户 UID 过滤"
+          placeholder={at.qUid}
           className={UID_FILTER_CLS}
         />
       </div>
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">用户</td>
-            <td className="colhead">勋章</td>
-            <td className="colhead">来源</td>
-            <td className="colhead">佩戴</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thUser}</td>
+            <td className="colhead">{at.thMedal}</td>
+            <td className="colhead">{at.thSource}</td>
+            <td className="colhead">{at.thWearing}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -63,7 +65,7 @@ export function MedalHeldPanel({
               </td>
               <td>{h.medal_name}</td>
               <td>{h.source}</td>
-              <td>{h.wearing ? "佩戴中" : "—"}</td>
+              <td>{h.wearing ? at.wearing : "—"}</td>
               <td className="text-right">
                 <button
                   className="cmgmt-act cmgmt-act--danger"
@@ -74,14 +76,14 @@ export function MedalHeldPanel({
                         user_id: h.user_id,
                         medal_id: h.medal_id,
                       });
-                      flash("已回收");
+                      flash(at.revoked);
                       await load();
                     } catch (e) {
-                      flash(e instanceof ApiError ? e.message : "回收失败");
+                      flash(e instanceof ApiError ? e.message : at.revokeFail);
                     }
                   }}
                 >
-                  回收
+                  {at.revoke}
                 </button>
               </td>
             </tr>
@@ -89,7 +91,7 @@ export function MedalHeldPanel({
           {held.length === 0 && (
             <tr>
               <td colSpan={5} className="py-4 text-center text-sub">
-                暂无持有记录
+                {at.heldEmpty}
               </td>
             </tr>
           )}
