@@ -39,10 +39,10 @@ export function AdminP2Tools() {
       <div className="flex flex-wrap gap-2" role="tablist">
         {(
           [
-            ["promos", "置顶促销"],
-            ["menus", "自定义菜单"],
-            ["templates", "消息模板"],
-            ["claims", "保种认领"],
+            ["promos", at.tabPromos],
+            ["menus", at.tabMenus],
+            ["templates", at.tabTemplates],
+            ["claims", at.tabClaims],
           ] as [typeof sub, string][]
         ).map(([k, label]) => (
           <button
