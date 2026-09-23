@@ -1,6 +1,7 @@
 "use client";
 
 import { INPUT_MD } from "@/lib/ui-classes";
+import { useI18n } from "@/i18n/client";
 
 /** 后台用户管理·筛选面板（从 components/admin-users.tsx 按域拆出）：
  *  五维筛选（ID/等级/状态/启用/下载权限/挂起）+ 搜索（好学站「筛选条件」口径）。
@@ -36,10 +37,11 @@ export function UsersFilterBar({
   set: <K extends keyof FilterValues>(k: K, v: FilterValues[K]) => void;
   onSearch: () => void;
 }) {
+  const at = useI18n().dict.adminUsers;
   return (
     <section className="baozi-panel grid grid-cols-2 gap-3 p-4 md:grid-cols-4">
       <label className="flex flex-col gap-1 text-xs">
-        ID
+        {at.fId}
         <input
           value={values.fId}
           onChange={(e) => set("fId", e.target.value)}
@@ -48,13 +50,13 @@ export function UsersFilterBar({
         />
       </label>
       <label className="flex flex-col gap-1 text-xs">
-        等级
+        {at.fClass}
         <select
           value={values.fClass}
           onChange={(e) => set("fClass", e.target.value)}
           className={FILTER_SELECT}
         >
-          <option value="">所有</option>
+          <option value="">{at.optAll}</option>
           {classes.map(([id, label]) => (
             <option key={id} value={id}>
               {label}
@@ -63,65 +65,65 @@ export function UsersFilterBar({
         </select>
       </label>
       <label className="flex flex-col gap-1 text-xs">
-        状态
+        {at.fStatus}
         <select
           value={values.fStatus}
           onChange={(e) => set("fStatus", e.target.value)}
           className={FILTER_SELECT}
         >
-          <option value="">所有</option>
-          <option value="1">正常</option>
-          <option value="2">禁言</option>
-          <option value="3">封禁</option>
+          <option value="">{at.optAll}</option>
+          <option value="1">{at.stNormal}</option>
+          <option value="2">{at.stMuted}</option>
+          <option value="3">{at.stBanned}</option>
         </select>
       </label>
       <label className="flex flex-col gap-1 text-xs">
-        启用
+        {at.fEnabled}
         <select
           value={values.fEnabled}
           onChange={(e) => set("fEnabled", e.target.value)}
           className={FILTER_SELECT}
         >
-          <option value="">所有</option>
-          <option value="yes">是</option>
-          <option value="no">否</option>
+          <option value="">{at.optAll}</option>
+          <option value="yes">{at.optYes}</option>
+          <option value="no">{at.optNo}</option>
         </select>
       </label>
       <label className="flex flex-col gap-1 text-xs">
-        下载权限
+        {at.fDownload}
         <select
           value={values.fDownload}
           onChange={(e) => set("fDownload", e.target.value)}
           className={FILTER_SELECT}
         >
-          <option value="">所有</option>
-          <option value="yes">有</option>
-          <option value="no">无</option>
+          <option value="">{at.optAll}</option>
+          <option value="yes">{at.optHas}</option>
+          <option value="no">{at.optNot}</option>
         </select>
       </label>
       <label className="flex flex-col gap-1 text-xs">
-        挂起
+        {at.fSuspended}
         <select
           value={values.fSuspended}
           onChange={(e) => set("fSuspended", e.target.value)}
           className={FILTER_SELECT}
         >
-          <option value="">所有</option>
-          <option value="yes">是</option>
-          <option value="no">否</option>
+          <option value="">{at.optAll}</option>
+          <option value="yes">{at.optYes}</option>
+          <option value="no">{at.optNo}</option>
         </select>
       </label>
       <label className="flex flex-col gap-1 text-xs md:col-span-2">
-        搜索
+        {at.fSearch}
         <div className="flex gap-2">
           <input
             value={values.q}
             onChange={(e) => set("q", e.target.value)}
-            placeholder="用户名 / 邮箱"
+            placeholder={at.qPh}
             className={`${FILTER_INPUT} flex-1`}
           />
           <button onClick={onSearch} className={SEARCH_BTN}>
-            搜索
+            {at.search}
           </button>
         </div>
       </label>

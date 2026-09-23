@@ -2768,6 +2768,18 @@ usertools: {
       audio_codec: "音频编码", standard: "规格", team: "制作组",
       source: "来源", processing: "处理工艺",
     } as Record<string, string>,
+    // 维度字典 + 分类归属（admin-sections-dict）
+    dictTitle: "维度字典", fKind: "维度",
+    phName: "名称", phSort: "排序",
+    added: "已添加", add: "添加", saved: "已保存", deleted: "已删除",
+    thId: "ID", thName: "名称", thSort: "排序", thAction: "操作",
+    renamePrompt: "新名称", rename: "重命名", del: "删除",
+    empty: "暂无字典项",
+    catsTitle: "分类归属模式 / 自动过审",
+    catsHint:
+      "「自动过审」打开后，发布到该分类的种子直接过审（Auto Approval Settings 口径）。",
+    thCats: "分类", thTorrents: "种子数", thMode: "归属模式",
+    thAuto: "自动过审", autoOn: "已开启自动过审", autoOff: "已关闭自动过审",
   },
   /** 用户详情页：管理动作 flash 与确认文案（admin-user-detail-*） */
   userDetail: {
@@ -2980,6 +2992,47 @@ usertools: {
     adjustBtn: "修改上传量等",
     dlDisableBtn: "禁用下载权限", dlEnableBtn: "恢复下载权限",
     suspendBtn: "挂起账号", unsuspendBtn: "解除挂起",
+    // 筛选面板（admin-users-filters）
+    fId: "ID", fClass: "等级", fStatus: "状态", fEnabled: "启用",
+    fDownload: "下载权限", fSuspended: "挂起", fSearch: "搜索",
+    optAll: "所有", optYes: "是", optNo: "否", optHas: "有", optNot: "无",
+    stNormal: "正常", stMuted: "禁言", stBanned: "封禁",
+    qPh: "用户名 / 邮箱", search: "搜索",
+  },
+  /** 保种认领（admin-p2-tools-claims） */
+  adminClaims: {
+    optAll: "全部", optActive: "认领中", optUnclaimed: "待认领",
+    optExited: "已移出", qPh: "种子名 / 认领人",
+    thTorrent: "种子", thSeeders: "做种数", thClaimedBy: "认领人",
+    thClaimedAt: "认领时间", thSeedSince: "认领以来做种",
+    thUploadSince: "认领以来上传", thStatus: "状态", thAction: "操作",
+    exitedWith: "已移出（{reason}）", claiming: "认领中", waiting: "待认领",
+    released: "已移出 #{id}", opFail: "操作失败", release: "移出保种区",
+    hoursUnit: "小时",
+  },
+  /** 邀请管理（admin-invites） */
+  adminInvites: {
+    statusLabels: {
+      "0": "未用", "1": "已用", "2": "过期", "3": "撤销",
+    } as Record<string, string>,
+    loadFail: "加载失败", fUid: "发邀者 UID", qAll: "留空看全部",
+    fStatus: "状态", optAll: "全部",
+    thId: "ID", thInviter: "发邀者", thCode: "邀请码", thStatus: "状态",
+    thUsedBy: "注册用户", thExpires: "到期时间", empty: "暂无邀请码",
+  },
+  /** 自定义菜单（admin-p2-tools-menus） */
+  adminMenus: {
+    locLabels: {
+      sidebar: "侧栏", footer: "页脚", topbar: "顶栏",
+    } as Record<string, string>,
+    added: "已新增菜单项", opFail: "操作失败",
+    newTitle: "新增自定义菜单", fLoc: "位置", fName: "名称", fUrl: "链接",
+    save: "保存",
+    thId: "ID", thLoc: "位置", thName: "名称", thUrl: "链接",
+    thSort: "排序", thEnabled: "启用", thAction: "操作",
+    yes: "是", no: "否", enable: "启用", disable: "停用",
+    toggled: "已启用", untoggled: "已停用",
+    deleted: "已删除", delFail: "删除失败", del: "删除",
   },
   /** 勋章稀有度配色档（值存库，主词表在 medal_rarities 表；此处是后台下拉显示名） */
   medalRarity: {

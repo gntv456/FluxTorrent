@@ -2754,6 +2754,18 @@ usertools: {
       audio_codec: "音訊編碼", standard: "規格", team: "製作組",
       source: "來源", processing: "處理工藝",
     } as Record<string, string>,
+    // 維度字典 + 分類歸屬（admin-sections-dict）
+    dictTitle: "維度字典", fKind: "維度",
+    phName: "名稱", phSort: "排序",
+    added: "已新增", add: "新增", saved: "已儲存", deleted: "已刪除",
+    thId: "ID", thName: "名稱", thSort: "排序", thAction: "操作",
+    renamePrompt: "新名稱", rename: "重新命名", del: "刪除",
+    empty: "暫無字典項",
+    catsTitle: "分類歸屬模式 / 自動過審",
+    catsHint:
+      "「自動過審」開啟後，發布到該分類的種子直接過審（Auto Approval Settings 口徑）。",
+    thCats: "分類", thTorrents: "種子數", thMode: "歸屬模式",
+    thAuto: "自動過審", autoOn: "已開啟自動過審", autoOff: "已關閉自動過審",
   },
   /** 使用者詳情頁：管理動作 flash 與確認文案（admin-user-detail-*） */
   userDetail: {
@@ -2965,6 +2977,47 @@ usertools: {
     adjustBtn: "修改上傳量等",
     dlDisableBtn: "停用下載權限", dlEnableBtn: "恢復下載權限",
     suspendBtn: "停權帳號", unsuspendBtn: "解除停權",
+    // 篩選面板（admin-users-filters）
+    fId: "ID", fClass: "等級", fStatus: "狀態", fEnabled: "啟用",
+    fDownload: "下載權限", fSuspended: "停權", fSearch: "搜尋",
+    optAll: "所有", optYes: "是", optNo: "否", optHas: "有", optNot: "無",
+    stNormal: "正常", stMuted: "禁言", stBanned: "封禁",
+    qPh: "使用者名稱 / 信箱", search: "搜尋",
+  },
+  /** 保種認領（admin-p2-tools-claims） */
+  adminClaims: {
+    optAll: "全部", optActive: "認領中", optUnclaimed: "待認領",
+    optExited: "已移出", qPh: "種子名 / 認領人",
+    thTorrent: "種子", thSeeders: "做種數", thClaimedBy: "認領人",
+    thClaimedAt: "認領時間", thSeedSince: "認領以來做種",
+    thUploadSince: "認領以來上傳", thStatus: "狀態", thAction: "操作",
+    exitedWith: "已移出（{reason}）", claiming: "認領中", waiting: "待認領",
+    released: "已移出 #{id}", opFail: "操作失敗", release: "移出保種區",
+    hoursUnit: "小時",
+  },
+  /** 邀請管理（admin-invites） */
+  adminInvites: {
+    statusLabels: {
+      "0": "未用", "1": "已用", "2": "過期", "3": "撤銷",
+    } as Record<string, string>,
+    loadFail: "載入失敗", fUid: "發邀者 UID", qAll: "留空看全部",
+    fStatus: "狀態", optAll: "全部",
+    thId: "ID", thInviter: "發邀者", thCode: "邀請碼", thStatus: "狀態",
+    thUsedBy: "註冊使用者", thExpires: "到期時間", empty: "暫無邀請碼",
+  },
+  /** 自訂選單（admin-p2-tools-menus） */
+  adminMenus: {
+    locLabels: {
+      sidebar: "側欄", footer: "頁尾", topbar: "頂欄",
+    } as Record<string, string>,
+    added: "已新增選單項", opFail: "操作失敗",
+    newTitle: "新增自訂選單", fLoc: "位置", fName: "名稱", fUrl: "連結",
+    save: "儲存",
+    thId: "ID", thLoc: "位置", thName: "名稱", thUrl: "連結",
+    thSort: "排序", thEnabled: "啟用", thAction: "操作",
+    yes: "是", no: "否", enable: "啟用", disable: "停用",
+    toggled: "已啟用", untoggled: "已停用",
+    deleted: "已刪除", delFail: "刪除失敗", del: "刪除",
   },
   medalRarity: {
     tones: {

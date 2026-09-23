@@ -18,6 +18,7 @@ import {
   MODE_SELECT_CLS,
   SELECT_FIELD_CLS,
 } from "./admin-sections-shared";
+import { useI18n } from "@/i18n/client";
 
 interface DictPanelProps {
   kind: string;
@@ -37,12 +38,13 @@ export function SectionDictPanel(props: DictPanelProps) {
   const { kind, setKind, kinds, dicts, dName, setDName, dSort, setDSort } =
     props;
   const { busy, act } = props;
+  const at = useI18n().dict.adminSections;
   return (
     <section className="baozi-panel p-4">
-      <h2 className="mb-2 text-base font-bold">维度字典</h2>
+      <h2 className="mb-2 text-base font-bold">{at.dictTitle}</h2>
       <div className="mb-2 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
-          维度
+          {at.fKind}
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
@@ -58,14 +60,14 @@ export function SectionDictPanel(props: DictPanelProps) {
         <input
           value={dName}
           onChange={(e) => setDName(e.target.value)}
-          placeholder="名称"
+          placeholder={at.phName}
           className={`w-36 ${FIELD_INPUT_CLS}`}
         />
         <input
           type="number"
           value={dSort}
           onChange={(e) => setDSort(Number(e.target.value))}
-          placeholder="排序"
+          placeholder={at.phSort}
           className={`w-20 ${FIELD_INPUT_CLS}`}
         />
         <button
@@ -79,19 +81,19 @@ export function SectionDictPanel(props: DictPanelProps) {
                 sort: dSort,
               });
               setDName("");
-            }, "已添加")
+            }, at.added)
           }
         >
-          添加
+          {at.add}
         </button>
       </div>
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">ID</td>
-            <td className="colhead">名称</td>
-            <td className="colhead">排序</td>
-            <td className="colhead text-right">操作</td>
+            <td className="colhead">{at.thId}</td>
+            <td className="colhead">{at.thName}</td>
+            <td className="colhead">{at.thSort}</td>
+            <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
         <tbody>
@@ -105,7 +107,7 @@ export function SectionDictPanel(props: DictPanelProps) {
                   className="cmgmt-act"
                   disabled={busy}
                   onClick={() => {
-                    const nn = window.prompt("新名称", d.name);
+                    const nn = window.prompt(at.renamePrompt, d.name);
                     if (nn && nn !== d.name)
                       act(
                         () =>
@@ -114,11 +116,11 @@ export function SectionDictPanel(props: DictPanelProps) {
                             name: nn,
                             sort: d.sort,
                           }),
-                        "已保存",
+                        at.saved,
                       );
                   }}
                 >
-                  重命名
+                  {at.rename}
                 </button>
                 <button
                   className="cmgmt-act cmgmt-act--danger"
@@ -129,11 +131,11 @@ export function SectionDictPanel(props: DictPanelProps) {
                         api.del(
                           `/api/v1/admin/section-dict/${d.id}?kind=${kind}`,
                         ),
-                      "已删除",
+                      at.deleted,
                     )
                   }
                 >
-                  删除
+                  {at.del}
                 </button>
               </td>
             </tr>
@@ -141,7 +143,7 @@ export function SectionDictPanel(props: DictPanelProps) {
           {dicts.length === 0 && (
             <tr>
               <td colSpan={4} className="py-6 text-center text-sub">
-                暂无字典项
+                {at.empty}
               </td>
             </tr>
           )}
@@ -160,21 +162,19 @@ interface CatsPanelProps {
 
 /** 分类归属模式 / 自动过审 */
 export function SectionCatsPanel({ cats, modes, busy, act }: CatsPanelProps) {
+  const at = useI18n().dict.adminSections;
   return (
     <section className="baozi-panel p-4">
-      <h2 className="mb-2 text-base font-bold">分类归属模式 / 自动过审</h2>
-      <p className="mb-3 text-xs text-sub">
-        「自动过审」打开后，发布到该分类的种子直接过审（Auto Approval Settings
-        口径）。
-      </p>
+      <h2 className="mb-2 text-base font-bold">{at.catsTitle}</h2>
+      <p className="mb-3 text-xs text-sub">{at.catsHint}</p>
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">ID</td>
-            <td className="colhead">分类</td>
-            <td className="colhead">种子数</td>
-            <td className="colhead">归属模式</td>
-            <td className="colhead">自动过审</td>
+            <td className="colhead">{at.thId}</td>
+            <td className="colhead">{at.thCats}</td>
+            <td className="colhead">{at.thTorrents}</td>
+            <td className="colhead">{at.thMode}</td>
+            <td className="colhead">{at.thAuto}</td>
           </tr>
         </thead>
         <tbody>
@@ -194,7 +194,7 @@ export function SectionCatsPanel({ cats, modes, busy, act }: CatsPanelProps) {
                         api.put(`/api/v1/admin/categories/${c.id}/flags`, {
                           mode_id: Number(e.target.value),
                         }),
-                      "已保存",
+                      at.saved,
                     )
                   }
                 >
@@ -216,7 +216,7 @@ export function SectionCatsPanel({ cats, modes, busy, act }: CatsPanelProps) {
                         api.put(`/api/v1/admin/categories/${c.id}/flags`, {
                           auto_approve: e.target.checked,
                         }),
-                      e.target.checked ? "已开启自动过审" : "已关闭自动过审",
+                      e.target.checked ? at.autoOn : at.autoOff,
                     )
                   }
                 />
