@@ -3166,6 +3166,35 @@ usertools: {
     toggled: "已啟用", untoggled: "已停用",
     deleted: "已刪除", delFail: "刪除失敗", del: "刪除",
   },
+  /** 標籤字典管理：主表 + 新建/編輯表單（admin-tagdict / admin-tagdict-form） */
+  adminTagdict: {
+    // 主表（admin-tagdict）
+    loadFail: "載入失敗", saved: "已儲存", opFail: "操作失敗",
+    thPreview: "預覽", thKind: "類型", thScope: "作用域",
+    thLayer: "層級", thUsage: "引用", thStyle: "樣式",
+    thMode: "模式", thStatus: "狀態", thAction: "操作",
+    kindOfficial: "官方", kindNormal: "普通",
+    scopeForum: "論壇", scopeTorrent: "種子",
+    layerGlobal: "通用", layerSite: "站型",
+    tipGlobalLayer: "通用層（跨站型共享）",
+    tipSiteLayer: "站型層（隨類型包重建）",
+    tipUsage: "種子引用 / 論壇主題引用",
+    allModes: "全部", enabled: "啟用", disabled: "停用",
+    edit: "編輯", deleted: "已刪除", delFail: "刪除失敗", del: "刪除",
+    empty: "暫無標籤",
+    // 表單（admin-tagdict-form）
+    formNew: "新建標籤", formEdit: "編輯標籤 #{id}",
+    fName: "名稱", fKind: "類型", fScope: "作用域", fGroup: "分組",
+    fLayer: "層級",
+    fBgColor: "背景色", fColor: "字體色", fFontSize: "字號",
+    fMargin: "外邊距", fPadding: "內邊距", fRadius: "圓角",
+    fMode: "作用域模式", fSort: "排序",
+    optAttribute: "屬性", optContent: "內容",
+    layerHint: "通用層跨站型共享（六件套）；站型層隨類型包 apply 重建",
+    optAllModes: "全部模式",
+    save: "儲存", cancel: "取消",
+    previewLabel: "預覽：", previewPh: "標籤預覽",
+  },
   medalRarity: {
     tones: {
       gold: "金（傳說）", coral: "橙（熱賣）", mint: "綠（普通）",

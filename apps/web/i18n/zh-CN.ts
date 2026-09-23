@@ -3181,6 +3181,35 @@ usertools: {
     toggled: "已启用", untoggled: "已停用",
     deleted: "已删除", delFail: "删除失败", del: "删除",
   },
+  /** 标签字典管理：主表 + 新建/编辑表单（admin-tagdict / admin-tagdict-form） */
+  adminTagdict: {
+    // 主表（admin-tagdict）
+    loadFail: "加载失败", saved: "已保存", opFail: "操作失败",
+    thPreview: "预览", thKind: "类型", thScope: "作用域",
+    thLayer: "层级", thUsage: "引用", thStyle: "样式",
+    thMode: "模式", thStatus: "状态", thAction: "操作",
+    kindOfficial: "官方", kindNormal: "普通",
+    scopeForum: "论坛", scopeTorrent: "种子",
+    layerGlobal: "通用", layerSite: "站型",
+    tipGlobalLayer: "通用层（跨站型共享）",
+    tipSiteLayer: "站型层（随类型包重建）",
+    tipUsage: "种子引用 / 论坛主题引用",
+    allModes: "全部", enabled: "启用", disabled: "停用",
+    edit: "编辑", deleted: "已删除", delFail: "删除失败", del: "删除",
+    empty: "暂无标签",
+    // 表单（admin-tagdict-form）
+    formNew: "新建标签", formEdit: "编辑标签 #{id}",
+    fName: "名称", fKind: "类型", fScope: "作用域", fGroup: "分组",
+    fLayer: "层级",
+    fBgColor: "背景色", fColor: "字体色", fFontSize: "字号",
+    fMargin: "外边距", fPadding: "内边距", fRadius: "圆角",
+    fMode: "作用域模式", fSort: "排序",
+    optAttribute: "属性", optContent: "内容",
+    layerHint: "通用层跨站型共享（六件套）；站型层随类型包 apply 重建",
+    optAllModes: "全部模式",
+    save: "保存", cancel: "取消",
+    previewLabel: "预览：", previewPh: "标签预览",
+  },
   /** 勋章稀有度配色档（值存库，主词表在 medal_rarities 表；此处是后台下拉显示名） */
   medalRarity: {
     tones: {

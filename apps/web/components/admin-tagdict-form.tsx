@@ -4,6 +4,9 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 
 import { useState } from "react";
 
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
+
 import { EMPTY, type TagRow } from "./admin-tagdict-shared";
 
 /** 第八轮 P1-2：标签管理（从 components/admin-tagdict.tsx 按域拆出）：
@@ -50,6 +53,9 @@ export function TagEditForm({
   busy: boolean;
   save: () => void;
 }) {
+  const { dict } = useI18n();
+  const at = dict.adminTagdict;
+
   const set = <K extends keyof Omit<TagRow, "id">>(
     k: K,
     v: Omit<TagRow, "id">[K],
@@ -58,59 +64,59 @@ export function TagEditForm({
   return (
     <section className="baozi-panel cmgmt-form p-4">
       <h2 className="mb-2 text-base font-bold">
-        {edit.id === null ? "新建标签" : `编辑标签 #${edit.id}`}
+        {edit.id === null ? at.formNew : fmt(at.formEdit, { id: edit.id })}
       </h2>
       <div className="flex flex-wrap items-end gap-2">
-        <Field label="名称">
+        <Field label={at.fName}>
           <input
             value={edit.f.name}
             onChange={(e) => set("name", e.target.value)}
             className={`${INP} w-28`}
           />
         </Field>
-        <Field label="类型">
+        <Field label={at.fKind}>
           <select
             value={edit.f.kind}
             onChange={(e) => set("kind", e.target.value)}
             className={INP}
           >
-            <option value="plain">普通</option>
-            <option value="official">官方</option>
+            <option value="plain">{at.kindNormal}</option>
+            <option value="official">{at.kindOfficial}</option>
           </select>
         </Field>
-        <Field label="作用域">
+        <Field label={at.fScope}>
           <select
             value={edit.f.scope ?? "torrent"}
             onChange={(e) => set("scope", e.target.value)}
             className={INP}
           >
-            <option value="torrent">种子</option>
-            <option value="forum">论坛</option>
+            <option value="torrent">{at.scopeTorrent}</option>
+            <option value="forum">{at.scopeForum}</option>
           </select>
         </Field>
         {/* 0160 P2：分组（发布/筛选按组分区）+ 层级（global 不随站型重建） */}
-        <Field label="分组">
+        <Field label={at.fGroup}>
           <select
             value={edit.f.tag_group ?? "attribute"}
             onChange={(e) => set("tag_group", e.target.value)}
             className={INP}
           >
-            <option value="attribute">属性</option>
-            <option value="content">内容</option>
+            <option value="attribute">{at.optAttribute}</option>
+            <option value="content">{at.optContent}</option>
           </select>
         </Field>
-        <Field label="层级">
+        <Field label={at.fLayer}>
           <select
             value={edit.f.scope_layer ?? "pack"}
             onChange={(e) => set("scope_layer", e.target.value)}
             className={INP}
-            title="通用层跨站型共享（六件套）；站型层随类型包 apply 重建"
+            title={at.layerHint}
           >
-            <option value="global">通用</option>
-            <option value="pack">站型</option>
+            <option value="global">{at.layerGlobal}</option>
+            <option value="pack">{at.layerSite}</option>
           </select>
         </Field>
-        <Field label="背景色">
+        <Field label={at.fBgColor}>
           <input
             value={edit.f.bg_color}
             onChange={(e) => set("bg_color", e.target.value)}
@@ -118,42 +124,42 @@ export function TagEditForm({
             className={`${INP} w-24`}
           />
         </Field>
-        <Field label="字体色">
+        <Field label={at.fColor}>
           <input
             value={edit.f.color}
             onChange={(e) => set("color", e.target.value)}
             className={`${INP} w-24`}
           />
         </Field>
-        <Field label="字号">
+        <Field label={at.fFontSize}>
           <input
             value={edit.f.font_size}
             onChange={(e) => set("font_size", e.target.value)}
             className={`${INP} w-20`}
           />
         </Field>
-        <Field label="外边距">
+        <Field label={at.fMargin}>
           <input
             value={edit.f.margin}
             onChange={(e) => set("margin", e.target.value)}
             className={`${INP} w-28`}
           />
         </Field>
-        <Field label="内边距">
+        <Field label={at.fPadding}>
           <input
             value={edit.f.padding}
             onChange={(e) => set("padding", e.target.value)}
             className={`${INP} w-24`}
           />
         </Field>
-        <Field label="圆角">
+        <Field label={at.fRadius}>
           <input
             value={edit.f.border_radius}
             onChange={(e) => set("border_radius", e.target.value)}
             className={`${INP} w-20`}
           />
         </Field>
-        <Field label="作用域模式">
+        <Field label={at.fMode}>
           <select
             value={edit.f.mode_id ?? ""}
             onChange={(e) =>
@@ -161,7 +167,7 @@ export function TagEditForm({
             }
             className={INP}
           >
-            <option value="">全部模式</option>
+            <option value="">{at.optAllModes}</option>
             {modes.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -169,7 +175,7 @@ export function TagEditForm({
             ))}
           </select>
         </Field>
-        <Field label="排序">
+        <Field label={at.fSort}>
           <input
             type="number"
             value={edit.f.sort}
@@ -183,27 +189,27 @@ export function TagEditForm({
             checked={edit.f.enabled}
             onChange={(e) => set("enabled", e.target.checked)}
           />
-          启用
+          {at.enabled}
         </label>
         <button
           className="baozi-button"
           disabled={busy || !edit.f.name.trim()}
           onClick={save}
         >
-          保存
+          {at.save}
         </button>
         {edit.id !== null && (
           <button
             className={BTN_CANCEL}
             onClick={() => setEdit({ id: null, f: { ...EMPTY } })}
           >
-            取消
+            {at.cancel}
           </button>
         )}
       </div>
       {/* 预览：name 为空时也显示占位字样，样式改了立刻能看到效果 */}
       <p className="mt-3 flex items-center gap-2 text-xs text-sub">
-        预览：
+        {at.previewLabel}
         <span className={PREVIEW_SHELL}>
           <span
             style={{
@@ -216,7 +222,7 @@ export function TagEditForm({
               border: edit.f.bg_color ? undefined : "1px solid #ccc",
             }}
           >
-            {edit.f.name || "标签预览"}
+            {edit.f.name || at.previewPh}
           </span>
         </span>
       </p>
