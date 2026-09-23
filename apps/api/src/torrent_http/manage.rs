@@ -101,6 +101,21 @@ async fn edit_torrent(
             .execute(&state.repo.db)
             .await;
         }
+        // 0159 封面回落与编辑同步：descr 变了，简介首图可能也变——仅在
+        // 存量 poster 为空时回落写入（用户显式填过的封面不被动覆盖）。
+        // poster 值走 jsonb_build_object 参数化（拼接 jsonb 字面量遇 URL
+        // 特殊字符会 22P02，且是注入面）。
+        if let Some(poster) = crate::publish_http::first_descr_image_pub(Some(d)) {
+            let _ = sqlx::query(
+                "UPDATE torrents SET media_info = COALESCE(media_info, '{}'::jsonb) \
+                 || jsonb_build_object('poster', $2) \
+                 WHERE id = $1 AND COALESCE(media_info->>'poster', '') = ''",
+            )
+            .bind(tid)
+            .bind(&poster)
+            .execute(&state.repo.db)
+            .await;
+        }
     }
     Ok(ok(
         serde_json::json!({ "edited": true, "note": "已回退待审核" }),
