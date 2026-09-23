@@ -2990,10 +2990,9 @@ usertools: {
     thConfig: "config", thStatus: "Status",
     listed: "Listed", unlisted: "Unlisted", delOrUnlist: "Delete / unlist",
     tableEmpty: "No items yet",
-    deleted: "Deleted",
+    deleted: "Deleted", saved: "Saved",
     propsLoadFail: "Load failed", cfgBadJson: "config must be valid JSON",
     disabledWithHeld: "Has holdings; unlisted instead",
-    badgePh: "Event",
   },
   /** Admin torrents: approval states / promo labels / bulk actions */
   adminTorrents: {

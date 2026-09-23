@@ -116,11 +116,11 @@ export function AdminProps() {
       };
       if (edit.id === null) await api.post("/api/v1/admin/shop-items", payload);
       else await api.put(`/api/v1/admin/shop-items/${edit.id}`, payload);
-      flash("已保存");
+      flash(at.saved);
       setEdit(EMPTY_EDIT);
       await load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }

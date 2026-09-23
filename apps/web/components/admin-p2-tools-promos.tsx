@@ -88,7 +88,7 @@ export function StickyPromos({ flash }: { flash: (m: string) => void }) {
           <input
             value={edit.badge}
             onChange={(e) => setEdit({ ...edit, badge: e.target.value })}
-            placeholder="活动"
+            placeholder={at.badgePh}
           />
         </label>
         <button
