@@ -295,3 +295,9 @@ fn extract_imdb(text: &str) -> Option<String> {
         .and_then(|c| c.get(1))
         .map(|m| m.as_str().to_ascii_uppercase())
 }
+
+/// 简介首图提取的 crate 出口（manage.rs 编辑 descr 后同步回落 poster 用，
+/// 与上传链 build_media_info 同一实现，防两处口径漂移）。
+pub(crate) fn first_descr_image_pub(descr: Option<&str>) -> Option<String> {
+    super::descr_image::first_descr_image(descr)
+}
