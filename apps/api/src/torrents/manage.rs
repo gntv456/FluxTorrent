@@ -129,12 +129,18 @@ pub async fn list_tags(
     db: &PgPool,
     torrent_id: i64,
 ) -> DomainResult<serde_json::Value> {
-    let dict: Vec<(i32, String, String, Option<String>, Option<String>)> =
-        sqlx::query_as(
-            "SELECT id, name, \
-         kind, nullif(bg_color, ''), nullif(color, '') \
-         FROM tag_dict WHERE scope = 'torrent' ORDER BY id",
-        )
+    let dict: Vec<(
+        i32,
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        String,
+    )> = sqlx::query_as(
+        "SELECT id, name, \
+         kind, nullif(bg_color, ''), nullif(color, ''), tag_group \
+         FROM tag_dict WHERE scope = 'torrent' ORDER BY sort DESC, id",
+    )
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -146,12 +152,14 @@ pub async fn list_tags(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // dict 行带样式列（0159 P1 渲染统一）：旧客户端按元组取前三项仍兼容，
-    // 新客户端读 bg_color/color（nullif 空串→null，未配色回落默认）
+    // 新客户端读 bg_color/color（nullif 空串→null，未配色回落默认）；
+    // 0160 P2 再带 tag_group（详情页标签云按组分区）
     let dict_json: Vec<serde_json::Value> = dict
         .into_iter()
-        .map(|(id, name, kind, bg, color)| {
+        .map(|(id, name, kind, bg, color, group)| {
             serde_json::json!({ "id": id, "name": name, "kind": kind,
-                                "bg_color": bg, "color": color })
+                                "bg_color": bg, "color": color,
+                                "group": group })
         })
         .collect();
     Ok(serde_json::json!({ "dict": dict_json, "mine": mine }))

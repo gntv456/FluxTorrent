@@ -225,6 +225,11 @@ pub(super) struct SiteTypePack {
     #[serde(default)]
     #[sqlx(default)]
     pub(super) sections: Option<serde_json::Value>,
+    /// 标签种子（0160 P2）：[{name, kind?, group?}]，仅站型层（scope_layer=pack）；
+    /// 通用层六件套不受 apply 影响。apply 时 pack 层重建（引用保护）。
+    #[serde(default)]
+    #[sqlx(default)]
+    pub(super) tags: Option<serde_json::Value>,
     /// 登录页品牌区默认标语（0143）：apply 时写入 site_settings.site_tagline
     #[serde(default)]
     #[sqlx(default)]

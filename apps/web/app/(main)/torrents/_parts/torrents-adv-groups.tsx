@@ -17,6 +17,8 @@ export interface AdvGroupsCtx {
   sp: TorrentsSP;
   categories: { id: number; label: string }[];
   tags: { id: number; name: string; kind: string }[];
+  /** 平行数组（0160 P2）：与 tags 下标对齐 'attribute'|'content' */
+  tagGroups?: string[];
   secDict: Record<string, SectionDictRow[]> | null;
   dimKinds: SectionKindMeta[];
   selectedCats: Set<number>;
