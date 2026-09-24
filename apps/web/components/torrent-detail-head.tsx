@@ -20,6 +20,7 @@ export function TorrentHead({
   left,
   subtitleChain,
   relTime,
+  manage,
 }: {
   t: TorrentListItem;
   ext: TorrentDetailExt | null;
@@ -31,6 +32,8 @@ export function TorrentHead({
   subtitleChain: string;
   /** 相对时间（馒头口径：x 天前；完整时间放 title） */
   relTime: (iso: string) => string;
+  /** 管理操作（编辑/补种/删除/促销购）：渲染进头部操作行（0166b 布局上移） */
+  manage?: React.ReactNode;
 }) {
   const d = dict.tdetail;
   const promo = promotionBadge(t.promotion);
@@ -69,7 +72,7 @@ export function TorrentHead({
           )}
           {left && (
             <span className="td-head__left">
-              {d?.promoLeft ?? "剩余"} {left}
+              {d?.promoLeft} {left}
             </span>
           )}
           {t.official && (
@@ -97,16 +100,16 @@ export function TorrentHead({
             {dict.torrent.uploadedAt}：<b>{relTime(t.created_at)}</b>
           </span>
           <span
-            title={new Date(
-              ext?.last_action ?? t.created_at,
-            ).toLocaleString(dateLocale(locale))}
+            title={new Date(ext?.last_action ?? t.created_at).toLocaleString(
+              dateLocale(locale),
+            )}
           >
-            {d?.lastActivity ?? "最近活动"}：
+            {d?.lastActivity}：
             <b>{relTime(ext?.last_action ?? t.created_at)}</b>
           </span>
         </div>
 
-        {/* 操作行（馒头口径：主下载 + 次级动作横排） */}
+        {/* 操作行（馒头口径：主下载 + 次级动作横排；编辑/删除等管理动作同排） */}
         <div className="td-head__actions">
           <DownloadButton
             torrentId={t.id}
@@ -120,6 +123,7 @@ export function TorrentHead({
           {t.seeders === 0 && (
             <ResurrectButton torrentId={t.id} name={t.name} />
           )}
+          {manage}
         </div>
       </div>
 
@@ -142,7 +146,7 @@ export function TorrentHead({
           <b className="num">{ext?.thanks_count ?? 0}</b>
         </div>
         <div className="td-stats__row">
-          <span>{d?.heatViews ?? "查看"}</span>
+          <span>{d?.heatViews}</span>
           <b className="num">{ext?.views ?? "—"}</b>
         </div>
         {/* 健康度（NP 口径：做种=0 视为死种） */}
@@ -153,9 +157,7 @@ export function TorrentHead({
               : "td-stats__health--alive"
           }`}
         >
-          {t.seeders === 0
-            ? (d?.healthDead ?? "💀 无种，等待抢救")
-            : (d?.healthAlive ?? "🌱 可下载")}
+          {t.seeders === 0 ? d?.healthDead : d?.healthAlive}
         </p>
       </aside>
     </section>

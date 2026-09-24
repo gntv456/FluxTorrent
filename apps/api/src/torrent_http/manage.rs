@@ -89,6 +89,62 @@ async fn edit_torrent(
         .await;
     // 2.5 详情对象缓存：编辑即失效（descr/分类等共享段字段变了）
     super::aggregate::invalidate_tdetail_cache(&state, tid).await;
+    // 多维质量（0087 同发布表单）：Some(map) = 整组重建（白名单 + 字典归属校验后
+    // 先清后写；未含的旧维删除）。校验口径与 upload_sections 同源。
+    if let Some(map) = &body.sections {
+        let owner: Option<i64> =
+            sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+                .bind(tid)
+                .fetch_optional(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+        if owner.is_none() {
+            return Err(DomainError::NotFound(tid));
+        }
+        if auth.class_id < 90 && owner != Some(auth.id) {
+            return Err(DomainError::Forbidden);
+        }
+        for (kind, dict_id) in map {
+            if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind)
+                .await
+            {
+                return Err(DomainError::Validation(format!(
+                    "未知维度 {kind}"
+                )));
+            }
+            let ok: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM \
+                     section_dict WHERE id = $2 AND kind = $1)",
+            )
+            .bind(kind)
+            .bind(dict_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            if !ok {
+                return Err(DomainError::Validation(format!(
+                    "维度 {kind} 的字典项 {dict_id} 不存在"
+                )));
+            }
+        }
+        sqlx::query("DELETE FROM torrent_sections WHERE torrent_id = $1")
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        for (kind, dict_id) in map {
+            sqlx::query(
+                "INSERT INTO torrent_sections \
+                 (torrent_id, kind, dict_id) VALUES ($1, $2, $3)",
+            )
+            .bind(tid)
+            .bind(kind)
+            .bind(dict_id)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+    }
     // 0148 C1：编辑 descr 后重提取 IMDB（descr 提取得到才覆盖，否则保留旧值）
     if let Some(d) = body.descr.as_deref() {
         if let Some(imdb) = crate::publish_http::extract_imdb_pub(d) {

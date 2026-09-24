@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { editionName, formatBytes } from "@/lib/format";
+import { getSiteProfile } from "@/lib/site-profile";
 import { TorrentManage } from "@/components/torrent-manage";
 import { PromoBuyButton } from "@/components/promo-buy-button";
 import { SnatchList } from "@/components/snatch-list";
@@ -45,10 +46,13 @@ interface Aggregate {
 
 export default async function TorrentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
   const tid = Number(id);
   if (!Number.isFinite(tid)) notFound();
   // 详情页首屏（方案批次三）：一次 /aggregate 带回七块数据，RTT 6 → 1。
@@ -79,6 +83,31 @@ export default async function TorrentDetailPage({
     .catch(() => []);
 
   const { dict, locale } = await getDict();
+  // 编辑弹层（0166b 全字段）：分类/多维字典与上传页同源，并行装载失败降级
+  const [profile, secDictAll] = await Promise.all([
+    getSiteProfile().catch(() => null),
+    api
+      .get<
+        Record<string, { id: number; name: string }[]> & {
+          kinds?: { kind: string; label: string }[];
+        }
+      >("/api/v1/section-dict")
+      .catch(() => null),
+  ]);
+  const editCats = (
+    profile?.categories?.length
+      ? profile.categories
+      : dict.torrents.categories
+          .slice(1)
+          .map((name, i) => ({ id: i + 1, name }))
+  ).map((c) => ({ id: c.id, name: c.name }));
+  const editKinds = secDictAll?.kinds ?? [];
+  const editDict: Record<string, { id: number; name: string }[]> = {};
+  for (const k of editKinds) editDict[k.kind] = secDictAll?.[k.kind] ?? [];
+  // 当前多维值（detail.sections：kind → dict_id）
+  const editSecVals = Object.fromEntries(
+    Object.entries(ext?.sections ?? {}).map(([k, v]) => [k, v.dict_id]),
+  );
   const d = dict.tdetail;
   const edition = editionName(t.edition_id);
   const grade =
@@ -103,7 +132,7 @@ export default async function TorrentDetailPage({
         if (ms <= 0) return null;
         const dd = Math.floor(ms / 86400000);
         const hh = Math.floor((ms % 86400000) / 3600000);
-        return `${dd}${d?.dayUnit ?? "天"}${hh}${d?.hourUnit ?? "时"}`;
+        return `${dd}${d?.dayUnit}${hh}${d?.hourUnit}`;
       })()
     : null;
   // 副题链（与资源库列表同口径：学段 · 媒介 · 版本）
@@ -111,11 +140,11 @@ export default async function TorrentDetailPage({
   // 相对时间（馒头口径：发布于 x 天前；完整时间放 title）
   const relTime = (iso: string) => {
     const ms = Date.now() - new Date(iso).getTime();
-    if (ms < 3600000) return d?.justNow ?? "刚刚";
+    if (ms < 3600000) return d?.justNow;
     const h = Math.floor(ms / 3600000);
     const dd = Math.floor(ms / 86400000);
-    if (ms < 86400000) return `${h} ${d?.hourUnit ?? "时"}${d?.agoUnit ?? "前"}`;
-    return `${dd} ${d?.dayUnit ?? "天"}${d?.agoUnit ?? "前"}`;
+    if (ms < 86400000) return `${h} ${d?.hourUnit}${d?.agoUnit}`;
+    return `${dd} ${d?.dayUnit}${d?.agoUnit}`;
   };
 
   return (
@@ -137,6 +166,28 @@ export default async function TorrentDetailPage({
         left={left}
         subtitleChain={subtitleChain}
         relTime={relTime}
+        manage={
+          <>
+            <PromoBuyButton torrentId={t.id} isOwner={Boolean(ext?.is_owner)} />
+            <TorrentManage
+              torrentId={t.id}
+              name={t.name}
+              smallDescr={t.small_descr}
+              descr={ext?.descr ?? null}
+              anonymous={t.anonymous}
+              categoryId={t.category_id}
+              sections={editSecVals}
+              secKinds={editKinds}
+              secDict={editDict}
+              cats={editCats}
+              seeders={t.seeders}
+              imdbId={t.imdb_id ?? null}
+              tagDict={agg.tags.dict}
+              tagMine={agg.tags.mine}
+              autoOpen={sp.edit === "1"}
+            />
+          </>
+        }
       />
 
       {/* ===== 规格网格（阳光站口径：数值 + 灰字说明，紧凑三列） ===== */}
@@ -168,9 +219,7 @@ export default async function TorrentDetailPage({
           .map((v) => (
             <Spec key={v.kind} value={v.name} label={v.label} />
           ))}
-        {t.rating && (
-          <Spec value={t.rating} label={d?.ratingLabel ?? "评分"} num />
-        )}
+        {t.rating && <Spec value={t.rating} label={d?.ratingLabel} num />}
         <Spec
           value={
             <span className="break-all text-[11px] font-normal text-sub">
@@ -181,30 +230,12 @@ export default async function TorrentDetailPage({
         />
       </section>
 
-      {/* ===== 标签 + 操作（阳光口径：标签行右侧放编辑/删除等低频操作） ===== */}
-      <section className="td-tags nexus-detail">
-        <h2 className="td-sec-title">{dict.torrTags2?.title ?? "标签"}</h2>
-        <div className="td-tags__body">
+      {/* ===== 标签（贴副标题下：标签行紧跟头部，管理操作在头部操作行） ===== */}
+      {agg.tags.dict.length + agg.tags.mine.length > 0 && (
+        <div className="td-tags-inline">
           <TorrentTags torrentId={t.id} initial={agg.tags} />
-          <div className="td-tags__manage">
-            <PromoBuyButton
-              torrentId={t.id}
-              isOwner={Boolean(ext?.is_owner)}
-            />
-            <TorrentManage
-              torrentId={t.id}
-              name={t.name}
-              smallDescr={t.small_descr}
-              descr={ext?.descr ?? null}
-              anonymous={t.anonymous}
-              seeders={t.seeders}
-              imdbId={t.imdb_id ?? null}
-              tagDict={agg.tags.dict}
-              tagMine={agg.tags.mine}
-            />
-          </div>
         </div>
-      </section>
+      )}
 
       {/* ===== 简介（默认展开；其余折叠分区默认收起） ===== */}
       {ext?.descr && (
@@ -271,9 +302,8 @@ export default async function TorrentDetailPage({
 
       {/* ===== 字幕面板（0146 P0-6 + 0148 C1 同片 IMDB 合并；模块关闭时空列表） ===== */}
       <TorrentSubtitles torrentId={t.id} imdbId={t.imdb_id ?? null} />
-
       {/* ===== 下载/做种记录 ===== */}
-      <Fold title={dict.snatches2?.title ?? "下载记录"} open>
+      <Fold title={dict.snatches2.title} open>
         <SnatchList torrentId={t.id} />
       </Fold>
 

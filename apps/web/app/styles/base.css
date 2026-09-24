@@ -810,13 +810,16 @@ a:hover {
   color: var(--text-strong);
 }
 
-/* 标签区（标签 + 右侧管理操作同排） */
-.td-tags__body {
+/* 标签区（0166b：标签贴头部副标题下方，不再是独立板块） */
+.td-tags-inline {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px 16px 14px;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px 10px;
+}
+.td-tags-inline:empty {
+  display: none;
 }
 .td-tagcloud {
   display: flex;
