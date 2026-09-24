@@ -4,14 +4,21 @@ import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 
-/** 购买按钮（§8.2：写操作带幂等键；错误按 code 映射文案） */
+/**
+ * 购买按钮（§8.2：写操作带幂等键；错误按 code 映射文案）。
+ * 改版新增「余额不足」态：`affordable=false` 时按钮禁用并显示差额（由 RSC 侧
+ * 用 /me 的 spark_balance 预判），把无效点击与报错挡在点击之前。
+ */
 export function BuyButton({
   itemId,
-  price,
+  affordable = true,
+  shortBy = null,
 }: {
   itemId: number;
-  name: string;
-  price: number;
+  /** 余额是否足够（余额未知时传 true，交给后端校验） */
+  affordable?: boolean;
+  /** 差额文案（如「还差 20,000」）；缺省不显示 */
+  shortBy?: string | null;
 }) {
   const { dict } = useI18n();
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
@@ -35,18 +42,27 @@ export function BuyButton({
     }
   }
 
+  const label =
+    state === "busy"
+      ? dict.shop.buying
+      : state === "done"
+        ? dict.shop.bought
+        : affordable
+          ? dict.shop.buy
+          : dict.shop.insufficient;
+
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col items-end gap-1">
+      {!affordable && shortBy && (
+        <span className="unit is-short">{shortBy}</span>
+      )}
       <button
+        type="button"
         onClick={buy}
-        disabled={state !== "idle"}
-        className="min-h-[44px] rounded-full bg-coral px-4 font-bold text-white active:scale-[0.97] disabled:opacity-50"
+        disabled={state !== "idle" || !affordable}
+        className={`btn btn-sm${affordable ? " btn-primary" : ""}`}
       >
-        {state === "busy"
-          ? dict.shop.buying
-          : state === "done"
-            ? dict.shop.bought
-            : dict.shop.buy}
+        {label}
       </button>
       {message && (
         <p role="status" className="text-xs text-sub">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import {
   REPLY_EVENT,
   type ReplyTarget,
@@ -163,7 +164,10 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
 
       {/* 魔力答谢（馒头口径按钮组） */}
       <div className="donate-spark">
-        <span className="text-xs font-bold text-sub">{t.sparkReward}</span>
+        <span className="text-xs font-bold text-sub">
+          {/* 0173：{magic} 占位符须替换为站点货币名，不得原样渲染 */}
+          {fmt(t.sparkReward, { magic: currency })}
+        </span>
         <div className="flex flex-wrap gap-2">
           {[1, 10, 100, 500, 1000, 10000].map((v) => (
             <button
