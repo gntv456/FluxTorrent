@@ -50,8 +50,11 @@ async fn pack_export(
         "theme" => {
             pack_format::export_theme(&state, q.name.as_deref()).await
         }
+        "assets" => {
+            pack_format::export_assets(&state, q.name.as_deref()).await
+        }
         _ => Err(DomainError::Validation(
-            "kind 需为 taxonomy / theme".into(),
+            "kind 需为 taxonomy / theme / assets".into(),
         )),
     }
 }

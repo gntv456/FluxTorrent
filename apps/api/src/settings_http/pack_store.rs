@@ -425,3 +425,195 @@ async fn apply_taxonomy_sections(
     }
     Ok(())
 }
+
+// ============ 素材包落库（M1 增量，kind=assets） ============
+
+/// 素材快照/落库的行形状（两张白名单表）
+pub(super) async fn snapshot_assets(
+    tx: &mut sqlx::PgTransaction<'_>,
+) -> DomainResult<Value> {
+    let medals: Vec<(i64, String, Option<i64>, Option<String>, Option<String>, Option<String>, Option<i32>, i16, Option<i32>, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>, f64, i32, i32)> = sqlx::query_as(
+        "SELECT id, name, price, rarity, description, asset_ref, \
+         duration_days, get_type, inventory, sale_begin_at, sale_end_at, \
+         bonus_addition_factor::float8, category_id, limited::int \
+         FROM medals ORDER BY id",
+    )
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(internal)?;
+    let frames: Vec<(i32, String, String, i32, i32, Option<String>)> =
+        sqlx::query_as(
+            "SELECT id, name, css, price, sort, image_url \
+             FROM avatar_frames ORDER BY id",
+        )
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(internal)?;
+    let medals_json: Vec<Value> = medals
+        .into_iter()
+        .map(|m| {
+            let (id, name, price, rarity, description, asset_ref,
+                 duration_days, get_type, inventory, sale_begin_at,
+                 sale_end_at, bonus, category_id, limited) = m;
+            serde_json::json!({
+                "id": id, "name": name, "price": price, "rarity": rarity,
+                "description": description, "asset_ref": asset_ref,
+                "duration_days": duration_days, "get_type": get_type,
+                "inventory": inventory, "sale_begin_at": sale_begin_at,
+                "sale_end_at": sale_end_at,
+                "bonus_addition_factor": bonus, "category_id": category_id,
+                "limited": limited != 0,
+            })
+        })
+        .collect();
+    let frames_json: Vec<Value> = frames
+        .into_iter()
+        .map(|(id, name, css, price, sort, image_url)| {
+            serde_json::json!({
+                "id": id, "name": name, "css": css, "price": price,
+                "sort": sort, "image_url": image_url,
+            })
+        })
+        .collect();
+    Ok(serde_json::json!({
+        "tables": {
+            "medals": medals_json,
+            "avatar_frames": frames_json,
+        },
+    }))
+}
+
+/// 素材纯覆盖落库：包内行 upsert（按 id）；包外表行删除——被引用的跳过
+/// （medals 被 user_medals 持有、frames 被用户佩戴，宁残留不破坏）。
+pub(super) async fn apply_assets(
+    tx: &mut sqlx::PgTransaction<'_>,
+    payload: &Value,
+) -> DomainResult<(usize, usize)> {
+    let Some(tables) =
+        payload.get("tables").and_then(Value::as_object)
+    else {
+        return Err(DomainError::Validation(
+            "assets 包缺少 payload.tables".into(),
+        ));
+    };
+    for t in tables.keys() {
+        if !super::pack_format::ASSET_TABLES.contains(&t.as_str()) {
+            return Err(DomainError::Validation(format!(
+                "assets 包不允许触碰表：{t}"
+            )));
+        }
+    }
+    // ---- medals ----
+    let medal_rows: Vec<Value> = tables
+        .get("medals")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let medal_ids: Vec<i64> = medal_rows
+        .iter()
+        .filter_map(|r| r.get("id").and_then(Value::as_i64))
+        .collect();
+    // 包外且被持有 → 跳过删除；其余删除
+    sqlx::query(
+        "DELETE FROM medals WHERE NOT (id = ANY($1)) AND NOT EXISTS (\
+           SELECT 1 FROM user_medals um WHERE um.medal_id = medals.id)",
+    )
+    .bind(&medal_ids)
+    .execute(&mut **tx)
+    .await
+    .map_err(internal)?;
+    let mut n_medals = 0usize;
+    for r in &medal_rows {
+        let Some(id) = r.get("id").and_then(Value::as_i64) else { continue };
+        let Some(name) = r.get("name").and_then(Value::as_str) else {
+            continue;
+        };
+        let g = |k: &str| r.get(k).cloned().unwrap_or(Value::Null);
+        let dt = |k: &str| -> Option<String> {
+            r.get(k).and_then(Value::as_str).map(str::to_string)
+        };
+        sqlx::query(
+            "INSERT INTO medals (id, name, price, rarity, description, \
+             asset_ref, duration_days, get_type, inventory, sale_begin_at, \
+             sale_end_at, bonus_addition_factor, category_id, limited) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, \
+             $10::timestamptz, $11::timestamptz, $12, $13, $14) \
+             ON CONFLICT (id) DO UPDATE SET \
+             name = EXCLUDED.name, price = EXCLUDED.price, \
+             rarity = EXCLUDED.rarity, description = EXCLUDED.description, \
+             asset_ref = EXCLUDED.asset_ref, \
+             duration_days = EXCLUDED.duration_days, \
+             get_type = EXCLUDED.get_type, inventory = EXCLUDED.inventory, \
+             sale_begin_at = EXCLUDED.sale_begin_at, \
+             sale_end_at = EXCLUDED.sale_end_at, \
+             bonus_addition_factor = EXCLUDED.bonus_addition_factor, \
+             category_id = EXCLUDED.category_id, limited = EXCLUDED.limited",
+        )
+        .bind(id)
+        .bind(name)
+        .bind(r.get("price").and_then(Value::as_i64))
+        .bind(r.get("rarity").and_then(Value::as_str))
+        .bind(r.get("description").and_then(Value::as_str))
+        .bind(r.get("asset_ref").and_then(Value::as_str))
+        .bind(r.get("duration_days").and_then(Value::as_i64).map(|v| v as i32))
+        .bind(r.get("get_type").and_then(Value::as_i64).unwrap_or(1) as i16)
+        .bind(r.get("inventory").and_then(Value::as_i64).map(|v| v as i32))
+        .bind(dt("sale_begin_at"))
+        .bind(dt("sale_end_at"))
+        .bind(r.get("bonus_addition_factor").and_then(Value::as_f64).unwrap_or(0.0))
+        .bind(r.get("category_id").and_then(Value::as_i64).unwrap_or(0) as i32)
+        .bind(r.get("limited").and_then(Value::as_bool).unwrap_or(false))
+        .execute(&mut **tx)
+        .await
+        .map_err(internal)?;
+        n_medals += 1;
+        let _ = g; // 未知列忽略（白名单列集）
+    }
+    // ---- avatar_frames ----
+    let frame_rows: Vec<Value> = tables
+        .get("avatar_frames")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let frame_ids: Vec<i32> = frame_rows
+        .iter()
+        .filter_map(|r| r.get("id").and_then(Value::as_i64).map(|v| v as i32))
+        .collect();
+    sqlx::query(
+        "DELETE FROM avatar_frames WHERE NOT (id = ANY($1)) \
+         AND NOT EXISTS (\
+           SELECT 1 FROM users u WHERE u.avatar_frame_id = avatar_frames.id)",
+    )
+    .bind(&frame_ids)
+    .execute(&mut **tx)
+    .await
+    .map_err(internal)?;
+    let mut n_frames = 0usize;
+    for r in &frame_rows {
+        let (Some(id), Some(name), Some(css)) = (
+            r.get("id").and_then(Value::as_i64).map(|v| v as i32),
+            r.get("name").and_then(Value::as_str),
+            r.get("css").and_then(Value::as_str),
+        ) else {
+            continue;
+        };
+        sqlx::query(
+            "INSERT INTO avatar_frames (id, name, css, price, sort, \
+             image_url) VALUES ($1, $2, $3, $4, $5, $6) \
+             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, \
+             css = EXCLUDED.css, price = EXCLUDED.price, \
+             sort = EXCLUDED.sort, image_url = EXCLUDED.image_url",
+        )
+        .bind(id)
+        .bind(name)
+        .bind(css)
+        .bind(r.get("price").and_then(Value::as_i64).unwrap_or(0) as i32)
+        .bind(r.get("sort").and_then(Value::as_i64).unwrap_or(0) as i32)
+        .bind(r.get("image_url").and_then(Value::as_str))
+        .execute(&mut **tx)
+        .await
+        .map_err(internal)?;
+        n_frames += 1;
+    }
+    Ok((n_medals, n_frames))
+}

@@ -23,9 +23,10 @@ use super::pack_format::{
     bad, parse_pack, parse_taxonomy, PackHead, THEME_KEYS,
 };
 use super::pack_store::{
-    apply_taxonomy, apply_taxonomy_guarded, apply_theme_import,
-    apply_theme_rollback, referenced_categories, snapshot_taxonomy,
-    snapshot_theme, snapshot_to_payload,
+    apply_assets, apply_taxonomy, apply_taxonomy_guarded,
+    apply_theme_import, apply_theme_rollback, referenced_categories,
+    snapshot_assets, snapshot_taxonomy, snapshot_theme,
+    snapshot_to_payload,
 };
 
 fn internal(e: sqlx::Error) -> DomainError {
@@ -44,6 +45,7 @@ pub(super) async fn import(
     match head.kind.as_str() {
         "taxonomy" => import_taxonomy(state, actor, &head, confirm).await,
         "rules" => import_rules(state, actor, &head, confirm).await,
+        "assets" => import_assets(state, actor, &head, confirm).await,
         _ => import_theme(state, actor, &head, confirm).await,
     }
 }
@@ -219,6 +221,83 @@ async fn import_rules(
         "pack_id": head.pack_id,
         "applied": { "rules": changed.len() },
         "changed": changed,
+    })))
+}
+
+/// assets 包导入（M1 增量）：payload.tables = {medals:[...], avatar_frames:[...]}。
+/// 白名单表 + 快照重放（同 taxonomy 口径）。
+async fn import_assets(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    actor: &i64,
+    head: &PackHead,
+    confirm: bool,
+) -> DomainResult<HttpResponse> {
+    // 键白名单预检（dry-run 与 confirm 共用）
+    if let Some(tables) =
+        head.payload.get("tables").and_then(Value::as_object)
+    {
+        for t in tables.keys() {
+            if !super::pack_format::ASSET_TABLES.contains(&t.as_str()) {
+                return Err(DomainError::Validation(format!(
+                    "assets 包不允许触碰表：{t}"
+                )));
+            }
+        }
+    } else {
+        return Err(bad("assets 包缺少 payload.tables"));
+    }
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(internal)?;
+    if !confirm {
+        let medals = head
+            .payload
+            .pointer("/tables/medals")
+            .and_then(Value::as_array)
+            .map(|a| a.len())
+            .unwrap_or(0);
+        let frames = head
+            .payload
+            .pointer("/tables/avatar_frames")
+            .and_then(Value::as_array)
+            .map(|a| a.len())
+            .unwrap_or(0);
+        tx.rollback().await.ok();
+        return Ok(ok(serde_json::json!({
+            "dry_run": true,
+            "kind": "assets",
+            "pack_id": head.pack_id,
+            "will_change": medals + frames,
+            "medals": medals,
+            "avatar_frames": frames,
+        })));
+    }
+    let snapshot = snapshot_assets(&mut tx).await?;
+    let (n_medals, n_frames) =
+        apply_assets(&mut tx, &head.payload).await?;
+    upsert_pack_row(&mut tx, actor, head, snapshot).await?;
+    audit(
+        &mut tx,
+        *actor,
+        "content_pack:import",
+        &serde_json::json!({
+            "pack_id": head.pack_id, "kind": head.kind,
+            "name": head.name, "version": head.version,
+        }),
+    )
+    .await;
+    tx.commit().await.map_err(internal)?;
+    invalidate_cache(state, "module").await;
+    Ok(ok(serde_json::json!({
+        "dry_run": false,
+        "kind": "assets",
+        "pack_id": head.pack_id,
+        "applied": {
+            "medals": n_medals, "avatar_frames": n_frames,
+        },
     })))
 }
 
@@ -439,6 +518,9 @@ pub(super) async fn rollback(
             .await
             .map_err(internal)?;
         }
+    } else if kind == "assets" {
+        // 快照即 payload 形状（tables 原样），直接重放
+        apply_assets(&mut tx, &snapshot).await?;
     } else {
         return Err(DomainError::Validation("未知包类别".into()));
     }
