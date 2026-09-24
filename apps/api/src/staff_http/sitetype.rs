@@ -24,7 +24,7 @@ pub async fn site_profile(
     .unwrap_or_else(|| "general".into());
     let pack: Option<SiteTypePack> = sqlx::query_as(
         "SELECT code, name, description, brand, categories, modules, \
-         sort, tagline FROM site_type_packs WHERE code = $1",
+         sort, tagline, subtitle_kind FROM site_type_packs WHERE code = $1",
     )
     .bind(&site_type)
     .fetch_optional(&state.repo.db)
@@ -39,12 +39,17 @@ pub async fn site_profile(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 旧三列（torrents.medium_id / grade_id / edition_id）的词表：这三张实体表
-    // 就是它们的 id 权威（grades 0=幼儿园…12=高三；media/editions 从 1 起），
-    // 与 0088 之后新模型的 section_dict.id **不是同一套编号**（0174 回填后已是
-    // 400+ 段），所以必须单独下发，前端不能再拿硬编码数组按下标补偿。
-    let dict_rows = |table: &'static str| {
+    // 就是它们的 id 权威，与 0088 之后新模型的 section_dict.id **不是同一套编号**，
+    // 所以下发空表时前端下拉自然消失（0180：非教育站的学段/版本词表已清空）。
+    // 教育系站型（education/ebook）仍下发全量；其余站型 grades/editions 为空数组。
+    let edu_like = matches!(site_type.as_str(), "education" | "ebook")
+        || site_type.starts_with("custom_");
+    let dict_rows = |table: &'static str, emit: bool| {
         let db = state.repo.db.clone();
         async move {
+            if !emit {
+                return Vec::new();
+            }
             sqlx::query_as::<_, (i32, String)>(
                 // 表名来自本函数内的字面量常量，非用户输入
                 &format!("SELECT id, name FROM {table} ORDER BY id"),
@@ -54,9 +59,9 @@ pub async fn site_profile(
             .unwrap_or_default()
         }
     };
-    let grades = dict_rows("grades").await;
-    let media = dict_rows("media").await;
-    let editions = dict_rows("editions").await;
+    let grades = dict_rows("grades", edu_like).await;
+    let media = dict_rows("media", true).await;
+    let editions = dict_rows("editions", edu_like).await;
     let brand: String = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'site_name'",
     )
@@ -230,7 +235,7 @@ pub async fn site_type_pack_list(
     .await?;
     let rows: Vec<SiteTypePack> = sqlx::query_as(
         "SELECT code, name, description, brand, categories, modules, \
-         sort, tagline FROM site_type_packs ORDER BY sort",
+         sort, tagline, subtitle_kind FROM site_type_packs ORDER BY sort",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -239,8 +244,8 @@ pub async fn site_type_pack_list(
 }
 
 #[derive(serde::Serialize, sqlx::FromRow)]
-pub(super) struct SiteTypePack {
-    pub(super) code: String,
+pub(crate) struct SiteTypePack {
+    pub(crate) code: String,
     pub(super) name: String,
     pub(super) description: Option<String>,
     pub(super) brand: String,
@@ -260,4 +265,8 @@ pub(super) struct SiteTypePack {
     #[serde(default)]
     #[sqlx(default)]
     pub(super) tagline: String,
+    /// 字幕区口径快照（0178）：lyric/subtitle；NULL = 未表态（apply 按 code 回落）
+    #[serde(default)]
+    #[sqlx(default)]
+    pub(super) subtitle_kind: Option<String>,
 }
