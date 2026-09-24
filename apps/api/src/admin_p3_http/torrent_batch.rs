@@ -250,6 +250,10 @@ async fn torrent_batch(
                 .map_err(|e| crate::errors::db_to_domain(e, "维度字典项"))?
                 .rows_affected();
             }
+            // 批量改维度后同样反向落旧三列，保持与单条编辑一致
+            for tid in &id_arr {
+                crate::torrents::sync_legacy_columns(db, *tid).await?;
+            }
             n
         }
         "delete" => sqlx::query(

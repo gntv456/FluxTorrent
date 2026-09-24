@@ -57,9 +57,8 @@ pub(super) async fn store_sections_tags(
     id: i64,
 ) -> DomainResult<()> {
     // 多维属性（第八轮 Section）：parse_sections 已整体校验，这里只写
-    for (kind, dict_id) in
-        parse_sections(&state.repo.db, form.sections.as_ref()).await?
-    {
+    let map = parse_sections(&state.repo.db, form.sections.as_ref()).await?;
+    for (kind, dict_id) in &map {
         sqlx::query(
             "INSERT INTO torrent_sections \
              (torrent_id, kind, dict_id) VALUES ($1, $2, $3) ON \
@@ -67,11 +66,15 @@ pub(super) async fn store_sections_tags(
              EXCLUDED.dict_id",
         )
         .bind(id)
-        .bind(&kind)
+        .bind(kind)
         .bind(dict_id)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    if !map.is_empty() {
+        // 反向落旧三列：只写 sections 的种子也要能被「按媒介/学段/版本」筛到
+        crate::torrents::sync_legacy_columns(&state.repo.db, id).await?;
     }
 
     // 标签（NP upload.php tags 口径）：发布时直接打标；统一走 apply_torrent_tags

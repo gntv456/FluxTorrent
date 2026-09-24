@@ -149,6 +149,9 @@ async fn edit_torrent(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
+        // sections 是这一轮的真值源：按名称反向落旧三列（维度已被站长删除的列不动），
+        // 否则「改了学段但按学段筛搜不到」会继续存在
+        crate::torrents::sync_legacy_columns(&state.repo.db, tid).await?;
     }
     // 0148 C1：编辑 descr 后重提取 IMDB（descr 提取得到才覆盖，否则保留旧值）
     if let Some(d) = body.descr.as_deref() {
