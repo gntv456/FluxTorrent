@@ -34,6 +34,11 @@ export const BTN_LG_SKY =
 export const BTN_XS_GHOST =
   "min-h-[32px] rounded-full border border-line px-3 text-xs font-bold";
 
+/** 主按钮：36px 主蓝**小圆角**（与 40px 输入框同排时的方角形态，非胶囊） */
+export const BTN_SM_SQUARE =
+  "min-h-[36px] rounded-[var(--r-sm)] bg-sky px-4 text-sm font-bold" +
+  " text-white disabled:opacity-50";
+
 /** 输入框：40px 圆角小方块 */
 export const INPUT_MD =
   "min-h-[40px] rounded-[var(--r-sm)] border border-line px-2";

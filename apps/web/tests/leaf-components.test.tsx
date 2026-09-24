@@ -33,7 +33,13 @@ describe("MedalActions", () => {
       .spyOn(api, "post")
       .mockImplementation(() => ok({}) as never);
     render(
-      <MedalActions medalId={5} owned={false} wearing={false} price={1000} />,
+      <MedalActions
+        medalId={5}
+        owned={false}
+        wearing={false}
+        price={1000}
+        getType={1}
+      />,
     );
     await userEvent.click(screen.getByRole("button", { name: /购买/ }));
     await waitFor(() =>
@@ -50,7 +56,13 @@ describe("MedalActions", () => {
       .spyOn(api, "post")
       .mockImplementation(() => ok({}) as never);
     render(
-      <MedalActions medalId={5} owned={true} wearing={false} price={1000} />,
+      <MedalActions
+        medalId={5}
+        owned={true}
+        wearing={false}
+        price={1000}
+        getType={1}
+      />,
     );
     await userEvent.click(screen.getByRole("button", { name: /赠送/ }));
     await waitFor(() =>
@@ -68,10 +80,33 @@ describe("MedalActions", () => {
       new ApiError(3001, "余额不足") as never,
     );
     render(
-      <MedalActions medalId={5} owned={false} wearing={false} price={1000} />,
+      <MedalActions
+        medalId={5}
+        owned={false}
+        wearing={false}
+        price={1000}
+        getType={1}
+      />,
     );
     await userEvent.click(screen.getByRole("button", { name: /购买/ }));
     expect(await screen.findByText(/余额不足/)).toBeInTheDocument();
+  });
+
+  it("授予型（get_type=2）即便带价格也不给购买按钮", () => {
+    // 回归锚点：库里存在 get_type=2 却 price=30000 的勋章（保种达人类），
+    // 旧口径按 price 判断会渲染出点不动的「购买」。
+    render(
+      <MedalActions
+        medalId={5}
+        owned={false}
+        wearing={false}
+        price={30000}
+        getType={2}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /购买/ })).toBeNull();
+    const locked = screen.getByRole("button", { name: /仅授予/ });
+    expect(locked).toBeDisabled();
   });
 });
 

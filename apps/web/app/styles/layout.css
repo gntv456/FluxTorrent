@@ -2345,3 +2345,135 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   font-size: 13.5px;
   line-height: 1.9;
 }
+
+/* ============ 页面通用件（页头 / 统计条 / 工具行 / 药丸） ============
+   2026-09-23 从 medal-shop.css 抽出：这批类与勋章/商店无关，是
+   「页头 + 统计条 + 工具行」的通用形态，my-spark / donate 等页复用。
+   依赖 theme-tide.css 的令牌，故仍排在 @import 链末。 */
+
+/* ---------- 3. 统计条 / 工具行（三页共用） ---------- */
+.pgstats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  overflow: hidden;
+}
+.pgstats > div {
+  padding: 12px 16px;
+  border-right: 1px solid var(--line);
+}
+.pgstats > div:last-child {
+  border-right: 0;
+}
+.pgstats .k {
+  font-size: 11px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+.pgstats .v {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-brand);
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+.pgstats .v small {
+  margin-left: 3px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+.pgstats .hl .v {
+  color: var(--sun);
+}
+
+.pgtools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.chip-sel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip-sel:hover {
+  border-color: var(--border-strong);
+  color: var(--text-brand);
+}
+.chip-sel[aria-pressed="true"] {
+  background: var(--sky-deep);
+  border-color: transparent;
+  color: #fff;
+}
+.chip-sel .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: currentColor;
+}
+.pgsel {
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-body-deep);
+  font-family: inherit;
+  font-size: 12.5px;
+}
+.pg-eyebrow {
+  margin-bottom: 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sky);
+}
+/* 页头信息药丸（已拥有 x/y、佩戴中、当前加成） */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--tide-haze);
+  color: var(--text-brand);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.pghd {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.pghd .sub {
+  padding-bottom: 5px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+.pghd .aside {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 4px;
+}
+
