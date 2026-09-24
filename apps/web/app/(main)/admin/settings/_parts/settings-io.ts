@@ -11,6 +11,8 @@ import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import type {
+  AdapterRow,
+  AdapterTryResult,
   CatalogResponse,
   ContentPackFile,
   ContentPackRow,
@@ -219,6 +221,55 @@ export function useSettingsTransfer({
     }
   }
 
+  // ---- 适配器管理（M4）：列表 / 启停 / 试调 ----
+  const [adapters, setAdapters] = useState<AdapterRow[] | null>(null);
+  const [adapterTryId, setAdapterTryId] = useState<string | null>(null);
+
+  async function reloadAdapters() {
+    try {
+      setAdapters(await api.get<AdapterRow[]>("/api/v1/admin/adapters"));
+    } catch {
+      setAdapters([]);
+    }
+  }
+
+  async function toggleAdapter(adapterId: string, enabled: boolean) {
+    try {
+      await api.post("/api/v1/admin/adapters/toggle", {
+        adapter_id: adapterId,
+        enabled,
+      });
+      onToast({
+        ok: true,
+        text: fmt(s.adapterToggled, { id: adapterId, state: enabled ? s.adapterOn : s.adapterOff }),
+      });
+      await reloadAdapters();
+    } catch (e) {
+      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+    }
+  }
+
+  async function tryAdapter(adapterId: string, url: string) {
+    setAdapterTryId(adapterId);
+    try {
+      const r = await api.post<AdapterTryResult>(
+        "/api/v1/admin/adapters/try",
+        { adapter_id: adapterId, url },
+      );
+      onToast({
+        ok: true,
+        text: fmt(s.adapterTryOk, { id: adapterId }),
+        effects: [JSON.stringify(r.result).slice(0, 200)],
+      });
+      await reloadAdapters();
+    } catch (e) {
+      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      await reloadAdapters(); // 熔断可能已更新
+    } finally {
+      setAdapterTryId(null);
+    }
+  }
+
   // ---- 内容包（生态商店 M1）：本站导出 / 导入（空跑→确认）/ 清单 / 回滚 ----
   const [packOpen, setPackOpen] = useState(false);
   const [packText, setPackText] = useState("");
@@ -240,6 +291,7 @@ export function useSettingsTransfer({
     setPackOpen(true);
     if (packRows === null) void reloadPacks();
     if (catalog === null) void reloadCatalog();
+    if (adapters === null) void reloadAdapters();
   }
 
   async function packExportKind(kind: "taxonomy" | "theme") {
@@ -374,5 +426,11 @@ export function useSettingsTransfer({
     ruleTryResult,
     setRuleTryResult,
     tryRule,
+    // 适配器域（M4）
+    adapters,
+    reloadAdapters,
+    toggleAdapter,
+    tryAdapter,
+    adapterTryId,
   };
 }
