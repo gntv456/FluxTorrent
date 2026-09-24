@@ -61,8 +61,9 @@ pub async fn run_all(
                 with_lock(&db, "job:task_settle", crate::task_jobs::task_settle(&db)).await;
                 with_lock(&db, "job:exam_assign", crate::task_jobs::exam_assign(&db)).await;
                 // 论坛抽奖到点开奖（0126）：draw_at 已过且仍 open 的逐个开。
-                // 开奖逻辑（CAS open→drawn + 按人幂等发放）在 sqlx 层面自守，这里独立
-                // 实现一份轻量扫描（worker 不依赖 api crate），锁内重跑安全。
+                // 开奖逻辑（CAS open→drawn + 按人幂等发放）在 sqlx 层面自守，
+                // 锁内重跑安全。二审 G8：包进 with_lock（advisory 锁防多实例
+                // 双开）+ forums 模块判定（模块关→不开奖不动账）。
                 {
                     let due: Vec<i64> = sqlx::query_scalar(
                                                 "SELECT topic_id FROM \
@@ -72,10 +73,17 @@ pub async fn run_all(
                     .fetch_all(&db)
                     .await
                     .unwrap_or_default();
-                    for tid in due {
-                        if let Err(e) = lottery_settle(&db, tid).await {
-                            tracing::warn!(topic_id = tid, error = %e, "lottery_settle failed");
-                        }
+                    if !due.is_empty() {
+                        let db2 = db.clone();
+                        with_lock(&db, "job:lottery_settle", async move {
+                            for tid in due {
+                                if let Err(e) = lottery_settle(&db2, tid).await {
+                                    tracing::warn!(topic_id = tid, error = %e, "lottery_settle failed");
+                                }
+                            }
+                            Ok::<(), anyhow::Error>(())
+                        })
+                        .await;
                     }
                 }
                 // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑

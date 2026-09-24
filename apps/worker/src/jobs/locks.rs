@@ -60,6 +60,8 @@ where
 
 /// U1 §5.4：job key → 模块键映射（与 API 网关表同口径）。
 /// 未列出的 job 属核心层（计费/快照/清理/反作弊/等级），不受模块开关影响。
+/// 二审 G8 补登：magic_pool/funding/subtitles/论坛抽奖此前漏挂锁——模块关闭后
+/// 仍开全站促销/退款动账/验收交稿/开奖发奖。
 fn job_module(job_key: &str) -> Option<&'static str> {
     Some(match job_key {
         "job:bank_daily" => "bank",
@@ -72,12 +74,17 @@ fn job_module(job_key: &str) -> Option<&'static str> {
         }
         "job:resurrection_settle" => "resurrections",
         "job:wishlist_notify" => "wishlist",
+        "job:magic_pool_promo" | "job:funding_settle" => "magic_pool",
+        "job:subreq_sweep" | "job:subawards" | "job:subcert_sweep" => {
+            "subtitles"
+        }
+        "job:lottery_settle" => "forums",
         _ => return None,
     })
 }
 
 /// 模块开关判定（worker 侧直查，无缓存——每分钟 tick 一次，查询代价可忽略；
-/// 与 API 的 ModuleFlags::default_on 保持同一缺省口径：缺键=教育站形态）。
+/// 与 API 的 ModuleFlags::default_on 保持同一缺省口径：缺键=general 中立形态，0178）。
 pub(crate) async fn module_on(db: &PgPool, module: &str) -> bool {
     let v: Option<String> =
         sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1")
@@ -86,9 +93,14 @@ pub(crate) async fn module_on(db: &PgPool, module: &str) -> bool {
             .await
             .unwrap_or(None);
     match v {
-        // 显式配置按配置（no = 关）；查询失败/未配置回落默认值（T3 缺省=现状）
+        // 显式配置按配置（no = 关）；查询失败/未配置回落默认值
+        // （0178 缺省 = general 中立矩阵：教育考核与重度娱乐关）
         Some(raw) => raw.trim() == "yes",
-        None => !matches!(module, "showcase" | "social" | "contests"),
+        None => !matches!(
+            module,
+            "textbooks" | "showcase" | "social" | "farm" | "gomoku"
+                | "contests" | "jixiao" | "exams"
+        ),
     }
 }
 
