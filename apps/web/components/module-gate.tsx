@@ -22,10 +22,10 @@ export async function requireModule(
         🚧
       </p>
       <h1 className="mt-4 text-lg font-semibold">
-        {dict.mod?.disabledTitle ?? "本站未开放此功能"}
+        {dict.mod.disabledTitle}
       </h1>
       <p className="mt-2 text-sm text-muted">
-        {dict.mod?.disabledBody ?? "站长未启用该模块，如有疑问请联系管理组。"}
+        {dict.mod.disabledBody}
       </p>
     </div>
   );

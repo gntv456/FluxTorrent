@@ -56,7 +56,7 @@ export function FriendsActions() {
       setMsg(
         e instanceof ApiError
           ? e.message
-          : (dict.common.networkError ?? "失败"),
+          : (dict.common.networkError),
       );
     } finally {
       setBusy(false);
@@ -122,7 +122,7 @@ export function FriendsActions() {
           <span className="text-sub">{t.blackTitle}：</span>
           {blacks.map((b) => (
             <span key={b.username} className="flex items-center gap-1">
-              <span className="sticker bg-line text-ink">{b.username}</span>
+              <span className="pill">{b.username}</span>
               <button
                 type="button"
                 className="font-bold text-sky"

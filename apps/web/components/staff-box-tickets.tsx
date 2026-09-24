@@ -73,7 +73,7 @@ export function TicketPanel({
             <tr>
               <td className="colhead w-12">#</td>
               <td className="colhead">{dict.messages.subject}</td>
-              <td className="colhead w-24">{t.from ?? "来信人"}</td>
+              <td className="colhead w-24">{t.from}</td>
               <td className="colhead w-20">{tk.priority}</td>
               <td className="colhead w-28">{tk.assignedTo}</td>
               <td className="colhead w-28">{tk.statusLabel}</td>

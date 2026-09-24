@@ -31,7 +31,7 @@ export function ResubButton({ cards }: { cards: number }) {
         },
       );
       setMsg(
-        `${dict.attResub2?.ok ?? "补签成功"}（剩余补签卡 ${r.cards_left}）`,
+        `${dict.attResub2.ok}（剩余补签卡 ${r.cards_left}）`,
       );
       setTimeout(() => window.location.reload(), 800);
     } catch (e) {
@@ -45,14 +45,11 @@ export function ResubButton({ cards }: { cards: number }) {
       <button
         type="button"
         className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold text-sub disabled:opacity-50"
-        title={
-          dict.attResub2?.note ??
-          "消耗补签卡（商店购买或管理发放），补过去 7 天内漏签"
-        }
+        title={dict.attResub2.note}
         disabled={busy}
         onClick={() => setOpen(!open)}
       >
-        {t.btn ?? "补签"}
+        {t.btn}
         <span
           className={`ml-1 rounded-full px-1.5 text-[10px] ${cards > 0 ? "bg-mint/30 text-ink" : "bg-coral/20 text-danger"}`}
         >
@@ -71,10 +68,10 @@ export function ResubButton({ cards }: { cards: number }) {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-1 text-sm font-bold">
-              {t.btn ?? "补签"}（持有 {cards} 张）
+              {t.btn}（持有 {cards} 张）
             </h3>
             <p className="mb-3 text-xs text-sub">
-              {dict.attResub2?.note ?? "消耗补签卡，补过去 7 天内漏签"}
+              {dict.attResub2.note}
             </p>
             {cards === 0 ? (
               <p className="rounded-[var(--r-md)] bg-sun/20 p-3 text-xs text-ink">
