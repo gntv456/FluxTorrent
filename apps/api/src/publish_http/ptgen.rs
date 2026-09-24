@@ -119,6 +119,15 @@ pub async fn ptgen(
             "链接无效或该元数据源未在本站启用（imdb / douban / bangumi / indienova）".into(),
         ));
     }
+    // 适配器优先（生态商店 M4 收尾）：启用的 metadata 适配器且 host 命中其
+    // 白名单 → 沙箱执行；失败自动回退 PT-Gen（站长无感降级，§5.1）
+    if let Some((name, descr)) =
+        super::super::adapter_http::try_adapter_metadata(&state, url).await
+    {
+        return Ok(ok(serde_json::json!({
+            "name": name, "descr": descr, "via": "adapter",
+        })));
+    }
     let api = url::Url::parse_with_params(
         "https://ptgen.rachpt.dev/api",
         &[("url", url)],

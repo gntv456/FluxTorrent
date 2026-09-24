@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import type {
+  AdapterRow,
   CatalogItem,
   CatalogResponse,
   ContentPackRow,
@@ -25,6 +26,8 @@ export interface PackDialogProps {
   catalog: CatalogResponse | null;
   installBusyId: string | null;
   ruleTryResult: RuleTryResult | null;
+  adapters: AdapterRow[] | null;
+  adapterTryId: string | null;
   onText: (v: string) => void;
   onPickFile: (f: File | null) => void;
   onExportKind: (kind: "taxonomy" | "theme") => void;
@@ -33,6 +36,8 @@ export interface PackDialogProps {
   onRollback: (id: number) => void;
   onInstall: (packId: string) => void;
   onTryRule: (key: string, expr: string, termDays: number) => void;
+  onToggleAdapter: (adapterId: string, enabled: boolean) => void;
+  onTryAdapter: (adapterId: string, url: string) => void;
   onClose: () => void;
 }
 
@@ -99,6 +104,92 @@ function RuleTrySection({
   );
 }
 
+/** 适配器小节（M4）：列表 / 启停 / 健康度（strikes）/ 试调 */
+function AdapterSection({
+  adapters,
+  adapterTryId,
+  onToggleAdapter,
+  onTryAdapter,
+}: {
+  adapters: AdapterRow[] | null;
+  adapterTryId: string | null;
+  onToggleAdapter: (adapterId: string, enabled: boolean) => void;
+  onTryAdapter: (adapterId: string, url: string) => void;
+}) {
+  const { dict } = useI18n();
+  const s = dict.settingsAdmin;
+  const [tryUrl, setTryUrl] = useState("https://movie.douban.com/subject/1292052/");
+  return (
+    <div className="mb-4">
+      <h3 className="mb-2 text-xs font-bold text-ink">{s.adapterTitle}</h3>
+      {adapters === null && (
+        <p className="py-2 text-center text-xs text-sub">…</p>
+      )}
+      {adapters?.length === 0 && (
+        <p className="py-2 text-center text-xs text-sub">{s.adapterEmpty}</p>
+      )}
+      {adapters && adapters.length > 0 && (
+        <>
+          <input
+            value={tryUrl}
+            onChange={(e) => setTryUrl(e.target.value)}
+            placeholder="https://…"
+            className="mb-2 w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2 py-1.5 font-mono text-[11px]"
+            spellCheck={false}
+          />
+          <ul className="flex flex-col divide-y divide-line">
+            {adapters.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-2 py-2 text-xs">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold text-ink">
+                    {a.name}{" "}
+                    <span className="font-mono text-[10px] text-sub">
+                      {a.adapter_id} · v{a.version}
+                    </span>
+                    {a.enabled ? (
+                      <span className="ml-1 rounded-full bg-mint/20 px-2 py-0.5 text-[10px] font-bold text-ink">
+                        {s.adapterOn}
+                      </span>
+                    ) : (
+                      <span className="ml-1 rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-bold text-danger">
+                        {s.adapterOff}
+                      </span>
+                    )}
+                  </p>
+                  <p className="truncate text-[11px] text-sub">
+                    {a.kind} · {s.adapterStrikes}: {a.strikes}/3
+                    {a.last_error ? ` · ${a.last_error.slice(0, 60)}` : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={adapterTryId === a.adapter_id}
+                  onClick={() => onTryAdapter(a.adapter_id, tryUrl)}
+                  className="min-h-[36px] rounded-full border border-line px-3 text-[11px] font-bold text-ink disabled:opacity-40"
+                >
+                  {s.adapterTryBtn}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onToggleAdapter(a.adapter_id, !a.enabled)}
+                  className={`min-h-[36px] rounded-full px-3 text-[11px] font-bold ${
+                    a.enabled
+                      ? "border border-danger/40 text-danger"
+                      : "bg-sky-deep text-white"
+                  }`}
+                >
+                  {a.enabled ? s.adapterDisable : s.adapterEnable}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-[10px] text-sub">{s.adapterHint}</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ContentPackDialog({
   busy,
   text,
@@ -107,6 +198,8 @@ export function ContentPackDialog({
   catalog,
   installBusyId,
   ruleTryResult,
+  adapters,
+  adapterTryId,
   onText,
   onPickFile,
   onExportKind,
@@ -115,6 +208,8 @@ export function ContentPackDialog({
   onRollback,
   onInstall,
   onTryRule,
+  onToggleAdapter,
+  onTryAdapter,
   onClose,
 }: PackDialogProps) {
   const { dict, locale } = useI18n();
@@ -295,6 +390,14 @@ export function ContentPackDialog({
 
         {/* 规则试算（M3）：lint + 变量代入求值 */}
         <RuleTrySection ruleTryResult={ruleTryResult} onTryRule={onTryRule} />
+
+        {/* 适配器管理（M4）：沙箱插件启停/健康度/试调 */}
+        <AdapterSection
+          adapters={adapters}
+          adapterTryId={adapterTryId}
+          onToggleAdapter={onToggleAdapter}
+          onTryAdapter={onTryAdapter}
+        />
 
         {/* 已装包清单 + 回滚（A2：禁用即还原） */}
         <h3 className="mb-2 text-xs font-bold text-ink">{s.packInstalled}</h3>

@@ -302,6 +302,28 @@ async fn adapter_call(
         )));
     }
     let manifest = row_to_manifest(aid, kind, allow, secrets, rate);
+    // secret 预加载：仅 manifest.secrets_read 列出的键（调用前一次查库）
+    let mut secret_map = std::collections::HashMap::new();
+    if !manifest.secrets_read.is_empty() {
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT name, value FROM site_settings              WHERE name = ANY($1)",
+        )
+        .bind(
+            &manifest
+                .secrets_read
+                .iter()
+                .map(|n| format!("adapter_secret_{n}"))
+                .collect::<Vec<_>>(),
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .unwrap_or_default();
+        for (full, val) in rows {
+            if let Some(short) = full.strip_prefix("adapter_secret_") {
+                secret_map.insert(short.to_string(), val);
+            }
+        }
+    }
     // 出网执行器：同步签名（guest ABI），在 spawn_blocking 线程内借
     // tokio handle block_on 跑 async reqwest（reqwest 无 blocking feature）
     let http = Arc::new(
@@ -339,9 +361,31 @@ async fn adapter_call(
         };
         let wasm2 = wasm.clone();
         let url = url.to_string();
-        tokio::task::spawn_blocking(move || rt.call(&m, &wasm2, &url, http))
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
+        let secrets2 = secret_map.clone();
+        tokio::task::spawn_blocking(move || {
+            rt.call(&m, &wasm2, &url, http, secrets2)
+        })
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+    };
+    // guest 可能把失败折成 success:false JSON（SDK 口径）——视为 Err 计熔断
+    let result = match result {
+        Ok(out) => {
+            let v: Value =
+                serde_json::from_str(&out).unwrap_or(Value::Null);
+            if v.get("success").and_then(Value::as_bool) == Some(false) {
+                Err(DomainError::Validation(format!(
+                    "适配器 {}: {}",
+                    manifest.adapter_id,
+                    v.get("error")
+                        .and_then(Value::as_str)
+                        .unwrap_or("执行失败"),
+                )))
+            } else {
+                Ok(v)
+            }
+        }
+        Err(e) => Err(e),
     };
     match result {
         Ok(out) => {
@@ -354,7 +398,7 @@ async fn adapter_call(
             .await
             .ok();
             Ok(ok(serde_json::json!({
-                "adapter_id": manifest.adapter_id, "result": serde_json::from_str::<Value>(&out).unwrap_or(Value::String(out)),
+                "adapter_id": manifest.adapter_id, "result": out,
             })))
         }
         Err(e) => {
@@ -387,6 +431,122 @@ async fn adapter_call(
             Err(e)
         }
     }
+}
+
+/// 共用出网执行器（同步签名；spawn_blocking 线程内 Handle::block_on 桥）
+fn adapter_http_exec(
+) -> Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync> {
+    Arc::new(move |u: &str| -> Result<String, String> {
+        let rt = tokio::runtime::Handle::current();
+        let u = u.to_string();
+        rt.block_on(async move {
+            let client = reqwest::Client::new();
+            let resp = client
+                .get(&u)
+                .header("User-Agent", "FluxTorrent-Adapter/1.0")
+                .timeout(std::time::Duration::from_secs(20))
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+            let status = resp.status().as_u16();
+            let text = resp.text().await.map_err(|e| e.to_string())?;
+            if !(200..300).contains(&status) {
+                return Err(format!("HTTP {status}"));
+            }
+            Ok(text)
+        })
+    })
+}
+
+/// PT-Gen 路径的适配器优先钩子：启用的 metadata 适配器且 URL 命中其
+/// http_allow → 沙箱执行；guest JSON（{success,name,poster,descr}）折成
+/// PT-Gen 同形出口。任何失败 → None（调用方回退 PT-Gen，降级语义 §5.1）。
+/// 注意：此路径不维护 strikes（只读试探；熔断计数在 /admin/adapters/try
+/// 与未来的常规调用入口维护）。
+pub(crate) async fn try_adapter_metadata(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    url: &str,
+) -> Option<(String, String)> {
+    let rows: Vec<(String, Value, Value, i32, Vec<u8>)> = sqlx::query_as(
+        "SELECT adapter_id, http_allow, secrets_read,          rate_limit_per_min, wasm FROM adapters          WHERE enabled AND kind = 'metadata'",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .ok()?;
+    for (aid, allow, secrets, rate, wasm) in rows {
+        let manifest = row_to_manifest(
+            aid,
+            String::new(),
+            allow,
+            secrets,
+            rate,
+        );
+        if !AdapterRuntime::url_allowed_for(&manifest, url) {
+            continue;
+        }
+        // secret 预加载（白名单内）
+        let mut secret_map = std::collections::HashMap::new();
+        if !manifest.secrets_read.is_empty() {
+            let sk: Vec<(String, String)> = sqlx::query_as(
+                "SELECT name, value FROM site_settings                  WHERE name = ANY($1)",
+            )
+            .bind(
+                &manifest
+                    .secrets_read
+                    .iter()
+                    .map(|n| format!("adapter_secret_{n}"))
+                    .collect::<Vec<_>>(),
+            )
+            .fetch_all(&state.repo.db)
+            .await
+            .unwrap_or_default();
+            for (full, val) in sk {
+                if let Some(short) = full.strip_prefix("adapter_secret_") {
+                    secret_map.insert(short.to_string(), val);
+                }
+            }
+        }
+        let http = adapter_http_exec();
+        let rt = AdapterRuntime::global();
+        let m2 = AdapterManifest {
+            adapter_id: manifest.adapter_id.clone(),
+            kind: manifest.kind.clone(),
+            http_allow: manifest.http_allow.clone(),
+            secrets_read: manifest.secrets_read.clone(),
+            rate_limit_per_min: manifest.rate_limit_per_min,
+        };
+        let url2 = url.to_string();
+        let out = tokio::task::spawn_blocking(move || {
+            rt.call(&m2, &wasm, &url2, http, secret_map)
+        })
+        .await
+        .ok()?
+        .ok()?;
+        let v: Value = serde_json::from_str(&out).ok()?;
+        if v.get("success").and_then(Value::as_bool) != Some(true) {
+            continue;
+        }
+        let name = v
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let mut descr = v
+            .get("descr")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        if let Some(poster) = v
+            .get("poster")
+            .and_then(Value::as_str)
+            .filter(|p| !p.is_empty())
+        {
+            descr = format!("[img]{poster}[/img]
+{descr}");
+        }
+        return Some((name, descr));
+    }
+    None
 }
 
 pub fn mount_adapters(scope: actix_web::Scope) -> actix_web::Scope {

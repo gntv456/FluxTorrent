@@ -132,3 +132,26 @@ export interface RuleTryResult {
   domain: [number, number];
   vars: string[];
 }
+
+// ============ 适配器（生态商店 M4） ============
+
+/** GET /admin/adapters 的行 */
+export interface AdapterRow {
+  id: number;
+  adapter_id: string;
+  kind: "metadata" | "payment" | "indexer";
+  name: string;
+  version: string;
+  http_allow: string[];
+  rate_limit_per_min: number;
+  enabled: boolean;
+  strikes: number;
+  last_error: string;
+  installed_at: string;
+}
+
+/** POST /admin/adapters/try 的结果 */
+export interface AdapterTryResult {
+  adapter_id: string;
+  result: unknown;
+}

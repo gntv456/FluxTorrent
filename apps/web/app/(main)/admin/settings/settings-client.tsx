@@ -286,6 +286,10 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
           onRollback={io.packRollback}
           onInstall={io.installFromCatalog}
           onTryRule={io.tryRule}
+          adapters={io.adapters}
+          adapterTryId={io.adapterTryId}
+          onToggleAdapter={io.toggleAdapter}
+          onTryAdapter={io.tryAdapter}
           onClose={() => io.setPackOpen(false)}
         />
       )}

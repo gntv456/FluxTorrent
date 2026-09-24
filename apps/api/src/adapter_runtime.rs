@@ -48,6 +48,8 @@ struct HostState {
     rate: Arc<Mutex<(Instant, u64)>>,
     /// 出网执行器（async 由 wrapper 线程承接，见 host_http_fetch 注释）
     http: Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>,
+    /// manifest.secrets_read 预加载的键值（site_settings.adapter_secret_<名>）
+    secrets: std::collections::HashMap<String, String>,
 }
 
 impl HostState {
@@ -110,6 +112,13 @@ impl AdapterRuntime {
     /// `https://example.com/**` → 该 host 任意路径；
     /// `https://*.douban.com/**` → 子域（含裸域）任意路径；
     /// 无 `/**` 后缀 → 精确 URL。全部强制 https。
+    pub(crate) fn url_allowed_for(
+        manifest: &AdapterManifest,
+        url: &str,
+    ) -> bool {
+        Self::url_allowed(manifest, url)
+    }
+
     fn url_allowed(manifest: &AdapterManifest, url: &str) -> bool {
         let u = url.trim();
         let https = u.starts_with("https://");
@@ -142,6 +151,7 @@ impl AdapterRuntime {
         wasm_bytes: &[u8],
         url: &str,
         http: Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>,
+        secrets: std::collections::HashMap<String, String>,
     ) -> DomainResult<String> {
         let module = wasmtime::Module::new(&self.engine, wasm_bytes)
             .map_err(|e| adapter_err(manifest, &format!("wasm 编译失败: {e}")))?;
@@ -158,6 +168,7 @@ impl AdapterRuntime {
                 cache: Arc::new(Mutex::new(HashMap::new())),
                 rate: Arc::new(Mutex::new((Instant::now(), 0))),
                 http,
+                secrets,
             },
         );
         store.set_epoch_deadline(1);
@@ -244,7 +255,7 @@ impl AdapterRuntime {
             ))
             .and_then(|l| l.func_wrap(
                 "host",
-                "log",
+                "host_log",
                 |mut caller: wasmtime::Caller<'_, HostState>,
                  level: i32,
                  msg_ptr: i32, msg_len: i32| {
@@ -258,6 +269,32 @@ impl AdapterRuntime {
                             2 => tracing::warn!(adapter = store.manifest.adapter_id.as_str(), "{m}"),
                             _ => tracing::info!(adapter = store.manifest.adapter_id.as_str(), "{m}"),
                         }
+                    }
+                },
+            ))
+            .and_then(|l| l.func_wrap(
+                "host",
+                "secret",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 name_ptr: i32, name_len: i32,
+                 out_ptr: i32, out_cap: i32|
+                 -> i32 {
+                    let mem = match caller.get_export("memory").and_then(|e| e.into_memory()) {
+                        Some(m) => m,
+                        None => return -1,
+                    };
+                    let (data, store) = mem.data_and_store_mut(&mut caller);
+                    let name = match read_str(data, name_ptr, name_len) {
+                        Some(s) => s,
+                        None => return -1,
+                    };
+                    if !store.manifest.secrets_read.contains(&name) {
+                        // 白名单外请求：不留内容痕迹，长度 -5 区分
+                        return -5;
+                    }
+                    match store.secrets.get(&name) {
+                        Some(v) => write_str(data, out_ptr, out_cap, v),
+                        None => 0,
                     }
                 },
             ))
