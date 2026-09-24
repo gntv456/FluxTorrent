@@ -10,7 +10,9 @@ import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { TorrentDetailExt } from "@/components/torrent-detail-blocks";
 
 /** 种子详情页海报头（馒头/阳光口径：左海报 + 右主信息 + 操作行 + 状态卡）。
- *  从 app/(main)/torrent/[id]/page.tsx 按域拆出；数据装载与派生值留在 page.tsx。 */
+ *  从 app/(main)/torrent/[id]/page.tsx 按域拆出；数据装载与派生值留在 page.tsx。
+ *  0173 排版整理：标签行入头部（副标题↓、发布人↑）；操作区纵向语义分行
+ *  （主操作 → 互动与打赏 → 管理），不再混排换行。 */
 
 export function TorrentHead({
   t,
@@ -20,6 +22,7 @@ export function TorrentHead({
   left,
   subtitleChain,
   relTime,
+  tags,
   manage,
 }: {
   t: TorrentListItem;
@@ -32,7 +35,9 @@ export function TorrentHead({
   subtitleChain: string;
   /** 相对时间（馒头口径：x 天前；完整时间放 title） */
   relTime: (iso: string) => string;
-  /** 管理操作（编辑/补种/删除/促销购）：渲染进头部操作行（0166b 布局上移） */
+  /** 标签行（0173：副标题与发布人之间；undefined = 不渲染） */
+  tags?: React.ReactNode;
+  /** 管理操作（编辑/补种/删除/促销购）：渲染进头部管理行 */
   manage?: React.ReactNode;
 }) {
   const d = dict.tdetail;
@@ -58,6 +63,9 @@ export function TorrentHead({
             {t.small_descr}
           </p>
         )}
+
+        {/* 标签行（0173：副标题与发布人之间） */}
+        {tags && <div className="td-head__tags">{tags}</div>}
 
         <div className="td-head__badges">
           {t.sticky && (
@@ -109,21 +117,25 @@ export function TorrentHead({
           </span>
         </div>
 
-        {/* 操作行（馒头口径：主下载 + 次级动作横排；编辑/删除等管理动作同排） */}
+        {/* 操作区（0173 语义分行）：主操作 → 互动与打赏 → 管理 */}
         <div className="td-head__actions">
-          <DownloadButton
-            torrentId={t.id}
-            name={t.name}
-            price={ext?.price}
-            purchased={ext?.purchased}
-            isOwner={ext?.is_owner}
-          />
+          <div className="td-head__actions-row">
+            <DownloadButton
+              torrentId={t.id}
+              name={t.name}
+              price={ext?.price}
+              purchased={ext?.purchased}
+              isOwner={ext?.is_owner}
+            />
+            <WishlistButton keyword={t.name} />
+          </div>
           <TorrentSocial torrentId={t.id} />
-          <WishlistButton keyword={t.name} />
-          {t.seeders === 0 && (
-            <ResurrectButton torrentId={t.id} name={t.name} />
-          )}
-          {manage}
+          <div className="td-head__actions-row">
+            {t.seeders === 0 && (
+              <ResurrectButton torrentId={t.id} name={t.name} />
+            )}
+            {manage}
+          </div>
         </div>
       </div>
 

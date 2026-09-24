@@ -166,6 +166,11 @@ export default async function TorrentDetailPage({
         left={left}
         subtitleChain={subtitleChain}
         relTime={relTime}
+        tags={
+          agg.tags.dict.length + agg.tags.mine.length > 0 ? (
+            <TorrentTags torrentId={t.id} initial={agg.tags} />
+          ) : undefined
+        }
         manage={
           <>
             <PromoBuyButton torrentId={t.id} />
@@ -228,12 +233,7 @@ export default async function TorrentDetailPage({
         {t.rating && <Spec value={t.rating} label={d?.ratingLabel} num />}
       </section>
 
-      {/* ===== 标签（贴副标题下：标签行紧跟头部，管理操作在头部操作行） ===== */}
-      {agg.tags.dict.length + agg.tags.mine.length > 0 && (
-        <div className="td-tags-inline">
-          <TorrentTags torrentId={t.id} initial={agg.tags} />
-        </div>
-      )}
+      {/* ===== 标签（0173：移入头部，副标题与发布人之间） ===== */}
 
       {/* ===== 简介（默认展开；其余折叠分区默认收起） ===== */}
       {ext?.descr && (
