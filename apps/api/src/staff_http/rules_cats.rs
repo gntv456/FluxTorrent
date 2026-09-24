@@ -131,6 +131,9 @@ pub async fn rule_delete(
 #[derive(Deserialize)]
 struct CatBody {
     name: String,
+    /// 图标键（0166）：前端 Icon 语义名（film/tv/music/…）；空 = 回落分类名首字
+    #[serde(default)]
+    icon_key: Option<String>,
 }
 
 #[derive(serde::Serialize, sqlx::FromRow)]
@@ -140,6 +143,7 @@ struct CatRow {
     mode_id: Option<i32>,
     auto_approve: bool,
     torrents: i64,
+    icon_key: String,
 }
 
 #[get("/admin/categories")]
@@ -155,7 +159,7 @@ pub async fn category_list(
     )
     .await?;
     let rows: Vec<CatRow> = sqlx::query_as(
-        "SELECT c.id, c.name, c.mode_id, c.auto_approve, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
+        "SELECT c.id, c.name, c.mode_id, c.auto_approve, c.icon_key, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
          FROM categories c ORDER BY c.id",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -205,12 +209,15 @@ pub async fn category_update(
         crate::authz::perm::CATEGORIES_MANAGE,
     )
     .await?;
-    let n = sqlx::query("UPDATE categories SET name=$2 WHERE id=$1")
-        .bind(*path)
-        .bind(&body.name)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let n = sqlx::query(
+        "UPDATE categories SET name=$2, icon_key=$3 WHERE id=$1",
+    )
+    .bind(*path)
+    .bind(&body.name)
+    .bind(body.icon_key.clone().unwrap_or_default())
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if n.rows_affected() == 0 {
         return Err(DomainError::NotFound(*path as i64));
     }

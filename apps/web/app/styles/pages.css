@@ -760,6 +760,11 @@
   font-weight: 700;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
+/* 图标键形态（0166）：SVG 描边图形，白描边 + 轻投影与色块底融合 */
+.torrents-cat-ico {
+  color: #fff;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+}
 
 /* 封面列（竖版海报 2:3；无图回退类型色块 + 🎬） */
 .torrents-td-cover {

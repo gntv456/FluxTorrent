@@ -197,12 +197,17 @@ export function StaffCatsPanel({
                     className="cmgmt-act"
                     onClick={() => {
                       const nn = prompt(t.renamePrompt, c.name);
-                      if (nn && nn !== c.name)
-                        void guard(async () => {
-                          await api.put(`/api/v1/admin/categories/${c.id}`, {
-                            name: nn,
-                          });
-                        }, t.saved);
+                      if (nn === null || nn === c.name) return;
+                      // 图标键（0166）：默认套 film/tv/music/anime/game/app/
+                      // book/sport/doc/edu；留空回落分类名首字色块
+                      const ik = prompt(t.iconKeyPrompt, c.icon_key ?? "");
+                      if (ik === null) return;
+                      void guard(async () => {
+                        await api.put(`/api/v1/admin/categories/${c.id}`, {
+                          name: nn,
+                          icon_key: ik.trim(),
+                        });
+                      }, t.saved);
                     }}
                   >
                     {dict.cmgmt.btnEdit}

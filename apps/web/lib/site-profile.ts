@@ -23,7 +23,7 @@ export interface SiteProfile {
   subtitle_kind?: string;
   /** 字幕区显示名（0146；默认「字幕」，音乐站「歌词」） */
   subtitle_label?: string;
-  categories: { id: number; name: string }[];
+  categories: { id: number; name: string; icon_key?: string }[];
   modules: Record<string, boolean>;
 }
 

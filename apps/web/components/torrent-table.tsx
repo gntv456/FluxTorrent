@@ -78,13 +78,17 @@ async function TorrentTr({
   t,
   extra,
   selectable,
+  catIcons,
 }: {
   t: TorrentListItem | PreserveRowAlias;
   /** 行尾附加列（保种区的认领人/认领按钮）；渲染在数字列后、行为列前 */
   extra?: React.ReactNode;
   /** 列表页批量下载：首列渲染选择框（表格视图专用，保种区等复用方不传） */
   selectable?: boolean;
+  /** 分类图标键（0166）：site-profile categories 下发；缺省回落首字色块 */
+  catIcons?: Record<number, string>;
 }) {
+  const icons = catIcons ?? {};
   const { dict, locale } = await getDict();
   const id = "torrent_id" in t ? t.torrent_id : t.id;
   const promo = promotionBadge(
@@ -127,7 +131,7 @@ async function TorrentTr({
           <BatchCheckbox id={id} />
         </td>
       )}
-      {/* 类型（色块 + 分类名首字；40px 对齐好学 catsprites 观感） */}
+      {/* 类型（0166：分类图标默认套，站长后台 icon_key 可替换；空键回落首字色块） */}
       <td className="torrents-td-cat">
         <span
           aria-hidden
@@ -135,7 +139,15 @@ async function TorrentTr({
           style={{ background: catColor(t.category_id) }}
           title={dict.torrents.categories[t.category_id] ?? ""}
         >
-          {(dict.torrents.categories[t.category_id] ?? "?").slice(0, 1)}
+          {icons[t.category_id] ? (
+            <Icon
+              name={icons[t.category_id]}
+              size={22}
+              className="torrents-cat-ico"
+            />
+          ) : (
+            (dict.torrents.categories[t.category_id] ?? "?").slice(0, 1)
+          )}
         </span>
       </td>
       {/* 封面（好学站 46px 外链图；无图回退类型色块底 + 🎬） */}
@@ -205,7 +217,9 @@ async function TorrentTr({
         <div className="torrents-meta">
           <span className="torrents-tags">
             {t.official && (
-              <span className="torrents-tag torrents-tag--official">官方</span>
+              <span className="torrents-tag torrents-tag--official">
+                {dict.torrents.officialTag}
+              </span>
             )}
             {t.sticky && (
               <span className="torrents-tag torrents-tag--sticky">

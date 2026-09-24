@@ -3591,6 +3591,7 @@ usertools: {
     unbanned: "Unbanned",
     banEmpty: "No bans yet.",
     renamePrompt: "Rename category:",
+    iconKeyPrompt: "Category icon key (film/tv/music/anime/game/app/book/sport/doc/edu, empty = initial-letter block):",
     mailNew: "Send mass mail",
     btnSend: "Send",
     mailQueued: "Mail queued",
