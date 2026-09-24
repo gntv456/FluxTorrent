@@ -1,0 +1,18 @@
+[package]
+name = "adapter-douban"
+version = "1.0.0"
+edition = "2021"
+# 宿主 ABI 样例：cargo build --target wasm32-unknown-unknown --release
+# 产物 target/wasm32-unknown-unknown/release/adapter_douban.wasm 经
+# base64 后 POST /admin/adapters/install 安装。
+
+[workspace] # 独立小workspace：不进主 workspace（主仓不背 no_std 依赖面）
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+panic = "abort"
+strip = true

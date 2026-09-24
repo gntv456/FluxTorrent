@@ -41,3 +41,5 @@ rsa = "0.9"
 ammonia.workspace = true
 regex.workspace = true
 lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
+evalexpr = { version = "13.1.0", default-features = false }
+wasmtime = "49.0.0"
