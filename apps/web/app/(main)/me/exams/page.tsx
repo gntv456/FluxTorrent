@@ -27,11 +27,14 @@ interface ExamRow {
   };
 }
 
-/** 我的考核（0093）：进行中/已完成/失败的考核 + 当前值 vs 目标进度 */
+/** 我的考核（0093）：进行中/已完成/失败的考核 + 当前值 vs 目标进度。
+ *  客户端页无法直接用 RSC 版 requireModule——开关关闭时渲染统一空态（二审 G2-2）。 */
 export default function MyExamsPage() {
   const { dict, locale } = useI18n();
   const t = dict.exams;
   const [rows, setRows] = useState<ExamRow[] | null>(null);
+  // exams 模块守卫：缺键视为开（与网关/导航口径一致）
+  const [gated, setGated] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -40,6 +43,29 @@ export default function MyExamsPage() {
       .catch(() => setRows([]));
   }, []);
   useEffect(load, [load]);
+  useEffect(() => {
+    fetch("/api/v1/site-profile")
+      .then((r) => r.json())
+      .then(
+        (b: { data?: { modules?: Record<string, boolean> } }) => {
+          if (b?.data?.modules?.exams === false) setGated(true);
+        },
+      )
+      .catch(() => {});
+  }, []);
+  if (gated) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center">
+        <p className="text-4xl" aria-hidden>
+          🚧
+        </p>
+        <h1 className="mt-4 text-lg font-semibold">
+          {dict.mod.disabledTitle}
+        </h1>
+        <p className="mt-2 text-sm text-muted">{dict.mod.disabledBody}</p>
+      </div>
+    );
+  }
 
   const metricLabel: Record<string, string> = {
     upload_delta: t.mUpload,

@@ -154,7 +154,8 @@ export async function Header() {
             ...(mod("messages")
               ? [{ href: "/messages", label: dict.nav.messages }]
               : []),
-            { href: "/myhr", label: dict.nav.myhr },
+            // H&R 入口归 exams 键（/me/hr 网关同口径，二审 G2-3）
+            ...(mod("exams") ? [{ href: "/myhr", label: dict.nav.myhr }] : []),
             { href: "/faq", label: dict.nav.faq },
             ...(mod("magic_pool")
               ? [{ href: "/donate", label: dict.nav.donate }]

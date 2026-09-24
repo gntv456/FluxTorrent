@@ -22,6 +22,19 @@ import type { HomeData } from "@/components/home-data";
 export function HomeSections() {
   const { dict, currency } = useI18n();
   const t = dict.home2;
+  // 模块开关（二审 G2-1 修复）：attendance/shoutbox/funbox/lucky_draw 板块
+  // 按对应模块过滤——games/attendance/shoutbox 关闭的站首页不再出现对应板块。
+  // 缺键视为开（与 requireModule/Header mod() 同口径）。
+  const [mods, setMods] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    fetch("/api/v1/site-profile")
+      .then((r) => r.json())
+      .then((b: { data?: { modules?: Record<string, boolean> } }) =>
+        setMods(b?.data?.modules ?? {}),
+      )
+      .catch(() => setMods({}));
+  }, []);
+  const mod = (k: string) => mods[k] !== false;
   const [data, setData] = useState<HomeData | null>(null);
   const [err, setErr] = useState(false);
   const [modal, setModal] = useState<number | null>(null);
@@ -64,7 +77,13 @@ export function HomeSections() {
   const headlineBodyPlain =
     headline?.body.replace(/<[^>]+>/g, "").slice(0, 160) ?? "";
 
-  const layout = parseHomeLayout(data.home_layout);
+  // 模块关闭的板块从排版中剔除（含站长自定义 home_layout 里显式排进的）
+  const layout = parseHomeLayout(data.home_layout).filter((i) => {
+    if (i.key === "attendance") return mod("attendance");
+    if (i.key === "shoutbox") return mod("shoutbox");
+    if (i.key === "funbox" || i.key === "lucky_draw") return mod("games");
+    return true;
+  });
   // 闭包内 TS 判窄失效：固化非空引用供 renderSection 使用
   const home = data;
 

@@ -23,13 +23,20 @@ export async function Footer() {
   const siteName = profile.brand || "FluxTorrent";
   const foundedDate = profile.founded || String(year);
 
+  // 快捷导航按模块开关过滤（二审 G2-8 修复）：forums/requests 关闭的站
+  // 页脚不再保留死入口；缺键视为开（与 requireModule 口径一致）
+  const mod = (k: string) => profile.modules[k] !== false;
   const links = [
     { href: "/", label: dict.nav.home },
     { href: "/torrents", label: dict.nav.library },
     { href: "/torrents?official=1", label: dict.nav.official },
-    { href: "/forums", label: dict.nav.forums },
+    ...(mod("forums")
+      ? [{ href: "/forums", label: dict.nav.forums }]
+      : []),
     { href: "/top", label: dict.nav.top },
-    { href: "/requests", label: dict.nav.requests },
+    ...(mod("requests")
+      ? [{ href: "/requests", label: dict.nav.requests }]
+      : []),
   ];
 
   return (
