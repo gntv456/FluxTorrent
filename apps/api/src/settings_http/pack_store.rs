@@ -203,10 +203,13 @@ pub(super) async fn apply_taxonomy(
         .await
         .map_err(internal)?;
     for (id, name, icon) in &data.cats {
+        // 图标语义（二审 G7e 修复）：包未声明图标（空串）时保留现有图标，
+        // 不抹空——与站型 apply 路径（只 UPDATE name）口径一致。
         sqlx::query(
             "INSERT INTO categories (id, name, icon_key) VALUES ($1, $2, $3) \
              ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, \
-             icon_key = EXCLUDED.icon_key",
+             icon_key = COALESCE(NULLIF(EXCLUDED.icon_key, ''), \
+               categories.icon_key)",
         )
         .bind(id)
         .bind(name)
