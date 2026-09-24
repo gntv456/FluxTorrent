@@ -63,10 +63,21 @@ pub async fn home_sections(
     };
 
     // ---- 个人段：签到日历（per-user，永不进共享缓存）----
-    let attendance = attendance_json(&state.repo.db, uid).await?;
+    // 二审 G8：attendance/games 模块关闭时不下发对应板块（前端也无入口），
+    // 空数据会让关闭模块的站首页仍出现签到日历/抽奖流水。
+    let attendance_on = state.require_module("attendance").await.is_ok();
+    let attendance = if attendance_on {
+        attendance_json(&state.repo.db, uid).await?
+    } else {
+        serde_json::json!({ "off": true })
+    };
 
     let mut out = shared;
     out["attendance"] = attendance;
+    let games_on = state.require_module("games").await.is_ok();
+    if !games_on {
+        out["lucky_draw"] = serde_json::json!([]);
+    }
     Ok(ok(out))
 }
 
