@@ -632,7 +632,7 @@ const zhTwBase: Omit<
     groupOrder: "標籤與排序",
   },
   promoBuy: {
-    title: "推廣本種子",
+    title: "購買置頂免費",
     pick: "選擇檔位",
     buy: "購買",
     busy: "處理中…",
@@ -3448,6 +3448,19 @@ usertools: {
     ruleDomain: "值域",
     ruleTryHint:
       "白名單：算術 / 比較 / min / max，變數 term_days；越域或求值失敗自動回落內建預設。規則包 JSON：kind=rules，payload.rules={rule_鍵: 運算式}。",
+    // 適配器（生態商店 M4）
+    adapterTitle: "適配器（沙箱插件）",
+    adapterEmpty: "尚未安裝適配器",
+    adapterOn: "執行中",
+    adapterOff: "已停用",
+    adapterStrikes: "連續失敗",
+    adapterTryBtn: "試調",
+    adapterEnable: "啟用",
+    adapterDisable: "停用",
+    adapterToggled: "適配器 {id} 已{state}",
+    adapterTryOk: "適配器 {id} 呼叫成功",
+    adapterHint:
+      "適配器在行程內 WASM 沙箱執行：出網走白名單、失敗 3 次自動熔斷停用；連續失敗計數與最近錯誤見各條目。",
     revealConfirm: "即將顯示明文，確認繼續？",
     revealConfirmYes: "確認顯示",
     cancel: "取消",

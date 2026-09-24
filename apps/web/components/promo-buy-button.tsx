@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
+import { Modal } from "@/components/modal";
 
 /** 用户自购置顶/限时免费（0101，好学站插件口径）：
  *  档位 = sticky1 一级置顶 / sticky2 二级置顶 / free 限时免费 × 24/72 小时，
- *  价目来自 /promo/plans；购买走 /promo/buy（幂等键防双扣）。 */
+ *  价目来自 /promo/plans；购买走 /promo/buy（幂等键防双扣）。
+ *  0173：详情页头部只留「购买置顶免费」按钮，档位选择进覆盖式弹窗。 */
 interface PlanEntry {
   hours: number;
   price: number;
@@ -17,6 +20,8 @@ interface PlansResp {
   enabled: boolean;
   plans: Record<string, PlanEntry[]>;
 }
+
+const KIND_ORDER = ["sticky1", "sticky2", "free"] as const;
 
 const KIND_LABELS: Record<string, string> = {
   sticky1: "一级置顶",
@@ -34,7 +39,7 @@ export function PromoBuyButton({
   const { dict } = useI18n();
   const router = useRouter();
   const t = dict.promoBuy ?? {
-    title: "推广本种子",
+    title: "购买置顶免费",
     pick: "选择档位",
     buy: "购买",
     busy: "处理中…",
@@ -43,6 +48,7 @@ export function PromoBuyButton({
     disabled: "功能未开放",
   };
   const [plans, setPlans] = useState<PlansResp | null>(null);
+  const [open, setOpen] = useState(false);
   const [pick, setPick] = useState<string>("");
   const [msg, setMsg] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
@@ -84,9 +90,7 @@ export function PromoBuyButton({
       router.refresh();
     } catch (err) {
       setMsg(
-        err instanceof ApiError
-          ? err.message
-          : (dict.common.networkError ?? "失败"),
+        err instanceof ApiError ? err.message : dict.common.networkError,
       );
     } finally {
       setBusy(false);
@@ -99,30 +103,79 @@ export function PromoBuyButton({
   if (entries.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-1 rounded-[var(--r-sm)] border border-line bg-cloud p-2">
-      <span className="text-xs font-bold">{t.title}</span>
-      <select
-        aria-label={t.pick}
-        className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-white px-2 text-xs"
-        value={pick}
-        onChange={(e) => setPick(e.target.value)}
-      >
-        {entries.map((e) => (
-          <option key={e.key} value={e.key}>
-            {KIND_LABELS[e.kind] ?? e.kind} {e.hours}h — {e.price} 魔力
-          </option>
-        ))}
-      </select>
+    <>
       <button
         type="button"
-        disabled={busy || !pick}
-        className="min-h-[36px] rounded-full bg-sun px-3 text-xs font-bold text-ink active:scale-[0.97] disabled:opacity-50"
-        onClick={() => void buy()}
+        onClick={() => setOpen(true)}
+        className="min-h-[36px] rounded-full bg-sun px-4 text-xs font-bold text-ink active:scale-[0.97]"
       >
-        {busy ? t.busy : t.buy}
+        {t.title}
       </button>
-      {msg && <p className="text-xs text-danger">{msg}</p>}
-      {okMsg && <p className="text-xs text-mint">{okMsg}</p>}
-    </div>
+      <Modal open={open} onClose={() => setOpen(false)} title={t.title}>
+        <div className="flex flex-col gap-3">
+          {KIND_ORDER.map((kind) => {
+            const list = plans.plans[kind] ?? [];
+            if (list.length === 0) return null;
+            return (
+              <fieldset
+                key={kind}
+                className="flex flex-col gap-1.5 text-xs"
+              >
+                <legend className="font-bold">
+                  {KIND_LABELS[kind] ?? kind}
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {list.map((e) => {
+                    const key = `${kind}:${e.hours}`;
+                    const on = pick === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setPick(key)}
+                        className={
+                          "min-h-[36px] rounded-full border px-3 " +
+                          "text-xs font-bold transition-colors " +
+                          (on
+                            ? "border-sun bg-sun text-ink"
+                            : "border-line text-sub hover:border-sky")
+                        }
+                      >
+                        {e.hours}h · {e.price}
+                        {" "}
+                        {fmt(dict.common.spark, {
+                          magic: e.price,
+                        })}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            );
+          })}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              disabled={busy || !pick}
+              onClick={() => void buy()}
+              className="min-h-[36px] rounded-full bg-sky-deep px-5 text-xs font-bold text-white disabled:opacity-50"
+            >
+              {busy ? t.busy : t.buy}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setOpen(false)}
+              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-sub disabled:opacity-50"
+            >
+              {dict.common.cancel}
+            </button>
+          </div>
+          {msg && <p className="text-xs text-danger">{msg}</p>}
+          {okMsg && <p className="text-xs text-mint">{okMsg}</p>}
+        </div>
+      </Modal>
+    </>
   );
 }

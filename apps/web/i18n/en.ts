@@ -635,7 +635,7 @@ const enBase: Omit<
     groupOrder: "Tag & sorting",
   },
   promoBuy: {
-    title: "Boost this torrent",
+    title: "Buy Pin & Free",
     pick: "Choose a plan",
     buy: "Purchase",
     busy: "Processing…",
@@ -3503,6 +3503,19 @@ usertools: {
     ruleDomain: "domain",
     ruleTryHint:
       "Whitelist: arithmetic / comparison / min / max, variable term_days; out-of-domain or failed evaluation falls back to built-in default. Rule pack JSON: kind=rules, payload.rules={rule_key: expr}.",
+    // Adapters (marketplace M4)
+    adapterTitle: "Adapters (sandboxed)",
+    adapterEmpty: "No adapters installed",
+    adapterOn: "running",
+    adapterOff: "disabled",
+    adapterStrikes: "strikes",
+    adapterTryBtn: "Test call",
+    adapterEnable: "Enable",
+    adapterDisable: "Disable",
+    adapterToggled: "Adapter {id} {state}",
+    adapterTryOk: "Adapter {id} call succeeded",
+    adapterHint:
+      "Adapters run in an in-process WASM sandbox: egress is allow-listed, 3 consecutive failures auto-disable (circuit breaker); strikes and last error shown per row.",
     revealConfirm: "Reveal cleartext — continue?",
     revealConfirmYes: "Reveal",
     cancel: "Cancel",

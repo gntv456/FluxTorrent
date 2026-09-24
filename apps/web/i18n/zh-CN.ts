@@ -628,7 +628,7 @@ const zhCnBase = {
     groupOrder: "标签与排序",
   },
   promoBuy: {
-    title: "推广本种子",
+    title: "购买置顶免费",
     pick: "选择档位",
     buy: "购买",
     busy: "处理中…",
@@ -3465,6 +3465,19 @@ usertools: {
     ruleDomain: "值域",
     ruleTryHint:
       "白名单：算术 / 比较 / min / max，变量 term_days；越域或求值失败自动回落内置默认。规则包 JSON：kind=rules，payload.rules={rule_键: 表达式}。",
+    // 适配器（生态商店 M4）
+    adapterTitle: "适配器（沙箱插件）",
+    adapterEmpty: "尚未安装适配器",
+    adapterOn: "运行中",
+    adapterOff: "已停用",
+    adapterStrikes: "连续失败",
+    adapterTryBtn: "试调",
+    adapterEnable: "启用",
+    adapterDisable: "停用",
+    adapterToggled: "适配器 {id} 已{state}",
+    adapterTryOk: "适配器 {id} 调用成功",
+    adapterHint:
+      "适配器在进程内 WASM 沙箱运行：出网走白名单、失败 3 次自动熔断停用；连续失败计数与最近错误见各条目。",
     revealConfirm: "即将显示明文，确认继续？",
     revealConfirmYes: "确认显示",
     cancel: "取消",

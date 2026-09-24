@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { TagPayload } from "@/components/torrent-tags";
 import { normTagRow } from "@/components/torrent-tags";
+import { Modal } from "@/components/modal";
 
 /** 种子作者/管理操作（NP edit.php/delete.php 口径）：
  *  编辑（全字段：名称/副题/分类/多维质量/简介/IMDB/匿名/标签整组）→ 回退待审；
@@ -184,13 +185,9 @@ export function TorrentManage({
         </button>
       </div>
 
-      {open && (
-        <div
-          role="dialog"
-          aria-label={t.edit}
-          className="flex w-full flex-col gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
-        >
-          <h3 className="text-sm font-bold">{t.edit}</h3>
+      {/* 0173：编辑改覆盖式弹窗——不再内嵌展开挤动详情页布局 */}
+      <Modal open={open} onClose={() => setOpen(false)} title={`✎ ${t.edit}`}>
+        <div className="flex w-full flex-col gap-2">
           <label className="flex flex-col gap-1 text-xs">
             {t.fieldName}
             <input
@@ -337,7 +334,7 @@ export function TorrentManage({
             </button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {msg && (
         <p className="text-xs text-sub" role="status">
