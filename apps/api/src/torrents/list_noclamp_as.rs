@@ -152,6 +152,15 @@ pub async fn list_torrents_noclamp_as(
     // 促销两列（kind + 到期）：一次 LATERAL 取「命中的最高优先级促销」，
     // 替代此前两条除 SELECT 列外完全相同的 correlated 子查询（方案 P0-5，每行省一次 promotions 扫描）。
     let promo_lateral = promo::lateral_latest();
+    // 旧三列筛选走双路：只写了 sections 的种子也要能被「按媒介/学段/版本」筛到
+    // （legacy_filter_dual 的返回串不含花括号，可安全嵌进 format!）
+    let medium_pred = super::section_pred::legacy_filter_dual("media", "$2")
+        .unwrap_or_else(|| "($2::int IS NULL OR t.medium_id = $2)".into());
+    let grade_pred = super::section_pred::legacy_filter_dual("grades", "$3")
+        .unwrap_or_else(|| "($3::int IS NULL OR t.grade_id = $3)".into());
+    let edition_pred =
+        super::section_pred::legacy_filter_dual("editions", "$4")
+            .unwrap_or_else(|| "($4::int IS NULL OR t.edition_id = $4)".into());
     // 游标谓词（方案批次二）：$7 = 游标 id，$26 = 排序键值（文本进、按列 cast 比较）。
     // 二元 keyset「(排序列, id)」与 ORDER BY 完全同序，非默认排序翻页不再丢行；
     // 旧格式游标（val=None，历史链接）sortval 为 NULL → 退化为回到第一页。
@@ -190,9 +199,9 @@ pub async fn list_torrents_noclamp_as(
         {promo_lateral}
         WHERE {approval_gate}
           AND ($1::int[] IS NULL OR t.category_id = ANY($1))
-          AND ($2::int IS NULL OR t.medium_id = $2)
-          AND ($3::int IS NULL OR t.grade_id = $3)
-          AND ($4::int IS NULL OR t.edition_id = $4)
+          AND {medium_pred}
+          AND {grade_pred}
+          AND {edition_pred}
           AND ($5::bool IS NULL OR t.official_tag = $5)
           {alive_pred}
           {approval_pred}
@@ -265,8 +274,8 @@ pub async fn list_torrents_noclamp_as(
     let count_sql = format!(
         "SELECT count(*) FROM (SELECT 1 FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          WHERE {approval_gate_count} \
-         AND ($1::int[] IS NULL OR t.category_id = ANY($1)) AND ($2::int IS NULL OR t.medium_id = $2) \
-         AND ($3::int IS NULL OR t.grade_id = $3) AND ($4::int IS NULL OR t.edition_id = $4) \
+         AND ($1::int[] IS NULL OR t.category_id = ANY($1)) AND {medium_pred} \
+         AND {grade_pred} AND {edition_pred} \
          AND ($5::bool IS NULL OR t.official_tag = $5) {alive_pred} {approval_pred} {status_pred} \
          {bookmark_pred} {search_pred} \
          {tag_pred} \
