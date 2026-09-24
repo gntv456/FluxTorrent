@@ -2,74 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
 /** 论坛回帖与帖子级管理操作（从 forum-composer.tsx 按域拆出）：
  *  ReplyBox 回帖、TopicModActions 主题管理（版主）、PostActions 帖子编辑/删除。
  *  发新主题（含悬赏/投票/抽奖）见 forum-composer.tsx。 */
-
-/** 主题页回复框——对接 POST /forums/topics/{id}/reply */
-export function ReplyBox({ topicId }: { topicId: number }) {
-  const { dict } = useI18n();
-  const router = useRouter();
-  const [body, setBody] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setMsg(null);
-    try {
-      await api.post(`/api/v1/forums/topics/${topicId}/reply`, {
-        body: body.trim(),
-      });
-      setBody("");
-      router.refresh();
-    } catch (err) {
-      setMsg(
-        err instanceof ApiError
-          ? (dict.errors[err.code] ?? err.message)
-          : dict.common.networkError,
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form
-      onSubmit={submit}
-      className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
-    >
-      <label className="flex flex-col gap-1">
-        <span className="text-sm text-sub">{dict.forums.replyTitle}</span>
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          required
-          rows={3}
-          maxLength={5000}
-          placeholder={dict.forums.replyPlaceholder}
-          className="min-h-[80px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2 text-sm outline-none focus:border-sky"
-        />
-      </label>
-      {msg && (
-        <p role="alert" className="text-sm text-danger">
-          {msg}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={busy}
-        className="min-h-[44px] self-start rounded-full bg-sky px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
-      >
-        {busy ? dict.forums.posting : dict.forums.submitReply}
-      </button>
-    </form>
-  );
-}
 
 /** 主题管理操作（版主/postmanage）——置顶/锁定/移动/删主题 */
 export function TopicModActions({
@@ -222,7 +161,7 @@ export function PostActions({
 
   if (editing) {
     return (
-      <div className="mt-2 flex flex-col gap-2">
+      <div className="flex w-full flex-col gap-2">
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -251,8 +190,10 @@ export function PostActions({
     );
   }
 
+  // display:contents —— 让编辑/删除按钮直接成为楼层操作行（ACTION_BAR）的
+  // flex 子项，渲染在打赏/赞之前（2026-09-23 用户要求：编辑放在赞前面）。
   return (
-    <div className="mt-2 flex items-center gap-2">
+    <div className="contents">
       <button className={btn} onClick={() => setEditing(true)}>
         编辑
       </button>

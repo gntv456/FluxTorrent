@@ -1,26 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPosts, getForums } from "@/lib/data";
-import {
-  ReplyBox,
-  TopicModActions,
-  PostActions,
-} from "@/components/forum-post-actions";
-import { MarkdownRenderer } from "@/components/forum-markdown";
+import { TopicModActions } from "@/components/forum-post-actions";
+import { ReplyBox } from "@/components/forum-reply-box";
 import { TypeBadge, TagChip } from "@/components/forum-bits";
 import { Icon } from "@/components/icons";
-import {
-  PostVoteBar,
-  TopicFavoriteButton,
-  BountyAcceptButton,
-  PostTipButton,
-} from "@/components/forum-vote";
+import { TopicFavoriteButton } from "@/components/forum-vote";
 import { PollWidget } from "@/components/forum-poll";
 import { LotteryWidget } from "@/components/forum-lottery";
 import { ReportTopicButton } from "@/components/forum-report";
 import { FollowButton } from "@/components/forum-follow";
+import { PostRow } from "./_parts/post-row";
 import { getDict } from "@/i18n/server";
-import { dateLocale, fmt } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +20,10 @@ export default async function TopicPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ before?: string }>;
+  searchParams: Promise<{ before?: string; reply_to?: string }>;
 }) {
   const { id } = await params;
-  const { before } = await searchParams;
+  const { before, reply_to } = await searchParams;
   const topicId = Number(id);
   const { dict, locale, currency } = await getDict();
   if (!Number.isFinite(topicId)) notFound();
@@ -41,6 +32,13 @@ export default async function TopicPage({
   // 版主「移动到」下拉用：仅 can_mod 时才需要
   const forums = detail.can_mod ? await getForums() : [];
   const authId = detail.current_user_id ?? -1;
+  // 楼中楼（0163）：?reply_to=N 定位目标楼（含楼中楼），供回复框显示徽标
+  const replyToId = Number(reply_to) || null;
+  const replyTarget = replyToId
+    ? (detail.posts
+        .flatMap((p) => [p, ...(p.replies ?? [])])
+        .find((x) => x.id === replyToId) ?? null)
+    : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -179,76 +177,16 @@ export default async function TopicPage({
       <table className="nexus-table">
         <tbody>
           {detail.posts.map((p, i) => (
-            <tr key={p.id} id={`p${p.id}`} className="align-top">
-              <td className="w-36 border-r border-line bg-[rgba(255,232,197,0.45)] p-3">
-                <span className="font-bold text-sky">
-                  {p.username ?? dict.torrent.anonymous}
-                </span>
-                <p className="mt-1 text-[11px] text-sub">
-                  {fmt(dict.forums.floor, { n: i + 1 })}
-                </p>
-              </td>
-              <td className="p-3">
-                <MarkdownRenderer source={p.body} />
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-sub">
-                  <span>
-                    {new Date(p.created_at).toLocaleString(dateLocale(locale))}
-                  </span>
-                  {p.edited_at && (
-                    <span className="italic">
-                      已由 #{p.edited_by} 编辑于{" "}
-                      {new Date(p.edited_at).toLocaleString(dateLocale(locale))}
-                    </span>
-                  )}
-                  {/* 中选楼层标记（0124）：楼主采纳的回复 */}
-                  {detail.bounty_post_id === p.id && (
-                    <span className="rounded-full bg-[var(--coral-soft)] px-2 py-0.5 font-bold text-coral">
-                      ✓ {dict.forums.bountyPicked}
-                    </span>
-                  )}
-                  {/* 悬赏未决 + 我是楼主 + 这层不是首帖：显示采纳按钮 */}
-                  {detail.topic_type === "bounty" &&
-                    detail.bounty_status === "open" &&
-                    detail.is_op &&
-                    i > 0 &&
-                    p.user_id !== authId && (
-                      <BountyAcceptButton
-                        topicId={topicId}
-                        postId={p.id}
-                        spark={detail.bounty_spark ?? 0}
-                        currency={currency}
-                      />
-                    )}
-                  {authId > 0 && (
-                    <span className="ml-auto flex items-center gap-2">
-                      {/* 打赏（0127）：非本人的楼都可打赏（匿名楼 user_id 为空不渲染） */}
-                      {p.user_id && p.user_id !== authId && (
-                        <PostTipButton
-                          postId={p.id}
-                          tips={p.tips ?? 0}
-                          tipCount={p.tip_count ?? 0}
-                          currency={currency}
-                        />
-                      )}
-                      <PostVoteBar
-                        postId={p.id}
-                        likes={p.likes ?? 0}
-                        liked={p.liked_by_me ?? false}
-                      />
-                    </span>
-                  )}
-                </div>
-                {(detail.can_mod || p.user_id === authId) &&
-                  p.body !== "……" && (
-                    <PostActions
-                      postId={p.id}
-                      canMod={detail.can_mod}
-                      isSelf={p.user_id === authId}
-                      initialBody={p.body}
-                    />
-                  )}
-              </td>
-            </tr>
+            <PostRow
+              key={p.id}
+              p={p}
+              i={i}
+              detail={detail}
+              authId={authId}
+              dict={dict}
+              locale={locale}
+              currency={currency}
+            />
           ))}
         </tbody>
       </table>
@@ -257,7 +195,14 @@ export default async function TopicPage({
           主题已锁定，无法回复
         </p>
       ) : detail.can_write ? (
-        <ReplyBox topicId={topicId} />
+        <ReplyBox
+          topicId={topicId}
+          replyTarget={
+            replyTarget
+              ? { id: replyTarget.id, username: replyTarget.username }
+              : null
+          }
+        />
       ) : (
         <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-center text-sm text-sub">
           您没有在本版块回帖的权限

@@ -14,6 +14,8 @@ use crate::state::AppState;
 #[derive(Deserialize)]
 struct ReplyReq {
     body: String,
+    /// 楼中楼（0163）：回复的目标楼层 id；空 = 回主题（顶层楼）
+    reply_to: Option<i64>,
 }
 
 #[post("/forums/topics/{id}/reply")]
@@ -51,14 +53,37 @@ async fn post_reply(
     }
     forum_flood_check(&state.repo.db, auth.id, auth.class_id).await?;
     let body_text = strip_markdown(&body.body);
+    // 楼中楼（0163）：解析回复目标楼 → root_id/parent_id（目标楼须属于本主题；
+    // 目标是顶层楼则 root = 目标楼 id，目标是楼中楼则 root = 它的 root_id）
+    let (root_id, parent_id, parent_author) = match body.reply_to {
+        Some(pt) => {
+            let row: Option<(i64, Option<i64>, Option<i64>)> = sqlx::query_as(
+                "SELECT COALESCE(root_id, id), root_id, user_id FROM posts \
+                 WHERE id = $1 AND topic_id = $2",
+            )
+            .bind(pt)
+            .bind(tid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            match row {
+                Some((r, _, pa)) => (Some(r), Some(pt), pa),
+                None => (None, None, None),
+            }
+        }
+        None => (None, None, None),
+    };
     let post_id: i64 = sqlx::query_scalar(
-        "INSERT INTO posts (id, topic_id, user_id, body, body_text) \
-         VALUES (nextval('posts_id_seq'), $1, $2, $3, $4) RETURNING id",
+        "INSERT INTO posts (id, topic_id, user_id, body, body_text, \
+         root_id, parent_id) \
+         VALUES (nextval('posts_id_seq'), $1, $2, $3, $4, $5, $6) RETURNING id",
     )
     .bind(tid)
     .bind(auth.id)
     .bind(&body.body)
     .bind(&body_text)
+    .bind(root_id)
+    .bind(parent_id)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -83,6 +108,21 @@ async fn post_reply(
             ),
         )
         .await;
+    }
+    // 楼中楼（0163）：被回复楼层作者收到定向通知（自己/匿名楼不通知）
+    if let Some(pa) = parent_author {
+        if pa != auth.id {
+            notify_user(
+                &state.repo.db,
+                pa,
+                "你的楼层收到回复",
+                &format!(
+                    "用户 #{} 回复了你在[{}](/forums/topic/{})的楼层",
+                    auth.id, title, tid
+                ),
+            )
+            .await;
+        }
     }
     notify_mentions(
         &state.repo.db,
