@@ -1,0 +1,692 @@
+/* ============================================================================
+   勋章 / 商店三页域：勋章墙(/medal-wall) · 勋章殿堂(/medals) · 魔力商店(/shop)
+   2026-09-23 改版。从 pages.css 拆出（该文件已贴 3000 行上限，只许瘦不许胖）。
+   放在 globals.css @import 链末（motion-tide 之后），以便压过 pages.css 的
+   旧 .medalwall-medal / .medal-meta 规则。
+   （原第 3 节「统计条 / 工具行」已抽出到 layout.css —— 那是页面通用件。）
+
+   设计原则（对齐 TIDE「水文制图」）：
+   - 徽章的四层信息 = 稀有度浅底 + 底边实色档条 + 佩戴金环 + 无图首字兜底；
+     全部由 data-tone 派生（color-mix 混合主题变量），站长改词表 tone 即跟随，
+     夜间主题也不写死浅色。颜色永远不是唯一载体（另有文字角标/tooltip）。
+   - 复用 theme-tide.css 既有件：.btn* / .tide-tabs / .tide-tab / .tide-pager*。
+   - 文案零硬编码：需要文字的地方走 attr()（如佩戴小旗的 data-worn-label）。
+   ======================================================================== */
+
+/* ---------- 1. 徽章本体 ---------- */
+.mb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border: 1px solid var(--border-soft);
+  border-bottom-width: 3px;
+  border-radius: 12px;
+  background: var(--surface-card);
+  color: var(--text-brand);
+  font-family: var(--font-serif);
+  font-weight: 700;
+  line-height: 1;
+}
+.mb-sm {
+  width: 44px;
+  height: 44px;
+  font-size: 19px;
+}
+.mb-md {
+  width: 56px;
+  height: 56px;
+  font-size: 24px;
+}
+.mb-lg {
+  width: 72px;
+  height: 72px;
+  font-size: 31px;
+  border-radius: 16px;
+}
+.mb img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+/* 稀有度派生：浅底 + 边框 + 底边实色档条（6 档对齐 .medal-rarity[data-tone]） */
+.mb[data-tone="gold"] {
+  background: color-mix(in srgb, var(--sun) 14%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--sun) 36%, var(--surface-card));
+  border-bottom-color: var(--sun);
+}
+.mb[data-tone="coral"] {
+  background: color-mix(in srgb, var(--coral) 12%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--coral) 34%, var(--surface-card));
+  border-bottom-color: var(--coral);
+}
+.mb[data-tone="mint"] {
+  background: color-mix(in srgb, var(--mint) 13%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--mint) 34%, var(--surface-card));
+  border-bottom-color: var(--mint);
+}
+.mb[data-tone="sky"] {
+  background: color-mix(in srgb, var(--sky) 11%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--sky) 32%, var(--surface-card));
+  border-bottom-color: var(--sky);
+}
+.mb[data-tone="indigo"] {
+  background: color-mix(in srgb, var(--indigo) 13%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--indigo) 32%, var(--surface-card));
+  border-bottom-color: var(--indigo);
+}
+.mb[data-tone="candy"] {
+  background: color-mix(in srgb, var(--candy) 13%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--candy) 34%, var(--surface-card));
+  border-bottom-color: var(--candy);
+}
+
+/* 佩戴中：金环 + 小旗（小旗文字由 data-worn-label 注入，无需硬编码） */
+.mb.is-worn {
+  border-color: var(--sun);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sun) 42%, transparent);
+}
+.mb.is-worn::after {
+  content: attr(data-worn-label);
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--sun);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  white-space: nowrap;
+}
+
+/* 库存角标（限 N） */
+.mb-cap {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--warning);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+}
+
+/* ---------- 2. 稀有度分布条（荣誉卡内） ---------- */
+.rbar {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  margin: 0 15px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.rbar i {
+  display: block;
+  min-width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--border-deep);
+}
+.rbar i[data-tone="gold"] {
+  background: var(--sun);
+}
+.rbar i[data-tone="coral"] {
+  background: var(--coral);
+}
+.rbar i[data-tone="mint"] {
+  background: var(--mint);
+}
+.rbar i[data-tone="sky"] {
+  background: var(--sky);
+}
+.rbar i[data-tone="indigo"] {
+  background: var(--indigo);
+}
+.rbar i[data-tone="candy"] {
+  background: var(--candy);
+}
+.rbar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 7px 15px 0;
+}
+.rbar-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rbar-legend .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--border-deep);
+}
+.rbar-legend .dot[data-tone="gold"] {
+  background: var(--sun);
+}
+.rbar-legend .dot[data-tone="coral"] {
+  background: var(--coral);
+}
+.rbar-legend .dot[data-tone="mint"] {
+  background: var(--mint);
+}
+.rbar-legend .dot[data-tone="sky"] {
+  background: var(--sky);
+}
+.rbar-legend .dot[data-tone="indigo"] {
+  background: var(--indigo);
+}
+.rbar-legend .dot[data-tone="candy"] {
+  background: var(--candy);
+}
+
+
+/* ---------- 4. 勋章墙：荣誉卡 ---------- */
+.honor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(332px, 1fr));
+  gap: 14px;
+}
+.honor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.honor:hover {
+  box-shadow: var(--shadow-hover);
+}
+.honor-hd {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 15px 11px;
+}
+.honor-ava {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: var(--grad-aurora);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+}
+.honor-who {
+  flex: 1;
+  min-width: 0;
+}
+.honor-nm {
+  display: block;
+  overflow: hidden;
+  font-family: var(--font-serif);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--text-heading);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.honor-nm:hover {
+  text-decoration: underline;
+}
+.honor-rank {
+  font-size: 11px;
+  color: var(--text-fainter);
+  font-variant-numeric: tabular-nums;
+}
+.honor-cnt {
+  flex: none;
+  text-align: right;
+}
+.honor-cnt b {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-brand);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.honor-cnt span {
+  display: block;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.honor-ft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 10px 15px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-raised);
+  font-size: 12px;
+}
+.honor-ft .lk {
+  color: var(--sky);
+  font-weight: 600;
+}
+.honor-ft .tail {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-fainter);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 徽章槽位 + 悬停档案 */
+.slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding: 13px 15px 15px;
+}
+.slot {
+  position: relative;
+}
+.slot-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--tide-abyss);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s var(--tide-ease);
+  box-shadow: 0 6px 16px -6px rgba(6, 42, 71, 0.5);
+}
+.slot:hover .slot-tip {
+  opacity: 1;
+}
+.slot-tip em {
+  font-style: normal;
+  color: var(--tide-mist);
+}
+
+/* ---------- 5. 勋章殿堂：碑卡 ---------- */
+.hall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+  gap: 14px;
+}
+.mcard {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.mcard:hover {
+  box-shadow: var(--shadow-hover);
+}
+.mcard.is-owned {
+  border-color: color-mix(in srgb, var(--mint) 30%, var(--line));
+}
+.mcard-tier {
+  height: 3px;
+  background: var(--border-deep);
+}
+.mcard-tier[data-tone="gold"] {
+  background: var(--sun);
+}
+.mcard-tier[data-tone="coral"] {
+  background: var(--coral);
+}
+.mcard-tier[data-tone="mint"] {
+  background: var(--mint);
+}
+.mcard-tier[data-tone="sky"] {
+  background: var(--sky);
+}
+.mcard-tier[data-tone="indigo"] {
+  background: var(--indigo);
+}
+.mcard-tier[data-tone="candy"] {
+  background: var(--candy);
+}
+.mcard-bd {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px 15px 13px;
+}
+.mcard-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.mcard-top .t {
+  flex: 1;
+  min-width: 0;
+}
+.mcard-top h3 {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.mcard-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+.mcard-desc {
+  margin: 0;
+  min-height: 34px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.spec {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  list-style: none;
+}
+.spec li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+.spec li b {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text-body-deep);
+  font-variant-numeric: tabular-nums;
+}
+.spec li b.is-bonus {
+  color: var(--sun);
+}
+.mcard-ft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 11px 15px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+.mcard-ft .acts {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.pricetag {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.pricetag b {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--text-brand);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.pricetag span {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* 已拥有态按钮（佩戴中/已拥有）：走成功色，与主按钮区分 */
+.btn-own {
+  border-color: var(--success-border);
+  background: var(--success-soft);
+  color: var(--success);
+}
+.btn-own:hover {
+  border-color: var(--success);
+  background: var(--success);
+  color: #fff;
+}
+
+/* 状态小标签（已拥有 / 限时 / 未达成） */
+.mtag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-sunken);
+  color: var(--text-brand);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.mtag.is-limited {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--warning);
+}
+.mtag.is-owned {
+  background: var(--success-soft);
+  border-color: var(--success-border);
+  color: var(--success);
+}
+
+/* ---------- 6. 魔力商店 ---------- */
+.shop-bal {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 13px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: linear-gradient(100deg, var(--tide-haze), var(--surface-card));
+}
+.shop-bal .k {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.shop-bal .v {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--text-brand);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.shop-bal .u {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.shop-bal .sep {
+  width: 1px;
+  height: 32px;
+  background: var(--line);
+}
+.shop-bal .tail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(246px, 1fr));
+  gap: 14px;
+  padding: 14px;
+}
+.gcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.gcard:hover {
+  box-shadow: var(--shadow-hover);
+}
+.gcard-bd {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  padding: 14px 14px 12px;
+}
+.gicon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--surface-sunken);
+  font-size: 22px;
+}
+.gicon[data-group="upload"] {
+  background: color-mix(in srgb, var(--sky) 11%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--sky) 30%, var(--surface-card));
+}
+.gicon[data-group="voucher"] {
+  background: color-mix(in srgb, var(--mint) 12%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--mint) 30%, var(--surface-card));
+}
+.gicon[data-group="right"] {
+  background: color-mix(in srgb, var(--indigo) 11%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--indigo) 28%, var(--surface-card));
+}
+.gicon[data-group="look"] {
+  background: color-mix(in srgb, var(--sun) 13%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--sun) 32%, var(--surface-card));
+}
+.gcard .txt {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.gcard h3 {
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-heading);
+}
+.gcard .kind {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--text-fainter);
+}
+.gcard .hint {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.gcard-ft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+.gcard-ft .acts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.unit {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-fainter);
+  font-variant-numeric: tabular-nums;
+}
+.unit.is-short {
+  color: var(--danger);
+}
+.gcard-best {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 2px 8px;
+  border-bottom-left-radius: 8px;
+  background: var(--sky-deep);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+/* 券包 */
+.vpack {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+.vticket {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 13px;
+  border: 1px dashed var(--border-deep);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+}
+.vticket .n {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-brand);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.vticket .l {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.vticket .l small {
+  display: block;
+  font-size: 10.5px;
+  color: var(--text-fainter);
+}
+.vticket .acts {
+  margin-left: auto;
+}

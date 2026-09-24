@@ -4,23 +4,32 @@ import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 
-/** 勋章购买/佩戴（客户端交互叶子组件 §8.3.2） */
+/**
+ * 勋章购买/佩戴（客户端交互叶子组件 §8.3.2）。
+ *
+ * ⚠️ 购买口径按 **get_type** 而非「有没有价格」：库里存在 `get_type=2`（站长授予型）
+ * 却带 `price=30000` 的勋章（如「保种达人」），旧写法 `price === null ? 不可购买 : 购买`
+ * 会渲染出一个点不动的「购买」按钮。1=魔力兑换 / 2=授予 / 3=合成。
+ */
 export function MedalActions({
   medalId,
   owned,
   wearing,
   price,
+  getType,
 }: {
   medalId: number;
   owned: boolean;
   wearing: boolean;
   price: number | null;
+  getType: number;
 }) {
   const { dict } = useI18n();
   const [isOwned, setIsOwned] = useState(owned);
   const [isWearing, setIsWearing] = useState(wearing);
   const [msg, setMsg] = useState<string | null>(null);
   const [idem] = useState(() => `web-medal-${medalId}-${crypto.randomUUID()}`);
+  const buyable = getType === 1 && price !== null;
 
   async function buy() {
     setMsg(null);
@@ -47,20 +56,6 @@ export function MedalActions({
     }
   }
 
-  if (!isOwned) {
-    return (
-      <div className="flex flex-col gap-1">
-        <button
-          onClick={buy}
-          disabled={price === null}
-          className="min-h-[44px] rounded-full bg-coral px-3 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-40"
-        >
-          {price === null ? dict.medals.notBuyable : dict.medals.buy}
-        </button>
-        {msg && <p className="text-xs text-sub">{msg}</p>}
-      </div>
-    );
-  }
   async function gift() {
     const to = prompt(dict.medals2.giftTo)?.trim();
     if (!to) {
@@ -79,24 +74,48 @@ export function MedalActions({
     }
   }
 
+  const locked = isOwned ? null : (
+    <button type="button" className="btn btn-sm" disabled>
+      {getType === 2
+        ? dict.medals.grantOnly
+        : getType === 3
+          ? dict.medals.synthOnly
+          : dict.medals.notBuyable}
+    </button>
+  );
+
   return (
-    <div className="flex flex-col gap-1">
-      <button
-        onClick={() => wear(!isWearing)}
-        className={`min-h-[44px] rounded-full px-3 text-sm font-bold active:scale-[0.97] ${
-          isWearing
-            ? "bg-mint text-white"
-            : "border border-line bg-cloud text-ink"
-        }`}
-      >
-        {isWearing ? dict.medals.wearing : dict.medals.wear}
-      </button>
-      <button
-        onClick={gift}
-        className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub active:scale-[0.97]"
-      >
-        {dict.medals2.gift}
-      </button>
+    <div className="ml-auto flex flex-col items-end gap-1">
+      <div className="flex gap-1.5">
+        {isOwned ? (
+          <>
+            <button
+              type="button"
+              onClick={() => wear(!isWearing)}
+              className={`btn btn-sm${isWearing ? " btn-own" : ""}`}
+            >
+              {isWearing ? dict.medals.wearing : dict.medals.wear}
+            </button>
+            <button
+              type="button"
+              onClick={gift}
+              className="btn btn-sm btn-ghost"
+            >
+              {dict.medals2.gift}
+            </button>
+          </>
+        ) : buyable ? (
+          <button
+            type="button"
+            onClick={buy}
+            className="btn btn-sm btn-primary"
+          >
+            {dict.medals.buy}
+          </button>
+        ) : (
+          locked
+        )}
+      </div>
       {msg && <p className="text-xs text-sub">{msg}</p>}
     </div>
   );
