@@ -235,7 +235,7 @@ const zhCnBase = {
     loginTitle: "用户登录",
     forgotLink: "找回密码",
     ssoLabel: "其他登录方式",
-    introTagline: "读书 · 学习 · 分享",
+    introTagline: "分享 · 交流 · 共建",
     introDesc: "资源分享社区，邀请制注册",
     securityNote: "登录即代表同意社区规则",
     remember: "记住登录",
@@ -380,7 +380,6 @@ const zhCnBase = {
     gradeNone: "不选择",
     edition: "版本",
     editionNone: "不选择",
-    editions: ["人教", "部编", "统编", "苏教", "北师大", "外研", "沪教"],
     quality: "质量",
     tags: "标签",
     tagsHint: "可多选（≤12 个）；发布后可在详情页增删",
@@ -4088,15 +4087,15 @@ export const zhCN = {
     } as Record<string, string>,
   },
 
-  /** 心愿单（教材愿望单，0074） */
+  /** 心愿单（求种愿望单，0074） */
   wishlist: {
     title: "我的心愿单",
-    note: "留下你想要的教材关键词，有人发布命中时会通知你（上限 20 条）。",
+    note: "留下你想要的资源关键词，有人发布命中时会通知你（上限 20 条）。",
     addBtn: "加入心愿单",
     added: "已加入心愿单",
     removeBtn: "移出心愿单",
     removed: "已移出",
-    keywordPh: "想要的关键词（如：线性代数 第六版）",
+    keywordPh: "想要的关键词（如：资源名 关键特征）",
     empty: "心愿单还是空的",
     addedOk: "已加入心愿单，命中时会通知你",
     addFailed: "加入失败",
