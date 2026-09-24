@@ -60,28 +60,7 @@ export default async function UserProfilePage({
   }
 
   const { dict, locale } = await getDict();
-  const t = dict.userProfile2 ?? {
-    title: "用户资料",
-    uploaded: "上传量",
-    downloaded: "下载量",
-    ratio: "分享率",
-    seeding: "做种中",
-    leeching: "下载中",
-    uploads: "发布数",
-    comments: "评论数",
-    medals: "勋章数",
-    joined: "注册时间",
-    lastSeen: "最近活动",
-    recentUploads: "近期发布",
-    recentComments: "近期评论",
-    torrentHistory: "种子历史",
-    histUploads: "发布",
-    histSeeding: "做种中",
-    histPublicOnly: "仅公开展示",
-    noUploads: "暂无公开种子",
-    noComments: "暂无评论",
-    donor: "捐赠者",
-  };
+  const t = dict.userProfile2;
   const p = data.profile;
   const ratio = p.downloaded > 0 ? (p.uploaded / p.downloaded).toFixed(2) : "∞";
   const realRatio =
