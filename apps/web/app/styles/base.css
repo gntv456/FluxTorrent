@@ -675,14 +675,18 @@ a:hover {
   color: var(--text-body-deep);
 }
 .td-head__actions {
+  /* 0173 排版整理：纵向语义分行（主操作 / 互动与打赏 / 管理），不再混排换行 */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 4px;
+}
+.td-head__actions-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-}
-.td-head__actions > div {
-  flex: 1 1 320px;
+  gap: 10px;
 }
 /* 状态卡（阳光口径：三色统计列） */
 .td-stats {
@@ -817,6 +821,16 @@ a:hover {
   align-items: center;
   gap: 6px;
   padding: 8px 16px 10px;
+}
+/* 0173：头部内标签行（副标题与发布人之间，无额外内边距） */
+.td-head__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.td-head__tags:empty {
+  display: none;
 }
 .td-tags-inline:empty {
   display: none;
