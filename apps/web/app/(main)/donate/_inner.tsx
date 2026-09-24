@@ -1,9 +1,5 @@
 "use client";
 
-import { BTN_SM_BOLD } from "@/lib/ui-classes";
-
-;
-
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -45,11 +41,15 @@ export default function DonatePage() {
   const [channel, setChannel] = useState<"alipay" | "wechat">("alipay");
   // 流水弹层
   const [ledgerOpen, setLedgerOpen] = useState(false);
+  // 挂载门控（同 /my-spark）：hasSessionCookie() 在渲染期读 document.cookie，
+  // SSR 恒 false → 服务端出「请先登录」而客户端出完整页面 → React #418。
+  const [mounted, setMounted] = useState(false);
 
   const load = useCallback(() => {
     api.get<DonateState>("/api/v1/donate/state").then(setSt).catch(() => setSt(null));
   }, []);
   useEffect(load, [load]);
+  useEffect(() => setMounted(true), []);
 
   function flash(m: string) {
     setMsg(m);
@@ -67,7 +67,20 @@ export default function DonatePage() {
     }
   }
 
-  const loggedIn = hasSessionCookie();
+  const loggedIn = mounted && hasSessionCookie();
+
+  if (!mounted) {
+    // 与 SSR 一致的中性态（必须在 hooks 之后）
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="font-display text-2xl">{t.title}</h1>
+        <p className="baozi-panel p-4 text-sm text-sub">
+          {dict.common.loading}
+        </p>
+      </div>
+    );
+  }
+
   if (!loggedIn) {
     return (
       <div className="flex flex-col gap-4">
@@ -90,10 +103,14 @@ export default function DonatePage() {
         {p.reward && <p className="donate-plan__reward">{p.reward}</p>}
         <p className="donate-plan__price num">{p.price_usd} USD</p>
         <button
+          className="btn btn-sm btn-primary"
           disabled={busy || !affordable}
           onClick={() =>
             guard(async () => {
-              const r = await api.post<{ plan: string }>("/api/v1/donate/order", { plan_id: p.id });
+              const r = await api.post<{ plan: string }>(
+                "/api/v1/donate/order",
+                { plan_id: p.id },
+              );
               flash(t.ordered.replace("{plan}", r.plan));
             })
           }
@@ -109,84 +126,90 @@ export default function DonatePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">{t.title}</h1>
-      {msg && <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
-
-      {/* 储值钱包 */}
-      <section className="baozi-panel flex flex-col gap-3 p-4">
-        <h2 className="text-base font-bold text-ink">{t.wallet}</h2>
-        <p className="text-xs text-sub">{t.walletNote}</p>
-        <div className="flex flex-wrap items-center gap-3">
-          <div>
-            <p className="text-xs text-sub">{t.balance}</p>
-            <p className="num text-2xl font-bold text-[var(--baozi-orange-dark)]">
-              {(st?.wallet_usd ?? 0).toFixed(2)} <span className="text-sm">USD</span>
-            </p>
-          </div>
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">Donation</div>
+          <h1 className="font-display text-2xl">{t.title}</h1>
+        </div>
+        <span className="sub">{t.subtitle}</span>
+        <div className="aside">
           {vipActive && (
             <div className="donate-vip-badge">
-              VIP · {t.vipUntil.replace("{d}", new Date(st!.vip_until!).toLocaleDateString(dateLocale(locale)))}
+              VIP ·{" "}
+              {t.vipUntil.replace(
+                "{d}",
+                new Date(st!.vip_until!).toLocaleDateString(
+                  dateLocale(locale),
+                ),
+              )}
             </div>
           )}
-          <div className="ml-auto flex gap-2">
-            <button className="baozi-button" onClick={() => setTopupOpen(true)}>
-              {t.btnTopup}
-            </button>
-            <button
-              className={BTN_SM_BOLD}
-              onClick={() => setLedgerOpen((v) => !v)}
-            >
-              {t.btnLedger}
-            </button>
+        </div>
+      </div>
+      {msg && (
+        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+          {msg}
+        </p>
+      )}
+
+      {/* 储值钱包 */}
+      <section className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{t.wallet}</h2>
+        </div>
+        <div className="flex flex-col gap-3 p-4">
+          <p className="text-xs text-sub">{t.walletNote}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div>
+              <p className="text-xs text-sub">{t.balance}</p>
+              <p className="num text-2xl font-bold text-deep">
+                {(st?.wallet_usd ?? 0).toFixed(2)}
+                <span className="text-sm"> USD</span>
+              </p>
+            </div>
+            <div className="ml-auto flex gap-2">
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() => setTopupOpen(true)}
+              >
+                {t.btnTopup}
+              </button>
+              <button
+                className="btn btn-sm"
+                onClick={() => setLedgerOpen((v) => !v)}
+              >
+                {t.btnLedger}
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
       {/* 套餐三区 */}
-      <section className="flex flex-col gap-3">
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">
-                <h2 className="font-display">{t.quotaZone}</h2>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <section className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{t.quotaZone}</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
           {quotaPlans.map((p) => <PlanCard key={p.id} p={p} />)}
         </div>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">
-                <h2 className="font-display">{t.uploadZone}</h2>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <section className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{t.uploadZone}</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
           {uploadPlans.map((p) => <PlanCard key={p.id} p={p} />)}
         </div>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">
-                <h2 className="font-display">
-                  {t.vipZone}
-                  <span className="ml-2 text-xs font-normal text-sub">{t.vipHelp}</span>
-                </h2>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <section className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{t.vipZone}</h2>
+          <span className="text-xs text-sub">{t.vipHelp}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
           {vipPlans.map((p) => <PlanCard key={p.id} p={p} />)}
         </div>
       </section>

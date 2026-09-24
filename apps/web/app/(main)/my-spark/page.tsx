@@ -20,15 +20,6 @@ interface LedgerRow {
   created_at: string;
 }
 
-/** 仅补字典里没有的 kind；主映射用 `dict.my.kinds`（用户中心同一份，一处维护、三语齐备） */
-const KIND_FALLBACK: Record<string, string> = {
-  seeding: "做种收益",
-  hourly: "小时结算",
-  grant: "发放",
-  admin: "管理员发放",
-  bank: "银行",
-};
-
 /** 我的魔力（mybonus.php 口径）：余额卡片 + 收益估算 + 最近流水 */
 export default function MySparkPage() {
   const { dict, locale, currency } = useI18n();
@@ -37,7 +28,13 @@ export default function MySparkPage() {
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [limit, setLimit] = useState(20);
   const [err, setErr] = useState<string | null>(null);
-  const loggedIn = hasSessionCookie();
+  // 挂载门控：hasSessionCookie() 在**渲染期**读 document.cookie，SSR 环境下
+  // document 不存在 → 恒返回 false → 服务端渲染「请先登录」而客户端渲染完整
+  // 页面，两棵树不同 → React #418（hydration mismatch）。
+  // 首帧（含 SSR）统一出中性态，挂载后再决定分支。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const loggedIn = mounted && hasSessionCookie();
 
   const load = useCallback(() => {
     api
@@ -53,6 +50,20 @@ export default function MySparkPage() {
       });
   }, [limit, dict]);
   useEffect(load, [load]);
+
+  if (!mounted) {
+    // 与 SSR 一致的中性态（必须在所有 hooks 之后，否则破坏 hooks 顺序）
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="font-display text-2xl">
+          {t.title.replace("{magic}", currency)}
+        </h1>
+        <p className="baozi-panel p-4 text-sm text-sub">
+          {dict.common.loading}
+        </p>
+      </div>
+    );
+  }
 
   if (!loggedIn) {
     return (
@@ -76,46 +87,64 @@ export default function MySparkPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">
-        {t.title.replace("{magic}", currency)}
-      </h1>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div className="baozi-panel p-4">
-          <p className="text-xs text-sub">{t.balance}</p>
-          <p className="num text-2xl font-bold text-[var(--baozi-orange-dark)]">
-            ✨ {info ? info.balance.toLocaleString() : "…"}
-          </p>
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">My Spark</div>
+          <h1 className="font-display text-2xl">
+            {t.title.replace("{magic}", currency)}
+          </h1>
         </div>
-        <div className="baozi-panel p-4">
-          <p className="text-xs text-sub">{t.hourly}</p>
-          <p className="num text-2xl font-bold text-ink">
-            {info ? `+${info.hourly_estimate}` : "…"}
-          </p>
-        </div>
-        <div className="baozi-panel p-4">
-          <p className="text-xs text-sub">{t.seedingCount}</p>
-          <p className="num text-2xl font-bold text-ink">
-            {info ? info.seeding_count : "…"}
-          </p>
-        </div>
-        <div className="baozi-panel p-4">
-          <p className="text-xs text-sub">{t.ruleTitle}</p>
-          <p className="text-xs leading-relaxed text-sub">
-            {t.rule.replace("{magic}", currency)}
-          </p>
+        <span className="sub">{t.subtitle}</span>
+        <div className="aside">
+          <span className="pill">
+            {t.seedingCount} {info ? info.seeding_count : "—"}
+          </span>
+          <span className="pill">
+            {t.hourly} {info ? `+${info.hourly_estimate}` : "—"}
+          </span>
         </div>
       </div>
 
+      <div className="pgstats">
+        <div>
+          <div className="k">{t.balance}</div>
+          <div className="v">
+            {info ? info.balance.toLocaleString() : "…"}
+          </div>
+        </div>
+        <div>
+          <div className="k">{t.recentIncome}</div>
+          <div className="v">{income.toLocaleString()}</div>
+        </div>
+        <div>
+          <div className="k">{t.recentSpend}</div>
+          <div className="v">{spend.toLocaleString()}</div>
+        </div>
+        <div>
+          <div className="k">{t.hourly}</div>
+          <div className="v">
+            {info ? `+${info.hourly_estimate}` : "…"}
+          </div>
+        </div>
+      </div>
+
+      <div className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{t.ruleTitle}</h2>
+        </div>
+        <p className="p-4 text-xs leading-relaxed text-sub">
+          {t.rule.replace("{magic}", currency)}
+        </p>
+      </div>
+
       {info?.reward_rules && info.reward_rules.length > 0 && (
-        <div className="baozi-panel flex flex-col gap-2 p-4">
-          <p className="text-xs text-sub">{t.rewardRules}</p>
-          <div className="flex flex-wrap gap-1.5">
+        <div className="baozi-panel">
+          <div className="baozi-panel__head">
+            <h2>{t.rewardRules}</h2>
+          </div>
+          <div className="flex flex-wrap gap-1.5 p-4">
             {info.reward_rules.map(([name, cnt], i) => (
-              <span
-                key={i}
-                className="rounded-full bg-sky-soft px-2.5 py-1 text-[11px] font-bold text-ink"
-              >
+              <span key={i} className="pill">
                 {name} ×{cnt}
               </span>
             ))}
@@ -123,61 +152,64 @@ export default function MySparkPage() {
         </div>
       )}
 
-      <table className="nexus-table">
-        <tbody>
-          <tr>
-            <td className="colhead" colSpan={4}>
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-display">
-                  {t.ledger.replace("{magic}", currency)}
-                </h2>
-                <span className="text-xs font-normal text-sub">
-                  {t.recentIncome}{" "}
-                  <b className="num text-success">+{income.toLocaleString()}</b>{" "}
-                  · {t.recentSpend}{" "}
-                  <b className="num text-danger">{spend.toLocaleString()}</b>
-                </span>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td className="colhead">{t.ledgerKind}</td>
-            <td className="colhead">{t.ledgerAmount}</td>
-            <td className="colhead">{t.ledgerBalance}</td>
-            <td className="colhead">{t.ledgerAt}</td>
-          </tr>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              <td>
-                {dict.my.kinds[r.kind] ?? KIND_FALLBACK[r.kind] ?? r.kind}
-              </td>
-              <td
-                className={`num font-bold ${r.amount >= 0 ? "text-success" : "text-danger"}`}
-              >
-                {r.amount >= 0 ? "+" : ""}
-                {r.amount.toLocaleString()}
-              </td>
-              <td className="num">
-                {r.balance_after?.toLocaleString() ?? "—"}
-              </td>
-              <td className="text-xs text-sub">
-                {new Date(r.created_at).toLocaleString(dateLocale(locale))}
-              </td>
-            </tr>
-          ))}
-          {rows.length === 0 && (
+      <div className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{t.ledger.replace("{magic}", currency)}</h2>
+          <span className="text-xs text-sub">
+            {t.recentIncome}{" "}
+            <b className="num text-success">+{income.toLocaleString()}</b>
+            {" · "}
+            {t.recentSpend}{" "}
+            <b className="num text-danger">{spend.toLocaleString()}</b>
+          </span>
+        </div>
+        <table className="nexus-table">
+          <tbody>
             <tr>
-              <td colSpan={4} className="py-6 text-center text-sub">
-                {err ?? t.ledgerEmpty}
-              </td>
+              <td className="colhead">{t.ledgerKind}</td>
+              <td className="colhead">{t.ledgerAmount}</td>
+              <td className="colhead">{t.ledgerBalance}</td>
+              <td className="colhead">{t.ledgerAt}</td>
             </tr>
-          )}
-        </tbody>
-      </table>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                <td>
+                  <span className="pill">
+                    {dict.my.kinds[r.kind] ?? t.otherKind}
+                  </span>
+                </td>
+                <td
+                  className={`num font-bold ${
+                    r.amount >= 0 ? "text-success" : "text-danger"
+                  }`}
+                >
+                  {r.amount >= 0 ? "+" : ""}
+                  {r.amount.toLocaleString()}
+                </td>
+                <td className="num">
+                  {r.balance_after?.toLocaleString() ?? "—"}
+                </td>
+                <td className="text-xs text-sub">
+                  {new Date(r.created_at).toLocaleString(
+                    dateLocale(locale),
+                  )}
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-sub">
+                  {err ?? t.ledgerEmpty}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {rows.length >= limit && (
         <button
-          className="self-center min-h-[40px] rounded-full border border-line px-6 text-sm font-bold"
+          className="btn btn-sm self-center"
           onClick={() => setLimit((n) => Math.min(n + 20, 50))}
         >
           {t.loadMore}

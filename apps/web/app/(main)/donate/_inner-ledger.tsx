@@ -20,13 +20,12 @@ export function LedgerTable({ rows }: { rows: LedgerRow[] | undefined }) {
   const { dict, locale } = useI18n();
   const t = dict.donate;
   return (
-    <table className="nexus-table">
-      <tbody>
-        <tr>
-          <td className="colhead" colSpan={4}>
-            <h2 className="font-display">{t.ledgerTitle}</h2>
-          </td>
-        </tr>
+    <div className="baozi-panel">
+      <div className="baozi-panel__head">
+        <h2>{t.ledgerTitle}</h2>
+      </div>
+      <table className="nexus-table">
+        <tbody>
         <tr>
           <td className="colhead">{t.ledgerKind}</td>
           <td className="colhead">{t.ledgerAmount}</td>
@@ -59,6 +58,7 @@ export function LedgerTable({ rows }: { rows: LedgerRow[] | undefined }) {
           </tr>
         )}
       </tbody>
-    </table>
+      </table>
+    </div>
   );
 }

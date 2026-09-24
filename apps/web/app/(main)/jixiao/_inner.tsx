@@ -122,9 +122,12 @@ export default function JixiaoPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{t.title}</h1>
-        <span className="text-sm text-sub">{t.subtitle}</span>
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">Performance</div>
+          <h1 className="font-display text-2xl">{t.title}</h1>
+        </div>
+        <span className="sub">{t.subtitle}</span>
       </div>
       {msg && (
         <p className="rounded-[var(--r-md)] bg-mint/30 p-3 text-sm text-ink">{msg}</p>
@@ -196,7 +199,7 @@ export default function JixiaoPage() {
                   ? t.stClaimed
                   : p.all_ok
                     ? p.claimable_prev
-                      ? (t.btnClaimPrev ?? "补领上期")
+                      ? (t.btnClaimPrev)
                       : t.btnClaim
                     : t.stNotQualified}
               </button>
@@ -217,18 +220,17 @@ export default function JixiaoPage() {
       )}
 
       {/* 领取记录 */}
-      <table className="nexus-table">
+      <section className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{t.myTitle}</h2>
+        </div>
+        <table className="nexus-table">
         <tbody>
-          <tr>
-            <td className="colhead" colSpan={5}>
-              <h2 className="font-display">{t.myTitle}</h2>
-            </td>
-          </tr>
           <tr>
             <td className="colhead">{t.colName}</td>
             <td className="colhead">{t.colPeriod}</td>
             <td className="colhead">{t.colAmount}</td>
-            <td className="colhead">{t.colPaidBy ?? "发放方式"}</td>
+            <td className="colhead">{t.colPaidBy}</td>
             <td className="colhead">{t.colAt}</td>
           </tr>
           {claims.map((c) => (
@@ -236,7 +238,7 @@ export default function JixiaoPage() {
               <td>{c.type_name}</td>
               <td className="num">{c.period}</td>
               <td className="num font-bold">+{c.amount.toLocaleString()}</td>
-              <td className="text-xs">{c.source === "worker" ? (t.paidByWorker ?? "月末自动") : (t.paidBySelf ?? "本人领取")}</td>
+              <td className="text-xs">{c.source === "worker" ? (t.paidByWorker) : (t.paidBySelf)}</td>
               <td className="text-xs text-sub">
                 {new Date(c.claimed_at).toLocaleString(dateLocale(locale))}
               </td>
@@ -250,7 +252,8 @@ export default function JixiaoPage() {
             </tr>
           )}
         </tbody>
-      </table>
+        </table>
+      </section>
 
       <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-xs text-ink">{t.note}</p>
     </div>

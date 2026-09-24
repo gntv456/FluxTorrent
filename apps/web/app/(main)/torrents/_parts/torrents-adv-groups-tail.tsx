@@ -147,8 +147,8 @@ export function TorrentsAdvGroupsTail(ctx: AdvGroupsCtx) {
                   {(tagGroups ?? []).some((x) => x === "content") && (
                     <span className="tsb-chip__grouplabel">
                       {g === "attribute"
-                        ? (t2.tagGroupAttr ?? "属性")
-                        : (t2.tagGroupContent ?? "内容")}
+                        ? t2.tagGroupAttr
+                        : t2.tagGroupContent}
                     </span>
                   )}
                   {tags

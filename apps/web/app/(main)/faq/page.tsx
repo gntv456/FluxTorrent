@@ -28,25 +28,30 @@ export default async function FaqPage() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">{dict.faq.title}</h1>
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">FAQ</div>
+          <h1 className="font-display text-2xl">{dict.faq.title}</h1>
+        </div>
+      </div>
       {[...groups.entries()].map(([cat, list]) => (
-        <table key={cat} className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead" colSpan={2}>
-                <h2 className="font-display">
-                  {cat === "default" ? dict.faq.defaultCat : cat}
-                </h2>
-              </td>
-            </tr>
-            {list.map((f) => (
-              <tr key={f.id}>
-                <td className="rowhead w-[38%] align-top">{f.question}</td>
-                <td className="rowfollow">{f.answer}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <section key={cat} className="baozi-panel">
+          <div className="baozi-panel__head">
+            <h2>{cat === "default" ? dict.faq.defaultCat : cat}</h2>
+          </div>
+          <table className="nexus-table">
+            <tbody>
+              {list.map((f) => (
+                <tr key={f.id}>
+                  <td className="rowhead w-[38%] align-top">
+                    {f.question}
+                  </td>
+                  <td className="rowfollow">{f.answer}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       ))}
       {items.length === 0 && (
         <p className="baozi-panel p-4 text-sm text-sub">{dict.faq.empty}</p>

@@ -72,9 +72,12 @@ export default async function GamesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.games.title}</h1>
-        <span className="text-sm text-sub">
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">Arcade</div>
+          <h1 className="font-display text-2xl">{dict.games.title}</h1>
+        </div>
+        <span className="sub">
           {dict.games.subtitle.replace("{magic}", currency)}
         </span>
       </div>

@@ -99,9 +99,12 @@ export default function DressupPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.dressup.title}</h1>
-        <span className="text-sm text-sub">{dict.dressup.subtitle}</span>
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">Dress Up</div>
+          <h1 className="font-display text-2xl">{dict.dressup.title}</h1>
+        </div>
+        <span className="sub">{dict.dressup.subtitle}</span>
       </div>
 
       {slots.map((slot) => {
@@ -160,7 +163,7 @@ export default function DressupPage() {
                     <button
                       onClick={() => wear(d, !d.wearing)}
                       disabled={busy}
-                      className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-ink active:scale-[0.97] disabled:opacity-50"
+                      className="btn btn-sm"
                     >
                       {d.wearing ? dict.dressup.unwear : dict.dressup.wear}
                     </button>
@@ -168,7 +171,7 @@ export default function DressupPage() {
                     <button
                       onClick={() => buy(d)}
                       disabled={busy}
-                      className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white active:scale-[0.97] disabled:opacity-50"
+                      className="btn btn-sm btn-primary"
                     >
                       {dict.dressup.buy}
                     </button>

@@ -20,9 +20,12 @@ export default async function FriendsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h1 className="font-display text-2xl">{dict.friends.title}</h1>
-          <span className="text-sm text-sub">{dict.friends.subtitle}</span>
+        <div className="pghd">
+          <div>
+            <div className="pg-eyebrow">Friends</div>
+            <h1 className="font-display text-2xl">{dict.friends.title}</h1>
+          </div>
+          <span className="sub">{dict.friends.subtitle}</span>
         </div>
         {/* 操作面板：加好友 / 接受申请 / 拉黑（此前只读列表，后端能力无入口） */}
         <section className={PANEL_MD}>
@@ -38,7 +41,7 @@ export default async function FriendsPage() {
             <ul className="mt-2 flex flex-wrap gap-2">
               {friendRows.map((f) => (
                 <li key={f.username}>
-                  <span className="sticker bg-sky-soft text-ink">
+                  <span className="pill">
                     {f.username}
                   </span>
                 </li>
@@ -56,7 +59,7 @@ export default async function FriendsPage() {
             <ul className="mt-2 flex flex-wrap gap-2">
               {blackRows.map((f) => (
                 <li key={f.username}>
-                  <span className="sticker bg-cloud text-sub">
+                  <span className="pill">
                     {f.username}
                   </span>
                 </li>
