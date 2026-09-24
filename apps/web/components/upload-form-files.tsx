@@ -135,13 +135,13 @@ export function UploadFilesBlock({
           </label>
         </div>
       </FormRow>
-      <FormRow label={dict.upload.titleName ?? "标题"}>
+      <FormRow label={dict.upload.titleName}>
         <div className="flex flex-col gap-1">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={dict.upload.nameHint ?? "不填将使用种子文件名"}
+            placeholder={dict.upload.nameHint}
             maxLength={200}
             className={fieldCls}
           />
@@ -158,7 +158,7 @@ export function UploadFilesBlock({
         />
       </FormRow>
       {metaSources.includes("imdb") && (
-        <FormRow label={dict.upload.imdb ?? "IMDb 链接"}>
+        <FormRow label={dict.upload.imdb}>
           <div className="flex flex-col gap-1">
             <input
               type="url"
@@ -169,7 +169,7 @@ export function UploadFilesBlock({
               className={fieldCls}
             />
             <span className="text-xs text-sub">
-              {dict.upload.imdbHint ?? "来自 IMDb 的条目链接；用于详情页展示与搜索区「IMDb」"}
+              {dict.upload.imdbHint}
             </span>
           </div>
         </FormRow>
@@ -192,16 +192,16 @@ export function UploadFilesBlock({
                 onClick={genDescr}
                 className="min-h-[38px] rounded-[10px] border border-[var(--baozi-line)] px-4 text-sm font-bold text-ink hover:border-[var(--baozi-orange)] disabled:opacity-50"
               >
-                {ptgenBusy ? (dict.upload.ptgenBusy ?? "生成中…") : (dict.upload.ptgenBtn ?? "生成简介")}
+                {ptgenBusy ? (dict.upload.ptgenBusy) : (dict.upload.ptgenBtn)}
               </button>
             </div>
             <span className="text-xs text-sub">
-              {dict.upload.ptgenHint ?? "自动拉取条目信息追加到下方简介（服务端代理，可重复追加）"}
+              {dict.upload.ptgenHint}
             </span>
           </div>
         </FormRow>
       )}
-      <FormRow label={dict.upload.nfo ?? "NFO 文件"}>
+      <FormRow label={dict.upload.nfo}>
         <div className="flex flex-col gap-1">
           <label className="flex min-h-[48px] cursor-pointer items-center justify-center rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--head-b)] px-3 text-sm text-[var(--text-body)] hover:border-[var(--baozi-orange)]">
             <input
@@ -211,11 +211,11 @@ export function UploadFilesBlock({
               className="sr-only"
               onChange={(e) => setNfoName(e.target.files?.[0]?.name ?? "")}
             />
-            {nfoName ? `📄 ${nfoName}` : (dict.upload.nfoHint ?? "可选；经典 NFO 字符画支持（CP437 / UTF-8 均可）")}
+            {nfoName ? `📄 ${nfoName}` : (dict.upload.nfoHint)}
           </label>
         </div>
       </FormRow>
-      <FormRow label={dict.upload.attachLabel ?? "附件 / 截图"}>
+      <FormRow label={dict.upload.attachLabel}>
         <div className="flex flex-col gap-1">
           <label className="flex min-h-[44px] cursor-pointer items-center justify-center rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--head-b)] px-3 text-sm text-[var(--text-body)] hover:border-[var(--baozi-orange)]">
             <input
@@ -231,7 +231,7 @@ export function UploadFilesBlock({
             />
             {attachBusy
               ? "上传中…"
-              : (dict.upload.attachHint ?? "可选；png/jpg/gif/webp/avif/pdf/txt ≤ 8MiB，上传后自动插入简介")}
+              : (dict.upload.attachHint)}
           </label>
           {attachMsg && <p className="text-xs text-sky-deep">{attachMsg}</p>}
         </div>
@@ -241,12 +241,12 @@ export function UploadFilesBlock({
           rows={4}
           value={mediainfo}
           onChange={(e) => setMediainfo(e.target.value)}
-          placeholder={dict.upload.mediainfoHint ?? "可选；粘贴 MediaInfo 摘要，详情页折叠展示"}
+          placeholder={dict.upload.mediainfoHint}
           className="w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-2 font-mono text-xs"
           maxLength={60000}
         />
       </FormRow>
-      <FormRow label={dict.upload.price ?? "价格"}>
+      <FormRow label={dict.upload.price}>
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -262,23 +262,22 @@ export function UploadFilesBlock({
             </span>
           </div>
           <span className="text-xs text-sub">
-            {dict.upload.priceHint ??
-              "下载者首次下载时支付，重复下载不再扣费；税率 30%，税入当月魔法池"}
+            {dict.upload.priceHint}
           </span>
         </div>
       </FormRow>
-      <FormRow label={dict.upload.poster ?? "封面图 URL"}>
+      <FormRow label={dict.upload.poster}>
         <div className="flex flex-col gap-1">
           <input
             type="url"
             value={poster}
             onChange={(e) => setPoster(e.target.value)}
-            placeholder="https://…（种子列表封面位与首页海报墙共用，留空则显示分类色块）"
+            placeholder={dict.upload.posterPh}
             maxLength={500}
             className={fieldCls}
           />
           <span className="text-xs text-sub">
-            {dict.upload.posterHint ?? "外链图床 URL；建议竖版海报比例"}
+            {dict.upload.posterHint}
           </span>
         </div>
       </FormRow>

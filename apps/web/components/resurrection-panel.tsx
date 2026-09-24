@@ -107,7 +107,7 @@ export function ResurrectionPanel() {
               <th>{t.colTorrent}</th>
               <th className="w-24">{t.colSize}</th>
               <td className="colhead w-24">
-                {dict.torrents.colActions ?? "操作"}
+                {dict.torrents.colActions}
               </td>
             </tr>
           </thead>

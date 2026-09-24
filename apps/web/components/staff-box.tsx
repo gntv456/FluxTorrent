@@ -156,9 +156,9 @@ export function StaffBox() {
         <div className="flex flex-wrap gap-2">
           {(
             [
-              ["desk", t.deskTab ?? "咨询工作台"],
+              ["desk", t.deskTab],
               ["ticket", tk.tab],
-              ["pm", t.pmTab ?? "管理组私信"],
+              ["pm", t.pmTab],
             ] as ["desk" | "ticket" | "pm", string][]
           ).map(([k, label]) => (
             <button
@@ -182,14 +182,14 @@ export function StaffBox() {
                 onClick={() => setDeskTab(0)}
                 className={`min-h-[36px] rounded-full px-3 text-xs font-bold ${deskTab === 0 ? "text-[var(--baozi-orange-dark)] underline" : "text-sub"}`}
               >
-                {t.pending ?? "未答复"}
+                {t.pending}
               </button>
               <button
                 type="button"
                 onClick={() => setDeskTab(1)}
                 className={`min-h-[36px] rounded-full px-3 text-xs font-bold ${deskTab === 1 ? "text-[var(--baozi-orange-dark)] underline" : "text-sub"}`}
               >
-                {t.answered ?? "已答复"}
+                {t.answered}
               </button>
             </span>
           )}
@@ -202,7 +202,7 @@ export function StaffBox() {
               onClick={() => bulkDesk("mark")}
               className="min-h-[36px] rounded-full border border-[var(--baozi-line)] px-3 font-bold disabled:opacity-40"
             >
-              ✓ {t.mark ?? "标记已答复"}
+              ✓ {t.mark}
             </button>
             <button
               type="button"
@@ -210,7 +210,7 @@ export function StaffBox() {
               onClick={() => bulkDesk("delete")}
               className="min-h-[36px] rounded-full border border-[var(--danger-border)] px-3 font-bold text-danger disabled:opacity-40"
             >
-              🗑 {t.del ?? "删除"}
+              🗑 {t.del}
             </button>
           </div>
         )}

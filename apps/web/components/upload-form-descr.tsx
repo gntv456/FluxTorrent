@@ -97,9 +97,9 @@ export function UploadDescrBlock({
           <details className="relative">
             <summary
               className={`${bbBtn} inline-flex cursor-pointer list-none items-center justify-center gap-1`}
-              title={dict.upload.bbColor ?? "颜色"}
+              title={dict.upload.bbColor}
             >
-              🎨 {dict.upload.bbColor ?? "颜色"}
+              🎨 {dict.upload.bbColor}
             </summary>
             <div className={`${bbPanel} grid-cols-8 w-72`}>
               {BB_COLORS.map(([hex, label]) => (
@@ -130,9 +130,9 @@ export function UploadDescrBlock({
               if (e.target.value) bbWrap(`[font=${e.target.value}]`, "[/font]");
             }}
             className={bbSelect}
-            title={dict.upload.bbFont ?? "字体"}
+            title={dict.upload.bbFont}
           >
-            <option value="">{dict.upload.bbFont ?? "字体"}</option>
+            <option value="">{dict.upload.bbFont}</option>
             <option value="SimSun">宋体</option>
             <option value="KaiTi">楷体</option>
             <option value="SimHei">黑体</option>
@@ -145,9 +145,9 @@ export function UploadDescrBlock({
               if (e.target.value) bbWrap(`[size=${e.target.value}]`, "[/size]");
             }}
             className={bbSelect}
-            title={dict.upload.bbSize ?? "字号"}
+            title={dict.upload.bbSize}
           >
-            <option value="">{dict.upload.bbSize ?? "字号"}</option>
+            <option value="">{dict.upload.bbSize}</option>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <option key={n} value={n}>
                 {n} 号
@@ -190,16 +190,16 @@ export function UploadDescrBlock({
             type="button"
             className={bbBtn}
             onClick={() => bbWrap("[url]", "[/url]", "https://")}
-            title={dict.upload.bbLink ?? "链接"}
+            title={dict.upload.bbLink}
           >
             🔗
           </button>
           <button
             type="button"
             className={bbBtn}
-            title={dict.upload.bbImg ?? "图片"}
+            title={dict.upload.bbImg}
             onClick={() => {
-              const u = window.prompt(dict.upload.bbImg ?? "图片 URL");
+              const u = window.prompt(dict.upload.bbImg);
               if (u && u.trim()) bbInsert(`[img]${u.trim()}[/img]`);
             }}
           >
@@ -209,14 +209,14 @@ export function UploadDescrBlock({
             type="button"
             className={bbBtn}
             onClick={() => bbWrap("[quote]", "[/quote]")}
-            title={dict.upload.bbQuote ?? "引用"}
+            title={dict.upload.bbQuote}
           >
             ❝
           </button>
           <button
             type="button"
             className={bbBtn}
-            title={dict.upload.bbCode ?? "代码 / MediaInfo"}
+            title={dict.upload.bbCode}
             onClick={() =>
               bbWrap(
                 "[code]",
@@ -230,7 +230,7 @@ export function UploadDescrBlock({
           <details className="relative">
             <summary
               className={`${bbBtn} inline-flex cursor-pointer list-none items-center justify-center`}
-              title={dict.upload.bbEmoji ?? "表情"}
+              title={dict.upload.bbEmoji}
             >
               😀
             </summary>

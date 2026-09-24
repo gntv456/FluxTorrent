@@ -101,7 +101,9 @@ export function PropsPanel({
                         flash(at.revoked);
                         await load();
                       } catch (e) {
-                        flash(e instanceof ApiError ? e.message : at.revokeFail);
+                        flash(
+                          e instanceof ApiError ? e.message : at.revokeFail,
+                        );
                       }
                     }}
                   >

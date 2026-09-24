@@ -84,7 +84,7 @@ export function UploadQualityBlock({
         </select>
       </FormRow>
       {kindDefs.length > 0 && (
-        <FormRow label={dict.upload.quality ?? "质量"}>
+        <FormRow label={dict.upload.quality}>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {kindDefs.map(({ kind, label, opts }) => (
               <label key={kind} className="flex items-center gap-1 text-sm">
@@ -107,7 +107,7 @@ export function UploadQualityBlock({
         </FormRow>
       )}
       {tagDict.filter((t) => t.kind !== "official").length > 0 && (
-        <FormRow label={dict.upload.tags ?? "标签"}>
+        <FormRow label={dict.upload.tags}>
           <div className="flex flex-col gap-1">
             {/* 0160 P2：按组分区（属性类 / 内容类），无组信息时退化为平铺 */}
             {(["attribute", "content"] as const)
@@ -119,12 +119,15 @@ export function UploadQualityBlock({
                 ),
               )
               .map((g) => (
-                <div key={g} className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div
+                  key={g}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2"
+                >
                   {(tagGroups ?? []).some((x) => x === "content") && (
                     <span className="text-xs font-bold text-sub">
                       {g === "attribute"
-                        ? (dict.upload.tagGroupAttr ?? "属性")
-                        : (dict.upload.tagGroupContent ?? "内容")}
+                        ? (dict.upload.tagGroupAttr)
+                        : (dict.upload.tagGroupContent)}
                       ：
                     </span>
                   )}
@@ -160,32 +163,32 @@ export function UploadQualityBlock({
                 </div>
               ))}
             <span className="text-xs text-sub">
-              {dict.upload.tagsHint ?? "可多选（≤12 个）；发布后可在详情页增删"}
+              {dict.upload.tagsHint}
             </span>
           </div>
         </FormRow>
       )}
-      <FormRow label={dict.upload.recommend ?? "推荐（挑选）"}>
+      <FormRow label={dict.upload.recommend}>
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <label className="flex items-center gap-1 text-sm">
               <span className="whitespace-nowrap text-sub">
-                {dict.upload.pickPos ?? "置顶位置"}：
+                {dict.upload.pickPos}：
               </span>
               <select
                 value={posState}
                 onChange={(e) => setPosState(Number(e.target.value))}
                 className={INPUT_BAOZI}
               >
-                <option value="0">{dict.upload.pickNone ?? "不置顶"}</option>
-                <option value="1">{dict.upload.pickL1 ?? "一级置顶"}</option>
-                <option value="2">{dict.upload.pickL2 ?? "二级置顶"}</option>
+                <option value="0">{dict.upload.pickNone}</option>
+                <option value="1">{dict.upload.pickL1}</option>
+                <option value="2">{dict.upload.pickL2}</option>
               </select>
             </label>
             {posState > 0 && (
               <label className="flex items-center gap-1 text-sm">
                 <span className="whitespace-nowrap text-sub">
-                  {dict.upload.pickUntil ?? "置顶截止"}：
+                  {dict.upload.pickUntil}：
                 </span>
                 <input
                   type="datetime-local"
@@ -197,26 +200,25 @@ export function UploadQualityBlock({
             )}
             <label className="flex items-center gap-1 text-sm">
               <span className="whitespace-nowrap text-sub">
-                {dict.upload.recommendMovie ?? "推荐影片"}：
+                {dict.upload.recommendMovie}：
               </span>
               <select
                 value={pickType}
                 onChange={(e) => setPickType(Number(e.target.value))}
                 className={INPUT_BAOZI}
               >
-                <option value="0">{dict.upload.recommendNone ?? "普通"}</option>
+                <option value="0">{dict.upload.recommendNone}</option>
                 <option value="1">
-                  {dict.upload.recommendNormal ?? "推荐"}
+                  {dict.upload.recommendNormal}
                 </option>
                 <option value="2">
-                  {dict.upload.recommendClassic ?? "经典"}
+                  {dict.upload.recommendClassic}
                 </option>
               </select>
             </label>
           </div>
           <span className="text-xs text-sub">
-            {dict.upload.recommendHint ??
-              "置顶与推荐需管理组权限；促销跟随站点自动策略，无需在此设置"}
+            {dict.upload.recommendHint}
           </span>
         </div>
       </FormRow>

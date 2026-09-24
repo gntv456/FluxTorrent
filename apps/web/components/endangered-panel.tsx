@@ -127,7 +127,7 @@ export function EndangeredPanel() {
               <th className="w-20 text-center">{t.colSeeders}</th>
               <th className="w-24">{t.colSize}</th>
               <th className="w-24">{t.colAge}</th>
-              <th className="w-40">{dict.torrents.colActions ?? "操作"}</th>
+              <th className="w-40">{dict.torrents.colActions}</th>
             </tr>
           </thead>
           <tbody>

@@ -74,10 +74,10 @@ export function DeskTable({
         <tr>
           <th className="w-10" />
           <th>{dict.messages.subject}</th>
-          <th className="w-24">{t.from ?? "来信人"}</th>
+          <th className="w-24">{t.from}</th>
           <th className="hidden w-40 md:table-cell">{dict.messages.timeCol}</th>
           {deskTab === 1 && (
-            <th className="w-24">{t.answeredBy ?? "答复人"}</th>
+            <th className="w-24">{t.answeredBy}</th>
           )}
         </tr>
       </thead>
@@ -114,7 +114,7 @@ export function DeskTable({
                         setAnswerText(e.target.value);
                       }}
                       placeholder={
-                        t.answerPh ?? "输入答复，将私信发给来信人并回写工单"
+                        t.answerPh
                       }
                       className="min-h-[70px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 py-2 text-sm"
                     />
@@ -126,7 +126,7 @@ export function DeskTable({
                       onClick={() => onSendAnswer(m.id)}
                       className="min-h-[36px] w-fit rounded-full bg-sky-deep px-4 text-xs font-bold text-white disabled:opacity-50"
                     >
-                      {t.sendBtn ?? "发送答复"}
+                      {t.sendBtn}
                     </button>
                   </div>
                 )}
@@ -144,7 +144,7 @@ export function DeskTable({
         {deskRows !== null && deskRows.length === 0 && (
           <tr>
             <td colSpan={5} className="py-6 text-center text-sub">
-              {t.emptyDesk ?? "暂无来信"}
+              {t.emptyDesk}
             </td>
           </tr>
         )}

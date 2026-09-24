@@ -89,7 +89,7 @@ export function DownloadButton({
       </button>
       {charged && (
         <span
-          title={dict.torrent.priceHint ?? "首次下载将支付，重复下载不再扣费"}
+          title={dict.torrent.priceHint}
           className="td-dl-price"
         >
           {price} {currency}
@@ -97,7 +97,7 @@ export function DownloadButton({
       )}
       {(price ?? 0) > 0 && purchased && !isOwner && (
         <span className="text-xs text-sub">
-          {dict.torrent.purchased ?? "已购"}
+          {dict.torrent.purchased}
         </span>
       )}
     </span>

@@ -14,7 +14,9 @@ interface TagDictRow {
 }
 
 /** 兼容 API 历史形态：dict 行可能序列化为 [id, name, kind] 元组 */
-export function normTagRow(r: TagDictRow | [number, string, string]): TagDictRow {
+export function normTagRow(
+  r: TagDictRow | [number, string, string],
+): TagDictRow {
   return Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r;
 }
 
@@ -34,11 +36,7 @@ export function TorrentTags({
   initial?: TagPayload;
 }) {
   const { dict } = useI18n();
-  const t = dict.torrTags2 ?? {
-    title: "标签",
-    needStaff: "官方标签仅管理组可打",
-    addTag: "+ 加标签",
-  };
+  const t = dict.torrTags2;
   const [dictRows, setDictRows] = useState<TagDictRow[]>(() =>
     initial ? initial.dict.map(normTagRow) : [],
   );

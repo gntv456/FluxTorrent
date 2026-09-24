@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
+import { INPUT_MD } from "@/lib/ui-classes";
 
 type Voucher = {
   id: number;
@@ -16,7 +18,7 @@ type Voucher = {
 
 /** 我的免费券/中性券：列表 + 对指定种子用券（0073，Gazelle FL token 口径） */
 export function VoucherPanel() {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [using, setUsing] = useState<number | null>(null);
   const [torrentId, setTorrentId] = useState("");
@@ -63,85 +65,86 @@ export function VoucherPanel() {
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <table className="nexus-table">
-        <tbody>
-          <tr>
-            <td className="colhead">
-              <h2 className="font-display">{dict.vouchers.title}</h2>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      {message && <p className="text-xs text-emerald-600">{message}</p>}
-      {error && <p className="text-xs text-red-500">{error}</p>}
-      {open.length === 0 && (
-        <p className="text-sm text-sub">{dict.vouchers.empty}</p>
-      )}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {open.map((v) => (
-          <div
-            key={v.id}
-            className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold">
+    <section className="baozi-panel">
+      <div className="baozi-panel__head">
+        <h2>{dict.vouchers.title}</h2>
+        <span className="text-xs text-sub">{dict.shop.packNote}</span>
+      </div>
+      <div className="flex flex-col gap-3 p-3">
+        {message && (
+          <p className="text-xs text-[var(--success)]">{message}</p>
+        )}
+        {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
+        {open.length === 0 && (
+          <p className="text-sm text-sub">{dict.vouchers.empty}</p>
+        )}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {open.map((v) => (
+            <div key={v.id} className="vticket">
+              <span className="n">
+                {v.kind === "free" ? "FL" : "NL"}
+              </span>
+              <span className="l">
                 {v.kind === "free"
                   ? dict.vouchers.freeKind
                   : dict.vouchers.neutralKind}
+                <small>
+                  {dict.vouchers.expires}{" "}
+                  {new Date(v.expires_at).toLocaleDateString(
+                    dateLocale(locale),
+                  )}
+                </small>
               </span>
-              <span className="text-xs text-sub">
-                {dict.vouchers.expires}{" "}
-                {new Date(v.expires_at).toLocaleDateString()}
-              </span>
-            </div>
-            {using === v.id ? (
-              <div className="flex flex-col gap-2">
-                <input
-                  className="rounded border border-line bg-transparent px-2 py-1 text-sm"
-                  placeholder={dict.vouchers.torrentIdPlaceholder}
-                  value={torrentId}
-                  onChange={(e) => setTorrentId(e.target.value)}
-                  inputMode="numeric"
-                />
-                <div className="flex gap-2">
+              <div className="acts">
+                {using === v.id ? (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      className={`${INPUT_MD} w-full text-sm`}
+                      placeholder={dict.vouchers.torrentIdPlaceholder}
+                      value={torrentId}
+                      onChange={(e) => setTorrentId(e.target.value)}
+                      inputMode="numeric"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        onClick={() => void use(v.id)}
+                      >
+                        {dict.vouchers.confirm}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => setUsing(null)}
+                      >
+                        {dict.vouchers.cancel}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <button
-                    className="btn-primary text-sm"
-                    onClick={() => void use(v.id)}
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={() => {
+                      setUsing(v.id);
+                      setMessage(null);
+                      setError(null);
+                    }}
                   >
-                    {dict.vouchers.confirm}
+                    {dict.vouchers.use}
                   </button>
-                  <button
-                    className="btn-ghost text-sm"
-                    onClick={() => setUsing(null)}
-                  >
-                    {dict.vouchers.cancel}
-                  </button>
-                </div>
+                )}
               </div>
-            ) : v.used_torrent_id ? (
-              <span className="text-xs text-sub">→ #{v.used_torrent_id}</span>
-            ) : (
-              <button
-                className="btn-primary text-sm"
-                onClick={() => {
-                  setUsing(v.id);
-                  setMessage(null);
-                  setError(null);
-                }}
-              >
-                {dict.vouchers.use}
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-      {history.length > 0 && (
-        <details className="rounded border border-line p-3">
-          <summary className="cursor-pointer text-sm text-sub">
-            {dict.vouchers.history}
-          </summary>
-          <ul className="mt-2 flex flex-col gap-1 text-xs text-sub">
+            </div>
+          ))}
+        </div>
+        {history.length > 0 && (
+          <details className="rounded border border-line p-3">
+            <summary className="cursor-pointer text-sm text-sub">
+              {dict.vouchers.history}
+            </summary>
+            <ul className="mt-2 flex flex-col gap-1 text-xs text-sub">
             {history.slice(0, 30).map((v) => (
               <li key={v.id}>
                 #{v.id}{" "}
@@ -150,13 +153,16 @@ export function VoucherPanel() {
                   : dict.vouchers.neutralKind}
                 {v.used_torrent_id ? ` → #${v.used_torrent_id}` : ""}{" "}
                 {v.used_at
-                  ? `(${new Date(v.used_at).toLocaleDateString()})`
+                  ? `(${new Date(v.used_at).toLocaleDateString(
+                      dateLocale(locale),
+                    )})`
                   : ""}
               </li>
             ))}
           </ul>
         </details>
-      )}
+        )}
+      </div>
     </section>
   );
 }

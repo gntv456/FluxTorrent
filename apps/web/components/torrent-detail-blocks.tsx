@@ -63,7 +63,7 @@ export function GroupVersions({
   const d = dict.tdetail;
   return (
     <Fold
-      title={`${d?.groupTitle ?? "同组版本"}：${group.group?.name}`}
+      title={`${d?.groupTitle}：${group.group?.name}`}
       count={group.items.length}
     >
       {/* 组订阅（0075）：新版本过审时通知 */}
@@ -90,7 +90,7 @@ export function GroupVersions({
               </td>
               <td className="num shrink-0 text-right text-sub">
                 {g.current ? (
-                  (d?.current ?? "当前")
+                  (d?.current)
                 ) : (
                   <>
                     <span className="text-green">{g.seeders}</span> ·{" "}
