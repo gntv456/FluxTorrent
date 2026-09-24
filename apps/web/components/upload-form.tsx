@@ -61,6 +61,14 @@ export function UploadForm() {
   const [ptgenUrl, setPtgenUrl] = useState("");
   const [ptgenBusy, setPtgenBusy] = useState(false);
   const [categoryId, setCategoryId] = useState(2);
+  // 默认分类不再硬编码 2：切换站型包后 id=2 可能压根不存在（有的包只有 3 个分类），
+  // 那会把非法 category_id 提交上去。档案到位后校正一次。
+  useEffect(() => {
+    if (!profileCats?.length) return;
+    setCategoryId((cur) =>
+      profileCats.some((c) => c.id === cur) ? cur : profileCats[0].id,
+    );
+  }, [profileCats]);
   const [smallDescr, setSmallDescr] = useState("");
   const [descr, setDescr] = useState("");
   const [poster, setPoster] = useState("");
@@ -116,18 +124,33 @@ export function UploadForm() {
   const [secKinds, setSecKinds] = useState<SectionKindMeta[]>([]);
   const [secVals, setSecVals] = useState<Record<string, string>>({});
   useEffect(() => {
+    // 归属模式决定「这个分类能填哪些维度」（categories.mode_id → show_*），
+    // 所以换分类必须重取维度清单，不能再拿首次加载的结果用到底
     api
-      .get<Record<string, unknown>>("/api/v1/section-dict")
+      .get<Record<string, unknown>>(
+        `/api/v1/section-dict?category_id=${categoryId}`,
+      )
       .then((d) => {
-        setSecKinds((d.kinds as SectionKindMeta[] | undefined) ?? []);
+        const ks = (d.kinds as SectionKindMeta[] | undefined) ?? [];
+        setSecKinds(ks);
         const rest: Record<string, SectionDictRow[]> = {};
         for (const [k, v] of Object.entries(d)) {
           if (k !== "kinds" && k !== "modes") rest[k] = v as SectionDictRow[];
         }
         setSecDict(rest);
+        // 被模式隐藏的维度、或换批后不再存在的字典项：残留取值不能再被提交
+        setSecVals((prev) => {
+          const kept: Record<string, string> = {};
+          for (const [k, v] of Object.entries(prev)) {
+            if (v && (rest[k] ?? []).some((r) => String(r.id) === v)) {
+              kept[k] = v;
+            }
+          }
+          return kept;
+        });
       })
       .catch(() => setSecDict({}));
-  }, []);
+  }, [categoryId]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
