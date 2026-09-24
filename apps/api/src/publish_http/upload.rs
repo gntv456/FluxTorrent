@@ -131,8 +131,15 @@ pub async fn upload(
     }
     // 0077 免审通道（NP offer_skip_approved_count 口径）：连续过审 ≥5 的发布者免审
     let streak_skip = streak >= 5;
+    // 0170 等级免审：class ≥ upload_auto_approve_class（缺省 92 论坛版主）
+    // 发布即通过；阈值同步约束编辑回退（interact.rs），「版主以上免审核」全链一致
+    let auto_class = crate::torrents::manage_perm::auto_approve_threshold(
+        &state.repo.db,
+    )
+    .await;
     let auto_approve = cat_auto
         || streak_skip
+        || auth.class_id >= i32::from(auto_class)
         || crate::authz::can(
             &state,
             &auth,

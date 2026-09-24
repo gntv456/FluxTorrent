@@ -88,18 +88,27 @@ pub(super) fn sort_of(
                 |r: &TorrentRow| r.comments.to_string(),
             ),
         ),
-        _ => (format!("{sticky_expr}, t.id DESC"), CursorCol::Sticky),
+        // 0170：方向吃 asc 参数 —— dir=prev 反向翻页时 id 比较方向随之反转
+        _ => (format!("{sticky_expr}, t.id {d}"), CursorCol::Sticky),
     }
 }
 
 /// 游标谓词：$7 = 游标 id，$26 = 排序键值（文本进、按列 cast 比较）。
 /// 与 ORDER BY 完全同序；键值为 NULL（旧格式游标）时短路 → 回到第一页。
+/// `tie_inclusive`（0170 双向翻页）：dir=prev 反向页传 true —— 锚行（正向页
+/// 末行）属于上一页，tie-break 须含等（id >= $7），否则回翻会丢锚行。
 pub(super) fn predicate(
     col: &CursorCol,
     asc: bool,
     sticky_calc: &str,
+    tie_inclusive: bool,
 ) -> String {
     let cmp = if asc { ">" } else { "<" };
+    let tie = if tie_inclusive {
+        if asc { ">=" } else { "<=" }
+    } else {
+        cmp
+    };
     let (expr, cast) = match col {
         CursorCol::Sticky => (sticky_calc.to_string(), "int"),
         CursorCol::Int(x, c, _) => ((*x).to_string(), *c),
@@ -110,7 +119,7 @@ pub(super) fn predicate(
     };
     format!(
         " AND (${v}::{cast} IS NULL OR ({expr} {cmp} ${v}::{cast} \
-         OR ({expr} = ${v}::{cast} AND t.id {cmp} $7)))",
+         OR ({expr} = ${v}::{cast} AND t.id {tie} $7)))",
         v = 26,
         cast = cast,
         expr = expr

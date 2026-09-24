@@ -46,14 +46,18 @@ pub async fn list_torrents_noclamp_as(
     // 旧列 sticky 仍被官种联动使用——「任一生效即置顶」，一级 > 二级 > 普通置顶。
     // 拆出无方向的 sticky_calc：游标谓词要比较它的值，SELECT 也要输出它（sticky_rank）。
     let sticky_calc = "(GREATEST(t.sticky::int, CASE WHEN t.pos_state IN (1, 2) AND (t.pos_state_until IS NULL OR t.pos_state_until > now()) THEN CASE t.pos_state WHEN 1 THEN 2 WHEN 2 THEN 1 ELSE 0 END ELSE 0 END))";
-    let sticky_expr = format!("{sticky_calc} DESC");
+    // 0170 双向翻页：dir=prev 时排序方向整体反转（置顶表达式含方向，一并反转）
+    let sticky_dir = if filter.reverse { "ASC" } else { "DESC" };
+    let sticky_expr = format!("{sticky_calc} {sticky_dir}");
     // 表头排序（NP colhead 口径）：asc 前缀反转方向；comments = 评论数
     let (key, asc) = match filter.sort.as_deref() {
         Some(s) if s.ends_with("_asc") => (&s[..s.len() - 4], true),
         other => (other.unwrap_or(""), false),
     };
+    // 0170：反向页的有效排序方向 = 原方向 XOR reverse（ORDER BY / 游标谓词同反）
+    let asc_eff = asc != filter.reverse;
     // 用户显式排序不掺置顶 + 二元 keyset 游标：构造细节见 cursor.rs
-    let (order, cursor_col) = cursor::sort_of(key, asc, &sticky_expr);
+    let (order, cursor_col) = cursor::sort_of(key, asc_eff, &sticky_expr);
     // 标签筛选（0159 P1 多选）：any = 单谓词 = ANY（复用 idx_tags_tag）；
     // all = 命中去重后等于标签数（聚合子查询，仍走索引）
     let tag_pred = match (&filter.tag_ids, filter.tag_all) {
@@ -66,30 +70,7 @@ pub async fn list_torrents_noclamp_as(
             ids.len()
         ),
     };
-    // 第八轮 Section 多维筛选：每个维度一个子查询谓词（kind 以 section_kinds 存在性校验 + i64 内插，无注入面）
-    // 多维多选（0102）：同维度多值 OR（= ANY），跨维度 AND
-    let mut sec_sql = String::new();
-    {
-        use std::collections::BTreeMap;
-        let mut by_kind: BTreeMap<&str, Vec<i64>> = BTreeMap::new();
-        for (kind, dict_id) in &filter.sections {
-            by_kind.entry(kind).or_default().push(*dict_id);
-        }
-        for (kind, ids) in by_kind {
-            if !crate::admin_p3_http::is_custom_kind(db, kind).await {
-                continue;
-            }
-            let list = ids
-                .iter()
-                .map(|i| i.to_string())
-                .collect::<Vec<_>>()
-                .join(",");
-            sec_sql.push_str(&format!(
-                " AND t.id IN (SELECT torrent_id FROM torrent_sections WHERE kind = '{kind}' AND dict_id = ANY(ARRAY[{list}]::bigint[]))"
-            ));
-        }
-    }
-    // 搜索范围分流（旧站口径）：0=标题+全字段(默认) 1=副标题/简介 3=发布者 4=IMDb
+    let sec_sql = super::section_pred::section_where(db, &filter.sections).await;    // 搜索范围分流（旧站口径）：0=标题+全字段(默认) 1=副标题/简介 3=发布者 4=IMDb
     let esc = if exact { "" } else { " ESCAPE chr(92)" };
     let search_pred = match filter.search_area.unwrap_or(0) {
         1 => format!("AND ($6::text IS NULL OR t.small_descr ILIKE $6{esc} OR t.descr ILIKE $6{esc})"),
@@ -110,13 +91,36 @@ pub async fn list_torrents_noclamp_as(
             }
         }
     };
-    // 审核状态（0102）：0=全部 1=通过（默认） 2=被拒（入口已按 see_banned 剥离）
-    let approval_pred: String = match filter.approval {
-        Some(0) | None => " AND t.approval_status = 1".into(),
-        Some(2) => " AND t.approval_status IN (2, 3)".into(),
-        Some(1) => " AND t.approval_status = 1".into(),
-        Some(_) => " AND t.approval_status = 1".into(),
+    // 审核状态（0102 + 0170 站点开关）：默认视图 = 已通过；开关放行待审/被拒
+    // （列表带徽标）。集合由白名单枚举拼接常量文本，无注入面。
+    // 被拒视图含软删 3 维持原口径；外层闸门与计数侧同口径（见 approval_gate）。
+    let allowed: Vec<i16> = match filter.approval {
+        Some(2) => vec![2, 3],
+        Some(1) => vec![1],
+        _ => {
+            let mut set = vec![1];
+            if filter.show_pending {
+                set.insert(0, 0);
+            }
+            if filter.show_rejected {
+                set.push(2);
+            }
+            set
+        }
     };
+    let in_list = allowed
+        .iter()
+        .map(|v| v.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let approval_pred = format!(" AND t.approval_status IN ({in_list})");
+    // 外层闸门：include_unapproved（staff see_banned）放行全部之外，开关放行的
+    // 默认集合也须放行 —— 否则开关开了仍被 (status=1 OR ...) 滤掉。
+    // 列表侧外层参数是 $10，计数侧是 $7（两处 bind 序号不同，分别生成）。
+    let approval_gate =
+        format!("(t.approval_status IN ({in_list}) OR $10::bool)");
+    let approval_gate_count =
+        format!("(t.approval_status IN ({in_list}) OR $7::bool)");
     // 种子状态 + 书签（viewer 维度谓词，阶段三筛选粒度收编 viewer_preds）
     let status_pred =
         super::viewer_preds::status_pred(filter.status.as_deref(), &viewer_sql);
@@ -153,7 +157,12 @@ pub async fn list_torrents_noclamp_as(
     // 旧格式游标（val=None，历史链接）sortval 为 NULL → 退化为回到第一页。
     let sortval = cursor.as_ref().and_then(|c| c.val.clone());
     let cursor_pred = match cursor.as_ref() {
-        Some(_) => cursor::predicate(&cursor_col, asc, sticky_calc),
+        Some(_) => cursor::predicate(
+            &cursor_col,
+            asc_eff,
+            sticky_calc,
+            filter.reverse,
+        ),
         None => String::new(),
     };
     let sql = format!(
@@ -169,17 +178,17 @@ pub async fn list_torrents_noclamp_as(
                t.media_info->>'poster' AS poster,
                t.imdb_id,
                t.created_at,
-               (SELECT COALESCE(json_agg(json_build_object( \
-                    'id', d.id, 'name', d.name, 'kind', d.kind, \
-                    'bg_color', d.bg_color, 'color', d.color) \
-                    ORDER BY d.sort DESC, d.id), '[]'::json) \
-                FROM tags tg JOIN tag_dict d ON d.id = tg.tag_id \
+               (SELECT COALESCE(json_agg(json_build_object(
+                    'id', d.id, 'name', d.name, 'kind', d.kind,
+                    'bg_color', d.bg_color, 'color', d.color)
+                    ORDER BY d.sort DESC, d.id), '[]'::json)
+                FROM tags tg JOIN tag_dict d ON d.id = tg.tag_id
                 WHERE tg.torrent_id = t.id) AS tags,
                {sticky_calc} AS sticky_rank
         FROM torrents t
         LEFT JOIN users u ON u.id = t.owner_id
         {promo_lateral}
-        WHERE (t.approval_status = 1 OR $10::bool)
+        WHERE {approval_gate}
           AND ($1::int[] IS NULL OR t.category_id = ANY($1))
           AND ($2::int IS NULL OR t.medium_id = $2)
           AND ($3::int IS NULL OR t.grade_id = $3)
@@ -255,7 +264,7 @@ pub async fn list_torrents_noclamp_as(
     // 把 count 的代价上界从 O(筛选集) 压到 O(10001 行扫描)。
     let count_sql = format!(
         "SELECT count(*) FROM (SELECT 1 FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
-         WHERE (t.approval_status = 1 OR $7::bool) \
+         WHERE {approval_gate_count} \
          AND ($1::int[] IS NULL OR t.category_id = ANY($1)) AND ($2::int IS NULL OR t.medium_id = $2) \
          AND ($3::int IS NULL OR t.grade_id = $3) AND ($4::int IS NULL OR t.edition_id = $4) \
          AND ($5::bool IS NULL OR t.official_tag = $5) {alive_pred} {approval_pred} {status_pred} \
@@ -292,11 +301,20 @@ pub async fn list_torrents_noclamp_as(
         .unwrap_or(0);
 
     let has_more = rows.len() as i64 > limit;
-    let items = rows.into_iter().take(limit as usize).collect::<Vec<_>>();
-    // 游标编码「排序键值 + id」：下一页谓词与 ORDER BY 完全同序，翻页不丢行（方案批次二）
+    let mut items: Vec<TorrentRow> =
+        rows.into_iter().take(limit as usize).collect();
+    // 0170 反向页：行序反转回原方向输出；游标锚点随方向取首/末行 ——
+    // 正向页锚末行（下一页），反向页锚首行（继续往回翻）
+    if filter.reverse {
+        items.reverse();
+    }
     let next_cursor = has_more.then(|| {
-        items
-            .last()
+        let anchor = if filter.reverse {
+            items.first()
+        } else {
+            items.last()
+        };
+        anchor
             .map(|r| cursor::encode_next(&cursor_col, r))
             .unwrap_or_default()
     });

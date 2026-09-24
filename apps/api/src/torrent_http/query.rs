@@ -3,36 +3,13 @@
 
 use serde::Deserialize;
 
-/// 宽松布尔解析（0093）：查询串里的 `1/0/true/false/yes/no` 均接受。
-/// 此前 `include_dead=1`（旧站 1/0 口径、第三方客户端常用）会让整个 Query 反序列化失败 → 400。
-pub(super) fn de_bool_lenient<'de, D>(d: D) -> Result<Option<bool>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let v = Option::<String>::deserialize(d)?;
-    Ok(v.map(|s| {
-        matches!(
-            s.trim().to_ascii_lowercase().as_str(),
-            "1" | "true" | "yes" | "on"
-        )
-    }))
-}
+mod query_de;
 
-/// 宽容的数字反序列化（005 修复）：表单里「全部」这类选项会提交 `alive=&tag_id=` 空串，
-/// 而 `Option<i32>` 直接吃空串会解析失败 → 整个 Query 反序列化报错 → 400。
-/// 这里统一把空/空白视为 None，非法值才算错。
-pub(super) fn de_opt_num_lenient<'de, D, T>(d: D) -> Result<Option<T>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-    T: std::str::FromStr,
-    T::Err: std::fmt::Display,
-{
-    let v = Option::<String>::deserialize(d)?;
-    match v.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {
-        None => Ok(None),
-        Some(s) => s.parse::<T>().map(Some).map_err(serde::de::Error::custom),
-    }
-}
+// 仅供本模块的 `deserialize_with` 使用（外部无引用，故不重导出）
+use query_de::{
+    de_bool_lenient, de_category_ids_lenient, de_opt_num_lenient,
+    de_tag_ids_lenient,
+};
 
 #[derive(Deserialize)]
 pub(super) struct ListQuery {
@@ -83,6 +60,9 @@ pub(super) struct ListQuery {
     /// category_id 旧键名的旁路收集（与上合并；空则不影响）
     #[serde(default, skip_serializing, rename = "category_id")]
     pub(super) category_id_alias: Option<String>,
+    /// 翻页方向（0170 双向 keyset）：prev = 上一页（取游标之前的 limit 行）
+    #[serde(default)]
+    pub(super) dir: Option<String>,
     pub(super) cursor: Option<String>,
     #[serde(default, deserialize_with = "de_opt_num_lenient")]
     pub(super) limit: Option<i64>,
@@ -178,30 +158,6 @@ pub(super) fn norm_promo(s: Option<String>) -> Option<String> {
         .filter(|out| !out.is_empty())
 }
 
-/// tag_ids 的宽松反序列化：seq → 原样；字符串 → 按逗号拆（与 category_ids 同套路）
-pub(super) fn de_tag_ids_lenient<'de, D>(
-    d: D,
-) -> Result<Vec<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(serde::Deserialize)]
-    #[serde(untagged)]
-    enum OneOrMany {
-        Many(Vec<String>),
-        One(String),
-    }
-    let v = serde_json::Value::deserialize(d)?;
-    let pick = serde_json::from_value::<OneOrMany>(v)
-        .map_err(serde::de::Error::custom)?;
-    Ok(match pick {
-        OneOrMany::Many(v) => v,
-        OneOrMany::One(s) => {
-            s.split(',').map(|x| x.trim().to_string()).collect()
-        }
-    })
-}
-
 /// 标签参数归一（0159 P1）：tag_id（旧单值）与 tag_ids（多选/重复参数）合并，
 /// 保序去重；tag_mode 只认 any/all，缺省 any。
 pub(super) fn norm_tags(
@@ -263,32 +219,6 @@ pub(super) fn parse_size(s: Option<String>) -> Option<i64> {
     let bytes = (n * mul).round();
     (bytes >= 1.0 && n.is_finite() && bytes < i64::MAX as f64)
         .then_some(bytes as i64)
-}
-
-/// category_ids/category_id 的宽松反序列化：seq → 原样；字符串 → 按逗号拆。
-/// （此前用 alias 兼容单值键名，但 serde 对 Vec 字段的裸字符串直接报错 → 前端筛选 400）
-pub(super) fn de_category_ids_lenient<'de, D>(
-    d: D,
-) -> Result<Vec<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(serde::Deserialize)]
-    #[serde(untagged)]
-    enum OneOrMany {
-        Many(Vec<String>),
-        One(String),
-    }
-    // actix-web Query 的 serde_qs 形状：字段值是「单值或 seq」的直接载荷
-    let v = serde_json::Value::deserialize(d)?;
-    let pick = serde_json::from_value::<OneOrMany>(v)
-        .map_err(serde::de::Error::custom)?;
-    Ok(match pick {
-        OneOrMany::Many(v) => v,
-        OneOrMany::One(s) => {
-            s.split(',').map(|x| x.trim().to_string()).collect()
-        }
-    })
 }
 
 #[cfg(test)]

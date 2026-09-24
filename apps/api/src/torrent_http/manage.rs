@@ -34,7 +34,8 @@ async fn edit_torrent(
                 None
             }
         });
-    torrents::edit_torrent(
+    // 0170：返回 true = 编辑后保持原审核状态（staff 管理通道或 ≥ 免审等级作者）
+    let kept = torrents::edit_torrent(
         &state.repo.db,
         tid,
         (auth.id, auth.class_id as i16),
@@ -173,9 +174,12 @@ async fn edit_torrent(
             .await;
         }
     }
-    Ok(ok(
-        serde_json::json!({ "edited": true, "note": "已回退待审核" }),
-    ))
+    Ok(ok(serde_json::json!({
+        "edited": true,
+        // 0170：是否回退待审（staff/免审等级编辑为 false，种子不出列表）
+        "requeued": !kept,
+        "note": if kept { "已保存" } else { "已回退待审核" },
+    })))
 }
 
 /// 修改付费定价（0086）：发布者或 staff；改价不影响已购（以 torrent_purchases 已扣为准）
