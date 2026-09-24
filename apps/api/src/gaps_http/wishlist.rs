@@ -78,7 +78,7 @@ pub async fn wishlist_add(
     .bind(body.grade_id)
     .execute(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| crate::errors::db_to_domain(e, "愿望单的分类/学段"))?;
     Ok(ok(serde_json::json!({ "keyword": kw })))
 }
 

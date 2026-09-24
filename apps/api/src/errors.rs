@@ -155,3 +155,17 @@ impl ResponseError for DomainError {
 }
 
 pub type DomainResult<T> = Result<T, DomainError>;
+
+/// 数据库错误 → 领域错误。
+///
+/// 外键违规（SQLSTATE 23503）是调用方给了不存在的 id（分类/字典项/用户…），
+/// 属于可修正的输入问题：此前一路 `.map_err(Internal)` 冒成 500，客户端既看不懂
+/// 也重试不好。其余数据库错误仍是 500（真故障，不该伪装成用户错误）。
+pub fn db_to_domain(e: sqlx::Error, what: &str) -> DomainError {
+    if let sqlx::Error::Database(ref d) = e {
+        if d.code().as_deref() == Some("23503") {
+            return DomainError::Validation(format!("{what}引用了不存在的分类或字典项"));
+        }
+    }
+    DomainError::Internal(e.into())
+}

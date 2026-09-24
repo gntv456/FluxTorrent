@@ -99,6 +99,9 @@ async fn tags_dict_public(
 /// 分类归属模式 + 自动过审开关
 #[derive(Deserialize)]
 struct CategoryFlagsReq {
+    /// 缺省 = 不改归属；`0` = 显式清除归属（回到「全模式可用」）；其余 = 改归属。
+    /// 早先实现是裸 `SET mode_id = $2`，前端只勾「自动过审」不带 mode_id 时会把
+    /// 归属写成 NULL（等于静默改分类归属）。
     #[serde(default)]
     mode_id: Option<i32>,
     #[serde(default)]
@@ -133,7 +136,7 @@ async fn category_flags(
     .bind(body.auto_approve)
     .execute(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?
+    .map_err(|e| crate::errors::db_to_domain(e, "分类归属模式"))?
     .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(id as i64));

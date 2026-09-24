@@ -60,9 +60,14 @@ async fn rss_feed(
     }
 
     // 多选分类/媒介：逗号分隔 → 数组（空 = 不过滤）；兼容旧版单值 category
-    let categories = parse_ids(q.categories.as_deref())
-        .or_else(|| q.category.map(|c| vec![c]));
-    let mediums = parse_ids(q.mediums.as_deref());
+    let categories = match parse_ids(q.categories.as_deref()) {
+        Ok(v) => v.or_else(|| q.category.map(|c| vec![c])),
+        Err(msg) => return HttpResponse::BadRequest().body(msg),
+    };
+    let mediums = match parse_ids(q.mediums.as_deref()) {
+        Ok(v) => v,
+        Err(msg) => return HttpResponse::BadRequest().body(msg),
+    };
     // paid=1 → 仅免费促销种（当前生效的 torrent 级或 scope 级 free/x2free；修复前参数被静默忽略）
     let free_only = q.paid == Some(1);
     // 促销口径与列表/筛选谓词共用同一份实现（crate::torrents::promo）：
@@ -207,20 +212,33 @@ struct RssQuery {
     paid: Option<i32>,
 }
 
-fn parse_ids(s: Option<&str>) -> Option<Vec<i32>> {
-    let s = s?.trim();
+/// 逗号分隔 id 串 → 数组。空/未给 = 不过滤（Ok(None)）；
+/// 给了值却有解析不出的 token → Err（此前静默丢弃，全非法时等于不加谓词、
+/// 返回全站订阅源，比报错危险）
+fn parse_ids(s: Option<&str>) -> Result<Option<Vec<i32>>, String> {
+    let s = match s {
+        Some(v) => v.trim(),
+        None => return Ok(None),
+    };
     if s.is_empty() {
-        return None;
+        return Ok(None);
     }
-    let ids: Vec<i32> = s
-        .split(',')
-        .filter_map(|p| p.trim().parse::<i32>().ok())
-        .collect();
-    if ids.is_empty() {
-        None
-    } else {
-        Some(ids)
+    let mut ids: Vec<i32> = Vec::new();
+    for p in s.split(',') {
+        let p = p.trim();
+        if p.is_empty() {
+            continue;
+        }
+        match p.parse::<i32>() {
+            Ok(v) => {
+                if !ids.contains(&v) {
+                    ids.push(v);
+                }
+            }
+            Err(_) => return Err(format!("参数非法：{p}")),
+        }
     }
+    Ok(if ids.is_empty() { None } else { Some(ids) })
 }
 
 fn format_size(b: i64) -> String {
@@ -238,11 +256,15 @@ mod tests {
 
     #[test]
     fn parse_ids_multi_and_invalid() {
-        assert_eq!(parse_ids(Some("1,2, 3")), Some(vec![1, 2, 3]));
-        assert_eq!(parse_ids(Some("5")), Some(vec![5]));
-        assert_eq!(parse_ids(Some("")), None);
-        assert_eq!(parse_ids(Some("x,y")), None);
-        assert_eq!(parse_ids(None), None);
+        assert_eq!(parse_ids(Some("1,2, 3")), Ok(Some(vec![1, 2, 3])));
+        assert_eq!(parse_ids(Some("5")), Ok(Some(vec![5])));
+        assert_eq!(parse_ids(Some("")), Ok(None));
+        assert_eq!(parse_ids(None), Ok(None));
+        // 给了值却解析不出来：报错，不再退化成「不过滤 = 返回全站」
+        assert!(parse_ids(Some("x,y")).is_err());
+        assert!(parse_ids(Some("1,abc")).is_err());
+        // 重复值合并，避免生成重复谓词
+        assert_eq!(parse_ids(Some("2,2")), Ok(Some(vec![2])));
         // 旧字段兼容由 handler 单独处理
     }
 }

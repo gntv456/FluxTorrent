@@ -94,11 +94,24 @@ async fn list(
             if let Some(one) = q.category_id_alias.as_deref() {
                 raw.push(one);
             }
-            let ids: Vec<i32> = raw
+            // 空串是表单未选的常态（category_id=），按「不筛选」处理；但给了值却
+            // 解析不出来的必须报错——以前 filter_map 会静默丢掉，全非法时得到
+            // None，等于「不加分类谓词 = 返回全站」，比 400 危险得多。
+            let toks: Vec<&str> = raw
                 .iter()
                 .flat_map(|s| s.split(','))
-                .filter_map(|s| s.trim().parse::<i32>().ok())
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
                 .collect();
+            let mut ids: Vec<i32> = Vec::with_capacity(toks.len());
+            for t in toks {
+                let v = t.parse::<i32>().map_err(|_| {
+                    DomainError::Validation(format!("分类参数非法：{t}"))
+                })?;
+                if !ids.contains(&v) {
+                    ids.push(v);
+                }
+            }
             (!ids.is_empty()).then_some(ids)
         },
         medium_id: q.medium_id,

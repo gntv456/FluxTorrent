@@ -39,8 +39,13 @@ async fn forum_rss_feed(
     let Some((uid, class_id)) = user else {
         return HttpResponse::NotFound().body("unknown passkey");
     };
-    // 版块筛选：缺省回落「公告版」（name LIKE '公告%' 的最小 id；找不到则 id=1）
-    let fids: Vec<i64> = match parse_ids(q.forums.as_deref()) {
+    // 版块筛选：缺省回落「公告版」（name LIKE '公告%' 的最小 id；找不到则 id=1）。
+    // 非法值直接 400——静默回落到公告版会让订阅方以为自己筛的是别的版块
+    let wanted = match parse_ids(q.forums.as_deref()) {
+        Ok(v) => v,
+        Err(msg) => return HttpResponse::BadRequest().body(msg),
+    };
+    let fids: Vec<i64> = match wanted {
         Some(v) => v.into_iter().map(|x| x as i64).collect(),
         None => vec![sqlx::query_scalar(
             "SELECT COALESCE((SELECT min(id) FROM forums WHERE \
