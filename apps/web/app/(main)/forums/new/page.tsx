@@ -11,12 +11,17 @@ export default async function NewTopicPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-baseline gap-2">
-        <Link href="/forums" className="text-sm text-sky">
-          {dict.forums.backToForums}
-        </Link>
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">New Topic</div>
+          <h1 className="font-display text-2xl">{dict.forums.newTopic}</h1>
+        </div>
+        <div className="aside">
+          <Link href="/forums" className="text-sm text-sky">
+            {dict.forums.backToForums}
+          </Link>
+        </div>
       </div>
-      <h1 className="font-display text-2xl">{dict.forums.newTopic}</h1>
       {forums.length === 0 ? (
         <p className="py-10 text-center text-sub">
           暂无可发帖的版块（需通过版块的 读/回/发 三档门槛）

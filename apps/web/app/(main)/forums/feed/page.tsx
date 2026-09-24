@@ -31,9 +31,12 @@ export default async function FeedPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="font-display text-2xl">{t.feedTitle}</h1>
-        <div className="flex items-baseline gap-3 text-sm">
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">Following</div>
+          <h1 className="font-display text-2xl">{t.feedTitle}</h1>
+        </div>
+        <div className="aside">
           <Link href="/forums" className="text-sky hover:underline">
             {t.backToForums}
           </Link>

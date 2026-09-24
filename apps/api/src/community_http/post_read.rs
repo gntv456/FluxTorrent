@@ -9,31 +9,7 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct PostRow {
-    id: i64,
-    username: Option<String>,
-    user_id: Option<i64>,
-    body: String,
-    created_at: chrono::DateTime<chrono::Utc>,
-    edited_at: Option<chrono::DateTime<chrono::Utc>>,
-    edited_by: Option<i64>,
-    /// 点赞数（0116）
-    #[sqlx(default)]
-    likes: i64,
-    /// 当前用户是否已点赞（0116）
-    #[sqlx(default)]
-    liked_by_me: bool,
-    /// 打赏总额（0127）：该楼收到的魔力总和（次数用 tips 单独计数）
-    #[sqlx(default)]
-    tips: i64,
-    /// 打赏次数（0127）
-    #[sqlx(default)]
-    tip_count: i64,
-    #[serde(skip)]
-    hidden: bool,
-}
+use super::post_group::{PostRow, group_by_root};
 
 #[derive(Deserialize)]
 struct TopicDetailQuery {
@@ -101,12 +77,35 @@ async fn topic_detail(
     }
     let mut posts = sqlx::query_as::<_, PostRow>(
         "SELECT p.id, u.username, p.user_id, p.body, p.created_at, p.edited_at, p.edited_by, FALSE AS hidden, \
+            u.avatar_url, c.name AS class_name, \
+            u.created_at AS author_joined_at, \
+            COALESCE(wm.j, '[]'::jsonb) AS worn_medals, \
+            p.root_id, p.parent_id, rt.name AS reply_to_name, \
             (SELECT count(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likes, \
             EXISTS(SELECT 1 FROM post_likes pl2 WHERE pl2.post_id = p.id AND pl2.user_id = $3) AS liked_by_me, \
             COALESCE((SELECT sum(t.spark) FROM post_tips t WHERE t.post_id = p.id), 0)::bigint AS tips, \
             (SELECT count(*) FROM post_tips t2 WHERE t2.post_id = p.id) AS tip_count \
-         FROM posts p LEFT JOIN users u ON u.id = p.user_id \
-         WHERE p.topic_id = $1 AND ($2::bigint IS NULL OR p.id < $2)          ORDER BY p.id DESC LIMIT 200",
+         FROM posts p \
+         LEFT JOIN users u ON u.id = p.user_id \
+         LEFT JOIN user_classes c ON c.id = u.class_id \
+         LEFT JOIN LATERAL ( \
+             SELECT u2.username AS name FROM posts pp \
+             LEFT JOIN users u2 ON u2.id = pp.user_id WHERE pp.id = p.parent_id \
+         ) rt ON TRUE \
+         LEFT JOIN LATERAL ( \
+             SELECT json_agg(json_build_object( \
+                 'name', m.name, 'asset_ref', m.asset_ref, \
+                 'rarity', m.rarity))::jsonb AS j \
+             FROM user_medals um JOIN medals m ON m.id = um.medal_id \
+             WHERE um.user_id = p.user_id AND um.wearing \
+               AND (um.expires_at IS NULL OR um.expires_at > now()) \
+         ) wm ON TRUE \
+         WHERE p.topic_id = $1 \
+           AND (p.root_id IS NOT NULL OR ($2::bigint IS NULL OR p.id < $2)) \
+           AND (p.root_id IS NULL OR EXISTS(SELECT 1 FROM posts t0 \
+                WHERE t0.id = p.root_id \
+                  AND ($2::bigint IS NULL OR t0.id < $2))) \
+         ORDER BY p.id DESC LIMIT 200",
     )
     .bind(tid)
     .bind(q.before)
@@ -135,7 +134,7 @@ async fn topic_detail(
     }
     // 论坛已读（0078，NP readposts 口径）：读到哪楼记哪楼（最大已见 post_id），
     // 列表页据此算「有新回复」角标。read_at 顺带刷新，供排序。
-    if let Some(last_pid) = posts.last().map(|p| p.id) {
+    if let Some(last_pid) = posts.iter().map(|p| p.id).max() {
         sqlx::query(
             "INSERT INTO topic_reads (user_id, topic_id, last_post_id, read_at) \
              VALUES ($1, $2, $3, now()) \
@@ -217,6 +216,18 @@ async fn topic_detail(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .unwrap_or(serde_json::Value::Null);
+    // 长帖游标（NP 分页口径）：先算好再消费 posts（楼中楼分组会 move）
+    let has_more = posts.first().map(|p| p.id > 1).unwrap_or(false)
+        && sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM posts WHERE \
+             topic_id = $1 AND root_id IS NULL AND id < $2)",
+        )
+        .bind(tid)
+        .bind(posts.first().map(|p| p.id).unwrap_or(0))
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+    let posts_with_replies = group_by_root(posts);
     Ok(ok(serde_json::json!({
         "topic_id": tid,
         "title": title,
@@ -238,17 +249,8 @@ async fn topic_detail(
         "current_user_id": auth.id,
         "can_write": perm.can_write,
         "can_mod": perm.can_mod,
-        "posts": posts,
-        // 长帖游标（NP 分页口径）：本窗口之外还有更早楼层时前端显示「加载更早的回复」
-        "has_more": posts.first().map(|p| p.id > 1).unwrap_or(false)
-            && sqlx::query_scalar::<_, bool>(
-                                "SELECT EXISTS(SELECT 1 FROM posts WHERE \
-                 topic_id = $1 AND id < $2)",
-            )
-            .bind(tid)
-            .bind(posts.first().map(|p| p.id).unwrap_or(0))
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false),
+        // 楼中楼（0163）：顶层楼线性排列，楼中楼挂在所属顶层楼的 replies 里
+        "posts": posts_with_replies,
+        "has_more": has_more,
     })))
 }
