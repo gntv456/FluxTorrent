@@ -7,6 +7,7 @@ import {
   colorMap,
   dictName,
   getSiteProfile,
+  legacyDimName,
 } from "@/lib/site-profile";
 import { TorrentManage } from "@/components/torrent-manage";
 import { PromoBuyButton } from "@/components/promo-buy-button";
@@ -121,8 +122,8 @@ export default async function TorrentDetailPage({
     Object.entries(ext?.sections ?? {}).map(([k, v]) => [k, v.dict_id]),
   );
   const d = dict.tdetail;
-  const edition = dictName(byId(editionOpts), t.edition_id);
-  const grade = dictName(byId(gradeOpts), t.grade_id);
+  const edition = legacyDimName(editionOpts, t.edition_id);
+  const grade = legacyDimName(gradeOpts, t.grade_id);
   // 0087：介质列可空（新数据在 sections），老数据仍按实体表 id 翻译
   const medium =
     t.medium_id !== null ? dictName(byId(mediaOpts), t.medium_id) : undefined;
@@ -230,13 +231,13 @@ export default async function TorrentDetailPage({
         )}
         {(grade || sectionOf("grades")) && (
           <Spec
-            value={grade ?? sectionOf("grades")}
+            value={grade || sectionOf("grades")}
             label={dict.torrent.grade}
           />
         )}
         {(edition || sectionOf("editions")) && (
           <Spec
-            value={edition ?? sectionOf("editions")}
+            value={edition || sectionOf("editions")}
             label={dict.torrent.edition}
           />
         )}
