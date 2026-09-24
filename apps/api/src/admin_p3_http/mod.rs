@@ -5,6 +5,7 @@
 
 mod attendance;
 mod ban_ip;
+mod classes_admin;
 mod exam_users;
 mod frames;
 mod hr;
@@ -37,6 +38,7 @@ mod users_batch;
 
 pub use attendance::*;
 pub use ban_ip::*;
+pub use classes_admin::*;
 pub use exam_users::*;
 pub use frames::*;
 pub use hr::*;
