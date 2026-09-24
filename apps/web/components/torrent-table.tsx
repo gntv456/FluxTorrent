@@ -3,6 +3,7 @@ import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { PreserveItem } from "@/lib/data";
 import { editionName, formatBytes, promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
+import { getCategoryNames } from "@/lib/site-profile";
 import { dateLocale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
 import { BatchCheckbox } from "@/components/torrent-batch";
@@ -90,6 +91,7 @@ async function TorrentTr({
 }) {
   const icons = catIcons ?? {};
   const { dict, locale } = await getDict();
+  const catNames = await getCategoryNames();
   const id = "torrent_id" in t ? t.torrent_id : t.id;
   const promo = promotionBadge(
     (t.promotion as TorrentListItem["promotion"]) ?? null,
@@ -137,7 +139,7 @@ async function TorrentTr({
           aria-hidden
           className="torrents-cat-block"
           style={{ background: catColor(t.category_id) }}
-          title={dict.torrents.categories[t.category_id] ?? ""}
+          title={catNames[t.category_id] ?? ""}
         >
           {icons[t.category_id] ? (
             <Icon
@@ -146,7 +148,7 @@ async function TorrentTr({
               className="torrents-cat-ico"
             />
           ) : (
-            (dict.torrents.categories[t.category_id] ?? "?").slice(0, 1)
+            (catNames[t.category_id] ?? "?").slice(0, 1)
           )}
         </span>
       </td>

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 
@@ -49,3 +50,18 @@ export async function getSiteProfile(): Promise<SiteProfile> {
     };
   }
 }
+
+/** 分类 id → 显示名：以站点分类表（torrents.category_id 的外键目标）为准；
+ *  dict.torrents.categories 是筛选用词表且 [0] 是「全部」，按 id 直接下标会整体错一档。
+ *  cache()：表行/卡片每行都要名字，同一请求内只取一次档案。 */
+export const getCategoryNames = cache(
+  async (): Promise<Record<number, string>> => {
+    const [p, { dict }] = await Promise.all([getSiteProfile(), getDict()]);
+    const list = p.categories?.length
+      ? p.categories
+      : dict.torrents.categories
+          .slice(1)
+          .map((name, i) => ({ id: i + 1, name }));
+    return Object.fromEntries(list.map((c) => [c.id, c.name]));
+  },
+);
