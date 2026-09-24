@@ -3552,6 +3552,7 @@ usertools: {
     unbanned: "已解封",
     banEmpty: "暂无封禁记录。",
     renamePrompt: "重命名分类：",
+    iconKeyPrompt: "分类图标键（film/tv/music/anime/game/app/book/sport/doc/edu，留空=首字色块）：",
     mailNew: "发送批量邮件",
     btnSend: "发送",
     mailQueued: "邮件已入队",

@@ -45,7 +45,7 @@ export default async function TorrentsPage({
   const pageSize = parsePageSize(sp.limit);
   const [profile, secDict, tagDict] = await Promise.all([
     loadPublic<{
-      categories: { id: number; name: string }[];
+      categories: { id: number; name: string; icon_key?: string }[];
       metadata_sources?: string[];
     }>("/api/v1/site-profile"),
     loadPublic<
@@ -65,7 +65,8 @@ export default async function TorrentsPage({
   const kinds: SectionKindMeta[] = secDict?.kinds ?? [];
   const dimKinds = kinds.filter((k) => (secDict?.[k.kind]?.length ?? 0) > 0);
   // 0160 起返回 { tags, groups }；旧形态（裸数组）兼容
-  const tagRows = tagDict && !Array.isArray(tagDict) ? tagDict.tags : (tagDict ?? []);
+  const tagRows =
+    tagDict && !Array.isArray(tagDict) ? tagDict.tags : (tagDict ?? []);
   const tags = (tagRows ?? []).map((r) =>
     Array.isArray(r) ? { id: r[0], name: r[1], kind: r[2] } : r,
   );
@@ -134,6 +135,12 @@ export default async function TorrentsPage({
     : dict.torrents.categories
         .slice(1)
         .map((label, i) => ({ id: i + 1, label }));
+  // 分类图标键（0166）：{category_id: icon_key}；站长后台可替换，空键回落首字
+  const catIcons = Object.fromEntries(
+    (profile?.categories ?? [])
+      .filter((c) => c.icon_key)
+      .map((c) => [c.id, c.icon_key]),
+  ) as Record<number, string>;
   // 多选分类：URL 里同名参数（checkbox 多选），解析去重
   const selectedCats = new Set(
     (sp.category_id ?? "").split(",").filter(Boolean).map(Number),
@@ -219,6 +226,7 @@ export default async function TorrentsPage({
           items={page.items}
           withParam={withParam}
           toggleSort={toggleSort}
+          catIcons={catIcons}
         />
       )}
 

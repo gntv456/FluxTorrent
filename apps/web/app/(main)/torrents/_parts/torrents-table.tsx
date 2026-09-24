@@ -17,15 +17,13 @@ export function TorrentsTable({
   items,
   withParam,
   toggleSort,
+  catIcons,
 }: {
   dict: Dict;
   sp: TorrentsSP;
   items: TorrentListItem[];
-  withParam: (
-    sp: TorrentsSP,
-    key: string,
-    value: string | undefined,
-  ) => string;
+  catIcons?: Record<number, string>;
+  withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
   toggleSort: (cur: string | undefined, key: string) => string | undefined;
 }) {
   const t = dict.torrents;
@@ -38,62 +36,64 @@ export function TorrentsTable({
         role="region"
         aria-label={t.title}
       >
-      <table className="nexus-table torrents-table">
-        <thead>
-          <tr>
-            <th className="w-8">
-              <BatchCheckAll />
-            </th>
-            <th className="w-12">{t.colType}</th>
-            <th className="w-16" aria-label="封面" />
-            <th>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "name"))}>
-                {t.colTitle}
-              </a>
-            </th>
-            {/* 表头点击排序（NP colhead 口径）：同列再点反转升降序 */}
-            <th className="w-16" title={t.colComments}>
-              <a
-                href={withParam(sp, "sort", toggleSort(sp.sort, "comments"))}
-                className="inline-flex"
-              >
-                <Icon name="messages" size={15} />
-              </a>
-            </th>
-            <th className="w-20" title={t.alive}>
-              <Icon name="clock" size={15} className="inline align-[-3px]" />
-            </th>
-            <th className="w-20" title={t.colSize}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}>
-                💾
-              </a>
-            </th>
-            <th className="w-16" title={t.colSeeders}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "seeders"))}>
-                🌱
-              </a>
-            </th>
-            <th className="w-16" title={t.colLeechers}>
-              <a href={withParam(sp, "sort", toggleSort(sp.sort, "leechers"))}>
-                ⬇️
-              </a>
-            </th>
-            <th className="w-16" title={t.colCompleted}>
-              <a
-            href={withParam(sp, "sort", toggleSort(sp.sort, "completed"))}
-          >
-                ✅
-              </a>
-            </th>
-            <th className="w-24">{t.colActions}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((t) => (
-            <TorrentTr key={t.id} t={t} selectable />
-          ))}
-        </tbody>
-      </table>
+        <table className="nexus-table torrents-table">
+          <thead>
+            <tr>
+              <th className="w-8">
+                <BatchCheckAll />
+              </th>
+              <th className="w-12">{t.colType}</th>
+              <th className="w-16" aria-label="封面" />
+              <th>
+                <a href={withParam(sp, "sort", toggleSort(sp.sort, "name"))}>
+                  {t.colTitle}
+                </a>
+              </th>
+              {/* 表头点击排序（NP colhead 口径）：同列再点反转升降序 */}
+              <th className="w-16" title={t.colComments}>
+                <a
+                  href={withParam(sp, "sort", toggleSort(sp.sort, "comments"))}
+                  className="inline-flex"
+                >
+                  <Icon name="messages" size={15} />
+                </a>
+              </th>
+              <th className="w-20" title={t.alive}>
+                <Icon name="clock" size={15} className="inline align-[-3px]" />
+              </th>
+              <th className="w-20" title={t.colSize}>
+                <a href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}>
+                  💾
+                </a>
+              </th>
+              <th className="w-16" title={t.colSeeders}>
+                <a href={withParam(sp, "sort", toggleSort(sp.sort, "seeders"))}>
+                  🌱
+                </a>
+              </th>
+              <th className="w-16" title={t.colLeechers}>
+                <a
+                  href={withParam(sp, "sort", toggleSort(sp.sort, "leechers"))}
+                >
+                  ⬇️
+                </a>
+              </th>
+              <th className="w-16" title={t.colCompleted}>
+                <a
+                  href={withParam(sp, "sort", toggleSort(sp.sort, "completed"))}
+                >
+                  ✅
+                </a>
+              </th>
+              <th className="w-24">{t.colActions}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((t) => (
+              <TorrentTr key={t.id} t={t} selectable catIcons={catIcons} />
+            ))}
+          </tbody>
+        </table>
       </div>
     </>
   );

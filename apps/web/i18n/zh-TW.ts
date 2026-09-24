@@ -3536,6 +3536,7 @@ usertools: {
     unbanned: "已解封",
     banEmpty: "暫無封禁記錄。",
     renamePrompt: "重新命名分類：",
+    iconKeyPrompt: "分類圖示鍵（film/tv/music/anime/game/app/book/sport/doc/edu，留空=首字色塊）：",
     mailNew: "發送批量郵件",
     btnSend: "發送",
     mailQueued: "郵件已入隊",
