@@ -13,7 +13,19 @@ export function SubtitleAwardsBoard() {
   const { dict } = useI18n();
   const t = dict.subtitles;
   const [rows, setRows] = useState<SubtitleAwardRow[] | null>(null);
+  // 评选开关（0148 C5 / 二审 G2-6 修复）：subtitle_award=0 时整个榜单不挂载，
+  // 也不发起请求——关闭评选的站不再出现空榜占位。
+  const [awardOn, setAwardOn] = useState(true);
   useEffect(() => {
+    fetch("/api/v1/site-profile")
+      .then((r) => r.json())
+      .then((b: { data?: { subtitle_award?: boolean } }) =>
+        setAwardOn(b?.data?.subtitle_award !== false),
+      )
+      .catch(() => setAwardOn(true));
+  }, []);
+  useEffect(() => {
+    if (!awardOn) return;
     api
       .get<SubtitleAwardRow[] | { items: SubtitleAwardRow[] }>(
         "/api/v1/subtitles/awards",
@@ -25,7 +37,8 @@ export function SubtitleAwardsBoard() {
         setRows(list);
       })
       .catch(() => setRows([]));
-  }, []);
+  }, [awardOn]);
+  if (!awardOn) return null;
   if (rows === null) return <p className="py-2 text-center text-sub">…</p>;
   const won = rows.filter((r) => r.rank > 0);
   if (!won.length) {

@@ -1,6 +1,7 @@
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { MyHrTable } from "@/components/my-hr";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,10 @@ interface HrRow {
 
 /** 我的 H&R（myhr.php 复刻）：完成下载的种子做种时长与达标状态 */
 export default async function MyHrPage() {
+  // exams 模块守卫（二审 G2-3 修复）：/me/hr 与 exams 同键（网关同口径），
+  // 关闭时统一空态而非 API 报错残页
+  const gate = await requireModule("exams");
+  if (gate) return gate;
   const { dict, locale } = await getDict();
   let rows: HrRow[] = [];
   try {

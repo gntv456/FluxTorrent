@@ -40,6 +40,17 @@ interface MeInfo {
 export function UserMenu({ loginLabel }: { loginLabel: string }) {
   const { dict, currency } = useI18n();
   const [me, setMe] = useState<MeInfo | null>(null);
+  // 模块开关（二审 G2-7 修复）：快捷链接按模块过滤（medals/tasks/jixiao）
+  const [mods, setMods] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    fetch("/api/v1/site-profile")
+      .then((r) => r.json())
+      .then((b: { data?: { modules?: Record<string, boolean> } }) =>
+        setMods(b?.data?.modules ?? {}),
+      )
+      .catch(() => setMods({}));
+  }, []);
+  const mod = (k: string) => mods[k] !== false;
   const [spark, setSpark] = useState<number | null>(null);
   const [sparkText, setSparkText] = useState<string>("…");
   const [open, setOpen] = useState(false);
@@ -244,10 +255,10 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
             <a href="/my">{t.center}</a>
             <a href="/my?tab=bookmarks">{t.bookmarksCount}</a>
             <a href="/my/torrentlist">{dict.mytl.title}</a>
-            <a href="/medals">{dict.nav.medals}</a>
-            <a href="/tasks">{dict.nav.tasks}</a>
+            {mod("medals") && <a href="/medals">{dict.nav.medals}</a>}
+            {mod("tasks") && <a href="/tasks">{dict.nav.tasks}</a>}
             <a href="/invites">{dict.nav.invites}</a>
-            <a href="/jixiao">{dict.nav.jixiao}</a>
+            {mod("jixiao") && <a href="/jixiao">{dict.nav.jixiao}</a>}
             {me.class_id !== undefined && me.class_id >= 90 && (
               <a
                 href="/admin"

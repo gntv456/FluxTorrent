@@ -278,6 +278,7 @@ export function SubtitleBoard({
             <h2 className="mb-2 text-base font-bold">
               {t.awardTitle ?? "Golden"}
             </h2>
+            {/* 评选榜开关（subtitle_award，0148 C5）：关闭时不再渲染空榜 */}
             <SubtitleAwardsBoard />
           </section>
         </>
