@@ -11,6 +11,27 @@ use crate::torrents;
 
 use super::query::{norm_date, norm_promo, norm_text, parse_size, ListQuery};
 
+/// 列表共享缓存的**代际号**键。写路径（发布/编辑/批量/审核/删除）INCR 它，
+/// 缓存 key 带上代际 → 旧条目立即不再命中，靠自身 TTL 自然过期。
+/// 不用 SCAN 删键，也修掉了「站长改完分类，列表仍显旧值 45 秒」。
+const TLIST_GEN_KEY: &str = "cache:tlist:gen";
+
+/// 当前代际（Redis 故障按 0 处理：退化成直查旧键，不影响可用性）
+pub async fn list_cache_gen(state: &AppState) -> i64 {
+    let mut c = state.redis.clone();
+    let gen: Option<i64> = redis::AsyncCommands::get(&mut c, TLIST_GEN_KEY)
+        .await
+        .unwrap_or(None);
+    gen.unwrap_or(0)
+}
+
+/// 列表内容发生变化时调用
+pub async fn bump_list_cache_gen(state: &AppState) {
+    let mut c = state.redis.clone();
+    let _: Result<i64, _> =
+        redis::AsyncCommands::incr(&mut c, TLIST_GEN_KEY, 1i64).await;
+}
+
 #[get("/torrents")]
 async fn list(
     req: HttpRequest,
@@ -216,10 +237,11 @@ async fn list(
         && filter.max_completed.is_none()
         && filter.anonymous.is_none()
         && q.limit.unwrap_or(20) == 20;
-    let cache_key = "cache:tlist:first:v1";
+    let gen = list_cache_gen(&state).await;
+    let cache_key = format!("cache:tlist:first:v1:{gen}");
     if is_first_screen {
         let mut c = state.redis.clone();
-        let hit: Option<String> = redis::AsyncCommands::get(&mut c, cache_key)
+        let hit: Option<String> = redis::AsyncCommands::get(&mut c, &cache_key)
             .await
             .unwrap_or(None);
         if let Some(json) = hit {
@@ -258,7 +280,7 @@ async fn list(
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
             std::hash::Hash::hash(&canonical, &mut hasher);
             let shared_key = format!(
-                "cache:tlist:v2:{:016x}",
+                "cache:tlist:v2:{gen}:{:016x}",
                 std::hash::Hasher::finish(&hasher)
             );
             let mut c = state.redis.clone();

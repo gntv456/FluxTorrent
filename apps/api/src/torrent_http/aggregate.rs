@@ -36,7 +36,9 @@ fn shared_cache_key(id: i64, reveal: bool) -> String {
     format!("cache:tdetail:v1:{id}:{}", if reveal { 1 } else { 0 })
 }
 
-/// 写路径失效（manage.rs 各写端点调用；staff 视角桶一并清）
+/// 写路径失效（manage.rs 各写端点调用；staff 视角桶一并清）。
+/// 顺带推进列表缓存代际：种子变了，列表的排序/分类名/统计也跟着变，
+/// 只清详情缓存会让列表继续吐旧内容。
 pub async fn invalidate_tdetail_cache(state: &AppState, id: i64) {
     let mut c = state.redis.clone();
     for reveal in [false, true] {
@@ -44,6 +46,7 @@ pub async fn invalidate_tdetail_cache(state: &AppState, id: i64) {
             redis::AsyncCommands::del(&mut c, shared_cache_key(id, reveal))
                 .await;
     }
+    super::list::bump_list_cache_gen(state).await;
 }
 
 #[get("/torrents/{id}/aggregate")]
