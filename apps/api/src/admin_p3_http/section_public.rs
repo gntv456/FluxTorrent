@@ -9,7 +9,6 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
-use super::section_dict::section_dict_rows;
 use super::section_kinds::SectionKindRow;
 use super::sections::SectionModeRow;
 use super::staff;
@@ -25,12 +24,59 @@ pub(super) fn regex_check_kind(kind: &str) -> bool {
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_')
 }
 
-/// 发布表单/筛选公开读（匿名可读：仅字典名称，与 site-profile 同级）
+/// 发布表单/筛选公开读（匿名可读：仅字典名称，与 site-profile 同级）。
+///
+/// `?category_id=N` 让**分类归属模式真正生效**：`categories.mode_id` 指向的
+/// `category_modes` 七个 `show_*` 决定该分类发布时能填哪些质量维度（学段/版本与
+/// 站方自建维度不在开关覆盖范围内，恒可见），同时字典行按
+/// `section_dict.mode_id IS NULL OR = 该模式` 过滤（NULL = 全模式可用，与
+/// /tags-dict 的「全局 + 本分区」口径一致）。不传 category_id 时行为不变。
+#[derive(Deserialize)]
+struct SectionDictQ {
+    #[serde(default)]
+    category_id: Option<i32>,
+}
+
 #[get("/section-dict")]
 async fn section_dict_public(
     _req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
+    // (mode_id, show_source, show_medium, show_codec, show_audio_codec,
+    //  show_standard, show_processing, show_team)
+    let mode: Option<(i32, bool, bool, bool, bool, bool, bool, bool)> =
+        match q.category_id {
+            Some(cid) => sqlx::query_as(
+                "SELECT m.id, m.show_source, m.show_medium, m.show_codec, \
+                 m.show_audio_codec, m.show_standard, m.show_processing, \
+                 m.show_team \
+                 FROM categories c JOIN category_modes m ON m.id = c.mode_id \
+                 WHERE c.id = $1",
+            )
+            .bind(cid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?,
+            None => None,
+        };
+    let mode_id = mode.as_ref().map(|m| m.0);
+    // 维度名 → 该维度的开关位置
+    let allows = |kind: &str| -> bool {
+        let Some((_, src, med, cod, aud, std, proc, team)) = mode else {
+            return true;
+        };
+        match kind {
+            "media" => med,
+            "source" => src,
+            "codec" => cod,
+            "audio_codec" => aud,
+            "standard" => std,
+            "processing" => proc,
+            "team" => team,
+            _ => true,
+        }
+    };
     let mut out = serde_json::Map::new();
     // 维度清单来自 section_kinds（0085 可配置），预置 9 维已种子化
     let kinds: Vec<SectionKindRow> = sqlx::query_as(
@@ -39,8 +85,27 @@ async fn section_dict_public(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    let kinds: Vec<SectionKindRow> =
+        kinds.into_iter().filter(|k| allows(&k.kind)).collect();
     for k in &kinds {
-        let rows = section_dict_rows(&state.repo.db, Some(&k.kind)).await?;
+        let rows: Vec<(i64, String, String, i32, Option<i32>)> =
+            sqlx::query_as(
+                "SELECT id, kind, name, sort, mode_id FROM section_dict \
+                 WHERE kind = $1 AND ($2::int IS NULL OR mode_id IS NULL \
+                 OR mode_id = $2) ORDER BY sort, id",
+            )
+            .bind(&k.kind)
+            .bind(mode_id)
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let rows: Vec<serde_json::Value> = rows
+            .into_iter()
+            .map(|(id, kind, name, sort, mid)| {
+                serde_json::json!({"id": id, "kind": kind, "name": name,
+                                   "sort": sort, "mode_id": mid})
+            })
+            .collect();
         out.insert(
             k.kind.clone(),
             serde_json::to_value(rows).unwrap_or_default(),
