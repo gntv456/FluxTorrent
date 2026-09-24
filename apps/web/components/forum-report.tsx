@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { Modal } from "@/components/modal";
 
 /**
  * 主题举报（Phase1 / G9 基础）：复用既有 `POST /reports`（ref_type=forum → topics，
@@ -52,16 +53,21 @@ export function ReportTopicButton({ topicId }: { topicId: number }) {
         <span aria-hidden="true">🚩</span>
         {dict.forums.report}
       </button>
-      {open && (
-        <span className="flex flex-col gap-1 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-2">
+      {/* 0173：举报改覆盖式弹窗，不再以小面板嵌在操作行里 */}
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={dict.forums.report}
+      >
+        <span className="flex flex-col gap-2">
           <textarea
-            rows={3}
+            rows={4}
             value={reason}
             maxLength={500}
             onChange={(e) => setReason(e.target.value)}
             placeholder={dict.usertools.reportReason}
             aria-label={dict.usertools.reportReason}
-            className="w-56 rounded-[var(--r-sm)] border border-line bg-transparent px-2 py-1 text-xs text-ink outline-none focus:border-sky"
+            className="w-full rounded-[var(--r-sm)] border border-line bg-transparent px-2 py-1 text-xs text-ink outline-none focus:border-sky"
           />
           <span className="flex items-center gap-2">
             <button
@@ -77,7 +83,7 @@ export function ReportTopicButton({ topicId }: { topicId: number }) {
             </span>
           </span>
         </span>
-      )}
+      </Modal>
       {msg && <span className="text-[11px] text-mint">{msg}</span>}
     </span>
   );

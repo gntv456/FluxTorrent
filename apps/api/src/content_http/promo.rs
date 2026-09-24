@@ -43,10 +43,11 @@ pub(super) async fn promo_plans(
     ))
 }
 
-/// 购买：本人种子或 staff 可购；扣费（spark_ledger 流水，幂等键含随机 nonce 由客户端
-/// 提供——每次购买是独立消费行为，重试需带同一键）→ 置顶写 pos_state/pos_state_until
-/// （延长语义：在现有效期内续购则顺延），免费写 promotions（torrent 专属 free）。
-/// 生效校验在写入端完成；列表 sticky_expr 与促销裁决天然消费这些字段（零新查询）。
+/// 购买：所有登录用户可购（0173 放开，此前仅发布者/staff）；扣费（spark_ledger
+/// 流水，幂等键含随机 nonce 由客户端提供——每次购买是独立消费行为，重试需带同一键）
+/// → 置顶写 pos_state/pos_state_until（延长语义：在现有效期内续购则顺延），
+/// 免费写 promotions（torrent 专属 free）。生效校验在写入端完成；
+/// 列表 sticky_expr 与促销裁决天然消费这些字段（零新查询）。
 #[post("/promo/buy")]
 pub(super) async fn promo_buy(
     req: HttpRequest,
@@ -83,6 +84,8 @@ pub(super) async fn promo_buy(
         .map(|k| format!("promo:{}:{}", auth.id, k.trim()))
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
 
+    // 0173 放开全员可购：查询仅作存在性校验（不存在/未过审 → 404），
+    // 不再限制发布者/staff。
     let owner: Option<i64> = sqlx::query_scalar(
         "SELECT owner_id FROM torrents WHERE id = $1 AND approval_status = 1",
     )
@@ -90,11 +93,8 @@ pub(super) async fn promo_buy(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some(owner) = owner else {
+    if owner.is_none() {
         return Err(DomainError::NotFound(body.torrent_id));
-    };
-    if owner != auth.id && auth.class_id < 90 {
-        return Err(DomainError::Forbidden);
     }
     let price = promo_price(&state.repo.db, &body.kind, body.hours)
         .await

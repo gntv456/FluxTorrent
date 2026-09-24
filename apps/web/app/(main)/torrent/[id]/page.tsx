@@ -168,7 +168,7 @@ export default async function TorrentDetailPage({
         relTime={relTime}
         manage={
           <>
-            <PromoBuyButton torrentId={t.id} isOwner={Boolean(ext?.is_owner)} />
+            <PromoBuyButton torrentId={t.id} />
             <TorrentManage
               torrentId={t.id}
               name={t.name}
