@@ -50,6 +50,8 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(section_mode_add)
         .service(section_mode_update)
         .service(section_mode_delete)
+        .service(admin_classes_list)
+        .service(admin_class_put)
         .service(section_dict_admin)
         .service(section_dict_public)
         .service(tags_dict_public)
