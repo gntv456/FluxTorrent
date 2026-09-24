@@ -67,7 +67,7 @@ export async function Header() {
           items: [
             { href: "/torrents?official=1", label: dict.nav.official },
             ...(mod("requests")
-              ? [{ href: "/requests", label: dict.nav.candidates }]
+              ? [{ href: "/requests", label: dict.nav.requests }]
               : []),
             ...(mod("offers")
               ? [{ href: "/offers", label: dict.nav.offers }]
