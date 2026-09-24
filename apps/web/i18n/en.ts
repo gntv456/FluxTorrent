@@ -3682,6 +3682,7 @@ usertools: {
     banEmpty: "No bans yet.",
     renamePrompt: "Rename category:",
     iconKeyPrompt: "Category icon key (film/tv/music/anime/game/app/book/sport/doc/edu, empty = initial-letter block):",
+    bgColorPrompt: "Category colour (#rrggbb, empty = neutral grey):",
     mailNew: "Send mass mail",
     btnSend: "Send",
     mailQueued: "Mail queued",

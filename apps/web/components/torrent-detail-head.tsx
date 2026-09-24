@@ -21,6 +21,7 @@ export function TorrentHead({
   locale,
   left,
   category,
+  categoryColor,
   subtitleChain,
   relTime,
   tags,
@@ -35,6 +36,8 @@ export function TorrentHead({
   /** 分类显示名：由 page 侧按站点档案 categories 解析（category_id 的外键目标），
    *  组件内不再持有任何站型词表 */
   category: string;
+  /** 分类色：page 侧按 categories.bg_color 解析 */
+  categoryColor: string;
   /** 副题链（学段 · 媒介 · 版本） */
   subtitleChain: string;
   /** 相对时间（馒头口径：x 天前；完整时间放 title） */
@@ -49,8 +52,8 @@ export function TorrentHead({
   return (
     <section className="td-head nexus-detail">
       <PosterBlock
-        categoryId={t.category_id}
         category={category}
+        color={categoryColor}
         poster={t.poster}
       />
 

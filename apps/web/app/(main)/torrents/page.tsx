@@ -1,6 +1,7 @@
 import { EmptyTorrents } from "@/components/torrent";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { colorMap } from "@/lib/site-profile";
 import { fmt } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { TorrentsSearchBox } from "./_parts/torrents-search-box";
@@ -50,7 +51,12 @@ export default async function TorrentsPage({
   const pageSize = parsePageSize(sp.limit);
   const [profile, secDict, tagDict] = await Promise.all([
     loadPublic<{
-      categories: { id: number; name: string; icon_key?: string }[];
+      categories: {
+        id: number;
+        name: string;
+        icon_key?: string;
+        bg_color?: string | null;
+      }[];
       metadata_sources?: string[];
     }>("/api/v1/site-profile"),
     loadPublic<
@@ -148,6 +154,8 @@ export default async function TorrentsPage({
       .filter((c) => c.icon_key)
       .map((c) => [c.id, c.icon_key]),
   ) as Record<number, string>;
+  // 分类色（0183）：categories.bg_color 下发，前端不再持有硬编码色表
+  const catColors = colorMap(profile?.categories ?? []);
   // 多选分类：URL 里同名参数（checkbox 多选），解析去重
   const selectedCats = new Set(
     (sp.category_id ?? "").split(",").filter(Boolean).map(Number),
@@ -223,9 +231,9 @@ export default async function TorrentsPage({
           <EmptyTorrents />
         )
       ) : view === "card" ? (
-        <TorrentCards items={page.items} dict={dict} />
+        <TorrentCards items={page.items} dict={dict} colors={catColors} />
       ) : view === "poster" ? (
-        <TorrentPosters items={page.items} dict={dict} />
+        <TorrentPosters items={page.items} dict={dict} colors={catColors} />
       ) : (
         <TorrentsTable
           dict={dict}

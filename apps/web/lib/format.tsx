@@ -20,21 +20,6 @@ export function formatRatio(up: number, down: number): string {
   return r >= 100 ? "INF" : r.toFixed(2);
 }
 
-/** 学科分类色（设计稿六色系 → 七分类映射） */
-const CATEGORY_COLORS: Record<number, string> = {
-  1: "#ff8fc7",
-  2: "#2fa8ff",
-  3: "#2fbf9b",
-  4: "#ffc93c",
-  5: "#5b6bf5",
-  6: "#ff7a59",
-  7: "#93a1bc",
-};
-
-export function categoryColor(categoryId: number): string {
-  return CATEGORY_COLORS[categoryId] ?? "#93a1bc";
-}
-
 /** 促销徽章（§7.3：免费=薄荷绿 / 2x=珊瑚橙）。label 由调用方按 dict.promotion[key] 本地化 */
 export type PromotionKey = "free" | "x2" | "x2free" | "half" | "x2half" | "p30";
 

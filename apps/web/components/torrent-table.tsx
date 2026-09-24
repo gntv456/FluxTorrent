@@ -3,25 +3,17 @@ import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { PreserveItem } from "@/lib/data";
 import { formatBytes, promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
-import { byId, dictName, getTorrentDicts } from "@/lib/site-profile";
+import { byId, catColor, dictName, getTorrentDicts } from "@/lib/site-profile";
 import { dateLocale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
 import { BatchCheckbox } from "@/components/torrent-batch";
-import { Icon } from "@/components/icons";
+import { Icon, ICON_NAMES } from "@/components/icons";
+
+/** 已注册图标名（站长可手填 icon_key，未注册的名字不能当图标用） */
+const KNOWN_ICONS = new Set<string>(ICON_NAMES as readonly string[]);
 
 /** 保种区行（/preserve 下发的同构行：id 键为 torrent_id） */
 type PreserveRowAlias = PreserveItem;
-
-/** 分类色（好学站 catsprites 色系）：类型列色块 + 无封面时的回退底色 */
-const CAT_COLORS: Record<number, string> = {
-  1: "#f6a5c0",
-  2: "#7fb7e6",
-  3: "#8fd6b5",
-  4: "#f4d06f",
-  5: "#b5a6f0",
-  6: "#f6a07a",
-  7: "#c9b8a3",
-};
 
 /** 促销行高亮（好学站口径：免费=浅蓝 #89c9e6 系、2x=暖黄系） */
 function promoRowBg(promo: string | null | undefined): string | undefined {
@@ -52,10 +44,6 @@ function promoSemanticClass(
     default:
       return undefined;
   }
-}
-
-function catColor(id: number): string {
-  return CAT_COLORS[id] ?? "#c9b8a3";
 }
 
 /** 剩余时间（好学站「6天23时」口径；无截止则不显示） */
@@ -140,18 +128,19 @@ async function TorrentTr({
         <span
           aria-hidden
           className="torrents-cat-block"
-          style={{ background: catColor(t.category_id) }}
+          style={{ background: catColor(dicts.colors, t.category_id) }}
           title={catNames[t.category_id] ?? ""}
         >
-          {icons[t.category_id] ? (
-            <Icon
-              name={icons[t.category_id]}
-              size={22}
-              className="torrents-cat-ico"
-            />
-          ) : (
-            (catNames[t.category_id] ?? "?").slice(0, 1)
-          )}
+          {(() => {
+            // 图标键是站长手填的：未注册的名字 Icon 会渲染 null，
+            // 那样色块就空了——必须自己判存在，缺失时回落分类名首字
+            const ico = icons[t.category_id];
+            return ico && KNOWN_ICONS.has(ico) ? (
+              <Icon name={ico} size={22} className="torrents-cat-ico" />
+            ) : (
+              (catNames[t.category_id] ?? "?").slice(0, 1)
+            );
+          })()}
         </span>
       </td>
       {/* 封面（好学站 46px 外链图；无图回退类型色块底 + 🎬） */}
@@ -168,7 +157,7 @@ async function TorrentTr({
           ) : (
             <span
               className="torrents-cover torrents-cover--fallback"
-              style={{ background: catColor(t.category_id) }}
+              style={{ background: catColor(dicts.colors, t.category_id) }}
             >
               <Icon name="disc" size={20} />
             </span>
@@ -299,4 +288,4 @@ async function TorrentTr({
   );
 }
 
-export { TorrentTr, catColor, promoSemanticClass };
+export { TorrentTr, promoSemanticClass };

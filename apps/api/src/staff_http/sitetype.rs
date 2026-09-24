@@ -30,9 +30,10 @@ pub async fn site_profile(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 实际分类以 categories 表为准（类型包只是初始快照，管理组可再编辑）
-    let cats: Vec<(i32, String, String)> = sqlx::query_as(
-        "SELECT id, name, icon_key FROM categories ORDER BY id",
+    // 实际分类以 categories 表为准（类型包只是初始快照，管理组可再编辑）；
+    // bg_color（0183）是分类自身的一等属性，前端不再持有硬编码色表
+    let cats: Vec<(i32, String, String, Option<String>)> = sqlx::query_as(
+        "SELECT id, name, icon_key, bg_color FROM categories ORDER BY id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -204,7 +205,7 @@ pub async fn site_profile(
         "founded": founded,
         "metadata_sources": sources,
         "site_desc": site_desc,
-        "categories": cats.iter().map(|(id, name, icon)| serde_json::json!({"id": id, "name": name, "icon_key": icon})).collect::<Vec<_>>(),
+        "categories": cats.iter().map(|(id, name, icon, bg)| serde_json::json!({"id": id, "name": name, "icon_key": icon, "bg_color": bg})).collect::<Vec<_>>(),
         "torrent_dicts": {
             "grades": grades.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
             "media": media.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),

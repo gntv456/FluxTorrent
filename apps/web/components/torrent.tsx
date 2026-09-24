@@ -1,12 +1,8 @@
 import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
-import {
-  categoryColor,
-  formatBytes,
-  promotionBadge,
-} from "@/lib/format";
+import { formatBytes, promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
-import { byId, dictName, getTorrentDicts } from "@/lib/site-profile";
+import { byId, catColor, dictName, getTorrentDicts } from "@/lib/site-profile";
 import { Icon } from "@/components/icons";
 import { dateLocale } from "@/i18n/config";
 
@@ -29,7 +25,7 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
       <span
         aria-hidden
         className="h-[34px] w-[34px] shrink-0 rounded-[9px]"
-        style={{ background: categoryColor(t.category_id) }}
+        style={{ background: catColor(dicts.colors, t.category_id) }}
       />
       {/* 中：主区 */}
       <div className="min-w-0 flex-1">
