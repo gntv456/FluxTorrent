@@ -23,7 +23,13 @@ export interface SiteProfile {
   subtitle_kind?: string;
   /** 字幕区显示名（0146；默认「字幕」，音乐站「歌词」） */
   subtitle_label?: string;
-  categories: { id: number; name: string; icon_key?: string }[];
+  categories: {
+    id: number;
+    name: string;
+    icon_key?: string;
+    /** 分类色（0183）：#rrggbb，由 categories 表下发 */
+    bg_color?: string | null;
+  }[];
   /** 旧三列（torrents.medium_id / grade_id / edition_id）的词表，id 以实体表为准。
    *  与新模型的 section_dict.id 不是同一套编号，不可互换。 */
   torrent_dicts?: {
@@ -73,16 +79,40 @@ export const getTorrentDicts = cache(
     grades: DictEntry[];
     media: DictEntry[];
     editions: DictEntry[];
+    /** 分类色（0183）：id → #rrggbb，来自 categories.bg_color */
+    colors: Record<number, string>;
   }> => {
     const p = await getSiteProfile();
+    const cats = p.categories ?? [];
     return {
-      categories: (p.categories ?? []).map((c) => ({ id: c.id, name: c.name })),
+      categories: cats.map((c) => ({ id: c.id, name: c.name })),
       grades: p.torrent_dicts?.grades ?? [],
       media: p.torrent_dicts?.media ?? [],
       editions: p.torrent_dicts?.editions ?? [],
+      colors: colorMap(cats),
     };
   },
 );
+
+/** 分类色映射：categories.bg_color → {id: #rrggbb} */
+export function colorMap(
+  cats: { id: number; bg_color?: string | null }[],
+): Record<number, string> {
+  return Object.fromEntries(
+    cats.filter((c) => c.bg_color).map((c) => [c.id, c.bg_color as string]),
+  );
+}
+
+/** 档案取不到颜色时的中性兜底（不再是「按 id 硬编码一张色表」） */
+export const CAT_FALLBACK_COLOR = "#93a1bc";
+
+export function catColor(
+  colors: Record<number, string>,
+  id: number | null | undefined,
+): string {
+  if (id === null || id === undefined) return CAT_FALLBACK_COLOR;
+  return colors[id] ?? CAT_FALLBACK_COLOR;
+}
 
 /** 字典列表 → id:名称 映射 */
 export function byId(list: DictEntry[]): Record<number, string> {

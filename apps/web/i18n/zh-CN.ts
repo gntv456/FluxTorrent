@@ -3642,6 +3642,7 @@ usertools: {
     banEmpty: "暂无封禁记录。",
     renamePrompt: "重命名分类：",
     iconKeyPrompt: "分类图标键（film/tv/music/anime/game/app/book/sport/doc/edu，留空=首字色块）：",
+    bgColorPrompt: "分类色（#rrggbb，留空=中性灰）：",
     mailNew: "发送批量邮件",
     btnSend: "发送",
     mailQueued: "邮件已入队",

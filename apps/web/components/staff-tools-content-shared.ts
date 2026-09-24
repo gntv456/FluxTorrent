@@ -24,6 +24,8 @@ export interface CatItem {
   torrents: number;
   /** 图标键（0166）：film/tv/music/anime/game/app/book/sport/doc/edu；空=首字色块 */
   icon_key?: string;
+  /** 分类色（0183）：#rrggbb；空=中性兜底 */
+  bg_color?: string | null;
 }
 
 export interface TypePack {

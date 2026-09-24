@@ -10,7 +10,8 @@
 import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { formatBytes, promotionBadge } from "@/lib/format";
-import { catColor, promoSemanticClass } from "@/components/torrent-table";
+import { promoSemanticClass } from "@/components/torrent-table";
+import { catColor } from "@/lib/site-profile";
 import { Icon } from "@/components/icons";
 import type { Dict } from "@/i18n/zh-CN";
 
@@ -48,10 +49,12 @@ function Cover({
   t,
   className,
   sizes,
+  colors,
 }: {
   t: TorrentListItem;
   className: string;
   sizes?: string;
+  colors: Record<number, string>;
 }) {
   if (t.poster) {
     return (
@@ -62,7 +65,7 @@ function Cover({
         loading="lazy"
         decoding="async"
         className={`${className} object-cover`}
-        style={{ background: catColor(t.category_id) }}
+        style={{ background: catColor(colors, t.category_id) }}
         sizes={sizes}
       />
     );
@@ -70,7 +73,7 @@ function Cover({
   return (
     <span
       className={`${className} flex items-center justify-center text-white/85`}
-      style={{ background: catColor(t.category_id) }}
+      style={{ background: catColor(colors, t.category_id) }}
       aria-hidden
     >
       {/* 与表格视图同款 fallback：分类色块 + 唱片图标
@@ -175,9 +178,11 @@ function Stats({ t, dict }: { t: TorrentListItem; dict: Dict }) {
 export function TorrentCards({
   items,
   dict,
+  colors,
 }: {
   items: TorrentListItem[];
   dict: Dict;
+  colors: Record<number, string>;
 }) {
   return (
     <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
@@ -200,6 +205,7 @@ export function TorrentCards({
                 t={t}
                 className="h-[104px] w-[79px] rounded-lg object-cover"
                 sizes="79px"
+                colors={colors}
               />
             </Link>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -232,9 +238,11 @@ export function TorrentCards({
 export function TorrentPosters({
   items,
   dict,
+  colors,
 }: {
   items: TorrentListItem[];
   dict: Dict;
+  colors: Record<number, string>;
 }) {
   return (
     <ul className={WALL_CLS}>
@@ -260,6 +268,7 @@ export function TorrentPosters({
                 t={t}
                 className="absolute inset-0 h-full w-full"
                 sizes="(max-width: 640px) 45vw, 220px"
+                colors={colors}
               />
             </span>
             {/* 顶部促销角标 */}

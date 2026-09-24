@@ -134,6 +134,17 @@ struct CatBody {
     /// 图标键（0166）：前端 Icon 语义名（film/tv/music/…）；空 = 回落分类名首字
     #[serde(default)]
     icon_key: Option<String>,
+    /// 分类色（0183）：`#rrggbb`；缺省或空 = 不改
+    #[serde(default)]
+    bg_color: Option<String>,
+}
+
+/// 只接受 `#rrggbb`：这个值最终进前端内联 style，库里也有同形 CHECK 兜底
+fn is_hex_color(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.len() == 7
+        && b[0] == b'#'
+        && b[1..].iter().all(|c| c.is_ascii_hexdigit())
 }
 
 #[derive(serde::Serialize, sqlx::FromRow)]
@@ -144,6 +155,8 @@ struct CatRow {
     auto_approve: bool,
     torrents: i64,
     icon_key: String,
+    /// 分类色（0183）：#rrggbb，NULL = 用前端中性兜底
+    bg_color: Option<String>,
 }
 
 #[get("/admin/categories")]
@@ -159,7 +172,7 @@ pub async fn category_list(
     )
     .await?;
     let rows: Vec<CatRow> = sqlx::query_as(
-        "SELECT c.id, c.name, c.mode_id, c.auto_approve, c.icon_key, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
+        "SELECT c.id, c.name, c.mode_id, c.auto_approve, c.icon_key, c.bg_color, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
          FROM categories c ORDER BY c.id",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -209,15 +222,24 @@ pub async fn category_update(
         crate::authz::perm::CATEGORIES_MANAGE,
     )
     .await?;
+    if let Some(c) = body.bg_color.as_deref() {
+        if !c.is_empty() && !is_hex_color(c) {
+            return Err(DomainError::Validation(
+                "分类色需为 #rrggbb 十六进制".into(),
+            ));
+        }
+    }
     let n = sqlx::query(
-        "UPDATE categories SET name=$2, icon_key=$3 WHERE id=$1",
+        "UPDATE categories SET name=$2, icon_key=$3, \
+         bg_color = COALESCE(NULLIF($4, ''), bg_color) WHERE id=$1",
     )
     .bind(*path)
     .bind(&body.name)
     .bind(body.icon_key.clone().unwrap_or_default())
+    .bind(body.bg_color.clone().unwrap_or_default())
     .execute(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| crate::errors::db_to_domain(e, "分类"))?;
     if n.rows_affected() == 0 {
         return Err(DomainError::NotFound(*path as i64));
     }

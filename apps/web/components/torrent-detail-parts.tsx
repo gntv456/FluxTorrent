@@ -1,4 +1,3 @@
-import { categoryColor } from "@/lib/format";
 import { hasBBCode, renderBBCode } from "@/lib/bbcode";
 import { Icon } from "@/components/icons";
 
@@ -104,19 +103,20 @@ export function Fold({
 
 /** 海报头分类角标与海报兜底（阳光口径：左海报，分类色） */
 export function PosterBlock({
-  categoryId,
   category,
+  color,
   poster,
 }: {
-  categoryId: number;
   category: string;
+  /** 分类色（categories.bg_color 下发，0183） */
+  color: string;
   poster?: string | null;
 }) {
   return (
     <div className="td-head__poster">
       <span
         className="td-head__cat"
-        style={{ background: categoryColor(categoryId) }}
+        style={{ background: color }}
       >
         {category}
       </span>
@@ -126,7 +126,7 @@ export function PosterBlock({
       ) : (
         <span
           className="td-head__img td-head__img--fallback"
-          style={{ background: categoryColor(categoryId) }}
+          style={{ background: color }}
         >
           <Icon name="disc" size={34} />
         </span>

@@ -1,7 +1,13 @@
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { formatBytes } from "@/lib/format";
-import { byId, dictName, getSiteProfile } from "@/lib/site-profile";
+import {
+  byId,
+  catColor,
+  colorMap,
+  dictName,
+  getSiteProfile,
+} from "@/lib/site-profile";
 import { TorrentManage } from "@/components/torrent-manage";
 import { PromoBuyButton } from "@/components/promo-buy-button";
 import { SnatchList } from "@/components/snatch-list";
@@ -83,8 +89,9 @@ export default async function TorrentDetailPage({
     .catch(() => []);
 
   const { dict, locale } = await getDict();
-  // 编辑弹层（0166b 全字段）：分类/多维字典与上传页同源，并行装载失败降级
-  const [profile, secDictAll] = await Promise.all([
+  // 当前用户（0184 编辑表单推荐位 staff 判定 + 元数据源口径）
+  const [me, profile, secDictAll] = await Promise.all([
+    api.get<{ class_id?: number }>("/api/v1/me").catch(() => null),
     getSiteProfile().catch(() => null),
     api
       .get<
@@ -94,6 +101,7 @@ export default async function TorrentDetailPage({
       >("/api/v1/section-dict")
       .catch(() => null),
   ]);
+  const isStaff = (me?.class_id ?? 0) >= 90;
   // 分类/学段/媒介/版本词表全部取自站点档案（后端为唯一真值源）；
   // 档案不可用时 editCats 为空——下拉只剩「请选择」、名称回落 #id，
   // 不再拿另一套硬编码词表顶替（那正是分类显示 bug 的源头）
@@ -165,6 +173,10 @@ export default async function TorrentDetailPage({
         locale={locale}
         left={left}
         category={category}
+        categoryColor={catColor(
+          colorMap(profile?.categories ?? []),
+          t.category_id,
+        )}
         subtitleChain={subtitleChain}
         relTime={relTime}
         tags={
@@ -193,6 +205,11 @@ export default async function TorrentDetailPage({
               imdbId={t.imdb_id ?? null}
               tagDict={agg.tags.dict}
               tagMine={agg.tags.mine}
+              posState={ext?.pos_state ?? 0}
+              posStateUntil={ext?.pos_state_until ?? null}
+              pickType={ext?.pick_type ?? 0}
+              isStaff={isStaff}
+              metaSources={profile?.metadata_sources}
               autoOpen={sp.edit === "1"}
             />
           </>
@@ -296,8 +313,10 @@ export default async function TorrentDetailPage({
         </Fold>
       )}
 
-      {/* ===== 字幕面板（0146 P0-6 + 0148 C1 同片 IMDB 合并；模块关闭时空列表） ===== */}
-      <TorrentSubtitles torrentId={t.id} imdbId={t.imdb_id ?? null} />
+      {/* ===== 字幕面板（0146 P0-6 + 0148 C1 同片 IMDB 合并；模块关闭不渲染） ===== */}
+      {profile?.modules?.subtitles !== false && (
+        <TorrentSubtitles torrentId={t.id} imdbId={t.imdb_id ?? null} />
+      )}
       {/* ===== 下载/做种记录 ===== */}
       <Fold title={dict.snatches2.title} open>
         <SnatchList torrentId={t.id} />

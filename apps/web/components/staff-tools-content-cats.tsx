@@ -202,10 +202,13 @@ export function StaffCatsPanel({
                       // book/sport/doc/edu；留空回落分类名首字色块
                       const ik = prompt(t.iconKeyPrompt, c.icon_key ?? "");
                       if (ik === null) return;
+                      const bg = prompt(t.bgColorPrompt, c.bg_color ?? "");
+                      if (bg === null) return;
                       void guard(async () => {
                         await api.put(`/api/v1/admin/categories/${c.id}`, {
                           name: nn,
                           icon_key: ik.trim(),
+                          bg_color: bg.trim(),
                         });
                       }, t.saved);
                     }}
