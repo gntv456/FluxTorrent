@@ -205,7 +205,7 @@ async fn torrent_batch(
             .bind(body.edition_id)
             .execute(db)
             .await
-            .map_err(|e| DomainError::Internal(e.into()))?
+            .map_err(|e| crate::errors::db_to_domain(e, "分类/媒介/学段/版本"))?
             .rows_affected()
         }
         "change_sections" => {
@@ -247,7 +247,7 @@ async fn torrent_batch(
                 .bind(dict_id)
                 .execute(db)
                 .await
-                .map_err(|e| DomainError::Internal(e.into()))?
+                .map_err(|e| crate::errors::db_to_domain(e, "维度字典项"))?
                 .rows_affected();
             }
             n

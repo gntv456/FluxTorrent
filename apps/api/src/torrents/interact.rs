@@ -103,7 +103,7 @@ pub async fn edit_torrent(
     .bind(e.mediainfo)
     .execute(db)
     .await
-    .map_err(|err| DomainError::Internal(err.into()))?
+    .map_err(|err| crate::errors::db_to_domain(err, "分类/媒介/学段/版本"))?
     .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(torrent_id));

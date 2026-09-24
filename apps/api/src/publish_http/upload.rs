@@ -215,7 +215,8 @@ pub async fn upload(
         {
             DomainError::TorrentDuplicate
         } else {
-            DomainError::Internal(e.into())
+            // 分类/媒介/学段/版本不存在 → 外键违规，是输入问题不是服务器故障
+            crate::errors::db_to_domain(e, "分类/媒介/学段/版本")
         }
     })?;
 
