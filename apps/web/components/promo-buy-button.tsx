@@ -29,13 +29,7 @@ const KIND_LABELS: Record<string, string> = {
   free: "限时免费",
 };
 
-export function PromoBuyButton({
-  torrentId,
-  isOwner,
-}: {
-  torrentId: number;
-  isOwner: boolean;
-}) {
+export function PromoBuyButton({ torrentId }: { torrentId: number }) {
   const { dict } = useI18n();
   const router = useRouter();
   const t = dict.promoBuy ?? {
@@ -71,7 +65,6 @@ export function PromoBuyButton({
 
   if (plans && !plans.enabled) return null;
   if (!plans) return null;
-  if (!isOwner) return <p className="text-xs text-sub">{t.needOwner}</p>;
 
   async function buy() {
     if (!pick) return;
