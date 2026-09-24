@@ -58,17 +58,10 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
       .catch(() => setMediumOpts([]));
   }, []);
 
-  // 站点配置优先；接口失败回落 i18n 字典（id 对应实体表 media.id，兼容旧口径）
-  const categories =
-    profile?.categories && profile.categories.length > 0
-      ? profile.categories
-      : dict.torrents.categories
-          .slice(1)
-          .map((name, i) => ({ id: i + 1, name }));
-  const mediums =
-    mediumOpts.length > 0
-      ? mediumOpts
-      : dict.torrents.media.slice(1).map((name, i) => ({ id: i + 1, name }));
+  // 只认站点档案下发的分类与媒介字典（id 即后端口径）；未就绪/失败就是空列表，
+  // 不回落 i18n 字典——那是另一套词表，生成的链接会指向不存在的分类
+  const categories = profile?.categories ?? [];
+  const mediums = mediumOpts;
 
   const url = useMemo(() => {
     if (!info) return "";

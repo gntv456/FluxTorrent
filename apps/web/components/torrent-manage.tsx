@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { EDITIONS } from "@/lib/format";
+import type { DictEntry } from "@/lib/site-profile";
 import type { TagPayload } from "@/components/torrent-tags";
 import { normTagRow } from "@/components/torrent-tags";
 import { Modal } from "@/components/modal";
@@ -37,6 +37,9 @@ export function TorrentManage({
   secKinds,
   secDict,
   cats,
+  mediaOpts,
+  gradeOpts,
+  editionOpts,
   seeders,
   imdbId,
   tagDict,
@@ -64,6 +67,11 @@ export function TorrentManage({
   secKinds: { kind: string; label: string }[];
   secDict: Record<string, { id: number; name: string }[]>;
   cats: { id: number; name: string }[];
+  /** 媒介/学段/版本词表：由站点档案下发（id 以实体表为准，grades 从 0 起、
+   *  media/editions 从 1 起），前端不再持有硬编码词表或做下标补偿 */
+  mediaOpts: DictEntry[];
+  gradeOpts: DictEntry[];
+  editionOpts: DictEntry[];
   seeders?: number;
   imdbId?: string | null;
   /** 标签字典与已选（0159 P1：详情页 aggregate 已带回，编辑表单免二次请求） */
@@ -219,10 +227,6 @@ export function TorrentManage({
 
   const fld =
     "min-h-[36px] rounded-[var(--r-sm)] border border-line px-2 text-sm";
-  // 0173：媒介/学段/版本下拉选项（数组 index+1 = id；0 位是列表筛选用占位）
-  const mediaOpts = dict.torrents.media.slice(1);
-  const gradeOpts = dict.torrents.grades.slice(1);
-  const editionOpts = EDITIONS.slice(1);
 
   return (
     <div className="flex flex-col items-start gap-2">
@@ -305,9 +309,9 @@ export function TorrentManage({
                 className={fld}
               >
                 <option value={0}>{dict.upload.gradeNone}</option>
-                {mediaOpts.map((name, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {name}
+                {mediaOpts.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
                   </option>
                 ))}
               </select>
@@ -322,9 +326,9 @@ export function TorrentManage({
                 className={fld}
               >
                 <option value={GRADE_NONE}>{dict.upload.gradeNone}</option>
-                {gradeOpts.map((name, i) => (
-                  <option key={i} value={i}>
-                    {name}
+                {gradeOpts.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
                   </option>
                 ))}
               </select>
@@ -339,9 +343,9 @@ export function TorrentManage({
                 className={fld}
               >
                 <option value={0}>{dict.upload.gradeNone}</option>
-                {editionOpts.map((name, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {name}
+                {editionOpts.map((ed) => (
+                  <option key={ed.id} value={ed.id}>
+                    {ed.name}
                   </option>
                 ))}
               </select>

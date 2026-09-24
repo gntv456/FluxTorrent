@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { PreserveItem } from "@/lib/data";
-import { editionName, formatBytes, promotionBadge } from "@/lib/format";
+import { formatBytes, promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
-import { getCategoryNames } from "@/lib/site-profile";
+import { byId, dictName, getTorrentDicts } from "@/lib/site-profile";
 import { dateLocale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
 import { BatchCheckbox } from "@/components/torrent-batch";
@@ -91,14 +91,16 @@ async function TorrentTr({
 }) {
   const icons = catIcons ?? {};
   const { dict, locale } = await getDict();
-  const catNames = await getCategoryNames();
+  const dicts = await getTorrentDicts();
+  const catNames = byId(dicts.categories);
+  const gradeNames = byId(dicts.grades);
+  const editionNames = byId(dicts.editions);
   const id = "torrent_id" in t ? t.torrent_id : t.id;
   const promo = promotionBadge(
     (t.promotion as TorrentListItem["promotion"]) ?? null,
   );
-  const edition = editionName(t.edition_id);
-  const grade =
-    t.grade_id !== null ? dict.torrents.grades[t.grade_id + 1] : undefined;
+  const edition = dictName(editionNames, t.edition_id);
+  const grade = dictName(gradeNames, t.grade_id);
   const now = Date.now();
   const age = now - new Date(t.created_at).getTime();
   const ageDays = Math.floor(age / 86400000);

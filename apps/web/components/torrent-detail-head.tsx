@@ -32,8 +32,8 @@ export function TorrentHead({
   locale: Locale;
   /** 促销剩余时间文案（好学站「x天x时」口径），null = 无促销 */
   left: string | null;
-  /** 分类显示名：page 侧按 site-profile categories（category_id 的外键目标）解析；
-   *  dict.torrents.categories 是筛选用词表且 [0] 为「全部」，不能按 id 直接下标 */
+  /** 分类显示名：由 page 侧按站点档案 categories 解析（category_id 的外键目标），
+   *  组件内不再持有任何站型词表 */
   category: string;
   /** 副题链（学段 · 媒介 · 版本） */
   subtitleChain: string;

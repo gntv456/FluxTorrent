@@ -1,6 +1,7 @@
 import { getPreserve } from "@/lib/data";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
+import { getTorrentDicts } from "@/lib/site-profile";
 import { fmt } from "@/i18n/config";
 import { ClaimButton } from "@/components/claim-button";
 import { TorrentTr } from "@/components/torrent-table";
@@ -23,6 +24,8 @@ export default async function PreservePage({
   if (gate) return gate;
 
   const { dict } = await getDict();
+  // 分类筛选项取自站点分类表（torrents.category_id 的外键目标）
+  const cats = (await getTorrentDicts()).categories;
   // 筛选接线（审计修复 P1）：scope/status 表单参数此前后端声明即弃、前端也不透传——
   // 筛选 UI 双重失效。现在透传到 /preserve。
   const spRaw = await searchParams;
@@ -110,13 +113,11 @@ export default async function PreservePage({
             <span>{dict.preserve.category}</span>
             <select name="category">
               <option value="0">{dict.preserve.categoryAll}</option>
-              {dict.torrents.categories
-                .filter((c) => c !== dict.torrents.categories[0])
-                .map((c, i) => (
-                  <option key={c} value={i + 1}>
-                    {c}
-                  </option>
-                ))}
+              {cats.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </label>
           <label className="preserve-filter__keyword">

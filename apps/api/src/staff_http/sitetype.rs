@@ -37,6 +37,25 @@ pub async fn site_profile(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 旧三列（torrents.medium_id / grade_id / edition_id）的词表：这三张实体表
+    // 就是它们的 id 权威（grades 0=幼儿园…12=高三；media/editions 从 1 起），
+    // 与 0088 之后新模型的 section_dict.id **不是同一套编号**（0174 回填后已是
+    // 400+ 段），所以必须单独下发，前端不能再拿硬编码数组按下标补偿。
+    let dict_rows = |table: &'static str| {
+        let db = state.repo.db.clone();
+        async move {
+            sqlx::query_as::<_, (i32, String)>(
+                // 表名来自本函数内的字面量常量，非用户输入
+                &format!("SELECT id, name FROM {table} ORDER BY id"),
+            )
+            .fetch_all(&db)
+            .await
+            .unwrap_or_default()
+        }
+    };
+    let grades = dict_rows("grades").await;
+    let media = dict_rows("media").await;
+    let editions = dict_rows("editions").await;
     let brand: String = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'site_name'",
     )
@@ -186,6 +205,11 @@ pub async fn site_profile(
         "metadata_sources": sources,
         "site_desc": site_desc,
         "categories": cats.iter().map(|(id, name, icon)| serde_json::json!({"id": id, "name": name, "icon_key": icon})).collect::<Vec<_>>(),
+        "torrent_dicts": {
+            "grades": grades.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
+            "media": media.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
+            "editions": editions.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
+        },
         "modules": modules,
     })))
 }
