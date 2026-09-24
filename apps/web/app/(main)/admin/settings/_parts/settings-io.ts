@@ -11,10 +11,15 @@ import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import type {
+  CatalogResponse,
+  ContentPackFile,
+  ContentPackRow,
   DiffRow,
   ExportPayload,
   ImportApplied,
   ImportDryRun,
+  PackImportResult,
+  RuleTryResult,
 } from "./settings-types";
 
 /** 主组件的提示条状态形状（成功/失败文案 + 生效列表） */
@@ -154,6 +159,179 @@ export function useSettingsTransfer({
     reader.readAsText(file, "utf-8");
   }
 
+  /** 内容包文件选择（与设定导入同一读取方式） */
+  function onPickPackFile(file: File | null) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPackText(String(reader.result ?? ""));
+      setPackPreview(null);
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  // ---- 商店目录（M2）：浏览 / 一键安装 / 已装对照 ----
+  const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
+  const [installBusyId, setInstallBusyId] = useState<string | null>(null);
+
+  async function reloadCatalog() {
+    try {
+      setCatalog(
+        await api.get<CatalogResponse>("/api/v1/admin/content-packs/catalog"),
+      );
+    } catch {
+      setCatalog(null);
+    }
+  }
+
+  async function installFromCatalog(packId: string) {
+    setInstallBusyId(packId);
+    try {
+      const r = await api.post<PackImportResult>(
+        "/api/v1/admin/content-packs/install",
+        { pack_id: packId, confirm: true },
+      );
+      const n = r.applied?.categories ?? r.applied?.settings ?? 0;
+      onToast({ ok: true, text: fmt(s.packImported, { n }) });
+      await Promise.all([reloadPacks(), reloadCatalog(), reload()]);
+    } catch (e) {
+      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+    } finally {
+      setInstallBusyId(null);
+    }
+  }
+
+  // ---- 规则试算（M3）：表达式 lint + 变量代入，不落库 ----
+  const [ruleTryResult, setRuleTryResult] = useState<RuleTryResult | null>(
+    null,
+  );
+
+  async function tryRule(key: string, expr: string, termDays: number) {
+    setRuleTryResult(null);
+    try {
+      const r = await api.post<RuleTryResult>(
+        "/api/v1/admin/content-packs/rule-try",
+        { key, expr, vars: { term_days: termDays } },
+      );
+      setRuleTryResult(r);
+    } catch (e) {
+      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+    }
+  }
+
+  // ---- 内容包（生态商店 M1）：本站导出 / 导入（空跑→确认）/ 清单 / 回滚 ----
+  const [packOpen, setPackOpen] = useState(false);
+  const [packText, setPackText] = useState("");
+  const [packBusy, setPackBusy] = useState(false);
+  const [packPreview, setPackPreview] = useState<PackImportResult | null>(
+    null,
+  );
+  const [packRows, setPackRows] = useState<ContentPackRow[] | null>(null);
+
+  async function reloadPacks() {
+    try {
+      setPackRows(await api.get<ContentPackRow[]>("/api/v1/admin/content-packs"));
+    } catch {
+      setPackRows([]);
+    }
+  }
+
+  function openPacks() {
+    setPackOpen(true);
+    if (packRows === null) void reloadPacks();
+    if (catalog === null) void reloadCatalog();
+  }
+
+  async function packExportKind(kind: "taxonomy" | "theme") {
+    try {
+      const r = await api.get<ContentPackFile>(
+        `/api/v1/admin/content-packs/export?kind=${kind}`,
+      );
+      const blob = new Blob([JSON.stringify(r, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fluxtorrent-${kind}-pack-${new Date()
+        .toISOString()
+        .slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      onToast({ ok: true, text: fmt(s.packExported, { kind }), effects: [] });
+    } catch (e) {
+      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+    }
+  }
+
+  async function packDryRun() {
+    let pack: unknown;
+    try {
+      pack = JSON.parse(packText);
+    } catch {
+      onToast({ ok: false, text: s.importBadJson });
+      return;
+    }
+    setPackBusy(true);
+    try {
+      const r = await api.post<PackImportResult>(
+        "/api/v1/admin/content-packs/import",
+        { pack, confirm: false },
+      );
+      setPackPreview(r);
+      if ((r.errors?.length ?? 0) > 0) {
+        onToast({ ok: false, text: s.packHasErrors });
+      }
+    } catch (e) {
+      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+    } finally {
+      setPackBusy(false);
+    }
+  }
+
+  async function packApply() {
+    let pack: unknown;
+    try {
+      pack = JSON.parse(packText);
+    } catch {
+      return;
+    }
+    setPackBusy(true);
+    try {
+      const r = await api.post<PackImportResult>(
+        "/api/v1/admin/content-packs/import",
+        { pack, confirm: true },
+      );
+      const n = r.applied?.categories ?? r.applied?.settings ?? 0;
+      onToast({ ok: true, text: fmt(s.packImported, { n }) });
+      setPackText("");
+      setPackPreview(null);
+      await Promise.all([reloadPacks(), reload()]);
+    } catch (e) {
+      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+    } finally {
+      setPackBusy(false);
+    }
+  }
+
+  async function packRollback(id: number) {
+    setPackBusy(true);
+    try {
+      const r = await api.post<{ rolled_back: string }>(
+        "/api/v1/admin/content-packs/rollback",
+        { id },
+      );
+      onToast({ ok: true, text: fmt(s.packRolledBack, { id: r.rolled_back }) });
+      await Promise.all([reloadPacks(), reload()]);
+    } catch (e) {
+      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+    } finally {
+      setPackBusy(false);
+    }
+  }
+
   return {
     exportPlain,
     setExportPlain,
@@ -172,5 +350,29 @@ export function useSettingsTransfer({
     importDryRun,
     importApply,
     onPickFile,
+    // 内容包域（M1）
+    packOpen,
+    setPackOpen,
+    openPacks,
+    packText,
+    setPackText,
+    packBusy,
+    packPreview,
+    setPackPreview,
+    packRows,
+    packExportKind,
+    packDryRun,
+    packApply,
+    packRollback,
+    onPickPackFile,
+    // 商店目录域（M2）
+    catalog,
+    reloadCatalog,
+    installBusyId,
+    installFromCatalog,
+    // 规则试算域（M3）
+    ruleTryResult,
+    setRuleTryResult,
+    tryRule,
   };
 }
