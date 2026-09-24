@@ -207,6 +207,10 @@ pub(super) struct TorrentEditReq {
     /// None = 不动（编辑入口与详情页 toggle / 发布同走 apply_torrent_tags）
     #[serde(default)]
     pub(super) tag_ids: Option<Vec<i32>>,
+    /// 多维质量（0087 同发布表单）：{kind: dict_id}；缺省 = 不动。
+    /// 提交即整组重建（未含的旧维删除——与前端「整表单保存」语义一致）
+    #[serde(default)]
+    pub(super) sections: Option<std::collections::HashMap<String, i64>>,
 }
 
 /// 请求补种（NP takereseed.php：死种 → PM 全体完成者，900s 限频）
