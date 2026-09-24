@@ -222,6 +222,8 @@ pub async fn upload(
     // 多维属性（第八轮 Section）与标签：外提至 sections_store::store_sections_tags
     super::upload_sections::store_sections_tags(&state, &form, &auth, id)
         .await?;
+    // 新种子进列表：推进列表缓存代际，否则首屏 45s 内看不到刚发的种
+    crate::torrent_http::bump_list_cache_gen(&state).await;
     // 存原始 .torrent 字节（下载时重新注入 announce，M05）
     sqlx::query("INSERT INTO torrent_files (torrent_id, raw) VALUES ($1, $2)")
         .bind(id)

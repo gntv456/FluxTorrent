@@ -283,5 +283,9 @@ async fn torrent_batch(
             None,
         )
         .await;
+    // 批量动作改的是列表可见内容（分类/状态/统计）：推进列表缓存代际
+    if n > 0 {
+        crate::torrent_http::bump_list_cache_gen(&state).await;
+    }
     Ok(ok(serde_json::json!({ "affected": n as i64 })))
 }
