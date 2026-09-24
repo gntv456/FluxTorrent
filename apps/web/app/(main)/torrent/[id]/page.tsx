@@ -220,14 +220,6 @@ export default async function TorrentDetailPage({
             <Spec key={v.kind} value={v.name} label={v.label} />
           ))}
         {t.rating && <Spec value={t.rating} label={d?.ratingLabel} num />}
-        <Spec
-          value={
-            <span className="break-all text-[11px] font-normal text-sub">
-              {t.info_hash.trim()}
-            </span>
-          }
-          label={dict.torrent.infoHash}
-        />
       </section>
 
       {/* ===== 标签（贴副标题下：标签行紧跟头部，管理操作在头部操作行） ===== */}
@@ -316,6 +308,12 @@ export default async function TorrentDetailPage({
           locale={locale}
         />
       )}
+
+      {/* Info Hash（BT 种子唯一指纹）：不再挤占规格网格，页底小字展示 */}
+      <p className="break-all border-t border-line pt-2 text-[11px] text-sub">
+        <span className="font-bold">{dict.torrent.infoHash}</span> ·{" "}
+        {t.info_hash.trim()}
+      </p>
 
       {/* ===== 评论区 ===== */}
       <Comments
