@@ -9,7 +9,6 @@ use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 use super::section_public::regex_check_kind;
-use super::sections::LEGACY_KINDS;
 use super::staff;
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -64,13 +63,10 @@ async fn section_kinds_add(
     )
     .await?;
     let kind = body.kind.trim().to_lowercase();
-    if !LEGACY_KINDS.contains(&kind.as_str()) && !regex_check_kind(&kind) {
+    if !regex_check_kind(&kind) {
         return Err(DomainError::Validation(
             "维度标识需为小写字母开头的 [a-z0-9_]（≤32 字符）".into(),
         ));
-    }
-    if LEGACY_KINDS.contains(&kind.as_str()) {
-        return Err(DomainError::Validation("该维度已内置".into()));
     }
     if body.label.trim().is_empty() {
         return Err(DomainError::Validation("显示名称不能为空".into()));
@@ -155,9 +151,10 @@ async fn section_kinds_delete(
     )
     .await?;
     let kind = path.into_inner();
-    if LEGACY_KINDS.contains(&kind.as_str()) {
-        return Err(DomainError::Validation("内置维度不可删除".into()));
-    }
+    // 内置维度不再冻结：项目定位是通用建站，维度归站长自定义（media/grades/
+    // editions 是教育站时代的内置维，冻结会让站长删不掉「学段」这类不相干维度，
+    // 也会被 pack_apply 删空后陷入「已内置、不能重建」的死锁）。
+    // 数据安全由下面的「在用量」守卫兜住。
     // 删除会级联清空字典与种子归属，先挡在用中的维度
     let used: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM torrent_sections ts JOIN section_dict sd ON sd.id = ts.dict_id \

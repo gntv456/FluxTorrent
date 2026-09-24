@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import type { DictEntry } from "@/lib/site-profile";
 import type { TagPayload } from "@/components/torrent-tags";
 import { normTagRow } from "@/components/torrent-tags";
 import { Modal } from "@/components/modal";
@@ -17,9 +16,6 @@ import { UploadDescrBlock } from "@/components/upload-form-descr";
 
 type Dict = ReturnType<typeof useI18n>["dict"];
 
-/** 学段「未设」哨兵：grades 表 0 已被「幼儿园」占用，不能用 0 */
-const GRADE_NONE = -1;
-
 export function TorrentManage({
   torrentId,
   name,
@@ -27,9 +23,6 @@ export function TorrentManage({
   descr,
   anonymous,
   categoryId,
-  mediumId,
-  gradeId,
-  editionId,
   price,
   posterUrl,
   mediainfo,
@@ -37,9 +30,6 @@ export function TorrentManage({
   secKinds,
   secDict,
   cats,
-  mediaOpts,
-  gradeOpts,
-  editionOpts,
   seeders,
   imdbId,
   tagDict,
@@ -52,10 +42,6 @@ export function TorrentManage({
   descr: string | null;
   anonymous: boolean;
   categoryId: number;
-  /** 媒介/学段/版本（0173 对齐发布页）：老数据列，null = 未设 */
-  mediumId: number | null;
-  gradeId: number | null;
-  editionId: number | null;
   /** 付费价格（0086 独立端点 PUT /price） */
   price: number;
   /** 封面外链（media_info.poster） */
@@ -67,11 +53,6 @@ export function TorrentManage({
   secKinds: { kind: string; label: string }[];
   secDict: Record<string, { id: number; name: string }[]>;
   cats: { id: number; name: string }[];
-  /** 媒介/学段/版本词表：由站点档案下发（id 以实体表为准，grades 从 0 起、
-   *  media/editions 从 1 起），前端不再持有硬编码词表或做下标补偿 */
-  mediaOpts: DictEntry[];
-  gradeOpts: DictEntry[];
-  editionOpts: DictEntry[];
   seeders?: number;
   imdbId?: string | null;
   /** 标签字典与已选（0159 P1：详情页 aggregate 已带回，编辑表单免二次请求） */
@@ -90,12 +71,6 @@ export function TorrentManage({
   const [fAnon, setFAnon] = useState(anonymous);
   const [fImdb, setFImdb] = useState(imdbId ?? "");
   const [fCat, setFCat] = useState(categoryId);
-  // 0173 对齐发布页：媒介/学段/版本（封面外链、MediaInfo、付费价格、PT-Gen）
-  // 媒介/版本的 id 从 1 起（0 = 未设不提交）；学段例外——grades 表 0=幼儿园…12=高三
-  // （torrents.grade_id 外键），所以「未设」用 -1 哨兵，选项 value 直接就是 id。
-  const [fMedium, setFMedium] = useState(mediumId ?? 0);
-  const [fGrade, setFGrade] = useState(gradeId ?? GRADE_NONE);
-  const [fEdition, setFEdition] = useState(editionId ?? 0);
   const [fPrice, setFPrice] = useState(price);
   const [fPoster, setFPoster] = useState(posterUrl ?? "");
   const [fMediainfo, setFMediainfo] = useState(mediainfo ?? "");
@@ -157,12 +132,9 @@ export function TorrentManage({
         anonymous: fAnon,
         category_id: fCat,
         imdb_id: fImdb.trim() || "",
-        // 0173 补齐发布页字段：媒介/学段/版本（媒介/版本 0 = 未设不提交；
-        // 学段用 -1 哨兵，0 是合法 id「幼儿园」）、封面外链、
-        // MediaInfo（None=不动 / Some("")=清除 / Some(text)=写入——始终提交）
-        ...(fMedium > 0 ? { medium_id: fMedium } : {}),
-        ...(fGrade >= 0 ? { grade_id: fGrade } : {}),
-        ...(fEdition > 0 ? { edition_id: fEdition } : {}),
+        // 0173 补齐发布页字段：封面外链、
+        // MediaInfo（None=不动 / Some("")=清除 / Some(text)=写入——始终提交）。
+        // 媒介/学段/版本三个 legacy 列不再提交：维度归属统一走下面的 sections。
         poster: fPoster.trim(),
         mediainfo: fMediainfo.trim(),
         // 多维质量：有值的维以 {kind: dict_id} 提交（后端写 torrent_sections）
@@ -297,60 +269,9 @@ export function TorrentManage({
               ))}
             </select>
           </label>
-          {/* 0173 对齐发布页：媒介/学段/版本（老数据列，api TorrentEditReq 直接支持） */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-            <label className="flex items-center gap-1">
-              <span className="whitespace-nowrap text-sub">
-                {dict.torrent.medium}：
-              </span>
-              <select
-                value={fMedium}
-                onChange={(e) => setFMedium(Number(e.target.value))}
-                className={fld}
-              >
-                <option value={0}>{dict.upload.gradeNone}</option>
-                {mediaOpts.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-1">
-              <span className="whitespace-nowrap text-sub">
-                {dict.torrent.grade}：
-              </span>
-              <select
-                value={fGrade}
-                onChange={(e) => setFGrade(Number(e.target.value))}
-                className={fld}
-              >
-                <option value={GRADE_NONE}>{dict.upload.gradeNone}</option>
-                {gradeOpts.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-1">
-              <span className="whitespace-nowrap text-sub">
-                {dict.torrent.edition}：
-              </span>
-              <select
-                value={fEdition}
-                onChange={(e) => setFEdition(Number(e.target.value))}
-                className={fld}
-              >
-                <option value={0}>{dict.upload.gradeNone}</option>
-                {editionOpts.map((ed) => (
-                  <option key={ed.id} value={ed.id}>
-                    {ed.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          {/* 维度归属统一走 sections（0087）：媒介/学段/版本等历史列不再作为
+              可编辑字段——维度与选项由站长在后台自定义，legacy 列仅供详情页
+              显示历史数据 */}
           {/* 多维质量（0087 同发布表单）：kind 下拉，空 = 不设 */}
           {secKinds.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">

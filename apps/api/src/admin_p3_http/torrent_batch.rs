@@ -180,26 +180,60 @@ async fn torrent_batch(
             .map_err(|e| DomainError::Internal(e.into()))?
             .rows_affected()
         }
-        "change_category" => sqlx::query(
-            "UPDATE torrents SET \
-               category_id = COALESCE($2, category_id), \
-               medium_id = COALESCE($3, medium_id), \
-               grade_id = COALESCE($4, grade_id), \
-               edition_id = COALESCE($5, edition_id), mtime = now() \
-             WHERE id = ANY($1)",
-        )
-        .bind(&id_arr)
-        .bind(body.category_id)
-        .bind(body.medium_id)
-        .bind(body.grade_id)
-        .bind(body.edition_id)
-        .execute(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected(),
+        "change_category" => {
+            // 四个字段全 COALESCE：全 None 时 SQL 仍会命中 N 行并回报「成功 N 条」，
+            // 但一个字段都没改——先挡掉空提交，别让操作者以为生效了
+            if body.category_id.is_none()
+                && body.medium_id.is_none()
+                && body.grade_id.is_none()
+                && body.edition_id.is_none()
+            {
+                return Err(DomainError::Validation("缺少要改的分类字段".into()));
+            }
+            sqlx::query(
+                "UPDATE torrents SET \
+                   category_id = COALESCE($2, category_id), \
+                   medium_id = COALESCE($3, medium_id), \
+                   grade_id = COALESCE($4, grade_id), \
+                   edition_id = COALESCE($5, edition_id), mtime = now() \
+                 WHERE id = ANY($1)",
+            )
+            .bind(&id_arr)
+            .bind(body.category_id)
+            .bind(body.medium_id)
+            .bind(body.grade_id)
+            .bind(body.edition_id)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected()
+        }
         "change_sections" => {
             if body.sections.is_empty() {
                 return Err(DomainError::Validation("缺少维度取值".into()));
+            }
+            // 先全量校验再写：外键只保证 dict_id 那行存在，不保证它属于该 kind，
+            // 缺这一步可以把「编码=x264」挂到「学段」维度下（与编辑口同口径）
+            for (kind, dict_id) in &body.sections {
+                if !crate::admin_p3_http::is_custom_kind(db, kind).await {
+                    return Err(DomainError::Validation(format!(
+                        "未知维度 {kind}"
+                    )));
+                }
+                let ok: bool = sqlx::query_scalar(
+                    "SELECT EXISTS(SELECT 1 FROM section_dict WHERE id = $1 \
+                     AND kind = $2)",
+                )
+                .bind(dict_id)
+                .bind(kind)
+                .fetch_one(db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+                if !ok {
+                    return Err(DomainError::Validation(format!(
+                        "维度 {kind} 的字典项 {dict_id} 不存在"
+                    )));
+                }
             }
             let mut n: u64 = 0;
             for (kind, dict_id) in &body.sections {

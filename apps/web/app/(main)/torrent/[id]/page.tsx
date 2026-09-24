@@ -182,9 +182,6 @@ export default async function TorrentDetailPage({
               descr={ext?.descr ?? null}
               anonymous={t.anonymous}
               categoryId={t.category_id}
-              mediumId={t.medium_id}
-              gradeId={t.grade_id}
-              editionId={t.edition_id}
               price={ext?.price ?? 0}
               posterUrl={t.poster}
               mediainfo={ext?.mediainfo ?? null}
@@ -192,9 +189,6 @@ export default async function TorrentDetailPage({
               secKinds={editKinds}
               secDict={editDict}
               cats={editCats}
-              mediaOpts={mediaOpts}
-              gradeOpts={gradeOpts}
-              editionOpts={editionOpts}
               seeders={t.seeders}
               imdbId={t.imdb_id ?? null}
               tagDict={agg.tags.dict}
