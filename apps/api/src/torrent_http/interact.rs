@@ -203,6 +203,12 @@ pub(super) struct TorrentEditReq {
     /// IMDB id（0150：后台/编辑表单直填；非法形态会被 manage 层过滤为 None）
     #[serde(default)]
     pub(super) imdb_id: Option<String>,
+    /// 封面外链（0173 编辑同步发布能力）：None=不动，Some("")=清除，Some(url)=写入
+    #[serde(default)]
+    pub(super) poster: Option<String>,
+    /// MediaInfo 全文（0173 编辑同步发布能力）：None=不动，Some("")=清除，Some(text)=写入
+    #[serde(default)]
+    pub(super) mediainfo: Option<String>,
     /// 标签（0159 P1）：编辑表单整组提交；Some([]) = 清空全部标签，
     /// None = 不动（编辑入口与详情页 toggle / 发布同走 apply_torrent_tags）
     #[serde(default)]

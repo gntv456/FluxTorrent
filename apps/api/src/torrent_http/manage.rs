@@ -53,6 +53,10 @@ async fn edit_torrent(
             grade_id: body.grade_id,
             edition_id: body.edition_id,
             imdb_id: imdb_norm.as_deref(),
+            // 0173：封面外链（None=不动 / Some("")=清除 / Some(url)=写入）
+            poster: body.poster.as_deref().map(str::trim),
+            // 0173：MediaInfo 全文（同三态语义）
+            mediainfo: body.mediainfo.as_deref().map(str::trim),
         },
     )
     .await?;

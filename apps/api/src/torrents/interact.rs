@@ -21,6 +21,10 @@ pub struct TorrentEdit<'a> {
     pub edition_id: Option<i32>,
     /// IMDB id（0150：后台/编辑表单直填；TT+7~8 位数字，空串清空）
     pub imdb_id: Option<&'a str>,
+    /// 封面外链（0173 编辑同步发布能力）：None=不动，Some("")=清除，Some(url)=写入
+    pub poster: Option<&'a str>,
+    /// MediaInfo 全文（0173 编辑同步发布能力）：None=不动，Some("")=清除，Some(text)=写入
+    pub mediainfo: Option<&'a str>,
 }
 
 pub async fn edit_torrent(
@@ -68,6 +72,18 @@ pub async fn edit_torrent(
             edition_id = COALESCE($9, edition_id),
             imdb_id = COALESCE($10, imdb_id),
             approval_status = CASE WHEN $11::bool THEN approval_status ELSE 0 END,
+            media_info = CASE
+                WHEN $12::text IS NULL AND $13::text IS NULL THEN media_info
+                ELSE COALESCE(media_info, '{}'::jsonb)
+                     || CASE WHEN $12::text IS NULL THEN '{}'::jsonb
+                             WHEN $12::text = ''
+                                 THEN jsonb_build_object('poster', NULL)
+                             ELSE jsonb_build_object('poster', $12::text) END
+                     || CASE WHEN $13::text IS NULL THEN '{}'::jsonb
+                             WHEN $13::text = ''
+                                 THEN jsonb_build_object('mediainfo', NULL)
+                             ELSE jsonb_build_object('mediainfo', $13::text) END
+            END,
             mtime = now()
         WHERE id = $1
         "#,
@@ -83,6 +99,8 @@ pub async fn edit_torrent(
     .bind(e.edition_id)
     .bind(e.imdb_id)
     .bind(keep_status)
+    .bind(e.poster)
+    .bind(e.mediainfo)
     .execute(db)
     .await
     .map_err(|err| DomainError::Internal(err.into()))?
