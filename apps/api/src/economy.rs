@@ -90,6 +90,37 @@ pub async fn term_rate_with_rules(
     crate::rules_engine::eval(&expr, &spec, &vars)
 }
 
+/// 规则覆盖版贷款日利率（万分比）：读 rule_bank_loan_daily（空 = 内置阶梯）。
+/// 规则值域 [0, 0.01]（小数）→ bp = round(v * 10000)。
+pub async fn loan_rate_bp_with_rules(
+    db: &sqlx::PgPool,
+    term_days: i32,
+) -> i32 {
+    let expr: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'rule_bank_loan_daily'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v: String| v.trim().to_string())
+    .filter(|v| !v.is_empty());
+    let Some(expr) = expr else {
+        return loan_rate_bp(term_days);
+    };
+    let vars: std::collections::HashMap<&str, f64> =
+        [("term_days", term_days as f64)].into_iter().collect();
+    let spec = crate::rules_engine::RuleSpec {
+        key: "bank.loan_daily_rate",
+        vars: &["term_days"],
+        fallback: loan_rate_bp(term_days) as f64 / 10_000.0,
+        min: 0.0,
+        max: 0.01,
+    };
+    let v = crate::rules_engine::eval(&expr, &spec, &vars);
+    (v * 10_000.0).round() as i32
+}
+
 /// 到期利息（整数火花，向下取整防超发）——规则覆盖版：利率走 term_rate_with_rules
 pub async fn maturity_interest_with_rules(
     db: &sqlx::PgPool,

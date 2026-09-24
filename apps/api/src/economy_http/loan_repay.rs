@@ -6,7 +6,9 @@ use super::loans::{bank_settings, max_loan_amount};
 use super::spend::SpendOutcome;
 use crate::dto::ok;
 use crate::economy;
-use crate::economy::{loan_rate_bp, term_rate, LOAN_TERMS, VALID_TERMS};
+use crate::economy::{
+    loan_rate_bp_with_rules, term_rate_with_rules, LOAN_TERMS, VALID_TERMS,
+};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -323,6 +325,20 @@ async fn bank_overview(
     .map_err(|e| DomainError::Internal(e.into()))?
     .unwrap_or_else(|| "maturity".into());
 
+    let mut fixed_rates = Vec::with_capacity(VALID_TERMS.len());
+    for t in VALID_TERMS {
+        fixed_rates.push(serde_json::json!({
+            "term_days": t,
+            "annual_rate": term_rate_with_rules(&state.repo.db, t).await,
+        }));
+    }
+    let mut loan_rates = Vec::with_capacity(LOAN_TERMS.len());
+    for t in LOAN_TERMS {
+        loan_rates.push(serde_json::json!({
+            "term_days": t,
+            "daily_rate_bp": loan_rate_bp_with_rules(&state.repo.db, t).await,
+        }));
+    }
     Ok(ok(serde_json::json!({
         "spark_balance": spark,
         "demand": { "balance": demand.balance, "daily_rate_bp": demand.daily_rate_bp },
@@ -345,12 +361,8 @@ async fn bank_overview(
             "settle_healthy": last_run.is_some(),
             "settle_mode": settle_mode,
         },
-        "fixed_rates": VALID_TERMS.iter().map(|t| serde_json::json!({
-            "term_days": t, "annual_rate": term_rate(*t),
-        })).collect::<Vec<_>>(),
-        "loan_rates": LOAN_TERMS.iter().map(|t| serde_json::json!({
-            "term_days": t, "daily_rate_bp": loan_rate_bp(*t),
-        })).collect::<Vec<_>>(),
+        "fixed_rates": fixed_rates,
+        "loan_rates": loan_rates,
     })))
 }
 
