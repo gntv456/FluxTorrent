@@ -52,7 +52,7 @@ const enBase: Omit<
     invites: "Invites",
     subtitles: "Subtitles",
     friends: "Social",
-    candidates: "Requests",
+    requests: "Requests",
     offers: "Offers",
     jixiao: "KPI",
     preserve: "Preserve",

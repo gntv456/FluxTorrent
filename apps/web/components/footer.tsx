@@ -29,7 +29,7 @@ export async function Footer() {
     { href: "/torrents?official=1", label: dict.nav.official },
     { href: "/forums", label: dict.nav.forums },
     { href: "/top", label: dict.nav.top },
-    { href: "/requests", label: dict.nav.candidates },
+    { href: "/requests", label: dict.nav.requests },
   ];
 
   return (
