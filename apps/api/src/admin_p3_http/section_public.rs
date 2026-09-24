@@ -3,6 +3,7 @@
 
 use actix_web::{get, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
+use std::collections::HashMap;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -74,7 +75,7 @@ async fn tags_dict_public(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let mode: Option<i32> = web::Query::<std::collections::HashMap<String, String>>::from_query(
+    let mode: Option<i32> = web::Query::<HashMap<String, String>>::from_query(
         req.query_string(),
     )
     .ok()

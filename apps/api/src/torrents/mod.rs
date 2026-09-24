@@ -13,8 +13,9 @@ mod list;
 mod list_noclamp;
 mod list_noclamp_as;
 mod manage;
-mod manage_perm;
+pub(crate) mod manage_perm;
 pub(crate) mod promo;
+mod section_pred;
 mod types;
 mod viewer_preds;
 
@@ -25,4 +26,5 @@ pub use interact::*;
 pub use list::*;
 pub use list_noclamp::*;
 pub use manage::*;
+pub(crate) use section_pred::sync_legacy_columns;
 pub use types::*;

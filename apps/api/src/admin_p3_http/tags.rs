@@ -88,7 +88,9 @@ async fn tags_dict_list(
     )
     .await?;
     let rows: Vec<TagDictRow> = sqlx::query_as(
-        "SELECT d.id, d.name, d.kind, d.scope, d.bg_color, d.color, d.font_size, d.margin, d.padding, d.border_radius, d.sort, d.enabled, d.mode_id, d.tag_group, d.scope_layer, \
+        "SELECT d.id, d.name, d.kind, d.scope, d.bg_color, d.color, \
+         d.font_size, d.margin, d.padding, d.border_radius, d.sort, \
+         d.enabled, d.mode_id, d.tag_group, d.scope_layer, \
          (SELECT count(*) FROM tags tg WHERE tg.tag_id = d.id) AS torrent_usage, \
          (SELECT count(*) FROM topic_tags tt WHERE tt.tag_id = d.id) AS forum_usage \
          FROM tag_dict d ORDER BY d.scope, d.sort, d.id",
@@ -142,7 +144,9 @@ async fn tags_dict_add(
         _ => "pack",
     };
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO tag_dict (name, kind, scope, bg_color, color, font_size, margin, padding, border_radius, sort, enabled, mode_id, tag_group, scope_layer) \
+        "INSERT INTO tag_dict (name, kind, scope, bg_color, color, \
+         font_size, margin, padding, border_radius, sort, enabled, \
+         mode_id, tag_group, scope_layer) \
          VALUES ($1, COALESCE($2, 'plain'), $3, COALESCE($4, ''), COALESCE($5, '#ffffff'), \
                  COALESCE($6, '12px'), COALESCE($7, '0 4px 0 0'), COALESCE($8, '1px 4px'), \
                  COALESCE($9, '2px'), COALESCE($10, 0), COALESCE($11, TRUE), $12, $13, $14) \
