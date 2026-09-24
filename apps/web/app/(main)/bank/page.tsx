@@ -10,16 +10,17 @@ export default async function BankPage() {
   const gate = await requireModule("bank");
   if (gate) return gate;
 
-  const { dict, currency } = await getDict();
+  const { dict } = await getDict();
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.bank.title}</h1>
-        <span className="text-sm text-sub">{dict.bank.subtitle}</span>
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">Bank</div>
+          <h1 className="font-display text-2xl">{dict.bank.title}</h1>
+        </div>
+        <span className="sub">{dict.bank.subtitle}</span>
       </div>
-      <BankCard
-        loginToView={dict.my.loginToView.replace("{magic}", currency)}
-      />
+      <BankCard />
     </div>
   );
 }

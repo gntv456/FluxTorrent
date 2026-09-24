@@ -16,9 +16,12 @@ export default async function TextbooksPage() {
   const books = await getTextbooks();
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.textbooks.title}</h1>
-        <span className="text-sm text-sub">{dict.textbooks.subtitle}</span>
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">Textbooks</div>
+          <h1 className="font-display text-2xl">{dict.textbooks.title}</h1>
+        </div>
+        <span className="sub">{dict.textbooks.subtitle}</span>
       </div>
       {books.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-10 text-center">
@@ -36,7 +39,7 @@ export default async function TextbooksPage() {
             >
               <div className="flex items-center justify-between">
                 <h2 className="font-bold">{b.subject}</h2>
-                <span className="sticker bg-sky text-white">
+                <span className="pill">
                   {fmt(dict.textbooks.edition, { name: b.edition })}
                 </span>
               </div>

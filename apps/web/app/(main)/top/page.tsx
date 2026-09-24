@@ -153,7 +153,12 @@ export default async function TopPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">{t.title}</h1>
+      <div className="pghd">
+        <div>
+          <div className="pg-eyebrow">Top Charts</div>
+          <h1 className="font-display text-2xl">{t.title}</h1>
+        </div>
+      </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Board
           currency={currency}
