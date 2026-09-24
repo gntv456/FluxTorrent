@@ -81,8 +81,8 @@ pub(super) fn parse_pack(pack: &Value) -> DomainResult<PackHead> {
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_string();
-    if !["taxonomy", "theme", "rules"].contains(&kind.as_str()) {
-        return Err(bad("kind 需为 taxonomy / theme / rules"));
+    if !["taxonomy", "theme", "rules", "assets"].contains(&kind.as_str()) {
+        return Err(bad("kind 需为 taxonomy / theme / rules / assets"));
     }
     let pack_id = obj
         .get("pack_id")
@@ -284,4 +284,78 @@ pub(super) fn parse_taxonomy(payload: &Value) -> DomainResult<TaxonomyData> {
         }
     }
     Ok(TaxonomyData { cats, kinds, dict })
+}
+
+// ============ 素材包（M1 增量，kind=assets） ============
+
+/// 素材表白名单：表名 →（列清单, 软上限）。越权表在 parse 阶段即拒。
+pub(super) const ASSET_TABLES: &[&str] = &["medals", "avatar_frames"];
+
+/// 素材包导出：两张表全量 → 包文件（行原样保留未知列以外的已知列）
+pub(super) async fn export_assets(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    name: Option<&str>,
+) -> DomainResult<HttpResponse> {
+    let medals: Vec<(i64, String, Option<i64>, Option<String>, Option<String>, Option<String>, Option<i32>, i16, Option<i32>, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>, f64, i32, i32)> = sqlx::query_as(
+        "SELECT id, name, price, rarity, description, asset_ref, \
+         duration_days, get_type, inventory, sale_begin_at, sale_end_at, \
+         bonus_addition_factor::float8, category_id, limited::int \
+         FROM medals ORDER BY id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(internal)?;
+    let frames: Vec<(i32, String, String, i32, i32, Option<String>)> =
+        sqlx::query_as(
+            "SELECT id, name, css, price, sort, image_url \
+             FROM avatar_frames ORDER BY id",
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(internal)?;
+    let medals_json: Vec<Value> = medals
+        .into_iter()
+        .map(|m| {
+            let (id, name, price, rarity, description, asset_ref,
+                 duration_days, get_type, inventory, sale_begin_at,
+                 sale_end_at, bonus, category_id, limited) = m;
+            serde_json::json!({
+                "id": id, "name": name, "price": price, "rarity": rarity,
+                "description": description, "asset_ref": asset_ref,
+                "duration_days": duration_days, "get_type": get_type,
+                "inventory": inventory, "sale_begin_at": sale_begin_at,
+                "sale_end_at": sale_end_at,
+                "bonus_addition_factor": bonus, "category_id": category_id,
+                "limited": limited != 0,
+            })
+        })
+        .collect();
+    let frames_json: Vec<Value> = frames
+        .into_iter()
+        .map(|(id, name, css, price, sort, image_url)| {
+            serde_json::json!({
+                "id": id, "name": name, "css": css, "price": price,
+                "sort": sort, "image_url": image_url,
+            })
+        })
+        .collect();
+    Ok(ok(serde_json::json!({
+        "format": FORMAT,
+        "version": 1,
+        "kind": "assets",
+        "pack_id": "assets.current.export",
+        "name": name.unwrap_or("当前站点素材快照"),
+        "core_compat": "*",
+        "exported_at": chrono::Utc::now(),
+        "payload": {
+            "tables": {
+                "medals": medals_json,
+                "avatar_frames": frames_json,
+            },
+        },
+    })))
+}
+
+fn internal<E: Into<anyhow::Error>>(e: E) -> DomainError {
+    DomainError::Internal(e.into())
 }
