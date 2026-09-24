@@ -46,7 +46,9 @@ pub fn next_streak(
 
 // ============ 银行规则（M11 旧站口径：7/30/90/180/365 天定期） ============
 
-/// 定期利率（年化，旧站口径）
+/// 定期利率（年化，旧站口径）——内置阶梯是**回退默认**；
+/// 站长配置 rule_bank_term_rate 表达式（规则包 M3）后按公式求值
+/// （lint 白名单：算术/比较/min/max，变量 term_days；失败回落阶梯并告警）。
 pub fn term_rate(term_days: i32) -> f64 {
     match term_days {
         7 => 0.01,
@@ -56,6 +58,47 @@ pub fn term_rate(term_days: i32) -> f64 {
         365 => 0.18,
         _ => 0.0,
     }
+}
+
+/// 规则覆盖版 term_rate：读 rule_bank_term_rate（空 = 内置阶梯）。
+/// 求值失败/越域由 rules_engine 回落（fallback = 该期限的阶梯值）。
+pub async fn term_rate_with_rules(
+    db: &sqlx::PgPool,
+    term_days: i32,
+) -> f64 {
+    let expr: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'rule_bank_term_rate'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v: String| v.trim().to_string())
+    .filter(|v| !v.is_empty());
+    let Some(expr) = expr else {
+        return term_rate(term_days);
+    };
+    let vars: std::collections::HashMap<&str, f64> =
+        [("term_days", term_days as f64)].into_iter().collect();
+    let spec = crate::rules_engine::RuleSpec {
+        key: "bank.term_rate",
+        vars: &["term_days"],
+        fallback: term_rate(term_days),
+        min: 0.0,
+        max: 1.0,
+    };
+    crate::rules_engine::eval(&expr, &spec, &vars)
+}
+
+/// 到期利息（整数火花，向下取整防超发）——规则覆盖版：利率走 term_rate_with_rules
+pub async fn maturity_interest_with_rules(
+    db: &sqlx::PgPool,
+    principal: i64,
+    term_days: i32,
+) -> i64 {
+    let rate = term_rate_with_rules(db, term_days).await;
+    ((principal as f64) * rate * (term_days as f64) / 365.0).floor()
+        as i64
 }
 
 /// 到期利息（整数火花，向下取整防超发）
