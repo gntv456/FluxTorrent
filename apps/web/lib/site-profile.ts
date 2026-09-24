@@ -127,3 +127,15 @@ export function dictName(
   if (id === null || id === undefined) return "";
   return map[id] ?? `#${id}`;
 }
+
+/** 旧三列（媒介/学段/版本）维度的显示名。
+ *  词表为空 = 该维度在本站型已退役（0180 按站型收敛，非教育站不再下发
+ *  grades/editions），此时整项不显示——把 `#11` 这种内部 id 抖给用户是泄漏；
+ *  词表非空但缺这个 id 才是真数据异常，保留 `#id` 让人看得见。 */
+export function legacyDimName(
+  list: DictEntry[],
+  id: number | null | undefined,
+): string {
+  if (id === null || id === undefined || list.length === 0) return "";
+  return dictName(byId(list), id);
+}

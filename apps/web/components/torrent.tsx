@@ -2,7 +2,11 @@ import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { formatBytes, promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
-import { byId, catColor, dictName, getTorrentDicts } from "@/lib/site-profile";
+import {
+  catColor,
+  getTorrentDicts,
+  legacyDimName,
+} from "@/lib/site-profile";
 import { Icon } from "@/components/icons";
 import { dateLocale } from "@/i18n/config";
 
@@ -14,8 +18,8 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
   const { dict, locale } = await getDict();
   const dicts = await getTorrentDicts();
   const promo = promotionBadge(t.promotion);
-  const edition = dictName(byId(dicts.editions), t.edition_id);
-  const grade = dictName(byId(dicts.grades), t.grade_id);
+  const edition = legacyDimName(dicts.editions, t.edition_id);
+  const grade = legacyDimName(dicts.grades, t.grade_id);
   return (
     <Link
       href={`/torrent/${t.id}`}
