@@ -86,7 +86,19 @@ function PromoBadges({ t, dict }: { t: TorrentListItem; dict: Dict }) {
   );
   const isNew = Date.now() - new Date(t.created_at).getTime() < 3 * 86400000;
   const userTags = t.tags ?? [];
-  if (!promo && !isNew && !t.official && userTags.length === 0) return null;
+  // 0170 审核状态徽标：仅待审(0)/被拒(2)行显示（站点开关放行后进列表）
+  const approval =
+    t.approval_status === 0 || t.approval_status === 2
+      ? t.approval_status
+      : null;
+  if (
+    !promo &&
+    !isNew &&
+    !t.official &&
+    approval === null &&
+    userTags.length === 0
+  )
+    return null;
   const promoCls =
     promo && promo.key === "free"
       ? "torrents-promo torrents-promo--free"
@@ -99,10 +111,26 @@ function PromoBadges({ t, dict }: { t: TorrentListItem; dict: Dict }) {
         </span>
       )}
       {t.official && (
-        <span className="torrents-tag torrents-tag--official">官方</span>
+        <span className="torrents-tag torrents-tag--official">
+          {dict.torrents.officialTag}
+        </span>
       )}
       {isNew && (
-        <span className="torrents-new">{dict.torrents.newTag ?? "新"}</span>
+        <span className="torrents-new">{dict.torrents.newTag}</span>
+      )}
+      {/* 0170 审核状态徽标：与表格行同款（待审琥珀 / 被拒红） */}
+      {approval !== null && (
+        <span
+          className={
+            approval === 0
+              ? "torrents-approval"
+              : "torrents-approval torrents-approval--rejected"
+          }
+        >
+          {approval === 0
+            ? dict.torrents.statusPending
+            : dict.torrents.statusRejected}
+        </span>
       )}
       {/* 用户标签徽标（0159 P1）：与表格行同口径，消费字典样式列 */}
       {userTags.slice(0, 3).map((b) => (

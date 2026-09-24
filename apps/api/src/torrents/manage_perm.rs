@@ -34,3 +34,17 @@ pub(crate) async fn edit_threshold(db: &PgPool) -> i16 {
 pub(crate) async fn delete_threshold(db: &PgPool) -> i16 {
     threshold(db, "torrent_delete_class", DEFAULT_DELETE_CLASS).await
 }
+
+/// 发布免审最低等级（0170）：站点设定 `upload_auto_approve_class`，缺省 92（论坛版主）。
+/// 语义：class ≥ 阈值的用户发布种子免审直接通过（upload.rs 免审链第 4 条）；
+/// 该等级的作者编辑自己的种子也不再回退待审（interact.rs 编辑回退联动）。
+pub(crate) const DEFAULT_AUTO_APPROVE_CLASS: i16 = 92;
+
+pub(crate) async fn auto_approve_threshold(db: &PgPool) -> i16 {
+    threshold(
+        db,
+        "upload_auto_approve_class",
+        DEFAULT_AUTO_APPROVE_CLASS,
+    )
+    .await
+}

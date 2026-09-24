@@ -817,6 +817,20 @@
   font-size: 12px;
   font-weight: 700;
 }
+/* 0170 审核状态徽标：待审=琥珀、被拒=红（站点开关放行后出现在列表） */
+.torrents-approval {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--sun);
+  color: #6b4e00;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.7;
+}
+.torrents-approval--rejected {
+  background: var(--danger);
+  color: #fff;
+}
 .torrents-promo {
   padding: 0 6px;
   border-radius: 4px;

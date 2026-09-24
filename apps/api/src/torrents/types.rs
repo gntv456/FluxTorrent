@@ -162,6 +162,16 @@ pub struct TorrentFilter {
     /// 审核状态（0102）：0=全部 1=通过 2=被拒（需 see_banned 由入口剥离）
     #[serde(default)]
     pub approval: Option<i16>,
+    /// 站点开关（0170）：默认视图放行「审核中」种子（列表带状态徽标）
+    #[serde(default)]
+    pub show_pending: bool,
+    /// 站点开关（0170）：默认视图放行「审核失败」种子（列表带状态徽标）
+    #[serde(default)]
+    pub show_rejected: bool,
+    /// 翻页方向（0170 双向 keyset）：true = dir=prev 反向页 —— 取游标之前的
+    /// limit 行（ORDER BY / 游标谓词同向反转），行序反转后输出
+    #[serde(default)]
+    pub reverse: bool,
     /// 匹配模式：0=AND 模糊(默认) 2=精确等值
     #[serde(default)]
     pub search_mode: Option<i32>,

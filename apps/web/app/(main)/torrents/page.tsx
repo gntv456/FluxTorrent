@@ -22,6 +22,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/** 翻页按钮样式（0170 双向翻页；长 className 拆串守行宽门禁） */
+const PILL_CLS =
+  "flex min-h-[44px] items-center rounded-full" +
+  " border border-line bg-[var(--surface-card)] px-6 text-sm text-sky-deep";
+
 /** 种子页（参考站 torrents.php 复刻 + 0118 高级搜索重排）：
  *  常驻搜索行（范围/关键字/匹配/搜索）+ 折叠高级面板按语义分组（基础筛选 / 数值与时间 /
  *  发布者与状态 / 标签与排序 / 多维筛选），每组内卡片网格；已选条件摘要条置顶可逐个移除。
@@ -101,6 +106,8 @@ export default async function TorrentsPage({
     tag_ids: sp.tag_ids || sp.tag_id || undefined,
     tag_mode: sp.tag_mode || undefined,
     cursor: sp.cursor,
+    // 0170 双向翻页：dir=prev 取游标之前的页（服务端反向 keyset）
+    dir: sp.dir || undefined,
     // 0105 高级搜索增强（体积带单位串 / 日期 YYYY-MM-DD / 数值区间 / 优惠 / 发布者 / 仅我）
     size_min: sp.size_min || undefined,
     size_max: sp.size_max || undefined,
@@ -240,14 +247,60 @@ export default async function TorrentsPage({
         </a>
       </div>
 
-      {page.next_cursor && (
-        <a
-          href={withParam(sp, "cursor", page.next_cursor)}
-          className="mx-auto min-h-[44px] flex items-center rounded-full border border-line bg-[var(--surface-card)] px-6 text-sm text-sky-deep"
-        >
-          {dict.common.nextPage}
-        </a>
-      )}
+      {/* 双向翻页（0170）：正向页 = cursor + dir=prev 回上一页；反向页 =
+          next_cursor 继续往回、删 dir 回正到游标原页。页码 p 仅作显示（服务端忽略） */}
+      {(() => {
+        const pageNo = Math.max(1, Number(sp.p ?? "1") || 1);
+        const isPrev = sp.dir === "prev";
+        // 上一页：正向页带 dir=prev；反向页沿反向继续（next_cursor 为锚）
+        const prevHref = isPrev
+          ? page.next_cursor
+            ? withParam(
+                {
+                  ...sp,
+                  cursor: page.next_cursor,
+                  p: String(Math.max(1, pageNo - 1)),
+                },
+                "dir",
+                "prev",
+              )
+            : null
+          : sp.cursor
+            ? withParam(sp, "dir", "prev")
+            : null;
+        // 下一页：正向 = next_cursor 前进；反向 = 删 dir 回正（cursor 保持）
+        const nextHref = isPrev
+          ? withParam(sp, "dir", undefined)
+          : page.next_cursor
+            ? withParam(
+                { ...sp, cursor: page.next_cursor, p: String(pageNo + 1) },
+                "dir",
+                undefined,
+              )
+            : null;
+        if (!prevHref && !nextHref) return null;
+        return (
+          <nav className="flex items-center justify-center gap-3 py-1">
+            {prevHref && (
+              <a href={prevHref} className={PILL_CLS}>
+                {dict.common.prevPage}
+              </a>
+            )}
+            <span className="text-sm text-sub">
+              {fmt(dict.common.pageX, { n: pageNo })}
+              {" · "}
+              {fmt(dict.common.totalItems, {
+                n: page.total_estimate ?? 0,
+              })}
+            </span>
+            {nextHref && (
+              <a href={nextHref} className={PILL_CLS}>
+                {dict.common.nextPage}
+              </a>
+            )}
+          </nav>
+        );
+      })()}
     </div>
   );
 }

@@ -48,6 +48,22 @@ async fn list(
             }
         }
     }
+    // 0170 站点开关：默认视图（approval 未指定 / 0）是否放行「审核中/失败」种子。
+    // 审核状态视图（1=通过 2=被拒）不受开关影响；单条查询两列点查，主键命中极便宜。
+    let default_view = q.approval.is_none() || q.approval == Some(0);
+    let (show_pending, show_rejected) = if default_view {
+        sqlx::query_as::<_, (bool, bool)>(
+            "SELECT COALESCE((SELECT value = 'yes' FROM site_settings \
+             WHERE name = 'list_show_pending'), false), \
+             COALESCE((SELECT value = 'yes' FROM site_settings \
+             WHERE name = 'list_show_rejected'), false)",
+        )
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or((false, false))
+    } else {
+        (false, false)
+    };
     let filter = torrents::TorrentFilter {
         // 多选分类：重复参数或逗号串（category_id=1&category_id=3 / category_id=1,3）均解析。
         // 旧键名 category_id 单值也在此合并（category_id_alias 旁路收集）。
@@ -86,6 +102,12 @@ async fn list(
         alive: q.alive,
         status: q.status.clone().filter(|s| !s.is_empty()),
         approval: q.approval,
+        // 0170 站点开关（仅默认视图生效，见上方读取）
+        show_pending,
+        show_rejected,
+        // 0170 双向翻页：dir=prev 且带游标才生效（第一页没有「上一页」）
+        reverse: q.dir.as_deref() == Some("prev")
+            && q.cursor.as_deref().is_some_and(|c| !c.is_empty()),
         // 搜索盒口径（此前前端传了但后端不解析，静默失效）
         search_area: q.search_area,
         search_mode: q.search_mode,
@@ -156,6 +178,8 @@ async fn list(
     // P1-4 读缓存（0071）：仅覆盖「首屏等价视图」——无筛选/无搜索/无游标/默认排序的第 1 页。
     // 该视图不含用户视角字段（owner 匿名化在 SQL 层完成），全部登录用户看到的字节一致，可共享缓存。
     // TTL 45s 兜底 + Redis 故障直查；带任何筛选条件时不走缓存（避免失效风暴复杂化）。
+    // 0170：反向页（reverse 需游标，逻辑上已被 cursor.is_none 排除，显式再挡一道）与
+    // 开关放行的视图不走首屏缓存 —— cache_key 固定，开关开了再写会让关闭后 45s 内 stale。
     let is_first_screen = cursor.is_none()
         && filter.category_id.is_none()
         && filter.medium_id.is_none()
@@ -164,6 +188,9 @@ async fn list(
         && filter.official.is_none()
         && !filter.include_dead
         && !filter.include_unapproved
+        && !filter.reverse
+        && !filter.show_pending
+        && !filter.show_rejected
         && filter.search.is_none()
         && filter.sort.is_none()
         && filter.tag_ids.is_none()
@@ -222,6 +249,7 @@ async fn list(
     // 请求，其结果对所有登录用户字节一致（owner 匿名化在 SQL 层完成、include_unapproved
     // 已按权限归一进 filter），可按「filter+cursor+limit」哈希共享。TTL 20s 兜底，
     // Redis 故障/序列化失败一律直查。
+    // 0170：show_pending/show_rejected/reverse 均在 filter 内，序列化自动进 hash key。
     let viewer_scoped = filter.status.is_some() || filter.only_mine;
     if !viewer_scoped {
         if let Ok(canonical) =

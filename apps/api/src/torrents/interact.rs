@@ -6,7 +6,10 @@ use sqlx::PgPool;
 use crate::errors::{DomainError, DomainResult};
 
 /// 种子编辑（NP takeedit.php 作者口径）：name/small_descr/descr/anonymous/category/medium/grade/edition
-/// 修改后回退到待审核（approval_status=0），走审核流重新过审。
+/// 普通作者修改后回退到待审核（approval_status=0），走审核流重新过审；
+/// 0170 例外：staff 管理通道（编辑他人）与 ≥ 免审等级的作者本人
+/// （upload_auto_approve_class，缺省 92 论坛版主）编辑后保持原审核状态
+/// ——「版主以上免审核」同样覆盖编辑口。返回 true = 编辑后未回退待审。
 pub struct TorrentEdit<'a> {
     pub name: Option<&'a str>,
     pub small_descr: Option<&'a str>,
@@ -25,7 +28,7 @@ pub async fn edit_torrent(
     torrent_id: i64,
     editor: (i64, i16), // (user_id, class_id)
     e: &TorrentEdit<'_>,
-) -> DomainResult<()> {
+) -> DomainResult<bool> {
     let owner: Option<i64> =
         sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
             .bind(torrent_id)
@@ -44,6 +47,14 @@ pub async fn edit_torrent(
             return Err(DomainError::Forbidden);
         }
     }
+    // 0170：编辑他人（staff 管理通道，能走到这里即已过阈值校验）或
+    // 作者本人等级 ≥ 免审阈值 → 保持原审核状态；其余回退待审。
+    // 被拒（2）种子被高权限编辑时保持 2 —— 状态流转统一走审核台 approve/reject。
+    let keep_status = if owner_id != editor.0 {
+        true
+    } else {
+        editor.1 >= super::manage_perm::auto_approve_threshold(db).await
+    };
     let n = sqlx::query(
         r#"
         UPDATE torrents SET
@@ -56,7 +67,7 @@ pub async fn edit_torrent(
             grade_id = COALESCE($8, grade_id),
             edition_id = COALESCE($9, edition_id),
             imdb_id = COALESCE($10, imdb_id),
-            approval_status = 0,
+            approval_status = CASE WHEN $11::bool THEN approval_status ELSE 0 END,
             mtime = now()
         WHERE id = $1
         "#,
@@ -71,6 +82,7 @@ pub async fn edit_torrent(
     .bind(e.grade_id)
     .bind(e.edition_id)
     .bind(e.imdb_id)
+    .bind(keep_status)
     .execute(db)
     .await
     .map_err(|err| DomainError::Internal(err.into()))?
@@ -78,7 +90,7 @@ pub async fn edit_torrent(
     if n == 0 {
         return Err(DomainError::NotFound(torrent_id));
     }
-    Ok(())
+    Ok(keep_status)
 }
 
 /// 种子软删除（NP delete.php 口径）：staff 或作者本人（未过审的可直接删；已过审的作者删除需 staff）
