@@ -11,9 +11,13 @@ mod export;
 mod groups;
 mod history;
 mod meta;
+mod pack_catalog;
+mod pack_format;
+mod pack_import;
+mod packs;
+mod pack_store;
 mod schema;
 mod validate;
-
 use export::*;
 use groups::*;
 use history::*;
@@ -21,11 +25,12 @@ use schema::*;
 use validate::*;
 
 pub fn mount_settings(scope: actix_web::Scope) -> actix_web::Scope {
-    scope
+    let scope = scope
         .service(settings_schema)
         .service(settings_groups_put)
         .service(settings_validate)
         .service(settings_history)
         .service(settings_export)
-        .service(settings_import)
+        .service(settings_import);
+    packs::mount_content_packs(scope)
 }

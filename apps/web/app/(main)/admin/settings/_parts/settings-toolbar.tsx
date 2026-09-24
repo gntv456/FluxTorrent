@@ -84,6 +84,15 @@ export function SettingsToolbar({
                 {s.doImport}
               </button>
             )}
+            {editable && (
+              <button
+                type="button"
+                onClick={io.openPacks}
+                className="min-h-[44px] rounded-full border border-sky-deep/40 bg-sky-soft px-4 text-xs font-bold text-ink"
+              >
+                {s.packEntry}
+              </button>
+            )}
           </>
         )}
         {dirtyCount > 0 && (

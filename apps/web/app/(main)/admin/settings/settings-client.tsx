@@ -23,6 +23,7 @@ import {
   type SettingsSchema,
 } from "@/components/setting-field";
 import { SettingsHistoryDrawer, SettingsImportDialog } from "./_parts/settings-dialogs";
+import { ContentPackDialog } from "./_parts/settings-pack-dialog";
 import {
   SettingsGroupCards,
   SettingsGroupNav,
@@ -261,6 +262,31 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
           onDryRun={io.importDryRun}
           onApply={io.importApply}
           onClose={() => io.setImportOpen(false)}
+        />
+      )}
+
+      {/* 内容包对话框（生态商店 M1/M2/M3）：目录/规则/导出/导入/清单/回滚 */}
+      {io.packOpen && (
+        <ContentPackDialog
+          busy={io.packBusy}
+          text={io.packText}
+          preview={io.packPreview}
+          rows={io.packRows}
+          catalog={io.catalog}
+          installBusyId={io.installBusyId}
+          ruleTryResult={io.ruleTryResult}
+          onText={(v) => {
+            io.setPackText(v);
+            io.setPackPreview(null);
+          }}
+          onPickFile={io.onPickPackFile}
+          onExportKind={io.packExportKind}
+          onDryRun={io.packDryRun}
+          onApply={io.packApply}
+          onRollback={io.packRollback}
+          onInstall={io.installFromCatalog}
+          onTryRule={io.tryRule}
+          onClose={() => io.setPackOpen(false)}
         />
       )}
 
