@@ -31,8 +31,8 @@ export function TorrentListTable({
             <td className="colhead">
               {`${t.torrentName}${publicOnly ? `（${t.histPublicOnly}）` : ""}`}
             </td>
-            <td className="colhead w-28 text-right">Size</td>
-            <td className="colhead w-20 text-right">S/L</td>
+            <td className="colhead w-28 text-right">{t.colSize}</td>
+            <td className="colhead w-20 text-right">{t.colSL}</td>
           </tr>
         </thead>
         <tbody>

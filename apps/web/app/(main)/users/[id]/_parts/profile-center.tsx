@@ -246,7 +246,7 @@ export function CenterGrid({
           <thead>
             <tr>
               <td className="colhead">{t.recentUploads}</td>
-              <td className="colhead w-28 text-right">Size</td>
+              <td className="colhead w-28 text-right">{t.colSize}</td>
             </tr>
           </thead>
           <tbody>
