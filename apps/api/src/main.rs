@@ -37,6 +37,7 @@ mod push_http;
 mod repo;
 mod request_id;
 mod adapter_http;
+mod adapter_seed;
 mod adapter_runtime;
 mod rules_engine;
 mod rss_http;
@@ -148,6 +149,13 @@ async fn main() -> anyhow::Result<()> {
                 tracing::warn!("演示账号防线检查失败（不阻塞启动）: {e}");
             }
         }
+    }
+
+    // 内置自营适配器上架（二审 R10-3：破「adapters 零行空货架」——douban
+    // wasm 随核心发版，幂等落库、默认停用、编译预检失败仅告警）
+    {
+        let st = state.clone();
+        crate::adapter_seed::ensure_builtin_adapters(&st.repo.db).await;
     }
 
     tracing::info!("flux-api listening on {bind}");
