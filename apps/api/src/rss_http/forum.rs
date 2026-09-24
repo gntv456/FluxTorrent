@@ -39,6 +39,11 @@ async fn forum_rss_feed(
     let Some((uid, class_id)) = user else {
         return HttpResponse::NotFound().body("unknown passkey");
     };
+    // forums 模块关闭 → 订阅源整体下线（二审 G8：RSS 出口不受网关覆盖，
+    // 必须在 handler 内判定；404 语义与刷流工具的重试退避兼容）
+    if !state.module_enabled("forums").await {
+        return HttpResponse::NotFound().body("forums disabled");
+    };
     // 版块筛选：缺省回落「公告版」（name LIKE '公告%' 的最小 id；找不到则 id=1）。
     // 非法值直接 400——静默回落到公告版会让订阅方以为自己筛的是别的版块
     let wanted = match parse_ids(q.forums.as_deref()) {
