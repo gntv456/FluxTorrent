@@ -175,6 +175,7 @@ pub(crate) async fn pack_catalog(
     )
     .await?;
     let mut items = builtin_catalog(&state).await?;
+    items.extend(builtin_assets_catalog(&state).await?);
     let mut index_url: Option<String> = None;
     if let Some((remote, url)) = remote_catalog(&state).await {
         index_url = Some(url);
@@ -263,6 +264,10 @@ pub(crate) async fn pack_install(
         body.pack_id.strip_prefix("builtin.taxonomy.")
     {
         builtin_taxonomy_pack(&state, code).await?
+    } else if let Some(code) =
+        body.pack_id.strip_prefix("builtin.assets.")
+    {
+        builtin_assets_pack(&state, code).await?
     } else {
         // 远程条目：从远程索引反查 url 再拉包文件
         let items = remote_catalog(&state).await;
@@ -276,6 +281,75 @@ pub(crate) async fn pack_install(
         fetch_remote_pack(&item.url.unwrap_or_default()).await?
     };
     super::pack_import::import(&state, &auth.id, &pack, body.confirm).await
+}
+
+/// 内置素材目录（0174 builtin_assets → CatalogItem；动态生成不物化）
+async fn builtin_assets_catalog(
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<Vec<CatalogItem>> {
+    let rows: Vec<(String, String, String, serde_json::Value)> =
+        sqlx::query_as(
+            "SELECT code, name, description, payload              FROM builtin_assets ORDER BY code",
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(internal)?;
+    Ok(rows
+        .into_iter()
+        .map(|(code, name, descr, payload)| {
+            let n_medals = payload
+                .pointer("/tables/medals")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let n_frames = payload
+                .pointer("/tables/avatar_frames")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            CatalogItem {
+                pack_id: format!("builtin.assets.{code}"),
+                kind: "assets".into(),
+                name,
+                description: format!(
+                    "{descr}（{n_medals} 勋章 / {n_frames} 头像框）"
+                ),
+                version: "1".into(),
+                source: "builtin",
+                site_type: None,
+                url: None,
+            }
+        })
+        .collect())
+}
+
+/// builtin_assets 行 → assets 包文件（payload 原样搬运）
+async fn builtin_assets_pack(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    code: &str,
+) -> DomainResult<serde_json::Value> {
+    let row: Option<(String, serde_json::Value)> = sqlx::query_as(
+        "SELECT name, payload FROM builtin_assets WHERE code = $1",
+    )
+    .bind(code)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(internal)?;
+    let Some((name, payload)) = row else {
+        return Err(DomainError::Validation(
+            "内置素材条目不存在".into(),
+        ));
+    };
+    Ok(serde_json::json!({
+        "format": "fluxtorrent.contentpack",
+        "version": 1,
+        "kind": "assets",
+        "pack_id": format!("builtin.assets.{code}"),
+        "name": name,
+        "core_compat": "*",
+        "pack_version": "1",
+        "payload": payload,
+    }))
 }
 
 /// 站型包 → taxonomy 包文件（categories/sections 动态拼装）
