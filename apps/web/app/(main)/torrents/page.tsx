@@ -136,12 +136,12 @@ export default async function TorrentsPage({
     };
   });
 
-  // 分类以 site-profile 为准（后台可改，与站型包同步）；接口失败回落 i18n 字典
-  const categories = profile?.categories?.length
-    ? profile.categories.map((c) => ({ id: c.id, label: c.name }))
-    : dict.torrents.categories
-        .slice(1)
-        .map((label, i) => ({ id: i + 1, label }));
+  // 分类只以 site-profile 为准（后台可改，与站型包同步）。拿不到就是空列表——
+  // 不再回落 i18n 字典：那是另一套筛选用词表，会把选项 id 指到不存在的分类上
+  const categories = (profile?.categories ?? []).map((c) => ({
+    id: c.id,
+    label: c.name,
+  }));
   // 分类图标键（0166）：{category_id: icon_key}；站长后台可替换，空键回落首字
   const catIcons = Object.fromEntries(
     (profile?.categories ?? [])

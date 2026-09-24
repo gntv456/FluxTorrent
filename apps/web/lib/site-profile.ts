@@ -1,6 +1,5 @@
 import { cache } from "react";
 import { api } from "@/lib/api-client";
-import { getDict } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +24,20 @@ export interface SiteProfile {
   /** 字幕区显示名（0146；默认「字幕」，音乐站「歌词」） */
   subtitle_label?: string;
   categories: { id: number; name: string; icon_key?: string }[];
+  /** 旧三列（torrents.medium_id / grade_id / edition_id）的词表，id 以实体表为准。
+   *  与新模型的 section_dict.id 不是同一套编号，不可互换。 */
+  torrent_dicts?: {
+    grades?: DictEntry[];
+    media?: DictEntry[];
+    editions?: DictEntry[];
+  };
   modules: Record<string, boolean>;
+}
+
+/** 站型字典条目（id 由后端词表表给出，前端不做任何下标补偿） */
+export interface DictEntry {
+  id: number;
+  name: string;
 }
 
 /** 公开：站点档案（RSC 服务端获取，layout 与上传表单复用；失败回落 general 默认） */
@@ -51,17 +63,37 @@ export async function getSiteProfile(): Promise<SiteProfile> {
   }
 }
 
-/** 分类 id → 显示名：以站点分类表（torrents.category_id 的外键目标）为准；
- *  dict.torrents.categories 是筛选用词表且 [0] 是「全部」，按 id 直接下标会整体错一档。
+/** 站型字典（分类 + 旧三列）的唯一真值源：一律来自后端，前端不持有词表。
+ *  取不到就是空表——显示侧回落 `#id`，筛选侧只剩「全部」，
+ *  绝不拿另一套硬编码词表顶替（那是分类显示 bug 的源头）。
  *  cache()：表行/卡片每行都要名字，同一请求内只取一次档案。 */
-export const getCategoryNames = cache(
-  async (): Promise<Record<number, string>> => {
-    const [p, { dict }] = await Promise.all([getSiteProfile(), getDict()]);
-    const list = p.categories?.length
-      ? p.categories
-      : dict.torrents.categories
-          .slice(1)
-          .map((name, i) => ({ id: i + 1, name }));
-    return Object.fromEntries(list.map((c) => [c.id, c.name]));
+export const getTorrentDicts = cache(
+  async (): Promise<{
+    categories: DictEntry[];
+    grades: DictEntry[];
+    media: DictEntry[];
+    editions: DictEntry[];
+  }> => {
+    const p = await getSiteProfile();
+    return {
+      categories: (p.categories ?? []).map((c) => ({ id: c.id, name: c.name })),
+      grades: p.torrent_dicts?.grades ?? [],
+      media: p.torrent_dicts?.media ?? [],
+      editions: p.torrent_dicts?.editions ?? [],
+    };
   },
 );
+
+/** 字典列表 → id:名称 映射 */
+export function byId(list: DictEntry[]): Record<number, string> {
+  return Object.fromEntries(list.map((d) => [d.id, d.name]));
+}
+
+/** 按 id 取显示名；缺词条宁可显示 `#id`，也不用错词表糊上去 */
+export function dictName(
+  map: Record<number, string>,
+  id: number | null | undefined,
+): string {
+  if (id === null || id === undefined) return "";
+  return map[id] ?? `#${id}`;
+}

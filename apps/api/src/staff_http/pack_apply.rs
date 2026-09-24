@@ -132,8 +132,9 @@ pub async fn site_type_pack_apply(
     }
     // 质量维度种子（0092）：包内定义的维度重建标签与选项（references 级联清理旧引用）。
     // 0101 修复：切换站型后旧站型的内置维度残留（切音乐站仍见「游戏类型」）——
-    // 内置九维中未被本包定义的维度整体移除（section_kinds 级联清 section_dict 与
-    // torrent_sections 引用）；站方自建维度（不在内置清单）原样保留。
+    // **声明了 sections 的包**里，内置九维中未被本包定义的维度整体移除
+    // （section_kinds 级联清 section_dict 与 torrent_sections 引用）；
+    // 站方自建维度（不在内置清单）原样保留；未声明 sections 的包不动任何维度。
     let builtin: std::collections::HashSet<String> = [
         "media",
         "grades",
@@ -150,6 +151,13 @@ pub async fn site_type_pack_apply(
     .collect();
     let mut packed_kinds: std::collections::HashSet<String> =
         std::collections::HashSet::new();
+    // 包是否**声明了** sections：NULL = 本包不管质量维度（12 个包里 general/
+    // education/anime/documentary/software/sports/lossless 等都是 NULL）。
+    let pack_declares_sections = pack
+        .sections
+        .as_ref()
+        .and_then(serde_json::Value::as_object)
+        .is_some();
     if let Some(sections) = pack
         .sections
         .as_ref()
@@ -166,9 +174,21 @@ pub async fn site_type_pack_apply(
                 }
             }
         }
+        // dict 里出现的维度同样是「本包已定义」——只看 kinds 会把它先删后建，
+        // 级联清掉 torrent_sections 引用并换掉 dict id。
+        if let Some(dict) =
+            sections.get("dict").and_then(serde_json::Value::as_object)
+        {
+            for kind in dict.keys() {
+                packed_kinds.insert(kind.clone());
+            }
+        }
     }
     for kind in &builtin {
-        if !packed_kinds.contains(kind) {
+        // 0092 的口径是「未在包内定义的维度不动」：包压根没声明 sections 时，
+        // 九维一个都不能删——否则新建站/测试站（torrent_sections 全空）切到
+        // general 等 NULL 包，9 个维度连同字典被级联清空，多维分类整体失效。
+        if pack_declares_sections && !packed_kinds.contains(kind) {
             // 引用中的维度直接删会级联清 torrent_sections —— 有种子的站点会丢筛选项，
             // 这里先检查是否被在用：被在用时跳过清理（宁残留不破坏）
             let in_use: i64 = sqlx::query_scalar(

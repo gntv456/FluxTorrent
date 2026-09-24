@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api-client";
-import { editionName, formatBytes } from "@/lib/format";
-import { getSiteProfile } from "@/lib/site-profile";
+import { formatBytes } from "@/lib/format";
+import { byId, dictName, getSiteProfile } from "@/lib/site-profile";
 import { TorrentManage } from "@/components/torrent-manage";
 import { PromoBuyButton } from "@/components/promo-buy-button";
 import { SnatchList } from "@/components/snatch-list";
@@ -94,13 +94,17 @@ export default async function TorrentDetailPage({
       >("/api/v1/section-dict")
       .catch(() => null),
   ]);
-  const editCats = (
-    profile?.categories?.length
-      ? profile.categories
-      : dict.torrents.categories
-          .slice(1)
-          .map((name, i) => ({ id: i + 1, name }))
-  ).map((c) => ({ id: c.id, name: c.name }));
+  // 分类/学段/媒介/版本词表全部取自站点档案（后端为唯一真值源）；
+  // 档案不可用时 editCats 为空——下拉只剩「请选择」、名称回落 #id，
+  // 不再拿另一套硬编码词表顶替（那正是分类显示 bug 的源头）
+  const editCats = (profile?.categories ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+  }));
+  const td = profile?.torrent_dicts ?? {};
+  const mediaOpts = td.media ?? [];
+  const gradeOpts = td.grades ?? [];
+  const editionOpts = td.editions ?? [];
   const editKinds = secDictAll?.kinds ?? [];
   const editDict: Record<string, { id: number; name: string }[]> = {};
   for (const k of editKinds) editDict[k.kind] = secDictAll?.[k.kind] ?? [];
@@ -109,19 +113,12 @@ export default async function TorrentDetailPage({
     Object.entries(ext?.sections ?? {}).map(([k, v]) => [k, v.dict_id]),
   );
   const d = dict.tdetail;
-  const edition = editionName(t.edition_id);
-  const grade =
-    t.grade_id !== null ? dict.torrents.grades[t.grade_id + 1] : undefined;
-  // 0087：介质列可空（新数据在 sections），老数据仍从字典翻译
+  const edition = dictName(byId(editionOpts), t.edition_id);
+  const grade = dictName(byId(gradeOpts), t.grade_id);
+  // 0087：介质列可空（新数据在 sections），老数据仍按实体表 id 翻译
   const medium =
-    t.medium_id !== null
-      ? (dict.torrents.media[t.medium_id] ?? undefined)
-      : undefined;
-  // 分类名以站点分类表（site-profile categories，即 category_id 的外键目标）为准；
-  // dict.torrents.categories 是筛选用词表（[0] 是「全部」），拿 id 直接下标会错一档
-  const category =
-    editCats.find((c) => c.id === t.category_id)?.name ??
-    String(t.category_id);
+    t.medium_id !== null ? dictName(byId(mediaOpts), t.medium_id) : undefined;
+  const category = dictName(byId(editCats), t.category_id);
   // 动态属性（0085/0087）：sections 带维度显示名与排序，直接铺进规格网格
   const secEntries = Object.entries(ext?.sections ?? {})
     .map(([kind, v]) => ({ kind, ...v }))
@@ -195,6 +192,9 @@ export default async function TorrentDetailPage({
               secKinds={editKinds}
               secDict={editDict}
               cats={editCats}
+              mediaOpts={mediaOpts}
+              gradeOpts={gradeOpts}
+              editionOpts={editionOpts}
               seeders={t.seeders}
               imdbId={t.imdb_id ?? null}
               tagDict={agg.tags.dict}

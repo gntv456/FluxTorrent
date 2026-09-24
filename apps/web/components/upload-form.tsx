@@ -52,9 +52,6 @@ export function UploadForm() {
       })
       .catch(() => setProfileCats([]));
   }, []);
-  const categories = profileCats
-    ? profileCats.map((c) => c.name)
-    : dict.torrents.categories.slice(1);
   const fileRef = useRef<HTMLInputElement>(null);
   const nfoRef = useRef<HTMLInputElement>(null);
   const descrRef = useRef<HTMLTextAreaElement>(null);
@@ -241,7 +238,6 @@ export function UploadForm() {
           />
           <UploadQualityBlock
             profileCats={profileCats}
-            categories={categories}
             categoryId={categoryId}
             setCategoryId={setCategoryId}
             secKinds={secKinds}

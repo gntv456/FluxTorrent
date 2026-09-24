@@ -16,7 +16,6 @@ import type {
 
 export function UploadQualityBlock({
   profileCats,
-  categories,
   categoryId,
   setCategoryId,
   secKinds,
@@ -35,7 +34,6 @@ export function UploadQualityBlock({
   setPickType,
 }: {
   profileCats: ProfileCat[] | null;
-  categories: string[];
   categoryId: number;
   setCategoryId: (v: number) => void;
   secKinds: SectionKindMeta[];
@@ -78,9 +76,7 @@ export function UploadQualityBlock({
           onChange={(e) => setCategoryId(Number(e.target.value))}
           className={fieldCls}
         >
-          {(
-            profileCats ?? categories.map((name, i) => ({ id: i + 1, name }))
-          ).map((c) => (
+          {(profileCats ?? []).map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
