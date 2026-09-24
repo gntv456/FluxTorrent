@@ -46,7 +46,7 @@ const zhCnBase = {
     invites: "邀请",
     subtitles: "字幕",
     friends: "社交",
-    candidates: "候选",
+    candidates: "求种",
     offers: "候选",
     jixiao: "绩效",
     preserve: "保种区",
