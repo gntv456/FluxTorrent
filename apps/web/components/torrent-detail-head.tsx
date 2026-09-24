@@ -20,6 +20,7 @@ export function TorrentHead({
   dict,
   locale,
   left,
+  category,
   subtitleChain,
   relTime,
   tags,
@@ -31,6 +32,9 @@ export function TorrentHead({
   locale: Locale;
   /** 促销剩余时间文案（好学站「x天x时」口径），null = 无促销 */
   left: string | null;
+  /** 分类显示名：page 侧按 site-profile categories（category_id 的外键目标）解析；
+   *  dict.torrents.categories 是筛选用词表且 [0] 为「全部」，不能按 id 直接下标 */
+  category: string;
   /** 副题链（学段 · 媒介 · 版本） */
   subtitleChain: string;
   /** 相对时间（馒头口径：x 天前；完整时间放 title） */
@@ -46,9 +50,7 @@ export function TorrentHead({
     <section className="td-head nexus-detail">
       <PosterBlock
         categoryId={t.category_id}
-        category={
-          dict.torrents.categories[t.category_id] ?? String(t.category_id)
-        }
+        category={category}
         poster={t.poster}
       />
 

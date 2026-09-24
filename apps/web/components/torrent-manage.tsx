@@ -17,6 +17,9 @@ import { UploadDescrBlock } from "@/components/upload-form-descr";
 
 type Dict = ReturnType<typeof useI18n>["dict"];
 
+/** 学段「未设」哨兵：grades 表 0 已被「幼儿园」占用，不能用 0 */
+const GRADE_NONE = -1;
+
 export function TorrentManage({
   torrentId,
   name,
@@ -79,10 +82,11 @@ export function TorrentManage({
   const [fAnon, setFAnon] = useState(anonymous);
   const [fImdb, setFImdb] = useState(imdbId ?? "");
   const [fCat, setFCat] = useState(categoryId);
-  // 0173 对齐发布页：媒介/学段/版本（下拉 index+1 = id，0 = 未设不提交）、
-  // 封面外链、MediaInfo、付费价格（独立端点）、PT-Gen
+  // 0173 对齐发布页：媒介/学段/版本（封面外链、MediaInfo、付费价格、PT-Gen）
+  // 媒介/版本的 id 从 1 起（0 = 未设不提交）；学段例外——grades 表 0=幼儿园…12=高三
+  // （torrents.grade_id 外键），所以「未设」用 -1 哨兵，选项 value 直接就是 id。
   const [fMedium, setFMedium] = useState(mediumId ?? 0);
-  const [fGrade, setFGrade] = useState(gradeId ?? 0);
+  const [fGrade, setFGrade] = useState(gradeId ?? GRADE_NONE);
   const [fEdition, setFEdition] = useState(editionId ?? 0);
   const [fPrice, setFPrice] = useState(price);
   const [fPoster, setFPoster] = useState(posterUrl ?? "");
@@ -145,10 +149,11 @@ export function TorrentManage({
         anonymous: fAnon,
         category_id: fCat,
         imdb_id: fImdb.trim() || "",
-        // 0173 补齐发布页字段：媒介/学段/版本（0 = 未设不提交）、封面外链、
+        // 0173 补齐发布页字段：媒介/学段/版本（媒介/版本 0 = 未设不提交；
+        // 学段用 -1 哨兵，0 是合法 id「幼儿园」）、封面外链、
         // MediaInfo（None=不动 / Some("")=清除 / Some(text)=写入——始终提交）
         ...(fMedium > 0 ? { medium_id: fMedium } : {}),
-        ...(fGrade > 0 ? { grade_id: fGrade } : {}),
+        ...(fGrade >= 0 ? { grade_id: fGrade } : {}),
         ...(fEdition > 0 ? { edition_id: fEdition } : {}),
         poster: fPoster.trim(),
         mediainfo: fMediainfo.trim(),
@@ -316,9 +321,9 @@ export function TorrentManage({
                 onChange={(e) => setFGrade(Number(e.target.value))}
                 className={fld}
               >
-                <option value={0}>{dict.upload.gradeNone}</option>
+                <option value={GRADE_NONE}>{dict.upload.gradeNone}</option>
                 {gradeOpts.map((name, i) => (
-                  <option key={i + 1} value={i + 1}>
+                  <option key={i} value={i}>
                     {name}
                   </option>
                 ))}

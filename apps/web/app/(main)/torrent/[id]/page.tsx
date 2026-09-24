@@ -117,8 +117,11 @@ export default async function TorrentDetailPage({
     t.medium_id !== null
       ? (dict.torrents.media[t.medium_id] ?? undefined)
       : undefined;
+  // 分类名以站点分类表（site-profile categories，即 category_id 的外键目标）为准；
+  // dict.torrents.categories 是筛选用词表（[0] 是「全部」），拿 id 直接下标会错一档
   const category =
-    dict.torrents.categories[t.category_id] ?? String(t.category_id);
+    editCats.find((c) => c.id === t.category_id)?.name ??
+    String(t.category_id);
   // 动态属性（0085/0087）：sections 带维度显示名与排序，直接铺进规格网格
   const secEntries = Object.entries(ext?.sections ?? {})
     .map(([kind, v]) => ({ kind, ...v }))
@@ -164,6 +167,7 @@ export default async function TorrentDetailPage({
         dict={dict}
         locale={locale}
         left={left}
+        category={category}
         subtitleChain={subtitleChain}
         relTime={relTime}
         tags={
