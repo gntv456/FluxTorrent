@@ -186,7 +186,7 @@ export default async function PreservePage({
                   ✅
                 </th>
                 {/* 保种区专属列：认领人 + 认领操作 */}
-                <th className="w-24">{dict.preserve.claimedBy}</th>
+                <th className="w-24">{dict.preserve.claimedByCol}</th>
                 <th className="w-24">{dict.torrents.colActions}</th>
               </tr>
             </thead>

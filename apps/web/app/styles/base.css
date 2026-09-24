@@ -666,8 +666,10 @@ a:hover {
 .td-head__meta {
   display: flex;
   flex-wrap: wrap;
-  gap-x: 18px;
-  gap-y: 4px;
+  /* 必须是 column-gap/row-gap：写成 gap-x/gap-y 是无效声明，浏览器直接丢弃，
+     三段 meta（发布人/发布时间/最近活动）就会挤成一行 */
+  column-gap: 18px;
+  row-gap: 4px;
   font-size: 12px;
   color: var(--text-muted);
 }

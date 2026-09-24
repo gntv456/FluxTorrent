@@ -251,7 +251,12 @@ export function TorrentManage({
       </div>
 
       {/* 0173：编辑改覆盖式弹窗——不再内嵌展开挤动详情页布局 */}
-      <Modal open={open} onClose={() => setOpen(false)} title={`✎ ${t.edit}`}>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`✎ ${t.edit}`}
+        size="lg"
+      >
         <div className="flex w-full flex-col gap-2">
           <label className="flex flex-col gap-1 text-xs">
             {t.fieldName}
