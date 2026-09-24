@@ -22,6 +22,7 @@ mod message_send;
 mod notice;
 mod post_ctx;
 mod post_edit;
+mod post_group;
 mod post_read;
 mod post_write;
 mod shoutbox;
@@ -158,6 +159,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         )),
     );
     let scope = crate::settings_http::mount_settings(scope);
+    let scope = crate::adapter_http::mount_adapters(scope);
     let scope = crate::push_http::mount_push(scope);
     let scope = crate::gaps_http::mount_gaps(scope);
     let scope = crate::rss_http::mount_rss(scope);
