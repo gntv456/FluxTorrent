@@ -101,6 +101,11 @@ async fn remote_catalog(
     .flatten()
     .map(|v: String| v.trim().to_string())
     .filter(|v| !v.is_empty())?;
+    // R11 加固：索引源仅允许 https（防 http 明文/内网探测面）
+    if !url.starts_with("https://") {
+        tracing::warn!("商店远程索引非 https，拒绝拉取（降级为仅内置）");
+        return None;
+    }
     let client = reqwest::Client::new();
     let resp = client
         .get(&url)
@@ -118,7 +123,18 @@ async fn remote_catalog(
         );
         return None;
     }
-    let body: serde_json::Value = resp.json().await.ok()?;
+    // R11 加固：索引大小上限 2MiB（原实现全量入内存，超大响应可打内存）
+    if resp.content_length().unwrap_or(0) > 2 * 1024 * 1024 {
+        tracing::warn!("商店远程索引超过 2MiB 上限（降级为仅内置）");
+        return None;
+    }
+    let body: serde_json::Value = resp
+        .json()
+        .await
+        .inspect_err(|_| {
+            tracing::warn!("商店远程索引 JSON 解析失败（降级为仅内置）");
+        })
+        .ok()?;
     if body.get("format").and_then(|f| f.as_str()) != Some(INDEX_FORMAT)
     {
         tracing::warn!("商店远程索引 format 不识别（降级为仅内置）");
@@ -395,6 +411,10 @@ async fn builtin_taxonomy_pack(
         "name": format!("{name}·分类学"),
         "core_compat": "*",
         "pack_version": "1",
+        // 商店目录载荷对齐（二审 R10-4）：taxonomy 包只携带分类学；
+        // 模块矩阵/标签/经济预设等完整站型能力不随包走，此处明示，
+        // 避免「装了 movie 包却没有 movie 模块矩阵」的预期落差。
+        "description": "仅含分类学与质量维度；模块开关/标签/等级叙事等完整站型能力请走后台「站型切换」",
         "payload": { "categories": categories, "sections": sections },
     }))
 }
@@ -422,6 +442,12 @@ async fn fetch_remote_pack(
             "远程包上游异常（HTTP {}）",
             resp.status().as_u16()
         )));
+    }
+    // R11 加固：包文件大小上限 16MiB（与适配器 wasm 上限同量级）
+    if resp.content_length().unwrap_or(0) > 16 * 1024 * 1024 {
+        return Err(DomainError::Validation(
+            "远程包超过 16MiB 上限".into(),
+        ));
     }
     let pack: serde_json::Value = resp
         .json()

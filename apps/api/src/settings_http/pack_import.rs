@@ -392,6 +392,7 @@ async fn import_theme(
 }
 
 /// 同 pack_id 再导入 = 升级：快照滚动覆盖（回滚永远回到「本次导入前」）
+/// payload 一并存表（0183）：rules 回滚只删包内键的边界依据
 async fn upsert_pack_row(
     tx: &mut sqlx::PgTransaction<'_>,
     actor: &i64,
@@ -400,11 +401,12 @@ async fn upsert_pack_row(
 ) -> DomainResult<()> {
     sqlx::query(
         "INSERT INTO content_packs \
-         (pack_id, kind, name, version, core_compat, snapshot, applied_by) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7) \
+         (pack_id, kind, name, version, core_compat, snapshot, payload, applied_by) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
          ON CONFLICT (pack_id) DO UPDATE SET kind = EXCLUDED.kind, \
          name = EXCLUDED.name, version = EXCLUDED.version, \
          core_compat = EXCLUDED.core_compat, snapshot = EXCLUDED.snapshot, \
+         payload = EXCLUDED.payload, \
          applied_at = now(), applied_by = EXCLUDED.applied_by",
     )
     .bind(&head.pack_id)
@@ -413,6 +415,7 @@ async fn upsert_pack_row(
     .bind(&head.version)
     .bind(&head.core_compat)
     .bind(snapshot) // sqlx 的 Value 直映 jsonb
+    .bind(&head.payload)
     .bind(actor)
     .execute(&mut **tx)
     .await
@@ -460,6 +463,18 @@ pub(super) async fn rollback(
     };
     let snapshot: Value = serde_json::from_str(&snapshot)
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // R11：回滚需要知道「包写过哪些键」——从登记的 payload 读取
+    // （0183 起随导入落表；旧登记行 payload 为 NULL 时按旧口径全删回内置）
+    let pack: Value = sqlx::query_scalar::<_, Option<String>>(
+        "SELECT payload::text FROM content_packs WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .unwrap_or(None)
+    .flatten()
+    .and_then(|t| serde_json::from_str(&t).ok())
+    .unwrap_or(Value::Null);
     let mut tx = state
         .repo
         .db
@@ -497,8 +512,20 @@ pub(super) async fn rollback(
         .fetch_all(&mut *tx)
         .await
         .map_err(internal)?;
+        // R11 修复：只删「本包导入写入的键」——导入后管理员手工新增的
+        // rule_% 键不属于包，回滚不得误删。旧登记行（payload NULL）按旧口径。
+        let packed_keys: Vec<String> = if pack.is_null() {
+            cur_keys.clone()
+        } else {
+            pack.get("rules")
+                .and_then(Value::as_object)
+                .map(|o| o.keys().cloned().collect())
+                .unwrap_or_default()
+        };
         for key in cur_keys {
-            if !snap_rules.contains_key(&key) {
+            if !snap_rules.contains_key(&key)
+                && packed_keys.contains(&key)
+            {
                 sqlx::query("DELETE FROM site_settings WHERE name = $1")
                     .bind(&key)
                     .execute(&mut *tx)

@@ -108,6 +108,22 @@ pub(super) fn parse_pack(pack: &Value) -> DomainResult<PackHead> {
         .and_then(Value::as_str)
         .unwrap_or("*")
         .to_string();
+    // R11：core_compat 接入实际校验——仅支持 "*"/">=" + 版本号格式，
+    // 不识别的表达式拒收（此前只存不校验，是死字段）
+    {
+        let compat = core_compat.trim();
+        let compat_ok = compat == "*"
+            || (compat.starts_with(">=")
+                && !compat[2..].is_empty()
+                && compat[2..]
+                    .chars()
+                    .all(|c| c.is_ascii_digit() || c == '.'));
+        if !compat_ok {
+            return Err(bad(
+                "core_compat 格式不支持（仅 * 或 >=版本号，如 >=1.4）",
+            ));
+        }
+    }
     let payload = obj
         .get("payload")
         .cloned()
