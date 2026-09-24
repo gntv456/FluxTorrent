@@ -32,27 +32,34 @@ fn route_module(path: &str) -> Option<&'static str> {
         ("/api/v1/forums", key::FORUMS),
         ("/api/v1/messages", key::MESSAGES),
         ("/api/v1/staffmessages", key::MESSAGES),
+        ("/api/v1/contactstaff", key::MESSAGES), // 给管理组发信（messages 域）
+        ("/api/v1/stafftickets", key::MESSAGES), // 工单（messages 域）
+        ("/api/v1/staff/leaks", key::MESSAGES),  // 泄密 bot（messages 域展示面）
         ("/api/v1/friends", key::FRIENDS),
         ("/api/v1/offers", key::OFFERS),
         ("/api/v1/requests", key::REQUESTS),
         ("/api/v1/subtitles", key::SUBTITLES),
         ("/api/v1/preserve", key::PRESERVE),
         ("/api/v1/social", key::SOCIAL), // 濒危/组队/赛季（默认关，走 social 键）
+        ("/api/v1/follows", key::FORUMS), // 论坛关注（0155）：与 /forums/feed 同域
         ("/api/v1/textbooks", key::TEXTBOOKS),
         ("/api/v1/shoutbox", key::SHOUTBOX),
         // 运营
         ("/api/v1/attendance", key::ATTENDANCE),
         ("/api/v1/medals", key::MEDALS),
+        ("/api/v1/medal-wall", key::MEDALS),   // 勋章墙（medals 域）
         ("/api/v1/dressup", key::DRESSUP),
         ("/api/v1/avatar-frames", key::DRESSUP),
         ("/api/v1/jixiao", key::JIXIAO),
         ("/api/v1/tasks", key::TASKS),
         ("/api/v1/push", key::PUSH),
+        ("/api/v1/sticky-promos", key::PROMO_BUY), // 置顶促销展示（promo_buy 域）
     ];
     TABLE
         .iter()
         .find(|(p, _)| path == *p || path.starts_with(&format!("{}/", p)))
         .map(|(_, k)| *k)
+        .or_else(|| exact_route_module(path))
 }
 
 /// 精确路径 → 模块键（不适合前缀表达的单点端点）。
@@ -65,6 +72,11 @@ fn exact_route_module(path: &str) -> Option<&'static str> {
         ("/api/v1/me/exams", key::EXAMS),
         ("/api/v1/me/hr", key::EXAMS), // 新人考核(HR)与 exams 同域口径
         ("/api/v1/me/hr/pardon", key::EXAMS),
+        // 二审 G8 补登：/me 下的模块动作端点（网关无 /me 前缀规则，逐条登记）
+        ("/api/v1/me/avatar-frame", key::DRESSUP), // 佩戴挂件（真实扣魔力）
+        ("/api/v1/me/medals", key::MEDALS),
+        ("/api/v1/me/notice-prefs", key::MEDALS),
+        ("/api/v1/pool/honor", key::MAGIC_POOL),
     ];
     TABLE.iter().find(|(p, _)| path == *p).map(|(_, k)| *k)
 }
@@ -120,8 +132,23 @@ mod tests {
             "/api/v1/textbooks",
             "/api/v1/jixiao",
             "/api/v1/shoutbox",
+            // 二审 G8 补登端点抽验
+            "/api/v1/follows/mine",
+            "/api/v1/contactstaff",
+            "/api/v1/stafftickets",
+            "/api/v1/medal-wall",
+            "/api/v1/sticky-promos",
+            "/api/v1/staff/leaks",
         ] {
             assert!(route_module(p).is_some(), "gateway missing {p}");
+        }
+        for p in [
+            "/api/v1/me/avatar-frame",
+            "/api/v1/me/medals",
+            "/api/v1/me/notice-prefs",
+            "/api/v1/pool/honor",
+        ] {
+            assert!(exact_route_module(p).is_some(), "gateway missing {p}");
         }
         // 核心层端点不映射任何模块
         assert!(route_module("/api/v1/torrents").is_none());

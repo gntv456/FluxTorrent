@@ -4,7 +4,7 @@
 //! - 三处同步：本文件常量表 / 迁移 0107 的 modules 表 / packages/domain-types 的 ModuleKey，
 //!   契约测试（本文件 tests）锁死键集合一致；
 //! - T2 行为开关：module_* 关闭必须同时作用于 API（本守卫）、导航、页面、worker；
-//! - T3 缺省=现状：读不到设置时回落 modules.is_on 默认值（教育站形态）；
+//! - T3 缺省=general 中立矩阵（0178 翻转）：读不到设置时回落 modules.is_on 默认值；
 //! - D4 fail-close：读取失败按「关」处理并告警。
 
 mod gateway;
@@ -93,11 +93,15 @@ pub mod key {
     ];
 }
 
-/// 注册表默认值（T3：= 当前教育站形态）。键集与 key::ALL 一致。
-/// settings 读不到时回落这里——「表被清空」不等于「全站功能关闭」。
+/// 注册表默认值（0178 翻转：= general 中立矩阵）。键集与 key::ALL 一致。
+/// settings 读不到时回落这里——裸库/漏键实例得到中立通用站形态，
+/// 不再呈现教育站全开（缺省形态站型中立纪律，二审 R1）。
 pub fn default_on(k: &str) -> bool {
-    // 唯二默认关闭的历史键（沿用 0037/0092 既有口径）；contests 由 0107 显式落 no
-    !matches!(k, "showcase" | "social" | "contests")
+    !matches!(
+        k,
+        "textbooks" | "showcase" | "social" | "farm" | "gomoku" | "contests"
+            | "jixiao" | "exams"
+    )
 }
 
 /// 模块开关缓存：TTL 兜底 + 后台改键主动失效（§5.1）。
@@ -204,14 +208,19 @@ mod tests {
         assert_eq!(v.len(), key::ALL.len(), "duplicate module keys");
     }
 
-    /// 契约：默认值函数覆盖全部键
+    /// 契约：默认值函数覆盖全部键（0178 翻转后 = general 中立矩阵）
     #[test]
     fn defaults_cover_all() {
         // default_on 对任意键都有定义（闭式布尔），只需抽验方向正确
         assert!(default_on(key::GAMES));
-        assert!(!default_on("showcase"));
-        assert!(!default_on("social"));
-        assert!(!default_on("contests"));
+        assert!(default_on(key::SUBTITLES));
+        assert!(default_on(key::FORUMS));
+        // 教育考核与重度娱乐缺省关（中立形态）
+        for k in ["textbooks", "jixiao", "exams", "farm", "gomoku",
+                  "contests", "showcase", "social"]
+        {
+            assert!(!default_on(k), "default_on({k}) 应为 false");
+        }
     }
 
     /// 契约：键数量与 TS ModuleKey 一致（29 键——4 历史 + 25 新增口径，见 0107 注释）
