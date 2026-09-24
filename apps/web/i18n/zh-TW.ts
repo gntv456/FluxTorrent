@@ -51,7 +51,7 @@ const zhTwBase: Omit<
     invites: "邀請",
     subtitles: "字幕",
     friends: "社交",
-    candidates: "候選",
+    candidates: "求種",
     offers: "候選",
     jixiao: "績效",
     preserve: "保種區",
