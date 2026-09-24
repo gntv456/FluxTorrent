@@ -121,8 +121,12 @@ async fn category_flags(
     .await?;
     let id = path.into_inner();
     let n = sqlx::query(
-        "UPDATE categories SET mode_id = $2, \
-         auto_approve = COALESCE($3, auto_approve) WHERE id = $1",
+        "UPDATE categories SET \
+           mode_id = CASE WHEN $2::int IS NULL THEN mode_id \
+                          WHEN $2::int = 0 THEN NULL \
+                          ELSE $2::int END, \
+           auto_approve = COALESCE($3, auto_approve) \
+         WHERE id = $1",
     )
     .bind(id)
     .bind(body.mode_id)

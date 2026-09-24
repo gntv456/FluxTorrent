@@ -192,10 +192,6 @@ async fn section_mode_delete(
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
 
-/// 自定义维度字典（0085/0087）：kind 白名单 = section_kinds 表，站方可自建维度；
-/// 0087 起 media/grades/editions 字典行也入 section_dict，实体表仅历史存档
-pub const LEGACY_KINDS: [&str; 3] = ["media", "grades", "editions"];
-
 /// 维度存在性判定（0085/0087）：kind 在 section_kinds 中即可用。
 /// 0087 起 media/grades/editions 字典行已迁入 section_dict，九维全走统一通道，
 /// legacy 实体表仅作历史口径存档（介质列保留兼容老数据）。

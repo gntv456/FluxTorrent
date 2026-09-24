@@ -156,9 +156,13 @@ export function UploadForm() {
       if (descr.trim()) qs.set("descr", descr.trim());
       if (poster.trim()) qs.set("poster", poster.trim());
       if (mediainfo.trim()) qs.set("mediainfo", mediainfo.trim());
-      // 第八轮 Section 多维：非空维度打包成 sections JSON
+      // 第八轮 Section 多维：非空维度打包成 sections JSON。
+      // 值必须转成 number——后端按 HashMap<String, i64> 解码，select 交回来的是
+      // 字符串，直接发会 400（"sections 需为 JSON 对象"）
       const sections = Object.fromEntries(
-        Object.entries(secVals).filter(([, v]) => v),
+        Object.entries(secVals)
+          .filter(([, v]) => v !== "" && Number(v) > 0)
+          .map(([k, v]) => [k, Number(v)]),
       );
       if (Object.keys(sections).length > 0)
         qs.set("sections", JSON.stringify(sections));

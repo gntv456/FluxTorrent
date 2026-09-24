@@ -170,6 +170,13 @@ pub async fn upload(
         .as_deref()
         .and_then(extract_imdb)
         .or_else(|| extract_imdb(&name));
+    // sections 先整体校验再落种子：原先校验在 INSERT 之后、且与写入交织，
+    // 报错时种子已入库，重试同一 .torrent 永远撞 TorrentDuplicate
+    super::upload_sections::parse_sections(
+        &state.repo.db,
+        form.sections.as_ref(),
+    )
+    .await?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, \
          group_id, name, small_descr, descr, category_id, medium_id, \
