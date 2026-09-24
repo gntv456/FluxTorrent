@@ -334,7 +334,10 @@ async fn adapter_call(
                 let client = reqwest::Client::new();
                 let resp = client
                     .get(&u)
-                    .header("User-Agent", "FluxTorrent-Adapter/1.0")
+                    .header(
+                    "User-Agent",
+                    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)                         AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
+                )
                     .timeout(std::time::Duration::from_secs(20))
                     .send()
                     .await
@@ -443,7 +446,10 @@ fn adapter_http_exec(
             let client = reqwest::Client::new();
             let resp = client
                 .get(&u)
-                .header("User-Agent", "FluxTorrent-Adapter/1.0")
+                .header(
+                    "User-Agent",
+                    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)                         AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
+                )
                 .timeout(std::time::Duration::from_secs(20))
                 .send()
                 .await
