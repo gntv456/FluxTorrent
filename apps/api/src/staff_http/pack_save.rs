@@ -159,6 +159,16 @@ pub async fn site_type_pack_save(
     let tagline = override_tagline
         .or(pack_default_tagline)
         .unwrap_or_default();
+    // 字幕口径快照（0178）：custom 包带上当前 kind，apply 时按快照显式应用
+    // （二审 G7d：music/lossless 站另存再 apply 不再把歌词口径重置回影视字幕）
+    let subtitle_kind: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'subtitle_kind'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .filter(|v| v == "lyric" || v == "subtitle");
     let sort: i32 = sqlx::query_scalar(
         "SELECT COALESCE(max(sort), 100) + 1 FROM site_type_packs",
     )
@@ -166,10 +176,11 @@ pub async fn site_type_pack_save(
     .await
     .unwrap_or(101);
     sqlx::query(
-        "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort, tagline) \
-         VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6, $7) \
+        "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort, tagline, subtitle_kind) \
+         VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6, $7, $8) \
          ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, brand = EXCLUDED.brand, \
-           categories = EXCLUDED.categories, modules = EXCLUDED.modules, tagline = EXCLUDED.tagline",
+           categories = EXCLUDED.categories, modules = EXCLUDED.modules, tagline = EXCLUDED.tagline, \
+           subtitle_kind = EXCLUDED.subtitle_kind",
     )
     .bind(&code)
     .bind(body.name.trim())
@@ -178,6 +189,7 @@ pub async fn site_type_pack_save(
     .bind(serde_json::Value::Object(modules).to_string())
     .bind(sort)
     .bind(&tagline)
+    .bind(subtitle_kind)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

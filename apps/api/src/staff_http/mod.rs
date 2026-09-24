@@ -11,6 +11,7 @@ mod emailbans;
 mod ipcheck;
 mod massmail;
 mod pack_apply;
+mod pack_core;
 mod pack_save;
 mod pack_tags;
 mod pack_types;
@@ -23,6 +24,13 @@ mod sitetype;
 mod stats;
 mod users_ops;
 mod warned;
+
+/// setup 向导复用站型物化链路（pack_core）：跨 crate 边界的引用别名。
+/// setup_http 属 http 域，不在此 pub use 展开避免路由符号污染。
+pub(crate) mod setup_bridge {
+    pub(crate) type PackRef = super::sitetype::SiteTypePack;
+    pub(crate) use super::pack_core::apply_pack_full;
+}
 
 pub use bans::*;
 pub use content::*;

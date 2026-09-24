@@ -127,38 +127,39 @@ async fn setup_finish(
             .fetch_all(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    // 2) 站型应用（extras：等级/经济/元数据；分类由既有 apply 端点处理，向导引导先调）
+    // 2) 站型完整应用（二审 G6 修复：与 /admin/site-type-packs/apply 同一条
+    //    pack_core::apply_pack_full 链路——分类/module_*/sections/tags/extras/
+    //    字幕口径全部落地；空库无种子，replace 模式重建分类安全）
     let mut extras_applied: Vec<(String, i64)> = Vec::new();
+    let mut applied_pack: Option<String> = None;
     if !body.pack.is_empty() {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM site_type_packs WHERE code = $1)",
-        )
-        .bind(&body.pack)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
-        if !exists {
+        let pack: Option<crate::staff_http::setup_bridge::PackRef> =
+            sqlx::query_as(
+                "SELECT code, name, description, brand, categories, modules, \
+                 sort, sections, tags, tagline, subtitle_kind \
+                 FROM site_type_packs WHERE code = $1",
+            )
+            .bind(&body.pack)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let Some(pack) = pack else {
             return Err(DomainError::Validation("站型包不存在".into()));
-        }
-        extras_applied =
-            sqlx::query_as("SELECT kind, applied FROM apply_pack_extras($1)")
-                .bind(&body.pack)
-                .fetch_all(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-        let _ = sqlx::query(
-            "UPDATE site_settings SET value = $2, \
-             updated_at = now() WHERE name = 'site_type'",
+        };
+        let (_cats, extras) = crate::staff_http::setup_bridge::apply_pack_full(
+            &state.repo.db,
+            &pack,
+            "replace",
         )
-        .bind(&body.pack)
-        .execute(&state.repo.db)
-        .await;
+        .await?;
+        extras_applied = extras;
+        applied_pack = Some(body.pack.clone());
     }
-    // 3) 站名（可选）
+    // 3) 站名（可选；apply 已写过包 brand，这里站长显式输入优先）
     if !body.site_name.trim().is_empty() {
         let _ = sqlx::query(
-            "UPDATE site_settings SET value = $2, \
-             updated_at = now() WHERE name = 'site_name'",
+            "INSERT INTO site_settings (name, value) VALUES ('site_name', $2) \
+             ON CONFLICT (name) DO UPDATE SET value = $2, updated_at = now()",
         )
         .bind(body.site_name.trim())
         .execute(&state.repo.db)
@@ -177,6 +178,7 @@ async fn setup_finish(
     Ok(ok(serde_json::json!({
         "done": true,
         "purged": purged,
+        "pack": applied_pack,
         "extras": extras_applied,
         "compliance_ack": true,
     })))
