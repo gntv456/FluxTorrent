@@ -66,6 +66,21 @@
   复验 14/14：关 `subtitles` → 页面 404 且菜单链接消失、重开恢复；挂 `exams` 的字段
   在注册页随开关出现/消失；关 `medals` → 「勋章管理」从后台面板消失（旧实现不会）；
   挂未知键被拒。
+- **消灭模块开关的双源**（0200）：删除 `modules.is_on`。开关真值只有
+  `site_settings.module_<key>` 一处，读不到时回落 Rust `default_on()`（general 中立矩阵）。
+  起因是 0196 把面板过滤写成读 `modules.is_on`（注册表种子值，后台改开关不会动它），
+  站长运行时关模块面板条目不消失——同类误读几乎必然复发，所以把那列删掉。
+  删列前核实过：代码唯一访问 modules 表的语句是 `EXISTS(key)`，`pg_proc`/`pg_views`
+  无引用；历史迁移（0107/0178/0179/0197/0198）都排在它之前，不改写任何历史文件。
+- **修 0197 自己埋下的新漂移 + 补三道门禁**：`packages/domain-types` 里
+  `ModuleKey` 联合与 `MODULE_KEYS` 数组是**两份手抄清单**，加 invites 时两份都漏了，
+  而原有 `check_type_drift.mjs` 只管错误码/促销枚举/响应形状，管不到模块键。
+  现改为数组是唯一清单、union 由 `typeof` 派生；新增 `scripts/module_keys_guard.mjs`
+  比对 Rust `key::ALL` ↔ TS `MODULE_KEYS` ↔ DB `modules` 表（已验证：故意删掉
+  `invites` 会红并点名），与 `home_sections_guard.mjs`、`check_type_drift.mjs` 一起
+  挂进 `build-test.yml` 与 `scripts/ci_local.sh`。
+- 复验（新卷 + 新镜像）：空库装机闸门 11/11、自建产物挂开关 14/14 全通过，
+  `modules` 列集为 `key,name_zh,name_en,descr,grp`。
 - 复验：`cargo test --workspace` 114 passed（含 `key_count` 29→30、3 条首页清单契约）、
   web `tsc` 零 error；新镜像上 invites/面板 11 条断言全通过（关闭后 `/invites/status` 与
   `POST /invites` 均 4101「本站未开放此功能」；面板 62→60 去掉考核配置/绩效考核；
