@@ -134,6 +134,13 @@ async fn site_settings_put(
     if body.name.trim().is_empty() || body.value.len() > 4096 {
         return Err(DomainError::Validation("非法的设定项".into()));
     }
+    // 三审 B-4：site_type 是站型包 apply 的派生锚点——设置页直改只改字符串，
+    // 分类/模块/维度全不跟随，设置值与站点形态脱钩。拒绝并引导走站型切换。
+    if body.name == "site_type" {
+        return Err(DomainError::Validation(
+            "站点类型请在后台「分类管理 → 站点类型包」切换（会完整应用分类/模块/维度）".into(),
+        ));
+    }
     let updated = sqlx::query(
         "UPDATE site_settings SET value = $3, updated_at = now() \
          WHERE name = $2 RETURNING name",

@@ -76,7 +76,10 @@ fn exact_route_module(path: &str) -> Option<&'static str> {
         ("/api/v1/me/avatar-frame", key::DRESSUP), // 佩戴挂件（真实扣魔力）
         ("/api/v1/me/medals", key::MEDALS),
         ("/api/v1/me/notice-prefs", key::MEDALS),
+        ("/api/v1/me/staffmessages", key::MESSAGES), // 三审 C-1：用户端管理组信件
+        ("/api/v1/me/staffmessages/confirm", key::MESSAGES),
         ("/api/v1/pool/honor", key::MAGIC_POOL),
+        ("/api/v1/medal-rarities", key::MEDALS), // 三审 C-1：稀有度字典
     ];
     TABLE.iter().find(|(p, _)| path == *p).map(|(_, k)| *k)
 }

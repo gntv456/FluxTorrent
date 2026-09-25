@@ -76,6 +76,7 @@ pub(super) fn group_label<'a>(key: &'a str) -> &'a str {
         "module_economy" => "模块开关·经济",
         "module_fun" => "模块开关·娱乐",
         "module_ops" => "模块开关·运营",
+        "appearance" => "外观与主题",
         other => other,
     }
 }
@@ -98,6 +99,7 @@ const DEFAULT_GROUP_ORDER: &[&str] = &[
     "module_economy",
     "module_fun",
     "module_ops",
+    "appearance",
     "misc",
 ];
 
