@@ -26,6 +26,17 @@ export function MoreInfoCard({
       <Row label={t.tabPosts} icon="◈">
         <span className="num">{data.recent_posts.length}</span>
       </Row>
+      {(data.user_fields ?? []).map((f) => (
+        <Row key={f.key} label={f.label} icon="✦">
+          {f.type === "multiselect" && Array.isArray(f.value)
+            ? (f.value as string[]).join(" / ")
+            : f.type === "bool"
+              ? f.value
+                ? "✓"
+                : "—"
+              : String(f.value ?? "—")}
+        </Row>
+      ))}
       {data.subtitle_count > 0 && (
         <Row label={t.subtitleWorks} icon="╬">
           <span className="num">

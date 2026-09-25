@@ -9,6 +9,7 @@ import { LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { WishlistPanel } from "@/components/wishlist";
 import { OverviewTab } from "@/components/usercp-overview";
 import { PersonalTab } from "@/components/usercp-personal";
+import { UserFieldsTab } from "@/components/usercp-fields";
 import { TrackerTab } from "@/components/usercp-tracker";
 import { ForumTab } from "@/components/usercp-forum";
 import { SecurityTab } from "@/components/usercp-security";
@@ -22,11 +23,12 @@ import { SecurityTab } from "@/components/usercp-security";
  *  （安全设定）；共用表格行在 usercp-row.tsx。 */
 
 export type UsercpTab =
-  "overview" | "personal" | "tracker" | "forum" | "security" | "wishlist";
+  "overview" | "personal" | "fields" | "tracker" | "forum" | "security" | "wishlist";
 
 export const USERCP_NAV: { key: UsercpTab; icon: string }[] = [
   { key: "overview", icon: "⌂" },
   { key: "personal", icon: "♙" },
+  { key: "fields", icon: "✎" },
   { key: "tracker", icon: "⚙" },
   { key: "forum", icon: "♧" },
   { key: "security", icon: "⌾" },
@@ -240,6 +242,7 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
             }}
           >
             {tab === "personal" && <PersonalTab s={settings} patch={patch} />}
+            {tab === "fields" && <UserFieldsTab />}
             {tab === "tracker" && <TrackerTab s={settings} patch={patch} />}
             {tab === "forum" && <ForumTab s={settings} patch={patch} />}
             {tab === "security" && <SecurityTab s={settings} patch={patch} />}

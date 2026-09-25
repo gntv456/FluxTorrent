@@ -7,6 +7,7 @@
 //! 公开主页 profile.rs + user_torrentlist.rs / me 总览与设置 me_settings.rs + me_settings_kv.rs。
 
 mod login;
+mod user_fields;
 mod login_types;
 mod logout;
 mod me;
@@ -29,4 +30,5 @@ pub use me_settings::*;
 pub use me_settings_kv::*;
 pub use profile::*;
 pub use register::*;
+pub use user_fields::*;
 pub use user_torrentlist::*;

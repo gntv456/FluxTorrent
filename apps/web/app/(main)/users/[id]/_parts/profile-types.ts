@@ -46,7 +46,16 @@ export interface TorrentHistRow {
   seeding: boolean;
 }
 
+export interface UserField {
+  key: string;
+  label: string;
+  type: string;
+  value: unknown;
+}
+
 export interface ProfileData {
+  /** 站长自定义字段（0186）：public 且有值才下发 */
+  user_fields?: UserField[];
   profile: Profile;
   gender: string | null;
   country: string | null;
