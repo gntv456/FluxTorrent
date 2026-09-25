@@ -3117,6 +3117,25 @@ const zhTwBase: Omit<
     zeroHint: "0（發布頁/搜尋不顯示）",
     renameKindPrompt: "新顯示名稱",
     delKindConfirm: "刪除維度「{name}」？其下所有字典選項將被清空",
+    // B2 六類型欄位系統
+    thFieldType: "類型",
+    thRequired: "必填",
+    thMultiple: "多值",
+    thEnabled: "啟用",
+    edit: "編輯",
+    close: "關閉",
+    editKindTitle: "編輯維度",
+    saveKind: "儲存",
+    fieldTypeLocked:
+      "欄位類型建立後不可修改（存量值按原類型解釋）；如需變更請新建維度。",
+    fieldTypes: {
+      text: "文字",
+      number: "數字",
+      select: "單選",
+      multiselect: "多選",
+      date: "日期",
+      bool: "開關",
+    } as Record<string, string>,
     // 分類模式（admin-sections）
     modesTitle: "分類模式",
     modesHint:
@@ -3125,6 +3144,7 @@ const zhTwBase: Omit<
     modeCreated: "已建立",
     createMode: "新建模式",
     thCategories: "分類數",
+    thVisibleKinds: "可見維度",
     modeDeleted: "已刪除（歸屬分類已回退預設模式）",
     loadFail: "載入失敗",
     opFail: "操作失敗",

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { normTagRow, type TagPayload } from "@/components/torrent-tags";
+import type { SectionKindMeta } from "@/components/admin-sections-shared";
 
 type Dict = ReturnType<typeof useI18n>["dict"];
 
@@ -213,20 +214,43 @@ export function useAttachmentUpload(
 }
 
 
-/** 多维质量编辑状态 + 分类联动（0184 从 torrent-manage.tsx 拆出）：
+/** 多维属性编辑状态 + 分类联动（0184 从 torrent-manage.tsx 拆出）：
  *  换分类按 mode_id 重取 section-dict（归属模式决定该分类能填哪些维度），
- *  被模式隐藏/换批后不存在的字典项残留取值会被清洗（不再提交） */
+ *  被模式隐藏/换批后不存在的字典项残留取值会被清洗（不再提交）。
+ *  B2（0195）：值统一以字符串承载 —— 枚举存 dict_id、自由值存原文、
+ *  多选存逗号串（与发布表单同形，提交时再按类型编码）。
+ *  入参 `sections` 为详情下发的 `{kind: {dict_id, values[]}}`，只带初值。 */
 export function useEditSections(
-  sections: Record<string, number>,
-  secKinds: { kind: string; label: string }[],
+  sections: Record<string, { dict_id: number | null; values?: string[] }>,
+  secKinds: SectionKindMeta[],
   secDict: Record<string, { id: number; name: string }[]>,
   categoryId: number,
+  /** 多选维度按下发的显示名反查 dict_id（详情只给 name，不给 id 数组） */
+  nameToId?: Record<string, number>,
 ) {
   const [fCat, setFCat] = useState(categoryId);
-  // 多维质量（0087）：kind → dict_id；空串 = 清空该维
-  const [fSec, setFSec] = useState<Record<string, number>>(() => {
-    const o: Record<string, number> = {};
-    for (const k of secKinds) o[k.kind] = sections[k.kind] ?? 0;
+  // kind → 字符串值（空串 = 清空该维）
+  const [fSec, setFSec] = useState<Record<string, string>>(() => {
+    const o: Record<string, string> = {};
+    for (const k of secKinds) {
+      const s = sections[k.kind];
+      if (!s) {
+        o[k.kind] = "";
+        continue;
+      }
+      const type = k.field_type ?? "select";
+      if (type === "select") {
+        o[k.kind] = s.dict_id ? String(s.dict_id) : "";
+      } else if (type === "multiselect") {
+        // 详情 values 是显示名数组；靠「名字→id」映射反查（后端 names 唯一）
+        const ids = (s.values ?? [])
+          .map((n) => nameToId?.[`${k.kind}:${n}`])
+          .filter((x): x is number => typeof x === "number");
+        o[k.kind] = ids.join(",");
+      } else {
+        o[k.kind] = (s.values ?? [])[0] ?? "";
+      }
+    }
     return o;
   });
   // 分类联动维度（0184）：换分类按 mode_id 重取 section-dict——
@@ -238,7 +262,7 @@ export function useEditSections(
     let alive = true;
     api
       .get<
-        Record<string, unknown> & { kinds?: { kind: string; label: string }[] }
+        Record<string, unknown> & { kinds?: SectionKindMeta[] }
       >(
         `/api/v1/section-dict?category_id=${fCat}`,
       )
@@ -252,12 +276,28 @@ export function useEditSections(
         }
         setCatKinds(kinds);
         setCatDict(rest);
-        // 被模式隐藏/换批后不存在的字典项：残留取值不能再被提交
+        // 被模式隐藏/换批后不存在的字典项：残留取值不能再被提交。
+        // 自由值维度（text/number/date/bool）不含字典项，原样保留。
         setFSec((prev) => {
-          const kept: Record<string, number> = {};
+          const kept: Record<string, string> = {};
           for (const k of kinds) {
-            const v = prev[k.kind] ?? 0;
-            if (v > 0 && (rest[k.kind] ?? []).some((r) => r.id === v)) {
+            const v = prev[k.kind] ?? "";
+            const type = k.field_type ?? "select";
+            if (!v) continue;
+            if (type === "select") {
+              if ((rest[k.kind] ?? []).some((r) => r.id === Number(v))) {
+                kept[k.kind] = v;
+              }
+            } else if (type === "multiselect") {
+              const ids = v
+                .split(",")
+                .map((s) => Number(s.trim()))
+                .filter(
+                  (n) =>
+                    n > 0 && (rest[k.kind] ?? []).some((r) => r.id === n),
+                );
+              if (ids.length > 0) kept[k.kind] = ids.join(",");
+            } else {
               kept[k.kind] = v;
             }
           }

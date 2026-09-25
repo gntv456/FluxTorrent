@@ -115,7 +115,10 @@ mod tests {
     use super::*;
 
     fn opts() -> serde_json::Value {
-        serde_json::json!([{"value": "a", "label": "A"}, {"value": "b", "label": "B"}])
+        serde_json::json!([
+            {"value": "a", "label": "A"},
+            {"value": "b", "label": "B"}
+        ])
     }
 
     #[test]
@@ -130,30 +133,34 @@ mod tests {
     #[test]
     fn text_number_date_bool_shapes() {
         let o = serde_json::json!([]);
-        assert!(validate_value("text", &o, &serde_json::json!("hello")).is_ok());
-        assert!(validate_value("text", &o, &serde_json::json!(5)).is_err());
-        assert!(validate_value("number", &o, &serde_json::json!(320)).is_ok());
-        assert!(validate_value("number", &o, &serde_json::json!("320")).is_err());
-        assert!(validate_value("date", &o, &serde_json::json!("2024-05-01")).is_ok());
-        assert!(validate_value("date", &o, &serde_json::json!("2024/05/01")).is_err());
-        assert!(validate_value("bool", &o, &serde_json::json!(true)).is_ok());
-        assert!(validate_value("bool", &o, &serde_json::json!("true")).is_err());
+        let v = |x: serde_json::Value| validate_value("text", &o, &x);
+        assert!(v(serde_json::json!("hello")).is_ok());
+        assert!(v(serde_json::json!(5)).is_err());
+        let n = |x: serde_json::Value| validate_value("number", &o, &x);
+        assert!(n(serde_json::json!(320)).is_ok());
+        assert!(n(serde_json::json!("320")).is_err());
+        let d = |x: serde_json::Value| validate_value("date", &o, &x);
+        assert!(d(serde_json::json!("2024-05-01")).is_ok());
+        assert!(d(serde_json::json!("2024/05/01")).is_err());
+        let b = |x: serde_json::Value| validate_value("bool", &o, &x);
+        assert!(b(serde_json::json!(true)).is_ok());
+        assert!(b(serde_json::json!("true")).is_err());
     }
 
     #[test]
     fn select_and_multiselect_must_be_in_options() {
-        assert!(validate_value("select", &opts(), &serde_json::json!("a")).is_ok());
-        assert!(validate_value("select", &opts(), &serde_json::json!("z")).is_err());
-        assert!(
-            validate_value("multiselect", &opts(), &serde_json::json!(["a", "b"])).is_ok()
-        );
-        assert!(
-            validate_value("multiselect", &opts(), &serde_json::json!(["a", "z"])).is_err()
-        );
+        let s = |x: serde_json::Value| validate_value("select", &opts(), &x);
+        assert!(s(serde_json::json!("a")).is_ok());
+        assert!(s(serde_json::json!("z")).is_err());
+        let m = |x: serde_json::Value| {
+            validate_value("multiselect", &opts(), &x)
+        };
+        assert!(m(serde_json::json!(["a", "b"])).is_ok());
+        assert!(m(serde_json::json!(["a", "z"])).is_err());
         // 上限 20 项
         let big: Vec<String> = (0..21).map(|i| format!("a{i}")).collect();
         let big_with_a = serde_json::json!(big);
-        assert!(validate_value("multiselect", &opts(), &big_with_a).is_err());
+        assert!(m(big_with_a).is_err());
     }
 
     #[test]

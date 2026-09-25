@@ -3116,6 +3116,25 @@ const zhCnBase = {
     zeroHint: "0（发布页/搜索不显示）",
     renameKindPrompt: "新显示名称",
     delKindConfirm: "删除维度「{name}」？其下所有字典选项将被清空",
+    // B2 六类型字段系统
+    thFieldType: "类型",
+    thRequired: "必填",
+    thMultiple: "多值",
+    thEnabled: "启用",
+    edit: "编辑",
+    close: "关闭",
+    editKindTitle: "编辑维度",
+    saveKind: "保存",
+    fieldTypeLocked:
+      "字段类型创建后不可修改（存量值按原类型解释）；如需变更请新建维度。",
+    fieldTypes: {
+      text: "文本",
+      number: "数字",
+      select: "单选",
+      multiselect: "多选",
+      date: "日期",
+      bool: "开关",
+    } as Record<string, string>,
     // 分类模式（admin-sections）
     modesTitle: "分类模式",
     modesHint:
@@ -3124,6 +3143,7 @@ const zhCnBase = {
     modeCreated: "已创建",
     createMode: "新建模式",
     thCategories: "分类数",
+    thVisibleKinds: "可见维度",
     modeDeleted: "已删除（归属分类已回退默认模式）",
     loadFail: "加载失败",
     opFail: "操作失败",

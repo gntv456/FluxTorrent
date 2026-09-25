@@ -2,6 +2,7 @@
 
 import { useI18n } from "@/i18n/client";
 import { api, ApiError } from "@/lib/api-client";
+import type { SectionKindMeta } from "@/components/admin-sections-shared";
 
 /** 编辑提交载荷 + 补种/删除动作（0184 从 torrent-manage.tsx 拆出，
  *  300 行门禁）：buildEditPayload 组 PUT /torrents/{id} body（含推荐位
@@ -63,7 +64,9 @@ export function buildEditPayload(x: {
   fImdb: string;
   fPoster: string;
   fMediainfo: string;
-  fSec: Record<string, number>;
+  fSec: Record<string, string>;
+  /** B2：维度定义（编码 sections 时按 field_type 分派） */
+  catKinds: SectionKindMeta[];
   fTags: number[];
   tagMine?: number[];
   dictRows: { id: number; kind: string }[];
@@ -84,10 +87,37 @@ export function buildEditPayload(x: {
         // 媒介/学段/版本三个 legacy 列不再提交：维度归属统一走下面的 sections。
         poster: x.fPoster.trim(),
         mediainfo: x.fMediainfo.trim(),
-        // 多维质量：有值的维以 {kind: dict_id} 提交（后端写 torrent_sections）
-        sections: Object.fromEntries(
-          Object.entries(x.fSec).filter(([, v]) => v > 0),
-        ),
+        // 多维属性（B2 六类型）：按 field_type 编码 —— 枚举发整数（旧格式，
+        // 后端零改动兼容）、多选发 {"dict_ids":[…]}、自由值发 {"text":…} 等；
+        // 后端按**值的 JSON 类型**分派。
+        sections: (() => {
+          const out: Record<string, unknown> = {};
+          for (const k of x.catKinds) {
+            const v = x.fSec[k.kind] ?? "";
+            if (!v) continue;
+            const type = k.field_type ?? "select";
+            if (type === "select") {
+              const n = Number(v);
+              if (n > 0) out[k.kind] = n;
+            } else if (type === "multiselect") {
+              const ids = v
+                .split(",")
+                .map((s) => Number(s.trim()))
+                .filter((n) => n > 0);
+              if (ids.length > 0) out[k.kind] = { dict_ids: ids };
+            } else if (type === "number") {
+              const n = Number(v);
+              if (!Number.isNaN(n)) out[k.kind] = { number: n };
+            } else if (type === "bool") {
+              out[k.kind] = { bool: v === "true" };
+            } else if (type === "date") {
+              out[k.kind] = { date: v };
+            } else {
+              out[k.kind] = { text: v };
+            }
+          }
+          return out;
+        })(),
         // 标签整组提交（official 类保留不动：前端只编辑普通标签，
         // 后端 DELETE+apply 会把 official 一并清掉，所以这里带上原 official 集）
         tag_ids: [

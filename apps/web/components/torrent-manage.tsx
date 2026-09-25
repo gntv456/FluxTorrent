@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { normTagRow, type TagPayload } from "@/components/torrent-tags";
+import type { SectionKindMeta } from "@/components/admin-sections-shared";
 import { Modal } from "@/components/modal";
 import { UploadDescrBlock } from "@/components/upload-form-descr";
 import {
@@ -39,9 +40,9 @@ export interface TorrentManageProps {
   posterUrl: string | null;
   /** MediaInfo 全文（media_info.mediainfo） */
   mediainfo: string | null;
-  /** 当前多维质量值（0087）：kind → dict_id */
-  sections: Record<string, number>;
-  secKinds: { kind: string; label: string }[];
+  /** 当前多维属性值（B2 六类型）：kind → { dict_id, values[] }，只带初值 */
+  sections: Record<string, { dict_id: number | null; values?: string[] }>;
+  secKinds: SectionKindMeta[];
   secDict: Record<string, { id: number; name: string }[]>;
   cats: { id: number; name: string }[];
   seeders?: number;
@@ -76,12 +77,18 @@ export function TorrentManage(p: TorrentManageProps) {
   const [fDescr, setFDescr] = useState(descr ?? "");
   const [fAnon, setFAnon] = useState(anonymous);
   const [fImdb, setFImdb] = useState(imdbId ?? "");
-  // 多维质量 + 分类联动维度（0184 拆至 parts 的 hook；fCat 一并由其持有）
+  // 多选维度初值反查表（kind:name → id）：详情只下发显示名
+  const secNameToId: Record<string, number> = {};
+  for (const [k, rows] of Object.entries(secDict)) {
+    for (const r of rows) secNameToId[`${k}:${r.name}`] = r.id;
+  }
+  // 多维属性 + 分类联动维度（0184 拆至 parts 的 hook；fCat 一并由其持有）
   const { fCat, setFCat, fSec, setFSec, catKinds, catDict } = useEditSections(
     sections,
     secKinds,
     secDict,
     categoryId,
+    secNameToId,
   );
   const [fPrice, setFPrice] = useState(price);
   const [fPoster, setFPoster] = useState(posterUrl ?? "");
@@ -148,7 +155,8 @@ export function TorrentManage(p: TorrentManageProps) {
     try {
       const body = buildEditPayload({
         fName, fSub, fDescr, fAnon, fCat, fImdb, fPoster, fMediainfo,
-        fSec, fTags, tagMine, dictRows, isStaff, fPos, fPosUntil, fPick,
+        fSec, catKinds, fTags, tagMine, dictRows, isStaff, fPos, fPosUntil,
+        fPick,
       });
       await api.put(`/api/v1/torrents/${torrentId}`, body);
       // 价格（0086 独立端点）：仅变化时调用（0 = 恢复免费）
