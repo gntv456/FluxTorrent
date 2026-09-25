@@ -5,6 +5,7 @@ import type { ShopItem } from "@fluxtorrent/domain-types";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { BuyButton } from "@/components/buy-button";
+import { FramePreview } from "@/components/frame-preview";
 
 // 魔力商店目录（客户端）：按 kind 归 5 组 + 组内筛选 + 余额预判。
 // 分组映射与图标是**前端常量**：新增 kind 只需补一行，未映射的落「其他」组，
@@ -121,20 +122,15 @@ export function ShopCatalog({
   }, [items]);
 
   const groupLabel = (g: Group) => {
-    switch (g) {
-      case "upload":
-        return t.grpUpload;
-      case "voucher":
-        return t.grpVoucher;
-      case "right":
-        return t.grpRight;
-      case "look":
-        return t.grpLook;
-      case "gift":
-        return t.grpGift;
-      default:
-        return t.grpOther;
-    }
+    const names: Record<Group, string> = {
+      upload: t.grpUpload,
+      voucher: t.grpVoucher,
+      right: t.grpRight,
+      look: t.grpLook,
+      gift: t.grpGift,
+      other: t.grpOther,
+    };
+    return names[g];
   };
 
   const shown = grouped.filter((x) => !grp || x.g === grp);
@@ -151,7 +147,9 @@ export function ShopCatalog({
         )}
         <div className="gcard-bd">
           <span className="gicon" data-group={g}>
-            {KIND_ICON[it.kind] ?? GROUP_ICON[g]}
+            {it.kind === "animated_avatar"
+              ? (it.config?.effect ?? "✨")
+              : (KIND_ICON[it.kind] ?? GROUP_ICON[g])}
           </span>
           <div className="txt">
             <h3>{it.name}</h3>
@@ -162,6 +160,9 @@ export function ShopCatalog({
               </span>
             )}
           </div>
+          {it.kind === "avatar_frame" && it.config?.frame_id != null && (
+            <FramePreview frameId={it.config.frame_id} />
+          )}
         </div>
         <div className="gcard-ft">
           <div className="pricetag">
@@ -174,12 +175,15 @@ export function ShopCatalog({
           <div className="acts">
             <BuyButton
               itemId={it.id}
+              unitPrice={it.price}
+              stackable={it.config?.stackable === true}
               affordable={!short}
               shortBy={
                 short && balance !== null
                   ? fmt(t.shortBy, { n: num(it.price - balance) })
                   : null
               }
+              balance={balance}
             />
           </div>
         </div>

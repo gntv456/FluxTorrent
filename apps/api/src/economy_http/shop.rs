@@ -1,5 +1,6 @@
 //! 商店（M11）：道具列表/购买/生效。
 //! 从 economy_http.rs 按域拆出。
+//! 0207：购买支持数量（stackable 类）；装扮类 SKU 拆分后 config 驱动候选选择。
 
 use super::shop_effects::apply_item_effect;
 use super::spend::spend_spark;
@@ -21,6 +22,8 @@ struct ShopItem {
     name: String,
     kind: String,
     price: i64,
+    /// 0207：前端要按 config 判定可否选数量（stackable）、装扮候选（frame_id）
+    config: serde_json::Value,
 }
 
 #[get("/shop/items")]
@@ -28,8 +31,8 @@ async fn shop_items(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let items = sqlx::query_as::<_, ShopItem>(
-        "SELECT id, name, kind, \
-         price FROM shop_items WHERE active = true ORDER BY price",
+        "SELECT id, name, kind, price, config FROM shop_items \
+         WHERE active = true ORDER BY price",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -42,6 +45,9 @@ struct BuyReq {
     item_id: i64,
     #[serde(default)]
     idempotency_key: Option<String>,
+    /// 购买数量（0207）：仅 stackable 类生效；装扮/头衔类强制 1
+    #[serde(default)]
+    qty: Option<i64>,
 }
 
 #[post("/shop/buy")]
@@ -60,33 +66,51 @@ async fn shop_buy(
         .fetch_optional(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((name, kind, price, config)) = item else {
+    let Some((name, kind, unit_price, config)) = item else {
         return Err(DomainError::NotFound(body.item_id));
     };
 
+    // 数量口径（0207）：stackable 类可 1..=100；其余一律 1。
+    // 唯一性道具（装扮/头衔类）叠加购买 = 花钱买空气，由 stackable 缺省挡住。
+    let stackable = config
+        .get("stackable")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let qty = body.qty.unwrap_or(1);
+    if qty < 1 || qty > 100 {
+        return Err(DomainError::Validation("购买数量须在 1-100 之间".into()));
+    }
+    if qty > 1 && !stackable {
+        return Err(DomainError::Validation(
+            "该商品不可叠加购买，数量固定为 1".into(),
+        ));
+    }
+    let total = unit_price
+        .checked_mul(qty)
+        .ok_or(DomainError::Validation("数量超出可计算范围".into()))?;
+
     // 审计修复（P1 花钱买空气）：唯一性道具（装扮/头衔类）重复购买此前照扣全价、
     // 效果 ON CONFLICT DO NOTHING —— 已拥有者再买 = 花钱买空气。可叠加类
-    //（邀请/券/上传量/VIP 时长）不在此列。拥有判定与 apply_item_effect 同表。
+    //（邀请/券/上传量/VIP 时长）不在此列。拥有判定与 apply_item_effect 同表
+    //（0207 起直接按 shop_items.id 判，旧口径读 config.item_id 对种子 SKU 永远
+    // 为空、护栏从未生效）。
     if matches!(
         kind.as_str(),
         "avatar_frame" | "animated_avatar" | "rainbow_id" | "rainbow_name"
     ) {
-        let item_id = config.get("item_id").and_then(|v| v.as_i64());
-        if let Some(iid) = item_id {
-            let owned: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM user_dressups \
-                 WHERE user_id = $1 AND item_id = $2)",
-            )
-            .bind(auth.id)
-            .bind(iid)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
-            if owned {
-                return Err(DomainError::Validation(
-                    "你已拥有该装扮，无需重复购买（装扮类道具不叠加）".into(),
-                ));
-            }
+        let owned: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM user_dressups \
+             WHERE user_id = $1 AND item_id = $2)",
+        )
+        .bind(auth.id)
+        .bind(body.item_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if owned {
+            return Err(DomainError::Validation(
+                "你已拥有该装扮，无需重复购买（装扮类道具不叠加）".into(),
+            ));
         }
     }
 
@@ -101,7 +125,7 @@ async fn shop_buy(
     let outcome = spend_spark(
         &state.repo.db,
         auth.id,
-        price,
+        total,
         "shop",
         &idem,
         "shop_item",
@@ -109,36 +133,86 @@ async fn shop_buy(
     )
     .await?;
 
-    // 订单落库（幂等键唯一）
-    sqlx::query(
-        "INSERT INTO shop_orders (user_id, item_id, price, idempotency_key, config_snapshot) \
-         VALUES ($1, $2, $3, $4, $5) ON CONFLICT (idempotency_key) DO NOTHING",
-    )
-    .bind(auth.id)
-    .bind(body.item_id)
-    .bind(price)
-    .bind(&idem)
-    .bind(config.clone())
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 订单落库（幂等键唯一）。卡牌类（补签/改名/临时邀请）库存口径 = 订单行数
+    //（checkin/gaps 按「无 resub_uses 的订单」计数），因此 qty 张就插 qty 行
+    //（键加序号后缀保持幂等）；其余类一行、price 记总额（0207）。
+    let card_kind = matches!(
+        kind.as_str(),
+        "makeup_card" | "rename_card" | "temp_invite"
+    );
+    if card_kind && qty > 1 {
+        for k in 1..=qty {
+            let key = if k == 1 {
+                idem.clone()
+            } else {
+                format!("{}:{}", idem, k)
+            };
+            sqlx::query(
+                "INSERT INTO shop_orders (user_id, item_id, price, \
+                 idempotency_key, config_snapshot) VALUES ($1, $2, $3, $4, $5) \
+                 ON CONFLICT (idempotency_key) DO NOTHING",
+            )
+            .bind(auth.id)
+            .bind(body.item_id)
+            .bind(unit_price)
+            .bind(&key)
+            .bind(config.clone())
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+    } else {
+        sqlx::query(
+            "INSERT INTO shop_orders (user_id, item_id, price, idempotency_key, config_snapshot) \
+             VALUES ($1, $2, $3, $4, $5) ON CONFLICT (idempotency_key) DO NOTHING",
+        )
+        .bind(auth.id)
+        .bind(body.item_id)
+        .bind(total)
+        .bind(&idem)
+        .bind(config.clone())
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
 
     // 效果执行（CAS 置位，0085）：首次成功扣款 OR 重试补发（此前 Replayed 直接跳过
     // 效果分支——扣款成功但效果失败后重试 = 花钱买空气）。置位失败 = 效果已发过，跳过。
+    // 卡牌多行订单：逐行 CAS，每次置位成功发一轮效果。
     let _ = outcome;
-    let should_apply: Option<i64> = sqlx::query_scalar(
-        "UPDATE shop_orders SET effect_applied = TRUE WHERE user_id = \
-         $1 AND idempotency_key = $2 AND NOT effect_applied RETURNING id",
-    )
-    .bind(auth.id)
-    .bind(&idem)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if should_apply.is_some() {
+    let mut applied = 0usize;
+    loop {
+        let hit: Option<i64> = sqlx::query_scalar(
+            "UPDATE shop_orders SET effect_applied = TRUE WHERE id IN ( \
+             SELECT id FROM shop_orders WHERE user_id = $1 \
+             AND (idempotency_key = $2 OR idempotency_key LIKE $3) \
+             AND NOT effect_applied ORDER BY id LIMIT 1) RETURNING id",
+        )
+        .bind(auth.id)
+        .bind(&idem)
+        .bind(format!("{}:%", idem))
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if hit.is_none() {
+            break;
+        }
+        applied += 1;
+        // 数量类效果按件发（上传量×N、券×N、邀请×N、卡牌入库×N）
         let mut cfg = config.clone();
         cfg["item_id"] = serde_json::json!(body.item_id);
         apply_item_effect(&state.repo.db, auth.id, &kind, &cfg).await?;
+        if !card_kind {
+            break; // 非卡牌：单行订单，一轮即全部效果（qty 循环见下）
+        }
+    }
+    if !card_kind && applied > 0 {
+        let rounds = if stackable { qty } else { 1 };
+        let mut cfg = config.clone();
+        cfg["item_id"] = serde_json::json!(body.item_id);
+        for _ in 1..rounds {
+            apply_item_effect(&state.repo.db, auth.id, &kind, &cfg).await?;
+        }
     }
 
     state
@@ -146,6 +220,9 @@ async fn shop_buy(
         .audit(Some(auth.id), "shop_buy", Some(body.item_id))
         .await;
     Ok(ok(
-        serde_json::json!({ "item": name, "price": price, "idempotency_key": idem }),
+        serde_json::json!({
+            "item": name, "price": total, "qty": qty,
+            "idempotency_key": idem,
+        }),
     ))
 }

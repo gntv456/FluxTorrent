@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
+import { FramePreview } from "@/components/frame-preview";
 
 interface Dressup {
   item_id: number;
@@ -15,6 +16,8 @@ interface Dressup {
   slot: string | null;
   owned: boolean;
   wearing: boolean;
+  /** 0207：头像框 SKU 带 config（frame_id 用于列表预览） */
+  config?: { frame_id?: number; effect?: string; [k: string]: unknown };
 }
 
 /** 装扮中心（M25）：购买走商店管线，佩戴同类互斥 */
@@ -137,6 +140,9 @@ export default function DressupPage() {
                           ? "🌈"
                           : "🎨"}
                   </span>
+                  {d.kind === "avatar_frame" && d.config?.frame_id != null && (
+                    <FramePreview frameId={d.config.frame_id} size={40} />
+                  )}
                   <div className="flex-1">
                     <p className="text-sm font-bold">
                       {d.name}
