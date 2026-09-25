@@ -33,6 +33,23 @@
   作 CI 不可用时的等价本地闸门；修 `audit_migration_checksums.py` 的 SQL 拼接缺空格
   （psql 报错被静默吞掉，导致所有迁移被误判「文件缺失」）与两个反了的分支标签。
 
+### 通用建站定位四审 C 批（模块开关覆盖，2026-09-25）
+
+- **后台面板随模块开关消失**（0196）：`staff_panel_entries` 新增 `module_key`，9 条明显
+  从属某模块的条目挂键（考核配置/绩效考核/勋章管理/签到记录/任务配置/金字字幕评选/
+  道具管理/投票/保种统计），面板查询按 `modules.is_on` 过滤；此前 29 个模块只在前台四处
+  一致，后台条目只看 `min_class`。迁移内含防呆：`module_key` 指向不存在的键直接 RAISE。
+  实测 `exams/jixiao` 关闭时条目 62 → 60。
+- **invites 进模块注册表**（0197，第 30 键）：网关映射、worker `job:expire_invites` 归属、
+  页面 `requireModule`、导航与用户菜单入口 `mod()` 过滤、11 个站型包 `modules` 快照补键。
+- **0198 补齐后加模块键的开关面**：`site_settings` 的 `module_<key>` 值行与 `settings_meta`
+  登记行（`settings_meta.name` 有 FK 指向 `site_settings`，必须先插值行）。缺它会出现
+  「注册表里有该模块、后台没有开关、写设置被『未知设定项』拒」——0197 首次落地即踩中。
+- 复验：`cargo test --workspace` 111 passed（含 `key_count` 契约 29→30）、web `tsc` 零 error；
+  新镜像上 11 条接口断言全通过（面板 3 条 + invites 关/开 6 条 + 注册与包快照 2 条），
+  关闭后 `/invites/status` 与 `POST /invites` 均返回 4101「本站未开放此功能」；
+  首页渲染 A/B 实测：开 150756 字节 / 关 150715 字节，差的正是那条导航入口。
+
 ### 通用建站系统收口（2026-09-25 六迭代，详见 _doc/通用建站定位符合度三审报告）
 
 - **模块缺省翻转**：可选模块缺省从教育站全开改为 general 中立矩阵；
