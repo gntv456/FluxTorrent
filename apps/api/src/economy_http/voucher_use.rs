@@ -18,6 +18,58 @@ async fn voucher_use(
     body: web::Json<VoucherUseReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // temp_invite 券（0204 修死库存）：核销即发一枚邀请码，天数取
+    // invite_admin_ttl_days（30 天口径），不绑种子。其余券种维持绑种子语义。
+    let vkind: Option<String> = sqlx::query_scalar(
+        "SELECT kind FROM user_vouchers WHERE id = $1 AND user_id = $2 \
+         AND used_torrent_id IS NULL AND used_at IS NULL AND expires_at > now()",
+    )
+    .bind(body.voucher_id)
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    match vkind.as_deref() {
+        Some("temp_invite") => {
+            let ttl_days = invite_admin_ttl_days(&state.repo.db).await;
+            let n = sqlx::query(
+                "UPDATE user_vouchers SET used_at = now() WHERE id = $1 \
+                 AND user_id = $2 AND used_at IS NULL AND used_torrent_id IS NULL \
+                 AND expires_at > now()",
+            )
+            .bind(body.voucher_id)
+            .bind(auth.id)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected();
+            if n == 0 {
+                return Err(DomainError::Validation(
+                    "券不存在、已使用或已过期".into(),
+                ));
+            }
+            let code = crate::domain::new_invite_code();
+            let expires = chrono::Utc::now()
+                + chrono::Duration::days(ttl_days);
+            let id = state.repo.issue_invite(auth.id, &code, expires).await?;
+            state
+                .repo
+                .audit(Some(auth.id), "voucher.temp_invite", Some(id))
+                .await;
+            return Ok(ok(serde_json::json!({
+                "voucher_id": body.voucher_id,
+                "invite_id": id,
+                "code": code,
+                "expires_at": expires.to_rfc3339(),
+            })));
+        }
+        None => {
+            return Err(DomainError::Validation(
+                "券不存在、已使用或已过期".into(),
+            ));
+        }
+        _ => {}
+    }
     // 绑定即生效但不置 used_at：worker 计费侧以「used_torrent_id 已绑定 + used_at IS NULL」
     // 判定生效中的券，下载量过阈值后由核销语句置 used_at。旧版绑定时就写 used_at，
     // 导致券永远不被计费侧匹配（用户花钱买的权益确定性为 0，真实资损）。
@@ -44,6 +96,21 @@ async fn voucher_use(
         "torrent_id": body.torrent_id,
         "note": "已对该种子生效；下载量超过种子大小 4% 后自动核销"
     })))
+}
+
+/// 管理端直发邀请码 TTL（0204 配置化）：site_settings.invite_admin_ttl_days，
+/// 缺省 30，clamp 1..=365。temp_invite 券核销与 admin 直发同口径。
+pub async fn invite_admin_ttl_days(db: &sqlx::PgPool) -> i64 {
+    sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'invite_admin_ttl_days'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v: String| v.parse().ok())
+    .map(|v: i64| v.clamp(1, 365))
+    .unwrap_or(30)
 }
 
 // ============ 我的火花（M11） ============
@@ -192,5 +259,7 @@ async fn my_ledger(
 #[derive(Deserialize)]
 pub(super) struct VoucherUseReq {
     pub(super) voucher_id: i64,
+    /// 免费券/中性券绑种子必填；temp_invite 券核销不消费此字段（可传 0）
+    #[serde(default)]
     pub(super) torrent_id: i64,
 }

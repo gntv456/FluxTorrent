@@ -7,19 +7,21 @@ import type { InviteItem } from "@/components/invite-manager";
 /** 邀请管理展示件（从 invite-manager.tsx 按域拆出）：
  *  邀请码列表表格 + 发送邀请邮件弹层（数据装载与动作留在原文件）。 */
 
-/** 邀请码列表：复制 / 状态角标 / 发送到邮箱 / 重发 / 过期展示 */
+/** 邀请码列表：复制 / 状态角标 / 发送到邮箱 / 重发 / 撤销 / 过期展示 */
 export function InviteList({
   invites,
   copiedId,
   busyId,
   onCopy,
   onSend,
+  onRevoke,
 }: {
   invites: InviteItem[];
   copiedId: number | null;
   busyId: number | null;
   onCopy: (inv: InviteItem) => void;
   onSend: (inv: InviteItem) => void;
+  onRevoke: (inv: InviteItem) => void;
 }) {
   const { dict, locale } = useI18n();
   const t = dict.invites;
@@ -67,7 +69,9 @@ export function InviteList({
                     ? t.unused
                     : i.status === 1
                       ? t.used
-                      : t.expired}
+                      : i.status === 3
+                        ? t.revokedTag
+                        : t.expired}
                 </span>
                 {i.status === 1 && i.used_by && (
                   <span className="ml-1 text-xs text-sub">→ {i.used_by}</span>
@@ -95,6 +99,14 @@ export function InviteList({
                       onClick={() => onSend(i)}
                     >
                       {i.emailed ? t.resend : t.sendEmail}
+                    </button>
+                    <button
+                      type="button"
+                      className="cmgmt-act cmgmt-act--danger"
+                      disabled={busyId === i.id}
+                      onClick={() => onRevoke(i)}
+                    >
+                      {t.revoke}
                     </button>
                   </div>
                 )}

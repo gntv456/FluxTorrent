@@ -422,3 +422,19 @@ pub async fn register_fields_endpoint(
 ) -> DomainResult<HttpResponse> {
     Ok(ok(register_fields(&state.repo.db).await))
 }
+
+/// GET /register-mode：注册模式公开下发（0204）——open 模式下前端
+/// 不再强制邀请码（与后端 registration_mode 判定同步）。
+#[get("/register-mode")]
+pub async fn register_mode_endpoint(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let mode: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'registration_mode'), 'invite_only')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_else(|_| "invite_only".into());
+    Ok(ok(serde_json::json!({ "mode": mode })))
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { PANEL_MD_FLAT } from "@/lib/ui-classes";
+import { formatBytes as fmtBytes } from "@/lib/format";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
@@ -10,11 +11,30 @@ import { InviteList, SendEmailDialog } from "@/components/invite-manager-parts";
 export interface InviteItem {
   id: number;
   code: string;
-  status: number; // 0 未用 1 已用 2 已过期（后端按 expires_at 折算）
+  status: number; // 0 未用 1 已用 2 已过期 3 已撤销（后端按 expires_at 折算）
   used_by: string | null;
   expires_at: string;
   email?: string | null;
   emailed?: boolean | null;
+}
+
+/** GET /invites 响应（0204 分页信封） */
+interface InvitesEnvelope {
+  items: InviteItem[];
+  total: number;
+  page: number;
+  per: number;
+}
+
+/** GET /invites/invitees：被邀请人（0204 P0，NP invitee 口径） */
+interface Invitee {
+  id: number;
+  username: string;
+  status: number;
+  class_name: string | null;
+  uploaded: number;
+  downloaded: number;
+  created_at: string;
 }
 
 /** GET /invites/status：配额 + 兑换价 + 计数（用于禁用态与顶部概览） */
@@ -41,6 +61,9 @@ export function InviteManager() {
   const inviteIdemRef = useRef<string | null>(null);
   const [status, setStatus] = useState<InviteStatus | null>(null);
   const [invites, setInvites] = useState<InviteItem[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [invitees, setInvitees] = useState<Invitee[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,14 +83,18 @@ export function InviteManager() {
     setTimeout(() => setErr(null), 5000);
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (p = 1) => {
     try {
-      const [st, list] = await Promise.all([
+      const [st, list, invs] = await Promise.all([
         api.get<InviteStatus>("/api/v1/invites/status"),
-        api.get<InviteItem[]>("/api/v1/invites"),
+        api.get<InvitesEnvelope>(`/api/v1/invites?page=${p}`),
+        api.get<Invitee[]>("/api/v1/invites/invitees").catch(() => []),
       ]);
       setStatus(st);
-      setInvites(list);
+      setInvites(list.items);
+      setTotal(list.total);
+      setPage(list.page);
+      setInvitees(invs);
     } catch {
       setStatus(null);
       setInvites([]);
@@ -114,6 +141,21 @@ export function InviteManager() {
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
       flashErr(inv.code);
+    }
+  }
+
+  /** 撤销未用邀请码（0204 P0）：status 0→3；不返还配额 */
+  async function revoke(inv: InviteItem) {
+    if (!window.confirm(t.confirmRevoke)) return;
+    setBusyId(inv.id);
+    try {
+      await api.del(`/api/v1/invites/${inv.id}`);
+      flash(t.revoked);
+      await refresh(page);
+    } catch (e) {
+      flashErr(e instanceof ApiError ? e.message : dict.common.networkError);
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -240,7 +282,81 @@ export function InviteManager() {
             setSendFor(inv);
             setSendEmail(inv.email ?? "");
           }}
+          onRevoke={(inv) => void revoke(inv)}
         />
+      )}
+      {/* 分页（0204：50/页） */}
+      {total > 50 && (
+        <div className="flex items-center justify-center gap-3 text-sm">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => void refresh(page - 1)}
+            className="min-h-[36px] rounded-full border border-line px-4 disabled:opacity-40"
+          >
+            {t.prevPage}
+          </button>
+          <span className="num text-sub">
+            {page} / {Math.ceil(total / 50)}
+          </span>
+          <button
+            type="button"
+            disabled={page >= Math.ceil(total / 50)}
+            onClick={() => void refresh(page + 1)}
+            className="min-h-[36px] rounded-full border border-line px-4 disabled:opacity-40"
+          >
+            {t.nextPage}
+          </button>
+        </div>
+      )}
+
+      {/* 被邀请人列表（0204 P0，NP invitee 口径） */}
+      {invitees !== null && invitees.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-base font-bold">{t.inviteesTitle}</h2>
+          <div className="baozi-wide-table-scroll">
+            <table className="nexus-table">
+              <tbody>
+                <tr>
+                  <td className="colhead">{t.invUser}</td>
+                  <td className="colhead">{t.invLevel}</td>
+                  <td className="colhead">{t.invUploaded}</td>
+                  <td className="colhead">{t.invDownloaded}</td>
+                  <td className="colhead">{t.invJoined}</td>
+                </tr>
+                {invitees.map((u) => (
+                  <tr key={u.id}>
+                    <td>
+                      <a
+                        href={`/users/${u.id}`}
+                        className="text-sky-deep hover:underline"
+                      >
+                        {u.username}
+                      </a>
+                      {u.status >= 2 && (
+                        <span className="ml-2 sticker bg-cloud text-sub">
+                          {t.invBanned}
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-xs text-sub">
+                      {u.class_name ?? "—"}
+                    </td>
+                    <td className="num text-xs">
+                      {fmtBytes(u.uploaded)}
+                    </td>
+                    <td className="num text-xs">
+                      {fmtBytes(u.downloaded)}
+                    </td>
+                    <td className="num text-xs text-sub">
+                      {new Date(u.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
       {/* 发送邀请邮件弹层 */}
