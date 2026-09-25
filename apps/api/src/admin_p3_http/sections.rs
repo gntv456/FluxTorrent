@@ -41,14 +41,20 @@ async fn section_modes_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let rows: Vec<SectionModeRow> = sqlx::query_as(
-        r#"SELECT m.id, m.name, m.show_source, m.show_medium, m.show_codec, m.show_audio_codec,
+        r#"SELECT m.id, m.name, m.show_source, m.show_medium,
+                  m.show_codec, m.show_audio_codec,
                   m.show_standard, m.show_processing, m.show_team,
-                  (SELECT count(*) FROM categories c WHERE c.mode_id = m.id)::bigint AS categories,
-                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind), '[]'::json)
-                     FROM mode_kinds mk WHERE mk.mode_id = m.id AND mk.visible)
+                  (SELECT count(*) FROM categories c
+                    WHERE c.mode_id = m.id)::bigint AS categories,
+                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind),
+                                   '[]'::json)
+                     FROM mode_kinds mk
+                    WHERE mk.mode_id = m.id AND mk.visible)
                       AS visible_kinds,
-                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind), '[]'::json)
-                     FROM mode_kinds mk WHERE mk.mode_id = m.id AND NOT mk.visible)
+                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind),
+                                   '[]'::json)
+                     FROM mode_kinds mk
+                    WHERE mk.mode_id = m.id AND NOT mk.visible)
                       AS hidden_kinds
            FROM category_modes m ORDER BY m.id"#,
     )
@@ -100,8 +106,12 @@ async fn section_mode_add(
         return Err(DomainError::Validation("模式名不能为空".into()));
     }
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO category_modes (name, show_source, show_medium, show_codec, show_audio_codec, show_standard, show_processing, show_team) \
-         VALUES ($1, COALESCE($2, TRUE), COALESCE($3, TRUE), COALESCE($4, TRUE), COALESCE($5, TRUE), COALESCE($6, TRUE), COALESCE($7, TRUE), COALESCE($8, TRUE)) RETURNING id",
+        "INSERT INTO category_modes \
+           (name, show_source, show_medium, show_codec, show_audio_codec, \
+            show_standard, show_processing, show_team) \
+         VALUES ($1, COALESCE($2, TRUE), COALESCE($3, TRUE), \
+                 COALESCE($4, TRUE), COALESCE($5, TRUE), COALESCE($6, TRUE), \
+                 COALESCE($7, TRUE), COALESCE($8, TRUE)) RETURNING id",
     )
     .bind(body.name.trim())
     .bind(body.show_source)
@@ -137,10 +147,14 @@ async fn section_mode_update(
     .await?;
     let id = path.into_inner();
     let n = sqlx::query(
-        "UPDATE category_modes SET name = $2, show_source = COALESCE($3, show_source), \
-           show_medium = COALESCE($4, show_medium), show_codec = COALESCE($5, show_codec), \
-           show_audio_codec = COALESCE($6, show_audio_codec), show_standard = COALESCE($7, show_standard), \
-           show_processing = COALESCE($8, show_processing), show_team = COALESCE($9, show_team) WHERE id = $1",
+        "UPDATE category_modes SET name = $2, \
+           show_source = COALESCE($3, show_source), \
+           show_medium = COALESCE($4, show_medium), \
+           show_codec = COALESCE($5, show_codec), \
+           show_audio_codec = COALESCE($6, show_audio_codec), \
+           show_standard = COALESCE($7, show_standard), \
+           show_processing = COALESCE($8, show_processing), \
+           show_team = COALESCE($9, show_team) WHERE id = $1",
     )
     .bind(id)
     .bind(body.name.trim())

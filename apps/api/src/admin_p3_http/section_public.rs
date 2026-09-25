@@ -58,22 +58,37 @@ async fn section_dict_public(
         .flatten(),
         None => None,
     };
-    // 该模式下被显式关闭（visible=false）的维度集合；无 mode_id 时不过滤
-    let hidden: Vec<String> = match mode_id {
-        Some(mid) => sqlx::query_scalar(
-            "SELECT kind FROM mode_kinds WHERE mode_id = $1 AND NOT visible",
-        )
-        .bind(mid)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?,
-        None => Vec::new(),
+    // 该模式的维度可见性判定（0195）。两种形态必须区分开，否则「只勾一个维度」
+    // 的模式在前台仍是全开（B2 复验 T20 抓到的正是这个）：
+    //   · 该模式**有** mode_kinds 行 ⇒ 行集合即白名单（visibible=true 才可见）
+    //     —— 这是管理面板「可见维度」勾选框写出来的形态；
+    //   · 该模式**没有** mode_kinds 行 ⇒ 老数据/未配置，全部可见
+    //     （与旧实现 `_ => true` 行为一致，不制造突变）。
+    let (has_rows, visible): (bool, Vec<String>) = match mode_id {
+        Some(mid) => {
+            let vis: Vec<String> = sqlx::query_scalar(
+                "SELECT kind FROM mode_kinds WHERE mode_id = $1 AND visible",
+            )
+            .bind(mid)
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            let total: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM mode_kinds WHERE mode_id = $1",
+            )
+            .bind(mid)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            (total > 0, vis)
+        }
+        None => (false, Vec::new()),
     };
     let allows = |kind: &str| -> bool {
-        if mode_id.is_none() {
+        if mode_id.is_none() || !has_rows {
             return true;
         }
-        !hidden.iter().any(|h| h == kind)
+        visible.iter().any(|v| v == kind)
     };
     let mut out = serde_json::Map::new();
     // 维度清单来自 section_kinds（0085 可配置；0195 起带六类型），预置 9 维已种子化
@@ -117,13 +132,19 @@ async fn section_dict_public(
     );
     let modes: Vec<SectionModeRow> = sqlx::query_as(
         r#"SELECT m.id, m.name, m.show_source, m.show_medium, m.show_codec,
-                  m.show_audio_codec, m.show_standard, m.show_processing, m.show_team,
-                  (SELECT count(*) FROM categories c WHERE c.mode_id = m.id)::bigint AS categories,
-                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind), '[]'::json)
-                     FROM mode_kinds mk WHERE mk.mode_id = m.id AND mk.visible)
+                  m.show_audio_codec, m.show_standard, m.show_processing,
+                  m.show_team,
+                  (SELECT count(*) FROM categories c
+                    WHERE c.mode_id = m.id)::bigint AS categories,
+                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind),
+                                   '[]'::json)
+                     FROM mode_kinds mk
+                    WHERE mk.mode_id = m.id AND mk.visible)
                       AS visible_kinds,
-                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind), '[]'::json)
-                     FROM mode_kinds mk WHERE mk.mode_id = m.id AND NOT mk.visible)
+                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind),
+                                   '[]'::json)
+                     FROM mode_kinds mk
+                    WHERE mk.mode_id = m.id AND NOT mk.visible)
                       AS hidden_kinds
            FROM category_modes m ORDER BY m.id"#,
     )
