@@ -27,6 +27,8 @@ pub use interact::*;
 pub use list::*;
 pub use list_noclamp::*;
 pub use manage::*;
-pub(crate) use section_pred::sync_legacy_columns;
 pub use section_filter::SectionFilter;
+/// 多维筛选谓词（B3）：后台管理列表复用前台同一实现。
+pub(crate) use section_pred::section_where;
+pub(crate) use section_pred::sync_legacy_columns;
 pub use types::*;

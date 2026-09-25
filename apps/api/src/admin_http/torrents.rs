@@ -8,6 +8,23 @@ use crate::state::AppState;
 use super::guard::staff;
 use super::user_list::{default_page, default_per_page};
 
+/// 后台种子列表的多维筛选参数（B3 六类型全量，2026-09-25）。
+///
+/// 维度是站长自建的，字段名编译期未知 ⇒ 与前台列表同一套做法：扫原始 query
+/// string 取 `sec_{kind}` / `sec_{kind}_min` / `sec_{kind}_max`。
+/// 复用 `torrent_http::parse_section_params` 解析与
+/// `torrents::section_pred::section_where` 生成谓词——**同一实现，不复制**，
+/// 保证前后台筛选语义不漂移。
+///
+/// ⚠ 谓词是「可选 SQL 片段」不是绑定参数：列表与 count 必须用同一个字符串，
+/// 否则会出现「翻页看得到、总数对不上」（前台同款纪律）。
+async fn parse_admin_sections(
+    db: &sqlx::PgPool,
+    qs: &str,
+) -> Vec<crate::torrents::SectionFilter> {
+    crate::torrent_http::parse_section_params(db, qs).await
+}
+
 // ============ 第五轮：后台种子管理列表（参考站 torrent/torrents 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -100,8 +117,9 @@ async fn admin_torrent_list(
         Some("no") => Some(false),
         _ => None,
     };
-    let promo_exists = r#"(SELECT count(*) FROM promotions p WHERE \
-     p.starts_at <= now() AND p.ends_at > now() AND p.torrent_id = t.id) > 0"#;
+    let promo_exists = r#"(SELECT count(*) FROM promotions p
+     WHERE p.starts_at <= now() AND p.ends_at > now()
+       AND p.torrent_id = t.id) > 0"#;
     let where_sql = r#"(CASE WHEN $1 = 1 THEN t.approval_status = 0 WHEN $1 = 2 THEN t.approval_status = 1 WHEN $1 = 3 THEN t.approval_status = 2 WHEN $1 = 4 THEN t.approval_status = 1 AND t.seeders = 0 ELSE TRUE END)
            AND ($2::int IS NULL OR t.category_id = $2)
            AND ($3::bigint IS NULL OR t.owner_id = $3)
@@ -116,6 +134,12 @@ async fn admin_torrent_list(
            AND ($12::timestamptz IS NULL OR t.created_at <= $12)
            AND ($13::text IS NULL OR t.name ILIKE $13)"#;
     let where_sql = where_sql.replace("{promo_exists}", promo_exists);
+    // 多维筛选（B3 六类型）：`sec_{kind}` / `_min` / `_max`，解析见 sec_params.rs。
+    // 片段形如 ` AND (...)`，与前台同一实现；列表与 count 共用此变量。
+    let sections =
+        parse_admin_sections(&state.repo.db, req.query_string()).await;
+    let sec_sql =
+        crate::torrents::section_where(&state.repo.db, &sections).await;
     let sql = format!(
         r#"SELECT t.id, t.name, t.owner_id, u.username AS owner_name, t.category_id,
                   t.size, t.seeders, t.leechers, t.approval_status,
@@ -132,7 +156,7 @@ async fn admin_torrent_list(
            FROM torrents t
            LEFT JOIN users u ON u.id = t.owner_id
            LEFT JOIN torrent_deny_reasons dr ON dr.id = t.deny_reason_id
-           WHERE {where_sql}
+           WHERE {where_sql}{sec_sql}
            ORDER BY t.id DESC LIMIT $14 OFFSET $15"#
     );
     let rows: Vec<AdminTorrentRow> = sqlx::query_as(&sql)
@@ -159,7 +183,7 @@ async fn admin_torrent_list(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let count_sql =
-        format!("SELECT count(*) FROM torrents t WHERE {where_sql}");
+        format!("SELECT count(*) FROM torrents t WHERE {where_sql}{sec_sql}");
     let total: i64 = sqlx::query_scalar(&count_sql)
         .bind(q.status)
         .bind(q.category_id)

@@ -3552,6 +3552,11 @@ const zhCnBase = {
     tableEmpty: "没有匹配的种子",
     pageNum: "第 {n} 页",
     qRecord: "{title}：按用户名搜索",
+    // 多维筛选（admin-torrents-dims，B3 六类型）
+    dimTitle: "自定义维度",
+    dimClear: "清空",
+    dimBoolYes: "是",
+    dimBoolNo: "否",
   },
   /** 绩效考核管理（admin-jixiao） */
   adminJixiao: {
