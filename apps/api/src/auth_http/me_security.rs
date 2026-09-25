@@ -68,6 +68,10 @@ pub async fn me_password_change(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 改密必须同时失效 5s 状态缓存：must_reset_password 是这条缓存的字段之一，
+    // 不失效的话，用户改完密（尤其装机时 root 首次强制改密）最多 5 秒内仍被判
+    // 「账号正在使用临时密码」，向导下一步 POST /setup 直接吃 400。
+    state.user_status_cache.invalidate(auth.id);
     let _ = rotated;
     state
         .repo
