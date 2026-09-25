@@ -12,6 +12,8 @@ import { useI18n } from "@/i18n/client";
 
 interface RoleDef { key: string; name: string }
 interface BulkResult { affected: number; targets: number; kind: string; amount: number }
+interface MedalDef { id: number; name: string }
+interface ItemDef { id: number; name: string; kind: string }
 
 /** 货币名动态化：火花档标签跟随站点 currency_name（默认「魔力」） */
 function kindsOf(currency: string): [string, string, string][] {
@@ -20,6 +22,8 @@ function kindsOf(currency: string): [string, string, string][] {
     ["uploaded", "上传量 (GB)", "正加负减，单次 ±10TB"],
     ["invite", "邀请", "正数增发 / 负数回收配额，单次 ±50；可填临时邀请天数直发 N 天码"],
     ["resub_card", "补签卡", "入背包待用户使用，单次 1-50"],
+    ["medal", "勋章", "每人发 1 枚（source=admin，已拥有自动跳过）"],
+    ["item", "道具", "按道具类型生效：即时类直接到账，背包类入包；单次 1-50"],
   ];
 }
 
@@ -30,6 +34,10 @@ export function IncrementBulk() {
   const [kind, setKind] = useState("spark");
   const [amount, setAmount] = useState("100");
   const [days, setDays] = useState(""); // 临时邀请：N 天有效直发邀请码（kind=invite 时可选）
+  const [medalId, setMedalId] = useState(""); // kind=medal（0204）
+  const [itemId, setItemId] = useState(""); // kind=item（0204）
+  const [medals, setMedals] = useState<MedalDef[]>([]);
+  const [items, setItems] = useState<ItemDef[]>([]);
   const [classes, setClasses] = useState<Set<number>>(new Set());
   const [roles, setRoles] = useState<string[]>([]);
   const [roleDefs, setRoleDefs] = useState<RoleDef[]>([]);
@@ -44,6 +52,14 @@ export function IncrementBulk() {
 
   useEffect(() => {
     api.get<RoleDef[]>("/api/v1/admin/roles").then(setRoleDefs).catch(() => setRoleDefs([]));
+    // 勋章/道具下拉（0204）：懒加载字典——仅在选对应类型时才需要。
+    // /medals 已信封化（items + max_worn），双形状兼容
+    api.get<MedalDef[] | { items: MedalDef[] }>("/api/v1/medals")
+      .then((r) =>
+        setMedals(Array.isArray(r) ? r : ((r as { items?: MedalDef[] }).items ?? [])),
+      )
+      .catch(() => setMedals([]));
+    api.get<ItemDef[]>("/api/v1/shop/items").then(setItems).catch(() => setItems([]));
   }, []);
 
   const kindHint = KINDS.find(([k]) => k === kind)?.[2] ?? "";
@@ -60,6 +76,8 @@ export function IncrementBulk() {
         user_ids: userIds.split(/[,，\s]+/).map(Number).filter((n) => n > 0),
       };
       if (days.trim()) payload.days = Number(days);
+      if (kind === "medal" && medalId) payload.medal_id = Number(medalId);
+      if (kind === "item" && itemId) payload.item_id = Number(itemId);
       if (subject.trim()) payload.subject = subject.trim();
       if (body.trim()) payload.body = body.trim();
       payload.sender = sender;
@@ -118,6 +136,34 @@ export function IncrementBulk() {
                   <span className="ml-2 text-xs text-sub">
                     填有效期天数（1-365）＝原「临时邀请」逻辑：直接生成 N 天到期的邀请码；留空则按普通邀请加/回收配额
                   </span>
+                </td>
+              </tr>
+            )}
+            {kind === "medal" && (
+              <tr>
+                <td className="rowhead">勋章</td>
+                <td className="rowfollow">
+                  <select value={medalId} onChange={(e) => setMedalId(e.target.value)} className={`${inp} w-64`}>
+                    <option value="">— 选择勋章 —</option>
+                    {medals.map((m) => (
+                      <option key={m.id} value={m.id}>#{m.id} {m.name}</option>
+                    ))}
+                  </select>
+                  <span className="ml-2 text-xs text-sub">数量固定 1（重复发放自动跳过已拥有者）</span>
+                </td>
+              </tr>
+            )}
+            {kind === "item" && (
+              <tr>
+                <td className="rowhead">道具</td>
+                <td className="rowfollow">
+                  <select value={itemId} onChange={(e) => setItemId(e.target.value)} className={`${inp} w-64`}>
+                    <option value="">— 选择道具 —</option>
+                    {items.map((it) => (
+                      <option key={it.id} value={it.id}>#{it.id} {it.name}</option>
+                    ))}
+                  </select>
+                  <span className="ml-2 text-xs text-sub">数量＝每人张数（1-50）</span>
                 </td>
               </tr>
             )}
@@ -196,7 +242,10 @@ export function IncrementBulk() {
               <td className="rowfollow" colSpan={2}>
                 <div className="flex flex-wrap items-center gap-3">
                   <button
-                    disabled={busy || !amount || Number(amount) === 0 || (classes.size === 0 && roles.length === 0 && !userIds.trim())}
+                    disabled={busy || !amount || Number(amount) === 0
+                      || (kind === "medal" && !medalId)
+                      || (kind === "item" && !itemId)
+                      || (classes.size === 0 && roles.length === 0 && !userIds.trim())}
                     onClick={run}
                     className="min-h-[38px] rounded-full bg-sky px-6 text-sm font-bold text-white disabled:opacity-50"
                   >
