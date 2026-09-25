@@ -178,6 +178,8 @@ export interface TorrentListItem {
   created_at: string;
   /** 行内标签徽标（0159 P1）：随行 json_agg，按字典 sort DESC, id 排序；旧数据缺省 */
   tags?: TagBadge[];
+  /** 维度名列表（R3-三步）：行副题「学段 · 媒介 · 版本」由 sections 单源下发 */
+  sec_names?: string[];
 }
 
 /** 列表行标签徽标（0159 P1：种子行回显——筛选与展示不再断裂） */
@@ -606,6 +608,8 @@ export interface PreserveItem {
   created_at: string;
   /** 行内标签徽标（0159 P1）：保种区行同构复用；该接口暂不返回 → 恒空 */
   tags?: TagBadge[];
+  /** 维度名列表（R3-三步）：保种区接口暂不返回 → 恒空数组 */
+  sec_names?: string[];
 }
 
 export interface PreserveStats {

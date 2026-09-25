@@ -8,7 +8,6 @@ import {
   catColor,
   dictName,
   getTorrentDicts,
-  legacyDimName,
 } from "@/lib/site-profile";
 import { dateLocale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
@@ -91,8 +90,6 @@ async function TorrentTr({
   const promo = promotionBadge(
     (t.promotion as TorrentListItem["promotion"]) ?? null,
   );
-  const edition = legacyDimName(dicts.editions, t.edition_id);
-  const grade = legacyDimName(dicts.grades, t.grade_id);
   const now = Date.now();
   const age = now - new Date(t.created_at).getTime();
   const ageDays = Math.floor(age / 86400000);
@@ -214,12 +211,12 @@ async function TorrentTr({
           {left && <span className="torrents-left">剩余 {left}</span>}
         </div>
         {/* 副题链：学段 · 媒介 · 版本 · 小备注 */}
-        {(grade || edition || subtitle) && (
+        {((t.sec_names?.length ?? 0) > 0 || subtitle) && (
           <div className="torrents-subtitle" title={subtitle}>
-            {grade}
-            {grade && edition ? " · " : ""}
-            {edition}
-            {subtitle ? `${grade || edition ? " · " : ""}${subtitle}` : ""}
+            {(t.sec_names ?? []).slice(0, 3).join(" · ")}
+            {subtitle
+              ? `${(t.sec_names?.length ?? 0) > 0 ? " · " : ""}${subtitle}`
+              : ""}
           </div>
         )}
         {/* 第三行：标签在前、发布者在后（好学站标签色块 + 上传者口径） */}

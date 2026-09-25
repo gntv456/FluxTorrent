@@ -193,6 +193,12 @@ pub async fn list_torrents_noclamp_as(
                     ORDER BY d.sort DESC, d.id), '[]'::json)
                 FROM tags tg JOIN tag_dict d ON d.id = tg.tag_id
                 WHERE tg.torrent_id = t.id) AS tags,
+               (SELECT COALESCE(json_agg(x.name ORDER BY k.sort, k.kind),
+                        '[]'::json)
+                FROM torrent_sections ts
+                JOIN section_dict x ON x.id = ts.dict_id
+                JOIN section_kinds k ON k.kind = ts.kind
+                WHERE ts.torrent_id = t.id) AS sec_names,
                {sticky_calc} AS sticky_rank
         FROM torrents t
         LEFT JOIN users u ON u.id = t.owner_id

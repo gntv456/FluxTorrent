@@ -111,9 +111,6 @@ export default async function TorrentDetailPage({
     name: c.name,
   }));
   const td = profile?.torrent_dicts ?? {};
-  const mediaOpts = td.media ?? [];
-  const gradeOpts = td.grades ?? [];
-  const editionOpts = td.editions ?? [];
   const editKinds = secDictAll?.kinds ?? [];
   const editDict: Record<string, { id: number; name: string }[]> = {};
   for (const k of editKinds) editDict[k.kind] = secDictAll?.[k.kind] ?? [];
@@ -122,18 +119,12 @@ export default async function TorrentDetailPage({
     Object.entries(ext?.sections ?? {}).map(([k, v]) => [k, v.dict_id]),
   );
   const d = dict.tdetail;
-  const edition = legacyDimName(editionOpts, t.edition_id);
-  const grade = legacyDimName(gradeOpts, t.grade_id);
-  // 0087：介质列可空（新数据在 sections），老数据仍按实体表 id 翻译
-  const medium =
-    t.medium_id !== null ? dictName(byId(mediaOpts), t.medium_id) : undefined;
   const category = dictName(byId(editCats), t.category_id);
-  // 动态属性（0085/0087）：sections 带维度显示名与排序，直接铺进规格网格
+  // 动态属性（0085/0087）：sections 带维度显示名与排序，直接铺进规格网格。
+  // R3-三步：旧三列翻译移除——0185 已迁数据，sections 是唯一展示源。
   const secEntries = Object.entries(ext?.sections ?? {})
     .map(([kind, v]) => ({ kind, ...v }))
-    .filter((v) => v.name && !(v.kind === "media" && medium));
-  const sectionOf = (kind: string) =>
-    secEntries.find((v) => v.kind === kind)?.name;
+    .filter((v) => v.name);
   // 促销剩余时间（好学站「x天x时」口径）
   const left = t.promotion_ends_at
     ? (() => {
@@ -144,8 +135,11 @@ export default async function TorrentDetailPage({
         return `${dd}${d?.dayUnit}${hh}${d?.hourUnit}`;
       })()
     : null;
-  // 副题链（与资源库列表同口径：学段 · 媒介 · 版本）
-  const subtitleChain = [grade, medium, edition].filter(Boolean).join(" · ");
+  // 副题链（R3-三步）：sections 单源——取前三维度的名称拼接（与列表同口径）
+  const subtitleChain = secEntries
+    .slice(0, 3)
+    .map((v) => v.name)
+    .join(" · ");
   // 相对时间（馒头口径：发布于 x 天前；完整时间放 title）
   const relTime = (iso: string) => {
     const ms = Date.now() - new Date(iso).getTime();
@@ -222,30 +216,12 @@ export default async function TorrentDetailPage({
         <Spec value={formatBytes(t.size)} label={dict.torrent.size} num />
         <Spec value={ext?.numfiles ?? "—"} label={dict.torrent.numFiles} num />
         <Spec value={category} label={dict.torrent.category} />
-        {/* 介质/学段/版本：老数据走列翻译，新数据（列可空）走 sections（0087） */}
-        {(medium || sectionOf("media")) && (
-          <Spec
-            value={medium ?? sectionOf("media")}
-            label={dict.torrent.medium}
-          />
-        )}
-        {(grade || sectionOf("grades")) && (
-          <Spec
-            value={grade || sectionOf("grades")}
-            label={dict.torrent.grade}
-          />
-        )}
-        {(edition || sectionOf("editions")) && (
-          <Spec
-            value={edition || sectionOf("editions")}
-            label={dict.torrent.edition}
-          />
-        )}
-        {secEntries
-          .filter((v) => !["media", "grades", "editions"].includes(v.kind))
-          .map((v) => (
-            <Spec key={v.kind} value={v.name} label={v.label} />
-          ))}
+        {/* 规格网格单源化（R3-三步）：全部维度走 sections（0185 已把旧列
+            存量值迁入；维度 label 由 section_kinds 下发，教育站的学段/版本
+            以维度形式继续工作） */}
+        {secEntries.map((v) => (
+          <Spec key={v.kind} value={v.name} label={v.label} />
+        ))}
         {t.rating && <Spec value={t.rating} label={d?.ratingLabel} num />}
       </section>
 

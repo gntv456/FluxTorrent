@@ -43,6 +43,10 @@ pub struct TorrentRow {
     /// 按 sort DESC, id 排序；其它查询不选该列 → sqlx(default) 落空数组
     #[sqlx(default)]
     pub tags: serde_json::Value,
+    /// 维度名列表（R3-三步：行副题「学段 · 媒介 · 版本」改由 sections 单源
+    /// 下发——COALESCE 旧列兜底 0185 未迁全的边角；其它查询不选该列落空数组）
+    #[sqlx(default)]
+    pub sec_names: serde_json::Value,
 }
 
 /// 列表游标（方案批次二）：id 之外携带排序键值，修复「非默认排序翻页丢行」。
@@ -110,6 +114,11 @@ pub struct TorrentDetailRow {
     pub sections: serde_json::Value,
     /// MediaInfo 全文（media_info.mediainfo；详情页折叠块原样展示）
     pub mediainfo: Option<String>,
+    /// 推荐位回显（0184 编辑对齐发布页）：置顶位置/截止/推荐影片，
+    /// 供编辑表单初始化；普通用户拿到也无提交权限（后端 class>=90 强校验）
+    pub pos_state: i16,
+    pub pos_state_until: Option<chrono::DateTime<chrono::Utc>>,
+    pub pick_type: i16,
 }
 
 /// 详情页文件列表（files 表；无记录时前端隐藏该区块）
