@@ -5,7 +5,6 @@ import { getDict } from "@/i18n/server";
 import {
   catColor,
   getTorrentDicts,
-  legacyDimName,
 } from "@/lib/site-profile";
 import { Icon } from "@/components/icons";
 import { dateLocale } from "@/i18n/config";
@@ -18,8 +17,6 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
   const { dict, locale } = await getDict();
   const dicts = await getTorrentDicts();
   const promo = promotionBadge(t.promotion);
-  const edition = legacyDimName(dicts.editions, t.edition_id);
-  const grade = legacyDimName(dicts.grades, t.grade_id);
   return (
     <Link
       href={`/torrent/${t.id}`}
@@ -54,12 +51,12 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
         {t.small_descr && (
           <p className="mt-0.5 truncate text-xs text-sub">{t.small_descr}</p>
         )}
-        {/* 教育元数据（媒介 · 学段 · 版本） */}
-        {(grade || edition) && (
+        {/* 维度链（R3-三步）：sections 单源——站型任意维度名拼接 */}
+        {(t.sec_names?.length ?? 0) > 0 && (
           <p className="mt-0.5 flex flex-wrap gap-1.5 text-[11px] text-sub">
-            {grade && <span>{grade}</span>}
-            {grade && edition && <span aria-hidden>·</span>}
-            {edition && <span>{edition}</span>}
+            {(t.sec_names ?? []).slice(0, 3).map((n, i) => (
+              <span key={i}>{n}</span>
+            ))}
           </p>
         )}
         <p className="mt-0.5 text-[11px] text-sub">
