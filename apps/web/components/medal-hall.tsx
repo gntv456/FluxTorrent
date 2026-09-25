@@ -29,9 +29,15 @@ function rankOf(list: MedalRarity[], v?: string | null): number {
 export function MedalHall({
   medals,
   rarities,
+  maxWorn,
+  globalGiftTaxBp,
 }: {
   medals: Medal[];
   rarities: MedalRarity[];
+  /** 佩戴上限（0204；站点设置下发） */
+  maxWorn?: number;
+  /** 全站赠送税率（基点；仅用于赠送按钮费率提示） */
+  globalGiftTaxBp?: number;
 }) {
   const { dict, locale, currency } = useI18n();
   const t = dict.medals;
@@ -39,6 +45,10 @@ export function MedalHall({
   const [cat, setCat] = useState<number | null>(null);
   const [only, setOnly] = useState("all");
   const [sort, setSort] = useState("rarity");
+  // 0204 多佩戴：佩戴计数本地维护（wear 回调触发重算，免整页拉取）
+  const [wornCount, setWornCount] = useState(
+    () => medals.filter((m) => m.wearing).length,
+  );
 
   const cats = useMemo(() => {
     const m = new Map<number, string>();
@@ -143,6 +153,11 @@ export function MedalHall({
           <option value="price">{t.sortPrice}</option>
           <option value="bonus">{t.sortBonus}</option>
         </select>
+        {maxWorn != null && (
+          <span className="text-xs text-sub whitespace-nowrap">
+            {fmt(t.wornCount, { n: wornCount, max: maxWorn })}
+          </span>
+        )}
       </div>
 
       {list.length === 0 && (
@@ -252,6 +267,14 @@ export function MedalHall({
                 wearing={m.wearing}
                 price={m.price}
                 getType={m.get_type}
+                giftFeeBp={m.gift_fee_bp ?? null}
+                globalGiftTaxBp={globalGiftTaxBp}
+                onWearChange={() =>
+                  setWornCount(
+                    medals.filter((x) => x.wearing).length +
+                      (m.wearing ? -1 : 1),
+                  )
+                }
               />
             </div>
           </article>

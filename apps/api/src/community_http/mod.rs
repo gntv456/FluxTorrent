@@ -14,7 +14,7 @@ mod interact;
 mod leak_bot;
 mod like;
 mod lottery;
-mod medal;
+pub mod medal;
 mod medal_buy;
 mod medal_gift;
 mod message;

@@ -15,6 +15,8 @@ export interface MedalRow {
   bonus_addition_factor: number | null;
   category_id: number;
   asset_ref: string | null;
+  /** per-勋章赠送手续费（基点；null = 回退全站 gift_tax_bp，0204） */
+  gift_fee_bp: number | null;
   held_count: number;
 }
 

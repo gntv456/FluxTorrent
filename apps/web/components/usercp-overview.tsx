@@ -153,7 +153,7 @@ function ProfileCard({
       <div>
         <h2>
           {ov.username}
-          {(ov.worn_medals ?? []).slice(0, 3).map((m) => (
+          {(ov.worn_medals ?? []).slice(0, 5).map((m) => (
             <span
               key={m.name}
               className="medal-chip ml-1 align-middle"

@@ -99,11 +99,18 @@ export async function getShopItems(): Promise<ShopItem[]> {
   }
 }
 
-export async function getMedals(): Promise<Medal[]> {
+/** GET /medals 响应（0204 信封化：items + max_worn） */
+export interface MedalsEnvelope {
+  items: Medal[];
+  /** 站点设置的佩戴上限（site_settings.medals_max_worn） */
+  max_worn: number;
+}
+
+export async function getMedals(): Promise<MedalsEnvelope> {
   try {
-    return await api.get<Medal[]>("/api/v1/medals");
+    return await api.get<MedalsEnvelope>("/api/v1/medals");
   } catch {
-    return [];
+    return { items: [], max_worn: 3 };
   }
 }
 

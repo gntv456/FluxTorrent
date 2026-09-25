@@ -157,6 +157,25 @@ export function MedalForm(props: {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
+          {at.fGiftFee}
+          <input
+            type="number"
+            value={edit.f.gift_fee_bp ?? ""}
+            onChange={(e) =>
+              setEdit({
+                ...edit,
+                f: {
+                  ...edit.f,
+                  gift_fee_bp: e.target.value ? Number(e.target.value) : null,
+                },
+              })
+            }
+            placeholder={at.phGiftFee}
+            title={at.hintGiftFee}
+            className={`${inp} w-24`}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
           {at.fDuration}
           <input
             type="number"

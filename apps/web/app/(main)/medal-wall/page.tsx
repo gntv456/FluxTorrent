@@ -14,7 +14,7 @@ export default async function MedalWallPage() {
 
   const { dict } = await getDict();
   // 稀有度词表（0143）：角标配色/标签/筛选档位都由它驱动
-  const [rarities, medals] = await Promise.all([
+  const [rarities, { items: medals }] = await Promise.all([
     getMedalRarities(),
     getMedals(),
   ]);

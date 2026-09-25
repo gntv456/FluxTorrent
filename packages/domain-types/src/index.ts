@@ -288,6 +288,14 @@ export interface ShopItem {
   name: string;
   kind: string;
   price: number;
+  /** 0207：stackable=可叠加数量；frame_id=头像框 SKU 绑定的框；effect=动态头像款式 */
+  config?: {
+    stackable?: boolean;
+    frame_id?: number;
+    effect?: string;
+    slot?: string;
+    [k: string]: unknown;
+  };
 }
 
 export interface Medal {
@@ -309,6 +317,8 @@ export interface Medal {
   category_name: string | null;
   /** 勋章图片 URL（medals.asset_ref）；空则展示位回落 🏅 */
   asset_ref: string | null;
+  /** per-勋章赠送手续费（基点；null = 回退全站 gift_tax_bp，0204） */
+  gift_fee_bp?: number | null;
 }
 
 export interface Forum {

@@ -71,13 +71,17 @@ pub async fn me(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (avatar_url, frame_id, frame_css, frame_image) =
         deco.unwrap_or((None, None, None, None));
-    // 佩戴勋章（与个人主页 worn_medals 同口径，userbar 用户名后角标，最多 3 枚）
+    // 佩戴勋章（与个人主页 worn_medals 同口径，userbar 用户名后角标；
+    // 上限 0204 起跟随 site_settings.medals_max_worn，缺省 3）
+    let max_worn =
+        crate::community_http::medal::medals_max_worn(&state.repo.db).await;
     let worn_medals: Vec<(String, Option<String>)> = sqlx::query_as(
         "SELECT m.name, m.asset_ref FROM user_medals um JOIN medals m ON m.id = um.medal_id \
          WHERE um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()) \
-         ORDER BY m.id LIMIT 3",
+         ORDER BY m.id LIMIT $2",
     )
     .bind(auth.id)
+    .bind(max_worn)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

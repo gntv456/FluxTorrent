@@ -25,6 +25,8 @@ struct MedalAdminRow {
     bonus_addition_factor: Option<f64>,
     category_id: i32,
     asset_ref: Option<String>,
+    /// per-勋章赠送手续费（基点；NULL = 回退全站，0204）
+    gift_fee_bp: Option<i32>,
     held_count: i64,
 }
 
@@ -36,7 +38,7 @@ async fn admin_medals(
     let _auth = staff(&req, &state).await?;
     let rows: Vec<MedalAdminRow> = sqlx::query_as(
         r#"SELECT m.id, m.name, m.description, m.price, m.rarity, m.limited, m.get_type,
-                  m.duration_days, m.bonus_addition_factor::float8, m.category_id, m.asset_ref,
+                  m.duration_days, m.bonus_addition_factor::float8, m.category_id, m.asset_ref, m.gift_fee_bp,
                   (SELECT count(*) FROM user_medals um WHERE um.medal_id = m.id)::bigint AS held_count
            FROM medals m ORDER BY m.category_id, m.id"#,
     )
@@ -67,6 +69,9 @@ struct MedalReq {
     category_id: Option<i32>,
     #[serde(default)]
     asset_ref: Option<String>,
+    /// per-勋章赠送手续费（基点 0-10000；空 = 回退全站 gift_tax_bp，0204）
+    #[serde(default)]
+    gift_fee_bp: Option<i32>,
 }
 
 #[post("/admin/medals")]
@@ -99,9 +104,17 @@ async fn admin_medal_add(
             ));
         }
     }
+    // 0204：赠送手续费基点，0-10000（0 = 免税，空 = 回退全站）
+    if let Some(bp) = body.gift_fee_bp {
+        if !(0..=10000).contains(&bp) {
+            return Err(DomainError::Validation(
+                "赠送手续费需在 0-10000 基点之间".into(),
+            ));
+        }
+    }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO medals (name, description, price, rarity, limited, get_type, duration_days, bonus_addition_factor, category_id, asset_ref) \
-         VALUES ($1, $2, $3, $4, COALESCE($5, FALSE), COALESCE($6, 2), $7, $8::numeric, COALESCE($9, 0), $10) RETURNING id",
+        "INSERT INTO medals (name, description, price, rarity, limited, get_type, duration_days, bonus_addition_factor, category_id, asset_ref, gift_fee_bp) \
+         VALUES ($1, $2, $3, $4, COALESCE($5, FALSE), COALESCE($6, 2), $7, $8::numeric, COALESCE($9, 0), $10, $11) RETURNING id",
     )
     .bind(body.name.trim())
     .bind(body.description.clone())
@@ -113,6 +126,7 @@ async fn admin_medal_add(
     .bind(body.bonus_addition_factor)
     .bind(body.category_id)
     .bind(body.asset_ref.clone())
+    .bind(body.gift_fee_bp)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -134,7 +148,7 @@ async fn admin_medal_update(
     let n = sqlx::query(
         "UPDATE medals SET name = $2, description = $3, price = $4, rarity = $5, limited = COALESCE($6, limited), \
            get_type = COALESCE($7, get_type), duration_days = $8, bonus_addition_factor = COALESCE($9::numeric, bonus_addition_factor), \
-           category_id = COALESCE($10, category_id), asset_ref = $11 WHERE id = $1",
+           category_id = COALESCE($10, category_id), asset_ref = $11, gift_fee_bp = $12 WHERE id = $1",
     )
     .bind(id)
     .bind(body.name.trim())
@@ -147,6 +161,7 @@ async fn admin_medal_update(
     .bind(body.bonus_addition_factor)
     .bind(body.category_id)
     .bind(body.asset_ref.clone())
+    .bind(body.gift_fee_bp)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
