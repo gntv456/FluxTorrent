@@ -40,6 +40,12 @@ pub(super) struct IncrementBulkReq {
     /// 发送者：self = 操作者，system = 系统私信（sender NULL）
     #[serde(default)]
     pub(super) sender: Option<String>,
+    /// kind=medal：勋章 id（0204）
+    #[serde(default)]
+    pub(super) medal_id: Option<i64>,
+    /// kind=item：道具 id（0204）
+    #[serde(default)]
+    pub(super) item_id: Option<i64>,
 }
 
 #[post("/admin/increment-bulk")]
@@ -206,6 +212,132 @@ async fn increment_bulk(
                         .await
                         .map_err(|e| DomainError::Internal(e.into()))?;
                         affected += 1;
+                    }
+                }
+            }
+            // 0204：勋章批量发放——与单发（user_grant_medal）同语义：
+            // source='admin'、有效期随 medals.duration_days、PK 冲突跳过（天然幂等）。
+            // 等级护栏：跳过不低于操作者的目标（对齐 users_batch 逐人跳过口径）。
+            "medal" => {
+                let medal_id = body.medal_id.ok_or_else(|| {
+                    DomainError::Validation("需选择勋章".into())
+                })?;
+                for uid in chunk {
+                    let skipped: bool = sqlx::query_scalar(
+                        "SELECT class_id >= $2 FROM users WHERE id = $1",
+                    )
+                    .bind(uid)
+                    .bind(auth.class_id)
+                    .fetch_one(db)
+                    .await
+                    .unwrap_or(true);
+                    if skipped {
+                        continue;
+                    }
+                    let n = sqlx::query(
+                        "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
+                         SELECT $1, $2, 'admin', now() + make_interval(days => m.duration_days) \
+                         FROM medals m WHERE m.id = $2 \
+                         ON CONFLICT (user_id, medal_id) DO NOTHING",
+                    )
+                    .bind(uid)
+                    .bind(medal_id)
+                    .execute(db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?
+                    .rows_affected();
+                    affected += n;
+                }
+            }
+            // 0204：道具批量发放——按 grant-item 的 kind 分流：
+            // 即时类（upload_credit/gift_spark/invite/temp_invite）直接生效；
+            // 背包类逐人逐张 0 价单入 shop_orders（独立幂等键，UNIQUE 约束防重）。
+            "item" => {
+                let item_id = body.item_id.ok_or_else(|| {
+                    DomainError::Validation("需选择道具".into())
+                })?;
+                let item: Option<(String, serde_json::Value)> =
+                    sqlx::query_as(
+                        "SELECT kind, config FROM shop_items WHERE id = $1 AND active = true",
+                    )
+                    .bind(item_id)
+                    .fetch_optional(db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
+                let Some((kind, config)) = item else {
+                    return Err(DomainError::NotFound(item_id));
+                };
+                match kind.as_str() {
+                    "invite" | "temp_invite" => {
+                        affected += sqlx::query(
+                            "UPDATE users SET quota_extra = quota_extra + $2 WHERE id = ANY($1) AND status < 2",
+                        )
+                        .bind(chunk)
+                        .bind(body.amount)
+                        .execute(db)
+                        .await
+                        .map_err(|e| DomainError::Internal(e.into()))?
+                        .rows_affected();
+                    }
+                    "upload_credit" => {
+                        let gb = config
+                            .get("gb")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(1)
+                            * body.amount;
+                        affected += sqlx::query(
+                            "UPDATE users SET uploaded = uploaded + $2::bigint * 1073741824 WHERE id = ANY($1) AND status < 2",
+                        )
+                        .bind(chunk)
+                        .bind(gb)
+                        .execute(db)
+                        .await
+                        .map_err(|e| DomainError::Internal(e.into()))?
+                        .rows_affected();
+                    }
+                    "gift_spark" => {
+                        let amt = config
+                            .get("amount")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0)
+                            * body.amount;
+                        for uid in chunk {
+                            let idem = format!(
+                                "increment_bulk:{batch_id}:{uid}:{}",
+                                uuid::Uuid::new_v4().simple()
+                            );
+                            crate::economy_http::earn_spark(
+                                db,
+                                *uid,
+                                amt,
+                                "increment_bulk",
+                                &idem,
+                            )
+                            .await?;
+                            affected += 1;
+                        }
+                    }
+                    _ => {
+                        for uid in chunk {
+                            for _ in 0..body.amount {
+                                let idem = format!(
+                                    "increment_bulk:{batch_id}:{uid}:{}",
+                                    uuid::Uuid::new_v4().simple()
+                                );
+                                sqlx::query(
+                                    "INSERT INTO shop_orders (user_id, item_id, price, idempotency_key, config_snapshot) \
+                                     VALUES ($1, $2, 0, $3, $4)",
+                                )
+                                .bind(uid)
+                                .bind(item_id)
+                                .bind(&idem)
+                                .bind(&config)
+                                .execute(db)
+                                .await
+                                .map_err(|e| DomainError::Internal(e.into()))?;
+                                affected += 1;
+                            }
+                        }
                     }
                 }
             }

@@ -19,9 +19,12 @@ pub(super) async fn increment_bulk_validate(
         "uploaded" | "invite" | "resub_card" => {
             crate::authz::perm::USER_AMOUNTUPLOAD
         }
+        // 0204：勋章/道具批量发放，挂各自管理权限
+        "medal" => crate::authz::perm::MEDAL_MANAGE,
+        "item" => crate::authz::perm::PROP_MANAGE,
         _ => {
             return Err(DomainError::Validation(
-                "kind 取值 spark/uploaded/invite/resub_card".into(),
+                "kind 取值 spark/uploaded/invite/resub_card/medal/item".into(),
             ))
         }
     };
@@ -52,6 +55,22 @@ pub(super) async fn increment_bulk_validate(
         }
         "resub_card" if !(1..=50).contains(&body.amount) => {
             return Err(DomainError::Validation("补签卡单次 1-50".into()));
+        }
+        // 0204：勋章每次发 1 枚（幂等由 PK 保证，重复发也无效果）；
+        // 道具 1-50（与补签卡同口径，逐张入包）
+        "medal" if body.medal_id.is_none() => {
+            return Err(DomainError::Validation("需选择勋章".into()));
+        }
+        "medal" if body.amount != 1 => {
+            return Err(DomainError::Validation(
+                "勋章每人每次发放 1 枚（已拥有则跳过）".into(),
+            ));
+        }
+        "item" if body.item_id.is_none() => {
+            return Err(DomainError::Validation("需选择道具".into()));
+        }
+        "item" if !(1..=50).contains(&body.amount) => {
+            return Err(DomainError::Validation("道具单次 1-50".into()));
         }
         _ => {}
     }
