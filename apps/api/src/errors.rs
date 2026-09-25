@@ -146,7 +146,10 @@ impl ResponseError for DomainError {
         };
         HttpResponse::build(status).json(json!({
             "code": self.code(),
-            "message": message,
+            // 术语表（0205 / 四审 L7）：错误详情里写死的「种子 / 魔力 / 保种」这类
+            // 固有词，在出口处按站长注册的规则改写——390 条校验串不用逐条改，
+            // 也不用给每条配三语译文，改的是「词」本身。零规则时 apply 原样返回。
+            "message": crate::terms::apply(&message),
             "data": data,
             // 贯穿修复（P2）：与响应头/日志同源（request_id_mw task-local）
             "request_id": crate::request_id::current(),

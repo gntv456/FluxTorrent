@@ -15,6 +15,9 @@ pub(super) struct PackSnapshot {
     pub(super) classes: Value,
     pub(super) economy: Value,
     pub(super) metadata: Value,
+    /// 术语规则（0206）：与 tags 同样「总写成数组」，另存即如实捕获当前站点的
+    /// 词汇表（空数组 = 本站确实没有规则）。apply 侧 NULL 才是「未声明、不动」。
+    pub(super) terms: Value,
 }
 
 /// 采集当前站点的五段自定义载荷。NULL 一律表达「未声明」，交由 apply 侧的
@@ -133,11 +136,36 @@ pub(super) async fn collect(db: &PgPool) -> DomainResult<PackSnapshot> {
         _ => Value::Null,
     };
 
+    let terms: Vec<(String, String, bool, i32)> = sqlx::query_as(
+        "SELECT canonical, replacement, enabled, sort FROM site_terms \
+         ORDER BY sort, canonical",
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    // 与 tags 同形：总写数组，空站就是空数组（NULL 留给「本包不声明术语」用）。
+    // `enabled` 必须一起采：只停用语义丢了，apply 回去就等于擅自把站长关掉的
+    // 规则全部重新打开——正是 0193/0197 那批「另存丢载荷」的复发病形。
+    let terms = Value::Array(
+        terms
+            .into_iter()
+            .map(|(canonical, replacement, enabled, sort)| {
+                json!({
+                    "canonical": canonical,
+                    "replacement": replacement,
+                    "enabled": enabled,
+                    "sort": sort,
+                })
+            })
+            .collect(),
+    );
+
     Ok(PackSnapshot {
         sections,
         tags,
         classes,
         economy,
         metadata,
+        terms,
     })
 }

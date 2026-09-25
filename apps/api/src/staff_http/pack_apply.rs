@@ -33,8 +33,8 @@ pub async fn site_type_pack_apply(
     }
     let pack: Option<SiteTypePack> = sqlx::query_as(
         "SELECT code, name, description, brand, categories, modules, \
-         sort, sections, tags, tagline, subtitle_kind FROM site_type_packs \
-         WHERE code = $1",
+         sort, sections, tags, tagline, subtitle_kind, terms \
+         FROM site_type_packs WHERE code = $1",
     )
     .bind(&body.code)
     .fetch_optional(&state.repo.db)
@@ -59,6 +59,10 @@ pub async fn site_type_pack_apply(
 
     let (added, extras) =
         super::pack_core::apply_pack_full(&state.repo.db, &pack, mode).await?;
+    // 术语段（0206）：NULL = 本包不声明 → 不动站方词汇表；数组 = 覆盖式重建。
+    // 与 apply_pack_extras 一样落在主事务之外（都是「按包声明重建一张表」）。
+    let terms_applied =
+        super::pack_terms::apply_pack_terms(&state.repo.db, &pack).await?;
     // 模块开关进程缓存失效（apply 改 module_* 后立即生效，不等 30s TTL）
     state.module_flags.invalidate().await;
     state
@@ -66,6 +70,7 @@ pub async fn site_type_pack_apply(
         .audit(Some(auth.id), "site_type_pack_apply", None)
         .await;
     Ok(ok(
-        serde_json::json!({ "applied": pack.code, "mode": mode, "categories": added, "extras": extras }),
+        serde_json::json!({ "applied": pack.code, "mode": mode, "categories": added, "extras": extras,
+            "terms_applied": terms_applied }),
     ))
 }

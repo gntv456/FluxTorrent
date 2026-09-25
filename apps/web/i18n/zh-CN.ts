@@ -1,5 +1,7 @@
 /** 简体中文字典（源字典：其他语言以此结构为类型基准） */
 
+import { termsPanelZh } from "./terms-panel";
+
 const zhCnBase = {
   meta: {
     titleSuffix: "PT",
@@ -4750,6 +4752,7 @@ const security2fa: Security2faDict = {
 export const zhCN = {
   ...zhCnBase,
   security2fa,
+  termsPanel: termsPanelZh,
   apitokens: {
     title: "开放 API 令牌",
     namePlaceholder: "令牌名称（如：RSS 同步）",
