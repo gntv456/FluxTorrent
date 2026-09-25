@@ -92,8 +92,10 @@ pub async fn admin_class_put(
     if body.name.trim().is_empty() || body.name.len() > 32 {
         return Err(DomainError::Validation("档位名需 1-32 字符".into()));
     }
-    if body.min_uploaded < 0 || body.min_download_count < 0
-        || body.min_seed_hours < 0 || body.min_account_age_days < 0
+    if body.min_uploaded < 0
+        || body.min_download_count < 0
+        || body.min_seed_hours < 0
+        || body.min_account_age_days < 0
         || body.promo_sparks < 0
     {
         return Err(DomainError::Validation("阈值/奖励不能为负".into()));

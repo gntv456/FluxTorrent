@@ -18,8 +18,7 @@ fn internal(e: sqlx::Error) -> DomainError {
 fn valid_slug(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 60
-        && s
-            .bytes()
+        && s.bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
 }
 

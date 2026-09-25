@@ -105,7 +105,11 @@ pub(super) fn predicate(
 ) -> String {
     let cmp = if asc { ">" } else { "<" };
     let tie = if tie_inclusive {
-        if asc { ">=" } else { "<=" }
+        if asc {
+            ">="
+        } else {
+            "<="
+        }
     } else {
         cmp
     };

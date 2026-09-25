@@ -22,18 +22,16 @@ fn sha256_hex(b: &[u8]) -> String {
 /// 启动幂等种子：内置自营适配器上架（不启用）。
 /// 幂等口径：adapter_id 冲突时 checksum 相同则跳过、不同则更新字节。
 pub async fn ensure_builtin_adapters(db: &PgPool) {
-    let builtin: &[(&str, &str, &str, &str, &str, &[&str], i32, &[u8])] = &[
-        (
-            "builtin.douban",
-            "豆瓣元数据（自营）",
-            "1.2.0",
-            "metadata",
-            "movie.douban.com/subject 页面 og: 元数据（移动端路径）",
-            &["https://m.douban.com", "https://movie.douban.com"],
-            30,
-            DOUBAN_WASM,
-        ),
-    ];
+    let builtin: &[(&str, &str, &str, &str, &str, &[&str], i32, &[u8])] = &[(
+        "builtin.douban",
+        "豆瓣元数据（自营）",
+        "1.2.0",
+        "metadata",
+        "movie.douban.com/subject 页面 og: 元数据（移动端路径）",
+        &["https://m.douban.com", "https://movie.douban.com"],
+        30,
+        DOUBAN_WASM,
+    )];
     for (adapter_id, name, version, kind, descr, http_allow, rate, wasm) in
         builtin
     {

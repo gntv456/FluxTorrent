@@ -70,7 +70,8 @@ pub async fn list_torrents_noclamp_as(
             ids.len()
         ),
     };
-    let sec_sql = super::section_pred::section_where(db, &filter.sections).await;    // 搜索范围分流（旧站口径）：0=标题+全字段(默认) 1=副标题/简介 3=发布者 4=IMDb
+    let sec_sql =
+        super::section_pred::section_where(db, &filter.sections).await; // 搜索范围分流（旧站口径）：0=标题+全字段(默认) 1=副标题/简介 3=发布者 4=IMDb
     let esc = if exact { "" } else { " ESCAPE chr(92)" };
     let search_pred = match filter.search_area.unwrap_or(0) {
         1 => format!("AND ($6::text IS NULL OR t.small_descr ILIKE $6{esc} OR t.descr ILIKE $6{esc})"),
@@ -166,12 +167,9 @@ pub async fn list_torrents_noclamp_as(
     // 旧格式游标（val=None，历史链接）sortval 为 NULL → 退化为回到第一页。
     let sortval = cursor.as_ref().and_then(|c| c.val.clone());
     let cursor_pred = match cursor.as_ref() {
-        Some(_) => cursor::predicate(
-            &cursor_col,
-            asc_eff,
-            sticky_calc,
-            filter.reverse,
-        ),
+        Some(_) => {
+            cursor::predicate(&cursor_col, asc_eff, sticky_calc, filter.reverse)
+        }
         None => String::new(),
     };
     let sql = format!(

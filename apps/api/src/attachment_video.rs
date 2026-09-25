@@ -49,13 +49,12 @@ pub async fn head_attachment(
     if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(DomainError::Validation("sha256 格式无效".into()));
     }
-    let row: Option<(String, i64)> = sqlx::query_as(
-        "SELECT mime, size FROM attachments WHERE sha256 = $1",
-    )
-    .bind(&sha)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(internal)?;
+    let row: Option<(String, i64)> =
+        sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")
+            .bind(&sha)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(internal)?;
     let Some((mime, size)) = row else {
         return Err(DomainError::NotFound(0));
     };
@@ -90,13 +89,12 @@ pub async fn serve_attachment(
     if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(DomainError::Validation("sha256 格式无效".into()));
     }
-    let row: Option<(String, i64)> = sqlx::query_as(
-        "SELECT mime, size FROM attachments WHERE sha256 = $1",
-    )
-    .bind(&sha)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(internal)?;
+    let row: Option<(String, i64)> =
+        sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")
+            .bind(&sha)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(internal)?;
     let Some((mime, size)) = row else {
         return Err(DomainError::NotFound(0));
     };

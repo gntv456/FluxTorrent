@@ -58,8 +58,7 @@ pub async fn site_type_pack_apply(
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     let (added, extras) =
-        super::pack_core::apply_pack_full(&state.repo.db, &pack, mode)
-            .await?;
+        super::pack_core::apply_pack_full(&state.repo.db, &pack, mode).await?;
     // 模块开关进程缓存失效（apply 改 module_* 后立即生效，不等 30s TTL）
     state.module_flags.invalidate().await;
     state

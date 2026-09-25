@@ -47,12 +47,8 @@ async fn pack_export(
         "taxonomy" => {
             pack_format::export_taxonomy(&state, q.name.as_deref()).await
         }
-        "theme" => {
-            pack_format::export_theme(&state, q.name.as_deref()).await
-        }
-        "assets" => {
-            pack_format::export_assets(&state, q.name.as_deref()).await
-        }
+        "theme" => pack_format::export_theme(&state, q.name.as_deref()).await,
+        "assets" => pack_format::export_assets(&state, q.name.as_deref()).await,
         _ => Err(DomainError::Validation(
             "kind 需为 taxonomy / theme / assets".into(),
         )),
@@ -99,14 +95,20 @@ async fn pack_list(
         crate::authz::perm::SETTINGS_VIEW,
     )
     .await?;
-    let rows: Vec<(i64, String, String, String, String, chrono::DateTime<chrono::Utc>)> =
-        sqlx::query_as(
-            "SELECT id, pack_id, kind, name, version, applied_at \
+    let rows: Vec<(
+        i64,
+        String,
+        String,
+        String,
+        String,
+        chrono::DateTime<chrono::Utc>,
+    )> = sqlx::query_as(
+        "SELECT id, pack_id, kind, name, version, applied_at \
              FROM content_packs ORDER BY applied_at DESC",
-        )
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows
         .into_iter()
         .map(|(id, pack_id, kind, name, version, at)| {
@@ -165,12 +167,8 @@ async fn rule_try(
         crate::authz::perm::SETTINGS_VIEW,
     )
     .await?;
-    let Some(spec) =
-        pack_format::rule_spec_for(body.key.as_str())
-    else {
-        return Err(DomainError::Validation(
-            "未知规则键（不在白名单）".into(),
-        ));
+    let Some(spec) = pack_format::rule_spec_for(body.key.as_str()) else {
+        return Err(DomainError::Validation("未知规则键（不在白名单）".into()));
     };
     let expr = body.expr.trim();
     if !expr.is_empty() {

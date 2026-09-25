@@ -4,12 +4,12 @@
 use actix_web::{get, web, HttpRequest, Responder};
 use serde::Deserialize;
 
+use super::post_group::{group_by_root, PostRow};
 use super::*;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
-use super::post_group::{PostRow, group_by_root};
 
 #[derive(Deserialize)]
 struct TopicDetailQuery {

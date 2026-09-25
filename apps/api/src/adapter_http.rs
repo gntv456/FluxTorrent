@@ -102,9 +102,7 @@ async fn adapter_install(
         .decode(body.wasm_b64.trim())
         .map_err(|_| DomainError::Validation("wasm_b64 解码失败".into()))?;
     if wasm.is_empty() || wasm.len() > MAX_WASM_BYTES {
-        return Err(DomainError::Validation(
-            "wasm 需为 1B–2MiB".into(),
-        ));
+        return Err(DomainError::Validation("wasm 需为 1B–2MiB".into()));
     }
     // 编译预检：坏模块直接拒绝（不能装一个起不来的适配器）
     wasmtime::Module::new(&AdapterRuntime::global().engine, &wasm)
@@ -138,12 +136,10 @@ async fn adapter_install(
     .execute(&state.repo.db)
     .await
     .map_err(internal)?;
-    state.repo.audit(
-        Some(auth.id),
-        "adapter:install",
-        None,
-    )
-    .await;
+    state
+        .repo
+        .audit(Some(auth.id), "adapter:install", None)
+        .await;
     Ok(ok(serde_json::json!({
         "installed": adapter_id, "version": version, "checksum": checksum,
         "enabled": false,
@@ -154,10 +150,7 @@ fn sha256_hex(data: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     let mut h = Sha256::new();
     h.update(data);
-    h.finalize()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
+    h.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
 #[get("/admin/adapters")]
@@ -173,8 +166,17 @@ async fn adapter_list(
     )
     .await?;
     let rows: Vec<(
-        i64, String, String, String, String, Value, i32, bool, i32,
-        String, chrono::DateTime<chrono::Utc>,
+        i64,
+        String,
+        String,
+        String,
+        String,
+        Value,
+        i32,
+        bool,
+        i32,
+        String,
+        chrono::DateTime<chrono::Utc>,
     )> = sqlx::query_as(
         "SELECT id, adapter_id, kind, name, version, http_allow, \
          rate_limit_per_min, enabled, strikes, last_error, installed_at \
@@ -186,7 +188,19 @@ async fn adapter_list(
     Ok(ok(rows
         .into_iter()
         .map(
-            |(id, adapter_id, kind, name, version, allow, rate, enabled, strikes, last_error, at)| {
+            |(
+                id,
+                adapter_id,
+                kind,
+                name,
+                version,
+                allow,
+                rate,
+                enabled,
+                strikes,
+                last_error,
+                at,
+            )| {
                 serde_json::json!({
                     "id": id, "adapter_id": adapter_id, "kind": kind,
                     "name": name, "version": version, "http_allow": allow,
@@ -235,7 +249,11 @@ async fn adapter_toggle(
         .repo
         .audit(
             Some(auth.id),
-            if body.enabled { "adapter:enable" } else { "adapter:disable" },
+            if body.enabled {
+                "adapter:enable"
+            } else {
+                "adapter:disable"
+            },
             None,
         )
         .await;
@@ -275,25 +293,17 @@ async fn adapter_call(
     adapter_id: &str,
     url: &str,
 ) -> DomainResult<HttpResponse> {
-    let row: Option<(
-        String,
-        String,
-        Value,
-        Value,
-        i32,
-        bool,
-        Vec<u8>,
-    )> = sqlx::query_as(
-        "SELECT adapter_id, kind, http_allow, secrets_read, \
+    let row: Option<(String, String, Value, Value, i32, bool, Vec<u8>)> =
+        sqlx::query_as(
+            "SELECT adapter_id, kind, http_allow, secrets_read, \
          rate_limit_per_min, enabled, wasm FROM adapters \
          WHERE adapter_id = $1",
-    )
-    .bind(adapter_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(internal)?;
-    let Some((aid, kind, allow, secrets, rate, enabled, wasm)) = row
-    else {
+        )
+        .bind(adapter_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(internal)?;
+    let Some((aid, kind, allow, secrets, rate, enabled, wasm)) = row else {
         return Err(DomainError::Validation("适配器不存在".into()));
     };
     if !enabled {
@@ -326,11 +336,10 @@ async fn adapter_call(
     }
     // 出网执行器：同步签名（guest ABI），在 spawn_blocking 线程内借
     // tokio handle block_on 跑 async reqwest（reqwest 无 blocking feature）
-    let http = Arc::new(
-        move |u: &str| -> Result<String, String> {
-            let rt = tokio::runtime::Handle::current();
-            let u = u.to_string();
-            rt.block_on(async move {
+    let http = Arc::new(move |u: &str| -> Result<String, String> {
+        let rt = tokio::runtime::Handle::current();
+        let u = u.to_string();
+        rt.block_on(async move {
                 let client = reqwest::Client::new();
                 let resp = client
                     .get(&u)
@@ -349,8 +358,7 @@ async fn adapter_call(
                 }
                 Ok(text)
             })
-        },
-    );
+    });
     let wasm = wasm.clone();
     let manifest_err = manifest.adapter_id.clone();
     let result = {
@@ -374,8 +382,7 @@ async fn adapter_call(
     // guest 可能把失败折成 success:false JSON（SDK 口径）——视为 Err 计熔断
     let result = match result {
         Ok(out) => {
-            let v: Value =
-                serde_json::from_str(&out).unwrap_or(Value::Null);
+            let v: Value = serde_json::from_str(&out).unwrap_or(Value::Null);
             if v.get("success").and_then(Value::as_bool) == Some(false) {
                 Err(DomainError::Validation(format!(
                     "适配器 {}: {}",
@@ -480,13 +487,8 @@ pub(crate) async fn try_adapter_metadata(
     .await
     .ok()?;
     for (aid, allow, secrets, rate, wasm) in rows {
-        let manifest = row_to_manifest(
-            aid,
-            String::new(),
-            allow,
-            secrets,
-            rate,
-        );
+        let manifest =
+            row_to_manifest(aid, String::new(), allow, secrets, rate);
         if !AdapterRuntime::url_allowed_for(&manifest, url) {
             continue;
         }
@@ -547,8 +549,10 @@ pub(crate) async fn try_adapter_metadata(
             .and_then(Value::as_str)
             .filter(|p| !p.is_empty())
         {
-            descr = format!("[img]{poster}[/img]
-{descr}");
+            descr = format!(
+                "[img]{poster}[/img]
+{descr}"
+            );
         }
         return Some((name, descr));
     }

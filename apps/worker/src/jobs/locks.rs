@@ -98,8 +98,14 @@ pub(crate) async fn module_on(db: &PgPool, module: &str) -> bool {
         Some(raw) => raw.trim() == "yes",
         None => !matches!(
             module,
-            "textbooks" | "showcase" | "social" | "farm" | "gomoku"
-                | "contests" | "jixiao" | "exams"
+            "textbooks"
+                | "showcase"
+                | "social"
+                | "farm"
+                | "gomoku"
+                | "contests"
+                | "jixiao"
+                | "exams"
         ),
     }
 }

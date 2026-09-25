@@ -88,7 +88,8 @@ async fn home_shared_fresh(
     let db = &state.repo.db;
 
     // 公告（home-news）：组装 + 视频白名单消毒在 home_news.rs（0190 拆出）
-    let (news_json, latest_news_id) = super::home_news::home_news_json(db).await?;
+    let (news_json, latest_news_id) =
+        super::home_news::home_news_json(db).await?;
 
     // 签到日历已拆至个人段 attendance_json（per-user 不进共享缓存，0066/0152）
 

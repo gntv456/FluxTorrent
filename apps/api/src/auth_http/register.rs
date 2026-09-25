@@ -122,11 +122,7 @@ pub async fn register(
         .await
         .unwrap_or_default();
         for key in defs {
-            if let Some(v) = body
-                .fields
-                .get(&key)
-                .filter(|v| !v.is_null())
-            {
+            if let Some(v) = body.fields.get(&key).filter(|v| !v.is_null()) {
                 let _ = sqlx::query(
                     "INSERT INTO user_field_values (user_id, field_key,                      value) VALUES ($1, $2, $3) ON CONFLICT (user_id,                      field_key) DO NOTHING",
                 )

@@ -140,11 +140,10 @@ async fn tags_dict_public(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let mode: Option<i32> = web::Query::<HashMap<String, String>>::from_query(
-        req.query_string(),
-    )
-    .ok()
-    .and_then(|m| m.get("mode").and_then(|v| v.parse().ok()));
+    let mode: Option<i32> =
+        web::Query::<HashMap<String, String>>::from_query(req.query_string())
+            .ok()
+            .and_then(|m| m.get("mode").and_then(|v| v.parse().ok()));
     let rows: Vec<(i32, String, String, String)> = sqlx::query_as(
         "SELECT id, name, kind, tag_group FROM tag_dict \
          WHERE COALESCE(enabled, TRUE) AND scope = 'torrent' \
@@ -156,8 +155,10 @@ async fn tags_dict_public(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 元组主数组（旧形态）+ groups 平行数组（下标对齐）：老客户端读前三项无感
-    let tuples: Vec<(i32, String, String)> =
-        rows.iter().map(|r| (r.0, r.1.clone(), r.2.clone())).collect();
+    let tuples: Vec<(i32, String, String)> = rows
+        .iter()
+        .map(|r| (r.0, r.1.clone(), r.2.clone()))
+        .collect();
     let groups: Vec<&str> = rows.iter().map(|r| r.3.as_str()).collect();
     Ok(ok(serde_json::json!({ "tags": tuples, "groups": groups })))
 }

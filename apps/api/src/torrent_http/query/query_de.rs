@@ -36,9 +36,7 @@ where
 }
 
 /// tag_ids 的宽松反序列化：seq → 原样；字符串 → 按逗号拆（与 category_ids 同套路）
-pub(super) fn de_tag_ids_lenient<'de, D>(
-    d: D,
-) -> Result<Vec<String>, D::Error>
+pub(super) fn de_tag_ids_lenient<'de, D>(d: D) -> Result<Vec<String>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
