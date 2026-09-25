@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPosts, getForums } from "@/lib/data";
+import { getPosts, getForums, getEmbedRules } from "@/lib/data";
 import { TopicModActions } from "@/components/forum-post-actions";
 import { ReplyBox } from "@/components/forum-reply-box";
 import { TypeBadge, TagChip } from "@/components/forum-bits";
@@ -31,6 +31,8 @@ export default async function TopicPage({
   if (!detail || detail.posts.length === 0) notFound();
   // 版主「移动到」下拉用：仅 can_mod 时才需要
   const forums = detail.can_mod ? await getForums() : [];
+  // 视频内嵌白名单规则（0189）：开关关闭/失败 → 空数组，视频语法降级链接
+  const embedRules = await getEmbedRules();
   const authId = detail.current_user_id ?? -1;
   // 楼中楼（0163）：?reply_to=N 定位目标楼（含楼中楼），供回复框显示徽标
   const replyToId = Number(reply_to) || null;
@@ -186,6 +188,7 @@ export default async function TopicPage({
               dict={dict}
               locale={locale}
               currency={currency}
+              embedRules={embedRules}
             />
           ))}
         </tbody>

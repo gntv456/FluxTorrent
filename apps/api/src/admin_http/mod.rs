@@ -61,6 +61,11 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(forum_category_update)
         .service(forum_category_delete)
         .service(forum_category_reorder)
+        // 论坛视频内嵌 V1（0189）：embed 规则 CRUD
+        .service(embed_rules_list)
+        .service(embed_rules_add)
+        .service(embed_rules_update)
+        .service(embed_rules_delete)
         // 0148 金字幕评选（候选/授金）
         .service(awards_candidates)
         .service(awards_build)
@@ -74,6 +79,7 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
 mod agent_rules;
 mod audit;
 mod deny;
+mod embed_rules;
 mod forum;
 mod forum_check;
 mod forum_mods;
@@ -98,6 +104,7 @@ mod user_status;
 pub use agent_rules::*;
 pub use audit::*;
 pub use deny::*;
+pub use embed_rules::*;
 pub use forum::*;
 pub use forum_mods::*;
 pub use overview::*;

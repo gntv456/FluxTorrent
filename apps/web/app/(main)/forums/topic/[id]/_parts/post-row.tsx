@@ -44,6 +44,7 @@ export function PostRow({
   dict,
   locale,
   currency,
+  embedRules = null,
 }: {
   p: Post;
   i: number;
@@ -52,6 +53,8 @@ export function PostRow({
   dict: Dict;
   locale: Locale;
   currency: string;
+  /** 视频内嵌白名单规则（0189）：null = 未启用 */
+  embedRules?: import("@/lib/data-forum").EmbedRule[] | null;
 }) {
   return (
     <tr id={`p${p.id}`} className="align-top">
@@ -113,7 +116,7 @@ export function PostRow({
         )}
       </td>
       <td className="p-3">
-        <MarkdownRenderer source={p.body} />
+        <MarkdownRenderer source={p.body} embedRules={embedRules} />
         <div className={ACTION_BAR}>
           <span>
             {new Date(p.created_at).toLocaleString(dateLocale(locale))}
@@ -231,7 +234,7 @@ export function PostRow({
                       <span className="text-sub"> 回复 @{r.reply_to_name}</span>
                     )}
                   </p>
-                  <MarkdownRenderer source={r.body} />
+                  <MarkdownRenderer source={r.body} embedRules={embedRules} />
                   <p className="text-[10px] text-fainter">
                     {new Date(r.created_at).toLocaleString(dateLocale(locale))}
                   </p>

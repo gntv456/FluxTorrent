@@ -123,6 +123,7 @@ pub async fn forum_flood_mark(db: &sqlx::PgPool, user_id: i64) {
 
 /// 把 Markdown 正文压成纯文本摘要（写入 posts.body_text，供搜索/列表预览）。
 /// 不追求完美解析，够用即可：去代码围栏/标题/引用/列表符号 + 行内强调与链接语法。
+/// 视频内嵌（0189）：!video(URL) 整行压成 URL 本身（预览可读、搜索可命中）。
 pub fn strip_markdown(src: &str) -> String {
     let mut out = String::with_capacity(src.len());
     let mut in_fence = false;
@@ -135,6 +136,7 @@ pub fn strip_markdown(src: &str) -> String {
         if in_fence {
             continue; // 代码块内容不进摘要，避免噪音
         }
+        let t = strip_video_syntax(t);
         let mut l = t.trim_start_matches('#').trim_start();
         while let Some(rest) = l.strip_prefix('>') {
             l = rest.trim_start();
@@ -171,6 +173,44 @@ pub fn strip_markdown(src: &str) -> String {
         s = s.replace(pat, "");
     }
     s.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// !video(URL) → URL（其余行原样返回；与前端 VIDEO_RE 同口径）。
+fn strip_video_syntax(line: &str) -> &str {
+    let t = line.trim();
+    if let Some(rest) = t.strip_prefix("!video(") {
+        if let Some(url) = rest.strip_suffix(')') {
+            if !url.is_empty() && !url.contains(char::is_whitespace) {
+                return url;
+            }
+        }
+    }
+    line
+}
+
+/// 每帖视频块上限（0190：post_video_max，0=不限）——发主题与回帖共用。
+/// 计数口径与前端一致：正文里 `!video(` 出现次数。
+pub async fn check_video_count(
+    db: &sqlx::PgPool,
+    body: &str,
+) -> DomainResult<()> {
+    let max: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'post_video_max'), '3')::bigint",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(3);
+    if max <= 0 {
+        return Ok(());
+    }
+    let n = body.matches("!video(").count() as i64;
+    if n > max {
+        return Err(DomainError::Validation(format!(
+            "每帖最多 {max} 个视频"
+        )));
+    }
+    Ok(())
 }
 
 pub fn strip_inline_links(s: &str) -> String {

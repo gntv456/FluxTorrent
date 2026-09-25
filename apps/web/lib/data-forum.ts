@@ -119,6 +119,29 @@ export async function getMyFollows(): Promise<MyFollows> {
 }
 
 /** 论坛标签字典（0123）：公开接口，含 tag_dict 样式列（TagChip 渲染源） */
+/** 视频内嵌白名单规则（0189）：渲染层据此生成播放器 src（二次校验在前端组件）。 */
+export interface EmbedRule {
+  id: number;
+  provider: string;
+  name_zh: string;
+  url_pattern: string;
+  embed_template: string;
+  embed_origin: string;
+  render_kind: "iframe" | "video";
+  aspect: "16:9" | "4:3" | "1:1";
+  extra_params: string | null;
+}
+
+/** 论坛视频 embed 规则（总开关关闭/失败 → 空数组，视频语法全部降级为链接）。 */
+export async function getEmbedRules(): Promise<EmbedRule[]> {
+  try {
+    const r = await api.get<EmbedRule[]>("/api/v1/forums/embed-rules");
+    return r ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getForumTags(): Promise<TagChipData[]> {
   try {
     return (await api.get<TagChipData[]>("/api/v1/forums/tags")) ?? [];
