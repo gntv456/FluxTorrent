@@ -254,12 +254,12 @@
  ],
  "components\\forum-poll.tsx": [],
  "components\\forum-post-actions.tsx": [
-  44,
-  64,
-  71,
-  78,
-  85,
-  151
+  45,
+  65,
+  72,
+  79,
+  86,
+  152
  ],
  "components\\forum-report.tsx": [],
  "components\\forum-search.tsx": [],
