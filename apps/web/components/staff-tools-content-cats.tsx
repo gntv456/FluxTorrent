@@ -19,6 +19,8 @@ interface CatsPanelProps {
   setPackMode: (v: "replace" | "merge") => void;
   catName: string;
   setCatName: (v: string) => void;
+  catParent: number | "";
+  setCatParent: (v: number | "") => void;
   busy: boolean;
   guard: (fn: () => Promise<void>, ok: string) => Promise<void>;
 }
@@ -42,6 +44,8 @@ export function StaffCatsPanel({
   setPackMode,
   catName,
   setCatName,
+  catParent,
+  setCatParent,
   busy,
   guard,
 }: CatsPanelProps) {
@@ -164,6 +168,22 @@ export function StaffCatsPanel({
               onChange={(e) => setCatName(e.target.value)}
             />
           </label>
+          <label>
+            {dict.cmgmt.parentLabel}
+            <select
+              value={catParent}
+              onChange={(e) =>
+                setCatParent(e.target.value === "" ? "" : Number(e.target.value))
+              }
+            >
+              <option value="">{dict.cmgmt.parentTop}</option>
+              {cats.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             className="baozi-button self-start"
             disabled={busy || !catName.trim()}
@@ -171,8 +191,10 @@ export function StaffCatsPanel({
               guard(async () => {
                 await api.post("/api/v1/admin/categories", {
                   name: catName,
+                  parent_id: catParent === "" ? null : catParent,
                 });
                 setCatName("");
+                setCatParent("");
               }, t.saved)
             }
           >
@@ -184,13 +206,18 @@ export function StaffCatsPanel({
             <tr>
               <td className="colhead">#</td>
               <td className="colhead">{t.fldCatName}</td>
+              <td className="colhead">{dict.cmgmt.parentLabel}</td>
               <td className="colhead">{t.catTorrents}</td>
               <td className="colhead text-right">{dict.cmgmt.colActions}</td>
             </tr>
             {cats.map((c) => (
               <tr key={c.id}>
                 <td className="num">{c.id}</td>
-                <td>{c.name}</td>
+                <td>
+                  {c.parent_id
+                    ? `${cats.find((x) => x.id === c.parent_id)?.name ?? "#" + c.parent_id} › ${c.name}`
+                    : c.name}
+                </td>
                 <td className="num">{c.torrents}</td>
                 <td className="text-right">
                   <button
@@ -204,11 +231,17 @@ export function StaffCatsPanel({
                       if (ik === null) return;
                       const bg = prompt(t.bgColorPrompt, c.bg_color ?? "");
                       if (bg === null) return;
+                      const pp = prompt(
+                        dict.cmgmt.parentPrompt,
+                        c.parent_id ? String(c.parent_id) : "0",
+                      );
+                      if (pp === null) return;
                       void guard(async () => {
                         await api.put(`/api/v1/admin/categories/${c.id}`, {
                           name: nn,
                           icon_key: ik.trim(),
                           bg_color: bg.trim(),
+                          parent_id: Number(pp) || null,
                         });
                       }, t.saved);
                     }}

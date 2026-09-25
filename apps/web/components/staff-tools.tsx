@@ -14,6 +14,8 @@ import { StaffMenuPanel } from "@/components/staff-tools-menu";
 import { StaffRolesPanel } from "@/components/staff-tools-roles";
 import { StaffPermPanel } from "@/components/staff-tools-perm";
 import { StaffSeedStatsPanel } from "@/components/staff-tools-seedstats";
+import { StaffUserFieldsPanel } from "@/components/staff-user-fields";
+import { StaffCustomPagesPanel } from "@/components/staff-custom-pages";
 
 /** staffpanel 管理工具落地页：FAQ 管理/规则管理/分类管理/封禁系统/批量邮件等
  *  工具面板的**分发器**（hxpt faqmanage/modrules/catmanage/bans/massmail 口径）。
@@ -68,7 +70,9 @@ export type ToolTab =
   | "menu"
   | "roles"
   | "perm"
-  | "seedstats";
+  | "seedstats"
+  | "userfields"
+  | "pages";
 
 /** 各域面板负责的 tab —— 既用于条件挂载，也是「谁渲染谁」的唯一声明处。
  *  新增工具时在这里归位，并同步 STAFF_TOOL_TABS（admin-tool-switch.tsx）
@@ -93,6 +97,8 @@ const SITE_TABS: ToolTab[] = [
   "polls",
   "ads",
   "plugins",
+  "userfields",
+  "pages",
 ];
 const SYS_TABS: ToolTab[] = ["dbstats", "syslog", "locations", "agentrules"];
 
@@ -150,6 +156,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       {tab === "roles" && <StaffRolesPanel flash={flash} />}
       {tab === "perm" && <StaffPermPanel flash={flash} />}
       {tab === "seedstats" && <StaffSeedStatsPanel />}
+      {tab === "userfields" && <StaffUserFieldsPanel flash={flash} />}
+      {tab === "pages" && <StaffCustomPagesPanel flash={flash} />}
     </div>
   );
 }
