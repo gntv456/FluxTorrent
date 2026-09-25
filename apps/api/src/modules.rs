@@ -57,6 +57,7 @@ pub mod key {
     pub const TASKS: &str = "tasks";
     pub const EXAMS: &str = "exams";
     pub const PUSH: &str = "push";
+    pub const INVITES: &str = "invites";
 
     /// 全部合法键（契约测试用：与迁移/modules 表、TS ModuleKey 三方一致）
     #[cfg_attr(not(test), allow(dead_code))]
@@ -72,6 +73,7 @@ pub mod key {
         SUBTITLES,
         PRESERVE,
         SHOUTBOX,
+        INVITES,
         PROMO_BUY,
         BANK,
         SHOP,
@@ -241,8 +243,8 @@ mod tests {
     fn key_count() {
         assert_eq!(
             key::ALL.len(),
-            29,
-            "module key set drifted from migration 0107"
+            30,
+            "module key set drifted from migration 0107（+0197 invites）"
         );
     }
 }
