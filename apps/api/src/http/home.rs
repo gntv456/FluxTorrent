@@ -18,7 +18,9 @@ use redis::AsyncCommands;
 /// 首页共享段 Redis 缓存键（0152）：公告/资源统计/站点数据/娱乐流水/友链/排版。
 /// 写失效式（Gazelle 范式）：管理端 news/links/home_layout/promos 写操作 DEL 本键，
 /// TTL 300s 兜底覆盖种子发布（资源统计）与游戏流水这类无写入口的慢变化。
-pub const HOME_SHARED_CACHE_KEY: &str = "cache:home:shared:v1";
+pub const HOME_SHARED_CACHE_KEY: &str = "cache:home:shared:v2";
+// v1→v2：本批 payload 新增 home_sections（板块单源清单）。前端拿到缺该字段的
+// 旧缓存会把首页当「无板块」渲染，直接换 key 让旧条目一次性作废。
 
 /// 供管理端写路径主动失效（写失效式缓存，Gazelle 范式）
 pub async fn invalidate_home_cache(state: &AppState) {
@@ -208,8 +210,9 @@ async fn home_shared_fresh(
             "name": n, "url": u, "title": t,
         })).collect::<Vec<_>>(),
         // 首页排版（0089）：site_settings.home_layout 原样透传（JSON 数组或空串），
-        // 前端空/非法回退默认布局
+        // 前端按 home_sections 清单解析（清单单源在后端，四审 L6）
         "home_layout": crate::http::home_layout_raw(db).await,
+        "home_sections": crate::http::home_sections_json(),
     }))
 }
 
