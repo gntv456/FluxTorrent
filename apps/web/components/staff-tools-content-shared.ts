@@ -21,6 +21,8 @@ export interface RuleItem {
 export interface CatItem {
   id: number;
   name: string;
+  /** 父分类（0188 层级）：NULL = 顶级 */
+  parent_id?: number | null;
   torrents: number;
   /** 图标键（0166）：film/tv/music/anime/game/app/book/sport/doc/edu；空=首字色块 */
   icon_key?: string;
