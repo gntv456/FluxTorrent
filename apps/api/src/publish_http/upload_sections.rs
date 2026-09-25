@@ -1,9 +1,8 @@
 //! 发种多维属性与标签入库（M04 第八轮 Section）。
 //! 从 publish_http/upload.rs 按域拆出；校验 kind 白名单后写 torrent_sections + tags。
 //!
-//! B 批承重墙·B2（2026-09-25）：内容侧维度从「只能单选枚举」升级为**六类型字段系统**
-//! （0195 数据模型 + `crate::fields` 共享校验器），与用户侧自定义字段同一套语义。
-//!
+//! B 批承重墙·B2（2026-09-25）：内容侧维度从「只能单选枚举」升级为**六类型字段
+//! 系统**（0195 数据模型 + `crate::fields` 共享校验器），与用户侧自定义字段同语义。
 //! 协议兼容：值可以是
 //!   · JSON number  ⇒ 旧格式，枚举单选（存量客户端零改动）
 //!   · JSON object  ⇒ 新格式，按 field_type 表达：
@@ -28,14 +27,10 @@ struct KindDef {
     field_type: String,
     required: bool,
     multiple: bool,
-    #[allow(dead_code)]
-    enabled: bool,
 }
 
-/// 解析后的单个维度取值。
-///
-/// 两种形态并存：`dict_ids` = 枚举（写 `dict_id` 列）；`values` = 自由值
-/// （写 `value` 列）。同一维度的多值按 `ordinal` 递增落库。
+/// 解析后的单个维度取值。两形态并存：`dict_ids` = 枚举（写 `dict_id` 列）；
+/// `values` = 自由值（写 `value` 列）。同维度多值按 `ordinal` 递增落库。
 pub(crate) struct SectionValue {
     pub kind: String,
     /// 枚举值：`section_dict.id`，按出现顺序
@@ -45,7 +40,6 @@ pub(crate) struct SectionValue {
 }
 
 impl SectionValue {
-    /// 该维度是否完全无值（用于必填判定）。
     fn is_empty(&self) -> bool {
         self.dict_ids.is_empty() && self.values.is_empty()
     }
@@ -54,7 +48,7 @@ impl SectionValue {
 /// 读取全部启用中的维度定义。
 async fn load_kinds(db: &sqlx::PgPool) -> DomainResult<Vec<KindDef>> {
     sqlx::query_as(
-        "SELECT kind, label, field_type, required, multiple, enabled \
+        "SELECT kind, label, field_type, required, multiple \
          FROM section_kinds WHERE enabled ORDER BY sort, kind",
     )
     .fetch_all(db)
@@ -66,18 +60,10 @@ async fn load_kinds(db: &sqlx::PgPool) -> DomainResult<Vec<KindDef>> {
 ///
 /// 发种主链必须在 `INSERT torrents` 之前先调它。原先校验与写入交织在同一个循环里，
 /// 后一个维度报错时种子已经入库、前面的归属也已落库——用户只看到一个 400，
-/// 而重试同一个 .torrent 会永远撞 TorrentDuplicate。
-///
-/// B2 起支持六类型与多值；校验规则：
-///   1. kind 必须在 `section_kinds` 且 `enabled`
-///   2. 值形状匹配该 kind 的 `field_type`（走 `crate::fields` 共享校验器）
-///   3. `multiple=false` 的维度只允许一个值
-///   4. `required=true` 的维度必须给非空值
-///   5. 枚举值必须属于该 kind 的 `section_dict`
-///
-/// `strict` = **编辑语义**：`true` 时要求把 enabled 维度全部给全（缺 = 视为清空，
-/// 但仍受 `required` 约束）——编辑表单是整表单提交，缺项不能算「不动」。
-/// 发种入口传 `false`（只校验给定项 + 必填）。
+/// 而重试同一个 .torrent 会永远撞 TorrentDuplicate。B2 起支持六类型与多值，
+/// 校验规则：kind 必须在 `section_kinds` 且 `enabled`；值形状匹配该 kind 的
+/// `field_type`（走 `crate::fields` 共享校验器）；`multiple=false` 只允许一个值；
+/// `required=true` 必须给非空值；枚举值必须属于该 kind 的 `section_dict`。
 pub(crate) async fn parse_sections(
     db: &sqlx::PgPool,
     raw: Option<&String>,
@@ -85,7 +71,9 @@ pub(crate) async fn parse_sections(
     parse_sections_ex(db, raw, false).await
 }
 
-/// `parse_sections` 的可配版（`strict` 见上）。编辑口与批量口用 `true`。
+/// `parse_sections` 的可配版。`strict` = **编辑语义**：`true` 时要求把 enabled
+/// 维度全部给全（缺 = 视为清空，但仍受 `required` 约束）——编辑表单是整表单提交，
+/// 缺项不能算「不动」；发种入口传 `false`（只校验给定项 + 必填）。
 pub(crate) async fn parse_sections_ex(
     db: &sqlx::PgPool,
     raw: Option<&String>,
@@ -96,8 +84,7 @@ pub(crate) async fn parse_sections_ex(
     let json = match raw.map(|s| s.as_str().trim()).filter(|s| !s.is_empty()) {
         Some(j) => j,
         None => {
-            // 没传 sections：仍要挡必填维度
-            check_required(&kinds, &[])?;
+            check_required(&kinds, &[])?; // 没传 sections 仍要挡必填维度
             return Ok(Vec::new());
         }
     };
@@ -114,16 +101,13 @@ pub(crate) async fn parse_sections_ex(
             out.push(sv);
         }
     }
-    // 必填维度缺值 ⇒ 400（新增能力：四审 L3 指出内容侧原无必填概念）
-    check_required(&kinds, &out)?;
+    check_required(&kinds, &out)?; // 必填缺口 ⇒ 400（四审 L3：内容侧原无必填概念）
     Ok(out)
 }
 
-/// **写**已解析的维度取值（编辑口/发种口共用）。
-///
-/// 语义：整组重建。`parsed` 里出现的维度先清后写；**调用方决定未出现的维度**
-/// 是保留还是清空——`clear_absent=true` 时把 `parsed` 未含的维度也清掉
-/// （编辑表单「整表单保存」口径），`false` 则只动给定的维度（发种口径）。
+/// **写**已解析的维度取值（编辑口/发种口共用）。语义：整组重建，`parsed` 里出现的
+/// 维度先清后写；**调用方决定未出现的维度**是保留还是清空——`clear_absent=true`
+/// 时把 `parsed` 未含的维度也清掉（编辑「整表单保存」口径），`false` 只动给定维度。
 pub(crate) async fn write_sections(
     db: &sqlx::PgPool,
     torrent_id: i64,
@@ -136,16 +120,16 @@ pub(crate) async fn write_sections(
         .map_err(|e| DomainError::Internal(e.into()))?;
     if clear_absent {
         // 只清「本次没提交」的维度；已提交的维度下面逐个重建
-        let handled: Vec<&str> = parsed.iter().map(|s| s.kind.as_str()).collect();
-        sqlx::query(
-            "DELETE FROM torrent_sections WHERE torrent_id = $1 \
-             AND NOT (kind = ANY($2))",
-        )
-        .bind(torrent_id)
-        .bind(&handled)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        let handled: Vec<&str> =
+            parsed.iter().map(|s| s.kind.as_str()).collect();
+        let q = "DELETE FROM torrent_sections WHERE torrent_id = $1 \
+                 AND NOT (kind = ANY($2))";
+        sqlx::query(q)
+            .bind(torrent_id)
+            .bind(&handled)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     }
     for sv in parsed {
         write_one(&mut tx, torrent_id, sv).await?;
@@ -162,39 +146,41 @@ async fn write_one(
     torrent_id: i64,
     sv: &SectionValue,
 ) -> DomainResult<()> {
-    sqlx::query("DELETE FROM torrent_sections WHERE torrent_id = $1 AND kind = $2")
-        .bind(torrent_id)
-        .bind(&sv.kind)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "DELETE FROM torrent_sections WHERE torrent_id = $1 AND kind = $2",
+    )
+    .bind(torrent_id)
+    .bind(&sv.kind)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 枚举写 dict_id、自由值写 value：两串值共用同一 ordinal 计数器，
+    // 顺序与 `SectionValue` 内 dict_ids → values 的排列一致。
     let mut ord: i32 = 0;
     for dict_id in &sv.dict_ids {
-        sqlx::query(
-            "INSERT INTO torrent_sections (torrent_id, kind, dict_id, ordinal) \
-             VALUES ($1, $2, $3, $4)",
-        )
-        .bind(torrent_id)
-        .bind(&sv.kind)
-        .bind(dict_id)
-        .bind(ord)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        let q = "INSERT INTO torrent_sections \
+                 (torrent_id, kind, dict_id, ordinal) VALUES ($1, $2, $3, $4)";
+        sqlx::query(q)
+            .bind(torrent_id)
+            .bind(&sv.kind)
+            .bind(dict_id)
+            .bind(ord)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         ord += 1;
     }
     for v in &sv.values {
-        sqlx::query(
-            "INSERT INTO torrent_sections (torrent_id, kind, value, ordinal) \
-             VALUES ($1, $2, $3, $4)",
-        )
-        .bind(torrent_id)
-        .bind(&sv.kind)
-        .bind(v)
-        .bind(ord)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        let q = "INSERT INTO torrent_sections \
+                 (torrent_id, kind, value, ordinal) VALUES ($1, $2, $3, $4)";
+        sqlx::query(q)
+            .bind(torrent_id)
+            .bind(&sv.kind)
+            .bind(v)
+            .bind(ord)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         ord += 1;
     }
     Ok(())
@@ -223,6 +209,7 @@ async fn parse_one(
     def: &KindDef,
     raw_val: &Value,
 ) -> DomainResult<SectionValue> {
+    let lb = &def.label;
     let mut dict_ids: Vec<i64> = Vec::new();
     let mut values: Vec<Value> = Vec::new();
 
@@ -241,15 +228,13 @@ async fn parse_one(
             if let Some(arr) = o.get("dict_ids") {
                 let arr = arr.as_array().ok_or_else(|| {
                     DomainError::Validation(format!(
-                        "维度「{}」的 dict_ids 需为数组",
-                        def.label
+                        "维度「{lb}」的 dict_ids 需为数组"
                     ))
                 })?;
                 for item in arr {
                     let id = item.as_i64().ok_or_else(|| {
                         DomainError::Validation(format!(
-                            "维度「{}」的 dict_ids 元素需为整数",
-                            def.label
+                            "维度「{lb}」的 dict_ids 元素需为整数"
                         ))
                     })?;
                     if !dict_ids.contains(&id) {
@@ -269,17 +254,35 @@ async fn parse_one(
                 .and_then(|k| o.get(k))
                 // 兼容写法：{"value": ...} 按 field_type 解释
                 .or_else(|| o.get("value"));
-            if let Some(v) = candidate {
-                crate::fields::validate_value(
-                    &def.field_type,
-                    &serde_json::json!([]),
-                    v,
-                )
-                .map_err(|e| {
-                    DomainError::Validation(format!("维度「{}」：{e}", def.label))
-                })?;
-                if !crate::fields::is_empty_value(v) {
-                    values.push(v.clone());
+            match candidate {
+                Some(v) => {
+                    crate::fields::validate_value(
+                        &def.field_type,
+                        &serde_json::json!([]),
+                        v,
+                    )
+                    .map_err(|e| {
+                        DomainError::Validation(format!("维度「{lb}」：{e}"))
+                    })?;
+                    if !crate::fields::is_empty_value(v) {
+                        values.push(v.clone());
+                    }
+                }
+                None => {
+                    // 键不对且非枚举（如 number 维度收到 {"text":"…"}）：以前静默
+                    // 当空值存下，界面填了却不生效。合法空形态是 `{}` /
+                    // `{"value":null}`（上面已处理）。枚举（select/multiselect）
+                    // 合法形态就是 `{"dict_ids":…}`，无自由值键属正常，用
+                    // dict_ids 非空挡掉误报。
+                    if !o.is_empty() && dict_ids.is_empty() {
+                        let expect = free_key.unwrap_or("dict_ids");
+                        let ft = &def.field_type;
+                        let kd = &def.kind;
+                        let m = format!(
+                            "维度「{lb}」的值格式不符：{ft}({kd}) 需要 {expect} 键"
+                        );
+                        return Err(DomainError::Validation(m));
+                    }
                 }
             }
         }
@@ -302,7 +305,8 @@ async fn parse_one(
     // 枚举值归属校验：外键只保证字典行存在，不保证没挂错维度
     for id in &dict_ids {
         let ok: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM section_dict WHERE id = $1 AND kind = $2)",
+            "SELECT EXISTS(SELECT 1 FROM section_dict \
+             WHERE id = $1 AND kind = $2)",
         )
         .bind(id)
         .bind(&def.kind)
@@ -341,7 +345,8 @@ pub(super) async fn store_sections_tags(
 
     // 标签（NP upload.php tags 口径）：发布时直接打标；统一走 apply_torrent_tags
     // （0159：校验 + official_tag 联动三入口同源，官种物化列不再漂移）
-    if let Some(json) = form.tags.as_deref().map(str::trim).filter(|j| !j.is_empty())
+    if let Some(json) =
+        form.tags.as_deref().map(str::trim).filter(|j| !j.is_empty())
     {
         let ids: Vec<i32> = serde_json::from_str(json)
             .map_err(|_| DomainError::Validation("tags 需为 JSON 数组".into()))?;
