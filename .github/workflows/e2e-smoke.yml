@@ -10,10 +10,34 @@
 
 name: e2e-smoke
 
+# 这条门要起 PG+Redis、跑完整迁移链、再编 tracker/worker，是最贵的一条：
+# 只在真的碰到后端/迁移/构建脚本时跑，且同一分支只留最新一次。
+concurrency:
+  group: e2e-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [master]
+    paths:
+      - "apps/api/**"
+      - "apps/worker/**"
+      - "apps/tracker/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "docker/**"
+      - "scripts/**"
+      - ".github/workflows/e2e-smoke.yml"
   pull_request:
+    paths:
+      - "apps/api/**"
+      - "apps/worker/**"
+      - "apps/tracker/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "docker/**"
+      - "scripts/**"
+      - ".github/workflows/e2e-smoke.yml"
   workflow_dispatch:
 
 env:
@@ -26,6 +50,8 @@ env:
 
 jobs:
   smoke:
+    # 依赖升级 PR 不需要重跑这条最贵的门（CVE 由 security-audit 把关）
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -79,6 +105,12 @@ jobs:
             if curl -sf http://127.0.0.1:8080/api/v1/health > /dev/null; then echo "api up (2nd)"; exit 0; fi
           done
           echo "::error::二次启动失败（迁移非幂等 / checksum 漂移）"; cat api2.log; exit 1
+
+      - name: 空库装站闸门 # 生产态首启可登录 → 强制改密 → 向导完成 → 演示数据清 0
+        # 这条是唯一能抓「装机链断在迁移/闸门/清理顺序里」的门：0134 注释引用尚未创建的
+        # 函数、装机白名单不含改密端点、purge_demo_data 删除顺序死结，都是它先撞出来的。
+        # 注：本 job 的 env.FLUX_DEV=1 只影响演示口令随机化与 CORS，闸门行为不变。
+        run: python3 scripts/install_e2e.py
 
       - name: 引导冒烟数据（psql 客户端直连 service）
         run: |

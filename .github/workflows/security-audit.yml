@@ -2,6 +2,11 @@
 # 无需 secrets；PR 与每周定期跑，发现已知漏洞即失败
 name: security-audit
 
+# 依赖升级 PR 唯一该跑的门（build-test/e2e-smoke 对 dependabot 让路，省下的分钟数都在这）
+concurrency:
+  group: security-audit-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     paths:

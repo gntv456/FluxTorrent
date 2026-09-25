@@ -25,6 +25,13 @@
   `--brand-glow`（原来注入 `--glow`，无人读，改色不生效）；删除死配置字段 `SEED_DEMO_DATA`。
 - 升级注意：0193 会删除上述五个设置键的值与元数据行，并从站型包 economy 预设里剔掉
   两个同名键；这些键此前无任何代码读取，删除不影响运行行为。
+- **CI 与本地闸门**：`scripts/install_e2e.py` 把「空库首启→强制改密→完成向导→演示数据
+  清 0」变成 11 条可复跑断言，并挂进 `e2e-smoke`（这是唯一能抓装机链断链的门）；
+  三条 workflow 加 `concurrency` 去重、dependabot PR 不再跑重编译与 e2e（只留
+  `security-audit`）、`e2e-smoke` 加 `paths` 过滤——private 仓库的 Actions 分钟数是有限
+  资源（实测最后成功是 2026-09-18，之后 4~5 秒判死且无日志）。新增 `scripts/ci_local.sh`
+  作 CI 不可用时的等价本地闸门；修 `audit_migration_checksums.py` 的 SQL 拼接缺空格
+  （psql 报错被静默吞掉，导致所有迁移被误判「文件缺失」）与两个反了的分支标签。
 
 ### 通用建站系统收口（2026-09-25 六迭代，详见 _doc/通用建站定位符合度三审报告）
 
