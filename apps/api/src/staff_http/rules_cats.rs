@@ -137,6 +137,9 @@ struct CatBody {
     /// 分类色（0183）：`#rrggbb`；缺省或空 = 不改
     #[serde(default)]
     bg_color: Option<String>,
+    /// 父分类（0188 层级）：None/0 = 顶级；触发器防环（≤8 层）
+    #[serde(default)]
+    parent_id: Option<i32>,
 }
 
 /// 只接受 `#rrggbb`：这个值最终进前端内联 style，库里也有同形 CHECK 兜底
@@ -151,6 +154,8 @@ fn is_hex_color(s: &str) -> bool {
 struct CatRow {
     id: i32,
     name: String,
+    /// 父分类（0188 层级）：NULL = 顶级
+    parent_id: Option<i32>,
     mode_id: Option<i32>,
     auto_approve: bool,
     torrents: i64,
@@ -172,7 +177,7 @@ pub async fn category_list(
     )
     .await?;
     let rows: Vec<CatRow> = sqlx::query_as(
-        "SELECT c.id, c.name, c.mode_id, c.auto_approve, c.icon_key, c.bg_color, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
+        "SELECT c.id, c.name, c.parent_id, c.mode_id, c.auto_approve, c.icon_key, c.bg_color, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
          FROM categories c ORDER BY c.id",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -193,10 +198,12 @@ pub async fn category_create(
     )
     .await?;
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO categories (id, name) \
-     VALUES ((SELECT max(id)+1 FROM categories), $1) RETURNING id",
+        "INSERT INTO categories (id, name, parent_id) \
+     VALUES ((SELECT max(id)+1 FROM categories), $1, NULLIF($2, 0)) \
+     RETURNING id",
     )
     .bind(&body.name)
+    .bind(body.parent_id.unwrap_or(0))
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -231,12 +238,14 @@ pub async fn category_update(
     }
     let n = sqlx::query(
         "UPDATE categories SET name=$2, icon_key=$3, \
-         bg_color = COALESCE(NULLIF($4, ''), bg_color) WHERE id=$1",
+         bg_color = COALESCE(NULLIF($4, ''), bg_color), \
+         parent_id = COALESCE(NULLIF($5, 0), parent_id) WHERE id=$1",
     )
     .bind(*path)
     .bind(&body.name)
     .bind(body.icon_key.clone().unwrap_or_default())
     .bind(body.bg_color.clone().unwrap_or_default())
+    .bind(body.parent_id.unwrap_or(0))
     .execute(&state.repo.db)
     .await
     .map_err(|e| crate::errors::db_to_domain(e, "分类"))?;
