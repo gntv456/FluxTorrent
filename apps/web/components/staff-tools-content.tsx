@@ -50,6 +50,7 @@ export function StaffContentPanel({
     body: string;
   }>({ id: null, title: "", body: "" });
   const [catName, setCatName] = useState("");
+  const [catParent, setCatParent] = useState<number | "">("");
 
   const load = useCallback(async () => {
     api
@@ -213,6 +214,8 @@ export function StaffContentPanel({
           packMode={packMode}
           setPackMode={setPackMode}
           catName={catName}
+          catParent={catParent}
+          setCatParent={setCatParent}
           setCatName={setCatName}
           busy={busy}
           guard={guard}

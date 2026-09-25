@@ -110,8 +110,7 @@ async fn edit_torrent(
             return Err(DomainError::Forbidden);
         }
         for (kind, dict_id) in map {
-            if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind)
-                .await
+            if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind).await
             {
                 return Err(DomainError::Validation(format!(
                     "未知维度 {kind}"
@@ -153,6 +152,49 @@ async fn edit_torrent(
         // 否则「改了学段但按学段筛搜不到」会继续存在
         crate::torrents::sync_legacy_columns(&state.repo.db, tid).await?;
     }
+    // 推荐位（0184 编辑对齐发布页，NP 挑选口径）：staff 专属；
+    // 任一字段出现即整组覆写，校验与 upload_files_promo 同源
+    if body.pos_state.is_some()
+        || body.pick_type.is_some()
+        || body.pos_state_until.is_some()
+    {
+        if auth.class_id < 90 {
+            return Err(DomainError::Forbidden); // 置顶/推荐仅管理组
+        }
+        let pos = body.pos_state.unwrap_or(0);
+        if ![0, 1, 2].contains(&pos) {
+            return Err(DomainError::Validation("置顶位置取值 0/1/2".into()));
+        }
+        let pick = body.pick_type.unwrap_or(0);
+        if ![0, 1, 2].contains(&pick) {
+            return Err(DomainError::Validation("推荐影片取值 0/1/2".into()));
+        }
+        let until = body
+            .pos_state_until
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| {
+                chrono::DateTime::parse_from_rfc3339(s)
+                    .map_err(|_| {
+                        DomainError::Validation("置顶截止时间格式无效".into())
+                    })
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+            })
+            .transpose()?;
+        sqlx::query(
+            "UPDATE torrents SET pos_state = $2, \
+                 pos_state_until = $3, pick_type = $4, \
+                 mtime = now() WHERE id = $1",
+        )
+        .bind(tid)
+        .bind(pos)
+        .bind(until)
+        .bind(pick)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     // 0148 C1：编辑 descr 后重提取 IMDB（descr 提取得到才覆盖，否则保留旧值）
     if let Some(d) = body.descr.as_deref() {
         if let Some(imdb) = crate::publish_http::extract_imdb_pub(d) {
@@ -169,7 +211,9 @@ async fn edit_torrent(
         // 存量 poster 为空时回落写入（用户显式填过的封面不被动覆盖）。
         // poster 值走 jsonb_build_object 参数化（拼接 jsonb 字面量遇 URL
         // 特殊字符会 22P02，且是注入面）。
-        if let Some(poster) = crate::publish_http::first_descr_image_pub(Some(d)) {
+        if let Some(poster) =
+            crate::publish_http::first_descr_image_pub(Some(d))
+        {
             let _ = sqlx::query(
                 "UPDATE torrents SET media_info = COALESCE(media_info, '{}'::jsonb) \
                  || jsonb_build_object('poster', $2) \

@@ -8,12 +8,13 @@ import { ForumCategoryPanel } from "./_parts/forum-category-panel";
 import { ForumBoardTable } from "./_parts/forum-board-table";
 import { ForumBoardDrawer } from "./_parts/forum-board-drawer";
 import {
-  NO_CATEGORY, catOf,
-  type ForumAdminData, type ForumAdminForum,
+  NO_CATEGORY,
+  catOf,
+  type ForumAdminData,
+  type ForumAdminForum,
 } from "./_parts/forum-structure-types";
 
-const MSG_CLS =
-  "mb-3 rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink";
+const MSG_CLS = "mb-3 rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink";
 
 /** 论坛结构（独立整页 /admin/forums）。
  *
@@ -140,6 +141,7 @@ export default function AdminForumsPage() {
         open={drawerOpen}
         forum={editing}
         categories={cats}
+        classes={data?.classes ?? []}
         defaultCatId={
           selected === null || selected === NO_CATEGORY ? "" : selected
         }

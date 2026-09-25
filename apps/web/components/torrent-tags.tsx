@@ -11,6 +11,8 @@ interface TagDictRow {
   /** 0159 P1：字典样式列（详情页已选标签消费；旧元组形态缺省回落轮换色） */
   bg_color?: string;
   color?: string;
+  /** 0160 P2：tag_group（attribute/content；编辑表单按组分区用） */
+  group?: string;
 }
 
 /** 兼容 API 历史形态：dict 行可能序列化为 [id, name, kind] 元组 */

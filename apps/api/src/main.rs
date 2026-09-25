@@ -1,6 +1,9 @@
 //! FluxTorrent API 服务入口。
 //! 启动：迁移 schema → 连接池/Redis → HTTP 服务（信封 + CORS + tracing）。
 
+mod adapter_http;
+mod adapter_runtime;
+mod adapter_seed;
 mod admin_http;
 mod admin_p2_http;
 mod admin_p3_http;
@@ -38,11 +41,8 @@ mod publish_http;
 mod push_http;
 mod repo;
 mod request_id;
-mod adapter_http;
-mod adapter_seed;
-mod adapter_runtime;
-mod rules_engine;
 mod rss_http;
+mod rules_engine;
 mod settings_http;
 mod setup_http;
 mod social_http;
