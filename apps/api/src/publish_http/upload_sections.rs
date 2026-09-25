@@ -88,8 +88,9 @@ pub(crate) async fn parse_sections_ex(
             return Ok(Vec::new());
         }
     };
-    let map: Map<String, Value> = serde_json::from_str(json)
-        .map_err(|_| DomainError::Validation("sections 需为 JSON 对象".into()))?;
+    let map: Map<String, Value> = serde_json::from_str(json).map_err(|_| {
+        DomainError::Validation("sections 需为 JSON 对象".into())
+    })?;
 
     let mut out: Vec<SectionValue> = Vec::new();
     for (kind, raw_val) in &map {
@@ -345,11 +346,15 @@ pub(super) async fn store_sections_tags(
 
     // 标签（NP upload.php tags 口径）：发布时直接打标；统一走 apply_torrent_tags
     // （0159：校验 + official_tag 联动三入口同源，官种物化列不再漂移）
-    if let Some(json) =
-        form.tags.as_deref().map(str::trim).filter(|j| !j.is_empty())
+    if let Some(json) = form
+        .tags
+        .as_deref()
+        .map(str::trim)
+        .filter(|j| !j.is_empty())
     {
-        let ids: Vec<i32> = serde_json::from_str(json)
-            .map_err(|_| DomainError::Validation("tags 需为 JSON 数组".into()))?;
+        let ids: Vec<i32> = serde_json::from_str(json).map_err(|_| {
+            DomainError::Validation("tags 需为 JSON 数组".into())
+        })?;
         crate::torrents::apply_torrent_tags(
             &state.repo.db,
             id,

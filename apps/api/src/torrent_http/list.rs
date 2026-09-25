@@ -39,14 +39,16 @@ async fn list(
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?; // 站点准入收口：资源元数据不对外
-    // 标签多选（0159 P1）：norm_tags 在 filter 构造块里赋值；声明在此因
-    // struct 字面量内不能先解构再引用同名字段
+                                                  // 标签多选（0159 P1）：norm_tags 在 filter 构造块里赋值；声明在此因
+                                                  // struct 字面量内不能先解构再引用同名字段
     let (tag_ids, tag_all) =
         super::query::norm_tags(q.tag_id, &q.tag_ids, q.tag_mode.as_deref());
     // 多维筛选（B3 六类型）：`sec_{kind}` / `_min` / `_max`，解析见 sec_params.rs
-    let sections =
-        super::sec_params::parse_section_params(&state.repo.db, req.query_string())
-            .await;
+    let sections = super::sec_params::parse_section_params(
+        &state.repo.db,
+        req.query_string(),
+    )
+    .await;
     // 0170 站点开关：默认视图（approval 未指定 / 0）是否放行「审核中/失败」种子。
     // 审核状态视图（1=通过 2=被拒）不受开关影响；单条查询两列点查，主键命中极便宜。
     let default_view = q.approval.is_none() || q.approval == Some(0);

@@ -122,8 +122,16 @@ pub async fn get_torrent_detail(
     // 0087：sections 附带维度显示名与排序（section_kinds.label），前端直接渲染。
     // B2（2026-09-25）：`section_dict` 改 **LEFT JOIN** —— 六类型字段系统下自由值行
     // （dict_id IS NULL）原来会被内连接直接丢掉；同时按 `ordinal` 支持多值。
-    let secs: Vec<(String, Option<i64>, Option<serde_json::Value>, i32, Option<String>,
-                   String, i32, Option<String>)> = sqlx::query_as(
+    let secs: Vec<(
+        String,
+        Option<i64>,
+        Option<serde_json::Value>,
+        i32,
+        Option<String>,
+        String,
+        i32,
+        Option<String>,
+    )> = sqlx::query_as(
         "SELECT ts.kind, ts.dict_id, ts.value, ts.ordinal, \
                 d.name, COALESCE(k.label, ts.kind) AS label, \
                 COALESCE(k.sort, 999) AS sort, k.field_type \

@@ -40,11 +40,13 @@ pub(crate) async fn build_section_filters(
             Some(t) => t,
             None => continue,
         };
-        let e = by_kind.entry(kind.clone()).or_insert_with(|| SectionFilter {
-            kind: kind.clone(),
-            field_type: ft,
-            ..Default::default()
-        });
+        let e = by_kind
+            .entry(kind.clone())
+            .or_insert_with(|| SectionFilter {
+                kind: kind.clone(),
+                field_type: ft,
+                ..Default::default()
+            });
         match op.as_str() {
             "min" => e.min = Some(val),
             "max" => e.max = Some(val),
@@ -76,11 +78,8 @@ pub(crate) fn typed_pred(kind: &str, c: &SectionFilter) -> Option<String> {
     match c.field_type.as_str() {
         // 枚举：值即 dict_id（多值由外层 OR 拼接）
         "select" | "multiselect" => {
-            let ids: Vec<&String> = c
-                .values
-                .iter()
-                .filter(|v| is_uint(v))
-                .collect();
+            let ids: Vec<&String> =
+                c.values.iter().filter(|v| is_uint(v)).collect();
             if ids.is_empty() {
                 return None;
             }
@@ -213,8 +212,12 @@ fn is_date(s: &str) -> bool {
 mod tests {
     use super::{is_date, is_num, is_uint, typed_pred, SectionFilter};
 
-    fn mk(ft: &str, values: &[&str], min: Option<&str>, max: Option<&str>)
-        -> SectionFilter {
+    fn mk(
+        ft: &str,
+        values: &[&str],
+        min: Option<&str>,
+        max: Option<&str>,
+    ) -> SectionFilter {
         SectionFilter {
             kind: "k".into(),
             field_type: ft.into(),
