@@ -56,6 +56,33 @@ pub(crate) async fn seo_block(db: &PgPool) -> Value {
     Value::Object(seo)
 }
 
+/// 术语表（0205 / 四审 L7）：`[{canonical, replacement}]`，只下发启用中的规则。
+///
+/// 前端 `apply-terms.ts` 拿它在字典出口做一次改写；后端错误信封走
+/// `crate::terms::apply` 同一份规则。**零规则下发空数组**，前端据此走恒等快速路径
+/// （不改写、不重新分配）。
+pub(crate) async fn terms(db: &PgPool) -> Value {
+    let rows = sqlx::query_as::<_, (String, String)>(
+        "SELECT canonical, replacement FROM site_terms \
+         WHERE enabled ORDER BY length(canonical) DESC, sort, canonical \
+         LIMIT $1",
+    )
+    .bind(crate::terms::MAX_RULES)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    Value::Array(
+        rows.into_iter()
+            .map(|(canonical, replacement)| {
+                serde_json::json!({
+                    "canonical": canonical,
+                    "replacement": replacement,
+                })
+            })
+            .collect(),
+    )
+}
+
 /// 主题令牌（0189 R4.6）：有值才下发，前端注入 `:root` 覆盖默认色。
 /// 只收 `#rrggbb`——这是站长能写进 CSS 的唯一入口，放开了就是注入面。
 pub(crate) async fn theme_tokens(db: &PgPool) -> Value {

@@ -1,6 +1,7 @@
 /** 繁體中文字典（與 zh-CN 同構） */
 
 import type { Dict } from "./zh-CN";
+import { termsPanelTw } from "./terms-panel";
 
 const zhTwBase: Omit<
   Dict,
@@ -22,6 +23,7 @@ const zhTwBase: Omit<
   | "resPage"
   | "endangered"
   | "teams"
+  | "termsPanel"
 > = {
   meta: {
     titleSuffix: "PT",
@@ -4894,6 +4896,7 @@ const groupsubTw: Dict["groupsub"] = {
 
 export const zhTW: Dict = {
   ...zhTwBase,
+  termsPanel: termsPanelTw,
   security2fa: {
     statusOn: "已啟用",
     statusOff: "未啟用",

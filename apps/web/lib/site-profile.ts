@@ -46,6 +46,8 @@ export interface SiteProfile {
     keywords?: string;
     indexable?: boolean;
   };
+  /** 术语规则（0205 四审 L7）：字典出口按此改写固有词；缺省/空数组 = 不改写 */
+  terms?: { canonical: string; replacement: string }[];
 }
 
 /** 站型字典条目（id 由后端词表表给出，前端不做任何下标补偿） */

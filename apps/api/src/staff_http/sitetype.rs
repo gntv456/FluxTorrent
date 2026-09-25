@@ -173,8 +173,11 @@ pub async fn site_profile(
     let seo = profile_bits::seo_block(db).await;
     // 主题令牌（0189 R4.6）：有值才下发——前端注入 :root 覆盖默认 Aurora 色
     let theme_tokens = profile_bits::theme_tokens(db).await;
+    // 术语表（0205 四审 L7）：前端字典出口改写的规则源
+    let terms = profile_bits::terms(db).await;
     Ok(ok(serde_json::json!({
         "theme_tokens": theme_tokens,
+        "terms": terms,
         "site_type": site_type,
         "pack_name": pack.as_ref().map(|p| p.name.clone()),
         "brand": brand,
@@ -249,4 +252,9 @@ pub(crate) struct SiteTypePack {
     #[serde(default)]
     #[sqlx(default)]
     pub(super) subtitle_kind: Option<String>,
+    /// 术语规则段（0206）：`[{canonical,replacement,sort}]`；
+    /// **NULL = 本包不声明术语**（内置预置包全为 NULL，切站型不动词汇表）
+    #[serde(default)]
+    #[sqlx(default)]
+    pub(super) terms: Option<serde_json::Value>,
 }

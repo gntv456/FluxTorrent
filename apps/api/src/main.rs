@@ -50,6 +50,7 @@ mod social_http;
 mod staff_http;
 mod state;
 mod storage;
+mod terms;
 mod torrent_http;
 mod torrents;
 mod twofa_http;
@@ -116,6 +117,10 @@ async fn main() -> anyhow::Result<()> {
             .run(&st.repo.db)
             .await?;
     }
+
+    // 术语快照（0205 / 四审 L7）：迁移跑完才有 site_terms，错误信封的文案出口
+    // 读的是这份进程内快照。零行 = 零规则 = 全站文案原样（新装与升级都不变文案）。
+    terms::reload(&state.repo.db).await;
 
     // 演示账号防线（审计 P0）：0018 迁移自带 12 个口令为 password123 的演示账号
     //（argon2 哈希公开在迁移文件里，任何拿到源码的人都能直接登录——含 class 6 高权限）。

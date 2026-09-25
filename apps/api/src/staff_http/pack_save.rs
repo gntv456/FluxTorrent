@@ -188,13 +188,17 @@ pub async fn site_type_pack_save(
         }
     };
     sqlx::query(
-        "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort, tagline, subtitle_kind, sections, tags, classes, economy, metadata) \
-         VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6, $7, $8, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb) \
+        "INSERT INTO site_type_packs (code, name, description, brand, categories, \
+         modules, sort, tagline, subtitle_kind, sections, tags, classes, economy, \
+         metadata, terms) \
+         VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6, \
+         $7, $8, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb, \
+         $14::jsonb) \
          ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, brand = EXCLUDED.brand, \
            categories = EXCLUDED.categories, modules = EXCLUDED.modules, tagline = EXCLUDED.tagline, \
            subtitle_kind = EXCLUDED.subtitle_kind, sections = EXCLUDED.sections, \
            tags = EXCLUDED.tags, classes = EXCLUDED.classes, economy = EXCLUDED.economy, \
-           metadata = EXCLUDED.metadata",
+           metadata = EXCLUDED.metadata, terms = EXCLUDED.terms",
     )
     .bind(&code)
     .bind(body.name.trim())
@@ -209,6 +213,8 @@ pub async fn site_type_pack_save(
     .bind(nullable(snap.classes))
     .bind(nullable(snap.economy))
     .bind(nullable(snap.metadata))
+    // 术语（0206）：另存即如实捕获，apply 才有东西可还原；NULL 才是「不声明」
+    .bind(snap.terms.to_string())
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

@@ -1,6 +1,7 @@
 /** English dictionary (mirrors zh-CN structure) */
 
 import type { Dict } from "./zh-CN";
+import { termsPanelEn } from "./terms-panel";
 
 const enBase: Omit<
   Dict,
@@ -22,6 +23,7 @@ const enBase: Omit<
   | "resPage"
   | "endangered"
   | "teams"
+  | "termsPanel"
 > = {
   meta: {
     titleSuffix: "FluxTorrent",
@@ -5033,6 +5035,7 @@ const groupsubEn: Dict["groupsub"] = {
 
 export const en: Dict = {
   ...enBase,
+  termsPanel: termsPanelEn,
   security2fa: {
     statusOn: "Enabled",
     statusOff: "Disabled",
