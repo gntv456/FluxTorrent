@@ -26,6 +26,11 @@ pub async fn setup_gate_mw(
         "/api/v1/setup/status",
         "/api/v1/health",
         "/api/v1/auth/login",
+        "/api/v1/auth/logout",
+        // 装机自救通道：0017 引导的 root 带 must_reset_password=true，而 auth_infra 的
+        // 强制改密闸门只放行 /me、/me/password*、/auth/logout。这里若不放行改密，
+        // 首启就死锁：改密被装机门拦 → 完不成向导（向导要鉴权）→ 站点永远装不完。
+        "/api/v1/me/password",
         "/api/v1/compat/meta",
         "/api/v1/metrics",
     ];
