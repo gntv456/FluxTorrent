@@ -6,7 +6,11 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import type { ForumCategory } from "@fluxtorrent/domain-types";
 import {
-  BTN_LINE, BTN_SKY, INPUT_CLS, NUM_INPUT,
+  BTN_LINE,
+  BTN_SKY,
+  INPUT_CLS,
+  NUM_INPUT,
+  type ClassTuple,
   type ForumAdminForum,
 } from "./forum-structure-types";
 
@@ -64,6 +68,7 @@ export function ForumBoardDrawer({
   open,
   forum,
   categories,
+  classes,
   defaultCatId,
   busy,
   run,
@@ -72,6 +77,8 @@ export function ForumBoardDrawer({
   open: boolean;
   forum: ForumAdminForum | null;
   categories: ForumCategory[];
+  /** 等级档候选（GET /admin/forums 附带 user_classes）；空则回落数字输入 */
+  classes: ClassTuple[];
   defaultCatId: number | "";
   busy: boolean;
   run: (fn: () => Promise<void>, ok: string) => void;
@@ -89,6 +96,15 @@ export function ForumBoardDrawer({
   useEffect(() => {
     if (open) setForm(initial);
   }, [open, initial]);
+
+  // 门槛下拉候选：等级全量 + 兜底并入当前值（历史数据可能指向已不存在的档）
+  const gateOpts = useMemo<ClassTuple[]>(() => {
+    const list = [...classes];
+    for (const v of [initial.mr, initial.mw, initial.mc]) {
+      if (!list.some(([id]) => id === v)) list.push([v, String(v)]);
+    }
+    return list.sort((a, b) => a[0] - b[0]);
+  }, [classes, initial]);
 
   if (!open) return null;
 
@@ -113,14 +129,17 @@ export function ForumBoardDrawer({
       category_id: form.catId === "" ? null : Number(form.catId),
       sort: form.sort,
     };
-    run(async () => {
-      if (forum) {
-        await api.put(`/api/v1/admin/forums/${forum.id}`, payload);
-      } else {
-        await api.post("/api/v1/admin/forums", payload);
-      }
-      onClose();
-    }, forum ? t.boardSaved : t.boardCreated);
+    run(
+      async () => {
+        if (forum) {
+          await api.put(`/api/v1/admin/forums/${forum.id}`, payload);
+        } else {
+          await api.post("/api/v1/admin/forums", payload);
+        }
+        onClose();
+      },
+      forum ? t.boardSaved : t.boardCreated,
+    );
   }
 
   return (
@@ -184,30 +203,39 @@ export function ForumBoardDrawer({
         <div className="mb-1">
           <span className="mb-1 block text-xs text-sub">{t.fldGates}</span>
           <div className="grid grid-cols-3 gap-2">
-            <input
-              type="number"
-              min={0}
-              max={99}
-              value={form.mr}
-              onChange={(e) => set("mr", Number(e.target.value))}
-              className={NUM_INPUT}
-            />
-            <input
-              type="number"
-              min={0}
-              max={99}
-              value={form.mw}
-              onChange={(e) => set("mw", Number(e.target.value))}
-              className={NUM_INPUT}
-            />
-            <input
-              type="number"
-              min={0}
-              max={99}
-              value={form.mc}
-              onChange={(e) => set("mc", Number(e.target.value))}
-              className={NUM_INPUT}
-            />
+            {(
+              [
+                ["mr", t.gateRead],
+                ["mw", t.gateWrite],
+                ["mc", t.gateCreate],
+              ] as const
+            ).map(([k, label]) => (
+              <label key={k} className="flex flex-col gap-1">
+                <span className="text-[11px] text-sub">{label}</span>
+                {gateOpts.length > 0 ? (
+                  <select
+                    value={form[k]}
+                    onChange={(e) => set(k, Number(e.target.value))}
+                    className={NUM_INPUT}
+                  >
+                    {gateOpts.map(([id, name]) => (
+                      <option key={id} value={id}>
+                        {id} · {name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="number"
+                    min={0}
+                    max={99}
+                    value={form[k]}
+                    onChange={(e) => set(k, Number(e.target.value))}
+                    className={NUM_INPUT}
+                  />
+                )}
+              </label>
+            ))}
           </div>
           <p
             className={`mt-1 text-xs ${gatesBad ? "text-danger" : "text-sub"}`}

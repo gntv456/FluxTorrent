@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getForumIndex } from "@/lib/data";
 import { getDict } from "@/i18n/server";
 import { ForumSearch } from "@/components/forum-search";
+import { TopicComposer } from "@/components/forum-composer";
 import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
@@ -28,8 +29,7 @@ export default async function ForumsPage() {
   // 「未分组」= category_id 为空，或指向本次未返回的分区
   const orphans = forums.filter(
     (f) =>
-      f.category_id == null ||
-      !categories.some((c) => c.id === f.category_id),
+      f.category_id == null || !categories.some((c) => c.id === f.category_id),
   );
   if (orphans.length > 0) {
     groups.push({
@@ -79,9 +79,8 @@ export default async function ForumsPage() {
           >
             {dict.forums.feedTitle}
           </Link>
-          <Link href="/forums/new" className="baozi-button">
-            {dict.forums2.newTopic}
-          </Link>
+          {/* 全局发帖入口：弹窗内先选版块再填表单（can_create 版块懒拉） */}
+          <TopicComposer />
         </header>
 
         {groups.map((g) => (

@@ -101,6 +101,7 @@ pub async fn get_torrent_detail(
                    COALESCE((SELECT max(s.completed_at) FROM snatches s WHERE s.torrent_id = t.id), t.created_at)
                ) AS last_action,
                (t.times_completed * 2 + 1)::bigint AS views,
+               t.pos_state, t.pos_state_until, t.pick_type,
                '{}'::jsonb AS sections
         FROM torrents t
         WHERE t.id = $1 AND (

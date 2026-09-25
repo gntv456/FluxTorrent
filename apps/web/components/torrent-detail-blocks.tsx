@@ -29,6 +29,10 @@ export interface TorrentDetailExt {
   >;
   /** MediaInfo 全文（发布表单录入，折叠块展示） */
   mediainfo?: string | null;
+  /** 推荐位回显（0184 编辑表单）：置顶位置/截止/推荐影片 */
+  pos_state?: number;
+  pos_state_until?: string | null;
+  pick_type?: number;
 }
 
 /** 聚合组（0069）：同一资源的多个版本 */

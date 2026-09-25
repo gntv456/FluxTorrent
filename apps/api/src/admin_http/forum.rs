@@ -82,9 +82,15 @@ async fn forum_admin_list(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(
-        serde_json::json!({ "forums": rows, "mods": mods, "categories": categories }),
-    ))
+    // 等级名对照（三档门槛下拉用）：user_classes 全量按 id 升序
+    let classes: Vec<(i32, String)> =
+        sqlx::query_as("SELECT id, name FROM user_classes ORDER BY id")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "forums": rows, "mods": mods, "categories": categories, "classes": classes,
+    })))
 }
 
 // ---- 分区/节点管理（0115；与版块同权限档 FORUMS_MANAGE） ----

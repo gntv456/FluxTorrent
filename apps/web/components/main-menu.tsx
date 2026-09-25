@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-/** 导航（Seedlight §3）：一级平铺 + 「更多 ▾」分组下拉（点击展开，点外部/ESC 收起）。 */
+/** 导航（Seedlight §3）：一级平铺 + 「更多 ▾」分组下拉（点击展开，点外部/ESC 收起）。
+ *
+ *  选中态口径：裸路径条目（资源库 /torrents）与带参条目（官种
+ *  /torrents?official=1）共享同一路径——带参条目仅当当前 URL 携带同参数
+ *  才点亮；裸路径条目在同路径带参条目命中时「让位」，否则三个条目
+ *  （资源库/官种/更多）会一起点亮（参数剥掉后匹配路径必然同真）。 */
 type NavItem = { href: string; label: string };
 type NavGroup = { group: string; items: NavItem[] };
 
@@ -21,14 +26,41 @@ export function MainMenu({
   ariaLabel: string;
 }) {
   const pathname = usePathname();
+  const sp = useSearchParams();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLLIElement>(null);
 
-  const isActive = (href: string) => {
-    const path = href.split("?")[0];
-    return path === "/"
+  const pathActive = (p: string) =>
+    p === "/"
       ? pathname === "/"
-      : pathname === path || pathname.startsWith(`${path}/`);
+      : pathname === p || pathname.startsWith(`${p}/`);
+  /** 当前 URL 是否携带该 href query 的全部键值 */
+  const queryActive = (href: string) => {
+    const q = href.split("?")[1];
+    if (!q) return false;
+    for (const [k, v] of new URLSearchParams(q)) {
+      if (sp.get(k) !== v) return false;
+    }
+    return true;
+  };
+  const allItems = [...items, ...(groups ?? []).flatMap((g) => g.items)];
+  // 命中的带参条目所占据的路径：裸路径条目在这些路径上让位
+  const claimedPaths = new Set(
+    allItems
+      .filter((i) => queryActive(i.href))
+      .map((i) => i.href.split("?")[0]),
+  );
+
+  const isActive = (href: string) => {
+    const [path, query] = href.split("?");
+    if (!pathActive(path)) return false;
+    if (query) {
+      for (const [k, v] of new URLSearchParams(query)) {
+        if (sp.get(k) !== v) return false;
+      }
+      return true;
+    }
+    return !claimedPaths.has(path);
   };
   const moreActive = (groups ?? []).some((g) =>
     g.items.some((i) => isActive(i.href)),

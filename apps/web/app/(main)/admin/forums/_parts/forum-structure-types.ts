@@ -22,10 +22,14 @@ export interface ForumAdminForum {
  *  后端此处保持元组返回（前端已按索引访问），显式标注避免再被误当对象。 */
 export type ModTuple = [number, number, string];
 
+/** 等级档（user_classes）：三档门槛下拉的候选 [id, name] 元组 */
+export type ClassTuple = [number, string];
+
 export interface ForumAdminData {
   forums: ForumAdminForum[];
   mods: ModTuple[];
   categories: ForumCategory[];
+  classes?: ClassTuple[];
 }
 
 /** 左栏「未分组」伪条目 id（真实分区 id 均为正） */
