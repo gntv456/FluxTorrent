@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { PANEL_BAOZI } from "@/lib/ui-classes";
@@ -16,6 +18,27 @@ interface CustomPage {
   updated_at: string;
 }
 
+/** 一次请求内 metadata 与正文共用同一次取数（React cache 去重） */
+const loadPage = cache(async (slug: string): Promise<CustomPage | null> => {
+  try {
+    return await api.get<CustomPage>(`/api/v1/pages/${slug}`);
+  } catch {
+    return null;
+  }
+});
+
+/** 页面标题用这条页面自己的 title：0201 把 /p/{slug} 写进 sitemap 后复验发现，
+ *  落到页面上 `<title>` 仍是全站同一个「站名 · 后缀」——爬虫拿到一串同名页。 */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const page = await loadPage(slug);
+  return page ? { title: page.title } : {};
+}
+
 export default async function CustomPageView({
   params,
 }: {
@@ -23,12 +46,7 @@ export default async function CustomPageView({
 }) {
   const { slug } = await params;
   const { dict } = await getDict();
-  let page: CustomPage | null = null;
-  try {
-    page = await api.get<CustomPage>(`/api/v1/pages/${slug}`);
-  } catch {
-    page = null;
-  }
+  const page = await loadPage(slug);
   if (!page) notFound();
   return (
     <div className="flex flex-col gap-4">

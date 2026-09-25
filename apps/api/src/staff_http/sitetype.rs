@@ -3,6 +3,7 @@
 
 use actix_web::{get, web, HttpRequest, Responder};
 
+use super::profile_bits;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -15,6 +16,7 @@ use crate::state::AppState;
 pub async fn site_profile(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
+    let db = &state.repo.db;
     let site_type: String = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'site_type'",
     )
@@ -73,24 +75,12 @@ pub async fn site_profile(
     .or(pack.as_ref().map(|p| p.brand.clone()))
     .unwrap_or_default();
     // 站点货币名（0082）：默认「魔力」，站长可后台改任意名；空值兜底回默认
-    let currency: String = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'currency_name'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten()
-    .filter(|v: &String| !v.trim().is_empty())
-    .unwrap_or_else(|| "魔力".to_string());
+    let currency: String = profile_bits::setting_text(db, "currency_name")
+        .await
+        .unwrap_or_else(|| "魔力".to_string());
     // 建站日期（页脚版权条 "(c) 站名 日期 Powered by FluxTorrent" 用）
-    let founded: Option<String> = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'datefounded'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten()
-    .filter(|v: &String| !v.trim().is_empty());
+    let founded: Option<String> =
+        profile_bits::setting_text(db, "datefounded").await;
 
     // 模块开关：site_type_packs.modules 只是站型的**初始快照**，运行时权威在
     // site_settings.module_*（后台改了开关，导航要跟着变）。以前者打底、后者覆盖。
@@ -176,47 +166,13 @@ pub async fn site_profile(
             .filter(|t| !t.is_empty())
     })
     .unwrap_or_default();
-    let site_logo: Option<String> = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'site_logo'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten()
-    .map(|v| v.trim().to_string())
-    .filter(|v| !v.is_empty());
+    let site_logo = profile_bits::setting_text(db, "site_logo").await;
     // 站点简介（0088）：页脚「站点信息」卡片文案，留空由前端回落字典默认
-    let site_desc: Option<String> = sqlx::query_scalar::<_, String>(
-        "SELECT value FROM site_settings WHERE name = 'site_desc'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten()
-    .map(|v| v.trim().to_string())
-    .filter(|v| !v.is_empty());
+    let site_desc = profile_bits::setting_text(db, "site_desc").await;
+    // SEO（0201）与主题令牌（0189）的判据在 profile_bits（空值/格式口径）
+    let seo = profile_bits::seo_block(db).await;
     // 主题令牌（0189 R4.6）：有值才下发——前端注入 :root 覆盖默认 Aurora 色
-    let token_rows: Vec<(String, String)> = sqlx::query_as(
-        "SELECT name, value FROM site_settings WHERE name LIKE          'theme_token_%'",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .unwrap_or_default();
-    let mut theme_tokens = serde_json::Map::new();
-    for (name, value) in token_rows {
-        let v = value.trim().to_string();
-        if v.is_empty() {
-            continue;
-        }
-        // 只收 #rrggbb（防任意 CSS 注入；settings 侧写入口在设置卡）
-        let b = v.as_bytes();
-        if b.len() == 7
-            && b[0] == b'#'
-            && b[1..].iter().all(|c| c.is_ascii_hexdigit())
-        {
-            theme_tokens.insert(name, serde_json::json!(v));
-        }
-    }
+    let theme_tokens = profile_bits::theme_tokens(db).await;
     Ok(ok(serde_json::json!({
         "theme_tokens": theme_tokens,
         "site_type": site_type,
@@ -233,6 +189,7 @@ pub async fn site_profile(
         "founded": founded,
         "metadata_sources": sources,
         "site_desc": site_desc,
+        "seo": seo,
         "categories": cats.iter().map(|(id, name, icon, bg)| serde_json::json!({"id": id, "name": name, "icon_key": icon, "bg_color": bg})).collect::<Vec<_>>(),
         "torrent_dicts": {
             "grades": grades.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),

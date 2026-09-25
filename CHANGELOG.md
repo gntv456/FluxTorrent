@@ -88,6 +88,44 @@
   首页单源 API 面 7/7 + 浏览器 DOM 实测（默认 9 格占宽合清单；把 `latest` 排到第 1 格
   `span-1` 后第 1 格确为海报墙；库里手塞坏键时只剩 1 格，旧行为会回退成 9 格）。
 
+### 通用建站定位四审 L6 收口：SEO/OG/sitemap 面板（2026-09-25）
+
+- **SEO 设置面终于接上前台**（0201）：根布局 `generateMetadata` 改为消费
+  `/site-profile` 新增的 `seo` 段——站长填的 META 描述/关键词真的落到
+  `<meta name="description">`/`keywords`/`og:*`/`twitter:*`。此前 `metadescription`
+  只有 RSS 消费、`metakeywords` 零读取，设置页那排框是四审 L6 点名的假开关族；
+  同时摘掉两个纯装饰键 `titlekeywords`/`cssdate`，新增 `seo_indexable`
+  （**缺省 `no`**：私有站被搜索引擎抓走是事故不是特性，要放开得站长显式打开）。
+- **描述三级回落**：META 描述 → 站点简介 `site_desc` → 自带词表。自带文案写的是
+  「通用 PT 建站系统」，与「不偏向任何 PT 类型」的定位相反，所以站长自己的话
+  必须排在它前面。
+- **新增 `/robots.txt` 与 `/sitemap.xml`**（全仓此前没有）：未开收录时 robots 是
+  `Disallow: /`、页面带 `noindex`、sitemap 不给条目；开收录后 robots 放行全站但
+  仍排除 `/admin/ /me/ /api/ /checkout/ /messages/`。sitemap 只列**匿名可达**地址
+  （首页 + 公开自定义页）——把需要登录的种子详情写进去等于给爬虫一堆死链，
+  为此新增匿名接口 `GET /api/v1/public-pages`。
+- **复验抓到两个真缺陷**（都不是「没做」，而是「做了但被别的环节吃掉」）：
+  ① 站点准入闸门把 `/robots.txt`、`/sitemap.xml` 一起 307 到 `/login`，爬虫永远
+  拿不到 ⇒ 收录开关与两个机器文件全是摆设；已把两者与 `/p/{slug}` 放进匿名白名单。
+  ② `PUBLIC_SITE_URL` 未配置时不编假域名（`siteBase()` 返回 null，
+  `metadataBase`/`og:url` 省略），不再编一个假域名。
+  ③ 顺带补上 `/p/{slug}` 自己的 `generateMetadata`：sitemap 里那些页面落到前台时
+  `<title>` 全是全站同一个「站名 · 后缀」，等于给爬虫一串同名页。
+- **门禁收口**：本批与上一批把自己的文件撑过了 300 行/80 列门禁（10 项违规），
+  现拆回全绿——`sitetype.rs` 拆出 `profile_bits.rs`（`setting_text`/`seo_block`/
+  `theme_tokens`），`user_fields.rs` 拆出 `user_fields_def.rs` 并删掉从未被调用的
+  `mount_user_fields`（路由实际在 `http/mod.rs` 注册），`staff-user-fields.tsx`
+  三处逐字段手抄的 PUT body 改展开（PUT 是全量覆盖，漏抄一个就静默清空那一个）。
+- 升级注意：0201 删除 `titlekeywords`/`cssdate` 两键的值与元数据行、新增
+  `seo_indexable`（默认 `no`）。既有站点前台描述原本取字典默认，若设过 `site_desc`
+  现在会改取它；打开收录前对爬虫无变化。
+- 复验（新镜像 + 独立 web 容器 24 条断言）：含「翻 `seo_indexable` 一个开关，
+  robots/noindex/sitemap 三处一起翻」、匿名取 `/robots.txt` 不再被 307、
+  `og:url` 落在部署域名、清空 META 描述后回落站点简介；对照组保留「未登录首页
+  仍被准入闸门挡住」，避免拿 `/login` 的根布局 metadata 冒充首页。
+  `cargo test --workspace` 138 passed、`tsc --noEmit` 零 error、`cargo fmt --check` 干净、
+  四道跨语言门禁（行数/行宽、模块键、首页板块、type-drift）全绿。
+
 ### 通用建站系统收口（2026-09-25 六迭代，详见 _doc/通用建站定位符合度三审报告）
 
 - **模块缺省翻转**：可选模块缺省从教育站全开改为 general 中立矩阵；

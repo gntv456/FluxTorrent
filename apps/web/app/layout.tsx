@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
+import { siteBase } from "@/lib/site-url";
 import { LocaleProvider } from "@/i18n/client";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -9,9 +10,38 @@ export async function generateMetadata(): Promise<Metadata> {
   // 品牌名跟随站点设定（site_name，站长后台可改）；默认 FluxTorrent
   const profile = await getSiteProfile();
   const brandName = profile.brand || "FluxTorrent";
+  // SEO（0201）：META 描述/关键词与收录开关真的接进来了——此前设置页那排键
+  // 只有 metadescription 被 RSS 用，前台一律用字典默认，站长改完不生效。
+  const seo = profile.seo ?? {};
+  // 描述三级回落：站长填的 META 描述 → 站点简介 → 自带词表。自带文案写着
+  // 「通用 PT 建站系统」，与「不偏向任何 PT 类型」的定位相反，所以站长自己的
+  // 话必须排在它前面。
+  const desc =
+    seo.description?.trim() ||
+    profile.site_desc?.trim() ||
+    dict.meta.description;
+  const base = siteBase();
+  const keywords = (seo.keywords ?? "")
+    .split(/[,，]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   return {
+    ...(base ? { metadataBase: base } : {}),
     title: `${brandName} · ${dict.meta.titleSuffix}`,
-    description: dict.meta.description,
+    description: desc,
+    ...(keywords.length ? { keywords } : {}),
+    // 未显式允许收录 ⇒ 私有站默认对爬虫关门（robots.txt 同步 Disallow）
+    robots: seo.indexable
+      ? { index: true, follow: true }
+      : { index: false, follow: false },
+    openGraph: {
+      type: "website",
+      siteName: brandName,
+      title: brandName,
+      description: desc,
+      ...(base ? { url: base.href } : {}),
+    },
+    twitter: { card: "summary", title: brandName, description: desc },
     // manifest 由 app/manifest.ts 运行时生成（品牌跟随 site_profile.brand），Next 自动注入 <link rel="manifest">
     icons: {
       icon: "/icons/icon-192.png",

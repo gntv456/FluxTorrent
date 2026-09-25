@@ -20,11 +20,20 @@ const PUBLIC_PATHS = [
   "/setup", // 安装向导（U3 §8.3）：冷启动期管理员未登录也要能进入
 ];
 
-function isAsset(pathname: string): boolean {
+function isAnonymousOk(pathname: string): boolean {
   return (
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/icons/") ||
-    ["/favicon.ico", "/manifest.webmanifest", "/sw.js"].includes(pathname)
+    pathname.startsWith("/p/") ||
+    [
+      "/favicon.ico",
+      "/manifest.webmanifest",
+      "/sw.js",
+      // 爬虫必读的机器文件必须匿名可达：否则准入闸门会把它们 307 到 /login，
+      // 「允许收录」开关与 robots/sitemap 全成了摆设（0201 复验时抓到）
+      "/robots.txt",
+      "/sitemap.xml",
+    ].includes(pathname)
   );
 }
 
@@ -37,7 +46,9 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (hasSession || isAsset(pathname) || PUBLIC_PATHS.includes(pathname)) {
+  const publicPage =
+    isAnonymousOk(pathname) || PUBLIC_PATHS.includes(pathname);
+  if (hasSession || publicPage) {
     // 已登录访问登录页 → 回资源库，避免原地打转
     if (hasSession && pathname === "/login") {
       return NextResponse.redirect(new URL("/torrents", req.url));
