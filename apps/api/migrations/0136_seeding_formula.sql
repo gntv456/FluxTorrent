@@ -131,3 +131,20 @@ CREATE OR REPLACE FUNCTION seeding_hourly(
     SELECT (p_base + floor((2 / pi()) * p_cap * atan(GREATEST(p_sum_bonus, 0) * p_curve_k))::bigint)
          * (CASE WHEN p_is_donor THEN p_donor_mult ELSE 1 END)
 $$;
+
+-- 函数注释（自 0134 移来：0134 早于本文件，那里注释这三个函数会让空库装站卡死）
+COMMENT ON FUNCTION seeding_torrent_bonus(
+    bigint, int, double precision, int, double precision, double precision, double precision, double precision, double precision
+) IS '单颗种子的做种收益加成系数（纯函数）。
+公式 =（种子档位分 + 个人做种时长档位分）× 体积对数饱和因子 × 稀有度加成 × 标定系数。
+体积因子实现用 ln(1+size_GB)/ln(1+vol_base)——与 log10 比值完全等价（换底公式），非口径差异。
+档位：种子维度 濒危2.0/高龄1.5/老1.0/大体积0.75/中体积0.5/日常0.25（第一命中优先）；
+个人时长 ≥1年2.0/6-12月1.0/3-6月0.75/1-3月0.5。参数全部来自 site_settings seeding_*（见 seeding_params()）。';
+
+COMMENT ON FUNCTION seeding_hourly(
+    double precision, bigint, double precision, double precision, bigint, boolean
+) IS 'Σ加成 → 每小时魔力。底薪不参与 arctan 压缩曲线；donor 整笔（含底薪）乘 donor_mult。
+渐近上限 = base + cap（atan 开区间，实际取不到，故实际恒 < base+cap）。';
+
+COMMENT ON FUNCTION seeding_params() IS '做种收益参数行（从 site_settings 的 seeding_* 键读取）。
+调用侧应使用 WITH p AS MATERIALIZED (SELECT * FROM seeding_params())，避免被内联后逐行求值。';

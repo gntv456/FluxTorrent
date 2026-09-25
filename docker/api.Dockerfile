@@ -8,6 +8,14 @@ RUN cargo install cargo-chef --locked
 COPY docker/cargo-config.toml /usr/local/cargo/config.toml
 
 FROM chef AS planner
+# 适配器 wasm 单独成层：adapter_seed.rs 的 include_bytes! 在编译期就要这个产物，
+# 而它落在 **/target/（被 .dockerignore 排除、也没入库）——不在这里构建，
+# 干净克隆的 api 镜像必然编不过（四审 A 批复验空库首启时踩实）。
+# 放在 `COPY apps` 之前，业务代码改动不再连带重付这 29 分钟的 wasm 编译。
+COPY apps/api/adapters ./apps/api/adapters
+RUN rustup target add wasm32-unknown-unknown \
+    && cd apps/api/adapters/douban \
+    && cargo build --release --target wasm32-unknown-unknown
 # Cargo workspace 需要全部成员 manifest —— 拷贝整个 apps + 根清单
 COPY Cargo.toml Cargo.lock ./
 COPY apps ./apps
@@ -19,6 +27,8 @@ COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY Cargo.toml Cargo.lock ./
 COPY apps ./apps
+COPY --from=planner /build/apps/api/adapters/douban/target/wasm32-unknown-unknown/release/adapter_douban.wasm \
+    /build/apps/api/adapters/douban/target/wasm32-unknown-unknown/release/adapter_douban.wasm
 RUN cargo build --release -p flux-api \
     && cp target/release/flux-api /usr/local/bin/flux-api
 # GeoLite2 离线库不入仓库（.gitignore）；CI 上下文无此目录时补空目录，
