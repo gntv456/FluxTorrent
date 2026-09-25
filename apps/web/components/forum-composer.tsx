@@ -7,10 +7,12 @@ import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { TagChip, TagChipData } from "@/components/forum-bits";
+import { VideoInsertRow } from "@/components/forum-video-insert";
 
 /** 论坛发主题组件群（从 forum-composer.tsx 按域拆出）：
  *  发帖选标签 TagPicker + 发主题 TopicComposer（悬赏/投票/抽奖三型，
- *  0124/0125/0126）。回帖/管理操作见 forum-post-actions.tsx。 */
+ *  0124/0125/0126）。视频插入行在 forum-video-insert.tsx；回帖/管理操作
+ *  见 forum-post-actions.tsx。 */
 
 /** 发主题选标签：字典自取（公开接口 /forums/tags，含 tag_dict 样式列），最多选 5 个 */
 function TagPicker({
@@ -263,6 +265,12 @@ export function TopicComposer({ forumId }: { forumId: number }) {
           />
         </div>
       </div>
+      {/* 视频内嵌（0189/0190）：白名单链接或本地上传，插入 !video() 独立行 */}
+      <VideoInsertRow
+        onInsert={(line) =>
+          setBody((b) => `${b}${b ? "\n" : ""}${line}\n`)
+        }
+      />
       {msg && (
         <p role="alert" className="text-sm text-danger">
           {msg}

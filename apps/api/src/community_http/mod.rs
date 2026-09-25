@@ -3,6 +3,7 @@
 
 use actix_web::web;
 mod bounty;
+mod embed_rules;
 mod feed;
 mod follow;
 mod forum_perm;
@@ -35,6 +36,7 @@ mod topic_admin;
 mod topic_create;
 
 pub use bounty::*;
+pub use embed_rules::*;
 pub use feed::*;
 pub use follow::*;
 pub use forum_perm::*;
@@ -103,6 +105,8 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(forum_feed)
         // M15 论坛标签（0123：词表复用 tag_dict，只建 topic_tags 关联）
         .service(forum_tags_dict)
+        // 论坛视频内嵌 V1（0189）：白名单 embed 规则只读端点
+        .service(forum_embed_rules)
         // M15 论坛悬赏（0124：发帖冻结 → 楼主采纳发放，复用求种悬赏范式）
         .service(bounty_award)
         // M15 论坛投票（0125：发帖定选项 → 一人一票 → 楼主可截止，范式照 fun_polls）

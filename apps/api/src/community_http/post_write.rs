@@ -32,6 +32,8 @@ async fn post_reply(
     }
     // 敏感词（Phase3）
     check_banned_words(&state.repo.db, &body.body).await?;
+    // 视频内嵌（0190）：每帖视频块上限
+    check_video_count(&state.repo.db, &body.body).await?;
     let row: Option<(i64, bool, i64, String)> = sqlx::query_as(
         "SELECT forum_id, locked, COALESCE(user_id, 0), \
          title FROM topics WHERE id = $1",

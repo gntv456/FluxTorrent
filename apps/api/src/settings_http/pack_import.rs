@@ -46,8 +46,135 @@ pub(super) async fn import(
         "taxonomy" => import_taxonomy(state, actor, &head, confirm).await,
         "rules" => import_rules(state, actor, &head, confirm).await,
         "assets" => import_assets(state, actor, &head, confirm).await,
+        "embed" => import_embed(state, actor, &head, confirm).await,
         _ => import_theme(state, actor, &head, confirm).await,
     }
+}
+
+/// embed 包导入（0190）：payload.rules = [video_embed_rules 行数组]。
+/// 白名单只有 video_embed_rules 一张表；快照重放（同 assets 口径）。
+/// builtin 行不受包影响（包只覆盖非 builtin 行；builtin 种子跟版本走）。
+async fn import_embed(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    actor: &i64,
+    head: &PackHead,
+    confirm: bool,
+) -> DomainResult<HttpResponse> {
+    let Some(rows) = head.payload.get("rules").and_then(Value::as_array)
+    else {
+        return Err(bad("embed 包缺少 payload.rules"));
+    };
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(internal)?;
+    if !confirm {
+        tx.rollback().await.ok();
+        return Ok(ok(serde_json::json!({
+            "dry_run": true,
+            "kind": "embed",
+            "pack_id": head.pack_id,
+            "will_change": rows.len(),
+        })));
+    }
+    // 快照（回滚 = 逆向重放，同 assets 口径）
+    let snap: Vec<(i64, String, String, String, String, String)> =
+        sqlx::query_as(
+            "SELECT id, provider, url_pattern, embed_template, \
+             embed_origin, render_kind FROM video_embed_rules \
+             WHERE NOT builtin ORDER BY id",
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(internal)?;
+    let snapshot = serde_json::json!({
+        "rules": snap.iter().map(|r| serde_json::json!({
+            "id": r.0, "provider": r.1, "url_pattern": r.2,
+            "embed_template": r.3, "embed_origin": r.4,
+            "render_kind": r.5,
+        })).collect::<Vec<_>>()
+    });
+    // 纯覆盖：删包外非 builtin 行 → 逐行 upsert
+    let keep: Vec<i64> = rows
+        .iter()
+        .filter_map(|r| r.get("id").and_then(Value::as_i64))
+        .collect();
+    sqlx::query(
+        "DELETE FROM video_embed_rules WHERE NOT builtin \
+         AND NOT (id = ANY($1))",
+    )
+    .bind(&keep)
+    .execute(&mut *tx)
+    .await
+    .map_err(internal)?;
+    let mut applied = 0usize;
+    for r in rows {
+        let s = |k: &str| {
+            r.get(k).and_then(Value::as_str).unwrap_or_default()
+        };
+        let id = r.get("id").and_then(Value::as_i64).unwrap_or(0);
+        if id <= 0 {
+            continue;
+        }
+        sqlx::query(
+            "INSERT INTO video_embed_rules (id, provider, name_zh, \
+             url_pattern, embed_template, embed_origin, render_kind, \
+             aspect, extra_params, builtin, enabled, sort) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE,$10,$11) \
+             ON CONFLICT (id) DO UPDATE SET \
+             provider=EXCLUDED.provider, name_zh=EXCLUDED.name_zh, \
+             url_pattern=EXCLUDED.url_pattern, \
+             embed_template=EXCLUDED.embed_template, \
+             embed_origin=EXCLUDED.embed_origin, \
+             render_kind=EXCLUDED.render_kind, aspect=EXCLUDED.aspect, \
+             extra_params=EXCLUDED.extra_params, \
+             enabled=EXCLUDED.enabled, sort=EXCLUDED.sort",
+        )
+        .bind(id)
+        .bind(s("provider"))
+        .bind(s("name_zh"))
+        .bind(s("url_pattern"))
+        .bind(s("embed_template"))
+        .bind(s("embed_origin"))
+        .bind(s("render_kind"))
+        .bind(s("aspect"))
+        .bind(r.get("extra_params").cloned().unwrap_or(Value::Null))
+        .bind(r.get("enabled").and_then(Value::as_bool).unwrap_or(true))
+        .bind(r.get("sort").and_then(Value::as_i64).unwrap_or(100) as i32)
+        .execute(&mut *tx)
+        .await
+        .map_err(internal)?;
+        applied += 1;
+    }
+    // 重放需要 sequence 对齐（显式 id 插入不推进 bigserial）
+    sqlx::query(
+        "SELECT setval('video_embed_rules_id_seq', \
+         GREATEST((SELECT COALESCE(max(id),1) FROM video_embed_rules), 1))",
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(internal)?;
+    upsert_pack_row(&mut tx, actor, head, snapshot).await?;
+    audit(
+        &mut tx,
+        *actor,
+        "content_pack:import",
+        &serde_json::json!({
+            "pack_id": head.pack_id, "kind": head.kind,
+            "name": head.name, "version": head.version,
+        }),
+    )
+    .await;
+    tx.commit().await.map_err(internal)?;
+    invalidate_cache(state, "module").await;
+    Ok(ok(serde_json::json!({
+        "dry_run": false,
+        "kind": "embed",
+        "pack_id": head.pack_id,
+        "applied": { "video_embed_rules": applied },
+    })))
 }
 
 async fn import_taxonomy(

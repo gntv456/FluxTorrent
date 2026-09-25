@@ -26,6 +26,7 @@ import { AdminJixiao } from "@/components/admin-jixiao";
 import { AdminTasks } from "@/components/admin-tasks";
 import { AdminTrackers } from "@/components/admin-trackers";
 import { AdminOpsPanel } from "@/components/admin-ops";
+import { AdminEmbedRules } from "@/components/admin-embed-rules";
 import { HomeLayoutEditor } from "@/components/home-layout-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
 
@@ -111,6 +112,9 @@ export function renderSimpleTool(
           <HomeLayoutEditor />
         </section>
       );
+    // 视频内嵌规则管理（0189）
+    case "embedrules":
+      return <AdminEmbedRules />;
     default:
       return undefined;
   }

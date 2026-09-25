@@ -186,35 +186,12 @@ fn ext_of(mime: &str) -> &'static str {
 }
 
 /// 附件读取（图床）：按 sha256 寻址（内容寻址不可猜测），mime 回放。
-/// 需登录（防匿名爬图床占带宽）。
+/// 需登录（防匿名爬图床占带宽）。Range/206 支持在 attachment_video.rs（0190）。
 #[get("/attachments/{sha}")]
 pub async fn get_attachment(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<String>,
 ) -> DomainResult<HttpResponse> {
-    require_auth(&req, &state).await?;
-    let sha = path.into_inner();
-    if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err(DomainError::Validation("sha256 格式无效".into()));
-    }
-    let row: Option<(String, i64)> =
-        sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")
-            .bind(&sha)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((mime, _size)) = row else {
-        return Err(DomainError::NotFound(0));
-    };
-    let bytes = crate::storage::get(&state.repo.db, &sha)
-        .await
-        .ok_or(DomainError::NotFound(0))?;
-    Ok(HttpResponse::Ok()
-        .content_type(mime)
-        .insert_header((
-            actix_web::http::header::CACHE_CONTROL,
-            "public, max-age=31536000, immutable",
-        ))
-        .body(bytes))
+    crate::attachment_video::serve_attachment(req, state, path).await
 }

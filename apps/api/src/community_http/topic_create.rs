@@ -67,6 +67,8 @@ async fn topic_create(
     if body.title.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("标题与正文不能为空".into()));
     }
+    // 视频内嵌（0190）：每帖视频块上限（!video 出现次数，0=不限）
+    check_video_count(&state.repo.db, &body.body).await?;
     // 敏感词（Phase3）：标题与正文一起过闸
     check_banned_words(
         &state.repo.db,
