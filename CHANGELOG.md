@@ -114,6 +114,17 @@
 
 ### 升级注意事项（Upgrade Notes）
 
+0. **升级到含「0134 函数注释搬移」修复的镜像之前，存量库必须先跑一次**
+   `docker exec -i flux-postgres psql -U flux -d fluxtorrent < scripts/align_migration_checksums_0134.sql`，
+   否则 sqlx 会因 134/136 校验和变化报 "migration was previously applied but has been
+   modified" 拒绝启动。背景：`0134` 对三个只在 `0136` 创建的函数下 COMMENT，**空库按序
+   执行到 134 必失败**（flux-api crash-loop），存量库因函数已存在而一直没暴露。
+   同期修复：装机白名单补 `/api/v1/me/password`（否则 root 的强制改密被装机门拦住，
+   向导永远完不成）；自助改密后失效 5s 用户状态缓存（否则改完密立刻完成向导会被
+   「临时密码」旧值挡下）。另修 `purge_demo_data()` 的删除顺序（新迁移 0194：原实现先删
+   users 撞 `torrents_owner_id_fkey`、引用不存在的 `torrents.title`、演示种子口径不匹配，
+   导致向导第一步在真空库上必 500）——**升级到全新装站可用的版本前，确认 0194 已入库**。
+
 1. 迁移 0142 对大表建索引：存量站点请在低峰窗口升级，或带外 `CREATE INDEX
    CONCURRENTLY` 预建同名索引后再启动（迁移内 IF NOT EXISTS 会跳过）
 2. 存量库如应用过「0129/0130 换号版」迁移，先执行
