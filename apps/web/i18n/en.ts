@@ -42,6 +42,7 @@ const enBase: Omit<
     networkError: "Network error, please try again later",
     spark: "{magic}",
     cancel: "Cancel",
+    save: "Save",
   },
   nav: {
     home: "Home",
@@ -1390,6 +1391,7 @@ const enBase: Omit<
     replyBadge: "Reply #{n}",
     loadEarlier: "↑ Load earlier replies",
     uncategorized: "Uncategorized",
+    postEditTitle: "Edit reply",
     types: {
       bounty: "Bounty",
       poll: "Poll",

@@ -20,6 +20,7 @@ const zhCnBase = {
     networkError: "网络异常，请稍后再试",
     spark: "{magic}",
     cancel: "取消",
+    save: "保存",
   },
   nav: {
     home: "首页",
@@ -1357,6 +1358,7 @@ const zhCnBase = {
     replyBadge: "回复 #{n}",
     loadEarlier: "↑ 加载更早的回复",
     uncategorized: "未分组",
+    postEditTitle: "编辑回帖",
     types: {
       bounty: "悬赏",
       poll: "投票",

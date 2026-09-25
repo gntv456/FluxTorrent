@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { Modal } from "@/components/modal";
 
 /** 论坛回帖与帖子级管理操作（从 forum-composer.tsx 按域拆出）：
  *  ReplyBox 回帖、TopicModActions 主题管理（版主）、PostActions 帖子编辑/删除。
@@ -159,39 +160,8 @@ export function PostActions({
     }
   }
 
-  if (editing) {
-    return (
-      <div className="flex w-full flex-col gap-2">
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={4}
-          maxLength={5000}
-          className="min-h-[80px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2 text-sm outline-none focus:border-sky"
-        />
-        {msg && (
-          <p role="alert" className="text-xs text-danger">
-            {msg}
-          </p>
-        )}
-        <div className="flex gap-2">
-          <button
-            className="min-h-[30px] rounded-full bg-sky px-3 text-xs font-bold text-white disabled:opacity-50"
-            disabled={busy}
-            onClick={save}
-          >
-            保存
-          </button>
-          <button className={btn} onClick={() => setEditing(false)}>
-            取消
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // display:contents —— 让编辑/删除按钮直接成为楼层操作行（ACTION_BAR）的
-  // flex 子项，渲染在打赏/赞之前（2026-09-23 用户要求：编辑放在赞前面）。
+  // 编辑改覆盖式弹窗（与种子编辑 TorrentManage 同口径）：
+  // 不再内联展开挤动楼层布局；display:contents 让按钮融入楼层操作行
   return (
     <div className="contents">
       <button className={btn} onClick={() => setEditing(true)}>
@@ -207,6 +177,39 @@ export function PostActions({
         </button>
       )}
       {msg && <span className="text-xs text-danger">{msg}</span>}
+      <Modal
+        open={editing}
+        onClose={() => setEditing(false)}
+        title={dict.forums.postEditTitle}
+      >
+        <div className="flex w-full flex-col gap-2">
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={10}
+            maxLength={5000}
+            autoFocus
+            className="min-h-[160px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2 text-sm outline-none focus:border-sky"
+          />
+          {msg && (
+            <p role="alert" className="text-xs text-danger">
+              {msg}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              className="min-h-[30px] rounded-full bg-sky px-3 text-xs font-bold text-white disabled:opacity-50"
+              disabled={busy}
+              onClick={save}
+            >
+              {dict.common.save}
+            </button>
+            <button className={btn} onClick={() => setEditing(false)}>
+              {dict.common.cancel}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

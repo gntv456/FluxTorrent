@@ -42,6 +42,7 @@ const zhTwBase: Omit<
     networkError: "網路異常，請稍後再試",
     spark: "{magic}",
     cancel: "取消",
+    save: "保存",
   },
   nav: {
     home: "首頁",
@@ -1378,6 +1379,7 @@ const zhTwBase: Omit<
     replyBadge: "回覆 #{n}",
     loadEarlier: "↑ 載入更早的回覆",
     uncategorized: "未分組",
+    postEditTitle: "編輯回覆",
     types: {
       bounty: "懸賞",
       poll: "投票",
