@@ -325,6 +325,9 @@ const enBase: Omit<
     deleteBoxConfirm: "Deleting a folder also clears its messages. Continue?",
     toCol: "To",
   },
+  page: {
+    updatedAt: "Last updated",
+  },
   register: {
     title: "Join us",
     subtitle: "Register with an invite code, plant your first seed",

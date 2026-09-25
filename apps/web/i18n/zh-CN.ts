@@ -319,6 +319,9 @@ const zhCnBase = {
     deleteBoxConfirm: "删除文件夹将连带清空夹内信件，确认？",
     toCol: "收件人",
   },
+  page: {
+    updatedAt: "最后更新",
+  },
   register: {
     title: "加入我们",
     subtitle: "凭邀请码注册，种下你的第一颗种子",
