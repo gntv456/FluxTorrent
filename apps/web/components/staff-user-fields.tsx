@@ -90,20 +90,15 @@ export function StaffUserFieldsPanel({
   }
 
   function payload(d: Draft) {
+    // 展开 Draft 而不是逐字段抄：PUT 是全量覆盖，漏抄一个就等于静默清空那一个
+    const { key, options, ...rest } = d;
     return {
-      label: d.label,
-      type: d.type,
-      required: d.required,
-      visibility: d.visibility,
-      show_on_register: d.show_on_register,
-      options: d.options
+      ...rest,
+      options: options
         .split(/[,，]/)
         .map((x) => x.trim())
         .filter(Boolean)
         .map((v) => ({ value: v })),
-      sort: d.sort,
-      enabled: d.enabled,
-      module_key: d.module_key,
     };
   }
 
@@ -131,17 +126,11 @@ export function StaffUserFieldsPanel({
   }
 
   async function toggleEnabled(d: FieldDef) {
+    const { key, filled, ...body } = d;
     try {
       await api.put(`/api/v1/admin/user-fields/${d.key}`, {
-        label: d.label,
-        type: d.type,
-        required: d.required,
-        visibility: d.visibility,
-        show_on_register: d.show_on_register,
-        options: d.options,
-        sort: d.sort,
+        ...body,
         enabled: !d.enabled,
-        module_key: d.module_key,
       });
       load();
     } catch (e) {
@@ -335,20 +324,11 @@ export function StaffUserFieldsPanel({
                   type="button"
                   className="underline"
                   onClick={() => {
+                    const { filled, ...def } = d;
                     setEditKey(d.key);
                     setDraft({
-                      key: d.key,
-                      label: d.label,
-                      type: d.type,
-                      required: d.required,
-                      visibility: d.visibility,
-                      show_on_register: d.show_on_register,
-                      options: d.options
-                        .map((o) => o.value)
-                        .join(","),
-                      sort: d.sort,
-                      enabled: d.enabled,
-                      module_key: d.module_key,
+                      ...def,
+                      options: d.options.map((o) => o.value).join(","),
                     });
                   }}
                 >

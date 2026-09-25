@@ -6,6 +6,9 @@ use actix_web::{get, post, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use sqlx::PgPool;
 
+use super::user_fields_def::{
+    norm_module_key, valid_key, validate_def, UserFieldDefBody,
+};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -13,17 +16,6 @@ use crate::state::AppState;
 
 fn internal(e: sqlx::Error) -> DomainError {
     DomainError::Internal(e.into())
-}
-
-fn valid_key(k: &str) -> bool {
-    !k.is_empty()
-        && k.len() <= 40
-        && k.bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
-}
-
-fn valid_field_type(t: &str) -> bool {
-    crate::fields::valid_field_type(t)
 }
 
 /// 校验值形状与 def 类型匹配；select/multiselect 额外校验选项在 options 内。
@@ -81,81 +73,6 @@ pub async fn user_fields_list(
     .await
     .map_err(internal)?;
     Ok(ok(rows))
-}
-
-#[derive(Deserialize)]
-struct UserFieldDefBody {
-    label: String,
-    r#type: String,
-    #[serde(default)]
-    required: bool,
-    #[serde(default = "default_vis")]
-    visibility: String,
-    #[serde(default)]
-    show_on_register: bool,
-    #[serde(default)]
-    options: serde_json::Value,
-    #[serde(default = "default_sort")]
-    sort: i32,
-    #[serde(default = "default_true")]
-    enabled: bool,
-    /// 挂到某模块键（空/缺省 = 不挂，恒可见）
-    #[serde(default)]
-    module_key: Option<String>,
-}
-
-/// 空串按「不挂模块」处理（后台清空选择框提交的就是空串）
-fn norm_module_key(k: &Option<String>) -> Option<&str> {
-    k.as_deref().map(str::trim).filter(|s| !s.is_empty())
-}
-fn default_vis() -> String {
-    "public".into()
-}
-fn default_sort() -> i32 {
-    100
-}
-fn default_true() -> bool {
-    true
-}
-
-fn validate_def(body: &UserFieldDefBody) -> DomainResult<()> {
-    if body.label.trim().is_empty() || body.label.len() > 50 {
-        return Err(DomainError::Validation("字段名需 1-50 字符".into()));
-    }
-    if !valid_field_type(&body.r#type) {
-        return Err(DomainError::Validation(
-            "type 需为 text/number/select/multiselect/date/bool".into(),
-        ));
-    }
-    if !["public", "private"].contains(&body.visibility.as_str()) {
-        return Err(DomainError::Validation(
-            "visibility 需为 public/private".into(),
-        ));
-    }
-    if matches!(body.r#type.as_str(), "select" | "multiselect") {
-        let arr = body.options.as_array().ok_or_else(|| {
-            DomainError::Validation("select 类型需提供 options 数组".into())
-        })?;
-        if arr.is_empty() || arr.len() > 50 {
-            return Err(DomainError::Validation("options 需 1-50 项".into()));
-        }
-        for o in arr {
-            let val = o
-                .get("value")
-                .and_then(serde_json::Value::as_str)
-                .ok_or_else(|| {
-                    DomainError::Validation(
-                        "options 项需含 value 字符串".into(),
-                    )
-                })?;
-            if val.is_empty() || val.len() > 100 {
-                return Err(DomainError::Validation(
-                    "option value 需 1-100 字符".into(),
-                ));
-            }
-        }
-    }
-    Ok(())
 }
 
 #[post("/admin/user-fields/{key}")]
@@ -486,16 +403,6 @@ pub(crate) async fn register_fields(db: &PgPool) -> Vec<serde_json::Value> {
             })
         })
         .collect()
-}
-
-pub fn mount_user_fields(scope: actix_web::Scope) -> actix_web::Scope {
-    scope
-        .service(user_fields_list)
-        .service(user_fields_add)
-        .service(user_fields_update)
-        .service(user_fields_delete)
-        .service(my_fields)
-        .service(my_fields_put)
 }
 
 /// register.rs 用的公开别名（required 校验共用同一形状校验器）
