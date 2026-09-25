@@ -30,6 +30,9 @@ fn route_module(path: &str) -> Option<&'static str> {
         ("/api/v1/resurrections", key::RESURRECTIONS),
         // 社区
         ("/api/v1/forums", key::FORUMS),
+        // 邀请系统（四审 L5 P1：此前 invites 从未进注册表，4 个端点不在网关、
+        // 页面无守卫、入口硬编码，关掉别的模块也拿它没办法）
+        ("/api/v1/invites", key::INVITES),
         ("/api/v1/messages", key::MESSAGES),
         ("/api/v1/staffmessages", key::MESSAGES),
         ("/api/v1/contactstaff", key::MESSAGES), // 给管理组发信（messages 域）

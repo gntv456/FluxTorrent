@@ -257,7 +257,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
             <a href="/my/torrentlist">{dict.mytl.title}</a>
             {mod("medals") && <a href="/medals">{dict.nav.medals}</a>}
             {mod("tasks") && <a href="/tasks">{dict.nav.tasks}</a>}
-            <a href="/invites">{dict.nav.invites}</a>
+            {mod("invites") && <a href="/invites">{dict.nav.invites}</a>}
             {mod("jixiao") && <a href="/jixiao">{dict.nav.jixiao}</a>}
             {me.class_id !== undefined && me.class_id >= 90 && (
               <a

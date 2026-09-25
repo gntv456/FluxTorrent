@@ -129,7 +129,9 @@ export async function Header() {
             ...(mod("jixiao")
               ? [{ href: "/jixiao", label: dict.nav.jixiao }]
               : []),
-            { href: "/invites", label: dict.nav.invites },
+            ...(mod("invites")
+              ? [{ href: "/invites", label: dict.nav.invites }]
+              : []),
           ],
         },
         {
