@@ -112,12 +112,11 @@ async fn edit_torrent(
         }
         let json = serde_json::to_string(raw)
             .map_err(|e| DomainError::Internal(e.into()))?;
-        let parsed =
-            crate::publish_http::upload_sections::parse_sections(
-                &state.repo.db,
-                Some(&json),
-            )
-            .await?;
+        let parsed = crate::publish_http::upload_sections::parse_sections(
+            &state.repo.db,
+            Some(&json),
+        )
+        .await?;
         crate::publish_http::upload_sections::write_sections(
             &state.repo.db,
             tid,

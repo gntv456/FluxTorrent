@@ -135,8 +135,18 @@ async fn section_kinds_add(
     .bind(body.required)
     .bind(body.multiple)
     .bind(body.enabled)
-    .bind(body.icon_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
-    .bind(body.bg_color.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(
+        body.icon_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        body.bg_color
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty()),
+    )
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -202,8 +212,18 @@ async fn section_kinds_update(
     .bind(body.required)
     .bind(body.multiple)
     .bind(body.enabled)
-    .bind(body.icon_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
-    .bind(body.bg_color.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(
+        body.icon_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        body.bg_color
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty()),
+    )
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?

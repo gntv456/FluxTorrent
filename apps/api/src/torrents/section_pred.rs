@@ -88,11 +88,7 @@ fn legacy_name_match(kind: &str, conds: &[&SectionFilter]) -> String {
     if ids.is_empty() {
         return "false".to_string();
     }
-    let list = ids
-        .iter()
-        .map(|s| s.as_str())
-        .collect::<Vec<_>>()
-        .join(",");
+    let list = ids.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(",");
     format!("sd.id = ANY(ARRAY[{list}]::bigint[]) AND sd.kind = '{kind}'")
 }
 
@@ -144,7 +140,7 @@ pub(crate) async fn sync_legacy_columns(
 
 #[cfg(test)]
 mod tests {
-    use super::{legacy_filter_dual, legacy_of, legacy_name_match};
+    use super::{legacy_filter_dual, legacy_name_match, legacy_of};
     use crate::torrents::section_filter::SectionFilter;
 
     #[test]

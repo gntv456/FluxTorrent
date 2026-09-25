@@ -101,7 +101,8 @@ async fn section_mode_add(
     .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("模式名不能为空".into()));
-    }    let id: i32 = sqlx::query_scalar(
+    }
+    let id: i32 = sqlx::query_scalar(
         "INSERT INTO category_modes \
            (name, show_source, show_medium, show_codec, show_audio_codec, \
             show_standard, show_processing, show_team) \
@@ -262,17 +263,18 @@ async fn section_mode_delete(
         &auth,
         crate::authz::perm::CATEGORIES_MANAGE,
     )
-        .await?;
+    .await?;
     let id = path.into_inner();
     if id == 1 {
         return Err(DomainError::Validation("默认模式不可删除".into()));
     }
-    let used: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM categories WHERE mode_id = $1")
-            .bind(id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    let used: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM categories WHERE mode_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
     if used > 0 {
         sqlx::query("UPDATE categories SET mode_id = 1 WHERE mode_id = $1")
             .bind(id)

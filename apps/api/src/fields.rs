@@ -86,7 +86,8 @@ pub fn validate_value(
                 return Err("multiselect 最多 20 项".into());
             }
             for item in arr {
-                let s = item.as_str().ok_or("multiselect 数组元素需为字符串")?;
+                let s =
+                    item.as_str().ok_or("multiselect 数组元素需为字符串")?;
                 if !allowed.contains(&s.to_string()) {
                     return Err("值不在字段选项集内".into());
                 }
@@ -152,9 +153,8 @@ mod tests {
         let s = |x: serde_json::Value| validate_value("select", &opts(), &x);
         assert!(s(serde_json::json!("a")).is_ok());
         assert!(s(serde_json::json!("z")).is_err());
-        let m = |x: serde_json::Value| {
-            validate_value("multiselect", &opts(), &x)
-        };
+        let m =
+            |x: serde_json::Value| validate_value("multiselect", &opts(), &x);
         assert!(m(serde_json::json!(["a", "b"])).is_ok());
         assert!(m(serde_json::json!(["a", "z"])).is_err());
         // 上限 20 项
