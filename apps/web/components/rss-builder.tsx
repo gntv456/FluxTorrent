@@ -35,9 +35,17 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
   const [paid, setPaid] = useState<"0" | "1">("0");
   const [showrows, setShowrows] = useState(50);
   const [linktype, setLinktype] = useState<"dl" | "page">("dl");
-  // 种子列表「订阅当前结果」入口预填：?keyword= 带入当前搜索词
+  // 种子列表「订阅当前结果」入口预填：?keyword= 带入当前搜索词；
+  // sec_* 维度筛选（B3）原样透传进生成的订阅链接（后端 rss 已接同一谓词）
   const sp = useSearchParams();
   const [search, setSearch] = useState(sp.get("keyword") ?? "");
+  const secParams = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const [k, v] of sp.entries()) {
+      if (k.startsWith("sec_") && v) m[k] = v;
+    }
+    return m;
+  }, [sp]);
   const [copied, setCopied] = useState(false);
   // 0103：分类/媒介跟随站型配置（site-profile + section-dict），不再用 i18n 硬编码字典
   const [profile, setProfile] = useState<ProfileCats | null>(null);
@@ -77,6 +85,7 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
     qs.set("showrows", String(showrows));
     if (linktype === "page") qs.set("linktype", "page");
     if (search.trim()) qs.set("search", search.trim());
+    for (const [k, v] of Object.entries(secParams)) qs.set(k, v);
     const s = qs.toString();
     return `${info.base}${info.passkey}${s ? `?${s}` : ""}`;
   }, [
@@ -90,6 +99,7 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
     search,
     categories.length,
     mediums.length,
+    secParams,
   ]);
 
   function toggle(list: number[], id: number, set: (v: number[]) => void) {

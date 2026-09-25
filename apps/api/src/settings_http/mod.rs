@@ -14,6 +14,7 @@ mod meta;
 mod pack_catalog;
 mod pack_format;
 mod pack_import;
+mod pack_kinds;
 mod pack_store;
 mod packs;
 mod schema;

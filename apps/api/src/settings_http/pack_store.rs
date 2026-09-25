@@ -15,6 +15,7 @@ use crate::errors::{DomainError, DomainResult};
 use super::engine::validate_field;
 use super::meta::MetaRow;
 use super::pack_format::{TaxonomyData, THEME_KEYS};
+pub(crate) use super::pack_kinds::{kind_to_json, KindRow};
 
 fn internal(e: sqlx::Error) -> DomainError {
     DomainError::Internal(e.into())
@@ -22,6 +23,8 @@ fn internal(e: sqlx::Error) -> DomainError {
 
 /// 事务内拍当前分类学快照（回滚源）。dict 带 sort；空维度也落键（{}）：
 /// 回滚按「包内维度整维重建」口径执行，缺键 = 不被回滚触碰。
+/// B2 起维度带六类型元数据（field_type 等）——快照必须拍全，否则回放包
+/// 漏字段，apply 侧会把它降级回 select（丢类型/必填/停用状态）。
 pub(super) async fn snapshot_taxonomy(
     tx: &mut sqlx::PgTransaction<'_>,
 ) -> DomainResult<Value> {
@@ -30,8 +33,9 @@ pub(super) async fn snapshot_taxonomy(
             .fetch_all(&mut **tx)
             .await
             .map_err(internal)?;
-    let kinds: Vec<(String, String, i32)> = sqlx::query_as(
-        "SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind",
+    let kinds: Vec<KindRow> = sqlx::query_as(
+        "SELECT kind, label, sort, field_type, required, multiple, enabled, \
+         icon_key, bg_color FROM section_kinds ORDER BY sort, kind",
     )
     .fetch_all(&mut **tx)
     .await
@@ -54,16 +58,7 @@ pub(super) async fn snapshot_taxonomy(
     let mut sections = serde_json::Map::new();
     sections.insert(
         "kinds".into(),
-        Value::Array(
-            kinds
-                .iter()
-                .map(|(k, label, sort)| {
-                    serde_json::json!({
-                        "kind": k, "label": label, "sort": sort,
-                    })
-                })
-                .collect(),
-        ),
+        Value::Array(kinds.iter().map(kind_to_json).collect()),
     );
     sections.insert("dict".into(), Value::Object(dict_map));
     Ok(serde_json::json!({
@@ -216,15 +211,29 @@ pub(super) async fn apply_taxonomy(
         .await
         .map_err(internal)?;
     }
-    for (kind, label, sort) in &data.kinds {
+    for k in &data.kinds {
+        // 六类型元数据全字段落库（B3：导出/快照回放不带 = 静默降级回 select）。
+        // field_type 仅 INSERT 时写入——更新侧不可改类型（存量值按旧类型解释，
+        // 与后台 section-kinds PUT 同一纪律）；required/enabled 等可更新。
         sqlx::query(
-            "INSERT INTO section_kinds (kind, label, sort) VALUES ($1, $2, $3) \
+            "INSERT INTO section_kinds \
+               (kind, label, sort, field_type, required, multiple, enabled, \
+                icon_key, bg_color) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) \
              ON CONFLICT (kind) DO UPDATE SET label = EXCLUDED.label, \
-             sort = EXCLUDED.sort",
+               sort = EXCLUDED.sort, required = EXCLUDED.required, \
+               multiple = EXCLUDED.multiple, enabled = EXCLUDED.enabled, \
+               icon_key = EXCLUDED.icon_key, bg_color = EXCLUDED.bg_color",
         )
-        .bind(kind)
-        .bind(label)
-        .bind(sort)
+        .bind(&k.kind)
+        .bind(&k.label)
+        .bind(k.sort)
+        .bind(&k.field_type)
+        .bind(k.required)
+        .bind(k.multiple)
+        .bind(k.enabled)
+        .bind(&k.icon_key)
+        .bind(&k.bg_color)
         .execute(&mut **tx)
         .await
         .map_err(internal)?;
@@ -326,7 +335,7 @@ async fn apply_taxonomy_sections(
     data: &TaxonomyData,
 ) -> DomainResult<()> {
     let mut kinds_in_pack: std::collections::HashSet<String> =
-        data.kinds.iter().map(|(k, _, _)| k.clone()).collect();
+        data.kinds.iter().map(|k| k.kind.clone()).collect();
     for (k, _) in &data.dict {
         kinds_in_pack.insert(k.clone());
     }
@@ -358,10 +367,11 @@ async fn apply_taxonomy_sections(
         }
     }
     for kind in &kinds_in_pack {
-        // dict-only 维度确保维度行存在
+        // dict-only 维度确保维度行存在（field_type 缺省 select——字典项维度
+        // 本就是枚举形态，与 B2 之前的历史口径一致）
         sqlx::query(
-            "INSERT INTO section_kinds (kind, label, sort) \
-             VALUES ($1, $1, 999) ON CONFLICT (kind) DO NOTHING",
+            "INSERT INTO section_kinds (kind, label, sort, field_type) \
+             VALUES ($1, $1, 999, 'select') ON CONFLICT (kind) DO NOTHING",
         )
         .bind(kind)
         .execute(&mut **tx)
