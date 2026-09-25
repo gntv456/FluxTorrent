@@ -5,6 +5,7 @@
 
 mod bans;
 mod content;
+mod custom_pages;
 mod donate;
 mod donate_notify;
 mod emailbans;
@@ -34,6 +35,7 @@ pub(crate) mod setup_bridge {
 
 pub use bans::*;
 pub use content::*;
+pub use custom_pages::*;
 pub use donate::*;
 pub use donate_notify::*;
 pub use emailbans::*;

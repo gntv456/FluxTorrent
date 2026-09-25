@@ -323,6 +323,9 @@ const zhTwBase: Omit<
     deleteBoxConfirm: "刪除資料夾將連帶清空夾內信件，確認？",
     toCol: "收件人",
   },
+  page: {
+    updatedAt: "最後更新",
+  },
   register: {
     title: "加入我們",
     subtitle: "憑邀請碼註冊，種下你的第一顆種子",
