@@ -3,6 +3,7 @@ import { getFeed, getMyFollows } from "@/lib/data";
 import { TypeBadge } from "@/components/forum-bits";
 import { Icon } from "@/components/icons";
 import { getDict } from "@/i18n/server";
+import { requireModule } from "@/components/module-gate";
 import { dateLocale } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,8 @@ export default async function FeedPage({
   searchParams: Promise<{ before?: string }>;
 }) {
   const { before } = await searchParams;
+  const gate = await requireModule("forums");
+  if (gate) return gate;
   const { dict, locale } = await getDict();
   const t = dict.forums;
   const [feed, mine] = await Promise.all([

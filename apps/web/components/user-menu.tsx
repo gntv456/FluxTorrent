@@ -271,7 +271,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
 
           {/* ── 信箱工具行（收件箱未读角标/发件箱/作弊者/举报/管理组/社交/RSS） ── */}
           <div className="usermenu__tools">
-            <UserTools unread={me.unread_messages ?? 0} />
+            <UserTools unread={me.unread_messages ?? 0} mods={mods} />
           </div>
         </div>
       )}

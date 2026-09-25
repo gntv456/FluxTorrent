@@ -1,10 +1,13 @@
 import { ContactStaff } from "@/components/contact-staff";
 import { getDict } from "@/i18n/server";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
 /** PM 管理组（参考站 contactstaff.php 复刻） */
 export default async function ContactStaffPage() {
+  const gate = await requireModule("messages");
+  if (gate) return gate;
   const { dict } = await getDict();
   return (
     <div className="flex flex-col gap-4">

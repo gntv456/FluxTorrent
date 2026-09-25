@@ -7,6 +7,7 @@ import { ForumTopicList } from "@/components/forum-topic-list";
 import { FollowButton } from "@/components/forum-follow";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,8 @@ export default async function ForumPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ sort?: string; tag?: string }>;
 }) {
+  const gate = await requireModule("forums");
+  if (gate) return gate;
   const { id } = await params;
   const { sort: sortRaw, tag: tagRaw } = await searchParams;
   const { dict, locale } = await getDict();
