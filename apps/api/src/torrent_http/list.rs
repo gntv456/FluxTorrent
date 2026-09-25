@@ -39,33 +39,14 @@ async fn list(
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?; // 站点准入收口：资源元数据不对外
-                                                  // 通用多维筛选（0088）：sec_{kind}=dict_id，kind 走 section_kinds 白名单；
-                                                  // 从原始 query string 解析，支持任意站方自建维度（不再写死六个）
-    let mut sections: Vec<(String, i64)> = Vec::new();
     // 标签多选（0159 P1）：norm_tags 在 filter 构造块里赋值；声明在此因
     // struct 字面量内不能先解构再引用同名字段
     let (tag_ids, tag_all) =
         super::query::norm_tags(q.tag_id, &q.tag_ids, q.tag_mode.as_deref());
-    for pair in req.query_string().split('&') {
-        let Some((k, v)) = pair.split_once('=') else {
-            continue;
-        };
-        let Some(kind) = k.strip_prefix("sec_") else {
-            continue;
-        };
-        if kind.is_empty() || v.is_empty() {
-            continue;
-        }
-        if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind).await {
-            continue;
-        }
-        // 多选（0102）：逗号串 / 重复参数均可；同维度多值 = OR（任一命中）
-        for part in v.split(',') {
-            if let Ok(dict_id) = part.trim().parse::<i64>() {
-                sections.push((kind.to_string(), dict_id));
-            }
-        }
-    }
+    // 多维筛选（B3 六类型）：`sec_{kind}` / `_min` / `_max`，解析见 sec_params.rs
+    let sections =
+        super::sec_params::parse_section_params(&state.repo.db, req.query_string())
+            .await;
     // 0170 站点开关：默认视图（approval 未指定 / 0）是否放行「审核中/失败」种子。
     // 审核状态视图（1=通过 2=被拒）不受开关影响；单条查询两列点查，主键命中极便宜。
     let default_view = q.approval.is_none() || q.approval == Some(0);
