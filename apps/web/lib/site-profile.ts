@@ -38,6 +38,8 @@ export interface SiteProfile {
     editions?: DictEntry[];
   };
   modules: Record<string, boolean>;
+  /** 主题令牌（0189）：有值的 theme_token_* 键 → #rrggbb；layout 注入 :root */
+  theme_tokens?: Record<string, string>;
 }
 
 /** 站型字典条目（id 由后端词表表给出，前端不做任何下标补偿） */

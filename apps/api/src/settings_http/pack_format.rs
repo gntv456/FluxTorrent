@@ -31,6 +31,15 @@ pub(super) const THEME_KEYS: &[&str] = &[
     "site_desc",
     "logo",
     "currency_name",
+    // 主题令牌（0189 R4.6）：品牌八色随 theme 包分发
+    "theme_token_sky",
+    "theme_token_sun",
+    "theme_token_coral",
+    "theme_token_mint",
+    "theme_token_candy",
+    "theme_token_indigo",
+    "theme_token_glow",
+    "theme_token_ribbon",
 ];
 /// rules 包允许触碰的规则键 → 求值 RuleSpec（M3 首批：银行利率两键）
 pub(super) fn rule_spec_for(key: &str) -> Option<crate::rules_engine::RuleSpec>
@@ -81,8 +90,10 @@ pub(super) fn parse_pack(pack: &Value) -> DomainResult<PackHead> {
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_string();
-    if !["taxonomy", "theme", "rules", "assets"].contains(&kind.as_str()) {
-        return Err(bad("kind 需为 taxonomy / theme / rules / assets"));
+    if !["taxonomy", "theme", "rules", "assets", "embed"]
+        .contains(&kind.as_str())
+    {
+        return Err(bad("kind 需为 taxonomy / theme / rules / assets / embed"));
     }
     let pack_id = obj
         .get("pack_id")
