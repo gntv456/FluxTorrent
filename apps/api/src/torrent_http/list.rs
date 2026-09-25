@@ -112,7 +112,27 @@ async fn list(
                     ids.push(v);
                 }
             }
-            (!ids.is_empty()).then_some(ids)
+            // 分类层级（0188 R4.3）：命中的分类递归展开子孙——筛父级包含
+            // 子级种子；无层级时子孙为空、行为与平表完全一致
+            let expanded: Vec<i32> = if ids.is_empty() {
+                Vec::new()
+            } else {
+                let rows: Vec<i32> = sqlx::query_scalar(
+                    "WITH RECURSIVE sub AS (                      SELECT id FROM categories WHERE id = ANY($1)                      UNION                      SELECT c.id FROM categories c                      JOIN sub s ON c.parent_id = s.id                      ) SELECT id FROM sub",
+                )
+                .bind(&ids)
+                .fetch_all(&state.repo.db)
+                .await
+                .unwrap_or_default();
+                let mut all = ids.clone();
+                for r in rows {
+                    if !all.contains(&r) {
+                        all.push(r);
+                    }
+                }
+                all
+            };
+            (!expanded.is_empty()).then_some(expanded)
         },
         medium_id: q.medium_id,
         grade_id: q.grade_id,

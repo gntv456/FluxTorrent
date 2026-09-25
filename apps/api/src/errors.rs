@@ -163,8 +163,17 @@ pub type DomainResult<T> = Result<T, DomainError>;
 /// 也重试不好。其余数据库错误仍是 500（真故障，不该伪装成用户错误）。
 pub fn db_to_domain(e: sqlx::Error, what: &str) -> DomainError {
     if let sqlx::Error::Database(ref d) = e {
-        if d.code().as_deref() == Some("23503") {
-            return DomainError::Validation(format!("{what}引用了不存在的分类或字典项"));
+        match d.code().as_deref() {
+            Some("23503") => {
+                return DomainError::Validation(format!(
+                    "{what}引用了不存在的分类或字典项"
+                ));
+            }
+            // 自定义异常（0188 分类防环等触发器）→ 400 带原话
+            Some("P0001") => {
+                return DomainError::Validation(d.message().to_string());
+            }
+            _ => {}
         }
     }
     DomainError::Internal(e.into())
