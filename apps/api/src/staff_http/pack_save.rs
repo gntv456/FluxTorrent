@@ -175,12 +175,26 @@ pub async fn site_type_pack_save(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(101);
+    // 五段自定义载荷（四审 L2 P0）：另存必须带走，否则 custom 包 apply 时
+    // 维度/标签/等级/经济全被当成未声明而跳过，站长配好的东西丢一大半。
+    let snap = super::pack_snapshot::collect(&state.repo.db).await?;
+    // JSON `null` 与 SQL NULL 不等价：apply_pack_extras 用 `IS NOT NULL` 判声明，
+    // 存进字面量 null 会让它走进 jsonb_to_recordset('null') 直接抛错。
+    let nullable = |v: serde_json::Value| -> Option<String> {
+        if v.is_null() {
+            None
+        } else {
+            Some(v.to_string())
+        }
+    };
     sqlx::query(
-        "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort, tagline, subtitle_kind) \
-         VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6, $7, $8) \
+        "INSERT INTO site_type_packs (code, name, description, brand, categories, modules, sort, tagline, subtitle_kind, sections, tags, classes, economy, metadata) \
+         VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6, $7, $8, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb) \
          ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, brand = EXCLUDED.brand, \
            categories = EXCLUDED.categories, modules = EXCLUDED.modules, tagline = EXCLUDED.tagline, \
-           subtitle_kind = EXCLUDED.subtitle_kind",
+           subtitle_kind = EXCLUDED.subtitle_kind, sections = EXCLUDED.sections, \
+           tags = EXCLUDED.tags, classes = EXCLUDED.classes, economy = EXCLUDED.economy, \
+           metadata = EXCLUDED.metadata",
     )
     .bind(&code)
     .bind(body.name.trim())
@@ -190,6 +204,11 @@ pub async fn site_type_pack_save(
     .bind(sort)
     .bind(&tagline)
     .bind(subtitle_kind)
+    .bind(nullable(snap.sections))
+    .bind(snap.tags.to_string())
+    .bind(nullable(snap.classes))
+    .bind(nullable(snap.economy))
+    .bind(nullable(snap.metadata))
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

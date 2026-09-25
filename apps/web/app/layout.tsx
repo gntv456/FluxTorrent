@@ -93,6 +93,11 @@ function ThemeTokenStyle({ tokens }: { tokens?: Record<string, string> }) {
         // 彩带底色：纯色替换渐变
         return `--ribbon:${v};--grad-rainbow:${v};`;
       }
+      if (varName === "glow") {
+        // 键名去前缀是 glow，而全站 CSS 读的是 --brand-glow（base.css / pages.css /
+        // theme-tide.css）——直注 --glow 没有任何消费方，后台改辉光色不生效。
+        return `--brand-glow:${v};--brand-glow-veil:${v}1a;`;
+      }
       return `--${varName}:${v};`;
     })
     .join("");

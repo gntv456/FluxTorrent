@@ -14,7 +14,9 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::farm::{get_crop, PlantReq};
-use super::helpers::{check_rate_scoped, eco_i64, farm_wither_days, RateScope};
+use super::helpers::{
+    check_rate_scoped, eco_i64, farm_market_hours, farm_wither_days, RateScope,
+};
 
 #[post("/farm/plant")]
 pub(super) async fn farm_plant(
@@ -35,7 +37,8 @@ pub(super) async fn farm_plant(
     };
 
     let now = chrono::Utc::now().timestamp();
-    let window = games::market_window_start(now);
+    let window =
+        games::market_window_start_with(now, farm_market_hours(&state).await);
     let price = games::market_price(crop.seed_price as i64, window);
 
     // 买种经统一交易管线扣款（幂等键含用户+槽位+当前分钟）。
@@ -227,7 +230,8 @@ pub(super) async fn farm_harvest(
     }
 
     let now = chrono::Utc::now().timestamp();
-    let window = games::market_window_start(now);
+    let window =
+        games::market_window_start_with(now, farm_market_hours(&state).await);
     let crop = get_crop(&state.repo.db, crop_id)
         .await?
         .ok_or(DomainError::Validation("作物不存在".into()))?;

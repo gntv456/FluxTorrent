@@ -63,6 +63,16 @@ pub(super) async fn farm_wither_days(
     eco_i64(state, "farm_wither_days", 5).await.clamp(0, 60)
 }
 
+/// 农场市场价刷新窗口（小时）。四审 L8：0109 登记了该键但无人读，站长改数字
+/// 不生效；此处接线后窗口仍钳 1..24，保证它是 3600 的整数倍且不超过一天。
+pub(super) async fn farm_market_hours(
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> i64 {
+    eco_i64(state, "farm_market_window_hours", 4)
+        .await
+        .clamp(1, 24)
+}
+
 /// 猜大小赔率（千分比）。倍数设置键缺省 1.9 —— **必须 < 2.0**：
 /// 2.0 时 EV 恰为 1.0（不回收）且可双向零风险对冲，见 games.rs 常量说明。
 /// 上限钳到 1999‰（运行时 EV 防线，P2）：设置键是管理员可写参数，此前上限 10_000‰
