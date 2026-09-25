@@ -121,9 +121,10 @@
    执行到 134 必失败**（flux-api crash-loop），存量库因函数已存在而一直没暴露。
    同期修复：装机白名单补 `/api/v1/me/password`（否则 root 的强制改密被装机门拦住，
    向导永远完不成）；自助改密后失效 5s 用户状态缓存（否则改完密立刻完成向导会被
-   「临时密码」旧值挡下）。另修 `purge_demo_data()` 的删除顺序（新迁移 0194：原实现先删
-   users 撞 `torrents_owner_id_fkey`、引用不存在的 `torrents.title`、演示种子口径不匹配，
-   导致向导第一步在真空库上必 500）——**升级到全新装站可用的版本前，确认 0194 已入库**。
+   「临时密码」旧值挡下）。另修 `purge_demo_data()` 的删除顺序（新迁移 **0194，已入库**：
+   原实现先删 users 撞 `torrents_owner_id_fkey`、引用不存在的 `torrents.title`、演示种子
+   口径不匹配，导致向导第一步在真空库上必 500；改后按 topics → torrents → 按
+   `pg_constraint` 动态清引用表 → users 的安全顺序，空库首启端到端 10/10 通过）。
 
 1. 迁移 0142 对大表建索引：存量站点请在低峰窗口升级，或带外 `CREATE INDEX
    CONCURRENTLY` 预建同名索引后再启动（迁移内 IF NOT EXISTS 会跳过）
