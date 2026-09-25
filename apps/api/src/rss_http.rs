@@ -3,6 +3,8 @@
 //! NexusPHP 口径：用户专属 token（我们复用 passkey）+ 可选过滤参数；
 //! 刷流工具（RSS 阅读器/下载器）凭 URL 自动拉新种。
 //! 参数对齐参考站 getrss.php 的常用子集：分类多选/媒介多选/官种/关键字/条数/标题格式/付费。
+//! B3（2026-09-25）起另认 `sec_{kind}` 六类型维度筛选——与前台列表、
+//! 后台管理列表共用同一解析与谓词实现，三处语义不漂移。
 
 mod forum;
 
@@ -75,6 +77,15 @@ async fn rss_feed(
     let promo_lateral = crate::torrents::promo::lateral_latest();
     let free_clause =
         crate::torrents::promo::exists_clause(Some("'free','x2free'"));
+    // B3 六类型维度筛选：与前台/后台同一实现（sec_params + section_where）。
+    // 谓词是字符串片段，直接内插进 WHERE——与上面 free_clause 同一暴露面纪律。
+    let sections = crate::torrent_http::parse_section_params(
+        &state.repo.db,
+        req.query_string(),
+    )
+    .await;
+    let sec_sql =
+        crate::torrents::section_where(&state.repo.db, &sections).await;
     let sql = format!(
         "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, t.official_tag, \
                 pr.promotion, \
@@ -92,7 +103,7 @@ async fn rss_feed(
                                            WHERE id = ANY($2)))) \
            AND ($3::bool IS NULL OR t.official_tag = $3) \
            AND ($4::text IS NULL OR t.name ILIKE '%' || $4 || '%') \
-           AND (NOT $6::bool OR {free_clause}) \
+           AND (NOT $6::bool OR {free_clause}){sec_sql} \
          ORDER BY t.id DESC LIMIT $5"
     );
     let rows: Vec<RssRow> = sqlx::query_as(&sql)

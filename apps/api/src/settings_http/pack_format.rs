@@ -21,6 +21,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 use super::meta::{MetaRow, META_SELECT};
+use super::pack_kinds::{kind_from_json, kind_to_json, KindRow};
 
 pub(super) const FORMAT: &str = "fluxtorrent.contentpack";
 /// theme 包允许触碰的 settings 键（外观白名单口径）
@@ -159,8 +160,9 @@ pub(super) async fn export_taxonomy(
             .fetch_all(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    let kinds: Vec<(String, String, i32)> = sqlx::query_as(
-        "SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind",
+    let kinds: Vec<KindRow> = sqlx::query_as(
+        "SELECT kind, label, sort, field_type, required, multiple, enabled, \
+         icon_key, bg_color FROM section_kinds ORDER BY sort, kind",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -201,9 +203,7 @@ pub(super) async fn export_taxonomy(
                 "id": id, "name": nm, "icon_key": icon,
             })).collect::<Vec<_>>(),
             "sections": {
-                "kinds": kinds.iter().map(|(k, label, sort)| serde_json::json!({
-                    "kind": k, "label": label, "sort": sort,
-                })).collect::<Vec<_>>(),
+                "kinds": kinds.iter().map(kind_to_json).collect::<Vec<_>>(),
                 "dict": Value::Object(dict_map),
             },
         },
@@ -247,7 +247,7 @@ pub(super) async fn export_theme(
 
 pub(super) struct TaxonomyData {
     pub cats: Vec<(i32, String, String)>,
-    pub kinds: Vec<(String, String, i32)>,
+    pub kinds: Vec<KindRow>,
     pub dict: Vec<(String, String)>,
 }
 
@@ -282,18 +282,16 @@ pub(super) fn parse_taxonomy(payload: &Value) -> DomainResult<TaxonomyData> {
         payload.pointer("/sections/kinds").and_then(Value::as_array)
     {
         for k in arr {
-            let (Some(kind), Some(label)) = (
-                k.get("kind").and_then(Value::as_str),
-                k.get("label").and_then(Value::as_str),
-            ) else {
+            let Some(kind) = k.get("kind").and_then(Value::as_str) else {
                 continue;
             };
+            if k.get("label").and_then(Value::as_str).is_none() {
+                continue;
+            }
             if !kind.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
                 return Err(bad(&format!("维度 kind 需为 ASCII 标识：{kind}")));
             }
-            let sort =
-                k.get("sort").and_then(Value::as_i64).unwrap_or(999) as i32;
-            kinds.push((kind.to_string(), label.to_string(), sort));
+            kinds.push(kind_from_json(k, &bad)?);
         }
     }
     let mut dict = Vec::new();

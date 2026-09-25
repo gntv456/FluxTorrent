@@ -245,10 +245,15 @@ export default async function TorrentsPage({
         />
       )}
 
-      {/* RSS 订阅入口（NP 列表头 RSS 图标口径）：携带当前关键字/分类跳转订阅页 */}
+      {/* RSS 订阅入口（NP 列表头 RSS 图标口径）：携带当前关键字/分类/维度
+          跳转订阅页——维度筛选（B3）一并带走，否则「订阅当前结果」名不副实 */}
       <div className="flex justify-end">
         <a
-          href={`/getrss?keyword=${encodeURIComponent(sp.search ?? "")}&cats=${sp.category_id ?? ""}`}
+          href={`/getrss?${new URLSearchParams({
+            keyword: sp.search ?? "",
+            cats: sp.category_id ?? "",
+            ...secParams,
+          }).toString()}`}
           className="text-xs text-sky hover:underline"
         >
           📡 {dict.getrss.title}
