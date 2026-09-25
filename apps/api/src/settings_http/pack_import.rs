@@ -169,6 +169,8 @@ async fn import_embed(
     .await;
     tx.commit().await.map_err(internal)?;
     invalidate_cache(state, "module").await;
+    // embed 规则影响首页公告 src 白名单 → 失效首页共享段缓存
+    crate::http::invalidate_home_cache(&**state).await;
     Ok(ok(serde_json::json!({
         "dry_run": false,
         "kind": "embed",

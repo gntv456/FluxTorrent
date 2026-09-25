@@ -765,6 +765,8 @@ usertools: {
     fldTitle: "標題",
     fldBadge: "徽章",
     fldBody: "正文",
+    newsVideoHint:
+      "支援影片內嵌：可貼影片平台的 <iframe> 嵌入程式碼（限後台「影片內嵌規則」白名單內的平台），或站內附件影片 URL；其它外域 src 會被自動剝除。",
     fldDate: "日期",
     fldStatus: "狀態",
     colActions: "操作",

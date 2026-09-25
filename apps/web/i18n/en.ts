@@ -768,6 +768,8 @@ usertools: {
     fldTitle: "Title",
     fldBadge: "Badge",
     fldBody: "Body",
+    newsVideoHint:
+      "Video embedding supported: paste a platform <iframe> embed code (platforms limited to the admin \"Video Embed Rules\" allowlist) or an on-site attachment video URL; foreign-domain src is stripped automatically.",
     fldDate: "Date",
     fldStatus: "Status",
     colActions: "Actions",
