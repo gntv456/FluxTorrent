@@ -3224,6 +3224,25 @@ const enBase: Omit<
     renameKindPrompt: "New display name",
     delKindConfirm:
       'Delete dimension "{name}"? All its dictionary options will be cleared',
+    // B2 six-type field system
+    thFieldType: "Type",
+    thRequired: "Required",
+    thMultiple: "Multi",
+    thEnabled: "Enabled",
+    edit: "Edit",
+    close: "Close",
+    editKindTitle: "Edit dimension",
+    saveKind: "Save",
+    fieldTypeLocked:
+      "Field type cannot be changed after creation (existing values are interpreted by the original type); create a new dimension instead.",
+    fieldTypes: {
+      text: "Text",
+      number: "Number",
+      select: "Single select",
+      multiselect: "Multi select",
+      date: "Date",
+      bool: "Toggle",
+    } as Record<string, string>,
     // Category modes (admin-sections)
     modesTitle: "Category modes",
     modesHint:
@@ -3232,6 +3251,7 @@ const enBase: Omit<
     modeCreated: "Created",
     createMode: "New mode",
     thCategories: "Categories",
+    thVisibleKinds: "Visible dimensions",
     modeDeleted: "Deleted (categories fell back to the default mode)",
     loadFail: "Load failed",
     opFail: "Action failed",

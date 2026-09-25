@@ -104,7 +104,8 @@ export function AdminSections() {
           </p>
         )}
 
-        {/* 分类模式 */}
+        {/* 分类模式（B2：可见维度走 mode_kinds 关联表，旧 7 列退为兼容镜像）
+            —— 勾选态来自 visible_kinds；自建维度也能在这里纳入管辖 */}
         <section className="baozi-panel p-4">
           <h2 className="mb-2 text-base font-bold">{at.modesTitle}</h2>
           <p className="mb-3 text-xs text-sub">{at.modesHint}</p>
@@ -135,59 +136,82 @@ export function AdminSections() {
               <tr>
                 <td className="colhead">ID</td>
                 <td className="colhead">{at.thName}</td>
-                {FLAGS.map(([k, l]) => (
-                  <td key={k} className="colhead">
-                    {l}
-                  </td>
-                ))}
+                <td className="colhead">{at.thVisibleKinds}</td>
                 <td className="colhead">{at.thCategories}</td>
                 <td className="colhead text-right">{at.thAction}</td>
               </tr>
             </thead>
             <tbody>
-              {modes.map((m) => (
-                <tr key={m.id}>
-                  <td className="num">{m.id}</td>
-                  <td className="font-bold">{m.name}</td>
-                  {FLAGS.map(([k]) => (
-                    <td key={k} className="text-center">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(m[k])}
-                        disabled={busy}
-                        onChange={(e) =>
-                          act(
-                            () =>
-                              api.put(`/api/v1/admin/section-modes/${m.id}`, {
-                                name: m.name,
-                                [k]: e.target.checked,
-                              }),
-                            at.saved,
-                          )
-                        }
-                      />
+              {modes.map((m) => {
+                // B2：可见集合以 mode_kinds（visible_kinds）为权威；
+                // 后端为老数据回填过，缺字段时回落旧 7 列映射
+                const shown =
+                  m.visible_kinds && m.visible_kinds.length > 0
+                    ? m.visible_kinds
+                    : FLAGS.filter(([k]) => Boolean(m[k])).map(
+                        ([, l]) => l.toLowerCase(),
+                      );
+                const shownSet = new Set(shown);
+                return (
+                  <tr key={m.id}>
+                    <td className="num">{m.id}</td>
+                    <td className="font-bold">{m.name}</td>
+                    <td>
+                      <div className="flex flex-wrap gap-x-2 gap-y-1">
+                        {kinds.map((k) => (
+                          <label
+                            key={k.kind}
+                            className="flex items-center gap-1"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={shownSet.has(k.kind)}
+                              disabled={busy}
+                              onChange={(e) => {
+                                const next = new Set(shownSet);
+                                if (e.target.checked) next.add(k.kind);
+                                else next.delete(k.kind);
+                                act(
+                                  () =>
+                                    api.put(
+                                      `/api/v1/admin/section-modes/${m.id}`,
+                                      {
+                                        name: m.name,
+                                        visible_kinds: [...next],
+                                      },
+                                    ),
+                                  at.saved,
+                                );
+                              }}
+                            />
+                            <span className="whitespace-nowrap">
+                              {k.label}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </td>
-                  ))}
-                  <td className="num">{m.categories}</td>
-                  <td className="text-right">
-                    {m.id !== 1 && (
-                      <button
-                        className="cmgmt-act cmgmt-act--danger"
-                        disabled={busy}
-                        onClick={() =>
-                          act(
-                            () =>
-                              api.del(`/api/v1/admin/section-modes/${m.id}`),
-                            at.modeDeleted,
-                          )
-                        }
-                      >
-                        {at.del}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    <td className="num">{m.categories}</td>
+                    <td className="text-right">
+                      {m.id !== 1 && (
+                        <button
+                          className="cmgmt-act cmgmt-act--danger"
+                          disabled={busy}
+                          onClick={() =>
+                            act(
+                              () =>
+                                api.del(`/api/v1/admin/section-modes/${m.id}`),
+                              at.modeDeleted,
+                            )
+                          }
+                        >
+                          {at.del}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </section>

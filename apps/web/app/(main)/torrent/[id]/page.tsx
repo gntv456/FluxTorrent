@@ -27,6 +27,7 @@ import {
   type TorrentDetailExt,
 } from "@/components/torrent-detail-blocks";
 import { getDict } from "@/i18n/server";
+import type { SectionKindMeta } from "@/components/admin-sections-shared";
 import type {
   TorrentComment,
   TorrentListItem,
@@ -97,7 +98,7 @@ export default async function TorrentDetailPage({
     api
       .get<
         Record<string, { id: number; name: string }[]> & {
-          kinds?: { kind: string; label: string }[];
+          kinds?: SectionKindMeta[];
         }
       >("/api/v1/section-dict")
       .catch(() => null),
@@ -114,9 +115,13 @@ export default async function TorrentDetailPage({
   const editKinds = secDictAll?.kinds ?? [];
   const editDict: Record<string, { id: number; name: string }[]> = {};
   for (const k of editKinds) editDict[k.kind] = secDictAll?.[k.kind] ?? [];
-  // 当前多维值（detail.sections：kind → dict_id）
+  // 当前多维属性值（B2：detail.sections = kind → {dict_id, name, values[]}；
+  // 编辑表单按 field_type 自行取初值——枚举用 dict_id、自由值/多值用 values）
   const editSecVals = Object.fromEntries(
-    Object.entries(ext?.sections ?? {}).map(([k, v]) => [k, v.dict_id]),
+    Object.entries(ext?.sections ?? {}).map(([k, v]) => [
+      k,
+      { dict_id: v.dict_id, values: v.values },
+    ]),
   );
   const d = dict.tdetail;
   const category = dictName(byId(editCats), t.category_id);

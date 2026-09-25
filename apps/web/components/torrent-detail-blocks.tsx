@@ -22,10 +22,18 @@ export interface TorrentDetailExt {
   price: number;
   purchased: boolean;
   is_owner: boolean;
-  /** 动态属性（0085/0087）：kind → { dict_id, name, label, sort } */
+  /** 动态属性（0085/0087；B2 六类型）：kind → { dict_id, name, label, sort,
+   *  field_type, values[] }。`name` = 首个展示值（向后兼容），多值看 `values`。 */
   sections?: Record<
     string,
-    { dict_id: number; name: string; label: string; sort: number }
+    {
+      dict_id: number | null;
+      name: string;
+      label: string;
+      sort: number;
+      field_type?: string;
+      values?: string[];
+    }
   >;
   /** MediaInfo 全文（发布表单录入，折叠块展示） */
   mediainfo?: string | null;

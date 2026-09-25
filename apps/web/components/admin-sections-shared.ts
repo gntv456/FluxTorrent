@@ -14,6 +14,10 @@ export interface ModeRow {
   show_processing: boolean;
   show_team: boolean;
   categories: number;
+  /** B2（0195）：mode_kinds 关联表下的**可见维度**清单（权威来源） */
+  visible_kinds?: string[] | null;
+  /** B2：被显式关闭的维度清单 */
+  hidden_kinds?: string[] | null;
 }
 
 export interface DictRow {
@@ -36,7 +40,26 @@ export interface SectionKindMeta {
   kind: string;
   label: string;
   sort: number;
+  /** B2（0195）六类型；缺省（旧后端）按 select 处理 */
+  field_type?: string;
+  required?: boolean;
+  multiple?: boolean;
+  enabled?: boolean;
+  icon_key?: string | null;
+  bg_color?: string | null;
+  /** 已挂字典项数（枚举维度用） */
+  options?: number;
 }
+
+/** B2 六类型字段系统的显示名键（i18n `adminSections.fieldTypes`）与取值集合 */
+export const FIELD_TYPE_KEYS = [
+  "text",
+  "number",
+  "select",
+  "multiselect",
+  "date",
+  "bool",
+] as const;
 
 /** 兜底维度表：取值键在 `KIND_KEYS`，显示名在 i18n `adminSections.kinds`（三语），
  *  由 `fallbackKinds()` 拼回原 `SectionKindMeta[]` 形状（sort 保持 10/20/…/90）。 */

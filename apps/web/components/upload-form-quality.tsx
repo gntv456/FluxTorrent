@@ -11,8 +11,11 @@ import type {
 } from "@/components/upload-form";
 
 /** 发布表单·分类/质量/标签/推荐块（从 upload-form.tsx 按域拆出，300 行门禁）：
- *  分类下拉、质量维度（section_kinds 数据驱动）、标签多选（NP tags 口径）、
- *  推荐位（NP 挑选口径：置顶位置/截止 + 推荐影片）。 */
+ *  分类下拉、质量维度（section_kinds 数据驱动，B2 起六类型）、标签多选
+ *  （NP tags 口径）、推荐位（NP 挑选口径：置顶位置/截止 + 推荐影片）。 */
+
+/** 六类型里需要「字典选项」的两类；其余为自由值（直接填） */
+const ENUM_TYPES = new Set(["select", "multiselect"]);
 
 export function UploadQualityBlock({
   profileCats,
@@ -38,6 +41,7 @@ export function UploadQualityBlock({
   setCategoryId: (v: number) => void;
   secKinds: SectionKindMeta[];
   secDict: Record<string, SectionDictRow[]>;
+  /** 六类型统一以字符串承载：枚举存 dict_id，自由值存原文 */
   secVals: Record<string, string>;
   setSecVals: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   tagDict: { id: number; name: string; kind: string }[];
@@ -53,19 +57,117 @@ export function UploadQualityBlock({
   setPickType: (v: number) => void;
 }) {
   const { dict } = useI18n();
+  const u = dict.upload;
 
-  // 质量维度渲染清单（0087）：九维全部由 section_kinds/section_dict 驱动，
-  // 统一写 sections JSON（media/grades/editions 也走 torrent_sections）
+  // 质量维度渲染清单（0087，B2 扩六类型）：维度由 section_kinds 驱动。
+  // 枚举维度必须有选项才显示（无选项 = 填不了）；自由值维度恒显示。
+  const kindVal = (kind: string) => secVals[kind] ?? "";
+  const setKindVal = (kind: string, v: string) => {
+    setSecVals((prev) => ({ ...prev, [kind]: v }));
+  };
+  // 多选：同一 kind 下多值以逗号串承载
+  const multiVal = (kind: string): number[] =>
+    (secVals[kind] ?? "")
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => n > 0);
+  const toggleMulti = (kind: string, id: number) => {
+    const cur = multiVal(kind);
+    const next = cur.includes(id)
+      ? cur.filter((x) => x !== id)
+      : [...cur, id];
+    setKindVal(kind, next.join(","));
+  };
   const kindDefs = secKinds
     .map((k) => ({
       kind: k.kind,
       label: k.label,
+      type: k.field_type ?? "select",
+      required: Boolean(k.required),
       opts: (secDict[k.kind] ?? []).map((d) => ({ v: d.id, label: d.name })),
     }))
-    .filter((k) => k.opts.length > 0);
-  const kindVal = (kind: string) => secVals[kind] ?? "";
-  const setKindVal = (kind: string, v: string) => {
-    setSecVals((prev) => ({ ...prev, [kind]: v }));
+    .filter((k) => (ENUM_TYPES.has(k.type) ? k.opts.length > 0 : true));
+
+  /** 按字段类型渲染控件（六类型） */
+  const renderControl = (k: (typeof kindDefs)[number]) => {
+    const val = kindVal(k.kind);
+    const cls = INPUT_BAOZI;
+    switch (k.type) {
+      case "multiselect":
+        return (
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {k.opts.map((o) => {
+              const on = multiVal(k.kind).includes(o.v);
+              return (
+                <label
+                  key={o.v}
+                  className="flex cursor-pointer items-center gap-1"
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => toggleMulti(k.kind, o.v)}
+                    className="h-4 w-4 accent-[var(--baozi-orange)]"
+                  />
+                  {o.label}
+                </label>
+              );
+            })}
+          </span>
+        );
+      case "select":
+        return (
+          <select
+            value={val}
+            onChange={(e) => setKindVal(k.kind, e.target.value)}
+            className={cls}
+          >
+            <option value="">{u.gradeNone}</option>
+            {k.opts.map((o) => (
+              <option key={o.v} value={o.v}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        );
+      case "number":
+        return (
+          <input
+            type="number"
+            value={val}
+            onChange={(e) => setKindVal(k.kind, e.target.value)}
+            className={`${cls} w-28`}
+          />
+        );
+      case "date":
+        return (
+          <input
+            type="date"
+            value={val}
+            onChange={(e) => setKindVal(k.kind, e.target.value)}
+            className={`${cls} w-40`}
+          />
+        );
+      case "bool":
+        return (
+          <input
+            type="checkbox"
+            checked={val === "true"}
+            onChange={(e) =>
+              setKindVal(k.kind, e.target.checked ? "true" : "")
+            }
+            className="h-4 w-4 accent-[var(--baozi-orange)]"
+          />
+        );
+      default:
+        return (
+          <input
+            value={val}
+            onChange={(e) => setKindVal(k.kind, e.target.value)}
+            className={`${cls} w-48`}
+          />
+        );
+    }
   };
 
   return (
@@ -86,21 +188,19 @@ export function UploadQualityBlock({
       {kindDefs.length > 0 && (
         <FormRow label={dict.upload.quality}>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {kindDefs.map(({ kind, label, opts }) => (
-              <label key={kind} className="flex items-center gap-1 text-sm">
-                <span className="whitespace-nowrap text-sub">{label}：</span>
-                <select
-                  value={kindVal(kind)}
-                  onChange={(e) => setKindVal(kind, e.target.value)}
-                  className={INPUT_BAOZI}
-                >
-                  <option value="">{dict.upload.gradeNone}</option>
-                  {opts.map((o) => (
-                    <option key={o.v} value={o.v}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+            {kindDefs.map((k) => (
+              <label
+                key={k.kind}
+                className="flex items-center gap-1 text-sm"
+              >
+                <span className="whitespace-nowrap text-sub">
+                  {k.label}
+                  {k.required && (
+                    <span className="text-[var(--danger,#d33)]">*</span>
+                  )}
+                  ：
+                </span>
+                {renderControl(k)}
               </label>
             ))}
           </div>

@@ -3,6 +3,7 @@
 import { useI18n } from "@/i18n/client";
 import { api, ApiError } from "@/lib/api-client";
 import { ATTACH_ACCEPT, FLD, PILL } from "@/components/torrent-manage-parts";
+import type { SectionKindMeta } from "@/components/admin-sections-shared";
 
 type Dict = ReturnType<typeof useI18n>["dict"];
 
@@ -50,10 +51,10 @@ export function ManageBasicFields({
   fCat: number;
   setFCat: (v: number) => void;
   cats: { id: number; name: string }[];
-  catKinds: { kind: string; label: string }[];
+  catKinds: SectionKindMeta[];
   catDict: Record<string, { id: number; name: string }[]>;
-  fSec: Record<string, number>;
-  setFSec: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  fSec: Record<string, string>;
+  setFSec: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   fPoster: string;
   setFPoster: (v: string) => void;
   fPrice: number;
@@ -93,31 +94,86 @@ export function ManageBasicFields({
           ))}
         </select>
       </label>
-      {/* 多维质量（0087 同发布表单；0184 分类联动）：kind 下拉，空 = 不设 */}
+      {/* 多维属性（B2 六类型）：按 field_type 渲染控件，空 = 不设。
+          multiselect 以逗号串承载多值（与发布表单同形） */}
       {catKinds.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-          {catKinds.map((k) => (
-            <label key={k.kind} className="flex items-center gap-1">
-              <span className="whitespace-nowrap text-sub">{k.label}：</span>
-              <select
-                value={fSec[k.kind] ?? 0}
-                onChange={(e) =>
-                  setFSec((prev) => ({
-                    ...prev,
-                    [k.kind]: Number(e.target.value),
-                  }))
-                }
-                className={FLD}
-              >
-                <option value={0}>{u.gradeNone}</option>
-                {(catDict[k.kind] ?? []).map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
+          {catKinds.map((k) => {
+            const type = k.field_type ?? "select";
+            const val = fSec[k.kind] ?? "";
+            const fld = `${FLD} min-w-[6rem]`;
+            const set = (v: string) =>
+              setFSec((prev) => ({ ...prev, [k.kind]: v }));
+            const opts = catDict[k.kind] ?? [];
+            const multiIds = val
+              .split(",")
+              .map((s) => Number(s.trim()))
+              .filter((n) => n > 0);
+            return (
+              <label key={k.kind} className="flex items-center gap-1">
+                <span className="whitespace-nowrap text-sub">
+                  {k.label}：
+                </span>
+                {type === "multiselect" ? (
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {opts.map((o) => (
+                      <label
+                        key={o.id}
+                        className="flex cursor-pointer items-center gap-1"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={multiIds.includes(o.id)}
+                          onChange={() => {
+                            const next = multiIds.includes(o.id)
+                              ? multiIds.filter((x) => x !== o.id)
+                              : [...multiIds, o.id];
+                            set(next.join(","));
+                          }}
+                          className="h-3.5 w-3.5 accent-[var(--baozi-orange)]"
+                        />
+                        {o.name}
+                      </label>
+                    ))}
+                  </span>
+                ) : type === "select" ? (
+                  <select
+                    value={val}
+                    onChange={(e) => set(e.target.value)}
+                    className={fld}
+                  >
+                    <option value="">{u.gradeNone}</option>
+                    {opts.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : type === "number" || type === "date" ? (
+                  <input
+                    type={type}
+                    value={val}
+                    onChange={(e) => set(e.target.value)}
+                    className={`${fld} w-28`}
+                  />
+                ) : type === "bool" ? (
+                  <input
+                    type="checkbox"
+                    checked={val === "true"}
+                    onChange={(e) =>
+                      set(e.target.checked ? "true" : "")
+                    }
+                  />
+                ) : (
+                  <input
+                    value={val}
+                    onChange={(e) => set(e.target.value)}
+                    className={`${fld} w-40`}
+                  />
+                )}
+              </label>
+            );
+          })}
         </div>
       )}
       {/* 0173 对齐发布页：封面外链 + 付费价格 */}

@@ -8,6 +8,9 @@ import { FormRow } from "@/components/upload-form-parts";
 import { UploadFilesBlock } from "@/components/upload-form-files";
 import { UploadDescrBlock } from "@/components/upload-form-descr";
 import { UploadQualityBlock } from "@/components/upload-form-quality";
+import type { SectionKindMeta } from "@/components/admin-sections-shared";
+
+export type { SectionKindMeta };
 
 export interface ProfileCat {
   id: number;
@@ -19,11 +22,6 @@ export interface SectionDictRow {
   name: string;
   sort: number;
   mode_id: number | null;
-}
-export interface SectionKindMeta {
-  kind: string;
-  label: string;
-  sort: number;
 }
 
 /** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类与质量维度全部站点数据驱动）。
@@ -179,14 +177,34 @@ export function UploadForm() {
       if (descr.trim()) qs.set("descr", descr.trim());
       if (poster.trim()) qs.set("poster", poster.trim());
       if (mediainfo.trim()) qs.set("mediainfo", mediainfo.trim());
-      // 第八轮 Section 多维：非空维度打包成 sections JSON。
-      // 值必须转成 number——后端按 HashMap<String, i64> 解码，select 交回来的是
-      // 字符串，直接发会 400（"sections 需为 JSON 对象"）
-      const sections = Object.fromEntries(
-        Object.entries(secVals)
-          .filter(([, v]) => v !== "" && Number(v) > 0)
-          .map(([k, v]) => [k, Number(v)]),
-      );
+      // 多维属性打包（B2 六类型）：枚举维度发整数（旧格式，后端零改动兼容），
+      // 自由值维度按 field_type 发对象 {"text":…}/{"number":…}/{"date":…}/{"bool":…}；
+      // multiselect 发 {"dict_ids":[…]}。后端按**值的 JSON 类型**分派。
+      const sections: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(secVals)) {
+        if (!v) continue;
+        const def = secKinds.find((x) => x.kind === k);
+        const type = def?.field_type ?? "select";
+        if (type === "select") {
+          const n = Number(v);
+          if (n > 0) sections[k] = n;
+        } else if (type === "multiselect") {
+          const ids = v
+            .split(",")
+            .map((s) => Number(s.trim()))
+            .filter((n) => n > 0);
+          if (ids.length > 0) sections[k] = { dict_ids: ids };
+        } else if (type === "number") {
+          const n = Number(v);
+          if (!Number.isNaN(n)) sections[k] = { number: n };
+        } else if (type === "bool") {
+          sections[k] = { bool: v === "true" };
+        } else if (type === "date") {
+          if (v.trim()) sections[k] = { date: v.trim() };
+        } else {
+          if (v.trim()) sections[k] = { text: v.trim() };
+        }
+      }
       if (Object.keys(sections).length > 0)
         qs.set("sections", JSON.stringify(sections));
       // 标签 / 推荐位（挑选）
