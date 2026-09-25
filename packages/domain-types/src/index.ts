@@ -219,46 +219,15 @@ export interface UserPublic {
   created_at: string;
 }
 
-// ============ 模块注册表（U1 §4.3：与迁移 0107 modules 表 / Rust modules.rs key::ALL 三方同步） ============
+// ============ 模块注册表（U1 §4.3：与迁移 modules 表 / Rust modules.rs key::ALL 同步） ============
+//
+// 2026-09-25：原先这里手抄了一份 union 又手抄了一份数组，Rust 侧再加键时只加了数组项
+// （invites 就是这么漏的）。改为**数组是唯一清单**、union 由 typeof 派生；
+// 三份（Rust key::ALL / 本数组 / DB modules 表）由 scripts/module_keys_guard.mjs 比对。
 
-/** 可选模块键（core 域不设开关；/site-profile 返回 modules: Record<ModuleKey, boolean>） */
-export type ModuleKey =
+/** 模块键唯一清单（顺序与 Rust key::ALL 一致；core 域不设开关） */
+export const MODULE_KEYS = [
   // 社区
-  | "textbooks"
-  | "showcase"
-  | "social"
-  | "forums"
-  | "messages"
-  | "friends"
-  | "offers"
-  | "requests"
-  | "subtitles"
-  | "preserve"
-  | "shoutbox"
-  // 经济
-  | "promo_buy"
-  | "bank"
-  | "shop"
-  | "magic_pool"
-  | "vouchers"
-  | "resurrections"
-  | "wishlist"
-  // 娱乐
-  | "games"
-  | "farm"
-  | "gomoku"
-  | "contests"
-  // 运营
-  | "attendance"
-  | "medals"
-  | "dressup"
-  | "jixiao"
-  | "tasks"
-  | "exams"
-  | "push";
-
-/** 模块开关联合键集合（契约测试用：长度与 Rust key::ALL / 迁移行数一致 = 29） */
-export const MODULE_KEYS: readonly ModuleKey[] = [
   "textbooks",
   "showcase",
   "social",
@@ -270,6 +239,8 @@ export const MODULE_KEYS: readonly ModuleKey[] = [
   "subtitles",
   "preserve",
   "shoutbox",
+  "invites",
+  // 经济
   "promo_buy",
   "bank",
   "shop",
@@ -277,10 +248,12 @@ export const MODULE_KEYS: readonly ModuleKey[] = [
   "vouchers",
   "resurrections",
   "wishlist",
+  // 娱乐
   "games",
   "farm",
   "gomoku",
   "contests",
+  // 运营
   "attendance",
   "medals",
   "dressup",
@@ -289,6 +262,9 @@ export const MODULE_KEYS: readonly ModuleKey[] = [
   "exams",
   "push",
 ] as const;
+
+/** 可选模块键（派生自 MODULE_KEYS，不再手抄） */
+export type ModuleKey = (typeof MODULE_KEYS)[number];
 
 
 // ============ 站点实体契约（自 apps/web/lib/data.ts 收编，2026-09-20） ============

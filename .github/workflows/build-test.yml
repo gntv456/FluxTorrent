@@ -69,6 +69,12 @@ jobs:
       # promo.rs KIND_RANK ↔ PromotionKind；后端加码/改枚举而前端契约未跟 → 红灯
       - name: Type drift guard
         run: node ../../scripts/check_type_drift.mjs
+      # 单源清单门禁（四审 L5/L6）：模块键 Rust key::ALL ↔ TS MODULE_KEYS ↔ DB modules；
+      # 首页板块键 后端 HOME_SECTIONS ↔ 前端渲染 case。CI 无库时模块键检查跳过 DB 侧。
+      - name: Module keys & home sections guard
+        run: |
+          node ../../scripts/module_keys_guard.mjs
+          node ../../scripts/home_sections_guard.mjs
       # 构建门禁（P1）：rewrites/standalone 输出/页面构建错误此前推迟到 publish-images
       # 发版构建才第一次暴露；tsc 通过不代表 next build 通过
       - name: Next build
