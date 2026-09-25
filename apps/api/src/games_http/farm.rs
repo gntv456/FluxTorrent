@@ -10,7 +10,9 @@ use crate::games;
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::helpers::{eco_i64, farm_wither_days, limit_used};
+use super::helpers::{
+    eco_i64, farm_market_hours, farm_wither_days, limit_used,
+};
 
 pub(super) async fn get_crop(
     db: &sqlx::PgPool,
@@ -34,7 +36,8 @@ pub(super) async fn farm_overview(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let now = chrono::Utc::now().timestamp();
-    let window = games::market_window_start(now);
+    let window =
+        games::market_window_start_with(now, farm_market_hours(&state).await);
 
     let crops: Vec<CropRow> = sqlx::query_as(
         "SELECT id, name, seed_price, base_yield, grow_hours, \

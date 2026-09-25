@@ -59,7 +59,19 @@ async fn checkin(
     } else {
         1
     };
-    let reward = checkin_reward(streak, total_days == 0);
+    let reward = checkin_reward(
+        streak,
+        total_days == 0,
+        &crate::economy::CheckInParams::from_settings(
+            &sqlx::query_as::<_, (String, String)>(
+                "SELECT name, value FROM site_settings WHERE name IN \
+                 ('attendance_first','attendance_streak','attendance_daily_cap')",
+            )
+            .fetch_all(&state.repo.db)
+            .await
+            .unwrap_or_default(),
+        ),
+    );
 
     {
         // 单事务（P1 撕裂窗口收口）：签到行与本日奖励同生共死——旧版 attendance 落库

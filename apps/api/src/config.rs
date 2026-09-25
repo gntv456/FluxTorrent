@@ -16,9 +16,6 @@ pub struct AppConfig {
     pub jwt_alg: String,
     #[serde(default = "default_pool")]
     pub db_pool_size: usize,
-    #[serde(default = "default_true")]
-    #[allow(dead_code)]
-    pub seed_demo_data: bool,
 }
 
 fn default_bind() -> String {
@@ -29,9 +26,6 @@ fn default_redis() -> String {
 }
 fn default_pool() -> usize {
     10
-}
-fn default_true() -> bool {
-    true
 }
 fn default_jwt_alg() -> String {
     "hs256".into()

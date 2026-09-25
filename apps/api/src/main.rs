@@ -120,6 +120,10 @@ async fn main() -> anyhow::Result<()> {
     //（argon2 哈希公开在迁移文件里，任何拿到源码的人都能直接登录——含 class 6 高权限）。
     // 生产态（非 FLUX_DEV=1）启动时把仍持有该公开哈希的账号口令随机化（幂等：中性化后
     // 哈希不再匹配，下次启动零行）；演示数据本体建议随后执行 0108 迁移清理逻辑删除。
+    // 必须再按演示签名（passkey 'demo%' / @demo.local）限定：0017 引导 root 用的是
+    // **同一个** password123 哈希，只按哈希匹配会把 root 一并随机化，而随机口令不写
+    // 日志 ⇒ 生产空库首启谁也登不进、向导也就进不去（四审 L1 P0）。root 的公开口令
+    // 由 auth_infra 的 must_reset_password 闸门兜住（只放行改密/登出/自身信息）。
     if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
         const DEMO_PUBLIC_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$XAMwi8WTuzejCBPhdilR6w$xUb/nkW8/iUYTMb+dCPsstkyeldF5LuM2sOIK4m8++c";
         use rand::Rng;
@@ -132,7 +136,9 @@ async fn main() -> anyhow::Result<()> {
         let new_hash = crate::domain::hash_password(&rnd);
         match sqlx::query_scalar::<_, i64>(
             "WITH neutralized AS (\
-               UPDATE users SET pass_hash = $1 WHERE pass_hash = $2 RETURNING 1\
+               UPDATE users SET pass_hash = $1 WHERE pass_hash = $2 \
+               AND (passkey LIKE 'demo%' OR email LIKE '%@demo.local') \
+               RETURNING 1\
              ) SELECT count(*) FROM neutralized",
         )
         .bind(new_hash.as_deref().unwrap_or(""))

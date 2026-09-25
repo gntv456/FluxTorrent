@@ -5,6 +5,27 @@
 
 ## [Unreleased]
 
+### 通用建站定位四审收口 A 批（2026-09-25，详见 _doc/通用建站定位四审报告-2026-09-25.md）
+
+- **生产空库首启不再自锁**：演示账号中性化防线改为「公开哈希 + 演示签名」双条件
+  （`passkey LIKE 'demo%'` 或 `@demo.local`）。0017 引导 root 用的就是同一个
+  password123 哈希，旧条件会把 root 一并随机化且不落口令日志，导致生产首启谁也
+  登不进、向导也就进不去；root 的公开口令由已有的 must_reset_password 服务端闸门兜住。
+- **站型包「另存快照」不再丢自定义**：custom 包快照补齐 `sections`/`tags`/`classes`/
+  `economy`/`metadata` 五段（新增 `staff_http/pack_snapshot.rs`，与预置包同形；
+  未采到的段落写 SQL NULL 而非 JSON null，避免 `apply_pack_extras` 误判为已声明）。
+- **批量写口单源化**：`POST /admin/torrents/batch` 的 `change_category` 不再接受
+  `medium_id/grade_id/edition_id`（改这三列不会反写 `torrent_sections`，会造成详情页
+  与筛选显旧值），返回 400 并引导用 `change_sections`；前端本就只发 `category_id`。
+- **假开关收口**：签到三键（`attendance_first`/`attendance_streak`/
+  `attendance_daily_cap`）与 `farm_market_window_hours` 接上真实读取；迁移 0193 摘除
+  零消费的 `carousel_images`/`stylesheet_default`/`nfo_view_style_default`/
+  `bank_max_rate_pct`/`magic_pool_target_default`，主题令牌控件改取色器，`site_type`
+  标为只读（此前渲染成可改下拉但必被拒）；`theme_token_glow` 前端注入名对齐
+  `--brand-glow`（原来注入 `--glow`，无人读，改色不生效）；删除死配置字段 `SEED_DEMO_DATA`。
+- 升级注意：0193 会删除上述五个设置键的值与元数据行，并从站型包 economy 预设里剔掉
+  两个同名键；这些键此前无任何代码读取，删除不影响运行行为。
+
 ### 通用建站系统收口（2026-09-25 六迭代，详见 _doc/通用建站定位符合度三审报告）
 
 - **模块缺省翻转**：可选模块缺省从教育站全开改为 general 中立矩阵；
