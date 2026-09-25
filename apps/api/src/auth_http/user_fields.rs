@@ -23,71 +23,20 @@ fn valid_key(k: &str) -> bool {
 }
 
 fn valid_field_type(t: &str) -> bool {
-    matches!(
-        t,
-        "text" | "number" | "select" | "multiselect" | "date" | "bool"
-    )
+    crate::fields::valid_field_type(t)
 }
 
-/// 校验值形状与 def 类型匹配；select/multiselect 额外校验选项在 options 内
+/// 校验值形状与 def 类型匹配；select/multiselect 额外校验选项在 options 内。
+///
+/// B 批（2026-09-25）：实现已搬到 `crate::fields::validate_value`，与内容侧自定义维度
+/// **共用同一套类型语义**（六类型逐字对齐），避免两边各自漂移。此处保留原签名转发，
+/// register.rs 等既有调用点零改动。
 pub(crate) fn validate_value(
     def_type: &str,
     options: &serde_json::Value,
     v: &serde_json::Value,
 ) -> Result<(), String> {
-    let allowed: Vec<String> = options
-        .as_array()
-        .map(|a| {
-            a.iter()
-                .filter_map(|o| {
-                    o.get("value")
-                        .and_then(serde_json::Value::as_str)
-                        .map(|s| s.to_string())
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    match def_type {
-        "text" => {
-            v.as_str()
-                .filter(|s| s.len() <= 500)
-                .map(|_| ())
-                .ok_or("text 字段需为 ≤500 字符字符串")?;
-        }
-        "number" => {
-            v.as_f64().map(|_| ()).ok_or("number 字段需为数字")?;
-        }
-        "date" => {
-            let s = v.as_str().ok_or("date 字段需为 YYYY-MM-DD 字符串")?;
-            chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
-                .map(|_| ())
-                .map_err(|_| "date 字段需为 YYYY-MM-DD".to_string())?;
-        }
-        "bool" => {
-            v.as_bool().map(|_| ()).ok_or("bool 字段需为 true/false")?;
-        }
-        "select" => {
-            let s = v.as_str().ok_or("select 字段需为选项值字符串")?;
-            if !allowed.contains(&s.to_string()) {
-                return Err("值不在字段选项集内".into());
-            }
-        }
-        "multiselect" => {
-            let arr = v.as_array().ok_or("multiselect 字段需为选项值数组")?;
-            if arr.len() > 20 {
-                return Err("multiselect 最多 20 项".into());
-            }
-            for item in arr {
-                let s =
-                    item.as_str().ok_or("multiselect 数组元素需为字符串")?;
-                if !allowed.contains(&s.to_string()) {
-                    return Err("值不在字段选项集内".into());
-                }
-            }
-        }
-        _ => return Err("未知字段类型".into()),
-    }
-    Ok(())
+    crate::fields::validate_value(def_type, options, v)
 }
 
 // ============ 后台：字段定义 CRUD（抄 medal_rarities 作业） ============

@@ -119,27 +119,82 @@ pub async fn get_torrent_detail(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let mut row = row.ok_or(DomainError::NotFound(id))?;
-    // 0087：sections 附带维度显示名与排序（section_kinds.label），前端直接渲染
-    let secs: Vec<(String, i64, String, String, i32)> = sqlx::query_as(
-        "SELECT ts.kind, ts.dict_id, d.name, COALESCE(k.label, ts.kind) AS label, COALESCE(k.sort, 999) AS sort \
+    // 0087：sections 附带维度显示名与排序（section_kinds.label），前端直接渲染。
+    // B2（2026-09-25）：`section_dict` 改 **LEFT JOIN** —— 六类型字段系统下自由值行
+    // （dict_id IS NULL）原来会被内连接直接丢掉；同时按 `ordinal` 支持多值。
+    let secs: Vec<(String, Option<i64>, Option<serde_json::Value>, i32, Option<String>,
+                   String, i32, Option<String>)> = sqlx::query_as(
+        "SELECT ts.kind, ts.dict_id, ts.value, ts.ordinal, \
+                d.name, COALESCE(k.label, ts.kind) AS label, \
+                COALESCE(k.sort, 999) AS sort, k.field_type \
          FROM torrent_sections ts \
-         JOIN section_dict d ON d.id = ts.dict_id \
+         LEFT JOIN section_dict d ON d.id = ts.dict_id \
          LEFT JOIN section_kinds k ON k.kind = ts.kind \
-         WHERE ts.torrent_id = $1 ORDER BY sort, ts.kind",
+         WHERE ts.torrent_id = $1 ORDER BY sort, ts.kind, ts.ordinal",
     )
     .bind(id)
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 按 kind 聚合（多值维度：name 取首个以兼容旧消费点，values 给全量有序数组）。
+    // 单趟收集 → 按首次出现顺序输出，避免多次遍历。
+    struct Agg {
+        dict_id: Option<i64>,
+        label: String,
+        sort: i32,
+        field_type: String,
+        values: Vec<String>,
+    }
+    let mut aggs: Vec<(String, Agg)> = Vec::new();
+    for (kind, dict_id, value, _ord, name, label, sort, field_type) in secs {
+        let display = match (&name, &value) {
+            (Some(n), _) => n.clone(),
+            (None, Some(v)) => free_value_display(v),
+            _ => String::new(),
+        };
+        match aggs.iter_mut().find(|(k, _)| *k == kind) {
+            Some((_, a)) => a.values.push(display),
+            None => aggs.push((
+                kind,
+                Agg {
+                    dict_id,
+                    label,
+                    sort,
+                    field_type: field_type
+                        .unwrap_or_else(|| "select".to_string()),
+                    values: vec![display],
+                },
+            )),
+        }
+    }
     let mut m = serde_json::Map::new();
-    for (kind, dict_id, name, label, sort) in secs {
+    for (kind, a) in aggs {
+        let first = a.values.first().cloned().unwrap_or_default();
         m.insert(
             kind,
-            serde_json::json!({ "dict_id": dict_id, "name": name, "label": label, "sort": sort }),
+            serde_json::json!({
+                "dict_id": a.dict_id,
+                "name": first,
+                "label": a.label,
+                "sort": a.sort,
+                "field_type": a.field_type,
+                "values": a.values,
+            }),
         );
     }
     row.sections = serde_json::Value::Object(m);
     Ok(row)
+}
+
+/// 自由值的展示串（text 直出；number/bool/date 转字符串）。
+fn free_value_display(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::Bool(b) => b.to_string(),
+        serde_json::Value::Null => String::new(),
+        other => other.to_string(),
+    }
 }
 
 pub async fn list_files(

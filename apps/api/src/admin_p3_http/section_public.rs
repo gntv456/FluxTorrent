@@ -26,11 +26,15 @@ pub(super) fn regex_check_kind(kind: &str) -> bool {
 
 /// 发布表单/筛选公开读（匿名可读：仅字典名称，与 site-profile 同级）。
 ///
-/// `?category_id=N` 让**分类归属模式真正生效**：`categories.mode_id` 指向的
-/// `category_modes` 七个 `show_*` 决定该分类发布时能填哪些质量维度（学段/版本与
-/// 站方自建维度不在开关覆盖范围内，恒可见），同时字典行按
-/// `section_dict.mode_id IS NULL OR = 该模式` 过滤（NULL = 全模式可用，与
-/// /tags-dict 的「全局 + 本分区」口径一致）。不传 category_id 时行为不变。
+/// `?category_id=N` 让**分类归属模式真正生效**：`categories.mode_id` 指向的模式的
+/// 可见维度由 `mode_kinds(mod_id, kind, visible)` 决定。B2（0195）把口径从
+/// 「category_modes 的 7 个固定 show_* 列」改为关联表：
+///   · 旧实现按 kind 名 match 那 7 列、`_ => true` ⇒ **站长自建的维度永远不受管辖**，
+///     且那 7 个名字（含 audio_codec/standard/processing）本身是影视/音频词表进了 schema；
+///   · 关联表下「哪些维度在某模式可见」是**数据**不是列，自建维度同样可被管辖。
+/// 缺行语义 = 可见（与旧 `_ => true` 一致，不改行为）。
+/// 字典行仍按 `section_dict.mode_id IS NULL OR = 该模式` 过滤（NULL = 全模式可用，
+/// 与 /tags-dict 的「全局 + 本分区」口径一致）。不传 category_id 时行为不变。
 #[derive(Deserialize)]
 struct SectionDictQ {
     #[serde(default)]
@@ -43,44 +47,40 @@ async fn section_dict_public(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
-    // (mode_id, show_source, show_medium, show_codec, show_audio_codec,
-    //  show_standard, show_processing, show_team)
-    let mode: Option<(i32, bool, bool, bool, bool, bool, bool, bool)> =
-        match q.category_id {
-            Some(cid) => sqlx::query_as(
-                "SELECT m.id, m.show_source, m.show_medium, m.show_codec, \
-                 m.show_audio_codec, m.show_standard, m.show_processing, \
-                 m.show_team \
-                 FROM categories c JOIN category_modes m ON m.id = c.mode_id \
-                 WHERE c.id = $1",
-            )
-            .bind(cid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?,
-            None => None,
-        };
-    let mode_id = mode.as_ref().map(|m| m.0);
-    // 维度名 → 该维度的开关位置
+    let mode_id: Option<i32> = match q.category_id {
+        Some(cid) => sqlx::query_scalar(
+            "SELECT c.mode_id FROM categories c WHERE c.id = $1",
+        )
+        .bind(cid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .flatten(),
+        None => None,
+    };
+    // 该模式下被显式关闭（visible=false）的维度集合；无 mode_id 时不过滤
+    let hidden: Vec<String> = match mode_id {
+        Some(mid) => sqlx::query_scalar(
+            "SELECT kind FROM mode_kinds WHERE mode_id = $1 AND NOT visible",
+        )
+        .bind(mid)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?,
+        None => Vec::new(),
+    };
     let allows = |kind: &str| -> bool {
-        let Some((_, src, med, cod, aud, std, proc, team)) = mode else {
+        if mode_id.is_none() {
             return true;
-        };
-        match kind {
-            "media" => med,
-            "source" => src,
-            "codec" => cod,
-            "audio_codec" => aud,
-            "standard" => std,
-            "processing" => proc,
-            "team" => team,
-            _ => true,
         }
+        !hidden.iter().any(|h| h == kind)
     };
     let mut out = serde_json::Map::new();
-    // 维度清单来自 section_kinds（0085 可配置），预置 9 维已种子化
+    // 维度清单来自 section_kinds（0085 可配置；0195 起带六类型），预置 9 维已种子化
     let kinds: Vec<SectionKindRow> = sqlx::query_as(
-        "SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind",
+        "SELECT kind, label, sort, field_type, required, multiple, enabled, \
+                icon_key, bg_color, 0::bigint AS options \
+         FROM section_kinds WHERE enabled ORDER BY sort, kind",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -116,9 +116,15 @@ async fn section_dict_public(
         serde_json::to_value(&kinds).unwrap_or_default(),
     );
     let modes: Vec<SectionModeRow> = sqlx::query_as(
-        r#"SELECT m.id, m.name, m.show_source, m.show_medium, m.show_codec, m.show_audio_codec,
-                  m.show_standard, m.show_processing, m.show_team,
-                  (SELECT count(*) FROM categories c WHERE c.mode_id = m.id)::bigint AS categories
+        r#"SELECT m.id, m.name, m.show_source, m.show_medium, m.show_codec,
+                  m.show_audio_codec, m.show_standard, m.show_processing, m.show_team,
+                  (SELECT count(*) FROM categories c WHERE c.mode_id = m.id)::bigint AS categories,
+                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind), '[]'::json)
+                     FROM mode_kinds mk WHERE mk.mode_id = m.id AND mk.visible)
+                      AS visible_kinds,
+                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind), '[]'::json)
+                     FROM mode_kinds mk WHERE mk.mode_id = m.id AND NOT mk.visible)
+                      AS hidden_kinds
            FROM category_modes m ORDER BY m.id"#,
     )
     .fetch_all(&state.repo.db)

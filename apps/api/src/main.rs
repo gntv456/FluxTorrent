@@ -24,6 +24,7 @@ mod dto;
 mod economy;
 mod economy_http;
 mod errors;
+mod fields;
 mod games;
 mod games_http;
 mod gaps_http;

@@ -16,6 +16,9 @@ use crate::state::AppState;
 pub(super) struct SectionModeRow {
     id: i32,
     name: String,
+    // ⚠ 以下 7 列是 0063 的旧口径，**本批保留**（站长拍板：保留一个发布周期，
+    // 回滚容易）。B2 起读取侧改用 `mode_kinds` 关联表，见 visible_kinds；
+    // 这 7 个字段仅为兼容存量消费点继续下发，不再是权威来源。
     show_source: bool,
     show_medium: bool,
     show_codec: bool,
@@ -24,6 +27,11 @@ pub(super) struct SectionModeRow {
     show_processing: bool,
     show_team: bool,
     categories: i64,
+    /// B2（0195）：该模式下**可见**的维度清单（来自 mode_kinds）。
+    /// 无行的维度 = 可见（与旧 `_ => true` 一致），故这里是「被显式关闭」的反面。
+    visible_kinds: Option<serde_json::Value>,
+    /// B2：该模式下**被显式关闭**的维度清单（管理面板直接编辑这个集合）。
+    hidden_kinds: Option<serde_json::Value>,
 }
 
 #[get("/admin/section-modes")]
@@ -35,7 +43,13 @@ async fn section_modes_list(
     let rows: Vec<SectionModeRow> = sqlx::query_as(
         r#"SELECT m.id, m.name, m.show_source, m.show_medium, m.show_codec, m.show_audio_codec,
                   m.show_standard, m.show_processing, m.show_team,
-                  (SELECT count(*) FROM categories c WHERE c.mode_id = m.id)::bigint AS categories
+                  (SELECT count(*) FROM categories c WHERE c.mode_id = m.id)::bigint AS categories,
+                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind), '[]'::json)
+                     FROM mode_kinds mk WHERE mk.mode_id = m.id AND mk.visible)
+                      AS visible_kinds,
+                  (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind), '[]'::json)
+                     FROM mode_kinds mk WHERE mk.mode_id = m.id AND NOT mk.visible)
+                      AS hidden_kinds
            FROM category_modes m ORDER BY m.id"#,
     )
     .fetch_all(&state.repo.db)
@@ -61,6 +75,12 @@ struct SectionModeReq {
     show_processing: Option<bool>,
     #[serde(default)]
     show_team: Option<bool>,
+    /// B2（0195）：该模式的**可见维度**整组提交（`mode_kinds` 唯一权威入口）。
+    /// `Some([...])` = 用这一组替换该模式全部 mode_kinds 行（不在组内的维度
+    /// 在改分类重取 /section-dict 时消失）；`None` = 不动（仅改旧 7 列）。
+    /// 自建维度只能从这里纳入管辖——旧 7 列写不下它们。
+    #[serde(default)]
+    visible_kinds: Option<Vec<String>>,
 }
 
 #[post("/admin/section-modes")]
@@ -138,11 +158,95 @@ async fn section_mode_update(
     if n == 0 {
         return Err(DomainError::NotFound(id as i64));
     }
+    // B2（0195）：mode_kinds 整组重建（自建维度的唯一管辖入口）。
+    // 校验：每个 kind 必须存在于 section_kinds（否则挂了个不存在的维度，
+    // 前台白拿不出字典项，属于静默错配）。
+    if let Some(kinds) = &body.visible_kinds {
+        let mut seen: Vec<String> = Vec::new();
+        for k in kinds {
+            let k = k.trim();
+            if k.is_empty() || seen.iter().any(|s| s == k) {
+                continue;
+            }
+            if !is_custom_kind(&state.repo.db, k).await {
+                return Err(DomainError::Validation(format!(
+                    "未知维度 {k}"
+                )));
+            }
+            seen.push(k.to_string());
+        }
+        let mut tx = state
+            .repo
+            .db
+            .begin()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query("DELETE FROM mode_kinds WHERE mode_id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        for k in &seen {
+            sqlx::query(
+                "INSERT INTO mode_kinds (mode_id, kind, visible) \
+                 VALUES ($1, $2, true)",
+            )
+            .bind(id)
+            .bind(k)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        tx.commit()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        // 同步回旧 7 列：本批「保留一个周期」，两边不能说法不一（回滚也不炸）
+        sync_legacy_mode_columns(&state.repo.db, id, &seen).await?;
+    }
     state
         .repo
         .audit(Some(auth.id), "section_mode.update", Some(id as i64))
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+/// 把 `mode_kinds` 的可见集合回写进 `category_modes` 的旧 7 个 show_* 列。
+/// 旧七维与 kind 名的固定映射，仅用于保留期兼容，不是权威来源。
+const LEGACY_MODE_KEYS: [(&str, &str); 7] = [
+    ("source", "show_source"),
+    ("media", "show_medium"),
+    ("codec", "show_codec"),
+    ("audio_codec", "show_audio_codec"),
+    ("standard", "show_standard"),
+    ("processing", "show_processing"),
+    ("team", "show_team"),
+];
+
+async fn sync_legacy_mode_columns(
+    db: &sqlx::PgPool,
+    mode_id: i32,
+    visible: &[String],
+) -> DomainResult<()> {
+    let mut sets: Vec<String> = Vec::new();
+    for (kind, col) in LEGACY_MODE_KEYS {
+        sets.push(format!(
+            "{col} = {}",
+            if visible.iter().any(|v| v == kind) {
+                "TRUE"
+            } else {
+                "FALSE"
+            }
+        ));
+    }
+    sqlx::query(&format!(
+        "UPDATE category_modes SET {} WHERE id = $1",
+        sets.join(", ")
+    ))
+    .bind(mode_id)
+    .execute(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(())
 }
 
 #[delete("/admin/section-modes/{id}")]
