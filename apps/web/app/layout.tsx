@@ -78,13 +78,36 @@ function ThemeNoFlash() {
   return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }
 
+/** 主题令牌覆盖（0189 R4.6）：站长在后台设置的品牌色注入 :root。
+ *  仅接受 #rrggbb（后端已过滤，此处再守一道）；空 = 不注入，用默认 Aurora。 */
+function ThemeTokenStyle({ tokens }: { tokens?: Record<string, string> }) {
+  const entries = Object.entries(tokens ?? {}).filter(
+    ([k, v]) =>
+      k.startsWith("theme_token_") && /^#[0-9a-fA-F]{6}$/.test(v ?? ""),
+  );
+  if (!entries.length) return null;
+  const css = entries
+    .map(([k, v]) => {
+      const varName = k.replace("theme_token_", "");
+      if (varName === "ribbon") {
+        // 彩带底色：纯色替换渐变
+        return `--ribbon:${v};--grad-rainbow:${v};`;
+      }
+      return `--${varName}:${v};`;
+    })
+    .join("");
+  return <style dangerouslySetInnerHTML={{ __html: `:root{${css}}` }} />;
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { dict, locale, currency } = await getDict();
+  const profile = await getSiteProfile();
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <ThemeTokenStyle tokens={profile.theme_tokens} />
         {/* TIDE 字体（P5）：已改为**自托管**（见 app/styles/fonts-tide.css + public/fonts/），
             不再请求 Google Fonts —— 保留 unicode-range 分片，浏览器按需加载，
             首访体积不变但彻底摆脱外网依赖；回退链（Songti SC / SimSun）仍是衬线。 */}

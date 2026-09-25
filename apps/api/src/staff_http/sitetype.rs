@@ -195,7 +195,30 @@ pub async fn site_profile(
     .flatten()
     .map(|v| v.trim().to_string())
     .filter(|v| !v.is_empty());
+    // 主题令牌（0189 R4.6）：有值才下发——前端注入 :root 覆盖默认 Aurora 色
+    let token_rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name LIKE          'theme_token_%'",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let mut theme_tokens = serde_json::Map::new();
+    for (name, value) in token_rows {
+        let v = value.trim().to_string();
+        if v.is_empty() {
+            continue;
+        }
+        // 只收 #rrggbb（防任意 CSS 注入；settings 侧写入口在设置卡）
+        let b = v.as_bytes();
+        if b.len() == 7
+            && b[0] == b'#'
+            && b[1..].iter().all(|c| c.is_ascii_hexdigit())
+        {
+            theme_tokens.insert(name, serde_json::json!(v));
+        }
+    }
     Ok(ok(serde_json::json!({
+        "theme_tokens": theme_tokens,
         "site_type": site_type,
         "pack_name": pack.as_ref().map(|p| p.name.clone()),
         "brand": brand,
