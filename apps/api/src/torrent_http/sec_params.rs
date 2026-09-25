@@ -18,7 +18,8 @@ use sqlx::PgPool;
 use crate::torrents::section_filter::{build_section_filters, SectionFilter};
 
 /// 从原始 query string 解析 `sec_*` 参数并归并成筛选条件。
-pub(super) async fn parse_section_params(
+/// 前台列表与后台管理列表共用（`pub(crate)`）——两处筛选语义必须一致。
+pub(crate) async fn parse_section_params(
     db: &PgPool,
     query: &str,
 ) -> Vec<SectionFilter> {

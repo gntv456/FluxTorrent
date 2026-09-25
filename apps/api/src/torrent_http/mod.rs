@@ -25,3 +25,5 @@ pub use list::*;
 pub use magnet::*;
 pub use manage::*;
 pub use peers::*;
+/// 多维筛选参数解析：后台管理列表也要用同一实现（B3）。
+pub(crate) use sec_params::parse_section_params;

@@ -17,11 +17,12 @@ import {
   fmtBytes,
   type AdminTorrentRow,
   type CatRow,
-  type DenyReason,
   type TagRow,
 } from "./admin-torrents-shared";
 import { BatchBar } from "./admin-torrents-batch-bar";
 import { TorrentTable } from "./admin-torrents-table";
+import { DimFilterPanel } from "./admin-torrents-dims";
+import { appendDims, useDecide, useDims } from "./admin-torrents-list-parts";
 
 /** 搜索按钮（实底天蓝） */
 const SKY_BTN_CLS =
@@ -65,6 +66,9 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
   const [tagIds, setTagIds] = useState<Set<number>>(new Set());
   const [batchCat, setBatchCat] = useState("");
 
+  /** 自建维度筛选（B3 六类型）：维度元数据 + 取值，见 list-parts.ts */
+  const dims = useDims();
+
   const load = useCallback(async () => {
     const params = new URLSearchParams({ page: String(page), per_page: "20" });
     if (q.trim()) params.set("q", q.trim());
@@ -74,6 +78,8 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
     if (promo) params.set("promo", promo);
     if (pick) params.set("pick_type", pick);
     if (hr) params.set("hr", hr);
+    // 维度筛选：与前台同一套 sec_{kind} 协议（后端共用同一解析器）
+    appendDims(params, dims.values);
     try {
       const r = await api.get<{
         rows: AdminTorrentRow[];
@@ -87,7 +93,7 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
     } catch {
       setData(null);
     }
-  }, [q, status, owner, pos, promo, pick, hr, page]);
+  }, [q, status, owner, pos, promo, pick, hr, page, dims.values]);
 
   useEffect(() => {
     load();
@@ -126,34 +132,7 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
   }
 
 
-  const decide = async (id: number, approve: boolean) => {
-    let deny_reason_id: number | undefined;
-    let reason = "";
-    if (!approve) {
-      const reasons: DenyReason[] = await api.get("/api/v1/admin/deny-reasons");
-      const list = reasons.map((r) => `${r.id}. ${r.reason}`).join("\n");
-      const choice = prompt(fmt(at.denyPrompt, { list }));
-      if (!choice) return;
-      const asNum = Number(choice);
-      if (asNum > 0 && reasons.some((r) => r.id === asNum))
-        deny_reason_id = asNum;
-      else reason = choice;
-    }
-    try {
-      await api.post("/api/v1/admin/reviews/decide", {
-        torrent_id: id,
-        approve,
-        reason,
-        deny_reason_id,
-      });
-      flash(
-        fmt(approve ? at.approvedMsg : at.rejectedMsg, { id }),
-      );
-      load();
-    } catch (e) {
-      flash(e instanceof ApiError ? e.message : at.opFail);
-    }
-  };
+  const decide = useDecide(flash, load);
 
   return (
     <div className="flex flex-col gap-3">
@@ -249,6 +228,15 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
           {at.search}
         </button>
       </section>
+
+      {/* 多维筛选（B3 六类型）：站长自建维度，与前台同一套 sec_{kind} 协议 */}
+      <DimFilterPanel
+        kinds={dims.kinds}
+        dict={dims.dict}
+        values={dims.values}
+        onChange={dims.set}
+        onClear={dims.clear}
+      />
 
       {/* 批量工具条（拆至 ./admin-torrents-batch-bar.tsx） */}
       <BatchBar

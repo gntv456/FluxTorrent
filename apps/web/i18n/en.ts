@@ -3673,6 +3673,11 @@ const enBase: Omit<
     tableEmpty: "No matching torrents",
     pageNum: "Page {n}",
     qRecord: "{title}: search by username",
+    // Dimension filters (admin-torrents-dims, B3 six field types)
+    dimTitle: "Custom dimensions",
+    dimClear: "Clear",
+    dimBoolYes: "Yes",
+    dimBoolNo: "No",
   },
   /** Performance review admin (admin-jixiao) */
   adminJixiao: {

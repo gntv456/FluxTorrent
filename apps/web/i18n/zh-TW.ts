@@ -3552,6 +3552,11 @@ const zhTwBase: Omit<
     tableEmpty: "沒有符合的種子",
     pageNum: "第 {n} 頁",
     qRecord: "{title}：按使用者名稱搜尋",
+    // 多維篩選（admin-torrents-dims，B3 六類型）
+    dimTitle: "自訂維度",
+    dimClear: "清空",
+    dimBoolYes: "是",
+    dimBoolNo: "否",
   },
   /** 績效考核管理（admin-jixiao） */
   adminJixiao: {
