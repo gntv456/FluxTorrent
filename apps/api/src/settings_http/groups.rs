@@ -133,6 +133,12 @@ pub(super) async fn settings_groups_put(
     if let Some(missing) = names.iter().find(|n| !by_name.contains_key(*n)) {
         return Err(DomainError::Validation(format!("未知设定项 {missing}")));
     }
+    // 三审 B-4：site_type 只能走站型包 apply（设置卡直改会让设置值与站点形态脱钩）
+    if names.iter().any(|n| n == "site_type") {
+        return Err(DomainError::Validation(
+            "站点类型请在后台「分类管理 → 站点类型包」切换（会完整应用分类/模块/维度）".into(),
+        ));
+    }
     // 无任何可写字段 → 403（administrator 只读，§7.1）
     if !names.iter().any(|n| {
         !by_name[n].readonly && auth.class_id >= write_min(&by_name[n])
