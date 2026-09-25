@@ -2,6 +2,13 @@
 # 与 security-audit.yml 互补——此前 CI 只扫 CVE 不跑测试，40 个单测只在本地执行。
 name: build-test
 
+# 同一分支的重复触发只留最新。private 仓库的 Actions 分钟数是有限资源：实测
+# e2e-smoke 最后一次成功是 2026-09-18，之后每条 run 都在 4~5 秒判死且无日志
+# （额度/runner 层的死法），而 dependabot 的一个 PR 会同时点着三条重门。
+concurrency:
+  group: build-test-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [master]
@@ -9,7 +16,9 @@ on:
   workflow_dispatch:
 
 jobs:
+  # 依赖升级 PR 由 security-audit 把关；重编译门留给自己的改动
   rust:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +38,7 @@ jobs:
         run: cargo clippy --workspace --all-targets || true
 
   web:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     defaults:
       run:
