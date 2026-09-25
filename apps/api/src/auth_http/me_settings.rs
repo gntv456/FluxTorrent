@@ -40,13 +40,17 @@ pub async fn me_overview(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .ok_or(DomainError::Unauthorized)?;
-    // 佩戴勋章（userbar 同口径，控制面板资料卡用户名角标）
+    // 佩戴勋章（userbar 同口径，控制面板资料卡用户名角标；
+    // 上限 0204 起跟随 medals_max_worn，缺省 3）
+    let max_worn =
+        crate::community_http::medal::medals_max_worn(&state.repo.db).await;
     let worn_medals: Vec<(String, Option<String>)> = sqlx::query_as(
         "SELECT m.name, m.asset_ref FROM user_medals um JOIN medals m ON m.id = um.medal_id \
          WHERE um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()) \
-         ORDER BY m.id LIMIT 3",
+         ORDER BY m.id LIMIT $2",
     )
     .bind(uid)
+    .bind(max_worn)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

@@ -61,7 +61,7 @@ export function ProfileHero({
           <h1 className="font-display text-2xl text-[var(--text-strong)]">
             {p.username}
           </h1>
-          {data.worn_medals.slice(0, 3).map((m) => (
+          {data.worn_medals.slice(0, 5).map((m) => (
             <span key={m.id} className="medal-chip align-middle" title={m.name}>
               <MedalIcon src={m.asset_ref} size={14} title={m.name} />
             </span>

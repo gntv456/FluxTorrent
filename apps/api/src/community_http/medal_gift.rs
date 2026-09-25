@@ -39,21 +39,24 @@ async fn medal_gift(
     if to_id == auth.id {
         return Err(DomainError::Validation("不能赠送给自己".into()));
     }
-    // 购买并直接入对方账户（赠送弹窗流程：一步完成）
-    let price: Option<i64> =
-        sqlx::query_scalar("SELECT price FROM medals WHERE id = $1")
-            .bind(body.medal_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+    // 购买并直接入对方账户（赠送弹窗流程：一步完成）。
+    // 0204：赠送为代购式——送方付费，无需拥有该勋章。
+    let (price, medal_fee_bp): (Option<i64>, Option<i32>) = sqlx::query_as(
+        "SELECT price, gift_fee_bp FROM medals WHERE id = $1",
+    )
+    .bind(body.medal_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or((None, None));
     let Some(price) = price else {
         return Err(DomainError::NotFound(body.medal_id));
     };
-    // 赠送税（0078）：礼物链路抽 gift_tax_bp（缺省 5%）入站免池——
-    // 扣款仍按全额（spend_spark price），勋章照常发放；税在「站点收入」侧记账，
+    // 赠送税（0078）：礼物链路抽手续费入站免池——扣款仍按全额
+    // （spend_spark price），勋章照常发放；税在「站点收入」侧记账，
     // 即 magic_pool/pool_donations（出资人=送礼人），不另记正向流水（防虚增 minted）。
-    let tax_bp: i32 = sqlx::query_scalar(
+    // 0204：per-勋章费率（medals.gift_fee_bp）优先，NULL 回退全站 gift_tax_bp。
+    let global_tax_bp: i32 = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'gift_tax_bp'",
     )
     .fetch_optional(&state.repo.db)
@@ -61,6 +64,7 @@ async fn medal_gift(
     .map_err(|e| DomainError::Internal(e.into()))?
     .and_then(|v: String| v.parse().ok())
     .unwrap_or(500);
+    let tax_bp = medal_fee_bp.unwrap_or(global_tax_bp);
     let tax = crate::economy::gift_tax(price, tax_bp);
     let idem = body
         .idempotency_key
@@ -182,7 +186,11 @@ async fn medal_gift(
     ))
     .execute(&state.repo.db)
     .await;
-    Ok(ok(
-        serde_json::json!({ "to": body.to_user, "medal_id": body.medal_id }),
-    ))
+    Ok(ok(serde_json::json!({
+        "to": body.to_user,
+        "medal_id": body.medal_id,
+        "price": price,
+        "tax": tax,
+        "tax_bp": tax_bp,
+    })))
 }

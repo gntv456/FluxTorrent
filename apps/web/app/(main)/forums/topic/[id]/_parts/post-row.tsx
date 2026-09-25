@@ -95,7 +95,7 @@ export function PostRow({
         )}
         {p.worn_medals && p.worn_medals.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
-            {p.worn_medals.slice(0, 3).map((m) => (
+            {p.worn_medals.slice(0, 5).map((m) => (
               <span key={m.name} className="medal-chip" title={m.name}>
                 {m.asset_ref ? (
                   <MedalIcon src={m.asset_ref} size={14} title={m.name} />
