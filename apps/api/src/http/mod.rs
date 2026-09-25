@@ -11,6 +11,7 @@ mod frames_gomoku;
 mod fun_links;
 mod home;
 mod home_layout;
+mod home_news;
 mod links;
 mod misc_handlers;
 mod news_fun;

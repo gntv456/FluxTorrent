@@ -87,32 +87,8 @@ async fn home_shared_fresh(
 ) -> DomainResult<serde_json::Value> {
     let db = &state.repo.db;
 
-    // 公告（home-news）：最新一条为头条 + 其余为列表
-    #[rustfmt::skip]
-    let news: Vec<(i32, String, String, String, chrono::DateTime<chrono::Utc>)> =
-        sqlx::query_as(
-        "SELECT id, title, body, badge, \
-         created_at FROM announcements ORDER BY id DESC LIMIT 8",
-    )
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let news_json: Vec<serde_json::Value> = news
-        .iter()
-        .map(|(id, title, body, badge, ts)| {
-            // 公告 body 为富文本 HTML（管理员撰写，NP 口径）：出站前 ammonia 白名单消毒，
-            // 剥离 script/事件属性/javascript: 协议 —— 管理员账号被盗也不构成全站存储 XSS
-            let safe_body = ammonia::Builder::default().clean(body).to_string();
-            serde_json::json!({
-                "id": id, "title": title, "body": safe_body, "badge": badge,
-                "date": ts.format("%m-%d").to_string(),
-            })
-        })
-        .collect();
-    // 公告未读感知（0152，NP last_home 口径）：个人已读水位 = 共享段最新公告 id，
-    // 由前端拉 me.news_seen 对比；这里附 latest_news_id 免去前端再解析一遍
-    let latest_news_id: i32 =
-        news.first().map(|(id, _, _, _, _)| *id).unwrap_or(0);
+    // 公告（home-news）：组装 + 视频白名单消毒在 home_news.rs（0190 拆出）
+    let (news_json, latest_news_id) = super::home_news::home_news_json(db).await?;
 
     // 签到日历已拆至个人段 attendance_json（per-user 不进共享缓存，0066/0152）
 

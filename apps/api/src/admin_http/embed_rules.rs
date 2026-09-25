@@ -205,6 +205,8 @@ pub async fn embed_rules_add(
         .repo
         .audit(Some(auth.id), "embed_rule_add", Some(id))
         .await;
+    // 规则影响首页公告的 iframe/video src 白名单 → 失效首页共享段缓存
+    crate::http::invalidate_home_cache(&state).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -251,6 +253,7 @@ pub async fn embed_rules_update(
         .repo
         .audit(Some(auth.id), "embed_rule_update", Some(id))
         .await;
+    crate::http::invalidate_home_cache(&state).await;
     Ok(ok(serde_json::json!({ "updated": true })))
 }
 
@@ -286,5 +289,6 @@ pub async fn embed_rules_delete(
         .repo
         .audit(Some(auth.id), "embed_rule_delete", Some(id))
         .await;
+    crate::http::invalidate_home_cache(&state).await;
     Ok(ok(serde_json::json!({ "deleted": true })))
 }

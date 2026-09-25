@@ -251,8 +251,12 @@ export function HomeSections() {
                 ×
               </button>
             </header>
+            {/* 视频内嵌（0190）：iframe/video 全宽 16:9 响应式（任意子代选择器） */}
             <div
-              className="home-news-modal__body"
+              className={"home-news-modal__body " +
+                "[&_iframe]:block [&_iframe]:aspect-video " +
+                "[&_iframe]:w-full [&_iframe]:max-w-full " +
+                "[&_iframe]:border-0 [&_video]:w-full [&_video]:max-w-full"}
               dangerouslySetInnerHTML={{
                 __html: data.news.find((n) => n.id === modal)?.body ?? "",
               }}

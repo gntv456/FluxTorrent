@@ -187,6 +187,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
                   value={nEdit.body}
                   onChange={(e) => setNEdit({ ...nEdit, body: e.target.value })}
                 />
+                <span className="text-xs text-sub">{t.newsVideoHint}</span>
               </label>
               <div className="flex gap-2">
                 <button
