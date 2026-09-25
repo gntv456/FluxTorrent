@@ -13,6 +13,8 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(hr_records)
         .service(hr_batch_pardon)
         .service(admin_invites)
+        .service(admin_invite_issue)
+        .service(admin_invite_revoke)
         .service(admin_attendance)
         .service(admin_attendance_makeup)
         .service(admin_attendance_makeup_delete)

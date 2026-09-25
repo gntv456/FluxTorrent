@@ -38,6 +38,8 @@ export default function RegisterPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // 注册模式（0204）：open 模式不强制邀请码；invite_only/email_verify 需要
+  const [openMode, setOpenMode] = useState(false);
 
   async function refreshCaptcha() {
     try {
@@ -48,6 +50,10 @@ export default function RegisterPage() {
   }
 
   useEffect(() => {
+    // ?invite=xxx 预填（邮件邀请链接落地，0204）
+    const q = new URLSearchParams(window.location.search);
+    const inv = q.get("invite");
+    if (inv) setInviteCode(inv);
     refreshCaptcha();
     fetch("/api/v1/register-fields")
       .then((r) => r.json())
@@ -55,6 +61,11 @@ export default function RegisterPage() {
         setRegFields(b?.data ?? []),
       )
       .catch(() => setRegFields([]));
+    // 注册模式与后端 registration_mode 同步（open 下邀请码非必填）
+    api
+      .get<{ mode?: string }>("/api/v1/register-mode")
+      .then((r) => setOpenMode(r.mode === "open"))
+      .catch(() => setOpenMode(false));
   }, []);
 
   async function submit(e: React.FormEvent) {
@@ -101,11 +112,18 @@ export default function RegisterPage() {
       <p className="-mt-4 text-sm text-sub">{dict.register.subtitle}</p>
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.register.inviteCode}</span>
+          <span className="text-sm text-sub">
+            {dict.register.inviteCode}
+            {openMode && (
+              <span className="ml-1 font-normal text-fainter">
+                {dict.register.inviteOptional}
+              </span>
+            )}
+          </span>
           <input
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}
-            required
+            required={!openMode}
             maxLength={32}
             className={inputCls}
           />
