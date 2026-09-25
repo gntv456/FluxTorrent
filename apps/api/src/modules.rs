@@ -1,8 +1,9 @@
 //! 模块注册表（U1，策划案 §4/§5.1）：可选功能域的行为开关。
 //!
 //! 纪律：
-//! - 三处同步：本文件 `key::ALL` / `packages/domain-types` 的 MODULE_KEYS / DB modules 表，
-//!   Rust 侧 tests 锁键数，跨语言比对由 `scripts/module_keys_guard.mjs` 承担
+//! - 三处同步：本文件 `key::ALL` / `packages/domain-types` 的 MODULE_KEYS /
+//!   DB modules 表，Rust 侧 tests 锁键数，跨语言比对由
+//!   `scripts/module_keys_guard.mjs` 承担
 //!   （0197 加 invites 时只改了 Rust、TS 漏改而无人报错，才补的这道门）；
 //! - T2 行为开关：module_* 关闭必须同时作用于 API（本守卫）、导航、页面、worker；
 //! - T3 缺省=general 中立矩阵（0178 翻转）：读不到 site_settings.module_<key> 时

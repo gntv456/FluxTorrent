@@ -28,12 +28,15 @@ const arrBlock = (ts.split("MODULE_KEYS = [")[1] ?? "").split("] as const")[0];
 const tsKeys = [...arrBlock.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
 
 function diff(a, b) {
-  return { onlyA: a.filter((k) => !b.includes(k)), onlyB: b.filter((k) => !a.includes(k)) };
+  const f = (x, y) => x.filter((k) => !y.includes(k));
+  return { onlyA: f(a, b), onlyB: f(b, a) };
 }
 
 let bad = [];
 const rt = diff(rustKeys, tsKeys);
-console.log(`Rust key::ALL ${rustKeys.length} 键 / TS MODULE_KEYS ${tsKeys.length} 键`);
+console.log(
+  `Rust ${rustKeys.length} 键 / TS ${tsKeys.length} 键`,
+);
 if (rt.onlyA.length || rt.onlyB.length) {
   bad.push(`Rust↔TS 漂移：只有 Rust 有 [${rt.onlyA}] / 只有 TS 有 [${rt.onlyB}]`);
 }
@@ -43,9 +46,12 @@ if (rustKeys.join() !== tsKeys.join() && !rt.onlyA.length && !rt.onlyB.length) {
 
 // DB 侧可选
 try {
-  const out = execFileSync("docker", ["exec", "flux-postgres", "psql", "-U", "flux",
-    "-d", "fluxtorrent", "-tAc", "SELECT key FROM modules ORDER BY key"],
-  { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  const out = execFileSync(
+    "docker",
+    ["exec", "flux-postgres", "psql", "-U", "flux", "-d", "fluxtorrent",
+     "-tAc", "SELECT key FROM modules ORDER BY key"],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+  );
   const dbKeys = out.split("\n").map((s) => s.trim()).filter(Boolean).sort();
   const d1 = diff(rustKeys.slice().sort(), dbKeys);
   if (d1.onlyA.length || d1.onlyB.length) {

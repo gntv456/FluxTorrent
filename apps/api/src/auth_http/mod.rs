@@ -19,6 +19,7 @@ mod profile_helpers;
 mod profile_types;
 mod register;
 mod user_fields;
+mod user_fields_def;
 mod user_torrentlist;
 
 pub use login::*;
