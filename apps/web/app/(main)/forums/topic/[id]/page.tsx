@@ -12,6 +12,7 @@ import { ReportTopicButton } from "@/components/forum-report";
 import { FollowButton } from "@/components/forum-follow";
 import { PostRow } from "./_parts/post-row";
 import { getDict } from "@/i18n/server";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export default async function TopicPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ before?: string; reply_to?: string }>;
 }) {
+  const gate = await requireModule("forums");
+  if (gate) return gate;
   const { id } = await params;
   const { before, reply_to } = await searchParams;
   const topicId = Number(id);

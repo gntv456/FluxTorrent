@@ -1,10 +1,13 @@
 import { StaffBox } from "@/components/staff-box";
 import { getDict } from "@/i18n/server";
+import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
 
-/** 管理组信箱（好学站 staffbox.php 复刻）：与管理组的往来短讯 */
+/** 管理组信箱（staffbox.php 复刻）：与管理组的往来短讯 */
 export default async function StaffBoxPage() {
+  const gate = await requireModule("messages");
+  if (gate) return gate;
   const { dict } = await getDict();
   return (
     <div className="flex flex-col gap-4">

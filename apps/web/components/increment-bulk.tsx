@@ -85,7 +85,7 @@ export function IncrementBulk() {
       <section className="baozi-panel p-4">
         <h2 className="mb-1 text-base font-bold">批量发放</h2>
         <p className="mb-3 text-xs text-sub">
-          合并原「魔力增减 / 上传量增减」：按等级、职务或指定用户批量增减四类资源，完成后可群发 PM 通知（好学 increment-bulk 口径）。
+          合并原「魔力增减 / 上传量增减」：按等级、职务或指定用户批量增减四类资源，完成后可群发 PM 通知。
         </p>
         <table className="nexus-table nexus-form">
           <tbody>
@@ -116,7 +116,7 @@ export function IncrementBulk() {
                 <td className="rowfollow">
                   <input type="number" min={1} max={365} value={days} onChange={(e) => setDays(e.target.value)} placeholder="留空" className={`${inp} w-24`} />
                   <span className="ml-2 text-xs text-sub">
-                    填有效期天数（1-365）＝好学「临时邀请」：直接生成 N 天到期的邀请码；留空则按普通邀请加/回收配额
+                    填有效期天数（1-365）＝原「临时邀请」逻辑：直接生成 N 天到期的邀请码；留空则按普通邀请加/回收配额
                   </span>
                 </td>
               </tr>

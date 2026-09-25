@@ -43,12 +43,20 @@ const ICONS = {
 /** 快捷工具条（好学站 userbar 口径）：收件箱/发件箱/作弊者/举报信箱/管理组信箱/社交/RSS。
  *  仅图标按钮，4+3 上下两行；RSS 直达获取RSS页（getrss.php 同款）。
  *  收件箱按钮带未读数角标（NP userbar 邮箱图标同款）。 */
-export function UserTools({ unread = 0 }: { unread?: number }) {
+export function UserTools({
+  unread = 0,
+  mods = {},
+}: {
+  unread?: number;
+  mods?: Record<string, boolean>;
+}) {
+  const mod = (k: string) => mods[k] !== false;
   const { dict } = useI18n();
   const t = dict.usertools;
 
   return (
     <div className="usertools usertools--grid">
+      {mod("messages") && (
       <a
         className="userbar-tool userbar-tool--icon"
         href="/messages"
@@ -64,6 +72,8 @@ export function UserTools({ unread = 0 }: { unread?: number }) {
           )}
         </span>
       </a>
+      )}
+      {mod("messages") && (
       <a
         className="userbar-tool userbar-tool--icon"
         href="/messages?box=sent"
@@ -72,6 +82,7 @@ export function UserTools({ unread = 0 }: { unread?: number }) {
       >
         <Icon {...ICONS.sent} />
       </a>
+      )}
       <a
         className="userbar-tool userbar-tool--icon"
         href="/cheaterbox"
@@ -88,6 +99,7 @@ export function UserTools({ unread = 0 }: { unread?: number }) {
       >
         <Icon {...ICONS.flag} />
       </a>
+      {mod("messages") && (
       <a
         className="userbar-tool userbar-tool--icon"
         href="/staffbox"
@@ -96,6 +108,8 @@ export function UserTools({ unread = 0 }: { unread?: number }) {
       >
         <Icon {...ICONS.staff} />
       </a>
+      )}
+      {mod("friends") && (
       <a
         className="userbar-tool userbar-tool--icon"
         href="/friends"
@@ -104,6 +118,7 @@ export function UserTools({ unread = 0 }: { unread?: number }) {
       >
         <Icon {...ICONS.social} />
       </a>
+      )}
       <a
         className="userbar-tool userbar-tool--icon"
         href="/getrss"

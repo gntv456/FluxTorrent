@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -47,10 +48,11 @@ export async function Header() {
     : [];
 
   // 默认一级：核心任务域（发布入口在菜单内，不再放独立大按钮）
+  // 三审 C-3：头部主导航与 footer 同口径——forums 关闭则一级入口消失
   const defaultPrimary: NavItem[] = [
     { href: "/", label: dict.nav.home },
     { href: "/torrents", label: dict.nav.library },
-    { href: "/forums", label: dict.nav.forums },
+    ...(mod("forums") ? [{ href: "/forums", label: dict.nav.forums }] : []),
     { href: "/top", label: dict.nav.top },
     { href: "/upload", label: dict.nav.upload },
   ];
@@ -171,16 +173,24 @@ export async function Header() {
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1536px] items-center gap-3 px-4 py-2 md:gap-5 md:px-6">
           <Link href="/" className="flex shrink-0 items-center gap-2">
             {/* 品牌标记：Tide 图标（原为猫头鹰 emoji）—— 颜色跟随 --sky，浅色/夜间自适应 */}
-            <Icon name="seed" size={30} className="shrink-0 text-[var(--sky)]" />
+            <Icon
+              name="seed"
+              size={30}
+              className="shrink-0 text-[var(--sky)]"
+            />
             <span className="font-display text-2xl text-ink">{brand}</span>
           </Link>
           <div className="min-w-0 flex-1">
-            <MainMenu
-              items={primary}
-              groups={groups}
-              moreLabel={`${dict.nav.more} ▾`}
-              ariaLabel={dict.nav.ariaPrimary}
-            />
+            {/* Suspense：MainMenu 用 useSearchParams 区分带参条目（官种），
+                预渲染路由要求它包在边界里 */}
+            <Suspense fallback={null}>
+              <MainMenu
+                items={primary}
+                groups={groups}
+                moreLabel={`${dict.nav.more} ▾`}
+                ariaLabel={dict.nav.ariaPrimary}
+              />
+            </Suspense>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
@@ -198,8 +208,14 @@ export async function Header() {
 /** 移动底部 5 Tab（Seedlight §3）：首页/发现/发布（极光凸起）/消息/我的 */
 export async function MobileTabBar() {
   const { dict } = await getDict();
+  const profile = await getSiteProfile();
+  const mod = (k: string) => profile.modules[k] !== false;
   const tabs = [
-    { href: "/", label: dict.tabbar.home, icon: <Icon name="home" size={23} /> },
+    {
+      href: "/",
+      label: dict.tabbar.home,
+      icon: <Icon name="home" size={23} />,
+    },
     {
       href: "/torrents",
       label: dict.tabbar.search,
@@ -211,12 +227,21 @@ export async function MobileTabBar() {
       icon: <Icon name="plus" size={26} strokeWidth={2} />,
       center: true,
     },
+    // 三审 C-3：messages 关闭则移动 TabBar 消息位替换为「我的」直连
+    ...(mod("messages")
+      ? [
+          {
+            href: "/messages",
+            label: dict.nav.tabbarMessages,
+            icon: <Icon name="messages" size={23} />,
+          },
+        ]
+      : []),
     {
-      href: "/messages",
-      label: dict.nav.tabbarMessages,
-      icon: <Icon name="messages" size={23} />,
+      href: "/my",
+      label: dict.tabbar.my,
+      icon: <Icon name="user" size={23} />,
     },
-    { href: "/my", label: dict.tabbar.my, icon: <Icon name="user" size={23} /> },
   ];
   return (
     <nav
