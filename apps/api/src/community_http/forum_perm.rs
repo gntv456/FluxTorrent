@@ -206,9 +206,7 @@ pub async fn check_video_count(
     }
     let n = body.matches("!video(").count() as i64;
     if n > max {
-        return Err(DomainError::Validation(format!(
-            "每帖最多 {max} 个视频"
-        )));
+        return Err(DomainError::Validation(format!("每帖最多 {max} 个视频")));
     }
     Ok(())
 }

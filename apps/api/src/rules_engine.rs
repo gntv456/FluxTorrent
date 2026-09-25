@@ -49,9 +49,7 @@ pub(crate) fn lint(expr: &str, spec: &RuleSpec) -> DomainResult<()> {
         return Err(DomainError::Validation("表达式为空".into()));
     }
     if expr.len() > 200 {
-        return Err(DomainError::Validation(
-            "表达式过长（≤200 字符）".into(),
-        ));
+        return Err(DomainError::Validation("表达式过长（≤200 字符）".into()));
     }
     // 字符白名单：数字/变量字符/空白/算术/比较/括号/逗号（min/max 参数表）
     let ok = expr.chars().all(|c| {
@@ -60,8 +58,7 @@ pub(crate) fn lint(expr: &str, spec: &RuleSpec) -> DomainResult<()> {
             || c.is_ascii_whitespace()
             || matches!(
                 c,
-                '+' | '-' | '*' | '/' | '%' | '(' | ')' | '<' | '>'
-                    | '.' | ','
+                '+' | '-' | '*' | '/' | '%' | '(' | ')' | '<' | '>' | '.' | ','
             )
     });
     if !ok {
@@ -69,9 +66,7 @@ pub(crate) fn lint(expr: &str, spec: &RuleSpec) -> DomainResult<()> {
             "表达式含非法字符（仅允许算术/比较/min/max）".into(),
         ));
     }
-    for forbidden in
-        ["==", "&&", "||", "!", "=", ";", "[", "]", "?", ":"]
-    {
+    for forbidden in ["==", "&&", "||", "!", "=", ";", "[", "]", "?", ":"] {
         if expr.contains(forbidden) {
             return Err(DomainError::Validation(format!(
                 "表达式含禁止记号：{forbidden}"
@@ -79,27 +74,21 @@ pub(crate) fn lint(expr: &str, spec: &RuleSpec) -> DomainResult<()> {
         }
     }
     let ast =
-        evalexpr::build_operator_tree::<evalexpr::DefaultNumericTypes>(
-            expr,
-        )
-        .map_err(|e| {
-            DomainError::Validation(format!("表达式解析失败：{e}"))
-        })?;
+        evalexpr::build_operator_tree::<evalexpr::DefaultNumericTypes>(expr)
+            .map_err(|e| {
+                DomainError::Validation(format!("表达式解析失败：{e}"))
+            })?;
     // 节点数上限（近似超时防线：表达式规模有界）
     let node_count = ast.iter().count();
     if node_count > 64 {
-        return Err(DomainError::Validation(
-            "表达式节点过多（≤64）".into(),
-        ));
+        return Err(DomainError::Validation("表达式节点过多（≤64）".into()));
     }
     // 变量白名单 + 函数白名单（仅 min/max）：遍历 AST
     let mut unknown = Vec::new();
     let mut bad_fn = Vec::new();
     for node in ast.iter() {
         match node.operator() {
-            evalexpr::Operator::VariableIdentifierRead {
-                identifier,
-            } => {
+            evalexpr::Operator::VariableIdentifierRead { identifier } => {
                 if !spec.vars.contains(&identifier.as_str()) {
                     unknown.push(identifier.clone());
                 }
@@ -149,19 +138,12 @@ pub(crate) fn eval(
     let mut ctx = evalexpr::HashMapContext::new();
     for v in spec.vars {
         let val = vars.get(v).copied().unwrap_or(0.0);
-        let _ = ctx.set_value(
-            v.to_string(),
-            evalexpr::Value::Float(val),
-        );
+        let _ = ctx.set_value(v.to_string(), evalexpr::Value::Float(val));
     }
     match ast_eval(expr, &ctx) {
         Some(v) if v.is_finite() && v >= spec.min && v <= spec.max => v,
         Some(v) => {
-            tracing::warn!(
-                rule = spec.key,
-                v,
-                "规则求值越域，回落默认值"
-            );
+            tracing::warn!(rule = spec.key, v, "规则求值越域，回落默认值");
             spec.fallback
         }
         None => {
@@ -193,11 +175,8 @@ mod tests {
     #[test]
     fn lint_accepts_clamped_formula() {
         // 连续利率曲线：底 0.5%、顶 18%，随期限线性爬升
-        lint(
-            "min(0.18, max(0.005, term_days / 30 * 0.02))",
-            &TERM_RATE,
-        )
-        .unwrap();
+        lint("min(0.18, max(0.005, term_days / 30 * 0.02))", &TERM_RATE)
+            .unwrap();
     }
 
     #[test]
@@ -210,10 +189,11 @@ mod tests {
     fn lint_rejects_functions_and_assign() {
         assert!(lint("sin(term_days)", &TERM_RATE).is_err());
         assert!(lint("a = 1", &TERM_RATE).is_err());
-        assert!(
-            lint("min(0.01, max(0.005, term_days / 30 * 0.02))", &TERM_RATE)
-                .is_ok()
-        );
+        assert!(lint(
+            "min(0.01, max(0.005, term_days / 30 * 0.02))",
+            &TERM_RATE
+        )
+        .is_ok());
     }
 
     #[test]

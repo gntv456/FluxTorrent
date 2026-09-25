@@ -55,7 +55,9 @@ struct HostState {
 impl HostState {
     fn cache_get(&self, key: &str) -> Option<String> {
         let map = self.cache.lock().ok()?;
-        let (v, exp) = map.get(&format!("{}:{}", self.manifest.adapter_id, key))?.clone();
+        let (v, exp) = map
+            .get(&format!("{}:{}", self.manifest.adapter_id, key))?
+            .clone();
         (Instant::now() < exp).then_some(v)
     }
     fn cache_set(&self, key: &str, val: &str, ttl_s: u64) {
@@ -65,7 +67,10 @@ impl HostState {
             }
             map.insert(
                 format!("{}:{}", self.manifest.adapter_id, key),
-                (val.to_string(), Instant::now() + Duration::from_secs(ttl_s.max(1))),
+                (
+                    val.to_string(),
+                    Instant::now() + Duration::from_secs(ttl_s.max(1)),
+                ),
             );
         }
     }
@@ -101,8 +106,7 @@ impl AdapterRuntime {
             cfg.epoch_interruption(true);
             cfg.wasm_component_model(false);
             // crash-if-hung 不开（win 兼容）；epoch 由调用方 bump 线程驱动
-            let engine = Engine::new(&cfg)
-                .expect("wasmtime engine init");
+            let engine = Engine::new(&cfg).expect("wasmtime engine init");
             AdapterRuntime { engine }
         })
     }
@@ -153,8 +157,10 @@ impl AdapterRuntime {
         http: Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>,
         secrets: std::collections::HashMap<String, String>,
     ) -> DomainResult<String> {
-        let module = wasmtime::Module::new(&self.engine, wasm_bytes)
-            .map_err(|e| adapter_err(manifest, &format!("wasm 编译失败: {e}")))?;
+        let module =
+            wasmtime::Module::new(&self.engine, wasm_bytes).map_err(|e| {
+                adapter_err(manifest, &format!("wasm 编译失败: {e}"))
+            })?;
         let mut store = Store::new(
             &self.engine,
             HostState {
@@ -300,9 +306,10 @@ impl AdapterRuntime {
             ))
             .map_err(|e| DomainError::Internal(e.into()))?;
 
-        let instance = linker
-            .instantiate(&mut store, &module)
-            .map_err(|e| adapter_err(manifest, &format!("wasm 实例化失败: {e}")))?;
+        let instance =
+            linker.instantiate(&mut store, &module).map_err(|e| {
+                adapter_err(manifest, &format!("wasm 实例化失败: {e}"))
+            })?;
         let fetch = instance
             .get_typed_func::<(i32, i32, i32), i32>(&mut store, "fetch")
             .map_err(|_| adapter_err(manifest, "缺少 fetch 导出"))?;
@@ -322,8 +329,13 @@ impl AdapterRuntime {
 
         let started = Instant::now();
         let write_len = fetch
-            .call(&mut store, (in_region as i32, url_bytes.len() as i32, out_region as i32))
-            .map_err(|e| adapter_err(manifest, &format!("wasm 执行失败: {e}")))?;
+            .call(
+                &mut store,
+                (in_region as i32, url_bytes.len() as i32, out_region as i32),
+            )
+            .map_err(|e| {
+                adapter_err(manifest, &format!("wasm 执行失败: {e}"))
+            })?;
         let _ = bump.join();
         if started.elapsed() > CALL_TIMEOUT {
             return Err(adapter_err(manifest, "适配器调用超时"));

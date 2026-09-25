@@ -41,10 +41,5 @@ pub(crate) async fn delete_threshold(db: &PgPool) -> i16 {
 pub(crate) const DEFAULT_AUTO_APPROVE_CLASS: i16 = 92;
 
 pub(crate) async fn auto_approve_threshold(db: &PgPool) -> i16 {
-    threshold(
-        db,
-        "upload_auto_approve_class",
-        DEFAULT_AUTO_APPROVE_CLASS,
-    )
-    .await
+    threshold(db, "upload_auto_approve_class", DEFAULT_AUTO_APPROVE_CLASS).await
 }

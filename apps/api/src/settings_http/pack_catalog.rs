@@ -135,8 +135,7 @@ async fn remote_catalog(
             tracing::warn!("商店远程索引 JSON 解析失败（降级为仅内置）");
         })
         .ok()?;
-    if body.get("format").and_then(|f| f.as_str()) != Some(INDEX_FORMAT)
-    {
+    if body.get("format").and_then(|f| f.as_str()) != Some(INDEX_FORMAT) {
         tracing::warn!("商店远程索引 format 不识别（降级为仅内置）");
         return None;
     }
@@ -198,12 +197,11 @@ pub(crate) async fn pack_catalog(
         items.extend(remote);
     }
     // 已装对照：pack_id → (id, version)（前端标「已装/可更新」）
-    let installed: Vec<(String, i64, String)> = sqlx::query_as(
-        "SELECT pack_id, id, version FROM content_packs",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(internal)?;
+    let installed: Vec<(String, i64, String)> =
+        sqlx::query_as("SELECT pack_id, id, version FROM content_packs")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(internal)?;
     let installed_map: std::collections::HashMap<String, (i64, String)> =
         installed
             .into_iter()
@@ -214,8 +212,7 @@ pub(crate) async fn pack_catalog(
         .map(|it| {
             let mut v = serde_json::to_value(it).unwrap_or_default();
             if let Some(obj) = v.as_object_mut() {
-                if let Some((row_id, ver)) = installed_map.get(&it.pack_id)
-                {
+                if let Some((row_id, ver)) = installed_map.get(&it.pack_id) {
                     obj.insert(
                         "installed_row_id".into(),
                         serde_json::json!(row_id),
@@ -280,9 +277,7 @@ pub(crate) async fn pack_install(
         body.pack_id.strip_prefix("builtin.taxonomy.")
     {
         builtin_taxonomy_pack(&state, code).await?
-    } else if let Some(code) =
-        body.pack_id.strip_prefix("builtin.assets.")
-    {
+    } else if let Some(code) = body.pack_id.strip_prefix("builtin.assets.") {
         builtin_assets_pack(&state, code).await?
     } else {
         // 远程条目：从远程索引反查 url 再拉包文件
@@ -291,9 +286,9 @@ pub(crate) async fn pack_install(
             .and_then(|(its, _)| {
                 its.into_iter().find(|i| i.pack_id == body.pack_id)
             })
-            .ok_or_else(|| DomainError::Validation(
-                "目录条目不存在或远程索引不可用".into(),
-            ))?;
+            .ok_or_else(|| {
+                DomainError::Validation("目录条目不存在或远程索引不可用".into())
+            })?;
         fetch_remote_pack(&item.url.unwrap_or_default()).await?
     };
     super::pack_import::import(&state, &auth.id, &pack, body.confirm).await
@@ -352,9 +347,7 @@ async fn builtin_assets_pack(
     .await
     .map_err(internal)?;
     let Some((name, payload)) = row else {
-        return Err(DomainError::Validation(
-            "内置素材条目不存在".into(),
-        ));
+        return Err(DomainError::Validation("内置素材条目不存在".into()));
     };
     Ok(serde_json::json!({
         "format": "fluxtorrent.contentpack",
@@ -373,18 +366,15 @@ async fn builtin_taxonomy_pack(
     state: &web::Data<std::sync::Arc<AppState>>,
     code: &str,
 ) -> DomainResult<serde_json::Value> {
-    let row: Option<(
-        String,
-        serde_json::Value,
-        Option<serde_json::Value>,
-    )> = sqlx::query_as(
-        "SELECT name, categories, sections FROM site_type_packs \
+    let row: Option<(String, serde_json::Value, Option<serde_json::Value>)> =
+        sqlx::query_as(
+            "SELECT name, categories, sections FROM site_type_packs \
          WHERE code = $1",
-    )
-    .bind(code)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(internal)?;
+        )
+        .bind(code)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(internal)?;
     let Some((name, categories, sections)) = row else {
         return Err(DomainError::Validation(
             "内置目录条目不存在（站型包缺失）".into(),
@@ -393,10 +383,8 @@ async fn builtin_taxonomy_pack(
     // sections 归一：kinds/dict 缺省为空（快照口径一致）
     let empty = serde_json::json!({ "kinds": [], "dict": {} });
     let sections = sections.unwrap_or(empty);
-    let mut sections = serde_json::from_value::<serde_json::Value>(
-        sections,
-    )
-    .unwrap_or_else(|_| serde_json::json!({ "kinds": [], "dict": {} }));
+    let mut sections = serde_json::from_value::<serde_json::Value>(sections)
+        .unwrap_or_else(|_| serde_json::json!({ "kinds": [], "dict": {} }));
     if let Some(obj) = sections.as_object_mut() {
         obj.entry("kinds".to_string())
             .or_insert_with(|| serde_json::json!([]));
@@ -420,9 +408,7 @@ async fn builtin_taxonomy_pack(
 }
 
 /// 远程包文件拉取：校验 format 后原样交给导入路径
-async fn fetch_remote_pack(
-    url: &str,
-) -> DomainResult<serde_json::Value> {
+async fn fetch_remote_pack(url: &str) -> DomainResult<serde_json::Value> {
     if url.is_empty() || !url.starts_with("https://") {
         return Err(DomainError::Validation(
             "远程包地址无效（需 https）".into(),
@@ -434,9 +420,7 @@ async fn fetch_remote_pack(
         .timeout(std::time::Duration::from_secs(20))
         .send()
         .await
-        .map_err(|e| DomainError::Validation(
-            format!("远程包拉取失败：{e}"),
-        ))?;
+        .map_err(|e| DomainError::Validation(format!("远程包拉取失败：{e}")))?;
     if !resp.status().is_success() {
         return Err(DomainError::Validation(format!(
             "远程包上游异常（HTTP {}）",
@@ -445,22 +429,15 @@ async fn fetch_remote_pack(
     }
     // R11 加固：包文件大小上限 16MiB（与适配器 wasm 上限同量级）
     if resp.content_length().unwrap_or(0) > 16 * 1024 * 1024 {
-        return Err(DomainError::Validation(
-            "远程包超过 16MiB 上限".into(),
-        ));
+        return Err(DomainError::Validation("远程包超过 16MiB 上限".into()));
     }
-    let pack: serde_json::Value = resp
-        .json()
-        .await
-        .map_err(|e| DomainError::Validation(
-            format!("远程包 JSON 解析失败：{e}"),
-        ))?;
+    let pack: serde_json::Value = resp.json().await.map_err(|e| {
+        DomainError::Validation(format!("远程包 JSON 解析失败：{e}"))
+    })?;
     if pack.get("format").and_then(|f| f.as_str())
         != Some("fluxtorrent.contentpack")
     {
-        return Err(DomainError::Validation(
-            "远程包 format 不识别".into(),
-        ));
+        return Err(DomainError::Validation("远程包 format 不识别".into()));
     }
     Ok(pack)
 }

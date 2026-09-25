@@ -9,7 +9,9 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::dto::ok;
-use crate::economy::{maturity_interest_with_rules, term_rate_with_rules, VALID_TERMS};
+use crate::economy::{
+    maturity_interest_with_rules, term_rate_with_rules, VALID_TERMS,
+};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -62,9 +64,12 @@ async fn bank_deposit(
         .filter(|k| !k.trim().is_empty())
         .map(|k| format!("deposit:{}:{}", auth.id, k.trim()))
         .unwrap_or_else(|| format!("deposit:{}:{}", auth.id, Uuid::new_v4()));
-    let interest =
-        maturity_interest_with_rules(&state.repo.db, body.amount, body.term_days)
-            .await;
+    let interest = maturity_interest_with_rules(
+        &state.repo.db,
+        body.amount,
+        body.term_days,
+    )
+    .await;
     // 结息模式：daily = 每日结息发到余额（到期只还本）；maturity = 到期一次性
     let mode: String = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'bank_fixed_settle_mode'",

@@ -71,12 +71,11 @@ async fn loan_repay(
     let payoff = remaining + accrued + today_interest;
     // 部分还款（D 缺口）：先息后本——付不掉全额时按「今日+累计利息 → 本金」顺序冲抵，
     // 余额不足报错。全额结清走原路径（销账+status='paid'）。
-    let (paid_total, principal_paid, interest_paid, settled_all) = match partial {
+    let (paid_total, principal_paid, interest_paid, settled_all) = match partial
+    {
         Some(amount) if amount < payoff => {
             if amount < 0 {
-                return Err(DomainError::Validation(
-                    "还款金额必须为正".into(),
-                ));
+                return Err(DomainError::Validation("还款金额必须为正".into()));
             }
             let to_interest = amount.min(accrued + today_interest);
             let to_principal = amount - to_interest;
@@ -176,7 +175,8 @@ async fn loan_repay(
             .rows_affected();
             if settled == 0 {
                 return Err(DomainError::Validation(
-                    "贷款状态已变更（可能已被系统自动扣款结清），请刷新后重试".into(),
+                    "贷款状态已变更（可能已被系统自动扣款结清），请刷新后重试"
+                        .into(),
                 ));
             }
             (payoff, remaining, accrued + today_interest, true)

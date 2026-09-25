@@ -44,11 +44,8 @@ async fn list(
     let mut sections: Vec<(String, i64)> = Vec::new();
     // 标签多选（0159 P1）：norm_tags 在 filter 构造块里赋值；声明在此因
     // struct 字面量内不能先解构再引用同名字段
-    let (tag_ids, tag_all) = super::query::norm_tags(
-        q.tag_id,
-        &q.tag_ids,
-        q.tag_mode.as_deref(),
-    );
+    let (tag_ids, tag_all) =
+        super::query::norm_tags(q.tag_id, &q.tag_ids, q.tag_mode.as_deref());
     for pair in req.query_string().split('&') {
         let Some((k, v)) = pair.split_once('=') else {
             continue;

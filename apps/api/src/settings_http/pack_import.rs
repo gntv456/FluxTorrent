@@ -23,10 +23,9 @@ use super::pack_format::{
     bad, parse_pack, parse_taxonomy, PackHead, THEME_KEYS,
 };
 use super::pack_store::{
-    apply_assets, apply_taxonomy, apply_taxonomy_guarded,
-    apply_theme_import, apply_theme_rollback, referenced_categories,
-    snapshot_assets, snapshot_taxonomy, snapshot_theme,
-    snapshot_to_payload,
+    apply_assets, apply_taxonomy, apply_taxonomy_guarded, apply_theme_import,
+    apply_theme_rollback, referenced_categories, snapshot_assets,
+    snapshot_taxonomy, snapshot_theme, snapshot_to_payload,
 };
 
 fn internal(e: sqlx::Error) -> DomainError {
@@ -60,16 +59,10 @@ async fn import_embed(
     head: &PackHead,
     confirm: bool,
 ) -> DomainResult<HttpResponse> {
-    let Some(rows) = head.payload.get("rules").and_then(Value::as_array)
-    else {
+    let Some(rows) = head.payload.get("rules").and_then(Value::as_array) else {
         return Err(bad("embed 包缺少 payload.rules"));
     };
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(internal)?;
+    let mut tx = state.repo.db.begin().await.map_err(internal)?;
     if !confirm {
         tx.rollback().await.ok();
         return Ok(ok(serde_json::json!({
@@ -111,9 +104,7 @@ async fn import_embed(
     .map_err(internal)?;
     let mut applied = 0usize;
     for r in rows {
-        let s = |k: &str| {
-            r.get(k).and_then(Value::as_str).unwrap_or_default()
-        };
+        let s = |k: &str| r.get(k).and_then(Value::as_str).unwrap_or_default();
         let id = r.get("id").and_then(Value::as_i64).unwrap_or(0);
         if id <= 0 {
             continue;
@@ -186,12 +177,7 @@ async fn import_taxonomy(
     confirm: bool,
 ) -> DomainResult<HttpResponse> {
     let data = parse_taxonomy(&head.payload)?;
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(internal)?;
+    let mut tx = state.repo.db.begin().await.map_err(internal)?;
     let conflicts = referenced_categories(&mut tx, &data.cats).await?;
     if !conflicts.is_empty() {
         return Err(DomainError::Validation(format!(
@@ -248,8 +234,7 @@ async fn import_rules(
     head: &PackHead,
     confirm: bool,
 ) -> DomainResult<HttpResponse> {
-    let Some(rules) =
-        head.payload.get("rules").and_then(Value::as_object)
+    let Some(rules) = head.payload.get("rules").and_then(Value::as_object)
     else {
         return Err(bad("rules 包缺少 payload.rules"));
     };
@@ -257,10 +242,7 @@ async fn import_rules(
     let mut errors: Vec<(String, String)> = Vec::new();
     for (key, expr_v) in rules {
         let Some(spec) = super::pack_format::rule_spec_for(key) else {
-            errors.push((
-                key.clone(),
-                "rules 包不允许触碰该规则键".into(),
-            ));
+            errors.push((key.clone(), "rules 包不允许触碰该规则键".into()));
             continue;
         };
         let expr = expr_v.as_str().unwrap_or_default().trim();
@@ -274,12 +256,7 @@ async fn import_rules(
         return Err(DomainError::FieldErrors(errors));
     }
     let keys: Vec<String> = rules.keys().cloned().collect();
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(internal)?;
+    let mut tx = state.repo.db.begin().await.map_err(internal)?;
     if !confirm {
         let mut will = 0usize;
         for (key, expr_v) in rules {
@@ -362,8 +339,7 @@ async fn import_assets(
     confirm: bool,
 ) -> DomainResult<HttpResponse> {
     // 键白名单预检（dry-run 与 confirm 共用）
-    if let Some(tables) =
-        head.payload.get("tables").and_then(Value::as_object)
+    if let Some(tables) = head.payload.get("tables").and_then(Value::as_object)
     {
         for t in tables.keys() {
             if !super::pack_format::ASSET_TABLES.contains(&t.as_str()) {
@@ -375,12 +351,7 @@ async fn import_assets(
     } else {
         return Err(bad("assets 包缺少 payload.tables"));
     }
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(internal)?;
+    let mut tx = state.repo.db.begin().await.map_err(internal)?;
     if !confirm {
         let medals = head
             .payload
@@ -405,8 +376,7 @@ async fn import_assets(
         })));
     }
     let snapshot = snapshot_assets(&mut tx).await?;
-    let (n_medals, n_frames) =
-        apply_assets(&mut tx, &head.payload).await?;
+    let (n_medals, n_frames) = apply_assets(&mut tx, &head.payload).await?;
     upsert_pack_row(&mut tx, actor, head, snapshot).await?;
     audit(
         &mut tx,
@@ -441,12 +411,7 @@ async fn import_theme(
     else {
         return Err(bad("theme 包缺少 payload.settings"));
     };
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(internal)?;
+    let mut tx = state.repo.db.begin().await.map_err(internal)?;
     let names: Vec<String> = settings.keys().cloned().collect();
     let metas: Vec<MetaRow> = sqlx::query_as(&format!(
         "{} WHERE s.name = ANY($1)",
@@ -456,20 +421,16 @@ async fn import_theme(
     .fetch_all(&mut *tx)
     .await
     .map_err(internal)?;
-    let by_name: std::collections::HashMap<String, MetaRow> = metas
-        .into_iter()
-        .map(|m| (m.name.clone(), m))
-        .collect();
+    let by_name: std::collections::HashMap<String, MetaRow> =
+        metas.into_iter().map(|m| (m.name.clone(), m)).collect();
     if !confirm {
         // 预检：白名单 + 校验，不落库
         let mut errors: Vec<(String, String)> = Vec::new();
         let mut will = 0usize;
         for name in &names {
             if !THEME_KEYS.contains(&name.as_str()) {
-                errors.push((
-                    name.clone(),
-                    "theme 包不允许触碰该设置键".into(),
-                ));
+                errors
+                    .push((name.clone(), "theme 包不允许触碰该设置键".into()));
                 continue;
             }
             let Some(meta) = by_name.get(name) else {
@@ -604,12 +565,7 @@ pub(super) async fn rollback(
     .flatten()
     .and_then(|t| serde_json::from_str(&t).ok())
     .unwrap_or(Value::Null);
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(internal)?;
+    let mut tx = state.repo.db.begin().await.map_err(internal)?;
     if kind == "taxonomy" {
         // 快照 dict 带 sort；转回 payload 形状走同一落库路径
         let payload = snapshot_to_payload(&snapshot);
@@ -623,8 +579,7 @@ pub(super) async fn rollback(
                 "快照损坏（缺少 settings 节）".into(),
             ));
         };
-        let (_, errors) =
-            apply_theme_rollback(&mut tx, settings).await?;
+        let (_, errors) = apply_theme_rollback(&mut tx, settings).await?;
         if !errors.is_empty() {
             return Err(DomainError::FieldErrors(errors));
         }
@@ -652,9 +607,7 @@ pub(super) async fn rollback(
                 .unwrap_or_default()
         };
         for key in cur_keys {
-            if !snap_rules.contains_key(&key)
-                && packed_keys.contains(&key)
-            {
+            if !snap_rules.contains_key(&key) && packed_keys.contains(&key) {
                 sqlx::query("DELETE FROM site_settings WHERE name = $1")
                     .bind(&key)
                     .execute(&mut *tx)

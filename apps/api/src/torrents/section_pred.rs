@@ -72,10 +72,7 @@ pub(crate) async fn section_where(
 /// 旧列筛选（`medium_id=$2` 等）的双路版：给定的 `$param` 是**旧实体表 id**，
 /// 既比列，也按名称去找挂在同名字典项上的 sections 种子。
 /// 返回形如 `($2::int IS NULL OR t.medium_id = $2 OR EXISTS (...))`。
-pub(crate) fn legacy_filter_dual(
-    kind: &str,
-    param: &str,
-) -> Option<String> {
+pub(crate) fn legacy_filter_dual(kind: &str, param: &str) -> Option<String> {
     let (col, tbl) = legacy_of(kind)?;
     Some(format!(
         "({param}::int IS NULL OR {col} = {param} OR EXISTS (SELECT 1 \

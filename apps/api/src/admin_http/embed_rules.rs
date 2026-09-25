@@ -87,9 +87,7 @@ fn anchored_domain(pattern: &str) -> bool {
 
 fn validate_body(b: &EmbedRuleBody) -> DomainResult<()> {
     if b.provider.trim().is_empty() || b.provider.len() > 40 {
-        return Err(DomainError::Validation(
-            "provider 需 1-40 字符".into(),
-        ));
+        return Err(DomainError::Validation("provider 需 1-40 字符".into()));
     }
     if b.name_zh.trim().is_empty() || b.name_zh.len() > 60 {
         return Err(DomainError::Validation("展示名需 1-60 字符".into()));
@@ -109,7 +107,8 @@ fn validate_body(b: &EmbedRuleBody) -> DomainResult<()> {
     }
     if !anchored_domain(&b.url_pattern) {
         return Err(DomainError::Validation(
-            "url_pattern 须 ^https?:// 域名字面量锚定（或 ^/api/v1/ 站内）".into(),
+            "url_pattern 须 ^https?:// 域名字面量锚定（或 ^/api/v1/ 站内）"
+                .into(),
         ));
     }
     // 正则可编译 + 捕获组清点（渲染侧换行不敏感，统一多行模式编译）

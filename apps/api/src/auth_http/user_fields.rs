@@ -58,17 +58,13 @@ pub(crate) fn validate_value(
             v.as_f64().map(|_| ()).ok_or("number 字段需为数字")?;
         }
         "date" => {
-            let s = v
-                .as_str()
-                .ok_or("date 字段需为 YYYY-MM-DD 字符串")?;
+            let s = v.as_str().ok_or("date 字段需为 YYYY-MM-DD 字符串")?;
             chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
                 .map(|_| ())
                 .map_err(|_| "date 字段需为 YYYY-MM-DD".to_string())?;
         }
         "bool" => {
-            v.as_bool()
-                .map(|_| ())
-                .ok_or("bool 字段需为 true/false")?;
+            v.as_bool().map(|_| ()).ok_or("bool 字段需为 true/false")?;
         }
         "select" => {
             let s = v.as_str().ok_or("select 字段需为选项值字符串")?;
@@ -77,16 +73,13 @@ pub(crate) fn validate_value(
             }
         }
         "multiselect" => {
-            let arr = v
-                .as_array()
-                .ok_or("multiselect 字段需为选项值数组")?;
+            let arr = v.as_array().ok_or("multiselect 字段需为选项值数组")?;
             if arr.len() > 20 {
                 return Err("multiselect 最多 20 项".into());
             }
             for item in arr {
-                let s = item
-                    .as_str()
-                    .ok_or("multiselect 数组元素需为字符串")?;
+                let s =
+                    item.as_str().ok_or("multiselect 数组元素需为字符串")?;
                 if !allowed.contains(&s.to_string()) {
                     return Err("值不在字段选项集内".into());
                 }
@@ -181,16 +174,11 @@ fn validate_def(body: &UserFieldDefBody) -> DomainResult<()> {
         ));
     }
     if matches!(body.r#type.as_str(), "select" | "multiselect") {
-        let arr = body
-            .options
-            .as_array()
-            .ok_or_else(|| {
-                DomainError::Validation("select 类型需提供 options 数组".into())
-            })?;
+        let arr = body.options.as_array().ok_or_else(|| {
+            DomainError::Validation("select 类型需提供 options 数组".into())
+        })?;
         if arr.is_empty() || arr.len() > 50 {
-            return Err(DomainError::Validation(
-                "options 需 1-50 项".into(),
-            ));
+            return Err(DomainError::Validation("options 需 1-50 项".into()));
         }
         for o in arr {
             let val = o
@@ -249,9 +237,7 @@ pub async fn user_fields_add(
     .execute(&state.repo.db)
     .await
     .map_err(|e| match &e {
-        sqlx::Error::Database(db)
-            if db.constraint().is_some() =>
-        {
+        sqlx::Error::Database(db) if db.constraint().is_some() => {
             DomainError::Validation("字段 key 已存在".into())
         }
         _ => internal(e),
@@ -368,7 +354,9 @@ pub async fn user_fields_delete(
         .repo
         .audit(Some(auth.id), "user_field_delete", None)
         .await;
-    Ok(ok(serde_json::json!({ "deleted": key, "dropped_values": filled })))
+    Ok(ok(
+        serde_json::json!({ "deleted": key, "dropped_values": filled }),
+    ))
 }
 
 // ============ 用户侧：本人字段读写（usercp 资料编辑） ============
@@ -418,27 +406,18 @@ pub async fn my_fields_put(
     body: web::Json<MyFieldsPutBody>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(internal)?;
+    let mut tx = state.repo.db.begin().await.map_err(internal)?;
     let mut saved = 0i64;
     for (key, val) in &body.values {
-        let def: Option<(
-            String,
-            String,
-            bool,
-            serde_json::Value,
-        )> = sqlx::query_as(
-            "SELECT type, label, required, options FROM user_field_defs \
+        let def: Option<(String, String, bool, serde_json::Value)> =
+            sqlx::query_as(
+                "SELECT type, label, required, options FROM user_field_defs \
              WHERE key = $1 AND enabled",
-        )
-        .bind(key)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(internal)?;
+            )
+            .bind(key)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(internal)?;
         let Some((ftype, _label, _req, options)) = def else {
             continue; // 未知/停用字段静默跳过
         };
@@ -508,22 +487,15 @@ pub(crate) async fn public_fields_for(
 }
 
 /// 注册页字段下发（register 前拉取）：show_on_register 且 enabled
-pub(crate) async fn register_fields(
-    db: &PgPool,
-) -> Vec<serde_json::Value> {
-    let rows: Vec<(
-        String,
-        String,
-        String,
-        bool,
-        serde_json::Value,
-    )> = sqlx::query_as(
-        "SELECT key, label, type, required, options FROM user_field_defs \
+pub(crate) async fn register_fields(db: &PgPool) -> Vec<serde_json::Value> {
+    let rows: Vec<(String, String, String, bool, serde_json::Value)> =
+        sqlx::query_as(
+            "SELECT key, label, type, required, options FROM user_field_defs \
          WHERE enabled AND show_on_register ORDER BY sort, key",
-    )
-    .fetch_all(db)
-    .await
-    .unwrap_or_default();
+        )
+        .fetch_all(db)
+        .await
+        .unwrap_or_default();
     rows.into_iter()
         .map(|(key, label, ftype, required, options)| {
             serde_json::json!({

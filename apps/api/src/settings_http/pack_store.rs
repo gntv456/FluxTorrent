@@ -25,12 +25,11 @@ fn internal(e: sqlx::Error) -> DomainError {
 pub(super) async fn snapshot_taxonomy(
     tx: &mut sqlx::PgTransaction<'_>,
 ) -> DomainResult<Value> {
-    let cats: Vec<(i32, String, String)> = sqlx::query_as(
-        "SELECT id, name, icon_key FROM categories ORDER BY id",
-    )
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(internal)?;
+    let cats: Vec<(i32, String, String)> =
+        sqlx::query_as("SELECT id, name, icon_key FROM categories ORDER BY id")
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(internal)?;
     let kinds: Vec<(String, String, i32)> = sqlx::query_as(
         "SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind",
     )
@@ -43,8 +42,7 @@ pub(super) async fn snapshot_taxonomy(
     .fetch_all(&mut **tx)
     .await
     .map_err(internal)?;
-    let mut dict_map: serde_json::Map<String, Value> =
-        serde_json::Map::new();
+    let mut dict_map: serde_json::Map<String, Value> = serde_json::Map::new();
     for (kind, nm, sort) in &dict {
         dict_map
             .entry(kind.clone())
@@ -96,10 +94,10 @@ pub(super) async fn snapshot_theme(
 
 /// 快照 → 回放包 payload（回滚路径复用）。dict 拍平成 [name]。
 pub(super) fn snapshot_to_payload(snapshot: &Value) -> Value {
-    let mut dict_out: serde_json::Map<String, Value> =
-        serde_json::Map::new();
-    if let Some(map) =
-        snapshot.pointer("/sections/dict").and_then(Value::as_object)
+    let mut dict_out: serde_json::Map<String, Value> = serde_json::Map::new();
+    if let Some(map) = snapshot
+        .pointer("/sections/dict")
+        .and_then(Value::as_object)
     {
         for (kind, items) in map {
             let names: Vec<Value> = items
@@ -248,10 +246,7 @@ pub(super) async fn apply_theme_import(
     let mut changed = Vec::new();
     for (name, raw) in settings {
         if !THEME_KEYS.contains(&name.as_str()) {
-            errors.push((
-                name.clone(),
-                "theme 包不允许触碰该设置键".into(),
-            ));
+            errors.push((name.clone(), "theme 包不允许触碰该设置键".into()));
             continue;
         }
         let Some(meta) = by_name.get(name) else {
@@ -305,10 +300,8 @@ pub(super) async fn apply_theme_rollback(
     .fetch_all(&mut **tx)
     .await
     .map_err(internal)?;
-    let by_name: std::collections::HashMap<String, MetaRow> = metas
-        .into_iter()
-        .map(|m| (m.name.clone(), m))
-        .collect();
+    let by_name: std::collections::HashMap<String, MetaRow> =
+        metas.into_iter().map(|m| (m.name.clone(), m)).collect();
     apply_theme_import(tx, settings, &by_name, true).await
 }
 
@@ -435,7 +428,22 @@ async fn apply_taxonomy_sections(
 pub(super) async fn snapshot_assets(
     tx: &mut sqlx::PgTransaction<'_>,
 ) -> DomainResult<Value> {
-    let medals: Vec<(i64, String, Option<i64>, Option<String>, Option<String>, Option<String>, Option<i32>, i16, Option<i32>, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>, f64, i32, i32)> = sqlx::query_as(
+    let medals: Vec<(
+        i64,
+        String,
+        Option<i64>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<i32>,
+        i16,
+        Option<i32>,
+        Option<chrono::DateTime<chrono::Utc>>,
+        Option<chrono::DateTime<chrono::Utc>>,
+        f64,
+        i32,
+        i32,
+    )> = sqlx::query_as(
         "SELECT id, name, price, rarity, description, asset_ref, \
          duration_days, get_type, inventory, sale_begin_at, sale_end_at, \
          bonus_addition_factor::float8, category_id, limited::int \
@@ -455,9 +463,22 @@ pub(super) async fn snapshot_assets(
     let medals_json: Vec<Value> = medals
         .into_iter()
         .map(|m| {
-            let (id, name, price, rarity, description, asset_ref,
-                 duration_days, get_type, inventory, sale_begin_at,
-                 sale_end_at, bonus, category_id, limited) = m;
+            let (
+                id,
+                name,
+                price,
+                rarity,
+                description,
+                asset_ref,
+                duration_days,
+                get_type,
+                inventory,
+                sale_begin_at,
+                sale_end_at,
+                bonus,
+                category_id,
+                limited,
+            ) = m;
             serde_json::json!({
                 "id": id, "name": name, "price": price, "rarity": rarity,
                 "description": description, "asset_ref": asset_ref,
@@ -492,9 +513,7 @@ pub(super) async fn apply_assets(
     tx: &mut sqlx::PgTransaction<'_>,
     payload: &Value,
 ) -> DomainResult<(usize, usize)> {
-    let Some(tables) =
-        payload.get("tables").and_then(Value::as_object)
-    else {
+    let Some(tables) = payload.get("tables").and_then(Value::as_object) else {
         return Err(DomainError::Validation(
             "assets 包缺少 payload.tables".into(),
         ));
@@ -527,7 +546,9 @@ pub(super) async fn apply_assets(
     .map_err(internal)?;
     let mut n_medals = 0usize;
     for r in &medal_rows {
-        let Some(id) = r.get("id").and_then(Value::as_i64) else { continue };
+        let Some(id) = r.get("id").and_then(Value::as_i64) else {
+            continue;
+        };
         let Some(name) = r.get("name").and_then(Value::as_str) else {
             continue;
         };
@@ -558,12 +579,20 @@ pub(super) async fn apply_assets(
         .bind(r.get("rarity").and_then(Value::as_str))
         .bind(r.get("description").and_then(Value::as_str))
         .bind(r.get("asset_ref").and_then(Value::as_str))
-        .bind(r.get("duration_days").and_then(Value::as_i64).map(|v| v as i32))
+        .bind(
+            r.get("duration_days")
+                .and_then(Value::as_i64)
+                .map(|v| v as i32),
+        )
         .bind(r.get("get_type").and_then(Value::as_i64).unwrap_or(1) as i16)
         .bind(r.get("inventory").and_then(Value::as_i64).map(|v| v as i32))
         .bind(dt("sale_begin_at"))
         .bind(dt("sale_end_at"))
-        .bind(r.get("bonus_addition_factor").and_then(Value::as_f64).unwrap_or(0.0))
+        .bind(
+            r.get("bonus_addition_factor")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0),
+        )
         .bind(r.get("category_id").and_then(Value::as_i64).unwrap_or(0) as i32)
         .bind(r.get("limited").and_then(Value::as_bool).unwrap_or(false))
         .execute(&mut **tx)

@@ -19,9 +19,7 @@ pub(crate) async fn subcert_sweep(db: &PgPool) -> anyhow::Result<(u64, u64)> {
         cfgs.insert(k, v);
     }
     let val = |k: &str, d: f64| -> f64 {
-        cfgs.get(k)
-            .and_then(|v| v.trim().parse().ok())
-            .unwrap_or(d)
+        cfgs.get(k).and_then(|v| v.trim().parse().ok()).unwrap_or(d)
     };
     let min_subs = val("subcert_min_subtitles", 10.0) as i64;
     let min_rating = val("subcert_min_rating", 8.0);

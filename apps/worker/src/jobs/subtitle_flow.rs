@@ -114,8 +114,7 @@ pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
         let mut remainder = bounty;
         if let Some(list) = crew.as_array() {
             for m in list.iter().filter(|m| {
-                m.get("accepted").and_then(|v| v.as_bool())
-                    .unwrap_or(false)
+                m.get("accepted").and_then(|v| v.as_bool()).unwrap_or(false)
             }) {
                 let (Some(uid), Some(share)) = (
                     m.get("user_id").and_then(|v| v.as_i64()),
@@ -134,8 +133,7 @@ pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
         }
         if remainder > 0 {
             let idem = format!("subtitle-bounty-pay:{}:{}", rid, claimer);
-            spark_award(db, claimer, remainder, "subtitle_bounty", &idem)
-                .await;
+            spark_award(db, claimer, remainder, "subtitle_bounty", &idem).await;
         }
         let _ = sqlx::query(
             "INSERT INTO messages (sender_id, receiver_id, subject, body) \

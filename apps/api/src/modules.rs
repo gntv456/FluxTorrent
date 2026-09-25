@@ -99,8 +99,14 @@ pub mod key {
 pub fn default_on(k: &str) -> bool {
     !matches!(
         k,
-        "textbooks" | "showcase" | "social" | "farm" | "gomoku" | "contests"
-            | "jixiao" | "exams"
+        "textbooks"
+            | "showcase"
+            | "social"
+            | "farm"
+            | "gomoku"
+            | "contests"
+            | "jixiao"
+            | "exams"
     )
 }
 
@@ -216,9 +222,16 @@ mod tests {
         assert!(default_on(key::SUBTITLES));
         assert!(default_on(key::FORUMS));
         // 教育考核与重度娱乐缺省关（中立形态）
-        for k in ["textbooks", "jixiao", "exams", "farm", "gomoku",
-                  "contests", "showcase", "social"]
-        {
+        for k in [
+            "textbooks",
+            "jixiao",
+            "exams",
+            "farm",
+            "gomoku",
+            "contests",
+            "showcase",
+            "social",
+        ] {
             assert!(!default_on(k), "default_on({k}) 应为 false");
         }
     }

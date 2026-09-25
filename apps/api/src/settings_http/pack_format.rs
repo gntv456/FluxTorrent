@@ -42,8 +42,9 @@ pub(super) const THEME_KEYS: &[&str] = &[
     "theme_token_ribbon",
 ];
 /// rules 包允许触碰的规则键 → 求值 RuleSpec（M3 首批：银行利率两键）
-pub(super) fn rule_spec_for(key: &str) -> Option<crate::rules_engine::RuleSpec>
-{
+pub(super) fn rule_spec_for(
+    key: &str,
+) -> Option<crate::rules_engine::RuleSpec> {
     match key {
         "rule_bank_term_rate" => Some(crate::rules_engine::RuleSpec {
             key: "bank.term_rate",
@@ -126,9 +127,7 @@ pub(super) fn parse_pack(pack: &Value) -> DomainResult<PackHead> {
         let compat_ok = compat == "*"
             || (compat.starts_with(">=")
                 && !compat[2..].is_empty()
-                && compat[2..]
-                    .chars()
-                    .all(|c| c.is_ascii_digit() || c == '.'));
+                && compat[2..].chars().all(|c| c.is_ascii_digit() || c == '.'));
         if !compat_ok {
             return Err(bad(
                 "core_compat 格式不支持（仅 * 或 >=版本号，如 >=1.4）",
@@ -139,7 +138,14 @@ pub(super) fn parse_pack(pack: &Value) -> DomainResult<PackHead> {
         .get("payload")
         .cloned()
         .ok_or_else(|| bad("缺少 payload 节"))?;
-    Ok(PackHead { kind, pack_id, name, version, core_compat, payload })
+    Ok(PackHead {
+        kind,
+        pack_id,
+        name,
+        version,
+        core_compat,
+        payload,
+    })
 }
 
 // ============ 导出：当前站点 → 包文件 ============
@@ -148,12 +154,11 @@ pub(super) async fn export_taxonomy(
     state: &web::Data<std::sync::Arc<AppState>>,
     name: Option<&str>,
 ) -> DomainResult<HttpResponse> {
-    let cats: Vec<(i32, String, String)> = sqlx::query_as(
-        "SELECT id, name, icon_key FROM categories ORDER BY id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let cats: Vec<(i32, String, String)> =
+        sqlx::query_as("SELECT id, name, icon_key FROM categories ORDER BY id")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let kinds: Vec<(String, String, i32)> = sqlx::query_as(
         "SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind",
     )
@@ -250,10 +255,8 @@ pub(super) fn parse_taxonomy(payload: &Value) -> DomainResult<TaxonomyData> {
     let mut cats = Vec::new();
     if let Some(arr) = payload.get("categories").and_then(Value::as_array) {
         for (i, c) in arr.iter().enumerate() {
-            let id = c
-                .get("id")
-                .and_then(Value::as_i64)
-                .unwrap_or(i as i64 + 1) as i32;
+            let id = c.get("id").and_then(Value::as_i64).unwrap_or(i as i64 + 1)
+                as i32;
             let name = c
                 .get("name")
                 .and_then(Value::as_str)
@@ -285,13 +288,8 @@ pub(super) fn parse_taxonomy(payload: &Value) -> DomainResult<TaxonomyData> {
             ) else {
                 continue;
             };
-            if !kind
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b == b'_')
-            {
-                return Err(bad(&format!(
-                    "维度 kind 需为 ASCII 标识：{kind}"
-                )));
+            if !kind.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+                return Err(bad(&format!("维度 kind 需为 ASCII 标识：{kind}")));
             }
             let sort =
                 k.get("sort").and_then(Value::as_i64).unwrap_or(999) as i32;
@@ -323,7 +321,22 @@ pub(super) async fn export_assets(
     state: &web::Data<std::sync::Arc<AppState>>,
     name: Option<&str>,
 ) -> DomainResult<HttpResponse> {
-    let medals: Vec<(i64, String, Option<i64>, Option<String>, Option<String>, Option<String>, Option<i32>, i16, Option<i32>, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>, f64, i32, i32)> = sqlx::query_as(
+    let medals: Vec<(
+        i64,
+        String,
+        Option<i64>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<i32>,
+        i16,
+        Option<i32>,
+        Option<chrono::DateTime<chrono::Utc>>,
+        Option<chrono::DateTime<chrono::Utc>>,
+        f64,
+        i32,
+        i32,
+    )> = sqlx::query_as(
         "SELECT id, name, price, rarity, description, asset_ref, \
          duration_days, get_type, inventory, sale_begin_at, sale_end_at, \
          bonus_addition_factor::float8, category_id, limited::int \
@@ -343,9 +356,22 @@ pub(super) async fn export_assets(
     let medals_json: Vec<Value> = medals
         .into_iter()
         .map(|m| {
-            let (id, name, price, rarity, description, asset_ref,
-                 duration_days, get_type, inventory, sale_begin_at,
-                 sale_end_at, bonus, category_id, limited) = m;
+            let (
+                id,
+                name,
+                price,
+                rarity,
+                description,
+                asset_ref,
+                duration_days,
+                get_type,
+                inventory,
+                sale_begin_at,
+                sale_end_at,
+                bonus,
+                category_id,
+                limited,
+            ) = m;
             serde_json::json!({
                 "id": id, "name": name, "price": price, "rarity": rarity,
                 "description": description, "asset_ref": asset_ref,

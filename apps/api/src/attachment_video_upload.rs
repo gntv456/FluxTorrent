@@ -147,9 +147,8 @@ pub async fn upload_video(
             poster_sha: None,
         }
     } else {
-        serde_json::from_str(&meta_raw).map_err(|_| {
-            DomainError::Validation("meta 字段格式无效".into())
-        })?
+        serde_json::from_str(&meta_raw)
+            .map_err(|_| DomainError::Validation("meta 字段格式无效".into()))?
     };
     persist(&state, &auth, &bytes, mime, &filename, &meta).await
 }
@@ -160,8 +159,7 @@ async fn check_quota_and_rate(
     uid: i64,
     len: usize,
 ) -> DomainResult<()> {
-    let quota_mib =
-        setting_i64(&state.repo.db, "video_quota_mib", 2048).await;
+    let quota_mib = setting_i64(&state.repo.db, "video_quota_mib", 2048).await;
     if quota_mib > 0 {
         let used: i64 = sqlx::query_scalar(
             "SELECT COALESCE(sum(size), 0) FROM attachments \
@@ -215,13 +213,12 @@ async fn persist(
         let d = h.finalize();
         d.iter().map(|b| format!("{b:02x}")).collect::<String>()
     };
-    let exists: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM attachments WHERE sha256 = $1",
-    )
-    .bind(&sha)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(internal)?;
+    let exists: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM attachments WHERE sha256 = $1")
+            .bind(&sha)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(internal)?;
     if exists.is_none() {
         crate::storage::put(&state.repo.db, &sha, bytes, mime)
             .await
@@ -249,10 +246,7 @@ async fn persist(
         .execute(&state.repo.db)
         .await
         .map_err(internal)?;
-        state
-            .repo
-            .audit(Some(auth.id), "video_upload", None)
-            .await;
+        state.repo.audit(Some(auth.id), "video_upload", None).await;
     }
     Ok(ok(serde_json::json!({
         "sha256": sha,

@@ -61,8 +61,7 @@ async fn loan_apply(
             "已有未结清贷款，请先结清后再申请".into(),
         ));
     }
-    let rate =
-        loan_rate_bp_with_rules(&state.repo.db, body.term_days).await;
+    let rate = loan_rate_bp_with_rules(&state.repo.db, body.term_days).await;
     // 单事务（P1 撕裂窗口收口）：放款与建贷款行同生共死——旧版 earn 失败靠 DELETE
     // 补偿回滚贷款行，进程崩溃窗口内残留 active 贷款进入计息/逾期/自动扣款集合
     //（用户没收到钱却背上了债务）。

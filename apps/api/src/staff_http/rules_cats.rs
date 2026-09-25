@@ -145,9 +145,7 @@ struct CatBody {
 /// 只接受 `#rrggbb`：这个值最终进前端内联 style，库里也有同形 CHECK 兜底
 fn is_hex_color(s: &str) -> bool {
     let b = s.as_bytes();
-    b.len() == 7
-        && b[0] == b'#'
-        && b[1..].iter().all(|c| c.is_ascii_hexdigit())
+    b.len() == 7 && b[0] == b'#' && b[1..].iter().all(|c| c.is_ascii_hexdigit())
 }
 
 #[derive(serde::Serialize, sqlx::FromRow)]

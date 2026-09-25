@@ -2,8 +2,8 @@
 //! 从 pack_apply.rs 拆出：setup 向导与后台 apply 端点共用同一条物化链路
 //! （二审 G6：向导此前只应用 extras 一段，分类/模块/维度/标签/字幕口径全部不落地）。
 
-use super::sitetype::SiteTypePack;
 use super::pack_types::is_ascii_kind;
+use super::sitetype::SiteTypePack;
 use crate::errors::{DomainError, DomainResult};
 use sqlx::PgPool;
 

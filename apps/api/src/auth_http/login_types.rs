@@ -23,8 +23,5 @@ pub(super) struct RegisterReq {
     pub(super) captcha_answer: i32,
     /// 注册页自定义字段值（0186）：key → 值；required 字段缺省时注册拒绝
     #[serde(default)]
-    pub(super) fields: std::collections::HashMap<
-        String,
-        serde_json::Value,
-    >,
+    pub(super) fields: std::collections::HashMap<String, serde_json::Value>,
 }

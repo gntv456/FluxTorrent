@@ -34,7 +34,7 @@ fn route_module(path: &str) -> Option<&'static str> {
         ("/api/v1/staffmessages", key::MESSAGES),
         ("/api/v1/contactstaff", key::MESSAGES), // 给管理组发信（messages 域）
         ("/api/v1/stafftickets", key::MESSAGES), // 工单（messages 域）
-        ("/api/v1/staff/leaks", key::MESSAGES),  // 泄密 bot（messages 域展示面）
+        ("/api/v1/staff/leaks", key::MESSAGES), // 泄密 bot（messages 域展示面）
         ("/api/v1/friends", key::FRIENDS),
         ("/api/v1/offers", key::OFFERS),
         ("/api/v1/requests", key::REQUESTS),
@@ -47,7 +47,7 @@ fn route_module(path: &str) -> Option<&'static str> {
         // 运营
         ("/api/v1/attendance", key::ATTENDANCE),
         ("/api/v1/medals", key::MEDALS),
-        ("/api/v1/medal-wall", key::MEDALS),   // 勋章墙（medals 域）
+        ("/api/v1/medal-wall", key::MEDALS), // 勋章墙（medals 域）
         ("/api/v1/dressup", key::DRESSUP),
         ("/api/v1/avatar-frames", key::DRESSUP),
         ("/api/v1/jixiao", key::JIXIAO),

@@ -22,13 +22,12 @@ pub(super) async fn apply_pack_tags(
                 .filter_map(|t| {
                     let name =
                         t.get("name").and_then(serde_json::Value::as_str)?;
-                    let kind = match t
-                        .get("kind")
-                        .and_then(serde_json::Value::as_str)
-                    {
-                        Some("official") => "official",
-                        _ => "plain",
-                    };
+                    let kind =
+                        match t.get("kind").and_then(serde_json::Value::as_str)
+                        {
+                            Some("official") => "official",
+                            _ => "plain",
+                        };
                     let group = match t
                         .get("group")
                         .and_then(serde_json::Value::as_str)
