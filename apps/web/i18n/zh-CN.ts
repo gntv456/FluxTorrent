@@ -2698,6 +2698,12 @@ const zhCnBase = {
     saved: "字段已保存",
     deleted: "字段已删除",
   },
+  moduleBind: {
+    label: "挂载模块（可选）",
+    none: "不挂载",
+    offPrefix: "已关闭：",
+    hint: "挂上后该模块一关，此项自动从前台下线；不挂则恒可见。",
+  },
   adminPages: {
     hint: "创建任意内容页，访问地址为 /p/{slug}；可在「导航菜单」把自定义菜单项指向该地址完成挂接。正文 HTML 出站前自动消毒。",
     add: "新建页面",

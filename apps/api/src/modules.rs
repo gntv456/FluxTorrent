@@ -112,6 +112,47 @@ pub fn default_on(k: &str) -> bool {
     )
 }
 
+/// 自建产物（自定义页面 / 用户自定义字段 / 菜单项）挂模块键时的校验：
+/// NULL = 不挂（恒可见）；非空必须存在于注册表，否则宁拒不悬——写错一个字母
+/// 会让产物在后台看得见、前台永久消失，且没有任何线索。
+pub async fn require_known_module(
+    db: &sqlx::PgPool,
+    k: Option<&str>,
+) -> crate::errors::DomainResult<()> {
+    let Some(k) = k.map(str::trim).filter(|s| !s.is_empty()) else {
+        return Ok(());
+    };
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM modules WHERE key = $1)",
+    )
+    .bind(k)
+    .fetch_one(db)
+    .await
+    .map_err(|e| crate::errors::DomainError::Internal(e.into()))?;
+    if !exists {
+        return Err(crate::errors::DomainError::Validation(format!(
+            "未知模块键 {k}（可用键见后台「模块开关」）"
+        )));
+    }
+    Ok(())
+}
+
+/// 「挂了模块键的行是否该出现」的 SQL 判据（同 menus_public 的 T3 语义：
+/// 未配置键按关处理）。集中一处，避免每个读路径各写一份而悄悄漂移。
+/// `alias` 传表名或别名；传空串则用裸列名。
+pub fn module_on_sql(alias: &str) -> String {
+    let p = if alias.is_empty() {
+        String::new()
+    } else {
+        format!("{alias}.")
+    };
+    format!(
+        "({p}module_key IS NULL OR COALESCE((SELECT value = 'yes' \
+         FROM site_settings sg WHERE sg.name = 'module_' || \
+         {p}module_key), false))"
+    )
+}
+
 /// 模块开关缓存：TTL 兜底 + 后台改键主动失效（§5.1）。
 /// 读 site_settings.module_{key} 失败按关处理并告警（D4 fail-close）——
 /// 但 DB 抖动不应把整站功能打成「关」，故仅对**存在且值非法**的场景 fail-close，

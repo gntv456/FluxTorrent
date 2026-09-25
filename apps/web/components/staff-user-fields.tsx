@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { ModuleKeySelect } from "@/components/module-key-select";
 
 /** 用户自定义字段管理面板（0186 一审 R4.1 的「方向盘」，三审 B-1）：
  *  站长定义/启停/删除字段（六类型 + public/private + 注册页展示位）。
@@ -18,6 +19,9 @@ interface FieldDef {
   options: { value: string; label?: string }[];
   sort: number;
   enabled: boolean;
+  /** 挂载模块键（0199）。PUT 全量覆盖，任何手拼 body 的地方都必须带上，
+   *  否则「启用/停用」开关会把挂载悄悄清空。 */
+  module_key: string | null;
   filled: number;
 }
 
@@ -43,6 +47,7 @@ interface Draft {
   options: string;
   sort: number;
   enabled: boolean;
+  module_key: string | null;
 }
 
 const emptyDraft = (): Draft => ({
@@ -55,6 +60,7 @@ const emptyDraft = (): Draft => ({
   options: "",
   sort: 100,
   enabled: true,
+  module_key: null,
 });
 
 export function StaffUserFieldsPanel({
@@ -97,6 +103,7 @@ export function StaffUserFieldsPanel({
         .map((v) => ({ value: v })),
       sort: d.sort,
       enabled: d.enabled,
+      module_key: d.module_key,
     };
   }
 
@@ -134,6 +141,7 @@ export function StaffUserFieldsPanel({
         options: d.options,
         sort: d.sort,
         enabled: !d.enabled,
+        module_key: d.module_key,
       });
       load();
     } catch (e) {
@@ -248,6 +256,12 @@ export function StaffUserFieldsPanel({
         />
         {dict.adminUserFields.enabled}
       </label>
+      <div className="md:col-span-2">
+        <ModuleKeySelect
+          value={draft.module_key}
+          onChange={(k) => setDraft({ ...draft, module_key: k })}
+        />
+      </div>
       <div className="flex gap-2 md:col-span-2">
         <button
           type="button"
@@ -334,6 +348,7 @@ export function StaffUserFieldsPanel({
                         .join(","),
                       sort: d.sort,
                       enabled: d.enabled,
+                      module_key: d.module_key,
                     });
                   }}
                 >

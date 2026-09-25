@@ -28,11 +28,11 @@ async fn staff_panel(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    let rows: Vec<StaffPanelEntry> = sqlx::query_as(
+    let rows: Vec<StaffPanelEntry> = sqlx::query_as::<_, StaffPanelEntry>(&format!(
         "SELECT section, name, url, info, tab_key, min_class FROM staff_panel_entries \
-         WHERE min_class <= $1 AND (module_key IS NULL OR module_key IN \
-         (SELECT key FROM modules WHERE is_on)) ORDER BY section, sort, id",
-    )
+         WHERE min_class <= $1 AND {} ORDER BY section, sort, id",
+        crate::modules::module_on_sql("staff_panel_entries")
+    ))
     .bind(auth.class_id)
     .fetch_all(&state.repo.db)
     .await

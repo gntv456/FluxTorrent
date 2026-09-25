@@ -54,6 +54,18 @@
   v1→v2（旧 payload 缺 `home_sections` 会让新前端把首页渲染成空白）。新增
   `scripts/home_sections_guard.mjs` 比对后端清单与前端渲染 `case` 集，漂移即失败，
   已挂进 `scripts/ci_local.sh`。
+- **自建产物也能挂模块开关**（0199）：`custom_pages` 与 `user_field_defs` 新增可空
+  `module_key`。挂上后该模块一关，页面 `/p/{slug}` 与注册页/usercp/公开档案里的字段
+  一并下线；指向某自定义页的**菜单项**也跟着消失（不留点开 404 的死入口）。
+  写入侧校验「未知模块键宁拒不留」。两个后台面板共用新增的 `ModuleKeySelect`，
+  其中「启用/停用」与「编辑」两处是手拼 PUT body——都补带 `module_key`，
+  否则全量覆盖 PUT 会把挂载静默清空（分类那边报过的同一形态）。
+- **修正 0196 的源读错**：后台面板过滤原先读 `modules.is_on`（注册表种子值），
+  而模块开关的权威是 `site_settings.module_*` —— 站长运行时关一个模块并不会让面板
+  条目消失。判据收进 `modules::module_on_sql()` 一处生成，面板/页面/字段/菜单共用。
+  复验 14/14：关 `subtitles` → 页面 404 且菜单链接消失、重开恢复；挂 `exams` 的字段
+  在注册页随开关出现/消失；关 `medals` → 「勋章管理」从后台面板消失（旧实现不会）；
+  挂未知键被拒。
 - 复验：`cargo test --workspace` 114 passed（含 `key_count` 29→30、3 条首页清单契约）、
   web `tsc` 零 error；新镜像上 invites/面板 11 条断言全通过（关闭后 `/invites/status` 与
   `POST /invites` 均 4101「本站未开放此功能」；面板 62→60 去掉考核配置/绩效考核；

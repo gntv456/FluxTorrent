@@ -2703,6 +2703,12 @@ const zhTwBase: Omit<
     saved: "欄位已儲存",
     deleted: "欄位已刪除",
   },
+  moduleBind: {
+    label: "掛載模組（可选）",
+    none: "不掛載",
+    offPrefix: "已關閉：",
+    hint: "掛上後該模組一關閉，此項即從前台下线；不掛則恆可見。",
+  },
   adminPages: {
     hint: "建立任意內容頁，存取地址為 /p/{slug}；可在「導覽選單」把自訂選單項指向該地址完成掛接。內文 HTML 出站前自動消毒。",
     add: "新建頁面",
