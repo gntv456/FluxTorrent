@@ -4,6 +4,10 @@ import { getDict } from "@/i18n/server";
 import type { Page, TorrentListItem } from "@fluxtorrent/domain-types";
 import { HomeSections } from "@/components/home-sections";
 import { LatestPosters } from "@/components/latest-posters";
+import {
+  parseHomeLayout,
+  type HomeSectionMeta,
+} from "@/components/home-layout";
 
 export const dynamic = "force-dynamic";
 
@@ -26,21 +30,21 @@ export default async function HomePage() {
   } catch {
     promos = [];
   }
-  // 首页排版（0089）：自定义布局显式包含 latest 才渲染海报墙（默认布局恒显示）。
-  // latest 由本 RSC 渲染（需服务端取数），其余板块在 HomeSections 内按配置排布。
-  let layoutRaw: string | undefined;
+  // 首页排版（0089 + 四审 L6 单源化）：是否显示海报墙、以及它排在第几格、占多宽，
+  // 全部由同一份排版解析结果决定（清单来自 /home.home_sections，解析函数与
+  // HomeSections / 后台编辑器共用），页面不再自己数 key、也不再硬拼末尾位置。
   let showLatest = true;
   try {
-    const home = await api.get<{ home_layout?: string }>("/api/v1/home");
-    layoutRaw = home.home_layout;
-    if (layoutRaw && layoutRaw.trim()) {
-      try {
-        const arr = JSON.parse(layoutRaw) as { key?: string }[];
-        showLatest = Array.isArray(arr) && arr.some((x) => x?.key === "latest");
-      } catch {
-        showLatest = true; // 非法配置回默认：显示
-      }
-    }
+    const home = await api.get<{
+      home_layout?: string;
+      home_sections?: HomeSectionMeta[];
+    }>("/api/v1/home");
+    const layout = parseHomeLayout(
+      home.home_layout,
+      home.home_sections ?? [],
+    );
+    if ((home.home_sections?.length ?? 0) > 0 || home.home_layout?.trim())
+      showLatest = layout.some((x) => x.key === "latest");
   } catch {
     // home 接口失败（未登录之外的异常）按默认渲染
   }
@@ -78,41 +82,49 @@ export default async function HomePage() {
           ))}
         </ul>
       )}
-      <HomeSections />
-
-      {/* 最新资源海报墙：匀速滚动，悬停暂停 + 放大显示名称与豆瓣评分 */}
-      {latest && latest.items.length > 0 && (
-        <section className="flex flex-col gap-1">
-          <div className="flex items-baseline justify-between px-1">
-            <h2 className="font-display">{dict.home.latest}</h2>
-            <Link href="/torrents" className="text-xs">
-              {dict.home.viewAll}
-            </Link>
-          </div>
-          <LatestPosters
-            items={latest.items.map((t) => ({
-              id: t.id,
-              name: t.name,
-              rating: t.rating ?? null,
-              poster: t.poster ?? null,
-            }))}
-          />
-        </section>
-      )}
-      {latest && latest.items.length === 0 && (
-        <table className="nexus-table">
-          <thead>
-            <tr>
-              <td className="colhead">{dict.home.latest}</td>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="p-6 text-center text-sub">{dict.home.empty}</td>
-            </tr>
-          </tbody>
-        </table>
-      )}
+      {/* 板块顺序/占宽由 HomeSections 按排版清单统一决定；海报墙内容在这里
+          服务端取好（首屏不退化成客户端取数），只把节点交出去占位。 */}
+      <HomeSections
+        latest={
+          latest === null
+            ? null
+            : latest.items.length > 0
+              ? (
+                <section className="flex flex-col gap-1">
+                  <div className="flex items-baseline justify-between px-1">
+                    <h2 className="font-display">{dict.home.latest}</h2>
+                    <Link href="/torrents" className="text-xs">
+                      {dict.home.viewAll}
+                    </Link>
+                  </div>
+                  <LatestPosters
+                    items={latest.items.map((t) => ({
+                      id: t.id,
+                      name: t.name,
+                      rating: t.rating ?? null,
+                      poster: t.poster ?? null,
+                    }))}
+                  />
+                </section>
+              )
+              : (
+                <table className="nexus-table">
+                  <thead>
+                    <tr>
+                      <td className="colhead">{dict.home.latest}</td>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-6 text-center text-sub">
+                        {dict.home.empty}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              )
+        }
+      />
     </div>
   );
 }

@@ -45,10 +45,21 @@
 - **0198 补齐后加模块键的开关面**：`site_settings` 的 `module_<key>` 值行与 `settings_meta`
   登记行（`settings_meta.name` 有 FK 指向 `site_settings`，必须先插值行）。缺它会出现
   「注册表里有该模块、后台没有开关、写设置被『未知设定项』拒」——0197 首次落地即踩中。
-- 复验：`cargo test --workspace` 111 passed（含 `key_count` 契约 29→30）、web `tsc` 零 error；
-  新镜像上 11 条接口断言全通过（面板 3 条 + invites 关/开 6 条 + 注册与包快照 2 条），
-  关闭后 `/invites/status` 与 `POST /invites` 均返回 4101「本站未开放此功能」；
-  首页渲染 A/B 实测：开 150756 字节 / 关 150715 字节，差的正是那条导航入口。
+- **首页板块清单单源化**（四审 L6）：键、推荐占宽、是否进默认排版收进后端唯一一份
+  `HOME_SECTIONS` 并随 `/home.home_sections` 下发；前端删掉自带的三份副本
+  （`HOME_SECTION_KEYS` / `DEFAULT_HOME_LAYOUT` / `RECOMMENDED_SPAN`）。两个行为变化：
+  ① `latest`（海报墙）自 0089 就在白名单里、但前端 switch 一直没有分支 ⇒ 排序与占宽
+  对它无效、只能硬钉在页面末尾，现在它和其它板块一样吃排版；② 排版里出现未知键/重复键
+  从「整份作废回退默认」改为「跳过该条」（手改库不再一坏全坏）。`/home` 共享缓存键
+  v1→v2（旧 payload 缺 `home_sections` 会让新前端把首页渲染成空白）。新增
+  `scripts/home_sections_guard.mjs` 比对后端清单与前端渲染 `case` 集，漂移即失败，
+  已挂进 `scripts/ci_local.sh`。
+- 复验：`cargo test --workspace` 114 passed（含 `key_count` 29→30、3 条首页清单契约）、
+  web `tsc` 零 error；新镜像上 invites/面板 11 条断言全通过（关闭后 `/invites/status` 与
+  `POST /invites` 均 4101「本站未开放此功能」；面板 62→60 去掉考核配置/绩效考核；
+  首页渲染 A/B 开 150756 / 关 150715 字节，差的正是那条导航入口），
+  首页单源 API 面 7/7 + 浏览器 DOM 实测（默认 9 格占宽合清单；把 `latest` 排到第 1 格
+  `span-1` 后第 1 格确为海报墙；库里手塞坏键时只剩 1 格，旧行为会回退成 9 格）。
 
 ### 通用建站系统收口（2026-09-25 六迭代，详见 _doc/通用建站定位符合度三审报告）
 

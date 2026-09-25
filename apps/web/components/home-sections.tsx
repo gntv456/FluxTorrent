@@ -19,7 +19,14 @@ import type { HomeData } from "@/components/home-data";
  *  签到日历 home-attendance.tsx、站点数据 home-site-data.tsx、
  *  资源统计 home-resource-stats.tsx、补签弹层 home-resub-button.tsx。 */
 
-export function HomeSections() {
+export function HomeSections({
+  latest,
+}: {
+  /** 海报墙节点：数据由首页 RSC 取（服务端渲染不退化），
+   *  但**位置与占宽由排版清单决定**——四审 L6 前它没有渲染分支，
+   *  站长的排序/span 对它完全无效，只在页面末尾硬渲染。 */
+  latest?: React.ReactNode;
+} = {}) {
   const { dict, currency } = useI18n();
   const t = dict.home2;
   // 模块开关（二审 G2-1 修复）：attendance/shoutbox/funbox/lucky_draw 板块
@@ -78,7 +85,10 @@ export function HomeSections() {
     headline?.body.replace(/<[^>]+>/g, "").slice(0, 160) ?? "";
 
   // 模块关闭的板块从排版中剔除（含站长自定义 home_layout 里显式排进的）
-  const layout = parseHomeLayout(data.home_layout).filter((i) => {
+  const layout = parseHomeLayout(
+    data.home_layout,
+    data.home_sections ?? [],
+  ).filter((i) => {
     if (i.key === "attendance") return mod("attendance");
     if (i.key === "shoutbox") return mod("shoutbox");
     if (i.key === "funbox" || i.key === "lucky_draw") return mod("games");
@@ -207,6 +217,9 @@ export function HomeSections() {
             </p>
           </div>
         );
+      case "latest":
+        // 海报墙：内容由首页 RSC 取好传入，这里只决定它在排版中的位置与占宽
+        return latest ?? null;
       default:
         return null;
     }
@@ -222,7 +235,10 @@ export function HomeSections() {
         return (
           <div
             key={item.key}
-            className={`home-cell home-cell--span-${effectiveSpan(item)}`}
+            className={`home-cell home-cell--span-${effectiveSpan(
+              item,
+              home.home_sections ?? [],
+            )}`}
           >
             {node}
           </div>

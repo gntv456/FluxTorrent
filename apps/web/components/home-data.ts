@@ -47,6 +47,8 @@ export interface HomeData {
   friend_links: { name: string; url: string; title: string | null }[];
   /** 首页排版（0089）：JSON 数组字符串或空串（空 = 默认布局） */
   home_layout?: string;
+  /** 板块单源清单（四审 L6）：键 + 推荐占宽 + 是否进默认排版，来自后端 */
+  home_sections?: import("@/components/home-layout").HomeSectionMeta[];
 }
 
 /** 首页板块文案字典段（原文件里 ReturnType<typeof useI18n> 的等价类型） */

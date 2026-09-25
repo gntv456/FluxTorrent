@@ -13,10 +13,10 @@ import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import {
-  DEFAULT_HOME_LAYOUT,
-  HOME_SECTION_KEYS,
-  effectiveSpan,
+  defaultLayout,
+  parseHomeLayout,
   type HomeLayoutItem,
+  type HomeSectionMeta,
 } from "@/components/home-layout";
 
 const SPAN_OPTIONS: [number, string][] = [
@@ -30,37 +30,36 @@ export function HomeLayoutEditor() {
   const { dict } = useI18n();
   const t = dict.homeLayout;
   const [items, setItems] = useState<HomeLayoutItem[] | null>(null);
+  // 板块清单同样只认后端下发的那一份（四审 L6 单源化）
+  const [sections, setSections] = useState<HomeSectionMeta[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // 初始值 = 当前线上配置（/api/v1/home.home_layout；空串回默认排版）
+  // 初始值 = 当前线上配置（/api/v1/home.home_layout；空/非法回默认排版）
   useEffect(() => {
+    const fallback = (s: HomeSectionMeta[]) => defaultLayout(s);
     api
-      .get<{ home_layout?: string }>("/api/v1/home")
+      .get<{
+        home_layout?: string;
+        home_sections?: HomeSectionMeta[];
+      }>("/api/v1/home")
       .then((h) => {
-        const raw = h.home_layout?.trim();
-        if (!raw) {
-          setItems(DEFAULT_HOME_LAYOUT.map((x) => ({ ...x })));
-          return;
-        }
-        try {
-          const arr = JSON.parse(raw) as HomeLayoutItem[];
-          setItems(
-            HOME_SECTION_KEYS.filter((k) => arr.some((a) => a.key === k))
-              .length === 0
-              ? DEFAULT_HOME_LAYOUT.map((x) => ({ ...x }))
-              : arr.map((a) => ({ key: a.key, span: a.span ?? 0 })),
-          );
-        } catch {
-          setItems(DEFAULT_HOME_LAYOUT.map((x) => ({ ...x })));
-        }
+        const secs = h.home_sections ?? [];
+        setSections(secs);
+        setItems(parseHomeLayout(h.home_layout, secs));
       })
-      .catch(() => setItems(DEFAULT_HOME_LAYOUT.map((x) => ({ ...x }))));
+      .catch(() => {
+        setSections([]);
+        setItems(fallback([]));
+      });
   }, []);
 
   const hiddenKeys = useMemo(
-    () => HOME_SECTION_KEYS.filter((k) => !items?.some((i) => i.key === k)),
-    [items],
+    () =>
+      sections
+        .filter((s) => !items?.some((i) => i.key === s.key))
+        .map((s) => s.key),
+    [items, sections],
   );
 
   function move(idx: number, dir: -1 | 1) {
@@ -104,7 +103,8 @@ export function HomeLayoutEditor() {
   }
 
   async function resetDefault() {
-    setItems(DEFAULT_HOME_LAYOUT.map((x) => ({ ...x })));
+    // 「恢复默认」= 后端清单里 in_default 的那批、按清单顺序（不再前端自带副本）
+    setItems(defaultLayout(sections).map((x) => ({ ...x })));
     setMsg(t.resetHint);
   }
 
