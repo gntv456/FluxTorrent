@@ -94,9 +94,10 @@ async fn edit_torrent(
         .await;
     // 2.5 详情对象缓存：编辑即失效（descr/分类等共享段字段变了）
     super::aggregate::invalidate_tdetail_cache(&state, tid).await;
-    // 多维质量（0087 同发布表单）：Some(map) = 整组重建（白名单 + 字典归属校验后
-    // 先清后写；未含的旧维删除）。校验口径与 upload_sections 同源。
-    if let Some(map) = &body.sections {
+    // 多维属性（B2 六类型，0195）：Some(值) = 整组重建（未含的旧维删除，
+    // 与前端「整表单保存」语义一致）。校验/写入与发种口**同源**
+    // （`publish_http::upload_sections`），六类型 + 必填 + 多值约束一致生效。
+    if let Some(raw) = &body.sections {
         let owner: Option<i64> =
             sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
                 .bind(tid)
@@ -109,45 +110,21 @@ async fn edit_torrent(
         if auth.class_id < 90 && owner != Some(auth.id) {
             return Err(DomainError::Forbidden);
         }
-        for (kind, dict_id) in map {
-            if !crate::admin_p3_http::is_custom_kind(&state.repo.db, kind).await
-            {
-                return Err(DomainError::Validation(format!(
-                    "未知维度 {kind}"
-                )));
-            }
-            let ok: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM \
-                     section_dict WHERE id = $2 AND kind = $1)",
+        let json = serde_json::to_string(raw)
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let parsed =
+            crate::publish_http::upload_sections::parse_sections(
+                &state.repo.db,
+                Some(&json),
             )
-            .bind(kind)
-            .bind(dict_id)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            if !ok {
-                return Err(DomainError::Validation(format!(
-                    "维度 {kind} 的字典项 {dict_id} 不存在"
-                )));
-            }
-        }
-        sqlx::query("DELETE FROM torrent_sections WHERE torrent_id = $1")
-            .bind(tid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        for (kind, dict_id) in map {
-            sqlx::query(
-                "INSERT INTO torrent_sections \
-                 (torrent_id, kind, dict_id) VALUES ($1, $2, $3)",
-            )
-            .bind(tid)
-            .bind(kind)
-            .bind(dict_id)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        }
+            .await?;
+        crate::publish_http::upload_sections::write_sections(
+            &state.repo.db,
+            tid,
+            &parsed,
+            true, // 编辑口径：未提交的维度视为清空
+        )
+        .await?;
         // sections 是这一轮的真值源：按名称反向落旧三列（维度已被站长删除的列不动），
         // 否则「改了学段但按学段筛搜不到」会继续存在
         crate::torrents::sync_legacy_columns(&state.repo.db, tid).await?;

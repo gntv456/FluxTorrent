@@ -213,10 +213,12 @@ pub(super) struct TorrentEditReq {
     /// None = 不动（编辑入口与详情页 toggle / 发布同走 apply_torrent_tags）
     #[serde(default)]
     pub(super) tag_ids: Option<Vec<i32>>,
-    /// 多维质量（0087 同发布表单）：{kind: dict_id}；缺省 = 不动。
-    /// 提交即整组重建（未含的旧维删除——与前端「整表单保存」语义一致）
+    /// 多维属性（B2 六类型）：{kind: 值}；缺省 = 不动。
+    /// 值可以是旧格式整数（枚举单选）或新格式对象（详见
+    /// `publish_http::upload_sections` 的协议说明）。提交即整组重建
+    /// （未含的旧维删除——与前端「整表单保存」语义一致）。
     #[serde(default)]
-    pub(super) sections: Option<std::collections::HashMap<String, i64>>,
+    pub(super) sections: Option<serde_json::Value>,
     /// 推荐位（0184 编辑对齐发布页）：staff 专属；None = 不动
     #[serde(default)]
     pub(super) pos_state: Option<i16>,

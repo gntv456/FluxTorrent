@@ -39,9 +39,11 @@ struct TorrentBatchReq {
     grade_id: Option<i32>,
     #[serde(default)]
     edition_id: Option<i32>,
-    /// 维度字典：kind → dict_id（change_sections 动作）
+    /// 维度取值：kind → 值（change_sections 动作）。
+    /// 值支持旧格式整数（枚举单选）与新格式对象（B2 六类型，详见
+    /// `publish_http::upload_sections`）。
     #[serde(default)]
-    sections: std::collections::HashMap<String, i64>,
+    sections: serde_json::Value,
 }
 
 const PROMO_KINDS: [&str; 6] =
@@ -210,50 +212,26 @@ async fn torrent_batch(
             .rows_affected()
         }
         "change_sections" => {
-            if body.sections.is_empty() {
+            // 与单条编辑口同源：走共享解析器（六类型 + 必填 + 多值 + 字典归属）
+            let json = serde_json::to_string(&body.sections)
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            let parsed = crate::publish_http::upload_sections::parse_sections(
+                db,
+                Some(&json),
+            )
+            .await?;
+            if parsed.is_empty() {
                 return Err(DomainError::Validation("缺少维度取值".into()));
             }
-            // 先全量校验再写：外键只保证 dict_id 那行存在，不保证它属于该 kind，
-            // 缺这一步可以把「编码=x264」挂到「学段」维度下（与编辑口同口径）
-            for (kind, dict_id) in &body.sections {
-                if !crate::admin_p3_http::is_custom_kind(db, kind).await {
-                    return Err(DomainError::Validation(format!(
-                        "未知维度 {kind}"
-                    )));
-                }
-                let ok: bool = sqlx::query_scalar(
-                    "SELECT EXISTS(SELECT 1 FROM section_dict WHERE id = $1 \
-                     AND kind = $2)",
-                )
-                .bind(dict_id)
-                .bind(kind)
-                .fetch_one(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-                if !ok {
-                    return Err(DomainError::Validation(format!(
-                        "维度 {kind} 的字典项 {dict_id} 不存在"
-                    )));
-                }
-            }
             let mut n: u64 = 0;
-            for (kind, dict_id) in &body.sections {
-                n += sqlx::query(
-                    "INSERT INTO torrent_sections (torrent_id, kind, dict_id) \
-                     SELECT id, $2, $3 FROM torrents WHERE id = ANY($1) \
-                     ON CONFLICT (torrent_id, kind) DO UPDATE SET dict_id = EXCLUDED.dict_id",
-                )
-                .bind(&id_arr)
-                .bind(kind)
-                .bind(dict_id)
-                .execute(db)
-                .await
-                .map_err(|e| crate::errors::db_to_domain(e, "维度字典项"))?
-                .rows_affected();
-            }
-            // 批量改维度后同样反向落旧三列，保持与单条编辑一致
             for tid in &id_arr {
+                // 整组重建：未含的旧维删除（与单条编辑整表单保存同口径）
+                crate::publish_http::upload_sections::write_sections(
+                    db, *tid, &parsed, true,
+                )
+                .await?;
                 crate::torrents::sync_legacy_columns(db, *tid).await?;
+                n += 1;
             }
             n
         }
