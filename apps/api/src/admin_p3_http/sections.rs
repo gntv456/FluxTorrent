@@ -16,9 +16,9 @@ use crate::state::AppState;
 pub(super) struct SectionModeRow {
     id: i32,
     name: String,
-    // ⚠ 以下 7 列是 0063 的旧口径，**本批保留**（站长拍板：保留一个发布周期，
-    // 回滚容易）。B2 起读取侧改用 `mode_kinds` 关联表，见 visible_kinds；
-    // 这 7 个字段仅为兼容存量消费点继续下发，不再是权威来源。
+    // ⚠ 以下 7 列是 0063 旧口径，**本批保留**（站长拍板：保留一个发布周期，回滚
+    // 容易）。B2 起读取侧改用 `mode_kinds` 关联表（见 visible_kinds）；这 7 个
+    // 字段仅为兼容存量消费点继续下发，不再是权威来源。
     show_source: bool,
     show_medium: bool,
     show_codec: bool,
@@ -28,7 +28,7 @@ pub(super) struct SectionModeRow {
     show_team: bool,
     categories: i64,
     /// B2（0195）：该模式下**可见**的维度清单（来自 mode_kinds）。
-    /// 无行的维度 = 可见（与旧 `_ => true` 一致），故这里是「被显式关闭」的反面。
+    /// 无行的维度 = 可见（与旧 `_ => true` 一致），故这里等于 visible 行的集合。
     visible_kinds: Option<serde_json::Value>,
     /// B2：该模式下**被显式关闭**的维度清单（管理面板直接编辑这个集合）。
     hidden_kinds: Option<serde_json::Value>,
@@ -49,13 +49,11 @@ async fn section_modes_list(
                   (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind),
                                    '[]'::json)
                      FROM mode_kinds mk
-                    WHERE mk.mode_id = m.id AND mk.visible)
-                      AS visible_kinds,
+                    WHERE mk.mode_id = m.id AND mk.visible) AS visible_kinds,
                   (SELECT COALESCE(json_agg(mk.kind ORDER BY mk.kind),
                                    '[]'::json)
                      FROM mode_kinds mk
-                    WHERE mk.mode_id = m.id AND NOT mk.visible)
-                      AS hidden_kinds
+                    WHERE mk.mode_id = m.id AND NOT mk.visible) AS hidden_kinds
            FROM category_modes m ORDER BY m.id"#,
     )
     .fetch_all(&state.repo.db)
@@ -82,9 +80,8 @@ struct SectionModeReq {
     #[serde(default)]
     show_team: Option<bool>,
     /// B2（0195）：该模式的**可见维度**整组提交（`mode_kinds` 唯一权威入口）。
-    /// `Some([...])` = 用这一组替换该模式全部 mode_kinds 行（不在组内的维度
-    /// 在改分类重取 /section-dict 时消失）；`None` = 不动（仅改旧 7 列）。
-    /// 自建维度只能从这里纳入管辖——旧 7 列写不下它们。
+    /// `Some([...])` = 用这一组替换该模式全部 mode_kinds 行；`None` = 不动
+    /// （仅改旧 7 列）。自建维度只能从这里纳入管辖——旧 7 列写不下它们。
     #[serde(default)]
     visible_kinds: Option<Vec<String>>,
 }
@@ -104,8 +101,7 @@ async fn section_mode_add(
     .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("模式名不能为空".into()));
-    }
-    let id: i32 = sqlx::query_scalar(
+    }    let id: i32 = sqlx::query_scalar(
         "INSERT INTO category_modes \
            (name, show_source, show_medium, show_codec, show_audio_codec, \
             show_standard, show_processing, show_team) \
@@ -172,9 +168,8 @@ async fn section_mode_update(
     if n == 0 {
         return Err(DomainError::NotFound(id as i64));
     }
-    // B2（0195）：mode_kinds 整组重建（自建维度的唯一管辖入口）。
-    // 校验：每个 kind 必须存在于 section_kinds（否则挂了个不存在的维度，
-    // 前台白拿不出字典项，属于静默错配）。
+    // B2（0195）：mode_kinds 整组重建（自建维度的唯一管辖入口）。校验每个
+    // kind 必须存在于 section_kinds——否则挂了个不存在的维度属静默错配。
     if let Some(kinds) = &body.visible_kinds {
         let mut seen: Vec<String> = Vec::new();
         for k in kinds {
@@ -183,9 +178,7 @@ async fn section_mode_update(
                 continue;
             }
             if !is_custom_kind(&state.repo.db, k).await {
-                return Err(DomainError::Validation(format!(
-                    "未知维度 {k}"
-                )));
+                return Err(DomainError::Validation(format!("未知维度 {k}")));
             }
             seen.push(k.to_string());
         }
@@ -214,7 +207,7 @@ async fn section_mode_update(
         tx.commit()
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-        // 同步回旧 7 列：本批「保留一个周期」，两边不能说法不一（回滚也不炸）
+        // 同步回旧 7 列：保留期内两边不能说法不一（回滚也不炸）
         sync_legacy_mode_columns(&state.repo.db, id, &seen).await?;
     }
     state
@@ -223,7 +216,6 @@ async fn section_mode_update(
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
-
 /// 把 `mode_kinds` 的可见集合回写进 `category_modes` 的旧 7 个 show_* 列。
 /// 旧七维与 kind 名的固定映射，仅用于保留期兼容，不是权威来源。
 const LEGACY_MODE_KEYS: [(&str, &str); 7] = [
@@ -243,23 +235,18 @@ async fn sync_legacy_mode_columns(
 ) -> DomainResult<()> {
     let mut sets: Vec<String> = Vec::new();
     for (kind, col) in LEGACY_MODE_KEYS {
-        sets.push(format!(
-            "{col} = {}",
-            if visible.iter().any(|v| v == kind) {
-                "TRUE"
-            } else {
-                "FALSE"
-            }
-        ));
+        let on = visible.iter().any(|v| v == kind);
+        sets.push(format!("{col} = {}", if on { "TRUE" } else { "FALSE" }));
     }
-    sqlx::query(&format!(
+    let sql = format!(
         "UPDATE category_modes SET {} WHERE id = $1",
         sets.join(", ")
-    ))
-    .bind(mode_id)
-    .execute(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    );
+    sqlx::query(&sql)
+        .bind(mode_id)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(())
 }
 
@@ -275,18 +262,17 @@ async fn section_mode_delete(
         &auth,
         crate::authz::perm::CATEGORIES_MANAGE,
     )
-    .await?;
+        .await?;
     let id = path.into_inner();
     if id == 1 {
         return Err(DomainError::Validation("默认模式不可删除".into()));
     }
-    let used: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM categories WHERE mode_id = $1",
-    )
-    .bind(id)
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or(0);
+    let used: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM categories WHERE mode_id = $1")
+            .bind(id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
     if used > 0 {
         sqlx::query("UPDATE categories SET mode_id = 1 WHERE mode_id = $1")
             .bind(id)
@@ -310,15 +296,28 @@ async fn section_mode_delete(
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
 
-/// 维度存在性判定（0085/0087）：kind 在 section_kinds 中即可用。
-/// 0087 起 media/grades/editions 字典行已迁入 section_dict，九维全走统一通道，
-/// legacy 实体表仅作历史口径存档（介质列保留兼容老数据）。
+/// 维度存在性判定（0085/0087）：kind 在 section_kinds 中即可用。0087 起
+/// media/grades/editions 字典行已迁入 section_dict，九维全走统一通道，legacy
+/// 实体表仅作历史口径存档（介质列保留兼容老数据）。
 pub(crate) async fn is_custom_kind(db: &sqlx::PgPool, kind: &str) -> bool {
-    sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)",
-    )
-    .bind(kind)
-    .fetch_one(db)
-    .await
-    .unwrap_or(false)
+    let q = "SELECT EXISTS(SELECT 1 FROM section_kinds WHERE kind = $1)";
+    sqlx::query_scalar(q)
+        .bind(kind)
+        .fetch_one(db)
+        .await
+        .unwrap_or(false)
+}
+
+/// 维度字段类型查询（B3 列表筛选）：`None` = 维度不存在。筛选谓词必须按类型
+/// 分派，解析参数时要先拿到类型。
+pub(crate) async fn kind_field_type(
+    db: &sqlx::PgPool,
+    kind: &str,
+) -> Option<String> {
+    sqlx::query_scalar("SELECT field_type FROM section_kinds WHERE kind = $1")
+        .bind(kind)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
 }

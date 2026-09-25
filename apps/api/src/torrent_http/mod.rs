@@ -15,6 +15,7 @@ mod magnet;
 mod manage;
 mod peers;
 mod query;
+mod sec_params;
 
 pub use aggregate::*;
 pub use batch::*;

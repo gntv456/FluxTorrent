@@ -156,9 +156,9 @@ pub struct TorrentFilter {
     pub tag_ids: Option<Vec<i32>>,
     /// 多选匹配模式：true = all（每个标签都要命中）；false/缺省 = any
     pub tag_all: bool,
-    /// 第八轮 Section 多维筛选：kind → dict_id（kind 走白名单，dict_id 为整数，拼接安全）
+    /// 多维筛选（B3 六类型）：谓词由 `section_pred::section_where` 按类型分派
     #[serde(default)]
-    pub sections: Vec<(String, i64)>,
+    pub sections: Vec<crate::torrents::SectionFilter>,
     /// 搜索范围（旧站口径）：0=标题(默认) 1=副标题/简介 3=发布者 4=IMDb
     #[serde(default)]
     pub search_area: Option<i32>,
