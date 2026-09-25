@@ -116,7 +116,8 @@
   `theme_tokens`），`user_fields.rs` 拆出 `user_fields_def.rs` 并删掉从未被调用的
   `mount_user_fields`（路由实际在 `http/mod.rs` 注册），`staff-user-fields.tsx`
   三处逐字段手抄的 PUT body 改展开（PUT 是全量覆盖，漏抄一个就静默清空那一个）。
-- 升级注意：0201 删除 `titlekeywords`/`cssdate` 两键的值与元数据行、新增
+- 升级注意：0203 把 `seo_indexable` 从 `main` 分区挪回 `tweak`——浏览器复验时发现「SEO 与统计」这张卡按 `grp` 出现，四个 SEO 键的 `grp` 不同就会在两个分区各冒出来一次，收录开关孤零零一个字段。
+  - 升级注意：0201 删除 `titlekeywords`/`cssdate` 两键的值与元数据行、新增
   `seo_indexable`（默认 `no`）。既有站点前台描述原本取字典默认，若设过 `site_desc`
   现在会改取它；打开收录前对爬虫无变化。
 - 复验（新镜像 + 独立 web 容器 24 条断言）：含「翻 `seo_indexable` 一个开关，
