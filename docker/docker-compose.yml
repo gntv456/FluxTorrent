@@ -228,6 +228,10 @@ services:
       # 浏览器走同源 /api（rewrites 转发），服务端 RSC 直连容器网
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
       API_SERVER_URL: http://api:8080
+      # 与 api 同一口径（见上文 RSS）：前台 metadataBase / og:url / sitemap 绝对地址
+      # 全靠它（0201）。缺省留空时 siteBase() 返回 null，og:url 省略、sitemap 落
+      # 相对路径——不编假域名，但要绝对地址就得在这配。
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
     ports:
       - "${WEB_BIND:-127.0.0.1}:3000:3000"
     depends_on:
