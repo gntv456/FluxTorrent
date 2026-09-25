@@ -975,6 +975,12 @@ usertools: {
       colStarter: "发布者",
       colLastPost: "最后回复",
     },
+    fields: {
+      title: "自定义字段",
+      empty: "站长未定义自定义字段",
+      saved: "自定义字段已保存",
+      boolOn: "是",
+    },
     personal: {
       title: "个人资料",
       subtitle: "管理账户资料、短讯偏好、网络信息与个人头像",

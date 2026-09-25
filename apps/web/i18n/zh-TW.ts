@@ -979,6 +979,12 @@ usertools: {
       colStarter: "發布者",
       colLastPost: "最後回復",
     },
+    fields: {
+      title: "自訂欄位",
+      empty: "站長未定義自訂欄位",
+      saved: "自訂欄位已儲存",
+      boolOn: "是",
+    },
     personal: {
       title: "個人資料",
       subtitle: "管理賬戶資料、短訊偏好、網絡信息與個人頭像",

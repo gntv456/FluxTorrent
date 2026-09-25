@@ -23,6 +23,17 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [captchaAnswer, setCaptchaAnswer] = useState("");
+  // 自定义字段（0186）：站长标记 show_on_register 的字段动态渲染
+  const [regFields, setRegFields] = useState<
+    {
+      key: string;
+      label: string;
+      type: string;
+      required: boolean;
+      options: { value: string; label?: string }[];
+    }[]
+  >([]);
+  const [fieldVals, setFieldVals] = useState<Record<string, unknown>>({});
   const [captcha, setCaptcha] = useState<Captcha | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
@@ -38,6 +49,12 @@ export default function RegisterPage() {
 
   useEffect(() => {
     refreshCaptcha();
+    fetch("/api/v1/register-fields")
+      .then((r) => r.json())
+      .then((b: { data?: typeof regFields }) =>
+        setRegFields(b?.data ?? []),
+      )
+      .catch(() => setRegFields([]));
   }, []);
 
   async function submit(e: React.FormEvent) {
@@ -53,6 +70,7 @@ export default function RegisterPage() {
         invite_code: inviteCode.trim(),
         captcha_id: captcha?.captcha_id ?? "",
         captcha_answer: captchaAnswer ? Number(captchaAnswer) : 0,
+        fields: fieldVals,
       });
       // 注册成功直接走登录（后端注册不返回 token）
       const resp = await api.post<{ token: string }>("/api/v1/auth/login", {
@@ -173,6 +191,70 @@ export default function RegisterPage() {
         >
           {busy ? dict.register.busy : dict.register.submit}
         </button>
+        {regFields.map((f) => (
+          <label key={f.key} className="flex flex-col gap-1">
+            <span className="text-sm text-sub">
+              {f.label}
+              {f.required ? " *" : ""}
+            </span>
+            {f.type === "select" ? (
+              <select
+                className={inputCls}
+                required={f.required}
+                value={String(fieldVals[f.key] ?? "")}
+                onChange={(e) =>
+                  setFieldVals((p) => ({
+                    ...p,
+                    [f.key]: e.target.value || null,
+                  }))
+                }
+              >
+                <option value="">—</option>
+                {f.options.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label ?? o.value}
+                  </option>
+                ))}
+              </select>
+            ) : f.type === "bool" ? (
+              <input
+                type="checkbox"
+                checked={fieldVals[f.key] === true}
+                onChange={(e) =>
+                  setFieldVals((p) => ({
+                    ...p,
+                    [f.key]: e.target.checked,
+                  }))
+                }
+              />
+            ) : (
+              <input
+                type={
+                  f.type === "number"
+                    ? "number"
+                    : f.type === "date"
+                      ? "date"
+                      : "text"
+                }
+                className={inputCls}
+                required={f.required}
+                maxLength={f.type === "text" ? 500 : undefined}
+                value={String(fieldVals[f.key] ?? "")}
+                onChange={(e) =>
+                  setFieldVals((p) => ({
+                    ...p,
+                    [f.key]:
+                      f.type === "number"
+                        ? e.target.value === ""
+                          ? null
+                          : Number(e.target.value)
+                        : e.target.value || null,
+                  }))
+                }
+              />
+            )}
+          </label>
+        ))}
       </form>
       <p className="text-sm text-sub">
         {dict.register.hasAccount}{" "}

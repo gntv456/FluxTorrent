@@ -982,6 +982,12 @@ usertools: {
       colStarter: "Starter",
       colLastPost: "Last post",
     },
+    fields: {
+      title: "Custom Fields",
+      empty: "No custom fields defined by the site owner",
+      saved: "Custom fields saved",
+      boolOn: "Yes",
+    },
     personal: {
       title: "Personal",
       subtitle: "Manage profile, PM preferences, network info and avatar",

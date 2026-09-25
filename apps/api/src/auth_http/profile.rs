@@ -254,7 +254,11 @@ pub async fn user_public_profile(
     // 字幕身份（0149）：gold 优先于 certified（helper 见文件尾）
     let cert_tier =
         super::profile_helpers::subtitle_cert_tier(&state.repo.db, uid).await;
+    // 用户自定义字段（0186）：public 字段 + 有值才下发
+    let user_fields =
+        super::user_fields::public_fields_for(&state.repo.db, uid).await;
     Ok(ok(serde_json::json!({
+        "user_fields": user_fields,
         "profile": profile,
         "avatar_frame_css": profile.avatar_frame_css,
         "avatar_frame_image": profile.avatar_frame_image,

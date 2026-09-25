@@ -33,6 +33,30 @@ pub async fn register(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or_else(|_| "invite_only".into());
+    // 注册自定义字段（0186）：required 校验前置（缺→拒绝，先于邀请码/验证码
+    // 报出更明确的提示）；值形状校验同批，落库在建号后
+    {
+        let defs: Vec<(String, String, bool, String, serde_json::Value)> =
+            sqlx::query_as(
+                "SELECT key, label, required, type, options FROM                  user_field_defs WHERE enabled AND show_on_register",
+            )
+            .fetch_all(&state.repo.db)
+            .await
+            .unwrap_or_default();
+        for (key, label, req, ftype, options) in &defs {
+            let val = body.fields.get(key);
+            if *req && (val.is_none() || val == Some(&serde_json::Value::Null))
+            {
+                return Err(DomainError::Validation(format!(
+                    "「{label}」为必填字段"
+                )));
+            }
+            if let Some(v) = val.filter(|v| !v.is_null()) {
+                super::user_fields::validate_value_pub(ftype, options, v)
+                    .map_err(DomainError::Validation)?;
+            }
+        }
+    }
     if reg_mode == "invite_only" && body.invite_code.trim().is_empty() {
         return Err(DomainError::InviteInvalid);
     }
@@ -89,6 +113,31 @@ pub async fn register(
             reg_mode == "invite_only",
         )
         .await?;
+    // 字段值落库（required 已在前置校验；失败不回滚账号——附属数据）
+    {
+        let defs: Vec<String> = sqlx::query_scalar(
+            "SELECT key FROM user_field_defs WHERE enabled AND              show_on_register",
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .unwrap_or_default();
+        for key in defs {
+            if let Some(v) = body
+                .fields
+                .get(&key)
+                .filter(|v| !v.is_null())
+            {
+                let _ = sqlx::query(
+                    "INSERT INTO user_field_values (user_id, field_key,                      value) VALUES ($1, $2, $3) ON CONFLICT (user_id,                      field_key) DO NOTHING",
+                )
+                .bind(user_id)
+                .bind(&key)
+                .bind(v)
+                .execute(&state.repo.db)
+                .await;
+            }
+        }
+    }
     state
         .repo
         .audit(Some(user_id), "user_register", Some(user_id))
