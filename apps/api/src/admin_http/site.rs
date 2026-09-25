@@ -30,7 +30,8 @@ async fn staff_panel(
     let auth = staff(&req, &state).await?;
     let rows: Vec<StaffPanelEntry> = sqlx::query_as(
         "SELECT section, name, url, info, tab_key, min_class FROM staff_panel_entries \
-         WHERE min_class <= $1 ORDER BY section, sort, id",
+         WHERE min_class <= $1 AND (module_key IS NULL OR module_key IN \
+         (SELECT key FROM modules WHERE is_on)) ORDER BY section, sort, id",
     )
     .bind(auth.class_id)
     .fetch_all(&state.repo.db)
