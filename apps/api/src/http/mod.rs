@@ -40,6 +40,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::register)
         .service(crate::auth_http::register_fields_endpoint)
         .service(crate::staff_http::custom_page_public)
+        .service(crate::staff_http::custom_pages_public_list)
         .service(crate::staff_http::custom_pages_list)
         .service(crate::staff_http::custom_pages_add)
         .service(crate::staff_http::custom_pages_update)

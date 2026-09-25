@@ -119,7 +119,8 @@ pub async fn custom_pages_add(
     )
     .await?;
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO custom_pages (slug, title, body, visible, sort, module_key) \
+        "INSERT INTO custom_pages \
+         (slug, title, body, visible, sort, module_key) \
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
     )
     .bind(body.slug.trim())
@@ -224,6 +225,31 @@ pub async fn custom_pages_delete(
 }
 
 // ============ 公开展示 ============
+
+/// GET /public-pages：可被前台访问的自定义页清单（sitemap 用；无登录态）。
+/// 与 /pages/{slug} 同一条可见性判据——挂了模块键且模块关闭的页面不出现在这里，
+/// 免得爬虫拿到一个必然 404 的地址。
+#[get("/public-pages")]
+pub async fn custom_pages_public_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let rows: Vec<(String, String)> =
+        sqlx::query_as::<_, (String, String)>(&format!(
+            "SELECT slug, updated_at::date::text FROM custom_pages \
+             WHERE visible AND {} ORDER BY sort, id LIMIT 500",
+            crate::modules::module_on_sql("custom_pages")
+        ))
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(internal)?;
+    Ok(ok(
+        rows.into_iter()
+            .map(|(slug, updated)| {
+                serde_json::json!({ "slug": slug, "updated_at": updated })
+            })
+            .collect::<Vec<_>>(),
+    ))
+}
 
 /// GET /pages/{slug}：消毒后的页面内容（visible=false 或不存在 → 404 信封）
 #[get("/pages/{slug}")]
