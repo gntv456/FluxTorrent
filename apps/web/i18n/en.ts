@@ -2789,6 +2789,12 @@ const enBase: Omit<
     saved: "Field saved",
     deleted: "Field deleted",
   },
+  moduleBind: {
+    label: "Bound module (optional)",
+    none: "Not bound",
+    offPrefix: "Off:",
+    hint: "When the bound module is off this item disappears from the site; leave empty to keep it always visible.",
+  },
   adminPages: {
     hint: "Create arbitrary content pages served at /p/{slug}; hook them into navigation via the Menu panel. Body HTML is sanitized on output.",
     add: "New page",

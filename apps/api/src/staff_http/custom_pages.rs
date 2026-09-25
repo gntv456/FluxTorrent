@@ -32,6 +32,7 @@ struct CustomPageRow {
     body: String,
     visible: bool,
     sort: i32,
+    module_key: Option<String>,
     updated_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -48,7 +49,7 @@ pub async fn custom_pages_list(
     )
     .await?;
     let rows: Vec<CustomPageRow> = sqlx::query_as(
-        "SELECT id, slug, title, body, visible, sort, updated_at \
+        "SELECT id, slug, title, body, visible, sort, module_key, updated_at \
          FROM custom_pages ORDER BY sort, id",
     )
     .fetch_all(&state.repo.db)
@@ -67,12 +68,20 @@ struct CustomPageBody {
     visible: bool,
     #[serde(default = "default_sort")]
     sort: i32,
+    /// 挂到某模块：该模块关闭时页面从前台下线（0199）
+    #[serde(default)]
+    module_key: Option<String>,
 }
 fn default_true() -> bool {
     true
 }
 fn default_sort() -> i32 {
     100
+}
+
+/// 空串按「不挂模块」处理（后台清空选择框提交的就是空串）
+pub(super) fn norm_module_key(k: &Option<String>) -> Option<&str> {
+    k.as_deref().map(str::trim).filter(|s| !s.is_empty())
 }
 
 fn validate_body(b: &CustomPageBody) -> DomainResult<()> {
@@ -104,15 +113,21 @@ pub async fn custom_pages_add(
     )
     .await?;
     validate_body(&body)?;
+    crate::modules::require_known_module(
+        &state.repo.db,
+        norm_module_key(&body.module_key),
+    )
+    .await?;
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO custom_pages (slug, title, body, visible, sort) \
-         VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        "INSERT INTO custom_pages (slug, title, body, visible, sort, module_key) \
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
     )
     .bind(body.slug.trim())
     .bind(body.title.trim())
     .bind(&body.body)
     .bind(body.visible)
     .bind(body.sort)
+    .bind(norm_module_key(&body.module_key))
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| match &e {
@@ -143,9 +158,15 @@ pub async fn custom_pages_update(
     )
     .await?;
     validate_body(&body)?;
+    crate::modules::require_known_module(
+        &state.repo.db,
+        norm_module_key(&body.module_key),
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE custom_pages SET slug = $2, title = $3, body = $4, \
-         visible = $5, sort = $6, updated_at = now() WHERE id = $1",
+         visible = $5, sort = $6, module_key = $7, updated_at = now() \
+         WHERE id = $1",
     )
     .bind(path.into_inner())
     .bind(body.slug.trim())
@@ -153,6 +174,7 @@ pub async fn custom_pages_update(
     .bind(&body.body)
     .bind(body.visible)
     .bind(body.sort)
+    .bind(norm_module_key(&body.module_key))
     .execute(&state.repo.db)
     .await
     .map_err(|e| match &e {
@@ -210,14 +232,16 @@ pub async fn custom_page_public(
     path: web::Path<String>,
 ) -> DomainResult<HttpResponse> {
     let slug = path.into_inner();
-    let row: Option<(String, String, String)> = sqlx::query_as(
-        "SELECT title, body, updated_at::text FROM custom_pages \
-         WHERE slug = $1 AND visible",
-    )
-    .bind(&slug)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(internal)?;
+    let row: Option<(String, String, String)> =
+        sqlx::query_as::<_, (String, String, String)>(&format!(
+            "SELECT title, body, updated_at::text FROM custom_pages \
+             WHERE slug = $1 AND visible AND {}",
+            crate::modules::module_on_sql("custom_pages")
+        ))
+        .bind(&slug)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(internal)?;
     let Some((title, body, updated)) = row else {
         return Err(DomainError::NotFound(0));
     };

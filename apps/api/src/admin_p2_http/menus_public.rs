@@ -45,6 +45,10 @@ pub async fn menu_items_public(
            AND (m.module_key IS NULL OR COALESCE(( \
                  SELECT value = 'yes' FROM site_settings s \
                  WHERE s.name = 'module_' || m.module_key), false)) \
+           AND NOT EXISTS (SELECT 1 FROM custom_pages cp \
+             WHERE '/p/' || cp.slug = m.url AND cp.module_key IS NOT NULL \
+             AND NOT COALESCE((SELECT value = 'yes' FROM site_settings s2 \
+                               WHERE s2.name = 'module_' || cp.module_key), false)) \
          ORDER BY sort, id LIMIT 60",
     )
     .bind(&q.location)

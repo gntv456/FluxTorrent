@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { ModuleKeySelect } from "@/components/module-key-select";
 
 /** 自定义页面管理面板（0187 一审 R4.4 的「方向盘」，三审 B-2）：
  *  站长创建/编辑/上下线任意内容页（slug → /p/{slug}），导航挂接走
@@ -15,6 +16,8 @@ interface CustomPage {
   body: string;
   visible: boolean;
   sort: number;
+  /** 挂载模块键（0199）；PUT 是全量覆盖，列表必须带回该字段否则会被清空 */
+  module_key: string | null;
   updated_at: string;
 }
 
@@ -27,6 +30,7 @@ interface Draft {
   body: string;
   visible: boolean;
   sort: number;
+  module_key: string | null;
 }
 
 const emptyDraft = (): Draft => ({
@@ -35,6 +39,7 @@ const emptyDraft = (): Draft => ({
   body: "",
   visible: true,
   sort: 100,
+  module_key: null,
 });
 
 export function StaffCustomPagesPanel({
@@ -138,6 +143,12 @@ export function StaffCustomPagesPanel({
           placeholder="<p>…</p>"
         />
       </label>
+      <div className="flex flex-wrap items-end gap-4">
+        <ModuleKeySelect
+          value={draft.module_key}
+          onChange={(k) => setDraft({ ...draft, module_key: k })}
+        />
+      </div>
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-xs text-sub">
           <input
@@ -232,6 +243,7 @@ export function StaffCustomPagesPanel({
                       body: p.body,
                       visible: p.visible,
                       sort: p.sort,
+                      module_key: p.module_key,
                     });
                   }}
                 >

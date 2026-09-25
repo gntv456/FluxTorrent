@@ -52,6 +52,8 @@ struct UserFieldDefRow {
     options: serde_json::Value,
     sort: i32,
     enabled: bool,
+    /// 挂到某模块：模块关闭时字段从前台（注册页/usercp/公开档案）下线（0199）
+    module_key: Option<String>,
     /// 已填用户数（删字段前的心里有数）
     filled: i64,
 }
@@ -70,7 +72,7 @@ pub async fn user_fields_list(
     .await?;
     let rows: Vec<UserFieldDefRow> = sqlx::query_as(
         "SELECT d.key, d.label, d.type, d.required, d.visibility, \
-             d.show_on_register, d.options, d.sort, d.enabled, \
+             d.show_on_register, d.options, d.sort, d.enabled, d.module_key, \
              (SELECT count(*) FROM user_field_values v \
                WHERE v.field_key = d.key) AS filled \
          FROM user_field_defs d ORDER BY d.sort, d.key",
@@ -97,6 +99,14 @@ struct UserFieldDefBody {
     sort: i32,
     #[serde(default = "default_true")]
     enabled: bool,
+    /// 挂到某模块键（空/缺省 = 不挂，恒可见）
+    #[serde(default)]
+    module_key: Option<String>,
+}
+
+/// 空串按「不挂模块」处理（后台清空选择框提交的就是空串）
+fn norm_module_key(k: &Option<String>) -> Option<&str> {
+    k.as_deref().map(str::trim).filter(|s| !s.is_empty())
 }
 fn default_vis() -> String {
     "public".into()
@@ -169,10 +179,15 @@ pub async fn user_fields_add(
         ));
     }
     validate_def(&body)?;
+    crate::modules::require_known_module(
+        &state.repo.db,
+        norm_module_key(&body.module_key),
+    )
+    .await?;
     sqlx::query(
         "INSERT INTO user_field_defs (key, label, type, required, \
-         visibility, show_on_register, options, sort, enabled) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+         visibility, show_on_register, options, sort, enabled, module_key) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
     )
     .bind(&key)
     .bind(body.label.trim())
@@ -183,6 +198,7 @@ pub async fn user_fields_add(
     .bind(&body.options)
     .bind(body.sort)
     .bind(body.enabled)
+    .bind(norm_module_key(&body.module_key))
     .execute(&state.repo.db)
     .await
     .map_err(|e| match &e {
@@ -214,12 +230,17 @@ pub async fn user_fields_update(
     .await?;
     let key = path.into_inner();
     validate_def(&body)?;
+    crate::modules::require_known_module(
+        &state.repo.db,
+        norm_module_key(&body.module_key),
+    )
+    .await?;
     // type 不可改（存量 values 的形状解释会失配）；options 收紧会留死值，
     // 允许改但已在值集外的旧值照存（展示原样）
     let n = sqlx::query(
         "UPDATE user_field_defs SET label = $2, required = $3, \
          visibility = $4, show_on_register = $5, options = $6, sort = $7, \
-         enabled = $8 WHERE key = $1 AND type = $9",
+         enabled = $8, module_key = $10 WHERE key = $1 AND type = $9",
     )
     .bind(&key)
     .bind(body.label.trim())
@@ -230,6 +251,7 @@ pub async fn user_fields_update(
     .bind(body.sort)
     .bind(body.enabled)
     .bind(&body.r#type)
+    .bind(norm_module_key(&body.module_key))
     .execute(&state.repo.db)
     .await
     .map_err(internal)?
@@ -327,14 +349,15 @@ pub async fn my_fields(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let rows: Vec<MyFieldRow> = sqlx::query_as(
+    let rows: Vec<MyFieldRow> = sqlx::query_as::<_, MyFieldRow>(&format!(
         "SELECT d.key, d.label, d.type, d.required, d.options, v.value \
          FROM user_field_defs d \
          LEFT JOIN user_field_values v \
            ON v.field_key = d.key AND v.user_id = $1 \
-         WHERE d.enabled \
+         WHERE d.enabled AND {} \
          ORDER BY d.sort, d.key",
-    )
+        crate::modules::module_on_sql("d")
+    ))
     .bind(auth.id)
     .fetch_all(&state.repo.db)
     .await
@@ -359,9 +382,12 @@ pub async fn my_fields_put(
     let mut saved = 0i64;
     for (key, val) in &body.values {
         let def: Option<(String, String, bool, serde_json::Value)> =
-            sqlx::query_as(
+            sqlx::query_as::<_, (String, String, bool, serde_json::Value)>(
+                &format!(
                 "SELECT type, label, required, options FROM user_field_defs \
-             WHERE key = $1 AND enabled",
+             WHERE key = $1 AND enabled AND {}",
+                crate::modules::module_on_sql("")
+            ),
             )
             .bind(key)
             .fetch_optional(&mut *tx)
@@ -414,13 +440,17 @@ pub(crate) async fn public_fields_for(
     uid: i64,
 ) -> Vec<serde_json::Value> {
     let rows: Vec<(String, String, String, serde_json::Value)> =
-        sqlx::query_as(
-            "SELECT d.key, d.label, d.type, v.value \
+        sqlx::query_as::<_, (String, String, String, serde_json::Value)>(
+            &format!(
+                "SELECT d.key, d.label, d.type, v.value \
              FROM user_field_defs d \
              JOIN user_field_values v ON v.field_key = d.key \
              WHERE d.enabled AND d.visibility = 'public' \
+               AND {} \
                AND v.user_id = $1 \
              ORDER BY d.sort, d.key",
+                crate::modules::module_on_sql("d")
+            ),
         )
         .bind(uid)
         .fetch_all(db)
@@ -438,9 +468,12 @@ pub(crate) async fn public_fields_for(
 /// 注册页字段下发（register 前拉取）：show_on_register 且 enabled
 pub(crate) async fn register_fields(db: &PgPool) -> Vec<serde_json::Value> {
     let rows: Vec<(String, String, String, bool, serde_json::Value)> =
-        sqlx::query_as(
+        sqlx::query_as::<_, (String, String, String, bool, serde_json::Value)>(
+            &format!(
             "SELECT key, label, type, required, options FROM user_field_defs \
-         WHERE enabled AND show_on_register ORDER BY sort, key",
+             WHERE enabled AND show_on_register AND {} ORDER BY sort, key",
+            crate::modules::module_on_sql("")
+        ),
         )
         .fetch_all(db)
         .await
