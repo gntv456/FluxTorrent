@@ -140,6 +140,75 @@ async fn user_set_status(
         },
     )
     .await;
+    // 0209 P1-9：状态变更通知当事人（此前理由只进内部 modify_log，
+    // 用户只能从公开 ban-log 猜状态）。封禁走邮件（已无法登录看 PM）；
+    // 禁言/恢复走 PM 必达 + 邮件尽力。
+    {
+        let target: Option<(String, Option<String>)> = sqlx::query_as(
+            "SELECT username, email FROM users WHERE id = $1",
+        )
+        .bind(body.user_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten();
+        if let Some((username, email)) = target {
+            let site: String = sqlx::query_scalar(
+                "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'site_name'), 'FluxTorrent')",
+            )
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or_else(|_| "FluxTorrent".into());
+            let reason_txt = if body.reason.trim().is_empty() {
+                "（未填写）".to_string()
+            } else {
+                body.reason.trim().to_string()
+            };
+            let subject = format!("[{site}] 账号状态变更：{label}");
+            let body_text = match body.status {
+                2 => format!(
+                    "你好 {username}，你的账号已被{label}。\n理由：{reason_txt}\n如认为有误，可通过站点的申诉通道提交申诉。",
+                ),
+                1 => format!(
+                    "你好 {username}，你的账号已被{label}（发言受限，其余功能正常）。\n理由：{reason_txt}",
+                ),
+                _ => format!(
+                    "你好 {username}，你的账号状态已恢复正常。此前的限制已解除。",
+                ),
+            };
+            // 封禁：PM 也写（解封后可见历史）+ 邮件必发；其余：notify 双通道
+            if body.status == 2 {
+                let _ = crate::mailer::site_message(
+                    &state.repo.db,
+                    body.user_id,
+                    &subject,
+                    &body_text,
+                )
+                .await;
+                if let Some(to) = email {
+                    let cfg = crate::mailer::smtp_config(&state.repo.db).await;
+                    let (s, b) = (subject.clone(), body_text.clone());
+                    actix_web::rt::spawn(async move {
+                        if let Some(cfg) = cfg {
+                            let _ = crate::gaps_http::send_generic_mail(
+                                &cfg.url, &cfg.from, &to, &s, &b,
+                            )
+                            .await;
+                        }
+                    });
+                }
+            } else {
+                crate::mailer::notify(
+                    &state.repo.db,
+                    body.user_id,
+                    email,
+                    &subject,
+                    &body_text,
+                )
+                .await;
+            }
+        }
+    }
     Ok(ok(
         serde_json::json!({ "user_id": body.user_id, "status": body.status }),
     ))

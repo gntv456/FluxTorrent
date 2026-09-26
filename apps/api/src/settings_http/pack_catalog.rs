@@ -150,7 +150,12 @@ async fn remote_catalog(
             ) else {
                 continue;
             };
-            if !["taxonomy", "theme"].contains(&kind) {
+            // 0209 P1-11：远程目录放开全五 kind——本地导入本就支持
+            // taxonomy/theme/rules/assets/embed，此前远程只放行两 kind，
+            // 生态商店「四品类」承诺在远程路径只兑现一半。
+            if !["taxonomy", "theme", "rules", "assets", "embed"]
+                .contains(&kind)
+            {
                 continue;
             }
             items.push(CatalogItem {

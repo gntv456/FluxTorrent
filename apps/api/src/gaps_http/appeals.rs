@@ -166,6 +166,13 @@ struct AppealHandleReq {
     appeal_id: i64,
     accept: bool,
     note: String,
+    /// 受理申诉后自动解封（0209 P1-8；缺省 true——受理即恢复，免两跳）
+    #[serde(default = "yes_default")]
+    unban: bool,
+}
+
+fn yes_default() -> bool {
+    true
 }
 
 /// staff 侧申诉队列（open 优先，可按状态过滤）
@@ -241,9 +248,72 @@ pub async fn appeal_handle(
     if n == 0 {
         return Err(DomainError::Validation("申诉不存在或已处理".into()));
     }
+    // 0209 P1-8：受理即联动解封（可选）+ 双通道通知当事人。
+    // 此前 accept 只改 appeals 表，站长须再进用户详情手动恢复 status=0，
+    // 且被封者不能登录看 PM、也收不到任何处理结果。
+    let (user_id, email, unbanned): (i64, Option<String>, bool) =
+        sqlx::query_as(
+            "SELECT a.user_id, u.email, \
+             ($2 AND a.kind = 'ban' AND u.status >= 2) \
+             FROM appeals a JOIN users u ON u.id = a.user_id WHERE a.id = $1",
+        )
+        .bind(body.appeal_id)
+        .bind(body.accept && body.unban)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .unwrap_or((0, None, false));
+    if unbanned {
+        let restored = sqlx::query(
+            "UPDATE users SET status = 0 WHERE id = $1 AND status >= 2",
+        )
+        .bind(user_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+        if restored > 0 {
+            state
+                .repo
+                .audit(Some(auth.id), "appeal.unban", Some(user_id))
+                .await;
+        }
+    }
+    if user_id > 0 {
+        let site: String = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'site_name'), 'FluxTorrent')",
+        )
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or_else(|_| "FluxTorrent".into());
+        let verdict = if body.accept { "已受理" } else { "未通过" };
+        let subject = format!("[{site}] 你的申诉{verdict}");
+        let body_text = format!(
+            "你的申诉（#{id}）处理结果：{verdict}。\n处理说明：{note}\n{}",
+            if unbanned { "账号已恢复，现在可以正常登录。" } else { "" },
+            id = body.appeal_id,
+            note = if body.note.trim().is_empty() {
+                "（无）"
+            } else {
+                body.note.trim()
+            },
+        );
+        // 被拒者可登录看 PM；仍被封者至少有邮件（未配 SMTP 则只留 PM）
+        crate::mailer::notify(
+            &state.repo.db,
+            user_id,
+            email,
+            &subject,
+            &body_text,
+        )
+        .await;
+    }
     state
         .repo
         .audit(Some(auth.id), "appeal.handle", Some(body.appeal_id))
         .await;
-    Ok(ok(serde_json::json!({ "handled": body.appeal_id })))
+    Ok(ok(serde_json::json!({
+        "handled": body.appeal_id,
+        "unbanned": unbanned,
+    })))
 }

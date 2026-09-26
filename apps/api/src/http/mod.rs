@@ -180,6 +180,8 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::donate_order_status)
         .service(crate::staff_http::donate_notify)
         .service(crate::staff_http::donate_order)
+        .service(crate::staff_http::admin_payment_orders)
+        .service(crate::staff_http::admin_payment_complete)
         .service(crate::staff_http::site_profile)
         .service(crate::staff_http::site_type_pack_list)
         .service(crate::staff_http::site_type_pack_apply)
