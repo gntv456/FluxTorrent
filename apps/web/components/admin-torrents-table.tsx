@@ -6,9 +6,11 @@ import {
   fmtBytes,
   type AdminTorrentRow,
 } from "./admin-torrents-shared";
+import { useRef, useState } from "react";
 import { useI18n } from "@/i18n/client";
 
-/** 种子批量工作台·列表表格（从 admin-torrents-list.tsx 按域拆出）。 */
+/** 种子批量工作台·列表表格（从 admin-torrents-list.tsx 按域拆出）。
+ *  M4：触屏长按行 500ms 进入多选态（等价勾选该行），桌面 checkbox 不变。 */
 export function TorrentTable(props: {
   data: { page: number; rows: AdminTorrentRow[] } | null;
   sel: Set<number>;
@@ -18,11 +20,48 @@ export function TorrentTable(props: {
 }) {
   const { data, sel, setSel, decide } = props;
   const { dict } = useI18n();
+  // M4 长按多选：长按行即勾选该行并进入多选；已选数量与批量操作条
+  // 复用既有 sel 展示（admin-torrents-list）。每行 onActivate 各自绑定。
+  // M4 长按多选：长按行 → 进入多选 + 勾选本行（每行独立计时器）
+  const [multi, setMulti] = useState(false);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const makeMultiBind = (id: number) => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      if (e.pointerType !== "touch") return;
+      pressTimer.current = setTimeout(() => {
+        if (navigator.vibrate) navigator.vibrate(10);
+        setMulti(true);
+        setSel((prev) => new Set(prev).add(id));
+      }, 500);
+    },
+    onPointerUp: () => {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+    },
+    onPointerCancel: () => {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+    },
+  });
   const at = dict.adminTorrents;
   const APPROVAL = approvalList(at.approval);
   const PROMO_LABEL = promoLabels(at.promo);
   return (
-    <table className="nexus-table">
+    <>
+      {multi && (
+        <p className="mb-2 text-xs font-bold text-sky">
+          {at.multiSelectOn.replace("{n}", String(sel.size))}
+          <button
+            type="button"
+            className="ml-2 underline"
+            onClick={() => {
+              setMulti(false);
+              setSel(new Set());
+            }}
+          >
+            {at.multiSelectExit}
+          </button>
+        </p>
+      )}
+      <table className={multi ? "nexus-table is-multiselect" : "nexus-table"}>
       <thead>
         <tr>
           <td className="colhead w-10"></td>
@@ -42,7 +81,17 @@ export function TorrentTable(props: {
       </thead>
       <tbody>
         {data?.rows.map((t) => (
-          <tr key={t.id}>
+          <tr
+            key={t.id}
+            {...makeMultiBind(t.id)}
+            onContextMenu={(e) => {
+              // 长按在部分浏览器触发 contextmenu：进入多选时抑制菜单
+              if (matchMedia("(pointer: coarse)").matches) {
+                e.preventDefault();
+                setSel((prev) => new Set(prev).add(t.id));
+              }
+            }}
+          >
             <td>
               <input
                 type="checkbox"
@@ -139,6 +188,7 @@ export function TorrentTable(props: {
           </tr>
         )}
       </tbody>
-    </table>
+      </table>
+    </>
   );
 }

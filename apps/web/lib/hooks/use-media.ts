@@ -14,6 +14,9 @@ import { useEffect, useState } from "react";
 export function useMediaQuery(query: string, fallback: boolean): boolean {
   const [matches, setMatches] = useState(fallback);
   useEffect(() => {
+    // SSR/极老浏览器无 matchMedia：保持 fallback（真 SSR 不会跑到
+    // useEffect；jsdom 某些配置下会跑，这里防御不抛错）
+    if (typeof window === "undefined" || !window.matchMedia) return;
     const mq = window.matchMedia(query);
     const update = () => setMatches(mq.matches);
     update();

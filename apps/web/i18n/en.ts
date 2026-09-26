@@ -3909,6 +3909,8 @@ const enBase: Omit<
     thSize: "Size",
     thSeeders: "Seed/Leech",
     tableEmpty: "No matching torrents",
+    multiSelectOn: "Multi-select on (long-press) · {n} selected",
+    multiSelectExit: "Exit multi-select",
     pageNum: "Page {n}",
     qRecord: "{title}: search by username",
     // Dimension filters (admin-torrents-dims, B3 six field types)
