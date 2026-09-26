@@ -1,22 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type { ToolTab } from "@/components/staff-tools";
 import { AgentRulesPanel } from "./staff-tools-sys-agentrules";
+import { RuntimeLogPanel } from "./staff-tools-runtime";
 import type {
   AgentRule,
   DbStats,
   LocationPage,
-  SysLogPage,
 } from "./staff-tools-sys-shared";
 import { PAGE_BTN_CLS } from "./staff-tools-sys-shared";
 
 /** 系统观测面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
- *  数据库状态（dbstats）/ 系统日志（syslog）/ 位置管理（locations）/
- *  客户端黑白名单（agentrules）。
+ *  数据库状态（dbstats）/ 运行日志（syslog，见 staff-tools-runtime.tsx）/
+ *  位置管理（locations）/ 客户端黑白名单（agentrules）。
  *  黑白名单拆至 ./staff-tools-sys-agentrules.tsx；类型拆至
  *  ./staff-tools-sys-shared.ts。 */
 
@@ -35,28 +35,17 @@ export function StaffSysPanel({
   const { dict, locale } = useI18n();
   const t = dict.stafftools;
   const [dbStats, setDbStats] = useState<DbStats | null>(null);
-  const [logPage, setLogPage] = useState(1);
-  const [logQ, setLogQ] = useState("");
-  const [logData, setLogData] = useState<SysLogPage | null>(null);
   const [locPage, setLocPage] = useState(1);
   const [locData, setLocData] = useState<LocationPage | null>(null);
   const [agentRules, setAgentRules] = useState<AgentRule[] | null>(null);
 
-  // 系统日志/位置管理：按需分页加载
+  // 数据库状态常显；位置管理按需分页加载
   useEffect(() => {
     api
       .get<DbStats | null>("/api/v1/admin/dbstats")
       .then(setDbStats)
       .catch(() => setDbStats(null));
   }, []);
-  useEffect(() => {
-    api
-      .get<SysLogPage>(
-        `/api/v1/admin/syslog?page=${logPage}&q=${encodeURIComponent(logQ)}`,
-      )
-      .then(setLogData)
-      .catch(() => setLogData(null));
-  }, [logPage, logQ]);
   useEffect(() => {
     api
       .get<LocationPage>(`/api/v1/admin/locations?page=${locPage}`)
@@ -143,76 +132,8 @@ export function StaffSysPanel({
         </>
       )}
 
-      {/* 系统日志（bitbucketlog → 审计日志） */}
-      {tab === "syslog" && (
-        <>
-          <section className="baozi-panel p-4">
-            <div className="cmgmt-form">
-              <label>
-                {t.slSearch}
-                <input
-                  value={logQ}
-                  onChange={(e) => {
-                    setLogQ(e.target.value);
-                    setLogPage(1);
-                  }}
-                  placeholder="massmail / warn_user / freeleech"
-                />
-              </label>
-            </div>
-          </section>
-          <table className="nexus-table">
-            <tbody>
-              <tr>
-                <td className="colhead">ID</td>
-                <td className="colhead">{t.slActor}</td>
-                <td className="colhead">{t.slAction}</td>
-                <td className="colhead">{t.fldIp}</td>
-                <td className="colhead">{t.mailAt}</td>
-              </tr>
-              {logData?.items.map((r) => (
-                <tr key={r.id}>
-                  <td className="num">{r.id}</td>
-                  <td>{r.actor ?? "system"}</td>
-                  <td className="font-mono text-xs">{r.action}</td>
-                  <td className="font-mono text-xs">{r.ip ?? "—"}</td>
-                  <td className="text-xs text-sub">
-                    {new Date(r.created_at).toLocaleString(dateLocale(locale))}
-                  </td>
-                </tr>
-              ))}
-              {(!logData || logData.items.length === 0) && (
-                <tr>
-                  <td colSpan={5} className="py-6 text-center text-sub">
-                    {t.slEmpty}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          {logData && logData.pages > 1 && (
-            <div className="flex items-center justify-between">
-              <button
-                className={PAGE_BTN_CLS}
-                disabled={logPage <= 1}
-                onClick={() => setLogPage((p) => p - 1)}
-              >
-                {dict.common.nextPage}
-              </button>
-              <span className="text-xs text-sub">
-                {logData.page} / {logData.pages}（{logData.total}）
-              </span>
-              <button
-                className={PAGE_BTN_CLS}
-                disabled={logPage >= logData.pages}
-                onClick={() => setLogPage((p) => p + 1)}
-              >
-                {dict.common.nextPage}
-              </button>
-            </div>
-          )}
-        </>
-      )}
+      {/* 运行日志（0218 G6：api/worker WARN+ 出口） */}
+      {tab === "syslog" && <RuntimeLogPanel />}
 
       {/* 位置管理（location → IP 网段视图） */}
       {tab === "locations" && (

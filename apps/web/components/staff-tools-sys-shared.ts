@@ -1,6 +1,6 @@
 /**
  * 系统观测·共享类型与常量（从 components/staff-tools-sys.tsx 按域拆出）：
- * 数据库状态 / 系统日志 / 位置管理 / 客户端规则行类型。
+ * 数据库状态 / 运行日志 / 位置管理 / 客户端规则行类型。
  */
 
 export interface PgConn {
@@ -25,21 +25,23 @@ export interface DbStats {
   tables: TableSize[];
 }
 
-export interface SysLogItem {
+export interface RuntimeLogItem {
   id: number;
-  actor: string | null;
-  action: string;
-  ref_json: unknown;
-  ip: string | null;
-  created_at: string;
+  ts: string;
+  level: string;
+  source: string;
+  target: string;
+  message: string;
+  repeat: number;
 }
 
-export interface SysLogPage {
-  items: SysLogItem[];
+export interface RuntimeLogPage {
+  items: RuntimeLogItem[];
   total: number;
   page: number;
   per_page: number;
   pages: number;
+  counts_24h: [string, number][];
 }
 
 export interface LocationItem {

@@ -24,9 +24,13 @@ pub async fn run_all(
     let mut first_tick30 = true;
     let mut first_tick6h = true;
     let mut first_tick1d = true;
+    // 任务目录同步（0218 G7）：面板的「全量 job + 节奏」以 job_status 为准
+    sync_job_catalog(&db).await;
     loop {
         tokio::select! {
             _ = tick.tick() => {
+                // 手动触发认领（0218 G7）：与定时同函数、同 advisory 锁，不阻塞本循环
+                poll_manual_triggers(&db, &redis).await;
                 // 审计修复（多实例互斥 + 超时）：每个 job 包 advisory lock + 900s 超时。
                 // 多 worker 部署时同 job 只有抢到锁的实例执行（拿不到锁静默跳过本轮）；
                 // 卡死任务 15 分钟后被 timeout 掐掉、连接归还，不会拖垮整个调度循环。
@@ -60,32 +64,10 @@ pub async fn run_all(
                 with_lock(&db, "job:preserve_seed", preserve_seed(&db)).await;
                 with_lock(&db, "job:task_settle", crate::task_jobs::task_settle(&db)).await;
                 with_lock(&db, "job:exam_assign", crate::task_jobs::exam_assign(&db)).await;
-                // 论坛抽奖到点开奖（0126）：draw_at 已过且仍 open 的逐个开。
-                // 开奖逻辑（CAS open→drawn + 按人幂等发放）在 sqlx 层面自守，
-                // 锁内重跑安全。二审 G8：包进 with_lock（advisory 锁防多实例
-                // 双开）+ forums 模块判定（模块关→不开奖不动账）。
-                {
-                    let due: Vec<i64> = sqlx::query_scalar(
-                                                "SELECT topic_id FROM \
-                         topic_lotteries WHERE status = 'open' AND draw_at <= \
-                         now() LIMIT 50",
-                    )
-                    .fetch_all(&db)
-                    .await
-                    .unwrap_or_default();
-                    if !due.is_empty() {
-                        let db2 = db.clone();
-                        with_lock(&db, "job:lottery_settle", async move {
-                            for tid in due {
-                                if let Err(e) = lottery_settle(&db2, tid).await {
-                                    tracing::warn!(topic_id = tid, error = %e, "lottery_settle failed");
-                                }
-                            }
-                            Ok::<(), anyhow::Error>(())
-                        })
-                        .await;
-                    }
-                }
+                // 论坛抽奖到点开奖（0126）：CAS open→drawn + 按人幂等发放在
+                // sqlx 层面自守，锁内重跑安全（二审 G8：包进 with_lock 防多实例
+                // 双开 + forums 模块判定——模块关不开奖不动账）。
+                with_lock(&db, "job:lottery_settle", lottery_settle_due(&db)).await;
                 // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
                 let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
                 if last_bank_day.is_none() {
@@ -147,6 +129,9 @@ pub async fn run_all(
                 // 卫生清理（NP docleanup 口径）：过期邀请落库回收 / 一次性凭证与重置 token 清理
                 with_lock(&db, "job:expire_invites", expire_invites(&db)).await;
                 with_lock(&db, "job:purge_expired_tokens", purge_expired_tokens(&db)).await;
+                // 运行日志保留期（0218 G6）：14 天 / 20 万行硬顶
+                with_lock(&db, "job:purge_runtime_logs", purge_runtime_logs(&db))
+                    .await;
                 // DLQ 可见性：只进不出等于变相丢计费——有积压时通知管理组信箱
                 {
                     let (db2, mut r) = (db.clone(), redis.clone());
@@ -177,131 +162,4 @@ pub async fn run_all(
             }
         }
     }
-}
-/// 多实例互斥 + per-job 超时（审计修复）。
-/// - 互斥：pg_try_advisory_lock(hashtext(key)) 拿不到（他实例在跑）→ 返回 None 静默跳过本轮；
-/// - 超时：tokio::time::timeout 900s 掐掉卡死任务（超时按失败上报）；
-/// - 连接口径：advisory lock 是会话级，lock/unlock 必须落在同一条连接上——
-///   从 pool acquire 一条专用连接持锁，业务 future 用整个 pool（不占锁连接），
-///   完成后在同一连接 unlock。业务超时被掐后 unlock 仍执行，锁不残留。
-/// 论坛抽奖开奖（0126，worker 侧）：与 api 的 lottery_draw_core 同一套库表协议——
-/// CAS open→drawn 防双开，中奖发放幂等键 `forum-lottery-win:{tid}:{uid}`（spark_ledger 自守），
-/// 无人参与退回楼主（`forum-lottery-refund:{tid}`）。票费不分成（归入池的是楼主冻结的奖金，
-/// 票费在本实现里是参与门槛而非奖池构成，避免开奖金额与冻结额错位）。
-pub(crate) async fn lottery_settle(
-    db: &PgPool,
-    topic_id: i64,
-) -> anyhow::Result<u64> {
-    let meta: Option<(i32, i64, i64)> = sqlx::query_as(
-        "SELECT winners, prize_per_winner, ticket_spark::bigint FROM topic_lotteries \
-         WHERE topic_id = $1 AND status = 'open'",
-    )
-    .bind(topic_id)
-    .fetch_optional(db)
-    .await?;
-    let Some((winners, prize, _ticket)) = meta else {
-        return Ok(0); // 已开/已取消：幂等静默
-    };
-    let n = sqlx::query(
-        "UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = \
-         $1 AND status = 'open'",
-    )
-    .bind(topic_id)
-    .execute(db)
-    .await?
-    .rows_affected();
-    if n == 0 {
-        return Ok(0); // 并发对手（楼主手动开）赢了对局
-    }
-    let mut tx = db.begin().await?;
-    // 中奖名单：数据库侧 random() 洗牌取前 N（抽签随机性不由应用层承担）
-    let picked: Vec<i64> = sqlx::query_scalar(
-        "UPDATE lottery_entries SET won = TRUE \
-         WHERE topic_id = $1 AND user_id IN ( \
-           SELECT user_id FROM lottery_entries WHERE topic_id = $1 ORDER BY random() LIMIT $2 \
-         ) RETURNING user_id",
-    )
-    .bind(topic_id)
-    .bind(winners)
-    .fetch_all(&mut *tx)
-    .await?;
-    if picked.is_empty() {
-        // 无人参与：奖金池整退楼主
-        let op: i64 =
-            sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
-                .bind(topic_id)
-                .fetch_one(&mut *tx)
-                .await?;
-        let refund = winners as i64 * prize;
-        if refund > 0 {
-            let exists: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM spark_ledger \
-                 WHERE idempotency_key = $1)",
-            )
-            .bind(format!("forum-lottery-refund:{topic_id}"))
-            .fetch_one(&mut *tx)
-            .await?;
-            if !exists {
-                let bal: i64 = sqlx::query_scalar(
-                    "UPDATE users SET spark_balance = \
-                     spark_balance + $2 WHERE id = $1 RETURNING spark_balance",
-                )
-                .bind(op)
-                .bind(refund)
-                .fetch_one(&mut *tx)
-                .await?;
-                sqlx::query(
-                    "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
-                     VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'forum_lottery_refund', $3, $4)",
-                )
-                .bind(op)
-                .bind(refund)
-                .bind(format!("forum-lottery-refund:{topic_id}"))
-                .bind(bal)
-                .execute(&mut *tx)
-                .await?;
-            }
-        }
-        tx.commit().await?;
-        tracing::info!(
-            topic_id,
-            refund,
-            "lottery settled: no entries, refunded"
-        );
-        return Ok(0);
-    }
-    // 发放（同事务逐人：幂等键存在则跳过，重跑安全）
-    for uid in &picked {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE \
-             idempotency_key = $1)",
-        )
-        .bind(format!("forum-lottery-win:{topic_id}:{uid}"))
-        .fetch_one(&mut *tx)
-        .await?;
-        if exists || prize <= 0 {
-            continue;
-        }
-        let bal: i64 = sqlx::query_scalar(
-            "UPDATE users SET spark_balance = spark_balance + $2 \
-             WHERE id = $1 RETURNING spark_balance",
-        )
-        .bind(uid)
-        .bind(prize)
-        .fetch_one(&mut *tx)
-        .await?;
-        sqlx::query(
-            "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
-             VALUES (nextval('spark_ledger_id_seq'), $1, $2, 'forum_lottery', $3, $4)",
-        )
-        .bind(uid)
-        .bind(prize)
-        .bind(format!("forum-lottery-win:{topic_id}:{uid}"))
-        .bind(bal)
-        .execute(&mut *tx)
-        .await?;
-    }
-    tx.commit().await?;
-    tracing::info!(topic_id, winners = picked.len(), prize, "lottery settled");
-    Ok(picked.len() as u64)
 }

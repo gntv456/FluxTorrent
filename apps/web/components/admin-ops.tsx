@@ -6,11 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { AdminOpsJobs } from "@/components/admin-ops-jobs";
 
 /** 后台运维三件套（0078，U3D 口径）：
  *  ① 版本页 GET /admin/version（git 版本 + 组件运行信息）
  *  ② 备份面板 GET /admin/backups + POST /admin/backups/run
- *  ③ 任务手动触发 POST /admin/jobs/run（前四个）+ /run2（0209 等价 SQL 六任务） */
+ *  ③ 任务调度（0218 G7：拆至 admin-ops-jobs.tsx，目录/最近运行/入队触发） */
 
 interface VersionInfo {
   app: string;
@@ -74,37 +75,6 @@ export function AdminOpsPanel() {
           .replace("{size}", fmtBytes(r.bytes)),
       );
       load();
-    } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : t.runFailed);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function jobRun(job: string) {
-    if (!window.confirm(`${t.jobRun} · ${job}？`)) return;
-    setBusy(job);
-    setMsg(null);
-    // 0209 P2-16：前四个任务走 /run，其余六个等价 SQL 任务走 /run2
-    const run2Jobs = [
-      "hr_enforce",
-      "hr_punish",
-      "class_auto_adjust",
-      "task_settle",
-      "multi_ip_check",
-      "leak_scan",
-    ];
-    const endpoint = run2Jobs.includes(job)
-      ? "/api/v1/admin/jobs/run2"
-      : "/api/v1/admin/jobs/run";
-    try {
-      const r = await api.post<{ job: string; affected: number }>(
-        endpoint,
-        { job },
-      );
-      setMsg(
-        t.jobDone.replace("{job}", r.job).replace("{n}", String(r.affected)),
-      );
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : t.runFailed);
     } finally {
@@ -206,32 +176,8 @@ export function AdminOpsPanel() {
         </div>
       </div>
 
-      {/* ③ 任务手动触发 */}
-      <div className="baozi-panel flex flex-col gap-2 p-4">
-        <h2 className="text-base font-bold">⚙️ {t.jobsTitle}</h2>
-        <p className="text-xs text-sub">{t.jobsNote}</p>
-        <ul className="flex flex-col divide-y divide-line text-sm">
-          {t.jobs.map(([job, label]) => (
-            <li
-              key={job}
-              className="flex items-center justify-between gap-2 py-2"
-            >
-              <span>
-                <b>{label}</b>
-                <code className="ml-2 font-mono text-xs text-sub">{job}</code>
-              </span>
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={() => jobRun(job)}
-                className="min-h-[32px] shrink-0 rounded-full border border-line px-3 text-xs font-bold disabled:opacity-50"
-              >
-                {busy === job ? "…" : t.jobRun}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* ③ 任务调度（0218 G7：目录/最近运行/入队触发，见 admin-ops-jobs.tsx） */}
+      <AdminOpsJobs />
 
       {msg && (
         <p
