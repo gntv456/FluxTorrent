@@ -4,6 +4,7 @@ import { useI18n } from "@/i18n/client";
 import { api, ApiError } from "@/lib/api-client";
 import { ATTACH_ACCEPT, FLD, PILL } from "@/components/torrent-manage-parts";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
+import { SectionKindBool } from "@/components/section-kind-bool";
 
 type Dict = ReturnType<typeof useI18n>["dict"];
 
@@ -16,7 +17,6 @@ const MONO_AREA =
   "rounded-[var(--r-sm)] border border-line px-2 py-1 font-mono text-xs";
 const IMDB_INPUT =
   "w-40 rounded-[var(--r-sm)] border border-line px-2 py-1 text-sm";
-
 
 /** 编辑弹层·基础字段块 + 元数据块（0184 从 torrent-manage.tsx 拆出，
  *  300 行门禁）：标题/副题/分类/多维质量（分类联动由主组件驱动）、
@@ -157,13 +157,7 @@ export function ManageBasicFields({
                     className={`${fld} w-28`}
                   />
                 ) : type === "bool" ? (
-                  <input
-                    type="checkbox"
-                    checked={val === "true"}
-                    onChange={(e) =>
-                      set(e.target.checked ? "true" : "")
-                    }
-                  />
+                  <SectionKindBool value={val} onChange={set} />
                 ) : (
                   <input
                     value={val}

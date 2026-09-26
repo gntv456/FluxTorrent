@@ -12,6 +12,7 @@
 import { useState } from "react";
 import { INPUT_CARD } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
+import { SectionKindBool } from "@/components/section-kind-bool";
 import type { SectionDictRow, SectionKindMeta } from "./admin-torrents-dims";
 
 const CHIP_ON = "bg-sky text-white border-sky";
@@ -37,15 +38,11 @@ function ValueControl({
   opts,
   raw,
   setRaw,
-  yes,
-  no,
 }: {
   k: SectionKindMeta;
   opts: SectionDictRow[];
   raw: string;
   setRaw: (v: string) => void;
-  yes: string;
-  no: string;
 }) {
   const ft = k.field_type;
   if (ft === "select" || ft === "multiselect") {
@@ -74,25 +71,7 @@ function ValueControl({
     );
   }
   if (ft === "bool") {
-    return (
-      <div className="flex gap-1">
-        {(
-          [
-            ["true", yes],
-            ["false", no],
-          ] as [string, string][]
-        ).map(([v, label]) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setRaw(raw === v ? "" : v)}
-            className={`${CHIP_CLS} ${raw === v ? CHIP_ON : CHIP_OFF}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    );
+    return <SectionKindBool value={raw} onChange={setRaw} />;
   }
   const typ = ft === "date" ? "date" : ft === "number" ? "number" : "text";
   return (
@@ -147,8 +126,6 @@ export function DimSetPanel({
           opts={dict[k.kind] ?? []}
           raw={raw}
           setRaw={setRaw}
-          yes={at.dimBoolYes}
-          no={at.dimBoolNo}
         />
       )}
       <button

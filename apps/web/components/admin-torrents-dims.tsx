@@ -16,6 +16,7 @@
  */
 
 import { useI18n } from "@/i18n/client";
+import { SectionKindBool } from "@/components/section-kind-bool";
 
 export interface SectionDictRow {
   id: number;
@@ -90,42 +91,24 @@ function EnumRow({
   );
 }
 
-/** 布尔：二选一（再点一次取消） */
+/** 布尔：三态（是 / 否 / 未设置），控件与发布页/编辑页共用同一实现 */
 function BoolRow({
   k,
   values,
   onChange,
-  yes,
-  no,
 }: {
   k: SectionKindMeta;
   values: ValueMap;
   onChange: Setter;
-  yes: string;
-  no: string;
 }) {
   const base = `sec_${k.kind}`;
-  const cur = values[base] ?? "";
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className={LBL_CLS}>{k.label}</span>
-      <div className="flex gap-1">
-        {(
-          [
-            ["true", yes],
-            ["false", no],
-          ] as [string, string][]
-        ).map(([v, label]) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => onChange(base, cur === v ? "" : v)}
-            className={`${CHIP_CLS} ${cur === v ? CHIP_ON : CHIP_OFF}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <SectionKindBool
+        value={values[base] ?? ""}
+        onChange={(v) => onChange(base, v)}
+      />
     </div>
   );
 }
@@ -194,8 +177,6 @@ function DimRow(props: {
   opts: SectionDictRow[];
   values: ValueMap;
   onChange: Setter;
-  yes: string;
-  no: string;
 }) {
   const ft = props.k.field_type;
   if (ft === "select" || ft === "multiselect") return <EnumRow {...props} />;
@@ -243,8 +224,6 @@ export function DimFilterPanel({
           opts={dict[k.kind] ?? []}
           values={values}
           onChange={onChange}
-          yes={at.dimBoolYes}
-          no={at.dimBoolNo}
         />
       ))}
     </section>

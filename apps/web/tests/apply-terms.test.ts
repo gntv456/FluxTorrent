@@ -3,6 +3,7 @@ import {
   applyTerms,
   applyTermsText,
   sortRules,
+  subtitleRules,
   type TermRule,
 } from "@/i18n/apply-terms";
 
@@ -64,6 +65,25 @@ describe("applyTermsText（与 Rust terms::apply 对齐）", () => {
     );
     // 占位符外面的同名词照常被改
     expect(applyTermsText("magic 与 {magic}", rules)).toBe("积分 与 {magic}");
+  });
+
+  it("字幕区改名（0146/0208）：复合词是原子，副产物不许出现", () => {
+    // 音乐站「字幕 → 歌词」是 B1 的口径；真实文案取自 zh-CN.ts
+    const rules = sortRules(subtitleRules("歌词"));
+    expect(applyTermsText("字幕区", rules)).toBe("歌词区");
+    expect(applyTermsText("字幕已更新", rules)).toBe("歌词已更新");
+    // 复合词整体不拆：字幕组 / 字幕人（金字幕人靠「字幕人」保护）
+    expect(applyTermsText("(译者或字幕组名，展示在字幕标题旁)", rules)).toBe(
+      "(译者或字幕组名，展示在歌词标题旁)",
+    );
+    expect(applyTermsText("认证字幕人", rules)).toBe("认证字幕人");
+    expect(applyTermsText("金字幕人（评选获奖）", rules)).toBe(
+      "金字幕人（评选获奖）",
+    );
+    // 繁体字形同样受保护（替换文本是站长设的字样本身，不分语种）
+    expect(applyTermsText("(譯者或字幕組名，展示在字幕標題旁)", rules)).toBe(
+      "(譯者或字幕組名，展示在歌词標題旁)",
+    );
   });
 });
 

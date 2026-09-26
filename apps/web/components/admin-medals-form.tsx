@@ -2,7 +2,8 @@
 
 import type { MedalRarity } from "@/lib/medal-rarity";
 import type { MedalRow } from "./admin-medals-shared";
-import { CUSTOM_RARITY, MedalImagePreview } from "./admin-medals-rarity";
+import { CUSTOM_RARITY } from "./admin-medals-rarity";
+import { MedalAssetBar } from "./admin-medals-asset";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
@@ -21,8 +22,7 @@ export function MedalForm(props: {
   busy: boolean;
   inp: string;
   currency: string;
-  asetBar: string;
-  clearBtn: string;
+  flash: (m: string) => void;
   plainBtn: string;
 }) {
   const {
@@ -40,8 +40,6 @@ export function MedalForm(props: {
   } = props;
   const { dict } = useI18n();
   const at = dict.adminMedals;
-  const ASSET_BAR_CLS = props.asetBar;
-  const CLEAR_BTN_CLS = props.clearBtn;
   const PLAIN_BTN_CLS = props.plainBtn;
   return (
     <section className="baozi-panel cmgmt-form p-4">
@@ -50,35 +48,14 @@ export function MedalForm(props: {
           ? at.formNew
           : fmt(at.formEdit, { id: edit.id })}
       </h2>
-      {/* 勋章图片（medals.asset_ref）：此前后端能存、表单没入口 → 全站只能画 🏅 */}
-      <div className={ASSET_BAR_CLS}>
-        <label className="flex flex-col gap-1 text-xs">
-          {at.fAsset}
-          <input
-            value={edit.f.asset_ref ?? ""}
-            onChange={(e) =>
-              setEdit({
-                ...edit,
-                f: { ...edit.f, asset_ref: e.target.value || null },
-              })
-            }
-            placeholder="https://…/medal.png"
-            className={`${inp} w-80`}
-          />
-        </label>
-        <MedalImagePreview src={edit.f.asset_ref} />
-        {edit.f.asset_ref ? (
-          <button
-            type="button"
-            className={CLEAR_BTN_CLS}
-            onClick={() =>
-              setEdit({ ...edit, f: { ...edit.f, asset_ref: null } })
-            }
-          >
-            {at.clearAsset}
-          </button>
-        ) : null}
-      </div>
+      {/* 勋章图片（medals.asset_ref）：URL 直填或站内图床上传（拆至
+          ./admin-medals-asset.tsx，含上传按钮） */}
+      <MedalAssetBar
+        edit={edit}
+        setEdit={setEdit}
+        flash={props.flash}
+        inp={inp}
+      />
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
           {at.fName}

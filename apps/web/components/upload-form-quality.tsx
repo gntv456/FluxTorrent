@@ -4,6 +4,7 @@ import { INPUT_BAOZI } from "@/lib/ui-classes";
 
 import { useI18n } from "@/i18n/client";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
+import { SectionKindBool } from "@/components/section-kind-bool";
 import type {
   ProfileCat,
   SectionDictRow,
@@ -150,13 +151,9 @@ export function UploadQualityBlock({
         );
       case "bool":
         return (
-          <input
-            type="checkbox"
-            checked={val === "true"}
-            onChange={(e) =>
-              setKindVal(k.kind, e.target.checked ? "true" : "")
-            }
-            className="h-4 w-4 accent-[var(--baozi-orange)]"
+          <SectionKindBool
+            value={val}
+            onChange={(v) => setKindVal(k.kind, v)}
           />
         );
       default:

@@ -99,13 +99,15 @@ pub async fn ptgen(
         .map_err(|_| DomainError::Validation("链接无效".into()))?;
     let host = parsed.host_str().unwrap_or_default().to_lowercase();
     // 站点启用源（0087 metadata_sources）∩ PT-Gen 支持的源：host 后缀映射
+    // （默认串与 0221 迁移后的设置值对齐；mediainfo 非 URL 源，不参与此处映射）
     let enabled: String = sqlx::query_scalar(
         "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
-         'metadata_sources'), 'imdb,douban,bangumi,indienova')",
+         'metadata_sources'), \
+         'imdb,douban,bangumi,indienova,mediainfo')",
     )
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or_else(|_| "imdb,douban,bangumi,indienova".into());
+    .unwrap_or_else(|_| "imdb,douban,bangumi,indienova,mediainfo".into());
     let allowed = enabled.contains("imdb") && host.ends_with("imdb.com")
         || enabled.contains("douban") && host.ends_with("douban.com")
         || enabled.contains("bangumi")
