@@ -15,6 +15,8 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(report_release)
         .service(user_admin_list)
         .service(user_admin_detail)
+        .service(admin_user_fields)
+        .service(admin_user_fields_put)
         .service(user_admin_snatches)
         .service(user_grant_medal)
         .service(user_grant_item)
@@ -97,9 +99,11 @@ mod roles;
 mod site;
 mod subtitle_awards;
 mod subtitle_certs;
+mod torrent_ops;
 mod torrents;
 mod user_del;
 mod user_detail;
+mod user_fields_admin;
 mod user_grant;
 mod user_list;
 mod user_ops;
@@ -120,9 +124,11 @@ pub use roles::*;
 pub use site::*;
 pub use subtitle_awards::*;
 pub use subtitle_certs::*;
+pub use torrent_ops::*;
 pub use torrents::*;
 pub use user_del::*;
 pub use user_detail::*;
+pub use user_fields_admin::*;
 pub use user_grant::*;
 pub use user_list::*;
 pub use user_ops::*;

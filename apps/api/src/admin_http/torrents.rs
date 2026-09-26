@@ -51,6 +51,9 @@ struct AdminTorrentRow {
     promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
     /// H&R 标记（hr_policy.on）
     hr: bool,
+    /// 自建维度取值（G5，2026-09-26）：与前台列表同一形状的可读名数组
+    /// （枚举取字典名、自由值取原文本），供后台列表新增「维度」列
+    sec_names: serde_json::Value,
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -152,6 +155,13 @@ async fn admin_torrent_list(
                      WHERE p.starts_at <= now() AND p.ends_at > now() AND p.torrent_id = t.id
                      ORDER BY p.id DESC LIMIT 1) AS promotion_ends_at,
                   COALESCE((t.hr_policy->>'on')::bool, FALSE) AS hr,
+                  (SELECT COALESCE(json_agg(
+                            COALESCE(x.name, ts.value #>> '{{}}')
+                            ORDER BY k.sort, k.kind, ts.ordinal), '[]'::json)
+                   FROM torrent_sections ts
+                   LEFT JOIN section_dict x ON x.id = ts.dict_id
+                   LEFT JOIN section_kinds k ON k.kind = ts.kind
+                   WHERE ts.torrent_id = t.id) AS sec_names,
                   t.created_at
            FROM torrents t
            LEFT JOIN users u ON u.id = t.owner_id
@@ -210,89 +220,5 @@ async fn admin_torrent_list(
         "page": q.page.max(1),
         "per_page": q.per_page,
         "total": total,
-    })))
-}
-
-// ============ 第五轮：种子操作记录（参考站 torrent-operation-logs 口径） ============
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct TorrentOpRow {
-    id: i64,
-    torrent_id: i64,
-    torrent_name: Option<String>,
-    operator_name: Option<String>,
-    action: String,
-    detail: Option<serde_json::Value>,
-    created_at: chrono::DateTime<chrono::Utc>,
-}
-
-// ============ 第五轮：种子操作记录（参考站 torrent-operation-logs 口径） ============
-
-#[derive(Deserialize)]
-struct TorrentOpQ {
-    #[serde(default)]
-    torrent_id: Option<i64>,
-    #[serde(default = "default_page")]
-    page: i64,
-    #[serde(default = "default_per_page")]
-    per_page: i64,
-}
-
-#[get("/admin/torrent-ops")]
-async fn torrent_op_logs(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<TorrentOpQ>,
-) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
-    let (rows, total): (Vec<TorrentOpRow>, i64) = if let Some(tid) =
-        q.torrent_id
-    {
-        let rows: Vec<TorrentOpRow> = sqlx::query_as(
-            r#"SELECT l.id, l.torrent_id, t.name AS torrent_name, u.username AS operator_name,
-                      l.action, l.detail, l.created_at
-               FROM torrent_operation_logs l
-               LEFT JOIN torrents t ON t.id = l.torrent_id
-               LEFT JOIN users u ON u.id = l.operator_id
-               WHERE l.torrent_id = $1
-               ORDER BY l.id DESC LIMIT $2 OFFSET $3"#,
-        )
-        .bind(tid)
-        .bind(crate::dto::page_window(q.page, q.per_page).1)
-        .bind(crate::dto::page_window(q.page, q.per_page).0)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        let total: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM torrent_operation_logs WHERE torrent_id = $1",
-        )
-        .bind(tid)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        (rows, total)
-    } else {
-        let rows: Vec<TorrentOpRow> = sqlx::query_as(
-            r#"SELECT l.id, l.torrent_id, t.name AS torrent_name, u.username AS operator_name,
-                      l.action, l.detail, l.created_at
-               FROM torrent_operation_logs l
-               LEFT JOIN torrents t ON t.id = l.torrent_id
-               LEFT JOIN users u ON u.id = l.operator_id
-               ORDER BY l.id DESC LIMIT $1 OFFSET $2"#,
-        )
-        .bind(crate::dto::page_window(q.page, q.per_page).1)
-        .bind(crate::dto::page_window(q.page, q.per_page).0)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        let total: i64 =
-            sqlx::query_scalar("SELECT count(*) FROM torrent_operation_logs")
-                .fetch_one(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-        (rows, total)
-    };
-    Ok(ok(serde_json::json!({
-        "rows": rows, "total": total, "page": q.page.max(1), "per_page": q.per_page,
     })))
 }

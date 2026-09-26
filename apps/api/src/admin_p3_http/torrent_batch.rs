@@ -212,24 +212,47 @@ async fn torrent_batch(
             .rows_affected()
         }
         "change_sections" => {
-            // 与单条编辑口同源：走共享解析器（六类型 + 必填 + 多值 + 字典归属）
+            // 与单条编辑口同源（六类型 + 多值 + 字典归属），但用**部分更新**口径：
+            // 批量选择里各种子既有维度各不相同，编辑口的整组重建会把没勾的维度
+            // 全清掉；这里只动给定维度（批量 UI 一次改一维）。
+            let given = match body.sections.as_object() {
+                Some(o) if !o.is_empty() => o.clone(),
+                _ => {
+                    return Err(DomainError::Validation("缺少维度取值".into()))
+                }
+            };
             let json = serde_json::to_string(&body.sections)
                 .map_err(|e| DomainError::Internal(e.into()))?;
-            let parsed = crate::publish_http::upload_sections::parse_sections(
-                db,
-                Some(&json),
-            )
-            .await?;
-            if parsed.is_empty() {
-                return Err(DomainError::Validation("缺少维度取值".into()));
-            }
-            let mut n: u64 = 0;
-            for tid in &id_arr {
-                // 整组重建：未含的旧维删除（与单条编辑整表单保存同口径）
-                crate::publish_http::upload_sections::write_sections(
-                    db, *tid, &parsed, true,
+            let parsed =
+                crate::publish_http::upload_sections::parse_sections_ex(
+                    db,
+                    Some(&json),
+                    true,
                 )
                 .await?;
+            // 给了但解析为空（如 {"dict_ids":[]}）＝清空该维度
+            let cleared: Vec<String> = given
+                .keys()
+                .filter(|k| !parsed.iter().any(|s| &s.kind == *k))
+                .cloned()
+                .collect();
+            let mut n: u64 = 0;
+            for tid in &id_arr {
+                crate::publish_http::upload_sections::write_sections(
+                    db, *tid, &parsed, false,
+                )
+                .await?;
+                if !cleared.is_empty() {
+                    sqlx::query(
+                        "DELETE FROM torrent_sections WHERE torrent_id = $1 \
+                         AND kind = ANY($2)",
+                    )
+                    .bind(*tid)
+                    .bind(&cleared)
+                    .execute(db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
+                }
                 crate::torrents::sync_legacy_columns(db, *tid).await?;
                 n += 1;
             }

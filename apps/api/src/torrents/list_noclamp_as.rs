@@ -191,11 +191,11 @@ pub async fn list_torrents_noclamp_as(
                     ORDER BY d.sort DESC, d.id), '[]'::json)
                 FROM tags tg JOIN tag_dict d ON d.id = tg.tag_id
                 WHERE tg.torrent_id = t.id) AS tags,
-               -- B2：改 LEFT JOIN —— 六类型字段系统下自由值行（dict_id IS NULL）
-               -- 不在 section_dict 里，内连接会把它们从列表里静默丢掉。
-               -- 字段名与形状不变（存量消费点零改动），只是自由值现在也能显示。
+               -- B2：自由值行（dict_id IS NULL）不在 section_dict 里，内连接会把
+               -- 它们从列表里静默丢掉；形状不变，自由值取 `#>> '{{}}'` 标量原文
+               -- （`::text` 会把 JSON 字符串连引号吐出），存量消费点零改动。
                (SELECT COALESCE(json_agg(
-                        COALESCE(x.name, ts.value::text)
+                        COALESCE(x.name, ts.value #>> '{{}}')
                         ORDER BY k.sort, k.kind, ts.ordinal), '[]'::json)
                 FROM torrent_sections ts
                 LEFT JOIN section_dict x ON x.id = ts.dict_id
