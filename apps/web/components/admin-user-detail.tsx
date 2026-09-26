@@ -8,6 +8,7 @@ import { dateLocale, fmt } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 import { AdminActions } from "./admin-user-detail-actions";
 import { useAdminUserActions } from "./admin-user-detail-actions-hook";
+import { AdminUserFieldsPanel } from "./admin-user-fields-panel";
 import {
   useAdminPanelDicts,
   useDetailLoad,
@@ -178,6 +179,8 @@ export function AdminUserDetailPage() {
       {tabs.tab === "profile" && (
         <>
           <ProfilePanels d={d} currency={currency} dt={dt} />
+          {/* 自定义字段值（G4）：运营侧查看/代改；站长没建字段时组件自身不渲染 */}
+          <AdminUserFieldsPanel userId={d.id} />
           {actions.tmpPass && (
             <p className={TMP_PASS_CLS}>
               {fmt(dict.userDetail.tmpPass, { pass: actions.tmpPass })}

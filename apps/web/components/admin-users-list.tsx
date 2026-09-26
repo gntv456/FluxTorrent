@@ -2,12 +2,18 @@
 
 import { BTN_SM_DANGER, BTN_SM_SKY } from "@/lib/ui-classes";
 
-import { fmtBytes } from "@/components/admin-users-detail";
 import { statusLabels } from "./admin-user-detail-shared";
 import { useI18n } from "@/i18n/client";
 
 /** 用户列表与批量操作面板（从 admin-users.tsx 按域拆出，300 门禁）：
  *  用户表格（多选/排序）/ 批量操作条 / 分页条。数据与动作留在 admin-users.tsx。 */
+
+function fmtBytes(n: number): string {
+  if (n >= 1099511627776) return `${(n / 1099511627776).toFixed(2)} TB`;
+  if (n >= 1073741824) return `${(n / 1073741824).toFixed(2)} GB`;
+  if (n >= 1048576) return `${(n / 1048576).toFixed(2)} MB`;
+  return `${(n / 1024).toFixed(2)} KB`;
+}
 
 interface AdminUserRow {
   id: number;
