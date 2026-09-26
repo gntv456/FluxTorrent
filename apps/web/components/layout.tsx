@@ -173,14 +173,22 @@ export async function Header() {
       <header className="tide-header border-b border-line">
         {/* 单行导航条：品牌（logo）居左 + 一级/更多菜单 + 主题/语言/头像弹窗居右 */}
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1536px] items-center gap-3 px-4 py-2 md:gap-5 md:px-6">
-          <Link href="/" className="flex shrink-0 items-center gap-2">
+          {/* M1：品牌长站名在 375px 会把右侧工具区推出视口（brand + 工具 + 头像
+              总宽 >375）。窄屏截断品牌字，min-w-0 允许收缩；完整名留在 logo title。 */}
+          <Link
+            href="/"
+            title={brand}
+            className="flex max-w-[46%] shrink items-center gap-2 md:max-w-none"
+          >
             {/* 品牌标记：Tide 图标（原为猫头鹰 emoji）—— 颜色跟随 --sky，浅色/夜间自适应 */}
             <Icon
               name="seed"
               size={30}
               className="shrink-0 text-[var(--sky)]"
             />
-            <span className="font-display text-2xl text-ink">{brand}</span>
+            <span className="truncate font-display text-2xl text-ink">
+              {brand}
+            </span>
           </Link>
           <div className="min-w-0 flex-1">
             {/* Suspense：MainMenu 用 useSearchParams 区分带参条目（官种），

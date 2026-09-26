@@ -228,9 +228,7 @@ export default async function TorrentsPage({
             </a>
           </p>
         ) : (
-          <EmptyTorrents
-            aliveFiltered={sp.alive !== "0" && sp.alive !== "2"}
-          />
+          <EmptyTorrents aliveFiltered={sp.alive !== "0" && sp.alive !== "2"} />
         )
       ) : view === "card" ? (
         <TorrentCards items={page.items} dict={dict} colors={catColors} />

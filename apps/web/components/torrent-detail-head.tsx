@@ -86,7 +86,11 @@ export function TorrentHead({
                 on ? "td-head__hr--on" : "td-head__hr--off"
               }`}
             >
-              {on ? d?.hrOn?.replace("{days}", `${days}`).replace("{hours}", `${hours}`) : d?.hrOff}
+              {on
+                ? d?.hrOn
+                    ?.replace("{days}", `${days}`)
+                    .replace("{hours}", `${hours}`)
+                : d?.hrOff}
             </p>
           );
         })()}

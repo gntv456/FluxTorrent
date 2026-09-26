@@ -236,7 +236,10 @@ export function AdminShell({
             {navBody}
           </nav>
         )}
-        <div className="min-w-0 flex-1">{children}</div>
+        {/* M1 裸表兜底：管理面板内容区的裸 <table> 在 <lg 直接撑破容器。
+            CSS 侧（pages.css .admin-panel-content table）统一转块级横滚，
+            组件文件零改动即可救活 39+ 张表；显式包裹的表格不受影响。 */}
+        <div className="admin-panel-content min-w-0 flex-1">{children}</div>
       </div>
     </div>
   );

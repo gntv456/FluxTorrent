@@ -90,7 +90,7 @@ export function SubtitleUploadForm({
           void upload();
         }}
       >
-        <table className="nexus-table nexus-form subtitles-upload-table">
+        <table className="nexus-table subtitles-upload-table">
           <tbody>
             <tr>
               <td className="rowhead">

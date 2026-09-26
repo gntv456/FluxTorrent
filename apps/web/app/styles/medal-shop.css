@@ -453,6 +453,9 @@
   display: flex;
   align-items: baseline;
   gap: 4px;
+  /* M1 桌面快修 #2：CJK 货币名与「余额不足」在窄卡内被逐字竖断
+     （「150,000 魔 力」），价格行强制不折行。 */
+  white-space: nowrap;
 }
 .pricetag b {
   font-family: var(--font-mono);
@@ -627,6 +630,9 @@
   padding: 10px 14px;
   border-top: 1px solid var(--line);
   background: var(--surface-raised);
+  /* 快修 #2 配套：footer 行允许换行（价格一行、操作一行），
+     但行内片段自身 nowrap，避免半行截断。 */
+  flex-wrap: wrap;
 }
 .gcard-ft .acts {
   display: flex;
@@ -642,11 +648,14 @@
 }
 .unit.is-short {
   color: var(--danger);
+  white-space: nowrap;
 }
+/* 快修 #2：角标贴卡片右上角会压住圆角——内收 6px 并让圆角只保留
+   左下（原 border-bottom-left-radius 方案在直角边仍有溢出感）。 */
 .gcard-best {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 6px;
+  right: 6px;
   padding: 2px 8px;
   border-bottom-left-radius: 8px;
   background: var(--sky-deep);
