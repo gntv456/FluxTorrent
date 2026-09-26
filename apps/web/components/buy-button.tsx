@@ -35,6 +35,7 @@ export function BuyButton({
   affordable = true,
   shortBy = null,
   balance,
+  onBought,
 }: {
   itemId: number;
   /** 单价（0207：按钮内按数量算总价，不再依赖外层预判单个价格） */
@@ -47,6 +48,8 @@ export function BuyButton({
   shortBy?: string | null;
   /** 当前余额（null=未知）：弹窗内按总价实时预判 */
   balance: number | null;
+  /** 购买成功回调（0207b：父层刷新余额/拥有态） */
+  onBought?: () => void;
 }) {
   const { dict, currency } = useI18n();
   const t = dict.buyDialog;
@@ -54,7 +57,8 @@ export function BuyButton({
   const [qty, setQty] = useState(1);
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
   const [message, setMessage] = useState<string | null>(null);
-  // 幂等键：每次打开弹窗生成一次，弹窗内重试复用（§8.2 幂等语义）
+  // 幂等键：每次打开弹窗生成一次，弹窗内重试复用（§8.2 幂等语义）；
+  // 购买成功后换新键（0207b：连买两单不再被幂等挡）
   const [idem, setIdem] = useState(
     () => `web-${itemId}-${crypto.randomUUID()}`,
   );
@@ -73,6 +77,11 @@ export function BuyButton({
       });
       setState("done");
       setMessage(dict.shop.buyOk);
+      onBought?.();
+      // 成功即收起弹窗（0207b）：反馈落在卡片按钮「已购买 ✓」+ 父层刷新的余额上；
+      // 同时换新幂等键，连买第二单不被上一单的键挡住
+      setOpen(false);
+      setIdem(`web-${itemId}-${crypto.randomUUID()}`);
     } catch (err) {
       setState("idle");
       setMessage(apiErrorMessage(dict, err));

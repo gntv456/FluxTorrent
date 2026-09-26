@@ -23,13 +23,15 @@ cargo test --workspace
 step "web: tsc --noEmit"
 (cd apps/web && npx tsc --noEmit)
 
-step "仓库门禁脚本（行数/宽度、i18n 基线、模块键与首页板块单源、类型契约、迁移校验和）"
+step "仓库门禁脚本（行数/宽度、i18n 基线、模块键/首页板块/术语规则单源、类型契约、迁移校验和）"
 node scripts/line_limit_guard.mjs
 node scripts/i18n_guard.mjs
 node scripts/home_sections_guard.mjs
 node scripts/module_keys_guard.mjs
+node scripts/terms_guard.mjs
 node scripts/check_type_drift.mjs
-python scripts/audit_migration_checksums.py
+python3 scripts/validation_i18n_guard.py
+python3 scripts/audit_migration_checksums.py
 
 if [ "${1:-}" = "--with-install" ]; then
   step "空库装站闸门（会 down -v 清掉本地数据卷）"

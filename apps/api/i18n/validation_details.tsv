@@ -1,0 +1,38 @@
+# 后端校验详情译文表（四审 L7 第二批：「379 处中文校验串绕过 i18n」）
+#
+# 三列 TAB 分隔：zh-CN 原文  →  zh-TW  →  en
+# 键就是**源码里那句字面量本身**，所以：
+#   - 改中文原文 = 改键 ⇒ 该条立刻掉出表外，被 scripts/validation_i18n_guard.py 当场点名；
+#   - 只有「整句字面量」能进表；`format!` 拼出来的动态串没有固定原句可查，
+#     必须先参数化成 key 才能覆盖（guard 单独统计条数、只许降不许升）。
+# 表里没有的串原样透出：**宁可露中文，绝不编译文**（编出来的错话没人能审）。
+#
+# 不变量（guard 逐条校验）：三列里的 `{...}` 插值占位符集合必须一致，
+# 少一个就意味着某个语言版本会把变量吞掉。
+#
+# 第一批覆盖面：apps/api/src/auth_http/*（登录/注册/改密/自身设定/自定义字段）
+# + 术语表面板的四条提示。
+IP 已被封禁，请联系管理组	IP 已被封禁，請聯繫管理組	This IP address is blocked; please contact the staff team
+账号因长期未登录已被停用，请通过『联系我们』附上用户名申请恢复	帳號因長期未登錄已被停用，請透過『聯繫我們』附上用戶名申請恢復	This account was disabled after a long period of inactivity. Use "Contact us" and include your username to request restoration.
+该邮箱地址已被禁用，请联系管理组	該電子郵件地址已被禁用，請聯繫管理組	This email address is blocked; please contact the staff team
+验证码错误或已过期	驗證碼錯誤或已過期	Verification code is invalid or expired
+新密码不能与旧密码相同	新密碼不能與舊密碼相同	The new password must differ from the current one
+新密码至少 8 位	新密碼至少 8 位	The new password must be at least 8 characters
+旧密码不正确	舊密碼不正確	Current password is incorrect
+数值超出范围	數值超出範圍	Value out of range
+非法的设定值	非法的設定值	Invalid setting value
+字段名需 1-50 字符	欄位名需 1-50 字元	Field label must be 1-50 characters
+type 需为 text/number/select/multiselect/date/bool	type 需為 text/number/select/multiselect/date/bool	type must be one of text/number/select/multiselect/date/bool
+visibility 需为 public/private	visibility 需為 public/private	visibility must be public or private
+select 类型需提供 options 数组	select 類型需提供 options 陣列	A select field requires an options array
+options 需 1-50 项	options 需 1-50 項	options must contain 1-50 items
+options 项需含 value 字符串	options 項需含 value 字串	Each option must include a value string
+option value 需 1-100 字符	option value 需 1-100 字元	An option value must be 1-100 characters
+key 需为小写字母/数字/下划线，≤40 字符	key 需為小寫字母/數字/下劃線，≤40 字元	key must use lowercase letters, digits or underscores, up to 40 characters
+字段 key 已存在	欄位 key 已存在	This field key already exists
+字段不存在	欄位不存在	Field not found
+字段类型不可修改（存量值形状失配）	欄位類型不可修改（存量值形狀不符）	A field's type cannot be changed (existing values have a different shape)
+词条需 1-20 字符且不含花括号（{n}/{magic} 是插值占位符）	詞條需 1-20 字元且不含大括號（{n}/{magic} 是插值佔位符）	A term must be 1-20 characters and contain no braces ({n}/{magic} are placeholders)
+规范词与替换词相同：这条规则什么都不会改	規範詞與替換詞相同：這條規則不會改變任何內容	The original and the replacement are identical: this rule would change nothing
+没有这条术语规则	沒有這條術語規則	No such term rule
+请确认删除	請確認刪除	Please confirm the deletion

@@ -26,14 +26,24 @@ struct DressupRow {
     config: serde_json::Value,
 }
 
-/// 装扮列表（拥有状态 + 佩戴中）
+/// 装扮列表（拥有状态 + 佩戴中）。排序（0207b）：头像框按框库 sort 顺序
+/// （JOIN avatar_frames 取 sort，四季框自然成序列），其余按价格——
+/// 此前裸 ORDER BY price 让四季框金→蓝→秋→冬→夏→春乱跳，看着像 bug。
 #[get("/dressup/list")]
 async fn dressup_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let rows: Vec<DressupRow> = sqlx::query_as(
+    // Rust 侧排序（0207b）：框类按 (avatar_frames.sort, id)，其余按 (price, id)。
+    // 框库 sort 需要另一查——列表最多二十来行，直接查全表 sort 映射最直白。
+    let frame_sort: Vec<(i32, i32)> = sqlx::query_as(
+        "SELECT id, sort FROM avatar_frames ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut rows: Vec<DressupRow> = sqlx::query_as(
         "SELECT si.id AS item_id, si.name, si.kind, si.price, \
          si.config->>'slot' AS slot, si.config, \
          EXISTS(SELECT 1 FROM user_dressups ud \
@@ -41,13 +51,34 @@ async fn dressup_list(
          COALESCE((SELECT ud.wearing FROM user_dressups ud \
          WHERE ud.user_id = $1 AND ud.item_id = si.id), FALSE) AS wearing \
          FROM shop_items si WHERE si.active AND si.kind IN \
-         ('avatar_frame','animated_avatar','rainbow_id','rainbow_name') \
-         ORDER BY si.price",
+         ('avatar_frame','animated_avatar','rainbow_id','rainbow_name')",
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    let frame_order = |fid: i64| -> (i64, i64) {
+        let s = frame_sort
+            .iter()
+            .find(|(id, _)| i32::try_from(fid).map(|f| f == *id).unwrap_or(false))
+            .map(|(_, s)| *s as i64);
+        (s.unwrap_or(i64::MAX), fid)
+    };
+    rows.sort_by(|a, b| {
+        let key = |r: &DressupRow| {
+            if r.kind == "avatar_frame" {
+                let fid = r
+                    .config
+                    .get("frame_id")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(i64::MAX);
+                (0, frame_order(fid).0, frame_order(fid).1)
+            } else {
+                (1, r.price, r.item_id)
+            }
+        };
+        key(a).cmp(&key(b))
+    });
     Ok(ok(rows))
 }
 
