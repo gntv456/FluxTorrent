@@ -196,7 +196,7 @@ async fn admin_job_trigger(
         }
         other => {
             return Err(DomainError::Validation(format!(
-                "未知任务 {other}（可选：expire_promotions/sweep_stale_peers/reconcile_snapshots/funding_settle/hr_enforce/hr_punish/class_auto_adjust/collect_milestones/multi_ip_check/leak_scan/ensure_partitions/task_settle/exam_assign）"
+                "未知任务 {other}（可选：expire_promotions/sweep_stale_peers/reconcile_snapshots/funding_settle）"
             )));
         }
     };
@@ -244,35 +244,44 @@ async fn admin_job_trigger2(
             .rows_affected() as i64;
             ("hr_punish", n)
         }
-        // 等级自动调整（只升不降，取满足条件的最高档）
+        // 等级自动调整（只升不降，取满足条件的最高档）。
+        // 判定列与 worker class_adj 同源：min_uploaded/min_download_count/
+        // min_seed_hours/min_account_age_days（0211 复检：旧写法引用了不存在的
+        // cr.min_downloaded，空库也会 500）
         "class_auto_adjust" => {
-            sqlx::query(
+            let n = sqlx::query(
                 r#"WITH stats AS (
-                     SELECT u.id, u.uploaded, u.downloaded
-                     FROM users u
-                     WHERE u.status < 2 AND u.class_id BETWEEN 1 AND 12
+                     SELECT u.id, u.class_id, u.uploaded,
+                            (SELECT count(*) FROM snatches s
+                             WHERE s.user_id = u.id AND s.completed_at IS NOT NULL) AS dl,
+                            (SELECT COALESCE(sum(s.seeded_seconds),0)/3600
+                             FROM snatches s WHERE s.user_id = u.id) AS sh,
+                            EXTRACT(DAY FROM now() - u.created_at)::bigint AS age
+                     FROM users u WHERE u.status < 2 AND u.class_id < 90
+                   ),
+                   target AS (
+                     SELECT s.id, max(r.class_id) AS new_class
+                     FROM stats s JOIN class_rules r ON
+                         s.uploaded >= r.min_uploaded AND s.dl >= r.min_download_count AND
+                         s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days
+                     GROUP BY s.id
                    )
-                   UPDATE users u SET class_id = cr.class_id
-                   FROM class_rules cr, stats st
-                   WHERE u.id = st.id
-                     AND cr.min_uploaded <= st.uploaded
-                     AND (cr.min_downloaded IS NULL OR cr.min_downloaded <= st.downloaded)
-                     AND cr.class_id > u.class_id
-                     AND NOT EXISTS (
-                       SELECT 1 FROM class_rules higher
-                       WHERE higher.min_uploaded <= st.uploaded
-                         AND (higher.min_downloaded IS NULL OR higher.min_downloaded <= st.downloaded)
-                         AND higher.class_id > cr.class_id)"#,
+                   UPDATE users u SET class_id = t.new_class
+                   FROM target t
+                   WHERE u.id = t.id AND t.new_class > u.class_id"#,
             )
             .execute(&state.repo.db)
             .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            ("class_auto_adjust", -1)
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected() as i64;
+            ("class_auto_adjust", n)
         }
         // 任务结算（task_claims 已领未结 → 结算标志；与 worker task_settle 的结算分支同向）
         "task_settle" => {
             let n = sqlx::query(
-                "UPDATE task_claims SET settled_at = now()                  WHERE settled_at IS NULL AND exempted_at IS NULL                    AND claimed_at < now() - interval '30 days'",
+                "UPDATE task_claims SET settled_at = now() \
+                 WHERE settled_at IS NULL AND exempted_at IS NULL \
+                 AND claimed_at < now() - interval '30 days'",
             )
             .execute(&state.repo.db)
             .await
