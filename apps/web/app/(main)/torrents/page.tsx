@@ -9,6 +9,7 @@ import { TorrentsTable } from "./_parts/torrents-table";
 import { TorrentRowList } from "./_parts/torrent-row-card";
 import { FilterFab } from "./_parts/filter-fab";
 import { TorrentsPullRefresh } from "./_parts/refresh-mount";
+import { TorrentSplitView } from "./_parts/torrent-split";
 import { TorrentCards, TorrentPosters } from "./_parts/torrents-cards";
 import { TorrentsViewSwitch } from "./_parts/torrents-view-switch";
 import { TorrentsHotkeys } from "./_parts/torrents-hotkeys";
@@ -218,7 +219,9 @@ export default async function TorrentsPage({
       {/* 列表 hover 预览卡（阶段三）：事件委托整页生效 */}
       <TorrentHoverPreview />
 
-      {/* 三种形态共享同一份数据：表格（信息密度）/ 卡片（浏览）/ 海报墙（视觉） */}
+      {/* 三种形态共享同一份数据：表格（信息密度）/ 卡片（浏览）/ 海报墙（视觉）。
+          M4：md-lg（含折叠展开一档）外层再包双栏排布（?selected= 存选中态） */}
+      <TorrentSplitView items={page.items}>
       {page.items.length === 0 ? (
         loadFailed ? (
           <p className="py-8 text-center text-sm text-sub" role="status">
@@ -257,6 +260,8 @@ export default async function TorrentsPage({
           </div>
         </>
       )}
+
+      </TorrentSplitView>
 
       {/* M3：下拉刷新（仅触屏渲染，不影响桌面） */}
       <TorrentsPullRefresh />

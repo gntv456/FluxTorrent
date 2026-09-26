@@ -541,6 +541,13 @@ const zhCnBase = {
     applyLink: "申请链接",
     closeModal: "关闭公告弹窗",
   },
+  tsplit: {
+    previewAria: "详情预览",
+    emptyHint: "选择左侧任意种子查看预览",
+    wideMode: "宽屏双栏模式",
+    openDetail: "打开详情 →",
+    close: "关闭",
+  },
   mhome: {
     m: "早上好",
     a: "下午好",

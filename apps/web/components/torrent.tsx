@@ -92,7 +92,10 @@ export async function EmptyTorrents({
 }) {
   const { dict } = await getDict();
   return (
-    <div className="flex flex-col items-center gap-3 py-16 text-center">
+    <div
+      className="torrents-empty flex flex-col items-center gap-3 py-16
+        text-center"
+    >
       <Icon name="seed" size={72} className="text-[var(--sky)]" />
       <h2 className="font-display text-xl text-ink">
         {aliveFiltered
