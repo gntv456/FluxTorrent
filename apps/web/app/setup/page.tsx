@@ -45,9 +45,14 @@ export default function SetupWizard() {
   // 管理员登录（后端 POST /setup 需 SITEPACKS_MANAGE 权限）
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  // 公网 announce 地址（P0-2.1）：预填当前值便于改成公网；仍填 127.0.0.1 后端会拒
+  const [announceUrl, setAnnounceUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<string>("");
+  // 首个邀请码（P0-2.2）：向导完成时后端自动发的一枚，展示 + 一键复制
+  const [firstInvite, setFirstInvite] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     api
@@ -75,13 +80,16 @@ export default function SetupWizard() {
       const res = await api.post<{
         purged: [string, number][];
         extras: [string, number][];
+        first_invite?: string | null;
       }>("/api/v1/setup", {
         pack,
         site_name: siteName,
+        announce_url: announceUrl,
         games_compliance_ack: ack,
       });
       const purged = res.purged?.map(([k, n]) => `${k}:${n}`).join(" ") ?? "";
       setResult(t("done", "安装完成") + (purged ? `（清理 ${purged}）` : ""));
+      setFirstInvite(res.first_invite ?? null);
       setStatus((s) => (s ? { ...s, done: true } : s));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e));
@@ -187,6 +195,25 @@ export default function SetupWizard() {
               autoComplete="current-password"
             />
           </label>
+          {/* P0-2.1：announce 在向导内采集。留空 = 保持现状（幂等重入不炸老站），
+              但公网填写的引导文案到位；仍填 127.0.0.1 由后端拒绝 */}
+          <label className="block text-sm">
+            <span className="text-muted">
+              {t("announceUrl", "Tracker 公网地址（announce URL）")}
+            </span>
+            <input
+              className={`mt-1 ${inputCls}`}
+              value={announceUrl}
+              onChange={(e) => setAnnounceUrl(e.target.value)}
+              placeholder="https://tracker.example.com/announce"
+            />
+            <span className="mt-1 block text-xs text-muted">
+              {t(
+                "announceHint",
+                "这是你站点的公网 Tracker 地址——其他用户下载种子后将通过它连接做种。留空保持现状；填 127.0.0.1/localhost 将被拒绝。",
+              )}
+            </span>
+          </label>
           <div className="flex gap-2">
             <button className={`${btn}`} onClick={() => setStep(1)}>
               {t("prev", "上一步")}
@@ -227,6 +254,40 @@ export default function SetupWizard() {
           {result && (
             <div className="rounded-md border border-success/40 bg-success/10 px-3 py-3 text-sm">
               <p>✅ {result}</p>
+              {/* P0-2.2：后端自动产的首个邀请码——注册死锁的解口，展示+一键复制 */}
+              {firstInvite && (
+                <div className="mt-2 rounded-md border border-line bg-[var(--panel)] px-3 py-2">
+                  <p className="text-xs font-medium">
+                    {t(
+                      "firstInviteTitle",
+                      "已生成首个邀请码（本站为邀请制注册）：",
+                    )}
+                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <code className="break-all font-mono text-xs">
+                      {firstInvite}
+                    </code>
+                    <button
+                      className="rounded border border-line px-2 py-0.5 text-xs"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(firstInvite);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1500);
+                      }}
+                    >
+                      {copied
+                        ? t("copied", "已复制")
+                        : t("copy", "复制")}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    {t(
+                      "firstInviteHint",
+                      "把它交给第一个注册的用户（注册页填入即可）；更多邀请码在后台「邀请管理」发放。",
+                    )}
+                  </p>
+                </div>
+              )}
               {/* 0208 P0：向导终点给落点——别让站长停在原地 */}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -250,7 +311,8 @@ export default function SetupWizard() {
               </p>
             </div>
           )}
-          {/* 开站 checklist（0209 P2-12）：装完就有可操作的警示卡 */}
+          {/* 开站 checklist（0209 P2-12）：装完就有可操作的警示卡。
+              0214 链接化：每条警示直达对应设定分组，不再让站长自己找路 */}
           {status?.done && status.checklist && !result && (
             <div className="rounded-md border border-warn/40 bg-warn/10 px-3 py-3 text-sm">
               <p className="font-medium">
@@ -261,16 +323,32 @@ export default function SetupWizard() {
                   <li>
                     {t(
                       "chkAnnounce",
-                      "tracker announce 地址仍是本地回环（127.0.0.1）——用户下载的种子文件将无法做种，请到「站点设定」改为公网域名。",
+                      "tracker announce 地址仍是本地回环（127.0.0.1）——用户下载的种子文件将无法做种，",
                     )}
+                    <a
+                      className="underline"
+                      href="/admin/settings?group=basic"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {t("chkGoFix", "去「基础设定 → Tracker 地址」修改")}
+                    </a>
                   </li>
                 )}
                 {status.checklist.smtp_unset && (
                   <li>
                     {t(
                       "chkSmtp",
-                      "邮件 SMTP 未配置——找回密码 / 邀请函 / 群发都将静默跳过，请在「站点设定 → 邮件」填写。",
+                      "邮件 SMTP 未配置——找回密码 / 邀请函 / 群发都将静默跳过，",
                     )}
+                    <a
+                      className="underline"
+                      href="/admin/settings?group=smtp"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {t("chkGoSmtp", "去配置 SMTP")}
+                    </a>
                   </li>
                 )}
                 <li>

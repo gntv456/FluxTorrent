@@ -117,6 +117,22 @@ check("S10 general 包词表已铺", cats >= 7 and kinds >= 4,
 check("S11 装完可调业务 API",
       code_of(call("GET", "/torrents", None, tok)[1]) == 0, "")
 
+# 6) 0214 装站守卫：首码自动发放 / announce 拒绝回环 / SMTP 测试端点存在
+st, bd = call("POST", "/setup", {"pack": "", "site_name": "",
+                                 "games_compliance_ack": True}, tok)
+first_invite = (json.loads(bd).get("data") or {}).get("first_invite")
+check("S12 邀请制自动产首码", isinstance(first_invite, str)
+      and len(first_invite) >= 20,
+      str(first_invite)[:60])
+st, bd = call("POST", "/setup", {"pack": "", "site_name": "",
+                                 "announce_url": "http://127.0.0.1:8080/announce",
+                                 "games_compliance_ack": True}, tok)
+check("S13 announce 填回环被拒", st == 400 or json.loads(bd).get("code") != 0,
+      "http %s" % st)
+st, bd = call("POST", "/admin/settings/smtp-test", {}, tok)
+check("S14 SMTP 测试端点存在（未配置时报校验错而非 404）",
+      st != 404, "http %s" % st)
+
 print("\nroot 新口令（本脚本随机生成，仅测试实例）：%s" % NEW_PW)
 if fails:
     print("==== 装机闸门 FAIL %d：%s ====" % (len(fails), "、".join(fails)))

@@ -18,11 +18,13 @@ mod pack_kinds;
 mod pack_store;
 mod packs;
 mod schema;
+mod smtp_test;
 mod validate;
 use export::*;
 use groups::*;
 use history::*;
 use schema::*;
+use smtp_test::*;
 use validate::*;
 
 pub fn mount_settings(scope: actix_web::Scope) -> actix_web::Scope {
@@ -30,6 +32,7 @@ pub fn mount_settings(scope: actix_web::Scope) -> actix_web::Scope {
         .service(settings_schema)
         .service(settings_groups_put)
         .service(settings_validate)
+        .service(settings_smtp_test)
         .service(settings_history)
         .service(settings_export)
         .service(settings_import);
