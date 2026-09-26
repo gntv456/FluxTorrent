@@ -122,6 +122,10 @@ struct SetupFinishBody {
     /// 站名（空 = 不改）
     #[serde(default)]
     site_name: String,
+    /// 公网 tracker announce 地址（空 = 不改；P0-2.1：向导内采集，
+    /// 拦住「装完仍是 127.0.0.1、种子的 tracker 永远收不到请求」的死链）
+    #[serde(default)]
+    announce_url: String,
     /// 玩法合规确认（§11.3：必须显式 true 才允许完成，留审计）
     games_compliance_ack: bool,
 }
@@ -189,6 +193,26 @@ async fn setup_finish(
         .execute(&state.repo.db)
         .await;
     }
+    // 3b) announce_url（可选但强烈引导；P0-2.1）。仅拒绝「仍是本地回环」的
+    // 显式填入——不填视为「保持现状」（幂等重入不炸老站），留给 checklist 兜底警示。
+    if !body.announce_url.trim().is_empty() {
+        let a = body.announce_url.trim();
+        if a.contains("127.0.0.1") || a.contains("localhost") {
+            return Err(DomainError::Validation(
+                "announce 地址不能是 127.0.0.1/localhost——请填写你站点的公网地址 \
+                 （其他用户下载种子后通过它连接你的 Tracker）"
+                    .into(),
+            ));
+        }
+        let _ = sqlx::query(
+            "INSERT INTO site_settings (name, value) VALUES ('announce_url', \
+             $2) ON CONFLICT (name) DO UPDATE SET value = $2, updated_at = \
+             now()",
+        )
+        .bind(a)
+        .execute(&state.repo.db)
+        .await;
+    }
     // 4) 置位（幂等）
     sqlx::query(
         "INSERT INTO site_settings (name, value) VALUES ('setup_done', 'done') \
@@ -198,6 +222,26 @@ async fn setup_finish(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.module_flags.invalidate().await;
+    // 5) 首个邀请码（P0-2.2 注册死锁）：注册模式为 invite_only 且站内尚无
+    //    可用码时，自动发一枚给完成向导的管理员——否则新站长无法产生第二个
+    //    用户（自己没配额、后台路径也不知道）。幂等：已有未用码不重复发。
+    let mut first_invite: Option<String> = None;
+    let (reg_mode, unused): (String, i64) = sqlx::query_as(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'registration_mode'), 'invite_only'), \
+         COALESCE((SELECT count(*) FROM invites WHERE status = 0 AND \
+         expires_at > now()), 0)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if reg_mode == "invite_only" && unused == 0 {
+        let code = crate::domain::new_invite_code();
+        let expires =
+            chrono::Utc::now() + chrono::Duration::hours(72);
+        let _ = state.repo.issue_invite(auth.id, &code, expires).await?;
+        first_invite = Some(code);
+    }
     state.repo.audit(Some(auth.id), "setup_finish", None).await;
     Ok(ok(serde_json::json!({
         "done": true,
@@ -205,6 +249,7 @@ async fn setup_finish(
         "pack": applied_pack,
         "extras": extras_applied,
         "compliance_ack": true,
+        "first_invite": first_invite,
     })))
 }
 

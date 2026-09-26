@@ -92,6 +92,17 @@ const zhCnBase = {
     done: "安装完成",
     alreadyDone: "本站已完成安装向导（重复完成幂等）。",
     loadFailed: "无法加载向导状态，请确认 API 可达",
+    // 0214：announce 采集 + 首个邀请码 + checklist 链接化
+    announceUrl: "Tracker 公网地址（announce URL）",
+    announceHint:
+      "这是你站点的公网 Tracker 地址——其他用户下载种子后将通过它连接做种。留空保持现状；填 127.0.0.1/localhost 将被拒绝。",
+    firstInviteTitle: "已生成首个邀请码（本站为邀请制注册）：",
+    firstInviteHint:
+      "把它交给第一个注册的用户（注册页填入即可）；更多邀请码在后台「邀请管理」发放。",
+    copy: "复制",
+    copied: "已复制",
+    chkGoFix: "去「基础设定 → Tracker 地址」修改",
+    chkGoSmtp: "去配置 SMTP",
   },
   mod: {
     disabledTitle: "本站未开放此功能",
@@ -4238,6 +4249,13 @@ const zhCnBase = {
     readonlyField: "只读项（由系统提供）",
     // P2：导出 / 导入、密文显隐确认、历史 diff
     doExport: "导出",
+    // SMTP 连通性测试（0214）
+    smtpTestHint:
+      "发一封测试邮件到你的管理员邮箱——通了，找回密码/邀请函就能投递。",
+    smtpTestBtn: "发送测试邮件",
+    smtpTestingBtn: "发送中…",
+    smtpTesting: "测试邮件发送中…",
+    smtpTestOk: "测试邮件已发出，请到管理员邮箱查收（含垃圾箱）",
     exportPlain: "含密文",
     exportPlainConfirm:
       "即将以明文导出全部密文字段（SMTP 密码、统计代码等）。请确认当前环境安全。",

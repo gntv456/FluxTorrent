@@ -115,6 +115,17 @@ const enBase: Omit<
     done: "Setup completed",
     alreadyDone: "Setup already completed (idempotent).",
     loadFailed: "Failed to load wizard status; check API availability",
+    // 0214: announce capture + first invite code + checklist links
+    announceUrl: "Public Tracker announce URL",
+    announceHint:
+      "Your site's public Tracker address — peers use it to connect after downloading torrents. Leave blank to keep current; 127.0.0.1/localhost is rejected.",
+    firstInviteTitle: "First invite code generated (registration is invite-only):",
+    firstInviteHint:
+      "Give it to your first registrant (they enter it on the signup page); more codes can be issued in the admin invite manager.",
+    copy: "Copy",
+    copied: "Copied",
+    chkGoFix: "Fix it in Settings → Basic → Announce URL",
+    chkGoSmtp: "Configure SMTP",
   },
   mod: {
     disabledTitle: "This feature is not enabled",
@@ -4373,6 +4384,14 @@ const enBase: Omit<
     lastSaved: "Last saved: {time}",
     readonlyField: "Read-only (system provided)",
     doExport: "Export",
+    // SMTP connectivity test (0214)
+    smtpTestHint:
+      "Send a test email to your admin mailbox — if it arrives, password-reset and invite mails will deliver.",
+    smtpTestBtn: "Send test email",
+    smtpTestingBtn: "Sending…",
+    smtpTesting: "Sending test email…",
+    smtpTestOk:
+      "Test email sent — check the admin mailbox (including spam folder)",
     exportPlain: "Include secrets",
     exportPlainConfirm:
       "Secrets (SMTP password, analytics code, ...) will be exported in cleartext. Confirm this environment is safe.",

@@ -114,6 +114,17 @@ const zhTwBase: Omit<
     done: "安裝完成",
     alreadyDone: "本站已完成安裝嚮導（重複完成冪等）。",
     loadFailed: "無法載入嚮導狀態，請確認 API 可達",
+    // 0214：announce 採集 + 首個邀請碼 + checklist 連結化
+    announceUrl: "Tracker 公網位址（announce URL）",
+    announceHint:
+      "這是你站點的公網 Tracker 位址——其他使用者下載種子後將透過它連接做種。留空保持現狀；填 127.0.0.1/localhost 將被拒絕。",
+    firstInviteTitle: "已產生首個邀請碼（本站為邀請制註冊）：",
+    firstInviteHint:
+      "把它交給第一個註冊的使用者（註冊頁填入即可）；更多邀請碼在後台「邀請管理」發放。",
+    copy: "複製",
+    copied: "已複製",
+    chkGoFix: "去「基礎設定 → Tracker 位址」修改",
+    chkGoSmtp: "去設定 SMTP",
   },
   mod: {
     disabledTitle: "本站未開放此功能",
@@ -4236,6 +4247,13 @@ const zhTwBase: Omit<
     lastSaved: "最近儲存：{time}",
     readonlyField: "唯讀項（由系統提供）",
     doExport: "匯出",
+    // SMTP 連通性測試（0214）
+    smtpTestHint:
+      "寄一封測試郵件到你的管理員信箱——通了，找回密碼/邀請函就能送達。",
+    smtpTestBtn: "寄送測試郵件",
+    smtpTestingBtn: "寄送中…",
+    smtpTesting: "測試郵件寄送中…",
+    smtpTestOk: "測試郵件已寄出，請到管理員信箱查收（含垃圾箱）",
     exportPlain: "含密文",
     exportPlainConfirm:
       "即將以明文匯出全部密文字段（SMTP 密碼、統計碼等）。請確認目前環境安全。",
