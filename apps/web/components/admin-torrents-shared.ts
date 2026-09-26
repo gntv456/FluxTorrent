@@ -22,6 +22,8 @@ export interface AdminTorrentRow {
   promotion: string | null;
   promotion_ends_at: string | null;
   hr: boolean;
+  /** 自建维度取值（G5 后台列表「维度」列，与前台同一形状） */
+  sec_names: string[];
   created_at: string;
 }
 

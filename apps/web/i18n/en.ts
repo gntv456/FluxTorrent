@@ -3754,6 +3754,7 @@ const enBase: Omit<
       hr: "Mark H&R",
       unhr: "Unmark H&R",
       change_category: "Move category",
+      change_sections: "Set dimension",
       delete: "Delete",
     } as Record<string, string>,
     actionApplied: "{action} applied to {n} torrents",
@@ -3868,6 +3869,13 @@ const enBase: Omit<
     dimClear: "Clear",
     dimBoolYes: "Yes",
     dimBoolNo: "No",
+    // Batch dimension setter (admin-torrents-dim-set, G5)
+    dimsCol: "Dimensions",
+    dimSetTitle: "Batch dimensions",
+    dimSetKind: "Pick dimension",
+    dimSetApply: "Apply",
+    dimSetClear: "Clear dimension",
+    dimSetHint: "Only the picked dimension changes; the rest keep values",
   },
   /** Performance review admin (admin-jixiao) */
   adminJixiao: {
@@ -4036,6 +4044,19 @@ const enBase: Omit<
     stBanned: "Banned",
     qPh: "Username / email",
     search: "Search",
+    // Custom fields (G4: filter by field value + view/edit in detail panel)
+    fField: "Custom field",
+    fFieldVal: "Value contains",
+    fFieldValPh: "Blank = filled at all",
+    fieldsTitle: "Custom field values",
+    fieldsSave: "Save fields ({n})",
+    fieldsSaved: "{n} fields saved",
+    fieldsHint: "Only changed fields are submitted; blank clears",
+    fieldsBlank: "(empty)",
+    fieldsYes: "Yes",
+    fieldsNo: "No",
+    fieldsOff: "disabled",
+    fieldsPrivate: "private",
     // List & batch bar (admin-users-list)
     batchHint:
       "Batch actions ({n} selected; you can only affect users below your class)",

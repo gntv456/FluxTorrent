@@ -3,6 +3,7 @@
 import { BTN_SM_BOLD, INPUT_MD } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { AdminUserFieldsPanel } from "@/components/admin-user-fields-panel";
 
 /** 用户详情面板（从 admin-users.tsx 按域拆出，300 门禁）：
  *  好学站用户详情页口径——字段全景 + 管理动作（数值调整 / 下载权限 / 挂起）。 */
@@ -153,9 +154,7 @@ export function UserDetailPanel({
           <dt className="text-sub">{u.lastSeen}</dt>
           <dd>
             {detail.last_seen_at
-              ? new Date(detail.last_seen_at).toLocaleString(
-                  dateLocale(locale),
-                )
+              ? new Date(detail.last_seen_at).toLocaleString(dateLocale(locale))
               : "—"}
           </dd>
         </div>
@@ -182,6 +181,9 @@ export function UserDetailPanel({
           {detail.suspended ? a.unsuspendBtn : a.suspendBtn}
         </button>
       </div>
+
+      {/* 自定义字段值（G4）：查看 + 代改，站长没建字段时组件自身不渲染 */}
+      <AdminUserFieldsPanel userId={detail.id} />
 
       {/* 数值调整表单（delta 语义） */}
       {adjust && (
@@ -245,10 +247,7 @@ export function UserDetailPanel({
             >
               {u.adjustSubmit}
             </button>
-            <button
-              className={BTN_SM_BOLD}
-              onClick={() => setAdjust(null)}
-            >
+            <button className={BTN_SM_BOLD} onClick={() => setAdjust(null)}>
               {dict.common.cancel}
             </button>
           </div>

@@ -22,6 +22,7 @@ import {
 import { BatchBar } from "./admin-torrents-batch-bar";
 import { TorrentTable } from "./admin-torrents-table";
 import { DimFilterPanel } from "./admin-torrents-dims";
+import { DimSetPanel } from "./admin-torrents-dim-set";
 import { appendDims, useDecide, useDims } from "./admin-torrents-list-parts";
 
 /** 搜索按钮（实底天蓝） */
@@ -131,7 +132,6 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
     }
   }
 
-
   const decide = useDecide(flash, load);
 
   return (
@@ -236,6 +236,14 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
         values={dims.values}
         onChange={dims.set}
         onClear={dims.clear}
+      />
+
+      {/* 批量改维度（G5）：与筛选面板同源协议，一次改一维（部分更新语义） */}
+      <DimSetPanel
+        kinds={dims.kinds}
+        dict={dims.dict}
+        busy={busy}
+        onApply={(sections) => batch("change_sections", { sections })}
       />
 
       {/* 批量工具条（拆至 ./admin-torrents-batch-bar.tsx） */}

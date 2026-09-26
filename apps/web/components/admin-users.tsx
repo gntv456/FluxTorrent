@@ -13,6 +13,7 @@ import {
 } from "@/components/admin-users-detail";
 import { UsersBatchBar, UsersTable } from "@/components/admin-users-list";
 import { UsersFilterBar } from "@/components/admin-users-filters";
+import { useUserFilters } from "@/components/admin-users-parts";
 import { UsersPager } from "@/components/admin-users-pager";
 
 /** 第五轮：后台用户管理（好学站 /nexusphp user/users 口径）
@@ -48,13 +49,6 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   const { dict, currency } = useI18n();
   const at = dict.adminUsers;
   const ud = dict.userDetail;
-  const [q, setQ] = useState("");
-  const [fId, setFId] = useState("");
-  const [fClass, setFClass] = useState("");
-  const [fStatus, setFStatus] = useState("");
-  const [fEnabled, setFEnabled] = useState("");
-  const [fDownload, setFDownload] = useState("");
-  const [fSuspended, setFSuspended] = useState("");
   const [sort, setSort] = useState("id");
   const [desc, setDesc] = useState(true);
   const [page, setPage] = useState(1);
@@ -66,6 +60,10 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   // 第八轮 P2-9：批量操作
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [batchClass, setBatchClass] = useState("");
+  /** 筛选状态（含 G4 自定义字段维）抽到 admin-users-parts.ts，主组件守 300 行 */
+  const filters = useUserFilters();
+  /** 自定义字段清单（G4）：筛选项用；无权/未建字段时为空数组 */
+  const [fields, setFields] = useState<{ key: string; label: string }[]>([]);
 
   const flash = (m: string) => {
     setMsg(m);
@@ -73,18 +71,12 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   };
 
   const load = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (q.trim()) params.set("q", q.trim());
-    if (fId.trim()) params.set("id", fId.trim());
-    if (fClass) params.set("class_id", fClass);
-    if (fStatus) params.set("status", fStatus);
-    if (fEnabled) params.set("enabled", fEnabled);
-    if (fDownload) params.set("download", fDownload);
-    if (fSuspended) params.set("suspended", fSuspended);
-    params.set("sort", sort);
-    params.set("desc", String(desc));
-    params.set("page", String(page));
-    params.set("per_page", "20");
+    const params = filters.params({
+      sort,
+      desc: String(desc),
+      page: String(page),
+      per_page: "20",
+    });
     try {
       setData(
         await api.get<UsersPage>(`/api/v1/admin/users?${params.toString()}`),
@@ -93,23 +85,18 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
     } catch (e) {
       flash(e instanceof ApiError ? e.message : dict.common.loadFailed);
     }
-  }, [
-    q,
-    fId,
-    fClass,
-    fStatus,
-    fEnabled,
-    fDownload,
-    fSuspended,
-    sort,
-    desc,
-    page,
-    dict,
-  ]);
+  }, [filters, sort, desc, page, dict]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    api
+      .get<{ key: string; label: string }[]>("/api/v1/admin/user-fields")
+      .then((rs) => setFields(rs.filter((r) => r.key)))
+      .catch(() => {});
+  }, []);
 
   const openDetail = async (id: number) => {
     try {
@@ -199,9 +186,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         { action, ids, value, reason },
       );
       const skipNote =
-        r.skipped.length > 0
-          ? fmt(at.skipNote, { n: r.skipped.length })
-          : "";
+        r.skipped.length > 0 ? fmt(at.skipNote, { n: r.skipped.length }) : "";
       flash(fmt(at.updatedMsg, { n: r.updated }) + skipNote);
       await load();
     } catch (e) {
@@ -237,16 +222,9 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
       {/* 筛选条件（好学站「筛选条件」面板口径） */}
       <UsersFilterBar
         classes={classes}
-        values={{ q, fId, fClass, fStatus, fEnabled, fDownload, fSuspended }}
-        set={(k, v) => {
-          if (k === "q") setQ(v);
-          else if (k === "fId") setFId(v);
-          else if (k === "fClass") setFClass(v);
-          else if (k === "fStatus") setFStatus(v);
-          else if (k === "fEnabled") setFEnabled(v);
-          else if (k === "fDownload") setFDownload(v);
-          else setFSuspended(v);
-        }}
+        fields={fields}
+        values={filters.values}
+        set={filters.set}
         onSearch={() => {
           setPage(1);
           load();
