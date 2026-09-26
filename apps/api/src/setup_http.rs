@@ -86,12 +86,31 @@ async fn setup_status(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(false);
+    // 开站 checklist（0209 P2-12）：三项「不配也能跑，但配错会坑」的检查。
+    // announce_url 默认 127.0.0.1 → 下载的 .torrent 带内网地址；
+    // SMTP 空 → 找回密码/邀请信静默降级；注册默认 invite_only。
+    let (announce, smtp_host, reg_mode): (String, String, String) =
+        sqlx::query_as(
+            "SELECT \
+             COALESCE(MAX(value) FILTER (WHERE name = 'announce_url'), ''), \
+             COALESCE(MAX(value) FILTER (WHERE name = 'smtp_host'), ''), \
+             COALESCE(MAX(value) FILTER (WHERE name = 'registration_mode'), 'invite_only') \
+             FROM site_settings WHERE name IN ('announce_url', 'smtp_host', 'registration_mode')",
+        )
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or_default();
     ok(serde_json::json!({
         "done": done == "done",
         "has_admin": has_admin,
         "packs": packs.into_iter().map(|(code, name, descr)| {
             serde_json::json!({"code": code, "name": name, "description": descr})
         }).collect::<Vec<_>>(),
+        "checklist": {
+            "announce_local": announce.contains("127.0.0.1") || announce.contains("localhost"),
+            "smtp_unset": smtp_host.trim().is_empty(),
+            "registration_mode": reg_mode,
+        },
     }))
 }
 

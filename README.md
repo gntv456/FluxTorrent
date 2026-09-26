@@ -30,6 +30,7 @@ FluxTorrent/
 cp docker/.env.example docker/.env && vim docker/.env   # 必填 DB_PASSWORD/REDIS_PASSWORD/JWT_SECRET（缺失会拒绝启动）
 docker compose -f docker/docker-compose.yml up -d
 # web: http://localhost:3000  api: http://localhost:8080/api/v1/health
+# ⚠️ 起来后先访问 http://localhost:3000/setup 完成安装向导（见下一节）
 ```
 
 ### 本地开发
@@ -57,17 +58,30 @@ pnpm install
 pnpm --filter @fluxtorrent/web dev
 ```
 
-### 引导首个账号
+### 安装向导（装完 compose 后的第一件事）
 
-注册采用邀请制（M01）。冷启动由站长直接向 `invites` 表发码：
+```bash
+# 1. 启动全部服务（迁移由 api 启动时自动执行）
+cp docker/.env.example docker/.env && vim docker/.env   # 必填 DB_PASSWORD/REDIS_PASSWORD/JWT_SECRET（缺失会拒绝启动）
+docker compose -f docker/docker-compose.yml up -d
 
-```sql
--- root(站长, class 99) 为引导示例；发放一枚邀请码
-INSERT INTO users (username, email, pass_hash, passkey, class_id)
-VALUES ('root', 'root@flux.local', 'stub', 'rootpasskey0000000000000000000ff', 99);
-INSERT INTO invites (inviter_id, code, expires_at)
-VALUES (1, '<恰好32位字符的邀请码>', now() + interval '3 days');
+# 2. 浏览器打开 http://localhost:3000/setup 完成三步向导：
+#    ① 选站型（11 种预置：综合/教育/影视/音乐/动漫…，决定分类/维度/模块缺省）
+#    ② 站点名称 + 管理员登录
+#    ③ 合规勾选 → 完成安装（幂等，可重复访问）
 ```
+
+**管理员账号**：系统已自动预置 `root`（初始密码 `password123`，首次登录强制修改）。向导第 ② 步用改密后的新密码登录即可。完成前所有业务 API 处于装机封锁状态（只放行登录/改密），这是设计行为。
+
+**开站前三项检查**（不检查也能跑，但建议先改）：
+
+1. **tracker announce 地址**：后台「站点设定」把 `announce_url` 从 `http://127.0.0.1:8080/announce` 改成你的公网域名——否则用户下载的 .torrent 里是内网地址，无法做种。
+2. **邮件 SMTP**：后台「站点设定 → 邮件」填 SMTP 服务器/端口/发件人即生效（找回密码/邀请信/群发都用它）；也可用环境变量 `SMTP_URL`/`SMTP_FROM`（后台设定优先）。
+3. **注册模式**：默认邀请制（invite_only）；要开放注册改 `registration_mode=open`，配套在「邀请管理」里发邀请码。
+
+### 引导首个普通用户
+
+注册默认邀请制。装好后在后台「邀请管理」给用户直发邀请码，或让 LV3+ 用户在 `/invites` 自助生成；也可切换为开放注册（见上）。
 
 ## 质量门禁（方案 §8.4）
 
