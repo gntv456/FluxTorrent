@@ -9,10 +9,9 @@ import { MainMenu } from "@/components/main-menu";
 import { CustomMenu } from "@/components/custom-menu";
 import { Icon } from "@/components/icons";
 import { getMenuItems } from "@/lib/data";
-
-/** 导航项（Seedlight §3）：href + label；group 用于「更多 ▾」下拉分组。 */
-type NavItem = { href: string; label: string };
-type NavGroup = { group: string; items: NavItem[] };
+import { buildNav } from "@/lib/nav-menu";
+import { MobileNavShell } from "@/components/mobile-nav-shell";
+import { api } from "@/lib/api-client";
 
 /**
  * Seedlight 页头：单行导航条（logo 居左 + 一级/更多菜单居中 + 主题/语言/头像弹窗居右）。
@@ -23,150 +22,35 @@ export async function Header() {
   const profile = await getSiteProfile();
   /** 模块开关（U1 §6.2）：缺键视为开（T3 缺省=现状），与 API 侧 default_on 口径一致 */
   const mod = (k: string) => profile.modules[k] !== false;
-  const textbooksOn = mod("textbooks");
-  /** 社交层（0102）：由 site_settings.module_social 决定，关闭时导航里不出现入口 */
-  const socialOn = mod("social");
   const brand = profile.brand || dict.common.brand;
-  /** 字典文案里的 {magic} 货币占位符（如 nav.spark「{magic}经济」）在此替换为站点货币名 */
-  const t = (tpl: string) => tpl.replace("{magic}", currency);
-
-  // 自定义菜单（location=topbar，nav.custom_enabled 开启时接口才返回非空）：
-  // 一级项替换主菜单；带子项的一级项其子项收进「更多 ▾」作为独立分组（nexusphp-menu 生产口径）。
-  // 接口返回空 = 开关关闭或未配置 → 显式回退默认导航（不做静默混淆）。
+  // 自定义菜单（location=topbar，nav.custom_enabled 开启时接口才返回非空）
   const customItems = await getMenuItems("topbar");
-  const customTops = customItems.filter((m) => m.parent_id === 0);
-  const customActive = customTops.length > 0;
-  const customGroups: NavGroup[] = customActive
-    ? customTops
-        .filter((m) => customItems.some((c) => c.parent_id === m.id))
-        .map((m) => ({
-          group: m.label,
-          items: customItems
-            .filter((c) => c.parent_id === m.id)
-            .map((c) => ({ href: c.url, label: c.label })),
-        }))
-    : [];
+  // 抽屉用户摘要（M2）：失败回落游客文案，不阻塞页头
+  const ov = await api
+    .get<{
+      username?: string;
+      class_name?: string;
+      uploaded?: number;
+      spark_balance?: number;
+    }>("/api/v1/me/overview")
+    .catch(() => null);
+  const me = ov?.username
+    ? {
+        username: ov.username,
+        className: ov.class_name ?? "",
+        uploaded: `${Math.round((ov.uploaded ?? 0) / 1e9)}G`,
+        spark: (ov.spark_balance ?? 0).toLocaleString("en-US"),
+      }
+    : null;
+  // 导航配置单源（M2）：桌面/抽屉/底 Tab「更多」共用 lib/nav-menu.ts
+  const { primary, groups } = buildNav({
+    nav: dict.nav,
+    tabbar: dict.tabbar,
+    currency,
+    modules: mod,
+    customItems,
+  });
 
-  // 默认一级：核心任务域（发布入口在菜单内，不再放独立大按钮）
-  // 三审 C-3：头部主导航与 footer 同口径——forums 关闭则一级入口消失
-  const defaultPrimary: NavItem[] = [
-    { href: "/", label: dict.nav.home },
-    { href: "/torrents", label: dict.nav.library },
-    ...(mod("forums") ? [{ href: "/forums", label: dict.nav.forums }] : []),
-    { href: "/top", label: dict.nav.top },
-    { href: "/upload", label: dict.nav.upload },
-  ];
-  const primary: NavItem[] = customActive
-    ? customTops.map((m) => ({ href: m.url, label: m.label }))
-    : defaultPrimary;
-
-  // 「更多 ▾」收纳域（自定义生效时替换为自定义子项分组；条目按 module 开关过滤 U1 §6.2）
-  const groups: NavGroup[] = customActive
-    ? customGroups
-    : [
-        {
-          group: dict.nav.discover,
-          items: [
-            { href: "/torrents?official=1", label: dict.nav.official },
-            ...(mod("requests")
-              ? [{ href: "/requests", label: dict.nav.requests }]
-              : []),
-            ...(mod("offers")
-              ? [{ href: "/offers", label: dict.nav.offers }]
-              : []),
-            ...(mod("subtitles")
-              ? [{ href: "/subtitles", label: dict.nav.subtitles }]
-              : []),
-            ...(mod("preserve")
-              ? [{ href: "/preserve", label: dict.nav.preserve }]
-              : []),
-            ...(socialOn
-              ? [
-                  { href: "/endangered", label: dict.nav.endangered },
-                  { href: "/teams", label: dict.nav.teams },
-                ]
-              : []),
-            ...(textbooksOn
-              ? [{ href: "/textbooks", label: dict.nav.textbooks }]
-              : []),
-          ],
-        },
-        {
-          group: t(dict.nav.spark),
-          items: [
-            ...(mod("shop")
-              ? [{ href: "/shop", label: dict.tabbar.shop }]
-              : []),
-            ...(mod("bank") ? [{ href: "/bank", label: dict.nav.bank }] : []),
-            ...(mod("magic_pool")
-              ? [{ href: "/magic-pool", label: dict.nav.magicPool }]
-              : []),
-            ...(mod("tasks")
-              ? [{ href: "/tasks", label: dict.nav.tasks }]
-              : []),
-            { href: "/my-spark", label: t(dict.nav.spark) },
-          ],
-        },
-        {
-          group: dict.nav.growth,
-          items: [
-            ...(mod("exams")
-              ? [{ href: "/me/exams", label: dict.nav.exams }]
-              : []),
-            { href: "/me/achievements", label: dict.nav.achievements },
-            ...(mod("resurrections")
-              ? [{ href: "/resurrections", label: dict.nav.resurrections }]
-              : []),
-            ...(mod("medals")
-              ? [{ href: "/medal-wall", label: dict.nav.medalWall }]
-              : []),
-            ...(mod("dressup")
-              ? [{ href: "/avatar-frames", label: dict.nav.frames }]
-              : []),
-            ...(mod("medals")
-              ? [{ href: "/medals", label: dict.nav.medals }]
-              : []),
-            ...(mod("jixiao")
-              ? [{ href: "/jixiao", label: dict.nav.jixiao }]
-              : []),
-            ...(mod("invites")
-              ? [{ href: "/invites", label: dict.nav.invites }]
-              : []),
-          ],
-        },
-        {
-          group: dict.nav.fun,
-          items: [
-            ...(mod("games")
-              ? [{ href: "/games", label: dict.nav.games }]
-              : []),
-            ...(mod("farm") ? [{ href: "/farm", label: dict.nav.farm }] : []),
-            ...(mod("gomoku")
-              ? [{ href: "/gomoku", label: dict.nav.gomoku }]
-              : []),
-            ...(mod("contests")
-              ? [{ href: "/contests", label: dict.nav.contests }]
-              : []),
-            ...(mod("friends")
-              ? [{ href: "/friends", label: dict.nav.friends }]
-              : []),
-          ],
-        },
-        {
-          group: dict.nav.more,
-          items: [
-            ...(mod("messages")
-              ? [{ href: "/messages", label: dict.nav.messages }]
-              : []),
-            // H&R 入口归 exams 键（/me/hr 网关同口径，二审 G2-3）
-            ...(mod("exams") ? [{ href: "/myhr", label: dict.nav.myhr }] : []),
-            { href: "/faq", label: dict.nav.faq },
-            ...(mod("magic_pool")
-              ? [{ href: "/donate", label: dict.nav.donate }]
-              : []),
-          ],
-        },
-      ];
 
   return (
     <>
@@ -203,10 +87,18 @@ export async function Header() {
             </Suspense>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {/* M2 移动汉堡（<md）：抽屉与桌面同源配置；摘要行回落游客 */}
+            <div className="md:hidden">
+              <MobileNavShell primary={primary} groups={groups} summary={me} />
+            </div>
             <ThemeToggle label={dict.common.themeToggle} />
-            {/* 语言切换器（0209 P2-17）：site_settings.locale_switcher_enabled=no 隐藏（单语站） */}
+            {/* 语言切换器（0209 P2-17）：site_settings.locale_switcher_enabled=no 隐藏（单语站）。
+                M2：<md 隐藏——右工具区（汉堡+主题+头像+语言）在 375px 超宽 ~39px，
+                语言是低频操作，移入抽屉外的登录页/页脚仍可达。 */}
             {profile.locale_switcher_enabled !== "no" && (
-              <LocaleSwitcher current={locale} />
+              <div className="hidden md:block">
+                <LocaleSwitcher current={locale} />
+              </div>
             )}
             {/* 头像弹窗（0147）：点击头像展开用户下拉（摘要/数据/快捷/信箱） */}
             <UserMenu loginLabel={dict.common.login} />

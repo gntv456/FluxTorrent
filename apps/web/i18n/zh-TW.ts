@@ -49,6 +49,12 @@ const zhTwBase: Omit<
     yes: "是",
     no: "否",
   },
+  navDrawer: {
+    open: "開啟導航選單",
+    close: "關閉選單",
+    adminPanel: "管理面板",
+    guest: "訪客",
+  },
   nav: {
     home: "首頁",
     library: "資源庫",

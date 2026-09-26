@@ -27,6 +27,12 @@ const zhCnBase = {
     yes: "是",
     no: "否",
   },
+  navDrawer: {
+    open: "打开导航菜单",
+    close: "关闭菜单",
+    adminPanel: "管理面板",
+    guest: "游客",
+  },
   nav: {
     home: "首页",
     library: "资源库",

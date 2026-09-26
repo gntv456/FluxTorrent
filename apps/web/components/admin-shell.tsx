@@ -228,13 +228,26 @@ export function AdminShell({
         >
           {navBody}
         </nav>
+        {/* M2：移动端管理导航从「内联展开顶出内容」改左侧滑入抽屉
+            （复用 navdrawer 骨架；条目是 onTool button 而非路由 link） */}
         {navOpen && (
-          <nav
-            aria-label={a.navAriaLabel}
-            className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-2 lg:hidden"
-          >
-            {navBody}
-          </nav>
+          <div className="navdrawer-root lg:hidden" role="dialog" aria-modal="true">
+            <div className="navdrawer-mask" onClick={() => setNavOpen(false)} />
+            <nav aria-label={a.navAriaLabel} className="navdrawer admin-navdrawer">
+              <div className="navdrawer__head">
+                <p className="navdrawer__name">{a.navAriaLabel}</p>
+                <button
+                  type="button"
+                  className="navdrawer__close"
+                  aria-label={a.navToggle}
+                  onClick={() => setNavOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="navdrawer__body">{navBody}</div>
+            </nav>
+          </div>
         )}
         {/* M1 裸表兜底：管理面板内容区的裸 <table> 在 <lg 直接撑破容器。
             CSS 侧（pages.css .admin-panel-content table）统一转块级横滚，
