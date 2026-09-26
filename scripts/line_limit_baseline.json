@@ -46,7 +46,6 @@
  "apps/web/components/admin-trackers.tsx::wide": 1,
  "apps/web/components/admin-user-detail-panels.tsx::wide": 26,
  "apps/web/components/admin-userlogs.tsx::wide": 1,
- "apps/web/components/admin-users-detail.tsx::wide": 3,
  "apps/web/components/admin-users-list.tsx::wide": 4,
  "apps/web/components/api-tokens.tsx::wide": 2,
  "apps/web/components/bank-actions-deposit.tsx::wide": 7,
