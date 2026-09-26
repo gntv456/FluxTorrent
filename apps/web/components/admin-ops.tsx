@@ -10,7 +10,7 @@ import { fmt } from "@/i18n/config";
 /** 后台运维三件套（0078，U3D 口径）：
  *  ① 版本页 GET /admin/version（git 版本 + 组件运行信息）
  *  ② 备份面板 GET /admin/backups + POST /admin/backups/run
- *  ③ 任务手动触发 POST /admin/jobs/run {job} */
+ *  ③ 任务手动触发 POST /admin/jobs/run（前四个）+ /run2（0209 等价 SQL 六任务） */
 
 interface VersionInfo {
   app: string;
@@ -85,9 +85,21 @@ export function AdminOpsPanel() {
     if (!window.confirm(`${t.jobRun} · ${job}？`)) return;
     setBusy(job);
     setMsg(null);
+    // 0209 P2-16：前四个任务走 /run，其余六个等价 SQL 任务走 /run2
+    const run2Jobs = [
+      "hr_enforce",
+      "hr_punish",
+      "class_auto_adjust",
+      "task_settle",
+      "multi_ip_check",
+      "leak_scan",
+    ];
+    const endpoint = run2Jobs.includes(job)
+      ? "/api/v1/admin/jobs/run2"
+      : "/api/v1/admin/jobs/run";
     try {
       const r = await api.post<{ job: string; affected: number }>(
-        "/api/v1/admin/jobs/run",
+        endpoint,
         { job },
       );
       setMsg(

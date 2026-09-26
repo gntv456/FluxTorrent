@@ -185,13 +185,23 @@ export default function AdminPage() {
           : (a.appealRejectNote ?? "reject-reason"),
       ) ?? "";
     if (!accept && !note.trim()) return;
+    // 0209 P1-8：受理封禁申诉时联动解封（后端缺省 true，这里显式传并消费回执）
+    const unban =
+      accept && window.confirm(a.appealUnbanConfirm ?? "unban-confirm");
     try {
-      await api.post("/api/v1/admin/appeals/handle", {
-        appeal_id: id,
-        accept,
-        note,
-      });
-      setMsg(fmt(a.appealHandled, { id }));
+      const r = await api.post<{ handled: number; unbanned: boolean }>(
+        "/api/v1/admin/appeals/handle",
+        {
+          appeal_id: id,
+          accept,
+          note,
+          unban,
+        },
+      );
+      setMsg(
+        fmt(a.appealHandled, { id }) +
+          (r.unbanned ? ` · ${a.appealUnbanned ?? "unbanned"}` : ""),
+      );
       load();
     } catch (e) {
       setMsg(errText(e, a, dict));

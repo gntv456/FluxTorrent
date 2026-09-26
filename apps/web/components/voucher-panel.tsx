@@ -6,9 +6,16 @@ import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { INPUT_MD } from "@/lib/ui-classes";
 
+type VoucherKind =
+  | "free"
+  | "neutral"
+  | "temp_invite"
+  | "rename_card"
+  | (string & {});
+
 type Voucher = {
   id: number;
-  kind: "free" | "neutral";
+  kind: VoucherKind;
   source: string;
   granted_at: string;
   expires_at: string;
@@ -16,7 +23,33 @@ type Voucher = {
   used_at: string | null;
 };
 
-/** 我的免费券/中性券：列表 + 对指定种子用券（0073，Gazelle FL token 口径） */
+/** temp_invite 核销响应（0211 H2）：直接返回邀请码，无需绑种子 */
+type InviteRedeem = {
+  voucher_id: number;
+  invite_id: number;
+  code: string;
+  expires_at: string;
+};
+
+const KIND_LABEL: Record<string, (d: VouchersDict) => string> = {
+  free: (d) => d.freeKind,
+  neutral: (d) => d.neutralKind,
+  temp_invite: (d) => d.tempInviteKind,
+  rename_card: (d) => d.renameCardKind,
+};
+
+const KIND_BADGE: Record<string, string> = {
+  free: "FL",
+  neutral: "NL",
+  temp_invite: "IV",
+  rename_card: "NM",
+};
+
+type VouchersDict = ReturnType<typeof useI18n>["dict"]["vouchers"];
+
+/** 我的券面板（0073 免费券/中性券 + 0211 分券种口径）：
+ *  free/neutral 绑种子；temp_invite 核销即得邀请码；rename_card 在
+ *  UserCP 改名时消费，这里只展示。 */
 export function VoucherPanel() {
   const { dict, locale } = useI18n();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -42,8 +75,35 @@ export function VoucherPanel() {
     (v) => !v.used_at && new Date(v.expires_at) > new Date(),
   );
   const history = vouchers.filter((v) => !open.includes(v));
+  const kindLabel = (v: Voucher) =>
+    (KIND_LABEL[v.kind] ?? ((d: VouchersDict) => v.kind))(dict.vouchers);
 
   async function use(id: number) {
+    const target = open.find((v) => v.id === id);
+    if (!target) return;
+    // temp_invite：无需种子 ID，核销即得邀请码
+    if (target.kind === "temp_invite") {
+      setError(null);
+      try {
+        const r = await api.post<InviteRedeem>(
+          "/api/v1/me/vouchers/use",
+          { voucher_id: id },
+        );
+        setMessage(
+          dict.vouchers.inviteRedeemed
+            .replace("{code}", r.code)
+            .replace(
+              "{date}",
+              new Date(r.expires_at).toLocaleDateString(dateLocale(locale)),
+            ),
+        );
+        setUsing(null);
+        await load();
+      } catch (err) {
+        setError(apiErrorMessage(dict, err));
+      }
+      return;
+    }
     const tid = Number(torrentId);
     if (!tid || tid <= 0) {
       setError(dict.vouchers.needTorrentId);
@@ -81,13 +141,9 @@ export function VoucherPanel() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {open.map((v) => (
             <div key={v.id} className="vticket">
-              <span className="n">
-                {v.kind === "free" ? "FL" : "NL"}
-              </span>
+              <span className="n">{KIND_BADGE[v.kind] ?? "??"}</span>
               <span className="l">
-                {v.kind === "free"
-                  ? dict.vouchers.freeKind
-                  : dict.vouchers.neutralKind}
+                {kindLabel(v)}
                 <small>
                   {dict.vouchers.expires}{" "}
                   {new Date(v.expires_at).toLocaleDateString(
@@ -96,32 +152,60 @@ export function VoucherPanel() {
                 </small>
               </span>
               <div className="acts">
-                {using === v.id ? (
-                  <div className="flex flex-col gap-2">
-                    <input
-                      className={`${INPUT_MD} w-full text-sm`}
-                      placeholder={dict.vouchers.torrentIdPlaceholder}
-                      value={torrentId}
-                      onChange={(e) => setTorrentId(e.target.value)}
-                      inputMode="numeric"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary"
-                        onClick={() => void use(v.id)}
-                      >
-                        {dict.vouchers.confirm}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => setUsing(null)}
-                      >
-                        {dict.vouchers.cancel}
-                      </button>
+                {v.kind === "rename_card" ? (
+                  <span className="text-xs text-sub">
+                    {dict.vouchers.renameHint}
+                  </span>
+                ) : using === v.id ? (
+                  v.kind === "temp_invite" ? (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs text-sub">
+                        {dict.vouchers.inviteConfirm}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() => void use(v.id)}
+                        >
+                          {dict.vouchers.confirm}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => setUsing(null)}
+                        >
+                          {dict.vouchers.cancel}
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        className={`${INPUT_MD} w-full text-sm`}
+                        placeholder={dict.vouchers.torrentIdPlaceholder}
+                        value={torrentId}
+                        onChange={(e) => setTorrentId(e.target.value)}
+                        inputMode="numeric"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() => void use(v.id)}
+                        >
+                          {dict.vouchers.confirm}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => setUsing(null)}
+                        >
+                          {dict.vouchers.cancel}
+                        </button>
+                      </div>
+                    </div>
+                  )
                 ) : (
                   <button
                     type="button"
@@ -147,10 +231,7 @@ export function VoucherPanel() {
             <ul className="mt-2 flex flex-col gap-1 text-xs text-sub">
             {history.slice(0, 30).map((v) => (
               <li key={v.id}>
-                #{v.id}{" "}
-                {v.kind === "free"
-                  ? dict.vouchers.freeKind
-                  : dict.vouchers.neutralKind}
+                #{v.id} {kindLabel(v)}
                 {v.used_torrent_id ? ` → #${v.used_torrent_id}` : ""}{" "}
                 {v.used_at
                   ? `(${new Date(v.used_at).toLocaleDateString(
