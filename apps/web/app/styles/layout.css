@@ -2477,3 +2477,135 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   padding-bottom: 4px;
 }
 
+
+
+/* ============ 移动导航抽屉（M2，移动端方案 §2） ============
+ * 与桌面 MainMenu 同源（lib/nav-menu.ts）。280ms var(--ease-out) 滑入；
+ * 触控目标 ≥44px；仅 <md 渲染（Header 条件挂载）。 */
+.navdrawer-root {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+.navdrawer-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 19, 31, 0.42);
+}
+.navdrawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(78vw, 320px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-card, var(--cloud));
+  border-right: 1px solid var(--line);
+  animation: navdrawer-in 280ms var(--ease-out, ease-out);
+  overflow-y: auto;
+}
+@keyframes navdrawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+.navdrawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.navdrawer__user {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+.navdrawer__avatar {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--sky-soft, #e6f2ff);
+  color: var(--sky-deep, #0a3d6b);
+  font-weight: 700;
+}
+.navdrawer__name {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink);
+}
+.navdrawer__stat {
+  margin: 0;
+  font-size: 11px;
+  color: var(--sub);
+}
+.navdrawer__close {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm, 8px);
+  color: var(--sub);
+}
+.navdrawer__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px 24px;
+}
+.navdrawer__gtitle {
+  margin: 10px 4px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sub);
+}
+.navdrawer__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.navdrawer__link {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: var(--r-sm, 8px);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.navdrawer__link:active {
+  background: var(--sky-soft, #e6f2ff);
+}
+.navdrawer-trigger {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm, 8px);
+  color: var(--ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .navdrawer {
+    animation: none;
+  }
+}
+
+/* 管理端抽屉变体（M2-3）：条目行距更紧（59 条目全量滚动） */
+.admin-navdrawer {
+  width: min(84vw, 340px);
+}
+.admin-navdrawer .navdrawer__body {
+  gap: 0;
+}

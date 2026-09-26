@@ -49,6 +49,12 @@ const enBase: Omit<
     yes: "Yes",
     no: "No",
   },
+  navDrawer: {
+    open: "Open navigation menu",
+    close: "Close menu",
+    adminPanel: "Admin Panel",
+    guest: "Guest",
+  },
   nav: {
     home: "Home",
     library: "Library",
