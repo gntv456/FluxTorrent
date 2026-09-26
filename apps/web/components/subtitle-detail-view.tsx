@@ -151,6 +151,7 @@ export function SubtitleDetailView({ sid }: { sid: number }) {
 
       <section className="subtitles-rules">
         <h2>{dt.metaTitle}</h2>
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table">
           <tbody>
             {metaRows.map(([k, v]) => (
@@ -161,11 +162,13 @@ export function SubtitleDetailView({ sid }: { sid: number }) {
             ))}
           </tbody>
         </table>
+        </div>
       </section>
 
       {(d.parents.length > 0 || d.children.length > 0) && (
         <section className="subtitles-rules">
           <h2>{dt.versions}</h2>
+          <div className="baozi-wide-table-scroll">
           <table className="nexus-table">
             <tbody>
               {d.parents.map(([id, title, lang, at]) => (
@@ -208,6 +211,7 @@ export function SubtitleDetailView({ sid }: { sid: number }) {
               ))}
             </tbody>
           </table>
+          </div>
         </section>
       )}
 

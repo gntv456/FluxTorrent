@@ -50,6 +50,7 @@ export function ForumTopicList({
         />
       )}
 
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table">
         <thead>
           <tr>
@@ -154,6 +155,7 @@ export function ForumTopicList({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

@@ -178,6 +178,7 @@ export function SubtitleRequestPanel({
           {t.reqBtn}
         </button>
       </form>
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table subtitles-list-table">
         <tbody>
           {reqs.map((r) => (
@@ -246,6 +247,7 @@ export function SubtitleRequestPanel({
           )}
         </tbody>
       </table>
+      </div>
     </section>
   );
 }

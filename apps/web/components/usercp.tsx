@@ -247,6 +247,7 @@ export function UsercpPanel({
             {tab === "tracker" && <TrackerTab s={settings} patch={patch} />}
             {tab === "forum" && <ForumTab s={settings} patch={patch} />}
             {tab === "security" && <SecurityTab s={settings} patch={patch} />}
+            <div className="baozi-wide-table-scroll">
             <table className="nexus-table nexus-form">
               <tbody>
                 <tr>
@@ -258,6 +259,7 @@ export function UsercpPanel({
                 </tr>
               </tbody>
             </table>
+            </div>
           </form>
         ) : (
           !err && <p className="usercp-loading">{dict.my.loading}</p>

@@ -67,6 +67,7 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
   }
 
   return (
+    <div className="baozi-wide-table-scroll">
     <table className="nexus-table">
       <thead>
         <tr>
@@ -126,5 +127,6 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
         )}
       </tbody>
     </table>
+    </div>
   );
 }

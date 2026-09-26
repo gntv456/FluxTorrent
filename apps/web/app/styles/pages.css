@@ -107,6 +107,25 @@
 .baozi-wide-table-scroll {
   overflow-x: auto;
 }
+/* table 自挂本类（行数门禁下不便包裹 div 的场景）：块化后 overflow 生效 */
+table.baozi-wide-table-scroll {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+}
+
+/* ============ M1 裸表兜底（移动端方案） ============
+ * 管理面板内容区（admin-shell .admin-panel-content）的裸 <table> 统一
+ * 转块级 + 横向滚动：<lg 不再撑破容器/引发 body 级横滚。
+ * 已显式用 .baozi-wide-table-scroll 包裹的表格不在此容器内，互不影响。
+ * display:block 会丢 table 语义布局（行不再随内容撑宽），因此配合
+ * width:max-content 保证列宽按内容计算，滚动容器裁剪。 */
+.admin-panel-content table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
 
 /* ============ 字幕区（subtitles.php 复刻） ============ */
 .subtitles-wrap {
@@ -170,6 +189,13 @@
   color: var(--danger);
   font-size: 12.5px;
   font-weight: 700;
+}
+/* M1：字幕上传表 table 自挂滚动（文件在行数门禁边缘，不便包裹 div） */
+table.subtitles-upload-table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
 }
 .subtitles-upload-table .toolbox {
   padding: 12px;
@@ -2115,6 +2141,22 @@ ange-dark); }
   background:linear-gradient(145deg,
     var(--baozi-orange-bright),
     var(--baozi-orange-dark));
+}
+/* M1 快修 #1：feed pill——全局 a{color} 是未分层样式，优先级压过 Tailwind
+   utility（text-white 失效的根因），故用专类 + 显式色板钉死 on-accent 口径。 */
+.pting-feed-pill {
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.pting-feed-pill:hover {
+  color: #fff;
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 .pting-board__head {
   display: flex;

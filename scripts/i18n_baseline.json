@@ -135,7 +135,9 @@
  "components\\admin-sections-dict.tsx": [],
  "components\\admin-sections-kinds.tsx": [],
  "components\\admin-sections.tsx": [],
- "components\\admin-shell.tsx": [],
+ "components\\admin-shell.tsx": [
+  239
+ ],
  "components\\admin-subtitles-awards.tsx": [],
  "components\\admin-tagdict-form.tsx": [],
  "components\\admin-tagdict.tsx": [],
@@ -227,7 +229,7 @@
   130
  ],
  "components\\file-tree.tsx": [
-  88
+  91
  ],
  "components\\footer.tsx": [],
  "components\\forum-bits.tsx": [],
@@ -263,9 +265,9 @@
  "components\\forum-report.tsx": [],
  "components\\forum-search.tsx": [],
  "components\\forum-topic-list.tsx": [
-  88,
-  99,
-  107
+  89,
+  100,
+  108
  ],
  "components\\forum-vote.tsx": [],
  "components\\friends-actions.tsx": [
@@ -320,28 +322,28 @@
   87,
   94,
   106,
-  113,
-  127,
-  130,
-  135,
-  137,
-  146,
-  149,
-  154,
-  160,
-  163,
-  168,
-  173,
-  195,
-  215,
-  217,
-  221,
-  223,
-  227,
-  229,
-  233,
-  246,
-  267
+  114,
+  128,
+  131,
+  136,
+  138,
+  147,
+  150,
+  155,
+  161,
+  164,
+  169,
+  174,
+  196,
+  216,
+  218,
+  222,
+  224,
+  228,
+  230,
+  234,
+  247,
+  268
  ],
  "components\\invite-manager-parts.tsx": [],
  "components\\invite-manager.tsx": [],
@@ -355,7 +357,7 @@
  ],
  "components\\login-history.tsx": [],
  "components\\main-menu.tsx": [
-  124
+  133
  ],
  "components\\medal-actions.tsx": [],
  "components\\medal-icon.tsx": [],
@@ -415,8 +417,8 @@
   69,
   70,
   83,
-  88,
-  89
+  89,
+  90
  ],
  "components\\setting-field-controls.tsx": [],
  "components\\setting-field.tsx": [],
@@ -667,9 +669,9 @@
   20,
   21,
   22,
-  157,
   158,
-  213
+  159,
+  214
  ],
  "components\\usercp.tsx": [],
  "components\\voucher-panel.tsx": [],

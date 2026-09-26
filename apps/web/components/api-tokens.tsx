@@ -112,6 +112,7 @@ export function ApiTokens() {
       )}
 
       {rows.length > 0 && (
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table text-xs">
           <thead>
             <tr>
@@ -150,6 +151,7 @@ export function ApiTokens() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

@@ -1,9 +1,21 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 import { siteBase } from "@/lib/site-url";
 import { LocaleProvider } from "@/i18n/client";
+
+/** 移动端方案 M1：viewport-fit=cover 让 env(safe-area-inset-*) 生效——
+ *  layout.tsx 底 Tab/操作条的 safe-area 内边距此前在 iOS 全面屏完全不工作。 */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5faff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1424" },
+  ],
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const { dict } = await getDict();

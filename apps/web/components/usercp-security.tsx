@@ -87,6 +87,7 @@ export function SecurityTab({
   }
 
   return (
+    <div className="baozi-wide-table-scroll">
     <table className="nexus-table nexus-form">
       <tbody>
         <Row head={t.resetPasskey}>
@@ -221,5 +222,6 @@ export function SecurityTab({
         </Row>
       </tbody>
     </table>
+    </div>
   );
 }

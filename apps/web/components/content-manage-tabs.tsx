@@ -110,6 +110,7 @@ export function FunTab({
           </div>
         </div>
       </section>
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table">
         <tbody>
           <tr>
@@ -186,6 +187,7 @@ export function FunTab({
           ))}
         </tbody>
       </table>
+      </div>
     </>
   );
 }
@@ -212,6 +214,7 @@ export function LinksTab({
     }
   }
   return (
+    <div className="baozi-wide-table-scroll">
     <table className="nexus-table">
       <tbody>
         <tr>
@@ -287,5 +290,6 @@ export function LinksTab({
         ))}
       </tbody>
     </table>
+    </div>
   );
 }

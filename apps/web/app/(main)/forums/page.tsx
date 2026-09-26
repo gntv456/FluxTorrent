@@ -73,9 +73,11 @@ export default async function ForumsPage() {
               {dict.forums2.totalSuffix}
             </p>
           </div>
+          {/* M1 桌面快修 #1：深蓝渐变横幅上 text-sky 近乎不可见（实截只剩空框）。
+              改 on-accent 口径：白描边 + 白字，悬停提亮。 */}
           <Link
             href="/forums/feed"
-            className="rounded-full border border-line px-4 py-1.5 text-sm font-bold text-sky transition hover:border-sky"
+            className="pting-feed-pill"
           >
             {dict.forums.feedTitle}
           </Link>

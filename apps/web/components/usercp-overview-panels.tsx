@@ -114,6 +114,7 @@ export function MoreInfoTable({
   return (
     <details className="uc-more" open>
       <summary>{t.moreTitle}</summary>
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table nexus-form">
         <tbody>
           <tr>
@@ -173,6 +174,7 @@ export function MoreInfoTable({
           </tr>
         </tbody>
       </table>
+      </div>
     </details>
   );
 }
@@ -183,6 +185,7 @@ export function RecentTopics({ t }: { t: Record<string, string> }) {
     <section className="uc-recent-topics">
       <h2>{t.recentTopics}</h2>
       <div className="uc-recent-topics__wrap">
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table">
           <tbody>
             <tr>
@@ -204,6 +207,7 @@ export function RecentTopics({ t }: { t: Record<string, string> }) {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   );

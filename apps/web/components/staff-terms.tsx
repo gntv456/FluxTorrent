@@ -207,6 +207,7 @@ export function StaffTermsPanel({
         )}
       </div>
       {editForm}
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table">
         <thead>
           <tr>
@@ -264,6 +265,7 @@ export function StaffTermsPanel({
           )}
         </tbody>
       </table>
+      </div>
       <div className="grid gap-1 rounded-[var(--r-md)] border border-line p-3">
         <label className="text-xs text-sub">
           {t.tryIt}

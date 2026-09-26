@@ -60,6 +60,7 @@ export function LinkApply() {
       }}
     >
       <p className="linkapply__note">{t.required}</p>
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table nexus-form">
         <tbody>
           {fields.map(([label, value, , setter, note]) => (
@@ -112,6 +113,7 @@ export function LinkApply() {
           </tr>
         </tbody>
       </table>
+      </div>
       {msg && <p className="linkapply__msg">{msg}</p>}
     </form>
   );

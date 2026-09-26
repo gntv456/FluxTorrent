@@ -89,6 +89,7 @@ export function ContactStaff() {
           void send();
         }}
       >
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table nexus-form">
           <tbody>
             <tr>
@@ -255,6 +256,7 @@ export function ContactStaff() {
             </tr>
           </tbody>
         </table>
+        </div>
       </form>
 
       <MyTickets tickets={tickets} onConfirm={confirmTicket} />

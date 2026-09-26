@@ -17,6 +17,7 @@ export function ForumTab({
   const { dict, currency } = useI18n();
   const t = dict.usercp.forum;
   return (
+    <div className="baozi-wide-table-scroll">
     <table className="nexus-table nexus-form">
       <tbody>
         <Row head={t.topicsPerPage}>
@@ -105,5 +106,6 @@ export function ForumTab({
         </Row>
       </tbody>
     </table>
+    </div>
   );
 }

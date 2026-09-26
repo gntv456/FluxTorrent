@@ -206,6 +206,7 @@ export function StaffCustomPagesPanel({
         )}
       </div>
       {editForm}
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table">
         <thead>
           <tr>
@@ -277,6 +278,7 @@ export function StaffCustomPagesPanel({
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

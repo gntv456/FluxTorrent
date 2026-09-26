@@ -81,6 +81,7 @@ export function SeedStatsCard() {
       {data.top_by_count.length > 0 && (
         <div className="mt-4">
           <h3 className="mb-2 text-sm font-bold">做种数 Top 10</h3>
+          <div className="baozi-wide-table-scroll">
           <table className="nexus-table w-full text-xs">
             <thead>
               <tr>
@@ -103,6 +104,7 @@ export function SeedStatsCard() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </section>

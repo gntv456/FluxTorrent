@@ -165,6 +165,7 @@ export function UserFieldsTab() {
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table nexus-form">
         <tbody>
           {defs.map((d) => (
@@ -174,6 +175,7 @@ export function UserFieldsTab() {
           ))}
         </tbody>
       </table>
+      </div>
       <div className="flex items-center gap-3">
         <button
           type="button"

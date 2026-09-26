@@ -259,6 +259,26 @@
   --font-body: var(--font-body);
 }
 
+/* ============ 断点体系（移动端方案 M1 归一） ============
+ * 语义四档 + folded。新增代码一律用语义档（md:/lg:/xl: 前缀或
+ *  @media (--bp-md) 等），禁止再引入裸像素野点。
+ *
+ * 语义档 → 存量野点吸收映射（分批迁移，迁移一处删一行野点）：
+ *   <sm（默认 <640）  ← 440 / 560 / 640
+ *   md（640–1023）    ← 700 / 720 / 768 / 860 / 900
+ *   lg（1024–1279）   ← 1080 / 1120
+ *   xl（≥1280）       ← 桌面现状，无野点
+ *   @media (folded)   ← 铰链避让（layout.css .hinge-safe，M4 启用）
+ * 断点值与 Tailwind 默认 sm/md/lg/xl 完全一致，这里显式声明只为
+ *  把映射表放进代码；行为零变化。 */
+@theme {
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
 html {
   background: var(--cloud);
   /* 站内锚点/返回顶部平滑滚动；reduced-motion 用户由下方媒体查询关掉 */

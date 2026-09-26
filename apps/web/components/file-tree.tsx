@@ -54,6 +54,7 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
 
   if (plain) {
     return (
+      <div className="baozi-wide-table-scroll">
       <table className="td-files">
         <tbody>
           {groups[0].files.map((f) => (
@@ -66,10 +67,12 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
           ))}
         </tbody>
       </table>
+      </div>
     );
   }
 
   return (
+    <div className="baozi-wide-table-scroll">
     <table className="td-files">
       <tbody>
         {groups.map((g) => {
@@ -111,5 +114,6 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
         })}
       </tbody>
     </table>
+    </div>
   );
 }

@@ -61,6 +61,7 @@ export function ContestBoard() {
           {msg}
         </p>
       )}
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table">
         <tbody>
           <tr>
@@ -105,6 +106,7 @@ export function ContestBoard() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

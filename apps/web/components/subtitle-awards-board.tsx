@@ -48,6 +48,7 @@ export function SubtitleAwardsBoard() {
   }
   const medals = ["👑", "🥈", "🥉"];
   return (
+    <div className="baozi-wide-table-scroll">
     <table className="nexus-table subtitles-list-table">
       <tbody>
         {won
@@ -76,5 +77,6 @@ export function SubtitleAwardsBoard() {
           ))}
       </tbody>
     </table>
+    </div>
   );
 }

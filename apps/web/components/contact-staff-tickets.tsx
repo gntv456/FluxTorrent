@@ -94,6 +94,7 @@ export function MyTickets({
         <p className="contactstaff-hint">{t.noTickets}</p>
       )}
       {tickets && tickets.length > 0 && (
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table">
           <tbody>
             {tickets.map((tk) => (
@@ -133,6 +134,7 @@ export function MyTickets({
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </section>
   );

@@ -105,6 +105,7 @@ export function TorrentSubtitles({
       ) : rows === null ? (
         <p className="py-4 text-center text-sub">…</p>
       ) : (
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table subtitles-list-table">
           <tbody>
             {rows.map((s) => (
@@ -194,6 +195,7 @@ export function TorrentSubtitles({
             )}
           </tbody>
         </table>
+        </div>
       )}
       <div className="mt-2">
         {!open ? (

@@ -42,6 +42,7 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
 
   return (
     <div className="flex flex-col gap-2">
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table">
         <tbody>
           <tr>
@@ -110,6 +111,7 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
           )}
         </tbody>
       </table>
+      </div>
       {msg && (
         <p className="text-xs text-sub" role="status">
           {msg}

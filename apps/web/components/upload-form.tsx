@@ -245,6 +245,7 @@ export function UploadForm() {
 
   return (
     <form onSubmit={submit}>
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table nexus-form">
         <thead>
           <tr>
@@ -334,6 +335,7 @@ export function UploadForm() {
           </tr>
         </tbody>
       </table>
+      </div>
     </form>
   );
 }

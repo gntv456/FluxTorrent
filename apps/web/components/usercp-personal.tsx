@@ -19,6 +19,7 @@ export function PersonalTab({
   const { dict, currency } = useI18n();
   const t = dict.usercp.personal;
   return (
+    <div className="baozi-wide-table-scroll">
     <table className="nexus-table nexus-form">
       <tbody>
         <Row head={t.parked}>
@@ -232,5 +233,6 @@ export function PersonalTab({
         </Row>
       </tbody>
     </table>
+    </div>
   );
 }

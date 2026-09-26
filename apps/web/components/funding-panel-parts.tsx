@@ -42,6 +42,7 @@ export function MineTable({
   return (
     <div>
       <h3 className="mb-2 text-sm font-bold">{t.mine}</h3>
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table text-xs">
         <tbody>
           <tr>
@@ -74,6 +75,7 @@ export function MineTable({
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

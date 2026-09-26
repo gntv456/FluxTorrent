@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useMediaQuery } from "@/lib/hooks/use-media";
 
 /** 导航（Seedlight §3）：一级平铺 + 「更多 ▾」分组下拉（点击展开，点外部/ESC 收起）。
  *
@@ -29,6 +30,9 @@ export function MainMenu({
   const sp = useSearchParams();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLLIElement>(null);
+  // M1 小屏收敛：<md 隐藏一级平铺，全部入口收进「更多 ▾」（M2 抽屉的过渡兜底）。
+  // SSR 首帧 fallback=false（桌面）：与 use-media 全站纪律一致，挂载后校正。
+  const compact = useMediaQuery("(max-width: 767px)", false);
 
   const pathActive = (p: string) =>
     p === "/"
@@ -65,6 +69,10 @@ export function MainMenu({
   const moreActive = (groups ?? []).some((g) =>
     g.items.some((i) => isActive(i.href)),
   );
+  // 小屏收敛态：一级条目并入「更多 ▾」首组，保证入口仍一步可达（M1 过渡）。
+  const dropGroups = compact
+    ? [{ group: ariaLabel, items }, ...(groups ?? [])]
+    : (groups ?? []);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -87,6 +95,7 @@ export function MainMenu({
     <nav aria-label={ariaLabel}>
       <ul className="mainmenu">
         {items.map((n) => {
+          if (compact) return null;
           const external = /^https?:\/\//i.test(n.href);
           return (
             <li key={n.href}>
@@ -111,7 +120,7 @@ export function MainMenu({
             </li>
           );
         })}
-        {groups && groups.length > 0 && (
+        {(compact || (groups && groups.length > 0)) && (
           <li className="relative" ref={moreRef}>
             <button
               type="button"
@@ -125,7 +134,7 @@ export function MainMenu({
             </button>
             {moreOpen && (
               <div className="mainmenu-drop">
-                {groups.map((g) => (
+                {dropGroups.map((g) => (
                   <div key={g.group} className="mainmenu-drop__group">
                     <p className="mainmenu-drop__title">{g.group}</p>
                     <div className="mainmenu-drop__links">

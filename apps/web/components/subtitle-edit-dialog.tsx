@@ -98,6 +98,7 @@ export function SubtitleEditDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-3 text-base font-bold">{t.editLabel}</h2>
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table nexus-form">
           <tbody>
             {row(
@@ -177,6 +178,7 @@ export function SubtitleEditDialog({
             )}
           </tbody>
         </table>
+        </div>
         {msg && <p className="mt-2 text-sm text-coral">{msg}</p>}
         <div className="mt-3 flex justify-end gap-2">
           <button type="button" className="btn2" onClick={onClose}>

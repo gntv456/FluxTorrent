@@ -82,6 +82,7 @@ export function GroupVersions({
       <div className="mb-2 flex justify-end">
         <GroupSubscribeButton groupId={group.group!.id} />
       </div>
+      <div className="baozi-wide-table-scroll">
       <table className="td-files">
         <tbody>
           {group.items.map((g) => (
@@ -114,6 +115,7 @@ export function GroupVersions({
           ))}
         </tbody>
       </table>
+      </div>
     </Fold>
   );
 }

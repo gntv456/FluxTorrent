@@ -163,6 +163,7 @@ export function WishlistPanel() {
         </p>
       )}
       {rows !== null && rows.length > 0 && (
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table">
           <tbody>
             <tr>
@@ -190,6 +191,7 @@ export function WishlistPanel() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
       {rows !== null && rows.length === 0 && (
         <p className="py-6 text-center text-sub">{t.empty}</p>

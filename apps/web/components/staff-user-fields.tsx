@@ -289,6 +289,7 @@ export function StaffUserFieldsPanel({
         )}
       </div>
       {editForm}
+      <div className="baozi-wide-table-scroll">
       <table className="nexus-table">
         <thead>
           <tr>
@@ -362,6 +363,7 @@ export function StaffUserFieldsPanel({
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

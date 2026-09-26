@@ -39,6 +39,7 @@ export function TrackerTab({
     patch({ browsecat: next.join(",") });
   };
   return (
+    <div className="baozi-wide-table-scroll">
     <table className="nexus-table nexus-form">
       <tbody>
         <Row head={t.defaultCat}>
@@ -240,5 +241,6 @@ export function TrackerTab({
         <BrowseSettingsRow s={s} patch={patch} />
       </tbody>
     </table>
+    </div>
   );
 }

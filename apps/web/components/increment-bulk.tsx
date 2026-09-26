@@ -107,6 +107,7 @@ export function IncrementBulk() {
         <p className="mb-3 text-xs text-sub">
           合并原「魔力增减 / 上传量增减」：按等级、职务或指定用户批量增减四类资源，完成后可群发 PM 通知。
         </p>
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table nexus-form">
           <tbody>
             <tr>
@@ -274,6 +275,7 @@ export function IncrementBulk() {
             </tr>
           </tbody>
         </table>
+        </div>
       </section>
     </div>
   );

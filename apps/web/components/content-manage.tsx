@@ -210,6 +210,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
               </div>
             </div>
           </section>
+          <div className="baozi-wide-table-scroll">
           <table className="nexus-table">
             <tbody>
               <tr>
@@ -248,6 +249,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
               ))}
             </tbody>
           </table>
+          </div>
         </>
       )}
 
