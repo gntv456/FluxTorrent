@@ -1,8 +1,27 @@
-//! 分区维护/休眠标记。
+//! 分区维护/休眠标记/运行日志清理。
 //! 从 jobs.rs 按域拆出。
 
 use chrono::Datelike;
 use sqlx::PgPool;
+
+/// 运行日志保留期（0218 G6）：14 天 + 20 万行硬顶（取严，防告警风暴撑爆库）。
+/// 小时级跑；DELETE 走 ts 索引与主键，代价可忽略。
+pub(crate) async fn purge_runtime_logs(db: &PgPool) -> anyhow::Result<u64> {
+    let a = sqlx::query(
+        "DELETE FROM runtime_logs WHERE ts < now() - interval '14 days'",
+    )
+    .execute(db)
+    .await?
+    .rows_affected();
+    let b = sqlx::query(
+        "DELETE FROM runtime_logs WHERE id < \
+         (SELECT COALESCE(max(id), 0) FROM runtime_logs) - 200000",
+    )
+    .execute(db)
+    .await?
+    .rows_affected();
+    Ok(a + b)
+}
 
 /// P0-2 分区预建：为三张 RANGE 流水表预建 [当月, +2 月] 的月分区（每日一次，IF NOT EXISTS 幂等）。
 /// 存量拆分见迁移 0070；没有本 job 时数据会持续落 default 分区导致裁剪失效。

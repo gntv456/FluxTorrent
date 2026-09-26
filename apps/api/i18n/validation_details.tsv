@@ -36,3 +36,6 @@ key 需为小写字母/数字/下划线，≤40 字符	key 需為小寫字母/�
 规范词与替换词相同：这条规则什么都不会改	規範詞與替換詞相同：這條規則不會改變任何內容	The original and the replacement are identical: this rule would change nothing
 没有这条术语规则	沒有這條術語規則	No such term rule
 请确认删除	請確認刪除	Please confirm the deletion
+缺少要改的字段	缺少要改的欄位	Missing the field to update
+触发队列已满（20 条待执行）——worker 可能未运行	觸發佇列已滿（20 條待執行）——worker 可能未運行	Trigger queue is full (20 pending) — the worker may not be running
+未知任务（worker 未注册该任务名）	未知任務（worker 未註冊該任務名）	Unknown job (the worker has not registered this task name)

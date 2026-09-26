@@ -34,6 +34,8 @@ where
         return None;
     }
     // 业务 future 与锁连接解耦：超时只掐业务，不掐持锁连接
+    let job = key.strip_prefix("job:").unwrap_or(key);
+    mark_start(db, job).await;
     let outcome =
         tokio::time::timeout(std::time::Duration::from_secs(900), fut).await;
     // 同一连接上解锁（连接归还池前必须释放，否则锁随连接泄漏到复用方）
@@ -44,6 +46,11 @@ where
             .await;
     if let Err(e) = unlock {
         tracing::error!(?e, key, "advisory unlock 失败（锁将随连接关闭释放）");
+    }
+    match &outcome {
+        Ok(Ok(_)) => mark_end(db, job, None).await,
+        Ok(Err(e)) => mark_end(db, job, Some(&format!("{e:#}"))).await,
+        Err(_) => mark_end(db, job, Some("超时（900s）被掐断")).await,
     }
     match outcome {
         Ok(Ok(v)) => Some(v),
@@ -58,11 +65,36 @@ where
     }
 }
 
+/// 运行登记（0218 G7）：自动/手动共用本函数，后台「任务面板」的
+/// 「最近运行」列以此为准——手动触发与定时触发在同一处留痕。
+async fn mark_start(db: &PgPool, job: &str) {
+    let _ = sqlx::query(
+        "INSERT INTO job_status (job, last_started_at, updated_at) \
+         VALUES ($1, now(), now()) ON CONFLICT (job) DO UPDATE \
+         SET last_started_at = now(), updated_at = now()",
+    )
+    .bind(job)
+    .execute(db)
+    .await;
+}
+
+async fn mark_end(db: &PgPool, job: &str, err: Option<&str>) {
+    let _ = sqlx::query(
+        "UPDATE job_status SET last_finished_at = now(), last_ok = $2, \
+         last_result = $3, updated_at = now() WHERE job = $1",
+    )
+    .bind(job)
+    .bind(err.is_none())
+    .bind(err)
+    .execute(db)
+    .await;
+}
+
 /// U1 §5.4：job key → 模块键映射（与 API 网关表同口径）。
 /// 未列出的 job 属核心层（计费/快照/清理/反作弊/等级），不受模块开关影响。
 /// 二审 G8 补登：magic_pool/funding/subtitles/论坛抽奖此前漏挂锁——模块关闭后
 /// 仍开全站促销/退款动账/验收交稿/开奖发奖。
-fn job_module(job_key: &str) -> Option<&'static str> {
+pub(crate) fn job_module(job_key: &str) -> Option<&'static str> {
     Some(match job_key {
         "job:bank_daily" => "bank",
         "job:task_settle" => "tasks",

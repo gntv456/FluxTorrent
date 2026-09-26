@@ -44,6 +44,7 @@ mod repo;
 mod request_id;
 mod rss_http;
 mod rules_engine;
+mod runtime_log;
 mod settings_http;
 mod setup_http;
 mod social_http;
@@ -93,17 +94,24 @@ fn build_cors() -> actix_cors::Cors {
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
-    tracing_subscriber::fmt()
-        .with_env_filter(
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    // fmt 层保留 stdout 输出；runtime_log 层把 WARN+ 也写进库（后台「运行日志」页）
+    tracing_subscriber::registry()
+        .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "info,sqlx=warn".into()),
         )
+        .with(tracing_subscriber::fmt::layer())
+        .with(runtime_log::layer("api"))
         .init();
 
     let cfg = config::AppConfig::from_env()?;
     let bind = cfg.bind.clone();
     let state =
         web::Data::new(std::sync::Arc::new(state::AppState::new(cfg).await?));
+    // 运行日志落库（0218 G6）：挂在这一刻之后的事件进 runtime_logs
+    runtime_log::attach(state.repo.db.clone());
 
     // 迁移（幂等）。路径解析相对 crate 根，兼容从仓库根或 apps/api 目录启动。
     {

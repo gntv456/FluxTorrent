@@ -60,55 +60,82 @@ pub async fn db_stats(
     })))
 }
 
-/// 系统日志（bitbucketlog.php 口径 → 审计日志分页）
+/// 运行日志（0218 G6）：api/worker 的 WARN+ 事件出口。
+/// 此前这里读 audit_log —— 那是「谁做了什么」的操作审计（在 ?tool=audit 页），
+/// 站点报错时站长查不到任何运行痕迹。现改读 runtime_logs（两级 tracing 层落库，
+/// 见 apps/api/src/runtime_log.rs 与 apps/worker/src/runtime_log.rs）。
 #[derive(serde::Serialize, sqlx::FromRow)]
-struct SysLogRow {
+struct RuntimeLogRow {
     id: i64,
-    actor: Option<String>,
-    action: String,
-    ref_json: Option<serde_json::Value>,
-    ip: Option<String>,
-    created_at: chrono::DateTime<chrono::Utc>,
+    ts: chrono::DateTime<chrono::Utc>,
+    level: String,
+    source: String,
+    target: String,
+    message: String,
+    repeat: i32,
 }
 
 #[derive(Deserialize)]
-struct SysLogQuery {
+struct RuntimeLogQuery {
     #[serde(default)]
     page: Option<i64>,
     #[serde(default)]
     q: Option<String>,
+    /// 级别筛选：ERROR / WARN（空 = 全部）
+    #[serde(default)]
+    level: Option<String>,
 }
 
 #[get("/admin/syslog")]
 pub async fn sys_log(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<SysLogQuery>,
+    q: web::Query<RuntimeLogQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::SYSLOG_VIEW)
         .await?;
     let page = q.page.unwrap_or(1).clamp(1, 1000);
-    let per = 30i64;
-    let rows: Vec<SysLogRow> = sqlx::query_as(
-                "SELECT l.id, u.username AS actor, l.action, \
-         l.ref AS ref_json, host(l.ip) AS ip, \
-         l.created_at FROM audit_log l LEFT JOIN users u ON u.id = l.actor_id WHERE ($1::text IS NULL OR l.action ILIKE '%' || $1 || '%') ORDER BY l.id DESC LIMIT $2 OFFSET $3",
-    ).bind(q.q.as_deref().map(str::trim).filter(|s| !s.is_empty()))
-    .bind(per).bind((page - 1) * per)
-    .fetch_all(&state.repo.db).await
+    let per = 50i64;
+    let kw = q.q.as_deref().map(str::trim).filter(|s| !s.is_empty());
+    let lv = q.level.as_deref().map(str::trim).filter(|s| !s.is_empty());
+    // 列表与计数同一谓词（_doc/同类BUG排查报告-20260916.md 的口径纪律）
+    let where_sql = "($1::text IS NULL OR level = $1) \
+         AND ($2::text IS NULL OR message ILIKE '%' || $2 || '%' \
+              OR target ILIKE '%' || $2 || '%')";
+    let rows: Vec<RuntimeLogRow> = sqlx::query_as(&format!(
+        "SELECT id, ts, level, source, target, message, repeat \
+         FROM runtime_logs WHERE {where_sql} \
+         ORDER BY id DESC LIMIT $3 OFFSET $4",
+    ))
+    .bind(lv)
+    .bind(kw)
+    .bind(per)
+    .bind((page - 1) * per)
+    .fetch_all(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM audit_log l WHERE ($1::text IS NULL OR \
-         l.action ILIKE '%' || $1 || '%')",
-    )
-    .bind(q.q.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    let total: i64 = sqlx::query_scalar(&format!(
+        "SELECT count(*) FROM runtime_logs WHERE {where_sql}",
+    ))
+    .bind(lv)
+    .bind(kw)
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
+    // 24h 级别计数：面板顶部常显「近期告警/错误」，不必翻页找
+    let counts: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT level, count(*)::bigint FROM runtime_logs \
+         WHERE ts > now() - interval '24 hours' \
+         GROUP BY level ORDER BY level",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
     Ok(ok(serde_json::json!({
         "items": rows, "total": total, "page": page, "per_page": per,
         "pages": (total + per - 1) / per,
+        "counts_24h": counts,
     })))
 }
 
