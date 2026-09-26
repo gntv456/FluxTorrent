@@ -43,6 +43,7 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_backups_list)
         .service(admin_backup_run)
         .service(admin_job_trigger)
+        .service(admin_job_trigger2)
         .service(admin_version)
         .service(admin_users_batch)
         .service(admin_ban_delete_by_ip)

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { UsercpPanel, type UsercpTab } from "@/components/usercp";
 import { getDict } from "@/i18n/server";
+import { getSiteProfile } from "@/lib/site-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,14 @@ export default async function MyPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { dict } = await getDict();
+  const profile = await getSiteProfile().catch(() => null);
+  // 心愿单 tab 受模块开关（0209 P2-15：此前关模块后 tab 仍在，点了看空面板）
+  const wishlistOn = profile?.modules?.wishlist !== false;
+  const valid = wishlistOn
+    ? VALID_TABS
+    : VALID_TABS.filter((t) => t !== "wishlist");
   const sp = await searchParams;
-  const tab = VALID_TABS.includes(sp.tab as UsercpTab)
+  const tab = valid.includes(sp.tab as UsercpTab)
     ? (sp.tab as UsercpTab)
     : "overview";
   return (

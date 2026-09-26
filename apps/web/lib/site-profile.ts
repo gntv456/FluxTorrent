@@ -23,6 +23,8 @@ export interface SiteProfile {
   subtitle_kind?: string;
   /** 字幕区显示名（0146；默认「字幕」，音乐站「歌词」） */
   subtitle_label?: string;
+  /** 语言切换器显隐（0209：locale_switcher_enabled=no 隐藏，单语站） */
+  locale_switcher_enabled?: string;
   categories: {
     id: number;
     name: string;

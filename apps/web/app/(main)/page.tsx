@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { getSiteProfile } from "@/lib/site-profile";
 import type { Page, TorrentListItem } from "@fluxtorrent/domain-types";
 import { HomeSections } from "@/components/home-sections";
 import { LatestPosters } from "@/components/latest-posters";
@@ -15,6 +16,10 @@ export const dynamic = "force-dynamic";
  *  社区新鲜事 + 签到日历 → 新增资源统计图表 → 站点数据三列 + 幸运大转盘 → 免责/友链 → 最新种子海报墙 */
 export default async function HomePage() {
   const { dict } = await getDict();
+  // showcase 模块键（0209 P2-18 接真）：海报墙此前只受排版控制，模块键空转——
+  // 现在关 showcase = 不拉不渲染（与其它模块同口径）
+  const profile = await getSiteProfile().catch(() => null);
+  const showcaseOn = profile?.modules?.showcase !== false;
   let latest: Page<TorrentListItem> | null = null;
   // 置顶促销公告条（0041 sticky_promotions 的前台消费端；空/失败静默隐藏）
   let promos: {
@@ -48,7 +53,7 @@ export default async function HomePage() {
   } catch {
     // home 接口失败（未登录之外的异常）按默认渲染
   }
-  if (showLatest) {
+  if (showLatest && showcaseOn) {
     try {
       latest = await paged<TorrentListItem>("/api/v1/torrents", { limit: 12 });
     } catch {

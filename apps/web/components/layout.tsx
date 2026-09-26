@@ -196,7 +196,10 @@ export async function Header() {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
-            <LocaleSwitcher current={locale} />
+            {/* 语言切换器（0209 P2-17）：site_settings.locale_switcher_enabled=no 隐藏（单语站） */}
+            {profile.locale_switcher_enabled !== "no" && (
+              <LocaleSwitcher current={locale} />
+            )}
             {/* 头像弹窗（0147）：点击头像展开用户下拉（摘要/数据/快捷/信箱） */}
             <UserMenu loginLabel={dict.common.login} />
           </div>

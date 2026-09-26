@@ -13,7 +13,6 @@ interface WishRow {
   id: number;
   keyword: string;
   category_id: number | null;
-  grade_id: number | null;
   created_at: string;
 }
 

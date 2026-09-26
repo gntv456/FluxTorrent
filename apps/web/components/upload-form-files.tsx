@@ -236,16 +236,19 @@ export function UploadFilesBlock({
           {attachMsg && <p className="text-xs text-sky-deep">{attachMsg}</p>}
         </div>
       </FormRow>
-      <FormRow label={dict.upload.mediainfoLabel ?? "MediaInfo"}>
-        <textarea
-          rows={4}
-          value={mediainfo}
-          onChange={(e) => setMediainfo(e.target.value)}
-          placeholder={dict.upload.mediainfoHint}
-          className="w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-2 font-mono text-xs"
-          maxLength={60000}
-        />
-      </FormRow>
+      {/* MediaInfo（0209 P2-14）：影视向字段——站长在元数据源里去掉 mediainfo 即隐藏 */}
+      {metaSources.includes("mediainfo") && (
+        <FormRow label={dict.upload.mediainfoLabel ?? "MediaInfo"}>
+          <textarea
+            rows={4}
+            value={mediainfo}
+            onChange={(e) => setMediainfo(e.target.value)}
+            placeholder={dict.upload.mediainfoHint}
+            className="w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-2 font-mono text-xs"
+            maxLength={60000}
+          />
+        </FormRow>
+      )}
       <FormRow label={dict.upload.price}>
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
