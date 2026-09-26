@@ -81,21 +81,39 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
   );
 }
 
-/** 空态（设计稿：吉祥物 80px + 蜡笔字标题 + 行动按钮） */
-export async function EmptyTorrents() {
+/** 空态（设计稿：吉祥物 80px + 蜡笔字标题 + 行动按钮）。
+ *  aliveFiltered：当前列表按「仅活种」口径过滤（默认视图）——空了不等于站里没种子，
+ *  可能只是全部断种；文案改写并给出切「全部」的入口，否则与侧栏「发布种子 N」矛盾
+ *  （评审 P0-2：同屏「共 0 个种子」+「发布种子 1」的口径打架）。 */
+export async function EmptyTorrents({
+  aliveFiltered = false,
+}: {
+  aliveFiltered?: boolean;
+}) {
   const { dict } = await getDict();
   return (
     <div className="flex flex-col items-center gap-3 py-16 text-center">
       <Icon name="seed" size={72} className="text-[var(--sky)]" />
       <h2 className="font-display text-xl text-ink">
-        {dict.torrent.emptyTitle}
+        {aliveFiltered
+          ? dict.torrent.emptyAliveTitle
+          : dict.torrent.emptyTitle}
       </h2>
-      <Link
-        href="/upload"
-        className="rounded-full bg-coral px-5 py-2 text-sm font-bold text-white"
-      >
-        {dict.common.publish}
-      </Link>
+      {aliveFiltered ? (
+        <a
+          href="/torrents?alive=0"
+          className="rounded-full border border-line px-5 py-2 text-sm font-bold text-sky-deep hover:bg-[var(--surface-card)]"
+        >
+          {dict.torrent.emptyAliveAction}
+        </a>
+      ) : (
+        <Link
+          href="/upload"
+          className="rounded-full bg-coral px-5 py-2 text-sm font-bold text-white"
+        >
+          {dict.common.publish}
+        </Link>
+      )}
     </div>
   );
 }

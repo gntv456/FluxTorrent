@@ -56,6 +56,7 @@ pub async fn get_torrent(
                t.media_info->>'rating' AS rating,
                t.media_info->>'poster' AS poster,
                t.imdb_id,
+               t.hr_policy,
                t.created_at
         FROM torrents t LEFT JOIN users u ON u.id = t.owner_id
         WHERE t.id = $1 AND {vis}

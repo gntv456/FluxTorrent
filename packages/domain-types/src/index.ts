@@ -174,6 +174,9 @@ export interface TorrentListItem {
   poster: string | null;
   /** IMDB id（0148：种子页字幕面板按此合并同片字幕；缺省 null） */
   imdb_id: string | null;
+  /** H&R 策略（评审 P1-5：详情页明示下载义务）；null = 站点默认策略，
+   *  语义 {"enabled","days","seed_hours"} 见 worker jobs/hr.rs。列表端点不下发。 */
+  hr_policy?: { enabled?: boolean; days?: number; seed_hours?: number } | null;
   owner_name: string | null;
   created_at: string;
   /** 行内标签徽标（0159 P1）：随行 json_agg，按字典 sort DESC, id 排序；旧数据缺省 */

@@ -53,6 +53,21 @@ pub async fn build_torrent_bytes(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(raw) = raw else {
+        // 区分两种 404（评审 P1-4）：种子行不在 = 真不存在；行在但 torrent_files
+        // 原文丢失 = 站点数据异常——统一报「资源不存在」会让用户误以为被封权，
+        // 详情页一切正常却下载 404 的场景必须给出可行动的提示。
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)",
+        )
+        .bind(torrent_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if exists {
+            return Err(DomainError::Validation(
+                "种子文件缺失（原始 .torrent 未存档），请联系管理组补档".into(),
+            ));
+        }
         return Err(DomainError::NotFound(torrent_id));
     };
     let user = state

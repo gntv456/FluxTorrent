@@ -72,6 +72,25 @@ export function TorrentHead({
         {/* 标签行（0173：副标题与发布人之间） */}
         {tags && <div className="td-head__tags">{tags}</div>}
 
+        {/* H&R 义务明示（评审 P1-5）：下载前必须可见，否则用户被追责时无预期。
+         *  hr_policy.enabled=false → 免 H&R；null/无键 → 站点默认（与 worker
+         *  jobs/hr.rs 的 COALESCE 口径一致：days=14 / seed_hours=48）。 */}
+        {(() => {
+          const hr = t.hr_policy;
+          const on = hr ? hr.enabled !== false : true;
+          const days = hr?.days ?? 14;
+          const hours = hr?.seed_hours ?? 48;
+          return (
+            <p
+              className={`td-head__hr ${
+                on ? "td-head__hr--on" : "td-head__hr--off"
+              }`}
+            >
+              {on ? d?.hrOn?.replace("{days}", `${days}`).replace("{hours}", `${hours}`) : d?.hrOff}
+            </p>
+          );
+        })()}
+
         <div className="td-head__badges">
           {t.sticky && (
             <span className="sticker bg-sun text-ink">

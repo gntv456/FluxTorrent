@@ -73,8 +73,9 @@ export function SiteDataCard({
           <div className="home-site-data__item">
             <dt>{t.sdSeedLeechRatio}</dt>
             <dd className="num">
+              {/* 无下载时显示「—」而非 ∞（评审 P2-12）：空站 ∞ 是除零假象 */}
               {home.site_data.leechers === 0
-                ? "∞"
+                ? "—"
                 : `${((home.site_data.seeders / Math.max(1, home.site_data.leechers)) * 100).toFixed(0)}%`}
             </dd>
           </div>

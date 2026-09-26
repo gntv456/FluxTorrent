@@ -834,6 +834,18 @@ a:hover {
 .td-head__tags:empty {
   display: none;
 }
+/* H&R 义务行（评审 P1-5）：详情页明示下载义务，与促销徽标同区视觉层级 */
+.td-head__hr {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.td-head__hr--on {
+  color: var(--coral, #d97706);
+}
+.td-head__hr--off {
+  color: var(--mint, #10b981);
+}
 .td-tags-inline:empty {
   display: none;
 }
