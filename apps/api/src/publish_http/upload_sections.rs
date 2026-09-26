@@ -71,27 +71,22 @@ pub(crate) async fn parse_sections(
     parse_sections_ex(db, raw, false).await
 }
 
-/// `parse_sections` 的可配版。`strict` = **编辑语义**：`true` 时要求把 enabled
-/// 维度全部给全（缺 = 视为清空，但仍受 `required` 约束）——编辑表单是整表单提交，
-/// 缺项不能算「不动」；发种入口传 `false`（只校验给定项 + 必填）。
+/// 扩展口径。`partial=true` = **部分更新**（批量改维度用）：只校验并写给定
+/// 维度、跳过必填校验——存量种子已过发布/编辑校验，批量改一维不该被迫
+/// 重填其他必填维度；未给定的维度由调用方决定保持原值。
 pub(crate) async fn parse_sections_ex(
     db: &sqlx::PgPool,
     raw: Option<&String>,
-    strict: bool,
+    partial: bool,
 ) -> DomainResult<Vec<SectionValue>> {
-    let _ = strict;
     let kinds = load_kinds(db).await?;
-    let json = match raw.map(|s| s.as_str().trim()).filter(|s| !s.is_empty()) {
-        Some(j) => j,
-        None => {
-            check_required(&kinds, &[])?; // 没传 sections 仍要挡必填维度
-            return Ok(Vec::new());
-        }
+    let json = raw.map(|s| s.as_str().trim()).filter(|s| !s.is_empty());
+    let map: Map<String, Value> = match json {
+        Some(j) => serde_json::from_str(j).map_err(|_| {
+            DomainError::Validation("sections 需为 JSON 对象".into())
+        })?,
+        None => Map::new(),
     };
-    let map: Map<String, Value> = serde_json::from_str(json).map_err(|_| {
-        DomainError::Validation("sections 需为 JSON 对象".into())
-    })?;
-
     let mut out: Vec<SectionValue> = Vec::new();
     for (kind, raw_val) in &map {
         let Some(def) = kinds.iter().find(|k| &k.kind == kind) else {
@@ -102,7 +97,10 @@ pub(crate) async fn parse_sections_ex(
             out.push(sv);
         }
     }
-    check_required(&kinds, &out)?; // 必填缺口 ⇒ 400（四审 L3：内容侧原无必填概念）
+    // 必填缺口 ⇒ 400（四审 L3：内容侧原无必填概念）；批量部分更新跳过
+    if !partial {
+        check_required(&kinds, &out)?;
+    }
     Ok(out)
 }
 

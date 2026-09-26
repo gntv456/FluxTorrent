@@ -43,6 +43,12 @@ struct UserListQ {
     download: Option<String>,
     #[serde(default)]
     suspended: Option<String>,
+    /// 自定义字段过滤（G4）：字段 key（值关键词为空 = 「填过这个字段的人」）
+    #[serde(default)]
+    ffield: Option<String>,
+    /// 字段值关键词（子串匹配；标量/多选/布尔都按值的 JSON 文本比）
+    #[serde(default)]
+    fval: Option<String>,
     #[serde(default = "default_sort")]
     sort: String,
     #[serde(default = "default_desc")]
@@ -125,6 +131,17 @@ async fn user_admin_list(
     if !q.q.trim().is_empty() {
         where_parts.push("(u.username ILIKE $1 OR u.email ILIKE $1)".into());
     }
+    // 自定义字段过滤（G4）：$4=字段 key，$5=值关键词（NULL = 只要填过）
+    let fk: Option<&str> =
+        q.ffield.as_deref().map(str::trim).filter(|s| !s.is_empty());
+    if fk.is_some() {
+        where_parts.push(
+            "EXISTS (SELECT 1 FROM user_field_values fv \
+             WHERE fv.user_id = u.id AND fv.field_key = $4 \
+               AND ($5::text IS NULL OR fv.value::text ILIKE $5))"
+                .into(),
+        );
+    }
     let where_sql = if where_parts.is_empty() {
         "TRUE".to_string()
     } else {
@@ -138,13 +155,21 @@ async fn user_admin_list(
            FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
            WHERE {where_sql}
            ORDER BY {order_col} {dir}, u.id {dir}
-           LIMIT $4 OFFSET $5"#,
+           LIMIT $6 OFFSET $7"#,
     );
     let pattern = crate::http::like_pattern(&q.q);
+    let fval_pat = q
+        .fval
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(crate::http::like_pattern);
     let rows: Vec<AdminUserListRow> = sqlx::query_as(&sql)
         .bind(pattern.clone())
         .bind(q.id)
         .bind(q.class_id)
+        .bind(fk)
+        .bind(fval_pat.clone())
         .bind(crate::dto::page_window(q.page, q.per_page).1)
         .bind(crate::dto::page_window(q.page, q.per_page).0)
         .fetch_all(&state.repo.db)
@@ -155,6 +180,8 @@ async fn user_admin_list(
         .bind(pattern)
         .bind(q.id)
         .bind(q.class_id)
+        .bind(fk)
+        .bind(fval_pat)
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
