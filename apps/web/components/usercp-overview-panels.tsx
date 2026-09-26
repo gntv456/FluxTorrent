@@ -32,6 +32,18 @@ export function SummaryRow({
   t: Record<string, string>;
   seedPct: number;
 } & DictProp) {
+  // 做种积分是类字节大数（LV2 门槛 ≈ 10G）：与上传/下载量同款单位化展示，
+  // 不再甩 10,737,418,240 这种原始值（评审 P1-7）
+  const fmtPts = (v: number): string => {
+    const units = ["", "K", "M", "G", "T"];
+    let val = v;
+    let i = 0;
+    while (val >= 1024 && i < units.length - 1) {
+      val /= 1024;
+      i += 1;
+    }
+    return `${val >= 100 ? val.toFixed(0) : val.toFixed(1)}${units[i]}`;
+  };
   return (
     <div className="uc-summary-row">
       <section className="uc-level-card">
@@ -41,10 +53,10 @@ export function SummaryRow({
           <i style={{ width: `${seedPct}%` }} />
         </div>
         <p>
-          {t.seedPoints} {ov.seed_points.toFixed(1)} /{" "}
-          {ov.next_class.required.toLocaleString()}，{t.nextClass}{" "}
+          {t.seedPoints} {fmtPts(ov.seed_points)} /{" "}
+          {fmtPts(ov.next_class.required)}，{t.nextClass}{" "}
           {ov.next_class.name} {t.still}
-          {(ov.next_class.required - ov.seed_points).toFixed(1)}
+          {fmtPts(ov.next_class.required - ov.seed_points)}
         </p>
       </section>
       <section>

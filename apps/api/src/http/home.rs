@@ -142,6 +142,9 @@ async fn home_shared_fresh(
     let total30: i64 = daily.iter().map(|(_, o, f)| o + f).sum();
 
     // 站点数据（home-site-data 三列）
+    // 口径修正（评审 P0-1）：墓碑行（status=3 的 deleted-* 账号）是 e2e/删号清理产物，
+    // 不是「被禁用户」；must_reset_password 也不等于「未验证」。两者都把墓碑
+    // （must_reset_password 恒真）排除，否则空站会出现「11 人 10 被禁」的矛盾数字。
     #[rustfmt::skip]
     let (users, torrents_n, peers, seeders, leechers, warned, banned, unverified): (
         i64, i64, i64, i64, i64, i64, i64, i64,
@@ -153,8 +156,9 @@ async fn home_shared_fresh(
             (SELECT count(*) FROM snatches WHERE seeding), \
             (SELECT count(*) FROM snatches WHERE leeching), \
             (SELECT count(*) FROM users WHERE status = 1), \
-            (SELECT count(*) FROM users WHERE status >= 2), \
-            (SELECT count(*) FROM users WHERE must_reset_password)",
+            (SELECT count(*) FROM users WHERE status = 2), \
+            (SELECT count(*) FROM users WHERE must_reset_password \
+             AND status < 2 AND username NOT LIKE 'deleted-%')",
     )
     .fetch_one(db)
     .await

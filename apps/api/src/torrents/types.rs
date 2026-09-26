@@ -34,6 +34,11 @@ pub struct TorrentRow {
     pub poster: Option<String>,
     /// IMDB id（0148 C1：种子页字幕面板按此合并同片字幕）
     pub imdb_id: Option<String>,
+    /// H&R 策略（评审 P1-5：详情页需明示下载义务）。NULL = 站点默认策略，
+    /// 语义见 worker jobs/hr.rs：{"enabled","days","seed_hours"}；仅详情 SELECT
+    /// 输出该列，列表等其它用本行的查询不选 → sqlx(default) 落 None。
+    #[sqlx(default)]
+    pub hr_policy: Option<serde_json::Value>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     /// 置顶权重（默认排序的游标键，方案批次二）：仅列表 SELECT 输出，
     /// 详情等其它用本行的查询不选该列 → sqlx(default) 落 0，互不影响。

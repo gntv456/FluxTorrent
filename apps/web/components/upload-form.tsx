@@ -37,7 +37,7 @@ export function UploadForm() {
     "imdb",
     "douban",
     "bangumi",
-    "indienova",
+    "indienova", "mediainfo",
   ]);
   useEffect(() => {
     api
@@ -58,13 +58,16 @@ export function UploadForm() {
   const [imdb, setImdb] = useState("");
   const [ptgenUrl, setPtgenUrl] = useState("");
   const [ptgenBusy, setPtgenBusy] = useState(false);
-  const [categoryId, setCategoryId] = useState(2);
-  // 默认分类不再硬编码 2：切换站型包后 id=2 可能压根不存在（有的包只有 3 个分类），
-  // 那会把非法 category_id 提交上去。档案到位后校正一次。
+  const [categoryId, setCategoryId] = useState(0);
+  // 默认分类不硬编码 2（评审 P2-11）：电影排首位的通用包会默认落在「电视剧」，
+  // 且换包后 id=2 可能压根不存在（有的包只有 3 个分类），把非法 category_id
+  // 提交上去。统一取档案首个分类；初值 0 仅作档案到位前的占位。
   useEffect(() => {
     if (!profileCats?.length) return;
     setCategoryId((cur) =>
-      profileCats.some((c) => c.id === cur) ? cur : profileCats[0].id,
+      cur !== 0 && profileCats.some((c) => c.id === cur)
+        ? cur
+        : profileCats[0].id,
     );
   }, [profileCats]);
   const [smallDescr, setSmallDescr] = useState("");
