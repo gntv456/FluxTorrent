@@ -68,6 +68,13 @@ async fn voucher_use(
                 "券不存在、已使用或已过期".into(),
             ));
         }
+        // 0211 H2：绑种子语义只属于免费/中性券——rename_card 等其它券种
+        // 误入此口 = 花钱买空气（绑上种子后既不生效也无消费出口），显式拒绝。
+        Some(k) if k != "free" && k != "neutral" => {
+            return Err(DomainError::Validation(format!(
+                "该券类型（{k}）不能绑定种子；请在对应的入口使用"
+            )));
+        }
         _ => {}
     }
     // 绑定即生效但不置 used_at：worker 计费侧以「used_torrent_id 已绑定 + used_at IS NULL」

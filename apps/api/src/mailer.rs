@@ -19,10 +19,14 @@ pub struct SmtpConfig {
 
 /// 读取 SMTP 配置：site_settings.smtp_host/smtp_port/smtp_from 优先；
 /// 未配置时回退环境变量 SMTP_URL/SMTP_FROM（compose 注入口，兼容既有部署）。
+/// 凭据/加密（0211）：accountname/accountpassword/encryption 三键接入装配——
+/// encryption=ssl（缺省，465）/tls（587 STARTTLS，拼 smtp:// 由 lettre 升级）/none
+///（内网中继 smtp:// 明文）；账密嵌入 URL userinfo，与 SMTP_URL 形状一致。
 pub async fn smtp_config(db: &PgPool) -> Option<SmtpConfig> {
     let rows: Vec<(String, String)> = sqlx::query_as(
         "SELECT name, value FROM site_settings \
-         WHERE name IN ('smtp_host','smtp_port','smtp_from')",
+         WHERE name IN ('smtp_host','smtp_port','smtp_from', \
+         'accountname','accountpassword','encryption')",
     )
     .fetch_all(db)
     .await
@@ -33,13 +37,29 @@ pub async fn smtp_config(db: &PgPool) -> Option<SmtpConfig> {
             .map(|(_, v)| v.trim().to_string())
             .filter(|v| !v.is_empty())
     };
-    // 后台三键齐（host + from）才算「后台已配置」；端口缺省 465（smtps 假定）
+    // 后台三键齐（host + from）才算「后台已配置」；端口缺省 465（ssl 假定）
     if let (Some(host), Some(from)) = (get("smtp_host"), get("smtp_from")) {
-        let port = get("smtp_port").unwrap_or_else(|| "465".into());
-        let url = format!("smtps://{host}:{port}");
+        let encryption = get("encryption").unwrap_or_else(|| "ssl".into());
+        let default_port = if encryption == "tls" { "587" } else { "465" };
+        let port = get("smtp_port").unwrap_or_else(|| default_port.to_string());
+        let scheme = match encryption.as_str() {
+            "tls" | "none" => "smtp",
+            _ => "smtps",
+        };
+        let (user, pass) = (get("accountname"), get("accountpassword"));
+        let auth = match (user, pass) {
+            // userinfo 百分号编码（@ : / 三个保留字即可覆盖绝大多数账密）
+            (Some(u), Some(p)) => {
+                let enc =
+                    |s: &str| s.replace('@', "%40").replace(':', "%3A").replace('/', "%2F");
+                format!("{}:{}@", enc(&u), enc(&p))
+            }
+            _ => String::new(),
+        };
+        let url = format!("{scheme}://{auth}{host}:{port}");
         return Some(SmtpConfig { url, from });
     }
-    // 兜底：环境变量（smtp:// 形状自带账号密码；后台无账密键，保持 env 优先的凭据口）
+    // 兜底：环境变量（smtp:// 形状自带账号密码；后台无凭据时保持 env 优先的凭据口）
     let url = std::env::var("SMTP_URL").unwrap_or_default();
     let from = std::env::var("SMTP_FROM").unwrap_or_default();
     if url.is_empty() || from.is_empty() {
