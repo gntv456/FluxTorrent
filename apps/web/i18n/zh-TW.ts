@@ -45,6 +45,7 @@ const zhTwBase: Omit<
     spark: "{magic}",
     cancel: "取消",
     save: "保存",
+    themeToggle: "切換主題",
   },
   nav: {
     home: "首頁",
@@ -304,8 +305,6 @@ const zhTwBase: Omit<
     recoverByEmail: "郵件找回",
     bannedIntro: "帳號被禁用？",
     bannedLog: "查看封禁記錄",
-    resendIntro: "沒有收到驗證郵件或驗證連結無法開啟？",
-    resendLink: "重新傳送驗證郵件",
     appealIntro: "對處理結果有異議？",
     appealLink: "申訴通道",
     inviteOnly: "本站為邀請制私有社群，帳號由邀請碼註冊",
@@ -4262,7 +4261,7 @@ const zhTwBase: Omit<
     importTitle: "匯入站點設定",
     importHint:
       "支援本頁匯出的 JSON 原始檔，或僅含 settings 映射的物件。匯入僅系統管理員可執行。",
-    importPlaceholder: '{ "settings": { "SITENAME": "範例站" } }',
+    importPlaceholder: '{ "settings": { "site_name": "範例站" } }',
     importPreview: "預覽差異",
     importConfirm: "確認匯入",
     importBadJson: "JSON 解析失敗，請檢查內容",
@@ -4351,13 +4350,6 @@ const zhTwBase: Omit<
     4002: "流水衝突，請重試",
     5002: "已感謝過",
   } as Record<number, string>,
-  resend: {
-    title: "重新傳送驗證郵件",
-    subtitle: "輸入註冊信箱，重新傳送驗證/通知郵件",
-    submit: "重新傳送",
-    busy: "傳送中…",
-    note: "出於安全考量，無論信箱是否存在都返回相同提示。",
-  },
   appeals: {
     title: "申訴通道",
     label: "使用者申訴",

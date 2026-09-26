@@ -19,8 +19,8 @@
   39
  ],
  "lib\\site-profile.ts": [
-  75,
-  80
+  80,
+  85
  ],
  "lib\\ui-classes.ts": [],
  "components\\admin-exams-shared.ts": [],
@@ -54,10 +54,10 @@
   31
  ],
  "app\\manifest.ts": [
-  14,
-  43,
-  48,
-  53
+  15,
+  45,
+  50,
+  55
  ],
  "app\\(main)\\users\\[id]\\_parts\\profile-types.ts": [],
  "app\\(main)\\torrents\\_parts\\torrents-chips.ts": [],
@@ -500,10 +500,7 @@
   13,
   14
  ],
- "components\\theme-toggle.tsx": [
-  63,
-  64
- ],
+ "components\\theme-toggle.tsx": [],
  "components\\torrent-actions.tsx": [
   73,
   83,

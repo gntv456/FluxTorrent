@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { LOCALE_COOKIE, type Locale } from "@/i18n/config";
+import { LOCALE_COOKIE, siteLangToLocale, type Locale } from "@/i18n/config";
 import { WishlistPanel } from "@/components/wishlist";
 import { OverviewTab } from "@/components/usercp-overview";
 import { PersonalTab } from "@/components/usercp-personal";
@@ -36,14 +36,8 @@ export const USERCP_NAV: { key: UsercpTab; icon: string }[] = [
 ];
 
 // ============ 站点语言 ⇄ 前端 locale 映射 ============
-// 库里存 NexusPHP 风格码（en/chs/cht），前端 i18n 用 BCP47（zh-CN/zh-TW/en）。
-// 两套体系此前割裂：控制面板改语言只落库，页面语言纹丝不动 —— 修复为保存时同步 cookie 并刷新。
-
-const LANG_TO_LOCALE: Record<string, Locale> = {
-  en: "en",
-  chs: "zh-CN",
-  cht: "zh-TW",
-};
+// 换算表已收敛到 i18n/config.siteLangToLocale（与后端 getLocale 默认语言回落共用）；
+// 此处只保留「保存后同步 cookie 并刷新」的副作用。
 
 function syncLocaleCookie(locale: Locale) {
   document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
@@ -164,7 +158,7 @@ export function UsercpPanel({
       .then((s) => {
         setSettings(s);
         // 反向一致：库里语言与当前 locale 不一致（如别的设备改过）→ 以库为准同步 cookie
-        const want = LANG_TO_LOCALE[s.site_language];
+        const want = siteLangToLocale(s.site_language);
         if (want && want !== locale) {
           syncLocaleCookie(want);
           router.refresh();
@@ -195,7 +189,7 @@ export function UsercpPanel({
       await api.put("/api/v1/me/settings", settings);
       setSaved(true);
       // 站点语言变更 → 同步前端 locale cookie 并刷新整站（RSC 重取词典）
-      const want = LANG_TO_LOCALE[settings.site_language];
+      const want = siteLangToLocale(settings.site_language);
       if (want && want !== locale) {
         syncLocaleCookie(want);
         router.refresh();

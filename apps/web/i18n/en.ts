@@ -45,6 +45,7 @@ const enBase: Omit<
     spark: "{magic}",
     cancel: "Cancel",
     save: "Save",
+    themeToggle: "Toggle theme",
   },
   nav: {
     home: "Home",
@@ -306,8 +307,6 @@ const enBase: Omit<
     recoverByEmail: "Recover by email",
     bannedIntro: "Account banned?",
     bannedLog: "View ban log",
-    resendIntro: "Didn't receive the verification email or the link is broken?",
-    resendLink: "Resend verification email",
     appealIntro: "Disagree with a decision?",
     appealLink: "Appeals",
     inviteOnly:
@@ -4400,7 +4399,7 @@ const enBase: Omit<
     importTitle: "Import site settings",
     importHint:
       "Accepts the JSON file exported from this page, or a bare settings map. Only the sysop can import.",
-    importPlaceholder: '{ "settings": { "SITENAME": "Example" } }',
+    importPlaceholder: '{ "settings": { "site_name": "Example" } }',
     importPreview: "Preview diff",
     importConfirm: "Confirm import",
     importBadJson: "Failed to parse JSON — please check the content",
@@ -4492,13 +4491,6 @@ const enBase: Omit<
     4002: "Ledger conflict, please retry",
     5002: "Already thanked",
   } as Record<number, string>,
-  resend: {
-    title: "Resend verification email",
-    subtitle: "Enter your registered email to resend the verification email",
-    submit: "Resend",
-    busy: "Sending…",
-    note: "For security the same confirmation is returned whether or not the email exists.",
-  },
   appeals: {
     title: "Appeals",
     label: "User appeals",

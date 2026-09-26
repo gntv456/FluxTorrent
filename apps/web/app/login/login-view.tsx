@@ -112,7 +112,7 @@ export function LoginShell() {
         {/* 右上：语言行 */}
         <div className="bz-login-lang-row">
           <div className="flex items-center gap-2">
-            <ThemeToggle className="min-h-0" />
+            <ThemeToggle className="min-h-0" label={dict.common.themeToggle} />
             <LoginLangSwitcher current={locale} />
           </div>
         </div>

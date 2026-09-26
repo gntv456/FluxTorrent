@@ -24,7 +24,6 @@ use wishlist::*;
 pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
     scope
         .service(ban_log)
-        .service(confirm_resend)
         // 找回密码
         .service(password_forgot)
         .service(password_reset)

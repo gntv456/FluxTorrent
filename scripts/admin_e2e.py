@@ -12,11 +12,16 @@
 - emailbans 的 mode 合法值为 ban|allow；
 - 模板预览 body 是 {scene_key, vars}，scene_key 须为库中真实场景；
 - settings validate 是 {name,value} 单字段、groups PUT 是 {group,
-    values}（真实字段名如 SITENAME）；
+    values}（真实字段名如 site_name）；
 - /admin/links 只有 GET/PUT/DELETE（友链由用户申请、后台审核，前端亦无新增入口）——设计如此；
-- /admin/users/flags 是 PUT-only。
+- /admin/users/flags 是 PUT-only；
+- 空库实例没有第二用户：flags/spark 对 /admin/adduser 建的临时探针账号读写，
+  跑完先封禁再 DELETE /admin/users/{id} 清理（删除接口仅收封禁号；落库为
+  墓碑行 deleted-<id>-<hash>，账号不可再用，属设计口径而非残留泄漏）；
+- freeleech GET 返回进行中促销**列表**（无促销 data=[]），按 kind 判在读。
 """
 import json
+import time
 import urllib.request
 import urllib.error
 
@@ -68,7 +73,7 @@ GETS = [
     "/admin/claims?state=exited", "/admin/torrent-buys?limit=5",
     "/admin/torrent-ops?limit=5", "/admin/sticky-promos",
         "/admin/settings/schema",
-    "/admin/settings/history?name=SITENAME",
+    "/admin/settings/history?name=site_name",
     # 公开读端点（staff-tools / content-manage 的真实读取口径）
     "/faq", "/rules-content", "/home",
 ]
@@ -82,20 +87,27 @@ st, r = call("GET", "/admin/freeleech", token=tok)
 check("GET /admin/freeleech", st == 200 and r.get("code") == 0,
     f"data={r.get('data')}")
 
-# users/flags 是 PUT-only：探真实调用（rows[1] 关掉再开回；列表形状 {rows:[...]}）
-st, r = call("GET", "/admin/users?limit=5", token=tok)
-rows = (r.get("data") or {}).get("rows") or []
-target = next((u for u in rows if u.get("id") != 1), None)
-if target:
-    st, _ = call("PUT", "/admin/users/flags", {"user_id": target["id"],
-        "download_enabled": False}, token=tok)
-    ok1 = st == 200
-    st, _ = call("PUT", "/admin/users/flags", {"user_id": target["id"],
-        "download_enabled": True}, token=tok)
-    check("PUT /admin/users/flags(开关复原)", ok1 and st == 200,
-        f"target={target['username']}")
-else:
-    check("PUT /admin/users/flags", False, "无第二用户")
+# 前置：临时用户（自建自清）——空库实例（install_e2e 清演示数据后）没有第二个
+# 用户，flags/spark 这类「对他人读写」的端点不能因此跳成假绿，故用 /admin/adduser
+# 建一个探针账号，全部用例跑完后 DELETE /admin/users/{id} 清理。
+uname = f"e2eprobe{int(time.time()) % 100000}"
+st, r = call("POST", "/admin/adduser", {"username": uname,
+    "email": f"{uname}@e2e-probe.invalid", "password": "E2eProbe!123"},
+    token=tok)
+tmp_uid = (r.get("data") or {}).get("user_id")
+check("前置·临时用户创建(/admin/adduser)", st == 200 and tmp_uid is not None,
+    f"{st} uid={tmp_uid}")
+if tmp_uid is None:
+    tmp_uid = 1  # 建号失败也继续跑（后续对 root 的断言会显式 FAIL 而非静默跳过）
+
+# users/flags 是 PUT-only：对临时用户关掉再开回（列表形状 {rows:[...]}）
+st, _ = call("PUT", "/admin/users/flags", {"user_id": tmp_uid,
+    "download_enabled": False}, token=tok)
+ok1 = st == 200
+st, _ = call("PUT", "/admin/users/flags", {"user_id": tmp_uid,
+    "download_enabled": True}, token=tok)
+check("PUT /admin/users/flags(开关复原)", ok1 and st == 200,
+    f"uid={tmp_uid}")
 
 # ============ B. 写操作安全路径 ============
 # B1. FAQ 增改删
@@ -132,22 +144,34 @@ if nid:
     st, _ = call("DELETE", f"/admin/news/{nid}", token=tok)
     check("写·公告删除", st == 200)
 
-# B4. 用户火花调整 ±7（写流水口径）
-st, _ = call("POST", "/admin/users/adjust", {"user_id": 2, "spark_delta": 7},
-    token=tok)
+# B4. 用户火花调整 ±7（写流水口径，对临时用户）
+st, _ = call("POST", "/admin/users/adjust", {"user_id": tmp_uid,
+    "spark_delta": 7}, token=tok)
 check("写·火花调整", st == 200)
-st, _ = call("POST", "/admin/users/adjust", {"user_id": 2, "spark_delta": -7},
-    token=tok)
+st, _ = call("POST", "/admin/users/adjust", {"user_id": tmp_uid,
+    "spark_delta": -7}, token=tok)
 check("写·火花回滚", st == 200)
 
-# B5. 全站促销 创建→读→关闭
+# B5. 全站促销 创建→读→关闭（GET 返回进行中促销列表，空时 data=[]）
 st, _ = call("POST", "/admin/freeleech", {"kind": "free", "hours": 1},
     token=tok)
 check("写·全站促销创建", st == 200)
 st, r = call("GET", "/admin/freeleech", token=tok)
-check("写·促销可读", st == 200 and (r.get("data") or {}).get("kind") == "free")
+promos = r.get("data")
+has_free = isinstance(promos, list) and any(
+    (p or {}).get("kind") == "free" for p in promos)
+check("写·促销可读", st == 200 and has_free,
+    f"n={len(promos) if isinstance(promos, list) else '?'}")
 st, _ = call("DELETE", "/admin/freeleech", token=tok)
 check("写·全站促销关闭", st == 200)
+
+# 临时用户清理（自建自清）：删除接口设计为「仅封禁状态可删」（防误删活跃账号），
+# 故先封禁 status=2 再删——顺带覆盖「封禁→删除」这条真实链路。
+st, _ = call("POST", "/admin/users/status", {"user_id": tmp_uid, "status": 2,
+    "reason": "e2e 探针清理"}, token=tok)
+st2, _ = call("DELETE", f"/admin/users/{tmp_uid}", token=tok)
+check("前置·临时用户清理(封禁→删除)", st == 200 and st2 == 200,
+    f"uid={tmp_uid} ban={st} del={st2}")
 
 # B6. 消息模板预览（真实 scene_key）
 st, r = call("GET", "/admin/message-templates", token=tok)
@@ -180,11 +204,11 @@ st, r = call("GET", "/admin/testip?ip=127.0.0.1", token=tok)
 check("GET testip探测", st == 200 and r.get("code") == 0, f"{st}")
 
 # B10. 设定：单字段校验 + 分组保存回写原值（无净变更）
-st, r = call("POST", "/admin/settings/validate", {"name": "SITENAME",
+st, r = call("POST", "/admin/settings/validate", {"name": "site_name",
     "value": "好学 FluxTorrent"}, token=tok)
 check("写·设定校验(name/value)", st == 200, f"{st}")
 st, r = call("PUT", "/admin/settings/groups", {"group": "basic", "values": {
-    "SITENAME": "好学 FluxTorrent"}}, token=tok)
+    "site_name": "好学 FluxTorrent"}}, token=tok)
 check("写·设定保存(回写原值)", st == 200, f"{st}")
 
 # B11. 审核队列决策：无待审不空跑（列队存活已由 GET 覆盖）

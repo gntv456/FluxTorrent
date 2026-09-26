@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getSiteProfile } from "@/lib/site-profile";
+import { siteLangToLocale } from "@/i18n/config";
 
 // PWA manifest 改为运行时生成：让「安装到桌面」的应用名跟随站长自定义品牌（site_profile.brand）。
 // force-dynamic：品牌运行时可改（后台改 site_name），不能被构建期预渲染写死。
@@ -19,7 +20,8 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     orientation: "portrait-primary",
     background_color: "#F6FBFF",
     theme_color: "#2FA8FF",
-    lang: "zh-CN",
+    // 0216：跟随站点默认语言（与 <html lang> 同源），英文站不再挂 zh-CN
+    lang: siteLangToLocale(profile.default_language) ?? "zh-CN",
     dir: "ltr",
     categories: ["productivity"],
     icons: [

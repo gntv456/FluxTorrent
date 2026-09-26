@@ -30,7 +30,13 @@ function applyChromeColor(theme: Theme) {
   meta.content = THEME_CHROME[theme];
 }
 
-export function ThemeToggle({ className = "" }: { className?: string }) {
+export function ThemeToggle({
+  className = "",
+  label,
+}: {
+  className?: string;
+  label: string;
+}) {
   const [theme, setTheme] = useState<Theme>("baozi");
   const [mounted, setMounted] = useState(false);
 
@@ -60,8 +66,8 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     <button
       type="button"
       onClick={toggle}
-      aria-label="切换日间/夜间主题 / Toggle theme"
-      title="切换主题"
+      aria-label={label}
+      title={label}
       suppressHydrationWarning
       className={`flex h-9 min-h-[44px] w-9 items-center justify-center rounded-[10px] border border-line bg-[var(--surface-raised)] text-base transition-colors hover:border-[var(--baozi-orange)] hover:text-[var(--baozi-orange)] ${className}`}
     >

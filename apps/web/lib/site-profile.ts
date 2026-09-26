@@ -27,6 +27,9 @@ export interface SiteProfile {
   subtitle_label?: string;
   /** 语言切换器显隐（0209：locale_switcher_enabled=no 隐藏，单语站） */
   locale_switcher_enabled?: string;
+  /** 默认语言（0216，site_settings.default_language）：NP 口径 en|chs|cht，
+   *  getLocale 对无 cookie 新访客的回落源；换算走 config.siteLangToLocale */
+  default_language?: string;
   categories: {
     id: number;
     name: string;
@@ -60,8 +63,10 @@ export interface DictEntry {
   name: string;
 }
 
-/** 公开：站点档案（RSC 服务端获取，layout 与上传表单复用；失败回落 general 默认） */
-export async function getSiteProfile(): Promise<SiteProfile> {
+/** 公开：站点档案（RSC 服务端获取，layout / footer / getDict 多处复用；失败回落 general 默认）。
+ *  cache()：一次请求内十几次调用共享同一次取档——0216 起 getLocale（默认语言回落）
+ *  也读它，去重不再只是省流量，而是一次请求内语言不能两次不一致。 */
+export const getSiteProfile = cache(async (): Promise<SiteProfile> => {
   try {
     return await api.get<SiteProfile>("/api/v1/site-profile");
   } catch {
@@ -82,7 +87,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
       modules: {},
     };
   }
-}
+});
 
 /** 站型字典（分类 + 旧三列）的唯一真值源：一律来自后端，前端不持有词表。
  *  取不到就是空表——显示侧回落 `#id`，筛选侧只剩「全部」，

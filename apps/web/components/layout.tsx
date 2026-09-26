@@ -195,7 +195,7 @@ export async function Header() {
             </Suspense>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <ThemeToggle />
+            <ThemeToggle label={dict.common.themeToggle} />
             {/* 语言切换器（0209 P2-17）：site_settings.locale_switcher_enabled=no 隐藏（单语站） */}
             {profile.locale_switcher_enabled !== "no" && (
               <LocaleSwitcher current={locale} />

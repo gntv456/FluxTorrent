@@ -14,6 +14,28 @@ export function dateLocale(locale: Locale): string {
   return locale === "zh-TW" ? "zh-TW" : locale === "en" ? "en-US" : "zh-CN";
 }
 
+/**
+ * 站点语言 ⇄ 前端 locale 的唯一换算处。库里存 NexusPHP 风格码
+ * （site_settings.default_language / users.site_language：en|chs|cht），
+ * 前端 i18n 用 BCP47（zh-CN/zh-TW/en）。用户面板（usercp）与
+ * 服务端默认语言回落（server getLocale）共用本函数，别再各写一份映射。
+ * 未知值返回 null（调用方自行回落），不猜。
+ */
+export function siteLangToLocale(v: string | null | undefined): Locale | null {
+  switch ((v ?? "").trim().toLowerCase()) {
+    case "en":
+      return "en";
+    case "chs":
+    case "zh-cn":
+      return "zh-CN";
+    case "cht":
+    case "zh-tw":
+      return "zh-TW";
+    default:
+      return null;
+  }
+}
+
 /** 简易模板插值：fmt("共 {n} 个种子", { n: 3 }) → "共 3 个种子" */
 export function fmt(
   tpl: string,
