@@ -51,29 +51,29 @@ pub async fn password_forgot(
         .map_err(|e| DomainError::Internal(e.into()))?;
         state.repo.audit(Some(uid), "pwd.forgot", None).await;
 
-        let smtp = std::env::var("SMTP_URL").unwrap_or_default();
-        if smtp.is_empty() {
+        // 0208 P0：SMTP 配置「站点设定优先，env 兜底」——后台填好 smtp_* 即生效
+        let cfg = crate::mailer::smtp_config(&state.repo.db).await;
+        if cfg.is_none() {
             // 审计修复（P1 凭据泄露面）：重置 token 明文进日志任何可读日志的人都能接管
             // 账号。生产（FLUX_DEV≠1）直接拒绝服务并要求配置 SMTP；开发态保留日志闭环。
             if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
                 tracing::error!(
                     uid,
-                    "SMTP_URL 未配置且非开发态：拒绝生成密码重置 token（防凭据经日志泄露）"
+                    "SMTP 未配置且非开发态：拒绝生成密码重置 token（防凭据经日志泄露）"
                 );
                 return Err(DomainError::Internal(anyhow::anyhow!(
-                    "SMTP_URL 未配置：生产环境禁止以日志方式暴露重置 token"
+                    "SMTP 未配置：生产环境禁止以日志方式暴露重置 token"
                 )));
             }
             tracing::warn!(%token, "SMTP 未配置：重置 token 输出到日志（仅限开发态闭环）");
         } else {
-            // 真实投递（lettre）：SMTP_URL = smtps://user:pass@host:port 或 smtp://host:port；
-            // 发件人 SMTP_FROM（缺省 no-reply@host）。后台线程发送，失败仅记日志不影响响应。
+            let cfg = cfg.unwrap();
+            // 真实投递（lettre）：URL = smtps://user:pass@host:port 或 smtp://host:port；
+            // 后台线程发送，失败仅记日志不影响响应。
             let base = std::env::var("PUBLIC_API_URL")
                 .unwrap_or_else(|_| "http://localhost:3000".into());
             let link = format!("{base}/reset?token={token}");
             let email_addr = body.email.trim().to_lowercase();
-            let from = std::env::var("SMTP_FROM")
-                .unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
             let site = sqlx::query_scalar::<_, String>(
                 "SELECT value FROM site_settings WHERE name = 'site_name'",
             )
@@ -83,7 +83,7 @@ pub async fn password_forgot(
             .flatten()
             .unwrap_or_else(|| "FluxTorrent".into());
             actix_web::rt::spawn(async move {
-                match send_reset_mail(&smtp, &from, &email_addr, &site, &link)
+                match send_reset_mail(&cfg.url, &cfg.from, &email_addr, &site, &link)
                     .await
                 {
                     Ok(_) => tracing::info!(

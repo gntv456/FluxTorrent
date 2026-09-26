@@ -23,9 +23,10 @@ pub async fn register(
         password: body.password.clone(),
     };
     domain::validate_register(&new_user)?;
-    // 注册模式（U1 §11.5）：invite_only（默认，现状）/ open / email_verify。
-    // open 模式旁路邀请码（inviter 置 NULL，链路其余不变）；email_verify 走
-    // 既有邮箱确认信（confirm/resend 已有），未确认账号登录受限由既有列控制。
+    // 注册模式（U1 §11.5）：invite_only（默认，现状）/ open。
+    // open 模式旁路邀请码（inviter 置 NULL，链路其余不变）。
+    // （0208 P0：email_verify 选项已移除——旧实现不发验证信也不拦登录，
+    // 留着是空壳；存量选了该值的站点由迁移归一为 open，行为本就等同。）
     let reg_mode: String = sqlx::query_scalar(
         "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
          'registration_mode'), 'invite_only')",

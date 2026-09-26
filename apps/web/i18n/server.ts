@@ -17,33 +17,48 @@ export async function getLocale(): Promise<Locale> {
   return isLocale(v) ? v : DEFAULT_LOCALE;
 }
 
-/** 站点档案里与「文案」有关的两项（0082 货币名 + 0205 术语规则）：
- *  一次 getSiteProfile 拿全，别为两个字段各打一次。 */
-async function getSiteWords(): Promise<{ currency: string; terms: TermRule[] }> {
+/** 站点档案里与「文案」有关的三项（0082 货币名 + 0205 术语规则 + 0146 字幕区显示名）：
+ *  一次 getSiteProfile 拿全，别为几个字段各打一次。 */
+async function getSiteWords(): Promise<{
+  currency: string;
+  terms: TermRule[];
+  subtitleLabel: string | null;
+}> {
   try {
     const p = await getSiteProfile();
     return {
       currency: p.currency_name?.trim() || "魔力",
       terms: sortRules(p.terms ?? []),
+      // subtitle_label（0208 P0 接真）：非默认值时作为术语规则注入——
+      // 「字幕」→站长设定的叫法（音乐站「歌词」），52 处字典文案一次性改写，
+      // 与 0205 术语表同一条出口，不需要逐组件接 profile。
+      subtitleLabel:
+        p.subtitle_label && p.subtitle_label.trim() && p.subtitle_label !== "字幕"
+          ? p.subtitle_label.trim()
+          : null,
     };
   } catch {
     // 站点档案不可用时全站仍需可用：默认货币名 + 不改写
-    return { currency: "魔力", terms: [] };
+    return { currency: "魔力", terms: [], subtitleLabel: null };
   }
 }
 
 /**
- * 取当前语言的字典。**术语表（0205 / 四审 L7）就在这一个出口生效**：
- * 字典叶子字符串过一遍规则，236 个 useI18n 消费点与所有 RSC 自动跟随，
- * 不需要把「种子 / 魔力」这些词从字典里抠成占位符。
+ * 取当前语言的字典。**术语表（0205 / 四审 L7）与字幕区显示名（0146/0208）
+ * 都在这一个出口生效**：字典叶子字符串过一遍规则，236 个 useI18n 消费点
+ * 与所有 RSC 自动跟随，不需要把「种子 / 魔力」这些词从字典里抠成占位符。
  * cache()：一次请求内 57 处 getDict 调用共用同一本改写后的字典
  * （改写要遍历数千个叶子，重复做就是白烧 CPU）。
  */
 export const getDict = cache(
   async (): Promise<{ dict: Dict; locale: Locale; currency: string }> => {
     const locale = await getLocale();
-    const { currency, terms } = await getSiteWords();
-    return { dict: applyTerms(DICTS[locale], terms), locale, currency };
+    const { currency, terms, subtitleLabel } = await getSiteWords();
+    // 字幕区改名规则与站长术语规则合并（字幕规则排最后，别盖过显式术语）
+    const allTerms = subtitleLabel
+      ? [...terms, { canonical: "字幕", replacement: subtitleLabel }]
+      : terms;
+    return { dict: applyTerms(DICTS[locale], allTerms), locale, currency };
   },
 );
 

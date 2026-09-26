@@ -62,52 +62,56 @@ pub async fn massmail_send(
     // 邮件永不发出且响应报 queued 误导操作者。现在当场投递（复用 build_smtp）：
     // SMTP 配置时逐户发送并回填实发数；未配置时（开发态）明确返回 delivered=0 与
     // 原因，不再谎报入队。
-    let smtp = std::env::var("SMTP_URL").unwrap_or_default();
-    let from = std::env::var("SMTP_FROM")
-        .unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
+    // 0208 P0：SMTP「站点设定优先，env 兜底」（与 mailer::smtp_config 同源）
+    let cfg = crate::mailer::smtp_config(&state.repo.db).await;
     let mut delivered: i64 = 0;
     let mut mail_err: Option<String> = None;
-    if smtp.is_empty() {
-        mail_err = Some("SMTP_URL 未配置（开发态：邮件未投递，仅留档）".into());
-    } else {
-        match crate::gaps_http::build_smtp(&smtp) {
-            Ok(mailer) => {
-                let emails: Vec<String> = sqlx::query_scalar(
-                    "SELECT email FROM users WHERE status \
-                     < 2 AND email IS NOT NULL",
-                )
-                .fetch_all(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-                for to in &emails {
-                    let msg = lettre::Message::builder()
-                        .from(from.parse().map_err(
-                            |e: lettre::address::AddressError| {
-                                DomainError::Internal(e.into())
-                            },
-                        )?)
-                        .to(to.parse().map_err(
-                            |e: lettre::address::AddressError| {
-                                DomainError::Internal(e.into())
-                            },
-                        )?)
-                        .subject(body.subject.trim())
-                        .body(body.body.clone())
-                        .map_err(|e| DomainError::Internal(e.into()))?;
-                    use lettre::AsyncTransport;
-                    match mailer.send(msg).await {
-                        Ok(_) => delivered += 1,
-                        Err(e) => {
-                            mail_err =
-                                Some(format!("第 {delivered} 封后失败：{e}"));
-                            break;
+    let note = match cfg {
+        None => {
+            mail_err = Some("SMTP 未配置（站点设定与 SMTP_URL 均为空，邮件未投递，仅留档）".into());
+            mail_err.unwrap()
+        }
+        Some(cfg) => {
+            match crate::gaps_http::build_smtp(&cfg.url) {
+                Ok(mailer) => {
+                    let emails: Vec<String> = sqlx::query_scalar(
+                        "SELECT email FROM users WHERE status \
+                         < 2 AND email IS NOT NULL",
+                    )
+                    .fetch_all(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
+                    for to in &emails {
+                        let msg = lettre::Message::builder()
+                            .from(cfg.from.parse().map_err(
+                                |e: lettre::address::AddressError| {
+                                    DomainError::Internal(e.into())
+                                },
+                            )?)
+                            .to(to.parse().map_err(
+                                |e: lettre::address::AddressError| {
+                                    DomainError::Internal(e.into())
+                                },
+                            )?)
+                            .subject(body.subject.trim())
+                            .body(body.body.clone())
+                            .map_err(|e| DomainError::Internal(e.into()))?;
+                        use lettre::AsyncTransport;
+                        match mailer.send(msg).await {
+                            Ok(_) => delivered += 1,
+                            Err(e) => {
+                                mail_err =
+                                    Some(format!("第 {delivered} 封后失败：{e}"));
+                                break;
+                            }
                         }
                     }
                 }
+                Err(e) => mail_err = Some(format!("SMTP 构建失败：{e}")),
             }
-            Err(e) => mail_err = Some(format!("SMTP 构建失败：{e}")),
+            mail_err.unwrap_or_else(|| "已全部投递".into())
         }
-    }
+    };
     if delivered > 0 {
         let _ =
             sqlx::query("UPDATE mass_mails SET recipients = $2 WHERE id = $1")
@@ -119,7 +123,7 @@ pub async fn massmail_send(
     Ok(ok(serde_json::json!({
         "id": id, "delivered": delivered,
         "queued": 0,
-        "note": mail_err.unwrap_or_else(|| "已全部投递".into()),
+        "note": note,
     })))
 }
 

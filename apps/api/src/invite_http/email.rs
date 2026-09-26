@@ -58,8 +58,9 @@ pub(super) async fn email_invite_handler(
         ));
     };
 
-    let smtp = std::env::var("SMTP_URL").unwrap_or_default();
-    if smtp.is_empty() {
+    // 0208 P0：SMTP「站点设定优先，env 兜底」——后台填好 smtp_* 即生效
+    let smtp_cfg = crate::mailer::smtp_config(&state.repo.db).await;
+    let Some((smtp, from)) = smtp_cfg.map(|c| (c.url, c.from)) else {
         // 开发态无邮件出口：仍登记发送对象，前端引导用户直接复制邀请码
         sqlx::query("UPDATE invites SET email = $2 WHERE id = $1")
             .bind(body.invite_id)
@@ -70,13 +71,11 @@ pub(super) async fn email_invite_handler(
         return Err(DomainError::Validation(
             "站点未配置邮件服务（SMTP），请复制邀请码手动发送给对方".into(),
         ));
-    }
+    };
     let base = std::env::var("PUBLIC_WEB_URL")
         .or_else(|_| std::env::var("PUBLIC_API_URL"))
         .unwrap_or_else(|_| "http://localhost:3000".into());
     let link = format!("{base}/register?invite={code}");
-    let from = std::env::var("SMTP_FROM")
-        .unwrap_or_else(|_| "no-reply@fluxtorrent.local".into());
     let site: String = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'site_name'",
     )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, ApiError, setSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
@@ -19,10 +20,17 @@ interface Status {
   done: boolean;
   has_admin: boolean;
   packs: Pack[];
+  /** 开站 checklist（0209 P2-12） */
+  checklist?: {
+    announce_local: boolean;
+    smtp_unset: boolean;
+    registration_mode: string;
+  };
 }
 
 export default function SetupWizard() {
   const { dict } = useI18n();
+  const router = useRouter();
   // setup 域文案（三语字典 setup 键；缺键回落中文兜底——向导页面在 i18n 域注册前可用）
   const setupDict = (
     dict as unknown as Record<string, Record<string, string> | undefined>
@@ -156,7 +164,7 @@ export default function SetupWizard() {
             <p className="rounded-md border border-warn/40 bg-warn/10 px-3 py-2 text-xs">
               {t(
                 "noAdmin",
-                "检测到尚无管理员账号：请先用引导 SQL 建立 root（class 99）后再完成向导，或直接在下方登录已有管理员。",
+                "系统已自动预置 root 账号（用户名 root，初始密码 password123，首次登录会强制要求修改）。请修改密码后用新密码完成向导。",
               )}
             </p>
           )}
@@ -217,9 +225,66 @@ export default function SetupWizard() {
             </span>
           </label>
           {result && (
-            <p className="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm">
-              ✅ {result}
-            </p>
+            <div className="rounded-md border border-success/40 bg-success/10 px-3 py-3 text-sm">
+              <p>✅ {result}</p>
+              {/* 0208 P0：向导终点给落点——别让站长停在原地 */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  className={btn}
+                  onClick={() => router.push("/torrents")}
+                >
+                  {t("goHome", "进入站点")}
+                </button>
+                <button className={btn} onClick={() => router.push("/admin")}>
+                  {t("goAdmin", "去管理后台")}
+                </button>
+                <button className={btn} onClick={() => router.push("/upload")}>
+                  {t("goUpload", "发布第一颗种子")}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-muted">
+                {t(
+                  "nextSteps",
+                  "开站前建议检查：后台「站点设定」里的 tracker announce 地址、邮件 SMTP、注册模式三项。",
+                )}
+              </p>
+            </div>
+          )}
+          {/* 开站 checklist（0209 P2-12）：装完就有可操作的警示卡 */}
+          {status?.done && status.checklist && !result && (
+            <div className="rounded-md border border-warn/40 bg-warn/10 px-3 py-3 text-sm">
+              <p className="font-medium">
+                {t("checklistTitle", "开站检查清单")}
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
+                {status.checklist.announce_local && (
+                  <li>
+                    {t(
+                      "chkAnnounce",
+                      "tracker announce 地址仍是本地回环（127.0.0.1）——用户下载的种子文件将无法做种，请到「站点设定」改为公网域名。",
+                    )}
+                  </li>
+                )}
+                {status.checklist.smtp_unset && (
+                  <li>
+                    {t(
+                      "chkSmtp",
+                      "邮件 SMTP 未配置——找回密码 / 邀请函 / 群发都将静默跳过，请在「站点设定 → 邮件」填写。",
+                    )}
+                  </li>
+                )}
+                <li>
+                  {t("chkReg", "注册模式：")}{" "}
+                  <b>{status.checklist.registration_mode}</b>
+                  {status.checklist.registration_mode === "invite_only"
+                    ? t(
+                        "chkRegInvite",
+                        "（邀请制：需要先在后台「邀请管理」发码）",
+                      )
+                    : t("chkRegOpen", "（开放注册）")}
+                </li>
+              </ul>
+            </div>
           )}
           <div className="flex gap-2">
             <button
