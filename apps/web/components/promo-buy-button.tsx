@@ -7,27 +7,37 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { Modal } from "@/components/modal";
 
-/** 用户自购置顶/限时免费（0101，好学站插件口径）：
- *  档位 = sticky1 一级置顶 / sticky2 二级置顶 / free 限时免费 × 24/72 小时，
- *  价目来自 /promo/plans；购买走 /promo/buy（幂等键防双扣）。
+/** 用户自购置顶/限时免费（0101，好学站插件口径；0213 起档位读服务端注册表）：
+ *  档位由 GET /promo/plans 返回的 kinds 元数据驱动（站方可自定义增删），
+ *  价目同响应；购买走 /promo/buy（幂等键防双扣）。
  *  0173：详情页头部只留「购买置顶免费」按钮，档位选择进覆盖式弹窗。 */
 interface PlanEntry {
   hours: number;
   price: number;
 }
 
+interface KindMeta {
+  kind: string;
+  label_zh: string;
+  label_en: string;
+  effect: string;
+  i18n_key: string | null;
+}
+
 interface PlansResp {
   enabled: boolean;
   plans: Record<string, PlanEntry[]>;
+  kinds?: KindMeta[];
 }
 
-const KIND_ORDER = ["sticky1", "sticky2", "free"] as const;
-
-const KIND_LABELS: Record<string, string> = {
-  sticky1: "一级置顶",
-  sticky2: "二级置顶",
-  free: "限时免费",
-};
+/** 档位显示名：优先字典（i18n_key → promoKind.*），回落服务端 label（按站点语言口径） */
+function kindLabel(k: KindMeta, dict: ReturnType<typeof useI18n>["dict"]) {
+  const map = dict.promoKind as unknown as
+    | Record<string, string>
+    | undefined;
+  const key = k.i18n_key ?? k.kind;
+  return map?.[key] ?? k.label_zh ?? k.kind;
+}
 
 export function PromoBuyButton({ torrentId }: { torrentId: number }) {
   const { dict } = useI18n();
@@ -55,7 +65,7 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
       const first = Object.entries(r.plans).find(([, v]) => v.length > 0);
       if (first) setPick(`${first[0]}:${first[1][0].hours}`);
     } catch {
-      setPlans({ enabled: false, plans: {} });
+      setPlans({ enabled: false, plans: {}, kinds: [] });
     }
   }, []);
 
@@ -93,6 +103,18 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
   const entries = Object.entries(plans.plans).flatMap(([kind, list]) =>
     list.map((e) => ({ key: `${kind}:${e.hours}`, kind, ...e })),
   );
+  // 档位顺序：服务端 kinds 元数据为准（站方在后台拖/设 sort_order）；
+  // 元数据缺失（老响应/降级）时回落 plans 键序
+  const orderedKinds: KindMeta[] =
+    plans.kinds && plans.kinds.length > 0
+      ? plans.kinds.filter((k) => (plans.plans[k.kind] ?? []).length > 0)
+      : Object.keys(plans.plans).map((k) => ({
+          kind: k,
+          label_zh: k,
+          label_en: k,
+          effect: "",
+          i18n_key: k,
+        }));
   if (entries.length === 0) return null;
 
   return (
@@ -106,20 +128,20 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title={t.title}>
         <div className="flex flex-col gap-3">
-          {KIND_ORDER.map((kind) => {
-            const list = plans.plans[kind] ?? [];
+          {orderedKinds.map((k) => {
+            const list = plans.plans[k.kind] ?? [];
             if (list.length === 0) return null;
             return (
               <fieldset
-                key={kind}
+                key={k.kind}
                 className="flex flex-col gap-1.5 text-xs"
               >
                 <legend className="font-bold">
-                  {KIND_LABELS[kind] ?? kind}
+                  {kindLabel(k, dict)}
                 </legend>
                 <div className="flex flex-wrap gap-2">
                   {list.map((e) => {
-                    const key = `${kind}:${e.hours}`;
+                    const key = `${k.kind}:${e.hours}`;
                     const on = pick === key;
                     return (
                       <button

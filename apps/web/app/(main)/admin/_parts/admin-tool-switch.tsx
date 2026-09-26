@@ -29,6 +29,7 @@ import { AdminOpsPanel } from "@/components/admin-ops";
 import { AdminEmbedRules } from "@/components/admin-embed-rules";
 import { HomeLayoutEditor } from "@/components/home-layout-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
+import { AdminPromoKinds } from "./admin-promo-kinds";
 
 /** 由 staff-tools 承载的工具页签（tab_key 与 ToolTab 同名）
  *
@@ -67,7 +68,13 @@ export function renderSimpleTool(
         </section>
       );
     case "freeleech":
-      return <FreeleechPanel />;
+      // 站方级促销 + 用户自购档位注册表（0213，同域两面板）
+      return (
+        <>
+          <FreeleechPanel />
+          <AdminPromoKinds />
+        </>
+      );
     case "clearcache":
       return <ClearCachePanel />;
     case "p2tools":
