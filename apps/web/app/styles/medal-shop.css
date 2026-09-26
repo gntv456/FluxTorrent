@@ -690,3 +690,50 @@
 .vticket .acts {
   margin-left: auto;
 }
+
+/* ---- 动态头像款式预览（0207b）：两款 CSS 动画近似效果 ---- */
+.aa-preview {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--sun) 10%, var(--surface-card));
+}
+.aa-preview-face {
+  font-size: 18px;
+  line-height: 1;
+}
+/* 霓虹脉冲：洋红描边呼吸 */
+.aa-preview-neon {
+  border: 2px solid #d94f9e;
+  animation: aa-neon 1.6s ease-in-out infinite;
+}
+@keyframes aa-neon {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(217, 79, 158, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 10px 3px rgba(217, 79, 158, 0.75);
+  }
+}
+/* 像素星环：青色虚线环旋转 */
+.aa-preview-pixel {
+  border: 2px dashed #37b6c9;
+  animation: aa-spin 6s linear infinite;
+}
+@keyframes aa-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aa-preview-neon,
+  .aa-preview-pixel {
+    animation: none;
+  }
+}

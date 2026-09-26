@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ShopItem } from "@fluxtorrent/domain-types";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { BuyButton } from "@/components/buy-button";
-import { FramePreview } from "@/components/frame-preview";
+import {
+  FramePreview,
+  AnimatedAvatarPreview,
+} from "@/components/frame-preview";
 
 // 魔力商店目录（客户端）：按 kind 归 5 组 + 组内筛选 + 余额预判。
 // 分组映射与图标是**前端常量**：新增 kind 只需补一行，未映射的落「其他」组，
@@ -21,6 +24,14 @@ const GROUP_ORDER: Group[] = [
   "gift",
   "other",
 ];
+
+/** 装扮四类（0207b）：拥有后卡片转「已拥有/去佩戴」 */
+const DRESSUP_KINDS = new Set([
+  "avatar_frame",
+  "animated_avatar",
+  "rainbow_id",
+  "rainbow_name",
+]);
 
 const KIND_GROUP: Record<string, Group> = {
   upload_credit: "upload",
@@ -92,7 +103,20 @@ export function ShopCatalog({
   const t = dict.shop;
   const hints = t.hints as Record<string, string>;
   const [grp, setGrp] = useState<Group | null>(null);
+  // 余额条本地镜像（0207b）：购买成功回调里减去花费，无需整页刷新
+  const [bal, setBal] = useState(balance);
+  useEffect(() => setBal(balance), [balance]);
   const num = (n: number) => n.toLocaleString(dateLocale(locale));
+  // 已拥有的装扮 id 集合（0207b：卡片显示「已拥有/去佩戴」而非可点购买）
+  const [ownedIds, setOwnedIds] = useState<Set<number>>(
+    () => new Set(items.filter((i) => i.owned).map((i) => i.id)),
+  );
+  const markBought = (it: ShopItem, total: number) => {
+    setBal((b) => (b === null ? b : b - total));
+    if (DRESSUP_KINDS.has(it.kind)) {
+      setOwnedIds((s) => new Set(s).add(it.id));
+    }
+  };
 
   const grouped = useMemo(() => {
     const m = new Map<Group, ShopItem[]>();
@@ -139,7 +163,8 @@ export function ShopCatalog({
     const g = KIND_GROUP[it.kind] ?? "other";
     const gb = it.kind === "upload_credit" ? gbOf(it.name) : null;
     const unit = gb ? Math.round(it.price / gb) : null;
-    const short = balance !== null && balance < it.price;
+    const owned = ownedIds.has(it.id);
+    const short = bal !== null && bal < it.price;
     return (
       <article className="gcard" key={it.id}>
         {it.id === bestId && (
@@ -147,9 +172,11 @@ export function ShopCatalog({
         )}
         <div className="gcard-bd">
           <span className="gicon" data-group={g}>
-            {it.kind === "animated_avatar"
-              ? (it.config?.effect ?? "✨")
-              : (KIND_ICON[it.kind] ?? GROUP_ICON[g])}
+            {it.kind === "animated_avatar" ? (
+              <AnimatedAvatarPreview effect={it.config?.effect} />
+            ) : (
+              (KIND_ICON[it.kind] ?? GROUP_ICON[g])
+            )}
           </span>
           <div className="txt">
             <h3>{it.name}</h3>
@@ -173,18 +200,28 @@ export function ShopCatalog({
             <span className="unit">{`${num(unit)} /GB`}</span>
           )}
           <div className="acts">
-            <BuyButton
-              itemId={it.id}
-              unitPrice={it.price}
-              stackable={it.config?.stackable === true}
-              affordable={!short}
-              shortBy={
-                short && balance !== null
-                  ? fmt(t.shortBy, { n: num(it.price - balance) })
-                  : null
-              }
-              balance={balance}
-            />
+            {owned ? (
+              <a
+                href="/dressup"
+                className="btn btn-sm btn-ghost whitespace-nowrap"
+              >
+                {t.ownedGoWear}
+              </a>
+            ) : (
+              <BuyButton
+                itemId={it.id}
+                unitPrice={it.price}
+                stackable={it.config?.stackable === true}
+                affordable={!short}
+                shortBy={
+                  short && bal !== null
+                    ? fmt(t.shortBy, { n: num(it.price - bal) })
+                    : null
+                }
+                balance={bal}
+                onBought={() => markBought(it, it.price)}
+              />
+            )}
           </div>
         </div>
       </article>

@@ -67,3 +67,29 @@ export function FramePreview({
     </span>
   );
 }
+
+/**
+ * 动态头像款式预览（0207b）：无图片资产前用 CSS 动画近似两款效果——
+ * 霓虹脉冲（neon_pulse）= 呼吸的洋红描边；像素星环（pixel_ring）= 旋转的
+ * 虚线青色环。让「按款式挑选」至少能看出两款区别，不再只有一个 ✨。
+ */
+const EFFECT_CLASS: Record<string, string> = {
+  neon_pulse: "aa-preview-neon",
+  pixel_ring: "aa-preview-pixel",
+};
+
+export function AnimatedAvatarPreview({
+  effect,
+}: {
+  effect?: string;
+}) {
+  const cls = EFFECT_CLASS[effect ?? ""] ?? "aa-preview-neon";
+  return (
+    <span
+      className={`aa-preview ${cls}`}
+      aria-hidden
+    >
+      <span className="aa-preview-face">✨</span>
+    </span>
+  );
+}

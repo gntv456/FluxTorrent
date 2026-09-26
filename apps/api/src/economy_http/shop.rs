@@ -24,19 +24,74 @@ struct ShopItem {
     price: i64,
     /// 0207：前端要按 config 判定可否选数量（stackable）、装扮候选（frame_id）
     config: serde_json::Value,
+    /// 装扮类商品：当前用户是否已拥有（0207b 商店「已拥有」态）
+    #[sqlx(default)]
+    owned: bool,
 }
 
 #[get("/shop/items")]
 async fn shop_items(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
-    let items = sqlx::query_as::<_, ShopItem>(
-        "SELECT id, name, kind, price, config FROM shop_items \
-         WHERE active = true ORDER BY price",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 匿名可看目录（owned=false 全员）；登录后附拥有态
+    let uid: Option<i64> = crate::http::require_auth(&req, &state)
+        .await
+        .ok()
+        .map(|a| a.id);
+    let items: Vec<ShopItem> = match uid {
+        Some(uid) => {
+            let rows: Vec<(i64, String, String, i64, serde_json::Value, bool)> =
+                sqlx::query_as(
+                    "SELECT si.id, si.name, si.kind, si.price, si.config, \
+                 EXISTS(SELECT 1 FROM user_dressups ud \
+                 WHERE ud.user_id = $1 AND ud.item_id = si.id) AS owned \
+                 FROM shop_items si WHERE si.active = true \
+                 AND si.kind IN ('avatar_frame','animated_avatar',\
+                 'rainbow_id','rainbow_name') \
+                 UNION ALL \
+                 SELECT si.id, si.name, si.kind, si.price, si.config, FALSE \
+                 FROM shop_items si WHERE si.active = true \
+                 AND si.kind NOT IN ('avatar_frame','animated_avatar',\
+                 'rainbow_id','rainbow_name') \
+                 ORDER BY price",
+                )
+                .bind(uid)
+                .fetch_all(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            rows.into_iter()
+                .map(|(id, name, kind, price, config, owned)| ShopItem {
+                    id,
+                    name,
+                    kind,
+                    price,
+                    config,
+                    owned,
+                })
+                .collect()
+        }
+        None => {
+            let rows: Vec<(i64, String, String, i64, serde_json::Value)> =
+                sqlx::query_as(
+                    "SELECT id, name, kind, price, config \
+                 FROM shop_items WHERE active = true ORDER BY price",
+                )
+                .fetch_all(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            rows.into_iter()
+                .map(|(id, name, kind, price, config)| ShopItem {
+                    id,
+                    name,
+                    kind,
+                    price,
+                    config,
+                    owned: false,
+                })
+                .collect()
+        }
+    };
     Ok(ok(items))
 }
 

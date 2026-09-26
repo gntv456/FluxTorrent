@@ -117,14 +117,16 @@ impl ResponseError for DomainError {
                 format!(
                     "{}: {}",
                     crate::i18n::localized_message(self.code(), locale),
-                    d
+                    // 详情按原句查译文表（i18n/validation_details.tsv）；
+                    // 不在表里就原样透出，不现场编译文
+                    crate::i18n::localized_detail(d, locale)
                 )
             }
             DomainError::TorrentInvalid(d) => {
                 format!(
                     "{}: {}",
                     crate::i18n::localized_message(self.code(), locale),
-                    d
+                    crate::i18n::localized_detail(d, locale)
                 )
             }
             DomainError::FieldErrors(list) => format!(
@@ -140,7 +142,10 @@ impl ResponseError for DomainError {
         let data = match self {
             DomainError::FieldErrors(list) => serde_json::json!(list
                 .iter()
-                .map(|(f, e)| serde_json::json!({ "field": f, "error": e }))
+                .map(|(f, e)| serde_json::json!({
+                    "field": f,
+                    "error": crate::i18n::localized_detail(e, locale)
+                }))
                 .collect::<Vec<_>>()),
             _ => serde_json::Value::Null,
         };

@@ -143,6 +143,63 @@ pub fn localized_message(code: i32, locale: Locale) -> &'static str {
     localized_message(1000, locale)
 }
 
+/// 校验详情译文表（四审 L7 第二批）：`apps/api/i18n/validation_details.tsv`，编译期内嵌。
+/// 本批**没有迁移**——机制是代码加一张表，DB 里没有新表新列。
+///
+/// 为什么按「原句」而不是按 key：595 条静态字面量若逐条建 key，就得改 595 个
+/// 调用点（多数在并行会话正在写的文件里），而且 key 名本身是第二份要维护的账。
+/// 按原句查表 ⇒ 出口一处生效、调用点零改动；代价是中文原文改了要记得同步表，
+/// 这条由 `scripts/validation_i18n_guard.py` 当场拦住（掉出表外就红）。
+const DETAILS_TSV: &str = include_str!("../i18n/validation_details.tsv");
+
+fn detail_table(
+) -> &'static std::collections::HashMap<&'static str, (&'static str, &'static str)> {
+    static TABLE: std::sync::OnceLock<
+        std::collections::HashMap<&'static str, (&'static str, &'static str)>,
+    > = std::sync::OnceLock::new();
+    TABLE.get_or_init(|| {
+        let mut m = std::collections::HashMap::new();
+        for line in DETAILS_TSV.lines() {
+            let t = line.trim_end();
+            if t.is_empty() || t.starts_with('#') {
+                continue;
+            }
+            let mut cols = t.split('\t');
+            if let (Some(zh), Some(tw), Some(en)) =
+                (cols.next(), cols.next(), cols.next())
+            {
+                m.insert(zh.trim(), (tw.trim(), en.trim()));
+            }
+        }
+        m
+    })
+}
+
+/// 表内条目数（测试与自检用）。
+pub fn detail_count() -> usize {
+    detail_table().len()
+}
+
+/// 按 locale 翻译一条校验详情。
+///
+/// **表里没有就原样返回**：宁可露中文，绝不现场编译文——编出来的错话没人审得动。
+/// zh-CN 直接原样（它就是源语言）。
+pub fn localized_detail(zh: &str, locale: Locale) -> &str {
+    if locale == Locale::ZhCn {
+        return zh;
+    }
+    match detail_table().get(zh.trim()) {
+        Some((tw, en)) => {
+            if locale == Locale::ZhTw {
+                tw
+            } else {
+                en
+            }
+        }
+        None => zh,
+    }
+}
+
 /// default_service 的 404 文案
 pub fn endpoint_not_found(locale: Locale) -> &'static str {
     match locale {
@@ -206,6 +263,75 @@ mod tests {
         assert_eq!(localized_message(9999, Locale::ZhCn), "内部错误");
     }
 
+    /// 译文表按原句查：第一批覆盖面（auth_http + 术语面板）三语都在
+    #[test]
+    fn detail_table_translates_known_sentences() {
+        assert_eq!(
+            localized_detail("旧密码不正确", Locale::En),
+            "Current password is incorrect"
+        );
+        assert_eq!(
+            localized_detail("旧密码不正确", Locale::ZhTw),
+            "舊密碼不正確"
+        );
+        assert_eq!(
+            localized_detail("字段不存在", Locale::En),
+            "Field not found"
+        );
+        // zh-CN 是源语言，原样返回（不查表也不改写）
+        assert_eq!(
+            localized_detail("字段不存在", Locale::ZhCn),
+            "字段不存在"
+        );
+    }
+
+    /// 表里没有的串必须原样透出：宁可露中文，也不现场编译文
+    #[test]
+    fn unknown_detail_falls_back_to_source() {
+        let s = "这一句肯定不在译文表里：随便写的";
+        assert_eq!(localized_detail(s, Locale::En), s);
+        assert!(detail_count() > 0, "译文表不应为空表");
+    }
+
+    /// 表自身形状：三列齐、无重复 key、`{...}` 占位符三语一致
+    #[test]
+    fn detail_table_shape_is_consistent() {
+        let mut seen = std::collections::HashSet::new();
+        let braces = |s: &str| -> Vec<String> {
+            let mut v: Vec<String> = s
+                .match_indices('{')
+                .zip(s.match_indices('}'))
+                .map(|((i, _), _)| {
+                    let j = s[i..].find('}').map(|k| i + k).unwrap_or(i);
+                    s[i..=j.min(s.len() - 1)].to_string()
+                })
+                .collect();
+            v.sort();
+            v
+        };
+        for line in DETAILS_TSV.lines() {
+            let t = line.trim_end();
+            if t.is_empty() || t.starts_with('#') {
+                continue;
+            }
+            let cols: Vec<&str> = t.split('\t').collect();
+            assert_eq!(cols.len(), 3, "必须是三列 TAB: {t}");
+            for c in &cols {
+                assert!(!c.trim().is_empty(), "空列: {t}");
+            }
+            assert!(
+                seen.insert(cols[0].trim().to_string()),
+                "重复的中文原句: {}",
+                cols[0]
+            );
+            let (a, b, c) = (braces(cols[0]), braces(cols[1]), braces(cols[2]));
+            assert_eq!(a, b, "zh-TW 占位符与源句不一致: {}", cols[0]);
+            assert_eq!(a, c, "en 占位符与源句不一致: {}", cols[0]);
+        }
+        // 带占位符的那条确实在表里（否则上面等于没验到）
+        assert!(DETAILS_TSV.contains("{magic}"));
+    }
+
     /// task_local 时序验证：错误转换发生在中间件 scope 内，message 随 Accept-Language 切换
     #[actix_web::test]
     async fn error_message_localizes_by_accept_language() {
@@ -236,6 +362,45 @@ mod tests {
             }
             let resp = test::call_service(&app, req.to_request()).await;
             assert_eq!(resp.status(), 404);
+            let body: serde_json::Value = test::read_body_json(resp).await;
+            assert_eq!(body["message"], expect, "lang={lang:?}");
+        }
+    }
+
+    /// 端到端：校验**详情**也随 Accept-Language 走（证明 errors.rs 出口接上了表）
+    #[actix_web::test]
+    async fn validation_detail_localizes_through_envelope() {
+        use actix_web::{test, web, App, HttpResponse};
+
+        let app = test::init_service(
+            App::new()
+                .wrap(actix_web::middleware::from_fn(locale_mw))
+                .route(
+                    "/v",
+                    web::to(|| async {
+                        Err::<HttpResponse, crate::errors::DomainError>(
+                            crate::errors::DomainError::Validation(
+                                "旧密码不正确".into(),
+                            ),
+                        )
+                    }),
+                ),
+        )
+        .await;
+
+        for (lang, expect) in [
+            (
+                Some("en-US,en;q=0.9"),
+                "Validation failed: Current password is incorrect",
+            ),
+            (Some("zh-TW,zh;q=0.8"), "參數校驗失敗: 舊密碼不正確"),
+            (None, "参数校验失败: 旧密码不正确"),
+        ] {
+            let mut req = test::TestRequest::get().uri("/v");
+            if let Some(l) = lang {
+                req = req.insert_header(("Accept-Language", l));
+            }
+            let resp = test::call_service(&app, req.to_request()).await;
             let body: serde_json::Value = test::read_body_json(resp).await;
             assert_eq!(body["message"], expect, "lang={lang:?}");
         }

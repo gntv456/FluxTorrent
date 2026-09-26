@@ -296,6 +296,8 @@ export interface ShopItem {
     slot?: string;
     [k: string]: unknown;
   };
+  /** 0207b：装扮类商品当前用户是否已拥有（匿名恒 false） */
+  owned?: boolean;
 }
 
 export interface Medal {

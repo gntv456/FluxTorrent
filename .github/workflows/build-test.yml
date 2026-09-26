@@ -36,6 +36,11 @@ jobs:
       # clippy 暂以 warning 不阻断（存量代码未按 lint 全量整备）；演进为 -D warnings
       - name: Clippy（信息性）
         run: cargo clippy --workspace --all-targets || true
+      # 校验详情本地化棘轮（四审 L7 第二批）：静态校验串必须进译文表、动态串条数不许涨。
+      # 基线按「文本」记账（不是行号），所以搬文件/插删行不会造成假红——
+      # 这是 i18n_guard 现有实现的坑，新门不再犯。
+      - name: Validation i18n ratchet
+        run: python3 scripts/validation_i18n_guard.py
 
   web:
     if: github.actor != 'dependabot[bot]'
@@ -71,10 +76,13 @@ jobs:
         run: node ../../scripts/check_type_drift.mjs
       # 单源清单门禁（四审 L5/L6）：模块键 Rust key::ALL ↔ TS MODULE_KEYS ↔ DB modules；
       # 首页板块键 后端 HOME_SECTIONS ↔ 前端渲染 case。CI 无库时模块键检查跳过 DB 侧。
+      # 术语规则门禁（四审 L7）额外要求每条启用中的规则至少命中一处文案——
+      # CI 无库时它仍会扫源码确认机制在位（DB 侧自动跳过）。
       - name: Module keys & home sections guard
         run: |
           node ../../scripts/module_keys_guard.mjs
           node ../../scripts/home_sections_guard.mjs
+          node ../../scripts/terms_guard.mjs
       # 构建门禁（P1）：rewrites/standalone 输出/页面构建错误此前推迟到 publish-images
       # 发版构建才第一次暴露；tsc 通过不代表 next build 通过
       - name: Next build
