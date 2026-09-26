@@ -152,8 +152,10 @@ pub fn localized_message(code: i32, locale: Locale) -> &'static str {
 /// 这条由 `scripts/validation_i18n_guard.py` 当场拦住（掉出表外就红）。
 const DETAILS_TSV: &str = include_str!("../i18n/validation_details.tsv");
 
-fn detail_table(
-) -> &'static std::collections::HashMap<&'static str, (&'static str, &'static str)> {
+fn detail_table() -> &'static std::collections::HashMap<
+    &'static str,
+    (&'static str, &'static str),
+> {
     static TABLE: std::sync::OnceLock<
         std::collections::HashMap<&'static str, (&'static str, &'static str)>,
     > = std::sync::OnceLock::new();
@@ -279,10 +281,7 @@ mod tests {
             "Field not found"
         );
         // zh-CN 是源语言，原样返回（不查表也不改写）
-        assert_eq!(
-            localized_detail("字段不存在", Locale::ZhCn),
-            "字段不存在"
-        );
+        assert_eq!(localized_detail("字段不存在", Locale::ZhCn), "字段不存在");
     }
 
     /// 表里没有的串必须原样透出：宁可露中文，也不现场编译文
