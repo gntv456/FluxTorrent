@@ -197,6 +197,25 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
 
   const activeGroup = groups.find((g) => g.key === active);
 
+  // SMTP 连通性测试（0214）：仅在 smtp 分组显示——装配与投递链路同源，
+  // 这里通了找回密码/邀请函就通。发到当前管理员邮箱。
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const testSmtp = async () => {
+    setSmtpTesting(true);
+    setToast({ ok: false, text: s.smtpTesting });
+    try {
+      await api.post("/api/v1/admin/settings/smtp-test", {});
+      setToast({
+        ok: true,
+        text: s.smtpTestOk,
+      });
+    } catch (e) {
+      setToast({ ok: false, text: apiErrorMessage(dict, e) });
+    } finally {
+      setSmtpTesting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <SettingsToolbar
@@ -234,7 +253,23 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
           {searching ? (
             <SettingsSearchResults matches={matches} renderField={renderField} />
           ) : activeGroup ? (
-            <SettingsGroupCards cards={activeGroup.cards} renderField={renderField} />
+            <>
+              {activeGroup.key === "smtp" && (
+                <div className="flex flex-wrap items-center gap-2 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3">
+                  <p className="text-xs text-sub">{s.smtpTestHint}</p>
+                  <span className="flex-1" />
+                  <button
+                    type="button"
+                    onClick={testSmtp}
+                    disabled={smtpTesting || !editable}
+                    className="min-h-[44px] rounded-full bg-sky-deep px-4 text-xs font-bold text-white disabled:opacity-40"
+                  >
+                    {smtpTesting ? s.smtpTestingBtn : s.smtpTestBtn}
+                  </button>
+                </div>
+              )}
+              <SettingsGroupCards cards={activeGroup.cards} renderField={renderField} />
+            </>
           ) : (
             !schema && (
               <p className={PANEL_CENTER}>
