@@ -64,6 +64,11 @@ pub const SETTINGS_VIEW: &str = "settings.view";
 pub const SETTINGS_MANAGE: &str = "settings.manage";
 pub const LOCATIONS_MANAGE: &str = "locations.manage";
 pub const SITEPACKS_MANAGE: &str = "sitepacks.manage";
+/// G2（0217）自建物细键：与 sitepacks.manage 拆分，缺省未授给任何档，
+/// 既有持有者由迁移原样继承（零漂移）
+pub const CUSTOMPAGES_MANAGE: &str = "custompages.manage";
+pub const USERFIELDS_MANAGE: &str = "userfields.manage";
+pub const TERMS_MANAGE: &str = "terms.manage";
 // 系统
 pub const AUDIT_VIEW: &str = "audit.view";
 pub const SYSLOG_VIEW: &str = "syslog.view";

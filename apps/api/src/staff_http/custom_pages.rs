@@ -45,7 +45,7 @@ pub async fn custom_pages_list(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
+        crate::authz::perm::CUSTOMPAGES_MANAGE,
     )
     .await?;
     let rows: Vec<CustomPageRow> = sqlx::query_as(
@@ -109,7 +109,7 @@ pub async fn custom_pages_add(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
+        crate::authz::perm::CUSTOMPAGES_MANAGE,
     )
     .await?;
     validate_body(&body)?;
@@ -155,7 +155,7 @@ pub async fn custom_pages_update(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
+        crate::authz::perm::CUSTOMPAGES_MANAGE,
     )
     .await?;
     validate_body(&body)?;
@@ -205,7 +205,7 @@ pub async fn custom_pages_delete(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
+        crate::authz::perm::CUSTOMPAGES_MANAGE,
     )
     .await?;
     let n = sqlx::query("DELETE FROM custom_pages WHERE id = $1")
