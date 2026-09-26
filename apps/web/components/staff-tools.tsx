@@ -16,6 +16,10 @@ import { StaffPermPanel } from "@/components/staff-tools-perm";
 import { StaffSeedStatsPanel } from "@/components/staff-tools-seedstats";
 import { StaffUserFieldsPanel } from "@/components/staff-user-fields";
 import { StaffCustomPagesPanel } from "@/components/staff-custom-pages";
+import {
+  AdminDonateOrders,
+  AdminPanelEntries,
+} from "@/components/admin-donate-orders";
 import { StaffTermsPanel } from "@/components/staff-terms";
 
 /** staffpanel 管理工具落地页：FAQ 管理/规则管理/分类管理/封禁系统/批量邮件等
@@ -74,7 +78,9 @@ export type ToolTab =
   | "seedstats"
   | "userfields"
   | "pages"
-  | "terms";
+  | "terms"
+  | "donateorders"
+  | "panelentries";
 
 /** 各域面板负责的 tab —— 既用于条件挂载，也是「谁渲染谁」的唯一声明处。
  *  新增工具时在这里归位，并同步 STAFF_TOOL_TABS（admin-tool-switch.tsx）
@@ -102,6 +108,8 @@ const SITE_TABS: ToolTab[] = [
   "userfields",
   "pages",
   "terms",
+  "donateorders",
+  "panelentries",
 ];
 const SYS_TABS: ToolTab[] = ["dbstats", "syslog", "locations", "agentrules"];
 
@@ -161,6 +169,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       {tab === "seedstats" && <StaffSeedStatsPanel />}
       {tab === "userfields" && <StaffUserFieldsPanel flash={flash} />}
       {tab === "pages" && <StaffCustomPagesPanel flash={flash} />}
+      {tab === "donateorders" && <AdminDonateOrders />}
+      {tab === "panelentries" && <AdminPanelEntries />}
       {tab === "terms" && <StaffTermsPanel flash={flash} />}
     </div>
   );

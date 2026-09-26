@@ -1,4 +1,4 @@
-use actix_web::{get, put, web, HttpRequest, HttpResponse};
+use actix_web::{get, post, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -17,11 +17,17 @@ struct StaffPanelEntry {
     info: String,
     tab_key: String,
     min_class: i32,
+    /// 权限键（0209）：非空时还须 user_can(perm_key)；NULL = 仅按 min_class
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[sqlx(default)]
+    perm_key: Option<String>,
 }
 
 /// 管理组面板：职能分组（section）+ 细粒度等级过滤（min_class）
 /// 说明：旧的 panel 字段（sysop/admin/moderator）是权限等级，曾被当作分组维度，
 /// 导致同一职能被拆散；现改为按 section 分组、按 min_class 逐条过滤，无权条目直接不返回。
+/// 0209：perm_key 非空的条目再按 user_can 过滤——「给某人只开某个面板」
+/// 走用户级权限覆盖（显式授予/拒绝），导航不再整块按等级切。
 #[get("/admin/staffpanel")]
 async fn staff_panel(
     req: HttpRequest,
@@ -30,7 +36,7 @@ async fn staff_panel(
     let auth = staff(&req, &state).await?;
     let rows: Vec<StaffPanelEntry> =
         sqlx::query_as::<_, StaffPanelEntry>(&format!(
-            "SELECT section, name, url, info, tab_key, min_class \
+            "SELECT section, name, url, info, tab_key, min_class, perm_key \
          FROM staff_panel_entries \
          WHERE min_class <= $1 AND {} \
          ORDER BY section, sort, id",
@@ -40,13 +46,191 @@ async fn staff_panel(
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 权限键过滤（0209）：逐条 user_can；无键条目直接放行
+    let mut filtered: Vec<StaffPanelEntry> = Vec::new();
+    for e in rows {
+        match e.perm_key.as_deref() {
+            Some(pk) => {
+                if crate::authz::can(&state, &auth, pk).await {
+                    filtered.push(e);
+                }
+            }
+            None => filtered.push(e),
+        }
+    }
     Ok(ok(serde_json::json!({
-        "entries": rows,
+        "entries": filtered,
         "role": if auth.class_id >= 99 { "sysop" }
             else if auth.class_id >= 93 { "administrator" }
             else { "moderator" },
         "class_id": auth.class_id,
     })))
+}
+
+// ============ 面板条目 CRUD（0209 P1-7：加减导航项不再写 SQL） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct StaffPanelEntryFull {
+    id: i32,
+    section: String,
+    name: String,
+    url: String,
+    info: String,
+    sort: i32,
+    tab_key: String,
+    min_class: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[sqlx(default)]
+    module_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[sqlx(default)]
+    perm_key: Option<String>,
+}
+
+#[get("/admin/staffpanel-entries")]
+async fn staff_panel_entries_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
+        .await?;
+    let rows: Vec<StaffPanelEntryFull> = sqlx::query_as(
+        "SELECT id, section, name, url, info, sort, tab_key, min_class, \
+         module_key, perm_key FROM staff_panel_entries ORDER BY section, sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct PanelEntryReq {
+    section: String,
+    name: String,
+    url: String,
+    info: String,
+    #[serde(default)]
+    sort: Option<i32>,
+    #[serde(default)]
+    tab_key: Option<String>,
+    #[serde(default)]
+    min_class: Option<i32>,
+    #[serde(default)]
+    module_key: Option<String>,
+    #[serde(default)]
+    perm_key: Option<String>,
+}
+
+#[post("/admin/staffpanel-entries")]
+async fn staff_panel_entries_add(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PanelEntryReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
+        .await?;
+    if body.name.trim().is_empty() || body.url.trim().is_empty() {
+        return Err(DomainError::Validation(
+            "面板条目需要名称与 URL".into(),
+        ));
+    }
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO staff_panel_entries \
+         (section, name, url, info, sort, tab_key, min_class, module_key, perm_key) \
+         VALUES ($1, $2, $3, $4, COALESCE($5, 0), COALESCE($6, ''), COALESCE($7, 90), $8, $9) \
+         RETURNING id",
+    )
+    .bind(body.section.trim())
+    .bind(body.name.trim())
+    .bind(body.url.trim())
+    .bind(body.info.trim())
+    .bind(body.sort)
+    .bind(body.tab_key.as_deref().map(str::trim))
+    .bind(body.min_class)
+    .bind(body.module_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(body.perm_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "staffpanel.entry_add", Some(id as i64))
+        .await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/staffpanel-entries/{id}")]
+async fn staff_panel_entries_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i32>,
+    body: web::Json<PanelEntryReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
+        .await?;
+    let id = path.into_inner();
+    let n = sqlx::query(
+        "UPDATE staff_panel_entries SET section=$2, name=$3, url=$4, info=$5, \
+         sort=COALESCE($6, sort), tab_key=COALESCE($7, tab_key), \
+         min_class=COALESCE($8, min_class), module_key=$9, perm_key=$10 \
+         WHERE id=$1",
+    )
+    .bind(id)
+    .bind(body.section.trim())
+    .bind(body.name.trim())
+    .bind(body.url.trim())
+    .bind(body.info.trim())
+    .bind(body.sort)
+    .bind(body.tab_key.as_deref().map(str::trim))
+    .bind(body.min_class)
+    .bind(body.module_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(body.perm_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(id as i64));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "staffpanel.entry_update", Some(id as i64))
+        .await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[derive(Deserialize)]
+struct PanelEntryDelReq {
+    id: i32,
+}
+
+#[post("/admin/staffpanel-entries/delete")]
+async fn staff_panel_entries_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PanelEntryDelReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
+        .await?;
+    let n = sqlx::query("DELETE FROM staff_panel_entries WHERE id = $1")
+        .bind(body.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::NotFound(body.id as i64));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "staffpanel.entry_del", Some(body.id as i64))
+        .await;
+    Ok(ok(serde_json::json!({ "deleted": body.id })))
 }
 
 #[derive(serde::Serialize, sqlx::FromRow)]

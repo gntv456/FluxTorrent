@@ -65,6 +65,42 @@ pub async fn warn_user(
         .repo
         .audit(Some(auth.id), "warn_user", Some(body.user_id))
         .await;
+    // 0209 P1-9：警告通知当事人（此前理由只进库，用户无感知）
+    {
+        let target: Option<(String, Option<String>)> = sqlx::query_as(
+            "SELECT username, email FROM users WHERE id = $1",
+        )
+        .bind(body.user_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten();
+        if let Some((username, email)) = target {
+            let site: String = sqlx::query_scalar(
+                "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'site_name'), 'FluxTorrent')",
+            )
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or_else(|_| "FluxTorrent".into());
+            let subject = format!(
+                "[{site}] 你收到了一次警告（{} 周）",
+                body.weeks
+            );
+            let body_text = format!(
+                "你好 {username}，管理组对你的账号发出了为期 {} 周的警告。\n理由：{reason}\n警告期间请遵守站点规则；如有疑问可联系管理组。",
+                body.weeks,
+                reason = body.reason.as_deref().map(str::trim).filter(|s| !s.is_empty()).unwrap_or("（未填写）"),
+            );
+            crate::mailer::notify(
+                &state.repo.db,
+                body.user_id,
+                email,
+                &subject,
+                &body_text,
+            )
+            .await;
+        }
+    }
     Ok(ok(
         serde_json::json!({ "warned": body.user_id, "until_weeks": body.weeks }),
     ))

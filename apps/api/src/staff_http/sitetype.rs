@@ -43,9 +43,9 @@ pub async fn site_profile(
     // 旧三列（torrents.medium_id / grade_id / edition_id）的词表：这三张实体表
     // 就是它们的 id 权威，与 0088 之后新模型的 section_dict.id **不是同一套编号**，
     // 所以下发空表时前端下拉自然消失（0180：非教育站的学段/版本词表已清空）。
-    // 教育系站型（education/ebook）仍下发全量；其余站型 grades/editions 为空数组。
-    let edu_like = matches!(site_type.as_str(), "education" | "ebook")
-        || site_type.starts_with("custom_");
+    // 教育系站型（education/ebook）仍下发全量；其余站型（含 custom_*，0209 修正：
+    // 自定义站型是「不偏向任何 PT 类型」的最后防线，不再强灌学段/版本词）为空数组。
+    let edu_like = matches!(site_type.as_str(), "education" | "ebook");
     let dict_rows = |table: &'static str, emit: bool| {
         let db = state.repo.db.clone();
         async move {
@@ -186,6 +186,13 @@ pub async fn site_profile(
         "currency_name": currency,
         "subtitle_kind": sub_kind,
         "subtitle_label": sub_label,
+        // 语言切换器显隐（0209 P2-17）：no = 隐藏（单语站）
+        "locale_switcher_enabled": profile_bits::setting_text(
+            db,
+            "locale_switcher_enabled",
+        )
+        .await
+        .unwrap_or_else(|| "yes".into()),
         "subtitle_workflow": flag("subtitle_workflow", "0") == "1",
         "subtitle_award": flag("subtitle_award", "0") == "1",
         "subtitle_ai_badge": flag("subtitle_ai_badge", "1") != "0",
