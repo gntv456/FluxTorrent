@@ -135,7 +135,14 @@ export interface Overview {
 
 // ============ 主组件 ============
 
-export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
+export function UsercpPanel({
+  initialTab,
+  nav,
+}: {
+  initialTab: UsercpTab;
+  /** 页面级过滤后的侧边栏（0209：心愿单关模块时页面已滤，侧边栏须同滤） */
+  nav?: { key: UsercpTab; icon: string }[];
+}) {
   const { dict, locale } = useI18n();
   const router = useRouter();
   const t = dict.usercp;
@@ -208,7 +215,7 @@ export function UsercpPanel({ initialTab }: { initialTab: UsercpTab }) {
           <span aria-hidden="true">⚙</span>
           {t.navTitle}
         </h1>
-        {USERCP_NAV.map((n) => (
+        {(nav ?? USERCP_NAV).map((n) => (
           <Link
             key={n.key}
             href={

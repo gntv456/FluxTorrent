@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UsercpPanel, type UsercpTab } from "@/components/usercp";
+import { USERCP_NAV, UsercpPanel, type UsercpTab } from "@/components/usercp";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 
@@ -31,10 +31,14 @@ export default async function MyPage({
   const tab = valid.includes(sp.tab as UsercpTab)
     ? (sp.tab as UsercpTab)
     : "overview";
+  // 侧边栏与页面级过滤同源（0209 P2-15：客户端 setTab 绕过了页面滤 tab）
+  const nav = wishlistOn
+    ? USERCP_NAV
+    : USERCP_NAV.filter((n) => n.key !== "wishlist");
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl">{dict.my.center}</h1>
-      <UsercpPanel initialTab={tab} />
+      <UsercpPanel initialTab={tab} nav={nav} />
       <p className="text-xs text-sub">
         <Link href="/faq" className="faqlink">
           {dict.my.center}

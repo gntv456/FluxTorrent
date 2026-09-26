@@ -242,12 +242,13 @@ export default async function TorrentDetailPage({
         </section>
       )}
 
-      {/* ===== MediaInfo（NP 详情页折叠块口径） ===== */}
-      {ext?.mediainfo && (
-        <Fold title="MediaInfo">
-          <pre className="td-nfo">{ext.mediainfo}</pre>
-        </Fold>
-      )}
+      {/* ===== MediaInfo（NP 详情页折叠块口径；0184 同发布页按站型 metaSources 显隐） ===== */}
+      {ext?.mediainfo &&
+        (profile?.metadata_sources ?? []).includes("mediainfo") && (
+          <Fold title="MediaInfo">
+            <pre className="td-nfo">{ext.mediainfo}</pre>
+          </Fold>
+        )}
 
       {/* ===== NFO ===== */}
       {nfo.nfo && (
