@@ -108,9 +108,19 @@ pub async fn login(
                 .into(),
         ));
     }
+    // 登录令牌有效期（0214 可配）：jwt_ttl_hours，缺省 24h = 既有口径；
+    // cookie max-age 同步用同一值（令牌过期后 cookie 也应失效，避免带死票重试）
+    let ttl_hours: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'jwt_ttl_hours')::bigint, 24)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(24)
+    .clamp(1, 720);
     let token = state
         .jwt
-        .issue(user.id, user.class_id, 24)
+        .issue(user.id, user.class_id, ttl_hours)
         .map_err(DomainError::Internal)?;
     // 登录事件（控制面板账户概览 30 天活跃趋势；含 IP 供 ipcheck/maxlogin）
     let _ = sqlx::query(
@@ -137,7 +147,7 @@ pub async fn login(
     }));
     let cookie = actix_web::cookie::Cookie::build("flux_token", token)
         .path("/")
-        .max_age(actix_web::cookie::time::Duration::hours(24))
+        .max_age(actix_web::cookie::time::Duration::hours(ttl_hours))
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
         .finish()

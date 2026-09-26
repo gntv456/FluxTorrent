@@ -53,7 +53,8 @@ pub fn verify_password(hash: &str, password: &str) -> bool {
 
 pub fn new_passkey() -> String {
     const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
-    let mut rng = rand::thread_rng();
+    // crypto RNG（0214）：passkey/邀请码是对外凭据，thread_rng 非密码学强度
+    let mut rng = rand::rngs::OsRng;
     (0..32)
         .map(|_| CHARSET[rng.gen_range(0..CHARSET.len())] as char)
         .collect()
