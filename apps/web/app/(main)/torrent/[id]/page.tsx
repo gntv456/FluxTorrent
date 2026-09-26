@@ -16,6 +16,7 @@ import { FileTree } from "@/components/file-tree";
 import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
 import { Descr, Spec, Fold } from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
+import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
 import { TorrentSubtitles } from "@/components/torrent-subtitles";
 import { TorrentPeers } from "@/components/torrent-peers";
 import {
@@ -328,6 +329,14 @@ export default async function TorrentDetailPage({
         dict={dict}
         locale={locale}
         relTime={relTime}
+      />
+
+      {/* M3：<md 底部固定操作条（收藏/复制/下载，键盘弹出自动让位） */}
+      <TorrentActionBarMount
+        torrentId={t.id}
+        name={t.name}
+        price={ext?.price}
+        labels={{ fav: "☆", copy: "⧉", download: "⬇" }}
       />
     </article>
   );

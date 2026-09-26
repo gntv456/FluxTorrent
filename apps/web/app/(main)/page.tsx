@@ -4,6 +4,8 @@ import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 import type { Page, TorrentListItem } from "@fluxtorrent/domain-types";
 import { HomeSections } from "@/components/home-sections";
+import { MobileHomeHeader } from "@/components/mobile-home-header";
+import type { HomeData } from "@/components/home-data";
 import { LatestPosters } from "@/components/latest-posters";
 import {
   parseHomeLayout,
@@ -35,23 +37,50 @@ export default async function HomePage() {
   } catch {
     promos = [];
   }
+  // M3 移动问候条数据（/me/overview 摘要；失败回落 null 只渲染问候语）
+  const ov = await api
+    .get<{
+      uploaded?: number;
+      downloaded?: number;
+      spark_balance?: number;
+    }>("/api/v1/me/overview")
+    .catch(() => null);
+  const meSummary = ov
+    ? {
+        uploaded: `${((ov.uploaded ?? 0) / 1e9).toFixed(1)}G`,
+        downloaded: `${((ov.downloaded ?? 0) / 1e9).toFixed(1)}G`,
+        ratio:
+          (ov.downloaded ?? 0) > 0
+            ? ((ov.uploaded ?? 0) / (ov.downloaded ?? 1)).toFixed(2)
+            : "∞",
+        spark: (ov.spark_balance ?? 0).toLocaleString("en-US"),
+      }
+    : null;
+  const brandName = profile?.brand || dict.common.brand;
+
+  // 首页数据（SSR 直出，P1 修复）：一次取回完整 HomeData 传给 HomeSections，
+  // 首屏即渲染真内容，不再退化到"加载中…"客户端壳（伤首屏与 SEO）。
+  let homeData: HomeData | null = null;
+  try {
+    homeData = await api.get<HomeData>("/api/v1/home");
+  } catch {
+    // 后端未启动/异常时降级：HomeSections 客户端会再拉一次
+    homeData = null;
+  }
   // 首页排版（0089 + 四审 L6 单源化）：是否显示海报墙、以及它排在第几格、占多宽，
   // 全部由同一份排版解析结果决定（清单来自 /home.home_sections，解析函数与
   // HomeSections / 后台编辑器共用），页面不再自己数 key、也不再硬拼末尾位置。
   let showLatest = true;
-  try {
-    const home = await api.get<{
-      home_layout?: string;
-      home_sections?: HomeSectionMeta[];
-    }>("/api/v1/home");
+  if (homeData) {
     const layout = parseHomeLayout(
-      home.home_layout,
-      home.home_sections ?? [],
+      homeData.home_layout,
+      homeData.home_sections ?? [],
     );
-    if ((home.home_sections?.length ?? 0) > 0 || home.home_layout?.trim())
+    if (
+      (homeData.home_sections?.length ?? 0) > 0 ||
+      homeData.home_layout?.trim()
+    )
       showLatest = layout.some((x) => x.key === "latest");
-  } catch {
-    // home 接口失败（未登录之外的异常）按默认渲染
   }
   if (showLatest && showcaseOn) {
     try {
@@ -89,7 +118,11 @@ export default async function HomePage() {
       )}
       {/* 板块顺序/占宽由 HomeSections 按排版清单统一决定；海报墙内容在这里
           服务端取好（首屏不退化成客户端取数），只把节点交出去占位。 */}
+            {/* M3：<md 问候条 + 个人数据条 */}
+      <MobileHomeHeader brand={brandName} me={meSummary} />
       <HomeSections
+        initialData={homeData}
+        initialMods={profile?.modules ?? {}}
         latest={
           latest === null
             ? null

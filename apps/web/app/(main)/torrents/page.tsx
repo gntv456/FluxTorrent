@@ -6,6 +6,9 @@ import { fmt } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { TorrentsSearchBox } from "./_parts/torrents-search-box";
 import { TorrentsTable } from "./_parts/torrents-table";
+import { TorrentRowList } from "./_parts/torrent-row-card";
+import { FilterFab } from "./_parts/filter-fab";
+import { TorrentsPullRefresh } from "./_parts/refresh-mount";
 import { TorrentCards, TorrentPosters } from "./_parts/torrents-cards";
 import { TorrentsViewSwitch } from "./_parts/torrents-view-switch";
 import { TorrentsHotkeys } from "./_parts/torrents-hotkeys";
@@ -235,15 +238,31 @@ export default async function TorrentsPage({
       ) : view === "poster" ? (
         <TorrentPosters items={page.items} dict={dict} colors={catColors} />
       ) : (
-        <TorrentsTable
-          dict={dict}
-          sp={sp}
-          items={page.items}
-          withParam={withParam}
-          toggleSort={toggleSort}
-          catIcons={catIcons}
-        />
+        <>
+          {/* M3：<640 表格隐藏、行卡片接管（useIsCompact 客户端分支，
+              URL view 显式指定时上面已分流不会走到这里）。SSR 首帧
+              渲染表格（fallback=桌面），挂载后双态切换。 */}
+          <div className="hidden md:block">
+            <TorrentsTable
+              dict={dict}
+              sp={sp}
+              items={page.items}
+              withParam={withParam}
+              toggleSort={toggleSort}
+              catIcons={catIcons}
+            />
+          </div>
+          <div className="md:hidden">
+            <TorrentRowList items={page.items} colors={catColors} />
+          </div>
+        </>
       )}
+
+      {/* M3：下拉刷新（仅触屏渲染，不影响桌面） */}
+      <TorrentsPullRefresh />
+
+      {/* M3：<md 筛选 FAB + Bottom Sheet（URL 双向同步） */}
+      <FilterFab />
 
       {/* RSS 订阅入口（NP 列表头 RSS 图标口径）：携带当前关键字/分类/维度
           跳转订阅页——维度筛选（B3）一并带走，否则「订阅当前结果」名不副实 */}

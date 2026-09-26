@@ -3056,3 +3056,330 @@ input.batch-all {
   padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
   background: var(--baozi-orange, #f60); color: #fff;
 }
+
+/* ============ 种子行卡片（M3，移动端方案 §3） ============
+ * <640 由 TorrentRowList 挂载（useIsCompact），桌面表格由
+ * torrents/page.tsx 以 md:block/hidden 双态渲染，两分支同一数据。 */
+.trow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.trow-card {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.trow-card:active {
+  background: var(--surface-raised);
+}
+.trow-card__cover {
+  position: relative;
+  display: flex;
+  width: 56px;
+  height: 76px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--trow-cat, #93a1bc) 26%, transparent);
+  color: var(--trow-cat, #93a1bc);
+  font-size: 11px;
+  font-weight: 700;
+}
+.trow-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.trow-card__promo {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  padding: 1px 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+.trow-card__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.trow-card__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.trow-card__meta {
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--sub);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trow-card__nums {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  font-size: 11px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+.trow-card__seed {
+  color: var(--mint);
+}
+.trow-card__leech {
+  color: var(--coral);
+}
+
+/* ============ Bottom Sheet（M3 通用件）+ 筛选 FAB/Sheet ============ */
+.bsheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+}
+.bsheet-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 19, 31, 0.42);
+}
+.bsheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 82%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px 18px 0 0;
+  background: var(--surface-card, #fff);
+  transition: transform 0.2s ease-out;
+}
+.bsheet__grab {
+  padding: 10px 16px 6px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.bsheet__bar {
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto 6px;
+  border-radius: 999px;
+  background: var(--line);
+}
+.bsheet__title {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sub);
+}
+.bsheet__body {
+  overflow-y: auto;
+  padding: 4px 16px calc(20px + env(safe-area-inset-bottom));
+}
+.filter-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 45;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--sky-deep, #0a3d6b);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(10, 61, 107, 0.35);
+}
+.fsheet__group {
+  margin-bottom: 14px;
+}
+.fsheet__gtitle {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sub);
+}
+.fsheet__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fsheet__chip {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.fsheet__chip.is-on {
+  border-color: var(--sky-deep, #0a3d6b);
+  background: var(--sky-soft, #e6f2ff);
+  color: var(--sky-deep, #0a3d6b);
+  font-weight: 700;
+}
+.fsheet__acts {
+  display: flex;
+  gap: 8px;
+  padding-top: 6px;
+}
+.fsheet__btn {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 700;
+}
+.fsheet__btn.is-primary {
+  border-color: var(--sky-deep, #0a3d6b);
+  background: var(--sky-deep, #0a3d6b);
+  color: #fff;
+}
+
+/* ============ 详情页底部操作条（M3，方案 §4） ============ */
+.td-actionbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--baozi-paper, #fff);
+  transition: transform 0.2s var(--ease-out, ease-out);
+}
+.td-actionbar__btn {
+  min-height: 44px;
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+.td-actionbar__btn.is-primary {
+  flex: 2;
+  border-color: var(--sky-deep, #0a3d6b);
+  background: var(--sky-deep, #0a3d6b);
+  color: #fff;
+}
+@media (min-width: 768px) {
+  .td-actionbar {
+    display: none;
+  }
+}
+
+/* ============ 首页移动问候条（M3，方案 §5） ============ */
+.mhome-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.mhome-head__hello {
+  margin: 0;
+  font-size: 15px;
+  color: var(--sub);
+}
+.mhome-head__hello b {
+  color: var(--ink);
+}
+.mhome-head__stats {
+  display: flex;
+  gap: 6px;
+}
+.mhome-head__stats span {
+  flex: 1;
+  padding: 8px 4px;
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.mhome-head__stats i {
+  font-style: normal;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ============ 下拉刷新（M3，仅触屏渲染） ============ */
+.ptr {
+  position: relative;
+  overflow: hidden;
+  transition: height 0.2s var(--ease-out, ease-out);
+}
+.ptr__ind {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 20px;
+  color: var(--sky, #3b82f6);
+  opacity: 0.6;
+}
+.ptr__ind.is-ready {
+  opacity: 1;
+}
+.ptr__ind.is-busy {
+  animation: ptr-wave 0.8s ease-in-out infinite;
+}
+@keyframes ptr-wave {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(-12deg);
+  }
+  50% {
+    transform: translateX(-50%) rotate(12deg);
+  }
+}
+
+/* ============ 行卡片左滑（M3） ============ */
+.trow-swipe {
+  position: relative;
+}
+.trow-swipe__acts {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+}
+.trow-swipe__act {
+  display: flex;
+  width: 64px;
+  align-items: center;
+  justify-content: center;
+  background: var(--sky-deep, #0a3d6b);
+  color: #fff;
+  font-size: 18px;
+}
+.trow-swipe__act.is-fav {
+  background: var(--coral, #e11d48);
+}
+.trow-swipe__front {
+  position: relative;
+  transition: transform 0.15s var(--ease-out, ease-out);
+  touch-action: pan-y;
+}
