@@ -20,6 +20,7 @@ import {
   AdminDonateOrders,
   AdminPanelEntries,
 } from "@/components/admin-donate-orders";
+import { AdminFundings } from "@/components/admin-fundings";
 import { StaffTermsPanel } from "@/components/staff-terms";
 
 /** staffpanel 管理工具落地页：FAQ 管理/规则管理/分类管理/封禁系统/批量邮件等
@@ -80,6 +81,7 @@ export type ToolTab =
   | "pages"
   | "terms"
   | "donateorders"
+  | "fundings"
   | "panelentries";
 
 /** 各域面板负责的 tab —— 既用于条件挂载，也是「谁渲染谁」的唯一声明处。
@@ -109,6 +111,7 @@ const SITE_TABS: ToolTab[] = [
   "pages",
   "terms",
   "donateorders",
+  "fundings",
   "panelentries",
 ];
 const SYS_TABS: ToolTab[] = ["dbstats", "syslog", "locations", "agentrules"];
@@ -170,6 +173,7 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       {tab === "userfields" && <StaffUserFieldsPanel flash={flash} />}
       {tab === "pages" && <StaffCustomPagesPanel flash={flash} />}
       {tab === "donateorders" && <AdminDonateOrders />}
+      {tab === "fundings" && <AdminFundings />}
       {tab === "panelentries" && <AdminPanelEntries />}
       {tab === "terms" && <StaffTermsPanel flash={flash} />}
     </div>

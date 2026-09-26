@@ -130,3 +130,162 @@ async fn funding_create(
         serde_json::json!({ "id": id, "goal": body.goal, "hours": body.hours }),
     ))
 }
+
+// ============ 后台管理（闭环审查 C11：此前无订单/取消入口，站长只能改库） ============
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct AdminFundingRow {
+    id: i64,
+    torrent_id: i64,
+    torrent_name: Option<String>,
+    creator_id: i64,
+    creator_name: Option<String>,
+    goal: i64,
+    raised: i64,
+    backers: i64,
+    hours: i32,
+    status: i16,
+    ends_at: chrono::DateTime<chrono::Utc>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// GET /admin/fundings：全量众筹（可按状态筛）——含发起人、进度、参与人数。
+#[get("/admin/fundings")]
+async fn admin_fundings_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL)
+        .await?;
+    let status: Option<i16> = q
+        .get("status")
+        .and_then(|s| s.parse::<i16>().ok())
+        .filter(|s| (0..=3).contains(s));
+    let rows = sqlx::query_as::<_, AdminFundingRow>(
+        "SELECT f.id, f.torrent_id, t.name AS torrent_name, f.creator_id, \
+                u.username AS creator_name, f.goal, f.raised, \
+                (SELECT count(*)::bigint FROM funding_contribs c \
+                  WHERE c.funding_id = f.id) AS backers, \
+                f.hours, f.status, f.ends_at, f.created_at \
+         FROM fundings f \
+         LEFT JOIN torrents t ON t.id = f.torrent_id \
+         LEFT JOIN users u ON u.id = f.creator_id \
+         WHERE ($1::smallint IS NULL OR f.status = $1) \
+         ORDER BY f.status ASC, f.created_at DESC LIMIT 200",
+    )
+    .bind(status)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[derive(Deserialize)]
+struct FundingCancelReq {
+    id: i64,
+    /// 是否给参与者退款（默认 true）。false 用于「已达标后关闭」等不退场景。
+    #[serde(default = "default_true_cancel")]
+    refund: bool,
+}
+
+fn default_true_cancel() -> bool {
+    true
+}
+
+/// POST /admin/fundings/cancel：管理员关闭进行中的众筹。
+/// 退款语义与 worker settle 完全一致（逐笔幂等退 spark_ledger + 余额），
+/// 最终置 status=2（对参与者等价于「未达标退款」）；幂等键前缀 funding-refund
+/// 与 worker 共用，重复触发不会双退。通知发起人 + 参与者。
+#[post("/admin/fundings/cancel")]
+async fn admin_funding_cancel(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<FundingCancelReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL)
+        .await?;
+    let db = &state.repo.db;
+    // 仅进行中（status=0）可被管理员关闭；已达标/已结束不允许（防误退已挂促销的）
+    let cur: Option<i16> =
+        sqlx::query_scalar("SELECT status FROM fundings WHERE id = $1")
+            .bind(body.id)
+            .fetch_optional(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(status) = cur else {
+        return Err(DomainError::NotFound(body.id));
+    };
+    if status != 0 {
+        return Err(DomainError::Validation(
+            "仅进行中的众筹可关闭".into(),
+        ));
+    }
+    let mut refunded = 0u64;
+    if body.refund {
+        let contribs: Vec<(i64, i64)> = sqlx::query_as(
+            "SELECT user_id, amount FROM funding_contribs \
+             WHERE funding_id = $1",
+        )
+        .bind(body.id)
+        .fetch_all(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        for (uid, amount) in &contribs {
+            let idem = format!("funding-refund:{}:{uid}", body.id);
+            sqlx::query(
+                r#"INSERT INTO spark_ledger
+                   (id, user_id, amount, kind, idempotency_key)
+                   SELECT nextval('spark_ledger_id_seq'), $1, $2,
+                          'funding_refund', $3
+                   WHERE NOT EXISTS (SELECT 1 FROM spark_ledger
+                     WHERE idempotency_key = $3)"#,
+            )
+            .bind(uid)
+            .bind(amount)
+            .bind(&idem)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "UPDATE users SET spark_balance = spark_balance + $2 \
+                 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger \
+                 WHERE idempotency_key = $3)",
+            )
+            .bind(uid)
+            .bind(amount)
+            .bind(&idem)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            refunded += 1;
+        }
+    }
+    sqlx::query("UPDATE fundings SET status = 2 WHERE id = $1")
+        .bind(body.id)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let note = if body.refund {
+        "'众筹已被管理员关闭，参与者的魔力已全额退款。'"
+    } else {
+        "'众筹已被管理员关闭。'"
+    };
+    let _ = sqlx::query(&format!(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         SELECT NULL, creator_id, '众筹已关闭', {note} \
+         FROM fundings WHERE id = $1"
+    ))
+    .bind(body.id)
+    .execute(db)
+    .await;
+    state
+        .repo
+        .audit(Some(auth.id), "funding_cancel", Some(body.id))
+        .await;
+    Ok(ok(serde_json::json!({
+        "id": body.id, "refunded": refunded, "refund": body.refund,
+    })))
+}

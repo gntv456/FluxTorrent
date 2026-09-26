@@ -263,6 +263,46 @@ async fn adapter_toggle(
 }
 
 #[derive(Deserialize)]
+struct AdapterDeleteBody {
+    adapter_id: String,
+}
+
+/// 卸载适配器（闭环审查 B10：此前只有安装/启停，装了坏插件无法撤——只能改库）。
+/// 与 install 对称：需 SETTINGS_MANAGE，审计留痕；连带清掉 wasm 字节（表行删除）。
+#[post("/admin/adapters/delete")]
+async fn adapter_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<AdapterDeleteBody>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
+    let adapter_id = body.adapter_id.trim();
+    if adapter_id.is_empty() {
+        return Err(DomainError::Validation("adapter_id 必填".into()));
+    }
+    let n = sqlx::query("DELETE FROM adapters WHERE adapter_id = $1")
+        .bind(adapter_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(internal)?
+        .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation("适配器不存在".into()));
+    }
+    state
+        .repo
+        .audit(Some(auth.id), "adapter:delete", None)
+        .await;
+    Ok(ok(serde_json::json!({ "deleted": adapter_id })))
+}
+
+#[derive(Deserialize)]
 struct AdapterTryBody {
     adapter_id: String,
     url: String,
@@ -564,5 +604,6 @@ pub fn mount_adapters(scope: actix_web::Scope) -> actix_web::Scope {
         .service(adapter_install)
         .service(adapter_list)
         .service(adapter_toggle)
+        .service(adapter_delete)
         .service(adapter_try)
 }

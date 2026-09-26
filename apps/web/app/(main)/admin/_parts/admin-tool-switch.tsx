@@ -43,7 +43,7 @@ export const STAFF_TOOL_TABS: ToolTab[] = [
   "emailbans", "testip", "stats", "cleanup", "ads", "notconnect", "uploaders",
   "agents", "polls", "dbstats", "syslog", "locations", "hrpardon", "plugins",
   "agentrules", "forums", "reports", "menu", "roles", "perm", "seedstats",
-  "userfields", "pages", "terms", "donateorders", "panelentries",
+  "userfields", "pages", "terms", "donateorders", "fundings", "panelentries",
 ];
 
 /** renderTool 的简单直排分流（复杂 case 由 page.tsx 内联处理） */

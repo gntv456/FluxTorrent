@@ -37,6 +37,7 @@ export interface PackDialogProps {
   onInstall: (packId: string) => void;
   onTryRule: (key: string, expr: string, termDays: number) => void;
   onToggleAdapter: (adapterId: string, enabled: boolean) => void;
+  onDeleteAdapter: (adapterId: string) => void;
   onTryAdapter: (adapterId: string, url: string) => void;
   onClose: () => void;
 }
@@ -105,15 +106,20 @@ function RuleTrySection({
 }
 
 /** 适配器小节（M4）：列表 / 启停 / 健康度（strikes）/ 试调 */
+const ADAPTER_DEL_CLS =
+  "min-h-[36px] rounded-full border border-line px-3 text-[11px] text-sub";
+
 function AdapterSection({
   adapters,
   adapterTryId,
   onToggleAdapter,
+  onDeleteAdapter,
   onTryAdapter,
 }: {
   adapters: AdapterRow[] | null;
   adapterTryId: string | null;
   onToggleAdapter: (adapterId: string, enabled: boolean) => void;
+  onDeleteAdapter: (adapterId: string) => void;
   onTryAdapter: (adapterId: string, url: string) => void;
 }) {
   const { dict } = useI18n();
@@ -180,6 +186,18 @@ function AdapterSection({
                 >
                   {a.enabled ? s.adapterDisable : s.adapterEnable}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const msg = fmt(s.adapterDeleteConfirm, {
+                      id: a.adapter_id,
+                    });
+                    if (window.confirm(msg)) onDeleteAdapter(a.adapter_id);
+                  }}
+                  className={ADAPTER_DEL_CLS}
+                >
+                  {s.adapterDelete}
+                </button>
               </li>
             ))}
           </ul>
@@ -209,6 +227,7 @@ export function ContentPackDialog({
   onInstall,
   onTryRule,
   onToggleAdapter,
+  onDeleteAdapter,
   onTryAdapter,
   onClose,
 }: PackDialogProps) {
@@ -396,6 +415,7 @@ export function ContentPackDialog({
           adapters={adapters}
           adapterTryId={adapterTryId}
           onToggleAdapter={onToggleAdapter}
+          onDeleteAdapter={onDeleteAdapter}
           onTryAdapter={onTryAdapter}
         />
 

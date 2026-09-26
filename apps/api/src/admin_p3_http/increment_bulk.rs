@@ -40,6 +40,10 @@ pub(super) struct IncrementBulkReq {
     /// 发送者：self = 操作者，system = 系统私信（sender NULL）
     #[serde(default)]
     pub(super) sender: Option<String>,
+    /// 同时发邮件（闭环审查 C13：旧版只发站内信，当事人不上站就蒙在鼓里）。
+    /// 缺省 false 保持旧行为；SMTP 未配置时由 mailer 降级为日志（不报错）。
+    #[serde(default)]
+    pub(super) email: bool,
     /// kind=medal：勋章 id（0204）
     #[serde(default)]
     pub(super) medal_id: Option<i64>,
@@ -344,24 +348,43 @@ async fn increment_bulk(
             _ => unreachable!(),
         }
 
-        // PM 通知（可选）
+        // PM 通知（可选）；email=true 时同时发邮件（闭环审查 C13）
         if let (Some(subject), Some(text)) =
             (body.subject.as_deref(), body.body.as_deref())
         {
             if !subject.trim().is_empty() && !text.trim().is_empty() {
                 for uid in chunk {
-                    sqlx::query(
-                        "INSERT INTO messages \
-                         (sender_id, receiver_id, subject, body) VALUES ($1, \
-                         $2, $3, $4)",
-                    )
-                    .bind(sender_id)
-                    .bind(uid)
-                    .bind(subject.trim())
-                    .bind(text.trim())
-                    .execute(db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?;
+                    if body.email {
+                        // 双通道：站内信必达 + 邮件尽力（mailer 内部降级）
+                        let em: Option<String> = sqlx::query_scalar(
+                            "SELECT email FROM users WHERE id = $1",
+                        )
+                        .bind(uid)
+                        .fetch_optional(db)
+                        .await
+                        .ok()
+                        .flatten();
+                        crate::mailer::notify(
+                            db,
+                            *uid,
+                            em,
+                            subject.trim(),
+                            text.trim(),
+                        )
+                        .await;
+                    } else {
+                        sqlx::query(
+                            "INSERT INTO messages (sender_id, receiver_id, \
+                             subject, body) VALUES ($1, $2, $3, $4)",
+                        )
+                        .bind(sender_id)
+                        .bind(uid)
+                        .bind(subject.trim())
+                        .bind(text.trim())
+                        .execute(db)
+                        .await
+                        .map_err(|e| DomainError::Internal(e.into()))?;
+                    }
                 }
             }
         }

@@ -249,6 +249,18 @@ export function useSettingsTransfer({
     }
   }
 
+  async function deleteAdapter(adapterId: string) {
+    try {
+      await api.post("/api/v1/admin/adapters/delete", {
+        adapter_id: adapterId,
+      });
+      onToast({ ok: true, text: fmt(s.adapterDeleted, { id: adapterId }) });
+      await reloadAdapters();
+    } catch (e) {
+      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+    }
+  }
+
   async function tryAdapter(adapterId: string, url: string) {
     setAdapterTryId(adapterId);
     try {
@@ -430,6 +442,7 @@ export function useSettingsTransfer({
     adapters,
     reloadAdapters,
     toggleAdapter,
+    deleteAdapter,
     tryAdapter,
     adapterTryId,
   };

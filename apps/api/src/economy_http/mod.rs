@@ -38,6 +38,8 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(funding_create)
         .service(funding_contribute)
         .service(funding_my)
+        .service(admin_fundings_list)
+        .service(admin_funding_cancel)
 }
 
 mod bank;

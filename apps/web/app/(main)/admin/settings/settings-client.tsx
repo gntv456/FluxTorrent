@@ -289,6 +289,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
           adapters={io.adapters}
           adapterTryId={io.adapterTryId}
           onToggleAdapter={io.toggleAdapter}
+          onDeleteAdapter={io.deleteAdapter}
           onTryAdapter={io.tryAdapter}
           onClose={() => io.setPackOpen(false)}
         />
