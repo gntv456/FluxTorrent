@@ -38,7 +38,8 @@ export default function RegisterPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // 注册模式（0204）：open 模式不强制邀请码；invite_only/email_verify 需要
+  // 注册模式（0204）：open 模式不强制邀请码；invite_only 需要
+  // （0208：email_verify 选项已移除，仅 invite_only/open 两态）
   const [openMode, setOpenMode] = useState(false);
 
   async function refreshCaptcha() {
