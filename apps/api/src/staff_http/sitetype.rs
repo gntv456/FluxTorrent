@@ -124,7 +124,7 @@ pub async fn site_profile(
     .ok()
     .flatten();
     let sources: Vec<String> = sources_raw
-        .unwrap_or_else(|| "imdb,douban,bangumi,indienova".into())
+        .unwrap_or_else(|| "imdb,douban,bangumi,indienova,mediainfo".into())
         .split(',')
         .map(str::trim)
         .filter(|s| !s.is_empty())

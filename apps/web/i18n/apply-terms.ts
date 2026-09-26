@@ -47,6 +47,24 @@ export function sortRules(rules: TermRule[]): TermRule[] {
   return sorted;
 }
 
+/** 字幕区改名（0146／0208）的**保护词**：整体是另一个词（团队／角色），
+ *  盲替换的副产物是生造词（字幕组→歌词组、认证字幕人→认证歌词人）。
+ *  长词优先机制下用同词**等值规则**即可原样保留：长词先命中，且替换出的
+ *  文本不再参与匹配。简体/繁体各一套（本站词典两种字形都有）。 */
+export const SUBTITLE_PROTECTED_WORDS = ["字幕组", "字幕組", "字幕人"];
+
+/** 站点设定的「字幕区显示名」→ 术语规则表（保护词在前，顺序无关，
+ *  真正生效的是 sortRules 的字节长度降序） */
+export function subtitleRules(label: string): TermRule[] {
+  return [
+    ...SUBTITLE_PROTECTED_WORDS.map((w) => ({
+      canonical: w,
+      replacement: w,
+    })),
+    { canonical: "字幕", replacement: label },
+  ];
+}
+
 /** `{...}` 插值占位符的字符区间（`{` 到其后第一个 `}`）。
  *  与 Rust 侧 `placeholder_spans` 同语义：占位符整段是原子，绝不改写 ——
  *  规则原词若正好是 `magic` / `n`，撕开占位符会让 `fmt()` 取不到变量。 */

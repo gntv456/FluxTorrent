@@ -136,6 +136,7 @@ export function AdminUserFieldsPanel({ userId }: { userId: number }) {
       <input
         type={typ}
         value={asText(v)}
+        maxLength={typ === "text" ? 500 : undefined}
         onChange={(e) =>
           put(
             r.key,

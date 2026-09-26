@@ -13,7 +13,7 @@ import { zhCN, type Dict } from "./zh-CN";
 import { zhTW } from "./zh-TW";
 import { en } from "./en";
 import { getSiteProfile } from "@/lib/site-profile";
-import { applyTerms, sortRules, type TermRule } from "./apply-terms";
+import { applyTerms, sortRules, subtitleRules, type TermRule } from "./apply-terms";
 
 const DICTS: Record<Locale, Dict> = { "zh-CN": zhCN, "zh-TW": zhTW, en };
 
@@ -64,9 +64,10 @@ export const getDict = cache(
   async (): Promise<{ dict: Dict; locale: Locale; currency: string }> => {
     const locale = await getLocale();
     const { currency, terms, subtitleLabel } = await getSiteWords();
-    // 字幕区改名规则与站长术语规则合并（字幕规则排最后，别盖过显式术语）
+    // 字幕区改名规则与站长术语规则合并（G9：复合词保护随规则一起注入，
+    // 长词优先保证「字幕组 / 字幕人」不被拆成生造词）
     const allTerms = subtitleLabel
-      ? [...terms, { canonical: "字幕", replacement: subtitleLabel }]
+      ? [...terms, ...subtitleRules(subtitleLabel)]
       : terms;
     return { dict: applyTerms(DICTS[locale], allTerms), locale, currency };
   },

@@ -105,8 +105,8 @@ describe("MedalActions", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: /购买/ })).toBeNull();
-    const locked = screen.getByRole("button", { name: /仅授予/ });
-    expect(locked).toBeDisabled();
+    // 锁定态是静态 chip（非可点按钮）——按文本断言，不按 role=button
+    expect(screen.getByText(/仅授予/)).toBeInTheDocument();
   });
 });
 

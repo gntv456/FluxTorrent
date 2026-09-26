@@ -112,9 +112,16 @@ async fn admin_medal_add(
             ));
         }
     }
+    // 0204 同款兜底：bonus_addition_factor 列 NOT NULL DEFAULT 0，而字段
+    // 在契约里可选（表单留空即 null）—— 直绑会让「不填加成」这条正常路径
+    // 500（P1 只修了负值，没修缺省）。
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO medals (name, description, price, rarity, limited, get_type, duration_days, bonus_addition_factor, category_id, asset_ref, gift_fee_bp) \
-         VALUES ($1, $2, $3, $4, COALESCE($5, FALSE), COALESCE($6, 2), $7, $8::numeric, COALESCE($9, 0), $10, $11) RETURNING id",
+        "INSERT INTO medals (name, description, price, rarity, limited, \
+           get_type, duration_days, bonus_addition_factor, category_id, \
+           asset_ref, gift_fee_bp) VALUES ($1, $2, $3, $4, \
+           COALESCE($5, FALSE), COALESCE($6, 2), $7, \
+           COALESCE($8::numeric, 0), COALESCE($9, 0), $10, $11) \
+         RETURNING id",
     )
     .bind(body.name.trim())
     .bind(body.description.clone())

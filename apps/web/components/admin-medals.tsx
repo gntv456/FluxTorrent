@@ -1,6 +1,6 @@
 "use client";
 
-import { BTN_SM_BOLD, BTN_XS_GHOST } from "@/lib/ui-classes";
+import { BTN_SM_BOLD } from "@/lib/ui-classes";
 
 import { useI18n } from "@/i18n/client";
 
@@ -29,11 +29,6 @@ import { getTypeLabels } from "./admin-medals-shared";
  *  持有浏览拆至 ./admin-medals-held.tsx；类型拆至
  *  ./admin-medals-shared.ts（300 门禁）。 */
 
-/** 勋章图片行容器 */
-const ASSET_BAR_CLS =
-  "mb-3 flex flex-wrap items-center gap-3 border-b border-line pb-3";
-/** 清除图片小按钮 */
-const CLEAR_BTN_CLS = BTN_XS_GHOST;
 /** 圆角描边小按钮（取消） */
 const PLAIN_BTN_CLS = BTN_SM_BOLD;
 /** 「限定」徽标 */
@@ -134,8 +129,7 @@ export function AdminMedals() {
         busy={busy}
         inp={inp}
         currency={currency}
-        asetBar={ASSET_BAR_CLS}
-        clearBtn={CLEAR_BTN_CLS}
+        flash={flash}
         plainBtn={PLAIN_BTN_CLS}
       />
       <div className="flex flex-col gap-3">
