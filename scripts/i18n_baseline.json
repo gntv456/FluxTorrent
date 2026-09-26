@@ -217,7 +217,7 @@
  "components\\content-manage.tsx": [
   65,
   107,
-  203
+  204
  ],
  "components\\custom-menu.tsx": [],
  "components\\download-button.tsx": [
@@ -317,31 +317,32 @@
   24,
   25,
   26,
-  68,
-  85,
-  92,
-  104,
-  111,
-  125,
-  128,
-  133,
+  69,
+  87,
+  94,
+  106,
+  113,
+  127,
+  130,
   135,
-  144,
-  147,
-  152,
-  158,
-  161,
-  166,
-  171,
-  193,
-  213,
+  137,
+  146,
+  149,
+  154,
+  160,
+  163,
+  168,
+  173,
+  195,
   215,
-  219,
+  217,
   221,
-  225,
+  223,
   227,
-  231,
-  252
+  229,
+  233,
+  246,
+  267
  ],
  "components\\invite-manager-parts.tsx": [],
  "components\\invite-manager.tsx": [],
@@ -355,7 +356,7 @@
  ],
  "components\\login-history.tsx": [],
  "components\\main-menu.tsx": [
-  92
+  124
  ],
  "components\\medal-actions.tsx": [],
  "components\\medal-icon.tsx": [],
@@ -550,10 +551,7 @@
  "components\\torrent-social.tsx": [],
  "components\\torrent-subtitles.tsx": [],
  "components\\torrent-table.tsx": [
-  67,
-  176,
-  206,
-  237
+  61
  ],
  "components\\torrent-tags.tsx": [
   35,
@@ -813,7 +811,7 @@
  "app\\(main)\\requests\\page.tsx": [],
  "app\\(main)\\reports\\page.tsx": [],
  "app\\(main)\\preserve\\page.tsx": [
-  164
+  165
  ],
  "app\\(main)\\offers\\page.tsx": [],
  "app\\(main)\\offers\\_inner.tsx": [],
@@ -8212,5 +8210,27 @@
   1672,
   1673,
   1675
+ ],
+ "components\\staff-custom-pages.tsx": [
+  104
+ ],
+ "components\\staff-user-fields.tsx": [
+  29,
+  30,
+  31,
+  32,
+  33,
+  34,
+  146,
+  205
+ ],
+ "components\\torrent-manage-fields.tsx": [
+  275
+ ],
+ "components\\torrent-manage-parts.tsx": [
+  197,
+  204,
+  205,
+  208
  ]
 }
