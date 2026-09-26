@@ -29,6 +29,7 @@ export function TorrentTable(props: {
           <td className="colhead">ID</td>
           <td className="colhead">{at.fName}</td>
           <td className="colhead">{at.fOwner}</td>
+          <td className="colhead">{at.dimsCol}</td>
           <td className="colhead">{at.thSize}</td>
           <td className="colhead">{at.thSeeders}</td>
           <td className="colhead">{at.fStatus}</td>
@@ -68,6 +69,9 @@ export function TorrentTable(props: {
               )}
             </td>
             <td className="text-xs">{t.owner_name ?? "—"}</td>
+            <td className="max-w-[180px] text-xs text-sub">
+              {t.sec_names?.length ? t.sec_names.join(" · ") : "—"}
+            </td>
             <td className="text-xs">{fmtBytes(t.size)}</td>
             <td>
               {t.seeders} / {t.leechers}
@@ -129,7 +133,7 @@ export function TorrentTable(props: {
         ))}
         {data?.rows.length === 0 && (
           <tr>
-            <td colSpan={12} className="py-6 text-center text-sub">
+            <td colSpan={13} className="py-6 text-center text-sub">
               {at.tableEmpty}
             </td>
           </tr>

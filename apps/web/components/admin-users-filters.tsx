@@ -8,8 +8,7 @@ import { useI18n } from "@/i18n/client";
  *  筛选值由父组件持有，搜索时重置回第一页并重新加载。 */
 
 // 筛选区输入/下拉底色
-const FILTER_INPUT =
-  INPUT_MD;
+const FILTER_INPUT = INPUT_MD;
 const FILTER_SELECT =
   "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2";
@@ -24,15 +23,21 @@ export interface FilterValues {
   fEnabled: string;
   fDownload: string;
   fSuspended: string;
+  /** 自定义字段筛选（G4）：字段 key + 值关键词（留空 = 填过即可） */
+  fField: string;
+  fVal: string;
 }
 
 export function UsersFilterBar({
   classes,
+  fields,
   values,
   set,
   onSearch,
 }: {
   classes: [number, string][];
+  /** 自定义字段（G4）：站长没建字段时整对控件不渲染 */
+  fields: { key: string; label: string }[];
   values: FilterValues;
   set: <K extends keyof FilterValues>(k: K, v: FilterValues[K]) => void;
   onSearch: () => void;
@@ -127,6 +132,35 @@ export function UsersFilterBar({
           </button>
         </div>
       </label>
+      {/* 自定义字段筛选（G4）：值留空 = 只要填过该字段的人 */}
+      {fields.length > 0 && (
+        <>
+          <label className="flex flex-col gap-1 text-xs">
+            {at.fField}
+            <select
+              value={values.fField}
+              onChange={(e) => set("fField", e.target.value)}
+              className={FILTER_SELECT}
+            >
+              <option value="">{at.optAll}</option>
+              {fields.map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            {at.fFieldVal}
+            <input
+              value={values.fVal}
+              onChange={(e) => set("fVal", e.target.value)}
+              placeholder={at.fFieldValPh}
+              className={FILTER_INPUT}
+            />
+          </label>
+        </>
+      )}
     </section>
   );
 }

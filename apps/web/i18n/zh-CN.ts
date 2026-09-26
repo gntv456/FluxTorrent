@@ -3628,6 +3628,7 @@ const zhCnBase = {
       hr: "标记H&R",
       unhr: "取消H&R",
       change_category: "改分类",
+      change_sections: "改维度",
       delete: "删除",
     } as Record<string, string>,
     actionApplied: "已{action} {n} 个种子",
@@ -3741,6 +3742,13 @@ const zhCnBase = {
     dimClear: "清空",
     dimBoolYes: "是",
     dimBoolNo: "否",
+    // 批量改维度（admin-torrents-dim-set，G5）
+    dimsCol: "维度",
+    dimSetTitle: "批量改维度",
+    dimSetKind: "选择维度",
+    dimSetApply: "应用",
+    dimSetClear: "清空该维度",
+    dimSetHint: "只改所选维度，其余维度保持原值",
   },
   /** 绩效考核管理（admin-jixiao） */
   adminJixiao: {
@@ -3906,6 +3914,19 @@ const zhCnBase = {
     stBanned: "封禁",
     qPh: "用户名 / 邮箱",
     search: "搜索",
+    // 自定义字段（G4：按字段值筛人 + 详情面板查看/代改）
+    fField: "自定义字段",
+    fFieldVal: "字段值包含",
+    fFieldValPh: "留空 = 填过即可",
+    fieldsTitle: "自定义字段值",
+    fieldsSave: "保存字段（{n}）",
+    fieldsSaved: "已保存 {n} 个字段",
+    fieldsHint: "只提交有改动的字段，留空 = 清空",
+    fieldsBlank: "（未填）",
+    fieldsYes: "是",
+    fieldsNo: "否",
+    fieldsOff: "已停用",
+    fieldsPrivate: "私有",
     // 列表与批量操作（admin-users-list）
     batchHint: "批量操作（已选 {n} 个；只能操作等级低于自己的用户）",
     batchNormal: "批量恢复正常",

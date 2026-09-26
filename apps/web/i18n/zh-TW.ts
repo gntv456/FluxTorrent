@@ -3628,6 +3628,7 @@ const zhTwBase: Omit<
       hr: "標記H&R",
       unhr: "取消H&R",
       change_category: "改分類",
+      change_sections: "改維度",
       delete: "刪除",
     } as Record<string, string>,
     actionApplied: "已{action} {n} 個種子",
@@ -3741,6 +3742,13 @@ const zhTwBase: Omit<
     dimClear: "清空",
     dimBoolYes: "是",
     dimBoolNo: "否",
+    // 批量改維度（admin-torrents-dim-set，G5）
+    dimsCol: "維度",
+    dimSetTitle: "批量改維度",
+    dimSetKind: "選擇維度",
+    dimSetApply: "套用",
+    dimSetClear: "清空該維度",
+    dimSetHint: "只改所選維度，其餘維度保持原值",
   },
   /** 績效考核管理（admin-jixiao） */
   adminJixiao: {
@@ -3906,6 +3914,19 @@ const zhTwBase: Omit<
     stBanned: "封禁",
     qPh: "使用者名稱 / 信箱",
     search: "搜尋",
+    // 自訂欄位（G4：按欄位值篩人 + 詳情面板查看/代改）
+    fField: "自訂欄位",
+    fFieldVal: "欄位值包含",
+    fFieldValPh: "留空 = 填過即可",
+    fieldsTitle: "自訂欄位值",
+    fieldsSave: "儲存欄位（{n}）",
+    fieldsSaved: "已儲存 {n} 個欄位",
+    fieldsHint: "只提交有改動的欄位，留空 = 清空",
+    fieldsBlank: "（未填）",
+    fieldsYes: "是",
+    fieldsNo: "否",
+    fieldsOff: "已停用",
+    fieldsPrivate: "私有",
     // 列表與批量操作（admin-users-list）
     batchHint: "批量操作（已選 {n} 個；只能操作等級低於自己的使用者）",
     batchNormal: "批量恢復正常",
