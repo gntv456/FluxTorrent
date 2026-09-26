@@ -10,8 +10,8 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 // ============ 附件/图床（0100，NP Pictured 最小落地） ============
+// 单文件上限自 0214 起可配（attach_max_mib，缺省 8MiB），见 upload_attachment。
 
-const ATTACH_MAX_BYTES: usize = 8 * 1024 * 1024; // 单文件 8MiB
 const ATTACH_MIME_ALLOW: [&str; 8] = [
     "image/png",
     "image/jpeg",
@@ -37,6 +37,16 @@ pub async fn upload_attachment(
     use futures_util::StreamExt;
 
     let auth = require_auth(&req, &state).await?;
+    // 单文件上限（0214 可配）：缺省 8MiB = 既有硬编码口径，0 = 不限
+    let max_mib: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'attach_max_mib')::bigint, 8)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(8);
+    let max_bytes =
+        if max_mib <= 0 { usize::MAX } else { (max_mib as usize) * 1024 * 1024 };
     let mut file_bytes: Option<Bytes> = None;
     let mut filename = String::new();
     let mut mime = String::new();
@@ -63,10 +73,10 @@ pub async fn upload_attachment(
                 let chunk = chunk
                     .map_err(|e| DomainError::Validation(e.to_string()))?;
                 buf.extend_from_slice(&chunk);
-                if buf.len() > ATTACH_MAX_BYTES {
-                    return Err(DomainError::Validation(
-                        "附件超过 8MiB 上限".into(),
-                    ));
+                if buf.len() > max_bytes {
+                    return Err(DomainError::Validation(format!(
+                        "附件超过 {max_mib}MiB 上限"
+                    )));
                 }
             }
             file_bytes = Some(buf.freeze());

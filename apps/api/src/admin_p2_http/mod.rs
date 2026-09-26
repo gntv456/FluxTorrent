@@ -2,6 +2,7 @@
 //! 按域拆分（300 行门禁）：置顶促销在 promos.rs，自定义菜单在 menus.rs，
 //! 消息模板与索赔在 templates.rs；staff 助手与挂载留在此。
 
+mod export_ops;
 mod menus;
 mod menus_crud;
 mod menus_public;
@@ -9,6 +10,7 @@ mod promos;
 mod templates;
 
 use actix_web::{web, HttpRequest};
+use export_ops::*;
 use menus::*;
 use menus_crud::*;
 use menus_public::*;
@@ -34,6 +36,8 @@ pub(super) async fn staff(
 
 pub fn mount_p2_tools(scope: actix_web::Scope) -> actix_web::Scope {
     scope
+        .service(admin_export_users)
+        .service(admin_export_torrents)
         .service(sticky_promos_list)
         .service(sticky_promos_add)
         .service(sticky_promos_update)

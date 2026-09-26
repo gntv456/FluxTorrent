@@ -11,6 +11,8 @@ export interface SiteProfile {
   tagline?: string;
   /** 站点 Logo URL（site_settings.site_logo；空 = 前端回落占位图形） */
   site_logo?: string | null;
+  /** 站点图标 URL（0214，site_settings.site_favicon；空 = 内置 icon） */
+  site_favicon?: string | null;
   /** 站点货币名（0082）：默认「魔力」，站长后台 site_settings.currency_name 可改 */
   currency_name?: string;
   /** 建站日期（site_settings.datefounded，页脚版权条用） */
@@ -69,6 +71,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
       brand: "",
       tagline: "",
       site_logo: null,
+      site_favicon: null,
       currency_name: "魔力",
       founded: null,
       metadata_sources: ["imdb", "douban", "bangumi", "indienova"],

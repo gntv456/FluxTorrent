@@ -43,10 +43,13 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: { card: "summary", title: brandName, description: desc },
     // manifest 由 app/manifest.ts 运行时生成（品牌跟随 site_profile.brand），Next 自动注入 <link rel="manifest">
-    icons: {
-      icon: "/icons/icon-192.png",
-      apple: "/icons/icon-192.png",
-    },
+    // 站点图标（0214）：site_favicon 有值优先（支持站内附件 /api/v1/attachments/{sha}）
+    icons: profile.site_favicon?.trim()
+      ? { icon: profile.site_favicon.trim(), apple: profile.site_favicon.trim() }
+      : {
+          icon: "/icons/icon-192.png",
+          apple: "/icons/icon-192.png",
+        },
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",

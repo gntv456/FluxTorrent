@@ -60,6 +60,40 @@ pub trait Plugin: Send + Sync {
     }
 }
 
+/// 插件运行时开关（0214，五路方案 P1-3.5）：site_settings 的
+/// `plugin__{name}` 键（yes/no，缺省 yes）。分发处同步询问——
+/// 站长可在「站点设定」一键停用某插件，无需重编译/重启。
+/// 键值热读有查询成本，用 30s 进程内缓存摊薄（与 module_flags 同思路的轻量版）。
+pub async fn plugin_enabled(db: &sqlx::PgPool, name: &str) -> bool {
+    use std::sync::Mutex;
+    type CacheMap = Mutex<std::collections::HashMap<String, (std::time::Instant, bool)>>;
+    static CACHE: tokio::sync::OnceCell<CacheMap> =
+        tokio::sync::OnceCell::const_new();
+    let cache = CACHE
+        .get_or_init(|| async { Mutex::new(std::collections::HashMap::new()) })
+        .await;
+    if let Ok(g) = cache.lock() {
+        if let Some((at, v)) = g.get(name) {
+            if at.elapsed() < std::time::Duration::from_secs(30) {
+                return *v;
+            }
+        }
+    }
+    let v: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = $1",
+    )
+    .bind(format!("plugin__{name}"))
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten();
+    let v = !matches!(v.as_deref(), Some("no"));
+    if let Ok(mut g) = cache.lock() {
+        g.insert(name.to_string(), (std::time::Instant::now(), v));
+    }
+    v
+}
+
 /// 插件管理器：编译期静态装配（Vec<Arc<dyn Plugin>>）。
 pub struct PluginManager {
     plugins: Vec<Arc<dyn Plugin>>,
@@ -78,6 +112,9 @@ impl PluginManager {
     }
 
     /// 统一分发：单插件 panic 不拖垮核心链路（M28 验收：启停不影响核心）。
+    /// 运行时开关（0214）：除插件自身 enabled()，还询问 site_settings 的
+    /// `plugin__{name}` 键（异步热读；查询挪进 spawn 的 blocking 任务，
+    /// 分发本身保持同步零阻塞）。停用键只跳过分发，不影响其余插件。
     pub fn dispatch_login(&self, state: &Arc<AppState>, user_id: i64) {
         for p in &self.plugins {
             if !p.enabled() {
@@ -85,13 +122,20 @@ impl PluginManager {
             }
             let p = p.clone();
             let st = state.clone();
-            tokio::task::spawn_blocking(move || {
-                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(
-                    || p.on_user_login(&st, user_id),
-                ));
-                if r.is_err() {
+            tokio::task::spawn(async move {
+                let name = p.name();
+                if !plugin_enabled(&st.repo.db, name).await {
+                    return;
+                }
+                let r = tokio::task::spawn_blocking(move || {
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+                        || p.on_user_login(&st, user_id),
+                    ))
+                })
+                .await;
+                if matches!(r, Ok(Err(_)) | Err(_)) {
                     tracing::error!(
-                        plugin = p.name(),
+                        plugin = name,
                         "login hook panicked (suppressed)"
                     );
                 }
@@ -111,13 +155,20 @@ impl PluginManager {
             }
             let p = p.clone();
             let st = state.clone();
-            tokio::task::spawn_blocking(move || {
-                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(
-                    || p.on_torrent_upload(&st, torrent_id, owner_id),
-                ));
-                if r.is_err() {
+            tokio::task::spawn(async move {
+                let name = p.name();
+                if !plugin_enabled(&st.repo.db, name).await {
+                    return;
+                }
+                let r = tokio::task::spawn_blocking(move || {
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+                        || p.on_torrent_upload(&st, torrent_id, owner_id),
+                    ))
+                })
+                .await;
+                if matches!(r, Ok(Err(_)) | Err(_)) {
                     tracing::error!(
-                        plugin = p.name(),
+                        plugin = name,
                         "upload hook panicked (suppressed)"
                     );
                 }
@@ -137,13 +188,20 @@ impl PluginManager {
             }
             let p = p.clone();
             let st = state.clone();
-            tokio::task::spawn_blocking(move || {
-                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(
-                    || p.on_seeding_milestone(&st, user_id, hours),
-                ));
-                if r.is_err() {
+            tokio::task::spawn(async move {
+                let name = p.name();
+                if !plugin_enabled(&st.repo.db, name).await {
+                    return;
+                }
+                let r = tokio::task::spawn_blocking(move || {
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+                        || p.on_seeding_milestone(&st, user_id, hours),
+                    ))
+                })
+                .await;
+                if matches!(r, Ok(Err(_)) | Err(_)) {
                     tracing::error!(
-                        plugin = p.name(),
+                        plugin = name,
                         "milestone hook panicked (suppressed)"
                     );
                 }

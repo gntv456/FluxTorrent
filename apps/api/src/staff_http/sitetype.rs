@@ -167,6 +167,8 @@ pub async fn site_profile(
     })
     .unwrap_or_default();
     let site_logo = profile_bits::setting_text(db, "site_logo").await;
+    // 站点图标（0214）：浏览器标签页 favicon；空 = 前端用内置 icon
+    let site_favicon = profile_bits::setting_text(db, "site_favicon").await;
     // 站点简介（0088）：页脚「站点信息」卡片文案，留空由前端回落字典默认
     let site_desc = profile_bits::setting_text(db, "site_desc").await;
     // SEO（0201）与主题令牌（0189）的判据在 profile_bits（空值/格式口径）
@@ -183,6 +185,7 @@ pub async fn site_profile(
         "brand": brand,
         "tagline": tagline,
         "site_logo": site_logo,
+        "site_favicon": site_favicon,
         "currency_name": currency,
         "subtitle_kind": sub_kind,
         "subtitle_label": sub_label,
