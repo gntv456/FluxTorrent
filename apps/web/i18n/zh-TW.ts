@@ -562,6 +562,13 @@ const zhTwBase: Omit<
     applyLink: "申請鏈接",
     closeModal: "關閉公告彈窗",
   },
+  tsplit: {
+    previewAria: "詳情預覽",
+    emptyHint: "選擇左側任意種子查看預覽",
+    wideMode: "寬屏雙欄模式",
+    openDetail: "打開詳情 →",
+    close: "關閉",
+  },
   mhome: {
     m: "早安",
     a: "午安",

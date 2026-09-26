@@ -566,6 +566,13 @@ const enBase: Omit<
     applyLink: "Apply",
     closeModal: "Close announcement",
   },
+  tsplit: {
+    previewAria: "detail preview",
+    emptyHint: "Pick a torrent on the left to preview",
+    wideMode: "wide two-pane mode",
+    openDetail: "Open detail →",
+    close: "Close",
+  },
   mhome: {
     m: "Good morning",
     a: "Good afternoon",
