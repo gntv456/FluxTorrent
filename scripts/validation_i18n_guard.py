@@ -2,7 +2,8 @@
 """后端校验详情本地化棘轮（四审 L7 第二批的「不再变坏」门）。
 
 两类串分开管，因为修法不同：
-  static  —— `Validation("中文…")` 整句字面量 ⇒ 按原句查 `apps/api/i18n/validation_details.tsv`，
+  static  —— `Validation("中文…")` 整句字面量 ⇒ 按原句查
+             `apps/api/i18n/validation_details.tsv`，
              调用点零改动；**新写的静态校验串必须进表**，否则这里红。
   dynamic —— `Validation(format!("…{x}…"))` ⇒ 没有固定原句可查，必须先参数化成 key；
              本门只锁它的**条数不增**。
