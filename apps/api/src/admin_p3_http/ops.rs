@@ -69,16 +69,28 @@ async fn admin_backup_run(
     std::fs::create_dir_all(&dir)
         .map_err(|e| DomainError::Internal(e.into()))?;
     let out = format!("{dir}/fluxtorrent-manual-{stamp}.dump");
-    let st = tokio::process::Command::new("docker")
-        .args([
-            "exec",
-            "flux-postgres",
-            "pg_dump",
-            "-U",
-            "flux",
-            "-Fc",
-            "fluxtorrent",
-        ])
+    // 0209 P2-19：备份命令可配置（site_settings.backup_docker_exec）——
+    // 默认 docker exec 容器内 pg_dump（compose 部署）；裸机部署改为本地
+    // pg_dump 全路径（如 pg_dump -U flux -Fc fluxtorrent）。
+    // 配置按空白切分 argv，输出恒重定向到备份目录文件（防误用吞盘）。
+    let cfg_cmd: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'backup_docker_exec'), '')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let default_args = [
+        "docker", "exec", "flux-postgres", "pg_dump", "-U", "flux", "-Fc",
+        "fluxtorrent",
+    ];
+    let argv: Vec<String> = if cfg_cmd.trim().is_empty() {
+        default_args.iter().map(|s| s.to_string()).collect()
+    } else {
+        cfg_cmd.split_whitespace().map(String::from).collect()
+    };
+    let st = tokio::process::Command::new(&argv[0])
+        .args(&argv[1..])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .output()
@@ -184,11 +196,124 @@ async fn admin_job_trigger(
         }
         other => {
             return Err(DomainError::Validation(format!(
-                "未知任务 {other}（可选：expire_promotions/sweep_stale_peers/reconcile_snapshots/funding_settle）"
+                "未知任务 {other}（可选：expire_promotions/sweep_stale_peers/reconcile_snapshots/funding_settle/hr_enforce/hr_punish/class_auto_adjust/collect_milestones/multi_ip_check/leak_scan/ensure_partitions/task_settle/exam_assign）"
             )));
         }
     };
     state.repo.audit(Some(auth.id), "job_trigger", None).await;
+    Ok(ok(serde_json::json!({ "job": job, "affected": affected })))
+}
+
+/// 0209 P2-16：worker 周期任务的「等价 SQL」手动触发（run2）。
+/// 与 run 的四个任务同口径——不是把 worker 函数搬过来（跨 crate），
+/// 而是复刻各 job 的核心 SQL（幂等、重跑安全语义不变），
+/// 供「漏跑补偿」场景使用（如银行结息在 run、等级调整等在此）。
+#[derive(Deserialize)]
+struct JobTrigger2Req {
+    job: String,
+}
+
+#[post("/admin/jobs/run2")]
+async fn admin_job_trigger2(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<JobTrigger2Req>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEANUP_RUN)
+        .await?;
+    let (job, affected): (&str, i64) = match body.job.as_str() {
+        // H&R 违规快查（hr_violations 未处置计数，可观测）
+        "hr_enforce" => {
+            let n: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM hr_violations WHERE resolved_at IS NULL",
+            )
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            ("hr_enforce", n)
+        }
+        // H&R 惩罚（命中未处置者停下载权限——users.download_enabled）
+        "hr_punish" => {
+            let n = sqlx::query(
+                "UPDATE users u SET download_enabled = false                  WHERE u.download_enabled AND EXISTS (                    SELECT 1 FROM hr_violations v                    WHERE v.user_id = u.id AND v.resolved_at IS NULL)",
+            )
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected() as i64;
+            ("hr_punish", n)
+        }
+        // 等级自动调整（只升不降，取满足条件的最高档）
+        "class_auto_adjust" => {
+            sqlx::query(
+                r#"WITH stats AS (
+                     SELECT u.id, u.uploaded, u.downloaded
+                     FROM users u
+                     WHERE u.status < 2 AND u.class_id BETWEEN 1 AND 12
+                   )
+                   UPDATE users u SET class_id = cr.class_id
+                   FROM class_rules cr, stats st
+                   WHERE u.id = st.id
+                     AND cr.min_uploaded <= st.uploaded
+                     AND (cr.min_downloaded IS NULL OR cr.min_downloaded <= st.downloaded)
+                     AND cr.class_id > u.class_id
+                     AND NOT EXISTS (
+                       SELECT 1 FROM class_rules higher
+                       WHERE higher.min_uploaded <= st.uploaded
+                         AND (higher.min_downloaded IS NULL OR higher.min_downloaded <= st.downloaded)
+                         AND higher.class_id > cr.class_id)"#,
+            )
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            ("class_auto_adjust", -1)
+        }
+        // 任务结算（task_claims 已领未结 → 结算标志；与 worker task_settle 的结算分支同向）
+        "task_settle" => {
+            let n = sqlx::query(
+                "UPDATE task_claims SET settled_at = now()                  WHERE settled_at IS NULL AND exempted_at IS NULL                    AND claimed_at < now() - interval '30 days'",
+            )
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected() as i64;
+            ("task_settle", n)
+        }
+        // 重复 IP 快查（可观测计数，不动账；snatches 无 ip 列——IP 维度在
+        // tracker 侧快照/登录记录，这里改用 multi_ip 的近似口径：
+        // 24h 内同 IP 多账号登录特征走 maxlogin/audit 数据源，此处退化为
+        // 「同 agent 多账户做种」的可观测快查）
+        "multi_ip_check" => {
+            let n: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM ( \
+                 SELECT agent FROM snatches \
+                 WHERE last_seen_at > now() - interval '24 hours' AND agent IS NOT NULL \
+                 GROUP BY agent HAVING count(DISTINCT user_id) > 3) x",
+            )
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            ("multi_ip_check", n)
+        }
+        // 泄露扫描（7 天内 passkey 查看审计计数）
+        "leak_scan" => {
+            let n: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM audit_log WHERE \
+                 action = 'passkey.view' AND created_at > now() - interval '7 days'",
+            )
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            ("leak_scan", n)
+        }
+        other => {
+            return Err(DomainError::Validation(format!(
+                "未知任务 {other}（可选：hr_enforce/hr_punish/class_auto_adjust/task_settle/multi_ip_check/leak_scan）"
+            )));
+        }
+    };
+    state.repo.audit(Some(auth.id), "job_trigger2", None).await;
     Ok(ok(serde_json::json!({ "job": job, "affected": affected })))
 }
 

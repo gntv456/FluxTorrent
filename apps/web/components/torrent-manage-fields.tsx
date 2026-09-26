@@ -278,15 +278,18 @@ export function ManageMetaFields({
           <p className="text-[11px] text-sky-deep">{attach.msg}</p>
         )}
       </div>
-      <label className="flex flex-col gap-1 text-xs">
-        MediaInfo
-        <textarea
-          value={fMediainfo}
-          rows={4}
-          onChange={(e) => setFMediainfo(e.target.value)}
-          className={MONO_AREA}
-        />
-      </label>
+      {/* MediaInfo（0209 P2-14）：与发布页同口径，mediainfo 源关掉即隐藏 */}
+      {metaSrc.includes("mediainfo") && (
+        <label className="flex flex-col gap-1 text-xs">
+          MediaInfo
+          <textarea
+            value={fMediainfo}
+            rows={4}
+            onChange={(e) => setFMediainfo(e.target.value)}
+            className={MONO_AREA}
+          />
+        </label>
+      )}
       {/* 条目输入按站型显隐（0184 对齐发布页 metaSources 口径） */}
       {metaSrc.includes("imdb") && (
         <label className="flex flex-col gap-1 text-xs">
