@@ -2090,6 +2090,7 @@ ange-dark); }
   gap: 16px;
   align-items: start;
 }
+
 .pting-sidenav {
   position: sticky;
   top: 12px;
@@ -2252,7 +2253,19 @@ ange-dark); }
 }
 @media (max-width: 860px) {
   .pting-forums {
-    grid-template-columns: 1fr;
+    /* minmax(0,1fr)：grid 隐式 min-width:auto 会让内部不可断元素
+       （搜索框/长标题）把列撑出视口——总验收 375 横滚的根因 */
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pting-sidenav {
+    min-width: 0;
+  }
+  /* 头部横幅（搜索 + 标题 + pill + 发帖）窄屏换行；子项可收缩 */
+  .pting-board__head {
+    flex-wrap: wrap;
+  }
+  .pting-board__head > * {
+    min-width: 0;
   }
   .pting-sidenav {
     position: static;
