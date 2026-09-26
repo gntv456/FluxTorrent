@@ -45,6 +45,7 @@ export function IncrementBulk() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sender, setSender] = useState("self");
+  const [email, setEmail] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -81,6 +82,7 @@ export function IncrementBulk() {
       if (subject.trim()) payload.subject = subject.trim();
       if (body.trim()) payload.body = body.trim();
       payload.sender = sender;
+      if (email) payload.email = true;
       const r = await api.post<BulkResult>("/api/v1/admin/increment-bulk", payload);
       flash(`已发放：${KINDS.find(([k]) => k === kind)?.[1]} ${amount} → ${r.targets} 个用户（${r.affected} 条生效${subject.trim() ? "，PM 已发送" : ""}）`);
       setClasses(new Set());
@@ -225,6 +227,19 @@ export function IncrementBulk() {
               <td className="rowhead align-top">私信内容</td>
               <td className="rowfollow">
                 <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} className={`${inp} w-96`} placeholder="支持说明发放原因与数量" />
+              </td>
+            </tr>
+            <tr>
+              <td className="rowhead">通知方式</td>
+              <td className="rowfollow">
+                <label className="inline-flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={email}
+                    onChange={(e) => setEmail(e.target.checked)}
+                  />
+                  同时发邮件（SMTP 未配置时静默降级）
+                </label>
               </td>
             </tr>
             <tr>
