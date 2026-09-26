@@ -2,7 +2,13 @@
 
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, type Locale } from "./config";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  LOCALE_COOKIE,
+  siteLangToLocale,
+  type Locale,
+} from "./config";
 import { zhCN, type Dict } from "./zh-CN";
 import { zhTW } from "./zh-TW";
 import { en } from "./en";
@@ -14,7 +20,11 @@ const DICTS: Record<Locale, Dict> = { "zh-CN": zhCN, "zh-TW": zhTW, en };
 export async function getLocale(): Promise<Locale> {
   const store = await cookies();
   const v = store.get(LOCALE_COOKIE)?.value;
-  return isLocale(v) ? v : DEFAULT_LOCALE;
+  if (isLocale(v)) return v;
+  // 0216：没有语言 cookie 的新访客 → 站点默认语言（后台「默认语言」，真驱动）。
+  // 库里是 NP 口径 en|chs|cht，经唯一换算处转 BCP47；档案取不到则内置默认。
+  const p = await getSiteProfile();
+  return siteLangToLocale(p.default_language) ?? DEFAULT_LOCALE;
 }
 
 /** 站点档案里与「文案」有关的三项（0082 货币名 + 0205 术语规则 + 0146 字幕区显示名）：

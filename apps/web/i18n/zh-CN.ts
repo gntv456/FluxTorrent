@@ -23,6 +23,7 @@ const zhCnBase = {
     spark: "{magic}",
     cancel: "取消",
     save: "保存",
+    themeToggle: "切换主题",
   },
   nav: {
     home: "首页",
@@ -282,8 +283,6 @@ const zhCnBase = {
     recoverByEmail: "邮件找回",
     bannedIntro: "账号被禁用？",
     bannedLog: "查看封禁记录",
-    resendIntro: "没有收到验证邮件或验证链接无法打开？",
-    resendLink: "重新发送验证邮件",
     appealIntro: "对处理结果有异议？",
     appealLink: "申诉通道",
     inviteOnly: "本站为邀请制私有社区，账号由邀请码注册",
@@ -4264,7 +4263,7 @@ const zhCnBase = {
     importTitle: "导入站点设定",
     importHint:
       "支持本页导出的 JSON 原文件，或仅含 settings 映射的对象。导入仅系统管理员可执行。",
-    importPlaceholder: '{ "settings": { "SITENAME": "示例站" } }',
+    importPlaceholder: '{ "settings": { "site_name": "示例站" } }',
     importPreview: "预览差异",
     importConfirm: "确认导入",
     importBadJson: "JSON 解析失败，请检查内容",
@@ -4353,13 +4352,6 @@ const zhCnBase = {
     4002: "流水冲突，请重试",
     5002: "已感谢过",
   } as Record<number, string>,
-  resend: {
-    title: "重新发送验证邮件",
-    subtitle: "输入注册邮箱，重新发送验证/通知邮件",
-    submit: "重新发送",
-    busy: "发送中…",
-    note: "出于安全考虑，无论邮箱是否存在都返回相同提示。",
-  },
   appeals: {
     title: "申诉通道",
     subtitle: "对处罚 / H&R 违规有异议？在这里提交",

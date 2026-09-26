@@ -17,7 +17,7 @@ PAGES = [
         "/dressup",
     "/farm", "/jixiao", "/my", "/my?tab=bookmarks", "/admin", "/login",
         "/register",
-    "/rules", "/appeals", "/ban-log", "/forgot", "/resend", "/reset",
+    "/rules", "/appeals", "/ban-log", "/forgot", "/reset",
         "/offline",
 ]
 
@@ -35,7 +35,7 @@ with urllib.request.urlopen(req, json.dumps({"username": "root",
     "password": "password123"}).encode(), timeout=10) as r:
     token = json.loads(r.read())["data"]["token"]
 
-cookie = f"flux.session=1; flux.token={token}"
+cookie = f"flux.session=1; flux_token={token}"
 
 for p in PAGES:
     try:

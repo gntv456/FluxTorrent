@@ -1,7 +1,9 @@
-//! 登录页辅助通道（0020）：封禁记录 / 重发验证邮件 + hash_token 助手。
+//! 登录页辅助通道（0020）：封禁记录 + hash_token 助手。
 //! 从 gaps_http.rs 按域拆出（mail.rs 的重置邮件也用 hash_token）。
+//! （0216：/auth/confirm/resend 退役——注册无邮箱验证环节，端点恒返回「暂未启用」，
+//!  「要么真驱动要么删」口径下删除。）
 
-use actix_web::{get, post, web, Responder};
+use actix_web::{get, web, Responder};
 use redis::AsyncCommands;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
@@ -65,45 +67,4 @@ pub async fn ban_log(
         status: 0,
         changed_at: None,
     }))))
-}
-
-/// 重发验证邮件：项目 M01 注册无邮箱验证环节，此通道为邮件触达兜底——
-/// SMTP 未配置时明确告知"邮件通道未开启"；无论邮箱是否存在返回相同响应（防枚举）。
-#[derive(Deserialize)]
-struct ConfirmResendReq {
-    email: String,
-}
-
-#[post("/auth/confirm/resend")]
-pub async fn confirm_resend(
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<ConfirmResendReq>,
-) -> DomainResult<impl Responder> {
-    // 限流：按邮箱 3 次/小时
-    let mut c = state.redis.clone();
-    let key = format!("rl:confirmresend:{}", body.email.to_lowercase());
-    let n: i64 = AsyncCommands::incr(&mut c, &key, 1).await.unwrap_or(0);
-    if n == 1 {
-        let _: () = AsyncCommands::expire(&mut c, &key, 3600)
-            .await
-            .unwrap_or(());
-    }
-    if n > 3 {
-        return Err(DomainError::RateLimited);
-    }
-    let uid: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE lower(email::text) = lower($1)",
-    )
-    .bind(body.email.trim())
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if let Some(uid) = uid {
-        state.repo.audit(Some(uid), "confirm.resend", None).await;
-    }
-    // 诚实响应（审计 P2-14）：系统本无邮箱验证环节，旧文案声称"已重新发送"名不副实
-    let _smtp = std::env::var("SMTP_URL").unwrap_or_default();
-    Ok(ok(serde_json::json!({
-        "message": "如邮箱存在，我们已记录该请求；本站暂未启用邮箱验证，注册即生效"
-    })))
 }

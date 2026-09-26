@@ -14,7 +14,6 @@ const PUBLIC_PATHS = [
   "/offline",
   "/appeals",
   "/ban-log",
-  "/resend",
   "/rules",
   "/faq",
   "/setup", // 安装向导（U3 §8.3）：冷启动期管理员未登录也要能进入

@@ -230,10 +230,6 @@ export function LoginForm() {
             <Link href="/ban-log">{dict.login.bannedLog}</Link>
           </p>
           <p>
-            {dict.login.resendIntro}
-            <Link href="/resend">{dict.login.resendLink}</Link>
-          </p>
-          <p>
             {dict.login.appealIntro}
             <Link href="/appeals">{dict.login.appealLink}</Link>
           </p>

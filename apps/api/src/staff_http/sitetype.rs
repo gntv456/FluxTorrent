@@ -85,6 +85,16 @@ pub async fn site_profile(
     // 建站日期（页脚版权条 "(c) 站名 日期 Powered by FluxTorrent" 用）
     let founded: Option<String> =
         profile_bits::setting_text(db, "datefounded").await;
+    // 默认语言（0216 G1 真驱动）：NP 口径 en|chs|cht（与 users.site_language 同码制），
+    // 前端 getLocale 对「无语言 cookie 的新访客」回落到它，再映射到 BCP47 文案
+    let default_language: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'default_language'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_else(|| "chs".into());
 
     // 模块开关：site_type_packs.modules 只是站型的**初始快照**，运行时权威在
     // site_settings.module_*（后台改了开关，导航要跟着变）。以前者打底、后者覆盖。
@@ -200,6 +210,7 @@ pub async fn site_profile(
         )
         .await
         .unwrap_or_else(|| "yes".into()),
+        "default_language": default_language,
         "subtitle_workflow": flag("subtitle_workflow", "0") == "1",
         "subtitle_award": flag("subtitle_award", "0") == "1",
         "subtitle_ai_badge": flag("subtitle_ai_badge", "1") != "0",
