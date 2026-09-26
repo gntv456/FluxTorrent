@@ -65,7 +65,11 @@ pub async fn site_profile(
     let media = dict_rows("media", true).await;
     let editions = dict_rows("editions", edu_like).await;
     let brand: String = sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = 'site_name'",
+        // 键收敛（0214 P2-4.6）：site_name 是权威键（向导/后台主要写它）；
+        // SITENAME 是 NexusPHP 口径的旧键（RSS 频道名在用），仅作回落，不再各自为政
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings WHERE name \
+         = 'site_name'), ''), \
+         (SELECT value FROM site_settings WHERE name = 'SITENAME'), '')",
     )
     .fetch_optional(&state.repo.db)
     .await

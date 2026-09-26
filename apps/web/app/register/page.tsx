@@ -258,6 +258,7 @@ export default function RegisterPage() {
                 className={inputCls}
                 required={f.required}
                 maxLength={f.type === "text" ? 500 : undefined}
+                step={f.type === "number" ? 1 : undefined}
                 value={String(fieldVals[f.key] ?? "")}
                 onChange={(e) =>
                   setFieldVals((p) => ({

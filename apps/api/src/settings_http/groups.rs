@@ -240,6 +240,23 @@ pub(super) async fn settings_groups_put(
         .map_err(|e| DomainError::Internal(e.into()))?;
         changed.push(name.clone());
     }
+    // 键收敛（0214 P2-4.6）：site_name 是权威键，SITENAME（NP 旧口径，RSS 频道
+    // 名在读）随写同步——三个键此前各自为政，站长改一处另两处不动，RSS 与前台
+    // 品牌名就分叉了。只镜像 site_name→SITENAME 方向；直接改 SITENAME 不回写
+    // （旧键单改属罕见，且反向同步会在两键同改时产生写冲突）。
+    if changed.iter().any(|n| n == "site_name") {
+        if let Some((_, new)) = pending.iter().find(|(n, _)| n == "site_name") {
+            sqlx::query(
+                "UPDATE site_settings SET value = $2, updated_at = now() \
+                 WHERE name = 'SITENAME' AND value IS DISTINCT FROM $2",
+            )
+            .bind("SITENAME")
+            .bind(new)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+    }
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

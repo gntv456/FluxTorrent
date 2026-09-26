@@ -77,13 +77,16 @@ export function UserFieldsTab() {
           <input
             type="number"
             className={FLD}
+            step="1"
             value={v === null || v === undefined ? "" : String(v)}
             onChange={(e) =>
               setV(
                 d.key,
                 e.target.value === ""
                   ? null
-                  : Number(e.target.value),
+                  : Number.isInteger(Number(e.target.value))
+                    ? Number(e.target.value)
+                    : Number(e.target.value),
               )
             }
           />
@@ -152,6 +155,7 @@ export function UserFieldsTab() {
           <input
             type="text"
             className={FLD}
+            maxLength={500}
             value={v === null || v === undefined ? "" : String(v)}
             onChange={(e) => setV(d.key, e.target.value || null)}
           />
