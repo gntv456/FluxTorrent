@@ -3779,6 +3779,8 @@ const zhCnBase = {
     thSize: "大小",
     thSeeders: "做种/下载",
     tableEmpty: "没有匹配的种子",
+    multiSelectOn: "已进入多选（长按选择）· 已选 {n} 项",
+    multiSelectExit: "退出多选",
     pageNum: "第 {n} 页",
     qRecord: "{title}：按用户名搜索",
     // 多维筛选（admin-torrents-dims，B3 六类型）

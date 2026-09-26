@@ -6,7 +6,9 @@ import { useRef, useState } from "react";
  *  多选态；再次长按或点「退出」退出。仅触屏（鼠标用户用 checkbox）。
  *  用法：const [multi, bindLong] = useLongPressMultiSelect();
  *  bindLong 挂到行容器（onPointerDown/Up/Cancel）。 */
-export function useLongPressMultiSelect(): [
+export function useLongPressMultiSelect(
+  onActivate?: () => void,
+): [
   boolean,
   {
     onPointerDown: (e: React.PointerEvent) => void;
@@ -17,6 +19,8 @@ export function useLongPressMultiSelect(): [
 ] {
   const [multi, setMulti] = useState(false);
   const timer = useRef<number | null>(null);
+  const activateRef = useRef(onActivate);
+  activateRef.current = onActivate;
 
   const clear = () => {
     if (timer.current !== null) {
@@ -32,6 +36,7 @@ export function useLongPressMultiSelect(): [
         // 触觉反馈（支持的浏览器）
         if (navigator.vibrate) navigator.vibrate(10);
         setMulti(true);
+        activateRef.current?.();
       }, 500);
     },
     onPointerUp: clear,

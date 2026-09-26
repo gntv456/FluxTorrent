@@ -3782,6 +3782,8 @@ const zhTwBase: Omit<
     thSize: "大小",
     thSeeders: "做種/下載",
     tableEmpty: "沒有符合的種子",
+    multiSelectOn: "已進入多選（長按選擇）· 已選 {n} 項",
+    multiSelectExit: "退出多選",
     pageNum: "第 {n} 頁",
     qRecord: "{title}：按使用者名稱搜尋",
     // 多維篩選（admin-torrents-dims，B3 六類型）
