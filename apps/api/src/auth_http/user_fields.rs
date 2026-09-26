@@ -59,7 +59,7 @@ pub async fn user_fields_list(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
+        crate::authz::perm::USERFIELDS_MANAGE,
     )
     .await?;
     let rows: Vec<UserFieldDefRow> = sqlx::query_as(
@@ -86,7 +86,7 @@ pub async fn user_fields_add(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
+        crate::authz::perm::USERFIELDS_MANAGE,
     )
     .await?;
     let key = path.into_inner();
@@ -142,7 +142,7 @@ pub async fn user_fields_update(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
+        crate::authz::perm::USERFIELDS_MANAGE,
     )
     .await?;
     let key = path.into_inner();
@@ -213,7 +213,7 @@ pub async fn user_fields_delete(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
+        crate::authz::perm::USERFIELDS_MANAGE,
     )
     .await?;
     let key = path.into_inner();

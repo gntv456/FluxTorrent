@@ -32,12 +32,8 @@ pub async fn terms_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TERMS_MANAGE)
+        .await?;
     let rows: Vec<TermRow> = sqlx::query_as(
         "SELECT canonical, replacement, enabled, descr, sort \
          FROM site_terms ORDER BY length(canonical) DESC, sort, canonical",
@@ -74,12 +70,8 @@ pub async fn terms_upsert(
     body: web::Json<TermBody>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TERMS_MANAGE)
+        .await?;
     let from = body.canonical.trim();
     let to = body.replacement.trim();
     if !terms::valid_term_word(from) || !terms::valid_term_word(to) {
@@ -144,12 +136,8 @@ pub async fn terms_toggle(
     path: web::Path<String>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TERMS_MANAGE)
+        .await?;
     let hit: Option<bool> = sqlx::query_scalar(
         "UPDATE site_terms SET enabled = NOT enabled, updated_at = now() \
          WHERE canonical = $1 RETURNING enabled",
@@ -179,12 +167,8 @@ pub async fn terms_delete(
     body: web::Json<TermDeleteBody>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::SITEPACKS_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TERMS_MANAGE)
+        .await?;
     if !body.confirm {
         return Err(DomainError::Validation("请确认删除".into()));
     }

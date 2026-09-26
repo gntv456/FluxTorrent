@@ -40,10 +40,14 @@ async fn permission_matrix(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let permissions: Vec<PermRow> = sqlx::query_as(
-        "SELECT key, name, category, descr, implemented FROM permissions \
-             ORDER BY category, sort, key",
-    )
+    // G3（0217）：权限矩阵随模块开关收敛——模块关掉的域（如商店 prop.manage）
+    // 不再出现在清单里，避免「配了也不生效」的误导。口径与面板条目同源。
+    let permissions: Vec<PermRow> = sqlx::query_as(&format!(
+        "SELECT p.key, p.name, p.category, p.descr, p.implemented \
+             FROM permissions p WHERE {} \
+             ORDER BY p.category, p.sort, p.key",
+        crate::modules::module_on_sql("p")
+    ))
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
