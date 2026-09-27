@@ -30,14 +30,27 @@ impl AuthRepo {
         // passkey 列是 CHAR(32)：gen_random_bytes(20)→hex 是 40 位必溢出。
         // 与 update_passkey 的 new_passkey()（32 位小写字母数字）对齐。
         let passkey = crate::domain::new_passkey();
+        // 初始上传量（C4 缓冲宽进制）：initial_upload_gb > 0 时新用户出生即带
+        // 缓冲（UNIT3D default_upload 口径）；键缺失/0 = 维持旧行为。
+        // value 是 TEXT：坏值（手改库写非数字）按 0 处理，不阻断注册。
+        let initial_gb: f64 = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT value FROM site_settings \
+             WHERE name = 'initial_upload_gb')::float8, 0)",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0.0);
+        let initial_uploaded: i64 =
+            (initial_gb.max(0.0) * 1024.0 * 1024.0 * 1024.0) as i64;
         let user_id: i64 = sqlx::query_scalar(
             "INSERT INTO users (username, email, pass_hash, \
-             passkey) VALUES ($1, $2, $3, $4) RETURNING id",
+             passkey, uploaded) VALUES ($1, $2, $3, $4, $5) RETURNING id",
         )
         .bind(&new_user.username)
         .bind(&new_user.email)
         .bind(pass_hash)
         .bind(&passkey)
+        .bind(initial_uploaded)
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| match e {

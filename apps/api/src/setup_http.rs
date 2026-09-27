@@ -10,6 +10,7 @@ use serde::Deserialize;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::ops_http::OnboardingApplyBodyRepr;
 use crate::state::AppState;
 
 /// 业务 API 封锁中间件（module_gate 之前判断）：
@@ -157,6 +158,9 @@ struct SetupFinishBody {
     /// 拦住「装完仍是 127.0.0.1、种子的 tracker 永远收不到请求」的死链）
     #[serde(default)]
     announce_url: String,
+    /// 新手运营模板（C4，0226）：strict | lenient | 空（跳过 = 维持现状）
+    #[serde(default)]
+    onboarding_preset: String,
     /// 玩法合规确认（§11.3：必须显式 true 才允许完成，留审计）
     games_compliance_ack: bool,
 }
@@ -248,6 +252,23 @@ async fn setup_finish(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    // 3c) 新手运营模板（C4，0226）：向导内可选 strict/lenient——复用
+    //     onboarding_apply 的参数簇写入（权限已由本端点的 SITEPACKS_MANAGE
+    //     覆盖；空 = 跳过维持现状）。
+    if !body.onboarding_preset.is_empty() {
+        let preset = body.onboarding_preset.as_str();
+        if !matches!(preset, "strict" | "lenient") {
+            return Err(DomainError::Validation(
+                "onboarding_preset 仅支持 strict / lenient".into(),
+            ));
+        }
+        let inner = OnboardingApplyBodyRepr {
+            preset: preset.to_string(),
+        };
+        let _ =
+            crate::ops_http::setup_apply_onboarding(&state, auth.id, &inner)
+                .await?;
     }
     // 4) 置位（幂等）
     sqlx::query(

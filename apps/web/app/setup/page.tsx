@@ -8,10 +8,11 @@ import { SetupStepSite, type SiteDraft } from "./_parts/step-site";
 import type { Status } from "./_parts/setup-types";
 
 /**
- * 安装向导（U3 §8.3）：三步 —— ① 选站型 ② 站名+管理员登录 ③ 合规勾选完成。
+ * 安装向导（U3 §8.3 + C4 四步）：① 选站型 ② 站名+管理员登录
+ * ③ 新手运营模板（可选，0226） ④ 合规勾选完成。
  * 消费 GET /api/v1/setup/status 与 POST /api/v1/setup（后端已就绪）。
  * setup_done 已置位时显示已完成态（可重复访问，POST 幂等）。
- * 第二/三步拆至 ./_parts/step-site.tsx、step-finish.tsx（300 行门禁）。
+ * 第二/四步拆至 ./_parts/step-site.tsx、step-finish.tsx（300 行门禁）。
  */
 
 export default function SetupWizard() {
@@ -25,6 +26,8 @@ export default function SetupWizard() {
   const [status, setStatus] = useState<Status | null>(null);
   const [step, setStep] = useState(1);
   const [pack, setPack] = useState("");
+  // 新手运营模板（C4）："" 跳过 | strict | lenient
+  const [preset, setPreset] = useState("");
   // 站点信息草稿（G12）：第二步由 step-site 采集，含临时密码就地改密后
   // 的新口令；第三步 finish 用它重登（改密会撤销全部旧 token）
   const [draft, setDraft] = useState<SiteDraft>({
@@ -45,7 +48,7 @@ export default function SetupWizard() {
       .get<Status>("/api/v1/setup/status")
       .then((s) => {
         setStatus(s);
-        if (s.done) setStep(3);
+        if (s.done) setStep(4);
       })
       .catch(() =>
         setError(t("loadFailed", "无法加载向导状态，请确认 API 可达")),
@@ -71,6 +74,7 @@ export default function SetupWizard() {
         pack,
         site_name: draft.siteName,
         announce_url: draft.announceUrl,
+        onboarding_preset: preset,
         games_compliance_ack: ack,
       });
       const purged = res.purged?.map(([k, n]) => `${k}:${n}`).join(" ") ?? "";
@@ -93,12 +97,12 @@ export default function SetupWizard() {
     <div className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="text-xl font-semibold">🚀 {t("title", "站点安装向导")}</h1>
       <p className="mt-2 text-sm text-muted">
-        {t("subtitle", "三步完成建站：选择站型 → 站点信息 → 合规确认")}
+        {t("subtitle", "四步完成建站：选择站型 → 站点信息 → 新手模板 → 合规确认")}
       </p>
 
       {/* 步骤条 */}
       <ol className="mt-6 flex items-center gap-2 text-xs">
-        {[1, 2, 3].map((n) => (
+        {[1, 2, 3, 4].map((n) => (
           <li
             key={n}
             className={`flex items-center gap-1 rounded-full px-3 py-1 ${
@@ -107,7 +111,11 @@ export default function SetupWizard() {
                 : "bg-[var(--panel)] text-muted"
             }`}
           >
-            {n}. {t(`step${n}`, ["选择站型", "站点信息", "合规确认"][n - 1])}
+            {n}.{" "}
+            {t(
+              `step${n}`,
+              ["选择站型", "站点信息", "新手模板", "合规确认"][n - 1],
+            )}
           </li>
         ))}
       </ol>
@@ -180,6 +188,63 @@ export default function SetupWizard() {
       )}
 
       {step === 3 && (
+        <div className="mt-6">
+          <h2 className="text-base font-semibold">
+            {t("presetTitle", "选择新手运营模板（可选）")}
+          </h2>
+          <p className="mt-1 text-xs text-muted">
+            {t(
+              "presetHint",
+              "两种已被主流引擎验证的新手哲学，一键写入一组运营参数。随时可在后台切换或微调，不影响已有用户数据。",
+            )}
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {(
+              [
+                ["strict", "presetStrict", "presetStrictDesc"],
+                ["lenient", "presetLenient", "presetLenientDesc"],
+              ] as const
+            ).map(([code, nameKey, descKey]) => (
+              <button
+                key={code}
+                onClick={() => {
+                  setPreset(code);
+                  setStep(4);
+                }}
+                className={`rounded-lg border p-4 text-left transition-colors hover:border-accent ${
+                  preset === code ? "border-accent" : "border-line"
+                }`}
+              >
+                <div className="font-medium">
+                  {t(nameKey, code === "strict" ? "考核淘汰制" : "缓冲宽进制")}
+                </div>
+                <div className="mt-1 text-xs text-muted">
+                  {t(
+                    descKey,
+                    code === "strict"
+                      ? "高压高留存：新人考核自动派发 + H&R 从严 + 低保户降级"
+                      : "宽进宽养：初始上传缓冲 + H&R 宽限预警 + 无考核",
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 text-center">
+            <button
+              className="rounded-md border border-line px-4 py-2 text-sm
+                text-muted transition-colors hover:border-accent"
+              onClick={() => {
+                setPreset("");
+                setStep(4);
+              }}
+            >
+              {t("presetSkip", "跳过：保持现状，参数手动配置")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
         <SetupStepFinish
           t={t}
           btn={btn}
@@ -190,7 +255,7 @@ export default function SetupWizard() {
           firstInvite={firstInvite}
           busy={busy}
           onFinish={finish}
-          onPrev={() => setStep(2)}
+          onPrev={() => setStep(3)}
         />
       )}
 

@@ -6,6 +6,7 @@ mod exams;
 mod jixiao;
 mod jixiao_claim;
 mod jixiao_compute;
+mod onboarding;
 mod preserve;
 mod resurrections;
 mod task_overview;
@@ -14,6 +15,7 @@ mod tasks;
 use exams::*;
 pub use jixiao::*;
 use jixiao_claim::*;
+pub use onboarding::*;
 use preserve::*;
 use resurrections::*;
 use task_overview::*;
@@ -41,4 +43,7 @@ pub fn mount_ops(scope: actix_web::Scope) -> actix_web::Scope {
         .service(resurrection_my)
         // M28 插件
         .service(plugins_overview)
+        // C4 新手运营双模板（0226）
+        .service(onboarding_status)
+        .service(onboarding_apply)
 }
