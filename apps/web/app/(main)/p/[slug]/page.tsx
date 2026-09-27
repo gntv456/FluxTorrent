@@ -55,9 +55,10 @@ export default async function CustomPageView({
         <div className="mt-1 text-xs text-sub">
           {dict.page.updatedAt}: {page.updated_at.slice(0, 10)}
         </div>
-        {/* 后端已 ammonia 消毒（剥 script/事件属性/js 协议），管理富文本注水 */}
+        {/* 后端已 ammonia 消毒（剥 script/事件属性/js 协议），管理富文本注水；
+         *  M6.3：长文排版——38em 行宽 + table/pre/img 移动兜底（.longform） */}
         <div
-          className="home-news-modal__body mt-4"
+          className="home-news-modal__body longform mt-4"
           dangerouslySetInnerHTML={{ __html: page.body }}
         />
       </div>

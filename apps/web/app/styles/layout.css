@@ -2400,6 +2400,60 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   line-height: 1.9;
 }
 
+/* ============ M6.3 长文页排版（/faq /rules /p/[slug] /textbooks 等） ============
+ * 概念稿 §15.4 范式③：正文 max-width 38em、移动 16px/1.8、
+ * 富文本注入面（table/pre/img）各加移动兜底——净化样式表口径，
+ * 站长后台富文本无论灌什么进来都不会撑破 390px 视口。 */
+.longform {
+  max-width: 38em;
+  font-size: 16px;
+  line-height: 1.8;
+}
+.longform img {
+  max-width: 100%;
+  height: auto;
+}
+.longform table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.longform pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.longform h2,
+.longform h3 {
+  margin: 1.4em 0 0.5em;
+  line-height: 1.5;
+}
+
+/* ============ M6.3 FAQ 折叠问答（/faq，概念稿 §15.4） ============ */
+.faq-list {
+  display: flex;
+  flex-direction: column;
+}
+.faq-item {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.faq-item:last-child {
+  border-bottom: 0;
+}
+.faq-item summary {
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.faq-item[open] summary {
+  margin-bottom: 6px;
+}
+.faq-item .longform {
+  font-size: 13.5px;
+}
+
 /* ============ 页面通用件（页头 / 统计条 / 工具行 / 药丸） ============
    2026-09-23 从 medal-shop.css 抽出：这批类与勋章/商店无关，是
    「页头 + 统计条 + 工具行」的通用形态，my-spark / donate 等页复用。
