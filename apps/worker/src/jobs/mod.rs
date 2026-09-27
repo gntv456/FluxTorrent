@@ -7,6 +7,7 @@
 mod achv_dormant;
 mod announce;
 mod announce_main;
+pub(crate) mod group;
 mod audit;
 mod backfill;
 mod billing;
