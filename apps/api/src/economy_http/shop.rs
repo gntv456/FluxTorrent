@@ -169,6 +169,36 @@ async fn shop_buy(
         }
     }
 
+    // 反通胀阀门（C5，UNIT3D max-buffer-to-buy-upload 同款）：上传量类商品
+    // 在用户缓冲量（上传-下载）已达 economy_max_buffer_gb 时拒购；0/缺键=不限。
+    // 只拦「花钱买上传量」，券/卡牌/装扮不受影响。
+    if matches!(kind.as_str(), "upload_credit" | "upload" | "upload_gb") {
+        let cap_gb: f64 = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT value FROM site_settings \
+             WHERE name = 'economy_max_buffer_gb')::float8, 0)",
+        )
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0.0);
+        if cap_gb > 0.0 {
+            let (up, down): (i64, i64) = sqlx::query_as(
+                "SELECT uploaded, downloaded FROM users WHERE id = $1",
+            )
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            let buffer_gb =
+                (up - down).max(0) as f64 / 1024.0 / 1024.0 / 1024.0;
+            if buffer_gb >= cap_gb {
+                return Err(DomainError::Validation(format!(
+                    "你的缓冲量已达 {buffer_gb:.0}GB（上限 {cap_gb:.0}GB），\
+                     暂不能继续购买上传量类商品"
+                )));
+            }
+        }
+    }
+
     // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款。
     // 服务端键必须带 uid 前缀：裸客户端键跨用户碰撞时，B 的消费会被误判为 A 的重放。
     let idem = body

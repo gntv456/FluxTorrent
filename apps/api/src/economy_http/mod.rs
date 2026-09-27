@@ -40,11 +40,14 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(funding_my)
         .service(admin_fundings_list)
         .service(admin_funding_cancel)
+        // C5 经济反通胀运营面板（0226）
+        .service(economy_dashboard)
 }
 
 mod bank;
 mod bank_withdraw;
 mod checkin;
+mod dashboard;
 mod dressup;
 mod funding;
 mod funding_contribute;
@@ -63,6 +66,7 @@ mod vouchers;
 pub use bank::*;
 pub use bank_withdraw::*;
 pub use checkin::*;
+pub use dashboard::*;
 pub use dressup::*;
 pub use funding::*;
 pub use funding_contribute::*;
