@@ -2,7 +2,10 @@
 
 use std::time::Duration;
 
-pub(super) const PROTOCOL_ID: u64 = 0x4172_7109_807a;
+/// BEP-15 connect 魔数 0x41727101980。修正前误写为 0x41727109807a——
+/// 所有标准客户端的 UDP connect 全部被静默丢弃，UDP tier 自上线起不可用
+/// （默认不下发 UDP tier 故未暴露；0230 G31-E 实测抓到）。
+pub(super) const PROTOCOL_ID: u64 = 0x0000_0417_2710_1980;
 pub(super) const CONNECT_ACTION: u32 = 0;
 pub(super) const ANNOUNCE_ACTION: u32 = 1;
 pub(super) const SCRAPE_ACTION: u32 = 2;
