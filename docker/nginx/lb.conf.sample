@@ -1,0 +1,60 @@
+# FluxTorrent 边缘负载均衡样例（0224 G30-A1）
+# 放置：/etc/nginx/conf.d/flux.conf（宿主 nginx，非容器；容器化 LB 自行挂载本文件）
+#
+# 拓扑（三机配方 M1）：nginx 挂在公网入口，web/api 各 2 副本在本机
+# （compose.multi-node.yml --profile app --scale web=2 --scale api=2）。
+# tracker 不进本配置——announce 必须公网直连 tracker 端口（无 XFF 支持，
+# 过 LB 会把 LB IP 记成 peer；G30 附录 D 档三）。
+#
+# web 与 api 同机是硬约束：API_SERVER_URL 构建期烘焙（docker/web.Dockerfile）。
+
+upstream flux_web {
+    # compose DNS 名（同默认网络）；--scale 副本自动多 A 记录轮询
+    server web:3000 max_fails=3 fail_timeout=10s;
+    keepalive 16;
+}
+
+upstream flux_api {
+    server api:8080 max_fails=3 fail_timeout=10s;
+    keepalive 16;
+}
+
+# 判活探针指向 0224 新增端点（web /health、api /api/v1/health）
+server {
+    listen 80;
+    server_name _;
+
+    # ---- web（页面与静态资源） ----
+    location / {
+        proxy_pass http://flux_web;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        # XFF 追加（勿覆盖）：api 侧 TRUST_PROXY=1 取首值
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ---- api 直通（独立客户端/开放 API 场景；页面流量走 / 的 web rewrites 也行） ----
+    location /api/v1/ {
+        proxy_pass http://flux_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ---- 附件下载（大文件：关缓冲、拉超时） ----
+    location /api/v1/attachments/ {
+        proxy_pass http://flux_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+}
+
+# TLS 由站长按域名自行终结（certbot / 云 LB 终结均可）；HSTS 由 web/api
+# 响应头自带。健康检查（外部拨测）：GET /health → 200，GET /api/v1/health → 200。
