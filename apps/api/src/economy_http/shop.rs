@@ -3,97 +3,11 @@
 //! 0207：购买支持数量（stackable 类）；装扮类 SKU 拆分后 config 驱动候选选择。
 
 use super::shop_effects::apply_item_effect;
+use super::shop_list::buffer_cap_check;
+use super::shop_list::shop_items;
 use super::spend::spend_spark;
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
-
-use crate::dto::ok;
-use crate::errors::{DomainError, DomainResult};
-use crate::http::require_auth;
-use crate::state::AppState;
-
-/// 经济路由（挂载进主 /api/v1 scope，单 scope 避免遮蔽）
-
-// ============ 商店（M11） ============
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct ShopItem {
-    id: i64,
-    name: String,
-    kind: String,
-    price: i64,
-    /// 0207：前端要按 config 判定可否选数量（stackable）、装扮候选（frame_id）
-    config: serde_json::Value,
-    /// 装扮类商品：当前用户是否已拥有（0207b 商店「已拥有」态）
-    #[sqlx(default)]
-    owned: bool,
-}
-
-#[get("/shop/items")]
-async fn shop_items(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<impl Responder> {
-    // 匿名可看目录（owned=false 全员）；登录后附拥有态
-    let uid: Option<i64> = crate::http::require_auth(&req, &state)
-        .await
-        .ok()
-        .map(|a| a.id);
-    let items: Vec<ShopItem> = match uid {
-        Some(uid) => {
-            let rows: Vec<(i64, String, String, i64, serde_json::Value, bool)> =
-                sqlx::query_as(
-                    "SELECT si.id, si.name, si.kind, si.price, si.config, \
-                 EXISTS(SELECT 1 FROM user_dressups ud \
-                 WHERE ud.user_id = $1 AND ud.item_id = si.id) AS owned \
-                 FROM shop_items si WHERE si.active = true \
-                 AND si.kind IN ('avatar_frame','animated_avatar',\
-                 'rainbow_id','rainbow_name') \
-                 UNION ALL \
-                 SELECT si.id, si.name, si.kind, si.price, si.config, FALSE \
-                 FROM shop_items si WHERE si.active = true \
-                 AND si.kind NOT IN ('avatar_frame','animated_avatar',\
-                 'rainbow_id','rainbow_name') \
-                 ORDER BY price",
-                )
-                .bind(uid)
-                .fetch_all(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-            rows.into_iter()
-                .map(|(id, name, kind, price, config, owned)| ShopItem {
-                    id,
-                    name,
-                    kind,
-                    price,
-                    config,
-                    owned,
-                })
-                .collect()
-        }
-        None => {
-            let rows: Vec<(i64, String, String, i64, serde_json::Value)> =
-                sqlx::query_as(
-                    "SELECT id, name, kind, price, config \
-                 FROM shop_items WHERE active = true ORDER BY price",
-                )
-                .fetch_all(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-            rows.into_iter()
-                .map(|(id, name, kind, price, config)| ShopItem {
-                    id,
-                    name,
-                    kind,
-                    price,
-                    config,
-                    owned: false,
-                })
-                .collect()
-        }
-    };
-    Ok(ok(items))
-}
 
 #[derive(Deserialize)]
 struct BuyReq {
@@ -104,6 +18,15 @@ struct BuyReq {
     #[serde(default)]
     qty: Option<i64>,
 }
+
+use crate::dto::ok;
+use crate::errors::{DomainError, DomainResult};
+use crate::http::require_auth;
+use crate::state::AppState;
+
+/// 经济路由（挂载进主 /api/v1 scope，单 scope 避免遮蔽）
+
+// ============ 商店（M11） ============
 
 #[post("/shop/buy")]
 async fn shop_buy(
@@ -169,34 +92,8 @@ async fn shop_buy(
         }
     }
 
-    // 反通胀阀门（C5，UNIT3D max-buffer-to-buy-upload 同款）：上传量类商品
-    // 在用户缓冲量（上传-下载）已达 economy_max_buffer_gb 时拒购；0/缺键=不限。
-    // 只拦「花钱买上传量」，券/卡牌/装扮不受影响。
     if matches!(kind.as_str(), "upload_credit" | "upload" | "upload_gb") {
-        let cap_gb: f64 = sqlx::query_scalar(
-            "SELECT COALESCE((SELECT value FROM site_settings \
-             WHERE name = 'economy_max_buffer_gb')::float8, 0)",
-        )
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(0.0);
-        if cap_gb > 0.0 {
-            let (up, down): (i64, i64) = sqlx::query_as(
-                "SELECT uploaded, downloaded FROM users WHERE id = $1",
-            )
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            let buffer_gb =
-                (up - down).max(0) as f64 / 1024.0 / 1024.0 / 1024.0;
-            if buffer_gb >= cap_gb {
-                return Err(DomainError::Validation(format!(
-                    "你的缓冲量已达 {buffer_gb:.0}GB（上限 {cap_gb:.0}GB），\
-                     暂不能继续购买上传量类商品"
-                )));
-            }
-        }
+        buffer_cap_check(&state.repo.db, auth.id).await?;
     }
 
     // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款。

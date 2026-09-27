@@ -89,7 +89,9 @@ export default function SetupWizard() {
   }
 
   const btn =
-    "rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 bg-[var(--accent)] text-[var(--accent-contrast)]";
+    "rounded-md px-4 py-2 text-sm font-medium transition-colors
+    disabled:opacity-50 bg-[var(--accent)]
+    text-[var(--accent-contrast)]";
 
   if (!status && !error) return null;
 
@@ -121,7 +123,8 @@ export default function SetupWizard() {
       </ol>
 
       {error && (
-        <p className="mt-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p className="mt-4 rounded-md border border-danger/40 bg-danger/10
+          px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}

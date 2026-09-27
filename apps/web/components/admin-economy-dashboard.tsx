@@ -50,7 +50,8 @@ export function AdminEconomyDashboard() {
           ["站免池存量", d.pool_balance.toLocaleString()],
           [
             "活跃人均（30 天）",
-            `${d.per_active_capita.toLocaleString()} / ${d.active_30d.toLocaleString()} 人`,
+            `${d.per_active_capita.toLocaleString()} / `
+              + `${d.active_30d.toLocaleString()} 人`,
           ],
           [
             "购买上限阀门",

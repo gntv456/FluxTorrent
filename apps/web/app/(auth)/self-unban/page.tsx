@@ -34,7 +34,8 @@ export default function SelfUnbanPage() {
         使用后再次被封只能通过申诉通道联系管理组。
       </p>
       {msg && (
-        <p className="mt-4 rounded-md border border-line bg-[var(--panel)] px-3 py-2 text-sm">
+        <p className="mt-4 rounded-md border border-line bg-[var(--panel)]
+          px-3 py-2 text-sm">
           {msg}
         </p>
       )}
@@ -42,7 +43,9 @@ export default function SelfUnbanPage() {
         <button
           onClick={() => void unban()}
           disabled={busy}
-          className="mt-6 w-full rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50 bg-[var(--accent)] text-[var(--accent-contrast)]"
+          className="mt-6 w-full rounded-md px-4 py-2 text-sm font-medium
+            disabled:opacity-50 bg-[var(--accent)]
+            text-[var(--accent-contrast)]"
         >
           {busy ? "处理中…" : "立即解封我的账号"}
         </button>
