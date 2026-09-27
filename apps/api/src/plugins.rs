@@ -43,35 +43,33 @@ pub trait Plugin: Send + Sync {
     /// 登录后 Hook
     fn on_user_login(&self, _state: &AppState, _user_id: i64) {}
     /// 种子发布后 Hook
-    fn on_torrent_upload(
-        &self,
-        _state: &AppState,
-        _torrent_id: i64,
-        _owner_id: i64,
-    ) {
-    }
+    fn on_torrent_upload(&self, _: &AppState, _: i64, _: i64) {}
     /// 做种里程碑 Hook（worker 周期触发）
-    fn on_seeding_milestone(
-        &self,
-        _state: &AppState,
-        _user_id: i64,
-        _hours: i64,
-    ) {
+    fn on_seeding_milestone(&self, _: &AppState, _: i64, _: i64) {}
+}
+
+/// 插件运行时开关（0214，五路方案 P1-3.5）：site_settings 的 `plugin__{name}`
+/// 键（yes/no，缺省 yes）。分发处同步询问——站长可一键停用某插件；
+/// 键值热读有查询成本，用 30s 进程内缓存摊薄。
+/// 开关缓存（模块级静态，0224 G30）：plugin_enabled 读；
+/// invalidate_plugin_cache 清（cfg:ver modules 域命中时同步失效）。
+type PluginCache = std::sync::Mutex<
+    std::collections::HashMap<String, (std::time::Instant, bool)>>;
+static PLUGIN_CACHE: tokio::sync::OnceCell<PluginCache> =
+    tokio::sync::OnceCell::const_new();
+
+/// 缓存整体失效（未初始化时跳过——首次读本身就是全量新值）。
+pub fn invalidate_plugin_cache() {
+    if let Some(c) = PLUGIN_CACHE.get() {
+        if let Ok(mut g) = c.lock() {
+            g.clear();
+        }
     }
 }
 
-/// 插件运行时开关（0214，五路方案 P1-3.5）：site_settings 的
-/// `plugin__{name}` 键（yes/no，缺省 yes）。分发处同步询问——
-/// 站长可在「站点设定」一键停用某插件，无需重编译/重启。
-/// 键值热读有查询成本，用 30s 进程内缓存摊薄（与 module_flags 同思路的轻量版）。
 pub async fn plugin_enabled(db: &sqlx::PgPool, name: &str) -> bool {
-    use std::sync::Mutex;
-    type CacheMap =
-        Mutex<std::collections::HashMap<String, (std::time::Instant, bool)>>;
-    static CACHE: tokio::sync::OnceCell<CacheMap> =
-        tokio::sync::OnceCell::const_new();
-    let cache = CACHE
-        .get_or_init(|| async { Mutex::new(std::collections::HashMap::new()) })
+    let cache = PLUGIN_CACHE
+        .get_or_init(|| async { PluginCache::default() })
         .await;
     if let Ok(g) = cache.lock() {
         if let Some((at, v)) = g.get(name) {
@@ -87,6 +85,7 @@ pub async fn plugin_enabled(db: &sqlx::PgPool, name: &str) -> bool {
             .await
             .ok()
             .flatten();
+
     let v = !matches!(v.as_deref(), Some("no"));
     if let Ok(mut g) = cache.lock() {
         g.insert(name.to_string(), (std::time::Instant::now(), v));

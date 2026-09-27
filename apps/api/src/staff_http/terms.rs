@@ -121,6 +121,7 @@ pub async fn terms_upsert(
     .await
     .map_err(internal)?;
     let n = terms::reload(&state.repo.db).await;
+    crate::cfgver::bump(state.get_ref(), "terms").await;
     Ok(ok(serde_json::json!({
         "canonical": from,
         "replacement": to,
@@ -149,6 +150,7 @@ pub async fn terms_toggle(
     let enabled =
         hit.ok_or_else(|| DomainError::Validation("没有这条术语规则".into()))?;
     terms::reload(&state.repo.db).await;
+    crate::cfgver::bump(state.get_ref(), "terms").await;
     Ok(ok(serde_json::json!({ "enabled": enabled })))
 }
 
@@ -179,5 +181,6 @@ pub async fn terms_delete(
         .map_err(internal)?
         .rows_affected();
     terms::reload(&state.repo.db).await;
+    crate::cfgver::bump(state.get_ref(), "terms").await;
     Ok(ok(serde_json::json!({ "deleted": n })))
 }

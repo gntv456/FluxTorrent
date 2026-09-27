@@ -258,6 +258,7 @@ async fn setup_finish(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.module_flags.invalidate().await;
+    crate::cfgver::bump(state.get_ref(), "modules").await;
     // 5) 首个邀请码（P0-2.2 注册死锁）：注册模式为 invite_only 且站内尚无
     //    可用码时，自动发一枚给完成向导的管理员——否则新站长无法产生第二个
     //    用户（自己没配额、后台路径也不知道）。幂等：已有未用码不重复发。

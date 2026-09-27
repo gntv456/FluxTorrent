@@ -94,7 +94,9 @@ pub(super) async fn invalidate_cache(
     let _: () = conn.del("settings:all").await.unwrap_or(());
     // 模块开关（module_*）属 module 组：本进程缓存立即失效（U1 §5.1，最坏竞态由 TTL 兜底）
     state.module_flags.invalidate().await;
-    let _: i64 = conn.publish("settings:changed", group).await.unwrap_or(0);
+    // 0224 G30：settings:changed 的 publish 全仓零订阅者（否定式假通过），
+    // 改走 cfg:ver 版本通道（订阅侧见 cfgver.rs；Redis 分区缓存 DEL 保留）
+    crate::cfgver::bump(state.get_ref(), "modules").await;
 }
 
 #[put("/admin/settings/groups")]

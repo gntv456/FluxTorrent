@@ -68,6 +68,7 @@ pub async fn site_type_pack_apply(
     // 与 apply_pack_extras 一样落在主事务之外（都是「按包声明重建一张表」）。
     let terms_applied =
         super::pack_terms::apply_pack_terms(&state.repo.db, &pack).await?;
+        crate::cfgver::bump(state.get_ref(), "terms").await;
     // 台账计数：extras 形状是 Vec<(kind, applied)>，转对象便于前端直读
     let extras_map: serde_json::Map<String, serde_json::Value> = extras
         .iter()
@@ -95,6 +96,7 @@ pub async fn site_type_pack_apply(
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 模块开关进程缓存失效（apply 改 module_* 后立即生效，不等 30s TTL）
     state.module_flags.invalidate().await;
+    crate::cfgver::bump(state.get_ref(), "modules").await;
     state
         .repo
         .audit(Some(auth.id), "site_type_pack_apply", Some(apply_id))
