@@ -69,7 +69,9 @@ export function DeskTable({
   const { dict, locale } = useI18n();
   const t = dict.staffbox;
   return (
-    <table className="nexus-table">
+    /* M6.5：管理台工单表补 M1 同款横滚包裹（全站最后一张裸 nexus-table） */
+    <div className="baozi-wide-table-scroll">
+      <table className="nexus-table">
       <thead>
         <tr>
           <th className="w-10" />
@@ -149,7 +151,8 @@ export function DeskTable({
           </tr>
         )}
       </tbody>
-    </table>
+      </table>
+    </div>
   );
 }
 

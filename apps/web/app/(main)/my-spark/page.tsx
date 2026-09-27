@@ -163,48 +163,56 @@ export default function MySparkPage() {
             <b className="num text-danger">{spend.toLocaleString()}</b>
           </span>
         </div>
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">{t.ledgerKind}</td>
-              <td className="colhead">{t.ledgerAmount}</td>
-              <td className="colhead">{t.ledgerBalance}</td>
-              <td className="colhead">{t.ledgerAt}</td>
-            </tr>
-            {rows.map((r, i) => (
-              <tr key={i}>
-                <td>
-                  <span className="pill">
-                    {dict.my.kinds[r.kind] ?? t.otherKind}
-                  </span>
-                </td>
-                <td
-                  className={`num font-bold ${
-                    r.amount >= 0 ? "text-success" : "text-danger"
-                  }`}
-                >
-                  {r.amount >= 0 ? "+" : ""}
-                  {r.amount.toLocaleString()}
-                </td>
-                <td className="num">
-                  {r.balance_after?.toLocaleString() ?? "—"}
-                </td>
-                <td className="text-xs text-sub">
-                  {new Date(r.created_at).toLocaleString(
-                    dateLocale(locale),
-                  )}
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
+        {/* M6.5：compact 档 CSS 双态（.profilet 同款：thead 隐藏+块化+小标签），
+         *  客户端组件但免 useIsCompact 双树——流水 4 列窄屏改行读 */}
+        <div className="baozi-wide-table-scroll">
+          <table className="nexus-table profilet">
+            <tbody>
               <tr>
-                <td colSpan={4} className="py-6 text-center text-sub">
-                  {err ?? t.ledgerEmpty}
-                </td>
+                <td className="colhead">{t.ledgerKind}</td>
+                <td className="colhead">{t.ledgerAmount}</td>
+                <td className="colhead">{t.ledgerBalance}</td>
+                <td className="colhead">{t.ledgerAt}</td>
               </tr>
-            )}
-          </tbody>
-        </table>
+              {rows.map((r, i) => (
+                <tr key={i}>
+                  <td>
+                    <span className="profilet__label">{t.ledgerKind}</span>
+                    <span className="pill">
+                      {dict.my.kinds[r.kind] ?? t.otherKind}
+                    </span>
+                  </td>
+                  <td
+                    className={`num font-bold ${
+                      r.amount >= 0 ? "text-success" : "text-danger"
+                    }`}
+                  >
+                    <span className="profilet__label">{t.ledgerAmount}</span>
+                    {r.amount >= 0 ? "+" : ""}
+                    {r.amount.toLocaleString()}
+                  </td>
+                  <td className="num">
+                    <span className="profilet__label">{t.ledgerBalance}</span>
+                    {r.balance_after?.toLocaleString() ?? "—"}
+                  </td>
+                  <td className="text-xs text-sub">
+                    <span className="profilet__label">{t.ledgerAt}</span>
+                    {new Date(r.created_at).toLocaleString(
+                      dateLocale(locale),
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-sub">
+                    {err ?? t.ledgerEmpty}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {rows.length >= limit && (
