@@ -32,6 +32,9 @@ function isAnonymousOk(pathname: string): boolean {
       // 「允许收录」开关与 robots/sitemap 全成了摆设（0201 复验时抓到）
       "/robots.txt",
       "/sitemap.xml",
+      // 健康检查（0224 G30）：LB/compose 探针无会话，被 307 到 /login 等于
+      // 判活永远拿不到 200
+      "/health",
     ].includes(pathname)
   );
 }
