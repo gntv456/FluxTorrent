@@ -5,6 +5,12 @@
 # - 预构建镜像（推荐，无需本机 Rust/Node 工具链）：docker compose pull && docker compose up -d
 # - 本地源码构建（二次开发/内网）：docker compose up -d --build
 # 镜像地址可经 .env 覆盖（FLUX_IMAGE_PREFIX / FLUX_VERSION），fork 站长可指向自己的 registry。
+#
+# 多套部署（同一宿主第二套站点）：container_name / 宿主端口 / 卷名默认都是固定的
+# flux-* · 5432/6379/8080/3000/7070/6969 · docker_*，直接再起一套会整排撞名，
+# 报错只说「container name is already in use」不告诉你怎么办。所有会撞的项都可经
+# FLUX_*_CONTAINER / FLUX_*_PORT / FLUX_*_VOLUME 覆盖（见 .env.example 末节配方），
+# 默认值即本机现状，不设就与以前完全一致。
 
 # 日志轮转（运维 P1）：默认 json-file 无上限，tracker 高频日志可撑爆宿主磁盘
 x-logging: &default-logging
@@ -16,7 +22,7 @@ x-logging: &default-logging
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: flux-postgres
+    container_name: ${FLUX_PG_CONTAINER:-flux-postgres}
     logging: *default-logging
     deploy:
       resources:
@@ -37,7 +43,7 @@ services:
       -c pg_stat_statements.max=5000
       -c log_min_duration_statement=300ms
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${FLUX_DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -49,7 +55,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: flux-redis
+    container_name: ${FLUX_REDIS_CONTAINER:-flux-redis}
     logging: *default-logging
     deploy:
       resources:
@@ -60,7 +66,7 @@ services:
       # 供 healthcheck 在容器内读密码（无密码 ping 曾造成 NOAUTH 下依旧 healthy 的假阳性）
       REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${FLUX_REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
@@ -73,7 +79,7 @@ services:
     build:
       context: ..
       dockerfile: docker/api.Dockerfile
-    container_name: flux-api
+    container_name: ${FLUX_API_CONTAINER:-flux-api}
     logging: *default-logging
     deploy:
       resources:
@@ -110,7 +116,7 @@ services:
       RUST_LOG: info
     ports:
       # 生产：仅本机可达，外部流量经 Nginx/Pingora 反代（§5.1 边缘层）
-      - "${API_BIND:-127.0.0.1}:8080:8080"
+      - "${API_BIND:-127.0.0.1}:${FLUX_API_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,7 +129,7 @@ services:
       retries: 5
     volumes:
       # 备份目录（admin/backups/run 与 scripts/backup.sh 同卷；宿主 ./backups 持久化）
-      - ../backups:/backups
+      - ${FLUX_BACKUP_DIR:-../backups}:/backups
       # 本地开发：迁移目录以宿主为准（镜像内迁移滞后时容器可先行），生产可去掉
       - ../apps/api/migrations:/app/migrations:ro
       # 附件持久化（P0）：api 落盘 savedirectory=./attachments（storage.rs），不挂卷
@@ -136,7 +142,7 @@ services:
     build:
       context: ..
       dockerfile: docker/worker.Dockerfile
-    container_name: flux-worker
+    container_name: ${FLUX_WORKER_CONTAINER:-flux-worker}
     logging: *default-logging
     deploy:
       resources:
@@ -166,7 +172,7 @@ services:
     build:
       context: ..
       dockerfile: docker/tracker.Dockerfile
-    container_name: flux-tracker
+    container_name: ${FLUX_TRACKER_CONTAINER:-flux-tracker}
     logging: *default-logging
     deploy:
       resources:
@@ -195,9 +201,9 @@ services:
       RUST_LOG: info
     ports:
       # BT 客户端直连入口，必须公网可达（与 api/web 的 127.0.0.1 收口不同，此为有意暴露）
-      - "7070:7070"
+      - "${FLUX_TRACKER_BIND:-0.0.0.0}:${FLUX_TRACKER_PORT:-7070}:7070"
       # UDP tracker（BEP15）：qBittorrent/Transmission 默认优先 UDP；TRACKER_UDP_BIND 置空可停用
-      - "6969:6969/udp"
+      - "${FLUX_TRACKER_BIND:-0.0.0.0}:${FLUX_TRACKER_UDP_PORT:-6969}:6969/udp"
     healthcheck:
       # 镜像是 debian-slim（无 wget/curl），用 bash /dev/tcp 探测端口连通
       test: ["CMD", "bash", "-c", "timeout 2 bash -c '</dev/tcp/127.0.0.1/7070'"]
@@ -218,7 +224,7 @@ services:
     build:
       context: ..
       dockerfile: docker/web.Dockerfile
-    container_name: flux-web
+    container_name: ${FLUX_WEB_CONTAINER:-flux-web}
     logging: *default-logging
     deploy:
       resources:
@@ -233,7 +239,7 @@ services:
       # 相对路径——不编假域名，但要绝对地址就得在这配。
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
     ports:
-      - "${WEB_BIND:-127.0.0.1}:3000:3000"
+      - "${WEB_BIND:-127.0.0.1}:${FLUX_WEB_PORT:-3000}:3000"
     depends_on:
       - api
     restart: unless-stopped
@@ -248,7 +254,7 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
-    container_name: flux-prometheus
+    container_name: ${FLUX_PROM_CONTAINER:-flux-prometheus}
     profiles: ["monitoring"]
     logging: *default-logging
     volumes:
@@ -259,12 +265,12 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.retention.time=30d
     ports:
-      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:${FLUX_PROM_PORT:-9090}:9090"
     restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
-    container_name: flux-grafana
+    container_name: ${FLUX_GRAFANA_CONTAINER:-flux-grafana}
     profiles: ["monitoring"]
     logging: *default-logging
     environment:
@@ -277,13 +283,17 @@ services:
       - ./monitoring/provisioning/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     ports:
-      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:${FLUX_GRAFANA_PORT:-3001}:3000"
     depends_on:
       - prometheus
     restart: unless-stopped
 
 volumes:
   pgdata:
+    name: ${FLUX_PG_VOLUME:-docker_pgdata}
   attachments:
+    name: ${FLUX_ATTACH_VOLUME:-docker_attachments}
   prometheus-data:
+    name: ${FLUX_PROM_VOLUME:-docker_prometheus-data}
   grafana-data:
+    name: ${FLUX_GRAFANA_VOLUME:-docker_grafana-data}

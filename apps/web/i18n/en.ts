@@ -106,13 +106,28 @@ const enBase: Omit<
     step2: "Site info",
     step3: "Compliance",
     siteName: "Site name",
-    noAdmin:
-      "A root account is auto-seeded (username: root, initial password: password123; a forced password change happens on first sign-in). Change it, then complete the wizard with the new password.",
+    // G12 re-verify: the seeded root still has a temp password, so the wizard
+    // must offer an inline password change (the gate blocks everything else)
+    needNewPwTitle: "The admin still uses the initial password — set a new one",
+    needNewPwHint:
+      "The seeded admin root (initial password: password123) uses a temporary password — with it, every endpoint except the password change is blocked, so setup cannot complete. After setting one, the wizard finishes with the new password (other devices must sign in again).",
+    newPw: "New password (min 8 chars)",
+    newPw2: "Confirm new password",
+    pwTooShort: "New password must be at least 8 characters",
+    pwMismatch: "The two new passwords do not match",
     goHome: "Enter the site",
     goAdmin: "Open admin panel",
     goUpload: "Publish the first torrent",
+    goPacks: "Import content packs",
     nextSteps:
-      "Before opening: check tracker announce URL, SMTP and registration mode in Site Settings.",
+      "Before opening: check tracker announce URL, SMTP and registration mode in Site Settings; more content packs (categories / themes) can be imported under Settings → Content Packs.",
+    // G12: both the site type and the site name can be skipped — make the
+    // skip path explicit instead of silently defaulting
+    skipPack: "Skip — start from a blank site",
+    skipPackHint:
+      "Skip = no site-type pack applied (categories / modules keep system defaults); you can import one anytime under Settings → Content Packs.",
+    siteNameHint:
+      "Optional — leaving it blank keeps the current name (shown as the input placeholder); change it later in Settings → Basic.",
     adminUser: "Admin username",
     adminPass: "Admin password",
     prev: "Back",
@@ -171,6 +186,7 @@ const enBase: Omit<
     douban: "Douban",
     noRating: "No rating",
     empty: "The site just sprouted — no resources yet",
+    emptyAction: "Publish the first torrent",
   },
   torrents: {
     viewLabel: "View",

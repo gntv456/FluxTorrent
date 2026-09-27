@@ -83,13 +83,26 @@ const zhCnBase = {
     step2: "站点信息",
     step3: "合规确认",
     siteName: "站点名称",
-    noAdmin:
-      "系统已自动预置 root 账号（用户名 root，初始密码 password123，首次登录会强制要求修改）。请修改密码后用新密码完成向导。",
+    // G12 复验：预置 root 是临时密码时必须就地改密（闸门拦其他接口）
+    needNewPwTitle: "管理员正在使用初始密码：先设置新密码再继续",
+    needNewPwHint:
+      "系统预置管理员 root（初始密码 password123）为临时密码——临时密码下除改密外的接口都会被拦截，不先改密无法完成安装。设置后向导会直接用新密码完成安装（其他设备需重新登录）。",
+    newPw: "新密码（至少 8 位）",
+    newPw2: "确认新密码",
+    pwTooShort: "新密码至少 8 位",
+    pwMismatch: "两次输入的新密码不一致",
     goHome: "进入站点",
     goAdmin: "去管理后台",
     goUpload: "发布第一颗种子",
+    goPacks: "导入内容包",
     nextSteps:
-      "开站前建议检查：后台「站点设定」里的 tracker announce 地址、邮件 SMTP、注册模式三项。",
+      "开站前建议检查：后台「站点设定」里的 tracker announce 地址、邮件 SMTP、注册模式三项；更多分类/主题等内容包也可在「站点设定 → 内容包」导入。",
+    // G12：站型/站名均可跳过——跳过路径要明示，别让站长静默裸奔
+    skipPack: "跳过：暂不预设站型，用空站起步",
+    skipPackHint:
+      "跳过 = 不应用任何站型包（分类 / 模块保持系统默认）；之后可在后台「站点设定」页的「内容包」里随时导入。",
+    siteNameHint:
+      "可留空——留空将沿用当前站名（见输入框灰色提示）；之后可在后台「站点设定 → 基础设定」修改。",
     adminUser: "管理员用户名",
     adminPass: "管理员密码",
     prev: "上一步",
@@ -147,6 +160,7 @@ const zhCnBase = {
     douban: "豆瓣",
     noRating: "暂无评分",
     empty: "站点刚刚发芽，还没有资源",
+    emptyAction: "发布第一个资源",
   },
   torrents: {
     viewLabel: "视图",
