@@ -106,11 +106,15 @@ export function defaultNav({
           : []),
         ...(modules("tasks") ? [{ href: "/tasks", label: nav.tasks }] : []),
         { href: "/my-spark", label: t(nav.spark) },
+        // C5（0226）：魔力明细（触点 #11 积分透明化）
+        { href: "/me/sparks", label: nav.sparkLedger },
       ],
     },
     {
       group: nav.growth,
       items: [
+        // P2（0226）：等级要求公开页（触点 #2）
+        { href: "/classes", label: nav.classes },
         ...(modules("exams") ? [{ href: "/me/exams", label: nav.exams }] : []),
         { href: "/me/achievements", label: nav.achievements },
         ...(modules("resurrections")

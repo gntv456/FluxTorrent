@@ -5,6 +5,7 @@
 
 mod appeals;
 mod captcha;
+mod classes_public;
 mod hr;
 mod login_aux;
 mod mail;
@@ -14,6 +15,7 @@ mod wishlist;
 
 use appeals::*;
 pub use captcha::*;
+use classes_public::*;
 use hr::*;
 use login_aux::*;
 pub use mail::*;
@@ -44,6 +46,9 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         // 等级
         .service(class_rules_list)
         .service(my_class_progress)
+        // P2 触点补齐（0226）：等级公开页 + 自助解封
+        .service(classes_public)
+        .service(self_unban)
         .service(wishlist_list)
         .service(wishlist_add)
         .service(wishlist_remove)

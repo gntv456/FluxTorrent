@@ -89,6 +89,8 @@ const enBase: Omit<
     upload: "Upload",
     exams: "My Exams",
     achievements: "Achievements",
+    sparkLedger: "Currency ledger",
+    classes: "Class requirements",
     resurrections: "Resurrections",
     ariaPrimary: "Primary navigation",
     more: "More",
@@ -101,10 +103,22 @@ const enBase: Omit<
   setup: {
     title: "Site Setup Wizard",
     subtitle:
-      "Three steps: pick a site type → site info → compliance confirmation",
+      "Four steps: pick a site type → site info → onboarding preset → compliance",
     step1: "Site type",
     step2: "Site info",
-    step3: "Compliance",
+    step3: "Onboarding",
+    step4: "Compliance",
+    // C4 (0226): onboarding presets — strict exam-based vs lenient buffer-based
+    presetTitle: "Pick an onboarding preset (optional)",
+    presetHint:
+      "Two newcomer philosophies proven by mainstream engines. Writes one bundle of operating parameters; switch or fine-tune anytime in the admin panel — existing user data is untouched.",
+    presetSkip: "Skip: keep current settings, configure manually",
+    presetStrict: "Exam-based (strict)",
+    presetStrictDesc:
+      "High-pressure, high-retention (NexusPHP style): auto-assigned newcomer exams; 96h H&R window, 3-violation cap; demotable peasant tier; no initial buffer.",
+    presetLenient: "Buffer-based (lenient)",
+    presetLenientDesc:
+      "Gentle onboarding (UNIT3D style): 50GB initial upload buffer; 168h H&R window, 5-violation cap, 48h pre-warning; no mandatory exams, no auto-demotion.",
     siteName: "Site name",
     // G12 re-verify: the seeded root still has a temp password, so the wizard
     // must offer an inline password change (the gate blocks everything else)

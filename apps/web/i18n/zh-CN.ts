@@ -67,6 +67,8 @@ const zhCnBase = {
     upload: "发布",
     exams: "我的考核",
     achievements: "成就墙",
+    sparkLedger: "魔力明细",
+    classes: "等级要求",
     resurrections: "复活任务",
     ariaPrimary: "主导航",
     more: "更多",
@@ -78,10 +80,22 @@ const zhCnBase = {
   },
   setup: {
     title: "站点安装向导",
-    subtitle: "三步完成建站：选择站型 → 站点信息 → 合规确认",
+    subtitle: "四步完成建站：选择站型 → 站点信息 → 新手模板 → 合规确认",
     step1: "选择站型",
     step2: "站点信息",
-    step3: "合规确认",
+    step3: "新手模板",
+    step4: "合规确认",
+    // C4（0226）：新手运营模板——考核淘汰制 / 缓冲宽进制
+    presetTitle: "选择新手运营模板（可选）",
+    presetHint:
+      "两种已被主流引擎验证的新手哲学，一键写入一组运营参数（考核 / H&R / 初始缓冲 / 降级）。随时可在后台「新手运营模板」页切换或逐项微调，不影响已有用户数据。",
+    presetSkip: "跳过：保持现状，参数手动配置",
+    presetStrict: "考核淘汰制",
+    presetStrictDesc:
+      "高压高留存（NexusPHP 式）：自动派发新人转正考核；H&R 考察 96 小时、违规上限 3；低保户档可自动降级；无初始缓冲。",
+    presetLenient: "缓冲宽进制",
+    presetLenientDesc:
+      "宽进宽养（UNIT3D 式）：新用户初始 50GB 上传缓冲；H&R 考察 168 小时、违规上限 5、到期前 48 小时预警；无强制考核、不自动降级。",
     siteName: "站点名称",
     // G12 复验：预置 root 是临时密码时必须就地改密（闸门拦其他接口）
     needNewPwTitle: "管理员正在使用初始密码：先设置新密码再继续",
