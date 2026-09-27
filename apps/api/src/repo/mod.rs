@@ -9,6 +9,11 @@ use crate::errors::{DomainError, DomainResult};
 
 pub struct Repo {
     pub db: PgPool,
+    /// 只读池（0230 G31-D2）：DATABASE_REPLICA_URL 未配置时与主池同一句柄
+    /// （Arc 克隆，零开销零行为变化）；配置后热点读走副本。
+    /// ⚠️ 写后立读路径（发布跳转/支付状态/刚写完的实体）必须用 db，
+    /// 复制延迟会让用户看到旧数据——钉主库清单见配方文档 §8。
+    pub read_db: PgPool,
 }
 
 #[derive(sqlx::FromRow)]
@@ -37,8 +42,41 @@ impl From<UserRow> for UserAccount {
 }
 
 impl Repo {
+    /// 同步构造（测试用）：read_db = 主池克隆。
+    #[allow(dead_code)]
     pub fn new(db: PgPool) -> Self {
-        Self { db }
+        Self {
+            read_db: db.clone(),
+            db,
+        }
+    }
+
+    /// 副本池构造：None / 连接失败时退化为主池克隆（启动不因副本故障失败）。
+    pub async fn with_replica(db: PgPool, replica_url: Option<&str>) -> Self {
+        let read_db = match replica_url {
+            Some(url) if !url.is_empty() => {
+                match sqlx::postgres::PgPoolOptions::new()
+                    .max_connections(8)
+                    .acquire_timeout(std::time::Duration::from_secs(3))
+                    .connect(url)
+                    .await
+                {
+                    Ok(p) => {
+                        tracing::info!("读写分离已启用：热点读走只读副本");
+                        p
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            ?e,
+                            "只读副本连接失败，read_db 退化为主池"
+                        );
+                        db.clone()
+                    }
+                }
+            }
+            _ => db.clone(),
+        };
+        Self { db, read_db }
     }
 
     pub async fn find_user_by_name(
