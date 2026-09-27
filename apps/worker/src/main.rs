@@ -5,6 +5,7 @@
 mod bank_jobs;
 mod jobs;
 mod runtime_log;
+mod shutdown;
 mod task_jobs;
 
 #[tokio::main]
@@ -21,6 +22,10 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .with(runtime_log::layer("worker"))
         .init();
+
+    // 优雅停机（0224 G30）：SIGTERM/SIGINT → 停止认领 + 排空在跑手动任务（≤60s）。
+    // compose 侧 stop_grace_period 须 ≥ 90s（60s 排空 + 余量），否则 docker 仍 SIGKILL。
+    shutdown::install_signal_handler();
 
     let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
         "postgres://flux:flux@127.0.0.1:5432/fluxtorrent".into()
