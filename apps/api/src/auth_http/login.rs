@@ -33,6 +33,20 @@ pub async fn login(
             "IP 已被封禁，请联系管理组".into(),
         ));
     }
+    // 账户级失败锁定（P2 安全小补）：连续失败 5 次锁 15 分钟（Redis 计数，
+    // 成功登录即清零）。与既有 IP/用户名限流叠加——限流拦高频，锁定拦低慢
+    // 定向爆破。锁定期内连正确密码也拒（不给探测反馈）。
+    {
+        use redis::AsyncCommands;
+        let lock_key = format!("acctlock:{}", body.username.to_lowercase());
+        let mut c = state.redis.clone();
+        let fails: i64 = c.get(&lock_key).await.unwrap_or(0i64);
+        if fails >= 5 {
+            return Err(DomainError::Validation(
+                "该账号因连续登录失败已被临时锁定，请 15 分钟后再试".into(),
+            ));
+        }
+    }
     // 登录限流（§5.7：5 次/分钟/用户名 + 5 次/分钟/IP 双维度——
     // 原实现仅用户名维度，换用户名字典爆破同一账户不受限）
     throttle(&state, format!("login:{}", body.username)).await?;
@@ -61,6 +75,14 @@ pub async fn login(
         }
     };
     if !domain::verify_password(&user.pass_hash, &body.password) {
+        // 账户级锁定计数 +1（15 分钟窗口累计；命中 5 次后见上方拦截）
+        {
+            use redis::AsyncCommands;
+            let lock_key = format!("acctlock:{}", body.username.to_lowercase());
+            let mut c = state.redis.clone();
+            let _: i64 = c.incr(&lock_key, 1).await.unwrap_or(0);
+            let _: () = c.expire(&lock_key, 900).await.unwrap_or(());
+        }
         let _ = sqlx::query(
                         "INSERT INTO login_events (user_id, ip, ok, \
              user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 1)",
@@ -118,6 +140,13 @@ pub async fn login(
     .await
     .unwrap_or(24)
     .clamp(1, 720);
+    // 成功登录清锁定计数（P2 账户级锁定配套）
+    {
+        use redis::AsyncCommands;
+        let lock_key = format!("acctlock:{}", body.username.to_lowercase());
+        let mut c = state.redis.clone();
+        let _: () = c.del(&lock_key).await.unwrap_or(());
+    }
     let token = state
         .jwt
         .issue(user.id, user.class_id, ttl_hours)
@@ -150,6 +179,16 @@ pub async fn login(
         .max_age(actix_web::cookie::time::Duration::hours(ttl_hours))
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
+        // Secure flag（P2 安全小补）：请求已过 TLS（X-Forwarded-Proto=https 的
+        // 反代场景）时显式加 secure——本地 http 开发不受影响。依赖站点按生产
+        // 部署指南以 TLS 反代对外，此 flag 防 cookie 经明文 http 泄出。
+        .secure(
+            req.headers()
+                .get("x-forwarded-proto")
+                .and_then(|v| v.to_str().ok())
+                .map(|v| v.eq_ignore_ascii_case("https"))
+                .unwrap_or(false),
+        )
         .finish()
         .to_string();
     use actix_web::http::header::{HeaderName, HeaderValue};

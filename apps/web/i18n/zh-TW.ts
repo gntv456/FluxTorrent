@@ -89,6 +89,8 @@ const zhTwBase: Omit<
     upload: "發佈",
     exams: "我的考核",
     achievements: "成就牆",
+    sparkLedger: "魔力明細",
+    classes: "等級要求",
     resurrections: "復活任務",
     ariaPrimary: "主導航",
     more: "更多",
@@ -100,10 +102,22 @@ const zhTwBase: Omit<
   },
   setup: {
     title: "站點安裝嚮導",
-    subtitle: "三步完成建站：選擇站型 → 站點資訊 → 合規確認",
+    subtitle: "四步完成建站：選擇站型 → 站點資訊 → 新手模板 → 合規確認",
     step1: "選擇站型",
     step2: "站點資訊",
-    step3: "合規確認",
+    step3: "新手模板",
+    step4: "合規確認",
+    // C4（0226）：新手運營模板——考核淘汰制 / 緩衝寬進制
+    presetTitle: "選擇新手運營模板（可選）",
+    presetHint:
+      "兩種已被主流引擎驗證的新手哲學，一鍵寫入一組運營參數（考核 / H&R / 初始緩衝 / 降級）。隨時可在後台「新手運營模板」頁切換或逐項微調，不影響已有用戶資料。",
+    presetSkip: "跳過：保持現狀，參數手動配置",
+    presetStrict: "考核淘汰制",
+    presetStrictDesc:
+      "高壓高留存（NexusPHP 式）：自動派發新人轉正考核；H&R 考察 96 小時、違規上限 3；低保戶檔可自動降級；無初始緩衝。",
+    presetLenient: "緩衝寬進制",
+    presetLenientDesc:
+      "寬進寬養（UNIT3D 式）：新用戶初始 50GB 上傳緩衝；H&R 考察 168 小時、違規上限 5、到期前 48 小時預警；無強制考核、不自動降級。",
     siteName: "站點名稱",
     // G12 複驗：預置 root 是臨時密碼時必須就地改密（閘門攔其他介面）
     needNewPwTitle: "管理員正在使用初始密碼：先設定新密碼再繼續",

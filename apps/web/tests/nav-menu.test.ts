@@ -20,6 +20,8 @@ const nav = {
   top: "排行",
   magicPool: "站免池",
   myhr: "我的H&R",
+  sparkLedger: "魔力明细",
+  classes: "等级要求",
   contests: "大赛",
   medalWall: "勋章墙",
   frames: "头像挂件",
@@ -78,7 +80,11 @@ describe("defaultNav", () => {
     ]);
     // {magic} 占位替换：分组名与条目名都生效
     expect(r.groups[1].group).toBe("魔力经济");
-    expect(r.groups[1].items.at(-1)?.label).toBe("魔力经济");
+    // 魔力经济组末两项：魔力总览 / 魔力明细（0226 C5 新增）
+    expect(r.groups[1].items.at(-2)?.label).toBe("魔力经济");
+    expect(r.groups[1].items.at(-1)?.label).toBe("魔力明细");
+    // 成长荣誉组首项：等级要求公开页（0226 P2 触点 #2）
+    expect(r.groups[2].items[0]?.href).toBe("/classes");
   });
 
   it("模块开关过滤：forums 关闭一级消失，games 关闭娱乐组剔除", () => {
