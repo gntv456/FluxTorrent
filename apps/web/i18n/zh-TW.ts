@@ -4799,6 +4799,7 @@ const zhTwBase: Omit<
     rlHint: "記錄 WARN 及以上級別（api/worker 執行日誌落庫，保留 14 天）；門檻可用環境變數 FLUX_RTLOG_LEVEL 調整。",
     rlTime: "時間",
     rlSrc: "來源",
+    rlInstance: "實例",
     rlTarget: "模組",
     rlMsg: "訊息",
     rlEmpty: "暫無執行日誌。",

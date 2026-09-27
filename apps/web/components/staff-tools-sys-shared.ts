@@ -33,6 +33,7 @@ export interface RuntimeLogItem {
   target: string;
   message: string;
   repeat: number;
+  instance: string;
 }
 
 export interface RuntimeLogPage {
@@ -42,6 +43,8 @@ export interface RuntimeLogPage {
   per_page: number;
   pages: number;
   counts_24h: [string, number][];
+  /** 近 7 天出现过的实例（0224 G30）：多副本部署时非空，前端据此显示筛选器 */
+  instances: [string, number][];
 }
 
 export interface LocationItem {

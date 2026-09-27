@@ -4944,6 +4944,7 @@ const enBase: Omit<
     rlHint: "Records WARN and above (api/worker runtime log sink, kept 14 days); tune the threshold with the FLUX_RTLOG_LEVEL env var.",
     rlTime: "Time",
     rlSrc: "Source",
+    rlInstance: "Instance",
     rlTarget: "Target",
     rlMsg: "Message",
     rlEmpty: "No runtime logs.",

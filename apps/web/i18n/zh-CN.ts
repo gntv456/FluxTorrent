@@ -4798,6 +4798,7 @@ const zhCnBase = {
     rlHint: "记录 WARN 及以上级别（api/worker 运行日志落库，保留 14 天）；阈值可用环境变量 FLUX_RTLOG_LEVEL 调整。",
     rlTime: "时间",
     rlSrc: "来源",
+    rlInstance: "实例",
     rlTarget: "模块",
     rlMsg: "消息",
     rlEmpty: "暂无运行日志。",
