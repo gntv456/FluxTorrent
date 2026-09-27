@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { HomeNewsPoster } from "@/components/home-news-poster";
 import { ShoutBox } from "@/components/shout-box";
 import { FunBox } from "@/components/fun-box";
 import { AttendanceCard } from "@/components/home-attendance";
@@ -21,28 +22,40 @@ import type { HomeData } from "@/components/home-data";
 
 export function HomeSections({
   latest,
+  initialData = null,
+  initialMods = {},
 }: {
   /** 海报墙节点：数据由首页 RSC 取（服务端渲染不退化），
    *  但**位置与占宽由排版清单决定**——四审 L6 前它没有渲染分支，
    *  站长的排序/span 对它完全无效，只在页面末尾硬渲染。 */
   latest?: React.ReactNode;
+  /** 首页数据（SSR 直出）：由首页 RSC 预取并传入，首屏即渲染真内容，
+   *  不再退化到"加载中…"壳（伤首屏与 SEO）。客户端 useEffect 仍会
+   *  重新拉一次以保证签到/公告等交互后的新鲜度。 */
+  initialData?: HomeData | null;
+  /** 模块开关（SSR 直出）：同样由 RSC 预取，避免首屏板块可见性抖动 */
+  initialMods?: Record<string, boolean>;
 } = {}) {
   const { dict, currency } = useI18n();
   const t = dict.home2;
   // 模块开关（二审 G2-1 修复）：attendance/shoutbox/funbox/lucky_draw 板块
   // 按对应模块过滤——games/attendance/shoutbox 关闭的站首页不再出现对应板块。
   // 缺键视为开（与 requireModule/Header mod() 同口径）。
-  const [mods, setMods] = useState<Record<string, boolean>>({});
+  // SSR：初始值由 RSC 传入；无初值（客户端独用时）再回落到 fetch。
+  const [mods, setMods] = useState<Record<string, boolean>>(initialMods);
   useEffect(() => {
+    if (Object.keys(initialMods).length > 0) return;
     fetch("/api/v1/site-profile")
       .then((r) => r.json())
       .then((b: { data?: { modules?: Record<string, boolean> } }) =>
         setMods(b?.data?.modules ?? {}),
       )
       .catch(() => setMods({}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const mod = (k: string) => mods[k] !== false;
-  const [data, setData] = useState<HomeData | null>(null);
+  // SSR：初始值来自 RSC 预取的 HomeData，首屏直出真内容
+  const [data, setData] = useState<HomeData | null>(initialData);
   const [err, setErr] = useState(false);
   const [modal, setModal] = useState<number | null>(null);
   const [checkinBusy, setCheckinBusy] = useState(false);
@@ -52,7 +65,8 @@ export function HomeSections({
     api
       .get<HomeData>("/api/v1/home")
       .then(setData)
-      .catch(() => setErr(true));
+      // 已有 SSR 直出的数据时，后台刷新失败不应把首屏内容替换成错误页
+      .catch(() => setErr((prev) => (data === null ? true : prev)));
   };
   useEffect(load, []);
 
@@ -109,30 +123,28 @@ export function HomeSections({
               </h1>
             </header>
             <div className="home-news__body">
-              <div className="home-news__poster" aria-hidden="true">
-                {dict.common.brand}
-              </div>
+              <HomeNewsPoster
+                brand={dict.common.brand}
+                items={rest.slice(0, 3).map((n) => ({
+                  id: n.id,
+                  title: n.title,
+                }))}
+              />
               <div className="home-news__content">
                 {headline && (
                   <article className="home-news__summary">
                     <strong>{headline.title}</strong>
                     <p>{headlineBodyPlain}…</p>
                     <div className="home-news__summary-footer">
-                      <button
-                        type="button"
-                        className="baozi-button"
+                      <button type="button" className="baozi-button"
                         onClick={() => setModal(headline.id)}
-                      >
-                        {t.viewNews}
-                      </button>
+                      >{t.viewNews}</button>
                     </div>
                   </article>
                 )}
-                <div className="home-news__list" aria-label={t.moreNews}>
+                <div aria-label={t.moreNews} className="home-news__list">
                   {rest.map((n) => (
-                    <button
-                      key={n.id}
-                      type="button"
+                    <button key={n.id} type="button"
                       className="home-news__item"
                       onClick={() => setModal(n.id)}
                     >

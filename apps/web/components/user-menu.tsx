@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { api, setSessionCookie, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import {
@@ -260,12 +261,12 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
             {mod("invites") && <a href="/invites">{dict.nav.invites}</a>}
             {mod("jixiao") && <a href="/jixiao">{dict.nav.jixiao}</a>}
             {me.class_id !== undefined && me.class_id >= 90 && (
-              <a
+              <Link
                 href="/admin"
                 className="font-bold text-[var(--baozi-orange-dark)]"
               >
                 {dict.admin.panelTitle}
-              </a>
+              </Link>
             )}
           </nav>
 
