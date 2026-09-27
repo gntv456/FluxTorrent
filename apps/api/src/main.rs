@@ -18,6 +18,7 @@ mod bencode;
 mod community_http;
 mod compat_http;
 mod config;
+mod cfgver;
 mod content_http;
 mod domain;
 mod dto;
@@ -114,6 +115,11 @@ async fn main() -> anyhow::Result<()> {
     runtime_log::attach(state.repo.db.clone());
 
     // 迁移（幂等）。路径解析相对 crate 根，兼容从仓库根或 apps/api 目录启动。
+    // 0224 G30：FLUX_BOOT_MIGRATIONS=0 时跳过（多副本滚动启停/第二实例起不重复
+    // 跑迁移与种子；sqlx 内部 advisory lock 仍在，这是显式开关不是并发保护）。
+    if std::env::var("FLUX_BOOT_MIGRATIONS")
+        .unwrap_or_else(|_| "1".into())
+        != "0"
     {
         let st = state.clone();
         let migrations_dir = ["./migrations", "apps/api/migrations"]
@@ -129,6 +135,13 @@ async fn main() -> anyhow::Result<()> {
     // 术语快照（0205 / 四审 L7）：迁移跑完才有 site_terms，错误信封的文案出口
     // 读的是这份进程内快照。零行 = 零规则 = 全站文案原样（新装与升级都不变文案）。
     terms::reload(&state.repo.db).await;
+
+    // 跨进程配置失效通道（0224 G30）：每 3s 轮询 flux:cfg:ver，术语/模块开关
+    // 在其它副本的变更 ≤3s 内本进程跟随（详见 cfgver.rs 模块注释）。
+    {
+        let st = state.clone();
+        cfgver::spawn_poll(st.get_ref().clone());
+    }
 
     // 演示账号防线（审计 P0）：0018 迁移自带 12 个口令为 password123 的演示账号
     //（argon2 哈希公开在迁移文件里，任何拿到源码的人都能直接登录——含 class 6 高权限）。

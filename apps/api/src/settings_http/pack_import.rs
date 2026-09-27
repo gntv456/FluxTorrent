@@ -1,12 +1,8 @@
 //! 内容包导入与回滚的 HTTP 编排（M1 核心）：快照 → 纯覆盖落库 → 登记 → 审计。
-//! 从 packs.rs 按域拆出（300 行门禁）。格式与导出在 pack_format.rs，
-//! 落库原语（快照/守卫/apply）在 pack_store.rs。
-//!
-//! 路径纪律：
-//! - 导入（confirm=true）在**单事务**内：拍快照 → 防悬挂检查 → 落库 → 写
-//!   content_packs（同 pack_id 升级覆盖快照）→ 审计 → 提交；失败整体回退；
-//! - 回滚 = 读 content_packs.snapshot，包装成一次「逆向导入」走同一条纯覆盖
-//!   路径重放（A2：回滚不依赖逆向 diff，永远可用），回滚后登记行删除；
+//! 从 packs.rs 按域拆出；格式在 pack_format.rs，落库原语在 pack_store.rs。
+//! 路径纪律：导入（confirm=true）在**单事务**内：拍快照 → 防悬挂检查 →
+//! 落库 → 写 content_packs → 审计 → 提交，失败整体回退；回滚 = 读 snapshot
+//! 包装成「逆向导入」重放同一纯覆盖路径（永远可用），登记行删除。
 //! - 预检（confirm=false）只读：重名分类悬挂检查 + theme 白名单/校验 + 差异计数。
 
 use actix_web::{web, HttpResponse};
@@ -216,6 +212,7 @@ async fn import_taxonomy(
     .await;
     tx.commit().await.map_err(internal)?;
     state.module_flags.invalidate().await;
+    crate::cfgver::bump(state.get_ref(), "modules").await;
     invalidate_cache(state, "appearance").await;
     Ok(ok(serde_json::json!({
         "dry_run": false,
@@ -647,6 +644,7 @@ pub(super) async fn rollback(
     .await;
     tx.commit().await.map_err(internal)?;
     state.module_flags.invalidate().await;
+    crate::cfgver::bump(state.get_ref(), "modules").await;
     invalidate_cache(state, "appearance").await;
     Ok(ok(serde_json::json!({ "rolled_back": pack_id })))
 }

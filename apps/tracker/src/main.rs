@@ -165,6 +165,9 @@ async fn main() -> anyhow::Result<()> {
         });
     }
 
+    // tracker 不订阅 flux:cfg:ver：术语/模块开关不在 tracker 进程内缓存（它只
+    // 读 ip_bans/agent_rules/passkey 小表，走上方 guard:ver），保持单一通道不重复。
+
     // connectable 抽样（0071 P1-9，防假保种）：每 5min 抽 50 个 peer 做 TCP 回连（3s 超时），
     // 未测优先、已测轮替复测。结果写回 peer 表 → 随 announce 事件流入 snatches.connectable，
     // 「不可达 + 零上传」的做种不计做种收益并进作弊探测。纯探测不阻断任何响应路径。
