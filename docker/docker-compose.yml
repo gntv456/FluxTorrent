@@ -204,6 +204,9 @@ services:
       # 支持「URL path 填入 tracker_id」扩展约定的客户端可用。默认空 = 只发 HTTP tier；
       # 需要时设为 udp://host:6969 追加 UDP tier（客户端失败后按 BEP12 降级 HTTP）。
       TRACKER_UDP_URL: ${TRACKER_UDP_URL:-}
+      # UDP 收包 worker 数（0227 G31 XL 档）：SO_REUSEPORT 多 socket 内核负载
+      # 均衡；空/1 = 单循环（行为不变），大站建议 4
+      TRACKER_UDP_WORKERS: ${TRACKER_UDP_WORKERS:-}
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       RUST_LOG: info

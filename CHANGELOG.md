@@ -52,6 +52,16 @@
 
 ## [Unreleased]
 
+### UDP tracker 修复 + 多核收包（2026-09-27）
+
+- **⚠ 修复 UDP tracker 从未可用**：connect 协议魔数误写为 0x41727109807a
+  （BEP-15 规定 0x41727101980），所有标准客户端的 UDP 请求被静默丢弃。
+  实测修复后 connect→announce 全往返通。
+- **UDP 多核收包**：`TRACKER_UDP_WORKERS=N`（缺省 1，行为不变）以
+  SO_REUSEPORT 起 N 个收包 socket（内核负载均衡；仅 Unix，Windows 自动
+  钳回 1）。XL 档触发点就此关闭。
+- 配方 §8.4 含 Linux 宿主验证命令（Docker Desktop UDP 回程不可用于验证）。
+
 ### 数据层规模支撑 G31-D 批（2026-09-27，迁移 0230；配方 §8 规模矩阵）
 
 - **部署规模矩阵**（配方 §8）：S/M/L/XL 四档——同一份代码伺候大小站，
