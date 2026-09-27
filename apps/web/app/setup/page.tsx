@@ -88,10 +88,11 @@ export default function SetupWizard() {
     }
   }
 
-  const btn =
-    "rounded-md px-4 py-2 text-sm font-medium transition-colors
-    disabled:opacity-50 bg-[var(--accent)]
-    text-[var(--accent-contrast)]";
+  const btn = [
+    "rounded-md px-4 py-2 text-sm font-medium transition-colors",
+    "disabled:opacity-50 bg-[var(--accent)]",
+    "text-[var(--accent-contrast)]",
+  ].join(" ");
 
   if (!status && !error) return null;
 
