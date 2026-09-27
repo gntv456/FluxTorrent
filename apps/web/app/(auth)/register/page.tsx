@@ -107,9 +107,9 @@ export default function RegisterPage() {
     INPUT_LG;
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-12">
-      <Icon name="seed" size={72} className="text-[var(--sky)]" />
-      <h1 className="font-display text-3xl">{dict.register.title}</h1>
+    <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-8">
+      {/* M5.1：品牌头由 (auth) 壳统一渲染，页内只留标题 */}
+      <h1 className="font-display text-2xl">{dict.register.title}</h1>
       <p className="-mt-4 text-sm text-sub">{dict.register.subtitle}</p>
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
         <label className="flex flex-col gap-1">
@@ -169,7 +169,11 @@ export default function RegisterPage() {
         <label className="flex flex-col gap-1">
           <span className="text-sm text-sub">{dict.register.captcha}</span>
           <div className="flex items-center gap-2">
-            <span className="num min-h-[44px] flex items-center rounded-[var(--r-sm)] border border-line bg-cloud px-3 font-bold">
+            <span
+              className="num min-h-[44px] flex items-center
+                rounded-[var(--r-sm)] border border-line bg-cloud px-3
+                font-bold"
+            >
               {captcha?.question ?? "…"}
             </span>
             <input
@@ -187,7 +191,8 @@ export default function RegisterPage() {
               type="button"
               onClick={refreshCaptcha}
               aria-label={dict.register.captchaRefresh}
-              className="min-h-[44px] shrink-0 rounded-full border border-line px-3 text-sm text-sub active:scale-[0.97]"
+              className="min-h-[44px] shrink-0 rounded-full border border-line
+                px-3 text-sm text-sub active:scale-[0.97]"
             >
               ↻
             </button>

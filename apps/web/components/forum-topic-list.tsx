@@ -8,6 +8,7 @@ import { TypeBadge, TagChip } from "@/components/forum-bits";
 import { Icon } from "@/components/icons";
 import { dateLocale } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
+import { useIsCompact } from "@/lib/hooks/use-media";
 import { ForumModBar } from "./forum-mod-bar";
 
 /** 版块页主题列表（客户端）。
@@ -28,6 +29,7 @@ export function ForumTopicList({
   forums: BoardBrief[];
 }) {
   const { dict, locale } = useI18n();
+  const compact = useIsCompact();
   const router = useRouter();
   const [picked, setPicked] = useState<number[]>([]);
   const pageIds = topics.map((t) => t.id);
@@ -50,6 +52,29 @@ export function ForumTopicList({
         />
       )}
 
+      {compact ? (
+        <div className="ftopic-cards">
+          {topics.map((t) => (
+            <a
+              key={t.id}
+              href={`/forums/topic/${t.id}`}
+              className="ftopic-card"
+            >
+              <p className="ftopic-card__title">
+                {t.sticky ? "📌 " : ""}
+                {t.digest ? "💎 " : ""}
+                {t.title}
+              </p>
+              <p className="ftopic-card__meta">
+                <span>{t.username ?? dict.torrent.anonymous}</span>
+                <span className="ftopic-card__nums">
+                  💬 {Math.max(0, t.replies)} · 👁 {t.views}
+                </span>
+              </p>
+            </a>
+          ))}
+        </div>
+      ) : (
       <div className="baozi-wide-table-scroll">
       <table className="nexus-table">
         <thead>
@@ -156,6 +181,7 @@ export function ForumTopicList({
         </tbody>
       </table>
       </div>
+      )}
     </div>
   );
 }

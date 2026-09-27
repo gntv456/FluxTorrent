@@ -3481,3 +3481,60 @@ input.batch-all {
   min-height: 46vh;
   justify-content: center;
 }
+
+/* ============ 论坛话题卡片（M5.4，概念稿 §13） ============ */
+.ftopic-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ftopic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.ftopic-card:active {
+  background: var(--surface-raised);
+}
+.ftopic-card__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.ftopic-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--sub);
+}
+.ftopic-card__nums {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ============ 发布页固定提交条（M5.5，概念稿 §13） ============ */
+.up-submitbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  min-height: 48px;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--baozi-orange, #f59e0b);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+.up-submitbar:disabled {
+  opacity: 0.6;
+}

@@ -9,13 +9,13 @@ import { UploadFilesBlock } from "@/components/upload-form-files";
 import { UploadDescrBlock } from "@/components/upload-form-descr";
 import { UploadQualityBlock } from "@/components/upload-form-quality";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
+import type { SiteProfile } from "@/lib/site-profile";
 
 export type { SectionKindMeta };
 
-export interface ProfileCat {
-  id: number;
-  name: string;
-}
+/** 分类项 = /site-profile 的 categories 元素（含 0188 层级 parent_id，
+ *  显示名由 catPath 拼「父 › 子」；类型不再另立一份，防两处漂移） */
+export type ProfileCat = SiteProfile["categories"][number];
 export interface SectionDictRow {
   id: number;
   kind: string;
@@ -244,7 +244,8 @@ export function UploadForm() {
   }
 
   return (
-    <form onSubmit={submit}>
+    <>
+    <form onSubmit={submit} id="upload-form">
       <div className="baozi-wide-table-scroll">
       <table className="nexus-table nexus-form">
         <thead>
@@ -336,6 +337,17 @@ export function UploadForm() {
         </tbody>
       </table>
       </div>
-    </form>
+      </form>
+      {/* M5.5：<md 固定提交条（长表单底部可达；≥md 不渲染）。
+          form 属性关联上方表单，busy 态与页内按钮同源 */}
+      <button
+        type="submit"
+        form="upload-form"
+        disabled={busy}
+        className="up-submitbar md:hidden"
+      >
+        {busy ? dict.upload.busy : dict.upload.submit}
+      </button>
+    </>
   );
 }

@@ -58,16 +58,18 @@ export function MessageTable({
     <table className="nexus-table">
       <thead>
         <tr>
-          <th className="w-10">
+          <th className="hidden w-10 sm:table-cell">
             <span className="sr-only">{t.selectAll}</span>
           </th>
-          <th className="w-16">{t.readCol}</th>
+          <th className="hidden w-16 sm:table-cell">{t.readCol}</th>
           <th>{t.subject}</th>
           <th className="hidden sm:table-cell">
             {box === "inbox" ? t.fromCol : t.toCol}
           </th>
           <th className="hidden w-44 md:table-cell">{t.timeCol}</th>
-          <th className="w-16 text-right">{t.actionCol}</th>
+          <th className="hidden w-16 text-right sm:table-cell">
+            {t.actionCol}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -81,14 +83,14 @@ export function MessageTable({
             box === "inbox" ? (unread ? t.unreadTag : t.readTag) : t.sentTag;
           return (
             <tr key={m.id}>
-              <td>
+              <td className="hidden sm:table-cell">
                 <input
                   type="checkbox"
                   checked={selected.includes(m.id)}
                   onChange={(e) => onToggle(m.id, e.target.checked)}
                 />
               </td>
-              <td>
+              <td className="hidden sm:table-cell">
                 <span aria-hidden className="mr-1">
                   {box === "sent"
                     ? "📤"
@@ -151,8 +153,9 @@ export function MessageTable({
               <td className="hidden text-[11px] text-sub md:table-cell">
                 {time}
               </td>
-              <td className="text-right">
-                <button
+                            <td
+                  className="hidden text-right sm:table-cell"
+                >   <button
                   type="button"
                   onClick={() => onOpen(m)}
                   className="text-xs font-bold text-sky hover:text-[var(--baozi-orange)]"

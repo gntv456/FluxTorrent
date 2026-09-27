@@ -6,6 +6,8 @@ import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { formatBytes } from "@/lib/format";
+import { useIsCompact } from "@/lib/hooks/use-media";
+import { TorrentRowList } from "@/components/torrent-row-card";
 
 interface SnatchRow {
   torrent_id: number;
@@ -28,6 +30,7 @@ export function TorrentListClient({
   emptyText: string;
 }) {
   const { dict, locale } = useI18n();
+  const compact = useIsCompact();
   const [rows, setRows] = useState<SnatchRow[] | null>(null);
 
   useEffect(() => {
@@ -43,6 +46,17 @@ export function TorrentListClient({
   }
   if (rows.length === 0) {
     return <p className="py-6 text-center text-sub">{emptyText}</p>;
+  }
+  // M5.2：<640 行卡片化（与 /torrents 同一组件，消除分裂）；
+  // ≥md 保留表格（列降级沿用现状）
+  if (compact) {
+    return (
+      <div className="md:hidden">
+        <TorrentRowList
+          items={rows.map((r) => ({ ...r, id: r.torrent_id }))}
+        />
+      </div>
+    );
   }
   return (
     <div className="baozi-wide-table-scroll">

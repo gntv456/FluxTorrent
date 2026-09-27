@@ -1257,6 +1257,47 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   top: 12px;
   display: flex;
   flex-direction: column;
+  /* M5.6：<md 侧栏六导航转横向滚动 chips（不占首屏高度） */
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  position: static;
+}
+.usercp-nav h1 {
+  white-space: nowrap;
+}
+.usercp-nav a {
+  white-space: nowrap;
+}
+@media (min-width: 768px) {
+  .usercp-nav {
+    position: sticky;
+    top: 12px;
+    flex-direction: column;
+    overflow: hidden;
+  }
+}
+@media (max-width: 767px) {
+  .usercp-nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    position: static;
+  }
+  .usercp-nav h1 {
+    padding: 10px;
+    font-size: 13px;
+  }
+  .usercp-nav a {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
+/* 桌面原态（legacy 兜底，上方 media 已覆盖） */
+.usercp-nav--col {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--baozi-line);
   border-radius: var(--r-md);
   background: var(--baozi-paper);
@@ -2679,4 +2720,65 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   font-size: 12px;
   line-height: 1.7;
   opacity: 0.92;
+}
+
+/* ============ 认证组壳（M5.1，概念稿 §13） ============
+ * register/forgot/reset：品牌头 + 居中卡片 + 底部快捷入口。
+ * 手机单列满宽、≥md 卡片化；safe-area 兼容全面屏。 */
+.auth-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0 16px calc(16px + env(safe-area-inset-bottom));
+}
+.auth-shell__head {
+  display: flex;
+  align-items: center;
+  padding: 14px 0 8px;
+}
+.auth-shell__brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.auth-shell__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.auth-shell__body > * {
+  width: 100%;
+  max-width: 28rem;
+}
+@media (min-width: 768px) {
+  .auth-shell__body > * {
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface-card);
+    padding: 28px;
+  }
+}
+.auth-shell__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 14px;
+}
+.auth-shell__home {
+  color: var(--sky-deep, #0a3d6b);
+  font-size: 14px;
+  font-weight: 700;
+}
+.auth-shell__minor {
+  color: var(--sub);
+  font-size: 12px;
+}
+.auth-shell__sep {
+  color: var(--line);
 }
