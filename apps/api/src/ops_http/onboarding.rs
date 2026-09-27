@@ -5,7 +5,8 @@
 //!
 //! 应用动作只写设定键与考核开关，**不动任何用户数据**；重复应用幂等。
 //! 消费点全部复用既有链路：
-//!   · hr_hours / hr_violation_limit / hr_warn / hr_prewarn_hours → worker hr.rs
+//!   · hr_hours / hr_violation_limit / hr_warn / hr_prewarn_hours
+//!     → worker hr.rs
 //!   · exam auto_assign + exam_onboard_days → worker task_jobs.rs
 //!   · class_rules.demotable → worker class_adj.rs（低保户降级开关）
 //!   · initial_upload_gb → register.rs（新用户初始上传量）

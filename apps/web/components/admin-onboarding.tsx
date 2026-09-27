@@ -87,7 +87,12 @@ export function AdminOnboarding() {
         <p className="text-xs text-sub">
           一键写入一组新手期运营参数（考核 / H&R / 初始缓冲 / 降级）。
           切换只改配置，不动已有用户数据；之后可在「站点设定」逐项微调。
-          当前：{st.current === "strict" ? "考核淘汰制" : st.current === "lenient" ? "缓冲宽进制" : "未选择"}
+          当前：
+            {st.current === "strict"
+              ? "考核淘汰制"
+              : st.current === "lenient"
+                ? "缓冲宽进制"
+                : "未选择"}
           （考核自动派发：{st.exam_auto_assign ? "开" : "关"}）
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -96,7 +101,8 @@ export function AdminOnboarding() {
               key={p.code}
               disabled={busy}
               onClick={() => void apply(p.code)}
-              className={`rounded-lg border p-3 text-left transition-colors hover:border-accent ${
+              className={`rounded-lg border p-3 text-left transition-colors
+                  hover:border-accent ${
                 st.current === p.code ? "border-accent" : "border-line"
               }`}
             >
