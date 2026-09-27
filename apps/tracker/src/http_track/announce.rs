@@ -42,10 +42,27 @@ pub(crate) async fn announce(
     let numwant = params.get_i64("numwant", 50).clamp(1, 200) as usize;
     let event = params.get_str("event").unwrap_or_default();
     let event = event.as_str();
-    // 安全（P2）：不信任客户端自报 IP —— 仅显式配置代理时才采用参数值
+    // 安全（P2）：不信任客户端自报 IP —— 仅显式配置代理时才采用参数值。
+    // 0225 G30-B3 补 XFF：tracker 挂 LB 后 peer IP 全成 LB 地址（做种计费与
+    // 在线数直接错）。优先级：TRUST_PROXY=1 时 XFF 首值 > TRUST_PROXY_IP=1
+    // 时 ?ip= 参数 > socket 对端；XFF 取链路首值（最接近真实客户端），
+    // 反代必须追加而非覆盖。
+    let trust_xff =
+        std::env::var("TRUST_PROXY").unwrap_or_default() == "1";
     let trust_param_ip =
         std::env::var("TRUST_PROXY_IP").unwrap_or_default() == "1";
-    let ip = if trust_param_ip {
+    let ip = if trust_xff {
+        req.headers()
+            .get("x-forwarded-for")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.split(',').next())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .or_else(|| {
+                req.peer_addr().map(|a| a.ip().to_string())
+            })
+    } else if trust_param_ip {
         params
             .get_str("ip")
             .or_else(|| req.peer_addr().map(|a| a.ip().to_string()))
