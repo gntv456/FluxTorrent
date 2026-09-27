@@ -5,6 +5,20 @@
 
 ## [Unreleased]
 
+### 多机部署 G30-B 批（2026-09-27，迁移 0225；配方 §6.5）
+
+- **计费流消费者组**：`flux:announce`/`flux:agent_block` 从全局游标 XRANGE 改
+  XREADGROUP——多 worker 并发消费真分摊（此前靠 advisory 锁互斥 = 热备）；
+  崩溃实例的 pending 由 XAUTOCLAIM（>120s）回收；失败留 PEL 重试、6 次进
+  DLQ 语义不变；旧游标首启自动迁移退役。
+- **worker 角色分片**：`FLUX_WORKER_JOBS=job 名清单` 让实例只跑清单内定时任务
+  （手动触发不受限）；`job_status.executed_by`（迁移 0225）面板可见分实例。
+- **tracker 挂 LB**：HTTP announce 支持 `TRUST_PROXY=1` 取 XFF 首值，peer IP
+  不再被记成 LB 地址。
+- **web 上游运行期可换**：新增 `app/api/[...path]/route.ts` 运行期代理
+  （API_SERVER_URL 环境变量即换，无需重打镜像），构建期 rewrites 降为兜底。
+- 实证：`_v_g30_multi.py` 21/21（新增 V7 组/消费者≥2/游标退役、V9 代理通）。
+
 ### 多机部署 G30-A 批（2026-09-27，迁移 0224；方案 _doc/G30-多机部署开发方案-2026-09-27.md，配方 _doc/G30-多机部署三机配方.md）
 
 - **多副本部署支撑**：新增 `docker/compose.multi-node.yml`（profiles 分机取子集、无
