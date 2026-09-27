@@ -14,11 +14,11 @@ use super::model::{
     CONN_UNTESTED,
 };
 
-const PEER_TIMEOUT: Duration = Duration::from_secs(90);
+pub(crate) const PEER_TIMEOUT: Duration = Duration::from_secs(90);
 /// 0077 分档 TTL（U3D ACTIVE_PEER_TTL 口径）：做种中的 peer 放宽——
 /// interval 1800s 下 90s 一刀切会让挂种大户每 90s 全量重建内存表；
 /// 3720s = 2×interval+120 冗余，断线种子在两个周期内自然除名。
-const SEEDER_TIMEOUT: Duration = Duration::from_secs(3720);
+pub(crate) const SEEDER_TIMEOUT: Duration = Duration::from_secs(3720);
 const MAX_PEERS_RESPONSE: usize = 50;
 
 /// 单个 swarm 的桶：peer_id hex → Peer

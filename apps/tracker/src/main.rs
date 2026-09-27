@@ -116,7 +116,10 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    // peer 快照周期落盘（60s）：tracker 是 SPOF，快照让重启从「全量重建」变「增量补齐」
+    // peer 快照周期落盘（60s）：tracker 是 SPOF，快照让重启从「全量重建」变「增量补齐」。
+    // 0225 G30-B12：外置模式（FLUX_TRACKER_PEER_STORE=redis）下停用——peer 权威
+    // 已在 Redis Hash，这个「全量覆盖写同一个键」正是多副本互抹的根源。
+    if !peers::external::external_enabled() {
     {
         let st = state.clone();
         actix_web::rt::spawn(async move {
@@ -140,6 +143,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         });
+    }
     }
 
     // 管理端变更通知轮询：flux:guard:ver 每 3s 一查（单 GET，可忽略的开销）。
@@ -188,6 +192,16 @@ async fn main() -> anyhow::Result<()> {
                     .await;
                     let reachable = matches!(attempt, Ok(Ok(_)));
                     st.peers.set_connectable(&key, reachable);
+                    // 外置模式同步写回（0225 G30-B12）：多副本共读同一测量值
+                    if peers::external::external_enabled() {
+                        let mut r = st.redis.clone();
+                        peers::external::set_connectable(
+                            &mut r,
+                            &key,
+                            reachable,
+                        )
+                        .await;
+                    }
                 }
             }
         });
