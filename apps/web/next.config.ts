@@ -6,7 +6,10 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "",
   },
-  // 浏览器请求走同源 /api → 服务端转发（免 CORS、免暴露内部端口）
+  // 浏览器请求走同源 /api → 服务端转发（免 CORS、免暴露内部端口）。
+  // 0225 G30-B4：app/api/[...path]/route.ts 的运行期代理优先级更高（本
+  // rewrites 是它被移除时的兜底；且 rewrites 在构建期固化 API_SERVER_URL，
+  // 运行期换上游须靠那个 route）。
   async rewrites() {
     const api = process.env.API_SERVER_URL ?? "http://localhost:8080";
     return [{ source: "/api/:path*", destination: `${api}/api/:path*` }];
