@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { catPath } from "@/lib/site-profile";
 
 interface RssInfo {
   urls: { label: string; url: string }[];
@@ -12,7 +13,12 @@ interface RssInfo {
 }
 
 interface ProfileCats {
-  categories?: { id: number; name: string }[];
+  categories?: {
+    id: number;
+    name: string;
+    /** 父分类（0188 层级）：显示走 catPath 拼「父 › 子」 */
+    parent_id?: number | null;
+  }[];
 }
 
 /** 媒介维度选项（0103：站型化后媒介在 section_dict(kind=media)，id 是 dict_id） */
@@ -132,7 +138,7 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
                   checked={cats.includes(c.id)}
                   onChange={() => toggle(cats, c.id, setCats)}
                 />
-                {c.name}
+                {catPath(categories, c)}
               </label>
             ))}
           </div>

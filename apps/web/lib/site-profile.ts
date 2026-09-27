@@ -36,6 +36,8 @@ export interface SiteProfile {
     icon_key?: string;
     /** 分类色（0183）：#rrggbb，由 categories 表下发 */
     bg_color?: string | null;
+    /** 父分类（0188 层级）：null = 顶级；显示走 catPath 拼「父 › 子」 */
+    parent_id?: number | null;
   }[];
   /** 旧三列（torrents.medium_id / grade_id / edition_id）的词表，id 以实体表为准。
    *  与新模型的 section_dict.id 不是同一套编号，不可互换。 */
@@ -61,6 +63,8 @@ export interface SiteProfile {
 export interface DictEntry {
   id: number;
   name: string;
+  /** 分类层级（0188）：仅 categories 条目带；旧三列词表无此字段 */
+  parent_id?: number | null;
 }
 
 /** 公开：站点档案（RSC 服务端获取，layout / footer / getDict 多处复用；失败回落 general 默认）。
@@ -111,7 +115,11 @@ export const getTorrentDicts = cache(
     const p = await getSiteProfile();
     const cats = p.categories ?? [];
     return {
-      categories: cats.map((c) => ({ id: c.id, name: c.name })),
+      categories: cats.map((c) => ({
+        id: c.id,
+        name: c.name,
+        parent_id: c.parent_id ?? null,
+      })),
       grades: p.torrent_dicts?.grades ?? [],
       media: p.torrent_dicts?.media ?? [],
       editions: p.torrent_dicts?.editions ?? [],
@@ -119,6 +127,18 @@ export const getTorrentDicts = cache(
     };
   },
 );
+
+/** 分类显示路径（0188 层级）：子分类带父前缀「父 › 子」（与后台分类表同口径）；
+ *  父不存在（已删）回落 `#id`。分级选择面（筛选/上传/RSS/保全）靠它让层级可见；
+ *  顺序由后端 ORDER BY sort, id 给出，前端不再重排。 */
+export function catPath(
+  cats: { id: number; name: string; parent_id?: number | null }[],
+  c: { id: number; name: string; parent_id?: number | null },
+): string {
+  if (!c.parent_id) return c.name;
+  const p = cats.find((x) => x.id === c.parent_id);
+  return `${p?.name ?? `#${c.parent_id}`} › ${c.name}`;
+}
 
 /** 分类色映射：categories.bg_color → {id: #rrggbb} */
 export function colorMap(

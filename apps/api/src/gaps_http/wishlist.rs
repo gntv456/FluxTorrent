@@ -14,7 +14,6 @@ struct WishRow {
     id: i64,
     keyword: String,
     category_id: Option<i32>,
-    grade_id: Option<i32>,
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -25,7 +24,7 @@ pub async fn wishlist_list(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<WishRow> = sqlx::query_as(
-                "SELECT id, keyword, category_id, grade_id, \
+                "SELECT id, keyword, category_id, \
          created_at FROM wishlist WHERE user_id = $1 ORDER BY id DESC LIMIT 100",
     )
     .bind(auth.id)
@@ -40,8 +39,6 @@ struct WishAddReq {
     keyword: String,
     #[serde(default)]
     category_id: Option<i32>,
-    #[serde(default)]
-    grade_id: Option<i32>,
 }
 
 #[post("/wishlist")]
@@ -67,18 +64,16 @@ pub async fn wishlist_add(
         ));
     }
     sqlx::query(
-        "INSERT INTO wishlist (user_id, keyword, category_id, \
-         grade_id) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, keyword) DO \
-         UPDATE SET category_id = EXCLUDED.category_id, \
-         grade_id = EXCLUDED.grade_id",
+        "INSERT INTO wishlist (user_id, keyword, category_id) \
+         VALUES ($1, $2, $3) ON CONFLICT (user_id, keyword) DO \
+         UPDATE SET category_id = EXCLUDED.category_id",
     )
     .bind(auth.id)
     .bind(kw)
     .bind(body.category_id)
-    .bind(body.grade_id)
     .execute(&state.repo.db)
     .await
-    .map_err(|e| crate::errors::db_to_domain(e, "愿望单的分类/学段"))?;
+    .map_err(|e| crate::errors::db_to_domain(e, "愿望单的分类"))?;
     Ok(ok(serde_json::json!({ "keyword": kw })))
 }
 

@@ -108,10 +108,7 @@ export default async function TorrentDetailPage({
   // 分类/学段/媒介/版本词表全部取自站点档案（后端为唯一真值源）；
   // 档案不可用时 editCats 为空——下拉只剩「请选择」、名称回落 #id，
   // 不再拿另一套硬编码词表顶替（那正是分类显示 bug 的源头）
-  const editCats = (profile?.categories ?? []).map((c) => ({
-    id: c.id,
-    name: c.name,
-  }));
+  const editCats = profile?.categories ?? [];
   const td = profile?.torrent_dicts ?? {};
   const editKinds = secDictAll?.kinds ?? [];
   const editDict: Record<string, { id: number; name: string }[]> = {};

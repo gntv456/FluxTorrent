@@ -187,6 +187,8 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::site_type_pack_apply)
         .service(crate::staff_http::site_type_pack_diff)
         .service(crate::staff_http::site_type_pack_save)
+        .service(crate::staff_http::site_pack_applies)
+        .service(crate::staff_http::site_pack_rollback)
         .service(crate::staff_http::massmail_list)
         .service(crate::staff_http::massmail_send)
         .service(medal_wall)

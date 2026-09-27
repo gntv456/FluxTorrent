@@ -10,6 +10,7 @@ import type { CatRow, TagRow } from "./admin-torrents-shared";
 import { promoLabels } from "./admin-torrents-shared";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { catPath } from "@/lib/site-profile";
 
 interface BatchBarProps {
   busy: boolean;
@@ -217,7 +218,7 @@ export function BatchBar(props: BatchBarProps) {
           <option value="">{at.catKeep}</option>
           {cats.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {catPath(cats, c)}
             </option>
           ))}
         </select>

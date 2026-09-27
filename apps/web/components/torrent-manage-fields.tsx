@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { ATTACH_ACCEPT, FLD, PILL } from "@/components/torrent-manage-parts";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
 import { SectionKindBool } from "@/components/section-kind-bool";
+import { catPath } from "@/lib/site-profile";
 
 type Dict = ReturnType<typeof useI18n>["dict"];
 
@@ -50,7 +51,7 @@ export function ManageBasicFields({
   setFSub: (v: string) => void;
   fCat: number;
   setFCat: (v: number) => void;
-  cats: { id: number; name: string }[];
+  cats: { id: number; name: string; parent_id?: number | null }[];
   catKinds: SectionKindMeta[];
   catDict: Record<string, { id: number; name: string }[]>;
   fSec: Record<string, string>;
@@ -89,7 +90,7 @@ export function ManageBasicFields({
         >
           {cats.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {catPath(cats, c)}
             </option>
           ))}
         </select>

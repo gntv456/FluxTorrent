@@ -11,6 +11,7 @@ import { StaffCatsPanel } from "./staff-tools-content-cats";
 import type {
   CatItem,
   FaqItem,
+  PackApplyItem,
   RuleItem,
   TypePack,
 } from "./staff-tools-content-shared";
@@ -33,6 +34,8 @@ export function StaffContentPanel({
   const [rules, setRules] = useState<RuleItem[]>([]);
   const [cats, setCats] = useState<CatItem[]>([]);
   const [packs, setPacks] = useState<TypePack[]>([]);
+  // 站型应用记录（G21：回看 + 回滚）
+  const [applies, setApplies] = useState<PackApplyItem[]>([]);
   // 当前站型 code（site-profile）：类型包列表标亮「使用中」
   const [curSiteType, setCurSiteType] = useState<string>("");
   const [packMode, setPackMode] = useState<"replace" | "merge">("merge");
@@ -70,6 +73,10 @@ export function StaffContentPanel({
       .get<TypePack[]>("/api/v1/admin/site-type-packs")
       .then(setPacks)
       .catch(() => setPacks([]));
+    api
+      .get<PackApplyItem[]>("/api/v1/admin/site-type-packs/applies")
+      .then(setApplies)
+      .catch(() => setApplies([]));
     api
       .get<{ site_type: string }>("/api/v1/site-profile")
       .then((p) => setCurSiteType(p.site_type ?? ""))
@@ -210,6 +217,7 @@ export function StaffContentPanel({
         <StaffCatsPanel
           packs={packs}
           cats={cats}
+          applies={applies}
           curSiteType={curSiteType}
           packMode={packMode}
           setPackMode={setPackMode}

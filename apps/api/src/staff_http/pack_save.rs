@@ -36,41 +36,14 @@ pub async fn site_type_pack_diff(
     let Some(pack) = pack else {
         return Err(DomainError::Validation("类型包不存在".into()));
     };
-    // 当前值快照（site_type/site_name/module_*）
-    let current: Vec<(String, String)> =
-                sqlx::query_as("SELECT name, \
-         value FROM site_settings WHERE name IN ('site_type','site_name') OR name LIKE 'module\\_%'")
-            .fetch_all(&state.repo.db)
-            .await
-            .unwrap_or_default();
-    let cur = std::collections::HashMap::<String, String>::from_iter(current);
-    let mut changes: Vec<serde_json::Value> = Vec::new();
-    let mut push = |key: &str, old: Option<&String>, new: &str| {
-        let old_v = old.map(|s| s.as_str()).unwrap_or("(未设置)");
-        if old_v != new {
-            changes.push(
-                serde_json::json!({ "key": key, "old": old_v, "new": new }),
-            );
-        }
-    };
-    push("site_type", cur.get("site_type"), &pack.code);
-    push("site_name", cur.get("site_name"), &pack.brand);
-    if let Some(mods) = pack.modules.as_object() {
-        for (k, v) in mods {
-            let setting = format!("module_{k}");
-            let new = if v.as_bool().unwrap_or(false) {
-                "yes"
-            } else {
-                "no"
-            };
-            push(&setting, cur.get(&setting), new);
-        }
-    }
+    // 当前值快照（site_type/site_name/module_*）：与 apply 台账同源（G21 回看）
+    let (unchanged, changes) =
+        super::pack_snapshot::diff_preview(&state.repo.db, &pack).await?;
     Ok(ok(serde_json::json!({
         "pack": pack.code,
         "name": pack.name,
         "changes": changes,
-        "unchanged_modules": cur.len().saturating_sub(changes.len()),
+        "unchanged_modules": unchanged,
     })))
 }
 
@@ -106,16 +79,8 @@ pub async fn site_type_pack_save(
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("name 不能为空".into()));
     }
-    // 当前配置快照：分类 / 模块开关 / 站名
-    let cats: Vec<serde_json::Value> = sqlx::query_as::<_, (i32, String)>(
-        "SELECT id, name FROM categories ORDER BY id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .into_iter()
-    .map(|(id, name)| serde_json::json!({"id": id, "name": name}))
-    .collect();
+    // 当前配置快照：分类（含层级/排序/图标，父先于子）/ 模块开关 / 站名
+    let cats = super::pack_snapshot::collect_categories(&state.repo.db).await?;
     let mods_rows: Vec<(String, String)> = sqlx::query_as(
         "SELECT name, value FROM site_settings WHERE name LIKE 'module\\_%'",
     )
