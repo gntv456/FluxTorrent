@@ -3555,3 +3555,117 @@ input.batch-all {
     padding: 10px;
   }
 }
+
+/* ============ M6.2 行卡片：H&R 紧凑卡（/myhr，概念稿 §15 范式②） ============ */
+.hrcard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.hrcard__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.hrcard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--sub);
+}
+.hrcard__ft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+.hrcard__btn {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--sky-deep);
+  font-size: 11px;
+  font-weight: 700;
+}
+.hrcard__btn:disabled {
+  opacity: 0.5;
+}
+
+/* ============ M6.2 行卡片：绩效领取记录紧凑卡（/jixiao） ============ */
+.claimcard {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.claimcard__hd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+.claimcard__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.claimcard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--sub);
+}
+
+/* ============ M6.2 行卡片：用户主页种子历史表（/users/[id] tabs） ============
+ * server component 表格：<768 thead 隐藏、单元格转块、
+ * 每格前置 .profilet__label 小标签——行卡片语义、零 JS 双态同 DOM。 */
+.profilet__label {
+  display: none;
+}
+@media (max-width: 767px) {
+  .profilet thead {
+    display: none;
+  }
+  .profilet,
+  .profilet tbody,
+  .profilet tr,
+  .profilet td {
+    display: block;
+    width: 100%;
+  }
+  .profilet tr {
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .profilet td {
+    padding: 3px 12px;
+    text-align: left !important;
+    max-width: none !important;
+    white-space: normal;
+  }
+  .profilet td:last-child {
+    border-bottom: 0;
+  }
+  .profilet__label {
+    display: inline-block;
+    margin-right: 6px;
+    color: var(--sub);
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+}

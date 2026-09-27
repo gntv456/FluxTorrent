@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { useIsCompact } from "@/lib/hooks/use-media";
 
 interface MetricCheck {
   key: string;
@@ -59,6 +60,7 @@ interface MyClaim {
  *  + 月末自动结算/补领窗口提示 + 领取记录（自动发放/手动领取标记）。未被分配岗位时给引导文案。 */
 export default function JixiaoPage() {
   const { dict, locale, currency } = useI18n();
+  const compact = useIsCompact();
   const t = dict.jixiao2;
   const [me, setMe] = useState<JixiaoMe | null>(null);
   const [claims, setClaims] = useState<MyClaim[]>([]);
@@ -219,40 +221,88 @@ export default function JixiaoPage() {
         </p>
       )}
 
-      {/* 领取记录 */}
+      {/* 领取记录（M6.2：compact 档转行卡片） */}
       <section className="baozi-panel">
         <div className="baozi-panel__head">
           <h2>{t.myTitle}</h2>
         </div>
-        <table className="nexus-table">
-        <tbody>
-          <tr>
-            <td className="colhead">{t.colName}</td>
-            <td className="colhead">{t.colPeriod}</td>
-            <td className="colhead">{t.colAmount}</td>
-            <td className="colhead">{t.colPaidBy}</td>
-            <td className="colhead">{t.colAt}</td>
-          </tr>
-          {claims.map((c) => (
-            <tr key={c.id}>
-              <td>{c.type_name}</td>
-              <td className="num">{c.period}</td>
-              <td className="num font-bold">+{c.amount.toLocaleString()}</td>
-              <td className="text-xs">{c.source === "worker" ? (t.paidByWorker) : (t.paidBySelf)}</td>
-              <td className="text-xs text-sub">
-                {new Date(c.claimed_at).toLocaleString(dateLocale(locale))}
-              </td>
-            </tr>
-          ))}
-          {claims.length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-6 text-center text-sub">
-                {t.myEmpty}
-              </td>
-            </tr>
-          )}
-        </tbody>
-        </table>
+        {compact && claims.length > 0 && (
+          <div className="trow-list p-2">
+            {claims.map((c) => (
+              <div className="claimcard" key={c.id}>
+                <p className="claimcard__hd">
+                  <span className="claimcard__name">{c.type_name}</span>
+                  <span className="num font-bold">
+                    +{c.amount.toLocaleString()}
+                  </span>
+                </p>
+                <p className="claimcard__meta num">
+                  <span>{c.period}</span>
+                  <span>
+                    {c.source === "worker"
+                      ? t.paidByWorker
+                      : t.paidBySelf}
+                  </span>
+                  <span>
+                    {new Date(c.claimed_at).toLocaleString(
+                      dateLocale(locale),
+                    )}
+                  </span>
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        {(!compact || claims.length === 0) && (
+          <table className={`nexus-table${compact ? " sr-only" : ""}`}>
+            <tbody>
+              {compact && (
+                <tr>
+                  <td colSpan={5} className="py-6 text-center text-sub">
+                    {t.myEmpty}
+                  </td>
+                </tr>
+              )}
+              {!compact && (
+                <>
+                  <tr>
+                    <td className="colhead">{t.colName}</td>
+                    <td className="colhead">{t.colPeriod}</td>
+                    <td className="colhead">{t.colAmount}</td>
+                    <td className="colhead">{t.colPaidBy}</td>
+                    <td className="colhead">{t.colAt}</td>
+                  </tr>
+                  {claims.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.type_name}</td>
+                      <td className="num">{c.period}</td>
+                      <td className="num font-bold">
+                        +{c.amount.toLocaleString()}
+                      </td>
+                      <td className="text-xs">
+                        {c.source === "worker"
+                          ? t.paidByWorker
+                          : t.paidBySelf}
+                      </td>
+                      <td className="text-xs text-sub">
+                        {new Date(c.claimed_at).toLocaleString(
+                          dateLocale(locale),
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {claims.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-6 text-center text-sub">
+                        {t.myEmpty}
+                      </td>
+                    </tr>
+                  )}
+                </>
+              )}
+            </tbody>
+          </table>
+        )}
       </section>
 
       <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-xs text-ink">{t.note}</p>

@@ -15,8 +15,10 @@ export interface Frame {
   price: number;
 }
 
-// 挂件卡片网格（自适应列）
-const FRAME_GRID = "grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3";
+// 挂件卡片网格（自适应列；M6.2：<768 降单列——紧凑卡信息密度可读）
+const FRAME_GRID =
+  "grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] " +
+  "gap-3 max-md:grid-cols-1";
 // 卡片容器 / 卡片上的两种操作按钮
 const FRAME_CARD = "baozi-panel flex flex-col items-center gap-2 p-4";
 const FRAME_BTN_OFF =

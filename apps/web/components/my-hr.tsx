@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { useIsCompact } from "@/lib/hooks/use-media";
 
 interface HrRow {
   torrent_id: number;
@@ -23,6 +24,7 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
   const dl = locale === "zh-TW" ? "zh-TW" : locale === "en" ? "en-US" : "zh-CN";
   const [busyId, setBusyId] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const compact = useIsCompact();
 
   async function selfPardon(tid: number) {
     if (!window.confirm(dict.myhr2.pardonConfirm.replace("{magic}", currency)))
@@ -42,32 +44,32 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="baozi-wide-table-scroll">
-      <table className="nexus-table">
-        <tbody>
-          <tr>
-            <td className="colhead">{t.colTorrent}</td>
-            <td className="colhead">{t.colRequired}</td>
-            <td className="colhead">{t.colSeeded}</td>
-            <td className="colhead">{t.colDeadline}</td>
-            <td className="colhead">{t.colStatus}</td>
-            <td className="colhead" />
-          </tr>
+      {/* M6.2 行卡片：compact 档表格降为行卡片（wide-table 横滚仅桌面保留） */}
+      {compact && rows.length > 0 && (
+        <div className="trow-list">
           {rows.map((r) => {
             const hours = (secs: number) => `${(secs / 3600).toFixed(1)} h`;
             return (
-              <tr key={r.torrent_id}>
-                <td>
-                  <Link href={`/torrent/${r.torrent_id}`} className="font-bold">
-                    {r.torrent_name}
-                  </Link>
-                </td>
-                <td className="num">{hours(r.required_seconds)}</td>
-                <td className="num">{hours(r.seeded_seconds)}</td>
-                <td className="nowrap">
-                  {new Date(r.deadline).toLocaleString(dl)}
-                </td>
-                <td>
+              <div className="hrcard" key={r.torrent_id}>
+                <Link
+                  href={`/torrent/${r.torrent_id}`}
+                  className="hrcard__title"
+                >
+                  {r.torrent_name}
+                </Link>
+                <p className="hrcard__meta num">
+                  <span>
+                    {t.colRequired} {hours(r.required_seconds)}
+                  </span>
+                  <span>
+                    {t.colSeeded} {hours(r.seeded_seconds)}
+                  </span>
+                  <span>
+                    {t.colDeadline}{" "}
+                    {new Date(r.deadline).toLocaleString(dl)}
+                  </span>
+                </p>
+                <p className="hrcard__ft">
                   {r.status === "violated" ? (
                     <span className="fun-status fun-status--banned">
                       {t.stFlagged}
@@ -85,33 +87,119 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                       {t.stPending}
                     </span>
                   )}
-                </td>
-                <td>
                   {r.status === "violated" && (
                     <button
                       type="button"
                       disabled={busyId === r.torrent_id}
                       onClick={() => selfPardon(r.torrent_id)}
-                      className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-sky-deep disabled:opacity-50"
-                      title={dict.myhr2.pardonNote.replace("{magic}", currency)}
+                      className="hrcard__btn"
+                      title={dict.myhr2.pardonNote.replace(
+                        "{magic}",
+                        currency,
+                      )}
                     >
                       {dict.myhr2.pardonBtn.replace("{magic}", currency)}
                     </button>
                   )}
-                </td>
-              </tr>
+                </p>
+              </div>
             );
           })}
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-8 text-center text-sub">
-                {t.empty}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-      </div>
+        </div>
+      )}
+      {(!compact || rows.length === 0) && (
+        <div className="baozi-wide-table-scroll">
+          <table className={`nexus-table${compact ? " sr-only" : ""}`}>
+            <tbody>
+              {compact && (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-sub">
+                    {t.empty}
+                  </td>
+                </tr>
+              )}
+              {!compact && (
+                <>
+                  <tr>
+                    <td className="colhead">{t.colTorrent}</td>
+                    <td className="colhead">{t.colRequired}</td>
+                    <td className="colhead">{t.colSeeded}</td>
+                    <td className="colhead">{t.colDeadline}</td>
+                    <td className="colhead">{t.colStatus}</td>
+                    <td className="colhead" />
+                  </tr>
+                  {rows.map((r) => {
+                    const hours = (secs: number) =>
+                      `${(secs / 3600).toFixed(1)} h`;
+                    return (
+                      <tr key={r.torrent_id}>
+                        <td>
+                          <Link
+                            href={`/torrent/${r.torrent_id}`}
+                            className="font-bold"
+                          >
+                            {r.torrent_name}
+                          </Link>
+                        </td>
+                        <td className="num">{hours(r.required_seconds)}</td>
+                        <td className="num">{hours(r.seeded_seconds)}</td>
+                        <td className="nowrap">
+                          {new Date(r.deadline).toLocaleString(dl)}
+                        </td>
+                        <td>
+                          {r.status === "violated" ? (
+                            <span className="fun-status fun-status--banned">
+                              {t.stFlagged}
+                            </span>
+                          ) : r.status === "satisfied" ? (
+                            <span className="fun-status fun-status--normal">
+                              {t.stOk}
+                            </span>
+                          ) : r.status === "pardoned" ? (
+                            <span className="fun-status fun-status--normal">
+                              {dict.myhr2.stPardoned}
+                            </span>
+                          ) : (
+                            <span className="fun-status fun-status--dull">
+                              {t.stPending}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {r.status === "violated" && (
+                            <button
+                              type="button"
+                              disabled={busyId === r.torrent_id}
+                              onClick={() => selfPardon(r.torrent_id)}
+                              className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-sky-deep disabled:opacity-50"
+                              title={dict.myhr2.pardonNote.replace(
+                                "{magic}",
+                                currency,
+                              )}
+                            >
+                              {dict.myhr2.pardonBtn.replace(
+                                "{magic}",
+                                currency,
+                              )}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-sub">
+                        {t.empty}
+                      </td>
+                    </tr>
+                  )}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
       {msg && (
         <p className="text-xs text-sub" role="status">
           {msg}

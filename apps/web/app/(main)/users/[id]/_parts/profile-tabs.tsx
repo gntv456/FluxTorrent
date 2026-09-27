@@ -1,7 +1,8 @@
 /**
  * 用户公开主页·标签页内容（从 app/(main)/users/[id]/page.tsx 按域拆出）：
  * renderTorrentList 种子列表 tab 表格、PostsTab 论坛动态、CommentsTab 种子评论。
- * 无 hooks：server component，数据经 props 注入。
+ * TorrentListTable 是 server component；compact 行卡片态由 CSS
+ * （.profilet 桌面表格 / .profilet-cards <768 双态同 DOM）承载，无 hooks。
  */
 
 import Link from "next/link";
@@ -9,7 +10,9 @@ import type { Locale } from "@/i18n/config";
 import { dateLocale } from "@/i18n/config";
 import type { ProfileData, TorrentHistRow } from "./profile-types";
 
-/** 种子列表 tab 渲染（每 tab 复用同一张表：名称/大小 + S/L；uploads 标注仅公开） */
+/** 种子列表 tab 渲染（每 tab 复用同一张表：名称/大小 + S/L；uploads 标注仅公开）
+ *  M6.2：表格本体加 .profilet——<768 时 thead 隐藏、行转块状行卡片
+ *  （两态同 DOM，server component 无需 useIsCompact）。 */
 export function TorrentListTable({
   rows,
   emptyText,
@@ -23,14 +26,13 @@ export function TorrentListTable({
   gb: (n: number) => string;
   publicOnly?: boolean;
 }) {
+  const label = `${t.torrentName}${publicOnly ? `（${t.histPublicOnly}）` : ""}`;
   return (
     <div className="baozi-wide-table-scroll">
-      <table className="nexus-table">
+      <table className="nexus-table profilet">
         <thead>
           <tr>
-            <td className="colhead">
-              {`${t.torrentName}${publicOnly ? `（${t.histPublicOnly}）` : ""}`}
-            </td>
+            <td className="colhead">{label}</td>
             <td className="colhead w-28 text-right">{t.colSize}</td>
             <td className="colhead w-20 text-right">{t.colSL}</td>
           </tr>
@@ -39,6 +41,7 @@ export function TorrentListTable({
           {rows.map((u) => (
             <tr key={u.torrent_id}>
               <td className="max-w-[420px] truncate">
+                <span className="profilet__label">{label}</span>
                 <Link
                   href={`/torrent/${u.torrent_id}`}
                   className="text-sky-deep hover:underline"
@@ -46,8 +49,12 @@ export function TorrentListTable({
                   {u.name}
                 </Link>
               </td>
-              <td className="num shrink-0 text-right text-sub">{gb(u.size)}</td>
               <td className="num shrink-0 text-right text-sub">
+                <span className="profilet__label">{t.colSize}</span>
+                {gb(u.size)}
+              </td>
+              <td className="num shrink-0 text-right text-sub">
+                <span className="profilet__label">{t.colSL}</span>
                 {u.seeders} / {u.leechers}
               </td>
             </tr>
