@@ -155,11 +155,17 @@ pub(crate) async fn announce(
         peer_id: peer_id_hex.clone(),
     };
 
-    // stopped：移除 peer；其余 upsert
+    // stopped：移除 peer；其余 upsert。
+    // 0225 G30-B12：FLUX_TRACKER_PEER_STORE=redis 时外置 Hash 为主（多副本
+    // 互见），内存表仍同步维护（快照导出/降级路径不受影响）。
     if event == "stopped" {
+        if crate::peers::external::external_enabled() {
+            let mut r = state.redis.clone();
+            let _ = crate::peers::external::remove(&mut r, &key).await;
+        }
         state.peers.remove(&key);
     } else {
-        state.peers.upsert(Peer {
+        let peer = Peer {
             key: key.clone(),
             ip: ip.clone(),
             port,
@@ -169,7 +175,12 @@ pub(crate) async fn announce(
             last_seen: chrono::Utc::now(),
             user_id,
             connectable: CONN_UNTESTED, // upsert 内部会保留既有测量值
-        });
+        };
+        if crate::peers::external::external_enabled() {
+            let mut r = state.redis.clone();
+            let _ = crate::peers::external::upsert(&mut r, peer.clone()).await;
+        }
+        state.peers.upsert(peer);
     }
 
     // ④ 事件投递（fire-and-forget，失败仅告警；ip/conn 供 worker 反作弊分析）
@@ -191,6 +202,26 @@ pub(crate) async fn announce(
     let (interval, min_interval) = state.intervals();
     let body = if event == "stopped" {
         bencode_announce(0, 0, 0, &[], &[], interval, min_interval)
+    } else if crate::peers::external::external_enabled() {
+        let mut r = state.redis.clone();
+        let (seeders, leechers) =
+            crate::peers::external::counts(&mut r, &info_hash_hex).await;
+        let snap = crate::peers::external::snapshot(
+            &mut r,
+            &info_hash_hex,
+            numwant,
+            &key.peer_id,
+        )
+        .await;
+        bencode_announce(
+            seeders as i64,
+            leechers as i64,
+            0,
+            &snap.v4,
+            &snap.v6,
+            interval,
+            min_interval,
+        )
     } else {
         let seeders = state.peers.count_seeders(&info_hash_hex);
         let leechers = state.peers.count_leechers(&info_hash_hex);
