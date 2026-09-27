@@ -71,3 +71,9 @@ _dsshot*/
 # e2e 会话凭证（测试登录产物，含有效 JWT，绝不入库）
 /_*.jwt
 docker/_*.jwt
+
+# 2026-09-27 C3 仓库卫生：根目录开发残留一律收纳进 _attic/（本地保留、永不入库）
+/_attic/
+/_*.cjs
+/UI参考/
+/hxpt-admin-design/
