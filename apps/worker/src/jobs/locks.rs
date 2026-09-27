@@ -67,18 +67,19 @@ where
 
 /// 运行登记（0218 G7）：自动/手动共用本函数，后台「任务面板」的
 /// 「最近运行」列以此为准——手动触发与定时触发在同一处留痕。
-async fn mark_start(db: &PgPool, job: &str) {
+pub(crate) async fn mark_start(db: &PgPool, job: &str) {
     let _ = sqlx::query(
-        "INSERT INTO job_status (job, last_started_at, updated_at) \
-         VALUES ($1, now(), now()) ON CONFLICT (job) DO UPDATE \
-         SET last_started_at = now(), updated_at = now()",
+        "INSERT INTO job_status (job, last_started_at,
+                 updated_at, executed_by) VALUES ($1, now(), now(), $2)
+                 ON CONFLICT (job) DO UPDATE SET last_started_at
+                     = now(), updated_at = now(), executed_by = $2",
     )
     .bind(job)
+    .bind(crate::shutdown::instance_tag())
     .execute(db)
     .await;
 }
-
-async fn mark_end(db: &PgPool, job: &str, err: Option<&str>) {
+pub(crate) async fn mark_end(db: &PgPool, job: &str, err: Option<&str>) {
     let _ = sqlx::query(
         "UPDATE job_status SET last_finished_at = now(), last_ok = $2, \
          last_result = $3, updated_at = now() WHERE job = $1",

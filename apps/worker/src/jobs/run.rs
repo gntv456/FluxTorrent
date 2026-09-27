@@ -4,6 +4,37 @@
 use super::*;
 use sqlx::PgPool;
 
+/// 角色分片（0225 G30-B1）：FLUX_WORKER_JOBS=逗号分隔 job 名（无 job: 前缀）。
+/// 非空时本实例只跑清单内的定时 job（手动触发认领不受限——面板操作应总有实例接）。
+/// 空缺省 = 全量（单实例行为不变）。示例：FLUX_WORKER_JOBS=consume_announce,
+/// consume_agent_blocks 让一台专吃计费流，另一台跑其余。
+fn job_shard() -> Option<Vec<String>> {
+    let v = std::env::var("FLUX_WORKER_JOBS").unwrap_or_default();
+    let list: Vec<String> = v
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if list.is_empty() {
+        None
+    } else {
+        Some(list)
+    }
+}
+
+/// 分片内才执行（with_lock 包装口）。
+macro_rules! shard_lock {
+    ($db:expr, $key:literal, $fut:expr, $shard:expr) => {
+        if let Some(list) = $shard {
+            let name = $key.trim_start_matches("job:");
+            if !list.iter().any(|s| s == name) {
+                continue;
+            }
+        }
+        with_lock($db, $key, $fut).await;
+    };
+}
+
 pub async fn run_all(
     db: PgPool,
     redis: redis::aio::ConnectionManager,
@@ -26,6 +57,10 @@ pub async fn run_all(
     let mut first_tick1d = true;
     // 手动任务句柄收口（0224 G30）：停机时 drain 等待在跑任务，而非裸 spawn 弃置
     let mut manual_tasks = crate::shutdown::TaskSet::new();
+    let shard = job_shard();
+    if let Some(list) = &shard {
+        tracing::info!(jobs = list.join(","), "角色分片生效（仅清单内定时 job）");
+    }
     // 任务目录同步（0218 G7）：面板的「全量 job + 节奏」以 job_status 为准
     sync_job_catalog(&db).await;
     loop {
@@ -41,39 +76,56 @@ pub async fn run_all(
                 // 多 worker 部署时同 job 只有抢到锁的实例执行（拿不到锁静默跳过本轮）；
                 // 卡死任务 15 分钟后被 timeout 掐掉、连接归还，不会拖垮整个调度循环。
                 // 失败/超时在 with_lock 内统一记日志（含 key），此处无需再逐个 match。
-                with_lock(&db, "job:expire_promotions", expire_promotions(&db)).await;
-                with_lock(&db, "job:magic_pool_promo", magic_pool_promo(&db)).await;
-                with_lock(&db, "job:preserve_exit", preserve_exit(&db)).await;
-                // consume_* 依赖 Redis 游标，天然单游标推进；但多实例并发拉同一段流
-                // 仍会双计——同样入锁。ConnectionManager 是 clone 句柄，clone 后移入闭包；
-                // PgPool 同样 clone（Arc 池句柄，代价可忽略），避免与外层 &db 借用冲突。
+                shard_lock!(&db, "job:expire_promotions",
+                    expire_promotions(&db), &shard);
+                shard_lock!(&db, "job:magic_pool_promo",
+                    magic_pool_promo(&db), &shard);
+                shard_lock!(&db, "job:preserve_exit",
+                    preserve_exit(&db), &shard);
+                // consume_* 已改消费者组（0225 G30-B2）：组内投递唯一，多实例
+                // 并发消费是真分摊而非双计——不再需要 advisory 锁互斥（保留
+                // mark_start 登记则由面板覆盖写口径承担，executed_by 可见分实例）。
                 {
                     let (db2, mut r) = (db.clone(), redis.clone());
-                    with_lock(&db, "job:consume_announce", async move {
-                        consume_announce(&db2, &mut r).await
-                    })
-                    .await;
+                    crate::jobs::locks::mark_start(&db,
+                        "consume_announce").await;
+                    if let Err(e) = consume_announce(&db2, &mut r).await {
+                        tracing::error!(?e, "consume_announce 失败");
+                    }
+                    crate::jobs::locks::mark_end(&db, "consume_announce",
+                        None).await;
                 }
                 {
                     let (db2, mut r) = (db.clone(), redis.clone());
-                    with_lock(&db, "job:consume_agent_blocks", async move {
-                        consume_agent_blocks(&db2, &mut r).await
-                    })
-                    .await;
+                    crate::jobs::locks::mark_start(&db,
+                        "consume_agent_blocks").await;
+                    if let Err(e) = consume_agent_blocks(&db2, &mut r).await {
+                        tracing::error!(?e, "consume_agent_blocks 失败");
+                    }
+                    crate::jobs::locks::mark_end(&db, "consume_agent_blocks",
+                        None).await;
                 }
-                with_lock(&db, "job:backfill_pieces_hash", backfill_pieces_hash(&db)).await;
-                with_lock(&db, "job:sweep_stale_peers", sweep_stale_peers(&db)).await;
-                with_lock(&db, "job:collect_milestones", collect_milestones(&db)).await;
-                with_lock(&db, "job:hr_enforce", hr_enforce(&db)).await;
-                with_lock(&db, "job:hr_punish", hr_punish(&db)).await;
-                with_lock(&db, "job:class_auto_adjust", class_auto_adjust(&db)).await;
-                with_lock(&db, "job:preserve_seed", preserve_seed(&db)).await;
-                with_lock(&db, "job:task_settle", crate::task_jobs::task_settle(&db)).await;
-                with_lock(&db, "job:exam_assign", crate::task_jobs::exam_assign(&db)).await;
+                shard_lock!(&db, "job:backfill_pieces_hash",
+                    backfill_pieces_hash(&db), &shard);
+                shard_lock!(&db, "job:sweep_stale_peers",
+                    sweep_stale_peers(&db), &shard);
+                shard_lock!(&db, "job:collect_milestones",
+                    collect_milestones(&db), &shard);
+                shard_lock!(&db, "job:hr_enforce", hr_enforce(&db), &shard);
+                shard_lock!(&db, "job:hr_punish", hr_punish(&db), &shard);
+                shard_lock!(&db, "job:class_auto_adjust",
+                    class_auto_adjust(&db), &shard);
+                shard_lock!(&db, "job:preserve_seed",
+                    preserve_seed(&db), &shard);
+                shard_lock!(&db, "job:task_settle",
+                    crate::task_jobs::task_settle(&db), &shard);
+                shard_lock!(&db, "job:exam_assign",
+                    crate::task_jobs::exam_assign(&db), &shard);
                 // 论坛抽奖到点开奖（0126）：CAS open→drawn + 按人幂等发放在
                 // sqlx 层面自守，锁内重跑安全（二审 G8：包进 with_lock 防多实例
                 // 双开 + forums 模块判定——模块关不开奖不动账）。
-                with_lock(&db, "job:lottery_settle", lottery_settle_due(&db)).await;
+                shard_lock!(&db, "job:lottery_settle",
+                    lottery_settle_due(&db), &shard);
                 // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
                 let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
                 if last_bank_day.is_none() {
@@ -109,35 +161,50 @@ pub async fn run_all(
                 // 由 DB 函数 seeding_params() 统一读取 —— 调价不再改代码重发（迁移 0133）。
                 // 结算前先拿僵尸阈值传给结算 SQL（同 tick 内不依赖 sweep_stale_peers 是否跑过）
                 let stale_secs = stale_peer_threshold_secs(&db).await;
-                with_lock(&db, "job:seeding_reward", seeding_reward(&db, stale_secs)).await;
-                with_lock(&db, "job:purge_old_login_events", purge_old_login_events(&db)).await;
-                with_lock(&db, "job:ratio_watch", ratio_watch(&db)).await;
-                with_lock(&db, "job:dormant_mark", dormant_mark(&db)).await;
-                with_lock(&db, "job:wishlist_notify", wishlist_notify(&db)).await;
-                with_lock(&db, "job:highspeed_tag", highspeed_tag(&db)).await;
-                with_lock(&db, "job:resurrection_settle", resurrection_settle(&db)).await;
-                with_lock(&db, "job:social_team_settle", social_team_settle(&db)).await;
+                shard_lock!(&db, "job:seeding_reward",
+                    seeding_reward(&db, stale_secs), &shard);
+                shard_lock!(&db, "job:purge_old_login_events",
+                    purge_old_login_events(&db), &shard);
+                shard_lock!(&db, "job:ratio_watch", ratio_watch(&db), &shard);
+                shard_lock!(&db, "job:dormant_mark", dormant_mark(&db), &shard);
+                shard_lock!(&db, "job:wishlist_notify",
+                    wishlist_notify(&db), &shard);
+                shard_lock!(&db, "job:highspeed_tag",
+                    highspeed_tag(&db), &shard);
+                shard_lock!(&db, "job:resurrection_settle",
+                    resurrection_settle(&db), &shard);
+                shard_lock!(&db, "job:social_team_settle",
+                    social_team_settle(&db), &shard);
                 // 失败判定必须排在成功结算之后：恰好在期限内达标的队伍应算成功
-                with_lock(&db, "job:social_team_expire", social_team_expire(&db)).await;
+                shard_lock!(&db, "job:social_team_expire",
+                    social_team_expire(&db), &shard);
                 // 绩效考核月末结算（0106）：挂 hourly 而非 daily——daily tick 首轮被
                 // first_tick1d 跳过、重启后要等 24h 才首跑；hourly 首轮立即执行，
                 // 且本 job 幂等（settled_at 标记 + 发薪幂等键），空扫描是一次索引查询
-                with_lock(&db, "job:jixiao_settle", jixiao_settle(&db)).await;
-                with_lock(&db, "job:preserve_settle", preserve_settle(&db)).await;
-                with_lock(&db, "job:funding_settle", funding_settle(&db)).await;
-                with_lock(&db, "job:refundable_settle", refundable_settle(&db)).await;
-                with_lock(&db, "job:achievement_grant", achievement_grant(&db)).await;
+                shard_lock!(&db, "job:jixiao_settle",
+                    jixiao_settle(&db), &shard);
+                shard_lock!(&db, "job:preserve_settle",
+                    preserve_settle(&db), &shard);
+                shard_lock!(&db, "job:funding_settle",
+                    funding_settle(&db), &shard);
+                shard_lock!(&db, "job:refundable_settle",
+                    refundable_settle(&db), &shard);
+                shard_lock!(&db, "job:achievement_grant",
+                    achievement_grant(&db), &shard);
                 // 0148 字幕工作流：认领超时回池 + 交稿超时自动验收 + 月度评选候选
                 // 0149 认证字幕人：三阈值复扫（均幂等：CAS/UNIQUE/PK + 仅撤 auto 行）
-                with_lock(&db, "job:subreq_sweep", subreq_sweep(&db)).await;
-                with_lock(&db, "job:subawards", subawards_build(&db)).await;
-                with_lock(&db, "job:subcert_sweep", subcert_sweep(&db)).await;
+                shard_lock!(&db, "job:subreq_sweep", subreq_sweep(&db), &shard);
+                shard_lock!(&db, "job:subawards", subawards_build(&db), &shard);
+                shard_lock!(&db, "job:subcert_sweep",
+                    subcert_sweep(&db), &shard);
                 // 卫生清理（NP docleanup 口径）：过期邀请落库回收 / 一次性凭证与重置 token 清理
-                with_lock(&db, "job:expire_invites", expire_invites(&db)).await;
-                with_lock(&db, "job:purge_expired_tokens", purge_expired_tokens(&db)).await;
+                shard_lock!(&db, "job:expire_invites",
+                    expire_invites(&db), &shard);
+                shard_lock!(&db, "job:purge_expired_tokens",
+                    purge_expired_tokens(&db), &shard);
                 // 运行日志保留期（0218 G6）：14 天 / 20 万行硬顶
-                with_lock(&db, "job:purge_runtime_logs", purge_runtime_logs(&db))
-                    .await;
+                shard_lock!(&db, "job:purge_runtime_logs",
+                    purge_runtime_logs(&db), &shard);
                 // DLQ 可见性：只进不出等于变相丢计费——有积压时通知管理组信箱
                 {
                     let (db2, mut r) = (db.clone(), redis.clone());
@@ -149,22 +216,26 @@ pub async fn run_all(
             }
             _ = tick10.tick() => {
                 if first_tick10 { first_tick10 = false; continue; }
-                with_lock(&db, "job:cheat_audit", cheat_audit(&db)).await;
+                shard_lock!(&db, "job:cheat_audit", cheat_audit(&db), &shard);
             }
             _ = tick30.tick() => {
                 if first_tick30 { first_tick30 = false; continue; }
-                with_lock(&db, "job:multi_ip_check", multi_ip_check(&db)).await;
-                with_lock(&db, "job:leak_scan", leak_scan(&db)).await;
+                shard_lock!(&db, "job:multi_ip_check",
+                    multi_ip_check(&db), &shard);
+                shard_lock!(&db, "job:leak_scan", leak_scan(&db), &shard);
             }
             _ = tick6h.tick() => {
                 if first_tick6h { first_tick6h = false; continue; }
                 // 对账告警必须先于 reconcile_snapshots：收敛会抹掉差异证据
-                with_lock(&db, "job:reconcile_diff_alert", reconcile_diff_alert(&db)).await;
-                with_lock(&db, "job:reconcile_snapshots", reconcile_snapshots(&db)).await;
+                shard_lock!(&db, "job:reconcile_diff_alert",
+                    reconcile_diff_alert(&db), &shard);
+                shard_lock!(&db, "job:reconcile_snapshots",
+                    reconcile_snapshots(&db), &shard);
             }
             _ = tick1d.tick() => {
                 if first_tick1d { first_tick1d = false; continue; }
-                with_lock(&db, "job:ensure_partitions", ensure_partitions(&db)).await;
+                shard_lock!(&db, "job:ensure_partitions",
+                    ensure_partitions(&db), &shard);
             }
         }
     }
