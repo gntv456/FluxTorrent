@@ -3,6 +3,53 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.2.0] - 2026-09-27
+
+竞品对比行动批（C 批，全案见 `_doc/开源生态全方位对比分析与完善策划案-2026-09-27.md`）。**本版含新迁移 0226**，升级即自动执行。
+
+### C3 仓库卫生
+
+- **根目录 520+ 个开发残留清出**：调试脚本/输出/截图（`_*` 前缀）移入本地 `_attic/`（已 gitignore，不入库不删除）；`.gitignore` 补 `/_attic/`、`/_*.cjs`、参考目录规则；解除误跟踪的 `_shot/` 截图。仓库根恢复「一个 clone 就能读懂」的形态。
+
+### C1 文档中心 + README
+
+- **新增 `docs/` 四册 22 篇**：webmaster（快速开始/开站 checklist/升级回滚/故障排查）、user（注册→顶级等级 7 篇用户指南）、customize（字段/维度/页面菜单/站型术语/内容包主题/模块/适配器 7 篇 How-to）、ops（监控/任务/性能/备份/工具生态收录）。内部策划案留在 `_doc/` 不对外。
+- **README 全量重写**：修掉滞后两个数量级的旧数字（14 页/79 单测/migrations 0001+0002 → 75 路由文件/144 单测/225 迁移），补与 NexusPHP/UNIT3D 一页对比表与 docs 入口。
+
+### C2 发布纪律
+
+- 版本号全仓 0.1.0 → **0.2.0**（api/worker/tracker Cargo.toml + web package.json）；本文件首个正式版本段；发布 tag `v0.2.0`。
+- **publish-images 增 arm64**：新增 `arm64-native` job（QEMU）与 `manifest-merge` job，semver/latest 变多架构清单（arm64 失败时自动回落仅 amd64，不阻断发布）。
+
+### C4 新手运营双模板（迁移 0226）
+
+- **安装向导第 ④ 步（可选）**：站型之后可选新手运营模板——**考核淘汰制**（NexusPHP 式：入职考核自动派发 + H&R 从严 + 低保户降级）或**缓冲宽进制**（UNIT3D 式：初始上传缓冲 + H&R 宽限预警 + 无考核）。跳过 = 维持现状。
+- 实现为 `onboarding_preset` 设定键 + 两套参数簇写入（等级 demotable/HR 阈值/考核开关与宽限/初始缓冲），**不动已有用户数据**，后台 `?tool=onboarding` 一页可随时查看与切换。
+- 目的：「不偏向任何 PT 类型」延伸到运营风格层——两种已被竞品源码级验证的新手哲学成为站长的一键选项。
+
+### C5 经济反通胀面板
+
+- **后台「经济仪表」**：`GET /admin/economy-dashboard`——近 7/30 天火花产出 vs 消耗曲线、池子存量、Top 消耗 SKU、人均持币、净通胀率；数据全部来自 spark_ledger 既有流水，零新表。
+- **购买上限阀门**：新设定 `economy_max_buffer_gb`——用户缓冲量（上传-下载）超过该值后禁止再购买上传量类商品（UNIT3D `max-buffer-to-buy-upload` 同款反通胀阀门；0 = 不限制，缺省）。
+- **用户侧「我的魔力明细」页**：`/me/sparks` 按天分页展示收支流水（触点 #11「积分感知透明化」）。
+
+### P2 首批（触点补齐）
+
+- **等级要求公开页 `/classes`**：只读展示全站等级门槛与特权（class_rules 单源），可在「菜单管理」挂入导航（触点 #2）。
+- **一次性邮箱域名黑名单**：新表 `banned_email_domains` + 注册/邀请绑定校验 + 后台维护（触点 #4）。
+- **登录 cookie Secure flag 显式化** + **账户级登录失败锁定**（连续失败 N 次锁 M 分钟，Redis 计数；与既有 IP 限流叠加）（2.7 节安全小补）。
+- **彩虹 ID / 用户名染色 SKU**：装扮体系新增可购 SKU（按天/永久两档），用户名渲染走既有 dressup 通道（触点 #17）。
+- **自助解封（首次宽恕）**：被禁用户在冷却期内可自助解封一次，`self_unban_used` 标记防重复；后台可查记录（触点 #24，对齐 NexusPHP 1.10.2 卖点）。
+
+### C6 工具生态收录（准备件）
+
+- `docs/ops/ecosystem.md`：PT-depiler 站点定义样例（走 `ptppUserInfo` + 开放 API 的自研站通道）、Jackett 通用定义映射（基于 `/compat/nexusphp` 形状）、cross-seed/Torznab 口径与负载建议。对外提交动作待仓库公开后执行。
+
+### 升级注意
+
+- 0226 只新增设定键/表/页面，不改既有数据；`economy_max_buffer_gb` 缺省 0（不限制），彩虹 ID SKU 与自助解封需站长在后台主动启用/上架才对外可见。
+- 升级后建议过一遍 `docs/webmaster/launch-checklist.md`（新站）或直接继续运营（存量站无破坏性变更）。
+
 ## [Unreleased]
 
 ### 多机部署 G30-B 批（2026-09-27，迁移 0225；配方 §6.5）
@@ -19,10 +66,17 @@
   （API_SERVER_URL 环境变量即换，无需重打镜像），构建期 rewrites 降为兜底。
 - **任务面板分实例可见**：`/admin/jobs` 返回并展示 `executed_by`（前端实例列，
   三语）——多 worker 下「最近运行」看得出谁在跑。
+- **tracker peer 外置**（收尾批）：`FLUX_TRACKER_PEER_STORE=redis` 启用 swarm
+  级 Redis Hash——多 tracker 副本互见不互抹（双 tracker 实测 complete=2）；外置
+  模式停用旧 60s 覆盖快照（互抹根源）；缺省空 = 内存单机行为不变。
+- **worker 60s 分支并发化**（收尾批）：独立任务 JoinSet 并发（900s 慢任务不再
+  堵同轮；顺序链保留）；**连接池 5→16（DB_POOL_SIZE 可配）**——并发调度后 5
+  连接必打满，PoolTimedOut 曾被误报成「另一实例锁冲突」（run_guarded 文案同步
+  修正为两种可能）。
 - 实证：`_v_g30_multi.py` 21/21（V7 组/消费者≥2/游标退役、V9 代理通）+ 收尾
-  三项栈内实测：计费入账单行不双计（announce→stream→组消费→ledger→快照全链）、
+  实测：计费入账单行不双计（announce→stream→组消费→ledger→快照全链）、
   XFF 双档（TRUST_PROXY 未开伪造 XFF 被忽略=socket IP；开启后事件 ip=XFF 首值）、
-  FLUX_WORKER_JOBS 白名单实例不越界跑清单外任务。
+  FLUX_WORKER_JOBS 白名单实例不越界、双 tracker 互见（V13）。
 
 ### 多机部署 G30-A 批（2026-09-27，迁移 0224；方案 _doc/G30-多机部署开发方案-2026-09-27.md，配方 _doc/G30-多机部署三机配方.md）
 
