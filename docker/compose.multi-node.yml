@@ -1,0 +1,233 @@
+# FluxTorrent 多机/多副本编排（0224 G30-A1，配套 _doc/G30-多机部署三机配方.md）
+#
+# 与 docker-compose.yml 的关系：本文件是**完整独立定义**（非 overlay）——
+# compose 的 override 机制移除不掉基础文件里的 container_name，而 container_name
+# 单值会让 `--scale` 与多副本直接撞名起不来。因此：
+#   - 单机部署继续用 docker/docker-compose.yml（一字未动，Round9 同机多套
+#     部署的 FLUX_*_CONTAINER 参数化不受影响）；
+#   - 分机/多副本用本文件：无 container_name、服务按 profiles 分机取子集。
+#
+# 用法（三机配方，详见配方文档）：
+#   M1（边缘+应用）：docker compose -f docker/compose.multi-node.yml --profile edge --profile app up -d
+#   M2（任务+tracker）：docker compose -f docker/compose.multi-node.yml --profile jobs up -d
+#   M3（数据层）：docker compose -f docker/compose.multi-node.yml --profile data up -d
+# 本机验证（单机模拟三机）：--profile edge --profile app --profile jobs --profile data
+#
+# 硬约束（G30 附录 D）：web 与 api 必须同机——API_SERVER_URL 构建期烘焙进
+# next 产物（docker/web.Dockerfile），跨机拆分需 B 轨改造。
+# ⚠️ 新增服务/环境变量时两份 compose 需同步维护。
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ============ 数据层（M3，--profile data） ============
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["data"]
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    environment:
+      POSTGRES_USER: flux
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
+      POSTGRES_DB: fluxtorrent
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c pg_stat_statements.max=5000
+      -c log_min_duration_statement=300ms
+    ports:
+      - "127.0.0.1:${FLUX_DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flux"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["data"]
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:${FLUX_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # ============ 应用层（M1，--profile app） ============
+  # 多副本：docker compose ... --profile app up -d --scale api=2 --scale web=2
+  # （无 container_name 才可 scale；副本共享同一份 .env）
+  api:
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/api:${FLUX_VERSION:-latest}
+    profiles: ["app"]
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    environment:
+      BIND: 0.0.0.0:8080
+      # 跨机时改为 http://<M3内网IP>:5432（经 .env 覆盖，不改本文件）
+      DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@${FLUX_DB_HOST:-postgres}:5432/fluxtorrent
+      REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@${FLUX_REDIS_HOST:-redis}:6379
+      JWT_SECRET: ${JWT_SECRET:?请在 .env 中设置 JWT_SECRET（至少 32 字节随机值）}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      PUBLIC_TRACKER_URL: ${PUBLIC_TRACKER_URL:-http://localhost:7070}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
+      PUBLIC_SITE_NAME: ${PUBLIC_SITE_NAME:-}
+      SMTP_URL: ${SMTP_URL:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      ANN_METRICS_TOKEN: ${ANN_METRICS_TOKEN:-}
+      # LB 后必须置 1（限流/封禁/风控改信 XFF 首值；直连暴露时必须留空）
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      FLUX_DEV: ${FLUX_DEV:-}
+      FLUX_BACKUP_DIR: /backups
+      # 多副本实例标识（syslog 按此分机器；不设则回落容器 hostname）
+      FLUX_INSTANCE_ID: ${FLUX_INSTANCE_ID:-}
+      # 迁移单飞（0224 G30）：第二副本起置 0——跳过启动迁移与种子（首台保持 1）
+      FLUX_BOOT_MIGRATIONS: ${FLUX_BOOT_MIGRATIONS:-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_KEY: ${S3_KEY:-}
+      S3_SECRET: ${S3_SECRET:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      RUST_LOG: info
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    volumes:
+      # 多副本共享附件必须切 S3（storage_backend=s3）；本地卷只对单副本成立
+      - ${FLUX_BACKUP_DIR:-../backups}:/backups
+      - ../apps/api/migrations:/app/migrations:ro
+      - attachments:/app/attachments
+    stop_grace_period: 45s
+    restart: unless-stopped
+
+  web:
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/web:${FLUX_VERSION:-latest}
+    profiles: ["app"]
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+      # web 与 api 同机（构建期烘焙硬约束）；LB 场景经 rewrites 打到本机 api
+      API_SERVER_URL: http://api:8080
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 20s
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ============ 任务层（M2，--profile jobs） ============
+  # worker 多副本 = 热备（advisory 锁天然 leader-follower），不是吞吐扩展（G30 D3）
+  worker:
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/worker:${FLUX_VERSION:-latest}
+    profiles: ["jobs"]
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    environment:
+      DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@${FLUX_DB_HOST:-postgres}:5432/fluxtorrent
+      REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@${FLUX_REDIS_HOST:-redis}:6379
+      FLUX_INSTANCE_ID: ${FLUX_INSTANCE_ID:-}
+      RUST_LOG: info
+    healthcheck:
+      test: ["NONE"]
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  # tracker 单副本（G30 D1：peer 表进程内 + 共享键互抹，多副本坏功能）
+  tracker:
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/tracker:${FLUX_VERSION:-latest}
+    profiles: ["jobs"]
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    environment:
+      TRACKER_BIND: 0.0.0.0:7070
+      TRACKER_UDP_BIND: 0.0.0.0:6969
+      ANN_RATE_USER_PER_MIN: "1800"
+      ANN_RATE_IP_PER_MIN: "3600"
+      ANN_INTERVAL_DEFAULT: "1800"
+      ANN_RATE_GLOBAL_PER_MIN: "0"
+      ANN_METRICS_TOKEN: "${ANN_METRICS_TOKEN:-}"
+      TRACKER_UDP_URL: ${TRACKER_UDP_URL:-}
+      DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@${FLUX_DB_HOST:-postgres}:5432/fluxtorrent
+      REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@${FLUX_REDIS_HOST:-redis}:6379
+      RUST_LOG: info
+    ports:
+      # BT 客户端直连：tracker 必须公网可达（绕开 LB——announce 无 XFF 支持，
+      # 过 LB 会把 LB IP 记成 peer，见 G30 D2 档三）
+      - "${FLUX_TRACKER_BIND:-0.0.0.0}:${FLUX_TRACKER_PORT:-7070}:7070"
+      - "${FLUX_TRACKER_BIND:-0.0.0.0}:${FLUX_TRACKER_UDP_PORT:-6969}:6969/udp"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "timeout 2 bash -c '</dev/tcp/127.0.0.1/7070'"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    name: ${FLUX_PG_VOLUME:-docker_pgdata}
+  attachments:
+    name: ${FLUX_ATTACH_VOLUME:-docker_attachments}

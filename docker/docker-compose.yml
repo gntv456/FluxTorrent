@@ -135,6 +135,9 @@ services:
       # 附件持久化（P0）：api 落盘 savedirectory=./attachments（storage.rs），不挂卷
       # 的话 compose pull && up -d 重建容器即丢全部用户附件
       - attachments:/app/attachments
+    # 0224 G30：SIGTERM 排空窗口须大于 actix 默认 drain 30s（缺省 10s 会 SIGKILL
+    # 掐掉在途请求——这是「其实有优雅停机却用不上」的坑）
+    stop_grace_period: 45s
     restart: unless-stopped
 
   worker:
@@ -165,6 +168,9 @@ services:
       # 冷启动全新卷时若 worker 先于 api 起来会因表不存在反复崩重启
       api:
         condition: service_healthy
+    # 0224 G30：worker 收 SIGTERM 后停认领 + 排空在跑手动任务（≤60s，见
+    # apps/worker/src/shutdown.rs），此处给 90s 窗口
+    stop_grace_period: 90s
     restart: unless-stopped
 
   tracker:
@@ -217,6 +223,7 @@ services:
         condition: service_healthy
       api:
         condition: service_healthy
+    stop_grace_period: 20s
     restart: unless-stopped
 
   web:
@@ -240,6 +247,14 @@ services:
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
     ports:
       - "${WEB_BIND:-127.0.0.1}:${FLUX_WEB_PORT:-3000}:3000"
+    # 0224 G30：LB 判活依据（此前 web 是唯一无 healthcheck 的服务）。
+    # 镜像 debian-slim 无 wget/curl，用 node 探（standalone 产物自带 node）
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 20s
     depends_on:
       - api
     restart: unless-stopped
