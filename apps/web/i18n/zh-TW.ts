@@ -391,6 +391,7 @@ const zhTwBase: Omit<
     title: "加入我們",
     subtitle: "憑邀請碼註冊，種下你的第一顆種子",
     inviteCode: "邀請碼",
+    emailMustMatch: "定向邀請：請填寫收到邀請郵件的郵箱，不一致將無法註冊",
     inviteOptional: "（開放註冊可不填）",
     username: "使用者名稱",
     email: "信箱",

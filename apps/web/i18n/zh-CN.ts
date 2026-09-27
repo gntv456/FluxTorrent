@@ -370,6 +370,7 @@ const zhCnBase = {
     title: "加入我们",
     subtitle: "凭邀请码注册，种下你的第一颗种子",
     inviteCode: "邀请码",
+    emailMustMatch: "定向邀请：请填写收到邀请邮件的邮箱，不一致将无法注册",
     inviteOptional: "（开放注册可不填）",
     username: "用户名",
     email: "邮箱",

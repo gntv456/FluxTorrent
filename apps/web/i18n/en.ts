@@ -396,6 +396,7 @@ const enBase: Omit<
     title: "Join us",
     subtitle: "Register with an invite code, plant your first seed",
     inviteCode: "Invite code",
+    emailMustMatch: "Targeted invite: use the email address that received the invitation",
     inviteOptional: " (optional in open registration)",
     username: "Username",
     email: "Email",

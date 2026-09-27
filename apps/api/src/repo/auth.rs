@@ -47,6 +47,27 @@ impl AuthRepo {
             other => DomainError::Internal(other.into()),
         })?;
         let inviter: Option<i64> = if invite_only {
+            // 邮箱定向邀请（评审 2026-09-27）：邀请码经 /invites/email 发送时
+            // invites.email 记录了目标邮箱——消费时校验注册邮箱一致，防止
+            // 码被转发后任何邮箱都能用（NP 邮件邀请口径）。无绑定（NULL，
+            // 复制口头发送）不受影响。
+            let bound_email: Option<Option<String>> = sqlx::query_scalar(
+                "SELECT email FROM invites \
+                 WHERE code = $1 AND status = 0 AND expires_at > now()",
+            )
+            .bind(invite_code)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            if let Some(expected) = bound_email.flatten().as_deref().map(str::trim) {
+                if !expected.is_empty()
+                    && !expected.eq_ignore_ascii_case(new_user.email.trim())
+                {
+                    return Err(DomainError::Validation(
+                        "该邀请码是定向邀请，注册邮箱须与收到邀请的邮箱一致".into(),
+                    ));
+                }
+            }
             let inv = sqlx::query_scalar(
                                 "UPDATE invites SET status = 1, \
                  used_by = $1 WHERE code = $2 AND status = 0 AND expires_at > now() RETURNING inviter_id",

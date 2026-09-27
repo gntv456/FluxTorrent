@@ -143,6 +143,13 @@ export default function RegisterPage() {
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-sm text-sub">{dict.register.email}</span>
+          {/* 定向邀请提示（2026-09-27）：邮件链接落地（?invite= 预填）时
+              后端校验注册邮箱须与收到邀请的邮箱一致 */}
+          {inviteCode && (
+            <span className="text-xs text-[var(--text-faint)]">
+              {dict.register.emailMustMatch}
+            </span>
+          )}
           <input
             type="email"
             value={email}
