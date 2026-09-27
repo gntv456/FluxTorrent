@@ -1,7 +1,6 @@
 "use client";
 
 import { BTN_LG_SKY, INPUT_LG } from "@/lib/ui-classes";
-import { Icon } from "@/components/icons";
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
@@ -135,9 +134,8 @@ function ResetForm() {
 export default function ResetPage() {
   const { dict } = useI18n();
   return (
-    <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-12">
-      <Icon name="seed" size={72} className="text-[var(--sky)]" />
-      <h1 className="font-display text-3xl">{dict.reset.title}</h1>
+    <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-8">
+      <h1 className="font-display text-2xl">{dict.reset.title}</h1>
       <p className="-mt-4 text-sm text-sub">{dict.reset.subtitle}</p>
       <Suspense fallback={<div className="h-[280px]" aria-hidden />}>
         <ResetForm />

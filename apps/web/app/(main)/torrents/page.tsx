@@ -1,12 +1,12 @@
 import { EmptyTorrents } from "@/components/torrent";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
-import { colorMap } from "@/lib/site-profile";
+import { colorMap, catPath } from "@/lib/site-profile";
 import { fmt } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { TorrentsSearchBox } from "./_parts/torrents-search-box";
 import { TorrentsTable } from "./_parts/torrents-table";
-import { TorrentRowList } from "./_parts/torrent-row-card";
+import { TorrentRowList } from "@/components/torrent-row-card";
 import { FilterFab } from "./_parts/filter-fab";
 import { TorrentsPullRefresh } from "./_parts/refresh-mount";
 import { TorrentSplitView } from "./_parts/torrent-split";
@@ -148,10 +148,8 @@ export default async function TorrentsPage({
 
   // 分类只以 site-profile 为准（后台可改，与站型包同步）。拿不到就是空列表——
   // 不再回落 i18n 字典：那是另一套筛选用词表，会把选项 id 指到不存在的分类上
-  const categories = (profile?.categories ?? []).map((c) => ({
-    id: c.id,
-    label: c.name,
-  }));
+  const cats = profile?.categories ?? [];
+  const categories = cats.map((c) => ({ id: c.id, label: catPath(cats, c) }));
   // 分类图标键（0166）：{category_id: icon_key}；站长后台可替换，空键回落首字
   const catIcons = Object.fromEntries(
     (profile?.categories ?? [])
