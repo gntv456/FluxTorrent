@@ -104,6 +104,8 @@ services:
       ANN_METRICS_TOKEN: ${ANN_METRICS_TOKEN:-}
       # LB 后必须置 1（限流/封禁/风控改信 XFF 首值；直连暴露时必须留空）
       TRUST_PROXY: ${TRUST_PROXY:-}
+      # 只读副本（0227 G31 L 档）：空 = 无副本；设流复制实例时热点读分流
+      DATABASE_REPLICA_URL: ${DATABASE_REPLICA_URL:-}
       FLUX_DEV: ${FLUX_DEV:-}
       FLUX_BACKUP_DIR: /backups
       # 多副本实例标识（syslog 按此分机器；不设则回落容器 hostname）

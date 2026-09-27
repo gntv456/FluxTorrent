@@ -105,6 +105,8 @@ services:
       # 反代模式（P1）：api 经 Nginx/Pingora 等反代对外时设 1，限流/封禁/登录事件改信
       # X-Forwarded-For 首值；api 直连暴露时必须留空（否则客户端可伪造头绕过风控）
       TRUST_PROXY: ${TRUST_PROXY:-}
+      # 只读副本（0227 G31 L 档）：空 = 无副本；设流复制实例时热点读分流
+      DATABASE_REPLICA_URL: ${DATABASE_REPLICA_URL:-}
       FLUX_DEV: ${FLUX_DEV:-}                      # 1 = 开发态（CORS 宽松/SMTP 日志闭环）
       FLUX_BACKUP_DIR: /backups                    # 与 backups 卷挂载对应
       # 附件对象存储（可选；storage_backend=s3 时生效，读取端自动回落本地卷）
