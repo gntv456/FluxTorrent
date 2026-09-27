@@ -1,0 +1,99 @@
+target/
+node_modules/
+.next/
+dist/
+.turbo/
+.env
+.env.local
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# 部署密钥（绝不入库）
+docker/.env
+.trae/
+# RS256 密钥自动落盘目录（JWT_RS_KEY_DIR 默认值；测试/开发自动生成，生产走密钥管理）
+apps/api/data/
+
+# 本地备份与截图产物（不入库）
+backups/
+docker/bz-css/
+
+# GeoIP 离线库（GeoLite2 mmdb，大文件不入库；构建机本地放置）
+apps/api/geoip/*.mmdb
+
+# 竞品源码克隆（调研用完整仓库，不入库；结论已沉淀 _doc/）
+.np-research/
+target-test/
+
+# 竞品站点实时调研产物（含会话凭据，绝不入库；结论已沉淀 _doc/）
+_panda/
+_panda_cookie.txt
+_ck_copy.db
+_ck_result.txt
+_ck_probe.py
+
+# 调试/验证临时产物（跑完即弃；结论沉淀 _doc/，勿入库。仅根目录，不影响 apps/web/_inner.tsx）
+/_*.txt
+/_*.json
+/_*.png
+/_*.py
+/_*.js
+/_*.log
+/_*.html
+/_*.sql
+/_shots/
+__pycache__/
+
+# 设计参考与竞品素材（第三方版权风险，不入库；借鉴结论沉淀 _doc/）
+UI参考/
+同类站-admin-design/
+design-system/
+
+# 开发代理工作区（会话记忆/调研笔记，个人工作产物不入库）
+.workbuddy/
+.research/
+
+# 审查/调研临时目录（跑完即弃，结论沉淀 _doc/）
+/_audit/
+/_i18n_chk/
+/_ref/
+/_upgrade_test/
+.zcode/plans/
+.wide-tmp/
+
+# 附件本地卷（savedirectory 缺省 ./attachments；运行时产物不入库）
+attachments/
+_shot*/
+_adminshot*/
+_dsshot*/
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+bower_components/
+jspm_packages/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）

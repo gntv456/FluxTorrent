@@ -67,3 +67,7 @@ attachments/
 _shot*/
 _adminshot*/
 _dsshot*/
+
+# e2e 会话凭证（测试登录产物，含有效 JWT，绝不入库）
+/_*.jwt
+docker/_*.jwt
