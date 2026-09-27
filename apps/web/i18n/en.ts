@@ -5313,6 +5313,7 @@ const adminopsEn: Dict["adminops"] = {
   jobsJob: "Job",
   jobsLast: "Last run",
   jobsState: "State",
+    jobsBy: "Instance",
   jobsNever: "Never run",
   jobsPending: "Queued",
   jobsRunning: "Running",

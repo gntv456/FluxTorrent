@@ -5166,6 +5166,7 @@ const adminopsTw: Dict["adminops"] = {
   jobsJob: "任務",
   jobsLast: "最近執行",
   jobsState: "狀態",
+    jobsBy: "執行實例",
   jobsNever: "從未執行",
   jobsPending: "待執行",
   jobsRunning: "執行中",
