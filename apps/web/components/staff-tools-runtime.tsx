@@ -38,20 +38,26 @@ export function RuntimeLogPanel() {
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
   const [level, setLevel] = useState("");
+  const [instance, setInstance] = useState("");
   const [data, setData] = useState<RuntimeLogPage | null>(null);
 
   useEffect(() => {
     const query =
       `page=${page}&q=${encodeURIComponent(q)}` +
-      `&level=${encodeURIComponent(level)}`;
+      `&level=${encodeURIComponent(level)}` +
+      `&instance=${encodeURIComponent(instance)}`;
     api
       .get<RuntimeLogPage>(`/api/v1/admin/syslog?${query}`)
       .then(setData)
       .catch(() => setData(null));
-  }, [page, q, level]);
+  }, [page, q, level, instance]);
 
   const countOf = (lv: string) =>
     (data?.counts_24h ?? []).find(([k]) => k === lv)?.[1] ?? 0;
+
+  // 多实例下拉（0224 G30）：后端只列近 7 天出现过的实例；单实例部署列表为
+  // 空（instance=''）→ 整块筛选器隐藏，不占位
+  const hasInstances = (data?.instances ?? []).length > 0;
 
   return (
     <>
@@ -74,6 +80,29 @@ export function RuntimeLogPanel() {
               )}
             </button>
           ))}
+          {hasInstances && (
+            <span className="ml-2 flex items-center gap-1">
+              <span className="text-xs text-sub">{t.rlInstance}</span>
+              <select
+                className={
+                  "min-h-[36px] rounded-full border border-line " +
+                  "bg-surface px-3 text-xs"
+                }
+                value={instance}
+                onChange={(e) => {
+                  setInstance(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">{t.rlAll}</option>
+                {(data?.instances ?? []).map(([name]) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </span>
+          )}
         </div>
         <div className="cmgmt-form">
           <label>
@@ -98,6 +127,9 @@ export function RuntimeLogPanel() {
               <td className="colhead w-40">{t.rlTime}</td>
               <td className="colhead w-20">{t.rlLevel}</td>
               <td className="colhead w-24">{t.rlSrc}</td>
+              {hasInstances && (
+                <td className="colhead w-24">{t.rlInstance}</td>
+              )}
               <td className="colhead w-48">{t.rlTarget}</td>
               <td className="colhead">{t.rlMsg}</td>
             </tr>
@@ -110,6 +142,9 @@ export function RuntimeLogPanel() {
                   {r.level}
                 </td>
                 <td className="font-mono text-xs">{r.source}</td>
+                {hasInstances && (
+                  <td className="font-mono text-xs">{r.instance || "—"}</td>
+                )}
                 <td className="font-mono text-xs break-all">
                   {r.target || "—"}
                 </td>
@@ -125,7 +160,10 @@ export function RuntimeLogPanel() {
             ))}
             {(!data || data.items.length === 0) && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-sub">
+                <td
+                  colSpan={hasInstances ? 6 : 5}
+                  className="py-6 text-center text-sub"
+                >
                   {t.rlEmpty}
                 </td>
               </tr>
