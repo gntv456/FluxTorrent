@@ -45,7 +45,7 @@ async fn list(
         super::query::norm_tags(q.tag_id, &q.tag_ids, q.tag_mode.as_deref());
     // 多维筛选（B3 六类型）：`sec_{kind}` / `_min` / `_max`，解析见 sec_params.rs
     let sections = super::sec_params::parse_section_params(
-        &state.repo.db,
+        &state.repo.read_db,
         req.query_string(),
     )
     .await;
@@ -59,7 +59,7 @@ async fn list(
              COALESCE((SELECT value = 'yes' FROM site_settings \
              WHERE name = 'list_show_rejected'), false)",
         )
-        .fetch_one(&state.repo.db)
+        .fetch_one(&state.repo.read_db)
         .await
         .unwrap_or((false, false))
     } else {
@@ -101,7 +101,7 @@ async fn list(
                     "WITH RECURSIVE sub AS (                      SELECT id FROM categories WHERE id = ANY($1)                      UNION                      SELECT c.id FROM categories c                      JOIN sub s ON c.parent_id = s.id                      ) SELECT id FROM sub",
                 )
                 .bind(&ids)
-                .fetch_all(&state.repo.db)
+                .fetch_all(&state.repo.read_db)
                 .await
                 .unwrap_or_default();
                 let mut all = ids.clone();
@@ -265,7 +265,7 @@ async fn list(
             }
         }
         let page = torrents::list_torrents_as(
-            &state.repo.db,
+            &state.repo.read_db,
             &filter,
             cursor,
             q.limit.unwrap_or(20),
@@ -309,7 +309,7 @@ async fn list(
                 }
             }
             let page = torrents::list_torrents_as(
-                &state.repo.db,
+                &state.repo.read_db,
                 &filter,
                 cursor,
                 q.limit.unwrap_or(20),
@@ -326,7 +326,7 @@ async fn list(
         }
     }
     let page = torrents::list_torrents_as(
-        &state.repo.db,
+        &state.repo.read_db,
         &filter,
         cursor,
         q.limit.unwrap_or(20),

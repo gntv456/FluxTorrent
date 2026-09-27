@@ -29,7 +29,7 @@ async fn detail(
     // G7：staff 视角传 (uid, true)——暂缓种对 staff 开放
     let viewer = (auth.id, auth.class_id >= 90);
     let t = torrents::get_torrent(
-        &state.repo.db,
+        &state.repo.read_db,
         path.into_inner(),
         reveal,
         Some(viewer),
@@ -47,7 +47,7 @@ async fn torrent_detail_ext(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let t = torrents::get_torrent_detail(
-        &state.repo.db,
+        &state.repo.read_db,
         path.into_inner(),
         auth.id,
     )
@@ -62,9 +62,11 @@ async fn torrent_files(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     require_auth(&req, &state).await?;
-    Ok(ok(
-        torrents::list_files(&state.repo.db, path.into_inner()).await?
-    ))
+    Ok(ok(torrents::list_files(
+        &state.repo.read_db,
+        path.into_inner(),
+    )
+    .await?))
 }
 
 #[get("/torrents/{id}/thanks")]
@@ -74,9 +76,11 @@ async fn torrent_thanks(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     require_auth(&req, &state).await?;
-    Ok(ok(
-        torrents::list_thanks(&state.repo.db, path.into_inner()).await?
-    ))
+    Ok(ok(torrents::list_thanks(
+        &state.repo.read_db,
+        path.into_inner(),
+    )
+    .await?))
 }
 
 #[get("/torrents/{id}/comments")]
@@ -88,7 +92,7 @@ async fn comments(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let items = torrents::list_comments_as(
-        &state.repo.db,
+        &state.repo.read_db,
         path.into_inner(),
         q.limit.unwrap_or(20),
         auth.id,
@@ -114,7 +118,7 @@ async fn torrent_snatches(
 ) -> DomainResult<impl Responder> {
     require_auth(&req, &state).await?;
     Ok(ok(torrents::list_snatches(
-        &state.repo.db,
+        &state.repo.read_db,
         path.into_inner(),
     )
     .await?))
@@ -128,6 +132,6 @@ async fn torrent_nfo(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     require_auth(&req, &state).await?;
-    let nfo = torrents::get_nfo(&state.repo.db, path.into_inner()).await?;
+    let nfo = torrents::get_nfo(&state.repo.read_db, path.into_inner()).await?;
     Ok(ok(serde_json::json!({ "nfo": nfo })))
 }

@@ -34,7 +34,7 @@ pub async fn user_public_profile(
         "#,
     )
     .bind(uid)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(profile) = profile else {
@@ -59,7 +59,7 @@ pub async fn user_public_profile(
              FROM users WHERE id = $1",
     )
     .bind(uid)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (
@@ -92,7 +92,7 @@ pub async fn user_public_profile(
          FROM snatches WHERE user_id = $1",
     )
     .bind(uid)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (real_up, real_down, seed_seconds, _, seeding_size) =
@@ -103,7 +103,7 @@ pub async fn user_public_profile(
          resolved_at IS NULL",
     )
     .bind(uid)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let hr_unresolved = hr.map(|(n,)| n).unwrap_or(0);
@@ -111,7 +111,7 @@ pub async fn user_public_profile(
         "SELECT COALESCE((value)::bigint, 3) FROM site_settings WHERE \
          name = 'hr_violation_limit'",
     )
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&state.repo.read_db)
     .await
     .unwrap_or(None)
     .unwrap_or(3);
@@ -119,7 +119,7 @@ pub async fn user_public_profile(
     let spark: (i64,) =
         sqlx::query_as("SELECT spark_balance FROM users WHERE id = $1")
             .bind(uid)
-            .fetch_one(&state.repo.db)
+            .fetch_one(&state.repo.read_db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     let month_earn: i64 = sqlx::query_scalar(
@@ -128,7 +128,7 @@ pub async fn user_public_profile(
            AND created_at >= date_trunc('month', now())",
     )
     .bind(uid)
-    .fetch_one(&state.repo.db)
+    .fetch_one(&state.repo.read_db)
     .await
     .unwrap_or(0);
     // 完成种子数（憨憨「完成种子」口径：completed_at 非空的抓取记录）
@@ -137,7 +137,7 @@ pub async fn user_public_profile(
          completed_at IS NOT NULL",
     )
     .bind(uid)
-    .fetch_one(&state.repo.db)
+    .fetch_one(&state.repo.read_db)
     .await
     .unwrap_or(0);
     // 邀请：待使用邀请码数（NP「邀请」字段口径）
@@ -145,7 +145,7 @@ pub async fn user_public_profile(
         "SELECT count(*) FROM invites WHERE inviter_id = $1 AND status = 0",
     )
     .bind(uid)
-    .fetch_one(&state.repo.db)
+    .fetch_one(&state.repo.read_db)
     .await
     .unwrap_or(0);
     // 邀请人（脱敏：只回邀请人 id+用户名，不回邮箱）
@@ -154,7 +154,7 @@ pub async fn user_public_profile(
          i.username FROM users u JOIN users i ON i.id = u.invited_by WHERE u.id = $1",
     )
     .bind(uid)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 客户端信息（NP 连接信息：最近一次上报的 BT 客户端 Agent；snatches 无记录则空）
@@ -163,7 +163,7 @@ pub async fn user_public_profile(
          ORDER BY last_seen_at DESC LIMIT 1",
     )
     .bind(uid)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 佩戴中的勋章（展示位：NP 佩戴勋章图 / UNIT3D achievements）
@@ -174,7 +174,7 @@ pub async fn user_public_profile(
          ORDER BY m.id LIMIT 12",
     )
     .bind(uid)
-    .fetch_all(&state.repo.db)
+    .fetch_all(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 成就数（user_achievements）
@@ -182,7 +182,7 @@ pub async fn user_public_profile(
         "SELECT count(*) FROM user_achievements WHERE user_id = $1",
     )
     .bind(uid)
-    .fetch_one(&state.repo.db)
+    .fetch_one(&state.repo.read_db)
     .await
     .unwrap_or(0);
     // 等级进度（对齐 /me/class-progress 口径：当前值 + 距下一级目标，供前端进度条）。
@@ -196,7 +196,7 @@ pub async fn user_public_profile(
          FROM users u WHERE u.id = $1",
     )
     .bind(uid)
-    .fetch_one(&state.repo.db)
+    .fetch_one(&state.repo.read_db)
     .await
     .ok();
     let mut next_class: Option<serde_json::Value> = None;
@@ -206,7 +206,7 @@ pub async fn user_public_profile(
              FROM class_rules WHERE class_id > $1 ORDER BY class_id LIMIT 1",
         )
         .bind(cur_class)
-        .fetch_all(&state.repo.db)
+        .fetch_all(&state.repo.read_db)
         .await
         .unwrap_or_default();
         if let Some((cid, cname, need_up, need_dl, need_sh, need_age)) =
@@ -223,13 +223,13 @@ pub async fn user_public_profile(
     }
     // 近期论坛回帖（社区动态板块；匿名帖不暴露归属；helper 见文件尾）
     let recent_posts =
-        super::profile_helpers::recent_posts_of(&state.repo.db, uid).await;
+        super::profile_helpers::recent_posts_of(&state.repo.read_db, uid).await;
     let uploads: Vec<RecentUpload> = sqlx::query_as(
                 "SELECT id, name, small_descr, size, \
          created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",
     )
     .bind(uid)
-    .fetch_all(&state.repo.db)
+    .fetch_all(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let recent_comments: Vec<RecentComment> = sqlx::query_as(
@@ -237,7 +237,7 @@ pub async fn user_public_profile(
          created_at FROM comments WHERE user_id = $1 ORDER BY id DESC LIMIT 10",
     )
     .bind(uid)
-    .fetch_all(&state.repo.db)
+    .fetch_all(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 字幕作品摘要（0146 P2-2：数量 + 下载总数 + 署名；匿名上传不计入公开归属）
@@ -247,16 +247,17 @@ pub async fn user_public_profile(
          AND NOT anon",
     )
     .bind(uid)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (subtitle_count, subtitle_downloads) = sub_stats.unwrap_or((0, 0));
     // 字幕身份（0149）：gold 优先于 certified（helper 见文件尾）
     let cert_tier =
-        super::profile_helpers::subtitle_cert_tier(&state.repo.db, uid).await;
+        super::profile_helpers::subtitle_cert_tier(&state.repo.read_db, uid)
+            .await;
     // 用户自定义字段（0186）：public 字段 + 有值才下发
     let user_fields =
-        super::user_fields::public_fields_for(&state.repo.db, uid).await;
+        super::user_fields::public_fields_for(&state.repo.read_db, uid).await;
     Ok(ok(serde_json::json!({
         "user_fields": user_fields,
         "profile": profile,

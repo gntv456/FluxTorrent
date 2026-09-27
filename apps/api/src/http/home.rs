@@ -69,7 +69,7 @@ pub async fn home_sections(
     // 空数据会让关闭模块的站首页仍出现签到日历/抽奖流水。
     let attendance_on = state.require_module("attendance").await.is_ok();
     let attendance = if attendance_on {
-        attendance_json(&state.repo.db, uid).await?
+        attendance_json(&state.repo.read_db, uid).await?
     } else {
         serde_json::json!({ "off": true })
     };
@@ -87,7 +87,7 @@ pub async fn home_sections(
 async fn home_shared_fresh(
     state: &web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<serde_json::Value> {
-    let db = &state.repo.db;
+    let db = &state.repo.read_db;
 
     // 公告（home-news）：组装 + 视频白名单消毒在 home_news.rs（0190 拆出）
     let (news_json, latest_news_id) =
