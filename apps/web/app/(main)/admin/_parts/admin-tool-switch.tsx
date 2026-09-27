@@ -27,6 +27,8 @@ import { AdminTasks } from "@/components/admin-tasks";
 import { AdminTrackers } from "@/components/admin-trackers";
 import { AdminOpsPanel } from "@/components/admin-ops";
 import { AdminEmbedRules } from "@/components/admin-embed-rules";
+import { AdminOnboarding } from "@/components/admin-onboarding";
+import { AdminEconomyDashboard } from "@/components/admin-economy-dashboard";
 import { HomeLayoutEditor } from "@/components/home-layout-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
 import { AdminPromoKinds } from "./admin-promo-kinds";
@@ -123,6 +125,12 @@ export function renderSimpleTool(
     // 视频内嵌规则管理（0189）
     case "embedrules":
       return <AdminEmbedRules />;
+    // C4 新手运营模板（0226）
+    case "onboarding":
+      return <AdminOnboarding />;
+    // C5 经济反通胀运营面板（0226）
+    case "economy":
+      return <AdminEconomyDashboard />;
     default:
       return undefined;
   }
