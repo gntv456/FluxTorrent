@@ -73,6 +73,7 @@ struct RuntimeLogRow {
     target: String,
     message: String,
     repeat: i32,
+    instance: String,
 }
 
 #[derive(Deserialize)]
@@ -84,6 +85,9 @@ struct RuntimeLogQuery {
     /// 级别筛选：ERROR / WARN（空 = 全部）
     #[serde(default)]
     level: Option<String>,
+    /// 实例筛选（0224 G30）：多副本下按 FLUX_INSTANCE_ID / 容器 hostname 过滤
+    #[serde(default)]
+    instance: Option<String>,
 }
 
 #[get("/admin/syslog")]
@@ -99,12 +103,15 @@ pub async fn sys_log(
     let per = 50i64;
     let kw = q.q.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let lv = q.level.as_deref().map(str::trim).filter(|s| !s.is_empty());
+    let inst =
+        q.instance.as_deref().map(str::trim).filter(|s| !s.is_empty());
     // 列表与计数同一谓词（_doc/同类BUG排查报告-20260916.md 的口径纪律）
     let where_sql = "($1::text IS NULL OR level = $1) \
          AND ($2::text IS NULL OR message ILIKE '%' || $2 || '%' \
-              OR target ILIKE '%' || $2 || '%')";
+              OR target ILIKE '%' || $2 || '%') \
+         AND ($5::text IS NULL OR instance = $5)";
     let rows: Vec<RuntimeLogRow> = sqlx::query_as(&format!(
-        "SELECT id, ts, level, source, target, message, repeat \
+        "SELECT id, ts, level, source, target, message, repeat, instance \
          FROM runtime_logs WHERE {where_sql} \
          ORDER BY id DESC LIMIT $3 OFFSET $4",
     ))
@@ -112,6 +119,7 @@ pub async fn sys_log(
     .bind(kw)
     .bind(per)
     .bind((page - 1) * per)
+    .bind(inst)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -120,6 +128,8 @@ pub async fn sys_log(
     ))
     .bind(lv)
     .bind(kw)
+    .bind(inst)
+    .bind((page - 1) * per)
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
@@ -132,10 +142,21 @@ pub async fn sys_log(
     .fetch_all(&state.repo.db)
     .await
     .unwrap_or_default();
+    // 实例下拉（0224 G30）：只列近 7 天出现过的实例，多副本部署时区分机器；
+    // 单实例（instance=''）时列表为空、前端隐藏筛选器
+    let instances: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT instance, count(*)::bigint FROM runtime_logs \
+         WHERE ts > now() - interval '7 days' AND instance <> '' \
+         GROUP BY instance ORDER BY count(*) DESC LIMIT 20",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
     Ok(ok(serde_json::json!({
         "items": rows, "total": total, "page": page, "per_page": per,
         "pages": (total + per - 1) / per,
         "counts_24h": counts,
+        "instances": instances,
     })))
 }
 
