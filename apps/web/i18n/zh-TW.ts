@@ -105,13 +105,26 @@ const zhTwBase: Omit<
     step2: "站點資訊",
     step3: "合規確認",
     siteName: "站點名稱",
-    noAdmin:
-      "系統已自動預置 root 帳號（使用者名 root，初始密碼 password123，首次登入會強制要求修改）。請修改密碼後用新密碼完成嚮導。",
+    // G12 複驗：預置 root 是臨時密碼時必須就地改密（閘門攔其他介面）
+    needNewPwTitle: "管理員正在使用初始密碼：先設定新密碼再繼續",
+    needNewPwHint:
+      "系統預置管理員 root（初始密碼 password123）為臨時密碼——臨時密碼下除改密外的介面都會被攔截，不先改密無法完成安裝。設定後嚮導會直接用新密碼完成安裝（其他裝置需重新登入）。",
+    newPw: "新密碼（至少 8 位）",
+    newPw2: "確認新密碼",
+    pwTooShort: "新密碼至少 8 位",
+    pwMismatch: "兩次輸入的新密碼不一致",
     goHome: "進入站點",
     goAdmin: "去管理後台",
     goUpload: "發布第一顆種子",
+    goPacks: "匯入內容包",
     nextSteps:
-      "開站前建議檢查：後台「站點設定」裡的 tracker announce 位址、郵件 SMTP、註冊模式三項。",
+      "開站前建議檢查：後台「站點設定」裡的 tracker announce 位址、郵件 SMTP、註冊模式三項；更多分類/主題等內容包也可在「站點設定 → 內容包」匯入。",
+    // G12：站型/站名均可跳過——跳過路徑要明示，別讓站長靜默裸奔
+    skipPack: "跳過：暫不預設站型，用空站起步",
+    skipPackHint:
+      "跳過 = 不套用任何站型包（分類 / 模組保持系統預設）；之後可在後台「站點設定」頁的「內容包」裡隨時匯入。",
+    siteNameHint:
+      "可留空——留空將沿用目前站名（見輸入框灰色提示）；之後可在後台「站點設定 → 基礎設定」修改。",
     adminUser: "管理員使用者名",
     adminPass: "管理員密碼",
     prev: "上一步",
@@ -169,6 +182,7 @@ const zhTwBase: Omit<
     douban: "豆瓣",
     noRating: "暫無評分",
     empty: "網站剛剛發芽，還沒有資源",
+    emptyAction: "發布第一個資源",
   },
   torrents: {
     viewLabel: "檢視",

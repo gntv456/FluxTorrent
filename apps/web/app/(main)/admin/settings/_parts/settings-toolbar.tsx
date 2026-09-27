@@ -6,6 +6,7 @@
  * 明文导出二次确认、只读横幅与全局 toast。状态与动作由主组件注入。
  */
 
+import { useEffect, useRef } from "react";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import type { SettingsSchema } from "@/components/setting-field";
@@ -34,6 +35,16 @@ export function SettingsToolbar({
 }) {
   const { dict, locale } = useI18n();
   const s = dict.settingsAdmin;
+  // G13：安装向导完成页深链（?packs=1）直接开内容包对话框——只自动开一次，
+  // 关掉不再重开（io 每次渲染都是新对象，用 ref 挡住重复触发）
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (autoOpened.current || !editable || !schema) return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("packs") !== "1") return;
+    autoOpened.current = true;
+    io.openPacks();
+  }, [editable, schema, io]);
   return (
     <>
       {/* 顶部标题 + 全局操作条 */}

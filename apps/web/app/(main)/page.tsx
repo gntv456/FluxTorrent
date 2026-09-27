@@ -7,6 +7,7 @@ import { HomeSections } from "@/components/home-sections";
 import { MobileHomeHeader } from "@/components/mobile-home-header";
 import type { HomeData } from "@/components/home-data";
 import { LatestPosters } from "@/components/latest-posters";
+import { Icon } from "@/components/icons";
 import {
   parseHomeLayout,
   type HomeSectionMeta,
@@ -89,6 +90,9 @@ export default async function HomePage() {
       // 后端未启动时首页降级为空态（本地开发体验）
     }
   }
+  // 已通过审核的资源总数（home.site_data 同源计数）：空态据此区分「冷启动」
+  // 与「有资源但都不是活种」两种口径
+  const hasApproved = (homeData?.site_data?.torrents ?? 0) > 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -154,8 +158,43 @@ export default async function HomePage() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td className="p-6 text-center text-sub">
-                        {dict.home.empty}
+                      {/* G14：空态给行动链接（与资源库空态同口径）。站点有已通过
+                          资源却显示空 → 默认视图只放活种，不能再说「还没有资源」，
+                          否则与同屏「站点数据·种子 N」打架。 */}
+                      <td className="p-6">
+                        <div
+                          className="flex flex-col items-center gap-3 py-4
+                            text-center"
+                        >
+                          <Icon
+                            name="seed"
+                            size={56}
+                            className="text-[var(--sky)]"
+                          />
+                          <p className="text-sub">
+                            {hasApproved
+                              ? dict.torrent.emptyAliveTitle
+                              : dict.home.empty}
+                          </p>
+                          {hasApproved ? (
+                            <a
+                              href="/torrents?alive=0"
+                              className="rounded-full border border-line px-5
+                                py-2 text-sm font-bold text-sky-deep
+                                hover:bg-[var(--surface-card)]"
+                            >
+                              {dict.torrent.emptyAliveAction}
+                            </a>
+                          ) : (
+                            <Link
+                              href="/upload"
+                              className="rounded-full bg-coral px-5 py-2
+                                text-sm font-bold text-white"
+                            >
+                              {dict.home.emptyAction}
+                            </Link>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   </tbody>
