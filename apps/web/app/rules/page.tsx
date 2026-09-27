@@ -40,11 +40,11 @@ export default async function RulesPage() {
             {items.map((r) => (
               <tr key={r.id}>
                 <td className="p-4">
-                  <section>
+                  <section className="longform">
                     <h2 className="font-display text-base font-bold text-[var(--baozi-orange-dark)]">
                       {r.title}
                     </h2>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{r.body}</p>
+                    <p className="mt-2 whitespace-pre-wrap leading-relaxed">{r.body}</p>
                   </section>
                 </td>
               </tr>
@@ -63,11 +63,11 @@ export default async function RulesPage() {
               <td className="p-4">
                 <p className="text-[11px] text-sub">{dict.rules.updated}</p>
                 {dict.rules.sections.map((sec) => (
-                  <section key={sec.head} className="mt-4">
+                  <section key={sec.head} className="longform mt-4">
                     <h2 className="font-display text-base font-bold text-[var(--baozi-orange-dark)]">
                       {sec.head}
                     </h2>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-relaxed">
+                    <ul className="mt-2 list-disc space-y-1 pl-5 leading-relaxed">
                       {sec.items.map((it) => (
                         <li key={it.slice(0, 24)}>{it}</li>
                       ))}

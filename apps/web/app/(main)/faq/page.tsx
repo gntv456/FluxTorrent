@@ -39,18 +39,17 @@ export default async function FaqPage() {
           <div className="baozi-panel__head">
             <h2>{cat === "default" ? dict.faq.defaultCat : cat}</h2>
           </div>
-          <table className="nexus-table">
-            <tbody>
-              {list.map((f) => (
-                <tr key={f.id}>
-                  <td className="rowhead w-[38%] align-top">
-                    {f.question}
-                  </td>
-                  <td className="rowfollow">{f.answer}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* M6.3：FAQ 问答转 details 折叠（概念稿 §15.4）——
+           *  桌面也用折叠（答案默认收起、点开阅读），窄屏长答案
+           *  不再撑出 rowhead 38% + rowfollow 的双列横滚 */}
+          <div className="faq-list">
+            {list.map((f) => (
+              <details key={f.id} className="faq-item">
+                <summary>{f.question}</summary>
+                <p className="longform">{f.answer}</p>
+              </details>
+            ))}
+          </div>
         </section>
       ))}
       {items.length === 0 && (

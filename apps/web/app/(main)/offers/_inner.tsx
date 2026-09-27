@@ -103,7 +103,9 @@ export default function OffersPage() {
         </div>
       </section>
 
-      <table className="nexus-table">
+      {/* M6.3：裸表补 M1 同款横滚包裹（前台无 admin 兜底，直裹） */}
+      <div className="baozi-wide-table-scroll">
+        <table className="nexus-table">
         <tbody>
           <tr>
             <td className="colhead">{t.colTorrent}</td>
@@ -162,7 +164,8 @@ export default function OffersPage() {
             </tr>
           )}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

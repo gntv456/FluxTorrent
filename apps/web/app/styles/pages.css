@@ -1249,6 +1249,14 @@ table.subtitles-upload-table {
   border: 0;
   box-shadow: none;
 }
+/* M6.3：保种列表 10 列窄屏兜底——与 M1 admin 裸表同款（块化+横滚），
+ * 前台无 admin-panel-content 兜底，此处自带 */
+table.preserve-list-table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
 
 /* ============ PM 管理组（contactstaff.php 复刻） ============ */
 .contactstaff-wrap {
