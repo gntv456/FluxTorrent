@@ -18,6 +18,8 @@ interface JobItem {
   last_finished_at: string | null;
   last_ok: boolean | null;
   last_result: string | null;
+  /** 0225 G30-B：最近一次执行的实例标识（多 worker 分实例可见） */
+  executed_by: string;
 }
 
 interface TriggerItem {
@@ -154,6 +156,7 @@ export function AdminOpsJobs() {
                   <td className="colhead">{t.jobsJob}</td>
                   <td className="colhead w-44">{t.jobsLast}</td>
                   <td className="colhead w-16">{t.jobsState}</td>
+                  <td className="colhead w-28">{t.jobsBy}</td>
                   <td className="colhead">{t.jobsResult}</td>
                   <td className="colhead w-20" />
                 </tr>
@@ -179,6 +182,9 @@ export function AdminOpsJobs() {
                         : j.last_ok
                           ? t.jobsOk
                           : t.jobsFail}
+                    </td>
+                    <td className="font-mono text-sub">
+                      {j.executed_by || "—"}
                     </td>
                     <td className="break-all text-sub">
                       {j.last_result ?? "—"}

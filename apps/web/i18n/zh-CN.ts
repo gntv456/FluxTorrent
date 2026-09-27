@@ -5212,6 +5212,7 @@ export const zhCN = {
     jobsJob: "任务",
     jobsLast: "最近运行",
     jobsState: "状态",
+    jobsBy: "执行实例",
     jobsNever: "从未运行",
     jobsPending: "待执行",
     jobsRunning: "执行中",

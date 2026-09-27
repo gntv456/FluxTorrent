@@ -134,6 +134,8 @@ struct JobRow {
     last_finished_at: Option<chrono::DateTime<chrono::Utc>>,
     last_ok: Option<bool>,
     last_result: Option<String>,
+    /// 0225 G30-B：最近一次执行的实例（多 worker 分实例可见）
+    executed_by: String,
 }
 
 #[derive(serde::Serialize, sqlx::FromRow)]
@@ -156,8 +158,9 @@ async fn admin_jobs_list(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::CLEANUP_RUN)
         .await?;
     let jobs: Vec<JobRow> = sqlx::query_as(
-        "SELECT job, cadence, last_started_at, last_finished_at, last_ok, \
-         last_result FROM job_status ORDER BY cadence, job",
+        "SELECT job, cadence, last_started_at, last_finished_at, \
+         last_ok, last_result, executed_by FROM job_status \
+         ORDER BY cadence, job",
     )
     .fetch_all(&state.repo.db)
     .await
