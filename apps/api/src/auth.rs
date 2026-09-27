@@ -25,12 +25,15 @@ pub enum JwtSigner {
 impl JwtSigner {
     /// alg：`hs256`（默认）或 `rs256`。
     /// RS256 密钥来源：`JWT_RS_PRIVATE_PEM` / `JWT_RS_PUBLIC_PEM`（PEM 文本），
-    /// 未配置时自动生成 2048 位密钥对并落盘 `JWT_RS_KEY_DIR`（默认 `data/`），
-    /// 重启复用；生产建议由密钥管理注入而非自动生成。
+    /// 或 `JWT_RS_KEY_DIR`（默认 `data/`，须挂卷）下既有的密钥对文件。
+    /// 0224 G30：**找不到密钥即拒绝启动**——原先会静默生成新密钥对写本地未挂卷
+    /// 目录，多副本/容器重建下各实例密钥互不相认（A 签的 token B 验不过，
+    /// 轮询即大面积 401），单机重建也全员登出。破坏性变更：依赖自动生成的
+    /// 现网部署须先生成一次密钥对并挂卷注入（见三机配方文档）。
     pub fn from_config(alg: &str, secret: &str) -> anyhow::Result<Self> {
         match alg.to_ascii_lowercase().as_str() {
             "rs256" => {
-                let (priv_pem, pub_pem) = load_or_generate_rs_pem()?;
+                let (priv_pem, pub_pem) = load_rs_pem()?;
                 Ok(JwtSigner::Rs {
                     enc: EncodingKey::from_rsa_pem(priv_pem.as_bytes())
                         .map_err(|e| {
@@ -97,9 +100,13 @@ impl JwtSigner {
     }
 }
 
-/// RS256 密钥加载/生成（P1：生产环境由密钥管理系统注入 PEM，开发态自动落盘）。
-fn load_or_generate_rs_pem() -> anyhow::Result<(String, String)> {
-    use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
+/// RS256 密钥加载（0224 G30 改 fail-fast）：env PEM 优先，其次 `JWT_RS_KEY_DIR`
+/// （默认 `data/`）下的既有文件；两处都没有 → 报错退出，不再自动生成。
+/// 一次性生成（写进挂卷目录，两行命令）：
+/// `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048
+///   -out jwt_rs_private.pem`（续行：反斜杠折命令）
+/// `openssl rsa -in jwt_rs_private.pem -pubout -out jwt_rs_public.pem`
+fn load_rs_pem() -> anyhow::Result<(String, String)> {
     let env_priv = std::env::var("JWT_RS_PRIVATE_PEM").unwrap_or_default();
     let env_pub = std::env::var("JWT_RS_PUBLIC_PEM").unwrap_or_default();
     if !env_priv.is_empty() && !env_pub.is_empty() {
@@ -116,25 +123,16 @@ fn load_or_generate_rs_pem() -> anyhow::Result<(String, String)> {
     ) {
         return Ok((priv_pem, pub_pem));
     }
-    tracing::warn!(
-        "未配置 JWT_RS_PRIVATE_PEM/JWT_RS_PUBLIC_PEM：自动生成 2048 位密钥对并写入 {}（生产环境请改用密钥管理注入）",
+    anyhow::bail!(
+        concat!(
+            "JWT_ALG=rs256 但未找到密钥：设置 ",
+            "JWT_RS_PRIVATE_PEM/JWT_RS_PUBLIC_PEM，或把 ",
+            "jwt_rs_private.pem / jwt_rs_public.pem 放进 {}",
+            "（须挂卷持久化）。旧版本的自动生成已移除——",
+            "静默生成的密钥在容器重建/多副本下互不相认"
+        ),
         dir.display()
-    );
-    let mut rng = rand::thread_rng();
-    let key = rsa::RsaPrivateKey::new(&mut rng, 2048)
-        .map_err(|e| anyhow::anyhow!("RSA 密钥生成失败: {e}"))?;
-    let priv_pem = key
-        .to_pkcs8_pem(LineEnding::LF)
-        .map_err(|e| anyhow::anyhow!("私钥序列化失败: {e}"))?
-        .to_string();
-    let pub_pem = key
-        .to_public_key()
-        .to_public_key_pem(LineEnding::LF)
-        .map_err(|e| anyhow::anyhow!("公钥序列化失败: {e}"))?;
-    std::fs::create_dir_all(dir)?;
-    std::fs::write(&priv_path, &priv_pem)?;
-    std::fs::write(&pub_path, &pub_pem)?;
-    Ok((priv_pem, pub_pem))
+    )
 }
 
 #[cfg(test)]
