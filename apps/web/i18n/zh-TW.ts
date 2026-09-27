@@ -73,6 +73,7 @@ const zhTwBase: Omit<
     faq: "FAQ",
     donate: "捐贈",
     games: "娛樂屋",
+    gacha: "抽卡屋",
     farm: "農場",
     dressup: "裝扮",
     tasks: "任務",
@@ -99,6 +100,7 @@ const zhTwBase: Omit<
     growth: "成長榮譽",
     fun: "娛樂",
     tabbarMessages: "訊息",
+    gachaDisclosure: "抽卡公示",
   },
   setup: {
     title: "站點安裝嚮導",

@@ -9,6 +9,7 @@ import { TwoFactorSetup } from "@/components/twofa-setup";
 import { ApiTokens } from "@/components/api-tokens";
 import { LoginHistory } from "@/components/login-history";
 import { NoticePrefsCard } from "@/components/notice-prefs";
+import { PasskeysCard } from "@/components/passkeys-card";
 import type { UserSettings } from "@/components/usercp";
 
 /** 安全设定面板（从 usercp.tsx 按域拆出，300 行门禁）：
@@ -128,6 +129,13 @@ export function SecurityTab({
           <td className="rowhead nowrap">{t.loginHistory}</td>
           <td className="rowfollow p-0">
             <LoginHistory />
+          </td>
+        </tr>
+        {/* Passkey（WebAuthn）绑定（0227） */}
+        <tr>
+          <td className="rowhead nowrap">Passkey</td>
+          <td className="rowfollow p-0">
+            <PasskeysCard />
           </td>
         </tr>
         {/* 通知偏好（0075）：站内通知事件类开关 */}

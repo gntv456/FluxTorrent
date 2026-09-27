@@ -58,29 +58,47 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
 
     // 3.5) 预警（0072，U3D prewarn 口径）：48h 内到期、未达标、未预警过的 → 站内信提醒。
     //      处罚前的缓冲带：教育站新人多，一次 PM 能挡掉大部分无意违规。
-    let prewarned = sqlx::query(
-        r#"
-        WITH due AS (
-            UPDATE hr_snapshots SET prewarned_at = now(), updated_at = now()
-            WHERE status = 'open' AND prewarned_at IS NULL
-              AND seeded_seconds < required_seconds
-              AND deadline < now() + interval '48 hours'
-            RETURNING user_id, torrent_id, seeded_seconds, required_seconds, deadline
-        )
-        INSERT INTO messages (sender_id, receiver_id, subject, body)
-        SELECT NULL, d.user_id,
-               'H&R 预警：请尽快补足做种',
-               format('你完成的种子 #%s 距 H&R 考察截止还剩不到 48 小时（截止 %s）。当前累计做种 %s 小时，'
-                      '需 %s 小时。请尽快恢复做种；也可在「我的 H&R」页用魔力自助免罪。',
-                      d.torrent_id,
-                      to_char(d.deadline AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI'),
-                      round(d.seeded_seconds / 3600.0, 1),
-                      round(d.required_seconds / 3600.0, 1))
-        FROM due d
-        "#,
+    //      0227 参数化：提前量读 hr_prewarn_hours 设定键（0=关闭整段；宽进制
+    //      模板 48h、淘汰制 24h）；收件人尊重 notice_prefs.hr_prewarn 开关。
+    let prewarn_hours: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings \
+         WHERE name = 'hr_prewarn_hours')::bigint, 0)",
     )
-    .execute(db)
-    .await?;
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+    let prewarned = if prewarn_hours > 0 {
+        sqlx::query(
+            r#"
+            WITH due AS (
+                UPDATE hr_snapshots SET prewarned_at = now(), updated_at = now()
+                WHERE status = 'open' AND prewarned_at IS NULL
+                  AND seeded_seconds < required_seconds
+                  AND deadline < now() + make_interval(hours => $1)
+                RETURNING user_id, torrent_id, seeded_seconds, required_seconds, deadline
+            )
+            INSERT INTO messages (sender_id, receiver_id, subject, body)
+            SELECT NULL, d.user_id,
+                   'H&R 预警：请尽快补足做种',
+                   format('你完成的种子 #%s 距 H&R 考察截止还剩不到 %s 小时（截止 %s）。当前累计做种 %s 小时，'
+                          '需 %s 小时。请尽快恢复做种；也可在「我的 H&R」页用魔力自助免罪。',
+                          d.torrent_id,
+                          $2,
+                          to_char(d.deadline AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI'),
+                          round(d.seeded_seconds / 3600.0, 1),
+                          round(d.required_seconds / 3600.0, 1))
+            FROM due d
+            JOIN users u ON u.id = d.user_id
+            WHERE COALESCE((u.notice_prefs->>'hr_prewarn')::boolean, true)
+            "#,
+        )
+        .bind(prewarn_hours)
+        .bind(prewarn_hours)
+        .execute(db)
+        .await?
+    } else {
+        sqlx::query("SELECT 1 WHERE false").execute(db).await?
+    };
     if prewarned.rows_affected() > 0 {
         tracing::info!(n = prewarned.rows_affected(), "H&R pre-warnings sent");
     }

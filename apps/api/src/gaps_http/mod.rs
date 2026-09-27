@@ -4,7 +4,9 @@
 //! captcha.rs，H&R 在 hr.rs，申诉在 appeals.rs，补签卡/等级在 misc.rs，愿望单在 wishlist.rs。
 
 mod appeals;
+mod applications;
 mod captcha;
+pub mod captcha_drivers;
 mod classes_public;
 mod hr;
 mod login_aux;
@@ -14,6 +16,7 @@ mod reset;
 mod wishlist;
 
 use appeals::*;
+use applications::*;
 pub use captcha::*;
 use classes_public::*;
 use hr::*;
@@ -46,6 +49,10 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         // 等级
         .service(class_rules_list)
         .service(my_class_progress)
+        // 申请制入站（0227）
+        .service(apply_submit)
+        .service(apply_queue)
+        .service(apply_decide)
         // P2 触点补齐（0226）：等级公开页 + 自助解封
         .service(classes_public)
         .service(self_unban)

@@ -61,14 +61,27 @@ pub async fn register(
     if reg_mode == "invite_only" && body.invite_code.trim().is_empty() {
         return Err(DomainError::InviteInvalid);
     }
-    // 图形验证码校验（防注册机）
-    if body.captcha_id.is_empty()
-        || !crate::gaps_http::captcha_verify(
-            &state,
-            &body.captcha_id,
-            body.captcha_answer,
-        )
-        .await
+    // 验证码校验（防注册机）。0227 起按驱动分发：
+    // - none（缺省）：自研算术题（captcha_id + captcha_answer）
+    // - turnstile/recaptcha/hcaptcha：前端组件 token → 后端 siteverify
+    let ip_early = client_ip(&req);
+    let provider =
+        crate::gaps_http::captcha_drivers::provider(&state.repo.db).await;
+    let handled_by_driver = crate::gaps_http::captcha_drivers::verify(
+        &state,
+        &provider,
+        &body.captcha_token,
+        &ip_early,
+    )
+    .await?;
+    if !handled_by_driver
+        && (body.captcha_id.is_empty()
+            || !crate::gaps_http::captcha_verify(
+                &state,
+                &body.captcha_id,
+                body.captcha_answer,
+            )
+            .await)
     {
         return Err(DomainError::Validation("验证码错误或已过期".into()));
     }

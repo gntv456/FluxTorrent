@@ -135,6 +135,30 @@ async fn smtp_config_common() -> Option<SmtpConfig> {
 }
 
 /// 通知双通道：站内信必达 + 邮件尽力（后台线程）
+/// 带事件类通知（0075 通知偏好的消费侧）：kind 对应 notice-prefs 白名单键，
+/// 用户关掉该类（notice_prefs JSONB 显式 false）时**站内信也静默**——
+/// 与既有 email 偏好语义一致。密码/审核等关键流程继续走 notify()（不受偏好控制）。
+pub async fn notify_kind(
+    db: &PgPool,
+    to_user: i64,
+    kind: &str,
+    email: Option<String>,
+    subject: &str,
+    body: &str,
+) {
+    let prefs: serde_json::Value =
+        sqlx::query_scalar("SELECT notice_prefs FROM users WHERE id = $1")
+            .bind(to_user)
+            .fetch_one(db)
+            .await
+            .unwrap_or(serde_json::json!({}));
+    let enabled = prefs.get(kind).and_then(|v| v.as_bool()).unwrap_or(true);
+    if !enabled {
+        return;
+    }
+    notify(db, to_user, email, subject, body).await;
+}
+
 pub async fn notify(
     db: &PgPool,
     to_user: i64,

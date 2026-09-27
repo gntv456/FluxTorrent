@@ -51,6 +51,12 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::custom_pages_update)
         .service(crate::staff_http::custom_pages_delete)
         .service(crate::auth_http::login)
+        // passkey（WebAuthn）第二通道（0227）
+        .service(crate::auth_http::passkey_begin)
+        .service(crate::auth_http::passkey_finish)
+        .service(crate::auth_http::passkey_login_begin)
+        .service(crate::auth_http::passkey_login_finish)
+        .service(crate::auth_http::passkey_remove)
         .service(crate::auth_http::me)
         .service(crate::auth_http::me_perms)
         .service(crate::auth_http::me_overview)

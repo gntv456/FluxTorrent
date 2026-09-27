@@ -73,6 +73,7 @@ const enBase: Omit<
     faq: "FAQ",
     donate: "Donate",
     games: "Arcade",
+    gacha: "Gacha",
     farm: "Farm",
     dressup: "Dress-up",
     tasks: "Tasks",
@@ -99,6 +100,7 @@ const enBase: Omit<
     growth: "Growth & Honors",
     fun: "Fun",
     tabbarMessages: "Messages",
+    gachaDisclosure: "Gacha Rates",
   },
   setup: {
     title: "Site Setup Wizard",
