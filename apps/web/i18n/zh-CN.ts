@@ -51,6 +51,7 @@ const zhCnBase = {
     faq: "FAQ",
     donate: "捐赠",
     games: "娱乐屋",
+    gacha: "抽卡屋",
     farm: "农场",
     dressup: "装扮",
     tasks: "任务",
@@ -77,6 +78,7 @@ const zhCnBase = {
     growth: "成长荣誉",
     fun: "娱乐",
     tabbarMessages: "消息",
+    gachaDisclosure: "抽卡公示",
   },
   setup: {
     title: "站点安装向导",

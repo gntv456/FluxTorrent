@@ -689,17 +689,17 @@
  "app\\setup\\page.tsx": [
   54,
   81,
-  98,
-  100,
-  117,
-  164,
-  169,
-  193,
-  198,
-  219,
-  225,
-  226,
-  241
+  101,
+  103,
+  120,
+  168,
+  173,
+  197,
+  202,
+  223,
+  229,
+  230,
+  245
  ],
  "app\\rules\\page.tsx": [],
  "app\\reset\\page.tsx": [],
@@ -8276,27 +8276,29 @@
   78,
   79,
   86,
-  90,
-  91,
-  112,
-  116,
-  117
+  92,
+  94,
+  95,
+  96,
+  118,
+  122,
+  123
  ],
  "components\\admin-economy-dashboard.tsx": [
   49,
   50,
   52,
-  53,
-  56,
-  59,
-  76,
+  54,
+  57,
+  60,
   77,
   78,
   79,
   80,
-  130,
+  81,
   131,
-  132
+  132,
+  133
  ],
  "app\\(main)\\me\\sparks\\page.tsx": [
   18,
@@ -8333,9 +8335,47 @@
  "app\\(auth)\\self-unban\\page.tsx": [
   21,
   31,
-  47
+  50
  ],
  "app\\api\\[...path]\\route.ts": [
   70
+ ],
+ "components\\gacha-rates.tsx": [
+  44,
+  45,
+  46,
+  47,
+  65,
+  67,
+  79,
+  82
+ ],
+ "lib\\use-passkey-login.ts": [
+  46
+ ],
+ "components\\admin-applications.tsx": [
+  19,
+  20,
+  21,
+  54,
+  55,
+  69,
+  72,
+  103
+ ],
+ "components\\passkeys-card.tsx": [
+  55,
+  70,
+  82,
+  91,
+  130,
+  143,
+  144
+ ],
+ "lib\\captcha-widget.ts": [],
+ "app\\(auth)\\apply\\page.tsx": [
+  52,
+  65,
+  123
  ]
 }

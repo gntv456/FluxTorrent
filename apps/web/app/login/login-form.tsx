@@ -10,6 +10,7 @@ import {
   ApiError,
 } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { usePasskeyLogin } from "@/lib/use-passkey-login";
 import { fmt } from "@/i18n/config";
 
 /** 登录表单域（从 app/login/page.tsx 按域拆出，再从 login-view 细分）：
@@ -72,6 +73,15 @@ export function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [showTotp, setShowTotp] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  const { runPasskeyLogin } = usePasskeyLogin({
+    next,
+    onError: (e: unknown) =>
+      setError(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : String(e),
+      ),
+  });
 
   // middleware 已挡未登录；这里兜底：残留会话直接跳回目标页。
   // P1 收敛后 token 为 HttpOnly（JS 不可读），登录态以 flux.session 标记判定；
@@ -116,6 +126,7 @@ export function LoginForm() {
       setBusy(false);
     }
   }
+
 
   return (
     <form onSubmit={submit} className="bz-form">
@@ -211,6 +222,16 @@ export function LoginForm() {
       <div className="bz-actions">
         <button type="submit" disabled={busy} className="bz-submit">
           {busy ? dict.login.busy : dict.login.submit}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void runPasskeyLogin(username.trim())}
+          className="min-h-[40px] rounded-full border border-line px-4
+            text-sm text-sub transition-colors hover:border-accent
+            disabled:opacity-50"
+        >
+          🔑 Passkey 登录
         </button>
       </div>
 

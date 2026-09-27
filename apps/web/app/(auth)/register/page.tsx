@@ -8,10 +8,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import {
+  DRIVER_WIDGET_ID,
+  mountCaptchaWidget,
+} from "@/lib/captcha-widget";
+import { RegisterFields } from "@/components/register-fields";
 
 interface Captcha {
   captcha_id: string;
   question: string;
+}
+
+/// register-mode 下发的公开配置（0227）：验证码驱动 + 申请通道
+interface ModeInfo {
+  mode?: string;
+  captcha_provider?: string;
+  captcha_site_key?: string;
+  application_signup?: string;
 }
 
 /** 注册页（M01 邀请制）：邀请码 + 算术验证码 + 账号密码，对接 POST /auth/register */
@@ -41,6 +54,10 @@ export default function RegisterPage() {
   // 注册模式（0204）：open 模式不强制邀请码；invite_only 需要
   // （0208：email_verify 选项已移除，仅 invite_only/open 两态）
   const [openMode, setOpenMode] = useState(false);
+  // 0227：验证码驱动（none=自研算术题，其他=第三方组件 token）
+  const [driver, setDriver] = useState("none");
+  const [siteKey, setSiteKey] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
 
   async function refreshCaptcha() {
     try {
@@ -64,8 +81,14 @@ export default function RegisterPage() {
       .catch(() => setRegFields([]));
     // 注册模式与后端 registration_mode 同步（open 下邀请码非必填）
     api
-      .get<{ mode?: string }>("/api/v1/register-mode")
-      .then((r) => setOpenMode(r.mode === "open"))
+      .get<ModeInfo>("/api/v1/register-mode")
+      .then((r) => {
+        setOpenMode(r.mode === "open");
+        const prov = r.captcha_provider ?? "none";
+        setDriver(prov);
+        setSiteKey(r.captcha_site_key ?? "");
+        mountCaptchaWidget(prov, r.captcha_site_key ?? "", setCaptchaToken);
+      })
       .catch(() => setOpenMode(false));
   }, []);
 
@@ -80,8 +103,10 @@ export default function RegisterPage() {
         email: email.trim(),
         password,
         invite_code: inviteCode.trim(),
-        captcha_id: captcha?.captcha_id ?? "",
-        captcha_answer: captchaAnswer ? Number(captchaAnswer) : 0,
+        captcha_id: driver === "none" ? (captcha?.captcha_id ?? "") : "",
+        captcha_answer:
+          driver === "none" && captchaAnswer ? Number(captchaAnswer) : 0,
+        captcha_token: captchaToken,
         fields: fieldVals,
       });
       // 注册成功直接走登录（后端注册不返回 token）
@@ -172,7 +197,12 @@ export default function RegisterPage() {
           />
           <span className="text-xs text-sub">{dict.register.passwordHint}</span>
         </label>
+        {/* 验证码（0227）：none=自研算术题；第三方=对应组件（token 由回调写入） */}
+        {driver !== "none" && siteKey ? (
+          <div id={DRIVER_WIDGET_ID[driver]} className="min-h-[64px]" />
+        ) : null}
         {/* 算术验证码（后端 /auth/captcha 出题，一次性） */}
+        {driver === "none" && (
         <label className="flex flex-col gap-1">
           <span className="text-sm text-sub">{dict.register.captcha}</span>
           <div className="flex items-center gap-2">
@@ -205,6 +235,7 @@ export default function RegisterPage() {
             </button>
           </div>
         </label>
+        )}
         {msg && (
           <p role="alert" className="text-sm text-danger">
             {msg}
@@ -222,71 +253,11 @@ export default function RegisterPage() {
         >
           {busy ? dict.register.busy : dict.register.submit}
         </button>
-        {regFields.map((f) => (
-          <label key={f.key} className="flex flex-col gap-1">
-            <span className="text-sm text-sub">
-              {f.label}
-              {f.required ? " *" : ""}
-            </span>
-            {f.type === "select" ? (
-              <select
-                className={inputCls}
-                required={f.required}
-                value={String(fieldVals[f.key] ?? "")}
-                onChange={(e) =>
-                  setFieldVals((p) => ({
-                    ...p,
-                    [f.key]: e.target.value || null,
-                  }))
-                }
-              >
-                <option value="">—</option>
-                {f.options.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label ?? o.value}
-                  </option>
-                ))}
-              </select>
-            ) : f.type === "bool" ? (
-              <input
-                type="checkbox"
-                checked={fieldVals[f.key] === true}
-                onChange={(e) =>
-                  setFieldVals((p) => ({
-                    ...p,
-                    [f.key]: e.target.checked,
-                  }))
-                }
-              />
-            ) : (
-              <input
-                type={
-                  f.type === "number"
-                    ? "number"
-                    : f.type === "date"
-                      ? "date"
-                      : "text"
-                }
-                className={inputCls}
-                required={f.required}
-                maxLength={f.type === "text" ? 500 : undefined}
-                step={f.type === "number" ? 1 : undefined}
-                value={String(fieldVals[f.key] ?? "")}
-                onChange={(e) =>
-                  setFieldVals((p) => ({
-                    ...p,
-                    [f.key]:
-                      f.type === "number"
-                        ? e.target.value === ""
-                          ? null
-                          : Number(e.target.value)
-                        : e.target.value || null,
-                  }))
-                }
-              />
-            )}
-          </label>
-        ))}
+        <RegisterFields
+          fields={regFields}
+          values={fieldVals}
+          onChange={setFieldVals}
+        />
       </form>
       <p className="text-sm text-sub">
         {dict.register.hasAccount}{" "}
