@@ -33,8 +33,15 @@ async fn main() -> anyhow::Result<()> {
     let redis_url = std::env::var("REDIS_URL")
         .unwrap_or_else(|_| "redis://127.0.0.1:6379".into());
 
+    // 0225 G30-B14：并发调度后同 tick 最多 10 定时 + 3 手动任务并发抢连接，
+    // 固定 5 会 PoolTimedOut（且被 run_guarded 的笼统文案误报成锁冲突）。
+    // 缺省提到 16，可经 DB_POOL_SIZE 覆盖。
+    let pool_size: u32 = std::env::var("DB_POOL_SIZE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(16);
     let db = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(pool_size)
         .connect(&db_url)
         .await?;
     // 运行日志落库（0218 G6）：挂在这一刻之后的事件进 runtime_logs

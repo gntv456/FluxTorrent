@@ -35,6 +35,14 @@ macro_rules! shard_lock {
     };
 }
 
+/// 分片判定（spawn 前置过滤，与 shard_lock! 同口径）
+fn job_in_shard(name: &str, shard: &Option<Vec<String>>) -> bool {
+    match shard {
+        Some(list) => list.iter().any(|s| s == name),
+        None => true,
+    }
+}
+
 pub async fn run_all(
     db: PgPool,
     redis: redis::aio::ConnectionManager,
@@ -61,8 +69,7 @@ pub async fn run_all(
     if let Some(list) = &shard {
         tracing::info!(jobs = list.join(","), "角色分片生效（仅清单内定时 job）");
     }
-    // 任务目录同步（0218 G7）：面板的「全量 job + 节奏」以 job_status 为准
-    sync_job_catalog(&db).await;
+    sync_job_catalog(&db).await; // 目录同步（0218 G7）：面板以 job_status 为准
     loop {
         if crate::shutdown::shutting_down() {
             tracing::info!("停机：调度循环退出，排空在跑手动任务（≤60s）");
@@ -105,27 +112,74 @@ pub async fn run_all(
                     crate::jobs::locks::mark_end(&db, "consume_agent_blocks",
                         None).await;
                 }
-                shard_lock!(&db, "job:backfill_pieces_hash",
-                    backfill_pieces_hash(&db), &shard);
-                shard_lock!(&db, "job:sweep_stale_peers",
-                    sweep_stale_peers(&db), &shard);
-                shard_lock!(&db, "job:collect_milestones",
-                    collect_milestones(&db), &shard);
-                shard_lock!(&db, "job:hr_enforce", hr_enforce(&db), &shard);
-                shard_lock!(&db, "job:hr_punish", hr_punish(&db), &shard);
-                shard_lock!(&db, "job:class_auto_adjust",
-                    class_auto_adjust(&db), &shard);
-                shard_lock!(&db, "job:preserve_seed",
-                    preserve_seed(&db), &shard);
-                shard_lock!(&db, "job:task_settle",
-                    crate::task_jobs::task_settle(&db), &shard);
-                shard_lock!(&db, "job:exam_assign",
-                    crate::task_jobs::exam_assign(&db), &shard);
-                // 论坛抽奖到点开奖（0126）：CAS open→drawn + 按人幂等发放在
-                // sqlx 层面自守，锁内重跑安全（二审 G8：包进 with_lock 防多实例
-                // 双开 + forums 模块判定——模块关不开奖不动账）。
-                shard_lock!(&db, "job:lottery_settle",
-                    lottery_settle_due(&db), &shard);
+                // 0225 G30-B14：独立任务并发执行——900s 慢任务不再堵住同轮
+                // 后续；锁/超时/分片语义不变。无顺序依赖（结算链在 hour 串行）。
+                let mut js = tokio::task::JoinSet::new();
+                if job_in_shard("backfill_pieces_hash", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:backfill_pieces_hash", backfill_pieces_hash(&d)).await;
+                    });
+                }
+                if job_in_shard("sweep_stale_peers", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:sweep_stale_peers", sweep_stale_peers(&d)).await;
+                    });
+                }
+                if job_in_shard("collect_milestones", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:collect_milestones", collect_milestones(&d)).await;
+                    });
+                }
+                if job_in_shard("hr_enforce", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:hr_enforce", hr_enforce(&d)).await;
+                    });
+                }
+                if job_in_shard("hr_punish", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:hr_punish", hr_punish(&d)).await;
+                    });
+                }
+                if job_in_shard("class_auto_adjust", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:class_auto_adjust", class_auto_adjust(&d)).await;
+                    });
+                }
+                if job_in_shard("preserve_seed", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:preserve_seed", preserve_seed(&d)).await;
+                    });
+                }
+                if job_in_shard("task_settle", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:task_settle", crate::task_jobs::task_settle(&d)).await;
+                    });
+                }
+                if job_in_shard("exam_assign", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:exam_assign", crate::task_jobs::exam_assign(&d)).await;
+                    });
+                }
+                if job_in_shard("lottery_settle", &shard) {
+                    let d = db.clone();
+                    js.spawn(async move {
+                        with_lock(&d, "job:lottery_settle", lottery_settle_due(&d)).await;
+                    });
+                }
+                while let Some(res) = js.join_next().await {
+                    let _ = res.map_err(|e| {
+                        tracing::error!(?e, "并发 job join 失败");
+                    });
+                }
                 // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
                 let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
                 if last_bank_day.is_none() {

@@ -152,6 +152,8 @@ async fn run_guarded(
     }
     match with_lock(db, key, run_named(db, redis, job)).await {
         Some(note) => Ok(note),
-        None => anyhow::bail!("未执行：另一实例正在跑同一任务（锁未抢到）"),
+        None => anyhow::bail!(
+            "未执行：锁未抢到（另一实例在跑同任务，或连接池繁忙——见 worker 日志）"
+        ),
     }
 }
