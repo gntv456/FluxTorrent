@@ -1,7 +1,7 @@
 import { getPreserve } from "@/lib/data";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
-import { getTorrentDicts } from "@/lib/site-profile";
+import { getTorrentDicts, catPath } from "@/lib/site-profile";
 import { fmt } from "@/i18n/config";
 import { ClaimButton } from "@/components/claim-button";
 import { TorrentTr } from "@/components/torrent-table";
@@ -115,7 +115,7 @@ export default async function PreservePage({
               <option value="0">{dict.preserve.categoryAll}</option>
               {cats.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {catPath(cats, c)}
                 </option>
               ))}
             </select>

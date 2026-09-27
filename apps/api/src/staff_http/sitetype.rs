@@ -33,13 +33,17 @@ pub async fn site_profile(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 实际分类以 categories 表为准（类型包只是初始快照，管理组可再编辑）；
-    // bg_color（0183）是分类自身的一等属性，前端不再持有硬编码色表
-    let cats: Vec<(i32, String, String, Option<String>)> = sqlx::query_as(
-        "SELECT id, name, icon_key, bg_color FROM categories ORDER BY id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // bg_color（0183）是分类自身的一等属性，前端不再持有硬编码色表。
+    // 排序（0195）按站长设定出（ORDER BY sort, id，同值回落 id）；层级（0188）
+    // 下发 parent_id，前端拼「父 › 子」显示——子分类筛选由后端递归包含子孙
+    let cats: Vec<(i32, String, String, Option<String>, Option<i32>)> =
+        sqlx::query_as(
+            "SELECT id, name, icon_key, bg_color, parent_id FROM categories \
+             ORDER BY sort, id",
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 旧三列（torrents.medium_id / grade_id / edition_id）的词表：这三张实体表
     // 就是它们的 id 权威，与 0088 之后新模型的 section_dict.id **不是同一套编号**，
     // 所以下发空表时前端下拉自然消失（0180：非教育站的学段/版本词表已清空）。
@@ -218,7 +222,7 @@ pub async fn site_profile(
         "metadata_sources": sources,
         "site_desc": site_desc,
         "seo": seo,
-        "categories": cats.iter().map(|(id, name, icon, bg)| serde_json::json!({"id": id, "name": name, "icon_key": icon, "bg_color": bg})).collect::<Vec<_>>(),
+        "categories": cats.iter().map(|(id, name, icon, bg, parent)| serde_json::json!({"id": id, "name": name, "icon_key": icon, "bg_color": bg, "parent_id": parent})).collect::<Vec<_>>(),
         "torrent_dicts": {
             "grades": grades.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
             "media": media.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),

@@ -39,3 +39,7 @@ key 需为小写字母/数字/下划线，≤40 字符	key 需為小寫字母/�
 缺少要改的字段	缺少要改的欄位	Missing the field to update
 触发队列已满（20 条待执行）——worker 可能未运行	觸發佇列已滿（20 條待執行）——worker 可能未運行	Trigger queue is full (20 pending) — the worker may not be running
 未知任务（worker 未注册该任务名）	未知任務（worker 未註冊該任務名）	Unknown job (the worker has not registered this task name)
+快照缺少站型，无法回滚	快照缺少站型，無法回滾	The snapshot has no site type; it cannot be rolled back
+该次应用已回滚过	該次應用已回滾過	This apply has already been rolled back
+应用记录不存在	應用記錄不存在	No such apply record
+只能回滚最近一次应用：其后还有更新的记录，请先回滚它	只能回滾最近一次應用：其後還有更新的記錄，請先回滾它	Only the most recent apply can be rolled back; roll back the newer record first

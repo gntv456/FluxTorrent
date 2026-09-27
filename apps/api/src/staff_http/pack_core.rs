@@ -11,7 +11,7 @@ use sqlx::PgPool;
 /// 返回 (categories 数, extras 应用清单)。
 ///
 /// mode 语义与既有 apply 端点一致：replace = 清空分类重建（有种子时拒绝）；
-/// merge = 保留现有分类，同 id 覆盖改名、新 id 追加。
+/// merge = 保留现有分类，同 id 覆盖改名、新 id 追加；restore = 回滚快照重放。
 /// 注意：tagline 不在此处重置（0145 覆盖语义——站长自定义值保留，见 pack_apply 调用方）。
 pub(crate) async fn apply_pack_full(
     db: &PgPool,
@@ -54,27 +54,27 @@ pub(crate) async fn apply_pack_full(
         if name.is_empty() {
             continue;
         }
-        // 图标（二审 G10-4 修复）：包快照可带 icon_key（pack.categories 元素
-        // {id,name,icon_key?}）；未带时按 0166 同款模式表为新建分类铺图标。
-        // 优先级：现有非空图标（站长手改保得住）> 包显式图标 > 模式表推断。
-        let icon = c
-            .get("icon_key")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or("")
-            .to_string();
+        // 图标：包可带 icon_key；未带按 0166 模式表推断（现有非空优先；restore 快照优先）。
+        // 层级/排序（G20）：包声明了才写（COALESCE 守旧值），载荷保证父先于子。
+        let icon = c.get("icon_key").and_then(|v| v.as_str()).unwrap_or("");
         let _ = sqlx::query(
-            "INSERT INTO categories (id, name, icon_key) VALUES ($1, $2, \
-             COALESCE(NULLIF($3, ''), pick_category_icon($2))) ON \
-             CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, \
-             icon_key = COALESCE(NULLIF(categories.icon_key, ''), \
-               COALESCE(NULLIF(EXCLUDED.icon_key, ''), \
-                 pick_category_icon(EXCLUDED.name)))",
+            "INSERT INTO categories (id, name, icon_key, parent_id, sort) \
+             VALUES ($1, $2, COALESCE(NULLIF($3, ''), \
+             pick_category_icon($2)), $4, COALESCE($5, 100)) \
+             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, \
+             parent_id = COALESCE($4, categories.parent_id), \
+             sort = COALESCE($5, categories.sort), icon_key = COALESCE( \
+             NULLIF(CASE WHEN $6 THEN $3 ELSE categories.icon_key END, ''), \
+             NULLIF(categories.icon_key, ''), NULLIF($3, ''), \
+             pick_category_icon($2))",
         )
         .bind(id)
         .bind(&name)
-        .bind(&icon)
-        .execute(&mut *tx)
-        .await;
+        .bind(icon)
+        .bind(c.get("parent_id").and_then(|v| v.as_i64()).map(|p| p as i32))
+        .bind(c.get("sort").and_then(|v| v.as_i64()).map(|s| s as i32))
+        .bind(mode == "restore")
+        .execute(&mut *tx).await;
     }
     // site_type + 品牌默认
     sqlx::query("INSERT INTO site_settings (name, value) VALUES \

@@ -146,7 +146,6 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
             FROM wishlist w
             JOIN recent r ON r.name ILIKE '%' || w.keyword || '%'
             WHERE (w.category_id IS NULL OR w.category_id = (SELECT category_id FROM torrents t WHERE t.id = r.id))
-              AND (w.grade_id IS NULL OR w.grade_id = (SELECT grade_id FROM torrents t WHERE t.id = r.id))
               AND (w.notified_at IS NULL OR w.notified_at < now() - interval '24 hours')
         ),
         agg AS (
@@ -184,7 +183,6 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
             FROM wishlist w
             JOIN recent r ON r.name ILIKE '%' || w.keyword || '%'
             WHERE (w.category_id IS NULL OR w.category_id = (SELECT category_id FROM torrents t WHERE t.id = r.id))
-              AND (w.grade_id IS NULL OR w.grade_id = (SELECT grade_id FROM torrents t WHERE t.id = r.id))
               AND (w.notified_at IS NULL OR w.notified_at < now() - interval '24 hours')
         )
         UPDATE wishlist w SET notified_at = now()

@@ -1,0 +1,13 @@
+-- 0222：G17 —— wishlist.grade_id 退净（前端早已不传，API/DB 是最后两处残留）
+--
+-- 0074 建表时带了 grade_id（学段过滤），但旧三列（grade_id/media_id/edition_id）
+-- 随 0185 起已由 sections 维度引擎取代：维度的表达走 torrent_sections / section_dict，
+-- 而 grade_id 这一列既无 FK 也无索引，前端（components/wishlist.tsx）从不再传它，
+-- worker 的命中匹配却还在读——形成「站长以为按学段过滤、实际永远匹配 NULL」的
+-- 假过滤。通用建站口径下没人再用教育站的学段语义时，这列纯属误导。
+--
+-- 同批代码改动：gaps_http/wishlist.rs 去掉读写与「分类/学段」文案；
+-- worker jobs/social_team_expire.rs 两段 CTE 去掉 grade 条件。
+-- 存量数据：列里的值随 DROP 一并作废（历史订阅变「不限学段」，命中面变大，
+-- 属预期——该过滤本就不可用）。
+ALTER TABLE wishlist DROP COLUMN IF EXISTS grade_id;

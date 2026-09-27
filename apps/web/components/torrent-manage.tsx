@@ -44,7 +44,7 @@ export interface TorrentManageProps {
   sections: Record<string, { dict_id: number | null; values?: string[] }>;
   secKinds: SectionKindMeta[];
   secDict: Record<string, { id: number; name: string }[]>;
-  cats: { id: number; name: string }[];
+  cats: { id: number; name: string; parent_id?: number | null }[];
   seeders?: number;
   imdbId?: string | null;
   /** 标签字典与已选（0159 P1：详情页 aggregate 已带回，编辑表单免二次请求） */

@@ -23,6 +23,8 @@ export interface CatItem {
   name: string;
   /** 父分类（0188 层级）：NULL = 顶级 */
   parent_id?: number | null;
+  /** 排序值（0195）：小的在前，同值回落 id */
+  sort: number;
   torrents: number;
   /** 图标键（0166）：film/tv/music/anime/game/app/book/sport/doc/edu；空=首字色块 */
   icon_key?: string;
@@ -38,4 +40,17 @@ export interface TypePack {
   categories: { id: number; name: string }[];
   modules: Record<string, boolean>;
   sort: number;
+}
+
+/** 站型包应用记录（G21）：回看 diff/计数，回滚 = 重放应用前快照 */
+export interface PackApplyItem {
+  id: number;
+  pack_code: string;
+  pack_name: string;
+  mode: string;
+  changes: { key: string; old: string; new: string }[];
+  counts: Record<string, unknown>;
+  applied_at: string;
+  actor: string | null;
+  rolled_back_at: string | null;
 }

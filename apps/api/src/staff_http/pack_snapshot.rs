@@ -3,7 +3,11 @@
 //! 预置包用 sections/tags/classes/economy/metadata 五段 JSONB 携带自定义内容，
 //! 另存时必须按同形采集：缺段会让 custom 包 apply 时把站长已配的维度、标签词表、
 //! 等级叙事、经济预设当成「本包未声明」而整体跳过——四审前正是这条路径丢数据。
+//!
+//! G21 起本模块还承担 apply 台账的两件事：diff 预览（回看，与向导同源）与
+//! apply 前全量状态快照（回滚基线，回滚 = 把快照当一次 apply 执行）。
 
+use super::sitetype::SiteTypePack;
 use serde_json::{json, Map, Value};
 use sqlx::PgPool;
 
@@ -168,4 +172,120 @@ pub(super) async fn collect(db: &PgPool) -> DomainResult<PackSnapshot> {
         metadata,
         terms,
     })
+}
+
+/// 站型包 apply 的 diff 预览（U2 §8.2 / G21 回看）：apply 将改动的键旧值→新值，
+/// 不落库。向导端点与 apply 台账共用同一实现，保证「预览所见 = 记录所存」。
+/// 返回 (未变动项数, changes)。
+pub(super) async fn diff_preview(
+    db: &PgPool,
+    pack: &SiteTypePack,
+) -> DomainResult<(usize, Vec<Value>)> {
+    let current: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name IN \
+         ('site_type','site_name') OR name LIKE 'module\\_%'",
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    let cur = std::collections::HashMap::<String, String>::from_iter(current);
+    let mut changes: Vec<Value> = Vec::new();
+    let mut push = |key: &str, old: Option<&String>, new: &str| {
+        let old_v = old.map(|s| s.as_str()).unwrap_or("(未设置)");
+        if old_v != new {
+            changes.push(json!({ "key": key, "old": old_v, "new": new }));
+        }
+    };
+    push("site_type", cur.get("site_type"), &pack.code);
+    push("site_name", cur.get("site_name"), &pack.brand);
+    if let Some(mods) = pack.modules.as_object() {
+        for (k, v) in mods {
+            let setting = format!("module_{k}");
+            let new = if v.as_bool().unwrap_or(false) {
+                "yes"
+            } else {
+                "no"
+            };
+            push(&setting, cur.get(&setting), new);
+        }
+    }
+    Ok((cur.len().saturating_sub(changes.len()), changes))
+}
+
+/// 分类树载荷（G20 另存 / G21 快照共用）：带层级/排序/图标/分类色，且**父先于子**——
+/// parent_id 外键在 INSERT 当场校验，顺序错会让子分类静默落空。
+pub(super) async fn collect_categories(
+    db: &PgPool,
+) -> DomainResult<Vec<Value>> {
+    type Row = (i32, String, String, Option<i32>, i32, Option<String>);
+    let rows: Vec<Row> = sqlx::query_as(
+        "WITH RECURSIVE d AS (SELECT id, 1 AS depth FROM categories \
+         WHERE parent_id IS NULL UNION ALL SELECT c.id, d.depth + 1 FROM \
+         categories c JOIN d ON c.parent_id = d.id) \
+         SELECT c.id, c.name, c.icon_key, c.parent_id, c.sort, c.bg_color \
+         FROM categories c LEFT JOIN d ON d.id = c.id \
+         ORDER BY COALESCE(d.depth, 99), c.sort, c.id",
+    )
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(rows
+        .into_iter()
+        .map(|(id, name, icon, parent, sort, bg)| {
+            json!({
+                "id": id,
+                "name": name,
+                "icon_key": icon,
+                "parent_id": parent,
+                "sort": sort,
+                "bg_color": bg,
+            })
+        })
+        .collect())
+}
+
+/// apply 前全量状态快照（G21 回滚基线）。回滚口径 = 把这份快照当一次 apply 执行
+/// （0167 内容包先例），因此形状与包载荷对齐：site/modules/categories 是包载荷
+/// 之外的站点状态，其余段直接取 collect() 的六段。
+pub(super) async fn collect_state(db: &PgPool) -> DomainResult<Value> {
+    let snap = collect(db).await?;
+    let cats = collect_categories(db).await?;
+    let settings: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name IN ('site_type', \
+         'site_name', 'site_tagline', 'subtitle_kind') OR name LIKE \
+         'module\\_%'",
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    let get = |k: &str| -> Option<String> {
+        settings
+            .iter()
+            .find(|(n, _)| n == k)
+            .map(|(_, v)| v.clone())
+    };
+    let modules: Map<String, Value> = settings
+        .iter()
+        .filter_map(|(n, v)| {
+            n.strip_prefix("module_")
+                .map(|k| (k.to_string(), json!(v == "yes")))
+        })
+        .collect();
+    Ok(json!({
+        "version": 1,
+        "site": {
+            "site_type": get("site_type"),
+            "site_name": get("site_name"),
+            "site_tagline": get("site_tagline"),
+            "subtitle_kind": get("subtitle_kind"),
+        },
+        "modules": modules,
+        "categories": cats,
+        "sections": snap.sections,
+        "tags": snap.tags,
+        "classes": snap.classes,
+        "economy": snap.economy,
+        "metadata": snap.metadata,
+        "terms": snap.terms,
+    }))
 }

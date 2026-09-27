@@ -59,6 +59,8 @@ export interface TagRow {
 export interface CatRow {
   id: number;
   name: string;
+  /** 父分类（0188 层级）：显示走 catPath 拼「父 › 子」 */
+  parent_id?: number | null;
 }
 
 export interface LoginRow {

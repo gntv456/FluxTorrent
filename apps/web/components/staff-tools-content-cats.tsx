@@ -9,11 +9,17 @@
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import type { CatItem, TypePack } from "./staff-tools-content-shared";
+import { StaffPackAppliesPanel } from "./staff-tools-pack-applies";
+import type {
+  CatItem,
+  PackApplyItem,
+  TypePack,
+} from "./staff-tools-content-shared";
 
 interface CatsPanelProps {
   packs: TypePack[];
   cats: CatItem[];
+  applies: PackApplyItem[];
   curSiteType: string;
   packMode: "replace" | "merge";
   setPackMode: (v: "replace" | "merge") => void;
@@ -39,6 +45,7 @@ const PACK_OFF_CLS =
 export function StaffCatsPanel({
   packs,
   cats,
+  applies,
   curSiteType,
   packMode,
   setPackMode,
@@ -206,7 +213,7 @@ export function StaffCatsPanel({
             <tr>
               <td className="colhead">#</td>
               <td className="colhead">{t.fldCatName}</td>
-              <td className="colhead">{dict.cmgmt.parentLabel}</td>
+              <td className="colhead">{t.fldCatSort}</td>
               <td className="colhead">{t.catTorrents}</td>
               <td className="colhead text-right">{dict.cmgmt.colActions}</td>
             </tr>
@@ -218,6 +225,7 @@ export function StaffCatsPanel({
                     ? `${cats.find((x) => x.id === c.parent_id)?.name ?? "#" + c.parent_id} › ${c.name}`
                     : c.name}
                 </td>
+                <td className="num">{c.sort}</td>
                 <td className="num">{c.torrents}</td>
                 <td className="text-right">
                   <button
@@ -236,12 +244,16 @@ export function StaffCatsPanel({
                         c.parent_id ? String(c.parent_id) : "0",
                       );
                       if (pp === null) return;
+                      const so = prompt(t.sortPrompt, String(c.sort));
+                      if (so === null) return;
+                      const soT = so.trim();
                       void guard(async () => {
                         await api.put(`/api/v1/admin/categories/${c.id}`, {
                           name: nn,
                           icon_key: ik.trim(),
                           bg_color: bg.trim(),
                           parent_id: Number(pp) || null,
+                          sort: soT === "" ? undefined : Number(soT),
                         });
                       }, t.saved);
                     }}
@@ -264,6 +276,7 @@ export function StaffCatsPanel({
           </tbody>
         </table>
       </section>
+      <StaffPackAppliesPanel rows={applies} busy={busy} guard={guard} />
     </>
   );
 }

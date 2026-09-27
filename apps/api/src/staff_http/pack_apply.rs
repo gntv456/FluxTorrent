@@ -57,20 +57,51 @@ pub async fn site_type_pack_apply(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
+    // G21：apply 前抓全量状态快照（回滚基线）与 diff 预览（回看），成功后落台账
+    let snapshot = super::pack_snapshot::collect_state(&state.repo.db).await?;
+    let (_, changes) =
+        super::pack_snapshot::diff_preview(&state.repo.db, &pack).await?;
+
     let (added, extras) =
         super::pack_core::apply_pack_full(&state.repo.db, &pack, mode).await?;
     // 术语段（0206）：NULL = 本包不声明 → 不动站方词汇表；数组 = 覆盖式重建。
     // 与 apply_pack_extras 一样落在主事务之外（都是「按包声明重建一张表」）。
     let terms_applied =
         super::pack_terms::apply_pack_terms(&state.repo.db, &pack).await?;
+    // 台账计数：extras 形状是 Vec<(kind, applied)>，转对象便于前端直读
+    let extras_map: serde_json::Map<String, serde_json::Value> = extras
+        .iter()
+        .map(|(k, v)| (k.clone(), serde_json::json!(v)))
+        .collect();
+    let counts = serde_json::json!({
+        "categories": added,
+        "terms": terms_applied,
+        "extras": extras_map,
+    });
+    let apply_id: i64 = sqlx::query_scalar(
+        "INSERT INTO site_pack_applies (pack_code, pack_name, mode, changes, \
+         counts, snapshot, applied_by) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, \
+         $6::jsonb, $7) RETURNING id",
+    )
+    .bind(&pack.code)
+    .bind(&pack.name)
+    .bind(mode)
+    .bind(serde_json::Value::Array(changes).to_string())
+    .bind(counts.to_string())
+    .bind(snapshot.to_string())
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 模块开关进程缓存失效（apply 改 module_* 后立即生效，不等 30s TTL）
     state.module_flags.invalidate().await;
     state
         .repo
-        .audit(Some(auth.id), "site_type_pack_apply", None)
+        .audit(Some(auth.id), "site_type_pack_apply", Some(apply_id))
         .await;
     Ok(ok(
-        serde_json::json!({ "applied": pack.code, "mode": mode, "categories": added, "extras": extras,
-            "terms_applied": terms_applied }),
+        serde_json::json!({ "applied": pack.code, "mode": mode,
+            "categories": added, "extras": extras,
+            "terms_applied": terms_applied, "apply_id": apply_id }),
     ))
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { INPUT_BAOZI } from "@/lib/ui-classes";
+import { catPath } from "@/lib/site-profile";
 
 import { useI18n } from "@/i18n/client";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
@@ -177,7 +178,7 @@ export function UploadQualityBlock({
         >
           {(profileCats ?? []).map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {catPath(profileCats ?? [], c)}
             </option>
           ))}
         </select>
