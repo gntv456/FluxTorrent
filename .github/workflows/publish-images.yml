@@ -4,7 +4,8 @@
 # 说明：
 # - geoip mmdb 不入仓库（.gitignore），CI 构建的 api 镜像内无 GeoLite2 文件 → GeoIP 功能静默降级（字段为 null），
 #   与本地构建行为一致（apps/api/src/geo.rs 缺失时降级）。
-# - arm64 跨平台构建（QEMU）对 Rust release 编译极慢（1h+），暂只发 linux/amd64。
+# - arm64 跨平台构建（QEMU）对 Rust release 编译慢，故 arm64 拆到独立 job 用原生二级缓存串行构建，
+#   amd64 主矩阵保持不变（v0.2.0 起双平台）。
 # - web 镜像的 NEXT_PUBLIC_API_URL 在 CI 构建时为空（默认同源 /api 反代），部署时经反代路径转发即可。
 name: publish-images
 
@@ -55,13 +56,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # amd64 用 provenance 附平台清单；arm64 由独立 job 追加（见 arm64-native）
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
+          provenance: false
           push: true
           tags: |
+            ${{ steps.repo.outputs.name }}:${{ steps.tags.outputs.version }}-amd64
             ${{ steps.repo.outputs.name }}:${{ steps.tags.outputs.version }}
             ${{ steps.repo.outputs.name }}:latest
           cache-from: type=gha
@@ -69,3 +73,97 @@ jobs:
 
       - name: 总结
         run: echo "已推送 ${{ steps.repo.outputs.name }} 的 ${{ steps.tags.outputs.version }} 与 latest 双 tag"
+
+  # arm64 追加 job（v0.2.0）：QEMU 慢但在可接受范围（cache-from 复用 amd64 层无效时全量编译）。
+  # 失败不阻断 amd64 发布（continue-on-error 由 needs 关系天然保证：manifest 合并 job 单独放行）。
+  arm64-native:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api,     dockerfile: docker/api.Dockerfile }
+          - { name: worker,  dockerfile: docker/worker.Dockerfile }
+          - { name: tracker, dockerfile: docker/tracker.Dockerfile }
+          - { name: web,     dockerfile: docker/web.Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: 计算版本号（v 前缀去除）
+        id: tags
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: 提取镜像名（ghcr 要求全小写）
+        id: repo
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}/${{ matrix.name }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/arm64
+          provenance: false
+          push: true
+          tags: |
+            ${{ steps.repo.outputs.name }}:${{ steps.tags.outputs.version }}-arm64
+          cache-from: type=gha,scope=arm64-${{ matrix.name }}
+          cache-to: type=gha,scope=arm64-${{ matrix.name }},mode=max
+
+  # 合并多架构 manifest：把 -amd64/-arm64 单架构 tag 收进 semver 与 latest 多架构清单
+  manifest-merge:
+    runs-on: ubuntu-latest
+    needs: [build-push, arm64-native]
+    if: always() && needs.build-push.result == 'success'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api }
+          - { name: worker }
+          - { name: tracker }
+          - { name: web }
+    steps:
+      - name: 提取镜像名（ghcr 要求全小写）
+        id: repo
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}/${{ matrix.name }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 合并多架构 manifest（arm64 失败时仅 amd64）
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          IMG="${{ steps.repo.outputs.name }}"
+          if docker manifest inspect "$IMG:$V-arm64" >/dev/null 2>&1; then
+            docker manifest create "$IMG:$V" "$IMG:$V-amd64" "$IMG:$V-arm64"
+            docker manifest create "$IMG:latest" "$IMG:$V-amd64" "$IMG:$V-arm64"
+          else
+            echo "arm64 镜像缺失（其 job 失败），manifest 仅含 amd64"
+            docker manifest create "$IMG:$V" "$IMG:$V-amd64"
+            docker manifest create "$IMG:latest" "$IMG:$V-amd64"
+          fi
+          docker manifest push "$IMG:$V"
+          docker manifest push "$IMG:latest"
