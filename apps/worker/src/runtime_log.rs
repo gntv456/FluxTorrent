@@ -10,6 +10,7 @@ use sqlx::PgPool;
 use std::sync::OnceLock;
 use tokio::sync::mpsc;
 
+#[derive(Clone)]
 struct Entry {
     ts: chrono::DateTime<chrono::Utc>,
     level: &'static str,
@@ -152,46 +153,57 @@ async fn writer(db: PgPool, mut rx: mpsc::Receiver<Entry>) {
     }
 }
 
-/// rows: (ts, level, source, target, message, repeat)
-type Row = (
-    chrono::DateTime<chrono::Utc>,
-    &'static str,
-    &'static str,
-    String,
-    String,
-    i32,
-);
+/// 实例标识（0224 G30）：多副本下区分日志来源机器；与 shutdown::instance_tag
+/// 同口径。⚠️ 与 apps/api/src/runtime_log.rs 同源（两 crate 不共享依赖，改动需同步）。
+fn instance_id() -> String {
+    crate::shutdown::instance_tag()
+}
 
 async fn flush(db: &PgPool, batch: &[Entry]) -> Result<(), sqlx::Error> {
-    let mut rows: Vec<Row> = Vec::with_capacity(batch.len());
+    let instance = instance_id();
+    // 连续重复折叠（ts 取末次、repeat 累加）——与 api 侧同逻辑。
+    // 聚合元组持克隆而非引用：末次 ts 要覆写，引用不可变。
+    let mut agg: Vec<(Entry, i32)> = Vec::with_capacity(batch.len());
     for e in batch {
-        if let Some(last) = rows.last_mut() {
-            if last.1 == e.level && last.3 == e.target && last.4 == e.message {
-                last.0 = e.ts;
-                last.5 += 1;
+        if let Some((last, n)) = agg.last_mut() {
+            if last.level == e.level
+                && last.target == e.target
+                && last.message == e.message
+            {
+                last.ts = e.ts;
+                *n += 1;
                 continue;
             }
         }
-        rows.push((
-            e.ts,
-            e.level,
-            e.source,
-            e.target.clone(),
-            e.message.clone(),
-            1,
-        ));
+        agg.push((e.clone(), 1));
     }
+    if agg.is_empty() {
+        return Ok(());
+    }
+    // 手工拼 VALUES（push_values 闭包与 instance String 借用冲突，见 api 侧同注）
     let mut qb = sqlx::QueryBuilder::new(
         "INSERT INTO runtime_logs \
-         (ts, level, source, target, message, repeat) ",
+         (ts, level, source, target, message, repeat, instance) VALUES ",
     );
-    qb.push_values(rows, |mut b, r| {
-        b.push_bind(r.0)
-            .push_bind(r.1)
-            .push_bind(r.2)
-            .push_bind(r.3)
-            .push_bind(r.4)
-            .push_bind(r.5);
-    });
+    for (i, (e, n)) in agg.iter().enumerate() {
+        if i > 0 {
+            qb.push(", ");
+        }
+        qb.push("(");
+        qb.push_bind(e.ts);
+        qb.push(", ");
+        qb.push_bind(e.level);
+        qb.push(", ");
+        qb.push_bind(e.source);
+        qb.push(", ");
+        qb.push_bind(e.target.as_str());
+        qb.push(", ");
+        qb.push_bind(e.message.as_str());
+        qb.push(", ");
+        qb.push_bind(*n);
+        qb.push(", ");
+        qb.push_bind(instance.as_str());
+        qb.push(")");
+    }
     qb.build().execute(db).await.map(|_| ())
 }

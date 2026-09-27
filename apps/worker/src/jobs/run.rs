@@ -24,13 +24,19 @@ pub async fn run_all(
     let mut first_tick30 = true;
     let mut first_tick6h = true;
     let mut first_tick1d = true;
+    // 手动任务句柄收口（0224 G30）：停机时 drain 等待在跑任务，而非裸 spawn 弃置
+    let mut manual_tasks = crate::shutdown::TaskSet::new();
     // 任务目录同步（0218 G7）：面板的「全量 job + 节奏」以 job_status 为准
     sync_job_catalog(&db).await;
     loop {
+        if crate::shutdown::shutting_down() {
+            tracing::info!("停机：调度循环退出，排空在跑手动任务（≤60s）");
+            break;
+        }
         tokio::select! {
             _ = tick.tick() => {
                 // 手动触发认领（0218 G7）：与定时同函数、同 advisory 锁，不阻塞本循环
-                poll_manual_triggers(&db, &redis).await;
+                poll_manual_triggers(&db, &redis, &mut manual_tasks).await;
                 // 审计修复（多实例互斥 + 超时）：每个 job 包 advisory lock + 900s 超时。
                 // 多 worker 部署时同 job 只有抢到锁的实例执行（拿不到锁静默跳过本轮）；
                 // 卡死任务 15 分钟后被 timeout 掐掉、连接归还，不会拖垮整个调度循环。
@@ -162,4 +168,7 @@ pub async fn run_all(
             }
         }
     }
+    manual_tasks.drain().await;
+    tracing::info!("flux-worker 已排空，退出");
+    Ok(())
 }

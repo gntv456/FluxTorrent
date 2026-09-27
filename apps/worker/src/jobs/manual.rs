@@ -76,32 +76,48 @@ fn d(_: ()) -> String {
     "完成".to_string()
 }
 
-/// 认领队列（60s tick 调用）：回收中断行 → 取最多 3 条待执行 → 各自 spawn 执行。
-/// spawn 而非 await：单个长任务（银行结息等）不拖住整个调度循环。
+/// 认领队列（60s tick 调用）：回收中断行 → 取最多 3 条待执行 → 交给 TaskSet 收口。
+/// spawn 而非 await：单个长任务（银行结息等）不拖住整个调度循环；
+/// 停机位（0224 G30）置位后不再认领，在跑任务由 shutdown::TaskSet::drain 等待。
 pub(crate) async fn poll_manual_triggers(
     db: &PgPool,
     redis: &redis::aio::ConnectionManager,
+    tasks: &mut crate::shutdown::TaskSet,
 ) {
-    // 中断回收：worker 崩溃/重启留下的 running 行 30 分钟后判失败（面板不转圈）
+    if crate::shutdown::shutting_down() {
+        return;
+    }
+    // 中断回收：worker 崩溃/重启留下的 running 行 30 分钟后判失败（面板不转圈）。
+    // 多实例注记：只回收非本实例认领且超时的行——本实例在跑的任务（claimed_by
+    // 相同）可能只是慢，交由其自身结束写回（附录 D2 已知边界：>30min 的慢任务
+    // 仍会被他实例标 failed，待 A 实测后再决定是否引入心跳/租约）。
+    let me = crate::shutdown::instance_tag();
     let _ = sqlx::query(
         "UPDATE job_triggers SET status = 'failed', ok = false, \
          finished_at = now(), result = 'worker 中断（超时回收）' \
          WHERE status = 'running' \
-         AND started_at < now() - interval '30 minutes'",
+         AND started_at < now() - interval '30 minutes' \
+         AND (claimed_by = '' OR claimed_by <> $1)",
     )
+    .bind(&me)
     .execute(db)
     .await;
+    // 认领（0224 G30）：FOR UPDATE SKIP LOCKED——两实例并发认领同一批 pending 时
+    // 各自拿不重叠的行，输家不再把行写成「另一实例正在跑」的假失败（入队侧的
+    // 「多实例不重复排队」只管入队，管不到认领）。claimed_by 记认领实例。
     let claimed: Vec<(i64, String)> = sqlx::query_as(
-        "UPDATE job_triggers SET status = 'running', started_at = now() \
+        "UPDATE job_triggers SET status = 'running', started_at = now(), \
+         claimed_by = $1 \
          WHERE id IN (SELECT id FROM job_triggers WHERE status = 'pending' \
-         ORDER BY id LIMIT 3) RETURNING id, job",
+         ORDER BY id LIMIT 3 FOR UPDATE SKIP LOCKED) RETURNING id, job",
     )
+    .bind(&me)
     .fetch_all(db)
     .await
     .unwrap_or_default();
     for (id, job) in claimed {
         let (db2, mut r2) = (db.clone(), redis.clone());
-        tokio::spawn(async move {
+        tasks.spawn(async move {
             let key = format!("job:{job}");
             let (status, ok, result) =
                 match run_guarded(&db2, &mut r2, &key, &job).await {
