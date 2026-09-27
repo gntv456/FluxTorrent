@@ -83,8 +83,14 @@ pub async fn password_forgot(
             .flatten()
             .unwrap_or_else(|| "FluxTorrent".into());
             actix_web::rt::spawn(async move {
-                match send_reset_mail(&cfg.url, &cfg.from, &email_addr, &site, &link)
-                    .await
+                match send_reset_mail(
+                    &cfg.url,
+                    &cfg.from,
+                    &email_addr,
+                    &site,
+                    &link,
+                )
+                .await
                 {
                     Ok(_) => tracing::info!(
                         uid,

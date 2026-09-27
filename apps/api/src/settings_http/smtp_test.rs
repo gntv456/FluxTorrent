@@ -33,14 +33,13 @@ pub(super) async fn settings_smtp_test(
     let to = match body.to.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
         Some(t) => t.to_string(),
         None => {
-            let email: Option<String> = sqlx::query_scalar(
-                "SELECT email FROM users WHERE id = $1",
-            )
-            .bind(auth.id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+            let email: Option<String> =
+                sqlx::query_scalar("SELECT email FROM users WHERE id = $1")
+                    .bind(auth.id)
+                    .fetch_optional(&state.repo.db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?
+                    .flatten();
             email.ok_or_else(|| {
                 DomainError::Validation(
                     "当前账号没有邮箱，请填写测试收件人地址".into(),
@@ -52,7 +51,8 @@ pub(super) async fn settings_smtp_test(
         .await
         .ok_or_else(|| {
             DomainError::Validation(
-                "SMTP 未配置：请先在「邮件」分组填写 SMTP 服务器与发件人".into(),
+                "SMTP 未配置：请先在「邮件」分组填写 SMTP 服务器与发件人"
+                    .into(),
             )
         })?;
     let site: String = sqlx::query_scalar(
@@ -75,8 +75,8 @@ pub(super) async fn settings_smtp_test(
         Ok(()) => Ok(ok(serde_json::json!({
             "sent": true, "to": to, "from": cfg.from,
         }))),
-        Err(e) => Err(DomainError::Validation(format!(
-            "测试邮件发送失败：{e:#}"
-        ))),
+        Err(e) => {
+            Err(DomainError::Validation(format!("测试邮件发送失败：{e:#}")))
+        }
     }
 }

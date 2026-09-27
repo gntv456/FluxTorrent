@@ -99,9 +99,7 @@ pub async fn site_type_pack_apply(
         .repo
         .audit(Some(auth.id), "site_type_pack_apply", Some(apply_id))
         .await;
-    Ok(ok(
-        serde_json::json!({ "applied": pack.code, "mode": mode,
+    Ok(ok(serde_json::json!({ "applied": pack.code, "mode": mode,
             "categories": added, "extras": extras,
-            "terms_applied": terms_applied, "apply_id": apply_id }),
-    ))
+            "terms_applied": terms_applied, "apply_id": apply_id })))
 }

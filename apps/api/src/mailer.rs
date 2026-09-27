@@ -50,8 +50,11 @@ pub async fn smtp_config(db: &PgPool) -> Option<SmtpConfig> {
         let auth = match (user, pass) {
             // userinfo 百分号编码（@ : / 三个保留字即可覆盖绝大多数账密）
             (Some(u), Some(p)) => {
-                let enc =
-                    |s: &str| s.replace('@', "%40").replace(':', "%3A").replace('/', "%2F");
+                let enc = |s: &str| {
+                    s.replace('@', "%40")
+                        .replace(':', "%3A")
+                        .replace('/', "%2F")
+                };
                 format!("{}:{}@", enc(&u), enc(&p))
             }
             _ => String::new(),
@@ -151,9 +154,10 @@ pub async fn notify(
                 tracing::info!(to, subject = %s, "SMTP 未配置，邮件降级为日志");
                 return;
             };
-            if let Err(e) =
-                crate::gaps_http::send_generic_mail(&cfg.url, &cfg.from, &to, &s, &b)
-                    .await
+            if let Err(e) = crate::gaps_http::send_generic_mail(
+                &cfg.url, &cfg.from, &to, &s, &b,
+            )
+            .await
             {
                 tracing::error!(?e, to, "mail send failed");
             }

@@ -140,8 +140,9 @@ async fn admin_invite_issue(
     // 天数：显式传入优先；缺省读 invite_admin_ttl_days（30）
     let days = match body.days {
         Some(d) => d.clamp(1, 365),
-        None => crate::economy_http::invite_admin_ttl_days(&state.repo.db)
-            .await,
+        None => {
+            crate::economy_http::invite_admin_ttl_days(&state.repo.db).await
+        }
     };
     let exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND status < 2)",
@@ -156,9 +157,11 @@ async fn admin_invite_issue(
     let mut codes = Vec::new();
     for _ in 0..body.count {
         let code = crate::domain::new_invite_code();
-        let expires =
-            chrono::Utc::now() + chrono::Duration::days(days);
-        let id = state.repo.issue_invite(body.user_id, &code, expires).await?;
+        let expires = chrono::Utc::now() + chrono::Duration::days(days);
+        let id = state
+            .repo
+            .issue_invite(body.user_id, &code, expires)
+            .await?;
         codes.push(serde_json::json!({
             "id": id, "code": code, "expires_at": expires.to_rfc3339(),
         }));

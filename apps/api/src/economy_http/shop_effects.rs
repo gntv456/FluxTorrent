@@ -38,10 +38,8 @@ pub async fn apply_item_effect(
         // 0207：item_id 直接用 SKU 自身 id（apply 的调用方把 config.item_id
         // 覆写为 body.item_id，种子 SKU 无该键时据此 fallback）。
         "avatar_frame" | "animated_avatar" | "rainbow_id" | "rainbow_name" => {
-            let item_id = config
-                .get("item_id")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0);
+            let item_id =
+                config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
             sqlx::query(
                 "INSERT INTO user_dressups (user_id, item_id, \
                  source) VALUES ($1, $2, 'buy') ON CONFLICT (user_id, item_id) \

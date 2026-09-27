@@ -219,9 +219,7 @@ async fn admin_funding_cancel(
         return Err(DomainError::NotFound(body.id));
     };
     if status != 0 {
-        return Err(DomainError::Validation(
-            "仅进行中的众筹可关闭".into(),
-        ));
+        return Err(DomainError::Validation("仅进行中的众筹可关闭".into()));
     }
     let mut refunded = 0u64;
     if body.refund {

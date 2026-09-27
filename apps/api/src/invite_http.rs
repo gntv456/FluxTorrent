@@ -37,16 +37,14 @@ struct InviteRow {
 
 /// 设置键点查（i64）：读不到/解析失败回退缺省。
 async fn setting_i64(db: &sqlx::PgPool, name: &str, default: i64) -> i64 {
-    sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = $1",
-    )
-    .bind(name)
-    .fetch_optional(db)
-    .await
-    .ok()
-    .flatten()
-    .and_then(|v: String| v.parse().ok())
-    .unwrap_or(default)
+    sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1")
+        .bind(name)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|v: String| v.parse().ok())
+        .unwrap_or(default)
 }
 
 /// 用户邀请码 TTL（0204 配置化）：site_settings.invite_ttl_hours，缺省 72h。
@@ -62,9 +60,11 @@ pub async fn invite_quota_limit(
     auth: &AuthUser,
 ) -> i64 {
     if crate::authz::can(state, auth, crate::authz::perm::INVITES_BONUS).await {
-        (setting_i64(&state.repo.db, "invites_weekly_bonus", 4).await).clamp(0, 100)
+        (setting_i64(&state.repo.db, "invites_weekly_bonus", 4).await)
+            .clamp(0, 100)
     } else if auth.class_id >= 3 {
-        (setting_i64(&state.repo.db, "invites_weekly_class3", 2).await).clamp(0, 100)
+        (setting_i64(&state.repo.db, "invites_weekly_class3", 2).await)
+            .clamp(0, 100)
     } else {
         0
     }
@@ -249,7 +249,10 @@ pub async fn revoke_invite_handler(
             "邀请码不存在、已使用或已撤销".into(),
         ));
     }
-    state.repo.audit(Some(auth.id), "invite.revoke", Some(id)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "invite.revoke", Some(id))
+        .await;
     Ok(ok(serde_json::json!({ "revoked": id })))
 }
 

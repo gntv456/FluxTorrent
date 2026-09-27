@@ -49,8 +49,7 @@ async fn voucher_use(
                 ));
             }
             let code = crate::domain::new_invite_code();
-            let expires = chrono::Utc::now()
-                + chrono::Duration::days(ttl_days);
+            let expires = chrono::Utc::now() + chrono::Duration::days(ttl_days);
             let id = state.repo.issue_invite(auth.id, &code, expires).await?;
             state
                 .repo

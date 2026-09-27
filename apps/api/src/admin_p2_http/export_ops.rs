@@ -24,26 +24,34 @@ pub async fn admin_export_users(
     q: web::Query<ExportQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::USER_ADJUST,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_ADJUST)
+        .await?;
     let page = q.page.unwrap_or(1).clamp(1, 1_000_000);
-    let rows: Vec<serde_json::Value> =
-        sqlx::query_as::<_, (i64, String, Option<String>, i16, i64, i64, i32, chrono::DateTime<chrono::Utc>)>(
-            "SELECT u.id, u.username, u.email, u.status, u.uploaded, \
+    let rows: Vec<serde_json::Value> = sqlx::query_as::<
+        _,
+        (
+            i64,
+            String,
+            Option<String>,
+            i16,
+            i64,
+            i64,
+            i32,
+            chrono::DateTime<chrono::Utc>,
+        ),
+    >(
+        "SELECT u.id, u.username, u.email, u.status, u.uploaded, \
              u.downloaded, u.class_id, u.created_at \
              FROM users u ORDER BY u.id LIMIT $1 OFFSET $2",
-        )
-        .bind(PER)
-        .bind((page - 1) * PER)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .into_iter()
-        .map(|(id, username, email, status, up, down, class_id, created)| {
+    )
+    .bind(PER)
+    .bind((page - 1) * PER)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .into_iter()
+    .map(
+        |(id, username, email, status, up, down, class_id, created)| {
             serde_json::json!({
                 "id": id, "username": username,
                 // 邮箱仅脱敏形态导出（运营报表口径，防导出文件外泄即泄邮箱）
@@ -55,8 +63,9 @@ pub async fn admin_export_users(
                 "uploaded": up, "downloaded": down,
                 "created_at": created.to_rfc3339(),
             })
-        })
-        .collect();
+        },
+    )
+    .collect();
     let total: i64 = sqlx::query_scalar("SELECT count(*) FROM users")
         .fetch_one(&state.repo.db)
         .await
@@ -81,25 +90,27 @@ pub async fn admin_export_torrents(
     )
     .await?;
     let page = q.page.unwrap_or(1).clamp(1, 1_000_000);
-    let rows: Vec<serde_json::Value> =
-        sqlx::query_as::<_, (i64, String, i64, i64, i32, chrono::DateTime<chrono::Utc>)>(
-            "SELECT t.id, t.name, t.owner_id, t.size, t.seeders, t.created_at \
+    let rows: Vec<serde_json::Value> = sqlx::query_as::<
+        _,
+        (i64, String, i64, i64, i32, chrono::DateTime<chrono::Utc>),
+    >(
+        "SELECT t.id, t.name, t.owner_id, t.size, t.seeders, t.created_at \
              FROM torrents t ORDER BY t.id LIMIT $1 OFFSET $2",
-        )
-        .bind(PER)
-        .bind((page - 1) * PER)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .into_iter()
-        .map(|(id, name, owner_id, size, seeders, created)| {
-            serde_json::json!({
-                "id": id, "name": name, "owner_id": owner_id,
-                "size": size, "seeders": seeders,
-                "created_at": created.to_rfc3339(),
-            })
+    )
+    .bind(PER)
+    .bind((page - 1) * PER)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .into_iter()
+    .map(|(id, name, owner_id, size, seeders, created)| {
+        serde_json::json!({
+            "id": id, "name": name, "owner_id": owner_id,
+            "size": size, "seeders": seeders,
+            "created_at": created.to_rfc3339(),
         })
-        .collect();
+    })
+    .collect();
     let total: i64 = sqlx::query_scalar("SELECT count(*) FROM torrents")
         .fetch_one(&state.repo.db)
         .await
