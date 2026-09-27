@@ -5,6 +5,28 @@
 
 ## [Unreleased]
 
+### 多机部署 G30-A 批（2026-09-27，迁移 0224；方案 _doc/G30-多机部署开发方案-2026-09-27.md，配方 _doc/G30-多机部署三机配方.md）
+
+- **多副本部署支撑**：新增 `docker/compose.multi-node.yml`（profiles 分机取子集、无
+  container_name 可 `--scale`）与 nginx LB 样例；web 补 `/health` 端点与 healthcheck
+  （此前唯一无判活依据的服务）；全服务加 `stop_grace_period`（api 45s / worker 90s）。
+- **worker 优雅停机**：SIGTERM/SIGINT → 停止认领新任务 + 在跑手动任务 60s 排空
+  （`apps/worker/src/shutdown.rs`）；此前 docker stop 10s 即 SIGKILL 硬掐。
+- **任务认领防互踩**：`job_triggers` 认领语句加 `FOR UPDATE SKIP LOCKED` 并记录
+  `claimed_by` 认领实例——多 worker 并发不再产出「另一实例正在跑」的假失败。
+- **跨进程配置失效通道**：`flux:cfg:ver` 版本键 + 3s 轮询（术语/模块开关两域），
+  多副本下 A 改文案 B ≤5s 跟随（此前永不跟随直到重启）；移除全仓零订阅者的
+  `settings:changed` 死发布点；Redis 故障时降级回 30s TTL 行为。
+- **运行日志实例维度**：`runtime_logs` 加 `instance` 列（`FLUX_INSTANCE_ID` 优先、
+  缺省回落容器 hostname），后台「运行日志」页多实例筛选器（单实例自动隐藏）。
+- **迁移单飞开关**：`FLUX_BOOT_MIGRATIONS=0` 跳过启动迁移与种子（第二副本起用）。
+- **⚠ 破坏性变更**：`JWT_ALG=rs256` 未提供密钥（`JWT_RS_PRIVATE_PEM/JWT_RS_PUBLIC_PEM`
+  或挂卷的 `JWT_RS_KEY_DIR` 密钥文件）时**拒绝启动**——原先静默自动生成的密钥在容器
+  重建/多副本下互不相认（A 签 token B 验不过）。依赖自动生成的部署请先按配方文档生成
+  一次密钥对并挂卷注入；默认 hs256 用户零感知。
+- 实证：`_v_g30_multi.py` 13/13 全绿（双副本 JWT 互认 / 通道 bump / syslog 实例筛选 /
+  SKIP LOCKED 形状与落库）。
+
 ### 通用建站定位四审收口 A 批（2026-09-25，详见 _doc/通用建站定位四审报告-2026-09-25.md）
 
 - **生产空库首启不再自锁**：演示账号中性化防线改为「公开哈希 + 演示签名」双条件
