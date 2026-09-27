@@ -120,30 +120,39 @@ async fn main() -> anyhow::Result<()> {
     // 0225 G30-B12：外置模式（FLUX_TRACKER_PEER_STORE=redis）下停用——peer 权威
     // 已在 Redis Hash，这个「全量覆盖写同一个键」正是多副本互抹的根源。
     if !peers::external::external_enabled() {
-    {
-        let st = state.clone();
-        actix_web::rt::spawn(async move {
-            let mut tick = tokio::time::interval(Duration::from_secs(60));
-            loop {
-                tick.tick().await;
-                let snap = st.peers.export();
-                match serde_json::to_string(&snap) {
-                    Ok(raw) => {
-                        let mut c = st.redis.clone();
-                        use redis::AsyncCommands;
-                        // 30min TTL：tracker 长时间下线后旧快照不再有效
-                        if let Err(e) = c
-                            .set_ex::<_, _, ()>("flux:tracker:peers", raw, 1800)
-                            .await
-                        {
-                            tracing::warn!(%e, "peer snapshot write failed");
+        {
+            let st = state.clone();
+            actix_web::rt::spawn(async move {
+                let mut tick = tokio::time::interval(Duration::from_secs(60));
+                loop {
+                    tick.tick().await;
+                    let snap = st.peers.export();
+                    match serde_json::to_string(&snap) {
+                        Ok(raw) => {
+                            let mut c = st.redis.clone();
+                            use redis::AsyncCommands;
+                            // 30min TTL：tracker 长时间下线后旧快照不再有效
+                            if let Err(e) = c
+                                .set_ex::<_, _, ()>(
+                                    "flux:tracker:peers",
+                                    raw,
+                                    1800,
+                                )
+                                .await
+                            {
+                                tracing::warn!(
+                                    %e,
+                                    "peer snapshot write failed"
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!(%e, "peer snapshot encode failed")
                         }
                     }
-                    Err(e) => tracing::warn!(%e, "peer snapshot encode failed"),
                 }
-            }
-        });
-    }
+            });
+        }
     }
 
     // 管理端变更通知轮询：flux:guard:ver 每 3s 一查（单 GET，可忽略的开销）。
@@ -196,9 +205,7 @@ async fn main() -> anyhow::Result<()> {
                     if peers::external::external_enabled() {
                         let mut r = st.redis.clone();
                         peers::external::set_connectable(
-                            &mut r,
-                            &key,
-                            reachable,
+                            &mut r, &key, reachable,
                         )
                         .await;
                     }
