@@ -17,7 +17,12 @@
   不再被记成 LB 地址。
 - **web 上游运行期可换**：新增 `app/api/[...path]/route.ts` 运行期代理
   （API_SERVER_URL 环境变量即换，无需重打镜像），构建期 rewrites 降为兜底。
-- 实证：`_v_g30_multi.py` 21/21（新增 V7 组/消费者≥2/游标退役、V9 代理通）。
+- **任务面板分实例可见**：`/admin/jobs` 返回并展示 `executed_by`（前端实例列，
+  三语）——多 worker 下「最近运行」看得出谁在跑。
+- 实证：`_v_g30_multi.py` 21/21（V7 组/消费者≥2/游标退役、V9 代理通）+ 收尾
+  三项栈内实测：计费入账单行不双计（announce→stream→组消费→ledger→快照全链）、
+  XFF 双档（TRUST_PROXY 未开伪造 XFF 被忽略=socket IP；开启后事件 ip=XFF 首值）、
+  FLUX_WORKER_JOBS 白名单实例不越界跑清单外任务。
 
 ### 多机部署 G30-A 批（2026-09-27，迁移 0224；方案 _doc/G30-多机部署开发方案-2026-09-27.md，配方 _doc/G30-多机部署三机配方.md）
 
