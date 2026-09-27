@@ -68,7 +68,10 @@ pub async fn massmail_send(
     let mut mail_err: Option<String> = None;
     let note = match cfg {
         None => {
-            mail_err = Some("SMTP 未配置（站点设定与 SMTP_URL 均为空，邮件未投递，仅留档）".into());
+            mail_err = Some(
+                "SMTP 未配置（站点设定与 SMTP_URL 均为空，邮件未投递，仅留档）"
+                    .into(),
+            );
             mail_err.unwrap()
         }
         Some(cfg) => {
@@ -100,8 +103,9 @@ pub async fn massmail_send(
                         match mailer.send(msg).await {
                             Ok(_) => delivered += 1,
                             Err(e) => {
-                                mail_err =
-                                    Some(format!("第 {delivered} 封后失败：{e}"));
+                                mail_err = Some(format!(
+                                    "第 {delivered} 封后失败：{e}"
+                                ));
                                 break;
                             }
                         }

@@ -286,11 +286,19 @@ pub async fn appeal_handle(
         .fetch_one(&state.repo.db)
         .await
         .unwrap_or_else(|_| "FluxTorrent".into());
-        let verdict = if body.accept { "已受理" } else { "未通过" };
+        let verdict = if body.accept {
+            "已受理"
+        } else {
+            "未通过"
+        };
         let subject = format!("[{site}] 你的申诉{verdict}");
         let body_text = format!(
             "你的申诉（#{id}）处理结果：{verdict}。\n处理说明：{note}\n{}",
-            if unbanned { "账号已恢复，现在可以正常登录。" } else { "" },
+            if unbanned {
+                "账号已恢复，现在可以正常登录。"
+            } else {
+                ""
+            },
             id = body.appeal_id,
             note = if body.note.trim().is_empty() {
                 "（无）"

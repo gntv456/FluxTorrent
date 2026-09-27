@@ -210,7 +210,10 @@ pub async fn category_create(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 审计修复（P1）：分类增删改此前完全不写审计日志
-    state.repo.audit(Some(auth.id), "category.create", Some(id as i64)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "category.create", Some(id as i64))
+        .await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -254,7 +257,10 @@ pub async fn category_update(
         return Err(DomainError::NotFound(*path as i64));
     }
     let cid = *path as i64;
-    state.repo.audit(Some(auth.id), "category.update", Some(cid)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "category.update", Some(cid))
+        .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -289,7 +295,10 @@ pub async fn category_delete(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let did = *path as i64;
-    state.repo.audit(Some(auth.id), "category.delete", Some(did)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "category.delete", Some(did))
+        .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 

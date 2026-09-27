@@ -66,7 +66,8 @@ pub trait Plugin: Send + Sync {
 /// 键值热读有查询成本，用 30s 进程内缓存摊薄（与 module_flags 同思路的轻量版）。
 pub async fn plugin_enabled(db: &sqlx::PgPool, name: &str) -> bool {
     use std::sync::Mutex;
-    type CacheMap = Mutex<std::collections::HashMap<String, (std::time::Instant, bool)>>;
+    type CacheMap =
+        Mutex<std::collections::HashMap<String, (std::time::Instant, bool)>>;
     static CACHE: tokio::sync::OnceCell<CacheMap> =
         tokio::sync::OnceCell::const_new();
     let cache = CACHE
@@ -79,14 +80,13 @@ pub async fn plugin_enabled(db: &sqlx::PgPool, name: &str) -> bool {
             }
         }
     }
-    let v: Option<String> = sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = $1",
-    )
-    .bind(format!("plugin__{name}"))
-    .fetch_optional(db)
-    .await
-    .ok()
-    .flatten();
+    let v: Option<String> =
+        sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1")
+            .bind(format!("plugin__{name}"))
+            .fetch_optional(db)
+            .await
+            .ok()
+            .flatten();
     let v = !matches!(v.as_deref(), Some("no"));
     if let Ok(mut g) = cache.lock() {
         g.insert(name.to_string(), (std::time::Instant::now(), v));

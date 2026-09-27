@@ -41,14 +41,13 @@ async fn medal_gift(
     }
     // 购买并直接入对方账户（赠送弹窗流程：一步完成）。
     // 0204：赠送为代购式——送方付费，无需拥有该勋章。
-    let (price, medal_fee_bp): (Option<i64>, Option<i32>) = sqlx::query_as(
-        "SELECT price, gift_fee_bp FROM medals WHERE id = $1",
-    )
-    .bind(body.medal_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .unwrap_or((None, None));
+    let (price, medal_fee_bp): (Option<i64>, Option<i32>) =
+        sqlx::query_as("SELECT price, gift_fee_bp FROM medals WHERE id = $1")
+            .bind(body.medal_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .unwrap_or((None, None));
     let Some(price) = price else {
         return Err(DomainError::NotFound(body.medal_id));
     };

@@ -41,8 +41,7 @@ pub(super) async fn promo_plans(
     // plans 保序：前端按 kind 分组渲染，顺序由本响应决定
     let mut plans = serde_json::Map::new();
     for r in rows {
-        let entry =
-            serde_json::json!({ "hours": r.hours, "price": r.price });
+        let entry = serde_json::json!({ "hours": r.hours, "price": r.price });
         plans
             .entry(r.kind)
             .or_insert_with(|| serde_json::Value::Array(Vec::new()))

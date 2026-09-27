@@ -144,14 +144,13 @@ async fn user_set_status(
     // 用户只能从公开 ban-log 猜状态）。封禁走邮件（已无法登录看 PM）；
     // 禁言/恢复走 PM 必达 + 邮件尽力。
     {
-        let target: Option<(String, Option<String>)> = sqlx::query_as(
-            "SELECT username, email FROM users WHERE id = $1",
-        )
-        .bind(body.user_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .ok()
-        .flatten();
+        let target: Option<(String, Option<String>)> =
+            sqlx::query_as("SELECT username, email FROM users WHERE id = $1")
+                .bind(body.user_id)
+                .fetch_optional(&state.repo.db)
+                .await
+                .ok()
+                .flatten();
         if let Some((username, email)) = target {
             let site: String = sqlx::query_scalar(
                 "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'site_name'), 'FluxTorrent')",

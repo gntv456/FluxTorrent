@@ -45,8 +45,11 @@ pub async fn upload_attachment(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(8);
-    let max_bytes =
-        if max_mib <= 0 { usize::MAX } else { (max_mib as usize) * 1024 * 1024 };
+    let max_bytes = if max_mib <= 0 {
+        usize::MAX
+    } else {
+        (max_mib as usize) * 1024 * 1024
+    };
     let mut file_bytes: Option<Bytes> = None;
     let mut filename = String::new();
     let mut mime = String::new();

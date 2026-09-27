@@ -55,11 +55,7 @@ pub async fn admin_payment_orders(
     if !(1..=100).contains(&q.per_page) {
         return Err(DomainError::Validation("per_page 取值 1-100".into()));
     }
-    let status = q
-        .status
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
+    let status = q.status.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let rows: Vec<PaymentOrderRow> = sqlx::query_as(
         r#"SELECT o.id, o.order_no, o.user_id, u.username, o.amount_usd::float8,
                   o.amount_paid::float8, o.channel, o.status, o.trade_no, o.created_at, o.paid_at

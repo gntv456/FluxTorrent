@@ -71,10 +71,15 @@ pub(crate) async fn apply_pack_full(
         .bind(id)
         .bind(&name)
         .bind(icon)
-        .bind(c.get("parent_id").and_then(|v| v.as_i64()).map(|p| p as i32))
+        .bind(
+            c.get("parent_id")
+                .and_then(|v| v.as_i64())
+                .map(|p| p as i32),
+        )
         .bind(c.get("sort").and_then(|v| v.as_i64()).map(|s| s as i32))
         .bind(mode == "restore")
-        .execute(&mut *tx).await;
+        .execute(&mut *tx)
+        .await;
     }
     // site_type + 品牌默认
     sqlx::query("INSERT INTO site_settings (name, value) VALUES \

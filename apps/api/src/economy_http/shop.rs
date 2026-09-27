@@ -191,10 +191,8 @@ async fn shop_buy(
     // 订单落库（幂等键唯一）。卡牌类（补签/改名/临时邀请）库存口径 = 订单行数
     //（checkin/gaps 按「无 resub_uses 的订单」计数），因此 qty 张就插 qty 行
     //（键加序号后缀保持幂等）；其余类一行、price 记总额（0207）。
-    let card_kind = matches!(
-        kind.as_str(),
-        "makeup_card" | "rename_card" | "temp_invite"
-    );
+    let card_kind =
+        matches!(kind.as_str(), "makeup_card" | "rename_card" | "temp_invite");
     if card_kind && qty > 1 {
         for k in 1..=qty {
             let key = if k == 1 {
@@ -274,10 +272,8 @@ async fn shop_buy(
         .repo
         .audit(Some(auth.id), "shop_buy", Some(body.item_id))
         .await;
-    Ok(ok(
-        serde_json::json!({
-            "item": name, "price": total, "qty": qty,
-            "idempotency_key": idem,
-        }),
-    ))
+    Ok(ok(serde_json::json!({
+        "item": name, "price": total, "qty": qty,
+        "idempotency_key": idem,
+    })))
 }

@@ -59,12 +59,15 @@ impl AuthRepo {
             .fetch_optional(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-            if let Some(expected) = bound_email.flatten().as_deref().map(str::trim) {
+            if let Some(expected) =
+                bound_email.flatten().as_deref().map(str::trim)
+            {
                 if !expected.is_empty()
                     && !expected.eq_ignore_ascii_case(new_user.email.trim())
                 {
                     return Err(DomainError::Validation(
-                        "该邀请码是定向邀请，注册邮箱须与收到邀请的邮箱一致".into(),
+                        "该邀请码是定向邀请，注册邮箱须与收到邀请的邮箱一致"
+                            .into(),
                     ));
                 }
             }

@@ -96,7 +96,9 @@ async fn medal_list(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let max_worn = medals_max_worn(&state.repo.db).await;
-    Ok(ok(serde_json::json!({ "items": rows, "max_worn": max_worn })))
+    Ok(ok(
+        serde_json::json!({ "items": rows, "max_worn": max_worn }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -118,11 +120,13 @@ async fn medal_wear(
     // 0204 多佩戴：摘掉全部仅剩「显式清空」语义（medal_id = null）；
     // 单枚戴/摘不再先清场。上限内自由多戴，超限报 Validation。
     let Some(mid) = body.medal_id else {
-        sqlx::query("UPDATE user_medals SET wearing = false WHERE user_id = $1")
-            .bind(auth.id)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        sqlx::query(
+            "UPDATE user_medals SET wearing = false WHERE user_id = $1",
+        )
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
         return Ok(ok(serde_json::json!({ "cleared": true })));
     };
     let mut tx = state
@@ -200,5 +204,7 @@ async fn my_medals(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let max_worn = medals_max_worn(&state.repo.db).await;
-    Ok(ok(serde_json::json!({ "items": rows, "max_worn": max_worn })))
+    Ok(ok(
+        serde_json::json!({ "items": rows, "max_worn": max_worn }),
+    ))
 }

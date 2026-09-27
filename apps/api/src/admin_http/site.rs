@@ -93,8 +93,12 @@ async fn staff_panel_entries_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let rows: Vec<StaffPanelEntryFull> = sqlx::query_as(
         "SELECT id, section, name, url, info, sort, tab_key, min_class, \
          module_key, perm_key FROM staff_panel_entries ORDER BY section, sort, id",
@@ -130,12 +134,14 @@ async fn staff_panel_entries_add(
     body: web::Json<PanelEntryReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     if body.name.trim().is_empty() || body.url.trim().is_empty() {
-        return Err(DomainError::Validation(
-            "面板条目需要名称与 URL".into(),
-        ));
+        return Err(DomainError::Validation("面板条目需要名称与 URL".into()));
     }
     let id: i32 = sqlx::query_scalar(
         "INSERT INTO staff_panel_entries \
@@ -170,8 +176,12 @@ async fn staff_panel_entries_update(
     body: web::Json<PanelEntryReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let n = sqlx::query(
         "UPDATE staff_panel_entries SET section=$2, name=$3, url=$4, info=$5, \
@@ -187,8 +197,18 @@ async fn staff_panel_entries_update(
     .bind(body.sort)
     .bind(body.tab_key.as_deref().map(str::trim))
     .bind(body.min_class)
-    .bind(body.module_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
-    .bind(body.perm_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(
+        body.module_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        body.perm_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty()),
+    )
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
@@ -215,8 +235,12 @@ async fn staff_panel_entries_delete(
     body: web::Json<PanelEntryDelReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let n = sqlx::query("DELETE FROM staff_panel_entries WHERE id = $1")
         .bind(body.id)
         .execute(&state.repo.db)

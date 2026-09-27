@@ -37,12 +37,11 @@ async fn dressup_list(
     let auth = require_auth(&req, &state).await?;
     // Rust 侧排序（0207b）：框类按 (avatar_frames.sort, id)，其余按 (price, id)。
     // 框库 sort 需要另一查——列表最多二十来行，直接查全表 sort 映射最直白。
-    let frame_sort: Vec<(i32, i32)> = sqlx::query_as(
-        "SELECT id, sort FROM avatar_frames ORDER BY sort, id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let frame_sort: Vec<(i32, i32)> =
+        sqlx::query_as("SELECT id, sort FROM avatar_frames ORDER BY sort, id")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let mut rows: Vec<DressupRow> = sqlx::query_as(
         "SELECT si.id AS item_id, si.name, si.kind, si.price, \
          si.config->>'slot' AS slot, si.config, \
@@ -60,7 +59,9 @@ async fn dressup_list(
     let frame_order = |fid: i64| -> (i64, i64) {
         let s = frame_sort
             .iter()
-            .find(|(id, _)| i32::try_from(fid).map(|f| f == *id).unwrap_or(false))
+            .find(|(id, _)| {
+                i32::try_from(fid).map(|f| f == *id).unwrap_or(false)
+            })
             .map(|(_, s)| *s as i64);
         (s.unwrap_or(i64::MAX), fid)
     };
@@ -106,11 +107,11 @@ async fn dressup_wear(
          FROM user_dressups ud JOIN shop_items si ON si.id = ud.item_id \
          WHERE ud.user_id = $1 AND ud.item_id = $2",
         )
-    .bind(auth.id)
-    .bind(body.item_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        .bind(auth.id)
+        .bind(body.item_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((slot, kind, cfg)) = owned else {
         return Err(DomainError::Validation(
             "尚未拥有该装扮（先在商店购买）".into(),
@@ -149,23 +150,22 @@ async fn dressup_wear(
             ("avatar_frame", Some("avatar")) => {
                 // 框 id 三级来源：config.frame_id（0207 新 SKU）→ config.avatar_url
                 // 填数字（管理员旧写法）→ 价格最贵一帧兜底
-                let fid: Option<i32> = match frame_id_cfg
-                    .map(|v| v as i32)
-                    .or_else(|| {
+                let fid: Option<i32> =
+                    match frame_id_cfg.map(|v| v as i32).or_else(|| {
                         effect_url
                             .as_deref()
                             .and_then(|s| s.parse::<i32>().ok())
                     }) {
-                    Some(x) => Some(x),
-                    None => sqlx::query_scalar(
-                        "SELECT id FROM avatar_frames \
+                        Some(x) => Some(x),
+                        None => sqlx::query_scalar(
+                            "SELECT id FROM avatar_frames \
                          ORDER BY price DESC, id DESC LIMIT 1",
-                    )
-                    .fetch_optional(&state.repo.db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?
-                    .flatten(),
-                };
+                        )
+                        .fetch_optional(&state.repo.db)
+                        .await
+                        .map_err(|e| DomainError::Internal(e.into()))?
+                        .flatten(),
+                    };
                 sqlx::query(
                     "UPDATE users SET avatar_frame_id = $2 WHERE id = $1",
                 )
