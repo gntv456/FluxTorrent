@@ -207,6 +207,9 @@ services:
       ANN_RATE_GLOBAL_PER_MIN: "0"
       ANN_METRICS_TOKEN: "${ANN_METRICS_TOKEN:-}"
       TRACKER_UDP_URL: ${TRACKER_UDP_URL:-}
+      # UDP 收包 worker 数（0227 G31 XL 档）：SO_REUSEPORT 多 socket 内核负载
+      # 均衡；空/1 = 单循环（行为不变），大站建议 4
+      TRACKER_UDP_WORKERS: ${TRACKER_UDP_WORKERS:-}
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@${FLUX_DB_HOST:-postgres}:5432/fluxtorrent
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@${FLUX_REDIS_HOST:-redis}:6379
       RUST_LOG: info
