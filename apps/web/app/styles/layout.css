@@ -2836,3 +2836,14 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .auth-shell__sep {
   color: var(--line);
 }
+
+/* ============ M6.5 统计条 compact 两列（pgstats，/my-spark /donate 共用） ============
+ * auto-fit(150px) 在 390px 会挤成三断列；compact 档固定两列更可读。 */
+@media (max-width: 767px) {
+  .pgstats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pgstats > div:nth-child(2n + 1) {
+    border-right: 1px solid var(--line);
+  }
+}
