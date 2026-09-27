@@ -44,9 +44,10 @@ impl AppState {
         .map_err(|_| {
             anyhow::anyhow!("连接 Redis 超时（10s）：{}", cfg.redis_url)
         })??;
+        let replica = cfg.database_replica_url.clone();
         Ok(Self {
             cfg,
-            repo: Repo::new(db),
+            repo: Repo::with_replica(db, replica.as_deref()).await,
             redis,
             jwt,
             plugins: crate::plugins::PluginManager::builtin(),

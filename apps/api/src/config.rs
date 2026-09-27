@@ -6,6 +6,10 @@ pub struct AppConfig {
     #[serde(default = "default_bind")]
     pub bind: String,
     pub database_url: String,
+    /// 只读副本 URL（0230 G31-D2 读写分离）：空 = 无副本，read_db 退化为
+    /// 主池（零行为变化）。设为流复制只读实例时，热点读路由过去。
+    #[serde(default)]
+    pub database_replica_url: Option<String>,
     #[serde(default = "default_redis")]
     pub redis_url: String,
     /// JWT 密钥：hs256 模式为共享密钥（≥32B）；rs256 模式仅作回退占位（实际用 RSA PEM）。
