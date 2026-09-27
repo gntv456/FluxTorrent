@@ -3538,3 +3538,20 @@ input.batch-all {
 .up-submitbar:disabled {
   opacity: 0.6;
 }
+
+/* ============ M6.1 卡片网格类：compact 档单列降级 ============
+ * 任务/勋章/商店等卡片网格 auto-fill(minmax) 在窄屏仍会挤到最小卡宽，
+ * 信息密度不可读。统一在此收敛：767px 以下五张网格全部降单列。
+ * 断点口径与 M1 断点归一（<768 = compact）一致。
+ * （task-shop-grid 复用 task-card-grid 列定义，无独立规则，故无需列条目） */
+@media (max-width: 767px) {
+  .task-card-grid,
+  .hall-grid,
+  .honor-grid,
+  .shop-grid {
+    grid-template-columns: 1fr;
+  }
+  .shop-grid {
+    padding: 10px;
+  }
+}
