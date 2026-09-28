@@ -55,21 +55,32 @@ pub async fn upsert(
     redis: &mut ConnectionManager,
     peer: Peer,
 ) -> Result<(), redis::RedisError> {
+    // 审查修正（P1-1）：HGET→改→HSET 读改写竞态会吞回连测量值（upsert
+    // 覆盖 connectable 回 -1）。Lua 原子化：旧值存在则保留其 connectable。
     let key = swarm_key(&peer.key.info_hash);
-    // connectable 保留：先读旧值
-    let old: Option<String> = redis
-        .hget(&key, &peer.key.peer_id)
-        .await
-        .unwrap_or(None);
-    let mut p = peer;
-    if let Some(old) = old {
-        if let Ok(prev) = serde_json::from_str::<Peer>(&old) {
-            p.connectable = prev.connectable;
-        }
-    }
-    let val = serde_json::to_string(&p).unwrap_or_default();
-    let _: () = redis.hset(&key, &p.key.peer_id, val).await?;
-    let _: bool = redis.expire(&key, swarm_ttl_secs()).await?;
+    let new_val = serde_json::to_string(&peer).unwrap_or_default();
+    let script = redis::Script::new(
+        r#"local old = redis.call('HGET', KEYS[1], ARGV[1])
+           if old then
+             local ok, o = pcall(cjson.decode, old)
+             if ok and o.connectable ~= nil then
+               local n = cjson.decode(ARGV[2])
+               n.connectable = o.connectable
+               redis.call('HSET', KEYS[1], ARGV[1], cjson.encode(n))
+               redis.call('EXPIRE', KEYS[1], ARGV[3])
+               return 1
+             end
+           end
+           redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+           redis.call('EXPIRE', KEYS[1], ARGV[3])
+           return 0"#,
+    );
+    let mut inv = script.prepare_invoke();
+    inv.key(key)
+        .arg(&peer.key.peer_id)
+        .arg(new_val)
+        .arg(swarm_ttl_secs());
+    let _: i32 = inv.invoke_async(redis).await?;
     Ok(())
 }
 
@@ -164,8 +175,7 @@ pub async fn set_connectable(
     reachable: bool,
 ) {
     let k = swarm_key(&key.info_hash);
-    let v: Option<String> =
-        redis.hget(&k, &key.peer_id).await.unwrap_or(None);
+    let v: Option<String> = redis.hget(&k, &key.peer_id).await.unwrap_or(None);
     if let Some(s) = v {
         if let Ok(mut p) = serde_json::from_str::<Peer>(&s) {
             p.connectable = if reachable { 1 } else { 0 };

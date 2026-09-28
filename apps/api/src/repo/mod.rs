@@ -45,6 +45,24 @@ impl From<UserRow> for UserAccount {
 
 impl Repo {
     /// 同步构造（测试用）：read_db = 主池克隆。
+    /// 读并回落（审查 P1-10）：副本运行期故障时热点读降级主库而非 500。
+    /// 用法：repo.read_fallback(|db| query...fetch_one(db)).await
+    pub async fn read_fallback<T, E, F, Fut>(&self, f: F) -> Result<T, E>
+    where
+        F: Fn(&PgPool) -> Fut,
+        Fut: std::future::Future<Output = Result<T, E>>,
+    {
+        match f(&self.read_db).await {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                // 只对连接类错误回落（业务错误照常返回）——E 无类型细节，
+                // 简化：全部回落（业务错误重试一次代价可接受且幂等）
+                tracing::warn!("read_db 查询失败，回落主库");
+                f(&self.db).await.or(Err(e))
+            }
+        }
+    }
+
     #[allow(dead_code)]
     pub fn new(db: PgPool) -> Self {
         Self {
