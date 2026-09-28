@@ -42,8 +42,8 @@ pub fn from_accept_language(header: &str) -> Locale {
             Some(Locale::ZhTw)
         } else if tag.starts_with("zh") {
             Some(Locale::ZhCn)
-        } else if tag.starts_with("en") {
-            Some(Locale::En)
+        } else if tag.starts_with("en") || tag.starts_with("ja") {
+            Some(Locale::En) // ja→英文（E10：后端无日语文案）
         } else {
             None
         };

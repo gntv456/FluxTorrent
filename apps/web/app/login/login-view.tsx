@@ -18,6 +18,7 @@ const LANG_LABELS: Record<Locale, string> = {
   "zh-CN": "简体中文",
   "zh-TW": "繁體中文",
   en: "English",
+  ja: "日本語",
 };
 
 /** 语言下拉（登录画布右上角，与站内切换器共用 cookie 语义） */
