@@ -21,30 +21,27 @@ pub async fn list_torrents_noclamp_as(
     let viewer_sql = viewer.to_string();
     // 匹配模式（旧站 torrents.php 口径）：0/缺省 = AND 模糊；2 = 精确等值（不带通配）
     let exact = filter.search_mode == Some(2);
-    let pattern = filter.search.as_deref().map(|s| {
+    let mk_pat = |s: &str| {
         if exact {
             s.to_string()
         } else {
             format!("%{}%", esc_like(s))
         }
-    });
+    };
+    let pattern = filter.search.as_deref().map(mk_pat);
     // 排除词/发布者：与关键字同口径（模糊 + 转义）
-    let exclude_pat = filter
-        .exclude
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(|s| format!("%{}%", esc_like(s)));
-    let owner_pat = filter
-        .owner
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(|s| format!("%{}%", esc_like(s)));
+    let fuzz = |v: &Option<String>| {
+        v.as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| format!("%{}%", esc_like(s)))
+    };
+    let exclude_pat = fuzz(&filter.exclude);
+    let owner_pat = fuzz(&filter.owner);
 
-    // 置顶口径（0063 起；0089 扩展二级置顶）：pos_state 1=一级 2=二级，pos_state_until 到期自动回落，
-    // 旧列 sticky 仍被官种联动使用——「任一生效即置顶」，一级 > 二级 > 普通置顶。
-    // 拆出无方向的 sticky_calc：游标谓词要比较它的值，SELECT 也要输出它（sticky_rank）。
+    // 置顶口径（0063/0089 二级置顶）：pos_state 1=一级 2=二级（until 到期回落），
+    // 旧列 sticky 仍被官种联动——「任一生效即置顶」，一级 > 二级 > 普通置顶。
+    // 拆出无方向 sticky_calc：游标谓词要比较它、SELECT 也要输出（sticky_rank）。
     let sticky_calc = "(GREATEST(t.sticky::int, CASE WHEN t.pos_state IN (1, 2) AND (t.pos_state_until IS NULL OR t.pos_state_until > now()) THEN CASE t.pos_state WHEN 1 THEN 2 WHEN 2 THEN 1 ELSE 0 END ELSE 0 END))";
     // 0170 双向翻页：dir=prev 时排序方向整体反转（置顶表达式含方向，一并反转）
     let sticky_dir = if filter.reverse { "ASC" } else { "DESC" };
