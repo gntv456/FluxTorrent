@@ -38,16 +38,17 @@ pub async fn consume_announce(
     let mut touched_torrents: BTreeSet<i64> = BTreeSet::new();
     let mut applied = 0u64;
 
-#[allow(clippy::too_many_arguments)]
-async fn handle_entry(
-    db: &PgPool,
-    redis: &mut redis::aio::ConnectionManager,
-    id: &str,
-    payload: &str,
-    seed_cap: i64,
-    touched_users: &mut BTreeSet<i64>,
-    touched_torrents: &mut BTreeSet<i64>,
-) -> anyhow::Result<bool> { // Ok(true) = ACK
+    #[allow(clippy::too_many_arguments)]
+    async fn handle_entry(
+        db: &PgPool,
+        redis: &mut redis::aio::ConnectionManager,
+        id: &str,
+        payload: &str,
+        seed_cap: i64,
+        touched_users: &mut BTreeSet<i64>,
+        touched_torrents: &mut BTreeSet<i64>,
+    ) -> anyhow::Result<bool> {
+        // Ok(true) = ACK
         let ev = match serde_json::from_str::<AnnounceEvent>(payload) {
             Ok(ev) => ev,
             Err(e) => {
@@ -116,8 +117,8 @@ async fn handle_entry(
     }
 
     // 新消息
-    for (id, payload) in group::read_group(redis, &ANNOUNCE_GROUP, &consumer)
-        .await
+    for (id, payload) in
+        group::read_group(redis, &ANNOUNCE_GROUP, &consumer).await
     {
         if payload.is_empty() {
             ANNOUNCE_GROUP
@@ -127,21 +128,39 @@ async fn handle_entry(
             applied += 1;
             continue;
         }
-        if handle_entry(db, redis, &id, &payload, seed_cap,
-            &mut touched_users, &mut touched_torrents).await? {
+        if handle_entry(
+            db,
+            redis,
+            &id,
+            &payload,
+            seed_cap,
+            &mut touched_users,
+            &mut touched_torrents,
+        )
+        .await?
+        {
             ANNOUNCE_GROUP.ack(redis, &id).await;
             applied += 1;
         }
     }
     // 回收遗孤 pending（worker 崩溃自愈）：空闲 > 120s
-    for (id, payload) in group::reclaim_stale(
-        redis, &ANNOUNCE_GROUP, &consumer, 120_000,
-    ).await {
+    for (id, payload) in
+        group::reclaim_stale(redis, &ANNOUNCE_GROUP, &consumer, 360_000).await
+    {
         if payload.is_empty() {
             continue;
         }
-        if handle_entry(db, redis, &id, &payload, seed_cap,
-            &mut touched_users, &mut touched_torrents).await? {
+        if handle_entry(
+            db,
+            redis,
+            &id,
+            &payload,
+            seed_cap,
+            &mut touched_users,
+            &mut touched_torrents,
+        )
+        .await?
+        {
             ANNOUNCE_GROUP.ack(redis, &id).await;
             applied += 1;
         }
@@ -157,9 +176,13 @@ async fn handle_entry(
         let users: Vec<i64> = touched_users.into_iter().collect();
         sqlx::query(
             "UPDATE users SET \
-             uploaded = COALESCE((SELECT sum(delta_up) FROM traffic_ledger \
+             uploaded = COALESCE((SELECT base_up FROM balance_baseline \
+                 WHERE user_id = users.id), 0) \
+                 + COALESCE((SELECT sum(delta_up) FROM traffic_ledger \
                  WHERE user_id = users.id), 0), \
-             downloaded = COALESCE((SELECT sum(delta_down) FROM \
+             downloaded = COALESCE((SELECT base_down FROM \
+                 balance_baseline WHERE user_id = users.id), 0) \
+                 + COALESCE((SELECT sum(delta_down) FROM \
                  traffic_ledger WHERE user_id = users.id), 0) \
              WHERE id = ANY($1)",
         )

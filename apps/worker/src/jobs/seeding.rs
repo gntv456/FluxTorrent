@@ -96,7 +96,12 @@ pub async fn seeding_reward(
     // 对全表行加锁，与所有写余额的 API 事务互斥（用户量大时持锁秒级）。改为只重算
     // 本小时流水覆盖到的用户 —— sum(ledger) 结果与其余用户现有快照一致，语义不变。
     sqlx::query(
-        "UPDATE users SET spark_balance = COALESCE((             SELECT sum(amount) FROM spark_ledger WHERE user_id = users.id          ), 0) \
+        "UPDATE users SET spark_balance = COALESCE(( \
+             SELECT base_spark FROM balance_baseline \
+             WHERE user_id = users.id), 0) \
+           + COALESCE(( \
+             SELECT sum(amount) FROM spark_ledger \
+             WHERE user_id = users.id), 0) \
          WHERE id IN (SELECT DISTINCT user_id FROM spark_ledger WHERE created_at > now() - interval '2 hours')",
     )
     .execute(db)
