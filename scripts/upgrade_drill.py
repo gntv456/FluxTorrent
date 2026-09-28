@@ -25,8 +25,8 @@ from urllib.parse import urlparse
 KEY_TABLES = ["users", "torrents", "traffic_ledger", "spark_ledger",
               "snatches", "_sqlx_migrations"]
 
-PG = ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d", "fluxtorrent",
-      "-t", "-A", "-c"]
+PG = ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
+      "fluxtorrent", "-t", "-A", "-c"]
 
 
 def psql(sql, check=True):
@@ -38,7 +38,8 @@ def psql(sql, check=True):
 
 
 def sh(cmd, check=True):
-    r = subprocess.run(cmd, capture_output=True, text=True, shell=isinstance(cmd, str))
+    r = subprocess.run(cmd, capture_output=True, text=True,
+                       shell=isinstance(cmd, str))
     if check and r.returncode != 0:
         print(f"!! 命令失败: {cmd}\n{r.stderr}", file=sys.stderr)
         sys.exit(1)

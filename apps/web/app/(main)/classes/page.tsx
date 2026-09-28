@@ -52,7 +52,8 @@ function fmtNum(n: number): string {
 function fmtVal(dim: Dim, n: number): string {
   if (dim === "uploaded") return fmtBytes(n);
   if (dim === "seed_hours") return n > 0 ? `${n.toLocaleString()} h` : "—";
-  if (dim === "account_age_days") return n > 0 ? `${n.toLocaleString()} 天` : "—";
+  if (dim === "account_age_days")
+    return n > 0 ? `${n.toLocaleString()} 天` : "—";
   return fmtNum(n);
 }
 /** 差值文案：已达标本地表 NULL，由调用方渲染达标标 */

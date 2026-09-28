@@ -6,7 +6,8 @@ use sqlx::PgPool;
 /// 失败只落日志）
 async fn webhook_broadcast(db: &PgPool, text: &str) {
     let keys: Vec<(String, String)> = sqlx::query_as(
-        "SELECT name, value FROM site_settings WHERE name IN          ('webhook_discord', 'tg_bot_token', 'tg_chat_id')",
+        "SELECT name, value FROM site_settings WHERE name IN \
+         ('webhook_discord', 'tg_bot_token', 'tg_chat_id')",
     )
     .fetch_all(db)
     .await
