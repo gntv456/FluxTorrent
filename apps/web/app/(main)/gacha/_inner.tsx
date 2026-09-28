@@ -1,6 +1,7 @@
 import { getDict } from "@/i18n/server";
 import { api } from "@/lib/api-client";
 import { GachaRates } from "@/components/gacha-rates";
+import { GachaAlbum } from "@/components/gacha-album";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,15 @@ export default async function GachaDisclosurePage() {
       <GachaRates
         rarities={rarities}
         banners={rates.filter((r): r is GachaBannerRates => r !== null)}
+      />
+      {/* 登录态附加收藏面（未登录仅公示——me 端点 401 时静默省略） */}
+      <GachaAlbum
+        rarities={rarities}
+        initial={await api
+          .get<import("@/components/gacha-album").MePayload>(
+            "/api/v1/gacha/me",
+          )
+          .catch(() => null)}
       />
     </div>
   );
