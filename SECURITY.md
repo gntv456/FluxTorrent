@@ -2,7 +2,9 @@
 
 ## 支持版本
 
-FluxTorrent 处于积极开发期（pre-1.0），仅对 master 最新提交提供安全修复。
+FluxTorrent 处于积极开发期（pre-1.0），安全修复覆盖**最新 minor 及其前一版**。
+升级路径与跳板规则见 [docs/ops/upgrade-drill.md](docs/ops/upgrade-drill.md)
+的「版本支持政策」节。
 
 ## 报告漏洞
 
@@ -28,4 +30,5 @@ FluxTorrent 处于积极开发期（pre-1.0），仅对 master 最新提交提�
 - `docker/.env` 三密钥（DB/REDIS/JWT）必须强随机；CORS_ORIGINS 生产必填
 - api/web 仅绑 127.0.0.1，公网流量经 TLS 终结的反代；此时设 `TRUST_PROXY=1`
 - `/metrics` 配置 ANN_METRICS_TOKEN 后才暴露（默认 404）
-- 定期跑 `scripts/backup.sh` + `backup_drill.py` 演练
+- 定期跑 `scripts/backup.sh` + `backup_drill.py` 演练；大版本升级前跑
+  `upgrade_drill.py`（见 docs/ops/upgrade-drill.md）
