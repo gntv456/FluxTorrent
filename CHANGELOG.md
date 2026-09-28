@@ -69,7 +69,10 @@
 - **P1 三件**：tracker peer 外置 upsert Lua 原子化（读改写竞态吞回连测量值）、
   种子详情主查钉主库（purchased 写后立读）、`Repo::read_fallback` 副本运行期
   故障回落主库（热点读不再因副本宕机 500）。
-- 遗留清单（UDP 双协议分裂等 7 项，均非活跃缺陷）见配方 §8.5。
+- **审查遗留 #1 闭环**：UDP announce 接入 peer 外置存储（外置模式下与 HTTP
+  同读写 Redis swarm，双协议互见）；顺带修复 UDP 响应 interval 按 i64 写
+  8 字节的 BEP-15 格式 bug（V17 实测）。
+- 其余遗留 6 项见配方 §8.5（均非活跃缺陷）。
 
 ### UDP tracker 修复 + 多核收包（2026-09-27）
 
