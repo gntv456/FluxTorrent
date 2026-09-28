@@ -19,8 +19,8 @@
   39
  ],
  "lib\\site-profile.ts": [
-  84,
-  95
+  90,
+  101
  ],
  "lib\\ui-classes.ts": [],
  "components\\admin-exams-shared.ts": [],
@@ -136,7 +136,7 @@
  "components\\admin-sections-kinds.tsx": [],
  "components\\admin-sections.tsx": [],
  "components\\admin-shell.tsx": [
-  252
+  264
  ],
  "components\\admin-subtitles-awards.tsx": [],
  "components\\admin-tagdict-form.tsx": [],
@@ -552,7 +552,7 @@
  "components\\torrent-social.tsx": [],
  "components\\torrent-subtitles.tsx": [],
  "components\\torrent-table.tsx": [
-  61
+  62
  ],
  "components\\torrent-tags.tsx": [
   35,
@@ -756,7 +756,7 @@
  "app\\(main)\\torrents\\_parts\\torrents-hotkeys.tsx": [],
  "app\\(main)\\torrents\\_parts\\torrents-search-box.tsx": [],
  "app\\(main)\\torrents\\_parts\\torrents-table.tsx": [
-  46
+  53
  ],
  "app\\(main)\\torrents\\_parts\\torrents-view-switch.tsx": [],
  "app\\(main)\\torrent\\[id]\\page.tsx": [
@@ -8321,28 +8321,28 @@
   64
  ],
  "app\\(main)\\classes\\page.tsx": [
-  55,
-  63,
+  56,
   64,
-  66,
-  68,
+  65,
+  67,
   69,
-  117,
-  119,
-  121,
+  70,
+  118,
+  120,
   122,
-  125,
-  142,
+  123,
+  126,
   143,
-  167,
-  176,
+  144,
+  168,
   177,
   178,
   179,
   180,
   181,
-  195,
-  211
+  182,
+  196,
+  212
  ],
  "app\\(auth)\\self-unban\\page.tsx": [
   21,

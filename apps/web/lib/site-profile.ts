@@ -57,6 +57,12 @@ export interface SiteProfile {
   };
   /** 术语规则（0205 四审 L7）：字典出口按此改写固有词；缺省/空数组 = 不改写 */
   terms?: { canonical: string; replacement: string }[];
+  /** 视图布局（E6）：站点级隐藏项——columns=种子列表列、sections=详情页段落；
+   *  空/缺省 = 全部显示。只裁显隐不改顺序（列序是油猴脚本的 DOM 契约）。 */
+  view_hidden?: {
+    columns?: string[];
+    sections?: string[];
+  };
 }
 
 /** 站型字典条目（id 由后端词表表给出，前端不做任何下标补偿） */

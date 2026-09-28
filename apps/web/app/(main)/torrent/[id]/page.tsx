@@ -27,6 +27,7 @@ import {
   type ThankItem,
   type TorrentDetailExt,
 } from "@/components/torrent-detail-blocks";
+import { TorrentDetailTail } from "./_parts/torrent-detail-tail";
 import { getDict } from "@/i18n/server";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
 import type {
@@ -104,6 +105,9 @@ export default async function TorrentDetailPage({
       >("/api/v1/section-dict")
       .catch(() => null),
   ]);
+  // E6 视图布局：段落隐藏门（空集=全显示；模块开关仍优先，无数据仍不渲染）
+  const sectOn = (k: string) =>
+    !(profile?.view_hidden?.sections ?? []).includes(k);
   const isStaff = (me?.class_id ?? 0) >= 90;
   // 分类/学段/媒介/版本词表全部取自站点档案（后端为唯一真值源）；
   // 档案不可用时 editCats 为空——下拉只剩「请选择」、名称回落 #id，
@@ -219,9 +223,8 @@ export default async function TorrentDetailPage({
         <Spec value={formatBytes(t.size)} label={dict.torrent.size} num />
         <Spec value={ext?.numfiles ?? "—"} label={dict.torrent.numFiles} num />
         <Spec value={category} label={dict.torrent.category} />
-        {/* 规格网格单源化（R3-三步）：全部维度走 sections（0185 已把旧列
-            存量值迁入；维度 label 由 section_kinds 下发，教育站的学段/版本
-            以维度形式继续工作） */}
+        {/* 规格网格单源化（R3）：维度走 sections（0185 迁移；label 由
+            section_kinds 下发） */}
         {secEntries.map((v) => (
           <Spec key={v.kind} value={v.name} label={v.label} />
         ))}
@@ -231,7 +234,7 @@ export default async function TorrentDetailPage({
       {/* ===== 标签（0173：移入头部，副标题与发布人之间） ===== */}
 
       {/* ===== 简介（默认展开；其余折叠分区默认收起） ===== */}
-      {ext?.descr && (
+      {sectOn("descr") && ext?.descr && (
         <section className="td-descr nexus-detail">
           <h2 className="td-sec-title">{dict.torrent.descrTitle}</h2>
           <div className="td-descr__body">
@@ -241,32 +244,34 @@ export default async function TorrentDetailPage({
       )}
 
       {/* ===== MediaInfo（NP 详情页折叠块口径；0184 同发布页按站型 metaSources 显隐） ===== */}
-      {ext?.mediainfo &&
+      {sectOn("mediainfo") && ext?.mediainfo &&
         (profile?.metadata_sources ?? []).includes("mediainfo") && (
           <Fold title="MediaInfo">
             <pre className="td-nfo">{ext.mediainfo}</pre>
           </Fold>
         )}
 
-      {/* ===== NFO ===== */}
-      {nfo.nfo && (
+
+      {sectOn("nfo") && nfo.nfo && (
         <Fold title="NFO">
           <pre className="td-nfo">{nfo.nfo}</pre>
         </Fold>
       )}
 
       {/* ===== 当前在线（tracker swarm 快照：做种/下载者明细，非 staff IP 已脱敏） ===== */}
-      <Fold title={dict.torrents.peersTitle}>
-        <TorrentPeers torrentId={t.id} />
-      </Fold>
+      {sectOn("peers") && (
+        <Fold title={dict.torrents.peersTitle}>
+          <TorrentPeers torrentId={t.id} />
+        </Fold>
+      )}
 
-      {/* ===== 同组版本（0069 聚合组） ===== */}
-      {group?.group && group.items.length > 1 && (
+
+      {sectOn("group") && group?.group && group.items.length > 1 && (
         <GroupVersions group={group} dict={dict} />
       )}
 
-      {/* ===== 所属合集（0157 阶段三聚合层） ===== */}
-      {inCollections.length > 0 && (
+
+      {sectOn("collections") && inCollections.length > 0 && (
         <section className="td-collections nexus-detail">
           <h2 className="td-sec-title">{dict.collections.inTitle}</h2>
           <div className="td-collections__list">
@@ -287,45 +292,34 @@ export default async function TorrentDetailPage({
         </section>
       )}
 
-      {/* ===== 文件列表 ===== */}
-      {files.length > 0 && (
+
+      {sectOn("files") && files.length > 0 && (
         <Fold title={dict.torrent.filesTitle} count={files.length}>
           <FileTree files={files} />
         </Fold>
       )}
 
       {/* ===== 字幕面板（0146 P0-6 + 0148 C1 同片 IMDB 合并；模块关闭不渲染） ===== */}
-      {profile?.modules?.subtitles !== false && (
+      {sectOn("subtitles") && profile?.modules?.subtitles !== false && (
         <TorrentSubtitles torrentId={t.id} imdbId={t.imdb_id ?? null} />
       )}
-      {/* ===== 下载/做种记录 ===== */}
-      <Fold title={dict.snatches2.title} open>
-        <SnatchList torrentId={t.id} />
-      </Fold>
 
-      {/* ===== 感谢者（馒头口径） ===== */}
-      {thanks.length > 0 && (
-        <Thankers
-          thanks={thanks}
-          count={ext?.thanks_count ?? thanks.length}
-          dict={dict}
-          locale={locale}
-        />
+      {sectOn("snatches") && (
+        <Fold title={dict.snatches2.title} open>
+          <SnatchList torrentId={t.id} />
+        </Fold>
       )}
 
-      {/* Info Hash（BT 种子唯一指纹）：不再挤占规格网格，页底小字展示 */}
-      <p className="break-all border-t border-line pt-2 text-[11px] text-sub">
-        <span className="font-bold">{dict.torrent.infoHash}</span> ·{" "}
-        {t.info_hash.trim()}
-      </p>
 
-      {/* ===== 评论区 ===== */}
-      <Comments
+      <TorrentDetailTail
+        t={t}
+        thanks={thanks}
+        thanksCount={ext?.thanks_count ?? thanks.length}
         comments={comments}
-        torrentId={t.id}
         dict={dict}
         locale={locale}
         relTime={relTime}
+        sectOn={sectOn}
       />
 
       {/* M3：<md 底部固定操作条（收藏/复制/下载，键盘弹出自动让位） */}

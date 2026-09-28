@@ -5,13 +5,12 @@ import { colorMap, catPath } from "@/lib/site-profile";
 import { fmt } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { TorrentsSearchBox } from "./_parts/torrents-search-box";
-import { TorrentsTable } from "./_parts/torrents-table";
-import { TorrentRowList } from "@/components/torrent-row-card";
 import { FilterFab } from "./_parts/filter-fab";
 import { TorrentsPullRefresh } from "./_parts/refresh-mount";
 import { TorrentSplitView } from "./_parts/torrent-split";
 import { TorrentCards, TorrentPosters } from "./_parts/torrents-cards";
 import { TorrentsViewSwitch } from "./_parts/torrents-view-switch";
+import { TorrentsTableView } from "./_parts/torrents-table-view";
 import { TorrentsHotkeys } from "./_parts/torrents-hotkeys";
 import { TorrentHoverPreview } from "@/components/torrent-hover-preview";
 import { buildTorrentChips } from "./_parts/torrents-chips";
@@ -62,6 +61,7 @@ export default async function TorrentsPage({
         bg_color?: string | null;
       }[];
       metadata_sources?: string[];
+      view_hidden?: { columns?: string[]; sections?: string[] };
     }>("/api/v1/site-profile"),
     loadPublic<
       Record<string, SectionDictRow[]> & { kinds?: SectionKindMeta[] }
@@ -77,6 +77,8 @@ export default async function TorrentsPage({
       | [number, string, string][]
     >("/api/v1/tags-dict"),
   ]);
+  // E6 视图布局：站点级列隐藏集合（profile.view_hidden.columns；空=全显示）
+  const hiddenCols = new Set(profile?.view_hidden?.columns ?? []);
   const kinds: SectionKindMeta[] = secDict?.kinds ?? [];
   const dimKinds = kinds.filter((k) => (secDict?.[k.kind]?.length ?? 0) > 0);
   // 0160 起返回 { tags, groups }；旧形态（裸数组）兼容
@@ -243,19 +245,16 @@ export default async function TorrentsPage({
           {/* M3：<640 表格隐藏、行卡片接管（useIsCompact 客户端分支，
               URL view 显式指定时上面已分流不会走到这里）。SSR 首帧
               渲染表格（fallback=桌面），挂载后双态切换。 */}
-          <div className="hidden md:block">
-            <TorrentsTable
-              dict={dict}
-              sp={sp}
-              items={page.items}
-              withParam={withParam}
-              toggleSort={toggleSort}
-              catIcons={catIcons}
-            />
-          </div>
-          <div className="md:hidden">
-            <TorrentRowList items={page.items} colors={catColors} />
-          </div>
+          <TorrentsTableView
+            dict={dict}
+            sp={sp}
+            items={page.items}
+            withParam={withParam}
+            toggleSort={toggleSort}
+            catIcons={catIcons}
+            catColors={catColors}
+            hiddenCols={hiddenCols}
+          />
         </>
       )}
 

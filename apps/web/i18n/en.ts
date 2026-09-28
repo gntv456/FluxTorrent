@@ -5,6 +5,7 @@ import { termsPanelEn } from "./terms-panel";
 
 const enBase: Omit<
   Dict,
+  "viewLayout"
   | "security2fa"
   | "apitokens"
   | "noticePrefs"
@@ -5400,6 +5401,40 @@ export const en: Dict = {
   adminrename: adminrenameEn,
   commentdel: commentdelEn,
   groupsub: groupsubEn,
+  viewLayout: {
+    title: "View Layout",
+    hint: "Site-wide show/hide for torrent list columns and detail page sections (order is fixed). Hiding applies to all users; the title column and page skeleton cannot be hidden.",
+    columnsTitle: "Torrent list columns",
+    sectionsTitle: "Detail page sections",
+    locked: "locked",
+    titleLocked: "Title column cannot be hidden (minimum usability)",
+    save: "Save",
+    reset: "Show all",
+    saved: "Saved, effective immediately",
+    names: {
+      cat: "Type",
+      cover: "Cover",
+      title: "Title",
+      comments: "Comments",
+      alive: "Alive",
+      size: "Size",
+      seeders: "Seeders",
+      leechers: "Leechers",
+      completed: "Completed",
+      descr: "Description",
+      mediainfo: "MediaInfo",
+      nfo: "NFO",
+      peers: "Peers online",
+      group: "Group versions",
+      collections: "Collections",
+      files: "Files",
+      subtitles: "Subtitles",
+      snatches: "Snatch list",
+      thankers: "Thankers",
+      infohash: "Info Hash",
+      comments_sec: "Comments",
+    },
+  },
   homeLayout: {
     hint: "Arrange homepage sections: order (↑↓), width (1/3, 2/3, full or auto), show/hide. Takes effect on the homepage immediately after saving; saving an empty list or reset = official default layout.",
     names: {

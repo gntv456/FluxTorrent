@@ -32,6 +32,7 @@ import { AdminEconomyDashboard } from "@/components/admin-economy-dashboard";
 import { AdminApplications } from "@/components/admin-applications";
 import { AdminGacha } from "@/components/admin-gacha";
 import { HomeLayoutEditor } from "@/components/home-layout-editor";
+import { ViewHiddenEditor } from "@/components/view-hidden-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
 import { AdminPromoKinds } from "./admin-promo-kinds";
 
@@ -139,6 +140,16 @@ export function renderSimpleTool(
     // 抽卡运营（G31-C 后台入口：发放+巡检）
     case "gacha":
       return <AdminGacha />;
+    // 视图布局（E6）：列表列/详情段落显隐
+    case "viewlayout":
+      return (
+        <section className="baozi-panel p-4">
+          <h2 className="mb-3 font-display text-lg">
+            {dict.viewLayout.title}
+          </h2>
+          <ViewHiddenEditor />
+        </section>
+      );
     default:
       return undefined;
   }

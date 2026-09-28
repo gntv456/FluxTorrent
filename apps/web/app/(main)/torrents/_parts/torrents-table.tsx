@@ -2,6 +2,8 @@
  * 种子列表页表格（从 app/(main)/torrents/page.tsx 按域拆出）：
  * TorrentsTable 种子九列表格（参考站 colhead 图标表头，同列再点反转升降序）。
  * 无 hooks：保持 server component。
+ * E6 视图布局：hiddenCols 站点级列隐藏（title/选择/行为列恒渲染）；
+ * 只裁显隐不改顺序——列序是油猴脚本/爬虫的 DOM 契约。
  */
 
 import { TorrentTr } from "@/components/torrent-table";
@@ -18,6 +20,7 @@ export function TorrentsTable({
   withParam,
   toggleSort,
   catIcons,
+  hiddenCols,
 }: {
   dict: Dict;
   sp: TorrentsSP;
@@ -25,8 +28,11 @@ export function TorrentsTable({
   catIcons?: Record<number, string>;
   withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
   toggleSort: (cur: string | undefined, key: string) => string | undefined;
+  /** E6：站点级隐藏列集合（空集=全显示） */
+  hiddenCols?: Set<string>;
 }) {
   const t = dict.torrents;
+  const hd = hiddenCols ?? new Set<string>();
   return (
     <>
       {/* 批量下载（阶段三）：选中行后出现操作条；仅表格视图提供多选 */}
@@ -42,55 +48,95 @@ export function TorrentsTable({
               <th className="w-8">
                 <BatchCheckAll />
               </th>
-              <th className="w-12">{t.colType}</th>
-              <th className="w-16" aria-label="封面" />
+              {!hd.has("cat") && <th className="w-12">{t.colType}</th>}
+              {!hd.has("cover") && (
+                <th className="w-16" aria-label="封面" />
+              )}
               <th>
                 <a href={withParam(sp, "sort", toggleSort(sp.sort, "name"))}>
                   {t.colTitle}
                 </a>
               </th>
               {/* 表头点击排序（NP colhead 口径）：同列再点反转升降序 */}
-              <th className="w-16" title={t.colComments}>
-                <a
-                  href={withParam(sp, "sort", toggleSort(sp.sort, "comments"))}
-                  className="inline-flex"
-                >
-                  <Icon name="messages" size={15} />
-                </a>
-              </th>
-              <th className="w-20" title={t.alive}>
-                <Icon name="clock" size={15} className="inline align-[-3px]" />
-              </th>
-              <th className="w-20" title={t.colSize}>
-                <a href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}>
-                  💾
-                </a>
-              </th>
-              <th className="w-16" title={t.colSeeders}>
-                <a href={withParam(sp, "sort", toggleSort(sp.sort, "seeders"))}>
-                  🌱
-                </a>
-              </th>
-              <th className="w-16" title={t.colLeechers}>
-                <a
-                  href={withParam(sp, "sort", toggleSort(sp.sort, "leechers"))}
-                >
-                  ⬇️
-                </a>
-              </th>
-              <th className="w-16" title={t.colCompleted}>
-                <a
-                  href={withParam(sp, "sort", toggleSort(sp.sort, "completed"))}
-                >
-                  ✅
-                </a>
-              </th>
+              {!hd.has("comments") && (
+                <th className="w-16" title={t.colComments}>
+                  <a
+                    href={withParam(
+                      sp,
+                      "sort",
+                      toggleSort(sp.sort, "comments"),
+                    )}
+                    className="inline-flex"
+                  >
+                    <Icon name="messages" size={15} />
+                  </a>
+                </th>
+              )}
+              {!hd.has("alive") && (
+                <th className="w-20" title={t.alive}>
+                  <Icon
+                    name="clock"
+                    size={15}
+                    className="inline align-[-3px]"
+                  />
+                </th>
+              )}
+              {!hd.has("size") && (
+                <th className="w-20" title={t.colSize}>
+                  <a
+                    href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}
+                  >
+                    💾
+                  </a>
+                </th>
+              )}
+              {!hd.has("seeders") && (
+                <th className="w-16" title={t.colSeeders}>
+                  <a
+                    href={withParam(sp, "sort", toggleSort(sp.sort, "seeders"))}
+                  >
+                    🌱
+                  </a>
+                </th>
+              )}
+              {!hd.has("leechers") && (
+                <th className="w-16" title={t.colLeechers}>
+                  <a
+                    href={withParam(
+                      sp,
+                      "sort",
+                      toggleSort(sp.sort, "leechers"),
+                    )}
+                  >
+                    ⬇️
+                  </a>
+                </th>
+              )}
+              {!hd.has("completed") && (
+                <th className="w-16" title={t.colCompleted}>
+                  <a
+                    href={withParam(
+                      sp,
+                      "sort",
+                      toggleSort(sp.sort, "completed"),
+                    )}
+                  >
+                    ✅
+                  </a>
+                </th>
+              )}
               <th className="w-24">{t.colActions}</th>
             </tr>
           </thead>
           <tbody>
             {items.map((t) => (
-              <TorrentTr key={t.id} t={t} selectable catIcons={catIcons} />
+              <TorrentTr
+                key={t.id}
+                t={t}
+                selectable
+                catIcons={catIcons}
+                hiddenCols={hiddenCols}
+              />
             ))}
           </tbody>
         </table>

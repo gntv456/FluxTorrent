@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { PreserveItem } from "@/lib/data";
-import { formatBytes, promotionBadge } from "@/lib/format";
+import { promotionBadge } from "@/lib/format";
 import { getDict } from "@/i18n/server";
 import {
   byId,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/site-profile";
 import { dateLocale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
+import { TorrentNums } from "@/components/torrent-table-nums";
 import { BatchCheckbox } from "@/components/torrent-batch";
 import { Icon, ICON_NAMES } from "@/components/icons";
 
@@ -73,6 +74,7 @@ async function TorrentTr({
   extra,
   selectable,
   catIcons,
+  hiddenCols,
 }: {
   t: TorrentListItem | PreserveRowAlias;
   /** 行尾附加列（保种区的认领人/认领按钮）；渲染在数字列后、行为列前 */
@@ -81,8 +83,11 @@ async function TorrentTr({
   selectable?: boolean;
   /** 分类图标键（0166）：site-profile categories 下发；缺省回落首字色块 */
   catIcons?: Record<number, string>;
+  /** E6 视图布局：站点级列隐藏（空集=全显示；title/选择/行为列不进集合） */
+  hiddenCols?: Set<string>;
 }) {
   const icons = catIcons ?? {};
+  const hd = hiddenCols ?? new Set<string>();
   const { dict, locale } = await getDict();
   const dicts = await getTorrentDicts();
   const catNames = byId(dicts.categories);
@@ -125,7 +130,7 @@ async function TorrentTr({
         </td>
       )}
       {/* 类型（0166：分类图标默认套，站长后台 icon_key 可替换；空键回落首字色块） */}
-      <td className="torrents-td-cat">
+      {!hd.has("cat") && <td className="torrents-td-cat">
         <span
           aria-hidden
           className="torrents-cat-block"
@@ -143,9 +148,9 @@ async function TorrentTr({
             );
           })()}
         </span>
-      </td>
+      </td>}
       {/* 封面（好学站 46px 外链图；无图回退类型色块底 + 🎬） */}
-      <td className="torrents-td-cover">
+      {!hd.has("cover") && <td className="torrents-td-cover">
         <Link href={`/torrent/${id}`} aria-hidden tabIndex={-1}>
           {t.poster ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -164,7 +169,7 @@ async function TorrentTr({
             </span>
           )}
         </Link>
-      </td>
+      </td>}
       {/* 标题（好学站三行结构） */}
       <td className="torrents-td-title">
         <div className="torrents-title">
@@ -272,14 +277,12 @@ async function TorrentTr({
           </span>
         </div>
       </td>
-      <td className="num">{t.comments}</td>
-      <td className="num torrents-td-alive" title={dict.torrents.alive}>
-        {alive}
-      </td>
-      <td className="num">{formatBytes(t.size)}</td>
-      <td className="num seed-arrow">{t.seeders}</td>
-      <td className="num leech-arrow">{t.leechers}</td>
-      <td className="num">{t.times_completed}</td>
+      <TorrentNums
+        t={t}
+        hd={hd}
+        aliveTitle={dict.torrents.alive}
+        alive={alive}
+      />
       {extra}
       {/* 行为列：下载 + ⋮ 下拉（收藏/编辑/删除，好学站 staff 菜单口径） */}
       <td className="torrents-td-actions">

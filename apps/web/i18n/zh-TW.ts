@@ -5,6 +5,7 @@ import { termsPanelTw } from "./terms-panel";
 
 const zhTwBase: Omit<
   Dict,
+  "viewLayout"
   | "security2fa"
   | "apitokens"
   | "noticePrefs"
@@ -5253,6 +5254,40 @@ export const zhTW: Dict = {
   adminrename: adminrenameTw,
   commentdel: commentdelTw,
   groupsub: groupsubTw,
+  viewLayout: {
+    title: "視圖佈局",
+    hint: "站點級調整種子列表欄與詳情頁段落的顯示/隱藏（不改順序）。隱藏即對所有用戶生效；title 欄與頁面骨架不可隱藏。",
+    columnsTitle: "種子列表欄",
+    sectionsTitle: "詳情頁段落",
+    locked: "鎖定",
+    titleLocked: "標題欄不可隱藏（列表最低可用性）",
+    save: "儲存",
+    reset: "全部恢復顯示",
+    saved: "已儲存，前台即時生效",
+    names: {
+      cat: "類型",
+      cover: "封面",
+      title: "標題",
+      comments: "評論",
+      alive: "存活",
+      size: "體積",
+      seeders: "做種",
+      leechers: "下載",
+      completed: "完成",
+      descr: "簡介",
+      mediainfo: "MediaInfo",
+      nfo: "NFO",
+      peers: "當前在線",
+      group: "同組版本",
+      collections: "所屬合集",
+      files: "檔案列表",
+      subtitles: "字幕",
+      snatches: "做種記錄",
+      thankers: "感謝者",
+      infohash: "Info Hash",
+      comments_sec: "評論區",
+    },
+  },
   homeLayout: {
     hint: "調整首頁板塊：順序（↑↓）、寬度（1/3、2/3、整行或自動）、顯示/隱藏。儲存後首頁立即生效；空列表儲存或恢復預設 = 官方預設排版。",
     names: {
