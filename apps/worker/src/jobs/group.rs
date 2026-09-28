@@ -99,17 +99,18 @@ async fn ensure_group(redis: &mut ConnectionManager, cfg: &GroupCfg) {
     // 审查修正（P0-4）：游标读取失败若静默回落 "$" 会跳过旧游标前未处理
     // 完的事件——读失败必须 fail-hard（本轮放弃建组，下轮重试）；
     // 只有「键不存在」才允许 $ 起点。
-    let last: Option<String> = match redis
-        .get::<_, Option<String>>(cfg.legacy_cursor)
-        .await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            tracing::error!(?e, stream = cfg.stream,
-                "旧游标读取失败，延迟建组（避免 $ 起点丢事件）");
-            return;
-        }
-    };
+    let last: Option<String> =
+        match redis.get::<_, Option<String>>(cfg.legacy_cursor).await {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::error!(
+                    ?e,
+                    stream = cfg.stream,
+                    "旧游标读取失败，延迟建组（避免 $ 起点丢事件）"
+                );
+                return;
+            }
+        };
     let start = last.clone().unwrap_or_else(|| "$".to_string());
     let created: Result<(), redis::RedisError> = redis::cmd("XGROUP")
         .arg("CREATE")

@@ -64,7 +64,6 @@ pub async fn ensure_partitions(db: &PgPool) -> anyhow::Result<()> {
     Ok(())
 }
 
-
 /// P0-3：DETACH 前把该分区（及一切早于 upper 的已不在库数据之前的历史）
 /// 聚合进 balance_baseline。幂等：UPSERT 累加语义——同分区重复聚合会翻倍，
 /// 故以 through 时间戳守门（仅当新上界 > 既有 through 才执行，且聚合范围
@@ -79,20 +78,16 @@ async fn aggregate_baseline(
         chrono::Utc,
     );
     let (cols, tbl): (&[&str], &str) = match table {
-        "traffic_ledger" => (
-            &["delta_up", "delta_down", ""],
-            "traffic_ledger",
-        ),
+        "traffic_ledger" => (&["delta_up", "delta_down", ""], "traffic_ledger"),
         "spark_ledger" => (&["amount", "", ""], "spark_ledger"),
         _ => return Ok(()),
     };
     // 全体用户的既有基线上界取最小（简化：全局单调推进，任一用户落后即重聚）
-    let prev: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
-        "SELECT max(through) FROM balance_baseline",
-    )
-    .fetch_one(db)
-    .await
-    .unwrap_or(None);
+    let prev: Option<chrono::DateTime<chrono::Utc>> =
+        sqlx::query_scalar("SELECT max(through) FROM balance_baseline")
+            .fetch_one(db)
+            .await
+            .unwrap_or(None);
     let from_ts = prev.unwrap_or(chrono::DateTime::<chrono::Utc>::UNIX_EPOCH);
     if from_ts >= upper_ts {
         return Ok(()); // 该区间已冻结过
@@ -187,24 +182,35 @@ async fn drop_expired_partitions(db: &PgPool) -> anyhow::Result<()> {
             // 审查修正（P0-1）：rsplitn(2) 倒序切片 nth(1) 取到的是
             // "traffic_ledger_2024"，parse 恒失败 → 归档整体死代码；
             // 改从右切两段：[..rfind('_')] 是 "<前缀>_YYYY"。
-            let Some(mstr) = name.rsplit('_').next() else { continue };
-            let Ok(month) = mstr.parse::<u32>() else { continue };
-            let Some(yidx) = name.rfind('_') else { continue };
+            let Some(mstr) = name.rsplit('_').next() else {
+                continue;
+            };
+            let Ok(month) = mstr.parse::<u32>() else {
+                continue;
+            };
+            let Some(yidx) = name.rfind('_') else {
+                continue;
+            };
             let with_year = &name[..yidx]; // traffic_ledger_2024
-            let Some(yidx2) = with_year.rfind('_') else { continue };
+            let Some(yidx2) = with_year.rfind('_') else {
+                continue;
+            };
             let Ok(year) = with_year[yidx2 + 1..].parse::<i32>() else {
                 continue;
             };
             let (bound_y, bound_m) = (year, month);
-            let upper =
-                chrono::NaiveDate::from_ymd_opt(bound_y, bound_m, 1)
+            let upper = chrono::NaiveDate::from_ymd_opt(bound_y, bound_m, 1)
                 .and_then(|d| d.checked_add_months(chrono::Months::new(1)));
             if let Some(upper) = upper {
                 if upper < cutoff {
                     // P0-3 基线聚合先行：users 快照是流水 SUM 派生（非独立
                     // 权威），不聚合就 DETACH/DROP 会把老用户余额清零。
-                    aggregate_baseline(db, prefix.trim_end_matches('_'),
-                        &upper).await?;
+                    aggregate_baseline(
+                        db,
+                        prefix.trim_end_matches('_'),
+                        &upper,
+                    )
+                    .await?;
                     sqlx::query(&format!(
                         "ALTER TABLE {} DETACH PARTITION {}",
                         prefix.trim_end_matches('_'),
