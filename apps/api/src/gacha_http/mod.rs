@@ -13,6 +13,7 @@
 
 mod craft;
 mod draw;
+mod me;
 mod pool;
 mod rates;
 mod roll;
@@ -27,6 +28,7 @@ pub fn mount_gacha(scope: Scope) -> Scope {
         .service(rates::gacha_banners)
         .service(rates::gacha_banner_rates)
         .service(draw::gacha_draw)
+        .service(me::gacha_me)
         .service(craft::gacha_dismantle)
         .service(craft::gacha_exchange)
         .service(craft::gacha_levelup)

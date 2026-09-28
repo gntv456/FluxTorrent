@@ -8377,5 +8377,13 @@
   52,
   65,
   123
- ]
+ ],
+ "components\\gacha-album.tsx": [
+  78,
+  85,
+  86,
+  122,
+  132
+ ],
+ "app\\(main)\\gacha\\_inner.tsx": []
 }
