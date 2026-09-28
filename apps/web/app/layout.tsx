@@ -4,6 +4,7 @@ import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 import { siteBase } from "@/lib/site-url";
 import { LocaleProvider } from "@/i18n/client";
+import { PwaInstallBar } from "@/components/pwa-install-bar";
 
 /** 移动端方案 M1：viewport-fit=cover 让 env(safe-area-inset-*) 生效——
  *  layout.tsx 底 Tab/操作条的 safe-area 内边距此前在 iOS 全面屏完全不工作。 */
@@ -165,6 +166,7 @@ export default async function RootLayout({
       <body>
         <ThemeNoFlash />
         <LocaleProvider dict={dict} locale={locale} currency={currency}>
+          <PwaInstallBar />
           {children}
           <ServiceWorkerRegister />
         </LocaleProvider>

@@ -5283,6 +5283,12 @@ export const zhCN = {
     unsubOk: "已退订",
     failed: "操作失败",
   },
+  pwa: {
+    installHint: "把本站安装到桌面，像原生应用一样使用：",
+    installBtn: "安装",
+    iosHint: "iOS 安装：分享 → 添加到主屏幕",
+    dismiss: "关闭",
+  },
   viewLayout: {
     title: "视图布局",
     hint: "站点级调整种子列表列与详情页段落的显示/隐藏（不改顺序）。隐藏即对所有用户生效；title 列与页面骨架不可隐藏。",
