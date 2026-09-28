@@ -253,6 +253,7 @@ export const MODULE_KEYS = [
   "wishlist",
   // 娱乐
   "games",
+  "gacha",
   "farm",
   "gomoku",
   "contests",

@@ -139,6 +139,7 @@ export function defaultNav({
       group: nav.fun,
       items: [
         ...(modules("games") ? [{ href: "/games", label: nav.games }] : []),
+        ...(modules("gacha") ? [{ href: "/gacha", label: nav.gacha }] : []),
         ...(modules("farm") ? [{ href: "/farm", label: nav.farm }] : []),
         ...(modules("gomoku")
           ? [{ href: "/gomoku", label: nav.gomoku }]

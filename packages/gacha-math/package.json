@@ -1,0 +1,15 @@
+{
+  "name": "@fluxtorrent/gacha-math",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "test": "echo 用例不在本包跑：vitest 侧在 apps/web/tests/gacha-math.test.ts，Rust 镜像在 apps/api/src/gacha_math/（cargo test -p flux-api gacha_math）"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
