@@ -17,6 +17,7 @@ pub(crate) mod manage_perm;
 pub(crate) mod promo;
 pub(crate) mod section_filter;
 mod section_pred;
+mod syn_search;
 mod types;
 mod viewer_preds;
 
