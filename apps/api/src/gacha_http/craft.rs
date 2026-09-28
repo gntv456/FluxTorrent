@@ -146,9 +146,16 @@ pub(super) async fn gacha_dismantle(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let after =
-        shard_move(&mut tx, uid, dupe, "dismantle", "card", body.card_id, &idem)
-            .await?;
+    let after = shard_move(
+        &mut tx,
+        uid,
+        dupe,
+        "dismantle",
+        "card",
+        body.card_id,
+        &idem,
+    )
+    .await?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -188,10 +195,9 @@ pub(super) async fn gacha_exchange(
     if synth <= 0 {
         return Err(DomainError::Validation("该卡未开放兑换".into()));
     }
-    let after = shard_move(
-        &mut tx, uid, -synth, "synth", "card", body.card_id, &idem,
-    )
-    .await?;
+    let after =
+        shard_move(&mut tx, uid, -synth, "synth", "card", body.card_id, &idem)
+            .await?;
     // 限次：唯一键冲突 → 409（shard_move 已在同一事务，冲突整体回滚）
     let inserted = sqlx::query(
         "INSERT INTO gacha_exchanges (user_id, card_id, season_key, \
