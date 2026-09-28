@@ -27,12 +27,12 @@ pub async fn consume_agent_blocks(
     let consumer = group::consumer_name();
     let mut applied = 0u64;
 
-async fn handle_entry(
-    db: &PgPool,
-    redis: &mut redis::aio::ConnectionManager,
-    id: &str,
-    payload: &str,
-) -> anyhow::Result<bool> {
+    async fn handle_entry(
+        db: &PgPool,
+        redis: &mut redis::aio::ConnectionManager,
+        id: &str,
+        payload: &str,
+    ) -> anyhow::Result<bool> {
         let Ok(ev) = serde_json::from_str::<AgentBlockEvent>(payload) else {
             tracing::warn!(%id, "agent_block 事件解析失败，进死信");
             AGENTBLOCK_GROUP.dlq_push_with(redis, payload).await;
@@ -76,16 +76,15 @@ async fn handle_entry(
                 if !existed {
                     // 首次命中 → 按 agent_hit_action 分级（U5 §12.3）：
                     // log=仅 staffmessages 告警（现状 T3）/ warn=告警+用户警告信
-                    let action: String =
-                        sqlx::query_scalar::<_, String>(
-                            "SELECT value FROM site_settings \
+                    let action: String = sqlx::query_scalar::<_, String>(
+                        "SELECT value FROM site_settings \
                              WHERE name = 'agent_hit_action'",
-                        )
-                        .fetch_optional(db)
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| "log".into());
+                    )
+                    .fetch_optional(db)
+                    .await
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| "log".into());
                     let body = format!(
                         "用户 #{} 的客户端命中黑白名单规则，tracker 已拒绝其 announce。\n客户端：{}\nIP：{}\n原因：{}\n（本条为系统自动告警，累计情况见后台「作弊探测」）",
                         ev.user,
@@ -127,11 +126,13 @@ async fn handle_entry(
         }
     }
 
-    for (id, payload) in group::read_group(redis, &AGENTBLOCK_GROUP, &consumer)
-        .await
+    for (id, payload) in
+        group::read_group(redis, &AGENTBLOCK_GROUP, &consumer).await
     {
         if payload.is_empty() {
-            AGENTBLOCK_GROUP.dlq_push_with(redis, &format!("{id}\t(no payload)")).await;
+            AGENTBLOCK_GROUP
+                .dlq_push_with(redis, &format!("{id}\t(no payload)"))
+                .await;
             AGENTBLOCK_GROUP.ack(redis, &id).await;
             applied += 1;
             continue;
@@ -141,9 +142,9 @@ async fn handle_entry(
             applied += 1;
         }
     }
-    for (id, payload) in group::reclaim_stale(
-        redis, &AGENTBLOCK_GROUP, &consumer, 120_000,
-    ).await {
+    for (id, payload) in
+        group::reclaim_stale(redis, &AGENTBLOCK_GROUP, &consumer, 360_000).await
+    {
         if payload.is_empty() {
             continue;
         }

@@ -64,6 +64,86 @@ pub async fn ensure_partitions(db: &PgPool) -> anyhow::Result<()> {
     Ok(())
 }
 
+
+/// P0-3：DETACH 前把该分区（及一切早于 upper 的已不在库数据之前的历史）
+/// 聚合进 balance_baseline。幂等：UPSERT 累加语义——同分区重复聚合会翻倍，
+/// 故以 through 时间戳守门（仅当新上界 > 既有 through 才执行，且聚合范围
+/// 限定 [既有 through, upper)，已聚合区间不重复计）。
+async fn aggregate_baseline(
+    db: &PgPool,
+    table: &str,
+    upper: &chrono::NaiveDate,
+) -> anyhow::Result<()> {
+    let upper_ts = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
+        upper.and_hms_opt(0, 0, 0).unwrap_or_default(),
+        chrono::Utc,
+    );
+    let (cols, tbl): (&[&str], &str) = match table {
+        "traffic_ledger" => (
+            &["delta_up", "delta_down", ""],
+            "traffic_ledger",
+        ),
+        "spark_ledger" => (&["amount", "", ""], "spark_ledger"),
+        _ => return Ok(()),
+    };
+    // 全体用户的既有基线上界取最小（简化：全局单调推进，任一用户落后即重聚）
+    let prev: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+        "SELECT max(through) FROM balance_baseline",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(None);
+    let from_ts = prev.unwrap_or(chrono::DateTime::<chrono::Utc>::UNIX_EPOCH);
+    if from_ts >= upper_ts {
+        return Ok(()); // 该区间已冻结过
+    }
+    match table {
+        "traffic_ledger" => {
+            sqlx::query(
+                "INSERT INTO balance_baseline \
+                 (user_id, base_up, base_down, base_spark, \
+                  base_seed_secs, through) \
+                 SELECT user_id, COALESCE(sum(delta_up),0), \
+                        COALESCE(sum(delta_down),0), 0, 0, $2 \
+                 FROM traffic_ledger \
+                 WHERE window_start < $2 AND window_start >= $1 \
+                 GROUP BY user_id \
+                 ON CONFLICT (user_id) DO UPDATE SET \
+                   base_up = balance_baseline.base_up \
+                     + EXCLUDED.base_up, \
+                   base_down = balance_baseline.base_down \
+                     + EXCLUDED.base_down, \
+                   through = EXCLUDED.through",
+            )
+            .bind(from_ts)
+            .bind(upper_ts)
+            .execute(db)
+            .await?;
+        }
+        "spark_ledger" => {
+            sqlx::query(
+                "INSERT INTO balance_baseline \
+                 (user_id, base_up, base_down, base_spark, \
+                  base_seed_secs, through) \
+                 SELECT user_id, 0, 0, COALESCE(sum(amount),0), 0, $2 \
+                 FROM spark_ledger \
+                 WHERE created_at < $2 AND created_at >= $1 \
+                 GROUP BY user_id \
+                 ON CONFLICT (user_id) DO UPDATE SET \
+                   base_spark = balance_baseline.base_spark \
+                     + EXCLUDED.base_spark, \
+                   through = EXCLUDED.through",
+            )
+            .bind(from_ts)
+            .bind(upper_ts)
+            .execute(db)
+            .await?;
+        }
+        _ => {}
+    }
+    let _ = (cols, tbl);
+    Ok(())
+}
 /// 过期分区处置（0230 G31-D4）：retain > 0 时，分区上界早于
 /// (当月 - retain) 的 DETACH；已 DETACH 的同名前缀孤表（上轮遗留）DROP。
 /// 两步走的意义：DETACH 秒级且可逆（误配时 ATTACH 回来即可），DROP
@@ -103,25 +183,28 @@ async fn drop_expired_partitions(db: &PgPool) -> anyhow::Result<()> {
         .fetch_all(db)
         .await?;
         for (name,) in parts {
-            // relname 形如 traffic_ledger_2024_06 → 上界 = 2024-07-01
-            let Some(bound) = name
-                .rsplit('_')
-                .next()
-                .and_then(|m| m.parse::<u32>().ok())
-                .and_then(|m| {
-                    name.rsplitn(2, '_')
-                        .nth(1)?
-                        .parse::<i32>()
-                        .ok()
-                        .map(|y| (y, m))
-                })
-            else {
+            // relname 形如 traffic_ledger_2024_06 → 上界 = 2024-07-01。
+            // 审查修正（P0-1）：rsplitn(2) 倒序切片 nth(1) 取到的是
+            // "traffic_ledger_2024"，parse 恒失败 → 归档整体死代码；
+            // 改从右切两段：[..rfind('_')] 是 "<前缀>_YYYY"。
+            let Some(mstr) = name.rsplit('_').next() else { continue };
+            let Ok(month) = mstr.parse::<u32>() else { continue };
+            let Some(yidx) = name.rfind('_') else { continue };
+            let with_year = &name[..yidx]; // traffic_ledger_2024
+            let Some(yidx2) = with_year.rfind('_') else { continue };
+            let Ok(year) = with_year[yidx2 + 1..].parse::<i32>() else {
                 continue;
             };
-            let upper = chrono::NaiveDate::from_ymd_opt(bound.0, bound.1, 1)
+            let (bound_y, bound_m) = (year, month);
+            let upper =
+                chrono::NaiveDate::from_ymd_opt(bound_y, bound_m, 1)
                 .and_then(|d| d.checked_add_months(chrono::Months::new(1)));
             if let Some(upper) = upper {
                 if upper < cutoff {
+                    // P0-3 基线聚合先行：users 快照是流水 SUM 派生（非独立
+                    // 权威），不聚合就 DETACH/DROP 会把老用户余额清零。
+                    aggregate_baseline(db, prefix.trim_end_matches('_'),
+                        &upper).await?;
                     sqlx::query(&format!(
                         "ALTER TABLE {} DETACH PARTITION {}",
                         prefix.trim_end_matches('_'),
@@ -129,7 +212,7 @@ async fn drop_expired_partitions(db: &PgPool) -> anyhow::Result<()> {
                     ))
                     .execute(db)
                     .await?;
-                    tracing::info!(%name, "流水分区超保留期，已 DETACH（下周期 DROP）");
+                    tracing::info!(%name, "流水分区超保留期，基线已冻结，DETACH（下周期 DROP）");
                 }
             }
         }

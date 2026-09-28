@@ -45,11 +45,7 @@ pub(crate) const AGENTBLOCK_GROUP: GroupCfg = GroupCfg {
 
 impl GroupCfg {
     /// 消息成功（或安全跳过）后 ACK——不 ACK 即留 PEL 待重试
-    pub(crate) async fn ack(
-        &self,
-        redis: &mut ConnectionManager,
-        id: &str,
-    ) {
+    pub(crate) async fn ack(&self, redis: &mut ConnectionManager, id: &str) {
         let _: Result<(), _> = redis::cmd("XACK")
             .arg(self.stream)
             .arg(self.group)
@@ -100,10 +96,20 @@ async fn ensure_group(redis: &mut ConnectionManager, cfg: &GroupCfg) {
     }
     // 起点：旧游标（有则从它之后继续）否则 $（只消费新事件——历史事件在
     // 单实例时代已被游标消费过；空库首启无历史，$ 与 0 等价）
-    let last: Option<String> = redis
+    // 审查修正（P0-4）：游标读取失败若静默回落 "$" 会跳过旧游标前未处理
+    // 完的事件——读失败必须 fail-hard（本轮放弃建组，下轮重试）；
+    // 只有「键不存在」才允许 $ 起点。
+    let last: Option<String> = match redis
         .get::<_, Option<String>>(cfg.legacy_cursor)
         .await
-        .unwrap_or(None);
+    {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(?e, stream = cfg.stream,
+                "旧游标读取失败，延迟建组（避免 $ 起点丢事件）");
+            return;
+        }
+    };
     let start = last.clone().unwrap_or_else(|| "$".to_string());
     let created: Result<(), redis::RedisError> = redis::cmd("XGROUP")
         .arg("CREATE")
@@ -115,14 +121,20 @@ async fn ensure_group(redis: &mut ConnectionManager, cfg: &GroupCfg) {
         .await;
     match created {
         Ok(()) => {
-            tracing::info!(stream = cfg.stream, group = cfg.group,
-                "消费者组已创建（起点 {start}，旧游标机制退役）");
+            tracing::info!(
+                stream = cfg.stream,
+                group = cfg.group,
+                "消费者组已创建（起点 {start}，旧游标机制退役）"
+            );
             let _: Result<i64, _> = redis.del(cfg.legacy_cursor).await;
         }
         Err(e) => {
             if !format!("{e}").contains("BUSYGROUP") {
-                tracing::warn!(?e, stream = cfg.stream,
-                    "消费者组创建失败（下轮重试）");
+                tracing::warn!(
+                    ?e,
+                    stream = cfg.stream,
+                    "消费者组创建失败（下轮重试）"
+                );
             }
         }
     }
@@ -220,7 +232,9 @@ fn parse_entries(v: &redis::Value) -> Option<Vec<(String, String)>> {
     };
     let mut out = Vec::with_capacity(entries.len());
     for e in entries {
-        let redis::Value::Array(pair) = e else { continue };
+        let redis::Value::Array(pair) = e else {
+            continue;
+        };
         if pair.len() < 2 {
             continue;
         }

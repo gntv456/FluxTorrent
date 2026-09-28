@@ -75,8 +75,14 @@ pub async fn reconcile_diff_alert(db: &PgPool) -> anyhow::Result<()> {
 pub async fn reconcile_snapshots(db: &PgPool) -> anyhow::Result<()> {
     sqlx::query(
         "UPDATE users SET \
-         uploaded = COALESCE((SELECT sum(delta_up) FROM traffic_ledger WHERE user_id = users.id), 0), \
-         downloaded = COALESCE((SELECT sum(delta_down) FROM traffic_ledger WHERE user_id = users.id), 0)",
+         uploaded = COALESCE((SELECT base_up FROM balance_baseline \
+             WHERE user_id = users.id), 0) \
+           + COALESCE((SELECT sum(delta_up) FROM traffic_ledger \
+             WHERE user_id = users.id), 0), \
+         downloaded = COALESCE((SELECT base_down FROM balance_baseline \
+             WHERE user_id = users.id), 0) \
+           + COALESCE((SELECT sum(delta_down) FROM traffic_ledger \
+             WHERE user_id = users.id), 0)",
     )
     .execute(db)
     .await?;
