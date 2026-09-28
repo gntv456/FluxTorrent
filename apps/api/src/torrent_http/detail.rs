@@ -46,8 +46,11 @@ async fn torrent_detail_ext(
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    // 审查修正（P1-9）：主查钉主库——purchased/is_owner 是写后立读字段
+    // （购买/发布跳转立即刷新详情），副本延迟会显示未购买；files/thanks/
+    // comments 等纯展示段保持 read_db。
     let t = torrents::get_torrent_detail(
-        &state.repo.read_db,
+        &state.repo.db,
         path.into_inner(),
         auth.id,
     )
