@@ -68,7 +68,7 @@ pub async fn site_type_pack_apply(
     // 与 apply_pack_extras 一样落在主事务之外（都是「按包声明重建一张表」）。
     let terms_applied =
         super::pack_terms::apply_pack_terms(&state.repo.db, &pack).await?;
-        crate::cfgver::bump(state.get_ref(), "terms").await;
+    crate::cfgver::bump(state.get_ref(), "terms").await;
     // 台账计数：extras 形状是 Vec<(kind, applied)>，转对象便于前端直读
     let extras_map: serde_json::Map<String, serde_json::Value> = extras
         .iter()

@@ -54,7 +54,8 @@ pub trait Plugin: Send + Sync {
 /// 开关缓存（模块级静态，0224 G30）：plugin_enabled 读；
 /// invalidate_plugin_cache 清（cfg:ver modules 域命中时同步失效）。
 type PluginCache = std::sync::Mutex<
-    std::collections::HashMap<String, (std::time::Instant, bool)>>;
+    std::collections::HashMap<String, (std::time::Instant, bool)>,
+>;
 static PLUGIN_CACHE: tokio::sync::OnceCell<PluginCache> =
     tokio::sync::OnceCell::const_new();
 

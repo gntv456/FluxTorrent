@@ -53,13 +53,11 @@ impl TaskSet {
 
     /// 停机排空：等所有在跑手动任务完成，上限 60s。
     pub(crate) async fn drain(&mut self) {
-        let _ = tokio::time::timeout(
-            std::time::Duration::from_secs(60),
-            async {
+        let _ =
+            tokio::time::timeout(std::time::Duration::from_secs(60), async {
                 while self.inner.join_next().await.is_some() {}
-            },
-        )
-        .await;
+            })
+            .await;
     }
 }
 
@@ -69,14 +67,13 @@ pub(crate) fn install_signal_handler() {
     {
         tokio::spawn(async {
             use tokio::signal::unix::{signal, SignalKind};
-            let mut term =
-                match signal(SignalKind::terminate()) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        tracing::warn!(?e, "SIGTERM 监听安装失败（停机走硬切）");
-                        return;
-                    }
-                };
+            let mut term = match signal(SignalKind::terminate()) {
+                Ok(s) => s,
+                Err(e) => {
+                    tracing::warn!(?e, "SIGTERM 监听安装失败（停机走硬切）");
+                    return;
+                }
+            };
             let mut int = match signal(SignalKind::interrupt()) {
                 Ok(s) => s,
                 Err(e) => {
