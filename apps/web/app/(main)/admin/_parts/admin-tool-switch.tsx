@@ -29,6 +29,8 @@ import { AdminOpsPanel } from "@/components/admin-ops";
 import { AdminEmbedRules } from "@/components/admin-embed-rules";
 import { AdminOnboarding } from "@/components/admin-onboarding";
 import { AdminEconomyDashboard } from "@/components/admin-economy-dashboard";
+import { AdminApplications } from "@/components/admin-applications";
+import { AdminGacha } from "@/components/admin-gacha";
 import { HomeLayoutEditor } from "@/components/home-layout-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
 import { AdminPromoKinds } from "./admin-promo-kinds";
@@ -131,6 +133,12 @@ export function renderSimpleTool(
     // C5 经济反通胀运营面板（0226）
     case "economy":
       return <AdminEconomyDashboard />;
+    // 申请制入站审核（0227）
+    case "applications":
+      return <AdminApplications />;
+    // 抽卡运营（G31-C 后台入口：发放+巡检）
+    case "gacha":
+      return <AdminGacha />;
     default:
       return undefined;
   }

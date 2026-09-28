@@ -11,6 +11,7 @@
 //! 模块关闭时 gateway 前缀映射（/api/v1/gacha → key::GACHA）整段 404，
 //! 路由随开关消失（方案 §5 断言「路由消失」的机制位）。
 
+mod admin_stats;
 mod craft;
 mod draw;
 mod me;
@@ -34,6 +35,7 @@ pub fn mount_gacha(scope: Scope) -> Scope {
         .service(craft::gacha_levelup)
         // staff 发放挂 /admin 前缀（gateway 对 /api/v1/admin 免检——站长必须
         // 始终能进设置中心；权限由 authz::require_perm 把守）
+        .service(admin_stats::gacha_admin_stats)
         .service(staff::gacha_grant_tickets)
         .service(staff::gacha_grant_shards)
 }

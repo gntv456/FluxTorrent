@@ -187,21 +187,32 @@ if (packTables && packTables.length === 0) {
     note.push("包台账表不在（gacha_* 表存在但 apply 台账未落）；跳过真库");
   } else {
     try {
+      // site_pack_applies 真实列（0223）：snapshot/changes/counts，无 payload——
+      // 站型包的 gacha 段在 changes 里（apply 台账）；当前无 gacha 包段属预期
+      // （G31 包载荷未落），解析逻辑先就位，落了就接管。
       const raw = dbQuery(
-        `SELECT payload::text FROM ${t} ` +
-        "WHERE payload IS NOT NULL ORDER BY id DESC LIMIT 50");
+        `SELECT COALESCE(changes::text, '{}'), COALESCE(snapshot::text, \
+'{}') FROM ${t} WHERE rolled_back_at IS NULL ORDER BY id DESC LIMIT 50`);
       let worst = null;
       for (const line of raw.split("\n").filter(Boolean)) {
-        const payload = JSON.parse(line);
-        const hits = [];
-        walk(payload, null, "", hits);
-        for (const h of hits) bad.push(`${t}: ${h}`);
-        for (const { key, ec } of packEconomics(math, payload)) {
-          if (ec.ratioWorst > 1) {
-            bad.push(`${t}.${key}: 综合返还率 ` +
-              `${(ec.ratioWorst * 100).toFixed(2)}% > 100%（倒灌）`);
+        const [changesTxt, snapTxt] = line.split("|");
+        for (const txt of [changesTxt, snapTxt]) {
+          let payload;
+          try {
+            payload = JSON.parse(txt);
+          } catch {
+            continue;
           }
-          if (!worst || ec.ratioWorst > worst) worst = ec.ratioWorst;
+          const hits = [];
+          walk(payload, null, "", hits);
+          for (const h of hits) bad.push(`${t}: ${h}`);
+          for (const { key, ec } of packEconomics(math, payload)) {
+            if (ec.ratioWorst > 1) {
+              bad.push(`${t}.${key}: 综合返还率 ` +
+                `${(ec.ratioWorst * 100).toFixed(2)}% > 100%（倒灌）`);
+            }
+            if (!worst || ec.ratioWorst > worst) worst = ec.ratioWorst;
+          }
         }
       }
       if (bad.length) {
@@ -213,7 +224,7 @@ if (packTables && packTables.length === 0) {
         `真库包载荷：50 条内最差口径 ` +
         `${worst == null ? "（无可算池）" : (worst * 100).toFixed(2) + "%"}，绿`);
     } catch (e) {
-      note.push("真库比对跳过（载荷列结构与预期不符，G31-C 落地后对齐：" +
+      note.push("真库比对跳过（载荷列结构与预期不符：" +
         String(e.message).slice(0, 120) + "）");
     }
   }

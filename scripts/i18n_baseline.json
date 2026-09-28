@@ -8385,5 +8385,13 @@
   122,
   132
  ],
- "app\\(main)\\gacha\\_inner.tsx": []
+ "app\\(main)\\gacha\\_inner.tsx": [],
+ "components\\admin-gacha.tsx": [
+  65,
+  96,
+  104,
+  112,
+  133,
+  134
+ ]
 }
