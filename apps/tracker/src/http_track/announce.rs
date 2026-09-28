@@ -47,8 +47,7 @@ pub(crate) async fn announce(
     // 在线数直接错）。优先级：TRUST_PROXY=1 时 XFF 首值 > TRUST_PROXY_IP=1
     // 时 ?ip= 参数 > socket 对端；XFF 取链路首值（最接近真实客户端），
     // 反代必须追加而非覆盖。
-    let trust_xff =
-        std::env::var("TRUST_PROXY").unwrap_or_default() == "1";
+    let trust_xff = std::env::var("TRUST_PROXY").unwrap_or_default() == "1";
     let trust_param_ip =
         std::env::var("TRUST_PROXY_IP").unwrap_or_default() == "1";
     let ip = if trust_xff {
@@ -59,9 +58,7 @@ pub(crate) async fn announce(
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(str::to_string)
-            .or_else(|| {
-                req.peer_addr().map(|a| a.ip().to_string())
-            })
+            .or_else(|| req.peer_addr().map(|a| a.ip().to_string()))
     } else if trust_param_ip {
         params
             .get_str("ip")

@@ -172,7 +172,7 @@ pub async fn site_pack_rollback(
     // 3) 术语段（自建事务；字幕口径已在 apply_pack_full 内按快照应用）
     let terms_applied =
         super::pack_terms::apply_pack_terms(&state.repo.db, &pack).await?;
-        crate::cfgver::bump(state.get_ref(), "terms").await;
+    crate::cfgver::bump(state.get_ref(), "terms").await;
     // 4) 清理本次 apply 新建、快照里没有的分类：被引用（种子/促销/愿望单等外键
     //    拒绝）或有子级的一律保留——宁残留不破坏
     let stale: Vec<i32> = sqlx::query_scalar(

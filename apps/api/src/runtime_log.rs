@@ -216,4 +216,3 @@ async fn flush(db: &PgPool, batch: &[Entry]) -> Result<(), sqlx::Error> {
     }
     qb.build().execute(db).await.map(|_| ())
 }
-

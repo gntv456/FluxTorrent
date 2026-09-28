@@ -103,8 +103,11 @@ pub async fn sys_log(
     let per = 50i64;
     let kw = q.q.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let lv = q.level.as_deref().map(str::trim).filter(|s| !s.is_empty());
-    let inst =
-        q.instance.as_deref().map(str::trim).filter(|s| !s.is_empty());
+    let inst = q
+        .instance
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
     // 列表与计数同一谓词（_doc/同类BUG排查报告-20260916.md 的口径纪律）
     let where_sql = "($1::text IS NULL OR level = $1) \
          AND ($2::text IS NULL OR message ILIKE '%' || $2 || '%' \
