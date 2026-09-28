@@ -127,10 +127,17 @@ pub(super) async fn announce(
         info_hash: info_hash_hex.clone(),
         peer_id: peer_id_hex.clone(),
     };
+    // 0227 G31 审查遗留#1：外置模式（FLUX_TRACKER_PEER_STORE=redis）下 UDP
+    // 与 HTTP 同读写 Redis swarm——此前 UDP 只进本进程内存，多副本/双协议下
+    // peer 视图分裂。内存表仍同步维护（快照导出/降级路径不变）。
     if event == "stopped" {
+        if crate::peers::external::external_enabled() {
+            let mut r = t.state.redis.clone();
+            let _ = crate::peers::external::remove(&mut r, &key).await;
+        }
         t.state.peers.remove(&key);
     } else {
-        t.state.peers.upsert(Peer {
+        let peer = Peer {
             key: key.clone(),
             ip: ip.clone(),
             port,
@@ -140,8 +147,20 @@ pub(super) async fn announce(
             last_seen: chrono::Utc::now(),
             user_id,
             connectable: crate::peers::CONN_UNTESTED,
-        });
+        };
+        if crate::peers::external::external_enabled() {
+            let mut r = t.state.redis.clone();
+            let _ =
+                crate::peers::external::upsert(&mut r, peer.clone()).await;
+        }
+        t.state.peers.upsert(peer);
     }
+    let connectable = if crate::peers::external::external_enabled() {
+        let mut r = t.state.redis.clone();
+        crate::peers::external::connectable_of(&mut r, &key).await
+    } else {
+        t.state.peers.connectable_of(&key)
+    };
     crate::emit_event(
         &t.state.redis,
         &info_hash_hex,
@@ -151,26 +170,38 @@ pub(super) async fn announce(
         event,
         left,
         &ip,
-        t.state.peers.connectable_of(&key),
+        connectable,
         "", // UDP 不携带 UA；agent 列以 HTTP announce 为准
     )
     .await;
 
     let (interval, min_interval) = t.state.intervals();
-    let (complete, incomplete) = if event == "stopped" {
-        (0, 0)
+    let (complete, incomplete, snap) = if event == "stopped" {
+        (0, 0, Default::default())
+    } else if crate::peers::external::external_enabled() {
+        let mut r = t.state.redis.clone();
+        let (seeders, leechers) =
+            crate::peers::external::counts(&mut r, &info_hash_hex).await;
+        let snap = crate::peers::external::snapshot(
+            &mut r,
+            &info_hash_hex,
+            numwant.clamp(1, 200),
+            &key.peer_id,
+        )
+        .await;
+        (seeders as i32, leechers as i32, snap)
     } else {
+        let snap = t.state.peers.snapshot(
+            &info_hash_hex,
+            numwant.clamp(1, 200),
+            &key.peer_id,
+        );
         (
             t.state.peers.count_seeders(&info_hash_hex) as i32,
             t.state.peers.count_leechers(&info_hash_hex) as i32,
+            snap,
         )
     };
-    // compact peers：IPv4 only（本站客户端主体；v6 走 HTTP tracker）
-    let snap = t.state.peers.snapshot(
-        &info_hash_hex,
-        numwant.clamp(1, 200),
-        &key.peer_id,
-    );
     let mut peers_bytes = Vec::with_capacity(snap.v4.len() * 6);
     for p in &snap.v4 {
         peers_bytes.extend_from_slice(&p.ip);
@@ -181,9 +212,12 @@ pub(super) async fn announce(
     let mut out = Vec::with_capacity(20 + peers_bytes.len());
     out.extend_from_slice(&ANNOUNCE_ACTION.to_be_bytes());
     out.extend_from_slice(&transaction_id.to_be_bytes());
-    out.extend_from_slice(&interval.to_be_bytes());
-    out.extend_from_slice(&incomplete.to_be_bytes());
-    out.extend_from_slice(&complete.to_be_bytes());
+    // 审查/V17 修正：intervals() 返回 i64，直接 to_be_bytes 是 8 字节——
+    // BEP-15 响应的 interval/leechers/seeders 各 4 字节，超写会令标准客户端
+    // 解析错位（响应 24 字节畸形）。
+    out.extend_from_slice(&(interval as i32).to_be_bytes());
+    out.extend_from_slice(&(incomplete as i32).to_be_bytes());
+    out.extend_from_slice(&(complete as i32).to_be_bytes());
     out.extend_from_slice(&peers_bytes);
     let _ = min_interval; // BEP15 响应无此字段
     out
