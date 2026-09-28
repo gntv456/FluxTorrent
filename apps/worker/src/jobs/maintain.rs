@@ -34,7 +34,6 @@ pub async fn ensure_partitions(db: &PgPool) -> anyhow::Result<()> {
     let tables = [
         ("traffic_ledger", "window_start"),
         ("spark_ledger", "created_at"),
-        ("posts", "created_at"),
     ];
     for i in 0..3i32 {
         let start = first_of_month
@@ -43,7 +42,11 @@ pub async fn ensure_partitions(db: &PgPool) -> anyhow::Result<()> {
         let end = start
             .checked_add_months(chrono::Months::new(1))
             .unwrap_or(start);
-        for (tbl, _col) in tables {
+        // posts（论坛正文）分区预建保留（不预建新帖会落 default），但绝不进
+        // 归档清单——它是业务数据不是流水
+        let mut all: Vec<&str> = tables.iter().map(|(t, _)| *t).collect();
+        all.push("posts");
+        for tbl in all {
             let name = format!("{}_{}", tbl, start.format("%Y_%m"));
             sqlx::query(&format!(
                 "CREATE TABLE IF NOT EXISTS {} PARTITION OF {} \
@@ -84,7 +87,9 @@ async fn drop_expired_partitions(db: &PgPool) -> anyhow::Result<()> {
     else {
         return Ok(());
     };
-    let prefixes = ["traffic_ledger_", "spark_ledger_", "posts_"];
+    // ⚠️ posts（论坛正文）是业务数据不是流水——绝不进归档清单（P0 审查修正：
+    // 它同是 RANGE 分区表故曾被一并圈入，retention 会删帖）
+    let prefixes = ["traffic_ledger_", "spark_ledger_"];
     for prefix in prefixes {
         // 在线分区：查 pg_inherits 拿分区上界（relname 编码了年月）
         let parts: Vec<(String,)> = sqlx::query_as(&format!(
