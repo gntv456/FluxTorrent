@@ -221,13 +221,20 @@ async fn main() -> anyhow::Result<()> {
             // 自定义格式以 %r 换成 %m %U（method + 不含 query 的 path）；其余与 default 对齐。
             .wrap(Logger::new("%a \"%m %U\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %T").exclude("/api/v1/health"))
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
-            // 安全响应头基线（§5.7）：nosniff / 防点击劫持 / 引用策略
-            // （HSTS 由 TLS 终结的反代统一注入；完整 CSP 需 nonce 基建，web 侧已配基础头）
+            // 安全响应头基线（§5.7）：nosniff / 防点击劫持 / 引用策略 / CSP
+            // （HSTS 由 TLS 终结的反代统一注入）。E1：API 只出 JSON 与文件流，
+            // 无任何脚本执行场景，CSP 直接最严形态——default-src 'none' +
+            // frame-ancestors 'none'，即便将来某响应被嗅探成 HTML 也无法引资源。
+            // 注意 base-uri/form-action 无意义（不返回 HTML），不加。
             .wrap(
                 actix_web::middleware::DefaultHeaders::new()
                     .add(("X-Content-Type-Options", "nosniff"))
                     .add(("X-Frame-Options", "DENY"))
-                    .add(("Referrer-Policy", "strict-origin-when-cross-origin")),
+                    .add(("Referrer-Policy", "strict-origin-when-cross-origin"))
+                    .add((
+                        "Content-Security-Policy",
+                        "default-src 'none'; frame-ancestors 'none'",
+                    )),
             )
             .wrap(actix_web::middleware::from_fn(request_id::request_id_mw)) // request_id 贯穿（信封/响应头/日志同源）
             .wrap(actix_web::middleware::from_fn(i18n::locale_mw)) // Accept-Language → task-local（错误消息三语）
