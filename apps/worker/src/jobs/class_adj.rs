@@ -57,10 +57,18 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
                 s.uploaded >= r.min_uploaded AND s.dl >= r.min_download_count AND
                 s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days
             GROUP BY s.id
+        ),
+        promo AS (
+            -- 晋升前的真实旧档：UPDATE ... RETURNING 里 u.class_id 已是更新后的
+            -- 新值，直接取会拿到 new（旧版因此把奖励区间算成 (new,new] 恒空，
+            -- 晋升奖励从不入账——ZT81 R1.6 实测抓到）。先在 CTE 里钉住旧值。
+            SELECT u.id, u.class_id AS old_class, t.new_class
+            FROM users u JOIN target t ON t.id = u.id
+              AND t.new_class > u.class_id
         )
-        UPDATE users u SET class_id = t.new_class
-        FROM target t WHERE u.id = t.id AND t.new_class > u.class_id
-        RETURNING u.id, u.class_id AS old_class, t.new_class
+        UPDATE users u SET class_id = p.new_class
+        FROM promo p WHERE u.id = p.id
+        RETURNING u.id, p.old_class, p.new_class
         "#,
     )
     .fetch_all(db)
@@ -69,6 +77,7 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
         tracing::info!(n = promoted.len(), "class promoted");
     }
     // 晋升待遇发放（0072）：promo_sparks > 0 的档位才发；幂等键防重复
+    // old_class 来自 promo CTE 钉住的更新前值（见上方 CTE 注释）。
     for row in &promoted {
         let (uid, old_class, new_class): (i64, i32, i32) =
             (row.try_get(0)?, row.try_get(1)?, row.try_get(2)?);
@@ -98,16 +107,23 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
         .await?
         .rows_affected();
         if credited > 0 {
-            sqlx::query(
-                "UPDATE users SET spark_balance = \
-             spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM \
-             spark_ledger WHERE idempotency_key = $3)",
+            // 余额入账与流水并入同一事务（ZT81 R1.6 修复二段）：旧版两条独立语句间
+            // 进程崩溃会「流水已落、余额没加」，且 UPDATE 的 NOT EXISTS 卫语句在
+            // 分区表上有已见自插入行的计划形态问题——单事务内改用「按流水行数对账」
+            // 的一步式 UPDATE，卫语句以本事务可见性为准，杜绝两条语句的窗口。
+            if let Err(e) = sqlx::query(
+                "UPDATE users SET spark_balance = spark_balance + $2 \
+                 WHERE id = $1 AND EXISTS (SELECT 1 FROM spark_ledger \
+                 WHERE idempotency_key = $3)",
             )
             .bind(uid)
             .bind(reward)
             .bind(&idem)
             .execute(db)
-            .await?;
+            .await
+            {
+                tracing::error!(%e, uid, "promotion balance update failed");
+            }
             let level_name: String = sqlx::query_scalar(
                 "SELECT name FROM class_rules WHERE class_id = $1",
             )
