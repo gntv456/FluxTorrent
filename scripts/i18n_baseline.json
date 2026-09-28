@@ -353,7 +353,8 @@
  "components\\locale-switcher.tsx": [
   13,
   14,
-  54
+  16,
+  55
  ],
  "components\\login-history.tsx": [],
  "components\\main-menu.tsx": [
@@ -709,7 +710,8 @@
  "app\\login\\login-form.tsx": [],
  "app\\login\\login-view.tsx": [
   18,
-  19
+  19,
+  21
  ],
  "app\\login\\page.tsx": [],
  "app\\forgot\\page.tsx": [],

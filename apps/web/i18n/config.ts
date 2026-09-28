@@ -1,6 +1,6 @@
 /** i18n 基础配置（三语：zh-CN 默认 / zh-TW / en；Cookie 切换，无 URL 前缀） */
 
-export const LOCALES = ["zh-CN", "zh-TW", "en"] as const;
+export const LOCALES = ["zh-CN", "zh-TW", "en", "ja"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "zh-CN";
 export const LOCALE_COOKIE = "flux.locale";
@@ -11,7 +11,16 @@ export function isLocale(v: string | undefined | null): v is Locale {
 
 /** 日期格式化 locale（toLocaleDateString/String/Time 用） */
 export function dateLocale(locale: Locale): string {
-  return locale === "zh-TW" ? "zh-TW" : locale === "en" ? "en-US" : "zh-CN";
+  switch (locale) {
+    case "zh-TW":
+      return "zh-TW";
+    case "en":
+      return "en-US";
+    case "ja":
+      return "ja-JP";
+    default:
+      return "zh-CN";
+  }
 }
 
 /**
@@ -31,6 +40,8 @@ export function siteLangToLocale(v: string | null | undefined): Locale | null {
     case "cht":
     case "zh-tw":
       return "zh-TW";
+    case "ja":
+      return "ja";
     default:
       return null;
   }

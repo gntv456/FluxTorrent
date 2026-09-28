@@ -13,6 +13,7 @@ const LABELS: Record<Locale, string> = {
   "zh-CN": "简体中文",
   "zh-TW": "繁體中文",
   en: "English",
+  ja: "日本語",
 };
 
 export function LocaleSwitcher({ current }: { current: Locale }) {

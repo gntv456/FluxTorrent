@@ -9,3 +9,4 @@
 5. [内容包与主题](packs-themes.md)：生态商店内容包、主题令牌
 6. [模块开关与面板](modules.md)：30 个模块的启停联动
 7. [适配器](adapters.md)：wasmtime 沙箱适配器（外部数据源接入）
+8. [翻译与多语言](translating.md)：语言切换/术语表分工/翻译贡献指南

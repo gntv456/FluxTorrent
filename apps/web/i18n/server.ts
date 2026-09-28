@@ -12,10 +12,18 @@ import {
 import { zhCN, type Dict } from "./zh-CN";
 import { zhTW } from "./zh-TW";
 import { en } from "./en";
+import { ja } from "./ja";
+import { deepMergeDict } from "./merge";
 import { getSiteProfile } from "@/lib/site-profile";
 import { applyTerms, sortRules, subtitleRules, type TermRule } from "./apply-terms";
 
-const DICTS: Record<Locale, Dict> = { "zh-CN": zhCN, "zh-TW": zhTW, en };
+// ja（E10）：段级回落式——翻到的段覆盖，其余回落 zh-CN
+const DICTS: Record<Locale, Dict> = {
+  "zh-CN": zhCN,
+  "zh-TW": zhTW,
+  en,
+  ja: deepMergeDict(zhCN, ja),
+};
 
 export async function getLocale(): Promise<Locale> {
   const store = await cookies();
