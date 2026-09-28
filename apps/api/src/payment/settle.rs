@@ -15,7 +15,7 @@ pub fn new_order_no(user_id: i64) -> String {
 
 /// 回调统一入口：验签 + 幂等入账（wallet_usd 增加 + donation_ledger + 订单 paid）
 pub async fn settle_notify(
-    state: &AppState,
+    state: &std::sync::Arc<AppState>,
     params: &std::collections::HashMap<String, String>,
 ) -> DomainResult<SettleOutcome> {
     let cfg = gateway_config(state).await;
@@ -76,10 +76,38 @@ pub async fn settle_notify(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // E7 捐赠档位：同事务发放（累计含本单——本单已置 paid；CAS 防双入口）
+    let cum = super::tiers::cumulative_paid(&mut tx, user_id).await?;
+    let granted =
+        super::tiers::grant_tier(&mut tx, state, &n.order_no, user_id, cum)
+            .await?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(SettleOutcome::Paid)
+    // 事务外通知（尽力而为，不影响回执）
+    if let Some(summary) = granted {
+        let email: Option<String> =
+            sqlx::query_scalar("SELECT email FROM users WHERE id = $1")
+                .bind(user_id)
+                .fetch_optional(&state.repo.db)
+                .await
+                .ok()
+                .flatten();
+        crate::mailer::notify_kind(
+            &state.repo.db,
+            user_id,
+            "donate_tier",
+            email,
+            "捐赠回馈已发放",
+            &format!("感谢支持！本次捐赠触发回馈档位 {summary}，已自动入账。"),
+        )
+        .await;
+        crate::ops_webhook::broadcast_ops_spawn(
+            state,
+            format!("收到捐赠 ${amount:.2}（{summary}）"),
+        );
+    }
+    return Ok(SettleOutcome::Paid);
 }
 
 #[derive(Debug, PartialEq)]

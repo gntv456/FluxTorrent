@@ -46,6 +46,7 @@ pub async fn donate_state(
         "plans": plans,
         "ledger": ledger,
         // U4 §12.1：通道可用性（provider=epay 且凭证齐全；FLUX_DEMO 演示模式恒开）
+        "donation_tiers": crate::payment::load_tiers(&state.repo.db).await,
         "payment_enabled": crate::payment::gateway_config(&state).await.available()
             || std::env::var("FLUX_DEMO").unwrap_or_default() == "1",
     })))

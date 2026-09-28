@@ -26,6 +26,9 @@ struct PaymentOrderRow {
     #[serde(skip_serializing_if = "Option::is_none")]
     trade_no: Option<String>,
     created_at: chrono::DateTime<chrono::Utc>,
+    /// E7：档位已发放（回调/补单共用 CAS 置位）
+    #[serde(default)]
+    tier_granted: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     paid_at: Option<chrono::DateTime<chrono::Utc>>,
 }
@@ -58,7 +61,8 @@ pub async fn admin_payment_orders(
     let status = q.status.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let rows: Vec<PaymentOrderRow> = sqlx::query_as(
         r#"SELECT o.id, o.order_no, o.user_id, u.username, o.amount_usd::float8,
-                  o.amount_paid::float8, o.channel, o.status, o.trade_no, o.created_at, o.paid_at
+                  o.amount_paid::float8, o.channel, o.status, o.trade_no, o.created_at, o.paid_at,
+                  o.tier_granted
            FROM payment_orders o LEFT JOIN users u ON u.id = o.user_id
            WHERE ($1::text IS NULL OR o.status = $1)
              AND ($2::bigint IS NULL OR o.user_id = $2)
@@ -178,6 +182,11 @@ pub async fn admin_payment_complete(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // E7：补单同事务走档位发放（与回调同一 CAS 闸，双入口只发一次）
+    let cum = crate::payment::cumulative_paid(&mut tx, user_id).await?;
+    let granted =
+        crate::payment::grant_tier(&mut tx, &state, order_no, user_id, cum)
+            .await?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -185,7 +194,26 @@ pub async fn admin_payment_complete(
         .repo
         .audit(Some(auth.id), "admin.payment_complete", None)
         .await;
+    if let Some(summary) = &granted {
+        let email: Option<String> =
+            sqlx::query_scalar("SELECT email FROM users WHERE id = $1")
+                .bind(user_id)
+                .fetch_optional(&state.repo.db)
+                .await
+                .ok()
+                .flatten();
+        crate::mailer::notify_kind(
+            &state.repo.db,
+            user_id,
+            "donate_tier",
+            email,
+            "捐赠回馈已发放",
+            &format!("感谢支持！本次捐赠触发回馈档位 {summary}，已自动入账。"),
+        )
+        .await;
+    }
     Ok(ok(serde_json::json!({
         "order_no": order_no, "result": "paid", "amount": amount,
+        "tier": granted,
     })))
 }

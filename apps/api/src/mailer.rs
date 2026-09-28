@@ -80,8 +80,8 @@ pub async fn site_message(
     body: &str,
 ) -> anyhow::Result<()> {
     sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         SELECT 0, $1, $2, $3 WHERE EXISTS (SELECT 1 FROM users WHERE id = $1)",
+        "INSERT INTO messages (receiver_id, subject, body) \
+         SELECT $1, $2, $3 WHERE EXISTS (SELECT 1 FROM users WHERE id = $1)",
     )
     .bind(to_user)
     .bind(subject)
