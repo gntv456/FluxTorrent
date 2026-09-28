@@ -50,8 +50,31 @@ pub(super) async fn classes_public(
             .fetch_one(&state.repo.db)
             .await
             .unwrap_or(0);
+    // E3：本人四维现状（与 worker class_auto_adjust 的 stats 同一口径），
+    // 前端算「距下一级还差多少」。账龄按日截断，与 EXTRACT(DAY) 升级判定一致。
+    let me_stats = sqlx::query_as::<_, (i64, i64, i64, i64)>(
+        "SELECT u.uploaded::bigint, \
+                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id \
+                  AND s.completed_at IS NOT NULL)::bigint, \
+                (SELECT COALESCE(sum(s.seeded_seconds),0)/3600 FROM snatches s \
+                  WHERE s.user_id = u.id)::bigint, \
+                EXTRACT(DAY FROM now() - u.created_at)::bigint \
+         FROM users u WHERE u.id = $1",
+    )
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .map(|(up, dl, sh, age)| {
+        json!({
+            "uploaded": up, "download_count": dl,
+            "seed_hours": sh, "account_age_days": age,
+        })
+    });
     Ok(ok(json!({
         "me_class": me_class,
+        "me_stats": me_stats,
         "classes": rows.iter().map(|(id, name, up, dl, sh, age, demo)| json!({
             "id": id, "name": name,
             "min_uploaded": up, "min_download_count": dl,
