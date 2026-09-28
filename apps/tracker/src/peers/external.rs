@@ -185,12 +185,13 @@ pub async fn set_connectable(
     }
 }
 
-/// 回连抽样候选（与内存表 sample_probes 同口径：未测优先、已测轮替）
+/// 回连探测：按调用方给的候选键查外置 peer（补全 ip/port）。
+/// 未测优先/轮替的筛选在内存表 sample_probes（候选生成在内存侧），
+/// 本函数只负责按键补全——与内存表口径并非同构。
 pub async fn sample_probes(
     redis: &mut ConnectionManager,
     keys: &[PeerKey],
 ) -> Vec<(PeerKey, String, u16)> {
-    // 调用方给候选键（内存表无外置时的路径不同）；此处按键批量查 connectable
     let mut out = Vec::with_capacity(keys.len());
     for key in keys {
         let v: Option<String> = redis

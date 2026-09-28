@@ -76,14 +76,18 @@ pub(crate) async fn purge_expired_tokens(db: &PgPool) -> anyhow::Result<u64> {
     Ok(a + b)
 }
 
-/// announce 死信队列可见性（卫生 P1）：DLQ 只进不出等于变相丢计费。
+/// 死信队列可见性（卫生 P1）：DLQ 只进不出等于变相丢计费。
 /// 有积压时通知管理组信箱（复用 cheat_audit 告警模式），同一批积压只告警一次。
+/// 0227 审查 P2：agent_block 死信分键（flux:agentblock:dlq），与计费死信
+/// 分开统计、文案分源——两队列共用告警节奏。
 pub(crate) async fn dlq_watch(
     db: &PgPool,
     redis: &mut redis::aio::ConnectionManager,
 ) -> anyhow::Result<u64> {
     use redis::AsyncCommands;
-    let len: i64 = redis.llen("flux:announce:dlq").await.unwrap_or(0);
+    let a_len: i64 = redis.llen("flux:announce:dlq").await.unwrap_or(0);
+    let b_len: i64 = redis.llen("flux:agentblock:dlq").await.unwrap_or(0);
+    let len: i64 = a_len + b_len;
     if len == 0 {
         // 队列清空后复位告警游标，下批积压可再次告警
         let _: () = redis.del("flux:announce:dlq:alerted").await.unwrap_or(());
@@ -93,8 +97,9 @@ pub(crate) async fn dlq_watch(
         redis.get("flux:announce:dlq:alerted").await.unwrap_or(0);
     if alerted == 0 {
         let body = format!(
-            "announce 死信队列当前积压 {len} 条事件（连续失败 6 次进入），计费已跳过。\
-             请排查 flux:announce:dlq 并人工补偿计费。"
+            "死信队列当前积压 {len} 条（连续失败 6 次进入）：计费流 \
+             flux:announce:dlq {a_len} 条（计费已跳过需人工补偿）、客户端拦截流 \
+             flux:agentblock:dlq {b_len} 条（仅告警记录）。请按队列排查。"
         );
         let _: Result<_, _> = sqlx::query(
             "INSERT INTO staffmessages (user_id, subject, body, permission) \

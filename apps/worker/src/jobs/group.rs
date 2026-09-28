@@ -39,7 +39,7 @@ pub(crate) const AGENTBLOCK_GROUP: GroupCfg = GroupCfg {
     stream: "flux:agent_block",
     group: "fluxcg-agentblock",
     legacy_cursor: "flux:agentblock:cursor",
-    dlq: "flux:announce:dlq",
+    dlq: "flux:agentblock:dlq",
     batch: 100,
 };
 
@@ -214,7 +214,9 @@ fn parse_stream_reply(v: &redis::Value) -> Vec<(String, String)> {
     }
 }
 
-/// 解析 XAUTOCLAIM 回复（[next-id, entries, deleted]——取第 2 元素）。
+/// 解析 XAUTOCLAIM 回复——entries 都在下标 1：Redis 7 为
+/// [next-id, entries, deleted] 三元，6.2 为 [next-id, entries] 二元
+/// （两种形态兼容；当前 compose 固定 redis:7）。
 fn parse_autoclaim_reply(v: &redis::Value) -> Vec<(String, String)> {
     match v {
         redis::Value::Array(items) if items.len() >= 2 => {
