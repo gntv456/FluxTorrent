@@ -52,6 +52,25 @@
 
 ## [Unreleased]
 
+### 全量代码审查修复批（2026-09-28，迁移 0237）
+
+对 G30-A/B/G31 全部 13 个 commit 做独立缺陷审查（P0×5/P1×8/P2×8），落地修复：
+
+- **P0 归档年月解析死代码**：`rsplitn(2)` 倒序切片使年份 parse 恒失败——
+  DETACH/DROP 一次都不会执行；改右切两段取年月。
+- **P0 balance_baseline 余额基线**：users 快照是流水 SUM 派生（非独立权威），
+  直接归档会把老用户 uploaded/downloaded/spark 清零——新增基线表（迁移 0237），
+  DETACH 前冻结期初余额，三处重算公式（announce 增量/reconcile 全量/seeding
+  小时重算）改为 baseline+SUM(剩余窗口)。实证：冻结后重算差额精确补回。
+- **P0 posts（论坛正文）移出归档清单**：业务数据误圈入流水归档，retention
+  会删帖；分区预建保留。
+- **P0 ensure_group 游标读失败 fail-hard**（静默回落 $ 会丢升级窗口事件）+
+  reclaim idle 120s→360s（恢复旧 6 轮 DLQ 节奏）。
+- **P1 三件**：tracker peer 外置 upsert Lua 原子化（读改写竞态吞回连测量值）、
+  种子详情主查钉主库（purchased 写后立读）、`Repo::read_fallback` 副本运行期
+  故障回落主库（热点读不再因副本宕机 500）。
+- 遗留清单（UDP 双协议分裂等 7 项，均非活跃缺陷）见配方 §8.5。
+
 ### UDP tracker 修复 + 多核收包（2026-09-27）
 
 - **⚠ 修复 UDP tracker 从未可用**：connect 协议魔数误写为 0x41727109807a
