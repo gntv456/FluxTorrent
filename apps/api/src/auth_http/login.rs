@@ -139,9 +139,7 @@ pub async fn login(
     }
     // C7-#4 邮箱激活拦截：email_verify 模式下未激活账号在此终止（密码/2FA
     // 之后，与 dormant 同位——不给探测者信息差）。resend 通道见 /auth/email/resend。
-    if let Some(_e) =
-        super::email_verify::guard_login(&state, user.id).await
-    {
+    if let Some(_e) = super::email_verify::guard_login(&state, user.id).await {
         let _ = sqlx::query(
             "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) \
              VALUES ($1, NULLIF($2,'')::inet, false, $3, 5)",

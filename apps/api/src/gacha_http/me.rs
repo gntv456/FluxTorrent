@@ -65,22 +65,20 @@ pub(super) async fn gacha_me(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let recent: Vec<(i32, String, Option<String>, i32, bool)> =
-        sqlx::query_as(
-            "SELECT seq, output_type, rarity, shards, was_pity \
+    let recent: Vec<(i32, String, Option<String>, i32, bool)> = sqlx::query_as(
+        "SELECT seq, output_type, rarity, shards, was_pity \
              FROM gacha_draws WHERE user_id = $1 \
              ORDER BY id DESC LIMIT 30",
-        )
-        .bind(uid)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let lit_total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM gacha_cards WHERE enabled",
     )
-    .fetch_one(&state.repo.db)
+    .bind(uid)
+    .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    let lit_total: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM gacha_cards WHERE enabled")
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "ticketBalance": ticket,
         "shardBalance": shard,

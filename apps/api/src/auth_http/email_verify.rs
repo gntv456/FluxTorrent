@@ -37,9 +37,7 @@ fn sha3_256_hex(s: &str) -> String {
 }
 
 /// 站点当前是否 email_verify 模式（未验证拦截只在此时生效）。
-pub(super) async fn mode_is_email_verify(
-    db: &sqlx::PgPool,
-) -> bool {
+pub(super) async fn mode_is_email_verify(db: &sqlx::PgPool) -> bool {
     sqlx::query_scalar(
         "SELECT COALESCE((SELECT value FROM site_settings \
          WHERE name = 'registration_mode'), '') = 'email_verify'",
@@ -57,8 +55,8 @@ pub(super) async fn send_verification(
     email: &str,
     username: &str,
 ) {
-    if let Err(e) = send_verification_inner(state, user_id, email, username)
-        .await
+    if let Err(e) =
+        send_verification_inner(state, user_id, email, username).await
     {
         tracing::warn!(user_id, error = %e, "验证信发送失败（可 resend 补发）");
     }
@@ -160,9 +158,7 @@ pub(crate) async fn email_verify(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((user_id, verified_at)) = row else {
-        return Err(DomainError::Validation(
-            "验证链接无效或已被使用".into(),
-        ));
+        return Err(DomainError::Validation("验证链接无效或已被使用".into()));
     };
     if verified_at.is_some() {
         return Ok(ok(serde_json::json!({
@@ -183,15 +179,18 @@ pub(crate) async fn email_verify(
             "验证链接已过期，请登录后重新发送".into(),
         ));
     }
-    sqlx::query(
-        "UPDATE users SET email_verified_at = now() WHERE id = $1",
-    )
-    .bind(user_id)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(user_id), "email_verified", Some(user_id)).await;
-    Ok(ok(serde_json::json!({ "verified": true, "already": false })))
+    sqlx::query("UPDATE users SET email_verified_at = now() WHERE id = $1")
+        .bind(user_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(user_id), "email_verified", Some(user_id))
+        .await;
+    Ok(ok(
+        serde_json::json!({ "verified": true, "already": false }),
+    ))
 }
 
 #[derive(Deserialize)]

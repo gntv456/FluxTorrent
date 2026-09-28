@@ -23,9 +23,7 @@ struct GrantReq {
 
 fn validate(body: &GrantReq) -> DomainResult<()> {
     if body.amount <= 0 || body.amount > 1_000_000 {
-        return Err(DomainError::Validation(
-            "amount 需在 1~1,000,000".into(),
-        ));
+        return Err(DomainError::Validation("amount 需在 1~1,000,000".into()));
     }
     let k = body.idempotency_key.trim();
     if k.len() < 8 || k.len() > 120 {
@@ -60,13 +58,12 @@ async fn grant_tx(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)",
-    )
-    .bind(body.user_id)
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
+            .bind(body.user_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if !exists {
         return Err(DomainError::NotFound(body.user_id));
     }
@@ -137,8 +134,11 @@ pub(crate) async fn gacha_grant_tickets(
     )
     .await?;
     tracing::info!(
-        staff = auth.id, user = body.user_id, amount = body.amount,
-        note = body.note.trim(), "gacha tickets granted"
+        staff = auth.id,
+        user = body.user_id,
+        amount = body.amount,
+        note = body.note.trim(),
+        "gacha tickets granted"
     );
     Ok(ok(serde_json::json!({
         "userId": body.user_id, "ticketBalance": after,
@@ -164,8 +164,11 @@ pub(crate) async fn gacha_grant_shards(
     )
     .await?;
     tracing::info!(
-        staff = auth.id, user = body.user_id, amount = body.amount,
-        note = body.note.trim(), "gacha shards granted"
+        staff = auth.id,
+        user = body.user_id,
+        amount = body.amount,
+        note = body.note.trim(),
+        "gacha shards granted"
     );
     Ok(ok(serde_json::json!({
         "userId": body.user_id, "shardBalance": after,
