@@ -98,6 +98,10 @@ pub(super) async fn apply_submit(
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    crate::ops_webhook::broadcast_ops_spawn(
+        &state,
+        format!("📥 新入站申请 #{username}（{email}）待审：/admin?tool=applications"),
+    );
     Ok(ok(serde_json::json!({
         "submitted": true,
         "note": "申请已提交，审核结果将通过邮件通知（请确保邮箱有效）",

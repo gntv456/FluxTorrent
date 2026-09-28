@@ -30,7 +30,7 @@ pub async fn user_public_profile(
                (SELECT count(*) FROM user_medals um WHERE um.user_id = u.id) AS medals
         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
              LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id
-        WHERE u.id = $1 AND u.status < 2
+        WHERE u.id = $1 AND u.status < 2 AND NOT u.archived
         "#,
     )
     .bind(uid)

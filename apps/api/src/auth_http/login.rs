@@ -125,6 +125,13 @@ pub async fn login(
         .bind(&ua)
         .execute(&state.repo.db)
         .await;
+        // 0228 三档：归档档给出更明确文案（数据仍在，管理组可解档）
+        if user.archived {
+            return Err(DomainError::Validation(
+                "账号因长期不活跃已被归档，请通过『联系我们』附上用户名申请解档"
+                    .into(),
+            ));
+        }
         return Err(DomainError::Validation(
             "账号因长期未登录已被停用，请通过『联系我们』附上用户名申请恢复"
                 .into(),

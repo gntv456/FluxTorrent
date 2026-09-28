@@ -4,6 +4,7 @@ version = "0.2.0"
 edition.workspace = true
 
 [dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio.workspace = true
 serde.workspace = true
 anyhow.workspace = true

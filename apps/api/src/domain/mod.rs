@@ -27,6 +27,8 @@ pub struct UserAccount {
     pub must_reset_password: bool,
     /// 闲置停用时间（0072）：非空 = 账号被标记为休眠，登录需先联系管理组恢复
     pub dormant_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// 归档（0228 inactivity_policy=archive 档）：档案页隐藏、登录文案区分
+    pub archived: bool,
 }
 
 /// Argon2id 哈希（§5.7：禁止 MD5/SHA1 裸存）

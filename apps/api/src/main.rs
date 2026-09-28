@@ -15,10 +15,10 @@ mod auth;
 mod auth_http;
 mod authz;
 mod bencode;
+mod cfgver;
 mod community_http;
 mod compat_http;
 mod config;
-mod cfgver;
 mod content_http;
 mod domain;
 mod dto;
@@ -26,6 +26,8 @@ mod economy;
 mod economy_http;
 mod errors;
 mod fields;
+mod gacha_http;
+mod gacha_math;
 mod games;
 mod games_http;
 mod gaps_http;
@@ -37,6 +39,7 @@ mod mailer;
 mod modules;
 mod openapi_http;
 mod ops_http;
+mod ops_webhook;
 mod payment;
 mod plugins;
 mod publish_http;
@@ -117,8 +120,7 @@ async fn main() -> anyhow::Result<()> {
     // 迁移（幂等）。路径解析相对 crate 根，兼容从仓库根或 apps/api 目录启动。
     // 0224 G30：FLUX_BOOT_MIGRATIONS=0 时跳过（多副本滚动启停/第二实例起不重复
     // 跑迁移与种子；sqlx 内部 advisory lock 仍在，这是显式开关不是并发保护）。
-    if std::env::var("FLUX_BOOT_MIGRATIONS")
-        .unwrap_or_else(|_| "1".into())
+    if std::env::var("FLUX_BOOT_MIGRATIONS").unwrap_or_else(|_| "1".into())
         != "0"
     {
         let st = state.clone();
