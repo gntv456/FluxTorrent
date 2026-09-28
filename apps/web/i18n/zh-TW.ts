@@ -6,6 +6,7 @@ import { termsPanelTw } from "./terms-panel";
 const zhTwBase: Omit<
   Dict,
   "viewLayout"
+  | "pwa"
   | "security2fa"
   | "apitokens"
   | "noticePrefs"
@@ -5262,6 +5263,12 @@ export const zhTW: Dict = {
   adminrename: adminrenameTw,
   commentdel: commentdelTw,
   groupsub: groupsubTw,
+  pwa: {
+    installHint: "把本站安裝到桌面，像原生應用一樣使用：",
+    installBtn: "安裝",
+    iosHint: "iOS 安裝：分享 → 加入主畫面",
+    dismiss: "關閉",
+  },
   viewLayout: {
     title: "視圖佈局",
     hint: "站點級調整種子列表欄與詳情頁段落的顯示/隱藏（不改順序）。隱藏即對所有用戶生效；title 欄與頁面骨架不可隱藏。",

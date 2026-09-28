@@ -6,6 +6,7 @@ import { termsPanelEn } from "./terms-panel";
 const enBase: Omit<
   Dict,
   "viewLayout"
+  | "pwa"
   | "security2fa"
   | "apitokens"
   | "noticePrefs"
@@ -5409,6 +5410,12 @@ export const en: Dict = {
   adminrename: adminrenameEn,
   commentdel: commentdelEn,
   groupsub: groupsubEn,
+  pwa: {
+    installHint: "Install this site to your desktop and use it like a native app:",
+    installBtn: "Install",
+    iosHint: "iOS install: Share → Add to Home Screen",
+    dismiss: "Dismiss",
+  },
   viewLayout: {
     title: "View Layout",
     hint: "Site-wide show/hide for torrent list columns and detail page sections (order is fixed). Hiding applies to all users; the title column and page skeleton cannot be hidden.",

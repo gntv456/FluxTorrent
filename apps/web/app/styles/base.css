@@ -1083,3 +1083,15 @@ a:hover {
   flex-direction: column;
   gap: 14px;
 }
+
+/* PWA 安装引导条（E8）：顶部浮层，与 tabbar 同视觉语言 */
+.pwa-install-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--panel, #fff);
+  border-bottom: 1px solid var(--line);
+}
+:root[data-theme="baozi-night"] .pwa-install-bar {
+  background: #141a2e;
+}
