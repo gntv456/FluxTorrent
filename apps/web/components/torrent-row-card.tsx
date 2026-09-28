@@ -71,11 +71,15 @@ function SwipeRow({
 export function TorrentRowCard({
   t,
   colors,
+  hiddenCols,
 }: {
   t: RowCardItem;
   colors?: Record<number, string>;
+  /** E6：站点级列隐藏（数字条对应列隐藏即不渲染该 span） */
+  hiddenCols?: Set<string>;
 }) {
   const { dict, locale } = useI18n();
+  const hd = hiddenCols ?? new Set<string>();
   const d = dict.torrent;
   const promo = promotionBadge((t.promotion ?? null) as never);
   const cat = catColor(colors ?? {}, t.category_id);
@@ -86,7 +90,8 @@ export function TorrentRowCard({
       className="trow-card"
       style={{ ["--trow-cat" as string]: cat }}
     >
-      <span className="trow-card__cover" aria-hidden>
+      {!hd.has("cover") && (
+        <span className="trow-card__cover" aria-hidden>
         {t.poster ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={t.poster} alt="" loading="lazy" />
@@ -98,17 +103,24 @@ export function TorrentRowCard({
             {dict.promotion[promo.key]}
           </span>
         )}
-      </span>
+        </span>
+      )}
       <span className="trow-card__body">
         <span className="trow-card__title">{t.name}</span>
         <span className="trow-card__meta">
           {t.small_descr || (t.sec_names ?? []).slice(0, 2).join(" · ")}
         </span>
         <span className="trow-card__nums num">
-          <span>{formatBytes(t.size)}</span>
-          <span className="trow-card__seed">↑ {t.seeders}</span>
-          <span className="trow-card__leech">↓ {t.leechers}</span>
-          <span className="trow-card__done">✓ {t.times_completed}</span>
+          {!hd.has("size") && <span>{formatBytes(t.size)}</span>}
+          {!hd.has("seeders") && (
+            <span className="trow-card__seed">↑ {t.seeders}</span>
+          )}
+          {!hd.has("leechers") && (
+            <span className="trow-card__leech">↓ {t.leechers}</span>
+          )}
+          {!hd.has("completed") && (
+            <span className="trow-card__done">✓ {t.times_completed}</span>
+          )}
         </span>
       </span>
     </Link>
@@ -121,16 +133,24 @@ export function TorrentRowCard({
 export function TorrentRowList({
   items,
   colors,
+  hiddenCols,
 }: {
   items: RowCardItem[];
   colors?: Record<number, string>;
+  /** E6 视图布局：站点级列隐藏（空集=全显示；行卡片消费数字/封面位） */
+  hiddenCols?: Set<string>;
 }) {
   const compact = useIsCompact();
   if (!compact) return null;
   return (
     <div className="trow-list">
       {items.map((t) => (
-        <TorrentRowCard key={t.id} t={t} colors={colors} />
+        <TorrentRowCard
+          key={t.id}
+          t={t}
+          colors={colors}
+          hiddenCols={hiddenCols}
+        />
       ))}
     </div>
   );

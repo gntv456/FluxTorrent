@@ -195,9 +195,12 @@ pub async fn site_profile(
     let theme_tokens = profile_bits::theme_tokens(db).await;
     // 术语表（0205 四审 L7）：前端字典出口改写的规则源
     let terms = profile_bits::terms(db).await;
+    // 视图布局（E6）：列表列/详情段落的隐藏项（空 = 全默认显示）
+    let view_hidden = crate::http::view_layout::view_hidden_raw(db).await;
     Ok(ok(serde_json::json!({
         "theme_tokens": theme_tokens,
         "terms": terms,
+        "view_hidden": view_hidden,
         "site_type": site_type,
         "pack_name": pack.as_ref().map(|p| p.name.clone()),
         "brand": brand,

@@ -16,6 +16,7 @@ mod links;
 mod misc_handlers;
 mod news_fun;
 mod plugins;
+pub mod view_layout;
 
 pub use auth_infra::*;
 pub use frames_gomoku::*;
@@ -26,6 +27,7 @@ pub use links::*;
 pub use misc_handlers::*;
 pub use news_fun::*;
 pub use plugins::*;
+pub use view_layout::*;
 
 // auth 模块经 state.jwt 使用（0071 RS256 化后 http 层不再直接调用）
 
@@ -211,6 +213,8 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(gomoku_get)
         .service(home_sections)
         .service(admin_home_layout_put)
+        .service(admin_view_hidden_put)
+        .service(view_layout_keys)
         .service(crate::publish_http::upload)
         .service(crate::publish_http::ptgen)
         .service(crate::publish_http::download)
