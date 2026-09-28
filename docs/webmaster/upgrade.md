@@ -18,6 +18,7 @@ docker compose -f docker/docker-compose.yml up -d --build   # 或镜像方式：
 - **应用层回滚**：`git checkout <旧tag> && docker compose up -d --build`。注意：若新版本已执行了不兼容的 schema 迁移，旧代码可能跑在新 schema 上——所以**重大升级前先备份**，回滚 = 旧代码 + 恢复备份。
 - **备份/恢复**：`scripts/backup.sh`（pg_dump -Fc + 附件卷 tar + 14 天轮转）与 `scripts/restore.sh`（先 `--drill` 演练确认归档完整，再 `--force` 实际恢复；恢复动作故意不提供网页按钮，防误触）。
 - **站型包回滚**：后台「站型包应用台账」可查看每次 apply 的 diff 快照并回滚（0223 起），与 schema 回滚相互独立。
+- **升级演练**：大版本升级前用 `scripts/upgrade_drill.py` 把「备份 → 迁移前进 → 断言 → 回滚口径」全路径预演一遍，见 [ops/升级演练](../ops/upgrade-drill.md)。
 
 ## 从 NexusPHP 迁移过来
 
