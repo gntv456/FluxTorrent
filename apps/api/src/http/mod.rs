@@ -51,6 +51,9 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::custom_pages_update)
         .service(crate::staff_http::custom_pages_delete)
         .service(crate::auth_http::login)
+        // 邮箱激活通道（C7-#4）：verify 匿名点击（邮件链接）、resend 限流
+        .service(crate::auth_http::email_verify)
+        .service(crate::auth_http::email_resend)
         // passkey（WebAuthn）第二通道（0227）
         .service(crate::auth_http::passkey_begin)
         .service(crate::auth_http::passkey_finish)

@@ -137,6 +137,26 @@ pub async fn login(
                 .into(),
         ));
     }
+    // C7-#4 邮箱激活拦截：email_verify 模式下未激活账号在此终止（密码/2FA
+    // 之后，与 dormant 同位——不给探测者信息差）。resend 通道见 /auth/email/resend。
+    if let Some(_e) =
+        super::email_verify::guard_login(&state, user.id).await
+    {
+        let _ = sqlx::query(
+            "INSERT INTO login_events (user_id, ip, ok, user_agent, reason) \
+             VALUES ($1, NULLIF($2,'')::inet, false, $3, 5)",
+        )
+        .bind(user.id)
+        .bind(&peer_ip)
+        .bind(&ua)
+        .execute(&state.repo.db)
+        .await;
+        return Err(DomainError::Validation(
+            "邮箱尚未激活：请到注册邮箱点击激活链接，\
+             或在登录页用注册邮箱重新发送激活邮件"
+                .into(),
+        ));
+    }
     // 登录令牌有效期（0214 可配）：jwt_ttl_hours，缺省 24h = 既有口径；
     // cookie max-age 同步用同一值（令牌过期后 cookie 也应失效，避免带死票重试）
     let ttl_hours: i64 = sqlx::query_scalar(

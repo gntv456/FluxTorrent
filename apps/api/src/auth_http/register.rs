@@ -152,5 +152,15 @@ pub async fn register(
         .repo
         .audit(Some(user_id), "user_register", Some(user_id))
         .await;
+    // C7-#4：email_verify 模式下注册即发激活信（失败不回滚账号，可 resend 补发）
+    if reg_mode == "email_verify" {
+        super::email_verify::send_verification(
+            &state,
+            user_id,
+            &new_user.email,
+            &new_user.username,
+        )
+        .await;
+    }
     Ok(ok(serde_json::json!({ "user_id": user_id })))
 }
