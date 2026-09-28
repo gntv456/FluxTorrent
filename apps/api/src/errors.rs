@@ -47,6 +47,10 @@ pub enum DomainError {
     /// 模块未开启（U1 §5.1）：本站未开放该功能，与 403 权限区分（先模块后权限，§5.5）
     #[error("本站未开放此功能")]
     ModuleDisabled(String),
+    /// 抽卡池经济守卫（方案 §5 G31-B）：含保底综合返还率 >100%，运行时拒抽——
+    /// 后台保存拦截不够，站长直连改库也要被拦（样张：合成价后门 202.8%）
+    #[error("卡池经济守卫触发，抽取已停止")]
+    PoolGuard(String),
     #[error("内部错误")]
     Internal(#[from] anyhow::Error),
 }
@@ -73,6 +77,7 @@ impl DomainError {
             DomainError::TorrentInvalid(_) => 3003,
             DomainError::TorrentDuplicate => 3004,
             DomainError::ModuleDisabled(_) => 4101,
+            DomainError::PoolGuard(_) => 4102,
             DomainError::Internal(_) => 1000,
         }
     }
@@ -92,13 +97,15 @@ impl DomainError {
             | DomainError::FieldErrors(_)
             | DomainError::TwoFactorRequired
             | DomainError::TwoFactorInvalid => StatusCode::BAD_REQUEST,
-            // 429 与 openapi 文档（openapi_http.rs 429 描述）及 scripts/_ratelimit_check.py 口径一致
+            // 429 与 openapi 文档（openapi_http.rs 429 描述）及 _ratelimit_check 口径一致
             DomainError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             DomainError::InsufficientSpark | DomainError::LedgerConflict => {
                 StatusCode::CONFLICT
             }
             // 4101 语义上更贴近「资源被移除」；用 403 会与权限混淆、404 会误导前端重试逻辑
             DomainError::ModuleDisabled(_) => StatusCode::NOT_FOUND,
+            // 经济守卫：409 语义是「资源当前状态冲突」，与 429 限频区分
+            DomainError::PoolGuard(_) => StatusCode::CONFLICT,
             DomainError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

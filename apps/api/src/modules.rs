@@ -50,6 +50,7 @@ pub mod key {
     pub const WISHLIST: &str = "wishlist";
     // 娱乐
     pub const GAMES: &str = "games";
+    pub const GACHA: &str = "gacha";
     pub const FARM: &str = "farm";
     pub const GOMOKU: &str = "gomoku";
     pub const CONTESTS: &str = "contests";
@@ -86,6 +87,7 @@ pub mod key {
         RESURRECTIONS,
         WISHLIST,
         GAMES,
+        GACHA,
         FARM,
         GOMOKU,
         CONTESTS,
@@ -283,13 +285,14 @@ mod tests {
         }
     }
 
-    /// 契约：键数量与 TS ModuleKey 一致（29 键——4 历史 + 25 新增口径，见 0107 注释）
+    /// 契约：键数量与 TS ModuleKey 一致（31 键——4 历史 + 27 新增口径，
+    /// 见 0107 注释；+0197 invites、+0229 gacha）
     #[test]
     fn key_count() {
         assert_eq!(
             key::ALL.len(),
-            30,
-            "module key set drifted from migration 0107（+0197 invites）"
+            31,
+            "module key set drifted（0107；+0197 invites、+0229 gacha）"
         );
     }
 }

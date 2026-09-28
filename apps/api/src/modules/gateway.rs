@@ -15,6 +15,7 @@ fn route_module(path: &str) -> Option<&'static str> {
     const TABLE: &[(&str, &str)] = &[
         // 娱乐
         ("/api/v1/games", key::GAMES),
+        ("/api/v1/gacha", key::GACHA),
         ("/api/v1/farm", key::FARM),
         ("/api/v1/gomoku", key::GOMOKU),
         ("/api/v1/contests", key::CONTESTS),

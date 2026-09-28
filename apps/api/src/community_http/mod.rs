@@ -157,6 +157,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     let scope = crate::games_http::mount_games(crate::ops_http::mount_ops(
         crate::content_http::mount_content(scope),
     ));
+    let scope = crate::gacha_http::mount_gacha(scope);
     let scope = crate::admin_p3_http::mount_p3_tools(
         crate::admin_p2_http::mount_p2_tools(crate::admin_http::mount_admin(
             scope,

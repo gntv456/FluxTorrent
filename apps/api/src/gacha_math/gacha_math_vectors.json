@@ -1,0 +1,934 @@
+{
+  "meta": {
+    "source": ".workbuddy/gacha-shared.js（样张，gitignored，未入库）",
+    "generated": "2026-09-27",
+    "tolerance": "f64 字段 1e-9；simulate 的 gold/hardHits/tenWin/tenTot/counts/maxGap 为整数，逐位相等",
+    "regenerate": "node packages/gacha-math/scripts/gen-vectors.cjs"
+  },
+  "cases": [
+    {
+      "name": "demo_pool",
+      "rates": [
+        {
+          "r": "MISS",
+          "type": "miss",
+          "w": 10,
+          "value": 0
+        },
+        {
+          "r": "SHARD",
+          "type": "shard",
+          "w": 12,
+          "value": 0,
+          "shards": 15
+        },
+        {
+          "r": "R",
+          "type": "card",
+          "w": 50,
+          "value": 8,
+          "dupe": 8,
+          "synth": 60,
+          "lvMax": 5,
+          "lvStep": 12,
+          "lvGain": 0.2
+        },
+        {
+          "r": "SR",
+          "type": "card",
+          "w": 22,
+          "value": 20,
+          "dupe": 20,
+          "synth": 180,
+          "lvMax": 6,
+          "lvStep": 22,
+          "lvGain": 0.25
+        },
+        {
+          "r": "SSR",
+          "type": "card",
+          "w": 2,
+          "value": 200,
+          "dupe": 60,
+          "synth": 520,
+          "lvMax": 10,
+          "lvStep": 40,
+          "lvGain": 0.5
+        },
+        {
+          "r": "UR",
+          "type": "card",
+          "w": 0.4,
+          "value": 800,
+          "dupe": 160,
+          "synth": 1400,
+          "lvMax": 10,
+          "lvStep": 120,
+          "lvGain": 0.5
+        },
+        {
+          "r": "LR",
+          "type": "card",
+          "w": 0.1,
+          "value": 3000,
+          "dupe": 400,
+          "synth": 3200,
+          "lvMax": 10,
+          "lvStep": 400,
+          "lvGain": 0.5
+        }
+      ],
+      "pity": {
+        "soft": 50,
+        "hard": 65,
+        "ramp": 5
+      },
+      "cost": 25,
+      "expectedComposite": {
+        "base": [
+          0.10362694300518134,
+          0.12435233160621761,
+          0.5181347150259067,
+          0.22797927461139897,
+          0.02072538860103627,
+          0.004145077720207254,
+          0.0010362694300518134
+        ],
+        "goldBase": 0.02590673575129534,
+        "comp": [
+          0.10277928200178146,
+          0.12333513840213779,
+          0.5138964100089072,
+          0.22611442040391938,
+          0.02709979934660303,
+          0.005419959869320606,
+          0.0013549899673301515
+        ],
+        "goldComp": 0.03387474918325379,
+        "cycle": 29.52051377827934,
+        "hardProb": 0.00008493734475175742,
+        "upRate": 0.03387474918325378,
+        "upShare": 1,
+        "evComp": 22.454357354917192,
+        "degenerate": false
+      },
+      "expectedEconomics": {
+        "sv": 0.9375,
+        "svFrom": {
+          "kind": "synth",
+          "r": "LR"
+        },
+        "evNew": 24.188757738697255,
+        "evEnd": 12.673747772813673,
+        "missRate": 0.10277928200178146,
+        "shardRate": 0.12333513840213779,
+        "cardRate": 0.7738855795960804,
+        "cost": 25,
+        "ratioNew": 0.9675503095478902,
+        "ratioEnd": 0.5069499109125469,
+        "ratioWorst": 0.9675503095478902
+      }
+    },
+    {
+      "name": "backdoor_lr_synth_800",
+      "rates": [
+        {
+          "r": "MISS",
+          "type": "miss",
+          "w": 10,
+          "value": 0
+        },
+        {
+          "r": "SHARD",
+          "type": "shard",
+          "w": 12,
+          "value": 0,
+          "shards": 15
+        },
+        {
+          "r": "R",
+          "type": "card",
+          "w": 50,
+          "value": 8,
+          "dupe": 8,
+          "synth": 60,
+          "lvMax": 5,
+          "lvStep": 12,
+          "lvGain": 0.2
+        },
+        {
+          "r": "SR",
+          "type": "card",
+          "w": 22,
+          "value": 20,
+          "dupe": 20,
+          "synth": 180,
+          "lvMax": 6,
+          "lvStep": 22,
+          "lvGain": 0.25
+        },
+        {
+          "r": "SSR",
+          "type": "card",
+          "w": 2,
+          "value": 200,
+          "dupe": 60,
+          "synth": 520,
+          "lvMax": 10,
+          "lvStep": 40,
+          "lvGain": 0.5
+        },
+        {
+          "r": "UR",
+          "type": "card",
+          "w": 0.4,
+          "value": 800,
+          "dupe": 160,
+          "synth": 1400,
+          "lvMax": 10,
+          "lvStep": 120,
+          "lvGain": 0.5
+        },
+        {
+          "r": "LR",
+          "type": "card",
+          "w": 0.1,
+          "value": 3000,
+          "dupe": 400,
+          "synth": 800,
+          "lvMax": 10,
+          "lvStep": 400,
+          "lvGain": 0.5
+        }
+      ],
+      "pity": {
+        "soft": 50,
+        "hard": 65,
+        "ramp": 5
+      },
+      "cost": 25,
+      "expectedComposite": {
+        "base": [
+          0.10362694300518134,
+          0.12435233160621761,
+          0.5181347150259067,
+          0.22797927461139897,
+          0.02072538860103627,
+          0.004145077720207254,
+          0.0010362694300518134
+        ],
+        "goldBase": 0.02590673575129534,
+        "comp": [
+          0.10277928200178146,
+          0.12333513840213779,
+          0.5138964100089072,
+          0.22611442040391938,
+          0.02709979934660303,
+          0.005419959869320606,
+          0.0013549899673301515
+        ],
+        "goldComp": 0.03387474918325379,
+        "cycle": 29.52051377827934,
+        "hardProb": 0.00008493734475175742,
+        "upRate": 0.03387474918325378,
+        "upShare": 1,
+        "evComp": 22.454357354917192,
+        "degenerate": false
+      },
+      "expectedEconomics": {
+        "sv": 3.75,
+        "svFrom": {
+          "kind": "synth",
+          "r": "LR"
+        },
+        "evNew": 29.39195889003744,
+        "evEnd": 50.69499109125469,
+        "missRate": 0.10277928200178146,
+        "shardRate": 0.12333513840213779,
+        "cardRate": 0.7738855795960804,
+        "cost": 25,
+        "ratioNew": 1.1756783556014976,
+        "ratioEnd": 2.0277996436501877,
+        "ratioWorst": 2.0277996436501877
+      }
+    },
+    {
+      "name": "up_mix",
+      "rates": [
+        {
+          "r": "MISS",
+          "type": "miss",
+          "w": 10,
+          "value": 0
+        },
+        {
+          "r": "SHARD",
+          "type": "shard",
+          "w": 12,
+          "value": 0,
+          "shards": 15
+        },
+        {
+          "r": "R",
+          "type": "card",
+          "w": 50,
+          "value": 8,
+          "dupe": 8,
+          "synth": 60,
+          "lvMax": 5,
+          "lvStep": 12,
+          "lvGain": 0.2
+        },
+        {
+          "r": "SR",
+          "type": "card",
+          "w": 22,
+          "value": 20,
+          "dupe": 20,
+          "synth": 180,
+          "lvMax": 6,
+          "lvStep": 22,
+          "lvGain": 0.25
+        },
+        {
+          "r": "SSR",
+          "type": "card",
+          "w": 2,
+          "value": 200,
+          "dupe": 60,
+          "synth": 520,
+          "lvMax": 10,
+          "lvStep": 40,
+          "lvGain": 0.5
+        },
+        {
+          "r": "UR",
+          "type": "card",
+          "w": 0.4,
+          "value": 800,
+          "dupe": 160,
+          "synth": 1400,
+          "lvMax": 10,
+          "lvStep": 120,
+          "lvGain": 0.5
+        },
+        {
+          "r": "LR",
+          "type": "card",
+          "w": 0.1,
+          "value": 3000,
+          "dupe": 400,
+          "synth": 3200,
+          "lvMax": 10,
+          "lvStep": 400,
+          "lvGain": 0.5
+        }
+      ],
+      "pity": {
+        "soft": 50,
+        "hard": 65,
+        "ramp": 5,
+        "upRatio": 0.5,
+        "guaranteeUp": true
+      },
+      "cost": 25,
+      "expectedComposite": {
+        "base": [
+          0.10362694300518134,
+          0.12435233160621761,
+          0.5181347150259067,
+          0.22797927461139897,
+          0.02072538860103627,
+          0.004145077720207254,
+          0.0010362694300518134
+        ],
+        "goldBase": 0.02590673575129534,
+        "comp": [
+          0.10277928200178146,
+          0.12333513840213779,
+          0.5138964100089072,
+          0.22611442040391938,
+          0.02709979934660303,
+          0.005419959869320606,
+          0.0013549899673301515
+        ],
+        "goldComp": 0.03387474918325379,
+        "cycle": 29.52051377827934,
+        "hardProb": 0.00008493734475175742,
+        "upRate": 0.016938813207251772,
+        "upShare": 0.5000424686723759,
+        "evComp": 22.454357354917192,
+        "degenerate": false
+      },
+      "expectedEconomics": {
+        "sv": 0.9375,
+        "svFrom": {
+          "kind": "synth",
+          "r": "LR"
+        },
+        "evNew": 24.188757738697255,
+        "evEnd": 12.673747772813673,
+        "missRate": 0.10277928200178146,
+        "shardRate": 0.12333513840213779,
+        "cardRate": 0.7738855795960804,
+        "cost": 25,
+        "ratioNew": 0.9675503095478902,
+        "ratioEnd": 0.5069499109125469,
+        "ratioWorst": 0.9675503095478902
+      }
+    },
+    {
+      "name": "degenerate_no_gold",
+      "rates": [
+        {
+          "r": "MISS",
+          "type": "miss",
+          "w": 10,
+          "value": 0
+        },
+        {
+          "r": "SHARD",
+          "type": "shard",
+          "w": 12,
+          "value": 0,
+          "shards": 15
+        },
+        {
+          "r": "R",
+          "type": "card",
+          "w": 50,
+          "value": 8,
+          "dupe": 8,
+          "synth": 60,
+          "lvMax": 5,
+          "lvStep": 12,
+          "lvGain": 0.2
+        },
+        {
+          "r": "SR",
+          "type": "card",
+          "w": 22,
+          "value": 20,
+          "dupe": 20,
+          "synth": 180,
+          "lvMax": 6,
+          "lvStep": 22,
+          "lvGain": 0.25
+        }
+      ],
+      "pity": {
+        "soft": 50,
+        "hard": 65,
+        "ramp": 5
+      },
+      "cost": 25,
+      "expectedComposite": {
+        "base": [
+          0.10638297872340426,
+          0.1276595744680851,
+          0.5319148936170213,
+          0.23404255319148937
+        ],
+        "goldBase": 0,
+        "comp": [
+          0.10638297872340426,
+          0.1276595744680851,
+          0.5319148936170213,
+          0.23404255319148937
+        ],
+        "goldComp": 0,
+        "cycle": 1,
+        "hardProb": 0,
+        "upRate": 0,
+        "upShare": 0,
+        "evComp": 8.936170212765958,
+        "degenerate": true
+      },
+      "expectedEconomics": {
+        "sv": 0.13333333333333333,
+        "svFrom": {
+          "kind": "synth",
+          "r": "R"
+        },
+        "evNew": 9.191489361702128,
+        "evEnd": 1.4468085106382977,
+        "missRate": 0.10638297872340426,
+        "shardRate": 0.1276595744680851,
+        "cardRate": 0.7659574468085106,
+        "cost": 25,
+        "ratioNew": 0.3676595744680851,
+        "ratioEnd": 0.05787234042553191,
+        "ratioWorst": 0.3676595744680851
+      }
+    },
+    {
+      "name": "degenerate_all_gold",
+      "rates": [
+        {
+          "r": "SSR",
+          "type": "card",
+          "w": 2,
+          "value": 200,
+          "dupe": 60,
+          "synth": 520,
+          "lvMax": 10,
+          "lvStep": 40,
+          "lvGain": 0.5
+        },
+        {
+          "r": "UR",
+          "type": "card",
+          "w": 0.4,
+          "value": 800,
+          "dupe": 160,
+          "synth": 1400,
+          "lvMax": 10,
+          "lvStep": 120,
+          "lvGain": 0.5
+        },
+        {
+          "r": "LR",
+          "type": "card",
+          "w": 0.1,
+          "value": 3000,
+          "dupe": 400,
+          "synth": 3200,
+          "lvMax": 10,
+          "lvStep": 400,
+          "lvGain": 0.5
+        }
+      ],
+      "pity": {
+        "soft": 50,
+        "hard": 65,
+        "ramp": 5
+      },
+      "cost": 25,
+      "expectedComposite": {
+        "base": [
+          0.8,
+          0.16,
+          0.04
+        ],
+        "goldBase": 1,
+        "comp": [
+          0.8,
+          0.16,
+          0.04
+        ],
+        "goldComp": 1,
+        "cycle": 1,
+        "hardProb": 0,
+        "upRate": 0,
+        "upShare": 0,
+        "evComp": 408,
+        "degenerate": true
+      },
+      "expectedEconomics": {
+        "sv": 0.9375,
+        "svFrom": {
+          "kind": "synth",
+          "r": "LR"
+        },
+        "evNew": 408,
+        "evEnd": 84,
+        "missRate": 0,
+        "shardRate": 0,
+        "cardRate": 1,
+        "cost": 25,
+        "ratioNew": 16.32,
+        "ratioEnd": 3.36,
+        "ratioWorst": 16.32
+      }
+    },
+    {
+      "name": "hard_pity_one",
+      "rates": [
+        {
+          "r": "MISS",
+          "type": "miss",
+          "w": 10,
+          "value": 0
+        },
+        {
+          "r": "SHARD",
+          "type": "shard",
+          "w": 12,
+          "value": 0,
+          "shards": 15
+        },
+        {
+          "r": "R",
+          "type": "card",
+          "w": 50,
+          "value": 8,
+          "dupe": 8,
+          "synth": 60,
+          "lvMax": 5,
+          "lvStep": 12,
+          "lvGain": 0.2
+        },
+        {
+          "r": "SR",
+          "type": "card",
+          "w": 22,
+          "value": 20,
+          "dupe": 20,
+          "synth": 180,
+          "lvMax": 6,
+          "lvStep": 22,
+          "lvGain": 0.25
+        },
+        {
+          "r": "SSR",
+          "type": "card",
+          "w": 2,
+          "value": 200,
+          "dupe": 60,
+          "synth": 520,
+          "lvMax": 10,
+          "lvStep": 40,
+          "lvGain": 0.5
+        },
+        {
+          "r": "UR",
+          "type": "card",
+          "w": 0.4,
+          "value": 800,
+          "dupe": 160,
+          "synth": 1400,
+          "lvMax": 10,
+          "lvStep": 120,
+          "lvGain": 0.5
+        },
+        {
+          "r": "LR",
+          "type": "card",
+          "w": 0.1,
+          "value": 3000,
+          "dupe": 400,
+          "synth": 3200,
+          "lvMax": 10,
+          "lvStep": 400,
+          "lvGain": 0.5
+        }
+      ],
+      "pity": {
+        "soft": 50,
+        "hard": 1,
+        "ramp": 5
+      },
+      "cost": 25,
+      "expectedComposite": {
+        "base": [
+          0.10362694300518134,
+          0.12435233160621761,
+          0.5181347150259067,
+          0.22797927461139897,
+          0.02072538860103627,
+          0.004145077720207254,
+          0.0010362694300518134
+        ],
+        "goldBase": 0.02590673575129534,
+        "comp": [
+          0,
+          0,
+          0,
+          0,
+          0.7999999999999999,
+          0.15999999999999998,
+          0.039999999999999994
+        ],
+        "goldComp": 1,
+        "cycle": 1,
+        "hardProb": 1,
+        "upRate": 1,
+        "upShare": 1,
+        "evComp": 408,
+        "degenerate": false
+      },
+      "expectedEconomics": {
+        "sv": 0.9375,
+        "svFrom": {
+          "kind": "synth",
+          "r": "LR"
+        },
+        "evNew": 408,
+        "evEnd": 83.99999999999999,
+        "missRate": 0,
+        "shardRate": 0,
+        "cardRate": 1,
+        "cost": 25,
+        "ratioNew": 16.32,
+        "ratioEnd": 3.3599999999999994,
+        "ratioWorst": 16.32
+      }
+    },
+    {
+      "name": "no_pity",
+      "rates": [
+        {
+          "r": "MISS",
+          "type": "miss",
+          "w": 10,
+          "value": 0
+        },
+        {
+          "r": "SHARD",
+          "type": "shard",
+          "w": 12,
+          "value": 0,
+          "shards": 15
+        },
+        {
+          "r": "R",
+          "type": "card",
+          "w": 50,
+          "value": 8,
+          "dupe": 8,
+          "synth": 60,
+          "lvMax": 5,
+          "lvStep": 12,
+          "lvGain": 0.2
+        },
+        {
+          "r": "SR",
+          "type": "card",
+          "w": 22,
+          "value": 20,
+          "dupe": 20,
+          "synth": 180,
+          "lvMax": 6,
+          "lvStep": 22,
+          "lvGain": 0.25
+        },
+        {
+          "r": "SSR",
+          "type": "card",
+          "w": 2,
+          "value": 200,
+          "dupe": 60,
+          "synth": 520,
+          "lvMax": 10,
+          "lvStep": 40,
+          "lvGain": 0.5
+        },
+        {
+          "r": "UR",
+          "type": "card",
+          "w": 0.4,
+          "value": 800,
+          "dupe": 160,
+          "synth": 1400,
+          "lvMax": 10,
+          "lvStep": 120,
+          "lvGain": 0.5
+        },
+        {
+          "r": "LR",
+          "type": "card",
+          "w": 0.1,
+          "value": 3000,
+          "dupe": 400,
+          "synth": 3200,
+          "lvMax": 10,
+          "lvStep": 400,
+          "lvGain": 0.5
+        }
+      ],
+      "pity": {
+        "soft": 0,
+        "hard": 65,
+        "ramp": 0
+      },
+      "cost": 25,
+      "expectedComposite": {
+        "base": [
+          0.10362694300518134,
+          0.12435233160621761,
+          0.5181347150259067,
+          0.22797927461139897,
+          0.02072538860103627,
+          0.004145077720207254,
+          0.0010362694300518134
+        ],
+        "goldBase": 0.02590673575129534,
+        "comp": [
+          0.10301552753022984,
+          0.12361863303627584,
+          0.5150776376511491,
+          0.22663416056650573,
+          0.025323232972671156,
+          0.005064646594534231,
+          0.0012661616486335577
+        ],
+        "goldComp": 0.031654041215838945,
+        "cycle": 31.591542867506714,
+        "hardProb": 0.1863951365024816,
+        "upRate": 0.03165404121583894,
+        "upShare": 1,
+        "evComp": 21.568153128601598,
+        "degenerate": false
+      },
+      "expectedEconomics": {
+        "sv": 0.9375,
+        "svFrom": {
+          "kind": "synth",
+          "r": "LR"
+        },
+        "evNew": 23.306540155674224,
+        "evEnd": 12.509799282208702,
+        "missRate": 0.10301552753022984,
+        "shardRate": 0.12361863303627584,
+        "cardRate": 0.7733658394334938,
+        "cost": 25,
+        "ratioNew": 0.932261606226969,
+        "ratioEnd": 0.5003919712883481,
+        "ratioWorst": 0.932261606226969
+      }
+    },
+    {
+      "name": "mc_200k_seed42",
+      "rates": [
+        {
+          "r": "MISS",
+          "type": "miss",
+          "w": 10,
+          "value": 0
+        },
+        {
+          "r": "SHARD",
+          "type": "shard",
+          "w": 12,
+          "value": 0,
+          "shards": 15
+        },
+        {
+          "r": "R",
+          "type": "card",
+          "w": 50,
+          "value": 8,
+          "dupe": 8,
+          "synth": 60,
+          "lvMax": 5,
+          "lvStep": 12,
+          "lvGain": 0.2
+        },
+        {
+          "r": "SR",
+          "type": "card",
+          "w": 22,
+          "value": 20,
+          "dupe": 20,
+          "synth": 180,
+          "lvMax": 6,
+          "lvStep": 22,
+          "lvGain": 0.25
+        },
+        {
+          "r": "SSR",
+          "type": "card",
+          "w": 2,
+          "value": 200,
+          "dupe": 60,
+          "synth": 520,
+          "lvMax": 10,
+          "lvStep": 40,
+          "lvGain": 0.5
+        },
+        {
+          "r": "UR",
+          "type": "card",
+          "w": 0.4,
+          "value": 800,
+          "dupe": 160,
+          "synth": 1400,
+          "lvMax": 10,
+          "lvStep": 120,
+          "lvGain": 0.5
+        },
+        {
+          "r": "LR",
+          "type": "card",
+          "w": 0.1,
+          "value": 3000,
+          "dupe": 400,
+          "synth": 3200,
+          "lvMax": 10,
+          "lvStep": 400,
+          "lvGain": 0.5
+        }
+      ],
+      "pity": {
+        "soft": 50,
+        "hard": 65,
+        "ramp": 5
+      },
+      "cost": 25,
+      "expectedComposite": {
+        "base": [
+          0.10362694300518134,
+          0.12435233160621761,
+          0.5181347150259067,
+          0.22797927461139897,
+          0.02072538860103627,
+          0.004145077720207254,
+          0.0010362694300518134
+        ],
+        "goldBase": 0.02590673575129534,
+        "comp": [
+          0.10277928200178146,
+          0.12333513840213779,
+          0.5138964100089072,
+          0.22611442040391938,
+          0.02709979934660303,
+          0.005419959869320606,
+          0.0013549899673301515
+        ],
+        "goldComp": 0.03387474918325379,
+        "cycle": 29.52051377827934,
+        "hardProb": 0.00008493734475175742,
+        "upRate": 0.03387474918325378,
+        "upShare": 1,
+        "evComp": 22.454357354917192,
+        "degenerate": false
+      },
+      "expectedEconomics": {
+        "sv": 0.9375,
+        "svFrom": {
+          "kind": "synth",
+          "r": "LR"
+        },
+        "evNew": 24.188757738697255,
+        "evEnd": 12.673747772813673,
+        "missRate": 0.10277928200178146,
+        "shardRate": 0.12333513840213779,
+        "cardRate": 0.7738855795960804,
+        "cost": 25,
+        "ratioNew": 0.9675503095478902,
+        "ratioEnd": 0.5069499109125469,
+        "ratioWorst": 0.9675503095478902
+      },
+      "simulate": {
+        "n": 200000,
+        "seed": 42,
+        "gold": 6859,
+        "hardHits": 0,
+        "tenWin": 6081,
+        "tenTot": 20000,
+        "maxGap": 63,
+        "counts": [
+          20746,
+          24461,
+          102742,
+          45192,
+          5496,
+          1084,
+          279
+        ],
+        "evSim": 22.64588,
+        "evBase": 19.27461139896373
+      }
+    }
+  ]
+}
