@@ -72,13 +72,15 @@ pub async fn list_torrents_noclamp_as(
     };
     let sec_sql =
         super::section_pred::section_where(db, &filter.sections).await; // 搜索范围分流（旧站口径）：0=标题+全字段(默认) 1=副标题/简介 3=发布者 4=IMDb
-    let esc = if exact { "" } else { " ESCAPE chr(92)" };
-    let search_pred = match filter.search_area.unwrap_or(0) {
-        1 => format!("AND ($6::text IS NULL OR t.small_descr ILIKE $6{esc} OR t.descr ILIKE $6{esc})"),
-        3 => format!("AND ($6::text IS NULL OR u.username ILIKE $6{esc})"),
-        4 => format!("AND ($6::text IS NULL OR t.media_info->>'imdb' ILIKE $6{esc} OR t.descr ILIKE $6{esc})"),
-        _ => format!("AND ($6::text IS NULL OR t.name ILIKE $6{esc}                OR t.small_descr ILIKE $6{esc}                OR t.descr ILIKE $6{esc}                OR t.id IN (SELECT torrent_id FROM files WHERE path ILIKE $6{esc}))"),
-    };
+                                                                        // 搜索谓词 + 同义词扩展（E9）：合成收在 syn_search（含白名单防注入说明）
+    let search_pred = super::syn_search::search_pred_with_syn(
+        db,
+        filter.search.as_deref(),
+        filter.search_area,
+        exact,
+        if exact { "" } else { " ESCAPE chr(92)" },
+    )
+    .await;
 
     // 存活三态（0102）：alive 显式给出时覆盖 include_dead（0=全部 1=活种 2=断种）
     let alive_pred = match filter.alive {
@@ -255,9 +257,8 @@ pub async fn list_torrents_noclamp_as(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 计数与列表同口径（0093 修复）：此前 count 只用「分类/媒介/学段/版本/官种/死种/标题搜索」，
-    // 多维筛选、标签、搜索范围（副标题/发布者/IMDb）一律不计入 —— 页面会显示「共 N 个」却零行。
-    // 计数同口径：额外谓词在计数侧编号 $9..$18（0118 补齐后 $19..$23）
+    // 计数与列表同口径（0093）：此前 count 不计多维筛选/标签/搜索范围——
+    // 页面会显示「共 N 个」却零行。计数侧额外谓词编号 $9..$18（0118 后 $19..$23）
     let extra_count_sql = extra_preds(ExtraSlots {
         size_min: 9,
         size_max: 10,
