@@ -2312,6 +2312,13 @@ const zhTwBase: Omit<
     subtitleCertGold: "金字幕人",
   },
   donate: {
+    tiersTitle: "捐贈回饋檔位",
+    tiersNote: "累計實付達到檔位後自動發放（回調即時入帳），無需申請：",
+    tierSpark: "魔力",
+    tierUpload: "上傳量",
+    tierInvites: "邀請碼",
+    tierMedal: "檔位勳章",
+    tierReached: "已達成",
     title: "捐贈",
     subtitle: "儲值錢包 · 套餐訂購 · 眾籌免費",
     wallet: "儲值錢包",
@@ -5051,6 +5058,7 @@ const noticePrefsTw: Dict["noticePrefs"] = {
     gift: "禮物",
     comment_reply: "評論回覆",
     system: "系統通知",
+    donate_tier: "捐贈回饋",
   } as Record<string, string>,
 };
 

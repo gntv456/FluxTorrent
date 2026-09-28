@@ -2344,6 +2344,13 @@ const enBase: Omit<
     subtitleCertGold: "Golden subtitler",
   },
   donate: {
+    tiersTitle: "Donation reward tiers",
+    tiersNote: "Rewards are granted automatically when cumulative payments reach a tier (instant on callback):",
+    tierSpark: "sparks",
+    tierUpload: "upload",
+    tierInvites: "invites",
+    tierMedal: "tier medal",
+    tierReached: "Reached",
     title: "Donate",
     subtitle: "Wallet · plans · crowdfunding",
     wallet: "Wallet",
@@ -5198,6 +5205,7 @@ const noticePrefsEn: Dict["noticePrefs"] = {
     gift: "Gifts",
     comment_reply: "Comment replies",
     system: "System notices",
+    donate_tier: "Donation rewards",
   } as Record<string, string>,
 };
 

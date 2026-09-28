@@ -11,6 +11,7 @@ mod epay;
 mod settle;
 #[cfg(test)]
 mod tests;
+mod tiers;
 
 // 重导出保留原公开面：epay_sign/SettleOutcome 等仅单测与内部使用，
 // bin crate 的 pub use 会触发 unused_imports，按原 pub fn 语义显式放行。
@@ -18,6 +19,7 @@ mod tests;
 pub use epay::{epay_sign, EpayProvider};
 #[allow(unused_imports)]
 pub use settle::{demo_topup, new_order_no, settle_notify, SettleOutcome};
+pub use tiers::{cumulative_paid, grant_tier, load_tiers};
 
 use crate::state::AppState;
 

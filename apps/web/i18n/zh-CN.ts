@@ -2291,6 +2291,13 @@ const zhCnBase = {
     subtitleCertGold: "金字幕人",
   },
   donate: {
+    tiersTitle: "捐赠回馈档位",
+    tiersNote: "累计实付达到档位后自动发放（回调即时入账），无需申请：",
+    tierSpark: "魔力",
+    tierUpload: "上传量",
+    tierInvites: "邀请码",
+    tierMedal: "档位勋章",
+    tierReached: "已达成",
     title: "捐赠",
     subtitle: "储值钱包 · 套餐订购 · 众筹免费",
     wallet: "储值钱包",
@@ -5090,6 +5097,7 @@ export const zhCN = {
       gift: "礼物",
       comment_reply: "评论回复",
       system: "系统通知",
+      donate_tier: "捐赠回馈",
     } as Record<string, string>,
   },
 

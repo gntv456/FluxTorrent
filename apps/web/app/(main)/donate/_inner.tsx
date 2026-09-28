@@ -6,6 +6,7 @@ import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { FundingPanel } from "@/components/funding-panel";
 import { LedgerTable, type LedgerRow } from "./_inner-ledger";
+import { DonateTiers, type DonationTier } from "./_parts/donate-tiers";
 
 interface DonatePlan {
   id: number;
@@ -21,6 +22,8 @@ interface DonateState {
   vip_until: string | null;
   plans: DonatePlan[];
   ledger: LedgerRow[];
+  /** E7：捐赠回馈档位（空数组=未启用） */
+  donation_tiers?: DonationTier[];
   /** U4 §12.1：通道可用性（provider 配置齐全或 FLUX_DEMO）；false 时充值区显示「通道未开通」 */
   payment_enabled?: boolean;
 }
@@ -213,6 +216,8 @@ export default function DonatePage() {
           {vipPlans.map((p) => <PlanCard key={p.id} p={p} />)}
         </div>
       </section>
+
+      <DonateTiers tiers={st?.donation_tiers ?? []} t={t} />
 
       {/* 众筹免费（0078）：凑火花挂限时免费 */}
       <FundingPanel />

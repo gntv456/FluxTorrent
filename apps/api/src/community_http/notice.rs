@@ -41,7 +41,7 @@ async fn notice_prefs_set(
     body: web::Json<NoticePrefsSetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    const KEYS: [&str; 9] = [
+    const KEYS: [&str; 10] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
@@ -51,6 +51,7 @@ async fn notice_prefs_set(
         "gift",
         "comment_reply",
         "system",
+        "donate_tier",
     ];
     if !KEYS.contains(&body.key.as_str()) {
         return Err(DomainError::Validation(format!(
