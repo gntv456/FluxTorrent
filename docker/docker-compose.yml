@@ -199,6 +199,9 @@ services:
       ANN_RATE_GLOBAL_PER_MIN: "0"
       # 指标端点 /metrics：设置非空 token 后启用（抓取端带 X-Metrics-Token 头）；留空=端点返回 404
       ANN_METRICS_TOKEN: "${ANN_METRICS_TOKEN:-}"
+      # tracker 挂 LB 后取 XFF 首值（0225 G30-B3；与 api 侧同名 env 同口径：
+      # 直连暴露时必须留空，否则客户端可伪造头绕过 IP 封禁/限流）
+      TRUST_PROXY: ${TRUST_PROXY:-}
       # UDP tracker 下发开关（api 侧 build_torrent_bytes 读取）：
       # 私有站 passkey 走 HTTP announce URL path；UDP 标准包不携带身份，仅对
       # 支持「URL path 填入 tracker_id」扩展约定的客户端可用。默认空 = 只发 HTTP tier；

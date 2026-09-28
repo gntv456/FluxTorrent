@@ -71,7 +71,9 @@
   自动退化主池。已分流：种子列表/详情系/首页/用户公开主页（四文件 36 处，
   均验证纯读）。**钉主库清单**（写后立读/鉴权/支付）写入配方 §8.1。
 - **流水归档可配**：`ledger_retain_months` 站点设定（0=永久缺省）——worker
-  每日对超期分区**先 DETACH（秒级可回滚）下周期 DROP**；迁移 0230
+  每日对超期分区**先 DETACH（秒级可回滚）下周期 DROP**；归档范围仅
+  traffic/spark 两张流水表（posts 论坛正文是业务数据不归档——审查修正）；
+  迁移 0230
   （⚠️ settings_meta 的 FK 指向 site_settings，必须先插设置行——首版顺序
   颠倒曾致启动失败）。
 - compose 预设：`max_connections=200`（两份 compose）、`DATABASE_REPLICA_URL`
