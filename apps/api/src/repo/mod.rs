@@ -86,7 +86,7 @@ impl Repo {
         username: &str,
     ) -> DomainResult<Option<UserAccount>> {
         let row = sqlx::query_as::<_, UserRow>(
-            "SELECT id, username, pass_hash, passkey, class_id, must_reset_password, dormant_at \
+            "SELECT id, username, pass_hash, passkey, class_id, must_reset_password, dormant_at, archived \
              FROM users WHERE username = $1 AND status < 2",
         )
         .bind(username)
@@ -101,7 +101,7 @@ impl Repo {
         id: i64,
     ) -> DomainResult<Option<UserAccount>> {
         let row = sqlx::query_as::<_, UserRow>(
-            "SELECT id, username, pass_hash, passkey, class_id, must_reset_password, dormant_at \
+            "SELECT id, username, pass_hash, passkey, class_id, must_reset_password, dormant_at, archived \
              FROM users WHERE id = $1 AND status < 2",
         )
         .bind(id)
