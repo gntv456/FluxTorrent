@@ -194,7 +194,17 @@ pub(crate) async fn achievement_grant(db: &PgPool) -> anyhow::Result<u64> {
 /// 90 天未登录、无任何做种、非员工（class<90）且非捐赠者 → dormant_at 打标。
 /// 不改 status（保留封禁语义）、不删数据；登录侧拦截 dormant_at 非空者并提示联系管理组。
 /// 排除 dormant_at 已打标（幂等）与 90 天内注册的新号（新人宽限）。
+/// 0228 三档：inactivity_policy = mark（缺省，仅打标）| demote（打标+降最低
+/// 成长级，数据保留，回来后按 class_rules 正常再升）| archive（打标+archived，
+/// 档案页隐藏）。
 pub(crate) async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
+    let policy: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings \
+         WHERE name = 'inactivity_policy'), 'mark')",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or_else(|_| "mark".into());
     let res = sqlx::query(
         r#"
         UPDATE users u SET dormant_at = now()
@@ -210,6 +220,33 @@ pub(crate) async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
     .await?;
     if res.rows_affected() > 0 {
         tracing::info!(n = res.rows_affected(), "dormant accounts marked");
+    }
+    // 档位动作（对已打标者执行；幂等——class_id/archived 条件天然收敛）
+    if policy == "demote" {
+        let demoted = sqlx::query(
+            "UPDATE users SET class_id = 1 \
+             WHERE dormant_at IS NOT NULL AND class_id > 1 \
+             AND class_id < 90",
+        )
+        .execute(db)
+        .await?;
+        if demoted.rows_affected() > 0 {
+            tracing::info!(
+                n = demoted.rows_affected(),
+                "dormant demoted to class 1"
+            );
+        }
+    }
+    if policy == "archive" {
+        let archived = sqlx::query(
+            "UPDATE users SET archived = true \
+             WHERE dormant_at IS NOT NULL AND NOT archived",
+        )
+        .execute(db)
+        .await?;
+        if archived.rows_affected() > 0 {
+            tracing::info!(n = archived.rows_affected(), "dormant archived");
+        }
     }
     Ok(res.rows_affected())
 }

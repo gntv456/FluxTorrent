@@ -25,6 +25,7 @@ struct UserRow {
     class_id: i32,
     must_reset_password: bool,
     dormant_at: Option<chrono::DateTime<chrono::Utc>>,
+    archived: bool,
 }
 
 impl From<UserRow> for UserAccount {
@@ -37,6 +38,7 @@ impl From<UserRow> for UserAccount {
             class_id: r.class_id,
             must_reset_password: r.must_reset_password,
             dormant_at: r.dormant_at,
+            archived: r.archived,
         }
     }
 }

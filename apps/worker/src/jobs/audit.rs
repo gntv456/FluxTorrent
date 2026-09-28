@@ -1,9 +1,40 @@
-//! 作弊审计/分享率观察/多 IP/对账。
-//! 从 jobs.rs 按域拆出。
+//! 作弊检测（cheat_audit / multi_ip_check）+ Ratio Watch。
 
 use sqlx::PgPool;
 
-/// P0-6 种子级 up/down 差额对账（NP cheaterbox 口径）：
+/// 0228 运维 webhook 广播（worker 侧：直接查 site_settings + reqwest，
+/// 失败只落日志）
+async fn webhook_broadcast(db: &PgPool, text: &str) {
+    let keys: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name IN          ('webhook_discord', 'tg_bot_token', 'tg_chat_id')",
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    let kv: std::collections::HashMap<_, _> = keys.into_iter().collect();
+    let client = reqwest::Client::new();
+    if let Some(url) = kv.get("webhook_discord").filter(|u| !u.is_empty()) {
+        let _ = client
+            .post(url)
+            .json(&serde_json::json!({ "content": text }))
+            .send()
+            .await;
+    }
+    if let (Some(token), Some(chat)) = (
+        kv.get("tg_bot_token").filter(|t| !t.is_empty()),
+        kv.get("tg_chat_id").filter(|c| !c.is_empty()),
+    ) {
+        let _ = client
+            .post(format!("https://api.telegram.org/bot{token}/sendMessage"))
+            .json(&serde_json::json!({
+                "chat_id": chat, "text": text,
+            }))
+            .send()
+            .await;
+    }
+}
+
+/// 种子级 up/down 差额对账（NP cheaterbox 口径）：
 /// 虚报上传者没有对应真实下载方，同种子 7 天窗口 Σ(delta_up) − Σ(delta_down) 长期为正且巨大。
 /// 免费促销（free/x2free，含全局/官种/分类维度）天然产生差额，豁免。
 /// 命中 → cheat_events（agent='torrent_gap', agent 字段存 torrent:{id}）+ 首次进管理组信箱。
@@ -86,6 +117,14 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
     }
     if first_hits > 0 {
         tracing::warn!(n = first_hits, "cheat_audit: new torrent-gap suspects");
+        // 0228 运维 webhook：新嫌疑广播到 Discord/TG（尽力而为）
+        webhook_broadcast(
+            db,
+            &format!(
+                "🚨 cheat_audit 新增 {first_hits} 个流量差额嫌疑，详情见后台"
+            ),
+        )
+        .await;
     }
     Ok(first_hits)
 }

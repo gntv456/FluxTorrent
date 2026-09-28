@@ -1394,6 +1394,7 @@ dependencies = [
  "dotenvy",
  "futures-util",
  "redis",
+ "reqwest",
  "serde",
  "serde_json",
  "sha1 0.10.7",

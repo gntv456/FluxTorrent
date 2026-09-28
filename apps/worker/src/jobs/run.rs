@@ -35,14 +35,9 @@ macro_rules! shard_lock {
     };
 }
 
-/// 分片判定（spawn 前置过滤，与 shard_lock! 同口径）
-fn job_in_shard(name: &str, shard: &Option<Vec<String>>) -> bool {
-    match shard {
-        Some(list) => list.iter().any(|s| s == name),
-        None => true,
-    }
+fn job_in_shard(n: &str, shard: &Option<Vec<String>>) -> bool {
+    shard.as_ref().map_or(true, |l| l.iter().any(|s| s == n))
 }
-
 pub async fn run_all(
     db: PgPool,
     redis: redis::aio::ConnectionManager,
@@ -67,7 +62,10 @@ pub async fn run_all(
     let mut manual_tasks = crate::shutdown::TaskSet::new();
     let shard = job_shard();
     if let Some(list) = &shard {
-        tracing::info!(jobs = list.join(","), "角色分片生效（仅清单内定时 job）");
+        tracing::info!(
+            jobs = list.join(","),
+            "角色分片生效（仅清单内定时 job）"
+        );
     }
     sync_job_catalog(&db).await; // 目录同步（0218 G7）：面板以 job_status 为准
     loop {
@@ -112,8 +110,8 @@ pub async fn run_all(
                     crate::jobs::locks::mark_end(&db, "consume_agent_blocks",
                         None).await;
                 }
-                // 0225 G30-B14：独立任务并发执行——900s 慢任务不再堵住同轮
-                // 后续；锁/超时/分片语义不变。无顺序依赖（结算链在 hour 串行）。
+                // 0225 G30-B14：独立任务并发执行（900s 慢任务不再堵同轮；
+                // 锁/超时/分片语义不变；结算链在 hour 分支保留串行）。
                 let mut js = tokio::task::JoinSet::new();
                 if job_in_shard("backfill_pieces_hash", &shard) {
                     let d = db.clone();
@@ -221,6 +219,8 @@ pub async fn run_all(
                     purge_old_login_events(&db), &shard);
                 shard_lock!(&db, "job:ratio_watch", ratio_watch(&db), &shard);
                 shard_lock!(&db, "job:dormant_mark", dormant_mark(&db), &shard);
+                shard_lock!(&db, "job:request_expire",
+                    request_expire(&db), &shard);
                 shard_lock!(&db, "job:wishlist_notify",
                     wishlist_notify(&db), &shard);
                 shard_lock!(&db, "job:highspeed_tag",
