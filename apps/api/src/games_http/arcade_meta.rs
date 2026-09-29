@@ -16,6 +16,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
+use super::arcade_backpack::{backpack, det_economic_grants};
 use super::arcade_cfg::{bad, COSMETIC_KINDS, MILESTONES, QUESTS, SEASON_KEY};
 use super::arcade_stubs::sync_stubs;
 use super::helpers::{bigsmall_mult_permille, eco_i64};
@@ -189,6 +190,10 @@ pub(super) async fn arcade_meta(
     })
     .collect();
 
+    // 背包：奖池发出的物品必须回到玩家眼前，否则「发奖」只是账面上的一行
+    let pack = backpack(db, uid).await?;
+    let det_items = det_economic_grants(db, win).await?;
+
     // ── 门禁：确定侧预算（第二道闸）+ 随机侧赔率方向 ──
     let mult = bigsmall_mult_permille(&state).await;
     let checks = vec![
@@ -202,7 +207,11 @@ pub(super) async fn arcade_meta(
             mult < 2000,
             format!("当前 {mult}‰"),
         ),
-        bad("周常/赛季奖励为魔力，不含经济类物品", true, String::new()),
+        bad(
+            "确定侧未发放经济类物品（EV 闸管不到这一侧）",
+            det_items == 0,
+            format!("窗口内 {det_items} 笔"),
+        ),
     ];
 
     let body = serde_json::json!({
@@ -216,6 +225,7 @@ pub(super) async fn arcade_meta(
         },
         "season": { "key": SEASON_KEY, "items": season },
         "shelf": shelf,
+        "backpack": pack,
         "feed": feed,
         "checks": checks,
     });

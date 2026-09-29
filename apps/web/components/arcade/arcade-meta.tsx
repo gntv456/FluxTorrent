@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/i18n/client";
 import { api } from "@/lib/api-client";
 import { ArcadeFeed, type ArcadeFeedItem } from "./arcade-feed";
+import { ArcadeBackpack, type ArcadePackData } from "./arcade-backpack";
 
 export interface ArcadeLedger {
   magic_back: number;
@@ -63,6 +64,7 @@ export interface ArcadeMeta {
   stubs: { owned: number; total: number; items: ArcadeStub[] };
   season: { key: string; items: ArcadeMilestone[] };
   shelf: ArcadeShelfItem[];
+  backpack: ArcadePackData;
   feed: ArcadeFeedItem[];
   checks: ArcadeCheck[];
 }
@@ -233,6 +235,9 @@ export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
           ))}
         </div>
       </section>
+
+      {/* 我的背包：奖池发出的物品要回到玩家眼前，否则「发奖」只是账面上的一行 */}
+      <ArcadeBackpack pack={initial.backpack} />
 
       {/* 外观货架 */}
       <section className="arc-sec">
