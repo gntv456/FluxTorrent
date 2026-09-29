@@ -8,20 +8,63 @@ fn bet_validation() {
     assert!(validate_bet(MAX_BET + 1).is_err());
 }
 
-/// 九宫格期望回报恒为 0.725（庄家优势 27.5%）——防止赔率表回归到增发配置
+/// 奖池已行表化（0242），播种值的 EV=0.725 由迁移内的 DO 块在**落库时**断言。
+/// 这里锁的是机制而非某张表：任何过 `validate_pool` 的池必然 EV<1，
+/// 且四类坏配置必须各自被点名拒绝 —— 不会红的门禁不算门禁。
+fn prize(label: &str, weight: u32, payout: i64) -> JggPrize {
+    JggPrize { label: label.to_string(), weight, payout }
+}
+
+/// 与 0242 播种同形的夹具（测试不连库；运行时的唯一清单只有表）
+fn seeded_pool() -> Vec<JggPrize> {
+    vec![
+        prize("谢谢参与", 731, 0),
+        prize("再来一次", 120, 1),
+        prize("2x 魔力", 60, 2),
+        prize("3x 魔力", 50, 3),
+        prize("5x 魔力", 25, 5),
+        prize("10x 魔力", 10, 10),
+        prize("20x 魔力", 3, 20),
+        prize("50x 魔力", 1, 50),
+    ]
+}
+
 #[test]
-fn jgg_expected_value_house_edge() {
-    let total: u32 = JGG_PRIZES.iter().map(|p| p.weight).sum();
-    assert_eq!(total, 1000, "权重总和建议恒为 1000");
-    let ev: f64 = JGG_PRIZES
-        .iter()
-        .map(|p| p.weight as f64 * p.payout as f64)
-        .sum::<f64>()
-        / total as f64;
-    assert!(
-        (ev - 0.725).abs() < 1e-9,
-        "EV 漂移: {ev}（调整赔率表必须同步更新本断言与经济模型）"
-    );
+fn jgg_seeded_pool_is_valid_and_recovers() {
+    let pool = seeded_pool();
+    validate_pool(&pool).expect("播种奖池必须合法");
+    let ev = jgg_ev(&pool);
+    assert!((ev - 0.725).abs() < 1e-9, "EV 漂移: {ev}");
+    assert!(ev < 1.0, "EV>=1 就不是回收口");
+}
+
+#[test]
+fn jgg_gate_rejects_the_five_backdoors() {
+    // ① 抬经济奖权重：把 50x 从 1 抬到 40 -> EV 破 1
+    let mut p = seeded_pool();
+    p[7].weight = 40;
+    assert!(matches!(validate_pool(&p), Err(PoolError::ExpectedValueNotBelowOne(_))));
+    // ② 抬赔率倍数：50x 改 900
+    let mut p = seeded_pool();
+    p[7].payout = 900;
+    assert!(matches!(validate_pool(&p), Err(PoolError::ExpectedValueNotBelowOne(_))));
+    // ③ 空池（全部停用 / 清单没渲染出来）
+    assert_eq!(validate_pool(&[]), Err(PoolError::Empty));
+    // ④ 权重为 0 的档位：配了但永远抽不到
+    let mut p = seeded_pool();
+    p[2].weight = 0;
+    assert_eq!(validate_pool(&p), Err(PoolError::ZeroWeight("2x 魔力".into())));
+    // ⑤ 中性池 EV 恰为 1 也必须拒（不允许「不赚不亏」的玩法）
+    let neutral = vec![prize("a", 1, 2)];
+    assert!(matches!(validate_pool(&neutral), Err(PoolError::ExpectedValueNotBelowOne(_))));
+}
+
+#[test]
+fn jgg_ev_formula_is_weight_scale_invariant() {
+    // 同比例放大权重不改变 EV —— EV 只看比例，防「加一档稀释」被当成降 EV
+    let a = seeded_pool();
+    let b: Vec<JggPrize> = a.iter().map(|p| prize(&p.label, p.weight * 7, p.payout)).collect();
+    assert!((jgg_ev(&a) - jgg_ev(&b)).abs() < 1e-9);
 }
 
 #[test]
@@ -147,19 +190,26 @@ fn buy_and_harvest_factors_are_independent() {
 
 #[test]
 fn jgg_weights_cover_all() {
-    let total: u32 = JGG_PRIZES.iter().map(|p| p.weight).sum();
+    let pool = seeded_pool();
+    let total: u64 = pool.iter().map(|p| u64::from(p.weight)).sum();
     assert_eq!(total, 1000);
-    // 抽样次数按最低权重动态推算：期望最稀有档被抽到 ~25 次，
-    // 漏检概率 ≈ e^-25。不能用固定次数——赔率表调整会改变最低权重
-    // （旧表最低 5/1000 固定 2000 次即可，EV 修复后 50x 降至 1/1000，
-    // 2000 次漏检概率高达 ~13%，测试随机失败）。
-    let min_weight = JGG_PRIZES.iter().map(|p| p.weight).min().unwrap();
-    assert!(min_weight > 0, "存在权重为 0 的档位，该奖永远不可能被抽到");
-    let draws = 25 * total / min_weight;
-    let mut seen = [false; 8];
+    // 档位数从池子来，别硬编码：奖池行表化之后「8」随时会变，
+    // 写死 [false; 8] 的话档数一变就是 panic 而不是测试失败。
+    // 抽样次数按最低权重动态推算，期望最稀有档被抽到 ~25 次，漏检概率约 e^-25。
+    let min_weight = pool.iter().map(|p| p.weight).min().unwrap();
+    assert!(min_weight > 0, "存在权重为 0 的档位");
+    let draws = 25 * (total as usize) / (min_weight as usize);
+    let mut seen = vec![false; pool.len()];
     for _ in 0..draws {
-        let d = jgg_draw();
+        let d = jgg_draw_from(&pool).expect("合法池必须可抽样");
         seen[d.index] = true;
     }
     assert!(seen.iter().all(|&s| s), "some prize never drawn: {seen:?}");
+}
+
+#[test]
+fn jgg_draw_refuses_invalid_pool_shape() {
+    // 空池 / 权重合计 0：不猜一档出来，而是 None 让调用方关闸
+    assert!(jgg_draw_from(&[]).is_none());
+    assert!(jgg_draw_from(&[prize("zero", 0, 1)]).is_none());
 }
