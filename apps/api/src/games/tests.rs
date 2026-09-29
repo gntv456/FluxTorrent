@@ -8,63 +8,108 @@ fn bet_validation() {
     assert!(validate_bet(MAX_BET + 1).is_err());
 }
 
-/// 奖池已行表化（0242），播种值的 EV=0.725 由迁移内的 DO 块在**落库时**断言。
-/// 这里锁的是机制而非某张表：任何过 `validate_pool` 的池必然 EV<1，
-/// 且四类坏配置必须各自被点名拒绝 —— 不会红的门禁不算门禁。
-fn prize(label: &str, weight: u32, payout: i64) -> JggPrize {
-    JggPrize { label: label.to_string(), weight, payout }
+/// 奖池已行表化（0242 池 / 0244 物品目录）。播种值的 EV 由迁移内 DO 块在落库时断言；
+/// 这里锁的是**机制**：任何过 `validate_pool` 的池必然 EV<1，且坏配置各自被点名拒绝。
+/// 价值口径：魔力位 = 票价×倍数；物品位 = arcade_items.anchor × 件数（绝不取登记价）。
+const TICKET: i64 = 100;
+
+fn magic(label: &str, weight: u32, multiples: i64) -> PoolEntry {
+    PoolEntry { label: label.to_string(), weight, kind: EntryKind::Magic { multiples } }
+}
+
+fn item(label: &str, weight: u32, key: &str, qty: i32, anchor: i64) -> PoolEntry {
+    PoolEntry {
+        label: label.to_string(),
+        weight,
+        kind: EntryKind::Item { item_key: key.to_string(), qty, anchor },
+    }
 }
 
 /// 与 0242 播种同形的夹具（测试不连库；运行时的唯一清单只有表）
-fn seeded_pool() -> Vec<JggPrize> {
+fn seeded_pool() -> Vec<PoolEntry> {
     vec![
-        prize("谢谢参与", 731, 0),
-        prize("再来一次", 120, 1),
-        prize("2x 魔力", 60, 2),
-        prize("3x 魔力", 50, 3),
-        prize("5x 魔力", 25, 5),
-        prize("10x 魔力", 10, 10),
-        prize("20x 魔力", 3, 20),
-        prize("50x 魔力", 1, 50),
+        magic("谢谢参与", 731, 0),
+        magic("再来一次", 120, 1),
+        magic("2x 魔力", 60, 2),
+        magic("3x 魔力", 50, 3),
+        magic("5x 魔力", 25, 5),
+        magic("10x 魔力", 10, 10),
+        magic("20x 魔力", 3, 20),
+        magic("50x 魔力", 1, 50),
     ]
 }
 
 #[test]
-fn jgg_seeded_pool_is_valid_and_recovers() {
-    let pool = seeded_pool();
-    validate_pool(&pool).expect("播种奖池必须合法");
-    let ev = jgg_ev(&pool);
+fn pool_seeded_shape_is_valid_and_recovers() {
+    let p = seeded_pool();
+    validate_pool(&p, TICKET).expect("播种奖池必须合法");
+    let ev = pool_ev(&p, TICKET);
     assert!((ev - 0.725).abs() < 1e-9, "EV 漂移: {ev}");
     assert!(ev < 1.0, "EV>=1 就不是回收口");
 }
 
 #[test]
-fn jgg_gate_rejects_the_five_backdoors() {
-    // ① 抬经济奖权重：把 50x 从 1 抬到 40 -> EV 破 1
-    let mut p = seeded_pool();
-    p[7].weight = 40;
-    assert!(matches!(validate_pool(&p), Err(PoolError::ExpectedValueNotBelowOne(_))));
-    // ② 抬赔率倍数：50x 改 900
-    let mut p = seeded_pool();
-    p[7].payout = 900;
-    assert!(matches!(validate_pool(&p), Err(PoolError::ExpectedValueNotBelowOne(_))));
-    // ③ 空池（全部停用 / 清单没渲染出来）
-    assert_eq!(validate_pool(&[]), Err(PoolError::Empty));
-    // ④ 权重为 0 的档位：配了但永远抽不到
-    let mut p = seeded_pool();
-    p[2].weight = 0;
-    assert_eq!(validate_pool(&p), Err(PoolError::ZeroWeight("2x 魔力".into())));
-    // ⑤ 中性池 EV 恰为 1 也必须拒（不允许「不赚不亏」的玩法）
-    let neutral = vec![prize("a", 1, 2)];
-    assert!(matches!(validate_pool(&neutral), Err(PoolError::ExpectedValueNotBelowOne(_))));
+fn pool_item_entry_is_valued_by_anchor_not_price() {
+    // 一张 anchor=900 的抽卡券，权重 10/1000：它给玩家的等值就是 900
+    let p = vec![
+        magic("谢谢参与", 990, 0),
+        item("抽卡券", 10, "ticket", 1, 900),
+    ];
+    validate_pool(&p, TICKET).expect("合法");
+    // Σ(权重×价值)/Σ权重/票价 = (10×900)/1000/100 = 0.09
+    assert!((pool_ev(&p, TICKET) - 0.09).abs() < 1e-9, "物品位 EV: {}", pool_ev(&p, TICKET));
 }
 
 #[test]
-fn jgg_ev_formula_is_weight_scale_invariant() {
-    // 同比例放大权重不改变 EV —— EV 只看比例，防「加一档稀释」被当成降 EV
+fn pool_gate_rejects_every_backdoor_by_name() {
+    // ① 抬经济奖权重 -> EV 破 1
+    let mut p = seeded_pool();
+    p[7].weight = 40;
+    assert!(matches!(validate_pool(&p, TICKET), Err(PoolError::ExpectedValueNotBelowOne(_))));
+    // ② 抬倍数
+    let mut p = seeded_pool();
+    p[7].kind = EntryKind::Magic { multiples: 900 };
+    assert!(matches!(validate_pool(&p, TICKET), Err(PoolError::ExpectedValueNotBelowOne(_))));
+    // ③ 空池
+    assert_eq!(validate_pool(&[], TICKET), Err(PoolError::Empty));
+    // ④ 零权重档
+    let mut p = seeded_pool();
+    p[2].weight = 0;
+    assert_eq!(validate_pool(&p, TICKET), Err(PoolError::ZeroWeight("2x 魔力".into())));
+    // ⑤ 中性池 EV 恰为 1 也拒
+    assert!(matches!(validate_pool(&[magic("a", 1, 2)], TICKET),
+                     Err(PoolError::ExpectedValueNotBelowOne(_))));
+    // ⑥ 物品位引用目录里不存在/停用/无折算价的物品 —— anchor<=0 即空头承诺
+    assert_eq!(
+        validate_pool(&[magic("b", 999, 0), item("空头券", 1, "gone", 1, 0)], TICKET),
+        Err(PoolError::UnknownItem("gone".into()))
+    );
+    // ⑦ 票价非正：EV 的分母，0 会让「返还率」变成除零
+    assert_eq!(validate_pool(&seeded_pool(), 0), Err(PoolError::BadTicket(0)));
+}
+
+#[test]
+fn pool_ev_is_invariant_to_weight_scaling() {
+    // 同比例放大权重不改变 EV —— 防「加一档稀释」被当成降 EV
     let a = seeded_pool();
-    let b: Vec<JggPrize> = a.iter().map(|p| prize(&p.label, p.weight * 7, p.payout)).collect();
-    assert!((jgg_ev(&a) - jgg_ev(&b)).abs() < 1e-9);
+    let b: Vec<PoolEntry> = a.iter().map(|e| magic(&e.label, e.weight * 7, m(e))).collect();
+    assert!((pool_ev(&a, TICKET) - pool_ev(&b, TICKET)).abs() < 1e-9);
+}
+
+fn m(e: &PoolEntry) -> i64 {
+    match &e.kind {
+        EntryKind::Magic { multiples } => *multiples,
+        EntryKind::Item { .. } => 0,
+    }
+}
+
+#[test]
+fn pool_item_value_floors_at_fallback() {
+    // 物品即使发不出去，站点也已欠一笔回落价；EV 取两者较大侧才算保守
+    let cheap = item("廉价外观", 1, "frame", 1, 5);
+    assert_eq!(cheap.value(TICKET), (TICKET * FALLBACK_MULT).max(5));
+    let zero = item("零价值", 1, "frame", 1, 0);
+    assert_eq!(zero.value(TICKET), TICKET * FALLBACK_MULT);
 }
 
 #[test]
@@ -128,16 +173,19 @@ fn scratch_expected_value_below_one() {
         "档位必须铺满 100%"
     );
     assert!((ev(&d) - 0.66).abs() < 1e-9, "缺省 EV 漂移: {}", ev(&d));
-    // 争议配置（前四档吃满）必须回落缺省，不能构造出必中/增发档位
-    let bad = ScratchOdds::from_parts(60, 30, 15, 8, 2);
-    assert_eq!(bad.empty + bad.half + bad.one + bad.two + bad.ten, 100);
-    assert!(ev(&bad) < 1.0, "越界配置未回落，EV={}", ev(&bad));
-    // 10x 档留 0（或与前四档合计不为 100）→ 按余数推导，总量恒 100
-    let auto = ScratchOdds::from_parts(50, 30, 15, 3, 0);
+    // 前四档吃满 / EV 破 1 的坏配置一律 Err —— **不再回落缺省**：
+    // 回落会让站长以为改生效了，而实际跑的是另一张表（静默后门）。
+    let over = ScratchOdds::try_from_parts(60, 30, 15, 8, 2);
+    assert!(over.is_err(), "前四档合计 113 >= 100 必须被拒");
+    let hot = ScratchOdds::try_from_parts(20, 30, 15, 20, 15);
+    assert!(matches!(hot, Err(ref m) if m.contains("增发")), "EV>=1 必须被拒: {:?}", hot);
+    // 10x 档留 0（或与前四档合计不为 100）→ 按余数推导，总量恒 100。
+    // 这条保留：它是文档化的「只配前三档」设计，不是偷改玩家看得见的赔率。
+    let auto = ScratchOdds::try_from_parts(50, 30, 15, 3, 0).expect("合法");
     assert_eq!(auto.empty + auto.half + auto.one + auto.two + auto.ten, 100);
     assert_eq!(auto.ten, 2, "余数应为 2");
     // 站长显式配置 10x 且合计正好 100 → 采用配置值
-    let explicit = ScratchOdds::from_parts(50, 30, 15, 3, 2);
+    let explicit = ScratchOdds::try_from_parts(50, 30, 15, 3, 2).expect("合法");
     assert_eq!(explicit.ten, 2);
     assert_eq!(
         explicit.empty
@@ -189,7 +237,7 @@ fn buy_and_harvest_factors_are_independent() {
 }
 
 #[test]
-fn jgg_weights_cover_all() {
+fn pool_weights_cover_all() {
     let pool = seeded_pool();
     let total: u64 = pool.iter().map(|p| u64::from(p.weight)).sum();
     assert_eq!(total, 1000);
@@ -201,15 +249,15 @@ fn jgg_weights_cover_all() {
     let draws = 25 * (total as usize) / (min_weight as usize);
     let mut seen = vec![false; pool.len()];
     for _ in 0..draws {
-        let d = jgg_draw_from(&pool).expect("合法池必须可抽样");
+        let d = draw_entry(&pool).expect("合法池必须可抽样");
         seen[d.index] = true;
     }
     assert!(seen.iter().all(|&s| s), "some prize never drawn: {seen:?}");
 }
 
 #[test]
-fn jgg_draw_refuses_invalid_pool_shape() {
+fn draw_refuses_invalid_pool_shape() {
     // 空池 / 权重合计 0：不猜一档出来，而是 None 让调用方关闸
-    assert!(jgg_draw_from(&[]).is_none());
-    assert!(jgg_draw_from(&[prize("zero", 0, 1)]).is_none());
+    assert!(draw_entry(&[]).is_none());
+    assert!(draw_entry(&[magic("zero", 0, 1)]).is_none());
 }

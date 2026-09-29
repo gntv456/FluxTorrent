@@ -22,18 +22,33 @@ pub(super) async fn games_overview(
     let max_bet = eco_i64(&state, "games_max_bet", games::MAX_BET).await;
     let max_plays =
         eco_i64(&state, "games_max_plays_per_hour", MAX_PLAYS_PER_HOUR).await;
-    let odds = scratch_odds(&state).await;
+    let odds = scratch_odds(&state).await?;
     let win_mult = bigsmall_mult_permille(&state).await;
-    let pool = super::helpers::jgg_pool(&state).await?;
+    let pool = super::helpers::load_pool(&state.repo.db, "jgg").await?;
+    // 公示必须把物品位连同其折算价值一起列出来：只报魔力倍数会让玩家以为物品档不值钱，
+    // 也让站长的 EV 复核对不上账。
     let jgg_prizes: Vec<_> = pool
-        .prizes
+        .entries
         .iter()
         .map(|p| {
-            serde_json::json!({
+            let mut j = serde_json::json!({
                 "label": p.label,
                 "weight_permille": p.weight,
-                "payout": p.payout,
-            })
+                "value": p.value(pool.ticket),
+            });
+            match &p.kind {
+                games::EntryKind::Magic { multiples } => {
+                    j["kind"] = serde_json::json!("magic");
+                    j["multiples"] = serde_json::json!(multiples);
+                }
+                games::EntryKind::Item { item_key, qty, anchor } => {
+                    j["kind"] = serde_json::json!("item");
+                    j["item_key"] = serde_json::json!(item_key);
+                    j["qty"] = serde_json::json!(qty);
+                    j["anchor"] = serde_json::json!(anchor);
+                }
+            }
+            j
         })
         .collect();
 
