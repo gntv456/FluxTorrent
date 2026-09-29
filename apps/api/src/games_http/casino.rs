@@ -195,7 +195,7 @@ pub(super) async fn jgg(
         "prize": draw.prize.label,
         "kind": if fell_back.is_some() { "fallback" } else { match draw.prize.kind { games::EntryKind::Magic{..} => "magic", _ => "item" } },
         "fell_back": fell_back,
-        "spark": spark,
+        "payout": spark,
         "value": value,
         "ticket": ticket,
         "net": value - ticket,
