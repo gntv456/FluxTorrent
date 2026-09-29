@@ -85,6 +85,10 @@
 }
 .arc-stub.locked { filter: grayscale(1); opacity: .55; }
 .arc-stub .ic { font-size: 22px; }
+/* 未获得的票根用名字首字做雕版，不用问号 —— 一整排「❔」看着像图挂了 */
+.arc-stub .ic.mono {
+  font-size: 19px; font-weight: 800; opacity: .5; filter: grayscale(1);
+}
 .arc-stub .nm { font-size: 12px; font-weight: 700; margin-top: 4px; }
 .arc-stub .ct { font-size: 10px; color: var(--sub, var(--text-sub)); }
 
@@ -99,7 +103,16 @@
 .arc-node.ready { background: var(--grad-aurora); color: #fff;
   border-color: transparent; }
 .arc-node.lock { color: var(--sub, var(--text-sub)); }
-.arc-link { width: 18px; height: 2px; background: var(--border-deep); }
+/* 串星的线：格子是「节点在上、标签在下」，线要绝对定位到节点中线，
+   否则它就是一条挤在格子顶边的短横，肉眼读不出「串在一条线上」 */
+.arc-track-cell {
+  position: relative; display: grid; justify-items: center; gap: 4px;
+}
+.arc-track-cell .arc-link {
+  position: absolute; left: -13px; top: 16px;
+  width: 24px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--border-deep));
+}
 .arc-lab {
   font-size: 10px; text-align: center; color: var(--sub, var(--text-sub));
 }
