@@ -63,9 +63,7 @@ impl ScratchOdds {
         // 放大 200 倍避免浮点：h + 2o + 4t + 20ten < 200 ⟺ EV < 1
         if h + 2 * o + 4 * t + 20 * ten_eff >= 200 {
             let ev = (h + 2 * o + 4 * t + 20 * ten_eff) as f64 / 200.0;
-            return Err(format!(
-                "综合返还 {ev:.3} >= 1：在增发而非回收，拒绝该赔率表                  （空{e} 半{h} 一{o} 二{t} 十{ten_eff}）"
-            ));
+            return Err(format!("ev {ev:.3} >= 1: 在增发，拒绝该赔率表",));
         }
         Ok(ScratchOdds {
             empty: e as u32,
