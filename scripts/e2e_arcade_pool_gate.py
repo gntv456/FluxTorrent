@@ -8,13 +8,13 @@
 读侧一律走 `/admin/arcade/overview`：它现在读表，所以「写进去了吗」和「玩法读到的是
 同一份」用同一个端点证明，避免脚本自己查库造出第二份口径。
 
+端点尚未部署时 POST 会返回 404「接口不存在」——那是旧二进制，不是关闸失效。
+关闸失效的表现是 200 且表被改坏；脚本把两种情况分开报，不会把前者误读成后者。
+
 用法：起一个带新二进制的侧容器，然后
     FLUX_API_BASE=http://127.0.0.1:8180/api/v1 python scripts/e2e_arcade_pool_gate.py
 """
 
-端点尚未部署时，POST 会返回 404「接口不存在」——那是旧二进制，不是关闸失效。
-关闸失效的表现是 200 且表被改坏；脚本会把两种情况分开报出来。
-"""
 import json
 import os
 import sys
@@ -128,8 +128,8 @@ def main():
     check("票价改动被玩法读到（写读同一条链）",
           after_ok.get("ticket") == before["ticket"] + 20, after_ok)
     check("档数与权重未被顺手改写",
-          [(p["label"], p["weight"], p["payout"]) for p in after_ok["prizes"]]
-          == [(p["label"], p["weight"], p["payout"]) for p in before["prizes"]],
+          [(p["label"], p["weight_permille"], p["payout"]) for p in after_ok["prizes"]]
+          == [(p["label"], p["weight_permille"], p["payout"]) for p in before["prizes"]],
           after_ok.get("prizes"))
 
     # 复原，不留残留
