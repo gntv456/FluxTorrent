@@ -114,10 +114,11 @@ def main():
     # 契约断言：payout 是前台一直在读的既有字段（apps/web/lib/games.ts）。
     # 上一轮把它重命名成 multiples 直接把客户端打坏了 —— 新语义只能附加，
     # 不能替换已上线的响应字段。这条断言就是为了让下次替换立刻红。
-    check("契约·每档都仍有 payout 字段", all("payout" in x for x in before["prizes"]),
-          before["prizes"][:2])
-    check("契约·物品位带 kind/item_key/anchor",
-          all(("kind" in x) for x in before["prizes"]), before["prizes"][:2])
+    # 必须读**原始**响应：pool_of 里的 _norm 会自己补 payout，
+    # 拿归一化后的对象做契约断言等于测我自己的代码，永远绿。
+    raw = ((call("GET", "/games", token=tok)[1].get("data") or {}).get("jgg") or {}).get("prizes") or []
+    check("契约·服务端仍返回 payout 字段", raw and all("payout" in x for x in raw), raw[:2])
+    check("契约·服务端仍返回 kind 字段", raw and all("kind" in x for x in raw), raw[:2])
 
     # 用读侧的投影反构一个「只抬 50x 权重」的坏池：抬到 40 后 EV 破 1
     entries = [to_req(p) for p in before["prizes"]]
