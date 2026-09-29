@@ -192,7 +192,9 @@ export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
               className={`arc-stub${s.obtained ? "" : " locked"}`}
               title={s.descr}
             >
-              <div className="ic">{s.obtained ? "🎟️" : "❔"}</div>
+              <div className={"ic" + (s.obtained ? "" : " mono")}>
+                {s.obtained ? "🎟️" : (s.name || s.code).trim().slice(0, 1)}
+              </div>
               <div className="nm">{s.name}</div>
               <div className="ct">
                 {t.holders.replace("{n}", String(s.holders))}
