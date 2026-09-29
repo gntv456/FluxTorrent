@@ -99,7 +99,22 @@
   font-size: 19px; font-weight: 800; opacity: .5; filter: grayscale(1);
 }
 .arc-stub .nm { font-size: 12px; font-weight: 700; margin-top: 4px; }
-.arc-stub .ct { font-size: 10px; color: var(--sub, var(--text-sub)); }
+/* 票根计数：样图 06 是挂在纸下缘的暗底金标，不是正文里的一行小字 */
+.arc-stub .ct {
+  display: inline-block; margin-top: 6px; padding: 1px 8px;
+  font-size: 10px; font-weight: 700; color: var(--sun);
+  border: 1px solid color-mix(in srgb, var(--sun) 34%, transparent);
+  border-radius: 6px; background: rgba(7, 10, 21, 0.86);
+}
+/* 绶带牌：压在纹章面板左上边上，读成「这块面板是哪个赛季的」 */
+.arc-ribbon {
+  position: absolute; left: 18px; top: -11px; z-index: 6;
+  padding: 3px 13px; border-radius: 8px;
+  font-size: 12px; font-weight: 800; color: #2a1c05;
+  background: linear-gradient(180deg, #ffe9a8, #e9b94e 62%, #a8781f);
+  box-shadow: 0 3px 9px rgba(3, 6, 16, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
 
 /* ── 赛季星轨 ── */
 .arc-track { display: flex; align-items: center; gap: 6px; overflow-x: auto; }
