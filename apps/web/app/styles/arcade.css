@@ -38,15 +38,21 @@
   --p: 0;
   width: 108px; height: 108px; border-radius: 50%;
   display: grid; place-items: center; position: relative;
+  /* 空槽不能是「14% 透明的天空色」——0% 时整圈读起来就是一个白洞，
+     像组件没渲染出来。给轨道一个实色底，进度才读得出「从这里开始」。 */
   background: conic-gradient(
     var(--sky-deep) calc(var(--p) * 1turn),
-    color-mix(in srgb, var(--sky-deep) 14%, transparent) 0);
+    color-mix(in srgb, var(--sky-deep) 22%, var(--surface-sunken)) 0);
 }
 .arc-ring::after {
   content: ""; position: absolute; inset: 10px; border-radius: 50%;
   background: var(--surface-card);
+  border: 1px solid var(--line);
 }
-.arc-ring b { position: relative; font-size: 18px; font-weight: 900; }
+.arc-ring b {
+  position: relative; font-size: 18px; font-weight: 900;
+  color: var(--ink);
+}
 
 .arc-note {
   font-size: 11px; color: var(--sub, var(--text-sub));
@@ -194,6 +200,37 @@
 .arc-goods .gn { font-size: 13px; font-weight: 700; }
 .arc-goods .gv { font-size: 11px; color: var(--sub, var(--text-sub)); }
 .arc-goods .gc { font-size: 22px; line-height: 1; margin-bottom: 4px; }
+/* 纹章面板：样图 06 的三段式承托。`crest-frame` 这个钩子一直在 DOM 里，
+   但生产 CSS 从来没定义它 —— 所以圆章与两个读数像浮在页面上，没有面板。 */
+.arc-crest.crest-frame {
+  position: relative;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--sun) 34%, var(--line));
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      color-mix(in srgb, var(--sun) 12%, transparent),
+      transparent 62%
+    ),
+    var(--surface-card);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 60%, transparent);
+}
+.arc-crest.crest-frame::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+  border: 1px dashed color-mix(in srgb, var(--sun) 30%, transparent);
+  border-radius: calc(var(--r-lg) - 4px);
+}
+/* 外观货架 = 描金格：内描边 + 一圈金色内框，不加角标（角标位已被零负债占着） */
+.arc-goods {
+  box-shadow: inset 0 0 0 1px var(--line),
+    inset 0 0 0 4px color-mix(in srgb, var(--sun) 20%, transparent);
+}
 .arc-goods .qty {
   margin-left: 5px; font-size: 10px; font-weight: 800;
   color: var(--ink); background: var(--sun-soft);
@@ -201,7 +238,19 @@
 }
 
 /* ── 周榜：两列并列，名次牌 + 名字 + 读数 ── */
-.arc-board { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* 1300px 下两列被拉成通栏长条会读成表格而不是榜：限宽 + 承托框 */
+.arc-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 330px));
+  justify-content: start;
+  gap: 16px;
+}
+.arc-board-col {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 10px;
+  background: var(--surface-sunken);
+}
 .arc-board-col h4 { font-size: 12px; margin-bottom: 6px; }
 .arc-board-col ol {
   list-style: none; display: flex; flex-direction: column; gap: 4px;
@@ -209,7 +258,7 @@
 .arc-board-col li {
   display: flex; align-items: center; gap: 8px;
   font-size: 12px; padding: 3px 6px;
-  border-radius: var(--r-sm); background: var(--surface-sunken);
+  border-radius: var(--r-sm); background: var(--surface-card);
 }
 .arc-board-col .rk {
   flex: none; width: 18px; height: 18px; border-radius: 50%;
