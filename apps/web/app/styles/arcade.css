@@ -52,6 +52,9 @@
 .arc-ring b {
   position: relative; font-size: 18px; font-weight: 900;
   color: var(--ink);
+  /* ::after 与 <b> 都是定位元素且都无 z-index —— 树序里 ::after 在后，
+     于是内盘把读数整个盖住，百分比从来没显示过。 */
+  z-index: 1;
 }
 
 .arc-note {
