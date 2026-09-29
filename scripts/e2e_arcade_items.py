@@ -379,9 +379,9 @@ if __name__ == "__main__":
     finally:
         try:
             _restore_pool()
-        except Exception as e:  # 兜底失败要喊出来，不能静默
+        except BaseException as e:  # 兜底失败要喊出来，不能静默
             print("奖池兜底复原失败，请手工核对 arcade_pool_entries：%r" % e)
         try:
             _drop_probe_items()
-        except Exception as e:
+        except BaseException as e:
             print("探针物品清理失败，请手工核对 arcade_items：%r" % e)
