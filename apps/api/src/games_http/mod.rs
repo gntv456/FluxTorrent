@@ -7,6 +7,7 @@
 mod arcade_admin;
 mod arcade_admin_write;
 mod arcade_backpack;
+mod arcade_board;
 mod arcade_cfg;
 mod arcade_claim;
 mod arcade_items_write;

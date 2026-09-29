@@ -17,6 +17,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::arcade_backpack::{backpack, det_economic_grants};
+use super::arcade_board::board;
 use super::arcade_cfg::{bad, COSMETIC_KINDS, MILESTONES, QUESTS, SEASON_KEY};
 use super::arcade_stubs::sync_stubs;
 use super::helpers::{bigsmall_mult_permille, eco_i64};
@@ -174,6 +175,7 @@ pub(super) async fn arcade_meta(
            SELECT c.claimed_at AS at, c.user_id, c.kind, c.ref_code AS name \
            FROM arcade_claims c \
          ) x JOIN users u ON u.id = x.user_id \
+         WHERE u.status < 2 \
          ORDER BY x.at DESC LIMIT 12",
     )
     .fetch_all(db)
@@ -192,6 +194,7 @@ pub(super) async fn arcade_meta(
 
     // 背包：奖池发出的物品必须回到玩家眼前，否则「发奖」只是账面上的一行
     let pack = backpack(db, uid).await?;
+    let board = board(db).await?;
     let det_items = det_economic_grants(db, win).await?;
 
     // ── 门禁：确定侧预算（第二道闸）+ 随机侧赔率方向 ──
@@ -226,6 +229,7 @@ pub(super) async fn arcade_meta(
         "season": { "key": SEASON_KEY, "items": season },
         "shelf": shelf,
         "backpack": pack,
+        "board": board,
         "feed": feed,
         "checks": checks,
     });

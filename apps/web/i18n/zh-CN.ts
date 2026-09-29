@@ -2042,6 +2042,10 @@ const zhCnBase = {
     },
 
     arcade: {
+      boardTitle: "娱乐屋周榜",
+      boardStubs: "票根收集",
+      boardPlays: "本周局数",
+      boardNote: "只按收集度与局数排，不按净输赢排 —— 排输赢等于鼓励加注。",
       title: "大厅 · 回收口与物品奖池",
       gateOk: "门禁全绿",
       gateBlocked: "{n} 项阻断",

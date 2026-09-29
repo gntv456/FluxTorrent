@@ -2064,6 +2064,10 @@ const zhTwBase: Omit<
     },
 
     arcade: {
+      boardTitle: "娛樂屋週榜",
+      boardStubs: "票根收集",
+      boardPlays: "本週局數",
+      boardNote: "只按收集度與局數排，不按淨輸贏排 —— 排輸贏等於鼓勵加注。",
       title: "大廳 · 回收口與物品獎池",
       gateOk: "門禁全綠",
       gateBlocked: "{n} 項阻斷",
