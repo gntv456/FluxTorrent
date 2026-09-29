@@ -2604,6 +2604,13 @@ const zhCnBase = {
    */
   adminArcade: {
     items: {
+      newTitle: "新建奖品",
+      create: "建",
+      created: "已建出 {k}",
+      del: "删除",
+      confirmDel: "确认删除？",
+      deleted: "已删除 {k}",
+      delFail: "删除失败",
       title: "物品目录",
       colIcon: "图标",
       colName: "名称",
@@ -2622,6 +2629,9 @@ const zhCnBase = {
       saveFail: "保存失败",
     },
     pool: {
+      colKind: "类型",
+      kindMagic: "魔力倍数",
+      kindItem: "物品",
       label: "九宫格 · 标准池",
       title: "奖池编辑器（九宫格）",
       ticket: "票价",

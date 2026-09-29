@@ -2651,6 +2651,13 @@ const enBase: Omit<
    */
   adminArcade: {
     items: {
+      newTitle: "New prize",
+      create: "Create",
+      created: "Created {k}",
+      del: "Delete",
+      confirmDel: "Confirm delete?",
+      deleted: "Deleted {k}",
+      delFail: "Delete failed",
       title: "Item catalog",
       colIcon: "Icon",
       colName: "Name",
@@ -2669,6 +2676,9 @@ const enBase: Omit<
       saveFail: "Save failed",
     },
     pool: {
+      colKind: "Kind",
+      kindMagic: "magic multiple",
+      kindItem: "item",
       label: "9-grid · standard pool",
       title: "Prize pool editor (9-grid)",
       ticket: "Ticket",

@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { api, ApiError } from "@/lib/api-client";
+import { AdminArcadeItemsNew } from "./admin-arcade-items-new";
 
 interface Item {
   key: string;
@@ -45,6 +46,7 @@ export function AdminArcadeItems({
   const [rows, setRows] = useState<Item[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -64,6 +66,29 @@ export function AdminArcadeItems({
   const set = (i: number, patch: Partial<Item>) =>
     setRows((rs) => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)));
 
+  async function del(r: Item) {
+    // 两步确认：第一下只把按钮变成「确认删除」，不弹窗
+    if (pending !== r.key) {
+      setPending(r.key);
+      return;
+    }
+    setPending(null);
+    setBusy(r.key);
+    setMsg(null);
+    try {
+      await api.del(
+        `/api/v1/admin/arcade/items/${encodeURIComponent(r.key)}`,
+      );
+      setMsg(t.deleted.replace("{k}", r.key));
+    } catch (e) {
+      // 服务端会点名「被哪个池的哪一档引用」或「已发放过多少件」
+      setMsg(e instanceof ApiError ? e.message : t.delFail);
+    }
+    await load();
+    onChanged?.();
+    setBusy(null);
+  }
+
   async function save(r: Item) {
     setBusy(r.key);
     setMsg(null);
@@ -82,6 +107,11 @@ export function AdminArcadeItems({
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-sm font-bold">{t.title}</h3>
+
+      <AdminArcadeItemsNew
+        onCreated={() => void load()}
+        busy={busy !== null}
+      />
 
       <div className="overflow-x-auto">
         <table className="nexus-table w-full text-xs">
@@ -122,9 +152,20 @@ export function AdminArcadeItems({
                     onChange={(e) => set(i, { kind: e.target.value })}
                   />
                 </td>
-                <td className="num py-1 pr-1 text-right">
-                  {r.anchor.toLocaleString("en-US")}
-                  <span className="ml-1 text-[10px] text-sub">
+                <td className="py-1 pr-1 text-right">
+                  <input
+                    type="number"
+                    min={0}
+                    className={CELL + " w-24 text-right"}
+                    value={r.anchor}
+                    onChange={(e) =>
+                      set(i, {
+                        anchor: Number(e.target.value) || 0,
+                        anchor_src: "declared",
+                      })
+                    }
+                  />
+                  <span className="block text-[10px] text-sub">
                     {r.anchor_src}
                   </span>
                 </td>
@@ -172,6 +213,14 @@ export function AdminArcadeItems({
                   />
                 </td>
                 <td className="py-1 pl-1 text-right">
+                  <button
+                    type="button"
+                    className={BTN}
+                    disabled={busy !== null}
+                    onClick={() => void del(r)}
+                  >
+                    {pending === r.key ? t.confirmDel : t.del}
+                  </button>
                   <button
                     type="button"
                     className={BTN}

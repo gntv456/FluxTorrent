@@ -2617,6 +2617,13 @@ const zhTwBase: Omit<
    */
   adminArcade: {
     items: {
+      newTitle: "新建獎品",
+      create: "建",
+      created: "已建出 {k}",
+      del: "刪除",
+      confirmDel: "確認刪除？",
+      deleted: "已刪除 {k}",
+      delFail: "刪除失敗",
       title: "物品目錄",
       colIcon: "圖標",
       colName: "名稱",
@@ -2635,6 +2642,9 @@ const zhTwBase: Omit<
       saveFail: "儲存失敗",
     },
     pool: {
+      colKind: "類型",
+      kindMagic: "魔力倍數",
+      kindItem: "物品",
       label: "九宮格 · 標準池",
       title: "獎池編輯器（九宮格）",
       ticket: "票價",

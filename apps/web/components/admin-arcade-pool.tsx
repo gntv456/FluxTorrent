@@ -24,6 +24,13 @@ interface Row {
   qty?: number;
 }
 
+interface CatItem {
+  key: string;
+  name: string;
+  icon: string;
+  anchor: number;
+}
+
 /** 这一版只管九宫格那一张池：键是常量，标题走字典（不写死中文） */
 const POOL_KEY = "jgg_default";
 
@@ -40,6 +47,7 @@ export function AdminArcadePool({
   const t = dict.adminArcade.pool;
   const [ticket, setTicket] = useState(0);
   const [rows, setRows] = useState<Row[]>([]);
+  const [catalog, setCatalog] = useState<CatItem[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -50,6 +58,11 @@ export function AdminArcadePool({
       );
       setTicket(g.jgg?.ticket ?? 0);
       setRows(g.jgg?.prizes ?? []);
+      // 物品位的候选来自目录本身，面板不另写一份物品清单
+      const ov = await api.get<{ items?: CatItem[] }>(
+        "/api/v1/admin/arcade/overview",
+      );
+      setCatalog(ov.items ?? []);
       return true;
     } catch {
       setMsg(t.loadFail);
@@ -114,6 +127,7 @@ export function AdminArcadePool({
           <tr className="text-left text-sub">
             <th className="py-1">{t.colPrize}</th>
             <th className="py-1">{t.colWeight}</th>
+            <th className="py-1">{t.colKind}</th>
             <th className="py-1 text-right">{t.colValue}</th>
           </tr>
         </thead>
@@ -138,10 +152,39 @@ export function AdminArcadePool({
                   }
                 />
               </td>
+              <td className="py-1 pr-1">
+                <select
+                  className={CELL + " w-24"}
+                  value={r.kind ?? "magic"}
+                  onChange={(e) => set(i, { kind: e.target.value })}
+                >
+                  <option value="magic">{t.kindMagic}</option>
+                  <option value="item">{t.kindItem}</option>
+                </select>
+              </td>
               <td className="py-1 text-right">
                 {r.kind === "item" ? (
                   <span className="text-sub">
-                    {r.item_key} ×
+                    <select
+                      className={CELL + " inline-block w-40"}
+                      value={r.item_key ?? ""}
+                      onChange={(e) => {
+                        const hit = catalog.find(
+                          (c) => c.key === e.target.value,
+                        );
+                        set(i, {
+                          item_key: e.target.value,
+                          label: hit ? hit.name : r.label,
+                        });
+                      }}
+                    >
+                      {catalog.map((c) => (
+                        <option key={c.key} value={c.key}>
+                          {c.icon} {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    ×
                     <input
                       type="number"
                       min={1}
