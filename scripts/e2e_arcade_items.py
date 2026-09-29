@@ -11,6 +11,7 @@
 """
 import json
 import os
+import subprocess
 import sys
 import time
 import urllib.error
@@ -286,9 +287,54 @@ def main():
     check("复原后池子与核验前逐项一致", pool(tok).get("prizes") == prizes,
           [x.get("label") for x in pool(tok).get("prizes", [])])
 
+    ov2 = (call("GET", "/admin/arcade/overview", None, tok)[1]
+             .get("data") or {})
+    probe_left = [x["key"] for x in (ov2.get("items") or [])
+                    if x["key"].endswith("_probe")]
+    check("探针物品确实建出来了（待收尾清理）",
+          bool(probe_left), probe_left)
+
     tail = "" if not fails else " -> " + "; ".join(fails[:5])
     print("\n结果：%d 项断言，失败 %d%s" % (n[0], len(fails), tail))
     sys.exit(1 if fails else 0)
 
 
-main()
+
+PROBES = ("gate_probe", "cap_probe")
+
+
+def psql(sql):
+    """物品目录没有 DELETE 端点，脚本自己造的测试行只能自己删。
+    与 install_e2e.py 同一手法（docker exec psql）。"""
+    r = subprocess.run(
+        ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
+         "-d", "fluxtorrent", "-tAc", sql],
+        capture_output=True, text=True,
+    )
+    return r.stdout.strip()
+
+
+def _drop_probe_items():
+    """删之前先确认没有池还引用：arcade_pool_entries.item_key 是
+    ON DELETE SET NULL，而 kind='item' 且 item_key 为 NULL 会撞 CHECK，
+    直接删会让玩法读表当场炸。"""
+    keys = ",".join("'%s'" % k for k in PROBES)
+    refs = psql("SELECT count(*) FROM arcade_pool_entries"
+                " WHERE item_key IN (%s)" % keys)
+    if refs != "0":
+        print("探针物品仍被 %s 个奖池位引用，跳过清理（人工核对）" % refs)
+        return
+    psql("DELETE FROM arcade_items WHERE key IN (%s)" % keys)
+    left = psql("SELECT count(*) FROM arcade_items"
+            " WHERE key LIKE '%_probe'")
+    print("收尾：目录里 *_probe 残留 %s 件" % left)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    finally:
+        try:
+            _drop_probe_items()
+        except Exception as e:  # 兜底失败要喊出来，不能静默
+            print("探针物品清理失败，请手工核对 arcade_items：%r" % e)
