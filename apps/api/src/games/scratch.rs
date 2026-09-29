@@ -59,19 +59,27 @@ impl ScratchOdds {
         } else {
             100 - sum4
         };
-        // 半点整数口径：EV(每注) = Σ(概率×倍率) = (h×0.5 + o×1 + t×2 + ten×10) / 100；
-        // 放大 200 倍避免浮点：h + 2o + 4t + 20ten < 200 ⟺ EV < 1
-        if h + 2 * o + 4 * t + 20 * ten_eff >= 200 {
-            let ev = (h + 2 * o + 4 * t + 20 * ten_eff) as f64 / 200.0;
-            return Err(format!("ev {ev:.3} >= 1: 在增发，拒绝该赔率表",));
-        }
-        Ok(ScratchOdds {
+        let odds = ScratchOdds {
             empty: e as u32,
             half: h as u32,
             one: o as u32,
             two: t as u32,
             ten: ten_eff as u32,
-        })
+        };
+        // 闸门与公示共用同一个 ev()：算式写两遍必然漂移
+        if odds.ev() >= 1.0 {
+            return Err(format!(
+                "ev {:.3} >= 1: 在增发，拒绝该赔率表",
+                odds.ev()
+            ));
+        }
+        Ok(odds)
+    }
+
+    /// 每注期望回报 = Σ(概率×倍率)。公示页要报这个数，但它必须与写侧闸门
+    /// 用的是同一份算式，不能让前端再推一遍（第二份公式必然漂移）。
+    pub fn ev(&self) -> f64 {
+        (self.half + 2 * self.one + 4 * self.two + 20 * self.ten) as f64 / 200.0
     }
 }
 
