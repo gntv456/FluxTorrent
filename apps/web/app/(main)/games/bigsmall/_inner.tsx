@@ -209,7 +209,7 @@ export default function BigSmallPage({
               type="button"
               onClick={() => guess("small")}
               disabled={busy}
-              className="min-h-[56px] flex-1 rounded-full bg-sky text-base font-black text-white active:scale-[0.97] disabled:opacity-50"
+              className="arc-call sky"
             >
               {tg.small}
             </button>
@@ -217,7 +217,7 @@ export default function BigSmallPage({
               type="button"
               onClick={() => guess("big")}
               disabled={busy}
-              className="min-h-[56px] flex-1 rounded-full bg-coral text-base font-black text-white active:scale-[0.97] disabled:opacity-50"
+              className="arc-call coral"
             >
               {tg.big}
             </button>
