@@ -8,6 +8,12 @@ const TOTAL_MS = 2400;
 
 export interface JggPrize {
   label: string;
+  /** magic | item；物品位的价值不在 payout 上 */
+  kind?: "magic" | "item";
+  /** 该档给玩家的魔力等值：魔力位=票价×倍数，物品位=anchor×件数 */
+  value?: number;
+  item_key?: string;
+  qty?: number;
   weight_permille: number;
   payout: number;
 }
@@ -110,7 +116,8 @@ export function JggGrid({
           if (!p) return <span key={gi} className={cellBase} />;
           const isLit = lit === pi;
           const isWin = landed && resultIndex === pi;
-          const jack = p.payout >= 10;
+          // 物品档按价值判高低：payout 恒为 0，直接判会把免考核卡画成最低档样式
+          const jack = p.kind === "item" ? (p.value ?? 0) >= ticket * 10 : p.payout >= 10;
           return (
             <div
               key={gi}
@@ -127,7 +134,13 @@ export function JggGrid({
               <span
                 className={`num text-sm font-black ${jack ? "text-[var(--warning)]" : ""}`}
               >
-                {p.payout === 0 ? "—" : p.payout === 1 ? "↺" : `×${p.payout}`}
+                {p.kind === "item"
+                  ? `🎁${p.qty && p.qty > 1 ? `×${p.qty}` : ""}`
+                  : p.payout === 0
+                    ? "—"
+                    : p.payout === 1
+                      ? "↺"
+                      : `×${p.payout}`}
               </span>
               <span className="mt-0.5 text-[10px] leading-tight text-sub">
                 {p.label}

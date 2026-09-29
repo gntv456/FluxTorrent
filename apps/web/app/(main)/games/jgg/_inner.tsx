@@ -33,6 +33,10 @@ interface DrawResult {
   prize: string;
   payout: number;
   net: number;
+  /** magic | item | fallback：物品中奖时 payout 为 0，只有 value 能区分「中了」与「没中」 */
+  kind?: "magic" | "item" | "fallback";
+  value?: number;
+  fell_back?: string | null;
 }
 
 /** 九宫格专注页：3×3 灯阵 + 跑马灯 + 翻牌揭晓 */
@@ -121,22 +125,25 @@ export default function JggPage({
     setBusy(false);
     setSessionPlays((n) => n + 1);
     if (!r) return;
+    // 必须按 value 判，不能按 payout：抽中物品时实付魔力是 0，
+    // 按 payout 分档会把「中了免考核卡」渲染成「谢谢参与」。
+    const won = r.value ?? r.payout;
     const kind: "win" | "lose" | "tie" | "jackpot" =
-      r.payout >= ticket * 10
+      won >= ticket * 10
         ? "jackpot"
-        : r.payout > ticket
+        : won > ticket
           ? "win"
-          : r.payout === ticket
+          : won === ticket
             ? "tie"
             : "lose";
     setFlash({
       kind,
       text:
-        r.payout >= ticket * 10
-          ? fmtCur(tj.jackpot, { prize: r.prize, net: r.net }, currency)
-          : r.payout > ticket
-            ? fmtCur(tj.win, { prize: r.prize, net: r.net }, currency)
-            : r.payout === ticket
+        won >= ticket * 10
+          ? fmtCur(tj.jackpot, { prize: r.prize, net: won - ticket }, currency)
+          : won > ticket
+            ? fmtCur(tj.win, { prize: r.prize, net: won - ticket }, currency)
+            : won === ticket
               ? tj.again
               : tj.thanks,
     });
@@ -191,9 +198,9 @@ export default function JggPage({
               <span
                 key={i}
                 className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                  p.payout >= 10
+                  (p.value ?? p.payout * ticket) >= ticket * 10
                     ? "bg-sun-soft text-[var(--warning)]"
-                    : p.payout > 1
+                    : (p.value ?? p.payout * ticket) > ticket
                       ? "bg-mint-soft text-[var(--mint)]"
                       : "bg-[var(--surface-sunken)] text-sub"
                 }`}
