@@ -2101,6 +2101,7 @@ const enBase: Omit<
       title: "Hall · Sinks & Item Pools",
       gateOk: "All gates green",
       gateBlocked: "{n} blocked",
+      crestRibbon: "Season {s} · stubs {n}/{m}",
       crestNet: "Net sink today",
       crestBudget: "Deterministic grants / budget",
       crestNote:

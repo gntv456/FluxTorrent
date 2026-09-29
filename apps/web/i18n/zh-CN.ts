@@ -2049,6 +2049,7 @@ const zhCnBase = {
       title: "大厅 · 回收口与物品奖池",
       gateOk: "门禁全绿",
       gateBlocked: "{n} 项阻断",
+      crestRibbon: "赛季 {s} · 票根 {n}/{m}",
       crestNet: "今日真净回收",
       crestBudget: "确定侧发放 / 额度",
       crestNote:

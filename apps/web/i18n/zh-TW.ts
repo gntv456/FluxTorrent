@@ -2071,6 +2071,7 @@ const zhTwBase: Omit<
       title: "大廳 · 回收口與物品獎池",
       gateOk: "門禁全綠",
       gateBlocked: "{n} 項阻斷",
+      crestRibbon: "賽季 {s} · 票根 {n}/{m}",
       crestNet: "今日真淨回收",
       crestBudget: "確定側發放 / 額度",
       crestNote:

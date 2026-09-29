@@ -124,6 +124,12 @@ export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
 
       {/* 纹章面板：确定侧发放预算环（EV 闸只管随机侧，这是第二道闸） */}
       <section className="arc-crest crest-frame">
+        <span className="arc-ribbon">
+          {t.crestRibbon
+            .replace("{s}", initial.season.key)
+            .replace("{n}", String(initial.stubs.owned))
+            .replace("{m}", String(initial.stubs.total))}
+        </span>
         <div className="arc-crest-side">
           <div className="arc-bignum">
             {L.net >= 0 ? "+" : ""}
