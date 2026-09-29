@@ -2132,6 +2132,8 @@ const zhCnBase = {
       lose: "{n} 没猜中，净输 {net} {magic}",
       pending: "开奖中…",
       streak: "手气不错 🔥",
+      srWait: "等待下注",
+      srResult: "开奖 {n}",
       statLine: "近 {n} 局：中 {w} · 平 {t} · 不中 {l} · 命中率 {p}%",
     },
     jgg: {

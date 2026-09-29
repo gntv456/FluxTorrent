@@ -2154,6 +2154,8 @@ const zhTwBase: Omit<
       lose: "{n} 沒猜中，淨輸 {net} {magic}",
       pending: "開獎中…",
       streak: "手氣不錯 🔥",
+      srWait: "等待下注",
+      srResult: "開獎 {n}",
       statLine: "近 {n} 局：中 {w} · 平 {t} · 不中 {l} · 命中率 {p}%",
     },
     jgg: {

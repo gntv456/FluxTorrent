@@ -2185,6 +2185,8 @@ const enBase: Omit<
       lose: "{n} — missed. Net loss {net} {magic}",
       pending: "Drawing…",
       streak: "On a roll 🔥",
+      srWait: "Waiting for a bet",
+      srResult: "Draw {n}",
       statLine: "Last {n}: hit {w} · tie {t} · miss {l} · {p}% hit rate",
     },
     jgg: {

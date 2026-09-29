@@ -69,23 +69,19 @@ export default async function OddsPage() {
           <tbody>
             {ov.jgg.prizes.map((p, i) => (
               <tr key={i} className="border-t border-line">
-                <td className="py-1.5">
-                  {p.label}
-                  {p.kind === "item" && (
-                    <span className="ml-1 text-[10px] text-sub">
-                      ×{p.qty ?? 1}
-                    </span>
-                  )}
-                </td>
+                <td className="py-1.5">{p.label}</td>
                 <td className="num py-1.5 text-right">
                   {pct(p.weight_permille / 10)}
                 </td>
+                {/* 等值一律用「票价倍数」同一把尺；物品位再补一个绝对折算价 */}
                 <td className="num py-1.5 text-right">
-                  {p.kind === "item"
-                    ? `${p.value.toLocaleString("en-US")} ${currency} · ${pct(
-                        (p.value / tk) * 100,
-                      )}`
-                    : `×${(p.value / tk).toFixed(2)}`}
+                  ×{(p.value / tk).toFixed(2)}
+                  {p.kind === "item" && (
+                    <span className="text-sub">
+                      {" "}
+                      （{p.value.toLocaleString("en-US")} {currency}）
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

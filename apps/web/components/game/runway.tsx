@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "@/i18n/client";
 
 /**
  * 猜大小开奖跑道：1-100 三段着色 + 游标减速定格 + 数字 odometer。
@@ -15,6 +16,8 @@ export function RunwayOdometer({
   spinning: boolean;
   reduced: boolean;
 }) {
+  const { dict } = useI18n();
+  const bs = dict.games.bigsmall;
   const [shown, setShown] = useState<number | null>(null);
   const timer = useRef<number | null>(null);
 
@@ -72,7 +75,11 @@ export function RunwayOdometer({
         ))}
       </div>
       <p className="sr-only" role="status" aria-live="polite">
-        {spinning ? "开奖中" : number === null ? "等待下注" : `开奖 ${number}`}
+        {spinning
+          ? bs.pending
+          : number === null
+            ? bs.srWait
+            : bs.srResult.replace("{n}", String(number))}
       </p>
     </div>
   );
