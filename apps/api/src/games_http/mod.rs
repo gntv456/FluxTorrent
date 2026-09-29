@@ -4,6 +4,10 @@
 //! helpers.rs，刮刮乐/猜大小/九宫格在 casino.rs，农场在 farm.rs，趣味投票在 fun.rs。
 //! mount_games 留在此。
 
+mod arcade_cfg;
+mod arcade_claim;
+mod arcade_meta;
+mod arcade_stubs;
 mod casino;
 mod farm;
 mod farm_actions;
@@ -11,6 +15,8 @@ mod fun;
 mod helpers;
 mod overview;
 
+use arcade_claim::*;
+use arcade_meta::*;
 use casino::*;
 use farm::*;
 use farm_actions::*;
@@ -31,4 +37,7 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(farm_harvest)
         .service(fun_polls)
         .service(fun_vote)
+        .service(arcade_meta)
+        .service(claim_quest)
+        .service(claim_season)
 }

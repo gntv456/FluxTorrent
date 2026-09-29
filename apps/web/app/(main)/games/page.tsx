@@ -4,6 +4,10 @@ import { getDict } from "@/i18n/server";
 import { requireModule } from "@/components/module-gate";
 import { FunBox } from "@/components/fun-box";
 import { fmtMult, scratchPoolText, type ScratchPrize } from "@/lib/games";
+import {
+  ArcadeMeta,
+  type ArcadeMeta as ArcadeMetaData,
+} from "@/components/arcade/arcade-meta";
 
 interface HallOverview {
   scratch?: { prizes: ScratchPrize[] };
@@ -30,6 +34,10 @@ export default async function GamesPage() {
     ? Math.max(...ov.jgg.prizes.map((p) => p.payout))
     : 50;
   const winMult = ov?.bigsmall?.win_mult ?? 1.9;
+  // 大厅游戏表面（真数据；未登录/失败静默隐藏——不阻塞大厅选玩）
+  const arcadeMeta = await api
+    .get<ArcadeMetaData>("/api/v1/games/arcade-meta")
+    .catch(() => null);
 
   const cards = [
     {
@@ -111,6 +119,8 @@ export default async function GamesPage() {
           </Link>
         ))}
       </div>
+
+      {arcadeMeta && <ArcadeMeta initial={arcadeMeta} />}
 
       <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-xs text-ink">
         {dict.games.rule.replace("{magic}", currency)}

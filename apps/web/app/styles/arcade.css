@@ -1,0 +1,140 @@
+/* 娱乐屋「大厅游戏表面」（2026-09-29）
+   纹章预算环 / 周常任务条 / 票根册 / 赛季星轨 / 外观货架 / 门禁自检。
+   令牌全部取自 TIDE 设计系统，零硬编码色值。
+   ⚠️ 尺寸类属性单独成规则，不并入布局合并选择器 —— 合并曾把描金框悄悄
+   限到 560px（历史坑）。 */
+
+.arc { display: flex; flex-direction: column; gap: 16px; }
+
+.arc-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.arc-hd h2 { font-size: 18px; font-weight: 800; }
+
+.arc-gate {
+  border-radius: 999px; padding: 4px 12px; font-size: 12px;
+  font-weight: 700; border: 1px solid var(--border-deep);
+  background: var(--surface-card);
+}
+.arc-gate.ok { color: var(--mint); border-color: var(--mint); }
+.arc-gate.warn { color: var(--coral); border-color: var(--coral); }
+
+/* ── 纹章预算环 ── */
+.arc-crest {
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 16px;
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+  background: var(--surface-card); box-shadow: var(--shadow-card);
+  padding: 18px 20px;
+}
+.arc-crest-side { display: flex; flex-direction: column; gap: 2px; }
+.arc-crest-side.r { text-align: right; align-items: flex-end; }
+.arc-bignum { font-size: 26px; font-weight: 900; line-height: 1.1; }
+.arc-bignum small { font-size: 14px; font-weight: 700; opacity: .6; }
+.arc-qsub { font-size: 12px; color: var(--sub, var(--text-sub)); }
+
+.arc-ring {
+  --p: 0;
+  width: 108px; height: 108px; border-radius: 50%;
+  display: grid; place-items: center; position: relative;
+  background: conic-gradient(
+    var(--sky-deep) calc(var(--p) * 1turn),
+    color-mix(in srgb, var(--sky-deep) 14%, transparent) 0);
+}
+.arc-ring::after {
+  content: ""; position: absolute; inset: 10px; border-radius: 50%;
+  background: var(--surface-card);
+}
+.arc-ring b { position: relative; font-size: 18px; font-weight: 900; }
+
+.arc-note {
+  font-size: 11px; color: var(--sub, var(--text-sub));
+  text-align: center; margin-top: 8px;
+}
+
+/* ── 通用小节 ── */
+.arc-sec { display: flex; flex-direction: column; gap: 10px; }
+.arc-sec > h3 { font-size: 14px; font-weight: 800; }
+.arc-sec .num { font-weight: 900; }
+
+/* ── 周常任务条 ── */
+.arc-q {
+  display: grid; grid-template-columns: 1fr auto auto;
+  align-items: center; gap: 10px;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 8px 12px; background: var(--surface-raised);
+}
+.arc-q.ready { background: var(--grad-aurora); color: #fff; }
+.arc-q .bar {
+  height: 8px; border-radius: 999px; overflow: hidden;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+.arc-q .bar > i { display: block; height: 100%; background: currentColor; }
+.arc-q .val { font-size: 12px; font-weight: 800; }
+
+/* ── 票根册 ── */
+.arc-album {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+}
+.arc-stub {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 10px 8px; text-align: center;
+  background: var(--surface-card);
+}
+.arc-stub.locked { filter: grayscale(1); opacity: .55; }
+.arc-stub .ic { font-size: 22px; }
+.arc-stub .nm { font-size: 12px; font-weight: 700; margin-top: 4px; }
+.arc-stub .ct { font-size: 10px; color: var(--sub, var(--text-sub)); }
+
+/* ── 赛季星轨 ── */
+.arc-track { display: flex; align-items: center; gap: 6px; overflow-x: auto; }
+.arc-node {
+  width: 34px; height: 34px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; font-size: 13px;
+  border: 2px solid var(--border-deep); background: var(--surface-card);
+}
+.arc-node.reached { border-color: var(--sky-deep); color: var(--sky-deep); }
+.arc-node.ready { background: var(--grad-aurora); color: #fff;
+  border-color: transparent; }
+.arc-node.lock { color: var(--sub, var(--text-sub)); }
+.arc-link { width: 18px; height: 2px; background: var(--border-deep); }
+.arc-lab {
+  font-size: 10px; text-align: center; color: var(--sub, var(--text-sub));
+}
+
+/* ── 外观货架 ── */
+.arc-shelf {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.arc-goods {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 10px; background: var(--surface-card); position: relative;
+}
+.arc-goods .zero {
+  position: absolute; top: 8px; right: 8px; font-size: 10px;
+  font-weight: 800; color: var(--mint);
+}
+.arc-goods .gn { font-size: 13px; font-weight: 700; }
+.arc-goods .gv { font-size: 11px; color: var(--sub, var(--text-sub)); }
+
+/* ── 门禁自检 ── */
+.arc-checks { display: flex; flex-direction: column; gap: 6px; }
+.arc-chk { display: flex; gap: 8px; font-size: 12px; align-items: baseline; }
+.arc-chk .dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+  background: var(--mint);
+}
+.arc-chk .dot.r { background: var(--coral); }
+.arc-chk .why { color: var(--sub, var(--text-sub)); font-size: 11px; }
+
+.arc-btn {
+  min-height: 32px; border-radius: 999px; padding: 0 14px;
+  font-size: 12px; font-weight: 800;
+  border: 1px solid var(--border-deep); background: var(--surface-card);
+}
+.arc-btn.primary { background: var(--grad-aurora); color: #fff;
+  border-color: transparent; }
+.arc-btn:disabled { opacity: .5; }
