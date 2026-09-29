@@ -14,14 +14,28 @@ fn bet_validation() {
 const TICKET: i64 = 100;
 
 fn magic(label: &str, weight: u32, multiples: i64) -> PoolEntry {
-    PoolEntry { label: label.to_string(), weight, kind: EntryKind::Magic { multiples } }
-}
-
-fn item(label: &str, weight: u32, key: &str, qty: i32, anchor: i64) -> PoolEntry {
     PoolEntry {
         label: label.to_string(),
         weight,
-        kind: EntryKind::Item { item_key: key.to_string(), qty, anchor },
+        kind: EntryKind::Magic { multiples },
+    }
+}
+
+fn item(
+    label: &str,
+    weight: u32,
+    key: &str,
+    qty: i32,
+    anchor: i64,
+) -> PoolEntry {
+    PoolEntry {
+        label: label.to_string(),
+        weight,
+        kind: EntryKind::Item {
+            item_key: key.to_string(),
+            qty,
+            anchor,
+        },
     }
 }
 
@@ -57,7 +71,11 @@ fn pool_item_entry_is_valued_by_anchor_not_price() {
     ];
     validate_pool(&p, TICKET).expect("合法");
     // Σ(权重×价值)/Σ权重/票价 = (10×900)/1000/100 = 0.09
-    assert!((pool_ev(&p, TICKET) - 0.09).abs() < 1e-9, "物品位 EV: {}", pool_ev(&p, TICKET));
+    assert!(
+        (pool_ev(&p, TICKET) - 0.09).abs() < 1e-9,
+        "物品位 EV: {}",
+        pool_ev(&p, TICKET)
+    );
 }
 
 #[test]
@@ -65,34 +83,54 @@ fn pool_gate_rejects_every_backdoor_by_name() {
     // ① 抬经济奖权重 -> EV 破 1
     let mut p = seeded_pool();
     p[7].weight = 40;
-    assert!(matches!(validate_pool(&p, TICKET), Err(PoolError::ExpectedValueNotBelowOne(_))));
+    assert!(matches!(
+        validate_pool(&p, TICKET),
+        Err(PoolError::ExpectedValueNotBelowOne(_))
+    ));
     // ② 抬倍数
     let mut p = seeded_pool();
     p[7].kind = EntryKind::Magic { multiples: 900 };
-    assert!(matches!(validate_pool(&p, TICKET), Err(PoolError::ExpectedValueNotBelowOne(_))));
+    assert!(matches!(
+        validate_pool(&p, TICKET),
+        Err(PoolError::ExpectedValueNotBelowOne(_))
+    ));
     // ③ 空池
     assert_eq!(validate_pool(&[], TICKET), Err(PoolError::Empty));
     // ④ 零权重档
     let mut p = seeded_pool();
     p[2].weight = 0;
-    assert_eq!(validate_pool(&p, TICKET), Err(PoolError::ZeroWeight("2x 魔力".into())));
+    assert_eq!(
+        validate_pool(&p, TICKET),
+        Err(PoolError::ZeroWeight("2x 魔力".into()))
+    );
     // ⑤ 中性池 EV 恰为 1 也拒
-    assert!(matches!(validate_pool(&[magic("a", 1, 2)], TICKET),
-                     Err(PoolError::ExpectedValueNotBelowOne(_))));
+    assert!(matches!(
+        validate_pool(&[magic("a", 1, 2)], TICKET),
+        Err(PoolError::ExpectedValueNotBelowOne(_))
+    ));
     // ⑥ 物品位引用目录里不存在/停用/无折算价的物品 —— anchor<=0 即空头承诺
     assert_eq!(
-        validate_pool(&[magic("b", 999, 0), item("空头券", 1, "gone", 1, 0)], TICKET),
+        validate_pool(
+            &[magic("b", 999, 0), item("空头券", 1, "gone", 1, 0)],
+            TICKET
+        ),
         Err(PoolError::UnknownItem("gone".into()))
     );
     // ⑦ 票价非正：EV 的分母，0 会让「返还率」变成除零
-    assert_eq!(validate_pool(&seeded_pool(), 0), Err(PoolError::BadTicket(0)));
+    assert_eq!(
+        validate_pool(&seeded_pool(), 0),
+        Err(PoolError::BadTicket(0))
+    );
 }
 
 #[test]
 fn pool_ev_is_invariant_to_weight_scaling() {
     // 同比例放大权重不改变 EV —— 防「加一档稀释」被当成降 EV
     let a = seeded_pool();
-    let b: Vec<PoolEntry> = a.iter().map(|e| magic(&e.label, e.weight * 7, m(e))).collect();
+    let b: Vec<PoolEntry> = a
+        .iter()
+        .map(|e| magic(&e.label, e.weight * 7, m(e)))
+        .collect();
     assert!((pool_ev(&a, TICKET) - pool_ev(&b, TICKET)).abs() < 1e-9);
 }
 
@@ -178,7 +216,11 @@ fn scratch_expected_value_below_one() {
     let over = ScratchOdds::try_from_parts(60, 30, 15, 8, 2);
     assert!(over.is_err(), "前四档合计 113 >= 100 必须被拒");
     let hot = ScratchOdds::try_from_parts(20, 30, 15, 20, 15);
-    assert!(matches!(hot, Err(ref m) if m.contains("增发")), "EV>=1 必须被拒: {:?}", hot);
+    assert!(
+        matches!(hot, Err(ref m) if m.contains("增发")),
+        "EV>=1 必须被拒: {:?}",
+        hot
+    );
     // 10x 档留 0（或与前四档合计不为 100）→ 按余数推导，总量恒 100。
     // 这条保留：它是文档化的「只配前三档」设计，不是偷改玩家看得见的赔率。
     let auto = ScratchOdds::try_from_parts(50, 30, 15, 3, 0).expect("合法");
