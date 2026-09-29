@@ -138,3 +138,28 @@
 .arc-btn.primary { background: var(--grad-aurora); color: #fff;
   border-color: transparent; }
 .arc-btn:disabled { opacity: .5; }
+
+/* ── 玩法舞台外框（绘制底图 + 压暗罩 + 描金角）──
+   底图在 public/games/stage-*.png；四玩法页共用 game-stage.tsx。 */
+.gs-stage {
+  position: relative; overflow: hidden;
+  border-radius: var(--r-lg); border: 1px solid var(--border-deep);
+}
+.gs-art {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+}
+.gs-scrim {
+  position: absolute; inset: 0;
+  background: radial-gradient(
+    75% 65% at 50% 50%, rgba(7, 10, 21, .12), rgba(7, 10, 21, .62));
+}
+.gs-inner { position: relative; z-index: 1; width: 100%; height: 100%; }
+.gs-corner {
+  position: absolute; width: 18px; height: 18px; z-index: 2;
+  border: 2px solid color-mix(in srgb, var(--warning) 70%, transparent);
+}
+.gs-corner.tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+.gs-corner.tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; }
+.gs-corner.bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; }
+.gs-corner.br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }

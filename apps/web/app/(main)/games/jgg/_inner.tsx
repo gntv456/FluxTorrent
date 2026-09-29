@@ -9,6 +9,7 @@ import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
 import { JggGrid, type JggPrize } from "@/components/game/jgg-grid";
+import { GameStage } from "@/components/game/game-stage";
 
 export interface Overview {
   me?: {
@@ -158,18 +159,23 @@ export default function JggPage({
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
-          <JggGrid
-            prizes={prizes}
-            ticket={ticket}
-            resultIndex={res?.index ?? null}
-            busy={busy}
-            disabled={prizes.length === 0}
-            reduced={reduced}
-            onDraw={draw}
-            onLanded={onLanded}
-            goLabel={tj.go}
-            drawingLabel={tj.drawing}
-          />
+          <GameStage
+            art="/games/stage-jgg.jpg"
+            className="w-full max-w-[460px] p-4"
+          >
+            <JggGrid
+              prizes={prizes}
+              ticket={ticket}
+              resultIndex={res?.index ?? null}
+              busy={busy}
+              disabled={prizes.length === 0}
+              reduced={reduced}
+              onDraw={draw}
+              onLanded={onLanded}
+              goLabel={tj.go}
+              drawingLabel={tj.drawing}
+            />
+          </GameStage>
           <ResultFlash
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tj.drawing : null)}

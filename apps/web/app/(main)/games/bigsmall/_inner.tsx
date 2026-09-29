@@ -9,6 +9,7 @@ import { fmtCur } from "@/i18n/config";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
 import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
 import { RunwayOdometer } from "@/components/game/runway";
+import { GameStage } from "@/components/game/game-stage";
 
 export interface Overview {
   max_bet: number;
@@ -177,7 +178,12 @@ export default function BigSmallPage({
       }
       stage={
         <div className="flex w-full flex-col items-center gap-2">
-          <RunwayOdometer number={num} spinning={busy} reduced={reduced} />
+          <GameStage
+            art="/games/stage-bigsmall.jpg"
+            className="h-[200px] w-full max-w-[460px]"
+          >
+            <RunwayOdometer number={num} spinning={busy} reduced={reduced} />
+          </GameStage>
           <ResultFlash
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tg.pending : null)}

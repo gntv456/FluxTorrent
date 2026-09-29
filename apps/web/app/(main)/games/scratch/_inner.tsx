@@ -9,6 +9,7 @@ import { fmtCur } from "@/i18n/config";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
 import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
 import { ScratchCanvas } from "@/components/game/scratch-canvas";
+import { GameStage } from "@/components/game/game-stage";
 import { scratchPoolText, type ScratchPrize } from "@/lib/games";
 
 export interface Overview {
@@ -197,7 +198,10 @@ export default function ScratchPage({
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
-          <div className="relative h-[170px] w-full max-w-[300px] overflow-hidden rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]">
+          <GameStage
+            art="/games/stage-scratch.jpg"
+            className="h-[210px] w-full max-w-[460px]"
+          >
             <div className="flex h-full flex-col items-center justify-center">
               {prizeFace()}
             </div>
@@ -209,7 +213,7 @@ export default function ScratchPage({
               onRevealed={onRevealed}
               label={ts.coatLabel}
             />
-          </div>
+          </GameStage>
           <p className="text-xs text-sub">
             {phase === "idle" && !err
               ? ts.hintIdle
