@@ -138,7 +138,7 @@ def main():
     check("复原成功", st == 200)
     check("复原后与基线完全一致", pool_of(tok) == before, pool_of(tok))
 
-    print("\n结果：%d 项断言，失败 %d" % (0, len(fails)))
+    print("\n结果：%d 项断言，失败 %d" % (n_checks[0], len(fails)))
     sys.exit(1 if fails else 0)
 
 
