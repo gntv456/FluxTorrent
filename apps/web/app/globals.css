@@ -21,3 +21,6 @@
 @import "./styles/motion-tide.css";
 /* 勋章墙 / 勋章殿堂 / 魔力商店三页域（2026-09-23 改版；从 pages.css 拆出的新域） */
 @import "./styles/medal-shop.css";
+
+/* 娱乐屋「大厅游戏表面」域（2026-09-29；纹章环/周常/票根册/星轨/货架/门禁） */
+@import "./styles/arcade.css";
