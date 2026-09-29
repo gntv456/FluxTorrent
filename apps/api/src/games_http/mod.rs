@@ -48,4 +48,5 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(claim_season)
         .service(arcade_overview)
         .service(arcade_pool_save)
+        .service(arcade_item_save)
 }

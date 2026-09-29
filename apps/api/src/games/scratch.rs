@@ -11,6 +11,7 @@ pub struct ScratchOutcome {
 
 /// 刮刮乐档位概率（百分比整数）。0109 设置键 `games_scratch_empty_pct/half_pct/one_pct`
 /// 可配前三档，剩余额度按 8:2 分给 2x/10x（与缺省表一致），见 `ScratchOdds::from_parts`。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScratchOdds {
     pub empty: u32,
     pub half: u32,
@@ -35,17 +36,23 @@ impl ScratchOdds {
     /// - EV 复算 ≥ 1 → 整体回落缺省（P2 运行时防线）：设置键是管理员可写参数，
     ///   单测只锁死 DEFAULT 常量。余数档设计可被配置放大为增发开关——
     ///   如 (0,0,0,99,·) → two=99%/ten=1%，EV = 0.99×2 + 0.01×10 = 2.08。
-    pub fn from_parts(
+    /// 由设置键构造赔率表。**坏配置一律 Err，不再静默回落 DEFAULT** ——
+    /// 回落等于把「运营改错一个字」伪装成「配置生效了」，而 EV>=1 的表开抽一秒就在增发。
+    /// 保留的是「余数档自动补齐」这一条：它是文档化的设计（只配前三档），
+    /// 不是把玩家看得见的赔率偷偷改掉。
+    pub fn try_from_parts(
         empty: i64,
         half: i64,
         one: i64,
         two: i64,
         ten: i64,
-    ) -> ScratchOdds {
+    ) -> Result<ScratchOdds, String> {
         let (e, h, o, t) = (empty.max(0), half.max(0), one.max(0), two.max(0));
         let sum4 = e + h + o + t;
         if sum4 >= 100 {
-            return ScratchOdds::DEFAULT;
+            return Err(format!(
+                "前三档 + 空档合计 {sum4} >= 100，没有余量分给 2x/10x，赔率表无法成立"
+            ));
         }
         let ten_eff = if ten > 0 && sum4 + ten == 100 {
             ten
@@ -55,15 +62,18 @@ impl ScratchOdds {
         // 半点整数口径：EV(每注) = Σ(概率×倍率) = (h×0.5 + o×1 + t×2 + ten×10) / 100；
         // 放大 200 倍避免浮点：h + 2o + 4t + 20ten < 200 ⟺ EV < 1
         if h + 2 * o + 4 * t + 20 * ten_eff >= 200 {
-            return ScratchOdds::DEFAULT;
+            let ev = (h + 2 * o + 4 * t + 20 * ten_eff) as f64 / 200.0;
+            return Err(format!(
+                "综合返还 {ev:.3} >= 1：刮刮乐在增发而非回收，拒绝该赔率表（空{e} 半{h} 一{o} 二{t} 十{ten_eff}）"
+            ));
         }
-        ScratchOdds {
+        Ok(ScratchOdds {
             empty: e as u32,
             half: h as u32,
             one: o as u32,
             two: t as u32,
             ten: ten_eff as u32,
-        }
+        })
     }
 }
 

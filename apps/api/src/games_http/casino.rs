@@ -12,8 +12,8 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::helpers::{
-    bigsmall_mult_permille, check_bet, check_rate, eco_i64, idem_key, jgg_pool,
-    scratch_odds, BetReq,
+    bigsmall_mult_permille, check_bet, check_rate, eco_i64, grant_item, idem_key, load_pool,
+    scratch_odds, BetReq, GrantOutcome,
 };
 
 #[post("/games/scratch")]
@@ -47,7 +47,7 @@ pub(super) async fn scratch(
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
     }
     // 概率档位读 0109 设置键（缺省回落 45/30/15/8/2）
-    let odds = scratch_odds(&state).await;
+    let odds = scratch_odds(&state).await?;
     let outcome = games::scratch_play_with(body.bet, &odds);
     if outcome.payout > 0 {
         let win_idem = format!("game-scratch-win:{}", idem);
@@ -147,7 +147,7 @@ pub(super) async fn jgg(
     let auth = require_auth(&req, &state).await?;
     // 风控一致性：票价同样受「单次下注上限」约束（旧实现绕过 games_max_bet，
     // 站长把上限调到 100 以下时仍能抽走 100）。先校验再计数，避免白耗次数。
-    let pool = jgg_pool(&state).await?;
+    let pool = load_pool(&state.repo.db, "jgg").await?;
     let ticket = pool.ticket;
     let max_bet = eco_i64(&state, "games_max_bet", games::MAX_BET).await;
     if ticket > max_bet {
@@ -167,20 +167,38 @@ pub(super) async fn jgg(
     ) {
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
     }
-    let draw = games::jgg_draw_from(&pool.prizes)
+    let draw = games::draw_entry(&pool.entries)
         .ok_or_else(|| DomainError::Validation("奖池不可抽样".into()))?;
-    let payout = ticket * draw.prize.payout;
-    if payout > 0 {
-        let win_idem = format!("game-jgg-win:{}", idem);
-        earn_spark(&state.repo.db, auth.id, payout, "game", &win_idem).await?;
+    // 魔力位直接入账；物品位走发放账（库存 / 每人上限 / 幂等同一事务判），
+    // 发不出去时按 FALLBACK_MULT 折魔力 —— 这条回落路径已被 EV 计入，不是额外成本。
+    let win_idem = format!("game-jgg-win:{}", idem);
+    let (spark, value, fell_back) = match &draw.prize.kind {
+        games::EntryKind::Magic { multiples } => (ticket * multiples, ticket * multiples, None),
+        games::EntryKind::Item { item_key, qty, anchor } => match grant_item(
+            &state.repo.db, auth.id, item_key, *qty, "jgg", &win_idem,
+        )
+        .await?
+        {
+            GrantOutcome::Granted => (0, anchor * i64::from(*qty), None),
+            GrantOutcome::FellBack(why) => {
+                let p = ticket * games::FALLBACK_MULT;
+                (p, p, Some(why))
+            }
+        }
+    };
+    if spark > 0 {
+        earn_spark(&state.repo.db, auth.id, spark, "game", &win_idem).await?;
     }
     state.repo.audit(Some(auth.id), "game.jgg", None).await;
     Ok(ok(serde_json::json!({
         "index": draw.index,
         "prize": draw.prize.label,
-        "payout": payout,
+        "kind": if fell_back.is_some() { "fallback" } else { match draw.prize.kind { games::EntryKind::Magic{..} => "magic", _ => "item" } },
+        "fell_back": fell_back,
+        "spark": spark,
+        "value": value,
         "ticket": ticket,
-        "net": payout - ticket,
+        "net": value - ticket,
     })))
 }
 
