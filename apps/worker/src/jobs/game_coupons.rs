@@ -22,7 +22,9 @@ pub async fn grant_food_coupons(db: &PgPool) -> anyhow::Result<u64> {
             ), 6) AS thr
         ),
         today AS (
-            SELECT date_trunc('day', now() AT TIME ZONE 'UTC' + interval '8 hours') AS start,
+            SELECT date_trunc('day',
+                               now() AT TIME ZONE 'UTC' + interval '8 hours')
+                   AS start,
                    (now() AT TIME ZONE 'UTC' + interval '8 hours')::date AS d
         ),
         seed_hours AS (
