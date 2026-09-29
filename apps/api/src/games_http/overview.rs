@@ -24,7 +24,9 @@ pub(super) async fn games_overview(
         eco_i64(&state, "games_max_plays_per_hour", MAX_PLAYS_PER_HOUR).await;
     let odds = scratch_odds(&state).await;
     let win_mult = bigsmall_mult_permille(&state).await;
-    let jgg_prizes: Vec<_> = games::JGG_PRIZES
+    let pool = super::helpers::jgg_pool(&state).await?;
+    let jgg_prizes: Vec<_> = pool
+        .prizes
         .iter()
         .map(|p| {
             serde_json::json!({
@@ -48,7 +50,7 @@ pub(super) async fn games_overview(
             "win_mult": win_mult as f64 / 1000.0,
             "expected_value": games::bigsmall_expected_value(win_mult),
             "rule": "1-49 小 · 52-100 大 · 50/51 平局返本 · 猜中按赔率派彩" },
-        "jgg": { "name": "九宫格抽奖", "ticket": games::JGG_TICKET, "prizes": jgg_prizes },
+        "jgg": { "name": "九宫格抽奖", "ticket": pool.ticket, "prizes": jgg_prizes },
         "farm": { "name": "农场", "slots": 6, "market_refresh": "每日 0/4/8/12/16/20 点", "volatility": "±50%" },
         "funvote": { "name": "趣味盒投票", "cost": "1 魔力/票", "rule": "一人一票" },
         "rate_limit": format!("每人每小时 {max_plays} 次"),

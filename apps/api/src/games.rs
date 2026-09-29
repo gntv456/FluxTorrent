@@ -31,7 +31,7 @@ pub use farm::{
     market_window_start, market_window_start_with, roll_double,
 };
 #[allow(unused_imports)]
-pub use jgg::{jgg_draw, JggDraw, JggPrize, JGG_PRIZES, JGG_TICKET};
+pub use jgg::{jgg_draw_from, jgg_ev, validate_pool, JggDraw, JggPrize, PoolError};
 #[allow(unused_imports)]
 pub use scratch::{
     scratch_play, scratch_play_with, ScratchOdds, ScratchOutcome,

@@ -9,6 +9,37 @@ use crate::errors::{DomainError, DomainResult};
 use crate::games::{self, MAX_PLAYS_PER_HOUR};
 use crate::state::AppState;
 
+/// 九宫格奖池：票价 + 档位。两者同源一行，避免「票价在表里、档位在表里、却各读一处」。
+pub(super) struct JggPool {
+    pub ticket: i64,
+    pub prizes: Vec<games::JggPrize>,
+}
+
+/// 从 arcade_pools / arcade_pool_entries 加载奖池并**关闸校验**。
+/// 不合法直接 Err（拒绝服务）—— 不猜旧值、不回落缺省：静默回落等于把
+/// 「运营改错一个字」伪装成「配置生效了」，而 EV>=1 的池子开一秒就在增发。
+pub(super) async fn jgg_pool(
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> Result<JggPool, DomainError> {
+    let rows: Vec<(i64, String, i32, i64)> = sqlx::query_as(
+        "SELECT p.ticket, e.label, e.weight, e.payout            FROM arcade_pools p            JOIN arcade_pool_entries e ON e.pool_key = p.key           WHERE p.game = 'jgg' AND p.enabled AND e.enabled           ORDER BY p.sort, e.sort",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(anyhow::Error::from(e)))?;
+    let ticket = rows.first().map(|r| r.0).unwrap_or(0);
+    let prizes: Vec<games::JggPrize> = rows
+        .into_iter()
+        .map(|(_, label, weight, payout)| games::JggPrize {
+            label,
+            weight: u32::try_from(weight.max(0)).unwrap_or(u32::MAX),
+            payout,
+        })
+        .collect();
+    games::validate_pool(&prizes).map_err(|e| DomainError::Validation(e.to_string()))?;
+    Ok(JggPool { ticket, prizes })
+}
+
 /// 读取游戏经济设置键（0109 参数化；缺省回落代码默认值 T3）
 pub(super) async fn eco_i64(
     state: &web::Data<std::sync::Arc<AppState>>,

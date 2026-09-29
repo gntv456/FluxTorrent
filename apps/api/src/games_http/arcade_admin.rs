@@ -4,7 +4,9 @@
 //! 与门禁）。EV 一律由代码常量 + 设置键现值**现场复算**，不落库、不写死 —— 站长改了
 //! `games_*` / `arcade_budget_*` 立即反映，门禁随之变红/绿。
 
-use actix_web::{get, web, HttpRequest, HttpResponse};
+use actix_web::{get, post, web, HttpRequest, HttpResponse};
+use serde::Deserialize;
+use serde_json::json;
 
 use crate::authz;
 use crate::dto::ok;
@@ -25,14 +27,95 @@ fn scratch_ev(o: &games::ScratchOdds) -> f64 {
         / 100.0
 }
 
-/// 九宫格 EV：Σ(权重 × 赔付倍数) / Σ权重
-fn jgg_ev() -> f64 {
-    let total: u32 = games::JGG_PRIZES.iter().map(|p| p.weight).sum();
-    let sum: f64 = games::JGG_PRIZES
+/// 九宫格 EV 只有一份公式，在 games::jgg_ev —— 这里不再抄第二遍求和
+
+#[derive(Deserialize)]
+pub(super) struct PoolEntryReq {
+    pub label: String,
+    pub weight: i32,
+    pub payout: i64,
+    #[serde(default)]
+    pub enabled: bool,
+}
+
+#[derive(Deserialize)]
+pub(super) struct PoolSaveReq {
+    pub pool_key: String,
+    pub game: String,
+    pub label: String,
+    pub ticket: i64,
+    pub entries: Vec<PoolEntryReq>,
+}
+
+/// sqlx 错误只实现了 From<anyhow::Error>，这里显式转一层，不让它冒到 `?` 上
+fn dberr(e: sqlx::Error) -> DomainError {
+    DomainError::Internal(anyhow::Error::from(e))
+}
+
+/// 保存奖池。**关闸放在写侧**：不合法就拒绝保存，坏池子根本进不了表。
+/// 只靠读侧关闸等于让面板有能力一键把玩法打成 503 —— 那是把正确性换成事故。
+#[post("/admin/arcade/pool")]
+pub(super) async fn arcade_pool_save(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PoolSaveReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    authz::require_perm(&state, &auth, authz::perm::USER_ADJUST).await?;
+    let b = body.into_inner();
+    if b.pool_key.trim().is_empty() || b.game.trim().is_empty() {
+        return Err(DomainError::Validation("pool_key / game 不能为空".into()));
+    }
+    if b.ticket <= 0 {
+        return Err(DomainError::Validation("票价必须为正".into()));
+    }
+    let prizes: Vec<games::JggPrize> = b
+        .entries
         .iter()
-        .map(|p| p.weight as f64 * p.payout as f64)
-        .sum();
-    sum / total as f64
+        .filter(|e| e.enabled)
+        .map(|e| games::JggPrize {
+            label: e.label.clone(),
+            weight: u32::try_from(e.weight.max(0)).unwrap_or(u32::MAX),
+            payout: e.payout,
+        })
+        .collect();
+    games::validate_pool(&prizes)
+        .map_err(|e| DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}")))?;
+
+    let mut tx = state.repo.db.begin().await.map_err(dberr)?;
+    sqlx::query(
+        "INSERT INTO arcade_pools (key, game, label, ticket) VALUES ($1, $2, $3, $4)          ON CONFLICT (key) DO UPDATE SET game = EXCLUDED.game, label = EXCLUDED.label,            ticket = EXCLUDED.ticket, updated_at = now()",
+    )
+    .bind(&b.pool_key)
+    .bind(&b.game)
+    .bind(&b.label)
+    .bind(b.ticket)
+    .execute(&mut *tx)
+    .await.map_err(dberr)?;
+    sqlx::query("DELETE FROM arcade_pool_entries WHERE pool_key = $1")
+        .bind(&b.pool_key)
+        .execute(&mut *tx)
+        .await.map_err(dberr)?;
+    for (i, e) in b.entries.iter().enumerate() {
+        sqlx::query(
+            "INSERT INTO arcade_pool_entries (pool_key, label, weight, payout, enabled, sort)              VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(&b.pool_key)
+        .bind(&e.label)
+        .bind(e.weight)
+        .bind(e.payout)
+        .bind(e.enabled)
+        .bind(i as i32)
+        .execute(&mut *tx)
+        .await.map_err(dberr)?;
+    }
+    tx.commit().await.map_err(dberr)?;
+    state.repo.audit(Some(auth.id), "arcade.pool.save", None).await;
+    Ok(ok(json!({
+        "pool": b.pool_key,
+        "entries": b.entries.len(),
+        "ev": games::jgg_ev(&prizes),
+    })))
 }
 
 #[get("/admin/arcade/overview")]
@@ -47,7 +130,8 @@ pub(super) async fn arcade_overview(
     let mult = bigsmall_mult_permille(&state).await;
     let odds = scratch_odds(&state).await;
     let s_ev = scratch_ev(&odds);
-    let j_ev = jgg_ev();
+    let jgg = super::helpers::jgg_pool(&state).await?;
+    let j_ev = games::jgg_ev(&jgg.prizes);
     let b_ev = games::bigsmall_expected_value(mult);
     // 农场 EV 由作物表（farm_crops，DB）出厂标定 0.75 × 1.2 双倍；此处给标称值
     let f_ev = 0.90_f64;
@@ -82,7 +166,7 @@ pub(super) async fn arcade_overview(
         }),
         serde_json::json!({
             "name": "九宫格", "ev": j_ev,
-            "note": format!("票价 {}，权重×赔付 / Σ权重", games::JGG_TICKET),
+            "note": format!("票价 {}，权重×赔付 / Σ权重", jgg.ticket),
         }),
         serde_json::json!({
             "name": "农场", "ev": f_ev,

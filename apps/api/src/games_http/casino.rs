@@ -12,7 +12,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::helpers::{
-    bigsmall_mult_permille, check_bet, check_rate, eco_i64, idem_key,
+    bigsmall_mult_permille, check_bet, check_rate, eco_i64, idem_key, jgg_pool,
     scratch_odds, BetReq,
 };
 
@@ -147,7 +147,8 @@ pub(super) async fn jgg(
     let auth = require_auth(&req, &state).await?;
     // 风控一致性：票价同样受「单次下注上限」约束（旧实现绕过 games_max_bet，
     // 站长把上限调到 100 以下时仍能抽走 100）。先校验再计数，避免白耗次数。
-    let ticket = games::JGG_TICKET;
+    let pool = jgg_pool(&state).await?;
+    let ticket = pool.ticket;
     let max_bet = eco_i64(&state, "games_max_bet", games::MAX_BET).await;
     if ticket > max_bet {
         return Err(DomainError::Validation(format!(
@@ -166,7 +167,8 @@ pub(super) async fn jgg(
     ) {
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
     }
-    let draw = games::jgg_draw();
+    let draw = games::jgg_draw_from(&pool.prizes)
+        .ok_or_else(|| DomainError::Validation("奖池不可抽样".into()))?;
     let payout = ticket * draw.prize.payout;
     if payout > 0 {
         let win_idem = format!("game-jgg-win:{}", idem);
