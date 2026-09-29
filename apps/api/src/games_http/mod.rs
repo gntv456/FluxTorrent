@@ -14,6 +14,7 @@ mod farm;
 mod farm_actions;
 mod fun;
 mod helpers;
+mod linkage;
 mod overview;
 
 use arcade_admin::*;
@@ -23,6 +24,7 @@ use casino::*;
 use farm::*;
 use farm_actions::*;
 use fun::*;
+use linkage::*;
 use overview::*;
 
 pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
@@ -39,6 +41,8 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(farm_harvest)
         .service(fun_polls)
         .service(fun_vote)
+        .service(linkage_status)
+        .service(use_coupon)
         .service(arcade_meta)
         .service(claim_quest)
         .service(claim_season)
