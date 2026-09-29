@@ -2649,6 +2649,24 @@ const enBase: Omit<
    * key is missing, so a brand-new tool never renders blank.
    */
   adminArcade: {
+    items: {
+      title: "Item catalog",
+      colIcon: "Icon",
+      colName: "Name",
+      colKind: "kind",
+      colAnchor: "Anchor value",
+      colStock: "Global stock",
+      colPerUser: "Per-user cap",
+      colUnlimited: "Unlimited",
+      colOn: "On",
+      unlimited: "unlimited",
+      save: "Save",
+      saving: "Saving…",
+      saved: "Saved {k}",
+      note: "anchor is derived (shop price or best redeemable value) and stays read-only here; changing it moves the EV of every pool that references it, so the server revalidates across pools and rolls back.",
+      loadFail: "Catalog unavailable",
+      saveFail: "Save failed",
+    },
     pool: {
       title: "Prize pool editor (9-grid)",
       ticket: "Ticket",

@@ -4,10 +4,11 @@
  *  EV 由后端按代码常量 + 设置键现值现场复算 —— 站长改 games_* / arcade_budget_*
  *  后重进本页即见变化，门禁红绿随之更新。 */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { api } from "@/lib/api-client";
 import { AdminArcadePool } from "./admin-arcade-pool";
+import { AdminArcadeItems } from "./admin-arcade-items";
 
 interface EvRow {
   name: string;
@@ -41,12 +42,18 @@ export function AdminArcade() {
   const t = dict.adminArcade;
   const [d, setD] = useState<Overview | null>(null);
 
-  useEffect(() => {
-    api
-      .get<Overview>("/api/v1/admin/arcade/overview")
-      .then(setD)
-      .catch(() => setD(null));
+  const load = useCallback(async () => {
+    try {
+      setD(
+        await api.get<Overview>("/api/v1/admin/arcade/overview"),
+      );
+    } catch {
+      setD(null);
+    }
   }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   if (!d) return <p className="text-sm text-sub">{t.loading}</p>;
 
@@ -56,7 +63,12 @@ export function AdminArcade() {
 
       {/* 奖池写侧：面板改的就是玩法读的那张表，EV 闸在保存前 */}
       <div className={CARD}>
-        <AdminArcadePool />
+        <AdminArcadePool onChanged={load} />
+      </div>
+
+      {/* 物品目录：anchor 只读，改派生价由服务端跨池回查把关 */}
+      <div className={CARD}>
+        <AdminArcadeItems onChanged={load} />
       </div>
 
       {/* 三口径 EV 对照 */}
