@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { api } from "@/lib/api-client";
+import { AdminArcadePool } from "./admin-arcade-pool";
 
 interface EvRow {
   name: string;
@@ -52,6 +53,11 @@ export function AdminArcade() {
   return (
     <section className="flex flex-col gap-4">
       <h2 className="font-display text-lg">{t.title}</h2>
+
+      {/* 奖池写侧：面板改的就是玩法读的那张表，EV 闸在保存前 */}
+      <div className={CARD}>
+        <AdminArcadePool />
+      </div>
 
       {/* 三口径 EV 对照 */}
       <div className={CARD}>
