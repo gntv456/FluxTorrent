@@ -206,6 +206,19 @@ async fn user_set_status(
                 )
                 .await;
             }
+            // E12 生命周期事件：状态变更广播管理侧（Discord/TG，尽力而为）
+            crate::ops_webhook::broadcast_ops_spawn(
+                &state,
+                format!(
+                    "用户 {username}（#{id}）{label}：{reason}",
+                    id = body.user_id,
+                    reason = if body.reason.trim().is_empty() {
+                        "（未填写）".to_string()
+                    } else {
+                        body.reason.trim().to_string()
+                    },
+                ),
+            );
         }
     }
     Ok(ok(

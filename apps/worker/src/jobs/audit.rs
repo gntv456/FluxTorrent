@@ -4,7 +4,7 @@ use sqlx::PgPool;
 
 /// 0228 运维 webhook 广播（worker 侧：直接查 site_settings + reqwest，
 /// 失败只落日志）
-async fn webhook_broadcast(db: &PgPool, text: &str) {
+pub(crate) async fn webhook_broadcast(db: &PgPool, text: &str) {
     let keys: Vec<(String, String)> = sqlx::query_as(
         "SELECT name, value FROM site_settings WHERE name IN \
          ('webhook_discord', 'tg_bot_token', 'tg_chat_id')",

@@ -162,5 +162,18 @@ pub async fn register(
         )
         .await;
     }
+    // E12 生命周期事件：新注册广播（用户名/第 N 位，不含邮箱等 PII）
+    {
+        let uname = new_user.username.clone();
+        let total: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM users WHERE status < 2")
+                .fetch_one(&state.repo.db)
+                .await
+                .unwrap_or(0);
+        crate::ops_webhook::broadcast_ops_spawn(
+            &state,
+            format!("新用户注册：{uname}（第 {total} 位活跃成员）"),
+        );
+    }
     Ok(ok(serde_json::json!({ "user_id": user_id })))
 }
