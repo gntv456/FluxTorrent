@@ -31,6 +31,7 @@ import { AdminOnboarding } from "@/components/admin-onboarding";
 import { AdminEconomyDashboard } from "@/components/admin-economy-dashboard";
 import { AdminApplications } from "@/components/admin-applications";
 import { AdminGacha } from "@/components/admin-gacha";
+import { AdminArcade } from "@/components/admin-arcade";
 import { HomeLayoutEditor } from "@/components/home-layout-editor";
 import { ViewHiddenEditor } from "@/components/view-hidden-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
@@ -140,6 +141,9 @@ export function renderSimpleTool(
     // 抽卡运营（G31-C 后台入口：发放+巡检）
     case "gacha":
       return <AdminGacha />;
+    // 娱乐屋运营（P3 后台入口：EV 三口径 / 门禁 / 参数 / 定义）
+    case "arcade":
+      return <AdminArcade />;
     // 视图布局（E6）：列表列/详情段落显隐
     case "viewlayout":
       return (

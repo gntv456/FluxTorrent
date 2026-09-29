@@ -2578,7 +2578,24 @@ const zhCnBase = {
    * ⚠️ 新增/改名工具时三处同步：本表、DB（走迁移）、以及前端 ToolTab
    * 与 STAFF_TOOL_TABS。差集核对脚本见仓库根 `_admin_nav_align.py`。
    */
+  adminArcade: {
+    title: "娱乐屋运营",
+    loading: "载入中…",
+    evTitle: "三口径 EV 对照（回收口径）",
+    checksTitle: "门禁自检",
+    paramsTitle: "参数现值",
+    defsTitle: "定义一览",
+    safe: "EV < 1 合规",
+    risk: "EV ≥ 1 倒灌",
+    defQuests: "周常",
+    defMilestones: "赛季里程碑",
+    defStubs: "票根定义",
+    defClaims: "领取记录",
+    defsNote:
+      "EV 由代码常量 + 设置键现值现场复算；确定侧（周常/赛季）发放为{magic}，受 arcade_budget_* 预算闸约束。",
+  },
   adminNav: {
+    arcade: { label: "娱乐屋运营", tip: "三口径 EV / 门禁 / 参数 / 定义" },
     torrents: { label: "种子管理", tip: "搜索并管理站点种子" },
     cats: { label: "分类管理", tip: "管理种子分类模式" },
     faq: { label: "常见问题", tip: "编辑 / 新增 / 删除常见问题" },

@@ -2625,7 +2625,24 @@ const enBase: Omit<
    * supplies the other locales. AdminShell falls back to the DB value when a
    * key is missing, so a brand-new tool never renders blank.
    */
+  adminArcade: {
+    title: "Arcade ops",
+    loading: "Loading…",
+    evTitle: "Three-caliber EV (sink)",
+    checksTitle: "Gate self-check",
+    paramsTitle: "Current params",
+    defsTitle: "Definitions",
+    safe: "EV < 1 OK",
+    risk: "EV ≥ 1 bleeds",
+    defQuests: "Quests",
+    defMilestones: "Season milestones",
+    defStubs: "Stub defs",
+    defClaims: "Claims",
+    defsNote:
+      "EV recomputed live from code constants + settings; deterministic grants (weekly/season) pay {magic}, capped by arcade_budget_*.",
+  },
   adminNav: {
+    arcade: { label: "Arcade ops", tip: "EV / gates / params / defs" },
     torrents: { label: "Torrents", tip: "Search and manage site torrents" },
     cats: { label: "Categories", tip: "Manage torrent category modes" },
     faq: { label: "FAQ", tip: "Add / edit / delete FAQ entries" },

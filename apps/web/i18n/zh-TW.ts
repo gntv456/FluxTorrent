@@ -2591,7 +2591,24 @@ const zhTwBase: Omit<
    * DB 的 `name` / `info` 存放 zh-CN 原文，本表提供其餘語系；
    * AdminShell 取不到鍵時回落 DB 值，新工具不會渲染成空白。
    */
+  adminArcade: {
+    title: "娛樂屋運營",
+    loading: "載入中…",
+    evTitle: "三口徑 EV 對照（回收口徑）",
+    checksTitle: "門禁自檢",
+    paramsTitle: "參數現值",
+    defsTitle: "定義一覽",
+    safe: "EV < 1 合規",
+    risk: "EV ≥ 1 倒灌",
+    defQuests: "週常",
+    defMilestones: "賽季里程碑",
+    defStubs: "票根定義",
+    defClaims: "領取記錄",
+    defsNote:
+      "EV 由代碼常量 + 設定鍵現值現場複算；確定側（週常/賽季）發放為{magic}，受 arcade_budget_* 預算閘約束。",
+  },
   adminNav: {
+    arcade: { label: "娛樂屋運營", tip: "三口徑 EV / 門禁 / 參數 / 定義" },
     torrents: { label: "種子管理", tip: "搜尋並管理站點種子" },
     cats: { label: "分類管理", tip: "管理種子分類模式" },
     faq: { label: "常見問題", tip: "編輯 / 新增 / 刪除常見問題" },
