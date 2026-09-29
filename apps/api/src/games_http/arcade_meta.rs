@@ -95,11 +95,7 @@ pub(super) async fn arcade_meta(
             let done: i64 = if *game == "*" {
                 counts.iter().map(|c| c.1).sum()
             } else {
-                counts
-                    .iter()
-                    .filter(|c| c.0 == *game)
-                    .map(|c| c.1)
-                    .sum()
+                counts.iter().filter(|c| c.0 == *game).map(|c| c.1).sum()
             };
             let claimed = q_claimed.iter().any(|c| c == code);
             serde_json::json!({

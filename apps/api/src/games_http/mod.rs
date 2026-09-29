@@ -5,6 +5,7 @@
 //! mount_games 留在此。
 
 mod arcade_admin;
+mod arcade_admin_write;
 mod arcade_cfg;
 mod arcade_claim;
 mod arcade_meta;
@@ -16,8 +17,10 @@ mod fun;
 mod helpers;
 mod linkage;
 mod overview;
+mod pool;
 
 use arcade_admin::*;
+use arcade_admin_write::*;
 use arcade_claim::*;
 use arcade_meta::*;
 use casino::*;

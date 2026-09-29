@@ -32,7 +32,8 @@ pub use farm::{
 };
 #[allow(unused_imports)]
 pub use jgg::{
-    draw_entry, pool_ev, validate_pool, Draw, EntryKind, PoolEntry, PoolError, FALLBACK_MULT,
+    draw_entry, pool_ev, validate_pool, Draw, EntryKind, PoolEntry, PoolError,
+    FALLBACK_MULT,
 };
 #[allow(unused_imports)]
 pub use scratch::{

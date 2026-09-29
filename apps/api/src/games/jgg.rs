@@ -15,7 +15,11 @@ pub enum EntryKind {
     /// 魔力位：`multiples` 是票价倍数（0 = 不中）
     Magic { multiples: i64 },
     /// 物品位：`anchor` 是加载时从 `arcade_items` 解析出的单件魔力等值
-    Item { item_key: String, qty: i32, anchor: i64 },
+    Item {
+        item_key: String,
+        qty: i32,
+        anchor: i64,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,10 +68,17 @@ impl std::fmt::Display for PoolError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PoolError::Empty => write!(f, "奖池为空：没有任何启用档位"),
-            PoolError::ZeroWeight(l) => write!(f, "档位「{l}」权重为 0，永远抽不到"),
-            PoolError::WeightsOverflow(t) => write!(f, "权重合计 {t} 超出 u32 抽样范围"),
+            PoolError::ZeroWeight(l) => {
+                write!(f, "档位「{l}」权重为 0，永远抽不到")
+            }
+            PoolError::WeightsOverflow(t) => {
+                write!(f, "权重合计 {t} 超出 u32 抽样范围")
+            }
             PoolError::UnknownItem(k) => {
-                write!(f, "物品位引用目录中不存在、已停用或无折算价的物品「{k}」")
+                write!(
+                    f,
+                    "物品位引用目录中不存在、已停用或无折算价的物品「{k}」"
+                )
             }
             PoolError::BadTicket(t) => write!(f, "票价必须为正，实为 {t}"),
             PoolError::ExpectedValueNotBelowOne(ev) => {
@@ -92,7 +103,10 @@ pub fn pool_ev(entries: &[PoolEntry], ticket: i64) -> f64 {
 
 /// 关闸式校验：不合法的池子一律拒绝，**不猜旧值、不回落缺省**。
 /// 静默回落等于把「运营改错一个字」伪装成「配置生效了」。
-pub fn validate_pool(entries: &[PoolEntry], ticket: i64) -> Result<(), PoolError> {
+pub fn validate_pool(
+    entries: &[PoolEntry],
+    ticket: i64,
+) -> Result<(), PoolError> {
     if entries.is_empty() {
         return Err(PoolError::Empty);
     }
@@ -104,7 +118,10 @@ pub fn validate_pool(entries: &[PoolEntry], ticket: i64) -> Result<(), PoolError
         if e.weight == 0 {
             return Err(PoolError::ZeroWeight(e.label.clone()));
         }
-        if let EntryKind::Item { item_key, anchor, .. } = &e.kind {
+        if let EntryKind::Item {
+            item_key, anchor, ..
+        } = &e.kind
+        {
             if item_key.trim().is_empty() || *anchor <= 0 {
                 return Err(PoolError::UnknownItem(item_key.clone()));
             }
