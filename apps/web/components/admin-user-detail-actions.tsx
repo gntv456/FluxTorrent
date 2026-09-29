@@ -22,8 +22,7 @@ const ON_CLS = "bg-sky text-white";
 const OFF_CLS = "border border-line";
 
 /** 圆角描边小按钮（普通/danger 文案用） */
-const PLAIN_BTN_CLS =
-  BTN_SM_BOLD;
+const PLAIN_BTN_CLS = BTN_SM_BOLD;
 const DANGER_BTN_CLS = `${PLAIN_BTN_CLS} text-danger`;
 
 /** 下载/挂起切换按钮的两种态样式 */
@@ -122,151 +121,170 @@ export interface AdminActionsProps {
 export function AdminActions(props: AdminActionsProps) {
   const { d, busy, dict, panel, setPanel, adjust, setAdjust } = props;
   const u = useI18n().dict.userDetail;
+  // 操作按钮按语义分组（P2）：12+ 个按钮平铺一行折行，扫读性差。
+  // 数值与身份是高频低危操作；惩戒/封禁是危险区，视觉隔开降低误触。
+  const atomic = (
+    <>
+      <button
+        className={`${TAB_BTN_CLS}${panel === "class" ? ON_CLS : OFF_CLS}`}
+        onClick={() => {
+          setPanel(panel === "class" ? "" : "class");
+          setAdjust(false);
+        }}
+      >
+        {u.btnClass}
+      </button>
+      <button
+        className={`${TAB_BTN_CLS}${panel === "role" ? ON_CLS : OFF_CLS}`}
+        onClick={() => {
+          setPanel(panel === "role" ? "" : "role");
+          setAdjust(false);
+        }}
+      >
+        {u.btnRole}
+      </button>
+      <button
+        className={`${TAB_BTN_CLS}${panel === "perm" ? ON_CLS : OFF_CLS}`}
+        onClick={() => {
+          setPanel(panel === "perm" ? "" : "perm");
+          setAdjust(false);
+        }}
+      >
+        {u.btnPerm}
+      </button>
+      <button
+        className={`${TAB_BTN_CLS}${panel === "medal" ? ON_CLS : OFF_CLS}`}
+        onClick={() => {
+          setPanel(panel === "medal" ? "" : "medal");
+          setAdjust(false);
+        }}
+      >
+        {u.btnMedal}
+      </button>
+      <button
+        className={`${TAB_BTN_CLS}${panel === "item" ? ON_CLS : OFF_CLS}`}
+        onClick={() => {
+          setPanel(panel === "item" ? "" : "item");
+          setAdjust(false);
+        }}
+      >
+        {u.btnItem}
+      </button>
+      <button
+        className={`${TAB_BTN_CLS}${panel === "jixiao" ? ON_CLS : OFF_CLS}`}
+        onClick={() => {
+          setPanel(panel === "jixiao" ? "" : "jixiao");
+          setAdjust(false);
+        }}
+      >
+        {u.btnJixiao}
+      </button>
+      <button
+        className={`${TAB_BTN_CLS}${props.renameOpen ? ON_CLS : OFF_CLS}`}
+        onClick={() => {
+          props.setRenameOpen(!props.renameOpen);
+          setPanel("");
+          setAdjust(false);
+        }}
+      >
+        {dict.adminrename.btn}
+      </button>
+      <button
+        disabled={busy}
+        onClick={props.onResetPass}
+        className={PLAIN_BTN_CLS}
+      >
+        {u.btnResetPass}
+      </button>
+    </>
+  );
+  const punitive = (
+    <>
+      <button
+        disabled={busy}
+        onClick={() => props.onToggle("download_enabled")}
+        className={
+          d.download_enabled ? DL_BTN_CLS : `${TAB_BTN_CLS}${MINT_CLS}`
+        }
+      >
+        {d.download_enabled ? u.btnDlDisable : u.btnDlEnable}
+      </button>
+      <button
+        disabled={busy}
+        onClick={() => props.onToggle("suspended")}
+        className={`${TAB_BTN_CLS}${d.suspended ? MINT_CLS : DANGER_CLS}`}
+      >
+        {d.suspended ? u.btnUnsuspend : u.btnSuspend}
+      </button>
+      {d.status === 1 && (
+        <button
+          disabled={busy}
+          onClick={() => props.onChangeStatus(0)}
+          className={SOLID_MINT_CLS}
+        >
+          {u.btnUnmute}
+        </button>
+      )}
+      {d.status === 2 && (
+        <button
+          disabled={busy}
+          onClick={() => props.onChangeStatus(0)}
+          className={SOLID_MINT_CLS}
+        >
+          {u.btnUnban}
+        </button>
+      )}
+      {d.status === 0 && (
+        <button
+          disabled={busy}
+          onClick={() => props.onChangeStatus(1)}
+          className={DANGER_BTN_CLS}
+        >
+          {u.btnMute}
+        </button>
+      )}
+      {d.status < 2 && (
+        <button
+          disabled={busy}
+          onClick={() => props.onChangeStatus(2)}
+          className={DANGER_BTN_CLS}
+        >
+          {u.btnBan}
+        </button>
+      )}
+      {d.status >= 2 && (
+        <button
+          disabled={busy}
+          onClick={props.onDeleteUser}
+          className={SOLID_CORAL_CLS}
+        >
+          {u.btnDeleteUser}
+        </button>
+      )}
+    </>
+  );
   return (
     <section className="baozi-panel flex flex-col gap-3 p-4">
       <h2 className="text-base font-bold text-ink">{u.actionsTitle}</h2>
-      <div className="flex flex-wrap gap-2">
-        <button
-          className="baozi-button"
-          onClick={() => {
-            setAdjust(!adjust);
-            setPanel("");
-          }}
-        >
-          {u.btnAdjust}
-        </button>
-        <button
-          className={`${TAB_BTN_CLS}${panel === "class" ? ON_CLS : OFF_CLS}`}
-          onClick={() => {
-            setPanel(panel === "class" ? "" : "class");
-            setAdjust(false);
-          }}
-        >
-          {u.btnClass}
-        </button>
-        <button
-          className={`${TAB_BTN_CLS}${panel === "role" ? ON_CLS : OFF_CLS}`}
-          onClick={() => {
-            setPanel(panel === "role" ? "" : "role");
-            setAdjust(false);
-          }}
-        >
-          {u.btnRole}
-        </button>
-        <button
-          className={`${TAB_BTN_CLS}${panel === "perm" ? ON_CLS : OFF_CLS}`}
-          onClick={() => {
-            setPanel(panel === "perm" ? "" : "perm");
-            setAdjust(false);
-          }}
-        >
-          {u.btnPerm}
-        </button>
-        <button
-          className={`${TAB_BTN_CLS}${panel === "medal" ? ON_CLS : OFF_CLS}`}
-          onClick={() => {
-            setPanel(panel === "medal" ? "" : "medal");
-            setAdjust(false);
-          }}
-        >
-          {u.btnMedal}
-        </button>
-        <button
-          className={`${TAB_BTN_CLS}${panel === "item" ? ON_CLS : OFF_CLS}`}
-          onClick={() => {
-            setPanel(panel === "item" ? "" : "item");
-            setAdjust(false);
-          }}
-        >
-          {u.btnItem}
-        </button>
-        <button
-          className={`${TAB_BTN_CLS}${panel === "jixiao" ? ON_CLS : OFF_CLS}`}
-          onClick={() => {
-            setPanel(panel === "jixiao" ? "" : "jixiao");
-            setAdjust(false);
-          }}
-        >
-          {u.btnJixiao}
-        </button>
-        <button
-          className={`${TAB_BTN_CLS}${props.renameOpen ? ON_CLS : OFF_CLS}`}
-          onClick={() => {
-            props.setRenameOpen(!props.renameOpen);
-            setPanel("");
-            setAdjust(false);
-          }}
-        >
-          {dict.adminrename.btn}
-        </button>
-        <button
-          disabled={busy}
-          onClick={props.onResetPass}
-          className={PLAIN_BTN_CLS}
-        >
-          {u.btnResetPass}
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => props.onToggle("download_enabled")}
-          className={
-            d.download_enabled ? DL_BTN_CLS : `${TAB_BTN_CLS}${MINT_CLS}`
-          }
-        >
-          {d.download_enabled ? u.btnDlDisable : u.btnDlEnable}
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => props.onToggle("suspended")}
-          className={`${TAB_BTN_CLS}${d.suspended ? MINT_CLS : DANGER_CLS}`}
-        >
-          {d.suspended ? u.btnUnsuspend : u.btnSuspend}
-        </button>
-        {d.status === 1 && (
+      <div className="grid gap-2 border-t border-line pt-3 md:grid-cols-2">
+        <div className="flex flex-wrap gap-2">
           <button
-            disabled={busy}
-            onClick={() => props.onChangeStatus(0)}
-            className={SOLID_MINT_CLS}
+            className="baozi-button"
+            onClick={() => {
+              setAdjust(!adjust);
+              setPanel("");
+            }}
           >
-            {u.btnUnmute}
+            {u.btnAdjust}
           </button>
-        )}
-        {d.status === 2 && (
-          <button
-            disabled={busy}
-            onClick={() => props.onChangeStatus(0)}
-            className={SOLID_MINT_CLS}
-          >
-            {u.btnUnban}
-          </button>
-        )}
-        {d.status === 0 && (
-          <button
-            disabled={busy}
-            onClick={() => props.onChangeStatus(1)}
-            className={DANGER_BTN_CLS}
-          >
-            {u.btnMute}
-          </button>
-        )}
-        {d.status < 2 && (
-          <button
-            disabled={busy}
-            onClick={() => props.onChangeStatus(2)}
-            className={DANGER_BTN_CLS}
-          >
-            {u.btnBan}
-          </button>
-        )}
-        {d.status >= 2 && (
-          <button
-            disabled={busy}
-            onClick={props.onDeleteUser}
-            className={SOLID_CORAL_CLS}
-          >
-            {u.btnDeleteUser}
-          </button>
-        )}
+          {atomic}
+        </div>
+        <div
+          className="flex flex-wrap items-start gap-2 md:border-l
+            md:border-line md:pl-3"
+        >
+          {punitive}
+        </div>
       </div>
 
       <AdminActionPanels {...props} />

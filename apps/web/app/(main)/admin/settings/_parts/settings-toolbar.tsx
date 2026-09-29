@@ -47,8 +47,8 @@ export function SettingsToolbar({
   }, [editable, schema, io]);
   return (
     <>
-      {/* 顶部标题 + 全局操作条 */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]/95 p-3 backdrop-blur shadow-[var(--shadow-card)]">
+      {/* 顶部标题 + 全局操作条（偏移到站点头栏之下：头栏 sticky 占 73px，见 theme-tide.css） */}
+      <div className="sticky top-[84px] z-10 flex flex-wrap items-center gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]/95 p-3 backdrop-blur shadow-[var(--shadow-card)]">
         <div>
           <h1 className="font-display text-xl">{s.title}</h1>
           <p className="text-[11px] text-sub">

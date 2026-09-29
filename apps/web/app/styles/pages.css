@@ -119,12 +119,16 @@ table.baozi-wide-table-scroll {
  * 转块级 + 横向滚动：<lg 不再撑破容器/引发 body 级横滚。
  * 已显式用 .baozi-wide-table-scroll 包裹的表格不在此容器内，互不影响。
  * display:block 会丢 table 语义布局（行不再随内容撑宽），因此配合
- * width:max-content 保证列宽按内容计算，滚动容器裁剪。 */
-.admin-panel-content table {
-  display: block;
-  width: max-content;
-  max-width: 100%;
-  overflow-x: auto;
+ * width:max-content 保证列宽按内容计算，滚动容器裁剪。
+ * ≥lg（桌面）恢复表格布局撑满内容区：block 化在宽屏让表格收缩成
+ * 内容宽（实测经济仪表 204px / 捐赠订单 528px），连带 w-full 失效。 */
+@media (max-width: 1023.98px) {
+  .admin-panel-content table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+  }
 }
 
 /* ============ 字幕区（subtitles.php 复刻） ============ */

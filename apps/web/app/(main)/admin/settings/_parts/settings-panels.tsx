@@ -36,7 +36,7 @@ export function SettingsGroupNav({
   const s = dict.settingsAdmin;
   const groups = schema?.groups ?? [];
   return (
-    <nav className="flex gap-2 overflow-x-auto border border-line bg-[var(--surface-card)] p-2 md:w-56 md:flex-none md:flex-col md:overflow-visible md:rounded-[var(--r-md)] md:shadow-[var(--shadow-card)]">
+    <nav className="flex gap-2 overflow-x-auto border border-line bg-[var(--surface-card)] p-2 md:w-56 md:flex-none md:flex-col md:overflow-visible md:rounded-[var(--r-md)] md:shadow-[var(--shadow-card)] md:sticky md:top-[100px] md:max-h-[calc(100vh-124px)] md:self-start md:overflow-y-auto">
       <div className="hidden md:block">
         <input
           value={q}

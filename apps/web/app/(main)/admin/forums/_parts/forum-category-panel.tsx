@@ -148,7 +148,11 @@ export function ForumCategoryPanel({
               onClick={() => onSelect(c.id)}
               title={c.name}
             >
-              <span className={c.visible ? "" : "text-sub line-through"}>
+              <span
+                className={`block truncate ${
+                  c.visible ? "" : "text-sub line-through"
+                }`}
+              >
                 {c.name}
               </span>
               <span className="ml-1.5 text-xs text-sub">{c.forums}</span>
