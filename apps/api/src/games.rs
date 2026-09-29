@@ -16,6 +16,8 @@ mod jgg;
 mod scratch;
 
 #[cfg(test)]
+mod pool_tests;
+#[cfg(test)]
 mod tests;
 
 // 重导出保留原公开面（原文件 #![allow(dead_code)] 语义下的 pub fn）：

@@ -32,16 +32,22 @@ pub(super) async fn linkage_status(
              FROM spark_ledger l
              WHERE l.kind = 'seeding_reward'
                AND l.user_id = $1
-               AND l.created_at >= date_trunc('day', now() AT TIME ZONE 'UTC' + interval '8 hours')
-               AND l.created_at <  date_trunc('day', now() AT TIME ZONE 'UTC' + interval '8 hours') + interval '1 day'),
+               AND l.created_at >= date_trunc('day', now()
+              AT TIME ZONE 'UTC') + interval '8 hours'
+               AND l.created_at <  date_trunc('day', now()
+              AT TIME ZONE 'UTC')
+              + interval '8 hours') + interval '1 day'),
           (SELECT count(DISTINCT split_part(l.idempotency_key, ':', 3))
              FROM spark_ledger l
              WHERE l.kind = 'seeding_reward'
                AND l.user_id = $1
-               AND l.created_at >= date_trunc('week', now() AT TIME ZONE 'UTC' + interval '8 hours')),
+               AND l.created_at >= date_trunc('week', now()
+              AT TIME ZONE 'UTC')
+              + interval '8 hours')),
           EXISTS(SELECT 1 FROM food_coupon_grants g
                  WHERE g.user_id = $1
-                   AND g.day = (now() AT TIME ZONE 'UTC' + interval '8 hours')::date)
+                   AND g.day = (now() AT TIME ZONE 'UTC')
+                 + interval '8 hours')::date)
         "#,
     )
     .bind(auth.id)
@@ -92,7 +98,8 @@ pub(super) async fn use_coupon(
         .map_err(|e| DomainError::Internal(e.into()))?;
 
     let balance: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(food_coupons, 0)::bigint FROM users WHERE id = $1 FOR UPDATE",
+        r#"SELECT COALESCE(food_coupons, 0)::bigint
+               FROM users WHERE id = $1 FOR UPDATE"#,
     )
     .bind(auth.id)
     .fetch_one(&mut *tx)
