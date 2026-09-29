@@ -40,36 +40,30 @@ export function RunwayOdometer({
   const pct = ((Math.max(1, shown ?? 1) - 1) / 99) * 100;
 
   return (
-    <div className="w-full max-w-[420px]">
-      <div className="relative h-3.5 overflow-hidden rounded-full border border-line bg-[linear-gradient(90deg,var(--sky)_0%,var(--sky)_47%,var(--surface-sunken)_47%,var(--surface-sunken)_51%,var(--coral)_51%,var(--coral)_100%)]">
+    <div className="bs-run">
+      <div className="bs-track">
         <span
           aria-hidden
-          className="absolute -top-2 h-0 w-0 border-x-[7px] border-t-[10px] border-x-transparent border-t-ink transition-[left] duration-[1600ms] ease-[cubic-bezier(.16,.84,.44,1)]"
-          style={{ left: `${pct}%`, transform: "translateX(-7px)" }}
+          className="bs-cursor"
+          style={{ left: `${pct}%` }}
         />
       </div>
-      <div className="mt-1.5 flex justify-between text-[11px] text-sub">
+      <div className="bs-ticks">
         <span>1</span>
         <span>49</span>
         <span>50-51</span>
         <span>52</span>
         <span>100</span>
       </div>
-      <div className="mt-4 flex justify-center gap-1.5" aria-hidden>
+      <div className="bs-plates" aria-hidden>
         {digits.map((d, i) => (
-          <span
-            key={i}
-            className="relative h-[52px] w-[36px] overflow-hidden rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)]"
-          >
+          <span key={i} className="bs-plate">
             <span
-              className="absolute left-0 top-0 flex w-full flex-col transition-transform duration-[1600ms] ease-[cubic-bezier(.16,.84,.44,1)]"
+              className="roll"
               style={{ transform: `translateY(${-52 * Number(d)}px)` }}
             >
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                <span
-                  key={n}
-                  className="num flex h-[52px] items-center justify-center text-[28px] font-black"
-                >
+                <span key={n} className="num d">
                   {n}
                 </span>
               ))}

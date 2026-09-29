@@ -240,7 +240,7 @@ export default function ScratchPage({
               type="button"
               onClick={buy}
               disabled={phase === "buying" || phase === "scratchable"}
-              className="min-h-[48px] flex-1 rounded-full bg-coral px-6 font-black text-white active:scale-[0.97] disabled:opacity-50"
+              className="arc-call coral"
             >
               {phase === "buying"
                 ? ts.buying

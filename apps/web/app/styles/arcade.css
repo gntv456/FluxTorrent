@@ -413,6 +413,194 @@
   }
 }
 
+/* ══════ 猜大小（样图 03）：金球游标 + 光锥 / 翻页牌 / 鼓筹码 / 大小胶囊 ══════ */
+.bs-run {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  /* 金球悬在轨道上方 13px，不留顶位就会被舞台的 overflow 削掉半颗球 */
+  padding-top: 18px;
+}
+.bs-track {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 206, 244, 0.26);
+  background: linear-gradient(
+    90deg,
+    #2f6fb8 0%,
+    #2f6fb8 47%,
+    #10162a 47%,
+    #10162a 51%,
+    #c2593a 51%,
+    #c2593a 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 4px 12px rgba(3, 6, 16, 0.5);
+}
+/* 游标是金球，光锥从球底打到轨道上——三角箭头撑不住「一颗球停在数上」 */
+.bs-cursor {
+  position: absolute;
+  top: -13px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  transform: translateX(-13px);
+  background: radial-gradient(
+    circle at 36% 28%,
+    #fff6d8,
+    #e9b94e 52%,
+    #8a6320 98%
+  );
+  box-shadow: 0 0 16px rgba(242, 198, 87, 0.6), 0 4px 10px rgba(3, 6, 16, 0.6);
+  transition: left 1600ms cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+.bs-cursor::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 23px;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 30px solid rgba(242, 198, 87, 0.3);
+}
+.bs-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11px;
+  color: rgba(228, 236, 253, 0.7);
+}
+.bs-plates {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+/* 翻页牌：暗壳 + 中缝 + 内高光。格高必须与 JS 的 52px 步长一致 */
+.bs-plate {
+  position: relative;
+  width: 38px;
+  height: 52px;
+  overflow: hidden;
+  border-radius: 9px;
+  border: 1px solid rgba(186, 206, 244, 0.26);
+  background: linear-gradient(180deg, #1b2338, #0b0e18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 5px 12px rgba(3, 6, 16, 0.55);
+}
+.bs-plate::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  z-index: 2;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.55);
+}
+.bs-plate .roll {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  transition: transform 1600ms cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+.bs-plate .d {
+  display: grid;
+  place-items: center;
+  height: 52px;
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffe9a8;
+  text-shadow: 0 0 12px rgba(242, 198, 87, 0.45);
+}
+/* 大/小 = 立体胶囊按钮（顶部一条镜面高光 + 底缘内阴影） */
+.arc-call {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  color: #fff;
+  font-weight: 800;
+  font-size: 17px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.38);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.24), 0 8px 18px rgba(3, 6, 16, 0.45);
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+.arc-call::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 4px;
+  height: 34%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent);
+}
+.arc-call:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.arc-call:disabled {
+  filter: saturate(0.45) brightness(0.82);
+  cursor: not-allowed;
+}
+.arc-call.sky {
+  background: linear-gradient(180deg, #a6d8ff, #4a8fdd 58%, #2a5da4);
+}
+.arc-call.coral {
+  background: linear-gradient(180deg, #ffd0bd, #f2683f 58%, #ab3c1c);
+}
+/* 注额 = 鼓筹码：条纹裙边 + 圆面高光，选中翻成金面 */
+.arc-chip {
+  position: relative;
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 206, 244, 0.3);
+  cursor: pointer;
+  color: #e8f0ff;
+  font-weight: 800;
+  background: radial-gradient(
+      circle at 50% 30%,
+      rgba(255, 255, 255, 0.4),
+      rgba(255, 255, 255, 0) 54%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      #24304d 0 8px,
+      #1a2340 8px 16px
+    );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 4px 10px rgba(3, 6, 16, 0.4);
+}
+.arc-chip[aria-pressed="true"] {
+  border-color: rgba(238, 203, 124, 0.85);
+  color: #2a1c05;
+  background: radial-gradient(
+      circle at 50% 30%,
+      rgba(255, 255, 255, 0.72),
+      rgba(255, 255, 255, 0) 54%
+    ),
+    repeating-linear-gradient(90deg, #ffe08a 0 8px, #e9b94e 8px 16px);
+}
+.arc-chip:disabled {
+  filter: saturate(0.4) brightness(0.9);
+  cursor: not-allowed;
+}
+
 /* ── 门禁自检 ── */
 .arc-checks { display: flex; flex-direction: column; gap: 6px; }
 .arc-chk { display: flex; gap: 8px; font-size: 12px; align-items: baseline; }

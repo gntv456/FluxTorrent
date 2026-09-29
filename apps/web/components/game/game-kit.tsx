@@ -182,11 +182,7 @@ export function ChipSelect({
           disabled={disabled}
           onClick={() => onChange(v)}
           aria-pressed={value === v}
-          className={`num min-h-[40px] rounded-full px-3.5 text-sm font-bold ${
-            value === v
-              ? "bg-[image:var(--grad-aurora)] text-white"
-              : "border border-[var(--border-deep)] bg-[var(--surface-card)] text-ink"
-          } disabled:opacity-50`}
+          className="arc-chip num"
         >
           {v}
         </button>
