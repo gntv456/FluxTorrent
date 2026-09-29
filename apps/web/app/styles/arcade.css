@@ -126,6 +126,293 @@
   border-radius: 999px; padding: 1px 6px;
 }
 
+/* ── 九宫格灯阵（样图 04 的器件：玻璃砖 + 中心徽章 + 押中率角牌 + 斜射光带）──
+   颜色一律走 token + color-mix，不抄样张的裸 rgba —— 样张只有暗色，生产有
+   亮/暗两套，硬抄会在亮色主题下变成脏灰块。 */
+.jgrid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 340px;
+}
+.jgrid .cells {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+.jgrid .beam {
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  top: 50%;
+  height: 120px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-50%) rotate(-24deg);
+  mix-blend-mode: screen;
+  filter: blur(7px);
+  transition: opacity 0.3s ease;
+  background: linear-gradient(
+    90deg,
+    transparent 6%,
+    color-mix(in srgb, var(--sun) 62%, #fff) 42%,
+    color-mix(in srgb, var(--sky-deep) 45%, #fff) 58%,
+    transparent 92%
+  );
+}
+.jgrid .beam.run {
+  opacity: 0.85;
+  animation: beamSweep 1.2s ease-in-out infinite alternate;
+}
+@keyframes beamSweep {
+  from {
+    transform: translateY(-50%) rotate(-24deg) translateX(-18%);
+  }
+  to {
+    transform: translateY(-50%) rotate(-24deg) translateX(18%);
+  }
+}
+/* 灯阵永远坐在舞台插画（暗色）上，所以砖面固定用暗玻璃，
+   不跟站点亮/暗主题走 —— 跟着主题会变成「亮色页 + 白砖 + 暗插画」三层皮。 */
+.jgrid .lamp {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(186, 206, 244, 0.22);
+  background: linear-gradient(
+    168deg,
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.045) 42%,
+    rgba(6, 9, 20, 0.55)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 6px 14px rgba(3, 6, 16, 0.5);
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+/* 玻璃斜面：一道斜高光，落在校贝上而不是边框上 */
+.jgrid .lamp::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    122deg,
+    transparent 26%,
+    color-mix(in srgb, #fff 22%, transparent) 40%,
+    transparent 52%
+  );
+}
+.jgrid .lamp .socket {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 68%;
+  height: 68%;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 42%,
+    color-mix(in srgb, var(--ink) 14%, transparent),
+    transparent 72%
+  );
+}
+.jgrid .lamp .medal {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 58%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(186, 206, 244, 0.26);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(232, 240, 255, 0.86);
+  /* 两层径向 = 高光 + 本体。用 conic 会留一条硬接缝，缩到 60px 上像刮痕 */
+  background: radial-gradient(
+      circle at 36% 28%,
+      rgba(255, 255, 255, 0.42),
+      rgba(255, 255, 255, 0) 46%
+    ),
+    radial-gradient(circle at 50% 66%, #33456e, #16203a 76%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 6px 12px rgba(3, 6, 16, 0.55);
+}
+/* 稀有度由「徽章配色 + 描边」承载，不另加宝石角标 —— 样图 04 就是这样 */
+.jgrid .lamp.high .medal,
+.jgrid .lamp.jack .medal {
+  border-color: rgba(238, 203, 124, 0.62);
+  color: #3a2a08;
+  background: radial-gradient(
+      circle at 36% 28%,
+      rgba(255, 255, 255, 0.86),
+      rgba(255, 255, 255, 0) 46%
+    ),
+    radial-gradient(circle at 50% 66%, #ffe08a, #e9b94e 52%, #8a6320 98%);
+}
+.jgrid .lamp.jack .medal {
+  border-color: rgba(255, 233, 160, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 14px rgba(242, 198, 87, 0.42), 0 6px 12px rgba(3, 6, 16, 0.55);
+}
+.jgrid .lamp.low .medal {
+  filter: saturate(0.45) brightness(0.9);
+  color: rgba(228, 236, 253, 0.6);
+}
+.jgrid .lamp .tname {
+  position: absolute;
+  left: 7px;
+  bottom: 8px;
+  z-index: 3;
+  max-width: 52%;
+  font-size: 10px;
+  line-height: 1.2;
+  color: rgba(228, 236, 253, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 角牌 = 该档的读数额（×50 / 再来 / 🎁），暗底金字——样图 04 的主读数是它 */
+.jgrid .lamp .tpill {
+  position: absolute;
+  right: 6px;
+  bottom: 7px;
+  z-index: 3;
+  padding: 2px 9px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--sun);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--sun) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-sunken) 40%, #10141f),
+    #0b0e18
+  );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
+}
+.jgrid .lamp.jack .tpill,
+.jgrid .lamp.high .tpill {
+  border-color: color-mix(in srgb, var(--sun) 46%, transparent);
+}
+/* 点亮 / 中奖：金环 + 上浮，勾选角牌只给中奖那格 */
+.jgrid .lamp .ring {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 74%;
+  height: 74%;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  opacity: 0;
+  border: 2px solid color-mix(in srgb, var(--sun) 88%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--sun) 52%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--sun) 34%, transparent);
+  transition: opacity 0.18s ease;
+}
+.jgrid .lamp.lit,
+.jgrid .lamp.win {
+  border-color: color-mix(in srgb, var(--sun) 70%, transparent);
+}
+.jgrid .lamp.lit .ring,
+.jgrid .lamp.win .ring {
+  opacity: 1;
+}
+.jgrid .lamp.win {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 72%, transparent),
+    0 10px 20px color-mix(in srgb, var(--sun) 26%, transparent);
+}
+.jgrid .lamp.win::after {
+  content: "✓";
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+  color: #2a1c05;
+  background: radial-gradient(
+    circle at 36% 30%,
+    color-mix(in srgb, var(--sun) 40%, #fff),
+    var(--sun) 54%,
+    color-mix(in srgb, var(--sun) 40%, #7a5a12)
+  );
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface-card) 80%, #fff);
+}
+/* 中心 GO = 大球按钮（样图 04 那颗红球），不再与格子同形 */
+.jgrid .go {
+  position: relative;
+  align-self: center;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  width: 88%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, #fff 62%, transparent);
+  cursor: pointer;
+  color: #fff;
+  font-weight: 900;
+  font-size: 15px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.38);
+  background: radial-gradient(
+      circle at 38% 26%,
+      color-mix(in srgb, #fff 62%, transparent),
+      transparent 46%
+    ),
+    linear-gradient(
+      180deg,
+      var(--coral),
+      color-mix(in srgb, var(--coral) 72%, #000) 92%
+    );
+  box-shadow: inset 0 2px 0 color-mix(in srgb, #fff 46%, transparent),
+    inset 0 -9px 16px rgba(0, 0, 0, 0.22),
+    0 8px 18px color-mix(in srgb, var(--coral) 30%, transparent);
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+.jgrid .go:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.jgrid .go:disabled {
+  filter: saturate(0.45) brightness(0.82);
+  cursor: not-allowed;
+}
+.jgrid .go .tk {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jgrid .beam.run {
+    animation: none;
+  }
+}
+
 /* ── 门禁自检 ── */
 .arc-checks { display: flex; flex-direction: column; gap: 6px; }
 .arc-chk { display: flex; gap: 8px; font-size: 12px; align-items: baseline; }

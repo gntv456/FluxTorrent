@@ -90,12 +90,10 @@ export function JggGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resultIndex, reduced]);
 
-  const cellBase =
-    "relative flex aspect-square flex-col items-center justify-center rounded-[var(--r-sm)] border-2 px-1 text-center transition-all duration-200";
-
   return (
-    <div className="flex w-full max-w-[340px] flex-col items-center gap-3">
-      <div className="grid w-full grid-cols-3 gap-2" aria-busy={busy}>
+    <div className="jgrid">
+      <span className={`beam${busy && !reduced ? " run" : ""}`} aria-hidden />
+      <div className="cells" aria-busy={busy}>
         {Array.from({ length: 9 }, (_, gi) => {
           if (gi === 4) {
             return (
@@ -105,48 +103,54 @@ export function JggGrid({
                 onClick={onDraw}
                 disabled={busy || disabled}
                 aria-label={`${goLabel} · ${ticket}`}
-                className="flex aspect-square items-center justify-center rounded-[var(--r-sm)] bg-coral text-base font-black text-white active:scale-[0.97] disabled:opacity-60"
+                className="go"
               >
-                {busy ? drawingLabel : goLabel}
+                <span>{busy ? drawingLabel : goLabel}</span>
+                <span className="tk">{ticket}</span>
               </button>
             );
           }
           const pi = RING.indexOf(gi);
           const p = prizes[pi];
-          if (!p) return <span key={gi} className={cellBase} />;
+          if (!p) return <span key={gi} className="lamp" />;
           const isLit = lit === pi;
           const isWin = landed && resultIndex === pi;
-          // 物品档按价值判高低：payout 恒为 0，直接判会把免考核卡画成最低档样式
-          // 物品档 payout 恒为 0，按 payout 判会把高价物品画成最低档样式
+          // 物品位 payout 恒为 0，按 payout 判会把高价物品画成最低档样式
           const v = p.value ?? p.payout * ticket;
-          const jack = v >= ticket * 10;
+          const tier =
+            v >= ticket * 10
+              ? "jack"
+              : v >= ticket * 5
+                ? "high"
+                : v >= ticket
+                  ? "mid"
+                  : "low";
+          const glyph =
+            p.kind === "item"
+              ? p.qty && p.qty > 1
+                ? `🎁×${p.qty}`
+                : "🎁"
+              : p.payout === 0
+                ? "0"
+                : `×${p.payout}`;
+          const cls = [
+            "lamp",
+            tier,
+            isLit ? "lit" : "",
+            isWin ? "win" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
           return (
-            <div
-              key={gi}
-              className={`${cellBase} ${
-                isWin
-                  ? "scale-[1.06] border-sun bg-sun-soft shadow-[0_8px_22px_rgba(255,201,60,.35)]"
-                  : isLit
-                    ? "border-sun bg-sun-soft"
-                    : jack
-                      ? "border-[var(--border-soft)] bg-[var(--surface-card)]"
-                      : "border-line bg-[var(--surface-card)]"
-              }`}
-            >
-              <span
-                className={`num text-sm font-black ${jack ? "text-[var(--warning)]" : ""}`}
-              >
-                {p.kind === "item"
-                  ? `🎁${p.qty && p.qty > 1 ? `×${p.qty}` : ""}`
-                  : p.payout === 0
-                    ? "—"
-                    : p.payout === 1
-                      ? "↺"
-                      : `×${p.payout}`}
+            <div key={gi} className={cls}>
+              <span className="socket" aria-hidden />
+              <span className="medal" aria-hidden>
+                {tier === "low" ? "" : "✦"}
               </span>
-              <span className="mt-0.5 text-[10px] leading-tight text-sub">
-                {p.label}
-              </span>
+              {/* 魔力档的名字就是「×N 魔力」，与角牌重复；物品位必须报名字 */}
+              {p.kind === "item" && <span className="tname">{p.label}</span>}
+              <span className="tpill num">{glyph}</span>
+              <span className="ring" aria-hidden />
             </div>
           );
         })}
