@@ -240,6 +240,33 @@ def main():
     check("探针账号已清理（封禁→删除）", st == 200 and st2 == 200,
           {"uid": uid, "ban": st, "del": st2})
 
+    # 墓碑回归闸：删除是「用户名改写成 deleted-<id>-<hash> + status=3、账本留证」，
+    # 所以探针号的 40 局流水还在 spark_ledger 里 —— 榜与公示一旦漏掉
+    # u.status < 2，这里立刻会看到一个 deleted- 名字挂在榜首（真发生过）。
+    st, bk2 = call("GET", "/games/arcade-meta", None, tok)
+    d2 = bk2.get("data") or {}
+    names = [str(x.get("who")) for x in
+             ((d2.get("board") or {}).get("stubs") or [])
+             + ((d2.get("board") or {}).get("plays") or [])
+             + (d2.get("feed") or [])]
+    check("周榜与公示里没有墓碑账号",
+          st == 200 and not any(n.startswith("deleted-") for n in names), names)
+    check("周榜两列都真的返回了",
+          isinstance((d2.get("board") or {}).get("stubs"), list)
+          and isinstance((d2.get("board") or {}).get("plays"), list),
+          sorted((d2.get("board") or {}).keys()))
+
+    # 公示口径：/games 的 expected_value 必须与闸门同源且 < 1；
+    # 物品位要带目录图标（灯阵与公示都读它，不再一律 🎁）。
+    st, gv = call("GET", "/games", None, tok)
+    j2 = ((gv.get("data") or {}).get("jgg") or {})
+    ev = j2.get("expected_value")
+    check("公示 EV 随 /games 下发且 < 1",
+          st == 200 and isinstance(ev, float) and 0 < ev < 1, ev)
+    its = [p for p in (j2.get("prizes") or []) if p.get("kind") == "item"]
+    check("物品位带目录图标", bool(its) and all(p.get("icon") for p in its),
+          [(p.get("label"), p.get("icon")) for p in its])
+
     # 复原：池子与上限都回到核验前，不给线上留残留
     restore = {
         "pool_key": "jgg_default", "game": "jgg", "label": "九宫格 · 标准池",
