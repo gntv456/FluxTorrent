@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { PANEL_LG } from "@/lib/ui-classes";
 
 /**
@@ -83,14 +84,46 @@ export function CheatersPanel({
   );
 }
 
-/** 审计日志列表（完整版；overview 内嵌最近 6 条在首页面板中） */
+/** 审计日志列表（完整版；overview 内嵌最近 6 条在首页面板中）。
+ *  一次拉全量（后端无分页参数），前端做搜索过滤 + 分批渲染：
+ *  实测 200 行 DOM 高 6600px+，全渲染既卡又难查。 */
 export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
   const { dict, locale } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
+  const [q, setQ] = useState("");
+  const [limit, setLimit] = useState(100);
+  const kw = q.trim().toLowerCase();
+
+  const filtered = useMemo(() => {
+    if (!kw) return audit;
+    return audit.filter(
+      (row) =>
+        row.action.toLowerCase().includes(kw) ||
+        String(row.actor_id ?? "").includes(kw),
+    );
+  }, [audit, kw]);
+  const shown = filtered.slice(0, limit);
+
   return (
     <section className={PANEL_LG}>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <input
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setLimit(100);
+          }}
+          placeholder={a.auditSearchPh}
+          className="min-h-[34px] min-w-[200px] flex-1 rounded-[var(--r-sm)]
+            border border-line bg-cloud px-3 text-sm outline-none
+            focus:border-sky"
+        />
+        <span className="text-xs text-sub">
+          {fmt(a.auditShown, { n: shown.length, total: filtered.length })}
+        </span>
+      </div>
       <ul className="flex flex-col divide-y divide-line text-sm">
-        {audit.map((row) => (
+        {shown.map((row) => (
           <li key={row.id} className="flex items-center justify-between py-2">
             <span className="font-mono text-xs">{row.action}</span>
             <span className="text-xs text-sub">
@@ -99,7 +132,20 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
             </span>
           </li>
         ))}
+        {shown.length === 0 && (
+          <li className="py-6 text-center text-sub">{a.queueEmpty}</li>
+        )}
       </ul>
+      {filtered.length > shown.length && (
+        <button
+          type="button"
+          onClick={() => setLimit((n) => n + 100)}
+          className="mt-2 min-h-[34px] w-full rounded-[var(--r-sm)] border
+            border-line text-xs font-bold text-sky hover:bg-cloud"
+        >
+          {a.auditShowMore}
+        </button>
+      )}
     </section>
   );
 }
