@@ -111,6 +111,14 @@ def main():
         raise SystemExit("读侧没拿到奖池 —— 玩法读表那一半没生效，先确认二进制版本")
     print("基线：ticket=%s 档数=%s" % (before.get("ticket"), len(before["prizes"])))
 
+    # 契约断言：payout 是前台一直在读的既有字段（apps/web/lib/games.ts）。
+    # 上一轮把它重命名成 multiples 直接把客户端打坏了 —— 新语义只能附加，
+    # 不能替换已上线的响应字段。这条断言就是为了让下次替换立刻红。
+    check("契约·每档都仍有 payout 字段", all("payout" in x for x in before["prizes"]),
+          before["prizes"][:2])
+    check("契约·物品位带 kind/item_key/anchor",
+          all(("kind" in x) for x in before["prizes"]), before["prizes"][:2])
+
     # 用读侧的投影反构一个「只抬 50x 权重」的坏池：抬到 40 后 EV 破 1
     entries = [to_req(p) for p in before["prizes"]]
     def body_of(entries, ticket=None):

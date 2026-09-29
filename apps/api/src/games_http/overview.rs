@@ -31,9 +31,15 @@ pub(super) async fn games_overview(
         .entries
         .iter()
         .map(|p| {
+            // payout 是既有公开字段（魔力位=票价倍数，物品位=0），前台一直按它渲染。
+            // 新语义一律**附加**，不替换：重命名已上线的响应字段等于悄悄打坏客户端。
             let mut j = serde_json::json!({
                 "label": p.label,
                 "weight_permille": p.weight,
+                "payout": match &p.kind {
+                    games::EntryKind::Magic { multiples } => *multiples,
+                    games::EntryKind::Item { .. } => 0,
+                },
                 "value": p.value(pool.ticket),
             });
             match &p.kind {
