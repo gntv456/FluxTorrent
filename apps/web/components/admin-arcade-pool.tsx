@@ -24,9 +24,8 @@ interface Row {
   qty?: number;
 }
 
-/** 机制在代码：这一版只管九宫格那一张池，键与标题都是常量 */
+/** 这一版只管九宫格那一张池：键是常量，标题走字典（不写死中文） */
 const POOL_KEY = "jgg_default";
-const POOL_LABEL = "九宫格 · 标准池";
 
 const CELL =
   "w-full rounded-[var(--r-sm)] border border-line " +
@@ -72,7 +71,7 @@ export function AdminArcadePool({
       await api.post("/api/v1/admin/arcade/pool", {
         pool_key: POOL_KEY,
         game: "jgg",
-        label: POOL_LABEL,
+        label: t.label,
         ticket,
         entries: rows.map((r) => ({
           label: r.label,

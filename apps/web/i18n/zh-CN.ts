@@ -2621,6 +2621,7 @@ const zhCnBase = {
       saveFail: "保存失败",
     },
     pool: {
+      label: "九宫格 · 标准池",
       title: "奖池编辑器（九宫格）",
       ticket: "票价",
       colPrize: "奖项名",
