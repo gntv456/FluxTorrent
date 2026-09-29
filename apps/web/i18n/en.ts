@@ -2649,6 +2649,22 @@ const enBase: Omit<
    * key is missing, so a brand-new tool never renders blank.
    */
   adminArcade: {
+    pool: {
+      title: "Prize pool editor (9-grid)",
+      ticket: "Ticket",
+      colPrize: "Prize",
+      colWeight: "Weight (‰)",
+      colValue: "Multiple / item qty",
+      save: "Save pool",
+      saving: "Saving…",
+      saved: "Saved — this is the table the game reads",
+      addRow: "Add tier",
+      delRow: "Drop last",
+      newRow: "New tier",
+      note: "The API gates every save on EV < 1; a rejection shows the server reason verbatim and leaves the table untouched.",
+      loadFail: "Pool unavailable (module off or session expired)",
+      saveFail: "Save failed",
+    },
     title: "Arcade ops",
     loading: "Loading…",
     evTitle: "Three-caliber EV (sink)",

@@ -2615,6 +2615,22 @@ const zhTwBase: Omit<
    * AdminShell 取不到鍵時回落 DB 值，新工具不會渲染成空白。
    */
   adminArcade: {
+    pool: {
+      title: "獎池編輯器（九宮格）",
+      ticket: "票價",
+      colPrize: "獎項名",
+      colWeight: "權重（千分）",
+      colValue: "倍數 / 物品件數",
+      save: "儲存獎池",
+      saving: "儲存中…",
+      saved: "已儲存，玩法讀到的就是這張表",
+      addRow: "加一檔",
+      delRow: "刪末檔",
+      newRow: "新檔位",
+      note: "儲存前服務端按 EV<1 關閘：被拒時下面直接顯示後端原因，表裡一字不改。",
+      loadFail: "讀不到獎池（玩法側未開放或登入態失效）",
+      saveFail: "儲存失敗",
+    },
     title: "娛樂屋運營",
     loading: "載入中…",
     evTitle: "三口徑 EV 對照（回收口徑）",

@@ -2602,6 +2602,22 @@ const zhCnBase = {
    * 与 STAFF_TOOL_TABS。差集核对脚本见仓库根 `_admin_nav_align.py`。
    */
   adminArcade: {
+    pool: {
+      title: "奖池编辑器（九宫格）",
+      ticket: "票价",
+      colPrize: "奖项名",
+      colWeight: "权重（千分）",
+      colValue: "倍数 / 物品件数",
+      save: "保存奖池",
+      saving: "保存中…",
+      saved: "已保存，玩法读到的就是这张表",
+      addRow: "加一档",
+      delRow: "删末档",
+      newRow: "新档位",
+      note: "保存前服务端按 EV<1 关闸：被拒时下面直接显示后端原因，表里一字不改。",
+      loadFail: "读不到奖池（玩法侧未开放或登录态失效）",
+      saveFail: "保存失败",
+    },
     title: "娱乐屋运营",
     loading: "载入中…",
     evTitle: "三口径 EV 对照（回收口径）",
