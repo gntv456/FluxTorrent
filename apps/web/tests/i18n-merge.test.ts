@@ -19,8 +19,8 @@ describe("deepMergeDict（ja 段级回落）", () => {
   });
 
   it("未翻的整段回落 zh-CN（ja 没碰的顶层段）", () => {
-    expect(merged.forum).toEqual(zhCN.forum);
-    expect(merged.gacha).toEqual(zhCN.gacha);
+    expect(merged.forums).toEqual(zhCN.forums);
+    expect(merged.gomoku).toEqual(zhCN.gomoku);
   });
 
   it("段级部分覆盖不丢同段兄弟键", () => {
