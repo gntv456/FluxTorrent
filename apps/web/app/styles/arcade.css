@@ -601,6 +601,59 @@
   cursor: not-allowed;
 }
 
+/* ══════ 魔力农场（样图 05）：等距苗床 ══════
+   只把「土」扳成菱形，作物保持直立 —— 整块田做 3D 变换会让点击坐标错位。 */
+.plot-bed {
+  position: relative;
+  display: grid;
+  place-items: end center;
+  height: 104px;
+  margin: 4px 0 6px;
+}
+.plot-bed::before,
+.plot-bed::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 84%;
+  height: 46px;
+  transform: translateX(-50%) rotateX(56deg) rotateZ(45deg);
+  border-radius: 12px;
+}
+/* 侧壁：压在土面下面一点并虚化，读成「一坨土」而不是一张纸 */
+.plot-bed::before {
+  bottom: 2px;
+  background: #241a12;
+  filter: blur(1.5px);
+}
+.plot-bed::after {
+  bottom: 6px;
+  background: repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.22) 0 5px,
+      rgba(255, 255, 255, 0.05) 5px 11px
+    ),
+    linear-gradient(160deg, #6b4a30, #3d2a1c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+.plot-bed.ripe::after {
+  background: repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.2) 0 5px,
+      rgba(255, 255, 255, 0.06) 5px 11px
+    ),
+    linear-gradient(160deg, #83602f, #4a331a);
+  box-shadow: inset 0 1px 0 rgba(255, 233, 160, 0.34),
+    0 0 14px rgba(242, 198, 87, 0.26);
+}
+.plot-bed.dead::after {
+  filter: saturate(0.35);
+}
+.plot-bed > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* ── 门禁自检 ── */
 .arc-checks { display: flex; flex-direction: column; gap: 6px; }
 .arc-chk { display: flex; gap: 8px; font-size: 12px; align-items: baseline; }

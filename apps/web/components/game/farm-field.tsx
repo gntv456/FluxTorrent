@@ -178,8 +178,12 @@ export function FarmPlot({
           </svg>
         )}
       </div>
-      <div className={withered ? "opacity-60 grayscale" : undefined}>
-        <CropArt cropId={plot.crop_id} stage={stage} />
+      <div
+        className={`plot-bed${ready ? " ripe" : ""}${withered ? " dead" : ""}`}
+      >
+        <div className={withered ? "opacity-60 grayscale" : undefined}>
+          <CropArt cropId={plot.crop_id} stage={stage} />
+        </div>
       </div>
       <div className="mt-1 flex gap-1.5">
         {!withered && !plot.watered && !ready && (
