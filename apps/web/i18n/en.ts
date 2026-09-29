@@ -2668,6 +2668,7 @@ const enBase: Omit<
       saveFail: "Save failed",
     },
     pool: {
+      label: "9-grid · standard pool",
       title: "Prize pool editor (9-grid)",
       ticket: "Ticket",
       colPrize: "Prize",

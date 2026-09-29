@@ -2634,6 +2634,7 @@ const zhTwBase: Omit<
       saveFail: "儲存失敗",
     },
     pool: {
+      label: "九宮格 · 標準池",
       title: "獎池編輯器（九宮格）",
       ticket: "票價",
       colPrize: "獎項名",
