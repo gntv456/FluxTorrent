@@ -7,6 +7,10 @@
 
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+const CARD =
+  "rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]";
+const DOT = "inline-block h-2 w-2 rounded-sm";
+
 import type {
   AppealRow,
   AuditRow,
@@ -136,11 +140,65 @@ export function AdminOverviewPanel({
         </div>
       )}
 
+      {ov && (ov.trend?.length || ov.health) && (
+        <div className="grid gap-2 md:grid-cols-2">
+          <div className={`${CARD} p-4`}>
+            <p className="mb-2 text-xs font-bold text-[var(--text-brand)]">
+              {a.trendTitle}
+            </p>
+            <div className="flex h-24 items-end gap-1">
+              {(ov.trend ?? []).map(([d, u, t]) => {
+                const max = Math.max(
+                  1,
+                  ...(ov.trend ?? []).map((x) => Math.max(x[1], x[2])),
+                );
+                return (
+                  <div
+                    key={d}
+                    className="flex flex-1 flex-col justify-end gap-0.5"
+                    title={`${d} · ${a.trendReg} ${u} · ${a.trendPub} ${t}`}
+                  >
+                    <div
+                      className="rounded-t bg-sky/70"
+                      style={{ height: `${(u / max) * 70}%` }}
+                    />
+                    <div
+                      className="rounded-t bg-mint/70"
+                      style={{ height: `${(t / max) * 70}%` }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-[10px] text-sub">
+              <span className={`mr-2 ${DOT} bg-sky/70`} />
+              {a.trendReg}
+              <span className={`mx-2 ${DOT} bg-mint/70`} />
+              {a.trendPub}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {ov.health && (
+              <>
+                <Stat
+                  label={a.healthAliveRate}
+                  v={`${ov.health.alive_rate}%`}
+                />
+                <Stat label={a.healthDead} v={ov.health.dead} />
+                <Stat label={a.healthAlive} v={ov.health.alive} />
+                <Stat label={a.healthAvgSeeders} v={ov.health.avg_seeders} />
+              </>
+            )}
+            <Stat label={a.wauTitle} v={ov.wau ?? 0} />
+          </div>
+        </div>
+      )}
+
       <div>
         <h2 className="mb-2 text-sm font-bold text-[var(--text-brand)]">
           {a.recentActions}
         </h2>
-        <div className="rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4">
+        <div className={`${CARD} rounded-[var(--r-lg)] p-4`}>
           <ul className="flex flex-col divide-y divide-line text-sm">
             {audit.slice(0, 6).map((row) => (
               <li
@@ -161,5 +219,14 @@ export function AdminOverviewPanel({
         </div>
       </div>
     </section>
+  );
+}
+
+function Stat({ label, v }: { label: string; v: string | number }) {
+  return (
+    <div className={`${CARD} p-3 text-center`}>
+      <p className="text-xs text-sub">{label}</p>
+      <p className="num mt-1 text-xl text-ink">{v}</p>
+    </div>
   );
 }

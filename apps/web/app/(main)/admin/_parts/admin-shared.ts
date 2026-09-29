@@ -11,6 +11,15 @@ export interface Overview {
   users: number;
   torrents: number;
   banned_users: number;
+  /** E16 大盘三块（空库各值为 0/[]） */
+  trend?: [string, number, number][];
+  health?: {
+    alive: number;
+    dead: number;
+    alive_rate: number;
+    avg_seeders: number;
+  };
+  wau?: number;
 }
 
 export interface PendingTorrent {
