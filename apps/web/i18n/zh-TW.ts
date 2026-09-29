@@ -2052,6 +2052,17 @@ const zhTwBase: Omit<
     empty: "榜單虛位以待",
   },
   games: {
+    odds: {
+      title: "機率公示",
+      colPrize: "獎項",
+      colChance: "機率",
+      colValue: "等值",
+      ev: "期望回報",
+      house: "莊家優勢",
+      note: "下表數字由服務端下發，與後台改賠率時的閘門共用同一份算式：期望回報必須小於 1，站長把表改到等於或大於 1 會被直接拒絕儲存。",
+      limit: "限次",
+    },
+
     arcade: {
       title: "大廳 · 回收口與物品獎池",
       gateOk: "門禁全綠",
@@ -2504,6 +2515,9 @@ const zhTwBase: Omit<
     sectionOps: "運營",
     sectionSystem: "系統",
     recentActions: "最近操作",
+    auditSearchPh: "搜尋動作 / 操作人…",
+    auditShown: "已顯示 {n} / {total} 條",
+    auditShowMore: "再顯示 100 條",
     pendingAppeals: "待處理申訴",
     cheatersEntry: "作弊偵測",
     queueTitle: "待辦佇列",

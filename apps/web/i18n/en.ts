@@ -2082,6 +2082,17 @@ const enBase: Omit<
     empty: "The podium awaits",
   },
   games: {
+    odds: {
+      title: "Odds disclosure",
+      colPrize: "Prize",
+      colChance: "Chance",
+      colValue: "Value",
+      ev: "Expected return",
+      house: "House edge",
+      note: "Every figure below comes from the API and uses the same formula as the write-side gate: expected return must stay under 1, and a table that reaches 1 is refused on save.",
+      limit: "Play limit",
+    },
+
     arcade: {
       title: "Hall · Sinks & Item Pools",
       gateOk: "All gates green",
@@ -2537,6 +2548,9 @@ const enBase: Omit<
     sectionOps: "Operations",
     sectionSystem: "System",
     recentActions: "Recent activity",
+    auditSearchPh: "Search action / actor…",
+    auditShown: "Showing {n} of {total}",
+    auditShowMore: "Show 100 more",
     pendingAppeals: "Pending appeals",
     cheatersEntry: "Cheater detection",
     queueTitle: "Work queues",

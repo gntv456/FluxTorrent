@@ -2030,6 +2030,17 @@ const zhCnBase = {
     empty: "榜单虚位以待",
   },
   games: {
+    odds: {
+      title: "概率公示",
+      colPrize: "奖项",
+      colChance: "概率",
+      colValue: "等值",
+      ev: "期望回报",
+      house: "庄家优势",
+      note: "下表数字由服务端下发，与后台改赔率时的闸门共用同一份算式：期望回报必须小于 1，站长把表改到等于或大于 1 会直接被拒绝保存。",
+      limit: "限次",
+    },
+
     arcade: {
       title: "大厅 · 回收口与物品奖池",
       gateOk: "门禁全绿",
@@ -2486,6 +2497,9 @@ const zhCnBase = {
     sectionOps: "运营",
     sectionSystem: "系统",
     recentActions: "最近操作",
+    auditSearchPh: "搜索动作 / 操作人…",
+    auditShown: "已显示 {n} / {total} 条",
+    auditShowMore: "再显示 100 条",
     pendingAppeals: "待处理申诉",
     cheatersEntry: "作弊探测",
     queueTitle: "待办队列",

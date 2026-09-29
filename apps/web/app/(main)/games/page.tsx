@@ -132,6 +132,10 @@ export default async function GamesPage() {
       </p>
       <p className="text-xs text-sub">{dict.games.hallHint}</p>
 
+      <Link href="/games/odds" className="text-xs font-bold text-[var(--sky-deep)]">
+        {dict.games.odds.title} →
+      </Link>
+
       {/* 趣味盒（旧站 fun.php 口径）仍挂在大厅底部 —— 它不是「下注玩法」，归在娱乐屋内容区 */}
       <FunBox embedded />
     </div>
