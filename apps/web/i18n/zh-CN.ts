@@ -2602,6 +2602,24 @@ const zhCnBase = {
    * 与 STAFF_TOOL_TABS。差集核对脚本见仓库根 `_admin_nav_align.py`。
    */
   adminArcade: {
+    items: {
+      title: "物品目录",
+      colIcon: "图标",
+      colName: "名称",
+      colKind: "kind",
+      colAnchor: "折算价 anchor",
+      colStock: "全服库存",
+      colPerUser: "每人上限",
+      colUnlimited: "不限量",
+      colOn: "启用",
+      unlimited: "不限量",
+      save: "保存",
+      saving: "保存中…",
+      saved: "已保存 {k}",
+      note: "anchor 是派生量（商店价或可兑换价值倒推），面板只读；改它会连带改掉所有引用它的奖池 EV，服务端跨池回查不通过就整体回滚。",
+      loadFail: "读不到物品目录",
+      saveFail: "保存失败",
+    },
     pool: {
       title: "奖池编辑器（九宫格）",
       ticket: "票价",

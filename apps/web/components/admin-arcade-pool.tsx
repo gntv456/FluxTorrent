@@ -32,7 +32,11 @@ const CELL =
   "w-full rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2 py-1 text-xs";
 
-export function AdminArcadePool() {
+export function AdminArcadePool({
+  onChanged,
+}: {
+  onChanged?: () => void;
+}) {
   const { dict } = useI18n();
   const t = dict.adminArcade.pool;
   const [ticket, setTicket] = useState(0);
@@ -86,6 +90,7 @@ export function AdminArcadePool() {
     }
     // 无论成没成都回读：被拒时让面板显示表里的真值，而不是表单里的猜测
     await load();
+    onChanged?.();
     setBusy(false);
   }
 

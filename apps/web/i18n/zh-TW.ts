@@ -2615,6 +2615,24 @@ const zhTwBase: Omit<
    * AdminShell 取不到鍵時回落 DB 值，新工具不會渲染成空白。
    */
   adminArcade: {
+    items: {
+      title: "物品目錄",
+      colIcon: "圖標",
+      colName: "名稱",
+      colKind: "kind",
+      colAnchor: "折算價 anchor",
+      colStock: "全服庫存",
+      colPerUser: "每人上限",
+      colUnlimited: "不限量",
+      colOn: "啟用",
+      unlimited: "不限量",
+      save: "儲存",
+      saving: "儲存中…",
+      saved: "已儲存 {k}",
+      note: "anchor 是派生量（商店價或可兌換價值倒推），面板唯讀；改它會連帶改掉所有引用它的獎池 EV，服務端跨池回查不通過就整體回滾。",
+      loadFail: "讀不到物品目錄",
+      saveFail: "儲存失敗",
+    },
     pool: {
       title: "獎池編輯器（九宮格）",
       ticket: "票價",

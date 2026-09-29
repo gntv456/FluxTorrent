@@ -18,15 +18,6 @@ use crate::state::AppState;
 use super::arcade_cfg::{bad, MILESTONES, QUESTS, SEASON_KEY};
 use super::helpers::{bigsmall_mult_permille, eco_i64, scratch_odds};
 
-/// 刮刮乐 EV（每注）：(h×0.5 + o×1 + t×2 + ten×10) / 100
-fn scratch_ev(o: &games::ScratchOdds) -> f64 {
-    (o.half as f64 * 0.5
-        + o.one as f64
-        + o.two as f64 * 2.0
-        + o.ten as f64 * 10.0)
-        / 100.0
-}
-
 /// 九宫格 EV 只有一份公式，在 games::pool_ev —— 这里不再抄第二遍求和
 
 #[get("/admin/arcade/overview")]
@@ -40,7 +31,8 @@ pub(super) async fn arcade_overview(
 
     let mult = bigsmall_mult_permille(&state).await;
     let odds = scratch_odds(&state).await?;
-    let s_ev = scratch_ev(&odds);
+    // 公式只有一份：ScratchOdds::ev() 与写侧闸门共用，这里不再抄第二遍
+    let s_ev = odds.ev();
     let jgg = super::pool::load_pool(&state.repo.db, "jgg").await?;
     let j_ev = games::pool_ev(&jgg.entries, jgg.ticket);
     let b_ev = games::bigsmall_expected_value(mult);
@@ -110,9 +102,41 @@ pub(super) async fn arcade_overview(
         ),
     ];
 
+    // 物品目录全表：面板要能编辑它，就得先读得到全部条目（不是只读
+    // 被某个池引用的那几件）。anchor 原样回传，编辑器里保持只读。
+    let item_rows = sqlx::query(
+        r#"
+        SELECT key, name, kind, anchor, anchor_src, unlimited,
+               stock, per_user, icon, enabled
+          FROM arcade_items ORDER BY sort, key
+        "#,
+    )
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let items: Vec<serde_json::Value> = item_rows
+        .iter()
+        .map(|r| {
+            use sqlx::Row;
+            json!({
+                "key": r.get::<String, _>("key"),
+                "name": r.get::<String, _>("name"),
+                "kind": r.get::<String, _>("kind"),
+                "anchor": r.get::<i64, _>("anchor"),
+                "anchor_src": r.get::<String, _>("anchor_src"),
+                "unlimited": r.get::<bool, _>("unlimited"),
+                "stock": r.get::<i64, _>("stock"),
+                "per_user": r.get::<i32, _>("per_user"),
+                "icon": r.get::<String, _>("icon"),
+                "enabled": r.get::<bool, _>("enabled"),
+            })
+        })
+        .collect();
+
     let body = serde_json::json!({
         "ev": ev,
         "checks": checks,
+        "items": items,
         "params": {
             "max_bet": max_bet, "max_plays_per_hour": max_plays,
             "bigsmall_mult_permille": mult,
