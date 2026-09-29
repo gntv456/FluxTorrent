@@ -654,6 +654,40 @@
   z-index: 1;
 }
 
+/* ── 刮刮乐票面（样图 02）：描金票框 + 斜虹彩，涂层就盖在它上面 ──
+   刻意不加任何 transform：ScratchCanvas 的落笔坐标是从元素 rect 反推的，
+   一倾斜涂层就和票面错位（样张那版是靠逆矩阵才救回来的）。 */
+.sc-face {
+  position: relative;
+  display: flex;
+  height: 100%;
+  width: min(300px, 84%);
+  margin-inline: auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(238, 203, 124, 0.5);
+  background: linear-gradient(
+      122deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.16) 42%,
+      transparent 54%
+    ),
+    linear-gradient(180deg, #1c2440, #0d1120);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.06),
+    0 8px 20px rgba(3, 6, 16, 0.5);
+}
+.sc-face::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: calc(var(--r-md) - 3px);
+  border: 1px dashed rgba(238, 203, 124, 0.34);
+  pointer-events: none;
+}
+
 /* ── 门禁自检 ── */
 .arc-checks { display: flex; flex-direction: column; gap: 6px; }
 .arc-chk { display: flex; gap: 8px; font-size: 12px; align-items: baseline; }
