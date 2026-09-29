@@ -132,7 +132,10 @@ export default async function GamesPage() {
       </p>
       <p className="text-xs text-sub">{dict.games.hallHint}</p>
 
-      <Link href="/games/odds" className="text-xs font-bold text-[var(--sky-deep)]">
+      <Link
+        href="/games/odds"
+        className="text-xs font-bold text-[var(--sky-deep)]"
+      >
         {dict.games.odds.title} →
       </Link>
 

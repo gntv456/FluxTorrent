@@ -2094,6 +2094,10 @@ const enBase: Omit<
     },
 
     arcade: {
+      boardTitle: "Weekly arcade board",
+      boardStubs: "Stubs collected",
+      boardPlays: "Plays this week",
+      boardNote: "Ranked by collection and plays only, never by net result — ranking losses would be nudging people to bet more.",
       title: "Hall · Sinks & Item Pools",
       gateOk: "All gates green",
       gateBlocked: "{n} blocked",
