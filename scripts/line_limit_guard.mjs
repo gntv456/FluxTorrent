@@ -35,6 +35,7 @@ const EXEMPT = [
   "package-lock.json",
   "next-env.d.ts",
   "apps/web/.next/",
+  "coverage/", // 覆盖率报告是生成物且已 gitignore，不是源码
   "node_modules/",
   "target/",
   "target-test/",

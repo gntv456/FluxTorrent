@@ -12,9 +12,10 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::helpers::{
-    bigsmall_mult_permille, check_bet, check_rate, eco_i64, grant_item, idem_key, load_pool,
-    scratch_odds, BetReq, GrantOutcome,
+    bigsmall_mult_permille, check_bet, check_rate, eco_i64, idem_key,
+    scratch_odds, BetReq,
 };
+use super::pool::{grant_item, load_pool, GrantOutcome};
 
 #[post("/games/scratch")]
 pub(super) async fn scratch(
@@ -173,9 +174,20 @@ pub(super) async fn jgg(
     // 发不出去时按 FALLBACK_MULT 折魔力 —— 这条回落路径已被 EV 计入，不是额外成本。
     let win_idem = format!("game-jgg-win:{}", idem);
     let (spark, value, fell_back) = match &draw.prize.kind {
-        games::EntryKind::Magic { multiples } => (ticket * multiples, ticket * multiples, None),
-        games::EntryKind::Item { item_key, qty, anchor } => match grant_item(
-            &state.repo.db, auth.id, item_key, *qty, "jgg", &win_idem,
+        games::EntryKind::Magic { multiples } => {
+            (ticket * multiples, ticket * multiples, None)
+        }
+        games::EntryKind::Item {
+            item_key,
+            qty,
+            anchor,
+        } => match grant_item(
+            &state.repo.db,
+            auth.id,
+            item_key,
+            *qty,
+            "jgg",
+            &win_idem,
         )
         .await?
         {
@@ -184,16 +196,22 @@ pub(super) async fn jgg(
                 let p = ticket * games::FALLBACK_MULT;
                 (p, p, Some(why))
             }
-        }
+        },
     };
     if spark > 0 {
         earn_spark(&state.repo.db, auth.id, spark, "game", &win_idem).await?;
     }
+    // 公示口径：物品 / 回落 / 魔力 三种结果在前台必须可区分
+    let award_kind = match (&draw.prize.kind, fell_back) {
+        (_, Some(_)) => "fallback",
+        (games::EntryKind::Magic { .. }, _) => "magic",
+        (games::EntryKind::Item { .. }, _) => "item",
+    };
     state.repo.audit(Some(auth.id), "game.jgg", None).await;
     Ok(ok(serde_json::json!({
         "index": draw.index,
         "prize": draw.prize.label,
-        "kind": if fell_back.is_some() { "fallback" } else { match draw.prize.kind { games::EntryKind::Magic{..} => "magic", _ => "item" } },
+        "kind": award_kind,
         "fell_back": fell_back,
         "payout": spark,
         "value": value,

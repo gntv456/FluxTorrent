@@ -64,7 +64,7 @@ impl ScratchOdds {
         if h + 2 * o + 4 * t + 20 * ten_eff >= 200 {
             let ev = (h + 2 * o + 4 * t + 20 * ten_eff) as f64 / 200.0;
             return Err(format!(
-                "综合返还 {ev:.3} >= 1：刮刮乐在增发而非回收，拒绝该赔率表（空{e} 半{h} 一{o} 二{t} 十{ten_eff}）"
+                "综合返还 {ev:.3} >= 1：在增发而非回收，拒绝该赔率表                  （空{e} 半{h} 一{o} 二{t} 十{ten_eff}）"
             ));
         }
         Ok(ScratchOdds {
