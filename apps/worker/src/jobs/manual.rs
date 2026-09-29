@@ -48,6 +48,7 @@ pub(crate) async fn run_named(
         "funding_settle" => n(funding_settle(db).await?),
         "refundable_settle" => n(refundable_settle(db).await?),
         "achievement_grant" => n(achievement_grant(db).await?),
+        "game_coupons" => n(grant_food_coupons(db).await?),
         "subreq_sweep" => d(subreq_sweep(db).await?),
         "subawards" => d(subawards_build(db).await?),
         "subcert_sweep" => {

@@ -11,6 +11,7 @@ pub(crate) mod audit;
 mod backfill;
 mod billing;
 mod catalog;
+mod game_coupons;
 mod class_adj;
 pub(crate) mod group;
 mod hr;
@@ -49,6 +50,7 @@ pub(crate) use social_team_expire::*;
 
 pub(crate) use achv_dormant::*;
 pub(crate) use announce_main::*;
+pub(crate) use game_coupons::*;
 pub(crate) use audit::*;
 pub(crate) use backfill::*;
 pub(crate) use class_adj::*;

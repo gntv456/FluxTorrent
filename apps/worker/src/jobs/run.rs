@@ -245,6 +245,10 @@ pub async fn run_all(
                     refundable_settle(&db), &shard);
                 shard_lock!(&db, "job:achievement_grant",
                     achievement_grant(&db), &shard);
+                // 优先级①：每日做种满 6h（设置键 games_coupon_seed_hours 可调）发 1 张口粮券。
+                // 复用 seeding_reward 流水判定，幂等靠 food_coupon_grants 主键，重跑零副作用。
+                shard_lock!(&db, "job:game_coupons",
+                    grant_food_coupons(&db), &shard);
                 // 0148 字幕工作流：认领超时回池 + 交稿超时自动验收 + 月度评选候选
                 // 0149 认证字幕人：三阈值复扫（均幂等：CAS/UNIQUE/PK + 仅撤 auto 行）
                 shard_lock!(&db, "job:subreq_sweep", subreq_sweep(&db), &shard);

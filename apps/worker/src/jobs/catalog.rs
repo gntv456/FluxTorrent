@@ -133,6 +133,10 @@ pub const JOBS: &[JobDef] = &[
         cadence: "1h",
     },
     JobDef {
+        name: "game_coupons",
+        cadence: "1h",
+    },
+    JobDef {
         name: "subreq_sweep",
         cadence: "1h",
     },
