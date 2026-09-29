@@ -46,13 +46,13 @@ def call(method, path, body=None, token=None):
 
 
 def login(user="root", pw="password123"):
-    for _ in range(4):
+    for i in range(10):
         st, r = call("POST", "/auth/login",
                      {"username": user, "password": pw})
         tok = (r.get("data") or {}).get("token")
         if tok:
             return tok
-        time.sleep(1.5)
+        time.sleep(min(2 + i * 3, 20))  # 限流窗口比 1.5s 长得多
     raise SystemExit("登录失败：侧容器是否指向同一个库？")
 
 
