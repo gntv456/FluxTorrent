@@ -2370,6 +2370,15 @@ const zhCnBase = {
     deleted: "已删除",
   },
   admin: {
+    trendTitle: "14 天注册 / 发种趋势",
+    trendReg: "注册",
+    trendPub: "发种",
+    healthAliveRate: "活种率",
+    healthDead: "死种数",
+    healthAlive: "活种",
+    healthAvgSeeders: "平均做种人数",
+    wauTitle: "周活用户（7 天）",
+
     title: "管理后台",
     settingGroups: {
       basic: "基础设定",

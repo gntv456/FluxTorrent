@@ -2390,6 +2390,15 @@ const zhTwBase: Omit<
     deleted: "已刪除",
   },
   admin: {
+    trendTitle: "14 天註冊 / 發種趨勢",
+    trendReg: "註冊",
+    trendPub: "發種",
+    healthAliveRate: "活種率",
+    healthDead: "死種數",
+    healthAlive: "活種",
+    healthAvgSeeders: "平均做種人數",
+    wauTitle: "週活用戶（7 天）",
+
     title: "管理後台",
     settingGroups: {
       basic: "基礎設定",

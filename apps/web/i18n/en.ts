@@ -2423,6 +2423,15 @@ const enBase: Omit<
     deleted: "Deleted",
   },
   admin: {
+    trendTitle: "14-day signups / uploads",
+    trendReg: "Signups",
+    trendPub: "Uploads",
+    healthAliveRate: "Alive rate",
+    healthDead: "Dead",
+    healthAlive: "Alive",
+    healthAvgSeeders: "Avg seeders",
+    wauTitle: "Weekly active users",
+
     title: "Admin",
     settingGroups: {
       basic: "Basic",
