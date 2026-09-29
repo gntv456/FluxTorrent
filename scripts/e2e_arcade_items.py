@@ -79,6 +79,39 @@ def item_body(key, kind="cosmetic", anchor=0, src="n/a", per_user=1,
             "enabled": True}
 
 
+BASE_POOL = None
+
+
+def pool_body(prizes, ticket):
+    """读侧投影 -> 写侧请求体：收尾复原与中途兜底共用这一份。"""
+    return {"pool_key": "jgg_default", "game": "jgg",
+            "label": "九宫格 · 标准池", "ticket": ticket,
+            "entries": [
+                dict(
+                    [("label", p["label"]),
+                     ("weight", p["weight_permille"]),
+                     ("kind", p.get("kind", "magic")),
+                     ("enabled", True)]
+                    + ([("payout", p["payout"])]
+                       if p.get("kind") != "item"
+                       else [("item_key", p["item_key"]),
+                             ("qty", p["qty"])]),
+                )
+                for p in prizes]}
+
+
+def _restore_pool():
+    """崩在半路也要把奖池写回进入时的样子（与 pool_gate 同一纪律）。"""
+    if not BASE_POOL:
+        print("兜底复原：没抓到基线，跳过")
+        return
+    tok = login()
+    st, _ = call("POST", "/admin/arcade/pool", BASE_POOL, tok)
+    left = ((call("GET", "/games", None, tok)[1].get("data") or {})
+            .get("jgg") or {}).get("prizes") or []
+    print("兜底复原奖池 -> HTTP %s，表里 %s 档" % (st, len(left)))
+
+
 def magic_row(label, weight):
     return {"label": label, "weight": weight, "payout": 0,
             "kind": "magic", "enabled": True}
@@ -97,6 +130,16 @@ def main():
     j = pool(tok)
     prizes = j.get("prizes") or []
     items = [p for p in prizes if p.get("kind") == "item"]
+
+    # 基线体检：上次崩在半路可能把探针池留在表里，那样「复原」会把脏态
+    # 当基线并断言成功 —— 本轮真发生过（跑完 33/33，表里其实只剩 2 档）。
+    check("基线奖池是正常表（不是上次留下的探针态）",
+          len(prizes) >= 3 and not any(
+              (x.get("item_key") or "").endswith("_probe")
+              for x in prizes),
+          [x.get('label') for x in prizes])
+    global BASE_POOL
+    BASE_POOL = pool_body(prizes, j.get("ticket"))
     check("奖池含物品位（0245 生效）", len(items) >= 1,
           [p.get("label") for p in prizes])
     check("物品位带目录 anchor 与件数",
@@ -335,6 +378,10 @@ if __name__ == "__main__":
         main()
     finally:
         try:
-            _drop_probe_items()
+            _restore_pool()
         except Exception as e:  # 兜底失败要喊出来，不能静默
+            print("奖池兜底复原失败，请手工核对 arcade_pool_entries：%r" % e)
+        try:
+            _drop_probe_items()
+        except Exception as e:
             print("探针物品清理失败，请手工核对 arcade_items：%r" % e)

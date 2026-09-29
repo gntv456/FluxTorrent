@@ -12,7 +12,7 @@ import {
 
 interface HallOverview {
   scratch?: { prizes: ScratchPrize[] };
-  jgg?: { prizes: { payout: number }[] };
+  jgg?: { ticket: number; prizes: { payout: number; value?: number }[] };
   bigsmall?: { win_mult: number };
 }
 
@@ -35,8 +35,13 @@ export default async function GamesPage() {
   const scratchTop = ov?.scratch?.prizes?.length
     ? Math.max(...ov.scratch.prizes.map((p) => p.multiplier))
     : 10;
+  // 角标要的是「最高值」而不是「最高魔力倍数」：0245 之后物品位 payout 恒为 0
+  // （库侧 CHECK 逼的），按 payout 排会把 120 倍等值的免考核卡整个漏掉。
+  const jggTk = ov?.jgg?.ticket ?? 100;
   const jggTop = ov?.jgg?.prizes?.length
-    ? Math.max(...ov.jgg.prizes.map((p) => p.payout))
+    ? Math.max(
+        ...ov.jgg.prizes.map((p) => (p.value ?? p.payout * jggTk) / jggTk),
+      )
     : 50;
   const winMult = ov?.bigsmall?.win_mult ?? 1.9;
   // 大厅游戏表面（真数据；未登录/失败静默隐藏——不阻塞大厅选玩）
@@ -68,7 +73,7 @@ export default async function GamesPage() {
       icon: "🎰",
       title: dict.games.jgg.title,
       sub: dict.games.jgg.ticket,
-      tag: `${jggTop}x`,
+      tag: `${fmtMult(jggTop)}x`,
       bg: "linear-gradient(135deg,var(--candy-soft),var(--sun-soft))",
       tagCls: "bg-candy-soft text-[var(--candy)]",
     },
