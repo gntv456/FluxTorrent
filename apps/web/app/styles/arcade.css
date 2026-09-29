@@ -108,6 +108,67 @@
 .arc-track-cell {
   position: relative; display: grid; justify-items: center; gap: 4px;
 }
+
+/* ══════ 样图 06 的两件材质：齿孔票根纸 + 星轨节点 ══════
+   齿孔不用 mask（内置浏览器上不稳），改成「用承托面颜色沿四条边 repeat
+   一排圆点把纸边啃掉」。承托色与相册底必须同源，否则圆点会读成一圈脏边——
+   所以这里给相册自己铺一层 sunken 承托，再把同一个 token 交给 --bk。 */
+.arc-album {
+  padding: 12px 10px 10px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+.arc-stub {
+  --bk: var(--surface-sunken);
+  border: 0;
+  border-radius: 3px;
+  padding: 10px 8px;
+  background: linear-gradient(150deg, #f6f8ff, #dde3f3 52%, #c3ccdf);
+  box-shadow: 0 6px 14px rgba(3, 6, 16, 0.18), inset 0 1px 0 #fff;
+}
+.arc-stub::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    radial-gradient(circle 4.6px at 7px 0, var(--bk) 4.6px, transparent 5.2px)
+      0 0 / 14px 9px repeat-x,
+    radial-gradient(circle 4.6px at 7px 9px, var(--bk) 4.6px, transparent 5.2px)
+      0 100% / 14px 9px repeat-x,
+    radial-gradient(circle 4.6px at 0 7px, var(--bk) 4.6px, transparent 5.2px)
+      0 0 / 9px 14px repeat-y,
+    radial-gradient(circle 4.6px at 9px 7px, var(--bk) 4.6px, transparent 5.2px)
+      100% 0 / 9px 14px repeat-y;
+}
+.arc-stub { position: relative; }
+.arc-stub.locked {
+  filter: none;
+  opacity: 1;
+  background: linear-gradient(150deg, #b9c1d3, #98a1b6 52%, #7d8698);
+}
+.arc-stub.locked .nm,
+.arc-stub.locked .ct { color: #2c3140; opacity: 0.75; }
+/* 星轨：已达成/可领取换成四角金牌（🔒 那颗保持圆形，锁形剪出来会被切掉） */
+.arc-node.reached,
+.arc-node.ready {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  clip-path: polygon(
+    50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%
+  );
+}
+.arc-node.reached {
+  background: radial-gradient(circle at 38% 30%, #fff6d8, #e9b94e 58%, #a8781f);
+  color: #2a1c05;
+}
+.arc-node.ready {
+  background: radial-gradient(circle at 38% 30%, #ffffff, #a6d8ff 52%, #2a5da4);
+  color: #08182c;
+  box-shadow: 0 0 14px rgba(74, 143, 221, 0.55);
+}
 .arc-track-cell .arc-link {
   position: absolute; left: -13px; top: 16px;
   width: 24px; height: 2px; border-radius: 2px;
