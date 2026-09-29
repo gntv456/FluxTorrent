@@ -164,6 +164,20 @@ def main():
     check("未知 anchor_src -> 400", st == 400, (st, r))
     st, r = call("POST", "/admin/arcade/items", item_body("gate_probe"), tok)
     check("合法 cosmetic -> 200", st == 200, (st, r))
+    # 删除端点的三道闸：① 还被奖池引用 → 拒（删了会让 load_pool 当场炸，
+    # 因为 item_key 是 SET NULL 而 CHECK 要求 item 位非空）
+    st, r = call("DELETE", "/admin/arcade/items/ticket", None, tok)
+    txt = json.dumps(r, ensure_ascii=False)
+    check("被奖池引用的物品删不掉且点名奖池",
+          st == 400 and ("奖池" in txt or "引用" in txt), (st, txt[:120]))
+    # ② 没被引用、也没发过账 → 真删掉（顺带自清 gate_probe，不再留残渣）
+    st, r = call("DELETE", "/admin/arcade/items/gate_probe", None, tok)
+    check("无引用无发放的物品可删", st == 200, (st, r))
+    keys = [x["key"] for x in ((call("GET", "/admin/arcade/overview",
+                                None, tok)[1].get("data") or {})
+                                .get("items") or [])]
+    check("删完目录里确实没有 gate_probe",
+          "gate_probe" not in keys, keys)
 
     # ── 3. 跨池回查：抬 anchor 到会让引用池 EV>=1 的水位，必须整体拒绝 ──
     ref = items[0]["item_key"]
@@ -258,6 +272,12 @@ def main():
     check("上限用尽后一律走回落并给出原因",
           fell >= 1 and bool(fell_reason),
           {"granted": granted, "fell": fell, "reason": fell_reason})
+    # 此刻 cap_probe 还在探针池里，先测到的其实是「引用闸」：
+    # 服务端点名是哪个池的哪一档挡着，不让人盲删。
+    st, r = call("DELETE", "/admin/arcade/items/cap_probe", None, tok)
+    txt2 = json.dumps(r, ensure_ascii=False)
+    check("在池里的物品删不掉（引用闸先响）",
+          st == 400 and "引用" in txt2, (st, txt2[:120]))
 
     # 闭环：发出去的东西必须回到玩家眼前。背包读的就是发放账本身，
     # 所以「中奖」与「看得到」之间不该再有第二份清单。
@@ -323,6 +343,15 @@ def main():
             for lb, wt, mu, kd, ik, q in base]}
     st, r = call("POST", "/admin/arcade/pool", restore, tok)
     check("池子复原成功", st == 200, (st, r))
+    # ③ 奖池已不引用它，但它发过 7 件 ——
+    # 发放账是余量与每人上限的唯一真相，
+    # 删物品会 CASCADE 清账，所以只许停用。
+    # 真相，删物品会 CASCADE 清账，所以只许停用。
+    st, r = call("DELETE", "/admin/arcade/items/cap_probe", None, tok)
+    txt3 = json.dumps(r, ensure_ascii=False)
+    check("发过账的物品只能停用不能删",
+          st == 400 and ("停用" in txt3 or "发放" in txt3),
+          (st, txt3[:140]))
     back = dict(cap1)
     back.update({"unlimited": False, "stock": 40, "per_user": 5})
     st, r = call("POST", "/admin/arcade/items", back, tok)
