@@ -10,6 +10,7 @@ import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/i18n/client";
 import { api } from "@/lib/api-client";
+import { ArcadeFeed, type ArcadeFeedItem } from "./arcade-feed";
 
 export interface ArcadeLedger {
   magic_back: number;
@@ -62,6 +63,7 @@ export interface ArcadeMeta {
   stubs: { owned: number; total: number; items: ArcadeStub[] };
   season: { key: string; items: ArcadeMilestone[] };
   shelf: ArcadeShelfItem[];
+  feed: ArcadeFeedItem[];
   checks: ArcadeCheck[];
 }
 
@@ -251,6 +253,9 @@ export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
           )}
         </div>
       </section>
+
+      {/* 全服公示：谁点亮了票根 / 领了奖励（社交钩子） */}
+      <ArcadeFeed items={initial.feed} />
 
       {/* 门禁自检 */}
       <section className="arc-sec">

@@ -165,6 +165,34 @@ pub(super) async fn arcade_meta(
     })
     .collect();
 
+    // ── 全服公示：近期票根/领取事件（社交钩子；文案由前端 i18n 合成）──
+    let feed: Vec<serde_json::Value> = sqlx::query(
+        "SELECT x.at, u.username AS who, x.kind, x.name FROM ( \
+           SELECT ua.granted_at AS at, ua.user_id, 'stub' AS kind, \
+                  d.name AS name \
+           FROM user_achievements ua \
+           JOIN achievement_defs d ON d.id = ua.def_id \
+           WHERE d.family = 'arcade' \
+           UNION ALL \
+           SELECT c.claimed_at AS at, c.user_id, c.kind, c.ref_code AS name \
+           FROM arcade_claims c \
+         ) x JOIN users u ON u.id = x.user_id \
+         ORDER BY x.at DESC LIMIT 12",
+    )
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .into_iter()
+    .map(|r| {
+        use sqlx::Row;
+        serde_json::json!({
+            "who": r.get::<String, _>("who"),
+            "kind": r.get::<String, _>("kind"),
+            "name": r.get::<String, _>("name"),
+        })
+    })
+    .collect();
+
     // ── 门禁：确定侧预算（第二道闸）+ 随机侧赔率方向 ──
     let mult = bigsmall_mult_permille(&state).await;
     let checks = vec![
@@ -192,6 +220,7 @@ pub(super) async fn arcade_meta(
         },
         "season": { "key": SEASON_KEY, "items": season },
         "shelf": shelf,
+        "feed": feed,
         "checks": checks,
     });
     Ok(ok(body))
