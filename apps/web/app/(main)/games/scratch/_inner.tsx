@@ -202,9 +202,7 @@ export default function ScratchPage({
             art="/games/stage-scratch.jpg"
             className="h-[210px] w-full max-w-[460px]"
           >
-            <div className="flex h-full flex-col items-center justify-center">
-              {prizeFace()}
-            </div>
+            <div className="sc-face">{prizeFace()}</div>
             <ScratchCanvas
               key={round}
               armed={phase === "scratchable"}

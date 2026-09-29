@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { getSiteProfile } from "@/lib/site-profile";
 import { requireModule } from "@/components/module-gate";
 import { FunBox } from "@/components/fun-box";
 import { fmtMult, scratchPoolText, type ScratchPrize } from "@/lib/games";
@@ -25,6 +26,10 @@ export default async function GamesPage() {
   if (gate) return gate;
 
   const { dict, currency } = await getDict();
+  const profile = await getSiteProfile();
+  // 模块开关口径与 requireModule / 页脚一致：缺键视为开
+  const mod = (k: string) => profile.modules[k] !== false;
+  const cardMod: Record<string, string> = { "/games/farm": "farm" };
   // 卡片角标取自后端下发的真实赔率/奖池（不在前端写死，避免展示与实现不符）
   const ov = await api.get<HallOverview>("/api/v1/games").catch(() => null);
   const scratchTop = ov?.scratch?.prizes?.length
@@ -76,7 +81,7 @@ export default async function GamesPage() {
       bg: "linear-gradient(135deg,var(--mint-soft),var(--sun-soft))",
       tagCls: "bg-mint-soft text-[var(--mint)]",
     },
-  ];
+  ].filter((c) => mod(cardMod[c.href] ?? "games"));
 
   return (
     <div className="flex flex-col gap-4">
