@@ -131,6 +131,15 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     .await?;
     if violated.rows_affected() > 0 {
         tracing::warn!(n = violated.rows_affected(), "H&R violations detected");
+        // E12 生命周期事件：H&R 违规产生（管理侧广播，尽力而为）
+        super::audit::webhook_broadcast(
+            db,
+            &format!(
+                "H&R 违规 {} 例（hr_enforce job）",
+                violated.rows_affected()
+            ),
+        )
+        .await;
         // 违规行同步 snatches.hr_flag（/me/hr 与列表角标口径）
         let _ = sqlx::query(
             "UPDATE snatches s SET hr_flag = TRUE FROM hr_violations v \
