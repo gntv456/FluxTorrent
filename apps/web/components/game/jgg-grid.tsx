@@ -117,7 +117,9 @@ export function JggGrid({
           const isLit = lit === pi;
           const isWin = landed && resultIndex === pi;
           // 物品档按价值判高低：payout 恒为 0，直接判会把免考核卡画成最低档样式
-          const jack = p.kind === "item" ? (p.value ?? 0) >= ticket * 10 : p.payout >= 10;
+          // 物品档 payout 恒为 0，按 payout 判会把高价物品画成最低档样式
+          const v = p.value ?? p.payout * ticket;
+          const jack = v >= ticket * 10;
           return (
             <div
               key={gi}
