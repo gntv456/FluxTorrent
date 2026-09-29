@@ -12,7 +12,8 @@
 关闸失效的表现是 200 且表被改坏；脚本把两种情况分开报，不会把前者误读成后者。
 
 用法：起一个带新二进制的侧容器，然后
-    FLUX_API_BASE=http://127.0.0.1:8180/api/v1 python scripts/e2e_arcade_pool_gate.py
+    export FLUX_API_BASE=http://127.0.0.1:8180/api/v1
+    python scripts/e2e_arcade_pool_gate.py
 """
 
 import json
@@ -46,7 +47,8 @@ def call(method, path, body=None, token=None):
 
 def login(user="root", pw="password123"):
     for _ in range(4):
-        st, r = call("POST", "/auth/login", {"username": user, "password": pw})
+        st, r = call("POST", "/auth/login",
+                     {"username": user, "password": pw})
         tok = (r.get("data") or {}).get("token")
         if tok:
             return tok
@@ -58,8 +60,7 @@ def snapshot(tok):
     """读侧现状。overview 读表，所以这就是表的投影。"""
     st, r = call("GET", "/admin/arcade/overview", token=tok)
     assert st == 200, ("读 overview 失败", st, r)
-    d = r.get("data") or {}
-    return d
+    return r.get("data") or {}
 
 
 def _norm(prize):
@@ -95,11 +96,28 @@ def to_req(p):
     return e
 
 
+def triples(prizes):
+    """档位投影：只比标签/权重/赔付 —— 票价改动不该波及它们。"""
+    return [(p["label"], p["weight_permille"], p["payout"]) for p in prizes]
+
+
 def check(name, cond, detail=""):
-    print(("  PASS  " if cond else "  FAIL  ") + name + ("" if cond else "   " + str(detail)[:220]))
-    n_checks[0] += 1
+    msg = ("  PASS  " if cond else "  FAIL  ") + name
     if not cond:
+        msg += "   " + str(detail)[:220]
         fails.append(name)
+    print(msg)
+    n_checks[0] += 1
+
+
+def magic(lb, wt, mu):
+    return {"label": lb, "weight": wt, "kind": "magic",
+            "payout": mu, "enabled": True}
+
+
+def item(lb, wt, k):
+    return {"label": lb, "weight": wt, "kind": "item",
+            "item_key": k, "qty": 1, "enabled": True}
 
 
 def main():
@@ -107,36 +125,40 @@ def main():
     print("FLUX_API_BASE =", BASE)
 
     before = pool_of(tok)
-    if not before or not before.get("prizes"):
-        raise SystemExit("读侧没拿到奖池 —— 玩法读表那一半没生效，先确认二进制版本")
-    print("基线：ticket=%s 档数=%s" % (before.get("ticket"), len(before["prizes"])))
+    if not before or not before["prizes"]:
+        raise SystemExit("读侧没拿到奖池 —— 玩法读表那一半没生效，"
+                         "先确认二进制版本")
+    print("基线：ticket=%s 档数=%s"
+          % (before.get("ticket"), len(before["prizes"])))
 
     # 契约断言：payout 是前台一直在读的既有字段（apps/web/lib/games.ts）。
     # 上一轮把它重命名成 multiples 直接把客户端打坏了 —— 新语义只能附加，
     # 不能替换已上线的响应字段。这条断言就是为了让下次替换立刻红。
     # 必须读**原始**响应：pool_of 里的 _norm 会自己补 payout，
     # 拿归一化后的对象做契约断言等于测我自己的代码，永远绿。
-    raw = ((call("GET", "/games", token=tok)[1].get("data") or {}).get("jgg") or {}).get("prizes") or []
-    check("契约·服务端仍返回 payout 字段", raw and all("payout" in x for x in raw), raw[:2])
-    check("契约·服务端仍返回 kind 字段", raw and all("kind" in x for x in raw), raw[:2])
+    resp = call("GET", "/games", token=tok)[1]
+    raw = ((resp.get("data") or {}).get("jgg") or {}).get("prizes") or []
+    check("契约·服务端仍返回 payout 字段",
+          bool(raw) and all("payout" in x for x in raw), raw[:2])
+    check("契约·服务端仍返回 kind 字段",
+          bool(raw) and all("kind" in x for x in raw), raw[:2])
 
     # 用读侧的投影反构一个「只抬 50x 权重」的坏池：抬到 40 后 EV 破 1
     entries = [to_req(p) for p in before["prizes"]]
-    def body_of(entries, ticket=None):
-        return {"pool_key": POOL_KEY, "game": "jgg", "label": "九宫格 · 标准池",
-                "ticket": before["ticket"] if ticket is None else ticket,
-                "entries": entries}
 
-    M = lambda lb, wt, mu: {"label": lb, "weight": wt, "kind": "magic", "payout": mu, "enabled": True}
-    I = lambda lb, wt, k: {"label": lb, "weight": wt, "kind": "item",
-                           "item_key": k, "qty": 1, "enabled": True}
+    def body_of(ents, ticket=None):
+        return {"pool_key": POOL_KEY, "game": "jgg",
+                "label": "九宫格 · 标准池",
+                "ticket": before["ticket"] if ticket is None else ticket,
+                "entries": ents}
+
     # ① 经济档权重堆到 EV 1.2
-    body_bad = body_of([M("谢谢参与", 400, 0), M("2x 魔力", 600, 2)])
+    body_bad = body_of([magic("谢谢参与", 400, 0), magic("2x 魔力", 600, 2)])
 
     st, r = call("POST", "/admin/arcade/pool", body_bad, tok)
     check("后门①抬经济奖权重 -> 400 拒绝", st == 400, (st, r))
-    check("拒绝原因点名 EV", "EV" in json.dumps(r, ensure_ascii=False)
-          or "返还" in json.dumps(r, ensure_ascii=False), r)
+    dumped = json.dumps(r, ensure_ascii=False)
+    check("拒绝原因点名 EV", "EV" in dumped or "返还" in dumped, r)
 
     after_bad = pool_of(tok)
     check("被拒之后表里一字未改（档数/权重/票价全等）", after_bad == before,
@@ -145,10 +167,14 @@ def main():
     # 其余四类坏配置：空池 / 零权重 / 票价非正 / EV 恰为 1
     cases = [
         ("空池", body_of([])),
-        ("零权重档", body_of([M("谢谢参与", 500, 0), M("2x", 0, 2)])),
-        ("票价 0", body_of([M("谢谢参与", 900, 0), M("2x", 100, 2)], ticket=0)),
-        ("EV 恰为 1 的中性池", body_of([M("谢谢参与", 500, 0), M("2x", 500, 2)])),
-        ("物品位引用不存在/停用物品", body_of([M("谢谢参与", 900, 0), I("空头券", 100, "no_such_item")])),
+        ("零权重档", body_of([magic("谢谢参与", 500, 0), magic("2x", 0, 2)])),
+        ("票价 0", body_of([magic("谢谢参与", 900, 0), magic("2x", 100, 2)],
+                           ticket=0)),
+        ("EV 恰为 1 的中性池",
+         body_of([magic("谢谢参与", 500, 0), magic("2x", 500, 2)])),
+        ("物品位引用不存在/停用物品",
+         body_of([magic("谢谢参与", 900, 0),
+                  item("空头券", 100, "no_such_item")])),
     ]
     for name, body in cases:
         st, r = call("POST", "/admin/arcade/pool", body, tok)
@@ -163,8 +189,7 @@ def main():
     check("票价改动被玩法读到（写读同一条链）",
           after_ok.get("ticket") == before["ticket"] + 20, after_ok)
     check("档数与权重未被顺手改写",
-          [(p["label"], p["weight_permille"], p["payout"]) for p in after_ok["prizes"]]
-          == [(p["label"], p["weight_permille"], p["payout"]) for p in before["prizes"]],
+          triples(after_ok["prizes"]) == triples(before["prizes"]),
           after_ok.get("prizes"))
 
     # 复原，不留残留（main 外层还有 try/finally 兜底）
@@ -176,7 +201,6 @@ def main():
     sys.exit(1 if fails else 0)
 
 
-
 def _restore_snapshot():
     """脚本崩在半路也要把奖池写回进入时的样子：
     本轮就发生过 KeyError 把 ticket=120 的探针态留在生产库。"""
@@ -185,14 +209,14 @@ def _restore_snapshot():
     if not snap or not snap.get("prizes"):
         print("兜底复原：读不到奖池，跳过")
         return
-    st, r = call("POST", "/admin/arcade/pool",
-                 body_for_restore(snap), tok)
+    st, _ = call("POST", "/admin/arcade/pool", body_for_restore(snap), tok)
     print("兜底复原奖池 -> HTTP %s" % st)
 
 
 def body_for_restore(snap):
     return {"pool_key": POOL_KEY, "game": "jgg", "label": "九宫格 · 标准池",
-            "ticket": snap.get("ticket"), "entries": [to_req(p) for p in snap["prizes"]]}
+            "ticket": snap.get("ticket"),
+            "entries": [to_req(p) for p in snap["prizes"]]}
 
 
 if __name__ == "__main__":

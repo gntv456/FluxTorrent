@@ -35,6 +35,19 @@ macro_rules! shard_lock {
     };
 }
 
+/// 同上，但丢进 JoinSet 并发跑（60s 分支：900s 慢任务不堵同轮）。
+/// 传函数名而非调用式：克隆出的池在宏内，调用式里的变量过不卫生检查。
+macro_rules! spawn_lock {
+    ($js:expr, $db:expr, $key:literal, $fut:path, $shard:expr) => {
+        if job_in_shard($key.trim_start_matches("job:"), $shard) {
+            let d = $db.clone();
+            $js.spawn(async move {
+                with_lock(&d, $key, $fut(&d)).await;
+            });
+        }
+    };
+}
+
 fn job_in_shard(n: &str, shard: &Option<Vec<String>>) -> bool {
     shard.as_ref().map_or(true, |l| l.iter().any(|s| s == n))
 }
@@ -113,66 +126,24 @@ pub async fn run_all(
                 // 0225 G30-B14：独立任务并发执行（900s 慢任务不再堵同轮；
                 // 锁/超时/分片语义不变；结算链在 hour 分支保留串行）。
                 let mut js = tokio::task::JoinSet::new();
-                if job_in_shard("backfill_pieces_hash", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:backfill_pieces_hash", backfill_pieces_hash(&d)).await;
-                    });
-                }
-                if job_in_shard("sweep_stale_peers", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:sweep_stale_peers", sweep_stale_peers(&d)).await;
-                    });
-                }
-                if job_in_shard("collect_milestones", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:collect_milestones", collect_milestones(&d)).await;
-                    });
-                }
-                if job_in_shard("hr_enforce", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:hr_enforce", hr_enforce(&d)).await;
-                    });
-                }
-                if job_in_shard("hr_punish", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:hr_punish", hr_punish(&d)).await;
-                    });
-                }
-                if job_in_shard("class_auto_adjust", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:class_auto_adjust", class_auto_adjust(&d)).await;
-                    });
-                }
-                if job_in_shard("preserve_seed", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:preserve_seed", preserve_seed(&d)).await;
-                    });
-                }
-                if job_in_shard("task_settle", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:task_settle", crate::task_jobs::task_settle(&d)).await;
-                    });
-                }
-                if job_in_shard("exam_assign", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:exam_assign", crate::task_jobs::exam_assign(&d)).await;
-                    });
-                }
-                if job_in_shard("lottery_settle", &shard) {
-                    let d = db.clone();
-                    js.spawn(async move {
-                        with_lock(&d, "job:lottery_settle", lottery_settle_due(&d)).await;
-                    });
-                }
+                spawn_lock!(js, &db, "job:backfill_pieces_hash",
+                            backfill_pieces_hash, &shard);
+                spawn_lock!(js, &db, "job:sweep_stale_peers",
+                            sweep_stale_peers, &shard);
+                spawn_lock!(js, &db, "job:collect_milestones",
+                            collect_milestones, &shard);
+                spawn_lock!(js, &db, "job:hr_enforce", hr_enforce, &shard);
+                spawn_lock!(js, &db, "job:hr_punish", hr_punish, &shard);
+                spawn_lock!(js, &db, "job:class_auto_adjust",
+                            class_auto_adjust, &shard);
+                spawn_lock!(js, &db, "job:preserve_seed",
+                            preserve_seed, &shard);
+                spawn_lock!(js, &db, "job:task_settle",
+                            crate::task_jobs::task_settle, &shard);
+                spawn_lock!(js, &db, "job:exam_assign",
+                            crate::task_jobs::exam_assign, &shard);
+                spawn_lock!(js, &db, "job:lottery_settle",
+                            lottery_settle_due, &shard);
                 while let Some(res) = js.join_next().await {
                     let _ = res.map_err(|e| {
                         tracing::error!(?e, "并发 job join 失败");
