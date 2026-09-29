@@ -215,6 +215,24 @@ def main():
           fell >= 1 and bool(fell_reason),
           {"granted": granted, "fell": fell, "reason": fell_reason})
 
+    # 闭环：发出去的东西必须回到玩家眼前。背包读的就是发放账本身，
+    # 所以「中奖」与「看得到」之间不该再有第二份清单。
+    st, bk = call("GET", "/games/arcade-meta", None, ptok)
+    data = bk.get("data") or {}
+    pack = data.get("backpack") or {}
+    owned = pack.get("items") or []
+    check("背包端点随大厅返回物品列表",
+          st == 200 and isinstance(owned, list), st)
+    check("抽中的物品出现在中奖者背包里",
+          any(x.get("key") in ("cap_probe", "ticket") and x.get("qty", 0) >= 1
+              for x in owned), owned[:3])
+    check("背包件数由发放账反推（合计=total）",
+          pack.get("total") == sum(x.get("qty", 0) for x in owned), pack)
+    gate = [c for c in (data.get("checks") or [])
+            if "经济类物品" in str(c.get("name", ""))]
+    check("确定侧经济物品门禁出现在自检里且为绿",
+          len(gate) == 1 and gate[0].get("pass") is True, gate)
+
     # 探针账号自清（删除接口设计为仅封禁态可删，故先封再删）
     st, _ = call("POST", "/admin/users/status",
                  {"user_id": uid, "status": 2, "reason": "e2e 探针清理"}, tok)

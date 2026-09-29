@@ -119,6 +119,12 @@
 }
 .arc-goods .gn { font-size: 13px; font-weight: 700; }
 .arc-goods .gv { font-size: 11px; color: var(--sub, var(--text-sub)); }
+.arc-goods .gc { font-size: 22px; line-height: 1; margin-bottom: 4px; }
+.arc-goods .qty {
+  margin-left: 5px; font-size: 10px; font-weight: 800;
+  color: var(--ink); background: var(--sun-soft);
+  border-radius: 999px; padding: 1px 6px;
+}
 
 /* ── 门禁自检 ── */
 .arc-checks { display: flex; flex-direction: column; gap: 6px; }
