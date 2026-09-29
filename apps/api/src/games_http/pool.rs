@@ -24,7 +24,7 @@ pub(super) fn dberr(e: sqlx::Error) -> DomainError {
 /// 分开判会留 TOCTOU —— 并发双抽能同时通过「还有余量」的检查。
 /// 限量物品的余量由发放账反推，不另存一份「已用数」（第二份清单必然漂移）。
 pub(super) async fn grant_item(
-    db: &sqlx::PgPool,
+    db: &PgPool,
     user_id: i64,
     item_key: &str,
     qty: i32,
@@ -124,7 +124,7 @@ pub(super) struct Pool {
 /// 物品停用/缺目录项时 anchor 为 NULL，会被 validate_pool 当空头承诺拒掉。
 /// 不合法直接 Err（拒绝服务）：不猜旧值、不回落缺省。
 pub(super) async fn load_pool(
-    db: &sqlx::PgPool,
+    db: &PgPool,
     game: &str,
 ) -> Result<Pool, DomainError> {
     let rows: Vec<(
