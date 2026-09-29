@@ -128,21 +128,66 @@ def main():
     st, r = call("POST", "/admin/arcade/items", cap1, tok)
     check("把 ticket 每人上限压到 1 可存", st == 200, (st, r))
 
-    granted = fell = 0
+    # 抽数必须用一次性探针账号，不能用 root：
+    #  a) games_max_plays_per_hour 的限次会把大批量抽压成前 60 抽有效，
+    #     而循环里的 `if st != 200: continue` 会把 429 全吞掉，
+    #     报成「0 次发放」——看着像功能坏了，其实是测试自己把证据吃掉了；
+    #  b) 所以「成功抽了多少次」本身要做成断言，被限次不能伪装成没抽中。
+    uname = "e2ecap%s" % int(time.time() % 100000)
+    st, r = call("POST", "/admin/adduser", {"username": uname,
+                 "email": uname + "@e2e-probe.invalid", "password": "E2eProbe!123"}, tok)
+    uid = (r.get("data") or {}).get("user_id")
+    check("前置·探针账号已建出 uid", uid is not None, (st, r))
+    st, r = call("POST", "/admin/users/adjust", {"user_id": uid, "spark_delta": 20000}, tok)
+    check("前置·探针账号已注魔力（余额 0 付不起票价）", st == 200, (st, r))
+    # 后台建的账号用的是临时密码，**不改密码不许消费**。漏这一步
+    # 会让所有抽数吃 400「账号正在使用临时密码」。
+    st, r = call("POST", "/me/password/change",
+                 {"old_password": "E2eProbe!123", "new_password": "E2eProbe!456"},
+                 login(uname, "E2eProbe!123"))
+    check("前置·探针账号已改掉临时密码", st == 200, (st, r))
+    ptok = login(uname, "E2eProbe!456")
+
+    # 物品档权重受 EV<1 限制（anchor 900 / 票价 100 → 最多约 11%），命中不确定。
+    # 造一个 anchor == 票价 的探针物品，它等价于 1 倍魔力档，
+    # 于是可以在 EV 远小于 1 的前提下占到 50% 权重，命中成为确定事件。
+    probe_item = {"key": "cap_probe", "name": "上限探针券", "kind": "voucher",
+                  "anchor": j["ticket"], "anchor_src": "derived",
+                  "unlimited": True, "stock": 0, "per_user": 1, "icon": "🧪", "enabled": True}
+    st, r = call("POST", "/admin/arcade/items", probe_item, tok)
+    check("探针物品（anchor=票价）可存", st == 200, (st, r))
+    st, r = call("POST", "/admin/arcade/pool",
+                 {"pool_key": "jgg_default", "game": "jgg", "label": "九宫格 · 上限探针",
+                  "ticket": j["ticket"], "entries": [
+                      {"label": "谢谢参与", "weight": 500, "payout": 0, "kind": "magic", "enabled": True},
+                      {"label": "上限探针券", "weight": 500, "kind": "item",
+                       "item_key": "cap_probe", "qty": 1, "enabled": True}]}, tok)
+    check("50% 物品档且 EV 0.5 的探针池可存", st == 200, (st, r))
+
+    ok_draws = granted = fell = 0
     fell_reason = None
-    for i in range(160):
-        st, r = call("POST", "/games/jgg", {"idempotency_key": "e2e-cap-%d" % i}, tok)
-        d = r.get("data") or {}
+    for i in range(40):
+        st, r = call("POST", "/games/jgg", {"idempotency_key": "e2e-cap-%d" % i}, ptok)
         if st != 200:
             continue
+        d = r.get("data") or {}
+        ok_draws += 1
         if d.get("kind") == "item":
             granted += 1
         elif d.get("kind") == "fallback":
             fell += 1
             fell_reason = d.get("fell_back")
-    check("上限内确实发出了物品", granted >= 1, {"granted": granted, "fell": fell})
+    check("成功抽数足够（限次没有把断言掏空）", ok_draws >= 30, ok_draws)
+    check("上限内确实发出了物品", granted >= 1, {"draws": ok_draws, "granted": granted, "fell": fell})
     check("上限用尽后一律走回落并给出原因", fell >= 1 and bool(fell_reason),
           {"granted": granted, "fell": fell, "reason": fell_reason})
+
+    # 探针账号自清（删除接口设计为仅封禁态可删，故先封再删）
+    st, _ = call("POST", "/admin/users/status",
+                 {"user_id": uid, "status": 2, "reason": "e2e 探针清理"}, tok)
+    st2, r = call("DELETE", "/admin/users/%s" % uid, None, tok)
+    check("探针账号已清理（封禁→删除）", st == 200 and st2 == 200,
+          {"uid": uid, "ban": st, "del": st2})
 
     # 复原：池子与上限都回到核验前，不给线上留残留
     restore = {"pool_key": "jgg_default", "game": "jgg", "label": "九宫格 · 标准池",

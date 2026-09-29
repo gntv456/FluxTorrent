@@ -62,11 +62,37 @@ def snapshot(tok):
     return d
 
 
+def _norm(prize):
+    """把读侧档位归一成脚本内部形状。
+    0244 之后魔力位报 multiples、物品位报 item_key/qty/anchor，
+    没有统一的 payout 字段 —— 在这里补别名，下游就不用到处猜。"""
+    p = dict(prize)
+    if p.get("kind") == "item":
+        p["payout"] = 0
+    else:
+        p["payout"] = p.get("multiples", 0)
+    return p
+
+
 def pool_of(tok):
     st, r = call("GET", "/games", token=tok)
     if st != 200:
         return None
-    return ((r.get("data") or {}).get("jgg") or {})
+    j = (r.get("data") or {}).get("jgg") or {}
+    if j.get("prizes"):
+        j["prizes"] = [_norm(x) for x in j["prizes"]]
+    return j
+
+
+def to_req(p):
+    """读侧档位 -> 写侧请求体：按 kind 分派，不再假设每档都有 payout。"""
+    e = {"label": p["label"], "weight": p["weight_permille"],
+         "kind": p.get("kind", "magic"), "enabled": True}
+    if e["kind"] == "item":
+        e.update({"item_key": p["item_key"], "qty": p["qty"]})
+    else:
+        e["payout"] = p["payout"]
+    return e
 
 
 def check(name, cond, detail=""):
@@ -86,16 +112,17 @@ def main():
     print("基线：ticket=%s 档数=%s" % (before.get("ticket"), len(before["prizes"])))
 
     # 用读侧的投影反构一个「只抬 50x 权重」的坏池：抬到 40 后 EV 破 1
-    entries = [
-        {"label": p["label"], "weight": p["weight_permille"], "payout": p["payout"], "enabled": True}
-        for p in before["prizes"]
-    ]
-    bad = [dict(e) for e in entries]
-    for e in bad:
-        if e["payout"] == 50:
-            e["weight"] = 40
-    body_bad = {"pool_key": POOL_KEY, "game": "jgg", "label": "九宫格 · 标准池",
-                "ticket": before["ticket"], "entries": bad}
+    entries = [to_req(p) for p in before["prizes"]]
+    def body_of(entries, ticket=None):
+        return {"pool_key": POOL_KEY, "game": "jgg", "label": "九宫格 · 标准池",
+                "ticket": before["ticket"] if ticket is None else ticket,
+                "entries": entries}
+
+    M = lambda lb, wt, mu: {"label": lb, "weight": wt, "kind": "magic", "payout": mu, "enabled": True}
+    I = lambda lb, wt, k: {"label": lb, "weight": wt, "kind": "item",
+                           "item_key": k, "qty": 1, "enabled": True}
+    # ① 经济档权重堆到 EV 1.2
+    body_bad = body_of([M("谢谢参与", 400, 0), M("2x 魔力", 600, 2)])
 
     st, r = call("POST", "/admin/arcade/pool", body_bad, tok)
     check("后门①抬经济奖权重 -> 400 拒绝", st == 400, (st, r))
@@ -108,12 +135,11 @@ def main():
 
     # 其余四类坏配置：空池 / 零权重 / 票价非正 / EV 恰为 1
     cases = [
-        ("空池", {**body_bad, "entries": []}),
-        ("零权重档", {**body_bad, "entries": [
-            {**entries[0], "weight": 0}, *entries[1:]]}),
-        ("票价 0", {**body_bad, "ticket": 0}),
-        ("EV 恰为 1 的中性池", {**body_bad, "entries": [
-            {"label": "a", "weight": 1, "payout": 2, "enabled": True}]}),
+        ("空池", body_of([])),
+        ("零权重档", body_of([M("谢谢参与", 500, 0), M("2x", 0, 2)])),
+        ("票价 0", body_of([M("谢谢参与", 900, 0), M("2x", 100, 2)], ticket=0)),
+        ("EV 恰为 1 的中性池", body_of([M("谢谢参与", 500, 0), M("2x", 500, 2)])),
+        ("物品位引用不存在/停用物品", body_of([M("谢谢参与", 900, 0), I("空头券", 100, "no_such_item")])),
     ]
     for name, body in cases:
         st, r = call("POST", "/admin/arcade/pool", body, tok)
@@ -121,7 +147,7 @@ def main():
         check("%s 拒绝后表未变" % name, pool_of(tok) == before)
 
     # 合法保存：只改票价，EV 按定义只与比例有关，不该变
-    ok_body = {**body_bad, "entries": entries, "ticket": before["ticket"] + 20}
+    ok_body = body_of(entries, before["ticket"] + 20)
     st, r = call("POST", "/admin/arcade/pool", ok_body, tok)
     check("合法保存 -> 200", st == 200, (st, r))
     after_ok = pool_of(tok)
@@ -132,9 +158,8 @@ def main():
           == [(p["label"], p["weight_permille"], p["payout"]) for p in before["prizes"]],
           after_ok.get("prizes"))
 
-    # 复原，不留残留
-    st, _ = call("POST", "/admin/arcade/pool",
-                 {**body_bad, "entries": entries, "ticket": before["ticket"]}, tok)
+    # 复原，不留残留（main 外层还有 try/finally 兜底）
+    st, _ = call("POST", "/admin/arcade/pool", body_of(entries), tok)
     check("复原成功", st == 200)
     check("复原后与基线完全一致", pool_of(tok) == before, pool_of(tok))
 
@@ -142,4 +167,30 @@ def main():
     sys.exit(1 if fails else 0)
 
 
-main()
+
+def _restore_snapshot():
+    """脚本崩在半路也要把奖池写回进入时的样子：
+    本轮就发生过 KeyError 把 ticket=120 的探针态留在生产库。"""
+    tok = login()
+    snap = pool_of(tok)
+    if not snap or not snap.get("prizes"):
+        print("兜底复原：读不到奖池，跳过")
+        return
+    st, r = call("POST", "/admin/arcade/pool",
+                 body_for_restore(snap), tok)
+    print("兜底复原奖池 -> HTTP %s" % st)
+
+
+def body_for_restore(snap):
+    return {"pool_key": POOL_KEY, "game": "jgg", "label": "九宫格 · 标准池",
+            "ticket": snap.get("ticket"), "entries": [to_req(p) for p in snap["prizes"]]}
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    finally:
+        try:
+            _restore_snapshot()
+        except Exception as e:  # 兜底本身失败要喊出来，不能静默
+            print("兜底复原失败，请手工核对 arcade_pool_entries：%r" % e)
