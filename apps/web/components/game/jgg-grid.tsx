@@ -14,6 +14,8 @@ export interface JggPrize {
   value?: number;
   item_key?: string;
   qty?: number;
+  /** 目录 arcade_items.icon：物品档显示自己的图标，不再一律 🎁 */
+  icon?: string;
   weight_permille: number;
   payout: number;
 }
@@ -128,8 +130,8 @@ export function JggGrid({
           const glyph =
             p.kind === "item"
               ? p.qty && p.qty > 1
-                ? `🎁×${p.qty}`
-                : "🎁"
+                ? `${p.icon ?? "🎁"}×${p.qty}`
+                : (p.icon ?? "🎁")
               : p.payout === 0
                 ? "0"
                 : `×${p.payout}`;
