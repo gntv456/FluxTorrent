@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { BalanceBar } from "@/components/game/game-kit";
+import { GameStage } from "@/components/game/game-stage";
 import { GameToast } from "@/components/game/game-kit-feedback";
 import { MarketSection, MyFieldSection } from "./_inner-sections";
 import Link from "next/link";
@@ -242,6 +243,14 @@ export default function FarmPage({
             : tf.hourLeft.replace("{n}", String(data.hour_left))
         }
       />
+
+      <GameStage art="/games/stage-farm.jpg" className="h-[132px] w-full">
+        <div className="flex h-full items-center justify-center">
+          <span className="font-display text-xl text-white">
+            🌾 {tf.title.replace("{magic}", currency)}
+          </span>
+        </div>
+      </GameStage>
 
       {/* 错误放在顶部（长页面里底部提示会跑出视野） */}
       {err && (
