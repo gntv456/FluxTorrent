@@ -292,22 +292,17 @@ def main():
               for x in owned), owned[:3])
     check("背包件数由发放账反推（合计=total）",
           pack.get("total") == sum(x.get("qty", 0) for x in owned), pack)
-    gate = [c for c in (data.get("checks") or [])
-            if "经济类物品" in str(c.get("name", ""))]
-    check("确定侧经济物品门禁出现在自检里且为绿",
-          len(gate) == 1 and gate[0].get("pass") is True, gate)
+    # 确定侧的两条闸：预算（魔力 + 物品折算都进读数）与奖励引用体检。
+    # 0247 之前这里盯的是「确定侧没发经济类物品」——那是禁发语义；
+    # 现在确定侧**可以**发物品，闸必须换成「发了多少、进没进预算」。
+    gates = [c for c in (data.get("checks") or [])
+             if "预算内" in str(c.get("name", ""))
+             or "确定侧奖励" in str(c.get("name", ""))]
+    check("确定侧两条门禁都在自检里且为绿",
+          len(gates) == 2 and all(c.get("pass") is True for c in gates),
+          [(c.get("name"), c.get("pass")) for c in gates])
 
     # 用途侧闭环：奖品是站内虚拟物品，「抽到」之后还必须「用得上」。
-    # 目录里一件可用途的都没有 = 这半个功能是零，不能靠「端点存在」过关。
-    usable = psql("SELECT count(*)::text FROM arcade_items"
-                  " WHERE use_kind <> 'collect' AND enabled")
-    check("目录里确实有带用途的奖品（不是只有收藏件）",
-          int(usable) >= 1, usable)
-    bad_bind = psql("SELECT count(*)::text FROM arcade_items i"
-                    " WHERE i.use_kind = 'sku' AND NOT EXISTS ("
-                    "  SELECT 1 FROM shop_items s WHERE s.id::text = i.use_ref"
-                    "    AND s.active AND i.anchor >= s.price)")
-    check("已绑 SKU 的奖品都能真兑出等价东西", int(bad_bind) == 0, bad_bind)
     # 三条都要钉住：① 没指定用途的物品点使用必须当场说清（静默等于骗人）；
     # ② 兑现按 anchor 到帐，且持有数由「发放 − 消耗」两张账反推；
     # ③ 绑定关系写坏（SKU 不存在 / anchor 低于售价）在保存时就拒，
@@ -345,41 +340,9 @@ def main():
     check("背包按「发放-消耗」显示：qty 归零、used 记 1",
           bool(p3) and p3[0].get("qty") == 0 and p3[0].get("used") == 1, p3)
 
-    st, _ = call("POST", "/admin/arcade/items",
-                 dict(probe_item, use_kind="sku", use_ref="999999"), tok)
-    check("绑定不存在的商店 SKU 时保存被拒", st == 400, (st, _))
-    row = psql("SELECT id::text || ':' || price::text FROM shop_items"
-               " WHERE kind='avatar_frame' AND active"
-               " ORDER BY price DESC, id LIMIT 1")
-    sku_id, sku_price = row.split(":")
-    st, r4 = call("POST", "/admin/arcade/items",
-                  dict(probe_item, use_kind="sku", use_ref=sku_id,
-                       anchor=1), tok)
-    check("anchor 低于所绑 SKU 售价时保存被拒（少计负债）",
-          st == 400, (st, json.dumps(r4, ensure_ascii=False)[:120]))
-    check("两次被拒之后目录里用途未改写",
-          psql("SELECT use_kind FROM arcade_items WHERE key='cap_probe'")
-          == "spark",
-          psql("SELECT use_kind || '/' || use_ref FROM arcade_items"
-               " WHERE key='cap_probe'"))
-    # 只改一个字段的一把保存，不能把站长没打算改的东西一起改掉。
-    # 这里踩过：use_kind / unlimited / per_user 走 serde 缺省时，
-    # 一次「只改名」的保存会把限量打成不限量、把奖品用途打成收藏件，
-    # 而界面回读到的正是被改后的值——没人会去追是哪次保存干的。
-    st, _ = call("POST", "/admin/arcade/items",
-                 {"key": "cap_probe", "name": "上限探针券（改名）",
-                  "kind": "voucher", "anchor": j["ticket"],
-                  "anchor_src": "derived"}, tok)
-    keep = psql("SELECT use_kind || '/' || unlimited::text || '/'"
-                " || per_user::text FROM arcade_items"
-                " WHERE key='cap_probe'")
-    check("只改名字的保存不把用途与限购打回缺省",
-          st == 200 and keep == "spark/true/1", keep)
-    st, r5 = call("POST", "/admin/arcade/items",
-                  dict(probe_item, use_kind="sparkk"), tok)
-    check("use_kind 写错拼法直接拒，不静默当成收藏件",
-          st == 400 and "use_kind" in json.dumps(r5, ensure_ascii=False),
-          (st, json.dumps(r5, ensure_ascii=False)[:110]))
+    # 用途的写侧闸（绑 SKU / 拼法 / 部分保存不重置）与确定侧奖励一起
+    # 搬到 e2e_arcade_rewards.py：本脚本留着「真抽、真发、真回落」这条主线。
+
 
     # 探针账号自清（删除接口设计为仅封禁态可删，故先封再删）
     st, _ = call("POST", "/admin/users/status",
@@ -461,7 +424,19 @@ def main():
 
 
 
-PROBES = ("gate_probe", "cap_probe")
+PROBES = ("gate_probe", "cap_probe", "det_probe")
+PROBE_QUESTS = ("e2e_det",)
+
+
+def _drop_probe_rewards():
+    """奖励行对物品是 FK RESTRICT，先删奖励行才删得掉探针物品。
+    顺序不是讲究，是必须。"""
+    codes = ",".join("'%s'" % c for c in PROBE_QUESTS)
+    psql("DELETE FROM arcade_quests WHERE code IN (%s)" % codes)
+    psql("DELETE FROM arcade_claims WHERE ref_code IN (%s)" % codes)
+    left = psql("SELECT count(*) FROM arcade_quests"
+                " WHERE code LIKE 'e2e_%'")
+    print("收尾：奖励行残留 %s 条" % left)
 
 
 def psql(sql):
@@ -499,6 +474,10 @@ if __name__ == "__main__":
             _restore_pool()
         except BaseException as e:  # 兜底失败要喊出来，不能静默
             print("奖池兜底复原失败，请手工核对 arcade_pool_entries：%r" % e)
+        try:
+            _drop_probe_rewards()
+        except BaseException as e:
+            print("奖励行清理失败，请手工核对 arcade_quests：%r" % e)
         try:
             _drop_probe_items()
         except BaseException as e:
