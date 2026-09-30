@@ -139,7 +139,10 @@ pub(super) async fn claim_quest(
     mark_claim(db, uid, "quest", &code, &week).await?;
     let idem = idem("arcade:quest", &code, &week, uid, &body.idempotency_key);
     let (spark, item, fell) = award(db, uid, &r, &idem).await?;
-    state.repo.audit(Some(uid), "arcade.quest.claim", None).await;
+    state
+        .repo
+        .audit(Some(uid), "arcade.quest.claim", None)
+        .await;
     Ok(ok(json!({
         "reward": spark, "item": item, "item_name": r.item_name,
         "item_qty": r.item_qty, "fell_back": fell, "period": week,
@@ -181,7 +184,10 @@ pub(super) async fn claim_season(
     let idem =
         idem("arcade:season", &code, &season, uid, &body.idempotency_key);
     let (spark, item, fell) = award(db, uid, &r, &idem).await?;
-    state.repo.audit(Some(uid), "arcade.season.claim", None).await;
+    state
+        .repo
+        .audit(Some(uid), "arcade.season.claim", None)
+        .await;
     Ok(ok(json!({
         "reward": spark, "item": item, "item_name": r.item_name,
         "item_qty": r.item_qty, "fell_back": fell, "period": season,

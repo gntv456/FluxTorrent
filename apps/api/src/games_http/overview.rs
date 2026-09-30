@@ -10,9 +10,7 @@ use crate::games::{self, MAX_PLAYS_PER_HOUR};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::helpers::{
-    bigsmall_mult_permille, eco_i64, limit_used,
-};
+use super::helpers::{eco_i64, limit_used};
 
 #[get("/games")]
 pub(super) async fn games_overview(
@@ -24,7 +22,21 @@ pub(super) async fn games_overview(
         eco_i64(&state, "games_max_plays_per_hour", MAX_PLAYS_PER_HOUR).await;
     // 刮刮乐与九宫格读同一张奖池行表（0248）：公示、闸门、玩法三处同一份数据
     let spool = super::pool::load_pool(&state.repo.db, "scratch").await?;
-    let win_mult = bigsmall_mult_permille(&state).await;
+    let btable = super::pool::load_table(&state.repo.db, "bigsmall").await?;
+    // 赔率读数：赢区魔力位的加权平均（配了物品位时它只是「魔力那一侧」的均值）
+    let win_mult = {
+        let w: i64 = btable.win.iter().map(|e| i64::from(e.weight)).sum();
+        let s: i64 = btable
+            .win
+            .iter()
+            .map(|e| i64::from(e.weight) * e.mult_permille())
+            .sum();
+        if w == 0 {
+            0
+        } else {
+            s / w
+        }
+    };
     let pool = super::pool::load_pool(&state.repo.db, "jgg").await?;
     // 物品图标与用途：目录 arcade_items 是唯一权威，这里只是把 icon 与用途附到
     // 灯阵与公示要用的行上（价值口径仍走 load_pool 的 anchor JOIN，不重复取）。
@@ -56,8 +68,11 @@ pub(super) async fn games_overview(
             "empty_pct": scratch_empty_pct(&spool.entries),
             "expected_value": games::pool_ev(&spool.entries, spool.ticket) },
         "bigsmall": { "name": "猜大小", "max_bet": max_bet,
+            "ticket": btable.ticket,
+            "min_bet": btable.ticket,
             "win_mult": win_mult as f64 / 1000.0,
-            "expected_value": games::bigsmall_expected_value(win_mult),
+            "prizes": region_rows(&btable, &icons),
+            "expected_value": games::pool_ev(&btable.all(), btable.ticket),
             "rule": "1-49 小 · 52-100 大 · 50/51 平局返本 · 猜中按赔率派彩" },
         "jgg": { "name": "九宫格抽奖", "ticket": pool.ticket,
             "prizes": jgg_prizes,
@@ -251,4 +266,20 @@ fn pct_of(weight: u32, total: u64) -> f64 {
     } else {
         f64::from(weight) * 100.0 / total as f64
     }
+}
+
+/// 猜大小的公示行：与 prize_rows 同一份形状，只是每行多带「在哪一区付」。
+/// 编辑器回读这张桌时要按它复原，少了这一列就会把三区抹成一区。
+fn region_rows(
+    t: &super::pool::Table,
+    icons: &[(String, String, String, Option<String>)],
+) -> Vec<serde_json::Value> {
+    let mut out = Vec::new();
+    for (side, rows) in [("win", &t.win), ("tie", &t.tie), ("lose", &t.lose)] {
+        for mut j in prize_rows(rows, t.ticket, icons) {
+            j["side"] = serde_json::json!(side);
+            out.push(j);
+        }
+    }
+    out
 }

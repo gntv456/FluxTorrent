@@ -75,4 +75,3 @@ pub(super) async fn backpack(
         .sum();
     Ok(json!({ "total": total, "kinds": items.len(), "items": items }))
 }
-

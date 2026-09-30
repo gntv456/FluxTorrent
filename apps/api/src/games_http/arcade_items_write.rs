@@ -100,24 +100,26 @@ pub(super) async fn arcade_item_save(
     }
 
     // 先读现值：所有「请求里没带」的字段都保持原样，校验也按生效后的值判
-    let prev = sqlx::query_as::<
-        _,
-        (bool, i64, i32, String, bool, String, String),
-    >(
-        "SELECT unlimited, stock, per_user, icon, enabled, \
+    let prev =
+        sqlx::query_as::<_, (bool, i64, i32, String, bool, String, String)>(
+            "SELECT unlimited, stock, per_user, icon, enabled, \
                 use_kind, use_ref \
            FROM arcade_items WHERE key = $1",
-    )
-    .bind(&b.key)
-    .fetch_optional(db)
-    .await
-    .map_err(dberr)?;
+        )
+        .bind(&b.key)
+        .fetch_optional(db)
+        .await
+        .map_err(dberr)?;
     let dflt = NEW_ITEM_DEFAULTS;
-    let (p_unl, p_stock, p_pu, p_icon, p_en, p_uk, p_ur) =
-        prev.unwrap_or((
-            dflt.0, dflt.1, dflt.2, dflt.3.to_string(), dflt.4,
-            dflt.5.to_string(), dflt.6.to_string(),
-        ));
+    let (p_unl, p_stock, p_pu, p_icon, p_en, p_uk, p_ur) = prev.unwrap_or((
+        dflt.0,
+        dflt.1,
+        dflt.2,
+        dflt.3.to_string(),
+        dflt.4,
+        dflt.5.to_string(),
+        dflt.6.to_string(),
+    ));
     let unlimited = b.unlimited.unwrap_or(p_unl);
     let stock = b.stock.unwrap_or(p_stock);
     let per_user = b.per_user.unwrap_or(p_pu);
@@ -267,4 +269,3 @@ pub(super) async fn arcade_item_save(
         "use_ref": use_ref.trim(),
     })))
 }
-

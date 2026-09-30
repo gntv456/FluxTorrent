@@ -23,7 +23,8 @@ use super::arcade_rewards::{
     det_cost_value, load_milestones, load_quests, refs_gate, season_key,
 };
 use super::arcade_stubs::sync_stubs;
-use super::helpers::{bigsmall_mult_permille, eco_i64};
+use super::helpers::eco_i64;
+use super::pool::load_table;
 
 /// ISO 周键（与 arcade_claim 同口径）
 const WEEK_SQL: &str = "SELECT to_char(now(), 'IYYY-\"W\"IW')";
@@ -220,7 +221,22 @@ pub(super) async fn arcade_meta(
     let refs = refs_gate(db).await?;
 
     // ── 门禁：确定侧预算（第二道闸）+ 随机侧赔率方向 ──
-    let mult = bigsmall_mult_permille(&state).await;
+    let btable = load_table(db, "bigsmall").await?;
+    // 赔率读数：赢区魔力位的加权平均（配了物品位时它只是「魔力那一侧」的均值）
+    let win_mult = {
+        let w: i64 = btable.win.iter().map(|e| i64::from(e.weight)).sum();
+        let s: i64 = btable
+            .win
+            .iter()
+            .map(|e| i64::from(e.weight) * e.mult_permille())
+            .sum();
+        if w == 0 {
+            0
+        } else {
+            s / w
+        }
+    };
+    let mult = win_mult;
     let checks = vec![
         bad(
             "确定侧发放（魔力 + 物品折算）落在娱乐屋预算内",

@@ -17,7 +17,7 @@ use crate::state::AppState;
 
 use super::arcade_cfg::bad;
 use super::arcade_rewards::{admin_rows, refs_gate, season_key};
-use super::helpers::{bigsmall_mult_permille, eco_i64};
+use super::helpers::eco_i64;
 
 /// 九宫格 EV 只有一份公式，在 games::pool_ev —— 这里不再抄第二遍求和
 
@@ -30,14 +30,29 @@ pub(super) async fn arcade_overview(
     authz::require_perm(&state, &auth, authz::perm::USER_ADJUST).await?;
     let db = &state.repo.db;
 
-    let mult = bigsmall_mult_permille(&state).await;
+    let btable = super::pool::load_table(db, "bigsmall").await?;
+    // 赔率读数：赢区魔力位的加权平均（配了物品位时它只是「魔力那一侧」的均值）
+    let win_mult = {
+        let w: i64 = btable.win.iter().map(|e| i64::from(e.weight)).sum();
+        let s: i64 = btable
+            .win
+            .iter()
+            .map(|e| i64::from(e.weight) * e.mult_permille())
+            .sum();
+        if w == 0 {
+            0
+        } else {
+            s / w
+        }
+    };
+    let mult = win_mult;
     // 刮刮乐的 EV 现在与玩法读同一张奖池行表（0248）：面板报的、闸门算的、
     // 玩法发的，是同一个数
     let scratch = super::pool::load_pool(db, "scratch").await?;
     let s_ev = games::pool_ev(&scratch.entries, scratch.ticket);
     let jgg = super::pool::load_pool(&state.repo.db, "jgg").await?;
     let j_ev = games::pool_ev(&jgg.entries, jgg.ticket);
-    let b_ev = games::bigsmall_expected_value(mult);
+    let b_ev = games::pool_ev(&btable.all(), btable.ticket);
     // 农场 EV 由作物表（farm_crops，DB）出厂标定 0.75 × 1.2 双倍；此处给标称值
     let f_ev = 0.90_f64;
 
