@@ -18,6 +18,8 @@ mod jgg;
 mod scratch;
 
 #[cfg(test)]
+mod farm_tests;
+#[cfg(test)]
 mod pool_tests;
 #[cfg(test)]
 mod tests;
@@ -32,9 +34,11 @@ pub use bigsmall::{
 };
 #[allow(unused_imports)]
 pub use farm::{
-    egg_pay, farm_total_ev, harvest_market_price, market_price,
-    market_window_hours, market_window_start, market_window_start_with,
-    roll_double, validate_farm, BASE_EV as FARM_BASE_EV, PLOTS as FARM_PLOTS,
+    crop_expected_value, egg_pay, farm_total_ev, harvest_market_price,
+    market_price, market_window_hours, market_window_start,
+    market_window_start_with, roll_double, validate_crop, validate_farm,
+    CropError, BASE_EV as FARM_BASE_EV, GROW_HOURS_MAX as FARM_GROW_MAX,
+    GROW_HOURS_MIN as FARM_GROW_MIN, PLOTS as FARM_PLOTS,
 };
 #[allow(unused_imports)]
 pub use jgg::{

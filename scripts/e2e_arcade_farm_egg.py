@@ -170,6 +170,93 @@ def main():
     st, r = call("DELETE", "/admin/arcade/items/e2e_egg", None, tok)
     check("彩蛋探针物品已清理", st == 200, (st, str(r)[:140]))
     psql("DELETE FROM farm_plots WHERE user_id = %d AND slot = 9" % rid)
+
+    # ── 作物表本身也是配置面（0253）：一行改动同时决定回收率与池子定标 ──
+    def crop_body(**kw):
+        base = {"name": "e2e 探针草", "seed_price": 20, "base_yield": 15,
+                "grow_hours": 4, "active": True}
+        base.update(kw)
+        return base
+
+    st, r = call("POST", "/admin/arcade/crops", None, tok)
+    check("作物表端点只有 GET/POST 单行，列表不会被误写成 POST",
+          st in (404, 405), st)
+    st, r = call("GET", "/admin/arcade/crops", None, tok)
+    ct = r.get("data") or {}
+    rows0 = ct.get("crops") or []
+    cap, unit0 = ct.get("cap"), ct.get("unit")
+    check("作物表读得到现值（每行带收获期望、表带定标与上限）",
+          st == 200 and len(rows0) >= 5 and unit0 and cap,
+          (st, len(rows0), unit0, cap))
+    check("播种的每一株都压在校准上（0.90 是天花板，不是假设）",
+          all(x["expected_value"] <= cap + 1e-9 for x in rows0),
+          [(x["name"], x["expected_value"]) for x in rows0])
+    st, r = call("POST", "/admin/arcade/crop",
+                 crop_body(name="e2e 越校准草", base_yield=16), tok)
+    txt = json.dumps(r, ensure_ascii=False)
+    check("产量越过「种子价 × 0.75」的作物存不进去", st == 400,
+          (st, txt[:140]))
+    check("拒绝原因点名「增发」这条根因",
+          "增发" in txt or "校准" in txt, txt[:140])
+
+    # 跨表回查：把便宜一株塞进作物表 = 把定标单位拉下来 = 顶穿整池余量
+    st, r = call("POST", "/admin/arcade/pool",
+                 farm_body([magic("空档", 981, 0),
+                            item("银行券", 19, "bank500")]), tok)
+    check("池子放 1.9% 概率的 500 折算价物品，当前定标下合法", st == 200,
+          (st, str(r)[:140]))
+    st, r = call("POST", "/admin/arcade/crop", crop_body(), tok)
+    txt = json.dumps(r, ensure_ascii=False)
+    check("加一株更便宜的作物会顶穿彩蛋池 -> 跨表回查拒", st == 400,
+          (st, txt[:160]))
+    check("拒绝原因点名定标单位", "定标" in txt, txt[:160])
+    st, back = call("GET", "/admin/arcade/crops", None, tok)
+    bt = back.get("data") or {}
+    check("被拒之后作物表没多出一行、定标未变",
+          len(bt.get("crops") or []) == len(rows0) and bt.get("unit") == unit0,
+          (len(bt.get("crops") or []), bt.get("unit")))
+
+    # 池子先收回「什么都不加」，同一株便宜作物就装得下了
+    st, r = call("POST", "/admin/arcade/pool",
+                 farm_body([to_req(x) for x in FARM_SNAP["prizes"]],
+                           ticket=unit0), tok)
+    check("彩蛋池收回出厂那一档", st == 200, (st, str(r)[:120]))
+    st, r = call("POST", "/admin/arcade/crop", crop_body(), tok)
+    new_id = (r.get("data") or {}).get("id")
+    check("池子留出余量后，同一株便宜作物存得进去", st == 200 and new_id,
+          (st, str(r)[:140]))
+    st, back = call("GET", "/admin/arcade/crops", None, tok)
+    bt = back.get("data") or {}
+    check("定标单位跟着变成新最便宜种子价", bt.get("unit") == 20,
+          bt.get("unit"))
+    check("农场投影读到同一个新单位",
+          farm_proj().get("unit") == 20, farm_proj().get("unit"))
+    st, mk = call("GET", "/farm", None, tok)
+    names = [c.get("name") for c in ((mk.get("data") or {}).get("crops") or [])]
+    check("新作物进了玩家行情", "e2e 探针草" in names, names)
+    st, r = call("POST", "/admin/arcade/crop",
+                 crop_body(id=new_id, active=False), tok)
+    check("下架一行作物合法", st == 200, (st, str(r)[:120]))
+    st, mk = call("GET", "/farm", None, tok)
+    names = [c.get("name") for c in ((mk.get("data") or {}).get("crops") or [])]
+    check("下架后不再出现在行情里", "e2e 探针草" not in names, names)
+    check("下架的作物不参与定标（单位回到 100）",
+          farm_proj().get("unit") == unit0, farm_proj().get("unit"))
+    # 播种要过 slot 1-6 的参数校验，夹具用的 9 号位是给收获用的
+    st, r = call("POST", "/farm/plant", {"slot": 1, "crop_id": new_id}, tok)
+    check("拿下架作物播种被点名拒绝（不是「作物不存在」）",
+          st == 400 and "下架" in json.dumps(r, ensure_ascii=False),
+          (st, str(r)[:140]))
+    st, r = call("DELETE", "/admin/arcade/crop/%d" % new_id, None, tok)
+    check("没收过种的作物可以直接删掉", st == 200, (st, str(r)[:140]))
+    st, r = call("DELETE", "/admin/arcade/crop/%d" % crop_id, None, tok)
+    txt = json.dumps(r, ensure_ascii=False)
+    check("收过的作物删不掉，并指路「下架」",
+          st == 400 and ("收获史" in txt or "下架" in txt), (st, txt[:160]))
+    check("收尾：作物表回到播种的那几株",
+          len((call("GET", "/admin/arcade/crops", None, tok)[1]
+               .get("data") or {}).get("crops") or []) == len(rows0))
+
     print("\n结果：农场彩蛋 %d 项断言，失败 %d"
           % (n_checks[0], len(fails)))
     sys.exit(1 if fails else 0)
@@ -188,6 +275,8 @@ def _restore():
     }
     st, _ = call("POST", "/admin/arcade/pool", body, tok)
     psql("UPDATE site_settings SET value = 'no' WHERE name = 'module_farm'")
+    # 崩在半路时探针作物也会留在表里（它没被种过，直接删安全）
+    psql("DELETE FROM farm_crops WHERE name LIKE 'e2e %'")
     # 探针物品：确认没有池子还引用它才删（item_key 被 SET NULL 会撞 CHECK）
     refs = psql("SELECT count(*) FROM arcade_pool_entries"
                 " WHERE item_key = 'e2e_egg'")

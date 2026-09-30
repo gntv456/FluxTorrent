@@ -2619,6 +2619,33 @@ const zhCnBase = {
    * 与 STAFF_TOOL_TABS。差集核对脚本见仓库根 `_admin_nav_align.py`。
    */
   adminArcade: {
+    crops: {
+      title: "农场作物表",
+      colName: "作物名",
+      colSeed: "种子价",
+      colYield: "基准产量",
+      colGrow: "成熟（小时）",
+      colEv: "收获期望",
+      colActive: "上架",
+      unitLine: "彩蛋池定标单位 {n} {magic}（现役最便宜种子价）",
+      capLine: "标定上限 {c}",
+      addRow: "加一株",
+      newRow: "新作物",
+      save: "保存",
+      saving: "保存中…",
+      saved: "已保存「{n}」",
+      del: "删除",
+      confirmDel: "确认删除",
+      deleted: "已删除「{n}」",
+      saveFail: "保存失败",
+      delFail: "删除失败",
+      loadFail: "读不到作物表（登录态失效或权限不足）",
+      note:
+        "产量按「种子价 × 0.75」标定：收获期望 = 产量 ÷ 种子价 × 1.2，" +
+        "上限 0.90 就是农场彩蛋池余量的来源。越标定的行会被拒；" +
+        "把现役最便宜种子价改低，也会因顶穿彩蛋池而被拒（跨表回查、整体回滚）。" +
+        "收过的作物删不掉，那是收获史留痕 —— 停止供应请取消「上架」。",
+    },
     rewards: {
       title: "确定侧奖励（周常 / 赛季）",
       colKind: "侧",

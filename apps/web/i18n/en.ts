@@ -2672,6 +2672,34 @@ const enBase: Omit<
    * key is missing, so a brand-new tool never renders blank.
    */
   adminArcade: {
+    crops: {
+      title: "Farm crop table",
+      colName: "Crop",
+      colSeed: "Seed price",
+      colYield: "Base yield",
+      colGrow: "Grow (hours)",
+      colEv: "Harvest EV",
+      colActive: "Listed",
+      unitLine: "Egg pool unit: {n} {magic} (cheapest listed seed)",
+      capLine: "calibration cap {c}",
+      addRow: "Add a crop",
+      newRow: "New crop",
+      save: "Save",
+      saving: "Saving…",
+      saved: "Saved: {n}",
+      del: "Delete",
+      confirmDel: "Confirm",
+      deleted: "Deleted: {n}",
+      saveFail: "Save failed",
+      delFail: "Delete failed",
+      loadFail: "Crop table unavailable (session or permission)",
+      note:
+        "Yields are calibrated at seed price x 0.75: harvest EV = yield / seed " +
+        "* 1.2, and that 0.90 cap is exactly the room the egg pool shares. " +
+        "A row over the calibration is refused, and so is a cheaper listed " +
+        "seed that would push the egg pool past 1 (cross-table recheck, full " +
+        "rollback). Harvested crops cannot be deleted - unlist them instead.",
+    },
     rewards: {
       title: "Deterministic rewards (weekly / season)",
       colKind: "Side",

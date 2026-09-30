@@ -8,12 +8,104 @@
 
 use rand::Rng;
 
-use super::jgg::{pool_ev, validate_shape, PoolEntry, PoolError, MULT_UNIT};
+use super::jgg::{
+    ev_strictly_below, pool_ev, validate_shape, PoolEntry, PoolError, MULT_UNIT,
+};
 
-/// 农场收获侧的**基础**回收率：作物按「产量 = 种子价 × 0.75」标定，
-/// 含 20% 双倍后期望 = 0.75 × 1.2 = 0.90。这是机制常数，
-/// 面板、写侧闸、运行时都读这一个值 —— 抄两份就会有一处忘记改。
-pub const BASE_EV: f64 = 0.90;
+/// 作物表标定与双倍率都写成分数：产量 = 种子价 × 3/4，20% 概率双倍。
+/// 基础回收率是这两者相乘（18/20 = 0.90），不是第三个数 —— 改标定等于改经济口径，
+/// 而 `validate_crop`、迁移 0253 的 CHECK、彩蛋池的余量全都以这条乘积为准。
+/// 用分数而不是小数，是因为闸门必须做**精确**比较（见 `ev_strictly_below`）。
+const YIELD_NUM: i64 = 3;
+const YIELD_DEN: i64 = 4;
+const DOUBLE_NUM: i64 = 1;
+const DOUBLE_DEN: i64 = 5;
+
+/// 基础回收率的分子/分母：(3 × (5+1)) / (4 × 5) = 18/20
+pub const BASE_EV_NUM: i64 = YIELD_NUM * (DOUBLE_DEN + DOUBLE_NUM);
+pub const BASE_EV_DEN: i64 = YIELD_DEN * DOUBLE_DEN;
+
+/// 农场收获侧的**基础**回收率上限 0.90 —— 只用于展示与报账，
+/// 判据一律走上面的分数。
+pub const BASE_EV: f64 = BASE_EV_NUM as f64 / BASE_EV_DEN as f64;
+
+/// 成熟时长区间（小时）：1 小时到 30 天
+pub const GROW_HOURS_MIN: i32 = 1;
+pub const GROW_HOURS_MAX: i32 = 720;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CropError {
+    BadPrice(i64),
+    BadYield(i64),
+    BadGrow(i32),
+    /// 突破标定：收获期望高过 BASE_EV，农场就不再是回收口
+    OverCalibration {
+        ev: f64,
+        cap: f64,
+    },
+}
+
+impl std::fmt::Display for CropError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CropError::BadPrice(p) => {
+                write!(f, "种子价需在 1 ~ {} 之间，实为 {p}", i32::MAX)
+            }
+            CropError::BadYield(y) => {
+                write!(f, "基准产量需在 1 ~ {} 之间，实为 {y}", i32::MAX)
+            }
+            CropError::BadGrow(h) => write!(
+                f,
+                "成熟时长需在 {}–{} 小时之间，实为 {h}",
+                GROW_HOURS_MIN, GROW_HOURS_MAX
+            ),
+            CropError::OverCalibration { ev, cap } => write!(
+                f,
+                "这一档收获期望 {ev:.3} 已超过作物表标定的上限 {cap:.2}：\
+                 产量要按「种子价 × 0.75」标定，否则农场在增发而不是回收，\
+                 彩蛋池那 0.10 的余量也算不住了"
+            ),
+        }
+    }
+}
+
+/// 一株作物的收获期望：产量 ÷ 种子价 × (1 + 双倍率)。
+/// 0 种子价不返回 0 而是正无穷 —— 「白送的种子」是最坏情况，不是没情况。
+pub fn crop_expected_value(seed_price: i64, base_yield: i64) -> f64 {
+    if seed_price <= 0 {
+        return f64::INFINITY;
+    }
+    (base_yield as f64 / seed_price as f64)
+        * (1.0 + DOUBLE_NUM as f64 / DOUBLE_DEN as f64)
+}
+
+/// 作物档位关闸（写侧与迁移 0253 的 CHECK 同源）：正数、成熟时长在区间内，
+/// 且**不得突破标定**。判据用整数式 `产量 × 4 <= 种子价 × 3`（与 CHECK 一字不差），
+/// 不引入浮点容差。
+pub fn validate_crop(
+    seed_price: i64,
+    base_yield: i64,
+    grow_hours: i32,
+) -> Result<(), CropError> {
+    // 上限是列宽（INT4）：越界必须由这里点名，不能让调用方 `as i32` 绕成负数
+    let fits = |v: i64| (1..=i64::from(i32::MAX)).contains(&v);
+    if !fits(seed_price) {
+        return Err(CropError::BadPrice(seed_price));
+    }
+    if !fits(base_yield) {
+        return Err(CropError::BadYield(base_yield));
+    }
+    if grow_hours < GROW_HOURS_MIN || grow_hours > GROW_HOURS_MAX {
+        return Err(CropError::BadGrow(grow_hours));
+    }
+    if base_yield * YIELD_DEN > seed_price * YIELD_NUM {
+        return Err(CropError::OverCalibration {
+            ev: crop_expected_value(seed_price, base_yield),
+            cap: BASE_EV,
+        });
+    }
+    Ok(())
+}
 
 /// 每人地块数：写侧校验、地块投影、总览三处读同一个数（前台按 API 给的 slots 画）。
 pub const PLOTS: i32 = 6;
@@ -40,9 +132,13 @@ pub fn validate_farm(
     unit: i64,
 ) -> Result<(), PoolError> {
     validate_shape(entries, unit)?;
-    let total = farm_total_ev(entries, unit);
-    if !(total < 1.0) {
-        return Err(PoolError::ExpectedValueNotBelowOne(total));
+    // 「0.90 + 彩蛋 < 1」等价于「彩蛋 < 1/10」，两侧都用整数判：
+    // 浮点会把恰好压在余量上的那张池算成 0.9999999999999999 而放过去
+    if !ev_strictly_below(entries, unit, BASE_EV_DEN - BASE_EV_NUM, BASE_EV_DEN)
+    {
+        return Err(PoolError::ExpectedValueNotBelowOne(farm_total_ev(
+            entries, unit,
+        )));
     }
     Ok(())
 }
@@ -96,7 +192,7 @@ fn market_unit(window_start: i64, salt: u64) -> u64 {
     x.wrapping_mul(0x2545F4914F6CDD1D) >> 33
 }
 
-/// 20% 概率双倍收获（真随机）
+/// 双倍收获（真随机，概率就是 `DOUBLE_CHANCE` —— 与标定乘积同一份来源）
 pub fn roll_double() -> bool {
-    rand::thread_rng().gen_range(0..100) < 20
+    rand::thread_rng().gen_range(0..DOUBLE_DEN) < DOUBLE_NUM
 }
