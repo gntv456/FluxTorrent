@@ -2677,6 +2677,11 @@ const zhTwBase: Omit<
     },
     pool: {
       colKind: "類型",
+      colSide: "哪一區付",
+      sideWin: "猜中",
+      sideTie: "平局",
+      sideLose: "猜錯",
+      labelBigsmall: "猜大小 · 標準桌",
       kindMagic: "魔力倍數",
       kindItem: "物品",
       labelJgg: "九宮格 · 標準池",

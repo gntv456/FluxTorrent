@@ -13,6 +13,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
+import {
+  AdminArcadePoolRows,
+  type CatalogItem,
+  type PoolRowView,
+} from "./admin-arcade-pool-rows";
 import { api, ApiError } from "@/lib/api-client";
 
 interface Row {
@@ -22,6 +27,8 @@ interface Row {
   kind?: string;
   item_key?: string;
   qty?: number;
+  /** 猜大小用：这一档在哪一区付 */
+  side?: string;
 }
 
 interface CatItem {
@@ -36,6 +43,7 @@ interface CatItem {
 const POOLS = [
   { game: "jgg", key: "jgg_default", labelKey: "labelJgg" },
   { game: "scratch", key: "scratch_default", labelKey: "labelScratch" },
+  { game: "bigsmall", key: "bigsmall_default", labelKey: "labelBigsmall" },
 ] as const;
 
 type PoolProj = { ticket: number; prizes: Row[] };
@@ -104,6 +112,7 @@ export function AdminArcadePool({
           ...(r.kind === "item"
             ? { item_key: r.item_key, qty: r.qty ?? 1 }
             : { payout: r.payout }),
+          side: r.side ?? "any",
         })),
       });
       setMsg(t.saved);
@@ -144,95 +153,12 @@ export function AdminArcadePool({
         </div>
       </div>
 
-      <table className="nexus-table w-full text-xs">
-        <thead>
-          <tr className="text-left text-sub">
-            <th className="py-1">{t.colPrize}</th>
-            <th className="py-1">{t.colWeight}</th>
-            <th className="py-1">{t.colKind}</th>
-            <th className="py-1 text-right">{t.colValue}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-t border-line">
-              <td className="py-1 pr-2">
-                <input
-                  className={CELL}
-                  value={r.label}
-                  onChange={(e) => set(i, { label: e.target.value })}
-                />
-              </td>
-              <td className="py-1 pr-2">
-                <input
-                  type="number"
-                  min={0}
-                  className={CELL}
-                  value={r.weight_permille}
-                  onChange={(e) =>
-                    set(i, { weight_permille: Number(e.target.value) || 0 })
-                  }
-                />
-              </td>
-              <td className="py-1 pr-1">
-                <select
-                  className={CELL + " w-24"}
-                  value={r.kind ?? "magic"}
-                  onChange={(e) => set(i, { kind: e.target.value })}
-                >
-                  <option value="magic">{t.kindMagic}</option>
-                  <option value="item">{t.kindItem}</option>
-                </select>
-              </td>
-              <td className="py-1 text-right">
-                {r.kind === "item" ? (
-                  <span className="text-sub">
-                    <select
-                      className={CELL + " inline-block w-40"}
-                      value={r.item_key ?? ""}
-                      onChange={(e) => {
-                        const hit = catalog.find(
-                          (c) => c.key === e.target.value,
-                        );
-                        set(i, {
-                          item_key: e.target.value,
-                          label: hit ? hit.name : r.label,
-                        });
-                      }}
-                    >
-                      {catalog.map((c) => (
-                        <option key={c.key} value={c.key}>
-                          {c.icon} {c.name}
-                        </option>
-                      ))}
-                    </select>
-                    ×
-                    <input
-                      type="number"
-                      min={1}
-                      className={`${CELL} ml-1 inline-block w-16 text-right`}
-                      value={r.qty ?? 1}
-                      onChange={(e) =>
-                        set(i, { qty: Number(e.target.value) || 1 })
-                      }
-                    />
-                  </span>
-                ) : (
-                  <input
-                    type="number"
-                    min={0}
-                    className={`${CELL} w-20 text-right`}
-                    value={r.payout}
-                    onChange={(e) =>
-                      set(i, { payout: Number(e.target.value) || 0 })
-                    }
-                  />
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <AdminArcadePoolRows
+        rows={rows}
+        catalog={catalog}
+        showSide={pool.game === "bigsmall"}
+        onSet={set}
+      />
 
       <div className="flex items-center gap-3">
         <button
