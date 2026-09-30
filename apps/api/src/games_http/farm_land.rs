@@ -1,6 +1,6 @@
 //! 农场土地阶梯（读侧）：地块持有状态、报价与播种关闸。
 //!
-//! 机制与算式都在 `games::farm_land`，参数在 site_settings（迁移 0256），这里
+//! 机制与算式都在 `games::farm_land`，参数在 site_settings（迁移 0260），这里
 //! 只做「读行表 + 派生投影」。买地/升级这两个动账动作在 `farm_land_write.rs`。
 //!
 //! 这条阶梯是**确定性魔力沉没口**：只出不进、零退款，不碰 EV —— 所以它不过
@@ -25,7 +25,7 @@ pub(super) fn land_err(e: impl std::fmt::Display) -> DomainError {
 /// 我的土地状态：站长参数 + 已买块数 + 每块等级。
 ///
 /// 「没行的地块就是 1 级」是这里唯一的派生默认：免费地块不播种持有行
-///（见迁移 0256 的 CHECK），所以这张表只记**买来的**与**升过级的**地。
+///（见迁移 0260 的 CHECK），所以这张表只记**买来的**与**升过级的**地。
 pub(super) struct LandState {
     cfg: LandConfig,
     free: i32,
