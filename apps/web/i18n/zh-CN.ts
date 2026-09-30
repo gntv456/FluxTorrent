@@ -2205,6 +2205,21 @@ const zhCnBase = {
     plant: "播种",
     plantOk: "已种下 {crop}（花费 {cost} {magic}）",
     full: "{n} 块地都已种满",
+    landTitle: "地块阶梯",
+    landHint: "已持有 {n} / {cap} 块（免费 {free} + 已买 {bought}）",
+    landSlot: "{n} 号",
+    landLv: "Lv.{n}",
+    landFast: "快 {p}%",
+    landBoughtTag: "买来的",
+    landMax: "已满级",
+    landUp: "升级 {cost}",
+    landBuy: "再买一块：第 {n} 号 · {cost} {magic}",
+    landFull: "地块已买满（{cap} 块）",
+    landNote:
+      "买地与升级只沉没魔力、不退款；升级只缩短成熟时间，产量与收获彩蛋都不变。",
+    landBuyOk: "第 {slot} 号地块到手（花费 {cost} {magic}）",
+    landUpOk:
+      "第 {slot} 号升到 Lv.{n}（花费 {cost} {magic}），成熟快 {p}%",
   },
   dressup: {
     title: "装扮中心",

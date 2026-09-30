@@ -10,18 +10,12 @@ import {
   type Crop,
   type Plot,
 } from "@/components/game/farm-field";
+import { FarmLandStrip, type ActFn as Act } from "@/components/game/farm-land";
 import type { FarmData } from "./_inner";
 
 /** 农场专注页分区件（从 games/farm/_inner.tsx 按域拆出）：
- *  我的六块田（一键收获 + 逐块浇水/收获）与图鉴式行情两区，
+ *  我的田（一键收获 + 逐块浇水/收获 + 土地阶梯）与图鉴式行情两区，
  *  数据装载与动作编排留在 _inner.tsx。 */
-
-type Act = (
-  path: string,
-  body: unknown,
-  ok: (d: never) => string,
-  kindOf?: (d: never) => "win" | "lose" | "jackpot",
-) => Promise<void>;
 
 /** 我的田地：地块网格 + 一键收获入口 */
 export function MyFieldSection({
@@ -133,6 +127,16 @@ export function MyFieldSection({
           />
         ))}
       </div>
+
+      {data.land && (
+        <FarmLandStrip
+          land={data.land}
+          tf={tf}
+          currency={currency}
+          busy={busy}
+          act={act}
+        />
+      )}
     </section>
   );
 }

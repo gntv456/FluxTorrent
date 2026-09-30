@@ -2265,6 +2265,21 @@ const enBase: Omit<
     plant: "Plant",
     plantOk: "Planted {crop} (cost {cost} {magic})",
     full: "All {n} plots are full",
+    landTitle: "Land ladder",
+    landHint: "Holding {n} / {cap} (free {free} + bought {bought})",
+    landSlot: "Plot {n}",
+    landLv: "Lv.{n}",
+    landFast: "{p}% faster",
+    landBoughtTag: "bought",
+    landMax: "Max level",
+    landUp: "Upgrade {cost}",
+    landBuy: "Buy plot {n} · {cost} {magic}",
+    landFull: "All {cap} plots owned",
+    landNote:
+      "Buying and upgrading only sink magic — no refunds. An upgrade shortens growth time; yield and the harvest egg stay exactly the same.",
+    landBuyOk: "Plot {slot} is yours (cost {cost} {magic})",
+    landUpOk:
+      "Plot {slot} → Lv.{n} (cost {cost} {magic}), {p}% faster",
   },
   dressup: {
     title: "Dress-up",
