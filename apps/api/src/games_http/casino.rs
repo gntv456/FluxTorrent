@@ -12,10 +12,68 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::helpers::{
-    bigsmall_mult_permille, check_bet, check_rate, eco_i64, idem_key,
-    scratch_odds, BetReq,
+    bigsmall_mult_permille, check_bet, check_rate, eco_i64, idem_key, BetReq,
 };
 use super::pool::{grant_item, load_pool, GrantOutcome};
+
+/// 一档的结算：魔力位按 `unit × 千分倍率 / 1000` 派彩，物品位走发放账。
+///
+/// `unit` 对九宫格是票价、对刮刮乐是玩家这注的金额 —— 两侧口径本来就一样，
+/// 写两遍的话「物品发不出去怎么算」这类规则迟早会在其中一侧偷偷改掉。
+/// 发不出去时按 `FALLBACK_MULT` 折魔力，这条回落已被 EV 计入，不是额外成本。
+async fn settle(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    uid: i64,
+    unit: i64,
+    draw: &games::Draw,
+    game: &str,
+    win_idem: &str,
+) -> DomainResult<(i64, i64, Option<&'static str>)> {
+    let (spark, value, fell_back) = match &draw.prize.kind {
+        games::EntryKind::Magic { mult_permille } => {
+            let p = unit.saturating_mul(*mult_permille) / games::MULT_UNIT;
+            (p, p, None)
+        }
+        games::EntryKind::Item {
+            item_key,
+            qty,
+            anchor,
+        } => match grant_item(
+            &state.repo.db,
+            uid,
+            item_key,
+            *qty,
+            game,
+            "rand",
+            win_idem,
+        )
+        .await?
+        {
+            GrantOutcome::Granted => (
+                0,
+                anchor.saturating_mul(i64::from(*qty)),
+                None,
+            ),
+            GrantOutcome::FellBack(why) => {
+                let p = unit.saturating_mul(games::FALLBACK_MULT);
+                (p, p, Some(why))
+            }
+        },
+    };
+    if spark > 0 {
+        earn_spark(&state.repo.db, uid, spark, "game", win_idem).await?;
+    }
+    Ok((spark, value, fell_back))
+}
+
+/// 中奖结果的类型，公示与前台都要按它区分渲染
+fn award_kind(draw: &games::Draw, fell_back: Option<&str>) -> &'static str {
+    match (&draw.prize.kind, fell_back) {
+        (_, Some(_)) => "fallback",
+        (games::EntryKind::Magic { .. }, _) => "magic",
+        (games::EntryKind::Item { .. }, _) => "item",
+    }
+}
 
 #[post("/games/scratch")]
 pub(super) async fn scratch(
@@ -24,9 +82,19 @@ pub(super) async fn scratch(
     body: web::Json<BetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 档位与概率在 arcade_pools(game='scratch')：不合法直接拒服务，
+    // 不再从设置键回落缺省表（0248 之前那条静默回落等于「改错一个字就当没事」）
+    let pool = load_pool(&state.repo.db, "scratch").await?;
     check_bet(&state, body.bet)
         .await
         .map_err(DomainError::Validation)?;
+    if body.bet < pool.ticket {
+        return Err(DomainError::Validation(format!(
+            "刮刮乐最低注额为 {} 魔力：注额低于票档时，固定折算价的物品位\
+             会让小额注的综合返还冲破 1",
+            pool.ticket
+        )));
+    }
     check_rate(&state, &state.redis, auth.id).await?;
 
     let idem = idem_key("scratch", auth.id, &body.idempotency_key);
@@ -47,19 +115,24 @@ pub(super) async fn scratch(
     ) {
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
     }
-    // 概率档位读 0109 设置键（缺省回落 45/30/15/8/2）
-    let odds = scratch_odds(&state).await?;
-    let outcome = games::scratch_play_with(body.bet, &odds);
-    if outcome.payout > 0 {
-        let win_idem = format!("game-scratch-win:{}", idem);
-        earn_spark(&state.repo.db, auth.id, outcome.payout, "game", &win_idem)
-            .await?;
-    }
+    let draw = games::draw_entry(&pool.entries)
+        .ok_or_else(|| DomainError::Validation("刮刮乐奖池不可抽样".into()))?;
+    let win_idem = format!("game-scratch-win:{}", idem);
+    let (spark, value, fell_back) =
+        settle(&state, auth.id, body.bet, &draw, "scratch", &win_idem).await?;
+    state
+        .repo
+        .audit(Some(auth.id), "game.scratch", None)
+        .await;
     Ok(ok(serde_json::json!({
-        "multiplier": outcome.multiplier,
-        "payout": outcome.payout,
+        "multiplier": draw.prize.mult_permille() as f64 / 1000.0,
+        "payout": spark,
+        "prize": draw.prize.label,
+        "kind": award_kind(&draw, fell_back),
+        "fell_back": fell_back,
         "bet": body.bet,
-        "net": outcome.payout - body.bet,
+        "value": value,
+        "net": value - body.bet,
     })))
 }
 
@@ -173,46 +246,13 @@ pub(super) async fn jgg(
     // 魔力位直接入账；物品位走发放账（库存 / 每人上限 / 幂等同一事务判），
     // 发不出去时按 FALLBACK_MULT 折魔力 —— 这条回落路径已被 EV 计入，不是额外成本。
     let win_idem = format!("game-jgg-win:{}", idem);
-    let (spark, value, fell_back) = match &draw.prize.kind {
-        games::EntryKind::Magic { multiples } => {
-            (ticket * multiples, ticket * multiples, None)
-        }
-        games::EntryKind::Item {
-            item_key,
-            qty,
-            anchor,
-        } => match grant_item(
-            &state.repo.db,
-            auth.id,
-            item_key,
-            *qty,
-            "jgg",
-            "rand",
-            &win_idem,
-        )
-        .await?
-        {
-            GrantOutcome::Granted => (0, anchor * i64::from(*qty), None),
-            GrantOutcome::FellBack(why) => {
-                let p = ticket * games::FALLBACK_MULT;
-                (p, p, Some(why))
-            }
-        },
-    };
-    if spark > 0 {
-        earn_spark(&state.repo.db, auth.id, spark, "game", &win_idem).await?;
-    }
-    // 公示口径：物品 / 回落 / 魔力 三种结果在前台必须可区分
-    let award_kind = match (&draw.prize.kind, fell_back) {
-        (_, Some(_)) => "fallback",
-        (games::EntryKind::Magic { .. }, _) => "magic",
-        (games::EntryKind::Item { .. }, _) => "item",
-    };
+    let (spark, value, fell_back) =
+        settle(&state, auth.id, ticket, &draw, "jgg", &win_idem).await?;
     state.repo.audit(Some(auth.id), "game.jgg", None).await;
     Ok(ok(serde_json::json!({
         "index": draw.index,
         "prize": draw.prize.label,
-        "kind": award_kind,
+        "kind": award_kind(&draw, fell_back),
         "fell_back": fell_back,
         "payout": spark,
         "value": value,

@@ -17,7 +17,7 @@ use crate::state::AppState;
 
 use super::arcade_cfg::bad;
 use super::arcade_rewards::{admin_rows, refs_gate, season_key};
-use super::helpers::{bigsmall_mult_permille, eco_i64, scratch_odds};
+use super::helpers::{bigsmall_mult_permille, eco_i64};
 
 /// 九宫格 EV 只有一份公式，在 games::pool_ev —— 这里不再抄第二遍求和
 
@@ -31,9 +31,10 @@ pub(super) async fn arcade_overview(
     let db = &state.repo.db;
 
     let mult = bigsmall_mult_permille(&state).await;
-    let odds = scratch_odds(&state).await?;
-    // 公式只有一份：ScratchOdds::ev() 与写侧闸门共用，这里不再抄第二遍
-    let s_ev = odds.ev();
+    // 刮刮乐的 EV 现在与玩法读同一张奖池行表（0248）：面板报的、闸门算的、
+    // 玩法发的，是同一个数
+    let scratch = super::pool::load_pool(db, "scratch").await?;
+    let s_ev = games::pool_ev(&scratch.entries, scratch.ticket);
     let jgg = super::pool::load_pool(&state.repo.db, "jgg").await?;
     let j_ev = games::pool_ev(&jgg.entries, jgg.ticket);
     let b_ev = games::bigsmall_expected_value(mult);
@@ -61,8 +62,13 @@ pub(super) async fn arcade_overview(
     let ev = vec![
         serde_json::json!({
             "name": "刮刮乐", "ev": s_ev,
-            "note": format!("档位 {}/{}/{}/{}/{}", odds.empty, odds.half,
-                odds.one, odds.two, odds.ten),
+            // 档位住在奖池行表里，note 就报行表现实：票档、档数、权重合计
+            "note": format!(
+                "最低注额 {}，{} 档，权重合计 {}",
+                scratch.ticket,
+                scratch.entries.len(),
+                scratch.entries.iter().map(|e| e.weight).sum::<u32>()
+            ),
         }),
         serde_json::json!({
             "name": "猜大小", "ev": b_ev,

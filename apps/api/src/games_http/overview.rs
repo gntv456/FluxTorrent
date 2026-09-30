@@ -11,7 +11,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::helpers::{
-    bigsmall_mult_permille, eco_i64, limit_used, scratch_odds,
+    bigsmall_mult_permille, eco_i64, limit_used,
 };
 
 #[get("/games")]
@@ -22,7 +22,8 @@ pub(super) async fn games_overview(
     let max_bet = eco_i64(&state, "games_max_bet", games::MAX_BET).await;
     let max_plays =
         eco_i64(&state, "games_max_plays_per_hour", MAX_PLAYS_PER_HOUR).await;
-    let odds = scratch_odds(&state).await?;
+    // 刮刮乐与九宫格读同一张奖池行表（0248）：公示、闸门、玩法三处同一份数据
+    let spool = super::pool::load_pool(&state.repo.db, "scratch").await?;
     let win_mult = bigsmall_mult_permille(&state).await;
     let pool = super::pool::load_pool(&state.repo.db, "jgg").await?;
     // 物品图标与用途：目录 arcade_items 是唯一权威，这里只是把 icon 与用途附到
@@ -41,64 +42,19 @@ pub(super) async fn games_overview(
     .await
     .map_err(super::pool::dberr)?;
     // 公示必须把物品位连同其折算价值一起列出来：只报魔力倍数会让玩家以为物品档不值钱，
-    // 也让站长的 EV 复核对不上账。
-    let jgg_prizes: Vec<_> = pool
-        .entries
-        .iter()
-        .map(|p| {
-            // payout 是既有公开字段（魔力位=票价倍数，物品位=0），前台一直按它渲染。
-            // 新语义一律**附加**，不替换：重命名已上线的响应字段等于悄悄打坏客户端。
-            let mut j = serde_json::json!({
-                "label": p.label,
-                "weight_permille": p.weight,
-                "payout": match &p.kind {
-                    games::EntryKind::Magic { multiples } => *multiples,
-                    games::EntryKind::Item { .. } => 0,
-                },
-                "value": p.value(pool.ticket),
-            });
-            match &p.kind {
-                games::EntryKind::Magic { multiples } => {
-                    j["kind"] = serde_json::json!("magic");
-                    j["multiples"] = serde_json::json!(multiples);
-                }
-                games::EntryKind::Item {
-                    item_key,
-                    qty,
-                    anchor,
-                } => {
-                    j["kind"] = serde_json::json!("item");
-                    j["item_key"] = serde_json::json!(item_key);
-                    j["qty"] = serde_json::json!(qty);
-                    j["anchor"] = serde_json::json!(anchor);
-                    let hit = icons
-                        .iter()
-                        .find(|(k, _, _, _)| k == item_key);
-                    j["icon"] = serde_json::json!(
-                        hit.map(|(_, v, _, _)| v.clone())
-                    );
-                    j["use_kind"] = serde_json::json!(
-                        hit.map(|(_, _, u, _)| u.clone())
-                    );
-                    j["use_name"] = serde_json::json!(
-                        hit.and_then(|(_, _, _, n)| n.clone())
-                    );
-                }
-            }
-            j
-        })
-        .collect();
+    // 也让站长的 EV 复核对不上账。两个玩法共用同一份投影（见 prize_rows）。
+    let jgg_prizes = prize_rows(&pool.entries, pool.ticket, &icons);
+    let scratch_prizes = prize_rows(&spool.entries, spool.ticket, &icons);
 
     let mut body = serde_json::json!({
         "max_bet": max_bet,
         "max_plays_per_hour": max_plays,
-        "scratch": { "name": "刮刮乐", "max_bet": max_bet, "prizes": [
-            { "multiplier": 0.5, "pct": odds.half },
-            { "multiplier": 1.0, "pct": odds.one },
-            { "multiplier": 2.0, "pct": odds.two },
-            { "multiplier": 10.0, "pct": odds.ten }
-        ], "empty_pct": odds.empty,
-            "expected_value": odds.ev() },
+        "scratch": { "name": "刮刮乐", "max_bet": max_bet,
+            "min_bet": spool.ticket,
+            "ticket": spool.ticket,
+            "prizes": scratch_prizes,
+            "empty_pct": scratch_empty_pct(&spool.entries),
+            "expected_value": games::pool_ev(&spool.entries, spool.ticket) },
         "bigsmall": { "name": "猜大小", "max_bet": max_bet,
             "win_mult": win_mult as f64 / 1000.0,
             "expected_value": games::bigsmall_expected_value(win_mult),
@@ -228,4 +184,71 @@ pub(super) async fn game_rounds(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
+}
+
+/// 奖池档位的公示投影：九宫格与刮刮乐读同一张表，投影也只留一份实现。
+/// 两处各写一遍的话，「物品位要带图标与用途」这类补充迟早只落在一边 ——
+/// 那就是第二份清单的开头。
+fn prize_rows(
+    entries: &[games::PoolEntry],
+    ticket: i64,
+    icons: &[(String, String, String, Option<String>)],
+) -> Vec<serde_json::Value> {
+    entries
+        .iter()
+        .map(|p| {
+            // payout 是既有公开字段（魔力位=倍数，物品位=0），前台一直按它渲染。
+            // 倍数可以是小数（刮刮乐有 0.5x 档），一律由千分比换算。
+            // 新语义一律**附加**，不替换：重命名已上线的字段等于悄悄打坏客户端。
+            let mut j = serde_json::json!({
+                "label": p.label,
+                "weight_permille": p.weight,
+                "payout": p.mult_permille() as f64 / 1000.0,
+                "multiples": p.mult_permille() as f64 / 1000.0,
+                "value": p.value(ticket),
+            });
+            match &p.kind {
+                games::EntryKind::Magic { .. } => {
+                    j["kind"] = serde_json::json!("magic");
+                }
+                games::EntryKind::Item {
+                    item_key,
+                    qty,
+                    anchor,
+                } => {
+                    j["kind"] = serde_json::json!("item");
+                    j["item_key"] = serde_json::json!(item_key);
+                    j["qty"] = serde_json::json!(qty);
+                    j["anchor"] = serde_json::json!(anchor);
+                    let hit = icons.iter().find(|(k, _, _, _)| k == item_key);
+                    j["icon"] =
+                        serde_json::json!(hit.map(|(_, v, _, _)| v.clone()));
+                    j["use_kind"] =
+                        serde_json::json!(hit.map(|(_, _, u, _)| u.clone()));
+                    j["use_name"] = serde_json::json!(
+                        hit.and_then(|(_, _, _, n)| n.clone())
+                    );
+                }
+            }
+            j
+        })
+        .collect()
+}
+
+/// 不中奖档（倍率 0）的合计概率。前台「谢谢参与」那一行读它。
+fn scratch_empty_pct(entries: &[games::PoolEntry]) -> f64 {
+    let total: u64 = entries.iter().map(|e| u64::from(e.weight)).sum();
+    entries
+        .iter()
+        .filter(|e| e.mult_permille() == 0)
+        .map(|e| pct_of(e.weight, total))
+        .sum()
+}
+
+fn pct_of(weight: u32, total: u64) -> f64 {
+    if total == 0 {
+        0.0
+    } else {
+        f64::from(weight) * 100.0 / total as f64
+    }
 }

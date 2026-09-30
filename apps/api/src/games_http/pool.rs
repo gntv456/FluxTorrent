@@ -143,7 +143,7 @@ pub(super) async fn load_pool(
         Option<i64>,
     )> = sqlx::query_as(
         r#"
-            SELECT p.ticket, e.label, e.weight, e.payout,
+            SELECT p.ticket, e.label, e.weight, e.mult_permille,
                    e.kind, e.item_key, e.qty, i.anchor
               FROM arcade_pools p
               JOIN arcade_pool_entries e ON e.pool_key = p.key
@@ -159,7 +159,7 @@ pub(super) async fn load_pool(
     let ticket = rows.first().map(|r| r.0).unwrap_or(0);
     let entries: Vec<games::PoolEntry> = rows
         .into_iter()
-        .map(|(_, label, weight, payout, kind, item_key, qty, anchor)| {
+        .map(|(_, label, weight, mult_permille, kind, item_key, qty, anchor)| {
             let k = if kind == "item" {
                 games::EntryKind::Item {
                     item_key: item_key.unwrap_or_default(),
@@ -167,7 +167,7 @@ pub(super) async fn load_pool(
                     anchor: anchor.unwrap_or(0),
                 }
             } else {
-                games::EntryKind::Magic { multiples: payout }
+                games::EntryKind::Magic { mult_permille }
             };
             games::PoolEntry {
                 label,

@@ -1,113 +1,22 @@
-//! 刮刮乐（即开型）：奖池 45% 空、30% 保底 0.5x、15% 1x、8% 2x、2% 10x。
+//! 刮刮乐（即开型）：档位、概率、倍数全在 `arcade_pools(game='scratch')`，
+//! 这里只留「按倍率算派彩」这一件纯计算。
+//!
+//! 0248 之前它住在五个设置键里（`games_scratch_*_pct`），那条路上没有 EV 闸、
+//! 没有跨池回查，也没有物品位可言 —— 站长改数字改出增发，只有运行时才发现。
+//! 现在它和九宫格读同一张表、过同一个 `validate_pool`。
 
-use rand::Rng;
-
-/// 奖池：45% 空、30% 保底 0.5x、15% 1x、8% 2x、2% 10x —— 期望回报 0.66（庄家优势 34%，运营可调）
+/// 一次刮开的结果。`multiplier` 是倍率（0.5 = 返本一半），`payout` 向下取整。
 #[derive(Debug, PartialEq)]
 pub struct ScratchOutcome {
     pub multiplier: f64,
     pub payout: i64,
 }
 
-/// 刮刮乐档位概率（百分比整数）。0109 设置键 `games_scratch_empty_pct/half_pct/one_pct`
-/// 可配前三档，剩余额度按 8:2 分给 2x/10x（与缺省表一致），见 `ScratchOdds::from_parts`。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ScratchOdds {
-    pub empty: u32,
-    pub half: u32,
-    pub one: u32,
-    pub two: u32,
-    pub ten: u32,
-}
-
-impl ScratchOdds {
-    /// 缺省档位：45/30/15/8/2（期望回报 0.66，庄家优势 34%）
-    pub const DEFAULT: ScratchOdds = ScratchOdds {
-        empty: 45,
-        half: 30,
-        one: 15,
-        two: 8,
-        ten: 2,
-    };
-
-    /// 由五档可配百分比推导完整档位。规则（保证**总量恒为 100 且 EV 不变**）：
-    /// - 前四档之和 ≥ 100 → 整体回落缺省（防非法配置造出必中/必增发档位）；
-    /// - 10x 档填了正数且与前四档合计正好 100 → 采用站长配置；否则取**余数**（兼容旧的"余数档"行为）；
-    /// - EV 复算 ≥ 1 → 整体回落缺省（P2 运行时防线）：设置键是管理员可写参数，
-    ///   单测只锁死 DEFAULT 常量。余数档设计可被配置放大为增发开关——
-    ///   如 (0,0,0,99,·) → two=99%/ten=1%，EV = 0.99×2 + 0.01×10 = 2.08。
-    /// 由设置键构造赔率表。**坏配置一律 Err，不再静默回落 DEFAULT** ——
-    /// 回落等于把「运营改错一个字」伪装成「配置生效了」，而 EV>=1 的表开抽一秒就在增发。
-    /// 保留的是「余数档自动补齐」这一条：它是文档化的设计（只配前三档），
-    /// 不是把玩家看得见的赔率偷偷改掉。
-    pub fn try_from_parts(
-        empty: i64,
-        half: i64,
-        one: i64,
-        two: i64,
-        ten: i64,
-    ) -> Result<ScratchOdds, String> {
-        let (e, h, o, t) = (empty.max(0), half.max(0), one.max(0), two.max(0));
-        let sum4 = e + h + o + t;
-        if sum4 >= 100 {
-            return Err(format!(
-                "前三档 + 空档合计 {sum4} >= 100，没有余量分给 2x/10x，赔率表无法成立"
-            ));
-        }
-        let ten_eff = if ten > 0 && sum4 + ten == 100 {
-            ten
-        } else {
-            100 - sum4
-        };
-        let odds = ScratchOdds {
-            empty: e as u32,
-            half: h as u32,
-            one: o as u32,
-            two: t as u32,
-            ten: ten_eff as u32,
-        };
-        // 闸门与公示共用同一个 ev()：算式写两遍必然漂移
-        if odds.ev() >= 1.0 {
-            return Err(format!(
-                "ev {:.3} >= 1: 在增发，拒绝该赔率表",
-                odds.ev()
-            ));
-        }
-        Ok(odds)
-    }
-
-    /// 每注期望回报 = Σ(概率×倍率)。公示页要报这个数，但它必须与写侧闸门
-    /// 用的是同一份算式，不能让前端再推一遍（第二份公式必然漂移）。
-    pub fn ev(&self) -> f64 {
-        (self.half + 2 * self.one + 4 * self.two + 20 * self.ten) as f64 / 200.0
-    }
-}
-
-pub fn scratch_play(bet: i64) -> ScratchOutcome {
-    scratch_play_with(bet, &ScratchOdds::DEFAULT)
-}
-
-pub fn scratch_play_with(bet: i64, odds: &ScratchOdds) -> ScratchOutcome {
-    let roll: u32 = rand::thread_rng().gen_range(0..100);
-    let (e, h, o, t) = (
-        odds.empty,
-        odds.empty + odds.half,
-        odds.empty + odds.half + odds.one,
-        odds.empty + odds.half + odds.one + odds.two,
-    );
-    let multiplier = if roll < e {
-        0.0
-    } else if roll < h {
-        0.5
-    } else if roll < o {
-        1.0
-    } else if roll < t {
-        2.0
-    } else {
-        10.0
-    };
+/// 派彩 = 注额 × 千分倍率，向下取整（对站点有利的一侧）。
+/// 关闸算 EV 用的是**不取整**的精确值，见 `PoolEntry::value_permille`。
+pub fn scratch_pay(bet: i64, mult_permille: i64) -> ScratchOutcome {
     ScratchOutcome {
-        multiplier,
-        payout: (bet as f64 * multiplier) as i64,
+        multiplier: mult_permille as f64 / 1000.0,
+        payout: bet.saturating_mul(mult_permille) / 1000,
     }
 }
