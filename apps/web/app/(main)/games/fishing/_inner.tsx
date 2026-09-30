@@ -121,10 +121,11 @@ export default function FishingPage({
     ? (100 - (prizes[0]?.weight_permille ?? 0) / 10).toFixed(1)
     : "—";
 
-  /** 起竿：时机由服务端判（elapsed vs 咬钩窗口），前端只负责提交。 */
+  /** 起竿：时机由服务端判，前端只提交。
+   *  `r0` 显式传入而非读 state：定时器回调捕获的是当轮渲染的旧闭包，
+   *  `setRound` 还没反映进去 → 读 state 得 null，自动判负会静默失效。 */
   const reel = useCallback(
-    async (auto: boolean) => {
-      const r0 = round;
+    async (r0: CastResult | null, auto: boolean) => {
       clearTimers();
       if (!r0) return;
       setPhase("reeling");
@@ -164,9 +165,8 @@ export default function FishingPage({
         setPhase("done");
         void loadMeta();
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [round, clearTimers, tf, currency, dict],
+    [clearTimers, tf, currency, dict],
   );
 
   async function cast() {
@@ -201,7 +201,7 @@ export default function FishingPage({
           setWindowPct(Math.max(0, left));
           if (left <= 0) {
             window.clearInterval(tickTimer.current ?? undefined);
-            void reel(true);
+            void reel(r, true);
           }
         }, 50);
       }, r.bite_after_ms);
@@ -266,7 +266,7 @@ export default function FishingPage({
             {canReel ? (
               <button
                 type="button"
-                onClick={() => reel(false)}
+                onClick={() => reel(round, false)}
                 className="arc-call coral"
               >
                 {tf.reel}
