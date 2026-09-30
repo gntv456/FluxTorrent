@@ -67,6 +67,10 @@ def psql(sql):
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
          "-d", "fluxtorrent", "-tAc", sql],
         capture_output=True, text=True,
+        # 显式 UTF-8：Windows 默认 codecs 是 cp936，读回中文（label_zh /
+        # hint / 报错文案）会让 reader 线程抛 UnicodeDecodeError，主线程
+        # 只看到一个莫名的 IndexError: list index out of range。
+        encoding="utf-8", errors="replace",
     )
     return r.stdout.strip()
 

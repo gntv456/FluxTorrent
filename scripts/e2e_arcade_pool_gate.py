@@ -120,13 +120,25 @@ def magic(lb, wt, mu):
             "payout": mu, "enabled": True}
 
 
+PG_EXEC = os.environ.get("FLUX_PG_EXEC", "flux-postgres")
+
+
 def psql(sql):
     """验「入账」这类命题只能查账本；与 e2e_arcade_items.py 同一手法
-    （docker exec psql），脚本自己造的夹具行也自己收。"""
+    （docker exec psql），脚本自己造的夹具行也自己收。
+
+    `FLUX_PG_EXEC` 让**账本那一半**跟着 `FLUX_API_BASE` 一起指到隔离栈
+    （一套并行 compose 项目：自己的 pgdata 卷与容器名），否则会出现
+    「接口打侧栈、夹具写生产库」的两不靠 —— 断言会红，但红得没有意义。
+    """
     r = subprocess.run(
-        ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
+        ["docker", "exec", PG_EXEC, "psql", "-U", "flux",
          "-d", "fluxtorrent", "-tAc", sql],
         capture_output=True, text=True,
+        # 显式 UTF-8：Windows 默认 codecs 是 cp936，读回中文（label_zh /
+        # hint / 报错文案）会让 reader 线程抛 UnicodeDecodeError，主线程
+        # 只看到一个莫名的 IndexError: list index out of range。
+        encoding="utf-8", errors="replace",
     )
     return r.stdout.strip()
 
