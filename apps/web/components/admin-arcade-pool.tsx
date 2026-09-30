@@ -31,8 +31,14 @@ interface CatItem {
   anchor: number;
 }
 
-/** 这一版只管九宫格那一张池：键是常量，标题走字典（不写死中文） */
-const POOL_KEY = "jgg_default";
+/** 可编辑的奖池清单：game 决定读 /games 的哪一份投影，pool_key/label 是行表上的键。
+ *  加一张池 = 在这里加一行 + 服务端有对应的 game 投影，不在界面里写死中文。 */
+const POOLS = [
+  { game: "jgg", key: "jgg_default", labelKey: "labelJgg" },
+  { game: "scratch", key: "scratch_default", labelKey: "labelScratch" },
+] as const;
+
+type PoolProj = { ticket: number; prizes: Row[] };
 
 const CELL =
   "w-full rounded-[var(--r-sm)] border border-line " +
@@ -50,14 +56,18 @@ export function AdminArcadePool({
   const [catalog, setCatalog] = useState<CatItem[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [game, setGame] = useState<string>("jgg");
+  const pool = POOLS.find((p) => p.game === game) ?? POOLS[0];
 
   const load = useCallback(async () => {
     try {
-      const g = await api.get<{ jgg?: { ticket: number; prizes: Row[] } }>(
+      // 读的就是玩法真正读的那份投影：面板与玩法之间没有第二份清单
+      const g = await api.get<Record<string, PoolProj | undefined>>(
         "/api/v1/games",
       );
-      setTicket(g.jgg?.ticket ?? 0);
-      setRows(g.jgg?.prizes ?? []);
+      const proj = g[pool.game];
+      setTicket(proj?.ticket ?? 0);
+      setRows(proj?.prizes ?? []);
       // 物品位的候选来自目录本身，面板不另写一份物品清单
       const ov = await api.get<{ items?: CatItem[] }>(
         "/api/v1/admin/arcade/overview",
@@ -68,7 +78,7 @@ export function AdminArcadePool({
       setMsg(t.loadFail);
       return false;
     }
-  }, [t.loadFail]);
+  }, [t.loadFail, pool.game]);
 
   useEffect(() => {
     void load();
@@ -82,9 +92,9 @@ export function AdminArcadePool({
     setMsg(null);
     try {
       await api.post("/api/v1/admin/arcade/pool", {
-        pool_key: POOL_KEY,
-        game: "jgg",
-        label: t.label,
+        pool_key: pool.key,
+        game: pool.game,
+        label: t[pool.labelKey],
         ticket,
         entries: rows.map((r) => ({
           label: r.label,
@@ -111,6 +121,18 @@ export function AdminArcadePool({
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold">{t.title}</h3>
         <div className="flex items-center gap-2 text-xs">
+          <span className="text-sub">{t.pickGame}</span>
+          <select
+            className={`${CELL} w-28`}
+            value={game}
+            onChange={(e) => setGame(e.target.value)}
+          >
+            {POOLS.map((p) => (
+              <option key={p.game} value={p.game}>
+                {t[p.labelKey]}
+              </option>
+            ))}
+          </select>
           <span className="text-sub">{t.ticket}</span>
           <input
             type="number"
