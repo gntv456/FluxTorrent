@@ -14,6 +14,7 @@ interface HallOverview {
   scratch?: { ticket?: number; prizes: ScratchPrize[] };
   jgg?: { ticket: number; prizes: { payout: number; value?: number }[] };
   bigsmall?: { win_mult: number };
+  farm?: { unit?: number; prizes?: { payout: number; value?: number }[] };
 }
 
 /**
@@ -32,23 +33,22 @@ export default async function GamesPage() {
   const cardMod: Record<string, string> = { "/games/farm": "farm" };
   // 卡片角标取自后端下发的真实赔率/奖池（不在前端写死，避免展示与实现不符）
   const ov = await api.get<HallOverview>("/api/v1/games").catch(() => null);
+  /** 角标要的是「最高等值」而不是「最高魔力倍数」：0245 之后物品位 payout 恒为 0
+   *  （库侧 CHECK 逼的），按 payout 排会把 120 倍等值的免考核卡整个漏掉。
+   *  三个玩法同一把尺，所以只留一份算法（`tk` = 该池的定标单位）。 */
+  const topOf = (
+    prizes: { payout: number; value?: number }[] | undefined,
+    tk: number,
+    none: number,
+  ) =>
+    prizes?.length
+      ? Math.max(...prizes.map((p) => (p.value ?? p.payout * tk) / tk))
+      : none;
   // 刮刮乐同理：0248 起它也读奖池行表，角标取「最高等值」而不是最高倍率
-  const scrTk = ov?.scratch?.ticket ?? 1;
-  const scratchTop = ov?.scratch?.prizes?.length
-    ? Math.max(
-        ...ov.scratch.prizes.map(
-          (p) => (p.value ?? p.payout * scrTk) / scrTk,
-        ),
-      )
-    : 10;
-  // 角标要的是「最高值」而不是「最高魔力倍数」：0245 之后物品位 payout 恒为 0
-  // （库侧 CHECK 逼的），按 payout 排会把 120 倍等值的免考核卡整个漏掉。
-  const jggTk = ov?.jgg?.ticket ?? 100;
-  const jggTop = ov?.jgg?.prizes?.length
-    ? Math.max(
-        ...ov.jgg.prizes.map((p) => (p.value ?? p.payout * jggTk) / jggTk),
-      )
-    : 50;
+  const scratchTop = topOf(ov?.scratch?.prizes, ov?.scratch?.ticket ?? 1, 10);
+  const jggTop = topOf(ov?.jgg?.prizes, ov?.jgg?.ticket ?? 100, 50);
+  // 农场彩蛋：倍数的尺子是种子价，表上只有空档时等于没开彩蛋 → 沿用原角标
+  const farmTop = topOf(ov?.farm?.prizes, ov?.farm?.unit ?? 1, 0);
   const winMult = ov?.bigsmall?.win_mult ?? 1.9;
   // 大厅游戏表面（真数据；未登录/失败静默隐藏——不阻塞大厅选玩）
   const arcadeMeta = await api
@@ -88,7 +88,9 @@ export default async function GamesPage() {
       icon: "🌾",
       title: dict.games.farmName.replace("{magic}", currency),
       sub: dict.games.farmSub.replace("{magic}", currency),
-      tag: dict.games.hallSlow,
+      // 开了彩蛋就报彩头的最高倍数（尺子是种子价），没开就沿用「慢回收」角标
+      tag:
+        farmTop > 0 ? `${fmtMult(farmTop)}x` : dict.games.hallSlow,
       bg: "linear-gradient(135deg,var(--mint-soft),var(--sun-soft))",
       tagCls: "bg-mint-soft text-[var(--mint)]",
     },

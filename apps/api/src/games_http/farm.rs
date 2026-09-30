@@ -36,8 +36,8 @@ pub(super) async fn farm_overview(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let now = chrono::Utc::now().timestamp();
-    let window =
-        games::market_window_start_with(now, farm_market_hours(&state).await);
+    let hours = farm_market_hours(&state).await;
+    let window = games::market_window_start_with(now, hours);
 
     let crops: Vec<CropRow> = sqlx::query_as(
         "SELECT id, name, seed_price, base_yield, grow_hours, \
@@ -76,10 +76,13 @@ pub(super) async fn farm_overview(
 
     Ok(ok(serde_json::json!({
         "window_start": window,
-        "next_refresh": window + 4 * 3600,
+        // 刷新点由**设置键**决定，不是写死的 4 小时：站长把窗口改成 6，
+        // 这里跟着走，否则前端倒计时会指向一个价格不会变的时刻
+        "next_refresh": window + hours * 3600,
+        "market_refresh": super::helpers::market_refresh_text(hours),
         "crops": crops,
         "plots": plots,
-        "slots": 6,
+        "slots": games::FARM_PLOTS,
         "wither_days": wither_days,
         "hour_limit": farm_limit,
         "hour_left": farm_left,

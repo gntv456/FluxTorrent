@@ -30,9 +30,49 @@ export function scratchPoolText(
     .join(" · ")}`;
 }
 
+/** 倒计时文案：ms → 06:12:34。农场市场刷新与地块成熟共用一种读法。 */
+export function countdownText(ms: number): string {
+  if (ms <= 0) return "00:00:00";
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return (
+    `${String(h).padStart(2, "0")}:` +
+    `${String(m).padStart(2, "0")}:` +
+    `${String(s).padStart(2, "0")}`
+  );
+}
+
 /** 赔率显示：千分比 → 1.9 / 2 / 0.5（去掉多余小数） */
 export function fmtMult(mult: number): string {
   return Number.isInteger(mult)
     ? String(mult)
     : mult.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+/** 农场收获彩蛋的回执（服务端 harvest 响应的 prize 字段）：
+ *  魔力档带 extra，物品档带 label，库存耗尽时是回落档。 */
+export interface EggPrize {
+  label: string;
+  kind: string;
+  extra?: number;
+  fell_back?: string;
+}
+
+/** 彩蛋那一句话。空档（倍率 0 的「什么都不加」）不出声 ——
+ *  出厂表就是这一档，每次都播报等于把噪声当成交互反馈。 */
+export function eggText(
+  tf: Record<string, string>,
+  p: EggPrize | undefined,
+): string {
+  if (!p) return "";
+  if (p.kind === "fallback") {
+    return tf.eggFallback
+      .replace("{p}", p.label)
+      .replace("{why}", p.fell_back ?? "");
+  }
+  if (p.kind === "item") return tf.eggItem.replace("{p}", p.label);
+  return (p.extra ?? 0) > 0
+    ? tf.eggMagic.replace("{n}", String(p.extra ?? 0))
+    : "";
 }

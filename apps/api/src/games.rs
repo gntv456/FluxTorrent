@@ -6,7 +6,9 @@
 //! - 猜大小赢面 49% / 平 2% / 输 49%，赔率必须 < 2.0 否则 EV 恒为 1
 //!   （旧值 2.0：EV = 0.49×2 + 0.02 = 1.0，且「同时押大押小」可零风险对冲），
 //!   现缺省 1.9（EV 0.951），见 `BIGSMALL_WIN_MULT_PERMILLE`；
-//! - 农场收获期望 = 产量/种子价 × (1 + 20% 双倍)，作物表按 0.75 标定 → EV 0.90。
+//! - 农场收获期望 = 产量/种子价 × (1 + 20% 双倍)，作物表按 0.75 标定 → EV 0.90；
+//!   收获之上的**彩蛋奖池**（`arcade_pools` game='farm'）只能吃剩下的 0.10，
+//!   由 `validate_farm` 与写侧闸共同把关；
 //! 纪律（§M24 验收）：全部经统一火花交易管线动账，限额风控内置，赔率常量化。
 #![allow(dead_code)]
 
@@ -30,8 +32,9 @@ pub use bigsmall::{
 };
 #[allow(unused_imports)]
 pub use farm::{
-    harvest_market_price, market_price, market_window_hours,
-    market_window_start, market_window_start_with, roll_double,
+    egg_pay, farm_total_ev, harvest_market_price, market_price,
+    market_window_hours, market_window_start, market_window_start_with,
+    roll_double, validate_farm, BASE_EV as FARM_BASE_EV, PLOTS as FARM_PLOTS,
 };
 #[allow(unused_imports)]
 pub use jgg::{

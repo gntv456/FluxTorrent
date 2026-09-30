@@ -35,11 +35,14 @@ export function AdminArcadePoolRows({
   rows,
   catalog,
   showSide,
+  valueColLabel,
   onSet,
 }: {
   rows: PoolRowView[];
   catalog: CatalogItem[];
   showSide: boolean;
+  /** 倍数那一列的尺子随玩法变（票价 / 农场种子价），故由壳子传进来 */
+  valueColLabel?: string;
   onSet: (i: number, patch: Partial<PoolRowView>) => void;
 }) {
   const { dict } = useI18n();
@@ -54,7 +57,9 @@ export function AdminArcadePoolRows({
             {showSide && (
               <th className="py-1">{t.colSide}</th>
             )}
-            <th className="py-1 text-right">{t.colValue}</th>
+            <th className="py-1 text-right">
+              {valueColLabel ?? t.colValue}
+            </th>
           </tr>
         </thead>
         <tbody>

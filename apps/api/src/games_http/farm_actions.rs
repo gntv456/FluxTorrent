@@ -10,6 +10,8 @@ use crate::economy_http::{
 };
 use crate::errors::{DomainError, DomainResult};
 use crate::games;
+
+use super::farm_egg::roll_egg;
 use crate::http::require_auth;
 use crate::state::AppState;
 
@@ -29,8 +31,11 @@ pub(super) async fn farm_plant(
     // 确定性市场价可被脚本以 6 槽 × 高频轮种套取波动收益。现独立计数（rl:farm），
     // 与即时赌局额度分开 —— 否则种满 6 块地就吃掉 6 次下注额度。
     check_rate_scoped(&state, &state.redis, auth.id, RateScope::Farm).await?;
-    if !(1..=6).contains(&body.slot) {
-        return Err(DomainError::Validation("slot 取值 1-6".into()));
+    if !(1..=games::FARM_PLOTS).contains(&body.slot) {
+        return Err(DomainError::Validation(format!(
+            "slot 取值 1-{}",
+            games::FARM_PLOTS
+        )));
     }
     let Some(crop) = get_crop(&state.repo.db, body.crop_id).await? else {
         return Err(DomainError::Validation("作物不存在".into()));
@@ -244,12 +249,19 @@ pub(super) async fn farm_harvest(
     let doubled = games::roll_double();
     let amount = if doubled { market * 2 } else { market };
 
+    // 收获彩蛋：额外一档来自 arcade_pools(game='farm')，魔力按**这一株的种子价**
+    // 倍数派，或直接发一件目录里的物品。基础收获仍是确定性的 —— 彩蛋是站长
+    // 想加才加的东西，写侧与运行时都按「0.90 + 彩蛋 < 1」把关（validate_farm）。
+    let egg = roll_egg(&state.repo.db, crop.seed_price as i64).await?;
+    let extra = egg.as_ref().map(|e| e.extra).unwrap_or(0);
+    let total = amount.saturating_add(extra);
+
     // 收益经统一交易管线入账（幂等键绑定地块；与地块锁同事务，双重防重复收获。
     // 地块已在本事务锁定且即将删除，重放不可达；显式丢弃以满足 must_use 契约）
     let idem = format!("farm-harvest:{}", plot_id);
-    let earn_outcome =
-        earn_spark_tx(&mut tx, auth.id, amount, "game", &idem).await?;
-    let _ = earn_outcome;
+    if total > 0 {
+        let _ = earn_spark_tx(&mut tx, auth.id, total, "game", &idem).await?;
+    }
 
     sqlx::query("DELETE FROM farm_plots WHERE id = $1")
         .bind(plot_id)
@@ -262,7 +274,7 @@ pub(super) async fn farm_harvest(
     )
     .bind(auth.id)
     .bind(crop_id)
-    .bind(amount)
+    .bind(total)
     .bind(market)
     .bind(doubled)
     .execute(&mut *tx)
@@ -272,9 +284,15 @@ pub(super) async fn farm_harvest(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
+    // 物品彩蛋在提交之后发：地块与账已经落定，发放本身自带幂等与库存判定
+    let award = match egg {
+        Some(e) => e.settle(&state.repo.db, auth.id, plot_id).await?,
+        None => serde_json::Value::Null,
+    };
+
     Ok(ok(serde_json::json!({
-        "crop": crop.name, "amount": amount, "market_price": market, "doubled": doubled, "withered": false,
+        "crop": crop.name, "amount": total, "base": amount,
+        "extra": extra, "market_price": market, "doubled": doubled,
+        "withered": false, "prize": award,
     })))
 }
-
-// ============ 趣味盒投票（funvote 口径：投票 +1 火花） ============

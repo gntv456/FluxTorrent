@@ -2040,6 +2040,8 @@ const zhCnBase = {
       ev: "期望回报",
       house: "庄家优势",
       note: "下表数字由服务端下发，与后台改赔率时的闸门共用同一份算式：期望回报必须小于 1，站长把表改到等于或大于 1 会直接被拒绝保存。",
+      farmEgg:
+        "在确定性收获之外，每次收获另按权重抽一档彩头；倍数按这一株作物的种子价折算（当前定标 {n} {magic}）。",
       limit: "限次",
     },
 
@@ -2164,7 +2166,7 @@ const zhCnBase = {
   },
   farm: {
     title: "{magic}农场",
-    marketRule: "市场价 {time} 刷新（每日 0/4/8/12/16/20 点 · ±50% 波动）",
+    marketRule: "市场价 {time} 刷新（{rule} · ±50% 波动）",
     loading: "农场加载中…",
     plotEmpty: "空地 #{n}",
     plotHint: "从下方行情选作物播种",
@@ -2189,6 +2191,10 @@ const zhCnBase = {
     harvest: "🌾 收获",
     notReady: "未成熟",
     harvestOk: "收获 {crop} +{amount} {magic}{doubled}",
+    eggMagic: " · 🥚 彩蛋 +{n}",
+    eggItem: " · 🎁 彩蛋「{p}」",
+    eggFallback: " · 彩蛋「{p}」没发出去：{why}",
+    eggSome: " · 🎁 彩蛋 {n} 次",
     doubled: "（双倍！）",
     market: "菜市场行情",
     myField: "我的田",
@@ -2197,7 +2203,7 @@ const zhCnBase = {
     growInfo: "{h}h 成熟 · 基准 {p}",
     plant: "播种",
     plantOk: "已种下 {crop}（花费 {cost} {magic}）",
-    full: "6 块地都已种满",
+    full: "{n} 块地都已种满",
   },
   dressup: {
     title: "装扮中心",
@@ -2673,12 +2679,19 @@ const zhCnBase = {
       kindItem: "物品",
       labelJgg: "九宫格 · 标准池",
       labelScratch: "刮刮乐 · 标准票",
+      labelFarm: "农场 · 收获彩蛋",
+      seedCapFarm:
+        "当前表上只有一档「什么都不加」——加一档就是给每次收获开一个彩蛋：倍率按这一株作物的种子价折算。",
       pickGame: "奖池",
       title: "奖池编辑器",
       ticket: "票价 / 最低注额",
+      ticketFarm: "定标单位（种子价）",
+      ticketFarmNote:
+        "农场彩蛋的倍数按「这一株作物的种子价」折算，定标单位取最便宜那一株，由作物表决定，不能手填",
       colPrize: "奖项名",
       colWeight: "权重（千分）",
       colValue: "倍数 / 物品件数",
+      colValueFarm: "种子价倍数 / 物品件数",
       save: "保存奖池",
       saving: "保存中…",
       saved: "已保存，玩法读到的就是这张表",
@@ -2687,6 +2700,8 @@ const zhCnBase = {
       newRow: "新档位",
       note: "保存前服务端按 EV<1 关闸：被拒时下面直接显示后端原因，表里一字不改。",
       loadFail: "读不到奖池（玩法侧未开放或登录态失效）",
+      farmGateNote:
+        "农场在彩蛋之外还有 0.90 的确定性收获，所以这一池的闸门是「0.90 + 彩蛋 < 1」：余量只有 0.10，物品位必须限量。",
       saveFail: "保存失败",
     },
     title: "娱乐屋运营",

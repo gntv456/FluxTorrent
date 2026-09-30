@@ -53,8 +53,9 @@ pub(super) async fn arcade_overview(
     let jgg = super::pool::load_pool(&state.repo.db, "jgg").await?;
     let j_ev = games::pool_ev(&jgg.entries, jgg.ticket);
     let b_ev = games::pool_ev(&btable.all(), btable.ticket);
-    // 农场 EV 由作物表（farm_crops，DB）出厂标定 0.75 × 1.2 双倍；此处给标称值
-    let f_ev = 0.90_f64;
+    // 农场 = 确定性收获（机制常数 FARM_BASE_EV）+ 彩蛋池那一注，现值现场复算
+    let fpool = super::farm_egg::load_farm(db).await?;
+    let f_ev = games::farm_total_ev(&fpool.entries, fpool.unit);
 
     let max_bet = eco_i64(&state, "games_max_bet", MAX_BET).await;
     let max_plays =
@@ -95,7 +96,14 @@ pub(super) async fn arcade_overview(
         }),
         serde_json::json!({
             "name": "农场", "ev": f_ev,
-            "note": "产量/种子价 × (1+20% 双倍)，作物表按 0.75 标定",
+            // 收获那一半是作物表标定的常数，彩蛋那一半住奖池行表 —— 两半都报
+            "note": format!(
+                "收获 {} + 彩蛋 {:.3}（{} 档，定标 {} 魔力）",
+                games::FARM_BASE_EV,
+                f_ev - games::FARM_BASE_EV,
+                fpool.entries.len(),
+                fpool.unit
+            ),
         }),
     ];
     let all_below = ev.iter().all(|r| r["ev"].as_f64().unwrap_or(1.0) < 1.0);

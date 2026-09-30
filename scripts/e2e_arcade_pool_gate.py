@@ -18,6 +18,7 @@
 
 import json
 import os
+import subprocess
 import sys
 import time
 import urllib.error
@@ -27,6 +28,7 @@ BASE = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8080/api/v1")
 POOL_KEY = "jgg_default"
 SCRATCH_SNAP = {}
 BS_SNAP = {}
+FARM_SNAP = {}  # 农场彩蛋池进入时的样子（收尾/兜底都要写回去）
 RUN = str(int(time.time()))  # 幂等键每轮必须不同，否则第二轮被判「已受理」
 fails = []
 n_checks = [0]
@@ -116,6 +118,17 @@ def check(name, cond, detail=""):
 def magic(lb, wt, mu):
     return {"label": lb, "weight": wt, "kind": "magic",
             "payout": mu, "enabled": True}
+
+
+def psql(sql):
+    """验「入账」这类命题只能查账本；与 e2e_arcade_items.py 同一手法
+    （docker exec psql），脚本自己造的夹具行也自己收。"""
+    r = subprocess.run(
+        ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
+         "-d", "fluxtorrent", "-tAc", sql],
+        capture_output=True, text=True,
+    )
+    return r.stdout.strip()
 
 
 def item(lb, wt, k):
@@ -331,7 +344,6 @@ def main():
          {"user_id": uid, "status": 2, "reason": "e2e 探针清理"}, tok)
     st3, _ = call("DELETE", "/admin/users/%s" % uid, None, tok)
     check("探针号已清理", st3 == 200, (uid, st3))
-
 
     print("\n结果：%d 项断言，失败 %d" % (n_checks[0], len(fails)))
     sys.exit(1 if fails else 0)

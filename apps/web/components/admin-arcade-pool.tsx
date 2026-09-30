@@ -39,14 +39,21 @@ interface CatItem {
 }
 
 /** 可编辑的奖池清单：game 决定读 /games 的哪一份投影，pool_key/label 是行表上的键。
- *  加一张池 = 在这里加一行 + 服务端有对应的 game 投影，不在界面里写死中文。 */
+ *  加一张池 = 在这里加一行 + 服务端有对应的 game 投影，不在界面里写死中文。
+ *  `unitDerived` 的池子定标单位由数据决定（农场 = 最便宜种子价），不给手填。 */
 const POOLS = [
   { game: "jgg", key: "jgg_default", labelKey: "labelJgg" },
   { game: "scratch", key: "scratch_default", labelKey: "labelScratch" },
   { game: "bigsmall", key: "bigsmall_default", labelKey: "labelBigsmall" },
+  {
+    game: "farm",
+    key: "farm_default",
+    labelKey: "labelFarm",
+    unitDerived: true,
+  },
 ] as const;
 
-type PoolProj = { ticket: number; prizes: Row[] };
+type PoolProj = { ticket?: number; unit?: number; prizes: Row[] };
 
 const CELL =
   "w-full rounded-[var(--r-sm)] border border-line " +
@@ -66,6 +73,14 @@ export function AdminArcadePool({
   const [busy, setBusy] = useState(false);
   const [game, setGame] = useState<string>("jgg");
   const pool = POOLS.find((p) => p.game === game) ?? POOLS[0];
+  // 农场的倍数按种子价折算，「票价」是作物表算出来的，不给手填
+  const derived = "unitDerived" in pool && pool.unitDerived;
+  // 出厂态 = 表上只有一档倍率 0：不是「坏了」，而是「站长还没开彩蛋」
+  const seededOnly =
+    derived &&
+    rows.length === 1 &&
+    (rows[0].kind ?? "magic") === "magic" &&
+    rows[0].payout === 0;
 
   const load = useCallback(async () => {
     try {
@@ -74,7 +89,7 @@ export function AdminArcadePool({
         "/api/v1/games",
       );
       const proj = g[pool.game];
-      setTicket(proj?.ticket ?? 0);
+      setTicket(proj?.ticket ?? proj?.unit ?? 0);
       setRows(proj?.prizes ?? []);
       // 物品位的候选来自目录本身，面板不另写一份物品清单
       const ov = await api.get<{ items?: CatItem[] }>(
@@ -99,22 +114,27 @@ export function AdminArcadePool({
     setBusy(true);
     setMsg(null);
     try {
-      await api.post("/api/v1/admin/arcade/pool", {
-        pool_key: pool.key,
-        game: pool.game,
-        label: t[pool.labelKey],
-        ticket,
-        entries: rows.map((r) => ({
-          label: r.label,
-          weight: r.weight_permille,
-          enabled: true,
-          kind: r.kind ?? "magic",
-          ...(r.kind === "item"
-            ? { item_key: r.item_key, qty: r.qty ?? 1 }
-            : { payout: r.payout }),
-          side: r.side ?? "any",
-        })),
-      });
+      // 农场那一池的定标单位由作物表决定，表单值不作数：按服务端回读的那份刷新
+      const r = await api.post<{ ticket?: number }>(
+        "/api/v1/admin/arcade/pool",
+        {
+          pool_key: pool.key,
+          game: pool.game,
+          label: t[pool.labelKey],
+          ticket,
+          entries: rows.map((r0) => ({
+            label: r0.label,
+            weight: r0.weight_permille,
+            enabled: true,
+            kind: r0.kind ?? "magic",
+            ...(r0.kind === "item"
+              ? { item_key: r0.item_key, qty: r0.qty ?? 1 }
+              : { payout: r0.payout }),
+            side: r0.side ?? "any",
+          })),
+        },
+      );
+      if (derived && typeof r.ticket === "number") setTicket(r.ticket);
       setMsg(t.saved);
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : t.saveFail);
@@ -142,11 +162,15 @@ export function AdminArcadePool({
               </option>
             ))}
           </select>
-          <span className="text-sub">{t.ticket}</span>
+          <span className="text-sub">
+            {derived ? t.ticketFarm : t.ticket}
+          </span>
           <input
             type="number"
             min={1}
-            className={`${CELL} w-24 text-right`}
+            readOnly={derived}
+            title={derived ? t.ticketFarmNote : undefined}
+            className={`${CELL} w-24 text-right${derived ? " opacity-60" : ""}`}
             value={ticket}
             onChange={(e) => setTicket(Number(e.target.value) || 0)}
           />
@@ -157,6 +181,7 @@ export function AdminArcadePool({
         rows={rows}
         catalog={catalog}
         showSide={pool.game === "bigsmall"}
+        valueColLabel={derived ? t.colValueFarm : undefined}
         onSet={set}
       />
 
@@ -205,6 +230,10 @@ export function AdminArcadePool({
         </p>
       )}
       <p className="text-[11px] text-sub">{t.note}</p>
+      {seededOnly && <p className="text-[11px] text-sub">{t.seedCapFarm}</p>}
+      {derived && (
+        <p className="text-[11px] text-sub">{t.farmGateNote}</p>
+      )}
     </div>
   );
 }

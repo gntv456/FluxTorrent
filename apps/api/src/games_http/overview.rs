@@ -10,7 +10,7 @@ use crate::games::{self, MAX_PLAYS_PER_HOUR};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::helpers::{eco_i64, limit_used};
+use super::helpers::{eco_i64, limit_used, market_refresh_text};
 
 #[get("/games")]
 pub(super) async fn games_overview(
@@ -57,6 +57,10 @@ pub(super) async fn games_overview(
     // 也让站长的 EV 复核对不上账。两个玩法共用同一份投影（见 prize_rows）。
     let jgg_prizes = prize_rows(&pool.entries, pool.ticket, &icons);
     let scratch_prizes = prize_rows(&spool.entries, spool.ticket, &icons);
+    // 农场收获彩蛋：确定性收获（0.90）之上的那一档，与三个抽奖读同一张池表
+    let fpool = super::farm_egg::load_farm(&state.repo.db).await?;
+    let farm_prizes = prize_rows(&fpool.entries, fpool.unit, &icons);
+    let farm_ev = games::farm_total_ev(&fpool.entries, fpool.unit);
 
     let mut body = serde_json::json!({
         "max_bet": max_bet,
@@ -77,7 +81,14 @@ pub(super) async fn games_overview(
         "jgg": { "name": "九宫格抽奖", "ticket": pool.ticket,
             "prizes": jgg_prizes,
             "expected_value": games::pool_ev(&pool.entries, pool.ticket) },
-        "farm": { "name": "农场", "slots": 6, "market_refresh": "每日 0/4/8/12/16/20 点", "volatility": "±50%" },
+        "farm": { "name": "农场", "slots": games::FARM_PLOTS,
+            "market_refresh": market_refresh_text(
+                super::helpers::farm_market_hours(&state).await),
+            "volatility": "±50%",
+            // 彩蛋档的倍数以「这一株作物的种子价」为定标单位，不是票价
+            "unit": fpool.unit,
+            "prizes": farm_prizes,
+            "expected_value": farm_ev },
         "funvote": { "name": "趣味盒投票", "cost": "1 魔力/票", "rule": "一人一票" },
         "rate_limit": format!("每人每小时 {max_plays} 次"),
     });

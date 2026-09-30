@@ -43,7 +43,6 @@ pub(super) async fn eco_f64(
     .unwrap_or(default)
 }
 
-/// 刮刮乐档位（五档可配；10x 留空/合计不为 100 时按余数推导，缺省 45/30/15/8/2）
 /// 农场作物有效期（天；0 = 永不枯萎）
 pub(super) async fn farm_wither_days(
     state: &web::Data<std::sync::Arc<AppState>>,
@@ -59,6 +58,22 @@ pub(super) async fn farm_market_hours(
     eco_i64(state, "farm_market_window_hours", 4)
         .await
         .clamp(1, 24)
+}
+
+/// 市场价刷新口径的说明文字：窗口长度是设置键，写死成「0/4/8… 点」会在站长
+/// 改成 6 小时之后继续对玩家报一个假时刻。农场总览与专注页共用这一份。
+pub(super) fn market_refresh_text(hours: i64) -> String {
+    if hours <= 0 || hours > 24 || 24 % hours != 0 {
+        return format!("每 {hours} 小时");
+    }
+    if hours == 24 {
+        return "每日刷新一次".into();
+    }
+    let pts: Vec<String> = (0..24)
+        .step_by(hours as usize)
+        .map(|h| format!("{h:02}"))
+        .collect();
+    format!("每日 {} 点", pts.join("/"))
 }
 
 /// 限流作用域：即时赌局与农场**分开计数**。

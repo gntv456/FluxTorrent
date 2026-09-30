@@ -268,10 +268,12 @@ pub(super) async fn load_table(
             "tie" => t.tie.push(entry),
             "lose" => t.lose.push(entry),
             // any 归到输区没有意义，宁可报错：一张桌不该出现「哪侧都算」的档
-            other => return Err(DomainError::Validation(format!(
+            other => {
+                return Err(DomainError::Validation(format!(
                 "猜大小档位「{}」的 side 是「{other}」，赢/平/输三区之外不认",
                 entry.label
-            ))),
+            )))
+            }
         }
     }
     games::validate_bigsmall(&t.win, &t.tie, &t.lose)

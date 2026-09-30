@@ -2097,6 +2097,8 @@ const enBase: Omit<
       ev: "Expected return",
       house: "House edge",
       note: "Every figure below comes from the API and uses the same formula as the write-side gate: expected return must stay under 1, and a table that reaches 1 is refused on save.",
+      farmEgg:
+        "On top of the deterministic harvest, each harvest draws one bonus tier priced off this crop's seed price (unit {n} {magic}).",
       limit: "Play limit",
     },
 
@@ -2223,8 +2225,7 @@ const enBase: Omit<
   },
   farm: {
     title: "{magic} Farm",
-    marketRule:
-      "Market refreshes at {time} (daily 0/4/8/12/16/20 · ±50% swing)",
+    marketRule: "Market refreshes at {time} ({rule} · ±50% swing)",
     loading: "Loading farm…",
     plotEmpty: "Plot #{n}",
     plotHint: "Pick a crop below to plant",
@@ -2249,6 +2250,10 @@ const enBase: Omit<
     harvest: "🌾 Harvest",
     notReady: "Not ready",
     harvestOk: "Harvested {crop} +{amount} {magic}{doubled}",
+    eggMagic: " · 🥚 bonus +{n}",
+    eggItem: ' · 🎁 bonus "{p}"',
+    eggFallback: ' · bonus "{p}" not granted: {why}',
+    eggSome: " · 🎁 {n} bonus prizes",
     doubled: " (doubled!)",
     market: "Crop Market",
     myField: "My Field",
@@ -2257,7 +2262,7 @@ const enBase: Omit<
     growInfo: "{h}h to grow · base {p}",
     plant: "Plant",
     plantOk: "Planted {crop} (cost {cost} {magic})",
-    full: "All 6 plots are full",
+    full: "All {n} plots are full",
   },
   dressup: {
     title: "Dress-up",
@@ -2727,12 +2732,19 @@ const enBase: Omit<
       kindItem: "item",
       labelJgg: "9-grid · standard pool",
       labelScratch: "Scratch card · standard ticket",
+      labelFarm: "Farm · harvest egg",
+      seedCapFarm:
+        "The table currently holds one ‘nothing added’ tier — add a tier and every harvest draws an egg, priced off this crop's seed price.",
       pickGame: "Pool",
       title: "Prize pool editor",
       ticket: "Ticket / min bet",
+      ticketFarm: "Unit (seed price)",
+      ticketFarmNote:
+        "Farm egg multiples are priced off this crop's seed price; the unit is the cheapest seed in the table, so it is not editable",
       colPrize: "Prize",
       colWeight: "Weight (‰)",
       colValue: "Multiple / item qty",
+      colValueFarm: "Seed-price multiple / item qty",
       save: "Save pool",
       saving: "Saving…",
       saved: "Saved — this is the table the game reads",
@@ -2741,6 +2753,8 @@ const enBase: Omit<
       newRow: "New tier",
       note: "The API gates every save on EV < 1; a rejection shows the server reason verbatim and leaves the table untouched.",
       loadFail: "Pool unavailable (module off or session expired)",
+      farmGateNote:
+        "Farm already returns 0.90 deterministically, so this pool is gated on 0.90 + egg < 1: only 0.10 of room, so item tiers must be limited.",
       saveFail: "Save failed",
     },
     title: "Arcade ops",

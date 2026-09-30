@@ -1,8 +1,8 @@
 //! M24 娱乐玩法 HTTP 接口（刮刮乐/猜大小/九宫格 + 农场 + 每小时限次）。
 //! 经济定位：四玩法一律**回收魔力**（各自 EV < 1），赔率/概率走代码常量 + 设置键双源。
 //! 按域拆分（300 行门禁）：总览/历史/回合在 overview.rs，赔率与限次助手在
-//! helpers.rs，刮刮乐/猜大小/九宫格在 casino.rs，农场在 farm.rs，趣味投票在 fun.rs。
-//! mount_games 留在此。
+//! helpers.rs，刮刮乐/猜大小/九宫格在 casino.rs，农场在 farm.rs（收获彩蛋奖池在
+//! farm_egg.rs），趣味投票在 fun.rs。mount_games 留在此。
 
 mod arcade_admin;
 mod arcade_admin_write;
@@ -19,6 +19,7 @@ mod arcade_stubs;
 mod casino;
 mod farm;
 mod farm_actions;
+mod farm_egg;
 mod fun;
 mod helpers;
 mod item_use;
