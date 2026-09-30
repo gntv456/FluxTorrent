@@ -15,7 +15,8 @@ use crate::games::{self, MAX_BET, MAX_PLAYS_PER_HOUR};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::arcade_cfg::{bad, MILESTONES, QUESTS, SEASON_KEY};
+use super::arcade_cfg::bad;
+use super::arcade_rewards::{admin_rows, refs_gate, season_key};
 use super::helpers::{bigsmall_mult_permille, eco_i64, scratch_odds};
 
 /// 九宫格 EV 只有一份公式，在 games::pool_ev —— 这里不再抄第二遍求和
@@ -77,7 +78,7 @@ pub(super) async fn arcade_overview(
         }),
     ];
     let all_below = ev.iter().all(|r| r["ev"].as_f64().unwrap_or(1.0) < 1.0);
-    let checks = vec![
+    let mut checks = vec![
         bad("随机侧各玩法 EV < 1（回收口径）", all_below, {
             let over: Vec<String> = ev
                 .iter()
@@ -101,6 +102,9 @@ pub(super) async fn arcade_overview(
             format!("base {base} / pct {pct}% / 窗口 {win} 天"),
         ),
     ];
+    // 奖励引用体检与玩家侧大厅挂同一条（名字与判据只有一份定义）：
+    // 站长是在这个面板里配坏东西的，这里不照出来就等于没有。
+    checks.push(refs_gate(db).await?);
 
     // 物品目录全表：面板要能编辑它，就得先读得到全部条目（不是只读
     // 被某个池引用的那几件）。anchor 原样回传，编辑器里保持只读。
@@ -135,6 +139,8 @@ pub(super) async fn arcade_overview(
         })
         .collect();
 
+    let rewards = admin_rows(db).await?;
+    let skey = season_key(db).await?;
     let body = serde_json::json!({
         "ev": ev,
         "checks": checks,
@@ -146,13 +152,9 @@ pub(super) async fn arcade_overview(
             "arcade_budget_window_days": win,
         },
         "defs": {
-            "season_key": SEASON_KEY,
-            "quests": QUESTS.iter().map(|q| serde_json::json!({
-                "code": q.0, "ref": q.1, "target": q.2, "reward": q.3,
-            })).collect::<Vec<_>>(),
-            "milestones": MILESTONES.iter().map(|m| serde_json::json!({
-                "code": m.0, "need": m.1, "reward": m.2,
-            })).collect::<Vec<_>>(),
+            "season_key": skey,
+            "quests": rewards["quests"],
+            "milestones": rewards["milestones"],
             "stub_total": stubs, "claims_total": claims,
         },
     });

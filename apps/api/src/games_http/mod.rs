@@ -13,6 +13,8 @@ mod arcade_claim;
 mod arcade_items_delete;
 mod arcade_items_write;
 mod arcade_meta;
+mod arcade_rewards;
+mod arcade_rewards_write;
 mod arcade_stubs;
 mod casino;
 mod farm;
@@ -30,6 +32,7 @@ use arcade_claim::*;
 use arcade_items_delete::*;
 use arcade_items_write::*;
 use arcade_meta::*;
+use arcade_rewards_write::*;
 use casino::*;
 use farm::*;
 use farm_actions::*;
@@ -61,5 +64,6 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(arcade_pool_save)
         .service(arcade_item_save)
         .service(arcade_item_delete)
+        .service(arcade_reward_save)
         .service(backpack_use)
 }

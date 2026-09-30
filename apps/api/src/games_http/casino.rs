@@ -187,6 +187,7 @@ pub(super) async fn jgg(
             item_key,
             *qty,
             "jgg",
+            "rand",
             &win_idem,
         )
         .await?

@@ -84,10 +84,6 @@ pub(super) async fn arcade_item_save(
             b.anchor_src
         )));
     }
-    /// 一件新物品从零入库时的初值（目录里还没有这一行时）
-    const NEW_ITEM: (bool, i64, i32, &str, bool, &str, &str) =
-        (true, 0, 1, "", true, "collect", "");
-
     if let Some(k) = b.use_kind.as_deref().filter(|s| !s.is_empty()) {
         if !matches!(k, "collect" | "spark" | "sku") {
             return Err(DomainError::Validation(format!(
@@ -116,7 +112,7 @@ pub(super) async fn arcade_item_save(
     .fetch_optional(db)
     .await
     .map_err(dberr)?;
-    let dflt = NEW_ITEM;
+    let dflt = NEW_ITEM_DEFAULTS;
     let (p_unl, p_stock, p_pu, p_icon, p_en, p_uk, p_ur) =
         prev.unwrap_or((
             dflt.0, dflt.1, dflt.2, dflt.3.to_string(), dflt.4,
@@ -138,6 +134,28 @@ pub(super) async fn arcade_item_save(
     }
     if !unlimited && stock < 0 {
         return Err(DomainError::Validation("限量物品 stock 不能为负".into()));
+    }
+    // 停用一件正被确定侧奖励引用的物品 = 那条奖励当场领不出去（确定侧没有
+    // 「打折回落」可用）。写侧先拒，别让面板自己制造出门禁才照得出的坏状态。
+    if !enabled {
+        let n: i64 = sqlx::query_scalar(
+            "SELECT count(*)::bigint FROM ( \
+               SELECT item_key FROM arcade_quests WHERE enabled \
+               UNION ALL \
+               SELECT item_key FROM arcade_milestones WHERE enabled \
+             ) r WHERE r.item_key = $1",
+        )
+        .bind(&b.key)
+        .fetch_one(db)
+        .await
+        .map_err(dberr)?;
+        if n > 0 {
+            return Err(DomainError::Validation(format!(
+                "「{}」仍被 {n} 条启用中的确定侧奖励引用：\
+                 先把那些奖励改掉再停用",
+                b.name
+            )));
+        }
     }
     // 用途侧的形制闸（详见 item_use.rs）：绑了商店 SKU 就必须兑得出等价的东西
     check_use_shape(db, &use_kind, &use_ref, b.anchor, &b.name).await?;

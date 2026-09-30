@@ -23,12 +23,16 @@ pub(super) fn dberr(e: sqlx::Error) -> DomainError {
 /// 发一件物品：物品存在性、全服库存、每人上限、幂等**在同一个事务里**判。
 /// 分开判会留 TOCTOU —— 并发双抽能同时通过「还有余量」的检查。
 /// 限量物品的余量由发放账反推，不另存一份「已用数」（第二份清单必然漂移）。
+///
+/// `side` 决定这一笔进哪一侧的账：`rand` 由奖池 EV 闸管，`det`（周常/赛季）
+/// 绕得过 EV 闸，只能被发放预算看见 —— 分不开这两类，确定侧就是一条没人拦的门。
 pub(super) async fn grant_item(
     db: &PgPool,
     user_id: i64,
     item_key: &str,
     qty: i32,
     game: &str,
+    side: &str,
     idem: &str,
 ) -> Result<GrantOutcome, DomainError> {
     let mut tx = db.begin().await.map_err(dberr)?;
@@ -98,13 +102,14 @@ pub(super) async fn grant_item(
         r#"
         INSERT INTO arcade_item_grants
             (item_key, user_id, qty, game, side, idem)
-        VALUES ($1, $2, $3, $4, 'rand', $5)
+        VALUES ($1, $2, $3, $4, $5, $6)
     "#,
     )
     .bind(item_key)
     .bind(user_id)
     .bind(qty)
     .bind(game)
+    .bind(side)
     .bind(idem)
     .execute(&mut *tx)
     .await
