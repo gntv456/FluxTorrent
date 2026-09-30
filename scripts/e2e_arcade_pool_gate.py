@@ -26,6 +26,8 @@ import urllib.request
 BASE = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8080/api/v1")
 POOL_KEY = "jgg_default"
 SCRATCH_SNAP = {}
+BS_SNAP = {}
+RUN = str(int(time.time()))  # 幂等键每轮必须不同，否则第二轮被判「已受理」
 fails = []
 n_checks = [0]
 
@@ -228,10 +230,108 @@ def main():
           sc2.get("ticket") == 10000 and len(sc2.get("prizes") or []) == 2,
           (sc2.get("ticket"), len(sc2.get("prizes") or [])))
     st, r = call("POST", "/games/scratch",
-                 {"bet": 50, "idempotency_key": "e2e-scratch-low"}, tok)
+                 {"bet": 50, "idempotency_key": "e2e-scratch-" + RUN}, tok)
     check("注额低于票档时刮刮乐拒开（不悄悄按最低档玩）",
           st == 400 and "最低注额" in json.dumps(r, ensure_ascii=False),
           (st, json.dumps(r, ensure_ascii=False)[:140]))
+
+    # ── 猜大小读奖池行表（0251）：三区必须配满，赔率不再是设置键 ──
+    def bs_body(entries, ticket=1):
+        return {"pool_key": "bigsmall_default", "game": "bigsmall",
+                "label": "猜大小 · 标准桌", "ticket": ticket,
+                "entries": entries}
+
+    def bs_row(lb, wt, side, payout=None, item=None, qty=1):
+        e = {"label": lb, "weight": wt, "side": side, "enabled": True}
+        if item:
+            e.update({"kind": "item", "item_key": item, "qty": qty})
+        else:
+            e.update({"kind": "magic", "payout": payout})
+        return e
+
+    st, ov3 = call("GET", "/games", None, tok)
+    bs = ((ov3.get("data") or {}).get("bigsmall")) or {}
+    brows = bs.get("prizes") or []
+    BS_SNAP.update({"ticket": bs.get("ticket"), "prizes": brows})
+    check("猜大小三区档位来自行表",
+          st == 200 and len(brows) == 3
+          and sorted(x.get("side") for x in brows) == ["lose", "tie", "win"],
+          (st, [(x.get("label"), x.get("side")) for x in brows]))
+    ev_bs = bs.get("expected_value") or 0
+    check("猜大小 EV 由行表现算且等于搬家前的 0.951",
+          abs(ev_bs - 0.951) < 1e-6, ev_bs)
+    st, r = call("POST", "/admin/arcade/pool", bs_body([
+        bs_row("猜中", 490, "win", payout=1.9),
+        bs_row("平局", 20, "tie", payout=1.0)]), tok)
+    txt = json.dumps(r, ensure_ascii=False)
+    # 缺一个区会被两道闸之一挡下（机制校验或 EV —— 少一区等于把 490‰ 的
+    # 派彩摊到 510‰ 上，EV 直接冲破 1）。要钉的是「存不进去」这件事。
+    check("缺输区的桌存不进去（机制或 EV 闸任一先响）",
+          st == 400 and ("区" in txt or "增发" in txt), (st, txt[:140]))
+    st, r = call("POST", "/admin/arcade/pool", bs_body([
+        bs_row("猜中", 500, "win", payout=1.9),
+        bs_row("平局", 20, "tie", payout=1.0),
+        bs_row("猜错", 480, "lose", payout=0)]), tok)
+    check("赢区多给 10 千分、破坏 49/2/49 被拒", st == 400, (st, str(r)[:140]))
+    gift = [bs_row("猜中派彩", 440, "win", payout=1.9),
+            bs_row("猜中送券", 50, "win", item="ticket"),
+            bs_row("平局返本", 20, "tie", payout=1.0),
+            bs_row("猜错归零", 490, "lose", payout=0)]
+    st, r = call("POST", "/admin/arcade/pool", bs_body(gift), tok)
+    check("票档 1 时赢区送 900 券被 EV 闸拒", st == 400, (st, str(r)[:140]))
+    st, r = call("POST", "/admin/arcade/pool", bs_body(gift, ticket=10000),
+                 tok)
+    check("抬票档到 10000 后「猜中送券」这张桌过关", st == 200,
+          (st, str(r)[:140]))
+    st, r = call("POST", "/games/bigsmall",
+                 {"bet": 100, "guess": "big",
+                  "idempotency_key": "e2e-bs-1-" + RUN}, tok)
+    check("注额低于票档时猜大小拒开这一局",
+          st == 400 and "最低注额" in json.dumps(r, ensure_ascii=False),
+          (st, json.dumps(r, ensure_ascii=False)[:140]))
+    st, r = call("POST", "/admin/arcade/pool", bs_body([
+        bs_row("猜中派彩", 490, "win", payout=1.9),
+        bs_row("平局返本", 20, "tie", payout=1.0),
+        bs_row("猜错归零", 490, "lose", payout=0)]), tok)
+    check("猜大小桌复原（票档回到 1）", st == 200, (st, str(r)[:140]))
+    # 真打一局要用注过魔力的探针号：dev 库里 root 余额是负的（早期商店
+    # 测试留的 -1142），拿它下注只会撞到经济守卫，测不出玩法本身
+    uname = "e2ebs" + RUN[-6:]
+    st, r = call("POST", "/admin/adduser",
+                 {"username": uname, "email": uname + "@e2e-probe.invalid",
+                  "password": "E2eProbe!123"}, tok)
+    uid = (r.get("data") or {}).get("user_id")
+    call("POST", "/admin/users/adjust",
+         {"user_id": uid, "spark_delta": 2000}, tok)
+    call("POST", "/me/password/change",
+         {"old_password": "E2eProbe!123", "new_password": "E2eProbe!456"},
+         login(uname, "E2eProbe!123"))
+    ptok = login(uname, "E2eProbe!456")
+    st, r = call("POST", "/games/bigsmall",
+                 {"bet": 100, "guess": "big",
+                  "idempotency_key": "e2e-bs-2-" + RUN}, ptok)
+    d = r.get("data") or {}
+    check("探针号真打一局：回报带 side 与派彩",
+          st == 200 and d.get("side") in ("win", "tie", "lose"), (st, d))
+    # 刮之前先把刮刮乐桌从探针态复原（上一段把票档抬到了 10000，
+    # 不复原的话这一注只会被「最低注额」挡下，测不到派彩路径）
+    st, r = call("POST", "/admin/arcade/pool", {
+        "pool_key": "scratch_default", "game": "scratch",
+        "label": "刮刮乐 · 标准票",
+        "ticket": SCRATCH_SNAP.get("ticket"),
+        "entries": [to_req(x) for x in SCRATCH_SNAP["prizes"]]}, tok)
+    check("刮刮乐桌撤掉探针票档", st == 200, (st, str(r)[:120]))
+    st, r = call("POST", "/games/scratch",
+                 {"bet": 100, "idempotency_key": "e2e-sc-" + RUN}, ptok)
+    d2 = r.get("data") or {}
+    check("探针号真刮一注：回报带 kind 与等值",
+          st == 200 and d2.get("kind") in ("magic", "item", "fallback"),
+          (st, d2))
+    call("POST", "/admin/users/status",
+         {"user_id": uid, "status": 2, "reason": "e2e 探针清理"}, tok)
+    st3, _ = call("DELETE", "/admin/users/%s" % uid, None, tok)
+    check("探针号已清理", st3 == 200, (uid, st3))
+
 
     print("\n结果：%d 项断言，失败 %d" % (n_checks[0], len(fails)))
     sys.exit(1 if fails else 0)
@@ -254,7 +354,16 @@ def _restore_snapshot():
                 "ticket": SCRATCH_SNAP.get("ticket"),
                 "entries": [to_req(x) for x in SCRATCH_SNAP["prizes"]]}
         st2, _ = call("POST", "/admin/arcade/pool", body, tok)
-    print("兜底复原奖池 -> 九宫格 HTTP %s / 刮刮乐 HTTP %s" % (st, st2))
+    st3 = "-"
+    if BS_SNAP.get("prizes"):
+        body = {"pool_key": "bigsmall_default", "game": "bigsmall",
+                "label": "猜大小 · 标准桌",
+                "ticket": BS_SNAP.get("ticket"),
+                "entries": [dict(to_req(x), side=x.get("side"))
+                            for x in BS_SNAP["prizes"]]}
+        st3, _ = call("POST", "/admin/arcade/pool", body, tok)
+    print("兜底复原奖池 -> 九宫格 %s / 刮刮乐 %s / 猜大小 %s"
+          % (st, st2, st3))
 
 
 def body_for_restore(snap):

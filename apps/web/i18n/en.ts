@@ -2718,6 +2718,11 @@ const enBase: Omit<
     },
     pool: {
       colKind: "Kind",
+      colSide: "Region",
+      sideWin: "win",
+      sideTie: "tie",
+      sideLose: "lose",
+      labelBigsmall: "Hi-lo · standard table",
       kindMagic: "magic multiple",
       kindItem: "item",
       labelJgg: "9-grid · standard pool",

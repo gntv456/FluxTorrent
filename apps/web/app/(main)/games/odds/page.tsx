@@ -24,7 +24,13 @@ interface Overview {
     empty_pct: number;
     expected_value: number;
   };
-  bigsmall?: { win_mult: number; expected_value: number; rule: string };
+  bigsmall?: {
+    win_mult: number;
+    expected_value: number;
+    rule: string;
+    ticket?: number;
+    prizes?: Prize[];
+  };
   jgg?: { ticket: number; prizes: Prize[]; expected_value: number };
   farm?: { slots: number; market_refresh: string; volatility: string };
   rate_limit?: string;
@@ -155,10 +161,46 @@ export default async function OddsPage() {
   }
 
   if (ov?.bigsmall) {
+    const bstk = ov.bigsmall.ticket ?? 1;
     rows.push({
       game: dict.games.bigsmall.title,
       ev: ov.bigsmall.expected_value,
-      body: <p className="text-xs text-sub">{ov.bigsmall.rule}</p>,
+      body: (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-sub">{ov.bigsmall.rule}</p>
+          {/* 赔率、平局返本、以及「猜中给一件东西」都在行表里，公示就照表念 */}
+          {!!ov.bigsmall.prizes?.length && (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-left text-sub">
+                  <th className="py-1">{t.colPrize}</th>
+                  <th className="py-1 text-right">{t.colChance}</th>
+                  <th className="py-1 text-right">{t.colValue}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ov.bigsmall.prizes.map((p, i) => (
+                  <tr key={i} className="border-t border-line">
+                    <td className="py-1.5">{p.label}</td>
+                    <td className="num py-1.5 text-right">
+                      {pct(p.weight_permille / 10)}
+                    </td>
+                    <td className="num py-1.5 text-right">
+                      ×{(p.value / bstk).toFixed(2)}
+                      {p.kind === "item" && (
+                        <span className="text-sub">
+                          {" "}
+                          （{p.value.toLocaleString("en-US")} {currency}）
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ),
     });
   }
 
