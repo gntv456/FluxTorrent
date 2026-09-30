@@ -24,8 +24,9 @@ mod tests;
 // bin crate 的 pub use 对未被外部引用的项会触发 unused_imports，显式放行。
 #[allow(unused_imports)]
 pub use bigsmall::{
-    bigsmall_expected_value, guess_play, guess_play_with, validate_bet,
-    DiceOutcome, Guess, BIGSMALL_WIN_MULT_PERMILLE,
+    bigsmall_expected_value, outcome_side, roll, validate_bet,
+    validate_bigsmall, DiceOutcome, Guess, BIGSMALL_WIN_MULT_PERMILLE,
+    REGION_LOSE_PERMILLE, REGION_TIE_PERMILLE, REGION_WIN_PERMILLE,
 };
 #[allow(unused_imports)]
 pub use farm::{

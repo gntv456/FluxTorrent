@@ -11,10 +11,8 @@ use crate::games::{self, Guess};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::helpers::{
-    bigsmall_mult_permille, check_bet, check_rate, eco_i64, idem_key, BetReq,
-};
-use super::pool::{grant_item, load_pool, GrantOutcome};
+use super::helpers::{check_bet, check_rate, eco_i64, idem_key, BetReq};
+use super::pool::{grant_item, load_pool, load_table, GrantOutcome};
 
 /// 一档的结算：魔力位按 `unit × 千分倍率 / 1000` 派彩，物品位走发放账。
 ///
@@ -49,11 +47,9 @@ async fn settle(
         )
         .await?
         {
-            GrantOutcome::Granted => (
-                0,
-                anchor.saturating_mul(i64::from(*qty)),
-                None,
-            ),
+            GrantOutcome::Granted => {
+                (0, anchor.saturating_mul(i64::from(*qty)), None)
+            }
             GrantOutcome::FellBack(why) => {
                 let p = unit.saturating_mul(games::FALLBACK_MULT);
                 (p, p, Some(why))
@@ -120,10 +116,7 @@ pub(super) async fn scratch(
     let win_idem = format!("game-scratch-win:{}", idem);
     let (spark, value, fell_back) =
         settle(&state, auth.id, body.bet, &draw, "scratch", &win_idem).await?;
-    state
-        .repo
-        .audit(Some(auth.id), "game.scratch", None)
-        .await;
+    state.repo.audit(Some(auth.id), "game.scratch", None).await;
     Ok(ok(serde_json::json!({
         "multiplier": draw.prize.mult_permille() as f64 / 1000.0,
         "payout": spark,
@@ -152,9 +145,18 @@ pub(super) async fn guess_bigsmall(
     body: web::Json<GuessReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 三区档位来自 arcade_pools(game='bigsmall')：赔率、平局返本、以及
+    // 「猜中给一件东西」都是站长可配的，配坏则整桌拒绝服务（load_table 里过关）
+    let table = load_table(&state.repo.db, "bigsmall").await?;
     check_bet(&state, body.bet)
         .await
         .map_err(DomainError::Validation)?;
+    if body.bet < table.ticket {
+        return Err(DomainError::Validation(format!(
+            "最低注额为 {} 魔力：注额低于票档时，固定折算价的物品位             会让小额注的综合返还冲破 1",
+            table.ticket
+        )));
+    }
     let guess = match body.guess.as_str() {
         "small" => Guess::Small,
         "big" => Guess::Big,
@@ -183,23 +185,29 @@ pub(super) async fn guess_bigsmall(
     ) {
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
     }
-    let outcome = games::guess_play_with(
-        body.bet,
-        guess,
-        bigsmall_mult_permille(&state).await,
-    );
-    if outcome.payout > 0 {
-        let win_idem = format!("game-bs-win:{}", idem);
-        earn_spark(&state.repo.db, auth.id, outcome.payout, "game", &win_idem)
-            .await?;
-    }
+    // 机制在代码（1..100 均匀、49/2/49 分区），派彩在表：平局返本也是表里
+    // 一条 1000‰ 的魔力位，不再由代码特判 —— 少一处「规则写在两个地方」
+    let number = games::roll();
+    let side = games::outcome_side(number, guess);
+    let draw = games::draw_entry(table.region(side)).ok_or_else(|| {
+        DomainError::Validation("猜大小该档区不可抽样".into())
+    })?;
+    let win_idem = format!("game-bs-win:{}", idem);
+    let (spark, value, fell_back) =
+        settle(&state, auth.id, body.bet, &draw, "bigsmall", &win_idem).await?;
+    state.repo.audit(Some(auth.id), "game.bigsmall", None).await;
     Ok(ok(serde_json::json!({
-        "number": outcome.number,
-        "player_win": outcome.player_win,
-        "payout": outcome.payout,
+        "number": number,
+        "player_win": side == "win",
+        "side": side,
+        "payout": spark,
+        "value": value,
+        "prize": draw.prize.label,
+        "kind": award_kind(&draw, fell_back),
+        "fell_back": fell_back,
         "bet": body.bet,
-        "net": if (50..=51).contains(&outcome.number) { 0 } else { outcome.payout - body.bet },
-        "tie": (50..=51).contains(&outcome.number),
+        "net": value - body.bet,
+        "tie": side == "tie",
     })))
 }
 

@@ -17,7 +17,11 @@ fn scratch_payout_is_exact_floor_of_bet_times_mult() {
     // 100 注 × 千分倍率，只能是 0/50/100/200/1000 五档
     for mp in [0, 500, 1000, 2000, 10000] {
         let o = scratch_pay(100, mp);
-        assert!([0, 50, 100, 200, 1000].contains(&o.payout), "{mp} -> {:?}", o);
+        assert!(
+            [0, 50, 100, 200, 1000].contains(&o.payout),
+            "{mp} -> {:?}",
+            o
+        );
         assert!((o.multiplier - mp as f64 / 1000.0).abs() < 1e-9);
     }
     // 向下取整：1 注的 0.5 倍派 0（不是 0.5，也不是进位成 1）
@@ -26,18 +30,45 @@ fn scratch_payout_is_exact_floor_of_bet_times_mult() {
 }
 
 #[test]
-fn dice_tie_returns_stake() {
-    // 平局区 50/51 返本：强行构造（函数随机，验证结构）
-    for _ in 0..500 {
-        let o = guess_play(100, Guess::Big);
-        if (50..=51).contains(&o.number) {
-            assert_eq!(o.payout, 100);
-            assert!(!o.player_win);
-        }
-        if o.player_win {
-            assert_eq!(o.payout, 190);
-        }
+fn dice_regions_match_the_mechanic() {
+    // 机制在代码（1-49 小 / 50-51 平 / 52-100 大），派彩在表：
+    // 这里只锁「哪一区付」，它不能被配置改掉
+    assert_eq!(outcome_side(1, Guess::Small), "win");
+    assert_eq!(outcome_side(49, Guess::Small), "win");
+    assert_eq!(outcome_side(50, Guess::Small), "tie");
+    assert_eq!(outcome_side(51, Guess::Big), "tie");
+    assert_eq!(outcome_side(52, Guess::Small), "lose");
+    assert_eq!(outcome_side(100, Guess::Big), "win");
+    for _ in 0..400 {
+        assert!((1..=100).contains(&roll()));
     }
+}
+
+#[test]
+fn bigsmall_table_must_cover_all_three_regions() {
+    let e = |w: i64, wt: u32| PoolEntry {
+        label: "x".into(),
+        weight: wt,
+        kind: EntryKind::Magic { mult_permille: w },
+    };
+    assert!(
+        validate_bigsmall(&[], &[e(1000, 20)], &[e(0, 490)]).is_err(),
+        "缺赢区必须拒"
+    );
+    assert!(
+        validate_bigsmall(
+            &[e(1900, 490)],
+            &[e(1000, 20)],
+            &[e(0, 290), e(0, 200)]
+        )
+        .is_ok(),
+        "输区拆两档、合计仍是 490 —— 合法"
+    );
+    assert!(
+        validate_bigsmall(&[e(1900, 490)], &[e(1000, 20)], &[e(0, 300)])
+            .is_err(),
+        "输区合计不等于 490 就是破坏 49/2/49"
+    );
 }
 
 /// 经济纪律（2026-09-19 产品决策）：娱乐玩法一律回收，期望回报必须 < 1。
@@ -107,7 +138,10 @@ fn scratch_seeded_pool_expected_value_below_one() {
             },
         },
     ];
-    assert!(validate_pool(&with_item, 100).is_err(), "100 票档下 900 券占一半必破 1");
+    assert!(
+        validate_pool(&with_item, 100).is_err(),
+        "100 票档下 900 券占一半必破 1"
+    );
     assert!(pool_ev(&with_item, 10000) < 1.0, "注额摊薄后才可能合法");
 }
 

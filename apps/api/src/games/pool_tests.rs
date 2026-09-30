@@ -82,7 +82,9 @@ fn pool_gate_rejects_every_backdoor_by_name() {
     ));
     // ② 抬倍数
     let mut p = seeded_pool();
-    p[7].kind = EntryKind::Magic { mult_permille: 900_000 };
+    p[7].kind = EntryKind::Magic {
+        mult_permille: 900_000,
+    };
     assert!(matches!(
         validate_pool(&p, TICKET),
         Err(PoolError::ExpectedValueNotBelowOne(_))

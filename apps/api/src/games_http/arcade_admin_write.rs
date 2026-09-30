@@ -61,10 +61,17 @@ pub(super) struct PoolEntryReq {
     pub qty: i32,
     #[serde(default)]
     pub enabled: bool,
+    /// 猜大小用：win | tie | lose。其余玩法不填（落库为 any）
+    #[serde(default)]
+    pub side: Option<String>,
 }
 
 /// 倍数 → 千分比。四舍五入而不是截断：0.5 在二进制浮点里是精确的，
 /// 但 1.1 这类值截断会少 1‰，对站长填的数字不诚实。
+fn side_of(e: &PoolEntryReq) -> &str {
+    e.side.as_deref().unwrap_or("any")
+}
+
 fn permille(multiples: f64) -> i64 {
     (multiples * 1000.0).round() as i64
 }
@@ -116,10 +123,27 @@ pub(super) async fn arcade_pool_save(
             kind,
         });
     }
+    // 猜大小多一道机制校验：三区必须各占 490/20/490 千分。
+    // 少了这一道，站长能把「平局不返本」或「猜大比猜小概率高」配出来 ——
+    // 那是机制被配置改掉，EV 闸看不住。它排在 EV 校验**之前**：
+    // 缺一个区时 EV 也会破 1，但「缺输区」才是根因，报错要说人话。
+    if b.game == "bigsmall" {
+        let part = |want: &str| -> Vec<games::PoolEntry> {
+            b.entries
+                .iter()
+                .zip(entries.iter())
+                .filter(|(e, _)| side_of(e) == want)
+                .map(|(_, p)| p.clone())
+                .collect()
+        };
+        games::validate_bigsmall(&part("win"), &part("tie"), &part("lose"))
+            .map_err(|e| {
+                DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}"))
+            })?;
+    }
     games::validate_pool(&entries, b.ticket).map_err(|e| {
         DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}"))
     })?;
-
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
     sqlx::query(
         r#"
@@ -147,14 +171,18 @@ pub(super) async fn arcade_pool_save(
             r#"
             INSERT INTO arcade_pool_entries
                 (pool_key, label, weight, mult_permille, kind,
-                 item_key, qty, enabled, sort)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 item_key, qty, enabled, sort, side)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         "#,
         )
         .bind(&b.pool_key)
         .bind(&e.label)
         .bind(e.weight)
-        .bind(if e.kind == "item" { 0 } else { permille(e.payout) })
+        .bind(if e.kind == "item" {
+            0
+        } else {
+            permille(e.payout)
+        })
         .bind(if e.kind == "item" { "item" } else { "magic" })
         .bind(if e.kind == "item" {
             e.item_key.as_deref()
@@ -164,6 +192,7 @@ pub(super) async fn arcade_pool_save(
         .bind(if e.kind == "item" { e.qty.max(1) } else { 1 })
         .bind(e.enabled)
         .bind(i as i32)
+        .bind(side_of(e))
         .execute(&mut *tx)
         .await
         .map_err(dberr)?;

@@ -61,17 +61,6 @@ pub(super) async fn farm_market_hours(
         .clamp(1, 24)
 }
 
-/// 猜大小赔率（千分比）。倍数设置键缺省 1.9 —— **必须 < 2.0**：
-/// 2.0 时 EV 恰为 1.0（不回收）且可双向零风险对冲，见 games.rs 常量说明。
-/// 上限钳到 1999‰（运行时 EV 防线，P2）：设置键是管理员可写参数，此前上限 10_000‰
-/// 意味着误配/越权写入 ≥2000‰ 即把游戏变成增发开关。
-pub(super) async fn bigsmall_mult_permille(
-    state: &web::Data<std::sync::Arc<AppState>>,
-) -> i64 {
-    let mult = eco_f64(state, "games_bigsmall_win_mult", 1.9).await;
-    ((mult * 1000.0).round() as i64).clamp(0, 1_999)
-}
-
 /// 限流作用域：即时赌局与农场**分开计数**。
 /// 农场是慢玩法，一次种满 6 块地不该吃掉 6 次即时下注额度（旧实现共用 `rl:games`）。
 #[derive(Clone, Copy)]

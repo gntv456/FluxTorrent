@@ -45,17 +45,15 @@ pub(super) async fn bound_sku(
             "绑定商店 SKU 要在 use_ref 里填 SKU 编号（整数）".into(),
         )
     })?;
-    let row = sqlx::query_as::<
-        _,
-        (String, String, serde_json::Value, i64, bool),
-    >(
-        "SELECT name, kind, config, price, active \
+    let row =
+        sqlx::query_as::<_, (String, String, serde_json::Value, i64, bool)>(
+            "SELECT name, kind, config, price, active \
            FROM shop_items WHERE id = $1",
-    )
-    .bind(id)
-    .fetch_optional(db)
-    .await
-    .map_err(dberr)?;
+        )
+        .bind(id)
+        .fetch_optional(db)
+        .await
+        .map_err(dberr)?;
     Ok(row)
 }
 
@@ -140,17 +138,19 @@ pub(super) async fn backpack_use(
         return Err(DomainError::Validation("单次使用数量限 1~99".into()));
     }
 
-    let item = sqlx::query_as::<_, (String, String, String, String, i64, bool)>(
-        "SELECT name, kind, use_kind, use_ref, anchor, enabled \
+    let item =
+        sqlx::query_as::<_, (String, String, String, String, i64, bool)>(
+            "SELECT name, kind, use_kind, use_ref, anchor, enabled \
            FROM arcade_items WHERE key = $1",
-    )
-    .bind(b.item_key.trim())
-    .fetch_optional(db)
-    .await
-    .map_err(dberr)?;
-    let (name, kind, use_kind, use_ref, anchor, enabled) = item.ok_or_else(|| {
-        DomainError::Validation(format!("目录里没有「{}」", b.item_key))
-    })?;
+        )
+        .bind(b.item_key.trim())
+        .fetch_optional(db)
+        .await
+        .map_err(dberr)?;
+    let (name, kind, use_kind, use_ref, anchor, enabled) =
+        item.ok_or_else(|| {
+            DomainError::Validation(format!("目录里没有「{}」", b.item_key))
+        })?;
     if !enabled {
         return Err(DomainError::Validation(format!(
             "「{name}」已停用，无法使用"

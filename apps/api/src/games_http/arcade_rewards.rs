@@ -62,22 +62,28 @@ fn map_row(
 }
 
 /// 两套奖励行的读取形状相同（只是列名不同），别名一下免得写两遍长元组
-type RewardRows =
-    Vec<(String, String, i32, i64, Option<String>, i32, Option<String>)>;
+type RewardRows = Vec<(
+    String,
+    String,
+    i32,
+    i64,
+    Option<String>,
+    i32,
+    Option<String>,
+)>;
 
 /// 周常（启用中的，按 sort）
 pub(super) async fn load_quests(db: &PgPool) -> DomainResult<Vec<Reward>> {
-    let rows: RewardRows =
-        sqlx::query_as(
-            "SELECT q.code, q.game_ref, q.target, q.reward_spark, \
+    let rows: RewardRows = sqlx::query_as(
+        "SELECT q.code, q.game_ref, q.target, q.reward_spark, \
                     q.item_key, q.item_qty, i.name \
                FROM arcade_quests q \
           LEFT JOIN arcade_items i ON i.key = q.item_key \
               WHERE q.enabled ORDER BY q.sort, q.code",
-        )
-        .fetch_all(db)
-        .await
-        .map_err(dberr)?;
+    )
+    .fetch_all(db)
+    .await
+    .map_err(dberr)?;
     Ok(rows
         .into_iter()
         .map(|(c, g, t, r, ik, q, nm)| map_row(c, g, t, r, ik, q, nm))
@@ -90,19 +96,18 @@ pub(super) async fn load_milestones(
     db: &PgPool,
     season: &str,
 ) -> DomainResult<Vec<Reward>> {
-    let rows: RewardRows =
-        sqlx::query_as(
-            "SELECT m.code, 'stub', m.need, m.reward_spark, \
+    let rows: RewardRows = sqlx::query_as(
+        "SELECT m.code, 'stub', m.need, m.reward_spark, \
                     m.item_key, m.item_qty, i.name \
                FROM arcade_milestones m \
           LEFT JOIN arcade_items i ON i.key = m.item_key \
               WHERE m.enabled AND m.season_key = $1 \
            ORDER BY m.sort, m.code",
-        )
-        .bind(season)
-        .fetch_all(db)
-        .await
-        .map_err(dberr)?;
+    )
+    .bind(season)
+    .fetch_all(db)
+    .await
+    .map_err(dberr)?;
     Ok(rows
         .into_iter()
         .map(|(c, g, t, r, ik, q, nm)| map_row(c, g, t, r, ik, q, nm))
@@ -153,17 +158,14 @@ pub(super) async fn award(
         }
     }
     if spark > 0 {
-        earn_spark(db, uid, spark, "arcade", &format!("{idem}:spark"))
-            .await?;
+        earn_spark(db, uid, spark, "arcade", &format!("{idem}:spark")).await?;
     }
     Ok((spark, got_item, fell))
 }
 
 /// 后台编辑器要看到**全部**行（含停用的），否则停用一条就再也编辑不回来。
 /// 玩法侧读的仍是 `load_*`（只给启用中的），两边同表同列，只差一个 WHERE。
-pub(super) async fn admin_rows(
-    db: &PgPool,
-) -> DomainResult<serde_json::Value> {
+pub(super) async fn admin_rows(db: &PgPool) -> DomainResult<serde_json::Value> {
     let quests: Vec<(String, String, i32, i64, Option<String>, i32, bool)> =
         sqlx::query_as(
             "SELECT code, game_ref, target, reward_spark, item_key, \
@@ -222,9 +224,7 @@ pub(super) async fn det_cost_value(
 pub(super) const REFS_GATE: &str =
     "确定侧奖励引用的物品都可用（停用会让领取当场失败）";
 
-pub(super) async fn refs_gate(
-    db: &PgPool,
-) -> DomainResult<serde_json::Value> {
+pub(super) async fn refs_gate(db: &PgPool) -> DomainResult<serde_json::Value> {
     let n = broken_reward_refs(db).await?;
     Ok(super::arcade_cfg::bad(
         REFS_GATE,
@@ -235,9 +235,7 @@ pub(super) async fn refs_gate(
 
 /// 坏引用体检：启用中的奖励行，引用了停用 / 无折算价 / 不存在的物品。
 /// 这一条**能红**：站长在物品目录里停用一件正在被奖励引用的东西，就是普通动作。
-pub(super) async fn broken_reward_refs(
-    db: &PgPool,
-) -> DomainResult<i64> {
+pub(super) async fn broken_reward_refs(db: &PgPool) -> DomainResult<i64> {
     let n: i64 = sqlx::query_scalar(
         r#"
         SELECT count(*)::bigint FROM (

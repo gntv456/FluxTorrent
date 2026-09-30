@@ -85,8 +85,8 @@ pub(super) async fn arcade_reward_save(
     if b.reward_spark == 0 && item_key.is_empty() {
         return Err(DomainError::Validation(format!(
             "奖励「{code}」既不发魔力也不发物品：领完什么都没拿到，\
-             这种行比报错更难查"))
-        );
+             这种行比报错更难查"
+        )));
     }
     if !item_key.is_empty() {
         let ok: bool = sqlx::query_scalar(
