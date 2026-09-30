@@ -16,6 +16,8 @@ interface Dressup {
   slot: string | null;
   owned: boolean;
   wearing: boolean;
+  /** 拥有来源：buy / prize / gift / admin；未拥有时是空串 */
+  source?: string;
   /** 0207：头像框 SKU 带 config（frame_id 用于列表预览） */
   config?: { frame_id?: number; effect?: string; [k: string]: unknown };
 }
@@ -28,6 +30,11 @@ export default function DressupPage() {
   // 幂等键按（用户+商品）在会话内固定：双击/网络重试共用同一键，杜绝双扣
   const idemRef = useRef<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
+
+  /** 拥有文案带来源：娱乐屋奖品兑来的装扮不该读成「买过的」。
+   *  未知来源（gift / admin / 老数据）一律回落到「已拥有」。 */
+  const ownLabel = (src: string | undefined) =>
+    src === "prize" ? dict.dressup.fromPrize : dict.dressup.owned;
 
   const refresh = useCallback(async () => {
     try {
@@ -154,9 +161,7 @@ export default function DressupPage() {
                     </p>
                     <p className="text-xs text-sub">
                       {dict.dressup.kinds[d.kind] ?? d.kind} ·{" "}
-                      {d.owned
-                        ? dict.dressup.owned
-                        : fmtCur(
+                      {d.owned ? ownLabel(d.source) : fmtCur(
                             dict.dressup.price,
                             {
                               n: d.price.toLocaleString(dateLocale(locale)),

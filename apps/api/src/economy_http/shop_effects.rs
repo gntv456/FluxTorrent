@@ -32,11 +32,14 @@ pub fn has_effect(kind: &str) -> bool {
     )
 }
 
+/// 授予一件 SKU 的效果。`dressup_source` 写进 `user_dressups.source`：
+/// 商店买入与「娱乐屋奖品兑换」是两件事，都记成 `'buy'` 就等于把奖品归属抹平。
 pub async fn apply_item_effect(
     db: &PgPool,
     user_id: i64,
     kind: &str,
     config: &serde_json::Value,
+    dressup_source: &str,
 ) -> DomainResult<()> {
     match kind {
         // 上传量：等值正流量流水（§6.2 快照刷新由 worker 聚合，这里直接加账）
@@ -68,11 +71,12 @@ pub async fn apply_item_effect(
                 config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
             sqlx::query(
                 "INSERT INTO user_dressups (user_id, item_id, \
-                 source) VALUES ($1, $2, 'buy') ON CONFLICT (user_id, item_id) \
+                 source) VALUES ($1, $2, $3) ON CONFLICT (user_id, item_id) \
                  DO NOTHING",
             )
             .bind(user_id)
             .bind(item_id)
+            .bind(dressup_source)
             .execute(db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;

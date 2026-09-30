@@ -252,7 +252,8 @@ pub(super) async fn backpack_use(
         let id: i64 = use_ref.trim().parse().unwrap_or(0);
         cfg["item_id"] = json!(id);
         for _ in 0..b.qty {
-            apply_item_effect(db, auth.id, &skind, &cfg).await?;
+            // 归属记 `prize`：这条链是「用掉一件奖品」，与商店买入不是一回事
+            apply_item_effect(db, auth.id, &skind, &cfg, "prize").await?;
         }
         state
             .repo
