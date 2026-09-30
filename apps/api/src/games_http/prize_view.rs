@@ -6,57 +6,97 @@
 
 use crate::games;
 
+/// 一档奖品的公开投影（`/games` 各池的 `prizes` 行）。
+///
+/// 用**具名结构体**而不是 `json!` 字面量：契约门禁（`scripts/check_type_drift.mjs`）
+/// 只比对具名结构体 —— 动态拼出来的形状是它的盲区，而那正是
+/// 「TS 声明了、Rust 没返回 → 前端读到 undefined → 页面静默空白」的温床。
+/// 改了这里的字段，记得同步 `apps/web/lib/games.ts` 的 `JggPrizeView`
+/// （门禁表里已挂这一对，漏改会当场 FAIL）。
+#[derive(serde::Serialize)]
+pub(super) struct PrizeRow {
+    pub label: String,
+    pub weight_permille: u32,
+    /// 魔力位=票价倍数（0.5x 这类小数也走这里）；物品位恒 0
+    pub payout: f64,
+    /// 与 payout 同值：历史字段名，前端两侧都在读
+    pub multiples: f64,
+    /// 该档魔力等值（物品位 = anchor × 件数）
+    pub value: i64,
+    /// 展示元数据（不参与 EV）：稀有度 1..5
+    pub rarity: i16,
+    /// 展示元数据（不参与 EV）：站长配的档位配图 URL
+    pub image_url: String,
+    pub kind: String,
+    /// 以下仅物品位出现
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qty: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub anchor: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    /// 用途（迁移 0246）：collect | spark | sku
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_name: Option<String>,
+    /// 猜大小专用：这一档在哪一区付（win | tie | lose）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub side: Option<String>,
+}
+
 /// 档位投影：魔力位给倍数、物品位给图标与用途（价值口径仍走 anchor JOIN）。
 pub(super) fn prize_rows(
     entries: &[games::PoolEntry],
     ticket: i64,
     icons: &[(String, String, String, Option<String>)],
     meta: &[(i16, String)],
-) -> Vec<serde_json::Value> {
+) -> Vec<PrizeRow> {
     entries
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            // payout 是既有公开字段（魔力位=倍数，物品位=0），前台一直按它渲染。
-            // 倍数可以是小数（刮刮乐有 0.5x 档），一律由千分比换算。
-            // 新语义一律**附加**，不替换：重命名已上线的字段等于悄悄打坏客户端。
-            let mut j = serde_json::json!({
-                "label": p.label,
-                "weight_permille": p.weight,
-                "payout": p.mult_permille() as f64 / 1000.0,
-                "multiples": p.mult_permille() as f64 / 1000.0,
-                "value": p.value(ticket),
-                // 展示元数据：稀有度（1..5）+ 配图；纯展示，不参与 EV
-                "rarity": meta.get(i).map(|m| m.0).unwrap_or(1),
-                "image_url": meta
+            // payout/multiples 是既有公开字段（魔力位=倍数，物品位=0），
+            // 前台两侧都在读，所以两个都发；新语义一律**附加**，不替换。
+            let mult = p.mult_permille() as f64 / 1000.0;
+            let mut row = PrizeRow {
+                label: p.label.clone(),
+                weight_permille: p.weight,
+                payout: mult,
+                multiples: mult,
+                value: p.value(ticket),
+                rarity: meta.get(i).map(|m| m.0).unwrap_or(1),
+                image_url: meta
                     .get(i)
                     .map(|m| m.1.clone())
                     .unwrap_or_default(),
-            });
-            match &p.kind {
-                games::EntryKind::Magic { .. } => {
-                    j["kind"] = serde_json::json!("magic");
-                }
-                games::EntryKind::Item {
-                    item_key,
-                    qty,
-                    anchor,
-                } => {
-                    j["kind"] = serde_json::json!("item");
-                    j["item_key"] = serde_json::json!(item_key);
-                    j["qty"] = serde_json::json!(qty);
-                    j["anchor"] = serde_json::json!(anchor);
-                    let hit = icons.iter().find(|(k, _, _, _)| k == item_key);
-                    j["icon"] =
-                        serde_json::json!(hit.map(|(_, v, _, _)| v.clone()));
-                    j["use_kind"] =
-                        serde_json::json!(hit.map(|(_, _, u, _)| u.clone()));
-                    j["use_name"] = serde_json::json!(
-                        hit.and_then(|(_, _, _, n)| n.clone())
-                    );
-                }
+                kind: "magic".to_string(),
+                item_key: None,
+                qty: None,
+                anchor: None,
+                icon: None,
+                use_kind: None,
+                use_name: None,
+                side: None,
+            };
+            if let games::EntryKind::Item {
+                item_key,
+                qty,
+                anchor,
+            } = &p.kind
+            {
+                row.kind = "item".to_string();
+                row.item_key = Some(item_key.clone());
+                row.qty = Some(*qty);
+                row.anchor = Some(*anchor);
+                let hit = icons.iter().find(|(k, _, _, _)| k == item_key);
+                row.icon = hit.map(|(_, v, _, _)| v.clone());
+                row.use_kind = hit.map(|(_, _, u, _)| u.clone());
+                row.use_name = hit.and_then(|(_, _, _, n)| n.clone());
             }
-            j
+            row
         })
         .collect()
 }
@@ -84,12 +124,12 @@ fn pct_of(weight: u32, total: u64) -> f64 {
 pub(super) fn region_rows(
     t: &super::pool::Table,
     icons: &[(String, String, String, Option<String>)],
-) -> Vec<serde_json::Value> {
+) -> Vec<PrizeRow> {
     let mut out = Vec::new();
     for (side, rows) in [("win", &t.win), ("tie", &t.tie), ("lose", &t.lose)] {
-        for mut j in prize_rows(rows, t.ticket, icons, &[]) {
-            j["side"] = serde_json::json!(side);
-            out.push(j);
+        for mut row in prize_rows(rows, t.ticket, icons, &[]) {
+            row.side = Some(side.to_string());
+            out.push(row);
         }
     }
     out

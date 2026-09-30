@@ -11,7 +11,7 @@ use rand::Rng;
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::{spend_spark, SpendOutcome};
+use crate::economy_http::{spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::games;
 use crate::http::require_auth;
@@ -63,16 +63,31 @@ pub(super) async fn fishing_cast(
         .clamp(400, 5000);
     let bite = rand::thread_rng().gen_range(min..=max);
 
+    // 扣鱼饵与落下这一竿**必须同一事务**：分两次写的话，INSERT 失败就是
+    // 「钱扣了、局没了」—— 玩家连起竿的机会都没有，只剩一笔冤枉流水。
+    let mut tx = db.begin().await.map_err(dberr)?;
     let idem = idem_key("fish", auth.id, &body.idempotency_key);
     // 幂等：同一键重放不重复扣鱼饵，也不重开一竿
     if !matches!(
-        spend_spark(db, auth.id, body.bet, "game", &idem, "fishing", 0).await?,
+        spend_spark_tx(&mut tx, auth.id, body.bet, "game", &idem, "fishing", 0)
+            .await?,
         SpendOutcome::Spent
     ) {
+        let _ = tx.rollback().await;
         return Err(DomainError::Validation(
             "这一竿已受理，请勿重复提交".into(),
         ));
     }
+    // 顺手清掉本用户超时未收线的残局：抛竿后不起竿，那一行就永远晾着，
+    // 而它再也不会被任何人读到 —— 不清就是只涨不消的表。
+    sqlx::query(
+        "DELETE FROM arcade_fishing_rounds WHERE user_id = $1 \
+           AND NOT resolved AND created_at < now() - interval '1 hour'",
+    )
+    .bind(auth.id)
+    .execute(&mut *tx)
+    .await
+    .map_err(dberr)?;
     let round_id: i64 = sqlx::query_scalar(
         "INSERT INTO arcade_fishing_rounds \
              (user_id, bet, entry_index, bite_after_ms, window_ms, idem) \
@@ -84,9 +99,10 @@ pub(super) async fn fishing_cast(
     .bind(bite)
     .bind(win_ms)
     .bind(&idem)
-    .fetch_one(db)
+    .fetch_one(&mut *tx)
     .await
     .map_err(dberr)?;
+    tx.commit().await.map_err(dberr)?;
     Ok(ok(serde_json::json!({
         "round_id": round_id,
         "bet": body.bet,
