@@ -9,6 +9,10 @@ import { fmtCur } from "@/i18n/config";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
 import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
 import { ScratchCanvas } from "@/components/game/scratch-canvas";
+import {
+  ScratchFace,
+  type ScratchOutcomeView,
+} from "@/components/game/scratch-face";
 import { GameStage } from "@/components/game/game-stage";
 import { scratchPoolText, type ScratchPrize } from "@/lib/games";
 
@@ -46,11 +50,7 @@ export default function ScratchPage({
   const [phase, setPhase] = useState<
     "idle" | "buying" | "scratchable" | "done"
   >("idle");
-  const [outcome, setOutcome] = useState<{
-    multiplier: number;
-    payout: number;
-    net: number;
-  } | null>(null);
+  const [outcome, setOutcome] = useState<ScratchOutcomeView | null>(null);
   const [pct, setPct] = useState(0);
   const [flash, setFlash] = useState<{
     kind: "win" | "lose" | "tie" | "jackpot";
@@ -115,8 +115,20 @@ export default function ScratchPage({
         multiplier: number;
         payout: number;
         net: number;
+        prize: string;
       }>("/api/v1/games/scratch", { bet, idempotency_key: idem.current });
-      setOutcome(r);
+      // 稀有度/图标取自同一份奖池投影（按 label 对齐），不在响应里重复下发
+      const meta = (ov?.scratch?.prizes ?? []).find(
+        (p) => p.label === r.prize,
+      );
+      setOutcome({
+        multiplier: r.multiplier,
+        payout: r.payout,
+        net: r.net,
+        rarity: meta?.rarity ?? 1,
+        icon: meta?.icon,
+        image_url: meta?.image_url || undefined,
+      });
       setRound((n) => n + 1);
       setPhase("scratchable");
       if (reduced) setAutoReveal(true);
@@ -160,28 +172,6 @@ export default function ScratchPage({
     void loadMeta();
   }
 
-  const prizeFace = () => {
-    if (phase === "buying")
-      return <span className="text-sm text-sub">{ts.buying}</span>;
-    if (!outcome)
-      return <span className="num text-4xl font-black text-sub">??</span>;
-    const big = outcome.multiplier >= 2;
-    return (
-      <div className="flex flex-col items-center">
-        <span
-          className={`num font-display text-[40px] ${big ? "text-[var(--warning)]" : outcome.multiplier > 0 ? "text-mint" : "text-sub"}`}
-        >
-          {outcome.multiplier === 0 ? "0" : `${outcome.multiplier}x`}
-        </span>
-        <span className="text-xs text-sub">
-          {outcome.multiplier === 0
-            ? ts.thanks
-            : `${ts.payout} ${outcome.payout}`}
-        </span>
-      </div>
-    );
-  };
-
   return (
     <GameShell
       icon="🎫"
@@ -202,7 +192,13 @@ export default function ScratchPage({
             art="/games/stage-scratch.jpg"
             className="h-[210px] w-full max-w-[460px]"
           >
-            <div className="sc-face">{prizeFace()}</div>
+            <div
+              className={`sc-face r${outcome?.rarity ?? 0}${
+                phase === "done" ? " sc-pop" : ""
+              }`}
+            >
+              <ScratchFace phase={phase} outcome={outcome} />
+            </div>
             <ScratchCanvas
               key={round}
               armed={phase === "scratchable"}

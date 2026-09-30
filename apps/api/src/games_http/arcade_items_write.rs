@@ -47,6 +47,9 @@ pub(super) struct ItemSaveReq {
     /// sku 时填绑定的 shop_items.id
     #[serde(default)]
     pub use_ref: Option<String>,
+    /// game 类道具的效果：{game, effect, value}；其他 use_kind 不填
+    #[serde(default)]
+    pub game_effect: Option<serde_json::Value>,
 }
 
 /// 一件新物品从零入库时的初值（目录里还没有这一行时）
@@ -85,9 +88,9 @@ pub(super) async fn arcade_item_save(
         )));
     }
     if let Some(k) = b.use_kind.as_deref().filter(|s| !s.is_empty()) {
-        if !matches!(k, "collect" | "spark" | "sku") {
+        if !matches!(k, "collect" | "spark" | "sku" | "game") {
             return Err(DomainError::Validation(format!(
-                "use_kind 只能是 collect | spark | sku，收到「{k}」"
+                "use_kind 只能是 collect | spark | sku | game，收到「{k}」"
             )));
         }
     }
@@ -100,26 +103,39 @@ pub(super) async fn arcade_item_save(
     }
 
     // 先读现值：所有「请求里没带」的字段都保持原样，校验也按生效后的值判
-    let prev =
-        sqlx::query_as::<_, (bool, i64, i32, String, bool, String, String)>(
-            "SELECT unlimited, stock, per_user, icon, enabled, \
-                use_kind, use_ref \
+    let prev = sqlx::query_as::<
+        _,
+        (
+            bool,
+            i64,
+            i32,
+            String,
+            bool,
+            String,
+            String,
+            Option<serde_json::Value>,
+        ),
+    >(
+        "SELECT unlimited, stock, per_user, icon, enabled, \
+                use_kind, use_ref, game_effect \
            FROM arcade_items WHERE key = $1",
-        )
-        .bind(&b.key)
-        .fetch_optional(db)
-        .await
-        .map_err(dberr)?;
+    )
+    .bind(&b.key)
+    .fetch_optional(db)
+    .await
+    .map_err(dberr)?;
     let dflt = NEW_ITEM_DEFAULTS;
-    let (p_unl, p_stock, p_pu, p_icon, p_en, p_uk, p_ur) = prev.unwrap_or((
-        dflt.0,
-        dflt.1,
-        dflt.2,
-        dflt.3.to_string(),
-        dflt.4,
-        dflt.5.to_string(),
-        dflt.6.to_string(),
-    ));
+    let (p_unl, p_stock, p_pu, p_icon, p_en, p_uk, p_ur, p_ge) =
+        prev.unwrap_or((
+            dflt.0,
+            dflt.1,
+            dflt.2,
+            dflt.3.to_string(),
+            dflt.4,
+            dflt.5.to_string(),
+            dflt.6.to_string(),
+            None,
+        ));
     let unlimited = b.unlimited.unwrap_or(p_unl);
     let stock = b.stock.unwrap_or(p_stock);
     let per_user = b.per_user.unwrap_or(p_pu);
@@ -130,6 +146,14 @@ pub(super) async fn arcade_item_save(
         None => p_uk,
     };
     let use_ref = b.use_ref.unwrap_or(p_ur);
+    // game_effect：显式传就用传的，否则保持现值；**非 game 类一律清空**
+    // （否则一件道具改成 collect 后还挂着旧效果，读侧会照旧把它当道具挂上）
+    let mut game_effect = b.game_effect.clone().or(p_ge);
+    if use_kind == "game" {
+        super::bigsmall_props::check_effect_shape(&game_effect, &b.name)?;
+    } else {
+        game_effect = None;
+    }
 
     if per_user <= 0 {
         return Err(DomainError::Validation("每人上限必须为正".into()));
@@ -167,15 +191,17 @@ pub(super) async fn arcade_item_save(
         r#"
         INSERT INTO arcade_items
             (key, name, kind, anchor, anchor_src,
-             unlimited, stock, per_user, icon, enabled, use_kind, use_ref)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             unlimited, stock, per_user, icon, enabled, use_kind, use_ref,
+             game_effect)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         ON CONFLICT (key) DO UPDATE SET
             name = EXCLUDED.name, kind = EXCLUDED.kind,
             anchor = EXCLUDED.anchor, anchor_src = EXCLUDED.anchor_src,
             unlimited = EXCLUDED.unlimited, stock = EXCLUDED.stock,
             per_user = EXCLUDED.per_user, icon = EXCLUDED.icon,
             enabled = EXCLUDED.enabled, use_kind = EXCLUDED.use_kind,
-            use_ref = EXCLUDED.use_ref, updated_at = now()
+            use_ref = EXCLUDED.use_ref,
+            game_effect = EXCLUDED.game_effect, updated_at = now()
     "#,
     )
     .bind(&b.key)
@@ -190,6 +216,7 @@ pub(super) async fn arcade_item_save(
     .bind(enabled)
     .bind(&use_kind)
     .bind(use_ref.trim())
+    .bind(game_effect.as_ref())
     .execute(&mut *tx)
     .await
     .map_err(dberr)?;

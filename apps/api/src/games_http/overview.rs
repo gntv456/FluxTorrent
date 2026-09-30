@@ -11,6 +11,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::helpers::{eco_i64, limit_used, market_refresh_text};
+use super::prize_view::{prize_rows, region_rows, scratch_empty_pct};
 
 #[get("/games")]
 pub(super) async fn games_overview(
@@ -55,15 +56,54 @@ pub(super) async fn games_overview(
     .map_err(super::pool::dberr)?;
     // 公示必须把物品位连同其折算价值一起列出来：只报魔力倍数会让玩家以为物品档不值钱，
     // 也让站长的 EV 复核对不上账。两个玩法共用同一份投影（见 prize_rows）。
-    let jgg_prizes = prize_rows(&pool.entries, pool.ticket, &icons);
-    let scratch_prizes = prize_rows(&spool.entries, spool.ticket, &icons);
+    let jgg_prizes = prize_rows(&pool.entries, pool.ticket, &icons, &pool.meta);
+    let scratch_prizes =
+        prize_rows(&spool.entries, spool.ticket, &icons, &spool.meta);
     // 农场收获彩蛋：确定性收获（0.90）之上的那一档，与三个抽奖读同一张池表
     let fpool = super::farm_egg::load_farm(&state.repo.db).await?;
-    let farm_prizes = prize_rows(&fpool.entries, fpool.unit, &icons);
+    let farm_prizes = prize_rows(&fpool.entries, fpool.unit, &icons, &[]);
     let farm_ev = games::farm_total_ev(&fpool.entries, fpool.unit);
+    // 扭蛋机 / 大转盘：与九宫格同构，读同一张池表。缺池时给空池而非让整个总览
+    // 500 —— 这两池是新玩法，旧库未跑迁移时不该拖垮已有四玩法的大厅。
+    let cpool = super::pool::load_pool(&state.repo.db, "capsule")
+        .await
+        .unwrap_or(super::pool::Pool {
+            ticket: 0,
+            entries: Vec::new(),
+            meta: Vec::new(),
+        });
+    let wpool = super::pool::load_pool(&state.repo.db, "wheel")
+        .await
+        .unwrap_or(super::pool::Pool {
+            ticket: 0,
+            entries: Vec::new(),
+            meta: Vec::new(),
+        });
+    let capsule_prizes =
+        prize_rows(&cpool.entries, cpool.ticket, &icons, &cpool.meta);
+    let wheel_prizes =
+        prize_rows(&wpool.entries, wpool.ticket, &icons, &wpool.meta);
+    let fishpool = super::pool::load_pool(&state.repo.db, "fishing")
+        .await
+        .unwrap_or(super::pool::Pool {
+            ticket: 0,
+            entries: Vec::new(),
+            meta: Vec::new(),
+        });
+    let fishing_prizes = prize_rows(
+        &fishpool.entries,
+        fishpool.ticket,
+        &icons,
+        &fishpool.meta,
+    );
+    // 大厅玩法清单（顺序/显隐）：表空则前端兜底注册表接管
+    let registry = super::arcade_games::load_registry(&state.repo.db)
+        .await
+        .unwrap_or_default();
 
     let mut body = serde_json::json!({
         "max_bet": max_bet,
+        "registry": registry,
         "max_plays_per_hour": max_plays,
         "scratch": { "name": "刮刮乐", "max_bet": max_bet,
             "min_bet": spool.ticket,
@@ -89,6 +129,16 @@ pub(super) async fn games_overview(
             "unit": fpool.unit,
             "prizes": farm_prizes,
             "expected_value": farm_ev },
+        "capsule": { "name": "扭蛋机", "ticket": cpool.ticket,
+            "prizes": capsule_prizes,
+            "expected_value": games::pool_ev(&cpool.entries, cpool.ticket) },
+        "wheel": { "name": "大转盘", "ticket": wpool.ticket,
+            "prizes": wheel_prizes,
+            "expected_value": games::pool_ev(&wpool.entries, wpool.ticket) },
+        "fishing": { "name": "钓鱼", "ticket": fishpool.ticket,
+            "prizes": fishing_prizes,
+            "expected_value": games::pool_ev(
+                &fishpool.entries, fishpool.ticket) },
         "funvote": { "name": "趣味盒投票", "cost": "1 魔力/票", "rule": "一人一票" },
         "rate_limit": format!("每人每小时 {max_plays} 次"),
     });
@@ -121,6 +171,18 @@ pub(super) async fn games_overview(
             // 不是「今日局数」——两者口径不同，用今日局数推算会与实际限流不符。
             "limit_left": (max_plays - limit_used(&state, auth.id, false).await.unwrap_or(today.1)).max(0),
         });
+        // 猜大小道具栏：把「玩家当前挂得上的道具」随总览一起下发，
+        // 前端不必再单拉一个端点（口径与 held 同一份：发放账 − 消耗账）
+        let props = super::bigsmall_props::held(&state.repo.db, auth.id)
+            .await
+            .unwrap_or_default();
+        body["props"] = serde_json::json!(props
+            .iter()
+            .map(|(p, n)| serde_json::json!({
+                "key": p.key, "name": p.name, "icon": p.icon,
+                "effect": p.effect, "value": p.value, "held": n,
+            }))
+            .collect::<Vec<_>>());
     }
     Ok(ok(body))
 }
@@ -198,7 +260,7 @@ pub(super) async fn game_rounds(
                 'game-bs-win:' || l.idempotency_key \
               ) \
          WHERE l.user_id = $1 AND l.kind = 'game' AND l.amount < 0 \
-           AND l.ref_type IN ('scratch', 'bigsmall', 'jgg') \
+           AND l.ref_type IN ('scratch', 'bigsmall', 'jgg', 'capsule', 'wheel', 'fishing') \
            AND ($2::text IS NULL OR l.ref_type = $2) \
            AND l.created_at > now() - interval '90 days' \
          ORDER BY l.id DESC LIMIT $3",
@@ -210,87 +272,4 @@ pub(super) async fn game_rounds(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
-}
-
-/// 奖池档位的公示投影：九宫格与刮刮乐读同一张表，投影也只留一份实现。
-/// 两处各写一遍的话，「物品位要带图标与用途」这类补充迟早只落在一边 ——
-/// 那就是第二份清单的开头。
-fn prize_rows(
-    entries: &[games::PoolEntry],
-    ticket: i64,
-    icons: &[(String, String, String, Option<String>)],
-) -> Vec<serde_json::Value> {
-    entries
-        .iter()
-        .map(|p| {
-            // payout 是既有公开字段（魔力位=倍数，物品位=0），前台一直按它渲染。
-            // 倍数可以是小数（刮刮乐有 0.5x 档），一律由千分比换算。
-            // 新语义一律**附加**，不替换：重命名已上线的字段等于悄悄打坏客户端。
-            let mut j = serde_json::json!({
-                "label": p.label,
-                "weight_permille": p.weight,
-                "payout": p.mult_permille() as f64 / 1000.0,
-                "multiples": p.mult_permille() as f64 / 1000.0,
-                "value": p.value(ticket),
-            });
-            match &p.kind {
-                games::EntryKind::Magic { .. } => {
-                    j["kind"] = serde_json::json!("magic");
-                }
-                games::EntryKind::Item {
-                    item_key,
-                    qty,
-                    anchor,
-                } => {
-                    j["kind"] = serde_json::json!("item");
-                    j["item_key"] = serde_json::json!(item_key);
-                    j["qty"] = serde_json::json!(qty);
-                    j["anchor"] = serde_json::json!(anchor);
-                    let hit = icons.iter().find(|(k, _, _, _)| k == item_key);
-                    j["icon"] =
-                        serde_json::json!(hit.map(|(_, v, _, _)| v.clone()));
-                    j["use_kind"] =
-                        serde_json::json!(hit.map(|(_, _, u, _)| u.clone()));
-                    j["use_name"] = serde_json::json!(
-                        hit.and_then(|(_, _, _, n)| n.clone())
-                    );
-                }
-            }
-            j
-        })
-        .collect()
-}
-
-/// 不中奖档（倍率 0）的合计概率。前台「谢谢参与」那一行读它。
-fn scratch_empty_pct(entries: &[games::PoolEntry]) -> f64 {
-    let total: u64 = entries.iter().map(|e| u64::from(e.weight)).sum();
-    entries
-        .iter()
-        .filter(|e| e.mult_permille() == 0)
-        .map(|e| pct_of(e.weight, total))
-        .sum()
-}
-
-fn pct_of(weight: u32, total: u64) -> f64 {
-    if total == 0 {
-        0.0
-    } else {
-        f64::from(weight) * 100.0 / total as f64
-    }
-}
-
-/// 猜大小的公示行：与 prize_rows 同一份形状，只是每行多带「在哪一区付」。
-/// 编辑器回读这张桌时要按它复原，少了这一列就会把三区抹成一区。
-fn region_rows(
-    t: &super::pool::Table,
-    icons: &[(String, String, String, Option<String>)],
-) -> Vec<serde_json::Value> {
-    let mut out = Vec::new();
-    for (side, rows) in [("win", &t.win), ("tie", &t.tie), ("lose", &t.lose)] {
-        for mut j in prize_rows(rows, t.ticket, icons) {
-            j["side"] = serde_json::json!(side);
-            out.push(j);
-        }
-    }
-    out
 }

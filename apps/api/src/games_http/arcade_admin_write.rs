@@ -64,6 +64,12 @@ pub(super) struct PoolEntryReq {
     /// 猜大小用：win | tie | lose。其余玩法不填（落库为 any）
     #[serde(default)]
     pub side: Option<String>,
+    /// 展示用稀有度 1..5（缺省 1）。纯展示，不参与 EV。
+    #[serde(default)]
+    pub rarity: Option<i32>,
+    /// 展示用配图 URL（缺省空串）。
+    #[serde(default)]
+    pub image_url: Option<String>,
 }
 
 /// 倍数 → 千分比。四舍五入而不是截断：0.5 在二进制浮点里是精确的，
@@ -144,6 +150,12 @@ pub(super) async fn arcade_pool_save(
     // 那是机制被配置改掉，EV 闸看不住。它排在 EV 校验**之前**：
     // 缺一个区时 EV 也会破 1，但「缺输区」才是根因，报错要说人话。
     if b.game == "bigsmall" {
+        // 猜大小机制决定纯魔力：物品位直接拒（与 pool.rs 读侧同一口径，写侧先拦）
+        if b.entries.iter().any(|e| e.enabled && e.kind == "item") {
+            return Err(DomainError::Validation(
+                "猜大小只输赢魔力：奖池里不能配物品位".into(),
+            ));
+        }
         let part = |want: &str| -> Vec<games::PoolEntry> {
             b.entries
                 .iter()
@@ -205,8 +217,8 @@ pub(super) async fn arcade_pool_save(
             r#"
             INSERT INTO arcade_pool_entries
                 (pool_key, label, weight, mult_permille, kind,
-                 item_key, qty, enabled, sort, side)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                 item_key, qty, enabled, sort, side, rarity, image_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         "#,
         )
         .bind(&b.pool_key)
@@ -227,6 +239,8 @@ pub(super) async fn arcade_pool_save(
         .bind(e.enabled)
         .bind(i as i32)
         .bind(side_of(e))
+        .bind(e.rarity.unwrap_or(1).clamp(1, 5))
+        .bind(e.image_url.as_deref().unwrap_or(""))
         .execute(&mut *tx)
         .await
         .map_err(dberr)?;

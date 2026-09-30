@@ -12,6 +12,14 @@ export interface JggPrizeView {
   kind?: string;
   /** 该档的魔力等值（物品位 = anchor × 件数），角标按它排最高值 */
   value?: number;
+  /** 展示用稀有度（1..5）：决定揭晓配色/光效，不参与任何计算 */
+  rarity?: number;
+  /** 物品位的目录图标（arcade_items.icon）；魔力位无 */
+  icon?: string;
+  /** 档位配图 URL（站长在后台配）；有就用它，没有回落到 icon */
+  image_url?: string;
+  /** 物品位的发放件数 */
+  qty?: number;
 }
 
 export type ScratchPrize = JggPrizeView;

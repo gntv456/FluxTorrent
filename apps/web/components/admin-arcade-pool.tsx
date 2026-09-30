@@ -29,6 +29,10 @@ interface Row {
   qty?: number;
   /** 猜大小用：这一档在哪一区付 */
   side?: string;
+  /** 展示用稀有度 1..5（不参与 EV） */
+  rarity?: number;
+  /** 展示用配图 URL */
+  image_url?: string;
 }
 
 interface CatItem {
@@ -45,6 +49,9 @@ const POOLS = [
   { game: "jgg", key: "jgg_default", labelKey: "labelJgg" },
   { game: "scratch", key: "scratch_default", labelKey: "labelScratch" },
   { game: "bigsmall", key: "bigsmall_default", labelKey: "labelBigsmall" },
+  { game: "capsule", key: "capsule_default", labelKey: "labelCapsule" },
+  { game: "wheel", key: "wheel_default", labelKey: "labelWheel" },
+  { game: "fishing", key: "fishing_default", labelKey: "labelFishing" },
   {
     game: "farm",
     key: "farm_default",
@@ -131,6 +138,8 @@ export function AdminArcadePool({
               ? { item_key: r0.item_key, qty: r0.qty ?? 1 }
               : { payout: r0.payout }),
             side: r0.side ?? "any",
+            rarity: r0.rarity ?? 1,
+            image_url: r0.image_url ?? "",
           })),
         },
       );

@@ -18,6 +18,10 @@ export interface PoolRowView {
   item_key?: string;
   qty?: number;
   side?: string;
+  /** 展示用稀有度 1..5（不参与 EV） */
+  rarity?: number;
+  /** 展示用配图 URL */
+  image_url?: string;
 }
 
 export interface CatalogItem {
@@ -60,6 +64,8 @@ export function AdminArcadePoolRows({
             <th className="py-1 text-right">
               {valueColLabel ?? t.colValue}
             </th>
+            <th className="py-1">{t.colRarity}</th>
+            <th className="py-1">{t.colImage}</th>
           </tr>
         </thead>
         <tbody>
@@ -151,6 +157,32 @@ export function AdminArcadePoolRows({
                     }
                   />
                 )}
+              </td>
+              <td className="py-1 pr-1">
+                {/* 稀有度：揭晓时的配色/星级（纯展示，不参与 EV） */}
+                <select
+                  className={CELL + " w-16"}
+                  value={r.rarity ?? 1}
+                  onChange={(e) =>
+                    onSet(i, { rarity: Number(e.target.value) })
+                  }
+                >
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </td>
+              <td className="py-1">
+                <input
+                  className={CELL + " w-40"}
+                  placeholder="https://…"
+                  value={r.image_url ?? ""}
+                  onChange={(e) =>
+                    onSet(i, { image_url: e.target.value })
+                  }
+                />
               </td>
             </tr>
           ))}
