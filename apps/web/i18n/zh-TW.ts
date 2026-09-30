@@ -2228,6 +2228,21 @@ const zhTwBase: Omit<
     plant: "播種",
     plantOk: "已種下 {crop}（花費 {cost} {magic}）",
     full: "{n} 塊地都已種滿",
+    landTitle: "地塊階梯",
+    landHint: "已持有 {n} / {cap} 塊（免費 {free} + 已買 {bought}）",
+    landSlot: "{n} 號",
+    landLv: "Lv.{n}",
+    landFast: "快 {p}%",
+    landBoughtTag: "買來的",
+    landMax: "已滿級",
+    landUp: "升級 {cost}",
+    landBuy: "再買一塊：第 {n} 號 · {cost} {magic}",
+    landFull: "地塊已買滿（{cap} 塊）",
+    landNote:
+      "買地與升級只沉沒魔力、不退款；升級只縮短成熟時間，產量與收穫彩蛋都不變。",
+    landBuyOk: "第 {slot} 號地塊到手（花費 {cost} {magic}）",
+    landUpOk:
+      "第 {slot} 號升到 Lv.{n}（花費 {cost} {magic}），成熟快 {p}%",
   },
   dressup: {
     title: "裝扮中心",

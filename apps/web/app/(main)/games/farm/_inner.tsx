@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { countdownText, eggText, type EggPrize } from "@/lib/games";
+import type { FarmLand } from "@/components/game/farm-land";
 import { BalanceBar } from "@/components/game/game-kit";
 import { GameStage } from "@/components/game/game-stage";
 import { GameToast } from "@/components/game/game-kit-feedback";
@@ -17,6 +18,8 @@ export interface FarmData {
   crops: import("@/components/game/farm-field").Crop[];
   plots: import("@/components/game/farm-field").Plot[];
   slots: number;
+  /** 土地阶梯（买地/升级）；旧响应没这块时按免费地块数画田 */
+  land?: FarmLand;
   /** 市场价刷新口径（服务端按设置键算出的文字，前端不抄第二份） */
   market_refresh?: string;
   /** 农场自己的限流配额（rl:farm，与即时赌局分开计数） */
@@ -32,6 +35,8 @@ export interface MeData {
   today_plays: number;
   limit_left: number;
 }
+
+type ToastMsg = { kind: "win" | "lose" | "tie" | "jackpot"; text: string };
 
 /** 农场专注页：六块田 + 图鉴式行情（旧 /farm 已重定向到此）。
  *  我的田地与行情两个分区拆到 _inner-sections.tsx */
@@ -49,10 +54,7 @@ export default function FarmPage({
   const [data, setData] = useState<FarmData | null>(initialFarm);
   const [me, setMe] = useState<MeData | null>(initialMe);
   const [now, setNow] = useState<number | null>(null);
-  const [msg, setMsg] = useState<{
-    kind: "win" | "lose" | "tie" | "jackpot";
-    text: string;
-  } | null>(null);
+  const [msg, setMsg] = useState<ToastMsg | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState<number | null>(null);
@@ -137,13 +139,12 @@ export default function FarmPage({
     }
   }
 
-  if (!data) {
-    return (
-      <div className="py-16 text-center text-sub">{err ?? tf.loading}</div>
-    );
-  }
+  if (!data)
+    return <div className="py-16 text-center text-sub">{err ?? tf.loading}</div>;
 
-  const plots = Array.from({ length: data.slots }, (_, i) =>
+  // 田里有几块地由土地阶梯定（买来的排在免费地后面）；旧响应没带 land 时退回免费数
+  const owned = data.land?.owned ?? data.slots;
+  const plots = Array.from({ length: owned }, (_, i) =>
     data.plots.find((p) => p.slot === i + 1),
   );
   // 时间文案一律等客户端挂载后再算：容器时区（UTC）与浏览器时区不同，
