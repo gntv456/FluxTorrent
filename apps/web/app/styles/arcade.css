@@ -873,6 +873,12 @@
 .arc-btn.primary { background: var(--grad-aurora); color: #fff;
   border-color: transparent; }
 .arc-btn:disabled { opacity: .5; }
+/* 背包里的小动作件：一件一个「使用」，不能抢主按钮的视觉权重 */
+.arc-btn.tiny { min-height: 24px; padding: 0 9px; font-size: 10px; }
+.arc-chip.mini {
+  min-height: 20px; padding: 0 8px; font-size: 10px; font-weight: 700;
+  cursor: default; opacity: .75;
+}
 
 /* ── 玩法舞台外框（绘制底图 + 压暗罩 + 描金角）──
    底图在 public/games/stage-*.png；四玩法页共用 game-stage.tsx。 */
