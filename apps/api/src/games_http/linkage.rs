@@ -3,7 +3,8 @@
 //! - `GET  /games/linkage/status`：现算口粮券余额 / 今日做种小时 / 本周做种小时 /
 //!   今日是否已发卡 / 渔汛做种门槛阈值与达成状态。
 //! - `POST /games/coupons/use`：核销 1 张口粮券（行锁 + 幂等键防双花），返回剩余。
-//!   供未来养成喂养 / 鱼竿升级消耗调用（当前宠物 / 钓鱼模块尚未落地）。
+//!   玩家侧消耗出口已接宠物投喂（`POST /games/pet/feed` 带 `use_coupon`）；
+//!   本端点保留作为通用核销入口（鱼竿升级等后续 sink 直接调它）。
 //!
 //! 全部走 runtime `sqlx::query`（不引入编译期 sqlx 依赖），与 worker 侧口径一致。
 
@@ -15,39 +16,25 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::helpers::{eco_i64, idem_key};
+use super::helpers::idem_key;
 
 /// 行为联动状态：把「做种」行为换算成游戏资源进度，前端据此展示正循环。
+/// 周做种小时与渔汛四态统一走 `fishing_extra`（与渔汛拦截同一份数据源，
+/// 两处口径漂移 = 玩家看到「已解锁」却被拦）。
 #[get("/games/linkage/status")]
 pub(super) async fn linkage_status(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let row: (i64, i64, i64, bool) = sqlx::query_as(
+    let row: (i64, bool) = sqlx::query_as(
         r#"
         SELECT
           COALESCE((SELECT food_coupons FROM users WHERE id = $1), 0)::bigint,
-          (SELECT count(DISTINCT split_part(l.idempotency_key, ':', 3))
-             FROM spark_ledger l
-             WHERE l.kind = 'seeding_reward'
-               AND l.user_id = $1
-               AND l.created_at >= date_trunc('day', now()
-              AT TIME ZONE 'UTC') + interval '8 hours'
-               AND l.created_at <  date_trunc('day', now()
-              AT TIME ZONE 'UTC')
-              + interval '8 hours') + interval '1 day'),
-          (SELECT count(DISTINCT split_part(l.idempotency_key, ':', 3))
-             FROM spark_ledger l
-             WHERE l.kind = 'seeding_reward'
-               AND l.user_id = $1
-               AND l.created_at >= date_trunc('week', now()
-              AT TIME ZONE 'UTC')
-              + interval '8 hours')),
           EXISTS(SELECT 1 FROM food_coupon_grants g
                  WHERE g.user_id = $1
-                   AND g.day = (now() AT TIME ZONE 'UTC')
-                 + interval '8 hours')::date)
+                   AND g.day = ((now() AT TIME ZONE 'UTC')
+                     + interval '8 hours')::date)
         "#,
     )
     .bind(auth.id)
@@ -55,18 +42,32 @@ pub(super) async fn linkage_status(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 渔汛门槛阈值走设置键（缺省 20 小时/周），运维可热调
-    let weekly_threshold =
-        eco_i64(&state, "games_fishing_event_seed_hours", 20).await;
-    let fishing_event_unlocked = row.2 >= weekly_threshold;
+    // 今日做种小时：seeding_reward 流水按小时幂等键去重（8:00 起算的一天）
+    let daily: i64 = sqlx::query_scalar(
+        "SELECT count(DISTINCT split_part(l.idempotency_key, ':', 3))::bigint \
+           FROM spark_ledger l \
+          WHERE l.kind = 'seeding_reward' AND l.user_id = $1 \
+            AND l.created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') \
+              + interval '8 hours' \
+            AND l.created_at <  date_trunc('day', now() AT TIME ZONE 'UTC') \
+              + interval '32 hours'",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
+    let (ev_on, ev_ok, weekly_hours, threshold) =
+        super::fishing_extra::event_state(&state, auth.id).await?;
 
     Ok(ok(serde_json::json!({
         "food_coupons": row.0,
-        "daily_seed_hours": row.1,
-        "weekly_seed_hours": row.2,
-        "coupon_granted_today": row.3,
-        "fishing_event_threshold": weekly_threshold,
-        "fishing_event_unlocked": fishing_event_unlocked,
+        "daily_seed_hours": daily,
+        "weekly_seed_hours": weekly_hours,
+        "coupon_granted_today": row.1,
+        "fishing_event_threshold": threshold,
+        "fishing_event_unlocked": ev_ok,
+        "fishing_event_active": ev_on,
     })))
 }
 

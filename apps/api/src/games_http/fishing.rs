@@ -37,7 +37,21 @@ pub(super) async fn fishing_cast(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let db = &state.repo.db;
-    let pool = load_pool(db, "fishing").await?;
+    // 渔汛：周末窗口开着就抽活动塘；开着但本周做种未达标 → 明确拒绝并给差值
+    let (ev_on, ev_ok, ev_hours, ev_need) =
+        super::fishing_extra::event_state(&state, auth.id).await?;
+    if ev_on && !ev_ok {
+        return Err(DomainError::Validation(format!(
+            "渔汛要求本周做种满 {ev_need} 小时（当前 {ev_hours} 小时）：\
+             挂机做种攒门槛，周末来钓限定鱼"
+        )));
+    }
+    let (pool_name, event) = if ev_on {
+        ("fishing_event", true)
+    } else {
+        ("fishing", false)
+    };
+    let pool = load_pool(db, pool_name).await?;
     check_bet(&state, body.bet)
         .await
         .map_err(DomainError::Validation)?;
@@ -61,6 +75,20 @@ pub(super) async fn fishing_cast(
     let win_ms = eco_i64(&state, "fishing_window_ms", 1500)
         .await
         .clamp(400, 5000);
+    // 鱼竿加成：每级加一点起竿窗口（纯 sink 换手感，不改概率）
+    let rod_lv: i32 = sqlx::query_scalar(
+        "SELECT level FROM arcade_fishing_rods WHERE user_id = $1",
+    )
+    .bind(auth.id)
+    .fetch_optional(db)
+    .await
+    .map_err(dberr)?
+    .unwrap_or(1);
+    let rod_bonus = eco_i64(&state, "fishing_rod_window_bonus_ms", 150)
+        .await
+        .clamp(0, 500)
+        * i64::from(rod_lv - 1);
+    let win_ms = (win_ms + rod_bonus).min(8000);
     let bite = rand::thread_rng().gen_range(min..=max);
 
     // 扣鱼饵与落下这一竿**必须同一事务**：分两次写的话，INSERT 失败就是
@@ -90,14 +118,16 @@ pub(super) async fn fishing_cast(
     .map_err(dberr)?;
     let round_id: i64 = sqlx::query_scalar(
         "INSERT INTO arcade_fishing_rounds \
-             (user_id, bet, entry_index, bite_after_ms, window_ms, idem) \
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+             (user_id, bet, entry_index, bite_after_ms, window_ms, \
+              event, idem) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
     )
     .bind(auth.id)
     .bind(body.bet)
     .bind(draw.index as i32)
     .bind(bite)
     .bind(win_ms)
+    .bind(event)
     .bind(&idem)
     .fetch_one(&mut *tx)
     .await
@@ -127,11 +157,11 @@ pub(super) async fn fishing_reel(
     let db = &state.repo.db;
     // 锁行 + 取「已过去多久」（时机由服务端算，不信客户端报的毫秒数）
     let mut tx = db.begin().await.map_err(dberr)?;
-    let row: Option<(i64, i32, i32, i32, i64, Option<String>)> =
+    let row: Option<(i64, i32, i32, i32, i64, Option<String>, bool)> =
         sqlx::query_as(
             "SELECT bet, entry_index, bite_after_ms, window_ms, \
                     (EXTRACT(EPOCH FROM (now() - created_at)) * 1000)::bigint \
-                      AS elapsed_ms, idem \
+                      AS elapsed_ms, idem, event \
                FROM arcade_fishing_rounds \
               WHERE id = $1 AND user_id = $2 AND NOT resolved FOR UPDATE",
         )
@@ -140,7 +170,7 @@ pub(super) async fn fishing_reel(
         .fetch_optional(&mut *tx)
         .await
         .map_err(dberr)?;
-    let Some((bet, idx, bite, win_ms, elapsed, idem)) = row else {
+    let Some((bet, idx, bite, win_ms, elapsed, idem, event)) = row else {
         let _ = tx.rollback().await;
         return Err(DomainError::Validation(
             "这一竿已收线或不存在".into(),
@@ -172,7 +202,9 @@ pub(super) async fn fishing_reel(
         })));
     }
     // 命中：按 cast 定下的档位结算（池若在这几秒内被改过，下标越界就安全失败）
-    let pool = load_pool(db, "fishing").await?;
+    // 结算池与 cast 同源：渔汛竿在活动塘结，普通竿在标准塘结
+    let pool = load_pool(db, if event { "fishing_event" } else { "fishing" })
+        .await?;
     let i = idx.max(0) as usize;
     let entry = pool
         .entries
@@ -184,8 +216,10 @@ pub(super) async fn fishing_reel(
         "game-fishing-win:{}",
         idem.unwrap_or_else(|| body.round_id.to_string())
     );
+    let rarity = super::casino::meta_rarity(&pool.meta, i);
     let (spark, value, fell_back) =
-        settle(&state, auth.id, bet, &draw, "fishing", &win_idem).await?;
+        settle(&state, auth.id, bet, &draw, "fishing", &win_idem, rarity)
+            .await?;
     state.repo.audit(Some(auth.id), "game.fishing", None).await;
     Ok(ok(serde_json::json!({
         "won": value > 0,

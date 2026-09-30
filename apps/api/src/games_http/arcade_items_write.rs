@@ -88,9 +88,9 @@ pub(super) async fn arcade_item_save(
         )));
     }
     if let Some(k) = b.use_kind.as_deref().filter(|s| !s.is_empty()) {
-        if !matches!(k, "collect" | "spark" | "sku" | "game") {
+        if !matches!(k, "collect" | "spark" | "sku" | "game" | "resub") {
             return Err(DomainError::Validation(format!(
-                "use_kind 只能是 collect | spark | sku | game，收到「{k}」"
+                "use_kind 只能是 collect | spark | sku | game | resub，收到「{k}」"
             )));
         }
     }

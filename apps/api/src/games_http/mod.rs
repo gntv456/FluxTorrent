@@ -15,6 +15,7 @@ mod arcade_crops;
 mod arcade_games;
 mod arcade_items_delete;
 mod arcade_items_write;
+mod arcade_leaderboard;
 mod arcade_meta;
 mod arcade_rewards;
 mod arcade_rewards_write;
@@ -27,11 +28,14 @@ mod farm_egg;
 mod farm_land;
 mod farm_land_write;
 mod fishing;
+mod fishing_extra;
+mod food_coupon;
 mod fun;
 mod helpers;
 mod item_use;
 mod linkage;
 mod overview;
+mod pet_custom;
 mod pets;
 mod pool;
 mod pool_games;
@@ -45,6 +49,7 @@ use arcade_crops::*;
 use arcade_items_delete::*;
 use arcade_items_write::*;
 use arcade_meta::*;
+use arcade_leaderboard::*;
 use arcade_rewards_write::*;
 use casino::*;
 use farm::*;
@@ -52,10 +57,12 @@ use farm_actions::*;
 use farm_land::*;
 use farm_land_write::*;
 use fishing::*;
+use fishing_extra::*;
 use fun::*;
 use item_use::*;
 use linkage::*;
 use overview::*;
+use pet_custom::*;
 use pets::*;
 use pool_games::*;
 
@@ -74,6 +81,12 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(pet_status)
         .service(pet_feed)
         .service(pet_claim)
+        .service(pet_customize)
+        .service(pet_of)
+        .service(fishing_rod)
+        .service(fishing_rod_upgrade)
+        .service(fishing_collection)
+        .service(arcade_leaderboard)
         .service(farm_overview)
         .service(farm_plant)
         .service(farm_water)

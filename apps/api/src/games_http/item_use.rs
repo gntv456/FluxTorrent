@@ -32,6 +32,7 @@ pub(super) fn use_kind_or_collect(k: &str) -> &'static str {
         "spark" => "spark",
         "sku" => "sku",
         "game" => "game",
+        "resub" => "resub",
         _ => "collect",
     }
 }
@@ -168,6 +169,13 @@ pub(super) async fn backpack_use(
     if use_kind == "game" {
         return Err(DomainError::Validation(format!(
             "「{name}」是游戏道具：在对应玩法的道具栏里挂载使用，不在这里点用"
+        )));
+    }
+    // 补签卡不在这里用：消耗端在自助补签（/attendance/resub），它认的就是
+    // 「发放账 − 消耗账」—— 在这里点用会绕过「补哪天」的语义
+    if use_kind == "resub" {
+        return Err(DomainError::Validation(format!(
+            "「{name}」是补签卡：到签到日历挑漏掉的那天使用"
         )));
     }
     // sku 类先验绑定，别把「扣了物品却无处生效」留给玩家

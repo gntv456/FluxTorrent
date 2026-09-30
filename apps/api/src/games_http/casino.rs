@@ -14,6 +14,11 @@ use crate::state::AppState;
 use super::helpers::{check_bet, check_rate, idem_key, BetReq};
 use super::pool::{dberr, grant_item_tx, load_pool, load_table, GrantOutcome};
 
+/// 档位展示元数据 (rarity, image_url) 里取稀有度；越界回落 1（未中奖不发光）
+pub(super) fn meta_rarity(meta: &[(i16, String)], i: usize) -> i16 {
+    meta.get(i).map(|m| m.0).unwrap_or(1)
+}
+
 /// 一档的结算：魔力位按 `unit × 千分倍率 / 1000` 派彩，物品位走发放账。
 ///
 /// `unit` 对九宫格是票价、对刮刮乐是玩家这注的金额 —— 两侧口径本来就一样，
@@ -24,24 +29,22 @@ pub(super) async fn settle(
     uid: i64,
     unit: i64,
     draw: &games::Draw,
-    game: &str,
-    win_idem: &str,
+    game: &str, win_idem: &str, rarity: i16,
 ) -> DomainResult<(i64, i64, Option<&'static str>)> {
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
-    let out = settle_tx(&mut tx, uid, unit, draw, game, win_idem).await?;
+    let out =
+        settle_tx(&mut tx, uid, unit, draw, game, win_idem, rarity).await?;
     tx.commit().await.map_err(dberr)?;
     Ok(out)
 }
 
 /// 事务内版本：把「扣注额 + 结算」并进一笔事务时用它 ——
 /// 分两次写的话，第二次失败就是「注额扣了、什么都没发生」，玩家白亏一注。
+/// 每局顺带落一行 arcade_pool_rounds（稀有播报 / 图鉴的事实源）。
 pub(super) async fn settle_tx(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    uid: i64,
-    unit: i64,
-    draw: &games::Draw,
-    game: &str,
-    win_idem: &str,
+    uid: i64, unit: i64, draw: &games::Draw,
+    game: &str, win_idem: &str, rarity: i16,
 ) -> DomainResult<(i64, i64, Option<&'static str>)> {
     let (spark, value, fell_back) = match &draw.prize.kind {
         games::EntryKind::Magic { mult_permille } => {
@@ -69,6 +72,16 @@ pub(super) async fn settle_tx(
     if spark > 0 {
         earn_spark_tx(tx, uid, spark, "game", win_idem).await?;
     }
+    sqlx::query(
+        "INSERT INTO arcade_pool_rounds (user_id, game, entry_index, \
+         rarity, prize, spark, value) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+    )
+    .bind(uid)
+    .bind(game)
+    .bind(draw.index as i32)
+    .bind(rarity)
+    .bind(&draw.prize.label)
+    .bind(spark).bind(value).execute(&mut **tx).await.map_err(dberr)?;
     Ok((spark, value, fell_back))
 }
 
@@ -128,9 +141,16 @@ pub(super) async fn scratch(
         let _ = tx.rollback().await;
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
     }
-    let (spark, value, fell_back) =
-        settle_tx(&mut tx, auth.id, body.bet, &draw, "scratch", &win_idem)
-            .await?;
+    let (spark, value, fell_back) = settle_tx(
+        &mut tx,
+        auth.id,
+        body.bet,
+        &draw,
+        "scratch",
+        &win_idem,
+        meta_rarity(&pool.meta, draw.index),
+    )
+    .await?;
     tx.commit().await.map_err(dberr)?;
     state.repo.audit(Some(auth.id), "game.scratch", None).await;
     Ok(ok(serde_json::json!({
@@ -222,9 +242,16 @@ pub(super) async fn guess_bigsmall(
         )
         .await?;
     }
-    let (base_spark, value, fell_back) =
-        settle_tx(&mut tx, auth.id, body.bet, &draw, "bigsmall", &win_idem)
-            .await?;
+    let (base_spark, value, fell_back) = settle_tx(
+        &mut tx,
+        auth.id,
+        body.bet,
+        &draw,
+        "bigsmall",
+        &win_idem,
+        meta_rarity(table.meta(side), draw.index),
+    )
+    .await?;
     // 道具加权：只改魔力的输赢幅度，不产生任何物品
     let ap = super::bigsmall_props::apply(
         &props,
