@@ -15,6 +15,11 @@ pub(super) struct Table {
     pub win: Vec<games::PoolEntry>,
     pub tie: Vec<games::PoolEntry>,
     pub lose: Vec<games::PoolEntry>,
+    /// 每区展示元数据 `(rarity, image_url)`，与对应区**按位对齐**。
+    /// 编辑器回读要按它复现 —— 少了它，站长设的稀有度会被下一次保存抹回默认。
+    pub win_meta: Vec<(i16, String)>,
+    pub tie_meta: Vec<(i16, String)>,
+    pub lose_meta: Vec<(i16, String)>,
 }
 
 impl Table {
@@ -30,6 +35,14 @@ impl Table {
             "win" => &self.win,
             "tie" => &self.tie,
             _ => &self.lose,
+        }
+    }
+    /// 与 `region()` 按位对齐的展示元数据
+    pub fn meta(&self, side: &str) -> &[(i16, String)] {
+        match side {
+            "win" => &self.win_meta,
+            "tie" => &self.tie_meta,
+            _ => &self.lose_meta,
         }
     }
 }
@@ -51,10 +64,13 @@ pub(super) async fn load_table(
         i32,
         Option<i64>,
         String,
+        i16,
+        String,
     )> = sqlx::query_as(
         r#"
         SELECT p.ticket, e.label, e.weight, e.mult_permille,
-               e.kind, e.item_key, e.qty, i.anchor, e.side
+               e.kind, e.item_key, e.qty, i.anchor, e.side,
+               e.rarity, e.image_url
           FROM arcade_pools p
           JOIN arcade_pool_entries e ON e.pool_key = p.key
      LEFT JOIN arcade_items i        ON i.key = e.item_key AND i.enabled
@@ -72,9 +88,23 @@ pub(super) async fn load_table(
         win: Vec::new(),
         tie: Vec::new(),
         lose: Vec::new(),
+        win_meta: Vec::new(),
+        tie_meta: Vec::new(),
+        lose_meta: Vec::new(),
     };
-    for (_, label, weight, mult_permille, kind, item_key, qty, anchor, side) in
-        rows
+    for (
+        _,
+        label,
+        weight,
+        mult_permille,
+        kind,
+        item_key,
+        qty,
+        anchor,
+        side,
+        rarity,
+        image,
+    ) in rows
     {
         let entry = games::PoolEntry {
             label,
@@ -90,9 +120,18 @@ pub(super) async fn load_table(
             },
         };
         match side.as_str() {
-            "win" => t.win.push(entry),
-            "tie" => t.tie.push(entry),
-            "lose" => t.lose.push(entry),
+            "win" => {
+                t.win.push(entry);
+                t.win_meta.push((rarity, image));
+            }
+            "tie" => {
+                t.tie.push(entry);
+                t.tie_meta.push((rarity, image));
+            }
+            "lose" => {
+                t.lose.push(entry);
+                t.lose_meta.push((rarity, image));
+            }
             // any 归到输区没有意义，宁可报错：一张桌不该出现「哪侧都算」的档
             other => {
                 return Err(DomainError::Validation(format!(
