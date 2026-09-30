@@ -9,10 +9,7 @@ import { AdminShell, type PanelEntry } from "@/components/admin-shell";
 import { AdminOverviewPanel } from "./_parts/admin-overview-panel";
 import { AppealsPanel, ReviewsPanel } from "./_parts/admin-queue-panels";
 import { AuditListPanel, CheatersPanel } from "./_parts/admin-tool-panels";
-import {
-  renderSimpleTool,
-  STAFF_TOOL_TABS,
-} from "./_parts/admin-tool-switch";
+import { renderSimpleTool, STAFF_TOOL_TABS } from "./_parts/admin-tool-switch";
 import {
   LEGACY_TOOL,
   type AppealRow,
@@ -23,8 +20,7 @@ import {
   type StatsData,
 } from "./_parts/admin-shared";
 
-const MSG_CLS =
-  "mb-3 rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink";
+const MSG_CLS = "mb-3 rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink";
 
 /** ApiError → dict.errors[code] ?? message，否则 actionFailed */
 function errText(
@@ -130,9 +126,15 @@ export default function AdminPage() {
   useEffect(() => {
     if (!toolReady) return;
     if (tool !== "overview" && tool !== "audit") return;
-    api.get<AuditRow[]>("/api/v1/admin/audit").then(setAudit).catch(() => {});
+    api
+      .get<AuditRow[]>("/api/v1/admin/audit")
+      .then(setAudit)
+      .catch(() => {});
     if (tool !== "overview") return;
-    api.get<StatsData>("/api/v1/admin/stats").then(setStats).catch(() => {});
+    api
+      .get<StatsData>("/api/v1/admin/stats")
+      .then(setStats)
+      .catch(() => {});
   }, [tool, toolReady]);
 
   useEffect(() => {
@@ -261,9 +263,9 @@ export default function AdminPage() {
       role={role}
       classId={classId}
     >
-      {msg && (
-        <p className={MSG_CLS}>{msg}</p>
-      )}
+      {/* 顶栏标题降为 p 后，工具页的唯一 h1 在此（对读屏可见即可） */}
+      <h1 className="sr-only">{a.panelTitle}</h1>
+      {msg && <p className={MSG_CLS}>{msg}</p>}
       {renderTool()}
     </AdminShell>
   );
