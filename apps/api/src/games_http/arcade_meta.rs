@@ -237,6 +237,9 @@ pub(super) async fn arcade_meta(
         }
     };
     let mult = win_mult;
+    // 农场土地阶梯：五个键都是真设置键（0260 的 settings_meta），配错会让
+    // 农场整页读不出来 —— 报价口径与「参数现值」由 land_gate_row 一并报。
+    let land = super::farm_land::land_gate_row(&state).await;
     let checks = vec![
         bad(
             "确定侧发放（魔力 + 物品折算）落在娱乐屋预算内",
@@ -254,6 +257,7 @@ pub(super) async fn arcade_meta(
         // 停用一件正被奖励引用的物品是普通运营动作，而确定侧没有「打折回落」：
         // 引用坏掉时玩家点领取会当场报错。这条闸就是提前把它照出来。
         refs,
+        land,
     ];
 
     let body = serde_json::json!({
