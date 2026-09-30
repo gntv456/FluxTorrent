@@ -1442,8 +1442,7 @@ const zhCnBase = {
     renameCardKind: "改名卡",
     renameHint: "改名时在控制面板自动抵扣",
     inviteConfirm: "核销后将生成一枚邀请码，确认？",
-    inviteRedeemed:
-      "已核销！邀请码：{code}（有效期至 {date}），可在邀请页管理",
+    inviteRedeemed: "已核销！邀请码：{code}（有效期至 {date}），可在邀请页管理",
   },
   forums: {
     title: "论坛",
@@ -2069,6 +2068,7 @@ const zhCnBase = {
       packCollect: "收藏",
       packGotSpark: "已兑现 {n} {c}",
       packGotSku: "已获得「{s}」",
+      rewardSpark: "+{n} 魔力",
       shelfTitle: "外观货架",
       shelfEmpty: "暂无外观上架",
       gateTitle: "门禁自检",
@@ -2516,6 +2516,7 @@ const zhCnBase = {
     auditSearchPh: "搜索动作 / 操作人…",
     auditShown: "已显示 {n} / {total} 条",
     auditShowMore: "再显示 100 条",
+    auditNoMatch: "没有匹配的审计记录",
     pendingAppeals: "待处理申诉",
     cheatersEntry: "作弊探测",
     queueTitle: "待办队列",
@@ -2612,6 +2613,25 @@ const zhCnBase = {
    * 与 STAFF_TOOL_TABS。差集核对脚本见仓库根 `_admin_nav_align.py`。
    */
   adminArcade: {
+    rewards: {
+      title: "确定侧奖励（周常 / 赛季）",
+      colKind: "侧",
+      colCode: "代号",
+      colScope: "归属",
+      colTarget: "目标",
+      colSpark: "奖励魔力",
+      colItem: "物品",
+      colQty: "件数",
+      colOn: "启用",
+      kindQuest: "周常",
+      kindMilestone: "里程碑",
+      season: "赛季 key",
+      save: "保存",
+      saving: "保存中",
+      saved: "已保存",
+      saveFail: "读取奖励行失败",
+      note: "确定侧不进 EV 闸：每一笔发放（魔力 + 物品按折算价）都计入娱乐屋预算，超预算门禁会红。物品发不出去时按折算价全额折魔力，不打折。",
+    },
     items: {
       newTitle: "新建奖品",
       create: "建",
@@ -2756,7 +2776,7 @@ const zhCnBase = {
   /** 论坛结构管理页（/admin/forums + 其 _parts/）。
    *  `noCategory` 是伪分区「未分组」——承载 category_id 为空的版块
    *  （外键 ON DELETE SET NULL），三处共用同一文案。 */
-    adminDonate: {
+  adminDonate: {
     fStatus: "状态",
     fUid: "用户 UID",
     optAll: "全部",
@@ -2816,7 +2836,8 @@ const zhCnBase = {
     saved: "已保存",
     deleted: "已删除",
     empty: "暂无条目",
-    permHint: "perm_key 非空时，用户还需持有该权限（可在「权限配置」里做用户级授予/拒绝）；module_key 非空时受模块开关控制。",
+    permHint:
+      "perm_key 非空时，用户还需持有该权限（可在「权限配置」里做用户级授予/拒绝）；module_key 非空时受模块开关控制。",
   },
   adminEmbedRules: {
     title: "视频内嵌规则",
@@ -3150,9 +3171,9 @@ const zhCnBase = {
   adminPromoKinds: {
     title: "用户自购促销档位",
     intro:
-      "配置种子详情页「购买推广」的可选档位：类型 × 时长 → 价格。"
-      + "落地效果决定购买后种子获得什么（置顶 / 免费 / 双倍等）。"
-      + "不偏向任何站型——按需增删即可。",
+      "配置种子详情页「购买推广」的可选档位：类型 × 时长 → 价格。" +
+      "落地效果决定购买后种子获得什么（置顶 / 免费 / 双倍等）。" +
+      "不偏向任何站型——按需增删即可。",
     kindsTitle: "档位类型",
     tiersTitle: "价目档（类型 × 时长）",
     colKind: "标识",
@@ -4960,7 +4981,8 @@ const zhCnBase = {
     rlLevel: "级别",
     rlAll: "全部",
     rlSearch: "按消息或模块搜索",
-    rlHint: "记录 WARN 及以上级别（api/worker 运行日志落库，保留 14 天）；阈值可用环境变量 FLUX_RTLOG_LEVEL 调整。",
+    rlHint:
+      "记录 WARN 及以上级别（api/worker 运行日志落库，保留 14 天）；阈值可用环境变量 FLUX_RTLOG_LEVEL 调整。",
     rlTime: "时间",
     rlSrc: "来源",
     rlInstance: "实例",

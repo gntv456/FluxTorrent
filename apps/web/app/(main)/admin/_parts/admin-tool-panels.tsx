@@ -103,6 +103,8 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
     );
   }, [audit, kw]);
   const shown = filtered.slice(0, limit);
+  // 空态分两种：真没数据（队列空）vs 搜索无命中，文案不能混用
+  const emptyText = kw ? a.auditNoMatch : a.queueEmpty;
 
   return (
     <section className={PANEL_LG}>
@@ -133,7 +135,7 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
           </li>
         ))}
         {shown.length === 0 && (
-          <li className="py-6 text-center text-sub">{a.queueEmpty}</li>
+          <li className="py-6 text-center text-sub">{emptyText}</li>
         )}
       </ul>
       {filtered.length > shown.length && (

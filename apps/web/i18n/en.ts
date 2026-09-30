@@ -5,7 +5,7 @@ import { termsPanelEn } from "./terms-panel";
 
 const enBase: Omit<
   Dict,
-  "viewLayout"
+  | "viewLayout"
   | "pwa"
   | "security2fa"
   | "apitokens"
@@ -161,7 +161,8 @@ const enBase: Omit<
     announceUrl: "Public Tracker announce URL",
     announceHint:
       "Your site's public Tracker address — peers use it to connect after downloading torrents. Leave blank to keep current; 127.0.0.1/localhost is rejected.",
-    firstInviteTitle: "First invite code generated (registration is invite-only):",
+    firstInviteTitle:
+      "First invite code generated (registration is invite-only):",
     firstInviteHint:
       "Give it to your first registrant (they enter it on the signup page); more codes can be issued in the admin invite manager.",
     copy: "Copy",
@@ -285,7 +286,8 @@ const enBase: Omit<
     magnetCopied: "Magnet link copied",
     magnetFailed: "Failed to get magnet link",
     emptyTitle: "Nothing here yet — go plant the first seed",
-    emptyAliveTitle: "No live torrents in this view — resources may be unseeded",
+    emptyAliveTitle:
+      "No live torrents in this view — resources may be unseeded",
     emptyAliveAction: "Show all (incl. dead)",
     sticky: "Pinned",
     category: "Category",
@@ -414,7 +416,8 @@ const enBase: Omit<
     title: "Join us",
     subtitle: "Register with an invite code, plant your first seed",
     inviteCode: "Invite code",
-    emailMustMatch: "Targeted invite: use the email address that received the invitation",
+    emailMustMatch:
+      "Targeted invite: use the email address that received the invitation",
     inviteOptional: " (optional in open registration)",
     username: "Username",
     email: "Email",
@@ -913,7 +916,7 @@ const enBase: Omit<
     fldBadge: "Badge",
     fldBody: "Body",
     newsVideoHint:
-      "Video embedding supported: paste a platform <iframe> embed code (platforms limited to the admin \"Video Embed Rules\" allowlist) or an on-site attachment video URL; foreign-domain src is stripped automatically.",
+      'Video embedding supported: paste a platform <iframe> embed code (platforms limited to the admin "Video Embed Rules" allowlist) or an on-site attachment video URL; foreign-domain src is stripped automatically.',
     fldDate: "Date",
     fldStatus: "Status",
     colActions: "Actions",
@@ -1823,7 +1826,8 @@ const enBase: Omit<
     resend: "Resend",
     revoke: "Revoke",
     revokedTag: "Revoked",
-    confirmRevoke: "The invite code becomes invalid immediately (quota not refunded). Continue?",
+    confirmRevoke:
+      "The invite code becomes invalid immediately (quota not refunded). Continue?",
     revoked: "✓ Invite revoked",
     prevPage: "Previous",
     nextPage: "Next",
@@ -2100,7 +2104,8 @@ const enBase: Omit<
       boardTitle: "Weekly arcade board",
       boardStubs: "Stubs collected",
       boardPlays: "Plays this week",
-      boardNote: "Ranked by collection and plays only, never by net result — ranking losses would be nudging people to bet more.",
+      boardNote:
+        "Ranked by collection and plays only, never by net result — ranking losses would be nudging people to bet more.",
       title: "Hall · Sinks & Item Pools",
       gateOk: "All gates green",
       gateBlocked: "{n} blocked",
@@ -2121,12 +2126,13 @@ const enBase: Omit<
       packCollect: "Collectible",
       packGotSpark: "Redeemed {n} {c}",
       packGotSku: "Granted {s}",
+      rewardSpark: "+{n} spark",
       shelfTitle: "Cosmetics shelf",
       shelfEmpty: "No cosmetics yet",
       gateTitle: "Gate self-check",
       feedTitle: "Hall feed",
       feedEmpty: "No one on the board yet — go play!",
-      feedStub: "{who} unlocked stamp \"{name}\"",
+      feedStub: '{who} unlocked stamp "{name}"',
       feedQuest: "{who} claimed a weekly reward",
       feedSeason: "{who} claimed a season milestone",
       claim: "Claim",
@@ -2409,7 +2415,8 @@ const enBase: Omit<
   },
   donate: {
     tiersTitle: "Donation reward tiers",
-    tiersNote: "Rewards are granted automatically when cumulative payments reach a tier (instant on callback):",
+    tiersNote:
+      "Rewards are granted automatically when cumulative payments reach a tier (instant on callback):",
     tierSpark: "sparks",
     tierUpload: "upload",
     tierInvites: "invites",
@@ -2567,6 +2574,7 @@ const enBase: Omit<
     auditSearchPh: "Search action / actor…",
     auditShown: "Showing {n} of {total}",
     auditShowMore: "Show 100 more",
+    auditNoMatch: "No matching audit entries",
     pendingAppeals: "Pending appeals",
     cheatersEntry: "Cheater detection",
     queueTitle: "Work queues",
@@ -2659,6 +2667,25 @@ const enBase: Omit<
    * key is missing, so a brand-new tool never renders blank.
    */
   adminArcade: {
+    rewards: {
+      title: "Deterministic rewards (weekly / season)",
+      colKind: "Side",
+      colCode: "Code",
+      colScope: "Scope",
+      colTarget: "Target",
+      colSpark: "Spark reward",
+      colItem: "Item",
+      colQty: "Qty",
+      colOn: "On",
+      kindQuest: "Weekly",
+      kindMilestone: "Milestone",
+      season: "Season key",
+      save: "Save",
+      saving: "Saving",
+      saved: "Saved",
+      saveFail: "Failed to load reward rows",
+      note: "The deterministic side bypasses the EV gate, so every payout (spark plus items at their anchor value) counts against the arcade budget; the gate turns red when it is exceeded. If an item cannot be granted, its full anchor value is paid in spark - no discount.",
+    },
     items: {
       newTitle: "New prize",
       create: "Create",
@@ -2848,14 +2875,14 @@ const enBase: Omit<
     invites: { label: "Invites", tip: "Browse every invitation on the site" },
     userlogs: { label: "User Logs", tip: "Rename and profile change records" },
     attendance: {
-    donateorders: {
-      label: "Donation Orders",
-      tip: "List / reconcile / manually complete payment orders",
-    },
-    panelentries: {
-      label: "Panel Entries",
-      tip: "CRUD admin nav entries with permission keys",
-    },
+      donateorders: {
+        label: "Donation Orders",
+        tip: "List / reconcile / manually complete payment orders",
+      },
+      panelentries: {
+        label: "Panel Entries",
+        tip: "CRUD admin nav entries with permission keys",
+      },
       label: "Attendance",
       tip: "Check-in history and manual backfill",
     },
@@ -2875,7 +2902,8 @@ const enBase: Omit<
     thCreated: "Created",
     thAction: "Action",
     completeBtn: "Complete",
-    confirmComplete: "Manually complete {no} (${usd})? Credits the user wallet immediately.",
+    confirmComplete:
+      "Manually complete {no} (${usd})? Credits the user wallet immediately.",
     completed: "✓ Completed & credited",
     duplicate: "Order already paid; nothing to do",
     empty: "No orders",
@@ -2920,7 +2948,8 @@ const enBase: Omit<
     saved: "Saved",
     deleted: "Deleted",
     empty: "No entries",
-    permHint: "When perm_key is set the user must also hold that permission (grant/deny per user in Permission Config); module_key subjects the entry to its module switch.",
+    permHint:
+      "When perm_key is set the user must also hold that permission (grant/deny per user in Permission Config); module_key subjects the entry to its module switch.",
   },
   adminEmbedRules: {
     title: "Video Embed Rules",
@@ -3255,9 +3284,9 @@ const enBase: Omit<
   adminPromoKinds: {
     title: "Self-purchase promo tiers",
     intro:
-      "Configure the plans users can buy on a torrent page: kind × duration "
-      + "→ price. The effect decides what the torrent gains after purchase "
-      + "(sticky / freeleech / double upload, etc). Drag-free and site-agnostic.",
+      "Configure the plans users can buy on a torrent page: kind × duration " +
+      "→ price. The effect decides what the torrent gains after purchase " +
+      "(sticky / freeleech / double upload, etc). Drag-free and site-agnostic.",
     kindsTitle: "Tier kinds",
     tiersTitle: "Price tiers (kind × duration)",
     colKind: "Key",
@@ -3448,7 +3477,8 @@ const enBase: Omit<
     fBonus: "Magic bonus (%)",
     fGiftFee: "Gift fee (bp)",
     phGiftFee: "blank = global",
-    hintGiftFee: "Basis points; blank falls back to global gift_tax_bp, 0 = tax-free",
+    hintGiftFee:
+      "Basis points; blank falls back to global gift_tax_bp, 0 = tax-free",
     fDuration: "Duration (days, empty = permanent)",
     fRarity: "Rarity",
     rarityUnset: "Unset",
@@ -5108,7 +5138,8 @@ const enBase: Omit<
     rlLevel: "Level",
     rlAll: "All",
     rlSearch: "Search message or target",
-    rlHint: "Records WARN and above (api/worker runtime log sink, kept 14 days); tune the threshold with the FLUX_RTLOG_LEVEL env var.",
+    rlHint:
+      "Records WARN and above (api/worker runtime log sink, kept 14 days); tune the threshold with the FLUX_RTLOG_LEVEL env var.",
     rlTime: "Time",
     rlSrc: "Source",
     rlInstance: "Instance",
@@ -5481,7 +5512,7 @@ const adminopsEn: Dict["adminops"] = {
   jobsJob: "Job",
   jobsLast: "Last run",
   jobsState: "State",
-    jobsBy: "Instance",
+  jobsBy: "Instance",
   jobsNever: "Never run",
   jobsPending: "Queued",
   jobsRunning: "Running",
@@ -5553,7 +5584,8 @@ export const en: Dict = {
   commentdel: commentdelEn,
   groupsub: groupsubEn,
   pwa: {
-    installHint: "Install this site to your desktop and use it like a native app:",
+    installHint:
+      "Install this site to your desktop and use it like a native app:",
     installBtn: "Install",
     iosHint: "iOS install: Share → Add to Home Screen",
     dismiss: "Dismiss",
