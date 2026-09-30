@@ -3,8 +3,49 @@
 //! 作物全部为通用幻想系命名（四叶草/星尘豆/云端瓜/月华参/日冕稻），**不绑定任何站型特色**
 //! （教育站、影音站、音乐站都用同一套），站长可在后台改名。
 //! 产量按「种子价 × 0.75」标定：收获期望 = 0.75 × (1 + 20% 双倍) = 0.90 < 1，回收口径。
+//! 收获之上还有一档站长可配的**彩蛋奖池**（`arcade_pools` game='farm'，见 farm_egg.rs）：
+//! 它只能吃 0.90 剩下的 0.10，由 `validate_farm` 把关。
 
 use rand::Rng;
+
+use super::jgg::{pool_ev, validate_shape, PoolEntry, PoolError, MULT_UNIT};
+
+/// 农场收获侧的**基础**回收率：作物按「产量 = 种子价 × 0.75」标定，
+/// 含 20% 双倍后期望 = 0.75 × 1.2 = 0.90。这是机制常数，
+/// 面板、写侧闸、运行时都读这一个值 —— 抄两份就会有一处忘记改。
+pub const BASE_EV: f64 = 0.90;
+
+/// 每人地块数：写侧校验、地块投影、总览三处读同一个数（前台按 API 给的 slots 画）。
+pub const PLOTS: i32 = 6;
+
+/// 农场额外奖池的总口径：确定性收获（BASE_EV）+ 奖池那一注。
+/// 单位 unit 取**最便宜作物的种子价**：额外档按种子价倍数派彩，
+/// 而收获本身也按同一倍数标定，所以比值对每一株作物都一样 ——
+/// 最便宜那一株就是最坏情况。
+pub fn farm_total_ev(entries: &[PoolEntry], unit: i64) -> f64 {
+    BASE_EV + pool_ev(entries, unit)
+}
+
+/// 农场收获彩蛋档的派彩：这一株的种子价 × 千分倍率。
+/// 与 `PoolEntry::value()` 同一条向下取整口径（对站点有利的取整侧）。
+pub fn egg_pay(seed_price: i64, mult_permille: i64) -> i64 {
+    seed_price.saturating_mul(mult_permille) / MULT_UNIT
+}
+
+/// 农场奖池关闸：额外那一注不能把总回收推过 1。
+/// 0.90 的余量只有 0.10 —— 这就是「农场发物品必须限量」的硬账。
+/// 结构项与另三个玩法共用 `validate_shape`，只有 EV 判据不同。
+pub fn validate_farm(
+    entries: &[PoolEntry],
+    unit: i64,
+) -> Result<(), PoolError> {
+    validate_shape(entries, unit)?;
+    let total = farm_total_ev(entries, unit);
+    if !(total < 1.0) {
+        return Err(PoolError::ExpectedValueNotBelowOne(total));
+    }
+    Ok(())
+}
 
 /// 市场价波动窗口：默认 4 小时（0109 games farm_market_window_hours 可调，worker
 /// 与 API 各自读取；窗口跨小时数变化只影响新窗口起点，历史价不重算）

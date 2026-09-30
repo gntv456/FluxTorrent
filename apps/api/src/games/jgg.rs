@@ -144,6 +144,21 @@ pub fn validate_pool(
     if entries.is_empty() {
         return Err(PoolError::Empty);
     }
+    validate_shape(entries, ticket)?;
+    let ev = pool_ev(entries, ticket);
+    if !(ev < 1.0) {
+        return Err(PoolError::ExpectedValueNotBelowOne(ev));
+    }
+    Ok(())
+}
+
+/// 池子的**结构**项：票价、权重、物品位有效性。EV 判据各玩法不同（农场在
+/// 奖池之外还有 0.90 的确定性收获），所以不在这里 —— 但结构项只此一份：
+/// 每个玩法抄一遍的话，「物品位 anchor 必须为正」这类检查迟早漏一处。
+pub fn validate_shape(
+    entries: &[PoolEntry],
+    ticket: i64,
+) -> Result<(), PoolError> {
     if ticket <= 0 {
         return Err(PoolError::BadTicket(ticket));
     }
@@ -164,10 +179,6 @@ pub fn validate_pool(
     }
     if total > u64::from(u32::MAX) {
         return Err(PoolError::WeightsOverflow(total));
-    }
-    let ev = pool_ev(entries, ticket);
-    if !(ev < 1.0) {
-        return Err(PoolError::ExpectedValueNotBelowOne(ev));
     }
     Ok(())
 }

@@ -2062,6 +2062,8 @@ const zhTwBase: Omit<
       ev: "期望回報",
       house: "莊家優勢",
       note: "下表數字由服務端下發，與後台改賠率時的閘門共用同一份算式：期望回報必須小於 1，站長把表改到等於或大於 1 會被直接拒絕儲存。",
+      farmEgg:
+        "在確定性收穫之外，每次收穫另按權重抽一檔彩頭；倍數按這一株作物的種子價折算（目前定標 {n} {magic}）。",
       limit: "限次",
     },
 
@@ -2186,7 +2188,7 @@ const zhTwBase: Omit<
   },
   farm: {
     title: "{magic}農場",
-    marketRule: "市場價 {time} 刷新（每日 0/4/8/12/16/20 點 · ±50% 波動）",
+    marketRule: "市場價 {time} 刷新（{rule} · ±50% 波動）",
     loading: "農場載入中…",
     plotEmpty: "空地 #{n}",
     plotHint: "從下方行情選作物播種",
@@ -2211,6 +2213,10 @@ const zhTwBase: Omit<
     harvest: "🌾 收穫",
     notReady: "未成熟",
     harvestOk: "收穫 {crop} +{amount} {magic}{doubled}",
+    eggMagic: " · 🥚 彩蛋 +{n}",
+    eggItem: " · 🎁 彩蛋「{p}」",
+    eggFallback: " · 彩蛋「{p}」沒發出去：{why}",
+    eggSome: " · 🎁 彩蛋 {n} 次",
     doubled: "（雙倍！）",
     market: "菜市場行情",
     myField: "我的田",
@@ -2219,7 +2225,7 @@ const zhTwBase: Omit<
     growInfo: "{h}h 成熟 · 基準 {p}",
     plant: "播種",
     plantOk: "已種下 {crop}（花費 {cost} {magic}）",
-    full: "6 塊地都已種滿",
+    full: "{n} 塊地都已種滿",
   },
   dressup: {
     title: "裝扮中心",
@@ -2686,12 +2692,19 @@ const zhTwBase: Omit<
       kindItem: "物品",
       labelJgg: "九宮格 · 標準池",
       labelScratch: "刮刮樂 · 標準票",
+      labelFarm: "農場 · 收穫彩蛋",
+      seedCapFarm:
+        "目前表上只有一檔「什麼都不加」——加一檔就是給每次收穫開一個彩蛋：倍率按這一株作物的種子價折算。",
       pickGame: "獎池",
       title: "獎池編輯器",
       ticket: "票價 / 最低注額",
+      ticketFarm: "定標單位（種子價）",
+      ticketFarmNote:
+        "農場彩蛋的倍數按「這一株作物的種子價」折算，定標單位取最便宜那一株，由作物表決定，不能手填",
       colPrize: "獎項名",
       colWeight: "權重（千分）",
       colValue: "倍數 / 物品件數",
+      colValueFarm: "種子價倍數 / 物品件數",
       save: "儲存獎池",
       saving: "儲存中…",
       saved: "已儲存，玩法讀到的就是這張表",
@@ -2700,6 +2713,8 @@ const zhTwBase: Omit<
       newRow: "新檔位",
       note: "儲存前服務端按 EV<1 關閘：被拒時下面直接顯示後端原因，表裡一字不改。",
       loadFail: "讀不到獎池（玩法側未開放或登入態失效）",
+      farmGateNote:
+        "農場在彩蛋之外還有 0.90 的確定性收穫，所以這一池的閘門是「0.90 + 彩蛋 < 1」：餘量只有 0.10，物品位必須限量。",
       saveFail: "儲存失敗",
     },
     title: "娛樂屋運營",

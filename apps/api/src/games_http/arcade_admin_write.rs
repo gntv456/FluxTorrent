@@ -102,6 +102,22 @@ pub(super) async fn arcade_pool_save(
     if b.ticket <= 0 {
         return Err(DomainError::Validation("票价必须为正".into()));
     }
+    // 农场的「票价」不是站长填的数，而是彩蛋池的定标单位 = **最便宜作物的种子价**
+    // （彩蛋按它的倍数派）。这里用活值覆盖表单值：作物表变了而表单还带着旧数，
+    // 按过期口径放行等于给增发留门。
+    let ticket = match b.game.as_str() {
+        "farm" => {
+            let unit = super::farm_egg::farm_unit(&state.repo.db).await?;
+            if unit <= 0 {
+                return Err(DomainError::Validation(
+                    "农场彩蛋按最便宜作物的种子价定标，作物表为空时无法定标"
+                        .into(),
+                ));
+            }
+            unit
+        }
+        _ => b.ticket,
+    };
     // 先逐个解析物品 anchor 再校验：anchor 要查库，闭包里 await 不合法，
     // 而且「先全解析、再一次校验」才能保证坏配置一条都不会写进去。
     let mut entries: Vec<games::PoolEntry> = Vec::new();
@@ -141,7 +157,14 @@ pub(super) async fn arcade_pool_save(
                 DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}"))
             })?;
     }
-    games::validate_pool(&entries, b.ticket).map_err(|e| {
+    // EV 判据分两条：另三个玩法是纯抽奖（池子 EV < 1），农场在奖池之外还有
+    // 0.90 的确定性收获，所以它的闸是「0.90 + 彩蛋 < 1」。
+    let gate = if b.game == "farm" {
+        games::validate_farm(&entries, ticket)
+    } else {
+        games::validate_pool(&entries, ticket)
+    };
+    gate.map_err(|e| {
         DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}"))
     })?;
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
@@ -157,7 +180,7 @@ pub(super) async fn arcade_pool_save(
     .bind(&b.pool_key)
     .bind(&b.game)
     .bind(&b.label)
-    .bind(b.ticket)
+    .bind(ticket)
     .execute(&mut *tx)
     .await
     .map_err(dberr)?;
@@ -202,9 +225,16 @@ pub(super) async fn arcade_pool_save(
         .repo
         .audit(Some(auth.id), "arcade.pool.save", None)
         .await;
-    Ok(ok(json!({
+    // 回给编辑器的是**闸门用的那个数**。`ev` 是既有公开字段（池子自身的 EV），
+    // 农场再**附加** total_ev = 0.90 收获 + 彩蛋 —— 替换已上线的字段等于打坏客户端。
+    let mut out = json!({
         "pool": b.pool_key,
+        "ticket": ticket,
         "entries": b.entries.len(),
-        "ev": games::pool_ev(&entries, b.ticket),
-    })))
+        "ev": games::pool_ev(&entries, ticket),
+    });
+    if b.game == "farm" {
+        out["total_ev"] = json!(games::farm_total_ev(&entries, ticket));
+    }
+    Ok(ok(out))
 }

@@ -3,6 +3,7 @@
 import { PANEL_LG } from "@/lib/ui-classes";
 
 import { fmt, fmtCur } from "@/i18n/config";
+import { eggText, type EggPrize } from "@/lib/games";
 import {
   FarmPlot,
   MarketCard,
@@ -101,6 +102,7 @@ export function MyFieldSection({
                     crop: string;
                     amount: number;
                     doubled: boolean;
+                    prize?: EggPrize;
                   };
                   return r.withered
                     ? fmtCur(tf.witheredOk, { crop: r.crop }, currency)
@@ -112,14 +114,18 @@ export function MyFieldSection({
                           doubled: r.doubled ? tf.doubled : "",
                         },
                         currency,
-                      );
+                      ) + eggText(tf, r.prize);
                 },
                 (d) => {
                   const r = d as unknown as {
                     withered?: boolean;
                     doubled?: boolean;
+                    prize?: EggPrize;
                   };
-                  return r.withered ? "lose" : r.doubled ? "jackpot" : "win";
+                  if (r.withered) return "lose";
+                  return r.doubled || r.prize?.kind === "item"
+                    ? "jackpot"
+                    : "win";
                 },
               )
             }

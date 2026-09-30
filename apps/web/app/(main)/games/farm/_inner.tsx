@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
+import { countdownText, eggText, type EggPrize } from "@/lib/games";
 import { BalanceBar } from "@/components/game/game-kit";
 import { GameStage } from "@/components/game/game-stage";
 import { GameToast } from "@/components/game/game-kit-feedback";
@@ -16,6 +17,8 @@ export interface FarmData {
   crops: import("@/components/game/farm-field").Crop[];
   plots: import("@/components/game/farm-field").Plot[];
   slots: number;
+  /** 市场价刷新口径（服务端按设置键算出的文字，前端不抄第二份） */
+  market_refresh?: string;
   /** 农场自己的限流配额（rl:farm，与即时赌局分开计数） */
   hour_limit?: number;
   hour_left?: number;
@@ -150,15 +153,12 @@ export default function FarmPage({
       ? ""
       : new Date(data.next_refresh * 1000).toLocaleTimeString(
           dateLocale(locale),
-          {
-            hour: "2-digit",
-            minute: "2-digit",
-          },
+          { hour: "2-digit", minute: "2-digit" },
         );
   const refreshIn =
     now === null
       ? ""
-      : fmt(tf.refreshIn, { t: leftText(data.next_refresh * 1000 - now) });
+      : fmt(tf.refreshIn, { t: countdownText(data.next_refresh * 1000 - now) });
   const firstEmpty = plots.findIndex((p) => !p) + 1;
   const readyPlots = plots.filter((p) => p && p.ready && !p.withered);
 
@@ -172,25 +172,31 @@ export default function FarmPage({
     let total = 0;
     let doubled = 0;
     let failed = 0;
+    let eggs = 0;
     for (const p of readyPlots) {
       try {
-        const r = await api.post<{ amount: number; doubled: boolean }>(
-          "/api/v1/farm/harvest",
-          {
-            slot: p!.slot,
-          },
-        );
+        const r = await api.post<{
+          amount: number;
+          doubled: boolean;
+          prize?: EggPrize;
+        }>("/api/v1/farm/harvest", {
+          slot: p!.slot,
+        });
         total += r.amount;
         if (r.doubled) doubled++;
+        // 「这一档彩蛋响不响」与单块收获共用同一份判断：空档不出声
+        if (eggText(tf, r.prize)) eggs++;
       } catch {
         failed++;
       }
     }
     setMsg({
-      kind: doubled > 0 ? "jackpot" : "win",
+      kind: doubled > 0 || eggs > 0 ? "jackpot" : "win",
       text: `${fmtCur(tf.harvestAllOk, { n: total, c: readyPlots.length - failed }, currency)}${
         doubled > 0 ? ` ${tf.doubled}` : ""
-      }${failed > 0 ? ` · ${tf.harvestAllFail.replace("{n}", String(failed))}` : ""}`,
+      }${failed > 0 ? ` · ${tf.harvestAllFail.replace("{n}", String(failed))}` : ""}${
+        eggs > 0 ? fmt(tf.eggSome, { n: eggs }) : ""
+      }`,
     });
     setBusy(false);
     await refresh();
@@ -200,7 +206,7 @@ export default function FarmPage({
   function plant(cropId: number) {
     const slot = picking ?? firstEmpty;
     if (slot === 0) {
-      setErr(tf.full);
+      setErr(fmt(tf.full, { n: plots.length }));
       return;
     }
     void act("/farm/plant", { slot, crop_id: cropId }, (d) =>
@@ -228,7 +234,10 @@ export default function FarmPage({
           🌾 {tf.title.replace("{magic}", currency)}
         </h1>
         <span className="text-sm text-sub">
-          {fmt(tf.marketRule, { time: nextRefresh })}
+          {fmt(tf.marketRule, {
+            time: nextRefresh,
+            rule: data.market_refresh ?? "",
+          })}
           {refreshIn && ` · ${refreshIn}`}
         </span>
       </div>
@@ -285,10 +294,3 @@ export default function FarmPage({
   );
 }
 
-function leftText(ms: number): string {
-  if (ms <= 0) return "00:00:00";
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
