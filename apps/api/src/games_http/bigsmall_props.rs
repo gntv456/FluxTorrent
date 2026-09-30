@@ -160,6 +160,23 @@ pub(super) async fn consume(
     idem: &str,
 ) -> DomainResult<()> {
     let mut tx = db.begin().await.map_err(dberr)?;
+    let out = consume_tx(&mut tx, user_id, key, game, idem).await;
+    if out.is_ok() {
+        tx.commit().await.map_err(dberr)?;
+    }
+    out
+}
+
+/// 事务内版本：调用方要把「扣注额 + 扣道具 + 结算」并进一笔事务时用它。
+/// 出错时**不在这里 rollback** —— 那会把调用方已经扣掉的注额一起撤掉（白玩一局）；
+/// 外层事务由调用方负责（出错即整体回滚，本来就该如此）。
+pub(super) async fn consume_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: i64,
+    key: &str,
+    game: &str,
+    idem: &str,
+) -> DomainResult<()> {
     let held: i64 = sqlx::query_scalar(
         "SELECT COALESCE((SELECT held FROM arcade_item_held \
                            WHERE user_id = $1 AND item_key = $2), 0)::bigint \
@@ -167,11 +184,10 @@ pub(super) async fn consume(
     )
     .bind(user_id)
     .bind(key)
-    .fetch_one(&mut *tx)
+    .fetch_one(&mut **tx)
     .await
     .map_err(dberr)?;
     if held < 1 {
-        tx.rollback().await.map_err(dberr)?;
         return Err(DomainError::Validation(
             "道具已被用完，请刷新后重试".into(),
         ));
@@ -185,7 +201,7 @@ pub(super) async fn consume(
     .bind(user_id)
     .bind(game)
     .bind(idem)
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await;
     if let Err(e) = res {
         // 同键重放（这一笔早受理）不算错，也不重复扣件
@@ -194,12 +210,10 @@ pub(super) async fn consume(
             .map(|d| d.constraint().unwrap_or("").contains("idem"))
             .unwrap_or(false);
         if replay {
-            tx.commit().await.map_err(dberr)?;
             return Ok(());
         }
         return Err(dberr(e));
     }
-    tx.commit().await.map_err(dberr)?;
     Ok(())
 }
 

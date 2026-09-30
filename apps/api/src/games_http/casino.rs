@@ -5,14 +5,14 @@ use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark, spend_spark, SpendOutcome};
+use crate::economy_http::{earn_spark_tx, spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::games::{self, Guess};
 use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::helpers::{check_bet, check_rate, idem_key, BetReq};
-use super::pool::{grant_item, load_pool, load_table, GrantOutcome};
+use super::pool::{dberr, grant_item_tx, load_pool, load_table, GrantOutcome};
 
 /// 一档的结算：魔力位按 `unit × 千分倍率 / 1000` 派彩，物品位走发放账。
 ///
@@ -21,6 +21,22 @@ use super::pool::{grant_item, load_pool, load_table, GrantOutcome};
 /// 发不出去时按 `FALLBACK_MULT` 折魔力，这条回落已被 EV 计入，不是额外成本。
 pub(super) async fn settle(
     state: &web::Data<std::sync::Arc<AppState>>,
+    uid: i64,
+    unit: i64,
+    draw: &games::Draw,
+    game: &str,
+    win_idem: &str,
+) -> DomainResult<(i64, i64, Option<&'static str>)> {
+    let mut tx = state.repo.db.begin().await.map_err(dberr)?;
+    let out = settle_tx(&mut tx, uid, unit, draw, game, win_idem).await?;
+    tx.commit().await.map_err(dberr)?;
+    Ok(out)
+}
+
+/// 事务内版本：把「扣注额 + 结算」并进一笔事务时用它 ——
+/// 分两次写的话，第二次失败就是「注额扣了、什么都没发生」，玩家白亏一注。
+pub(super) async fn settle_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     uid: i64,
     unit: i64,
     draw: &games::Draw,
@@ -36,28 +52,22 @@ pub(super) async fn settle(
             item_key,
             qty,
             anchor,
-        } => match grant_item(
-            &state.repo.db,
-            uid,
-            item_key,
-            *qty,
-            game,
-            "rand",
-            win_idem,
-        )
-        .await?
-        {
-            GrantOutcome::Granted => {
-                (0, anchor.saturating_mul(i64::from(*qty)), None)
+        } => {
+            match grant_item_tx(tx, uid, item_key, *qty, game, "rand", win_idem)
+                .await?
+            {
+                GrantOutcome::Granted => {
+                    (0, anchor.saturating_mul(i64::from(*qty)), None)
+                }
+                GrantOutcome::FellBack(why) => {
+                    let p = unit.saturating_mul(games::FALLBACK_MULT);
+                    (p, p, Some(why))
+                }
             }
-            GrantOutcome::FellBack(why) => {
-                let p = unit.saturating_mul(games::FALLBACK_MULT);
-                (p, p, Some(why))
-            }
-        },
+        }
     };
     if spark > 0 {
-        earn_spark(&state.repo.db, uid, spark, "game", win_idem).await?;
+        earn_spark_tx(tx, uid, spark, "game", win_idem).await?;
     }
     Ok((spark, value, fell_back))
 }
@@ -94,11 +104,17 @@ pub(super) async fn scratch(
     check_rate(&state, &state.redis, auth.id).await?;
 
     let idem = idem_key("scratch", auth.id, &body.idempotency_key);
+    // 抽档是纯计算，先定死；再开一笔事务把「扣注额 + 结算」一起提交 ——
+    // 分两次写的话，结算失败就是「注额扣了、奖没开」，玩家白亏一注。
+    let draw = games::draw_entry(&pool.entries)
+        .ok_or_else(|| DomainError::Validation("刮刮乐奖池不可抽样".into()))?;
+    let win_idem = format!("game-scratch-win:{}", idem);
     // 幂等：同一键重复提交（网络重试/双击）不重复扣款，也**不重开一次奖** ——
     // 否则「首局未中奖 + 重放中奖」= 白赚，是必须堵住的印钞口。
+    let mut tx = state.repo.db.begin().await.map_err(dberr)?;
     if !matches!(
-        spend_spark(
-            &state.repo.db,
+        spend_spark_tx(
+            &mut tx,
             auth.id,
             body.bet,
             "game",
@@ -109,13 +125,13 @@ pub(super) async fn scratch(
         .await?,
         SpendOutcome::Spent
     ) {
+        let _ = tx.rollback().await;
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
     }
-    let draw = games::draw_entry(&pool.entries)
-        .ok_or_else(|| DomainError::Validation("刮刮乐奖池不可抽样".into()))?;
-    let win_idem = format!("game-scratch-win:{}", idem);
     let (spark, value, fell_back) =
-        settle(&state, auth.id, body.bet, &draw, "scratch", &win_idem).await?;
+        settle_tx(&mut tx, auth.id, body.bet, &draw, "scratch", &win_idem)
+            .await?;
+    tx.commit().await.map_err(dberr)?;
     state.repo.audit(Some(auth.id), "game.scratch", None).await;
     Ok(ok(serde_json::json!({
         "multiplier": draw.prize.mult_permille() as f64 / 1000.0,
@@ -175,33 +191,40 @@ pub(super) async fn guess_bigsmall(
     check_rate(&state, &state.redis, auth.id).await?;
 
     let idem = idem_key("bs", auth.id, &body.idempotency_key);
-    // 幂等（同 scratch）：重放不重开，避免「首局没中 + 重放中了」白赚
-    if !matches!(
-        spend_spark(db, auth.id, body.bet, "game", &idem, "bigsmall", 0).await?,
-        SpendOutcome::Spent
-    ) {
-        return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
-    }
-    // 扣道具（幂等键 = 本局 + 道具 key）：重放不重复扣，也不吞掉一件
-    for p in &props {
-        super::bigsmall_props::consume(
-            db,
-            auth.id,
-            &p.key,
-            "bigsmall",
-            &format!("game-bs-prop:{idem}:{}", p.key),
-        )
-        .await?;
-    }
-    // 机制在代码（1..100 均匀、49/2/49 分区），派彩在表
+    // 机制在代码（1..100 均匀、49/2/49 分区），派彩在表。先定死结果再动账。
     let number = games::roll();
     let side = games::outcome_side(number, guess);
     let draw = games::draw_entry(table.region(side)).ok_or_else(|| {
         DomainError::Validation("猜大小该档区不可抽样".into())
     })?;
     let win_idem = format!("game-bs-win:{}", idem);
+    let prop_idem = |k: &str| format!("game-bs-prop:{idem}:{k}");
+    // 一笔事务走完：扣注额 → 扣道具 → 结算 → 道具加成。
+    // 中间任何一步失败都整体回滚 —— 半途而废等于「注额和道具都扣了，什么都没发生」。
+    let mut tx = state.repo.db.begin().await.map_err(dberr)?;
+    // 幂等（同 scratch）：重放不重开，避免「首局没中 + 重放中了」白赚
+    if !matches!(
+        spend_spark_tx(&mut tx, auth.id, body.bet, "game", &idem, "bigsmall", 0)
+            .await?,
+        SpendOutcome::Spent
+    ) {
+        let _ = tx.rollback().await;
+        return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
+    }
+    // 扣道具（幂等键 = 本局 + 道具 key）：重放不重复扣，也不吞掉一件
+    for p in &props {
+        super::bigsmall_props::consume_tx(
+            &mut tx,
+            auth.id,
+            &p.key,
+            "bigsmall",
+            &prop_idem(&p.key),
+        )
+        .await?;
+    }
     let (base_spark, value, fell_back) =
-        settle(&state, auth.id, body.bet, &draw, "bigsmall", &win_idem).await?;
+        settle_tx(&mut tx, auth.id, body.bet, &draw, "bigsmall", &win_idem)
+            .await?;
     // 道具加权：只改魔力的输赢幅度，不产生任何物品
     let ap = super::bigsmall_props::apply(
         &props,
@@ -211,8 +234,8 @@ pub(super) async fn guess_bigsmall(
         draw.prize.mult_permille(),
     );
     if ap.extra > 0 {
-        earn_spark(
-            db,
+        earn_spark_tx(
+            &mut tx,
             auth.id,
             ap.extra,
             "game",
@@ -220,6 +243,7 @@ pub(super) async fn guess_bigsmall(
         )
         .await?;
     }
+    tx.commit().await.map_err(dberr)?;
     let payout = base_spark + ap.extra;
     state.repo.audit(Some(auth.id), "game.bigsmall", None).await;
     Ok(ok(serde_json::json!({
