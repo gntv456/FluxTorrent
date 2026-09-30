@@ -171,13 +171,17 @@ def main():
                 "FROM farm_crops ORDER BY seed_price LIMIT 1").split("/")
     cid, grow_h = int(crop[0]), int(crop[2])
     base_min = grow_h * 60
-    st, r = call("POST", "/farm/plant", {"slot": 3, "crop_id": cid}, pt)
+    # 基线用 slot 4（Lv.1 免费地）：同一槽位一分钟内只许种一次（反刷保护），
+    # 后面还要在 slot 3 升级后复测，这里换槽避免撞上那一分钟窗口。
+    st, r = call("POST", "/farm/plant", {"slot": 4, "crop_id": cid}, pt)
     d3 = (r.get("data") or {})
     check("免费地块未升级时按作物表原速成熟",
           st == 200 and d3.get("minutes") == base_min, (st, d3))
-    psql("DELETE FROM farm_plots WHERE user_id = %d AND slot = 3" % uid)
+    psql("DELETE FROM farm_plots WHERE user_id = %d AND slot = 4" % uid)
 
-    st, r = call("POST", "/farm/land/upgrade", {"slot": 3}, pt)
+    up_k = "e2e-land-up-%d" % int(time.time())
+    st, r = call("POST", "/farm/land/upgrade",
+                 {"slot": 3, "idempotency_key": up_k + "-a"}, pt)
     d4 = (r.get("data") or {})
     check("升级免费地块（Lv.1->2）按底数收钱",
           st == 200 and d4.get("level") == 2
@@ -185,10 +189,15 @@ def main():
     check("免费地一旦升级就落持有行（不升级就没有行）",
           psql("SELECT level FROM farm_land WHERE user_id = %d AND slot = 3"
                % uid) == "2", uid)
-    st, r = call("POST", "/farm/land/upgrade", {"slot": 3}, pt)
-    check("同一级的重放不双扣（幂等键绑「从第几级升」）",
+    # 重放要**带同一个客户端幂等键**才成立：两个字节完全相同的请求
+    # （都不带键）服务端无从区分「上一次的重试」和「新的一次升级」，
+    # 那种断言天然不可满足 —— 是测试不自洽，不是产品坏。
+    st, r = call("POST", "/farm/land/upgrade",
+                 {"slot": 3, "idempotency_key": up_k + "-a"}, pt)
+    check("同一级的重放不双扣（客户端幂等键去重）",
           st == 400, (st, str(r)[:120]))
-    st, r = call("POST", "/farm/land/upgrade", {"slot": 3}, pt)
+    st, r = call("POST", "/farm/land/upgrade",
+                 {"slot": 3, "idempotency_key": up_k + "-b"}, pt)
     d5 = (r.get("data") or {})
     check("Lv.2->3 收更贵的下一级价（×比率）",
           st == 200 and d5.get("level") == 3
@@ -212,7 +221,7 @@ def main():
              "ready_at, watered) VALUES (%d, %d, %d, now() - interval '2 "
              "hour', now() - interval '5 minute', FALSE) ON CONFLICT "
              "(user_id, slot) DO UPDATE SET crop_id = %d"
-             % (uid, slot, cid, uid, slot, cid))
+             % (uid, slot, cid, cid))
         st, r = call("POST", "/farm/harvest", {"slot": slot}, pt)
         paid[lvl] = (r.get("data") or {}).get("market_price")
     win1 = land_of(pt)[1].get("data", {}).get("window_start")
@@ -227,7 +236,12 @@ def main():
     check("满级之后拒收钱（那一注买不到任何东西）",
           st == 400 and "12" in json.dumps(r, ensure_ascii=False),
           (st, str(r)[:140]))
-    st, r = call("POST", "/farm/plant", {"slot": 3, "crop_id": cid}, pt)
+    # 满级地板用 slot 5（换槽，避开同一分钟内的种植限次）。
+    # ⚠️ 免费地**没有持有行**（不升级就没有行），UPDATE 影响 0 行等于没改 ——
+    # 必须真的 INSERT 一行 Lv.12（0260 的 CHECK 允许 level>1 的免费槽落行）。
+    psql("INSERT INTO farm_land (user_id, slot, level) VALUES (%d, 5, 12) "
+         "ON CONFLICT (user_id, slot) DO UPDATE SET level = 12" % uid)
+    st, r = call("POST", "/farm/plant", {"slot": 5, "crop_id": cid}, pt)
     d7 = (r.get("data") or {})
     check("满级也只压到地板：4 小时的作物最低 120 分钟，不会种下即熟",
           st == 200 and d7.get("minutes") == base_min * 503 // 1000 == 120,
