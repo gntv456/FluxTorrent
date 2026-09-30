@@ -176,7 +176,9 @@ pub(super) async fn arcade_overview(
         "items": items,
         "params": {
             "max_bet": max_bet, "max_plays_per_hour": max_plays,
-            "bigsmall_mult_permille": mult,
+            // 猜大小的当前赔率不列在这里：0251 之后它住在奖池行表，
+            // 挂一个像设置键的名字在这一栏，等于让人去站点设定里找一个不存在的键。
+            // 同一个数字由下面 EV 表的 note 报出（赔率 1900‰，必须 < 2000‰）。
             "arcade_budget_base": base, "arcade_budget_pct": pct,
             "arcade_budget_window_days": win,
         },

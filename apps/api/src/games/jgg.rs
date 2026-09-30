@@ -90,6 +90,13 @@ pub enum PoolError {
     RegionWeight(String, i64, i64),
     /// EV ≥ 1：不再回收魔力而是在增发 —— 一律关闸，不回落
     ExpectedValueNotBelowOne(f64),
+    /// 票档 / 最低注额高过「单次下注上限」：没有任何合法注额能开出这一局
+    TicketAboveMaxBet {
+        ticket: i64,
+        max_bet: i64,
+    },
+    /// 票档非正（农场那池是定标单位，另三个是最低注额）
+    BadTicketValue(i64),
 }
 
 impl std::fmt::Display for PoolError {
@@ -117,6 +124,13 @@ impl std::fmt::Display for PoolError {
             ),
             PoolError::ExpectedValueNotBelowOne(ev) => {
                 write!(f, "综合返还 {ev:.3} ≥ 1：玩法在增发而非回收，拒绝服务")
+            }
+            PoolError::TicketAboveMaxBet { ticket, max_bet } => write!(
+                f,
+                "票价 / 最低注额 {ticket} 超过单次下注上限 {max_bet}：没有任何合法注额，玩法当场死掉，拒绝保存"
+            ),
+            PoolError::BadTicketValue(t) => {
+                write!(f, "票价 / 定标单位必须为正，实为 {t}")
             }
         }
     }
@@ -177,6 +191,20 @@ pub fn validate_pool(
         return Err(PoolError::ExpectedValueNotBelowOne(pool_ev(
             entries, ticket,
         )));
+    }
+    Ok(())
+}
+
+/// 票档上限关闸：`games_max_bet` 是风控常数，票价 / 最低注额超过它，
+/// 「低于票档拒开」与「高于上限拒开」两条规则就把所有注额都堵死了 ——
+/// 玩法不是变贵，是不再可玩。运行时 `casino.rs` 同样会拒开这一局，
+/// 但那等于把配置事故留给玩家发现，所以写侧先拦。
+pub fn validate_ticket_cap(ticket: i64, max_bet: i64) -> Result<(), PoolError> {
+    if ticket <= 0 {
+        return Err(PoolError::BadTicketValue(ticket));
+    }
+    if max_bet > 0 && ticket > max_bet {
+        return Err(PoolError::TicketAboveMaxBet { ticket, max_bet });
     }
     Ok(())
 }

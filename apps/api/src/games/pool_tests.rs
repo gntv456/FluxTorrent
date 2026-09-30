@@ -170,3 +170,25 @@ fn draw_refuses_invalid_pool_shape() {
     assert!(draw_entry(&[]).is_none());
     assert!(draw_entry(&[magic("zero", 0, 1)]).is_none());
 }
+
+// ---- 票档 / 最低注额与单次下注上限 ----
+
+#[test]
+fn ticket_above_max_bet_is_refused() {
+    // 票价 10000 而 games_max_bet 是 500：低于票档拒开、高于上限也拒开，
+    // 两个规则夹住所有注额 —— 这张表存进去，玩法就不再可玩
+    assert!(matches!(
+        validate_ticket_cap(10_000, 500),
+        Err(PoolError::TicketAboveMaxBet { .. })
+    ));
+    // 正好等于上限合法（注额只有一个值，但它是合法的）
+    assert!(validate_ticket_cap(500, 500).is_ok());
+    assert!(validate_ticket_cap(100, 500).is_ok());
+    // 上限被设成 0 视为「不额外约束」，不拿它当拒开一切的理由
+    assert!(validate_ticket_cap(100, 0).is_ok());
+    // 票价非正是另一件事，报另一个错
+    assert!(matches!(
+        validate_ticket_cap(0, 500),
+        Err(PoolError::BadTicketValue(0))
+    ));
+}
