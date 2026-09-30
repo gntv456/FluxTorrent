@@ -211,6 +211,25 @@ const CONTRACTS = [
     iface: "BoardBrief",
     strict: true,
   },
+  // 娱乐屋 · 农场：`GET /farm` 的两行表投影。作物表自 0253 起是站长可配的行表
+  // （`active` = 下架位），地块投影自 0260 起与土地阶梯同页读 —— 两侧字段
+  // 必须逐字对齐，接口改了前端没跟就是「读到 undefined」。
+  {
+    label: "农场地块 GET /farm.plots",
+    rust: "apps/api/src/games_http/farm.rs",
+    struct: "PlotRow",
+    ts: "apps/web/components/game/farm-field.tsx",
+    iface: "Plot",
+    strict: true,
+  },
+  {
+    label: "农场作物行情 GET /farm.crops",
+    rust: "apps/api/src/games_http/farm.rs",
+    struct: "CropRow",
+    ts: "apps/web/components/game/farm-art.tsx",
+    iface: "Crop",
+    strict: true,
+  },
 ];
 
 const cache = new Map();
