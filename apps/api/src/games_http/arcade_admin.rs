@@ -107,7 +107,7 @@ pub(super) async fn arcade_overview(
     let item_rows = sqlx::query(
         r#"
         SELECT key, name, kind, anchor, anchor_src, unlimited,
-               stock, per_user, icon, enabled
+               stock, per_user, icon, enabled, use_kind, use_ref
           FROM arcade_items ORDER BY sort, key
         "#,
     )
@@ -129,6 +129,8 @@ pub(super) async fn arcade_overview(
                 "per_user": r.get::<i32, _>("per_user"),
                 "icon": r.get::<String, _>("icon"),
                 "enabled": r.get::<bool, _>("enabled"),
+                "use_kind": r.get::<String, _>("use_kind"),
+                "use_ref": r.get::<String, _>("use_ref"),
             })
         })
         .collect();

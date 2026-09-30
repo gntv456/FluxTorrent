@@ -5,7 +5,7 @@
 //! 必须跨池回查并整体回滚。这条逻辑独立出来才看得清，
 //! 也不会把两个端点的行数叠在一起撞 300 上限。
 
-use actix_web::{delete, post, web, HttpRequest, HttpResponse};
+use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -17,6 +17,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::arcade_admin_write::default_qty;
+use super::item_use::{check_use_shape, use_kind_or_collect};
 use super::pool::dberr;
 #[derive(Deserialize)]
 pub(super) struct ItemSaveReq {
@@ -35,6 +36,12 @@ pub(super) struct ItemSaveReq {
     pub icon: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
+    /// 用途：collect 收藏 | spark 兑现魔力 | sku 走商店生效链（见 item_use.rs）
+    #[serde(default)]
+    pub use_kind: String,
+    /// sku 时填绑定的 shop_items.id
+    #[serde(default)]
+    pub use_ref: String,
 }
 
 fn default_true() -> bool {
@@ -85,20 +92,24 @@ pub(super) async fn arcade_item_save(
     if !b.unlimited && b.stock < 0 {
         return Err(DomainError::Validation("限量物品 stock 不能为负".into()));
     }
+    // 用途侧的形制闸（详见 item_use.rs）：绑了商店 SKU 就必须兑得出等价的东西
+    check_use_shape(db, &b.use_kind, b.use_ref.trim(), b.anchor, &b.name)
+        .await?;
 
     let mut tx = db.begin().await.map_err(dberr)?;
     sqlx::query(
         r#"
         INSERT INTO arcade_items
             (key, name, kind, anchor, anchor_src,
-             unlimited, stock, per_user, icon, enabled)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             unlimited, stock, per_user, icon, enabled, use_kind, use_ref)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         ON CONFLICT (key) DO UPDATE SET
             name = EXCLUDED.name, kind = EXCLUDED.kind,
             anchor = EXCLUDED.anchor, anchor_src = EXCLUDED.anchor_src,
             unlimited = EXCLUDED.unlimited, stock = EXCLUDED.stock,
             per_user = EXCLUDED.per_user, icon = EXCLUDED.icon,
-            enabled = EXCLUDED.enabled, updated_at = now()
+            enabled = EXCLUDED.enabled, use_kind = EXCLUDED.use_kind,
+            use_ref = EXCLUDED.use_ref, updated_at = now()
     "#,
     )
     .bind(&b.key)
@@ -111,6 +122,8 @@ pub(super) async fn arcade_item_save(
     .bind(b.per_user)
     .bind(&b.icon)
     .bind(b.enabled)
+    .bind(use_kind_or_collect(&b.use_kind))
+    .bind(b.use_ref.trim())
     .execute(&mut *tx)
     .await
     .map_err(dberr)?;
@@ -182,91 +195,12 @@ pub(super) async fn arcade_item_save(
         .repo
         .audit(Some(auth.id), "arcade.item.save", None)
         .await;
-    Ok(ok(
-        json!({ "key": b.key, "anchor": b.anchor, "kind": b.kind }),
-    ))
+    Ok(ok(json!({
+        "key": b.key,
+        "anchor": b.anchor,
+        "kind": b.kind,
+        "use_kind": use_kind_or_collect(&b.use_kind),
+        "use_ref": b.use_ref.trim(),
+    })))
 }
 
-/// 删除目录项。**两道必须先查，否则删除本身就是炸玩法读表的路**：
-///  · 还有奖池位引用它 —— `arcade_pool_entries.item_key` 是
-///    `ON DELETE SET NULL`，而 CHECK 要求 `kind='item'` 时 item_key 非空，
-///    删掉之后 load_pool 会当场校验失败，玩法直接拒绝服务；
-///  · 发放账里有它 —— 余量与每人上限都由 `arcade_item_grants` 反推，
-///    删物品会 CASCADE 清账，等于把「发出去多少」的证据抹掉。有账只许停用。
-#[delete("/admin/arcade/items/{key}")]
-pub(super) async fn arcade_item_delete(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<String>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    authz::require_perm(&state, &auth, authz::perm::USER_ADJUST).await?;
-    let key = path.into_inner();
-    let db = &state.repo.db;
-
-    let name: Option<String> =
-        sqlx::query_scalar("SELECT name FROM arcade_items WHERE key = $1")
-            .bind(&key)
-            .fetch_optional(db)
-            .await
-            .map_err(dberr)?;
-    let name = name.ok_or_else(|| {
-        DomainError::Validation(format!("目录里没有「{key}」"))
-    })?;
-
-    let refs: Vec<(String, String)> = sqlx::query_as(
-        r#"
-        SELECT e.label, p.key
-          FROM arcade_pool_entries e
-          JOIN arcade_pools p ON p.key = e.pool_key
-         WHERE e.item_key = $1 AND p.enabled AND e.enabled
-         ORDER BY p.key, e.sort
-        "#,
-    )
-    .bind(&key)
-    .fetch_all(db)
-    .await
-    .map_err(dberr)?;
-    if !refs.is_empty() {
-        let spots: Vec<String> = refs
-            .iter()
-            .map(|(label, pk)| format!("{pk}·{label}"))
-            .collect();
-        return Err(DomainError::Validation(format!(
-            "「{name}」仍被 {} 个奖池位引用（{}）：先从奖池撤下再删",
-            refs.len(),
-            spots.join("、")
-        )));
-    }
-
-    let grants: (i64, i64) = sqlx::query_as(
-        r#"
-        SELECT count(*)::bigint, COALESCE(sum(qty), 0)::bigint
-          FROM arcade_item_grants WHERE item_key = $1
-        "#,
-    )
-    .bind(&key)
-    .fetch_one(db)
-    .await
-    .map_err(dberr)?;
-    if grants.0 > 0 {
-        let why = "发放账是余量与每人上限的唯一真相，\
-                   删物品会连账一起清掉 —— 请改为停用";
-        return Err(DomainError::Validation(format!(
-            "「{name}」已发放过 {} 件（{} 条账）。{why}",
-            grants.1, grants.0
-        )));
-    }
-
-    let deleted = sqlx::query("DELETE FROM arcade_items WHERE key = $1")
-        .bind(&key)
-        .execute(db)
-        .await
-        .map_err(dberr)?
-        .rows_affected();
-    state
-        .repo
-        .audit(Some(auth.id), "arcade.item.delete", None)
-        .await;
-    Ok(ok(json!({ "key": key, "deleted": deleted })))
-}
