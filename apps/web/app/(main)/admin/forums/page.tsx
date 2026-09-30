@@ -103,9 +103,10 @@ export default function AdminForumsPage() {
       ) : (
         <div className="baozi-panel p-4">
           <div className="mb-3 flex items-center gap-3">
-            <h2 className="font-display text-base font-bold text-ink">
+            {/* 唯一 h1：顶栏标题已降为视觉 p（admin-shell），页面标题自持 */}
+            <h1 className="font-display text-base font-bold text-ink">
               {f.title}
-            </h2>
+            </h1>
             <span className="text-xs text-sub">{f.hint}</span>
           </div>
 

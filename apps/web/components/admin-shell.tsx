@@ -171,9 +171,12 @@ export function AdminShell({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* 页面 h1 由各页自持（工具页 sr-only / 设定·论坛·用户详情可见标题），
+          这里只承担顶栏视觉 + 全局搜索。搜索框 max-w 封顶：flex-1 在放宽到
+          1600 的内容区会被拉到 1340px，输入框过宽失衡。 */}
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="font-display text-2xl">{a.panelTitle}</h1>
-        <div className="min-w-[180px] flex-1">
+        <p className="font-display text-2xl">{a.panelTitle}</p>
+        <div className="min-w-[180px] max-w-[560px] flex-1">
           <input
             ref={inputRef}
             value={q}
@@ -184,7 +187,7 @@ export function AdminShell({
           />
         </div>
         <span
-          className="shrink-0 rounded-full bg-sky-soft px-3 py-1 text-xs font-bold text-sky"
+          className="ml-auto shrink-0 rounded-full bg-sky-soft px-3 py-1 text-xs font-bold text-sky"
           title={
             ROLE_LABEL[role]
               ? a.roleTitle.replace("{role}", ROLE_LABEL[role]!)
