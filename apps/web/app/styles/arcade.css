@@ -1592,3 +1592,136 @@
 @media (prefers-reduced-motion: reduce) {
   .pp-pet { animation: none; }
 }
+
+/* ── 宠物档案 / 口粮券（0262 生态补全） ── */
+.pp-name { font-size: 13px; font-weight: 800; color: #eaf7ef; }
+.pp-species-tag {
+  font-size: 11px; color: #9fd8bc;
+  border: 1px solid var(--border-deep); border-radius: 999px;
+  padding: 1px 10px;
+}
+.pp-coupon {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: #cfe9dd; cursor: pointer;
+}
+.pp-custom-btn {
+  align-self: flex-start;
+  font-size: 12px; font-weight: 700; color: var(--sky-deep);
+  background: none; border: none; cursor: pointer; padding: 0;
+}
+.pp-custom-wrap {
+  position: fixed; inset: 0; z-index: 90;
+  display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.45); padding: 16px;
+}
+.pp-custom {
+  display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--border-deep); border-radius: var(--r-md);
+  background: var(--surface-card); padding: 12px;
+  width: min(420px, 92vw); max-height: min(86vh, 560px);
+  overflow-y: auto; box-shadow: var(--shadow-card);
+}
+.pp-custom-hd {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.pp-custom-hd h4 { font-size: 14px; font-weight: 800; }
+.pp-custom-x {
+  background: none; border: none; cursor: pointer;
+  color: var(--sub); font-size: 13px; padding: 2px 4px;
+}
+.pp-custom-lb { font-size: 11px; color: var(--sub); }
+.pp-custom-input {
+  background: var(--surface-sunken); border: 1px solid var(--line);
+  border-radius: var(--r-sm); padding: 6px 10px; color: inherit;
+}
+.pp-custom-save { align-self: flex-end; padding: 6px 14px; font-size: 12px; }
+.pp-species { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.pp-sp {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 8px 4px; cursor: pointer; background: transparent;
+}
+.pp-sp.on {
+  border-color: var(--mint); background: rgba(52, 185, 140, 0.12);
+}
+.pp-sp-line { font-size: 15px; }
+.pp-sp-name { font-size: 11px; font-weight: 700; }
+
+/* ── 钓鱼生态侧栏：渔汛横幅 / 鱼竿 / 渔获图鉴 ── */
+.fs-event {
+  font-size: 12px; font-weight: 700;
+  border-radius: var(--r-md); padding: 8px 10px;
+  background: var(--surface-sunken); color: var(--sub);
+}
+.fs-event.on {
+  background: rgba(52, 185, 140, 0.14); color: var(--mint);
+}
+.fs-rod {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12px;
+}
+.fs-rod-ico { font-size: 18px; }
+.fs-rod-lv { font-weight: 800; }
+.fs-rod-bonus { color: var(--sub); }
+.fs-rod-up { margin-left: auto; padding: 4px 10px; font-size: 11px; }
+.fs-album { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.fs-album-n {
+  margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--sub);
+}
+.fs-fish {
+  position: relative; display: flex; flex-direction: column;
+  align-items: center; gap: 1px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 8px 4px 6px; opacity: 0.45;
+}
+.fs-fish.got { opacity: 1; border-color: var(--border-deep); }
+.fs-fish.r4.got,
+.fs-fish.r5.got {
+  border-color: var(--warning);
+  box-shadow: 0 0 10px rgba(233, 185, 78, 0.35);
+}
+.fs-fish-face { font-size: 20px; }
+.fs-fish-name { font-size: 11px; font-weight: 700; }
+.fs-fish-ev { font-size: 9px; font-weight: 800; color: var(--mint); }
+.fs-fish-n { font-size: 10px; color: var(--sub); }
+
+/* ── 稀有掉落播报（大厅 feed） ── */
+.arc-chk.rare { font-weight: 800; }
+.arc-chk.rare .dot {
+  background: var(--warning);
+  box-shadow: 0 0 8px rgba(233, 185, 78, 0.8);
+}
+
+/* ── 周榜页 ── */
+.lb-hero { display: flex; flex-direction: column; gap: 4px; }
+.lb-hero h1 { font-size: 22px; font-weight: 900; }
+.lb-table { display: flex; flex-direction: column; }
+.lb-row {
+  display: grid; grid-template-columns: 48px 1fr auto;
+  align-items: center; gap: 8px;
+  padding: 8px 6px; font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+.lb-row:last-child { border-bottom: none; }
+.lb-head { font-size: 11px; color: var(--sub); }
+.lb-row.top1 {
+  background: linear-gradient(90deg, rgba(233, 185, 78, 0.16), transparent);
+}
+.lb-row.top2 {
+  background: linear-gradient(90deg, rgba(160, 170, 180, 0.12), transparent);
+}
+.lb-row.top3 {
+  background: linear-gradient(90deg, rgba(205, 133, 63, 0.10), transparent);
+}
+.lb-rank { font-weight: 800; }
+.lb-who { font-weight: 700; }
+
+/* ── 个人页宠物展示位 ── */
+.up-pet {
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+  background: var(--surface-card); box-shadow: var(--shadow-card);
+  padding: 12px 16px;
+}
+.up-pet-face { font-size: 30px; }
+.up-pet-meta { display: flex; flex-direction: column; flex: 1; }

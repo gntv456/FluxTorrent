@@ -14,14 +14,21 @@ export interface ArcadeFeedItem {
 
 function text(
   f: ArcadeFeedItem,
-  t: { feedStub: string; feedQuest: string; feedSeason: string },
+  t: {
+    feedStub: string;
+    feedQuest: string;
+    feedSeason: string;
+    feedRare: string;
+  },
 ): string {
   const tpl =
     f.kind === "stub"
       ? t.feedStub
       : f.kind === "quest"
         ? t.feedQuest
-        : t.feedSeason;
+        : f.kind === "rare"
+          ? t.feedRare
+          : t.feedSeason;
   return tpl.replace("{who}", f.who).replace("{name}", f.name);
 }
 
@@ -33,7 +40,10 @@ export function ArcadeFeed({ items }: { items: ArcadeFeedItem[] }) {
       <h3>{t.feedTitle}</h3>
       <div className="arc-checks">
         {items.map((f, i) => (
-          <div key={i} className="arc-chk">
+          <div
+            key={i}
+            className={`arc-chk${f.kind === "rare" ? " rare" : ""}`}
+          >
             <span className="dot" />
             <span>{text(f, t)}</span>
           </div>
