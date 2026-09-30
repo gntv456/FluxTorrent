@@ -36,15 +36,34 @@ pub(super) async fn grant_item(
     idem: &str,
 ) -> Result<GrantOutcome, DomainError> {
     let mut tx = db.begin().await.map_err(dberr)?;
+    let out = grant_item_tx(&mut tx, user_id, item_key, qty, game, side, idem)
+        .await?;
+    tx.commit().await.map_err(dberr)?;
+    Ok(out)
+}
+
+/// 事务内版本：调用方要把「扣注额 + 结算」并进一笔事务时用它。
+///
+/// ⚠️ 与旧实现的一处**有意差异**：回落（库存耗尽/达上限/物品停用）**不再 rollback**。
+/// 合并进外层事务后回滚会把已经扣掉的注额一起撤掉 —— 那就是白玩一局。
+/// 回落本就是正常结果（按 FALLBACK_MULT 折魔力），交给调用方去 commit。
+pub(super) async fn grant_item_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: i64,
+    item_key: &str,
+    qty: i32,
+    game: &str,
+    side: &str,
+    idem: &str,
+) -> Result<GrantOutcome, DomainError> {
     let seen: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM arcade_item_grants WHERE idem = $1)",
     )
     .bind(idem)
-    .fetch_one(&mut *tx)
+    .fetch_one(&mut **tx)
     .await
     .map_err(dberr)?;
     if seen {
-        tx.commit().await.map_err(dberr)?;
         return Ok(GrantOutcome::Granted);
     }
     let item: Option<(bool, i64, i32)> = sqlx::query_as(
@@ -55,15 +74,12 @@ pub(super) async fn grant_item(
     "#,
     )
     .bind(item_key)
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&mut **tx)
     .await
     .map_err(dberr)?;
     let (unlimited, stock, per_user) = match item {
         Some(v) => v,
-        None => {
-            tx.rollback().await.map_err(dberr)?;
-            return Ok(GrantOutcome::FellBack("物品不存在或已停用"));
-        }
+        None => return Ok(GrantOutcome::FellBack("物品不存在或已停用")),
     };
     if !unlimited {
         let used: i64 = sqlx::query_scalar(
@@ -74,11 +90,10 @@ pub(super) async fn grant_item(
     "#,
         )
         .bind(item_key)
-        .fetch_one(&mut *tx)
+        .fetch_one(&mut **tx)
         .await
         .map_err(dberr)?;
         if stock - used < i64::from(qty) {
-            tx.rollback().await.map_err(dberr)?;
             return Ok(GrantOutcome::FellBack("全服库存耗尽"));
         }
     }
@@ -91,11 +106,10 @@ pub(super) async fn grant_item(
     )
     .bind(item_key)
     .bind(user_id)
-    .fetch_one(&mut *tx)
+    .fetch_one(&mut **tx)
     .await
     .map_err(dberr)?;
     if mine + i64::from(qty) > i64::from(per_user) {
-        tx.rollback().await.map_err(dberr)?;
         return Ok(GrantOutcome::FellBack("已达每人上限"));
     }
     sqlx::query(
@@ -111,10 +125,9 @@ pub(super) async fn grant_item(
     .bind(game)
     .bind(side)
     .bind(idem)
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     .map_err(dberr)?;
-    tx.commit().await.map_err(dberr)?;
     Ok(GrantOutcome::Granted)
 }
 

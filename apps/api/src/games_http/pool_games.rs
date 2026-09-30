@@ -8,15 +8,15 @@ use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::{spend_spark, SpendOutcome};
+use crate::economy_http::{spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::games;
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::casino::{award_kind, settle};
+use super::casino::{award_kind, settle_tx};
 use super::helpers::{check_rate, eco_i64, idem_key};
-use super::pool::load_pool;
+use super::pool::{dberr, load_pool};
 
 #[derive(Deserialize)]
 struct DrawReq {
@@ -45,20 +45,25 @@ async fn pool_round(
     check_rate(state, &state.redis, uid).await?;
 
     let idem = idem_key(game, uid, &client_idem);
-    // 幂等（同 scratch）：重放不重开，避免「首局没中 + 重放中了」白赚
-    if !matches!(
-        spend_spark(&state.repo.db, uid, ticket, "game", &idem, game, 0).await?,
-        SpendOutcome::Spent
-    ) {
-        return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
-    }
+    // 抽档是纯计算，先定死；再开一笔事务把「扣票 + 结算」一起提交 ——
+    // 分两次写的话，结算失败就是「票价扣了、奖没开」，玩家白亏一注。
     let draw = games::draw_entry(&pool.entries)
         .ok_or_else(|| DomainError::Validation("奖池不可抽样".into()))?;
     // 魔力位直接入账；物品位走发放账（库存/上限/幂等同一事务判），
     // 发不出去时按 FALLBACK_MULT 折魔力 —— 这条回落已被 EV 计入，不是额外成本。
     let win_idem = format!("game-{game}-win:{idem}");
+    let mut tx = state.repo.db.begin().await.map_err(dberr)?;
+    // 幂等（同 scratch）：重放不重开，避免「首局没中 + 重放中了」白赚
+    if !matches!(
+        spend_spark_tx(&mut tx, uid, ticket, "game", &idem, game, 0).await?,
+        SpendOutcome::Spent
+    ) {
+        let _ = tx.rollback().await;
+        return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
+    }
     let (spark, value, fell_back) =
-        settle(state, uid, ticket, &draw, game, &win_idem).await?;
+        settle_tx(&mut tx, uid, ticket, &draw, game, &win_idem).await?;
+    tx.commit().await.map_err(dberr)?;
     state
         .repo
         .audit(Some(uid), &format!("game.{game}"), None)
