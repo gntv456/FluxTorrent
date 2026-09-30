@@ -179,3 +179,38 @@ pub(super) async fn land_projection(
 ) -> DomainResult<serde_json::Value> {
     Ok(load_land(state, user_id).await?.projection())
 }
+
+/// 运营面板的门禁行：五个阶梯参数合不合法，外加它们的**现值**。
+///
+/// 为什么这条要存在于面板而不是只在农场页炸：参数配错时 `load_land` 会
+/// 拒整份土地状态，于是农场整页读不出来 —— 站长看到的现象是「农场坏了」，
+/// 而不是「哪一把数配错了」。面板先替他把名字点出来。
+pub(super) async fn land_gate_row(
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> serde_json::Value {
+    let cap = eco_i64(state, "farm_max_plots", games::DEFAULT_MAX_PLOTS).await;
+    let land_base =
+        eco_i64(state, "farm_land_base", games::DEFAULT_LAND_BASE).await;
+    let land_ratio = eco_i64(
+        state,
+        "farm_land_ratio_permille",
+        games::DEFAULT_LAND_RATIO,
+    )
+    .await;
+    let up_base = eco_i64(state, "farm_up_base", games::DEFAULT_UP_BASE).await;
+    let up_ratio =
+        eco_i64(state, "farm_up_ratio_permille", games::DEFAULT_UP_RATIO).await;
+    let cfg = games::land_config(cap, land_base, land_ratio, up_base, up_ratio);
+    let why = match &cfg {
+        Ok(c) => format!(
+            "上限 {} · 首块地 {}（递增 {}‰）· 首次升级 {}（递增 {}‰）",
+            c.max_plots, c.land_base, c.land_ratio, c.up_base, c.up_ratio
+        ),
+        Err(e) => e.to_string(),
+    };
+    super::arcade_cfg::bad(
+        "农场土地阶梯参数合法（买地/升级报价可用）",
+        cfg.is_ok(),
+        why,
+    )
+}
