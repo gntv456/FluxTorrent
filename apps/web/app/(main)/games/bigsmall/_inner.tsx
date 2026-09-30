@@ -6,14 +6,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
+import { fmtMult } from "@/lib/games";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
 import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
 import { RunwayOdometer } from "@/components/game/runway";
 import { GameStage } from "@/components/game/game-stage";
+import { PropBar, type PropView } from "@/components/game/bigsmall-props";
 
 export interface Overview {
   max_bet: number;
   bigsmall?: { win_mult: number; expected_value: number };
+  props?: PropView[];
   me?: {
     balance: number;
     today_net: number;
@@ -35,11 +38,14 @@ interface GuessResult {
   payout: number;
   net: number;
   tie: boolean;
+  shield_refund?: number;
+  effective_mult?: number | null;
+  props_applied?: { key: string; effect: string; value: number }[];
 }
 
 const SPIN_MS = 1750;
 
-/** 猜大小专注页：跑道减速定格 + 路单 */
+/** 猜大小专注页：跑道减速定格 + 路单 + 道具栏（道具只加权魔力，不出物品） */
 export default function BigSmallPage({
   initialOver,
 }: {
@@ -55,6 +61,8 @@ export default function BigSmallPage({
   const [busy, setBusy] = useState(false);
   const [num, setNum] = useState<number | null>(null);
   const [res, setRes] = useState<GuessResult | null>(null);
+  /** 已挂载的道具 key（同类效果至多一件） */
+  const [sel, setSel] = useState<string[]>([]);
   const [flash, setFlash] = useState<{
     kind: "win" | "lose" | "tie";
     text: string;
@@ -102,6 +110,7 @@ export default function BigSmallPage({
   const maxBet = ov?.max_bet ?? 1000;
   // 赔率由后端下发（< 2.0，回收口径），不在前端写死
   const winMult = ov?.bigsmall?.win_mult ?? 1.9;
+  const props = ov?.props ?? [];
   // 近 N 局统计（按局聚合的战绩算，不含流水噪音）
   const stats = hist.reduce(
     (a, r) => {
@@ -113,6 +122,17 @@ export default function BigSmallPage({
     { w: 0, t: 0, l: 0 },
   );
   const hitRate = hist.length ? Math.round((stats.w / hist.length) * 100) : 0;
+
+  /** 挂/卸一件道具：同类效果互斥（不在前端叠乘，服务端也只收一件） */
+  function toggle(p: PropView) {
+    setSel((cur) => {
+      if (cur.includes(p.key)) return cur.filter((k) => k !== p.key);
+      const same = props
+        .filter((x) => x.effect === p.effect && cur.includes(x.key))
+        .map((x) => x.key);
+      return [...cur.filter((k) => !same.includes(k)), p.key];
+    });
+  }
 
   async function guess(g: "small" | "big") {
     if (busy) return;
@@ -129,18 +149,36 @@ export default function BigSmallPage({
       const r = await api.post<GuessResult>("/api/v1/games/bigsmall", {
         bet,
         guess: g,
+        props: sel,
         idempotency_key: idem.current,
       });
       setNum(r.number);
       const settle = () => {
         setRes(r);
+        // 道具已消耗：清掉挂载态并刷新持有数（否则会显示一件已用完的道具）
+        setSel([]);
+        const hint =
+          (r.props_applied?.length ?? 0) === 0
+            ? ""
+            : (r.shield_refund ?? 0) > 0
+              ? ` · ${tg.propAppliedShield.replace(
+                  "{n}",
+                  String(r.shield_refund),
+                )}`
+              : r.effective_mult
+                ? ` · ${tg.propAppliedMult.replace(
+                    "{n}",
+                    fmtMult(r.effective_mult),
+                  )}`
+                : "";
+        const base = r.tie
+          ? fmtCur(tg.tie, { n: r.number }, currency)
+          : r.player_win
+            ? fmtCur(tg.win, { n: r.number, net: r.net }, currency)
+            : fmtCur(tg.lose, { n: r.number, net: -r.net }, currency);
         setFlash({
           kind: r.tie ? "tie" : r.player_win ? "win" : "lose",
-          text: r.tie
-            ? fmtCur(tg.tie, { n: r.number }, currency)
-            : r.player_win
-              ? fmtCur(tg.win, { n: r.number, net: r.net }, currency)
-              : fmtCur(tg.lose, { n: r.number, net: -r.net }, currency),
+          text: base + hint,
         });
         setStreak((s) => (r.player_win ? s + 1 : 0));
         setSessionPlays((n) => n + 1);
@@ -203,6 +241,13 @@ export default function BigSmallPage({
             onChange={setBet}
             maxBet={maxBet}
             disabled={busy}
+          />
+          {/* 道具栏：只加权魔力的输赢，永不出物品 */}
+          <PropBar
+            props={props}
+            sel={sel}
+            busy={busy}
+            onToggle={toggle}
           />
           <div className="flex gap-2">
             <button

@@ -122,6 +122,9 @@ pub(super) async fn grant_item(
 pub(super) struct Pool {
     pub ticket: i64,
     pub entries: Vec<games::PoolEntry>,
+    /// 每档展示元数据 `(rarity, image_url)`，与 `entries` **按位对齐**（同一 ORDER BY）。
+    /// 纯展示，不参与 EV —— 前台画的东西和闸门看的数本就无关。
+    pub meta: Vec<(i16, String)>,
 }
 
 /// 从 arcade_pools / arcade_pool_entries 加载奖池并**关闸校验**。
@@ -141,10 +144,13 @@ pub(super) async fn load_pool(
         Option<String>,
         i32,
         Option<i64>,
+        i16,
+        String,
     )> = sqlx::query_as(
         r#"
             SELECT p.ticket, e.label, e.weight, e.mult_permille,
-                   e.kind, e.item_key, e.qty, i.anchor
+                   e.kind, e.item_key, e.qty, i.anchor, e.rarity,
+                   e.image_url
               FROM arcade_pools p
               JOIN arcade_pool_entries e ON e.pool_key = p.key
          LEFT JOIN arcade_items i        ON i.key = e.item_key AND i.enabled
@@ -157,10 +163,23 @@ pub(super) async fn load_pool(
     .await
     .map_err(dberr)?;
     let ticket = rows.first().map(|r| r.0).unwrap_or(0);
+    let mut meta: Vec<(i16, String)> = Vec::with_capacity(rows.len());
     let entries: Vec<games::PoolEntry> = rows
         .into_iter()
         .map(
-            |(_, label, weight, mult_permille, kind, item_key, qty, anchor)| {
+            |(
+                _,
+                label,
+                weight,
+                mult_permille,
+                kind,
+                item_key,
+                qty,
+                anchor,
+                rar,
+                img,
+            )| {
+                meta.push((rar, img));
                 let k = if kind == "item" {
                     games::EntryKind::Item {
                         item_key: item_key.unwrap_or_default(),
@@ -180,105 +199,14 @@ pub(super) async fn load_pool(
         .collect();
     games::validate_pool(&entries, ticket)
         .map_err(|e| DomainError::Validation(e.to_string()))?;
-    Ok(Pool { ticket, entries })
-}
-
-/// 猜大小的一张桌：票价 + 三个区各自的档位。
-pub(super) struct Table {
-    pub ticket: i64,
-    pub win: Vec<games::PoolEntry>,
-    pub tie: Vec<games::PoolEntry>,
-    pub lose: Vec<games::PoolEntry>,
-}
-
-impl Table {
-    /// 整桌档位摊平后的 EV 用同一份公式（三区合计就是一局）。
-    pub fn all(&self) -> Vec<games::PoolEntry> {
-        let mut v = self.win.clone();
-        v.extend(self.tie.iter().cloned());
-        v.extend(self.lose.iter().cloned());
-        v
-    }
-    pub fn region(&self, side: &str) -> &[games::PoolEntry] {
-        match side {
-            "win" => &self.win,
-            "tie" => &self.tie,
-            _ => &self.lose,
-        }
-    }
-}
-
-/// 从行表加载猜大小的桌：区由 `side` 列决定，权重仍是**一整局的千分占比**。
-/// 先过 `validate_bigsmall`（机制：49/2/49）再过 `validate_pool`（EV<1），
-/// 两道都在读表时跑 —— 配坏就是拒绝服务，不猜旧值。
-pub(super) async fn load_table(
-    db: &PgPool,
-    game: &str,
-) -> Result<Table, DomainError> {
-    let rows: Vec<(
-        i64,
-        String,
-        i32,
-        i64,
-        String,
-        Option<String>,
-        i32,
-        Option<i64>,
-        String,
-    )> = sqlx::query_as(
-        r#"
-        SELECT p.ticket, e.label, e.weight, e.mult_permille,
-               e.kind, e.item_key, e.qty, i.anchor, e.side
-          FROM arcade_pools p
-          JOIN arcade_pool_entries e ON e.pool_key = p.key
-     LEFT JOIN arcade_items i        ON i.key = e.item_key AND i.enabled
-         WHERE p.game = $1 AND p.enabled AND e.enabled
-      ORDER BY p.sort, e.sort
-        "#,
-    )
-    .bind(game)
-    .fetch_all(db)
-    .await
-    .map_err(dberr)?;
-    let ticket = rows.first().map(|r| r.0).unwrap_or(0);
-    let mut t = Table {
+    Ok(Pool {
         ticket,
-        win: Vec::new(),
-        tie: Vec::new(),
-        lose: Vec::new(),
-    };
-    for (_, label, weight, mult_permille, kind, item_key, qty, anchor, side) in
-        rows
-    {
-        let entry = games::PoolEntry {
-            label,
-            weight: u32::try_from(weight.max(0)).unwrap_or(u32::MAX),
-            kind: if kind == "item" {
-                games::EntryKind::Item {
-                    item_key: item_key.unwrap_or_default(),
-                    qty: qty.max(1),
-                    anchor: anchor.unwrap_or(0),
-                }
-            } else {
-                games::EntryKind::Magic { mult_permille }
-            },
-        };
-        match side.as_str() {
-            "win" => t.win.push(entry),
-            "tie" => t.tie.push(entry),
-            "lose" => t.lose.push(entry),
-            // any 归到输区没有意义，宁可报错：一张桌不该出现「哪侧都算」的档
-            other => {
-                return Err(DomainError::Validation(format!(
-                "猜大小档位「{}」的 side 是「{other}」，赢/平/输三区之外不认",
-                entry.label
-            )))
-            }
-        }
-    }
-    games::validate_bigsmall(&t.win, &t.tie, &t.lose)
-        .map_err(|e| DomainError::Validation(e.to_string()))?;
-    games::validate_pool(&t.all(), ticket)
-        .map_err(|e| DomainError::Validation(e.to_string()))?;
-    Ok(t)
+        entries,
+        meta,
+    })
 }
+
+/// 猜大小的桌（`Table`）与其加载/校验已拆到 `pool_table.rs`（撞 300 行上限）。
+/// 这里重导出，保持 `super::pool::{load_table, Table}` 这条既有路径不变。
+pub(super) use super::pool_table::{load_table, Table};
+

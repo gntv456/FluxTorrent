@@ -31,6 +31,7 @@ pub(super) fn use_kind_or_collect(k: &str) -> &'static str {
     match k {
         "spark" => "spark",
         "sku" => "sku",
+        "game" => "game",
         _ => "collect",
     }
 }
@@ -160,6 +161,13 @@ pub(super) async fn backpack_use(
     if use_kind == "collect" {
         return Err(DomainError::Validation(format!(
             "「{name}」是收藏件：没有可执行用途（想让它能用，去物品目录给它指定用途）"
+        )));
+    }
+    // 游戏道具不在这里用：它在对局开始时挂载（如猜大小的道具栏），
+    // 扣减由玩法侧那次下注的事务完成，背包页点「使用」等于绕开对局规则
+    if use_kind == "game" {
+        return Err(DomainError::Validation(format!(
+            "「{name}」是游戏道具：在对应玩法的道具栏里挂载使用，不在这里点用"
         )));
     }
     // sku 类先验绑定，别把「扣了物品却无处生效」留给玩家
