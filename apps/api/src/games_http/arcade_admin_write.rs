@@ -49,8 +49,9 @@ pub(super) fn default_qty() -> i32 {
 pub(super) struct PoolEntryReq {
     pub label: String,
     pub weight: i32,
+    /// 票价倍数（可为 0.5 这类小数）。库里存千分比，见 `permille`。
     #[serde(default)]
-    pub payout: i64,
+    pub payout: f64,
     /// magic | item；缺省 magic，老面板不传也能存
     #[serde(default = "default_kind")]
     pub kind: String,
@@ -60,6 +61,12 @@ pub(super) struct PoolEntryReq {
     pub qty: i32,
     #[serde(default)]
     pub enabled: bool,
+}
+
+/// 倍数 → 千分比。四舍五入而不是截断：0.5 在二进制浮点里是精确的，
+/// 但 1.1 这类值截断会少 1‰，对站长填的数字不诚实。
+fn permille(multiples: f64) -> i64 {
+    (multiples * 1000.0).round() as i64
 }
 
 #[derive(Deserialize)]
@@ -100,7 +107,7 @@ pub(super) async fn arcade_pool_save(
             }
         } else {
             games::EntryKind::Magic {
-                multiples: e.payout,
+                mult_permille: permille(e.payout),
             }
         };
         entries.push(games::PoolEntry {
@@ -139,7 +146,7 @@ pub(super) async fn arcade_pool_save(
         sqlx::query(
             r#"
             INSERT INTO arcade_pool_entries
-                (pool_key, label, weight, payout, kind,
+                (pool_key, label, weight, mult_permille, kind,
                  item_key, qty, enabled, sort)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         "#,
@@ -147,7 +154,7 @@ pub(super) async fn arcade_pool_save(
         .bind(&b.pool_key)
         .bind(&e.label)
         .bind(e.weight)
-        .bind(if e.kind == "item" { 0 } else { e.payout })
+        .bind(if e.kind == "item" { 0 } else { permille(e.payout) })
         .bind(if e.kind == "item" { "item" } else { "magic" })
         .bind(if e.kind == "item" {
             e.item_key.as_deref()

@@ -44,19 +44,6 @@ pub(super) async fn eco_f64(
 }
 
 /// 刮刮乐档位（五档可配；10x 留空/合计不为 100 时按余数推导，缺省 45/30/15/8/2）
-pub(super) async fn scratch_odds(
-    state: &web::Data<std::sync::Arc<AppState>>,
-) -> Result<games::ScratchOdds, DomainError> {
-    games::ScratchOdds::try_from_parts(
-        eco_i64(state, "games_scratch_empty_pct", 45).await,
-        eco_i64(state, "games_scratch_half_pct", 30).await,
-        eco_i64(state, "games_scratch_one_pct", 15).await,
-        eco_i64(state, "games_scratch_two_pct", 8).await,
-        eco_i64(state, "games_scratch_ten_pct", 2).await,
-    )
-    .map_err(DomainError::Validation)
-}
-
 /// 农场作物有效期（天；0 = 永不枯萎）
 pub(super) async fn farm_wither_days(
     state: &web::Data<std::sync::Arc<AppState>>,

@@ -35,12 +35,10 @@ pub use farm::{
 #[allow(unused_imports)]
 pub use jgg::{
     draw_entry, pool_ev, validate_pool, Draw, EntryKind, PoolEntry, PoolError,
-    FALLBACK_MULT,
+    FALLBACK_MULT, MULT_UNIT,
 };
 #[allow(unused_imports)]
-pub use scratch::{
-    scratch_play, scratch_play_with, ScratchOdds, ScratchOutcome,
-};
+pub use scratch::{scratch_pay, ScratchOutcome};
 
 /// 单次游戏下注上限（风控：防一次性输光；0109 games_max_bet 可调，此值为缺省）
 pub const MAX_BET: i64 = 1000;

@@ -217,7 +217,7 @@ pub(super) async fn arcade_item_save(
             Option<i64>,
         )> = sqlx::query_as(
             r#"
-            SELECT e.label, e.weight, e.payout, e.kind,
+            SELECT e.label, e.weight, e.mult_permille, e.kind,
                    e.item_key, e.qty, i.anchor
             FROM arcade_pool_entries e
             LEFT JOIN arcade_items i
@@ -232,7 +232,7 @@ pub(super) async fn arcade_item_save(
         .map_err(dberr)?;
         let entries: Vec<games::PoolEntry> = rows
             .into_iter()
-            .map(|(label, weight, payout, kind, ik, qty, anchor)| {
+            .map(|(label, weight, mult_permille, kind, ik, qty, anchor)| {
                 games::PoolEntry {
                     label,
                     weight: u32::try_from(weight.max(0)).unwrap_or(u32::MAX),
@@ -243,7 +243,7 @@ pub(super) async fn arcade_item_save(
                             anchor: anchor.unwrap_or(0),
                         }
                     } else {
-                        games::EntryKind::Magic { multiples: payout }
+                        games::EntryKind::Magic { mult_permille }
                     },
                 }
             })

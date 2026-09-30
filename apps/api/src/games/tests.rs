@@ -12,12 +12,17 @@ fn bet_validation() {
 /// 这里锁的是**机制**：任何过 `validate_pool` 的池必然 EV<1，且坏配置各自被点名拒绝。
 /// 价值口径：魔力位 = 票价×倍数；物品位 = arcade_items.anchor × 件数（绝不取登记价）。
 #[test]
-fn scratch_payout_bounds() {
-    for _ in 0..1000 {
-        let o = scratch_play(100);
-        // 派彩只能是 0/50/100/200/1000 五档
-        assert!([0, 50, 100, 200, 1000].contains(&o.payout));
+fn scratch_payout_is_exact_floor_of_bet_times_mult() {
+    // 档位住在奖池行表里（0248），这里锁的是「倍率→派彩」这一件纯计算：
+    // 100 注 × 千分倍率，只能是 0/50/100/200/1000 五档
+    for mp in [0, 500, 1000, 2000, 10000] {
+        let o = scratch_pay(100, mp);
+        assert!([0, 50, 100, 200, 1000].contains(&o.payout), "{mp} -> {:?}", o);
+        assert!((o.multiplier - mp as f64 / 1000.0).abs() < 1e-9);
     }
+    // 向下取整：1 注的 0.5 倍派 0（不是 0.5，也不是进位成 1）
+    assert_eq!(scratch_pay(1, 500).payout, 0);
+    assert_eq!(scratch_pay(999, 10000).payout, 9990);
 }
 
 #[test]
@@ -54,50 +59,56 @@ fn bigsmall_expected_value_below_one() {
     assert!((bigsmall_expected_value(2000) - 1.0).abs() < 1e-9);
 }
 
-/// 刮刮乐档位参数化的期望回报仍 < 1（四档可配，10x 取余数）
+/// 刮刮乐播种表（0248 从设置键现值搬进 arcade_pools）的 EV 必须仍是 0.66，
+/// 且权重铺满 100 —— 这条断言锁的是「搬家前后行为一字不差」。
 #[test]
-fn scratch_expected_value_below_one() {
-    let ev = |o: &ScratchOdds| {
-        (o.empty as f64 * 0.0
-            + o.half as f64 * 0.5
-            + o.one as f64 * 1.0
-            + o.two as f64 * 2.0
-            + o.ten as f64 * 10.0)
-            / 100.0
+fn scratch_seeded_pool_expected_value_below_one() {
+    let seeded = |w: &[u32], mp: &[i64]| -> Vec<PoolEntry> {
+        w.iter()
+            .zip(mp.iter())
+            .map(|(wt, m)| PoolEntry {
+                label: format!("{m}"),
+                weight: *wt,
+                kind: EntryKind::Magic { mult_permille: *m },
+            })
+            .collect()
     };
-    let d = ScratchOdds::DEFAULT;
-    assert_eq!(
-        d.empty + d.half + d.one + d.two + d.ten,
-        100,
-        "档位必须铺满 100%"
-    );
-    assert!((ev(&d) - 0.66).abs() < 1e-9, "缺省 EV 漂移: {}", ev(&d));
-    // 前四档吃满 / EV 破 1 的坏配置一律 Err —— **不再回落缺省**：
-    // 回落会让站长以为改生效了，而实际跑的是另一张表（静默后门）。
-    let over = ScratchOdds::try_from_parts(60, 30, 15, 8, 2);
-    assert!(over.is_err(), "前四档合计 113 >= 100 必须被拒");
-    let hot = ScratchOdds::try_from_parts(20, 30, 15, 20, 15);
+    let p = seeded(&[45, 30, 15, 8, 2], &[0, 500, 1000, 2000, 10000]);
+    assert_eq!(p.iter().map(|e| e.weight).sum::<u32>(), 100);
+    let ev = pool_ev(&p, 1);
+    assert!((ev - 0.66).abs() < 1e-9, "EV 漂移: {ev}");
+    validate_pool(&p, 1).expect("播种表必须过关");
+
+    // 注额=票档时 EV 最高；注额越大，固定折算价的物品位被摊得越薄。
+    // 所以闸门按票档（最低注额）算，是**对所有合法注额都成立**的那一侧。
+    let hot = seeded(&[20, 30, 15, 20, 15], &[0, 500, 1000, 2000, 10000]);
     assert!(
-        matches!(hot, Err(ref m) if m.contains("增发")),
+        matches!(
+            validate_pool(&hot, 1),
+            Err(PoolError::ExpectedValueNotBelowOne(_))
+        ),
         "EV>=1 必须被拒: {:?}",
-        hot
+        pool_ev(&hot, 1)
     );
-    // 10x 档留 0（或与前四档合计不为 100）→ 按余数推导，总量恒 100。
-    // 这条保留：它是文档化的「只配前三档」设计，不是偷改玩家看得见的赔率。
-    let auto = ScratchOdds::try_from_parts(50, 30, 15, 3, 0).expect("合法");
-    assert_eq!(auto.empty + auto.half + auto.one + auto.two + auto.ten, 100);
-    assert_eq!(auto.ten, 2, "余数应为 2");
-    // 站长显式配置 10x 且合计正好 100 → 采用配置值
-    let explicit = ScratchOdds::try_from_parts(50, 30, 15, 3, 2).expect("合法");
-    assert_eq!(explicit.ten, 2);
-    assert_eq!(
-        explicit.empty
-            + explicit.half
-            + explicit.one
-            + explicit.two
-            + explicit.ten,
-        100
-    );
+    // 同一张表在 100 票档下 EV 只有物品位摊薄后的部分 —— 说明票档是真闸门
+    let with_item = vec![
+        PoolEntry {
+            label: "空".into(),
+            weight: 50,
+            kind: EntryKind::Magic { mult_permille: 0 },
+        },
+        PoolEntry {
+            label: "券".into(),
+            weight: 50,
+            kind: EntryKind::Item {
+                item_key: "ticket".into(),
+                qty: 1,
+                anchor: 900,
+            },
+        },
+    ];
+    assert!(validate_pool(&with_item, 100).is_err(), "100 票档下 900 券占一半必破 1");
+    assert!(pool_ev(&with_item, 10000) < 1.0, "注额摊薄后才可能合法");
 }
 
 /// 九宫格头奖 50x 的 EV 已由 jgg_expected_value_house_edge 锁定（0.725）。

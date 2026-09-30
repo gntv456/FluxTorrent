@@ -6,11 +6,11 @@
 use super::*;
 const TICKET: i64 = 100;
 
-fn magic(label: &str, weight: u32, multiples: i64) -> PoolEntry {
+fn magic(label: &str, weight: u32, mult_permille: i64) -> PoolEntry {
     PoolEntry {
         label: label.to_string(),
         weight,
-        kind: EntryKind::Magic { multiples },
+        kind: EntryKind::Magic { mult_permille },
     }
 }
 
@@ -36,13 +36,13 @@ fn item(
 fn seeded_pool() -> Vec<PoolEntry> {
     vec![
         magic("谢谢参与", 731, 0),
-        magic("再来一次", 120, 1),
-        magic("2x 魔力", 60, 2),
-        magic("3x 魔力", 50, 3),
-        magic("5x 魔力", 25, 5),
-        magic("10x 魔力", 10, 10),
-        magic("20x 魔力", 3, 20),
-        magic("50x 魔力", 1, 50),
+        magic("再来一次", 120, 1_000),
+        magic("2x 魔力", 60, 2_000),
+        magic("3x 魔力", 50, 3_000),
+        magic("5x 魔力", 25, 5_000),
+        magic("10x 魔力", 10, 10_000),
+        magic("20x 魔力", 3, 20_000),
+        magic("50x 魔力", 1, 50_000),
     ]
 }
 
@@ -82,7 +82,7 @@ fn pool_gate_rejects_every_backdoor_by_name() {
     ));
     // ② 抬倍数
     let mut p = seeded_pool();
-    p[7].kind = EntryKind::Magic { multiples: 900 };
+    p[7].kind = EntryKind::Magic { mult_permille: 900_000 };
     assert!(matches!(
         validate_pool(&p, TICKET),
         Err(PoolError::ExpectedValueNotBelowOne(_))
@@ -98,7 +98,7 @@ fn pool_gate_rejects_every_backdoor_by_name() {
     );
     // ⑤ 中性池 EV 恰为 1 也拒
     assert!(matches!(
-        validate_pool(&[magic("a", 1, 2)], TICKET),
+        validate_pool(&[magic("a", 1, 2_000)], TICKET),
         Err(PoolError::ExpectedValueNotBelowOne(_))
     ));
     // ⑥ 物品位引用目录里不存在/停用/无折算价的物品 —— anchor<=0 即空头承诺
@@ -129,7 +129,7 @@ fn pool_ev_is_invariant_to_weight_scaling() {
 
 fn m(e: &PoolEntry) -> i64 {
     match &e.kind {
-        EntryKind::Magic { multiples } => *multiples,
+        EntryKind::Magic { mult_permille } => *mult_permille,
         EntryKind::Item { .. } => 0,
     }
 }

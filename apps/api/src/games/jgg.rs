@@ -12,8 +12,8 @@ use rand::Rng;
 /// 档位种类。物品位的价值不在自己身上，在目录的 anchor 上。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EntryKind {
-    /// 魔力位：`multiples` 是票价倍数（0 = 不中）
-    Magic { multiples: i64 },
+    /// 魔力位：`mult_permille` 是票价倍数 ×1000（0 = 不中；500 = 0.5 倍）
+    Magic { mult_permille: i64 },
     /// 物品位：`anchor` 是加载时从 `arcade_items` 解析出的单件魔力等值
     Item {
         item_key: String,
@@ -33,16 +33,40 @@ pub struct PoolEntry {
 /// 物品即使发不出去，站点该付的钱已经在账上。
 pub const FALLBACK_MULT: i64 = 0;
 
+/// 一千 = 1.0 倍：把 0.5x 这类分数倍数带进整数列（刮刮乐有返本一半档）
+pub const MULT_UNIT: i64 = 1000;
+
 impl PoolEntry {
-    /// 该档位的魔力等值。取「物品价值」与「回落价值」的较大者，是对玩家更有利的
-    /// 那一侧：用有利侧算 EV 仍然 < 1，才是真的小于 1。
-    pub fn value(&self, ticket: i64) -> i64 {
+    /// **精确**价值 ×1000。EV 一律按它算：向下取整只对站点有利，
+    /// 用对玩家更有利的一侧算出来仍然 < 1，才是真的小于 1。
+    /// 取「物品价值」与「回落价值」的较大者，同一条保守口径。
+    pub fn value_permille(&self, ticket: i64) -> i64 {
         match &self.kind {
-            EntryKind::Magic { multiples } => ticket.saturating_mul(*multiples),
-            EntryKind::Item { qty, anchor, .. } => {
-                let v = anchor.saturating_mul(i64::from(*qty));
-                v.max(ticket.saturating_mul(FALLBACK_MULT))
+            EntryKind::Magic { mult_permille } => {
+                ticket.saturating_mul(*mult_permille)
             }
+            EntryKind::Item { qty, anchor, .. } => {
+                let v = anchor
+                    .saturating_mul(i64::from(*qty))
+                    .saturating_mul(MULT_UNIT);
+                let fb = ticket
+                    .saturating_mul(FALLBACK_MULT)
+                    .saturating_mul(MULT_UNIT);
+                v.max(fb)
+            }
+        }
+    }
+
+    /// 该档位的魔力等值（实际派彩口径，向下取整）
+    pub fn value(&self, ticket: i64) -> i64 {
+        self.value_permille(ticket) / MULT_UNIT
+    }
+
+    /// 千分倍率（物品位恒为 0：它的价值不在自己身上，在目录的 anchor 上）
+    pub fn mult_permille(&self) -> i64 {
+        match &self.kind {
+            EntryKind::Magic { mult_permille } => *mult_permille,
+            EntryKind::Item { .. } => 0,
         }
     }
 }
@@ -96,9 +120,9 @@ pub fn pool_ev(entries: &[PoolEntry], ticket: i64) -> f64 {
     }
     let sum: f64 = entries
         .iter()
-        .map(|e| f64::from(e.weight) * e.value(ticket) as f64)
+        .map(|e| f64::from(e.weight) * e.value_permille(ticket) as f64)
         .sum();
-    sum / total as f64 / ticket as f64
+    sum / total as f64 / (ticket as f64 * MULT_UNIT as f64)
 }
 
 /// 关闸式校验：不合法的池子一律拒绝，**不猜旧值、不回落缺省**。
