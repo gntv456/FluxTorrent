@@ -297,6 +297,72 @@ def main():
     check("确定侧经济物品门禁出现在自检里且为绿",
           len(gate) == 1 and gate[0].get("pass") is True, gate)
 
+    # 用途侧闭环：奖品是站内虚拟物品，「抽到」之后还必须「用得上」。
+    # 目录里一件可用途的都没有 = 这半个功能是零，不能靠「端点存在」过关。
+    usable = psql("SELECT count(*)::text FROM arcade_items"
+                  " WHERE use_kind <> 'collect' AND enabled")
+    check("目录里确实有带用途的奖品（不是只有收藏件）",
+          int(usable) >= 1, usable)
+    bad_bind = psql("SELECT count(*)::text FROM arcade_items i"
+                    " WHERE i.use_kind = 'sku' AND NOT EXISTS ("
+                    "  SELECT 1 FROM shop_items s WHERE s.id::text = i.use_ref"
+                    "    AND s.active AND i.anchor >= s.price)")
+    check("已绑 SKU 的奖品都能真兑出等价东西", int(bad_bind) == 0, bad_bind)
+    # 三条都要钉住：① 没指定用途的物品点使用必须当场说清（静默等于骗人）；
+    # ② 兑现按 anchor 到帐，且持有数由「发放 − 消耗」两张账反推；
+    # ③ 绑定关系写坏（SKU 不存在 / anchor 低于售价）在保存时就拒，
+    #    不能等玩家扣了物品才发现无处生效——那是审计里「花钱买空气」的老坑。
+    st, u0 = call("POST", "/games/arcade/backpack/use",
+                  {"item_key": "cap_probe", "qty": 1,
+                   "idempotency_key": "e2e-use-0"}, ptok)
+    txtu = json.dumps(u0, ensure_ascii=False)
+    check("未指定用途的物品用不了且说明是收藏件",
+          st == 400 and "收藏" in txtu, (st, txtu[:120]))
+
+    st, _ = call("POST", "/admin/arcade/items",
+                 dict(probe_item, use_kind="spark"), tok)
+    check("探针物品指定「兑现魔力」用途可存", st == 200, (st, _))
+    bal0 = int(psql("SELECT spark_balance FROM users WHERE id=%d" % uid))
+    st, u1 = call("POST", "/games/arcade/backpack/use",
+                  {"item_key": "cap_probe", "qty": 1,
+                   "idempotency_key": "e2e-use-1"}, ptok)
+    d1 = u1.get("data") or {}
+    bal1 = int(psql("SELECT spark_balance FROM users WHERE id=%d" % uid))
+    anchor_cap = int(probe_item["anchor"])
+    check("兑现入账等于 anchor 且真进了余额",
+          st == 200 and d1.get("spark") == anchor_cap
+          and bal1 == bal0 + anchor_cap,
+          {"st": st, "spark": d1.get("spark"), "delta": bal1 - bal0})
+    st, u2 = call("POST", "/games/arcade/backpack/use",
+                  {"item_key": "cap_probe", "qty": 1,
+                   "idempotency_key": "e2e-use-2"}, ptok)
+    bal2 = int(psql("SELECT spark_balance FROM users WHERE id=%d" % uid))
+    check("用过的那件不能再凭空用第二次", st == 400, (st, u2))
+    check("重试没有二次入账", bal2 == bal1, {"bal1": bal1, "bal2": bal2})
+    st, bk3 = call("GET", "/games/arcade-meta", None, ptok)
+    p3 = [x for x in (((bk3.get("data") or {}).get("backpack") or {})
+                      .get("items") or []) if x.get("key") == "cap_probe"]
+    check("背包按「发放-消耗」显示：qty 归零、used 记 1",
+          bool(p3) and p3[0].get("qty") == 0 and p3[0].get("used") == 1, p3)
+
+    st, _ = call("POST", "/admin/arcade/items",
+                 dict(probe_item, use_kind="sku", use_ref="999999"), tok)
+    check("绑定不存在的商店 SKU 时保存被拒", st == 400, (st, _))
+    row = psql("SELECT id::text || ':' || price::text FROM shop_items"
+               " WHERE kind='avatar_frame' AND active"
+               " ORDER BY price DESC, id LIMIT 1")
+    sku_id, sku_price = row.split(":")
+    st, r4 = call("POST", "/admin/arcade/items",
+                  dict(probe_item, use_kind="sku", use_ref=sku_id,
+                       anchor=1), tok)
+    check("anchor 低于所绑 SKU 售价时保存被拒（少计负债）",
+          st == 400, (st, json.dumps(r4, ensure_ascii=False)[:120]))
+    check("两次被拒之后目录里用途未改写",
+          psql("SELECT use_kind FROM arcade_items WHERE key='cap_probe'")
+          == "spark",
+          psql("SELECT use_kind || '/' || use_ref FROM arcade_items"
+               " WHERE key='cap_probe'"))
+
     # 探针账号自清（删除接口设计为仅封禁态可删，故先封再删）
     st, _ = call("POST", "/admin/users/status",
                  {"user_id": uid, "status": 2, "reason": "e2e 探针清理"}, tok)
