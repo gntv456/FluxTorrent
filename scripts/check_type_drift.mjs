@@ -230,6 +230,17 @@ const CONTRACTS = [
     iface: "Crop",
     strict: true,
   },
+  // 奖池档位（/games 各池的 prizes 行）：五玩法共用一份投影。
+  // 这一行是**补盲区** —— 该投影原先用 json! 动态拼，门禁盖不到，
+  // 而「TS 声明了、Rust 没返回」正是页面静默空白的来源（B1 型）。
+  {
+    label: "奖池档位 GET /games.prizes",
+    rust: "apps/api/src/games_http/prize_view.rs",
+    struct: "PrizeRow",
+    ts: "apps/web/lib/games.ts",
+    iface: "JggPrizeView",
+    strict: true,
+  },
 ];
 
 const cache = new Map();

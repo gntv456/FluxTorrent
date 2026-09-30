@@ -3,23 +3,37 @@
  * 展示口径一律来自后端下发，不在前端写死 —— 避免出现「前端奖池与后端实现不符」。
  */
 
-/** 奖池档位的展示形状：两个玩法读同一张表，服务端也只有一份投影，
- *  前端就不该有第二种档位形状（0248 之后刮刮乐也走行表投影）。 */
+/** 奖池档位的展示形状 —— 与 Rust `prize_view.rs::PrizeRow` **双向镜像**
+ *  （已在 scripts/check_type_drift.mjs 的 CONTRACTS 里挂成 strict 契约，
+ *  两边任一侧改名/加字段而另一边没跟，门禁当场 FAIL）。
+ *  两个玩法读同一张表，服务端也只有一份投影，前端就不该有第二种档位形状。 */
 export interface JggPrizeView {
   label: string;
   weight_permille: number;
+  /** 魔力位的票价倍数（0.5x 这类小数也有）；物品位恒 0 */
   payout: number;
-  kind?: string;
+  /** 与 payout 同值的历史字段名，两侧都在读 */
+  multiples?: number;
   /** 该档的魔力等值（物品位 = anchor × 件数），角标按它排最高值 */
   value?: number;
   /** 展示用稀有度（1..5）：决定揭晓配色/光效，不参与任何计算 */
   rarity?: number;
-  /** 物品位的目录图标（arcade_items.icon）；魔力位无 */
-  icon?: string;
   /** 档位配图 URL（站长在后台配）；有就用它，没有回落到 icon */
   image_url?: string;
-  /** 物品位的发放件数 */
+  /** magic | item */
+  kind?: string;
+  /** 以下仅物品位出现：目录键 / 发放件数 / 单件折算价 */
+  item_key?: string;
   qty?: number;
+  anchor?: number;
+  /** 目录图标（arcade_items.icon） */
+  icon?: string;
+  /** 用途（迁移 0246）：collect | spark | sku */
+  use_kind?: string;
+  /** 用途人话（如「可兑现为等值魔力」） */
+  use_name?: string;
+  /** 猜大小专用：这一档在哪一区付（win | tie | lose） */
+  side?: string;
 }
 
 export type ScratchPrize = JggPrizeView;

@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark_tx, spend_spark, SpendOutcome};
+use crate::economy_http::{earn_spark_tx, spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -48,7 +48,7 @@ struct Pet {
     pending: i64,
 }
 
-/// 读 + 结算到此刻；不存在则创建默认宠物。
+/// 读 + 结算到此刻；不存在则创建默认宠物。**自己开事务**（读数/领取路径用它）。
 /// 传 `claim_idem` 时把 pending 在同一事务内入账（返回入账额）。
 async fn tick(
     db: &sqlx::PgPool,
@@ -57,6 +57,19 @@ async fn tick(
     claim_idem: Option<&str>,
 ) -> DomainResult<(Pet, i64)> {
     let mut tx = db.begin().await.map_err(dberr)?;
+    let out = tick_tx(&mut tx, uid, digest_per_hour, claim_idem).await?;
+    tx.commit().await.map_err(dberr)?;
+    Ok(out)
+}
+
+/// 事务内版本：投喂要把「扣款 + 推进状态」并进同一笔事务时才用得上 ——
+/// 分两次写的话，第二次失败就是「钱扣了、宠物一点没喂到」。
+async fn tick_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    uid: i64,
+    digest_per_hour: i64,
+    claim_idem: Option<&str>,
+) -> DomainResult<(Pet, i64)> {
     let row: Option<(String, String, i32, i64, i32, i64, i64, DateTime<Utc>)> =
         sqlx::query_as(
             "SELECT species, name, level, exp, hunger, energy, pending, \
@@ -64,7 +77,7 @@ async fn tick(
                FROM arcade_pets WHERE user_id = $1 FOR UPDATE",
         )
         .bind(uid)
-        .fetch_optional(&mut *tx)
+        .fetch_optional(&mut **tx)
         .await
         .map_err(dberr)?;
     let (species, name, level, exp, hunger, energy, pending, last_tick) =
@@ -76,7 +89,7 @@ async fn tick(
                      ON CONFLICT (user_id) DO NOTHING",
                 )
                 .bind(uid)
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await
                 .map_err(dberr)?;
                 (
@@ -104,7 +117,7 @@ async fn tick(
     if let Some(idem) = claim_idem {
         if new_pending > 0 {
             let out =
-                earn_spark_tx(&mut tx, uid, new_pending, "game", idem).await?;
+                earn_spark_tx(tx, uid, new_pending, "game", idem).await?;
             // Replayed = 这枚幂等键已入过账：不再重复付，但 pending 仍要清零
             if !matches!(out, SpendOutcome::Replayed) {
                 earned = new_pending;
@@ -120,10 +133,9 @@ async fn tick(
     .bind(new_energy)
     .bind(new_pending)
     .bind(new_hunger)
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     .map_err(dberr)?;
-    tx.commit().await.map_err(dberr)?;
     Ok((
         Pet {
             species,
@@ -200,16 +212,19 @@ pub(super) async fn pet_feed(
     let (feed, dig) = tune(&state).await;
     let client = body.and_then(|b| b.idempotency_key.clone());
     let idem = idem_key("pet-feed", auth.id, &client);
-    // 先扣款（幂等）再推进状态：重放不再喂一次，也不重复扣费
+    // 扣款与喂食**同一事务**：分两次写的话，第二次失败就是「钱扣了、没喂到」。
+    let mut tx = db.begin().await.map_err(dberr)?;
     if !matches!(
-        spend_spark(db, auth.id, feed, "game", &idem, "pet_feed", 0).await?,
+        spend_spark_tx(&mut tx, auth.id, feed, "game", &idem, "pet_feed", 0)
+            .await?,
         SpendOutcome::Spent
     ) {
+        let _ = tx.rollback().await;
         return Err(DomainError::Validation(
             "这次投喂已受理，请勿重复提交".into(),
         ));
     }
-    let (p, _) = tick(db, auth.id, dig, None).await?;
+    let (p, _) = tick_tx(&mut tx, auth.id, dig, None).await?;
     let exp = p.exp + EXP_PER_FEED;
     let level = level_of(exp);
     let energy = (p.energy + FEED_ENERGY).min(ENERGY_CAP);
@@ -221,9 +236,10 @@ pub(super) async fn pet_feed(
     .bind(energy)
     .bind(exp)
     .bind(level)
-    .execute(db)
+    .execute(&mut *tx)
     .await
     .map_err(dberr)?;
+    tx.commit().await.map_err(dberr)?;
     let after = Pet {
         species: p.species,
         name: p.name,
