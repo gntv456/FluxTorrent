@@ -35,8 +35,16 @@ export function SettingsGroupNav({
   const { dict, currency } = useI18n();
   const s = dict.settingsAdmin;
   const groups = schema?.groups ?? [];
+  // md+ 吸顶偏移 168 = 保存条(top-84, 高 70, 实测四档宽度均单行) + 14 间隙；
+  // 100 会与保存条重叠 54px（双吸顶同列，保存条 z-10 盖住分组导航顶部）。
+  const NAV_CLS =
+    "flex gap-2 overflow-x-auto border border-line bg-[var(--surface-card)]" +
+    " p-2 md:w-56 md:flex-none md:flex-col md:overflow-visible" +
+    " md:rounded-[var(--r-md)] md:shadow-[var(--shadow-card)] md:sticky" +
+    " md:top-[168px] md:max-h-[calc(100vh-192px)] md:self-start" +
+    " md:overflow-y-auto";
   return (
-    <nav className="flex gap-2 overflow-x-auto border border-line bg-[var(--surface-card)] p-2 md:w-56 md:flex-none md:flex-col md:overflow-visible md:rounded-[var(--r-md)] md:shadow-[var(--shadow-card)] md:sticky md:top-[100px] md:max-h-[calc(100vh-124px)] md:self-start md:overflow-y-auto">
+    <nav className={NAV_CLS}>
       <div className="hidden md:block">
         <input
           value={q}
@@ -92,11 +100,7 @@ export function SettingsSearchResults({
       <p className="text-xs text-sub">
         {fmt(s.searchHit, { n: matches.length })}
       </p>
-      {matches.length === 0 && (
-        <p className={PANEL_CENTER}>
-          {s.searchEmpty}
-        </p>
-      )}
+      {matches.length === 0 && <p className={PANEL_CENTER}>{s.searchEmpty}</p>}
       {matches.map((m) => (
         <div key={`${m.group}-${m.field.name}`}>
           <p className="mb-1 text-[11px] font-bold text-sub">{m.groupLabel}</p>
@@ -155,11 +159,7 @@ export function SettingsGroupCards({
           </div>
         );
       })}
-      {cards.length === 0 && (
-        <p className={PANEL_CENTER}>
-          {s.searchEmpty}
-        </p>
-      )}
+      {cards.length === 0 && <p className={PANEL_CENTER}>{s.searchEmpty}</p>}
     </section>
   );
 }

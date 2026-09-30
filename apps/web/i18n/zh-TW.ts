@@ -5,7 +5,7 @@ import { termsPanelTw } from "./terms-panel";
 
 const zhTwBase: Omit<
   Dict,
-  "viewLayout"
+  | "viewLayout"
   | "pwa"
   | "security2fa"
   | "apitokens"
@@ -1465,8 +1465,7 @@ const zhTwBase: Omit<
     renameCardKind: "改名卡",
     renameHint: "改名時在控制面板自動抵扣",
     inviteConfirm: "核銷後將生成一枚邀請碼，確認？",
-    inviteRedeemed:
-      "已核銷！邀請碼：{code}（有效期至 {date}），可在邀請頁管理",
+    inviteRedeemed: "已核銷！邀請碼：{code}（有效期至 {date}），可在邀請頁管理",
   },
   forums: {
     title: "論壇",
@@ -2091,6 +2090,7 @@ const zhTwBase: Omit<
       packCollect: "收藏",
       packGotSpark: "已兌現 {n} {c}",
       packGotSku: "已獲得「{s}」",
+      rewardSpark: "+{n} 魔力",
       shelfTitle: "外觀貨架",
       shelfEmpty: "暫無外觀上架",
       gateTitle: "門禁自檢",
@@ -2534,6 +2534,7 @@ const zhTwBase: Omit<
     auditSearchPh: "搜尋動作 / 操作人…",
     auditShown: "已顯示 {n} / {total} 條",
     auditShowMore: "再顯示 100 條",
+    auditNoMatch: "沒有匹配的審計記錄",
     pendingAppeals: "待處理申訴",
     cheatersEntry: "作弊偵測",
     queueTitle: "待辦佇列",
@@ -2625,6 +2626,25 @@ const zhTwBase: Omit<
    * AdminShell 取不到鍵時回落 DB 值，新工具不會渲染成空白。
    */
   adminArcade: {
+    rewards: {
+      title: "確定側獎勵（週常 / 賽季）",
+      colKind: "側",
+      colCode: "代號",
+      colScope: "歸屬",
+      colTarget: "目標",
+      colSpark: "獎勵魔力",
+      colItem: "物品",
+      colQty: "件數",
+      colOn: "啟用",
+      kindQuest: "週常",
+      kindMilestone: "里程碑",
+      season: "賽季 key",
+      save: "儲存",
+      saving: "儲存中",
+      saved: "已儲存",
+      saveFail: "讀取獎勵行失敗",
+      note: "確定側不進 EV 閘：每一筆發放（魔力 + 物品按折算價）都計入娛樂屋預算，超預算門禁會紅。物品發不出去時按折算價全額折魔力，不打折。",
+    },
     items: {
       newTitle: "新建獎品",
       create: "建",
@@ -2829,7 +2849,8 @@ const zhTwBase: Omit<
     saved: "已保存",
     deleted: "已刪除",
     empty: "暫無條目",
-    permHint: "perm_key 非空時，使用者還需持有該權限（可在「權限配置」裡做使用者級授予/拒絕）；module_key 非空時受模組開關控制。",
+    permHint:
+      "perm_key 非空時，使用者還需持有該權限（可在「權限配置」裡做使用者級授予/拒絕）；module_key 非空時受模組開關控制。",
   },
   adminEmbedRules: {
     title: "影片內嵌規則",
@@ -3159,9 +3180,9 @@ const zhTwBase: Omit<
   adminPromoKinds: {
     title: "使用者自購促銷檔位",
     intro:
-      "設定種子詳情頁「購買推廣」的可選檔位：類型 × 時長 → 價格。"
-      + "落地效果決定購買後種子獲得什麼（置頂 / 免費 / 雙倍等）。"
-      + "不偏向任何站型——按需增刪即可。",
+      "設定種子詳情頁「購買推廣」的可選檔位：類型 × 時長 → 價格。" +
+      "落地效果決定購買後種子獲得什麼（置頂 / 免費 / 雙倍等）。" +
+      "不偏向任何站型——按需增刪即可。",
     kindsTitle: "檔位類型",
     tiersTitle: "價目檔（類型 × 時長）",
     colKind: "識別碼",
@@ -4963,7 +4984,8 @@ const zhTwBase: Omit<
     rlLevel: "級別",
     rlAll: "全部",
     rlSearch: "按訊息或模組搜尋",
-    rlHint: "記錄 WARN 及以上級別（api/worker 執行日誌落庫，保留 14 天）；門檻可用環境變數 FLUX_RTLOG_LEVEL 調整。",
+    rlHint:
+      "記錄 WARN 及以上級別（api/worker 執行日誌落庫，保留 14 天）；門檻可用環境變數 FLUX_RTLOG_LEVEL 調整。",
     rlTime: "時間",
     rlSrc: "來源",
     rlInstance: "實例",
@@ -5334,7 +5356,7 @@ const adminopsTw: Dict["adminops"] = {
   jobsJob: "任務",
   jobsLast: "最近執行",
   jobsState: "狀態",
-    jobsBy: "執行實例",
+  jobsBy: "執行實例",
   jobsNever: "從未執行",
   jobsPending: "待執行",
   jobsRunning: "執行中",

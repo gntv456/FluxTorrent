@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/client";
+import { AdminNavGroups } from "./admin-nav-groups";
 /** 管理面板条目（后端 /admin/staffpanel 返回，已按 min_class 过滤） */
 export interface PanelEntry {
   section: string;
@@ -73,9 +74,6 @@ export function AdminShell({
   const [q, setQ] = useState("");
   const [navOpen, setNavOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  // 分组折叠（P2）：59 条全展开高 872px，默认只展开「含当前工具」的分组；
-  // 搜索时全部展开（结果要跨分组可见），折叠状态按分组 key 记忆。
-  const [folded, setFolded] = useState<Record<string, boolean>>({});
 
   /** 分组标题：i18n 缺失时回落 section key（英文），不留中文兜底 */
   const LABEL: Record<string, string> = {
@@ -156,71 +154,19 @@ export function AdminShell({
   })).filter((g) => g.items.length > 0);
 
   const navBody = (
-    <div className="flex flex-col gap-3">
-      {grouped.map((g) => {
-        // 默认只展开当前工具所在分组；搜索中全部展开（kw 非空）
-        const expanded =
-          kw !== "" ||
-          !folded[g.key] ||
-          g.items.some((e) => e.tab_key === tool);
-        return (
-          <div key={g.key}>
-            <button
-              type="button"
-              onClick={() => setFolded((f) => ({ ...f, [g.key]: !expanded }))}
-              aria-expanded={expanded}
-              className="mb-1 flex w-full items-center justify-between px-2
-                text-xs font-bold text-sub hover:text-ink"
-            >
-              <span>{g.label}</span>
-              <span className="text-[10px]">{expanded ? "▾" : "▸"}</span>
-            </button>
-            {expanded && (
-              <div className="flex flex-col gap-0.5">
-                {g.items.map((e) => {
-                  const active = tool === e.tab_key;
-                  const n = badges[e.tab_key] ?? 0;
-                  return (
-                    <button
-                      key={e.tab_key}
-                      onClick={() => {
-                        onTool(e.tab_key);
-                        setNavOpen(false);
-                      }}
-                      title={tipOf(e)}
-                      className={`flex min-h-[34px] items-center justify-between
-                        gap-2 rounded-[var(--r-md)] px-2 text-left text-[13px]
-                        transition ${
-                          active
-                            ? "bg-sky font-bold text-white"
-                            : "text-sub hover:bg-[var(--surface-raised)]"
-                        }`}
-                    >
-                      <span className="truncate">{labelOf(e)}</span>
-                      {n > 0 && (
-                        <span
-                          className={`shrink-0 rounded-full px-1.5
-                            text-[11px] ${
-                              active
-                                ? "bg-white/25 text-white"
-                                : "bg-coral/20 text-danger"
-                            }`}
-                        >
-                          {n}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-      {grouped.length === 0 && (
-        <p className="px-2 text-xs text-sub">{a.navEmpty}</p>
-      )}
-    </div>
+    <AdminNavGroups
+      grouped={grouped}
+      badges={badges}
+      tool={tool}
+      onTool={(t) => {
+        onTool(t);
+        setNavOpen(false);
+      }}
+      kwEmpty={kw === ""}
+      labelOf={labelOf}
+      tipOf={tipOf}
+      navEmpty={a.navEmpty}
+    />
   );
 
   return (

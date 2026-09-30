@@ -7,9 +7,11 @@
   padding: 14px 18px;
   border: 1px solid var(--baozi-line-soft);
   border-radius: var(--r-md);
-  background:linear-gradient(100deg,
+  background: linear-gradient(
+    100deg,
     var(--brand-glow),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
   box-shadow: var(--shadow-card);
 }
 .request-center__header span {
@@ -60,9 +62,11 @@
 .request-center__filter--primary {
   color: var(--text-on-accent);
   border-color: transparent;
-  background:linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     var(--baozi-orange-bright),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
 }
 .request-center__filter--primary:hover {
   color: var(--text-on-accent);
@@ -116,18 +120,31 @@ table.baozi-wide-table-scroll {
 
 /* ============ M1 裸表兜底（移动端方案） ============
  * 管理面板内容区（admin-shell .admin-panel-content）的裸 <table> 统一
- * 转块级 + 横向滚动：<lg 不再撑破容器/引发 body 级横滚。
+ * 转块级 + 横向滚动：<xl 不再撑破容器/引发 body 级横滚。
  * 已显式用 .baozi-wide-table-scroll 包裹的表格不在此容器内，互不影响。
  * display:block 会丢 table 语义布局（行不再随内容撑宽），因此配合
  * width:max-content 保证列宽按内容计算，滚动容器裁剪。
- * ≥lg（桌面）恢复表格布局撑满内容区：block 化在宽屏让表格收缩成
- * 内容宽（实测经济仪表 204px / 捐赠订单 528px），连带 w-full 失效。 */
-@media (max-width: 1023.98px) {
+ * ≥1280（xl，配合下方 main:has 放宽到 1600）恢复表格布局撑满内容区：
+ * block 化在宽屏让表格收缩成内容宽（实测经济仪表 204px / 捐赠订单
+ * 528px），连带 w-full 失效。恢复点取 1280 而非 1024：1024–1279 窄桌面
+ * 内容区仍 ~1016px，users 表 min-content 1014 / torrents 780 会顶破
+ * （display:table 无滚动容器），该段保持块化内滚。 */
+@media (max-width: 1279.98px) {
   .admin-panel-content table {
     display: block;
     width: max-content;
     max-width: 100%;
     overflow-x: auto;
+  }
+}
+
+/* 后台数据密集页在宽屏放宽内容区：main 默认 max-w-[1280px]（全站统一），
+ * 但后台左导航 + 多列表格在 1600 屏右侧留白 ~470px。仅对含后台内容区的
+ * 页面放宽（:has 后代匹配），前台各页不动；pages.css 未分层，稳压
+ * Tailwind utility 的 max-w。1280 以下无效果，与本文件表格恢复点一致。 */
+@media (min-width: 1280px) {
+  main:has(.admin-panel-content) {
+    max-width: 1600px;
   }
 }
 
@@ -157,9 +174,11 @@ table.baozi-wide-table-scroll {
   color: var(--text-on-accent);
   font-size: 17px;
   font-weight: 900;
-  background:linear-gradient(145deg,
+  background: linear-gradient(
+    145deg,
     var(--baozi-orange-bright),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
 }
 .subtitles-head strong {
   color: var(--text-strong);
@@ -218,9 +237,11 @@ table.subtitles-upload-table {
 }
 .subtitles-upload-table input.btn {
   color: var(--text-on-accent);
-  background:linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     var(--baozi-orange-bright),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
 }
 .subtitles-upload-table input.btn:disabled {
   opacity: 0.6;
@@ -1119,9 +1140,11 @@ table.subtitles-upload-table {
   padding: 16px 20px;
   border: 1px solid var(--baozi-line-soft);
   border-radius: var(--r-md);
-  background:linear-gradient(100deg,
+  background: linear-gradient(
+    100deg,
     var(--brand-glow),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
   box-shadow: var(--shadow-card);
 }
 .preserve-hero__mark {
@@ -1341,9 +1364,11 @@ textarea.bbcode {
   border-radius: 8px;
   color: var(--text-on-accent);
   font-weight: 800;
-  background:linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     var(--baozi-orange-bright),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
   cursor: pointer;
 }
 .contactstaff-actions .btn:disabled {
@@ -1385,9 +1410,11 @@ textarea.bbcode {
   padding: 18px 22px;
   border: 1px solid var(--baozi-line-soft);
   border-radius: var(--r-md);
-  background:linear-gradient(100deg,
+  background: linear-gradient(
+    100deg,
     var(--brand-glow),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
   box-shadow: var(--shadow-card);
   color: var(--text-on-accent);
 }
@@ -1625,9 +1652,11 @@ textarea.bbcode {
   border-radius: 5px;
 }
 .task-stats-bars progress::-webkit-progress-value {
-  background:linear-gradient(90deg,
+  background: linear-gradient(
+    90deg,
     var(--baozi-orange-bright),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
   border-radius: 5px;
 }
 .task-stats-bars progress::-moz-progress-bar {
@@ -1875,18 +1904,38 @@ textarea.bbcode {
   font-size: 11.5px;
   font-weight: 700;
 }
-.fun-status--normal { background: var(--success-soft); color: var(--success); }
-.fun-status--dull, .fun-status--notfunny { background: var(--muted-soft); color:
- var(--text-muted); }
-.fun-status--funny { background: var(--surface-sunken); color: var(--baozi-orang
-e-dark); }
-.fun-status--veryfunny { background: var(--brand-soft); color: var(--baozi-orang
-e-dark); }
-.fun-status--banned { background: var(--danger-soft); color: var(--danger); }
-.link-status--pending { background: var(--surface-sunken); color: var(--baozi-or
-ange-dark); }
-.link-status--active { background: var(--success-soft); color: var(--success); }
-.link-status--hidden { background: var(--muted-soft); color: var(--text-muted); 
+.fun-status--normal {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.fun-status--dull,
+.fun-status--notfunny {
+  background: var(--muted-soft);
+  color: var(--text-muted);
+}
+.fun-status--funny {
+  background: var(--surface-sunken);
+  color: var(--baozi-orang e-dark);
+}
+.fun-status--veryfunny {
+  background: var(--brand-soft);
+  color: var(--baozi-orang e-dark);
+}
+.fun-status--banned {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.link-status--pending {
+  background: var(--surface-sunken);
+  color: var(--baozi-or ange-dark);
+}
+.link-status--active {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.link-status--hidden {
+  background: var(--muted-soft);
+  color: var(--text-muted);
 }
 
 /* ============ 趣味盒 + 友链申请 ============ */
@@ -2151,9 +2200,11 @@ ange-dark); }
   border-radius: 7px;
   color: var(--text-on-accent);
   font-size: 12px;
-  background:linear-gradient(145deg,
+  background: linear-gradient(
+    145deg,
     var(--baozi-orange-bright),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
 }
 /* M1 快修 #1：feed pill——全局 a{color} 是未分层样式，优先级压过 Tailwind
    utility（text-white 失效的根因），故用专类 + 显式色板钉死 on-accent 口径。 */
@@ -2164,7 +2215,9 @@ ange-dark); }
   padding: 6px 16px;
   font-size: 14px;
   font-weight: 700;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 .pting-feed-pill:hover {
   color: #fff;
@@ -2179,9 +2232,11 @@ ange-dark); }
   padding: 16px 20px;
   border: 1px solid var(--baozi-line-soft);
   border-radius: var(--r-md);
-  background:linear-gradient(100deg,
+  background: linear-gradient(
+    100deg,
     var(--brand-glow),
-    var(--baozi-orange-dark));
+    var(--baozi-orange-dark)
+  );
   box-shadow: var(--shadow-card);
   color: var(--text-on-accent);
 }
@@ -2434,9 +2489,11 @@ ange-dark); }
   min-height: 34px;
   border: none;
   border-radius: 999px;
-  background:linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     var(--baozi-orange-bright),
-    var(--baozi-orange));
+    var(--baozi-orange)
+  );
   color: var(--text-on-accent);
   font-size: 12.5px;
   font-weight: 700;
@@ -2471,7 +2528,6 @@ ange-dark); }
   background: var(--baozi-paper);
 }
 
-
 /* ==== 首页：聊天室 + 趣味盒 两栏等高 ==== */
 .home-duo > section {
   display: flex;
@@ -2488,7 +2544,6 @@ ange-dark); }
     min-height: 520px;
   }
 }
-
 
 /* ==== 获取 RSS 页（好学站 getrss.php 复刻） ==== */
 .rss-card {
@@ -2652,9 +2707,11 @@ ange-dark); }
   padding: 18px 20px;
   border: 1px solid var(--border-soft);
   border-radius: var(--r-lg);
-  background:linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     var(--surface-card) 0%,
-    var(--surface-cloud) 100%);
+    var(--surface-cloud) 100%
+  );
   box-shadow: var(--shadow-card);
 }
 .up-hero__avatar {
@@ -3064,22 +3121,41 @@ input.batch-all {
 
 /* 详情页下载/磁力按钮（2.4 磁力缺口；从 download-button 抽出，守 80 列） */
 .td-dl-btn {
-  display: inline-flex; align-items: center; min-height: 44px;
-  padding: 0 24px; border: none; border-radius: 999px;
-  background: var(--coral, #c0392b); color: #fff;
-  font-weight: 700; cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 999px;
+  background: var(--coral, #c0392b);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
 }
-.td-dl-btn:active { transform: scale(0.97); }
-.td-dl-btn:disabled { opacity: 0.5; }
+.td-dl-btn:active {
+  transform: scale(0.97);
+}
+.td-dl-btn:disabled {
+  opacity: 0.5;
+}
 .td-dl-btn--magnet {
-  padding: 0 16px; font-size: 14px; color: inherit;
+  padding: 0 16px;
+  font-size: 14px;
+  color: inherit;
   border: 1px solid var(--line, rgba(0, 0, 0, 0.14));
-  border-radius: 999px; background: var(--card, #fff);
+  border-radius: 999px;
+  background: var(--card, #fff);
 }
 .td-dl-price {
-  display: inline-flex; align-items: center; min-height: 28px;
-  padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
-  background: var(--baozi-orange, #f60); color: #fff;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--baozi-orange, #f60);
+  color: #fff;
 }
 
 /* ============ 种子行卡片（M3，移动端方案 §3） ============
