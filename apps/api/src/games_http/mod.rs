@@ -2,7 +2,8 @@
 //! 经济定位：四玩法一律**回收魔力**（各自 EV < 1），赔率/概率走代码常量 + 设置键双源。
 //! 按域拆分（300 行门禁）：总览/历史/回合在 overview.rs，赔率与限次助手在
 //! helpers.rs，刮刮乐/猜大小/九宫格在 casino.rs，农场在 farm.rs（收获彩蛋奖池在
-//! farm_egg.rs），趣味投票在 fun.rs。mount_games 留在此。
+//! farm_egg.rs，土地阶梯在 farm_land.rs / farm_land_write.rs），趣味投票在 fun.rs。
+//! mount_games 留在此。
 
 mod arcade_admin;
 mod arcade_admin_write;
@@ -21,6 +22,8 @@ mod casino;
 mod farm;
 mod farm_actions;
 mod farm_egg;
+mod farm_land;
+mod farm_land_write;
 mod fun;
 mod helpers;
 mod item_use;
@@ -39,6 +42,8 @@ use arcade_rewards_write::*;
 use casino::*;
 use farm::*;
 use farm_actions::*;
+use farm_land::*;
+use farm_land_write::*;
 use fun::*;
 use item_use::*;
 use linkage::*;
@@ -56,6 +61,8 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(farm_plant)
         .service(farm_water)
         .service(farm_harvest)
+        .service(farm_land_buy)
+        .service(farm_land_upgrade)
         .service(fun_polls)
         .service(fun_vote)
         .service(linkage_status)

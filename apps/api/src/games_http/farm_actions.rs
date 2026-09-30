@@ -31,13 +31,13 @@ pub(super) async fn farm_plant(
     // 确定性市场价可被脚本以 6 槽 × 高频轮种套取波动收益。现独立计数（rl:farm），
     // 与即时赌局额度分开 —— 否则种满 6 块地就吃掉 6 次下注额度。
     check_rate_scoped(&state, &state.redis, auth.id, RateScope::Farm).await?;
-    if !(1..=games::FARM_PLOTS).contains(&body.slot) {
-        return Err(DomainError::Validation(format!(
-            "slot 取值 1-{}",
-            games::FARM_PLOTS
-        )));
-    }
     let crop = get_plantable_crop(&state.repo.db, body.crop_id).await?;
+    // 地块关闸：槽位必须是我**持有**的（免费 6 块 + 按阶梯买来的），
+    // 成熟分钟数由那一块的等级定（升级只买周转，不改产量 —— games::farm_land）。
+    let minutes = super::farm_land::plant_guard(
+        &state, auth.id, body.slot, crop.grow_hours,
+    )
+    .await?;
 
     let now = chrono::Utc::now().timestamp();
     let window =
@@ -67,13 +67,13 @@ pub(super) async fn farm_plant(
 
     let planted = sqlx::query_scalar::<_, i64>(
         r#"INSERT INTO farm_plots (user_id, slot, crop_id, ready_at)
-         VALUES ($1, $2, $3, now() + make_interval(hours => $4))
+         VALUES ($1, $2, $3, now() + make_interval(mins => $4::int))
          ON CONFLICT (user_id, slot) DO NOTHING RETURNING id"#,
     )
     .bind(auth.id)
     .bind(body.slot)
     .bind(crop.id)
-    .bind(crop.grow_hours)
+    .bind(minutes)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -100,9 +100,11 @@ pub(super) async fn farm_plant(
         .repo
         .audit(Some(auth.id), "farm.plant", Some(crop.id as i64))
         .await;
+    let ready = chrono::Utc::now() + chrono::Duration::minutes(minutes);
     Ok(ok(serde_json::json!({
         "slot": body.slot, "crop": crop.name, "cost": price,
-        "ready_at": (chrono::Utc::now() + chrono::Duration::hours(crop.grow_hours as i64)).to_rfc3339(),
+        "minutes": minutes,
+        "ready_at": ready.to_rfc3339(),
     })))
 }
 

@@ -14,9 +14,12 @@
 
 mod bigsmall;
 mod farm;
+mod farm_land;
 mod jgg;
 mod scratch;
 
+#[cfg(test)]
+mod farm_land_tests;
 #[cfg(test)]
 mod farm_tests;
 #[cfg(test)]
@@ -39,6 +42,14 @@ pub use farm::{
     market_window_start_with, roll_double, validate_crop, validate_farm,
     CropError, BASE_EV as FARM_BASE_EV, GROW_HOURS_MAX as FARM_GROW_MAX,
     GROW_HOURS_MIN as FARM_GROW_MIN, PLOTS as FARM_PLOTS,
+};
+#[allow(unused_imports)]
+pub use farm_land::{
+    grow_minutes, land_config, land_price, next_purchasable_slot,
+    speed_permille, upgrade_price, validate_ladder, validate_purchase,
+    validate_upgrade, LandConfig, LandError, DEFAULT_LAND_BASE,
+    DEFAULT_LAND_RATIO, DEFAULT_MAX_PLOTS, DEFAULT_UP_BASE,
+    DEFAULT_UP_RATIO, MAX_LEVEL, MAX_PLOTS_HARD_CAP, RATIO_MIN,
 };
 #[allow(unused_imports)]
 pub use jgg::{

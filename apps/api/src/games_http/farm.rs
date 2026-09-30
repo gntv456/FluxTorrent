@@ -92,6 +92,10 @@ pub(super) async fn farm_overview(
         - limit_used(&state, auth.id, true).await.unwrap_or(0))
     .max(0);
 
+    // 土地阶梯状态（买地/升级的价格与等级）。参数配错时这里就报出去 ——
+    // 白送地块是另一种增发，不能让它带着坏配置继续长作物。
+    let land = super::farm_land::land_projection(&state, auth.id).await?;
+
     Ok(ok(serde_json::json!({
         "window_start": window,
         // 刷新点由**设置键**决定，不是写死的 4 小时：站长把窗口改成 6，
@@ -101,6 +105,7 @@ pub(super) async fn farm_overview(
         "crops": crops,
         "plots": plots,
         "slots": games::FARM_PLOTS,
+        "land": land,
         "wither_days": wither_days,
         "hour_limit": farm_limit,
         "hour_left": farm_left,
