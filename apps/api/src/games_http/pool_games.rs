@@ -61,8 +61,16 @@ async fn pool_round(
         let _ = tx.rollback().await;
         return Err(DomainError::Validation("该局已受理，请勿重复提交".into()));
     }
-    let (spark, value, fell_back) =
-        settle_tx(&mut tx, uid, ticket, &draw, game, &win_idem).await?;
+    let (spark, value, fell_back) = settle_tx(
+        &mut tx,
+        uid,
+        ticket,
+        &draw,
+        game,
+        &win_idem,
+        super::casino::meta_rarity(&pool.meta, draw.index),
+    )
+    .await?;
     tx.commit().await.map_err(dberr)?;
     state
         .repo

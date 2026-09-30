@@ -13,11 +13,12 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark_tx, spend_spark_tx, SpendOutcome};
+use crate::economy_http::{earn_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
+use super::food_coupon::pay_feed_tx;
 use super::helpers::{eco_i64, idem_key};
 use super::pool::dberr;
 
@@ -191,16 +192,28 @@ pub(super) async fn pet_status(
     let auth = require_auth(&req, &state).await?;
     let (feed, dig) = tune(&state).await;
     let (p, _) = tick(&state.repo.db, auth.id, dig, None).await?;
-    Ok(ok(status_json(&p, feed, dig)))
+    let coupons: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(food_coupons, 0)::bigint FROM users WHERE id = $1",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(0);
+    let mut st = status_json(&p, feed, dig);
+    st["food_coupons"] = serde_json::json!(coupons);
+    Ok(ok(st))
 }
 
 #[derive(Deserialize)]
 struct PetActionReq {
     #[serde(default)]
     idempotency_key: Option<String>,
+    /// 用口粮券抵扣本次投喂（仅投喂读取；行为联动消耗出口）
+    #[serde(default)]
+    use_coupon: bool,
 }
 
-/// 投喂：扣喂价 → 加能量/经验、满饥饿、可能升级。
+/// 投喂：扣喂价（或 1 张口粮券抵扣）→ 加能量/经验、满饥饿、可能升级。
 #[post("/games/pet/feed")]
 pub(super) async fn pet_feed(
     req: HttpRequest,
@@ -210,20 +223,16 @@ pub(super) async fn pet_feed(
     let auth = require_auth(&req, &state).await?;
     let db = &state.repo.db;
     let (feed, dig) = tune(&state).await;
-    let client = body.and_then(|b| b.idempotency_key.clone());
+    let (client, use_coupon) = match body {
+        Some(b) => (b.idempotency_key.clone(), b.use_coupon),
+        None => (None, false),
+    };
     let idem = idem_key("pet-feed", auth.id, &client);
-    // 扣款与喂食**同一事务**：分两次写的话，第二次失败就是「钱扣了、没喂到」。
+    // 扣款（或扣券）与喂食**同一事务**：分两次写的话，第二次失败就是
+    // 「钱扣了、没喂到」。
     let mut tx = db.begin().await.map_err(dberr)?;
-    if !matches!(
-        spend_spark_tx(&mut tx, auth.id, feed, "game", &idem, "pet_feed", 0)
-            .await?,
-        SpendOutcome::Spent
-    ) {
-        let _ = tx.rollback().await;
-        return Err(DomainError::Validation(
-            "这次投喂已受理，请勿重复提交".into(),
-        ));
-    }
+    let (spent, used_coupon) =
+        pay_feed_tx(&mut tx, auth.id, &idem, use_coupon, feed).await?;
     let (p, _) = tick_tx(&mut tx, auth.id, dig, None).await?;
     let exp = p.exp + EXP_PER_FEED;
     let level = level_of(exp);
@@ -250,9 +259,18 @@ pub(super) async fn pet_feed(
         pending: p.pending,
     };
     state.repo.audit(Some(auth.id), "game.pet.feed", None).await;
+    let coupons_left: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(food_coupons, 0)::bigint FROM users WHERE id = $1",
+    )
+    .bind(auth.id)
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
     Ok(ok(serde_json::json!({
         "ok": true,
-        "spent": feed,
+        "spent": spent,
+        "used_coupon": used_coupon,
+        "food_coupons": coupons_left,
         "status": status_json(&after, feed, dig),
     })))
 }

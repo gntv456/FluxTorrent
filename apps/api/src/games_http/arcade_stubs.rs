@@ -51,13 +51,17 @@ pub(super) async fn sync_stubs(
     .bind(uid)
     .fetch_all(db)
     .await?;
-    let m: (i64, i64, i64, i64, i64, i64) = sqlx::query_as(
+    let m: (i64, i64, i64, i64, i64, i64, i64, i64, i64, i64) = sqlx::query_as(
         "SELECT count(*)::bigint, \
                 count(*) FILTER (WHERE ref_type = 'scratch')::bigint, \
                 count(*) FILTER (WHERE ref_type = 'jgg')::bigint, \
                 count(*) FILTER (WHERE ref_type = 'bigsmall')::bigint, \
                 count(*) FILTER (WHERE ref_type = 'farm_water')::bigint, \
-                count(*) FILTER (WHERE ref_type = 'farm_plant')::bigint \
+                count(*) FILTER (WHERE ref_type = 'farm_plant')::bigint, \
+                count(*) FILTER (WHERE ref_type = 'capsule')::bigint, \
+                count(*) FILTER (WHERE ref_type = 'wheel')::bigint, \
+                count(*) FILTER (WHERE ref_type = 'fishing')::bigint, \
+                count(*) FILTER (WHERE ref_type = 'pet_feed')::bigint \
          FROM spark_ledger \
          WHERE user_id = $1 AND kind = 'game' AND amount < 0",
     )
@@ -72,6 +76,10 @@ pub(super) async fn sync_stubs(
             "bs_plays" => Some(m.3),
             "farm_water" => Some(m.4),
             "farm_plant" => Some(m.5),
+            "capsule_plays" => Some(m.6),
+            "wheel_plays" => Some(m.7),
+            "fishing_plays" => Some(m.8),
+            "pet_feeds" => Some(m.9),
             _ => None,
         }
     };

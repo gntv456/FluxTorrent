@@ -73,6 +73,8 @@ async fn checkin(
         ),
     );
 
+    // 每日签到是否送出了抽卡券（gacha daily_free；事务块内赋值）
+    let mut df_granted = false;
     {
         // 单事务（P1 撕裂窗口收口）：签到行与本日奖励同生共死——旧版 attendance 落库
         // 成功后 earn 失败，当日奖励永久漏发（重试被「已签到」拦截，幂等键空有设计）。
@@ -103,6 +105,56 @@ async fn checkin(
             earn_spark_tx(&mut tx, auth.id, reward.total, "attendance", &idem)
                 .await?;
         let _ = earn_outcome;
+        // 每日签到送 1 张抽卡券（gacha daily_free）：券走独立账本不进火花，
+        // 零通胀。幂等键带日期 —— 重放 / 补签路径都不会重复发。
+        let df_idem =
+            format!("gacha:df:{}:{}", auth.id, today.format("%Y%m%d"));
+        let df_seen: Option<i32> = sqlx::query_scalar(
+            "SELECT balance_after FROM gacha_ticket_ledger \
+             WHERE idempotency_key = $1",
+        )
+        .bind(&df_idem)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if df_seen.is_none() {
+            sqlx::query(
+                "INSERT INTO gacha_ticket_balance (user_id, balance) \
+                 VALUES ($1, 0) ON CONFLICT (user_id) DO NOTHING",
+            )
+            .bind(auth.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            let tb: i32 = sqlx::query_scalar(
+                "SELECT balance FROM gacha_ticket_balance \
+                 WHERE user_id = $1 FOR UPDATE",
+            )
+            .bind(auth.id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "INSERT INTO gacha_ticket_ledger (user_id, delta, kind, \
+                 ref_type, idempotency_key, balance_after) \
+                 VALUES ($1, 1, 'daily_free', 'checkin', $2, $3)",
+            )
+            .bind(auth.id)
+            .bind(&df_idem)
+            .bind(tb + 1)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "UPDATE gacha_ticket_balance SET balance = $2 WHERE user_id = $1",
+            )
+            .bind(auth.id)
+            .bind(tb + 1)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            df_granted = true;
+        }
         tx.commit()
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
@@ -111,6 +163,7 @@ async fn checkin(
     Ok(ok(serde_json::json!({
         "streak": reward.streak, "reward": reward.total,
         "base": reward.base, "streak_bonus": reward.streak_bonus,
+        "gacha_ticket": df_granted,
     })))
 }
 
@@ -143,11 +196,20 @@ async fn checkin_status(
     .map_err(|e| DomainError::Internal(e.into()))?
     .map(|s: i32| s as i64)
     .unwrap_or(0);
-    // 补签卡持有数（未消耗订单；kind 兼容 makeup_card/resub_card，0066）
+    // 补签卡持有数（双源 0262：未消耗订单 + 娱乐屋发放的补签卡；kind 兼容 makeup_card/resub_card，0066）
     let makeup_cards: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM shop_orders o JOIN shop_items i ON i.id = o.item_id \
-         WHERE o.user_id = $1 AND i.kind IN ('makeup_card','resub_card') \
-           AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.idempotency_key = concat('resub:', o.id))",
+        "SELECT (SELECT count(*) FROM shop_orders o \
+                   JOIN shop_items i ON i.id = o.item_id \
+                  WHERE o.user_id = $1 \
+                    AND i.kind IN ('makeup_card','resub_card') \
+                    AND NOT EXISTS (SELECT 1 FROM resub_uses r \
+                                     WHERE r.idempotency_key = concat('resub:', o.id))) \
+             + (SELECT COALESCE(SUM(g.qty), 0)::bigint \
+                  FROM arcade_item_grants g \
+                 WHERE g.user_id = $1 AND g.item_key = 'resub_card') \
+             - (SELECT COALESCE(SUM(u.qty), 0)::bigint \
+                  FROM arcade_item_uses u \
+                 WHERE u.user_id = $1 AND u.item_key = 'resub_card')",
     )
     .bind(auth.id)
     .fetch_one(&state.repo.db)

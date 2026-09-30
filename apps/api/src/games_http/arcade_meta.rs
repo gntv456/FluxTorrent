@@ -186,7 +186,7 @@ pub(super) async fn arcade_meta(
     })
     .collect();
 
-    // ── 全服公示：近期票根/领取事件（社交钩子；文案由前端 i18n 合成）──
+    // ── 全服公示：近期票根/领取/稀有掉落事件（社交钩子；文案由前端 i18n 合成）──
     let feed: Vec<serde_json::Value> = sqlx::query(
         "SELECT x.at, u.username AS who, x.kind, x.name FROM ( \
            SELECT ua.granted_at AS at, ua.user_id, 'stub' AS kind, \
@@ -197,6 +197,10 @@ pub(super) async fn arcade_meta(
            UNION ALL \
            SELECT c.claimed_at AS at, c.user_id, c.kind, c.ref_code AS name \
            FROM arcade_claims c \
+           UNION ALL \
+           SELECT r.created_at AS at, r.user_id, 'rare' AS kind, \
+                  r.game || '·' || r.prize AS name \
+           FROM arcade_pool_rounds r WHERE r.rarity >= 4 \
          ) x JOIN users u ON u.id = x.user_id \
          WHERE u.status < 2 \
          ORDER BY x.at DESC LIMIT 12",
