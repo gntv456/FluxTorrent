@@ -23,6 +23,35 @@ use super::helpers::{check_rate_scoped, RateScope};
 #[derive(Deserialize)]
 struct SlotReq {
     slot: i32,
+    /// 客户端幂等键（可选，与其它娱乐端点同款）。**重试安全靠它**：
+    /// 缺省回落到派生键，而派生键里含会变的量（升级的「从第几级升」），
+    /// 所以派生键只挡并发双击，挡不住「响应丢了再重试」——那种重试会再扣一笔。
+    #[serde(default)]
+    idempotency_key: Option<String>,
+}
+
+/// 幂等键：**客户端给了就用客户端那把**，没给才回落到派生键。
+///
+/// 两种都要，因为它们防的不是同一件事：
+/// - 客户端键由**请求本身**决定，不随服务端状态漂移 → 响应丢失后的重试能去重；
+/// - 派生键保证**旧客户端不传键时仍有并发保护** → 两个并发双击都读到同一个
+///   `from`、算出同一个键，第二个被判重放。
+fn land_idem(
+    prefix: &str,
+    uid: i64,
+    slot: i32,
+    derived_tail: Option<i32>,
+    client: &Option<String>,
+) -> String {
+    match client {
+        Some(k) if !k.trim().is_empty() && k.len() <= 128 => {
+            format!("{prefix}:{uid}:{slot}:c:{k}")
+        }
+        _ => match derived_tail {
+            Some(v) => format!("{prefix}:{uid}:{slot}:{v}"),
+            None => format!("{prefix}:{uid}:{slot}"),
+        },
+    }
 }
 
 #[post("/farm/land/buy")]
@@ -51,7 +80,8 @@ pub(super) async fn farm_land_buy(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let idem = format!("farm-land:{}:{}", auth.id, slot);
+    let idem =
+        land_idem("farm-land", auth.id, slot, None, &body.idempotency_key);
     let outcome = spend_spark_tx(
         &mut tx,
         auth.id,
@@ -128,9 +158,16 @@ pub(super) async fn farm_land_upgrade(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    // 幂等键**绑在「从第几级升上去」**：同一级的重放必然被拒（不重复扣钱），
-    // 而真正的下一次升级键自然不同 —— 这比按分钟取窗口更准。
-    let idem = format!("farm-up:{}:{}:{}", auth.id, body.slot, from);
+    // 幂等键：客户端给了优先（重试去重靠它）；没给才用「从第几级升」派生。
+    // ⚠️ 派生键**挡不住顺序重试**：第一次成功后 from 已变，重试算出的键就不同了，
+    // 会被当成新的一次升级再扣一笔。派生键只对**并发**双击有效。
+    let idem = land_idem(
+        "farm-up",
+        auth.id,
+        body.slot,
+        Some(from),
+        &body.idempotency_key,
+    );
     let outcome = spend_spark_tx(
         &mut tx,
         auth.id,
