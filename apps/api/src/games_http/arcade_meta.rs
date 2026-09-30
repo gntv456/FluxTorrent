@@ -16,9 +16,12 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::arcade_backpack::{backpack, det_economic_grants};
+use super::arcade_backpack::backpack;
 use super::arcade_board::board;
-use super::arcade_cfg::{bad, COSMETIC_KINDS, MILESTONES, QUESTS, SEASON_KEY};
+use super::arcade_cfg::{bad, COSMETIC_KINDS};
+use super::arcade_rewards::{
+    det_cost_value, load_milestones, load_quests, refs_gate, season_key,
+};
 use super::arcade_stubs::sync_stubs;
 use super::helpers::{bigsmall_mult_permille, eco_i64};
 
@@ -51,8 +54,9 @@ pub(super) async fn arcade_meta(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 确定侧发放：窗口内 arcade 奖励支出
-    let det: i64 = sqlx::query_scalar(
+    // 确定侧发放：魔力按流水计，物品按目录 anchor 计 —— 两边合起来才是
+    // 「这一周站点确定付出了多少」。只数魔力等于给确定侧留了一条不进账的路。
+    let det_spark: i64 = sqlx::query_scalar(
         "SELECT COALESCE(sum(amount), 0)::bigint FROM spark_ledger \
          WHERE user_id = $1 AND kind = 'arcade' AND amount > 0 \
            AND created_at >= now() - make_interval(days => $2::int)",
@@ -62,6 +66,8 @@ pub(super) async fn arcade_meta(
     .fetch_one(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    let det_item_value = det_cost_value(db, uid, win).await?;
+    let det = det_spark + det_item_value;
 
     let budget = base + back.max(0) * win * pct / 100;
     let net = back - det;
@@ -91,19 +97,30 @@ pub(super) async fn arcade_meta(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let q_claimed: Vec<String> = claimed_q.into_iter().map(|r| r.0).collect();
-    let quests: Vec<serde_json::Value> = QUESTS
+    let quest_rows = load_quests(db).await?;
+    let quests: Vec<serde_json::Value> = quest_rows
         .iter()
-        .map(|(code, game, target, reward)| {
-            let done: i64 = if *game == "*" {
+        .map(|r| {
+            let done: i64 = if r.game_ref == "*" {
                 counts.iter().map(|c| c.1).sum()
             } else {
-                counts.iter().filter(|c| c.0 == *game).map(|c| c.1).sum()
+                counts
+                    .iter()
+                    .filter(|c| c.0 == r.game_ref)
+                    .map(|c| c.1)
+                    .sum()
             };
-            let claimed = q_claimed.iter().any(|c| c == code);
+            let claimed = q_claimed.iter().any(|c| c == &r.code);
             serde_json::json!({
-                "code": code, "done": done.min(*target), "target": target,
-                "claimed": claimed, "ready": !claimed && done >= *target,
-                "reward": reward,
+                "code": r.code,
+                "done": done.min(r.target),
+                "target": r.target,
+                "claimed": claimed,
+                "ready": !claimed && done >= r.target,
+                "reward": r.reward_spark,
+                "item_key": r.item_key,
+                "item_name": r.item_name,
+                "item_qty": r.item_qty,
             })
         })
         .collect();
@@ -114,24 +131,29 @@ pub(super) async fn arcade_meta(
         .map_err(|e| DomainError::Internal(e.into()))?;
 
     // ── 赛季星轨：里程碑按票根数解锁 + 领取态 ──
+    let skey = season_key(db).await?;
     let claimed_s: Vec<(String,)> = sqlx::query_as(
         "SELECT ref_code FROM arcade_claims \
          WHERE user_id = $1 AND kind = 'season' AND period_key = $2",
     )
     .bind(uid)
-    .bind(SEASON_KEY)
+    .bind(&skey)
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let s_claimed: Vec<String> = claimed_s.into_iter().map(|r| r.0).collect();
-    let season: Vec<serde_json::Value> = MILESTONES
+    let season: Vec<serde_json::Value> = load_milestones(db, &skey)
+        .await?
         .iter()
-        .map(|(code, need, reward)| {
-            let claimed = s_claimed.iter().any(|c| c == code);
+        .map(|r| {
+            let claimed = s_claimed.iter().any(|c| c == &r.code);
             serde_json::json!({
-                "code": code, "need": need, "reward": reward,
-                "claimed": claimed, "reached": stub_count >= *need,
-                "ready": !claimed && stub_count >= *need,
+                "code": r.code, "need": r.target,
+                "reward": r.reward_spark,
+                "item_key": r.item_key, "item_name": r.item_name,
+                "item_qty": r.item_qty,
+                "claimed": claimed, "reached": stub_count >= r.target,
+                "ready": !claimed && stub_count >= r.target,
             })
         })
         .collect();
@@ -195,26 +217,27 @@ pub(super) async fn arcade_meta(
     // 背包：奖池发出的物品必须回到玩家眼前，否则「发奖」只是账面上的一行
     let pack = backpack(db, uid).await?;
     let board = board(db).await?;
-    let det_items = det_economic_grants(db, win).await?;
+    let refs = refs_gate(db).await?;
 
     // ── 门禁：确定侧预算（第二道闸）+ 随机侧赔率方向 ──
     let mult = bigsmall_mult_permille(&state).await;
     let checks = vec![
         bad(
-            "确定侧发放在娱乐屋预算内",
+            "确定侧发放（魔力 + 物品折算）落在娱乐屋预算内",
             det <= budget,
-            format!("已发 {det} / 预算 {budget}"),
+            format!(
+                "已发 {det}（魔力 {det_spark} + 物品 {det_item_value}）\
+                 / 预算 {budget}"
+            ),
         ),
         bad(
             "猜大小赔率 < 2.0（随机侧 EV < 1）",
             mult < 2000,
             format!("当前 {mult}‰"),
         ),
-        bad(
-            "确定侧未发放经济类物品（EV 闸管不到这一侧）",
-            det_items == 0,
-            format!("窗口内 {det_items} 笔"),
-        ),
+        // 停用一件正被奖励引用的物品是普通运营动作，而确定侧没有「打折回落」：
+        // 引用坏掉时玩家点领取会当场报错。这条闸就是提前把它照出来。
+        refs,
     ];
 
     let body = serde_json::json!({
@@ -226,7 +249,7 @@ pub(super) async fn arcade_meta(
         "stubs": {
             "owned": stub_count, "total": stubs_json.len(), "items": stubs_json,
         },
-        "season": { "key": SEASON_KEY, "items": season },
+        "season": { "key": skey, "items": season },
         "shelf": shelf,
         "backpack": pack,
         "board": board,

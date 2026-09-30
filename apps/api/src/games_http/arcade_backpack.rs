@@ -1,11 +1,8 @@
-//! 玩家侧物品背包（只读发放账 arcade_item_grants）。
+//! 玩家侧物品背包（读侧）。
 //!
 //! 奖池能发物品之后，「发出去的东西玩家看得见吗」是闭环的另一半。这里刻意
-//! **不另存一份持有数**：余量与持有量一律由发放账反推（第二份清单必然漂移），
+//! **不另存一份持有数**：余量与持有量一律由两张账反推（第二份清单必然漂移），
 //! 与 0244 的 arcade_item_stock_left 视图同一口径。
-//!
-//! det_economic_grants 是给运营面板用的实测量：确定侧（周常/赛季）不进 EV 闸，
-//! 一旦有人给它挂上经济类物品，面板必须真的变红，而不是写死一句「不含」。
 
 use serde_json::json;
 use sqlx::{PgPool, Row};
@@ -79,23 +76,3 @@ pub(super) async fn backpack(
     Ok(json!({ "total": total, "kinds": items.len(), "items": items }))
 }
 
-/// 窗口内「确定侧」发出的经济类物品笔数——应当恒为 0，EV 闸管不到这一侧。
-pub(super) async fn det_economic_grants(
-    db: &PgPool,
-    window_days: i64,
-) -> DomainResult<i64> {
-    let n: i64 = sqlx::query_scalar(
-        r#"
-        SELECT count(*)::bigint
-          FROM arcade_item_grants g
-          JOIN arcade_items i ON i.key = g.item_key
-         WHERE g.side = 'det' AND i.kind = 'economic'
-           AND g.granted_at >= now() - make_interval(days => $1::int)
-        "#,
-    )
-    .bind(window_days as i32)
-    .fetch_one(db)
-    .await
-    .map_err(dberr)?;
-    Ok(n)
-}
