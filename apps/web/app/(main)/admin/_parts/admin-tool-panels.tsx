@@ -90,6 +90,7 @@ export function CheatersPanel({
 export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
   const { dict, locale } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
+  const labels = dict.auditLabels;
   const [q, setQ] = useState("");
   const [limit, setLimit] = useState(100);
   const kw = q.trim().toLowerCase();
@@ -99,10 +100,13 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
     return audit.filter(
       (row) =>
         row.action.toLowerCase().includes(kw) ||
+        (labels[row.action] ?? row.action).toLowerCase().includes(kw) ||
         String(row.actor_id ?? "").includes(kw),
     );
-  }, [audit, kw]);
+  }, [audit, kw, labels]);
   const shown = filtered.slice(0, limit);
+  /** action 的人话；未收录的回落原始 key（搜得到也看得到，方便补文案） */
+  const labelOf = (action: string) => labels[action] ?? action;
   // 空态分两种：真没数据（队列空）vs 搜索无命中，文案不能混用
   const emptyText = kw ? a.auditNoMatch : a.queueEmpty;
 
@@ -127,7 +131,15 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
       <ul className="flex flex-col divide-y divide-line text-sm">
         {shown.map((row) => (
           <li key={row.id} className="flex items-center justify-between py-2">
-            <span className="font-mono text-xs">{row.action}</span>
+            <span className="text-xs">
+              {labelOf(row.action)}
+              {/* 未收录动作：尾巴带 mono key，提示去 audit-labels.ts 补文案 */}
+              {!labels[row.action] && (
+                <code className="ml-1 font-mono text-[10px] text-sub">
+                  {row.action}
+                </code>
+              )}
+            </span>
             <span className="text-xs text-sub">
               {fmt(a.actor, { id: row.actor_id ?? "-" })} ·{" "}
               {new Date(row.created_at).toLocaleString(dateLocale(locale))}
