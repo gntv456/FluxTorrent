@@ -25,6 +25,8 @@ interface Draft {
   per_user: number;
   stock: number;
   unlimited: boolean;
+  use_kind: string;
+  use_ref: string;
 }
 
 const EMPTY: Draft = {
@@ -36,6 +38,8 @@ const EMPTY: Draft = {
   per_user: 5,
   stock: 0,
   unlimited: true,
+  use_kind: "collect",
+  use_ref: "",
 };
 
 const CELL =
@@ -137,6 +141,28 @@ export function AdminArcadeItemsNew({
           />
           {t.colUnlimited}
         </label>
+        <label className="flex items-center gap-1 text-[11px]">
+          {t.colUse}
+          <select
+            className={CELL + " w-24"}
+            value={draft.use_kind}
+            onChange={(e) =>
+              setDraft({ ...draft, use_kind: e.target.value })
+            }
+          >
+            <option value="collect">{t.useCollect}</option>
+            <option value="spark">{t.useSpark}</option>
+            <option value="sku">{t.useSku}</option>
+          </select>
+        </label>
+        {draft.use_kind === "sku" && (
+          <input
+            className={CELL + " w-24"}
+            placeholder={t.colUseRef}
+            value={draft.use_ref}
+            onChange={(e) => setDraft({ ...draft, use_ref: e.target.value })}
+          />
+        )}
         <button
           type="button"
           className={BTN}

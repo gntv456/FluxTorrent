@@ -3,9 +3,11 @@
 /**
  * 物品目录编辑器（配置面第二件）。
  *
- * anchor **只读**：它是派生量（商店价或「该物品能兑换到的最值钱东西」倒推），
- * 手填 anchor 就是 EV 守卫的后门。改一个 anchor 会连带改掉所有引用它的池，
- * 所以这一列由服务端的跨池回查把关 —— 被拒时原因原样回显，表里一字不改。
+ * anchor 可以直改，但**改完不是就完了**：它是派生量（商店价或「该物品能兑换到的
+ * 最值钱东西」倒推），改一个 anchor 会连带改掉所有引用它的池，所以服务端保存时
+ * 跨池回查 EV，不合法整体回滚。被拒时原因原样回显，表里一字不改。
+ * use_kind/use_ref 是「这件奖品在站内能干什么」：collect 收藏、spark 按 anchor
+ * 兑现、sku 绑一件商店 SKU 走同一条生效链（绑了就得兑得出等价的东西）。
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -24,6 +26,8 @@ interface Item {
   per_user: number;
   icon: string;
   enabled: boolean;
+  use_kind?: string;
+  use_ref?: string;
 }
 
 const CELL =
@@ -121,6 +125,7 @@ export function AdminArcadeItems({
               <th className="py-1">{t.colName}</th>
               <th className="py-1">{t.colKind}</th>
               <th className="py-1 text-right">{t.colAnchor}</th>
+              <th className="py-1">{t.colUse}</th>
               <th className="py-1 text-right">{t.colStock}</th>
               <th className="py-1 text-right">{t.colPerUser}</th>
               <th className="py-1 text-center">{t.colOn}</th>
@@ -168,6 +173,25 @@ export function AdminArcadeItems({
                   <span className="block text-[10px] text-sub">
                     {r.anchor_src}
                   </span>
+                </td>
+                <td className="py-1 pr-1">
+                  <select
+                    className={`${CELL} w-24`}
+                    value={r.use_kind ?? "collect"}
+                    onChange={(e) => set(i, { use_kind: e.target.value })}
+                  >
+                    <option value="collect">{t.useCollect}</option>
+                    <option value="spark">{t.useSpark}</option>
+                    <option value="sku">{t.useSku}</option>
+                  </select>
+                  {(r.use_kind ?? "collect") === "sku" && (
+                    <input
+                      className={`${CELL} mt-1 w-20`}
+                      placeholder={t.colUseRef}
+                      value={r.use_ref ?? ""}
+                      onChange={(e) => set(i, { use_ref: e.target.value })}
+                    />
+                  )}
                 </td>
                 <td className="py-1 pr-1 text-right">
                   {r.unlimited ? (
