@@ -78,6 +78,8 @@ pub use loans_apply::*;
 pub use pool::*;
 pub use recon::*;
 pub use shop::*;
+// 娱乐屋奖品的「使用」侧复用商店生效链：一件物品能干什么，只在这一个地方实现。
+pub(crate) use shop_effects::{apply_item_effect, has_effect};
 pub use shop_list::*;
 pub use spend::*;
 pub use voucher_use::*;

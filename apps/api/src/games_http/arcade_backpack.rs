@@ -13,7 +13,11 @@ use sqlx::{PgPool, Row};
 use super::pool::dberr;
 use crate::errors::DomainResult;
 
-/// 我的背包：按物品聚合的持有件数 + 最近一次来源玩法。
+/// 我的背包：按物品聚合的**持有**件数（发放 − 消耗）+ 用途 + 最近来源玩法。
+///
+/// 0246 加了消耗账之后，`qty` 语义从「发过多少」变成「还能用多少」——
+/// 前台拿它显示数量、后端拿它判能不能扣，两处必须是同一个数，所以直接读
+/// arcade_item_held 视图而不是在这里再减一遍。
 pub(super) async fn backpack(
     db: &PgPool,
     uid: i64,
@@ -21,17 +25,21 @@ pub(super) async fn backpack(
     let rows = sqlx::query(
         r#"
         SELECT i.key, i.name, i.icon, i.kind, i.anchor, i.anchor_src,
-               i.enabled,
-               SUM(g.qty)::bigint              AS qty,
-               MAX(g.granted_at)               AS last_at,
-               (ARRAY_AGG(g.game
-                  ORDER BY g.granted_at DESC))[1] AS last_game
-          FROM arcade_item_grants g
-          JOIN arcade_items i ON i.key = g.item_key
-         WHERE g.user_id = $1
-         GROUP BY i.key, i.name, i.icon, i.kind, i.anchor,
-                  i.anchor_src, i.enabled
-         ORDER BY MAX(g.granted_at) DESC
+               i.enabled, i.use_kind, i.use_ref,
+               h.held, h.granted, h.used,
+               gr.last_at, gr.last_game
+          FROM arcade_item_held h
+          JOIN arcade_items i ON i.key = h.item_key
+          LEFT JOIN (
+                SELECT item_key, MAX(granted_at) AS last_at,
+                       (ARRAY_AGG(game ORDER BY granted_at DESC))[1]
+                         AS last_game
+                  FROM arcade_item_grants
+                 WHERE user_id = $1
+                 GROUP BY item_key
+          ) gr ON gr.item_key = h.item_key
+         WHERE h.user_id = $1
+         ORDER BY gr.last_at DESC NULLS LAST
         "#,
     )
     .bind(uid)
@@ -50,7 +58,12 @@ pub(super) async fn backpack(
                 "anchor": r.get::<i64, _>("anchor"),
                 "anchor_src": r.get::<String, _>("anchor_src"),
                 "enabled": r.get::<bool, _>("enabled"),
-                "qty": r.get::<i64, _>("qty"),
+                "use_kind": r.get::<String, _>("use_kind"),
+                "use_ref": r.get::<String, _>("use_ref"),
+                // qty 对外语义 = 还能用几件（发放 − 消耗），与后端扣减判定同一个数
+                "qty": r.get::<i64, _>("held"),
+                "granted": r.get::<i64, _>("granted"),
+                "used": r.get::<i64, _>("used"),
                 "last_game": r.get::<Option<String>, _>("last_game"),
                 "last_at": r
                     .get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_at")

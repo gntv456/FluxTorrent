@@ -6,6 +6,32 @@ use crate::economy;
 use crate::errors::{DomainError, DomainResult};
 use sqlx::PgPool;
 
+/// 生效链**真正实现了**的 kind 清单。下面的 match 加 `_ => {}` 兜底，意味着
+/// 不在这张清单里的 kind 扣了钱什么也不会发生（审计 P1 命名的「花钱买空气」）。
+/// 商店直接卖这类 SKU 是历史行为，娱乐屋把奖品绑到 SKU 时必须先过这道判定。
+/// 新增生效分支时，记得同时把它加进清单——漏加只会让绑定被拒，不会静默。
+pub fn has_effect(kind: &str) -> bool {
+    matches!(
+        kind,
+        "upload_credit"
+            | "avatar_frame"
+            | "animated_avatar"
+            | "rainbow_id"
+            | "rainbow_name"
+            | "invite"
+            | "voucher_free"
+            | "voucher_neutral"
+            | "vip"
+            | "app_vip"
+            | "ad_free"
+            | "custom_title"
+            | "gift_spark"
+            | "charity"
+            | "rename_card"
+            | "temp_invite"
+    )
+}
+
 pub async fn apply_item_effect(
     db: &PgPool,
     user_id: i64,
