@@ -42,8 +42,8 @@ pub use farm::{
 };
 #[allow(unused_imports)]
 pub use jgg::{
-    draw_entry, pool_ev, validate_pool, Draw, EntryKind, PoolEntry, PoolError,
-    FALLBACK_MULT, MULT_UNIT,
+    draw_entry, pool_ev, validate_pool, validate_ticket_cap, Draw, EntryKind,
+    PoolEntry, PoolError, FALLBACK_MULT, MULT_UNIT,
 };
 #[allow(unused_imports)]
 pub use scratch::{scratch_pay, ScratchOutcome};

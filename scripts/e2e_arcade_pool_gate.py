@@ -233,14 +233,22 @@ def main():
            "entries": [magic("未中奖", 500, 0), item("抽卡券", 500, "ticket")]}
     st, r = call("POST", "/admin/arcade/pool", low, tok)
     check("票档 1 时 900 折算价的物品位被 EV 闸拒", st == 400, (st, str(r)[:160]))
-    high = dict(low, ticket=10000, label="刮刮乐 · 标准票")
+    high = dict(low, ticket=500, label="刮刮乐 · 标准票")
     st, r = call("POST", "/admin/arcade/pool", high, tok)
-    check("同一张表把票档抬到 10000 就过关（票档就是那道闸）",
+    check("同一张表把票档抬到 500 就过关（票档就是那道闸）",
           st == 200, (st, str(r)[:160]))
+    st, r = call("POST", "/admin/arcade/pool",
+                 dict(high, ticket=10000), tok)
+    txt = json.dumps(r, ensure_ascii=False)
+    check("票档抬过单次下注上限被拒（没有合法注额的表存不进去）",
+          st == 400 and ("上限" in txt or "max_bet" in txt), (st, txt[:160]))
+    st, r = call("POST", "/admin/arcade/pool", high, tok)
+    check("抬回 500 仍可保存（上一把的拒绝没有留下半成品）", st == 200,
+          (st, str(r)[:120]))
     st, ov2 = call("GET", "/games", None, tok)
     sc2 = ((ov2.get("data") or {}).get("scratch")) or {}
     check("改完票档玩法立刻读到（写读同一条链）",
-          sc2.get("ticket") == 10000 and len(sc2.get("prizes") or []) == 2,
+          sc2.get("ticket") == 500 and len(sc2.get("prizes") or []) == 2,
           (sc2.get("ticket"), len(sc2.get("prizes") or [])))
     st, r = call("POST", "/games/scratch",
                  {"bet": 50, "idempotency_key": "e2e-scratch-" + RUN}, tok)
@@ -292,9 +300,9 @@ def main():
             bs_row("猜错归零", 490, "lose", payout=0)]
     st, r = call("POST", "/admin/arcade/pool", bs_body(gift), tok)
     check("票档 1 时赢区送 900 券被 EV 闸拒", st == 400, (st, str(r)[:140]))
-    st, r = call("POST", "/admin/arcade/pool", bs_body(gift, ticket=10000),
+    st, r = call("POST", "/admin/arcade/pool", bs_body(gift, ticket=500),
                  tok)
-    check("抬票档到 10000 后「猜中送券」这张桌过关", st == 200,
+    check("抬票档到 500 后「猜中送券」这张桌过关", st == 200,
           (st, str(r)[:140]))
     st, r = call("POST", "/games/bigsmall",
                  {"bet": 100, "guess": "big",
@@ -326,7 +334,7 @@ def main():
     d = r.get("data") or {}
     check("探针号真打一局：回报带 side 与派彩",
           st == 200 and d.get("side") in ("win", "tie", "lose"), (st, d))
-    # 刮之前先把刮刮乐桌从探针态复原（上一段把票档抬到了 10000，
+    # 刮之前先把刮刮乐桌从探针态复原（上一段把票档抬到了 500，
     # 不复原的话这一注只会被「最低注额」挡下，测不到派彩路径）
     st, r = call("POST", "/admin/arcade/pool", {
         "pool_key": "scratch_default", "game": "scratch",

@@ -157,6 +157,17 @@ pub(super) async fn arcade_pool_save(
                 DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}"))
             })?;
     }
+    // 票档上限先判（农场除外：那一池的「票价」是定标单位，玩家不下注）。
+    // 票价高过 `games_max_bet` 时，「低于票档拒开」与「高于上限拒开」两条
+    // 规则夹住所有注额 —— 玩法不是变贵，是不再可玩，所以写侧就拦下来。
+    if b.game != "farm" {
+        let max_bet =
+            super::helpers::eco_i64(&state, "games_max_bet", games::MAX_BET)
+                .await;
+        games::validate_ticket_cap(ticket, max_bet).map_err(|e| {
+            DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}"))
+        })?;
+    }
     // EV 判据分两条：另三个玩法是纯抽奖（池子 EV < 1），农场在奖池之外还有
     // 0.90 的确定性收获，所以它的闸是「0.90 + 彩蛋 < 1」。
     let gate = if b.game == "farm" {
