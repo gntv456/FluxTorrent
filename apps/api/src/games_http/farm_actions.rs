@@ -15,7 +15,7 @@ use super::farm_egg::roll_egg;
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::farm::{get_crop, PlantReq};
+use super::farm::{get_crop, get_plantable_crop, PlantReq};
 use super::helpers::{
     check_rate_scoped, eco_i64, farm_market_hours, farm_wither_days, RateScope,
 };
@@ -37,9 +37,7 @@ pub(super) async fn farm_plant(
             games::FARM_PLOTS
         )));
     }
-    let Some(crop) = get_crop(&state.repo.db, body.crop_id).await? else {
-        return Err(DomainError::Validation("作物不存在".into()));
-    };
+    let crop = get_plantable_crop(&state.repo.db, body.crop_id).await?;
 
     let now = chrono::Utc::now().timestamp();
     let window =

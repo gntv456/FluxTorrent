@@ -2632,6 +2632,33 @@ const zhTwBase: Omit<
    * AdminShell 取不到鍵時回落 DB 值，新工具不會渲染成空白。
    */
   adminArcade: {
+    crops: {
+      title: "農場作物表",
+      colName: "作物名",
+      colSeed: "種子價",
+      colYield: "基準產量",
+      colGrow: "成熟（小時）",
+      colEv: "收穫期望",
+      colActive: "上架",
+      unitLine: "彩蛋池定標單位 {n} {magic}（現役最便宜種子價）",
+      capLine: "標定上限 {c}",
+      addRow: "加一株",
+      newRow: "新作物",
+      save: "儲存",
+      saving: "儲存中…",
+      saved: "已儲存「{n}」",
+      del: "刪除",
+      confirmDel: "確認刪除",
+      deleted: "已刪除「{n}」",
+      saveFail: "儲存失敗",
+      delFail: "刪除失敗",
+      loadFail: "讀不到作物表（登入態失效或權限不足）",
+      note:
+        "產量按「種子價 × 0.75」標定：收穫期望 = 產量 ÷ 種子價 × 1.2，" +
+        "上限 0.90 就是農場彩蛋池余量的來源。越標定的行會被拒；" +
+        "把現役最便宜種子價改低，也會因頂穿彩蛋池而被拒（跨表回查、整體回滾）。" +
+        "收過的作物刪不掉，那是收穫史留痕 —— 停止供應請取消「上架」。",
+    },
     rewards: {
       title: "確定側獎勵（週常 / 賽季）",
       colKind: "側",

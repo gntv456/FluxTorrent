@@ -21,22 +21,29 @@ pub(super) struct FarmPool {
     pub entries: Vec<games::PoolEntry>,
 }
 
-/// 彩蛋池的定标单位 = **活的**最便宜种子价。写侧闸与运行时读同一个数，
+/// 彩蛋池的定标单位 = **现役最便宜种子价**（下架的不算，下架等于不再供应种子）。
+/// 写侧闸、作物保存的跨表回查与运行时都读这同一个查询；
 /// 两处各查一遍的话，「新加一株便宜作物」就会只被一侧看见。
-pub(super) async fn farm_unit(db: &PgPool) -> Result<i64, DomainError> {
-    let unit: Option<i64> =
-        sqlx::query_scalar("SELECT min(seed_price)::bigint FROM farm_crops")
-            .fetch_optional(db)
-            .await
-            .map_err(dberr)?;
+pub(super) async fn farm_unit<'e, E>(exe: E) -> Result<i64, DomainError>
+where
+    E: sqlx::PgExecutor<'e>,
+{
+    let unit: Option<i64> = sqlx::query_scalar(
+        "SELECT min(seed_price)::bigint FROM farm_crops WHERE active",
+    )
+    .fetch_optional(exe)
+    .await
+    .map_err(dberr)?;
     Ok(unit.unwrap_or(0))
 }
 
-/// 读农场彩蛋池。单位用**活的** `min(seed_price)` 而不是池上记的 ticket：
-/// 站长新加一株更便宜的作物，就会让同一档彩蛋的相对价值变大，
-/// 用旧 ticket 算等于给增发留门。
-pub(super) async fn load_farm(db: &PgPool) -> Result<FarmPool, DomainError> {
-    let unit = farm_unit(db).await?;
+/// 农场彩蛋池的档位（事务内也读得到未提交的改动 —— 作物保存要的就是这个）。
+pub(super) async fn farm_entries<'e, E>(
+    exe: E,
+) -> Result<Vec<games::PoolEntry>, DomainError>
+where
+    E: sqlx::PgExecutor<'e>,
+{
     let rows: Vec<(
         String,
         i32,
@@ -56,10 +63,10 @@ pub(super) async fn load_farm(db: &PgPool) -> Result<FarmPool, DomainError> {
           ORDER BY e.sort
         "#,
     )
-    .fetch_all(db)
+    .fetch_all(exe)
     .await
     .map_err(dberr)?;
-    let entries: Vec<games::PoolEntry> = rows
+    Ok(rows
         .into_iter()
         .map(
             |(label, weight, mult_permille, kind, item_key, qty, anchor)| {
@@ -78,7 +85,15 @@ pub(super) async fn load_farm(db: &PgPool) -> Result<FarmPool, DomainError> {
                 }
             },
         )
-        .collect();
+        .collect())
+}
+
+/// 读农场彩蛋池并**关闸校验**。单位用活的 `min(seed_price)` 而不是池上记的
+/// ticket：站长新加（或改便宜）一株作物，就会让同一档彩蛋的相对价值变大，
+/// 用旧 ticket 算等于给增发留门。
+pub(super) async fn load_farm(db: &PgPool) -> Result<FarmPool, DomainError> {
+    let unit = farm_unit(db).await?;
+    let entries = farm_entries(db).await?;
     // 没配池子等于「什么都不加」：这是合法状态，不该因此把收获打死
     if !entries.is_empty() {
         games::validate_farm(&entries, unit)

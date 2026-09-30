@@ -19,13 +19,31 @@ pub(super) async fn get_crop(
     crop_id: i32,
 ) -> DomainResult<Option<CropRow>> {
     sqlx::query_as(
-        "SELECT id, name, seed_price, base_yield, grow_hours, \
+        "SELECT id, name, seed_price, base_yield, grow_hours, active, \
          0::bigint AS market_price FROM farm_crops WHERE id = $1",
     )
     .bind(crop_id)
     .fetch_optional(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))
+}
+
+/// 取一株**可播种**的作物：不存在与已下架分开报 —— 前者是数据坏了，
+/// 后者是站长刚把它下架，玩家该看到的是第二句（已种下的地仍然可收）。
+pub(super) async fn get_plantable_crop(
+    db: &sqlx::PgPool,
+    crop_id: i32,
+) -> DomainResult<CropRow> {
+    let crop = get_crop(db, crop_id)
+        .await?
+        .ok_or_else(|| DomainError::Validation("作物不存在".into()))?;
+    if !crop.active {
+        return Err(DomainError::Validation(format!(
+            "「{}」已下架，买不到种子（已种下的地还能收）",
+            crop.name
+        )));
+    }
+    Ok(crop)
 }
 
 /// 农场总览：作物行情（含当前窗口市场价）+ 我的 6 块地
@@ -40,8 +58,8 @@ pub(super) async fn farm_overview(
     let window = games::market_window_start_with(now, hours);
 
     let crops: Vec<CropRow> = sqlx::query_as(
-        "SELECT id, name, seed_price, base_yield, grow_hours, \
-         0::bigint AS market_price FROM farm_crops ORDER BY id",
+        "SELECT id, name, seed_price, base_yield, grow_hours, active, \
+         0::bigint AS market_price FROM farm_crops WHERE active ORDER BY id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -102,6 +120,9 @@ pub(super) struct CropRow {
     pub(super) seed_price: i32,
     pub(super) base_yield: i32,
     pub(super) grow_hours: i32,
+    /// 下架（false）的作物不进行情、不能播种；但**已经种下的地块照常可收**，
+    /// 所以地块那两处 JOIN 不过滤它。
+    pub(super) active: bool,
     pub(super) market_price: i64,
 }
 

@@ -10,6 +10,7 @@ mod arcade_backpack;
 mod arcade_board;
 mod arcade_cfg;
 mod arcade_claim;
+mod arcade_crops;
 mod arcade_items_delete;
 mod arcade_items_write;
 mod arcade_meta;
@@ -30,6 +31,7 @@ mod pool;
 use arcade_admin::*;
 use arcade_admin_write::*;
 use arcade_claim::*;
+use arcade_crops::*;
 use arcade_items_delete::*;
 use arcade_items_write::*;
 use arcade_meta::*;
@@ -66,5 +68,8 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(arcade_item_save)
         .service(arcade_item_delete)
         .service(arcade_reward_save)
+        .service(arcade_crops_list)
+        .service(arcade_crop_save)
+        .service(arcade_crop_delete)
         .service(backpack_use)
 }

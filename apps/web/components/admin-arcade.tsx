@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { api } from "@/lib/api-client";
+import { AdminArcadeCrops } from "./admin-arcade-crops";
 import { AdminArcadePool } from "./admin-arcade-pool";
 import { AdminArcadeItems } from "./admin-arcade-items";
 import { AdminArcadeRewards } from "./admin-arcade-rewards";
@@ -75,6 +76,11 @@ export function AdminArcade() {
       {/* 确定侧奖励（周常 / 赛季）：0247 起从代码常量搬进行表 */}
       <div className={CARD}>
         <AdminArcadeRewards onChanged={load} />
+      </div>
+
+      {/* 作物表：一行改动同时决定这一档的回收期望与彩蛋池的定标单位 */}
+      <div className={CARD}>
+        <AdminArcadeCrops onChanged={load} />
       </div>
 
       {/* 三口径 EV 对照 */}

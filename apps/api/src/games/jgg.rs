@@ -135,6 +135,33 @@ pub fn pool_ev(entries: &[PoolEntry], ticket: i64) -> f64 {
     sum / total as f64 / (ticket as f64 * MULT_UNIT as f64)
 }
 
+/// 精确比较「池子 EV < cap_num / cap_den」。
+///
+/// 边界必须用整数判：浮点会把「0.90 + 0.10」算成 0.9999999999999999，
+/// 于是一张**恰好中性**的池子从 `!(total < 1.0)` 底下溜过去 —— 那正是
+/// 「EV=1 的中性池」最该被拒的形状。判据写作
+/// `Σ(权重 × 等值千分) × cap_den < cap_num × Σ权重 × 票价 × 1000`，
+/// 两侧都是整数，不引入容差，也不改变对站点有利的那一侧取整口径。
+pub fn ev_strictly_below(
+    entries: &[PoolEntry],
+    ticket: i64,
+    cap_num: i64,
+    cap_den: i64,
+) -> bool {
+    let mut total_w: i128 = 0;
+    let mut sum: i128 = 0;
+    for e in entries {
+        let w = i128::from(e.weight);
+        total_w += w;
+        sum += w * i128::from(e.value_permille(ticket));
+    }
+    if total_w == 0 || ticket <= 0 || cap_den <= 0 || cap_num < 0 {
+        return false;
+    }
+    sum * i128::from(cap_den)
+        < i128::from(cap_num) * total_w * i128::from(ticket) * 1000
+}
+
 /// 关闸式校验：不合法的池子一律拒绝，**不猜旧值、不回落缺省**。
 /// 静默回落等于把「运营改错一个字」伪装成「配置生效了」。
 pub fn validate_pool(
@@ -145,9 +172,11 @@ pub fn validate_pool(
         return Err(PoolError::Empty);
     }
     validate_shape(entries, ticket)?;
-    let ev = pool_ev(entries, ticket);
-    if !(ev < 1.0) {
-        return Err(PoolError::ExpectedValueNotBelowOne(ev));
+    // 判据用整数比较（见 `ev_strictly_below`），浮点值只用来报账
+    if !ev_strictly_below(entries, ticket, 1, 1) {
+        return Err(PoolError::ExpectedValueNotBelowOne(pool_ev(
+            entries, ticket,
+        )));
     }
     Ok(())
 }
