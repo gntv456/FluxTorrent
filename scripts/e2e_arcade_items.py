@@ -362,6 +362,24 @@ def main():
           == "spark",
           psql("SELECT use_kind || '/' || use_ref FROM arcade_items"
                " WHERE key='cap_probe'"))
+    # 只改一个字段的一把保存，不能把站长没打算改的东西一起改掉。
+    # 这里踩过：use_kind / unlimited / per_user 走 serde 缺省时，
+    # 一次「只改名」的保存会把限量打成不限量、把奖品用途打成收藏件，
+    # 而界面回读到的正是被改后的值——没人会去追是哪次保存干的。
+    st, _ = call("POST", "/admin/arcade/items",
+                 {"key": "cap_probe", "name": "上限探针券（改名）",
+                  "kind": "voucher", "anchor": j["ticket"],
+                  "anchor_src": "derived"}, tok)
+    keep = psql("SELECT use_kind || '/' || unlimited::text || '/'"
+                " || per_user::text FROM arcade_items"
+                " WHERE key='cap_probe'")
+    check("只改名字的保存不把用途与限购打回缺省",
+          st == 200 and keep == "spark/true/1", keep)
+    st, r5 = call("POST", "/admin/arcade/items",
+                  dict(probe_item, use_kind="sparkk"), tok)
+    check("use_kind 写错拼法直接拒，不静默当成收藏件",
+          st == 400 and "use_kind" in json.dumps(r5, ensure_ascii=False),
+          (st, json.dumps(r5, ensure_ascii=False)[:110]))
 
     # 探针账号自清（删除接口设计为仅封禁态可删，故先封再删）
     st, _ = call("POST", "/admin/users/status",
@@ -396,6 +414,11 @@ def main():
     its = [p for p in (j2.get("prizes") or []) if p.get("kind") == "item"]
     check("物品位带目录图标", bool(its) and all(p.get("icon") for p in its),
           [(p.get("label"), p.get("icon")) for p in its])
+    # 公示要能说出「抽到之后拿到什么」：只有概率和价值、没有用途，
+    # 玩家读到的是半句话（这件东西究竟能不能用、用成什么，全凭猜）。
+    check("公示把物品位的用途一并下发",
+          bool(its) and all(p.get("use_kind") for p in its),
+          [(p.get("label"), p.get("use_kind")) for p in its])
 
     # 复原：池子与上限都回到核验前，不给线上留残留
     restore = {

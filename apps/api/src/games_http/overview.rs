@@ -25,13 +25,21 @@ pub(super) async fn games_overview(
     let odds = scratch_odds(&state).await?;
     let win_mult = bigsmall_mult_permille(&state).await;
     let pool = super::pool::load_pool(&state.repo.db, "jgg").await?;
-    // 物品图标：目录 arcade_items 是唯一权威，这里只是把 icon 附到灯阵与
-    // 公示要用的行上（价值口径仍走 load_pool 的 anchor JOIN，不重复取）。
-    let icons: Vec<(String, String)> =
-        sqlx::query_as("SELECT key, icon FROM arcade_items WHERE enabled")
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(super::pool::dberr)?;
+    // 物品图标与用途：目录 arcade_items 是唯一权威，这里只是把 icon 与用途附到
+    // 灯阵与公示要用的行上（价值口径仍走 load_pool 的 anchor JOIN，不重复取）。
+    // 绑 SKU 的行把 SKU 名一起带出：公示要说清「抽到之后你实际拿到什么」。
+    let icons: Vec<(String, String, String, Option<String>)> = sqlx::query_as(
+        r#"
+        SELECT i.key, i.icon, i.use_kind, s.name
+          FROM arcade_items i
+          LEFT JOIN shop_items s
+                 ON i.use_kind = 'sku' AND s.id::text = i.use_ref
+         WHERE i.enabled
+        "#,
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(super::pool::dberr)?;
     // 公示必须把物品位连同其折算价值一起列出来：只报魔力倍数会让玩家以为物品档不值钱，
     // 也让站长的 EV 复核对不上账。
     let jgg_prizes: Vec<_> = pool
@@ -63,10 +71,18 @@ pub(super) async fn games_overview(
                     j["item_key"] = serde_json::json!(item_key);
                     j["qty"] = serde_json::json!(qty);
                     j["anchor"] = serde_json::json!(anchor);
-                    j["icon"] = serde_json::json!(icons
+                    let hit = icons
                         .iter()
-                        .find(|(k, _)| k == item_key)
-                        .map(|(_, v)| v.clone()));
+                        .find(|(k, _, _, _)| k == item_key);
+                    j["icon"] = serde_json::json!(
+                        hit.map(|(_, v, _, _)| v.clone())
+                    );
+                    j["use_kind"] = serde_json::json!(
+                        hit.map(|(_, _, u, _)| u.clone())
+                    );
+                    j["use_name"] = serde_json::json!(
+                        hit.and_then(|(_, _, _, n)| n.clone())
+                    );
                 }
             }
             j

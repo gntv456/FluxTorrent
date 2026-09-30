@@ -12,6 +12,8 @@ interface Prize {
   kind?: string;
   qty?: number;
   anchor?: number;
+  use_kind?: string;
+  use_name?: string | null;
 }
 interface Overview {
   max_plays_per_hour?: number;
@@ -67,24 +69,43 @@ export default async function OddsPage() {
             </tr>
           </thead>
           <tbody>
-            {ov.jgg.prizes.map((p, i) => (
-              <tr key={i} className="border-t border-line">
-                <td className="py-1.5">{p.label}</td>
-                <td className="num py-1.5 text-right">
-                  {pct(p.weight_permille / 10)}
-                </td>
-                {/* 等值一律用「票价倍数」同一把尺；物品位再补一个绝对折算价 */}
-                <td className="num py-1.5 text-right">
-                  ×{(p.value / tk).toFixed(2)}
-                  {p.kind === "item" && (
-                    <span className="text-sub">
-                      {" "}
-                      （{p.value.toLocaleString("en-US")} {currency}）
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {ov.jgg.prizes.map((p, i) => {
+              // 抽到之后拿到什么：绑 SKU 的报出实际授予物，兑现的报出口径，
+              // 收藏件也要说明——公示不该只报概率让人自己猜价值。
+              const hint =
+                p.kind !== "item"
+                  ? null
+                  : p.use_kind === "sku" && p.use_name
+                    ? t.useSku.replace("{s}", p.use_name)
+                    : p.use_kind === "spark"
+                      ? t.useSpark
+                      : t.useCollect;
+              return (
+                <tr key={i} className="border-t border-line">
+                  <td className="py-1.5">
+                    {p.label}
+                    {hint && (
+                      <span className="block text-[11px] text-sub">
+                        {hint}
+                      </span>
+                    )}
+                  </td>
+                  <td className="num py-1.5 text-right">
+                    {pct(p.weight_permille / 10)}
+                  </td>
+                  {/* 等值一律用「票价倍数」同一把尺；物品位再补一个绝对折算价 */}
+                  <td className="num py-1.5 text-right">
+                    ×{(p.value / tk).toFixed(2)}
+                    {p.kind === "item" && (
+                      <span className="text-sub">
+                        {" "}
+                        （{p.value.toLocaleString("en-US")} {currency}）
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       ),
