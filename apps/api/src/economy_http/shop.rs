@@ -181,7 +181,7 @@ async fn shop_buy(
         // 数量类效果按件发（上传量×N、券×N、邀请×N、卡牌入库×N）
         let mut cfg = config.clone();
         cfg["item_id"] = serde_json::json!(body.item_id);
-        apply_item_effect(&state.repo.db, auth.id, &kind, &cfg).await?;
+        apply_item_effect(&state.repo.db, auth.id, &kind, &cfg, "buy").await?;
         if !card_kind {
             break; // 非卡牌：单行订单，一轮即全部效果（qty 循环见下）
         }
@@ -191,7 +191,8 @@ async fn shop_buy(
         let mut cfg = config.clone();
         cfg["item_id"] = serde_json::json!(body.item_id);
         for _ in 1..rounds {
-            apply_item_effect(&state.repo.db, auth.id, &kind, &cfg).await?;
+            apply_item_effect(&state.repo.db, auth.id, &kind, &cfg, "buy")
+                .await?;
         }
     }
 

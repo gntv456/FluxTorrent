@@ -22,6 +22,9 @@ struct DressupRow {
     slot: Option<String>,
     owned: bool,
     wearing: bool,
+    /// 拥有来源：`buy` 商店买入 / `prize` 娱乐屋奖品 / `gift`、`admin`。
+    /// 未拥有时是空串 —— 这张列表本来就带全部装扮，不能拿它当拥有判定。
+    source: String,
     /// 0207：装扮 SKU 的 config（frame_id 供前端预览头像框）
     config: serde_json::Value,
 }
@@ -48,7 +51,9 @@ async fn dressup_list(
          EXISTS(SELECT 1 FROM user_dressups ud \
          WHERE ud.user_id = $1 AND ud.item_id = si.id) AS owned, \
          COALESCE((SELECT ud.wearing FROM user_dressups ud \
-         WHERE ud.user_id = $1 AND ud.item_id = si.id), FALSE) AS wearing \
+         WHERE ud.user_id = $1 AND ud.item_id = si.id), FALSE) AS wearing, \
+         COALESCE((SELECT ud.source FROM user_dressups ud \
+         WHERE ud.user_id = $1 AND ud.item_id = si.id), '') AS source \
          FROM shop_items si WHERE si.active AND si.kind IN \
          ('avatar_frame','animated_avatar','rainbow_id','rainbow_name')",
     )
