@@ -33,6 +33,9 @@ export const ErrorCode = {
   LEDGER_CONFLICT: 4002,
   // 41xx 模块开关（U1 §5.1：本站未开放该功能，与权限 403 区分）
   MODULE_DISABLED: 4101,
+  // 卡池经济守卫（方案 §5 G31-B）：含保底综合返还率 >100% 时运行时拒抽，
+  // HTTP 409 —— 后台保存拦截不够，站长直连改库也要被拦
+  POOL_GUARD: 4102,
   // 5xxx 社区
   COMMENT_NOT_FOUND: 5001,
   ALREADY_THANKED: 5002,

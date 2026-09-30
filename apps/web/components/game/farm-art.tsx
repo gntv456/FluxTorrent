@@ -12,6 +12,9 @@ export interface Crop {
   seed_price: number;
   base_yield: number;
   grow_hours: number;
+  /** 下架位（0253）：false 的作物不进行情、不能播种，但已种下的地仍可收。
+   *  行情列表本身只返回 active 的行，这个字段是给「图鉴里保留下架株」用的。 */
+  active: boolean;
   market_price: number;
 }
 
