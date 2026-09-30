@@ -120,14 +120,17 @@ fn pct_of(weight: u32, total: u64) -> f64 {
 }
 
 /// 猜大小的公示行：与 prize_rows 同一份形状，只是每行多带「在哪一区付」。
-/// 编辑器回读这张桌时要按它复原，少了这一列就会把三区抹成一区。
+/// 编辑器回读这张桌时要按它复原，少了这一列就会把三区抹成一区；
+/// 同理，展示元数据（稀有度/配图）也要按区带出来，否则站长设的稀有度
+/// 在回读时恒为默认 1，下一次保存就把真值抹掉了。
 pub(super) fn region_rows(
     t: &super::pool::Table,
     icons: &[(String, String, String, Option<String>)],
 ) -> Vec<PrizeRow> {
     let mut out = Vec::new();
-    for (side, rows) in [("win", &t.win), ("tie", &t.tie), ("lose", &t.lose)] {
-        for mut row in prize_rows(rows, t.ticket, icons, &[]) {
+    for side in ["win", "tie", "lose"] {
+        let (rows, meta) = (t.region(side), t.meta(side));
+        for mut row in prize_rows(rows, t.ticket, icons, meta) {
             row.side = Some(side.to_string());
             out.push(row);
         }
