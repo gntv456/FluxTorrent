@@ -16,9 +16,14 @@ use crate::games;
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::arcade_admin_write::default_qty;
 use super::item_use::{check_use_shape, use_kind_or_collect};
 use super::pool::dberr;
+
+/// 目录项保存请求。**带默认值的字段一律是 `Option`**：
+/// 一个「只想改名字」的请求如果不带 `unlimited`，按缺省 `true` 落库就等于
+/// 悄悄把一件限量物品改成不限量、把 `use_kind` 改回 collect、把图标清空——
+/// 配置面自己把站长没打算改的东西改掉了，而且读不出区别。
+/// 规则：**缺字段 = 保持库里现值**，显式传值（包括传 `""` 清空图标）才覆盖。
 #[derive(Deserialize)]
 pub(super) struct ItemSaveReq {
     pub key: String,
@@ -26,27 +31,27 @@ pub(super) struct ItemSaveReq {
     pub kind: String,
     pub anchor: i64,
     pub anchor_src: String,
-    #[serde(default = "default_true")]
-    pub unlimited: bool,
     #[serde(default)]
-    pub stock: i64,
-    #[serde(default = "default_qty")]
-    pub per_user: i32,
+    pub unlimited: Option<bool>,
     #[serde(default)]
-    pub icon: String,
-    #[serde(default = "default_true")]
-    pub enabled: bool,
+    pub stock: Option<i64>,
+    #[serde(default)]
+    pub per_user: Option<i32>,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub enabled: Option<bool>,
     /// 用途：collect 收藏 | spark 兑现魔力 | sku 走商店生效链（见 item_use.rs）
     #[serde(default)]
-    pub use_kind: String,
+    pub use_kind: Option<String>,
     /// sku 时填绑定的 shop_items.id
     #[serde(default)]
-    pub use_ref: String,
+    pub use_ref: Option<String>,
 }
 
-fn default_true() -> bool {
-    true
-}
+/// 一件新物品从零入库时的初值（目录里还没有这一行时）
+const NEW_ITEM_DEFAULTS: (bool, i64, i32, &str, bool, &str, &str) =
+    (true, 0, 1, "", true, "collect", "");
 
 /// 保存物品目录项。**改一个物品的 anchor 会同时改掉所有引用它的奖池的 EV**，
 /// 所以写侧必须回查这些池：否则面板本身就是一条绕过关闸的后门。
@@ -79,8 +84,16 @@ pub(super) async fn arcade_item_save(
             b.anchor_src
         )));
     }
-    if b.per_user <= 0 {
-        return Err(DomainError::Validation("每人上限必须为正".into()));
+    /// 一件新物品从零入库时的初值（目录里还没有这一行时）
+    const NEW_ITEM: (bool, i64, i32, &str, bool, &str, &str) =
+        (true, 0, 1, "", true, "collect", "");
+
+    if let Some(k) = b.use_kind.as_deref().filter(|s| !s.is_empty()) {
+        if !matches!(k, "collect" | "spark" | "sku") {
+            return Err(DomainError::Validation(format!(
+                "use_kind 只能是 collect | spark | sku，收到「{k}」"
+            )));
+        }
     }
     // 经济类物品必须报得出正折算价，否则「零负债」是假的
     if b.kind == "economic" && b.anchor <= 0 {
@@ -89,12 +102,45 @@ pub(super) async fn arcade_item_save(
             b.key
         )));
     }
-    if !b.unlimited && b.stock < 0 {
+
+    // 先读现值：所有「请求里没带」的字段都保持原样，校验也按生效后的值判
+    let prev = sqlx::query_as::<
+        _,
+        (bool, i64, i32, String, bool, String, String),
+    >(
+        "SELECT unlimited, stock, per_user, icon, enabled, \
+                use_kind, use_ref \
+           FROM arcade_items WHERE key = $1",
+    )
+    .bind(&b.key)
+    .fetch_optional(db)
+    .await
+    .map_err(dberr)?;
+    let dflt = NEW_ITEM;
+    let (p_unl, p_stock, p_pu, p_icon, p_en, p_uk, p_ur) =
+        prev.unwrap_or((
+            dflt.0, dflt.1, dflt.2, dflt.3.to_string(), dflt.4,
+            dflt.5.to_string(), dflt.6.to_string(),
+        ));
+    let unlimited = b.unlimited.unwrap_or(p_unl);
+    let stock = b.stock.unwrap_or(p_stock);
+    let per_user = b.per_user.unwrap_or(p_pu);
+    let icon = b.icon.unwrap_or(p_icon);
+    let enabled = b.enabled.unwrap_or(p_en);
+    let use_kind = match b.use_kind.as_deref().filter(|s| !s.is_empty()) {
+        Some(k) => use_kind_or_collect(k).to_string(),
+        None => p_uk,
+    };
+    let use_ref = b.use_ref.unwrap_or(p_ur);
+
+    if per_user <= 0 {
+        return Err(DomainError::Validation("每人上限必须为正".into()));
+    }
+    if !unlimited && stock < 0 {
         return Err(DomainError::Validation("限量物品 stock 不能为负".into()));
     }
     // 用途侧的形制闸（详见 item_use.rs）：绑了商店 SKU 就必须兑得出等价的东西
-    check_use_shape(db, &b.use_kind, b.use_ref.trim(), b.anchor, &b.name)
-        .await?;
+    check_use_shape(db, &use_kind, &use_ref, b.anchor, &b.name).await?;
 
     let mut tx = db.begin().await.map_err(dberr)?;
     sqlx::query(
@@ -117,13 +163,13 @@ pub(super) async fn arcade_item_save(
     .bind(&b.kind)
     .bind(b.anchor)
     .bind(&b.anchor_src)
-    .bind(b.unlimited)
-    .bind(b.stock)
-    .bind(b.per_user)
-    .bind(&b.icon)
-    .bind(b.enabled)
-    .bind(use_kind_or_collect(&b.use_kind))
-    .bind(b.use_ref.trim())
+    .bind(unlimited)
+    .bind(stock)
+    .bind(per_user)
+    .bind(&icon)
+    .bind(enabled)
+    .bind(&use_kind)
+    .bind(use_ref.trim())
     .execute(&mut *tx)
     .await
     .map_err(dberr)?;
@@ -199,8 +245,8 @@ pub(super) async fn arcade_item_save(
         "key": b.key,
         "anchor": b.anchor,
         "kind": b.kind,
-        "use_kind": use_kind_or_collect(&b.use_kind),
-        "use_ref": b.use_ref.trim(),
+        "use_kind": use_kind,
+        "use_ref": use_ref.trim(),
     })))
 }
 
