@@ -1,6 +1,7 @@
 /** 简体中文字典（源字典：其他语言以此结构为类型基准） */
 
 import { termsPanelZh } from "./terms-panel";
+import { auditLabelsZh } from "./audit-labels";
 
 const zhCnBase = {
   meta: {
@@ -2218,6 +2219,7 @@ const zhCnBase = {
       avatar: "头像位",
       username: "用户名位",
     } as Record<string, string>,
+    fromPrize: "已拥有（娱乐屋奖品）",
     wearing: "佩戴中",
     wear: "佩戴",
     unwear: "摘下",
@@ -5283,6 +5285,7 @@ export const zhCN = {
   ...zhCnBase,
   security2fa,
   termsPanel: termsPanelZh,
+  auditLabels: auditLabelsZh,
   apitokens: {
     title: "开放 API 令牌",
     namePlaceholder: "令牌名称（如：RSS 同步）",

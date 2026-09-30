@@ -205,7 +205,9 @@ export function AdminOverviewPanel({
                 key={row.id}
                 className="flex items-center justify-between py-2"
               >
-                <span className="font-mono text-xs">{row.action}</span>
+                <span className="text-xs">
+                  {dict.auditLabels[row.action] ?? row.action}
+                </span>
                 <span className="text-xs text-sub">
                   {fmt(a.actor, { id: row.actor_id ?? "-" })} ·{" "}
                   {new Date(row.created_at).toLocaleString(dateLocale(locale))}

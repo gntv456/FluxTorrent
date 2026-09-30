@@ -2,6 +2,7 @@
 
 import type { Dict } from "./zh-CN";
 import { termsPanelTw } from "./terms-panel";
+import { auditLabelsTw } from "./audit-labels";
 
 const zhTwBase: Omit<
   Dict,
@@ -26,6 +27,7 @@ const zhTwBase: Omit<
   | "endangered"
   | "teams"
   | "termsPanel"
+  | "auditLabels"
 > = {
   meta: {
     titleSuffix: "PT",
@@ -2240,6 +2242,7 @@ const zhTwBase: Omit<
       avatar: "頭像位",
       username: "使用者名稱位",
     } as Record<string, string>,
+    fromPrize: "已擁有（娛樂屋獎品）",
     wearing: "佩戴中",
     wear: "佩戴",
     unwear: "摘下",
@@ -5453,6 +5456,7 @@ const groupsubTw: Dict["groupsub"] = {
 export const zhTW: Dict = {
   ...zhTwBase,
   termsPanel: termsPanelTw,
+  auditLabels: auditLabelsTw,
   security2fa: {
     statusOn: "已啟用",
     statusOff: "未啟用",

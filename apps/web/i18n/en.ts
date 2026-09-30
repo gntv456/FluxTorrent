@@ -2,6 +2,7 @@
 
 import type { Dict } from "./zh-CN";
 import { termsPanelEn } from "./terms-panel";
+import { auditLabelsEn } from "./audit-labels";
 
 const enBase: Omit<
   Dict,
@@ -26,6 +27,7 @@ const enBase: Omit<
   | "endangered"
   | "teams"
   | "termsPanel"
+  | "auditLabels"
 > = {
   meta: {
     titleSuffix: "FluxTorrent",
@@ -2277,6 +2279,7 @@ const enBase: Omit<
       avatar: "Avatar slot",
       username: "Username slot",
     } as Record<string, string>,
+    fromPrize: "Owned (arcade prize)",
     wearing: "Wearing",
     wear: "Wear",
     unwear: "Remove",
@@ -5609,6 +5612,7 @@ const groupsubEn: Dict["groupsub"] = {
 export const en: Dict = {
   ...enBase,
   termsPanel: termsPanelEn,
+  auditLabels: auditLabelsEn,
   security2fa: {
     statusOn: "Enabled",
     statusOff: "Disabled",
