@@ -9,6 +9,7 @@ import { useI18n } from "@/i18n/client";
 import { api } from "@/lib/api-client";
 import { AdminArcadePool } from "./admin-arcade-pool";
 import { AdminArcadeItems } from "./admin-arcade-items";
+import { AdminArcadeRewards } from "./admin-arcade-rewards";
 
 interface EvRow {
   name: string;
@@ -69,6 +70,11 @@ export function AdminArcade() {
       {/* 物品目录：anchor 只读，改派生价由服务端跨池回查把关 */}
       <div className={CARD}>
         <AdminArcadeItems onChanged={load} />
+      </div>
+
+      {/* 确定侧奖励（周常 / 赛季）：0247 起从代码常量搬进行表 */}
+      <div className={CARD}>
+        <AdminArcadeRewards onChanged={load} />
       </div>
 
       {/* 三口径 EV 对照 */}

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/i18n/client";
 import { api } from "@/lib/api-client";
 import { ArcadeFeed, type ArcadeFeedItem } from "./arcade-feed";
+import { ArcadeAlbum } from "./arcade-album";
 import { ArcadeBackpack, type ArcadePackData } from "./arcade-backpack";
 import { ArcadeBoard, type ArcadeBoardData } from "./arcade-board";
 
@@ -30,6 +31,9 @@ export interface ArcadeQuest {
   claimed: boolean;
   ready: boolean;
   reward: number;
+  /** 0247 起确定侧奖励可以发物品：件数与目录名一起下发，前台不再猜 */
+  item_name?: string | null;
+  item_qty?: number;
 }
 export interface ArcadeStub {
   code: string;
@@ -45,6 +49,8 @@ export interface ArcadeMilestone {
   claimed: boolean;
   reached: boolean;
   ready: boolean;
+  item_name?: string | null;
+  item_qty?: number;
 }
 export interface ArcadeShelfItem {
   id: number;
@@ -111,6 +117,15 @@ export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
     }
   }
 
+  // 奖励文案：魔力与物品都要说得出名字。确定侧现在能发物品了，
+  // 前台只报数字的话，玩家不知道自己领到的是券还是装扮。
+  const award = (n: number, item?: string | null, qty?: number) => {
+    const parts: string[] = [];
+    if (n > 0) parts.push(t.rewardSpark.replace("{n}", fmt(n)));
+    if (item) parts.push(`+${qty ?? 1} ${item}`);
+    return parts.join(" · ");
+  };
+
   return (
     <div className="arc">
       <div className="arc-hd">
@@ -163,6 +178,9 @@ export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
           <div key={q.code} className={`arc-q${q.ready ? " ready" : ""}`}>
             <div>
               <div>{qText[q.code] ?? q.code}</div>
+              <div className="arc-qsub">
+                {award(q.reward, q.item_name, q.item_qty)}
+              </div>
               <div className="bar">
                 <i
                   style={{
@@ -185,32 +203,8 @@ export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
         ))}
       </section>
 
-      {/* 票根册 */}
-      <section className="arc-sec">
-        <h3>
-          {t.albumTitle}{" "}
-          <span className="num">
-            {initial.stubs.owned}/{initial.stubs.total}
-          </span>
-        </h3>
-        <div className="arc-album">
-          {initial.stubs.items.map((s) => (
-            <div
-              key={s.code}
-              className={`arc-stub${s.obtained ? "" : " locked"}`}
-              title={s.descr}
-            >
-              <div className={"ic" + (s.obtained ? "" : " mono")}>
-                {s.obtained ? "🎟️" : (s.name || s.code).trim().slice(0, 1)}
-              </div>
-              <div className="nm">{s.name}</div>
-              <div className="ct">
-                {t.holders.replace("{n}", String(s.holders))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* 票根册（拆给 arcade-album：这一件有自己的材质与「未获得怎么画」的口径）*/}
+      <ArcadeAlbum stubs={initial.stubs} />
 
       {/* 赛季星轨 */}
       <section className="arc-sec">
@@ -234,7 +228,11 @@ export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
                 }
                 disabled={!m.ready || busy === "season:" + m.code}
                 onClick={() => claim("season", m.code)}
-                title={mText[m.code] ?? m.code}
+                title={`${mText[m.code] ?? m.code} · ${award(
+                  m.reward,
+                  m.item_name,
+                  m.item_qty,
+                )}`}
               >
                 {m.claimed ? "✓" : m.ready ? "★" : m.reached ? "★" : "🔒"}
               </button>
