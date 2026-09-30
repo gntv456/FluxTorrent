@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { petLineOf, PET_SPECIES_KEY } from "@/lib/pet-lines";
+import type { PetSpecies } from "@/lib/pet-lines";
 import { ProfileHero, StatTiles } from "./_parts/profile-hero";
 import { CenterGrid } from "./_parts/profile-center";
 import { CommentsTab, PostsTab, TorrentListTable } from "./_parts/profile-tabs";
@@ -61,6 +63,15 @@ export default async function UserProfilePage({
 
   const { dict, locale } = await getDict();
   const t = dict.userProfile2;
+  // 宠物展示位（只读快照；没养过 / games 模块关闭 → 接口失败，不渲染）
+  const pet = await api
+    .get<{
+      exists: boolean;
+      species?: string;
+      name?: string;
+      level?: number;
+    }>(`/api/v1/games/pet/of?user_id=${encodeURIComponent(uid)}`)
+    .catch(() => null);
   const p = data.profile;
   const ratio = p.downloaded > 0 ? (p.uploaded / p.downloaded).toFixed(2) : "∞";
   const realRatio =
@@ -143,6 +154,34 @@ export default async function UserProfilePage({
 
       {/* 核心指标磁贴（首屏只给 5 个关键数，明细下放到卡片） */}
       <StatTiles statTiles={statTiles} />
+
+      {/* 宠物展示位：养成成果社交化（种类只改外观，零数值差） */}
+      {pet?.exists && (
+        <section className="up-pet">
+          <span className="up-pet-face" aria-hidden>
+            {petLineOf(pet.species ?? "slime")[
+              Math.min((pet.level ?? 1) - 1, 9)
+            ]}
+          </span>
+          <div className="up-pet-meta">
+            <b>{pet.name || dict.games.cards.pet.title}</b>
+            <span className="text-xs text-sub">
+              {`Lv.${pet.level ?? 1} · ${
+                (dict.games.pet as Record<string, string>)[
+                  PET_SPECIES_KEY[(pet.species ?? "slime") as PetSpecies] ??
+                    "spSlime"
+                ]
+              }`}
+            </span>
+          </div>
+          <Link
+            href="/games/pet"
+            className="text-xs font-bold text-[var(--sky-deep)]"
+          >
+            {dict.games.cards.pet.title} →
+          </Link>
+        </section>
+      )}
 
       {/* 标签页导航（憨憨式：链接切换 ?tab=，SSR 渲染对应内容，无客户端状态） */}
       <div className="flex flex-wrap items-center gap-1.5">

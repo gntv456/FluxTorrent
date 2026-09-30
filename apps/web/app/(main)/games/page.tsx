@@ -236,6 +236,12 @@ export default async function GamesPage() {
         >
           {dict.games.hall.funBoxEntry} →
         </Link>
+        <Link
+          href="/games/leaderboard"
+          className="text-xs font-bold text-[var(--sky-deep)]"
+        >
+          {dict.games.hall.lbEntry} →
+        </Link>
       </div>
     </div>
   );

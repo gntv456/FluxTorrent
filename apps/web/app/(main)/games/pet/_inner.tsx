@@ -6,7 +6,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { GameShell } from "@/components/game/game-kit";
 import { GameToast } from "@/components/game/game-kit-feedback";
-import { PetPen, type PetStatus } from "@/components/game/pet-pen";
+import { PetCustom, PetPen, type PetStatus } from "@/components/game/pet-pen";
 import { GameStage } from "@/components/game/game-stage";
 
 export type { PetStatus };
@@ -25,6 +25,8 @@ export default function PetFocusPage({
   const [st, setSt] = useState<PetStatus | null>(initial);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [useCoupon, setUseCoupon] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
   const [toast, setToast] = useState<{
     kind: "win" | "lose" | "tie" | "jackpot";
     text: string;
@@ -50,19 +52,25 @@ export default function PetFocusPage({
     setErr(null);
     try {
       const before = st;
-      const r = await api.post<{ spent: number; status: PetStatus }>(
-        "/api/v1/games/pet/feed",
-        { idempotency_key: newIdem() },
-      );
-      setSt(r.status);
-      const leveled =
-        before !== null && r.status.level > before.level;
+      const r = await api.post<{
+        spent: number;
+        used_coupon: boolean;
+        food_coupons: number;
+        status: PetStatus;
+      }>("/api/v1/games/pet/feed", {
+        idempotency_key: newIdem(),
+        use_coupon: useCoupon,
+      });
+      setSt({ ...r.status, food_coupons: r.food_coupons });
+      const leveled = before !== null && r.status.level > before.level;
       const gained = Math.max(0, r.status.exp - (before?.exp ?? 0));
       setToast({
         kind: leveled ? "jackpot" : "win",
         text: leveled
           ? tp.levelUp.replace("{n}", String(r.status.level))
-          : tp.fed.replace("{n}", String(gained)),
+          : r.used_coupon
+            ? tp.fedCoupon.replace("{n}", String(gained))
+            : tp.fed.replace("{n}", String(gained)),
       });
     } catch (e) {
       fail(e);
@@ -147,7 +155,11 @@ export default function PetFocusPage({
               disabled={busy || !st || st.level >= (st?.max_level ?? 10)}
               className="arc-call sky"
             >
-              {busy ? tp.feeding : tp.feed.replace("{n}", String(feedCost))}
+              {busy
+                ? tp.feeding
+                : useCoupon && (st?.food_coupons ?? 0) > 0
+                  ? tp.feedCoupon
+                  : tp.feed.replace("{n}", String(feedCost))}
             </button>
             <button
               type="button"
@@ -158,6 +170,37 @@ export default function PetFocusPage({
               {busy ? tp.claiming : tp.claim}
             </button>
           </div>
+          <label className="pp-coupon">
+            <input
+              type="checkbox"
+              checked={useCoupon}
+              onChange={(e) => setUseCoupon(e.target.checked)}
+              disabled={!st || (st.food_coupons ?? 0) <= 0}
+            />
+            <span>
+              {(st?.food_coupons ?? 0) > 0
+                ? tp.coupon.replace("{n}", String(st?.food_coupons ?? 0))
+                : tp.couponNone}
+            </span>
+          </label>
+          <button
+            type="button"
+            className="pp-custom-btn"
+            onClick={() => setCustomOpen((v) => !v)}
+          >
+            {tp.customBtn}
+          </button>
+          {customOpen && st && (
+            <PetCustom
+              status={st}
+              onClose={() => setCustomOpen(false)}
+              onSaved={(v) => {
+                setSt({ ...st, name: v.name, species: v.species });
+                setCustomOpen(false);
+                setToast({ kind: "win", text: tp.saved });
+              }}
+            />
+          )}
           {st && st.level >= st.max_level && (
             <p className="text-[11px] font-bold text-[var(--warning)]">
               {tp.full}
