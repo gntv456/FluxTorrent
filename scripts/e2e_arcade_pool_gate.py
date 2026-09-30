@@ -25,6 +25,7 @@ import urllib.request
 
 BASE = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8080/api/v1")
 POOL_KEY = "jgg_default"
+SCRATCH_SNAP = {}
 fails = []
 n_checks = [0]
 
@@ -197,6 +198,41 @@ def main():
     check("复原成功", st == 200)
     check("复原后与基线完全一致", pool_of(tok) == before, pool_of(tok))
 
+    # ── 刮刮乐也读奖池行表（0248）：票档就是那道 EV 闸 ──
+    st, ov = call("GET", "/games", None, tok)
+    sc = ((ov.get("data") or {}).get("scratch")) or {}
+    srows = sc.get("prizes") or []
+    SCRATCH_SNAP.update({"ticket": sc.get("ticket"), "prizes": srows})
+    check("刮刮乐档位来自行表（带权重与等值）",
+          st == 200 and len(srows) >= 3
+          and all("weight_permille" in r for r in srows),
+          (st, [(r.get("label"), r.get("weight_permille")) for r in srows]))
+    check("刮刮乐权重合计 1000 千分",
+          sum(r.get("weight_permille", 0) for r in srows) == 1000,
+          sum(r.get("weight_permille", 0) for r in srows))
+    ev_sc = sc.get("expected_value") or 0
+    check("刮刮乐 EV 由行表现算且等于搬家前的 0.66",
+          0 < ev_sc < 1 and abs(ev_sc - 0.66) < 1e-6, ev_sc)
+    low = {"pool_key": "scratch_default", "game": "scratch",
+           "label": "刮刮乐 · 探针", "ticket": 1,
+           "entries": [magic("未中奖", 500, 0), item("抽卡券", 500, "ticket")]}
+    st, r = call("POST", "/admin/arcade/pool", low, tok)
+    check("票档 1 时 900 折算价的物品位被 EV 闸拒", st == 400, (st, str(r)[:160]))
+    high = dict(low, ticket=10000, label="刮刮乐 · 标准票")
+    st, r = call("POST", "/admin/arcade/pool", high, tok)
+    check("同一张表把票档抬到 10000 就过关（票档就是那道闸）",
+          st == 200, (st, str(r)[:160]))
+    st, ov2 = call("GET", "/games", None, tok)
+    sc2 = ((ov2.get("data") or {}).get("scratch")) or {}
+    check("改完票档玩法立刻读到（写读同一条链）",
+          sc2.get("ticket") == 10000 and len(sc2.get("prizes") or []) == 2,
+          (sc2.get("ticket"), len(sc2.get("prizes") or [])))
+    st, r = call("POST", "/games/scratch",
+                 {"bet": 50, "idempotency_key": "e2e-scratch-low"}, tok)
+    check("注额低于票档时刮刮乐拒开（不悄悄按最低档玩）",
+          st == 400 and "最低注额" in json.dumps(r, ensure_ascii=False),
+          (st, json.dumps(r, ensure_ascii=False)[:140]))
+
     print("\n结果：%d 项断言，失败 %d" % (n_checks[0], len(fails)))
     sys.exit(1 if fails else 0)
 
@@ -210,7 +246,15 @@ def _restore_snapshot():
         print("兜底复原：读不到奖池，跳过")
         return
     st, _ = call("POST", "/admin/arcade/pool", body_for_restore(snap), tok)
-    print("兜底复原奖池 -> HTTP %s" % st)
+    # 刮刮乐池也被本脚本写过，必须一起复原（只复原「主对象」不算复原）
+    st2 = "-"
+    if SCRATCH_SNAP.get("prizes"):
+        body = {"pool_key": "scratch_default", "game": "scratch",
+                "label": "刮刮乐 · 标准票",
+                "ticket": SCRATCH_SNAP.get("ticket"),
+                "entries": [to_req(x) for x in SCRATCH_SNAP["prizes"]]}
+        st2, _ = call("POST", "/admin/arcade/pool", body, tok)
+    print("兜底复原奖池 -> 九宫格 HTTP %s / 刮刮乐 HTTP %s" % (st, st2))
 
 
 def body_for_restore(snap):

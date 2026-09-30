@@ -11,7 +11,7 @@ import {
 } from "@/components/arcade/arcade-meta";
 
 interface HallOverview {
-  scratch?: { prizes: ScratchPrize[] };
+  scratch?: { ticket?: number; prizes: ScratchPrize[] };
   jgg?: { ticket: number; prizes: { payout: number; value?: number }[] };
   bigsmall?: { win_mult: number };
 }
@@ -32,8 +32,14 @@ export default async function GamesPage() {
   const cardMod: Record<string, string> = { "/games/farm": "farm" };
   // 卡片角标取自后端下发的真实赔率/奖池（不在前端写死，避免展示与实现不符）
   const ov = await api.get<HallOverview>("/api/v1/games").catch(() => null);
+  // 刮刮乐同理：0248 起它也读奖池行表，角标取「最高等值」而不是最高倍率
+  const scrTk = ov?.scratch?.ticket ?? 1;
   const scratchTop = ov?.scratch?.prizes?.length
-    ? Math.max(...ov.scratch.prizes.map((p) => p.multiplier))
+    ? Math.max(
+        ...ov.scratch.prizes.map(
+          (p) => (p.value ?? p.payout * scrTk) / scrTk,
+        ),
+      )
     : 10;
   // 角标要的是「最高值」而不是「最高魔力倍数」：0245 之后物品位 payout 恒为 0
   // （库侧 CHECK 逼的），按 payout 排会把 120 倍等值的免考核卡整个漏掉。

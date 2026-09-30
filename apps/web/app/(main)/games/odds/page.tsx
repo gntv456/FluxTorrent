@@ -18,7 +18,9 @@ interface Prize {
 interface Overview {
   max_plays_per_hour?: number;
   scratch?: {
-    prizes: { multiplier: number; pct: number }[];
+    /** 与九宫格同一份服务端投影，前端不再自己拼档位 */
+    prizes: Prize[];
+    ticket?: number;
     empty_pct: number;
     expected_value: number;
   };
@@ -113,6 +115,7 @@ export default async function OddsPage() {
   }
 
   if (ov?.scratch?.prizes?.length) {
+    const stk = ov.scratch.ticket ?? 1;
     rows.push({
       game: dict.games.scratch.title,
       ev: ov.scratch.expected_value,
@@ -122,22 +125,27 @@ export default async function OddsPage() {
             <tr className="text-left text-sub">
               <th className="py-1">{t.colPrize}</th>
               <th className="py-1 text-right">{t.colChance}</th>
+              <th className="py-1 text-right">{t.colValue}</th>
             </tr>
           </thead>
           <tbody>
-            {[
-              {
-                label: dict.games.scratch.thanks,
-                chance: ov.scratch.empty_pct,
-              },
-              ...ov.scratch.prizes.map((p) => ({
-                label: `×${p.multiplier}`,
-                chance: p.pct,
-              })),
-            ].map((r, i) => (
+            {/* 与九宫格同一份投影：档位、概率、等值都来自奖池行表现值，
+                包括倍率为 0 的「未中奖」档，不再由前端拼一行假数据 */}
+            {ov.scratch.prizes.map((p, i) => (
               <tr key={i} className="border-t border-line">
-                <td className="py-1.5">{r.label}</td>
-                <td className="num py-1.5 text-right">{pct(r.chance)}</td>
+                <td className="py-1.5">{p.label}</td>
+                <td className="num py-1.5 text-right">
+                  {pct(p.weight_permille / 10)}
+                </td>
+                <td className="num py-1.5 text-right">
+                  ×{(p.value / stk).toFixed(2)}
+                  {p.kind === "item" && (
+                    <span className="text-sub">
+                      {" "}
+                      （{p.value.toLocaleString("en-US")} {currency}）
+                    </span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
