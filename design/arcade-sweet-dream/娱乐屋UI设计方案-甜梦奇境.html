@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>娱乐屋 · 甜梦奇境 — UI 视觉交互设计方案</title>
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💝</text></svg>" />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" />
+<style>
+/* ============================================================
+   娱乐屋 · 甜梦奇境 — 设计方案册自身样式
+   以身作则：本页即样品，粉金奶油 / 缎带玻璃 / 衬线优雅
+   ============================================================ */
+:root{
+  /* —— 甜梦奇境·蓝调版色板（冰蓝 × 香槟金 × 雾紫）—— */
+  --cream:      #f4f8fd;   /* 页面底：冷奶油 */
+  --cream-2:    #e8f0fa;   /* 次底：雾蓝 */
+  --mist:       #c5dff0;   /* 冰蓝（原 blush 位） */
+  --rose:       #8ab4dd;   /* 主交互蓝（原 rose 位，色值换蓝） */
+  --rose-deep:  #4a7ab0;   /* 深海蓝（原 rose-deep） */
+  --lilac:      #b8c8e8;   /* 淡蓝紫 */
+  --lilac-deep: #6a7ab8;   /* 深蓝紫 */
+  --gold:       #d4af7a;   /* 香槟金 */
+  --gold-deep:  #b08a4a;   /* 深金 */
+  --sky-mist:   #9ec8e8;   /* 亮雾蓝 */
+  --mint-mist:  #bfe3d4;
+  --ink:        #2c3e5c;   /* 深海军蓝（正文） */
+  --ink-soft:   #5a6b8c;
+  --ink-faint:  #8a9ab0;
+  --line:       #d8e4f2;
+  --card:       #ffffff;
+  --shadow-rose: 0 10px 30px -12px rgba(74,122,176,.35);
+  --shadow-gold: 0 6px 20px -8px rgba(212,175,122,.45);
+  --r-xl: 28px;
+  --r-lg: 22px;
+  --r-md: 16px;
+  --r-sm: 10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"Noto Sans SC",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #d8e8f8 0%, transparent 60%),
+    radial-gradient(900px 500px at 110% 10%,  #e0e8f8 0%, transparent 55%),
+    radial-gradient(800px 600px at 50% 120%, #f4ecd8 0%, transparent 60%),
+    var(--cream);
+  line-height:1.7;
+  font-size:15px;
+  letter-spacing:.02em;
+}
+h1,h2,h3,h4{font-family:"Noto Serif SC","Songti SC",serif; font-weight:700; line-height:1.3}
+.wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+
+/* —— 封面 —— */
+.cover{
+  min-height:92vh;display:flex;flex-direction:column;justify-content:center;align-items:center;
+  text-align:center;position:relative;padding:80px 24px;overflow:hidden;
+}
+.cover .ribbon-top{
+  position:absolute;top:0;left:0;right:0;height:10px;
+  background:linear-gradient(90deg,var(--sky-mist),var(--gold),var(--lilac),var(--sky-mist));
+  opacity:.7;
+}
+.cover .eyebrow{
+  font-size:13px;letter-spacing:.5em;color:var(--gold-deep);
+  text-transform:uppercase;margin-bottom:24px;
+}
+.cover h1{
+  font-size:clamp(40px,7vw,76px);font-weight:900;letter-spacing:.08em;
+  background:linear-gradient(120deg,#4a7ab0 0%,#d4af7a 50%,#6a7ab8 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 2px 0 rgba(255,255,255,.6);
+  margin-bottom:18px;
+}
+.cover .sub{
+  font-family:"Noto Serif SC",serif;font-size:clamp(16px,2vw,22px);
+  color:var(--ink-soft);letter-spacing:.15em;margin-bottom:40px;
+}
+.cover .meta{
+  display:flex;gap:14px;flex-wrap:wrap;justify-content:center;
+}
+.chip{
+  padding:8px 18px;border-radius:999px;font-size:13px;
+  background:rgba(255,255,255,.7);backdrop-filter:blur(8px);
+  border:1px solid var(--line);color:var(--ink-soft);
+}
+.cover .bow{font-size:42px;margin-bottom:10px;filter:drop-shadow(0 4px 8px rgba(201,122,158,.3))}
+
+/* —— 缎带分隔 —— */
+.ribbon{
+  display:flex;align-items:center;gap:16px;margin:64px 0 28px;
+}
+.ribbon::before,.ribbon::after{
+  content:"";flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+.ribbon .tag{
+  font-family:"Noto Serif SC",serif;font-size:13px;letter-spacing:.4em;
+  color:var(--gold-deep);background:var(--cream);padding:0 14px;
+}
+
+/* —— 章节标题 —— */
+.sec-head{margin:56px 0 24px}
+.sec-head .no{
+  display:inline-block;font-family:"Noto Serif SC",serif;font-size:13px;
+  color:var(--rose-deep);letter-spacing:.3em;margin-bottom:8px;
+}
+.sec-head h2{
+  font-size:clamp(26px,3.4vw,38px);color:var(--ink);letter-spacing:.06em;
+}
+.sec-head p.lead{
+  margin-top:10px;color:var(--ink-soft);max-width:760px;font-size:15px;
+}
+
+/* —— 玻璃卡片 —— */
+.card{
+  background:var(--card);border-radius:var(--r-xl);
+  border:1px solid #fff;
+  box-shadow:var(--shadow-rose), inset 0 0 0 1px rgba(212,175,122,.18);
+  padding:28px;position:relative;
+}
+.card.gold-edge{box-shadow:var(--shadow-gold), inset 0 0 0 1.5px rgba(212,175,122,.45)}
+
+/* 角花（蝴蝶结角） */
+.corner{position:absolute;width:46px;height:46px;pointer-events:none;opacity:.85}
+.corner.tl{top:-10px;left:-10px}
+.corner.tr{top:-10px;right:-10px;transform:scaleX(-1)}
+.corner.bl{bottom:-10px;left:-10px;transform:scaleY(-1)}
+.corner.br{bottom:-10px;right:-10px;transform:scale(-1,-1)}
+
+/* —— 网格 —— */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+@media(max-width:880px){
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+}
+
+/* —— 色板 —— */
+.swatch{
+  border-radius:var(--r-lg);overflow:hidden;border:1px solid #fff;
+  box-shadow:0 6px 18px -10px rgba(74,59,107,.25);
+}
+.swatch .chip-color{height:96px;display:flex;align-items:flex-end;padding:10px}
+.swatch .meta{padding:12px 14px;background:#fff}
+.swatch .name{font-family:"Noto Serif SC",serif;font-weight:700;color:var(--ink)}
+.swatch .hex{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--ink-soft);margin-top:2px}
+.swatch .use{font-size:12px;color:var(--ink-faint);margin-top:4px}
+
+/* —— 组件演示 —— */
+.demo-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:14px 0}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 28px;border-radius:999px;font-size:14px;font-weight:500;
+  font-family:"Noto Serif SC",serif;letter-spacing:.1em;cursor:pointer;
+  border:1px solid rgba(255,255,255,.7);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.btn-primary{
+  background:linear-gradient(180deg,#c5dff0 0%,#8ab4dd 100%);
+  color:#1f3d5c;box-shadow:0 6px 16px -6px rgba(74,122,176,.6), inset 0 1px 0 #fff;
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 22px -8px rgba(74,122,176,.7), inset 0 1px 0 #fff}
+.btn-gold{
+  background:linear-gradient(180deg,#f6e2b8 0%,#d4af7a 100%);
+  color:#6b4a1a;box-shadow:0 6px 16px -6px rgba(212,175,122,.6), inset 0 1px 0 #fff;
+}
+.btn-ghost{
+  background:rgba(255,255,255,.7);color:var(--rose-deep);
+  border:1.5px solid var(--mist);
+}
+.btn[disabled]{opacity:.5;cursor:not-allowed;transform:none}
+
+/* 游戏卡（大厅卡样例） */
+.game-card{
+  border-radius:var(--r-lg);padding:22px 18px;text-align:center;
+  background:linear-gradient(160deg,#fff 0%,#eef5fc 100%);
+  border:1.5px solid rgba(255,255,255,.9);
+  box-shadow:0 8px 20px -12px rgba(74,122,176,.45), inset 0 0 0 1px var(--line);
+  position:relative;overflow:hidden;
+}
+.game-card .icon{
+  width:64px;height:64px;margin:0 auto 12px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:30px;
+  background:radial-gradient(circle at 30% 30%,#fff 0%,var(--mist) 100%);
+  box-shadow:inset 0 -3px 8px rgba(74,122,176,.25), 0 4px 10px -4px rgba(74,122,176,.5);
+}
+.game-card h4{font-size:16px;color:var(--ink);margin-bottom:4px}
+.game-card p{font-size:12px;color:var(--ink-soft)}
+.game-card .badge{
+  position:absolute;top:10px;right:10px;font-size:11px;
+  background:linear-gradient(90deg,var(--gold),#f0d9a8);color:#6b4a1a;
+  padding:3px 10px;border-radius:999px;font-weight:700;
+}
+
+/* 进度条 / 星轨 */
+.track{display:flex;align-items:center;gap:6px;margin:14px 0}
+.track .node{
+  width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:14px;background:#fff;border:1.5px solid var(--line);color:var(--ink-faint);
+}
+.track .node.on{background:radial-gradient(circle at 30% 30%,#fff,var(--gold));border-color:var(--gold);color:#6b4a1a;box-shadow:0 0 0 4px rgba(212,175,122,.2)}
+.track .node.done{background:linear-gradient(180deg,var(--rose),var(--rose-deep));color:#fff;border-color:var(--rose-deep)}
+.track .link{flex:1;height:2px;background:linear-gradient(90deg,var(--gold),var(--mist));border-radius:2px}
+
+.bar{height:10px;border-radius:999px;background:#e3edf8;overflow:hidden;position:relative}
+.bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--rose),var(--gold));border-radius:999px}
+
+/* 表格 */
+table.spec{width:100%;border-collapse:collapse;font-size:14px}
+table.spec th,table.spec td{padding:12px 14px;text-align:left;border-bottom:1px dashed var(--line);vertical-align:top}
+table.spec th{font-family:"Noto Serif SC",serif;color:var(--rose-deep);width:140px;background:linear-gradient(90deg,#eef5fc,transparent)}
+
+/* 游戏单页卡 */
+.game-spec{display:grid;grid-template-columns:220px 1fr;gap:24px;margin-bottom:22px}
+.game-spec .thumb{
+  border-radius:var(--r-lg);aspect-ratio:3/4;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#fff;font-family:"Noto Serif SC",serif;letter-spacing:.1em;
+  box-shadow:var(--shadow-rose);position:relative;overflow:hidden;
+}
+.game-spec .thumb .big{font-size:46px;margin-bottom:8px;text-shadow:0 3px 10px rgba(0,0,0,.2)}
+.game-spec h4{font-size:20px;color:var(--ink);margin-bottom:6px}
+.game-spec .tagline{color:var(--rose-deep);font-size:13px;letter-spacing:.2em;margin-bottom:12px}
+.game-spec ul{padding-left:20px;color:var(--ink-soft);font-size:14px}
+.game-spec ul li{margin-bottom:6px}
+@media(max-width:760px){.game-spec{grid-template-columns:1fr}}
+
+/* 页脚 */
+footer{
+  text-align:center;padding:60px 20px 40px;color:var(--ink-faint);font-size:13px;
+}
+footer .divider{width:120px;height:1px;background:var(--gold);margin:0 auto 20px}
+
+/* 提示块 */
+.note{
+  border-left:3px solid var(--gold);background:#fff8e8;
+  padding:14px 18px;border-radius:0 var(--r-md) var(--r-md) 0;
+  color:#6b4a1a;font-size:13px;margin:14px 0;
+}
+/* 装饰星点 */
+.star{position:absolute;color:var(--gold);opacity:.6;animation:twinkle 3s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.9;transform:scale(1.1)}}
+</style>
+</head>
+<body>
+
+<!-- ============ 封面 ============ -->
+<section class="cover">
+  <div class="ribbon-top"></div>
+  <div class="bow">🎀</div>
+  <div class="eyebrow">FLUXTORRENT · ARCADE UI SPEC</div>
+  <h1>娱乐屋 · 甜梦奇境</h1>
+  <div class="sub">— Miracle Nikki-style Delicate UI Design Proposal —</div>
+  <p style="max-width:680px;color:var(--ink-soft)">
+    将现有 TIDE 潮汐商务蓝主题，升级为以雾蓝、香槟金、淡蓝紫为主调的
+    <b>冰雪宫廷感 · 水晶玻璃质感 · 精致游戏屋</b> 视觉体系，覆盖大厅与 9 款玩法的全套界面。
+  </p>
+  <div class="meta" style="margin-top:32px">
+    <span class="chip">9 款玩法</span>
+    <span class="chip">1 套设计令牌</span>
+    <span class="chip">3 类核心组件</span>
+    <span class="chip">兼容 TIDE 令牌层</span>
+  </div>
+</section>
+
+<div class="wrap">
+
+<!-- ============ 01 设计理念 ============ -->
+<div class="ribbon"><span class="tag">壹 · PHILOSOPHY</span></div>
+<div class="sec-head">
+  <span class="no">01</span>
+  <h2>设计理念：从「潮汐蓝」到「甜梦奇境」</h2>
+  <p class="lead">
+    现有 TIDE 主题是冷静的工程感蓝白，适合 PT 站的种子/论坛主域；但娱乐屋是用户「卸下压力、抽卡碰运气」的情绪场，
+    需要一套与之互补、甚至略有反差的童话语言。奇迹暖暖之所以迷人，不在粉色本身，而在
+    <b>「缎带 + 水晶 + 烫金 + 衬线字」四种材质叠出的精致感</b>。本方案把这种材质语言抽象为可复用的设计令牌。
+  </p>
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <h3 style="color:var(--rose-deep);margin-bottom:10px">🎀 情绪定位</h3>
+    <p style="color:var(--ink-soft);font-size:14px">
+      像走进一座藏在花园里的糖果宫殿。每一次刮奖、每一次转盘停下，都应该像拆开一份包装精致的礼物——
+      仪式感大于刺激感，陪伴感大于赌博感。
+    </p>
+  </div>
+  <div class="card">
+    <h3 style="color:var(--lilac-deep);margin-bottom:10px">💎 材质关键词</h3>
+    <p style="color:var(--ink-soft);font-size:14px">
+      乳白玻璃、丝绸缎带、香槟烫金、珍珠柔光、蕾丝花边、水晶切面。
+      所有组件都要有「被精心包装过」的边缘细节，拒绝扁平色块。
+    </p>
+  </div>
+  <div class="card">
+    <h3 style="color:var(--gold-deep);margin-bottom:10px">✨ 交互承诺</h3>
+    <p style="color:var(--ink-soft);font-size:14px">
+      每次下注/开奖都配「缎带展开 + 星屑飘散 + 水晶高光」三段式动效，
+      让 1 秒的等待变成值得期待的小仪式。
+    </p>
+  </div>
+</div>
+
+<!-- ============ 02 色彩系统 ============ -->
+<div class="ribbon"><span class="tag">贰 · COLOR TOKENS</span></div>
+<div class="sec-head">
+  <span class="no">02</span>
+  <h2>色彩系统：雾蓝 × 香槟金 × 淡蓝紫</h2>
+  <p class="lead">
+    主色从现有 <code>--sky / --gold / --lilac</code> 三个语义位派生，全部走柔雾冰蓝明度（L≥75），
+    避免高饱和宝蓝。每个颜色都同时给出 <i>hex / 用途 / 与 TIDE 令牌的映射</i>，方便落地。
+  </p>
+</div>
+
+<div class="grid-4" id="color-grid">
+  <!-- 色卡由 JS 渲染占位 -->
+</div>
+
+<div class="note">
+  <b>落地提示：</b> 在 <code>theme-tide.css</code> 旁新增 <code>arcade-sweet.css</code>，仅在 <code>/games/*</code> 路由下
+  <code>@import</code>，用 <code>[data-arcade="sweet"]</code> 作用域覆盖令牌——主站其余页面保持 TIDE 蓝白不变，零回归风险。
+</div>
+
+<!-- ============ 03 字体与排版 ============ -->
+<div class="ribbon"><span class="tag">叁 · TYPOGRAPHY</span></div>
+<div class="sec-head">
+  <span class="no">03</span>
+  <h2>字体与排版：衬线为冕，圆体为礼</h2>
+  <p class="lead">
+    奇迹暖暖的标题永远有一种「宫廷请柬」的庄重感——用衬线体做标题，用圆柔无衬线做正文，
+    字距放宽 0.1em 以上，让粉色与金色呼吸。
+  </p>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h3 style="margin-bottom:14px">标题字 · Noto Serif SC</h3>
+    <div style="font-family:'Noto Serif SC',serif">
+      <div style="font-size:44px;font-weight:900;color:var(--ink);letter-spacing:.08em">娱乐屋</div>
+      <div style="font-size:22px;font-weight:700;color:var(--rose-deep);letter-spacing:.15em;margin-top:8px">Sweet Dream Arcade</div>
+    </div>
+    <table class="spec" style="margin-top:18px">
+      <tr><th>Display 大标题</th><td>40–72px / 900 / 字距 0.08em / 金色渐变文字</td></tr>
+      <tr><th>H2 章节</th><td>26–38px / 700 / 字距 0.06em</td></tr>
+      <tr><th>H3 卡片标题</th><td>16–18px / 700 / 字距 0.04em</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:14px">正文字 · Noto Sans SC</h3>
+    <div style="font-family:'Noto Sans SC',sans-serif">
+      <div style="font-size:15px;color:var(--ink);line-height:1.9">
+        欢迎来到甜梦奇境。在这里，每一次刮开涂层的沙沙声、每一次转盘停下的叮铃声，
+        都是命运偷偷塞给你的小礼物。请放松心情，挑选一款你喜欢的小游戏吧。
+      </div>
+    </div>
+    <table class="spec" style="margin-top:18px">
+      <tr><th>正文 Body</th><td>14–15px / 400 / 行高 1.8 / 颜色 #4A3B6B</td></tr>
+      <tr><th>辅助 Sub</th><td>12–13px / 400 / 颜色 #7A6B94</td></tr>
+      <tr><th>数字 Numeral</th><td>用衬线体加粗，保留等宽数字；金币/火花数用香槟金</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ 04 材质与装饰母题 ============ -->
+<div class="ribbon"><span class="tag">肆 · MOTIFS</span></div>
+<div class="sec-head">
+  <span class="no">04</span>
+  <h2>材质与装饰母题：五件「宫廷道具」</h2>
+  <p class="lead">
+    奇迹暖暖的精致感来自固定的一套装饰母题反复出现。我们为娱乐屋提炼五件母题，
+    所有页面都从这五件里取，不另发明新符号。
+  </p>
+</div>
+
+<div class="grid-4">
+  <div class="card" style="text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">🎀</div>
+    <h4>缎带蝴蝶结</h4>
+    <p style="font-size:13px;color:var(--ink-soft);margin-top:6px">
+      卡片顶饰、弹窗标题、活动角标。所有「被包装」的容器顶端都压一条粉色缎带。
+    </p>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">✨</div>
+    <h4>星屑水晶</h4>
+    <p style="font-size:13px;color:var(--ink-soft);margin-top:6px">
+      开奖、获得奖励、领取任务时飘散。香槟金色四角星 + 粉白闪粒，3 秒内淡出。
+    </p>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">🌹</div>
+    <h4>玫瑰卷草</h4>
+    <p style="font-size:13px;color:var(--ink-soft);margin-top:6px">
+      大厅 Hero 区、赛季星轨两端、页脚分隔。细线描金，不填充，保持透气。
+    </p>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">💎</div>
+    <h4>玻璃宝石</h4>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px">
+      按钮高光、徽章中心、扭蛋/水晶图标。半透明白顶高光 + 粉色投影。
+    </p>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">🌙</div>
+    <h4>月桂星轨</h4>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px">
+      赛季进度条、纹章环外圈。用一段金色虚线圆弧串起节点，替代直线进度条。
+    </p>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">🤍</div>
+    <h4>珍珠扣子</h4>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px">
+      关闭按钮、卡片折角、输入框聚焦态。圆形乳白，带顶部 1px 高光。
+    </p>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">🕊️</div>
+    <h4>羽毛飘落</h4>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px">
+      页头/页脚装饰背景，透明度 ≤8%，不抢内容。
+    </p>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">🏆</div>
+    <h4>皇冠角标</h4>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px">
+      排行榜第一、本周热门、最高赔率。金色皇冠小图标，配缎带垂尾。
+    </p>
+  </div>
+</div>
+
+<!-- ============ 05 核心组件库 ============ -->
+<div class="ribbon"><span class="tag">伍 · COMPONENTS</span></div>
+<div class="sec-head">
+  <span class="no">05</span>
+  <h2>核心组件库：从按钮到开奖台</h2>
+  <p class="lead">
+    所有娱乐屋页面共享以下七类组件。每一类都给出默认/悬停/按下/禁用四态。
+  </p>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h3 style="margin-bottom:12px">5.1 按钮三态</h3>
+    <div class="demo-row">
+      <span class="btn btn-primary">🌸 开始刮奖</span>
+      <span class="btn btn-gold">✨ 领取奖励</span>
+      <span class="btn btn-ghost">查看规则</span>
+      <span class="btn btn-primary" disabled>已领取</span>
+    </div>
+    <p style="font-size:13px;color:var(--ink-soft)">
+      主按钮 = 雾蓝渐变 + 顶部 1px 白高光 + 深海蓝投影；
+      强调按钮 = 香槟金渐变；幽灵按钮 = 白底粉边。所有按钮胶囊形（999px 圆角）。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">5.2 游戏入口卡</h3>
+    <div class="grid-3">
+      <div class="game-card">
+        <span class="badge">3.8x</span>
+        <div class="icon">🎯</div>
+        <h4>猜大小</h4>
+        <p>即开即中</p>
+      </div>
+      <div class="game-card">
+        <span class="badge hot">HOT</span>
+        <div class="icon">🎡</div>
+        <h4>幸运转盘</h4>
+        <p>每周大奖</p>
+      </div>
+      <div class="game-card">
+        <div class="icon">🌾</div>
+        <h4>好学农场</h4>
+        <p>慢慢经营</p>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--ink-soft);margin-top:12px">
+      卡片 = 白底粉雾渐变 + 双层描边（外 1px 白 / 内 1px 粉丝线）+ 顶部圆形宝石图标。
+      角标用金色缎带小胶囊。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">5.3 赛季星轨（替代直线进度条）</h3>
+    <div class="track">
+      <div class="node done">✓</div>
+      <span class="link"></span>
+      <div class="node done">✓</div>
+      <span class="link"></span>
+      <div class="node on">★</div>
+      <span class="link"></span>
+      <div class="node">🔒</div>
+      <span class="link"></span>
+      <div class="node">🔒</div>
+    </div>
+    <p style="font-size:13px;color:var(--ink-soft)">
+      节点 34px 圆，已达成=雾蓝实心，当前=香槟金发光，未解锁=灰描边。
+      连线用粉金渐变 2px，替代原来的灰条。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">5.4 任务进度条</h3>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px">刮开 3 张彩票 · 12/20</p>
+    <div class="bar"><i style="width:60%"></i></div>
+    <div style="height:14px"></div>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px">本周累计消耗 · 72%</p>
+    <div class="bar"><i style="width:72%;background:linear-gradient(90deg,var(--lilac),var(--rose))"></i></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">5.5 纹章预算环（圆形仪表盘）</h3>
+    <div style="display:flex;gap:20px;align-items:center">
+      <div style="
+        width:120px;height:120px;border-radius:50%;
+        background:conic-gradient(var(--rose) 0 62%, #e3edf8 62% 100%);
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 0 6px #fff, 0 8px 20px -10px rgba(74,122,176,.5);
+      ">
+        <div style="
+          width:88px;height:88px;border-radius:50%;background:#fff;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+        ">
+          <b style="font-family:'Noto Serif SC',serif;color:var(--rose-deep);font-size:20px">62%</b>
+          <small style="font-size:10px;color:var(--ink-faint)">已用</small>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--ink-soft)">
+        <b style="color:var(--ink)">+1,280</b> 本周净收益<br/>
+        <b style="color:var(--ink)">3,100 / 5,000</b> 预算<br/>
+        <span style="color:var(--gold-deep)">✦ 赛季 S3 · 星轨集</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">5.6 弹窗 / 奖励揭晓</h3>
+    <div style="
+      background:linear-gradient(160deg,#fff 0%,#eef5fc 100%);
+      border-radius:var(--r-lg);padding:22px;text-align:center;
+      box-shadow:inset 0 0 0 1.5px var(--gold);position:relative;
+    ">
+      <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:24px">🎀</div>
+      <div style="font-family:'Noto Serif SC',serif;color:var(--rose-deep);letter-spacing:.2em;font-size:13px;margin-top:6px">CONGRATULATIONS</div>
+      <div style="font-size:30px;margin:8px 0">💎</div>
+      <div style="font-family:'Noto Serif SC',serif;font-size:22px;font-weight:700;color:var(--ink)">获得「星尘水晶」×1</div>
+      <div style="font-size:13px;color:var(--ink-soft);margin:6px 0 14px">已存入你的背包，可在装扮中心佩戴</div>
+      <span class="btn btn-primary">收入背包</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 06 大厅布局 ============ -->
+<div class="ribbon"><span class="tag">陆 · LOBBY</span></div>
+<div class="sec-head">
+  <span class="no">06</span>
+  <h2>娱乐屋大厅：一座藏在花园里的糖果宫殿</h2>
+  <p class="lead">
+    大厅是用户进入娱乐屋的第一印象，也是现有 <code>/games</code> 页面的重构目标。
+    保留现有信息架构（Hero → 分组卡片 → 纹章/周常/赛季/背包），但把每一层都「包装」成礼盒。
+  </p>
+</div>
+
+<div class="card gold-edge" style="margin-bottom:22px">
+  <svg class="corner tl" viewBox="0 0 46 46"><text y="36" font-size="30">🎀</text></svg>
+  <svg class="corner br" viewBox="0 0 46 46"><text y="36" font-size="30">🌹</text></svg>
+
+  <h3 style="margin-bottom:16px">📐 大厅分区与视觉层级</h3>
+  <div style="overflow-x:auto">
+  <table class="spec" style="min-width:640px">
+    <colgroup><col style="width:18%"><col style="width:30%"><col style="width:52%"></colgroup>
+    <tr><th>① Hero 迎宾台</th><td>粉金渐变云雾底 + 飘落樱花瓣（CSS 动画）</td>
+      <td>大标题「甜梦奇境」用衬线金色渐变；右侧悬浮一座水晶旋转木马插画（生成图）；下方三颗数字宝石：<b>今日已开启 12 款游戏 / 本周累计奖励 8,420 火花 / 连续好运 5 天</b>。</td></tr>
+    <tr><th>② 分组标题</th><td>缎带横幅</td>
+      <td>「即时开奖 · Instant」与「养成经营 · Session」两个分组标题，用粉色缎带横贯，两侧配卷草金纹，替代原来的「分组线+数字」。</td></tr>
+    <tr><th>③ 游戏卡片网格</th><td>3 列 × 2 行（桌面）</td>
+      <td>9 张游戏卡，每张顶部圆形宝石图标（取代 emoji 直出），角标「3.8x」用金色缎带胶囊，「HOT」用红色小皇冠。卡片 hover 时浮起 + 轻微倾斜 2° + 星屑闪现。</td></tr>
+    <tr><th>④ 纹章预算环</th><td>圆形仪表盘居中</td>
+      <td>把现有 <code>.arc-crest</code> 改成 220px 大圆环，外环粉→金渐变，中心放净收益数字，两侧文字保留。背景是淡淡蕾丝纹。</td></tr>
+    <tr><th>⑤ 周常任务条</th><td>三张并排小卡</td>
+      <td>刮 3 张 / 猜 5 局 / 本周登录 3 天，每条都有粉色进度条 + 领取按钮（金色胶囊）。</td></tr>
+    <tr><th>⑥ 赛季星轨</th><td>横向五节点</td>
+      <td>现有 <code>.arc-track</code> 升级为「月亮弯轨」：节点是小星星，连线是金色虚线弧，从新月 → 半月 → 满月 → 星团 → 皇冠。</td></tr>
+    <tr><th>⑦ 票根册 / 背包 / 货架</th><td>抽屉式收起</td>
+      <td>默认折叠成三个金色缎带 tab，点开才展开——减少首屏噪音，把精致感留到互动时。</td></tr>
+    <tr><th>⑧ 全服公示 Feed</th><td>跑马灯缎带</td>
+      <td>「✦ 星野 刚刚 在九宫格抽到了 月桂皇冠」横向滚动，粉金渐变字。</td></tr>
+  </table>
+  </div>
+</div>
+
+<!-- ============ 07 九款游戏逐页设计 ============ -->
+<div class="ribbon"><span class="tag">柒 · GAME PAGES</span></div>
+<div class="sec-head">
+  <span class="no">07</span>
+  <h2>九款玩法逐页设计：各有各的童话布景</h2>
+  <p class="lead">
+    共用同一套组件库，但每款游戏有自己的<b>场景色调</b>与<b>核心交互仪式</b>。
+    下面按现有路由顺序逐一给出界面方案。
+  </p>
+</div>
+
+<!-- 7.1 猜大小 -->
+<div class="card game-spec">
+  <div class="thumb" style="background:linear-gradient(160deg,#b8cfe8,#7ea8d8)">
+    <div class="big">🎯</div>
+    <div>猜大小 · Big/Small</div>
+  </div>
+  <div>
+    <div class="tagline">INSTANT · 雾蓝水晶骰桌</div>
+    <h4>7.1 猜大小 —— 水晶骰局</h4>
+    <ul>
+      <li><b>场景：</b>一张铺着蓝丝绒的赌桌，中央悬浮两颗透明水晶骰子，骰面数字是烫金衬线。</li>
+      <li><b>交互：</b>下注金额用「珍珠滑块」调节（拖动乳白珍珠，刻度是小水晶）；选择「大 / 小 / 围骰」三个缎带按钮。</li>
+      <li><b>开奖：</b>点击「摇骰」后骰子在水晶杯中滚动 1.2s，伴随叮铃声，停下时金光爆闪 + 数字翻转。</li>
+      <li><b>赔率角标：</b>现有 1.9x 倍率写在玫瑰金缎带上，贴在赌桌右上角。</li>
+      <li><b>禁忌：</b>不用红色/绿色赌桌——保持雾蓝冷调，避免与赌场风混淆，符合 PT 站教育气质。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7.2 刮刮乐 -->
+<div class="card game-spec">
+  <div class="thumb" style="background:linear-gradient(160deg,#c5dff0,#4a7ab0)">
+    <div class="big">🎫</div>
+    <div>刮刮乐 · Scratch</div>
+  </div>
+  <div>
+    <div class="tagline">INSTANT · 冰蓝信封礼盒涂层</div>
+    <h4>7.2 刮刮乐 —— 信封里的星尘</h4>
+    <ul>
+      <li><b>场景：</b>一张冰蓝信封卡片，表面是磨砂银蓝涂层，上面压着一颗水晶浮雕。</li>
+      <li><b>交互：</b>支持鼠标/手指拖动刮开，刮开区域用 <code>canvas</code> 实现；刮开 60% 自动判定。</li>
+      <li><b>中奖：</b>刮出三个相同宝石（💎👑🌹）时，信封自动裂开，花瓣从卡片里飘出 2 秒。</li>
+      <li><b>奖池：</b>现有 <code>scratchPoolText</code> 放到信封封口的火漆印里，hover 展开。</li>
+      <li><b>多连刮：</b>底部一排未刮信封缩略图，像一副牌，点哪张刮哪张。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7.3 九宫格 -->
+<div class="card game-spec">
+  <div class="thumb" style="background:linear-gradient(160deg,#c9b6e4,#8e7bbf)">
+    <div class="big">🎰</div>
+    <div>九宫格 · JGG</div>
+  </div>
+  <div>
+    <div class="tagline">INSTANT · 淡蓝紫宝石盘</div>
+    <h4>7.3 九宫格 —— 命运宝石盘</h4>
+    <ul>
+      <li><b>场景：</b>3×3 圆形宝石阵，每格是一颗切面紫水晶，背面写着奖品名。</li>
+      <li><b>交互：</b>点击一颗宝石 → 它先悬浮、发光、裂开，露出奖品；其余宝石变灰。</li>
+      <li><b>未中奖：</b>宝石碎裂成星屑缓缓落下，配一句温柔文案「下次一定更好」，不做嘲讽。</li>
+      <li><b>奖池预览：</b>底部一排迷你宝石图标，hover 显示奖品名与概率（沿用现有 <code>prizes</code> 数据）。</li>
+      <li><b>十连抽：</b>加一个金色「连开十次」按钮，十颗宝石按顺序依次裂开，节奏感 0.3s/颗。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7.4 扭蛋 -->
+<div class="card game-spec">
+  <div class="thumb" style="background:linear-gradient(160deg,#d4af7a,#b08a4a)">
+    <div class="big">🥚</div>
+    <div>扭蛋 · Capsule</div>
+  </div>
+  <div>
+    <div class="tagline">INSTANT · 香槟金扭蛋机</div>
+    <h4>7.4 扭蛋 —— 黄金蛋壳孵化</h4>
+    <ul>
+      <li><b>场景：</b>一台鎏金扭蛋机，玻璃罩内堆满粉/紫/金三色胶囊球。</li>
+      <li><b>交互：</b>转动金色旋钮（有物理触感的旋转动画），一颗胶囊从轨道滚出，落在托盘上摇晃 0.5s。</li>
+      <li><b>孵化：</b>胶囊裂开，里面是装扮道具/票根/火花。SSR 道具会伴随光柱升起 + 全屏淡金粒子。</li>
+      <li><b>保底：</b>第 N 次必出稀有，用蛋壳上的刻度环显示（沿用现有概率配置）。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7.5 大转盘 -->
+<div class="card game-spec">
+  <div class="thumb" style="background:linear-gradient(160deg,#f6d8a8,#d4af7a)">
+    <div class="big">🎡</div>
+    <div>大转盘 · Wheel</div>
+  </div>
+  <div>
+    <div class="tagline">INSTANT · 嘉年华摩天轮</div>
+    <h4>7.5 大转盘 —— 星尘摩天轮</h4>
+    <ul>
+      <li><b>场景：</b>不要做传统赌场轮盘，改造成一座迷你摩天轮：8 个座舱分别写奖品，中心是月亮。</li>
+      <li><b>交互：</b>点击「开始」后轮盘缓动旋转 4–5 圈，指针是一颗下垂的星星；停在哪个座舱，哪个座舱就点亮。</li>
+      <li><b>灯光：</b>转盘边缘 12 颗小灯泡依次点亮（跑马灯），停转时全部闪一次。</li>
+      <li><b>免费次数：</b>今日剩余次数做成「门票」贴在转盘下方，金色票根样式。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7.6 农场 -->
+<div class="card game-spec">
+  <div class="thumb" style="background:linear-gradient(160deg,#bfe3d4,#6fb89a)">
+    <div class="big">🌾</div>
+    <div>好学农场 · Farm</div>
+  </div>
+  <div>
+    <div class="tagline">SESSION · 薄荷绿花园</div>
+    <h4>7.6 好学农场 —— 奶油田园</h4>
+    <ul>
+      <li><b>场景：</b>一块 3×4 的柔绿花田，格子里是软萌作物（麦芒、星星果、玫瑰萝卜），不是写实农田。</li>
+      <li><b>交互：</b>点击空格播种 → 作物分 5 天生长（种子 / 发芽 / 含苞 / 盛开 / 成熟），每阶段形状变化。</li>
+      <li><b>收获：</b>成熟作物有呼吸光晕，一键收获时花瓣/麦粒从格子里跳起 0.6s。</li>
+      <li><b>菜市场：</b>价格波动面板做成一个粉色账本，每日 0/4/8/12/16/20 点刷新价用小折线图。</li>
+      <li><b>20% 双倍：</b>双倍收获时作物变成金色，伴随「✨」飘字。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7.7 抽卡 -->
+<div class="card game-spec">
+  <div class="thumb" style="background:linear-gradient(160deg,#8e7bbf,#4a3b6b)">
+    <div class="big">🃏</div>
+    <div>卡牌合成 · Gacha</div>
+  </div>
+  <div>
+    <div class="tagline">SESSION · 午夜紫卡匣</div>
+    <h4>7.7 卡牌合成 —— 星夜卡匣</h4>
+    <ul>
+      <li><b>场景：</b>深紫夜空背景，一张背面印着烫金星轨的卡匣浮在中央。</li>
+      <li><b>交互：</b>点击卡匣 → 它先旋转 180°、光芒从缝隙渗出 → 翻开成一张角色/勋章卡。</li>
+      <li><b>稀有度：</b>N/R/SR/SSR 用不同边框（银边 / 金边 / 粉钻边 / 彩虹流光边），SSR 卡面有 3D 倾斜视差。</li>
+      <li><b>合成：</b>三张同款卡合成时，卡面先合光、再裂开成更稀有的卡。</li>
+      <li><b>图鉴：</b>票根册 <code>ArcadeAlbum</code> 改造成卡册，未获得的卡用剪影 + 问号。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7.8 宠物 -->
+<div class="card game-spec">
+  <div class="thumb" style="background:linear-gradient(160deg,#a8d8d0,#5aa89c)">
+    <div class="big">🐾</div>
+    <div>宠物 · Pet</div>
+  </div>
+  <div>
+    <div class="tagline">SESSION · 青碧宠窝</div>
+    <h4>7.8 宠物 —— 云端小窝</h4>
+    <ul>
+      <li><b>场景：</b>一朵粉紫色云团当窝，宠物（狐耳/鹿耳/水晶鸟）坐在上面打瞌睡。</li>
+      <li><b>交互：</b>抚摸（点击）宠物会眨眼、蹭手；喂食（火花购买）会增加亲密度。</li>
+      <li><b>成长：</b>亲密度分 5 阶，每阶宠物外形变化（小→戴蝴蝶结→戴皇冠→长翅膀）。</li>
+      <li><b>展示：</b>宠物跟随头像出现在论坛/评论区（与 M25 装扮中心打通）。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7.9 钓鱼 -->
+<div class="card game-spec">
+  <div class="thumb" style="background:linear-gradient(160deg,#b8cfe8,#6a9ec8)">
+    <div class="big">🎣</div>
+    <div>钓鱼 · Fishing</div>
+  </div>
+  <div>
+    <div class="tagline">SESSION · 雾蓝星夜湖畔</div>
+    <h4>7.9 钓鱼 —— 星夜湖畔</h4>
+    <ul>
+      <li><b>场景：</b>一片镜面湖水，倒映着星空与月亮，远处有淡紫色山影。</li>
+      <li><b>交互：</b>抛竿后鱼漂下沉 0.8–3s（随机），玩家需在鱼漂下沉瞬间点击「收竿」——反应力小游戏。</li>
+      <li><b>鱼种：</b>普通鱼 / 稀有水晶鱼 / 传说月桂鱼，鱼鳞片用发光蓝。</li>
+      <li><b>渔获图鉴：</b>背包里的鱼按品种陈列，未钓到的是水泡剪影。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 08 动效与微交互 ============ -->
+<div class="ribbon"><span class="tag">捌 · MOTION</span></div>
+<div class="sec-head">
+  <span class="no">08</span>
+  <h2>动效规范：三拍式开奖仪式</h2>
+  <p class="lead">
+    奇迹暖暖的精致感一半在动效。我们为所有「开奖/获得」统一一套三拍节奏，避免每个游戏各做各的。
+  </p>
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <h3 style="color:var(--rose-deep)">第一拍 · 期待（0–0.6s）</h3>
+    <p style="font-size:14px;color:var(--ink-soft)">
+      按钮按下 → 缎带从中心展开 → 水晶高光汇聚 → 背景压暗 15%。
+      这一拍让玩家进入「屏息」状态。
+    </p>
+  </div>
+  <div class="card">
+    <h3 style="color:var(--gold-deep)">第二拍 · 揭晓（0.6–1.4s）</h3>
+    <p style="font-size:14px;color:var(--ink-soft)">
+      结果物（卡片/宝石/胶囊）放大弹出，带 3D 旋转 15°；
+      SSR/大奖时全屏撒金色星屑，普通奖只在卡片周围飘 5 颗小星。
+    </p>
+  </div>
+  <div class="card">
+    <h3 style="color:var(--lilac-deep)">第三拍 · 余韵（1.4–2.2s）</h3>
+    <p style="font-size:14px;color:var(--ink-soft)">
+      奖励数字翻滚计数 → 缎带缓缓收回 → 「收入背包」按钮淡入。
+      全程 <b>≤ 2.2s</b>，不拖泥带水。
+    </p>
+  </div>
+</div>
+
+<div class="note">
+  <b>克制原则：</b> 非开奖场景（浏览大厅、查看规则）不主动动效；
+  尊重 <code>prefers-reduced-motion</code>，系统开了减弱动效就只保留淡入淡出。
+  背景飘落花瓣/羽毛全局只在 Hero 区出现，不铺满整站。
+</div>
+
+<!-- ============ 09 落地策略 ============ -->
+<div class="ribbon"><span class="tag">玖 · ROLLOUT</span></div>
+<div class="sec-head">
+  <span class="no">09</span>
+  <h2>落地策略：与 TIDE 主题共存，零主站回归</h2>
+  <p class="lead">
+    不推翻现有 TIDE 主题，而是给娱乐屋单独开一个「皮肤」。
+  </p>
+</div>
+
+<div class="card">
+  <div style="overflow-x:auto">
+  <table class="spec" style="min-width:600px">
+    <colgroup><col style="width:22%"><col style="width:78%"></colgroup>
+    <tr><th>样式隔离</th><td>新建 <code>apps/web/app/styles/arcade-sweet.css</code>，仅在 <code>/(main)/games/**</code> 布局里 import；
+      所有规则挂在 <code>[data-arcade="sweet"]</code> 作用域下，不污染全站。</td></tr>
+    <tr><th>令牌覆盖</th><td>把 <code>--sky / --coral / --sun / --mint</code> 在该作用域下重映射为雾蓝/冰蓝/金/薄荷雾；
+      组件类名（<code>.gc-card / .arc-*</code>）不变，只换皮肤。</td></tr>
+    <tr><th>图标替换</th><td>现有 emoji 图标（🎯🎫🎰🥚🎡🌾🃏🐾🎣）保留为兜底；
+      第一期用内联 SVG 宝石图标替换，二期再补 Lottie 动效。</td></tr>
+    <tr><th>图片素材</th><td>Hero 水晶旋转木马、各游戏场景插画用 image_gen 生成 16:9，
+      风格关键词：<i>Soft watercolor, pink cream, gilded details, Nikki miracle style, lace ribbon, transparent background</i>。</td></tr>
+    <tr><th>分期</th><td><b>P0（2 周）：</b>令牌 + 大厅 + 按钮/卡片组件换肤；
+      <b>P1（3 周）：</b>5 款即时游戏（猜大小/刮刮乐/九宫格/扭蛋/转盘）逐页改造；
+      <b>P2（2 周）：</b>4 款养成游戏 + 动效 + 宠物/装扮联动。</td></tr>
+    <tr><th>验收</th><td>桌面 1440 / 移动 390 两档截图对照；
+      夜间主题 <code>baozi-night</code> 下娱乐屋自动切「深紫星空版」（奶白底 → 深紫底，金描边保留）。</td></tr>
+  </table>
+  </div>
+</div>
+
+<div class="card gold-edge" style="margin-top:22px;text-align:center">
+  <div style="font-size:36px;margin-bottom:8px">🎀 ✨ 🌹</div>
+  <h3 style="color:var(--rose-deep)">让每一次点开娱乐屋，都像拆开一份礼物</h3>
+  <p style="color:var(--ink-soft);margin-top:8px;max-width:640px;margin-left:auto;margin-right:auto">
+    这套设计不只是换色——它把 PT 站里最容易显得「粗糙赌博」的小游戏区，
+    变成用户愿意每天回来逛一逛的小花园。
+  </p>
+</div>
+
+</div>
+
+<footer>
+  <div class="divider"></div>
+  FluxTorrent · 娱乐屋「甜梦奇境」UI 设计方案 · v1.0<br/>
+  本文档即设计样品，所有色值/组件均可直接切 token 落地
+</footer>
+
+<script>
+/* —— 色板数据（本页自包含，不依赖外部 JSON）—— */
+const SWATCHES = [
+  {name:"冷奶油底 Cream", hex:"#F4F8FD", use:"页面/卡片底", c:"#f4f8fd", ink:"#2c3e5c"},
+  {name:"冰蓝 Mist",     hex:"#C5DFF0", use:"装饰/高光/缎带", c:"#c5dff0", ink:"#1f3d5c"},
+  {name:"雾蓝主 Sky",    hex:"#8AB4DD", use:"主交互/主按钮", c:"#8ab4dd", ink:"#fff"},
+  {name:"深海蓝 Deep",   hex:"#4A7AB0", use:"按下/强调文字", c:"#4a7ab0", ink:"#fff"},
+  {name:"淡蓝紫 Lilac",  hex:"#B8C8E8", use:"次主色/紫系游戏", c:"#b8c8e8", ink:"#2c3e5c"},
+  {name:"深蓝紫 Violet", hex:"#6A7AB8", use:"标题/紫系按钮", c:"#6a7ab8", ink:"#fff"},
+  {name:"香槟金 Gold",   hex:"#D4AF7A", use:"烫金描边/角饰", c:"#d4af7a", ink:"#5a3f10"},
+  {name:"深金 Gold-Deep",hex:"#B08A4A", use:"烫字/细描边", c:"#b08a4a", ink:"#fff"},
+  {name:"亮雾蓝 Sky-Bright", hex:"#9EC8E8", use:"冷点缀/水系游戏", c:"#9ec8e8", ink:"#1f3d5c"},
+  {name:"薄荷雾 Mint",   hex:"#BFE3D4", use:"成功/农场系", c:"#bfe3d4", ink:"#1f5c46"},
+  {name:"深海军 Ink",    hex:"#2C3E5C", use:"正文标题（非纯黑）", c:"#2c3e5c", ink:"#fff"},
+  {name:"发丝线 Line",   hex:"#D8E4F2", use:"分隔线/细描边", c:"#d8e4f2", ink:"#4a7ab0"},
+];
+document.getElementById('color-grid').innerHTML = SWATCHES.map(s=>`
+  <div class="swatch">
+    <div class="chip-color" style="background:${s.c};color:${s.ink}">
+      <span style="font-size:11px;letter-spacing:.1em;opacity:.85">${s.name}</span>
+    </div>
+    <div class="meta">
+      <div class="hex">${s.hex}</div>
+      <div class="use">${s.use}</div>
+    </div>
+  </div>
+`).join('');
+</script>
+</body>
+</html>

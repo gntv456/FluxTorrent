@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>娱乐屋 · 高保真界面样图</title>
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%238ab4dd'/></svg>" />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" />
+<style>
+:root{
+  --cream:#f4f8fd; --mist:#c5dff0; --sky:#8ab4dd; --sky-deep:#4a7ab0;
+  --lilac:#b8c8e8; --lilac-deep:#6a7ab8;
+  --gold:#d4af7a; --gold-deep:#b08a4a;
+  --ink:#2c3e5c; --ink-soft:#5a6b8c; --ink-faint:#8a9ab0;
+  --line:#d8e4f2; --card:#fff;
+  --danger:#d97a7a; --success:#6fb89a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"Noto Sans SC",sans-serif;color:var(--ink);
+  background:
+    radial-gradient(1000px 500px at 10% -10%, #d8e8f8 0%, transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, #e8eef8 0%, transparent 55%),
+    var(--cream);
+  min-height:100vh;padding:40px 20px;
+}
+h1{font-family:"Noto Serif SC",serif;text-align:center;font-size:32px;letter-spacing:.1em;
+  background:linear-gradient(120deg,var(--sky-deep),var(--gold-deep),var(--lilac-deep));
+  -webkit-background-clip:text;background-clip:text;color:transparent;}
+.sub{text-align:center;color:var(--ink-soft);margin:8px 0 40px;font-size:14px;letter-spacing:.15em}
+
+/* —— SVG 图标基础 —— */
+.ic{width:1.2em;height:1.2em;display:inline-block;vertical-align:-0.2em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ic.fill{fill:currentColor;stroke:none}
+
+/* —— 手机外框 —— */
+.phone-wrap{display:flex;flex-wrap:wrap;gap:32px;justify-content:center;align-items:flex-start;max-width:1800px;margin:0 auto}
+.phone{
+  width:390px;flex-shrink:0;background:#fff;border-radius:44px;
+  box-shadow:0 30px 60px -20px rgba(44,62,92,.35), 0 0 0 10px #2c3e5c, 0 0 0 12px #4a7ab0;
+  overflow:hidden;position:relative;
+}
+.phone .label{
+  text-align:center;padding:10px;background:linear-gradient(90deg,var(--sky-deep),var(--lilac-deep));
+  color:#fff;font-family:"Noto Serif SC",serif;font-size:13px;letter-spacing:.2em;
+}
+.screen{height:720px;display:flex;flex-direction:column;background:var(--cream);position:relative;overflow:hidden}
+
+.statusbar{height:32px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;font-size:11px;color:var(--ink-soft);font-weight:600}
+.statusbar .sb-right{display:flex;align-items:center;gap:6px}
+.statusbar .ic{width:12px;height:12px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px 12px}
+.topbar .back{width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--sky-deep);box-shadow:0 2px 6px rgba(44,62,92,.1)}
+.topbar .title{font-family:"Noto Serif SC",serif;font-size:17px;font-weight:700;letter-spacing:.1em}
+.topbar .balance{display:flex;align-items:center;gap:4px;background:#fff;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;color:var(--gold-deep);box-shadow:inset 0 0 0 1px var(--line)}
+.topbar .balance .ic{width:13px;height:13px}
+
+/* Hero */
+.hero{margin:0 12px 12px;border-radius:18px;padding:16px;background:linear-gradient(135deg,#c5dff8 0%,#9ec0e8 50%,#b8c8e8 100%);position:relative;overflow:hidden;color:#2c3e5c;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.6)}
+.hero .h-tag{font-size:10px;letter-spacing:.3em;color:var(--sky-deep);opacity:.8}
+.hero .h-title{font-family:"Noto Serif SC",serif;font-size:20px;font-weight:900;margin:4px 0 2px}
+.hero .h-sub{font-size:11px;opacity:.8}
+.hero .h-cta{display:inline-flex;align-items:center;gap:4px;margin-top:10px;background:#fff;color:var(--sky-deep);padding:5px 14px;border-radius:999px;font-size:11px;font-weight:700;box-shadow:0 3px 8px rgba(74,122,176,.3)}
+.hero .h-deco{position:absolute;right:14px;top:10px;width:36px;height:36px;color:#fff;opacity:.7}
+
+/* 快捷入口 */
+.quick{display:flex;justify-content:space-around;padding:4px 8px 12px}
+.quick .qi{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+.quick .qi .ic-wrap{
+  width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+  background:#fff;box-shadow:0 4px 10px -4px rgba(74,122,176,.3);border:1.5px solid #fff;position:relative;color:var(--sky-deep);
+}
+.quick .qi .ic-wrap .ic{width:26px;height:26px}
+.quick .qi .ic-wrap .badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;border-radius:999px;background:var(--gold);color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700;padding:0 4px}
+.quick .qi .lb{font-size:10px;color:var(--ink-soft)}
+
+.sec-t{display:flex;align-items:center;gap:8px;padding:4px 16px 8px;font-family:"Noto Serif SC",serif;font-size:13px;font-weight:700;color:var(--sky-deep)}
+.sec-t::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+
+/* 游戏网格 */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px;overflow-y:auto}
+.gcard{background:#fff;border-radius:14px;padding:10px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 8px -4px rgba(44,62,92,.12);border:1px solid #fff}
+.gcard .gi{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
+.gcard .gi .ic{width:22px;height:22px}
+.gcard .gn{font-size:12px;font-weight:700;line-height:1.2}
+.gcard .gs{font-size:10px;color:var(--ink-faint);margin-top:2px}
+.gcard .gb{margin-left:auto;font-size:9px;background:linear-gradient(90deg,var(--gold),#f0d9a8);color:#6b4a1a;padding:2px 6px;border-radius:999px;font-weight:700;flex-shrink:0}
+.tone-sky{background:linear-gradient(135deg,#6a9ec8,#4a7ab0)}
+.tone-sun{background:linear-gradient(135deg,#e8c878,#c89848)}
+.tone-lilac{background:linear-gradient(135deg,#9a8ac8,#6a5a98)}
+.tone-mint{background:linear-gradient(135deg,#78b898,#4a8868)}
+.tone-coral{background:linear-gradient(135deg,#d89898,#b86868)}
+
+/* 底部tab */
+.tabbar{margin-top:auto;height:58px;background:#fff;display:flex;border-top:1px solid var(--line)}
+.tabbar .tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--ink-faint);cursor:pointer}
+.tabbar .tb.on{color:var(--sky-deep);font-weight:700}
+.tabbar .tb .ic{width:20px;height:20px}
+
+/* 按钮 */
+.cta{margin:12px 16px;padding:14px;border-radius:999px;text-align:center;font-family:"Noto Serif SC",serif;font-size:15px;font-weight:700;letter-spacing:.2em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.cta .ic{width:16px;height:16px}
+.cta-primary{background:linear-gradient(180deg,#c5dff0 0%,#8ab4dd 100%);color:#1f3d5c;box-shadow:0 6px 16px -6px rgba(74,122,176,.6), inset 0 1px 0 #fff}
+.cta-gold{background:linear-gradient(180deg,#f6e2b8 0%,#d4af7a 100%);color:#6b4a1a;box-shadow:0 6px 16px -6px rgba(212,175,122,.6), inset 0 1px 0 #fff}
+.cta-row{display:flex;gap:10px;margin:12px 16px}
+.cta-row .cta{flex:1;margin:0}
+
+/* 刮刮卡 */
+.scratch-card{margin:16px;background:linear-gradient(160deg,#fff,#eef5fc);border-radius:20px;padding:14px;box-shadow:inset 0 0 0 1.5px var(--gold), 0 8px 20px -10px rgba(74,122,176,.4)}
+.scratch-card .sc-head{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);margin-bottom:10px}
+.scratch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.scratch-cell{aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,#d8d8d8,#b8b8b8);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 4px rgba(0,0,0,.15);color:#888}
+.scratch-cell .ic{width:28px;height:28px}
+.scratch-cell.open{background:linear-gradient(135deg,#fff,#fff5e0);box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--gold-deep)}
+.scratch-info{display:flex;justify-content:space-around;margin-top:12px;font-size:11px;color:var(--ink-soft)}
+.scratch-info b{color:var(--gold-deep)}
+
+/* 转盘 */
+.wheel-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+.wheel{width:260px;height:260px;border-radius:50%;position:relative;
+  background:conic-gradient(#f8d8a8 0 45deg,#c5dff0 45deg 90deg,#e0d8f0 90deg 135deg,#d8f0e4 135deg 180deg,#f8d8d8 180deg 225deg,#f8e8c8 225deg 270deg,#b8d8f0 270deg 315deg,#e8d8f8 315deg 360deg);
+  box-shadow:0 0 0 8px #fff, 0 0 0 10px var(--gold), 0 12px 30px -10px rgba(74,122,176,.4);}
+.wheel .pointer{position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:20px solid #d97a7a;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}
+.wheel .center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 0 3px var(--gold);font-size:10px;color:var(--ink-soft)}
+.wheel .center b{font-family:"Noto Serif SC",serif;font-size:16px;color:var(--sky-deep)}
+.wheel-prize{position:absolute;font-size:11px;font-weight:700;color:#2c3e5c;transform:translate(-50%,-50%);display:flex;align-items:center;gap:2px}
+.wheel-prize .ic{width:12px;height:12px}
+
+/* 九宫格 */
+.jgg-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+.jgg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.jgg-cell{width:90px;height:90px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#b8c8e8);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 -4px 8px rgba(106,122,184,.3), 0 4px 10px -4px rgba(74,122,176,.4);color:var(--lilac-deep);position:relative}
+.jgg-cell .ic{width:28px;height:28px}
+.jgg-cell .pz{font-size:9px;color:var(--ink-soft);margin-top:2px}
+.jgg-cell.center{background:radial-gradient(circle at 30% 30%,#fff,#d4af7a);box-shadow:inset 0 -4px 8px rgba(176,138,74,.4), 0 0 0 3px #fff, 0 0 0 5px var(--gold);color:var(--gold-deep)}
+
+/* 农场 */
+.farm-stats{display:flex;justify-content:space-around;padding:8px 16px;background:#fff;margin:0 12px;border-radius:12px;box-shadow:0 2px 6px rgba(44,62,92,.08)}
+.farm-stats > div{text-align:center}
+.farm-stats .lb{font-size:10px;color:var(--ink-faint)}
+.farm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px}
+.farm-cell{aspect-ratio:1;border-radius:10px;background:linear-gradient(160deg,#e8d8b8,#c8a878);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 4px rgba(0,0,0,.1);position:relative;color:#8a6a3a}
+.farm-cell .ic{width:24px;height:24px}
+.farm-cell.ready{background:linear-gradient(160deg,#c8e8d0,#88c898);color:#2a6a4a}
+.farm-cell .timer{position:absolute;bottom:2px;right:3px;font-size:8px;color:#fff;background:rgba(0,0,0,.3);padding:1px 4px;border-radius:4px}
+
+.phone-cap{text-align:center;margin-top:10px;font-size:12px;color:var(--ink-soft);letter-spacing:.1em}
+
+/* —— 桌面 / 平板框 —— */
+.desktop-frame{
+  width:1000px;flex-shrink:0;background:#fff;border-radius:16px;
+  box-shadow:0 30px 60px -20px rgba(44,62,92,.35), 0 0 0 10px #2c3e5c, 0 0 0 12px #4a7ab0;
+  overflow:hidden;
+}
+.desktop-frame .label{text-align:center;padding:10px;background:linear-gradient(90deg,var(--sky-deep),var(--lilac-deep));color:#fff;font-family:"Noto Serif SC",serif;font-size:13px;letter-spacing:.2em}
+.desk-screen{height:640px;display:flex;flex-direction:column;background:var(--cream)}
+.desk-nav{height:56px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;gap:24px}
+.desk-nav .logo{font-family:"Noto Serif SC",serif;font-weight:900;font-size:18px;color:var(--sky-deep)}
+.desk-nav .nav-items{display:flex;gap:20px;font-size:13px;color:var(--ink-soft)}
+.desk-nav .nav-items .on{color:var(--sky-deep);font-weight:700;border-bottom:2px solid var(--sky);padding-bottom:4px}
+.desk-nav .right{margin-left:auto;display:flex;gap:10px;align-items:center}
+.desk-body{flex:1;display:flex;overflow:hidden}
+.desk-side{width:180px;background:#fff;border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:4px}
+.desk-side .si{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.desk-side .si.on{background:var(--sky-soft,#e8f0fa);color:var(--sky-deep);font-weight:700}
+.desk-side .si .ic{width:18px;height:18px}
+.desk-main{flex:1;padding:20px;overflow-y:auto}
+.desk-hero{border-radius:16px;padding:20px;margin-bottom:16px;background:linear-gradient(135deg,#c5dff8,#9ec0e8);color:#2c3e5c;display:flex;justify-content:space-between;align-items:center}
+.desk-hero .h-title{font-family:"Noto Serif SC",serif;font-size:22px;font-weight:900}
+.desk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+.tablet-frame{
+  width:520px;flex-shrink:0;background:#fff;border-radius:24px;
+  box-shadow:0 30px 60px -20px rgba(44,62,92,.35), 0 0 0 10px #2c3e5c, 0 0 0 12px #4a7ab0;
+  overflow:hidden;
+}
+.tablet-frame .label{text-align:center;padding:10px;background:linear-gradient(90deg,var(--sky-deep),var(--lilac-deep));color:#fff;font-family:"Noto Serif SC",serif;font-size:13px;letter-spacing:.2em}
+.tab-screen{height:680px;display:flex;flex-direction:column;background:var(--cream)}
+
+</style>
+</head>
+<body>
+
+<!-- ============ SVG 图标库（统一游戏图标风格） ============ -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- 火花：四角星 -->
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z"/></symbol>
+    <!-- 金币：圆+¥ -->
+    <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 8 L12 12 L16 8 M12 12 L12 17 M8 11 L16 11"/></symbol>
+    <!-- 票根：带齿孔的票 -->
+    <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4 7 Q4 5 6 5 L18 5 Q20 5 20 7 L20 10 Q17 12 20 14 L20 17 Q20 19 18 19 L6 19 Q4 19 4 17 L4 14 Q7 12 4 10 Z"/><path d="M13 7 L13 17" stroke-dasharray="2 2"/></symbol>
+    <!-- 钻石宝石 -->
+    <symbol id="i-gem" viewBox="0 0 24 24"><path d="M7 4 L17 4 L21 9 L12 21 L3 9 Z"/><path d="M3 9 L21 9 M12 21 L7 4 M12 21 L17 4"/></symbol>
+    <!-- 骰子（猜大小） -->
+    <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.2" fill="currentColor" stroke="none"/></symbol>
+    <!-- 转盘 -->
+    <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3 L12 10 M12 14 L12 21 M3 12 L10 12 M14 12 L21 12 M6 6 L10 10 M14 14 L18 18 M18 6 L14 10 M10 14 L6 18"/></symbol>
+    <!-- 九宫格方块 -->
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+    <!-- 蛋/扭蛋 -->
+    <symbol id="i-egg" viewBox="0 0 24 24"><path d="M12 3 C7 3 5 10 5 14 C5 19 8 21 12 21 C16 21 19 19 19 14 C19 10 17 3 12 3 Z"/><path d="M9 14 Q12 16 15 14"/></symbol>
+    <!-- 麦穗/农场 -->
+    <symbol id="i-wheat" viewBox="0 0 24 24"><path d="M12 21 L12 8"/><path d="M12 8 Q8 8 7 5 Q11 5 12 8 Z"/><path d="M12 8 Q16 8 17 5 Q13 5 12 8 Z"/><path d="M12 13 Q8 13 7 10 Q11 10 12 13 Z"/><path d="M12 13 Q16 13 17 10 Q13 10 12 13 Z"/></symbol>
+    <!-- 鱼/钓鱼 -->
+    <symbol id="i-fish" viewBox="0 0 24 24"><path d="M3 12 Q8 6 15 8 Q20 9 21 12 Q20 15 15 16 Q8 18 3 12 Z"/><path d="M21 12 L23 9 L23 15 Z"/><circle cx="9" cy="11" r="1" fill="currentColor" stroke="none"/></symbol>
+    <!-- 房子 -->
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 L12 4 L20 11"/><path d="M6 10 L6 20 L18 20 L18 10"/><path d="M10 20 L10 15 L14 15 L14 20"/></symbol>
+    <!-- 背包 -->
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 8 Q6 5 12 5 Q18 5 18 8 L19 20 Q19 21 18 21 L6 21 Q5 21 5 20 Z"/><path d="M9 8 Q9 3 12 3 Q15 3 15 8"/><rect x="9" y="13" width="6" height="4" rx="1"/></symbol>
+    <!-- 星星（赛季） -->
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3 L14.5 9 L21 9.5 L16 13.5 L17.5 20 L12 16.5 L6.5 20 L8 13.5 L3 9.5 L9.5 9 Z"/></symbol>
+    <!-- 用户 -->
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21 Q4 14 12 14 Q20 14 20 21"/></symbol>
+    <!-- 玫瑰/花 -->
+    <symbol id="i-rose" viewBox="0 0 24 24"><circle cx="12" cy="10" r="5"/><circle cx="12" cy="10" r="2.5"/><path d="M12 15 L12 21 M12 18 Q9 17 7 19 M12 18 Q15 17 17 19"/></symbol>
+    <!-- 蝴蝶结 -->
+    <symbol id="i-bow" viewBox="0 0 24 24"><path d="M12 12 L5 7 Q3 7 3 9 L3 15 Q3 17 5 17 Z"/><path d="M12 12 L19 7 Q21 7 21 9 L21 15 Q21 17 19 17 Z"/><circle cx="12" cy="12" r="2"/></symbol>
+    <!-- 种子苗 -->
+    <symbol id="i-sprout" viewBox="0 0 24 24"><path d="M12 21 L12 12"/><path d="M12 12 Q12 7 7 6 Q7 11 12 12 Z"/><path d="M12 12 Q12 7 17 6 Q17 11 12 12 Z"/></symbol>
+    <!-- 锁 -->
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="6" y="11" width="12" height="9" rx="1.5"/><path d="M9 11 L9 8 Q9 5 12 5 Q15 5 15 8 L15 11"/></symbol>
+    <!-- 箭头 -->
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M9 6 L15 12 L9 18"/></symbol>
+  </defs>
+</svg>
+
+<h1>娱乐屋 · 高保真界面样图</h1>
+<div class="sub">BLUE PALACE UI MOCKUPS · 多端适配 · 紧凑 / 精致 / 易操作</div>
+
+<div class="phone-wrap">
+
+  <!-- ============ 0. 桌面端大厅 ============ -->
+  <div>
+  <div class="desktop-frame">
+    <div class="label">🖥️ 桌面端 · 1024px+</div>
+    <div class="desk-screen">
+      <div class="desk-nav">
+        <div class="logo">甜梦奇境</div>
+        <div class="nav-items">
+          <span class="on">娱乐屋</span><span>种子</span><span>论坛</span><span>商店</span>
+        </div>
+        <div class="right">
+          <div class="balance"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</div>
+          <div class="balance"><svg class="ic"><use href="#i-coin"/></svg>8,200</div>
+        </div>
+      </div>
+      <div class="desk-body">
+        <div class="desk-side">
+          <div class="si on"><svg class="ic"><use href="#i-home"/></svg>大厅</div>
+          <div class="si"><svg class="ic"><use href="#i-ticket"/></svg>刮刮乐</div>
+          <div class="si"><svg class="ic"><use href="#i-wheel"/></svg>转盘</div>
+          <div class="si"><svg class="ic"><use href="#i-grid"/></svg>九宫格</div>
+          <div class="si"><svg class="ic"><use href="#i-egg"/></svg>扭蛋</div>
+          <div class="si"><svg class="ic"><use href="#i-wheat"/></svg>农场</div>
+          <div class="si"><svg class="ic"><use href="#i-bag"/></svg>背包</div>
+          <div class="si"><svg class="ic"><use href="#i-star"/></svg>赛季</div>
+        </div>
+        <div class="desk-main">
+          <div class="desk-hero">
+            <div>
+              <div style="font-size:11px;letter-spacing:.3em;color:var(--sky-deep)">DAILY BONUS</div>
+              <div class="h-title">今日好运已刷新</div>
+              <div style="font-size:12px;opacity:.8;margin-top:4px">登录即领 100 火花 · 转盘免费 +1</div>
+            </div>
+            <span class="h-cta">立即领取 ›</span>
+          </div>
+          <div class="sec-t" style="padding-left:0">全部玩法</div>
+          <div class="desk-grid">
+            <div class="gcard"><div class="gi tone-sky"><svg class="ic"><use href="#i-dice"/></svg></div><div><div class="gn">猜大小</div><div class="gs">1.9x 即开</div></div></div>
+            <div class="gcard"><div class="gi tone-coral"><svg class="ic"><use href="#i-ticket"/></svg></div><div><div class="gn">刮刮乐</div><div class="gs">3 张免费</div></div></div>
+            <div class="gcard"><div class="gi tone-lilac"><svg class="ic"><use href="#i-grid"/></svg></div><div><div class="gn">九宫格</div><div class="gs">紫宝石阵</div></div></div>
+            <div class="gcard"><div class="gi tone-sun"><svg class="ic"><use href="#i-egg"/></svg></div><div><div class="gn">扭蛋机</div><div class="gs">SSR 保底</div></div></div>
+            <div class="gcard"><div class="gi tone-sky"><svg class="ic"><use href="#i-wheel"/></svg></div><div><div class="gn">幸运转盘</div><div class="gs">今日 2 次</div></div></div>
+            <div class="gcard"><div class="gi tone-mint"><svg class="ic"><use href="#i-wheat"/></svg></div><div><div class="gn">好学农场</div><div class="gs">2 块地已熟</div></div></div>
+            <div class="gcard"><div class="gi tone-sky"><svg class="ic"><use href="#i-fish"/></svg></div><div><div class="gn">星夜钓鱼</div><div class="gs">今日 5 次</div></div></div>
+            <div class="gcard"><div class="gi tone-lilac"><svg class="ic"><use href="#i-star"/></svg></div><div><div class="gn">卡牌合成</div><div class="gs">收集图鉴</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">桌面端：顶部导航 + 左侧边栏 + 4 列游戏卡（1024px+）</div>
+  </div>
+
+  <!-- ============ 0b. 平板端大厅 ============ -->
+  <div>
+  <div class="tablet-frame">
+    <div class="label">📱 iPad 平板 · 768–1024px</div>
+    <div class="tab-screen">
+      <div class="statusbar"><span>9:41</span><span class="sb-right"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span></div>
+      <div class="topbar">
+        <div class="title">甜梦奇境</div>
+        <div class="balance"><svg class="ic"><use href="#i-coin"/></svg>8,200</div>
+      </div>
+      <div class="hero" style="margin:0 16px 12px">
+        <div class="h-tag">DAILY BONUS</div>
+        <div class="h-title">今日好运已刷新</div>
+        <div class="h-sub">登录即领 100 火花 · 转盘免费 +1</div>
+        <span class="h-cta">立即领取 ›</span>
+      </div>
+      <div class="quick">
+        <div class="qi"><div class="ic-wrap"><svg class="ic"><use href="#i-ticket"/></svg><span class="badge">3</span></div><div class="lb">刮刮乐</div></div>
+        <div class="qi"><div class="ic-wrap"><svg class="ic"><use href="#i-wheel"/></svg><span class="badge">1</span></div><div class="lb">转盘</div></div>
+        <div class="qi"><div class="ic-wrap"><svg class="ic"><use href="#i-grid"/></svg></div><div class="lb">九宫格</div></div>
+        <div class="qi"><div class="ic-wrap"><svg class="ic"><use href="#i-egg"/></svg></div><div class="lb">扭蛋</div></div>
+      </div>
+      <div class="sec-t">全部玩法</div>
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <div class="gcard"><div class="gi tone-sky"><svg class="ic"><use href="#i-dice"/></svg></div><div><div class="gn">猜大小</div><div class="gs">1.9x 即开</div></div><span class="gb">HOT</span></div>
+        <div class="gcard"><div class="gi tone-coral"><svg class="ic"><use href="#i-ticket"/></svg></div><div><div class="gn">刮刮乐</div><div class="gs">3 张免费</div></div><span class="gb">3.8x</span></div>
+        <div class="gcard"><div class="gi tone-lilac"><svg class="ic"><use href="#i-grid"/></svg></div><div><div class="gn">九宫格</div><div class="gs">紫宝石阵</div></div><span class="gb">50x</span></div>
+        <div class="gcard"><div class="gi tone-sun"><svg class="ic"><use href="#i-egg"/></svg></div><div><div class="gn">扭蛋机</div><div class="gs">SSR 保底</div></div></div>
+        <div class="gcard"><div class="gi tone-mint"><svg class="ic"><use href="#i-wheat"/></svg></div><div><div class="gn">好学农场</div><div class="gs">2 块地已熟</div></div></div>
+        <div class="gcard"><div class="gi tone-sky"><svg class="ic"><use href="#i-fish"/></svg></div><div><div class="gn">星夜钓鱼</div><div class="gs">今日 5 次</div></div></div>
+      </div>
+      <div class="tabbar">
+        <div class="tb on"><svg class="ic"><use href="#i-home"/></svg>大厅</div>
+        <div class="tb"><svg class="ic"><use href="#i-bag"/></svg>背包</div>
+        <div class="tb"><svg class="ic"><use href="#i-star"/></svg>赛季</div>
+        <div class="tb"><svg class="ic"><use href="#i-user"/></svg>我的</div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">平板端：顶部导航 + 2 列游戏卡 + 底部 Tab（768–1024px）</div>
+  </div>
+
+  <!-- ============ 1. 手机大厅 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">① 娱乐屋大厅</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">甜梦奇境</div>
+        <div class="balance"><svg class="ic"><use href="#i-coin"/></svg>8,200</div>
+      </div>
+
+      <div class="hero">
+        <div class="h-tag">DAILY BONUS</div>
+        <div class="h-title">今日好运已刷新</div>
+        <div class="h-sub">登录即领 100 火花 · 转盘免费 +1</div>
+        <span class="h-cta">立即领取 <svg class="ic" style="width:12px;height:12px"><use href="#i-arrow"/></svg></span>
+        <svg class="ic h-deco"><use href="#i-sparkle"/></svg>
+      </div>
+
+      <div class="quick">
+        <div class="qi"><div class="ic-wrap"><svg class="ic"><use href="#i-ticket"/></svg><span class="badge">3</span></div><div class="lb">刮刮乐</div></div>
+        <div class="qi"><div class="ic-wrap"><svg class="ic"><use href="#i-wheel"/></svg><span class="badge">1</span></div><div class="lb">转盘</div></div>
+        <div class="qi"><div class="ic-wrap"><svg class="ic"><use href="#i-grid"/></svg></div><div class="lb">九宫格</div></div>
+        <div class="qi"><div class="ic-wrap"><svg class="ic"><use href="#i-egg"/></svg></div><div class="lb">扭蛋</div></div>
+        <div class="qi"><div class="ic-wrap"><svg class="ic"><use href="#i-wheat"/></svg></div><div class="lb">农场</div></div>
+      </div>
+
+      <div class="sec-t">即时开奖</div>
+      <div class="grid">
+        <div class="gcard"><div class="gi tone-sky"><svg class="ic"><use href="#i-dice"/></svg></div><div><div class="gn">猜大小</div><div class="gs">1.9x 即开</div></div><span class="gb">HOT</span></div>
+        <div class="gcard"><div class="gi tone-coral"><svg class="ic"><use href="#i-ticket"/></svg></div><div><div class="gn">刮刮乐</div><div class="gs">3 张免费</div></div><span class="gb">3.8x</span></div>
+        <div class="gcard"><div class="gi tone-lilac"><svg class="ic"><use href="#i-grid"/></svg></div><div><div class="gn">九宫格</div><div class="gs">紫宝石阵</div></div><span class="gb">50x</span></div>
+        <div class="gcard"><div class="gi tone-sun"><svg class="ic"><use href="#i-egg"/></svg></div><div><div class="gn">扭蛋机</div><div class="gs">SSR 保底</div></div></div>
+      </div>
+
+      <div class="sec-t">养成经营</div>
+      <div class="grid">
+        <div class="gcard"><div class="gi tone-mint"><svg class="ic"><use href="#i-wheat"/></svg></div><div><div class="gn">好学农场</div><div class="gs">2 块地已熟</div></div></div>
+        <div class="gcard"><div class="gi tone-sky"><svg class="ic"><use href="#i-fish"/></svg></div><div><div class="gn">星夜钓鱼</div><div class="gs">今日 5 次</div></div></div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tb on"><svg class="ic"><use href="#i-home"/></svg>大厅</div>
+        <div class="tb"><svg class="ic"><use href="#i-bag"/></svg>背包</div>
+        <div class="tb"><svg class="ic"><use href="#i-star"/></svg>赛季</div>
+        <div class="tb"><svg class="ic"><use href="#i-user"/></svg>我的</div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-cap">大厅：顶部余额 / Hero 横幅 / 5 个快捷入口 / 分组游戏网格 / 底部 Tab</div>
+  </div>
+
+  <!-- ============ 2. 刮刮乐 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">② 刮刮乐</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">星尘信封</div>
+        <div class="balance"><svg class="ic"><use href="#i-ticket"/></svg>× 3</div>
+      </div>
+
+      <div class="scratch-card">
+        <div class="sc-head"><span>第 1 张 / 共 3 张</span><span>投注 100</span></div>
+        <div class="scratch-grid">
+          <div class="scratch-cell open"><svg class="ic"><use href="#i-gem"/></svg></div>
+          <div class="scratch-cell"><svg class="ic"><use href="#i-sparkle"/></svg></div>
+          <div class="scratch-cell open"><svg class="ic"><use href="#i-gem"/></svg></div>
+          <div class="scratch-cell open"><svg class="ic"><use href="#i-gem"/></svg></div>
+          <div class="scratch-cell"><svg class="ic"><use href="#i-ticket"/></svg></div>
+          <div class="scratch-cell open"><svg class="ic"><use href="#i-bow"/></svg></div>
+        </div>
+        <div class="scratch-info">
+          <span>已刮 <b>4/6</b> 格</span>
+          <span>本场最高 <b>500x</b></span>
+        </div>
+      </div>
+
+      <div style="padding:0 16px;font-size:11px;color:var(--ink-soft);text-align:center">
+        已命中三颗水晶！继续刮开剩余两格确认奖金
+      </div>
+
+      <div style="flex:1"></div>
+
+      <div class="cta-row">
+        <div class="cta cta-primary"><svg class="ic"><use href="#i-ticket"/></svg>刮开下一张</div>
+        <div class="cta cta-gold">十连刮</div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--ink-faint);padding-bottom:12px">查看规则 · 奖池明细</div>
+    </div>
+  </div>
+  <div class="phone-cap">刮刮乐：3×2 涂层格 / 命中高亮 / 双按钮（单刮+十连）</div>
+  </div>
+
+  <!-- ============ 3. 大转盘 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">③ 幸运转盘</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">星尘摩天轮</div>
+        <div class="balance"><svg class="ic"><use href="#i-ticket"/></svg>× 2</div>
+      </div>
+
+      <div class="wheel-wrap">
+        <div class="wheel">
+          <div class="pointer"></div>
+          <div class="center"><b>GO</b><span>点击开始</span></div>
+          <div class="wheel-prize" style="top:18%;left:50%"><svg class="ic"><use href="#i-sparkle"/></svg>100</div>
+          <div class="wheel-prize" style="top:30%;left:82%"><svg class="ic"><use href="#i-bow"/></svg></div>
+          <div class="wheel-prize" style="top:62%;left:90%">50</div>
+          <div class="wheel-prize" style="top:85%;left:68%"><svg class="ic"><use href="#i-gem"/></svg></div>
+          <div class="wheel-prize" style="top:88%;left:32%">500</div>
+          <div class="wheel-prize" style="top:62%;left:10%"><svg class="ic"><use href="#i-sparkle"/></svg><svg class="ic"><use href="#i-sparkle"/></svg></div>
+          <div class="wheel-prize" style="top:30%;left:18%">20</div>
+        </div>
+        <div style="margin-top:20px;font-size:12px;color:var(--ink-soft)">
+          今日剩余 <b style="color:var(--gold-deep)">2</b> 次免费 · 额外 1 次 = 50 火花
+        </div>
+      </div>
+
+      <div class="cta cta-gold"><svg class="ic"><use href="#i-sparkle"/></svg>开始转动</div>
+      <div style="text-align:center;font-size:11px;color:var(--ink-faint);padding-bottom:16px">奖池已累积 12,480 火花</div>
+    </div>
+  </div>
+  <div class="phone-cap">转盘：8 格彩色扇区 / 红指针 / 中心 GO / 大金色开始键</div>
+  </div>
+
+  <!-- ============ 4. 九宫格 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">④ 九宫格宝石阵</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">命运宝石盘</div>
+        <div class="balance"><svg class="ic"><use href="#i-gem"/></svg>× 12</div>
+      </div>
+
+      <div class="jgg-wrap">
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:14px">选择一颗宝石，揭开命运</div>
+        <div class="jgg-grid">
+          <div class="jgg-cell"><svg class="ic"><use href="#i-rose"/></svg><div class="pz">装扮</div></div>
+          <div class="jgg-cell"><svg class="ic"><use href="#i-sparkle"/></svg><div class="pz">200</div></div>
+          <div class="jgg-cell"><svg class="ic"><use href="#i-gem"/></svg><div class="pz">稀有</div></div>
+          <div class="jgg-cell"><svg class="ic"><use href="#i-ticket"/></svg><div class="pz">券×3</div></div>
+          <div class="jgg-cell center"><svg class="ic"><use href="#i-sparkle"/></svg><div class="pz">开始</div></div>
+          <div class="jgg-cell"><svg class="ic"><use href="#i-coin"/></svg><div class="pz">500</div></div>
+          <div class="jgg-cell"><svg class="ic"><use href="#i-lock"/></svg><div class="pz">?</div></div>
+          <div class="jgg-cell"><svg class="ic"><use href="#i-star"/></svg><div class="pz">皮肤</div></div>
+          <div class="jgg-cell"><svg class="ic"><use href="#i-lock"/></svg><div class="pz">?</div></div>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <div class="cta cta-primary">单抽 · 100</div>
+        <div class="cta cta-gold">十连 · 900</div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--ink-faint);padding-bottom:12px">SSR 概率 2% · 保底 90 抽</div>
+    </div>
+  </div>
+  <div class="phone-cap">九宫格：8 颗宝石 + 中心金色开始键 / 单抽十连双按钮</div>
+  </div>
+
+  <!-- ============ 5. 农场 ============ -->
+  <div>
+  <div class="phone">
+    <div class="label">⑤ 好学农场</div>
+    <div class="screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="sb-right"><svg class="ic"><use href="#i-sparkle"/></svg>12,480</span>
+      </div>
+      <div class="topbar">
+        <div class="back"><svg class="ic" style="width:16px;height:16px"><use href="#i-arrow"/></svg></div>
+        <div class="title">奶油田园</div>
+        <div class="balance"><svg class="ic"><use href="#i-wheat"/></svg>× 6</div>
+      </div>
+
+      <div class="farm-stats">
+        <div><div class="lb">菜价</div><b style="color:var(--gold-deep)">+12%</b></div>
+        <div><div class="lb">已种</div><b>6/12</b></div>
+        <div><div class="lb">成熟</div><b style="color:var(--success)">2 块</b></div>
+      </div>
+
+      <div class="farm-grid">
+        <div class="farm-cell ready"><svg class="ic"><use href="#i-wheat"/></svg><span class="timer">熟</span></div>
+        <div class="farm-cell"><svg class="ic"><use href="#i-sprout"/></svg><span class="timer">2天</span></div>
+        <div class="farm-cell ready"><svg class="ic"><use href="#i-rose"/></svg><span class="timer">熟</span></div>
+        <div class="farm-cell"><svg class="ic"><use href="#i-sprout"/></svg><span class="timer">4天</span></div>
+        <div class="farm-cell empty"></div>
+        <div class="farm-cell"><svg class="ic"><use href="#i-sprout"/></svg><span class="timer">1天</span></div>
+        <div class="farm-cell empty"></div>
+        <div class="farm-cell empty"></div>
+      </div>
+
+      <div style="flex:1"></div>
+
+      <div class="cta-row">
+        <div class="cta cta-primary">一键收获</div>
+        <div class="cta cta-gold">播种</div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--ink-faint);padding-bottom:12px">市场 4 小时后刷新价格</div>
+    </div>
+  </div>
+  <div class="phone-cap">农场：4×2 田地 / 成熟高亮 / 顶栏行情 / 收获+播种双按钮</div>
+  </div>
+
+</div>
+
+</body>
+</html>
