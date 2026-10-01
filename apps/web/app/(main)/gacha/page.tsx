@@ -8,5 +8,10 @@ import GachaDisclosurePage from "./_inner";
 export default async function GachaPageWrapper() {
   const gate = await requireModule("gacha");
   if (gate) return gate;
-  return <GachaDisclosurePage />;
+  /* 娱乐屋样图⑧（星轨卡册）落在公示页上——与 /games/* 同挂甜梦皮肤 */
+  return (
+    <div data-arcade="sweet">
+      <GachaDisclosurePage />
+    </div>
+  );
 }

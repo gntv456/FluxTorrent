@@ -161,7 +161,7 @@
  "apps/web/components/game/runway.tsx::wide": 5,
  "apps/web/app/layout.tsx::wide": 7,
  "apps/web/app/styles/fonts-tide.css::wide": 426,
- "apps/web/app/styles/pages.css": 3680,
+ "apps/web/app/styles/pages.css": 3760,
  "apps/web/app/setup/page.tsx::wide": 3,
  "apps/web/app/rules/page.tsx::wide": 4,
  "apps/web/app/offline/page.tsx::wide": 2,
@@ -185,7 +185,7 @@
  "apps/web/app/(main)/games/scratch/_inner.tsx::wide": 4,
  "apps/web/app/(main)/games/farm/_inner-sections.tsx::wide": 1,
  "apps/web/app/(main)/games/farm/_inner.tsx::wide": 5,
- "apps/web/app/(main)/games/bigsmall/_inner.tsx::wide": 2,
+ "apps/web/app/(main)/games/bigsmall/_inner.tsx::wide": 3,
  "apps/web/app/(main)/forums/page.tsx::wide": 1,
  "apps/web/app/(main)/forums/topic/[id]/page.tsx::wide": 4,
  "apps/web/app/(main)/forums/feed/page.tsx::wide": 3,
@@ -429,5 +429,11 @@
  "scripts/i18n_guard.mjs::wide": 2,
  "scripts/install_e2e.py::wide": 4,
  "scripts/regression.py::wide": 1,
- "scripts/tide-fonts.py::wide": 1
+ "scripts/tide-fonts.py::wide": 1,
+ "apps/web/components/admin-user-detail-panels.tsx": 336,
+ "apps/web/app/(main)/games/scratch/_inner.tsx": 317,
+ "apps/web/app/(main)/games/fishing/_inner.tsx": 314,
+ "apps/web/app/(main)/games/capsule/_inner.tsx": 306,
+ "apps/web/app/(main)/games/bigsmall/_inner.tsx": 334,
+ "apps/web/components/gacha-rates.tsx::wide": 1
 }

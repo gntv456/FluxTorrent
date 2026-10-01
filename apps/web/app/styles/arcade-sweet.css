@@ -221,8 +221,10 @@
 [data-arcade="sweet"] .gc-tone-teal {
   background: linear-gradient(135deg, #78b8c8, #4888a8);
 }
-/* 角标：金胶囊贴**整卡**右上 —— 撤掉 gc-art 的 relative（原 arcade.css
-   给了它 relative，角标 absolute 就近锚到彩块上了），改锚到 gc-card */
+/* 角标：金胶囊按样图收进卡内，**行尾**贴右（margin-left:auto 语义，
+   absolute right 对齐 gc-body 右缘），不再外挂出卡。
+   badge 在 JSX 里渲染于 gc-art 内，而基础 arcade.css 给 gc-art
+   position:relative —— 必须压回 static 才能锚到整卡 */
 [data-arcade="sweet"] .gc-card {
   position: relative;
 }
@@ -231,46 +233,56 @@
 }
 [data-arcade="sweet"] .gc-badge {
   position: absolute;
-  top: -7px; right: -5px;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
   margin: 0;
   background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
   color: #6b4a1a;
   border-radius: 999px;
   font-size: 9px;
   font-weight: 800;
-  padding: 2px 7px;
-  border: 1.5px solid #fff;
+  padding: 2px 6px;
   box-shadow: 0 2px 6px rgba(176, 138, 74, 0.35);
 }
+/* hot/soon 同位收进；随角标一起入卡，白描边去掉（样图 .gb 无描边） */
 [data-arcade="sweet"] .gc-hot {
   position: absolute;
-  top: -7px; right: -5px;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
   margin: 0;
   background: linear-gradient(90deg, #d97a7a, #e8a8a8);
   color: #fff;
   border-radius: 999px;
   font-size: 9px;
-  padding: 2px 7px;
-  border: 1.5px solid #fff;
+  padding: 2px 6px;
   letter-spacing: 0.1em;
   box-shadow: 0 2px 6px rgba(217, 122, 122, 0.35);
 }
 [data-arcade="sweet"] .gc-soon {
   position: absolute;
-  top: -7px; right: -5px;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
   margin: 0;
   border-radius: 999px;
-  padding: 2px 7px;
+  padding: 2px 6px;
   font-size: 9px;
-  border: 1.5px solid #fff;
 }
-/* 文案区：名称 + 副标两行，去「去玩→」 */
+/* 文案区：名称 + 副标两行，去「去玩→」；右缘给行尾角标留白防叠 */
 [data-arcade="sweet"] .gc-body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding-right: 44px;
+}
+[data-arcade="sweet"] .gc-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 [data-arcade="sweet"] .gc-title {
   font-family: var(--sweet-serif);
