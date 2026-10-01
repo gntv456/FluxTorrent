@@ -24,3 +24,5 @@
 
 /* 娱乐屋「大厅游戏表面」域（2026-09-29；纹章环/周常/票根册/星轨/货架/门禁） */
 @import "./styles/arcade.css";
+/* 娱乐屋「甜梦奇境 · 蓝调」皮肤覆盖层（仅 /games/* 作用域生效，见 games/layout.tsx） */
+@import "./styles/arcade-sweet.css";

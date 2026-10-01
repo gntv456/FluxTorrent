@@ -1,0 +1,322 @@
+/* ============================================================
+   娱乐屋「甜梦奇境 · 蓝调版」皮肤覆盖层（v2，对齐设计稿）
+   设计源：design/arcade-sweet-dream/娱乐屋UI设计方案-甜梦奇境.html
+   作用域：[data-arcade="sweet"]，仅 /games/* 路由生效（games/layout.tsx）。
+   策略：不改任何 TSX 组件，只覆盖现有类名的视觉。
+   色板：冰蓝 #8ab4dd × 深海蓝 #4a7ab0 × 香槟金 #d4af7a × 淡蓝紫 #b8c8e8
+   母题：缎带 / 烫金 / 珍珠柔光 / 衬线冕。圆角 28/22/16。
+   ============================================================ */
+
+[data-arcade="sweet"] {
+  /* —— 局部令牌（不污染全局 TIDE）—— */
+  --sweet-cream: #f4f8fd;
+  --sweet-mist: #c5dff0;
+  --sweet-sky: #8ab4dd;
+  --sweet-sky-deep: #4a7ab0;
+  --sweet-lilac: #b8c8e8;
+  --sweet-lilac-deep: #6a7ab8;
+  --sweet-gold: #d4af7a;
+  --sweet-gold-deep: #b08a4a;
+  --sweet-ink: #2c3e5c;
+  --sweet-ink-soft: #5a6b8c;
+  --sweet-line: #d8e4f2;
+  --sweet-shadow: 0 10px 30px -12px rgba(74, 122, 176, 0.35);
+  --sweet-shadow-gold: 0 6px 20px -8px rgba(212, 175, 122, 0.45);
+  --sweet-serif: "Noto Serif SC", "Songti SC", serif;
+
+  /* 让现有 TIDE 令牌在本作用域内偏蓝 */
+  --sky: #4a7ab0;
+  --sky-deep: #2c5a8c;
+  --sky-soft: #e8f0fa;
+  --r-xl: 28px;
+  --r-lg: 22px;
+  --r-md: 16px;
+  --shadow-card: var(--sweet-shadow);
+  --shadow-hover: 0 14px 34px -14px rgba(74, 122, 176, 0.45);
+}
+
+/* 眉标：贴金小字（设计稿 DAILY BONUS 母题） */
+[data-arcade="sweet"] .gc-hero .pg-eyebrow {
+  color: var(--sweet-gold-deep) !important;
+  letter-spacing: 0.4em;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+/* ══════ ① Hero 迎宾台：蓝金渐变云雾 + 衬线金渐变标题 ══════ */
+[data-arcade="sweet"] .gc-hero {
+  position: relative;
+  border-radius: var(--r-xl);
+  padding: 30px 26px;
+  background: linear-gradient(135deg, #c5dff8 0%, #9ec0e8 50%, #b8c8e8 100%);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.6), var(--sweet-shadow);
+  overflow: hidden;
+  color: var(--sweet-ink);
+}
+/* 金色光晕独立成层：压在渐变底上、文字之下（塞进 background 多层
+   会被不透明 linear 盖掉）+ 左下珍珠白雾 */
+[data-arcade="sweet"] .gc-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(360px 170px at 86% 38%,
+      rgba(212, 175, 122, 0.95),
+      rgba(212, 175, 122, 0.45) 55%, transparent 78%),
+    radial-gradient(720px 280px at 100% 10%,
+      rgba(226, 194, 144, 0.6), transparent 72%),
+    radial-gradient(420px 150px at 0% 115%,
+      rgba(255, 255, 255, 0.4), transparent 60%);
+}
+/* 缎带母题：顶缘一条香槟金缎带细线 */
+[data-arcade="sweet"] .gc-hero::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent,
+    var(--sweet-gold) 30%, #f0d9a8 50%, var(--sweet-gold) 70%, transparent);
+}
+[data-arcade="sweet"] .gc-hero h1 {
+  font-family: var(--sweet-serif);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: linear-gradient(105deg,
+    #24466e 0%, #2c5a8c 30%, #8a6a30 62%, #c89a50 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.55));
+}
+[data-arcade="sweet"] .gc-hero-sub {
+  color: #24406b;
+  font-size: 14px;
+  margin-top: 6px;
+}
+/* 数字宝石：撤掉旧深色玻璃块，衬线大数字直接浮在云雾上 */
+[data-arcade="sweet"] .gc-hero-stat {
+  border: none;
+  background: none;
+  backdrop-filter: none;
+}
+[data-arcade="sweet"] .gc-hero-stat b.num {
+  font-family: var(--sweet-serif);
+  font-size: 46px;
+  line-height: 1;
+  color: var(--sweet-sky-deep);
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.6);
+}
+[data-arcade="sweet"] .gc-hero-stat span {
+  color: var(--sweet-ink);
+  font-weight: 600;
+}
+[data-arcade="sweet"] .gc-hero-orb {
+  display: none; /* orb 装饰由金晕 + 缎带顶线替代 */
+}
+
+/* ══════ ② 分组标题：金色缎带横贯 ══════ */
+[data-arcade="sweet"] .gc-group-hd {
+  align-items: center;
+}
+[data-arcade="sweet"] .gc-group-hd h2 {
+  font-family: var(--sweet-serif);
+  font-size: 18px;
+  font-weight: 800;
+  color: #2c5a8c;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+/* 金色缎带：细金线 + 起端立体金珠（珠画在 ::before，3px 线盒装不下它） */
+[data-arcade="sweet"] .gc-group-line {
+  position: relative;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+    var(--sweet-gold), var(--sweet-mist) 75%, transparent);
+}
+[data-arcade="sweet"] .gc-group-line::before {
+  content: "";
+  position: absolute;
+  left: -2px; top: 50%;
+  width: 11px; height: 11px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%,
+    #f7e6c0, var(--sweet-gold) 60%, var(--sweet-gold-deep));
+  box-shadow: 0 1px 4px rgba(176, 138, 74, 0.5);
+}
+[data-arcade="sweet"] .gc-group-n {
+  background: linear-gradient(180deg, #f0d9a8, var(--sweet-gold));
+  color: #6b4a1a;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-family: var(--sweet-serif);
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: var(--sweet-shadow-gold);
+}
+
+/* ══════ ③ 游戏卡片：大圆角 + 蓝雾渐变 + 浮起微倾 ══════ */
+[data-arcade="sweet"] .gc-card {
+  border-radius: var(--r-lg);
+  background: linear-gradient(160deg, #ffffff 0%, #eef5fc 100%);
+  box-shadow: 0 6px 16px -8px rgba(74, 122, 176, 0.25),
+    inset 0 0 0 1px #fff;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  border: none;
+}
+[data-arcade="sweet"] .gc-card:hover {
+  transform: translateY(-3px) rotate(-0.5deg);
+  box-shadow: 0 14px 28px -10px rgba(74, 122, 176, 0.4),
+    inset 0 0 0 1px var(--sweet-mist);
+}
+[data-arcade="sweet"] .gc-art {
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+[data-arcade="sweet"] .gc-glyph {
+  font-size: 34px;
+  filter: drop-shadow(0 3px 6px rgba(44, 62, 92, 0.25));
+}
+/* 角标 = 金色缎带胶囊；HOT = 珊瑚红小冠 */
+[data-arcade="sweet"] .gc-badge {
+  background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
+  color: #6b4a1a;
+  border-radius: 999px;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(176, 138, 74, 0.35);
+}
+[data-arcade="sweet"] .gc-hot {
+  background: linear-gradient(90deg, #d97a7a, #e8a8a8);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+[data-arcade="sweet"] .gc-title {
+  font-family: var(--sweet-serif);
+  font-weight: 800;
+  color: var(--sweet-ink);
+}
+[data-arcade="sweet"] .gc-sub {
+  color: var(--sweet-ink-soft);
+  font-size: 12px;
+}
+[data-arcade="sweet"] .gc-go {
+  color: #2c5a8c;
+  font-weight: 700;
+  font-size: 12px;
+}
+[data-arcade="sweet"] .gc-grid {
+  gap: 14px;
+}
+
+/* ══════ ④ 纹章预算环：金描边 + 米黄缎面（蕾丝纹） ══════ */
+[data-arcade="sweet"] .arc {
+  margin-top: 24px;
+  border-radius: var(--r-xl);
+  padding: 20px;
+  background: linear-gradient(180deg, #ffffff, #f0f6fc);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-line), var(--sweet-shadow);
+}
+[data-arcade="sweet"] .arc-hd h2 {
+  font-family: var(--sweet-serif);
+  color: #2c5a8c;
+  letter-spacing: 0.08em;
+}
+[data-arcade="sweet"] .arc-crest {
+  border: 1.5px solid var(--sweet-gold);
+  border-radius: var(--r-lg);
+  background:
+    repeating-linear-gradient(45deg,
+      rgba(212, 175, 122, 0.05) 0 10px, transparent 10px 20px),
+    linear-gradient(160deg, #fff, #f8f4e8);
+  box-shadow: var(--sweet-shadow-gold);
+}
+[data-arcade="sweet"] .arc-ribbon {
+  background: linear-gradient(90deg,
+    var(--sweet-sky), var(--sweet-lilac) 45%, var(--sweet-gold));
+  color: #fff;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-family: var(--sweet-serif);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  box-shadow: var(--sweet-shadow-gold);
+}
+[data-arcade="sweet"] .arc-bignum {
+  font-family: var(--sweet-serif);
+  color: var(--sweet-sky-deep);
+}
+
+/* ══════ ⑤ 周常任务：蓝雾珍珠卡 + 金胶囊按钮 ══════ */
+[data-arcade="sweet"] .arc-q {
+  border-radius: var(--r-md);
+  border: 1px solid var(--sweet-line);
+  background: linear-gradient(160deg, #fff, #eef5fc);
+}
+[data-arcade="sweet"] .arc-q.ready {
+  border-color: var(--sweet-gold);
+  box-shadow: var(--sweet-shadow-gold);
+}
+[data-arcade="sweet"] .arc-btn {
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+[data-arcade="sweet"] .arc-btn.primary {
+  background: linear-gradient(180deg, #f0d9a8, var(--sweet-gold));
+  color: #5a3d12;
+  box-shadow: 0 4px 10px -4px rgba(176, 138, 74, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border: none;
+}
+
+/* ══════ ⑥ 赛季星轨：金蓝双色节点 + 粉金渐变连线 ══════ */
+[data-arcade="sweet"] .arc-node {
+  border-radius: 50%;
+  border: 1.5px solid var(--sweet-line);
+  background: radial-gradient(circle at 30% 30%, #fff, var(--sweet-mist));
+}
+[data-arcade="sweet"] .arc-node.on {
+  background: radial-gradient(circle at 30% 30%, #fff, var(--sweet-gold));
+  border-color: var(--sweet-gold-deep);
+  box-shadow: 0 0 0 4px rgba(212, 175, 122, 0.22);
+}
+[data-arcade="sweet"] .arc-node.done {
+  background: linear-gradient(180deg,
+    var(--sweet-sky), var(--sweet-sky-deep));
+  border-color: var(--sweet-sky-deep);
+  color: #fff;
+}
+[data-arcade="sweet"] .arc-link {
+  background: linear-gradient(90deg,
+    var(--sweet-gold), var(--sweet-lilac) 60%, var(--sweet-gold));
+}
+
+/* ══════ ⑦ 票根 / Feed / 货架：珍珠行 + 稀有金星点 ══════ */
+[data-arcade="sweet"] .arc-chk .dot {
+  background: var(--sweet-sky);
+}
+[data-arcade="sweet"] .arc-chk.rare .dot {
+  background: var(--sweet-gold);
+  box-shadow: 0 0 8px rgba(212, 175, 122, 0.85);
+}
+[data-arcade="sweet"] .arc-goods {
+  border-radius: var(--r-md);
+  border: 1px solid var(--sweet-line);
+  background: linear-gradient(160deg, #fff, #eef5fc);
+}
+
+/* ══════ ⑧ 底部链接行：深海蓝可读色 ══════ */
+[data-arcade="sweet"] a[href^="/games/"] {
+  color: var(--sweet-sky-deep) !important;
+  font-weight: 700;
+}
+[data-arcade="sweet"] .text-\[\#0f62c4\] {
+  color: var(--sweet-sky-deep) !important;
+}
