@@ -320,3 +320,74 @@
 [data-arcade="sweet"] .text-\[\#0f62c4\] {
   color: var(--sweet-sky-deep) !important;
 }
+
+/* ══════ ⑨ 玩法专注页：珍珠舞台 + 甜梦操作件 ══════
+   各页 GameStage 的底图是内联暗色 radial（!important 才压得住）；
+   机台/池塘等「游戏美术层」保留固有色（与 arcade.css 头注同纪律）。 */
+[data-arcade="sweet"] .gs-art {
+  background:
+    radial-gradient(120% 130% at 50% 0%,
+      #e6f1fc 0%, #cfe2f6 55%, #b7cfea 100%) !important;
+}
+[data-arcade="sweet"] .gs-scrim {
+  background: radial-gradient(
+    75% 65% at 50% 45%, transparent 55%, rgba(74, 122, 176, 0.16));
+}
+[data-arcade="sweet"] .gs-stage {
+  border-color: var(--sweet-line);
+}
+[data-arcade="sweet"] .gs-corner {
+  border-color: var(--sweet-gold);
+}
+/* 玩法页标题：衬线冕（GameShell/lb-hero 的 h1） */
+[data-arcade="sweet"] h1.font-display {
+  font-family: var(--sweet-serif);
+  color: var(--sweet-ink);
+  letter-spacing: 0.04em;
+}
+/* 宠物舞台内原本按深底调的文字 → 深海军蓝 */
+[data-arcade="sweet"] .pp-bar-lb { color: var(--sweet-ink-soft); }
+[data-arcade="sweet"] .pp-bar-n { color: var(--sweet-ink); }
+[data-arcade="sweet"] .pp-name { color: var(--sweet-ink); }
+[data-arcade="sweet"] .pp-species-tag {
+  color: var(--sweet-ink-soft);
+  border-color: var(--sweet-line);
+}
+[data-arcade="sweet"] .pp-coupon { color: var(--sweet-ink-soft); }
+/* 操作件：主行动钮换甜雾蓝渐变（珊瑚保留暖调）；sun 原本无定义，
+   补香槟金（鱼竿升级钮在浅面板上曾经是透明底白字） */
+[data-arcade="sweet"] .arc-call {
+  text-shadow: 0 1px 2px rgba(28, 51, 82, 0.3);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -8px 14px rgba(44, 62, 92, 0.18),
+    0 8px 18px rgba(74, 122, 176, 0.35);
+}
+[data-arcade="sweet"] .arc-call.sky {
+  background: linear-gradient(180deg, #d6e9fc, #8ab4dd 58%, #4a7ab0);
+}
+[data-arcade="sweet"] .arc-call.sun {
+  background: linear-gradient(180deg, #f7e6c0, #d4af7a 58%, #b08a4a);
+  color: #3d2c0e;
+  text-shadow: 0 1px 2px rgba(255, 244, 214, 0.6);
+}
+/* 注额筹码：深海军条纹 → 雾蓝珍珠条纹（选中金面口径不变） */
+[data-arcade="sweet"] .arc-chip {
+  color: var(--sweet-ink);
+  border-color: var(--sweet-line);
+  background: radial-gradient(circle at 50% 30%,
+      rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 54%),
+    repeating-linear-gradient(90deg, #d8e4f2 0 8px, #c5dff0 8px 16px);
+}
+[data-arcade="sweet"] .arc-chip[aria-pressed="true"] {
+  border-color: var(--sweet-gold-deep);
+  box-shadow: var(--sweet-shadow-gold);
+}
+/* 跑道刻度标签：暗底浅字 → 深海军蓝（浅舞台上 CR 1.5 不可读） */
+[data-arcade="sweet"] .bs-ticks {
+  color: var(--sweet-ink);
+}
+/* 金球游标待机位与描金角标相撞：珍珠镶边把球从同色系里衬出来 */
+[data-arcade="sweet"] .bs-cursor {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.65),
+    0 4px 10px rgba(44, 62, 92, 0.35);
+}
