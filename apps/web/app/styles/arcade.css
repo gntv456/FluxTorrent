@@ -1502,6 +1502,15 @@
   padding: 10px 14px 12px;
   background: linear-gradient(180deg, transparent, rgba(6, 16, 26, 0.72));
 }
+/* SVG 版鱼塘（星夜钓场）：svg 铺满容器、HUD 叠其上 */
+.fp-pond-svg {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  margin-inline: auto;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+}
 .fp-label {
   font-size: 13px;
   font-weight: 800;

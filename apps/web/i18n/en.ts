@@ -2350,6 +2350,8 @@ const enBase: Omit<
       fTodayGold: "Gold",
       fBest: "Best",
       albumLink: "Album ›",
+      histWin: "Catch",
+      histLose: "Escaped",
       fStatNet: "Net catch today",
       fStatLeft: "Rounds left",
     },

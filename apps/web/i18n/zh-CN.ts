@@ -2287,6 +2287,8 @@ const zhCnBase = {
       fTodayGold: "金色渔获",
       fBest: "最佳",
       albumLink: "图鉴 ›",
+      histWin: "渔获",
+      histLose: "脱钩",
       fStatNet: "今日渔获净收",
       fStatLeft: "剩余局数",
     },

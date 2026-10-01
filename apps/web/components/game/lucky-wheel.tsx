@@ -99,7 +99,7 @@ export function LuckyWheel({
     const desired = (360 - center) % 360;
     setRot((prev) => {
       const cur = ((prev % 360) + 360) % 360;
-      const delta = ((desired - cur) % 360 + 360) % 360;
+      const delta = (((desired - cur) % 360) + 360) % 360;
       return prev + 360 * 5 + delta;
     });
     timer.current = window.setTimeout(() => onLanded?.(), SPIN_MS);
@@ -119,7 +119,36 @@ export function LuckyWheel({
           style={{ transform: `rotate(${rot}deg)` }}
           aria-hidden
         >
-          <circle cx={CX} cy={CY} r={R + 6} fill="#d4af7a" />
+          <defs>
+            <radialGradient id="lwRim" cx="0.5" cy="0.3" r="0.8">
+              <stop offset="0%" stopColor="#e8c888" />
+              <stop offset="100%" stopColor="#b08a4a" />
+            </radialGradient>
+            <radialGradient id="lwGo" cx="0.35" cy="0.3" r="0.8">
+              <stop offset="0%" stopColor="#f7e6c0" />
+              <stop offset="60%" stopColor="#d4af7a" />
+              <stop offset="100%" stopColor="#b08a4a" />
+            </radialGradient>
+          </defs>
+          {/* 金色渐变外圈 */}
+          <circle cx={CX} cy={CY} r={R + 8} fill="url(#lwRim)" />
+          <circle cx={CX} cy={CY} r={R + 3} fill="#fff" />
+          {/* 灯珠：金色与白色交替，沿外圈均匀分布 */}
+          {Array.from({ length: 12 }).map((_, i) => {
+            const a = (i * 360) / 12;
+            const [lx, ly] = polar(a, R + 5);
+            const isGold = i % 2 === 0;
+            return (
+              <circle
+                key={i}
+                cx={lx}
+                cy={ly}
+                r={3.5}
+                fill={isGold ? "#ffd700" : "#fff"}
+                opacity={isGold ? 1 : 0.7}
+              />
+            );
+          })}
           {prizes.map((p, i) => {
             const a1 = i * seg;
             const a2 = a1 + seg;
@@ -131,8 +160,8 @@ export function LuckyWheel({
                 <path
                   d={sector(a1, a2)}
                   fill={segColor(v, ticket)}
-                  stroke="rgba(255,255,255,0.22)"
-                  strokeWidth="1"
+                  stroke="#fff"
+                  strokeWidth="2"
                 />
                 <text
                   x={tx}
@@ -141,7 +170,7 @@ export function LuckyWheel({
                   dominantBaseline="middle"
                   fontSize={seg > 60 ? 15 : 13}
                   fontWeight="800"
-                  fill="#2c3e5c"
+                  fill={v >= ticket * 10 ? "#5a3d12" : "#fff"}
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {glyph(p)}
@@ -152,9 +181,9 @@ export function LuckyWheel({
           <circle
             cx={CX}
             cy={CY}
-            r={R + 4}
+            r={R}
             fill="none"
-            stroke="rgba(255,255,255,0.35)"
+            stroke="rgba(255,255,255,0.6)"
             strokeWidth="2"
           />
         </svg>
@@ -163,6 +192,15 @@ export function LuckyWheel({
           onClick={onDraw}
           disabled={busy || disabled}
           className="lw-hub"
+          style={{
+            background:
+              "radial-gradient(circle at 35% 30%, #f7e6c0, " +
+              "#d4af7a 60%, #b08a4a)",
+            border: "3px solid #b08a4a",
+            boxShadow:
+              "0 4px 12px rgba(176,138,74,0.4), " +
+              "inset 0 1px 2px rgba(255,255,255,0.5)",
+          }}
           aria-label={`${goLabel} · ${ticket}`}
         >
           {busy ? spinningLabel : goLabel}

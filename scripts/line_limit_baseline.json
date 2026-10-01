@@ -434,7 +434,7 @@
  "apps/web/app/(main)/games/scratch/_inner.tsx": 335,
  "apps/web/app/(main)/games/fishing/_inner.tsx": 344,
  "apps/web/app/(main)/games/capsule/_inner.tsx": 331,
- "apps/web/app/(main)/games/bigsmall/_inner.tsx": 379,
+ "apps/web/app/(main)/games/bigsmall/_inner.tsx": 387,
  "apps/web/components/gacha-rates.tsx::wide": 1,
  "apps/web/app/(main)/games/jgg/_inner.tsx": 310,
  "apps/web/app/(main)/games/farm/_inner.tsx": 343

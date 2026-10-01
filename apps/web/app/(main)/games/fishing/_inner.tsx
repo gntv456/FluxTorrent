@@ -9,9 +9,8 @@ import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { FishingPond, type FishPhase } from "@/components/game/fishing-pond";
 import { FishingSide } from "@/components/game/fishing-side";
-import { SwStatRow } from "@/components/game/sw-panels";
+import { SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { SwRules } from "@/components/game/sw-enrich";
-import { GameStage } from "@/components/game/game-stage";
 
 export interface Overview {
   max_bet: number;
@@ -37,6 +36,7 @@ interface RoundRow {
   bet: number;
   payout: number;
   net: number;
+  at?: string;
 }
 
 interface CastResult {
@@ -238,35 +238,17 @@ export default function FishingPage({
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
-          <GameStage
-            bg="radial-gradient(120% 130% at 50% 0%, #10344f, #071826 72%)"
-            className="w-full max-w-[460px] p-4"
-          >
-            <FishingPond
-              phase={phase}
-              windowPct={windowPct}
-              waitingLabel={phase === "idle" ? tf.hintIdle : tf.waiting}
-              biteLabel={tf.bite}
-            />
-          </GameStage>
+          {/* 样图⑩：全出血星夜海（GameStage 的内框样式被甜梦层
+              撤掉——fp-pond 直接铺满宽、占首屏 ~60%） */}
+          <FishingPond
+            phase={phase}
+            windowPct={windowPct}
+            waitingLabel={phase === "idle" ? tf.hintIdle : tf.waiting}
+            biteLabel={tf.bite}
+          />
           <ResultFlash
             kind={flash?.kind ?? null}
             text={flash?.text ?? null}
-          />
-          <SwStatRow
-            items={[
-              { lb: tf.fStatPlays, vl: String(sessionPlays) },
-              {
-                lb: tf.fStatNet,
-                vl: String(ov?.me?.today_net ?? 0),
-                tone: "gold",
-              },
-              {
-                lb: tf.fStatLeft,
-                vl: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
-                tone: "green",
-              },
-            ]}
           />
           {/* 今日收获三格（样图⑩）：条数 / 金色数 / 最佳渔获 */}
           <SwStatRow
@@ -292,6 +274,15 @@ export default function FishingPage({
               },
             ]}
           />
+          {/* 今日渔获（样图⑩）：3 行历史卡 + 图鉴链接 */}
+          <SwHist
+            rows={hist.slice(0, 3).map((h) => ({
+              t: (h.at ?? "").slice(11, 16) || "—",
+              txt: h.net > 0 ? tf.histWin : tf.histLose,
+              net: h.net,
+            }))}
+            empty={dict.games.historyEmpty}
+          />
           <SwRules
             left={tf.poolNote}
             linkLabel={tf.albumLink}
@@ -308,12 +299,14 @@ export default function FishingPage({
             maxBet={ov?.max_bet ?? 1000}
             disabled={!canCast && phase !== "bite"}
           />
-          <div className="flex gap-2">
+          {/* CTA 双按钮（样图⑩）：抛竿（蓝）/ 起竿（珊瑚）；
+              咬钩态切换主行动，饵量文案并入按钮下 */}
+          <div className="sw-cta-row">
             {canReel ? (
               <button
                 type="button"
                 onClick={() => reel(round, false)}
-                className="arc-call coral"
+                className="sw-cta cta-gold"
               >
                 {tf.reel}
               </button>
@@ -322,7 +315,7 @@ export default function FishingPage({
                 type="button"
                 onClick={cast}
                 disabled={!canCast || prizes.length === 0}
-                className="arc-call sky"
+                className="sw-cta cta-primary"
               >
                 {phase === "casting"
                   ? tf.casting
