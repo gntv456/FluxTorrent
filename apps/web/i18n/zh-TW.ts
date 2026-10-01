@@ -2356,6 +2356,9 @@ const zhTwBase: Omit<
     },
     gachaPool: "本期卡池",
     hall: {
+      hTag: "DAILY BONUS",
+      hTitle: "今日好運已刷新",
+      hSub: "做種賺{magic}，來甜夢奇境試試手氣",
       groupInstant: "即時開獎",
       groupSession: "養成經營",
       soon: "即將開放",

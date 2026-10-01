@@ -2333,6 +2333,9 @@ const zhCnBase = {
     },
     gachaPool: "本期卡池",
     hall: {
+      hTag: "DAILY BONUS",
+      hTitle: "今日好运已刷新",
+      hSub: "做种赚{magic}，来甜梦奇境试试手气",
       groupInstant: "即时开奖",
       groupSession: "养成经营",
       soon: "即将开放",

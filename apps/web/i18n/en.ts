@@ -2396,6 +2396,9 @@ const enBase: Omit<
     },
     gachaPool: "Current pool",
     hall: {
+      hTag: "DAILY BONUS",
+      hTitle: "Today's luck has refreshed",
+      hSub: "Seed to earn {magic}, then try your luck",
       groupInstant: "Instant",
       groupSession: "Idle & Collector",
       soon: "Coming soon",
