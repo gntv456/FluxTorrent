@@ -81,6 +81,33 @@ export default async function GachaDisclosurePage() {
         .catch(() => null),
     ),
   );
+  // 星轨卡册卡位（样图⑧）：本期卡池前 3 档卡面（按稀有度星数降序）
+  const first = rates.find((r): r is GachaBannerRates => r !== null);
+  const topCards = (() => {
+    if (!first) return [];
+    const byR = new Map(rarities.map((r) => [r.key, r]));
+    // 每档代表卡：按星数降序**去重档位**取前 3（高低档并列呈现，
+    // 蓝卡位不会被前 3 全挤成金 —— 样图⑧ 的三卡即三个不同档）
+    const rows = first.rows
+      .filter((row) => row.type === "card")
+      .sort((a, b) => (byR.get(b.r)?.stars ?? 0) - (byR.get(a.r)?.stars ?? 0))
+      .filter(
+        (row, i, arr) =>
+          arr.findIndex((x) => byR.get(x.r)?.stars === byR.get(row.r)?.stars)
+          === i,
+      )
+      .slice(0, 3);
+    return rows.map((row) => {
+      const meta = byR.get(row.r);
+      return {
+        name: meta?.label ?? row.r,
+        sub: row.r.toUpperCase(),
+        stars: meta?.stars ?? 1,
+        tone: (meta?.stars ?? 1) >= 5 ? "gold" : "sky",
+      };
+    });
+  })();
+
   return (
     <div className="flex flex-col gap-4">
       <div className="pghd">
@@ -89,6 +116,27 @@ export default async function GachaDisclosurePage() {
           <h1 className="font-display text-2xl">{dict.nav.gachaDisclosure}</h1>
         </div>
       </div>
+      {first && (
+        <section className="sw-cardbook">
+          <div className="sw-cardbook-cap">
+            {dict.games.gachaPool} · {first.banner.name}
+          </div>
+          <div className="sw-cardbook-grid">
+            {topCards.map((c) => (
+              <div key={c.name} className={`sw-card sw-tone-${c.tone}`}>
+                <span className="sw-card-stars num" aria-hidden>
+                  {"★".repeat(c.stars)}
+                </span>
+                <span className="sw-card-face" aria-hidden>
+                  🃏
+                </span>
+                <span className="sw-card-name">{c.name}</span>
+                <span className="sw-card-rank num">{c.sub}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <GachaRates
         rarities={rarities}
         banners={rates.filter((r): r is GachaBannerRates => r !== null)}

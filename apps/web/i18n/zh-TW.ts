@@ -2354,6 +2354,7 @@ const zhTwBase: Omit<
       value: "數值",
       times: "次",
     },
+    gachaPool: "本期卡池",
     hall: {
       groupInstant: "即時開獎",
       groupSession: "養成經營",
@@ -2378,6 +2379,8 @@ const zhTwBase: Omit<
   },
   farm: {
     title: "{magic}農場",
+    fsPlanted: "已種 {a}/{b}",
+    fsReady: "成熟 {n} 塊",
     marketRule: "市場價 {time} 刷新（{rule} · ±50% 波動）",
     loading: "農場載入中…",
     plotEmpty: "空地 #{n}",

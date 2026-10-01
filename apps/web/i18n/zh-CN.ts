@@ -2331,6 +2331,7 @@ const zhCnBase = {
       value: "数值",
       times: "次",
     },
+    gachaPool: "本期卡池",
     hall: {
       groupInstant: "即时开奖",
       groupSession: "养成经营",
@@ -2355,6 +2356,8 @@ const zhCnBase = {
   },
   farm: {
     title: "{magic}农场",
+    fsPlanted: "已种 {a}/{b}",
+    fsReady: "成熟 {n} 块",
     marketRule: "市场价 {time} 刷新（{rule} · ±50% 波动）",
     loading: "农场加载中…",
     plotEmpty: "空地 #{n}",
