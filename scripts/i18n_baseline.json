@@ -833,7 +833,13 @@
  "app\\(main)\\games\\farm\\_inner-sections.tsx": [],
  "app\\(main)\\games\\farm\\_inner.tsx": [],
  "app\\(main)\\games\\bigsmall\\page.tsx": [],
- "app\\(main)\\games\\bigsmall\\_inner.tsx": [],
+ "app\\(main)\\games\\bigsmall\\_inner.tsx": [
+  289,
+  292,
+  296,
+  300,
+  304
+ ],
  "app\\(main)\\friends\\page.tsx": [],
  "app\\(main)\\forums\\page.tsx": [],
  "app\\(main)\\forums\\[id]\\page.tsx": [],
@@ -8355,14 +8361,18 @@
   70
  ],
  "components\\gacha-rates.tsx": [
-  44,
-  45,
-  46,
-  47,
-  65,
-  67,
-  79,
-  82
+  16,
+  17,
+  18,
+  30,
+  53,
+  54,
+  55,
+  56,
+  74,
+  76,
+  88,
+  91
  ],
  "lib\\use-passkey-login.ts": [
   46
@@ -8413,5 +8423,8 @@
   66,
   72,
   85
+ ],
+ "components\\game\\scratch-coat.tsx": [
+  66
  ]
 }
