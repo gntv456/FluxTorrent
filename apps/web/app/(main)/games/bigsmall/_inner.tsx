@@ -32,6 +32,8 @@ interface RoundRow {
   payout: number;
   net: number;
   at?: string;
+  /** 服务端局记录里带的点数（有则近 5 局走势直接显大/小） */
+  number?: number;
 }
 
 interface GuessResult {
@@ -224,6 +226,20 @@ export default function BigSmallPage({
           >
             <RunwayOdometer number={num} spinning={busy} reduced={reduced} />
           </GameStage>
+          {/* 双骰舞台（样图⑥）：一枚骰拆两枚，点数各显一半 */}
+          <div className="bs-dice" aria-hidden>
+            <div className="bs-die">
+              <span>{num == null ? "🎲" : Math.ceil(num / 2) || "🎲"}</span>
+            </div>
+            <div className="bs-die">
+              <span>{num == null ? "🎲" : Math.floor(num / 2) || "🎲"}</span>
+            </div>
+          </div>
+          <p className="bs-dice-cap">
+            {num == null
+              ? tg.bsDiceWait
+              : `${tg.bsRecent.replace("{s}", "")} ${num}`}
+          </p>
           <ResultFlash
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tg.pending : null)}
@@ -231,6 +247,23 @@ export default function BigSmallPage({
           {streak >= 3 && (
             <p className="text-xs font-bold text-[var(--warning)]">
               {tg.streak}
+            </p>
+          )}
+          {hist.length > 0 && (
+            <p className="bs-recent">
+              {tg.bsRecent.replace(
+                "{s}",
+                hist
+                  .slice(0, 5)
+                  .map((h) =>
+                    h.number == null
+                      ? "·"
+                      : h.number >= 11 && h.number <= 18
+                        ? tg.bsPickBig
+                        : tg.bsPickSmall,
+                  )
+                  .join(" "),
+              )}
             </p>
           )}
           <SwStatRow
@@ -255,6 +288,36 @@ export default function BigSmallPage({
             maxBet={maxBet}
             disabled={busy}
           />
+          {/* 三大选卡（样图⑥）：大 / 豹子 / 小。豹子只是展示位——
+              玩法本体只有大/小两种下注，豹子按平局退款口径 */}
+          <div className="bs-picks">
+            <button
+              type="button"
+              onClick={() => guess("small")}
+              disabled={busy}
+              className="bs-pick"
+            >
+              <div className="bs-pick-t">{tg.bsPickSmall}</div>
+              <div className="bs-pick-s">
+                {tg.bsPickSmallSub.replace("{n}", fmtMult(winMult))}
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => guess("big")}
+              disabled={busy}
+              className="bs-pick gold"
+            >
+              <div className="bs-pick-t">{tg.bsPickBig}</div>
+              <div className="bs-pick-s">
+                {tg.bsPickBigSub.replace("{n}", fmtMult(winMult))}
+              </div>
+            </button>
+            <div className="bs-pick" aria-disabled="true">
+              <div className="bs-pick-t">{tg.bsPickTriple}</div>
+              <div className="bs-pick-s">{tg.bsPickTripleSub}</div>
+            </div>
+          </div>
           {/* 道具栏：只加权魔力的输赢，永不出物品 */}
           <PropBar
             props={props}
@@ -262,24 +325,6 @@ export default function BigSmallPage({
             busy={busy}
             onToggle={toggle}
           />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => guess("small")}
-              disabled={busy}
-              className="arc-call sky"
-            >
-              {tg.small}
-            </button>
-            <button
-              type="button"
-              onClick={() => guess("big")}
-              disabled={busy}
-              className="arc-call coral"
-            >
-              {tg.big}
-            </button>
-          </div>
         </div>
       }
       side={

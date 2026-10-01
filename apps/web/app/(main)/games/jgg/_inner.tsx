@@ -17,6 +17,7 @@ import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { JggGrid, type JggPrize } from "@/components/game/jgg-grid";
+import { SwPrizeStrip } from "@/components/game/sw-enrich";
 import { GameStage } from "@/components/game/game-stage";
 
 export interface Overview {
@@ -100,6 +101,25 @@ export default function JggPage({
   const winRate = prizes.length
     ? (100 - (prizes[0]?.weight_permille ?? 0) / 10).toFixed(1)
     : "—";
+  // 奖池条（样图④ 九宫格屏）：等值前 4 档
+  const prizeStripItems = prizes
+    .slice()
+    .sort(
+      (a, b) =>
+        (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
+    )
+    .slice(0, 4)
+    .map((p) => ({
+      ic: p.kind === "item" ? (p.icon ?? "🎁") : "💎",
+      nm: p.label,
+      odds: `${(p.weight_permille / 10).toFixed(1)}%`,
+      tone:
+        (p.value ?? p.payout * ticket) >= ticket * 10
+          ? ("gold" as const)
+          : (p.value ?? p.payout * ticket) >= ticket * 3
+            ? ("lilac" as const)
+            : ("sky" as const),
+    }));
 
   async function draw() {
     if (busy) return;
@@ -234,6 +254,7 @@ export default function JggPage({
               },
             ]}
           />
+          <SwPrizeStrip label={tj.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>
       }

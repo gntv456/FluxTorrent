@@ -91,9 +91,13 @@ export async function Header() {
             <div className="md:hidden">
               <MobileNavShell primary={primary} groups={groups} summary={me} />
             </div>
-            <ThemeToggle label={dict.common.themeToggle} />
+            {/* 主题切换 <md 收进汉堡抽屉：280px 折叠屏外屏态右工具区
+                （汉堡+主题+头像）会挤出横向滚动 */}
+            <div className="hidden md:block">
+              <ThemeToggle label={dict.common.themeToggle} />
+            </div>
             {/* 语言切换器（0209 P2-17）：site_settings.locale_switcher_enabled=no 隐藏（单语站）。
-                M2：<md 隐藏——右工具区（汉堡+主题+头像+语言）在 375px 超宽 ~39px，
+                M2：<md 隐藏——右工具区在 375px 超宽 ~39px，
                 语言是低频操作，移入抽屉外的登录页/页脚仍可达。 */}
             {profile.locale_switcher_enabled !== "no" && (
               <div className="hidden md:block">

@@ -137,6 +137,9 @@ export default async function GamesPage() {
           <p className="gc-hero-sub">
             {dict.games.hall.hSub.replace("{magic}", currency)}
           </p>
+          <Link href="/me/sparks" className="gc-hero-cta">
+            {dict.games.hall.hCta} <i aria-hidden>→</i>
+          </Link>
         </div>
         <div className="gc-hero-stat">
           <b className="num">{liveCount}</b>

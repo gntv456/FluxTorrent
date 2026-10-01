@@ -18,6 +18,7 @@ import {
 } from "@/components/game/sw-panels";
 import { useTenDraw } from "@/lib/ten-draw";
 import { scratchPoolText, type ScratchPrize } from "@/lib/games";
+import { SwPrizeStrip } from "@/components/game/sw-enrich";
 
 export interface Overview {
   max_bet: number;
@@ -98,6 +99,22 @@ export default function ScratchPage({
   const maxMult = prizes.length
     ? Math.max(...prizes.map((p) => p.payout))
     : 0;
+  // 奖池条（样图② prize-strip）：按等值取前 4 档，千分权重换算成 %
+  const prizeStripItems = prizes
+    .slice()
+    .sort((a, b) => (b.value ?? b.payout) - (a.value ?? a.payout))
+    .slice(0, 4)
+    .map((p) => ({
+      ic: p.kind === "item" ? "🎁" : "💎",
+      nm: p.label,
+      odds: `${((p.weight_permille / 10) || 0).toFixed(1)}%`,
+      tone:
+        (p.rarity ?? 0) >= 4
+          ? ("gold" as const)
+          : (p.rarity ?? 0) >= 3
+            ? ("lilac" as const)
+            : ("sky" as const),
+    }));
   const histRows: SwHistRow[] = hist.slice(0, 6).map((h) => ({
     t: (h.at ?? "").slice(11, 16) || "—",
     txt: h.net > 0 ? ts.histWin : ts.histLose,
@@ -282,6 +299,7 @@ export default function ScratchPage({
               },
             ]}
           />
+          <SwPrizeStrip label={ts.prizeLb} items={prizeStripItems} />
           <SwCtaRow
             primaryLabel={`${ts.buy.replace("{n}", String(bet))}`}
             goldLabel={`${ts.tenBtn} · ${bet * 10}`}

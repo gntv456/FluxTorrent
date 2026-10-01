@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/i18n/client";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { NavItem, NavGroup } from "@/lib/nav-menu";
 
 /** 移动导航抽屉（M2）：与桌面 MainMenu 同源（lib/nav-menu.ts 构建的
@@ -134,6 +135,10 @@ export function NavDrawer({
             </div>
           ))}
         </nav>
+        {/* 主题切换 <md 从顶栏收进来（280px 外屏态右工具区挤不下） */}
+        <div className="navdrawer__foot">
+          <ThemeToggle label={dict.common.themeToggle} />
+        </div>
       </div>
     </div>
   );
