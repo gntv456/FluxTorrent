@@ -4,10 +4,17 @@ import { PANEL_LG } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useTenDraw } from "@/lib/ten-draw";
+import {
+  SwCtaRow,
+  SwHist,
+  SwStatRow,
+  SwTenModal,
+} from "@/components/game/sw-panels";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
-import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
+import { ResultFlash } from "@/components/game/game-kit-feedback";
 import {
   CapsuleMachine,
   type CapsulePrize,
@@ -29,6 +36,7 @@ interface RoundRow {
   bet: number;
   payout: number;
   net: number;
+  at?: string;
 }
 
 interface DrawResult {
@@ -91,6 +99,30 @@ export default function CapsuleFocusPage({
 
   const prizes = ov?.capsule?.prizes ?? [];
   const ticket = ov?.capsule?.ticket ?? 100;
+
+  // R-SR-SSR 收集度（样图⑦）：按奖池稀有度权重分布实时合成（公示口径）
+  const rarityMeters = (() => {
+    const buckets: Record<number, number> = {};
+    for (const p of prizes) {
+      const r = (p as { rarity?: number }).rarity ?? 1;
+      buckets[r] = (buckets[r] ?? 0) + p.weight_permille;
+    }
+    const total = Object.values(buckets).reduce((a, b) => a + b, 0) || 1;
+    return [2, 3, 4].map((r) => ({
+      r,
+      pct: Math.round(((buckets[r] ?? 0) / total) * 100),
+    }));
+  })();
+  const ten = useTenDraw<DrawResult>({
+    path: "/api/v1/games/capsule",
+    onError: (msg) => setErr(msg),
+    onDone: () => {
+      setSessionPlays((n) => n + 10);
+      void loadMeta();
+    },
+    netOf: (r) => (r.value ?? r.payout) - ticket,
+    labelOf: (r) => r.prize,
+  });
   const winRate = prizes.length
     ? (100 - (prizes[0]?.weight_permille ?? 0) / 10).toFixed(1)
     : "—";
@@ -188,6 +220,17 @@ export default function CapsuleFocusPage({
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tc.drawing : null)}
           />
+          <SwStatRow
+            items={[
+              { lb: tc.statPlays, vl: String(ov?.me?.today_plays ?? 0) },
+              { lb: tc.statTicket, vl: String(ticket), tone: "gold" },
+              {
+                lb: tc.statLeft,
+                vl: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
+                tone: "green",
+              },
+            ]}
+          />
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>
       }
@@ -211,13 +254,51 @@ export default function CapsuleFocusPage({
             ))}
           </div>
           <p className="mt-2 text-[11px] text-sub">{tc.poolNote}</p>
+          <div className="sw-cap-meters">
+            {rarityMeters.map((m) => (
+              <div key={m.r} className="sw-cap-meter">
+                <span className="sw-cap-r num">
+                  {m.r >= 4 ? "SSR" : m.r === 3 ? "SR" : "R"}
+                </span>
+                <span className="sw-cap-track">
+                  <i style={{ width: `${m.pct}%` }} />
+                </span>
+                <span className="num sw-cap-pct">{m.pct}%</span>
+              </div>
+            ))}
+          </div>
+          <SwCtaRow
+            primaryLabel={`${tc.go} · ${ticket}`}
+            goldLabel={`${tc.tenBtn} · ${ticket * 10}`}
+            onPrimary={draw}
+            onGold={() => void ten.run()}
+            primaryDisabled={busy || prizes.length === 0}
+            goldDisabled={ten.busy || prizes.length === 0}
+            goldBusy={ten.busy}
+          />
         </div>
       }
       side={
         <div className={PANEL_LG}>
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
-          <HistoryStrip rounds={hist} />
+          <SwHist
+            rows={hist.slice(0, 6).map((h) => ({
+              t: (h.at ?? "").slice(11, 16) || "—",
+              txt: h.net > 0 ? tc.histWin : tc.histLose,
+              net: h.net,
+            }))}
+            empty={t.historyEmpty}
+          />
         </div>
+      }
+      foot={
+        <SwTenModal
+          open={ten.open}
+          title={tc.tenTitle}
+          rows={ten.rows}
+          totalLabel={tc.tenTotal.replace("{magic}", currency)}
+          onClose={ten.close}
+        />
       }
     />
   );

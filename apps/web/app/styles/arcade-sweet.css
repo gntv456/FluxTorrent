@@ -782,3 +782,21 @@
 [data-arcade="sweet"] .lw-pointer {
   border-top-color: #e05656;
 }
+
+/* 扭蛋稀有度分布 meter（星砂扭蛋，样图⑦） */
+.sw-cap-meters { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.sw-cap-meter {
+  display: grid; grid-template-columns: 40px 1fr 44px;
+  align-items: center; gap: 8px; font-size: 11px; font-weight: 800;
+}
+.sw-cap-r { color: var(--sweet-gold-deep); }
+.sw-cap-track {
+  height: 8px; border-radius: 999px; overflow: hidden;
+  background: var(--surface-sunken);
+}
+.sw-cap-track i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, #f0d9a8, var(--sweet-gold));
+  border-radius: 999px;
+}
+.sw-cap-pct { color: var(--sweet-ink-soft); text-align: right; }

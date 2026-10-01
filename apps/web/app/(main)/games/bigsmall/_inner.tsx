@@ -8,7 +8,8 @@ import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { fmtMult } from "@/lib/games";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
-import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
+import { ResultFlash } from "@/components/game/game-kit-feedback";
+import { SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { RunwayOdometer } from "@/components/game/runway";
 import { GameStage } from "@/components/game/game-stage";
 import { PropBar, type PropView } from "@/components/game/bigsmall-props";
@@ -30,6 +31,7 @@ interface RoundRow {
   bet: number;
   payout: number;
   net: number;
+  at?: string;
 }
 
 interface GuessResult {
@@ -231,6 +233,17 @@ export default function BigSmallPage({
               {tg.streak}
             </p>
           )}
+          <SwStatRow
+            items={[
+              { lb: tg.bsStatPlays, vl: String(ov?.me?.today_plays ?? 0) },
+              { lb: tg.bsStatMax, vl: `${fmtMult(winMult)}x`, tone: "gold" },
+              {
+                lb: tg.bsStatLeft,
+                vl: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
+                tone: "green",
+              },
+            ]}
+          />
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>
       }
@@ -271,8 +284,37 @@ export default function BigSmallPage({
       }
       side={
         <div className={PANEL_LG}>
+          {/* 赔率表 */}
+          <div className="mb-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3">
+            <h3 className="mb-2 text-xs font-bold text-sub">赔率表</h3>
+            <div className="grid grid-cols-2 gap-1 text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-sub">大 (11-18)</span>
+                <b className="num text-[var(--sky-deep)]">{fmtMult(winMult)}x</b>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sub">小 (3-10)</span>
+                <b className="num text-[var(--sky-deep)]">{fmtMult(winMult)}x</b>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sub">豹子 (三同)</span>
+                <b className="num text-[var(--gold-deep)]">8x</b>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sub">围骰 (全1/6)</span>
+                <b className="num text-danger">15x</b>
+              </div>
+            </div>
+          </div>
           <h2 className="mb-2 font-display text-base">{t.roadmap}</h2>
-          <HistoryStrip rounds={hist} />
+          <SwHist
+            rows={hist.slice(0, 6).map((h) => ({
+              t: (h.at ?? "").slice(11, 16) || "—",
+              txt: h.net > 0 ? tg.bsHistWin : tg.bsHistLose,
+              net: h.net,
+            }))}
+            empty={t.historyEmpty}
+          />
           {hist.length > 0 && (
             <p className="num mt-2 text-[11px] text-sub">
               {tg.statLine

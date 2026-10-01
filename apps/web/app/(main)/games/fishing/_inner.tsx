@@ -9,6 +9,7 @@ import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { FishingPond, type FishPhase } from "@/components/game/fishing-pond";
 import { FishingSide } from "@/components/game/fishing-side";
+import { SwStatRow } from "@/components/game/sw-panels";
 import { GameStage } from "@/components/game/game-stage";
 
 export interface Overview {
@@ -250,6 +251,21 @@ export default function FishingPage({
           <ResultFlash
             kind={flash?.kind ?? null}
             text={flash?.text ?? null}
+          />
+          <SwStatRow
+            items={[
+              { lb: tf.fStatPlays, vl: String(sessionPlays) },
+              {
+                lb: tf.fStatNet,
+                vl: String(ov?.me?.today_net ?? 0),
+                tone: "gold",
+              },
+              {
+                lb: tf.fStatLeft,
+                vl: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
+                tone: "green",
+              },
+            ]}
           />
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>
