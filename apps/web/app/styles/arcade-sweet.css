@@ -391,3 +391,394 @@
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.65),
     0 4px 10px rgba(44, 62, 92, 0.35);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ⑩ BalanceBar 余额条：珍珠蓝雾卡（用语义化类名 .gs-balance）
+   ═══════════════════════════════════════════════════════════ */
+[data-arcade="sweet"] .gs-balance {
+  background: linear-gradient(160deg, #ffffff 0%, #eef5fc 100%) !important;
+  border-color: var(--sweet-line) !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: inset 0 0 0 1px #fff, var(--sweet-shadow) !important;
+}
+[data-arcade="sweet"] .gs-balance .num {
+  font-family: var(--sweet-serif);
+  color: var(--sweet-sky-deep);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ⑪ HistoryStrip 战绩圆点：金=大奖 绿=赢
+   ═══════════════════════════════════════════════════════════ */
+[data-arcade="sweet"] .bg-sun {
+  background: linear-gradient(135deg, #f0d9a8, var(--sweet-gold)) !important;
+  box-shadow: 0 0 6px rgba(212, 175, 122, 0.6);
+}
+[data-arcade="sweet"] .bg-mint {
+  background: linear-gradient(135deg, #a8d8b8, #4a9a6a) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ⑫ GameShell 返回栏 + 标题（.gs-back / .gs-title）
+   ═══════════════════════════════════════════════════════════ */
+[data-arcade="sweet"] .gs-title {
+  font-family: var(--sweet-serif);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--sweet-ink);
+}
+[data-arcade="sweet"] .gs-back {
+  background: #fff;
+  border-color: var(--sweet-line) !important;
+  color: var(--sweet-sky-deep) !important;
+  font-weight: 700;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ⑬ 各游戏舞台组件细节
+   ═══════════════════════════════════════════════════════════ */
+
+/* —— 刮刮卡：稀有度星标金色 —— */
+[data-arcade="sweet"] .sc-stars {
+  color: var(--sweet-gold);
+  letter-spacing: 0.1em;
+}
+[data-arcade="sweet"] .sc-face {
+  border-radius: var(--r-md);
+}
+
+/* —— 九宫格：珍珠白底 + 中奖金光 —— */
+[data-arcade="sweet"] .jgrid {
+  background: linear-gradient(160deg, #e8f0fa, #d8e4f2);
+  border-radius: var(--r-md);
+  padding: 12px;
+}
+[data-arcade="sweet"] .cells .go {
+  background: linear-gradient(160deg, #f0d9a8, var(--sweet-gold));
+  box-shadow: 0 0 12px rgba(212, 175, 122, 0.6);
+  color: #5a3d12;
+}
+[data-arcade="sweet"] .cells .lamp {
+  background: #c5dff0;
+}
+[data-arcade="sweet"] .beam {
+    background: linear-gradient(90deg,
+    transparent, var(--sweet-lilac), transparent);
+}
+
+/* —— 扭蛋机：蓝紫机身 + 珍珠玻璃罩 —— */
+[data-arcade="sweet"] .cap-machine {
+  background: linear-gradient(180deg, #c5dff0, #8ab4dd);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+[data-arcade="sweet"] .cap-dome {
+    background: radial-gradient(circle at 35% 30%,
+    rgba(255,255,255,0.6), rgba(197,223,240,0.3) 60%, rgba(184,200,232,0.2));
+  border: 2px solid rgba(255,255,255,0.5);
+}
+[data-arcade="sweet"] .cap-base {
+  background: linear-gradient(180deg, var(--sweet-sky-deep), #2c5a8c);
+}
+[data-arcade="sweet"] .cap-knob {
+    background: radial-gradient(circle at 35% 30%,
+    #f7e6c0, var(--sweet-gold) 60%, var(--sweet-gold-deep));
+}
+
+/* —— 转盘：蓝紫金薄荷四色扇区 + 香槟金中心 —— */
+[data-arcade="sweet"] .lw-disc {
+  background: conic-gradient(
+    #c5dff0 0deg 45deg,
+    #d8c8e8 45deg 90deg,
+    #f0d9a8 90deg 135deg,
+    #b8e8d0 135deg 180deg,
+    #c5dff0 180deg 225deg,
+    #d8c8e8 225deg 270deg,
+    #f0d9a8 270deg 315deg,
+    #b8e8d0 315deg 360deg
+  );
+  box-shadow: 0 0 0 6px #fff, 0 0 0 8px var(--sweet-gold), var(--sweet-shadow);
+}
+[data-arcade="sweet"] .lw-hub {
+    background: radial-gradient(circle at 35% 30%,
+    #f7e6c0, var(--sweet-gold) 60%, var(--sweet-gold-deep));
+  box-shadow: 0 4px 12px rgba(176, 138, 74, 0.5);
+}
+
+/* —— 农场：成熟金光 + 枯萎灰褐 —— */
+[data-arcade="sweet"] .plot-bed.ripe {
+  box-shadow: 0 0 10px rgba(212, 175, 122, 0.5),
+    inset 0 0 0 2px var(--sweet-gold);
+}
+[data-arcade="sweet"] .plot-bed.dead {
+  filter: grayscale(0.6) opacity(0.7);
+}
+
+/* —— 宠物：舞台蓝雾 + 进度条蓝金 —— */
+[data-arcade="sweet"] .pp-stage {
+  background: radial-gradient(circle at 50% 40%, #e8f0fa, #c5dff0);
+  border-radius: var(--r-lg);
+}
+[data-arcade="sweet"] .pp-fill.hunger {
+  background: linear-gradient(90deg, var(--sweet-sky), var(--sweet-sky-deep));
+}
+[data-arcade="sweet"] .pp-fill.exp {
+  background: linear-gradient(90deg, var(--sweet-gold), var(--sweet-gold-deep));
+}
+
+/* —— 钓鱼：深蓝夜空 + 月光水面 —— */
+[data-arcade="sweet"] .fp-pond {
+  background: linear-gradient(180deg, #2c3e5c 0%, #4a7ab0 60%, #8ab4dd 100%);
+  border-radius: var(--r-md);
+}
+[data-arcade="sweet"] .fp-water {
+    background: linear-gradient(180deg,
+    rgba(197,223,240,0.3), rgba(74,122,176,0.5));
+}
+[data-arcade="sweet"] .fp-bobber {
+  background: linear-gradient(180deg, #fff 50%, #c85a5a 50%);
+}
+
+/* —— 钓鱼侧栏：鱼竿升级金卡 + 图鉴珍珠格 —— */
+[data-arcade="sweet"] .fs-rod {
+  background: linear-gradient(160deg, #fff, #f8f4e8);
+  border: 1px solid var(--sweet-gold);
+  border-radius: var(--r-md);
+  padding: 12px;
+}
+[data-arcade="sweet"] .fs-fish {
+  background: #fff;
+  border: 1px solid var(--sweet-line);
+  border-radius: var(--r-md);
+}
+[data-arcade="sweet"] .fs-fish.got {
+  border-color: var(--sweet-gold);
+  box-shadow: 0 2px 8px rgba(212, 175, 122, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ⑭ 多端断点：768px+ 出侧栏（.gs-body 缩窄 220px）
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 768px) and (max-width: 1023px) {
+  [data-arcade="sweet"] .gs-body {
+    grid-template-columns: minmax(0, 1fr) 220px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ⑮ 舞台容器：珍珠蓝雾卡（.gs-stage-box）
+   ═══════════════════════════════════════════════════════════ */
+[data-arcade="sweet"] .gs-stage-box {
+  background: linear-gradient(160deg, #fff, #eef5fc) !important;
+  border-color: var(--sweet-line) !important;
+  box-shadow: inset 0 0 0 1px #fff, var(--sweet-shadow) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ⑯ 防沉迷提示条：香槟金软提示
+   ═══════════════════════════════════════════════════════════ */
+[data-arcade="sweet"] .rounded-\[var\(--r-md\)\].bg-sun-soft {
+  background: linear-gradient(160deg, #f8f4e8, #f0d9a8) !important;
+  border: 1px solid var(--sweet-gold);
+}
+
+/* ══════ ⑩ 样图组件：stat-row / 历史 / cta / 涂层信封 ══════ */
+.sw-stat-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  width: 100%; max-width: 460px;
+}
+.sw-stat {
+  border-radius: var(--r-md); padding: 10px 8px; text-align: center;
+  background: linear-gradient(160deg, #fff, #eef5fc);
+  box-shadow: inset 0 0 0 1px var(--sweet-line);
+}
+.sw-stat-lb { font-size: 11px; font-weight: 700; color: var(--sweet-ink-soft); }
+.sw-stat-vl {
+  font-family: var(--sweet-serif); font-size: 18px; font-weight: 900;
+  color: var(--sweet-ink);
+}
+.sw-stat-vl.gold { color: var(--sweet-gold-deep); }
+.sw-stat-vl.green { color: #3f8a6b; }
+
+.sw-hist { display: flex; flex-direction: column; gap: 6px; }
+.sw-hrow {
+  display: grid; grid-template-columns: 44px 1fr auto;
+  align-items: center; gap: 8px;
+  font-size: 12px; padding: 6px 10px;
+  border-radius: 10px; border: 1px solid var(--sweet-line);
+  background: #f6f9fd;
+}
+.sw-htime { color: #8a9ab0; font-weight: 700; }
+.sw-htxt { color: var(--sweet-ink); }
+.sw-hamt { font-weight: 900; }
+.sw-hamt.win { color: #3f8a6b; }
+.sw-hamt.lose { color: #b3596b; }
+.sw-hist-empty {
+  padding: 8px 0; text-align: center; font-size: 12px;
+  color: var(--sweet-ink-soft);
+}
+
+.sw-cta-row { display: flex; gap: 10px; }
+.sw-cta {
+  flex: 1; min-height: 52px; border: none; cursor: pointer;
+  border-radius: 999px; color: #fff;
+  font-weight: 900; font-size: 15px; letter-spacing: 0.04em;
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+.sw-cta:active:not(:disabled) { transform: scale(0.97); }
+.sw-cta:disabled {
+  filter: none; opacity: 0.55; cursor: not-allowed;
+}
+.sw-cta.cta-primary {
+  background: linear-gradient(180deg, #a9c9ec, #4a7ab0);
+  box-shadow: 0 6px 14px -6px rgba(74, 122, 176, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 2px rgba(28, 51, 82, 0.35);
+}
+.sw-cta.cta-gold {
+  background: linear-gradient(180deg, #f0d9a8, #d4af7a 60%, #b08a4a);
+  color: #4a3312;
+  text-shadow: 0 1px 2px rgba(255, 244, 214, 0.6);
+  box-shadow: 0 6px 14px -6px rgba(176, 138, 74, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.sw-ten-overlay {
+  position: fixed; inset: 0; z-index: 95;
+  display: grid; place-items: center; padding: 16px;
+  background: rgba(20, 32, 52, 0.5);
+}
+.sw-ten {
+  width: min(420px, 92vw); max-height: 80vh; overflow-y: auto;
+  border-radius: var(--r-lg); padding: 14px;
+  background: linear-gradient(180deg, #fff, #f0f6fc);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-line),
+    0 20px 50px -20px rgba(44, 62, 92, 0.5);
+}
+.sw-ten-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.sw-ten-hd h4 {
+  font-family: var(--sweet-serif); font-size: 15px;
+  color: var(--sweet-sky-deep);
+}
+.sw-ten-x {
+  background: none; border: none; cursor: pointer;
+  color: var(--sweet-ink-soft);
+}
+.sw-ten-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px; padding: 6px 10px; margin-bottom: 4px;
+  border-radius: 8px; border: 1px solid var(--sweet-line); background: #fff;
+}
+.sw-ten-row.win { border-color: var(--sweet-gold); background: #fffaf0; }
+.sw-ten-total {
+  padding: 6px 4px 0; text-align: right;
+  font-weight: 900; color: var(--sweet-sky-deep);
+}
+
+/* 票种三档（星尘信封） */
+.sw-tiers { display: flex; gap: 8px; width: 100%; }
+.sw-tier {
+  flex: 1; padding: 10px 6px; cursor: pointer; text-align: center;
+  border-radius: 12px; background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--sweet-line);
+}
+.sw-tier.on-mint {
+  background: linear-gradient(160deg, #fff, #e8f0fa);
+  box-shadow: inset 0 0 0 2px var(--sweet-sky-deep);
+}
+.sw-tier.on-gold {
+  background: linear-gradient(160deg, #fff, #f8f4e8);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-gold);
+}
+.sw-tier-b { font-size: 12px; font-weight: 800; color: var(--sweet-ink-soft); }
+.sw-tier.on-mint .sw-tier-b { color: var(--sweet-sky-deep); font-weight: 900; }
+.sw-tier.on-gold .sw-tier-b { color: var(--sweet-gold-deep); }
+.sw-tier-s { margin-top: 2px; font-size: 10px; color: #8a9ab0; }
+
+/* 星尘信封 + 3×2 涂层格 */
+.sw-envelope {
+  width: 100%; max-width: 420px; border-radius: 20px; padding: 14px;
+  background: linear-gradient(160deg, #fff, #eef5fc);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-gold),
+    0 8px 20px -10px rgba(74, 122, 176, 0.4);
+}
+.sw-env-head {
+  display: flex; justify-content: space-between; margin-bottom: 10px;
+  font-size: 11px; font-weight: 700; color: var(--sweet-ink-soft);
+}
+.sw-env-info {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 10px; font-size: 11px; font-weight: 700;
+  color: var(--sweet-ink-soft);
+}
+.sw-reveal-all {
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; font-weight: 800; color: var(--sweet-sky-deep);
+  text-decoration: underline;
+}
+.sw-coat-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.sw-coat-cell {
+  position: relative; aspect-ratio: 1; padding: 0;
+  border: none; cursor: pointer; overflow: hidden;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #fff, #e8f0fa);
+  box-shadow: inset 0 0 0 1px var(--sweet-line);
+}
+.sw-coat-cell:disabled { cursor: default; }
+.sw-coat-face {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; font-weight: 800;
+}
+.sw-coat-face .ic { font-size: 26px; }
+.sw-coat-face .mx { font-size: 12px; color: var(--sweet-gold-deep); }
+.sw-coat-face.decoy { font-size: 11px; color: #8a9ab0; }
+.sw-coat-lid {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 20px; font-weight: 900; color: #fff;
+  background: repeating-linear-gradient(45deg,
+      rgba(255, 255, 255, 0.14) 0 8px, transparent 8px 16px),
+    linear-gradient(160deg, #c5dff0, #8ab4dd);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.sw-coat-cell.open .sw-coat-lid {
+  opacity: 0; transform: scale(1.15); pointer-events: none;
+}
+.sw-coat-cell.sw-coat-hit .sw-coat-face {
+  border-radius: 12px;
+  background: radial-gradient(circle at 50% 30%, #fffaf0, #f8f4e8);
+  box-shadow: inset 0 0 0 2px var(--sweet-gold);
+}
+
+/* 奖池 pill（转盘：单池如实展示） */
+.sw-pool-pill {
+  display: inline-block; padding: 4px 14px;
+  border-radius: 999px; font-size: 11px; font-weight: 800;
+  letter-spacing: 0.1em; color: #fff;
+    background: linear-gradient(90deg,
+    var(--sweet-sky), var(--sweet-lilac) 45%, var(--sweet-gold));
+  box-shadow: var(--sweet-shadow-gold);
+}
+
+/* 九宫格灯牌标签：暗底浅字 → 甜梦深字（白标签压浅盘不再隐身） */
+[data-arcade="sweet"] .jgrid .lamp .tname {
+  color: var(--sweet-ink-soft);
+  text-shadow: none;
+}
+[data-arcade="sweet"] .jgrid .lamp .tpill {
+  color: var(--sweet-gold-deep);
+  text-shadow: none;
+  border-color: var(--sweet-line);
+  background: linear-gradient(180deg, #fff, #f8f4e8);
+}
+[data-arcade="sweet"] .jgrid .lamp .medal {
+  opacity: 0.85;
+}
+/* 转盘盘面：色板已在 lucky-wheel 源头切粉彩（样图口径），此处不再滤色 */
+[data-arcade="sweet"] .lw-pointer {
+  border-top-color: #e05656;
+}
