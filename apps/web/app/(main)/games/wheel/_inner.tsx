@@ -4,10 +4,11 @@ import { PANEL_LG } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { SwCtaRow, SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
-import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
+import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { LuckyWheel, type WheelPrize } from "@/components/game/lucky-wheel";
 import { GameStage } from "@/components/game/game-stage";
 
@@ -26,6 +27,7 @@ interface RoundRow {
   bet: number;
   payout: number;
   net: number;
+  at?: string;
 }
 
 interface DrawResult {
@@ -182,11 +184,42 @@ export default function WheelFocusPage({
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tw.spinning : null)}
           />
+          <SwCtaRow
+            primaryLabel={`${tw.go} · ${ticket}`}
+            primaryDisabled={busy || prizes.length === 0}
+            onPrimary={draw}
+            primaryGold
+          />
+          <SwStatRow
+            items={[
+              {
+                lb: tw.statLeft,
+                vl: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
+              },
+              {
+                lb: tw.statMax,
+                vl:
+                  prizes.length > 0
+                    ? `${Math.max(...prizes.map((p) => p.payout)).toFixed(1)}x`
+                    : "—",
+                tone: "gold",
+              },
+              {
+                lb: tw.statNet,
+                vl: String(ov?.me?.today_net ?? 0),
+                tone: "green",
+              },
+            ]}
+          />
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>
       }
       controls={
         <div className={PANEL_LG}>
+          {/* 奖池口径：当前只有一张日常池，标签如实展示（不放假切换） */}
+          <div className="mb-3">
+            <span className="sw-pool-pill">{tw.poolPill}</span>
+          </div>
           <h2 className="mb-2 font-display text-base">{tw.prizePool}</h2>
           <div className="flex flex-wrap gap-1.5">
             {prizes.map((p, i) => (
@@ -210,7 +243,14 @@ export default function WheelFocusPage({
       side={
         <div className={PANEL_LG}>
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
-          <HistoryStrip rounds={hist} />
+          <SwHist
+            rows={hist.slice(0, 6).map((h) => ({
+              t: (h.at ?? "").slice(11, 16) || "—",
+              txt: h.net > 0 ? tw.histWin : tw.histLose,
+              net: h.net,
+            }))}
+            empty={t.historyEmpty}
+          />
         </div>
       }
     />

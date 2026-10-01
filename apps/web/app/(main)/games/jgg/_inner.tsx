@@ -4,10 +4,18 @@ import { PANEL_LG } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useTenDraw } from "@/lib/ten-draw";
+import {
+  SwCtaRow,
+  SwHist,
+  SwStatRow,
+  SwTenModal,
+  type SwHistRow,
+} from "@/components/game/sw-panels";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
-import { HistoryStrip, ResultFlash } from "@/components/game/game-kit-feedback";
+import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { JggGrid, type JggPrize } from "@/components/game/jgg-grid";
 import { GameStage } from "@/components/game/game-stage";
 
@@ -26,6 +34,7 @@ interface RoundRow {
   bet: number;
   payout: number;
   net: number;
+  at?: string;
 }
 
 interface DrawResult {
@@ -150,6 +159,29 @@ export default function JggPage({
     void loadMeta();
   }
 
+  // 十连：十次真实单抽（每次独立幂等键），结果汇总进浮层
+  const ten = useTenDraw<DrawResult>({
+    path: "/api/v1/games/jgg",
+    onError: (m) => setErr(m),
+    onDone: () => {
+      setSessionPlays((n) => n + 10);
+      void loadMeta();
+    },
+    netOf: (r) => (r.value ?? r.payout) - ticket,
+    labelOf: (r) => r.prize,
+  });
+
+  const maxMult = prizes.length
+    ? Math.max(
+        ...prizes.map((p) => (p.value ?? (p.payout * ticket) / 1) / ticket),
+      )
+    : 0;
+  const histRows: SwHistRow[] = hist.slice(0, 6).map((h, i) => ({
+    t: (h.at ?? "").slice(11, 16) || "—",
+    txt: h.net >= 0 ? tj.histWin : tj.histLose,
+    net: h.net,
+  }));
+
   return (
     <GameShell
       icon="🎰"
@@ -187,6 +219,21 @@ export default function JggPage({
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tj.drawing : null)}
           />
+          <SwStatRow
+            items={[
+              { lb: tj.statPlays, vl: String(ov?.me?.today_plays ?? 0) },
+              {
+                lb: tj.statMax,
+                vl: maxMult > 0 ? `${maxMult.toFixed(1)}x` : "—",
+                tone: "gold",
+              },
+              {
+                lb: tj.statLeft,
+                vl: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
+                tone: "green",
+              },
+            ]}
+          />
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>
       }
@@ -210,13 +257,31 @@ export default function JggPage({
             ))}
           </div>
           <p className="mt-2 text-[11px] text-sub">{tj.poolNote}</p>
+          <SwCtaRow
+            primaryLabel={`${tj.go} · ${ticket}`}
+            goldLabel={`${tj.tenBtn} · ${ticket * 10}`}
+            onPrimary={draw}
+            onGold={ten.run}
+            primaryDisabled={busy || prizes.length === 0}
+            goldDisabled={busy || ten.busy || prizes.length === 0}
+            goldBusy={ten.busy}
+          />
         </div>
       }
       side={
         <div className={PANEL_LG}>
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
-          <HistoryStrip rounds={hist} />
+          <SwHist rows={histRows} empty={t.historyEmpty} />
         </div>
+      }
+      foot={
+        <SwTenModal
+          open={ten.open}
+          title={tj.tenTitle}
+          rows={ten.rows}
+          totalLabel={tj.tenTotal}
+          onClose={ten.close}
+        />
       }
     />
   );

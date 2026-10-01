@@ -35,10 +35,10 @@ function sector(a1: number, a2: number): string {
 
 /** 档位配色：大奖金、高档紫、中档蓝、小档灰（与九宫格/扭蛋同语义） */
 function segColor(v: number, tk: number): string {
-  if (v >= tk * 10) return "#e9b94e";
-  if (v >= tk * 3) return "#a06bf0";
-  if (v >= tk) return "#3f83d6";
-  return "#28324f";
+  if (v >= tk * 10) return "#f0d9a8";
+  if (v >= tk * 3) return "#c9d4f2";
+  if (v >= tk) return "#c5dff0";
+  return "#eef5fc";
 }
 
 /** 扇区读数：魔力档 ×N、物品档显示图标（与九宫格一致） */
@@ -119,7 +119,7 @@ export function LuckyWheel({
           style={{ transform: `rotate(${rot}deg)` }}
           aria-hidden
         >
-          <circle cx={CX} cy={CY} r={R + 6} fill="#0b0e18" />
+          <circle cx={CX} cy={CY} r={R + 6} fill="#d4af7a" />
           {prizes.map((p, i) => {
             const a1 = i * seg;
             const a2 = a1 + seg;
@@ -141,7 +141,7 @@ export function LuckyWheel({
                   dominantBaseline="middle"
                   fontSize={seg > 60 ? 15 : 13}
                   fontWeight="800"
-                  fill={v >= ticket ? "#2a1c05" : "#dbe4fb"}
+                  fill="#2c3e5c"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {glyph(p)}
