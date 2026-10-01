@@ -656,17 +656,48 @@
   background: linear-gradient(90deg, var(--sweet-gold), var(--sweet-gold-deep));
 }
 
-/* —— 钓鱼：深蓝夜空 + 月光水面 —— */
+/* —— 钓鱼（样图⑩）：全出血星夜海 ——
+   fishing-pond.tsx 渲染 .fp-pond-svg（SVG 星夜场景：月/星/水草/
+   鱼群/浮漂）。外壳层要突破 gs-stage-box 的内边距与圆角，
+   让塘真正铺满栏宽、占首屏大头（样图 ~60%） */
+[data-arcade="sweet"] .gs-stage-box:has(.fp-pond-svg) {
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  overflow: hidden;
+}
+[data-arcade="sweet"] .fp-pond-svg {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+[data-arcade="sweet"] .fp-pond-svg svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
 [data-arcade="sweet"] .fp-pond {
-  background: linear-gradient(180deg, #2c3e5c 0%, #4a7ab0 60%, #8ab4dd 100%);
-  border-radius: var(--r-md);
+  max-width: none;
+  height: clamp(300px, 58vh, 520px);
+  border-radius: 0;
+  border: none;
+  background:
+    linear-gradient(180deg, #2c3e5c 0%, #4a7ab0 45%, #8ab4dd 82%, #a0c4e3 100%);
+  box-shadow: none;
 }
-[data-arcade="sweet"] .fp-water {
-    background: linear-gradient(180deg,
-    rgba(197,223,240,0.3), rgba(74,122,176,0.5));
+/* 状态文案：白字叠在塘面下缘（HUD 黑底条撤掉） */
+[data-arcade="sweet"] .fp-hud {
+  justify-content: center;
+  align-items: center;
+  bottom: 22%;
+  background: none;
+  padding: 0 14px;
 }
-[data-arcade="sweet"] .fp-bobber {
-  background: linear-gradient(180deg, #fff 50%, #c85a5a 50%);
+[data-arcade="sweet"] .fp-label {
+  color: #fff;
+  font-size: 12px;
+  text-shadow: 0 1px 4px rgba(9, 18, 32, 0.55);
 }
 
 /* —— 钓鱼侧栏：鱼竿升级金卡 + 图鉴珍珠格 —— */

@@ -11,6 +11,7 @@ import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { RunwayOdometer } from "@/components/game/runway";
+import { DieFace } from "@/components/game/die-face";
 import { GameStage } from "@/components/game/game-stage";
 import { PropBar, type PropView } from "@/components/game/bigsmall-props";
 
@@ -226,14 +227,15 @@ export default function BigSmallPage({
           >
             <RunwayOdometer number={num} spinning={busy} reduced={reduced} />
           </GameStage>
-          {/* 双骰舞台（样图⑥）：一枚骰拆两枚，点数各显一半 */}
+          {/* 双骰舞台（样图⑥）：两枚 72px 骰面，点数拆两枚显示 */}
           <div className="bs-dice" aria-hidden>
-            <div className="bs-die">
-              <span>{num == null ? "🎲" : Math.ceil(num / 2) || "🎲"}</span>
-            </div>
-            <div className="bs-die">
-              <span>{num == null ? "🎲" : Math.floor(num / 2) || "🎲"}</span>
-            </div>
+            {[
+              Math.ceil((num ?? 2) / 2) || 1,
+              Math.floor((num ?? 2) / 2) || 1,
+            ].map((n, i) => (
+                <DieFace key={i} n={n} />
+              ),
+            )}
           </div>
           <p className="bs-dice-cap">
             {num == null
@@ -330,16 +332,22 @@ export default function BigSmallPage({
       side={
         <div className={PANEL_LG}>
           {/* 赔率表 */}
-          <div className="mb-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3">
+          <div
+            className="mb-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3"
+          >
             <h3 className="mb-2 text-xs font-bold text-sub">赔率表</h3>
             <div className="grid grid-cols-2 gap-1 text-[11px]">
               <div className="flex justify-between">
                 <span className="text-sub">大 (11-18)</span>
-                <b className="num text-[var(--sky-deep)]">{fmtMult(winMult)}x</b>
+                <b className="num text-[var(--sky-deep)]">
+                  {fmtMult(winMult)}x
+                </b>
               </div>
               <div className="flex justify-between">
                 <span className="text-sub">小 (3-10)</span>
-                <b className="num text-[var(--sky-deep)]">{fmtMult(winMult)}x</b>
+                <b className="num text-[var(--sky-deep)]">
+                  {fmtMult(winMult)}x
+                </b>
               </div>
               <div className="flex justify-between">
                 <span className="text-sub">豹子 (三同)</span>

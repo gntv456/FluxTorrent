@@ -26,7 +26,7 @@ export function BalanceBar({
   const { dict, currency } = useI18n();
   const t = dict.games;
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-3 shadow-[var(--shadow-card)]">
+    <div className="gs-balance flex flex-wrap items-center gap-x-5 gap-y-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-3 shadow-[var(--shadow-card)]">
       <span className="flex items-baseline gap-1.5">
         <span aria-hidden>💎</span>
         <span className="num text-base font-black">
@@ -88,24 +88,24 @@ export function GameShell({
 }) {
   const { dict } = useI18n();
   return (
-    <div className="flex flex-col gap-4">
+    <div className="gs-shell flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href="/games"
-          className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
+          className="gs-back min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
         >
           ← {dict.games.back}
         </Link>
-        <h1 className="font-display text-2xl">
+        <h1 className="gs-title font-display text-2xl">
           <span aria-hidden>{icon}</span> {title}
         </h1>
         {subtitle && <span className="text-sm text-sub">{subtitle}</span>}
       </div>
       <BalanceBar balance={balance} todayNet={todayNet} limitLeft={limitLeft} />
       {notice}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="gs-body grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col items-center gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-raised)] p-5 shadow-[var(--shadow-card)]">
+          <div className="gs-stage-box flex flex-col items-center gap-3 rounded-[var(--r-lg)] border border-line bg-[var(--surface-raised)] p-5 shadow-[var(--shadow-card)]">
             {stage}
           </div>
           {controls}

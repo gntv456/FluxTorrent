@@ -2310,6 +2310,8 @@ const zhTwBase: Omit<
       fTodayGold: "金色漁獲",
       fBest: "最佳",
       albumLink: "圖鑑 ›",
+      histWin: "漁獲",
+      histLose: "脫鉤",
       fStatNet: "今日漁獲淨收",
       fStatLeft: "剩餘局數",
     },
