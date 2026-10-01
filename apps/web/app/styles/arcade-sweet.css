@@ -158,59 +158,144 @@
   box-shadow: var(--sweet-shadow-gold);
 }
 
-/* ══════ ③ 游戏卡片：大圆角 + 蓝雾渐变 + 浮起微倾 ══════ */
+/* ══════ ③ 游戏卡片：样图横向 gcard（彩块图标 + 名称行 + 金胶囊）══════ */
 [data-arcade="sweet"] .gc-card {
-  border-radius: var(--r-lg);
-  background: linear-gradient(160deg, #ffffff 0%, #eef5fc 100%);
-  box-shadow: 0 6px 16px -8px rgba(74, 122, 176, 0.25),
-    inset 0 0 0 1px #fff;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 8px -4px rgba(44, 62, 92, 0.12);
+  border: 1px solid #fff;
   overflow: hidden;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
-  border: none;
 }
 [data-arcade="sweet"] .gc-card:hover {
-  transform: translateY(-3px) rotate(-0.5deg);
-  box-shadow: 0 14px 28px -10px rgba(74, 122, 176, 0.4),
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(74, 122, 176, 0.35),
     inset 0 0 0 1px var(--sweet-mist);
 }
+/* 图标区：从 120px 大画布缩成 42px 彩块（样图 tone 渐变） */
 [data-arcade="sweet"] .gc-art {
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  height: 42px;
+  width: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+[data-arcade="sweet"] .gc-art::after {
+  display: none; /* 大画布的玻璃高光在 42px 块上太挤 */
+}
+[data-arcade="sweet"] .gc-art-grid {
+  display: none;
 }
 [data-arcade="sweet"] .gc-glyph {
-  font-size: 34px;
-  filter: drop-shadow(0 3px 6px rgba(44, 62, 92, 0.25));
+  width: 42px; height: 42px;
+  font-size: 22px;
+  filter: drop-shadow(0 2px 4px rgba(44, 62, 92, 0.3));
 }
-/* 角标 = 金色缎带胶囊；HOT = 珊瑚红小冠 */
+[data-arcade="sweet"] .gc-glyph::after {
+  display: none; /* 宝石底座换到彩块上不需要 */
+}
+[data-arcade="sweet"] .gc-tone-sky {
+  background: linear-gradient(135deg, #6a9ec8, #4a7ab0);
+}
+[data-arcade="sweet"] .gc-tone-coral {
+  background: linear-gradient(135deg, #d89898, #b86868);
+}
+[data-arcade="sweet"] .gc-tone-mint {
+  background: linear-gradient(135deg, #78b898, #4a8868);
+}
+[data-arcade="sweet"] .gc-tone-sun {
+  background: linear-gradient(135deg, #e8c878, #c89848);
+}
+[data-arcade="sweet"] .gc-tone-candy {
+  background: linear-gradient(135deg, #d898b8, #b86898);
+}
+[data-arcade="sweet"] .gc-tone-indigo {
+  background: linear-gradient(135deg, #8898d8, #5a6ab8);
+}
+[data-arcade="sweet"] .gc-tone-violet {
+  background: linear-gradient(135deg, #9a8ac8, #6a5a98);
+}
+[data-arcade="sweet"] .gc-tone-teal {
+  background: linear-gradient(135deg, #78b8c8, #4888a8);
+}
+/* 角标：金胶囊贴**整卡**右上 —— 撤掉 gc-art 的 relative（原 arcade.css
+   给了它 relative，角标 absolute 就近锚到彩块上了），改锚到 gc-card */
+[data-arcade="sweet"] .gc-card {
+  position: relative;
+}
+[data-arcade="sweet"] .gc-art {
+  position: static;
+}
 [data-arcade="sweet"] .gc-badge {
+  position: absolute;
+  top: -7px; right: -5px;
+  margin: 0;
   background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
   color: #6b4a1a;
   border-radius: 999px;
+  font-size: 9px;
   font-weight: 800;
+  padding: 2px 7px;
+  border: 1.5px solid #fff;
   box-shadow: 0 2px 6px rgba(176, 138, 74, 0.35);
 }
 [data-arcade="sweet"] .gc-hot {
+  position: absolute;
+  top: -7px; right: -5px;
+  margin: 0;
   background: linear-gradient(90deg, #d97a7a, #e8a8a8);
   color: #fff;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 9px;
+  padding: 2px 7px;
+  border: 1.5px solid #fff;
   letter-spacing: 0.1em;
+  box-shadow: 0 2px 6px rgba(217, 122, 122, 0.35);
+}
+[data-arcade="sweet"] .gc-soon {
+  position: absolute;
+  top: -7px; right: -5px;
+  margin: 0;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 9px;
+  border: 1.5px solid #fff;
+}
+/* 文案区：名称 + 副标两行，去「去玩→」 */
+[data-arcade="sweet"] .gc-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 [data-arcade="sweet"] .gc-title {
   font-family: var(--sweet-serif);
+  font-size: 14px;
   font-weight: 800;
   color: var(--sweet-ink);
+  line-height: 1.2;
 }
 [data-arcade="sweet"] .gc-sub {
   color: var(--sweet-ink-soft);
-  font-size: 12px;
+  font-size: 11px;
+  margin: 0;
 }
 [data-arcade="sweet"] .gc-go {
-  color: #2c5a8c;
-  font-weight: 700;
-  font-size: 12px;
+  display: none;
 }
+/* 网格：横向小卡改成 2~4 列密排（样图 2 列手机 / 桌面 4 列） */
 [data-arcade="sweet"] .gc-grid {
-  gap: 14px;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 900px) {
+  [data-arcade="sweet"] .gc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ══════ ④ 纹章预算环：金描边 + 米黄缎面（蕾丝纹） ══════ */
@@ -573,6 +658,23 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
+   ⑮b 电脑端宽屏优化：放大舞台、加宽侧栏
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 1280px) {
+  [data-arcade="sweet"] .gs-body {
+    grid-template-columns: minmax(0, 1fr) 320px !important;
+  }
+  [data-arcade="sweet"] .gs-stage-box {
+    padding: 28px !important;
+  }
+}
+@media (min-width: 1024px) {
+  [data-arcade="sweet"] .gs-stage-box .w-full.max-w-\[460px\] {
+    max-width: 560px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
    ⑯ 防沉迷提示条：香槟金软提示
    ═══════════════════════════════════════════════════════════ */
 [data-arcade="sweet"] .rounded-\[var\(--r-md\)\].bg-sun-soft {
@@ -884,3 +986,33 @@
     rgba(255, 255, 255, 0.7), rgba(197, 223, 240, 0.35));
   z-index: -1;
 }
+
+/* ══════ 快捷入口（样图① quick）：白卡圆角图标 + 待办角标 ══════ */
+.gc-quick {
+  display: flex; justify-content: space-around; gap: 8px;
+  padding: 2px 4px;
+}
+.gc-qi {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 5px; min-width: 56px;
+}
+.gc-qi-ic {
+  position: relative;
+  width: 52px; height: 52px; border-radius: 16px;
+  display: grid; place-items: center;
+  font-size: 22px;
+  background: #fff;
+  box-shadow: 0 4px 10px -4px rgba(74, 122, 176, 0.3);
+  border: 1.5px solid #fff;
+  color: var(--sweet-sky-deep);
+}
+.gc-qi-badge {
+  position: absolute; top: -6px; right: -8px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  display: grid; place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
+  border: 1.5px solid #fff;
+  color: #6b4a1a; font-size: 10px; font-weight: 800;
+}
+.gc-qi-lb { font-size: 11px; font-weight: 700; color: var(--sweet-ink-soft); }

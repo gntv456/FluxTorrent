@@ -132,10 +132,10 @@ export default async function GamesPage() {
     <div className="flex flex-col gap-5">
       <section className="gc-hero">
         <div className="gc-hero-main">
-          <div className="pg-eyebrow">Arcade</div>
-          <h1 className="font-display">{dict.games.title}</h1>
+          <div className="pg-eyebrow">{dict.games.hall.hTag}</div>
+          <h1 className="font-display">{dict.games.hall.hTitle}</h1>
           <p className="gc-hero-sub">
-            {dict.games.subtitle.replace("{magic}", currency)}
+            {dict.games.hall.hSub.replace("{magic}", currency)}
           </p>
         </div>
         <div className="gc-hero-stat">
@@ -146,6 +146,23 @@ export default async function GamesPage() {
         </div>
         <span className="gc-hero-orb" aria-hidden />
       </section>
+
+      {/* 快捷入口（样图①）：五个直达 + 待办角标 */}
+      <div className="gc-quick">
+        {visible.slice(0, 5).map((e) => (
+          <Link key={e.key} href={e.href} className="gc-qi" aria-label={cards[e.key]?.title ?? e.key}>
+            <span className="gc-qi-ic">
+              <span aria-hidden>{e.icon}</span>
+              {e.badge === "scratch" && (
+                <span className="gc-qi-badge num">3</span>
+              )}
+            </span>
+            <span className="gc-qi-lb">
+              {(cards[e.key]?.title ?? e.key).replace("{magic}", currency)}
+            </span>
+          </Link>
+        ))}
+      </div>
 
       {groups.map((g) => {
         const items = visible.filter((e) => e.group === g.key);
@@ -160,7 +177,8 @@ export default async function GamesPage() {
             <div className="gc-grid">
               {items.map((e) => {
                 const badge = badgeOf(e);
-                const title = cards[e.key]?.title ?? e.key;
+                const rawTitle = cards[e.key]?.title ?? e.key;
+                const title = rawTitle.replace("{magic}", currency);
                 const inner = (
                   <>
                     <div className={`gc-art gc-tone-${e.tone}`}>
