@@ -27,6 +27,8 @@ export default function PetFocusPage({
   const [err, setErr] = useState<string | null>(null);
   const [useCoupon, setUseCoupon] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  // 投喂成功的「吃到东西」反馈：让宠物晃一下（纯前端，零账目）
+  const [eating, setEating] = useState(false);
   const [toast, setToast] = useState<{
     kind: "win" | "lose" | "tie" | "jackpot";
     text: string;
@@ -62,6 +64,8 @@ export default function PetFocusPage({
         use_coupon: useCoupon,
       });
       setSt({ ...r.status, food_coupons: r.food_coupons });
+      setEating(true);
+      window.setTimeout(() => setEating(false), 700);
       const leveled = before !== null && r.status.level > before.level;
       const gained = Math.max(0, r.status.exp - (before?.exp ?? 0));
       setToast({
@@ -124,6 +128,7 @@ export default function PetFocusPage({
             {st ? (
               <PetPen
                 status={st}
+                eating={eating}
                 hungerLabel={tp.hunger}
                 expLabel={tp.exp}
               />

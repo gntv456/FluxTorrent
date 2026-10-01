@@ -23,33 +23,66 @@ export interface PetStatus {
   food_coupons?: number;
 }
 
-/** 宠物栏：成长形象 + 状态条。纯展示，动作在页面。 */
+/** 宠物情绪：饿=馋（投喂可解锁动画），饱=开心；满级再叠一层 celebrating */
+function moodOf(status: PetStatus): "hungry" | "happy" | "max" {
+  if (status.level >= status.max_level) return "max";
+  return status.hunger < 40 ? "hungry" : "happy";
+}
+
+/** 宠物栏：小舞台（天光/地面/气泡/等级徽章）+ 成长形象 + 状态条。
+ *  纯展示；「摸摸头」是本地动画（零账目，纯情感反馈）。 */
 export function PetPen({
   status,
+  eating = false,
   hungerLabel,
   expLabel,
 }: {
   status: PetStatus;
+  eating?: boolean;
   hungerLabel: string;
   expLabel: string;
 }) {
   const { dict } = useI18n();
+  const tp = dict.games.pet as Record<string, string>;
+  const [pat, setPat] = useState(0);
   const line = petLineOf(status.species);
   const i = Math.min(Math.max(status.level - 1, 0), line.length - 1);
   const maxed = status.level >= status.max_level;
-  const spKey =
-    PET_SPECIES_KEY[status.species as PetSpecies] ?? "spSlime";
+  const mood = moodOf(status);
+  const spKey = PET_SPECIES_KEY[status.species as PetSpecies] ?? "spSlime";
   return (
     <div className="pp-pen">
       {status.name ? <div className="pp-name num">{status.name}</div> : null}
-      <div className="pp-stage">
-        <span className={`pp-pet${maxed ? " max" : ""}`} aria-hidden>
+      <div className={`pp-stage mood-${mood}`}>
+        <span className="pp-glow" aria-hidden />
+        <span
+          className={`pp-pet${maxed ? " max" : ""}${eating ? " eating" : ""}`}
+          aria-hidden
+        >
           {line[i]}
         </span>
-        <span className="pp-ring" aria-hidden />
+        <span className="pp-lv num" aria-label={`Lv.${status.level}`}>
+          {status.level}
+        </span>
+        <span className="pp-bubble" aria-hidden>
+          {mood === "hungry" ? tp.moodHungry : tp.moodHappy}
+        </span>
+        <span className="pp-ground" aria-hidden />
+        <span className="pp-ground-shadow" aria-hidden />
+        <button
+          type="button"
+          className="pp-pat"
+          aria-label={tp.pat}
+          title={tp.pat}
+          onClick={() => setPat((n) => n + 1)}
+        >
+          <span key={pat} className="pp-pat-heart" aria-hidden>
+            {pat > 0 ? "💜" : ""}
+          </span>
+        </button>
       </div>
       <div className="pp-species-tag">
-        {(dict.games.pet as Record<string, string>)[spKey]}
+        {tp[spKey]}
       </div>
       <div className="pp-bars">
         <div className="pp-bar">
