@@ -1544,7 +1544,8 @@
   overflow: hidden;
   border-radius: var(--r-lg);
   background:
-    radial-gradient(90% 60% at 50% 0%, rgba(124, 224, 160, 0.16), transparent 70%),
+    radial-gradient(90% 60% at 50% 0%,
+      rgba(124, 224, 160, 0.16), transparent 70%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 45%),
     var(--surface-sunken);
   border: 1px solid var(--line);
@@ -1552,12 +1553,14 @@
 /* 情绪氛围光：饿=暖橙（该喂了），饱=薄荷（安好），满级=金 */
 .pp-stage.mood-hungry {
   background:
-    radial-gradient(90% 60% at 50% 0%, rgba(241, 156, 77, 0.18), transparent 70%),
+    radial-gradient(90% 60% at 50% 0%,
+      rgba(241, 156, 77, 0.18), transparent 70%),
     var(--surface-sunken);
 }
 .pp-stage.mood-max {
   background:
-    radial-gradient(90% 60% at 50% 0%, rgba(233, 185, 78, 0.2), transparent 70%),
+    radial-gradient(90% 60% at 50% 0%,
+      rgba(233, 185, 78, 0.2), transparent 70%),
     var(--surface-sunken);
 }
 /* 中心柔光（宠物站在光里） */
@@ -1565,13 +1568,16 @@
   position: absolute;
   top: 44px; left: 50%; transform: translateX(-50%);
   width: 120px; height: 120px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(160, 240, 200, 0.22), transparent 65%);
+  background:
+    radial-gradient(circle, rgba(160, 240, 200, 0.22), transparent 65%);
 }
 .pp-stage.mood-hungry .pp-glow {
-  background: radial-gradient(circle, rgba(255, 190, 120, 0.25), transparent 65%);
+  background:
+    radial-gradient(circle, rgba(255, 190, 120, 0.25), transparent 65%);
 }
 .pp-stage.mood-max .pp-glow {
-  background: radial-gradient(circle, rgba(255, 220, 120, 0.3), transparent 65%);
+  background:
+    radial-gradient(circle, rgba(255, 220, 120, 0.3), transparent 65%);
 }
 /* 地面：宠物有了「站的地方」，画面立刻从浮空变舞台 */
 .pp-ground {
@@ -1793,7 +1799,10 @@
 .fs-rod-ico { font-size: 18px; }
 .fs-rod-lv { font-weight: 800; }
 .fs-rod-bonus { color: var(--sub); }
-.fs-rod-up { margin-left: auto; padding: 4px 10px; font-size: 11px; }
+.fs-rod-up {
+  flex-basis: 100%; text-align: center; white-space: nowrap;
+  padding: 4px 10px; font-size: 11px;
+}
 .fs-album { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .fs-album-n {
   margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--sub);
