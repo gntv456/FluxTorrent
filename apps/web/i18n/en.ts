@@ -2394,6 +2394,7 @@ const enBase: Omit<
       value: "Value",
       times: "×",
     },
+    gachaPool: "Current pool",
     hall: {
       groupInstant: "Instant",
       groupSession: "Idle & Collector",
@@ -2418,6 +2419,8 @@ const enBase: Omit<
   },
   farm: {
     title: "{magic} Farm",
+    fsPlanted: "Planted {a}/{b}",
+    fsReady: "{n} ready",
     marketRule: "Market refreshes at {time} ({rule} · ±50% swing)",
     loading: "Loading farm…",
     plotEmpty: "Plot #{n}",

@@ -43,8 +43,21 @@ export function MyFieldSection({
   onHarvestAll: () => void;
   act: Act;
 }) {
+  const planted = plots.filter((p) => p).length;
   return (
     <section className={PANEL_LG}>
+      <div className="sw-farm-strip">
+        <span>
+          {tf.fsPlanted.replace("{a}", String(planted)).replace(
+            "{b}",
+            String(plots.length),
+          )}
+        </span>
+        <span className="sw-farm-dot">·</span>
+        <span>
+          {tf.fsReady.replace("{n}", String(readyPlots.length))}
+        </span>
+      </div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-base">{tf.myField}</h2>
         <div className="flex flex-wrap items-center gap-2">

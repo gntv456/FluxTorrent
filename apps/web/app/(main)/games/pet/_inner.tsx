@@ -153,12 +153,12 @@ export default function PetFocusPage({
               )}
             </span>
           </div>
-          <div className="flex gap-2">
+          <div className="pp-acts">
             <button
               type="button"
               onClick={feed}
               disabled={busy || !st || st.level >= (st?.max_level ?? 10)}
-              className="arc-call sky"
+              className="pp-act sky"
             >
               {busy
                 ? tp.feeding
@@ -168,9 +168,19 @@ export default function PetFocusPage({
             </button>
             <button
               type="button"
+              onClick={() => {
+                const pet = document.querySelector(".pp-pat");
+                if (pet instanceof HTMLElement) pet.click();
+              }}
+              className="pp-act gold"
+            >
+              {tp.pat}
+            </button>
+            <button
+              type="button"
               onClick={claim}
               disabled={busy || !st || st.pending <= 0}
-              className="arc-call coral"
+              className="pp-act sky"
             >
               {busy ? tp.claiming : tp.claim}
             </button>
