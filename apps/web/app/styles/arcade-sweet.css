@@ -115,6 +115,25 @@
 [data-arcade="sweet"] .gc-hero-orb {
   display: none; /* orb 装饰由金晕 + 缎带顶线替代 */
 }
+/* 立即领取胶囊（样图① h-cta）：白底天蓝字，云雾上唯一按钮 */
+[data-arcade="sweet"] .gc-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  min-height: 30px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--sweet-sky-deep);
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 3px 8px rgba(74, 122, 176, 0.3);
+  cursor: pointer;
+}
+[data-arcade="sweet"] .gc-hero-cta i {
+  font-style: normal;
+}
 
 /* ══════ ② 分组标题：金色缎带横贯 ══════ */
 [data-arcade="sweet"] .gc-group-hd {
@@ -299,14 +318,30 @@
 [data-arcade="sweet"] .gc-go {
   display: none;
 }
-/* 网格：横向小卡改成 2~4 列密排（样图 2 列手机 / 桌面 4 列） */
+/* 网格：横向小卡列数按样图断点柜走（280 单 / 680 双 / 880 三 /
+   1024 四 / 1440 五）——vw 以视口为准，与站点最大宽不冲突 */
 [data-arcade="sweet"] .gc-grid {
   gap: 10px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-@media (max-width: 900px) {
+@media (max-width: 360px) {
   [data-arcade="sweet"] .gc-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+@media (min-width: 901px) {
+  [data-arcade="sweet"] .gc-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1201px) {
+  [data-arcade="sweet"] .gc-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1600px) {
+  [data-arcade="sweet"] .gc-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
@@ -652,8 +687,14 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   ⑭ 多端断点：768px+ 出侧栏（.gs-body 缩窄 220px）
+   ⑭ 多端断点（样图断点柜）：680 起双栏（折叠屏窄右栏 180px）、
+   768 平板 220px、1024 起正式右栏（game-kit lg 断点）1280 加宽
    ═══════════════════════════════════════════════════════════ */
+@media (min-width: 680px) and (max-width: 1023px) {
+  [data-arcade="sweet"] .gs-body {
+    grid-template-columns: minmax(0, 1fr) 180px !important;
+  }
+}
 @media (min-width: 768px) and (max-width: 1023px) {
   [data-arcade="sweet"] .gs-body {
     grid-template-columns: minmax(0, 1fr) 220px !important;
@@ -944,6 +985,29 @@
 .sw-card.sw-tone-gold {
   background: linear-gradient(160deg, #e8d8b8, #d4af7a);
 }
+
+/* 合成进度（样图⑧）：碎片进度条 + 当期 SSR 目标 */
+.sw-synth { margin-top: 12px; }
+.sw-synth-cap {
+  font-size: 11px; color: var(--sweet-ink-soft); margin-bottom: 8px;
+  font-weight: 700;
+}
+.sw-synth-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.sw-synth-track {
+  flex: 1; height: 10px; border-radius: 999px;
+  background: #e8f0fa; overflow: hidden; display: block;
+}
+.sw-synth-track i {
+  display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, #8ab4dd, #b8c8e8);
+  border-radius: 999px;
+}
+.sw-synth-row b {
+  font-size: 12px; color: var(--sweet-sky-deep); white-space: nowrap;
+}
+.sw-synth-note { font-size: 11px; color: var(--sweet-ink-soft); margin: 0; }
 .sw-card-stars { font-size: 10px; letter-spacing: 2px; color: #fff; }
 .sw-card-face {
   font-size: 30px;
@@ -967,6 +1031,50 @@
 .pp-act.gold { color: var(--sweet-gold-deep); }
 .pp-act:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* 当前宠物大卡（样图⑨）：圆脸 + 名 + Lv/亲密度行 */
+.pp-hero {
+  border-radius: var(--r-lg); padding: 20px; text-align: center;
+  background: linear-gradient(160deg, #e8f0fa, #c5dff0);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-mist);
+}
+.pp-hero-face {
+  width: 80px; height: 80px; margin: 0 auto 10px;
+  border-radius: 50%; display: grid; place-items: center; font-size: 40px;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--sweet-lilac));
+  box-shadow: 0 8px 16px -6px rgba(106, 122, 184, 0.4);
+}
+.pp-hero-name {
+  font-family: var(--sweet-serif); font-size: 18px; font-weight: 900;
+  color: var(--sweet-lilac-deep);
+}
+.pp-hero-sub {
+  font-size: 11px; color: var(--sweet-ink-soft); margin-top: 4px;
+}
+
+/* 我的宠舍网格（样图⑨）：3×2，占位格虚线 */
+.pp-pen-cap {
+  font-size: 12px; color: var(--sweet-ink-soft);
+  letter-spacing: 0.15em; margin-bottom: 10px; font-weight: 700;
+}
+.pp-pen-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.pp-pen-cell {
+  aspect-ratio: 1; border-radius: 14px;
+  display: grid; place-items: center; font-size: 28px;
+  background: linear-gradient(160deg, #fff, #e8f0fa);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-mist);
+}
+.pp-pen-cell.on {
+  background: linear-gradient(160deg, #fff, #f8f4e8);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-gold);
+}
+.pp-pen-cell.empty {
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1.5px dashed var(--sweet-line);
+  color: var(--sweet-ink-soft); font-size: 20px; font-weight: 700;
+}
+
 /* 奶油田园农情条（样图⑤）：已种/成熟 一条横幅 */
 .sw-farm-strip {
   display: flex; align-items: center; gap: 8px;
@@ -977,6 +1085,115 @@
   box-shadow: inset 0 0 0 1px rgba(150, 200, 160, 0.4);
 }
 .sw-farm-dot { color: var(--sweet-gold-deep); }
+
+/* 行情三格（样图⑤ farm-stats）：满宽不限 460 */
+.sw-farm-stats { max-width: none; }
+
+/* 猜大小三大选卡（样图⑥）：大/豹子/小 衬线大字选卡 */
+.bs-picks {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  width: 100%; max-width: 460px;
+}
+.bs-pick {
+  padding: 14px 8px; border-radius: var(--r-lg);
+  text-align: center; cursor: pointer;
+  background: linear-gradient(160deg, #fff, #eef5fc);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-mist);
+  border: none;
+}
+.bs-pick.gold {
+  background: linear-gradient(160deg, #fff, #f8f4e8);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-gold);
+}
+.bs-pick:active:not(:disabled) { transform: scale(0.98); }
+.bs-pick:disabled { opacity: 0.55; cursor: not-allowed; }
+.bs-pick-t {
+  font-family: var(--sweet-serif); font-size: 20px; font-weight: 900;
+  color: var(--sweet-sky-deep); line-height: 1.2;
+}
+.bs-pick.gold .bs-pick-t { color: var(--sweet-gold-deep); }
+.bs-pick-s { font-size: 11px; color: var(--sweet-ink-soft); margin-top: 2px; }
+
+/* 双骰舞台（样图⑥）：两枚 72px 骰面并排 */
+.bs-dice {
+  display: flex; justify-content: center; gap: 16px;
+}
+.bs-die {
+  width: 72px; height: 72px; border-radius: 18px;
+  display: grid; place-items: center;
+  background: linear-gradient(160deg, #fff, #e8f0fa);
+  box-shadow: 0 6px 16px -6px rgba(74, 122, 176, 0.3),
+    inset 0 0 0 1.5px var(--sweet-mist);
+}
+.bs-die span { font-size: 36px; }
+.bs-dice-cap {
+  font-size: 12px; color: var(--sweet-ink-soft);
+  letter-spacing: 0.2em; margin-bottom: 12px; text-align: center;
+}
+.bs-recent {
+  font-size: 12px; color: var(--sweet-ink-soft); text-align: center;
+  margin-top: 10px;
+}
+.bs-recent b { color: var(--sweet-sky-deep); }
+
+/* ══════ 样图 v2 富化模块：奖池条 / 规则条 / 农场天气条 ══════ */
+
+/* 奖池条（prize-strip）：金框米黄缎面 + 图标横排（样图②） */
+.sw-prize-strip {
+  width: 100%; max-width: 460px;
+  margin: 0; padding: 12px;
+  border-radius: var(--r-lg);
+  background: linear-gradient(160deg, #fff, #f8f4e8);
+  box-shadow: inset 0 0 0 1px var(--sweet-gold);
+}
+.sw-prize-lb {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.15em;
+  color: var(--sweet-gold-deep); margin-bottom: 8px;
+}
+.sw-prize-row {
+  display: flex; justify-content: space-around; align-items: center;
+}
+.sw-prize-item { text-align: center; min-width: 0; }
+.sw-prize-ic {
+  width: 32px; height: 32px; margin: 0 auto 4px;
+  border-radius: 10px; display: grid; place-items: center;
+  font-size: 16px; color: #fff;
+  background: var(--tone, var(--sweet-sky-deep));
+  box-shadow: 0 3px 8px -3px rgba(44, 62, 92, 0.35);
+}
+.sw-prize-nm {
+  font-size: 10px; color: var(--sweet-ink-soft); font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sw-prize-odds { font-size: 9px; color: var(--sweet-ink-soft); opacity: 0.75; }
+
+/* 规则条（rules-bar）：浅蓝底一行提示（样图 v2 通用） */
+.sw-rules {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; width: 100%; max-width: 460px;
+  padding: 10px 14px; border-radius: var(--r-md);
+  background: #f4f8fd;
+  font-size: 11px; color: var(--sweet-ink-soft);
+}
+.sw-rules b { color: var(--sweet-sky-deep); }
+.sw-rules a {
+  color: var(--sweet-sky-deep); font-weight: 700; white-space: nowrap;
+}
+
+/* 农场天气条（样图⑤）：晴雨横幅 + 生长加成 */
+.sw-farm-weather {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; padding: 8px 12px;
+  border-radius: 10px; font-size: 11px; font-weight: 700;
+  color: var(--sweet-ink-soft);
+  background: linear-gradient(90deg, #e8f4e8, #f8f4e8);
+}
+.sw-farm-weather b { color: var(--sweet-gold-deep); }
+.sw-farm-weather .wx-right {
+  margin-left: auto; color: var(--sweet-ink-soft); opacity: 0.7;
+  font-weight: 600; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
 
 /* 大厅徽卡（样图①）：图标落在宝石圆底座上（emoji 直出 → 圆形光球） */
 [data-arcade="sweet"] .gc-glyph {
@@ -1003,6 +1220,7 @@
 .gc-quick {
   display: flex; justify-content: space-around; gap: 8px;
   padding: 2px 4px;
+  flex-wrap: wrap; /* 280px 外屏态五个入口放不下时换行，不挤出滚动 */
 }
 .gc-qi {
   display: flex; flex-direction: column; align-items: center;
@@ -1028,3 +1246,16 @@
   color: #6b4a1a; font-size: 10px; font-weight: 800;
 }
 .gc-qi-lb { font-size: 11px; font-weight: 700; color: var(--sweet-ink-soft); }
+
+/* 纹章预算环 280px 外屏态：1fr auto 1fr 三列塞不下 → 环缩列收窄 */
+@media (max-width: 400px) {
+  [data-arcade="sweet"] .arc-crest {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+  [data-arcade="sweet"] .arc-crest-side.r {
+    text-align: center;
+    align-items: center;
+  }
+}

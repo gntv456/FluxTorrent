@@ -10,6 +10,7 @@ import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { FishingPond, type FishPhase } from "@/components/game/fishing-pond";
 import { FishingSide } from "@/components/game/fishing-side";
 import { SwStatRow } from "@/components/game/sw-panels";
+import { SwRules } from "@/components/game/sw-enrich";
 import { GameStage } from "@/components/game/game-stage";
 
 export interface Overview {
@@ -266,6 +267,35 @@ export default function FishingPage({
                 tone: "green",
               },
             ]}
+          />
+          {/* 今日收获三格（样图⑩）：条数 / 金色数 / 最佳渔获 */}
+          <SwStatRow
+            items={[
+              {
+                lb: tf.fTodayCount,
+                vl: String(hist.filter((h) => h.net > 0).length),
+              },
+              {
+                lb: tf.fTodayGold,
+                vl: String(
+                  hist.filter((h) => h.net >= (ticket ?? 100) * 5).length,
+                ),
+                tone: "gold",
+              },
+              {
+                lb: tf.fBest,
+                vl:
+                  hist.length > 0
+                    ? `+${Math.max(...hist.map((h) => h.net))}`
+                    : "—",
+                tone: "green",
+              },
+            ]}
+          />
+          <SwRules
+            left={tf.poolNote}
+            linkLabel={tf.albumLink}
+            linkHref="/games/fishing#album"
           />
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>

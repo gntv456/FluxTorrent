@@ -142,6 +142,22 @@ export default function PetFocusPage({
       }
       controls={
         <div className={PANEL_LG_COL}>
+          {/* 当前宠物大卡（样图⑨）：名 / Lv / 亲密度口径（饱食度） */}
+          <div className="pp-hero">
+            <div className="pp-hero-face" aria-hidden>
+              {st?.species === "cat"
+                ? "🐱"
+                : st?.species === "bunny"
+                  ? "🐰"
+                  : st?.species === "drake"
+                    ? "🐲"
+                    : "🫧"}
+            </div>
+            <div className="pp-hero-name">{st?.name ?? tp.title}</div>
+            <div className="pp-hero-sub">
+              Lv.{st?.level ?? 1} · {tp.hunger} {st?.hunger ?? 0}/100
+            </div>
+          </div>
           <div className="flex items-baseline justify-between gap-3">
             <span className="font-display text-lg">
               Lv.{st?.level ?? 1}
@@ -225,22 +241,24 @@ export default function PetFocusPage({
       }
       side={
         <div className={PANEL_LG}>
-          <dl className="flex flex-col gap-1.5 text-xs">
-            <div className="flex justify-between">
-              <dt className="text-sub">{tp.pending}</dt>
-              <dd className="num font-bold">
-                {st?.pending ?? 0} {currency}
-              </dd>
+          {/* 我的宠舍（样图⑨）：当前物种占一格 + 虚线空位到 6 */}
+          <div className="pp-pen-cap">{tp.penCap}</div>
+          <div className="pp-pen-grid">
+            <div className="pp-pen-cell on" aria-label={st?.name ?? ""}>
+              {st?.species === "cat"
+                ? "🐱"
+                : st?.species === "bunny"
+                  ? "🐰"
+                  : st?.species === "drake"
+                    ? "🐲"
+                    : "🫧"}
             </div>
-            <div className="flex justify-between">
-              <dt className="text-sub">{tp.energy}</dt>
-              <dd className="num font-bold">{st?.energy ?? 0}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sub">{tp.hunger}</dt>
-              <dd className="num font-bold">{st?.hunger ?? 0}%</dd>
-            </div>
-          </dl>
+            {[2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="pp-pen-cell empty" aria-hidden>
+                +
+              </div>
+            ))}
+          </div>
           <p className="mt-3 text-[11px] text-sub">
             {tp.rule.replace("{magic}", currency)}
           </p>

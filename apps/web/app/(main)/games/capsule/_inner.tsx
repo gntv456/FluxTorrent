@@ -11,6 +11,7 @@ import {
   SwStatRow,
   SwTenModal,
 } from "@/components/game/sw-panels";
+import { SwPrizeStrip } from "@/components/game/sw-enrich";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
@@ -113,6 +114,29 @@ export default function CapsuleFocusPage({
       pct: Math.round(((buckets[r] ?? 0) / total) * 100),
     }));
   })();
+  // 奖池条（样图⑦ 扭蛋屏）：等值前 4 档（CapsulePrize 无 rarity 字段，
+  //  按「等值/票价」分色调：≥10x 金、≥3x 紫、其余蓝）
+  const prizeStripItems = prizes
+    .slice()
+    .sort(
+      (a, b) =>
+        (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
+    )
+    .slice(0, 4)
+    .map((p) => {
+      const v = p.value ?? p.payout * ticket;
+      return {
+        ic: p.kind === "item" ? (p.icon ?? "🎁") : "💎",
+        nm: p.label,
+        odds: `${(p.weight_permille / 10).toFixed(1)}%`,
+        tone:
+          v >= ticket * 10
+            ? ("gold" as const)
+            : v >= ticket * 3
+              ? ("lilac" as const)
+              : ("sky" as const),
+      };
+    });
   const ten = useTenDraw<DrawResult>({
     path: "/api/v1/games/capsule",
     onError: (msg) => setErr(msg),
@@ -231,6 +255,7 @@ export default function CapsuleFocusPage({
               },
             ]}
           />
+          <SwPrizeStrip label={tc.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-danger">{err}</p>}
         </div>
       }

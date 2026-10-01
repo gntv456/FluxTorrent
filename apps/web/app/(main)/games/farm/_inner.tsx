@@ -162,6 +162,21 @@ export default function FarmPage({
       : fmt(tf.refreshIn, { t: countdownText(data.next_refresh * 1000 - now) });
   const firstEmpty = plots.findIndex((p) => !p) + 1;
   const readyPlots = plots.filter((p) => p && p.ready && !p.withered);
+  // 行情三格（样图⑤）：菜价按市场价相对基准的均值口径、已种/成熟直取田里。
+  //  标签不带占位符（fsPlanted/fsReady 的 {a}/{b}/{n} 版本给农情条用）
+  const fsPlantedLabel = tf.fsPlantedLabel;
+  const fsReadyLabel = tf.fsReadyLabel;
+  const planted = plots.filter((p) => p).length;
+  const fsPriceText = (() => {
+    const rows = data.crops.filter((c) => c.active && c.market_price > 0);
+    if (rows.length === 0) return "—";
+    const ups = rows.filter((c) => c.market_price > c.seed_price).length;
+    return `+${Math.round((ups / rows.length) * 100)}%`;
+  })();
+  const fsPlantedText = tf.fsPlanted
+    .replace("{a}", String(planted))
+    .replace("{b}", String(owned));
+  const fsReadyText = tf.fsReady.replace("{n}", String(readyPlots.length));
 
   /** 一键收获：逐块调同一 harvest 端点（后端幂等 + 行锁，重复点也安全）；
    *  单块失败不中断其余（例如某块刚好被并发收走）。 */
@@ -268,6 +283,36 @@ export default function FarmPage({
           {err}
         </p>
       )}
+
+      {/* 天气条（样图⑤）：晴 + 生长口径；右侧带行情刷新倒计时 */}
+      <div className="sw-farm-weather">
+        <span aria-hidden>☀️</span>
+        <span>
+          <b>{tf.wxSun}</b> · {tf.wxBoost}
+        </span>
+        <span className="wx-right">
+          {fmt(tf.marketRule, {
+            time: nextRefresh,
+            rule: data.market_refresh ?? "",
+          })}
+        </span>
+      </div>
+
+      {/* 行情三格（样图⑤ farm-stats）：菜价 / 已种 / 成熟 */}
+      <div className="sw-stat-row sw-farm-stats">
+        <div className="sw-stat">
+          <div className="sw-stat-lb">{tf.fsPrice}</div>
+          <div className="sw-stat-vl num gold">{fsPriceText}</div>
+        </div>
+        <div className="sw-stat">
+          <div className="sw-stat-lb">{fsPlantedLabel}</div>
+          <div className="sw-stat-vl num">{fsPlantedText}</div>
+        </div>
+        <div className="sw-stat">
+          <div className="sw-stat-lb">{fsReadyLabel}</div>
+          <div className="sw-stat-vl num green">{fsReadyText}</div>
+        </div>
+      </div>
 
       <MyFieldSection
         data={data}

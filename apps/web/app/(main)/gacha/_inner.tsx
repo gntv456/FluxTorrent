@@ -135,6 +135,18 @@ export default async function GachaDisclosurePage() {
               </div>
             ))}
           </div>
+          {/* 合成进度（样图⑧）：碎片进度条 + 当期 SSR 目标说明。
+              碎片数据在收藏面（登录态），未登录按 0 展示轨道 */}
+          <div className="sw-synth">
+            <div className="sw-synth-cap">{dict.games.gachaSynthCap}</div>
+            <div className="sw-synth-row">
+              <span className="sw-synth-track" aria-hidden>
+                <i />
+              </span>
+              <b className="num">{dict.games.gachaSynthFrag}</b>
+            </div>
+            <p className="sw-synth-note">{dict.games.gachaSynthNote}</p>
+          </div>
         </section>
       )}
       <GachaRates
