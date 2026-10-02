@@ -127,6 +127,7 @@ pub async fn snapshot(
             continue;
         }
         let port = p.port;
+        let peer_id = crate::peers::peer_id_bytes(&p.key.peer_id);
         if let Ok(v6) = p.ip.parse::<std::net::Ipv6Addr>() {
             snap.v6.push(CompactPeer6 {
                 ip: v6.octets(),
@@ -136,6 +137,7 @@ pub async fn snapshot(
             snap.v4.push(CompactPeer {
                 ip: v4.octets(),
                 port,
+                peer_id,
             });
         }
     }

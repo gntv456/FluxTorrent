@@ -38,6 +38,8 @@ pub async fn list_torrents_noclamp_as(
     };
     let exclude_pat = fuzz(&filter.exclude);
     let owner_pat = fuzz(&filter.owner);
+    // 标题必须命中（0267）：仅当调用方显式给了 title_like 才生成谓词
+    let title_pat = fuzz(&filter.title_like);
 
     // 置顶口径（0063/0089 二级置顶）：pos_state 1=一级 2=二级（until 到期回落），
     // 旧列 sticky 仍被官种联动——「任一生效即置顶」，一级 > 二级 > 普通置顶。
@@ -148,6 +150,8 @@ pub async fn list_torrents_noclamp_as(
         min_completed: 23,
         max_completed: 24,
         anonymous: 25,
+        // 标题谓词排在游标排序键（$26）之后，避免改动 cursor.rs 的固定编号
+        title_like: 27,
     });
     // 促销两列（kind + 到期）：一次 LATERAL 取「命中的最高优先级促销」，
     // 替代此前两条除 SELECT 列外完全相同的 correlated 子查询（方案 P0-5，每行省一次 promotions 扫描）。
@@ -173,7 +177,7 @@ pub async fn list_torrents_noclamp_as(
     };
     let sql = format!(
         r#"
-        SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
+        SELECT t.id, t.info_hash, t.pieces_hash, t.name, t.small_descr, t.category_id, t.medium_id,
                t.grade_id, t.edition_id, t.size, t.seeders, t.leechers, t.times_completed,
                (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments,
                t.official_tag, t.anonymous, t.approval_status, t.sticky,
@@ -250,6 +254,8 @@ pub async fn list_torrents_noclamp_as(
         .bind(filter.max_completed)
         .bind(filter.anonymous)
         .bind(sortval)
+        // $27：标题谓词（extra_sql 里 title_like 槽位；排在 sortval 之后）
+        .bind(&title_pat)
         .fetch_all(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -272,6 +278,8 @@ pub async fn list_torrents_noclamp_as(
         min_completed: 21,
         max_completed: 22,
         anonymous: 23,
+        // 计数侧最后一位（$24）
+        title_like: 24,
     });
     // 计数降级（方案 P0-3）：此前每次列表请求都对「筛选后全量集合」做精确 count(*)，
     // 搜索/深筛选下是一次无上界聚合。现在封顶采样：内层 LIMIT 10001，
@@ -311,6 +319,8 @@ pub async fn list_torrents_noclamp_as(
         .bind(filter.min_completed)
         .bind(filter.max_completed)
         .bind(filter.anonymous)
+        // $24：标题谓词（与 extra_count_sql 的 title_like 槽位对应）
+        .bind(&title_pat)
         .fetch_one(db)
         .await
         .unwrap_or(0);

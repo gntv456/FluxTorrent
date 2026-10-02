@@ -5,6 +5,12 @@ use super::announce_main::AnnounceEvent;
 use super::billing::billing_multipliers;
 use sqlx::PgPool;
 
+/// ZT81（2026-10-02）：按**字符边界**截断。原实现用 `&s[..len.min(200)]` 按字节
+/// 切片，UA 含多字节 UTF-8 且恰好落在第 200 字节非边界时会 panic。
+fn truncate_chars(s: &str, n: usize) -> String {
+    s.chars().take(n).collect()
+}
+
 /// 单事件计费（促销裁决 + snatch upsert + 流水 + 保种时长累计）
 /// 返回 torrent_id 供快照点刷收集（种子不存在返回 None）。
 /// seed_cap：做种时长单次累计容忍窗（秒）= 2 × announce_interval，由 consume_announce 按站点设定算出
@@ -206,7 +212,8 @@ pub(crate) async fn process_event(
     .bind(stopped)
     .bind(ev.conn)
     // 0098：UA + 万分比进度（(size-left)/size；做种恒 10000；size 未知为 0）
-    .bind(ev.agent[..ev.agent.len().min(200)].to_string())
+    // ZT81：改按字符边界截断（原字节切片在多字节 UTF-8 边界会 panic）
+    .bind(truncate_chars(&ev.agent, 200))
     .bind(if torrent_size > 0 {
         (((torrent_size - ev.left.max(0)) as f64 / torrent_size as f64) * 10000.0).clamp(0.0, 10000.0) as i32
     } else {

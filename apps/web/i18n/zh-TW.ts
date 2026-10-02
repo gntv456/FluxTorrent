@@ -400,6 +400,7 @@ const zhTwBase: Omit<
     moveToInbox: "主收件箱",
     moveToBox: "資料夾：{name}",
     deleteSel: "刪除",
+    deleteSelConfirm: "將刪除選取的 {n} 封訊息，此操作無法復原，確認？",
     selectedCount: "已選 {n} 封",
     manageBoxes: "管理資料夾",
     newBoxPh: "新資料夾名（≤14 字）",

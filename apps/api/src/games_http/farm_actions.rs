@@ -35,7 +35,10 @@ pub(super) async fn farm_plant(
     // 地块关闸：槽位必须是我**持有**的（免费 6 块 + 按阶梯买来的），
     // 成熟分钟数由那一块的等级定（升级只买周转，不改产量 —— games::farm_land）。
     let minutes = super::farm_land::plant_guard(
-        &state, auth.id, body.slot, crop.grow_hours,
+        &state,
+        auth.id,
+        body.slot,
+        crop.grow_hours,
     )
     .await?;
 

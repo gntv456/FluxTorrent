@@ -74,8 +74,10 @@ fn exact_route_module(path: &str) -> Option<&'static str> {
         ("/api/v1/wishlist", key::WISHLIST),
         ("/api/v1/wishlist/remove", key::WISHLIST),
         ("/api/v1/me/exams", key::EXAMS),
-        ("/api/v1/me/hr", key::EXAMS), // 新人考核(HR)与 exams 同域口径
-        ("/api/v1/me/hr/pardon", key::EXAMS),
+        // H&R 用户记录不再挂 exams：general 站型 exams 缺省关，而 hr_enforce
+        // 执法独立于 exams 在跑——曾造成「执法在跑、用户看不到自己 H&R」的
+        // 断链（2026-10-02 资深用户深测 P1-4）。H&R 无独立模块键，恒开放；
+        // 站点要整体关 H&R 用 hr 相关 site_settings（hr_enforce 读的那组）。
         // 二审 G8 补登：/me 下的模块动作端点（网关无 /me 前缀规则，逐条登记）
         ("/api/v1/me/avatar-frame", key::DRESSUP), // 佩戴挂件（真实扣魔力）
         ("/api/v1/me/medals", key::MEDALS),

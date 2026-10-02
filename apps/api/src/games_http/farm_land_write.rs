@@ -65,13 +65,8 @@ pub(super) async fn farm_land_buy(
     let land = load_land(&state, auth.id).await?;
     let owned = land.owned();
     let cap = land.cap();
-    let slot = validate_purchase(
-        body.slot,
-        land.free(),
-        land.purchased(),
-        cap,
-    )
-    .map_err(land_err)?;
+    let slot = validate_purchase(body.slot, land.free(), land.purchased(), cap)
+        .map_err(land_err)?;
     let price = land.land_quote();
 
     let mut tx = state
@@ -179,9 +174,7 @@ pub(super) async fn farm_land_upgrade(
     )
     .await?;
     if !matches!(outcome, SpendOutcome::Spent) {
-        return Err(land_err(
-            "这一级的升级费刚刚已经付过一次，请刷新后重试",
-        ));
+        return Err(land_err("这一级的升级费刚刚已经付过一次，请刷新后重试"));
     }
     // 用户行锁已由 spend_spark_tx 取到，这里的等级复判不会再被并发插队
     let held: Option<i32> = sqlx::query_scalar(

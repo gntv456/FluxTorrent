@@ -11,6 +11,8 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
+use super::helpers::{check_rate_scoped, RateScope};
+
 type Db = web::Data<std::sync::Arc<AppState>>;
 
 #[derive(Deserialize)]
@@ -65,14 +67,15 @@ pub(super) async fn ranch_state(
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let crafts: Vec<(String, chrono::DateTime<chrono::Utc>, i64)> = sqlx::query_as(
-        "SELECT recipe, ready_at, out_spark FROM arcade_farm_crafts \
+    let crafts: Vec<(String, chrono::DateTime<chrono::Utc>, i64)> =
+        sqlx::query_as(
+            "SELECT recipe, ready_at, out_spark FROM arcade_farm_crafts \
           WHERE user_id = $1",
-    )
-    .bind(auth.id)
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        )
+        .bind(auth.id)
+        .fetch_all(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let recipe_items: Vec<serde_json::Value> = recipes
         .iter()
         .map(|(key, name, icon, spend, yld, mins)| {
@@ -124,16 +127,7 @@ pub(super) async fn ranch_buy(
         return Err(DomainError::Validation("这只已经养在栏里了".into()));
     }
     let idem = format!("ranch-buy:{}:{}", auth.id, body.animal);
-    match spend_spark(
-        db,
-        auth.id,
-        price,
-        "game",
-        &idem,
-        "ranch_buy",
-        0,
-    )
-    .await?
+    match spend_spark(db, auth.id, price, "game", &idem, "ranch_buy", 0).await?
     {
         SpendOutcome::Replayed => {
             return Err(DomainError::Validation("请勿重复提交".into()))
@@ -162,7 +156,9 @@ pub(super) async fn ranch_buy(
         .await;
         return Err(DomainError::Validation("这只已经养在栏里了".into()));
     }
-    Ok(ok(serde_json::json!({ "bought": body.animal, "cost": price })))
+    Ok(ok(
+        serde_json::json!({ "bought": body.animal, "cost": price }),
+    ))
 }
 
 /// 投喂（POST /farm/ranch/feed）：把产出周期重新计时（没到点也能喂，
@@ -213,29 +209,51 @@ pub(super) async fn ranch_collect(
     let auth = require_auth(&req, &state).await?;
     let db = &state.repo.db;
     // 行锁：并收只放一发
-    let row: Option<(chrono::DateTime<chrono::Utc>, i64, i32)> = sqlx::query_as(
-        "SELECT p.ready_at, a.yield_spark, a.cycle_mins \
+    let row: Option<(chrono::DateTime<chrono::Utc>, i64, i32, i64, i64)> =
+        sqlx::query_as(
+            "SELECT p.ready_at, a.yield_spark, a.cycle_mins, \
+                    p.collected_spark, a.price \
            FROM arcade_ranch_pens p \
            JOIN arcade_ranch_animals a ON a.key = p.animal \
           WHERE p.user_id = $1 AND p.animal = $2 AND p.ready_at <= now() \
           FOR UPDATE OF p",
-    )
-    .bind(auth.id)
-    .bind(&body.animal)
-    .fetch_optional(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((ready_at, yld, cycle)) = row else {
+        )
+        .bind(auth.id)
+        .bind(&body.animal)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((ready_at, yld, cycle, collected, price)) = row else {
         return Err(DomainError::Validation("还没到产出时间".into()));
     };
+    // ZT2（2026-10-03）：终身产出封顶。原实现只推移 ready_at、无总次数/寿命上限
+    // ——「一次买入 → 永久产出」回本后是纯增发（实测约 +2,680 魔力/日/账号）。
+    // 上限 = 购入价 ×95%（回收口：终身返还 < 100%），达上限即退休、需重新领养。
+    let cap = price * 95 / 100;
+    let pay = yld.min((cap - collected).max(0));
+    if pay <= 0 {
+        sqlx::query(
+            "DELETE FROM arcade_ranch_pens WHERE user_id = $1 AND animal = $2",
+        )
+        .bind(auth.id)
+        .bind(&body.animal)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        return Err(DomainError::Validation(
+            "这只已产出满额（回本 95%），已退休；想继续请重新领养".into(),
+        ));
+    }
     let next = ready_at + chrono::Duration::minutes(i64::from(cycle));
     sqlx::query(
-        "UPDATE arcade_ranch_pens SET ready_at = $3 \
+        "UPDATE arcade_ranch_pens SET ready_at = $3, \
+                collected_spark = collected_spark + $4 \
           WHERE user_id = $1 AND animal = $2",
     )
     .bind(auth.id)
     .bind(&body.animal)
     .bind(next)
+    .bind(pay)
     .execute(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -243,12 +261,14 @@ pub(super) async fn ranch_collect(
     earn_spark(
         db,
         auth.id,
-        yld,
+        pay,
         "arcade",
         &format!("ranch-collect:{}:{}:{}", auth.id, body.animal, ready_at),
     )
     .await?;
-    Ok(ok(serde_json::json!({ "collected": body.animal, "earned": yld })))
+    Ok(ok(
+        serde_json::json!({ "collected": body.animal, "earned": pay }),
+    ))
 }
 
 /// 开工加工（POST /farm/craft）：扣投入 → 落在产位（锁定产出额）。
@@ -260,6 +280,9 @@ pub(super) async fn craft_start(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let db = &state.repo.db;
+    // ZT2（2026-10-03）：加工此前**无任何限次闸**——牧场/加工是全站唯一没有
+    // check_rate 的扣魔力互动，配合「产出>投入」可无限刷。补上与农场/宠物同档的限流。
+    check_rate_scoped(&state, &state.redis, auth.id, RateScope::Farm).await?;
     let recipe: Option<(i64, i64, i32)> = sqlx::query_as(
         "SELECT in_spark, out_spark, mins FROM arcade_farm_recipes \
           WHERE key = $1 AND enabled",
@@ -284,7 +307,9 @@ pub(super) async fn craft_start(
         return Err(DomainError::Validation("这个配方已经在做了".into()));
     }
     let idem = format!("craft-start:{}:{}:{}", auth.id, body.recipe, yld);
-    match spend_spark(db, auth.id, spend, "game", &idem, "farm_craft", 0).await? {
+    match spend_spark(db, auth.id, spend, "game", &idem, "farm_craft", 0)
+        .await?
+    {
         SpendOutcome::Replayed => {
             return Err(DomainError::Validation("请勿重复提交".into()))
         }
@@ -362,5 +387,7 @@ pub(super) async fn craft_collect(
         &format!("craft-collect:{}:{}:{}", auth.id, body.recipe, ready_at),
     )
     .await?;
-    Ok(ok(serde_json::json!({ "collected": body.recipe, "earned": yld })))
+    Ok(ok(
+        serde_json::json!({ "collected": body.recipe, "earned": yld }),
+    ))
 }

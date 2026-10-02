@@ -125,8 +125,8 @@ pub(super) async fn arcade_item_save(
     .await
     .map_err(dberr)?;
     let dflt = NEW_ITEM_DEFAULTS;
-    let (p_unl, p_stock, p_pu, p_icon, p_en, p_uk, p_ur, p_ge) =
-        prev.unwrap_or((
+    let (p_unl, p_stock, p_pu, p_icon, p_en, p_uk, p_ur, p_ge) = prev
+        .unwrap_or((
             dflt.0,
             dflt.1,
             dflt.2,

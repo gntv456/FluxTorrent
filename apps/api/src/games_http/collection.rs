@@ -45,7 +45,8 @@ pub(super) async fn game_collection(
     let ticket = pool.ticket;
     let mut entries: Vec<serde_json::Value> = Vec::new();
     for (i, e) in pool.entries.iter().enumerate() {
-        let (rar, img) = pool.meta.get(i).cloned().unwrap_or((1, String::new()));
+        let (rar, img) =
+            pool.meta.get(i).cloned().unwrap_or((1, String::new()));
         let count = caught
             .iter()
             .find(|(p, _)| p == &e.label)

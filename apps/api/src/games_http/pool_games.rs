@@ -108,7 +108,9 @@ pub(super) async fn capsule(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());
-    Ok(ok(pool_round(&state, auth.id, "capsule", client_idem).await?))
+    Ok(ok(
+        pool_round(&state, auth.id, "capsule", client_idem).await?
+    ))
 }
 
 /// 大转盘：与九宫格同构，仅池键不同（wheel）。

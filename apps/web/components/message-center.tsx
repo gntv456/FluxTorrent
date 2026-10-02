@@ -147,6 +147,13 @@ export function MessageCenter() {
     target?: number | null,
   ) {
     if (selected.length === 0) return;
+    // ZT81（2026-10-02）：批量删除不可逆，此前直接发请求无二次确认
+    //（种子/评论/字幕/文件夹删除都有确认，唯此处漏了）。
+    if (action === "delete") {
+      const n = String(selected.length);
+      const ask = t.deleteSelConfirm.replace("{n}", n);
+      if (!window.confirm(ask)) return;
+    }
     setBusy(true);
     try {
       if (action === "markread") {

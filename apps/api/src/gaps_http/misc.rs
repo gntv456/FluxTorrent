@@ -103,11 +103,7 @@ pub async fn resub_use(
                  VALUES ('resub_card', $1, 1, 'resub', $2)",
             )
             .bind(auth.id)
-            .bind(format!(
-                "resub-arc:{}:{}",
-                auth.id,
-                date.format("%Y%m%d")
-            ))
+            .bind(format!("resub-arc:{}:{}", auth.id, date.format("%Y%m%d")))
             .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;

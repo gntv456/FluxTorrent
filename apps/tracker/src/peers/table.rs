@@ -123,7 +123,8 @@ impl PeerTable {
         exclude: &str,
     ) -> Snapshot {
         self.gc_swarm(info_hash);
-        let limit = numwant.clamp(1, MAX_PEERS_RESPONSE);
+        // ZT81：允许 numwant=0（客户端明确不要 peer 列表时不返回）；上限照旧钳死
+        let limit = numwant.min(MAX_PEERS_RESPONSE);
         let mut snap = Snapshot::default();
         let Some(s) = self.swarms.get(info_hash) else {
             return snap;
@@ -135,7 +136,12 @@ impl PeerTable {
             if p.key.peer_id == exclude {
                 continue;
             }
+            // ZT81：port=0 的 peer 不可连接，不下发给其他客户端
+            if p.port == 0 {
+                continue;
+            }
             let port = p.port;
+            let peer_id = crate::peers::peer_id_bytes(&p.key.peer_id);
             if let Ok(v6) = p.ip.parse::<std::net::Ipv6Addr>() {
                 snap.v6.push(CompactPeer6 {
                     ip: v6.octets(),
@@ -145,6 +151,7 @@ impl PeerTable {
                 snap.v4.push(CompactPeer {
                     ip: v4.octets(),
                     port,
+                    peer_id,
                 });
             }
             // 其余非法字符串（历史脏数据）丢弃
@@ -180,24 +187,16 @@ impl PeerTable {
         let mut retriable: Vec<(PeerKey, String, u16)> = Vec::new();
         for s in self.swarms.iter() {
             for p in s.peers.values() {
+                if p.connectable == CONN_UNTESTED {
+                    out.push((p.key.clone(), p.ip.clone(), p.port));
+                } else if retriable.len() < n {
+                    retriable.push((p.key.clone(), p.ip.clone(), p.port));
+                }
                 if out.len() >= n {
                     break;
                 }
-                match p.connectable {
-                    CONN_UNTESTED => {
-                        out.push((p.key.clone(), p.ip.clone(), p.port))
-                    }
-                    _ => {
-                        if retriable.len() < n {
-                            retriable.push((
-                                p.key.clone(),
-                                p.ip.clone(),
-                                p.port,
-                            ))
-                        }
-                    }
-                }
             }
+            // ZT81：原实现 inner break 后仍继续遍历其余桶（无未测 peer 时等于全表扫）。
             if out.len() >= n {
                 break;
             }
@@ -242,11 +241,22 @@ impl PeerTable {
         });
     }
 
-    /// 单桶惰性 GC（snapshot/counts 热路径触发）
+    /// 单桶惰性 GC（snapshot/counts 热路径触发）。
+    /// ZT81（2026-10-02）：清理后若桶已空则**移除整桶**——原实现只 retain peers、
+    /// 不删空桶，而空桶仅由 `remove()`（event=stopped）清理，于是「只被 announce
+    /// 一次、之后再无人问津」的 info_hash 会永久驻留。实测 3,000 个幽灵 swarm 让
+    /// 常驻内存 +1.77 MiB（≈590 B/个）；1 GiB 上限下约 170 万个即 OOM，而单账号
+    /// 限速 1800/min，约 16 小时就能造出来（tracker 是单进程 SPOF）。
     fn gc_swarm(&self, info_hash: &str) {
         let now = chrono::Utc::now();
         if let Some(mut s) = self.swarms.get_mut(info_hash) {
             s.peers.retain(|_, p| alive(p, &now));
+            let empty = s.peers.is_empty();
+            drop(s); // 必须先放掉写锁，否则同分片 remove_if 死锁
+            if empty {
+                self.swarms
+                    .remove_if(info_hash, |_, sw| sw.peers.is_empty());
+            }
         }
     }
 }

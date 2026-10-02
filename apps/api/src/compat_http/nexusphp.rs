@@ -6,11 +6,11 @@ use serde::Deserialize;
 use super::common::sha3_hex;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::openapi_http::require_token;
+use crate::openapi_http::{no_store, require_token, with_rl};
 use crate::publish_http::build_torrent_bytes;
 use crate::state::AppState;
 use crate::torrents::{
-    charge_for_download, list_torrents_noclamp, TorrentFilter,
+    charge_for_download, list_torrents_noclamp, CatMap, MediaMap, TorrentFilter,
 };
 
 // ============ NexusPHP 兼容端点（Token 鉴权，只读） ============
@@ -21,7 +21,18 @@ async fn compat_np_user(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let (uid, _rpm) = require_token(&req, &state).await?;
+    let tk = require_token(&req, &state).await?;
+    let body = np_user_json(&state, tk.uid).await?;
+    // 含本人 passkey：禁止中间层缓存
+    Ok(no_store(with_rl(ok(body), &tk)))
+}
+
+/// NP userdetails 口径的用户 JSON（`user.json` 与别名 `userdetails.php` 共用，
+/// 保证两条路径的字段口径不可能漂移）。
+pub(super) async fn np_user_json(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    uid: i64,
+) -> DomainResult<serde_json::Value> {
     let row: Option<(i64, String, i64, i64, i64, i32, String)> =
         sqlx::query_as(
             "SELECT id, username, uploaded, downloaded, \
@@ -44,21 +55,39 @@ async fn compat_np_user(
     else {
         return Err(DomainError::Unauthorized);
     };
-    let ratio = if downloaded > 0 {
-        (uploaded as f64 / downloaded as f64 * 10000.0).round() / 10000.0
+    // 分享率：downloaded=0 时旧实现回 -1.0，工具会当负数直接显示。
+    // 改为恒非负 + 语义标记（0267）：真值 >0 时给数值；只上传未下载给
+    // ratio_infinite=true 与 display "∞"；两者皆 0 给 "---"。
+    let (ratio, ratio_infinite, ratio_display) = if downloaded > 0 {
+        let r =
+            (uploaded as f64 / downloaded as f64 * 10000.0).round() / 10000.0;
+        (r, false, format!("{r:.4}"))
+    } else if uploaded > 0 {
+        (0.0, true, "∞".to_string())
     } else {
-        -1.0
+        (0.0, false, "---".to_string())
     };
-    Ok(ok(serde_json::json!({
+    // 等级：NP 口径给可读等级名（class 数字对工具没有展示价值）
+    let class_name: String =
+        sqlx::query_scalar("SELECT name FROM user_classes WHERE id = $1")
+            .bind(class_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .unwrap_or_else(|| format!("LV{class_id}"));
+    Ok(serde_json::json!({
         "id": id,
         "username": username,
         "uploaded": uploaded,
         "downloaded": downloaded,
         "seedbonus": seedbonus,
         "class": class_id,
+        "class_name": class_name,
         "ratio": ratio,
+        "ratio_infinite": ratio_infinite,
+        "ratio_display": ratio_display,
         "passkey": passkey, // 本人 Token 才能读取；工具用它拼接 download.php 与 tracker 汇报
-    })))
+    }))
 }
 
 #[derive(Deserialize)]
@@ -80,6 +109,29 @@ struct NpListQuery {
     /// IMDb 关键字（设置后等效 search_area=4）
     #[serde(default)]
     imdb: Option<String>,
+    /// 存活筛选（0102 内部口径）：0=全部 1=仅活种 2=仅断种；
+    /// **对外缺省 = 0（全部）** —— 新种在有人做种前也必须对第三方可见，
+    /// 否则冷启动期工具搜索恒空（被误判成「对接坏了」）。
+    #[serde(default)]
+    alive: Option<i16>,
+    /// 旧习惯兼容：1/true=全部（含断种） 0/false=仅活种。给了 alive 时以 alive 为准。
+    /// 取 String 而非 bool —— 老工具常发 `include_dead=1`，serde 的 bool
+    /// 遇 "1" 会整条 Query 反序列化失败（此项目历史上踩过同名坑）。
+    #[serde(default)]
+    include_dead: Option<String>,
+}
+
+/// 解析对外存活口径：alive 优先，其次 include_dead，最后缺省「全部」。
+fn resolve_alive(alive: Option<i16>, include_dead: Option<&str>) -> i16 {
+    if let Some(v) = alive {
+        if (0..=2).contains(&v) {
+            return v;
+        }
+    }
+    match include_dead.map(str::trim) {
+        Some("0") | Some("false") | Some("no") => 1,
+        _ => 0,
+    }
 }
 
 /// 种子列表（NP torrents.php 字段口径，游标分页内部转 page 语义）
@@ -89,8 +141,10 @@ async fn compat_np_torrents(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<NpListQuery>,
 ) -> DomainResult<HttpResponse> {
-    let (_uid, _rpm) = require_token(&req, &state).await?;
-    let page = q.page.unwrap_or(1).max(1);
+    let tk = require_token(&req, &state).await?;
+    // ZT81：page 必须有上界——page*pagesize 直接进 SQL LIMIT（实测 page=1000000
+    // 触发 LIMIT 50,000,000，20,000 种子时 1.65s；十万级即可被单请求打满 DB）。
+    let page = q.page.unwrap_or(1).clamp(1, 400);
     let pagesize = q.pagesize.unwrap_or(30).clamp(1, 50);
     // IMDb 参数优先（NP 工具惯用 ?imdb=tt123 传法）；否则用显式 search_area
     let (search, search_area) = if let Some(im) =
@@ -108,8 +162,13 @@ async fn compat_np_torrents(
         search,
         search_area,
         search_mode: q.search_mode,
+        // 对外缺省「全部」（含零做种）：新种必须立刻可被第三方搜到
+        alive: Some(resolve_alive(q.alive, q.include_dead.as_deref())),
         ..TorrentFilter::default()
     };
+    // 分类/媒介小字典：一次载入，供本页每行补可读名与标准号
+    let cats = CatMap::load(&state.repo.db).await;
+    let media = MediaMap::load(&state.repo.db).await;
     // 审计修复（P1）：list_torrents 内部把 limit 钳到 50，page*pagesize 在 page≥2 时
     // skip 后恒空（第 2 页起拿不到数据）。深翻页走 noclamp 版（调用方已 clamp pagesize≤50）。
     let p =
@@ -122,6 +181,7 @@ async fn compat_np_torrents(
         .skip(skip)
         .take(pagesize as usize)
         .map(|t| {
+            let cat = t.category_id;
             serde_json::json!({
                 "id": t.id,
                 "name": t.name,
@@ -131,9 +191,24 @@ async fn compat_np_torrents(
                 "completed": t.times_completed,
                 "size": t.size,
                 "added": t.created_at.timestamp(),
-                "category": t.category_id,
+                // 兼容既有消费方：category 仍是内部 id（不动语义，只增不改）
+                "category": cat,
+                // 0267 新增：可读名 + 两种标准号，工具无需自备映射表
+                "category_name": cats.name(cat),
+                "category_np": cats.legacy(cat),
+                "category_newznab": cats.newznab(cat),
                 "medium": t.medium_id,
+                "medium_name": t.medium_id.and_then(|m| media.name(m)),
                 "promotion": t.promotion,
+                // 促销可读标签（Free / 2xFree / 50% …），与 RSS/Torznab 同源
+                "promotion_name": t
+                    .promotion
+                    .as_deref()
+                    .map(crate::torrents::promo::label)
+                    .filter(|s| !s.is_empty()),
+                // 跨站辅种指纹（0267）：IYUU/cross-seed 类工具按 hash 精确匹配
+                "info_hash": t.info_hash,
+                "pieces_hash": t.pieces_hash,
                 "free": matches!(
                     t.promotion.as_deref(),
                     Some("free") | Some("x2free")
@@ -144,13 +219,17 @@ async fn compat_np_torrents(
         })
         .collect();
     let has_more = p.total_estimate > page * pagesize;
-    Ok(ok(serde_json::json!({
-        "page": page,
-        "page_size": pagesize,
-        "total_estimate": p.total_estimate,
-        "has_more": has_more,
-        "items": items,
-    })))
+    // 行内含 info_hash/pieces_hash 与 download 模板：禁缓存
+    Ok(no_store(with_rl(
+        ok(serde_json::json!({
+            "page": page,
+            "page_size": pagesize,
+            "total_estimate": p.total_estimate,
+            "has_more": has_more,
+            "items": items,
+        })),
+        &tk,
+    )))
 }
 
 /// 种子详情（NP details 口径 + 本站扩展；download 字段为模板，passkey 由工具自行拼接）
@@ -160,9 +239,11 @@ async fn compat_np_torrent_detail(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
-    let (_uid, _rpm) = require_token(&req, &state).await?;
+    let tk = require_token(&req, &state).await?;
     let id = path.into_inner();
     let row: Option<(
+        String,
+        Option<String>,
         String,
         Option<String>,
         i64,
@@ -170,11 +251,13 @@ async fn compat_np_torrent_detail(
         i32,
         i32,
         i32,
+        Option<i32>,
         Option<i64>,
         chrono::DateTime<chrono::Utc>,
     )> = sqlx::query_as(
-        "SELECT name, descr, size, seeders, leechers, times_completed, \
-         category_id, group_id, created_at \
+        "SELECT info_hash, pieces_hash, name, descr, size, seeders, \
+         leechers, times_completed, category_id, medium_id, group_id, \
+         created_at \
              FROM torrents WHERE id = $1 AND approval_status = 1",
     )
     .bind(id)
@@ -182,6 +265,8 @@ async fn compat_np_torrent_detail(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((
+        info_hash,
+        pieces_hash,
         name,
         descr,
         size,
@@ -189,27 +274,41 @@ async fn compat_np_torrent_detail(
         leechers,
         completed,
         category,
+        medium_id,
         group_id,
         created,
     )) = row
     else {
         return Err(DomainError::NotFound(id));
     };
-    Ok(ok(serde_json::json!({
-        "id": id,
-        "name": name,
-        "descr": descr,
-        "size": size,
-        "seeders": seeders,
-        "leechers": leechers,
-        "completed": completed,
-        "category": category,
-        "group_id": group_id,
-        "group_api": "/api/v1/torrents/{id}/group",
-        "added": created.timestamp(),
-        "download": "/api/v1/compat/nexusphp/download.php\
-                      ?id={id}&passkey=<你的 passkey>",
-    })))
+    let cats = CatMap::load(&state.repo.db).await;
+    let media = MediaMap::load(&state.repo.db).await;
+    Ok(with_rl(
+        ok(serde_json::json!({
+            "id": id,
+            "name": name,
+            "descr": descr,
+            "size": size,
+            "seeders": seeders,
+            "leechers": leechers,
+            "completed": completed,
+            "category": category,
+            "category_name": cats.name(category),
+            "category_np": cats.legacy(category),
+            "category_newznab": cats.newznab(category),
+            "medium": medium_id,
+            "medium_name": medium_id.and_then(|m| media.name(m)),
+            // 0267：辅种/查重工具需要的双指纹
+            "info_hash": info_hash,
+            "pieces_hash": pieces_hash,
+            "group_id": group_id,
+            "group_api": "/api/v1/torrents/{id}/group",
+            "added": created.timestamp(),
+            "download": "/api/v1/compat/nexusphp/download.php\
+                          ?id={id}&passkey=<你的 passkey>",
+        })),
+        &tk,
+    ))
 }
 
 #[derive(Deserialize)]
@@ -256,7 +355,10 @@ async fn compat_np_download(
         .await
         .map_err(actix_web::Error::from)?;
     let body = build_torrent_bytes(&state, user_id, q.id).await?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/x-bittorrent")
-        .body(body))
+    // .torrent 内嵌本人 announce（含 passkey）：禁止中间层缓存
+    Ok(crate::openapi_http::no_store(
+        HttpResponse::Ok()
+            .content_type("application/x-bittorrent")
+            .body(body),
+    ))
 }

@@ -2,21 +2,16 @@
 //! require_auth/optional_auth/require_staff + AuthUser。
 //! 从 http.rs 按域拆出。
 
-use actix_web::{get, web, HttpRequest, Responder};
+use actix_web::{web, HttpRequest};
 use std::sync::Arc;
 
 // auth 模块经 state.jwt 使用（0071 RS256 化后 http 层不再直接调用）
 
-use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 // ============ 基础 ============
-
-#[get("/health")]
-async fn health() -> impl Responder {
-    ok(serde_json::json!({ "status": "up", "service": "flux-api" }))
-}
+// 健康/就绪探针已按域拆到 http/probes.rs（ZT81）。
 
 // ============ 认证（M01） ============
 
@@ -24,7 +19,11 @@ pub async fn throttle(state: &Arc<AppState>, key: String) -> DomainResult<()> {
     use redis::AsyncCommands;
     let mut c = state.redis.clone();
     let k = format!("rl:{}", key);
-    let n: i64 = c.incr(&k, 1).await.unwrap_or(0);
+    // ZT81：Redis 故障时 fail-close（原 `unwrap_or(0)` 让计数恒 0 → 限流永不触发，
+    // 抖动期间密码爆破/撞库全部失守）。与游戏侧 check_rate_scoped 口径对齐。
+    let n: i64 = c.incr(&k, 1).await.map_err(|e| {
+        DomainError::Internal(anyhow::anyhow!("限流服务不可用: {e}"))
+    })?;
     if n == 1 {
         let _: () = c.expire(&k, 60).await.unwrap_or(());
     }

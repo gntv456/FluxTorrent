@@ -161,14 +161,18 @@ async fn check_quota_and_rate(
 ) -> DomainResult<()> {
     let quota_mib = setting_i64(&state.repo.db, "video_quota_mib", 2048).await;
     if quota_mib > 0 {
+        // sum(bigint)→numeric 同坑：无 ::bigint 时 i64 解码失败 → 视频配额恒不生效
         let used: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(sum(size), 0) FROM attachments \
+            "SELECT COALESCE(sum(size), 0)::bigint FROM attachments \
              WHERE user_id = $1 AND kind = 'video'",
         )
         .bind(uid)
         .fetch_one(&state.repo.db)
         .await
-        .unwrap_or(0);
+        .unwrap_or_else(|e| {
+            tracing::warn!(%e, "视频配额已用量查询失败");
+            0
+        });
         if used + len as i64 > quota_mib * 1024 * 1024 {
             return Err(DomainError::Validation(format!(
                 "视频配额不足（已用 {}/{} MiB）",

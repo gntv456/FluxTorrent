@@ -52,6 +52,29 @@ pub async fn metrics_mw(
     Ok(res)
 }
 
+/// 指标端点鉴权：接受 `x-metrics-token` 或标准 `Authorization: Bearer`。
+/// ZT81（2026-10-02）：随仓库附带的 `docker/monitoring/prometheus.yml` 用的是
+/// 标准 `authorization: Bearer`，而 handler 只认前者 → 即便按文档配好
+/// ANN_METRICS_TOKEN，Prometheus 抓取仍全 404，告警形同虚设。
+fn metrics_authorized(req: &HttpRequest) -> bool {
+    let tok = std::env::var("ANN_METRICS_TOKEN").unwrap_or_default();
+    if tok.is_empty() {
+        return false;
+    }
+    let hdr = |n: &str| {
+        req.headers()
+            .get(n)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+    };
+    if hdr("x-metrics-token") == tok {
+        return true;
+    }
+    hdr("authorization")
+        .strip_prefix("Bearer ")
+        .is_some_and(|t| t.trim() == tok)
+}
+
 #[get("/metrics")]
 pub(super) async fn api_metrics(
     req: HttpRequest,
@@ -60,14 +83,7 @@ pub(super) async fn api_metrics(
     // 与 tracker /metrics 同款门禁：未配 token 时 404 不暴露。
     // 统一读 ANN_METRICS_TOKEN（compose/.env.example 一直按此名注入两处），
     // 此前误读 API_METRICS_TOKEN 导致 compose 配了 token 后 api /metrics 仍 404。
-    let tok = std::env::var("ANN_METRICS_TOKEN").unwrap_or_default();
-    if tok.is_empty()
-        || req
-            .headers()
-            .get("x-metrics-token")
-            .and_then(|v| v.to_str().ok())
-            != Some(tok.as_str())
-    {
+    if !metrics_authorized(&req) {
         return HttpResponse::NotFound().finish();
     }
     // 池状态是 api 侧最有价值的 gauge（容量规划的底线数据）

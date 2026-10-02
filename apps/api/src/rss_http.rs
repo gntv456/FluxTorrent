@@ -47,8 +47,21 @@ async fn rss_feed(
     q: web::Query<RssQuery>,
 ) -> HttpResponse {
     let passkey = path.into_inner();
-    if passkey.len() != 32 {
+    // 形状校验收紧（0267）：此前只查长度 32，现在与 passkey 生成口径一致
+    // （32 位小写字母数字）——非法字符不可能命中库，早拒省一次查询
+    if !crate::compat_http::valid_passkey(&passkey) {
         return HttpResponse::BadRequest().body("invalid passkey");
+    }
+    // 0267 安全补：RSS 此前**没有限流** —— 一枚泄露的 passkey 可无限拉订阅源
+    // （打库 + 放大信息面）。30 次/分钟对分钟级轮询的订阅器绰绰有余。
+    if crate::compat_http::limit_passkey(&state, "rss", &passkey, 30)
+        .await
+        .is_err()
+    {
+        return HttpResponse::TooManyRequests()
+            .insert_header(("retry-after", "60"))
+            .content_type("text/plain; charset=utf-8")
+            .body("too many requests");
     }
     let user: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM users WHERE passkey = $1 AND status < 2",
@@ -132,22 +145,24 @@ async fn rss_feed(
                 .unwrap_or_else(|| "http://localhost:3000".into());
             host
         });
-    // 标题格式：linktype=dl（默认）[促销] [官种] 标题 [副标题] 大小 发布者；linktype=page 仅标题。
     // 促销标记（刷流时效性关键，NP 官方插件口径）：用户自购/站方挂的 Free 与 2xFree
     // 必须在 RSS 标题第一时间可见——刷流器按标题关键词过滤，标记缺失 = 免费信息传不到
     // （NP 二改站的常见缺陷）。标记格式与列表角标一致：Free / 2xFree / 50% / 2x / 2x50%。
+    // 0267：六档标签收进 promo::label 单一来源（此前 RSS/Torznab 各写一份）。
     let promo_tag = |p: &Option<String>| -> String {
-        match p.as_deref() {
-            Some("free") => "[Free] ".into(),
-            Some("x2free") => "[2xFree] ".into(),
-            Some("half") => "[50%] ".into(),
-            Some("x2half") => "[2x50%] ".into(),
-            Some("x2") => "[2x] ".into(),
-            Some("p30") => "[30%] ".into(),
+        match p.as_deref().map(crate::torrents::promo::label) {
+            Some(l) if !l.is_empty() => format!("[{l}] "),
             _ => String::new(),
         }
     };
     let verbose = q.linktype.as_deref() != Some("page");
+    // 下载直链基址：优先 PUBLIC_API_URL（API 独立域名/端口场景），
+    // 否则回落站点基址（生产同域反代 /api → api 服务）。
+    let api_base = std::env::var("PUBLIC_API_URL")
+        .ok()
+        .map(|v| v.trim().trim_end_matches('/').to_string())
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| base.clone());
     let mut items = String::new();
     for r in &rows {
         let title = if verbose {
@@ -163,15 +178,34 @@ async fn rss_feed(
         } else {
             format!("{}{}", promo_tag(&r.promotion), r.name)
         };
+        // 0267 修复：此前 item 既无 <enclosure>、<link> 又指向网页，
+        // 刷流器（qBittorrent RSS 自动下载 / autobrr / Flexget / cross-seed）
+        // 拿到的是 HTML 页面 → 整条刷流链路不可用。现在：
+        //   link      = NP 口径的下载直链（刷流器直接取 link 即可）
+        //   enclosure = 同一地址（标准 RSS 消费方走 enclosure）
+        // linktype=page 时保留「link 指向详情页、标题仅名称」的旧行为
+        // （注意：linktype 管的是**标题格式**，与下载链接无关，历史上被误读）。
+        let dl = format!(
+            "{}/api/v1/compat/nexusphp/download.php?id={}&passkey={}",
+            api_base, r.id, passkey
+        );
+        let link = if verbose {
+            dl.clone()
+        } else {
+            format!("{}/torrent/{}", base, r.id)
+        };
         items.push_str(&format!(
-            "<item><title>{}</title><link>{}/torrent/{}</link>\
+            "<item><title>{}</title><link>{}</link>\
              <guid isPermaLink=\"true\">{}/torrent/{}</guid>\
+             <enclosure url=\"{}\" type=\"application/x-bittorrent\" \
+             length=\"{}\"/>\
              <pubDate>{}</pubDate><description>{} · {}</description></item>",
             xml_escape(&title),
+            xml_escape(&link),
             base,
             r.id,
-            base,
-            r.id,
+            xml_escape(&dl),
+            r.size,
             r.created_at.format("%a, %d %b %Y %H:%M:%S GMT"),
             xml_escape(&r.small_descr.clone().unwrap_or_default()),
             format_size(r.size),
@@ -208,6 +242,8 @@ async fn rss_feed(
     );
     HttpResponse::Ok()
         .content_type("application/rss+xml; charset=utf-8")
+        // 0267：enclosure/link 里带本人 passkey，绝不能被中间层缓存
+        .insert_header(("cache-control", "private, no-store, max-age=0"))
         .body(xml)
 }
 

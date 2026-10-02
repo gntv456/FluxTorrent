@@ -39,9 +39,15 @@ export function UserCheckin({ onDone }: { onDone: () => void }) {
       onDone();
     } catch (e) {
       if (e instanceof ApiError) {
-        // 业务错误：透出后端文案；已签类错误直接收敛为已签态
+        // ZT2（2026-10-03）：不再按中文文案 `includes("已经签到")` 判分支——后端一旦
+        // 本地化/改文案即失效，外语站更是直接失效。改为回读权威状态 checked_today。
         setMsg(e.message);
-        if (e.message.includes("已经签到")) setChecked(true);
+        api
+          .get<{ checked_today: boolean }>("/api/v1/attendance")
+          .then((s) => {
+            if (s.checked_today) setChecked(true);
+          })
+          .catch(() => {});
       } else {
         setMsg(dict.common.networkError);
       }

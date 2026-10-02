@@ -60,8 +60,18 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384m
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+          memory: 768m
+          cpus: "1.0"
+    # ZT81（2026-10-02）：Redis 承载**计费事件流与死信**（flux:announce /
+    # flux:announce:dlq），不是纯缓存，因此：
+    #   ① allkeys-lru → noeviction：内存压力时宁可写失败，也不静默驱逐「尚未计费」
+    #      的 stream 条目（原策略下 worker 停摆数小时即可能悄悄丢计费）；
+    #   ② 开 AOF(everysec) + 具名卷：容器重建/宕机不再丢账——原先只有默认 RDB
+    #      快照落在**匿名卷**上，且 scripts/backup.sh 明确「Redis 不备份」；
+    #   ③ maxmemory 256m → 512m（容器上限同步提到 768m），为流积压留余量。
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redisdata:/data
     environment:
       # 供 healthcheck 在容器内读密码（无密码 ping 曾造成 NOAUTH 下依旧 healthy 的假阳性）
       REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
@@ -85,6 +95,9 @@ services:
       resources:
         limits:
           memory: 1g
+          # ZT81（2026-10-02）：补 CPU 上限——此前只限内存，单容器可吃满宿主
+          # CPU 拖垮邻居（worker 全表任务与 api/tracker 同机时最明显）。
+          cpus: "2.0"
     environment:
       BIND: 0.0.0.0:8080
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
@@ -125,7 +138,9 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health || exit 1"]
+      # ZT81（2026-10-02）：改用 /ready（探 DB + Redis）。原 /health 是静态 up，
+      # 依赖挂掉也报 healthy，LB 会持续导流 → 用户侧大面积 500。
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/ready || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -314,6 +329,9 @@ services:
 volumes:
   pgdata:
     name: ${FLUX_PG_VOLUME:-docker_pgdata}
+  # ZT81：Redis 计费 stream/DLQ 需要持久化（AOF 落此卷）；匿名卷会在 down -v 时丢失
+  redisdata:
+    name: ${FLUX_REDIS_VOLUME:-docker_redisdata}
   attachments:
     name: ${FLUX_ATTACH_VOLUME:-docker_attachments}
   prometheus-data:

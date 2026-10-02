@@ -85,14 +85,12 @@ impl std::fmt::Display for LandError {
             LandError::BadBase(b) => {
                 write!(f, "阶梯底数需大于 0，实为 {b}（配成 0 等于白送地块）")
             }
-            LandError::BadRatio(r) => write!(
-                f,
-                "阶梯比率需大于 {RATIO_MIN}‰（越买越贵），实为 {r}‰"
-            ),
-            LandError::NoRoom { owned, cap } => write!(
-                f,
-                "地块已买满（{owned}/{cap}），站长把上限就放在这里"
-            ),
+            LandError::BadRatio(r) => {
+                write!(f, "阶梯比率需大于 {RATIO_MIN}‰（越买越贵），实为 {r}‰")
+            }
+            LandError::NoRoom { owned, cap } => {
+                write!(f, "地块已买满（{owned}/{cap}），站长把上限就放在这里")
+            }
             LandError::AlreadyOwned(s) => {
                 write!(f, "第 {s} 号地块你已经有了，不用重复买")
             }
@@ -229,20 +227,12 @@ pub fn next_purchasable_slot(
 }
 
 /// 买第 n 块地（`purchased` 为已购块数）的价格。
-pub fn land_price(
-    base: i64,
-    ratio_permille: i64,
-    purchased: i32,
-) -> i64 {
+pub fn land_price(base: i64, ratio_permille: i64, purchased: i32) -> i64 {
     ladder_price(base, ratio_permille, purchased.max(0))
 }
 
 /// 把某块地从 `level` 升到 `level + 1` 的价格。
-pub fn upgrade_price(
-    base: i64,
-    ratio_permille: i64,
-    level: i32,
-) -> i64 {
+pub fn upgrade_price(base: i64, ratio_permille: i64, level: i32) -> i64 {
     ladder_price(base, ratio_permille, (level - 1).max(0))
 }
 

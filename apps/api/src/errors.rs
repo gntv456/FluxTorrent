@@ -156,7 +156,7 @@ impl ResponseError for DomainError {
                 .collect::<Vec<_>>()),
             _ => serde_json::Value::Null,
         };
-        HttpResponse::build(status).json(json!({
+        let mut resp = HttpResponse::build(status).json(json!({
             "code": self.code(),
             // 术语表（0205 / 四审 L7）：错误详情里写死的「种子 / 魔力 / 保种」这类
             // 固有词，在出口处按站长注册的规则改写——390 条校验串不用逐条改，
@@ -165,7 +165,17 @@ impl ResponseError for DomainError {
             "data": data,
             // 贯穿修复（P2）：与响应头/日志同源（request_id_mw task-local）
             "request_id": crate::request_id::current(),
-        }))
+        }));
+        // 0267：限流响应必须自带 Retry-After —— 第三方客户端据此退避，
+        // 否则只能盲目重试。本项目所有限流桶都是 60s 固定窗口
+        // （openapi 按 token、download.php 按 passkey、登录按用户名/IP）。
+        if matches!(self, DomainError::RateLimited) {
+            resp.headers_mut().insert(
+                actix_web::http::header::RETRY_AFTER,
+                actix_web::http::header::HeaderValue::from_static("60"),
+            );
+        }
+        resp
     }
 }
 

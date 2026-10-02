@@ -48,8 +48,8 @@ pub use farm_land::{
     grow_minutes, land_config, land_price, next_purchasable_slot,
     speed_permille, upgrade_price, validate_ladder, validate_purchase,
     validate_upgrade, LandConfig, LandError, DEFAULT_LAND_BASE,
-    DEFAULT_LAND_RATIO, DEFAULT_MAX_PLOTS, DEFAULT_UP_BASE,
-    DEFAULT_UP_RATIO, MAX_LEVEL, MAX_PLOTS_HARD_CAP, RATIO_MIN,
+    DEFAULT_LAND_RATIO, DEFAULT_MAX_PLOTS, DEFAULT_UP_BASE, DEFAULT_UP_RATIO,
+    MAX_LEVEL, MAX_PLOTS_HARD_CAP, RATIO_MIN,
 };
 #[allow(unused_imports)]
 pub use jgg::{

@@ -82,8 +82,8 @@ impl LandState {
 
     /// 展示投影：前台地块格与后台参数卡读同一份，不各算一遍价
     fn projection(&self) -> serde_json::Value {
-        let next = next_purchasable_slot(self.free, self.purchased, self.cap())
-            .ok();
+        let next =
+            next_purchasable_slot(self.free, self.purchased, self.cap()).ok();
         let plots: Vec<serde_json::Value> = (1..=self.owned())
             .map(|slot| {
                 let level = self.level(slot);
@@ -123,12 +123,9 @@ pub(super) async fn load_land(
     let cap = eco_i64(state, "farm_max_plots", games::DEFAULT_MAX_PLOTS).await;
     let land_base =
         eco_i64(state, "farm_land_base", games::DEFAULT_LAND_BASE).await;
-    let land_ratio = eco_i64(
-        state,
-        "farm_land_ratio_permille",
-        games::DEFAULT_LAND_RATIO,
-    )
-    .await;
+    let land_ratio =
+        eco_i64(state, "farm_land_ratio_permille", games::DEFAULT_LAND_RATIO)
+            .await;
     let up_base = eco_i64(state, "farm_up_base", games::DEFAULT_UP_BASE).await;
     let up_ratio =
         eco_i64(state, "farm_up_ratio_permille", games::DEFAULT_UP_RATIO).await;
@@ -191,12 +188,9 @@ pub(super) async fn land_gate_row(
     let cap = eco_i64(state, "farm_max_plots", games::DEFAULT_MAX_PLOTS).await;
     let land_base =
         eco_i64(state, "farm_land_base", games::DEFAULT_LAND_BASE).await;
-    let land_ratio = eco_i64(
-        state,
-        "farm_land_ratio_permille",
-        games::DEFAULT_LAND_RATIO,
-    )
-    .await;
+    let land_ratio =
+        eco_i64(state, "farm_land_ratio_permille", games::DEFAULT_LAND_RATIO)
+            .await;
     let up_base = eco_i64(state, "farm_up_base", games::DEFAULT_UP_BASE).await;
     let up_ratio =
         eco_i64(state, "farm_up_ratio_permille", games::DEFAULT_UP_RATIO).await;

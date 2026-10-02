@@ -6,7 +6,7 @@ use serde::Deserialize;
 use super::common::sha3_hex;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::openapi_http::require_token;
+use crate::openapi_http::{no_store, require_token, with_rl};
 use crate::publish_http::build_torrent_bytes;
 use crate::state::AppState;
 use crate::torrents::charge_for_download;
@@ -24,7 +24,8 @@ async fn download_key_issue(
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<DownloadKeyReq>,
 ) -> DomainResult<HttpResponse> {
-    let (uid, _rpm) = require_token(&req, &state).await?;
+    let tk = require_token(&req, &state).await?;
+    let uid = tk.uid;
     let approved: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM torrents \
          WHERE id = $1 AND approval_status = 1)",
@@ -62,16 +63,20 @@ async fn download_key_issue(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({
-        "key": plain,
-        "expires_at": expires,
-        "ttl_minutes": 30,
-        "download_url": format!(
-                      "/api/v1/downloads/{}?token={}",
-                      body.torrent_id, plain
-                  ),
-        "hint": "凭证与用户+种子绑定；明文仅显示一次",
-    })))
+    // 响应里含一次性凭证明文：禁止中间层缓存
+    Ok(no_store(with_rl(
+        ok(serde_json::json!({
+            "key": plain,
+            "expires_at": expires,
+            "ttl_minutes": 30,
+            "download_url": format!(
+                          "/api/v1/downloads/{}?token={}",
+                          body.torrent_id, plain
+                      ),
+            "hint": "凭证与用户+种子绑定；明文仅显示一次",
+        })),
+        &tk,
+    )))
 }
 
 #[derive(Deserialize)]
@@ -127,7 +132,10 @@ async fn download_key_fetch(
         .await
         .map_err(actix_web::Error::from)?;
     let body = build_torrent_bytes(&state, user_id, torrent_id).await?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/x-bittorrent")
-        .body(body))
+    // .torrent 内嵌本人 announce（含 passkey）：禁止中间层缓存
+    Ok(crate::openapi_http::no_store(
+        HttpResponse::Ok()
+            .content_type("application/x-bittorrent")
+            .body(body),
+    ))
 }

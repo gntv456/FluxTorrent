@@ -38,6 +38,8 @@ pub(super) struct ExtraSlots {
     pub(super) min_completed: u32,
     pub(super) max_completed: u32,
     pub(super) anonymous: u32,
+    /// 标题必须命中（0267）：pattern 已由调用方转义/加通配
+    pub(super) title_like: u32,
 }
 
 /// 高级搜索增强谓词（体积/时间/做种数/排除词/优惠/发布者/仅我发布）。
@@ -75,6 +77,12 @@ pub(super) fn extra_preds(s: ExtraSlots) -> String {
            AND COALESCE(t.small_descr, '') NOT ILIKE ${a} ESCAPE chr(92) \
            AND COALESCE(t.descr, '') NOT ILIKE ${a} ESCAPE chr(92)))",
         a = s.exclude
+    ));
+    // 标题必须命中（0267）：Torznab tvsearch 季集收窄等场景；
+    // 只看 t.name，不牵副标题/简介（与上面的排除词语义刻意不同）
+    out.push_str(&format!(
+        " AND (${a}::text IS NULL OR t.name ILIKE ${a} ESCAPE chr(92))",
+        a = s.title_like
     ));
     let p = s.promo;
     let (promo_free, promo_x2, promo_half, promo_any) = (

@@ -14,6 +14,27 @@ function greet(h: number, t: { m: string; a: string; e: string; n: string }) {
   return t.e;
 }
 
+/** 站点时区（UTC+8）下的当前小时。
+ *
+ * ZT2（2026-10-03）修水合不匹配：此前直接 `new Date().getHours()` —— web 容器跑
+ * UTC（本地 01:07 时容器是 17:07 → 渲染「下午好」），浏览器跑 UTC+8（渲染「夜深了」），
+ * SSR 与首次客户端渲染文本不一致 → React 每次进首页报 #418（text mismatch）并在
+ * 首屏闪一下。改成两端都按**站点时区**取小时，结果一致，且对站内用户更符合预期。
+ * 取不到（ICU 异常）时返回 -1，由调用方回落到中性问候，绝不渲染 NaN。 */
+function siteHour(): number {
+  try {
+    const s = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Shanghai",
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date());
+    const h = Number(s) % 24;
+    return Number.isFinite(h) ? h : -1;
+  } catch {
+    return -1;
+  }
+}
+
 export function MobileHomeHeader({
   brand,
   me,
@@ -27,9 +48,10 @@ export function MobileHomeHeader({
   } | null;
 }) {
   const { dict } = useI18n();
-  const h = new Date().getHours();
   const t = dict.mhome;
-  const hello = greet(h, t);
+  const h = siteHour();
+  // -1（ICU 异常）→ 中性问候，避免 SSR/CSR 分歧又避免出现 NaN
+  const hello = h < 0 ? t.a : greet(h, t);
   return (
     <div className="mhome-head md:hidden">
       <p className="mhome-head__hello">

@@ -200,6 +200,9 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
 
 /// 做种里程碑采集（M28 插件数据源）：把达到档位的事件落表，api 侧插件按需消费。
 /// 幂等：UNIQUE(user_id, torrent_id, hours) + ON CONFLICT DO NOTHING。
+/// ZT81（2026-10-02）：加「近 6h 仍在 announce」增量窗口——原实现每轮全表扫
+/// 所有 seeding 的 snatches（42 万行时单轮 9.9s）。做种秒数只在 announce 时增长，
+/// 不活跃的行为方档位不会推进，跳过它们不丢里程碑（激活后自动补采）。
 pub(crate) async fn collect_milestones(db: &PgPool) -> anyhow::Result<u64> {
     let res = sqlx::query(
         r#"
@@ -212,6 +215,7 @@ pub(crate) async fn collect_milestones(db: &PgPool) -> anyhow::Result<u64> {
           -- 旧墙钟口径「完成至今的挂机时长」会把只下载不做种的账号也计入里程碑。
           AND s.seeded_seconds >= h.hours * 3600
           AND s.completed_at IS NOT NULL
+          AND s.last_seen_at > now() - interval '6 hours'
         ON CONFLICT (user_id, torrent_id, hours) DO NOTHING
         "#,
     )

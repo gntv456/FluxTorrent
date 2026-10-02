@@ -164,7 +164,10 @@ pub(super) async fn arcade_pool_save(
                 .map(|(_, p)| p.clone())
                 .collect()
         };
-        games::validate_bigsmall(&part("win"), &part("tie"), &part("lose"))
+        // ZT2（2026-10-03）：0265 把 side 取值域从 tie 改成 triple（三骰豹子），
+        // 这里仍按 "tie" 过滤 → part("tie") 恒空 → validate_bigsmall 恒返回
+        // RegionEmpty("豹子") → **任何猜大小奖池保存都被拒**（fail-closed 的功能破损）。
+        games::validate_bigsmall(&part("win"), &part("triple"), &part("lose"))
             .map_err(|e| {
                 DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}"))
             })?;

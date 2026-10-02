@@ -68,8 +68,7 @@ fn bigsmall_table_must_cover_all_three_regions() {
         "输区拆两档、合计仍是 486 —— 合法"
     );
     assert!(
-        validate_bigsmall(&[e(1900, 486)], &[e(0, 28)], &[e(0, 300)])
-        .is_err(),
+        validate_bigsmall(&[e(1900, 486)], &[e(0, 28)], &[e(0, 300)]).is_err(),
         "输区合计不等于 486 就是破坏 486/28/486"
     );
 }

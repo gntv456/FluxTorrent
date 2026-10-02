@@ -9,7 +9,9 @@ pub mod external;
 mod model;
 mod table;
 
-pub use bencode::{bencode_announce, bencode_scrape, hex, percent_decode};
+pub use bencode::{
+    bencode_announce, bencode_scrape, hex, peer_id_bytes, percent_decode,
+};
 pub use model::{Peer, PeerKey, CONN_UNTESTED};
 // 以下仅在 peers 内部与测试使用（bin crate 私有模块的 re-export 未用时告警）
 #[cfg(test)]

@@ -37,6 +37,10 @@ impl Peer {
 pub struct CompactPeer {
     pub ip: [u8; 4],
     pub port: u16,
+    /// peer id 原始 20 字节（0267）：仅非 compact 响应需要；
+    /// compact 响应不使用（BEP23 之后所有现代客户端走 compact），
+    /// 存着是为了老客户端 `compact=0` 时能发出合规的 peer 字典。
+    pub peer_id: [u8; 20],
 }
 
 /// BEP-7：IPv6 peer（16 字节 IP + 2 字节端口，进响应的 peers6 字段）。

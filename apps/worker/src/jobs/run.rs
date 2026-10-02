@@ -51,22 +51,29 @@ macro_rules! spawn_lock {
 fn job_in_shard(n: &str, shard: &Option<Vec<String>>) -> bool {
     shard.as_ref().map_or(true, |l| l.iter().any(|s| s == n))
 }
+/// 统一 Skip 语义的 interval：tick 体耗时超周期时**跳过**积压轮次，而不是默认的
+/// Burst（立刻补跑）——后者会把慢任务退化成永不停歇的忙碌循环（ZT81 实测：
+/// hr_enforce 38.6s/轮 + 60s 周期 → 实际周期缩到 45~58s，worker 全程扫表）。
+fn every(secs: u64) -> tokio::time::Interval {
+    let mut i = tokio::time::interval(std::time::Duration::from_secs(secs));
+    i.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    i
+}
+
 pub async fn run_all(
     db: PgPool,
     redis: redis::aio::ConnectionManager,
 ) -> anyhow::Result<()> {
-    let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
-    let mut hour_tick =
-        tokio::time::interval(std::time::Duration::from_secs(3600));
+    let mut tick = every(60);
+    // 重型巡检（O(全表)：H&R 快照/里程碑/等级/死种入池）从 60s 降到 300s
+    let mut tick5 = every(300);
+    let mut hour_tick = every(3600);
     let mut last_bank_day: Option<chrono::NaiveDate> = None;
     // 0071 反作弊/性能调度
-    let mut tick10 = tokio::time::interval(std::time::Duration::from_secs(600));
-    let mut tick30 =
-        tokio::time::interval(std::time::Duration::from_secs(1800));
-    let mut tick6h =
-        tokio::time::interval(std::time::Duration::from_secs(6 * 3600));
-    let mut tick1d =
-        tokio::time::interval(std::time::Duration::from_secs(24 * 3600));
+    let mut tick10 = every(600);
+    let mut tick30 = every(1800);
+    let mut tick6h = every(6 * 3600);
+    let mut tick1d = every(24 * 3600);
     let mut first_tick10 = true;
     let mut first_tick30 = true;
     let mut first_tick6h = true;
@@ -123,30 +130,27 @@ pub async fn run_all(
                     crate::jobs::locks::mark_end(&db, "consume_agent_blocks",
                         None).await;
                 }
-                // 0225 G30-B14：独立任务并发执行（900s 慢任务不再堵同轮；
-                // 锁/超时/分片语义不变；结算链在 hour 分支保留串行）。
-                let mut js = tokio::task::JoinSet::new();
-                spawn_lock!(js, &db, "job:backfill_pieces_hash",
-                            backfill_pieces_hash, &shard);
-                spawn_lock!(js, &db, "job:sweep_stale_peers",
-                            sweep_stale_peers, &shard);
-                spawn_lock!(js, &db, "job:collect_milestones",
-                            collect_milestones, &shard);
-                spawn_lock!(js, &db, "job:hr_enforce", hr_enforce, &shard);
-                spawn_lock!(js, &db, "job:hr_punish", hr_punish, &shard);
-                spawn_lock!(js, &db, "job:class_auto_adjust",
-                            class_auto_adjust, &shard);
-                spawn_lock!(js, &db, "job:preserve_seed",
-                            preserve_seed, &shard);
-                spawn_lock!(js, &db, "job:task_settle",
-                            crate::task_jobs::task_settle, &shard);
-                spawn_lock!(js, &db, "job:exam_assign",
-                            crate::task_jobs::exam_assign, &shard);
-                spawn_lock!(js, &db, "job:lottery_settle",
-                            lottery_settle_due, &shard);
-                while let Some(res) = js.join_next().await {
-                    let _ = res.map_err(|e| {
-                        tracing::error!(?e, "并发 job join 失败");
+                // ZT81：分离到后台执行，不再 join/await——原实现会把整个 select 循环
+                // 卡到任务跑完，全表任务一慢，同分支的计费消费就跟着停摆。
+                {
+                    let (db2, shard2) = (db.clone(), shard.clone());
+                    tokio::spawn(async move {
+                        let mut js = tokio::task::JoinSet::new();
+                        spawn_lock!(js, &db2, "job:backfill_pieces_hash",
+                                    backfill_pieces_hash, &shard2);
+                        spawn_lock!(js, &db2, "job:sweep_stale_peers",
+                                    sweep_stale_peers, &shard2);
+                        spawn_lock!(js, &db2, "job:task_settle",
+                                    crate::task_jobs::task_settle, &shard2);
+                        spawn_lock!(js, &db2, "job:exam_assign",
+                                    crate::task_jobs::exam_assign, &shard2);
+                        spawn_lock!(js, &db2, "job:lottery_settle",
+                                    lottery_settle_due, &shard2);
+                        while let Some(res) = js.join_next().await {
+                            let _ = res.map_err(|e| {
+                                tracing::error!(?e, "并发 job join 失败");
+                            });
+                        }
                     });
                 }
                 // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
@@ -242,6 +246,26 @@ pub async fn run_all(
                     })
                     .await;
                 }
+            }
+            _ = tick5.tick() => {
+                // 重型巡检（ZT81 从 60s 迁来）：O(全表)，300s 一轮且分离到后台。
+                let (db2, shard2) = (db.clone(), shard.clone());
+                tokio::spawn(async move {
+                    let mut js = tokio::task::JoinSet::new();
+                    spawn_lock!(js, &db2, "job:hr_enforce", hr_enforce, &shard2);
+                    spawn_lock!(js, &db2, "job:hr_punish", hr_punish, &shard2);
+                    spawn_lock!(js, &db2, "job:collect_milestones",
+                                collect_milestones, &shard2);
+                    spawn_lock!(js, &db2, "job:class_auto_adjust",
+                                class_auto_adjust, &shard2);
+                    spawn_lock!(js, &db2, "job:preserve_seed",
+                                preserve_seed, &shard2);
+                    while let Some(res) = js.join_next().await {
+                        let _ = res.map_err(|e| {
+                            tracing::error!(?e, "重型巡检 join 失败");
+                        });
+                    }
+                });
             }
             _ = tick10.tick() => {
                 if first_tick10 { first_tick10 = false; continue; }
