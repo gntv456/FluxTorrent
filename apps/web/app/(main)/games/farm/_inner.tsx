@@ -7,9 +7,15 @@ import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { countdownText, eggText, type EggPrize } from "@/lib/games";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import type { FarmLand } from "@/components/game/farm-land";
+import { GameTabs } from "@/components/game/game-tabs";
 import { BalanceBar } from "@/components/game/game-kit";
 import { GameToast } from "@/components/game/game-kit-feedback";
-import { MarketSection, MyFieldSection } from "./_inner-sections";
+import { CraftSection, FarmAlbumSection, RanchSection } from "./_inner-ranch";
+import {
+  MarketSection,
+  MyFieldSection,
+  FarmQuestSection,
+} from "./_inner-sections";
 import Link from "next/link";
 
 export interface FarmData {
@@ -59,6 +65,46 @@ export default function FarmPage({
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState<number | null>(null);
 
+  // 农场周常任务（样图⑤任务卡）：arcade-meta 的 quests 里筛 farm 系行。
+  // 大厅组件 ArcadeMeta 也会拉同一端点，但它是另一棵树 —— 这里独立拉取。
+  const [questPack, setQuestPack] = useState<{
+    period: string;
+    items: {
+      code: string;
+      done: number;
+      target: number;
+      claimed: boolean;
+      ready: boolean;
+      reward: number;
+      item_name?: string | null;
+    }[];
+  } | null>(null);
+  const [claiming, setClaiming] = useState<string | null>(null);
+  // 样图⑤四 Tab：田园 / 牧场 / 加工 / 图鉴（区块按 tab 切换，不平铺）
+  const [tab, setTab] = useState("field");
+
+  const loadQuests = useCallback(async () => {
+    try {
+      const r = await api.get<{
+        quests: {
+          period: string;
+          items: {
+            code: string;
+            done: number;
+            target: number;
+            claimed: boolean;
+            ready: boolean;
+            reward: number;
+            item_name?: string | null;
+          }[];
+        };
+      }>("/api/v1/games/arcade-meta");
+      setQuestPack(r.quests);
+    } catch {
+      /* 未配置/关闭时静默：任务卡整体不渲染 */
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       setData(await api.get<FarmData>("/api/v1/farm"));
@@ -84,7 +130,8 @@ export default function FarmPage({
     void refresh();
     // 农场接口不带「我的」，从总览接口补余额/今日/剩余（下注条常驻可见）
     void loadMe();
-  }, [refresh, loadMe]);
+    void loadQuests();
+  }, [refresh, loadMe, loadQuests]);
 
   // 倒计时 tick（SSR 不渲染时间，避免 hydration 不一致）
   useEffect(() => {
@@ -181,6 +228,41 @@ export default function FarmPage({
   const fsPlantedText = `${planted}/${owned}`;
   const fsReadyText = tf.fsReadyNum.replace("{n}", String(readyPlots.length));
 
+  /** 农场任务行的展示文案：大厅 arcade 段按 code 给了每条任务的措辞，
+   *  这里沿用同一来源（q_farm / q_farm_fert …），没有词条的任务退
+   *  game_ref 原文——不造假数据。 */
+  const ta = dict.games.arcade as Record<string, string>;
+  const farmQuests = (questPack?.items ?? [])
+    .filter((q) => q.code.startsWith("q_farm"))
+    .map((q) => ({
+      ...q,
+      label: ta[q.code] ?? q.code,
+    }));
+  const questPeriod = questPack?.period ?? "";
+
+  /** 领取农场周常：与大厅 ArcadeMeta 同一端点；领取后回读任务面与余额 */
+  async function claimQuest(code: string) {
+    if (claiming) return;
+    setClaiming(`quest:${code}`);
+    setErr(null);
+    try {
+      await api.post(`/api/v1/games/arcade/quest/${code}/claim`, {
+        idempotency_key: `farm-q-${code}-${Date.now()}`,
+      });
+      setMsg({ kind: "win", text: tf.questClaimed ?? "✓ 已领取" });
+      await loadQuests();
+      void loadMe();
+    } catch (e) {
+      setErr(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
+      );
+    } finally {
+      setClaiming(null);
+    }
+  }
+
   /** 一键收获：逐块调同一 harvest 端点（后端幂等 + 行锁，重复点也安全）；
    *  单块失败不中断其余（例如某块刚好被并发收走）。 */
   async function harvestAll() {
@@ -275,8 +357,17 @@ export default function FarmPage({
         }
       />
 
-      {/* 样图⑤没有舞台横幅（标题行下方直接天气条），标题-only 的
-          GameStage 与页头重复 —— 不渲染 */}
+      {/* 样图⑤：田园/牧场/加工/图鉴四 Tab（不平铺） */}
+      <GameTabs
+        tabs={[
+          { key: "field", label: tf.tabField, icon: "🌾" },
+          { key: "ranch", label: tf.tabRanch, icon: "🐄" },
+          { key: "craft", label: tf.tabCraft, icon: "🏭" },
+          { key: "album", label: tf.tabAlbum, icon: "📖" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
       {/* 错误放在顶部（长页面里底部提示会跑出视野） */}
       {err && (
@@ -316,26 +407,58 @@ export default function FarmPage({
         </div>
       </div>
 
-      <MyFieldSection
-        data={data}
-        plots={plots}
-        now={now}
-        busy={busy}
-        picking={picking}
-        setPicking={setPicking}
-        readyPlots={readyPlots}
-        tf={tf as unknown as Record<string, string>}
-        currency={currency}
-        onHarvestAll={harvestAll}
-        act={act}
-      />
+      {tab === "field" && (
+        <>
+          <MyFieldSection
+            data={data}
+            plots={plots}
+            now={now}
+            busy={busy}
+            picking={picking}
+            setPicking={setPicking}
+            readyPlots={readyPlots}
+            tf={tf as unknown as Record<string, string>}
+            currency={currency}
+            onHarvestAll={harvestAll}
+            act={act}
+          />
 
-      <MarketSection
-        crops={data.crops}
-        onPlant={plant}
-        busy={busy}
-        tf={tf as unknown as Record<string, string>}
-      />
+          {/* 农场周常任务（样图⑤任务卡）：数据来自 arcade-meta（_inner 顶层
+              拉取），筛 farm 系任务行；领取后 reload quests + 刷余额 */}
+          <FarmQuestSection
+            quests={farmQuests}
+            period={questPeriod}
+            tf={tf as unknown as Record<string, string>}
+            claiming={claiming}
+            onClaim={claimQuest}
+          />
+
+          <MarketSection
+            crops={data.crops}
+            onPlant={plant}
+            busy={busy}
+            tf={tf as unknown as Record<string, string>}
+          />
+        </>
+      )}
+
+      {/* 牧场 / 加工坊 / 图鉴（样图⑤ 2026-10 补页批）：按 tab 切换，
+          各自取数、模块未配置时整段隐藏 */}
+      {tab === "ranch" && (
+        <RanchSection
+          tf={tf as unknown as Record<string, string>}
+          onErr={setErr}
+        />
+      )}
+      {tab === "craft" && (
+        <CraftSection
+          tf={tf as unknown as Record<string, string>}
+          onErr={setErr}
+        />
+      )}
+      {tab === "album" && (
+        <FarmAlbumSection tf={tf as unknown as Record<string, string>} />
+      )}
 
       {/* 动作反馈走浮层：田地与行情都很长，固定在视口下方的提示不会跑出视野 */}
       <GameToast message={msg} onDone={() => setMsg(null)} />

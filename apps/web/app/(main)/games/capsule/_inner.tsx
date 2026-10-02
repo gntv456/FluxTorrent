@@ -11,8 +11,9 @@ import {
   SwStatRow,
   SwTenModal,
 } from "@/components/game/sw-panels";
-import { SubpageLink } from "@/components/game/subpage-link";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
+import { GameTabs } from "@/components/game/game-tabs";
+import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
@@ -72,6 +73,8 @@ export default function CapsuleFocusPage({
     text: string;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // 样图手机版：主玩法 / 记录图鉴 双 tab
+  const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const [sessionPlays, setSessionPlays] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -244,6 +247,21 @@ export default function CapsuleFocusPage({
     void loadCollect();
   }
 
+  if (tab === "records") {
+    return (
+      <div className="flex flex-col gap-4">
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+        <GameRecordsPanel game="capsule" />
+      </div>
+    );
+  }
   return (
     <GameShell
       icon={<ArcadeGlyph k="capsule" />}
@@ -253,10 +271,20 @@ export default function CapsuleFocusPage({
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
       notice={
-        <PlayHint
-          sessionPlays={sessionPlays}
-          todayNet={ov?.me?.today_net ?? null}
-        />
+        <>
+          <GameTabs
+            tabs={[
+              { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
+          <PlayHint
+            sessionPlays={sessionPlays}
+            todayNet={ov?.me?.today_net ?? null}
+          />
+        </>
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
@@ -295,7 +323,6 @@ export default function CapsuleFocusPage({
           />
           <SwPrizeStrip label={tc.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-danger">{err}</p>}
-          <SubpageLink game="capsule" />
         </div>
       }
       controls={

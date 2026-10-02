@@ -169,6 +169,25 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
 
 // ============ 种子操作记录（既有） ============
 
+/** op action → 人话：approve/reject（review.rs）+ batch_<action>
+ *  （torrent_batch.rs 的 12 种批量动作）。未收录回落原值。 */
+const OP_ACTION: Record<string, string> = {
+  approve: "通过审核",
+  reject: "驳回",
+  batch_sticky: "批量置顶",
+  batch_recommend: "批量推荐",
+  batch_promo: "批量促销",
+  batch_free: "批量免费",
+  batch_half: "批量半价",
+  batch_hr: "批量开启 H&R",
+  batch_unhr: "批量豁免 H&R",
+  batch_delete: "批量删除",
+  batch_set_tags: "批量设置标签",
+  batch_clear_tags: "批量清除标签",
+  batch_change_category: "批量改分类",
+  batch_change_sections: "批量改板块",
+};
+
 export function OpLogs() {
   const { dict } = useI18n();
   const at = dict.adminTorrents;
@@ -222,7 +241,7 @@ export function OpLogs() {
                 #{r.torrent_id} {r.torrent_name ?? ""}
               </td>
               <td>{r.operator_name ?? "—"}</td>
-              <td>{r.action}</td>
+              <td>{OP_ACTION[r.action] ?? r.action}</td>
               <td className="max-w-[220px] truncate text-xs">
                 {r.detail ? JSON.stringify(r.detail) : "—"}
               </td>

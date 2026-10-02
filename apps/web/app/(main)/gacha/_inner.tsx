@@ -2,6 +2,7 @@ import { getDict } from "@/i18n/server";
 import { api } from "@/lib/api-client";
 import { GachaRates } from "@/components/gacha-rates";
 import { GachaAlbum } from "@/components/gacha-album";
+import { GachaTabbed } from "@/components/gacha-tabbed";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 
 export const dynamic = "force-dynamic";
@@ -144,59 +145,83 @@ export default async function GachaDisclosurePage() {
           <h1 className="font-display text-2xl">{dict.nav.gachaDisclosure}</h1>
         </div>
       </div>
-      <GachaRates
-        rarities={rarities}
-        banners={rates.filter((r): r is GachaBannerRates => r !== null)}
-      />
-      {first && (
-        <section className="sw-cardbook">
-          <div className="sw-cardbook-cap">
-            {dict.games.gachaPool} · {bannerName}
-          </div>
-          <div className="sw-cardbook-grid">
-            {topCards.map((c) => (
-              <div key={c.name} className={`sw-card sw-tone-${c.tone}`}>
-                <span className="sw-card-stars num" aria-hidden>
-                  {"★".repeat(c.stars)}
-                </span>
-                <span className="sw-card-face" aria-hidden>
-                  <ArcadeGlyph k="gacha" />
-                </span>
-                <span className="sw-card-name">{c.name}</span>
-                <span className="sw-card-rank num">{c.sub}</span>
-              </div>
-            ))}
-          </div>
-          {/* 合成进度（样图⑧）：真实碎片数据驱动（登录态）；未登录整块隐藏 */}
-          {me && ssrSynth > 0 && (
-            <div className="sw-synth">
-              <div className="sw-synth-cap">{dict.games.gachaSynthCap}</div>
-              <div className="sw-synth-row">
-                <span className="sw-synth-track" aria-hidden>
-                  <i
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        (me.shardBalance / ssrSynth) * 100,
-                      )}%`,
-                    }}
-                  />
-                </span>
-                <b className="num">
-                  {dict.games.gachaSynthFrag
-                    .replace("{a}", String(me.shardBalance))
-                    .replace("{b}", String(ssrSynth))}
-                </b>
-              </div>
-              <p className="sw-synth-note">
-                {dict.games.gachaSynthNote.replace("{n}", String(ssrSynth))}
+      {/* 样图⑧三 Tab：卡池 / 概率 / 我的卡册（RSC 预渲染，客户端只做显隐） */}
+      <GachaTabbed
+        labels={{
+          pool: dict.games.gachaTabPool,
+          rates: dict.games.gachaTabRates,
+          album: dict.games.gachaTabAlbum,
+        }}
+        rates={
+          <GachaRates
+            rarities={rarities}
+            banners={rates.filter((r): r is GachaBannerRates => r !== null)}
+          />
+        }
+        album={<GachaAlbum rarities={rarities} initial={me} />}
+        pool={
+          <>
+            {/* 新手首抽体验价：未抽过卡的用户单抽 1 券（后端放行） */}
+            {me && (me.cards?.length ?? 0) === 0 && (
+              <p className="rounded-[var(--r-md)] bg-mint-soft px-3 py-2 text-xs font-bold text-ink">
+                {dict.games.gachaFirstDraw}
               </p>
-            </div>
-          )}
-        </section>
-      )}
-      {/* 登录态附加收藏面（未登录仅公示——me 端点 401 时静默省略） */}
-      <GachaAlbum rarities={rarities} initial={me} />
+            )}
+            {first && (
+              <section className="sw-cardbook">
+                <div className="sw-cardbook-cap">
+                  {dict.games.gachaPool} · {bannerName}
+                </div>
+                <div className="sw-cardbook-grid">
+                  {topCards.map((c) => (
+                    <div key={c.name} className={`sw-card sw-tone-${c.tone}`}>
+                      <span className="sw-card-stars num" aria-hidden>
+                        {"★".repeat(c.stars)}
+                      </span>
+                      <span className="sw-card-face" aria-hidden>
+                        <ArcadeGlyph k="gacha" />
+                      </span>
+                      <span className="sw-card-name">{c.name}</span>
+                      <span className="sw-card-rank num">{c.sub}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* 合成进度（样图⑧）：真实碎片数据驱动（登录态）；未登录整块隐藏 */}
+                {me && ssrSynth > 0 && (
+                  <div className="sw-synth">
+                    <div className="sw-synth-cap">
+                      {dict.games.gachaSynthCap}
+                    </div>
+                    <div className="sw-synth-row">
+                      <span className="sw-synth-track" aria-hidden>
+                        <i
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (me.shardBalance / ssrSynth) * 100,
+                            )}%`,
+                          }}
+                        />
+                      </span>
+                      <b className="num">
+                        {dict.games.gachaSynthFrag
+                          .replace("{a}", String(me.shardBalance))
+                          .replace("{b}", String(ssrSynth))}
+                      </b>
+                    </div>
+                    <p className="sw-synth-note">
+                      {dict.games.gachaSynthNote.replace(
+                        "{n}",
+                        String(ssrSynth),
+                      )}
+                    </p>
+                  </div>
+                )}
+              </section>
+            )}
+          </>
+        }
+      />
     </div>
   );
 }

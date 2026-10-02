@@ -22,7 +22,7 @@ export default async function RulesPage() {
     // 未登录/后端不可达 → 回落静态文案
   }
   return (
-    <main className="mx-auto w-full max-w-[900px] px-4 py-8">
+    <main className="mx-auto w-full max-w-[min(900px,100%)] px-4 py-8">
       <p className="mb-3 text-xs text-sub">
         <Link href="/login" className="text-sky">
           FluxTorrent

@@ -5,6 +5,8 @@ import { PANEL_LG } from "@/lib/ui-classes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { SwCtaRow, SwHist, SwStatRow } from "@/components/game/sw-panels";
+import { GameTabs } from "@/components/game/game-tabs";
+import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
 import { useI18n } from "@/i18n/client";
@@ -14,7 +16,6 @@ import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { StreakPill } from "@/components/game/streak-pill";
 import { LuckyWheel, type WheelPrize } from "@/components/game/lucky-wheel";
 import { GameStage } from "@/components/game/game-stage";
-import { SubpageLink } from "@/components/game/subpage-link";
 
 export interface Overview {
   me?: {
@@ -63,6 +64,8 @@ export default function WheelFocusPage({
     text: string;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // 样图手机版：主玩法 / 记录图鉴 双 tab
+  const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const [sessionPlays, setSessionPlays] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -172,6 +175,21 @@ export default function WheelFocusPage({
     void loadMeta();
   }
 
+  if (tab === "records") {
+    return (
+      <div className="flex flex-col gap-4">
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+        <GameRecordsPanel game="wheel" />
+      </div>
+    );
+  }
   return (
     <GameShell
       icon={<ArcadeGlyph k="wheel" />}
@@ -181,10 +199,20 @@ export default function WheelFocusPage({
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
       notice={
-        <PlayHint
-          sessionPlays={sessionPlays}
-          todayNet={ov?.me?.today_net ?? null}
-        />
+        <>
+          <GameTabs
+            tabs={[
+              { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
+          <PlayHint
+            sessionPlays={sessionPlays}
+            todayNet={ov?.me?.today_net ?? null}
+          />
+        </>
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
@@ -240,7 +268,6 @@ export default function WheelFocusPage({
           />
           <SwPrizeStrip label={tw.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-danger">{err}</p>}
-          <SubpageLink game="wheel" />
         </div>
       }
       controls={

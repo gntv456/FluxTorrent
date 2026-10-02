@@ -904,6 +904,56 @@
   height: auto;
   display: block;
 }
+
+/* ══════ 游戏页切换标签条（样图手机版：主玩法+子页的 tab 形态）══════ */
+.gtabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #eef4fc, #e2ebf7);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.gtabs::-webkit-scrollbar {
+  display: none;
+}
+.gtab {
+  flex: 1 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 4px 14px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--sweet-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.gtab .gtab-ic {
+  font-size: 14px;
+  line-height: 1;
+}
+.gtab.on {
+  background: #fff;
+  color: var(--sweet-sky-deep);
+  box-shadow: 0 3px 8px -3px rgba(44, 62, 92, 0.25);
+}
+.gtab:not(.on):hover {
+  color: var(--sweet-ink);
+}
+
 /* ── 鱼塘环境动效：给静态 SVG 加生命（样图是静帧，实机要活的）──
    鱼群洄游出画再从对侧入画（衔接处全在画外，循环无跳变）；
    尊重系统「减少动态」偏好 —— 包一层 no-preference 媒体查询 */
@@ -2265,15 +2315,23 @@
   animation: jpkFall 1.6s ease-in forwards;
 }
 @keyframes jpkFall {
-  0% { opacity: 0; transform: translateY(0) rotate(0deg); }
-  8% { opacity: 1; }
+  0% {
+    opacity: 0;
+    transform: translateY(0) rotate(0deg);
+  }
+  8% {
+    opacity: 1;
+  }
   100% {
     opacity: 0.9;
     transform: translateY(105vh) rotate(540deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .jpk-piece { animation: none; opacity: 0; }
+  .jpk-piece {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 /* 连胜徽章：火焰胶囊，档位越高越亮（3/5/8 连三档） */
@@ -2302,44 +2360,80 @@
   box-shadow: 0 0 14px rgba(184, 72, 138, 0.5);
 }
 @keyframes jpkPop {
-  0% { transform: scale(0.6); opacity: 0; }
-  70% { transform: scale(1.12); }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .streak-pill { animation: none; }
+  .streak-pill {
+    animation: none;
+  }
 }
 
 /* 扭蛋个人收集行（趣味性批）：档位名 + 集齐数 + 累计次数 */
 .sw-cap-collect {
-  display: flex; flex-direction: column; gap: 6px;
-  margin-top: 12px; padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 10px 12px;
   border-radius: var(--r-md);
   background: linear-gradient(160deg, #fff, #f8f4e8);
   box-shadow: inset 0 0 0 1px var(--sweet-gold);
 }
 .sw-cap-crow {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 12px; color: var(--sweet-ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--sweet-ink);
 }
 .sw-cap-ctier {
-  min-width: 34px; text-align: center;
-  font-size: 11px; font-weight: 900;
-  color: #fff; border-radius: 6px; padding: 1px 6px;
+  min-width: 34px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 900;
+  color: #fff;
+  border-radius: 6px;
+  padding: 1px 6px;
   background: var(--sweet-sky-deep);
 }
-.sw-cap-crow:first-child .sw-cap-ctier { background: var(--sweet-gold-deep); }
-.sw-cap-chits { margin-left: auto; color: var(--sweet-gold-deep); }
+.sw-cap-crow:first-child .sw-cap-ctier {
+  background: var(--sweet-gold-deep);
+}
+.sw-cap-chits {
+  margin-left: auto;
+  color: var(--sweet-gold-deep);
+}
 
 /* 宠物进化演出（趣味性批）：跨档升级时新形态弹入 + 光环 */
 .pp-evolve {
   animation: ppEvolve 0.9s cubic-bezier(0.2, 0.8, 0.3, 1.2);
 }
 @keyframes ppEvolve {
-  0% { transform: scale(0.4) rotate(-8deg); opacity: 0; filter: brightness(2); }
-  55% { transform: scale(1.25) rotate(4deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0deg); }
+  0% {
+    transform: scale(0.4) rotate(-8deg);
+    opacity: 0;
+    filter: brightness(2);
+  }
+  55% {
+    transform: scale(1.25) rotate(4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pp-evolve { animation: none; }
+  .pp-evolve {
+    animation: none;
+  }
 }

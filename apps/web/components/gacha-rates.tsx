@@ -9,6 +9,15 @@ import type {
  * （样张实测同一池表定 91.6% / 综合 105.8% 的返还差）。
  * 稀有度色 token 全部来自后端行表（rarities），前端不持色表（样张判据）。
  */
+
+/** 池类型（gacha_banners.kind，CHECK 固定三种）→ 人话；未知回落原值。
+ *  本组件其余文案（档位/表定概率等）也是中文硬编码，口径一致即可。 */
+const BANNER_KIND: Record<string, string> = {
+  standard: "常驻池",
+  limited: "限定池",
+  newbie: "新手池",
+};
+
 export function GachaRates({
   rarities,
   banners,
@@ -18,9 +27,7 @@ export function GachaRates({
 }) {
   if (banners.length === 0) {
     return (
-      <div className="card p-6 text-sm text-muted">
-        当前没有开放中的卡池。
-      </div>
+      <div className="card p-6 text-sm text-muted">当前没有开放中的卡池。</div>
     );
   }
   const pct = (x: number, d = 2) => `${(x * 100).toFixed(d)}%`;
@@ -32,7 +39,9 @@ export function GachaRates({
           <section key={b.banner.id} className="card overflow-hidden">
             <header className="flex flex-wrap items-baseline border-b p-4">
               <h2 className="font-display text-lg">{b.banner.name}</h2>
-              <span className="text-xs text-muted">{b.banner.kind}</span>
+              <span className="text-xs text-muted">
+                {BANNER_KIND[b.banner.kind] ?? b.banner.kind}
+              </span>
               <span className="ml-auto text-xs text-muted">
                 单抽票价 {b.banner.ticketCost}
               </span>
@@ -87,23 +96,15 @@ export function GachaRates({
                 </tbody>
               </table>
             </div>
-            <footer
-              className="flex flex-wrap gap-x-6 gap-y-1 p-4 text-xs text-muted"
-            >
+            <footer className="flex flex-wrap gap-x-6 gap-y-1 p-4 text-xs text-muted">
               <span>
                 综合出金率{" "}
-                <b className="text-base tabular-nums">
-                  {pct(b.goldComp)}
-                </b>
+                <b className="text-base tabular-nums">{pct(b.goldComp)}</b>
                 （表定 {pct(b.goldBase)}）
               </span>
               <span>保底周期 ≈ {b.cycle.toFixed(1)} 抽</span>
-              <span>
-                硬保底触发概率 {pct(b.hardProb, 3)}
-              </span>
-              <span>
-                返还率（最差口径）{pct(b.ratioWorst, 1)}
-              </span>
+              <span>硬保底触发概率 {pct(b.hardProb, 3)}</span>
+              <span>返还率（最差口径）{pct(b.ratioWorst, 1)}</span>
             </footer>
           </section>
         );

@@ -211,9 +211,10 @@ pub(super) async fn guess_bigsmall(
     check_rate(&state, &state.redis, auth.id).await?;
 
     let idem = idem_key("bs", auth.id, &body.idempotency_key);
-    // 机制在代码（1..100 均匀、49/2/49 分区），派彩在表。先定死结果再动账。
-    let number = games::roll();
-    let side = games::outcome_side(number, guess);
+    // 机制在代码（3 颗六面骰、105/6/105 分区），派彩在表。先定死结果再动账。
+    let dice = games::roll();
+    let side = games::outcome_side(dice, guess);
+    let number: u32 = dice.iter().sum();
     let draw = games::draw_entry(table.region(side)).ok_or_else(|| {
         DomainError::Validation("猜大小该档区不可抽样".into())
     })?;
@@ -275,6 +276,7 @@ pub(super) async fn guess_bigsmall(
     state.repo.audit(Some(auth.id), "game.bigsmall", None).await;
     Ok(ok(serde_json::json!({
         "number": number,
+        "dice": dice,
         "player_win": side == "win",
         "side": side,
         "payout": payout,
@@ -285,7 +287,7 @@ pub(super) async fn guess_bigsmall(
         "fell_back": fell_back,
         "bet": body.bet,
         "net": payout - body.bet,
-        "tie": side == "tie",
+        "triple": side == "triple",
         "props_applied": props.iter().map(|p| serde_json::json!({
             "key": p.key, "name": p.name, "icon": p.icon,
             "effect": p.effect, "value": p.value,

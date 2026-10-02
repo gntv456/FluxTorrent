@@ -6,6 +6,8 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
+import { GameTabs } from "@/components/game/game-tabs";
+import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { FishingPond, type FishPhase } from "@/components/game/fishing-pond";
@@ -78,6 +80,7 @@ export default function FishingPage({
     text: string;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const [sessionPlays, setSessionPlays] = useState(0);
   const idem = useRef<string>("");
@@ -238,6 +241,21 @@ export default function FishingPage({
   const canCast = phase === "idle" || phase === "done";
   const canReel = phase === "bite" || phase === "waiting";
 
+  if (tab === "records") {
+    return (
+      <div className="flex flex-col gap-4">
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🎣" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+        <GameRecordsPanel game="fishing" />
+      </div>
+    );
+  }
   return (
     <GameShell
       icon={<ArcadeGlyph k="fishing" />}
@@ -247,10 +265,20 @@ export default function FishingPage({
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
       notice={
-        <PlayHint
-          sessionPlays={sessionPlays}
-          todayNet={ov?.me?.today_net ?? null}
-        />
+        <>
+          <GameTabs
+            tabs={[
+              { key: "play", label: dict.games.sub.tabPlay, icon: "🎣" },
+              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
+          <PlayHint
+            sessionPlays={sessionPlays}
+            todayNet={ov?.me?.today_net ?? null}
+          />
+        </>
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">

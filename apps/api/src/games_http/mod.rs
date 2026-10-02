@@ -22,8 +22,10 @@ mod arcade_rewards_write;
 mod arcade_stubs;
 mod bigsmall_props;
 mod casino;
+mod collection;
 mod farm;
 mod farm_actions;
+mod farm_collection;
 mod farm_egg;
 mod farm_land;
 mod farm_land_write;
@@ -36,9 +38,11 @@ mod item_use;
 mod linkage;
 mod overview;
 mod pet_custom;
+mod pet_log;
 mod pets;
 mod pool;
 mod pool_games;
+mod ranch;
 mod pool_table;
 mod prize_view;
 
@@ -52,7 +56,9 @@ use arcade_meta::*;
 use arcade_leaderboard::*;
 use arcade_rewards_write::*;
 use casino::*;
+use collection::*;
 use farm::*;
+use farm_collection::*;
 use farm_actions::*;
 use farm_land::*;
 use farm_land_write::*;
@@ -63,8 +69,10 @@ use item_use::*;
 use linkage::*;
 use overview::*;
 use pet_custom::*;
+use pet_log::*;
 use pets::*;
 use pool_games::*;
+use ranch::*;
 
 pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
     scope
@@ -82,6 +90,7 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(pet_feed)
         .service(pet_claim)
         .service(pet_customize)
+        .service(pet_log)
         .service(pet_of)
         .service(fishing_rod)
         .service(fishing_rod_upgrade)
@@ -90,6 +99,15 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(farm_overview)
         .service(farm_plant)
         .service(farm_water)
+        .service(farm_fertilize)
+        .service(game_collection)
+        .service(farm_collection)
+        .service(ranch_state)
+        .service(ranch_buy)
+        .service(ranch_feed)
+        .service(ranch_collect)
+        .service(craft_start)
+        .service(craft_collect)
         .service(farm_harvest)
         .service(farm_land_buy)
         .service(farm_land_upgrade)

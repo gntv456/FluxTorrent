@@ -498,6 +498,23 @@ a:hover {
   overflow: hidden;
   box-shadow: var(--shadow-card);
 }
+/* 窄端（折叠外屏 ~342px）溢出兜底：长内容（用户名/时间戳/链接）允许
+   换行而不是把表格撑出视口 —— 全站 144 处 nexus-table 不可能逐个包
+   overflow-x-auto，换行在数据表上比横向滚动更可用 */
+.nexus-table td {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 380px) {
+  .nexus-table {
+    font-size: 11px;
+  }
+  .nexus-table th,
+  .nexus-table thead td {
+    font-size: 11px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
 .nexus-table th,
 .nexus-table thead td {
   color: var(--text-brand);

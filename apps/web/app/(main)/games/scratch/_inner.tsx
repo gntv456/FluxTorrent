@@ -7,6 +7,8 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
+import { GameTabs } from "@/components/game/game-tabs";
+import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { ScratchCoat, type CoatOutcome } from "@/components/game/scratch-coat";
@@ -73,6 +75,8 @@ export default function ScratchPage({
     text: string;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // 样图手机版：主玩法 / 记录图鉴 双 tab
+  const [tab, setTab] = useState("play");
   const [sessionPlays, setSessionPlays] = useState(0);
   const idem = useRef<string>("");
 
@@ -203,6 +207,21 @@ export default function ScratchPage({
     if (next.length >= 6) finishTicket();
   }
 
+  if (tab === "records") {
+    return (
+      <div className="flex flex-col gap-4">
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+        <GameRecordsPanel game="scratch" />
+      </div>
+    );
+  }
   return (
     <GameShell
       icon={<ArcadeGlyph k="scratch" />}
@@ -212,10 +231,20 @@ export default function ScratchPage({
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
       notice={
-        <PlayHint
-          sessionPlays={sessionPlays}
-          todayNet={ov?.me?.today_net ?? null}
-        />
+        <>
+          <GameTabs
+            tabs={[
+              { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
+          <PlayHint
+            sessionPlays={sessionPlays}
+            todayNet={ov?.me?.today_net ?? null}
+          />
+        </>
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">

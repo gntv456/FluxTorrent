@@ -67,6 +67,13 @@ export function AppealsPanel({
 }) {
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
+  // 申诉类型四值（后端 appeals.rs CHECK），与用户侧 /appeals 同一组文案
+  const KIND: Record<string, string> = {
+    ban: dict.appeals.kindBan,
+    hr: dict.appeals.kindHr,
+    warn: dict.appeals.kindWarn,
+    other: dict.appeals.kindOther,
+  };
   return (
     <section className={PANEL_LG}>
       <ul className="flex flex-col divide-y divide-line">
@@ -75,7 +82,7 @@ export function AppealsPanel({
             <div className="flex-1">
               <p className="text-sm">
                 <span className="rounded-full bg-sun/30 px-2 py-0.5 text-[10px]">
-                  {ap.kind}
+                  {KIND[ap.kind] ?? ap.kind}
                 </span>{" "}
                 <b>{ap.username}</b>
                 {ap.ref_id !== null && (
@@ -121,9 +128,7 @@ export function AppealsPanel({
           </li>
         ))}
         {appeals.length === 0 && (
-          <li className="py-6 text-center text-sub">
-            {a.appealEmpty}
-          </li>
+          <li className="py-6 text-center text-sub">{a.appealEmpty}</li>
         )}
       </ul>
     </section>

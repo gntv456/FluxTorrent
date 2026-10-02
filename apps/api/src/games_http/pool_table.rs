@@ -13,12 +13,12 @@ use super::pool::dberr;
 pub(super) struct Table {
     pub ticket: i64,
     pub win: Vec<games::PoolEntry>,
-    pub tie: Vec<games::PoolEntry>,
+    pub triple: Vec<games::PoolEntry>,
     pub lose: Vec<games::PoolEntry>,
     /// 每区展示元数据 `(rarity, image_url)`，与对应区**按位对齐**。
     /// 编辑器回读要按它复现 —— 少了它，站长设的稀有度会被下一次保存抹回默认。
     pub win_meta: Vec<(i16, String)>,
-    pub tie_meta: Vec<(i16, String)>,
+    pub triple_meta: Vec<(i16, String)>,
     pub lose_meta: Vec<(i16, String)>,
 }
 
@@ -26,14 +26,14 @@ impl Table {
     /// 整桌档位摊平后的 EV 用同一份公式（三区合计就是一局）。
     pub fn all(&self) -> Vec<games::PoolEntry> {
         let mut v = self.win.clone();
-        v.extend(self.tie.iter().cloned());
+        v.extend(self.triple.iter().cloned());
         v.extend(self.lose.iter().cloned());
         v
     }
     pub fn region(&self, side: &str) -> &[games::PoolEntry] {
         match side {
             "win" => &self.win,
-            "tie" => &self.tie,
+            "triple" => &self.triple,
             _ => &self.lose,
         }
     }
@@ -41,14 +41,14 @@ impl Table {
     pub fn meta(&self, side: &str) -> &[(i16, String)] {
         match side {
             "win" => &self.win_meta,
-            "tie" => &self.tie_meta,
+            "triple" => &self.triple_meta,
             _ => &self.lose_meta,
         }
     }
 }
 
 /// 从行表加载猜大小的桌：区由 `side` 列决定，权重仍是**一整局的千分占比**。
-/// 先过 `validate_bigsmall`（机制：49/2/49）再过 `validate_pool`（EV<1），
+/// 先过 `validate_bigsmall`（机制：486/28/486）再过 `validate_pool`（EV<1），
 /// 两道都在读表时跑 —— 配坏就是拒绝服务，不猜旧值。
 pub(super) async fn load_table(
     db: &PgPool,
@@ -86,10 +86,10 @@ pub(super) async fn load_table(
     let mut t = Table {
         ticket,
         win: Vec::new(),
-        tie: Vec::new(),
+        triple: Vec::new(),
         lose: Vec::new(),
         win_meta: Vec::new(),
-        tie_meta: Vec::new(),
+        triple_meta: Vec::new(),
         lose_meta: Vec::new(),
     };
     for (
@@ -124,9 +124,9 @@ pub(super) async fn load_table(
                 t.win.push(entry);
                 t.win_meta.push((rarity, image));
             }
-            "tie" => {
-                t.tie.push(entry);
-                t.tie_meta.push((rarity, image));
+            "triple" => {
+                t.triple.push(entry);
+                t.triple_meta.push((rarity, image));
             }
             "lose" => {
                 t.lose.push(entry);
@@ -135,7 +135,7 @@ pub(super) async fn load_table(
             // any 归到输区没有意义，宁可报错：一张桌不该出现「哪侧都算」的档
             other => {
                 return Err(DomainError::Validation(format!(
-                "猜大小档位「{}」的 side 是「{other}」，赢/平/输三区之外不认",
+                "猜大小档位「{}」的 side 是「{other}」，赢/豹/输三区之外不认",
                 entry.label
             )))
             }
@@ -154,7 +154,7 @@ pub(super) async fn load_table(
                 .into(),
         ));
     }
-    games::validate_bigsmall(&t.win, &t.tie, &t.lose)
+    games::validate_bigsmall(&t.win, &t.triple, &t.lose)
         .map_err(|e| DomainError::Validation(e.to_string()))?;
     games::validate_pool(&t.all(), ticket)
         .map_err(|e| DomainError::Validation(e.to_string()))?;

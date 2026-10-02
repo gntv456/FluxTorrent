@@ -27,6 +27,14 @@ interface ReportItem {
 export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
   const { dict, locale } = useI18n();
   const t = dict.adminReports;
+  // 举报对象类型 → 人话（与用户侧 report-box 的 typeLabel 同一组键）
+  const TYPE_LABEL: Record<string, string> = {
+    torrent: dict.usertools.rtTorrent,
+    user: dict.usertools.rtUser,
+    comment: dict.usertools.rtComment,
+    subtitle: dict.usertools.rtSubtitle,
+    forum: dict.usertools.rtForum,
+  };
   const [reports, setReports] = useState<ReportItem[] | null>(null);
   const [rpStatus, setRpStatus] = useState<
     "pending" | "handling" | "handled" | "all"
@@ -105,7 +113,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
               <td className="num">{r.id}</td>
               <td>
                 <span className="rounded-full bg-sky-soft px-2 py-0.5 font-bold">
-                  {r.ref_type}
+                  {TYPE_LABEL[r.ref_type] ?? r.ref_type}
                 </span>
                 {r.ref_label ? (
                   <span className="ml-1 text-sub">{r.ref_label}</span>

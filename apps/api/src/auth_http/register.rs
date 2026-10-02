@@ -152,6 +152,35 @@ pub async fn register(
         .repo
         .audit(Some(user_id), "user_register", Some(user_id))
         .await;
+    // 新手欢迎 PM（2026-10 链路测试修复）：新用户 0 魔力冷启动没有指引，
+    // 第一局游戏前需要先签到。系统私信（sender_id NULL）讲清前三步；
+    // 失败不回滚注册（附属数据，与字段值落库同口径）。
+    {
+        let site_name: String = sqlx::query_scalar(
+            "SELECT value FROM site_settings WHERE name = 'site_name'",
+        )
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "站点".into());
+        let body = format!(
+            "欢迎！起步三步：\n1. 每天「任务中心 → 每日签到」领魔力与抽卡券；\
+             \n2. 用魔力去「娱乐屋」玩一把（刮刮乐 10 魔力起）；\
+             \n3. 抽卡的首次单抽只要 1 张券（票面 25 券），试试手气。\n\n\
+             做种赚魔力才是正道——上传你的第一颗种子吧！"
+        );
+        let _ = sqlx::query(
+            "INSERT INTO messages (sender_id, receiver_id, subject, body, \
+             location, saved, unread) \
+             VALUES (NULL, $1, $2, $3, 1, 1, true)",
+        )
+        .bind(user_id)
+        .bind(format!("欢迎来到{site_name}！你的起步三步"))
+        .bind(body)
+        .execute(&state.repo.db)
+        .await;
+    }
     // C7-#4：email_verify 模式下注册即发激活信（失败不回滚账号，可 resend 补发）
     if reg_mode == "email_verify" {
         super::email_verify::send_verification(

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>娱乐屋甜梦蓝 · 开发落地文档</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
+<style>
+:root {
+  --cream:#f4f8fd; --mist:#c5dff0; --sky:#8ab4dd; --sky-deep:#4a7ab0;
+  --lilac:#b8c8e8; --gold:#d4af7a; --gold-deep:#b08a4a; --ink:#2c3e5c;
+  --ink-soft:#5a6b8c; --ink-faint:#8a9bb8; --line:#d8e4f2;
+  --success:#4a9a6a; --danger:#c85a5a; --warning:#d4a04a;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Noto Sans SC',sans-serif; background:var(--cream); color:var(--ink);
+  line-height:1.7; padding:40px 20px;
+}
+.wrap { max-width:960px; margin:0 auto; }
+h1 {
+  font-family:'Noto Serif SC',serif; font-size:32px; font-weight:900;
+  color:var(--sky-deep); text-align:center; margin-bottom:8px; letter-spacing:.1em;
+}
+.subtitle { text-align:center; color:var(--ink-soft); font-size:14px; margin-bottom:40px; }
+h2 {
+  font-family:'Noto Serif SC',serif; font-size:22px; font-weight:700;
+  color:var(--sky-deep); margin:40px 0 16px; padding-bottom:8px;
+  border-bottom:2px solid var(--line);
+}
+h3 { font-size:16px; font-weight:700; color:var(--ink); margin:24px 0 12px; }
+p { margin-bottom:12px; font-size:14px; }
+code {
+  background:#e8f0fa; padding:2px 6px; border-radius:4px;
+  font-family:'Consolas',monospace; font-size:13px; color:var(--sky-deep);
+}
+pre {
+  background:#2c3e5c; color:#e8f0fa; padding:16px; border-radius:12px;
+  overflow-x:auto; margin:12px 0; font-size:13px; line-height:1.5;
+}
+pre code { background:none; color:inherit; padding:0; }
+table {
+  width:100%; border-collapse:collapse; margin:16px 0; font-size:13px;
+  background:#fff; border-radius:12px; overflow:hidden;
+  box-shadow:0 2px 8px rgba(74,122,176,.1);
+}
+th { background:var(--sky-deep); color:#fff; padding:10px 12px; text-align:left; font-weight:700; }
+td { padding:10px 12px; border-bottom:1px solid var(--line); }
+tr:last-child td { border-bottom:none; }
+.card {
+  background:#fff; border-radius:16px; padding:20px; margin:16px 0;
+  box-shadow:0 4px 12px rgba(74,122,176,.08); border:1px solid var(--line);
+}
+.card-title { font-weight:700; color:var(--sky-deep); margin-bottom:8px; font-size:15px; }
+.tag {
+  display:inline-block; padding:2px 10px; border-radius:999px;
+  font-size:11px; font-weight:700; margin-right:6px;
+}
+.tag-done { background:#d4edda; color:var(--success); }
+.tag-todo { background:#fff3cd; color:var(--warning); }
+.tag-new { background:#d1ecf1; color:var(--sky-deep); }
+ul, ol { margin:8px 0 12px 24px; font-size:14px; }
+li { margin-bottom:6px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; }
+@media(max-width:640px){ .grid-2{grid-template-columns:1fr;} }
+.path {
+  font-family:'Consolas',monospace; font-size:12px; background:#e8f0fa;
+  padding:8px 12px; border-radius:8px; margin:8px 0; color:var(--sky-deep);
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>娱乐屋 · 甜梦蓝开发落地文档</h1>
+<p class="subtitle">FluxTorrent PT 站 /games 模块 · 奇迹暖暖风蓝调皮肤 · 完整开发指南</p>
+
+<!-- ========== 1. 项目现状 ========== -->
+<h2>一、项目现状盘点</h2>
+
+<div class="card">
+<div class="card-title">1.1 目录结构</div>
+<div class="path">apps/web/app/(main)/games/</div>
+<table>
+<tr><th>路径</th><th>说明</th><th>状态</th></tr>
+<tr><td><code>layout.tsx</code></td><td>挂 data-arcade="sweet" 作用域</td><td><span class="tag tag-done">已完成</span></td></tr>
+<tr><td><code>page.tsx</code></td><td>大厅（游戏选择网格）</td><td><span class="tag tag-done">已换皮</span></td></tr>
+<tr><td><code>scratch/_inner.tsx</code></td><td>刮刮乐（Canvas 真刮）</td><td><span class="tag tag-done">已换皮</span></td></tr>
+<tr><td><code>bigsmall/_inner.tsx</code></td><td>猜大小（跑道+道具栏）</td><td><span class="tag tag-done">已换皮</span></td></tr>
+<tr><td><code>jgg/_inner.tsx</code></td><td>九宫格（点灯中奖）</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td><code>capsule/_inner.tsx</code></td><td>扭蛋机</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td><code>wheel/_inner.tsx</code></td><td>大转盘</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td><code>farm/_inner.tsx</code></td><td>农场（种地+市场）</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td><code>pet/_inner.tsx</code></td><td>宠物（养成+互动）</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td><code>fishing/_inner.tsx</code></td><td>钓鱼（鱼塘+图鉴）</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td><code>odds/page.tsx</code></td><td>赔率说明页</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td><code>leaderboard/_inner.tsx</code></td><td>排行榜</td><td><span class="tag tag-todo">待补充</span></td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="card-title">1.2 公共组件（components/game/）</div>
+<table>
+<tr><th>组件</th><th>类名</th><th>作用</th><th>CSS 覆盖状态</th></tr>
+<tr><td>GameShell</td><td>（布局容器）</td><td>返回栏+标题+舞台+操作区+侧栏</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>BalanceBar</td><td>（余额条）</td><td>余额+今日净收+剩余次数</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>ChipSelect</td><td>.arc-chip</td><td>筹码选择按钮组</td><td><span class="tag tag-done">已覆盖</span></td></tr>
+<tr><td>GameStage</td><td>.gs-art / .gs-scrim / .gs-corner</td><td>游戏舞台底图+压暗罩+描金角</td><td><span class="tag tag-done">已覆盖</span></td></tr>
+<tr><td>HistoryStrip</td><td>（战绩圆点）</td><td>最近战绩小圆点</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>ResultFlash</td><td>（结果飘字）</td><td>赢/输/大奖飘字</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>PlayHint</td><td>（防沉迷提示）</td><td>连打多局软提示</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>scratch-face</td><td>.sc-face / .sc-stars</td><td>刮刮卡正面</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>runway</td><td>.bs-run / .bs-track / .bs-cursor</td><td>猜大小跑道</td><td><span class="tag tag-partial">部分覆盖</span></td></tr>
+<tr><td>jgg-grid</td><td>.jgrid / .cells / .go</td><td>九宫格点灯</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>capsule-machine</td><td>.cap-rig / .cap-machine / .cap-dome</td><td>扭蛋机</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>lucky-wheel</td><td>.lw-rig / .lw-disc / .lw-hub</td><td>转盘</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>farm-field</td><td>.plot-bed / .ripe / .dead</td><td>农场地块</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>farm-land</td><td>（土地+种子商店）</td><td>农场土地购买</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>pet-pen</td><td>.pp-pen / .pp-stage / .pp-bars</td><td>宠物栏</td><td><span class="tag tag-partial">部分覆盖</span></td></tr>
+<tr><td>fishing-pond</td><td>.fp-pond / .fp-water / .fp-bobber</td><td>钓鱼塘</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>fishing-side</td><td>.fs-rod / .fs-album / .fs-fish</td><td>钓鱼侧栏（鱼竿+图鉴）</td><td><span class="tag tag-todo">待补充</span></td></tr>
+<tr><td>bigsmall-props</td><td>.arc-chip（道具版）</td><td>道具栏</td><td><span class="tag tag-done">已覆盖</span></td></tr>
+</table>
+</div>
+
+<!-- ========== 2. 设计规范 ========== -->
+<h2>二、设计规范（甜梦蓝 · 奇迹暖暖风）</h2>
+
+<div class="card">
+<div class="card-title">2.1 色板（CSS 变量已在 arcade-sweet.css 定义）</div>
+<table>
+<tr><th>变量</th><th>色值</th><th>用途</th></tr>
+<tr><td>--sweet-cream</td><td>#f4f8fd</td><td>页面底色（奶油蓝白）</td></tr>
+<tr><td>--sweet-mist</td><td>#c5dff0</td><td>浅雾蓝（卡片渐变起始）</td></tr>
+<tr><td>--sweet-sky</td><td>#8ab4dd</td><td>主蓝（按钮/选中态）</td></tr>
+<tr><td>--sweet-sky-deep</td><td>#4a7ab0</td><td>深海蓝（标题/强调文字）</td></tr>
+<tr><td>--sweet-lilac</td><td>#b8c8e8</td><td>淡蓝紫（辅助渐变）</td></tr>
+<tr><td>--sweet-gold</td><td>#d4af7a</td><td>香槟金（点缀/角标/头奖）</td></tr>
+<tr><td>--sweet-gold-deep</td><td>#b08a4a</td><td>深金（按钮文字/描边）</td></tr>
+<tr><td>--sweet-ink</td><td>#2c3e5c</td><td>深海军蓝（正文）</td></tr>
+<tr><td>--sweet-ink-soft</td><td>#5a6b8c</td><td>次要文字</td></tr>
+<tr><td>--sweet-line</td><td>#d8e4f2</td><td>分隔线/边框</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="card-title">2.2 字体与材质</div>
+<ul>
+<li><b>标题字体</b>：Noto Serif SC（衬线冕，900字重）</li>
+<li><b>正文字体</b>：Noto Sans SC（无衬线，400/700字重）</li>
+<li><b>圆角体系</b>：28px（大卡片）/ 22px（中卡片）/ 16px（小卡片）/ 999px（胶囊按钮）</li>
+<li><b>阴影</b>：柔和蓝雾投影（rgba(74,122,176,.25)），金色阴影（rgba(212,175,122,.4)）</li>
+<li><b>材质母题</b>：缎带细线、烫金描边、珍珠柔光、衬线冕</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">2.3 多端断点与布局策略</div>
+<table>
+<tr><th>断点</th><th>宽度</th><th>布局</th><th>当前 GameShell 对应</th></tr>
+<tr><td>折叠屏外屏</td><td>280-360px</td><td>单列，紧凑</td><td>默认单列</td></tr>
+<tr><td>直板手机</td><td>360-680px</td><td>单列，stage+controls 堆叠</td><td>grid-cols-1</td></tr>
+<tr><td>折叠屏展开</td><td>680-880px</td><td>单列加宽，side 可浮层</td><td>lg 以下仍是单列</td></tr>
+<tr><td>三折叠全展开</td><td>880-1024px</td><td>双栏（stage+side）</td><td>需加 md 断点</td></tr>
+<tr><td>iPad 平板</td><td>768-1024px</td><td>双栏，side 240px</td><td>需加 md 断点</td></tr>
+<tr><td>桌面</td><td>1024-1440px</td><td>双栏，side 280px</td><td>lg:grid-cols-[1fr_280px]</td></tr>
+<tr><td>宽屏桌面</td><td>1440px+</td><td>三栏（stage+controls+side 加宽）</td><td>需加 xl 断点</td></tr>
+</table>
+<p><b>关键改造点</b>：GameShell 当前 <code>lg:grid-cols-[minmax(0,1fr)_280px]</code> 只在 1024px+ 才出侧栏。需要加 <code>md:</code> 断点让 768px+ 就出侧栏（缩窄到 220px）。</p>
+</div>
+
+<!-- ========== 3. 各游戏改造清单 ========== -->
+<h2>三、9 个游戏改造清单</h2>
+
+<div class="card">
+<div class="card-title">3.1 刮刮乐（scratch）</div>
+<p><span class="tag tag-done">已完成</span> 舞台底图换蓝雾 / 按钮换甜雾蓝 / 刮刮卡稀有度星标</p>
+<p><b>待补充</b>：</p>
+<ul>
+<li>票种选择 Tab（10/100/1000 三档）— 纯前端展示，后端 bet 参数不变</li>
+<li>奖池概率侧栏面板（从 ov.scratch.prizes 渲染）</li>
+<li>HistoryStrip 圆点换蓝金色系</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">3.2 猜大小（bigsmall）</div>
+<p><span class="tag tag-partial">部分完成</span> 跑道刻度标签换深海军蓝 / 金球游标加珍珠镶边</p>
+<p><b>待补充</b>：</p>
+<ul>
+<li>赔率表面板（大1.9x / 小1.9x / 豹子8x / 围骰15x）— 从 ov.bigsmall.win_mult 渲染</li>
+<li>连投模式选择（单局/3局/5局）— 纯前端 UI，不发请求</li>
+<li>道具栏 chip 样式优化</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">3.3 九宫格（jgg）</div>
+<p><b>待补充</b>：</p>
+<ul>
+<li>.jgrid 整体换蓝雾渐变背景</li>
+<li>.cells 格子换成珍珠白圆角方块</li>
+<li>.go 中奖格加金色发光</li>
+<li>.beam 光束换蓝紫渐变</li>
+<li>.lamp 未中奖格换淡蓝灰</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">3.4 扭蛋机（capsule）</div>
+<p><b>待补充</b>：</p>
+<ul>
+<li>.cap-machine 机身换蓝紫渐变</li>
+<li>.cap-dome 玻璃罩加珍珠光泽</li>
+<li>.cap-egg 蛋体换马卡龙蓝/紫/金三色</li>
+<li>.cap-base 底座换香槟金描边</li>
+<li>.cap-knob 旋钮换金色立体</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">3.5 大转盘（wheel）</div>
+<p><b>待补充</b>：</p>
+<ul>
+<li>.lw-disc 转盘盘面换蓝/紫/金/薄荷四色扇区</li>
+<li>.lw-hub 中心按钮换香槟金立体圆</li>
+<li>.lw-pointer 指针换红色三角（保留识别度）</li>
+<li>奖池累积数字换衬线大金字</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">3.6 农场（farm）</div>
+<p><b>待补充</b>：</p>
+<ul>
+<li>.plot-bed 地块换泥土棕+嫩绿渐变</li>
+<li>.ripe 成熟态加金色光晕</li>
+<li>.dead 枯萎态换灰褐</li>
+<li>种子商店卡片换珍珠白+彩色边框（按作物稀有度）</li>
+<li>天气条/经验条换蓝金渐变</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">3.7 宠物（pet）</div>
+<p><span class="tag tag-partial">部分完成</span> pp-bar / pp-name 文字颜色已换深海军蓝</p>
+<p><b>待补充</b>：</p>
+<ul>
+<li>.pp-stage 舞台换蓝雾渐变</li>
+<li>.pp-pet 宠物身体换圆润软萌风格</li>
+<li>.pp-bars 进度条换蓝金渐变</li>
+<li>.pp-custom 自定义弹窗换珍珠白金边</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">3.8 钓鱼（fishing）</div>
+<p><b>待补充</b>：</p>
+<ul>
+<li>.fp-pond 鱼塘换深蓝夜空+月光倒影</li>
+<li>.fp-water 水面波纹换蓝紫色流动</li>
+<li>.fp-bobber 浮漂换红白经典色</li>
+<li>.fs-rod 鱼竿升级卡片换香槟金</li>
+<li>.fs-fish 图鉴格子换珍珠白+稀有金边</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">3.9 抽卡（gacha）</div>
+<p><b>说明</b>：项目中抽卡功能合并在 capsule（扭蛋）里，没有独立 gacha 目录。样图里的"卡册合成"对应农场市场或扭蛋收集度。</p>
+</div>
+
+<!-- ========== 4. CSS 改造计划 ========== -->
+<h2>四、CSS 改造计划（arcade-sweet.css 补充）</h2>
+
+<div class="card">
+<div class="card-title">4.1 需要追加的 CSS 块</div>
+<pre><code>/* ═══ ⑩ BalanceBar 余额条 ═══ */
+[data-arcade="sweet"] .rounded-\[var\(--r-md\)\].border.border-line.bg-\[var\(--surface-card\)\] {
+  background: linear-gradient(160deg, #fff, #eef5fc) !important;
+  border-color: var(--sweet-line) !important;
+  border-radius: var(--r-lg) !important;
+}
+
+/* ═══ ⑪ HistoryStrip 战绩圆点 ═══ */
+[data-arcade="sweet"] .bg-sun { background: var(--sweet-gold) !important; }
+[data-arcade="sweet"] .bg-mint { background: var(--success) !important; }
+
+/* ═══ ⑫ GameShell 返回栏 ═══ */
+[data-arcade="sweet"] h1.font-display {
+  font-family: var(--sweet-serif);
+  color: var(--sweet-ink);
+}
+
+/* ═══ ⑬ 各游戏舞台细节 ═══ */
+/* 刮刮卡 */
+[data-arcade="sweet"] .sc-face { ... }
+[data-arcade="sweet"] .sc-stars { color: var(--sweet-gold); }
+
+/* 九宫格 */
+[data-arcade="sweet"] .jgrid { background: ...; }
+[data-arcade="sweet"] .cells .go { box-shadow: 0 0 12px var(--sweet-gold); }
+
+/* 扭蛋机 */
+[data-arcade="sweet"] .cap-machine { ... }
+[data-arcade="sweet"] .cap-dome { ... }
+
+/* 转盘 */
+[data-arcade="sweet"] .lw-disc { ... }
+[data-arcade="sweet"] .lw-hub { ... }
+
+/* 农场 */
+[data-arcade="sweet"] .plot-bed.ripe { box-shadow: 0 0 10px var(--sweet-gold); }
+
+/* 钓鱼 */
+[data-arcade="sweet"] .fp-pond { background: linear-gradient(...); }
+
+/* ═══ ⑭ 多端断点补充 ═══ */
+/* 768px+ 出侧栏（缩窄到 220px） */
+@media (min-width: 768px) {
+  [data-arcade="sweet"] .grid.grid-cols-1.gap-4.lg\:grid-cols-\[minmax\(0\,1fr\)_280px\] {
+    grid-template-columns: minmax(0,1fr) 220px !important;
+  }
+}</code></pre>
+</div>
+
+<!-- ========== 5. 开发步骤 ========== -->
+<h2>五、开发步骤（按优先级）</h2>
+
+<div class="card">
+<div class="card-title">Phase 1：CSS 补全（纯样式，不改 TSX）</div>
+<ol>
+<li>在 arcade-sweet.css 末尾追加 ⑩-⑭ 块（约 200 行）</li>
+<li>覆盖 BalanceBar / HistoryStrip / GameShell 返回栏</li>
+<li>覆盖各游戏舞台组件（jgrid / cap-machine / lw-disc / fp-pond / plot-bed）</li>
+<li>加多端断点（md:768px 出侧栏）</li>
+<li>Dev server 热更新验证视觉效果</li>
+</ol>
+</div>
+
+<div class="card">
+<div class="card-title">Phase 2：UI 模块增强（改 TSX，纯展示层）</div>
+<ol>
+<li>刮刮乐：在 controls 区加票种选择 Tab（10/100/1000）</li>
+<li>猜大小：在 side 栏加赔率表面板</li>
+<li>转盘：在 controls 区加奖池切换 Tab</li>
+<li>农场：确认三栏布局在桌面端正常显示</li>
+<li>所有游戏：确认 side 栏在 md 断点正常出现</li>
+</ol>
+</div>
+
+<div class="card">
+<div class="card-title">Phase 3：多端适配验证</div>
+<ol>
+<li>DevTools 切 280px（折叠屏外屏）— 确认不溢出</li>
+<li>切 680px（折叠屏展开）— 确认双栏合理</li>
+<li>切 880px（三折叠）— 确认三栏不挤</li>
+<li>切 768px（iPad）— 确认侧栏出现</li>
+<li>切 1440px（宽屏）— 确认三栏舒展</li>
+</ol>
+</div>
+
+<!-- ========== 6. 注意事项 ========== -->
+<h2>六、注意事项</h2>
+
+<div class="card">
+<div class="card-title">6.1 不要改的东西</div>
+<ul>
+<li><b>不改后端 API 调用</b>：所有 POST/GET 路径和参数保持原样</li>
+<li><b>不改游戏逻辑</b>：下注、开奖、结算逻辑一行不动</li>
+<li><b>不改 i18n 字典</b>：文案由 dict.games 提供，不硬编码</li>
+<li><b>不改 GameShell 组件签名</b>：只通过 CSS 覆盖视觉，不改 TSX props</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">6.2 CSS 覆盖纪律</div>
+<ul>
+<li>所有选择器必须以 <code>[data-arcade="sweet"]</code> 开头，作用域隔离</li>
+<li>不改全局 TIDE 令牌，只在本作用域内覆盖</li>
+<li>用 <code>!important</code> 压过 Tailwind 工具类（如 bg-sun / bg-mint）</li>
+<li>不新增 npm 依赖，纯 CSS 覆盖</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">6.3 已知风险</div>
+<ul>
+<li>登录凭据 root/password123 验证失败，无法实际验证游戏页效果</li>
+<li>部分游戏舞台底图是位图（/games/stage-*.jpg），CSS 覆盖可能压不住</li>
+<li>GameShell 的 grid-cols 是 Tailwind 工具类，CSS 覆盖需要转义方括号</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

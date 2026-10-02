@@ -31,16 +31,19 @@ fn scratch_payout_is_exact_floor_of_bet_times_mult() {
 
 #[test]
 fn dice_regions_match_the_mechanic() {
-    // 机制在代码（1-49 小 / 50-51 平 / 52-100 大），派彩在表：
+    // 机制在代码（3 骰：小 3-10 / 大 11-18 / 三同豹子），派彩在表：
     // 这里只锁「哪一区付」，它不能被配置改掉
-    assert_eq!(outcome_side(1, Guess::Small), "win");
-    assert_eq!(outcome_side(49, Guess::Small), "win");
-    assert_eq!(outcome_side(50, Guess::Small), "tie");
-    assert_eq!(outcome_side(51, Guess::Big), "tie");
-    assert_eq!(outcome_side(52, Guess::Small), "lose");
-    assert_eq!(outcome_side(100, Guess::Big), "win");
+    let d = |a: u32, b: u32, c: u32| [a, b, c];
+    assert_eq!(outcome_side(d(1, 2, 3), Guess::Small), "win"); // 6 最小非三同
+    assert_eq!(outcome_side(d(4, 3, 3), Guess::Small), "win"); // 10 边界
+    assert_eq!(outcome_side(d(5, 3, 3), Guess::Small), "lose"); // 11 过界到大
+    assert_eq!(outcome_side(d(6, 6, 6), Guess::Big), "triple"); // 18 但三同
+    assert_eq!(outcome_side(d(2, 2, 2), Guess::Small), "triple"); // 6 但三同
+    assert_eq!(outcome_side(d(6, 6, 5), Guess::Big), "win"); // 17 大
     for _ in 0..400 {
-        assert!((1..=100).contains(&roll()));
+        for x in roll() {
+            assert!((1..=6).contains(&x));
+        }
     }
 }
 
@@ -52,42 +55,42 @@ fn bigsmall_table_must_cover_all_three_regions() {
         kind: EntryKind::Magic { mult_permille: w },
     };
     assert!(
-        validate_bigsmall(&[], &[e(1000, 20)], &[e(0, 490)]).is_err(),
+        validate_bigsmall(&[], &[e(0, 28)], &[e(0, 486)]).is_err(),
         "缺赢区必须拒"
     );
     assert!(
         validate_bigsmall(
-            &[e(1900, 490)],
-            &[e(1000, 20)],
-            &[e(0, 290), e(0, 200)]
+            &[e(1900, 486)],
+            &[e(0, 28)],
+            &[e(0, 286), e(0, 200)]
         )
         .is_ok(),
-        "输区拆两档、合计仍是 490 —— 合法"
+        "输区拆两档、合计仍是 486 —— 合法"
     );
     assert!(
-        validate_bigsmall(&[e(1900, 490)], &[e(1000, 20)], &[e(0, 300)])
-            .is_err(),
-        "输区合计不等于 490 就是破坏 49/2/49"
+        validate_bigsmall(&[e(1900, 486)], &[e(0, 28)], &[e(0, 300)])
+        .is_err(),
+        "输区合计不等于 486 就是破坏 486/28/486"
     );
 }
 
 /// 经济纪律（2026-09-19 产品决策）：娱乐玩法一律回收，期望回报必须 < 1。
-/// 猜大小赢面 49% / 平 2% / 输 49%，赔率 ≥ 2.0 时 EV ≥ 1.0 且可双向零风险对冲 ——
-/// 这个断言锁死「赔率 < 2.0」，调整赔率必须同步复算本式与经济文档。
+/// 三骰口径：赢面 105/216（48.6%）、豹子 6/216 判负、输面 105/216，
+/// EV = 105/216 × 赔率。赔率 2.07x 以上 EV ≥ 1 且可双向零风险对冲 ——
+/// 这个断言锁死「赔率 < 2.07」，调整赔率必须同步复算本式与经济文档。
 #[test]
 fn bigsmall_expected_value_below_one() {
     let ev = bigsmall_expected_value(BIGSMALL_WIN_MULT_PERMILLE);
     assert!(ev < 1.0, "猜大小 EV 未回收: {ev}");
     assert!(
-        (ev - 0.951).abs() < 1e-9,
-        "EV 漂移: {ev}（1.9x 应为 0.951）"
+        (ev - 105.0 / 216.0 * 1.9).abs() < 1e-9,
+        "EV 漂移: {ev}（1.9x 应为 105/216×1.9）"
     );
+    // 隐含：赔率越高 EV 越高，216/105 ≈ 2.057 处回到 1.0（不允许）
     assert!(
-        BIGSMALL_WIN_MULT_PERMILLE < 2000,
-        "赔率必须 < 2000‰，否则 EV ≥ 1 且可对冲套零风险"
+        bigsmall_expected_value(2070) >= 1.0,
+        "2.07x 起 EV ≥ 1（可对冲套零风险）"
     );
-    // 隐含：赔率越高 EV 越高，2.0 处恰好回到 1.0（不允许）
-    assert!((bigsmall_expected_value(2000) - 1.0).abs() < 1e-9);
 }
 
 /// 刮刮乐播种表（0248 从设置键现值搬进 arcade_pools）的 EV 必须仍是 0.66，
