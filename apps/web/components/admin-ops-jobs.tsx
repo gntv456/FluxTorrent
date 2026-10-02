@@ -178,7 +178,11 @@ export function AdminOpsJobs() {
                       }
                     >
                       {j.last_ok === null
-                        ? "—"
+                        ? // NULL = 从未执行（多为所属模块关闭，worker 注册目录但不跑）
+                          // ——与「执行过但失败」区分，避免面板满屏红叉误导
+                          (j.last_started_at === null
+                            ? t.jobsIdle
+                            : "—")
                         : j.last_ok
                           ? t.jobsOk
                           : t.jobsFail}

@@ -8,6 +8,8 @@
 # 与 backup.sh / admin/backups/run 同口径：docker exec flux-postgres、-Fc 自定义格式。
 # 恢复 = 整库替换（--clean 先 DROP 再 CREATE），执行前自动停 api/worker/tracker 写入
 # 由运维手动执行 docker compose stop api worker tracker —— 脚本会检测并提醒。
+# Git Bash（Windows）注意：MSYS 会改写传给 docker exec 的容器内路径，先关闭转换。
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*"
 set -euo pipefail
 
 DUMP="${1:?用法: ./restore.sh <dump文件> [--drill|--force]}"
@@ -21,12 +23,16 @@ PG_DB="${FLUX_PG_DB:-fluxtorrent}"
 
 run_pg() { docker exec -i "$PG_CONTAINER" "$@"; }
 
+# dump 由宿主经 stdin 灌入容器（docker exec 非 stdin 形态传不了宿主路径，
+# Windows/Git Bash 下尤为明显；stdin 形态两端通吃）
+restore_from() { run_pg pg_restore -U "$PG_USER" "$@" < "$DUMP"; }
+
 case "$MODE" in
   --drill)
     DRILL_DB="fluxtorrent_drill_$$"
     echo "[restore][drill] 恢复到临时库 $DRILL_DB 验证完整性（不动生产库）"
     run_pg psql -U "$PG_USER" -d postgres -c "CREATE DATABASE \"$DRILL_DB\";"
-    if ! run_pg pg_restore -U "$PG_USER" -d "$DRILL_DB" --no-owner "$DUMP"; then
+    if ! restore_from -d "$DRILL_DB" --no-owner; then
       run_pg psql -U "$PG_USER" -d postgres -c "DROP DATABASE \"$DRILL_DB\";"
       echo "[restore][drill] ✗ pg_restore 失败：dump 损坏或版本不兼容，禁止用于生产恢复"
       exit 1
@@ -51,7 +57,7 @@ case "$MODE" in
     docker exec "$PG_CONTAINER" pg_dump -U "$PG_USER" -Fc "$PG_DB" \
       > "${FLUX_BACKUP_DIR:-./backups}/safety-$(date +%F-%H%M%S).dump"
     echo "[restore][force] ② 整库恢复（--clean 先删后建）"
-    run_pg pg_restore -U "$PG_USER" -d "$PG_DB" --clean --if-exists --no-owner "$DUMP"
+    restore_from -d "$PG_DB" --clean --if-exists --no-owner
     echo "[restore][force] ③ 完成。重启服务：docker compose start api worker tracker"
     echo "[restore][force] ④ 验证：/api/v1/health + 抽查 users/torrents 计数"
     ;;

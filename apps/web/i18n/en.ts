@@ -5876,6 +5876,7 @@ const adminopsEn: Dict["adminops"] = {
   jobsRunning: "Running",
   jobsOk: "OK",
   jobsFail: "Failed",
+  jobsIdle: "Never run (module off or awaiting first run)",
   jobsResult: "Result",
   jobsTriggers: "Recent triggers",
   jobsRequested: "Requested",

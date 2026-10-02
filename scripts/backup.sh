@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# FluxTorrent 每日备份（cron 示例：0 4 * * * /path/to/backup.sh）
+# FluxTorrent 每日备份（cron 示例：0 4 * * * /path/backup.sh）
 # 用法：./backup.sh [保留天数，默认 14]
 # 覆盖：PostgreSQL 全量 + 附件卷（.torrent 原始文件在 DB 内，随 pg_dump 覆盖）。
 # Redis 不备份：限流/缓存均可再生。
+#
+# Git Bash（Windows）注意：MSYS 会把传给 docker exec 的 /app 等绝对路径
+# 改写成 C:/Program Files/Git/app 导致容器内找不到——必须在执行前关闭路径转换。
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*"
 set -euo pipefail
 KEEP_DAYS="${1:-14}"
 STAMP=$(date +%F-%H%M%S)
