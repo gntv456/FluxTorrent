@@ -8,11 +8,10 @@ import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { fmtMult } from "@/lib/games";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
+import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { SwHist, SwStatRow } from "@/components/game/sw-panels";
-import { RunwayOdometer } from "@/components/game/runway";
 import { DieFace } from "@/components/game/die-face";
-import { GameStage } from "@/components/game/game-stage";
 import { PropBar, type PropView } from "@/components/game/bigsmall-props";
 
 export interface Overview {
@@ -207,7 +206,7 @@ export default function BigSmallPage({
 
   return (
     <GameShell
-      icon="🎯"
+      icon={<ArcadeGlyph k="bigsmall" />}
       title={tg.title}
       subtitle={`${tg.rule} · ${tg.winMult.replace("{n}", String(winMult))}`}
       balance={ov?.me?.balance ?? null}
@@ -221,36 +220,17 @@ export default function BigSmallPage({
       }
       stage={
         <div className="flex w-full flex-col items-center gap-2">
-          <GameStage
-            art="/games/stage-bigsmall.jpg"
-            className="h-[200px] w-full max-w-[460px]"
-          >
-            <RunwayOdometer number={num} spinning={busy} reduced={reduced} />
-          </GameStage>
-          {/* 双骰舞台（样图⑥）：两枚 72px 骰面，点数拆两枚显示 */}
-          <div className="bs-dice" aria-hidden>
-            {[
-              Math.ceil((num ?? 2) / 2) || 1,
-              Math.floor((num ?? 2) / 2) || 1,
-            ].map((n, i) => (
-                <DieFace key={i} n={n} />
-              ),
-            )}
-          </div>
+          {/* 样图⑥：题注在上，双骰居中，近5局缀下 —— 跑道数字舞台
+              （数域条 + 翻牌数字）与样图⑥的双骰舞台是两套语言，撤掉 */}
           <p className="bs-dice-cap">
-            {num == null
-              ? tg.bsDiceWait
-              : `${tg.bsRecent.replace("{s}", "")} ${num}`}
+            {num == null ? tg.bsDiceWait : tg.bsNow.replace("{n}", String(num))}
           </p>
-          <ResultFlash
-            kind={flash?.kind ?? null}
-            text={flash?.text ?? (busy ? tg.pending : null)}
-          />
-          {streak >= 3 && (
-            <p className="text-xs font-bold text-[var(--warning)]">
-              {tg.streak}
-            </p>
-          )}
+          {/* 数字舞台：1-100 数域用「十位骰 + 个位骰」两枚十面骰拼出
+              （六面骰表达不了 >12，任何大点数都只会是两枚 6），纯哑件 */}
+          <div className="bs-dice" aria-hidden>
+            <DieFace n={Math.floor((num ?? 0) / 10)} variant="tens" />
+            <DieFace n={(num ?? 0) % 10} variant="ones" />
+          </div>
           {hist.length > 0 && (
             <p className="bs-recent">
               {tg.bsRecent.replace(
@@ -260,12 +240,23 @@ export default function BigSmallPage({
                   .map((h) =>
                     h.number == null
                       ? "·"
-                      : h.number >= 11 && h.number <= 18
+                      : h.number >= 52
                         ? tg.bsPickBig
-                        : tg.bsPickSmall,
+                        : h.number <= 49
+                          ? tg.bsPickSmall
+                          : tg.bsPickTriple,
                   )
                   .join(" "),
               )}
+            </p>
+          )}
+          <ResultFlash
+            kind={flash?.kind ?? null}
+            text={flash?.text ?? (busy ? tg.pending : null)}
+          />
+          {streak >= 3 && (
+            <p className="text-xs font-bold text-[var(--warning)]">
+              {tg.streak}
             </p>
           )}
           <SwStatRow
@@ -321,41 +312,31 @@ export default function BigSmallPage({
             </div>
           </div>
           {/* 道具栏：只加权魔力的输赢，永不出物品 */}
-          <PropBar
-            props={props}
-            sel={sel}
-            busy={busy}
-            onToggle={toggle}
-          />
+          <PropBar props={props} sel={sel} busy={busy} onToggle={toggle} />
         </div>
       }
       side={
         <div className={PANEL_LG}>
-          {/* 赔率表 */}
-          <div
-            className="mb-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3"
-          >
+          {/* 赔率表：后端口径（1-100 数域：小 1-49 / 大 52-100 / 50·51 平局返本）。
+              赔率 win_mult 由后端下发，区间划分与 bigsmall.rs 的三区常量一致 */}
+          <div className="mb-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3">
             <h3 className="mb-2 text-xs font-bold text-sub">赔率表</h3>
-            <div className="grid grid-cols-2 gap-1 text-[11px]">
+            <div className="grid grid-cols-1 gap-1 text-[11px]">
               <div className="flex justify-between">
-                <span className="text-sub">大 (11-18)</span>
+                <span className="text-sub">{tg.bsPickSmall} (1-49)</span>
                 <b className="num text-[var(--sky-deep)]">
                   {fmtMult(winMult)}x
                 </b>
               </div>
               <div className="flex justify-between">
-                <span className="text-sub">小 (3-10)</span>
+                <span className="text-sub">{tg.bsPickBig} (52-100)</span>
                 <b className="num text-[var(--sky-deep)]">
                   {fmtMult(winMult)}x
                 </b>
               </div>
               <div className="flex justify-between">
-                <span className="text-sub">豹子 (三同)</span>
-                <b className="num text-[var(--gold-deep)]">8x</b>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sub">围骰 (全1/6)</span>
-                <b className="num text-danger">15x</b>
+                <span className="text-sub">50 / 51</span>
+                <b className="num text-[var(--gold-deep)]">{tg.bsTieRow}</b>
               </div>
             </div>
           </div>

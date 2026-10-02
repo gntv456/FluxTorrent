@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PANEL_LG, PANEL_LG_COL } from "@/lib/ui-classes";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { GameShell } from "@/components/game/game-kit";
+import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { GameToast } from "@/components/game/game-kit-feedback";
 import { PetCustom, PetPen, type PetStatus } from "@/components/game/pet-pen";
 import { GameStage } from "@/components/game/game-stage";
@@ -27,8 +28,17 @@ export default function PetFocusPage({
   const [err, setErr] = useState<string | null>(null);
   const [useCoupon, setUseCoupon] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  // 余额条（反沉迷纪律：喂食扣钱前先看得见——与其它玩法页同口径）
+  const [me, setMe] = useState<{
+    balance: number;
+    today_net: number;
+    today_plays: number;
+    limit_left: number;
+  } | null>(null);
   // 投喂成功的「吃到东西」反馈：让宠物晃一下（纯前端，零账目）
   const [eating, setEating] = useState(false);
+  // 「摸摸头」外部按钮 → PetPen 内部爱心动画的受控桥（替代 DOM 代理）
+  const [patTick, setPatTick] = useState(0);
   const [toast, setToast] = useState<{
     kind: "win" | "lose" | "tie" | "jackpot";
     text: string;
@@ -38,6 +48,20 @@ export default function PetFocusPage({
     typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
       : String(Date.now());
+
+  // 余额条数据：喂食/领取后一并刷新（pending 入账会改变今日净收）
+  const loadMe = useCallback(async () => {
+    try {
+      const r = await api.get<{ me?: typeof me }>("/api/v1/games");
+      setMe(r.me ?? null);
+    } catch {
+      /* 取不到不影响玩法 */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMe();
+  }, [loadMe]);
 
   const fail = (e: unknown) =>
     setErr(
@@ -64,6 +88,7 @@ export default function PetFocusPage({
         use_coupon: useCoupon,
       });
       setSt({ ...r.status, food_coupons: r.food_coupons });
+      void loadMe();
       setEating(true);
       window.setTimeout(() => setEating(false), 700);
       const leveled = before !== null && r.status.level > before.level;
@@ -93,6 +118,7 @@ export default function PetFocusPage({
         { idempotency_key: newIdem() },
       );
       setSt(r.status);
+      void loadMe();
       setToast({
         kind: r.earned > 0 ? "win" : "tie",
         text:
@@ -113,12 +139,12 @@ export default function PetFocusPage({
 
   return (
     <GameShell
-      icon="🐾"
+      icon={<ArcadeGlyph k="pet" />}
       title={tp.title}
       subtitle={tp.sub}
-      balance={null}
-      todayNet={null}
-      limitLeft={null}
+      balance={me?.balance ?? null}
+      todayNet={me?.today_net ?? null}
+      limitLeft={me?.limit_left ?? null}
       stage={
         <div className="flex w-full flex-col items-center gap-3">
           <GameStage
@@ -129,6 +155,7 @@ export default function PetFocusPage({
               <PetPen
                 status={st}
                 eating={eating}
+                patTick={patTick}
                 hungerLabel={tp.hunger}
                 expLabel={tp.exp}
               />
@@ -151,7 +178,7 @@ export default function PetFocusPage({
                   ? "🐰"
                   : st?.species === "drake"
                     ? "🐲"
-                    : "🫧"}
+                    : "🥚"}
             </div>
             <div className="pp-hero-name">{st?.name ?? tp.title}</div>
             <div className="pp-hero-sub">
@@ -159,9 +186,7 @@ export default function PetFocusPage({
             </div>
           </div>
           <div className="flex items-baseline justify-between gap-3">
-            <span className="font-display text-lg">
-              Lv.{st?.level ?? 1}
-            </span>
+            <span className="font-display text-lg">Lv.{st?.level ?? 1}</span>
             <span className="text-xs text-sub">
               {tp.yield.replace(
                 "{n}",
@@ -184,10 +209,7 @@ export default function PetFocusPage({
             </button>
             <button
               type="button"
-              onClick={() => {
-                const pet = document.querySelector(".pp-pat");
-                if (pet instanceof HTMLElement) pet.click();
-              }}
+              onClick={() => setPatTick((n) => n + 1)}
               className="pp-act gold"
             >
               {tp.pat}
@@ -251,7 +273,7 @@ export default function PetFocusPage({
                   ? "🐰"
                   : st?.species === "drake"
                     ? "🐲"
-                    : "🫧"}
+                    : "🥚"}
             </div>
             {[2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="pp-pen-cell empty" aria-hidden>

@@ -140,10 +140,25 @@ pub(super) async fn farm_water(
     }
     // 浇水消耗（0109 键 farm_water_spark，缺省 1；为 0 表示免费）。
     // 先占位后扣费，扣费失败回滚占位（与 fun_vote 同口径，避免白扣或白浇）。
+    // 幂等键带「这一茬」的 ready_at：静态 {uid}:{slot} 会在换茬后重放成
+    // Ok(Replayed) —— 扣款被当成功，第二茬起浇水永久免费（2026-10 审计 P1）。
     let cost = eco_i64(&state, "farm_water_spark", 1).await;
     if cost > 0 {
-        let idem = format!("farm-water:{}:{}", auth.id, body.slot);
-        if let Err(e) = spend_spark(
+        let crop_ready: Option<chrono::DateTime<chrono::Utc>> =
+            sqlx::query_scalar(
+                "SELECT ready_at FROM farm_plots \
+                  WHERE user_id = $1 AND slot = $2",
+            )
+            .bind(auth.id)
+            .bind(body.slot)
+            .fetch_one(&state.repo.db)
+            .await
+            .ok();
+        let idem = match crop_ready {
+            Some(t) => format!("farm-water:{}:{}:{}", auth.id, body.slot, t),
+            None => format!("farm-water:{}:{}:x", auth.id, body.slot),
+        };
+        match spend_spark(
             &state.repo.db,
             auth.id,
             cost,
@@ -154,15 +169,33 @@ pub(super) async fn farm_water(
         )
         .await
         {
-            let _ = sqlx::query(
-                r#"UPDATE farm_plots SET watered = FALSE, ready_at = ready_at + interval '10 minutes'
-                   WHERE user_id = $1 AND slot = $2"#,
-            )
-            .bind(auth.id)
-            .bind(body.slot)
-            .execute(&state.repo.db)
-            .await;
-            return Err(e);
+            Err(e) => {
+                let _ = sqlx::query(
+                    r#"UPDATE farm_plots SET watered = FALSE, ready_at = ready_at + interval '10 minutes'
+                       WHERE user_id = $1 AND slot = $2"#,
+                )
+                .bind(auth.id)
+                .bind(body.slot)
+                .execute(&state.repo.db)
+                .await;
+                return Err(e);
+            }
+            // 重放 = 同一茬的这 1 次浇水已扣过费（此刻 watered 仍应为 TRUE，
+            // UPDATE 影响 0 行才会走到扣费——正常不可能；防御性回滚占位并拒绝）
+            Ok(SpendOutcome::Replayed) => {
+                let _ = sqlx::query(
+                    r#"UPDATE farm_plots SET watered = FALSE, ready_at = ready_at + interval '10 minutes'
+                       WHERE user_id = $1 AND slot = $2"#,
+                )
+                .bind(auth.id)
+                .bind(body.slot)
+                .execute(&state.repo.db)
+                .await;
+                return Err(DomainError::Validation(
+                    "该地块本茬已浇过水，请勿重复提交".into(),
+                ));
+            }
+            Ok(SpendOutcome::Spent) => {}
         }
     }
     Ok(ok(

@@ -19,7 +19,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::food_coupon::pay_feed_tx;
-use super::helpers::{eco_i64, idem_key};
+use super::helpers::{check_rate_scoped, eco_i64, idem_key, RateScope};
 use super::pool::dberr;
 
 const MAX_LEVEL: i32 = 10;
@@ -222,6 +222,9 @@ pub(super) async fn pet_feed(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let db = &state.repo.db;
+    // 限次（2026-10 审计 P2）：宠物投喂此前不限次，是唯一扣魔力的
+    // 无限互动；与农场同档慢节奏（pet_max_feeds_per_hour，缺省 30/时）
+    check_rate_scoped(&state, &state.redis, auth.id, RateScope::Pet).await?;
     let (feed, dig) = tune(&state).await;
     let (client, use_coupon) = match body {
         Some(b) => (b.idempotency_key.clone(), b.use_coupon),

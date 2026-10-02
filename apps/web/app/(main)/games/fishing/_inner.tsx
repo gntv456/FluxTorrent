@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
+import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { FishingPond, type FishPhase } from "@/components/game/fishing-pond";
 import { FishingSide } from "@/components/game/fishing-side";
@@ -104,9 +105,7 @@ export default function FishingPage({
     }
     try {
       setHist(
-        await api.get<RoundRow[]>(
-          "/api/v1/games/rounds?game=fishing&limit=10",
-        ),
+        await api.get<RoundRow[]>("/api/v1/games/rounds?game=fishing&limit=10"),
       );
     } catch {
       /* ignore */
@@ -161,7 +160,14 @@ export default function FishingPage({
               : (dict.errors[e.code] ?? e.message)
             : dict.common.networkError,
         );
-        if (auto) setFlash({ kind: "lose", text: tf.missed });
+        // 自动判负走这里：网络错误时 r0.bet 仍在闭包里，占位符照常替换
+        if (auto)
+          setFlash({
+            kind: "lose",
+            text: tf.missed
+              .replace("{n}", String(r0.bet))
+              .replace("{magic}", currency),
+          });
       } finally {
         setRound(null);
         setPhase("done");
@@ -191,8 +197,18 @@ export default function FishingPage({
       setWindowPct(1);
       setPhase("waiting");
       if (reduced) {
-        // 减少动效：直接进入可起竿态，不自动判成败（把时机交给玩家）
+        // 减少动效：直接进入可起竿态。窗口计时不能省——reduced 玩家
+        // 也要有真实的窗口递减 + 超时自动判负（否则满格条说谎）
         setPhase("bite");
+        const start = performance.now();
+        tickTimer.current = window.setInterval(() => {
+          const left = 1 - (performance.now() - start) / r.window_ms;
+          setWindowPct(Math.max(0, left));
+          if (left <= 0) {
+            window.clearInterval(tickTimer.current ?? undefined);
+            void reel(r, true);
+          }
+        }, 100);
         return;
       }
       biteTimer.current = window.setTimeout(() => {
@@ -224,7 +240,7 @@ export default function FishingPage({
 
   return (
     <GameShell
-      icon="🎣"
+      icon={<ArcadeGlyph k="fishing" />}
       title={tf.title}
       subtitle={`${tf.winRate.replace("{pct}", winRate)} · ${tf.sub}`}
       balance={ov?.me?.balance ?? null}
@@ -246,10 +262,7 @@ export default function FishingPage({
             waitingLabel={phase === "idle" ? tf.hintIdle : tf.waiting}
             biteLabel={tf.bite}
           />
-          <ResultFlash
-            kind={flash?.kind ?? null}
-            text={flash?.text ?? null}
-          />
+          <ResultFlash kind={flash?.kind ?? null} text={flash?.text ?? null} />
           {/* 今日收获三格（样图⑩）：条数 / 金色数 / 最佳渔获 */}
           <SwStatRow
             items={[

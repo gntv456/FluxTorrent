@@ -75,7 +75,8 @@ export function GameShell({
 }: {
   title: string;
   subtitle?: string;
-  icon: string;
+  /** 标题前图标：线条 SVG（ArcadeGlyph）或 emoji 均可 */
+  icon: React.ReactNode;
   balance: number | null;
   todayNet: number | null;
   limitLeft: number | null;
@@ -97,7 +98,10 @@ export function GameShell({
           ← {dict.games.back}
         </Link>
         <h1 className="gs-title font-display text-2xl">
-          <span aria-hidden>{icon}</span> {title}
+          <span aria-hidden className="gs-title-ic">
+            {icon}
+          </span>{" "}
+          {title}
         </h1>
         {subtitle && <span className="text-sm text-sub">{subtitle}</span>}
       </div>

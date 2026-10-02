@@ -10,8 +10,9 @@ use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde_json::json;
 
 use super::arcade_rewards::{
-    award, load_milestones, load_quests, season_key, Reward,
+    award_tx, det_cost_value, load_milestones, load_quests, season_key, Reward,
 };
+use super::helpers::eco_i64;
 use super::pool::dberr;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -61,7 +62,7 @@ async fn ref_ok(db: &sqlx::PgPool, r: &Reward) -> DomainResult<()> {
 
 /// 落领取记录；已领过则 Err（幂等主键就是唯一真相，不另存「已领」标记）
 async fn mark_claim(
-    db: &sqlx::PgPool,
+    db: impl sqlx::Executor<'_, Database = sqlx::Postgres>,
     uid: i64,
     kind: &str,
     code: &str,
@@ -122,7 +123,8 @@ pub(super) async fn claim_quest(
         "SELECT count(*)::bigint FROM spark_ledger \
           WHERE user_id = $1 AND kind = 'game' AND amount < 0 \
             AND ($2 = '*' OR ref_type = $2) \
-            AND created_at >= date_trunc('week', now())",
+            AND created_at >= date_trunc('week', \
+                  now() AT TIME ZONE 'UTC') + interval '8 hours'",
     )
     .bind(uid)
     .bind(&r.game_ref)
@@ -135,10 +137,41 @@ pub(super) async fn claim_quest(
             r.target
         )));
     }
+    // 预算闸（2026-10 审计 P2）：此前只是大厅红绿灯展示，领取路径不拦。
+    // 确定侧累计价值超过窗口预算 → 拒（防站长配错一行高奖奖励无硬闸）
+    {
+        let base = eco_i64(&state, "arcade_budget_base", 1500).await;
+        let pct = eco_i64(&state, "arcade_budget_pct", 20).await;
+        let win = eco_i64(&state, "arcade_budget_window_days", 7).await;
+        let back: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(-sum(amount), 0)::bigint FROM spark_ledger \
+             WHERE user_id = $1 AND kind = 'game' \
+               AND created_at >= now() - make_interval(days => $2::int)",
+        )
+        .bind(uid)
+        .bind(win as i32)
+        .fetch_one(db)
+        .await
+        .map_err(dberr)?;
+        let det = det_cost_value(db, uid, win).await?;
+        let budget = base + back.max(0) * pct / 100;
+        if det >= budget {
+            return Err(DomainError::Validation(format!(
+                "本周期确定侧奖励已达预算上限（{det}/{}）：过后台调 \
+                 arcade_budget_* 键或等窗口滚动",
+                budget
+            )));
+        }
+    }
     ref_ok(db, &r).await?;
-    mark_claim(db, uid, "quest", &code, &week).await?;
+    // 领取记录与奖励发放**同一事务**（2026-10 审计 P2）：旧实现 mark_claim
+    // 先独立提交，award 里物品/魔力又各一笔——claim 落库后任一步失败，
+    // 该期奖励永久丢失（重试报「已领取」）
     let idem = idem("arcade:quest", &code, &week, uid, &body.idempotency_key);
-    let (spark, item, fell) = award(db, uid, &r, &idem).await?;
+    let mut tx = db.begin().await.map_err(dberr)?;
+    mark_claim(&mut *tx, uid, "quest", &code, &week).await?;
+    let (spark, item, fell) = award_tx(&mut tx, uid, &r, &idem).await?;
+    tx.commit().await.map_err(dberr)?;
     state
         .repo
         .audit(Some(uid), "arcade.quest.claim", None)
@@ -180,10 +213,13 @@ pub(super) async fn claim_season(
         )));
     }
     ref_ok(db, &r).await?;
-    mark_claim(db, uid, "season", &code, &season).await?;
+    // 与周常同款原子性（见 claim_quest）
     let idem =
         idem("arcade:season", &code, &season, uid, &body.idempotency_key);
-    let (spark, item, fell) = award(db, uid, &r, &idem).await?;
+    let mut tx = db.begin().await.map_err(dberr)?;
+    mark_claim(&mut *tx, uid, "season", &code, &season).await?;
+    let (spark, item, fell) = award_tx(&mut tx, uid, &r, &idem).await?;
+    tx.commit().await.map_err(dberr)?;
     state
         .repo
         .audit(Some(uid), "arcade.season.claim", None)

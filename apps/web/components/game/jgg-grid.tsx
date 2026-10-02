@@ -127,31 +127,26 @@ export function JggGrid({
                 : v >= ticket
                   ? "mid"
                   : "low";
-          const glyph =
-            p.kind === "item"
-              ? p.qty && p.qty > 1
-                ? `${p.icon ?? "🎁"}×${p.qty}`
-                : (p.icon ?? "🎁")
-              : p.payout === 0
-                ? "0"
-                : `×${p.payout}`;
-          const cls = [
-            "lamp",
-            tier,
-            isLit ? "lit" : "",
-            isWin ? "win" : "",
-          ]
+          const cls = ["lamp", tier, isLit ? "lit" : "", isWin ? "win" : ""]
             .filter(Boolean)
             .join(" ");
+          // 球面内容（样图④）：魔力档 = ✦ 星 + ×N 读数；物品档 = 自带图标
+          // + 名字；未中奖档 = 无星 + 后端下发的「谢谢参与」类文案
           return (
             <div key={gi} className={cls}>
-              <span className="socket" aria-hidden />
-              <span className="medal" aria-hidden>
-                {tier === "low" ? "" : "✦"}
+              {p.kind === "item" ? (
+                <span className="bico" aria-hidden>
+                  {p.icon ?? "🎁"}
+                  {p.qty && p.qty > 1 && <i className="num">×{p.qty}</i>}
+                </span>
+              ) : (
+                <span className="bstar" aria-hidden>
+                  {p.payout === 0 ? "" : "✦"}
+                </span>
+              )}
+              <span className="blabel num">
+                {p.kind !== "item" && p.payout > 0 ? `×${p.payout}` : p.label}
               </span>
-              {/* 魔力档的名字就是「×N 魔力」，与角牌重复；物品位必须报名字 */}
-              {p.kind === "item" && <span className="tname">{p.label}</span>}
-              <span className="tpill num">{glyph}</span>
               <span className="ring" aria-hidden />
             </div>
           );

@@ -17,14 +17,19 @@ use crate::state::AppState;
 
 /// 周常可以挂的玩法 ref_type（`*` = 任意玩法）。进度是按 `spark_ledger.ref_type`
 /// 数的，写一个不存在的 ref 就等于造一条永远完成不了的任务。
-const QUEST_REFS: [&str; 7] = [
+/// ⚠️ 0262 扩了四款玩法后同步补齐；`farm_harvest` 已撤——收获入账走
+/// `earn_spark_tx`（不写 ref_type），靠 ref_type 数永远是 0。
+const QUEST_REFS: [&str; 10] = [
     "*",
     "scratch",
     "bigsmall",
     "jgg",
+    "capsule",
+    "wheel",
+    "fishing",
     "farm_plant",
     "farm_water",
-    "farm_harvest",
+    "pet_feed",
 ];
 
 #[derive(Deserialize)]

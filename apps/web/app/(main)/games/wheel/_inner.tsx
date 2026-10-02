@@ -5,6 +5,7 @@ import { PANEL_LG } from "@/lib/ui-classes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { SwCtaRow, SwHist, SwStatRow } from "@/components/game/sw-panels";
+import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
@@ -96,8 +97,7 @@ export default function WheelFocusPage({
   const prizeStripItems = prizes
     .slice()
     .sort(
-      (a, b) =>
-        (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
+      (a, b) => (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
     )
     .slice(0, 4)
     .map((p) => ({
@@ -169,7 +169,7 @@ export default function WheelFocusPage({
 
   return (
     <GameShell
-      icon="🎡"
+      icon={<ArcadeGlyph k="wheel" />}
       title={tw.title}
       subtitle={`${tw.winRate.replace("{pct}", winRate)} · ${tw.sub}`}
       balance={ov?.me?.balance ?? null}
@@ -198,6 +198,7 @@ export default function WheelFocusPage({
               onLanded={onLanded}
               goLabel={tw.go}
               spinningLabel={tw.spinning}
+              tapLabel={tw.tap}
             />
           </GameStage>
           <ResultFlash

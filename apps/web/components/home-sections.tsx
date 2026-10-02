@@ -160,14 +160,16 @@ export function HomeSections({
         );
       case "attendance":
         return (
-          <AttendanceCard
-            home={home}
-            t={t}
-            dict={dict}
-            checkin={checkin}
-            checkinBusy={checkinBusy}
-            checkinMsg={checkinMsg}
-          />
+          <div id="attendance" key="attendance-anchor">
+            <AttendanceCard
+              home={home}
+              t={t}
+              dict={dict}
+              checkin={checkin}
+              checkinBusy={checkinBusy}
+              checkinMsg={checkinMsg}
+            />
+          </div>
         );
       case "shoutbox":
         return <ShoutBox />;

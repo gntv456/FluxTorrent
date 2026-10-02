@@ -1415,43 +1415,8 @@
 }
 
 /* ══════ 钓鱼鱼塘（fp-*，2026-09-30） ══════ */
-.fp-pond {
-  position: relative;
-  width: 100%;
-  max-width: 420px;
-  height: 210px;
-  margin-inline: auto;
-  overflow: hidden;
-  border-radius: var(--r-lg);
-  border: 1px solid rgba(120, 190, 240, 0.28);
-}
-.fp-water {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(
-      120% 90% at 50% 0%,
-      rgba(120, 200, 255, 0.35),
-      transparent 60%
-    ),
-    linear-gradient(180deg, #16456b, #0a2438 70%, #071826);
-}
-/* 波纹横线：两条不同速漂移，读成流动的水面 */
-.fp-wave {
-  position: absolute;
-  left: -10%;
-  right: -10%;
-  top: 38%;
-  height: 2px;
-  opacity: 0.5;
-  background: repeating-linear-gradient(
-    90deg,
-    rgba(200, 235, 255, 0.28) 0 18px,
-    transparent 18px 40px
-  );
-  animation: fpDrift 6s linear infinite;
-}
-.fp-wave.w2 { top: 58%; opacity: 0.32; animation-duration: 9s; }
+/* 旧 div 鱼塘样式已被 .fp-pond-svg（SVG 星夜钓场）取代：
+   类规则删除，仅保留 keyframes 供回落/复用（2026-10 审计死代码清理） */
 @keyframes fpDrift { to { transform: translateX(40px); } }
 /* 浮漂：上红下白，静止轻晃；咬钩时下沉并抖动 */
 .fp-bobber {
@@ -1470,27 +1435,19 @@
   0%, 100% { transform: translateY(0) rotate(-3deg); }
   50% { transform: translateY(-4px) rotate(3deg); }
 }
-.fp-bobber.bite { animation: fpBite 0.28s ease-in-out infinite; }
 @keyframes fpBite {
   0%, 100% { transform: translateY(10px); }
   50% { transform: translateY(16px); }
 }
-/* 涟漪：从浮漂处扩散，只在等待/咬钩阶段出现 */
-.fp-ripple {
-  position: absolute;
-  left: 50%;
-  top: 52%;
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(190, 235, 255, 0.55);
-  animation: fpRipple 2.2s ease-out infinite;
+@keyframes fpBobberBite {
+  0%, 100% { transform: translateY(0); r: 8; }
+  50% { transform: translateY(5px); r: 9.5; }
 }
 @keyframes fpRipple {
   0% { transform: scale(0.4); opacity: 0.8; }
   100% { transform: scale(3.4); opacity: 0; }
 }
+
 .fp-hud {
   position: absolute;
   left: 0;

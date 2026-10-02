@@ -17,7 +17,7 @@ use crate::games;
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::casino::{award_kind, settle};
+use super::casino::{award_kind, settle_tx};
 use super::helpers::{check_bet, check_rate, eco_i64, idem_key};
 use super::pool::{dberr, load_pool};
 
@@ -179,6 +179,44 @@ pub(super) async fn fishing_reel(
     let lo = i64::from(bite);
     let hi = lo + i64::from(win_ms);
     let hit = elapsed >= lo && elapsed <= hi;
+    // 命中才需要奖池；未命中连池都不读，直接在同一事务里收线。
+    // 池若在这几秒被站长改过：下标越界 → 回滚整笔（round 仍 NOT resolved，
+    // 玩家重试时按新池结，不再出现「注已扣、奖结不出、round 永久晾死」）。
+    let mut draw = None;
+    if hit {
+        let key = if event { "fishing_event" } else { "fishing" };
+        let pool = load_pool(db, key).await?;
+        let i = idx.max(0) as usize;
+        let entry = match pool.entries.get(i).cloned() {
+            Some(e) => e,
+            None => {
+                // 池在 cast→reel 之间被改：越界即回滚（round 保持可重试）。
+                // rollback 也可能失败，但只丢一行未收线残局（1 小时后 cast
+                // 侧的清理会兜底），不产生错账——warn 后按可重试错误返回。
+                let _ = tx.rollback().await;
+                return Err(DomainError::Validation(
+                    "奖池已变更，请重试这一竿".into(),
+                ));
+            }
+        };
+        let rarity = super::casino::meta_rarity(&pool.meta, i);
+        draw = Some((
+            games::Draw { index: i, prize: entry },
+            rarity,
+        ));
+    }
+    // 「收线 + 派彩」必须同一笔事务（2026-10 审计 P1）：旧实现先提交
+    // resolved=true 再单独结算，中间失败=注已扣且 round 已死，无法重放。
+    let win_idem = idem
+        .clone()
+        .map(|k| format!("game-fishing-win:{k}"))
+        .unwrap_or_else(|| format!("game-fishing-win:{}", body.round_id));
+    let (spark, value, fell_back) = if let Some((d, rarity)) = draw.as_ref() {
+        settle_tx(&mut tx, auth.id, bet, d, "fishing", &win_idem, *rarity)
+            .await?
+    } else {
+        (0i64, 0i64, None)
+    };
     sqlx::query(
         "UPDATE arcade_fishing_rounds \
             SET resolved = true, won = $2, resolved_at = now() WHERE id = $1",
@@ -201,30 +239,15 @@ pub(super) async fn fishing_reel(
             "bite_after_ms": bite, "window_ms": win_ms,
         })));
     }
-    // 命中：按 cast 定下的档位结算（池若在这几秒内被改过，下标越界就安全失败）
-    // 结算池与 cast 同源：渔汛竿在活动塘结，普通竿在标准塘结
-    let pool = load_pool(db, if event { "fishing_event" } else { "fishing" })
-        .await?;
-    let i = idx.max(0) as usize;
-    let entry = pool
-        .entries
-        .get(i)
-        .cloned()
-        .ok_or_else(|| DomainError::Validation("奖池已变更，这一竿无法结算".into()))?;
-    let draw = games::Draw { index: i, prize: entry };
-    let win_idem = format!(
-        "game-fishing-win:{}",
-        idem.unwrap_or_else(|| body.round_id.to_string())
-    );
-    let rarity = super::casino::meta_rarity(&pool.meta, i);
-    let (spark, value, fell_back) =
-        settle(&state, auth.id, bet, &draw, "fishing", &win_idem, rarity)
-            .await?;
-    state.repo.audit(Some(auth.id), "game.fishing", None).await;
+    let d = draw.expect("hit 为真时 draw 必在").0;
+    state
+        .repo
+        .audit(Some(auth.id), "game.fishing", None)
+        .await;
     Ok(ok(serde_json::json!({
         "won": value > 0,
-        "prize": draw.prize.label,
-        "kind": award_kind(&draw, fell_back),
+        "prize": d.prize.label,
+        "kind": award_kind(&d, fell_back),
         "fell_back": fell_back,
         "payout": spark,
         "value": value,

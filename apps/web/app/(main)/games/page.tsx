@@ -9,6 +9,7 @@ import {
   ArcadeMeta,
   type ArcadeMeta as ArcadeMetaData,
 } from "@/components/arcade/arcade-meta";
+import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 
 interface HallOverview {
   scratch?: { ticket?: number; prizes: ScratchPrize[] };
@@ -115,8 +116,7 @@ export default async function GamesPage() {
 
   // 清单来源：DB 优先（站长可调序/隐藏），空则用前端注册表兜底
   const regRows = ov?.registry ?? [];
-  const list: GameEntry[] =
-    regRows.length > 0 ? regRows.map(toEntry) : GAMES;
+  const list: GameEntry[] = regRows.length > 0 ? regRows.map(toEntry) : GAMES;
   const visible = list.filter((e) => mod(e.module ?? "games"));
   const liveCount = visible.filter((e) => e.live).length;
   const groups: { key: GameGroup; label: string }[] = [
@@ -137,7 +137,9 @@ export default async function GamesPage() {
           <p className="gc-hero-sub">
             {dict.games.hall.hSub.replace("{magic}", currency)}
           </p>
-          <Link href="/me/sparks" className="gc-hero-cta">
+          {/* 样图①的「立即领取」在站点语境=每日签到（发魔力+抽卡券）。
+              大厅是 RSC：直接跳首页签到卡，而不是落到只读流水页 */}
+          <Link href="/#attendance" className="gc-hero-cta">
             {dict.games.hall.hCta} <i aria-hidden>→</i>
           </Link>
         </div>
@@ -150,15 +152,19 @@ export default async function GamesPage() {
         <span className="gc-hero-orb" aria-hidden />
       </section>
 
-      {/* 快捷入口（样图①）：五个直达 + 待办角标 */}
+      {/* 快捷入口（样图①）：五个直达。样图的「3 张免费」角标撤掉——
+          站点刮刮乐没有免费票账（免费票是抽卡 gacha 的 daily_free 机制），
+          假数字违反「每个角标都来自后端真实数据」的口径（2026-10 审计 P1） */}
       <div className="gc-quick">
         {visible.slice(0, 5).map((e) => (
-          <Link key={e.key} href={e.href} className="gc-qi" aria-label={cards[e.key]?.title ?? e.key}>
+          <Link
+            key={e.key}
+            href={e.href}
+            className="gc-qi"
+            aria-label={cards[e.key]?.title ?? e.key}
+          >
             <span className="gc-qi-ic">
-              <span aria-hidden>{e.icon}</span>
-              {e.badge === "scratch" && (
-                <span className="gc-qi-badge num">3</span>
-              )}
+              <ArcadeGlyph k={e.key} />
             </span>
             <span className="gc-qi-lb">
               {(cards[e.key]?.title ?? e.key).replace("{magic}", currency)}
@@ -187,7 +193,7 @@ export default async function GamesPage() {
                     <div className={`gc-art gc-tone-${e.tone}`}>
                       <span className="gc-art-grid" aria-hidden />
                       <span className="gc-glyph" aria-hidden>
-                        {e.icon}
+                        <ArcadeGlyph k={e.key} />
                       </span>
                       {e.hot && e.live && (
                         <span className="gc-hot">{dict.games.hall.hot}</span>
@@ -196,9 +202,7 @@ export default async function GamesPage() {
                         <span className="gc-badge num">{badge}</span>
                       )}
                       {!e.live && (
-                        <span className="gc-soon">
-                          {dict.games.hall.soon}
-                        </span>
+                        <span className="gc-soon">{dict.games.hall.soon}</span>
                       )}
                     </div>
                     <div className="gc-body">

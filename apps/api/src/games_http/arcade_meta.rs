@@ -70,7 +70,9 @@ pub(super) async fn arcade_meta(
     let det_item_value = det_cost_value(db, uid, win).await?;
     let det = det_spark + det_item_value;
 
-    let budget = base + back.max(0) * win * pct / 100;
+    // 预算 = 基数 + 回收×比例（窗口只是「往回看多久」的分母，不是乘数——
+    // 旧公式误把天数乘进去，7 天窗口会把预算放大 7×pct%）
+    let budget = base + back.max(0) * pct / 100;
     let net = back - det;
 
     // ── 周常：本周（ISO 周）进度 + 领取态 ──
@@ -81,7 +83,8 @@ pub(super) async fn arcade_meta(
     let counts: Vec<(String, i64)> = sqlx::query_as(
         "SELECT COALESCE(ref_type, ''), count(*)::bigint FROM spark_ledger \
          WHERE user_id = $1 AND kind = 'game' AND amount < 0 \
-           AND created_at >= date_trunc('week', now()) \
+           AND created_at >= date_trunc('week', \
+                  now() AT TIME ZONE 'UTC') + interval '8 hours' \
          GROUP BY 1",
     )
     .bind(uid)

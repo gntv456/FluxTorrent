@@ -169,6 +169,14 @@ pub(super) async fn arcade_pool_save(
                 DomainError::Validation(format!("奖池不合法，已拒绝保存：{e}"))
             })?;
     }
+    // 九宫格的灯板是 3×3 环形 8 格（前端 jgg-grid 的 RING 常量）：
+    // 池子超 8 档时多出的档位在灯板上不可见，中奖会落在空格——写侧拦。
+    if b.game == "jgg" && entries.len() > 8 {
+        return Err(DomainError::Validation(format!(
+            "九宫格灯板只有 8 个环形格：奖池最多 8 档，收到 {} 档",
+            entries.len()
+        )));
+    }
     // 票档上限先判（农场除外：那一池的「票价」是定标单位，玩家不下注）。
     // 票价高过 `games_max_bet` 时，「低于票档拒开」与「高于上限拒开」两条
     // 规则夹住所有注额 —— 玩法不是变贵，是不再可玩，所以写侧就拦下来。
