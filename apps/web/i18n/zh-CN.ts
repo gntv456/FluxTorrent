@@ -5757,6 +5757,7 @@ export const zhCN = {
     jobsRunning: "执行中",
     jobsOk: "成功",
     jobsFail: "失败",
+    jobsIdle: "未运行（模块关闭或等待首跑）",
     jobsResult: "结果",
     jobsTriggers: "最近触发",
     jobsRequested: "请求时间",

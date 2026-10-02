@@ -5713,6 +5713,7 @@ const adminopsTw: Dict["adminops"] = {
   jobsRunning: "執行中",
   jobsOk: "成功",
   jobsFail: "失敗",
+  jobsIdle: "未執行（模組關閉或等待首跑）",
   jobsResult: "結果",
   jobsTriggers: "最近觸發",
   jobsRequested: "請求時間",

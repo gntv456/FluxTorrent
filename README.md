@@ -17,7 +17,7 @@ FluxTorrent/
 │   ├── api/          # Rust Actix-web 业务 API（认证/种子/促销/经济/管理/兼容层）
 │   │   ├── migrations/   # sqlx 迁移（0001 起，启动自动执行）
 │   │   └── adapters/     # wasmtime 适配器 SDK 与内置示例（douban）
-│   ├── worker/       # Rust 异步任务（43 个 job 应用内调度 + NP 导入器 np_import）
+│   ├── worker/       # Rust 异步任务（45 个 job 应用内调度 + NP 导入器 np_import）
 │   ├── tracker/      # Rust 私有 Tracker（HTTP + UDP BEP15 + IPv6 BEP7 + scrape）
 │   └── web/          # Next.js 15 前端（RSC / 三语 i18n / PWA / 移动端全适配）
 ├── packages/
@@ -59,7 +59,7 @@ docker compose -f docker/docker-compose.yml up -d
 ## 运维
 
 - 监控：`--profile monitoring` 起 Prometheus + Grafana，五条告警预置（docs/ops/monitoring.md）；
-- 任务：43 个 job 后台面板可观测/可手动触发（docs/ops/jobs.md）；
+- 任务：45 个 job 后台面板可观测/可手动触发（docs/ops/jobs.md）；
 - 备份：`scripts/backup.sh` + `restore.sh --drill` 两段式（docs/ops/backup.md）；
 - 升级：`git pull && docker compose up -d --build`，注意事项见 CHANGELOG（docs/webmaster/upgrade.md）。
 
