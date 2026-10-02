@@ -4,7 +4,7 @@
 
 ## 必做（硬性）
 
-- [ ] **announce 地址**：后台「站点设定」`announce_url` 改为公网域名（默认 `http://127.0.0.1:8080/announce` 只对本机可用）。若 tracker 走独立域名并终结 TLS，同时配 `https_announce_url`（种子将按 BEP12 双 tier 下发 https 首选 + http 回退）。
+- [ ] **announce 地址**：后台「站点设定」`announce_url` 改为公网域名（默认 `http://127.0.0.1:7070` 是 tracker 根地址，只对本机可用；系统按 `/announce/<passkey>` 自动拼接，勿手写 `/announce` 尾缀——历史上 0034 迁移曾因此产生双重路径，0080 已纠偏并加了代码侧双保险）。若 tracker 走独立域名并终结 TLS，同时配 `https_announce_url`（种子将按 BEP12 双 tier 下发 https 首选 + http 回退）。
 - [ ] **SMTP 邮件**：后台「站点设定 → 邮件」填服务器/端口/发件人。可用后台的「测试发信」给自己发一封验证。未配置时找回密码的 token 只进日志（不影响开发，但生产必须有）。
 - [ ] **改 root 密码**：首次登录已强制修改；再确认后台「用户管理」里无其他演示账号（向导完成时已自动清 0，复核一眼）。
 

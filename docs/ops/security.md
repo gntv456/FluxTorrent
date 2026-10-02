@@ -59,6 +59,7 @@ frame-ancestors 'none'
 ## 审计与监控
 
 - audit_log 后台可查（管理动作全量）；runtime_logs（WARN+）落库后台「运行日志」页。
+- **审计防篡改链（0266 起）**：每行 `self_hash = SHA256(prev_hash ‖ 行内容)` 串成哈希链，触发器同时拒绝 UPDATE/DELETE；`GET /admin/audit/chain-verify` 一键全链校验（返回断链位置，null = 完整）。0266 之前的存量行已按同一公式回填串链。
 - Prometheus 告警 5 条：DLQ 积压 / 5xx 率 / tracker Redis 降级等（`docker/monitoring/`）。
 - 周度 `cargo audit`（CI security-audit workflow）。
 

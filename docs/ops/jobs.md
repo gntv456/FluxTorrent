@@ -16,6 +16,7 @@
 | seeding_reward / bank_daily | 做种收益、银行结息 |
 | dormant_mark | 休眠账号打标 |
 | cheat_audit / multi_ip_check / highspeed_tag / leak_scan | 风控四件套 |
+| reconcile_diff_alert / reconcile_snapshots | 账本对账：前者每 6h 比对流水合计 vs 余额快照（超阈值告警，先留证）；后者静默收敛快照漂移。删除用户自 0266 起自动补 `user_purge` 流水，正常运营不应再触发告警——若仍告警说明存在新的流水外动账路径，按告警排查 |
 | dlq_watch | 死信看门狗（自动重试） |
 | purge_runtime_logs | 运行日志清理 |
 

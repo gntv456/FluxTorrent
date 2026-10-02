@@ -45,6 +45,31 @@ pub async fn delete_user_cascade(
         tx.commit().await?;
         return Ok(());
     }
+    // ── 动账纪律（0266）：软删前清余额并补 user_purge 负流水 ──────────
+    // 否则 spark_balance 残留在快照侧而无对应流水，reconcile_diff_alert
+    // 每 6h 对账告警永久误报（流水外余额变动源）。
+    sqlx::query(
+        r#"
+        INSERT INTO spark_ledger
+            (id, user_id, amount, kind, ref_type,
+             idempotency_key, balance_after)
+        SELECT nextval('spark_ledger_id_seq'), $1, -spark_balance,
+               'user_purge', 'user', 'user-purge-' || $1, 0
+        FROM users WHERE id = $1 AND spark_balance <> 0
+        ON CONFLICT DO NOTHING
+        "#,
+    )
+    .bind(uid)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| anyhow::anyhow!(format!("uid {uid}: purge ledger: {e}")))?;
+    sqlx::query("UPDATE users SET spark_balance = 0 WHERE id = $1")
+        .bind(uid)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            anyhow::anyhow!(format!("uid {uid}: zero balance: {e}"))
+        })?;
     sqlx::query(
                 "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, \
          EXTRACT(EPOCH FROM now())::bigint) ON CONFLICT (user_id) DO UPDATE SET \

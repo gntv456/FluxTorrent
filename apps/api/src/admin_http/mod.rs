@@ -35,6 +35,7 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(user_permission_view)
         .service(user_permission_set)
         .service(audit_query)
+        .service(audit_chain_verify)
         .service(staff_panel)
         .service(staff_panel_entries_list)
         .service(staff_panel_entries_add)
