@@ -28,7 +28,7 @@ docker compose -f docker/docker-compose.yml up -d
 
 不检查也能跑，但放用户进来之前建议先做（详见 [launch-checklist.md](launch-checklist.md)）：
 
-1. **tracker announce 地址**：后台「站点设定」把 `announce_url` 从 `http://127.0.0.1:8080/announce` 改成你的公网域名——否则用户下载的 .torrent 里是内网地址，无法做种；
+1. **tracker announce 地址**：后台「站点设定」把 `announce_url` 从默认 `http://127.0.0.1:7070`（tracker 根地址，只对本机可用）改成你的公网域名——否则用户下载的 .torrent 里是内网地址，无法做种。注意填 tracker 根地址（不带 `/announce` 尾缀，系统会自动拼 `/announce/<passkey>`）；
 2. **邮件 SMTP**：后台「站点设定 → 邮件」填 SMTP 服务器/端口/发件人即生效（找回密码/邀请信/群发都用它）；
 3. **注册模式**：默认邀请制；要开放注册改 `registration_mode=open`。
 
