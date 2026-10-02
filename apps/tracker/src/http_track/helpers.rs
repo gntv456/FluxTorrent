@@ -31,6 +31,7 @@ pub(crate) struct Metrics {
     pub(crate) announce_limited_user: AtomicU64,
     pub(crate) announce_auth_fail: AtomicU64,
     pub(crate) announce_agent_blocked: AtomicU64,
+    pub(crate) announce_torrent_unknown: AtomicU64,
     pub(crate) announce_global_shed: AtomicU64,
     pub(crate) scrape_total: AtomicU64,
     /// Redis 故障 → 本地降级限流的触发次数（fail-open 窗口监测）
@@ -90,6 +91,9 @@ pub(crate) struct GuardInner {
     /// None = 尚未完成首次加载（0071：正则编译后的 agent/peer_id 交叉规则）
     pub(crate) agent_rules: Option<Vec<AgentRule>>,
     pub(crate) announce_interval: i64,
+    /// 已注册种子 info_hash 集合（P0-2 白名单）。None = 尚未完成首次加载
+    /// （此间 torrent_registered 走直查，见 guard.rs）。
+    pub(crate) known_hashes: Option<std::collections::HashSet<String>>,
     pub(crate) refreshed_at: Instant,
 }
 
