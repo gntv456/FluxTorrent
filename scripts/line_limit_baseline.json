@@ -433,15 +433,16 @@
  "apps/web/components/admin-user-detail-panels.tsx": 336,
  "apps/web/app/(main)/games/scratch/_inner.tsx": 338,
  "apps/web/app/(main)/games/fishing/_inner.tsx": 354,
- "apps/web/app/(main)/games/capsule/_inner.tsx": 331,
+ "apps/web/app/(main)/games/capsule/_inner.tsx": 387,
  "apps/web/app/(main)/games/bigsmall/_inner.tsx": 381,
  "apps/web/components/gacha-rates.tsx::wide": 1,
- "apps/web/app/(main)/games/jgg/_inner.tsx": 310,
+ "apps/web/app/(main)/games/jgg/_inner.tsx": 315,
  "apps/web/app/(main)/games/farm/_inner.tsx": 345,
  "apps/api/src/games_http/farm_actions.rs": 332,
  "apps/web/app/(main)/games/pet/_inner.tsx": 291,
  "apps/web/lib/ten-draw.ts": 101,
  "apps/api/src/games_http/pets.rs": 303,
  "apps/web/components/arcade/arcade-glyph.tsx::wide": 5,
- "apps/web/components/game/fishing-pond.tsx": 311
+ "apps/web/components/game/fishing-pond.tsx": 311,
+ "apps/web/app/(main)/games/wheel/_inner.tsx": 286
 }

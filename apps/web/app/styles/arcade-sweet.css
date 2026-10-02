@@ -2246,3 +2246,100 @@
     align-items: center;
   }
 }
+
+/* ══════ 趣味性批：大奖庆祝 / 连胜徽章 / near-miss ══════ */
+
+/* 大奖庆祝时刻：全屏彩带层（fixed 穿透点击；reduced-motion 降级为无动画） */
+.jpk-burst {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  overflow: hidden;
+}
+.jpk-piece {
+  position: absolute;
+  top: -12px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: jpkFall 1.6s ease-in forwards;
+}
+@keyframes jpkFall {
+  0% { opacity: 0; transform: translateY(0) rotate(0deg); }
+  8% { opacity: 1; }
+  100% {
+    opacity: 0.9;
+    transform: translateY(105vh) rotate(540deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jpk-piece { animation: none; opacity: 0; }
+}
+
+/* 连胜徽章：火焰胶囊，档位越高越亮（3/5/8 连三档） */
+.streak-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #6b4a1a;
+  background: linear-gradient(90deg, #f0d9a8, var(--sweet-gold));
+  box-shadow: 0 2px 8px rgba(212, 175, 122, 0.4);
+  animation: jpkPop 0.35s ease-out;
+}
+.streak-pill.hot {
+  background: linear-gradient(90deg, #e8a878, #d4785a);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(212, 120, 90, 0.45);
+}
+.streak-pill.blaze {
+  background: linear-gradient(90deg, #d4785a, #b8488a);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(184, 72, 138, 0.5);
+}
+@keyframes jpkPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.12); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .streak-pill { animation: none; }
+}
+
+/* 扭蛋个人收集行（趣味性批）：档位名 + 集齐数 + 累计次数 */
+.sw-cap-collect {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-top: 12px; padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: linear-gradient(160deg, #fff, #f8f4e8);
+  box-shadow: inset 0 0 0 1px var(--sweet-gold);
+}
+.sw-cap-crow {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--sweet-ink);
+}
+.sw-cap-ctier {
+  min-width: 34px; text-align: center;
+  font-size: 11px; font-weight: 900;
+  color: #fff; border-radius: 6px; padding: 1px 6px;
+  background: var(--sweet-sky-deep);
+}
+.sw-cap-crow:first-child .sw-cap-ctier { background: var(--sweet-gold-deep); }
+.sw-cap-chits { margin-left: auto; color: var(--sweet-gold-deep); }
+
+/* 宠物进化演出（趣味性批）：跨档升级时新形态弹入 + 光环 */
+.pp-evolve {
+  animation: ppEvolve 0.9s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+}
+@keyframes ppEvolve {
+  0% { transform: scale(0.4) rotate(-8deg); opacity: 0; filter: brightness(2); }
+  55% { transform: scale(1.25) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pp-evolve { animation: none; }
+}

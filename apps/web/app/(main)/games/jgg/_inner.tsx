@@ -16,7 +16,9 @@ import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
+import { SubpageLink } from "@/components/game/subpage-link";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
+import { StreakPill } from "@/components/game/streak-pill";
 import { JggGrid, type JggPrize } from "@/components/game/jgg-grid";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
 import { GameStage } from "@/components/game/game-stage";
@@ -70,6 +72,7 @@ export default function JggPage({
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [reduced, setReduced] = useState(false);
+  const [streak, setStreak] = useState(0);
   /** 本次会话已完成的局数（防沉迷软提示用） */
   const [sessionPlays, setSessionPlays] = useState(0);
   const idem = useRef<string>("");
@@ -165,6 +168,8 @@ export default function JggPage({
           : won === ticket
             ? "tie"
             : "lose";
+    // 连胜（趣味性批）：>票价续 1、否则清零
+    setStreak((st) => (won > ticket ? st + 1 : 0));
     setFlash({
       kind,
       text:
@@ -239,6 +244,7 @@ export default function JggPage({
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tj.drawing : null)}
           />
+          <StreakPill n={streak} label={t.streakLabel} />
           <SwStatRow
             items={[
               { lb: tj.statPlays, vl: String(ov?.me?.today_plays ?? 0) },
@@ -256,6 +262,7 @@ export default function JggPage({
           />
           <SwPrizeStrip label={tj.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-danger">{err}</p>}
+          <SubpageLink game="jgg" />
         </div>
       }
       controls={

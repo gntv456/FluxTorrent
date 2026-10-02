@@ -11,12 +11,14 @@ import {
   SwStatRow,
   SwTenModal,
 } from "@/components/game/sw-panels";
+import { SubpageLink } from "@/components/game/subpage-link";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
+import { StreakPill } from "@/components/game/streak-pill";
 import {
   CapsuleMachine,
   type CapsulePrize,
@@ -72,10 +74,42 @@ export default function CapsuleFocusPage({
   const [err, setErr] = useState<string | null>(null);
   const [reduced, setReduced] = useState(false);
   const [sessionPlays, setSessionPlays] = useState(0);
+  const [streak, setStreak] = useState(0);
+  // 个人收集（趣味性批）：本人真实抽中数，替代纯概率的收集感。
+  // 数据来自通用图鉴端点 /games/collection/capsule（与 jgg/scratch/wheel 同源）
+  const [collect, setCollect] = useState<{
+    tiers: { tier: string; got: number; total: number; hits: number }[];
+  } | null>(null);
   const idem = useRef<string>("");
 
   useEffect(() => {
     setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }, []);
+
+  const loadCollect = useCallback(async () => {
+    try {
+      const r = await api.get<{
+        entries: { rarity: number; count: number }[];
+      }>("/api/v1/games/collection/capsule");
+      type Bucket = { got: number; total: number; hits: number };
+      const byRar: Record<number, Bucket> = {};
+      for (const e of r.entries) {
+        const b = (byRar[e.rarity] ??= { got: 0, total: 0, hits: 0 });
+        b.total += 1;
+        if (e.count > 0) {
+          b.got += 1;
+          b.hits += e.count;
+        }
+      }
+      const name = (rr: number) => (rr >= 4 ? "SSR" : rr === 3 ? "SR" : "R");
+      setCollect({
+        tiers: [4, 3, 2]
+          .filter((rr) => byRar[rr]?.total)
+          .map((rr) => ({ tier: name(rr), ...byRar[rr] })),
+      });
+    } catch {
+      /* 未登录或失败：收集块整块隐藏，不影响玩法 */
+    }
   }, []);
 
   const loadMeta = useCallback(async () => {
@@ -95,7 +129,8 @@ export default function CapsuleFocusPage({
 
   useEffect(() => {
     void loadMeta();
-  }, [loadMeta]);
+    void loadCollect();
+  }, [loadMeta, loadCollect]);
 
   const prizes = ov?.capsule?.prizes ?? [];
   const ticket = ov?.capsule?.ticket ?? 100;
@@ -141,6 +176,7 @@ export default function CapsuleFocusPage({
     onDone: () => {
       setSessionPlays((n) => n + 10);
       void loadMeta();
+      void loadCollect();
     },
     netOf: (r) => (r.value ?? r.payout) - ticket,
     labelOf: (r) => r.prize,
@@ -202,7 +238,10 @@ export default function CapsuleFocusPage({
               ? tc.again
               : tc.thanks,
     });
+    // 连胜（趣味性批）：>票价续 1、否则清零
+    setStreak((st) => (won > ticket ? st + 1 : 0));
     void loadMeta();
+    void loadCollect();
   }
 
   return (
@@ -242,6 +281,7 @@ export default function CapsuleFocusPage({
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tc.drawing : null)}
           />
+          <StreakPill n={streak} label={t.streakLabel} />
           <SwStatRow
             items={[
               { lb: tc.statPlays, vl: String(ov?.me?.today_plays ?? 0) },
@@ -255,6 +295,7 @@ export default function CapsuleFocusPage({
           />
           <SwPrizeStrip label={tc.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-danger">{err}</p>}
+          <SubpageLink game="capsule" />
         </div>
       }
       controls={
@@ -290,6 +331,25 @@ export default function CapsuleFocusPage({
               </div>
             ))}
           </div>
+          {/* 个人收集（趣味性批）：本人真实抽中数，替代纯概率的收集感。
+              got/total = 集齐档位数；hits = 累计抽中次数 */}
+          {collect && (
+            <div className="sw-cap-collect">
+              {collect.tiers.map((tr) => (
+                <div key={tr.tier} className="sw-cap-crow">
+                  <b className="num sw-cap-ctier">{tr.tier}</b>
+                  <span className="num">
+                    {tc.collectGot
+                      .replace("{a}", String(tr.got))
+                      .replace("{b}", String(tr.total))}
+                  </span>
+                  {tr.hits > 0 && (
+                    <span className="num sw-cap-chits">×{tr.hits}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           <SwCtaRow
             primaryLabel={`${tc.go} · ${ticket}`}
             goldLabel={`${tc.tenBtn} · ${ticket * 10}`}

@@ -72,17 +72,29 @@ export function JggGrid({
     let step = 0;
     const laps = prizes.length * 2;
     const target = laps + resultIndex;
+    // near-miss 演出（趣味性批）：最后 2 格先冲过中奖格再回摆定格——
+    // 相邻格擦肩的张力感；整体梯度 90→160→240→400→回摆 300
     const tick = () => {
       setLit(step % prizes.length);
       step++;
-      if (step > target) {
+      if (step > target + 2) {
+        // 回摆收尾：落在中奖格
+        setLit(resultIndex);
         setLanded(true);
         onLanded?.();
         return;
       }
-      const remain = target - step;
+      const remain = target + 2 - step;
       const delay =
-        remain <= 1 ? 400 : remain <= 3 ? 240 : remain <= 6 ? 160 : 90;
+        remain <= 0
+          ? 300
+          : remain <= 2
+            ? 420
+            : remain <= 4
+              ? 240
+              : remain <= 7
+                ? 160
+                : 90;
       timer.current = window.setTimeout(tick, delay);
     };
     tick();

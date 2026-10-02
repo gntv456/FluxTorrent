@@ -11,8 +11,10 @@ import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
+import { StreakPill } from "@/components/game/streak-pill";
 import { LuckyWheel, type WheelPrize } from "@/components/game/lucky-wheel";
 import { GameStage } from "@/components/game/game-stage";
+import { SubpageLink } from "@/components/game/subpage-link";
 
 export interface Overview {
   me?: {
@@ -63,6 +65,7 @@ export default function WheelFocusPage({
   const [err, setErr] = useState<string | null>(null);
   const [reduced, setReduced] = useState(false);
   const [sessionPlays, setSessionPlays] = useState(0);
+  const [streak, setStreak] = useState(0);
   const idem = useRef<string>("");
 
   useEffect(() => {
@@ -153,6 +156,8 @@ export default function WheelFocusPage({
           : won === ticket
             ? "tie"
             : "lose";
+    // 连胜（趣味性批）：>票价续 1、否则清零；jackpot 也算
+    setStreak((s) => (won > ticket ? s + 1 : 0));
     setFlash({
       kind,
       text:
@@ -205,6 +210,7 @@ export default function WheelFocusPage({
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tw.spinning : null)}
           />
+          <StreakPill n={streak} label={t.streakLabel} />
           <SwCtaRow
             primaryLabel={`${tw.go} · ${ticket}`}
             primaryDisabled={busy || prizes.length === 0}
@@ -234,6 +240,7 @@ export default function WheelFocusPage({
           />
           <SwPrizeStrip label={tw.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-danger">{err}</p>}
+          <SubpageLink game="wheel" />
         </div>
       }
       controls={
