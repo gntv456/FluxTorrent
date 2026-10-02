@@ -7,6 +7,19 @@ use sqlx::PgPool;
 /// 策略口径（§5.4）：hr_policy JSONB {"days": N, "seed_hours": H} —— 完成后 N 天内需累计做种 H 小时。
 /// B-01：完成时刻正处免费（free/x2free，含全局站免）窗口的种子豁免 H&R —— 行业惯例。
 pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
+    // ZT81（2026-10-02）增量窗口：原实现每轮全表扫 snatches（42 万行实测单轮
+    // 38.6s、≈7GB 缓冲访问、279,852 次索引探测），而每轮真正要处理的只是新到的
+    // 「完成」。completed_at 在事件消费时写为 now()，故按「近 N 小时」过滤即可
+    // 覆盖全部新增完成；回看窗可配（site_settings.hr_scan_lookback_hours，
+    // 默认 6h），用于 worker 停机后的事件积压补跑。
+    let lookback_h: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings \
+         WHERE name = 'hr_scan_lookback_hours')::bigint, 6)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(6)
+    .clamp(1, 720);
     // 1) 为新完成的下载建快照（幂等）；免费窗口内完成的不建快照（豁免）
     sqlx::query(
         r#"
@@ -16,7 +29,7 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
                s.completed_at + make_interval(days => COALESCE((t.hr_policy->>'days')::int, 14))
         FROM snatches s
         JOIN torrents t ON t.id = s.torrent_id
-        WHERE s.completed_at IS NOT NULL
+        WHERE s.completed_at > now() - make_interval(hours => $1::int)
           AND NOT EXISTS (SELECT 1 FROM hr_snapshots h WHERE h.user_id = s.user_id AND h.torrent_id = s.torrent_id)
           AND COALESCE(t.hr_policy->>'enabled', 'true')::boolean
           -- 0072 buffer 豁免（U3D hitrun.buffer 口径）：下载量不足种子 10% 视为误触/秒删，不计 H&R
@@ -37,13 +50,17 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         ON CONFLICT DO NOTHING
         "#,
     )
+    .bind(lookback_h as i32)
     .execute(db)
     .await?;
 
-    // 2) 刷新累计做种秒数（快照口径：snatches.seeded_seconds）
+    // 2) 刷新累计做种秒数（快照口径：snatches.seeded_seconds）。
+    //    ZT81：只刷新「近 6h 仍在 announce」的 snatch——不再全表 join。
+    //    不再 announce 的行为方 seconds 本就停止增长，冻结值即正确值。
     sqlx::query(
                 "UPDATE hr_snapshots h SET seeded_seconds = s.seeded_seconds, \
-         updated_at = now() FROM snatches s WHERE s.user_id = h.user_id AND s.torrent_id = h.torrent_id AND h.status = 'open'",
+         updated_at = now() FROM snatches s WHERE s.user_id = h.user_id AND s.torrent_id = h.torrent_id AND h.status = 'open' \
+         AND s.last_seen_at > now() - interval '6 hours'",
     )
     .execute(db)
     .await?;

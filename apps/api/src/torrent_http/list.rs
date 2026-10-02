@@ -164,6 +164,8 @@ async fn list(
         anonymous: q.anonymous.filter(|v| (0..=2).contains(v)),
         bookmarked: q.bookmarked.unwrap_or(false),
         sections,
+        // 0267：前台列表没有「标题必须命中」入口，由对外端点（Torznab）使用
+        title_like: None,
     };
     // 上下界颠倒时自动对调（用户先填大后填小很常见，直接判空更友好）
     let mut filter = filter;

@@ -2437,3 +2437,56 @@
     animation: none;
   }
 }
+
+/* ============================================================
+   夜间模式覆盖（ZT81 2026-10-02）
+   为什么需要：皮肤层追加在 globals.css @import 链末，且与
+   [data-theme="baozi-night"] 同为单类特异性 → 按源序皮肤胜出。结果夜间用户
+   进 /games 会突然被整屏冰蓝/白色「闪」一下，与站内其余页面断裂。
+   做法：① 用双属性选择器（特异性更高）把局部令牌换回深色；
+        ② 皮肤里另有 13 处硬编码浅色（#fff / #f4f8fd）不走令牌，逐条兜底。
+   ============================================================ */
+[data-arcade="sweet"][data-theme="baozi-night"] {
+  --sweet-cream: #101728;
+  --sweet-mist: #1c2740;
+  --sweet-sky: #5f8cc0;
+  --sweet-sky-deep: #8ab4dd;
+  --sweet-lilac: #56659b;
+  --sweet-lilac-deep: #9aa8e0;
+  --sweet-gold-deep: #e8c894;
+  --sweet-ink: #e6eefc;
+  --sweet-ink-soft: #9fb0cc;
+  --sweet-line: #26314e;
+  --sweet-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.55);
+  --sweet-shadow-gold: 0 6px 20px -8px rgba(212, 175, 122, 0.28);
+
+  /* 同步被皮肤改写的 TIDE 令牌，别把夜间色又拉回亮色 */
+  --sky: #47b3ff;
+  --sky-deep: #6cc0ff;
+  --sky-soft: #12233c;
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* 硬编码白底/浅底面板统一拉回深色（逐条对应原规则，避免误伤其它页面） */
+[data-arcade="sweet"][data-theme="baozi-night"] .gc-hero-cta,
+[data-arcade="sweet"][data-theme="baozi-night"] .gc-card,
+[data-arcade="sweet"][data-theme="baozi-night"] .gs-back,
+[data-arcade="sweet"][data-theme="baozi-night"] .fs-fish,
+[data-arcade="sweet"][data-theme="baozi-night"] .sw-album-card,
+[data-arcade="sweet"][data-theme="baozi-night"] .sw-album-btn,
+[data-arcade="sweet"][data-theme="baozi-night"] .gtab.on,
+[data-arcade="sweet"][data-theme="baozi-night"] .sw-ten-row,
+[data-arcade="sweet"][data-theme="baozi-night"] .sw-tier,
+[data-arcade="sweet"][data-theme="baozi-night"] .pp-act,
+[data-arcade="sweet"][data-theme="baozi-night"] .sw-rules,
+[data-arcade="sweet"][data-theme="baozi-night"] .gc-qi-ic {
+  background: var(--surface-card);
+  border-color: var(--border-soft);
+}
+
+/* 中奖行保留「香槟金」母题，只在暗色基础上偏暖 */
+[data-arcade="sweet"][data-theme="baozi-night"] .sw-ten-row.win {
+  background: #2a2415;
+  border-color: var(--sweet-gold-deep);
+}

@@ -172,9 +172,7 @@ pub(super) async fn fishing_reel(
         .map_err(dberr)?;
     let Some((bet, idx, bite, win_ms, elapsed, idem, event)) = row else {
         let _ = tx.rollback().await;
-        return Err(DomainError::Validation(
-            "这一竿已收线或不存在".into(),
-        ));
+        return Err(DomainError::Validation("这一竿已收线或不存在".into()));
     };
     let lo = i64::from(bite);
     let hi = lo + i64::from(win_ms);
@@ -201,7 +199,10 @@ pub(super) async fn fishing_reel(
         };
         let rarity = super::casino::meta_rarity(&pool.meta, i);
         draw = Some((
-            games::Draw { index: i, prize: entry },
+            games::Draw {
+                index: i,
+                prize: entry,
+            },
             rarity,
         ));
     }
@@ -240,10 +241,7 @@ pub(super) async fn fishing_reel(
         })));
     }
     let d = draw.expect("hit 为真时 draw 必在").0;
-    state
-        .repo
-        .audit(Some(auth.id), "game.fishing", None)
-        .await;
+    state.repo.audit(Some(auth.id), "game.fishing", None).await;
     Ok(ok(serde_json::json!({
         "won": value > 0,
         "prize": d.prize.label,

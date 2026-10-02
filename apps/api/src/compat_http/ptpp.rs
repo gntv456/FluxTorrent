@@ -4,7 +4,7 @@ use actix_web::{get, web, HttpRequest, HttpResponse};
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::openapi_http::require_token;
+use crate::openapi_http::{no_store, require_token, with_rl};
 use crate::state::AppState;
 
 /// `/api/plugins/ptppUserInfo`：按 PT-Plugin-Plus 的字段命名一次性返回用户面板数据。
@@ -16,7 +16,8 @@ async fn ptpp_user_info(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let (uid, _rpm) = require_token(&req, &state).await?;
+    let tk = require_token(&req, &state).await?;
+    let uid = tk.uid;
     let row: Option<(
         i64,
         String,
@@ -26,10 +27,11 @@ async fn ptpp_user_info(
         i64,
         i32,
         chrono::DateTime<chrono::Utc>,
+        String,
     )> = sqlx::query_as(
         "SELECT u.id, u.username, u.spark_balance, u.uploaded, u.downloaded, \
                 u.seeding_size, \
-                u.class_id, u.created_at \
+                u.class_id, u.created_at, u.passkey \
          FROM users u WHERE u.id = $1 AND u.status < 2",
     )
     .bind(uid)
@@ -45,6 +47,7 @@ async fn ptpp_user_info(
         seeding_size,
         class_id,
         join_time,
+        passkey,
     )) = row
     else {
         return Err(DomainError::Unauthorized);
@@ -70,20 +73,28 @@ async fn ptpp_user_info(
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({
-        // 插件契约字段（PT-Plugin-Plus TNode schema 口径）
-        "id": id,
-        "name": name,
-        "bonus": bonus,
-        "uploaded": uploaded,
-        "downloaded": downloaded,
-        "seeding": seeding,
-        "leeching": leeching,
-        "seedingSize": seeding_size,
-        "invites": invites,
-        "levelName": class_name,
-        "joinTime": join_time,
-        "messageCount": unread_messages,
-        "isLogged": true,
-    })))
+    // 含 passkey（插件拼下载链要用）：禁止中间层缓存
+    Ok(no_store(with_rl(
+        ok(serde_json::json!({
+            // 插件契约字段（PT-Plugin-Plus TNode schema 口径）
+            "id": id,
+            "name": name,
+            "bonus": bonus,
+            "uploaded": uploaded,
+            "downloaded": downloaded,
+            "seeding": seeding,
+            "leeching": leeching,
+            "seedingSize": seeding_size,
+            "invites": invites,
+            "levelName": class_name,
+            "joinTime": join_time,
+            "messageCount": unread_messages,
+            // 0267：插件要拼 download.php 的下载链，必须拿到 passkey。
+            // NP 的 userdetails 页面本来就内含本人 passkey（同源暴露面），
+            // 而插件 config 里 `$passkey$` 取不到值时下载链会拼成空 passkey → 401。
+            "passkey": passkey,
+            "isLogged": true,
+        })),
+        &tk,
+    )))
 }

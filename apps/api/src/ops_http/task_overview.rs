@@ -107,7 +107,7 @@ pub(super) async fn task_overview(
     // 指标现值一次性取齐（四源与 task_settle/my_exams 一致）
     let stats: Option<(i64, i64, i64, i64)> = sqlx::query_as(
         "SELECT u.uploaded, \
-                COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0), \
+                COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0)::bigint, \
                 (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), \
                 (SELECT count(*) FROM subtitles sub WHERE sub.user_id = u.id) \
          FROM users u WHERE u.id = $1",

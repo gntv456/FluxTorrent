@@ -4,6 +4,7 @@
 //! 编辑/删除/恢复/抓取/NFO/求续种/标签在 manage.rs，下载计费与站点统计在
 //! charge.rs；全部 pub use re-export，crate::torrents::xxx 路径不变。
 
+mod cat_map;
 mod charge;
 mod comments;
 mod cursor;
@@ -21,6 +22,7 @@ mod syn_search;
 mod types;
 mod viewer_preds;
 
+pub use cat_map::{newznab_name, CatMap, MediaMap, NEWZNAB_OTHER};
 pub use charge::*;
 pub use comments::*;
 pub use detail::*;

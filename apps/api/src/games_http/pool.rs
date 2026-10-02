@@ -222,4 +222,3 @@ pub(super) async fn load_pool(
 /// 猜大小的桌（`Table`）与其加载/校验已拆到 `pool_table.rs`（撞 300 行上限）。
 /// 这里重导出，保持 `super::pool::{load_table, Table}` 这条既有路径不变。
 pub(super) use super::pool_table::{load_table, Table};
-

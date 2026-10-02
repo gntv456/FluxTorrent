@@ -29,7 +29,9 @@ pub(super) async fn settle(
     uid: i64,
     unit: i64,
     draw: &games::Draw,
-    game: &str, win_idem: &str, rarity: i16,
+    game: &str,
+    win_idem: &str,
+    rarity: i16,
 ) -> DomainResult<(i64, i64, Option<&'static str>)> {
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
     let out =
@@ -43,8 +45,12 @@ pub(super) async fn settle(
 /// 每局顺带落一行 arcade_pool_rounds（稀有播报 / 图鉴的事实源）。
 pub(super) async fn settle_tx(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    uid: i64, unit: i64, draw: &games::Draw,
-    game: &str, win_idem: &str, rarity: i16,
+    uid: i64,
+    unit: i64,
+    draw: &games::Draw,
+    game: &str,
+    win_idem: &str,
+    rarity: i16,
 ) -> DomainResult<(i64, i64, Option<&'static str>)> {
     let (spark, value, fell_back) = match &draw.prize.kind {
         games::EntryKind::Magic { mult_permille } => {
@@ -81,12 +87,19 @@ pub(super) async fn settle_tx(
     .bind(draw.index as i32)
     .bind(rarity)
     .bind(&draw.prize.label)
-    .bind(spark).bind(value).execute(&mut **tx).await.map_err(dberr)?;
+    .bind(spark)
+    .bind(value)
+    .execute(&mut **tx)
+    .await
+    .map_err(dberr)?;
     Ok((spark, value, fell_back))
 }
 
 /// 中奖结果的类型，公示与前台都要按它区分渲染
-pub(super) fn award_kind(draw: &games::Draw, fell_back: Option<&str>) -> &'static str {
+pub(super) fn award_kind(
+    draw: &games::Draw,
+    fell_back: Option<&str>,
+) -> &'static str {
     match (&draw.prize.kind, fell_back) {
         (_, Some(_)) => "fallback",
         (games::EntryKind::Magic { .. }, _) => "magic",
@@ -126,16 +139,8 @@ pub(super) async fn scratch(
     // 否则「首局未中奖 + 重放中奖」= 白赚，是必须堵住的印钞口。
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
     if !matches!(
-        spend_spark_tx(
-            &mut tx,
-            auth.id,
-            body.bet,
-            "game",
-            &idem,
-            "scratch",
-            0
-        )
-        .await?,
+        spend_spark_tx(&mut tx, auth.id, body.bet, "game", &idem, "scratch", 0)
+            .await?,
         SpendOutcome::Spent
     ) {
         let _ = tx.rollback().await;
@@ -225,8 +230,10 @@ pub(super) async fn guess_bigsmall(
     let mut tx = state.repo.db.begin().await.map_err(dberr)?;
     // 幂等（同 scratch）：重放不重开，避免「首局没中 + 重放中了」白赚
     if !matches!(
-        spend_spark_tx(&mut tx, auth.id, body.bet, "game", &idem, "bigsmall", 0)
-            .await?,
+        spend_spark_tx(
+            &mut tx, auth.id, body.bet, "game", &idem, "bigsmall", 0
+        )
+        .await?,
         SpendOutcome::Spent
     ) {
         let _ = tx.rollback().await;

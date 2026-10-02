@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { useFocusTrap } from "@/lib/use-focus-trap";
+
 /** Bottom Sheet 通用件（M3，移动端方案 §交互规范）：
  *  圆角 18 · grabber · max-height 82% · 遮罩 rgba(8,19,31,.42)。
  *  关闭：下拉 grabber 区 ≥64px / 点遮罩 / ESC。打开锁 body 滚动。
@@ -19,6 +21,9 @@ export function BottomSheet({
 }) {
   const [dragY, setDragY] = useState(0);
   const startY = useRef<number | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  // 焦点圈定：Tab 不穿透到遮罩后的页面（ZT81）
+  useFocusTrap(open, sheetRef);
 
   useEffect(() => {
     if (!open) return;
@@ -58,6 +63,7 @@ export function BottomSheet({
     >
       <div className="bsheet-mask" onClick={onClose} />
       <div
+        ref={sheetRef}
         className="bsheet"
         style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
       >

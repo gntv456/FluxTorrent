@@ -66,7 +66,7 @@ async fn user_admin_detail(
                   (SELECT count(*) FROM user_medals um WHERE um.user_id = u.id) AS medals,
                   u.warned_until, u.warned_reason,
                   host((SELECT l.ip FROM login_events l WHERE l.user_id = u.id ORDER BY l.id DESC LIMIT 1)) AS last_ip,
-                  COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0) AS seed_seconds,
+                  COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0)::bigint AS seed_seconds,
                   (SELECT count(*) FROM attendance a WHERE a.user_id = u.id) AS attendance_days
            FROM users u
            LEFT JOIN user_classes c ON c.id = u.class_id

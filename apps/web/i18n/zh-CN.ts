@@ -377,6 +377,8 @@ const zhCnBase = {
     moveToInbox: "主收件箱",
     moveToBox: "文件夹：{name}",
     deleteSel: "删除",
+    // ZT81：批量删除不可逆，此前无二次确认（其它删除入口都有）
+    deleteSelConfirm: "将删除选中的 {n} 封消息，此操作不可恢复，确认？",
     selectedCount: "已选 {n} 封",
     manageBoxes: "管理文件夹",
     newBoxPh: "新文件夹名（≤14 字）",

@@ -11,12 +11,79 @@ use crate::state::AppState;
 
 use super::login_types::LoginReq;
 
+/// 跨站表单登录（login CSRF）防护（0267）。
+///
+/// 0267 起登录接受 `application/x-www-form-urlencoded`（为兼容 NexusPHP
+/// `takelogin.php` 的工具体），但表单 POST **不触发 CORS 预检** —— 任意站点
+/// 都能用一个 `<form>` 把访客浏览器「登录成攻击者的账号」，之后访客的浏览与
+/// 流量全记到攻击者名下（洗白账号/套取访客行为）。
+///
+/// 判据：浏览器发 POST 会带 `Origin`，curl / Python / 移动端不会。
+///   - 无 Origin            → 非浏览器客户端，放行（工具登录不受影响）
+///   - Origin 与本站 Host 同源，或在 CORS_ORIGINS 白名单内 → 放行
+///   - 其余（含 `Origin: null` 的沙箱 iframe）→ 拒绝
+///
+/// 只对**表单**路径生效：JSON 路径跨站必须走预检，CORS 已覆盖，
+/// 且本站前端就是 JSON —— 不动它就不会误伤自家登录。
+fn origin_allowed(req: &HttpRequest) -> bool {
+    let Some(origin) =
+        req.headers().get("origin").and_then(|v| v.to_str().ok())
+    else {
+        return true;
+    };
+    let origin = origin.trim();
+    if origin.is_empty() || origin == "null" {
+        return false;
+    }
+    // 本机同源：Origin 的 authority 与请求 Host 一致
+    let authority = origin.split_once("://").map_or(origin, |(_, a)| a);
+    let host = req
+        .headers()
+        .get("host")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    if !host.is_empty() && authority.eq_ignore_ascii_case(host) {
+        return true;
+    }
+    // 显式白名单（反代/多域名场景与 CORS 同一份配置）
+    std::env::var("CORS_ORIGINS")
+        .unwrap_or_default()
+        .split(',')
+        .any(|o| {
+            let o = o.trim().trim_end_matches('/');
+            !o.is_empty()
+                && o.eq_ignore_ascii_case(origin.trim_end_matches('/'))
+        })
+}
+
+/// 请求是否为表单编码（login CSRF 防护只对这条路径生效）
+fn is_form_body(req: &HttpRequest) -> bool {
+    req.headers()
+        .get(actix_web::http::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .map(|v| {
+            v.trim_start()
+                .to_ascii_lowercase()
+                .starts_with("application/x-www-form-urlencoded")
+        })
+        .unwrap_or(false)
+}
+
+/// 登录体既接受 JSON（本站前端）也接受 `application/x-www-form-urlencoded`
+/// （0267）：NexusPHP 生态的登录习惯是表单 POST（`takelogin.php`
+/// username/password），此前表单打进来会 400「Content type error」，
+/// 于是 MoviePilot / autobrr 这类按 NP 习惯登录的工具一个都进不来。
 #[post("/auth/login")]
 pub async fn login(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<LoginReq>,
+    body: web::Either<web::Json<LoginReq>, web::Form<LoginReq>>,
 ) -> DomainResult<impl Responder> {
+    // 表单路径先过跨站来源闸（见 origin_allowed 注释）
+    if is_form_body(&req) && !origin_allowed(&req) {
+        return Err(DomainError::Forbidden);
+    }
+    let body = body.into_inner();
     // IP 封禁强制校验（ip_bans 此前仅管理面 CRUD，无请求入口拦截）
     let peer_ip = client_ip(&req);
     // UA（0096 风控证据）：区分「同一人多设备」与「凭据泄露换客户端」；截断防滥用

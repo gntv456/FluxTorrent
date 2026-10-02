@@ -121,13 +121,18 @@ pub async fn upload_attachment(
     .await
     .unwrap_or(512);
     if quota_mib > 0 {
+        // sum(bigint)→numeric 必须显式 ::bigint，否则 i64 解码失败被
+        // unwrap_or 吞掉 → 配额已用量恒 0（等于配额永不生效）
         let used: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(sum(size), 0) FROM attachments WHERE user_id = $1",
+            "SELECT COALESCE(sum(size), 0)::bigint FROM attachments WHERE user_id = $1",
         )
         .bind(auth.id)
         .fetch_one(&state.repo.db)
         .await
-        .unwrap_or(0);
+        .unwrap_or_else(|e| {
+            tracing::warn!(%e, "附件配额已用量查询失败");
+            0
+        });
         if used + bytes.len() as i64 > quota_mib * 1024 * 1024 {
             return Err(DomainError::Validation(format!(
                 "附件配额不足（已用 {}/{} MiB）",

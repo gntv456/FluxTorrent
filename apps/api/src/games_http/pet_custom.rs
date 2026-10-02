@@ -51,9 +51,9 @@ pub(super) async fn pet_customize(
         "SELECT species, name FROM arcade_pets WHERE user_id = $1",
     )
     .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(super::pool::dberr)?;
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(super::pool::dberr)?;
     let name = match b.name.as_deref().map(str::trim) {
         Some(n) => {
             if n.chars().count() > 12 {

@@ -51,16 +51,17 @@ function Avatar({ u }: { u: TopRow }) {
   );
 }
 
-function valueHeader(
-  title: string,
-  empty: string,
-  isBytes: boolean,
-  currency: string,
-): string {
-  if (isBytes) return "大小";
-  if (title.includes("做种")) return "时长";
-  if (title.includes("后宫")) return "每小时";
-  if (title.includes(currency) || title.includes("魔力")) return currency;
+/** 榜单数值列的表头单位。
+ *  ZT2（2026-10-03）：原实现按**本地化标题**猜单位（`title.includes("做种"/"后宫"/
+ *  "魔力")`）——标题一翻译（en/zh-TW/ja）所有分支即失效，列头永远退化成「数量」。
+ *  改为由调用方按后端的**稳定 board key**显式传入，与语言无关。 */
+type BoardUnit = "size" | "hours" | "perHour" | "magic" | "count";
+
+function valueHeader(unit: BoardUnit, currency: string): string {
+  if (unit === "size") return "大小";
+  if (unit === "hours") return "时长";
+  if (unit === "perHour") return "每小时";
+  if (unit === "magic") return currency;
   return "数量";
 }
 
@@ -70,7 +71,7 @@ function Board({
   rows,
   empty,
   fmt,
-  isBytes = false,
+  unit,
   currency,
 }: {
   icon: string;
@@ -78,7 +79,7 @@ function Board({
   rows: TopRow[];
   empty: string;
   fmt: (v: number) => string;
-  isBytes?: boolean;
+  unit: BoardUnit;
   currency: string;
 }) {
   return (
@@ -97,7 +98,7 @@ function Board({
               <th className="w-12 py-2 pl-3 text-left font-bold">排名</th>
               <th className="py-2 text-left font-bold">用户</th>
               <th className="py-2 pr-3 text-right font-bold">
-                {valueHeader(title, empty, isBytes, currency)}
+                {valueHeader(unit, currency)}
               </th>
             </tr>
           </thead>
@@ -166,6 +167,7 @@ export default async function TopPage() {
           title={t.boardBonus.replace("{magic}", currency)}
           rows={b.bonus}
           empty={t.empty}
+          unit="magic"
           fmt={(v) => Math.round(v).toLocaleString("zh-CN")}
         />
         <Board
@@ -174,8 +176,8 @@ export default async function TopPage() {
           title={t.boardUploaded}
           rows={b.uploaded}
           empty={t.empty}
+          unit="size"
           fmt={formatBytes}
-          isBytes
         />
         <Board
           currency={currency}
@@ -183,8 +185,8 @@ export default async function TopPage() {
           title={t.boardDownloaded}
           rows={b.downloaded}
           empty={t.empty}
+          unit="size"
           fmt={formatBytes}
-          isBytes
         />
         <Board
           currency={currency}
@@ -192,6 +194,7 @@ export default async function TopPage() {
           title={t.boardSeedtime}
           rows={b.seedtime}
           empty={t.empty}
+          unit="hours"
           fmt={fmtDuration}
         />
         <Board
@@ -200,6 +203,7 @@ export default async function TopPage() {
           title={t.boardHourly}
           rows={b.hourly}
           empty={t.empty}
+          unit="perHour"
           fmt={(v) => v.toFixed(2)}
         />
         <Board
@@ -208,6 +212,7 @@ export default async function TopPage() {
           title={t.boardTorrents}
           rows={b.torrents}
           empty={t.empty}
+          unit="count"
           fmt={(v) => Math.round(v).toLocaleString("zh-CN")}
         />
       </div>

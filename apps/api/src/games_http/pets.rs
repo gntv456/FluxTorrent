@@ -111,14 +111,12 @@ async fn tick_tx(
     let gain = digestible * yield_permille(level) / 1000;
     let mut new_pending = (pending + gain).min(PENDING_CAP);
     let new_energy = energy - digestible;
-    let new_hunger = (i64::from(hunger)
-        - (dt_ms * HUNGER_PER_HOUR) / 3_600_000)
+    let new_hunger = (i64::from(hunger) - (dt_ms * HUNGER_PER_HOUR) / 3_600_000)
         .max(0) as i32;
     let mut earned = 0i64;
     if let Some(idem) = claim_idem {
         if new_pending > 0 {
-            let out =
-                earn_spark_tx(tx, uid, new_pending, "game", idem).await?;
+            let out = earn_spark_tx(tx, uid, new_pending, "game", idem).await?;
             // Replayed = 这枚幂等键已入过账：不再重复付，但 pending 仍要清零
             if !matches!(out, SpendOutcome::Replayed) {
                 earned = new_pending;
@@ -174,9 +172,7 @@ fn status_json(
 }
 
 /// 两只设置键（喂价 / 消化速度），缺省即可玩，站长可调。
-async fn tune(
-    state: &web::Data<std::sync::Arc<AppState>>,
-) -> (i64, i64) {
+async fn tune(state: &web::Data<std::sync::Arc<AppState>>) -> (i64, i64) {
     let feed = eco_i64(state, "pet_feed_cost", 100).await.clamp(1, 100_000);
     let dig = eco_i64(state, "pet_digest_per_hour", 300)
         .await
@@ -289,8 +285,7 @@ pub(super) async fn pet_claim(
     let (feed, dig) = tune(&state).await;
     let client = body.and_then(|b| b.idempotency_key.clone());
     let idem = idem_key("pet-claim", auth.id, &client);
-    let (p, earned) =
-        tick(&state.repo.db, auth.id, dig, Some(&idem)).await?;
+    let (p, earned) = tick(&state.repo.db, auth.id, dig, Some(&idem)).await?;
     state
         .repo
         .audit(Some(auth.id), "game.pet.claim", None)

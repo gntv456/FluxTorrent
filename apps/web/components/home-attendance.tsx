@@ -24,6 +24,13 @@ export function AttendanceCard({
   // 周一开头对齐：本月 1 号之前补空位
   const firstDate = new Date(home.attendance.calendar[0]?.date ?? Date.now());
   const leadingBlanks = (firstDate.getDay() + 6) % 7; // 周一=0
+  // ZT2（2026-10-03）：站点时区（UTC+8）的今天。
+  // 此前在 map 里用 `new Date().toISOString().slice(0,10)`（UTC）——对 UTC+8 用户，
+  // 每天 00:00–08:00 会算成「昨天」，把今天的格子标成未来/漏签（与后端按 UTC+8 生成的
+  // 日历口径不一致）。改为固定 +8 偏移，SSR 与客户端结果一致且符合站点日界。
+  const todayStr = new Date(Date.now() + 8 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
   return (
     <aside className="baozi-panel attendance-card">
       <header className="baozi-panel__head">
@@ -75,7 +82,6 @@ export function AttendanceCard({
           />
         ))}
         {home.attendance.calendar.map((d) => {
-          const todayStr = new Date().toISOString().slice(0, 10);
           const isToday = d.date === todayStr;
           const isFuture = d.date > todayStr;
           const cls = [

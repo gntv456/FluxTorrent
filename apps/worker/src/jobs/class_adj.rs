@@ -44,12 +44,22 @@ pub(crate) async fn preserve_seed(db: &PgPool) -> anyhow::Result<u64> {
 pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
     let promoted = sqlx::query(
         r#"
-        WITH stats AS (
+        WITH agg AS (
+            -- ZT81（2026-10-02）：两次「每用户各扫一遍 snatches」的相关子查询
+            -- 合并为一次分组聚合。原实现 2,068 用户时每轮 4,136 次索引扫描、
+            -- 84 万次缓冲访问，且挂在 60s 周期上。
+            SELECT user_id,
+                   count(*) FILTER (WHERE completed_at IS NOT NULL) AS dl,
+                   COALESCE(sum(seeded_seconds), 0) / 3600 AS sh
+            FROM snatches GROUP BY user_id
+        ),
+        stats AS (
             SELECT u.id, u.class_id, u.uploaded,
-                   (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.completed_at IS NOT NULL) AS dl,
-                   (SELECT COALESCE(sum(s.seeded_seconds),0)/3600 FROM snatches s WHERE s.user_id = u.id) AS sh,
+                   COALESCE(a.dl, 0)::bigint AS dl,
+                   COALESCE(a.sh, 0) AS sh,
                    EXTRACT(DAY FROM now() - u.created_at)::bigint AS age
-            FROM users u WHERE u.class_id < 90
+            FROM users u LEFT JOIN agg a ON a.user_id = u.id
+            WHERE u.class_id < 90
         ),
         target AS (
             SELECT s.id, max(r.class_id) AS new_class
@@ -147,12 +157,19 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
     }
     let demoted = sqlx::query(
         r#"
-        WITH stats AS (
+        WITH agg AS (
+            SELECT user_id,
+                   count(*) FILTER (WHERE completed_at IS NOT NULL) AS dl,
+                   COALESCE(sum(seeded_seconds), 0) / 3600 AS sh
+            FROM snatches GROUP BY user_id
+        ),
+        stats AS (
             SELECT u.id, u.class_id, u.uploaded,
-                   (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.completed_at IS NOT NULL) AS dl,
-                   (SELECT COALESCE(sum(s.seeded_seconds),0)/3600 FROM snatches s WHERE s.user_id = u.id) AS sh,
+                   COALESCE(a.dl, 0)::bigint AS dl,
+                   COALESCE(a.sh, 0) AS sh,
                    EXTRACT(DAY FROM now() - u.created_at)::bigint AS age
             FROM users u JOIN class_rules cr ON cr.class_id = u.class_id
+            LEFT JOIN agg a ON a.user_id = u.id
             WHERE u.class_id < 90 AND cr.demotable
         ),
         target AS (

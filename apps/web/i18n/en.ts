@@ -407,6 +407,8 @@ const enBase: Omit<
     moveToInbox: "Inbox",
     moveToBox: "Folder: {name}",
     deleteSel: "Delete",
+    deleteSelConfirm:
+      "Delete the {n} selected message(s)? This cannot be undone.",
     selectedCount: "{n} selected",
     manageBoxes: "Manage folders",
     newBoxPh: "New folder name (≤14 chars)",

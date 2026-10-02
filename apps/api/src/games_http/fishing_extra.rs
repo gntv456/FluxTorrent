@@ -58,16 +58,14 @@ pub(super) async fn event_state(
 }
 
 async fn rod_level(db: &PgPool, uid: i64) -> DomainResult<i32> {
-    Ok(
-        sqlx::query_scalar(
-            "SELECT level FROM arcade_fishing_rods WHERE user_id = $1",
-        )
-            .bind(uid)
-            .fetch_optional(db)
-            .await
-            .map_err(dberr)?
-            .unwrap_or(1),
+    Ok(sqlx::query_scalar(
+        "SELECT level FROM arcade_fishing_rods WHERE user_id = $1",
     )
+    .bind(uid)
+    .fetch_optional(db)
+    .await
+    .map_err(dberr)?
+    .unwrap_or(1))
 }
 
 fn rod_json(level: i32, bonus_per: i64) -> serde_json::Value {
@@ -192,4 +190,3 @@ pub(super) async fn fishing_collection(
         "got": got, "total": total, "fishes": fishes,
     })))
 }
-

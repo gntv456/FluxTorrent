@@ -7,6 +7,10 @@ use serde::{Deserialize, Serialize};
 pub struct TorrentRow {
     pub id: i64,
     pub info_hash: String,
+    /// 跨站辅种指纹（info.pieces 的 SHA-1）。仅对外复用的列表查询
+    /// （list_noclamp_as）输出该列，其它查询不选 → sqlx(default) 落 None。
+    #[sqlx(default)]
+    pub pieces_hash: Option<String>,
     pub name: String,
     pub small_descr: Option<String>,
     pub category_id: i32,
@@ -240,6 +244,10 @@ pub struct TorrentFilter {
     /// 仅看我书签收藏的种（viewer 维度，阶段三筛选粒度补齐）
     #[serde(default)]
     pub bookmarked: bool,
+    /// 标题必须命中（0267）：Torznab tvsearch 的季集收窄（`S01E02`）等场景。
+    /// 与 `search` 的区别：search 会同时命中副标题/简介，本字段只卡标题。
+    #[serde(default)]
+    pub title_like: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

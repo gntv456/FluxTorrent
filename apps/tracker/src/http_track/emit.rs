@@ -32,9 +32,12 @@ pub(crate) async fn emit_event(
     if conn != peers::CONN_UNTESTED {
         payload["conn"] = serde_json::json!(conn);
     }
-    // 0098：BT 客户端 UA（下载列表「客户端」列 + 反作弊证据）；截断防事件膨胀
+    // 0098：BT 客户端 UA（下载列表「客户端」列 + 反作弊证据）；截断防事件膨胀。
+    // ZT81（2026-10-02）：按**字符边界**截断——原实现 `&agent[..len]` 按字节切片，
+    // UA 含多字节 UTF-8 且恰好落在第 200 字节的非边界时会 panic（该 announce 500）。
     if !agent.is_empty() {
-        payload["agent"] = serde_json::json!(&agent[..agent.len().min(200)]);
+        let ua: String = agent.chars().take(200).collect();
+        payload["agent"] = serde_json::json!(ua);
     }
     xadd(redis, "flux:announce", &payload).await;
 }

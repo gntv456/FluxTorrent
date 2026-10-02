@@ -27,7 +27,7 @@ export const ja: DeepPartial<Dict> = {
     preserve: "保種エリア",
     endangered: "絶滅危惧",
     teams: "保種チーム",
-    classes: "等级",
+    classes: "等級",
     resurrections: "復活タスク",
     more: "その他",
     discover: "発見",

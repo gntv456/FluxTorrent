@@ -68,10 +68,7 @@ pub(super) fn prize_rows(
                 multiples: mult,
                 value: p.value(ticket),
                 rarity: meta.get(i).map(|m| m.0).unwrap_or(1),
-                image_url: meta
-                    .get(i)
-                    .map(|m| m.1.clone())
-                    .unwrap_or_default(),
+                image_url: meta.get(i).map(|m| m.1.clone()).unwrap_or_default(),
                 kind: "magic".to_string(),
                 item_key: None,
                 qty: None,

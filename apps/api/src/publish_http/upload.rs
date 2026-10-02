@@ -5,31 +5,69 @@ use actix_web::{post, web, HttpRequest, HttpResponse};
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::require_auth;
+use crate::http::{require_auth, AuthUser};
 use crate::state::AppState;
 
 use super::ptgen::{
     build_media_info, decode_nfo, UploadForm, NFO_MAX_BYTES, TORRENT_MAX_BYTES,
 };
 
+/// 发种结果。Token 化发种（`/open/torrents`）需要把「重复」当**成功**返回
+/// （幂等语义：工具重试同一 .torrent 不该报错），而网页发种必须继续报
+/// 3004 让用户看到「种子重复」—— 故核心层返回枚举，由两个入口各自翻译。
+pub(crate) enum UploadOutcome {
+    Created(serde_json::Value),
+    Duplicate {
+        id: Option<i64>,
+        info_hash: String,
+        pieces_hash: String,
+    },
+}
+
 #[post("/torrents")]
 pub async fn upload(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    mut payload: actix_multipart::Multipart,
+    payload: actix_multipart::Multipart,
     form: web::Query<UploadForm>,
 ) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    match upload_core(&state, &auth, form.into_inner(), payload).await? {
+        UploadOutcome::Created(v) => Ok(ok(v)),
+        UploadOutcome::Duplicate { .. } => Err(DomainError::TorrentDuplicate),
+    }
+}
+
+/// Token 化发种入口（0267，`POST /open/torrents`）：与网页上传走**同一条**
+/// 核心链路（同一套过审/扣费/权限/幂等规则），差别只有两处：
+/// ①鉴权来自 API Token（外部合成 AuthUser）；
+/// ②元数据来自原始 query string —— 这样无需把 UploadForm 及其 25 个字段
+/// 提升为 crate 可见，避免把 web 表单结构泄漏成对外契约。
+pub(crate) async fn upload_token(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    auth: &AuthUser,
+    query_string: &str,
+    payload: actix_multipart::Multipart,
+) -> DomainResult<UploadOutcome> {
+    let form = web::Query::<UploadForm>::from_query(query_string)
+        .map_err(|e| DomainError::Validation(format!("查询参数非法: {e}")))?
+        .into_inner();
+    upload_core(state, auth, form, payload).await
+}
+
+/// 发种核心：网页表单与开放 API 共用。调用方负责鉴权与表单来源。
+async fn upload_core(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    auth: &AuthUser,
+    form: UploadForm,
+    mut payload: actix_multipart::Multipart,
+) -> DomainResult<UploadOutcome> {
     use actix_web::web::Bytes;
     use futures_util::StreamExt;
 
-    let auth = require_auth(&req, &state).await?;
     // 发种基础权限（默认配给全体用户 class 1；可用于限制上传资格）
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::TORRENT_UPLOAD,
-    )
-    .await?;
+    crate::authz::require_perm(state, auth, crate::authz::perm::TORRENT_UPLOAD)
+        .await?;
     let mut file_bytes: Option<Bytes> = None;
     let mut nfo_bytes: Option<Bytes> = None;
     while let Some(item) = payload.next().await {
@@ -89,7 +127,21 @@ pub async fn upload(
     .await
     .unwrap_or(false);
     if dupe {
-        return Err(DomainError::TorrentDuplicate);
+        // 幂等：把已存在的那一枚的 id 一并回给调用方（Token 发种据此判重）
+        let existing: Option<i64> = sqlx::query_scalar(
+            "SELECT id FROM torrents WHERE info_hash = $1 OR \
+             raw_info_hash = $2 ORDER BY id LIMIT 1",
+        )
+        .bind(&parsed.info_hash_hex)
+        .bind(&parsed.raw_info_hash_hex)
+        .fetch_optional(&state.repo.db)
+        .await
+        .unwrap_or(None);
+        return Ok(UploadOutcome::Duplicate {
+            id: existing,
+            info_hash: parsed.info_hash_hex.clone(),
+            pieces_hash: parsed.pieces_hash_hex.clone(),
+        });
     }
 
     let name = form
@@ -140,8 +192,8 @@ pub async fn upload(
         || streak_skip
         || auth.class_id >= i32::from(auto_class)
         || crate::authz::can(
-            &state,
-            &auth,
+            state,
+            auth,
             crate::authz::perm::TORRENT_APPROVAL_AUTO,
         )
         .await;
@@ -176,7 +228,7 @@ pub async fn upload(
         form.sections.as_ref(),
     )
     .await?;
-    let id: i64 = sqlx::query_scalar(
+    let insert_res: Result<i64, sqlx::Error> = sqlx::query_scalar(
         "INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, \
          group_id, name, small_descr, descr, category_id, medium_id, \
          grade_id, edition_id, owner_id, anonymous, size, numfiles, \
@@ -205,25 +257,39 @@ pub async fn upload(
     .bind(price)
     .bind(imdb_id)
     .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| {
-        // 并发上传同一 .torrent：EXISTS 检查与 INSERT 之间的窗口由唯一约束兜底，
-        // 映射为语义化的重复错误而非裸 500（raw_info_hash 只有普通索引，见 0081）
-        if e.to_string().contains("torrents_info_hash_key")
-            || e.to_string().contains("duplicate key")
-        {
-            DomainError::TorrentDuplicate
-        } else {
+    .await;
+    let id: i64 = match insert_res {
+        Ok(v) => v,
+        Err(e) => {
+            // 并发上传同一 .torrent：EXISTS 检查与 INSERT 之间的窗口由唯一约束兜底，
+            // 映射为语义化的重复结果而非裸 500（raw_info_hash 只有普通索引，见 0081）
+            if e.to_string().contains("torrents_info_hash_key")
+                || e.to_string().contains("duplicate key")
+            {
+                let existing: Option<i64> = sqlx::query_scalar(
+                    "SELECT id FROM torrents WHERE info_hash = $1 \
+                     ORDER BY id LIMIT 1",
+                )
+                .bind(&parsed.info_hash_hex)
+                .fetch_optional(&state.repo.db)
+                .await
+                .unwrap_or(None);
+                return Ok(UploadOutcome::Duplicate {
+                    id: existing,
+                    info_hash: parsed.info_hash_hex.clone(),
+                    pieces_hash: parsed.pieces_hash_hex.clone(),
+                });
+            }
             // 分类/媒介/学段/版本不存在 → 外键违规，是输入问题不是服务器故障
-            crate::errors::db_to_domain(e, "分类/媒介/学段/版本")
+            return Err(crate::errors::db_to_domain(e, "分类/媒介/学段/版本"));
         }
-    })?;
+    };
 
     // 多维属性（第八轮 Section）与标签：外提至 sections_store::store_sections_tags
-    super::upload_sections::store_sections_tags(&state, &form, &auth, id)
-        .await?;
+    super::upload_sections::store_sections_tags(state, &form, auth, id).await?;
     // 新种子进列表：推进列表缓存代际，否则首屏 45s 内看不到刚发的种
-    crate::torrent_http::bump_list_cache_gen(&state).await;
+    let app: &AppState = state;
+    crate::torrent_http::bump_list_cache_gen(app).await;
     // 存原始 .torrent 字节（下载时重新注入 announce，M05）
     sqlx::query("INSERT INTO torrent_files (torrent_id, raw) VALUES ($1, $2)")
         .bind(id)
@@ -234,11 +300,11 @@ pub async fn upload(
 
     // 文件清单/自动促销/推荐位：外提至 upload_files_promo::store_files_promo
     super::upload_files_promo::store_files_promo(
-        &state, &form, &parsed, id, &auth,
+        state, &form, &parsed, id, auth,
     )
     .await?;
     // M28 插件 Hook：发布成功后分发（异步、失败不影响主流程）
-    state.plugins.dispatch_upload(&state, id, auth.id);
+    state.plugins.dispatch_upload(state.get_ref(), id, auth.id);
 
     // 0075 聚合组推荐（未显式指定组时）：
     //   a) pieces_hash 命中已有组 → 直接建议锁定（跨站同源再发布场景）
@@ -290,11 +356,13 @@ pub async fn upload(
         .await;
     }
 
-    Ok(ok(serde_json::json!({
+    Ok(UploadOutcome::Created(serde_json::json!({
         "id": id,
         "approval_status": approval_status,
         "auto_approved": auto_approve,
         "group_suggest": group_suggest,
+        "pieces_hash": parsed.pieces_hash_hex,
+        "info_hash": parsed.info_hash_hex,
     })))
 }
 

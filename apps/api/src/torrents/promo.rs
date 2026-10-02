@@ -55,6 +55,38 @@ pub(crate) fn exists_clause(kinds: Option<&str>) -> String {
     }
 }
 
+/// 促销档位的对外展示标签：RSS 标题前缀、Torznab tags、compat 促销名共用
+/// 同一份，防止三处各写一份而漂移（此前 rss_http.rs 与 economy_http
+/// 的 recon.rs 各有一份）。未知/无促销 → 空串。
+pub fn label(kind: &str) -> &'static str {
+    match kind {
+        "free" => "Free",
+        "x2free" => "2xFree",
+        "half" => "50%",
+        "x2half" => "2x50%",
+        "x2" => "2x",
+        "p30" => "30%",
+        _ => "",
+    }
+}
+
+/// 促销档位的 (下载倍率, 上传倍率) —— Torznab 的
+/// downloadvolumefactor / uploadvolumefactor 口径。
+/// 语义与 worker 计费、0213 effect 注释一致：
+/// free 下载 0 / x2 上传 2 / x2free 0+2 / half 下载 0.5 /
+/// x2half 0.5+2 / p30 下载 0.3；无促销 → (1,1)。
+pub fn factors(kind: &str) -> (f64, f64) {
+    match kind {
+        "free" => (0.0, 1.0),
+        "x2free" => (0.0, 2.0),
+        "half" => (0.5, 1.0),
+        "x2half" => (0.5, 2.0),
+        "x2" => (1.0, 2.0),
+        "p30" => (0.3, 1.0),
+        _ => (1.0, 1.0),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,5 +152,30 @@ mod tests {
         let any = exists_clause(None);
         assert!(!any.contains("p.kind::text IN"), "any 不应限定 kind");
         assert!(any.contains("p.torrent_id = t.id"));
+    }
+
+    /// 六档标签齐备且不误伤未知档位（第三方按标签过滤，缺档 = 免费信息断传）
+    #[test]
+    fn label_covers_all_kinds() {
+        assert_eq!(label("free"), "Free");
+        assert_eq!(label("x2free"), "2xFree");
+        assert_eq!(label("half"), "50%");
+        assert_eq!(label("x2half"), "2x50%");
+        assert_eq!(label("x2"), "2x");
+        assert_eq!(label("p30"), "30%");
+        assert_eq!(label(""), "");
+        assert_eq!(label("sticky1"), "", "置顶档位没有流量标签");
+    }
+
+    /// 倍率必须与 0213 的 effect 语义逐档对齐（错一档 = 媒体库免费判断出错）
+    #[test]
+    fn factors_match_billing_semantics() {
+        assert_eq!(factors("free"), (0.0, 1.0));
+        assert_eq!(factors("x2"), (1.0, 2.0));
+        assert_eq!(factors("x2free"), (0.0, 2.0));
+        assert_eq!(factors("half"), (0.5, 1.0));
+        assert_eq!(factors("x2half"), (0.5, 2.0));
+        assert_eq!(factors("p30"), (0.3, 1.0));
+        assert_eq!(factors("nope"), (1.0, 1.0));
     }
 }

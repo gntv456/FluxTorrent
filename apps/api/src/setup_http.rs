@@ -29,6 +29,7 @@ pub async fn setup_gate_mw(
         "/api/v1/setup",
         "/api/v1/setup/status",
         "/api/v1/health",
+        "/api/v1/ready",
         "/api/v1/auth/login",
         "/api/v1/auth/logout",
         // 装机自救通道：0017 引导的 root 带 must_reset_password=true，而 auth_infra 的

@@ -158,8 +158,9 @@ export function defaultNav({
         ...(modules("messages")
           ? [{ href: "/messages", label: nav.messages }]
           : []),
-        // H&R 入口归 exams 键（/me/hr 网关同口径，二审 G2-3）
-        ...(modules("exams") ? [{ href: "/myhr", label: nav.myhr }] : []),
+        // H&R 入口恒可见：hr_enforce 执法独立于 exams 模块，入口随 exams
+        // 关闭会形成「执法在跑、记录不可见」断链（见 /me/hr 网关注释）
+        { href: "/myhr", label: nav.myhr },
         { href: "/faq", label: nav.faq },
         ...(modules("magic_pool")
           ? [{ href: "/donate", label: nav.donate }]

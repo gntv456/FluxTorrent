@@ -90,12 +90,8 @@ pub(super) async fn games_overview(
             entries: Vec::new(),
             meta: Vec::new(),
         });
-    let fishing_prizes = prize_rows(
-        &fishpool.entries,
-        fishpool.ticket,
-        &icons,
-        &fishpool.meta,
-    );
+    let fishing_prizes =
+        prize_rows(&fishpool.entries, fishpool.ticket, &icons, &fishpool.meta);
     // 大厅玩法清单（顺序/显隐）：表空则前端兜底注册表接管
     let registry = super::arcade_games::load_registry(&state.repo.db)
         .await

@@ -30,6 +30,13 @@ impl AppState {
             crate::auth::JwtSigner::from_config(&cfg.jwt_alg, &cfg.jwt_secret)?;
         let db = sqlx::postgres::PgPoolOptions::new()
             .max_connections(cfg.db_pool_size as u32)
+            // ZT81（2026-10-02）：补超时与生命周期。此前未设 acquire_timeout，
+            // 沿用 sqlx 默认 30s——后台重任务（worker 全表巡检）抢连接时，网页
+            // 请求会静默排队 30s 再报 PoolTimedOut；也无 max_lifetime，长连接累积。
+            // 5s 快速失败 + 30min 回收，让故障表现为「快错」而非「长时间挂住」。
+            .acquire_timeout(std::time::Duration::from_secs(5))
+            .idle_timeout(Some(std::time::Duration::from_secs(600)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
             .connect(&cfg.database_url)
             .await?;
         // ConnectionManager 内建无限重连：认证失败/不可达时不返回错误，

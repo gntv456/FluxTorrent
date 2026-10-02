@@ -61,7 +61,11 @@ pub fn outcome_side(dice: [u32; 3], guess: Guess) -> &'static str {
 /// 掷 3 颗六面骰（机制：每颗 1..=6 均匀）
 pub fn roll() -> [u32; 3] {
     let mut rng = rand::thread_rng();
-    [rng.gen_range(1..=6), rng.gen_range(1..=6), rng.gen_range(1..=6)]
+    [
+        rng.gen_range(1..=6),
+        rng.gen_range(1..=6),
+        rng.gen_range(1..=6),
+    ]
 }
 
 /// 一张桌的三区档位必须真的铺满 486/28/486：少一个区、或多给了一点权重，

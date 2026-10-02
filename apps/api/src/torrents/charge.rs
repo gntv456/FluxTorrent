@@ -172,13 +172,19 @@ pub async fn site_stats(db: &PgPool) -> DomainResult<serde_json::Value> {
     .fetch_one(db)
     .await
     .unwrap_or(0);
+    // sum(bigint) 在 PG 返回 numeric —— sqlx 按 i64 解码必失败，曾配合
+    // unwrap_or(0) 把「做种总量」静默归零（首页恒 0.0B）。::bigint 显式收口。
     let seed_size: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(sum(t.size), 0) FROM torrents t \
+        "SELECT COALESCE(sum(t.size), 0)::bigint FROM torrents t \
          JOIN (SELECT DISTINCT torrent_id FROM snatches WHERE seeding) s ON s.torrent_id = t.id",
     )
     .fetch_one(db)
     .await
-    .unwrap_or(0);
+    .unwrap_or_else(|e| {
+        // 统计类查询失败不 500，但必须留痕——静默 0 会让「没数据」与「查挂了」不可分
+        tracing::warn!(%e, "site_stats seed_size 查询失败");
+        0
+    });
     Ok(serde_json::json!({
         "users": users, "torrents": torrents, "dead": dead, "seed_size": seed_size
     }))

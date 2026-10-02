@@ -125,8 +125,14 @@ fn config_out_of_range_is_named() {
         Err(LandError::BadBase(-5))
     );
     // 比率 1000‰ = 阶梯不涨；900‰ = 越买越便宜
-    assert_eq!(validate_ladder(2000, 1000, 12), Err(LandError::BadRatio(1000)));
-    assert_eq!(validate_ladder(2000, 900, 12), Err(LandError::BadRatio(900)));
+    assert_eq!(
+        validate_ladder(2000, 1000, 12),
+        Err(LandError::BadRatio(1000))
+    );
+    assert_eq!(
+        validate_ladder(2000, 900, 12),
+        Err(LandError::BadRatio(900))
+    );
     assert_eq!(validate_ladder(2000, RATIO_MIN, 12), Ok(()));
     assert_eq!(validate_ladder(2000, 2200, 0), Err(LandError::BadCap(0)));
     assert_eq!(

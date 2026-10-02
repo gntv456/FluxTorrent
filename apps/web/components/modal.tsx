@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 /** 覆盖式弹窗（0173）：fixed 遮罩 + 居中卡片，ESC / 点遮罩关闭，锁 body 滚动。
  *  详情页编辑（TorrentManage）、购买置顶免费（PromoBuyButton）共用。 */
@@ -20,6 +22,10 @@ export function Modal({
   size?: keyof typeof WIDTH;
   children: React.ReactNode;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  // 焦点圈定：Tab 不穿透到遮罩后的页面（ZT81）
+  useFocusTrap(open, cardRef);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -42,6 +48,7 @@ export function Modal({
       role="presentation"
     >
       <div
+        ref={cardRef}
         role="dialog"
         aria-modal
         aria-label={title}
