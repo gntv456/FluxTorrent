@@ -27,6 +27,11 @@ const zhCnBase = {
     themeToggle: "切换主题",
     yes: "是",
     no: "否",
+    // 相对时间（求种/字幕列表共用 lib/time-ago.ts；{n}/{m} 为数值槽）
+    timeM: "{n}分钟",
+    timeHm: "{n}时{m}分",
+    timeDh: "{n}天{m}时",
+    timeMoD: "{n}月{m}天",
   },
   navDrawer: {
     open: "打开导航菜单",
