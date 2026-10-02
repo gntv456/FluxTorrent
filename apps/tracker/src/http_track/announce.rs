@@ -35,11 +35,28 @@ pub(crate) async fn announce(
 
     let info_hash_hex = hex(&info_hash_raw);
     let peer_id_hex = hex(&peer_id_raw);
-    let port: u16 = params.get_i64("port", 0) as u16;
+    let port_raw = params.get_i64("port", 0);
+    if !(0..=65535).contains(&port_raw) {
+        return bencode_err("port 无效");
+    }
+    let port: u16 = port_raw as u16;
     let uploaded = params.get_i64("uploaded", 0);
     let downloaded = params.get_i64("downloaded", 0);
-    let left = params.get_i64("left", 0);
-    let numwant = params.get_i64("numwant", 50).clamp(1, 200) as usize;
+    // ZT81（2026-10-02）：left 缺失/负数不再静默按 0 处理。原实现缺 left 即判为
+    // 做种（is_seeder = left==0），会把畸形 announce 计入 seeders 并喂 3720s TTL，
+    // 造成在线做种数虚高。BEP3 中 left 为必填。
+    let left = match params.get_bytes("left") {
+        Some(_) => {
+            let v = params.get_i64("left", 0);
+            if v < 0 {
+                return bencode_err("left 无效");
+            }
+            v
+        }
+        None => return bencode_err("缺少 left"),
+    };
+    // numwant=0 是合法请求（客户端明确表示不要 peer 列表），不应当被抬成 1
+    let numwant = params.get_i64("numwant", 50).clamp(0, 200) as usize;
     let event = params.get_str("event").unwrap_or_default();
     let event = event.as_str();
     // 安全（P2）：不信任客户端自报 IP —— 仅显式配置代理时才采用参数值。
@@ -112,6 +129,20 @@ pub(crate) async fn announce(
     }
     if !download_enabled && left > 0 {
         return bencode_err("下载权限已被禁用，请联系管理组");
+    }
+
+    // ①''' 种子白名单（P0-2，2026-10-02 资深用户深测发现）：announce 对
+    // 任意伪造 info_hash 放行并计入 swarm——伪造种子可刷 swarm 计数/制造
+    // 幽灵 peer。私有 tracker 行业惯例：info_hash 必须已在站内注册
+    // （approval_status=1 过审或待审均可 announce——审核期发布者要先能做种；
+    // 回收站/被拒种子不再接受新 announce）。60s 缓存（guard 通道），
+    // DB 不可达时 fail-open（与 passkey 缓存同等降级纪律）。
+    if !state.torrent_registered(&info_hash_hex).await {
+        state
+            .metrics
+            .announce_torrent_unknown
+            .fetch_add(1, Ordering::Relaxed);
+        return bencode_err("种子不存在或不可用（torrent unregistered）");
     }
 
     // ①' 每用户频率（按 user_id 而非 IP —— NAT 场景按 IP 会误伤）
@@ -196,9 +227,12 @@ pub(crate) async fn announce(
     .await;
 
     // ③ compact 二进制响应（interval 按 site_settings.announce_interval 下发；BEP-7 v6 进 peers6）
+    // 0267：`compact=0` 时回退 BEP3 原始 peer 字典列表，供不支持 BEP23 的老客户端；
+    // 缺省/其它值一律按 compact（现代客户端的事实标准，也是唯一被压测覆盖的路径）。
+    let compact = params.get_i64("compact", 1) != 0;
     let (interval, min_interval) = state.intervals();
     let body = if event == "stopped" {
-        bencode_announce(0, 0, 0, &[], &[], interval, min_interval)
+        bencode_announce(0, 0, 0, &[], &[], interval, min_interval, compact)
     } else if crate::peers::external::external_enabled() {
         let mut r = state.redis.clone();
         let (seeders, leechers) =
@@ -218,6 +252,7 @@ pub(crate) async fn announce(
             &snap.v6,
             interval,
             min_interval,
+            compact,
         )
     } else {
         let seeders = state.peers.count_seeders(&info_hash_hex);
@@ -231,6 +266,7 @@ pub(crate) async fn announce(
             &snap.v6,
             interval,
             min_interval,
+            compact,
         )
     };
     HttpResponse::Ok().content_type("text/plain").body(body)

@@ -119,9 +119,20 @@ pub(super) async fn announce(
             .fetch_add(1, Ordering::Relaxed);
         return UdpTracker::err_pkt(transaction_id, &reason);
     }
+    // 种子白名单（P0-2，与 HTTP announce 同口径；UDP 扩展 passkey 鉴权之后）
+    let info_hash_hex = crate::peers::hex(&info_hash);
+    if !t.state.torrent_registered(&info_hash_hex).await {
+        t.state
+            .metrics
+            .announce_torrent_unknown
+            .fetch_add(1, Ordering::Relaxed);
+        return UdpTracker::err_pkt(
+            transaction_id,
+            "种子不存在或不可用（torrent unregistered）",
+        );
+    }
 
     // —— peer 表与事件流（与 HTTP 同源） ——
-    let info_hash_hex = crate::peers::hex(&info_hash);
     let peer_id_hex = crate::peers::hex(&peer_id);
     let key = PeerKey {
         info_hash: info_hash_hex.clone(),
@@ -150,8 +161,7 @@ pub(super) async fn announce(
         };
         if crate::peers::external::external_enabled() {
             let mut r = t.state.redis.clone();
-            let _ =
-                crate::peers::external::upsert(&mut r, peer.clone()).await;
+            let _ = crate::peers::external::upsert(&mut r, peer.clone()).await;
         }
         t.state.peers.upsert(peer);
     }

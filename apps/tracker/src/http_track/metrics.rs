@@ -9,21 +9,39 @@ use std::sync::atomic::Ordering;
 
 /// 本地滑动窗口限流（Redis 故障降级用）：key → (计数, 窗口起点)
 
+/// 指标端点鉴权（ZT81 2026-10-02）：同时接受 `x-metrics-token` 与标准
+/// `Authorization: Bearer <token>`。原实现只认前者，而随仓库附带的
+/// `docker/monitoring/prometheus.yml` 用的是标准 `authorization: Bearer`
+/// → 即便按文档配好 ANN_METRICS_TOKEN，Prometheus 抓取仍全 404，监控与
+/// 告警全部不触发（「有监控栈」是假象）。
+pub(crate) fn metrics_authorized(req: &actix_web::HttpRequest) -> bool {
+    let tok = std::env::var("ANN_METRICS_TOKEN").unwrap_or_default();
+    if tok.is_empty() {
+        return false;
+    }
+    let hdr = |n: &str| {
+        req.headers()
+            .get(n)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+    };
+    if hdr("x-metrics-token") == tok {
+        return true;
+    }
+    hdr("authorization")
+        .strip_prefix("Bearer ")
+        .is_some_and(|t| t.trim() == tok)
+}
+
 /// Prometheus 指标端点：ANN_METRICS_TOKEN 未设置时返回 404（不暴露）；
-/// 抓取端需带 X-Metrics-Token 头。监控与告警基线见 生产部署指南「监控与告警」节。
+/// 抓取端带 X-Metrics-Token 或 Authorization: Bearer 均可。监控与告警基线见
+/// 生产部署指南「监控与告警」节。
 #[get("/metrics")]
 pub(crate) async fn metrics(
     state: web::Data<TrackerState>,
     req: actix_web::HttpRequest,
 ) -> HttpResponse {
-    let tok = std::env::var("ANN_METRICS_TOKEN").unwrap_or_default();
-    if tok.is_empty()
-        || req
-            .headers()
-            .get("x-metrics-token")
-            .and_then(|v| v.to_str().ok())
-            != Some(tok.as_str())
-    {
+    if !metrics_authorized(&req) {
         return HttpResponse::NotFound().finish();
     }
     let m = &state.metrics;
@@ -52,6 +70,8 @@ pub(crate) async fn metrics(
             "flux_tracker_announce_auth_fail_total {}\n",
             "# TYPE flux_tracker_announce_agent_blocked_total counter\n",
             "flux_tracker_announce_agent_blocked_total {}\n",
+            "# TYPE flux_tracker_announce_torrent_unknown_total counter\n",
+            "flux_tracker_announce_torrent_unknown_total {}\n",
             "# TYPE flux_tracker_announce_global_shed_total counter\n",
             "flux_tracker_announce_global_shed_total {}\n",
             "# TYPE flux_tracker_scrape_total counter\n",
@@ -73,6 +93,7 @@ pub(crate) async fn metrics(
         m.announce_limited_user.load(Ordering::Relaxed),
         m.announce_auth_fail.load(Ordering::Relaxed),
         m.announce_agent_blocked.load(Ordering::Relaxed),
+        m.announce_torrent_unknown.load(Ordering::Relaxed),
         m.announce_global_shed.load(Ordering::Relaxed),
         m.scrape_total.load(Ordering::Relaxed),
         m.redis_fallback.load(Ordering::Relaxed),

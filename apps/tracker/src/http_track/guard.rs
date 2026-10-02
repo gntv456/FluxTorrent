@@ -79,6 +79,17 @@ impl TrackerState {
         .and_then(|v| v.parse::<i64>().ok())
         .map(|v| v.clamp(60, 86400))
         .unwrap_or(self.cfg.default_interval);
+        // 种子白名单（P0-2）：全量 info_hash 双口径（规范化 + 原始字节）。
+        // 大站量级 = 十万级字符串 HashSet，内存 ~20MB 内，60s 全量重拉可接受；
+        // 拉取失败保留旧快照（与 ip_bans 同纪律）。
+        let hashes: Option<std::collections::HashSet<String>> = sqlx::query_scalar::<_, String>(
+            "SELECT info_hash FROM torrents WHERE approval_status IN (0, 1) \
+             UNION SELECT raw_info_hash FROM torrents WHERE approval_status IN (0, 1) AND raw_info_hash IS NOT NULL",
+        )
+        .fetch_all(&self.db)
+        .await
+        .ok()
+        .map(|v| v.into_iter().collect());
 
         let mut g = self.guard_write();
         if let Some(b) = bans {
@@ -87,8 +98,36 @@ impl TrackerState {
         if let Some(r) = rules {
             g.agent_rules = Some(r);
         }
+        if let Some(h) = hashes {
+            g.known_hashes = Some(h);
+        }
         g.announce_interval = interval;
         g.refreshed_at = Instant::now();
+    }
+
+    /// 种子白名单判定（P0-2）：info_hash 是否已在站内注册。
+    /// 命中缓存 O(1)；未命中（含快照未加载/新发种 60s 窗口）直查 PG，
+    /// 查询失败 fail-open（与 passkey 同纪律——DB 抖动不应打断全站 announce）。
+    pub(crate) async fn torrent_registered(&self, info_hash: &str) -> bool {
+        {
+            let g = self.guard_read();
+            if let Some(set) = &g.known_hashes {
+                if set.contains(info_hash) {
+                    return true;
+                }
+                // 快照非空且不含 → 大概率未注册；仍直查兜底新发种窗口
+            }
+        }
+        let known: Option<bool> = sqlx::query_scalar::<_, i64>(
+            "SELECT 1 FROM torrents WHERE (info_hash = $1 OR raw_info_hash = $1) \
+             AND approval_status IN (0, 1) LIMIT 1",
+        )
+        .bind(info_hash)
+        .fetch_optional(&self.db)
+        .await
+        .ok()
+        .map(|r| r.is_some());
+        known.unwrap_or(true)
     }
 
     /// passkey → (user_id, download_enabled, suspended)，60s 内存缓存

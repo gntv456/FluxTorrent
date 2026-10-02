@@ -80,6 +80,7 @@ async fn main() -> anyhow::Result<()> {
             ip_bans: HashMap::new(),
             agent_rules: None, // None 使首个请求必然触发首次加载（见 refresh_guard 的 stale 判定）
             announce_interval: cfg.default_interval,
+            known_hashes: None, // 同上：首个请求触发全量加载
             refreshed_at: Instant::now(),
         }),
         cfg,
@@ -114,6 +115,24 @@ async fn main() -> anyhow::Result<()> {
                 tracing::warn!(%e, "peer snapshot read failed, skip warm restore")
             }
         }
+    }
+
+    // 全量 peer GC（ZT81 2026-10-02）：原实现只挂在 /metrics 处理器里，而该端点
+    // 在 ANN_METRICS_TOKEN 未设时恒 404（默认未设）→ 全量 GC 从未执行，配合
+    // 「空桶只在 event=stopped 才移除」形成永久驻留的幽灵 swarm。迁到独立 60s
+    // 后台 tick，不再依赖监控抓取是否配置。单桶惰性 GC 仍是热路径的第一道防线。
+    {
+        let st = state.clone();
+        actix_web::rt::spawn(async move {
+            let mut tick = tokio::time::interval(Duration::from_secs(60));
+            tick.set_missed_tick_behavior(
+                tokio::time::MissedTickBehavior::Skip,
+            );
+            loop {
+                tick.tick().await;
+                st.peers.gc_all();
+            }
+        });
     }
 
     // peer 快照周期落盘（60s）：tracker 是 SPOF，快照让重启从「全量重建」变「增量补齐」。
