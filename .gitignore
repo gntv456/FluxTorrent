@@ -80,3 +80,4 @@ docker/_*.jwt
 
 # 甜梦样图对照截图（设计工作区产物，不入库；结论沉淀在样图 HTML 与 _doc/）
 design/arcade-sweet-dream/_ref/
+_doc/_audit_zt81/_tokens.json
