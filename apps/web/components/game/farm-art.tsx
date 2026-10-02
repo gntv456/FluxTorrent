@@ -134,10 +134,13 @@ const PLANT_BTN_CLS =
 export function MarketCard({
   crop,
   onPlant,
+  busy,
   t,
 }: {
   crop: Crop;
   onPlant: (cropId: number) => void;
+  /** 播种请求进行中：防连点（与田块按钮同纪律） */
+  busy?: boolean;
   t: Record<string, string>;
 }) {
   const pct = Math.round((crop.market_price / crop.seed_price - 1) * 100);
@@ -165,6 +168,7 @@ export function MarketCard({
       <button
         type="button"
         onClick={() => onPlant(crop.id)}
+        disabled={busy}
         className={PLANT_BTN_CLS}
       >
         {t.plant}

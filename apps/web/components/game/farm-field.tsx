@@ -3,6 +3,10 @@
 /**
  * 农场单块田组件（CropArt / MarketCard / Crop 已拆至
  * components/game/farm-art.tsx，295 行门禁）。本文件保留 FarmPlot + Plot。
+ *
+ * 2026-10 样图⑤对齐：田块从大卡改成紧凑方格（4 列 aspect-square），
+ * 作物色淡底 + 右下状态角牌；浇水收进角落小钮（显式动作，避免点 tile
+ * 误触扣费）；成熟/枯萎整块可点（收获/清理）。
  */
 
 import { CropArt } from "./farm-art";
@@ -24,27 +28,27 @@ export interface Plot {
 export { CropArt, MarketCard } from "./farm-art";
 export type { Crop } from "./farm-art";
 
-const PLOT_EMPTY_CLS =
-  "flex min-h-[132px] flex-col items-center justify-between " +
-  "rounded-[var(--r-md)] border border-dashed p-3 text-center " +
-  "active:scale-[0.98] disabled:opacity-60";
+/** 作物淡底色：与其余农场件同一组色 token（色相环错开） */
+const CROP_TINTS = [
+  "--sun",
+  "--mint",
+  "--candy",
+  "--coral",
+  "--sky",
+  "--indigo",
+];
 
-const WATER_BTN_CLS =
-  "min-h-[34px] flex-1 rounded-full bg-sky-soft px-2 text-[11px] " +
-  "font-bold text-ink active:scale-[0.97] disabled:opacity-50";
+const BADGE_CLS =
+  "num rounded-full bg-[var(--surface-card)]/90 px-1.5 py-0.5 " +
+  "text-[9px] font-black leading-none shadow-[0_1px_3px_rgba(44,62,92,0.25)]";
 
-const HARVEST_BTN_CLS =
-  "min-h-[34px] flex-1 rounded-full px-2 text-[11px] font-bold " +
-  "active:scale-[0.97] disabled:opacity-40";
+const WATER_CHIP_CLS =
+  "absolute bottom-1 left-1 grid h-6 w-6 place-items-center rounded-full " +
+  "bg-sky-soft text-[12px] shadow-[0_1px_4px_rgba(44,62,92,0.3)] " +
+  "active:scale-95 disabled:opacity-50";
 
-const HARVEST_WITHERED_CLS =
-  "border border-[var(--border-deep)] bg-[var(--surface-card)] text-sub";
-
-const PLOT_CLS =
-  "flex min-h-[132px] flex-col justify-between rounded-[var(--r-md)] " +
-  "border bg-[var(--surface-card)] p-3 shadow-[var(--shadow-card)]";
-
-/** 单块田：进度环 + 阶段造型 + 浇水/收获/清理动作 */
+/** 单块田：紧凑方格（样图⑤）。空地=虚线+号；种植中=作物色底+倒计时角牌
+ *  + 浇水角钮；成熟/枯萎=整块可点（收获/清理）。 */
 export function FarmPlot({
   slot,
   plot,
@@ -76,17 +80,18 @@ export function FarmPlot({
         onClick={() => onPlant(slot)}
         disabled={busy}
         aria-pressed={picking}
-        className={`${PLOT_EMPTY_CLS} ${
+        className={`fp-plot flex aspect-square flex-col items-center justify-center gap-0.5 rounded-[14px] border border-dashed p-1 text-center active:scale-[0.98] disabled:opacity-60 ${
           picking
             ? "border-sun bg-sun-soft ring-2 ring-sun"
             : "border-[var(--border-deep)] bg-[var(--surface-raised)]"
         }`}
       >
-        <CropArt cropId={slot} stage={0} />
-        <span className="text-xs font-bold">
+        <span aria-hidden className="text-xl leading-none text-sub">
+          +
+        </span>
+        <span className="text-[10px] font-bold leading-tight">
           {t.plotEmpty.replace("{n}", String(slot))}
         </span>
-        <span className="text-[11px] text-sub">{t.plotHint}</span>
       </button>
     );
   }
@@ -110,107 +115,90 @@ export function FarmPlot({
     left === null
       ? "…"
       : left <= 0
-        ? t.mature
+        ? t.matureShort
         : `${Math.floor(left / 3600000)}h${Math.floor(
             (left % 3600000) / 60000,
           )}m`;
 
-  const r = 14;
-  const c = 2 * Math.PI * r;
-  return (
-    <div
-      className={`${PLOT_CLS} ${
-        withered
-          ? "border-[var(--border-soft)] opacity-80"
-          : ready
-            ? "border-sun"
-            : "border-line"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-bold">
-            <span className={withered ? "text-sub line-through" : undefined}>
-              {crop?.name ?? plot.crop_name}
-            </span>
-            {withered ? (
-              <span className="ml-1 text-[11px] font-black text-danger">
-                🥀 {t.witheredTag}
-              </span>
-            ) : (
-              ready && (
-                <span className="ml-1 text-[11px] text-mint">
-                  ✓ {t.matureShort}
-                </span>
-              )
-            )}
-          </p>
-          <p className="text-[11px] text-sub">
-            {withered
-              ? t.witheredHint
-              : `${ready ? t.ready : t.readyIn.replace("{t}", leftText)}${
-                  plot.watered ? ` · ${t.watered}` : ""
-                }`}
-          </p>
-        </div>
-        {!withered && (
-          <svg viewBox="0 0 36 36" className="h-9 w-9 shrink-0" aria-hidden>
-            <circle
-              cx="18"
-              cy="18"
-              r={r}
-              fill="none"
-              stroke="var(--surface-sunken)"
-              strokeWidth="4"
-            />
-            <circle
-              cx="18"
-              cy="18"
-              r={r}
-              fill="none"
-              stroke={ready ? "var(--sun)" : "var(--mint)"}
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray={c}
-              strokeDashoffset={c * (1 - progress)}
-              transform="rotate(-90 18 18)"
-            />
-          </svg>
-        )}
-      </div>
-      <div
-        className={`plot-bed${ready ? " ripe" : ""}${withered ? " dead" : ""}`}
-      >
+  const tint = `color-mix(in srgb, var(${
+    CROP_TINTS[(plot.crop_id - 1) % CROP_TINTS.length]
+  }) 16%, white)`;
+
+  // 成熟/枯萎：整块就是动作钮（收获/清理）；种植中：tile 不可点，浇水走角钮
+  const actionable = ready || withered;
+  const inner = (
+    <>
+      <div className="pointer-events-none flex w-full flex-1 items-center justify-center">
         <div className={withered ? "opacity-60 grayscale" : undefined}>
           <CropArt cropId={plot.crop_id} stage={stage} />
         </div>
       </div>
-      <div className="mt-1 flex gap-1.5">
-        {!withered && !plot.watered && !ready && (
-          <button
-            type="button"
-            onClick={() => onWater(slot)}
-            disabled={busy}
-            className={WATER_BTN_CLS}
-          >
-            {t.water}
-          </button>
-        )}
+      <span
+        className={`absolute bottom-1 right-1 ${BADGE_CLS} ${
+          withered
+            ? "text-danger"
+            : ready
+              ? "border border-sun text-mint"
+              : "text-sub"
+        }`}
+      >
+        {withered
+          ? `🥀${t.witheredTag}`
+          : ready
+            ? `✓${t.matureShort}`
+            : leftText}
+      </span>
+      {plot.watered && !ready && !withered && (
+        <span
+          aria-hidden
+          className="absolute right-1 top-1 text-[10px] opacity-70"
+        >
+          💧
+        </span>
+      )}
+      {!withered && !plot.watered && !ready && (
         <button
           type="button"
-          onClick={() => onHarvest(slot)}
-          disabled={busy || (!ready && !withered)}
-          className={`${HARVEST_BTN_CLS} ${
-            withered
-              ? HARVEST_WITHERED_CLS
-              : ready
-                ? "bg-mint text-white"
-                : "bg-[var(--surface-sunken)] text-sub"
-          }`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onWater(slot);
+          }}
+          disabled={busy}
+          title={t.water}
+          aria-label={t.water}
+          className={WATER_CHIP_CLS}
         >
-          {withered ? t.cleanup : ready ? t.harvest : t.notReady}
+          💧
         </button>
+      )}
+    </>
+  );
+  if (!actionable) {
+    return (
+      <div
+        className={`fp-plot relative flex aspect-square items-stretch rounded-[14px] border p-1 ${
+          ready ? "border-sun" : "border-line"
+        } bg-[var(--surface-card)] shadow-[var(--shadow-card)]`}
+        style={{ background: tint }}
+      >
+        {inner}
       </div>
-    </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => onHarvest(slot)}
+      disabled={busy}
+      title={withered ? t.cleanup : t.harvest}
+      className={`fp-plot relative flex aspect-square items-stretch rounded-[14px] border p-1 text-left active:scale-[0.98] disabled:opacity-60 ${
+        withered
+          ? "border-[var(--border-soft)] bg-[var(--surface-card)] opacity-80"
+          : "border-sun bg-sun-soft"
+      } shadow-[var(--shadow-card)]`}
+      style={withered ? undefined : { background: tint }}
+    >
+      {inner}
+    </button>
   );
 }

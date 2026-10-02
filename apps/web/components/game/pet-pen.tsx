@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { petLineOf, PET_SPECIES, PET_SPECIES_KEY } from "@/lib/pet-lines";
@@ -34,17 +34,23 @@ function moodOf(status: PetStatus): "hungry" | "happy" | "max" {
 export function PetPen({
   status,
   eating = false,
+  patTick = 0,
   hungerLabel,
   expLabel,
 }: {
   status: PetStatus;
   eating?: boolean;
+  /** 外部「摸摸头」按钮递增的计数：变化即播一次爱心（受控，无 DOM 代理） */
+  patTick?: number;
   hungerLabel: string;
   expLabel: string;
 }) {
   const { dict } = useI18n();
   const tp = dict.games.pet as Record<string, string>;
   const [pat, setPat] = useState(0);
+  useEffect(() => {
+    if (patTick > 0) setPat((n) => n + 1);
+  }, [patTick]);
   const line = petLineOf(status.species);
   const i = Math.min(Math.max(status.level - 1, 0), line.length - 1);
   const maxed = status.level >= status.max_level;

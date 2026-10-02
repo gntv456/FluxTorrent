@@ -48,15 +48,12 @@ export function MyFieldSection({
     <section className={PANEL_LG}>
       <div className="sw-farm-strip">
         <span>
-          {tf.fsPlanted.replace("{a}", String(planted)).replace(
-            "{b}",
-            String(plots.length),
-          )}
+          {tf.fsPlanted
+            .replace("{a}", String(planted))
+            .replace("{b}", String(plots.length))}
         </span>
         <span className="sw-farm-dot">·</span>
-        <span>
-          {tf.fsReady.replace("{n}", String(readyPlots.length))}
-        </span>
+        <span>{tf.fsReady.replace("{n}", String(readyPlots.length))}</span>
       </div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-base">{tf.myField}</h2>
@@ -79,7 +76,8 @@ export function MyFieldSection({
           </span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      {/* 样图⑤：4 列紧凑方格田（大屏 6 列），地块多时也不撑长页 */}
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 md:grid-cols-6">
         {plots.map((p, i) => (
           <FarmPlot
             key={i}
@@ -158,10 +156,13 @@ export function MyFieldSection({
 export function MarketSection({
   crops,
   onPlant,
+  busy,
   tf,
 }: {
   crops: Crop[];
   onPlant: (cropId: number) => void;
+  /** 播种请求进行中（防连点，与田块按钮同纪律） */
+  busy: boolean;
   tf: Record<string, string>;
 }) {
   return (
@@ -169,7 +170,13 @@ export function MarketSection({
       <h2 className="mb-3 font-display text-base">{tf.market}</h2>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {crops.map((c) => (
-          <MarketCard key={c.id} crop={c} onPlant={onPlant} t={tf} />
+          <MarketCard
+            key={c.id}
+            crop={c}
+            onPlant={onPlant}
+            busy={busy}
+            t={tf}
+          />
         ))}
       </div>
     </section>

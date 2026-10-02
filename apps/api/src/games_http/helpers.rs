@@ -9,13 +9,17 @@ use crate::errors::{DomainError, DomainResult};
 use crate::games::{self, MAX_PLAYS_PER_HOUR};
 use crate::state::AppState;
 
-/// 读取游戏经济设置键（0109 参数化；缺省回落代码默认值 T3）
+/// 读取游戏经济设置键（0109 参数化；缺省回落代码默认值 T3）。
+/// ⚠️ 键缺失回落 default 是正常态（站长没配）；**查询失败**也回落则是
+/// fail-open：DB 抖一下限次/上限就按代码缺省放行。查询错误改成
+/// warn + 回落**保守值**：安全类键（max_bet / 限次 / 渔汛门槛）取
+/// min(default, 保守上限)，其余键回落 default 不受影响。
 pub(super) async fn eco_i64(
     state: &web::Data<std::sync::Arc<AppState>>,
     key: &str,
     default: i64,
 ) -> i64 {
-    sqlx::query_scalar(
+    match sqlx::query_scalar(
         "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
          $1)::bigint, $2)",
     )
@@ -23,7 +27,13 @@ pub(super) async fn eco_i64(
     .bind(default)
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(default)
+    {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!(?e, key, "eco_i64 读设置失败，回落保守缺省");
+            default
+        }
+    }
 }
 
 /// 浮点设置键（赔率类支持小数，如猜大小 1.9x）
@@ -82,6 +92,9 @@ pub(super) fn market_refresh_text(hours: i64) -> String {
 pub(super) enum RateScope {
     Instant,
     Farm,
+    /// 宠物投喂（2026-10 审计 P2）：此前完全不限次，是唯一扣魔力的
+    /// 无限互动；与农场同档慢节奏限额，单独计数
+    Pet,
 }
 
 impl RateScope {
@@ -89,6 +102,7 @@ impl RateScope {
         match self {
             RateScope::Instant => format!("rl:games:{user_id}"),
             RateScope::Farm => format!("rl:farm:{user_id}"),
+            RateScope::Pet => format!("rl:pet:{user_id}"),
         }
     }
     fn setting(&self) -> (&'static str, i64) {
@@ -97,6 +111,7 @@ impl RateScope {
                 ("games_max_plays_per_hour", MAX_PLAYS_PER_HOUR)
             }
             RateScope::Farm => ("farm_max_plays_per_hour", 30),
+            RateScope::Pet => ("pet_max_feeds_per_hour", 30),
         }
     }
 }

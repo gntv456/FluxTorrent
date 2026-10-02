@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
+import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { ScratchCoat, type CoatOutcome } from "@/components/game/scratch-coat";
 import {
@@ -60,9 +61,9 @@ export default function ScratchPage({
   const [ov, setOv] = useState<Overview | null>(initialOver);
   const [hist, setHist] = useState<RoundRow[]>([]);
   const [bet, setBet] = useState(100);
-  const [phase, setPhase] = useState<"idle" | "buying" | "scratchable" | "done">(
-    "idle",
-  );
+  const [phase, setPhase] = useState<
+    "idle" | "buying" | "scratchable" | "done"
+  >("idle");
   const [outcome, setOutcome] = useState<CoatOutcome | null>(null);
   const [hitIndex, setHitIndex] = useState<number | null>(null);
   const [revealed, setRevealed] = useState<number[]>([]);
@@ -96,9 +97,7 @@ export default function ScratchPage({
 
   const prizes = ov?.scratch?.prizes ?? [];
   // payout 即票价倍数（0.5x/2x/...），物品位 payout=0 不进最高倍率
-  const maxMult = prizes.length
-    ? Math.max(...prizes.map((p) => p.payout))
-    : 0;
+  const maxMult = prizes.length ? Math.max(...prizes.map((p) => p.payout)) : 0;
   // 奖池条（样图② prize-strip）：按等值取前 4 档，千分权重换算成 %
   const prizeStripItems = prizes
     .slice()
@@ -107,7 +106,7 @@ export default function ScratchPage({
     .map((p) => ({
       ic: p.kind === "item" ? "🎁" : "💎",
       nm: p.label,
-      odds: `${((p.weight_permille / 10) || 0).toFixed(1)}%`,
+      odds: `${(p.weight_permille / 10 || 0).toFixed(1)}%`,
       tone:
         (p.rarity ?? 0) >= 4
           ? ("gold" as const)
@@ -197,16 +196,16 @@ export default function ScratchPage({
   }
 
   function onReveal(i: number) {
-    setRevealed((prev) => {
-      const next = prev.includes(i) ? prev : [...prev, i];
-      if (next.length >= 6) finishTicket();
-      return next;
-    });
+    // updater 必须纯净（StrictMode 会双调用）：只算下一个集合，
+    // 「第 6 格 → 结算」的副作用在 setState 外面判（2026-10 审计 P2）
+    const next = revealed.includes(i) ? revealed : [...revealed, i];
+    setRevealed(next);
+    if (next.length >= 6) finishTicket();
   }
 
   return (
     <GameShell
-      icon="🎫"
+      icon={<ArcadeGlyph k="scratch" />}
       title={ts.title}
       subtitle={scratchPoolText(ov?.scratch?.prizes, ts.poolLabel) || ts.pool}
       balance={ov?.me?.balance ?? null}
@@ -227,7 +226,9 @@ export default function ScratchPage({
                   .replace("{n}", String(round + 1))
                   .replace("{bet}", String(bet))}
               </span>
-              <span className="num">{ts.tierMax.replace("{n}", maxMult.toFixed(0))}</span>
+              <span className="num">
+                {ts.tierMax.replace("{n}", maxMult.toFixed(0))}
+              </span>
             </div>
             <ScratchCoat
               outcome={phase === "idle" ? null : outcome}
@@ -306,7 +307,9 @@ export default function ScratchPage({
             onPrimary={buy}
             onGold={ten.run}
             primaryDisabled={phase === "buying" || phase === "scratchable"}
-            goldDisabled={ten.busy || phase === "buying" || phase === "scratchable"}
+            goldDisabled={
+              ten.busy || phase === "buying" || phase === "scratchable"
+            }
             goldBusy={ten.busy}
           />
         </div>

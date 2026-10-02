@@ -70,7 +70,7 @@ pub(super) async fn grant_item_tx(
         r#"
         SELECT unlimited, stock, per_user
         FROM arcade_items
-        WHERE key = $1 AND enabled FOR SHARE
+        WHERE key = $1 AND enabled FOR UPDATE
     "#,
     )
     .bind(item_key)

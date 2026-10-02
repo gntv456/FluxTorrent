@@ -170,7 +170,7 @@ export function FishingSide({
       {err && <p className="text-xs text-danger">{err}</p>}
 
       <h2 className="mb-2 mt-3 font-display text-base">
-        {tf.albumTitle}
+        <span id="album">{tf.albumTitle}</span>
         {album && (
           <span className="num fs-album-n">
             {tf.albumCount

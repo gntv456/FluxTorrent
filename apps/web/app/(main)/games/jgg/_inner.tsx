@@ -15,6 +15,7 @@ import {
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
+import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { JggGrid, type JggPrize } from "@/components/game/jgg-grid";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
@@ -105,8 +106,7 @@ export default function JggPage({
   const prizeStripItems = prizes
     .slice()
     .sort(
-      (a, b) =>
-        (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
+      (a, b) => (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
     )
     .slice(0, 4)
     .map((p) => ({
@@ -204,7 +204,7 @@ export default function JggPage({
 
   return (
     <GameShell
-      icon="🎰"
+      icon={<ArcadeGlyph k="jgg" />}
       title={tj.title}
       subtitle={`${tj.ticket} · ${tj.winRate.replace("{pct}", winRate)}`}
       balance={ov?.me?.balance ?? null}

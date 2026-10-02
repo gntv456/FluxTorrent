@@ -114,8 +114,12 @@ pub(super) async fn load_milestones(
         .collect())
 }
 
-/// 按 anchor 反查一件物品的折算价（回落定价用）
-async fn anchor_of(db: &PgPool, key: &str) -> DomainResult<i64> {
+/// 按 anchor 反查一件物品的折算价（回落定价用）。
+/// Executor 版：池连接与事务连接都能喂（award_tx 里要在同一事务读）。
+async fn anchor_of(
+    db: impl sqlx::Executor<'_, Database = sqlx::Postgres>,
+    key: &str,
+) -> DomainResult<i64> {
     let a: Option<i64> = sqlx::query_scalar(
         "SELECT anchor FROM arcade_items WHERE key = $1 AND enabled",
     )
@@ -127,8 +131,12 @@ async fn anchor_of(db: &PgPool, key: &str) -> DomainResult<i64> {
 }
 
 /// 发放一行奖励：魔力 + 物品，全部幂等。返回 (入账魔力, 物品说明, 回落原因)
-pub(super) async fn award(
-    db: &PgPool,
+///
+/// 事务版（2026-10 审计 P2）：claim 落库、物品发放、魔力入账并进**同一笔**。
+/// 旧实现三段各自提交，claim 落库后任一步失败该期奖励永久丢失
+/// （重试报「已领取」）。fallback_to_db 仅供无法开外层事务的旧调用。
+pub(super) async fn award_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     uid: i64,
     r: &Reward,
     idem: &str,
@@ -140,10 +148,14 @@ pub(super) async fn award(
         let qty = r.item_qty.max(1);
         let game = format!("arcade:{}", r.code);
         let gidem = format!("{idem}:item");
-        match grant_item(db, uid, key, qty, &game, "det", &gidem).await? {
+        match super::pool::grant_item_tx(
+            tx, uid, key, qty, &game, "det", &gidem,
+        )
+        .await?
+        {
             GrantOutcome::Granted => got_item = Some(key.clone()),
             GrantOutcome::FellBack(why) => {
-                let anchor = anchor_of(db, key).await?;
+                let anchor = anchor_of(&mut **tx, key).await?;
                 if anchor <= 0 {
                     // 报不出价值就不能默默吞掉这份奖励
                     return Err(DomainError::Validation(format!(
@@ -158,9 +170,29 @@ pub(super) async fn award(
         }
     }
     if spark > 0 {
-        earn_spark(db, uid, spark, "arcade", &format!("{idem}:spark")).await?;
+        crate::economy_http::earn_spark_tx(
+            tx,
+            uid,
+            spark,
+            "arcade",
+            &format!("{idem}:spark"),
+        )
+        .await?;
     }
     Ok((spark, got_item, fell))
+}
+
+/// 独立事务包装（无外层事务时的便捷入口；原子性弱于 award_tx）
+pub(super) async fn award(
+    db: &PgPool,
+    uid: i64,
+    r: &Reward,
+    idem: &str,
+) -> DomainResult<(i64, Option<String>, Option<String>)> {
+    let mut tx = db.begin().await.map_err(dberr)?;
+    let out = award_tx(&mut tx, uid, r, idem).await?;
+    tx.commit().await.map_err(dberr)?;
+    Ok(out)
 }
 
 /// 后台编辑器要看到**全部**行（含停用的），否则停用一条就再也编辑不回来。

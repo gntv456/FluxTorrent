@@ -5,9 +5,9 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { countdownText, eggText, type EggPrize } from "@/lib/games";
+import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import type { FarmLand } from "@/components/game/farm-land";
 import { BalanceBar } from "@/components/game/game-kit";
-import { GameStage } from "@/components/game/game-stage";
 import { GameToast } from "@/components/game/game-kit-feedback";
 import { MarketSection, MyFieldSection } from "./_inner-sections";
 import Link from "next/link";
@@ -113,6 +113,8 @@ export default function FarmPage({
     ok: (d: never) => string,
     kindOf?: (d: never) => "win" | "lose" | "jackpot",
   ): Promise<void> {
+    // 双击防抖：与其它玩法的 draw() 同纪律（市场行播种按钮共用此入口）
+    if (busy) return;
     setBusy(true);
     setErr(null);
     setMsg(null);
@@ -140,7 +142,9 @@ export default function FarmPage({
   }
 
   if (!data)
-    return <div className="py-16 text-center text-sub">{err ?? tf.loading}</div>;
+    return (
+      <div className="py-16 text-center text-sub">{err ?? tf.loading}</div>
+    );
 
   // 田里有几块地由土地阶梯定（买来的排在免费地后面）；旧响应没带 land 时退回免费数
   const owned = data.land?.owned ?? data.slots;
@@ -162,8 +166,9 @@ export default function FarmPage({
       : fmt(tf.refreshIn, { t: countdownText(data.next_refresh * 1000 - now) });
   const firstEmpty = plots.findIndex((p) => !p) + 1;
   const readyPlots = plots.filter((p) => p && p.ready && !p.withered);
-  // 行情三格（样图⑤）：菜价按市场价相对基准的均值口径、已种/成熟直取田里。
-  //  标签不带占位符（fsPlanted/fsReady 的 {a}/{b}/{n} 版本给农情条用）
+  // 行情三格（样图⑤）：标签已由 sw-stat-lb 渲染，值用裸数字避免
+  // 「已种 / 已种 0/6」式重复；带标签的完整句式（fsPlanted/fsReady）
+  // 只给农情条和「我的田」strip 用
   const fsPlantedLabel = tf.fsPlantedLabel;
   const fsReadyLabel = tf.fsReadyLabel;
   const planted = plots.filter((p) => p).length;
@@ -173,10 +178,8 @@ export default function FarmPage({
     const ups = rows.filter((c) => c.market_price > c.seed_price).length;
     return `+${Math.round((ups / rows.length) * 100)}%`;
   })();
-  const fsPlantedText = tf.fsPlanted
-    .replace("{a}", String(planted))
-    .replace("{b}", String(owned));
-  const fsReadyText = tf.fsReady.replace("{n}", String(readyPlots.length));
+  const fsPlantedText = `${planted}/${owned}`;
+  const fsReadyText = tf.fsReadyNum.replace("{n}", String(readyPlots.length));
 
   /** 一键收获：逐块调同一 harvest 端点（后端幂等 + 行锁，重复点也安全）；
    *  单块失败不中断其余（例如某块刚好被并发收走）。 */
@@ -247,7 +250,10 @@ export default function FarmPage({
           ← {tg.back}
         </Link>
         <h1 className="font-display text-2xl">
-          🌾 {tf.title.replace("{magic}", currency)}
+          <span aria-hidden className="gs-title-ic">
+            <ArcadeGlyph k="farm" />
+          </span>{" "}
+          {tf.title.replace("{magic}", currency)}
         </h1>
         <span className="text-sm text-sub">
           {fmt(tf.marketRule, {
@@ -269,13 +275,8 @@ export default function FarmPage({
         }
       />
 
-      <GameStage art="/games/stage-farm.jpg" className="h-[132px] w-full">
-        <div className="flex h-full items-center justify-center">
-          <span className="font-display text-xl text-white">
-            🌾 {tf.title.replace("{magic}", currency)}
-          </span>
-        </div>
-      </GameStage>
+      {/* 样图⑤没有舞台横幅（标题行下方直接天气条），标题-only 的
+          GameStage 与页头重复 —— 不渲染 */}
 
       {/* 错误放在顶部（长页面里底部提示会跑出视野） */}
       {err && (
@@ -284,11 +285,12 @@ export default function FarmPage({
         </p>
       )}
 
-      {/* 天气条（样图⑤）：晴 + 生长口径；右侧带行情刷新倒计时 */}
+      {/* 农情条（样图⑤天气条的落地版）：站点没有天气系统，文案用
+          真实机制——浇水提前 10 分钟成熟；右侧行情刷新倒计时 */}
       <div className="sw-farm-weather">
-        <span aria-hidden>☀️</span>
+        <span aria-hidden>💧</span>
         <span>
-          <b>{tf.wxSun}</b> · {tf.wxBoost}
+          <b>{tf.wxSun}</b> · {tf.wxBoostReal}
         </span>
         <span className="wx-right">
           {fmt(tf.marketRule, {
@@ -331,6 +333,7 @@ export default function FarmPage({
       <MarketSection
         crops={data.crops}
         onPlant={plant}
+        busy={busy}
         tf={tf as unknown as Record<string, string>}
       />
 
@@ -339,4 +342,3 @@ export default function FarmPage({
     </div>
   );
 }
-

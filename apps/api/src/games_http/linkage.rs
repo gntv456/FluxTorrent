@@ -42,15 +42,18 @@ pub(super) async fn linkage_status(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 今日做种小时：seeding_reward 流水按小时幂等键去重（8:00 起算的一天）
+    // 今日做种小时：seeding_reward 流水按小时幂等键去重。
+    // 窗口 = UTC+8 自然日（与 worker 发券的 game_coupons.rs 同口径；
+    // 旧实现「UTC 日 + 8h」在 UTC 00:00-08:00 读数为 0）
     let daily: i64 = sqlx::query_scalar(
         "SELECT count(DISTINCT split_part(l.idempotency_key, ':', 3))::bigint \
            FROM spark_ledger l \
           WHERE l.kind = 'seeding_reward' AND l.user_id = $1 \
-            AND l.created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') \
-              + interval '8 hours' \
-            AND l.created_at <  date_trunc('day', now() AT TIME ZONE 'UTC') \
-              + interval '32 hours'",
+            AND l.created_at >= date_trunc('day', \
+                  now() AT TIME ZONE 'UTC' + interval '8 hours') \
+            AND l.created_at <  date_trunc('day', \
+                  now() AT TIME ZONE 'UTC' + interval '8 hours') \
+              + interval '24 hours'",
     )
     .bind(auth.id)
     .fetch_one(&state.repo.db)

@@ -12,6 +12,7 @@ import {
   SwTenModal,
 } from "@/components/game/sw-panels";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
+import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
@@ -85,9 +86,7 @@ export default function CapsuleFocusPage({
     }
     try {
       setHist(
-        await api.get<RoundRow[]>(
-          "/api/v1/games/rounds?game=capsule&limit=10",
-        ),
+        await api.get<RoundRow[]>("/api/v1/games/rounds?game=capsule&limit=10"),
       );
     } catch {
       /* ignore */
@@ -119,8 +118,7 @@ export default function CapsuleFocusPage({
   const prizeStripItems = prizes
     .slice()
     .sort(
-      (a, b) =>
-        (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
+      (a, b) => (b.value ?? b.payout * ticket) - (a.value ?? a.payout * ticket),
     )
     .slice(0, 4)
     .map((p) => {
@@ -209,7 +207,7 @@ export default function CapsuleFocusPage({
 
   return (
     <GameShell
-      icon="🥚"
+      icon={<ArcadeGlyph k="capsule" />}
       title={tc.title}
       subtitle={`${tc.winRate.replace("{pct}", winRate)} · ${tc.sub}`}
       balance={ov?.me?.balance ?? null}
@@ -298,7 +296,7 @@ export default function CapsuleFocusPage({
             onPrimary={draw}
             onGold={() => void ten.run()}
             primaryDisabled={busy || prizes.length === 0}
-            goldDisabled={ten.busy || prizes.length === 0}
+            goldDisabled={ten.busy || busy || prizes.length === 0}
             goldBusy={ten.busy}
           />
         </div>

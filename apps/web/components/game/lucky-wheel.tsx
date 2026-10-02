@@ -33,12 +33,14 @@ function sector(a1: number, a2: number): string {
   return `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} Z`;
 }
 
-/** 档位配色：大奖金、高档紫、中档蓝、小档灰（与九宫格/扭蛋同语义） */
-function segColor(v: number, tk: number): string {
-  if (v >= tk * 10) return "#f0d9a8";
-  if (v >= tk * 3) return "#c9d4f2";
-  if (v >= tk) return "#c5dff0";
-  return "#eef5fc";
+/** 档位配色（样图③粉彩板）：大奖金、高档紫、中档蓝、小档雾白；
+ *  同档相邻扇区用亮/暗两档交错，避免连成一块。 */
+function segColor(v: number, tk: number, i: number): string {
+  const alt = i % 2 === 0;
+  if (v >= tk * 10) return alt ? "#f2cf8a" : "#f7e2b2";
+  if (v >= tk * 3) return alt ? "#c3b4e6" : "#d5c9f0";
+  if (v >= tk) return alt ? "#a3c4e8" : "#bdd4ef";
+  return alt ? "#e7edf6" : "#f3f7fc";
 }
 
 /** 扇区读数：魔力档 ×N、物品档显示图标（与九宫格一致） */
@@ -64,6 +66,7 @@ export function LuckyWheel({
   onLanded,
   goLabel,
   spinningLabel,
+  tapLabel,
 }: {
   prizes: WheelPrize[];
   ticket: number;
@@ -75,6 +78,8 @@ export function LuckyWheel({
   onLanded?: () => void;
   goLabel: string;
   spinningLabel: string;
+  /** 中心毂副行（样图③「点击开始」） */
+  tapLabel: string;
 }) {
   const [rot, setRot] = useState(0);
   const timer = useRef<number | null>(null);
@@ -159,10 +164,11 @@ export function LuckyWheel({
               <g key={i}>
                 <path
                   d={sector(a1, a2)}
-                  fill={segColor(v, ticket)}
+                  fill={segColor(v, ticket, i)}
                   stroke="#fff"
                   strokeWidth="2"
                 />
+                {/* 读数墨蓝（样图③）：浅粉彩扇区上白字会隐身 */}
                 <text
                   x={tx}
                   y={ty}
@@ -170,7 +176,7 @@ export function LuckyWheel({
                   dominantBaseline="middle"
                   fontSize={seg > 60 ? 15 : 13}
                   fontWeight="800"
-                  fill={v >= ticket * 10 ? "#5a3d12" : "#fff"}
+                  fill={v >= ticket * 10 ? "#6b4a1a" : "#2c4a74"}
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {glyph(p)}
@@ -193,18 +199,20 @@ export function LuckyWheel({
           disabled={busy || disabled}
           className="lw-hub"
           style={{
+            /* 样图③中心毂：白玉底 + 金环 + 墨蓝 GO（原金底白字与盘面抢色） */
             background:
-              "radial-gradient(circle at 35% 30%, #f7e6c0, " +
-              "#d4af7a 60%, #b08a4a)",
-            border: "3px solid #b08a4a",
+              "radial-gradient(circle at 35% 28%, #ffffff, " +
+              "#eef4fb 62%, #dbe7f4)",
+            border: "3px solid #d4af7a",
             boxShadow:
-              "0 4px 12px rgba(176,138,74,0.4), " +
-              "inset 0 1px 2px rgba(255,255,255,0.5)",
+              "0 6px 14px rgba(176,138,74,0.35), " +
+              "inset 0 1px 2px rgba(255,255,255,0.85)",
+            color: "#2c4a74",
           }}
           aria-label={`${goLabel} · ${ticket}`}
         >
-          {busy ? spinningLabel : goLabel}
-          {!busy && <small className="num">{ticket}</small>}
+          <span className="lw-go">{busy ? spinningLabel : goLabel}</span>
+          {!busy && <small>{tapLabel}</small>}
         </button>
       </div>
     </div>
