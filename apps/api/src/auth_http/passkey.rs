@@ -24,7 +24,7 @@ async fn passkey_list(
         Option<chrono::DateTime<chrono::Utc>>,
     );
     let rows: Vec<PasskeyRow> = sqlx::query_as(
-        "SELECT label, cred_id, created_at, last_used_at \\
+        "SELECT label, cred_id, created_at, last_used_at \
          FROM user_passkeys WHERE user_id = $1 ORDER BY id DESC",
     )
     .bind(auth.id)
@@ -65,12 +65,7 @@ async fn passkey_remove(
     Ok(ok(serde_json::json!({ "removed": true })))
 }
 
-pub fn mount_passkey(scope: actix_web::Scope) -> actix_web::Scope {
-    scope
-        .service(passkey_list)
-        .service(passkey_begin)
-        .service(passkey_finish)
-        .service(passkey_login_begin)
-        .service(passkey_login_finish)
-        .service(passkey_remove)
-}
+// 挂载说明：passkey 六个 handler 全部在 http::v1_scope 逐个 .service。
+// 此前的 mount_passkey 快捷挂载无调用者，且 passkey_list 只在这里出现——
+// 逐个挂载时被遗漏，GET /me/passkeys 前端 404（2026-10-03 前后端联调发现）。
+// 已删除该死代码，防「看似有挂载点实则漏挂」再发。

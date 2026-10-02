@@ -52,6 +52,10 @@ const enBase: Omit<
     themeToggle: "Toggle theme",
     yes: "Yes",
     no: "No",
+    timeM: "{n}m",
+    timeHm: "{n}h{m}m",
+    timeDh: "{n}d{m}h",
+    timeMoD: "{n}mo{m}d",
   },
   navDrawer: {
     open: "Open navigation menu",

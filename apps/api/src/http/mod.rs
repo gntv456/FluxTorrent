@@ -16,6 +16,7 @@ mod links;
 mod misc_handlers;
 mod news_fun;
 mod plugins;
+mod probes;
 pub mod view_layout;
 
 pub use auth_infra::*;
@@ -27,6 +28,7 @@ pub use links::*;
 pub use misc_handlers::*;
 pub use news_fun::*;
 pub use plugins::*;
+pub use probes::*;
 pub use view_layout::*;
 
 // auth 模块经 state.jwt 使用（0071 RS256 化后 http 层不再直接调用）
@@ -39,6 +41,7 @@ use actix_web::web;
 pub fn v1_scope() -> actix_web::Scope {
     web::scope("/api/v1")
         .service(health)
+        .service(ready)
         .service(crate::auth_http::register)
         .service(crate::auth_http::register_fields_endpoint)
         .service(crate::auth_http::register_mode_endpoint)
@@ -57,6 +60,9 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::email_verify)
         .service(crate::auth_http::email_resend)
         // passkey（WebAuthn）第二通道（0227）
+        // passkey_list（GET /me/passkeys）在此前只进了 mount_passkey——而该
+        // mount 无调用者（逐个挂载时被遗漏），前端 passkeys-card 长期 404。
+        .service(crate::auth_http::passkey_list)
         .service(crate::auth_http::passkey_begin)
         .service(crate::auth_http::passkey_finish)
         .service(crate::auth_http::passkey_login_begin)

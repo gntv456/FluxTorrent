@@ -4,8 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { RequestForm } from "@/components/request-board-form";
+import { RequestCardList } from "@/components/request-card-list";
+import { useIsCompact } from "@/lib/hooks/use-media";
+import { timeAgo } from "@/lib/time-ago";
 
-interface RequestRow {
+export interface RequestRow {
   id: number;
   username: string | null;
   title: string;
@@ -36,17 +39,23 @@ export function RequestBoard({
   const [search, setSearch] = useState(initialSearch);
   const [rows, setRows] = useState<RequestRow[] | null>(null);
   const [loading, setLoading] = useState(false);
+  // ZT81（2026-10-02）：三态显式化——原先 catch 里 `setRows([])` 把「服务挂了」
+  // 伪装成「暂无数据」，用户反复筛选无果、也无法自助重试。
+  const [failed, setFailed] = useState(false);
+  const isCompact = useIsCompact();
   // 发布求种表单（此前整站无 POST /requests 入口，求种业务发不出第一步）
   const [showForm, setShowForm] = useState(false);
 
   const load = useCallback(async (fin: string, q: string) => {
     setLoading(true);
+    setFailed(false);
     try {
       const params = new URLSearchParams({ finished: fin });
       if (q.trim()) params.set("search", q.trim());
       setRows(await api.get<RequestRow[]>(`/api/v1/requests?${params}`));
     } catch {
-      setRows([]);
+      setRows(null);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -110,10 +119,33 @@ export function RequestBoard({
         />
       )}
 
-      {/* 八列表格 */}
+      {/* ZT81：窄屏改卡片，桌面保留八列表格（hidden md:block / md:hidden） */}
       <section className="request-center__list" aria-label={t.title}>
+        {failed && (
+          <div className="py-8 text-center text-sm text-sub">
+            <p>{dict.common.loadFailed}</p>
+            <button
+              type="button"
+              className="mt-2 rounded-full border border-line px-3 py-1 text-xs"
+              onClick={() => load(finished, search)}
+            >
+              {dict.common.retry}
+            </button>
+          </div>
+        )}
+        {!failed && loading && rows === null && (
+          <p className="py-8 text-center text-sm text-sub">
+            {dict.common.loading}
+          </p>
+        )}
+        {!failed && isCompact && rows !== null && rows.length > 0 && (
+          <RequestCardList
+            rows={rows}
+            onChanged={() => load(finished, search)}
+          />
+        )}
         <div
-          className="baozi-wide-table-scroll"
+          className="baozi-wide-table-scroll hidden md:block"
           role="region"
           aria-label="scrollable table"
         >
@@ -159,7 +191,7 @@ export function RequestBoard({
                     className="nowrap"
                     title={new Date(r.created_at).toLocaleString("zh-CN")}
                   >
-                    {timeAgo(r.created_at)}
+                    {timeAgo(r.created_at, dict.common)}
                   </td>
                   <td>
                     {r.fulfilled_torrent_id ? (
@@ -245,16 +277,4 @@ export function RequestBoard({
       </div>
     </div>
   );
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 60) return `${m}分钟`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}时${m % 60}分`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}天${h % 24}时`;
-  const mo = Math.floor(d / 30);
-  return `${mo}月${d % 30}天`;
 }

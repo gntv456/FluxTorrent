@@ -52,6 +52,10 @@ const zhTwBase: Omit<
     themeToggle: "切換主題",
     yes: "是",
     no: "否",
+    timeM: "{n}分鐘",
+    timeHm: "{n}時{m}分",
+    timeDh: "{n}天{m}時",
+    timeMoD: "{n}月{m}天",
   },
   navDrawer: {
     open: "開啟導航選單",
