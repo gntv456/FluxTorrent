@@ -2,11 +2,13 @@
 
 import { useEffect } from "react";
 import { useI18n } from "@/i18n/client";
+import { JackpotBurst } from "@/components/game/jackpot-burst";
 
 /** 娱乐屋反馈件（从 game-kit.tsx 按域拆出）：
  *  结果飘字 / 轻量浮层提示 / 战绩条（外壳与余额条留在 game-kit.tsx）。 */
 
-/** 结果飘字：赢/平/输/大奖 四态，颜色之外另有文案与图标（色觉无障碍） */
+/** 结果飘字：赢/平/输/大奖 四态，颜色之外另有文案与图标（色觉无障碍）。
+ *  jackpot 态叠全屏彩带庆祝时刻（趣味性批；reduced-motion 下 CSS 降级） */
 export function ResultFlash({
   kind,
   text,
@@ -28,7 +30,14 @@ export function ResultFlash({
       aria-live="polite"
       className={`flex min-h-[36px] items-center justify-center gap-1.5 text-center text-base font-black ${cls}`}
     >
-      {text && <span className="animate-[fly_.28s_ease-out]">{text}</span>}
+      {text && (
+        <>
+          <span className="animate-[fly_.28s_ease-out]">{text}</span>
+          {kind === "jackpot" && (
+            <JackpotBurst fire key={text} label={text} />
+          )}
+        </>
+      )}
     </p>
   );
 }

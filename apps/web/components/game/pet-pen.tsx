@@ -53,6 +53,10 @@ export function PetPen({
   }, [patTick]);
   const line = petLineOf(status.species);
   const i = Math.min(Math.max(status.level - 1, 0), line.length - 1);
+  // 进化演出（趣味性批）：升级瞬间换 key 触发 pp-evolve 弹入；
+  // 判据 = 等级超出上一档门槛（向前回看一格，跨档即换形态）
+  const prevI = Math.min(Math.max(status.level - 2, 0), line.length - 1);
+  const evolved = i !== prevI && status.level > 1;
   const maxed = status.level >= status.max_level;
   const mood = moodOf(status);
   const spKey = PET_SPECIES_KEY[status.species as PetSpecies] ?? "spSlime";
@@ -62,7 +66,10 @@ export function PetPen({
       <div className={`pp-stage mood-${mood}`}>
         <span className="pp-glow" aria-hidden />
         <span
-          className={`pp-pet${maxed ? " max" : ""}${eating ? " eating" : ""}`}
+          key={i}
+          className={`pp-pet${maxed ? " max" : ""}${eating ? " eating" : ""}${
+            evolved ? " pp-evolve" : ""
+          }`}
           aria-hidden
         >
           {line[i]}
