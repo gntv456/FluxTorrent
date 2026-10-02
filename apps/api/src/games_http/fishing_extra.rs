@@ -192,3 +192,4 @@ pub(super) async fn fishing_collection(
         "got": got, "total": total, "fishes": fishes,
     })))
 }
+

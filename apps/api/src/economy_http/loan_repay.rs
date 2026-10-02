@@ -241,11 +241,28 @@ async fn bank_interest_records(
 }
 
 /// 银行总览：活期账户 + 资产汇总 + 当前贷款 + 额度
+/// 兼容别名（2026-10 链路测试）：与游戏端点命名风格对齐——/bank/status
+/// 与 /bank/overview 同一份数据。
+#[get("/bank/status")]
+async fn bank_status_alias(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    bank_overview_inner(req, &state).await
+}
+
 #[get("/bank/overview")]
 async fn bank_overview(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<impl Responder> {
+) -> DomainResult<HttpResponse> {
+    bank_overview_inner(req, &state).await
+}
+
+async fn bank_overview_inner(
+    req: HttpRequest,
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let bs = bank_settings(&state.repo.db).await;
 

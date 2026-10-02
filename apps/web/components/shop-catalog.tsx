@@ -167,9 +167,7 @@ export function ShopCatalog({
     const short = bal !== null && bal < it.price;
     return (
       <article className="gcard" key={it.id}>
-        {it.id === bestId && (
-          <span className="gcard-best">{t.bestValue}</span>
-        )}
+        {it.id === bestId && <span className="gcard-best">{t.bestValue}</span>}
         <div className="gcard-bd">
           <span className="gicon" data-group={g}>
             {it.kind === "animated_avatar" ? (
@@ -180,7 +178,13 @@ export function ShopCatalog({
           </span>
           <div className="txt">
             <h3>{it.name}</h3>
-            <span className="kind">{it.kind.toUpperCase()}</span>
+            {/* kind 人话（三语 userDetail.itemKindLabels）；gift_spark 的
+                CURRENCY 占位与 hints 同口径换站点货币名；未收录回落大写原值 */}
+            <span className="kind">
+              {(
+                dict.userDetail.itemKindLabels[it.kind] ?? it.kind.toUpperCase()
+              ).replace("CURRENCY", currency)}
+            </span>
             {hints[it.kind] && (
               <span className="hint">
                 {fmt(hints[it.kind], { magic: currency })}
@@ -196,9 +200,7 @@ export function ShopCatalog({
             <b>{num(it.price)}</b>
             <span>{currency}</span>
           </div>
-          {unit !== null && (
-            <span className="unit">{`${num(unit)} /GB`}</span>
-          )}
+          {unit !== null && <span className="unit">{`${num(unit)} /GB`}</span>}
           <div className="acts">
             {owned ? (
               <a
@@ -234,7 +236,8 @@ export function ShopCatalog({
         <div className="tide-tabs" role="tablist">
           <button
             type="button"
-            role="tab" className="tide-tab"
+            role="tab"
+            className="tide-tab"
             aria-selected={grp === null}
             onClick={() => setGrp(null)}
           >
@@ -244,7 +247,8 @@ export function ShopCatalog({
             <button
               key={x.g}
               type="button"
-              role="tab" className="tide-tab"
+              role="tab"
+              className="tide-tab"
               aria-selected={grp === x.g}
               onClick={() => setGrp(x.g)}
             >

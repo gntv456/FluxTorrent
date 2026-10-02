@@ -5,6 +5,8 @@ import { PANEL_LG, PANEL_LG_COL } from "@/lib/ui-classes";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { GameShell } from "@/components/game/game-kit";
+import { GameTabs } from "@/components/game/game-tabs";
+import { PetLogPanel } from "@/components/game/pet-log";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { GameToast } from "@/components/game/game-kit-feedback";
 import { PetCustom, PetPen, type PetStatus } from "@/components/game/pet-pen";
@@ -26,6 +28,7 @@ export default function PetFocusPage({
   const [st, setSt] = useState<PetStatus | null>(initial);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [tab, setTab] = useState("play");
   const [useCoupon, setUseCoupon] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   // 余额条（反沉迷纪律：喂食扣钱前先看得见——与其它玩法页同口径）
@@ -137,6 +140,21 @@ export default function PetFocusPage({
 
   const feedCost = st?.feed_cost ?? 100;
 
+  if (tab === "records") {
+    return (
+      <div className="flex flex-col gap-4">
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🐾" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+        <PetLogPanel />
+      </div>
+    );
+  }
   return (
     <GameShell
       icon={<ArcadeGlyph k="pet" />}
@@ -169,6 +187,14 @@ export default function PetFocusPage({
       }
       controls={
         <div className={PANEL_LG_COL}>
+          <GameTabs
+            tabs={[
+              { key: "play", label: dict.games.sub.tabPlay, icon: "🐾" },
+              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
           {/* 当前宠物大卡（样图⑨）：名 / Lv / 亲密度口径（饱食度） */}
           <div className="pp-hero">
             <div className="pp-hero-face" aria-hidden>

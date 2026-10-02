@@ -8,10 +8,13 @@ import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { fmtMult } from "@/lib/games";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
+import { GameTabs } from "@/components/game/game-tabs";
+import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { DieFace } from "@/components/game/die-face";
+import { StreakPill } from "@/components/game/streak-pill";
 import { PropBar, type PropView } from "@/components/game/bigsmall-props";
 
 export interface Overview {
@@ -38,10 +41,12 @@ interface RoundRow {
 
 interface GuessResult {
   number: number;
+  /** 三颗骰面（1-6），画骰用 */
+  dice?: number[];
   player_win: boolean;
   payout: number;
   net: number;
-  tie: boolean;
+  triple: boolean;
   shield_refund?: number;
   effective_mult?: number | null;
   props_applied?: { key: string; effect: string; value: number }[];
@@ -64,6 +69,7 @@ export default function BigSmallPage({
   const [bet, setBet] = useState(100);
   const [busy, setBusy] = useState(false);
   const [num, setNum] = useState<number | null>(null);
+  const [dice, setDice] = useState<number[]>([1, 1, 1]);
   const [res, setRes] = useState<GuessResult | null>(null);
   /** 已挂载的道具 key（同类效果至多一件） */
   const [sel, setSel] = useState<string[]>([]);
@@ -75,6 +81,7 @@ export default function BigSmallPage({
   /** 本次会话已完成的局数（防沉迷软提示用） */
   const [sessionPlays, setSessionPlays] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+  const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const idem = useRef<string>("");
   const timer = useRef<number | null>(null);
@@ -157,6 +164,7 @@ export default function BigSmallPage({
         idempotency_key: idem.current,
       });
       setNum(r.number);
+      if (r.dice?.length === 3) setDice(r.dice);
       const settle = () => {
         setRes(r);
         // 道具已消耗：清掉挂载态并刷新持有数（否则会显示一件已用完的道具）
@@ -175,13 +183,13 @@ export default function BigSmallPage({
                     fmtMult(r.effective_mult),
                   )}`
                 : "";
-        const base = r.tie
-          ? fmtCur(tg.tie, { n: r.number }, currency)
+        const base = r.triple
+          ? fmtCur(tg.triple, { n: r.number }, currency)
           : r.player_win
             ? fmtCur(tg.win, { n: r.number, net: r.net }, currency)
             : fmtCur(tg.lose, { n: r.number, net: -r.net }, currency);
         setFlash({
-          kind: r.tie ? "tie" : r.player_win ? "win" : "lose",
+          kind: r.triple ? "tie" : r.player_win ? "win" : "lose",
           text: base + hint,
         });
         setStreak((s) => (r.player_win ? s + 1 : 0));
@@ -204,6 +212,21 @@ export default function BigSmallPage({
     }
   }
 
+  if (tab === "records") {
+    return (
+      <div className="flex flex-col gap-4">
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+        <GameRecordsPanel game="bigsmall" />
+      </div>
+    );
+  }
   return (
     <GameShell
       icon={<ArcadeGlyph k="bigsmall" />}
@@ -213,23 +236,32 @@ export default function BigSmallPage({
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
       notice={
-        <PlayHint
-          sessionPlays={sessionPlays}
-          todayNet={ov?.me?.today_net ?? null}
-        />
+        <>
+          <GameTabs
+            tabs={[
+              { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
+          <PlayHint
+            sessionPlays={sessionPlays}
+            todayNet={ov?.me?.today_net ?? null}
+          />
+        </>
       }
       stage={
         <div className="flex w-full flex-col items-center gap-2">
-          {/* 样图⑥：题注在上，双骰居中，近5局缀下 —— 跑道数字舞台
-              （数域条 + 翻牌数字）与样图⑥的双骰舞台是两套语言，撤掉 */}
+          {/* 样图⑥：题注在上，三骰居中，近5局缀下 */}
           <p className="bs-dice-cap">
             {num == null ? tg.bsDiceWait : tg.bsNow.replace("{n}", String(num))}
           </p>
-          {/* 数字舞台：1-100 数域用「十位骰 + 个位骰」两枚十面骰拼出
-              （六面骰表达不了 >12，任何大点数都只会是两枚 6），纯哑件 */}
+          {/* 三颗六面骰（与后端三骰机制一致）：点数和 3-18，小 3-10 / 大 11-18 / 三同豹子 */}
           <div className="bs-dice" aria-hidden>
-            <DieFace n={Math.floor((num ?? 0) / 10)} variant="tens" />
-            <DieFace n={(num ?? 0) % 10} variant="ones" />
+            {dice.map((d, i) => (
+              <DieFace key={i} n={d} />
+            ))}
           </div>
           {hist.length > 0 && (
             <p className="bs-recent">
@@ -240,11 +272,13 @@ export default function BigSmallPage({
                   .map((h) =>
                     h.number == null
                       ? "·"
-                      : h.number >= 52
-                        ? tg.bsPickBig
-                        : h.number <= 49
+                      : h.number % 111 === 0 &&
+                          h.number >= 111 &&
+                          h.number <= 666
+                        ? tg.bsPickTriple
+                        : h.number <= 10
                           ? tg.bsPickSmall
-                          : tg.bsPickTriple,
+                          : tg.bsPickBig,
                   )
                   .join(" "),
               )}
@@ -254,11 +288,7 @@ export default function BigSmallPage({
             kind={flash?.kind ?? null}
             text={flash?.text ?? (busy ? tg.pending : null)}
           />
-          {streak >= 3 && (
-            <p className="text-xs font-bold text-[var(--warning)]">
-              {tg.streak}
-            </p>
-          )}
+          <StreakPill n={streak} label={tg.streak} />
           <SwStatRow
             items={[
               { lb: tg.bsStatPlays, vl: String(ov?.me?.today_plays ?? 0) },

@@ -108,9 +108,21 @@ pub(super) async fn gacha_draw(
         })));
     }
     if bal < total {
-        return Err(DomainError::Validation(format!(
-            "抽卡券不足：需要 {total}，持有 {bal}"
-        )));
+        // 新手首抽体验（2026-10 链路测试修复）：从未抽过卡的用户第一发
+        // 单抽按 1 券体验价（票面 25 券对新用户遥不可及，签到一天才 1 券）。
+        // 只覆盖 count=1 的首抽；十连与第二发起恢复票面价。
+        let never_drawn: bool = sqlx::query_scalar(
+            "SELECT NOT EXISTS(SELECT 1 FROM gacha_draws WHERE user_id = $1)",
+        )
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e: sqlx::Error| DomainError::Internal(e.into()))?;
+        if !(never_drawn && count == 1 && bal >= 1) {
+            return Err(DomainError::Validation(format!(
+                "抽卡券不足：需要 {total}，持有 {bal}"
+            )));
+        }
     }
     // pity 状态：最后一批的最后一抽——金档已重置，非金档续计数
     let last: Option<(i32, Option<String>)> = sqlx::query_as(
@@ -215,15 +227,31 @@ pub(super) async fn gacha_draw(
         .map_err(|e| DomainError::Internal(e.into()))?;
         results.push(item);
     }
-    // 券流水（扣减一行，balance_after 连续可核）+ 余额更新
-    let after = bal - total;
+    // 券流水（扣减一行，balance_after 连续可核）+ 余额更新。
+    // 实际扣费 = 体验价分支生效时只扣 1（total 可能仍是票面 25——首抽
+    // 放行不等于首抽免费，账上扣多少以这里为准）
+    let never_drawn2: bool = sqlx::query_scalar(
+        "SELECT NOT EXISTS(SELECT 1 FROM gacha_draws \
+          WHERE user_id = $1 AND idempotency_key IS DISTINCT FROM $2)",
+    )
+    .bind(user_id)
+    .bind(&idem)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e: sqlx::Error| DomainError::Internal(e.into()))?;
+    let charged = if never_drawn2 && count == 1 && bal >= 1 && bal < total {
+        1
+    } else {
+        total
+    };
+    let after = bal - charged;
     sqlx::query(
         "INSERT INTO gacha_ticket_ledger (user_id, delta, kind, ref_type, \
          ref_id, idempotency_key, balance_after) \
          VALUES ($1, $2, 'draw', 'banner', $3, $4, $5)",
     )
     .bind(user_id)
-    .bind(-total)
+    .bind(-charged)
     .bind(body.banner_id)
     .bind(&ticket_idem)
     .bind(after)

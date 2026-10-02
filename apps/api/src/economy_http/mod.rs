@@ -17,6 +17,7 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(bank_withdraw)
         .service(bank_list)
         .service(bank_overview)
+        .service(bank_status_alias)
         .service(demand_deposit)
         .service(demand_withdraw)
         .service(loan_apply)

@@ -75,6 +75,7 @@ pub(super) async fn farm_overview(
     let wither_days = farm_wither_days(&state).await;
     let plots: Vec<PlotRow> = sqlx::query_as(
         r#"SELECT p.slot, p.crop_id, c.name AS crop_name, p.planted_at, p.ready_at, p.watered,
+            p.fertilized,
             (p.ready_at <= now()) AS ready,
             ($2 > 0 AND p.ready_at + make_interval(days => $2::int) < now()) AS withered
          FROM farm_plots p JOIN farm_crops c ON c.id = p.crop_id
@@ -139,6 +140,8 @@ pub(super) struct PlotRow {
     pub(super) planted_at: chrono::DateTime<chrono::Utc>,
     pub(super) ready_at: chrono::DateTime<chrono::Utc>,
     pub(super) watered: bool,
+    /// 施肥（每茬一次，催熟 30 分钟）
+    pub(super) fertilized: bool,
     pub(super) ready: bool,
     /// 成熟后超过 `farm_wither_days` 天未收获 → 枯萎（收获作废、清空地块）
     pub(super) withered: bool,

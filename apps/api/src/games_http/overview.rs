@@ -117,7 +117,7 @@ pub(super) async fn games_overview(
             "win_mult": win_mult as f64 / 1000.0,
             "prizes": region_rows(&btable, &icons),
             "expected_value": games::pool_ev(&btable.all(), btable.ticket),
-            "rule": "1-49 小 · 52-100 大 · 50/51 平局返本 · 猜中按赔率派彩" },
+            "rule": "3-10 小 · 11-18 大 · 三同豹子判负 · 猜中按赔率派彩" },
         "jgg": { "name": "九宫格抽奖", "ticket": pool.ticket,
             "prizes": jgg_prizes,
             "expected_value": games::pool_ev(&pool.entries, pool.ticket) },

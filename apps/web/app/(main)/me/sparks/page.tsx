@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { SPARK_KIND_LABELS } from "@/lib/spark-kind-labels";
 
 /** C5 用户侧「我的魔力明细」页（0226，触点 #11）：
- *  消费既有 GET /me/spark/ledger（最近 50 条收支流水）。 */
+ *  消费既有 GET /me/spark/ledger（最近 50 条收支流水）。
+ *  kind 人话映射与后台用户详情 SparkPanel 共享（lib/spark-kind-labels）。 */
 
 interface LedgerRow {
   amount: number;
@@ -13,21 +15,6 @@ interface LedgerRow {
   balance_after: number;
   created_at: string;
 }
-
-const KIND_LABELS: Record<string, string> = {
-  shop: "商店消费",
-  checkin: "签到",
-  seeding: "做种收益",
-  task: "任务奖励",
-  forum: "论坛奖励",
-  subtitle: "字幕奖励",
-  games: "娱乐玩法",
-  bank: "银行",
-  pool: "站免池",
-  admin: "管理调整",
-  upload: "发布奖励",
-  gift: "赠送",
-};
 
 export default function MySparksPage() {
   const { dict } = useI18n();
@@ -71,7 +58,7 @@ export default function MySparksPage() {
                   {new Date(r.created_at).toLocaleString()}
                 </td>
                 <td className="px-3 py-2">
-                  {KIND_LABELS[r.kind] ?? r.kind}
+                  {SPARK_KIND_LABELS[r.kind] ?? r.kind}
                 </td>
                 <td
                   className={`px-3 py-2 text-right font-mono ${

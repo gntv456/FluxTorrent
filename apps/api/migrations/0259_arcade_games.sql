@@ -31,8 +31,8 @@ INSERT INTO arcade_games
 VALUES
     ('bigsmall', 'bigsmall', '🎯', '/games/bigsmall', 'sky',    'instant', '',      'bigsmall', true,  true,  10),
     ('scratch',  'scratch',  '🎫', '/games/scratch',  'coral',  'instant', '',      'scratch',  true,  true,  20),
-    ('jgg',      'jgg',      '🎰', '/games/jgg',      'candy',  'instant', '',      'jgg',      false, true,  30),
-    ('capsule',  'capsule',  '🥚', '/games/capsule',  'violet', 'instant', '',      'capsule',  false, true,  40),
+    ('jgg',      'jgg',      '🎰', '/games/jgg',      'violet',  'instant', '',      'jgg',      false, true,  30),
+    ('capsule',  'capsule',  '🥚', '/games/capsule',  'sun',    'instant', '',      'capsule',  false, true,  40),
     ('wheel',    'wheel',    '🎡', '/games/wheel',    'sun',    'instant', '',      'wheel',    true,  true,  50),
     ('farm',     'farm',     '🌾', '/games/farm',     'mint',   'session', 'farm',  'farm',     false, true,  60),
     ('gacha',    'gacha',    '🃏', '/gacha',          'indigo', 'session', 'gacha', '',         false, true,  70),

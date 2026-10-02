@@ -179,96 +179,95 @@ export function SubtitleRequestPanel({
         </button>
       </form>
       <div className="baozi-wide-table-scroll">
-      <table className="nexus-table subtitles-list-table">
-        <tbody>
-          {reqs.map((r) => (
-            <tr key={r.id}>
-              <td>{r.lang}</td>
-              <td className="text-sub">{r.username ?? "—"}</td>
-              <td className="num">
-                {r.bounty} {currency}
-                {r.offer_free && (
-                  <span className="ml-1 text-[11px] text-mint">Free</span>
-                )}
-              </td>
-              <td>
-                <button
-                  type="button"
-                  className="btn2"
-                  onClick={() => void contribute(r.id)}
-                >
-                  {t.contributeBtn}
-                </button>
-                {wfOn && r.status === 0 && (
-                  <button
-                    type="button"
-                    className="btn2 ml-1"
-                    onClick={() => void wfAction("claim", r)}
-                  >
-                    {t.claimBtn}
-                  </button>
-                )}
-                {wfOn && r.status === 3 && r.claimed_by === me?.id && (
-                  <>
+        <table className="nexus-table subtitles-list-table">
+          <tbody>
+            {reqs.map((r) => {
+              // 语言码回显人话：与提交下拉同一份 langs 表；未知码回落原值
+              const l = langs.find((x) => x.code === r.lang);
+              return (
+                <tr key={r.id}>
+                  <td>{l ? `${l.flag} ${l.name}` : r.lang}</td>
+                  <td className="text-sub">{r.username ?? "—"}</td>
+                  <td className="num">
+                    {r.bounty} {currency}
+                    {r.offer_free && (
+                      <span className="ml-1 text-[11px] text-mint">Free</span>
+                    )}
+                  </td>
+                  <td>
                     <button
                       type="button"
-                      className="btn2 ml-1"
-                      onClick={() => void wfAction("deliver", r)}
+                      className="btn2"
+                      onClick={() => void contribute(r.id)}
                     >
-                      {t.deliverBtn}
+                      {t.contributeBtn}
                     </button>
-                    <button
-                      type="button"
-                      className="btn2 ml-1"
-                      onClick={() => void wfAction("abandon", r)}
-                    >
-                      {t.abandonBtn}
-                    </button>
-                  </>
-                )}
-                {wfOn && r.status === 4 && r.username && (
-                  <button
-                    type="button"
-                    className="btn2 ml-1"
-                    onClick={() => void wfAction("accept", r)}
-                  >
-                    {t.acceptBtn}
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-          {reqs.length === 0 && (
-            <tr>
-              <td colSpan={4} className="py-4 text-center text-sub">
-                {t.reqEmpty}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                    {wfOn && r.status === 0 && (
+                      <button
+                        type="button"
+                        className="btn2 ml-1"
+                        onClick={() => void wfAction("claim", r)}
+                      >
+                        {t.claimBtn}
+                      </button>
+                    )}
+                    {wfOn && r.status === 3 && r.claimed_by === me?.id && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn2 ml-1"
+                          onClick={() => void wfAction("deliver", r)}
+                        >
+                          {t.deliverBtn}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn2 ml-1"
+                          onClick={() => void wfAction("abandon", r)}
+                        >
+                          {t.abandonBtn}
+                        </button>
+                      </>
+                    )}
+                    {wfOn && r.status === 4 && r.username && (
+                      <button
+                        type="button"
+                        className="btn2 ml-1"
+                        onClick={() => void wfAction("accept", r)}
+                      >
+                        {t.acceptBtn}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {reqs.length === 0 && (
+              <tr>
+                <td colSpan={4} className="py-4 text-center text-sub">
+                  {t.reqEmpty}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </section>
   );
 }
 
 /** 附件上传共用：multipart 到 attachments 拿 sha256（board 与种子面板复用） */
-export async function uploadAttachment(
-  file: File,
-): Promise<string> {
+export async function uploadAttachment(file: File): Promise<string> {
   const form = new FormData();
   form.append("file", file);
   const lang = rawFetchHelpers.lang();
-  const upRes = await fetch(
-    rawFetchHelpers.base() + "/api/v1/attachments",
-    {
-      method: "POST",
-      headers: {
-        ...(lang ? { "Accept-Language": lang } : {}),
-      },
-      body: form,
+  const upRes = await fetch(rawFetchHelpers.base() + "/api/v1/attachments", {
+    method: "POST",
+    headers: {
+      ...(lang ? { "Accept-Language": lang } : {}),
     },
-  );
+    body: form,
+  });
   const upBody = (await upRes.json()) as {
     code: number;
     message?: string;

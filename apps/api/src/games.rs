@@ -33,7 +33,7 @@ mod tests;
 pub use bigsmall::{
     bigsmall_expected_value, outcome_side, roll, validate_bet,
     validate_bigsmall, DiceOutcome, Guess, BIGSMALL_WIN_MULT_PERMILLE,
-    REGION_LOSE_PERMILLE, REGION_TIE_PERMILLE, REGION_WIN_PERMILLE,
+    REGION_LOSE_PERMILLE, REGION_TRIPLE_PERMILLE, REGION_WIN_PERMILLE,
 };
 #[allow(unused_imports)]
 pub use farm::{

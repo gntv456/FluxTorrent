@@ -203,6 +203,95 @@ pub(super) async fn farm_water(
     ))
 }
 
+#[post("/farm/fertilize")]
+pub(super) async fn farm_fertilize(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<SlotReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let wither_days = farm_wither_days(&state).await;
+    // 施肥：每茬一次，催熟 30 分钟（浇水 10 分钟）；只对未成熟、未枯萎地块。
+    // wither 守卫与浇水同式：ready_at 加枯萎期仍在未来 = 还没枯。
+    let updated = sqlx::query(
+        r#"UPDATE farm_plots SET fertilized = TRUE, ready_at = ready_at - interval '30 minutes'
+         WHERE user_id = $1 AND slot = $2 AND fertilized = FALSE AND ready_at > now()
+           AND ($3 = 0 OR ready_at + make_interval(days => $3::int) >= now())"#,
+    )
+    .bind(auth.id)
+    .bind(body.slot)
+    .bind(wither_days)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if updated.rows_affected() == 0 {
+        return Err(DomainError::Validation(
+            "该地块无法施肥（未种植 / 已施过 / 已成熟或已枯萎）".into(),
+        ));
+    }
+    // 计费与浇水同口径：先占位后扣费，失败回滚占位；幂等键带「这一茬」
+    // 的 ready_at，换茬后重放不会把扣款当成功（2026-10 审计 P1 同修）。
+    let cost = eco_i64(&state, "farm_fertilize_spark", 5).await;
+    if cost > 0 {
+        let crop_ready: Option<chrono::DateTime<chrono::Utc>> =
+            sqlx::query_scalar(
+                "SELECT ready_at FROM farm_plots \
+                  WHERE user_id = $1 AND slot = $2",
+            )
+            .bind(auth.id)
+            .bind(body.slot)
+            .fetch_one(&state.repo.db)
+            .await
+            .ok();
+        let idem = match crop_ready {
+            Some(t) => format!("farm-fert:{}:{}:{}", auth.id, body.slot, t),
+            None => format!("farm-fert:{}:{}:x", auth.id, body.slot),
+        };
+        match spend_spark(
+            &state.repo.db,
+            auth.id,
+            cost,
+            "game",
+            &idem,
+            "farm_fertilize",
+            body.slot as i64,
+        )
+        .await
+        {
+            Err(e) => {
+                let _ = sqlx::query(
+                    r#"UPDATE farm_plots SET fertilized = FALSE, ready_at = ready_at + interval '30 minutes'
+                       WHERE user_id = $1 AND slot = $2"#,
+                )
+                .bind(auth.id)
+                .bind(body.slot)
+                .execute(&state.repo.db)
+                .await;
+                return Err(e);
+            }
+            // 重放 = 同一茬的这 1 次施肥已扣过费（此刻 fertilized 仍应为 TRUE，
+            // UPDATE 影响 0 行才会走到扣费——正常不可能；防御性回滚占位并拒绝）
+            Ok(SpendOutcome::Replayed) => {
+                let _ = sqlx::query(
+                    r#"UPDATE farm_plots SET fertilized = FALSE, ready_at = ready_at + interval '30 minutes'
+                       WHERE user_id = $1 AND slot = $2"#,
+                )
+                .bind(auth.id)
+                .bind(body.slot)
+                .execute(&state.repo.db)
+                .await;
+                return Err(DomainError::Validation(
+                    "该地块本茬已施过肥，请勿重复提交".into(),
+                ));
+            }
+            Ok(SpendOutcome::Spent) => {}
+        }
+    }
+    Ok(ok(
+        serde_json::json!({ "fertilized": true, "accelerated_minutes": 30, "cost": cost }),
+    ))
+}
+
 #[post("/farm/harvest")]
 pub(super) async fn farm_harvest(
     req: HttpRequest,

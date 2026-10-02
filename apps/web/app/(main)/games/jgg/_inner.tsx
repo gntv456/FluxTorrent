@@ -15,8 +15,9 @@ import {
 import { useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
+import { GameTabs } from "@/components/game/game-tabs";
+import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
-import { SubpageLink } from "@/components/game/subpage-link";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { StreakPill } from "@/components/game/streak-pill";
 import { JggGrid, type JggPrize } from "@/components/game/jgg-grid";
@@ -71,6 +72,8 @@ export default function JggPage({
     text: string;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // 样图手机版：主玩法 / 记录图鉴 双 tab
+  const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const [streak, setStreak] = useState(0);
   /** 本次会话已完成的局数（防沉迷软提示用） */
@@ -207,6 +210,21 @@ export default function JggPage({
     net: h.net,
   }));
 
+  if (tab === "records") {
+    return (
+      <div className="flex flex-col gap-4">
+        <GameTabs
+          tabs={[
+            { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+            { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+        <GameRecordsPanel game="jgg" />
+      </div>
+    );
+  }
   return (
     <GameShell
       icon={<ArcadeGlyph k="jgg" />}
@@ -216,10 +234,20 @@ export default function JggPage({
       todayNet={ov?.me?.today_net ?? null}
       limitLeft={ov?.me?.limit_left ?? null}
       notice={
-        <PlayHint
-          sessionPlays={sessionPlays}
-          todayNet={ov?.me?.today_net ?? null}
-        />
+        <>
+          <GameTabs
+            tabs={[
+              { key: "play", label: dict.games.sub.tabPlay, icon: "🎲" },
+              { key: "records", label: dict.games.sub.tabRecords, icon: "📜" },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
+          <PlayHint
+            sessionPlays={sessionPlays}
+            todayNet={ov?.me?.today_net ?? null}
+          />
+        </>
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
@@ -262,7 +290,6 @@ export default function JggPage({
           />
           <SwPrizeStrip label={tj.prizeLb} items={prizeStripItems} />
           {err && <p className="text-xs text-danger">{err}</p>}
-          <SubpageLink game="jgg" />
         </div>
       }
       controls={

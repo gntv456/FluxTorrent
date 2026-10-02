@@ -19,6 +19,8 @@ export interface Plot {
   planted_at: string;
   ready_at: string;
   watered: boolean;
+  /** 施肥（每茬一次，催熟 30 分钟） */
+  fertilized?: boolean;
   ready: boolean;
   /** 超过有效期（farm_wither_days）未收 → 枯萎：收获作废，只能清理重种 */
   withered?: boolean;
@@ -48,7 +50,7 @@ const WATER_CHIP_CLS =
   "active:scale-95 disabled:opacity-50";
 
 /** 单块田：紧凑方格（样图⑤）。空地=虚线+号；种植中=作物色底+倒计时角牌
- *  + 浇水角钮；成熟/枯萎=整块可点（收获/清理）。 */
+ *  + 浇水/施肥角钮；成熟/枯萎=整块可点（收获/清理）。 */
 export function FarmPlot({
   slot,
   plot,
@@ -58,6 +60,7 @@ export function FarmPlot({
   picking,
   onPlant,
   onWater,
+  onFertilize,
   onHarvest,
   t,
 }: {
@@ -70,6 +73,8 @@ export function FarmPlot({
   picking?: boolean;
   onPlant: (slot: number) => void;
   onWater: (slot: number) => void;
+  /** 施肥（每茬一次，催熟 30 分钟） */
+  onFertilize?: (slot: number) => void;
   onHarvest: (slot: number) => void;
   t: Record<string, string>;
 }) {
@@ -156,20 +161,47 @@ export function FarmPlot({
           💧
         </span>
       )}
-      {!withered && !plot.watered && !ready && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onWater(slot);
-          }}
-          disabled={busy}
-          title={t.water}
-          aria-label={t.water}
-          className={WATER_CHIP_CLS}
+      {plot.fertilized && !ready && !withered && (
+        <span
+          aria-hidden
+          className="absolute right-6 top-1 text-[10px] opacity-70"
         >
-          💧
-        </button>
+          🌱
+        </span>
+      )}
+      {!withered && !ready && (
+        <div className="absolute bottom-1 left-1 flex gap-1">
+          {!plot.watered && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onWater(slot);
+              }}
+              disabled={busy}
+              title={t.water}
+              aria-label={t.water}
+              className={WATER_CHIP_CLS}
+            >
+              💧
+            </button>
+          )}
+          {!plot.fertilized && onFertilize && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFertilize(slot);
+              }}
+              disabled={busy}
+              title={t.fert}
+              aria-label={t.fert}
+              className={WATER_CHIP_CLS}
+            >
+              🌱
+            </button>
+          )}
+        </div>
       )}
     </>
   );
