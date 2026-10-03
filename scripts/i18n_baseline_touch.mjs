@@ -38,10 +38,10 @@ const baseline = existsSync(BASELINE)
   ? JSON.parse(readFileSync(BASELINE, "utf-8"))
   : {};
 
-// ⚠️ 基线的键在 Windows 上是**反斜杠**形式（来自 globSync），Linux/CI 上是正斜杠。
-// 传参一律用正斜杠，这里按基线自身的风格归一，否则会写出两套重复键。
-const useBackslash = Object.keys(baseline).some((k) => k.includes("\\"));
-const keyOf = (f) => (useBackslash ? f.replace(/\//g, "\\") : f);
+// ⚠️ 基线键统一**正斜杠**（与 i18n_guard.mjs 的归一口径一致；历史上 Windows
+// glob 曾产出反斜杠键，已由 normalize_i18n_baseline_keys.py 一次性归一）。
+// 传参两种斜杠都接受，落键前归一，避免写出两套重复键。
+const keyOf = (f) => f.replace(/\\/g, "/");
 
 let touched = 0;
 for (const f of targets) {

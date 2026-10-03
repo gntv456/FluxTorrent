@@ -3,49 +3,49 @@
  "next.config.ts": [],
  "vitest.config.ts": [],
  "vitest.setup.ts": [],
- "lib\\api-client.ts": [
+ "lib/api-client.ts": [
   97,
   129,
   132
  ],
- "lib\\data-content.ts": [],
- "lib\\data-forum.ts": [],
- "lib\\data.ts": [],
- "lib\\games.ts": [],
- "lib\\medal-rarity.ts": [
+ "lib/data-content.ts": [],
+ "lib/data-forum.ts": [],
+ "lib/data.ts": [],
+ "lib/games.ts": [],
+ "lib/medal-rarity.ts": [
   36,
   37,
   38,
   39
  ],
- "lib\\site-profile.ts": [
+ "lib/site-profile.ts": [
   90,
   101
  ],
- "lib\\ui-classes.ts": [],
- "components\\admin-exams-shared.ts": [],
- "components\\admin-medals-shared.ts": [],
- "components\\admin-props-shared.ts": [],
- "components\\admin-sections-shared.ts": [],
- "components\\admin-tagdict-shared.ts": [],
- "components\\admin-tasks-shared.ts": [],
- "components\\admin-torrents-shared.ts": [],
- "components\\admin-user-detail-actions-hook.ts": [],
- "components\\admin-user-detail-actions-hook2.ts": [],
- "components\\admin-user-detail-hooks.ts": [],
- "components\\admin-user-detail-shared.ts": [],
- "components\\home-data.ts": [],
- "components\\setting-field-types.ts": [],
- "components\\staff-tools-content-shared.ts": [],
- "components\\staff-tools-security-shared.ts": [],
- "components\\staff-tools-site-shared.ts": [],
- "components\\staff-tools-sys-shared.ts": [],
- "components\\subtitle-board-format.ts": [
+ "lib/ui-classes.ts": [],
+ "components/admin-exams-shared.ts": [],
+ "components/admin-medals-shared.ts": [],
+ "components/admin-props-shared.ts": [],
+ "components/admin-sections-shared.ts": [],
+ "components/admin-tagdict-shared.ts": [],
+ "components/admin-tasks-shared.ts": [],
+ "components/admin-torrents-shared.ts": [],
+ "components/admin-user-detail-actions-hook.ts": [],
+ "components/admin-user-detail-actions-hook2.ts": [],
+ "components/admin-user-detail-hooks.ts": [],
+ "components/admin-user-detail-shared.ts": [],
+ "components/home-data.ts": [],
+ "components/setting-field-types.ts": [],
+ "components/staff-tools-content-shared.ts": [],
+ "components/staff-tools-security-shared.ts": [],
+ "components/staff-tools-site-shared.ts": [],
+ "components/staff-tools-sys-shared.ts": [],
+ "components/subtitle-board-format.ts": [
   58,
   59
  ],
- "components\\subtitle-board-shared.ts": [],
- "components\\usercp-personal-shared.ts": [
+ "components/subtitle-board-shared.ts": [],
+ "components/usercp-personal-shared.ts": [
   26,
   27,
   28,
@@ -53,23 +53,23 @@
   30,
   31
  ],
- "app\\manifest.ts": [
+ "app/manifest.ts": [
   15,
   45,
   50,
   55
  ],
- "app\\(main)\\users\\[id]\\_parts\\profile-types.ts": [],
- "app\\(main)\\torrents\\_parts\\torrents-chips.ts": [],
- "app\\(main)\\torrents\\_parts\\torrents-utils.ts": [],
- "app\\(main)\\admin\\_parts\\admin-shared.ts": [],
- "app\\(main)\\admin\\settings\\_parts\\settings-io.ts": [],
- "app\\(main)\\admin\\settings\\_parts\\settings-save.ts": [],
- "app\\(main)\\admin\\settings\\_parts\\settings-types.ts": [],
- "app\\(main)\\admin\\forums\\_parts\\forum-structure-types.ts": [],
- "app\\(main)\\admin\\forums\\_parts\\use-category-dnd.ts": [],
- "lib\\bbcode.tsx": [],
- "lib\\format.tsx": [
+ "app/(main)/users/[id]/_parts/profile-types.ts": [],
+ "app/(main)/torrents/_parts/torrents-chips.ts": [],
+ "app/(main)/torrents/_parts/torrents-utils.ts": [],
+ "app/(main)/admin/_parts/admin-shared.ts": [],
+ "app/(main)/admin/settings/_parts/settings-io.ts": [],
+ "app/(main)/admin/settings/_parts/settings-save.ts": [],
+ "app/(main)/admin/settings/_parts/settings-types.ts": [],
+ "app/(main)/admin/forums/_parts/forum-structure-types.ts": [],
+ "app/(main)/admin/forums/_parts/use-category-dnd.ts": [],
+ "lib/bbcode.tsx": [],
+ "lib/format.tsx": [
   47,
   48,
   49,
@@ -78,8 +78,8 @@
   52,
   53
  ],
- "components\\admin-attendance.tsx": [],
- "components\\admin-exams-form.tsx": [
+ "components/admin-attendance.tsx": [],
+ "components/admin-exams-form.tsx": [
   25,
   63,
   71,
@@ -89,7 +89,7 @@
   161,
   163
  ],
- "components\\admin-exams-table.tsx": [
+ "components/admin-exams-table.tsx": [
   47,
   48,
   49,
@@ -102,46 +102,46 @@
   97,
   100
  ],
- "components\\admin-exams.tsx": [
+ "components/admin-exams.tsx": [
   46,
   90,
   94
  ],
- "components\\admin-hr.tsx": [],
- "components\\admin-invites.tsx": [],
- "components\\admin-jixiao-payroll.tsx": [],
- "components\\admin-jixiao.tsx": [],
- "components\\admin-medals-form.tsx": [],
- "components\\admin-medals-held.tsx": [],
- "components\\admin-medals-rarity.tsx": [],
- "components\\admin-medals.tsx": [],
- "components\\admin-ops.tsx": [],
- "components\\admin-p2-tools-claims.tsx": [],
- "components\\admin-p2-tools-menus.tsx": [],
- "components\\admin-p2-tools-promos.tsx": [],
- "components\\admin-p2-tools-templates.tsx": [],
- "components\\admin-p2-tools.tsx": [
+ "components/admin-hr.tsx": [],
+ "components/admin-invites.tsx": [],
+ "components/admin-jixiao-payroll.tsx": [],
+ "components/admin-jixiao.tsx": [],
+ "components/admin-medals-form.tsx": [],
+ "components/admin-medals-held.tsx": [],
+ "components/admin-medals-rarity.tsx": [],
+ "components/admin-medals.tsx": [],
+ "components/admin-ops.tsx": [],
+ "components/admin-p2-tools-claims.tsx": [],
+ "components/admin-p2-tools-menus.tsx": [],
+ "components/admin-p2-tools-promos.tsx": [],
+ "components/admin-p2-tools-templates.tsx": [],
+ "components/admin-p2-tools.tsx": [
   42,
   43,
   44,
   45
  ],
- "components\\admin-page-shell.tsx": [],
- "components\\admin-props-form.tsx": [],
- "components\\admin-props-frames.tsx": [],
- "components\\admin-props-table.tsx": [],
- "components\\admin-props-user-bag.tsx": [],
- "components\\admin-props.tsx": [],
- "components\\admin-sections-dict.tsx": [],
- "components\\admin-sections-kinds.tsx": [],
- "components\\admin-sections.tsx": [],
- "components\\admin-shell.tsx": [
+ "components/admin-page-shell.tsx": [],
+ "components/admin-props-form.tsx": [],
+ "components/admin-props-frames.tsx": [],
+ "components/admin-props-table.tsx": [],
+ "components/admin-props-user-bag.tsx": [],
+ "components/admin-props.tsx": [],
+ "components/admin-sections-dict.tsx": [],
+ "components/admin-sections-kinds.tsx": [],
+ "components/admin-sections.tsx": [],
+ "components/admin-shell.tsx": [
   245
  ],
- "components\\admin-subtitles-awards.tsx": [],
- "components\\admin-tagdict-form.tsx": [],
- "components\\admin-tagdict.tsx": [],
- "components\\admin-tasks-exams.tsx": [
+ "components/admin-subtitles-awards.tsx": [],
+ "components/admin-tagdict-form.tsx": [],
+ "components/admin-tagdict.tsx": [],
+ "components/admin-tasks-exams.tsx": [
   68,
   71,
   79,
@@ -162,20 +162,20 @@
   146,
   147
  ],
- "components\\admin-tasks-form.tsx": [],
- "components\\admin-tasks-table.tsx": [],
- "components\\admin-tasks.tsx": [
+ "components/admin-tasks-form.tsx": [],
+ "components/admin-tasks-table.tsx": [],
+ "components/admin-tasks.tsx": [
   38,
   51,
   55,
   82,
   86
  ],
- "components\\admin-torrents-batch-bar.tsx": [],
- "components\\admin-torrents-list.tsx": [],
- "components\\admin-torrents-login-logs.tsx": [],
- "components\\admin-torrents-record-query.tsx": [],
- "components\\admin-torrents-records.tsx": [
+ "components/admin-torrents-batch-bar.tsx": [],
+ "components/admin-torrents-list.tsx": [],
+ "components/admin-torrents-login-logs.tsx": [],
+ "components/admin-torrents-record-query.tsx": [],
+ "components/admin-torrents-records.tsx": [
   175,
   176,
   177,
@@ -191,20 +191,20 @@
   187,
   188
  ],
- "components\\admin-torrents-table.tsx": [],
- "components\\admin-torrents.tsx": [],
- "components\\admin-trackers.tsx": [],
- "components\\admin-user-detail-actions-forms-more.tsx": [],
- "components\\admin-user-detail-actions-forms.tsx": [],
- "components\\admin-user-detail-actions.tsx": [],
- "components\\admin-user-detail-panels.tsx": [],
- "components\\admin-user-detail.tsx": [],
- "components\\admin-userlogs.tsx": [],
- "components\\admin-users-filters.tsx": [],
- "components\\admin-users-list.tsx": [],
- "components\\admin-users-pager.tsx": [],
- "components\\admin-users.tsx": [],
- "components\\api-tokens.tsx": [
+ "components/admin-torrents-table.tsx": [],
+ "components/admin-torrents.tsx": [],
+ "components/admin-trackers.tsx": [],
+ "components/admin-user-detail-actions-forms-more.tsx": [],
+ "components/admin-user-detail-actions-forms.tsx": [],
+ "components/admin-user-detail-actions.tsx": [],
+ "components/admin-user-detail-panels.tsx": [],
+ "components/admin-user-detail.tsx": [],
+ "components/admin-userlogs.tsx": [],
+ "components/admin-users-filters.tsx": [],
+ "components/admin-users-list.tsx": [],
+ "components/admin-users-pager.tsx": [],
+ "components/admin-users.tsx": [],
+ "components/api-tokens.tsx": [
   23,
   24,
   25,
@@ -214,45 +214,45 @@
   29,
   30
  ],
- "components\\bank-actions-deposit.tsx": [],
- "components\\bank-actions-loan.tsx": [
+ "components/bank-actions-deposit.tsx": [],
+ "components/bank-actions-loan.tsx": [
   121
  ],
- "components\\bank-actions-parts.tsx": [],
- "components\\bank-actions.tsx": [],
- "components\\buy-button.tsx": [],
- "components\\cheater-box.tsx": [],
- "components\\claim-button.tsx": [],
- "components\\comment-delete-button.tsx": [],
- "components\\comment-like-button.tsx": [],
- "components\\comment-reply-button.tsx": [],
- "components\\community-extra.tsx": [],
- "components\\contact-staff-tickets.tsx": [],
- "components\\contact-staff.tsx": [],
- "components\\content-manage-tabs.tsx": [],
- "components\\content-manage.tsx": [
+ "components/bank-actions-parts.tsx": [],
+ "components/bank-actions.tsx": [],
+ "components/buy-button.tsx": [],
+ "components/cheater-box.tsx": [],
+ "components/claim-button.tsx": [],
+ "components/comment-delete-button.tsx": [],
+ "components/comment-like-button.tsx": [],
+ "components/comment-reply-button.tsx": [],
+ "components/community-extra.tsx": [],
+ "components/contact-staff-tickets.tsx": [],
+ "components/contact-staff.tsx": [],
+ "components/content-manage-tabs.tsx": [],
+ "components/content-manage.tsx": [
   65,
   107,
   204
  ],
- "components\\custom-menu.tsx": [],
- "components\\download-button.tsx": [
+ "components/custom-menu.tsx": [],
+ "components/download-button.tsx": [
   92,
   100
  ],
- "components\\endangered-panel.tsx": [
+ "components/endangered-panel.tsx": [
   130
  ],
- "components\\file-tree.tsx": [
+ "components/file-tree.tsx": [
   91
  ],
- "components\\footer.tsx": [],
- "components\\forum-bits.tsx": [],
- "components\\forum-composer.tsx": [],
- "components\\forum-follow.tsx": [],
- "components\\forum-lottery.tsx": [],
- "components\\forum-markdown.tsx": [],
- "components\\forum-mod-bar.tsx": [
+ "components/footer.tsx": [],
+ "components/forum-bits.tsx": [],
+ "components/forum-composer.tsx": [],
+ "components/forum-follow.tsx": [],
+ "components/forum-lottery.tsx": [],
+ "components/forum-markdown.tsx": [],
+ "components/forum-mod-bar.tsx": [
   68,
   74,
   75,
@@ -268,8 +268,8 @@
   166,
   191
  ],
- "components\\forum-poll.tsx": [],
- "components\\forum-post-actions.tsx": [
+ "components/forum-poll.tsx": [],
+ "components/forum-post-actions.tsx": [
   45,
   65,
   72,
@@ -277,15 +277,15 @@
   86,
   152
  ],
- "components\\forum-report.tsx": [],
- "components\\forum-search.tsx": [],
- "components\\forum-topic-list.tsx": [
+ "components/forum-report.tsx": [],
+ "components/forum-search.tsx": [],
+ "components/forum-topic-list.tsx": [
   114,
   125,
   133
  ],
- "components\\forum-vote.tsx": [],
- "components\\friends-actions.tsx": [
+ "components/forum-vote.tsx": [],
+ "components/friends-actions.tsx": [
   19,
   20,
   21,
@@ -298,23 +298,23 @@
   28,
   59
  ],
- "components\\fun-box-history.tsx": [],
- "components\\fun-box-publish.tsx": [],
- "components\\fun-box.tsx": [],
- "components\\funding-panel-parts.tsx": [],
- "components\\funding-panel.tsx": [
+ "components/fun-box-history.tsx": [],
+ "components/fun-box-publish.tsx": [],
+ "components/fun-box.tsx": [],
+ "components/funding-panel-parts.tsx": [],
+ "components/funding-panel.tsx": [
   44,
   45,
   181
  ],
- "components\\group-subscribe-button.tsx": [],
- "components\\home-attendance.tsx": [],
- "components\\home-layout-editor.tsx": [
+ "components/group-subscribe-button.tsx": [],
+ "components/home-attendance.tsx": [],
+ "components/home-layout-editor.tsx": [
   26
  ],
- "components\\home-layout.tsx": [],
- "components\\home-resource-stats.tsx": [],
- "components\\home-resub-button.tsx": [
+ "components/home-layout.tsx": [],
+ "components/home-resource-stats.tsx": [],
+ "components/home-resub-button.tsx": [
   13,
   34,
   38,
@@ -323,10 +323,10 @@
   74,
   77
  ],
- "components\\home-sections.tsx": [],
- "components\\home-site-data.tsx": [],
- "components\\icons.tsx": [],
- "components\\increment-bulk.tsx": [
+ "components/home-sections.tsx": [],
+ "components/home-site-data.tsx": [],
+ "components/icons.tsx": [],
+ "components/increment-bulk.tsx": [
   21,
   22,
   23,
@@ -360,43 +360,43 @@
   247,
   268
  ],
- "components\\invite-manager-parts.tsx": [],
- "components\\invite-manager.tsx": [],
- "components\\latest-posters.tsx": [],
- "components\\layout.tsx": [],
- "components\\link-apply.tsx": [],
- "components\\locale-switcher.tsx": [
+ "components/invite-manager-parts.tsx": [],
+ "components/invite-manager.tsx": [],
+ "components/latest-posters.tsx": [],
+ "components/layout.tsx": [],
+ "components/link-apply.tsx": [],
+ "components/locale-switcher.tsx": [
   13,
   14,
   16,
   55
  ],
- "components\\login-history.tsx": [],
- "components\\main-menu.tsx": [
+ "components/login-history.tsx": [],
+ "components/main-menu.tsx": [
   133
  ],
- "components\\medal-actions.tsx": [],
- "components\\medal-icon.tsx": [],
- "components\\medal-rarity-chip.tsx": [
+ "components/medal-actions.tsx": [],
+ "components/medal-icon.tsx": [],
+ "components/medal-rarity-chip.tsx": [
   45
  ],
- "components\\medal-wall.tsx": [],
- "components\\message-center-compose.tsx": [],
- "components\\message-center-table.tsx": [],
- "components\\message-center-toolbar.tsx": [],
- "components\\message-center.tsx": [],
- "components\\module-gate.tsx": [
+ "components/medal-wall.tsx": [],
+ "components/message-center-compose.tsx": [],
+ "components/message-center-table.tsx": [],
+ "components/message-center-toolbar.tsx": [],
+ "components/message-center.tsx": [],
+ "components/module-gate.tsx": [
   25,
   28
  ],
- "components\\motion.tsx": [],
- "components\\my-hr.tsx": [],
- "components\\notice-prefs.tsx": [],
- "components\\plugins-frames.tsx": [],
- "components\\plugins-gomoku.tsx": [],
- "components\\plugins.tsx": [],
- "components\\pool-donate.tsx": [],
- "components\\promo-buy-button.tsx": [
+ "components/motion.tsx": [],
+ "components/my-hr.tsx": [],
+ "components/notice-prefs.tsx": [],
+ "components/plugins-frames.tsx": [],
+ "components/plugins-gomoku.tsx": [],
+ "components/plugins.tsx": [],
+ "components/pool-donate.tsx": [],
+ "components/promo-buy-button.tsx": [
   46,
   47,
   48,
@@ -405,27 +405,27 @@
   51,
   52
  ],
- "components\\push-settings.tsx": [],
- "components\\report-box.tsx": [],
- "components\\request-board-form.tsx": [],
- "components\\request-board.tsx": [
+ "components/push-settings.tsx": [],
+ "components/report-box.tsx": [],
+ "components/request-board-form.tsx": [],
+ "components/request-board.tsx": [
   253,
   255,
   257,
   259
  ],
- "components\\resurrect-button.tsx": [],
- "components\\resurrection-panel.tsx": [
+ "components/resurrect-button.tsx": [],
+ "components/resurrection-panel.tsx": [
   110
  ],
- "components\\rss-builder.tsx": [],
- "components\\scroll-buttons.tsx": [
+ "components/rss-builder.tsx": [],
+ "components/scroll-buttons.tsx": [
   65,
   66,
   76,
   77
  ],
- "components\\seed-stats-card.tsx": [
+ "components/seed-stats-card.tsx": [
   47,
   55,
   65,
@@ -436,10 +436,10 @@
   89,
   90
  ],
- "components\\setting-field-controls.tsx": [],
- "components\\setting-field.tsx": [],
- "components\\shout-box.tsx": [],
- "components\\snatch-list.tsx": [
+ "components/setting-field-controls.tsx": [],
+ "components/setting-field.tsx": [],
+ "components/shout-box.tsx": [],
+ "components/snatch-list.tsx": [
   26,
   27,
   28,
@@ -454,18 +454,18 @@
   37,
   38
  ],
- "components\\staff-box-desk.tsx": [
+ "components/staff-box-desk.tsx": [
   77,
   80,
   117,
   129,
   147
  ],
- "components\\staff-box-pm.tsx": [],
- "components\\staff-box-tickets.tsx": [
+ "components/staff-box-pm.tsx": [],
+ "components/staff-box-tickets.tsx": [
   76
  ],
- "components\\staff-box.tsx": [
+ "components/staff-box.tsx": [
   159,
   161,
   185,
@@ -473,53 +473,53 @@
   205,
   213
  ],
- "components\\staff-tools-content-cats.tsx": [],
- "components\\staff-tools-content-rules.tsx": [],
- "components\\staff-tools-content.tsx": [],
- "components\\staff-tools-menu.tsx": [],
- "components\\staff-tools-ops-forms.tsx": [],
- "components\\staff-tools-ops.tsx": [],
- "components\\staff-tools-perm-matrix.tsx": [],
- "components\\staff-tools-perm.tsx": [],
- "components\\staff-tools-reports.tsx": [],
- "components\\staff-tools-roles-dict.tsx": [],
- "components\\staff-tools-roles.tsx": [],
- "components\\staff-tools-security-panels.tsx": [],
- "components\\staff-tools-security.tsx": [],
- "components\\staff-tools-seedstats.tsx": [],
- "components\\staff-tools-site-ads.tsx": [],
- "components\\staff-tools-site-lists.tsx": [],
- "components\\staff-tools-site.tsx": [],
- "components\\staff-tools-sys-agentrules.tsx": [],
- "components\\staff-tools-sys.tsx": [],
- "components\\staff-tools-users-tools.tsx": [],
- "components\\staff-tools-users.tsx": [],
- "components\\staff-tools.tsx": [],
- "components\\subtitle-awards-board.tsx": [],
- "components\\subtitle-board-table.tsx": [],
- "components\\subtitle-board.tsx": [],
- "components\\subtitle-detail-view.tsx": [],
- "components\\subtitle-edit-dialog.tsx": [],
- "components\\subtitle-request-panel.tsx": [],
- "components\\subtitle-row-actions.tsx": [],
- "components\\subtitle-upload-form.tsx": [],
- "components\\task-board-parts.tsx": [
+ "components/staff-tools-content-cats.tsx": [],
+ "components/staff-tools-content-rules.tsx": [],
+ "components/staff-tools-content.tsx": [],
+ "components/staff-tools-menu.tsx": [],
+ "components/staff-tools-ops-forms.tsx": [],
+ "components/staff-tools-ops.tsx": [],
+ "components/staff-tools-perm-matrix.tsx": [],
+ "components/staff-tools-perm.tsx": [],
+ "components/staff-tools-reports.tsx": [],
+ "components/staff-tools-roles-dict.tsx": [],
+ "components/staff-tools-roles.tsx": [],
+ "components/staff-tools-security-panels.tsx": [],
+ "components/staff-tools-security.tsx": [],
+ "components/staff-tools-seedstats.tsx": [],
+ "components/staff-tools-site-ads.tsx": [],
+ "components/staff-tools-site-lists.tsx": [],
+ "components/staff-tools-site.tsx": [],
+ "components/staff-tools-sys-agentrules.tsx": [],
+ "components/staff-tools-sys.tsx": [],
+ "components/staff-tools-users-tools.tsx": [],
+ "components/staff-tools-users.tsx": [],
+ "components/staff-tools.tsx": [],
+ "components/subtitle-awards-board.tsx": [],
+ "components/subtitle-board-table.tsx": [],
+ "components/subtitle-board.tsx": [],
+ "components/subtitle-detail-view.tsx": [],
+ "components/subtitle-edit-dialog.tsx": [],
+ "components/subtitle-request-panel.tsx": [],
+ "components/subtitle-row-actions.tsx": [],
+ "components/subtitle-upload-form.tsx": [],
+ "components/task-board-parts.tsx": [
   110,
   111,
   112,
   113,
   114
  ],
- "components\\task-board.tsx": [],
- "components\\team-panel.tsx": [],
- "components\\textbook-link-button.tsx": [
+ "components/task-board.tsx": [],
+ "components/team-panel.tsx": [],
+ "components/textbook-link-button.tsx": [
   11,
   12,
   13,
   14
  ],
- "components\\theme-toggle.tsx": [],
- "components\\torrent-actions.tsx": [
+ "components/theme-toggle.tsx": [],
+ "components/torrent-actions.tsx": [
   73,
   83,
   118,
@@ -530,22 +530,22 @@
   167,
   176
  ],
- "components\\torrent-batch.tsx": [],
- "components\\torrent-detail-blocks.tsx": [
+ "components/torrent-batch.tsx": [],
+ "components/torrent-detail-blocks.tsx": [
   66,
   93
  ],
- "components\\torrent-detail-head.tsx": [
+ "components/torrent-detail-head.tsx": [
   72,
   104,
   145,
   157,
   158
  ],
- "components\\torrent-detail-parts.tsx": [],
- "components\\torrent-hover-preview.tsx": [],
- "components\\torrent-list-client.tsx": [],
- "components\\torrent-manage.tsx": [
+ "components/torrent-detail-parts.tsx": [],
+ "components/torrent-hover-preview.tsx": [],
+ "components/torrent-list-client.tsx": [],
+ "components/torrent-manage.tsx": [
   32,
   33,
   34,
@@ -562,20 +562,20 @@
   131,
   185
  ],
- "components\\torrent-peers.tsx": [
+ "components/torrent-peers.tsx": [
   135
  ],
- "components\\torrent-social.tsx": [],
- "components\\torrent-subtitles.tsx": [],
- "components\\torrent-table.tsx": [
+ "components/torrent-social.tsx": [],
+ "components/torrent-subtitles.tsx": [],
+ "components/torrent-table.tsx": [
   62
  ],
- "components\\torrent-tags.tsx": [
+ "components/torrent-tags.tsx": [
   35,
   36
  ],
- "components\\torrent.tsx": [],
- "components\\twofa-setup.tsx": [
+ "components/torrent.tsx": [],
+ "components/twofa-setup.tsx": [
   13,
   14,
   15,
@@ -587,7 +587,7 @@
   21,
   22
  ],
- "components\\upload-form-descr.tsx": [
+ "components/upload-form-descr.tsx": [
   53,
   54,
   55,
@@ -621,15 +621,15 @@
   219,
   233
  ],
- "components\\upload-form-files.tsx": [
+ "components/upload-form-files.tsx": [
   84,
   93,
   95,
   186,
   234
  ],
- "components\\upload-form-parts.tsx": [],
- "components\\upload-form-quality.tsx": [
+ "components/upload-form-parts.tsx": [],
+ "components/upload-form-quality.tsx": [
   88,
   111,
   141,
@@ -645,20 +645,20 @@
   190,
   197
  ],
- "components\\upload-form.tsx": [],
- "components\\user-checkin.tsx": [
+ "components/upload-form.tsx": [],
+ "components/user-checkin.tsx": [
   44
  ],
- "components\\user-menu.tsx": [],
- "components\\user-tools.tsx": [],
- "components\\usercp-forum.tsx": [],
- "components\\usercp-overview-panels.tsx": [],
- "components\\usercp-overview.tsx": [],
- "components\\usercp-personal.tsx": [],
- "components\\usercp-row.tsx": [],
- "components\\usercp-security.tsx": [],
- "components\\usercp-tracker-browse.tsx": [],
- "components\\usercp-tracker.tsx": [
+ "components/user-menu.tsx": [],
+ "components/user-tools.tsx": [],
+ "components/usercp-forum.tsx": [],
+ "components/usercp-overview-panels.tsx": [],
+ "components/usercp-overview.tsx": [],
+ "components/usercp-personal.tsx": [],
+ "components/usercp-row.tsx": [],
+ "components/usercp-security.tsx": [],
+ "components/usercp-tracker-browse.tsx": [],
+ "components/usercp-tracker.tsx": [
   13,
   14,
   15,
@@ -673,20 +673,20 @@
   159,
   214
  ],
- "components\\usercp.tsx": [],
- "components\\voucher-panel.tsx": [],
- "components\\wishlist.tsx": [],
- "components\\game\\farm-art.tsx": [],
- "components\\game\\farm-field.tsx": [],
- "components\\game\\game-kit-feedback.tsx": [],
- "components\\game\\game-kit.tsx": [],
- "components\\game\\jgg-grid.tsx": [],
- "components\\game\\runway.tsx": [
+ "components/usercp.tsx": [],
+ "components/voucher-panel.tsx": [],
+ "components/wishlist.tsx": [],
+ "components/game/farm-art.tsx": [],
+ "components/game/farm-field.tsx": [],
+ "components/game/game-kit-feedback.tsx": [],
+ "components/game/game-kit.tsx": [],
+ "components/game/jgg-grid.tsx": [],
+ "components/game/runway.tsx": [
   81
  ],
- "components\\game\\scratch-canvas.tsx": [],
- "app\\layout.tsx": [],
- "app\\setup\\page.tsx": [
+ "components/game/scratch-canvas.tsx": [],
+ "app/layout.tsx": [],
+ "app/setup/page.tsx": [
   54,
   81,
   101,
@@ -701,24 +701,24 @@
   230,
   245
  ],
- "app\\rules\\page.tsx": [],
- "app\\reset\\page.tsx": [],
- "app\\resend\\page.tsx": [],
- "app\\register\\page.tsx": [],
- "app\\offline\\page.tsx": [],
- "app\\login\\login-form.tsx": [],
- "app\\login\\login-view.tsx": [
+ "app/rules/page.tsx": [],
+ "app/reset/page.tsx": [],
+ "app/resend/page.tsx": [],
+ "app/register/page.tsx": [],
+ "app/offline/page.tsx": [],
+ "app/login/login-form.tsx": [],
+ "app/login/login-view.tsx": [
   17,
   18,
   20
  ],
- "app\\login\\page.tsx": [],
- "app\\forgot\\page.tsx": [],
- "app\\ban-log\\page.tsx": [],
- "app\\appeals\\page.tsx": [],
- "app\\(main)\\layout.tsx": [],
- "app\\(main)\\page.tsx": [],
- "app\\(main)\\users\\[id]\\page.tsx": [
+ "app/login/page.tsx": [],
+ "app/forgot/page.tsx": [],
+ "app/ban-log/page.tsx": [],
+ "app/appeals/page.tsx": [],
+ "app/(main)/layout.tsx": [],
+ "app/(main)/page.tsx": [],
+ "app/(main)/users/[id]/page.tsx": [
   64,
   65,
   66,
@@ -740,27 +740,27 @@
   82,
   83
  ],
- "app\\(main)\\users\\[id]\\_parts\\profile-card.tsx": [],
- "app\\(main)\\users\\[id]\\_parts\\profile-center.tsx": [],
- "app\\(main)\\users\\[id]\\_parts\\profile-hero.tsx": [],
- "app\\(main)\\users\\[id]\\_parts\\profile-moreinfo.tsx": [],
- "app\\(main)\\users\\[id]\\_parts\\profile-tabs.tsx": [],
- "app\\(main)\\upload\\page.tsx": [],
- "app\\(main)\\torrents\\page.tsx": [],
- "app\\(main)\\torrents\\_parts\\torrents-adv-gear.tsx": [],
- "app\\(main)\\torrents\\_parts\\torrents-adv-groups-tail.tsx": [],
- "app\\(main)\\torrents\\_parts\\torrents-adv-groups.tsx": [],
- "app\\(main)\\torrents\\_parts\\torrents-cards.tsx": [
+ "app/(main)/users/[id]/_parts/profile-card.tsx": [],
+ "app/(main)/users/[id]/_parts/profile-center.tsx": [],
+ "app/(main)/users/[id]/_parts/profile-hero.tsx": [],
+ "app/(main)/users/[id]/_parts/profile-moreinfo.tsx": [],
+ "app/(main)/users/[id]/_parts/profile-tabs.tsx": [],
+ "app/(main)/upload/page.tsx": [],
+ "app/(main)/torrents/page.tsx": [],
+ "app/(main)/torrents/_parts/torrents-adv-gear.tsx": [],
+ "app/(main)/torrents/_parts/torrents-adv-groups-tail.tsx": [],
+ "app/(main)/torrents/_parts/torrents-adv-groups.tsx": [],
+ "app/(main)/torrents/_parts/torrents-cards.tsx": [
   101,
   104
  ],
- "app\\(main)\\torrents\\_parts\\torrents-hotkeys.tsx": [],
- "app\\(main)\\torrents\\_parts\\torrents-search-box.tsx": [],
- "app\\(main)\\torrents\\_parts\\torrents-table.tsx": [
+ "app/(main)/torrents/_parts/torrents-hotkeys.tsx": [],
+ "app/(main)/torrents/_parts/torrents-search-box.tsx": [],
+ "app/(main)/torrents/_parts/torrents-table.tsx": [
   53
  ],
- "app\\(main)\\torrents\\_parts\\torrents-view-switch.tsx": [],
- "app\\(main)\\torrent\\[id]\\page.tsx": [
+ "app/(main)/torrents/_parts/torrents-view-switch.tsx": [],
+ "app/(main)/torrent/[id]/page.tsx": [
   106,
   114,
   117,
@@ -769,7 +769,7 @@
   186,
   274
  ],
- "app\\(main)\\top\\page.tsx": [
+ "app/(main)/top/page.tsx": [
   20,
   21,
   22,
@@ -780,102 +780,102 @@
   98,
   99
  ],
- "app\\(main)\\textbooks\\page.tsx": [],
- "app\\(main)\\teams\\page.tsx": [],
- "app\\(main)\\tasks\\page.tsx": [],
- "app\\(main)\\subtitles\\page.tsx": [],
- "app\\(main)\\subtitles\\[id]\\page.tsx": [],
- "app\\(main)\\staffbox\\page.tsx": [],
- "app\\(main)\\shop\\page.tsx": [],
- "app\\(main)\\resurrections\\page.tsx": [],
- "app\\(main)\\requests\\page.tsx": [],
- "app\\(main)\\reports\\page.tsx": [],
- "app\\(main)\\preserve\\page.tsx": [
+ "app/(main)/textbooks/page.tsx": [],
+ "app/(main)/teams/page.tsx": [],
+ "app/(main)/tasks/page.tsx": [],
+ "app/(main)/subtitles/page.tsx": [],
+ "app/(main)/subtitles/[id]/page.tsx": [],
+ "app/(main)/staffbox/page.tsx": [],
+ "app/(main)/shop/page.tsx": [],
+ "app/(main)/resurrections/page.tsx": [],
+ "app/(main)/requests/page.tsx": [],
+ "app/(main)/reports/page.tsx": [],
+ "app/(main)/preserve/page.tsx": [
   165
  ],
- "app\\(main)\\offers\\page.tsx": [],
- "app\\(main)\\offers\\_inner.tsx": [],
- "app\\(main)\\myhr\\page.tsx": [],
- "app\\(main)\\my-spark\\page.tsx": [
+ "app/(main)/offers/page.tsx": [],
+ "app/(main)/offers/_inner.tsx": [],
+ "app/(main)/myhr/page.tsx": [],
+ "app/(main)/my-spark/page.tsx": [
   25,
   26,
   27,
   28,
   29
  ],
- "app\\(main)\\my\\page.tsx": [],
- "app\\(main)\\my\\torrentlist\\page.tsx": [],
- "app\\(main)\\messages\\page.tsx": [],
- "app\\(main)\\medals\\page.tsx": [],
- "app\\(main)\\medal-wall\\page.tsx": [],
- "app\\(main)\\me\\exams\\page.tsx": [],
- "app\\(main)\\me\\achievements\\page.tsx": [],
- "app\\(main)\\magic-pool\\page.tsx": [],
- "app\\(main)\\links\\apply\\page.tsx": [],
- "app\\(main)\\jixiao\\page.tsx": [],
- "app\\(main)\\jixiao\\_inner.tsx": [
+ "app/(main)/my/page.tsx": [],
+ "app/(main)/my/torrentlist/page.tsx": [],
+ "app/(main)/messages/page.tsx": [],
+ "app/(main)/medals/page.tsx": [],
+ "app/(main)/medal-wall/page.tsx": [],
+ "app/(main)/me/exams/page.tsx": [],
+ "app/(main)/me/achievements/page.tsx": [],
+ "app/(main)/magic-pool/page.tsx": [],
+ "app/(main)/links/apply/page.tsx": [],
+ "app/(main)/jixiao/page.tsx": [],
+ "app/(main)/jixiao/_inner.tsx": [
   199,
   231,
   239
  ],
- "app\\(main)\\invites\\page.tsx": [],
- "app\\(main)\\gomoku\\page.tsx": [],
- "app\\(main)\\gomoku\\_inner.tsx": [],
- "app\\(main)\\getrss\\page.tsx": [],
- "app\\(main)\\games\\page.tsx": [],
- "app\\(main)\\games\\scratch\\page.tsx": [],
- "app\\(main)\\games\\scratch\\_inner.tsx": [],
- "app\\(main)\\games\\jgg\\page.tsx": [],
- "app\\(main)\\games\\jgg\\_inner.tsx": [],
- "app\\(main)\\games\\farm\\page.tsx": [],
- "app\\(main)\\games\\farm\\_inner-sections.tsx": [
+ "app/(main)/invites/page.tsx": [],
+ "app/(main)/gomoku/page.tsx": [],
+ "app/(main)/gomoku/_inner.tsx": [],
+ "app/(main)/getrss/page.tsx": [],
+ "app/(main)/games/page.tsx": [],
+ "app/(main)/games/scratch/page.tsx": [],
+ "app/(main)/games/scratch/_inner.tsx": [],
+ "app/(main)/games/jgg/page.tsx": [],
+ "app/(main)/games/jgg/_inner.tsx": [],
+ "app/(main)/games/farm/page.tsx": [],
+ "app/(main)/games/farm/_inner-sections.tsx": [
   266
  ],
- "app\\(main)\\games\\farm\\_inner.tsx": [
+ "app/(main)/games/farm/_inner.tsx": [
   252
  ],
- "app\\(main)\\games\\bigsmall\\page.tsx": [],
- "app\\(main)\\games\\bigsmall\\_inner.tsx": [
+ "app/(main)/games/bigsmall/page.tsx": [],
+ "app/(main)/games/bigsmall/_inner.tsx": [
   353
  ],
- "app\\(main)\\friends\\page.tsx": [],
- "app\\(main)\\forums\\page.tsx": [],
- "app\\(main)\\forums\\[id]\\page.tsx": [],
- "app\\(main)\\forums\\topic\\[id]\\page.tsx": [],
- "app\\(main)\\forums\\new\\page.tsx": [],
- "app\\(main)\\forums\\feed\\page.tsx": [],
- "app\\(main)\\farm\\page.tsx": [],
- "app\\(main)\\faq\\page.tsx": [],
- "app\\(main)\\endangered\\page.tsx": [],
- "app\\(main)\\dressup\\page.tsx": [],
- "app\\(main)\\dressup\\_inner.tsx": [],
- "app\\(main)\\donate\\page.tsx": [],
- "app\\(main)\\donate\\_inner-ledger.tsx": [],
- "app\\(main)\\donate\\_inner.tsx": [],
- "app\\(main)\\contactstaff\\page.tsx": [],
- "app\\(main)\\collections\\page.tsx": [],
- "app\\(main)\\collections\\[id]\\page.tsx": [],
- "app\\(main)\\cheaterbox\\page.tsx": [],
- "app\\(main)\\bank\\page.tsx": [],
- "app\\(main)\\avatar-frames\\page.tsx": [],
- "app\\(main)\\avatar-frames\\_inner.tsx": [],
- "app\\(main)\\admin\\page.tsx": [],
- "app\\(main)\\admin\\_parts\\admin-freeleech.tsx": [],
- "app\\(main)\\admin\\_parts\\admin-overview-panel.tsx": [],
- "app\\(main)\\admin\\_parts\\admin-queue-panels.tsx": [],
- "app\\(main)\\admin\\_parts\\admin-tool-panels.tsx": [],
- "app\\(main)\\admin\\_parts\\admin-tool-switch.tsx": [],
- "app\\(main)\\admin\\users\\[id]\\page.tsx": [],
- "app\\(main)\\admin\\settings\\page.tsx": [],
- "app\\(main)\\admin\\settings\\settings-client.tsx": [],
- "app\\(main)\\admin\\settings\\_parts\\settings-dialogs.tsx": [],
- "app\\(main)\\admin\\settings\\_parts\\settings-panels.tsx": [],
- "app\\(main)\\admin\\settings\\_parts\\settings-toolbar.tsx": [],
- "app\\(main)\\admin\\forums\\page.tsx": [],
- "app\\(main)\\admin\\forums\\_parts\\forum-board-drawer.tsx": [],
- "app\\(main)\\admin\\forums\\_parts\\forum-board-table.tsx": [],
- "app\\(main)\\admin\\forums\\_parts\\forum-category-panel.tsx": [],
- "i18n\\zh-CN.ts": [
+ "app/(main)/friends/page.tsx": [],
+ "app/(main)/forums/page.tsx": [],
+ "app/(main)/forums/[id]/page.tsx": [],
+ "app/(main)/forums/topic/[id]/page.tsx": [],
+ "app/(main)/forums/new/page.tsx": [],
+ "app/(main)/forums/feed/page.tsx": [],
+ "app/(main)/farm/page.tsx": [],
+ "app/(main)/faq/page.tsx": [],
+ "app/(main)/endangered/page.tsx": [],
+ "app/(main)/dressup/page.tsx": [],
+ "app/(main)/dressup/_inner.tsx": [],
+ "app/(main)/donate/page.tsx": [],
+ "app/(main)/donate/_inner-ledger.tsx": [],
+ "app/(main)/donate/_inner.tsx": [],
+ "app/(main)/contactstaff/page.tsx": [],
+ "app/(main)/collections/page.tsx": [],
+ "app/(main)/collections/[id]/page.tsx": [],
+ "app/(main)/cheaterbox/page.tsx": [],
+ "app/(main)/bank/page.tsx": [],
+ "app/(main)/avatar-frames/page.tsx": [],
+ "app/(main)/avatar-frames/_inner.tsx": [],
+ "app/(main)/admin/page.tsx": [],
+ "app/(main)/admin/_parts/admin-freeleech.tsx": [],
+ "app/(main)/admin/_parts/admin-overview-panel.tsx": [],
+ "app/(main)/admin/_parts/admin-queue-panels.tsx": [],
+ "app/(main)/admin/_parts/admin-tool-panels.tsx": [],
+ "app/(main)/admin/_parts/admin-tool-switch.tsx": [],
+ "app/(main)/admin/users/[id]/page.tsx": [],
+ "app/(main)/admin/settings/page.tsx": [],
+ "app/(main)/admin/settings/settings-client.tsx": [],
+ "app/(main)/admin/settings/_parts/settings-dialogs.tsx": [],
+ "app/(main)/admin/settings/_parts/settings-panels.tsx": [],
+ "app/(main)/admin/settings/_parts/settings-toolbar.tsx": [],
+ "app/(main)/admin/forums/page.tsx": [],
+ "app/(main)/admin/forums/_parts/forum-board-drawer.tsx": [],
+ "app/(main)/admin/forums/_parts/forum-board-table.tsx": [],
+ "app/(main)/admin/forums/_parts/forum-category-panel.tsx": [],
+ "i18n/zh-CN.ts": [
   6,
   10,
   11,
@@ -4533,7 +4533,7 @@
   4236,
   4237
  ],
- "i18n\\zh-TW.ts": [
+ "i18n/zh-TW.ts": [
   11,
   15,
   16,
@@ -8192,15 +8192,15 @@
   4189,
   4190
  ],
- "i18n\\en.ts": [
+ "i18n/en.ts": [
   1672,
   1673,
   1675
  ],
- "components\\staff-custom-pages.tsx": [
+ "components/staff-custom-pages.tsx": [
   104
  ],
- "components\\staff-user-fields.tsx": [
+ "components/staff-user-fields.tsx": [
   29,
   30,
   31,
@@ -8210,16 +8210,16 @@
   146,
   205
  ],
- "components\\torrent-manage-fields.tsx": [
+ "components/torrent-manage-fields.tsx": [
   270
  ],
- "components\\torrent-manage-parts.tsx": [
+ "components/torrent-manage-parts.tsx": [
   197,
   204,
   205,
   208
  ],
- "app\\setup\\_parts\\step-finish.tsx": [
+ "app/setup/_parts/step-finish.tsx": [
   43,
   60,
   61,
@@ -8245,7 +8245,7 @@
   198,
   205
  ],
- "app\\setup\\_parts\\step-site.tsx": [
+ "app/setup/_parts/step-site.tsx": [
   55,
   59,
   85,
@@ -8268,7 +8268,7 @@
   195,
   207
  ],
- "components\\admin-onboarding.tsx": [
+ "components/admin-onboarding.tsx": [
   19,
   20,
   21,
@@ -8290,7 +8290,7 @@
   122,
   123
  ],
- "components\\admin-economy-dashboard.tsx": [
+ "components/admin-economy-dashboard.tsx": [
   49,
   50,
   52,
@@ -8306,7 +8306,7 @@
   132,
   133
  ],
- "app\\(main)\\me\\sparks\\page.tsx": [
+ "app/(main)/me/sparks/page.tsx": [
   33,
   41,
   42,
@@ -8314,7 +8314,7 @@
   44,
   51
  ],
- "app\\(main)\\classes\\page.tsx": [
+ "app/(main)/classes/page.tsx": [
   56,
   64,
   65,
@@ -8338,15 +8338,15 @@
   196,
   212
  ],
- "app\\(auth)\\self-unban\\page.tsx": [
+ "app/(auth)/self-unban/page.tsx": [
   21,
   31,
   50
  ],
- "app\\api\\[...path]\\route.ts": [
+ "app/api/[...path]/route.ts": [
   70
  ],
- "components\\gacha-rates.tsx": [
+ "components/gacha-rates.tsx": [
   16,
   17,
   18,
@@ -8360,10 +8360,10 @@
   88,
   91
  ],
- "lib\\use-passkey-login.ts": [
+ "lib/use-passkey-login.ts": [
   46
  ],
- "components\\admin-applications.tsx": [
+ "components/admin-applications.tsx": [
   19,
   20,
   21,
@@ -8373,7 +8373,7 @@
   72,
   103
  ],
- "components\\passkeys-card.tsx": [
+ "components/passkeys-card.tsx": [
   55,
   70,
   82,
@@ -8382,21 +8382,21 @@
   143,
   144
  ],
- "lib\\captcha-widget.ts": [],
- "app\\(auth)\\apply\\page.tsx": [
+ "lib/captcha-widget.ts": [],
+ "app/(auth)/apply/page.tsx": [
   52,
   65,
   123
  ],
- "components\\gacha-album.tsx": [
+ "components/gacha-album.tsx": [
   78,
   85,
   86,
   122,
   132
  ],
- "app\\(main)\\gacha\\_inner.tsx": [],
- "components\\admin-gacha.tsx": [
+ "app/(main)/gacha/_inner.tsx": [],
+ "components/admin-gacha.tsx": [
   65,
   96,
   104,
@@ -8404,16 +8404,16 @@
   133,
   134
  ],
- "app\\(auth)\\email-verify\\page.tsx": [
+ "app/(auth)/email-verify/page.tsx": [
   48,
   66,
   72,
   85
  ],
- "components\\game\\scratch-coat.tsx": [
+ "components/game/scratch-coat.tsx": [
   66
  ],
- "lib\\spark-kind-labels.ts": [
+ "lib/spark-kind-labels.ts": [
   15,
   16,
   17,
@@ -8473,7 +8473,7 @@
   87,
   88
  ],
- "e2e\\smoke.spec.ts": [
+ "e2e/smoke.spec.ts": [
   10,
   14,
   23,
@@ -8482,22 +8482,22 @@
   39,
   43
  ],
- "components\\ui\\skeleton.tsx": [
+ "components/ui/skeleton.tsx": [
   25,
   56
  ],
- "app\\error.tsx": [
+ "app/error.tsx": [
   36,
   37
  ],
- "app\\not-found.tsx": [
+ "app/not-found.tsx": [
   26,
   27
  ],
- "components\\game\\bigsmall-road.tsx": [
+ "components/game/bigsmall-road.tsx": [
   130
  ],
- "components\\game\\game-records.tsx": [
+ "components/game/game-records.tsx": [
   194
  ]
 }

@@ -17,14 +17,19 @@ const BASELINE = path.resolve(import.meta.dirname, "i18n_baseline.json");
 const CJK = /[\u4e00-\u9fff]/;
 // ⚠️ 必须同时扫 .ts —— 管理端相当一部分文案不在 tsx 里，而在
 // `admin-*-shared.ts`（选项表 / 分组字典 / 默认值）这类纯 ts 模块中。
-// 只扫 tsx 会漏掉这 154 条（实测），门禁形同虚设。排除 .d.ts / i18n / tests。
+// 只扫 tsx 会漏掉 154 条（管理端文案在 admin-*-shared.ts）；排除 .d.ts/i18n/tests。
 const GLOBS = ["**/*.ts", "**/*.tsx"];
-const files = GLOBS.flatMap((p) => globSync(p, { cwd: ROOT })).filter(
+// 键统一正斜杠：glob 在 Windows（fast-glob 回落）返回反斜杠、在 Linux/CI
+// （node:fs globSync）返回正斜杠——不归一的话「Windows 维护基线、CI 消费」
+// 全部键错位，整份基线失效、所有存量命中被误判新增（2026-10-03 CI 实炸）。
+const files = GLOBS.flatMap((p) =>
+  globSync(p, { cwd: ROOT }).map((f) => f.replace(/\\/g, "/")),
+).filter(
   (f) =>
     !f.includes("node_modules") &&
     !f.includes(".next") &&
-    !f.replace(/\\/g, "/").includes("i18n/") &&
-    !f.replace(/\\/g, "/").includes("tests/") &&
+    !f.includes("i18n/") &&
+    !f.includes("tests/") &&
     !f.endsWith(".d.ts"),
 );
 
