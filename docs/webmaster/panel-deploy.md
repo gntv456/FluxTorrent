@@ -1,75 +1,37 @@
-# 面板部署（1Panel / 宝塔）
+# 部署方式总览（SSH / 1Panel / 宝塔 怎么选）
 
-> 两款国内主流服务器面板的部署口径。**统一原则：面板只当「 Docker 运行时 +
-> 反代 + 证书」的壳**，FluxTorrent 永远以 compose 栈运行，不拆装进面板的
-> 网站目录——升级/回滚/迁移因此与裸机完全一致（见
-> [升级与回滚](upgrade.md)）。
+> 不懂的词先查 [术语小词典](glossary.md)。
+> 本篇是**部署方式的选型与通用注意事项**。逐步操作在对应的方式专文里：
+> - **[SSH 部署方式](build-tutorial.md)**（命令行，从买服务器到上线）
+> - **[1Panel 部署方式](deploy-1panel.md)**（面板图形化）
+> - **[宝塔部署方式](deploy-baota.md)**（面板图形化）
 >
-> 已经熟悉 Docker 的同学不需要本文：面板路径没有额外魔法。
+> 三种方式**安装向导四步、开站前检查、发种邀请完全一样**，区别只在「怎么起栈」和「怎么配反代/证书」。
 
-## 1Panel
+## TL;DR（赶时间看这版）
 
-1Panel 自带 Docker 与 Compose 编排（应用商店 → 容器 → 编排），是两款面板里
-更顺的路径。
+- **拿不定主意** → 选 SSH 命令行（[看教程](build-tutorial.md)），最可控、资料最多。
+- **想图形化点点鼠标** → 1Panel 或宝塔，二选一即可（[1Panel](deploy-1panel.md) / [宝塔](deploy-baota.md)）。
+- **一句话原则**：面板只是「跑 Docker + 反代 + 证书」的外壳，本站永远以 compose 整包运行。
 
-### 步骤
+## 一句话原则
 
-1. **装 1Panel**（官方一键脚本），首次进入会自动装好 Docker；
-2. **上传代码**：主机终端里 `git clone <本仓库> && cd FluxTorrent`（或面板
-   「文件」上传解压），放在如 `/opt/fluxtorrent`；
-3. **配环境**：`cp docker/.env.example docker/.env` 后编辑必填三项
-   （DB_PASSWORD / REDIS_PASSWORD / JWT_SECRET，口径见
-   [快速开始](quick-start.md)）；
-4. **建编排**：面板「容器 → 编排 → 创建编排」，路径指向仓库根（compose 文件
-   选 `docker/docker-compose.yml`）。起栈后 5 个容器（postgres/redis/api/
-   worker/tracker）应全部健康；
-5. **反代与证书**：「网站 → 网站 → 创建网站 → 反向代理」，域名指向
-   `http://127.0.0.1:3000`（web 容器）；在网站设置里申请 Let's Encrypt
-   证书并开启 HTTPS；
-6. **放行端口**：面板「主机 → 防火墙」放行 80/443（网站）与 **6969/UDP、
-   7070/TCP**（tracker，announce 直连走它，见 launch-checklist）；
-7. **收尾**：浏览器 `https://<域名>/setup` 完成安装向导。
+**面板只当「运行 Docker + 反代 + 证书」的外壳**，本站永远以 compose 栈（一整包容器）运行，不拆成面板的网站目录。这样升级、回滚、换机器都和裸机手动装完全一样（见 [升级与回滚](upgrade.md)）。
 
-### 注意
+## 三种方式对比
 
-- 1Panel 的「应用商店」没有 FluxTorrent 条目（也不建议装成面板应用——
-  应用商店的应用升级路径不受我们控制）；
-- 编排名随意，但**不要**让面板「自动拉取镜像更新」——升级按
-  `git pull && 重新 up` 的节奏来，先看 CHANGELOG 再动。
+| 方式 | 起栈 | 反代/证书 | 适合 |
+| :--- | :--- | :--- | :--- |
+| SSH 命令行 | 终端 `docker compose up -d` | 手敲 Nginx + certbot | 想完全掌控、熟悉终端 |
+| 1Panel | 面板「编排」创建并启动 | 面板网站反代 + Let's Encrypt（tracker 需补 `/announce/`） | 想图形化、1Panel 顺手 |
+| 宝塔 | 终端 `up -d`（免费版无编排 UI） | 宝塔网站反代 + Let's Encrypt（tracker 需补 `/announce/`） | 熟悉宝塔 |
 
-## 宝塔（BT-Panel）
+## 面板通用注意事项（两个方式都适用）
 
-宝塔免费版没有 compose 编排 UI，路径是「终端装 Docker + 网站反代」。
+1. **别装成面板应用**：1Panel 应用商店没有 FluxTorrent 条目，也不要装成面板应用——应用商店应用的升级路径不受我们控制，会和 compose 栈冲突。
+2. **别让面板「自动拉取镜像更新」**：升级按 `git pull && 重新 up` 的节奏，且先看 CHANGELOG。
+3. **tracker 反代要手动补**：面板默认只反代了网站（3000），`/announce/` → 7070 这段要在网站 Nginx 配置里手动加，否则用户做不了种。
+4. **别用「Python/Node 项目」形态**：那会把栈拆散成面板托管，升级和多机扩容对不上。
+5. **MySQL/Redis 别在面板另装**：栈内自带，再装只会抢端口。
 
-### 步骤
-
-1. **装宝塔**（官方脚本），软件商店里安装 **Docker 管理器**（会带上
-   docker compose 插件）；
-2. **上传代码**：宝塔「文件」上传仓库到 `/opt/fluxtorrent`（或终端 git
-   clone）；
-3. **配环境**：同上，`docker/.env` 必填三项；
-4. **起栈**：宝塔终端 `docker compose -f docker/docker-compose.yml up -d`。
-   Docker 管理器里能看到 5 个容器即成功（不要在面板里逐个容器点「启动/
-   重启」——compose 栈整体生命周期交给 compose）；
-5. **反代**：宝塔「网站 → 添加站点」（纯静态、不开 FTP/数据库），域名解析
-   到本机后进站点设置 → 「反向代理」目标 `http://127.0.0.1:3000`；
-6. **证书**：站点设置 → SSL → Let's Encrypt 申请，开启「强制 HTTPS」；
-7. **tracker 端口**：宝塔「安全」放行 6969/UDP 与 7070/TCP；
-8. **收尾**：`https://<域名>/setup` 完成向导。
-
-### 注意
-
-- 宝塔的 Nginx 反代默认 `proxy_buffering on`，对 web（Next.js）无碍；
-  若后续挂大文件下载代理，参照 `_doc/生产部署指南.md` 调 buffer；
-- **别用宝塔的「Python/Node 项目」形态部署**——那会把栈拆散成面板托管，
-  升级/多机扩容（G30 配方）都对不上；
-- MySQL/Redis 别在面板里另装一份——栈内自带，再装只会抢端口。
-
-## 常见问题
-
-| 症状 | 原因 | 处置 |
-|---|---|---|
-| 容器起一半退出 | `.env` 必填三项没填全 | 看容器日志（面板可看），补齐后 `up -d` |
-| 网站打开了但 API 全 404 | 反代只代理了页面没代理 `/api` | web 容器自带 `/api` 转发（同源），确认反代目标是 3000 整站 |
-| announce 不通 | 6969/UDP 未放行或被面板防火墙拦 | 面板+云厂商安全组两层都要放 |
-| 面板重装后容器消失 | Docker 数据目录被清 | 代码与 `docker/.env` 在仓库目录，`up -d` 即恢复（数据在卷里，先确认卷未被删） |
+> 更细的逐步操作、每一步点哪，进对应的方式专文。域名/HTTPS 的原理见 [域名部署](domain-deploy.md)。
