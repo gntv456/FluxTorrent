@@ -122,7 +122,18 @@ jobs:
           psql "$DATABASE_URL" -t -A -c "
             INSERT INTO users (username, email, pass_hash, passkey, class_id)
             VALUES ('root', 'root@flux.local', 'stub', 'rootpasskey0000000000000000000ff', 99)
-            ON CONFLICT (username) DO NOTHING;"
+            ON CONFLICT (username) DO UPDATE
+              SET passkey = EXCLUDED.passkey, class_id = EXCLUDED.class_id;"
+          # announce 冒烟的 info_hash 白名单（e32e541）：伪造 hash 会被拒，
+          # 引导一颗待审种（approval_status=0 允许 announce——发布者审核期要先能做种）。
+          # info_hash 列是 character(40) 十六进制文本，不是 bytea。
+          psql "$DATABASE_URL" -t -A -c "
+            INSERT INTO torrents (info_hash, name, owner_id, size, numfiles,
+                                  approval_status, category_id)
+            SELECT repeat('41', 40), 'ci-smoke-announce', id,
+                   1024, 1, 0, (SELECT min(id) FROM categories)
+              FROM users WHERE username = 'root'
+            ON CONFLICT DO NOTHING;"
 
       - name: HTTP 冒烟（schema 驱动，不依赖种子业务数据）
         run: |
