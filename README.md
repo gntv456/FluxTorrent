@@ -66,7 +66,7 @@ docker compose -f docker/docker-compose.yml up -d
 ## 质量门禁
 
 ```bash
-cargo fmt --all --check && cargo check && cargo test      # 144 个 Rust 单测
+cargo fmt --all --check && cargo check && cargo test      # 202 个 Rust 单测
 pnpm --filter @fluxtorrent/web exec next build            # tsc strict
 scripts/ci_local.sh                                       # CI 等价本地闸门（8 个守门脚本）
 ```
