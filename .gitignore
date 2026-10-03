@@ -59,6 +59,8 @@ design-system/
 /_i18n_chk/
 /_ref/
 /_upgrade_test/
+/_logo_out/
+/_ui_audit_shots/
 .zcode/plans/
 .wide-tmp/
 
