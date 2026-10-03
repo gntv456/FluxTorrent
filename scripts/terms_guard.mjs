@@ -12,7 +12,7 @@
 // 读库方式与 module_keys_guard.mjs 一致：连不上 flux-postgres 时跳过 DB 部分，
 // 静态部分仍然生效。用法：node scripts/terms_guard.mjs
 import { readFileSync, existsSync } from "node:fs";
-import { globSync } from "node:fs";
+import { globCompat as globSync } from "./lib/glob_compat.mjs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
