@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ApiError, setSessionCookie } from "@/lib/api-client";
 import type { Status } from "./setup-types";
 
@@ -44,6 +44,21 @@ export function SetupStepSite({
   const [err, setErr] = useState("");
   // 仅当后台上报「引导 root 仍是临时密码」时渲染改密块
   const needReset = status?.root_temp_password === true;
+  // 从浏览器地址推导建议 announce：有域名（非 IP/localhost）才建议——
+  // 冷启动经 IP:3000 访问时不猜（此时反代/证书都没配，填了也不通），
+  // 留空 + 收尾指引比一个错值更安全。
+  const [suggest, setSuggest] = useState("");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const host = window.location.hostname;
+    const isIp =
+      /^\d+\.\d+\.\d+\.\d+$/.test(host) || host.includes(":");
+    const isLocal =
+      host === "localhost" || host.endsWith(".local");
+    if (!isIp && !isLocal && host.includes(".")) {
+      setSuggest(`https://${host}`);
+    }
+  }, []);
 
   async function next() {
     setErr("");
@@ -170,7 +185,9 @@ export function SetupStepSite({
         />
       </label>
       {/* P0-2.1：announce 在向导内采集。留空 = 保持现状（幂等重入不炸
-          老站），但公网填写的引导文案到位；仍填 127.0.0.1 由后端拒绝 */}
+          老站），但公网填写的引导文案到位；仍填 127.0.0.1 由后端拒绝。
+          有域名访问时给出「一键采用建议值」；IP 访问（冷启动常态）时
+          明确告知先留空、收尾再配 */}
       <label className="block text-sm">
         <span className="text-muted">
           {t("announceUrl", "Tracker 公网地址（announce URL）")}
@@ -179,16 +196,39 @@ export function SetupStepSite({
           className={`mt-1 ${inputCls}`}
           value={announceUrl}
           onChange={(e) => setAnnounceUrl(e.target.value)}
-          placeholder="https://tracker.example.com/announce"
+          placeholder={suggest || "https://tracker.example.com"}
         />
-        <span className="mt-1 block text-xs text-muted">
-          {t(
-            "announceHint",
-            "这是你站点的公网 Tracker 地址——其他用户下载种子后将通" +
-              "过它连接做种。留空保持现状；填 127.0.0.1/localhost 将被" +
-              "拒绝。",
-          )}
-        </span>
+        {suggest ? (
+          <span className="mt-1 block text-xs text-muted">
+            {t("announceSuggestPrefix", "检测到你在用域名访问：")}
+            <button
+              type="button"
+              className="mx-1 underline"
+              onClick={() => setAnnounceUrl(suggest)}
+            >
+              {t("announceSuggestUse", `采用 ${suggest}`)}
+            </button>
+            {t(
+              "announceSuggestSuffix",
+              "（前提：HTTPS 已配好；还没配就先留空，配完在后台填）",
+            )}
+          </span>
+        ) : (
+          <span className="mt-1 block text-xs text-muted">
+            {t(
+              "announceHint",
+              "这是你站点的公网 Tracker 地址——其他用户下载种子后将通" +
+                "过它连接做种。留空保持现状；填 127.0.0.1/localhost 将被" +
+                "拒绝。",
+            )}
+            {t(
+              "announceHintColdstart",
+              "你现在是 IP 访问（域名/HTTPS 还没配）：建议先留空，配好" +
+                "域名后到后台「站点设定 → 基础设定 → Tracker 地址」填 " +
+                "https://你的域名。",
+            )}
+          </span>
+        )}
       </label>
       <div className="flex gap-2">
         <button className={`${btn}`} onClick={onBack}>

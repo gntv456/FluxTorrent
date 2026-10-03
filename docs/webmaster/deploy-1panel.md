@@ -53,9 +53,9 @@ git clone https://github.com/gntv456/FluxTorrent.git && cd FluxTorrent
 cp docker/.env.example docker/.env
 ```
 
-**方式二（面板「文件」）：** 把仓库打包上传到 `/opt/fluxtorrent` 并解压，然后终端里 `cp docker/.env.example docker/.env`。
+**方式二（面板「文件」，全程不碰终端）：** 把仓库打包上传到 `/opt/fluxtorrent` 并解压。接着做 `.env`：在面板文件管理器进入 `/opt/fluxtorrent/docker`，看不到 `.env.example` 就先开「显示隐藏文件」，复制一份重命名为 `.env`，双击在线编辑（或下载到本地改完再传回）。
 
-编辑 `.env`，至少填三项：
+**编辑 `.env`（面板里双击 `.env` 在线编辑，或终端 `nano docker/.env`），至少填三项：**
 
 | 配置项 | 填什么 | 例子 |
 | :--- | :--- | :--- |

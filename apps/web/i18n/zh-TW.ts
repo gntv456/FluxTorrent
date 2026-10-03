@@ -164,6 +164,16 @@ const zhTwBase: Omit<
     announceUrl: "Tracker 公網位址（announce URL）",
     announceHint:
       "這是你站點的公網 Tracker 位址——其他使用者下載種子後將透過它連接做種。留空保持現狀；填 127.0.0.1/localhost 將被拒絕。",
+    // 冷啟動 announce 引導（網域訪問一鍵採用 / IP 訪問明確留空）
+    announceSuggestPrefix: "偵測到你在用網域訪問：",
+    announceSuggestUse: "採用建議值",
+    announceSuggestSuffix:
+      "（前提：HTTPS 已配好；還沒配就先留空，配完在後台填）",
+    announceHintColdstart:
+      "你现在是 IP 訪問（網域/HTTPS 還沒配）：建議先留空，配好網域後到後台「站點設定 → 基礎設定 → Tracker 位址」填 https://你的網域。",
+    ipAccessTitle: "你现在是 IP 直連（3000 對外網敞開）",
+    ipAccessHint:
+      "正式開站前建議：① 寶塔/1Panel 建站反代到 127.0.0.1:3000 並配 HTTPS 憑證；② 後台 Tracker 位址改成 https://你的網域；③ 伺服器 docker/.env 刪掉 WEB_BIND=0.0.0.0 那行（或重跑 quick-deploy.sh 自動收回）並重啟棧，雲端安全群組關掉 3000。",
     firstInviteTitle: "已產生首個邀請碼（本站為邀請制註冊）：",
     firstInviteHint:
       "把它交給第一個註冊的使用者（註冊頁填入即可）；更多邀請碼在後台「邀請管理」發放。",
@@ -411,6 +421,13 @@ const zhTwBase: Omit<
   },
   page: {
     updatedAt: "最後更新",
+  },
+  help: {
+    title: "幫助中心",
+    subtitle: "新手指南與常見問題，照著做就能上手",
+    empty: "幫助內容正在準備中，先看看下面的常見問題。",
+    groupGuide: "使用指南",
+    readDoc: "閱讀",
   },
   register: {
     title: "加入我們",
@@ -3475,6 +3492,8 @@ const zhTwBase: Omit<
     visible: "可見",
     visibleOn: "已發布",
     visibleOff: "已隱藏",
+    docGroupLabel: "幫助分組",
+    docSortLabel: "組內排序",
     hideAction: "隱藏",
     showAction: "發布",
     sortLabel: "排序",

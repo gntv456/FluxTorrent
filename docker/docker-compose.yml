@@ -269,6 +269,10 @@ services:
       # 相对路径——不编假域名，但要绝对地址就得在这配。
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
     ports:
+      # WEB_BIND 默认 127.0.0.1（生产默认：公网不可达，流量走 443 反代）。
+      # 冷启动例外由 quick-deploy.sh 管：首次安装期间写 WEB_BIND=0.0.0.0
+      # 进 .env（外网浏览器要开 :3000/setup），脚本重跑检测向导已完成时
+      # 自动删行收回——键位单一，收回即删行。
       - "${WEB_BIND:-127.0.0.1}:${FLUX_WEB_PORT:-3000}:3000"
     # 0224 G30：LB 判活依据（此前 web 是唯一无 healthcheck 的服务）。
     # 镜像 debian-slim 无 wget/curl，用 node 探（standalone 产物自带 node）

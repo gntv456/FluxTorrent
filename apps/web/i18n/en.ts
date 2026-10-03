@@ -167,6 +167,16 @@ const enBase: Omit<
     announceUrl: "Public Tracker announce URL",
     announceHint:
       "Your site's public Tracker address — peers use it to connect after downloading torrents. Leave blank to keep current; 127.0.0.1/localhost is rejected.",
+    // Cold-start announce guidance (domain visit suggests / IP visit says leave blank)
+    announceSuggestPrefix: "You are visiting via a domain:",
+    announceSuggestUse: "Use suggestion",
+    announceSuggestSuffix:
+      "(only if HTTPS is already set up; otherwise leave blank and configure it in the admin panel later)",
+    announceHintColdstart:
+      "You are visiting via IP (no domain/HTTPS yet): leave blank for now, then set https://your-domain in Admin → Site Settings → Basic → Tracker URL after the domain is configured.",
+    ipAccessTitle: "You are on a direct IP connection (port 3000 is exposed)",
+    ipAccessHint:
+      "Before going live: ① set up a reverse proxy to 127.0.0.1:3000 with an HTTPS certificate (BT-Panel/1Panel); ② set the admin Tracker URL to https://your-domain; ③ remove WEB_BIND=0.0.0.0 from docker/.env (or re-run quick-deploy.sh to auto-revert) and restart the stack, then close port 3000 in the cloud firewall.",
     firstInviteTitle:
       "First invite code generated (registration is invite-only):",
     firstInviteHint:
@@ -419,6 +429,13 @@ const enBase: Omit<
   },
   page: {
     updatedAt: "Last updated",
+  },
+  help: {
+    title: "Help Center",
+    subtitle: "Guides and answers to get you started",
+    empty: "Help content is on the way. Check the FAQ below.",
+    groupGuide: "Guides",
+    readDoc: "Read",
   },
   register: {
     title: "Join us",
@@ -3586,6 +3603,8 @@ const enBase: Omit<
     visible: "Visible",
     visibleOn: "Published",
     visibleOff: "Hidden",
+    docGroupLabel: "Help group",
+    docSortLabel: "Group sort",
     hideAction: "Hide",
     showAction: "Publish",
     sortLabel: "Sort",

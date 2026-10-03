@@ -135,6 +135,30 @@ export function SetupStepFinish({
                 "也可在「站点设定 → 内容包」导入。",
             )}
           </p>
+          {/* 冷启动收尾联动：用 IP 直连 :3000 完成向导（无域名/反代）时，
+              服务器还在裸奔——给出「收回 3000」的三步指引。域名访问则不显示。 */}
+          {typeof window !== "undefined" &&
+            (/^\d+\.\d+\.\d+\.\d+$/.test(window.location.hostname) ||
+              window.location.hostname === "localhost") && (
+              <div
+                className="mt-3 rounded-md border border-warn/40 bg-warn/10
+                  px-3 py-2 text-left text-xs"
+              >
+                <p className="font-medium">
+                  {t("ipAccessTitle", "你现在是 IP 直连（3000 对外网敞开）")}
+                </p>
+                <p className="mt-1 text-muted">
+                  {t(
+                    "ipAccessHint",
+                    "正式开站前建议：① 宝塔/1Panel 建站反代到 " +
+                      "127.0.0.1:3000 并配 HTTPS 证书；② 后台 Tracker 地址改" +
+                      "成 https://你的域名；③ 服务器 docker/.env 删掉 " +
+                      "WEB_BIND=0.0.0.0 那行（或重跑 quick-deploy.sh 自动收" +
+                      "回）并重启栈，云安全组关掉 3000。",
+                  )}
+                </p>
+              </div>
+            )}
         </div>
       )}
       {/* 开站 checklist（0209 P2-12）：装完就有可操作的警示卡。

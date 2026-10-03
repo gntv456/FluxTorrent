@@ -57,7 +57,7 @@ docker load -i fluxtorrent-offline-latest-20261003.tar
 
 # 2) 准备配置
 cp docker/.env.example docker/.env
-vim docker/.env        # 填 DB_PASSWORD / REDIS_PASSWORD / JWT_SECRET
+nano docker/.env      # 填 DB_PASSWORD / REDIS_PASSWORD / JWT_SECRET；也可用面板「文件」双击在线编辑
 
 # 3) 启动（注意：不要加 --build，否则会去拉基础镜像）
 docker compose -f docker/docker-compose.yml up -d

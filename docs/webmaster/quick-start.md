@@ -52,9 +52,11 @@
 git clone https://github.com/gntv456/FluxTorrent.git && cd FluxTorrent
 # 或用 SSH：git clone git@github.com:gntv456/FluxTorrent.git && cd FluxTorrent
 cp docker/.env.example docker/.env
-vim docker/.env        # 见下方“填什么”
+nano docker/.env       # 见下方“填什么”；保存 Ctrl+O 回车，退出 Ctrl+X
 docker compose -f docker/docker-compose.yml up -d
 ```
+
+> 不习惯终端编辑器？两条替代路：① 用宝塔/1Panel 等面板的「文件」管理器，进到 `docker/` 目录双击 `.env` 在线编辑（复制 `.env.example` 改名 `.env` 也在面板里点完成）；② 把 `docker/.env.example` 下载到自己电脑，记事本改好三项、文件改名为 `.env`，再上传回服务器的 `docker/` 目录。改完再回来跑最后那条 `docker compose ... up -d`。
 
 **填什么**（用编辑器打开 `.env` 后，至少有三项必须填，不填服务起不来）：
 
