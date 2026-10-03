@@ -87,7 +87,18 @@ async fn torrent_batch(
             .rows_affected()
         }
         "promo" => {
-            let kind = body.promo_kind.as_deref().unwrap_or("free");
+            // 深测四轮（2026-10-03）：promo_kind 未给才缺省 free；给了但不在
+            // 白名单的值直接 400——旧版 unwrap_or 会把拼错的 kind（如 "x2free"
+            // 误传 "2xfree"）静默挂成 free，管理端无感知（本轮深测实测踩中）。
+            let kind = match body.promo_kind.as_deref() {
+                None => "free",
+                Some(k) if PROMO_KINDS.contains(&k) => k,
+                Some(k) => {
+                    return Err(DomainError::Validation(format!(
+                        "未知促销类型：{k}（合法值：{PROMO_KINDS:?}）"
+                    )));
+                }
+            };
             if !PROMO_KINDS.contains(&kind) {
                 return Err(DomainError::Validation("未知促销类型".into()));
             }
