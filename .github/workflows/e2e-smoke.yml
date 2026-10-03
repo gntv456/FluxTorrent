@@ -126,11 +126,12 @@ jobs:
               SET passkey = EXCLUDED.passkey, class_id = EXCLUDED.class_id;"
           # announce 冒烟的 info_hash 白名单（e32e541）：伪造 hash 会被拒，
           # 引导一颗待审种（approval_status=0 允许 announce——发布者审核期要先能做种）。
-          # info_hash 列是 character(40) 十六进制文本，不是 bytea。
+          # info_hash 列是 character(40) 的十六进制文本（20 字节 → 40 个字符）；
+          # repeat('41', 40) 是 80 字符必溢出，正确写法 repeat('41', 20)。
           psql "$DATABASE_URL" -t -A -c "
             INSERT INTO torrents (info_hash, name, owner_id, size, numfiles,
                                   approval_status, category_id)
-            SELECT repeat('41', 40), 'ci-smoke-announce', id,
+            SELECT repeat('41', 20), 'ci-smoke-announce', id,
                    1024, 1, 0, (SELECT min(id) FROM categories)
               FROM users WHERE username = 'root'
             ON CONFLICT DO NOTHING;"
