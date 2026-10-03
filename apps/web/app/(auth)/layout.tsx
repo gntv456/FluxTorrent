@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
-import { Icon } from "@/components/icons";
 
 /** 认证组布局（M5.1）：register/forgot/reset 共用（login 保留自己的
  *  双栏画布 bz-login-canvas，不进本组——见概念稿 §13 认证页补设计）。
@@ -18,7 +17,14 @@ export default async function AuthLayout({
     <div className="auth-shell">
       <header className="auth-shell__head">
         <Link href="/" className="auth-shell__brand" title={brand}>
-          <Icon name="seed" size={26} className="shrink-0 text-[var(--sky)]" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/logo-mark.png"
+            alt=""
+            width={26}
+            height={26}
+            className="shrink-0"
+          />
           <span className="truncate font-display text-xl text-ink">
             {brand}
           </span>

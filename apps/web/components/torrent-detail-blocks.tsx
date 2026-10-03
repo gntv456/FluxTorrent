@@ -4,6 +4,7 @@ import { GroupSubscribeButton } from "@/components/group-subscribe-button";
 import { CommentDeleteButton } from "@/components/comment-delete-button";
 import { CommentLikeButton } from "@/components/comment-like-button";
 import { CommentReplyButton } from "@/components/comment-reply-button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { dateLocale, type Locale } from "@/i18n/config";
 import type { Dict } from "@/i18n/server";
 import type { TorrentComment } from "@fluxtorrent/domain-types";
@@ -219,7 +220,13 @@ export function Comments({
         </div>
       ))}
       {comments.length === 0 && (
-        <p className="py-4 text-center text-sub">{dict.torrent.noComments}</p>
+        /* 2026-10-03：此前是裸文字居中（无容器无引导），
+           用户想评论不知道从哪下手。改用统一空态三件套。 */
+        <EmptyState
+          icon="topic"
+          title={dict.torrent.noComments}
+          compact
+        />
       )}
     </section>
   );

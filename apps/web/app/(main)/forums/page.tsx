@@ -107,7 +107,14 @@ export default async function ForumsPage() {
             ) : (
               <div className="pting-cards">
                 {g.items.map((f) => (
-                  <article key={f.id} className="pting-card">
+                  /* 2026-10-03：空版块（0 话题）此前与有内容版块视觉同构，
+                     用户无法一眼分辨哪个版块有货。给 0 话题版块加 muted
+                     降饱和 + data-empty 钩子（CSS 据此压低对比）。 */
+                  <article
+                    key={f.id}
+                    className="pting-card"
+                    data-empty={f.topics === 0 ? "true" : undefined}
+                  >
                     <header>
                       <Link
                         href={`/forums/${f.id}`}

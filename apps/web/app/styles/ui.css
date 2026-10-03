@@ -1,0 +1,432 @@
+/* ===== FluxTorrent · UI 基础组件层（2026-10-03 新建）=====
+   范围（严格）：基础组件的视觉，不含页面域样式。
+     ✅ .ui-empty  空态三件套（图标 + 文案 + 引导动作）
+     ✅ .ui-btn    按钮变体统一（解决"同页 5 种按钮样式"）
+     ✅ .ui-card   卡片基座（统一圆角/边框/阴影/留白）
+     ✅ .ui-grid   共享响应式栅格（4 种容器宽度策略 → 1 套）
+   依赖：只读令牌（var(--r-*) / var(--surface-*) / var(--text-*)…），
+        **不新增硬编码色值** —— 换肤自动跟随。
+
+   纪律：新增基础组件先问「能不能复用这里的类」，
+        页面专属样式进 pages.css / layout.css，不要往本文件堆。
+   ============================================================ */
+
+/* ---------- 空态 ---------- */
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 24px;
+  text-align: center;
+}
+.ui-empty--compact {
+  gap: 7px;
+  padding: 20px 16px;
+}
+.ui-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-circle, 50%);
+  color: var(--text-faint);
+  background: var(--surface-sunken);
+}
+.ui-empty--compact .ui-empty__icon {
+  width: 38px;
+  height: 38px;
+}
+.ui-empty__title {
+  margin: 0;
+  color: var(--text-body-deep);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.ui-empty--compact .ui-empty__title {
+  font-size: 13px;
+}
+.ui-empty__desc {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ui-empty__action {
+  margin-top: 2px;
+}
+
+/* ---------- 按钮变体 ----------
+   解决「同一页面 5 种按钮样式」：圆角从 0/6/8/10/999/50% 六种收敛到
+   --r-sm（6px，直角按钮） 与 --r-pill（胶囊）两档 + 语义色三档。 */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--tap-min, 44px);
+  padding: 0 var(--sp-4, 16px);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm, 6px);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.16s var(--tide-ease, ease-out),
+    border-color 0.16s var(--tide-ease, ease-out),
+    color 0.16s var(--tide-ease, ease-out);
+}
+.ui-btn:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
+}
+.ui-btn:disabled,
+.ui-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ui-btn--primary {
+  color: var(--text-on-accent);
+  background: var(--sky);
+  border-color: var(--sky);
+}
+.ui-btn--primary:hover:not(:disabled) {
+  background: var(--sky-deep);
+  border-color: var(--sky-deep);
+}
+.ui-btn--secondary {
+  color: var(--text-body-deep);
+  background: var(--surface-card);
+  border-color: var(--border-deep);
+}
+.ui-btn--secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.ui-btn--ghost {
+  color: var(--text-brand);
+  background: transparent;
+  border-color: transparent;
+}
+.ui-btn--ghost:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.ui-btn--danger {
+  color: var(--text-on-accent);
+  background: var(--danger);
+  border-color: var(--danger);
+}
+.ui-btn--danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+/* 破坏性操作（删除/清空）用 ghost + danger 色，
+   视觉权重低于普通操作，替代此前「删除与编辑同样式」 */
+.ui-btn--danger-ghost {
+  color: var(--danger);
+  background: transparent;
+  border-color: transparent;
+}
+.ui-btn--danger-ghost:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+.ui-btn--pill {
+  border-radius: var(--r-pill, 999px);
+}
+.ui-btn--sm {
+  min-height: 32px;
+  padding: 0 var(--sp-3, 12px);
+  font-size: 13px;
+}
+
+/* ---------- 卡片基座 ---------- */
+.ui-card {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md, 10px);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+/* ---------- 共享响应式栅格 ----------
+   此前 93 个页面有 4 种容器宽度策略（1232 / 1132 / 100% / 无栅格），
+   详情页甚至零栅格导致右栏被绝对定位摆成 94px 窄条。统一到这一套。 */
+.ui-container {
+  width: 100%;
+  max-width: 1232px;
+  margin-inline: auto;
+  padding-inline: var(--sp-4, 16px);
+}
+.ui-grid {
+  display: grid;
+  gap: var(--sp-4, 16px);
+  grid-template-columns: minmax(0, 1fr);
+}
+/* ≥1024px 起双栏（主区 + 侧栏），替代详情页的绝对定位窄条 */
+@media (min-width: 1024px) {
+  .ui-grid--split {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+  .ui-grid--halves {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ui-grid--thirds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+/* 卡片网格：末行不留孤卡（auto-fit + minmax） */
+.ui-grid--cards {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+/* ---------- 统计卡（有标签）----------
+   此前首页 4 张统计卡只有数字和符号、没有文字说明，新用户无法判断
+   ↑ 是上传量、∑ 是分享率还是魔力。强制 title + unit + hint 三段。 */
+.ui-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-3, 12px) var(--sp-4, 16px);
+}
+.ui-stat__label {
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ui-stat__value {
+  color: var(--text-strong);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.ui-stat__hint {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* ---------- 加载骨架 ----------
+   补「加载态缺失」这条短板：全站多处是一个裸 `…`，用户分不清
+   加载中还是真没数据。单色低透明度块，不用彩色 shimmer（不刺眼）。 */
+.ui-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+.ui-skeleton__row,
+.ui-skeleton__block {
+  display: block;
+  border-radius: var(--r-xs, 6px);
+  background: var(--surface-sunken);
+  animation: ui-skeleton-pulse 1.4s var(--tide-ease, ease-out) infinite;
+}
+.ui-skeleton__row:nth-child(2n) {
+  width: 92%;
+}
+.ui-skeleton__row:nth-child(3n) {
+  width: 78%;
+}
+@keyframes ui-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ---------- 动效降级（2026-10-03 补）----------
+   pages.css 有 553 个选择器但 0 处 prefers-reduced-motion，
+   基础组件层先建立基线：所有过渡/动画在用户要求减少动效时归零。 */
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn,
+  .ui-empty__icon,
+  .ui-card,
+  .ui-skeleton__row,
+  .ui-skeleton__block {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ---------- 种子表头列名 ----------
+   2026-10-03：表头此前是裸 emoji（💾/🌱/⬇️/✅），列名只藏在 title
+   属性里，扫读时无法判断哪列是什么。改为「图标 + 可见文字」，
+   但表头不能挤压本就紧张的数据列，故 ≤1024px 只留图标（文字仍在
+   title 与 DOM 里，屏幕阅读器可读）。 */
+.tcol-label {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: 1px;
+}
+@media (max-width: 1024px) {
+  .tcol-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* ---------- 上传页拖拽区：必填 vs 选填 ----------
+   2026-10-03：此前所有拖拽区样式完全一致（虚线框 + 灰底 + 居中文案），
+   必填与选填只能逐字读占位符文字才分得清。改为：
+   必填 = 实线边框 + 主色强调；选填 = 虚线 + 降饱和。
+   同时统一高度（原 44/48/64 三种混排 → 选填 64px，与必填同高）。 */
+.uf-drop {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--r-sm, 6px);
+  background: var(--surface-raised);
+  color: var(--text-body);
+  font-size: 14px;
+  cursor: pointer;
+}
+.uf-drop:hover {
+  border-color: var(--border-strong);
+}
+/* 必填：实线边框 + 强调底色（视觉重量高于选填） */
+.uf-drop--required {
+  border-style: solid;
+  border-color: var(--border-strong);
+  background: var(--surface-sunken);
+  color: var(--text-body-deep);
+}
+.uf-drop--optional {
+  border-style: dashed;
+  border-color: var(--border-soft);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+}
+
+/* ---------- 浮层：底部抽屉 + 筛选 FAB/Sheet ----------
+   2026-10-03 从 pages.css 搬来：这是 components/bottom-sheet.tsx
+   的通用浮层样式，不属 pages 域；且 pages.css 已在行宽基线外
+   （只能变瘦不能变胖）。搬运不改视觉。 */
+/* ============ Bottom Sheet（M3 通用件）+ 筛选 FAB/Sheet ============ */
+.bsheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+}
+.bsheet-mask {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay-scrim, rgba(8, 19, 31, 0.42));
+}
+.bsheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 82%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px 18px 0 0;
+  background: var(--surface-card, #fff);
+  transition: transform 0.2s ease-out;
+}
+.bsheet__grab {
+  padding: 10px 16px 6px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.bsheet__bar {
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto 6px;
+  border-radius: 999px;
+  background: var(--line);
+}
+.bsheet__title {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sub);
+}
+.bsheet__body {
+  overflow-y: auto;
+  padding: 4px 16px calc(20px + env(safe-area-inset-bottom));
+}
+.filter-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 45;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--sky-deep, #0a3d6b);
+  color: var(--text-on-accent);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--shadow-hover);
+}
+.fsheet__group {
+  margin-bottom: 14px;
+}
+.fsheet__gtitle {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sub);
+}
+.fsheet__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fsheet__chip {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.fsheet__chip.is-on {
+  border-color: var(--sky-deep, #0a3d6b);
+  background: var(--sky-soft, #e6f2ff);
+  color: var(--sky-deep, #0a3d6b);
+  font-weight: 700;
+}
+.fsheet__acts {
+  display: flex;
+  gap: 8px;
+  padding-top: 6px;
+}
+.fsheet__btn {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 700;
+}
+.fsheet__btn.is-primary {
+  border-color: var(--sky-deep, #0a3d6b);
+  background: var(--sky-deep, #0a3d6b);
+  color: var(--text-on-accent);
+}

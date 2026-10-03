@@ -66,9 +66,10 @@ export function TorrentsTable({
                       "sort",
                       toggleSort(sp.sort, "comments"),
                     )}
-                    className="inline-flex"
+                    className="inline-flex items-center gap-1"
                   >
                     <Icon name="messages" size={15} />
+                    <span className="sr-only">{t.colComments}</span>
                   </a>
                 </th>
               )}
@@ -79,49 +80,61 @@ export function TorrentsTable({
                     size={15}
                     className="inline align-[-3px]"
                   />
+                  <span className="sr-only">{t.alive}</span>
                 </th>
               )}
+              {/* 2026-10-03：表头此前是裸 emoji（💾/🌱/⬇️/✅），列名只
+                  藏在 title 属性里，扫读时无法判断哪列是什么。改为
+                  图标 + 可见文字，窄屏由 CSS 隐藏文字保留图标。 */}
               {!hd.has("size") && (
                 <th className="w-20" title={t.colSize}>
                   <a
+                    className="inline-flex items-center gap-1"
                     href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}
                   >
-                    💾
+                    <Icon name="disc" size={15} />
+                    <span className="tcol-label">{t.colSize}</span>
                   </a>
                 </th>
               )}
               {!hd.has("seeders") && (
                 <th className="w-16" title={t.colSeeders}>
                   <a
+                    className="inline-flex items-center gap-1"
                     href={withParam(sp, "sort", toggleSort(sp.sort, "seeders"))}
                   >
-                    🌱
+                    <Icon name="seed" size={15} />
+                    <span className="tcol-label">{t.colSeeders}</span>
                   </a>
                 </th>
               )}
               {!hd.has("leechers") && (
                 <th className="w-16" title={t.colLeechers}>
                   <a
+                    className="inline-flex items-center gap-1"
                     href={withParam(
                       sp,
                       "sort",
                       toggleSort(sp.sort, "leechers"),
                     )}
                   >
-                    ⬇️
+                    <Icon name="download" size={15} />
+                    <span className="tcol-label">{t.colLeechers}</span>
                   </a>
                 </th>
               )}
               {!hd.has("completed") && (
                 <th className="w-16" title={t.colCompleted}>
                   <a
+                    className="inline-flex items-center gap-1"
                     href={withParam(
                       sp,
                       "sort",
                       toggleSort(sp.sort, "completed"),
                     )}
                   >
-                    ✅
+                    <Icon name="check" size={15} />
+                    <span className="tcol-label">{t.colCompleted}</span>
                   </a>
                 </th>
               )}

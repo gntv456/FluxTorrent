@@ -8,6 +8,8 @@ import { dateLocale } from "@/i18n/config";
 import { formatBytes } from "@/lib/format";
 import { useIsCompact } from "@/lib/hooks/use-media";
 import { TorrentRowList } from "@/components/torrent-row-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonRows } from "@/components/ui/skeleton";
 
 interface SnatchRow {
   torrent_id: number;
@@ -42,10 +44,10 @@ export function TorrentListClient({
   }, [kind]);
 
   if (rows === null) {
-    return <p className="py-6 text-center text-sub">…</p>;
+    return <SkeletonRows />;
   }
   if (rows.length === 0) {
-    return <p className="py-6 text-center text-sub">{emptyText}</p>;
+    return <EmptyState icon="seed" title={emptyText} />;
   }
   // M5.2：<640 行卡片化（与 /torrents 同一组件，消除分裂）；
   // ≥md 保留表格（列降级沿用现状）

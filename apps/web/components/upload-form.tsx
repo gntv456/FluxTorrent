@@ -322,7 +322,7 @@ export function UploadForm() {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="min-h-[38px] rounded-[10px] bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] px-5 text-sm font-bold text-white shadow-[var(--shadow-card)] hover:bg-[linear-gradient(135deg,var(--brand-orange),var(--brand-orange-dark))] active:scale-[0.97] disabled:opacity-50"
+                  className="min-h-10 rounded-[10px] bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] px-5 text-sm font-bold text-white shadow-[var(--shadow-card)] hover:bg-[linear-gradient(135deg,var(--brand-orange),var(--brand-orange-dark))] active:scale-[0.97] disabled:opacity-50"
                 >
                   {busy ? dict.upload.busy : dict.upload.submit}
                 </button>
