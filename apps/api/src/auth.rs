@@ -139,6 +139,27 @@ fn load_rs_pem() -> anyhow::Result<(String, String)> {
 mod tests {
     use super::*;
 
+    /// 测试内生成一对 2048 位 RSA 密钥（jsonwebtoken 拒绝 <2048 的 RSA）。
+    /// 生成在秒级，只在单测里用；强度口径与生产文档一致。
+    fn test_rs_keys() -> (EncodingKey, DecodingKey) {
+        use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
+        let mut rng = rand::thread_rng();
+        let priv_key =
+            rsa::RsaPrivateKey::new(&mut rng, 2048).expect("gen rsa key");
+        let priv_pem = priv_key
+            .to_pkcs8_pem(rsa::pkcs8::LineEnding::LF)
+            .expect("encode priv pem")
+            .to_string();
+        let pub_pem = priv_key
+            .to_public_key()
+            .to_public_key_pem(rsa::pkcs8::LineEnding::LF)
+            .expect("encode pub pem");
+        (
+            EncodingKey::from_rsa_pem(priv_pem.as_bytes()).unwrap(),
+            DecodingKey::from_rsa_pem(pub_pem.as_bytes()).unwrap(),
+        )
+    }
+
     #[test]
     fn jwt_roundtrip_hs() {
         let signer =
@@ -158,7 +179,20 @@ mod tests {
 
     #[test]
     fn jwt_roundtrip_rs() {
-        let signer = JwtSigner::from_config("rs256", "").unwrap();
+        // RS256 走 fail-fast 加载（0224 G30）：无密钥必须报错而不是静默生成——
+        // 这本身就是该批次要验证的行为。roundtrip 用测试内生成的密钥对，
+        // 不依赖机器上恰好残留的 data/*.pem（CI 无挂卷，此前靠本地遗留文件假绿）。
+        // 临时把密钥目录指到空目录再断言，结束后不残留（test 是串行 env 敏感的，
+        // 这里不并发跑第二个读同一 env 的用例）。
+        std::env::set_var("JWT_RS_PRIVATE_PEM", "");
+        std::env::set_var("JWT_RS_PUBLIC_PEM", "");
+        std::env::set_var("JWT_RS_KEY_DIR", "target/test_no_rs_keys");
+        let load_result = JwtSigner::from_config("rs256", "");
+        std::env::remove_var("JWT_RS_KEY_DIR");
+        assert!(load_result.is_err());
+
+        let (enc, dec) = test_rs_keys();
+        let signer = JwtSigner::Rs { enc, dec };
         let t = signer.issue(7, 5, 1).unwrap();
         let c = signer.verify(&t).unwrap();
         assert_eq!(c.sub, 7);
