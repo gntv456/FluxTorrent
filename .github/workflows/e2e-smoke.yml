@@ -173,11 +173,12 @@ jobs:
           # 与 worker process_event 同构的促销裁决双查询——直接验证 SQL 可解析可 bind。
           # 注意：psql 变量替换（:tid）只在 stdin/heredoc 生效，-c 里的 :tid 是字面量报
           # syntax error；且 torrent id 要动态取（库不是每次都从 1 记账）。
-          psql "$DATABASE_URL" -t -A -v tid="$(psql "$DATABASE_URL" -t -A -c \
-            "SELECT id FROM torrents WHERE name='ci-smoke' LIMIT 1")" <<'SQL' > /dev/null && echo "promotion SQL ok"
-            SELECT kind::text FROM promotions WHERE torrent_id = :tid AND starts_at <= now() AND ends_at > now()
-            ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'free' THEN 3 ELSE 0 END DESC, id DESC LIMIT 1;
-SQL
+          # heredoc 收尾标记 <<-'SQL' 必须独占一行且顶格（YAML 里用 <<- 会吃 tab），
+          # 所以 SQL 内容写进变量再管道给 psql——保持 YAML 块结构不破。
+          TID="$(psql "$DATABASE_URL" -t -A -c \
+            "SELECT id FROM torrents WHERE name='ci-smoke' LIMIT 1")"
+          printf "SELECT kind::text FROM promotions WHERE torrent_id = :tid AND starts_at <= now() AND ends_at > now()\nORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'free' THEN 3 ELSE 0 END DESC, id DESC LIMIT 1;\n" \
+            | psql "$DATABASE_URL" -t -A -v tid="$TID" > /dev/null && echo "promotion SQL ok"
           echo "SMOKE DONE"
 
       # PT 生命线：announce → Redis Stream → worker 计费。此前只测 api，这条链路在 CI 裸奔
