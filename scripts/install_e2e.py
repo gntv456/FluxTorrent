@@ -52,10 +52,20 @@ def code_of(body):
 
 
 def psql(sql):
-    r = subprocess.run(
-        ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
-         "-d", "fluxtorrent", "-tAc", sql],
-        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    """CI（service container 无固定名）走 DATABASE_URL 直连；本地 compose 栈
+    （容器名 flux-postgres）走 docker exec——两种环境同一语义。"""
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        r = subprocess.run(
+            ["psql", url, "-tAc", sql],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace")
+    else:
+        r = subprocess.run(
+            ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
+             "-d", "fluxtorrent", "-tAc", sql],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace")
     if r.returncode:
         raise SystemExit("psql 失败：" + r.stderr.strip()[:200])
     return r.stdout.strip()
