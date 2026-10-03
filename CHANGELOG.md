@@ -3,6 +3,105 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.3.0] - 2026-10-03
+
+v0.2.0（2026-09-27）以来 151 个提交的聚合：娱乐屋（游戏厅）全生态、抽卡收藏、
+多机部署 G30、数据层规模 G31-D、UDP tracker 首次真可用、四语化、生态兼容复测、
+UI 设计系统治理。**本版含新迁移 0227–0272（46 个），升级即自动执行。**
+
+### 破坏性变更 / 升级注意
+
+- **`JWT_ALG=rs256` 无密钥拒绝启动**（G30-A）：原先静默自动生成的密钥在容器重建/多副本
+  下互不相认。rs256 部署须挂载密钥；hs256（默认）用户零感知。
+- **对外列表口径变更**（0267）：兼容层/Torznab/RSS 默认**含零做种新种**（`alive=1`）——
+  冷启动期第三方工具不再「零结果」；代价是持 Token 成员可批量导出目录（与站内浏览
+  可见度一致，受 60 req/min 限流封顶）。
+- **`docker/.env.example` 的 `CORS_ORIGINS` 缺省值**从空改为 `http://localhost:3000`
+  （原留空非开发态必启动失败，新手第一次 `up -d` 就撞墙）；**生产必须改自己的域名**。
+- 0230 起流水归档可配（`ledger_retain_months`，0=永久缺省）；论坛正文 posts 已移出
+  归档清单（retention 永不删帖）。
+
+### 娱乐屋（游戏厅）全生态（0228–0265，30+ 提交）
+
+- **九款玩法**：钓鱼（星夜海舞台/鱼竿图鉴/渔汛）· 猜大小（三骰机制/按区奖池）·
+  九宫格 · 刮刮乐 · 大转盘 · 扭蛋 · 农场（土地阶梯/施肥/等距苗床）· 牧场（加工坊）·
+  宠物（进化/舞台化档案/日志）；「甜梦奇境·蓝调」整套换肤（纯 CSS 覆盖层）。
+- **经济安全三闸**：玩法 EV 上限闸（票档就是 EV 闸，超限拒保存）· 奖池行表化
+  （后台可配，删掉赔率静默回落）· 「扣款→结算」单事务（六条玩法路径）。
+  全站游戏审计修复批另堵 3×P1 经济漏洞 + 造假三连 + 16×P2。
+- **奖品有站内用途**：物品目录/背包/使用端点/装扮生效链/折算价；口粮券做种满
+  6h 自动发（0239）。运营后台面板：三口径 EV 对照/参数现值/概率公示页/全服公示
+  feed/周榜（收集度与局数，非经济）。
+
+### 抽卡 + 收藏面（0228/0233–0235）
+
+- 十连=真实单抽、数学双镜像（10 万抽 3.3560% 实测对表）、碎片分解/定向兑换/升级、
+  staff 发放面板、个人收藏册 `/gacha`。
+
+### 生态兼容复测批（2026-10-03，0267+0268）
+
+- **修正此前「全绿」结论**：只验「端点可达」没验「工具消费路径」。按第三方工具
+  真实用法逐项复测（48 断言）后修复：RSS `<enclosure>` 直链（cross-seed/qB/Flexget
+  此前拿到 HTML）、Torznab caps 根节点（Prowlarr/Jackett 此前无法添加索引器）、
+  tv/movie-search 参数、ptppUserInfo 补 passkey、老脚本别名薄壳。
+- **开放 API 补深**：`/open/torrents/{id}` 深详情、`/open/me/{seeding,hr,messages,
+  history}`（移动壳不再爬 HTML）、`/openapi.json` 4→27 路径含 schema、高级筛选接
+  站内同一套归一器。新增**工具维护者对接页** + `scripts/demo_seed.py`（三行命令
+  起测实例）。矩阵见 `docs/ops/compat-matrix.md`。
+
+### UI 设计系统治理（2026-10-03）
+
+- **四 P0**：深色模式完全失效（`:root,` 前缀覆盖 109 个夜间令牌）· 移动端列表砖红
+  色块透出 · `/login` 安全告知永久丢失（写死 max-height 无滚动条）· CSS 变量名带
+  空格整条声明失效 + 9 个悬挂 `var()`。
+- **新门禁** `scripts/ui_design_guard.mjs` 入 CI（六规则：变量须有定义/硬编码色只减
+  不增/断点四档/z-index 语义档/reduced-motion/focus-visible）；品牌资产全套重制
+  （logo/og/favicon/全档图标）。
+
+### 多机部署 G30（迁移 0224/0225，三机配方已实证）
+
+- 计费流消费者组（XREADGROUP + XAUTOCLAIM 回收）· 任务认领 `FOR UPDATE SKIP
+  LOCKED` + 角色分片 `FLUX_WORKER_JOBS` · tracker 挂 LB（XFF 双档）+ peer 外置
+  Redis（多副本互见）· web 运行期可换上游 · `/health` 判活 · worker 优雅停机 ·
+  跨进程配置 3s 跟随 · `docker/compose.multi-node.yml` + nginx LB 样例。
+- 详见 `_doc/G30-多机部署三机配方.md`。
+
+### 数据层规模 G31-D（迁移 0230/0237）
+
+- **读写分离**：`DATABASE_REPLICA_URL` 只读副本，热点读分流（36 处），副本故障自动
+  回落主库；**流水归档**：按月分区 DETACH→DROP 两步；**余额基线表**（0237）：归档
+  前冻结期初，三处重算公式改 baseline+SUM（直接 SUM 会清零老用户余额的 P0 修正）。
+- 部署规模矩阵 S/M/L/XL 四档（`docs/ops/performance.md`）。
+
+### UDP tracker 首次真可用（G31）
+
+- **⚠ BEP-15 魔数误写**（0x41727109807a→0x41727101980）：修复前 UDP tier 所有标准
+  客户端被静默丢弃——此前「支持 UDP」实为从未可用。另修 interval 8 字节格式 bug；
+  `TRACKER_UDP_WORKERS=N` 多核收包（SO_REUSEPORT）。
+
+### PT 硬度深测修复批（2026-10-02/03，资深用户视角四轮）
+
+- tracker 种子白名单（防幽灵 swarm 计费）· `sum()` numeric 静默归零 · H&R 三口径
+  统一读 `hr_hours` · RSS 付费种默认过滤 · 注册初始等级断链（class0）·
+  `orphan_offset` 余额污染 · 晋升奖励从不入账 · announce→计费全链路四发现。
+- 另有 zt81 并行审计批：调度饿死根治/announce 参数加固/metrics 鉴权/peer GC 等。
+
+### 开源对标 E 批（E1–E16 择要）
+
+- **四语化**（zh-CN/en/ja 段级回落）；CSP 安全头最严形态；等级页晋级进度可视化；
+  视图布局自配（列/段落显隐 9+12 键）；同义词检索；PWA 安装引导；捐赠自动回馈
+  档位（四通道发放）；面板部署指南（1Panel/宝塔）；admin 数据大盘（趋势/健康度/
+  周活）；升级演练 `scripts/upgrade_drill.py`；覆盖率基线 + Playwright E2E 骨架。
+- **可插拔验证码**（none/turnstile/recaptcha/hcaptcha）· **passkey/WebAuthn 第二
+  通道** · 申请制入站 · 不活跃策略三档 · 运维 webhook 双出口（Discord/TG）·
+  邮件激活真实发信版。
+
+### 仓库与 CI
+
+- UI design guard / view_layout guard / terms guard / type drift guard 四门禁入 CI；
+  `pnpm lint`（ESLint 9）+ Next build 门禁补齐；行数门禁 45 文件零新增。
+- Rust 单测 144→202；模块 30→31 键（invites 入注册表）。
+
 ## [0.2.0] - 2026-09-27
 
 竞品对比行动批（C 批，全案见 `_doc/开源生态全方位对比分析与完善策划案-2026-09-27.md`）。**本版含新迁移 0226**，升级即自动执行。
@@ -50,7 +149,7 @@
 - 0226 只新增设定键/表/页面，不改既有数据；`economy_max_buffer_gb` 缺省 0（不限制），彩虹 ID SKU 与自助解封需站长在后台主动启用/上架才对外可见。
 - 升级后建议过一遍 `docs/webmaster/launch-checklist.md`（新站）或直接继续运营（存量站无破坏性变更）。
 
-## [Unreleased]
+## 0.2.0 前的迭代批次（0.2.0 发布时未入版本段的记录，考古用）
 
 ### 全量代码审查修复批（2026-09-28，迁移 0237）
 
