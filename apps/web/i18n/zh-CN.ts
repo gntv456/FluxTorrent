@@ -140,6 +140,16 @@ const zhCnBase = {
     announceUrl: "Tracker 公网地址（announce URL）",
     announceHint:
       "这是你站点的公网 Tracker 地址——其他用户下载种子后将通过它连接做种。留空保持现状；填 127.0.0.1/localhost 将被拒绝。",
+    // 冷启动 announce 引导（域名访问一键采用 / IP 访问明确留空）
+    announceSuggestPrefix: "检测到你在用域名访问：",
+    announceSuggestUse: "采用建议值",
+    announceSuggestSuffix:
+      "（前提：HTTPS 已配好；还没配就先留空，配完在后台填）",
+    announceHintColdstart:
+      "你现在是 IP 访问（域名/HTTPS 还没配）：建议先留空，配好域名后到后台「站点设定 → 基础设定 → Tracker 地址」填 https://你的域名。",
+    ipAccessTitle: "你现在是 IP 直连（3000 对外网敞开）",
+    ipAccessHint:
+      "正式开站前建议：① 宝塔/1Panel 建站反代到 127.0.0.1:3000 并配 HTTPS 证书；② 后台 Tracker 地址改成 https://你的域名；③ 服务器 docker/.env 删掉 WEB_BIND=0.0.0.0 那行（或重跑 quick-deploy.sh 自动收回）并重启栈，云安全组关掉 3000。",
     firstInviteTitle: "已生成首个邀请码（本站为邀请制注册）：",
     firstInviteHint:
       "把它交给第一个注册的用户（注册页填入即可）；更多邀请码在后台「邀请管理」发放。",
@@ -389,6 +399,13 @@ const zhCnBase = {
   },
   page: {
     updatedAt: "最后更新",
+  },
+  help: {
+    title: "帮助中心",
+    subtitle: "新手指南与常见问题，照着做就能上手",
+    empty: "帮助内容正在准备中，先看看下面的常见问题。",
+    groupGuide: "使用指南",
+    readDoc: "阅读",
   },
   register: {
     title: "加入我们",
@@ -3466,6 +3483,8 @@ const zhCnBase = {
     visible: "可见",
     visibleOn: "已发布",
     visibleOff: "已隐藏",
+    docGroupLabel: "帮助分组",
+    docSortLabel: "组内排序",
     hideAction: "隐藏",
     showAction: "发布",
     sortLabel: "排序",

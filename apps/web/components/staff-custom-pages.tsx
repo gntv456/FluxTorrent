@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ModuleKeySelect } from "@/components/module-key-select";
+import {
+  HelpFieldsEditor,
+  HelpGroupBadge,
+} from "@/components/staff-custom-pages-help";
 
 /** 自定义页面管理面板（0187 一审 R4.4 的「方向盘」，三审 B-2）：
  *  站长创建/编辑/上下线任意内容页（slug → /p/{slug}），导航挂接走
@@ -18,6 +22,9 @@ interface CustomPage {
   sort: number;
   /** 挂载模块键（0199）；PUT 是全量覆盖，列表必须带回该字段否则会被清空 */
   module_key: string | null;
+  /** 帮助中心分组（0274）；非空即进 /help 目录。全量覆盖，必须带回。 */
+  doc_group: string | null;
+  doc_sort: number | null;
   updated_at: string;
 }
 
@@ -31,6 +38,8 @@ interface Draft {
   visible: boolean;
   sort: number;
   module_key: string | null;
+  doc_group: string | null;
+  doc_sort: number | null;
 }
 
 const emptyDraft = (): Draft => ({
@@ -40,6 +49,8 @@ const emptyDraft = (): Draft => ({
   visible: true,
   sort: 100,
   module_key: null,
+  doc_group: null,
+  doc_sort: null,
 });
 
 export function StaffCustomPagesPanel({
@@ -167,6 +178,8 @@ export function StaffCustomPagesPanel({
             onChange={(e) => setDraft({ ...draft, sort: Number(e.target.value) })}
           />
         </label>
+        <HelpFieldsEditor value={draft}
+          onChange={(v) => setDraft({ ...draft, ...v })} />
         <div className="flex gap-2">
           <button
             type="button"
@@ -175,8 +188,7 @@ export function StaffCustomPagesPanel({
             disabled={busy || !draft.slug.trim() || !draft.title.trim()}
           >
             {dict.usercp.saveBtn}
-          </button>
-          <button
+          </button>          <button
             type="button"
             className="rounded-full border border-line px-4 py-1.5 text-sm"
             onClick={() => {
@@ -196,27 +208,25 @@ export function StaffCustomPagesPanel({
       <div className="flex items-center justify-between">
         <p className="text-xs text-sub">{dict.adminPages.hint}</p>
         {!draft && (
-          <button
-            type="button"
+          <button type="button"
             className="rounded-full border border-line px-4 py-1.5 text-sm font-bold"
-            onClick={() => setDraft(emptyDraft())}
-          >
+            onClick={() => setDraft(emptyDraft())}>
             + {dict.adminPages.add}
           </button>
         )}
-      </div>
-      {editForm}
+      </div>      {editForm}
       <div className="baozi-wide-table-scroll">
-      <table className="nexus-table">
-        <thead>
-          <tr>
-            <th>slug</th>
-            <th>{dict.adminPages.titleLabel}</th>
-            <th>{dict.adminPages.visible}</th>
-            <th>{dict.adminPages.sortLabel}</th>
-            <th />
-          </tr>
-        </thead>
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <th>slug</th>
+              <th>{dict.adminPages.titleLabel}</th>
+              <th>{dict.adminPages.visible}</th>
+              <th>{dict.adminPages.sortLabel}</th>
+              <th>{dict.adminPages.docGroupLabel}</th>
+              <th />
+            </tr>
+          </thead>
         <tbody>
           {(rows ?? []).map((p) => (
             <tr key={p.id}>
@@ -232,10 +242,11 @@ export function StaffCustomPagesPanel({
                   : dict.adminPages.visibleOff}
               </td>
               <td className="num text-xs">{p.sort}</td>
-              <td className="flex gap-2 text-xs">
+              <td className="text-xs">
+                <HelpGroupBadge group={p.doc_group} sort={p.doc_sort} />
+              </td>              <td className="flex gap-2 text-xs">
                 <button
-                  type="button"
-                  className="underline"
+                  type="button"                  className="underline"
                   onClick={() => {
                     setEditId(p.id);
                     setDraft({
@@ -245,6 +256,8 @@ export function StaffCustomPagesPanel({
                       visible: p.visible,
                       sort: p.sort,
                       module_key: p.module_key,
+                      doc_group: p.doc_group,
+                      doc_sort: p.doc_sort,
                     });
                   }}
                 >
@@ -271,7 +284,7 @@ export function StaffCustomPagesPanel({
           ))}
           {rows !== null && rows.length === 0 && (
             <tr>
-              <td colSpan={5} className="text-sub">
+              <td colSpan={6} className="text-sub">
                 {dict.adminPages.empty}
               </td>
             </tr>
