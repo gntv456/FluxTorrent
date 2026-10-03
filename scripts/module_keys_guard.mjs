@@ -7,9 +7,13 @@
 // 用法：node scripts/module_keys_guard.mjs
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import path from "node:path";
 
-const RS = "apps/api/src/modules.rs";
-const TS = "packages/domain-types/src/index.ts";
+// 相对脚本位置解析：CI 在 apps/web 的 working-directory 下调用本脚本，
+// 相对 cwd 的路径会指到 apps/web/apps/api/...（本地在仓库根调用同样成立）
+const ROOT = path.resolve(import.meta.dirname, "..");
+const RS = path.join(ROOT, "apps/api/src/modules.rs");
+const TS = path.join(ROOT, "packages/domain-types/src/index.ts");
 
 // Rust：key 常量定义 `pub const X: &str = "k";` + ALL 列表引用大写名
 const rs = readFileSync(RS, "utf8");
