@@ -115,7 +115,7 @@ pub(super) struct ListQuery {
 
 /// 日期参数校验（严格 `YYYY-MM-DD`）：非法值直接丢弃——宁可不筛，
 /// 也不让 PG 对烂字符串抛错变成 500。
-pub(super) fn norm_date(s: Option<String>) -> Option<String> {
+pub(crate) fn norm_date(s: Option<String>) -> Option<String> {
     let s = s?;
     let s = s.trim();
     let ok = s.len() == 10
@@ -132,7 +132,7 @@ pub(super) fn norm_date(s: Option<String>) -> Option<String> {
 /// 优惠参数白名单（未知取值丢弃，避免静默返回空列表让用户以为「没数据」）。
 /// 阶段三起支持多选：`free,x2` 这类逗号串——逐项校验白名单（free/x2/half/any/none），
 /// 全非法丢弃；any/none 与具体档位语义互斥，归一时剔除（保序去重）。
-pub(super) fn norm_promo(s: Option<String>) -> Option<String> {
+pub(crate) fn norm_promo(s: Option<String>) -> Option<String> {
     let s = s?.trim().to_ascii_lowercase();
     if !s.contains(',') {
         return matches!(s.as_str(), "free" | "x2" | "half" | "any" | "none")
@@ -160,7 +160,7 @@ pub(super) fn norm_promo(s: Option<String>) -> Option<String> {
 
 /// 标签参数归一（0159 P1）：tag_id（旧单值）与 tag_ids（多选/重复参数）合并，
 /// 保序去重；tag_mode 只认 any/all，缺省 any。
-pub(super) fn norm_tags(
+pub(crate) fn norm_tags(
     tag_id: Option<i32>,
     tag_ids: &[String],
     tag_mode: Option<&str>,
@@ -183,13 +183,13 @@ pub(super) fn norm_tags(
 }
 
 /// 空白即视为未填（表单里清空后仍会提交空串）
-pub(super) fn norm_text(s: Option<String>) -> Option<String> {
+pub(crate) fn norm_text(s: Option<String>) -> Option<String> {
     s.map(|v| v.trim().to_string()).filter(|v| !v.is_empty())
 }
 
 /// 体积参数解析：`1024`（字节）/ `500MB` / `1.5GB` / `2TB`，KB/MB/GB/TB 与 KiB/GiB 写法均可，
 /// 大小写不敏感。无效值或非正数返回 None（= 不筛，而不是报错）。
-pub(super) fn parse_size(s: Option<String>) -> Option<i64> {
+pub(crate) fn parse_size(s: Option<String>) -> Option<i64> {
     let raw = s?.trim().to_ascii_lowercase();
     if raw.is_empty() {
         return None;

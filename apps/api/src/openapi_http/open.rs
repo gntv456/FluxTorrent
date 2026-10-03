@@ -6,9 +6,9 @@ use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
-use crate::torrents::CatMap;
+use crate::torrents::{CatMap, MediaMap};
 
-use super::{require_token, with_rl};
+use super::{require_scope, require_token, with_rl, SCOPE_READ};
 
 /// 单次返回上限（recent / announces 共用）
 const MAX_ROWS: i64 = 200;
@@ -166,104 +166,45 @@ pub(super) async fn open_announces(
     ))
 }
 
+/// GET /open/categories —— 分类与媒介字典（0268）。
+///
+/// 工具做分类下拉/筛选 UI 不再需要自备映射表：每条分类同时给出
+/// 站内 id、NexusPHP 4xx 号与 Newznab 标准号（与列表/详情/Torznab 同源）。
+#[get("/open/categories")]
+pub(super) async fn open_categories(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let tk = require_token(&req, &state).await?;
+    require_scope(&tk, SCOPE_READ)?;
+    let cats: Vec<(i32, String, i32, i32)> = sqlx::query_as(
+        "SELECT id, name, COALESCE(legacy_id, id), \
+         COALESCE(newznab_id, 8000) FROM categories ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let media: Vec<(i32, String)> =
+        sqlx::query_as("SELECT id, name FROM media ORDER BY sort, id")
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(with_rl(
+        ok(serde_json::json!({
+            "categories": cats.into_iter().map(|(id, name, np, nz)| {
+                serde_json::json!({
+                    "id": id, "name": name, "legacy_id": np, "newznab_id": nz,
+                })
+            }).collect::<Vec<_>>(),
+            "media": media.into_iter().map(|(id, name)| {
+                serde_json::json!({ "id": id, "name": name })
+            }).collect::<Vec<_>>(),
+        })),
+        &tk,
+    ))
+}
+
 #[get("/openapi.json")]
 pub(super) async fn openapi_spec() -> impl Responder {
-    ok(serde_json::json!({
-        "openapi": "3.1.0",
-        "info": {
-            "title": "FluxTorrent Open API",
-            "version": "1.1.0",
-            "description": "第三方接口。鉴权：Authorization: Token <fxo_...>。\
-    Token 在网页端「我的 → API Token」签发，180 天，可 POST /me/tokens/refresh 续期。\
-    响应带 X-RateLimit-Limit/Remaining/Reset 头；超限返回 429（code 1015）+ Retry-After。"
-        },
-        "servers": [{ "url": "/api/v1" }],
-        "components": {
-            "securitySchemes": {
-                "apiToken": { "type": "apiKey", "in": "header", "name": "Authorization", "description": "值形如 `Token fxo_xxx`；亦支持 `?apikey=`" }
-            },
-            "schemas": {
-                "Envelope": {
-                    "type": "object",
-                    "properties": {
-                        "code": { "type": "integer" },
-                        "message": { "type": "string" },
-                        "data": {},
-                        "request_id": { "type": "string", "format": "uuid" }
-                    }
-                },
-                "TorrentSummary": {
-                    "type": "object",
-                    "properties": {
-                        "id": { "type": "integer", "format": "int64" },
-                        "name": { "type": "string" },
-                        "description": { "type": "string", "nullable": true },
-                        "size": { "type": "integer", "format": "int64", "description": "字节" },
-                        "published_at": { "type": "integer", "format": "int64", "description": "Unix 秒" },
-                        "seeders": { "type": "integer" },
-                        "leechers": { "type": "integer" },
-                        "category": { "type": "integer" },
-                        "category_name": { "type": "string" },
-                        "category_np": { "type": "integer", "description": "NexusPHP 4xx 口径分类号" },
-                        "category_newznab": { "type": "integer", "description": "Newznab/Torznab 标准分类号" },
-                        "info_hash": { "type": "string", "description": "40 位 hex" },
-                        "pieces_hash": { "type": "string", "nullable": true, "description": "跨站辅种指纹" }
-                    }
-                }
-            }
-        },
-        "security": [{ "apiToken": [] }],
-        "paths": {
-            "/open/recent": {
-                "get": {
-                    "summary": "最新种子",
-                    "description": "按 id 倒序的种子摘要；limit 1-200（默认 50）。",
-                    "parameters": [
-                        { "name": "limit", "in": "query", "schema": { "type": "integer" } }
-                    ],
-                    "responses": {
-                        "200": { "description": "Envelope<TorrentSummary[]>" },
-                        "401": { "description": "token 无效或已撤销（code 2001）" },
-                        "429": { "description": "超出 token 独立限流（code 1015）" }
-                    }
-                }
-            },
-            "/open/announces": {
-                "get": {
-                    "summary": "增量新种流",
-                    "description": "返回 id > since_id 的过审种子（升序），用于只推新种的轮询；把响应的 next_since_id 存下来当下次游标。",
-                    "parameters": [
-                        { "name": "since_id", "in": "query", "schema": { "type": "integer" } },
-                        { "name": "since", "in": "query", "schema": { "type": "integer", "description": "Unix 秒下界" } },
-                        { "name": "limit", "in": "query", "schema": { "type": "integer" } }
-                    ],
-                    "responses": {
-                        "200": { "description": "Envelope<{items, next_since_id, count}>" }
-                    }
-                }
-            },
-            "/open/torrents": {
-                "post": {
-                    "summary": "Token 化发种",
-                    "description": "multipart/form-data：file=<.torrent>（必填）、nfo=<文本>；其余元数据走查询参数（category_id、name、small_descr、descr、anonymous、price…）。按 info_hash/pieces_hash 幂等：已存在时返回 200 且 duplicate=true。",
-                    "requestBody": {
-                        "content": { "multipart/form-data": { "schema": { "type": "object" } } }
-                    },
-                    "responses": {
-                        "200": { "description": "Envelope<{id, approval_status, auto_approved, duplicate, info_hash, pieces_hash}>" },
-                        "401": { "description": "token 无效（code 2001）" },
-                        "403": { "description": "无发种权限（code 2003）" },
-                        "400": { "description": "种子无效/元数据非法（code 3003/1002）" }
-                    }
-                }
-            },
-            "/openapi.json": {
-                "get": {
-                    "summary": "本文档",
-                    "security": [],
-                    "responses": { "200": { "description": "OpenAPI 3.1 文档" } }
-                }
-            }
-        }
-    }))
+    ok(super::spec::build())
 }

@@ -4,7 +4,14 @@
 //! 可独立撤销、独立限流（按 token 维度，默认 60 req/min）。
 //! 鉴权头：`Authorization: Token <fxo_...>`（与会话 Bearer 区分）。
 
+mod detail_open;
+mod me;
+mod me_torrents;
 mod open;
+mod spec;
+mod spec_np;
+mod spec_schemas;
+mod spec_util;
 mod upload;
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
@@ -26,6 +33,13 @@ pub fn mount_openapi(scope: actix_web::Scope) -> actix_web::Scope {
         .service(token_refresh)
         .service(open::open_recent_torrents)
         .service(open::open_announces)
+        .service(open::open_categories)
+        .service(detail_open::open_torrent_detail)
+        .service(me::me_overview)
+        .service(me::me_hr)
+        .service(me::me_messages)
+        .service(me_torrents::me_seeding)
+        .service(me_torrents::me_history)
         .service(upload::open_upload)
 }
 

@@ -119,6 +119,40 @@ struct NpListQuery {
     /// 遇 "1" 会整条 Query 反序列化失败（此项目历史上踩过同名坑）。
     #[serde(default)]
     include_dead: Option<String>,
+    // ===== 0268：对外层透出站内已有的高级筛选（此前只有 9 个参数，
+    // 「只看 free、>5GB、做种<3」这类刷流规则做不了；口径与网页搜索一致） =====
+    /// 优惠筛选：free / x2 / half / any / none，支持逗号多选（与站内搜索同口径）
+    #[serde(default)]
+    promo: Option<String>,
+    /// 体积下/上界：字节数或 `5GB`/`500MB`/`2TB`（与站内搜索同一解析器）
+    #[serde(default)]
+    size_min: Option<String>,
+    #[serde(default)]
+    size_max: Option<String>,
+    /// 做种数下/上界（含）
+    #[serde(default)]
+    min_seeders: Option<i32>,
+    #[serde(default)]
+    max_seeders: Option<i32>,
+    /// 发布时间范围（`YYYY-MM-DD`，含当天；非法值丢弃不筛）
+    #[serde(default)]
+    date_from: Option<String>,
+    #[serde(default)]
+    date_to: Option<String>,
+    /// 发布者用户名（模糊）
+    #[serde(default)]
+    owner: Option<String>,
+    /// 官种：1/true = 仅官种
+    #[serde(default)]
+    official: Option<String>,
+    /// 排序：created(默认)/seeders/size/completed，可加 `_asc` 反转
+    #[serde(default)]
+    sort: Option<String>,
+    /// 标签：tag_dict.id 逗号串；`tag_mode=any|all`（缺省 any）
+    #[serde(default)]
+    tags: Option<String>,
+    #[serde(default)]
+    tag_mode: Option<String>,
 }
 
 /// 解析对外存活口径：alive 优先，其次 include_dead，最后缺省「全部」。
@@ -157,6 +191,24 @@ async fn compat_np_torrents(
             q.search_area,
         )
     };
+    // 0268：高级筛选走与站内搜索**同一套**归一器（体积/优惠/日期/标签），
+    // 复制一份必然漂移。布尔类参数取 String —— 老工具发 `official=1`，bool 会炸。
+    let on = |v: &Option<String>| -> Option<bool> {
+        match v.as_deref().map(str::trim) {
+            Some("1") | Some("true") | Some("yes") => Some(true),
+            Some("0") | Some("false") | Some("no") => Some(false),
+            _ => None,
+        }
+    };
+    let tag_parts: Vec<String> = q
+        .tags
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(str::to_string)
+        .collect();
+    let (tag_ids, tag_all) =
+        crate::torrent_http::norm_tags(None, &tag_parts, q.tag_mode.as_deref());
     let filter = TorrentFilter {
         category_id: q.category.map(|v| vec![v]),
         search,
@@ -164,6 +216,23 @@ async fn compat_np_torrents(
         search_mode: q.search_mode,
         // 对外缺省「全部」（含零做种）：新种必须立刻可被第三方搜到
         alive: Some(resolve_alive(q.alive, q.include_dead.as_deref())),
+        promo: crate::torrent_http::norm_promo(q.promo.clone()),
+        size_min: crate::torrent_http::parse_size(q.size_min.clone()),
+        size_max: crate::torrent_http::parse_size(q.size_max.clone()),
+        min_seeders: q.min_seeders.filter(|v| *v >= 0),
+        max_seeders: q.max_seeders.filter(|v| *v >= 0),
+        date_from: crate::torrent_http::norm_date(q.date_from.clone()),
+        date_to: crate::torrent_http::norm_date(q.date_to.clone()),
+        owner: crate::torrent_http::norm_text(q.owner.clone()),
+        official: on(&q.official),
+        sort: q
+            .sort
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string),
+        tag_ids,
+        tag_all,
         ..TorrentFilter::default()
     };
     // 分类/媒介小字典：一次载入，供本页每行补可读名与标准号

@@ -70,7 +70,12 @@ GET /api/v1/compat/nexusphp/torrents.json?page=1&pagesize=50&keyword=高等数�
   `category_np`（NexusPHP 4xx 号）、`category_newznab`（Newznab 标准号），
   工具无需自备映射表。
 - **指纹**：`info_hash` / `pieces_hash` 于 0267 加入，供辅种/查重工具精确匹配。
+- **高级筛选（0268）**：`promo`(free/x2/half/any/none，逗号多选)、`size_min`/`size_max`
+  （字节数或 `5GB`/`500MB`）、`min_seeders`/`max_seeders`、`date_from`/`date_to`
+  （`YYYY-MM-DD`）、`owner`、`official`、`sort`(created/seeders/size/completed，可加 `_asc`)、
+  `tags`+`tag_mode`(any/all)。解析口径与站内搜索**同一套归一器**，不会各说各话。
 - 详情：`GET /api/v1/compat/nexusphp/torrent/{id}.json`（含 descr/group_id/download 模板与双指纹）。
+  要文件清单/MediaInfo/多维属性请用 `/open/torrents/{id}`（见 §8）。
 
 ## 4. 下载（三种方式按需选择）
 
@@ -138,7 +143,40 @@ category, category_name, category_np, category_newznab, info_hash, pieces_hash }
 > 该端点要求有效 API Token（调用者本就是本站注册成员），游客策略管的是未登录可见度，
 > 不应拦已认证成员 —— 现改为对 Token 持有者正常返回。
 
-## 8. 发种（Token 化）
+## 8. 分类字典 · 深详情 · 我的数据（0268 新增）
+
+```
+GET /api/v1/open/categories
+→ data: { categories: [ { id, name, legacy_id, newznab_id } ], media: [ { id, name } ] }
+```
+
+做分类下拉/筛选 UI 不再需要自备映射表。
+
+```
+GET /api/v1/open/torrents/{id}?with_nfo=1
+→ data: { …种子主信息…, descr, numfiles, files:[{index,path,size}],
+          mediainfo, sections, hr_policy, price, thanks_count,
+          downloadvolumefactor, uploadvolumefactor, info_hash, pieces_hash }
+```
+
+深详情 = 站内详情页同一批数据；`with_nfo=1` 才带 NFO 全文（默认不带，省流量）。
+
+```
+GET /api/v1/open/me/overview      # 上传量/做种/未读/H&R 一条拿齐
+GET /api/v1/open/me/seeding       # 我正在做种（含 my_uploaded / 进度）
+GET /api/v1/open/me/history       # 我的下载/抓取历史
+GET /api/v1/open/me/hr?status=open  # H&R 违约（含 shortfall_seconds）
+GET /api/v1/open/me/messages?unread=1  # 站内信
+```
+
+全部只读、只暴露 Token 主人自己的数据（uid 一律取自 Token，不收路径参数），
+`read` scope 即可。此前移动壳要爬 HTML 的四件事现在都有 JSON。
+
+> **机器可读文档**：`GET /api/v1/openapi.json` 自 0268 起覆盖全部对外路径
+> （开放数据 / 发种 / 我的数据 / 兼容层 / Torznab / RSS / Token 管理，共 20+ 路径），
+> 含组件 schema —— 先拉 spec 再写适配器即可，不必读源码。
+
+## 9. 发种（Token 化）
 
 ```
 POST /api/v1/open/torrents?category_id=1&name=...&small_descr=...
@@ -159,7 +197,7 @@ info_hash, pieces_hash, group_suggest }`。
 
 权限与网页发种同源（`torrent.upload`），过审/免审/被拒禁发/扣费规则完全一致。
 
-## 9. NP 别名路径
+## 10. NP 别名路径
 
 | 别名 | 行为 |
 |---|---|
@@ -171,7 +209,7 @@ info_hash, pieces_hash, group_suggest }`。
 登录端点（`POST /api/v1/auth/login`）**同时接受 JSON 与
 `application/x-www-form-urlencoded`** —— 按 NP 习惯用表单登录的工具可直接对接。
 
-## 10. PT-Plugin-Plus 收录
+## 11. PT-Plugin-Plus 收录
 
 站方已备好收录材料（`.research/ptpp-config-template/`：`config.json` +
 `fluxtorrent.js` 解析脚本），字段口径与 `ptppUserInfo` 一致，
