@@ -110,7 +110,11 @@ jobs:
         # 这条是唯一能抓「装机链断在迁移/闸门/清理顺序里」的门：0134 注释引用尚未创建的
         # 函数、装机白名单不含改密端点、purge_demo_data 删除顺序死结，都是它先撞出来的。
         # 注：本 job 的 env.FLUX_DEV=1 只影响演示口令随机化与 CORS，闸门行为不变。
-        run: python3 scripts/install_e2e.py
+        # S8 起的断言要查库：闸门脚本在有 DATABASE_URL 时直连 service（本地走
+        # docker exec flux-postgres），psql 客户端在跑闸门前就要装好。
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client > /dev/null
+          python3 scripts/install_e2e.py
 
       - name: 引导冒烟数据（psql 客户端直连 service）
         run: |
