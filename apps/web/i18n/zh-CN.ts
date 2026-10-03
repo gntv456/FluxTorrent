@@ -592,6 +592,10 @@ const zhCnBase = {
     a: "下午好",
     e: "晚上好",
     n: "夜深了",
+    up: "上传",
+    down: "下载",
+    ratio: "分享率",
+    spark: "魔力",
   },
   fsheet: {
     alive: "存活",
@@ -993,7 +997,7 @@ const zhCnBase = {
   },
   myhr: {
     title: "我的 H&R",
-    rule: "完成下载的种子需在 14 天内累计做种满 120 小时；未达标记录会被标记并可能影响考核。",
+    rule: "完成下载的种子需在 {days} 天内累计做种满 {hours} 小时；未达标记录会被标记并可能影响考核。",
     colTorrent: "种子",
     colSize: "大小",
     colCompleted: "完成时间",
@@ -1069,6 +1073,7 @@ const zhCnBase = {
       trendUnit: "次登录",
       trendAria: "最近三十天登录活跃趋势",
       levelTitle: "等级进度",
+      classUnset: "未设置等级",
       seedPoints: "做种积分",
       nextClass: "距",
       still: "还差",
@@ -2767,6 +2772,7 @@ const zhCnBase = {
   },
   admin: {
     trendTitle: "14 天注册 / 发种趋势",
+    trendEmpty: "暂无数据",
     trendReg: "注册",
     trendPub: "发种",
     healthAliveRate: "活种率",

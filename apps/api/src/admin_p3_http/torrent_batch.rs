@@ -167,16 +167,28 @@ async fn torrent_batch(
         .rows_affected(),
         "hr" | "unhr" => {
             let on = body.action == "hr";
+            // 深测 2026-10-03：挂 H&R 时把站点缺省口径（hr_hours 设定；days 缺省 14）
+            // 落进种子 policy —— worker 快照与详情页展示都优先读种子 policy，
+            // 只写 {"on":true} 会让策略全靠 COALESCE 兜底，后台改 hr_hours 不生效。
+            let policy: serde_json::Value = if on {
+                let hr_hours: i32 = sqlx::query_scalar(
+                    "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+                     WHERE name = 'hr_hours'), '')::int, 48)",
+                )
+                .fetch_one(db)
+                .await
+                .unwrap_or(48)
+                .clamp(1, 24 * 365);
+                serde_json::json!({ "on": true, "seed_hours": hr_hours, "days": 14 })
+            } else {
+                serde_json::Value::Null
+            };
             sqlx::query(
                 "UPDATE torrents SET hr_policy = $2, \
              mtime = now() WHERE id = ANY($1)",
             )
             .bind(&id_arr)
-            .bind(if on {
-                serde_json::json!({ "on": true })
-            } else {
-                serde_json::Value::Null
-            })
+            .bind(policy)
             .execute(db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?
