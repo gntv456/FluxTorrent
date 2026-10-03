@@ -70,41 +70,44 @@ def redis_cmd(*args):
 
 
 # 2. Stream 里能看到本 peer 的事件（tracker 异步投递，轮询 10s）
+# 事件 payload 里没有 peer_id（emit_event 只带 user/hash/up/down/ts/ip/agent），
+# 匹配键用 info_hash 的 hex 形态（41×20 = "4141...41"）——本脚本专用 hash，
+# 唯一前缀足够。注意 payload 里 hash 是 40 字符十六进制小写。
+HASH_HEX = "41" * 20
 seen_event = False
 try:
     for _ in range(20):
         out = redis_cmd("XRANGE", "flux:announce", "-", "+")
-        if PEER_ID in out and IH.replace("%", "").lower() in out.lower(
-            ).replace("\\x", ""):
-            # redis-cli 转义形态多变：退化为宽匹配（peer_id 唯一前缀已足够）
-            pass
-        if PEER_ID in out:
+        if HASH_HEX in out.lower():
             seen_event = True
             break
         time.sleep(0.5)
     check("stream·事件可见", seen_event,
-        "flux:announce 内含 peer_id" if seen_event else "10s 内未见事件")
+        "flux:announce 内含本 hash" if seen_event else "10s 内未见事件")
 except Exception as e:
     check("stream·事件可见", False, str(e)[:120])
 
-# 3. worker 消费（分钟级 tick；轮询 100s）→ DLQ 空 + cursor 前进
+# 3. worker 消费（分钟级 tick；轮询 100s）→ 计费入账 + DLQ 空。
+# 0225 起 worker 走 XREADGROUP 消费者组（fluxcg-announce），旧
+# flux:announce:cursor 键在首启迁移后即删除——游标断言改看组内 pending
+# 被清空（消费完成的标志），或退而求其次看 snatches 出现做种行。
 if seen_event:
     try:
-        dlq_len = ""
-        cursor_before = redis_cmd("GET", "flux:announce:cursor")
         consumed = False
         for _ in range(100):
             time.sleep(1)
-            cursor_now = redis_cmd("GET", "flux:announce:cursor")
-            if cursor_now and cursor_now != cursor_before:
+            pend = redis_cmd("XPENDING", "flux:announce",
+                             "fluxcg-announce")
+            # XPENDING 输出首行是 pending 计数；「0」= 组内无待处理（已消费完）
+            if pend.splitlines() and pend.splitlines()[0].strip() == "0":
                 consumed = True
                 break
-        check("worker·游标前进", consumed,
-            f"{cursor_before!r} → {redis_cmd('GET', 'flux:announce:cursor')!r}")
+        check("worker·组内消费完成", consumed,
+              f"XPENDING: {pend.splitlines()[0] if pend.splitlines() else '空'}")
         dlq_len = redis_cmd("LLEN", "flux:announce:dlq")
         check("worker·DLQ为空", dlq_len == "0", f"dlq_len={dlq_len}")
     except Exception as e:
-        check("worker·游标前进", False, str(e)[:120])
+        check("worker·组内消费完成", False, str(e)[:120])
         check("worker·DLQ为空", False, "")
 
 # 4. api /health 仍健康（worker 计费不阻塞 api）

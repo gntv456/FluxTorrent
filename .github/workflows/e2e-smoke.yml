@@ -159,19 +159,25 @@ jobs:
           probe GET  /compat/meta              # 公开端点
           probe GET  /auth/captcha             # 验证码签发（Redis 依赖）
           probe POST /auth/login '{"username":"root","password":"wrong"}'   # 登录路径可达（非 500）
-          # 关键回归锁：促销计费 SQL（历史 P0——冗余 bind 在无数据时同样报错，真库必抓）
+          # 关键回归锁：促销计费 SQL（历史 P0——冗余 bind 在无数据时同样报错，真库必抓）。
+          # torrents.info_hash 是 CHAR(40) NOT NULL UNIQUE——'aa' 只有 2 字符，
+          # bpchar 比较会静默补白导致 UNIQUE 恒撞（首版入库成功是运气），且
+          # 引导种 info_hash 已被 announce 冒烟占用 41×20；这里给独立合法 hash。
           psql "$DATABASE_URL" -t -A -c "
             INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, name, category_id, owner_id, size, numfiles, approval_status)
-            VALUES ('aa','aa','aa','ci-smoke', 1, 1, 1024, 1, 1) ON CONFLICT DO NOTHING;
+            VALUES (repeat('42', 20), repeat('42', 20), repeat('42', 20), 'ci-smoke', 1, 1, 1024, 1, 1) ON CONFLICT (info_hash) DO NOTHING;
             INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source)
             SELECT 'torrent', id, 'free', now() - interval '1 hour', now() + interval '1 hour', 'manual'
             FROM torrents WHERE name='ci-smoke' LIMIT 1
             ON CONFLICT DO NOTHING;" > /dev/null
-          # 与 worker process_event 同构的促销裁决双查询——直接验证 SQL 可解析可 bind
-          psql "$DATABASE_URL" -t -A -c "
-            SELECT kind::text FROM promotions WHERE torrent_id = \$1 AND starts_at <= \$2 AND ends_at > \$2
-            ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'free' THEN 3 ELSE 0 END DESC, id DESC LIMIT 1;" \
-            -v 1=1 -v 2=now > /dev/null && echo "promotion SQL ok"
+          # 与 worker process_event 同构的促销裁决双查询——直接验证 SQL 可解析可 bind。
+          # 注意：psql 变量替换（:tid）只在 stdin/heredoc 生效，-c 里的 :tid 是字面量报
+          # syntax error；且 torrent id 要动态取（库不是每次都从 1 记账）。
+          psql "$DATABASE_URL" -t -A -v tid="$(psql "$DATABASE_URL" -t -A -c \
+            "SELECT id FROM torrents WHERE name='ci-smoke' LIMIT 1")" <<'SQL' > /dev/null && echo "promotion SQL ok"
+            SELECT kind::text FROM promotions WHERE torrent_id = :tid AND starts_at <= now() AND ends_at > now()
+            ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'free' THEN 3 ELSE 0 END DESC, id DESC LIMIT 1;
+SQL
           echo "SMOKE DONE"
 
       # PT 生命线：announce → Redis Stream → worker 计费。此前只测 api，这条链路在 CI 裸奔
