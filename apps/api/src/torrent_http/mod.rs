@@ -20,10 +20,15 @@ mod sec_params;
 pub use aggregate::*;
 pub use batch::*;
 pub use detail::*;
+// 查询参数归一器（0267）：对外兼容层要用同一套「体积/优惠/日期/标签」解析口径，
+// 复制一份必然漂移（历史上 RSS/Torznab 的促销标签就是这么各写一份的）
 pub use interact::*;
 pub use list::*;
 pub use magnet::*;
 pub use manage::*;
 pub use peers::*;
+pub(crate) use query::{
+    norm_date, norm_promo, norm_tags, norm_text, parse_size,
+};
 /// 多维筛选参数解析：后台管理列表也要用同一实现（B3）。
 pub(crate) use sec_params::parse_section_params;

@@ -30,7 +30,7 @@ pub async fn get_torrent(
     };
     let page = sqlx::query_as::<_, TorrentRow>(
         &format!(r#"
-        SELECT t.id, t.info_hash, t.name, t.small_descr, t.category_id, t.medium_id,
+        SELECT t.id, t.info_hash, t.pieces_hash, t.name, t.small_descr, t.category_id, t.medium_id,
                t.grade_id, t.edition_id, t.size, t.seeders, t.leechers, t.times_completed,
                (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments,
                t.official_tag, t.anonymous, t.approval_status, t.sticky,
