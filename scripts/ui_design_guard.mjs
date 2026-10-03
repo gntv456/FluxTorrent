@@ -25,7 +25,7 @@
  * 退出码：0=通过（可能有 WARN） 1=违规
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { globSync } from "node:fs";
+import { globCompat as globSync } from "./lib/glob_compat.mjs";
 import path from "node:path";
 
 import { checkDomScopes } from "./ui_design_guard_dom.mjs";

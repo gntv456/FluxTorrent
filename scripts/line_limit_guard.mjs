@@ -11,7 +11,7 @@
 //      老文件可以改，但不许把超宽行改得更多。
 // 用法：node scripts/line_limit_guard.mjs [--update]（CI 一步；exit 1 = 违规）。
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
-import { globSync } from "node:fs";
+import { globCompat as globSync } from "./lib/glob_compat.mjs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");

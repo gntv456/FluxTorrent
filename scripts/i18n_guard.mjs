@@ -8,7 +8,7 @@
 // 迁移某个文件后**不要**跑 `--update`（它会把并行会话的新违规一并洗白），
 // 改用 `scripts/i18n_baseline_touch.mjs <文件...>` 只重算指定文件。
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
-import { globSync } from "node:fs";
+import { globCompat as globSync } from "./lib/glob_compat.mjs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "apps/web");

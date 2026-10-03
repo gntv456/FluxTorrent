@@ -13,7 +13,7 @@
  * 单独 `node scripts/ui_design_guard_dom.mjs` 也能跑（自检模式）。
  */
 import { readFileSync } from "node:fs";
-import { globSync } from "node:fs";
+import { globCompat as globSync } from "./lib/glob_compat.mjs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
