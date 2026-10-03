@@ -624,6 +624,10 @@ const enBase: Omit<
     a: "Good afternoon",
     e: "Good evening",
     n: "Up late?",
+    up: "Uploaded",
+    down: "Downloaded",
+    ratio: "Ratio",
+    spark: "Points",
   },
   fsheet: {
     alive: "Availability",
@@ -1029,7 +1033,7 @@ const enBase: Omit<
   },
   myhr: {
     title: "My H&R",
-    rule: "Completed torrents need 120 hours of seeding within 14 days; unmet records get flagged.",
+    rule: "Completed torrents need {hours} hours of seeding within {days} days; unmet records get flagged.",
     colTorrent: "Torrent",
     colSize: "Size",
     colCompleted: "Completed",
@@ -1105,6 +1109,7 @@ const enBase: Omit<
       trendUnit: "logins",
       trendAria: "Login activity over the last 30 days",
       levelTitle: "Level progress",
+      classUnset: "No level set",
       seedPoints: "Seed points",
       nextClass: "to",
       still: "remaining",
@@ -2834,6 +2839,7 @@ const enBase: Omit<
   },
   admin: {
     trendTitle: "14-day signups / uploads",
+    trendEmpty: "No data yet",
     trendReg: "Signups",
     trendPub: "Uploads",
     healthAliveRate: "Alive rate",

@@ -614,6 +614,10 @@ const zhTwBase: Omit<
     a: "午安",
     e: "晚安",
     n: "夜深了",
+    up: "上傳",
+    down: "下載",
+    ratio: "分享率",
+    spark: "魔力",
   },
   fsheet: {
     alive: "存活",
@@ -1015,7 +1019,7 @@ const zhTwBase: Omit<
   },
   myhr: {
     title: "我的 H&R",
-    rule: "完成下載的種子需在 14 天內累計做種滿 120 小時；未達標記錄會被標記並可能影響考核。",
+    rule: "完成下載的種子需在 {days} 天內累計做種滿 {hours} 小時；未達標記錄會被標記並可能影響考核。",
     colTorrent: "種子",
     colSize: "大小",
     colCompleted: "完成時間",
@@ -1091,6 +1095,7 @@ const zhTwBase: Omit<
       trendUnit: "次登入",
       trendAria: "最近三十天登入活躍趨勢",
       levelTitle: "等級進度",
+      classUnset: "未設定等級",
       seedPoints: "做種積分",
       nextClass: "距",
       still: "還差",
@@ -2786,6 +2791,7 @@ const zhTwBase: Omit<
   },
   admin: {
     trendTitle: "14 天註冊 / 發種趨勢",
+    trendEmpty: "暫無資料",
     trendReg: "註冊",
     trendPub: "發種",
     healthAliveRate: "活種率",

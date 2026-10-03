@@ -21,6 +21,15 @@ struct HrRow {
     status: String,
 }
 
+#[derive(serde::Serialize)]
+struct MyHrResp {
+    rows: Vec<HrRow>,
+    /// 站点缺省口径（深测 2026-10-03）：与 worker 建快照同源的 hr_hours 设定，
+    /// 供前端动态渲染规则文案（此前写死 120h 与实际执行 48h 矛盾）
+    default_seed_hours: i32,
+    default_days: i32,
+}
+
 #[get("/me/hr")]
 pub async fn my_hr_status(
     req: HttpRequest,
@@ -37,7 +46,19 @@ pub async fn my_hr_status(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    let default_seed_hours: i32 = sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+         WHERE name = 'hr_hours'), '')::int, 48)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(48)
+    .clamp(1, 24 * 365);
+    Ok(ok(MyHrResp {
+        rows,
+        default_seed_hours,
+        default_days: 14,
+    }))
 }
 
 #[derive(Deserialize)]

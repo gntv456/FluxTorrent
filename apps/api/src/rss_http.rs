@@ -70,9 +70,9 @@ async fn rss_feed(
     .fetch_optional(&state.repo.db)
     .await
     .unwrap_or(None);
-    if user.is_none() {
+    let Some(user_id) = user else {
         return HttpResponse::NotFound().body("unknown passkey");
-    }
+    };
 
     // 多选分类/媒介：逗号分隔 → 数组（空 = 不过滤）；兼容旧版单值 category
     let categories = match parse_ids(q.categories.as_deref()) {
@@ -99,6 +99,10 @@ async fn rss_feed(
     .await;
     let sec_sql =
         crate::torrents::section_where(&state.repo.db, &sections).await;
+    // 深测 2026-10-03：付费种子无差别推给订阅器 —— 未购用户下载时才被
+    // charge_for_download 拦下（402），刷流器每轮重试同一批失败项形成噪音。
+    // 默认排除「付费且该用户未购」的种子；paid=0 显式要求全量时才放行。
+    let exclude_paid = q.paid != Some(0);
     let sql = format!(
         "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, t.official_tag, \
                 pr.promotion, \
@@ -117,6 +121,9 @@ async fn rss_feed(
            AND ($3::bool IS NULL OR t.official_tag = $3) \
            AND ($4::text IS NULL OR t.name ILIKE '%' || $4 || '%') \
            AND (NOT $6::bool OR {free_clause}){sec_sql} \
+           AND (NOT $7::bool OR t.price <= 0 OR t.owner_id = $8 \
+                OR EXISTS (SELECT 1 FROM torrent_purchases tp \
+                           WHERE tp.user_id = $8 AND tp.torrent_id = t.id)) \
          ORDER BY t.id DESC LIMIT $5"
     );
     let rows: Vec<RssRow> = sqlx::query_as(&sql)
@@ -126,6 +133,8 @@ async fn rss_feed(
         .bind(q.search.as_deref().filter(|s| !s.is_empty()))
         .bind(q.showrows.unwrap_or(50).clamp(1, 200))
         .bind(free_only)
+        .bind(exclude_paid)
+        .bind(user_id)
         .fetch_all(&state.repo.db)
         .await
         .unwrap_or_default();
@@ -258,7 +267,9 @@ struct RssQuery {
     showrows: Option<i64>,
     /// dl = 标题带元信息（默认）；page = 仅标题
     linktype: Option<String>,
-    /// 0=全部 1=仅免费（当前生效的 free/x2free 促销种；与好学 paid 口径对齐）
+    /// 0=全部（含未购付费种） 1=仅免费促销（free/x2free；与好学 paid 口径对齐）；
+    /// 缺省 = 排除「付费且未购」的种子（深测 2026-10-03：付费种无差别推送会让
+    /// 刷流器反复拿到 402，默认挡掉；需要全量监控付费种的用户显式传 paid=0）
     paid: Option<i32>,
 }
 
