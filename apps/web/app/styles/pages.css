@@ -1921,11 +1921,11 @@ textarea.bbcode {
 }
 .fun-status--funny {
   background: var(--surface-sunken);
-  color: var(--baozi-orang e-dark);
+  color: var(--baozi-orange-dark);
 }
 .fun-status--veryfunny {
   background: var(--brand-soft);
-  color: var(--baozi-orang e-dark);
+  color: var(--baozi-orange-dark);
 }
 .fun-status--banned {
   background: var(--danger-soft);
@@ -1933,7 +1933,7 @@ textarea.bbcode {
 }
 .link-status--pending {
   background: var(--surface-sunken);
-  color: var(--baozi-or ange-dark);
+  color: var(--baozi-orange-dark);
 }
 .link-status--active {
   background: var(--success-soft);
@@ -2272,6 +2272,12 @@ textarea.bbcode {
   background: var(--baozi-paper);
   box-shadow: var(--shadow-card);
 }
+/* 空版块（0 话题）降饱和：与有货版块拉开一眼可辨的差别，不靠加
+   文案（版块名本身已是信息，加「暂无」反显冗余）。2026-10-03 新增。 */
+.pting-card[data-empty="true"] { background: var(--surface-raised);
+  box-shadow: none; }
+.pting-card[data-empty="true"] .pting-card__title {
+  color: var(--text-muted); }
 .pting-card header {
   display: flex;
   flex-wrap: wrap;
@@ -3248,119 +3254,6 @@ input.batch-all {
   color: var(--coral);
 }
 
-/* ============ Bottom Sheet（M3 通用件）+ 筛选 FAB/Sheet ============ */
-.bsheet-root {
-  position: fixed;
-  inset: 0;
-  z-index: 95;
-}
-.bsheet-mask {
-  position: absolute;
-  inset: 0;
-  background: rgba(8, 19, 31, 0.42);
-}
-.bsheet {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  max-height: 82%;
-  display: flex;
-  flex-direction: column;
-  border-radius: 18px 18px 0 0;
-  background: var(--surface-card, #fff);
-  transition: transform 0.2s ease-out;
-}
-.bsheet__grab {
-  padding: 10px 16px 6px;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-.bsheet__bar {
-  display: block;
-  width: 40px;
-  height: 4px;
-  margin: 0 auto 6px;
-  border-radius: 999px;
-  background: var(--line);
-}
-.bsheet__title {
-  margin: 0;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--sub);
-}
-.bsheet__body {
-  overflow-y: auto;
-  padding: 4px 16px calc(20px + env(safe-area-inset-bottom));
-}
-.filter-fab {
-  position: fixed;
-  right: 16px;
-  bottom: calc(76px + env(safe-area-inset-bottom));
-  z-index: 45;
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 6px;
-  padding: 0 16px;
-  border-radius: 999px;
-  background: var(--sky-deep, #0a3d6b);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  box-shadow: 0 6px 18px rgba(10, 61, 107, 0.35);
-}
-.fsheet__group {
-  margin-bottom: 14px;
-}
-.fsheet__gtitle {
-  margin: 0 0 6px;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--sub);
-}
-.fsheet__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.fsheet__chip {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink);
-  font-size: 12.5px;
-}
-.fsheet__chip.is-on {
-  border-color: var(--sky-deep, #0a3d6b);
-  background: var(--sky-soft, #e6f2ff);
-  color: var(--sky-deep, #0a3d6b);
-  font-weight: 700;
-}
-.fsheet__acts {
-  display: flex;
-  gap: 8px;
-  padding-top: 6px;
-}
-.fsheet__btn {
-  flex: 1;
-  min-height: 44px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  font-size: 14px;
-  font-weight: 700;
-}
-.fsheet__btn.is-primary {
-  border-color: var(--sky-deep, #0a3d6b);
-  background: var(--sky-deep, #0a3d6b);
-  color: #fff;
-}
-
 /* ============ 详情页底部操作条（M3，方案 §4） ============ */
 .td-actionbar {
   position: fixed;
@@ -3416,15 +3309,15 @@ input.batch-all {
   display: flex;
   gap: 6px;
 }
-.mhome-head__stats span {
-  flex: 1;
-  padding: 8px 4px;
-  border-radius: var(--r-md);
-  background: var(--surface-card);
-  font-size: 12.5px;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
+/* 2026-10-03：<span> → <dl> 以承载「标签 + 数值」两段（此前只有
+   ↑↓∑★ 符号，新用户判断不出 ∑ 是分享率、★ 是魔力）。 */
+.mhome-head__stats > div { flex: 1; padding: 7px 4px 8px;
+  border-radius: var(--r-md); background: var(--surface-card);
+  text-align: center; }
+.mhome-head__stats dt { color: var(--text-faint); font-size: 11px;
+  line-height: 1.3; }
+.mhome-head__stats dd { margin: 1px 0 0; font-size: 12.5px;
+  font-variant-numeric: tabular-nums; }
 .mhome-head__stats i {
   font-style: normal;
   color: var(--ink);
@@ -3466,12 +3359,16 @@ input.batch-all {
 .trow-swipe {
   position: relative;
 }
+/* 操作层藏在前层右侧之外：未滑动时不可见，滑动时随前层左移露出。
+   2026-10-03 修：此前缺初始位移，acts 直接压在卡片右缘，
+   移动端每行露出一块砖红（--coral）色块，像渲染破损。 */
 .trow-swipe__acts {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
   display: flex;
+  transform: translateX(100%);
 }
 .trow-swipe__act {
   display: flex;
@@ -3487,6 +3384,8 @@ input.batch-all {
 }
 .trow-swipe__front {
   position: relative;
+  /* 兜底背景：前层必须不透明，否则 acts 的色块会从内层透出 */
+  background: var(--surface-card);
   transition: transform 0.15s var(--ease-out, ease-out);
   touch-action: pan-y;
 }
@@ -3762,4 +3661,15 @@ input.batch-all {
     font-size: 10.5px;
     font-weight: 600;
   }
+}
+
+/* === prefers-reduced-motion 降级（2026-10-03 补）=====
+   本文件 553 个选择器此前 0 处降级块（motion-tide.css 有 22 处、
+   base.css 有 2 处，唯独最大的 pages.css 漏了）。口径与 motion-tide
+   一致：位移与循环动画全关，颜色/边框过渡保留（避免生硬跳变）。
+   逐个列举而非 `*` 通配——通配会连带干掉组件内部必要过渡。 */
+@media (prefers-reduced-motion: reduce) {
+  .ptr__ind.is-busy { animation: none; opacity: 0.7; }
+  .bsheet, .td-actionbar, .trow-swipe__front, .ptr { transition: none; }
+  .pting-feed-pill { transition-duration: 0.01ms; }
 }

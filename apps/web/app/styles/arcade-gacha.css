@@ -1,0 +1,380 @@
+/* arcade-gacha.css —— /gacha 路由专用（2026-10-03 从 arcade-sweet.css 拆出）
+   拆分原因：arcade-sweet.css 原本挂在 globals.css 根 @import 链，
+   全站 93 页都下载 68KB，但只服务 games 路由。gacha 是独立抽卡模块，
+   因该文件里部分规则未写 [data-arcade] 作用域而吃到了样式——直接搬走
+   会让抽卡页掉 35 个类名。故把 /gacha 真正消费的规则抽成此文件，
+   由 games/layout.tsx 与 gacha/layout.tsx 各自 import。
+   抽出规则块数：46
+
+   局部令牌：/gacha 页面 DOM 上没有 data-arcade="sweet"，拿不到
+   arcade-sweet.css 里定义在 [data-arcade="sweet"] 下的 --sweet-*，
+   此前一直靠消费点的 fallback 硬编码色。此处补一份无作用域的浅色
+   令牌让抽卡页真正拿到色板；夜间值见文件末尾。 */
+
+:root {
+  --sweet-cream: #f4f8fd;
+  --sweet-mist: #c5dff0;
+  --sweet-sky: #8ab4dd;
+  --sweet-sky-deep: #4a7ab0;
+  --sweet-lilac: #b8c8e8;
+  --sweet-lilac-deep: #6a7ab8;
+  --sweet-gold: #d4af7a;
+  --sweet-gold-deep: #b08a4a;
+  --sweet-ink: #2c3e5c;
+  --sweet-ink-soft: #5a6b8c;
+  --sweet-line: #d8e4f2;
+  --sweet-shadow: 0 10px 30px -12px rgba(74, 122, 176, 0.35);
+  --sweet-shadow-gold: 0 6px 20px -8px rgba(212, 175, 122, 0.45);
+  --sweet-serif: "Noto Serif SC", "Songti SC", serif;
+}
+
+.gtabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #eef4fc, #e2ebf7);
+  box-shadow: inset 0 0 0 1.5px var(--sweet-line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gtabs::-webkit-scrollbar {
+  display: none;
+}
+
+.sw-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 460px;
+}
+
+.sw-stat {
+  border-radius: var(--r-md);
+  padding: 10px 8px;
+  text-align: center;
+  background: linear-gradient(160deg, #fff, #eef5fc);
+  box-shadow: inset 0 0 0 1px var(--sweet-line);
+}
+
+.sw-stat-lb {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sweet-ink-soft);
+}
+
+.sw-stat-vl {
+  font-family: var(--sweet-serif);
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--sweet-ink);
+}
+
+.sw-stat-vl.gold {
+  color: var(--sweet-gold-deep);
+}
+
+.sw-stat-vl.green {
+  color: #3f8a6b;
+}
+
+.sw-cardbook {
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #fff, #f0f6fc);
+  box-shadow:
+  inset 0 0 0 1.5px var(--sweet-line),
+  var(--sweet-shadow);
+}
+
+.sw-cardbook-cap {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: var(--sweet-ink-soft);
+  margin-bottom: 10px;
+}
+
+.sw-cardbook-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 360px;
+}
+
+.sw-card {
+  aspect-ratio: 3/4;
+  border-radius: 12px;
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(28, 51, 82, 0.35);
+  box-shadow: 0 6px 12px -6px rgba(74, 122, 176, 0.4);
+}
+
+.sw-card.sw-tone-sky {
+  background: linear-gradient(160deg, #c5dff0, #8ab4dd);
+}
+
+.sw-card.sw-tone-gold {
+  background: linear-gradient(160deg, #e8d8b8, #d4af7a);
+}
+
+.sw-synth {
+  margin-top: 12px;
+}
+
+.sw-synth-cap {
+  font-size: 11px;
+  color: var(--sweet-ink-soft);
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.sw-synth-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.sw-synth-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: #e8f0fa;
+  overflow: hidden;
+  display: block;
+}
+
+.sw-synth-track i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #8ab4dd, #b8c8e8);
+  border-radius: 999px;
+}
+
+.sw-synth-row b {
+  font-size: 12px;
+  color: var(--sweet-sky-deep);
+  white-space: nowrap;
+}
+
+.sw-synth-note {
+  font-size: 11px;
+  color: var(--sweet-ink-soft);
+  margin: 0;
+}
+
+.sw-card-stars {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #fff;
+}
+
+.sw-card-face {
+  font-size: 30px;
+  color: #fff;
+  filter: drop-shadow(0 3px 6px rgba(44, 62, 92, 0.3));
+}
+
+.sw-card-face svg {
+  width: 30px;
+  height: 30px;
+}
+
+.sw-card-name {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sw-card-rank {
+  font-size: 9px;
+  opacity: 0.85;
+}
+
+[data-arcade="sweet"] .sw-album {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+[data-arcade="sweet"] .sw-album-panel {
+  border-radius: var(--r-xl);
+  padding: 18px;
+  background: linear-gradient(180deg, #ffffff, #f0f6fc);
+  box-shadow:
+  inset 0 0 0 1.5px var(--sweet-line),
+  var(--sweet-shadow);
+}
+
+[data-arcade="sweet"] .sw-album-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+[data-arcade="sweet"] .sw-album-head h2 {
+  font-family: var(--sweet-serif);
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--sweet-ink);
+  margin: 0;
+}
+
+[data-arcade="sweet"] .sw-album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+[data-arcade="sweet"] .sw-album-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 8px -4px rgba(44, 62, 92, 0.12);
+  border: 1px solid var(--sweet-line);
+  padding: 10px;
+}
+
+[data-arcade="sweet"] .sw-album-face {
+  aspect-ratio: 5 / 3.4;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1.5px solid var(--sweet-line);
+  text-align: center;
+  padding: 6px;
+}
+
+[data-arcade="sweet"] .sw-album-face-name {
+  font-family: var(--sweet-serif);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+[data-arcade="sweet"] .sw-album-face-r {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  opacity: 0.85;
+}
+
+[data-arcade="sweet"] .sw-album-meta {
+  font-size: 11px;
+  color: var(--sweet-ink-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+[data-arcade="sweet"] .sw-album-exch {
+  color: var(--sweet-gold-deep);
+  font-weight: 800;
+}
+
+[data-arcade="sweet"] .sw-album-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: auto;
+}
+
+[data-arcade="sweet"] .sw-album-btn {
+  border: 1px solid var(--sweet-line);
+  background: #fff;
+  color: var(--sweet-ink);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+[data-arcade="sweet"] .sw-album-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+[data-arcade="sweet"] .sw-album-btn.gold {
+  background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
+  border-color: transparent;
+  color: #6b4a1a;
+}
+
+[data-arcade="sweet"] .sw-album-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 10px;
+  border: 1.5px dashed var(--sweet-line);
+  border-radius: 14px;
+  color: var(--sweet-ink-soft);
+  font-size: 13px;
+}
+
+[data-arcade="sweet"] .sw-album-empty-face {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, #fff, #e8f0fa);
+  color: var(--sweet-sky-deep);
+}
+
+[data-arcade="sweet"] .sw-album-empty p {
+  margin: 0;
+}
+
+[data-arcade="sweet"] .sw-album-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f3d9a4, var(--sweet-gold));
+  color: #5b3d12;
+  font-family: var(--sweet-serif);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  box-shadow:
+  var(--sweet-shadow-gold),
+  inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* 夜间：与 arcade-sweet.css 的 [data-arcade="sweet"][data-theme=
+   "baozi-night"] 块同值，双属性选择器确保夜间覆盖浅色。 */
+[data-theme="baozi-night"] {
+  --sweet-cream: #101728;
+  --sweet-mist: #1c2740;
+  --sweet-sky: #5f8cc0;
+  --sweet-sky-deep: #8ab4dd;
+  --sweet-lilac: #56659b;
+  --sweet-lilac-deep: #9aa8e0;
+  --sweet-gold: #d4af7a;
+  --sweet-gold-deep: #e8c894;
+  --sweet-ink: #e6eefc;
+  --sweet-ink-soft: #9fb0cc;
+  --sweet-line: #26314e;
+  --sweet-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.55);
+  --sweet-shadow-gold: 0 6px 20px -8px rgba(212, 175, 122, 0.28);
+}

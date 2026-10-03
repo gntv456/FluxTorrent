@@ -58,20 +58,34 @@ export function MobileHomeHeader({
         {hello}，<b>{brand}</b>
       </p>
       {me && (
-        <div className="mhome-head__stats num">
-          <span>
-            <i>↑ {me.uploaded}</i>
-          </span>
-          <span>
-            <i>↓ {me.downloaded}</i>
-          </span>
-          <span>
-            <i>∑ {me.ratio}</i>
-          </span>
-          <span>
-            <i>★ {me.spark}</i>
-          </span>
-        </div>
+        /* 2026-10-03：此前四个数据格只有 ↑/↓/∑/★ 符号没有文字，
+           新用户无法判断 ∑ 是分享率、★ 是魔力余额。补标签。 */
+        <dl className="mhome-head__stats num">
+          <div>
+            <dt>{t.up}</dt>
+            <dd>
+              <i>↑ {me.uploaded}</i>
+            </dd>
+          </div>
+          <div>
+            <dt>{t.down}</dt>
+            <dd>
+              <i>↓ {me.downloaded}</i>
+            </dd>
+          </div>
+          <div>
+            <dt>{t.ratio}</dt>
+            <dd>
+              <i>∑ {me.ratio}</i>
+            </dd>
+          </div>
+          <div>
+            <dt>{t.spark}</dt>
+            <dd>
+              <i>★ {me.spark}</i>
+            </dd>
+          </div>
+        </dl>
       )}
     </div>
   );

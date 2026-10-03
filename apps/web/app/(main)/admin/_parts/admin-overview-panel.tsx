@@ -7,6 +7,7 @@
 
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { EmptyState } from "@/components/ui/empty-state";
 const CARD =
   "rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]";
 const DOT = "inline-block h-2 w-2 rounded-sm";
@@ -146,30 +147,38 @@ export function AdminOverviewPanel({
             <p className="mb-2 text-xs font-bold text-[var(--text-brand)]">
               {a.trendTitle}
             </p>
-            <div className="flex h-24 items-end gap-1">
-              {(ov.trend ?? []).map(([d, u, t]) => {
-                const max = Math.max(
-                  1,
-                  ...(ov.trend ?? []).map((x) => Math.max(x[1], x[2])),
-                );
-                return (
-                  <div
-                    key={d}
-                    className="flex flex-1 flex-col justify-end gap-0.5"
-                    title={`${d} · ${a.trendReg} ${u} · ${a.trendPub} ${t}`}
-                  >
+            {/* 2026-10-03：此前 ov.trend 为空时是 500×220 纯空白框，
+                只有左下角图例，看起来像坏了。补「暂无数据」空态。 */}
+            {ov.trend?.length ? (
+              <div className="flex h-24 items-end gap-1">
+                {(ov.trend ?? []).map(([d, u, t]) => {
+                  const max = Math.max(
+                    1,
+                    ...(ov.trend ?? []).map((x) => Math.max(x[1], x[2])),
+                  );
+                  return (
                     <div
-                      className="rounded-t bg-sky/70"
-                      style={{ height: `${(u / max) * 70}%` }}
-                    />
-                    <div
-                      className="rounded-t bg-mint/70"
-                      style={{ height: `${(t / max) * 70}%` }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+                      key={d}
+                      className="flex flex-1 flex-col justify-end gap-0.5"
+                      title={`${d} · ${a.trendReg} ${u} · ${a.trendPub} ${t}`}
+                    >
+                      <div
+                        className="rounded-t bg-sky/70"
+                        style={{ height: `${(u / max) * 70}%` }}
+                      />
+                      <div
+                        className="rounded-t bg-mint/70"
+                        style={{ height: `${(t / max) * 70}%` }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid h-24 place-items-center">
+                <EmptyState icon="ranking" title={a.trendEmpty} compact />
+              </div>
+            )}
             <p className="mt-1 text-[10px] text-sub">
               <span className={`mr-2 ${DOT} bg-sky/70`} />
               {a.trendReg}

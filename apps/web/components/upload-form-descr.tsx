@@ -45,9 +45,9 @@ export function UploadDescrBlock({
     });
   }
   const bbBtn =
-    "min-h-[28px] min-w-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1.5 text-xs font-bold text-ink hover:border-[var(--baozi-orange)]";
+    "min-h-10 min-w-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1.5 text-xs font-bold text-ink hover:border-[var(--baozi-orange)]";
   const bbSelect =
-    "min-h-[28px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1 text-xs text-ink outline-none focus:border-[var(--baozi-orange)]";
+    "min-h-10 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1 text-xs text-ink outline-none focus:border-[var(--baozi-orange)]";
   // 色板（NP 颜色面板口径）：色块按钮，点击包住选区
   const BB_COLORS: [string, string][] = [
     ["#111827", "黑"],

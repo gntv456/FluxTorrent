@@ -120,7 +120,8 @@ export function UploadFilesBlock({
     <>
       <FormRow label={dict.upload.fileLabel}>
         <div className="flex flex-col gap-1">
-          <label className="flex min-h-[64px] cursor-pointer items-center justify-center rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--head-b)] px-3 text-sm text-[var(--text-body)] hover:border-[var(--baozi-orange)]">
+          {/* 2026-10-03：必填/选填此前视觉完全一致，加 uf-drop* 区分 */}
+          <label className="uf-drop uf-drop--required">
             <input
               ref={fileRef}
               type="file"
@@ -184,13 +185,13 @@ export function UploadFilesBlock({
                 onChange={(e) => setPtgenUrl(e.target.value)}
                 placeholder={dict.upload.ptgenPlaceholder ?? `粘贴 ${metaSources.join(" / ")} 链接`}
                 maxLength={300}
-                className="min-h-[38px] flex-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+                className="min-h-10 flex-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
               />
               <button
                 type="button"
                 disabled={ptgenBusy || !ptgenUrl.trim()}
                 onClick={genDescr}
-                className="min-h-[38px] rounded-[10px] border border-[var(--baozi-line)] px-4 text-sm font-bold text-ink hover:border-[var(--baozi-orange)] disabled:opacity-50"
+                className="min-h-10 rounded-[10px] border border-[var(--baozi-line)] px-4 text-sm font-bold text-ink hover:border-[var(--baozi-orange)] disabled:opacity-50"
               >
                 {ptgenBusy ? (dict.upload.ptgenBusy) : (dict.upload.ptgenBtn)}
               </button>
@@ -203,7 +204,7 @@ export function UploadFilesBlock({
       )}
       <FormRow label={dict.upload.nfo}>
         <div className="flex flex-col gap-1">
-          <label className="flex min-h-[48px] cursor-pointer items-center justify-center rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--head-b)] px-3 text-sm text-[var(--text-body)] hover:border-[var(--baozi-orange)]">
+          <label className="uf-drop uf-drop--optional">
             <input
               ref={nfoRef}
               type="file"
@@ -217,7 +218,7 @@ export function UploadFilesBlock({
       </FormRow>
       <FormRow label={dict.upload.attachLabel}>
         <div className="flex flex-col gap-1">
-          <label className="flex min-h-[44px] cursor-pointer items-center justify-center rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--head-b)] px-3 text-sm text-[var(--text-body)] hover:border-[var(--baozi-orange)]">
+          <label className="uf-drop uf-drop--optional">
             <input
               type="file"
               className="sr-only"
@@ -258,7 +259,7 @@ export function UploadFilesBlock({
               max={1000000}
               value={price}
               onChange={(e) => setPrice(Number(e.target.value))}
-              className="min-h-[38px] w-36 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
+              className="min-h-10 w-36 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--baozi-orange)]"
             />
             <span className="text-sm text-sub">
               {currency}（0 = 免费，最大 1000000）

@@ -1,6 +1,6 @@
 // FluxTorrent Service Worker（M26）
 // 策略（§5.7 离线策略）：静态资源缓存优先、页面导航网络优先失败回退、API 永不缓存。
-const VERSION = "flux-v2";
+const VERSION = "flux-v3";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const OFFLINE_URL = "/offline";

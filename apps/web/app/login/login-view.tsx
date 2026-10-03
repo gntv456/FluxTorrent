@@ -6,7 +6,6 @@ import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt, LOCALES, LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Icon } from "@/components/icons";
 import { LoginForm } from "./login-form";
 
 /** 登录页画布外壳（从 app/login/page.tsx 按域拆出，来源文件是 server
@@ -101,9 +100,14 @@ export function LoginShell() {
                 className="bz-login-intro-mascot bz-login-intro-logo"
               />
             ) : (
-              <span className="bz-login-intro-mascot" aria-hidden>
-                <Icon name="seed" size={64} className="text-[var(--sky)]" />
-              </span>
+              // 内置站标兜底（原 seed 线框占位）：站长未传 site_logo 时的默认品牌图形
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src="/brand/logo-mark.png"
+                alt=""
+                aria-hidden
+                className="bz-login-intro-mascot bz-login-intro-logo"
+              />
             )}
             <p className="bz-login-intro-tagline">{brand.tagline}</p>
             <p className="bz-login-intro-desc">{brand.desc}</p>

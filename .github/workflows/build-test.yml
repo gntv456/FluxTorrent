@@ -74,6 +74,14 @@ jobs:
       # promo.rs KIND_RANK ↔ PromotionKind；后端加码/改枚举而前端契约未跟 → 红灯
       - name: Type drift guard
         run: node ../../scripts/check_type_drift.mjs
+      # UI 设计系统门禁（2026-10-03）：六条规则防「令牌层退化」——
+      # CSS 变量引用须有定义 / 硬编码色值只减不增 / 断点只允许四档 /
+      # z-index 只允许语义档 / 含动效文件须有 reduced-motion 降级 /
+      # outline-none 须配 focus-visible 描边。
+      # 背景：此前 eslint 只有 next/core-web-vitals、零样式规则，760 处
+      # 硬编码与 47 个野断点无任何阻断能力（详见 scripts/ui_design_guard.mjs）。
+      - name: UI design guard
+        run: node ../../scripts/ui_design_guard.mjs
       # 单源清单门禁（四审 L5/L6）：模块键 Rust key::ALL ↔ TS MODULE_KEYS ↔ DB modules；
       # 首页板块键 后端 HOME_SECTIONS ↔ 前端渲染 case。CI 无库时模块键检查跳过 DB 侧。
       # 术语规则门禁（四审 L7）额外要求每条启用中的规则至少命中一处文案——

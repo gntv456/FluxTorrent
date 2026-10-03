@@ -64,11 +64,15 @@ export async function Header() {
             title={brand}
             className="flex max-w-[46%] shrink items-center gap-2 md:max-w-none"
           >
-            {/* 品牌标记：Tide 图标（原为猫头鹰 emoji）—— 颜色跟随 --sky，浅色/夜间自适应 */}
-            <Icon
-              name="seed"
-              size={30}
-              className="shrink-0 text-[var(--sky)]"
+            {/* 品牌标记：内置 FluxTorrent 站标（白字深底，浅色/夜间均可见）；
+                站点自定义 logo 走 site_settings.site_logo（登录页品牌图） */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/logo-mark.png"
+              alt=""
+              width={30}
+              height={30}
+              className="shrink-0"
             />
             <span className="truncate font-display text-2xl text-ink">
               {brand}

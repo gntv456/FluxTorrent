@@ -17,11 +17,10 @@
      sky→主品牌蓝 / indigo→深海军蓝（去紫）/ candy→信号青
      sun→琥珀（促销）/ coral→砖红（危险）/ mint→深松绿（成功）
 
-   纪律：本文件只写 `[data-theme="baozi"]`（浅色），
-   绝不触碰 `baozi-night` —— 夜间主题保持原样，回归必测。
+   纪律：本文件只写 `[data-theme="baozi"]`（浅色）+ 末尾夜间回填块，
+   绝不用 `:root` 兜底（那会连夜间一起覆盖，见下方 2026-10-03 修正）。
    ============================================================ */
 
-:root,
 [data-theme="baozi"] {
   color-scheme: light;
 
@@ -461,7 +460,11 @@ button.btn2:hover {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.9);
+  /* 2026-10-03 修：此前硬编码 rgba(255,255,255,.9)，夜间下顶栏整条
+     雪白（实测 8/8 页面发白，全站最大面积的漏网）。改用 --chip-veil
+     令牌——base.css:96 浅色 .9、base.css:183 夜间 rgba(33,41,69,.9)，
+     自动跟随主题。 */
+  background: var(--chip-veil, rgba(255, 255, 255, 0.9));
   backdrop-filter: blur(12px) saturate(1.1);
   border-bottom: 1px solid var(--border-soft);
 }
@@ -672,7 +675,9 @@ button.btn2:hover {
    所以即便 Google Fonts 不可达，设计方向依旧成立（只是字面细节不同）。
    数据（体积/比率/统计）走 IBM Plex Mono —— mono 无中文字形，故只用于纯数字场景。
    ============================================================ */
-:root,
+/* 2026-10-03 修正：此前此处也写了 `:root,` 前缀，与上方令牌块同一
+   缺陷——`:root` 会匹配 `<html data-theme="baozi-night">`，把 TIDE
+   字体栈强灌给夜间用户。字体不随主题变，故只认浅色属性选择器。 */
 [data-theme="baozi"] {
   --font-display: "Bricolage Grotesque", "Noto Serif SC", "Songti SC",
     "Source Han Serif SC", "SimSun", "Noto Sans SC", sans-serif;
@@ -719,4 +724,73 @@ button.btn2:hover {
 /* 供组件按需使用的工具类（纯数字/ID/hash/时间） */
 .tide-num {
   font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   夜间回填块 · TIDE Night（2026-10-03 新增）
+   为什么需要：本文件浅色块覆盖了 109 个令牌，摘掉 `:root` 后
+   夜间不再被浅色污染，但**拿不到 TIDE 的夜间版式**——
+   尺寸类（--r-*）与 --tide-* 专有令牌是 TIDE 独有的，base.css
+   没有定义，必须在此显式给出夜间值。
+
+   策略：
+     · 色彩/表面/文本/边框/状态 → 沿用 base.css:126 夜间值
+       （那里已定义），此处**不重复声明**，避免两处真源；
+     · 尺寸类（--r-*）/ --promo-* / --tide-* → 显式给夜间值；
+     · 兼容层（--baozi-*）→ 全部指向夜间语义变量。
+
+   放在文件末尾：同特异性后出现者胜，确保覆盖前面的浅色声明。
+   ============================================================ */
+[data-theme="baozi-night"] {
+  color-scheme: dark;
+
+  /* ===== 尺寸类：与浅色同值（圆角不随主题变） ===== */
+  --r-xl: 18px;
+  --r-lg: 14px;
+  --r-md: 10px;
+  --r-sm: 6px;
+
+  /* ===== 字体栈：与浅色同值（字体不随主题变，但必须显式给出——
+     浅色块已摘掉 :root，夜间若不声明会掉回 base.css 的旧栈）===== */
+  --font-display: "Bricolage Grotesque", "Noto Serif SC", "Songti SC",
+    "Source Han Serif SC", "SimSun", "Noto Sans SC", sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "Source Han Serif SC",
+    "SimSun", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+
+  /* ===== 促销行高亮：夜间改深蓝 / 深琥珀底 ===== */
+  --promo-free-bg: #14263c;
+  --promo-x2-bg: #2e2510;
+
+  /* ===== Tide 专有令牌：夜间反向（深靛 ↔ 亮蓝） ===== */
+  --tide-abyss: #03080f;
+  --tide-deep: #0f62c4;
+  --tide-sea: #47b3ff;
+  --tide-surf: #6cc0ff;
+  --tide-foam: #2e86e0;
+  --tide-mist: #1d2b44;
+  --tide-haze: #161f33;
+  --tide-signal: #ffa3d3;
+  --tide-up: #ff6b5e; /* 涨：红（中国习惯） */
+  --tide-down: #43cda8; /* 跌：绿 */
+  --tide-grid: rgba(103, 176, 255, 0.09);
+  --tide-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --tide-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ===== 兼容层：跟随夜间语义变量 ===== */
+  --baozi-bg: var(--surface-page);
+  --baozi-paper: var(--surface-card);
+  --baozi-cream: var(--surface-cream);
+  --baozi-line: #3a4670;
+  --baozi-line-soft: var(--line);
+  --baozi-orange: var(--sky);
+  --baozi-orange-bright: #6cc0ff;
+  --baozi-orange-dark: #7fc6ff;
+  --baozi-green: var(--mint);
+  --baozi-blue: var(--info);
+  --baozi-ink: var(--ink);
+  --baozi-coral: var(--danger);
+  --baozi-sub: var(--text-muted);
+  --text-sub: var(--text-muted);
 }

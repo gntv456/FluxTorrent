@@ -25,12 +25,15 @@
   --candy-soft: #ffe9f4;
   --indigo: #5b6bf5;
   --indigo-soft: #eaebff;
-  /* ===== 中性 ===== */
+  /* ===== 中性 =====
+     2026-10-03：--ink/--sub/--line 与下方 --text-strong/--text-muted/
+     --border-soft 同义同值（历史遗留双名）。改为别名建立单一真源——
+     CSS 变量解析不受声明顺序约束，前向引用安全。 */
   --cloud: #f5faff;
-  --cream: #fffdf6;
-  --ink: #1f2a44;
-  --sub: #6b7a99;
-  --line: #e3edf7;
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
   /* ===== 渐变与彩带 ===== */
   --grad-aurora: linear-gradient(135deg, #2fa8ff 0%, #5b6bf5 48%, #ff8fc7 100%);
   --grad-rainbow:linear-gradient(90deg,  #ffc93c,  #ff7a59,  #ff8fc7,  #5b6bf5,
@@ -108,6 +111,20 @@
   --font-body:
     "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+  /* ===== 旧名别名层（2026-10-03）=====
+     这些变量在全站 21 处被 var() 引用但从未定义，浏览器静默回退到
+     消费点写的 fallback 硬编码色（旧 Aurora 色板），导致换肤后
+     hover 卡 / 回复横幅 / PWA 条 / 评论按钮仍是老配色。
+     统一在此定义为语义变量的别名 —— 浅色夜间自动跟随，
+     消费点的 fallback 保留作兜底（双保险，不删）。
+     注意：--trow-cat / --tone / --marquee-duration 是 TSX 内联
+     注入的动态变量（有真实消费方），故意不列。 */
+  --muted: var(--text-muted);
+  --card: var(--surface-card);
+  --panel: var(--surface-card);
+  --fill-2: var(--surface-sunken);
+  --accent-soft: var(--sky-soft);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   /* ===== 兼容层：--baozi-* → Aurora 语义映射（30+ 组件零改动） ===== */
   --baozi-bg: var(--surface-page);
   --baozi-paper: var(--surface-card);
@@ -120,6 +137,9 @@
   --baozi-green: var(--mint);
   --baozi-blue: var(--info);
   --baozi-ink: var(--ink);
+  /* 浮层遮罩（弹窗/抽屉背后的压暗层）：2026-10-03 抽成令牌，
+     此前散落 3 处 rgba(8,19,31,.42) 硬编码，换主题时需逐处改。 */
+  --overlay-scrim: rgba(8, 19, 31, 0.42);
 }
 
 /* ===== 夜间主题：Aurora Night（Seedlight §9）—— 深夜蓝底，品牌六色提亮 +8% ===== */
@@ -141,10 +161,10 @@
   --indigo-soft: #1d2145;
   /* 中性 */
   --cloud: #0b101f;
-  --cream: #1a2036;
-  --ink: #e8eef9;
-  --sub: #93a2bf;
-  --line: #262f4a;
+  --cream: var(--surface-cream);
+  --ink: var(--text-strong);
+  --sub: var(--text-muted);
+  --line: var(--border-soft);
   /* 渐变 */
   --grad-aurora: linear-gradient(135deg, #47b3ff 0%, #7d8aff 48%, #ffa3d3 100%);
   --grad-rainbow:linear-gradient(90deg,  #ffd35f,  #ff9072,  #ffa3d3,  #7d8aff,
@@ -223,6 +243,8 @@
   --baozi-green: var(--mint);
   --baozi-blue: var(--info);
   --baozi-ink: var(--ink);
+  /* 夜间遮罩更重（浅色遮罩压不住亮色内容） */
+  --overlay-scrim: rgba(2, 6, 14, 0.62);
 }
 
 /* Tailwind v4 主题映射 */
@@ -277,6 +299,70 @@
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
   --breakpoint-2xl: 1536px;
+  /* 语义断点别名：供 @media (--bp-md) 这类具名 media 用。
+     2026-10-03 补：全站 47 个裸像素断点值（700/720/860/900/1080…），
+     映射表见上方注释。裸点分批收敛，此处先给出唯一真源。 */
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+  /* 铰链折叠态（layout.css .hinge-safe 避让用，M4） */
+  --bp-folded: 280px;
+
+  /* ===== 间距令牌（8px 栅格 + 4px 半档）=====
+     2026-10-03 补：存量 438 处 padding/margin 声明里 59.4% 非 4 倍数
+     （10px×64、6px×38、14px×34 都在 8px 栅格外）。新增代码用
+     var(--sp-*)，存量分批替换。 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* ===== 圆角补充档 =====
+     2026-10-03 补：--r-xl/lg/md/sm 在 base.css 是 24/20/14/10，
+     theme-tide.css 收敛为 18/14/10/6 后实际生效的是后者。但全站
+     硬编码圆角有 19 种，其中 8px(50 次) 与 999px(78 次) 最高频却
+     无令牌。此处补齐这两档 + 更小的 4px 档。 */
+  --r-2xs: 4px;
+  --r-xs: 6px;
+  --r-pill: 999px;
+  --r-circle: 50%;
+
+  /* ===== 字号档 =====
+     2026-10-03 补：全站 34 种字号、全 px、其中 20.6% 是半像素
+     （12.5/11.5/13.5px），TSX 被迫用 text-[11px](176 次) 等任意值
+     对齐。此处给出 9 档收敛目标（12/13/14 差异仅 1px 时应合并）。 */
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 14px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+  --fs-3xl: 36px;
+
+  /* ===== 层级令牌（z-index）=====
+     2026-10-03 补：全站 18 个裸 z-index 值、0 令牌，其中 90 同时
+     承担 4 种浮层语义（hover 卡/新闻弹窗/娱乐屋弹窗/奖池特效）。
+     语义 9 档覆盖现存全部用法。 */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 30;
+  --z-nav: 40;
+  --z-fab: 45;
+  --z-dropdown: 50;
+  --z-overlay: 70;
+  --z-modal: 90;
+  --z-toast: 120;
+
+  /* ===== 触控目标下限（可访问性）=====
+     2026-10-03 补：全站 346 处可交互元素 < 44px。新增代码必须
+     满足 min-height/min-width: var(--tap-min)。 */
+  --tap-min: 44px;
 }
 
 html {
@@ -304,6 +390,21 @@ button:focus-visible,
 select:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
+  outline-offset: 1px;
+}
+
+/* 2026-10-03 补：全站 55 处 `outline-none` 把上面的全局焦点环关掉、
+   改用 `focus:border-sky`（仅边框变色）。边框色变化对键盘用户的
+   定位帮助远弱于 2px 描边，低视力用户尤其难以察觉；而逐个改
+   55 个 TSX 会把 className 串顶到 130 字符、触发行宽门禁。
+
+   折中：输入类元素用「边框变色 + 2px 描边」的组合——描边保证可见，
+   边框色保留原设计意图（两者叠加不冲突）。这条用 `:where()` 零
+   特异度 + 放在文件末尾靠后，保证能覆盖 Tailwind 的 outline-none。 */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--baozi-orange);
   outline-offset: 1px;
 }
 

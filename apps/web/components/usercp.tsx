@@ -13,6 +13,7 @@ import { UserFieldsTab } from "@/components/usercp-fields";
 import { TrackerTab } from "@/components/usercp-tracker";
 import { ForumTab } from "@/components/usercp-forum";
 import { SecurityTab } from "@/components/usercp-security";
+import { Icon } from "@/components/icons";
 
 /** 控制面板 —— 像素级复刻 NexusPHP usercp（参考站）：
  *  左侧 ⚙控制面板 六项侧边导航（账户概览/个人资料/网站设定/论坛设定/安全设定）
@@ -25,14 +26,19 @@ import { SecurityTab } from "@/components/usercp-security";
 export type UsercpTab =
   "overview" | "personal" | "fields" | "tracker" | "forum" | "security" | "wishlist";
 
+/** 侧栏导航图标：走 TIDE 图标系统（components/icons.tsx 的语义 SVG），
+ *  颜色继承 currentColor，浅色/夜间自动适配。
+ *  2026-10-03 修：此前用 ⌂♙✎⚙♧⌾☆ 七个键盘符号/装饰字符当图标，
+ *  其中 ✎(U+270E) 缺字形在多数字体下渲染成「、」，控制面板第 4 项
+ *  只剩一个孤立顿号；且与全站其他页面的图标体系不统一。 */
 export const USERCP_NAV: { key: UsercpTab; icon: string }[] = [
-  { key: "overview", icon: "⌂" },
-  { key: "personal", icon: "♙" },
-  { key: "fields", icon: "✎" },
-  { key: "tracker", icon: "⚙" },
-  { key: "forum", icon: "♧" },
-  { key: "security", icon: "⌾" },
-  { key: "wishlist", icon: "☆" },
+  { key: "overview", icon: "gauge" },
+  { key: "personal", icon: "user" },
+  { key: "fields", icon: "edit" },
+  { key: "tracker", icon: "settings" },
+  { key: "forum", icon: "forums" },
+  { key: "security", icon: "shield" },
+  { key: "wishlist", icon: "star" },
 ];
 
 // ============ 站点语言 ⇄ 前端 locale 映射 ============
@@ -222,7 +228,7 @@ export function UsercpPanel({
               setTab(n.key);
             }}
           >
-            <span aria-hidden="true">{n.icon}</span>
+            <Icon name={n.icon} size={17} className="shrink-0" />
             {t.tabs[n.key]}
           </Link>
         ))}

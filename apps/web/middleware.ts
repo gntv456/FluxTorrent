@@ -23,6 +23,9 @@ function isAnonymousOk(pathname: string): boolean {
   return (
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/icons/") ||
+    // 内置品牌资产（站标/字标/OG 卡）：登录页品牌区与爬虫 OG 抓取都要匿名可达，
+    // 否则站标图被 307 成登录页 HTML、分享卡抓取落空
+    pathname.startsWith("/brand/") ||
     pathname.startsWith("/p/") ||
     [
       "/favicon.ico",

@@ -179,7 +179,9 @@
 .arc-stub.locked .ct {
   color: #6b4a12;
   border-color: rgba(107, 74, 18, .26);
-  background: rgba(255, 252, 240, .78);
+  /* 2026-10-03 修：硬编码浅底 rgba(255,252,240,.78)，夜间下这块
+     仍是雪白（实测 /games 有 13.8 万 px² 发白）。改走令牌。 */
+  background: var(--surface-raised);
   opacity: 1;
 }
 /* 星轨：已达成/可领取换成四角金牌（🔒 那颗保持圆形，锁形剪出来会被切掉） */
@@ -1830,3 +1832,16 @@
 }
 .up-pet-face { font-size: 30px; }
 .up-pet-meta { display: flex; flex-direction: column; flex: 1; }
+
+/* ============ 夜间兜底（2026-10-03 新增）============
+   arcade.css 是全局裸类名（gc- 与 arc- 前缀，无命名空间包裹），
+   硬编码的浅底/深字在夜间会打架。令牌层修好后实测仍有残留，
+   此处集中兜底——改的是「颜色令牌」，不是结构。 */
+
+/* 票根计数牌：浅色态是「灰纸上的深字」，夜间要翻成「深纸上的浅字」。
+   不用 prefers-color-scheme 包裹——用户手动切主题时系统偏好可能
+   仍是浅色，属性选择器才是唯一可靠判据。 */
+[data-theme="baozi-night"] .arc-stub.locked .ct {
+  color: var(--sun);
+  border-color: var(--warning-border);
+}

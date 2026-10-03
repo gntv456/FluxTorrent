@@ -1,7 +1,7 @@
 /* ============================================================
    娱乐屋「甜梦奇境 · 蓝调版」皮肤覆盖层（v2，对齐设计稿）
    设计源：design/arcade-sweet-dream/娱乐屋UI设计方案-甜梦奇境.html
-   作用域：[data-arcade="sweet"]，仅 /games/* 路由生效（games/layout.tsx）。
+   作用域：[data-arcade="sweet"]，仅 games 路由生效（games/layout.tsx）。
    策略：不改任何 TSX 组件，只覆盖现有类名的视觉。
    色板：冰蓝 #8ab4dd × 深海蓝 #4a7ab0 × 香槟金 #d4af7a × 淡蓝紫 #b8c8e8
    母题：缎带 / 烫金 / 珍珠柔光 / 衬线冕。圆角 28/22/16。
@@ -148,7 +148,7 @@
   min-height: 30px;
   padding: 4px 14px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-card);
   color: var(--sweet-sky-deep);
   font-size: 11px;
   font-weight: 800;
@@ -218,9 +218,12 @@
   gap: 9px;
   padding: 10px;
   border-radius: 14px;
-  background: #fff;
+  /* 2026-10-03 修：原写死 #fff（背景+边框），夜间下发白——实测
+     /games 娱乐屋有 38 个发白元素，此处面积最大（17.3 万 px²）。
+     改用语义令牌，夜间自动跟随。 */
+  background: var(--surface-card);
   box-shadow: 0 3px 8px -4px rgba(44, 62, 92, 0.12);
-  border: 1px solid #fff;
+  border: 1px solid var(--border-soft);
   overflow: hidden;
   transition:
     transform 0.18s ease,
@@ -691,7 +694,7 @@
   color: var(--sweet-sky-deep);
 }
 [data-arcade="sweet"] .gs-back {
-  background: #fff;
+  background: var(--surface-card);
   border-color: var(--sweet-line) !important;
   color: var(--sweet-sky-deep) !important;
   font-weight: 700;
@@ -946,7 +949,7 @@
   line-height: 1;
 }
 .gtab.on {
-  background: #fff;
+  background: var(--surface-card);
   color: var(--sweet-sky-deep);
   box-shadow: 0 3px 8px -3px rgba(44, 62, 92, 0.25);
 }
@@ -1203,7 +1206,7 @@
   padding: 12px;
 }
 [data-arcade="sweet"] .fs-fish {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--sweet-line);
   border-radius: var(--r-md);
 }
@@ -1422,7 +1425,7 @@
   margin-bottom: 4px;
   border-radius: 8px;
   border: 1px solid var(--sweet-line);
-  background: #fff;
+  background: var(--surface-card);
 }
 .sw-ten-row.win {
   border-color: var(--sweet-gold);
@@ -1447,7 +1450,7 @@
   cursor: pointer;
   text-align: center;
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface-card);
   box-shadow: inset 0 0 0 1.5px var(--sweet-line);
 }
 .sw-tier.on-mint {
@@ -1775,7 +1778,7 @@
   border: none;
   cursor: pointer;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-card);
   font-size: 11px;
   font-weight: 800;
   box-shadow:
@@ -2127,7 +2130,7 @@
   flex-direction: column;
   gap: 8px;
   border-radius: 14px;
-  background: #fff;
+  background: var(--surface-card);
   box-shadow: 0 3px 8px -4px rgba(44, 62, 92, 0.12);
   border: 1px solid var(--sweet-line);
   padding: 10px;
@@ -2174,7 +2177,7 @@
 }
 [data-arcade="sweet"] .sw-album-btn {
   border: 1px solid var(--sweet-line);
-  background: #fff;
+  background: var(--surface-card);
   color: var(--sweet-ink);
   border-radius: 999px;
   font-size: 11px;
@@ -2256,7 +2259,7 @@
   display: grid;
   place-items: center;
   font-size: 22px;
-  background: #fff;
+  background: var(--surface-card);
   box-shadow: 0 4px 10px -4px rgba(74, 122, 176, 0.3);
   border: 1.5px solid #fff;
   /* 样图①快捷带：白块上是蓝调线条图标（ArcadeGlyph currentColor） */
@@ -2446,7 +2449,7 @@
    做法：① 用双属性选择器（特异性更高）把局部令牌换回深色；
         ② 皮肤里另有 13 处硬编码浅色（#fff / #f4f8fd）不走令牌，逐条兜底。
    ============================================================ */
-[data-arcade="sweet"][data-theme="baozi-night"] {
+[data-theme="baozi-night"] [data-arcade="sweet"] {
   --sweet-cream: #101728;
   --sweet-mist: #1c2740;
   --sweet-sky: #5f8cc0;
@@ -2469,24 +2472,59 @@
 }
 
 /* 硬编码白底/浅底面板统一拉回深色（逐条对应原规则，避免误伤其它页面） */
-[data-arcade="sweet"][data-theme="baozi-night"] .gc-hero-cta,
-[data-arcade="sweet"][data-theme="baozi-night"] .gc-card,
-[data-arcade="sweet"][data-theme="baozi-night"] .gs-back,
-[data-arcade="sweet"][data-theme="baozi-night"] .fs-fish,
-[data-arcade="sweet"][data-theme="baozi-night"] .sw-album-card,
-[data-arcade="sweet"][data-theme="baozi-night"] .sw-album-btn,
-[data-arcade="sweet"][data-theme="baozi-night"] .gtab.on,
-[data-arcade="sweet"][data-theme="baozi-night"] .sw-ten-row,
-[data-arcade="sweet"][data-theme="baozi-night"] .sw-tier,
-[data-arcade="sweet"][data-theme="baozi-night"] .pp-act,
-[data-arcade="sweet"][data-theme="baozi-night"] .sw-rules,
-[data-arcade="sweet"][data-theme="baozi-night"] .gc-qi-ic {
+[data-theme="baozi-night"] [data-arcade="sweet"] .gc-hero-cta,
+[data-theme="baozi-night"] [data-arcade="sweet"] .gc-card,
+[data-theme="baozi-night"] [data-arcade="sweet"] .gs-back,
+[data-theme="baozi-night"] [data-arcade="sweet"] .fs-fish,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-album-card,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-album-btn,
+[data-theme="baozi-night"] [data-arcade="sweet"] .gtab.on,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-ten-row,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-tier,
+[data-theme="baozi-night"] [data-arcade="sweet"] .pp-act,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-rules,
+[data-theme="baozi-night"] [data-arcade="sweet"] .gc-qi-ic,
+[data-theme="baozi-night"] [data-arcade="sweet"] .gc-hero-cta,
+[data-theme="baozi-night"] [data-arcade="sweet"] .gs-back,
+[data-theme="baozi-night"] [data-arcade="sweet"] .arc-q,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-stat,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-cardbook,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-env-head,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-ten,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-hrow,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-synth-track,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-cap-track {
   background: var(--surface-card);
   border-color: var(--border-soft);
 }
 
+/* 2026-10-03 补：夜间实测仍发白的剩余项（无头浏览器逐元素量
+   computed background，/games 有 38 个发白元素）。多为
+   `linear-gradient(160deg, #fff, …)` 形式的硬编码白底——
+   夜间应改为「深底 + 稍亮」的双色渐变。 */
+[data-theme="baozi-night"] [data-arcade="sweet"] .arc-q,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-synth-track,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-cap-track {
+  background: linear-gradient(
+    160deg,
+    var(--surface-card),
+    var(--surface-raised)
+  );
+}
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-ten,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-cardbook,
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-env-head {
+  background: linear-gradient(180deg, var(--surface-card), #1a2440);
+}
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-rules {
+  background: var(--surface-sunken);
+}
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-hrow {
+  background: var(--surface-raised);
+}
+
 /* 中奖行保留「香槟金」母题，只在暗色基础上偏暖 */
-[data-arcade="sweet"][data-theme="baozi-night"] .sw-ten-row.win {
+[data-theme="baozi-night"] [data-arcade="sweet"] .sw-ten-row.win {
   background: #2a2415;
   border-color: var(--sweet-gold-deep);
 }

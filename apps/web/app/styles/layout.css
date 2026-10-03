@@ -619,7 +619,9 @@
   grid-template-columns: 50.4% 49.6%;
   grid-template-rows: 52px minmax(0, 1fr);
   width: min(1132px, calc(100vw - 48px));
-  min-height: 615px;
+  /* 2026-10-03 修：写死 615px 在矮屏（<695px）会顶出视口且不可滚。
+     改 min()：够高时保持 615px 观感，不够时按视口收敛。 */
+  min-height: min(615px, calc(100vh - 80px));
   overflow: hidden;
   border: 1px solid var(--border-deep);
   border-radius: 24px;
@@ -725,7 +727,10 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   min-width: 0;
   align-self: start;
   padding: 0 59px 22px 49px;
-  max-height: 563px;
+  /* 2026-10-03 修：此前写死 max-height:563px，900px 视口下画布
+     min-height 615px 顶着溢出，底部提示框被裁且页面不产生滚动条
+     （登录安全告知永久不可见）。改用视口单位跟随实际高度。 */
+  max-height: calc(100vh - 180px);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
@@ -1119,10 +1124,12 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 /* 登录提示条 */
 .bz-login-notice {
   margin: 10px 0 0;
-  padding: 6px 10px;
+  padding: 8px 12px;
   color: var(--text-brand);
-  font-size: 9px;
-  line-height: 1.6;
+  /* 2026-10-03 修：此前 9px 是全站最小字号 + 低对比浅蓝，
+     登录安全告知几乎不可读。提到 12px 并给足行高。 */
+  font-size: 12px;
+  line-height: 1.7;
   border: 1px solid var(--warning-border);
   border-radius: 7px;
   background: var(--surface-sunken);
@@ -1256,7 +1263,6 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   position: sticky;
   top: 12px;
   display: flex;
-  flex-direction: column;
   /* M5.6：<md 侧栏六导航转横向滚动 chips（不占首屏高度） */
   flex-direction: row;
   flex-wrap: nowrap;
@@ -1290,6 +1296,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     font-size: 13px;
   }
   .usercp-nav a {
+    min-height: 44px;
     padding: 10px 12px;
     font-size: 13px;
   }
@@ -1324,6 +1331,8 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* 触控目标 ≥44px（2026-10-03：此前 10px+10px+13.5px 行高≈40px） */
+  min-height: 44px;
   padding: 10px 14px;
   color: var(--baozi-ink);
   font-size: 13.5px;
