@@ -42,15 +42,29 @@ impl AuthRepo {
         .unwrap_or(0.0);
         let initial_uploaded: i64 =
             (initial_gb.max(0.0) * 1024.0 * 1024.0 * 1024.0) as i64;
+        // 初始等级（深测四轮 2026-10-03）：此前 INSERT 不写 class_id → 落 DB
+        // 缺省 0（「种子」级，role_permissions 零授权），新用户注册后连发种都
+        // 403，要等最长 5 分钟 worker class_auto_adjust 才提到 1（新芽）。
+        // 站长可用 initial_class 设定改初始档（0..89 有效档；<90 防误配把
+        // 注册直通 staff）。缺省 1 = 与权限种子（torrent.upload 授 class≥1）对齐。
+        let initial_class: i32 = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT value FROM site_settings \
+             WHERE name = 'initial_class')::int, 1)",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(1)
+        .clamp(0, 89);
         let user_id: i64 = sqlx::query_scalar(
             "INSERT INTO users (username, email, pass_hash, \
-             passkey, uploaded) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+             passkey, uploaded, class_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
         )
         .bind(&new_user.username)
         .bind(&new_user.email)
         .bind(pass_hash)
         .bind(&passkey)
         .bind(initial_uploaded)
+        .bind(initial_class)
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| match e {

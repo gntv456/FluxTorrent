@@ -95,13 +95,17 @@ pub async fn seeding_reward(
     // 审计修复（P0 锁表）：旧版 `WHERE id IN (SELECT id FROM users FOR UPDATE)` 每小时
     // 对全表行加锁，与所有写余额的 API 事务互斥（用户量大时持锁秒级）。改为只重算
     // 本小时流水覆盖到的用户 —— sum(ledger) 结果与其余用户现有快照一致，语义不变。
+    // 深测四轮（2026-10-03）：排除 kind='orphan_offset' 系统对冲行——0266 迁移把
+    // 历史孤儿流水对冲 -52374 挂在 root 名下（对账口径是全站合计，个人重算不该吃），
+    // 否则首个重算周期就把 root 快照打成大负数（实测 -51619，游戏/签到跟着报负）。
     sqlx::query(
         "UPDATE users SET spark_balance = COALESCE(( \
              SELECT base_spark FROM balance_baseline \
              WHERE user_id = users.id), 0) \
            + COALESCE(( \
              SELECT sum(amount) FROM spark_ledger \
-             WHERE user_id = users.id), 0) \
+             WHERE user_id = users.id \
+               AND kind <> 'orphan_offset'), 0) \
          WHERE id IN (SELECT DISTINCT user_id FROM spark_ledger WHERE created_at > now() - interval '2 hours')",
     )
     .execute(db)

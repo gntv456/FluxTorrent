@@ -207,7 +207,16 @@ pub async fn hr_self_pardon(
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<SelfPardonReq>,
 ) -> DomainResult<HttpResponse> {
-    const SELF_PARDON_PRICE: i64 = 20_000;
+    // 深测四轮（2026-10-03）：价格改读站点设定 cancel_hr（NP 取消 H&R 价格口径，
+    // 后台商店价格组可改；此前硬编码 20000，后台调价不生效）。坏值/缺省回落 20000。
+    let self_pardon_price: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+         WHERE name = 'cancel_hr'), '')::bigint, 20000)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(20_000)
+    .clamp(0, 10_000_000);
     let auth = require_auth(&req, &state).await?;
     // 先扣火花，成功后才赦免 —— 原顺序（先 UPDATE 后扣费）在余额不足时会把违规白白
     // 赦免（扣费失败仅回 4001，状态已不可逆），且两步非事务，中途失败同样撕裂。
@@ -216,7 +225,7 @@ pub async fn hr_self_pardon(
     let outcome = crate::economy_http::spend_spark(
         &state.repo.db,
         auth.id,
-        SELF_PARDON_PRICE,
+        self_pardon_price,
         "hr_pardon",
         &idem,
         "hr",
@@ -247,7 +256,7 @@ pub async fn hr_self_pardon(
         crate::economy_http::earn_spark(
             &state.repo.db,
             auth.id,
-            SELF_PARDON_PRICE,
+            self_pardon_price,
             "hr_pardon_refund",
             &format!("{idem}:refund"),
         )
@@ -268,6 +277,6 @@ pub async fn hr_self_pardon(
         .audit(Some(auth.id), "hr.self_pardon", Some(body.torrent_id))
         .await;
     Ok(ok(
-        serde_json::json!({ "pardoned": body.torrent_id, "cost": SELF_PARDON_PRICE }),
+        serde_json::json!({ "pardoned": body.torrent_id, "cost": self_pardon_price }),
     ))
 }
