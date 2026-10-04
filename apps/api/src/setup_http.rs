@@ -38,6 +38,8 @@ pub async fn setup_gate_mw(
         "/api/v1/me/password",
         "/api/v1/compat/meta",
         "/api/v1/metrics",
+        // 版本页（0276 页尾 FluxTorrent 入口）：装机未完成也应能渲染
+        "/api/v1/about",
     ];
     if !path.starts_with("/api/v1") || ALLOW.iter().any(|p| path.starts_with(p))
     {

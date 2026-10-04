@@ -5141,11 +5141,20 @@ const zhCnBase = {
     banlog: "封禁记录",
     disclaimer:
       "本站不存储任何资源文件，仅提供种子索引服务；请勿上传未经授权的内容，下载后请自行评估留存合法性。",
-    copyright: "(c) {site} {date} Powered by FluxTorrent",
+    copyright: "(c) {site} {date}",
     statsUsers: "注册会员 {n}",
     statsTorrents: "发布种子 {n}",
     statsSeedSize: "做种总量 {n}",
     deadTorrents: "无种资源 {n}",
+  },
+  about: {
+    title: "关于本站",
+    intro:
+      "本站基于开源项目 FluxTorrent 构建——Rust + Next.js 的新一代私有种子站程序，兼容 NexusPHP 生态，支持 Docker 一键部署与多机横向扩展。",
+    version: "程序版本",
+    siteTitle: "站点",
+    source: "开源仓库",
+    docs: "建站文档",
   },
   faq: {
     title: "常见问题",
