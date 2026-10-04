@@ -18,7 +18,6 @@ import { clientUuid } from "@/lib/client-uuid";
 // 拆出：资产格/存款行 @/components/bank-actions-parts、
 // 存款面板 @/components/bank-actions-deposit、
 // 贷款面板与贷款历史行 @/components/bank-actions-loan。
-
 const fmt = (n: number) => n.toLocaleString();
 
 export function BankCard() {
