@@ -27,6 +27,8 @@ pub(super) async fn email_invite_handler(
     if !email.contains('@') || email.len() < 5 {
         return Err(DomainError::Validation("邮箱地址无效".into()));
     }
+    // 后缀策略（0282）：与注册同口径——发到不允许注册的邮箱等于白发邀请
+    crate::auth_http::check_email_policy(&state, &email).await?;
     // 邮箱黑名单（与注册同口径）：无命中行为 allow，命中且非 allow 行才禁
     let banned: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM email_bans \

@@ -6,6 +6,7 @@
 //! me 基础面 me.rs（perms/me/logins）/ me 安全面 me_security.rs（passkey/密码）/
 //! 公开主页 profile.rs + user_torrentlist.rs / me 总览与设置 me_settings.rs + me_settings_kv.rs。
 
+mod email_policy;
 mod email_verify;
 mod login;
 mod login_types;
@@ -28,6 +29,7 @@ mod user_fields;
 mod user_fields_def;
 mod user_torrentlist;
 
+pub use email_policy::*;
 pub use email_verify::*;
 pub use login::*;
 pub use logout::*;

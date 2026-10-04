@@ -95,6 +95,9 @@ pub async fn register(
     }
     // 邮箱黑名单（0032 建表后首次接入注册链路）：pattern 三形态匹配——
     // 完整邮箱 / @domain（域名封禁）/ user@（前缀封禁）；allow 行优先豁免
+    // 后缀策略（0282）：整类后缀准入门（先于个案封禁——后缀不过关时
+    // 提示更聚焦「这类邮箱不能注册」）
+    super::email_policy::check_email_policy(&state, &new_user.email).await?;
     let email_banned: Option<bool> = sqlx::query_scalar(
         "SELECT NOT bool_or(mode = 'allow') FROM email_bans \
          WHERE lower($1) = lower(pattern) \
