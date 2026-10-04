@@ -44,6 +44,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(ready)
         .service(about)
         .service(crate::auth_http::register)
+        .service(crate::auth_http::email_policy_endpoint)
         .service(crate::auth_http::register_fields_endpoint)
         .service(crate::auth_http::register_mode_endpoint)
         .service(crate::staff_http::custom_page_public)
