@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { Modal } from "@/components/modal";
+import { clientUuid } from "@/lib/client-uuid";
 
 /** 用户自购置顶/限时免费（0101，好学站插件口径；0213 起档位读服务端注册表）：
  *  档位由 GET /promo/plans 返回的 kinds 元数据驱动（站方可自定义增删），
@@ -32,9 +33,7 @@ interface PlansResp {
 
 /** 档位显示名：优先字典（i18n_key → promoKind.*），回落服务端 label（按站点语言口径） */
 function kindLabel(k: KindMeta, dict: ReturnType<typeof useI18n>["dict"]) {
-  const map = dict.promoKind as unknown as
-    | Record<string, string>
-    | undefined;
+  const map = dict.promoKind as unknown as Record<string, string> | undefined;
   const key = k.i18n_key ?? k.kind;
   return map?.[key] ?? k.label_zh ?? k.kind;
 }
@@ -87,14 +86,12 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
         torrent_id: torrentId,
         kind,
         hours: Number(hours),
-        idempotency_key: `web-${torrentId}-${kind}-${crypto.randomUUID()}`,
+        idempotency_key: `web-${torrentId}-${kind}-${clientUuid()}`,
       });
       setOkMsg(t.ok);
       router.refresh();
     } catch (err) {
-      setMsg(
-        err instanceof ApiError ? err.message : dict.common.networkError,
-      );
+      setMsg(err instanceof ApiError ? err.message : dict.common.networkError);
     } finally {
       setBusy(false);
     }
@@ -132,13 +129,8 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
             const list = plans.plans[k.kind] ?? [];
             if (list.length === 0) return null;
             return (
-              <fieldset
-                key={k.kind}
-                className="flex flex-col gap-1.5 text-xs"
-              >
-                <legend className="font-bold">
-                  {kindLabel(k, dict)}
-                </legend>
+              <fieldset key={k.kind} className="flex flex-col gap-1.5 text-xs">
+                <legend className="font-bold">{kindLabel(k, dict)}</legend>
                 <div className="flex flex-wrap gap-2">
                   {list.map((e) => {
                     const key = `${k.kind}:${e.hours}`;
@@ -157,8 +149,7 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
                             : "border-line text-sub hover:border-sky")
                         }
                       >
-                        {e.hours}h · {e.price}
-                        {" "}
+                        {e.hours}h · {e.price}{" "}
                         {fmt(dict.common.spark, {
                           magic: e.price,
                         })}

@@ -16,6 +16,7 @@ import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { StreakPill } from "@/components/game/streak-pill";
 import { LuckyWheel, type WheelPrize } from "@/components/game/lucky-wheel";
 import { GameStage } from "@/components/game/game-stage";
+import { clientUuid } from "@/lib/client-uuid";
 
 export interface Overview {
   me?: {
@@ -125,9 +126,7 @@ export default function WheelFocusPage({
     setFlash(null);
     setRes(null);
     idem.current =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : String(Date.now());
+      clientUuid();
     try {
       const r = await api.post<DrawResult>("/api/v1/games/wheel", {
         idempotency_key: idem.current,

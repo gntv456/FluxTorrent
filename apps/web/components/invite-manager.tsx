@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { InviteList, SendEmailDialog } from "@/components/invite-manager-parts";
+import { clientUuid } from "@/lib/client-uuid";
 
 export interface InviteItem {
   id: number;
@@ -123,7 +124,7 @@ export function InviteManager() {
       // 幂等键：每次点击生成新 UUID（与 /shop/buy 同口径，防网络重试双扣款）
       const r = await api.post<{ code?: string; replayed?: boolean }>(
         "/api/v1/invites/redeem",
-        { idempotency_key: (inviteIdemRef.current ??= crypto.randomUUID()) },
+        { idempotency_key: (inviteIdemRef.current ??= clientUuid()) },
       );
       flash(r.code ?? t.replayed);
       await refresh();
@@ -207,10 +208,7 @@ export function InviteManager() {
           { label: t.statUsed, value: status?.used },
           { label: t.statExpired, value: status?.expired },
         ].map((s) => (
-          <div
-            key={s.label}
-            className={PANEL_MD_FLAT}
-          >
+          <div key={s.label} className={PANEL_MD_FLAT}>
             <p className="text-xs text-sub">{s.label}</p>
             <p className="mt-1 num text-lg font-bold">{s.value ?? "—"}</p>
           </div>
@@ -339,15 +337,9 @@ export function InviteManager() {
                         </span>
                       )}
                     </td>
-                    <td className="text-xs text-sub">
-                      {u.class_name ?? "—"}
-                    </td>
-                    <td className="num text-xs">
-                      {fmtBytes(u.uploaded)}
-                    </td>
-                    <td className="num text-xs">
-                      {fmtBytes(u.downloaded)}
-                    </td>
+                    <td className="text-xs text-sub">{u.class_name ?? "—"}</td>
+                    <td className="num text-xs">{fmtBytes(u.uploaded)}</td>
+                    <td className="num text-xs">{fmtBytes(u.downloaded)}</td>
                     <td className="num text-xs text-sub">
                       {new Date(u.created_at).toLocaleDateString()}
                     </td>

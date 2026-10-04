@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { clientUuid } from "@/lib/client-uuid";
 
 /** 首页签到与补签部件（从 home-sections.tsx 按域拆出，300 门禁）：
  *  ResubButton 补签卡弹层。签到日历本体在 home-sections-attendance.tsx。 */
@@ -27,12 +28,10 @@ export function ResubButton({ cards }: { cards: number }) {
         "/api/v1/attendance/resub",
         {
           target_date: date,
-          idempotency_key: `resub-web-${date}-${crypto.randomUUID()}`,
+          idempotency_key: `resub-web-${date}-${clientUuid()}`,
         },
       );
-      setMsg(
-        `${dict.attResub2.ok}（剩余补签卡 ${r.cards_left}）`,
-      );
+      setMsg(`${dict.attResub2.ok}（剩余补签卡 ${r.cards_left}）`);
       setTimeout(() => window.location.reload(), 800);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "补签失败");
@@ -70,9 +69,7 @@ export function ResubButton({ cards }: { cards: number }) {
             <h3 className="mb-1 text-sm font-bold">
               {t.btn}（持有 {cards} 张）
             </h3>
-            <p className="mb-3 text-xs text-sub">
-              {dict.attResub2.note}
-            </p>
+            <p className="mb-3 text-xs text-sub">{dict.attResub2.note}</p>
             {cards === 0 ? (
               <p className="rounded-[var(--r-md)] bg-sun/20 p-3 text-xs text-ink">
                 暂无可用补签卡：可到

@@ -12,6 +12,7 @@ import type {
 import { Stat, DepositRow } from "@/components/bank-actions-parts";
 import { BankDepositPanel } from "@/components/bank-actions-deposit";
 import { BankLoanPanel, LoanHistoryRow } from "@/components/bank-actions-loan";
+import { clientUuid } from "@/lib/client-uuid";
 
 // 银行系统（火花银行对齐）：活期复利 + 定期 + 贷款 + 资产概览。
 // 拆出：资产格/存款行 @/components/bank-actions-parts、
@@ -135,7 +136,7 @@ export function BankCard() {
   const loanRepay = (partial?: number) =>
     act(async () => {
       if (partial !== undefined) {
-        repayIdemRef.current ||= `web-repay-${crypto.randomUUID()}`;
+        repayIdemRef.current ||= `web-repay-${clientUuid()}`;
         const r = await api.post<{
           paid: number;
           principal: number;

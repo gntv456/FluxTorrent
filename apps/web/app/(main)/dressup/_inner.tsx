@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { FramePreview } from "@/components/frame-preview";
+import { clientUuid } from "@/lib/client-uuid";
 
 interface Dressup {
   item_id: number;
@@ -84,7 +85,7 @@ export default function DressupPage() {
       await api.post("/api/v1/shop/buy", {
         item_id: item.item_id,
         idempotency_key: (idemRef.current[item.item_id] ??=
-          `dressup-${item.item_id}-${crypto.randomUUID()}`),
+          `dressup-${item.item_id}-${clientUuid()}`),
       });
       setMsg(
         fmtCur(

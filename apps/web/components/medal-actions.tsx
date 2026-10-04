@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { clientUuid } from "@/lib/client-uuid";
 
 /**
  * 勋章购买/佩戴/赠送（客户端交互叶子组件 §8.3.2）。
@@ -40,7 +41,7 @@ export function MedalActions({
   const [isOwned, setIsOwned] = useState(owned);
   const [isWearing, setIsWearing] = useState(wearing);
   const [msg, setMsg] = useState<string | null>(null);
-  const [idem] = useState(() => `web-medal-${medalId}-${crypto.randomUUID()}`);
+  const [idem] = useState(() => `web-medal-${medalId}-${clientUuid()}`);
   const buyable = getType === 1 && price !== null;
 
   async function buy() {

@@ -23,6 +23,7 @@ import { StreakPill } from "@/components/game/streak-pill";
 import { JggGrid, type JggPrize } from "@/components/game/jgg-grid";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
 import { GameStage } from "@/components/game/game-stage";
+import { clientUuid } from "@/lib/client-uuid";
 
 export interface Overview {
   me?: {
@@ -134,9 +135,7 @@ export default function JggPage({
     setFlash(null);
     setRes(null);
     idem.current =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : String(Date.now());
+      clientUuid();
     try {
       const r = await api.post<DrawResult>("/api/v1/games/jgg", {
         idempotency_key: idem.current,

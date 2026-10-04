@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api-client";
+import { clientUuid } from "@/lib/client-uuid";
 
 /**
  * 样图「十连」：十次**真实单抽**的客户端串行循环，每抽独立幂等键。
@@ -15,10 +16,7 @@ export async function tenDraw<T>(
   body: Record<string, unknown> = {},
 ): Promise<T[]> {
   const out: T[] = [];
-  const base =
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : String(Date.now());
+  const base = clientUuid();
   for (let i = 0; i < 10; i++) {
     try {
       out.push(
