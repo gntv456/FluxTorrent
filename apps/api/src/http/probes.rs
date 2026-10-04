@@ -13,7 +13,12 @@ use crate::state::AppState;
 
 #[get("/health")]
 async fn health() -> impl Responder {
-    ok(serde_json::json!({ "status": "up", "service": "flux-api" }))
+    ok(serde_json::json!({
+        "status": "up",
+        "service": "flux-api",
+        // 版本来源 Cargo.toml（与 ghcr 镜像 tag 同源）；站长报障/检查更新对齐用
+        "version": env!("CARGO_PKG_VERSION"),
+    }))
 }
 
 /// 就绪探针：DB 与 Redis 任一不可用即 503。

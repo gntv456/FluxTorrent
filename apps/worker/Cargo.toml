@@ -19,6 +19,8 @@ dotenvy.workspace = true
 redis.workspace = true
 futures-util.workspace = true
 sha1.workspace = true
+# usage_stats 上报的站点匿名哈希（0276）
+sha2 = "0.10"
 # np-import bin（U4 §12.4）直连 NexusPHP 源库（MySQL 只读）：
 # feature 并集编译——mysql 驱动只被本 bin 代码触达
 
