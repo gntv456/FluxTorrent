@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
+import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type { InviteItem } from "@/components/invite-manager";
@@ -119,7 +122,7 @@ export function InviteList({
   );
 }
 
-/** 发送邀请邮件弹层（收件地址填完才可发送） */
+/** 发送邀请邮件弹层（收件地址填完才可发送；受限后缀实时禁发 + 提示） */
 export function SendEmailDialog({
   sendFor,
   sendEmail,
@@ -137,6 +140,33 @@ export function SendEmailDialog({
 }) {
   const { dict } = useI18n();
   const t = dict.invites;
+  // 邮箱后缀策略（0282）：与后端同口径的前端预判——填到受限后缀时
+  // 禁用发送按钮并说明原因，而不是等点发送才被 400。
+  const [policy, setPolicy] = useState<{
+    policy: string;
+    list: string[];
+  } | null>(null);
+  useEffect(() => {
+    api
+      .get<{ policy: string; list: string[] }>("/api/v1/auth/email-policy")
+      .then(setPolicy)
+      .catch(() => setPolicy(null)); // 拉不到=不预判，交给后端兜底
+  }, []);
+  const suffix = sendEmail.includes("@")
+    ? sendEmail.slice(sendEmail.lastIndexOf("@") + 1).trim().toLowerCase()
+    : "";
+  const policyBlocked =
+    policy !== null &&
+    policy.list.length > 0 &&
+    suffix !== "" &&
+    (policy.policy === "allow_list"
+      ? !policy.list.includes(suffix)
+      : policy.policy === "deny_list" && policy.list.includes(suffix));
+  const blockedHint = policyBlocked
+    ? policy.policy === "allow_list"
+      ? t.suffixNotAllowed
+      : t.suffixBanned
+    : null;
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -158,6 +188,11 @@ export function SendEmailDialog({
           placeholder={t.emailPlaceholder}
           className="mt-3 w-full rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-3 py-2 text-sm"
         />
+        {blockedHint && (
+          <p className="mt-2 text-xs text-danger" role="alert">
+            {blockedHint}
+          </p>
+        )}
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
@@ -169,7 +204,7 @@ export function SendEmailDialog({
           <button
             type="button"
             className="min-h-[40px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:opacity-50"
-            disabled={busy || !sendEmail.includes("@")}
+            disabled={busy || !sendEmail.includes("@") || policyBlocked}
             onClick={onSend}
           >
             {t.send}

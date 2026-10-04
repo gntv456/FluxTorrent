@@ -61,3 +61,38 @@ pub(crate) async fn check_email_policy(
     }
     Ok(())
 }
+
+/// 策略只读导出（0282）：邀请发送弹层用它在前端做「发送按钮禁用 + 提示」，
+/// 免得用户填完邮箱点发送才被后端拒。登录态即可（清单本身不是秘密——
+/// 注册页同样要展示）；none 模式下 list 为空。
+#[actix_web::get("/auth/email-policy")]
+pub(crate) async fn email_policy_endpoint(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<actix_web::HttpResponse> {
+    let kv: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name IN \
+         ('email_policy', 'email_policy_list')",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let kv: std::collections::HashMap<_, _> = kv.into_iter().collect();
+    let policy = kv
+        .get("email_policy")
+        .cloned()
+        .unwrap_or_else(|| "none".into());
+    // 归一化口径与 check_email_policy 一致：剥 @、小写、去空项
+    let list: Vec<String> = kv
+        .get("email_policy_list")
+        .map(|s| {
+            s.split(',')
+                .map(|p| p.trim().trim_start_matches('@').to_lowercase())
+                .filter(|p| !p.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+    Ok(crate::dto::ok(serde_json::json!({
+        "policy": policy,
+        "list": list,
+    })))
+}

@@ -1848,6 +1848,10 @@ const enBase: Omit<
     sendEmailTitle: "Send invite by email",
     sendEmailNote: "The invite link will be emailed (valid for 72 hours)",
     emailPlaceholder: "Recipient email",
+    suffixNotAllowed:
+      "This email suffix is not on the site allowlist; the recipient cannot register with it",
+    suffixBanned:
+      "This email suffix is banned from registration; try another address",
     send: "Send",
     cancel: "Cancel",
     sent: "✓ Invite email sent",

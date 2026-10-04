@@ -1821,6 +1821,8 @@ const zhTwBase: Omit<
     sendEmailTitle: "發送邀請到信箱",
     sendEmailNote: "邀請連結將發送到對方信箱（72 小時內有效）",
     emailPlaceholder: "對方信箱地址",
+    suffixNotAllowed: "該信箱後綴不在本站允許清單內，對方無法用它註冊",
+    suffixBanned: "該信箱後綴已被本站禁止註冊，換一個信箱吧",
     send: "發送",
     cancel: "取消",
     sent: "✓ 邀請郵件已發送",
