@@ -45,6 +45,7 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_jobs_list)
         .service(admin_job_run)
         .service(admin_version)
+        .service(admin_update_check)
         .service(admin_users_batch)
         .service(admin_ban_delete_by_ip)
         .service(admin_template_create)

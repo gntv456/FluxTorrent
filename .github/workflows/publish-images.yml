@@ -7,6 +7,9 @@
 # - arm64 跨平台构建（QEMU）对 Rust release 编译慢，故 arm64 拆到独立 job 用原生二级缓存串行构建，
 #   amd64 主矩阵保持不变（v0.2.0 起双平台）。
 # - web 镜像的 NEXT_PUBLIC_API_URL 在 CI 构建时为空（默认同源 /api 反代），部署时经反代路径转发即可。
+# - Docker Hub 镜像同步（0276）：配置 secrets.DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 后，
+#   各服务多推一份 docker.io/<user>/fluxtorrent-<name>（Docker Hub 公开拉取计数，部署规模可观测）；
+#   未配置时该 job 静默跳过，不影响 GHCR 主发布。
 name: publish-images
 
 on:
@@ -125,6 +128,34 @@ jobs:
             ${{ steps.repo.outputs.name }}:${{ steps.tags.outputs.version }}-arm64
           cache-from: type=gha,scope=arm64-${{ matrix.name }}
           cache-to: type=gha,scope=arm64-${{ matrix.name }},mode=max
+
+  # Docker Hub 同步 job（0276）：把已推到 GHCR 的同版本镜像搬运（buildx imagetools
+  # 直接复制清单，不再编译一遍）。只在配了 DOCKERHUB_* 密钥时生效。
+  dockerhub-sync:
+    runs-on: ubuntu-latest
+    needs: [manifest-merge]
+    if: ${{ github.event_name == 'push' && vars.DOCKERHUB_REPO != '' && secrets.DOCKERHUB_USERNAME != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api }
+          - { name: worker }
+          - { name: tracker }
+          - { name: web }
+    steps:
+      - name: 登录 Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 复制多架构镜像到 Docker Hub
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          SRC="${REGISTRY}/${GITHUB_REPOSITORY,,}/${{ matrix.name }}"
+          DST="docker.io/${{ vars.DOCKERHUB_REPO }}/${{ matrix.name }}"
+          docker buildx imagetools create -t "$DST:$V" -t "$DST:latest" "$SRC:$V"
 
   # 合并多架构 manifest：把 -amd64/-arm64 单架构 tag 收进 semver 与 latest 多架构清单
   manifest-merge:

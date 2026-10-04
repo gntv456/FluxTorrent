@@ -188,6 +188,10 @@ pub const JOBS: &[JobDef] = &[
         name: "ensure_partitions",
         cadence: "24h",
     },
+    JobDef {
+        name: "usage_stats",
+        cadence: "24h",
+    },
 ];
 
 /// 目录同步：幂等 upsert 节奏；代码里已下线的 job 从目录里删掉（避免面板留死按钮）。

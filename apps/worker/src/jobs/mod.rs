@@ -37,6 +37,7 @@ mod sweep;
 
 mod social_team;
 mod social_team_expire;
+mod usage_stats;
 pub(crate) use announce::*;
 pub(crate) use catalog::*;
 pub(crate) use locks::*;
@@ -66,6 +67,7 @@ pub(crate) use settle_periodic::*;
 pub(crate) use subtitle_cert::*;
 pub(crate) use subtitle_flow::*;
 pub(crate) use sweep::*;
+pub(crate) use usage_stats::*;
 
 #[cfg(test)]
 mod tests;

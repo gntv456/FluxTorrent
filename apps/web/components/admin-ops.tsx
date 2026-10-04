@@ -21,6 +21,17 @@ interface VersionInfo {
   latest_migration: string;
 }
 
+/** /admin/update_check 响应（0276 检查更新） */
+interface UpdateInfo {
+  current: string;
+  latest: string;
+  up_to_date: boolean;
+  release_name: string | null;
+  published_at: string | null;
+  url: string | null;
+  notes: string | null;
+}
+
 interface BackupsInfo {
   dir: string;
   files: [string, number][];
@@ -41,6 +52,7 @@ export function AdminOpsPanel() {
   const { dict } = useI18n();
   const t = dict.adminops;
   const [ver, setVer] = useState<VersionInfo | null>(null);
+  const [upd, setUpd] = useState<UpdateInfo | null>(null);
   const [backups, setBackups] = useState<BackupsInfo | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -60,6 +72,19 @@ export function AdminOpsPanel() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function updateCheck() {
+    setBusy("update");
+    setUpd(null);
+    try {
+      const r = await api.get<UpdateInfo>("/api/v1/admin/update_check");
+      setUpd(r);
+    } catch (e) {
+      setMsg(e instanceof ApiError ? e.message : t.updateFailed);
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function backupRun() {
     setBusy("backup");
@@ -84,9 +109,60 @@ export function AdminOpsPanel() {
 
   return (
     <section className="flex flex-col gap-4">
-      {/* ① 版本信息卡 */}
+      {/* ① 版本信息卡（含检查更新，0276） */}
       <div className="baozi-panel flex flex-col gap-2 p-4">
-        <h2 className="text-base font-bold">🧭 {t.versionTitle}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold">🧭 {t.versionTitle}</h2>
+          <button
+            type="button"
+            disabled={busy === "update"}
+            onClick={updateCheck}
+            className={BTN_SM_SKY}
+          >
+            {busy === "update" ? t.updateChecking : t.updateCheck}
+          </button>
+        </div>
+        {upd && (
+          <p
+            className={
+              upd.up_to_date
+                ? "rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink"
+                : "rounded-[var(--r-md)] p-2 text-xs text-ink"
+            }
+            style={
+              upd.up_to_date
+                ? undefined
+                : { background: "var(--warning-soft)" }
+            }
+            role="status"
+          >
+            {upd.up_to_date
+              ? fmt(t.updateToDate, { current: upd.current })
+              : fmt(t.updateAvailable, {
+                  latest: upd.latest,
+                  current: upd.current,
+                })}
+            {upd.published_at && (
+              <>
+                {" · "}
+                {t.updateReleasedAt} {upd.published_at.slice(0, 10)}
+              </>
+            )}
+            {upd.url && !upd.up_to_date && (
+              <>
+                {" · "}
+                <a
+                  className="text-link"
+                  href={upd.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {upd.release_name || upd.latest}
+                </a>
+              </>
+            )}
+          </p>
+        )}
         {ver ? (
           <>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:grid-cols-3">
