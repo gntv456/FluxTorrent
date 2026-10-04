@@ -10,6 +10,7 @@ import { PANEL_CENTER } from "@/lib/ui-classes";
 
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { enumOptions } from "@/components/setting-field-controls";
 import type {
   SettingCard,
   SettingFieldMeta,
@@ -127,9 +128,8 @@ export function SettingsGroupCards({
         const isSwitch = (f: SettingFieldMeta) =>
           f.type === "yesno" ||
           (f.type === "enum" &&
-            Array.isArray(f.options) &&
-            f.options.length > 0 &&
-            f.options.length <= 4);
+            enumOptions(f.options).length > 0 &&
+            enumOptions(f.options).length <= 4);
         const switches = c.fields.filter(isSwitch);
         const rest = c.fields.filter((f) => !isSwitch(f));
         return (

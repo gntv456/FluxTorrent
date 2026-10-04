@@ -103,7 +103,7 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
                 UPDATE hr_snapshots SET prewarned_at = now(), updated_at = now()
                 WHERE status = 'open' AND prewarned_at IS NULL
                   AND seeded_seconds < required_seconds
-                  AND deadline < now() + make_interval(hours => $1)
+                  AND deadline < now() + make_interval(hours => $1::int)
                 RETURNING user_id, torrent_id, seeded_seconds, required_seconds, deadline
             )
             INSERT INTO messages (sender_id, receiver_id, subject, body)
