@@ -11,6 +11,7 @@ import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { GameToast } from "@/components/game/game-kit-feedback";
 import { PetCustom, PetPen, type PetStatus } from "@/components/game/pet-pen";
 import { GameStage } from "@/components/game/game-stage";
+import { clientUuid } from "@/lib/client-uuid";
 
 export type { PetStatus };
 
@@ -48,9 +49,7 @@ export default function PetFocusPage({
   } | null>(null);
 
   const newIdem = () =>
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : String(Date.now());
+    clientUuid();
 
   // 余额条数据：喂食/领取后一并刷新（pending 入账会改变今日净收）
   const loadMe = useCallback(async () => {

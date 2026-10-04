@@ -16,6 +16,7 @@ import { SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { DieFace } from "@/components/game/die-face";
 import { StreakPill } from "@/components/game/streak-pill";
 import { PropBar, type PropView } from "@/components/game/bigsmall-props";
+import { clientUuid } from "@/lib/client-uuid";
 
 export interface Overview {
   max_bet: number;
@@ -153,9 +154,7 @@ export default function BigSmallPage({
     setRes(null);
     setNum(null);
     idem.current =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : String(Date.now());
+      clientUuid();
     try {
       const r = await api.post<GuessResult>("/api/v1/games/bigsmall", {
         bet,

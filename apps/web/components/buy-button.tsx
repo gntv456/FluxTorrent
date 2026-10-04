@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { clientUuid } from "@/lib/client-uuid";
 
 // 长类名常量（行宽 ≤80 门禁）：弹窗遮罩/卡片/关闭钮/数量行三件套
 const MODAL_MASK =
@@ -59,9 +60,7 @@ export function BuyButton({
   const [message, setMessage] = useState<string | null>(null);
   // 幂等键：每次打开弹窗生成一次，弹窗内重试复用（§8.2 幂等语义）；
   // 购买成功后换新键（0207b：连买两单不再被幂等挡）
-  const [idem, setIdem] = useState(
-    () => `web-${itemId}-${crypto.randomUUID()}`,
-  );
+  const [idem, setIdem] = useState(() => `web-${itemId}-${clientUuid()}`);
 
   const total = unitPrice * qty;
   const totalOk = balance === null || balance >= total;
@@ -81,7 +80,7 @@ export function BuyButton({
       // 成功即收起弹窗（0207b）：反馈落在卡片按钮「已购买 ✓」+ 父层刷新的余额上；
       // 同时换新幂等键，连买第二单不被上一单的键挡住
       setOpen(false);
-      setIdem(`web-${itemId}-${crypto.randomUUID()}`);
+      setIdem(`web-${itemId}-${clientUuid()}`);
     } catch (err) {
       setState("idle");
       setMessage(apiErrorMessage(dict, err));

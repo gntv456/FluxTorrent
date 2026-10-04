@@ -25,6 +25,7 @@ import {
   type CapsulePrize,
 } from "@/components/game/capsule-machine";
 import { GameStage } from "@/components/game/game-stage";
+import { clientUuid } from "@/lib/client-uuid";
 
 export interface Overview {
   me?: {
@@ -195,9 +196,7 @@ export default function CapsuleFocusPage({
     setFlash(null);
     setRes(null);
     idem.current =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : String(Date.now());
+      clientUuid();
     try {
       const r = await api.post<DrawResult>("/api/v1/games/capsule", {
         idempotency_key: idem.current,

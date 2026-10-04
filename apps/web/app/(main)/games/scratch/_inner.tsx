@@ -22,6 +22,7 @@ import {
 import { useTenDraw } from "@/lib/ten-draw";
 import { scratchPoolText, type ScratchPrize } from "@/lib/games";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
+import { clientUuid } from "@/lib/client-uuid";
 
 export interface Overview {
   max_bet: number;
@@ -129,9 +130,7 @@ export default function ScratchPage({
     setFlash(null);
     setPhase("buying");
     idem.current =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : String(Date.now());
+      clientUuid();
     try {
       const r = await api.post<ScratchResp>("/api/v1/games/scratch", {
         bet,

@@ -14,6 +14,7 @@ import { FishingPond, type FishPhase } from "@/components/game/fishing-pond";
 import { FishingSide } from "@/components/game/fishing-side";
 import { SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { SwRules } from "@/components/game/sw-enrich";
+import { clientUuid } from "@/lib/client-uuid";
 
 export interface Overview {
   max_bet: number;
@@ -188,9 +189,7 @@ export default function FishingPage({
     setRound(null);
     setPhase("casting");
     idem.current =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : String(Date.now());
+      clientUuid();
     try {
       const r = await api.post<CastResult>("/api/v1/games/fishing/cast", {
         bet,
