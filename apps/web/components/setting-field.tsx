@@ -113,7 +113,7 @@ export function SettingField({
             title={s.history}
             className="shrink-0 text-[10px] font-bold text-sub underline hover:text-ink"
           >
-            史
+            {s.history}
           </button>
         )}
       </div>

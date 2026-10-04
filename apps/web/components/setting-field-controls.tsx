@@ -13,9 +13,9 @@ export interface EnumOption {
   l: string;
 }
 
-/** enum 的 options 兼容三种存量形态（0159 修复：候选栏空白根因）：
- *  1) [{v,l}] 规范形态（本组件原先唯一支持的）
- *  2) {"options": ["a","b"]} —— 迁移里包了一层的字符串数组（registration_mode 等）
+/** enum 的 options 兼容四种存量形态（0159 修复：候选栏空白根因）：
+ *  1) [{v,l}] / [{value,label}] 规范形态（0275 起 enum 全量收敛到 v/l）
+ *  2) {"options": ["a","b"]} —— 迁移里包了一层的字符串数组（裸英文值直出）
  *  3) {"key": "中文说明"} —— map 形态（bank_fixed_settle_mode）；
  *  裸字符串数组 ["a","b"] 也认。文本类字段的 {rule} 对象仍返回 []。 */
 export function enumOptions(options: unknown): EnumOption[] {
@@ -40,9 +40,12 @@ export function enumOptions(options: unknown): EnumOption[] {
   return list
     .map((o) => {
       if (typeof o === "string") return { v: o, l: o };
-      if (!!o && typeof o === "object" && "v" in o) {
-        const rec = o as { v: unknown; l?: unknown };
-        return { v: String(rec.v), l: String(rec.l ?? rec.v) };
+      if (!!o && typeof o === "object") {
+        const rec = o as Record<string, unknown>;
+        const v = rec.v ?? rec.value;
+        if (v !== undefined) {
+          return { v: String(v), l: String(rec.l ?? rec.label ?? v) };
+        }
       }
       return null;
     })

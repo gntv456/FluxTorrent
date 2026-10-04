@@ -133,6 +133,20 @@ function ThemeNoFlash() {
   return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }
 
+/** 旧内核运行时兜底（2026-10-04 生产站实测）：Next.js 15 预编译的路由器
+ *  内部用了 Array.prototype.at()（Chrome 92+ 才支持），且这段 runtime 不经过
+ *  SWC 转译、next 自带 polyfill chunk 也不含 .at —— 旧内核（实测 Chrome 57-91，
+ *  生产访问日志 128+ 次）水合必抛 TypeError，整站落 error.tsx「页面出错了」。
+ *  这里在水合前的同步内联脚本里补 .at()（MDN 标准 polyfill 改写，ES5 语法）。
+ *  有 .at 的内核一行不执行，零开销。 */
+function LegacyRuntimePolyfill() {
+  const script = `(function(){function at(n){n=Math.trunc(n)||0;if(n<0)n+=this.length;` +
+    `if(n<0||n>=this.length)return undefined;return this[n];}` +
+    `if(!Array.prototype.at)Array.prototype.at=at;` +
+    `if(!String.prototype.at)String.prototype.at=at;})();`;
+  return <script dangerouslySetInnerHTML={{ __html: script }} />;
+}
+
 /** 主题令牌覆盖（0189 R4.6）：站长在后台设置的品牌色注入 :root。
  *  仅接受 #rrggbb（后端已过滤，此处再守一道）；空 = 不注入，用默认 Aurora。 */
 function ThemeTokenStyle({ tokens }: { tokens?: Record<string, string> }) {
@@ -173,6 +187,8 @@ export default async function RootLayout({
             首访体积不变但彻底摆脱外网依赖；回退链（Songti SC / SimSun）仍是衬线。 */}
       </head>
       <body>
+        {/* 旧内核 polyfill 必须最先执行（先于 next 的路由器水合；见组件注释） */}
+        <LegacyRuntimePolyfill />
         <ThemeNoFlash />
         <LocaleProvider dict={dict} locale={locale} currency={currency}>
           <PwaInstallBar />
