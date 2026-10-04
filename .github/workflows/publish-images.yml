@@ -134,7 +134,9 @@ jobs:
   dockerhub-sync:
     runs-on: ubuntu-latest
     needs: [manifest-merge]
-    if: ${{ github.event_name == 'push' && vars.DOCKERHUB_REPO != '' && secrets.DOCKERHUB_USERNAME != '' }}
+    # if 里不能引用 secrets（Actions 语法限制，引用即整条 workflow 报
+    # invalid）——只判 vars + 事件；密钥缺失时登录步主动跳过。
+    if: ${{ github.event_name == 'push' && vars.DOCKERHUB_REPO != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -144,11 +146,16 @@ jobs:
           - { name: tracker }
           - { name: web }
     steps:
-      - name: 登录 Docker Hub
+      - name: 密钥齐备才登录 Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 缺 Docker Hub 密钥则跳过同步
+        if: ${{ secrets.DOCKERHUB_USERNAME == '' || secrets.DOCKERHUB_TOKEN == '' }}
+        run: echo "DOCKERHUB_USERNAME/TOKEN 未配置，跳过 Docker Hub 同步" && exit 1
 
       - name: 复制多架构镜像到 Docker Hub
         run: |
