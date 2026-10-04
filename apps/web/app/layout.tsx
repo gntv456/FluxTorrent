@@ -140,8 +140,10 @@ function ThemeNoFlash() {
  *  这里在水合前的同步内联脚本里补 .at()（MDN 标准 polyfill 改写，ES5 语法）。
  *  有 .at 的内核一行不执行，零开销。 */
 function LegacyRuntimePolyfill() {
-  const script = `(function(){function at(n){n=Math.trunc(n)||0;if(n<0)n+=this.length;` +
-    `if(n<0||n>=this.length)return undefined;return this[n];}` +
+  const script =
+    `(function(){function at(n){n=Math.trunc(n)||0;` +
+    `if(n<0)n+=this.length;if(n<0||n>=this.length)` +
+    `return undefined;return this[n];}` +
     `if(!Array.prototype.at)Array.prototype.at=at;` +
     `if(!String.prototype.at)String.prototype.at=at;})();`;
   return <script dangerouslySetInnerHTML={{ __html: script }} />;
