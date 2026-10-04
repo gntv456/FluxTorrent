@@ -3,6 +3,21 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [未发布] - 2026-10-04
+
+v0.3.0（2026-10-03）以来 6 个提交：部署体验 + 站长手册通俗化 + wiki。**无新迁移，升级零动作。**
+
+### 部署体验
+
+- **一键部署脚本增强**（quick-deploy）：起栈前自动检测 5 个默认端口（5432/6379/8080/3000/7070），被占自动换备选端口——旧服务器上跑着别的站不再起不来；向导未完成时自动临时开放 3000，装完重跑脚本自动收回。
+- **反向代理一键补全**（新脚本 reverse-proxy.sh）：一条命令自动补 `/announce/` 与 `/api/` 反代（宝塔/系统 Nginx 均可），自动校验配置并体检，替代手动改配置文件。
+- **安装向导更聪明**：用域名访问时一键采用建议的 Tracker 地址；IP 访问时明确提示「先留空」；完成页对 IP 直连部署给出收尾三步指引（界面三语）。
+
+### 文档
+
+- **宝塔部署手册重排**：全程地图 + 每阶段「做什么/怎么做/完成标志」+ 向导四屏对照表；SSH/1Panel/快速开始各篇同步补面板操作路径。
+- 站内帮助中心（`/help`）上线；对外文档站落地 [wiki.ptang.top/ft](https://wiki.ptang.top/ft/)。
+
 ## [0.3.0] - 2026-10-03
 
 v0.2.0（2026-09-27）以来 151 个提交的聚合：娱乐屋（游戏厅）全生态、抽卡收藏、
@@ -45,7 +60,7 @@ UI 设计系统治理。**本版含新迁移 0227–0272（46 个），升级即
   此前拿到 HTML）、Torznab caps 根节点（Prowlarr/Jackett 此前无法添加索引器）、
   tv/movie-search 参数、ptppUserInfo 补 passkey、老脚本别名薄壳。
 - **开放 API 补深**：`/open/torrents/{id}` 深详情、`/open/me/{seeding,hr,messages,
-  history}`（移动壳不再爬 HTML）、`/openapi.json` 4→27 路径含 schema、高级筛选接
+history}`（移动壳不再爬 HTML）、`/openapi.json` 4→27 路径含 schema、高级筛选接
   站内同一套归一器。新增**工具维护者对接页** + `scripts/demo_seed.py`（三行命令
   起测实例）。矩阵见 `docs/ops/compat-matrix.md`。
 
@@ -61,7 +76,7 @@ UI 设计系统治理。**本版含新迁移 0227–0272（46 个），升级即
 ### 多机部署 G30（迁移 0224/0225，三机配方已实证）
 
 - 计费流消费者组（XREADGROUP + XAUTOCLAIM 回收）· 任务认领 `FOR UPDATE SKIP
-  LOCKED` + 角色分片 `FLUX_WORKER_JOBS` · tracker 挂 LB（XFF 双档）+ peer 外置
+LOCKED` + 角色分片 `FLUX_WORKER_JOBS` · tracker 挂 LB（XFF 双档）+ peer 外置
   Redis（多副本互见）· web 运行期可换上游 · `/health` 判活 · worker 优雅停机 ·
   跨进程配置 3s 跟随 · `docker/compose.multi-node.yml` + nginx LB 样例。
 - 详见 `_doc/G30-多机部署三机配方.md`。
@@ -367,8 +382,8 @@ UI 设计系统治理。**本版含新迁移 0227–0272（46 个），升级即
   `og:url` 静默省略、sitemap 落相对路径。现与 api 同口径转发，`.env` 里设一次两边都生效；
   不设 = api 回落 `localhost:3000`、web 省略绝对地址（不编假域名）。
   - 升级注意：0201 删除 `titlekeywords`/`cssdate` 两键的值与元数据行、新增
-  `seo_indexable`（默认 `no`）。既有站点前台描述原本取字典默认，若设过 `site_desc`
-  现在会改取它；打开收录前对爬虫无变化。
+    `seo_indexable`（默认 `no`）。既有站点前台描述原本取字典默认，若设过 `site_desc`
+    现在会改取它；打开收录前对爬虫无变化。
 - 复验（新镜像 + 独立 web 容器 24 条断言）：含「翻 `seo_indexable` 一个开关，
   robots/noindex/sitemap 三处一起翻」、匿名取 `/robots.txt` 不再被 307、
   `og:url` 落在部署域名、清空 META 描述后回落站点简介；对照组保留「未登录首页
@@ -386,8 +401,8 @@ UI 设计系统治理。**本版含新迁移 0227–0272（46 个），升级即
   - 前端只改一处——`getDict()` 出口把整本字典的字符串叶子过一遍规则，于是 236 个
     `useI18n` 消费点与全部服务端组件自动跟随，不必把 5000 行三语字典重写成占位符；
   - 后端在响应信封出口（`errors.rs`）同口径改写，390 条中文校验串一并跟上。
-  两侧共享同一套规则语义：**长词优先、单次正向扫描、替换结果不再参与匹配**
-  （「种子↔资源」这种互指规则不会级联或死循环）。
+    两侧共享同一套规则语义：**长词优先、单次正向扫描、替换结果不再参与匹配**
+    （「种子↔资源」这种互指规则不会级联或死循环）。
 - **零规则 = 零行为**：表是空的，新装与升级后的站点文案一字不变。预置规则由站型包
   携带（0206 新增 `site_type_packs.terms`，沿用「NULL = 本包不声明」口径 ⇒ 切换
   站型不会擅自改写谁的词汇表；数组才是显式覆盖）。另存快照会把术语段（含 `enabled`）
@@ -539,7 +554,7 @@ UI 设计系统治理。**本版含新迁移 0227–0272（46 个），升级即
    `pg_constraint` 动态清引用表 → users 的安全顺序，空库首启端到端 10/10 通过）。
 
 1. 迁移 0142 对大表建索引：存量站点请在低峰窗口升级，或带外 `CREATE INDEX
-   CONCURRENTLY` 预建同名索引后再启动（迁移内 IF NOT EXISTS 会跳过）
+CONCURRENTLY` 预建同名索引后再启动（迁移内 IF NOT EXISTS 会跳过）
 2. 存量库如应用过「0129/0130 换号版」迁移，先执行
    `scripts/align_migration_renumber_0127_0128.sql` 再拉新代码
 3. 反代部署在 .env 加 `TRUST_PROXY=1` 后 `docker compose up -d` 生效
