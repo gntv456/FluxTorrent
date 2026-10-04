@@ -169,7 +169,10 @@ struct ClassRuleRow {
     min_account_age_days: i32,
 }
 
-#[get("/classes")]
+/// 等级门槛原始表（数据单源导出口径）。路径用 /class-rules：/classes 已被
+/// classes_public（等级要求公开页聚合）占用——actix 同路径双注册时先注册者
+/// 恒赢，曾致公开页拿到数组形态数据在前端渲染崩溃（「页面出错了」）。
+#[get("/class-rules")]
 pub async fn class_rules_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
