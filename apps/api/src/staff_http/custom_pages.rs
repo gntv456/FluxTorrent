@@ -1,7 +1,7 @@
 //! 自定义页面（一审 R4.4）：custom_pages 后台 CRUD + 公开展示端点。
 //!
-//! body 是管理员撰写的 HTML——展示侧 ammonia 白名单消毒（与公告同防线）；
-//! 菜单挂接走既有 menu_items（url 填 /p/{slug}）。
+//! body 是管理员撰写的 HTML——展示侧 ammonia 白名单消毒（与公告同防线）。
+//! doc_group/doc_sort（0274）把帮助中心也收进本表：NULL = 普通自定义页。
 
 use actix_web::{get, post, put, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
@@ -33,6 +33,8 @@ struct CustomPageRow {
     visible: bool,
     sort: i32,
     module_key: Option<String>,
+    doc_group: Option<String>,
+    doc_sort: Option<i32>,
     updated_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -49,7 +51,8 @@ pub async fn custom_pages_list(
     )
     .await?;
     let rows: Vec<CustomPageRow> = sqlx::query_as(
-        "SELECT id, slug, title, body, visible, sort, module_key, updated_at \
+        "SELECT id, slug, title, body, visible, sort, module_key, \
+         doc_group, doc_sort, updated_at \
          FROM custom_pages ORDER BY sort, id",
     )
     .fetch_all(&state.repo.db)
@@ -71,6 +74,12 @@ struct CustomPageBody {
     /// 挂到某模块：该模块关闭时页面从前台下线（0199）
     #[serde(default)]
     module_key: Option<String>,
+    /// 帮助中心分组（0274）：NULL = 普通自定义页，不进 /help 目录
+    #[serde(default)]
+    doc_group: Option<String>,
+    /// 帮助中心目录内排序；NULL 时回落 sort
+    #[serde(default)]
+    doc_sort: Option<i32>,
 }
 fn default_true() -> bool {
     true
@@ -84,6 +93,12 @@ pub(super) fn norm_module_key(k: &Option<String>) -> Option<&str> {
     k.as_deref().map(str::trim).filter(|s| !s.is_empty())
 }
 
+/// 帮助中心分组规范化（0274）：空串视作 None（普通自定义页）。
+pub(super) fn norm_doc_group(g: &Option<String>) -> Option<&str> {
+    g.as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty() && s.len() <= 60)
+}
 fn validate_body(b: &CustomPageBody) -> DomainResult<()> {
     if !valid_slug(&b.slug) {
         return Err(DomainError::Validation(
@@ -120,8 +135,8 @@ pub async fn custom_pages_add(
     .await?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO custom_pages \
-         (slug, title, body, visible, sort, module_key) \
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+         (slug, title, body, visible, sort, module_key, doc_group, doc_sort) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
     )
     .bind(body.slug.trim())
     .bind(body.title.trim())
@@ -129,6 +144,8 @@ pub async fn custom_pages_add(
     .bind(body.visible)
     .bind(body.sort)
     .bind(norm_module_key(&body.module_key))
+    .bind(norm_doc_group(&body.doc_group))
+    .bind(body.doc_sort)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| match &e {
@@ -166,8 +183,8 @@ pub async fn custom_pages_update(
     .await?;
     let n = sqlx::query(
         "UPDATE custom_pages SET slug = $2, title = $3, body = $4, \
-         visible = $5, sort = $6, module_key = $7, updated_at = now() \
-         WHERE id = $1",
+         visible = $5, sort = $6, module_key = $7, doc_group = $8, \
+         doc_sort = $9, updated_at = now() WHERE id = $1",
     )
     .bind(path.into_inner())
     .bind(body.slug.trim())
@@ -176,6 +193,8 @@ pub async fn custom_pages_update(
     .bind(body.visible)
     .bind(body.sort)
     .bind(norm_module_key(&body.module_key))
+    .bind(norm_doc_group(&body.doc_group))
+    .bind(body.doc_sort)
     .execute(&state.repo.db)
     .await
     .map_err(|e| match &e {

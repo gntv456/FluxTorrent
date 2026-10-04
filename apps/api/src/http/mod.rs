@@ -47,6 +47,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::register_mode_endpoint)
         .service(crate::staff_http::custom_page_public)
         .service(crate::staff_http::custom_pages_public_list)
+        .service(crate::staff_http::help_docs_list)
         .service(crate::staff_http::terms_list)
         .service(crate::staff_http::terms_upsert)
         .service(crate::staff_http::terms_toggle)

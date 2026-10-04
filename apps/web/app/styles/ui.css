@@ -430,3 +430,27 @@
   background: var(--sky-deep, #0a3d6b);
   color: var(--text-on-accent);
 }
+
+/* 长文正文列表排版（2026-10-03 帮助中心）：全站 reset 清了 list-style
+   （base.css 的 ul/ol → list-style:none），而 .longform 只定义了 img/table/
+   pre/h2/h3，导致管理员撰写的正文里的 <ul>/<ol> 渲染成无圆点的缩进块、
+   层级全丢。管理员内容（自定义页面/公告/帮助中心）都走 .longform，这里补齐
+   列表标记与层级缩进；纯符号列表不受影响。 */
+.longform ul,
+.longform ol {
+  margin: 0.6em 0;
+  padding-left: 1.6em;
+  list-style: revert;
+}
+.longform li {
+  margin: 0.3em 0;
+}
+.longform li > ul,
+.longform li > ol {
+  margin: 0.3em 0;
+}
+/* 任务列表（- [ ]）沿用原符号，不当普通列表处理 */
+.longform ul:has(input[type="checkbox"]) {
+  list-style: none;
+  padding-left: 0.4em;
+}
