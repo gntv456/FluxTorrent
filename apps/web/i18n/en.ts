@@ -5304,11 +5304,21 @@ const enBase: Omit<
     banlog: "Ban log",
     disclaimer:
       "We host no content files, only torrent indexing. Do not upload unauthorized material; evaluate retention legality yourself after downloading.",
-    copyright: "(c) {site} {date} Powered by FluxTorrent",
+    copyright: "(c) {site} {date}",
     statsUsers: "Members {n}",
     statsTorrents: "Torrents {n}",
     statsSeedSize: "Seeding size {n}",
     deadTorrents: "Dead torrents {n}",
+  },
+
+  about: {
+    title: "About this site",
+    intro:
+      "This site runs on FluxTorrent, an open-source private tracker stack built with Rust + Next.js — NexusPHP-ecosystem compatible, one-command Docker deployment, and horizontally scalable.",
+    version: "Software version",
+    siteTitle: "Site",
+    source: "Source repository",
+    docs: "Documentation",
   },
 
   faq: {

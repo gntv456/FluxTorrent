@@ -42,6 +42,7 @@ pub fn v1_scope() -> actix_web::Scope {
     web::scope("/api/v1")
         .service(health)
         .service(ready)
+        .service(about)
         .service(crate::auth_http::register)
         .service(crate::auth_http::register_fields_endpoint)
         .service(crate::auth_http::register_mode_endpoint)

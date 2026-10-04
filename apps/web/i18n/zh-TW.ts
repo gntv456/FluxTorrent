@@ -5143,11 +5143,21 @@ const zhTwBase: Omit<
     banlog: "封禁記錄",
     disclaimer:
       "本站不儲存任何資源檔案，僅提供種子索引服務；請勿上傳未經授權的內容，下載後請自行評估留存合法性。",
-    copyright: "(c) {site} {date} Powered by FluxTorrent",
+    copyright: "(c) {site} {date}",
     statsUsers: "註冊會員 {n}",
     statsTorrents: "發布種子 {n}",
     statsSeedSize: "做種總量 {n}",
     deadTorrents: "無種資源 {n}",
+  },
+
+  about: {
+    title: "關於本站",
+    intro:
+      "本站基於開源項目 FluxTorrent 構建——Rust + Next.js 的新一代私有種子站程序，相容 NexusPHP 生態，支援 Docker 一鍵部署與多機橫向擴展。",
+    version: "程式版本",
+    siteTitle: "站點",
+    source: "開源倉庫",
+    docs: "建站文件",
   },
 
   faq: {

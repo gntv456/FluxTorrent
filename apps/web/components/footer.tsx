@@ -138,7 +138,16 @@ export async function Footer() {
             {dict.footer.disclaimer}
           </p>
           <p className="mt-1 text-[11px] text-sub">
-            {fmt(dict.footer.copyright, { site: siteName, date: foundedDate })}
+            {fmt(dict.footer.copyright, {
+              site: siteName,
+              date: foundedDate,
+            })}{" "}
+            <Link
+              href="/about"
+              className="text-sky hover:text-[var(--baozi-orange)]"
+            >
+              Powered by FluxTorrent
+            </Link>
           </p>
         </div>
       </div>

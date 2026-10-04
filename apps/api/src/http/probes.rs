@@ -21,6 +21,28 @@ async fn health() -> impl Responder {
     }))
 }
 
+/// 公开版本页数据（NP aboutnexus 口径）：站名 + 版本 + 建站年，不探依赖、
+/// 不要求登录——页尾「Powered by FluxTorrent」点进来第一屏就要能渲染。
+#[get("/about")]
+async fn about(state: web::Data<std::sync::Arc<AppState>>) -> impl Responder {
+    let site_name: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'site_name'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_default();
+    ok(serde_json::json!({
+        "product": "FluxTorrent",
+        "version": env!("CARGO_PKG_VERSION"),
+        "site_name": site_name,
+        // 开源主页（页尾 FluxTorrent 链接的跳转目标之一）
+        "source_url": "https://github.com/gntv456/FluxTorrent",
+        "docs_url": "https://wiki.ptang.top/ft/",
+    }))
+}
+
 /// 就绪探针：DB 与 Redis 任一不可用即 503。
 ///
 /// 此前只有 `/health`——静态返回 up、不探任何依赖，而 compose 的 healthcheck
