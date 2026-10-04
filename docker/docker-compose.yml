@@ -147,8 +147,10 @@ services:
     volumes:
       # 备份目录（admin/backups/run 与 scripts/backup.sh 同卷；宿主 ./backups 持久化）
       - ${FLUX_BACKUP_DIR:-../backups}:/backups
-      # 本地开发：迁移目录以宿主为准（镜像内迁移滞后时容器可先行），生产可去掉
-      - ../apps/api/migrations:/app/migrations:ro
+      # ⚠️ 迁移目录不再挂宿主（v0.3.1 升级实测踩坑）：宿主仓库落后于镜像时，旧迁移
+      # 目录会把镜像内新迁移整个遮住（镜像 270 条被宿主 268 条盖住，api 反复重启
+      # 也不应用）。镜像即版本，生产/常规部署一律用镜像内置迁移；本地开发要宿主
+      # 迁移先行的话叠 docker/docker-compose.dev.yml（见该文件头注释）。
       # 附件持久化（P0）：api 落盘 savedirectory=./attachments（storage.rs），不挂卷
       # 的话 compose pull && up -d 重建容器即丢全部用户附件
       - attachments:/app/attachments

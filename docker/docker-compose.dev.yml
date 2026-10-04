@@ -1,0 +1,13 @@
+# 本地开发叠加层（v0.3.1 后与主 compose 分工）：
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d
+#
+# 只做一件事：把宿主仓库的 apps/api/migrations 以只读挂回 /app/migrations——
+# 本地开发时改迁移文件不必重建 api 镜像（镜像内迁移滞后时容器可先行）。
+#
+# ⚠️ 别在生产用这个叠加层：宿主仓库一旦落后于镜像，旧迁移目录会把镜像内
+# 新迁移整个遮住（v0.3.1 升级实测：镜像 270 条被宿主 268 条盖住，api 反复
+# 重启也不应用新迁移，且症状极隐蔽——容器显示 healthy）。
+services:
+  api:
+    volumes:
+      - ../apps/api/migrations:/app/migrations:ro
