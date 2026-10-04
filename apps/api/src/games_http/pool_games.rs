@@ -76,11 +76,17 @@ async fn pool_round(
         .repo
         .audit(Some(uid), &format!("game.{game}"), None)
         .await;
+    // 返本档（倍数恰为 1）不占九宫格灯格：前端灯阵跳过它、直接按返本演出。
+    // 只有 jgg 的灯板按格定位中奖，其余两个玩法（扭蛋/大转盘）没有灯阵。
+    let replay = game == "jgg"
+        && draw.prize.mult_permille() == 1000
+        && matches!(draw.prize.kind, games::EntryKind::Magic { .. });
     Ok(serde_json::json!({
         "index": draw.index,
         "prize": draw.prize.label,
         "kind": award_kind(&draw, fell_back),
         "fell_back": fell_back,
+        "replay": replay,
         "payout": spark,
         "value": value,
         "ticket": ticket,

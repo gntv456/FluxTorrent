@@ -34,17 +34,16 @@ const CELL =
   "w-full rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-1.5 py-1 text-xs";
 
+/** 物品位类型三值闭集（与后端 arcade_items_write.rs 的 matches! 对应）。 */
+const ITEM_KINDS = ["economic", "voucher", "cosmetic"] as const;
+
 const BTN =
   "rounded-full border border-line px-3 py-1 text-[11px] " +
   "font-bold disabled:opacity-50";
 
 const LBL = "mt-1 flex items-center justify-end gap-1 text-[10px]";
 
-export function AdminArcadeItems({
-  onChanged,
-}: {
-  onChanged?: () => void;
-}) {
+export function AdminArcadeItems({ onChanged }: { onChanged?: () => void }) {
   const { dict } = useI18n();
   const t = dict.adminArcade.items;
   const [rows, setRows] = useState<Item[]>([]);
@@ -80,9 +79,7 @@ export function AdminArcadeItems({
     setBusy(r.key);
     setMsg(null);
     try {
-      await api.del(
-        `/api/v1/admin/arcade/items/${encodeURIComponent(r.key)}`,
-      );
+      await api.del(`/api/v1/admin/arcade/items/${encodeURIComponent(r.key)}`);
       setMsg(t.deleted.replace("{k}", r.key));
     } catch (e) {
       // 服务端会点名「被哪个池的哪一档引用」或「已发放过多少件」
@@ -112,10 +109,7 @@ export function AdminArcadeItems({
     <div className="flex flex-col gap-3">
       <h3 className="text-sm font-bold">{t.title}</h3>
 
-      <AdminArcadeItemsNew
-        onCreated={() => void load()}
-        busy={busy !== null}
-      />
+      <AdminArcadeItemsNew onCreated={() => void load()} busy={busy !== null} />
 
       <div className="overflow-x-auto">
         <table className="nexus-table w-full text-xs">
@@ -151,11 +145,26 @@ export function AdminArcadeItems({
                   <span className="text-[10px] text-sub">{r.key}</span>
                 </td>
                 <td className="py-1 pr-1">
-                  <input
-                    className={`${CELL} w-24`}
-                    value={r.kind}
+                  {/* kind 三值闭集（后端 arcade_items_write.rs）：
+                      自由文本填中文会被 400 拒，用下拉防错 */}
+                  <select
+                    className={`${CELL} w-28`}
+                    value={
+                      (ITEM_KINDS as readonly string[]).includes(r.kind)
+                        ? r.kind
+                        : ""
+                    }
                     onChange={(e) => set(i, { kind: e.target.value })}
-                  />
+                  >
+                    {!(ITEM_KINDS as readonly string[]).includes(r.kind) && (
+                      <option value="">{r.kind || "—"}</option>
+                    )}
+                    {ITEM_KINDS.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="py-1 pr-1 text-right">
                   <input
@@ -183,6 +192,8 @@ export function AdminArcadeItems({
                     <option value="collect">{t.useCollect}</option>
                     <option value="spark">{t.useSpark}</option>
                     <option value="sku">{t.useSku}</option>
+                    <option value="game">{t.useGame}</option>
+                    <option value="resub">{t.useResub}</option>
                   </select>
                   {(r.use_kind ?? "collect") === "sku" && (
                     <input
@@ -207,9 +218,7 @@ export function AdminArcadeItems({
                       }
                     />
                   )}
-                  <label
-                    className={LBL}
-                  >
+                  <label className={LBL}>
                     <input
                       type="checkbox"
                       checked={r.unlimited}

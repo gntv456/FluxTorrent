@@ -889,7 +889,10 @@
 /* —— 钓鱼（样图⑩）：全出血星夜海 ——
    fishing-pond.tsx 渲染 .fp-pond-svg（SVG 星夜场景：月/星/水草/
    鱼群/浮漂）。外壳层要突破 gs-stage-box 的内边距与圆角，
-   让塘真正铺满栏宽、占首屏大头（样图 ~60%） */
+   让塘铺满栏宽（样图手机版）。塘高不能顶穿首屏：宽度按
+   min(62vh, 560px) × 版式比例反算——竖版（手机全出血样图⑩）
+   宽 100% 封顶、横版（≥1024 桌面双栏，.fp-wide 640×400）
+   高 min(56vh, 480px) 封顶，超出时等比收窄居中 */
 [data-arcade="sweet"] .gs-stage-box:has(.fp-pond-svg) {
   padding: 0 !important;
   border: none !important;
@@ -898,9 +901,12 @@
   overflow: hidden;
 }
 [data-arcade="sweet"] .fp-pond-svg {
-  width: 100%;
+  width: min(100%, calc(min(62vh, 560px) * 0.8214));
   max-width: none;
-  margin: 0;
+  margin: 0 auto;
+}
+[data-arcade="sweet"] .fp-pond-svg.fp-wide {
+  width: min(100%, calc(min(56vh, 480px) * 1.6));
 }
 [data-arcade="sweet"] .fp-pond-svg svg {
   width: 100%;
@@ -1023,7 +1029,8 @@
     animation-duration: 5.8s;
     animation-delay: -3.8s;
   }
-  /* 鱼群洄游：位移区间按各自摆位算，起止都在画外 */
+  /* 鱼群洄游：位移区间按各自摆位算，起止都在画外。
+     横版（.fp-wide 640×400）摆位不同，另配一套区间 */
   [data-arcade="sweet"] .fp-f1 {
     animation: fpSwim1 36s linear infinite;
   }
@@ -1038,6 +1045,18 @@
   [data-arcade="sweet"] .fp-f4 {
     animation: fpSwim4 58s linear infinite;
     animation-delay: -33s;
+  }
+  [data-arcade="sweet"] .fp-wide .fp-f1 {
+    animation-name: fpSwimW1;
+  }
+  [data-arcade="sweet"] .fp-wide .fp-f2 {
+    animation-name: fpSwimW2;
+  }
+  [data-arcade="sweet"] .fp-wide .fp-f3 {
+    animation-name: fpSwimW3;
+  }
+  [data-arcade="sweet"] .fp-wide .fp-f4 {
+    animation-name: fpSwimW4;
   }
   /* 浮漂：待机随波轻浮，咬钩连续抖动 */
   [data-arcade="sweet"] .fp-bobber {
@@ -1144,6 +1163,66 @@
   }
   100% {
     transform: translate(195px, 0);
+  }
+}
+/* 横版洄游区间（f1 x=145 / f2 x=400 / f3 x=250 / f4 x=330 + 鱼宽） */
+@keyframes fpSwimW1 {
+  0% {
+    transform: translate(-185px, 0);
+  }
+  25% {
+    transform: translate(-10px, 4px);
+  }
+  50% {
+    transform: translate(160px, 0);
+  }
+  75% {
+    transform: translate(330px, 5px);
+  }
+  100% {
+    transform: translate(500px, 0);
+  }
+}
+@keyframes fpSwimW2 {
+  0% {
+    transform: translate(-455px, 0);
+  }
+  30% {
+    transform: translate(-230px, 5px);
+  }
+  60% {
+    transform: translate(20px, 0);
+  }
+  100% {
+    transform: translate(170px, 4px);
+  }
+}
+@keyframes fpSwimW3 {
+  0% {
+    transform: translate(-280px, 0);
+  }
+  40% {
+    transform: translate(-40px, 3px);
+  }
+  75% {
+    transform: translate(180px, 0);
+  }
+  100% {
+    transform: translate(360px, 3px);
+  }
+}
+@keyframes fpSwimW4 {
+  0% {
+    transform: translate(-358px, 0);
+  }
+  35% {
+    transform: translate(-150px, 2px);
+  }
+  70% {
+    transform: translate(90px, 4px);
+  }
+  100% {
+    transform: translate(240px, 0);
   }
 }
 @keyframes fpBob {

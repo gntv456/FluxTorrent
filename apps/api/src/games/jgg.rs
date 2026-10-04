@@ -84,7 +84,7 @@ pub enum PoolError {
     /// 物品位引用了目录里不存在 / 已停用 / 无折算价的物品 —— 发不出去的空头承诺
     UnknownItem(String),
     BadTicket(i64),
-    /// 猜大小少了一个区（赢/平/输）—— 机制被配置破坏
+    /// 猜大小少了一个区（赢/豹/输）—— 机制被配置破坏
     RegionEmpty(String),
     /// 某一区的权重不等于机制规定的千分占比
     RegionWeight(String, i64, i64),
@@ -117,10 +117,10 @@ impl std::fmt::Display for PoolError {
             }
             PoolError::BadTicket(t) => write!(f, "票价必须为正，实为 {t}"),
             PoolError::RegionEmpty(n) => write!(
-                f, "猜大小缺「{n}」区的档位：三区（赢/平/输）都必须配上才是一张桌"
+                f, "猜大小缺「{n}」区的档位：三区（赢/豹/输）都必须配上才是一张桌"
             ),
             PoolError::RegionWeight(n, got, want) => write!(
-                f, "猜大小「{n}」区权重合计 {got}，机制规定 {want}（49/2/49 的千分占比）"
+                f, "猜大小「{n}」区权重合计 {got}，机制规定 {want}（486/28/486 的千分占比）"
             ),
             PoolError::ExpectedValueNotBelowOne(ev) => {
                 write!(f, "综合返还 {ev:.3} ≥ 1：玩法在增发而非回收，拒绝服务")

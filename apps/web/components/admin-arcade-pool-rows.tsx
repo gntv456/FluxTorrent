@@ -4,7 +4,7 @@
  * 奖池档位表格（编辑器的一半：只管「这一行填什么」）。
  *
  * 从 admin-arcade-pool 拆出：壳子管读数、保存与回读，这一件管行的形状。
- * 猜大小多一列「哪一区付」，因为它的档位必须说明在赢/平/输哪一侧生效；
+ * 猜大小多一列「哪一区付」，因为它的档位必须说明在赢/豹/输哪一侧生效；
  * 另两个玩法不显示这一列（落库为 any）。
  */
 
@@ -101,14 +101,16 @@ export function AdminArcadePoolRows({
               </td>
               {showSide && (
                 <td className="py-1 pr-1">
-                  {/* 猜大小的一档必须说明它在哪一区付：三区合起来才是 49/2/49 */}
+                  {/* 猜大小的一档必须说明它在哪一区付：三区合起来才是 486/28/486。
+                      取值域是 win/triple/lose（0265 三骰豹子）；历史值 tie 读到时
+                      当 triple 显示，避免旧数据在下拉里「消失」被保存抹区 */}
                   <select
                     className={CELL + " w-20"}
-                    value={r.side ?? "any"}
+                    value={r.side === "tie" ? "triple" : (r.side ?? "any")}
                     onChange={(e) => onSet(i, { side: e.target.value })}
                   >
                     <option value="win">{t.sideWin}</option>
-                    <option value="tie">{t.sideTie}</option>
+                    <option value="triple">{t.sideTriple}</option>
                     <option value="lose">{t.sideLose}</option>
                   </select>
                 </td>
