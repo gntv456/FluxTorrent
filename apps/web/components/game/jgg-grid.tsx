@@ -24,11 +24,14 @@ export interface JggPrize {
  * 九宫格抽奖灯阵。
  * 关键：跑马灯在**响应返回后**才启动（旧实现是请求发出就开始转，快网空转、慢网转完没结果）；
  * 奖池文案全部来自后端下发的 prizes（修「前端硬编码 100x 与后端不符」）。
+ * 返本档（payout === 1）不占灯格：prizes 里它在列（公示/编辑器要它），
+ * 但灯阵按位跳过——池子可含 9 档而灯板只有 8 格。
  */
 export function JggGrid({
   prizes,
   ticket,
   resultIndex,
+  replay,
   busy,
   disabled,
   reduced,
@@ -40,6 +43,8 @@ export function JggGrid({
   prizes: JggPrize[];
   ticket: number;
   resultIndex: number | null;
+  /** 服务端判定这局抽中的是返本档：灯阵不定位，直接走回摆+揭晓 */
+  replay?: boolean;
   busy: boolean;
   disabled?: boolean;
   reduced: boolean;
@@ -51,6 +56,14 @@ export function JggGrid({
   const [lit, setLit] = useState<number | null>(null);
   const [landed, setLanded] = useState(false);
   const timer = useRef<number | null>(null);
+  // 灯阵可见档 = 非返本档（payout===1 不占灯格）。`lampIndexOf[i]` =
+  // 池内第 i 档在灯阵上的位置（返本档为 -1，中奖落在它上面时不点亮任何格）。
+  const lamps = prizes
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.payout !== 1);
+  const lampIndexOf = prizes.map(
+    (p) => lamps.findIndex((l) => l.p === p), // 引用相等：同一对象才映射
+  );
 
   // 开抽瞬间清掉上一局的高亮/中奖态（否则新一局开始前上次的中奖格还亮着）
   useEffect(() => {
@@ -63,28 +76,30 @@ export function JggGrid({
   useEffect(() => {
     if (resultIndex === null) return;
     setLanded(false);
+    // 返本档：不跑定位灯，转一圈后收在起点格附近直接揭晓（无中奖格可亮）
+    const winLamp = replay ? -1 : (lampIndexOf[resultIndex] ?? -1);
     if (reduced) {
-      setLit(resultIndex);
+      setLit(winLamp >= 0 ? winLamp : null);
       setLanded(true);
       onLanded?.();
       return;
     }
     let step = 0;
-    const laps = prizes.length * 2;
-    const target = laps + resultIndex;
+    const n = Math.max(lamps.length, 1);
+    const laps = n * 2;
     // near-miss 演出（趣味性批）：最后 2 格先冲过中奖格再回摆定格——
     // 相邻格擦肩的张力感；整体梯度 90→160→240→400→回摆 300
     const tick = () => {
-      setLit(step % prizes.length);
+      setLit(step % n);
       step++;
-      if (step > target + 2) {
-        // 回摆收尾：落在中奖格
-        setLit(resultIndex);
+      if (step > laps + n) {
+        // 回摆收尾：落在中奖格（返本局不亮任何格）
+        setLit(winLamp >= 0 ? winLamp : null);
         setLanded(true);
         onLanded?.();
         return;
       }
-      const remain = target + 2 - step;
+      const remain = laps + n - step;
       const delay =
         remain <= 0
           ? 300
@@ -125,10 +140,14 @@ export function JggGrid({
             );
           }
           const pi = RING.indexOf(gi);
-          const p = prizes[pi];
+          // 灯格与池档的对应：第 pi 个灯格 = lamps[pi]（返本档已被过滤，
+          // 池内第 i 档 ≠ 灯阵第 i 格）。isLit/isWin 都按灯阵位比较。
+          const lp = pi >= 0 ? lamps[pi] : undefined;
+          const poolIdx = lp ? lp.i : -1;
+          const p = lp?.p;
           if (!p) return <span key={gi} className="lamp" />;
           const isLit = lit === pi;
-          const isWin = landed && resultIndex === pi;
+          const isWin = landed && resultIndex === poolIdx;
           // 物品位 payout 恒为 0，按 payout 判会把高价物品画成最低档样式
           const v = p.value ?? p.payout * ticket;
           const tier =

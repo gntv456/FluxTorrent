@@ -174,11 +174,18 @@ pub(super) async fn arcade_pool_save(
     }
     // 九宫格的灯板是 3×3 环形 8 格（前端 jgg-grid 的 RING 常量）：
     // 池子超 8 档时多出的档位在灯板上不可见，中奖会落在空格——写侧拦。
-    if b.game == "jgg" && entries.len() > 8 {
-        return Err(DomainError::Validation(format!(
-            "九宫格灯板只有 8 个环形格：奖池最多 8 档，收到 {} 档",
-            entries.len()
-        )));
+    // 例外：倍率恰为 1 的「返本」档不占灯格（pool_round 返回 replay=true，
+    // 前端灯阵跳过它）——出厂池 9 档正是含一档「再来一次」，按总数拦
+    // 会让任何编辑都 400，而面板回读旧值，看起来就是「保存被吞」。
+    if b.game == "jgg" {
+        let lamps =
+            entries.iter().filter(|e| e.mult_permille() != 1000).count();
+        if lamps > 8 {
+            return Err(DomainError::Validation(format!(
+                "九宫格灯板只有 8 个环形格：非返本档最多 8 档，收到 {lamps} 档\
+                 （倍数恰为 1 的返本档不占灯格）"
+            )));
+        }
     }
     // 票档上限先判（农场除外：那一池的「票价」是定标单位，玩家不下注）。
     // 票价高过 `games_max_bet` 时，「低于票档拒开」与「高于上限拒开」两条

@@ -42,16 +42,33 @@ interface DefRow {
 
 const CELL =
   "w-full rounded-[var(--r-sm)] border border-line " +
-  "bg-[var(--surface-card)] px-1.5 py-1 text-xs";
+  "bg-[var(--surface-card)] px-2 py-1 text-xs";
+
+/** 周常归属玩法的合法值（与后端 arcade_rewards_write.rs 的 QUEST_REFS 闭集
+ *  一一对应）。改这里必须同步改后端 —— 两份清单漂移就是「保存被吞」的回归。 */
+const QUEST_REFS = [
+  "*",
+  "scratch",
+  "bigsmall",
+  "jgg",
+  "capsule",
+  "wheel",
+  "fishing",
+  "farm_plant",
+  "farm_water",
+  "farm_fertilize",
+  "farm_craft",
+  "farm_land",
+  "farm_up",
+  "ranch_buy",
+  "pet_feed",
+] as const;
+
 const BTN =
   "rounded-full border border-line px-3 py-1 text-[11px] " +
   "font-bold disabled:opacity-50";
 
-export function AdminArcadeRewards({
-  onChanged,
-}: {
-  onChanged?: () => void;
-}) {
+export function AdminArcadeRewards({ onChanged }: { onChanged?: () => void }) {
   const { dict } = useI18n();
   const t = dict.adminArcade.rewards;
   const [rows, setRows] = useState<Row[]>([]);
@@ -145,11 +162,36 @@ export function AdminArcadeRewards({
                 </td>
                 <td className="py-1 pr-1">{r.code}</td>
                 <td className="py-1 pr-1">
-                  <input
-                    className={`${CELL} w-24`}
-                    value={r.scope}
-                    onChange={(e) => set(i, { scope: e.target.value })}
-                  />
+                  {/* 周常的归属玩法是后端 QUEST_REFS 十值闭集（写错 ref_type
+                      任务永远完成不了），用下拉防拼错；里程碑的 scope 是
+                      赛季 key（自由文本）保持输入框。存量行不在闭集时
+                      原样显示，保存会收到后端点名原因 */}
+                  {r.kind === "quest" ? (
+                    <select
+                      className={CELL}
+                      value={
+                        (QUEST_REFS as readonly string[]).includes(r.scope)
+                          ? r.scope
+                          : ""
+                      }
+                      onChange={(e) => set(i, { scope: e.target.value })}
+                    >
+                      {!(QUEST_REFS as readonly string[]).includes(r.scope) && (
+                        <option value="">{r.scope || "—"}</option>
+                      )}
+                      {QUEST_REFS.map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className={`${CELL} w-24`}
+                      value={r.scope}
+                      onChange={(e) => set(i, { scope: e.target.value })}
+                    />
+                  )}
                 </td>
                 <td className="py-1 pr-1 text-right">
                   <input

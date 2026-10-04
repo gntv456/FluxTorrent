@@ -32,7 +32,7 @@ export interface JggPrizeView {
   use_kind?: string;
   /** 用途人话（如「可兑现为等值魔力」） */
   use_name?: string;
-  /** 猜大小专用：这一档在哪一区付（win | tie | lose） */
+  /** 猜大小专用：这一档在哪一区付（win | triple | lose） */
   side?: string;
 }
 

@@ -39,6 +39,7 @@ export function HelpFieldsEditor({
             onChange({ ...value, doc_group: e.target.value || null })
           }
           placeholder="guide"
+          maxLength={60}
         />
       </label>
       <label className="flex items-center gap-2 text-xs text-sub">

@@ -21,9 +21,18 @@ export interface JixiaoTypeRow {
  *  在此处替换为站点货币名（与全站 fmtCur 约定一致）。
  *  `labels` 缺省时回落指标 key 本身（不会渲染成空白）。 */
 export const METRIC_KEYS = [
-  "uploaded", "downloaded", "seed_hours", "avg_seed_hours", "seed_days",
-  "spark_delta", "seed_points_delta", "uploads", "seed_size_tb",
-  "seeding_count", "ops",
+  "uploaded",
+  "downloaded",
+  "seed_hours",
+  "avg_seed_hours",
+  "seed_days",
+  "spark_delta",
+  "seed_points_delta",
+  "uploads",
+  "seed_size",
+  "seed_size_tb",
+  "seeding_count",
+  "ops",
 ] as const;
 
 export interface MetricMeta {

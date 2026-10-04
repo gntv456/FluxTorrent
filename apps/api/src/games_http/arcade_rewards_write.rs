@@ -19,7 +19,10 @@ use crate::state::AppState;
 /// 数的，写一个不存在的 ref 就等于造一条永远完成不了的任务。
 /// ⚠️ 0262 扩了四款玩法后同步补齐；`farm_harvest` 已撤——收获入账走
 /// `earn_spark_tx`（不写 ref_type），靠 ref_type 数永远是 0。
-const QUEST_REFS: [&str; 10] = [
+/// 周常归属玩法的合法值。口径 = `arcade_meta.rs` 周常进度按 `spark_ledger.ref_type`
+/// 分组计数 —— 只有**会产生下注流水**的 ref_type 配进来才有进度。农场全链
+/// （plant/water/fertilize/craft/land/up）与牧场/宠物喂食都在下注侧。
+const QUEST_REFS: [&str; 15] = [
     "*",
     "scratch",
     "bigsmall",
@@ -29,6 +32,11 @@ const QUEST_REFS: [&str; 10] = [
     "fishing",
     "farm_plant",
     "farm_water",
+    "farm_fertilize",
+    "farm_craft",
+    "farm_land",
+    "farm_up",
+    "ranch_buy",
     "pet_feed",
 ];
 

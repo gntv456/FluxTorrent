@@ -44,12 +44,7 @@ pub async fn custom_pages_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::CUSTOMPAGES_MANAGE,
-    )
-    .await?;
+    require_cp_manage(&state, &auth).await?;
     let rows: Vec<CustomPageRow> = sqlx::query_as(
         "SELECT id, slug, title, body, visible, sort, module_key, \
          doc_group, doc_sort, updated_at \
@@ -88,17 +83,37 @@ fn default_sort() -> i32 {
     100
 }
 
+/// 四个 handler 同一权限：收成单行调用，body 里三行链太吵
+async fn require_cp_manage(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    auth: &crate::http::AuthUser,
+) -> DomainResult<()> {
+    crate::authz::require_perm(
+        state,
+        auth,
+        crate::authz::perm::CUSTOMPAGES_MANAGE,
+    )
+    .await
+}
+
 /// 空串按「不挂模块」处理（后台清空选择框提交的就是空串）
 pub(super) fn norm_module_key(k: &Option<String>) -> Option<&str> {
     k.as_deref().map(str::trim).filter(|s| !s.is_empty())
 }
-
 /// 帮助中心分组规范化（0274）：空串视作 None（普通自定义页）。
-pub(super) fn norm_doc_group(g: &Option<String>) -> Option<&str> {
-    g.as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty() && s.len() <= 60)
+/// 超长报错而非静默归 None（静默丢弃 = 页面从 /help 目录消失）。
+pub(super) fn norm_doc_group(g: &Option<String>) -> DomainResult<Option<&str>> {
+    match g.as_deref().map(str::trim) {
+        Some(s) if s.is_empty() => Ok(None),
+        Some(s) if s.len() <= 60 => Ok(Some(s)),
+        Some(s) => Err(DomainError::Validation(format!(
+            "帮助分组名「{s}」超长（{} 字节 > 60）：分组名过长会让 /help 目录无法归类，请缩短",
+            s.len()
+        ))),
+        None => Ok(None),
+    }
 }
+
 fn validate_body(b: &CustomPageBody) -> DomainResult<()> {
     if !valid_slug(&b.slug) {
         return Err(DomainError::Validation(
@@ -121,12 +136,7 @@ pub async fn custom_pages_add(
     body: web::Json<CustomPageBody>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::CUSTOMPAGES_MANAGE,
-    )
-    .await?;
+    require_cp_manage(&state, &auth).await?;
     validate_body(&body)?;
     crate::modules::require_known_module(
         &state.repo.db,
@@ -144,7 +154,7 @@ pub async fn custom_pages_add(
     .bind(body.visible)
     .bind(body.sort)
     .bind(norm_module_key(&body.module_key))
-    .bind(norm_doc_group(&body.doc_group))
+    .bind(norm_doc_group(&body.doc_group)?)
     .bind(body.doc_sort)
     .fetch_one(&state.repo.db)
     .await
@@ -169,12 +179,7 @@ pub async fn custom_pages_update(
     body: web::Json<CustomPageBody>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::CUSTOMPAGES_MANAGE,
-    )
-    .await?;
+    require_cp_manage(&state, &auth).await?;
     validate_body(&body)?;
     crate::modules::require_known_module(
         &state.repo.db,
@@ -193,7 +198,7 @@ pub async fn custom_pages_update(
     .bind(body.visible)
     .bind(body.sort)
     .bind(norm_module_key(&body.module_key))
-    .bind(norm_doc_group(&body.doc_group))
+    .bind(norm_doc_group(&body.doc_group)?)
     .bind(body.doc_sort)
     .execute(&state.repo.db)
     .await
@@ -221,12 +226,7 @@ pub async fn custom_pages_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::CUSTOMPAGES_MANAGE,
-    )
-    .await?;
+    require_cp_manage(&state, &auth).await?;
     let n = sqlx::query("DELETE FROM custom_pages WHERE id = $1")
         .bind(path.into_inner())
         .execute(&state.repo.db)

@@ -52,6 +52,8 @@ interface DrawResult {
   kind?: "magic" | "item" | "fallback";
   value?: number;
   fell_back?: string | null;
+  /** 返本档（×1）：不占灯格，灯阵跳过直接按返本演出 */
+  replay?: boolean;
 }
 
 /** 九宫格专注页：3×3 灯阵 + 跑马灯 + 翻牌揭晓 */
@@ -134,8 +136,7 @@ export default function JggPage({
     setErr(null);
     setFlash(null);
     setRes(null);
-    idem.current =
-      clientUuid();
+    idem.current = clientUuid();
     try {
       const r = await api.post<DrawResult>("/api/v1/games/jgg", {
         idempotency_key: idem.current,
@@ -258,6 +259,7 @@ export default function JggPage({
               prizes={prizes}
               ticket={ticket}
               resultIndex={res?.index ?? null}
+              replay={res?.replay ?? false}
               busy={busy}
               disabled={prizes.length === 0}
               reduced={reduced}

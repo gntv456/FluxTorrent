@@ -101,12 +101,17 @@ export function AdminArcadeItemsNew({
           value={draft.name}
           onChange={(e) => setDraft({ ...draft, name: e.target.value })}
         />
-        <input
-          className={CELL + " w-24"}
-          placeholder={t.colKind}
+        <select
+          className={CELL + " w-28"}
           value={draft.kind}
           onChange={(e) => setDraft({ ...draft, kind: e.target.value })}
-        />
+        >
+          {(["economic", "voucher", "cosmetic"] as const).map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
+        </select>
         <input
           className={CELL + " w-14"}
           placeholder={t.colIcon}
@@ -146,13 +151,13 @@ export function AdminArcadeItemsNew({
           <select
             className={CELL + " w-24"}
             value={draft.use_kind}
-            onChange={(e) =>
-              setDraft({ ...draft, use_kind: e.target.value })
-            }
+            onChange={(e) => setDraft({ ...draft, use_kind: e.target.value })}
           >
             <option value="collect">{t.useCollect}</option>
             <option value="spark">{t.useSpark}</option>
             <option value="sku">{t.useSku}</option>
+            <option value="game">{t.useGame}</option>
+            <option value="resub">{t.useResub}</option>
           </select>
         </label>
         {draft.use_kind === "sku" && (
