@@ -11,6 +11,7 @@ import { Icon } from "@/components/icons";
 import { getMenuItems } from "@/lib/data";
 import { buildNav } from "@/lib/nav-menu";
 import { MobileNavShell } from "@/components/mobile-nav-shell";
+import { GlobalSearch } from "@/components/global-search";
 import { api } from "@/lib/api-client";
 
 /**
@@ -79,6 +80,16 @@ export async function Header() {
             </span>
           </Link>
           <div className="min-w-0 flex-1">
+            {/* 全局搜索（0283 P1-6）：桌面常驻（lg+），聚合种子+论坛联想 */}
+            <div className="mb-2 hidden lg:block">
+              <GlobalSearch
+                placeholder={dict.common.globalSearchPh}
+                tipTorrents={dict.common.gsTorrents}
+                tipTopics={dict.common.gsTopics}
+                tipEmpty={dict.common.gsEmpty}
+                tipMore={dict.common.gsMore}
+              />
+            </div>
             {/* Suspense：MainMenu 用 useSearchParams 区分带参条目（官种），
                 预渲染路由要求它包在边界里 */}
             <Suspense fallback={null}>

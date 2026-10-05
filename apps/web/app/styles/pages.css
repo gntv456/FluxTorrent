@@ -335,6 +335,7 @@ table.subtitles-upload-table {
 
 /* 常驻搜索行 */
 .tsb-bar {
+  position: relative; /* 0283 P0-2：搜索联想下拉的定位锚点 */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -385,6 +386,52 @@ table.subtitles-upload-table {
 }
 .tsb-submit {
   min-height: 38px;
+}
+
+/* 搜索联想下拉（0283 P0-2）：绝对定位挂在 .tsb-bar 之下、左对齐输入框列。
+   组件无 wrapper 包住 input（保持 server 表单结构零改动），定位锚点借用
+   .tsb-bar（相对定位）+ 下拉贴其下缘左侧；宽度与输入框弹性一致。
+   position:relative 补在主 .tsb-bar 规则之后（相邻），不动上方原块。 */
+.tsb-suggest {
+  position: absolute;
+  top: calc(100% - 4px);
+  left: 12px;
+  right: 12px;
+  z-index: 60;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--baozi-line);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  box-shadow: 0 12px 28px rgb(17 34 68 / 14%);
+}
+.tsb-suggest__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: inherit;
+  font-size: 13px;
+  border-bottom: 1px solid var(--baozi-line-soft);
+}
+.tsb-suggest__item:last-child {
+  border-bottom: none;
+}
+.tsb-suggest__item.is-active,
+.tsb-suggest__item:hover {
+  background: var(--surface-hover);
+}
+.tsb-suggest__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tsb-suggest__meta {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* 高级搜索触发器：「给我搜」右侧的小齿轮按钮（点击开合 details，JS 在
@@ -3672,4 +3719,174 @@ input.batch-all {
   .ptr__ind.is-busy { animation: none; opacity: 0.7; }
   .bsheet, .td-actionbar, .trow-swipe__front, .ptr { transition: none; }
   .pting-feed-pill { transition-duration: 0.01ms; }
+}
+
+/* 头栏全局搜索（0283 P1-6）：lg+ 常驻。与单行导航条并存时占一行高的
+   弹性区（Header 里 lg:block 包裹），下拉绝对定位。 */
+.gsearch {
+  position: relative;
+  max-width: 560px;
+}
+.gsearch__form {
+  display: flex;
+}
+.gsearch__input {
+  width: 100%;
+  min-height: 36px;
+  padding: 2px 14px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: inherit;
+  font-size: 13px;
+}
+.gsearch__input:focus {
+  outline: 2px solid var(--sky-soft);
+  border-color: var(--sky);
+}
+.gsearch__drop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 70;
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--baozi-line);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  box-shadow: 0 14px 32px rgb(17 34 68 / 16%);
+}
+.gsearch__cap {
+  padding: 6px 12px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.gsearch__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: inherit;
+  font-size: 13px;
+  border-bottom: 1px solid var(--baozi-line-soft);
+}
+.gsearch__item:last-child {
+  border-bottom: none;
+}
+.gsearch__item:hover {
+  background: var(--surface-hover);
+}
+.gsearch__item--more {
+  justify-content: center;
+  font-weight: 600;
+  color: var(--text-brand);
+}
+.gsearch__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gsearch__meta {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.gsearch__empty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* 通知中心卡片（0283 P1-9）：三入口聚合页 */
+.ntf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  color: inherit;
+}
+.ntf-card:hover {
+  background: var(--surface-hover);
+}
+.ntf-card--hot {
+  border-color: var(--coral);
+}
+.ntf-card--warm {
+  border-color: var(--sun);
+}
+.ntf-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.ntf-card__count {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.ntf-card__extra {
+  font-size: 12px;
+  color: var(--coral);
+}
+
+/* 客户端指南卡片（0283 P1-7） */
+.client-card {
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+}
+.client-card--banned {
+  border-color: var(--coral);
+  opacity: 0.85;
+}
+.client-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.client-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.client-card__rec {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--mint-soft);
+  color: var(--mint);
+  font-size: 11px;
+}
+.client-card__ban {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--coral-soft);
+  color: var(--coral);
+  font-size: 11px;
+}
+.client-card__ver {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.client-card__keys {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--text-body);
+}
+.client-rules {
+  padding: 14px 16px;
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--r-md);
 }

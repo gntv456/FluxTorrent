@@ -253,6 +253,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
 
           {/* ── 快捷链接行（好学 CuteTop 口径：一行收纳高频入口） ── */}
           <nav className="usermenu__links" aria-label={t.center}>
+            <a href="/notifications">{dict.notifications.title}</a>
             <a href="/my">{t.center}</a>
             <a href="/my?tab=bookmarks">{t.bookmarksCount}</a>
             <a href="/my/torrentlist">{dict.mytl.title}</a>

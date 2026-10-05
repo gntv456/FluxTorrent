@@ -39,6 +39,11 @@ export const ja: DeepPartial<Dict> = {
   },
   common: {
     brand: "FluxTorrent",
+    globalSearchPh: "Torrent / 投稿を検索…",
+    gsTorrents: "Torrent",
+    gsTopics: "フォーラム投稿",
+    gsEmpty: "該当なし",
+    gsMore: "すべての結果を見る →",
     publish: "アップロード",
     login: "ログイン",
     nextPage: "次へ",
@@ -76,6 +81,10 @@ export const ja: DeepPartial<Dict> = {
     total: "合計 {n} 件",
     statusPending: "審査中",
     statusRejected: "却下",
+  },
+  torrents2: {
+    ratingLegend: "評価",
+    ratingHint: "この評価以上のTorrentのみ表示（Douban/IMDb、例: 7.5）",
   },
   torrent: {
     size: "サイズ",
