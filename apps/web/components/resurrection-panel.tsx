@@ -14,7 +14,14 @@ import { formatBytes } from "@/lib/format";
  *  POST /resurrections/claim {torrent_id} 认领
  *  GET /resurrections/mine 我的任务（元组 [torrent_id, reward_sparks, required_hours, claimed_at, status, seeded_seconds]） */
 
-type DeadRow = [number, string, number];
+/** 0284 P1-5：对象形态（旧元组 [id,name,size]），契约字段前置可见 */
+type DeadRow = {
+  torrent_id: number;
+  name: string;
+  size: number;
+  required_hours: number;
+  reward_sparks: number;
+};
 type MineRow = [number, number, number, string, string, number];
 
 export function ResurrectionPanel() {
@@ -112,24 +119,30 @@ export function ResurrectionPanel() {
             </tr>
           </thead>
           <tbody>
-            {(dead ?? []).map(([id, name, size]) => (
-              <tr key={id}>
+            {(dead ?? []).map((r) => (
+              <tr key={r.torrent_id}>
                 <td>
-                  <Link href={`/torrent/${id}`} className="text-link">
-                    {name}
+                  <Link href={`/torrent/${r.torrent_id}`} className="text-link">
+                    {r.name}
                   </Link>
+                  <div className="text-[11px] text-sub">
+                    {fmt(t.contract, {
+                      h: String(r.required_hours),
+                      sparks: String(r.reward_sparks),
+                    })}
+                  </div>
                 </td>
-                <td className="num text-sub">{formatBytes(size)}</td>
+                <td className="num text-sub">{formatBytes(r.size)}</td>
                 <td className="text-right">
-                  {claimed[id] ? (
+                  {claimed[r.torrent_id] ? (
                     <span className="text-xs font-bold text-mint">
-                      {claimed[id]}
+                      {claimed[r.torrent_id]}
                     </span>
                   ) : (
                     <button
                       type="button"
                       disabled={busy !== null}
-                      onClick={() => claim(id)}
+                      onClick={() => claim(r.torrent_id)}
                       className="min-h-[32px] rounded-full border border-[var(--baozi-orange-dark)] px-3 text-xs font-bold text-[var(--baozi-orange-dark)] disabled:opacity-50"
                     >
                       {t.claimBtn}
