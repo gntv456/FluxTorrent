@@ -111,6 +111,9 @@ pub(super) struct ListQuery {
     /// 仅看我书签收藏的种（阶段三筛选粒度；1/true 生效）
     #[serde(default, deserialize_with = "de_bool_lenient")]
     pub(super) bookmarked: Option<bool>,
+    /// 媒体评分下界（0283 P1-5）：0-10 一位小数；越界值丢弃（不筛）
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
+    pub(super) rating_min: Option<f64>,
 }
 
 /// 日期参数校验（严格 `YYYY-MM-DD`）：非法值直接丢弃——宁可不筛，
