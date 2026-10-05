@@ -5,11 +5,15 @@
 
 mod attendance;
 mod ban_ip;
+mod bulk_notify;
+mod bulk_traffic;
 mod classes_admin;
 mod exam_users;
 mod frames;
 mod hr;
 mod increment_bulk;
+mod increment_grant;
+mod increment_grant_item;
 mod increment_targets;
 mod invites;
 mod jixiao_ops;
