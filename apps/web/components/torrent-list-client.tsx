@@ -21,6 +21,9 @@ interface SnatchRow {
   leeching: boolean;
   completed_at: string | null;
   done: number;
+  /** 0284 P0-1：仅 kind=uploads —— 0=待审 1=过审 2=被拒 */
+  approval_status?: number;
+  deny_reason?: string | null;
 }
 
 /** 我的种子列表（NP getusertorrentlist 口径）：做种中 / 已完成 / 我的发布 */
@@ -92,6 +95,22 @@ export function TorrentListClient({
                 {r.leeching && (
                   <span className="sticker ml-1 bg-sun">
                     {dict.mytl.badgeLeeching}
+                  </span>
+                )}
+                {/* 0284 P0-1：自己发布的三态徽标 + 被拒原因（title 悬停全文） */}
+                {kind === "uploads" &&
+                  r.approval_status === 0 && (
+                    <span className="sticker ml-1 bg-sky/30">
+                      {dict.mytl.badgePending}
+                    </span>
+                  )}
+                {kind === "uploads" && r.approval_status === 2 && (
+                  <span
+                    className="sticker ml-1 bg-coral/40"
+                    title={r.deny_reason ?? ""}
+                  >
+                    {dict.mytl.badgeRejected}
+                    {r.deny_reason ? `：${r.deny_reason}` : ""}
                   </span>
                 )}
               </td>

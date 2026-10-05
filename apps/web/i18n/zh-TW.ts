@@ -558,6 +558,8 @@ const zhTwBase: Omit<
     bbCode: "程式碼 / MediaInfo",
     bbEmoji: "表情",
     success: "發布成功（#{id}），等待管理員審核",
+    sameSource: "發布成功，但偵測到同源種子已存在（#{name} #{id}）——若為重複發布請撤回",
+    groupCandidates: "發布成功；偵測到同名聚合組，可到種子頁將其歸組",
     fail: "發布失敗",
     networkError: "網路異常，請先登入後再發布",
   },
@@ -1069,6 +1071,16 @@ const zhTwBase: Omit<
       { name: "迅雷 Thunder", ver: "—", os: "—", rec: false, banned: true, keys: ["本站禁用：吸血用戶端會被 Tracker 直接拒絕回報"] },
     ],
   },
+  sessions: {
+    title: "活躍會話",
+    empty: "近 24 小時無登入記錄",
+    lastAt: "最近",
+    logins: "次登入",
+    revokeBtn: "登出其它會話",
+    revokeConfirm: "將使其它所有裝置上的登入立即失效（本裝置不受影響），確定？",
+    revokedOk: "已登出其它會話",
+    hint: "會話按近 24 小時成功登入的 IP 與用戶端近似分組；登出後其它裝置需重新登入",
+  },
   notifications: {
     title: "通知中心",
     summary: "你有 {n} 條待處理訊息",
@@ -1385,6 +1397,8 @@ const zhTwBase: Omit<
     colAt: "完成時間",
     badgeSeeding: "做種中",
     badgeLeeching: "下載中",
+    badgePending: "待審",
+    badgeRejected: "被拒",
     note: "僅自己可見；列表最多展示最近 100 條。",
   },
   my: {
@@ -5078,7 +5092,7 @@ const zhTwBase: Omit<
     2006: "邀請碼已被使用",
     2007: "使用者名稱已被佔用",
     3003: "種子檔案無效",
-    3004: "種子重複",
+    3004: "種子重複（本站已存在同 infohash 的種子，可在列表搜尋確認）",
     4001: "餘額不足",
     4002: "流水衝突，請重試",
     5002: "已感謝過",
@@ -5701,6 +5715,9 @@ const noticePrefsTw: Dict["noticePrefs"] = {
 };
 
 const wishlistTw: Dict["wishlist"] = {
+  hitsTitle: "命中種子",
+  hitsKeyword: "命中關鍵詞",
+  hitsAt: "命中時間",
   title: "我的願望單",
   note: "留下你想要的資源關鍵詞，有人發布命中時會通知你（上限 20 條）。",
   addBtn: "加入願望單",
@@ -5746,6 +5763,7 @@ const fundingTw: Dict["funding"] = {
 };
 
 const resurrectTw: Dict["resurrect"] = {
+  contract: "契約：需做種 {h} 小時 → {sparks} {magic} + 免費券 + 7 天免費",
   title: "復活任務",
   note: "領取無種死種的復活任務，持續做種達標可獲得 5000 {magic} + 1 枚免費券 + 該種 7 天免費。",
   claimBtn: "認領復活",

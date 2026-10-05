@@ -231,7 +231,18 @@ export function UploadForm() {
         // 发布成功直接进详情页预览（0159 用户反馈）：仅提示不跳转时用户
         // 不知道去哪看；待审种对本人可见（get_torrent 口径）
         const newId = body.data.id;
-        setMsg(fmt(dict.upload.success, { id: newId }));
+        // 0284 P1-4：同源提示（group_suggest.same_source）优先于普通成功文案
+        const gs = body.data.group_suggest;
+        if (gs?.same_source) {
+          setMsg(
+            fmt(dict.upload.sameSource, {
+              id: gs.torrent_id,
+              name: gs.name ?? "",
+            }),
+          );
+        } else {
+          setMsg(fmt(dict.upload.success, { id: newId }));
+        }
         setTimeout(() => {
           window.location.href = `/torrent/${newId}`;
         }, 900);

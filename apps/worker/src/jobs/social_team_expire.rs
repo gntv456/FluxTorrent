@@ -165,6 +165,14 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
             FROM agg
             WHERE dummy
             RETURNING 1
+        ),
+        -- 命中历史（0284 P2-10）：通知之外可回溯（/wishlist 接口带 hits）
+        hist AS (
+            INSERT INTO wishlist_hits (user_id, torrent_id, keyword)
+            SELECT h.user_id, h.torrent_id, w.keyword
+            FROM hits h JOIN wishlist w ON w.id = h.wish_id
+            ON CONFLICT DO NOTHING
+            RETURNING 1
         )
         -- Web Push outbox（0283 P0-1）：愿望单命中的即时推送（promo topic）
         INSERT INTO push_outbox (user_id, topic, title, body, dedupe_key)
