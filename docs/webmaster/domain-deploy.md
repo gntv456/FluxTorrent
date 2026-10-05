@@ -170,6 +170,41 @@ curl https://pt.example.com/api/v1/health    # 应返回 {"status":"up"}
 
 ---
 
+## 进阶：多域名（一主一备 / 防封备用域名）
+
+支持给同一个站配多个访问域名（比如 `pt.example.com` 主用、`pt-backup.net` 备用防封）。**系统层面原生支持**——CORS 白名单就是逗号分隔设计、登录 cookie 不绑定域名、内部容器链路不感知域名；要做的只是把每个域名都正确接到 Nginx 并加进白名单。
+
+三步：
+
+**① DNS + Nginx**：每个域名的 DNS 都解析到本服务器；Nginx 站点配置的 `server_name` 写成多值：
+
+```nginx
+server_name pt.example.com pt-backup.net;
+```
+
+（宝塔/1Panel 用户：网站设置里把第二域名加进「域名列表」，`/announce/` 反代段两个域名共用同一份配置所以自动生效。）
+
+**② 证书**：certbot 一张多域证书，或给第二域名单签一张：
+
+```bash
+sudo certbot --nginx -d pt.example.com -d pt-backup.net
+```
+
+**③ CORS 白名单（唯一必改的后端配置）**：编辑 `docker/.env`：
+
+```bash
+CORS_ORIGINS=https://pt.example.com,https://pt-backup.net
+```
+
+改完 `docker compose up -d` 重启。漏了这步的话，备用域名下登录/保存类请求会被浏览器 CORS 拦掉。
+
+**两个如实的边界**（不是坑，是口径）：
+
+- **种子里的 tracker 地址只有一个**：`announce_url` 是单值，烧进 `.torrent` 文件。第二域名做网页入口、下载种子完全没问题；想让它**也**当 tracker 用，把它的 Nginx 里也补上 `/announce/` 反代段即可（老种子里的地址不会变，重新下载的种子才会带新地址——与换主域名同口径）。
+- **RSS / 分享链接统一指向主域名**：`PUBLIC_SITE_URL` 是单值，RSS 输出、og:url 等规范地址都用主域名。对私站通常无所谓（内容本来就不给搜索引擎）。
+
+---
+
 ## 常见问题
 
 | 现象 | 原因 | 怎么办 |
@@ -180,6 +215,7 @@ curl https://pt.example.com/api/v1/health    # 应返回 {"status":"up"}
 | announce 报 404/421 | announce_url 拼错或带了多余端口 | 填根地址 `https://域名`，不要带 `:7070`、不要带 `/announce` |
 | 要不要开 6969/UDP | 默认不需要 | 私有站走 HTTP(S) announce 即可（行业惯例）；除非你显式配了 `TRACKER_UDP_URL` |
 | certbot 报错「无法验证域名」 | 80 端口没开 / DNS 未生效 | 确认 80 开着、域名已解析到本机 IP，等 DNS 传播 |
+| 备用域名登录/保存报跨域错误 | 第二域名没进 CORS 白名单 | `docker/.env` 的 `CORS_ORIGINS` 逗号追加，`up -d` 重启 |
 
 ---
 
