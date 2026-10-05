@@ -41,7 +41,7 @@ async fn notice_prefs_set(
     body: web::Json<NoticePrefsSetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    const KEYS: [&str; 10] = [
+    const KEYS: [&str; 13] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
@@ -52,6 +52,10 @@ async fn notice_prefs_set(
         "comment_reply",
         "system",
         "donate_tier",
+        // Web Push 三 topic 的用户级开关（0283 P0-1；缺省 true）
+        "push_hr",
+        "push_promo",
+        "push_message",
     ];
     if !KEYS.contains(&body.key.as_str()) {
         return Err(DomainError::Validation(format!(

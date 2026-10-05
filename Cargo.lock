@@ -1394,6 +1394,7 @@ dependencies = [
  "chrono",
  "dotenvy",
  "futures-util",
+ "lettre",
  "redis",
  "reqwest",
  "serde",
@@ -1404,6 +1405,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]

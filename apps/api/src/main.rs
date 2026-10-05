@@ -44,6 +44,7 @@ mod payment;
 mod plugins;
 mod publish_http;
 mod push_http;
+mod push_notify;
 mod repo;
 mod request_id;
 mod rss_http;
@@ -193,6 +194,15 @@ async fn main() -> anyhow::Result<()> {
     {
         let st = state.clone();
         crate::adapter_seed::ensure_builtin_adapters(&st.repo.db).await;
+    }
+
+    // Web Push outbox 消费循环（0283 P0-1）：worker/站内事件写 push_outbox，
+    // 本进程周期性捞未投递行 → 加密投递（复用 push_http::crypto）→ 标记完成。
+    {
+        let db = state.repo.db.clone();
+        actix_web::rt::spawn(async move {
+            push_notify::spawn_outbox_consumer(db).await;
+        });
     }
 
     tracing::info!("flux-api listening on {bind}");

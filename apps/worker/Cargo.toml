@@ -21,6 +21,9 @@ futures-util.workspace = true
 sha1.workspace = true
 # usage_stats 上报的站点匿名哈希（0276）
 sha2 = "0.10"
+# H&R 预警邮件通道（0283 P1-8）：与 api 侧 mailer 同一套 lettre feature 口径
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
+url = "2"
 # np-import bin（U4 §12.4）直连 NexusPHP 源库（MySQL 只读）：
 # feature 并集编译——mysql 驱动只被本 bin 代码触达
 

@@ -96,40 +96,11 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     .fetch_one(db)
     .await
     .unwrap_or(0);
-    let prewarned = if prewarn_hours > 0 {
-        sqlx::query(
-            r#"
-            WITH due AS (
-                UPDATE hr_snapshots SET prewarned_at = now(), updated_at = now()
-                WHERE status = 'open' AND prewarned_at IS NULL
-                  AND seeded_seconds < required_seconds
-                  AND deadline < now() + make_interval(hours => $1::int)
-                RETURNING user_id, torrent_id, seeded_seconds, required_seconds, deadline
-            )
-            INSERT INTO messages (sender_id, receiver_id, subject, body)
-            SELECT NULL, d.user_id,
-                   'H&R 预警：请尽快补足做种',
-                   format('你完成的种子 #%s 距 H&R 考察截止还剩不到 %s 小时（截止 %s）。当前累计做种 %s 小时，'
-                          '需 %s 小时。请尽快恢复做种；也可在「我的 H&R」页用魔力自助免罪。',
-                          d.torrent_id,
-                          $2,
-                          to_char(d.deadline AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI'),
-                          round(d.seeded_seconds / 3600.0, 1),
-                          round(d.required_seconds / 3600.0, 1))
-            FROM due d
-            JOIN users u ON u.id = d.user_id
-            WHERE COALESCE((u.notice_prefs->>'hr_prewarn')::boolean, true)
-            "#,
-        )
-        .bind(prewarn_hours)
-        .bind(prewarn_hours)
-        .execute(db)
-        .await?
-    } else {
-        sqlx::query("SELECT 1 WHERE false").execute(db).await?
-    };
+    let prewarned = super::hr_mail::prewarn_run(db, prewarn_hours as i32).await?;
     if prewarned.rows_affected() > 0 {
         tracing::info!(n = prewarned.rows_affected(), "H&R pre-warnings sent");
+        // 邮件通道（0283 P1-8）——本轮刚预警的用户补邮件，天然幂等
+        super::hr_mail::prewarn_mails(db, prewarn_hours as i32).await;
     }
 
     // 4) 过期未达标 → violated + 落违规表（追责依据）
@@ -145,41 +116,48 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
             SELECT user_id, torrent_id, seeded_seconds, required_seconds FROM dead
             ON CONFLICT DO NOTHING
             RETURNING user_id, torrent_id, seeded_seconds, required_seconds
+        ),
+        pm AS (
+            -- 审计修复（P1）：violated 此前只落表+日志零成本躺平。补 PM 告知违规与免罪途径
+            INSERT INTO messages (sender_id, receiver_id, subject, body)
+            SELECT NULL, ins.user_id, 'H&R 违规确认',
+                   '种子 #' || ins.torrent_id || ' 的 H&R 考察期已结束且未达标（做种 '
+                   || round(ins.seeded_seconds / 3600.0, 1) || ' 小时 / 要求 '
+                   || round(ins.required_seconds / 3600.0, 1) || ' 小时），已记违规一次。
+                   持续做种可自行恢复；也可在「我的 H&R」用 20000 魔力自助免罪。累计多次违规将影响下载权限。'
+            FROM ins
+            RETURNING 1
         )
-        -- 审计修复（P1）：violated 此前只落表+日志零成本躺平。补 PM 告知违规与免罪途径
-        INSERT INTO messages (sender_id, receiver_id, subject, body)
-        SELECT NULL, ins.user_id, 'H&R 违规确认',
-               '种子 #' || ins.torrent_id || ' 的 H&R 考察期已结束且未达标（做种 '
-               || round(ins.seeded_seconds / 3600.0, 1) || ' 小时 / 要求 '
-               || round(ins.required_seconds / 3600.0, 1) || ' 小时），已记违规一次。
-               持续做种可自行恢复；也可在「我的 H&R」用 20000 魔力自助免罪。累计多次违规将影响下载权限。'
+        -- Web Push outbox（0283 P0-1）：违规即推
+        INSERT INTO push_outbox (user_id, topic, title, body, dedupe_key)
+        SELECT ins.user_id, 'hr', 'H&R 违规确认',
+               format('种子 #%s H&R 未达标（做种 %s/%s 小时），已记违规一次。',
+                      ins.torrent_id,
+                      round(ins.seeded_seconds / 3600.0, 1),
+                      round(ins.required_seconds / 3600.0, 1)),
+               'hr_violation:' || ins.torrent_id || ':' || ins.user_id
         FROM ins
+        ON CONFLICT DO NOTHING
         "#,
     )
     .execute(db)
     .await?;
     if violated.rows_affected() > 0 {
-        tracing::warn!(n = violated.rows_affected(), "H&R violations detected");
-        // E12 生命周期事件：H&R 违规产生（管理侧广播，尽力而为）
-        super::audit::webhook_broadcast(
-            db,
-            &format!(
-                "H&R 违规 {} 例（hr_enforce job）",
-                violated.rows_affected()
-            ),
-        )
-        .await;
-        // 违规行同步 snatches.hr_flag（/me/hr 与列表角标口径）
-        let _ = sqlx::query(
-            "UPDATE snatches s SET hr_flag = TRUE FROM hr_violations v \
-             WHERE v.user_id = s.user_id AND v.torrent_id = s.torrent_id AND NOT s.hr_flag",
-        )
-        .execute(db)
-        .await;
+        on_violations(db, violated.rows_affected()).await;
     }
 
-    // 5) hr_flag 刷新（0029 一次性迁移的运行时延续）。
-    //    此前该标记只在迁移里置过一次，运行时无人刷新 —— /me/hr（community_http）口径失真。
+
+    // 5) hr_flag 刷新（独立函数，口径注释见 refresh_hr_flag）
+    refresh_hr_flag(db, default_hr_hours as i32).await?;
+    Ok(())
+}
+
+/// hr_flag 刷新（0029 一次性迁移的运行时延续）。
+/// 此前该标记只在迁移里置过一次，运行时无人刷新 —— /me/hr 口径失真。
+/// 审计修复（P1）：硬编码 14 天/120 小时与 hr_policy 可配口径脱节，逐种取
+/// policy；深测 2026-10-03：无 policy 种子的缺省同样走站点设定 hr_hours
+/// （与建快照口径一致）。
+async fn refresh_hr_flag(db: &PgPool, default_hr_hours: i32) -> anyhow::Result<()> {
     sqlx::query(
         // 审计修复（P1）：硬编码 14 天/120 小时与 hr_policy 可配口径脱节，逐种取 policy；
         // 深测 2026-10-03：无 policy 种子的缺省同样走站点设定 hr_hours（与建快照口径一致）
@@ -189,7 +167,7 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
            AND s.completed_at < now() - make_interval(days => COALESCE((t.hr_policy->>'days')::int, 14)) \
            AND NOT s.hr_flag",
     )
-    .bind(default_hr_hours as i32)
+    .bind(default_hr_hours)
     .execute(db)
     .await?;
     Ok(())
@@ -283,4 +261,23 @@ pub(crate) async fn hr_punish(db: &PgPool) -> anyhow::Result<()> {
         );
     }
     Ok(())
+}
+
+/// 违规产生后的旁路动作：管理侧 webhook 广播 + snatches.hr_flag 同步
+/// （/me/hr 与列表角标口径）。
+async fn on_violations(db: &PgPool, n: u64) {
+    tracing::warn!(n, "H&R violations detected");
+    // E12 生命周期事件：H&R 违规产生（管理侧广播，尽力而为）
+    super::audit::webhook_broadcast(
+        db,
+        &format!("H&R 违规 {n} 例（hr_enforce job）"),
+    )
+    .await;
+    let _ = sqlx::query(
+        "UPDATE snatches s SET hr_flag = TRUE FROM hr_violations v \
+         WHERE v.user_id = s.user_id AND v.torrent_id = s.torrent_id \
+         AND NOT s.hr_flag",
+    )
+    .execute(db)
+    .await;
 }
