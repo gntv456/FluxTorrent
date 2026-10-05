@@ -128,7 +128,22 @@ export async function Footer() {
                 n: formatBytes(stats.seed_size),
               })}
             </span>
-            <span>💀 {fmt(dict.footer.deadTorrents, { n: stats.dead })}</span>
+            {/* 全断种降级（0283 P2）：种子全断且做种总量为 0 时，「无种 N」
+                与「N 种子」并排观感差（冷启动站点第一天全死）。改发种引导。 */}
+            {stats.torrents > 0 &&
+            stats.dead === stats.torrents &&
+            stats.seed_size === 0 ? (
+              <Link
+                href="/upload"
+                className="underline decoration-dotted"
+              >
+                {dict.footer.allDeadHint}
+              </Link>
+            ) : (
+              <span>
+                💀 {fmt(dict.footer.deadTorrents, { n: stats.dead })}
+              </span>
+            )}
           </div>
         )}
 

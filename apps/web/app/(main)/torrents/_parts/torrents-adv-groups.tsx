@@ -269,6 +269,28 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
               sp.max_completed,
             )}
           </section>
+
+          {/* 媒体评分下界（0283 P1-5）：豆瓣/IMDb 口径；只设下界（找高分） */}
+          <section className="tsb-card">
+            <header className="tsb-card__head">
+              <h2 className="tsb-card__title">{t2.ratingLegend}</h2>
+            </header>
+            <div className="tsb-range">
+              <input
+                className="tsb-num"
+                name="rating_min"
+                type="number"
+                min={0}
+                max={10}
+                step={0.1}
+                defaultValue={sp.rating_min}
+                placeholder="7.5"
+                aria-label={t2.ratingLegend}
+              />
+              <span className="tsb-range__sep" aria-hidden="true">+</span>
+            </div>
+            <p className="tsb-hint">{t2.ratingHint}</p>
+          </section>
         </div>
       </div>
     </>

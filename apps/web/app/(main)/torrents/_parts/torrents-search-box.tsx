@@ -15,6 +15,7 @@ import type { TorrentChip } from "./torrents-chips";
 import { TorrentsAdvGroups } from "./torrents-adv-groups";
 import { TorrentsAdvGroupsTail } from "./torrents-adv-groups-tail";
 import { AdvGear } from "./torrents-adv-gear";
+import { SearchSuggest } from "./search-suggest";
 
 export interface TorrentsSearchBoxProps {
   dict: Dict;
@@ -78,6 +79,8 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
           placeholder={t2.keywordPh}
           autoComplete="off"
         />
+        {/* 联想下拉（0283 P0-2）：overlay 定位挂在输入框下方，不改表单语义 */}
+        <SearchSuggest />
         <label className="tsb-field tsb-field--mode">
           <span className="tsb-field__label">{t2.mode}</span>
           <select
