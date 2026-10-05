@@ -93,6 +93,10 @@ struct AmountBonusBody {
     amount: i64,
     #[serde(default)]
     user_id: Option<i64>,
+    /// 幂等键（0286 P2b）：可选，8~120 字符——网络重试同键直接拒绝，
+    /// 防单发双发（此前与 increment-bulk/gacha 的幂等口径不一致）
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/admin/amountbonus")]
@@ -112,6 +116,34 @@ pub async fn admin_amount_bonus(
         return Err(DomainError::Validation(
             "数量需在 ±1,000,000 之间且非 0".into(),
         ));
+    }
+    // 幂等占位（0286）：同键已存在 → 直接拒绝（口径同 gacha grant）
+    let idem_prefix = body
+        .idempotency_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|k| !k.is_empty());
+    if let Some(k) = idem_prefix {
+        if k.len() < 8 || k.len() > 120 {
+            return Err(DomainError::Validation(
+                "idempotency_key 需 8~120 字符".into(),
+            ));
+        }
+        // 落键形态 'amountbonus:{k}:{uid}'（下方循环拼）——LIKE 前缀匹配；
+        // 全量发放（user_id=None 多户）时同键在任一户存在即视为已发放
+        let seen: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger \
+             WHERE idempotency_key LIKE 'amountbonus:' || $1 || ':%')",
+        )
+        .bind(k)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if seen {
+            return Err(DomainError::Validation(
+                "该 idempotency_key 已发放过".into(),
+            ));
+        }
     }
     // 走统一账务管线：事务 + 逐户流水 + balance_after 快照（原实现裸 UPDATE 绕过
     // spark_ledger，账本 sum(amount) 与余额失配、管理端 spark-logs 查不到这类变动）
@@ -155,11 +187,14 @@ pub async fn admin_amount_bonus(
         .bind(uid)
         .bind(actual_delta)
         .bind(auth.id)
-        .bind(format!(
-            "amountbonus-{}-{}",
-            uid,
-            uuid::Uuid::new_v4().simple()
-        ))
+        .bind(match idem_prefix {
+            Some(k) => format!("amountbonus:{k}:{}", uid),
+            None => format!(
+                "amountbonus-{}-{}",
+                uid,
+                uuid::Uuid::new_v4().simple()
+            ),
+        })
         .bind(after)
         .execute(&mut *tx)
         .await

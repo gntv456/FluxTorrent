@@ -12,7 +12,9 @@ struct AdminUserDetail {
     id: i64,
     username: String,
     email: String,
-    passkey: String,
+    /// 掩码（0285）：明文 passkey 不再对任意 staff 下发，
+    /// 取明文走 POST /admin/users/passkey/reveal（专项权限 + outranks + 审计）。
+    passkey_masked: String,
     class_id: i32,
     class_name: Option<String>,
     title: Option<String>,
@@ -50,10 +52,13 @@ async fn user_admin_detail(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     let uid = path.into_inner();
     let row: Option<AdminUserDetail> = sqlx::query_as(
-        r#"SELECT u.id, u.username, u.email, u.passkey, u.class_id, c.name AS class_name,
+        r#"SELECT u.id, u.username, u.email,
+                  left(u.passkey, 4) || '****' ||
+                    right(u.passkey, 4) AS passkey_masked,
+                  u.class_id, c.name AS class_name,
                   u.title, u.uploaded, u.downloaded, u.spark_balance, u.status,
                   u.download_enabled, u.suspended, u.parked, u.donor, u.totp_enabled,
                   u.invited_by, i.username AS inviter_name, u.created_at, u.last_seen_at,
@@ -78,6 +83,12 @@ async fn user_admin_detail(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let user = row.ok_or(DomainError::NotFound(uid))?;
+    // 敏感读取留痕（0285）：会员详情含邮箱/_lastIP/流量/火花余额，
+    // 旧版 staff 随便翻、事后无从追查「谁看过谁的档案」。
+    state
+        .repo
+        .audit_detail(Some(auth.id), "user.detail.view", Some(uid), None, None)
+        .await;
     Ok(ok(user))
 }
 
@@ -112,44 +123,6 @@ async fn user_admin_snatches(
     Ok(ok(rows))
 }
 
-/// 详情页授予勋章（参考站用户详情「授予勋章」口径）：管理发放 source='admin'
-#[post("/admin/users/{id}/medal/{medal_id}")]
-async fn user_grant_medal(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<(i64, i64)>,
-) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    let (uid, medal_id) = path.into_inner();
-    ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM medals WHERE id = $1)")
-            .bind(medal_id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
-    if !exists {
-        return Err(DomainError::NotFound(medal_id));
-    }
-    sqlx::query(
-        "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
-         SELECT $1, $2, 'admin', now() + make_interval(days => m.duration_days) \
-         FROM medals m WHERE m.id = $2 \
-         ON CONFLICT (user_id, medal_id) DO NOTHING",
-    )
-    .bind(uid)
-    .bind(medal_id)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    state
-        .repo
-        .audit(Some(auth.id), "user.grant_medal", Some(uid))
-        .await;
-    Ok(ok(
-        serde_json::json!({ "user_id": uid, "medal_id": medal_id }),
-    ))
-}
 
 /// 详情页授予道具/卡牌（参考站「授予道具」口径）：把商店道具（含化妆卡/改名卡等卡牌类）免费发放给目标用户。
 /// 即时类（上传量/火花/邀请）直接生效；卡牌装饰类入 shop_orders（零元，source=admin）待用户使用。
@@ -176,14 +149,33 @@ async fn user_grant_item(
     match kind.as_str() {
         "upload_credit" => {
             let gb = config.get("gb").and_then(|v| v.as_i64()).unwrap_or(0);
-            sqlx::query(
-                "UPDATE users SET uploaded = uploaded + $2 WHERE id = $1",
-            )
-            .bind(uid)
-            .bind(gb * 1024 * 1024 * 1024)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            let bytes = gb * 1024 * 1024 * 1024;
+            if bytes > 0 {
+                // 同 user_adjust（P0-2，0285）：只改 users 快照会被 announce 重算抹掉，
+                // 发放量必须进流水才能留存，并留下发放来源。
+                sqlx::query(
+                    "INSERT INTO traffic_ledger (id, user_id, torrent_id, \
+                     delta_up, delta_down, window_start, \
+                     reason, operator_id) \
+                     VALUES (nextval('traffic_ledger_id_seq'), \
+                             $1, NULL, $2, 0, now(), $3, $4)",
+                )
+                .bind(uid)
+                .bind(bytes)
+                .bind(format!("#{} grant_item#{} {}", auth.id, item_id, name))
+                .bind(auth.id)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+                sqlx::query(
+                    "UPDATE users SET uploaded = uploaded + $2 WHERE id = $1",
+                )
+                .bind(uid)
+                .bind(bytes)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            }
         }
         "gift_spark" => {
             let amount =
@@ -213,6 +205,24 @@ async fn user_grant_item(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
+        // 券类（0286 P1）：库存语义是 user_vouchers 行（与 shop_effects 购买
+        // 路径同构）——此前落 default 分支塞 shop_orders，券成了死券：
+        // /me/vouchers 读不到、voucher_use 无从核销
+        "voucher_free" | "voucher_neutral" => {
+            let vkind = config
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .unwrap_or("free");
+            sqlx::query(
+                "INSERT INTO user_vouchers (user_id, kind, source) \
+                 VALUES ($1, $2, 'admin')",
+            )
+            .bind(uid)
+            .bind(vkind)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
         _ => {
             let idem = format!(
                 "admin_grant_item:{}:{}:{}",
@@ -235,8 +245,28 @@ async fn user_grant_item(
     }
     state
         .repo
-        .audit(Some(auth.id), "user.grant_item", Some(uid))
+        .audit(
+            Some(auth.id),
+            "user.grant_item",
+            Some(uid),
+        )
         .await;
+    // 附送 PM（0286 P3）：单发默认通知收件人（批量侧早有）；管理员自己
+    // 也可在消息里说明缘由。通知失败不影响发放结果。
+    let pm_subject = format!("管理员向你发放了道具：{name}");
+    let pm_body = format!(
+        "你收到了管理员发放的道具「{name}」，请到个人中心查看使用。"
+    );
+    let _ = sqlx::query(
+        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+         VALUES ($1, $2, $3, $4)",
+    )
+    .bind(auth.id)
+    .bind(uid)
+    .bind(&pm_subject)
+    .bind(&pm_body)
+    .execute(&state.repo.db)
+    .await;
     Ok(ok(
         serde_json::json!({ "user_id": uid, "item_id": item_id, "name": name, "kind": kind }),
     ))
