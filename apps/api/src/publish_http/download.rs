@@ -154,6 +154,64 @@ pub async fn build_torrent_bytes(
             user.passkey
         ));
     }
+    // 附加 tracker（多域多 tracker）：后台 Tracker URL 管理表按 priority
+    // 追加 tier——多域名站每个域名各配一条，客户端按 BEP12 轮换。
+    // 过滤口径：enabled=false 不发；纯内网地址（127.0.0.1/localhost）不发
+    // （防误配进公网种子）；与已选地址重复（剥 /announce 后同根）跳过；
+    // 地址须带 scheme（http(s):// 或 udp://），站长填裸域名时拒绝入库
+    // 由管理端校验承担，这里只兜底跳过。
+    {
+        let extra: Vec<String> = sqlx::query_scalar(
+            "SELECT url FROM tracker_urls WHERE enabled \
+             ORDER BY priority, id",
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .unwrap_or_default();
+        let mut known_roots: Vec<String> = vec![
+            announce.clone(),
+            fallbacks.iter().cloned().collect::<Vec<_>>().join("§"),
+        ];
+        known_roots.retain(|s| !s.is_empty());
+        let root_of = |u: &str| -> String {
+            // 剥掉尾部 /announce/<passkey>，保留 scheme://host[:port] 根
+            let u = u.trim().trim_end_matches('/');
+            let (base, _) = u
+                .rsplit_once('/')
+                .map(|(b, _)| (b.to_string(), String::new()))
+                .unwrap_or((u.to_string(), String::new()));
+            base
+        };
+        for url in extra {
+            let url = url.trim().trim_end_matches('/').to_string();
+            if url.is_empty() {
+                continue;
+            }
+            let lower = url.to_lowercase();
+            if !(lower.starts_with("http://")
+                || lower.starts_with("https://")
+                || lower.starts_with("udp://"))
+            {
+                continue;
+            }
+            if lower.contains("127.0.0.1") || lower.contains("localhost") {
+                continue;
+            }
+            let full = if lower.starts_with("udp://") {
+                format!("{url}/{}", user.passkey)
+            } else {
+                // 允许站长填到 /announce 根或裸域名，统一剥后拼
+                let base = strip_announce(url.clone());
+                format!("{base}/announce/{}", user.passkey)
+            };
+            let root = root_of(&full);
+            if known_roots.iter().any(|k| k.contains(&root)) {
+                continue;
+            }
+            known_roots.push(full.clone());
+            fallbacks.push(full);
+        }
+    }
     crate::bencode::build_download_torrent(&raw, &announce, &fallbacks)
         .map_err(DomainError::TorrentInvalid)
 }
