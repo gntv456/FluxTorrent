@@ -309,6 +309,8 @@ async fn upload_core(
     // 0075 聚合组推荐（未显式指定组时）：
     //   a) pieces_hash 命中已有组 → 直接建议锁定（跨站同源再发布场景）
     //   b) 否则名称相似度（trgm）> 0.4 的组 → 候选列表
+    //   c) 无组可荐但 pieces_hash 已存在同源种（0284 P1-4）→ same_source
+    //      提示「同源种子已存在」，防重复发布（NP 口径的辅种提示）
     let mut group_suggest: serde_json::Value = serde_json::json!(null);
     if form.group_id.is_none() {
         let lock: Option<i64> = sqlx::query_scalar(
@@ -341,6 +343,23 @@ async fn upload_core(
             if !cands.is_empty() {
                 group_suggest =
                     serde_json::json!({ "locked": false, "candidates": cands });
+            } else {
+                let same: Option<(i64, String)> = sqlx::query_as(
+                    "SELECT id, name FROM torrents WHERE pieces_hash = $1 \
+                     AND pieces_hash <> '' AND id <> $2 \
+                     ORDER BY id LIMIT 1",
+                )
+                .bind(&parsed.pieces_hash_hex)
+                .bind(id)
+                .fetch_optional(&state.repo.db)
+                .await
+                .unwrap_or(None);
+                if let Some((sid, sname)) = same {
+                    group_suggest = serde_json::json!({
+                        "same_source": true,
+                        "torrent_id": sid, "name": sname,
+                    });
+                }
             }
         }
     }
