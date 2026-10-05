@@ -27,6 +27,12 @@ pub struct SnatchRow {
     completed_at: Option<chrono::DateTime<chrono::Utc>>,
     #[serde(rename = "done")]
     uploaded_here: i64,
+    /// 发布者视角的状态（仅 kind=uploads 填充）：0=待审 1=过审 2=被拒
+    #[serde(skip_serializing_if = "Option::is_none")]
+    approval_status: Option<i16>,
+    /// 被拒原因（approval_status=2 时给发布者自助整改）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    deny_reason: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -45,11 +51,20 @@ pub async fn my_torrentlist(
     let auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
     let rows: Vec<SnatchRow> = match q.kind.as_deref() {
+        // 自己的 uploads 放开全部审核态（0284 P0-1）：发种者要能跟踪「待审/被拒
+        // + 拒因」，此前硬编码 =1 让待审种从「我的发布」消失。别人视角的
+        // users/{id}/torrentlist 维持只看过审（user_torrentlist.rs）。
         Some("uploads") => sqlx::query_as(
-            "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
-             false AS seeding, false AS leeching, NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here \
-             FROM torrents t WHERE t.owner_id = $1 AND t.approval_status = 1 \
-             ORDER BY t.id DESC LIMIT $2",
+            "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, \
+             t.leechers, false AS seeding, false AS leeching, \
+             NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here, \
+             t.approval_status, \
+             NULLIF(CONCAT_WS('：', dr.reason, \
+               NULLIF(t.deny_note, '')), '') AS deny_reason \
+             FROM torrents t \
+             LEFT JOIN torrent_deny_reasons dr ON dr.id = t.deny_reason_id \
+             WHERE t.owner_id = $1 \
+             ORDER BY t.approval_status = 1 DESC, t.id DESC LIMIT $2",
         ),
         Some("completed") => sqlx::query_as(
             "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \

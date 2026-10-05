@@ -130,8 +130,24 @@ pub async fn ptgen(
             "name": name, "descr": descr, "via": "adapter",
         })));
     }
+    // 上游可配（0284 P0-2）：site_settings.ptgen_upstream 优先（自托管可替换），
+    // 缺省回落内置公共实例；空串 = 站长显式禁用——返回可操作文案而非 500
+    let upstream: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'ptgen_upstream'), 'https://ptgen.rachpt.dev/api')",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or_else(|_| "https://ptgen.rachpt.dev/api".into());
+    if upstream.trim().is_empty() {
+        return Err(DomainError::Validation(
+            "一键填充未启用（PT-Gen 服务未配置，请联系站长或在后台填写 \
+             ptgen_upstream）"
+                .into(),
+        ));
+    }
     let api = url::Url::parse_with_params(
-        "https://ptgen.rachpt.dev/api",
+        upstream.trim(),
         &[("url", url)],
     )
     .map_err(|_| DomainError::Validation("链接无效".into()))?;
@@ -141,7 +157,11 @@ pub async fn ptgen(
         .timeout(std::time::Duration::from_secs(20))
         .send()
         .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        // 网络层失败降级为 Validation（0284 P0-2）：DNS 断/连不上是上游环境的
+        // 常态，不该以 500 内部错误的形态出现在用户面前
+        .map_err(|e| DomainError::Validation(format!(
+            "PT-Gen 服务不可达（{e}），请稍后重试或手动填写简介"
+        )))?;
     if !resp.status().is_success() {
         return Err(DomainError::Validation(format!(
             "PT-Gen 上游异常（HTTP {}）",
