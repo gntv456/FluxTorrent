@@ -81,6 +81,8 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(my_bookmarks)
         .service(crate::auth_http::rotate_passkey)
         .service(crate::auth_http::my_login_history)
+        .service(crate::auth_http::my_sessions)
+        .service(crate::auth_http::revoke_other_sessions)
         .service(crate::attachment_http::upload_attachment)
         .service(crate::attachment_http::get_attachment)
         .service(crate::attachment_video_upload::upload_video)
