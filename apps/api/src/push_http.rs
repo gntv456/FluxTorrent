@@ -3,7 +3,7 @@
 //! 实现遵循 RFC 8291（Message Encryption for WebPush, aes128gcm）与 RFC 8292（VAPID）。
 //! 环境变量：`VAPID_PUBLIC_KEY` / `VAPID_PUBLIC_KEY`（P-256，未配置时推送端点禁用但订阅可管理）。
 
-mod crypto;
+pub(crate) mod crypto;
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;

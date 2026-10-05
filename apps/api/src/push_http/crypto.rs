@@ -28,18 +28,18 @@ pub(super) fn decode_client_key(p256dh_b64: &str) -> anyhow::Result<PublicKey> {
 
 /// 单订阅加密投递。返回推送服务响应分类。
 #[derive(PartialEq)]
-pub(super) enum PushResult {
+pub(crate) enum PushResult {
     Delivered,
     Gone,         // 404/410：订阅失效，调用方应清理
     ServiceError, // 其它 4xx/5xx：推送服务问题，不清理
 }
 
-pub(super) struct VapidKeys {
+pub(crate) struct VapidKeys {
     pub public_b64: String,
     pub secret: p256::SecretKey,
 }
 
-pub(super) fn vapid_from_env() -> Option<VapidKeys> {
+pub(crate) fn vapid_from_env() -> Option<VapidKeys> {
     let public_b64 = std::env::var("VAPID_PUBLIC_KEY").unwrap_or_default();
     let private_b64 = std::env::var("VAPID_PRIVATE_KEY").unwrap_or_default();
     if public_b64.is_empty() || private_b64.is_empty() {
@@ -77,7 +77,7 @@ fn vapid_header(keys: &VapidKeys, endpoint: &str) -> anyhow::Result<String> {
     ))
 }
 
-pub(super) async fn deliver(
+pub(crate) async fn deliver(
     endpoint: &str,
     p256dh_b64: &str,
     auth_b64: &str,

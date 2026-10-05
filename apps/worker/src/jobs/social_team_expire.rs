@@ -151,17 +151,30 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
         agg AS (
             SELECT user_id, string_agg('#' || torrent_id || ' ' || torrent_name, E'
 ' ORDER BY torrent_id) AS body,
+                   count(*) AS n_hits,
                    bool_or(wish_id IS NOT NULL) AS dummy
             FROM hits GROUP BY user_id
-        )
-        INSERT INTO messages (sender_id, receiver_id, subject, body)
-        SELECT NULL, user_id, '愿望单命中：你关注的新资源已上架', '你订阅的关键词有新种子过审：
+        ),
+        pm AS (
+            INSERT INTO messages (sender_id, receiver_id, subject, body)
+            SELECT NULL, user_id, '愿望单命中：你关注的新资源已上架', '你订阅的关键词有新种子过审：
 
 ' || body || '
 
 （每条愿望 24 小时内只提醒一次；可在「我的 → 愿望单」管理订阅）'
+            FROM agg
+            WHERE dummy
+            RETURNING 1
+        )
+        -- Web Push outbox（0283 P0-1）：愿望单命中的即时推送（promo topic）
+        INSERT INTO push_outbox (user_id, topic, title, body, dedupe_key)
+        SELECT user_id, 'promo',
+               '愿望单命中：你关注的新资源已上架',
+               format('你订阅的关键词有 %s 个新种子过审，去看看吧。', n_hits),
+               'wishlist:' || user_id || ':' || to_char(now(), 'YYYYMMDDHH24')
         FROM agg
         WHERE dummy
+        ON CONFLICT DO NOTHING
         RETURNING 1
         "#,
     )
