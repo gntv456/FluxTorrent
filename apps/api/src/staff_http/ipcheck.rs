@@ -64,14 +64,22 @@ pub async fn maxlogin(
     Ok(ok(rows))
 }
 
-// ---- staffpanel 第二批运营工具：增加上传 / 重置密码 / 删除被禁用户 / 邮箱黑白名单 / IP测试 / 统计 / 清缓存 / 做清理 / 广告管理 / 查询页四件 ----
+// ---- staffpanel 第二批运营工具：增加上传/重置密码/删被禁用户/邮箱黑白名单/IP测试/统计/清缓存/做清理/广告/查询页四件 ----
 
 /// 增加上传（amountupload.php 口径）：全部或指定用户加/扣上传量
 #[derive(Deserialize)]
 struct AmountUploadBody {
+    #[serde(default)]
     bytes: i64,
     #[serde(default)]
     user_id: Option<i64>,
+    /// GB 口径（0286 P2b）：与 increment-bulk 的 uploaded 单位对齐——
+    /// 面板直传 GB 时不再差 1024³ 倍；与 bytes 二选一，同传以 bytes 为准
+    #[serde(default)]
+    gb: Option<i64>,
+    /// 幂等键（0286 P2b）：可选 8~120 字符，防网络重试双发
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/admin/amountupload")]
@@ -87,10 +95,48 @@ pub async fn admin_amount_upload(
         crate::authz::perm::USER_AMOUNTUPLOAD,
     )
     .await?;
-    if body.bytes == 0 || body.bytes.abs() > 10 * 1024 * 1024 * 1024 * 1024 {
+    // gb → bytes 折算（bytes=0 且给了 gb 时启用；否则保持旧 bytes 语义）
+    let bytes = if body.bytes == 0 {
+        match body.gb {
+            Some(g) => g.saturating_mul(1024 * 1024 * 1024),
+            None => 0,
+        }
+    } else {
+        body.bytes
+    };
+    if bytes == 0 || bytes.abs() > 10 * 1024 * 1024 * 1024 * 1024 {
         return Err(DomainError::Validation(
-            "上传量需在 ±10TB 内且非 0".into(),
+            "上传量需在 ±10TB 内且非 0（bytes 或 gb 二选一）".into(),
         ));
+    }
+    // 幂等占位（0286）：traffic_ledger 无独立幂等列，借 reason 字段
+    // 埋键（reason 是文本列，查询 LIKE 可检索）；同键已存在 → 拒绝
+    let idem_tag = body
+        .idempotency_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|k| k.len() >= 8 && k.len() <= 120);
+    if let Some(k) = body.idempotency_key.as_deref().map(str::trim) {
+        if !k.is_empty() && (k.len() < 8 || k.len() > 120) {
+            return Err(DomainError::Validation(
+                "idempotency_key 需 8~120 字符".into(),
+            ));
+        }
+    }
+    if let Some(k) = idem_tag {
+        let seen: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM traffic_ledger \
+             WHERE reason = 'amountupload:' || $1)",
+        )
+        .bind(k)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if seen {
+            return Err(DomainError::Validation(
+                "该 idempotency_key 已发放过".into(),
+            ));
+        }
     }
     // 审计修复（P0 错账）：uploaded 的权威在 traffic_ledger（worker reconcile 与
     // /admin/jobs/run:reconcile 会把 users.uploaded 重算为 sum(ledger)），此前裸
@@ -109,11 +155,25 @@ pub async fn admin_amount_upload(
          SELECT nextval('traffic_ledger_id_seq'), id, 0, delta, 0, now() FROM upd WHERE delta <> 0",
     )
     .bind(body.user_id)
-    .bind(body.bytes)
+    .bind(bytes)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
+    if let Some(k) = idem_tag {
+        // 幂等锚点行（delta=0 不影响账本）：把键写进 reason 供下次查重
+        let _ = sqlx::query(
+            "INSERT INTO traffic_ledger (id, user_id, torrent_id, \
+             delta_up, delta_down, window_start, reason, operator_id) \
+             VALUES (nextval('traffic_ledger_id_seq'), $1, NULL, \
+             0, 0, now(), 'amountupload:' || $2, $3)",
+        )
+        .bind(body.user_id.unwrap_or(0))
+        .bind(k)
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await;
+    }
     state
         .repo
         .audit(Some(auth.id), "amount_upload", body.user_id)
