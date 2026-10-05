@@ -8,6 +8,7 @@ import { PushSettings } from "@/components/push-settings";
 import { TwoFactorSetup } from "@/components/twofa-setup";
 import { ApiTokens } from "@/components/api-tokens";
 import { LoginHistory } from "@/components/login-history";
+import { SessionsCard } from "@/components/sessions-card";
 import { NoticePrefsCard } from "@/components/notice-prefs";
 import { PasskeysCard } from "@/components/passkeys-card";
 import type { UserSettings } from "@/components/usercp";
@@ -129,6 +130,13 @@ export function SecurityTab({
           <td className="rowhead nowrap">{t.loginHistory}</td>
           <td className="rowfollow p-0">
             <LoginHistory />
+          </td>
+        </tr>
+        {/* 活跃会话 + 踢出其它会话（0284 P1-3） */}
+        <tr>
+          <td className="rowhead nowrap">{dict.sessions.title}</td>
+          <td className="rowfollow p-0">
+            <SessionsCard />
           </td>
         </tr>
         {/* Passkey（WebAuthn）绑定（0227） */}
