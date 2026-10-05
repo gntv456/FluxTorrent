@@ -5,31 +5,29 @@ import { INPUT_CLOUD } from "@/lib/ui-classes";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { kindsOf } from "./increment-bulk-kinds";
+import { BulkNotifyRow } from "./increment-bulk-notify";
 
 /** 第八轮 0065：批量发放（好学 increment-bulk.php 口径）
  *  合并原「魔力增减 / 上传量增减」两个页签：火花/上传量/邀请/补签卡
  *  × 等级多选 / 职务多选 / 指定用户，支持负数（减）与 PM 通知。 */
 
 interface RoleDef { key: string; name: string }
-interface BulkResult { affected: number; targets: number; kind: string; amount: number }
+interface BulkResult {
+  affected: number;
+  targets: number;
+  kind: string;
+  amount: number;
+  batch_id?: string;
+  target_ids?: number[];
+}
 interface MedalDef { id: number; name: string }
 interface ItemDef { id: number; name: string; kind: string }
 
-/** 货币名动态化：火花档标签跟随站点 currency_name（默认「魔力」） */
-function kindsOf(currency: string): [string, string, string][] {
-  return [
-    ["spark", currency, "正加负减，单次 ±1,000,000"],
-    ["uploaded", "上传量 (GB)", "正加负减，单次 ±10TB"],
-    ["invite", "邀请", "正数增发 / 负数回收配额，单次 ±50；可填临时邀请天数直发 N 天码"],
-    ["resub_card", "补签卡", "入背包待用户使用，单次 1-50"],
-    ["medal", "勋章", "每人发 1 枚（source=admin，已拥有自动跳过）"],
-    ["item", "道具", "按道具类型生效：即时类直接到账，背包类入包；单次 1-50"],
-  ];
-}
-
 export function IncrementBulk() {
   const { dict, currency } = useI18n();
-  const KINDS = kindsOf(currency);
+  const t = dict.adminBulk;
+  const KINDS = kindsOf(currency, t);
   const classList = (dict.admin as unknown as { classList: [number, string][] }).classList;
   const [kind, setKind] = useState("spark");
   const [amount, setAmount] = useState("100");
@@ -49,69 +47,96 @@ export function IncrementBulk() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(null), 5000); };
+  const flash = useCallback((m: string) => {
+    setMsg(m);
+    setTimeout(() => setMsg(null), 5000);
+  }, []);
 
   useEffect(() => {
     api.get<RoleDef[]>("/api/v1/admin/roles").then(setRoleDefs).catch(() => setRoleDefs([]));
-    // 勋章/道具下拉（0204）：懒加载字典——仅在选对应类型时才需要。
-    // /medals 已信封化（items + max_worn），双形状兼容
+    // 勋章/道具下拉（0204）：懒加载；/medals 已信封化（双形状兼容）
     api.get<MedalDef[] | { items: MedalDef[] }>("/api/v1/medals")
-      .then((r) =>
-        setMedals(Array.isArray(r) ? r : ((r as { items?: MedalDef[] }).items ?? [])),
-      )
+      .then((r) => setMedals(Array.isArray(r) ? r : ((r as { items?: MedalDef[] }).items ?? [])))
       .catch(() => setMedals([]));
     api.get<ItemDef[]>("/api/v1/shop/items").then(setItems).catch(() => setItems([]));
   }, []);
 
   const kindHint = KINDS.find(([k]) => k === kind)?.[2] ?? "";
 
-  async function run() {
-    if (!window.confirm(`确认执行批量发放？将影响所选用户，不可撤销。`)) return;
+  function buildPayload(): Record<string, unknown> {
+    const payload: Record<string, unknown> = {
+      kind,
+      amount: Number(amount),
+      classes: [...classes],
+      roles,
+      user_ids: userIds.split(/[,，\s]+/).map(Number).filter((n) => n > 0),
+    };
+    if (days.trim()) payload.days = Number(days);
+    if (kind === "medal" && medalId) payload.medal_id = Number(medalId);
+    if (kind === "item" && itemId) payload.item_id = Number(itemId);
+    if (subject.trim()) payload.subject = subject.trim();
+    if (body.trim()) payload.body = body.trim();
+    payload.sender = sender;
+    if (email) payload.email = true;
+    return payload;
+  }
+
+  // 提交可用性（0286）：两个按钮共用——数量/勋章/道具/受众齐备
+  const canSubmit =
+    !!amount &&
+    Number(amount) !== 0 &&
+    !(kind === "medal" && !medalId) &&
+    !(kind === "item" && !itemId) &&
+    (classes.size > 0 || roles.length > 0 || !!userIds.trim());
+
+  /** dry（0286）：true = 试运行（只返回命中清单不发） */
+  async function submit(dry: boolean) {
+    if (!dry && !window.confirm(t.confirmRun)) return;
     setBusy(true);
     try {
-      const payload: Record<string, unknown> = {
-        kind,
-        amount: Number(amount),
-        classes: [...classes],
-        roles,
-        user_ids: userIds.split(/[,，\s]+/).map(Number).filter((n) => n > 0),
-      };
-      if (days.trim()) payload.days = Number(days);
-      if (kind === "medal" && medalId) payload.medal_id = Number(medalId);
-      if (kind === "item" && itemId) payload.item_id = Number(itemId);
-      if (subject.trim()) payload.subject = subject.trim();
-      if (body.trim()) payload.body = body.trim();
-      payload.sender = sender;
-      if (email) payload.email = true;
-      const r = await api.post<BulkResult>("/api/v1/admin/increment-bulk", payload);
-      flash(`已发放：${KINDS.find(([k]) => k === kind)?.[1]} ${amount} → ${r.targets} 个用户（${r.affected} 条生效${subject.trim() ? "，PM 已发送" : ""}）`);
+      const r = await api.post<BulkResult>("/api/v1/admin/increment-bulk", {
+        ...buildPayload(),
+        ...(dry ? { dry_run: true } : {}),
+      });
+      if (dry) {
+        flash(t.dryOk.replace("{n}", String(r.targets)).replace("{ids}", (r.target_ids ?? []).join(", ")));
+        return;
+      }
+      const label = KINDS.find(([k]) => k === kind)?.[1] ?? kind;
+      flash(
+        t.done
+          .replace("{kind}", label)
+          .replace("{amount}", amount)
+          .replace("{n}", String(r.targets))
+          .replace("{m}", String(r.affected))
+          .replace("{pm}", subject.trim() ? t.donePm : ""),
+      );
       setClasses(new Set());
       setRoles([]);
       setUserIds("");
       setSubject("");
       setBody("");
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : "操作失败");
+      flash(e instanceof ApiError ? e.message : t.fail);
     } finally {
       setBusy(false);
     }
   }
 
   const inp = INPUT_CLOUD;
+  const picked = userIds.trim() ? userIds.split(/[,，\s]+/).filter(Boolean).length : 0;
 
   return (
     <div className="flex flex-col gap-3">
       {msg && <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">{msg}</p>}
       <section className="baozi-panel p-4">
-        <h2 className="mb-1 text-base font-bold">批量发放</h2>
-        <p className="mb-3 text-xs text-sub">
-          合并原「魔力增减 / 上传量增减」：按等级、职务或指定用户批量增减四类资源，完成后可群发 PM 通知。
-        </p>
+        <h2 className="mb-1 text-base font-bold">{t.title}</h2>
+        <p className="mb-3 text-xs text-sub">{t.intro}</p>
         <div className="baozi-wide-table-scroll">
         <table className="nexus-table nexus-form">
           <tbody>
             <tr>
-              <td className="rowhead w-28">类型</td>
+              <td className="rowhead w-28">{t.kind}</td>
               <td className="rowfollow">
                 <div className="flex flex-wrap gap-3">
                   {KINDS.map(([k, label]) => (
@@ -125,53 +150,51 @@ export function IncrementBulk() {
               </td>
             </tr>
             <tr>
-              <td className="rowhead">数量</td>
+              <td className="rowhead">{t.amount}</td>
               <td className="rowfollow">
                 <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className={`${inp} w-32`} />
-                <span className="ml-2 text-xs text-sub">正数增加 / 负数减少（下限 0）</span>
+                <span className="ml-2 text-xs text-sub">{t.amountHint}</span>
               </td>
             </tr>
             {kind === "invite" && (
               <tr>
-                <td className="rowhead">临时邀请</td>
+                <td className="rowhead">{t.tempInvite}</td>
                 <td className="rowfollow">
-                  <input type="number" min={1} max={365} value={days} onChange={(e) => setDays(e.target.value)} placeholder="留空" className={`${inp} w-24`} />
-                  <span className="ml-2 text-xs text-sub">
-                    填有效期天数（1-365）＝原「临时邀请」逻辑：直接生成 N 天到期的邀请码；留空则按普通邀请加/回收配额
-                  </span>
+                  <input type="number" min={1} max={365} value={days} onChange={(e) => setDays(e.target.value)} className={`${inp} w-24`} />
+                  <span className="ml-2 text-xs text-sub">{t.tempInviteHint}</span>
                 </td>
               </tr>
             )}
             {kind === "medal" && (
               <tr>
-                <td className="rowhead">勋章</td>
+                <td className="rowhead">{t.medalLabel}</td>
                 <td className="rowfollow">
                   <select value={medalId} onChange={(e) => setMedalId(e.target.value)} className={`${inp} w-64`}>
-                    <option value="">— 选择勋章 —</option>
+                    <option value="">{t.medalPick}</option>
                     {medals.map((m) => (
                       <option key={m.id} value={m.id}>#{m.id} {m.name}</option>
                     ))}
                   </select>
-                  <span className="ml-2 text-xs text-sub">数量固定 1（重复发放自动跳过已拥有者）</span>
+                  <span className="ml-2 text-xs text-sub">{t.medalHint}</span>
                 </td>
               </tr>
             )}
             {kind === "item" && (
               <tr>
-                <td className="rowhead">道具</td>
+                <td className="rowhead">{t.itemLabel}</td>
                 <td className="rowfollow">
                   <select value={itemId} onChange={(e) => setItemId(e.target.value)} className={`${inp} w-64`}>
-                    <option value="">— 选择道具 —</option>
+                    <option value="">{t.itemPick}</option>
                     {items.map((it) => (
                       <option key={it.id} value={it.id}>#{it.id} {it.name}</option>
                     ))}
                   </select>
-                  <span className="ml-2 text-xs text-sub">数量＝每人张数（1-50）</span>
+                  <span className="ml-2 text-xs text-sub">{t.itemHint}</span>
                 </td>
               </tr>
             )}
             <tr>
-              <td className="rowhead align-top">用户等级</td>
+              <td className="rowhead align-top">{t.classes}</td>
               <td className="rowfollow">
                 <div className="grid grid-cols-2 gap-1 md:grid-cols-4">
                   {classList.filter(([id]) => id < 90).map(([id, label]) => (
@@ -193,7 +216,7 @@ export function IncrementBulk() {
             </tr>
             {roleDefs.length > 0 && (
               <tr>
-                <td className="rowhead align-top">职务</td>
+                <td className="rowhead align-top">{t.roles}</td>
                 <td className="rowfollow">
                   <div className="flex flex-wrap gap-3">
                     {roleDefs.map((r) => (
@@ -213,44 +236,32 @@ export function IncrementBulk() {
               </tr>
             )}
             <tr>
-              <td className="rowhead">指定用户</td>
+              <td className="rowhead">{t.userIds}</td>
               <td className="rowfollow">
-                <input value={userIds} onChange={(e) => setUserIds(e.target.value)} placeholder="UID 逗号/空格分隔（优先生效，单批 ≤500）" className={`${inp} w-96`} />
+                <input value={userIds} onChange={(e) => setUserIds(e.target.value)} placeholder={t.userIdsPh} className={`${inp} w-96`} />
               </td>
             </tr>
             <tr>
-              <td className="rowhead">私信主题</td>
+              <td className="rowhead">{t.pmSubject}</td>
               <td className="rowfollow">
-                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="留空则不发 PM" className={`${inp} w-96`} />
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t.pmSubjectPh} className={`${inp} w-96`} />
               </td>
             </tr>
             <tr>
-              <td className="rowhead align-top">私信内容</td>
+              <td className="rowhead align-top">{t.pmBody}</td>
               <td className="rowfollow">
-                <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} className={`${inp} w-96`} placeholder="支持说明发放原因与数量" />
+                <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} className={`${inp} w-96`} placeholder={t.pmBodyPh} />
               </td>
             </tr>
+            <BulkNotifyRow t={t} email={email} setEmail={setEmail} />
             <tr>
-              <td className="rowhead">通知方式</td>
-              <td className="rowfollow">
-                <label className="inline-flex items-center gap-1.5 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={email}
-                    onChange={(e) => setEmail(e.target.checked)}
-                  />
-                  同时发邮件（SMTP 未配置时静默降级）
-                </label>
-              </td>
-            </tr>
-            <tr>
-              <td className="rowhead">操作者</td>
+              <td className="rowhead">{t.operator}</td>
               <td className="rowfollow">
                 <label className="mr-4 inline-flex items-center gap-1.5 text-sm">
-                  <input type="radio" name="bulk-sender" checked={sender === "self"} onChange={() => setSender("self")} />以我的名义
+                  <input type="radio" name="bulk-sender" checked={sender === "self"} onChange={() => setSender("self")} />{t.asSelf}
                 </label>
                 <label className="inline-flex items-center gap-1.5 text-sm">
-                  <input type="radio" name="bulk-sender" checked={sender === "system"} onChange={() => setSender("system")} />System 系统私信
+                  <input type="radio" name="bulk-sender" checked={sender === "system"} onChange={() => setSender("system")} />{t.asSystem}
                 </label>
               </td>
             </tr>
@@ -258,17 +269,23 @@ export function IncrementBulk() {
               <td className="rowfollow" colSpan={2}>
                 <div className="flex flex-wrap items-center gap-3">
                   <button
-                    disabled={busy || !amount || Number(amount) === 0
-                      || (kind === "medal" && !medalId)
-                      || (kind === "item" && !itemId)
-                      || (classes.size === 0 && roles.length === 0 && !userIds.trim())}
-                    onClick={run}
+                    disabled={busy || !canSubmit}
+                    onClick={() => void submit(false)}
                     className="min-h-[38px] rounded-full bg-sky px-6 text-sm font-bold text-white disabled:opacity-50"
                   >
-                    {busy ? "执行中…" : "提交"}
+                    {busy ? t.running : t.submit}
+                  </button>
+                  {/* 试运行（0286） */}
+                  <button
+                    disabled={busy || !canSubmit}
+                    onClick={() => void submit(true)}
+                    className="min-h-[38px] rounded-full border border-sky px-5
+                      text-sm font-bold text-sky-deep disabled:opacity-50"
+                  >
+                    {t.dryRun}
                   </button>
                   <span className="text-xs text-sub">
-                    已选：等级 {classes.size} 项 · 职务 {roles.length} 项 · 指定 {userIds.trim() ? userIds.split(/[,，\s]+/).filter(Boolean).length : 0} 人
+                    {t.selected.replace("{c}", String(classes.size)).replace("{r}", String(roles.length)).replace("{u}", String(picked))}
                   </span>
                 </div>
               </td>
