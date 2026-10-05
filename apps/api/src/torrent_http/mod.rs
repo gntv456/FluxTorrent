@@ -16,6 +16,7 @@ mod manage;
 mod peers;
 mod query;
 mod sec_params;
+mod suggest;
 
 pub use aggregate::*;
 pub use batch::*;
@@ -27,6 +28,7 @@ pub use list::*;
 pub use magnet::*;
 pub use manage::*;
 pub use peers::*;
+pub use suggest::*;
 pub(crate) use query::{
     norm_date, norm_promo, norm_tags, norm_text, parse_size,
 };

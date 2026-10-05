@@ -10,7 +10,7 @@ use super::promo;
 use super::types::{ListCursor, TorrentFilter, TorrentPage, MAX_LIMIT};
 
 /// LIKE 通配转义（防用户输入的 `%`/`_` 变成通配符；配合 SQL 侧 `ESCAPE chr(92)`）
-pub(super) fn esc_like(s: &str) -> String {
+pub(crate) fn esc_like(s: &str) -> String {
     s.replace('\\', "").replace('%', "\\%").replace('_', "\\_")
 }
 
@@ -40,6 +40,8 @@ pub(super) struct ExtraSlots {
     pub(super) anonymous: u32,
     /// 标题必须命中（0267）：pattern 已由调用方转义/加通配
     pub(super) title_like: u32,
+    /// 媒体评分下界（0283 P1-5）：media_info->>'rating' 数值化比较
+    pub(super) rating_min: u32,
 }
 
 /// 高级搜索增强谓词（体积/时间/做种数/排除词/优惠/发布者/仅我发布）。
@@ -132,8 +134,17 @@ pub(super) fn extra_preds(s: ExtraSlots) -> String {
     ));
     // 匿名发布三态：1=仅匿名 2=仅具名（缺省/0 不筛；口径同 alive）
     out.push_str(&format!(
-        " AND (${a}::int IS NULL OR ${a} = 0 OR (${a} = 1 AND t.anonymous) OR (${a} = 2 AND NOT t.anonymous))",
+        " AND (${a}::int IS NULL OR ${a} = 0 \
+           OR (${a} = 1 AND t.anonymous) \
+           OR (${a} = 2 AND NOT t.anonymous))",
         a = s.anonymous
+    ));
+    // 媒体评分下界（0283 P1-5）：rating 存 JSONB 字符串，空串/非数值行
+    // nullif+::numeric 归 NULL 后自然落选；合法评分 < 0 的种子（脏数据）也落选
+    out.push_str(&format!(
+        " AND (${a}::numeric IS NULL \
+           OR NULLIF(t.media_info->>'rating', '')::numeric >= ${a})",
+        a = s.rating_min
     ));
     out
 }

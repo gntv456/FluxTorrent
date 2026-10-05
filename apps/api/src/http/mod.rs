@@ -94,6 +94,9 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::user_fields_update)
         .service(crate::auth_http::user_fields_delete)
         .service(crate::torrent_http::list)
+        // suggest 必须先于 detail（/torrents/{id}）注册：actix 按注册顺序
+        // 匹配，{id} 的 Path<i64> 解析失败会直接 404 而不是fallthrough
+        .service(crate::torrent_http::torrent_suggest)
         .service(crate::torrent_http::detail)
         .service(crate::torrent_http::torrent_aggregate)
         .service(crate::torrent_http::torrent_detail_ext)

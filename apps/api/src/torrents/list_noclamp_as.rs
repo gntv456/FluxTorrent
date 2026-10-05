@@ -152,6 +152,8 @@ pub async fn list_torrents_noclamp_as(
         anonymous: 25,
         // 标题谓词排在游标排序键（$26）之后，避免改动 cursor.rs 的固定编号
         title_like: 27,
+        // 评分下界（0283 P1-5）：列表侧最后一位
+        rating_min: 28,
     });
     // 促销两列（kind + 到期）：一次 LATERAL 取「命中的最高优先级促销」，
     // 替代此前两条除 SELECT 列外完全相同的 correlated 子查询（方案 P0-5，每行省一次 promotions 扫描）。
@@ -256,6 +258,8 @@ pub async fn list_torrents_noclamp_as(
         .bind(sortval)
         // $27：标题谓词（extra_sql 里 title_like 槽位；排在 sortval 之后）
         .bind(&title_pat)
+        // $28：评分下界（0283 P1-5）
+        .bind(filter.rating_min)
         .fetch_all(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -278,8 +282,9 @@ pub async fn list_torrents_noclamp_as(
         min_completed: 21,
         max_completed: 22,
         anonymous: 23,
-        // 计数侧最后一位（$24）
+        // 计数侧（$24 起；0283 P1-5 评分下界再 +1）
         title_like: 24,
+        rating_min: 25,
     });
     // 计数降级（方案 P0-3）：此前每次列表请求都对「筛选后全量集合」做精确 count(*)，
     // 搜索/深筛选下是一次无上界聚合。现在封顶采样：内层 LIMIT 10001，
@@ -321,6 +326,8 @@ pub async fn list_torrents_noclamp_as(
         .bind(filter.anonymous)
         // $24：标题谓词（与 extra_count_sql 的 title_like 槽位对应）
         .bind(&title_pat)
+        // $25：评分下界（0283 P1-5，计数侧）
+        .bind(filter.rating_min)
         .fetch_one(db)
         .await
         .unwrap_or(0);

@@ -166,6 +166,11 @@ async fn list(
         sections,
         // 0267：前台列表没有「标题必须命中」入口，由对外端点（Torznab）使用
         title_like: None,
+        // 评分下界（0283 P1-5）：越界（≤0 或 >10）丢弃 = 不筛
+        rating_min: q
+            .rating_min
+            .filter(|v| *v > 0.0 && *v <= 10.0)
+            .map(|v| (v * 10.0).round() / 10.0),
     };
     // 上下界颠倒时自动对调（用户先填大后填小很常见，直接判空更友好）
     let mut filter = filter;

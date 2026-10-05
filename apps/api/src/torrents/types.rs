@@ -248,6 +248,10 @@ pub struct TorrentFilter {
     /// 与 `search` 的区别：search 会同时命中副标题/简介，本字段只卡标题。
     #[serde(default)]
     pub title_like: Option<String>,
+    /// 媒体评分下界（0283 P1-5）：media_info.rating（录入方口径，豆瓣/IMDb
+    /// 同字段）≥ 该值；0-10 一位小数，None = 不筛。无评分种子自然落选。
+    #[serde(default)]
+    pub rating_min: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

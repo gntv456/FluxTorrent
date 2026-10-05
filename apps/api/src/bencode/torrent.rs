@@ -144,6 +144,21 @@ pub fn build_download_torrent(
         ));
     }
     pairs.push((b"private".to_vec(), Bencode::Int(1)));
+    // 根级元数据（0283 P1-10）：`created by` 声明生成器（排障时能区分本站
+    // 再分发与原始文件）；`encoding: UTF-8` 提示中文文件名的解码口径——
+    // 两键都在 info 字典之外，不影响 info_hash / pieces_hash。
+    if !pairs.iter().any(|(k, _)| k == b"created by") {
+        pairs.push((
+            b"created by".to_vec(),
+            Bencode::Bytes(b"FluxTorrent".to_vec()),
+        ));
+    }
+    if !pairs.iter().any(|(k, _)| k == b"encoding") {
+        pairs.push((
+            b"encoding".to_vec(),
+            Bencode::Bytes(b"UTF-8".to_vec()),
+        ));
+    }
     let rebuilt = Bencode::Dict(pairs);
     let mut out = Vec::new();
     encode(&rebuilt, &mut out);
