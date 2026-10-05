@@ -536,6 +536,8 @@ const zhCnBase = {
     bbCode: "代码 / MediaInfo",
     bbEmoji: "表情",
     success: "发布成功（#{id}），等待管理员审核",
+    sameSource: "发布成功，但检测到同源种子已存在（#{name} #{id}）——若为重复发布请撤回",
+    groupCandidates: "发布成功；检测到同名聚合组，可到种子页将其归组",
     fail: "发布失败",
     networkError: "网络异常，请先登录后再发布",
   },
@@ -1047,6 +1049,16 @@ const zhCnBase = {
       { name: "迅雷 Thunder", ver: "—", os: "—", rec: false, banned: true, keys: ["本站禁用：吸血客户端会被 Tracker 直接拒绝汇报"] },
     ],
   },
+  sessions: {
+    title: "活跃会话",
+    empty: "近 24 小时无登录记录",
+    lastAt: "最近",
+    logins: "次登录",
+    revokeBtn: "踢出其它会话",
+    revokeConfirm: "将使其它所有设备上的登录立即失效（本设备不受影响），确定？",
+    revokedOk: "已踢出其它会话",
+    hint: "会话按近 24 小时成功登录的 IP 与客户端近似分组；踢出后其它设备需重新登录",
+  },
   notifications: {
     title: "通知中心",
     summary: "你有 {n} 条待处理消息",
@@ -1363,6 +1375,8 @@ const zhCnBase = {
     colAt: "完成时间",
     badgeSeeding: "做种中",
     badgeLeeching: "下载中",
+    badgePending: "待审",
+    badgeRejected: "被拒",
     note: "仅自己可见；列表最多展示最近 100 条。",
   },
   my: {
@@ -5076,7 +5090,7 @@ const zhCnBase = {
     2006: "邀请码已被使用",
     2007: "用户名已被占用",
     3003: "种子文件无效",
-    3004: "种子重复",
+    3004: "种子重复（本站已存在同 infohash 的种子，可在列表搜索确认）",
     4001: "余额不足",
     4002: "流水冲突，请重试",
     5002: "已感谢过",
@@ -5741,6 +5755,9 @@ export const zhCN = {
 
   /** 心愿单（求种愿望单，0074） */
   wishlist: {
+    hitsTitle: "命中种子",
+    hitsKeyword: "命中关键词",
+    hitsAt: "命中时间",
     title: "我的心愿单",
     note: "留下你想要的资源关键词，有人发布命中时会通知你（上限 20 条）。",
     addBtn: "加入心愿单",
@@ -5798,6 +5815,7 @@ export const zhCN = {
     mineEmpty: "还没有领取过复活任务",
     colTorrent: "种子",
     colSize: "大小",
+    contract: "契约：需做种 {h} 小时 → {sparks} {magic} + 免费券 + 7 天免费",
     colRequired: "要求做种",
     colSeeded: "已做种",
     colStatus: "状态",

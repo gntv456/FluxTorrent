@@ -575,6 +575,8 @@ const enBase: Omit<
     bbCode: "Code / MediaInfo",
     bbEmoji: "Emoji",
     success: "Published (#{id}), awaiting review",
+    sameSource: "Published, but a same-source torrent already exists (#{name} #{id}) — withdraw it if this is a duplicate",
+    groupCandidates: "Published; a matching group was detected, attach it on the torrent page",
     fail: "Publish fail",
     networkError: "Network error — please sign in before publishing",
   },
@@ -1083,6 +1085,16 @@ const enBase: Omit<
       { name: "thunder", ver: "—", os: "—", rec: false, banned: true, keys: ["Banned on this site: leeching clients are rejected by the tracker"] },
     ],
   },
+  sessions: {
+    title: "Active sessions",
+    empty: "No logins in the last 24 hours",
+    lastAt: "Last",
+    logins: "logins",
+    revokeBtn: "Revoke other sessions",
+    revokeConfirm: "This immediately signs out all other devices (this one stays). Continue?",
+    revokedOk: "Other sessions revoked",
+    hint: "Sessions are approximated by IP + client over successful logins in 24h; other devices must sign in again",
+  },
   notifications: {
     title: "Notifications",
     summary: "{n} item(s) need your attention",
@@ -1402,6 +1414,8 @@ const enBase: Omit<
     colAt: "Completed at",
     badgeSeeding: "Seeding",
     badgeLeeching: "Leeching",
+    badgePending: "Pending",
+    badgeRejected: "Rejected",
     note: "Visible only to you; up to 100 latest rows.",
   },
   my: {
@@ -5241,7 +5255,7 @@ const enBase: Omit<
     2006: "Invite code already used",
     2007: "Username already taken",
     3003: "Invalid torrent file",
-    3004: "Duplicate torrent",
+    3004: "Duplicate torrent (same infohash already exists — search the list to confirm)",
     4001: "Insufficient balance",
     4002: "Ledger conflict, please retry",
     5002: "Already thanked",
@@ -5868,6 +5882,9 @@ const noticePrefsEn: Dict["noticePrefs"] = {
 };
 
 const wishlistEn: Dict["wishlist"] = {
+  hitsTitle: "Matched torrent",
+  hitsKeyword: "Keyword",
+  hitsAt: "Matched at",
   title: "My wishlist",
   note: "Leave keywords of resources you want; you will be notified when a matching torrent is uploaded (max 20).",
   addBtn: "Add to wishlist",
@@ -5913,6 +5930,7 @@ const fundingEn: Dict["funding"] = {
 };
 
 const resurrectEn: Dict["resurrect"] = {
+  contract: "Contract: seed {h} h → {sparks} {magic} + free coupon + 7-day freeleech",
   title: "Resurrections",
   note: "Claim a dead torrent and keep seeding; meeting the hours earns 5000 {magic} + 1 free voucher + 7 days free on that torrent.",
   claimBtn: "Claim resurrection",

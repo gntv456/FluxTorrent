@@ -17,6 +17,14 @@ struct WishRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct WishHitRow {
+    torrent_id: i64,
+    torrent_name: String,
+    keyword: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
 #[get("/wishlist")]
 pub async fn wishlist_list(
     req: HttpRequest,
@@ -31,7 +39,20 @@ pub async fn wishlist_list(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    // 命中历史（0284 P2-10）：最近 20 条，「我的 → 愿望单」可回看，
+    // 不再只靠一条站内信。注意响应从裸数组升级为 {items, hits}——
+    // 消费方 wishlist-panel.tsx 同步升级
+    let hits: Vec<WishHitRow> = sqlx::query_as(
+        "SELECT h.torrent_id, t.name AS torrent_name, h.keyword, \
+         h.created_at FROM wishlist_hits h \
+         JOIN torrents t ON t.id = h.torrent_id \
+         WHERE h.user_id = $1 ORDER BY h.id DESC LIMIT 20",
+    )
+    .bind(auth.id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({ "items": rows, "hits": hits })))
 }
 
 #[derive(Deserialize)]
