@@ -132,8 +132,13 @@ async fn resolve_file(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         let Some((fsize, fname)) = owned else {
+            // 0285 P2：sha 字段是服务端算的 SHA3-256（字段名沿用历史契约），
+            // 第三方工具用本地 SHA2 会落这里——文案必须指路正确的取值方式
             return Err(DomainError::Validation(
-                "附件未上传或不存在（请先通过上传接口提交字幕文件）".into(),
+                "附件未上传或不存在（请先通过 POST /api/v1/attachments \
+                 提交字幕文件，并原样回传其响应中的 sha256 字段值；\
+                 该值是服务端按 SHA3-256 计算的，与本地 SHA2 不同）"
+                    .into(),
             ));
         };
         // P0-2 体积上限（maxsubsize 接线；默认 1MB）
