@@ -12,7 +12,10 @@ use crate::state::AppState;
 // ============ 附件/图床（0100，NP Pictured 最小落地） ============
 // 单文件上限自 0214 起可配（attach_max_mib，缺省 8MiB），见 upload_attachment。
 
-const ATTACH_MIME_ALLOW: [&str; 8] = [
+// 0285 P1：字幕链路全量打通——此前白名单/嗅探只放行 zip，注释却声称
+// 「zip/rar/7z 走附件存储」，导致裸 .srt/.ass 与 .rar/.7z 包在附件层必被拒
+// （前端 SUB_EXTS 与字幕端白名单都允许这些扩展名）。
+const ATTACH_MIME_ALLOW: [&str; 14] = [
     "image/png",
     "image/jpeg",
     "image/gif",
@@ -20,8 +23,17 @@ const ATTACH_MIME_ALLOW: [&str; 8] = [
     "image/avif",
     "application/pdf",
     "text/plain",
-    // 0146 字幕链路：字幕包（zip/rar/7z）走附件存储；解包校验在字幕端白名单把关
+    // 字幕文本（浏览器对 .ass/.ssa 常报 text/x-ssa 变体，统一收敛到这两个）
+    "application/x-subrip",
+    "application/x-ssa",
+    // 字幕/未知扩展兜底：.sup/.idx/.sub/.cue 等浏览器一律报 octet-stream，
+    // 内容层按「文本可解码或已知字幕/档案签名」二次校验（见 sniff_ok）
+    "application/octet-stream",
+    // 字幕包档案（0146 起设计意图，0285 补齐实现）
     "application/zip",
+    "application/x-7z-compressed",
+    "application/x-rar-compressed",
+    "application/vnd.rar",
 ];
 
 /// 上传附件（multipart 字段 file）。存本地 savedirectory（缺省 ./attachments），
@@ -90,23 +102,42 @@ pub async fn upload_attachment(
     };
     if !ATTACH_MIME_ALLOW.contains(&mime.as_str()) {
         return Err(DomainError::Validation(
-            "仅支持 png/jpeg/gif/webp/avif/pdf/txt".into(),
+            "仅支持 png/jpeg/gif/webp/avif/pdf/txt 与字幕文本 \
+             （srt/ass）及字幕包（zip/rar/7z）"
+                .into(),
         ));
     }
-    // 真实内容嗅探（不信客户端头）：图片 magic bytes 校验；
-    // .ass/.ssa 字幕在浏览器常被报为 text/plain——扩展名按文件名判、按文本嗅探放行；
-    // zip 类字幕包按 PK 头嗅探（0146）
-    let declared_txt = mime == "text/plain";
-    let sniff_ok = match bytes.first() {
-        Some(0x89) => {
-            bytes.starts_with(&[0x89, b'P', b'N', b'G'])
-                || mime == "application/pdf"
+    // 真实内容嗅探（不信客户端头），按家族核对签名（0285 重写）：
+    //   图片按 magic bytes；PDF 按 %PDF；zip 按 PK；rar 按 Rar!；7z 按 7z\xBC\xAF；
+    //   字幕文本类（text/plain / x-subrip / x-ssa / octet-stream）按「UTF-8 可解码」；
+    //   octet-stream 额外放行已知二进制字幕签名（PGS .sup 的 PG 头）。
+    // 旧实现的缺陷：PDF（%PDF 开头）与裸字幕（octet-stream）落 default 分支被误杀。
+    let sniff_ok = match mime.as_str() {
+        "image/png" => bytes.starts_with(&[0x89, b'P', b'N', b'G']),
+        "image/jpeg" => bytes.starts_with(&[0xFF, 0xD8]),
+        "image/gif" => bytes.starts_with(b"GIF8"),
+        "image/webp" => {
+            bytes.len() > 12
+                && bytes.starts_with(b"RIFF")
+                && &bytes[8..12] == b"WEBP"
         }
-        Some(0xFF) => mime == "image/jpeg",
-        Some(b'G') => bytes.starts_with(b"GIF8"),
-        Some(b'R') => bytes.starts_with(b"RIFF") && mime == "image/webp",
-        Some(b'P') => bytes.starts_with(b"PK") && mime == "application/zip",
-        _ => declared_txt || mime == "image/avif",
+        "image/avif" => bytes.len() > 12 && &bytes[4..8] == b"ftyp",
+        "application/pdf" => bytes.starts_with(b"%PDF"),
+        "application/zip" => bytes.starts_with(b"PK"),
+        "application/x-7z-compressed" => {
+            bytes.starts_with(b"7z\xBC\xAF\x27\x1C")
+        }
+        "application/x-rar-compressed" | "application/vnd.rar" => {
+            bytes.starts_with(b"Rar!")
+        }
+        "application/x-subrip" | "application/x-ssa" | "text/plain" => {
+            is_textlike(&bytes)
+        }
+        // octet-stream：文本可解码 → 字幕文本类；否则须命中已知二进制字幕签名
+        "application/octet-stream" => {
+            is_textlike(&bytes) || bytes.starts_with(b"PG")
+        }
+        _ => false,
     };
     if !sniff_ok {
         return Err(DomainError::Validation("文件内容与声明类型不符".into()));
@@ -185,10 +216,20 @@ pub async fn upload_attachment(
     }
     Ok(ok(serde_json::json!({
         "sha256": sha,
+        // 0285 P2：字段名沿用 sha256（历史契约），算法实为 SHA3-256——
+        // 显式标注供第三方工具正确计算；本地算的 SHA2 会校验失败
+        "algorithm": "sha3-256",
         "url": format!("/api/v1/attachments/{sha}"),
         "size": bytes.len(),
         "deduplicated": exists.is_some(),
     })))
+}
+
+/// 文本类嗅探：UTF-8 可解码且不含 NUL 即视为字幕文本（srt/ass/ssa/cue/idx
+/// 均为纯文本；只查前 8KiB 防 8MiB 大文件全量扫描）。
+fn is_textlike(bytes: &[u8]) -> bool {
+    let head = &bytes[..bytes.len().min(8192)];
+    std::str::from_utf8(head).is_ok() && !head.contains(&0u8)
 }
 
 fn ext_of(mime: &str) -> &'static str {
@@ -199,6 +240,12 @@ fn ext_of(mime: &str) -> &'static str {
         "image/webp" => "webp",
         "image/avif" => "avif",
         "application/pdf" => "pdf",
+        "application/x-subrip" => "srt",
+        "application/x-ssa" => "ass",
+        "application/zip" => "zip",
+        "application/x-7z-compressed" => "7z",
+        "application/x-rar-compressed" | "application/vnd.rar" => "rar",
+        "application/octet-stream" => "bin",
         _ => "txt",
     }
 }

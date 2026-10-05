@@ -16,6 +16,8 @@ pub(super) struct SubtitleUploadReq {
     /// s3:// UUID——下载只回 JSON 引用，全链路无文件本体。现统一走 attachments
     /// 存储（本地 savedirectory 卷 + sha256 内容寻址 + 配额），file_ref 记
     /// attach://<sha>；历史外部引用（http(s):// 链接）仍按原样展示。
+    /// 注意：sha256 是**服务端 SHA3-256** 摘要（attachment_http.rs 计算），
+    /// 不是客户端本地算的 SHA2——取值必须来自上传响应，不可自算（0285 P2）。
     #[serde(default)]
     pub(super) file_sha: Option<String>,
     /// 兼容字段：外部字幕站直链（http/https），与本地附件二选一
