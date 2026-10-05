@@ -1,6 +1,6 @@
 /** 服务端 i18n 入口：读 cookie 定位语言（仅 RSC / Server Components 内使用） */
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import {
   DEFAULT_LOCALE,
@@ -29,6 +29,24 @@ export async function getLocale(): Promise<Locale> {
   const store = await cookies();
   const v = store.get(LOCALE_COOKIE)?.value;
   if (isLocale(v)) return v;
+  // 0284 P1-6：无 cookie 的新访客先按 Accept-Language 协商（四语精确前缀匹配；
+  // 匹配不上再落站点默认）。英文/日文用户首访不再看整页中文；用户手动切换
+  // 或站点明确单语时 cookie/默认语言仍然优先，行为不回退。
+  const header = (await headers()).get("accept-language") ?? "";
+  const negotiate = (tag: string): Locale | null => {
+    const base = tag.trim().toLowerCase().split("-")[0];
+    if (!base) return null;
+    if (base === "zh") {
+      return tag.toLowerCase().includes("tw") || tag.toLowerCase().includes("hk")
+        ? "zh-TW"
+        : "zh-CN";
+    }
+    return (base === "en" ? "en" : base === "ja" ? "ja" : null);
+  };
+  for (const part of header.split(",")) {
+    const negotiated = negotiate(part.split(";")[0] ?? "");
+    if (negotiated) return negotiated;
+  }
   // 0216：没有语言 cookie 的新访客 → 站点默认语言（后台「默认语言」，真驱动）。
   // 库里是 NP 口径 en|chs|cht，经唯一换算处转 BCP47；档案取不到则内置默认。
   const p = await getSiteProfile();
