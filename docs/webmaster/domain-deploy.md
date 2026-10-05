@@ -200,8 +200,10 @@ CORS_ORIGINS=https://pt.example.com,https://pt-backup.net
 
 **两个如实的边界**（不是坑，是口径）：
 
-- **种子里的 tracker 地址只有一个**：`announce_url` 是单值，烧进 `.torrent` 文件。第二域名做网页入口、下载种子完全没问题；想让它**也**当 tracker 用，把它的 Nginx 里也补上 `/announce/` 反代段即可（老种子里的地址不会变，重新下载的种子才会带新地址——与换主域名同口径）。
+- **种子里的 tracker 地址默认只有一个**（可配多 tracker，见下）：`announce_url` 是单值，烧进 `.torrent` 文件。
 - **RSS / 分享链接统一指向主域名**：`PUBLIC_SITE_URL` 是单值，RSS 输出、og:url 等规范地址都用主域名。对私站通常无所谓（内容本来就不给搜索引擎）。
+
+**多 tracker（可选进阶）**：想让每个域名**都**当 tracker 用、种子同时携带多个地址轮换，去后台「Tracker URL 管理」（管理工具 → trackers）把备用域名的根地址（如 `https://pt-backup.net`）加一条、启用并设好优先级——之后新生成的 `.torrent` 会在 announce-list 里自动带上所有已启用地址（BEP12 多 tier，客户端自动轮换）。安全护栏：纯内网地址（127.0.0.1/localhost）、不带 `http(s)://`/`udp://` 前缀的裸域名、与主 announce 重复的地址都会被自动跳过，不会误进公网种子。注意旧种子不回填，重新下载才会带新 tier。
 
 ---
 
