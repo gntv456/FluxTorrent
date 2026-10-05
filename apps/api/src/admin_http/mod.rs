@@ -23,6 +23,8 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(user_assign_jixiao)
         .service(user_admin_delete)
         .service(user_adjust)
+        .service(admin_passkey_reveal)
+        .service(admin_passkey_reset)
         .service(user_flags)
         .service(user_set_status)
         .service(user_set_class)
@@ -90,12 +92,13 @@ mod embed_rules;
 mod forum;
 mod forum_check;
 mod forum_mods;
-mod guard;
+pub(crate) mod guard;
 mod overview;
 mod perms;
 mod records;
 mod reports;
 mod review;
+mod review_notify;
 mod roles;
 mod site;
 mod subtitle_awards;
@@ -106,8 +109,10 @@ mod user_del;
 mod user_detail;
 mod user_fields_admin;
 mod user_grant;
+mod user_grant_medal;
 mod user_list;
 mod user_ops;
+mod user_passkey;
 mod user_status;
 
 pub use agent_rules::*;
@@ -129,8 +134,10 @@ pub use torrent_ops::*;
 pub use torrents::*;
 pub use user_del::*;
 pub use user_detail::*;
+pub use user_grant_medal::*;
 pub use user_fields_admin::*;
 pub use user_grant::*;
 pub use user_list::*;
 pub use user_ops::*;
+pub use user_passkey::*;
 pub use user_status::*;
