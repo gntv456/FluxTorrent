@@ -3,6 +3,12 @@ import { api } from "@/lib/api-client";
 
 export const dynamic = "force-dynamic";
 
+/** 跨请求缓存秒数（移动端反馈批 P1-2）：档案是布局层每页导航都要取的
+ *  数据（layout/footer/getDict 三处消费），no-store 让每次点击都重拉。
+ *  60s 内的陈旧对品牌名/分类/模块开关无感——站长改档案本就不是
+ *  「保存后全站立即可见」的契约；页面自身数据仍走 no-store 不受影响。 */
+const PROFILE_REVALIDATE = 60;
+
 export interface SiteProfile {
   site_type: string;
   pack_name: string | null;
@@ -75,10 +81,15 @@ export interface DictEntry {
 
 /** 公开：站点档案（RSC 服务端获取，layout / footer / getDict 多处复用；失败回落 general 默认）。
  *  cache()：一次请求内十几次调用共享同一次取档——0216 起 getLocale（默认语言回落）
- *  也读它，去重不再只是省流量，而是一次请求内语言不能两次不一致。 */
+ *  也读它，去重不再只是省流量，而是一次请求内语言不能两次不一致。
+ *  跨请求缓存（P1-2）：服务端取档带 next.revalidate，60s 内的连续
+ *  导航不再每次都打 API——no-store 时代这是每页点击都付的一次内网往返。 */
 export const getSiteProfile = cache(async (): Promise<SiteProfile> => {
   try {
-    return await api.get<SiteProfile>("/api/v1/site-profile");
+    return await api.get<SiteProfile>(
+      "/api/v1/site-profile",
+      PROFILE_REVALIDATE,
+    );
   } catch {
     return {
       site_type: "general",

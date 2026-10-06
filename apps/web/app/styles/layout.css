@@ -76,6 +76,9 @@
 }
 
 /* ===== 更多 ▾ 分组下拉（Seedlight §3 导航收敛） ===== */
+/* 手机右溢出修复（2026-10-06）：left:0 + auto-fit 150px 双列在 375px 下
+ * right 冲到 543px（实测），整块被右切。<md 收敛为单列 + 右缘对齐锚点，
+ * 宽度上限 100vw-32；md+ 维持桌面行为。 */
 .mainmenu-drop {
   position: absolute;
   top: calc(100% + 10px);
@@ -92,6 +95,23 @@
   border-radius: var(--r-lg);
   background: var(--baozi-paper);
   box-shadow: var(--shadow-card);
+}
+
+@media (max-width: 767px) {
+  .mainmenu-drop {
+    /* 手机上锚点 li 离右缘远（实测 li.right=259 < 375），absolute
+       right:0 对齐锚点时 345px 宽的 drop 左缘会冲出视口（x=-86）。
+       改 fixed 对齐视口右缘 + 限宽 100vw-24，任何锚点位置都不溢出。 */
+    position: fixed;
+    top: auto;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 10px;
+  }
 }
 .mainmenu-drop__group {
   min-width: 0;
@@ -2862,5 +2882,71 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   }
   .pgstats > div:nth-child(2n + 1) {
     border-right: 1px solid var(--line);
+  }
+}
+
+/* ============ 底 Tab 选中态 + 触控即时反馈（移动端点击反馈批 P0） ============
+ * 背景：底 Tab 此前无选中态、且全站 tap-highlight 透明——弱网下点击
+ * 后到新页出现之间零反馈，主观「点了没反应」。
+ * - .tablink[data-active]：当前 tab 常驻高亮（与 mainmenu 同语义）；
+ * - .tablink[data-pending]：useLinkStatus 慢导航时图标层微转（TabLink 内控）；
+ * - 全站交互件统一按压反馈：非 hover 设备上 :active 压暗 + 轻缩。 */
+.tablink {
+  transition: color 0.15s var(--ease-out, ease-out);
+}
+.tablink[data-active="true"] {
+  color: var(--sky-deep, #0a3d6b);
+  font-weight: 700;
+}
+.tablink[data-active="true"] .tablink-ic {
+  transform: scale(1.06);
+}
+.tablink-ic {
+  transition: transform 0.15s var(--ease-out, ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tablink,
+  .tablink-ic {
+    transition: none;
+  }
+}
+.tablink[data-pending="true"] .tablink-ic {
+  animation: tab-pending-pulse 0.9s var(--tide-ease, ease-in-out) infinite;
+}
+@keyframes tab-pending-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tablink[data-pending="true"] .tablink-ic {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+/* 统一按压反馈（P0-3）：非 hover 设备（触屏）上，站内常见交互件
+ * 按下即压暗——不等网络、不等 JS，纯 CSS 即时确认「点到了」。
+ * 只在 (hover: none) 生效，桌面鼠标按下不闪。 */
+@media (hover: none) {
+  a:not([data-no-press]),
+  button:not([data-no-press]),
+  summary,
+  label[for],
+  .mainmenu-link,
+  .navdrawer__link,
+  .trow-card,
+  .ftopic-card {
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.18);
+  }
+  a:active:not(:disabled),
+  button:active:not(:disabled),
+  .mainmenu-link:active,
+  .navdrawer__link:active {
+    filter: brightness(0.92);
   }
 }

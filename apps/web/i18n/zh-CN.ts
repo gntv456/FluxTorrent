@@ -19,6 +19,7 @@ const zhCnBase = {
     pleaseLogin: "请先登录",
     loadFailed: "加载失败",
     loading: "加载中…",
+    pageLoading: "正在打开页面…",
     retry: "重试",
     networkError: "网络异常，请稍后再试",
     spark: "{magic}",

@@ -4,9 +4,9 @@
  "vitest.config.ts": [],
  "vitest.setup.ts": [],
  "lib/api-client.ts": [
-  97,
-  129,
-  132
+  103,
+  135,
+  138
  ],
  "lib/data-content.ts": [],
  "lib/data-forum.ts": [],
@@ -19,8 +19,8 @@
   39
  ],
  "lib/site-profile.ts": [
-  90,
-  101
+  101,
+  112
  ],
  "lib/ui-classes.ts": [],
  "components/admin-exams-shared.ts": [],

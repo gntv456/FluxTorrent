@@ -12,6 +12,7 @@ import { getMenuItems } from "@/lib/data";
 import { buildNav } from "@/lib/nav-menu";
 import { MobileNavShell } from "@/components/mobile-nav-shell";
 import { GlobalSearch } from "@/components/global-search";
+import { TabLink } from "@/components/tab-link";
 import { api } from "@/lib/api-client";
 
 /**
@@ -175,10 +176,10 @@ export async function MobileTabBar() {
       {tabs.map((t) =>
         t.center ? (
           /* 中间发布：极光渐变凸起大圆 —— 移动端核心行动召唤 */
-          <Link
+          <TabLink
             key={t.href}
             href={t.href}
-            aria-label={t.label}
+            label={t.label}
             className="-mt-6 flex flex-1 flex-col items-center justify-end gap-1 pb-1 text-[11px] font-bold text-sub"
           >
             <span
@@ -189,21 +190,24 @@ export async function MobileTabBar() {
               {t.icon}
             </span>
             {t.label}
-          </Link>
+          </TabLink>
         ) : (
-          <Link
+          <TabLink
             key={t.href}
             href={t.href}
-            className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[11px] text-sub active:text-sky"
+            label={t.label}
+            className="tablink flex min-h-[44px] flex-1 flex-col items-center
+              justify-center gap-0.5 py-1 text-[11px] text-sub active:text-sky"
           >
             <span
               aria-hidden
-              className="flex items-center justify-center leading-none"
+              className="tablink-ic flex items-center justify-center
+                leading-none"
             >
               {t.icon}
             </span>
             {t.label}
-          </Link>
+          </TabLink>
         ),
       )}
     </nav>

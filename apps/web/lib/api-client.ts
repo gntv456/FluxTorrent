@@ -81,6 +81,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     bearer = store.get("flux_token")?.value ?? null;
   }
   const lang = acceptLanguage();
+  // revalidate（P1-2 布局缓存）：仅服务端 RSC 且调用方显式传值时用
+  // Next data cache（next.revalidate 与 cache:'no-store' 互斥，二选一）。
+  // 默认仍 no-store——页面自身数据绝不过期。浏览器侧忽略 revalidate。
+  const serverCache =
+    typeof window === "undefined" &&
+    (init as { next?: { revalidate?: number } } | undefined)?.next?.revalidate;
   const res = await fetch(`${baseUrl()}${path}`, {
     ...init,
     headers: {
@@ -89,7 +95,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...(lang ? { "Accept-Language": lang } : {}),
       ...init?.headers,
     },
-    cache: "no-store",
+    ...(serverCache ? {} : { cache: "no-store" as const }),
   });
   // 非 JSON 响应（网关错误页等）归一化为 ApiError
   const ctype = res.headers.get("content-type") ?? "";
@@ -135,7 +141,16 @@ async function requestBlob(path: string): Promise<ArrayBuffer> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  /** revalidate（可选，P1-2）：服务端 RSC 的跨请求缓存秒数（Next data
+   *  cache）；浏览器侧忽略。仅布局级「每页都取、允许短陈旧」的数据
+   *  （site-profile / menu-items）传值，页面自身数据保持 no-store。 */
+  get: <T>(path: string, revalidate?: number) =>
+    request<T>(
+      path,
+      revalidate !== undefined && typeof window === "undefined"
+        ? { next: { revalidate } }
+        : undefined,
+    ),
   getBlob: (path: string) => requestBlob(path),
   post: <T>(path: string, data?: unknown) =>
     request<T>(path, { method: "POST", body: JSON.stringify(data ?? {}) }),
