@@ -19,6 +19,23 @@ def db_i(sql):
     try: return int(v)
     except Exception: return None
 
+
+def wait_credit(sql, target, timeout=150, step=5):
+    """轮询到「等于预期」或超时，返回最后一次读数。
+
+    announce 事件由 worker 按 60s 一批 flush，固定 sleep(12) 读到的是 flush
+    之前的旧值——实测流水在 announce 之后约 90s 才落库（10:24:47），
+    于是三条计费断言集体假红。超时不缩短，宁可多等也不要假信号。
+    """
+    deadline = time.time() + timeout
+    cur = db_i(sql)
+    while time.time() < deadline:
+        if cur == target:
+            return cur
+        time.sleep(step)
+        cur = db_i(sql)
+    return cur
+
 # ---- 造两个测试用户：管理员姿态直插邀请码 → 邀请注册（invite_only 模式） ----
 # 注：POST /admin/users/adjust 的 invite_grant 对 root 调整自身会撞
 # ensure_outranks(99 vs 99) 护栏（by design），故借普通用户 e2ecap* 做 inviter。
@@ -91,7 +108,12 @@ print("tidA=%s tidB=%s" % (tidA, tidB))
 
 # ---- 促销：给 tidB 挂 2xfree（x2 上传 + 免费），tidA 挂 30% 下载 p30 ----
 if tidA and tidB:
-    s, r = call("POST", "/admin/torrents/batch", {"action": "promo", "ids": [tidB], "kind": "x2free", "hours": 2}, token=tok)
+    # 接口的字段是 promo_kind / promo_until（torrent_batch.rs:26）。
+    # 早先这里传的是 kind / hours——serde 认不到就静默走缺省，
+    # 于是促销全被写成 'free'，"x2free 上传翻倍" 与 "p30 按 30% 计"
+    # 两条断言永远不会绿（红了还不是产品的错）。
+    until = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 7200))
+    s, r = call("POST", "/admin/torrents/batch", {"action": "promo", "ids": [tidB], "promo_kind": "x2free", "promo_until": until}, token=tok)
     print("batch promo x2free:", s, json.dumps(r, ensure_ascii=False)[:160])
     if s != 200:
         # 尝试直接写库（管理员测试姿态，报告留档）
@@ -100,28 +122,38 @@ if tidA and tidB:
         ok("促销直插库", True)
     else:
         ok("batch promo 接口", r.get("code") == 0, r.get("message"))
-        s, r = call("POST", "/admin/torrents/batch", {"action": "promo", "ids": [tidA], "kind": "p30", "hours": 2}, token=tok)
+        s, r = call("POST", "/admin/torrents/batch", {"action": "promo", "ids": [tidA], "promo_kind": "p30", "promo_until": until}, token=tok)
         print("batch promo p30:", s, r.get("code"))
 
+    # 落库回读：接口 200 不代表写进去的是请求的那个 kind（这项目最常见的
+    # 「静默缺省」形状）。kind 缺省成 free 时，后面所有倍率断言都会假红。
+    kb = DB("SELECT kind FROM promotions WHERE torrent_id=%d ORDER BY id DESC LIMIT 1" % tidB)
+    ok("x2free 按请求 kind 落库（没被静默缺省成 free）", kb == "x2free", "库里 kind=%s" % kb)
+    ka = DB("SELECT kind FROM promotions WHERE torrent_id=%d ORDER BY id DESC LIMIT 1" % tidA)
+    ok("p30 按请求 kind 落库", ka == "p30", "库里 kind=%s" % ka)
+
     # ---- 计费实测：两个用户各下 B（x2free），buyer 再下 A（p30） ----
+    # worker 按 60s 一批 flush announce 事件（不是逐条实时），所以这里必须
+    # **轮询到值稳定**，固定 sleep(12) 会读到 flush 之前的旧值 => 假红。
     u0 = db_i("SELECT uploaded FROM users WHERE id=%s" % uid1)
     d0 = db_i("SELECT downloaded FROM users WHERE id=%s" % uid1)
+    u2_0 = db_i("SELECT uploaded FROM users WHERE id=%s" % uid2)
+    d2_0 = db_i("SELECT downloaded FROM users WHERE id=%s" % uid2)
     # user1: 下 B 完整 20MiB（x2free：下载全免、上传统计翻倍按实际上传）
     announce(pk1, ihB, 0, 0, left=20971520, event="started")
     announce(pk1, ihB, 5242880, 20971520, left=0, event="completed")
-    # user2: 同样下 B —— 对照组
+    # user2: 同样下 B —— 对照组（基线已在 announce 之前取，见上）
     announce(pk2, ihB, 0, 0, left=20971520, event="started")
     announce(pk2, ihB, 5242880, 20971520, left=0, event="completed")
-    time.sleep(12)
-    u1 = db_i("SELECT uploaded FROM users WHERE id=%s" % uid1)
+    u1 = wait_credit("SELECT uploaded FROM users WHERE id=%s" % uid1,
+                     u0 + 5242880 * 2)
     d1 = db_i("SELECT downloaded FROM users WHERE id=%s" % uid1)
     print("user1: up +%s down +%s（x2free 预期 up +%s down +0）" % (u1-u0, d1-d0, 5242880*2))
     ok("x2free 下载量不计（down 不变）", d1 == d0, "down %s -> %s" % (d0, d1))
     ok("x2free 上传量 x2", u1 - u0 == 5242880*2, "up %s -> %s" % (u0, u1))
     # 对照组
-    u2_0 = db_i("SELECT uploaded FROM users WHERE id=%s" % uid2)
-    d2_0 = db_i("SELECT downloaded FROM users WHERE id=%s" % uid2)
-    u2_1 = db_i("SELECT uploaded FROM users WHERE id=%s" % uid2)
+    u2_1 = wait_credit("SELECT uploaded FROM users WHERE id=%s" % uid2,
+                       u2_0 + 5242880 * 2)
     d2_1 = db_i("SELECT downloaded FROM users WHERE id=%s" % uid2)
     print("user2 对照: up +%s down +%s" % (u2_1-u2_0, d2_1-d2_0))
     ok("对照组 x2free 下载量不计", d2_1 == d2_0, "down %s -> %s" % (d2_0, d2_1))
@@ -131,19 +163,58 @@ if tidA and tidB:
     da0 = db_i("SELECT downloaded FROM users WHERE id=%s" % uid1)
     announce(pk1, ihA, 0, 0, left=20971520, event="started")
     announce(pk1, ihA, 1048576, 20971520, left=0, event="completed")
-    time.sleep(12)
-    da1 = db_i("SELECT downloaded FROM users WHERE id=%s" % uid1)
+    da1 = wait_credit("SELECT downloaded FROM users WHERE id=%s" % uid1,
+                      da0 + int(20971520 * 0.3))
     print("user1 下 A(p30): down +%s 预期 +%s" % (da1-da0, int(20971520*0.3)))
     ok("p30 下载量按 30%% 入账", da1 - da0 == int(20971520*0.3), "down %s -> %s" % (da0, da1))
 
-    # ---- 付费种子：user2 无票下载 A 应扣 spark / 或被拒 ----
+    # ---- 付费种子：无余额应拦下；注资后应真扣费 ----
+    # 这条原先只认 402/403，而接口对「余额不足」回的是 400 + Validation，
+    # 于是产品行为是对的、闸门却一直红（两个测试号 spark 都是 0，
+    # 天然走不到扣费分支）。这里把两个分支分开测。
     sp0 = db_i("SELECT spark_balance FROM users WHERE id=%s" % uid2)
     s_dl, raw = call("GET", "/torrents/%d/download" % tidA, token=t2, raw=True)
-    print("user2 直下付费种子: %s len=%s" % (s_dl, len(raw) if isinstance(raw, bytes) else raw))
+    print("user2 无余额直下付费种子: %s" % s_dl)
     sp1 = db_i("SELECT spark_balance FROM users WHERE id=%s" % uid2)
-    print("spark: %s -> %s" % (sp0, sp1))
-    ok("付费种子下载有拦截或扣费", (s_dl in (402, 403)) or sp0 != sp1,
+    ok("付费种子无余额时拦下（不给文件、不动账）",
+       s_dl != 200 and sp1 == sp0,
        "status=%s spark %s->%s" % (s_dl, sp0, sp1))
+
+    price_a = db_i("SELECT price FROM torrents WHERE id=%s" % tidA)
+    call("POST", "/admin/users/adjust",
+         {"user_id": uid2, "spark_delta": price_a * 3,
+          "note": "gate-b 付费种子扣费实测",
+          "idempotency_key": "gate-b-fund-%d" % uid2}, token=tok)
+    sp2 = db_i("SELECT spark_balance FROM users WHERE id=%s" % uid2)
+    s_dl2, _ = call("GET", "/torrents/%d/download" % tidA, token=t2,
+                    raw=True)
+    sp3 = db_i("SELECT spark_balance FROM users WHERE id=%s" % uid2)
+    tax = db_i("SELECT coalesce((SELECT value::int FROM site_settings"
+               " WHERE name='upload_price_tax'), 30)")
+    net = price_a * (100 - tax) // 100
+    print("user2 注资后下载: %s spark %s->%s（价 %s 税 %s%% 卖家净得 %s）"
+          % (s_dl2, sp2, sp3, price_a, tax, net))
+    # 买家付**全价**，卖家拿**税后净额**——两个金额别写进一条断言。
+    ok("付费种子有余额时真扣费（买家扣全价）",
+       s_dl2 == 200 and sp2 - sp3 == price_a,
+       "status=%s 扣了 %s 预期 %s" % (s_dl2, sp2 - sp3, price_a))
+    ok("扣费流水落库且去向是卖家",
+       db_i("SELECT count(*) FROM spark_ledger WHERE user_id=%s"
+            " AND kind='torrent_buy'" % uid2) >= 1
+       or db_i("SELECT count(*) FROM torrent_purchases WHERE user_id=%s"
+               " AND torrent_id=%s" % (uid2, tidA)) >= 1,
+       "买断记录未落库")
+    # 钱要走到卖家与资金池，否则「付费种子」只是把买家钱变没
+    owner = db_i("SELECT owner_id FROM torrents WHERE id=%s" % tidA)
+    ok("卖家入账净额 = 价 - 站税",
+       db_i("SELECT coalesce(sum(amount),0) FROM spark_ledger"
+            " WHERE user_id=%s AND kind='torrent_sell'" % owner) >= net,
+       "owner=%s 净额预期>=%s" % (owner, net))
+    month = time.strftime("%Y-%m", time.gmtime())
+    ok("站税进资金池（magic_pool）",
+       db_i("SELECT coalesce(donated_total,0) FROM magic_pool"
+            " WHERE month='%s'" % month) >= price_a - net,
+       "本月 donated_total 不足 %s" % (price_a - net))
 
     # ---- H&R：hr_policy 存在与否 + hr_snapshots 是否出现 ----
     hr = DB("SELECT hr_policy FROM torrents WHERE id=%d" % tidB)
