@@ -91,6 +91,10 @@ async fn user_role_grant(
     body: web::Json<GrantRoleReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 职务授予需要 roles.manage（0285）：此前任何 staff 都能给低等级用户发职务，
+    // 而 `uploader` 职务＝ torrent.approval.auto（发种免审）——等于版主可给熟人开免审后门。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE)
+        .await?;
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
     let exists: Option<String> =
         sqlx::query_scalar("SELECT key FROM roles WHERE key = $1")

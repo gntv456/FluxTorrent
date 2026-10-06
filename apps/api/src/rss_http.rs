@@ -106,7 +106,7 @@ async fn rss_feed(
     let sql = format!(
         "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, t.official_tag, \
                 pr.promotion, \
-                u.username AS owner_name \
+            CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name \
          FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          {promo_lateral} \
          WHERE t.approval_status = 1 \

@@ -232,6 +232,42 @@ impl Repo {
         action: &str,
         ref_id: Option<i64>,
     ) {
+        self.audit_detail(actor_id, action, ref_id, None, None)
+            .await;
+    }
+
+    /// 带理由与附加现场的审计（0285）。
+    /// 旧版 `ref` 只存 `{"id": 目标}`，叠加读模型根本不选 ref，
+    /// 于是「谁把这名用户的余额改成多少、为什么」无法回答——版主交接与纠纷仲裁
+    /// 全靠这三问。`reason` 按字符边界截断（多字节 UA/文案曾按字节切片 panic，ZT81 同因）。
+    pub async fn audit_detail(
+        &self,
+        actor_id: Option<i64>,
+        action: &str,
+        ref_id: Option<i64>,
+        reason: Option<&str>,
+        extra: Option<serde_json::Value>,
+    ) {
+        let mut v = serde_json::Map::new();
+        if let Some(id) = ref_id {
+            v.insert("id".to_string(), serde_json::json!(id));
+        }
+        if let Some(r) = reason.map(str::trim).filter(|s| !s.is_empty()) {
+            v.insert(
+                "reason".to_string(),
+                serde_json::json!(r.chars().take(200).collect::<String>()),
+            );
+        }
+        if let Some(serde_json::Value::Object(m)) = extra {
+            for (k, val) in m {
+                v.insert(k, val);
+            }
+        }
+        let payload = if v.is_empty() {
+            None
+        } else {
+            Some(serde_json::Value::Object(v).to_string())
+        };
         // 审计日志失败不阻塞业务，但必须记录（§5.7）
         let audit = sqlx::query(
             "INSERT INTO audit_log (id, actor_id, action, ref) \
@@ -239,7 +275,7 @@ impl Repo {
         )
         .bind(actor_id)
         .bind(action)
-        .bind(ref_id.map(|i| serde_json::json!({"id": i}).to_string()))
+        .bind(payload)
         .execute(&self.db)
         .await;
         if let Err(e) = &audit {

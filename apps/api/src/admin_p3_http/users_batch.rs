@@ -73,13 +73,17 @@ async fn admin_users_batch(
         }
         let n = match body.action.as_str() {
             "status" => {
-                sqlx::query("UPDATE users SET status = $2 WHERE id = $1")
-                    .bind(uid)
-                    .bind(body.value as i16)
-                    .execute(db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?
-                    .rows_affected()
+                // 与单人改状态同口径：禁言(1) 必须落到 forumpost，否则批量禁言空转
+                sqlx::query(
+                    "UPDATE users SET status = $2, forumpost = ($2 <> 1) \
+                     WHERE id = $1",
+                )
+                .bind(uid)
+                .bind(body.value as i16)
+                .execute(db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?
+                .rows_affected()
             }
             "class" => {
                 sqlx::query("UPDATE users SET class_id = $2 WHERE id = $1")

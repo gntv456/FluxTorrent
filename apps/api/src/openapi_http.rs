@@ -157,7 +157,10 @@ pub async fn require_token(
         "SELECT t.user_id, t.rate_per_min, t.scopes FROM api_tokens t \
          JOIN users u ON u.id = t.user_id AND u.status < 2 \
          WHERE t.token_hash = $1 AND t.revoked_at IS NULL \
-           AND (t.expires_at IS NULL OR t.expires_at > now())",
+           AND (t.expires_at IS NULL OR t.expires_at > now()) \
+           AND t.created_at > to_timestamp(COALESCE( \
+                 (SELECT r.nbf FROM token_revocations r \
+                  WHERE r.user_id = t.user_id), 0))",
     )
     .bind(&token_hash)
     .fetch_optional(&state.repo.db)

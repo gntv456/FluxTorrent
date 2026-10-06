@@ -21,7 +21,8 @@ pub async fn rotate_passkey(
         .repo
         .audit(Some(auth.id), "passkey_rotate", Some(auth.id))
         .await;
-    // 旧 passkey 在 tracker passkey 缓存中立即失效（否则 60s TTL 内仍可用）
+    // 旧 passkey 随 guard 版本轮询失效（tracker 侧 ≤3s，见 apps/tracker/src/main.rs
+    // 的 flux:guard:ver 轮询清缓存）——不是字面「立即」，文案与注释同口径。
     bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "passkey": pk })))
 }

@@ -94,17 +94,23 @@ async fn report_resolve(
         return Err(DomainError::Validation("action 需为 act/dismiss".into()));
     }
     // 取举报人与对象（供 PM）
-    let info: Option<(i64, String, i64)> = sqlx::query_as(
+    let info: Option<(i64, String, i64, Option<i64>)> = sqlx::query_as(
         "SELECT reporter_id, ref_type, \
-         ref_id FROM reports WHERE id = $1 AND status IN (0, 2)",
+         ref_id, claimed_by FROM reports WHERE id = $1 AND status IN (0, 2)",
     )
     .bind(body.report_id)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((reporter_id, ref_type, ref_id)) = info else {
+    let Some((reporter_id, ref_type, ref_id, claimed_by)) = info else {
         return Err(DomainError::Validation("举报不存在或已处理".into()));
     };
+    // 认领互斥（0285）：resolve 此前无视 claimed_by，任何人可关掉别人正在办的工单。
+    if claimed_by.is_some() && claimed_by != Some(auth.id) {
+        return Err(DomainError::Validation(
+            "该举报已被其他管理员认领，请先由认领人释放".into(),
+        ));
+    }
     sqlx::query(
         "UPDATE reports SET status = 1, handled_by = $1, handled_at = now() \
          WHERE id = $2 AND status IN (0, 2)",

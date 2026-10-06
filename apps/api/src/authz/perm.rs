@@ -4,6 +4,8 @@
 
 // 发布
 pub const TORRENT_UPLOAD: &str = "torrent.upload";
+/// 审核种子（0285）：把「审」从 torrent.manage 里拆出来，站长可按区/按级再收
+pub const TORRENT_REVIEW: &str = "torrent.review";
 pub const TORRENT_APPROVAL_AUTO: &str = "torrent.approval.auto";
 /// 尚无代码生效点：付费种子改价端点未实装（价格仅发布时设置），接线时删除本 allow
 #[allow(dead_code)]
@@ -48,6 +50,8 @@ pub const USER_RESETPASS: &str = "user.resetpass";
 pub const USER_DELETE_DISABLED: &str = "user.delete_disabled";
 pub const USER_AMOUNTBONUS: &str = "user.amountbonus";
 pub const USER_AMOUNTUPLOAD: &str = "user.amountupload";
+/// 查看/重置他人 passkey 明文（0285）：凭证属高敏数据，默认仅主管与站长
+pub const USER_PASSKEY_REVEAL: &str = "user.passkey.reveal";
 pub const APPEAL_HANDLE: &str = "appeal.handle";
 pub const IP_CHECK: &str = "ip.check";
 pub const UPLOADERS_VIEW: &str = "uploaders.view";

@@ -10,32 +10,120 @@ import { PANEL_LG } from "@/lib/ui-classes";
 
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import type { DenyReason } from "@/components/admin-torrents-shared";
 import type { AppealRow, PendingTorrent } from "./admin-shared";
+
+/** 待审时长（0286）：旧版取了 created_at 却从不渲染，压了三天看上去还是三天。 */
+function waitingText(iso: string): string {
+  const mins = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(iso).getTime()) / 60000),
+  );
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 48) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
 
 export function ReviewsPanel({
   reviews,
+  total,
+  offset,
+  onPage,
+  denyReasons,
+  denyReasonId,
+  onDenyReason,
   onDecide,
 }: {
   reviews: PendingTorrent[];
+  total: number;
+  offset: number;
+  onPage: (next: number) => void;
+  denyReasons: DenyReason[];
+  denyReasonId: number | null;
+  onDenyReason: (id: number | null) => void;
   onDecide: (torrentId: number, approve: boolean) => void;
 }) {
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
+  const pageSize = reviews.length || 50;
   return (
     <section className={PANEL_LG}>
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-sub">{fmt(a.queueTotal, { n: total })}</span>
+        <select
+          className="rounded border border-line bg-transparent px-2 py-1"
+          value={denyReasonId ?? ""}
+          onChange={(e) =>
+            onDenyReason(e.target.value ? Number(e.target.value) : null)
+          }
+        >
+          <option value="">{a.denyPickNone}</option>
+          {denyReasons.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.reason}
+            </option>
+          ))}
+        </select>
+        <span className="ml-auto flex gap-1">
+          <button
+            disabled={offset <= 0}
+            onClick={() => onPage(Math.max(0, offset - pageSize))}
+            className="rounded border border-line px-2 py-1 disabled:opacity-40"
+          >
+            {a.queuePrev}
+          </button>
+          <button
+            disabled={offset + reviews.length >= total}
+            onClick={() => onPage(offset + pageSize)}
+            className="rounded border border-line px-2 py-1 disabled:opacity-40"
+          >
+            {a.queueNext}
+          </button>
+        </span>
+      </div>
       <ul className="flex flex-col divide-y divide-line">
         {reviews.map((t) => (
-          <li key={t.id} className="flex items-center gap-3 py-2">
+          <li key={t.id} className="flex items-start gap-3 py-2">
             <div className="flex-1">
               <p className="text-sm font-bold">{t.name}</p>
               <p className="text-xs text-sub">
                 #{t.id} ·{" "}
+                {fmt(a.queueWaiting, { t: waitingText(t.created_at) })} ·{" "}
                 {fmt(a.uploader, {
-                  name: t.owner_id ?? dict.torrent.anonymous,
+                  name: t.owner_name ?? t.owner_id ?? dict.torrent.anonymous,
                 })}{" "}
                 · {(t.size / 1024 / 1024 / 1024).toFixed(2)}GB
+                {t.category_name ? ` · ${t.category_name}` : ""}
               </p>
+              {/* 0285：内容面可见——文件数/截图/NFO/查重命中/上传者过审与驳回史 */}
+              <p className="text-xs text-sub">
+                {t.numfiles ?? 0}F · {t.screenshots ?? 0}IMG
+                {t.has_nfo ? " · NFO" : ""}
+                {t.has_media_info ? " · MEDIA" : ""}
+                {(t.dup_hash ?? 0) > 0 ? ` · DUP×${t.dup_hash}` : ""}
+                {(t.dup_name ?? 0) > 0 ? ` · NAME×${t.dup_name}` : ""}
+                {" · "}
+                {t.owner_approved ?? 0}/
+                {(t.owner_approved ?? 0) + (t.owner_denied ?? 0)}
+              </p>
+              {t.small_descr ? (
+                <p className="mt-1 text-xs">{t.small_descr}</p>
+              ) : null}
+              {t.descr_excerpt ? (
+                <p className="mt-1 line-clamp-3 text-xs text-sub">
+                  {t.descr_excerpt.replace(/<[^>]+>/g, "")}
+                </p>
+              ) : null}
             </div>
+            <a
+              href={`/torrent/${t.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="self-center text-xs underline text-sub"
+            >
+              {a.queueOpen}
+            </a>
             <button
               onClick={() => onDecide(t.id, true)}
               className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white"

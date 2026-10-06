@@ -176,9 +176,10 @@ async fn import_stats(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
         else {
             continue;
         };
-        // 上下量初始值：写 users 快照列（traffic_ledger 无 kind/note 列，且导入站
-        // 无历史流水——快照即初始事实）。幂等：仅当目标仍为 0（未跑过/未活动）时写入，
-        // 重跑不覆盖导入后产生的新增量
+        // 上下量初始值：写 users 快照列 + 同步抬 balance_baseline（P0-2 同族，0285）。
+        // 只写快照会被 announce 消费轮的「基线 + SUM(流水)」重算抹平（导入站无历史流水
+        // ⇒ 基线缺行 ⇒ 归零），所以基线才是初始事实的权威落点。
+        // 幂等：仅当目标仍为 0（未跑过/未活动）时写入，重跑不覆盖导入后产生的新增量
         let n = sqlx::query(
             "UPDATE users SET uploaded = $2, downloaded = $3 \
              WHERE id = $1 AND uploaded = 0 AND downloaded = 0",
@@ -189,6 +190,23 @@ async fn import_stats(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
         .execute(flux)
         .await?
         .rows_affected();
+        if n > 0 {
+            sqlx::query(
+                "INSERT INTO balance_baseline \
+                 (user_id, base_up, base_down, base_spark, \
+                 base_seed_secs, through) \
+                 VALUES ($1, $2, $3, 0, 0, now()) \
+                 ON CONFLICT (user_id) DO UPDATE SET \
+                   base_up = EXCLUDED.base_up, \
+                   base_down = EXCLUDED.base_down, \
+                   updated_at = now()",
+            )
+            .bind(flux_id)
+            .bind(uploaded)
+            .bind(downloaded)
+            .execute(flux)
+            .await?;
+        }
         imported += n;
     }
     println!("stats: 源 {total}/{imported} 初始流水写入");

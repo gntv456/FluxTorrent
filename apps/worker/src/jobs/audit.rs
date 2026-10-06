@@ -219,7 +219,8 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
         let punished = sqlx::query(
             r#"
             WITH expired AS (
-                UPDATE users SET download_enabled = FALSE
+                UPDATE users SET download_enabled = FALSE,
+                                 download_locked_by = 'ratio_watch'
                 WHERE status < 2 AND class_id < 90 AND download_enabled
                   AND ratio_watch_until IS NOT NULL AND ratio_watch_until < now()
                   AND downloaded > 0 AND uploaded::float8 / downloaded::float8 < $1
@@ -239,8 +240,17 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
     let _ = notified;
 
     // ③ 期内恢复：自动解除观察
+    // 0286：同时解除「本作业自己锁的」下载开关。此前只清观察期，
+    // 恢复下载靠 hr.rs 无差别放开（连带放开管理组手动冻结的账号）；
+    // hr.rs 现在只解 download_locked_by='hr'，这里必须自己收尾，否则误锁无人解。
     let cleared = sqlx::query(
-        "UPDATE users SET ratio_watch_until = NULL \
+        "UPDATE users SET ratio_watch_until = NULL, \
+                download_enabled = \
+                  CASE WHEN download_locked_by = 'ratio_watch' \
+                       THEN TRUE ELSE download_enabled END, \
+                download_locked_by = \
+                  CASE WHEN download_locked_by = 'ratio_watch' \
+                       THEN NULL ELSE download_locked_by END \
          WHERE ratio_watch_until IS NOT NULL \
            AND (downloaded = 0 OR uploaded::float8 / downloaded::float8 >= $1)",
     )

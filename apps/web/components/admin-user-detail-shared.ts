@@ -7,7 +7,8 @@ export interface Detail {
   id: number;
   username: string;
   email: string;
-  passkey: string;
+  /** 0285：详情接口只回掩码；明文走 POST /admin/users/passkey/reveal（专项权限+审计） */
+  passkey_masked: string;
   class_id: number;
   class_name: string | null;
   title: string | null;
