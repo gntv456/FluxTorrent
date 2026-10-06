@@ -55,6 +55,7 @@ pub(crate) async fn run_named(
             let (off, on) = subcert_sweep(db).await?;
             format!("撤销 {off} / 授予 {on}")
         }
+        "expire_medals" => n(expire_medals(db).await?),
         "expire_invites" => n(expire_invites(db).await?),
         "purge_expired_tokens" => n(purge_expired_tokens(db).await?),
         "purge_runtime_logs" => n(purge_runtime_logs(db).await?),

@@ -160,6 +160,10 @@ pub async fn admin_amount_upload(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
+    // 指定用户不存在时明确报错（0287 P0）：与 amountbonus 同口径
+    if body.user_id.is_some() && n == 0 {
+        return Err(DomainError::NotFound(body.user_id.unwrap_or(0)));
+    }
     if let Some(k) = idem_tag {
         // 幂等锚点行（delta=0 不影响账本）：把键写进 reason 供下次查重
         let _ = sqlx::query(

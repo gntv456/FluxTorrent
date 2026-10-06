@@ -9,6 +9,43 @@ use super::increment_grant_item::{grant_item, grant_medal};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::AuthUser;
 
+/// 库存配额（0287 P3）：quota 非空时原子占位；越界回滚并报错。
+/// 背包类/券类/即时类统一在此把关（订单行数 = 池口径）。
+pub(super) async fn stock_take(
+    db: &sqlx::PgPool,
+    item_id: i64,
+    qty: i64,
+) -> DomainResult<()> {
+    let stocked: Option<bool> = sqlx::query_scalar(
+                "UPDATE shop_items SET stock_used = stock_used + $2 \
+         WHERE id = $1 AND stock_quota IS NOT NULL \
+         RETURNING (stock_used <= stock_quota)",
+    )
+    .bind(item_id)
+    .bind(qty)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(within) = stocked {
+        if !within {
+            sqlx::query(
+                            "UPDATE shop_items \
+             SET stock_used = stock_used - $2 \
+             WHERE id = $1",
+            )
+            .bind(item_id)
+            .bind(qty)
+            .execute(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            return Err(DomainError::Validation(
+                "该道具库存已发罄（stock_quota）".into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub(super) struct GrantCtx<'a> {
     pub(super) db: &'a sqlx::PgPool,
     pub(super) batch_id: &'a str,
@@ -169,6 +206,7 @@ async fn grant_resub_card(
             "商店缺少可用的补签卡道具（makeup_card）".into(),
         ));
     };
+    stock_take(ctx.db, item_id, ctx.amount * chunk.len() as i64).await?;
     bulk_backpack_orders(ctx, chunk, item_id, &config).await
 }
 
@@ -220,14 +258,24 @@ pub(super) async fn grant_kind(
         "uploaded" => grant_uploaded(&ctx, chunk).await,
         "invite" => grant_invite(&ctx, chunk, body.days).await,
         "resub_card" => grant_resub_card(&ctx, chunk).await,
-        "medal" => grant_medal(
-            &ctx,
-            chunk,
-            body.medal_id.ok_or_else(|| {
-                DomainError::Validation("需选择勋章".into())
-            })?,
-        )
-        .await,
+        "medal" => {
+            if let Some(d) = body.medal_days {
+                if !(1..=3650).contains(&d) {
+                    return Err(DomainError::Validation(
+                        "medal_days 需在 1-3650 之间".into(),
+                    ));
+                }
+            }
+            grant_medal(
+                &ctx,
+                chunk,
+                body.medal_id.ok_or_else(|| {
+                    DomainError::Validation("需选择勋章".into())
+                })?,
+                body.medal_days,
+            )
+            .await
+        }
         "item" => grant_item(
             &ctx,
             chunk,

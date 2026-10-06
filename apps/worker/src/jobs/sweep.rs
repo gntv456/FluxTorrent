@@ -64,6 +64,21 @@ pub(crate) async fn expire_invites(db: &PgPool) -> anyhow::Result<u64> {
 
 /// 一次性凭证清理：download_keys（30 分钟）与 password_resets（30 分钟）过期即删。
 /// password_resets 原本只在手动 POST /admin/docleanup 里清，无人点击则永久堆积。
+/// 过期勋章下线（0287 P2）：wearing 置 false 保留行。
+/// 用户侧读取全带 expires_at > now() 过滤（表现正确），但 admin 持有面板
+/// 不过滤会把过期勋章当有效显示；佩戴标志不清理也会让「过期仍佩戴」
+/// 的中间态残留。不 DELETE——发放审计需要行存在以追溯。
+pub(crate) async fn expire_medals(db: &PgPool) -> anyhow::Result<u64> {
+    let res = sqlx::query(
+        "UPDATE user_medals SET wearing = false \
+         WHERE wearing AND expires_at IS NOT NULL \
+           AND expires_at <= now()",
+    )
+    .execute(db)
+    .await?;
+    Ok(res.rows_affected())
+}
+
 pub(crate) async fn purge_expired_tokens(db: &PgPool) -> anyhow::Result<u64> {
     let a = sqlx::query("DELETE FROM download_keys WHERE expires_at < now()")
         .execute(db)

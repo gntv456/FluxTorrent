@@ -161,6 +161,12 @@ pub async fn admin_amount_bonus(
     .fetch_all(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 指定用户不存在时明确报错（0287 P0）：旧版静默 affected=0 返回
+    // 「成功」，管理员敲错 UID 会以为发出去了——对照 grant-item/medal 的
+    // NotFound 口径补齐
+    if body.user_id.is_some() && ids.is_empty() {
+        return Err(DomainError::NotFound(body.user_id.unwrap_or(0)));
+    }
     for (uid, before) in &ids {
         // 账本权威口径：流水按「实际前后差额」落账（与 increment_bulk 同修复）。
         // 旧版余额 GREATEST(0,...) 截断但流水记原始 amount，负扣被截断的部分

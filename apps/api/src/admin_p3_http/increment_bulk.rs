@@ -49,6 +49,10 @@ pub(super) struct IncrementBulkReq {
     /// kind=medal：勋章 id（0204）
     #[serde(default)]
     pub(super) medal_id: Option<i64>,
+    /// kind=medal 的有效期覆盖（天，1-3650；0287 与单发 days 对齐）：
+    /// 缺省随 medals.duration_days
+    #[serde(default)]
+    pub(super) medal_days: Option<i32>,
     /// kind=item：道具 id（0204）
     #[serde(default)]
     pub(super) item_id: Option<i64>,
