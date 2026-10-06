@@ -67,7 +67,7 @@ pub async fn head_attachment(
         .insert_header(("Accept-Ranges", "bytes"))
         .insert_header((
             actix_web::http::header::CACHE_CONTROL,
-            "public, max-age=31536000, immutable",
+            "private, max-age=31536000, immutable",
         ))
         .body(vec![0u8; n]);
     resp.headers_mut().insert(
@@ -117,7 +117,7 @@ pub async fn serve_attachment(
                 .content_type(mime)
                 .insert_header((
                     actix_web::http::header::CACHE_CONTROL,
-                    "public, max-age=31536000, immutable",
+                    "private, max-age=31536000, immutable",
                 ))
                 .insert_header(("Accept-Ranges", "bytes"))
                 .insert_header((
@@ -134,7 +134,7 @@ pub async fn serve_attachment(
                 .content_type(mime)
                 .insert_header((
                     actix_web::http::header::CACHE_CONTROL,
-                    "public, max-age=31536000, immutable",
+                    "private, max-age=31536000, immutable",
                 ))
                 .insert_header(("Accept-Ranges", "bytes"))
                 .body(bytes))

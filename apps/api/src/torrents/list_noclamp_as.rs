@@ -57,18 +57,11 @@ pub async fn list_torrents_noclamp_as(
     let asc_eff = asc != filter.reverse;
     // 用户显式排序不掺置顶 + 二元 keyset 游标：构造细节见 cursor.rs
     let (order, cursor_col) = cursor::sort_of(key, asc_eff, &sticky_expr);
-    // 标签筛选（0159 P1 多选）：any = 单谓词 = ANY（复用 idx_tags_tag）；
-    // all = 命中去重后等于标签数（聚合子查询，仍走索引）
-    let tag_pred = match (&filter.tag_ids, filter.tag_all) {
-        (None, _) => String::new(),
-        (Some(_), false) => {
-            " AND t.id IN (SELECT torrent_id FROM tags WHERE tag_id = ANY($9::int[]))".into()
-        }
-        (Some(ids), true) => format!(
-            " AND (SELECT count(DISTINCT tag_id) FROM tags WHERE torrent_id = t.id AND tag_id = ANY($9::int[])) = {}",
-            ids.len()
-        ),
-    };
+    // 标签筛选（0159 P1 多选）：谓词按参数槽位生成（列表 $9 / 计数 $8）。
+    let tag_pred =
+        super::tag_pred::tag_pred(&filter.tag_ids, filter.tag_all, 9);
+    let tag_pred_count =
+        super::tag_pred::tag_pred(&filter.tag_ids, filter.tag_all, 8);
     let sec_sql =
         super::section_pred::section_where(db, &filter.sections).await; // 搜索范围分流（旧站口径）：0=标题+全字段(默认) 1=副标题/简介 3=发布者 4=IMDb
                                                                         // 搜索谓词 + 同义词扩展（E9）：合成收在 syn_search（含白名单防注入说明）
@@ -297,7 +290,7 @@ pub async fn list_torrents_noclamp_as(
          AND {grade_pred} AND {edition_pred} \
          AND ($5::bool IS NULL OR t.official_tag = $5) {alive_pred} {approval_pred} {status_pred} \
          {bookmark_pred} {search_pred} \
-         {tag_pred} \
+         {tag_pred_count} \
          {sec_sql} {extra_count_sql} LIMIT 10001) sub",
     );
     let total: i64 = sqlx::query_scalar(&count_sql)
@@ -330,7 +323,11 @@ pub async fn list_torrents_noclamp_as(
         .bind(filter.rating_min)
         .fetch_one(db)
         .await
-        .unwrap_or(0);
+        .unwrap_or_else(|e| {
+            // 计数失败此前静默成 0（页面「共 0 个」却有行）；给日志留痕
+            tracing::error!(error = %e, "列表计数查询失败，降级 total=0");
+            0
+        });
 
     let has_more = rows.len() as i64 > limit;
     let mut items: Vec<TorrentRow> =

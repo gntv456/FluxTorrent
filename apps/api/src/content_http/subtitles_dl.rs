@@ -10,6 +10,7 @@ use crate::state::AppState;
 
 /// 字幕下载：计数 +1；本地附件直接回文件字节。0146：扩展名按 mime + 落库 ext
 /// 决定（字幕格式直通，兜底 .srt 而非 .bin），文件名带语言代码。
+/// 挂靠种子的字幕跟种子审批走（待审/被拒/回收 ⇒ 仅 see_banned 可取）。
 #[get("/subtitles/{id}/download")]
 pub(super) async fn subtitle_download(
     req: HttpRequest,
@@ -18,13 +19,23 @@ pub(super) async fn subtitle_download(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let sid = path.into_inner();
+    let can_see_banned = crate::authz::can(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_SEE_BANNED,
+    )
+    .await;
     // (file_ref, torrent_id, title, lang, ext)
     type DlRow = (String, Option<i64>, String, Option<String>, Option<String>);
     let row: Option<DlRow> = sqlx::query_as(
-        "SELECT file_ref, torrent_id, title, lang, ext FROM subtitles \
-         WHERE id = $1 AND deleted_at IS NULL AND status = 1",
+        "SELECT s.file_ref, s.torrent_id, s.title, s.lang, s.ext \
+         FROM subtitles s \
+         LEFT JOIN torrents t ON t.id = s.torrent_id \
+         WHERE s.id = $1 AND s.deleted_at IS NULL AND s.status = 1 \
+           AND (t.id IS NULL OR t.approval_status = 1 OR $2::bool)",
     )
     .bind(sid)
+    .bind(can_see_banned)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -73,7 +84,6 @@ pub(super) async fn subtitle_download(
             ))
             .body(bytes));
     }
-    let _ = auth;
     Ok(ok(serde_json::json!({
         "id": sid,
         "title": title,

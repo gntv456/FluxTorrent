@@ -264,13 +264,13 @@ async fn list(
         return Ok(ok(page));
     }
     // 扩展共享缓存（方案 P0-3）：此前只有「纯净首屏」走缓存，分类浏览/搜索/排序/翻页
-    // 等主路径全部穿透。凡不含用户视角语义（status=snatches 视角、mine=按 viewer 过滤）的
+    // 等主路径全部穿透。凡不含用户视角语义（status/mine/bookmarked 三种 viewer 维度，
+    // 判定见 view_scope::viewer_scoped）的
     // 请求，其结果对所有登录用户字节一致（owner 匿名化在 SQL 层完成、include_unapproved
     // 已按权限归一进 filter），可按「filter+cursor+limit」哈希共享。TTL 20s 兜底，
     // Redis 故障/序列化失败一律直查。
     // 0170：show_pending/show_rejected/reverse 均在 filter 内，序列化自动进 hash key。
-    let viewer_scoped = filter.status.is_some() || filter.only_mine;
-    if !viewer_scoped {
+    if !crate::torrents::view_scope::viewer_scoped(&filter) {
         if let Ok(canonical) =
             serde_json::to_string(&(&filter, &cursor, q.limit.unwrap_or(20)))
         {
