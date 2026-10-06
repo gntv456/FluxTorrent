@@ -96,6 +96,35 @@ async fn shop_buy(
         buffer_cap_check(&state.repo.db, auth.id).await?;
     }
 
+    // 库存配额（0287 P3）：quota 非空时 buy 前原子占位——
+    // UPDATE ... WHERE stock_used < stock_quota 抢不到即售罄，防超发
+    let stocked: Option<bool> = sqlx::query_scalar(
+                "UPDATE shop_items SET stock_used = stock_used + $2 \
+         WHERE id = $1 AND stock_quota IS NOT NULL \
+         RETURNING (stock_used <= stock_quota)",
+    )
+    .bind(body.item_id)
+    .bind(qty as i64)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(within) = stocked {
+        if !within {
+            // 抢到了但越界：回滚占位再报售罄
+            sqlx::query(
+                            "UPDATE shop_items \
+             SET stock_used = stock_used - $2 \
+             WHERE id = $1",
+            )
+            .bind(body.item_id)
+            .bind(qty as i64)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            return Err(DomainError::Validation("该道具已售罄".into()));
+        }
+    }
+
     // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款。
     // 服务端键必须带 uid 前缀：裸客户端键跨用户碰撞时，B 的消费会被误判为 A 的重放。
     let idem = body
@@ -114,6 +143,34 @@ async fn shop_buy(
         body.item_id,
     )
     .await?;
+
+    // 重放＝这个请求已经处理过：既不能再插订单行，也不能再发效果。
+    // 旧版这里写 `let _ = outcome;` 把 Replayed 吞掉继续往下走，而卡牌类
+    // （补签/改名/临时邀请）会用 `idem:2..idem:N` 的新行绕过扣款——
+    // 同一 idempotency_key 先 qty=1 买一次、再 qty=100 买一次，
+    // 第二次分文不花却领到 99 张券（券可兑 30 天邀请 → 批量开小号）。
+    if matches!(outcome, crate::economy_http::SpendOutcome::Replayed) {
+        let orders: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM shop_orders WHERE user_id = $1 \
+             AND (idempotency_key = $2 OR idempotency_key LIKE $3)",
+        )
+        .bind(auth.id)
+        .bind(&idem)
+        .bind(format!("{}:%", idem))
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
+        tracing::info!(
+            user = auth.id,
+            item = body.item_id,
+            "商店购买重放，按原单返回"
+        );
+        return Ok(ok(serde_json::json!({
+            "replayed": true,
+            "item_id": body.item_id,
+            "orders": orders,
+        })));
+    }
 
     // 订单落库（幂等键唯一）。卡牌类（补签/改名/临时邀请）库存口径 = 订单行数
     //（checkin/gaps 按「无 resub_uses 的订单」计数），因此 qty 张就插 qty 行
@@ -159,7 +216,6 @@ async fn shop_buy(
     // 效果执行（CAS 置位，0085）：首次成功扣款 OR 重试补发（此前 Replayed 直接跳过
     // 效果分支——扣款成功但效果失败后重试 = 花钱买空气）。置位失败 = 效果已发过，跳过。
     // 卡牌多行订单：逐行 CAS，每次置位成功发一轮效果。
-    let _ = outcome;
     let mut applied = 0usize;
     loop {
         let hit: Option<i64> = sqlx::query_scalar(

@@ -112,6 +112,7 @@ pub(crate) fn job_module(job_key: &str) -> Option<&'static str> {
             "subtitles"
         }
         "job:lottery_settle" => "forums",
+        "job:expire_medals" => "user_medals",
         "job:expire_invites" => "invites",
         _ => return None,
     })

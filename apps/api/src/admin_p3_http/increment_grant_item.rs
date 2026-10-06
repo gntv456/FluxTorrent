@@ -11,6 +11,7 @@ pub(super) async fn grant_medal(
     ctx: &GrantCtx<'_>,
     chunk: &[i64],
     medal_id: i64,
+    days: Option<i32>,
 ) -> DomainResult<u64> {
     let mut affected: u64 = 0;
     for uid in chunk {
@@ -27,13 +28,15 @@ pub(super) async fn grant_medal(
         }
         let n = sqlx::query(
             "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
-             SELECT $1, $2, 'admin', \
-                    now() + make_interval(days => m.duration_days) \
+             SELECT $1, $2, 'admin', CASE WHEN $3::int IS NOT NULL \
+                    THEN now() + make_interval(days => $3::int) \
+                    ELSE now() + make_interval(days => m.duration_days) END \
              FROM medals m WHERE m.id = $2 \
              ON CONFLICT (user_id, medal_id) DO NOTHING",
         )
         .bind(uid)
         .bind(medal_id)
+        .bind(days)
         .execute(ctx.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
@@ -60,6 +63,12 @@ pub(super) async fn grant_item(
     let Some((kind, config)) = item else {
         return Err(DomainError::NotFound(item_id));
     };
+    super::increment_grant::stock_take(
+        ctx.db,
+        item_id,
+        ctx.amount * chunk.len() as i64,
+    )
+    .await?;
     let db = ctx.db;
     match kind.as_str() {
         "invite" | "temp_invite" => {

@@ -9,6 +9,7 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_overview)
         .service(review_queue)
         .service(review_decide)
+        .service(review_batch)
         .service(report_queue)
         .service(report_resolve)
         .service(report_claim)
@@ -19,6 +20,9 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_user_fields_put)
         .service(user_admin_snatches)
         .service(user_grant_medal)
+        .service(user_revoke_item)
+        .service(admin_voucher_void)
+        .service(user_medal_redate)
         .service(user_grant_item)
         .service(user_assign_jixiao)
         .service(user_admin_delete)
@@ -98,7 +102,11 @@ mod perms;
 mod records;
 mod reports;
 mod review;
+// 审核台批量裁决（0286）：单条 decide 之外的吞吐口，副作用与 decide 同源
+mod review_batch;
 mod review_notify;
+// 过审副作用（自动促销 + 组订阅）：单条与批量裁决共用
+mod review_side_effects;
 mod roles;
 mod site;
 mod subtitle_awards;
@@ -110,6 +118,7 @@ mod user_detail;
 mod user_fields_admin;
 mod user_grant;
 mod user_grant_medal;
+mod user_revoke;
 mod user_list;
 mod user_ops;
 mod user_passkey;
@@ -126,6 +135,7 @@ pub use perms::*;
 pub use records::*;
 pub use reports::*;
 pub use review::*;
+pub use review_batch::*;
 pub use roles::*;
 pub use site::*;
 pub use subtitle_awards::*;
@@ -135,6 +145,7 @@ pub use torrents::*;
 pub use user_del::*;
 pub use user_detail::*;
 pub use user_grant_medal::*;
+pub use user_revoke::*;
 pub use user_fields_admin::*;
 pub use user_grant::*;
 pub use user_list::*;

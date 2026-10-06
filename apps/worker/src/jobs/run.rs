@@ -228,8 +228,8 @@ pub async fn run_all(
             // 0149 认证字幕人：三阈值复扫（均幂等：CAS/UNIQUE/PK + 仅撤 auto 行）
             shard_lock!(&db, "job:subreq_sweep", subreq_sweep(&db), &shard);
             shard_lock!(&db, "job:subawards", subawards_build(&db), &shard);
-            shard_lock!(&db, "job:subcert_sweep",
-                subcert_sweep(&db), &shard);
+            shard_lock!(&db, "job:subcert_sweep", subcert_sweep(&db), &shard);
+            shard_lock!(&db, "job:expire_medals", expire_medals(&db), &shard);
             // 卫生清理（NP docleanup 口径）：过期邀请落库回收 / 一次性凭证与重置 token 清理
             shard_lock!(&db, "job:expire_invites",
                 expire_invites(&db), &shard);

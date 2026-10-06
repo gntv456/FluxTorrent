@@ -149,6 +149,10 @@ pub const JOBS: &[JobDef] = &[
         cadence: "1h",
     },
     JobDef {
+        name: "expire_medals",
+        cadence: "1h",
+    },
+    JobDef {
         name: "expire_invites",
         cadence: "1h",
     },

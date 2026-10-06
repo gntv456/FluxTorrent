@@ -18,6 +18,9 @@ struct ShopItemRow {
     price: i64,
     config: serde_json::Value,
     active: bool,
+    /// 库存配额（0287）：NULL=不限；used 为已消耗数
+    stock_quota: Option<i64>,
+    stock_used: i64,
 }
 
 #[get("/admin/shop-items")]
@@ -28,7 +31,8 @@ async fn admin_shop_items(
     let _auth = staff(&req, &state).await?;
     let rows: Vec<ShopItemRow> = sqlx::query_as(
         "SELECT id, name, kind, price, config, \
-         active FROM shop_items ORDER BY kind, id",
+         active, stock_quota, stock_used \
+         FROM shop_items ORDER BY kind, id",
     )
     .fetch_all(&state.repo.db)
     .await
@@ -46,6 +50,11 @@ struct ShopItemReq {
     config: Option<serde_json::Value>,
     #[serde(default)]
     active: Option<bool>,
+    /// 库存配额（0287）：null=不限量；编辑时可同时改 stock_used（补纠错）
+    #[serde(default)]
+    stock_quota: Option<i64>,
+    #[serde(default)]
+    stock_used: Option<i64>,
 }
 
 #[post("/admin/shop-items")]
@@ -61,14 +70,18 @@ async fn admin_shop_item_add(
         return Err(DomainError::Validation("名称与类型必填".into()));
     }
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO shop_items (name, kind, price, config, active) \
-         VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, '{}'::jsonb), COALESCE($5, TRUE)) RETURNING id",
+        "INSERT INTO shop_items \
+         (name, kind, price, config, active, stock_quota, stock_used) \
+         VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, '{}'::jsonb), \
+                 COALESCE($5, TRUE), $6, COALESCE($7, 0)) RETURNING id",
     )
     .bind(body.name.trim())
     .bind(body.kind.trim())
     .bind(body.price)
     .bind(body.config.clone())
     .bind(body.active)
+    .bind(body.stock_quota)
+    .bind(body.stock_used)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

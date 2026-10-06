@@ -22,6 +22,10 @@ struct UserAdjustReq {
     invite_grant: Option<i32>,
     #[serde(default)]
     note: Option<String>,
+    /// 幂等键（0287 P1）：可选 8~120 字符——同键重试直接拒绝，
+    /// 防管理员手抖双击造成双份调整（与 amountbonus 口径一致）
+    #[serde(default)]
+    idempotency_key: Option<String>,
 }
 
 #[post("/admin/users/adjust")]
@@ -41,6 +45,35 @@ async fn user_adjust(
     // 数值调整仅 sysop/管理员（等级 93+）
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_ADJUST)
         .await?;
+    // 幂等占位（0287）：spark 侧落键 admin-adjust:{k}:{uid} 前缀查重；
+    // traffic 侧 reason 埋 admin-adjust:{k} 锚点
+    let idem = body
+        .idempotency_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|k| !k.is_empty());
+    if let Some(k) = idem {
+        if k.len() < 8 || k.len() > 120 {
+            return Err(DomainError::Validation(
+                "idempotency_key 需 8~120 字符".into(),
+            ));
+        }
+        let seen: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger \
+             WHERE idempotency_key LIKE 'admin-adjust:' || $1 || ':%') \
+             OR EXISTS(SELECT 1 FROM traffic_ledger \
+             WHERE reason = 'admin-adjust:' || $1)",
+        )
+        .bind(k)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if seen {
+            return Err(DomainError::Validation(
+                "该 idempotency_key 已使用过".into(),
+            ));
+        }
+    }
     // 数值调整同属伤害性操作，须严格高于目标等级
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
     let row: Option<(i64, i64, i64)> = sqlx::query_as(
@@ -58,6 +91,40 @@ async fn user_adjust(
         .max(0)) as i64;
     let spark = ((spark0 as i128 + body.spark_delta.unwrap_or(0) as i128)
         .max(0)) as i64;
+    // 流量调整必须走流水（P0-2，0285）：users.uploaded/downloaded 只是
+    // 「balance_baseline + SUM(traffic_ledger)」的快照，worker 每次消费 announce 都会重算覆盖。
+    // 旧实现只 UPDATE users ⇒ 实测站长补的 1GB 在用户下一次 announce 后归零，
+    // 而接口全程 200、无任何告警（补偿/捐赠/商店发放同病）。
+    let actual_up = up - up0;
+    let actual_down = down - down0;
+    if actual_up != 0 || actual_down != 0 {
+        let reason = match idem {
+            Some(k) => format!("admin-adjust:{k}"),
+            None => body
+                .note
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|s| format!("#{}/{}", auth.id, s))
+                .unwrap_or_else(|| {
+                    format!("#{} admin_adjust", auth.id)
+                }),
+        };
+        sqlx::query(
+            "INSERT INTO traffic_ledger (id, user_id, torrent_id, \
+             delta_up, delta_down, window_start, reason, operator_id) \
+             VALUES (nextval('traffic_ledger_id_seq'), $1, NULL, \
+                     $2, $3, now(), $4, $5)",
+        )
+        .bind(body.user_id)
+        .bind(actual_up)
+        .bind(actual_down)
+        .bind(reason)
+        .bind(auth.id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     sqlx::query(
         "UPDATE users SET uploaded = $2, downloaded = $3, \
          spark_balance = $4 WHERE id = $1",
@@ -84,11 +151,14 @@ async fn user_adjust(
                 .bind(body.user_id)
                 .bind(actual_delta)
                 .bind(auth.id)
-                .bind(format!(
-                    "admin-adjust-{}-{}",
-                    body.user_id,
-                    uuid::Uuid::new_v4().simple()
-                ))
+                .bind(match idem {
+                    Some(k) => format!("admin-adjust:{}:{}", k, body.user_id),
+                    None => format!(
+                        "admin-adjust-{}-{}",
+                        body.user_id,
+                        uuid::Uuid::new_v4().simple()
+                    ),
+                })
                 .bind(spark)
                 .execute(&state.repo.db)
                 .await
