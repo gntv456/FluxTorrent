@@ -236,8 +236,6 @@ fn html_to_text(html: &str) -> String {
 
 /// .torrent 本体远小于附件（极端多文件大 piece 也在 MiB 级）；nfo 为纯文本。
 /// 必须在流式循环内拦截：actix 默认 2MB PayloadConfig 只约束 Json 提取器，不约束 Multipart。
-pub(super) const TORRENT_MAX_BYTES: usize = 4 * 1024 * 1024; // 单文件 4MiB
-pub(super) const NFO_MAX_BYTES: usize = 1 * 1024 * 1024; // 单文件 1MiB
 
 /// 组装 media 信息 JSON（poster/imdb/mediainfo 三可选键；空则 None）。
 /// 从 upload 主链路外提（拆分时纯搬移）。

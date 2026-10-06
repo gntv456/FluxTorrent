@@ -48,6 +48,51 @@ pub(super) fn first_descr_image(descr: Option<&str>) -> Option<String> {
     best.map(|(_, u)| u)
 }
 
+/// 简介里的**全部**图 URL（去重、保序、上限 24）。
+/// 用途：发种时落 `torrents.screenshots`——该列过去全仓无写入路径，
+/// 而审核队列的「截图数」读的就是它（实测恒为 0，是一列假数据）。
+pub(super) fn descr_images(descr: Option<&str>) -> Vec<String> {
+    let Some(d) = descr.map(str::trim).filter(|s| !s.is_empty()) else {
+        return Vec::new();
+    };
+    let take_url = |s: &str| -> Option<String> {
+        let u = s.trim().trim_matches(|c| c == '"' || c == '\'').trim();
+        let ok = u.starts_with("http://") || u.starts_with("https://");
+        ok.then(|| u.chars().take(2000).collect())
+    };
+    let mut out: Vec<String> = Vec::new();
+    let mut push = |u: Option<String>| {
+        if let Some(u) = u {
+            if !out.contains(&u) && out.len() < 24 {
+                out.push(u);
+            }
+        }
+    };
+    // 三种写法各扫一遍（与 first_descr_image 同一 URL 口径，只是取全集）
+    let mut rest = d.to_string();
+    while let Some(pos) = rest.find("src=") {
+        let seg = rest[pos + 4..]
+            .split(['"', '\'', '>', ' '])
+            .find(|x| !x.is_empty())
+            .map(str::to_string);
+        push(seg.as_deref().and_then(take_url));
+        rest = rest[pos + 4..].to_string();
+    }
+    let mut rest = d.to_string();
+    while let Some(pos) = rest.find("](") {
+        let seg = rest[pos + 2..].split(')').next().map(str::to_string);
+        push(seg.as_deref().and_then(take_url));
+        rest = rest[pos + 2..].to_string();
+    }
+    let mut rest = d.to_string();
+    while let Some(pos) = rest.find("[img]") {
+        let seg = rest[pos + 5..].split("[/img]").next().map(str::to_string);
+        push(seg.as_deref().and_then(take_url));
+        rest = rest[pos + 5..].to_string();
+    }
+    out
+}
+
 #[cfg(test)]
 mod descr_image_tests {
     use super::first_descr_image;

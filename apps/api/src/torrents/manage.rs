@@ -43,13 +43,18 @@ pub async fn list_snatches(
 /// NFO（NP viewnfo.php 口径）：纯文本返回。
 /// 种子存在但 nfo 为 NULL 时返回 Ok(None)（无 NFO），而非 404——
 /// 修复前 fetch_optional 展平后把「行存在列空」也当 NotFound。
+/// 0288：准入从「写死 approval_status=1」改为 `visibility_sql` 同口径。
+/// 旧写法让**审核员也读不到待审种子的 NFO**（实测 404），
+/// 而 NFO 恰恰是判断压制来源/版本/是否盗版的核心依据——审核只能凭标题猜。
 pub async fn get_nfo(
     db: &PgPool,
     torrent_id: i64,
+    viewer: (i64, bool),
 ) -> DomainResult<Option<String>> {
-    let row: Option<Option<String>> = sqlx::query_scalar(
-        "SELECT nfo FROM torrents WHERE id = $1 AND approval_status = 1",
-    )
+    let vis = super::visibility::visibility_sql(Some(viewer));
+    let row: Option<Option<String>> = sqlx::query_scalar(&format!(
+        "SELECT nfo FROM torrents t WHERE t.id = $1 AND {vis}"
+    ))
     .bind(torrent_id)
     .fetch_optional(db)
     .await
@@ -125,10 +130,13 @@ pub async fn request_reseed(
 }
 
 /// 种子标签（T-04）：列出字典 + 该种子已打的标签（0138：字典只出种子域 scope=torrent）
+/// 0288 / P1-1：可见性闸门长在取数里（原来各端点自己判，漏一处就是一条口子）
 pub async fn list_tags(
     db: &PgPool,
     torrent_id: i64,
+    viewer: (i64, bool),
 ) -> DomainResult<serde_json::Value> {
+    super::visibility::assert_visible(db, torrent_id, viewer).await?;
     let dict: Vec<(
         i32,
         String,
@@ -213,19 +221,16 @@ pub async fn tag_torrent(
     Ok(())
 }
 
-/// 统一打标入口（0159 标签 P0）：发布 / 详情页 / 管理批量共用。
-/// 校验口径与 tag_torrent 一致（存在 + enabled + scope=torrent + official
-/// 仅 staff），官方标签联动 official_tag 物化列——三个入口不再各写各的。
-pub async fn apply_torrent_tags(
+/// 标签合法性单一判据（0288 抽出）：存在 + scope=torrent + enabled + 官种仅 staff。
+/// `apply_torrent_tags` 与发种前置校验共用同一份，杜绝「先入库再报标签错」。
+pub async fn check_tag_ids(
     db: &PgPool,
-    torrent_id: i64,
     tag_ids: &[i32],
-    actor: (i64, i16),
+    is_staff: bool,
 ) -> DomainResult<()> {
     if tag_ids.len() > 12 {
         return Err(DomainError::Validation("标签最多选择 12 个".into()));
     }
-    let is_staff = actor.1 >= 90;
     for tid in tag_ids {
         let row: Option<(String, bool)> = sqlx::query_as(
             "SELECT kind, COALESCE(enabled, TRUE) FROM tag_dict \
@@ -244,6 +249,21 @@ pub async fn apply_torrent_tags(
         if kind == "official" && !is_staff {
             return Err(DomainError::Forbidden); // 官种/官方标签仅 staff
         }
+    }
+    Ok(())
+}
+
+/// 统一打标入口（0159 标签 P0）：发布 / 详情页 / 管理批量共用。
+/// 校验口径与 tag_torrent 一致（存在 + enabled + scope=torrent + official
+/// 仅 staff），官方标签联动 official_tag 物化列——三个入口不再各写各的。
+pub async fn apply_torrent_tags(
+    db: &PgPool,
+    torrent_id: i64,
+    tag_ids: &[i32],
+    actor: (i64, i16),
+) -> DomainResult<()> {
+    check_tag_ids(db, tag_ids, actor.1 >= 90).await?;
+    for tid in tag_ids {
         sqlx::query(
             "INSERT INTO tags (torrent_id, tag_id) VALUES ($1, $2) \
              ON CONFLICT DO NOTHING",

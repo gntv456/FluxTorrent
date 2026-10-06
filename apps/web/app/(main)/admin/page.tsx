@@ -6,6 +6,7 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { StaffTools, type ToolTab } from "@/components/staff-tools";
 import { AdminShell, type PanelEntry } from "@/components/admin-shell";
+import { useReviewQueue } from "./_parts/use-review-queue";
 import { AdminOverviewPanel } from "./_parts/admin-overview-panel";
 import { AppealsPanel, ReviewsPanel } from "./_parts/admin-queue-panels";
 import { AuditListPanel, CheatersPanel } from "./_parts/admin-tool-panels";
@@ -49,7 +50,8 @@ export default function AdminPage() {
   const [tool, setTool] = useState("overview");
   const [cheaters, setCheaters] = useState<CheaterRow[]>([]);
   const [ov, setOv] = useState<Overview | null>(null);
-  const [reviews, setReviews] = useState<PendingTorrent[]>([]);
+  // 0288：审核队列（分页 + 拒因字典）状态在 ./_parts/use-review-queue.ts
+  const rq = useReviewQueue();
   const [appeals, setAppeals] = useState<AppealRow[]>([]);
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -92,9 +94,8 @@ export default function AdminPage() {
    *  概览与审计的明细（audit / stats）**不在这里**，见下面的按需 effect。 */
   const load = useCallback(async () => {
     try {
-      const [ovr, rev, pnl, aps] = await Promise.all([
+      const [ovr, pnl, aps] = await Promise.all([
         api.get<Overview>("/api/v1/admin/overview"),
-        api.get<PendingTorrent[]>("/api/v1/admin/reviews"),
         api.get<{
           entries: PanelEntry[];
           role: string;
@@ -105,7 +106,6 @@ export default function AdminPage() {
           .catch(() => [] as AppealRow[]),
       ]);
       setOv(ovr);
-      setReviews(rev);
       setEntries(pnl.entries);
       setRole(pnl.role);
       setClassId(pnl.class_id);
@@ -160,13 +160,16 @@ export default function AdminPage() {
   );
 
   async function decide(torrentId: number, approve: boolean) {
-    const reason = approve ? "" : (prompt(a.rejectReason) ?? "");
-    if (!approve && !reason) return;
+    // 0286：选了字典拒因就不再手打自由文本——结构化拒因才能统计、才能三语下发
+    const useDict = !approve && rq.reasonId !== null;
+    const reason = approve || useDict ? "" : (prompt(a.rejectReason) ?? "");
+    if (!approve && !useDict && !reason) return;
     try {
       await api.post("/api/v1/admin/reviews/decide", {
         torrent_id: torrentId,
         approve,
         reason,
+        ...(useDict ? { deny_reason_id: rq.reasonId } : {}),
       });
       setMsg(
         approve
@@ -174,6 +177,7 @@ export default function AdminPage() {
           : fmt(a.rejected, { id: torrentId }),
       );
       load();
+      rq.reload().catch(() => {});
     } catch (e) {
       setMsg(errText(e, a, dict));
     }
@@ -211,7 +215,7 @@ export default function AdminPage() {
   }
 
   const badges: Record<string, number> = {
-    reviews: reviews.length,
+    reviews: rq.total,
     reports: ov?.open_reports ?? 0,
     // 申诉也是待办队列，此前只有 reviews/reports 有徽标
     appeals: appeals.filter((x) => x.status === "open").length,
@@ -224,7 +228,7 @@ export default function AdminPage() {
           <AdminOverviewPanel
             ov={ov}
             stats={stats}
-            reviews={reviews}
+            reviews={rq.items}
             appeals={appeals}
             audit={audit}
             onOpen={handleTool}
@@ -232,7 +236,18 @@ export default function AdminPage() {
         );
 
       case "reviews":
-        return <ReviewsPanel reviews={reviews} onDecide={decide} />;
+        return (
+          <ReviewsPanel
+            reviews={rq.items}
+            total={rq.total}
+            offset={rq.offset}
+            onPage={rq.setPage}
+            denyReasons={rq.reasons}
+            denyReasonId={rq.reasonId}
+            onDenyReason={rq.setReasonId}
+            onDecide={decide}
+          />
+        );
 
       case "appeals":
         return <AppealsPanel appeals={appeals} onHandle={handleAppeal} />;
