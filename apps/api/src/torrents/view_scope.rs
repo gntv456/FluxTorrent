@@ -57,3 +57,36 @@ pub(crate) fn shared_cache_safe(
         && f.anonymous.is_none()
         && limit.unwrap_or(20) == 20
 }
+
+/// 扩展共享缓存（`cache:tlist:v2`）的入缓存判定：viewer 维度筛选一律直查。
+/// viewer 维度 = SQL 里绑定 `auth.id` 的三项：status、mine、bookmarked
+/// （谓词见 viewer_preds.rs 的 status_pred/bookmark_pred 与 list.rs 的 mine 槽）。
+/// 0289 复验实锤：漏判 `bookmarked` 时 A 的收藏结果会写进 v2 共享键，
+/// B 在 TTL（20s）内请求同 URL 直接看到 A 的收藏列表。
+pub(crate) fn viewer_scoped(f: &TorrentFilter) -> bool {
+    f.status.is_some() || f.only_mine || f.bookmarked
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{shared_cache_safe, viewer_scoped};
+    use crate::torrents::TorrentFilter;
+
+    #[test]
+    fn viewer_dims_are_never_shared() {
+        let base = TorrentFilter::default();
+        assert!(!viewer_scoped(&base), "默认视图无 viewer 维度");
+        assert!(shared_cache_safe(&base, true, None), "默认首屏可共享");
+        for f in [
+            TorrentFilter { bookmarked: true, ..Default::default() },
+            TorrentFilter { only_mine: true, ..Default::default() },
+            TorrentFilter {
+                status: Some("seeding".into()),
+                ..Default::default()
+            },
+        ] {
+            assert!(viewer_scoped(&f), "viewer 维度必须直查");
+            assert!(!shared_cache_safe(&f, true, None), "不得进首屏共享键");
+        }
+    }
+}

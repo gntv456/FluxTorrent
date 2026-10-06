@@ -174,11 +174,13 @@ async fn home_shared_fresh(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 娱乐流水（幸运大转盘 → 以 spark_ledger 游戏类流水近似）
+    // 娱乐流水（幸运大转盘 → 以 spark_ledger 游戏类流水近似）；
+    // 公开面口径与 /top/boards、娱乐屋周榜一致：墓碑号（status>=2）不进展示
     let lucky: Vec<(String, String, i64)> = sqlx::query_as(
         "SELECT u.username, l.kind, l.amount FROM spark_ledger l \
          JOIN users u ON u.id = l.user_id \
-         WHERE l.kind LIKE '%game%' OR l.kind LIKE '%vote%' \
+         WHERE (l.kind LIKE '%game%' OR l.kind LIKE '%vote%') \
+               AND u.status < 2 \
          ORDER BY l.created_at DESC LIMIT 15",
     )
     .fetch_all(db)

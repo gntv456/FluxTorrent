@@ -9,6 +9,10 @@
   J3  RSS 不再暴露匿名上传者的真名
   J5  禁言真的挡发帖/评论/站短（写 users.forumpost + 三通道拒绝）
   J6  API 令牌跟随 token_revocations（改密/踢会话后立刻失效）
+  J7  viewer 维度筛选（书签/approval）不得经共享缓存串用户
+  J8  标签筛选的 total 与列表同口径（计数 SQL 槽位回归）
+  J9  附件（登录资源）Cache-Control 不得含 public
+  J10 挂非过审种子的字幕不得被普通会员下载（版主阳性对照）
 
 用法：python scripts/e2e_surface_economy_invariants.py
 可覆盖：FLUX_API_BASE / FLUX_PROBE / FLUX_TORRENT
@@ -54,6 +58,19 @@ def redis_get(pat):
     return [x for x in r.stdout.split("\n") if x.strip()]
 
 
+def flush_tlist():
+    """清空列表缓存（first/v2 两族），缓存类断言须从干净状态起跑。"""
+    pw = re.search(r"^REDIS_PASSWORD=(.+)$",
+                   open(os.environ.get("FLUX_ENV", "docker/.env"),
+                        encoding="utf-8").read(), re.M).group(1).strip()
+    keys = redis_get("cache:tlist*")
+    if keys:
+        subprocess.run(
+            ["docker", "exec", "flux-redis", "redis-cli", "-a", pw,
+             "--no-auth-warning", "DEL"] + keys, capture_output=True)
+    return len(keys)
+
+
 def secret():
     txt = open(os.environ.get("FLUX_ENV", "docker/.env"),
                encoding="utf-8").read()
@@ -92,6 +109,17 @@ def call(tok, method, path, body=None, raw_auth=None):
             return e.code, json.loads(raw)
         except Exception:
             return e.code, {"raw": raw[:200]}
+
+
+def http_get_raw(tok, path):
+    """原始响应（状态 + 头对象），二进制正文/缓存头类断言用。"""
+    req = urllib.request.Request(API + path,
+                                 headers={"Authorization": "Bearer " + tok})
+    try:
+        with urllib.request.urlopen(req, timeout=25) as r:
+            return r.status, r.headers
+    except urllib.error.HTTPError as e:
+        return e.code, e.headers
 
 
 def check(name, ok, detail=""):
@@ -214,6 +242,97 @@ def main():
         psql("DELETE FROM api_tokens WHERE user_id=%d AND name='E2E 探针'"
              % PROBE)
 
+        # ---------- J7 列表缓存 viewer 维度隔离 ----------
+        print("\n[J7] viewer 维度筛选不得经共享缓存串用户")
+        flush_tlist()
+        psql("DELETE FROM bookmarks WHERE user_id=%d AND torrent_id=%d"
+             % (PROBE, TORRENT))
+        call(root, "PUT", "/torrents/%d/bookmark" % TORRENT, {"on": True})
+        _, da = call(root, "GET", "/torrents?bookmarked=1&alive=0")
+        ids_a = [r["id"] for r in (da.get("data") or {}).get("items", [])]
+        # 不 flush：B 的相同请求若命中 A 写入的共享键即告泄漏
+        _, db_ = call(jwt(PROBE, 1), "GET", "/torrents?bookmarked=1&alive=0")
+        ids_b = [r["id"] for r in (db_.get("data") or {}).get("items", [])]
+        check("J7a 收藏视图阳性对照（A 看得到自己的收藏）",
+              TORRENT in ids_a, "A %d 条" % len(ids_a))
+        check("J7b B 无书签时看不到 A 的收藏（旧：v2 共享键串用户）",
+              TORRENT not in ids_b, "B %d 条 %s" % (len(ids_b), ids_b[:4]))
+        call(root, "PUT", "/torrents/%d/bookmark" % TORRENT, {"on": False})
+        psql("UPDATE torrents SET approval_status=2 WHERE id=%d" % TORRENT)
+        flush_tlist()
+        _, dm = call(jwt(PROBE, 1), "GET", "/torrents?approval=2&alive=0")
+        ids_m = [r["id"] for r in (dm.get("data") or {}).get("items", [])]
+        _, dr = call(root, "GET", "/torrents?approval=2&alive=0")
+        ids_r = [r["id"] for r in (dr.get("data") or {}).get("items", [])]
+        check("J7c 普通会员 ?approval=2 不得看到被拒种（旧：直给 [2,3]）",
+              TORRENT not in ids_m, "会员 %d 条" % len(ids_m))
+        check("J7d 版主 ?approval=2 仍应看到被拒种（阳性对照）",
+              TORRENT in ids_r, "版主 %d 条" % len(ids_r))
+        psql("UPDATE torrents SET approval_status=1 WHERE id=%d" % TORRENT)
+        flush_tlist()
+
+        # ---------- J8 标签筛选计数与列表同口径 ----------
+        print("\n[J8] 标签筛选 total 不得恒 0（计数 SQL 槽位回归）")
+        tag_row = psql("SELECT id FROM tag_dict ORDER BY id LIMIT 1")
+        if tag_row:
+            # psql() 返回整串（非行列表）：此前 tag_row[0] 只取到首字符
+            tid = tag_row
+            psql("INSERT INTO tags (torrent_id, tag_id) VALUES (%d, %s) "
+                 "ON CONFLICT DO NOTHING" % (TORRENT, tid))
+            try:
+                flush_tlist()
+                _, dtg = call(root, "GET",
+                              "/torrents?tag_id=%s&alive=0" % tid)
+                items_tg = (dtg.get("data") or {}).get("items", [])
+                total_tg = (dtg.get("data") or {}).get("total_estimate")
+                check("J8a 标签筛选有行", len(items_tg) > 0,
+                      "items=%d" % len(items_tg))
+                check("J8b total 与列表同口径（>0 且 ≥ 本页行数）",
+                      (total_tg or 0) >= max(1, len(items_tg)),
+                      "total=%s items=%d" % (total_tg, len(items_tg)))
+            finally:
+                psql("DELETE FROM tags WHERE torrent_id=%d AND tag_id=%s"
+                     % (TORRENT, tid))
+                flush_tlist()
+        else:
+            check("J8 标签探针可用", False, "tag_dict 为空")
+
+        # ---------- J9 附件不得进共享缓存 ----------
+        print("\n[J9] 附件（登录资源）Cache-Control 不得含 public")
+        sha_row = psql("SELECT sha256 FROM attachments ORDER BY id DESC "
+                       "LIMIT 1")
+        if sha_row:
+            code9, hd9 = http_get_raw(root, "/attachments/%s" % sha_row)
+            cc = hd9.get("Cache-Control") or ""
+            check("J9a 附件可取", code9 == 200, "HTTP %s" % code9)
+            check("J9b Cache-Control 不含 public（旧：public, immutable）",
+                  "public" not in cc.lower(), cc)
+        else:
+            print("  skip  J9（无附件探针）")
+
+        # ---------- J10 字幕下载跟种子审批 ----------
+        print("\n[J10] 挂非过审种子的字幕不得被普通会员下载")
+        sub_row = psql("SELECT s.id || '|' || s.torrent_id FROM subtitles s "
+                       "JOIN torrents t ON t.id = s.torrent_id "
+                       "WHERE s.deleted_at IS NULL AND s.status = 1 "
+                       "AND t.approval_status = 1 LIMIT 1")
+        if sub_row:
+            sid_s, tid_s = sub_row.split("|")
+            psql("UPDATE torrents SET approval_status=2 WHERE id=%s" % tid_s)
+            try:
+                cm, _ = http_get_raw(jwt(PROBE, 1),
+                                     "/subtitles/%s/download" % sid_s)
+                cr, _ = http_get_raw(root, "/subtitles/%s/download" % sid_s)
+                check("J10a 会员取不到被拒种的字幕（旧：200 直给）",
+                      cm == 404, "HTTP %s" % cm)
+                check("J10b 版主仍可取（阳性对照）", cr == 200,
+                      "HTTP %s" % cr)
+            finally:
+                psql("UPDATE torrents SET approval_status=1 WHERE id=%s"
+                     % tid_s)
+        else:
+            print("  skip  J10（无挂过审种的字幕探针）")
+
         # ---------- J1 商店重放 ----------
         print("\n[J1] 商店重放不得铸造卡牌")
         item = psql("SELECT id || '|' || price FROM shop_items "
@@ -275,7 +394,10 @@ def cleanup():
     psql("DELETE FROM token_revocations WHERE user_id=%d" % PROBE)
     psql("DELETE FROM api_tokens WHERE user_id=%d AND name='E2E 探针'"
          % PROBE)
-    print("\n[cleanup] 探针发言/待审态/匿名态/令牌/撤销线 均已复位")
+    psql("DELETE FROM bookmarks WHERE torrent_id=%d AND user_id IN (%d, %d)"
+         % (TORRENT, ROOT, PROBE))
+    flush_tlist()
+    print("\n[cleanup] 探针发言/待审态/匿名态/令牌/撤销线/书签 均已复位")
 
 
 if __name__ == "__main__":
