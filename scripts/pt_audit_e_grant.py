@@ -164,6 +164,14 @@ def sec_b_voucher():
          " (%d, 'free', 'shop')" % uid)
     bought = psql("SELECT id FROM user_vouchers WHERE user_id=%d"
                   " AND source='shop'" % uid)
+    s, r = call("GET", "/admin/user-vouchers?uid=%d" % uid, None, TOKEN)
+    vrows = r.get("data") or []
+    ok("B6 券要有后台读口（来源/到期/核销都在，才敢决定作废几张）",
+       s == 200 and len(vrows) == 3
+       and all(k in vrows[0] for k in ("kind", "source", "expires_at",
+                                       "expired", "used_at")),
+       "HTTP %s 行数 %d 字段 %s"
+       % (s, len(vrows), sorted(vrows[0].keys()) if vrows else "-"))
     aud_base = audit_max()
     s, r = call("POST", "/admin/user-vouchers/void",
                 {"user_id": uid, "limit": 2}, TOKEN)
@@ -183,6 +191,12 @@ def sec_b_voucher():
     ok("B5 作废必须留审计（限本次新写的行，历史行不算）",
        audit_row("voucher.void", aud_base) is not None,
        "audit_log 无本次 voucher.void")
+    s, r = call("GET", "/admin/user-vouchers?uid=%d&unused_only=true" % uid,
+                None, TOKEN)
+    left = r.get("data") or []
+    ok("B7 作废结果当场可在读口核对（unused_only 只剩自购券）",
+       s == 200 and len(left) == 1 and left[0]["source"] == "shop",
+       "行数 %d 来源 %s" % (len(left), [x.get("source") for x in left]))
     psql("DELETE FROM user_vouchers WHERE user_id=%d" % uid)
 
 
@@ -361,6 +375,20 @@ def sec_f_ledger():
     tgt = brows[0].get("target_ids") if brows else None
     ok("F3 按 batch_id 能回放出完整受众（漏发核对靠它）",
        s == 200 and tgt is not None, "HTTP %s 受众字段 %s" % (s, tgt))
+
+    # 审计：接口从 0285 就下发 ref，但 TS 类型没这一列、面板也不渲染
+    # ⇒ 存了等于没存。按对象回查同时验「查得到」与「看得到现场」。
+    s, r = call("GET", "/admin/audit?uid=%d&limit=50" % uid, None, TOKEN)
+    arows = r.get("data") or []
+    ok("F4 审计要能按对象回查（谁被发过什么，不靠翻 200 行）",
+       s == 200 and len(arows) > 0
+       and all(str(uid) in (x.get("detail") or "") for x in arows),
+       "HTTP %s 行数 %d" % (s, len(arows)))
+    ok("F5 审计现场要带得走关键项（item_id / granted / batch_id）",
+       any("item_id" in (x.get("detail") or "") for x in arows)
+       and any("batch_id" in (x.get("detail") or "") for x in arows),
+       "样例 %s" % (json.dumps(arows[0], ensure_ascii=False)[:160]
+                    if arows else "-"))
 
 
 def cleanup():

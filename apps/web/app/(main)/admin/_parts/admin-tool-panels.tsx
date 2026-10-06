@@ -84,9 +84,36 @@ export function CheatersPanel({
   );
 }
 
+/** 审计现场摘要：把 `ref` JSONB 里最常被追问的几项摊成一行 `k=v`。
+ *  读不出结构（老数据/自定义形状）就回落原文前 80 字——面板不该因为
+ *  一条奇怪的 ref 就整列空白；完整内容挂在 title 上，悬停可看。 */
+function briefDetail(raw?: string | null): string {
+  if (!raw) return "";
+  const KEYS = [
+    "id", "uid", "kind", "amount", "affected", "targets", "voided",
+    "item_id", "item_name", "medal_id", "days", "reason", "batch_id",
+  ];
+  try {
+    const o = JSON.parse(raw) as Record<string, unknown>;
+    const parts: string[] = [];
+    for (const k of KEYS) {
+      const v = o[k];
+      if (v === null || v === undefined) continue;
+      parts.push(
+        `${k}=${typeof v === "object" ? JSON.stringify(v) : String(v)}`,
+      );
+      if (parts.length >= 4) break;
+    }
+    return parts.length ? parts.join(" · ") : raw.slice(0, 80);
+  } catch {
+    return raw.slice(0, 80);
+  }
+}
+
 /** 审计日志列表（完整版；overview 内嵌最近 6 条在首页面板中）。
- *  一次拉全量（后端无分页参数），前端做搜索过滤 + 分批渲染：
- *  实测 200 行 DOM 高 6600px+，全渲染既卡又难查。 */
+ *  一次拉全量（后端支持 limit/uid/actor，面板默认取 200 条），
+ *  前端做搜索过滤 + 分批渲染：实测 200 行 DOM 高 6600px+，全渲染既卡又难查。
+ *  搜索词同时匹配 `ref`（发放/调账的对象 id 就在里面，只搜 action 是查不到人的）。 */
 export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
   const { dict, locale } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
@@ -101,7 +128,8 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
       (row) =>
         row.action.toLowerCase().includes(kw) ||
         (labels[row.action] ?? row.action).toLowerCase().includes(kw) ||
-        String(row.actor_id ?? "").includes(kw),
+        String(row.actor_id ?? "").includes(kw) ||
+        (row.detail ?? "").toLowerCase().includes(kw),
     );
   }, [audit, kw, labels]);
   const shown = filtered.slice(0, limit);
@@ -130,13 +158,26 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
       </div>
       <ul className="flex flex-col divide-y divide-line text-sm">
         {shown.map((row) => (
-          <li key={row.id} className="flex items-center justify-between py-2">
+          <li
+            key={row.id}
+            className="flex items-start justify-between gap-3 py-2"
+          >
             <span className="text-xs">
               {labelOf(row.action)}
               {/* 未收录动作：尾巴带 mono key，提示去 audit-labels.ts 补文案 */}
               {!labels[row.action] && (
                 <code className="ml-1 font-mono text-[10px] text-sub">
                   {row.action}
+                </code>
+              )}
+              {/* 现场：对谁做、多少钱、哪一批——0285 就在 ref 里，
+                  此前界面不渲染，等于白存 */}
+              {briefDetail(row.detail) && (
+                <code
+                  className="ml-2 break-all font-mono text-[10px] text-sub"
+                  title={row.detail ?? ""}
+                >
+                  {briefDetail(row.detail)}
                 </code>
               )}
             </span>

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { FramesPanel } from "@/components/admin-props-frames";
 import { PropsPanel } from "./admin-props-user-bag";
+import { VoucherPanel } from "./admin-props-vouchers";
 import type {
   EditState,
   FrameRow,
@@ -179,6 +180,9 @@ export function AdminProps() {
           flash={flash}
           load={load}
         />
+
+        {/* 券：读口与作废在同一块面板（UID 与背包共用，一次圈定两处都看） */}
+        <VoucherPanel uid={uid} setUid={setUid} flash={flash} />
       </div>
     </>
   );

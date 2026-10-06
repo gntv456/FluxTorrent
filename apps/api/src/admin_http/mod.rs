@@ -22,6 +22,7 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(user_grant_medal)
         .service(user_revoke_item)
         .service(admin_voucher_void)
+        .service(admin_voucher_list)
         .service(user_medal_redate)
         .service(user_grant_item)
         .service(user_assign_jixiao)
@@ -120,6 +121,7 @@ mod user_grant;
 mod user_grant_item;
 mod user_grant_medal;
 mod user_revoke;
+mod user_vouchers;
 mod user_list;
 mod user_ops;
 mod user_passkey;
@@ -147,6 +149,7 @@ pub use user_del::*;
 pub use user_detail::*;
 pub use user_grant_medal::*;
 pub use user_revoke::*;
+pub use user_vouchers::*;
 pub use user_fields_admin::*;
 pub use user_grant::*;
 pub use user_grant_item::*;
