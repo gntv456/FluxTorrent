@@ -24,6 +24,7 @@ export interface ActionFormValues {
   permKey: string;
   permGrant: "1" | "0" | "";
   medalId: string;
+  medalDays: string;
   itemId: string;
   jixiaoTypeId: string;
   jixiaoPeriod: string;
@@ -34,6 +35,7 @@ export interface ActionFormValues {
     spark: string;
     invite: string;
     note: string;
+    idem: string;
   };
 }
 
@@ -96,6 +98,7 @@ export function useAdminUserActions({
           spark_delta: Number(adj.spark) || 0,
           invite_grant: Number(adj.invite) || 0,
           note: adj.note || undefined,
+          idempotency_key: adj.idem?.trim() || undefined,
         });
         flash(t.adjusted);
         setAdjust(false);
@@ -200,15 +203,18 @@ export function useAdminUserActions({
     () =>
       run(async () => {
         if (!values.medalId) return;
+        const days = Number(values.medalDays);
         await api.post(
           `/api/v1/admin/users/${uid}/medal/${values.medalId}`,
-          {},
+          Number.isFinite(days) && values.medalDays.trim() !== ""
+            ? { days }
+            : {},
         );
         flash(t.medalGranted);
         setPanel("");
         await load();
       }),
-    [values.medalId, uid, flash, setPanel, load],
+    [values.medalId, values.medalDays, uid, flash, setPanel, load],
   );
 
   const submitItem = useCallback(

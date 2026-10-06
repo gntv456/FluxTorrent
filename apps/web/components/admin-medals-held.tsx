@@ -67,24 +67,61 @@ export function MedalHeldPanel({
               <td>{h.source}</td>
               <td>{h.wearing ? at.wearing : "—"}</td>
               <td className="text-right">
-                <button
-                  className="cmgmt-act cmgmt-act--danger"
-                  disabled={busy}
-                  onClick={async () => {
-                    try {
-                      await api.post("/api/v1/admin/user-medals/delete", {
-                        user_id: h.user_id,
-                        medal_id: h.medal_id,
-                      });
-                      flash(at.revoked);
-                      await load();
-                    } catch (e) {
-                      flash(e instanceof ApiError ? e.message : at.revokeFail);
-                    }
-                  }}
-                >
-                  {at.revoke}
-                </button>
+                <div className="flex justify-end gap-1">
+                  <button
+                    className="cmgmt-act"
+                    disabled={busy}
+                    title={at.redateTitle}
+                    onClick={async () => {
+                      const raw = window.prompt(at.redatePrompt);
+                      if (raw === null) return;
+                      const trimmed = raw.trim();
+                      const days =
+                        trimmed === "" ? null : Number(trimmed);
+                      if (days !== null && !Number.isInteger(days)) {
+                        flash(at.redateBad);
+                        return;
+                      }
+                      try {
+                        await api.post(
+                          `/api/v1/admin/users/${h.user_id}` +
+                            `/medal/${h.medal_id}/redate`,
+                          { days },
+                        );
+                        flash(at.redated);
+                        await load();
+                      } catch (e) {
+                        flash(
+                          e instanceof ApiError
+                            ? e.message
+                            : at.redateFail,
+                        );
+                      }
+                    }}
+                  >
+                    {at.redate}
+                  </button>
+                  <button
+                    className="cmgmt-act cmgmt-act--danger"
+                    disabled={busy}
+                    onClick={async () => {
+                      try {
+                        await api.post("/api/v1/admin/user-medals/delete", {
+                          user_id: h.user_id,
+                          medal_id: h.medal_id,
+                        });
+                        flash(at.revoked);
+                        await load();
+                      } catch (e) {
+                        flash(
+                          e instanceof ApiError ? e.message : at.revokeFail,
+                        );
+                      }
+                    }}
+                  >
+                    {at.revoke}
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

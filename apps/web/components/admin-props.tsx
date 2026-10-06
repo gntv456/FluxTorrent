@@ -33,6 +33,7 @@ export const EMPTY_EDIT: EditState = {
     price: "0",
     config: "{}",
     active: true,
+    stockQuota: "",
   },
 };
 
@@ -113,6 +114,8 @@ export function AdminProps() {
         price: Number(edit.f.price) || 0,
         config,
         active: edit.f.active,
+        stock_quota:
+          edit.f.stockQuota.trim() === "" ? null : Number(edit.f.stockQuota),
       };
       if (edit.id === null) await api.post("/api/v1/admin/shop-items", payload);
       else await api.put(`/api/v1/admin/shop-items/${edit.id}`, payload);

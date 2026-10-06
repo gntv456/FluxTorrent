@@ -12,6 +12,7 @@ export interface PropsEditForm {
   price: string;
   config: string;
   active: boolean;
+  stockQuota: string;
 }
 
 export function PropsTable(props: {
@@ -34,6 +35,7 @@ export function PropsTable(props: {
           <td className="colhead">{at.thKind}</td>
           <td className="colhead">{at.thPrice}</td>
           <td className="colhead">{at.thConfig}</td>
+          <td className="colhead">{at.thStock}</td>
           <td className="colhead">{at.thStatus}</td>
           <td className="colhead text-right">{at.thAction}</td>
         </tr>
@@ -53,6 +55,11 @@ export function PropsTable(props: {
             <td className="max-w-[220px] truncate font-mono">
               {JSON.stringify(it.config)}
             </td>
+            <td className="num">
+              {it.stock_quota === null
+                ? "∞"
+                : `${it.stock_used}/${it.stock_quota}`}
+            </td>
             <td>{it.active ? at.listed : at.unlisted}</td>
             <td className="text-right">
               <button
@@ -64,6 +71,8 @@ export function PropsTable(props: {
                     price: String(it.price),
                     config: JSON.stringify(it.config),
                     active: it.active,
+                    stockQuota:
+                      it.stock_quota === null ? "" : String(it.stock_quota),
                   })
                 }
               >

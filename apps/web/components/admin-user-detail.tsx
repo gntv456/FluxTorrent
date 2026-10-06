@@ -57,6 +57,7 @@ export function AdminUserDetailPage() {
     spark: "0",
     invite: "0",
     note: "",
+    idem: "",
   });
 
   const { d, msg, load } = useDetailLoad(uid);
@@ -74,6 +75,7 @@ export function AdminUserDetailPage() {
       permKey: dicts.permKey,
       permGrant: dicts.permGrant,
       medalId: dicts.medalId,
+      medalDays: dicts.medalDays,
       itemId: dicts.itemId,
       jixiaoTypeId: dicts.jixiaoTypeId,
       jixiaoPeriod: dicts.jixiaoPeriod,
@@ -220,6 +222,8 @@ export function AdminUserDetailPage() {
             permData={dicts.permData}
             medals={dicts.medals}
             medalId={dicts.medalId}
+            medalDays={dicts.medalDays}
+            setMedalDays={dicts.setMedalDays}
             setMedalId={dicts.setMedalId}
             items={dicts.items}
             itemId={dicts.itemId}

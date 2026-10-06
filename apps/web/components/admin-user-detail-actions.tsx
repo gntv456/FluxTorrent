@@ -57,6 +57,7 @@ export interface AdminActionsProps {
     spark: string;
     invite: string;
     note: string;
+    idem: string;
   };
   setAdj: (v: {
     up: string;
@@ -64,6 +65,7 @@ export interface AdminActionsProps {
     spark: string;
     invite: string;
     note: string;
+    idem: string;
   }) => void;
   classId: string;
   setClassId: (v: string) => void;
@@ -91,6 +93,8 @@ export interface AdminActionsProps {
   medals: { id: number; name: string }[];
   medalId: string;
   setMedalId: (v: string) => void;
+  medalDays: string;
+  setMedalDays: (v: string) => void;
   items: { id: number; name: string; kind: string }[];
   itemId: string;
   setItemId: (v: string) => void;

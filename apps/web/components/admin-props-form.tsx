@@ -154,6 +154,23 @@ export function PropsForm(props: {
             className={`${inp} w-52 font-mono`}
           />
         </label>
+        <label className="flex flex-col gap-1 text-xs">
+          {at.fStock}
+          <input
+            type="number"
+            min={0}
+            value={edit.f.stockQuota}
+            onChange={(e) =>
+              setEdit({
+                ...edit,
+                f: { ...edit.f, stockQuota: e.target.value },
+              })
+            }
+            placeholder={at.fStockPh}
+            title={at.fStockPh}
+            className={`${inp} w-24`}
+          />
+        </label>
         <label className="flex items-center gap-1 pb-2 text-xs">
           <input
             type="checkbox"

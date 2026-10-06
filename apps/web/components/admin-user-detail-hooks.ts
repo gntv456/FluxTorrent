@@ -77,6 +77,7 @@ export function useAdminPanelDicts(uid: number) {
   const [permGrant, setPermGrant] = useState<"1" | "0" | "">("");
   const [medals, setMedals] = useState<{ id: number; name: string }[]>([]);
   const [medalId, setMedalId] = useState("");
+  const [medalDays, setMedalDays] = useState("");
   const [items, setItems] = useState<
     { id: number; name: string; kind: string }[]
   >([]);
@@ -166,7 +167,9 @@ export function useAdminPanelDicts(uid: number) {
     setPermGrant,
     medals,
     medalId,
+    medalDays,
     setMedalId,
+    setMedalDays,
     items,
     itemId,
     setItemId,
