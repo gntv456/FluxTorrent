@@ -36,8 +36,10 @@ const ATTACH_MIME_ALLOW: [&str; 14] = [
     "application/vnd.rar",
 ];
 
-/// 上传附件（multipart 字段 file）。存本地 savedirectory（缺省 ./attachments），
-/// sha256 全站去重（同文件只存一份物理文件）；受 attach_quota_mib 配额约束。
+/// 上传附件（multipart 字段 file，可选字段 visibility）。
+/// 存本地 savedirectory（缺省 ./attachments），sha256 全站去重（同文件只存
+/// 一份物理文件）；受 attach_quota_mib 配额约束。visibility 缺省 shared
+/// （图床语义）；private=仅本人与 staff 可读（0294 / 安全审计 P1-2）。
 /// 返回可直接在简介里引用的 /api/v1/attachments/{sha} URL。
 #[post("/attachments")]
 pub async fn upload_attachment(
@@ -49,6 +51,7 @@ pub async fn upload_attachment(
     use futures_util::StreamExt;
 
     let auth = require_auth(&req, &state).await?;
+    let mut visibility = String::new();
     // 单文件上限（0214 可配）：缺省 8MiB = 既有硬编码口径，0 = 不限
     let max_mib: i64 = sqlx::query_scalar(
         "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
@@ -95,11 +98,26 @@ pub async fn upload_attachment(
                 }
             }
             file_bytes = Some(buf.freeze());
+        } else if field.name() == Some("visibility") {
+            // 0294：可选三态，仅接受 private（上传私有材料）。shared/staff
+            // 是展示与管理语义，不开放上传侧自选 staff 档。
+            let mut v = String::new();
+            while let Some(chunk) = field.next().await {
+                let chunk = chunk
+                    .map_err(|e| DomainError::Validation(e.to_string()))?;
+                v.push_str(&String::from_utf8_lossy(&chunk));
+            }
+            visibility = v.trim().to_string();
         }
     }
     let Some(bytes) = file_bytes else {
         return Err(DomainError::Validation("缺少 file 字段".into()));
     };
+    if !visibility.is_empty() && visibility != "private" {
+        return Err(DomainError::Validation(
+            "visibility 仅支持 private（缺省公开共享）".into(),
+        ));
+    }
     if !ATTACH_MIME_ALLOW.contains(&mime.as_str()) {
         return Err(DomainError::Validation(
             "仅支持 png/jpeg/gif/webp/avif/pdf/txt 与字幕文本 \
@@ -195,7 +213,7 @@ pub async fn upload_attachment(
             .map_err(|e| DomainError::Internal(e))?;
         sqlx::query(
             "INSERT INTO attachments (user_id, sha256, filename, \
-             mime, size) VALUES ($1, $2, $3, $4, $5)",
+             mime, size, visibility) VALUES ($1, $2, $3, $4, $5, $6)",
         )
         .bind(auth.id)
         .bind(&sha)
@@ -206,6 +224,11 @@ pub async fn upload_attachment(
         })
         .bind(&mime)
         .bind(bytes.len() as i64)
+        .bind(if visibility.is_empty() {
+            "shared"
+        } else {
+            visibility.as_str()
+        })
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -222,6 +245,7 @@ pub async fn upload_attachment(
         "url": format!("/api/v1/attachments/{sha}"),
         "size": bytes.len(),
         "deduplicated": exists.is_some(),
+        "visibility": if visibility.is_empty() { "shared" } else { &visibility },
     })))
 }
 

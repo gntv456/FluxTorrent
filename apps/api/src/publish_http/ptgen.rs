@@ -108,14 +108,15 @@ pub async fn ptgen(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or_else(|_| "imdb,douban,bangumi,indienova,mediainfo".into());
-    let allowed = enabled.contains("imdb") && host.ends_with("imdb.com")
-        || enabled.contains("douban") && host.ends_with("douban.com")
+    // P2（2026-10-06 安全审计）：ends_with("imdb.com") 会放行 evil-imdb.com；
+    // 改为「裸域或 .子域」精确匹配，bangumi 原本就是这个口径
+    let domain_ok =
+        |h: &str, base: &str| h == base || h.ends_with(&format!(".{base}"));
+    let allowed = enabled.contains("imdb") && domain_ok(&host, "imdb.com")
+        || enabled.contains("douban") && domain_ok(&host, "douban.com")
         || enabled.contains("bangumi")
-            && (host == "bgm.tv"
-                || host.ends_with(".bgm.tv")
-                || host == "bangumi.tv"
-                || host.ends_with(".bangumi.tv"))
-        || enabled.contains("indienova") && host.ends_with("indienova.com");
+            && (domain_ok(&host, "bgm.tv") || domain_ok(&host, "bangumi.tv"))
+        || enabled.contains("indienova") && domain_ok(&host, "indienova.com");
     if !allowed {
         return Err(DomainError::Validation(
             "链接无效或该元数据源未在本站启用（imdb / douban / bangumi / indienova）".into(),
@@ -146,11 +147,8 @@ pub async fn ptgen(
                 .into(),
         ));
     }
-    let api = url::Url::parse_with_params(
-        upstream.trim(),
-        &[("url", url)],
-    )
-    .map_err(|_| DomainError::Validation("链接无效".into()))?;
+    let api = url::Url::parse_with_params(upstream.trim(), &[("url", url)])
+        .map_err(|_| DomainError::Validation("链接无效".into()))?;
     let client = reqwest::Client::new();
     let resp = client
         .get(api)
@@ -159,9 +157,11 @@ pub async fn ptgen(
         .await
         // 网络层失败降级为 Validation（0284 P0-2）：DNS 断/连不上是上游环境的
         // 常态，不该以 500 内部错误的形态出现在用户面前
-        .map_err(|e| DomainError::Validation(format!(
-            "PT-Gen 服务不可达（{e}），请稍后重试或手动填写简介"
-        )))?;
+        .map_err(|e| {
+            DomainError::Validation(format!(
+                "PT-Gen 服务不可达（{e}），请稍后重试或手动填写简介"
+            ))
+        })?;
     if !resp.status().is_success() {
         return Err(DomainError::Validation(format!(
             "PT-Gen 上游异常（HTTP {}）",

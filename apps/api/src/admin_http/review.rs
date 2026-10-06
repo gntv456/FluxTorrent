@@ -107,12 +107,12 @@ async fn review_queue(
     .replace("{ORDER}", order);
     let rows: Vec<PendingTorrent> = sqlx::query_as(&sql)
         .bind(q.category_id)
-    .bind(q.owner_id)
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        .bind(q.owner_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let total: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM torrents t WHERE t.approval_status = 0          AND ($1::int IS NULL OR t.category_id = $1)          AND ($2::bigint IS NULL OR t.owner_id = $2)",
     )

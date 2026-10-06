@@ -83,13 +83,14 @@ pub(super) fn roll(
     pick
 }
 
-/// 批种子：纳秒 ^ user_id 混乘（行种子 = 批种子 + seq，落库可复核）。
-pub(super) fn batch_seed(user_id: i64) -> u64 {
-    let t = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos() as u64)
-        .unwrap_or(0x9E37_79B9_7F4A_7C15);
-    t ^ (user_id as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
+/// 批种子：thread_rng 直接产出（行种子 = 批种子 + seq，落库可复核）。
+/// P2（2026-10-06 安全审计）：旧版 `时间纳秒 ^ user_id 混乘` 虽不可从外部
+/// 观测，但属可推导构造（高精度喷请求可逼近服务器时钟）；换 CSPRNG 后
+/// 种子完全不可预测。落库复核语义不变——seed 仍写 gacha_draws 供审计，
+/// 但任何端点都不得把 seed 回显给客户端（历史接口 me.rs 不含该列）。
+pub(super) fn batch_seed(_user_id: i64) -> u64 {
+    use rand::Rng;
+    rand::thread_rng().gen()
 }
 
 /// pity_at 落库口径：金档记 0（重置），非金档记本抽后的连续抽数。

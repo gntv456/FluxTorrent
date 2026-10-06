@@ -28,9 +28,9 @@ pub use list::*;
 pub use magnet::*;
 pub use manage::*;
 pub use peers::*;
-pub use suggest::*;
 pub(crate) use query::{
     norm_date, norm_promo, norm_tags, norm_text, parse_size,
 };
 /// 多维筛选参数解析：后台管理列表也要用同一实现（B3）。
 pub(crate) use sec_params::parse_section_params;
+pub use suggest::*;

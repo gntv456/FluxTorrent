@@ -119,7 +119,11 @@ pub(super) async fn grant_item(
                 );
                 crate::economy_http::expect_spent(
                     crate::economy_http::earn_spark_tx(
-                        tx, *uid, per, "increment_bulk", &idem,
+                        tx,
+                        *uid,
+                        per,
+                        "increment_bulk",
+                        &idem,
                     )
                     .await?,
                 )?;

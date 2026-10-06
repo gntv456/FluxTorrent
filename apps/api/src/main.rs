@@ -83,6 +83,21 @@ fn build_cors() -> actix_cors::Cors {
         );
         return Cors::permissive();
     }
+    // P2（2026-10-06 安全审计）：条目形状校验。`*` 会被 actix-cors 当通配
+    // 放行全部来源（等于没配）；畸形条目（缺 scheme/带 path）静默失效同样
+    // 危险——fail-fast 让运维当场看见。
+    for o in &list {
+        let ok = matches!(o.split_once("://"), Some((s, rest))
+            if matches!(s, "http" | "https")
+                && !rest.is_empty()
+                && !rest.contains('/')
+                && !o.contains('*'));
+        if !ok {
+            panic!(
+                "CORS_ORIGINS 含非法条目 {o:?}：须形如 https://example.com                  （精确 origin，不允许 * 通配、不允许带路径）"
+            );
+        }
+    }
     let mut cors = Cors::default()
         .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
         .allowed_headers(vec![
@@ -249,6 +264,10 @@ async fn main() -> anyhow::Result<()> {
             .wrap(actix_web::middleware::from_fn(request_id::request_id_mw)) // request_id 贯穿（信封/响应头/日志同源）
             .wrap(actix_web::middleware::from_fn(i18n::locale_mw)) // Accept-Language → task-local（错误消息三语）
             .wrap(actix_web::middleware::from_fn(setup_http::setup_gate_mw)) // U3 安装向导封锁（setup_done 未置位拦业务 API）
+            // P2（2026-10-06 安全审计）：写方法跨站来源闸——SameSite=Lax 在
+            // 项目声明兼容的旧内核浏览器上会被忽略，此层把「Origin/Referer
+            // 同源或白名单」作为 CSRF 纵深第二道防线（非浏览器客户端无该头，放行）
+            .wrap(actix_web::middleware::from_fn(crate::http::write_origin_mw))
             .wrap(actix_web::middleware::from_fn(modules::module_gate_mw)) // U1 模块网关：可选域 fail-close（4101）
             .wrap(actix_web::middleware::from_fn(v4_http::metrics_mw)) // G3：请求/5xx 计数（/metrics 出口）
             .configure(community_http::configure)

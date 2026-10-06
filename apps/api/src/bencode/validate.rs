@@ -90,8 +90,8 @@ pub fn reject_off_tracker_sources(bytes: &[u8]) -> Result<(), String> {
         if root.get(key).is_some() {
             return Err(format!(
                 concat!(
-                ".torrent 含 {} 字段：本站禁止不经 tracker 的取源通道",
-                "（HTTP seed / DHT 提示），请重新打包后发布"
+                    ".torrent 含 {} 字段：本站禁止不经 tracker 的取源通道",
+                    "（HTTP seed / DHT 提示），请重新打包后发布"
                 ),
                 String::from_utf8_lossy(key)
             ));

@@ -9,7 +9,6 @@ use crate::http::require_auth;
 use crate::state::AppState;
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
-use uuid::Uuid;
 
 /// 参与众筹（一人一项目可追投；扣款走 spend_spark 幂等，税入池、净额计入 raised）。
 /// 退款时按实付全额退（税部分由站免池承担——池子本来就是回收通道）。
@@ -56,11 +55,21 @@ async fn funding_contribute(
     .unwrap_or(500);
     let tax = economy::gift_tax(body.amount, tax_bp);
     let net = body.amount - tax;
-    // 幂等重放必须终止（P0）：重放时 spend 不扣款，若继续累加 raised/contribs =
-    // 众筹虚增达标白嫖免费促销，到期还能按 contribs 全额退款。
+    // 单事务收口（P2，2026-10-06 安全审计）：旧版 spend 独立提交后 contribs
+    // 另开事务，失败靠 spawn 随机键 best-effort 退款——进程崩溃窗口内
+    // 「钱扣了、无参与记录、退款未发起」（钱有去无回）。现扣款/参与记录/
+    // 进度推进并入同一事务（照 pool_donate 范式），任一失败整体回滚；
+    // 税入池账在事务提交后补记（幂等性由 contribs 行保证，失败仅账面
+    // 少一笔税收，不再影响用户资金）。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     if !matches!(
-        crate::economy_http::spend_spark(
-            &state.repo.db,
+        crate::economy_http::spend_spark_tx(
+            &mut tx,
             auth.id,
             body.amount,
             "funding",
@@ -75,53 +84,29 @@ async fn funding_contribute(
             "该笔参与已受理，请勿重复提交".into(),
         ));
     }
-    // 参与记录 + 进度推进（审计 P1-5：旧版三段独立语句，扣款成功但 contribs 落库
-    // 失败时该笔不在退款集合——worker 按 funding_contribs 逐行退，钱有去无回。
-    // 现在两段进同一事务，任一失败整体回滚并冲销扣款。）
-    let contrib_ok = async {
-        let mut tx = state.repo.db.begin().await.map_err(|e| e.to_string())?;
-        sqlx::query(
-            "INSERT INTO funding_contribs (funding_id, user_id, \
-             amount, tax) VALUES ($1, $2, $3, $4) ON CONFLICT (funding_id, \
-             user_id) DO UPDATE SET amount = funding_contribs.amount + \
-             EXCLUDED.amount, tax = funding_contribs.tax + EXCLUDED.tax, \
-             created_at = now()",
-        )
+    sqlx::query(
+        "INSERT INTO funding_contribs (funding_id, user_id, \
+         amount, tax) VALUES ($1, $2, $3, $4) ON CONFLICT (funding_id, \
+         user_id) DO UPDATE SET amount = funding_contribs.amount + \
+         EXCLUDED.amount, tax = funding_contribs.tax + EXCLUDED.tax, \
+         created_at = now()",
+    )
+    .bind(body.funding_id)
+    .bind(auth.id)
+    .bind(body.amount)
+    .bind(tax)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("UPDATE fundings SET raised = raised + $2 WHERE id = $1")
         .bind(body.funding_id)
-        .bind(auth.id)
-        .bind(body.amount)
-        .bind(tax)
+        .bind(net)
         .execute(&mut *tx)
         .await
-        .map_err(|e| e.to_string())?;
-        sqlx::query("UPDATE fundings SET raised = raised + $2 WHERE id = $1")
-            .bind(body.funding_id)
-            .bind(net)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| e.to_string())?;
-        tx.commit().await.map_err(|e| e.to_string())
-    }
-    .await;
-    if let Err(why) = contrib_ok {
-        let db = state.repo.db.clone();
-        let uid = auth.id;
-        let amount = body.amount;
-        let idem2 = format!("funding_refund:{}", Uuid::new_v4());
-        actix_web::rt::spawn(async move {
-            let _ = crate::economy_http::earn_spark(
-                &db,
-                uid,
-                amount,
-                "funding_refund",
-                &idem2,
-            )
-            .await;
-        });
-        return Err(DomainError::Validation(format!(
-            "参与记录写入失败，已发起退款冲销：{why}"
-        )));
-    }
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 税入站免池（与 pool_donate 同账：magic_pool + pool_donations）。
     // 账务口径：税不另记 spark_ledger——支出方的 -amount 流水已把含税全额记为回收，
     // 这里只入池账；若再向某个汇入账户记正流水会虚增 v_spark_flow_monthly 的 minted。

@@ -37,9 +37,7 @@ pub(super) async fn stock_take(
 
 /// 补签卡用的到底是哪件 SKU：字典名 makeup_card 优先，历史名 resub_card 兼容。
 /// 两处（真发 / 试运行体检）必须走同一个解析，否则体检的是另一件东西。
-pub(super) async fn resub_item_id(
-    db: &sqlx::PgPool,
-) -> DomainResult<i64> {
+pub(super) async fn resub_item_id(db: &sqlx::PgPool) -> DomainResult<i64> {
     let id: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM shop_items WHERE kind IN ('makeup_card','resub_card') \
          AND active = true ORDER BY kind = 'makeup_card' DESC, id LIMIT 1",
@@ -48,7 +46,9 @@ pub(super) async fn resub_item_id(
     .await
     .map_err(dberr)?;
     id.ok_or_else(|| {
-        DomainError::Validation("商店缺少可用的补签卡道具（makeup_card）".into())
+        DomainError::Validation(
+            "商店缺少可用的补签卡道具（makeup_card）".into(),
+        )
     })
 }
 
@@ -58,9 +58,10 @@ pub(super) async fn stock_item_id(
     body: &IncrementBulkReq,
 ) -> DomainResult<Option<i64>> {
     Ok(match body.kind.as_str() {
-        "item" => Some(body.item_id.ok_or_else(|| {
-            DomainError::Validation("需选择道具".into())
-        })?),
+        "item" => Some(
+            body.item_id
+                .ok_or_else(|| DomainError::Validation("需选择道具".into()))?,
+        ),
         "resub_card" => Some(resub_item_id(db).await?),
         _ => None,
     })

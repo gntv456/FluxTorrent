@@ -19,14 +19,13 @@ pub(super) async fn pm_chunk(
     for uid in chunk {
         if email {
             // 双通道：站内信必达 + 邮件尽力（mailer 内部降级）
-            let em: Option<String> = sqlx::query_scalar(
-                "SELECT email FROM users WHERE id = $1",
-            )
-            .bind(uid)
-            .fetch_optional(db)
-            .await
-            .ok()
-            .flatten();
+            let em: Option<String> =
+                sqlx::query_scalar("SELECT email FROM users WHERE id = $1")
+                    .bind(uid)
+                    .fetch_optional(db)
+                    .await
+                    .ok()
+                    .flatten();
             crate::mailer::notify(db, *uid, em, subject.trim(), text.trim())
                 .await;
         } else {

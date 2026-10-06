@@ -195,11 +195,9 @@ pub async fn admin_amount_bonus(
         .bind(auth.id)
         .bind(match idem_prefix {
             Some(k) => format!("amountbonus:{k}:{}", uid),
-            None => format!(
-                "amountbonus-{}-{}",
-                uid,
-                uuid::Uuid::new_v4().simple()
-            ),
+            None => {
+                format!("amountbonus-{}-{}", uid, uuid::Uuid::new_v4().simple())
+            }
         })
         .bind(after)
         .execute(&mut *tx)

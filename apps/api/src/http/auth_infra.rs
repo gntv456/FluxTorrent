@@ -54,11 +54,18 @@ pub async fn bump_guard_ver(state: &Arc<AppState>) {
 }
 
 /// 解析请求来源 IP（限流 / 封禁 / 风控事件统一口径）。
-/// 默认取 socket 对端；`TRUST_PROXY=1` 时改信 X-Forwarded-For 首值——仅当 api 只能经
-/// 可信反代访问时启用（直连暴露时客户端可伪造 XFF 绕过限流/封禁）。
-/// P1 修复：此前注册/登录/验证码全部直接用 peer_addr（socket 对端），生产经反代后
-/// 全站共享代理 IP——login-ip 限流桶全站共用（误伤 429）、ip_bans 误封整个代理、
-/// login_events 风控记录失真。
+/// 默认取 socket 对端；`TRUST_PROXY=1` 时采信 X-Forwarded-For。
+/// P1-4（2026-10-06 安全审计）：旧版取 XFF **首值**，前提是「反代追加而非
+/// 覆盖」——nginx 常见误配 `proxy_set_header X-Forwarded-For
+/// $http_x_forwarded_for`（透传客户端自带 XFF）下，攻击者可任意伪造 IP
+/// 绕过 ip_bans/login-ip 限流。现改为**取右值**（最后一跳）：标准反代会把
+/// 真实客户端 IP 追加在链尾，右侧第一段不受客户端控制；单层代理场景
+/// （本项目部署文档的标准形态）右值即真实客户端 IP。多级代理须保证
+/// 每一级都追加且最后一跳是可信反代（与之前相比，右值模型只信任「离
+/// 我最近的那一跳写了什么」，被伪造面从「整条链」缩小到「直连对端」）。
+/// P1 修复（历史）：此前注册/登录/验证码全部直接用 peer_addr（socket 对端），
+/// 生产经反代后全站共享代理 IP——login-ip 限流桶全站共用（误伤 429）、
+/// ip_bans 误封整个代理、login_events 风控记录失真。
 pub fn client_ip(req: &HttpRequest) -> String {
     static TRUST_PROXY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     let trust = *TRUST_PROXY.get_or_init(|| {
@@ -70,9 +77,11 @@ pub fn client_ip(req: &HttpRequest) -> String {
             .get("x-forwarded-for")
             .and_then(|v| v.to_str().ok())
         {
-            // 取链路首值（最接近真实客户端的一段）；反代应追加而非覆盖
-            if let Some(first) = xff.split(',').next() {
-                let ip = first.trim();
+            // 取链尾值：由直连我们的那台反代追加，客户端无法伪造该段
+            // （除非攻击者能直连 api 绕过反代——那属于网络层暴露问题，
+            //  部署文档已要求 api 端口不直接对外）。
+            if let Some(last) = xff.split(',').next_back() {
+                let ip = last.trim();
                 if !ip.is_empty() {
                     return ip.to_string();
                 }

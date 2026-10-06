@@ -17,7 +17,7 @@ use crate::state::AppState;
 
 use super::farm::{get_crop, get_plantable_crop, PlantReq};
 use super::helpers::{
-    check_rate_scoped, eco_i64, farm_market_hours, farm_wither_days, RateScope,
+    check_rate_scoped, eco_i64, farm_wither_days, RateScope,
 };
 
 #[post("/farm/plant")]
@@ -42,10 +42,15 @@ pub(super) async fn farm_plant(
     )
     .await?;
 
+    // 买种价：请求内真随机因子（P1-1，2026-10-06 安全审计）。窗口行情价
+    // （farm_overview 展示的 market_price）只是参考——旧版按窗口哈希定价可
+    // 离线预计算，专挑低价窗口种植是确定性套利。扣费价与展示价分离后，
+    // 实际成本 ±50% 波动、期望 ×1.0，作物回收率标定不受影响。
     let now = chrono::Utc::now().timestamp();
-    let window =
-        games::market_window_start_with(now, farm_market_hours(&state).await);
-    let price = games::market_price(crop.seed_price as i64, window);
+    let price = games::apply_market_factor(
+        crop.seed_price as i64,
+        games::roll_market_factor(),
+    );
 
     // 买种经统一交易管线扣款（幂等键含用户+槽位+当前分钟）。
     // 审计修复（P0 铸币）：旧逻辑对 spend_spark 返回的 Replayed 不检查——同槽同分钟内
@@ -359,17 +364,18 @@ pub(super) async fn farm_harvest(
         })));
     }
 
-    let now = chrono::Utc::now().timestamp();
-    let window =
-        games::market_window_start_with(now, farm_market_hours(&state).await);
     let crop = get_crop(&state.repo.db, crop_id)
         .await?
         .ok_or(DomainError::Validation("作物不存在".into()))?;
-    // 收获量 = base_yield × 收获侧市场因子（±50% 窗口波动；与买种侧因子错开——
-    // 见 games::harvest_market_price 注释，消除确定性低买高卖套利）。
-    // 回收口径：作物表按「产量 = 种子价 × 0.75」标定，含 20% 双倍后期望回报 0.90 < 1
-    // （0127 迁移统一下发，五档一致；市场 ±50% 只影响单局运气，不改期望）。
-    let market = games::harvest_market_price(crop.base_yield as i64, window);
+    // 收获量 = base_yield × 收获侧市场因子（±50% 波动）。P1-1（2026-10-06
+    // 安全审计）：因子改为**收获请求内** thread_rng 掷出——旧版是窗口起点
+    // 纯哈希、可离线预计算，低价窗买入 × 高价窗收获的筛选套利成立。
+    // 买种侧同改（见 farm_plant）；两侧期望因子均 ×1.0，作物回收率
+    // 0.90 < 1 的标定（0127）不受影响。
+    let market = games::apply_market_factor(
+        crop.base_yield as i64,
+        games::roll_market_factor(),
+    );
 
     let doubled = games::roll_double();
     let amount = if doubled { market * 2 } else { market };

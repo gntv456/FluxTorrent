@@ -490,7 +490,12 @@ fn adapter_http_exec(
         let rt = tokio::runtime::Handle::current();
         let u = u.to_string();
         rt.block_on(async move {
-            let client = reqwest::Client::new();
+            // P2（2026-10-06 安全审计）：禁跟随重定向——http_allow 白名单域
+            // 302 跳内网地址（169.254.169.254 等）必须拒绝而不是跟随
+            let client = reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .map_err(|e| e.to_string())?;
             let resp = client
                 .get(&u)
                 .header(

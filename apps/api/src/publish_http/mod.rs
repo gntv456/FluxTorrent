@@ -14,9 +14,9 @@ mod upload_body;
 mod upload_fields;
 mod upload_precheck;
 // 墓碑复活（0288）：同作者删除后重发同一 .torrent 走 UPDATE 复用原 id
+mod upload_files_promo;
 mod upload_revive;
 mod upload_suggest;
-mod upload_files_promo;
 // 多维属性解析/写入（B2 六类型）：编辑口与批量口也要调，故公开
 pub(crate) mod upload_sections;
 

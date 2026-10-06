@@ -179,14 +179,13 @@ async fn grant_resub_card(
     chunk: &[i64],
 ) -> DomainResult<u64> {
     let item_id = resub_item_id(ctx.db).await?;
-    let config: serde_json::Value = sqlx::query_scalar(
-        "SELECT config FROM shop_items WHERE id = $1",
-    )
-    .bind(item_id)
-    .fetch_optional(&mut **tx)
-    .await
-    .map_err(dberr)?
-    .unwrap_or_else(|| serde_json::json!({ "stackable": true }));
+    let config: serde_json::Value =
+        sqlx::query_scalar("SELECT config FROM shop_items WHERE id = $1")
+            .bind(item_id)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(dberr)?
+            .unwrap_or_else(|| serde_json::json!({ "stackable": true }));
     stock_take(tx, item_id, ctx.amount * chunk.len() as i64).await?;
     bulk_backpack_orders(ctx, tx, chunk, item_id, &config).await
 }
@@ -235,7 +234,12 @@ pub(super) async fn grant_kind(
     chunk: &[i64],
     auth: &AuthUser,
 ) -> DomainResult<u64> {
-    let ctx = GrantCtx { db, batch_id, amount: body.amount, auth };
+    let ctx = GrantCtx {
+        db,
+        batch_id,
+        amount: body.amount,
+        auth,
+    };
     let mut tx = db.begin().await.map_err(dberr)?;
     let n = dispatch(&ctx, &mut tx, body, chunk).await?;
     tx.commit().await.map_err(dberr)?;
@@ -272,15 +276,17 @@ async fn dispatch(
             )
             .await
         }
-        "item" => grant_item(
-            ctx,
-            tx,
-            chunk,
-            body.item_id.ok_or_else(|| {
-                DomainError::Validation("需选择道具".into())
-            })?,
-        )
-        .await,
+        "item" => {
+            grant_item(
+                ctx,
+                tx,
+                chunk,
+                body.item_id.ok_or_else(|| {
+                    DomainError::Validation("需选择道具".into())
+                })?,
+            )
+            .await
+        }
         _ => Err(DomainError::Validation("kind 不合法".into())),
     }
 }

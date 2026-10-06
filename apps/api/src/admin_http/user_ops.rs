@@ -114,9 +114,7 @@ async fn user_adjust(
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
                 .map(|s| format!("#{}/{}", auth.id, s))
-                .unwrap_or_else(|| {
-                    format!("#{} admin_adjust", auth.id)
-                }),
+                .unwrap_or_else(|| format!("#{} admin_adjust", auth.id)),
         };
         sqlx::query(
             "INSERT INTO traffic_ledger (id, user_id, torrent_id, \

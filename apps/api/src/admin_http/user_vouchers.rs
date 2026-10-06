@@ -49,12 +49,8 @@ pub(super) async fn admin_voucher_list(
     q: web::Query<VoucherListQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::PROP_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     let rows: Vec<VoucherRow> = sqlx::query_as(
         r#"SELECT v.id, v.user_id, u.username, v.kind, v.source,
                   v.granted_at, v.expires_at, v.used_at, v.used_torrent_id,
@@ -97,12 +93,8 @@ pub(super) async fn admin_voucher_void(
     body: web::Json<VoucherVoidReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::PROP_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
     if !(1..=50).contains(&body.limit) {
         return Err(DomainError::Validation("limit 需在 1-50".into()));

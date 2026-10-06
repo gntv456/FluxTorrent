@@ -91,12 +91,8 @@ async fn admin_user_medal_revoke(
     body: web::Json<UserMedalDel>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::MEDAL_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     // 等级护栏（0291）：回收属伤害性动作，与发放侧同闸——此前 93 可以直接摘掉
     // 站长(99) 的勋章，而给用户详情挂勋章都要严格高于目标。
     crate::admin_http::guard::ensure_outranks(

@@ -83,7 +83,9 @@ pub async fn reclaim_order(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok((uid, item_id, name))
 }
 
@@ -95,12 +97,8 @@ pub(super) async fn user_revoke_item(
     path: web::Path<(i64, i64)>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::PROP_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     let (uid, order_id) = path.into_inner();
     let (_, item_id, _name) =
         reclaim_order(&state.repo.db, auth.class_id, order_id).await?;
@@ -118,7 +116,6 @@ pub(super) async fn user_revoke_item(
         .await;
     Ok(ok(serde_json::json!({ "order_id": order_id })))
 }
-
 
 #[derive(Deserialize)]
 pub(super) struct MedalRedateReq {
@@ -174,5 +171,7 @@ pub(super) async fn user_medal_redate(
             })),
         )
         .await;
-    Ok(ok(serde_json::json!({ "user_id": uid, "medal_id": medal_id })))
+    Ok(ok(
+        serde_json::json!({ "user_id": uid, "medal_id": medal_id }),
+    ))
 }

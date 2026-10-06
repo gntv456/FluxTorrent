@@ -23,8 +23,7 @@ async fn smtp_config(db: &PgPool) -> Option<(String, String)> {
             .map(|(_, v)| v.trim().to_string())
             .filter(|v| !v.is_empty())
     };
-    let (Some(host), Some(from)) = (get("smtp_host"), get("smtp_from"))
-    else {
+    let (Some(host), Some(from)) = (get("smtp_host"), get("smtp_from")) else {
         return None;
     };
     let encryption = get("encryption").unwrap_or_else(|| "ssl".into());
@@ -45,10 +44,7 @@ async fn smtp_config(db: &PgPool) -> Option<(String, String)> {
         }
         _ => String::new(),
     };
-    Some((
-        format!("{scheme}://{auth}{host}:{port}"),
-        from,
-    ))
+    Some((format!("{scheme}://{auth}{host}:{port}"), from))
 }
 
 /// 给单用户发邮件（尽力而为）：email 为 None / SMTP 未配置 / 投递失败都只记日志。
@@ -82,7 +78,8 @@ async fn send_via_smtp(
         .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
         .to_string();
     let port =
-        url.port().unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
+        url.port()
+            .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
     let builder = if url.scheme() == "smtps" {
         AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
     } else {
