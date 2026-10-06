@@ -65,6 +65,14 @@ async fn list(
     } else {
         (false, false)
     };
+    // 「能看未过审种子」这一条权限在多处生效（include_unapproved / approval /
+    // 首屏缓存判定），先算一次，避免各分支各判各的而漏掉一个入口。
+    let can_see_unapproved = crate::authz::can(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_SEE_BANNED,
+    )
+    .await;
     let filter = torrents::TorrentFilter {
         // 多选分类：重复参数或逗号串（category_id=1&category_id=3 / category_id=1,3）均解析。
         // 旧键名 category_id 单值也在此合并（category_id_alias 旁路收集）。
@@ -121,12 +129,7 @@ async fn list(
         include_dead: q.include_dead.unwrap_or(false),
         // 仅持 see_banned 权限者可查看未过审种子；无权限时参数被静默忽略
         include_unapproved: q.include_unapproved.unwrap_or(false)
-            && crate::authz::can(
-                &state,
-                &auth,
-                crate::authz::perm::TORRENT_SEE_BANNED,
-            )
-            .await,
+            && can_see_unapproved,
         search: q.search.as_deref().map(str::to_string),
         sort: q.sort.as_deref().map(str::to_string),
         // 标签多选（0159 P1）：旧单值 tag_id 并入 tag_ids；tag_mode 只认 any/all
@@ -135,7 +138,12 @@ async fn list(
         // 0102 高级搜索三态
         alive: q.alive,
         status: q.status.clone().filter(|s| !s.is_empty()),
-        approval: q.approval,
+        approval: q.approval.filter(|_| {
+            // `?approval=2` 会把被拒与软删（回收站）种子直接给出去，
+            // 与 include_unapproved 同一闸门：非 see_banned 者一律忽略该参数。
+            can_see_unapproved
+        }),
+
         // 0170 站点开关（仅默认视图生效，见上方读取）
         show_pending,
         show_rejected,
@@ -221,42 +229,11 @@ async fn list(
     // TTL 45s 兜底 + Redis 故障直查；带任何筛选条件时不走缓存（避免失效风暴复杂化）。
     // 0170：反向页（reverse 需游标，逻辑上已被 cursor.is_none 排除，显式再挡一道）与
     // 开关放行的视图不走首屏缓存 —— cache_key 固定，开关开了再写会让关闭后 45s 内 stale。
-    let is_first_screen = cursor.is_none()
-        && filter.category_id.is_none()
-        && filter.medium_id.is_none()
-        && filter.grade_id.is_none()
-        && filter.edition_id.is_none()
-        && filter.official.is_none()
-        && !filter.include_dead
-        && !filter.include_unapproved
-        && !filter.reverse
-        && !filter.show_pending
-        && !filter.show_rejected
-        && filter.search.is_none()
-        && filter.sort.is_none()
-        && filter.tag_ids.is_none()
-        && filter.sections.is_empty()
-        // 状态筛选是用户视角（viewer 的 snatches）：带 status 的请求不得共享首屏缓存
-        && filter.status.is_none()
-        && filter.alive.is_none()
-        // 0105 高级搜索增强：任一条件生效即视为非「首屏等价视图」，不得复用共享缓存
-        && filter.size_min.is_none()
-        && filter.size_max.is_none()
-        && filter.date_from.is_none()
-        && filter.date_to.is_none()
-        && filter.min_seeders.is_none()
-        && filter.max_seeders.is_none()
-        && filter.exclude.is_none()
-        && filter.promo.is_none()
-        && filter.owner.is_none()
-        && !filter.only_mine
-        // 0118 补齐项同口径：任一生效即非首屏等价视图
-        && filter.min_leechers.is_none()
-        && filter.max_leechers.is_none()
-        && filter.min_completed.is_none()
-        && filter.max_completed.is_none()
-        && filter.anonymous.is_none()
-        && q.limit.unwrap_or(20) == 20;
+    let is_first_screen = crate::torrents::view_scope::shared_cache_safe(
+        &filter,
+        cursor.is_none(),
+        q.limit,
+    );
     let gen = list_cache_gen(&state).await;
     let cache_key = format!("cache:tlist:first:v1:{gen}");
     if is_first_screen {

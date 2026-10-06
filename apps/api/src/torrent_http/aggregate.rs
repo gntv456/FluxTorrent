@@ -154,10 +154,30 @@ async fn assemble(
         torrents::list_thanks(&state.repo.db, id),
         torrents::list_comments_as(&state.repo.db, id, 20, uid),
     );
-    let _ = uid;
+    // detail 里的 is_owner / purchased 是 viewer 态，而共享缓存存的是「第一个访问者」
+    // 的答案——必须按当前用户重算（0285 修过一次，被并行批次覆盖回 `let _ = uid;`，
+    // 症状：B 打开付费种看到「已购买/我发布」，付费墙被隐藏）。
+    let mut detail = shared.detail;
+    let own: Option<(bool, bool)> = sqlx::query_as(
+        "SELECT (t.owner_id = $2) AS is_owner, \
+                EXISTS(SELECT 1 FROM torrent_purchases p \
+                        WHERE p.torrent_id = t.id \
+                          AND p.user_id = $2) AS purchased \
+         FROM torrents t WHERE t.id = $1",
+    )
+    .bind(id)
+    .bind(uid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten();
+    if let Some((is_owner, purchased)) = own {
+        detail.is_owner = is_owner;
+        detail.purchased = purchased;
+    }
     Ok(TorrentAggregate {
         torrent: shared.torrent,
-        detail: shared.detail,
+        detail,
         files: shared.files,
         thanks: thanks.unwrap_or_default(),
         comments: match comments {

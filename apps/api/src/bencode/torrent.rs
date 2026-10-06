@@ -141,6 +141,10 @@ pub fn build_download_torrent(
             && k != b"url-list"
             && k != b"httpseeds"
             && k != b"dht_nodes"
+            // 下面无条件 push 了 private；原文件根级已有 private 时不去重
+            // 就会产出两个同名键（严格模式客户端直接 bdecode 失败，
+            // 而「删了重发 / 跨站复种」正是会走到这一步的常规动线）
+            && k != b"private"
     });
     pairs.push((
         b"announce".to_vec(),
