@@ -65,12 +65,15 @@ pub async fn gateway_config(state: &AppState) -> GatewayConfig {
 }
 
 impl GatewayConfig {
-    /// 通道可用：provider=epay 且三要素齐全
+    /// 通道可用：provider=epay 且三要素齐全。
+    /// P2（2026-10-06 安全审计）：密钥长度下限 16——回调安全完全依赖 MD5
+    /// 验签，弱密钥/短密钥可被离线碰撞伪造充值；短于 16 位视为未配置
+    /// （通道关闭比弱密钥裸奔安全）。
     pub fn available(&self) -> bool {
         self.provider == "epay"
             && !self.gateway_url.is_empty()
             && !self.pid.is_empty()
-            && !self.key.is_empty()
+            && self.key.len() >= 16
     }
 }
 

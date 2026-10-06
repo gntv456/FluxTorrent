@@ -104,7 +104,12 @@ pub(crate) async fn deliver(
             return PushResult::ServiceError;
         }
     };
-    let client = match reqwest::Client::builder().build() {
+    // P2（2026-10-06 安全审计）：禁跟随重定向——endpoint 经白名单 push 服务域
+    // 校验（subscribe 侧），302 跳内网地址必须拒绝而不是跟随（SSRF）
+    let client = match reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+    {
         Ok(c) => c,
         Err(_) => return PushResult::ServiceError,
     };

@@ -134,9 +134,14 @@ pub(crate) async fn process_event(
     // 物理可入账上限（P0-1 主防线）：增量不得超过「距上次上报秒数 × 站点声明速率」。
     // 旧实现只留痕不扣量，且 secs>=30 盲区让同秒连投的多笔大增量全额入账；
     // 首报（无基线）按一个 announce 周期计，不惩罚正常下载。
+    // P2（2026-10-06 安全审计）：首报窗口从 seed_cap/2（缺省 900s）收紧到
+    // ≤300s——旧口径下「换 peer_id/换种子无限首报」每颗种子都能吃满
+    // 900s × 速率上限；300s 足以覆盖正常客户端首个 announce 周期
+    // （interval 缺省 1800s 时客户端首次汇报的增量本来就该按下载启动
+    // 时刻起算，900s 的宽限只便宜了伪造者）。
     let secs = last
         .and_then(|(_, _, s)| s)
-        .unwrap_or((seed_cap / 2).max(60))
+        .unwrap_or((seed_cap / 2).max(60).min(300))
         .max(1);
     let allowance = credit_ceiling(&mut tx).await.saturating_mul(secs);
     let credit_up = raw_up.min(allowance);

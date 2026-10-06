@@ -18,8 +18,8 @@ pub(super) async fn resurrection_list(
                                                    // 审计修复（P2）：旧版 ORDER BY t.created_at ASC 恒取最老的 50 条——新死种永远
                                                    // 排不进列表（30 天活动排除口径下“最老”几乎全是无人问津的陈种）。改为按
                                                    // “最近一次有人活跃的时间”倒序：新鲜死种（刚断种、还有救的价值）优先露出。
-    // 0284 P1-5：契约前置可见——行内直接带 required_hours/reward_sparks，
-    // 认领前用户就能看到「要做多久、给多少」（此前只在 claim 响应里才揭晓）
+                                                   // 0284 P1-5：契约前置可见——行内直接带 required_hours/reward_sparks，
+                                                   // 认领前用户就能看到「要做多久、给多少」（此前只在 claim 响应里才揭晓）
     let rows: Vec<ResRow> = sqlx::query_as(
         "SELECT t.id AS torrent_id, t.name, t.size, \
                 COALESCE((SELECT value::int FROM site_settings WHERE \

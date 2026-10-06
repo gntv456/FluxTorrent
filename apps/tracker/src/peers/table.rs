@@ -211,8 +211,12 @@ impl PeerTable {
 
     /// connectable 抽样候选：优先未测（-1），其次轮替已测 peer（连通性会变化，需周期复测）。
     /// 返回 (key, ip, port) 供 main 的 tokio 任务做 TCP 回连。
+    /// P2（2026-10-06 安全审计「幽灵做种」）：未测候选超编时按时间轮转起点
+    /// 截断——旧版固定取哈希序前 n 个，大池下排名靠后的未测 peer 可能永远
+    /// 轮不到（CONN_UNTESTED 长期滞留），而「不可达且零上传」过滤对未测
+    /// peer 不生效。轮转后每个未测 peer 在 ceil(total/n) 轮内必被抽中一次。
     pub fn sample_probes(&self, n: usize) -> Vec<(PeerKey, String, u16)> {
-        let mut out = Vec::with_capacity(n);
+        let mut out: Vec<(PeerKey, String, u16)> = Vec::with_capacity(n);
         let mut retriable: Vec<(PeerKey, String, u16)> = Vec::new();
         for s in self.swarms.iter() {
             for p in s.peers.values() {
@@ -221,14 +225,17 @@ impl PeerTable {
                 } else if retriable.len() < n {
                     retriable.push((p.key.clone(), p.ip.clone(), p.port));
                 }
-                if out.len() >= n {
-                    break;
-                }
             }
-            // ZT81：原实现 inner break 后仍继续遍历其余桶（无未测 peer 时等于全表扫）。
-            if out.len() >= n {
-                break;
-            }
+        }
+        if out.len() > n {
+            let epoch = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs() as usize)
+                .unwrap_or(0)
+                / 300; // 抽样周期 5min，同轮内稳定、跨轮前进
+            let skip = epoch % out.len();
+            out.rotate_left(skip);
+            out.truncate(n);
         }
         for r in retriable {
             if out.len() >= n {

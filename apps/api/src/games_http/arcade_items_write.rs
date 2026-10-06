@@ -150,7 +150,12 @@ pub(super) async fn arcade_item_save(
     // （否则一件道具改成 collect 后还挂着旧效果，读侧会照旧把它当道具挂上）
     let mut game_effect = b.game_effect.clone().or(p_ge);
     if use_kind == "game" {
-        super::bigsmall_props::check_effect_shape(&game_effect, &b.name)?;
+        // writing=true：写侧按收紧后的倍率上限（×2.5）把关（P2 安全审计）
+        super::bigsmall_props::check_effect_shape_at(
+            &game_effect,
+            &b.name,
+            true,
+        )?;
     } else {
         game_effect = None;
     }

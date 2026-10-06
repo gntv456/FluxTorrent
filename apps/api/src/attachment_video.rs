@@ -37,6 +37,39 @@ fn parse_range(h: &str, total: i64) -> Option<(u64, u64)> {
     Some((start, end))
 }
 
+/// 附件读取的可见性判定（0294 / 安全审计 P1-2）：
+/// shared=任何成员（图床/帖子引用语义）；private=上传者本人或 staff；
+/// staff=仅 staff。返回 None 表示无权（对外统一 404，不泄存在性）。
+async fn visibility_denied(
+    db: &sqlx::PgPool,
+    uid: i64,
+    sha: &str,
+) -> DomainResult<Option<bool>> {
+    // class_id 顺带取：staff 读 private/staff 附件均放行
+    let row: Option<(String, i64)> = sqlx::query_as(
+        "SELECT a.visibility, u.class_id FROM attachments a \
+         JOIN users u ON u.id = $1 WHERE a.sha256 = $2 AND a.user_id <> $1",
+    )
+    .bind(uid)
+    .bind(sha)
+    .fetch_optional(db)
+    .await
+    .map_err(internal)?;
+    Ok(row.map(|(vis, class)| {
+        // 他人行：private 仅 staff 可读；staff 档同样仅 staff；shared 放行
+        vis != "shared" && class < 90
+    }))
+}
+
+/// 附件读取限流（P2，2026-10-06 安全审计）：读取是「S3/本地盘 IO + DB 查询」
+/// 路径，登录用户可循环打。60 次/分钟（页面一次加载几十张缩略图远够）。
+async fn read_throttled(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    uid: i64,
+) -> DomainResult<()> {
+    crate::http::throttle(state, format!("att:{}", uid)).await
+}
+
 /// HEAD：预检长度与可区间性（<video> 元数据预载依赖）。
 #[head("/attachments/{sha}")]
 pub async fn head_attachment(
@@ -44,10 +77,16 @@ pub async fn head_attachment(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<String>,
 ) -> DomainResult<HttpResponse> {
-    require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
     let sha = path.into_inner();
     if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(DomainError::Validation("sha256 格式无效".into()));
+    }
+    if visibility_denied(&state.repo.db, auth.id, &sha)
+        .await?
+        .unwrap_or(false)
+    {
+        return Err(DomainError::NotFound(0));
     }
     let row: Option<(String, i64)> =
         sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")
@@ -84,10 +123,17 @@ pub async fn serve_attachment(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<String>,
 ) -> DomainResult<HttpResponse> {
-    require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
+    read_throttled(&state, auth.id).await?;
     let sha = path.into_inner();
     if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(DomainError::Validation("sha256 格式无效".into()));
+    }
+    if visibility_denied(&state.repo.db, auth.id, &sha)
+        .await?
+        .unwrap_or(false)
+    {
+        return Err(DomainError::NotFound(0));
     }
     let row: Option<(String, i64)> =
         sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")

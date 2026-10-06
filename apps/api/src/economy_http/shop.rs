@@ -177,15 +177,19 @@ async fn shop_buy(
         }
     }
 
-    // 重放＝这个请求已经处理过：既不能再插订单行，也不能再发效果。
-    // 旧版这里写 `let _ = outcome;` 把 Replayed 吞掉继续往下走，而卡牌类
-    // （补签/改名/临时邀请）会用 `idem:2..idem:N` 的新行绕过扣款——
-    // 同一 idempotency_key 先 qty=1 买一次、再 qty=100 买一次，
-    // 第二次分文不花却领到 99 张券（券可兑 30 天邀请 → 批量开小号）。
+    // 重放＝这个请求已经处理过。不能再插订单行；效果补发**允许**（P2，
+    // 2026-10-06 安全审计修订）：旧版 Replayed 直接 return，而效果 CAS
+    // 「先置位后执行」——apply 中途失败时置位已生效，重试又被 Replayed
+    // 分支拦下，效果永远补不回（花钱买空气）。现在 Replayed 时检查有无
+    // 「已扣款但效果未置位」的订单行：有则走下方正常 CAS/apply 路径补发
+    // （CAS 的 NOT effect_applied 条件天然只补未发的），没有才按原单返回。
+    // 历史注：更早版本把 Replayed 整个吞掉继续走，卡牌类会用 `idem:2..N`
+    // 新行绕过扣款白拿券——本分支保持「不插新订单行」，只放补发。
     if matches!(outcome, crate::economy_http::SpendOutcome::Replayed) {
-        let orders: i64 = sqlx::query_scalar(
+        let pending: i64 = sqlx::query_scalar(
             "SELECT count(*) FROM shop_orders WHERE user_id = $1 \
-             AND (idempotency_key = $2 OR idempotency_key LIKE $3)",
+             AND (idempotency_key = $2 OR idempotency_key LIKE $3) \
+             AND NOT effect_applied",
         )
         .bind(auth.id)
         .bind(&idem)
@@ -193,16 +197,34 @@ async fn shop_buy(
         .fetch_one(&state.repo.db)
         .await
         .unwrap_or(0);
+        if pending == 0 {
+            let orders: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM shop_orders WHERE user_id = $1 \
+                 AND (idempotency_key = $2 OR idempotency_key LIKE $3)",
+            )
+            .bind(auth.id)
+            .bind(&idem)
+            .bind(format!("{}:%", idem))
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(0);
+            tracing::info!(
+                user = auth.id,
+                item = body.item_id,
+                "商店购买重放，按原单返回"
+            );
+            return Ok(ok(serde_json::json!({
+                "replayed": true,
+                "item_id": body.item_id,
+                "orders": orders,
+            })));
+        }
         tracing::info!(
             user = auth.id,
             item = body.item_id,
-            "商店购买重放，按原单返回"
+            pending,
+            "商店购买重放，补发未生效效果"
         );
-        return Ok(ok(serde_json::json!({
-            "replayed": true,
-            "item_id": body.item_id,
-            "orders": orders,
-        })));
     }
 
     // 订单落库（幂等键唯一）。卡牌类（补签/改名/临时邀请）库存口径 = 订单行数

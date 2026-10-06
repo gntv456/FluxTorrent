@@ -89,12 +89,8 @@ async fn admin_user_prop_revoke(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::PROP_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     let order_id = path.into_inner();
     let (uid, item_id, name) = crate::admin_http::reclaim_order(
         &state.repo.db,

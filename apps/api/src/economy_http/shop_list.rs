@@ -97,19 +97,17 @@ pub(super) async fn shop_items(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
             rows.into_iter()
-                .map(
-                    |(id, name, kind, price, config, owned, stock_left)| {
-                        ShopItem {
-                            id,
-                            name,
-                            kind,
-                            price,
-                            config,
-                            owned,
-                            stock_left,
-                        }
-                    },
-                )
+                .map(|(id, name, kind, price, config, owned, stock_left)| {
+                    ShopItem {
+                        id,
+                        name,
+                        kind,
+                        price,
+                        config,
+                        owned,
+                        stock_left,
+                    }
+                })
                 .collect()
         }
         None => {
@@ -129,17 +127,15 @@ pub(super) async fn shop_items(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
             rows.into_iter()
-                .map(
-                    |(id, name, kind, price, config, stock_left)| ShopItem {
-                        id,
-                        name,
-                        kind,
-                        price,
-                        config,
-                        owned: false,
-                        stock_left,
-                    },
-                )
+                .map(|(id, name, kind, price, config, stock_left)| ShopItem {
+                    id,
+                    name,
+                    kind,
+                    price,
+                    config,
+                    owned: false,
+                    stock_left,
+                })
                 .collect()
         }
     };

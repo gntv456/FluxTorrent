@@ -232,11 +232,12 @@ async fn admin_grants(
             .unwrap_or_default();
             let ids: Vec<i64> = people.iter().map(|p| p.0).collect();
             first["target_ids"] = serde_json::json!(ids);
-            first["target_users"] = serde_json::json!(
-                people.iter().map(|p| serde_json::json!({
+            first["target_users"] = serde_json::json!(people
+                .iter()
+                .map(|p| serde_json::json!({
                     "id": p.0, "username": p.1,
-                })).collect::<Vec<_>>()
-            );
+                }))
+                .collect::<Vec<_>>());
         }
     }
     Ok(ok(out))

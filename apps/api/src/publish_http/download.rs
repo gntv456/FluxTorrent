@@ -4,7 +4,7 @@
 use actix_web::{get, web, HttpRequest, HttpResponse};
 
 use crate::errors::{DomainError, DomainResult};
-use crate::http::require_auth;
+use crate::http::{require_auth, throttle};
 use crate::state::AppState;
 use crate::torrents;
 
@@ -17,6 +17,11 @@ pub async fn download(
     use actix_web::body::BoxBody;
 
     let auth = require_auth(&req, &state).await?;
+    // P2（2026-10-06 安全审计）：下载是「动态 bencode 重编码 + 扣费事务 +
+    // 读原始种子文件」的高成本路径，登录用户可循环打——加 20 次/分钟
+    // per-user 限流（正常使用远够：浏览器单次点击 1 次，RSS 走独立
+    // passkey 通道不受影响）。
+    throttle(&state, format!("dl:{}", auth.id)).await?;
     let torrent_id = path.into_inner();
     // 付费下载（0086）：免费/发布者/已购直接放行，否则扣费（余额不足拦截）
     torrents::charge_for_download(&state.repo.db, auth.id, torrent_id).await?;

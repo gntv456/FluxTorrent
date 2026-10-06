@@ -55,6 +55,34 @@ async fn subscribe(
             "endpoint 必须为 https 推送服务地址".into(),
         ));
     }
+    // P2（2026-10-06 安全审计）：内网/回环 endpoint 拒收——站点会向该地址
+    // POST（E2E 加密 payload），可被当内网探测 oracle。仅放行公网域名/IP。
+    if let Ok(u) = url::Url::parse(&body.endpoint) {
+        let private = matches!(
+            u.host_str(),
+            Some(h)
+                if h == "localhost"
+                    || h.ends_with(".localhost")
+                    || h.ends_with(".internal")
+                    || h.ends_with(".local")
+                    || h.split('.').count() == 1
+                    || h.starts_with("127.")
+                    || h.starts_with("10.")
+                    || h.starts_with("192.168.")
+                    || h.starts_with("169.254.")
+                    || h.starts_with("0.")
+                    || h.starts_with("[::1]")
+        ) || matches!(u.host_str(),
+            Some(h) if h.starts_with("172.")
+                && h.split('.').nth(1)
+                    .and_then(|o| o.parse::<u8>().ok())
+                    .map_or(false, |o| (16..=31).contains(&o)));
+        if private {
+            return Err(DomainError::Validation(
+                "endpoint 不允许指向内网地址".into(),
+            ));
+        }
+    }
     for t in &body.topics {
         if !VALID_TOPICS.contains(&t.as_str()) {
             return Err(DomainError::Validation(format!(

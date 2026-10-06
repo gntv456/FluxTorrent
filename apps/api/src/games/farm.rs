@@ -166,21 +166,31 @@ pub fn market_window_start(ts: i64) -> i64 {
 
 /// 确定性市场价：基准价 ±50% 波动，同一价格窗口内稳定。
 /// 用窗口起点做种子（不是真随机），保证全站所有用户同一窗口看到同一价格。
-/// 审计修复（P1 套利）：买种与收获此前共用同一确定性因子——低价窗（0.5x）买入、
-/// 高价窗（1.5x）收获可稳定锁定利润。现买卖两侧使用错开的独立哈希（salt 不同 →
-/// 因子近似独立），期望收益回到作物表本身的档位差（0011：80/100 … 4800/5000，
-/// 全档微亏防刷），波动只剩赌运气，无确定性正 EV 策略。
+/// 2026-10-06 安全审计 P1-1 后本函数**只用于行情展示**——实际买种扣费与
+/// 收获入账都改用 `roll_market_factor` 在请求内真随机掷出（见下）。
 pub fn market_price(seed_price: i64, window_start: i64) -> i64 {
     let unit = market_unit(window_start, 0);
     let factor = 50 + (unit % 101); // 50..150
     (seed_price * factor as i64) / 100
 }
 
-/// 收获侧市场价（与买种侧 salt 错开，消除「同因子低买高卖」套利）
-pub fn harvest_market_price(base_yield: i64, window_start: i64) -> i64 {
-    let unit = market_unit(window_start, 0x5DEECE66D);
-    let factor = 50 + (unit % 101); // 50..150
-    (base_yield * factor as i64) / 100
+/// 市场因子：请求内服务端真随机掷出（2026-10-06 安全审计 P1-1）。
+///
+/// 旧实现买/卖两侧同为「窗口起点纯哈希」（salt 错开）——两因子虽独立但都
+/// **可离线预计算**：作弊者可筛「低价窗口买入 × 高价窗口收获」确定性套利
+/// （约 35-40% 组合 ROI>1）；只随机化收获侧也不够——专挑最低价买窗仍有
+/// 0.75×100/50 = 1.5 的期望 ROI（回归测试
+/// `random_buy_and_sell_factors_yield_house_edge` 锁此教训）。
+/// 因此**买种扣费与收获入账都在各自请求内**用本函数掷因子（thread_rng，
+/// CSPRNG），窗口行情价（market_price）降级为纯展示参考；两侧期望因子
+/// 均 ×1.0，作物回收率 0.90 < 1 的标定不受影响。
+pub fn roll_market_factor() -> i64 {
+    50 + rand::thread_rng().gen_range(0..101i64)
+}
+
+/// 按给定市场因子折算价格（roll_market_factor 的配套）。
+pub fn apply_market_factor(base: i64, factor: i64) -> i64 {
+    (base * factor) / 100
 }
 
 /// xorshift64* 窗口哈希 → 高 31 位；salt 区分买/卖两侧因子

@@ -165,23 +165,74 @@ fn market_price_within_bounds() {
     }
 }
 
-/// 审计修复（P1 套利）回归锁：买种侧与收获侧因子必须错开——
-/// 若两侧同因子，存在窗口对 (w_buy, w_sell) 使 seed 价 ×0.5 而 yield 价 ×1.5，
-/// 确定性利润 +200%。锁「同窗口下两侧因子不同的窗口占比 ≥ 80%」，
-/// 防止未来改哈希时不慎回到同因子。
+/// P1-1（2026-10-06 安全审计）回归锁：收获因子与任何窗口值无关。
+///
+/// 旧实现的套利形态：买种因子 f_b(W) 与收获因子 f_h(W) 都是窗口起点纯
+/// 哈希、可离线预计算 → 筛「f_b 低 × f_h 高」的窗口组合确定性正 EV。
+/// 现在收获因子由 roll_harvest_factor 在收获请求内真随机掷出——本测试
+/// 锁三件事：
+/// 1. 因子落在 50..=150（±50% 语义不变，期望 ×1.0，作物回收率 0.90 不变）；
+/// 2. 多次掷出的因子有分布宽度（不是常数/退化）；
+/// 3. 与买种因子**统计独立**：对任意固定买种因子，收获因子期望 ≈100
+///    （联合分布无筛选增益）——枚举 10^4 次「买低×卖高」组合，平均
+///    ROI 不得显著超过作物基准 0.75（容差 5%）。
 #[test]
-fn buy_and_harvest_factors_are_independent() {
-    let mut diff = 0;
-    let n = 200;
-    for w in 0..n {
-        let buy = market_price(10_000, w * 14400);
-        let sell = harvest_market_price(10_000, w * 14400);
-        if buy != sell {
-            diff += 1;
-        }
+fn harvest_factor_is_unpredictable_and_within_bounds() {
+    let n = 10_000;
+    let mut sum = 0i64;
+    let mut distinct = std::collections::HashSet::new();
+    for _ in 0..n {
+        let f = roll_market_factor();
+        assert!((50..=150).contains(&f), "factor {f} out of ±50% bounds");
+        sum += f;
+        distinct.insert(f);
     }
+    assert!(distinct.len() > 50, "factor distribution degenerated");
+    let mean = sum as f64 / n as f64;
+    assert!((95.0..=105.0).contains(&mean), "mean factor {mean} skewed");
+
+    // 旧攻击回归：挑最便宜买窗（窗口哈希仍可算）× 真随机卖因子。实测
+    // ROI 必须与「零信息增益」口径一致（= 7500×100/mean_min_buy）——证明
+    // 收获侧对攻击者没有任何可预测性。
+    let mut roi_sum = 0.0;
+    let mut min_buy_sum = 0.0;
+    for i in 0..n {
+        let min_buy = (0..101)
+            .map(|w| market_price(10_000, (i * 101 + w) * 14400))
+            .min()
+            .unwrap();
+        min_buy_sum += min_buy as f64;
+        let sell = apply_market_factor(7_500, roll_market_factor());
+        roi_sum += sell as f64 / min_buy as f64;
+    }
+    let roi = roi_sum / n as f64;
+    let mean_min_buy = min_buy_sum / n as f64;
+    // min_buy 已是折算价（≈10000×min_f/100 ≈ 5100）；E[sell] = 7500×E[f]/100 = 7500
+    let predicted = 7_500.0 / mean_min_buy;
     assert!(
-        (diff as f64 / n as f64) >= 0.8,
-        "buy/harvest factors too correlated: {diff}/{n}"
+        (roi - predicted).abs() / predicted < 0.05,
+        "harvest side leaked information: roi {roi} vs predicted {predicted}"
     );
+}
+
+/// P1-1 根治回归锁：买种与收获的**实际成交价**都用请求内真随机因子。
+/// 注意期望不是 0.75×E[fy]/E[fx]——E[fy/fx]（两独立均匀分布之比的期望）
+/// ≈ 0.825×1.33… 数值上 ≈ 1.10×0.75 = 0.826（重尾比值把期望抬高于中位数），
+/// 断言带 ±0.04 容差锁实测口径；关键语义是「对攻击者零信息」——任何挑窗
+/// 策略无法把期望推过 1（期望锁 < 0.90）。
+#[test]
+fn random_buy_and_sell_factors_yield_house_edge() {
+    let n = 20_000;
+    let mut roi_sum = 0.0;
+    for _ in 0..n {
+        let buy = apply_market_factor(10_000, roll_market_factor());
+        let sell = apply_market_factor(7_500, roll_market_factor());
+        roi_sum += sell as f64 / buy as f64;
+    }
+    let roi = roi_sum / n as f64;
+    assert!(
+        (0.79..=0.87).contains(&roi),
+        "expected house edge ≈0.826, got {roi}"
+    );
+    assert!(roi < 0.90, "house edge lost: ROI {roi} >= 0.90");
 }

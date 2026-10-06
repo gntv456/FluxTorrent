@@ -97,7 +97,10 @@ fn trust_param_ip() -> bool {
 /// 客户端 IP 判定（announce/scrape 共用——审计 10-06 第 3 条：scrape 曾只认
 /// socket 对端，LB 后全部 peer IP 变 LB 地址，与 announce 口径分叉）。
 /// 安全：不信任客户端自报 —— 仅显式配置代理时采用。优先级：
-/// TRUST_PROXY=1 时 XFF 首值（最接近真实客户端，反代须追加而非覆盖）
+/// TRUST_PROXY=1 时 XFF **右值**（P1-4，2026-10-06 安全审计：旧版取首值，
+/// 依赖「反代追加而非覆盖」——nginx 误配透传 `$http_x_forwarded_for` 时
+/// 客户端可伪造任意 IP 绕过 ip_bans/限流。右值=直连我们的那台反代追加的
+/// 那段，单层反代下即真实客户端 IP）
 /// > TRUST_PROXY_IP=1 时 ?ip= 参数 > socket 对端。
 pub(crate) fn client_ip(
     req: &actix_web::HttpRequest,
@@ -108,7 +111,7 @@ pub(crate) fn client_ip(
             .headers()
             .get("x-forwarded-for")
             .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.split(',').next())
+            .and_then(|v| v.split(',').next_back())
             .map(str::trim)
             .filter(|s| !s.is_empty())
         {

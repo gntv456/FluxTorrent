@@ -95,6 +95,33 @@ async fn admin_backup_run(
     } else {
         cfg_cmd.split_whitespace().map(String::from).collect()
     };
+    // P2（2026-10-06 安全审计）：argv[0] 可执行白名单——backup_docker_exec
+    // 来自站长配置，settings 写权限与备份权限若分离即成 RCE 通道。只放行
+    // 备份语义的可执行（pg_dump / docker / podman / sudo），其余当场拒绝。
+    const BACKUP_EXE_ALLOW: &[&str] = &[
+        "pg_dump",
+        "docker",
+        "podman",
+        "sudo",
+        "/usr/bin/pg_dump",
+        "/usr/bin/docker",
+        "/usr/local/bin/docker",
+        "/usr/bin/sudo",
+        "/usr/local/bin/pg_dump",
+    ];
+    // 裸名配置（pg_dump）按 basename 判定；带路径的配置须精确命中白名单全路径
+    let basename = argv[0].rsplit('/').next().unwrap_or(&argv[0]).to_string();
+    let allowed = BACKUP_EXE_ALLOW.iter().any(|a| {
+        *a == argv[0].as_str()
+            || (a.rsplit('/').next().unwrap_or(a) == basename
+                && !argv[0].contains('/'))
+    });
+    if !allowed {
+        return Err(DomainError::Validation(format!(
+            "backup_docker_exec 可执行 {:?} 不在白名单（pg_dump/docker/podman/sudo）",
+            argv[0]
+        )));
+    }
     let st = tokio::process::Command::new(&argv[0])
         .args(&argv[1..])
         .stdout(std::process::Stdio::piped())

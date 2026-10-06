@@ -78,8 +78,14 @@ mod tests {
         assert!(!viewer_scoped(&base), "默认视图无 viewer 维度");
         assert!(shared_cache_safe(&base, true, None), "默认首屏可共享");
         for f in [
-            TorrentFilter { bookmarked: true, ..Default::default() },
-            TorrentFilter { only_mine: true, ..Default::default() },
+            TorrentFilter {
+                bookmarked: true,
+                ..Default::default()
+            },
+            TorrentFilter {
+                only_mine: true,
+                ..Default::default()
+            },
             TorrentFilter {
                 status: Some("seeding".into()),
                 ..Default::default()

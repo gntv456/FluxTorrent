@@ -37,8 +37,10 @@ pub async fn setup_gate_mw(
         // 首启就死锁：改密被装机门拦 → 完不成向导（向导要鉴权）→ 站点永远装不完。
         "/api/v1/me/password",
         "/api/v1/compat/meta",
-        "/api/v1/metrics",
         // 版本页（0276 页尾 FluxTorrent 入口）：装机未完成也应能渲染
+        // P2（2026-10-06 安全审计）：/api/v1/metrics 移出白名单——端点自身
+        // 有 ANN_METRICS_TOKEN 门禁（未配 token 404），但带运营指标的端点
+        // 不该进匿名白名单（最小化原则）
         "/api/v1/about",
         "/api/v1/auth/email-policy",
     ];

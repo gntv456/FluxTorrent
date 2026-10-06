@@ -29,13 +29,12 @@ pub(super) async fn group_suggest(
     .await
     .unwrap_or(None);
     if let Some(gid) = lock {
-        let gname: String = sqlx::query_scalar(
-            "SELECT name FROM torrent_groups WHERE id = $1",
-        )
-        .bind(gid)
-        .fetch_one(db)
-        .await
-        .unwrap_or_default();
+        let gname: String =
+            sqlx::query_scalar("SELECT name FROM torrent_groups WHERE id = $1")
+                .bind(gid)
+                .fetch_one(db)
+                .await
+                .unwrap_or_default();
         return serde_json::json!({
             "locked": true, "group_id": gid, "name": gname,
         });

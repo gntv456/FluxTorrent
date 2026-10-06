@@ -25,12 +25,19 @@ use super::login_types::LoginReq;
 ///
 /// 只对**表单**路径生效：JSON 路径跨站必须走预检，CORS 已覆盖，
 /// 且本站前端就是 JSON —— 不动它就不会误伤自家登录。
-fn origin_allowed(req: &HttpRequest) -> bool {
+pub(crate) fn origin_allowed(req: &HttpRequest) -> bool {
     let Some(origin) =
         req.headers().get("origin").and_then(|v| v.to_str().ok())
     else {
         return true;
     };
+    origin_matches(req, origin)
+}
+
+/// 给定 Origin/Referer 值的同源判定（write_origin 中间件与表单闸共用）。
+/// 返回 false：空值、`null`（沙箱 iframe）、与本站 Host 不同源且不在
+/// CORS_ORIGINS 白名单内。
+pub(crate) fn origin_matches(req: &HttpRequest, origin: &str) -> bool {
     let origin = origin.trim();
     if origin.is_empty() || origin == "null" {
         return false;
@@ -162,13 +169,22 @@ pub async fn login(
         return Err(DomainError::InvalidCredentials);
     }
     // 2FA（启用者必须带 totp_code）。失败也落登录事件（reason=2：缺码/错码细分看返回错误）
+    // 安全审计 P1-3（2026-10-06）：TOTP 失败同样递增账户锁定计数——旧版只在密码
+    // 错误分支计数，密码已泄露者可对 6 位码低速持续爆破（换 IP 即绕 IP 维度限流）。
     if let Err(e) = crate::twofa_http::login_totp_check(
-        &state.repo.db,
+        &state,
         user.id,
         body.totp_code.unwrap_or(0),
     )
     .await
     {
+        {
+            use redis::AsyncCommands;
+            let lock_key = format!("acctlock:{}", body.username.to_lowercase());
+            let mut c = state.redis.clone();
+            let _: i64 = c.incr(&lock_key, 1).await.unwrap_or(0);
+            let _: () = c.expire(&lock_key, 900).await.unwrap_or(());
+        }
         let _ = sqlx::query(
                         "INSERT INTO login_events (user_id, ip, ok, \
              user_agent, reason) VALUES ($1, NULLIF($2,'')::inet, false, $3, 2)",

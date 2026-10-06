@@ -16,7 +16,10 @@ pub async fn user_public_profile(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
-    require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
+    // P2（2026-10-06 安全审计）：档案页含多个聚合子查询，登录用户可顺序
+    // 遍历 id 拉全站——加 60 次/分钟 per-user 限流（正常浏览远够）
+    crate::http::throttle(&state, format!("profile:{}", auth.id)).await?;
     let uid = path.into_inner();
     let profile: Option<PublicProfile> = sqlx::query_as(
         r#"

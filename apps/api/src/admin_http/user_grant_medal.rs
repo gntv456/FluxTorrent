@@ -33,12 +33,8 @@ pub(super) async fn user_grant_medal(
             ));
         }
     }
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::MEDAL_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     let (uid, medal_id) = path.into_inner();
     ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
     let exists: bool =

@@ -29,14 +29,8 @@ pub async fn torrent_suggest(
     if raw.chars().count() > 80 {
         return Err(DomainError::Validation("关键词过长".into()));
     }
-    let pat = format!(
-        "%{}%",
-        crate::torrents::esc_like(raw)
-    );
-    let prefix = format!(
-        "{}%",
-        crate::torrents::esc_like(raw)
-    );
+    let pat = format!("%{}%", crate::torrents::esc_like(raw));
+    let prefix = format!("{}%", crate::torrents::esc_like(raw));
     // 前缀命中（权重高，按长度升序贴近输入）+ trgm 相似兜底（拼错/缺头场景）
     let rows: Vec<(i64, String, Option<String>, i64)> = sqlx::query_as(
         r#"

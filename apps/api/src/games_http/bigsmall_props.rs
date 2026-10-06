@@ -14,10 +14,15 @@ use crate::errors::{DomainError, DomainResult};
 
 use super::pool::dberr;
 
-/// 倍率券的合法区间（千分）：×1 ~ ×5。上限是 EV 闸外的第二道闸 ——
-/// 道具越权放大派彩，站点回收口会被单局击穿。
+/// 倍率券的合法区间（千分）：×1 ~ ×2.5（写侧）。P2（2026-10-06 安全审计）：
+/// 写侧上限从 ×5 收紧到 ×2.5——EV 闸只校验奖池、不含道具威力，赢面 49% ×
+/// 赔率 1.9 的基础 EV 是 0.951，挂 ×5 券单局等效 9.5x（条件 EV≈4.6），
+/// 站长把高倍券配进低 anchor 池档/周常奖励即成增发口。读侧
+/// （MULT_MAX_READ）对既有存量 ≤×5 放行——收紧只在写侧拦新增/改值，
+/// 不剥夺已持有用户的存量道具。
 const MULT_MIN: i64 = 1000;
-const MULT_MAX: i64 = 5000;
+const MULT_MAX_WRITE: i64 = 2500;
+const MULT_MAX_READ: i64 = 5000;
 /// 护盾的合法区间（千分）：0.1% ~ 100%
 const SHIELD_MAX: i64 = 1000;
 
@@ -32,11 +37,21 @@ pub(super) struct Prop {
     pub value: i64,
 }
 
-/// 校验一件道具的 `game_effect` 形状（写侧与读侧共用）。
+/// 校验一件道具的 `game_effect` 形状。
 /// 形状不对 = 挂载时不知道改什么，必须当场拦下，别等到玩家点了按钮才炸。
+/// `writing=false` 为读侧口径（存量 ≤×5 放行）；写侧（物品编辑/新建）用
+/// `writing=true`（≤×2.5，见 MULT_MAX_WRITE 注释）。
 pub(super) fn check_effect_shape(
     v: &Option<Value>,
     name: &str,
+) -> DomainResult<()> {
+    check_effect_shape_at(v, name, false)
+}
+
+pub(super) fn check_effect_shape_at(
+    v: &Option<Value>,
+    name: &str,
+    writing: bool,
 ) -> DomainResult<()> {
     let Some(v) = v else {
         return Err(DomainError::Validation(format!(
@@ -51,10 +66,15 @@ pub(super) fn check_effect_shape(
             "「{name}」的 game_effect.game 不能为空"
         )));
     }
+    let mult_max = if writing {
+        MULT_MAX_WRITE
+    } else {
+        MULT_MAX_READ
+    };
     match effect {
-        "mult" if !(MULT_MIN..=MULT_MAX).contains(&value) => {
+        "mult" if !(MULT_MIN..=mult_max).contains(&value) => {
             Err(DomainError::Validation(format!(
-                "「{name}」倍率 value={value}‰ 越界（须 {MULT_MIN}~{MULT_MAX}）"
+                "「{name}」倍率 value={value}‰ 越界（须 {MULT_MIN}~{mult_max}）"
             )))
         }
         "shield" if !(1..=SHIELD_MAX).contains(&value) => {

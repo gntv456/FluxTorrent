@@ -82,13 +82,35 @@ pub fn validate_register(u: &NewUser) -> DomainResult<()> {
             "用户名仅允许字母数字下划线或中文".into(),
         ));
     }
-    if !u.email.contains('@') || u.email.len() < 5 {
+    if !valid_email(&u.email) {
         return Err(DomainError::Validation("邮箱格式无效".into()));
     }
     if u.password.len() < 8 {
         return Err(DomainError::Validation("密码至少 8 位".into()));
     }
     Ok(())
+}
+
+/// 严格邮箱校验（P2，2026-10-06 安全审计）：单一 validator 供注册/邀请/
+/// 找回等所有入口复用。拒空格/多 @/无点域/CRLF/过长——lettre 的 Mailbox
+/// 解析兜底头注入，这里在入库前就拦掉畸形形态。
+pub(crate) fn valid_email(s: &str) -> bool {
+    let s = s.trim();
+    if s.len() < 5 || s.len() > 254 || s.contains(char::is_whitespace) {
+        return false;
+    }
+    let Some((local, domain)) = s.rsplit_once('@') else {
+        return false;
+    };
+    // RFC 粗粒度：local 至少 1 字符且无连续点结尾；域须有至少一个点且
+    // 每段非空（拦截 "a@b"、"a@.com"、"a@b."）
+    !local.is_empty()
+        && !local.starts_with('.')
+        && !local.ends_with('.')
+        && domain.contains('.')
+        && !domain.starts_with('.')
+        && !domain.ends_with('.')
+        && !domain.contains("..")
 }
 
 /// 邀请码到期判定（旧站口径 72h，LIMITS.INVITE_TTL_HOURS）

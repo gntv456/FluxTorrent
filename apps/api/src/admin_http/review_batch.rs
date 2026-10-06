@@ -66,9 +66,7 @@ async fn review_batch(
         return Err(DomainError::Validation("未选择种子".into()));
     }
     if ids.len() > BATCH_MAX {
-        return Err(DomainError::Validation(
-            "单次最多处理 100 条".into(),
-        ));
+        return Err(DomainError::Validation("单次最多处理 100 条".into()));
     }
     let reason = body.reason.trim().to_string();
     if !body.approve && body.deny_reason_id.is_none() && reason.is_empty() {

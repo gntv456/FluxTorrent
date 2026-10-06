@@ -88,9 +88,8 @@ pub(super) async fn read_body(
             // 无 name 的 part：读完丢弃（不消费会把后续 field 留在半截流上）
             None => {
                 while let Some(chunk) = field.next().await {
-                    chunk.map_err(|e| {
-                        DomainError::Validation(e.to_string())
-                    })?;
+                    chunk
+                        .map_err(|e| DomainError::Validation(e.to_string()))?;
                 }
             }
         }

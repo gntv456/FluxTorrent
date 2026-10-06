@@ -154,10 +154,8 @@ async fn increment_bulk(
         );
     }
     if !body.classes.is_empty() {
-        selector.insert(
-            "classes".to_string(),
-            serde_json::json!(&body.classes),
-        );
+        selector
+            .insert("classes".to_string(), serde_json::json!(&body.classes));
     }
     if !body.roles.is_empty() {
         selector.insert("roles".to_string(), serde_json::json!(&body.roles));
@@ -189,8 +187,9 @@ async fn increment_bulk(
                     // 一批都没发出去 ⇒ 这就是普通的校验/库存拒绝，原样透传
                     // 状态码（400）。把它包成 500 会让站长以为服务端炸了，
                     // 然后去重试同一批。
-                    let _ = batch_finish(db, &batch_id, 0, "failed",
-                                         Some(&msg)).await;
+                    let _ =
+                        batch_finish(db, &batch_id, 0, "failed", Some(&msg))
+                            .await;
                     return Err(e);
                 }
                 // 前面几批是**真发出去了**的：把这批标成 partial 落库，
@@ -201,10 +200,7 @@ async fn increment_bulk(
                     &batch_id,
                     affected as i64,
                     "partial",
-                    Some(&format!(
-                        "第 {} 批失败：{msg}",
-                        done_chunks + 1
-                    )),
+                    Some(&format!("第 {} 批失败：{msg}", done_chunks + 1)),
                 )
                 .await;
                 return Err(DomainError::Internal(anyhow::anyhow!(

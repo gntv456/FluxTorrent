@@ -39,7 +39,8 @@ fn parse_effect(
             Some(v) => Effect::Spark(v),
             None => {
                 return Err(DomainError::Validation(
-                    "该道具配置里没有可用的魔力数额（spark），已拒绝发放".into(),
+                    "该道具配置里没有可用的魔力数额（spark），已拒绝发放"
+                        .into(),
                 ))
             }
         },
@@ -126,8 +127,10 @@ pub async fn user_grant_item(
     let mut granted = serde_json::Map::new();
     match &effect {
         Effect::Spark(amount) => {
-            let idem = format!("admin-grant-item:{uid}:{item_id}:{}",
-                uuid::Uuid::new_v4().simple());
+            let idem = format!(
+                "admin-grant-item:{uid}:{item_id}:{}",
+                uuid::Uuid::new_v4().simple()
+            );
             crate::economy_http::expect_spent(
                 earn_spark_tx(&mut tx, uid, *amount, "admin_grant_item", &idem)
                     .await?,
