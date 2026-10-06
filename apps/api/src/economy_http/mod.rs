@@ -13,6 +13,7 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(shop_buy)
         .service(my_spark)
         .service(my_ledger)
+        .service(my_orders)
         .service(bank_deposit)
         .service(bank_withdraw)
         .service(bank_list)
@@ -56,6 +57,7 @@ mod ledger;
 mod loan_repay;
 mod loans;
 mod loans_apply;
+mod my_orders;
 mod pool;
 mod recon;
 mod shop;
@@ -76,6 +78,7 @@ pub use ledger::*;
 pub use loan_repay::*;
 pub use loans::*;
 pub use loans_apply::*;
+pub use my_orders::*;
 pub use pool::*;
 pub use recon::*;
 pub use shop::*;

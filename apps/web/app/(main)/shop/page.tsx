@@ -39,6 +39,9 @@ export default async function ShopPage() {
           <span className="u">{dict.shop.balanceNote}</span>
         </div>
         <div className="tail">
+          <a className="btn btn-sm btn-ghost" href="/my/orders">
+            {dict.myOrders.title}
+          </a>
           <a className="btn btn-sm btn-ghost" href="/my-spark">
             {magic(dict.shop.earnMore)}
           </a>

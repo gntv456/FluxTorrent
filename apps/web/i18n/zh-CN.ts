@@ -4393,6 +4393,21 @@ const zhCnBase = {
     /** 道具列表行删除成功（admin-props 的 onDel；与头像框的 frameDeleted 区分） */
     delOk: "已删除",
     // 用户背包（admin-props-user-bag）
+    orders: {
+      title: "订单中心（全站购买记录）",
+      qUser: "按用户名搜索",
+      qUid: "按用户 UID 过滤",
+      onlyPending: "只看未发货",
+      colUser: "用户",
+      colItem: "商品",
+      colPrice: "价格",
+      colStatus: "状态",
+      applied: "已发货",
+      pending: "未发货",
+      colAt: "时间",
+      empty: "没有符合条件的订单",
+    },
+
     bagTitle: "用户背包（购买 + 发放）",
     qUid: "按用户 UID 过滤",
     thOrder: "单号",
@@ -5749,6 +5764,21 @@ const zhCnBase = {
     testSent: "测试消息已发送",
     serverDisabled: "服务端未配置 VAPID 密钥，推送暂不可用。",
     browserUnsupported: "当前浏览器不支持 Web Push。",
+  },
+  myOrders: {
+    title: "我的订单",
+    subtitle: "商城购买记录",
+    total: "共 {n} 笔",
+    colItem: "商品",
+    colKind: "类型",
+    colPrice: "价格",
+    colStatus: "状态",
+    colAt: "时间",
+    applied: "已发货",
+    pending: "未发货",
+    empty: "还没有订单——去商店逛逛",
+    prev: "上一页",
+    next: "下一页",
   },
   myspark: {
     title: "我的{magic}",
