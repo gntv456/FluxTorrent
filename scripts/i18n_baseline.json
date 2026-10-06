@@ -8405,12 +8405,12 @@
  ],
  "app/(main)/gacha/_inner.tsx": [],
  "components/admin-gacha.tsx": [
-  65,
-  96,
-  104,
-  112,
-  133,
-  134
+  75,
+  108,
+  116,
+  124,
+  149,
+  150
  ],
  "app/(auth)/email-verify/page.tsx": [
   48,

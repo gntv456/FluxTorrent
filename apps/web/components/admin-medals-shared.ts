@@ -28,6 +28,10 @@ export interface UserMedalRow {
   source: string;
   wearing: boolean;
   granted_at: string | null;
+  /** 到期时间（0291 后端补下发）。null = 永久 */
+  expires_at: string | null;
+  /** 已过期（后端算，避免前端再持一份「now」口径） */
+  expired: boolean;
 }
 
 /** 获取方式取值键；显示名在 i18n `adminMedals.getType`（三语），

@@ -25,6 +25,8 @@ export interface UserPropRow {
   kind: string;
   price: number;
   created_at: string;
+  /** 是否已生效（0291 后端补下发）：回收只对「0 价 + 未生效」的单成立 */
+  effect_applied: boolean;
 }
 
 export interface FrameRow {

@@ -2,13 +2,16 @@
 
 /**
  * G31 后台「抽卡运营」面板（方案 §5 G31-C 六 pane 的最小合体）：
- * 发券/发碎片表单（staff.rs 端点，幂等键 UI 侧自动生成——同参数重提
- * 会被 400「已发放过」拒绝，这是刻意的可审计语义）+ 池/卡/面板行只读总览。
+ * 发券/发碎片表单 + 池/卡/面板行只读总览。幂等键按「提交内容 + 当天」
+ * 派生（`@/lib/idem-key`，0291），所以同一天里连点两次是同一批，
+ * 服务端唯一约束会拒第二次——早先用 `Date.now()` 现造键时，这条承诺
+ * 并不成立（每次点击都是新键，双击就是两笔真发放）。
  * 池参数与卡定义的 CRUD 走 SQL/内容包（机制进代码、内容进包，方案 §3），
  * 本面板只做发放与巡检，不复制编辑器。
  */
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { idemKey } from "@/lib/idem-key";
 
 interface GrantForm {
   userId: string;
@@ -22,6 +25,7 @@ export function AdminGacha() {
   const [tk, setTk] = useState<GrantForm>(EMPTY);
   const [sh, setSh] = useState<GrantForm>(EMPTY);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
   const [stats, setStats] = useState<{
     banners: number;
     cards: number;
@@ -48,15 +52,21 @@ export function AdminGacha() {
       form: GrantForm,
     ) => {
       setMsg(null);
+      setBusy(true);
+      // 幂等键按提交内容算（同一天同参数 = 同一批）。此前这里是
+      // `ui-${kind}-${userId}-${Date.now()}`——每次点击都是新键，
+      // 后端那道唯一约束永远不会命中，双击就是两笔真发放。
+      const payload = {
+        user_id: Number(form.userId),
+        amount: Number(form.amount),
+        note: form.note,
+      };
       try {
         const d = await api.post<{ [k: string]: number }>(
           `/api/v1/admin/gacha/${kind}`,
           {
-            user_id: Number(form.userId),
-            amount: Number(form.amount),
-            note: form.note,
-            idempotency_key:
-              `ui-${kind}-${form.userId}-${Date.now()}`,
+            ...payload,
+            idempotency_key: idemKey(payload, "gacha"),
           },
         );
         const bal = d.ticketBalance ?? d.shardBalance;
@@ -70,6 +80,8 @@ export function AdminGacha() {
           ok: false,
           text: e instanceof ApiError ? e.message : String(e),
         });
+      } finally {
+        setBusy(false);
       }
     },
     [load],
@@ -114,7 +126,11 @@ export function AdminGacha() {
         onChange={(e) => set({ ...f, note: e.target.value })}
         required
       />
-      <button className="btn btn-primary text-sm" type="submit">
+      <button
+        className="btn btn-primary text-sm"
+        type="submit"
+        disabled={busy}
+      >
         发放
       </button>
     </form>

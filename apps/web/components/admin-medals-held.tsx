@@ -49,6 +49,7 @@ export function MedalHeldPanel({
             <td className="colhead">{at.thMedal}</td>
             <td className="colhead">{at.thSource}</td>
             <td className="colhead">{at.thWearing}</td>
+            <td className="colhead">{at.thExpiry}</td>
             <td className="colhead text-right">{at.thAction}</td>
           </tr>
         </thead>
@@ -66,6 +67,13 @@ export function MedalHeldPanel({
               <td>{h.medal_name}</td>
               <td>{h.source}</td>
               <td>{h.wearing ? at.wearing : "—"}</td>
+              <td>
+                {h.expires_at
+                  ? `${h.expires_at.slice(0, 10)}${
+                      h.expired ? ` · ${at.expiredMark}` : ""
+                    }`
+                  : at.forever}
+              </td>
               <td className="text-right">
                 <div className="flex justify-end gap-1">
                   <button
@@ -127,7 +135,7 @@ export function MedalHeldPanel({
           ))}
           {held.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-4 text-center text-sub">
+              <td colSpan={6} className="py-4 text-center text-sub">
                 {at.heldEmpty}
               </td>
             </tr>

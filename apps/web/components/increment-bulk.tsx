@@ -7,22 +7,15 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { kindsOf } from "./increment-bulk-kinds";
 import { BulkNotifyRow } from "./increment-bulk-notify";
+import {
+  bulkIdemKey, buildBulkPayload, type BulkResult, type ItemDef,
+  type MedalDef, type RoleDef,
+} from "./increment-bulk-idem";
+import { BulkLedger } from "./increment-bulk-ledger";
 
 /** 第八轮 0065：批量发放（好学 increment-bulk.php 口径）
  *  合并原「魔力增减 / 上传量增减」两个页签：火花/上传量/邀请/补签卡
  *  × 等级多选 / 职务多选 / 指定用户，支持负数（减）与 PM 通知。 */
-
-interface RoleDef { key: string; name: string }
-interface BulkResult {
-  affected: number;
-  targets: number;
-  kind: string;
-  amount: number;
-  batch_id?: string;
-  target_ids?: number[];
-}
-interface MedalDef { id: number; name: string }
-interface ItemDef { id: number; name: string; kind: string }
 
 export function IncrementBulk() {
   const { dict, currency } = useI18n();
@@ -46,6 +39,8 @@ export function IncrementBulk() {
   const [email, setEmail] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // 发放成功后自增，台账跟着回读（不然发完这一屏还是空的）
+  const [ledTick, setLedTick] = useState(0);
 
   const flash = useCallback((m: string) => {
     setMsg(m);
@@ -64,21 +59,10 @@ export function IncrementBulk() {
   const kindHint = KINDS.find(([k]) => k === kind)?.[2] ?? "";
 
   function buildPayload(): Record<string, unknown> {
-    const payload: Record<string, unknown> = {
-      kind,
-      amount: Number(amount),
-      classes: [...classes],
-      roles,
-      user_ids: userIds.split(/[,，\s]+/).map(Number).filter((n) => n > 0),
-    };
-    if (days.trim()) payload.days = Number(days);
-    if (kind === "medal" && medalId) payload.medal_id = Number(medalId);
-    if (kind === "item" && itemId) payload.item_id = Number(itemId);
-    if (subject.trim()) payload.subject = subject.trim();
-    if (body.trim()) payload.body = body.trim();
-    payload.sender = sender;
-    if (email) payload.email = true;
-    return payload;
+    return buildBulkPayload({
+      kind, amount, classes: [...classes], roles, userIds, days,
+      medalId, itemId, subject, body, sender, email,
+    });
   }
 
   // 提交可用性（0286）：两个按钮共用——数量/勋章/道具/受众齐备
@@ -93,13 +77,23 @@ export function IncrementBulk() {
   async function submit(dry: boolean) {
     if (!dry && !window.confirm(t.confirmRun)) return;
     setBusy(true);
+    const payload = buildPayload();
     try {
-      const r = await api.post<BulkResult>("/api/v1/admin/increment-bulk", {
-        ...buildPayload(),
-        ...(dry ? { dry_run: true } : {}),
-      });
+      // 幂等键（0291）：同一天里同一份表单内容算同一批，双击/连点会被后端拒。
+      // 试运行不占键（它不发放）。
+      const r = await api.post<BulkResult>(
+        "/api/v1/admin/increment-bulk",
+        dry
+          ? { ...payload, dry_run: true }
+          : { ...payload, idempotency_key: bulkIdemKey(payload) },
+      );
       if (dry) {
-        flash(t.dryOk.replace("{n}", String(r.targets)).replace("{ids}", (r.target_ids ?? []).join(", ")));
+        const stock = r.stock_ok === false ? t.dryStockBad : "";
+        flash(
+          t.dryOk
+            .replace("{n}", String(r.targets))
+            .replace("{ids}", (r.target_ids ?? []).join(", ")) + stock,
+        );
         return;
       }
       const label = KINDS.find(([k]) => k === kind)?.[1] ?? kind;
@@ -109,8 +103,10 @@ export function IncrementBulk() {
           .replace("{amount}", amount)
           .replace("{n}", String(r.targets))
           .replace("{m}", String(r.affected))
-          .replace("{pm}", subject.trim() ? t.donePm : ""),
+          .replace("{pm}", subject.trim() ? t.donePm : "")
+          + ` · ${r.batch_id ?? ""}${r.ledger && r.ledger !== "ok" ? ` · ${t.ledgerWarn}` : ""}`,
       );
+      setLedTick((v) => v + 1);
       setClasses(new Set());
       setRoles([]);
       setUserIds("");
@@ -294,6 +290,10 @@ export function IncrementBulk() {
         </table>
         </div>
       </section>
+      <BulkLedger
+        kindLabel={(k) => KINDS.find(([x]) => k === x)?.[1] ?? k}
+        tick={ledTick}
+      />
     </div>
   );
 }
