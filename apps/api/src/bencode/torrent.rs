@@ -120,6 +120,7 @@ pub fn parse_torrent(bytes: &[u8]) -> Result<ParsedTorrent, String> {
 /// 生成下载用 .torrent：重新注入本站 announce（含 passkey，M05）。
 /// announce_fallbacks 非空时按 BEP12 追加 announce-list（单 tier：首选地址 + 回退地址，
 /// 如 https 首选 + http 回退），客户端汇报失败时自动降级。
+/// info 字典整段保留原始字节（不重编码）：键序非标准的种子 info_hash 与上传时一致。
 pub fn build_download_torrent(
     raw: &[u8],
     announce_url: &str,
@@ -177,10 +178,36 @@ pub fn build_download_torrent(
     if !pairs.iter().any(|(k, _)| k == b"encoding") {
         pairs.push((b"encoding".to_vec(), Bencode::Bytes(b"UTF-8".to_vec())));
     }
-    let rebuilt = Bencode::Dict(pairs);
     let mut out = Vec::new();
-    encode(&rebuilt, &mut out);
+    // info 值落原始区间字节：encode() 会把字典键排成 BEP3 序，键序非标准的
+    // 种子（重打包/跨站复种常见）重编码后 info_hash 与上传口径分叉——客户端
+    // 按原始字节算哈希，M05「info 不动」对这批种子曾失效（审计四轮实测复现）。
+    let raw_info = raw_info_span(raw).and_then(|(s, e)| raw.get(s..e));
+    encode_root_keep_info(&pairs, raw_info, &mut out);
     Ok(out)
+}
+
+/// 根字典编码：键按 BEP3 字节序排序；`info` 值若有原始区间则原样落字节，
+/// 无则退 `encode` 规范化（其余值一律 `encode`）。
+fn encode_root_keep_info(
+    pairs: &[(Vec<u8>, Bencode)],
+    raw_info: Option<&[u8]>,
+    out: &mut Vec<u8>,
+) {
+    out.push(b'd');
+    let mut sorted: Vec<_> = pairs.iter().collect();
+    sorted.sort_by(|a, b| a.0.cmp(&b.0));
+    for (k, v) in sorted {
+        encode(&Bencode::Bytes(k.clone()), out);
+        if k == b"info" {
+            if let Some(raw) = raw_info {
+                out.extend_from_slice(raw);
+                continue;
+            }
+        }
+        encode(v, out);
+    }
+    out.push(b'e');
 }
 
 /// 定位 .torrent 字节中顶层 info 字典的原始区间 [start, end)。
