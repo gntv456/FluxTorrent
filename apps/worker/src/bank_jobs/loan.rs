@@ -94,7 +94,8 @@ pub async fn bank_auto_deduct(
 ) -> anyhow::Result<u64> {
     let loans: Vec<(i64, i64, i64)> = sqlx::query_as(
         "SELECT id, user_id, remaining FROM bank_loans \
-         WHERE status = 'active' AND due_at < now() - ($1 || ' days')::interval \
+         WHERE status IN ('active', 'defaulted') \
+           AND due_at < now() - ($1 || ' days')::interval \
            AND (last_interest_date IS NULL OR last_interest_date <= CURRENT_DATE)",
     )
     .bind(deduct_days.to_string())

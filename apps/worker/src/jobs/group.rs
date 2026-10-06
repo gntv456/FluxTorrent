@@ -64,6 +64,19 @@ impl GroupCfg {
             .arg(item)
             .query_async(redis)
             .await;
+        // 0286：死信队列必须有界。此前全仓只有 RPUSH 没有裁剪，而 compose 给
+        // redis 配了 maxmemory 512mb + noeviction ⇒ 死信堆到上限后**所有** Redis
+        // 写操作一起失败（限流、幂等键、缓存、announce 投递全挂）。
+        // 保留最近 5000 条（人工补偿窗口足够），超出丢最旧。
+        let trimmed = redis::cmd("LTRIM")
+            .arg(self.dlq)
+            .arg(-5000)
+            .arg(-1)
+            .query_async::<redis::Value>(redis)
+            .await;
+        if let Err(e) = trimmed {
+            tracing::warn!(?e, dlq = %self.dlq, "死信队列裁剪失败，存在无界增长风险");
+        }
     }
 }
 

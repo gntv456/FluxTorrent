@@ -28,6 +28,22 @@ export interface PendingTorrent {
   owner_id: number | null;
   size: number;
   created_at: string;
+  /** 0285 补：审核队列内容面（旧版只有上面 5 个字段，版主看不到内容就要判生死） */
+  owner_name?: string | null;
+  category_name?: string | null;
+  small_descr?: string;
+  descr_excerpt?: string;
+  numfiles?: number;
+  screenshots?: number;
+  has_nfo?: boolean;
+  has_media_info?: boolean;
+  anonymous?: boolean;
+  official_tag?: boolean;
+  price?: number;
+  dup_hash?: number;
+  dup_name?: number;
+  owner_approved?: number;
+  owner_denied?: number;
 }
 
 export interface AppealRow {

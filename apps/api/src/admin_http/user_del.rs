@@ -130,7 +130,12 @@ pub async fn delete_user_cascade(
         "DELETE FROM reports WHERE reporter_id = $1",
         // —— 他方操作留痕列（置空，保留记录本身） ——
         "UPDATE torrents SET owner_id = NULL WHERE owner_id = $1",
-        "UPDATE audit_log SET actor_id = NULL WHERE actor_id = $1",
+        // 注：audit_log.actor_id **不能置空**。0266 的审计哈希链触发器拒绝任何
+        // audit_log UPDATE（`NEW.self_hash <> OLD.self_hash` 即 RAISE），
+        // 一句置空会让整条删号事务失败 ⇒ 「凡是产生过审计行的账号都删不掉」
+        // （实测 DELETE /admin/users/{id} 回 400「audit_log 中不可篡改，留痕保留」）。
+        // 这里刻意不动 audit_log：actor_id 继续指向该账号，而账号已被墓碑化成
+        // `deleted-<id>-<hash>`，归属信息不丢、链也不断。
         "UPDATE announcements SET author_id = NULL WHERE author_id = $1",
         "UPDATE appeals SET handled_by = NULL WHERE handled_by = $1",
         "UPDATE posts SET edited_by = NULL WHERE edited_by = $1",

@@ -89,6 +89,31 @@ pub async fn grant_tier(
     if n == 0 {
         return Ok(None);
     }
+    // 0286：档位奖励只能按 (人, 档) 发一次。旧版 CAS 只保证「本单不重发」，
+    // 而档位是按**累计实付**取最高档 ⇒ 跨过门槛后每一单都再发一遍同档奖励
+    // （魔力/上传量/邀请/勋章），小额多次捐赠＝无限复领。
+    let first_time = sqlx::query(
+        "INSERT INTO user_donation_tiers \
+         (user_id, min_usd, tier_name, order_no) \
+         VALUES ($1, $2, $3, $4) \
+         ON CONFLICT (user_id, min_usd) DO NOTHING",
+    )
+    .bind(user_id)
+    .bind(tier.min_usd)
+    .bind(&tier.label)
+    .bind(order_no)
+    .execute(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if first_time == 0 {
+        tracing::info!(
+            user = user_id,
+            tier = %tier.label,
+            "捐赠档位此前已发放，本单不再重复发放"
+        );
+        return Ok(Some(format!("{} 档此前已发放（不重复）", tier.label)));
+    }
     let mut parts: Vec<String> = Vec::new();
     // ① 魔力：earn_spark_tx（行锁+幂等键双保险）
     if tier.spark > 0 {
@@ -106,13 +131,16 @@ pub async fn grant_tier(
     // ② 上传量：traffic_ledger + users.uploaded 双写（6h reconcile 以流水为准）
     if tier.upload_gb > 0 {
         let bytes = tier.upload_gb as i64 * 1024 * 1024 * 1024;
+        // torrent_id 用 NULL（0285 起可空）而不是 0 哨兵：0 既不是真实种子，
+        // 又会被按种子聚合的报表当成一条有效行。
         sqlx::query(
             "INSERT INTO traffic_ledger (id, user_id, torrent_id, \
-             delta_up, delta_down, window_start) VALUES \
-             (nextval('traffic_ledger_id_seq'), $1, 0, $2, 0, now())",
+             delta_up, delta_down, window_start, reason) VALUES \
+             (nextval('traffic_ledger_id_seq'), $1, NULL, $2, 0, now(), $3)",
         )
         .bind(user_id)
         .bind(bytes)
+        .bind(format!("donation_tier {order_no}"))
         .execute(&mut **tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

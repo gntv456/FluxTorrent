@@ -47,6 +47,14 @@ pub async fn warn_user(
     if !(1..=52).contains(&body.weeks) {
         return Err(DomainError::Validation("警告时长需 1-52 周".into()));
     }
+    // 等级护栏（0285 实测补）：警告是伤害性动作，此前只判 user.warn，
+    // 实测 class 92 论坛版主可给 class 99 站长挂警告并真的落库。
+    crate::admin_http::guard::ensure_outranks(
+        &state.repo.db,
+        auth.class_id,
+        body.user_id,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE users SET warned_until = now() + make_interval(weeks \
          => $2), warned_reason = $3 WHERE id = $1 AND status < 2",

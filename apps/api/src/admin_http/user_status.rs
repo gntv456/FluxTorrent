@@ -34,6 +34,10 @@ async fn user_flags(
     let n = sqlx::query(
         "UPDATE users SET \
             download_enabled = COALESCE($2, download_enabled), \
+            download_locked_by = CASE \
+                WHEN $2 IS NULL THEN download_locked_by \
+                WHEN $2 THEN NULL \
+                ELSE 'staff' END, \
             suspended = COALESCE($3, suspended) \
          WHERE id = $1",
     )
@@ -103,13 +107,18 @@ async fn user_set_status(
     }
     // 操作者等级须严格大于目标用户（防同级/下级操作上级）
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
-    let n = sqlx::query("UPDATE users SET status = $2 WHERE id = $1")
-        .bind(body.user_id)
-        .bind(body.status)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    // 禁言必须落到论坛侧真正读的那面旗子：`users.forumpost`。
+    // 旧版只写 status=1，而鉴权层只拦 status>=2、论坛/漂流瓶只看 forumpost
+    // （且全仓没有任何写口）⇒ 点「禁言」后用户照样发帖回帖刷漂流瓶。
+    let n = sqlx::query(
+        "UPDATE users SET status = $2, forumpost = ($2 <> 1) WHERE id = $1",
+    )
+    .bind(body.user_id)
+    .bind(body.status)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
     if n == 0 {
         return Err(DomainError::Validation("用户不存在".into()));
     }

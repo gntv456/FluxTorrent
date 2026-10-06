@@ -74,7 +74,12 @@ async fn torrent_aggregate(
             .unwrap_or(None);
     if let Some(json) = hit {
         if let Ok(v) = serde_json::from_str::<TorrentAggregateShared>(&json) {
-            return Ok(ok(assemble(v, auth.id, &state, id).await?));
+            // 命中也要过闸门：缓存桶只按 reveal 分，而取数时管理视角/作者本人
+            // 会放宽到 approval_status IN (0,2,4)——不加这行，版主或作者打开
+            // 一条未过审种后的 30 秒内，任何普通会员都能拿到它的标题/描述/文件。
+            if v.torrent.approval_status == 1 {
+                return Ok(ok(assemble(v, auth.id, &state, id).await?));
+            }
         }
     }
 
@@ -82,8 +87,8 @@ async fn torrent_aggregate(
         torrents::get_torrent(&state.repo.db, id, reveal, Some(viewer));
     let detail_f = torrents::get_torrent_detail(&state.repo.db, id, auth.id);
     let files_f = torrents::list_files(&state.repo.db, id);
-    let nfo_f = torrents::get_nfo(&state.repo.db, id);
-    let tags_f = torrents::list_tags(&state.repo.db, id);
+    let nfo_f = torrents::get_nfo(&state.repo.db, id, viewer);
+    let tags_f = torrents::list_tags(&state.repo.db, id, viewer);
 
     // torrent/detail 失败才整体短路（种子不存在 → 404）；files/nfo/tags
     // 为纯静态块降级为空。detail/thanks 带 viewer 态，留在个人段实时算。
@@ -98,6 +103,8 @@ async fn torrent_aggregate(
         },
     );
     let (torrent_r, detail_r, files, nfo, tags) = joined;
+    // 只有对外可见的种子才允许进共享缓存（见上方命中判定）
+    let cacheable = matches!(&torrent_r, Ok(t) if t.approval_status == 1);
     let torrent = torrent_r?;
     let detail = detail_r?;
 
@@ -109,14 +116,16 @@ async fn torrent_aggregate(
         nfo,
         tags,
     };
-    if let Ok(json) = serde_json::to_string(&shared) {
-        let _: Result<(), _> = redis::AsyncCommands::set_ex(
-            &mut c,
-            shared_cache_key(id, reveal),
-            json,
-            30u64,
-        )
-        .await;
+    if cacheable {
+        if let Ok(json) = serde_json::to_string(&shared) {
+            let _: Result<(), _> = redis::AsyncCommands::set_ex(
+                &mut c,
+                shared_cache_key(id, reveal),
+                json,
+                30u64,
+            )
+            .await;
+        }
     }
     Ok(ok(assemble(shared, auth.id, &state, id).await?))
 }

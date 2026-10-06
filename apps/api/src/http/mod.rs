@@ -17,6 +17,7 @@ mod misc_handlers;
 mod news_fun;
 mod plugins;
 mod probes;
+mod reports_http;
 pub mod view_layout;
 
 pub use auth_infra::*;
@@ -134,7 +135,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::torrent_http::torrent_tag_put)
         .service(stats)
         .service(cheat_events_list)
-        .service(report_create)
+        .service(reports_http::report_create)
         .service(rss_info)
         .service(news_create)
         .service(news_update)

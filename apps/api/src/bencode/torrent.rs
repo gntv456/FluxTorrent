@@ -20,6 +20,8 @@ pub struct ParsedTorrent {
     pub size: i64,
     pub numfiles: i64,
     pub piece_length: i64,
+    /// `info.pieces` 的字节数（缺字段 = 0）。结构校验用它判「能不能真正校验分片」。
+    pub pieces_len: usize,
     /// 文件清单（多文件种按 files 列表展开为 path.join("/")；单文件种为 name 一行）。
     /// 上传时写 files 表供「文件列表 / 按文件名搜索」使用（修复前该表从不写入）
     pub files: Vec<(String, i64)>,
@@ -105,6 +107,11 @@ pub fn parse_torrent(bytes: &[u8]) -> Result<ParsedTorrent, String> {
         size,
         numfiles,
         piece_length,
+        pieces_len: info
+            .get(b"pieces")
+            .and_then(|v| v.as_bytes())
+            .map(|p| p.len())
+            .unwrap_or(0),
         files,
         raw: bytes.to_vec(),
     })
@@ -123,8 +130,18 @@ pub fn build_download_torrent(
         Bencode::Dict(p) => p.clone(),
         _ => return Err("root not dict".into()),
     };
-    // 移除旧 announce 列表并写入本站
-    pairs.retain(|(k, _)| k != b"announce-list" && k != b"announce");
+    // 移除旧 announce 列表并写入本站；同时剥掉**一切不经 tracker 的取源/取 peer 通道**：
+    // `url-list`(BEP19 HTTP 种子) 与 `httpseeds` 会让内容直接从站外 HTTP 服务器下载，
+    // 完全绕过 announce 计量（比率/H&R/免费时段全部失真，且等于把资源发给非会员）；
+    // `dht_nodes`(BEP51) 是内置 DHT 节点提示，配合未生效的 private 同样能绕 tracker。
+    // 这四个键都在 info 字典之外，删除不影响 info_hash / pieces。
+    pairs.retain(|(k, _)| {
+        k != b"announce-list"
+            && k != b"announce"
+            && k != b"url-list"
+            && k != b"httpseeds"
+            && k != b"dht_nodes"
+    });
     pairs.push((
         b"announce".to_vec(),
         Bencode::Bytes(announce_url.as_bytes().to_vec()),
@@ -154,10 +171,7 @@ pub fn build_download_torrent(
         ));
     }
     if !pairs.iter().any(|(k, _)| k == b"encoding") {
-        pairs.push((
-            b"encoding".to_vec(),
-            Bencode::Bytes(b"UTF-8".to_vec()),
-        ));
+        pairs.push((b"encoding".to_vec(), Bencode::Bytes(b"UTF-8".to_vec())));
     }
     let rebuilt = Bencode::Dict(pairs);
     let mut out = Vec::new();

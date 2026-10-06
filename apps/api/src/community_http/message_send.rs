@@ -93,6 +93,12 @@ async fn message_send(
             }
             _ => {}
         }
+        // 禁言同样挡住站短（0285）：骚扰多发生在私信，禁言不该只管论坛。
+        if crate::community_http::is_muted(&state.repo.db, auth.id).await {
+            return Err(DomainError::Validation(
+                "账号已被禁言，暂不能发私信".into(),
+            ));
+        }
         // 防刷：60s 一条
         let last: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
             "SELECT last_sent_at FROM message_flood WHERE user_id = $1",
@@ -174,21 +180,16 @@ async fn message_send(
     // Web Push（0283 P0-1）：私信即时推送——后台尽力而为，不阻塞响应。
     // 收信人 notice_prefs.push_message 为 false 时由 push_to_user 内部过滤。
     {
-        let (db, to, subj, txt) = (
-            state.repo.db.clone(),
-            to_id,
-            subject.clone(),
-            text.clone(),
-        );
-        let sender: String = sqlx::query_scalar(
-            "SELECT username FROM users WHERE id = $1",
-        )
-        .bind(auth.id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_default();
+        let (db, to, subj, txt) =
+            (state.repo.db.clone(), to_id, subject.clone(), text.clone());
+        let sender: String =
+            sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+                .bind(auth.id)
+                .fetch_optional(&state.repo.db)
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or_default();
         actix_web::rt::spawn(async move {
             crate::push_notify::push_to_user(
                 &db,

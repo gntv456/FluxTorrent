@@ -7,6 +7,19 @@ use sqlx::PgPool;
 /// 策略口径（§5.4）：hr_policy JSONB {"days": N, "seed_hours": H} —— 完成后 N 天内需累计做种 H 小时。
 /// B-01：完成时刻正处免费（free/x2free，含全局站免）窗口的种子豁免 H&R —— 行业惯例。
 pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
+    // 0286：`enable_hr` 此前是「后台能改、代码零读」的假开关。现在 no = 整段不跑
+    // （不建快照、不判违规、不自动停下载，也不自动恢复——冻结全部交回人工）。
+    let hr_on: bool = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings \
+         WHERE name = 'enable_hr') <> 'no', TRUE)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(true);
+    if !hr_on {
+        tracing::debug!("H&R 已由站点设定关闭，本轮跳过");
+        return Ok(());
+    }
     // ZT81（2026-10-02）增量窗口：原实现每轮全表扫 snatches（42 万行实测单轮
     // 38.6s、≈7GB 缓冲访问、279,852 次索引探测），而每轮真正要处理的只是新到的
     // 「完成」。completed_at 在事件消费时写为 now()，故按「近 N 小时」过滤即可
@@ -41,6 +54,10 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         FROM snatches s
         JOIN torrents t ON t.id = s.torrent_id
         WHERE s.completed_at > now() - make_interval(hours => $1::int)
+          -- 0286：只对「当前对外可见」的种子建义务。此前无此判定，
+          -- 待审/被拒/回收站里的种子同样给会员记 H&R 责任（且删种会连带
+          -- 级联掉证据，等于一边误判一边免单）。
+          AND t.approval_status = 1
           AND NOT EXISTS (SELECT 1 FROM hr_snapshots h WHERE h.user_id = s.user_id AND h.torrent_id = s.torrent_id)
           AND COALESCE(t.hr_policy->>'enabled', 'true')::boolean
           -- 0072 buffer 豁免（U3D hitrun.buffer 口径）：下载量不足种子 10% 视为误触/秒删，不计 H&R
@@ -67,13 +84,17 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     .await?;
 
     // 2) 刷新累计做种秒数（快照口径：snatches.seeded_seconds）。
-    //    ZT81：只刷新「近 6h 仍在 announce」的 snatch——不再全表 join。
-    //    不再 announce 的行为方 seconds 本就停止增长，冻结值即正确值。
+    //    0286：新鲜度窗口改用站点统一口径 `max(2h, 2×announce_interval)`
+    //    （`sweep::stale_peer_threshold_secs`）。此前硬编码 6h，而 announce_interval
+    //    允许配到 86400s ⇒ 长间隔站点的保种者永远刷不进秒数，人人判违规。
+    let fresh_secs = super::sweep::stale_peer_threshold_secs(db).await;
     sqlx::query(
-                "UPDATE hr_snapshots h SET seeded_seconds = s.seeded_seconds, \
-         updated_at = now() FROM snatches s WHERE s.user_id = h.user_id AND s.torrent_id = h.torrent_id AND h.status = 'open' \
-         AND s.last_seen_at > now() - interval '6 hours'",
+        "UPDATE hr_snapshots h SET seeded_seconds = s.seeded_seconds, \
+         updated_at = now() FROM snatches s WHERE s.user_id = h.user_id \
+         AND s.torrent_id = h.torrent_id AND h.status = 'open' \
+         AND s.last_seen_at > now() - ($1::bigint * interval '1 second')",
     )
+    .bind(fresh_secs)
     .execute(db)
     .await?;
 
@@ -84,6 +105,9 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     )
     .execute(db)
     .await?;
+
+    // 3.2) 逾期后才补够做种的，把已落的违规自清（0286，实现在 hr_resolve.rs）
+    super::hr_resolve::resolve_met_violations(db).await?;
 
     // 3.5) 预警（0072，U3D prewarn 口径）：48h 内到期、未达标、未预警过的 → 站内信提醒。
     //      处罚前的缓冲带：教育站新人多，一次 PM 能挡掉大部分无意违规。
@@ -96,7 +120,8 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     .fetch_one(db)
     .await
     .unwrap_or(0);
-    let prewarned = super::hr_mail::prewarn_run(db, prewarn_hours as i32).await?;
+    let prewarned =
+        super::hr_mail::prewarn_run(db, prewarn_hours as i32).await?;
     if prewarned.rows_affected() > 0 {
         tracing::info!(n = prewarned.rows_affected(), "H&R pre-warnings sent");
         // 邮件通道（0283 P1-8）——本轮刚预警的用户补邮件，天然幂等
@@ -146,7 +171,6 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         on_violations(db, violated.rows_affected()).await;
     }
 
-
     // 5) hr_flag 刷新（独立函数，口径注释见 refresh_hr_flag）
     refresh_hr_flag(db, default_hr_hours as i32).await?;
     Ok(())
@@ -157,7 +181,10 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
 /// 审计修复（P1）：硬编码 14 天/120 小时与 hr_policy 可配口径脱节，逐种取
 /// policy；深测 2026-10-03：无 policy 种子的缺省同样走站点设定 hr_hours
 /// （与建快照口径一致）。
-async fn refresh_hr_flag(db: &PgPool, default_hr_hours: i32) -> anyhow::Result<()> {
+async fn refresh_hr_flag(
+    db: &PgPool,
+    default_hr_hours: i32,
+) -> anyhow::Result<()> {
     sqlx::query(
         // 审计修复（P1）：硬编码 14 天/120 小时与 hr_policy 可配口径脱节，逐种取 policy；
         // 深测 2026-10-03：无 policy 种子的缺省同样走站点设定 hr_hours（与建快照口径一致）
@@ -205,7 +232,7 @@ pub(crate) async fn hr_punish(db: &PgPool) -> anyhow::Result<()> {
         ),
         banned AS (
             UPDATE users u
-            SET download_enabled = FALSE
+            SET download_enabled = FALSE, download_locked_by = 'hr'
             FROM viol
             WHERE u.id = viol.user_id
               AND u.status < 2
@@ -233,33 +260,8 @@ pub(crate) async fn hr_punish(db: &PgPool) -> anyhow::Result<()> {
         );
     }
 
-    // ② 降回阈值以下 → 自动恢复下载。
-    // 口径注释：不区分当初被禁原因（见函数头取舍说明）——违规数低于阈值即恢复，
-    // 极小概率把其他原因禁用的账号一并恢复，换取 H&R 自助闭环不依赖人工。
-    let restored = sqlx::query(
-        r#"
-        UPDATE users u
-        SET download_enabled = TRUE
-        WHERE u.status < 2
-          AND NOT u.download_enabled
-          AND COALESCE((SELECT count(*) FROM hr_violations v
-                        WHERE v.user_id = u.id AND v.resolved_at IS NULL), 0) < $1
-          AND NOT EXISTS (
-              -- Ratio Watch 到期处置仍生效的用户不在此恢复（那边由管理组/观察期自愈管理）
-              SELECT 1 FROM users u2
-              WHERE u2.id = u.id AND u2.ratio_watch_until IS NOT NULL AND u2.ratio_watch_until < now()
-          )
-        "#,
-    )
-    .bind(limit)
-    .execute(db)
-    .await?;
-    if restored.rows_affected() > 0 {
-        tracing::info!(
-            n = restored.rows_affected(),
-            "H&R 违规降回阈值以下，已恢复下载权限"
-        );
-    }
+    // ② 违规降回阈值后解除下载锁（只解 H&R 自己锁的，0286）
+    super::hr_resolve::restore_hr_locks(db, limit).await?;
     Ok(())
 }
 

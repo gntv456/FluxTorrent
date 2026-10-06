@@ -12,6 +12,9 @@ pub async fn bank_demand_settle(db: &PgPool) -> anyhow::Result<u64> {
             SELECT a.id, a.user_id, a.balance, a.daily_rate_bp,
                    (CURRENT_DATE - COALESCE(a.last_interest_date, CURRENT_DATE)) AS days
             FROM bank_demand_accounts a
+            -- 被封/已注销的账号不再计息（0285）：旧版无此 join，
+            -- 封禁后利息照发并 1:1 兑回火花，等于给被封账号留了台提款机
+            JOIN users u ON u.id = a.user_id AND u.status < 2
             WHERE a.balance > 0
               AND a.last_interest_date < CURRENT_DATE
         ),

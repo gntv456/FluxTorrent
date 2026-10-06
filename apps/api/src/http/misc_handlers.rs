@@ -1,4 +1,5 @@
-//! me 杂项与站点面：my_torrentlist/bookmarks/stats/cheat_events/reports/rss_info。
+//! me 杂项与站点面：my_torrentlist/bookmarks/stats/cheat_events/rss_info。
+//! 举报受理在 0285 拆到 `http::reports_http`。
 //! 从 http.rs 按域拆出。
 
 use crate::torrents;
@@ -199,65 +200,6 @@ pub async fn cheat_events_list(
         })
         .collect();
     Ok(ok(serde_json::json!({ "items": items })))
-}
-
-// ============ 举报信箱（用户提交举报，进管理后台审核队列） ============
-
-#[derive(Deserialize)]
-struct ReportReq {
-    ref_type: String,
-    ref_id: i64,
-    reason: String,
-}
-
-#[post("/reports")]
-pub async fn report_create(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<ReportReq>,
-) -> DomainResult<impl Responder> {
-    let auth = require_auth(&req, &state).await?;
-    let allowed = ["torrent", "comment", "user", "subtitle", "forum"];
-    if !allowed.contains(&body.ref_type.as_str()) {
-        return Err(DomainError::Validation("非法的举报对象".into()));
-    }
-    if body.reason.trim().is_empty() || body.reason.len() > 500 {
-        return Err(DomainError::Validation("举报理由需 1-500 字".into()));
-    }
-    // 目标存在性校验（此前任意 ref_id 含不存在对象可无限提交）
-    let target_table = match body.ref_type.as_str() {
-        "torrent" => Some(("torrents", "approval_status = 1")),
-        "comment" => Some(("comments", "true")),
-        "user" => Some(("users", "status < 2")),
-        "subtitle" => Some(("subtitles", "true")),
-        "forum" => Some(("topics", "true")),
-        _ => None,
-    };
-    if let Some((table, extra)) = target_table {
-        let sql = format!(
-            "SELECT EXISTS(SELECT 1 FROM {table} WHERE id = $1 AND {extra})"
-        );
-        let exists: bool = sqlx::query_scalar(&sql)
-            .bind(body.ref_id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(false);
-        if !exists {
-            return Err(DomainError::NotFound(body.ref_id));
-        }
-    }
-    let id: i64 = sqlx::query_scalar(
-        "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) \
-         VALUES ($1, $2, $3, $4) RETURNING id",
-    )
-    .bind(auth.id)
-    .bind(&body.ref_type)
-    .bind(body.ref_id)
-    .bind(body.reason.trim())
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "id": id })))
 }
 
 #[get("/rss-info")]

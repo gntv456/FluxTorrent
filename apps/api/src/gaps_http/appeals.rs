@@ -248,10 +248,9 @@ pub async fn appeal_handle(
     if n == 0 {
         return Err(DomainError::Validation("申诉不存在或已处理".into()));
     }
-    // 0209 P1-8：受理即联动解封（可选）+ 双通道通知当事人。
-    // 此前 accept 只改 appeals 表，站长须再进用户详情手动恢复 status=0，
-    // 且被封者不能登录看 PM、也收不到任何处理结果。
-    let (user_id, email, unbanned): (i64, Option<String>, bool) =
+    // 0209 P1-8：受理即联动解封（可选）+ 双通道通知当事人（此前 accept 只改 appeals 表，
+    // 站长须手动恢复 status=0，且被封者不能登录看 PM、收不到任何处理结果）。
+    let (user_id, email, mut unbanned): (i64, Option<String>, bool) =
         sqlx::query_as(
             "SELECT a.user_id, u.email, \
              ($2 AND a.kind = 'ban' AND u.status >= 2) \
@@ -264,20 +263,14 @@ pub async fn appeal_handle(
         .map_err(|e| DomainError::Internal(e.into()))?
         .unwrap_or((0, None, false));
     if unbanned {
-        let restored = sqlx::query(
-            "UPDATE users SET status = 0 WHERE id = $1 AND status >= 2",
+        // 0285：解封需严格高于目标（旧版任何 staff 都能放出被封的管理员/站长）
+        unbanned = super::appeal_unban::restore_if_outranked(
+            &state,
+            auth.id,
+            auth.class_id,
+            user_id,
         )
-        .bind(user_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
-        if restored > 0 {
-            state
-                .repo
-                .audit(Some(auth.id), "appeal.unban", Some(user_id))
-                .await;
-        }
+        .await?;
     }
     if user_id > 0 {
         let site: String = sqlx::query_scalar(

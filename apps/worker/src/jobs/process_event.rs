@@ -12,12 +12,15 @@ fn truncate_chars(s: &str, n: usize) -> String {
 }
 
 /// 单事件计费（促销裁决 + snatch upsert + 流水 + 保种时长累计）
-/// 返回 torrent_id 供快照点刷收集（种子不存在返回 None）。
+/// 返回 torrent_id 供快照点刷收集（种子不存在/重复事件返回 None）。
 /// seed_cap：做种时长单次累计容忍窗（秒）= 2 × announce_interval，由 consume_announce 按站点设定算出
+/// event_id：Redis 流条目 id，作「恰好入账一次」的幂等键（0285）
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn process_event(
     db: &PgPool,
     ev: &AnnounceEvent,
     seed_cap: i64,
+    event_id: &str,
 ) -> anyhow::Result<Option<i64>> {
     // 未知种子的查询失败必须显式报错（重试），不能静默丢弃计费
     // 审计修复（P1）：announce 哈希是客户端「原始字节」口径；库内 info_hash 为规范化
@@ -96,71 +99,78 @@ pub(crate) async fn process_event(
 
     // BEP3：ev.up/down 是客户端累计总量 —— 先取出上次上报值换算增量（P0 修复）
     let mut tx = db.begin().await?;
-    let last: Option<(i64, i64)> = sqlx::query_as(
-                "SELECT last_up, \
-         last_down FROM snatches WHERE user_id = $1 AND torrent_id = $2 FOR UPDATE",
+
+    // 恰好入账一次（P0-1／0285）：同一事件被 PEL 回收或重投时直接跳过。
+    // 旧实现无幂等键，reclaim_stale(360s) 与 with_lock(900s) 超时窗重叠即双计。
+    let fresh = sqlx::query(
+        "INSERT INTO announce_seen (event_id, user_id) VALUES ($1, $2) \
+         ON CONFLICT (event_id) DO NOTHING",
+    )
+    .bind(event_id)
+    .bind(ev.user)
+    .execute(&mut *tx)
+    .await?
+    .rows_affected();
+    if fresh == 0 {
+        tracing::debug!(user = ev.user, torrent = torrent_id, "重复事件跳过");
+        tx.commit().await?;
+        return Ok(None);
+    }
+
+    let last: Option<(i64, i64, Option<i64>)> = sqlx::query_as(
+        "SELECT last_up, \
+         last_down, \
+         EXTRACT(EPOCH FROM (now() - last_seen_at))::bigint \
+         FROM snatches WHERE user_id = $1 AND torrent_id = $2 FOR UPDATE",
     )
     .bind(ev.user)
     .bind(torrent_id)
     .fetch_optional(&mut *tx)
     .await?;
-    let (last_up, last_down) = last.unwrap_or((0, 0));
+    let (last_up, last_down) = last.map(|(u, d, _)| (u, d)).unwrap_or((0, 0));
     // 计数器回绕/客户端重置时按 0 处理
     let raw_up = (ev.up - last_up).max(0);
     let raw_down = (ev.down - last_down).max(0);
-    let delta_up = (raw_up as f64 * up_mult) as i64;
-    let delta_down = (raw_down as f64 * down_mult) as i64;
+    // 物理可入账上限（P0-1 主防线）：增量不得超过「距上次上报秒数 × 站点声明速率」。
+    // 旧实现只留痕不扣量，且 secs>=30 盲区让同秒连投的多笔大增量全额入账；
+    // 首报（无基线）按一个 announce 周期计，不惩罚正常下载。
+    let secs = last
+        .and_then(|(_, _, s)| s)
+        .unwrap_or((seed_cap / 2).max(60))
+        .max(1);
+    let allowance = credit_ceiling(&mut tx).await.saturating_mul(secs);
+    let credit_up = raw_up.min(allowance);
+    let credit_down = raw_down.min(allowance);
+    let held_up = raw_up - credit_up;
+    let held_down = raw_down - credit_down;
+    let delta_up = (credit_up as f64 * up_mult) as i64;
+    let delta_down = (credit_down as f64 * down_mult) as i64;
 
-    // 实时速度反作弊（NP announce 侧口径）：本次上报增量 ÷ 距上次上报间隔 得均速，
-    // 超物理阈值（默认 2GB/s，site_settings.speed_alarm_bps 可调）→ 记 cheat_events。
-    // 首次上报（无 last 行）算不出间隔，跳过；只记事件不打断计费（离线复核后处置）。
-    if last.is_some() && (raw_up > 0 || raw_down > 0) {
-        let interval: Option<i64> = sqlx::query_scalar(
-            "SELECT EXTRACT(EPOCH FROM (now() - last_seen_at))::bigint \
-             FROM snatches WHERE user_id = $1 AND torrent_id = $2",
+    // 超上限留痕：agent 沿用 cheat_audit 的 torrent:{id} 约定、speed: 前缀区分来源，
+    // reason 带被扣量与证据，供管理组复核后用补量接口发还。
+    if last.is_some() && (held_up > 0 || held_down > 0) {
+        let _ = sqlx::query(
+            "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
+             VALUES ($1, $2, $3, $4) \
+             ON CONFLICT (user_id, agent, reason) DO UPDATE \
+               SET hits = cheat_events.hits + 1, last_seen = now()",
         )
         .bind(ev.user)
-        .bind(torrent_id)
-        .fetch_optional(&mut *tx)
-        .await
-        .ok()
-        .flatten();
-        if let Some(secs) = interval {
-            if secs >= 30 {
-                let bps = (raw_up.max(raw_down) as f64 / secs as f64) as i64;
-                let threshold: i64 = sqlx::query_scalar(
-                    "SELECT COALESCE((SELECT value FROM \
-                     site_settings WHERE name = 'speed_alarm_bps')::bigint, \
-                     2147483648)",
-                )
-                .fetch_one(&mut *tx)
-                .await
-                .unwrap_or(2_147_483_648);
-                if bps > threshold {
-                    // agent 字段沿用 cheat_audit 的 torrent:{id} 约定（speed: 前缀区分来源），reason 带证据
-                    let _ = sqlx::query(
-                        "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
-                         VALUES ($1, $2, $3, $4) \
-                         ON CONFLICT (user_id, agent, reason) DO UPDATE \
-                           SET hits = cheat_events.hits + 1, last_seen = now()",
-                    )
-                    .bind(ev.user)
-                    .bind(format!("speed:{torrent_id}"))
-                    .bind(&ev.ip)
-                    .bind(format!(
-                        "speed_anomaly {bps}B/s over {secs}s up={raw_up} down={raw_down}"
-                    ))
-                    .execute(&mut *tx)
-                    .await;
-                    tracing::warn!(
-                        user = ev.user,
-                        torrent = torrent_id,
-                        bps,
-                        "speed anomaly recorded"
-                    );
-                }
-            }
-        }
+        .bind(format!("speed:{torrent_id}"))
+        .bind(&ev.ip)
+        .bind(format!(
+            "over_ceiling held_up={held_up} held_down={held_down} secs={secs}"
+        ))
+        .execute(&mut *tx)
+        .await;
+        tracing::warn!(
+            user = ev.user,
+            torrent = torrent_id,
+            held_up,
+            held_down,
+            secs,
+            "增量超物理速率上限，超出部分未入账"
+        );
     }
 
     let seeding = ev.left == 0;
@@ -197,8 +207,8 @@ pub(crate) async fn process_event(
     )
     .bind(ev.user)
     .bind(torrent_id)
-    .bind(raw_up)
-    .bind(raw_down)
+    .bind(credit_up)
+    .bind(credit_down)
     .bind(ev.up)
     .bind(ev.down)
     .bind(!seeding)
@@ -239,20 +249,51 @@ pub(crate) async fn process_event(
     .execute(&mut *tx)
     .await?;
 
-    // 仅在有实际增量时落流水（避免零增量噪声）
+    // 零增量不落流水；0286：promotion_kind 是 0001 起无人写的死列 ⇒ 倍率无法追溯
     if delta_up > 0 || delta_down > 0 {
+        let (promo_code, promo_note) =
+            super::promo_audit::promo_audit(kind.as_deref(), global.as_deref());
         sqlx::query(
-            "INSERT INTO traffic_ledger (id, user_id, torrent_id, \
-             delta_up, delta_down, window_start) VALUES \
-             (nextval('traffic_ledger_id_seq'), $1, $2, $3, $4, now())",
+            "INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, \
+             delta_down, window_start, event_id, promotion_kind, reason) \
+             VALUES (nextval('traffic_ledger_id_seq'), \
+                     $1, $2, $3, $4, now(), $5, $6, $7)",
         )
         .bind(ev.user)
         .bind(torrent_id)
         .bind(delta_up)
         .bind(delta_down)
+        .bind(event_id)
+        .bind(promo_code)
+        .bind(promo_note)
         .execute(&mut *tx)
         .await?;
     }
     tx.commit().await?;
     Ok(Some(torrent_id))
+}
+
+/// 单次 announce 可入账的速率上限（字节/秒）：`traffic_credit_max_bps`（0285）优先，
+/// 回落 `speed_alarm_bps`（告警线），都缺省/非法时回落 2 GiB/s（与旧默认一致）。
+/// 夹在 [1 MiB/s, 1 TiB/s]：填 0 或非数字不得把全站流量清零，也不得放开成无上限。
+async fn credit_ceiling(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> i64 {
+    let r = sqlx::query_scalar::<_, i64>(
+        "SELECT COALESCE( \
+           MAX(CASE WHEN name = 'traffic_credit_max_bps' THEN NULLIF(value, '')::bigint END), \
+           MAX(CASE WHEN name = 'speed_alarm_bps' THEN NULLIF(value, '')::bigint END), \
+           2147483648) \
+         FROM site_settings \
+         WHERE name IN ('traffic_credit_max_bps', 'speed_alarm_bps')",
+    )
+    .fetch_optional(&mut **tx)
+    .await;
+    match r {
+        Ok(v) => v
+            .unwrap_or(2_147_483_648)
+            .clamp(1_048_576, 1_099_511_627_776),
+        Err(e) => {
+            tracing::warn!(?e, "速率上限设定读取失败，回落 2 GiB/s");
+            2_147_483_648
+        }
+    }
 }

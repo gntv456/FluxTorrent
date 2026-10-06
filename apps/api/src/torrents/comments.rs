@@ -111,6 +111,11 @@ pub async fn add_comment_as(
             }
             None => (None, None),
         };
+    // 禁言同样要挡住种子评论（0285）：旧版只有论坛与漂流瓶读 forumpost，
+    // 被禁言的人换个通道照样发言。
+    if crate::community_http::is_muted(db, user_id).await {
+        return Err(DomainError::Validation("账号已被禁言，暂不能评论".into()));
+    }
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO comments (torrent_id, user_id, body, parent_id, \
          reply_to_user) VALUES ($1, $2, $3, $4, $5) RETURNING id",

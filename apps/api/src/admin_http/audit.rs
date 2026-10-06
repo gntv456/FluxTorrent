@@ -14,6 +14,9 @@ struct AuditRow {
     id: i64,
     actor_id: Option<i64>,
     action: String,
+    /// 审计现场（0285）：目标 id / 理由 / 附加上下文。旧版读模型不选这列，
+    /// 面板只能看到「user.set_class」而不知道对谁做、为什么做。
+    detail: Option<String>,
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -28,7 +31,8 @@ async fn audit_query(
         .await?;
     let pattern = crate::http::like_pattern(&q.q);
     let rows: Vec<AuditRow> = sqlx::query_as(
-        "SELECT id, actor_id, action, created_at FROM audit_log \
+        "SELECT id, actor_id, action, \
+         ref::text AS detail, created_at FROM audit_log \
          WHERE action ILIKE $1 ORDER BY id DESC LIMIT 200",
     )
     .bind(pattern)

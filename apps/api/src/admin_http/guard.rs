@@ -20,7 +20,7 @@ pub(super) async fn staff(
 ///
 /// 用于所有会修改目标用户的端点。此前 status / flags / adjust 仅有 staff(>=90) 守卫，
 /// 导致总版主(93) 可封禁、挂起、扣减管理员(94) / 主管(95) / 站长(99) 的数据。
-pub(super) async fn ensure_outranks(
+pub(crate) async fn ensure_outranks(
     db: &sqlx::PgPool,
     actor_class: i32,
     target_user_id: i64,

@@ -3,6 +3,7 @@
 //! 按域拆分（300 行门禁）：登录辅助在 login_aux.rs，邮件在 mail.rs，找回密码端点在 reset.rs，验证码在
 //! captcha.rs，H&R 在 hr.rs，申诉在 appeals.rs，补签卡/等级在 misc.rs，愿望单在 wishlist.rs。
 
+mod appeal_unban;
 mod appeals;
 mod applications;
 mod captcha;

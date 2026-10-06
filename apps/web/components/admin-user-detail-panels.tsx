@@ -76,7 +76,7 @@ export function ProfilePanels({
           <div>
             <dt className="text-sub">Passkey</dt>
             <dd className="font-mono text-xs">
-              {d.passkey.slice(0, 8)}…{d.passkey.slice(-4)}
+              {d.passkey_masked}
             </dd>
           </div>
           <div>

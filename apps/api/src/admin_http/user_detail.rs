@@ -146,6 +146,32 @@ async fn user_grant_item(
     let Some((name, kind, config)) = item else {
         return Err(DomainError::NotFound(item_id));
     };
+    // 库存配额（0287 P3）：管理发放同样占池（单发 qty=1）
+    let stocked: Option<bool> = sqlx::query_scalar(
+                "UPDATE shop_items SET stock_used = stock_used + 1 \
+         WHERE id = $1 AND stock_quota IS NOT NULL \
+         RETURNING (stock_used <= stock_quota)",
+    )
+    .bind(item_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(within) = stocked {
+        if !within {
+            sqlx::query(
+                                "UPDATE shop_items \
+                 SET stock_used = stock_used - 1 \
+                 WHERE id = $1",
+            )
+            .bind(item_id)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            return Err(DomainError::Validation(
+                "该道具库存已发罄（stock_quota）".into(),
+            ));
+        }
+    }
     match kind.as_str() {
         "upload_credit" => {
             let gb = config.get("gb").and_then(|v| v.as_i64()).unwrap_or(0);

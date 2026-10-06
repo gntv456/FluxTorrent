@@ -90,3 +90,44 @@ fn download_rebuild_dedup_fallback() {
     let (root, _) = parse(&out).unwrap();
     assert!(root.get(b"announce-list").is_none());
 }
+
+#[test]
+fn download_rebuild_strips_offtracker_sources() {
+    let info = Bencode::Dict(vec![
+        (b"length".to_vec(), Bencode::Int(1024)),
+        (b"name".to_vec(), Bencode::Bytes(b"test.bin".to_vec())),
+        (b"piece length".to_vec(), Bencode::Int(16384)),
+        (b"pieces".to_vec(), Bencode::Bytes(vec![7u8; 20])),
+    ]);
+    let root = Bencode::Dict(vec![
+        (
+            b"announce".to_vec(),
+            Bencode::Bytes(b"http://old.example/announce".to_vec()),
+        ),
+        (
+            b"url-list".to_vec(),
+            Bencode::Bytes(b"http://evil.example/seed.bin".to_vec()),
+        ),
+        (
+            b"httpseeds".to_vec(),
+            Bencode::List(vec![Bencode::Bytes(b"http://evil/hs".to_vec())]),
+        ),
+        (b"dht_nodes".to_vec(), Bencode::List(vec![])),
+        (b"info".to_vec(), info),
+    ]);
+    let mut raw = Vec::new();
+    encode(&root, &mut raw);
+    let out = build_download_torrent(&raw, "http://t.example/announce/PK", &[])
+        .unwrap();
+    let (parsed, _) = parse(&out).unwrap();
+    // 这三个键都让内容绕过 tracker 直接到手（计量/风控全部失真）
+    assert!(parsed.get(b"url-list").is_none(), "url-list 未剥离");
+    assert!(parsed.get(b"httpseeds").is_none(), "httpseeds 未剥离");
+    assert!(parsed.get(b"dht_nodes").is_none(), "dht_nodes 未剥离");
+    assert!(parsed.get(b"private").is_some(), "private 标记丢失");
+    assert_eq!(
+        parse_torrent(&raw).unwrap().info_hash_hex,
+        parse_torrent(&out).unwrap().info_hash_hex,
+        "剥离不得改变 info_hash"
+    );
+}

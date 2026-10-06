@@ -85,6 +85,19 @@ pub async fn forum_access(
 }
 
 /// 发帖 10 秒防刷（postmanage/版主豁免）
+/// 账户级禁言判定（0285）：`users.forumpost` 是论坛/漂流瓶已经在读的那面旗子，
+/// 但种子评论与站短此前各查各的（或不查）。统一走这里，避免口径再次分叉。
+pub async fn is_muted(db: &sqlx::PgPool, user_id: i64) -> bool {
+    let ok: bool = sqlx::query_scalar(
+        "SELECT COALESCE(forumpost, TRUE) FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_one(db)
+    .await
+    .unwrap_or(true);
+    !ok
+}
+
 pub async fn forum_flood_check(
     db: &sqlx::PgPool,
     user_id: i64,

@@ -57,7 +57,7 @@ pub async fn consume_announce(
                 return Ok(true);
             }
         };
-        match process_event(db, &ev, seed_cap).await {
+        match process_event(db, &ev, seed_cap, id).await {
             Ok(Some(torrent_id)) => {
                 let _ = redis::cmd("DEL")
                     .arg(format!("flux:announce:fail:{id}"))
@@ -170,6 +170,19 @@ pub async fn consume_announce(
         .xtrim("flux:announce", redis::streams::StreamMaxlen::Approx(10000))
         .await
         .unwrap_or(());
+
+    // 幂等键表清理（0285）：重投/回收窗口最长 12 分钟，留 3 天已极宽；
+    // 就地跟着消费循环裁，不另开 job（避免「表在但没人清」的长跑泄漏）。
+    let purged = sqlx::query(
+        "DELETE FROM announce_seen WHERE seen_at < now() - interval '3 days'",
+    )
+    .execute(db)
+    .await
+    .map(|r| r.rows_affected())
+    .unwrap_or(0);
+    if purged > 20_000 {
+        tracing::info!(n = purged, "announce_seen 批量清理");
+    }
 
     // P0-1：快照点刷——仅本轮有事件的用户/种子（权威在流水，快照仅展示）
     if !touched_users.is_empty() {

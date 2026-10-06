@@ -108,6 +108,24 @@ pub async fn edit_torrent(
     if n == 0 {
         return Err(DomainError::NotFound(torrent_id));
     }
+    // 管理通道改他人种子必须逐种留痕（0285）：staff 编辑保持原审核状态（0170 口径），
+    // 而此前只写 audit_log、不写 torrent_operation_logs —— 在线种子的标题/描述/分类
+    // 被改写后，审核台与 /admin/torrent-ops 两端都看不出发生过什么。
+    if owner_id != editor.0 {
+        let _ = sqlx::query(
+            "INSERT INTO torrent_operation_logs \
+             (torrent_id, operator_id, action, detail) \
+             VALUES ($1, $2, 'staff_edit_keep_approved', $3)",
+        )
+        .bind(torrent_id)
+        .bind(editor.0)
+        .bind(serde_json::json!({
+            "owner_id": owner_id,
+            "editor_class": editor.1,
+        }))
+        .execute(db)
+        .await;
+    }
     Ok(keep_status)
 }
 
