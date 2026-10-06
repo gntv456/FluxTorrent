@@ -84,25 +84,28 @@ export function PropsPanel({
                 {new Date(p.created_at).toLocaleString(dateLocale(locale))}
               </td>
               <td className="text-right">
-                {[
-                  "upload_credit",
-                  "gift_spark",
-                  "invite",
-                  "temp_invite",
-                ].includes(p.kind) ? (
-                  <span className="text-sub">{at.instant}</span>
+                {p.price > 0 ? (
+                  /* 付费单不在回收范围（0291 与后端同规则）：删它就是白吞 */
+                  <span className="text-sub">{at.paid}</span>
+                ) : p.effect_applied ? (
+                  <span className="text-sub">{at.applied}</span>
                 ) : (
                   <button
                     className="cmgmt-act cmgmt-act--danger"
                     disabled={busy}
                     onClick={async () => {
+                      if (!window.confirm(at.confirmRevoke)) return;
                       try {
-                        await api.del(`/api/v1/admin/user-props/${p.order_id}`);
+                        await api.del(
+                          `/api/v1/admin/user-props/${p.order_id}`,
+                        );
                         flash(at.revoked);
                         await load();
                       } catch (e) {
                         flash(
-                          e instanceof ApiError ? e.message : at.revokeFail,
+                          e instanceof ApiError
+                            ? e.message
+                            : at.revokeFail,
                         );
                       }
                     }}
