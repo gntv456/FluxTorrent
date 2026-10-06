@@ -17,6 +17,10 @@ struct ShopItem {
     /// 装扮类商品：当前用户是否已拥有（0207b 商店「已拥有」态）
     #[sqlx(default)]
     owned: bool,
+    /// 剩余库存（商城审计 P2）：null=不限量；0=售罄（前端据此置灰按钮，
+    /// 不再让用户点了购买才收到「已售罄」）
+    #[sqlx(default)]
+    stock_left: Option<i64>,
 }
 
 /// 反通胀阀门（C5，UNIT3D max-buffer-to-buy-upload 同款）：上传量类商品在
@@ -64,54 +68,78 @@ pub(super) async fn shop_items(
         .map(|a| a.id);
     let items: Vec<ShopItem> = match uid {
         Some(uid) => {
-            let rows: Vec<(i64, String, String, i64, serde_json::Value, bool)> =
-                sqlx::query_as(
-                    "SELECT si.id, si.name, si.kind, si.price, si.config, \
+            let rows: Vec<(
+                i64,
+                String,
+                String,
+                i64,
+                serde_json::Value,
+                bool,
+                Option<i64>,
+            )> = sqlx::query_as(
+                "SELECT si.id, si.name, si.kind, si.price, si.config, \
                  EXISTS(SELECT 1 FROM user_dressups ud \
-                 WHERE ud.user_id = $1 AND ud.item_id = si.id) AS owned \
+                 WHERE ud.user_id = $1 AND ud.item_id = si.id) AS owned, \
+                 (si.stock_quota - si.stock_used) AS stock_left \
                  FROM shop_items si WHERE si.active = true \
                  AND si.kind IN ('avatar_frame','animated_avatar',\
                  'rainbow_id','rainbow_name') \
                  UNION ALL \
-                 SELECT si.id, si.name, si.kind, si.price, si.config, FALSE \
+                 SELECT si.id, si.name, si.kind, si.price, si.config, FALSE, \
+                 (si.stock_quota - si.stock_used) AS stock_left \
                  FROM shop_items si WHERE si.active = true \
                  AND si.kind NOT IN ('avatar_frame','animated_avatar',\
                  'rainbow_id','rainbow_name') \
                  ORDER BY price",
-                )
-                .bind(uid)
-                .fetch_all(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            )
+            .bind(uid)
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             rows.into_iter()
-                .map(|(id, name, kind, price, config, owned)| ShopItem {
-                    id,
-                    name,
-                    kind,
-                    price,
-                    config,
-                    owned,
-                })
+                .map(
+                    |(id, name, kind, price, config, owned, stock_left)| {
+                        ShopItem {
+                            id,
+                            name,
+                            kind,
+                            price,
+                            config,
+                            owned,
+                            stock_left,
+                        }
+                    },
+                )
                 .collect()
         }
         None => {
-            let rows: Vec<(i64, String, String, i64, serde_json::Value)> =
-                sqlx::query_as(
-                    "SELECT id, name, kind, price, config \
+            let rows: Vec<(
+                i64,
+                String,
+                String,
+                i64,
+                serde_json::Value,
+                Option<i64>,
+            )> = sqlx::query_as(
+                "SELECT id, name, kind, price, config, \
+                 (stock_quota - stock_used) AS stock_left \
                  FROM shop_items WHERE active = true ORDER BY price",
-                )
-                .fetch_all(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+            )
+            .fetch_all(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             rows.into_iter()
-                .map(|(id, name, kind, price, config)| ShopItem {
-                    id,
-                    name,
-                    kind,
-                    price,
-                    config,
-                    owned: false,
-                })
+                .map(
+                    |(id, name, kind, price, config, stock_left)| ShopItem {
+                        id,
+                        name,
+                        kind,
+                        price,
+                        config,
+                        owned: false,
+                        stock_left,
+                    },
+                )
                 .collect()
         }
     };

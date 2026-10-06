@@ -1516,6 +1516,8 @@ const zhTwBase: Omit<
     shortBy: "還差 {n}",
     ownedGoWear: "已擁有 · 去佩戴",
     insufficient: "餘額不足",
+    soldOut: "已售罄",
+    stockLeft: "僅剩 {n} 件",
     hints: {
       upload_credit: "購買後立即計入上傳量，可多件疊加",
       vip: "站點身份標識與專屬權限，時長可疊加",

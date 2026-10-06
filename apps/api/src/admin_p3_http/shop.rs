@@ -57,6 +57,38 @@ struct ShopItemReq {
     stock_used: Option<i64>,
 }
 
+/// 商品护栏（商城审计 P0-2/P1-3）：kind 必须在生效链白名单内（否则就是
+/// 「花钱买空气」——测试架了 kind=free_money_forever 的 SKU 照样能上架）；
+/// price 必须为正且封顶（负价商品 = 用户每买一单净入账，实测可刷）。
+/// stock_used 不允许改成负数，quota 传 0 视为「清零限量=不限」由 SQL 层处理。
+fn validate_shop_item(body: &ShopItemReq) -> DomainResult<()> {
+    if body.name.trim().is_empty() || body.kind.trim().is_empty() {
+        return Err(DomainError::Validation("名称与类型必填".into()));
+    }
+    if !crate::economy_http::has_effect(body.kind.trim()) {
+        return Err(DomainError::Validation(format!(
+            "未知商品类型 {}：必须在道具生效链白名单内，否则买到无效果",
+            body.kind.trim()
+        )));
+    }
+    let Some(price) = body.price else {
+        return Ok(());
+    };
+    if !(1..=1_000_000_000).contains(&price) {
+        return Err(DomainError::Validation(
+            "价格须在 1 - 1,000,000,000 魔力之间".into(),
+        ));
+    }
+    if let Some(used) = body.stock_used {
+        if used < 0 {
+            return Err(DomainError::Validation(
+                "stock_used 不能为负数".into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
 #[post("/admin/shop-items")]
 async fn admin_shop_item_add(
     req: HttpRequest,
@@ -66,9 +98,7 @@ async fn admin_shop_item_add(
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
         .await?;
-    if body.name.trim().is_empty() || body.kind.trim().is_empty() {
-        return Err(DomainError::Validation("名称与类型必填".into()));
-    }
+    validate_shop_item(&body)?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO shop_items \
          (name, kind, price, config, active, stock_quota, stock_used) \
@@ -99,10 +129,16 @@ async fn admin_shop_item_update(
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
         .await?;
+    validate_shop_item(&body)?;
     let id = path.into_inner();
+    // P1-1（商城审计）：0287 的 stock_quota/stock_used 此前只在 INSERT 透传，
+    // UPDATE 语句没 SET 这两列——后台库存编辑表单保存「成功」但库不落。
+    // 现补齐：quota 传 null=改回不限量；used 仅显式传值时覆盖（补纠错口径）。
     let n = sqlx::query(
         "UPDATE shop_items SET name = $2, kind = $3, price = COALESCE($4, price), \
-           config = COALESCE($5, config), active = COALESCE($6, active) WHERE id = $1",
+           config = COALESCE($5, config), active = COALESCE($6, active), \
+           stock_quota = $7, \
+           stock_used = COALESCE($8, stock_used) WHERE id = $1",
     )
     .bind(id)
     .bind(body.name.trim())
@@ -110,6 +146,8 @@ async fn admin_shop_item_update(
     .bind(body.price)
     .bind(body.config.clone())
     .bind(body.active)
+    .bind(body.stock_quota)
+    .bind(body.stock_used)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?

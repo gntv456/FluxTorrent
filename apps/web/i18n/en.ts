@@ -1534,6 +1534,8 @@ const enBase: Omit<
     shortBy: "{n} short",
     ownedGoWear: "Owned · Wear it",
     insufficient: "Not enough",
+    soldOut: "Sold out",
+    stockLeft: "Only {n} left",
     hints: {
       upload_credit: "Credited to your upload immediately, stackable",
       vip: "Site badge and exclusive perks, duration stacks",
