@@ -34,6 +34,7 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_shop_item_add)
         .service(admin_shop_item_update)
         .service(admin_shop_item_delete)
+        .service(admin_shop_orders)
         .service(admin_avatar_frames)
         .service(admin_avatar_frame_add)
         .service(admin_avatar_frame_update)

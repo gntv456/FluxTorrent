@@ -236,6 +236,10 @@ struct LedgerRow {
     kind: String,
     balance_after: Option<i64>,
     created_at: chrono::DateTime<chrono::Utc>,
+    /// 消费对象摘要（商城审计 P2-4）：流水里 kind 全是 'shop'，用户看不出
+    /// 买了什么。JOIN shop_orders/shop_items 带出商品名；非商店流水为 NULL。
+    #[sqlx(default)]
+    item_name: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -251,8 +255,13 @@ async fn my_ledger(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows = sqlx::query_as::<_, LedgerRow>(
-        "SELECT amount, kind, balance_after, created_at FROM spark_ledger \
-         WHERE user_id = $1 ORDER BY id DESC LIMIT $2",
+        "SELECT l.amount, l.kind, l.balance_after, l.created_at, \
+         si.name AS item_name \
+         FROM spark_ledger l \
+         LEFT JOIN shop_orders o \
+           ON o.user_id = l.user_id AND o.idempotency_key = l.idempotency_key \
+         LEFT JOIN shop_items si ON si.id = o.item_id \
+         WHERE l.user_id = $1 ORDER BY l.id DESC LIMIT $2",
     )
     .bind(auth.id)
     .bind(q.limit.unwrap_or(20).clamp(1, 50))

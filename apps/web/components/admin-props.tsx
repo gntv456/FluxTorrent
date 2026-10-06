@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { FramesPanel } from "@/components/admin-props-frames";
 import { PropsPanel } from "./admin-props-user-bag";
+import { OrdersPanel } from "./admin-orders-panel";
 import { VoucherPanel } from "./admin-props-vouchers";
 import type {
   EditState,
@@ -183,6 +184,9 @@ export function AdminProps() {
 
         {/* 券：读口与作废在同一块面板（UID 与背包共用，一次圈定两处都看） */}
         <VoucherPanel uid={uid} setUid={setUid} flash={flash} />
+
+        {/* 订单中心（P2-1）：全站订单浏览，回收动作在背包/券面板 */}
+        <OrdersPanel />
       </div>
     </>
   );

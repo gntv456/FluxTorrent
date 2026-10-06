@@ -18,6 +18,8 @@ interface LedgerRow {
   kind: string;
   balance_after: number | null;
   created_at: string;
+  /** 商店消费带的商品名（其它流水为 null）——kind 全是 'shop' 分不清 */
+  item_name?: string | null;
 }
 
 /** 我的魔力（mybonus.php 口径）：余额卡片 + 收益估算 + 最近流水 */
@@ -179,7 +181,9 @@ export default function MySparkPage() {
                   <td>
                     <span className="profilet__label">{t.ledgerKind}</span>
                     <span className="pill">
-                      {dict.my.kinds[r.kind] ?? t.otherKind}
+                      {r.item_name
+                        ? r.item_name
+                        : (dict.my.kinds[r.kind] ?? t.otherKind)}
                     </span>
                   </td>
                   <td

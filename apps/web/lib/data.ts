@@ -101,6 +101,34 @@ export async function getShopItems(): Promise<ShopItem[]> {
   }
 }
 
+/** GET /me/orders 响应（商城订单中心 P2-1） */
+export interface MyOrdersEnvelope {
+  rows: {
+    id: number;
+    item_id: number;
+    item_name: string | null;
+    kind: string;
+    price: number;
+    effect_applied: boolean;
+    created_at: string;
+  }[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export async function getMyOrders(
+  page = 1,
+): Promise<MyOrdersEnvelope | null> {
+  try {
+    return await api.get<MyOrdersEnvelope>(
+      `/api/v1/me/orders?page=${page}`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 /** GET /medals 响应（0204 信封化：items + max_worn） */
 export interface MedalsEnvelope {
   items: Medal[];
@@ -130,6 +158,10 @@ export async function getMenuItems(
   location: string,
 ): Promise<MenuItem[]> {
   try {
+    // 注意：这里**不能**加跨请求缓存——menu-items 按 optional_auth 的
+    // 用户等级过滤（min_class），而 Next data cache 的键不含
+    // Authorization 头，缓存会把高等级用户可见的菜单漏给匿名/低等级
+    // 用户。保持默认 no-store。
     return await api.get<MenuItem[]>(
       `/api/v1/menu-items?location=${encodeURIComponent(location)}`,
     );
