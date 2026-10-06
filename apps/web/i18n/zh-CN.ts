@@ -1494,6 +1494,8 @@ const zhCnBase = {
     shortBy: "还差 {n}",
     ownedGoWear: "已拥有 · 去佩戴",
     insufficient: "余额不足",
+    soldOut: "已售罄",
+    stockLeft: "仅剩 {n} 件",
     hints: {
       upload_credit: "购买后立即计入上传量，可多件叠加",
       vip: "站点身份标识与专属权限，时长可叠加",

@@ -165,6 +165,7 @@ export function ShopCatalog({
     const unit = gb ? Math.round(it.price / gb) : null;
     const owned = ownedIds.has(it.id);
     const short = bal !== null && bal < it.price;
+    const soldOut = it.stock_left === 0;
     return (
       <article className="gcard" key={it.id}>
         {it.id === bestId && <span className="gcard-best">{t.bestValue}</span>}
@@ -201,6 +202,11 @@ export function ShopCatalog({
             <span>{currency}</span>
           </div>
           {unit !== null && <span className="unit">{`${num(unit)} /GB`}</span>}
+          {it.stock_left != null && it.stock_left > 0 && (
+            <span className="unit is-short">
+              {t.stockLeft.replace("{n}", num(it.stock_left))}
+            </span>
+          )}
           <div className="acts">
             {owned ? (
               <a
@@ -209,6 +215,10 @@ export function ShopCatalog({
               >
                 {t.ownedGoWear}
               </a>
+            ) : soldOut ? (
+              <button type="button" disabled className="btn btn-sm">
+                {t.soldOut}
+              </button>
             ) : (
               <BuyButton
                 itemId={it.id}

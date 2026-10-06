@@ -305,6 +305,8 @@ export interface ShopItem {
   };
   /** 0207b：装扮类商品当前用户是否已拥有（匿名恒 false） */
   owned?: boolean;
+  /** 剩余库存（null=不限量；0=售罄，前端置灰购买按钮） */
+  stock_left?: number | null;
 }
 
 export interface Medal {

@@ -96,43 +96,60 @@ async fn shop_buy(
         buffer_cap_check(&state.repo.db, auth.id).await?;
     }
 
-    // 库存配额（0287 P3）：quota 非空时 buy 前原子占位——
-    // UPDATE ... WHERE stock_used < stock_quota 抢不到即售罄，防超发
-    let stocked: Option<bool> = sqlx::query_scalar(
-                "UPDATE shop_items SET stock_used = stock_used + $2 \
-         WHERE id = $1 AND stock_quota IS NOT NULL \
-         RETURNING (stock_used <= stock_quota)",
-    )
-    .bind(body.item_id)
-    .bind(qty as i64)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if let Some(within) = stocked {
-        if !within {
-            // 抢到了但越界：回滚占位再报售罄
-            sqlx::query(
-                            "UPDATE shop_items \
-             SET stock_used = stock_used - $2 \
-             WHERE id = $1",
-            )
-            .bind(body.item_id)
-            .bind(qty as i64)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            return Err(DomainError::Validation("该道具已售罄".into()));
-        }
-    }
-
     // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款。
     // 服务端键必须带 uid 前缀：裸客户端键跨用户碰撞时，B 的消费会被误判为 A 的重放。
+    // trim 后为空视同缺失（商城审计 P2）：空白键会落成 `shop:{uid}:` 这种
+    // 全站可碰撞的键，不同请求互相误判重放。
     let idem = body
         .idempotency_key
         .clone()
+        .map(|k| k.trim().to_string())
         .filter(|k| !k.is_empty())
-        .map(|k| format!("shop:{}:{}", auth.id, k.trim()))
+        .map(|k| format!("shop:{}:{}", auth.id, k))
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
+
+    // 库存配额（0287 P3）：quota 非空时 buy 前原子占位——越界即回滚报售罄，
+    // 防超发。必须放在幂等判定**之后**（商城审计 P1-2）：重放请求不扣款
+    // 也不该再占库存，旧顺序是同键重试一次 stock_used 虚增一次，脚本可把
+    // 限量商品顶到假售罄。占位后若 spend 判重放（并发同键抢先），回滚分支
+    // 会把多占的库存退掉。
+    let replayed_before: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
+    )
+    .bind(&idem)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut stock_rollback: Option<(i64, i64)> = None;
+    if !replayed_before {
+        let stocked: Option<bool> = sqlx::query_scalar(
+            "UPDATE shop_items SET stock_used = stock_used + $2 \
+             WHERE id = $1 AND stock_quota IS NOT NULL \
+             RETURNING (stock_used <= stock_quota)",
+        )
+        .bind(body.item_id)
+        .bind(qty as i64)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if let Some(within) = stocked {
+            if !within {
+                // 抢到了但越界：回滚占位再报售罄
+                sqlx::query(
+                    "UPDATE shop_items SET stock_used = stock_used - $2 \
+                     WHERE id = $1",
+                )
+                .bind(body.item_id)
+                .bind(qty as i64)
+                .execute(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+                return Err(DomainError::Validation("该道具已售罄".into()));
+            }
+            stock_rollback = Some((body.item_id, qty));
+        }
+    }
+
     let outcome = spend_spark(
         &state.repo.db,
         auth.id,
@@ -143,6 +160,22 @@ async fn shop_buy(
         body.item_id,
     )
     .await?;
+
+    // 极小窗口兜底：占位与 spend 之间并发同键请求抢先扣款成功——本次占位
+    // 属于重放，把多占的库存退回去（不动对方已成功的账）。
+    if matches!(outcome, crate::economy_http::SpendOutcome::Replayed) {
+        if let Some((item_id, q)) = stock_rollback {
+            sqlx::query(
+                "UPDATE shop_items SET stock_used = stock_used - $2 \
+                 WHERE id = $1",
+            )
+            .bind(item_id)
+            .bind(q)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+    }
 
     // 重放＝这个请求已经处理过：既不能再插订单行，也不能再发效果。
     // 旧版这里写 `let _ = outcome;` 把 Replayed 吞掉继续往下走，而卡牌类
@@ -200,8 +233,9 @@ async fn shop_buy(
         }
     } else {
         sqlx::query(
-            "INSERT INTO shop_orders (user_id, item_id, price, idempotency_key, config_snapshot) \
-             VALUES ($1, $2, $3, $4, $5) ON CONFLICT (idempotency_key) DO NOTHING",
+            "INSERT INTO shop_orders (user_id, item_id, price, \
+             idempotency_key, config_snapshot) VALUES ($1, $2, $3, $4, $5) \
+             ON CONFLICT (idempotency_key) DO NOTHING",
         )
         .bind(auth.id)
         .bind(body.item_id)
