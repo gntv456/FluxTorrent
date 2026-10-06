@@ -5,7 +5,8 @@ use std::sync::atomic::Ordering;
 use std::time::Instant;
 
 use super::helpers::{
-    AgentRule, TrackerState, GUARD_REFRESH, PASSKEY_CACHE_CAP, PASSKEY_TTL,
+    AgentRule, TrackerState, GUARD_REFRESH, PASSKEY_CACHE_CAP,
+    PASSKEY_MISS_TTL, PASSKEY_TTL,
 };
 
 impl TrackerState {
@@ -79,6 +80,9 @@ impl TrackerState {
         .and_then(|v| v.parse::<i64>().ok())
         .map(|v| v.clamp(60, 86400))
         .unwrap_or(self.cfg.default_interval);
+        // peer 存活 TTL 随 interval 伸缩（审计 10-06 第 4 条）：leecher 曾硬编码
+        // 90s，interval=1800s 下两次 announce 之间即被除名，在线数长期偏低。
+        crate::peers::set_interval_secs(interval);
         // 种子白名单（P0-2）：全量 info_hash 双口径（规范化 + 原始字节）。
         // 大站量级 = 十万级字符串 HashSet，内存 ~20MB 内，60s 全量重拉可接受；
         // 拉取失败保留旧快照（与 ip_bans 同纪律）。
@@ -130,7 +134,22 @@ impl TrackerState {
         known.unwrap_or(true)
     }
 
-    /// passkey → (user_id, download_enabled, suspended)，60s 内存缓存
+    /// scrape 用白名单判定（审计 10-06 第 3 条）：scrape 一次可带几十个
+    /// info_hash，逐 miss 直查 PG 等于把 scrape 变成 DB 放大器——只认 60s
+    /// 全量快照（未命中即未注册，计数按 0 回）。快照尚未完成首次加载时
+    /// 退化为直查（仅启动最初一瞬；scrape 链路先 refresh_guard 预热）。
+    pub(crate) async fn torrent_registered_scrape(
+        &self,
+        info_hash: &str,
+    ) -> bool {
+        if let Some(set) = &self.guard_read().known_hashes {
+            return set.contains(info_hash);
+        }
+        self.torrent_registered(info_hash).await
+    }
+
+    /// passkey → (user_id, download_enabled, suspended)，60s 内存缓存。
+    /// 未命中负缓存 30s（审计 10-06 第 7 条）：随机 passkey 洪水不落 PG。
     pub async fn resolve_passkey_cached(
         &self,
         passkey: &str,
@@ -142,6 +161,12 @@ impl TrackerState {
                     return Some((*uid, *de, *su));
                 }
             }
+            if g.passkey_miss
+                .get(passkey)
+                .is_some_and(|at| at.elapsed() < PASSKEY_MISS_TTL)
+            {
+                return None;
+            }
         }
         let row: Option<(i64, bool, bool)> =
             sqlx::query_as::<_, (i64, bool, bool)>(
@@ -152,13 +177,21 @@ impl TrackerState {
             .fetch_one(&self.db)
             .await
             .ok();
-        if let Some(v) = &row {
-            let mut g = self.guard_write();
-            if g.passkeys.len() >= PASSKEY_CACHE_CAP {
-                g.passkeys.clear(); // 粗暴防膨胀：正常站点远达不到该量级
+        let mut g = self.guard_write();
+        if g.passkeys.len() + g.passkey_miss.len() >= PASSKEY_CACHE_CAP {
+            g.passkeys.clear(); // 粗暴防膨胀：正常站点远达不到该量级
+            g.passkey_miss.clear();
+        }
+        match &row {
+            Some(v) => {
+                g.passkeys.insert(
+                    passkey.to_string(),
+                    (v.0, v.1, v.2, Instant::now()),
+                );
             }
-            g.passkeys
-                .insert(passkey.to_string(), (v.0, v.1, v.2, Instant::now()));
+            None => {
+                g.passkey_miss.insert(passkey.to_string(), Instant::now());
+            }
         }
         row
     }

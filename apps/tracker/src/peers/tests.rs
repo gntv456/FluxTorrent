@@ -36,8 +36,65 @@ fn stopped_removes() {
         peer_id: "p1".into(),
     };
     t.upsert(mk_peer("abc", "p1", 0));
-    t.remove(&key);
+    assert!(t.remove_owned(&key, 1));
     assert_eq!(t.counts("abc"), (0, 0));
+}
+
+/// 审计 10-06：stopped 归属校验——他人 peer_id 的 stopped 不得把对方踢下线。
+#[test]
+fn stop_wrong_user_keeps_peer() {
+    let t = PeerTable::new();
+    let key = PeerKey {
+        info_hash: "abc".into(),
+        peer_id: "p1".into(),
+    };
+    t.upsert(mk_peer("abc", "p1", 0)); // user 1
+    assert!(!t.remove_owned(&key, 2)); // user 2 无权移除
+    assert_eq!(t.counts("abc"), (1, 0));
+    assert!(t.remove_owned(&key, 1));
+    assert_eq!(t.counts("abc"), (0, 0));
+}
+
+/// 审计 10-06：单账号同 swarm 影子 peer 配额——超限淘汰最旧，计数钳在 10。
+#[test]
+fn per_user_swarm_cap_evicts_oldest() {
+    let t = PeerTable::new();
+    let base = chrono::Utc::now();
+    for i in 0..12i64 {
+        let mut p = mk_peer("abc", &format!("p{i}"), 0);
+        p.last_seen = base + chrono::Duration::seconds(i);
+        if i == 11 {
+            p.user_id = 2; // 另一账号的 peer 不受配额影响
+        }
+        t.upsert(p);
+    }
+    // user1 配额 10 + user2 1 = 11（若没配额会 12）
+    assert_eq!(t.count_seeders("abc"), 11);
+    let snap = t.snapshot("abc", 50, "");
+    assert!(!snap.v4.iter().any(|p| p.peer_id[..2] == *b"p0")); // p0 已淘汰
+}
+
+/// 审计 10-06 第 5 条：port=0 的 peer 不可连接，计数口径应与下发一致
+#[test]
+fn port_zero_not_counted() {
+    let t = PeerTable::new();
+    t.upsert(Peer {
+        port: 0,
+        ..mk_peer("abc", "p0", 0)
+    });
+    t.upsert(mk_peer("abc", "p1", 0));
+    assert_eq!(t.count_seeders("abc"), 1);
+}
+
+/// 审计 10-06：TTL 随 interval 伸缩（做种=2×interval+120，leecher=interval+120）
+#[test]
+fn ttl_follows_interval() {
+    super::set_interval_secs(1800);
+    assert_eq!(super::ttl_for(0).as_secs(), 3720);
+    assert_eq!(super::ttl_for(100).as_secs(), 1920);
+    super::set_interval_secs(600);
+    assert_eq!(super::ttl_for(100).as_secs(), 720);
+    super::set_interval_secs(1800);
 }
 
 #[test]
@@ -50,10 +107,13 @@ fn swarm_isolation() {
     assert_eq!(t.count_seeders("hot"), 1);
     assert_eq!(t.count_seeders("cold"), 1);
     assert_eq!(t.swarms(), 2);
-    t.remove(&PeerKey {
-        info_hash: "hot".into(),
-        peer_id: "p2".into(),
-    });
+    t.remove_owned(
+        &PeerKey {
+            info_hash: "hot".into(),
+            peer_id: "p2".into(),
+        },
+        1,
+    );
     assert_eq!(t.swarms(), 2); // cold 桶不受影响
 }
 

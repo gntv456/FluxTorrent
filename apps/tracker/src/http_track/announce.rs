@@ -4,7 +4,7 @@ use actix_web::{get, web, HttpResponse};
 use std::sync::atomic::Ordering;
 
 use super::emit::{bencode_err, emit_agent_block, emit_event};
-use super::helpers::TrackerState;
+use super::helpers::{client_ip, TrackerState};
 use super::params::RawParams;
 
 use crate::peers::{bencode_announce, hex, Peer, PeerKey, CONN_UNTESTED};
@@ -42,48 +42,26 @@ pub(crate) async fn announce(
     let port: u16 = port_raw as u16;
     let uploaded = params.get_i64("uploaded", 0);
     let downloaded = params.get_i64("downloaded", 0);
+    if uploaded < 0 || downloaded < 0 {
+        return bencode_err("uploaded/downloaded 无效");
+    }
     // ZT81（2026-10-02）：left 缺失/负数不再静默按 0 处理。原实现缺 left 即判为
     // 做种（is_seeder = left==0），会把畸形 announce 计入 seeders 并喂 3720s TTL，
     // 造成在线做种数虚高。BEP3 中 left 为必填。
-    let left = match params.get_bytes("left") {
-        Some(_) => {
-            let v = params.get_i64("left", 0);
-            if v < 0 {
-                return bencode_err("left 无效");
-            }
-            v
-        }
+    // 审计 10-06 第 1 条补洞：非数字（left=abc）经 get_i64 默认 0 → 同样被判种，
+    // 现改为严格解析——解析失败一律回错，绝不静默当 0。
+    let left = match params.get_str("left").map(|v| v.parse::<i64>()) {
+        Some(Ok(v)) if v >= 0 => v,
+        Some(Ok(_)) => return bencode_err("left 无效"),
+        Some(Err(_)) => return bencode_err("left 无效"),
         None => return bencode_err("缺少 left"),
     };
     // numwant=0 是合法请求（客户端明确表示不要 peer 列表），不应当被抬成 1
     let numwant = params.get_i64("numwant", 50).clamp(0, 200) as usize;
     let event = params.get_str("event").unwrap_or_default();
     let event = event.as_str();
-    // 安全（P2）：不信任客户端自报 IP —— 仅显式配置代理时才采用参数值。
-    // 0225 G30-B3 补 XFF：tracker 挂 LB 后 peer IP 全成 LB 地址（做种计费与
-    // 在线数直接错）。优先级：TRUST_PROXY=1 时 XFF 首值 > TRUST_PROXY_IP=1
-    // 时 ?ip= 参数 > socket 对端；XFF 取链路首值（最接近真实客户端），
-    // 反代必须追加而非覆盖。
-    let trust_xff = std::env::var("TRUST_PROXY").unwrap_or_default() == "1";
-    let trust_param_ip =
-        std::env::var("TRUST_PROXY_IP").unwrap_or_default() == "1";
-    let ip = if trust_xff {
-        req.headers()
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.split(',').next())
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(str::to_string)
-            .or_else(|| req.peer_addr().map(|a| a.ip().to_string()))
-    } else if trust_param_ip {
-        params
-            .get_str("ip")
-            .or_else(|| req.peer_addr().map(|a| a.ip().to_string()))
-    } else {
-        req.peer_addr().map(|a| a.ip().to_string())
-    }
-    .unwrap_or_else(|| "0.0.0.0".into());
+    // 客户端 IP：XFF / ?ip= / socket 对端（TRUST_PROXY 门控），scrape 同源共用。
+    let ip = client_ip(&req, &params);
 
     // ⓪ 应急熔断（默认关闭，见 ANN_RATE_GLOBAL_PER_MIN）
     if state.global_shed().await {
@@ -183,15 +161,15 @@ pub(crate) async fn announce(
         peer_id: peer_id_hex.clone(),
     };
 
-    // stopped：移除 peer；其余 upsert。
+    // stopped：移除 peer（归属校验——他人 peer_id 的 stopped 不生效）；其余 upsert。
     // 0225 G30-B12：FLUX_TRACKER_PEER_STORE=redis 时外置 Hash 为主（多副本
     // 互见），内存表仍同步维护（快照导出/降级路径不受影响）。
     if event == "stopped" {
         if crate::peers::external::external_enabled() {
             let mut r = state.redis.clone();
-            let _ = crate::peers::external::remove(&mut r, &key).await;
+            let _ = crate::peers::external::remove(&mut r, &key, user_id).await;
         }
-        state.peers.remove(&key);
+        state.peers.remove_owned(&key, user_id);
     } else {
         let peer = Peer {
             key: key.clone(),

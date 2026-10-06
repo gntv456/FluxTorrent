@@ -4,8 +4,8 @@
 //! 键全量覆盖写——多副本互不可见且互抹，是「tracker 多副本坏功能」的根。
 //!
 //! 改造：Redis Hash 按 swarm 分键（`flux:swarm:{info_hash}`，field=peer_id，
-//! value=Peer JSON），所有副本读写同一份。TTL 取 SEEDER_TIMEOUT+冗余（断线
-//! swarm 自然过期，与内存表 90s/3720s 分档淘汰语义对齐：读侧按 last_seen
+//! value=Peer JSON），所有副本读写同一份。TTL 取做种分档+冗余（断线
+//! swarm 自然过期，与内存表分档淘汰语义对齐：读侧按 last_seen
 //! 过滤，超时分档与内存一致）。
 //!
 //! 形态：FLUX_TRACKER_PEER_STORE=redis 启用；缺省空 = 内存单机（行为与
@@ -17,7 +17,7 @@ use redis::AsyncCommands;
 use super::model::{
     CompactPeer, CompactPeer6, Peer, PeerKey, Snapshot, CONN_UNTESTED,
 };
-use super::table::{PEER_TIMEOUT, SEEDER_TIMEOUT};
+use super::ttl_for;
 
 /// 外置键：每个 swarm 一张 hash
 fn swarm_key(info_hash: &str) -> String {
@@ -27,7 +27,7 @@ fn swarm_key(info_hash: &str) -> String {
 /// 外置 TTL：做种分档上限 + 30s 冗余（读写两侧都有 last_seen 过滤，
 /// TTL 只负责回收无人问津的 swarm 键）
 fn swarm_ttl_secs() -> i64 {
-    SEEDER_TIMEOUT.as_secs() as i64 + 30
+    ttl_for(0).as_secs() as i64 + 30
 }
 
 /// 是否启用外置（进程级开关，env 读一次）
@@ -39,15 +39,10 @@ pub fn external_enabled() -> bool {
 }
 
 fn alive(p: &Peer, now: &chrono::DateTime<chrono::Utc>) -> bool {
-    let timeout = if p.left == 0 {
-        SEEDER_TIMEOUT
-    } else {
-        PEER_TIMEOUT
-    };
     now.signed_duration_since(p.last_seen)
         .to_std()
         .unwrap_or_default()
-        < timeout
+        < ttl_for(p.left)
 }
 
 /// 写：upsert 单 peer（保留既有 connectable 测量值——与内存表同语义）
@@ -84,12 +79,30 @@ pub async fn upsert(
     Ok(())
 }
 
-/// 写：删除单 peer（stopped 事件）
+/// 写：删除单 peer（stopped 事件）。归属校验在 Lua 内原子完成（审计 10-06
+/// 第 2 条）：peer_id 客户端自报，旧实现任意账号可用他人 peer_id 把对方
+/// 从 swarm 踢下线。user_id 不匹配则不动。
 pub async fn remove(
     redis: &mut ConnectionManager,
     key: &PeerKey,
+    user_id: i64,
 ) -> Result<(), redis::RedisError> {
-    let _: () = redis.hdel(swarm_key(&key.info_hash), &key.peer_id).await?;
+    let script = redis::Script::new(
+        r#"local old = redis.call('HGET', KEYS[1], ARGV[1])
+           if old then
+             local ok, o = pcall(cjson.decode, old)
+             if ok and o.user_id ~= nil then
+               if tostring(o.user_id) ~= ARGV[2] then return 0 end
+             end
+           end
+           redis.call('HDEL', KEYS[1], ARGV[1])
+           return 1"#,
+    );
+    let mut inv = script.prepare_invoke();
+    inv.key(swarm_key(&key.info_hash))
+        .arg(&key.peer_id)
+        .arg(user_id);
+    let _: i32 = inv.invoke_async(redis).await?;
     Ok(())
 }
 
@@ -126,6 +139,10 @@ pub async fn snapshot(
         if p.key.peer_id == exclude {
             continue;
         }
+        // 与内存表 snapshot 同口径（审计 10-06 第 5 条）：port=0 不可连接
+        if p.port == 0 {
+            continue;
+        }
         let port = p.port;
         let peer_id = crate::peers::peer_id_bytes(&p.key.peer_id);
         if let Ok(v6) = p.ip.parse::<std::net::Ipv6Addr>() {
@@ -144,15 +161,21 @@ pub async fn snapshot(
     snap
 }
 
-/// 读：seeders/leechers 计数
+/// 读：seeders/leechers 计数（与内存表口径一致：port=0 不计）
 pub async fn counts(
     redis: &mut ConnectionManager,
     info_hash: &str,
 ) -> (usize, usize) {
     let peers = swarm_peers(redis, info_hash).await;
     (
-        peers.iter().filter(|p| p.is_seeder()).count(),
-        peers.iter().filter(|p| !p.is_seeder()).count(),
+        peers
+            .iter()
+            .filter(|p| p.is_seeder() && p.port != 0)
+            .count(),
+        peers
+            .iter()
+            .filter(|p| !p.is_seeder() && p.port != 0)
+            .count(),
     )
 }
 

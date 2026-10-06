@@ -1,25 +1,22 @@
-//! 内存 Peer 表（§5.2 tracker 职责：按 info_hash 分桶 + 桶内 HashMap，90s 超时淘汰）。
+//! 内存 Peer 表（§5.2 tracker 职责：按 info_hash 分桶 + 桶内 HashMap，
+//! 分档 TTL 淘汰，TTL 随 announce_interval 伸缩——见 peers::ttl_for）。
 //!
-//! P0-3（0071）：此前是单张 `DashMap<PeerKey, Peer>`，snapshot/counts 对**全体在线 peer**
-//! 全表遍历再按 info_hash 过滤——热门 swarm 一次 announce 就扫全表。现改为
-//! `DashMap<info_hash, Swarm>` 二级索引：snapshot/counts 只碰对应桶，复杂度从
-//! O(全体 peer) 降到 O(该 swarm)；DashMap 分片锁竞争同时缓解（每桶独立 entry）。
+//! P0-3（0071）：snapshot/counts 曾对全体在线 peer 全表遍历再过滤——热门 swarm
+//! 一次 announce 就扫全表。现为 `DashMap<info_hash, Swarm>` 二级索引：只碰对应桶。
 
 use dashmap::DashMap;
 use std::collections::HashMap;
-use std::time::Duration;
 
 use super::model::{
     CompactPeer, CompactPeer6, Peer, PeerKey, Snapshot, CONN_DEAD, CONN_OK,
     CONN_UNTESTED,
 };
+use super::ttl_for;
 
-pub(crate) const PEER_TIMEOUT: Duration = Duration::from_secs(90);
-/// 0077 分档 TTL（U3D ACTIVE_PEER_TTL 口径）：做种中的 peer 放宽——
-/// interval 1800s 下 90s 一刀切会让挂种大户每 90s 全量重建内存表；
-/// 3720s = 2×interval+120 冗余，断线种子在两个周期内自然除名。
-pub(crate) const SEEDER_TIMEOUT: Duration = Duration::from_secs(3720);
 const MAX_PEERS_RESPONSE: usize = 50;
+/// 同账号同 swarm 的 peer 上限（审计 10-06）：防单账号刷随机 peer_id 制造
+/// 影子 peer 抬高在线数；超限淘汰该账号最旧的。
+const MAX_PEERS_PER_USER: usize = 10;
 
 /// 单个 swarm 的桶：peer_id hex → Peer
 #[derive(Default)]
@@ -53,16 +50,11 @@ impl PeerTable {
         let mut n = 0;
         for (_ih, peers) in snap {
             for p in peers {
-                let ttl = if p.left == 0 {
-                    SEEDER_TIMEOUT
-                } else {
-                    PEER_TIMEOUT
-                };
                 if now
                     .signed_duration_since(p.last_seen)
                     .to_std()
                     .unwrap_or_default()
-                    < ttl
+                    < ttl_for(p.left)
                 {
                     self.upsert(p);
                     n += 1;
@@ -88,7 +80,25 @@ impl PeerTable {
         if let Some(old) = s.peers.get(&peer.key.peer_id) {
             peer.connectable = old.connectable;
         }
+        let is_new = !s.peers.contains_key(&peer.key.peer_id);
+        let uid = peer.user_id;
         s.peers.insert(peer.key.peer_id.clone(), peer);
+        // 每账号每 swarm 配额：新 peer 且桶已超阈值才扫描（小 swarm 零开销）
+        if is_new && s.peers.len() > MAX_PEERS_PER_USER {
+            let mut mine: Vec<_> = s
+                .peers
+                .values()
+                .filter(|p| p.user_id == uid)
+                .map(|p| (p.last_seen, p.key.peer_id.clone()))
+                .collect();
+            if mine.len() > MAX_PEERS_PER_USER {
+                let over = mine.len() - MAX_PEERS_PER_USER;
+                mine.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+                for (_, pid) in mine.into_iter().take(over) {
+                    s.peers.remove(&pid);
+                }
+            }
+        }
     }
 
     /// 查询 peer 当前回连状态（-1 未测）
@@ -103,15 +113,27 @@ impl PeerTable {
             .unwrap_or(CONN_UNTESTED)
     }
 
-    pub fn remove(&self, key: &PeerKey) {
-        if let Some(mut s) = self.swarms.get_mut(&key.info_hash) {
+    /// stopped 归属校验版移除（审计 10-06 第 2 条）：peer_id 客户端自报，旧 remove
+    /// 使任意账号可用他人 peer_id 把对方踢下线。仅当现存 peer 属同一 user 才
+    /// 移除；返回是否移除。
+    pub fn remove_owned(&self, key: &PeerKey, user_id: i64) -> bool {
+        let Some(mut s) = self.swarms.get_mut(&key.info_hash) else {
+            return false;
+        };
+        let owned = s
+            .peers
+            .get(&key.peer_id)
+            .is_some_and(|p| p.user_id == user_id);
+        if owned {
             s.peers.remove(&key.peer_id);
-            if s.peers.is_empty() {
-                drop(s);
-                self.swarms
-                    .remove_if(&key.info_hash, |_, sw| sw.peers.is_empty());
-            }
         }
+        let empty = s.peers.is_empty();
+        drop(s); // 必须先放掉写锁，否则同分片 remove_if 死锁
+        if empty {
+            self.swarms
+                .remove_if(&key.info_hash, |_, sw| sw.peers.is_empty());
+        }
+        owned
     }
 
     /// 取同一 info_hash 的活跃 peer（排除自己，numwant 上限），v4/v6 分列。
@@ -159,18 +181,25 @@ impl PeerTable {
         snap
     }
 
+    // 计数与 snapshot 同口径（审计 10-06）：port=0 不可连接，旧实现计数仍含 → 虚高。
     pub fn count_seeders(&self, info_hash: &str) -> usize {
         self.gc_swarm(info_hash);
-        self.swarms
-            .get(info_hash)
-            .map_or(0, |s| s.peers.values().filter(|p| p.is_seeder()).count())
+        self.swarms.get(info_hash).map_or(0, |s| {
+            s.peers
+                .values()
+                .filter(|p| p.is_seeder() && p.port != 0)
+                .count()
+        })
     }
 
     pub fn count_leechers(&self, info_hash: &str) -> usize {
         self.gc_swarm(info_hash);
-        self.swarms
-            .get(info_hash)
-            .map_or(0, |s| s.peers.values().filter(|p| !p.is_seeder()).count())
+        self.swarms.get(info_hash).map_or(0, |s| {
+            s.peers
+                .values()
+                .filter(|p| !p.is_seeder() && p.port != 0)
+                .count()
+        })
     }
 
     pub fn counts(&self, info_hash: &str) -> (usize, usize) {
@@ -261,15 +290,10 @@ impl PeerTable {
     }
 }
 
-/// 0077 分档存活判定：做种 peer 用 SEEDER_TIMEOUT，其余 PEER_TIMEOUT。
+/// 分档存活判定：做种 2×interval+120，其余 interval+120（见 peers::ttl_for）。
 fn alive(p: &Peer, now: &chrono::DateTime<chrono::Utc>) -> bool {
-    let timeout = if p.left == 0 {
-        SEEDER_TIMEOUT
-    } else {
-        PEER_TIMEOUT
-    };
     now.signed_duration_since(p.last_seen)
         .to_std()
         .unwrap_or_default()
-        < timeout
+        < ttl_for(p.left)
 }

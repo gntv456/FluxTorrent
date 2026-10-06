@@ -82,11 +82,56 @@ pub(crate) fn env_i64(key: &str, default: i64) -> i64 {
         .unwrap_or(default)
 }
 
+fn trust_xff() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| std::env::var("TRUST_PROXY").unwrap_or_default() == "1")
+}
+
+fn trust_param_ip() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| {
+        std::env::var("TRUST_PROXY_IP").unwrap_or_default() == "1"
+    })
+}
+
+/// 客户端 IP 判定（announce/scrape 共用——审计 10-06 第 3 条：scrape 曾只认
+/// socket 对端，LB 后全部 peer IP 变 LB 地址，与 announce 口径分叉）。
+/// 安全：不信任客户端自报 —— 仅显式配置代理时采用。优先级：
+/// TRUST_PROXY=1 时 XFF 首值（最接近真实客户端，反代须追加而非覆盖）
+/// > TRUST_PROXY_IP=1 时 ?ip= 参数 > socket 对端。
+pub(crate) fn client_ip(
+    req: &actix_web::HttpRequest,
+    params: &super::params::RawParams,
+) -> String {
+    if trust_xff() {
+        if let Some(v) = req
+            .headers()
+            .get("x-forwarded-for")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.split(',').next())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            return v.to_string();
+        }
+    } else if trust_param_ip() {
+        if let Some(v) = params.get_str("ip").filter(|s| !s.is_empty()) {
+            return v;
+        }
+    }
+    req.peer_addr()
+        .map(|a| a.ip().to_string())
+        .unwrap_or_else(|| "0.0.0.0".into())
+}
+
 /// 内存防护缓存：高频路径不再逐请求打 PG。
 /// - passkey：60s TTL（挂起/禁下载最迟 60s 生效，可接受的折衷）
 /// - ip_bans / agent_rules / announce_interval：60s 定期刷新
 pub(crate) struct GuardInner {
     pub(crate) passkeys: HashMap<String, (i64, bool, bool, Instant)>,
+    /// 无效 passkey 负缓存（审计 10-06 第 7 条）：旧实现只缓存命中——
+    /// 随机 passkey 洪水每发必查 PG，缓存形同虚设。
+    pub(crate) passkey_miss: HashMap<String, Instant>,
     pub(crate) ip_bans: HashMap<String, String>,
     /// None = 尚未完成首次加载（0071：正则编译后的 agent/peer_id 交叉规则）
     pub(crate) agent_rules: Option<Vec<AgentRule>>,
@@ -110,6 +155,8 @@ pub(crate) struct AgentRule {
 pub(crate) const GUARD_REFRESH: Duration = Duration::from_secs(60);
 pub(crate) const PASSKEY_TTL: Duration = Duration::from_secs(60);
 pub(crate) const PASSKEY_CACHE_CAP: usize = 50_000;
+/// 无效 passkey 负缓存时长（短于正缓存——新注册/重置的 passkey 最迟 30s 生效）
+pub(crate) const PASSKEY_MISS_TTL: Duration = Duration::from_secs(30);
 
 impl TrackerState {
     pub(crate) fn guard_read(&self) -> RwLockReadGuard<'_, GuardInner> {

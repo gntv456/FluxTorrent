@@ -27,18 +27,25 @@ pub(super) fn passkey_from_tracker_id(s: &str) -> &str {
     s
 }
 
-/// 轻量 PRNG（xorshift64*）：connection_id 只需不可预测，无需密码学强度
+/// connection_id 生成：RandomState（std 内置 SipHash，密钥源自系统随机）做 PRF，
+/// 混入全局计数器与纳秒时钟——不可预测且不重复。旧实现 xorshift64* 固定种子
+/// 0x9E3779B97F4A7C15：算法可逆，观测若干 connection_id 即可推演出后续全部
+/// 序列，攻击者无需先 connect 就能伪造任意 (ip,port) 的 announce（审计 10-06
+/// 第 8 条）。Cargo 无 rand 依赖，RandomState 是标准库内唯一带随机密钥的哈希。
 pub(super) fn rand_u64() -> u64 {
-    use std::cell::Cell;
-    thread_local! {
-        static SEED: Cell<u64> = const { Cell::new(0x9E3779B97F4A7C15) };
-    }
-    SEED.with(|s| {
-        let mut x = s.get();
-        x ^= x << 13;
-        x ^= x >> 7;
-        x ^= x << 17;
-        s.set(x);
-        x.wrapping_mul(0x2545F4914F6CDD1D)
-    })
+    use std::collections::hash_map::RandomState;
+    use std::hash::{BuildHasher, Hasher};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static STATE: std::sync::OnceLock<RandomState> = std::sync::OnceLock::new();
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    let rs = STATE.get_or_init(RandomState::new);
+    let mut h = rs.build_hasher();
+    h.write_u64(SEQ.fetch_add(1, Ordering::Relaxed));
+    h.write_u64(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0),
+    );
+    h.finish()
 }
