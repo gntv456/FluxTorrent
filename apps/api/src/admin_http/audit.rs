@@ -5,7 +5,6 @@ use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 use super::guard::staff;
-use super::user_status::SearchQ;
 
 // ============ 审计日志 ============
 
@@ -20,22 +19,63 @@ struct AuditRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[derive(serde::Deserialize)]
+struct AuditQ {
+    /// action 模糊匹配（旧口径保留：面板搜索框直接用这个）
+    #[serde(default = "empty_q")]
+    q: String,
+    /// 按**对象**回查：`ref->>'id'` 等于该用户 id。
+    /// 「这个号被谁动过、动过什么」是发放/调账纠纷里第一问，
+    /// 旧版只能靠 action 关键词搜，200 行一封顶就翻不到了。
+    #[serde(default)]
+    uid: Option<i64>,
+    /// 按操作者回查（交接：某个版主做过哪些动作）
+    #[serde(default)]
+    actor: Option<i64>,
+    /// 行数上限：默认 200，最多 1000（批量发放后翻旧记录要用）
+    #[serde(default = "default_audit_limit")]
+    limit: i64,
+}
+
+fn empty_q() -> String {
+    String::new()
+}
+
+fn default_audit_limit() -> i64 {
+    200
+}
+
 #[get("/admin/audit")]
 async fn audit_query(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<SearchQ>,
+    q: web::Query<AuditQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::AUDIT_VIEW)
         .await?;
-    let pattern = crate::http::like_pattern(&q.q);
+    if !(1..=1000).contains(&q.limit) {
+        return Err(DomainError::Validation("limit 取值 1-1000".into()));
+    }
+    // 空串 = 不过滤。旧版把空串喂给 like_pattern 得到 '%%'，语义上等价，
+    // 但显式传 NULL 才能和 uid/actor 三个条件写成同一组可选谓词。
+    let pattern = if q.q.trim().is_empty() {
+        None
+    } else {
+        Some(crate::http::like_pattern(&q.q))
+    };
     let rows: Vec<AuditRow> = sqlx::query_as(
         "SELECT id, actor_id, action, \
          ref::text AS detail, created_at FROM audit_log \
-         WHERE action ILIKE $1 ORDER BY id DESC LIMIT 200",
+         WHERE ($1::text IS NULL OR action ILIKE $1) \
+           AND ($2::text IS NULL OR ref->>'id' = $2) \
+           AND ($3::bigint IS NULL OR actor_id = $3) \
+         ORDER BY id DESC LIMIT $4",
     )
-    .bind(pattern)
+    .bind(pattern.as_deref())
+    .bind(q.uid.map(|v| v.to_string()))
+    .bind(q.actor)
+    .bind(q.limit)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

@@ -62,6 +62,9 @@ export interface AuditRow {
   actor_id: number | null;
   action: string;
   created_at: string;
+  /** 审计现场（ref JSONB 原文）。后端 0285 起就在下发，
+   *  但这个类型一直没有这一列 ⇒ 面板再怎么改也读不到「对谁做、多少钱」。 */
+  detail?: string | null;
 }
 
 export interface StatsData {
