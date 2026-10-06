@@ -40,6 +40,7 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_avatar_frame_delete)
         .service(admin_user_props)
         .service(admin_user_prop_revoke)
+        .service(admin_grants)
         .service(admin_backups_list)
         .service(admin_backup_run)
         .service(admin_jobs_list)

@@ -80,7 +80,11 @@ pub use pool::*;
 pub use recon::*;
 pub use shop::*;
 // 娱乐屋奖品的「使用」侧复用商店生效链：一件物品能干什么，只在这一个地方实现。
-pub(crate) use shop_effects::{apply_item_effect, has_effect};
+// 三个 config 取值器同属「一把尺」：商店购买与管理端发放必须读同一组键，
+// 各读各的会让某一张 SKU 在某一侧静默空转（0291 实测 A1）。
+pub(crate) use shop_effects::{
+    apply_item_effect, credit_gb, has_effect, spark_amount, voucher_kind,
+};
 pub use shop_list::*;
 pub use spend::*;
 pub use voucher_use::*;

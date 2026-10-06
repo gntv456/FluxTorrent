@@ -20,6 +20,9 @@ struct UserPropRow {
     kind: String,
     price: i64,
     created_at: chrono::DateTime<chrono::Utc>,
+    /// 是否已生效（0291）：回收只对「0 价 + 未生效」的单成立，
+    /// 列表不给这一列，站长只能点了才知道拒。
+    effect_applied: bool,
 }
 
 #[derive(Deserialize)]
@@ -44,8 +47,9 @@ async fn admin_user_props(
         return Err(DomainError::Validation("per_page 取值 1-100".into()));
     }
     let rows: Vec<UserPropRow> = sqlx::query_as(
-        r#"SELECT o.id AS order_id, o.user_id, u.username, o.item_id, i.name AS item_name,
-                  i.kind, o.price, o.created_at
+        r#"SELECT o.id AS order_id, o.user_id, u.username, o.item_id,
+                  i.name AS item_name, i.kind, o.price, o.created_at,
+                  o.effect_applied
            FROM shop_orders o
            JOIN users u ON u.id = o.user_id
            JOIN shop_items i ON i.id = o.item_id
@@ -71,7 +75,13 @@ async fn admin_user_props(
     ))
 }
 
-/// 背包回收：删除持有单（仅卡牌/装饰类入包道具；即时生效类不可撤）
+/// 背包回收：删除未生效的 0 价发放单。
+///
+/// 0291：规则收进 `admin_http::reclaim_order`，与
+/// `POST /admin/users/{id}/revoke-item/{order_id}` 共用一份。这条是后台背包面板
+/// 实际调用的路径，此前它比那条弱得多——能删用户**付费购买**的单（白吞资产）、
+/// 不退库存配额（永久少卖一格）、不过等级护栏（93 可删 99 的背包）。
+/// 同一件事有两份规则时，界面在用的那份必然是被改漏的那份。
 #[delete("/admin/user-props/{order_id}")]
 async fn admin_user_prop_revoke(
     req: HttpRequest,
@@ -79,35 +89,30 @@ async fn admin_user_prop_revoke(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
-        .await?;
-    let order_id = path.into_inner();
-    let row: Option<(i64, String, String)> = sqlx::query_as(
-        "SELECT o.user_id, i.kind, i.name FROM shop_orders o \
-         JOIN shop_items i ON i.id = o.item_id WHERE o.id = $1",
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::PROP_MANAGE,
     )
-    .bind(order_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((uid, kind, name)) = row else {
-        return Err(DomainError::NotFound(order_id));
-    };
-    const INSTANT_KINDS: [&str; 4] =
-        ["upload_credit", "gift_spark", "invite", "temp_invite"];
-    if INSTANT_KINDS.contains(&kind.as_str()) {
-        return Err(DomainError::Validation(
-            "即时生效类道具已入账，不可回收".into(),
-        ));
-    }
-    sqlx::query("DELETE FROM shop_orders WHERE id = $1")
-        .bind(order_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    .await?;
+    let order_id = path.into_inner();
+    let (uid, item_id, name) = crate::admin_http::reclaim_order(
+        &state.repo.db,
+        auth.class_id,
+        order_id,
+    )
+    .await?;
     state
         .repo
-        .audit(Some(auth.id), "prop.revoke", Some(order_id))
+        .audit_detail(
+            Some(auth.id),
+            "prop.revoke",
+            Some(uid),
+            None,
+            Some(serde_json::json!({
+                "order_id": order_id, "item_id": item_id, "item_name": name,
+            })),
+        )
         .await;
     modify_log(
         &state.repo.db,
@@ -116,5 +121,5 @@ async fn admin_user_prop_revoke(
         &format!("回收道具「{name}」"),
     )
     .await;
-    Ok(ok(serde_json::json!({ "ok": true })))
+    Ok(ok(serde_json::json!({ "ok": true, "order_id": order_id })))
 }

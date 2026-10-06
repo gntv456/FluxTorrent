@@ -42,6 +42,14 @@ async fn user_adjust(
     {
         return Err(DomainError::Validation("至少提供一项调整".into()));
     }
+    // 邀请上限要在动任何账之前拒掉。旧版是 `grant.min(50)` 静默截断，
+    // 再把**请求值**回显给站长（实测：要 100 拿到 50，响应写 100），
+    // 于是报表与库对不上，而且没人知道被截过。
+    if let Some(g) = body.invite_grant {
+        if g.abs() > 50 {
+            return Err(DomainError::Validation("邀请单次 ±50".into()));
+        }
+    }
     // 数值调整仅 sysop/管理员（等级 93+）
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_ADJUST)
         .await?;
@@ -168,9 +176,10 @@ async fn user_adjust(
     }
     // 增发邀请：直接生成有效邀请码（30 天有效，NP takeinvite 口径）
     let mut granted_codes: Vec<String> = Vec::new();
+    let mut revoked_invites: i64 = 0;
     if let Some(grant) = body.invite_grant {
         if grant > 0 {
-            for _ in 0..grant.min(50) {
+            for _ in 0..grant {
                 let code = uuid::Uuid::new_v4().simple().to_string();
                 sqlx::query(
                     "INSERT INTO invites (inviter_id, \
@@ -186,7 +195,7 @@ async fn user_adjust(
             }
         } else if grant < 0 {
             // 负数：回收最早到期的未用邀请
-            sqlx::query(
+            revoked_invites = sqlx::query(
                 "DELETE FROM invites WHERE ctid IN (\
                     SELECT ctid FROM invites WHERE inviter_id = $1 AND status = 0 \
                     ORDER BY expires_at LIMIT $2)",
@@ -195,7 +204,8 @@ async fn user_adjust(
             .bind((-grant) as i64)
             .execute(&state.repo.db)
             .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected() as i64;
         }
     }
     state
@@ -208,17 +218,20 @@ async fn user_adjust(
         Some(auth.id),
         &format!(
             "数值调整 up{:+}/down{:+}/spark{:+}/invite{:+}",
-            body.uploaded_delta.unwrap_or(0),
-            body.downloaded_delta.unwrap_or(0),
-            body.spark_delta.unwrap_or(0),
-            body.invite_grant.unwrap_or(0)
+            actual_up,
+            actual_down,
+            spark - spark0,
+            granted_codes.len() as i64 - revoked_invites,
         ),
     )
     .await;
     Ok(ok(serde_json::json!({
         "user_id": body.user_id,
         "uploaded": up, "downloaded": down, "spark": spark,
-        "invite_grant": body.invite_grant.unwrap_or(0),
+        // 一律回**实际发生数**（0291）：旧版回显请求值，被 clamp 掉的差额
+        // 在响应里看不出来，站长与库对不上账。
+        "invite_granted": granted_codes.len() as i64,
+        "invite_revoked": revoked_invites,
         "granted_codes": granted_codes,
         "note": body.note,
     })))

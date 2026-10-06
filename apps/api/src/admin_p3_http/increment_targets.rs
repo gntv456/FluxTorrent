@@ -95,8 +95,11 @@ pub(super) async fn increment_bulk_targets(
     body: &IncrementBulkReq,
 ) -> DomainResult<Vec<i64>> {
     let targets: Vec<i64> = if !body.user_ids.is_empty() {
+        // DISTINCT：受众里重复点了同一个人是常见手抖。不去重的话第二批
+        // 起会撞同一批次+同一用户的幂等键（expect_spent 会把它判成失败），
+        // 语义上「发给同一个人两次」也不该由名单里的重复决定。
         sqlx::query_scalar(
-            "SELECT id FROM users WHERE id = ANY($1) AND status < 2",
+            "SELECT DISTINCT id FROM users WHERE id = ANY($1) AND status < 2",
         )
         .bind(&body.user_ids)
         .fetch_all(db)
