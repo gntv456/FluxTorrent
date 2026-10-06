@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { appendMeta, packSections } from "@/lib/upload-fields";
 import { fmt } from "@/i18n/config";
 import { FormRow } from "@/components/upload-form-parts";
 import { UploadFilesBlock } from "@/components/upload-form-files";
@@ -168,59 +169,27 @@ export function UploadForm() {
       form.append("file", file);
       const nfoFile = nfoRef.current?.files?.[0];
       if (nfoFile) form.append("nfo", nfoFile);
-      const qs = new URLSearchParams({
-        category_id: String(categoryId),
-        anonymous: String(anonymous),
+      // 0288：元数据走 multipart 文本字段（服务端仍兼容 query string 老通道）。
+      // 塞进 URL 时简介的上限其实由 HTTP 请求行决定：实测 8192 汉字即 400 空响应体。
+      appendMeta(form, {
+        category_id: categoryId,
+        anonymous,
+        name,
+        imdb,
+        price,
+        small_descr: smallDescr,
+        descr,
+        poster,
+        mediainfo,
+        sections: packSections(secVals, secKinds),
+        tags: tagSel,
+        pos_state: posState,
+        pos_state_until: posUntil ? new Date(posUntil).toISOString() : "",
+        pick_type: pickType,
       });
-      if (name.trim()) qs.set("name", name.trim());
-      if (imdb.trim()) qs.set("imdb", imdb.trim());
-      if (price > 0)
-        qs.set("price", String(Math.min(1_000_000, Math.max(0, price))));
-      if (smallDescr.trim()) qs.set("small_descr", smallDescr.trim());
-      if (descr.trim()) qs.set("descr", descr.trim());
-      if (poster.trim()) qs.set("poster", poster.trim());
-      if (mediainfo.trim()) qs.set("mediainfo", mediainfo.trim());
-      // 多维属性打包（B2 六类型）：枚举维度发整数（旧格式，后端零改动兼容），
-      // 自由值维度按 field_type 发对象 {"text":…}/{"number":…}/{"date":…}/{"bool":…}；
-      // multiselect 发 {"dict_ids":[…]}。后端按**值的 JSON 类型**分派。
-      const sections: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(secVals)) {
-        if (!v) continue;
-        const def = secKinds.find((x) => x.kind === k);
-        const type = def?.field_type ?? "select";
-        if (type === "select") {
-          const n = Number(v);
-          if (n > 0) sections[k] = n;
-        } else if (type === "multiselect") {
-          const ids = v
-            .split(",")
-            .map((s) => Number(s.trim()))
-            .filter((n) => n > 0);
-          if (ids.length > 0) sections[k] = { dict_ids: ids };
-        } else if (type === "number") {
-          const n = Number(v);
-          if (!Number.isNaN(n)) sections[k] = { number: n };
-        } else if (type === "bool") {
-          sections[k] = { bool: v === "true" };
-        } else if (type === "date") {
-          if (v.trim()) sections[k] = { date: v.trim() };
-        } else {
-          if (v.trim()) sections[k] = { text: v.trim() };
-        }
-      }
-      if (Object.keys(sections).length > 0)
-        qs.set("sections", JSON.stringify(sections));
-      // 标签 / 推荐位（挑选）
-      if (tagSel.length > 0) qs.set("tags", JSON.stringify(tagSel));
-      if (posState > 0) {
-        qs.set("pos_state", String(posState));
-        if (posUntil)
-          qs.set("pos_state_until", new Date(posUntil).toISOString());
-      }
-      if (pickType > 0) qs.set("pick_type", String(pickType));
       // 同源相对路径走 Next rewrites 转发（与 api-client 同口径），避免依赖发布端口
       const base = process.env.NEXT_PUBLIC_API_URL ?? "";
-      const res = await fetch(`${base}/api/v1/torrents?${qs}`, {
+      const res = await fetch(`${base}/api/v1/torrents`, {
         method: "POST",
         body: form,
       });

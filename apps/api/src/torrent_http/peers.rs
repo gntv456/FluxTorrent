@@ -106,8 +106,15 @@ async fn torrent_peers(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
+    let auth = require_auth(&req, &state).await?;
+    // 与主详情同口径（0286 / P1-1）：未过审种子的 info_hash 与在线 peer 不外泄
+    crate::torrents::assert_visible(
+        &state.repo.db,
+        id,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     let info_hash: Option<String> =
         sqlx::query_scalar("SELECT info_hash FROM torrents WHERE id = $1")
             .bind(id)

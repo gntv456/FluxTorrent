@@ -6,6 +6,7 @@ use sqlx::PgPool;
 use crate::errors::{DomainError, DomainResult};
 
 use super::types::{FileRow, ThankRow, TorrentDetailRow, TorrentRow};
+use super::visibility::visibility_sql;
 
 pub async fn get_torrent(
     db: &PgPool,
@@ -19,15 +20,7 @@ pub async fn get_torrent(
     } else {
         "CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name"
     };
-    // G7 POSTPONED：status=4 的种子只对发布者本人与 staff 开放；
-    // staff（viewer.is_staff）或本人（owner_id = viewer.0）时放宽到 approval_status IN (1,4)
-    // 审计修复（P1）：本人对 status=0 待审种子也应可见（上传后马上看详情不再 404）
-    let vis = match viewer {
-        Some((uid, is_staff)) => format!(
-            "(t.approval_status = 1 OR ((t.approval_status = 4 OR t.approval_status = 0) AND ({is_staff} OR t.owner_id = {uid})))"
-        ),
-        None => "t.approval_status = 1".to_string(),
-    };
+    let vis = visibility_sql(viewer);
     let page = sqlx::query_as::<_, TorrentRow>(
         &format!(r#"
         SELECT t.id, t.info_hash, t.pieces_hash, t.name, t.small_descr, t.category_id, t.medium_id,
@@ -85,9 +78,9 @@ pub async fn get_torrent_detail(
     id: i64,
     viewer: i64,
 ) -> DomainResult<TorrentDetailRow> {
-    // 可见性与 get_torrent 同口径（2026-09-22 对齐修复）：过审 1 全员可见；
-    // 待审 0/暂缓 4 仅 owner 与 staff——否则「编辑打回待审后 staff 的 aggregate
-    // 立刻 404（主行可见、扩展块不可见的口径劈叉）」。
+    // 可见性与 get_torrent 同口径（`visibility_sql`，0288 收口）：过审 1 全员可见；
+    // 待审 0 / 被拒 2 / 暂缓 4 仅 owner 与 staff——被拒态必须放行，否则作者与审核员
+    // 都进不去自己刚处理的那条种子，编辑重提这条路整条断掉（实测 P0-3）。
     // viewer 解析 owner（is_owner）但不能判定 staff，这里放宽到 owner；staff 态
     // 由 SQL 内 EXISTS 子查询判定（user_status 权威行 class_id >= 90）。
     let row = sqlx::query_as::<_, TorrentDetailRow>(
@@ -107,7 +100,7 @@ pub async fn get_torrent_detail(
         FROM torrents t
         WHERE t.id = $1 AND (
             t.approval_status = 1
-            OR ((t.approval_status = 0 OR t.approval_status = 4)
+            OR (t.approval_status IN (0, 2, 4)
                 AND (t.owner_id = $2
                      OR EXISTS(SELECT 1 FROM users su
                          WHERE su.id = $2 AND su.class_id >= 90)))

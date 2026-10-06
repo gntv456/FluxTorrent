@@ -37,6 +37,23 @@ export function TorrentListClient({
   const { dict, locale } = useI18n();
   const compact = useIsCompact();
   const [rows, setRows] = useState<SnatchRow[] | null>(null);
+  // 0288：被拒种子原本只有服务端端点（POST /torrents/{id}/resubmit），
+  // 前端零接线；而详情页又进不去（被拒态不在可见性白名单）⇒ 作者无从自助。
+  const [busyId, setBusyId] = useState<number | null>(null);
+  async function resubmit(id: number) {
+    setBusyId(id);
+    try {
+      await api.post(`/api/v1/torrents/${id}/resubmit`, {});
+      setRows(
+        await api.get<SnatchRow[]>(
+          `/api/v1/me/torrentlist?kind=${kind}&limit=100`,
+        ),
+      );
+    } catch {
+      // 状态可能已被审核员改动，保持列表原样并允许再点
+    }
+    setBusyId(null);
+  }
 
   useEffect(() => {
     setRows(null);
@@ -105,13 +122,25 @@ export function TorrentListClient({
                     </span>
                   )}
                 {kind === "uploads" && r.approval_status === 2 && (
-                  <span
-                    className="sticker ml-1 bg-coral/40"
-                    title={r.deny_reason ?? ""}
-                  >
-                    {dict.mytl.badgeRejected}
-                    {r.deny_reason ? `：${r.deny_reason}` : ""}
-                  </span>
+                  <>
+                    <span
+                      className="sticker ml-1 bg-coral/40"
+                      title={r.deny_reason ?? ""}
+                    >
+                      {dict.mytl.badgeRejected}
+                      {r.deny_reason ? `：${r.deny_reason}` : ""}
+                    </span>
+                    <button
+                      onClick={() => resubmit(r.torrent_id)}
+                      disabled={busyId === r.torrent_id}
+                      className={
+                      "ml-1 rounded-full border border-line px-2 py-[1px] "
+                      + "text-[10px] disabled:opacity-40"
+                      }
+                    >
+                      {dict.mytl.resubmit}
+                    </button>
+                  </>
                 )}
               </td>
               <td className="num text-xs">{formatBytes(r.size)}</td>

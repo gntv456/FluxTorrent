@@ -24,6 +24,11 @@ struct MessageRow {
     /// 系统通知（sender_id IS NULL）：前端据此做视觉区分（通知带 🔔 徽标、不可回复）
     #[sqlx(default)]
     is_system: bool,
+    /// 文案键 + 参数（0288 / P1-9）：非空时前端按键现取字典渲染，切语言翻得动
+    #[sqlx(default)]
+    kind: Option<String>,
+    #[sqlx(default)]
+    params: Option<serde_json::Value>,
 }
 
 /// 收件箱（messages.php location=1 口径）：支持 box=folderid、关键词搜索（主题/正文/两者）与未读筛选
@@ -38,7 +43,7 @@ async fn message_inbox(
     let pattern = q.search.as_deref().map(crate::http::like_pattern);
     let rows = sqlx::query_as::<_, MessageRow>(
         "SELECT m.id, u.username AS counterpart, m.subject, m.body, m.read_at, m.created_at, m.unread, m.folder, \
-                (m.sender_id IS NULL) AS is_system \
+                (m.sender_id IS NULL) AS is_system, m.kind, m.params \
          FROM messages m LEFT JOIN users u ON u.id = m.sender_id \
          WHERE m.receiver_id = $1 AND m.location = 1 \
            AND ($2::int IS NULL OR m.folder = $2) \

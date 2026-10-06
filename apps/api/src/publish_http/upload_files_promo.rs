@@ -6,29 +6,34 @@ use actix_web::web;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
-use super::ptgen::UploadForm;
-
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn store_files_promo(
     state: &web::Data<std::sync::Arc<AppState>>,
-    form: &UploadForm,
     parsed: &crate::bencode::ParsedTorrent,
     id: i64,
     auth: &crate::http::AuthUser,
+    promo: Option<super::upload_precheck::PromoSet>,
 ) -> DomainResult<()> {
     // 文件清单入 files 表（修复前从不写入：新种的文件列表/按文件名搜索永远为空）
-    for (idx, (path, len)) in parsed.files.iter().enumerate() {
-        sqlx::query(
-            "INSERT INTO files (torrent_id, file_index, \
-                 path, size) VALUES ($1, $2, $3, $4)",
-        )
-        .bind(id)
-        .bind(idx as i32)
-        .bind(path)
-        .bind(len)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 0288：改多值批量 INSERT —— 逐行 await 的写法在实测 5000 文件种子上是 5000 次往返。
+    if !parsed.files.is_empty() {
+        let mut qb = sqlx::QueryBuilder::new(
+            "INSERT INTO files (torrent_id, file_index, path, size) ",
+        );
+        qb.push_values(
+            parsed.files.iter().enumerate(),
+            |mut b, (idx, (path, len))| {
+                b.push_bind(id)
+                    .push_bind(idx as i32)
+                    .push_bind(path)
+                    .push_bind(*len);
+            },
+        );
+        qb.push(" ON CONFLICT DO NOTHING")
+            .build()
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     }
 
     // 发种自动促销（0089，NP 促销设置 口径）：管理后台配置默认促销（类型+天数），
@@ -67,49 +72,20 @@ pub(super) async fn store_files_promo(
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
 
-    // 推荐位（0089，NP 挑选 口径）：置顶位置/截止 + 推荐影片，管理组专属；
-    // 发布页人人可见，无权限提交会被此处拦截（与参考站服务端强校验同口径）
-    if form.pos_state.unwrap_or(0) != 0
-        || form.pick_type.unwrap_or(0) != 0
-        || form
-            .pos_state_until
-            .as_deref()
-            .map(str::trim)
-            .is_some_and(|s| !s.is_empty())
-    {
-        if auth.class_id < 90 {
-            return Err(DomainError::Forbidden); // 置顶/推荐仅管理组
-        }
-        let pos = form.pos_state.unwrap_or(0);
-        if ![0, 1, 2].contains(&pos) {
-            return Err(DomainError::Validation("置顶位置取值 0/1/2".into()));
-        }
-        let pick = form.pick_type.unwrap_or(0);
-        if ![0, 1, 2].contains(&pick) {
-            return Err(DomainError::Validation("推荐影片取值 0/1/2".into()));
-        }
-        let until = form
-            .pos_state_until
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(|s| {
-                chrono::DateTime::parse_from_rfc3339(s)
-                    .map_err(|_| {
-                        DomainError::Validation("置顶截止时间格式无效".into())
-                    })
-                    .map(|dt| dt.with_timezone(&chrono::Utc))
-            })
-            .transpose()?;
+    // 推荐位（0089，NP 挑选 口径）：置顶位置/截止 + 推荐影片，管理组专属。
+    // 0288：权限/取值/时间格式的校验已全部前置到 `upload_precheck::check_promo`
+    // （建种子行之前），这里只写已判定合法的值——过去这段跑在 INSERT 之后，
+    // 越权提交会留下一枚待审残种且同一 .torrent 永久判重。
+    if let Some(p) = promo {
         sqlx::query(
             "UPDATE torrents SET pos_state = $2, \
                  pos_state_until = $3, pick_type = $4, \
                  mtime = now() WHERE id = $1",
         )
         .bind(id)
-        .bind(pos)
-        .bind(until)
-        .bind(pick)
+        .bind(p.pos)
+        .bind(p.until)
+        .bind(p.pick)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

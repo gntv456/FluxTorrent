@@ -64,12 +64,16 @@ async fn torrent_files(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
-    require_auth(&req, &state).await?;
-    Ok(ok(torrents::list_files(
+    let auth = require_auth(&req, &state).await?;
+    let id = path.into_inner();
+    // 与主详情同一准入闸门（0288 / P1-1）：未过审种子的附属数据不再各开各的口子
+    torrents::assert_visible(
         &state.repo.read_db,
-        path.into_inner(),
+        id,
+        (auth.id, auth.class_id >= 90),
     )
-    .await?))
+    .await?;
+    Ok(ok(torrents::list_files(&state.repo.read_db, id).await?))
 }
 
 #[get("/torrents/{id}/thanks")]
@@ -78,12 +82,16 @@ async fn torrent_thanks(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
-    require_auth(&req, &state).await?;
-    Ok(ok(torrents::list_thanks(
+    let auth = require_auth(&req, &state).await?;
+    let id = path.into_inner();
+    // 与主详情同一准入闸门（0288 / P1-1）：未过审种子的附属数据不再各开各的口子
+    torrents::assert_visible(
         &state.repo.read_db,
-        path.into_inner(),
+        id,
+        (auth.id, auth.class_id >= 90),
     )
-    .await?))
+    .await?;
+    Ok(ok(torrents::list_thanks(&state.repo.read_db, id).await?))
 }
 
 #[get("/torrents/{id}/comments")]
@@ -94,9 +102,16 @@ async fn comments(
     q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    let id = path.into_inner();
+    torrents::assert_visible(
+        &state.repo.read_db,
+        id,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     let items = torrents::list_comments_as(
         &state.repo.read_db,
-        path.into_inner(),
+        id,
         q.limit.unwrap_or(20),
         auth.id,
     )
@@ -119,12 +134,16 @@ async fn torrent_snatches(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
-    require_auth(&req, &state).await?;
-    Ok(ok(torrents::list_snatches(
+    let auth = require_auth(&req, &state).await?;
+    let id = path.into_inner();
+    // 与主详情同一准入闸门（0288 / P1-1）：未过审种子的附属数据不再各开各的口子
+    torrents::assert_visible(
         &state.repo.read_db,
-        path.into_inner(),
+        id,
+        (auth.id, auth.class_id >= 90),
     )
-    .await?))
+    .await?;
+    Ok(ok(torrents::list_snatches(&state.repo.read_db, id).await?))
 }
 
 /// NFO（NP viewnfo.php）
@@ -134,7 +153,13 @@ async fn torrent_nfo(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
-    require_auth(&req, &state).await?;
-    let nfo = torrents::get_nfo(&state.repo.read_db, path.into_inner()).await?;
+    let auth = require_auth(&req, &state).await?;
+    // 审核员要能读待审/被拒种子的 NFO（判压制来源与是否盗版的主要依据，旧口径 404）
+    let nfo = torrents::get_nfo(
+        &state.repo.read_db,
+        path.into_inner(),
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     Ok(ok(serde_json::json!({ "nfo": nfo })))
 }

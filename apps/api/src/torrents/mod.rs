@@ -27,6 +27,8 @@ pub use charge::*;
 pub use comments::*;
 pub use detail::*;
 pub use interact::*;
+mod visibility;
+pub use visibility::*;
 pub use list::*;
 pub use list_noclamp::*;
 pub use manage::*;

@@ -238,8 +238,14 @@ pub async fn torrent_collections(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
-    require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
+    crate::torrents::assert_visible(
+        &state.repo.db,
+        tid,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     let rows: Vec<(i64, String, String, Option<String>)> = sqlx::query_as(
         "SELECT c.id, c.kind, c.name, c.cover FROM torrent_collections tc \
          JOIN collections c ON c.id = tc.collection_id \

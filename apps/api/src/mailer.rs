@@ -91,6 +91,70 @@ pub async fn site_message(
     Ok(())
 }
 
+/// 带文案键的站内信（0288 / P1-9）。
+///
+/// `kind` + `params` 让「先存下来、以后再展示」的文本可事后翻译：`subject/body`
+/// 仍写按当前站点语言成文的兜底文本（老客户端、邮件、以及按键取不到译文时用），
+/// 但前端在 `kind` 命中字典时优先现取字典渲染 ⇒ 切语言翻得动。
+/// 项目 09-27 已定这条口径（抽卡流水那次是存了成品中文，切语言永远翻不过来）。
+pub async fn site_message_keyed(
+    db: &PgPool,
+    to_user: i64,
+    subject: &str,
+    body: &str,
+    kind: &str,
+    params: serde_json::Value,
+) -> anyhow::Result<()> {
+    sqlx::query(
+        r#"INSERT INTO messages
+        (receiver_id, subject, body, kind, params)
+        SELECT $1, $2, $3, $4, $5::jsonb
+        WHERE EXISTS (SELECT 1 FROM users WHERE id = $1)"#,
+    )
+    .bind(to_user)
+    .bind(subject)
+    .bind(body)
+    .bind(kind)
+    .bind(params)
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
+/// notify 的带键版：站内信按键落库 + 邮件尽力（邮件正文只能是成品文本，保持原样）
+pub async fn notify_keyed(
+    db: &PgPool,
+    to_user: i64,
+    email: Option<String>,
+    subject: &str,
+    body: &str,
+    kind: &str,
+    params: serde_json::Value,
+) {
+    if let Err(e) =
+        site_message_keyed(db, to_user, subject, body, kind, params).await
+    {
+        tracing::error!(?e, to_user, "site message failed");
+    }
+    if let Some(to) = email {
+        let cfg = smtp_config(db).await;
+        let (s, b) = (subject.to_string(), body.to_string());
+        actix_web::rt::spawn(async move {
+            let Some(cfg) = cfg else {
+                tracing::info!(to, subject = %s, "SMTP 未配置，邮件降级为日志");
+                return;
+            };
+            if let Err(e) = crate::gaps_http::send_generic_mail(
+                &cfg.url, &cfg.from, &to, &s, &b,
+            )
+            .await
+            {
+                tracing::error!(?e, to, "mail send failed");
+            }
+        });
+    }
+}
+
 /// SMTP 投递（配置装配见 smtp_config；未配置时降级日志）。
 /// 持 db 句柄的调用方优先用 send_mail_with（读站点设定）。
 pub async fn send_mail(

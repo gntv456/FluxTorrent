@@ -43,3 +43,8 @@ key 需为小写字母/数字/下划线，≤40 字符	key 需為小寫字母/�
 该次应用已回滚过	該次應用已回滾過	This apply has already been rolled back
 应用记录不存在	應用記錄不存在	No such apply record
 只能回滚最近一次应用：其后还有更新的记录，请先回滚它	只能回滾最近一次應用：其後還有更新的記錄，請先回滾它	Only the most recent apply can be rolled back; roll back the newer record first
+未选择种子	未选择种子	No torrent selected
+不能审核自己发布的种子	不能審核自己發布的種子	You cannot review your own upload
+本站要求提交 MediaInfo	本站要求提交 MediaInfo	This site requires MediaInfo
+该内容的删除状态已变化，请重试	該內容的刪除狀態已變化，請重試	The deletion state of this item changed; please retry
+单次最多处理 100 条	單次最多處理 100 條	At most 100 items per batch

@@ -4,9 +4,12 @@
 mod encode;
 mod parse;
 mod torrent;
+mod validate;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod validate_tests;
 
 // 门禁拆分：`parse`/`encode`/`ParsedTorrent` 等仅在模块内与单测使用，
 // bin crate 的 pub use 重导出会触发 unused_imports（原文件为 pub fn + dead_code 静默）。
@@ -16,6 +19,10 @@ pub use encode::{encode, info_hash};
 pub use parse::parse;
 #[allow(unused_imports)]
 pub use torrent::{build_download_torrent, parse_torrent, ParsedTorrent};
+#[allow(unused_imports)]
+pub use validate::{
+    reject_off_tracker_sources, validate_for_upload, MAX_TORRENT_FILES,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Bencode {

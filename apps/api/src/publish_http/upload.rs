@@ -8,9 +8,9 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::{require_auth, AuthUser};
 use crate::state::AppState;
 
-use super::ptgen::{
-    build_media_info, decode_nfo, UploadForm, NFO_MAX_BYTES, TORRENT_MAX_BYTES,
-};
+use super::descr_image::descr_images;
+use super::ptgen::{build_media_info, decode_nfo};
+use super::{upload_precheck as precheck, upload_revive};
 
 /// 发种结果。Token 化发种（`/open/torrents`）需要把「重复」当**成功**返回
 /// （幂等语义：工具重试同一 .torrent 不该报错），而网页发种必须继续报
@@ -29,10 +29,9 @@ pub async fn upload(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     payload: actix_multipart::Multipart,
-    form: web::Query<UploadForm>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    match upload_core(&state, &auth, form.into_inner(), payload).await? {
+    match upload_core(&state, &auth, req.query_string(), payload).await? {
         UploadOutcome::Created(v) => Ok(ok(v)),
         UploadOutcome::Duplicate { .. } => Err(DomainError::TorrentDuplicate),
     }
@@ -49,100 +48,60 @@ pub(crate) async fn upload_token(
     query_string: &str,
     payload: actix_multipart::Multipart,
 ) -> DomainResult<UploadOutcome> {
-    let form = web::Query::<UploadForm>::from_query(query_string)
-        .map_err(|e| DomainError::Validation(format!("查询参数非法: {e}")))?
-        .into_inner();
-    upload_core(state, auth, form, payload).await
+    upload_core(state, auth, query_string, payload).await
 }
 
 /// 发种核心：网页表单与开放 API 共用。调用方负责鉴权与表单来源。
 async fn upload_core(
     state: &web::Data<std::sync::Arc<AppState>>,
     auth: &AuthUser,
-    form: UploadForm,
+    query_string: &str,
     mut payload: actix_multipart::Multipart,
 ) -> DomainResult<UploadOutcome> {
-    use actix_web::web::Bytes;
-    use futures_util::StreamExt;
-
     // 发种基础权限（默认配给全体用户 class 1；可用于限制上传资格）
     crate::authz::require_perm(state, auth, crate::authz::perm::TORRENT_UPLOAD)
         .await?;
-    let mut file_bytes: Option<Bytes> = None;
-    let mut nfo_bytes: Option<Bytes> = None;
-    while let Some(item) = payload.next().await {
-        let mut field =
-            item.map_err(|e| DomainError::Validation(e.to_string()))?;
-        match field.name() {
-            Some("file") => {
-                let mut buf = web::BytesMut::new();
-                while let Some(chunk) = field.next().await {
-                    buf.extend_from_slice(
-                        &chunk.map_err(|e| {
-                            DomainError::Validation(e.to_string())
-                        })?,
-                    );
-                    if buf.len() > TORRENT_MAX_BYTES {
-                        return Err(DomainError::Validation(
-                            ".torrent 超过 4MiB 上限".into(),
-                        ));
-                    }
-                }
-                file_bytes = Some(buf.freeze());
-            }
-            // NFO 文件（NP upload.php nfo 口径）：文本解码后落 torrents.nfo
-            Some("nfo") => {
-                let mut buf = web::BytesMut::new();
-                while let Some(chunk) = field.next().await {
-                    buf.extend_from_slice(
-                        &chunk.map_err(|e| {
-                            DomainError::Validation(e.to_string())
-                        })?,
-                    );
-                    if buf.len() > NFO_MAX_BYTES {
-                        return Err(DomainError::Validation(
-                            "NFO 超过 1MiB 上限".into(),
-                        ));
-                    }
-                }
-                nfo_bytes = Some(buf.freeze());
-            }
-            _ => {}
-        }
-    }
-    let bytes = file_bytes
-        .ok_or(DomainError::Validation("缺少 .torrent 文件".into()))?;
+    // 体积上限、multipart 读取与元数据装配都在 upload_body.rs
+    let (bytes, nfo_bytes, mp_fields) =
+        super::upload_body::read_body(&state.repo.db, &mut payload).await?;
+    let form = super::upload_fields::build_form(query_string, mp_fields)?;
 
     let parsed = crate::bencode::parse_torrent(&bytes)
         .map_err(DomainError::TorrentInvalid)?;
+    // 结构校验（P0-6 实测：无 `pieces`、`pieces` 非 20 倍数、`piece length=0`、
+    // 总大小 0、空标题、`..\..\` 路径穿越 六种畸形 .torrent 全部 200 入库；
+    // 这类种子在客户端必然校验失败，变成 0 做种死种，工单全回审核员面前）
+    crate::bencode::validate_for_upload(&parsed)
+        .map_err(DomainError::TorrentInvalid)?;
+    // 站外取源键（HTTP seed / DHT 提示）入库这一侧直接拒收；下载侧另有剥离
+    crate::bencode::reject_off_tracker_sources(&bytes)
+        .map_err(DomainError::TorrentInvalid)?;
 
-    // 重复检测（M04：info_hash 唯一）
-    let dupe: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM torrents WHERE info_hash = $1 OR \
-         raw_info_hash = $2)",
+    // 重复检测（M04：info_hash 唯一）。**同一作者的墓碑（status=3）不算重复**——
+    // 走复活路径，否则「删了再发」这条路被唯一索引永久锁死（P0-4 实测）。
+    let existing: Option<(i64, Option<i64>, i16)> = sqlx::query_as(
+        "SELECT id, owner_id, approval_status FROM torrents \
+         WHERE info_hash = $1 OR raw_info_hash = $2 ORDER BY id LIMIT 1",
     )
     .bind(&parsed.info_hash_hex)
     .bind(&parsed.raw_info_hash_hex)
-    .fetch_one(&state.repo.db)
+    .fetch_optional(&state.repo.db)
     .await
-    .unwrap_or(false);
-    if dupe {
-        // 幂等：把已存在的那一枚的 id 一并回给调用方（Token 发种据此判重）
-        let existing: Option<i64> = sqlx::query_scalar(
-            "SELECT id FROM torrents WHERE info_hash = $1 OR \
-             raw_info_hash = $2 ORDER BY id LIMIT 1",
-        )
-        .bind(&parsed.info_hash_hex)
-        .bind(&parsed.raw_info_hash_hex)
-        .fetch_optional(&state.repo.db)
-        .await
-        .unwrap_or(None);
-        return Ok(UploadOutcome::Duplicate {
-            id: existing,
-            info_hash: parsed.info_hash_hex.clone(),
-            pieces_hash: parsed.pieces_hash_hex.clone(),
-        });
-    }
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let revive_id: Option<i64> = match existing {
+        Some((id, owner, status)) if status == 3 && owner == Some(auth.id) => {
+            Some(id)
+        }
+        Some((id, _, _)) => {
+            // 幂等：把已存在的那一枚的 id 一并回给调用方（Token 发种据此判重）
+            return Ok(UploadOutcome::Duplicate {
+                id: Some(id),
+                info_hash: parsed.info_hash_hex.clone(),
+                pieces_hash: parsed.pieces_hash_hex.clone(),
+            });
+        }
+        None => None,
+    };
 
     let name = form
         .name
@@ -181,8 +140,10 @@ async fn upload_core(
             "因多次发布被拒，上传资格已暂停；请先通过『联系我们』申诉".into(),
         ));
     }
-    // 0077 免审通道（NP offer_skip_approved_count 口径）：连续过审 ≥5 的发布者免审
-    let streak_skip = streak >= 5;
+    // 0077 免审通道（NP offer_skip_approved_count 口径）：连续**人工过审** ≥5 的发布者免审。
+    // P1-8：连击只由审核员累加（review_decide）。原先免审通道自己也 +1，等于
+    // 「免审 → 连击涨 → 更免审」的自激，一旦过 5 就事实永久免审。
+    let streak_skip = streak >= precheck::STREAK_SKIP_MIN;
     // 0170 等级免审：class ≥ upload_auto_approve_class（缺省 92 论坛版主）
     // 发布即通过；阈值同步约束编辑回退（interact.rs），「版主以上免审核」全链一致
     let auto_class =
@@ -214,13 +175,22 @@ async fn upload_core(
         .as_deref()
         .map(decode_nfo)
         .filter(|s| !s.trim().is_empty());
-    let price = form.price.unwrap_or(0).clamp(0, 1_000_000);
+    // ---- 以下全部在 INSERT 之前（P0-4：过去 tags / 推荐位 / 价格越界都在入库后
+    //      才报错，留下待审残种 + 同一 .torrent 永久「种子重复」）----
+    precheck::check_lengths(&form)?;
+    let price = precheck::check_price(form.price)?;
+    precheck::check_tags(&state.repo.db, &form, auth).await?;
+    let promo = precheck::check_promo(&form, auth)?;
     // 0148 C1：descr/name 里的 IMDB 引用自动提取（tt1234567，大小写不敏感）
     let imdb_id: Option<String> = form
         .descr
         .as_deref()
         .and_then(extract_imdb)
         .or_else(|| extract_imdb(&name));
+    // 简介里的图 → screenshots 列（该列过去全仓无写入，审核队列的「截图数」恒 0）
+    let shots = descr_images(form.descr.as_deref());
+    precheck::check_quality(&state.repo.db, &form, &parsed, shots.len())
+        .await?;
     // sections 先整体校验再落种子：原先校验在 INSERT 之后、且与写入交织，
     // 报错时种子已入库，重试同一 .torrent 永远撞 TorrentDuplicate
     super::upload_sections::parse_sections(
@@ -228,64 +198,102 @@ async fn upload_core(
         form.sections.as_ref(),
     )
     .await?;
-    let insert_res: Result<i64, sqlx::Error> = sqlx::query_scalar(
-        "INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, \
-         group_id, name, small_descr, descr, category_id, medium_id, \
-         grade_id, edition_id, owner_id, anonymous, size, numfiles, \
-         approval_status, media_info, nfo, price, imdb_id) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, \
-         $14, $15, $16, $17, $18, $19, $20) RETURNING id",
-    )
-    .bind(&parsed.info_hash_hex)
-    .bind(&parsed.raw_info_hash_hex)
-    .bind(&parsed.pieces_hash_hex)
-    .bind(form.group_id)
-    .bind(&name)
-    .bind(&form.small_descr)
-    .bind(&form.descr)
-    .bind(form.category_id)
-    .bind(form.medium_id)
-    .bind(form.grade_id)
-    .bind(form.edition_id)
-    .bind(auth.id)
-    .bind(form.anonymous)
-    .bind(parsed.size)
-    .bind(parsed.numfiles)
-    .bind(approval_status)
-    .bind(media_info)
-    .bind(nfo_text)
-    .bind(price)
-    .bind(imdb_id)
-    .fetch_one(&state.repo.db)
-    .await;
-    let id: i64 = match insert_res {
-        Ok(v) => v,
-        Err(e) => {
-            // 并发上传同一 .torrent：EXISTS 检查与 INSERT 之间的窗口由唯一约束兜底，
-            // 映射为语义化的重复结果而非裸 500（raw_info_hash 只有普通索引，见 0081）
-            if e.to_string().contains("torrents_info_hash_key")
-                || e.to_string().contains("duplicate key")
-            {
-                let existing: Option<i64> = sqlx::query_scalar(
-                    "SELECT id FROM torrents WHERE info_hash = $1 \
-                     ORDER BY id LIMIT 1",
-                )
-                .bind(&parsed.info_hash_hex)
-                .fetch_optional(&state.repo.db)
-                .await
-                .unwrap_or(None);
-                return Ok(UploadOutcome::Duplicate {
-                    id: existing,
-                    info_hash: parsed.info_hash_hex.clone(),
-                    pieces_hash: parsed.pieces_hash_hex.clone(),
-                });
+    // 重复发布策略（suggest/block/group）：pieces_hash 命中同内容时的处置
+    let dup_group: Option<i64> =
+        match precheck::dup_policy(&state.repo.db, &parsed.pieces_hash_hex)
+            .await?
+        {
+            precheck::DupVerdict::AutoGroup(gid) => Some(gid),
+            _ => None,
+        };
+    let group_id = form.group_id.or(dup_group);
+    // 复活路径（同一作者删过的同内容）：复用原 id，内容整体覆盖，重回审核流
+    let id: i64 = match revive_id {
+        Some(old) => {
+            upload_revive::revive_tombstone(
+                &state.repo.db,
+                old,
+                &form,
+                &name,
+                &parsed,
+                &media_info,
+                &nfo_text,
+                price,
+                &imdb_id,
+                group_id,
+                approval_status,
+                &shots,
+            )
+            .await?
+        }
+        None => {
+            let insert_res: Result<i64, sqlx::Error> = sqlx::query_scalar(
+                "INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, \
+                 group_id, name, small_descr, descr, category_id, medium_id, \
+                 grade_id, edition_id, owner_id, anonymous, size, numfiles, \
+                 approval_status, media_info, nfo, price, imdb_id, \
+                 screenshots) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, \
+                 $13, $14, $15, $16, $17, $18, $19, $20, \
+                 $21::jsonb) RETURNING id",
+            )
+            .bind(&parsed.info_hash_hex)
+            .bind(&parsed.raw_info_hash_hex)
+            .bind(&parsed.pieces_hash_hex)
+            .bind(group_id)
+            .bind(&name)
+            .bind(&form.small_descr)
+            .bind(&form.descr)
+            .bind(form.category_id)
+            .bind(form.medium_id)
+            .bind(form.grade_id)
+            .bind(form.edition_id)
+            .bind(auth.id)
+            .bind(form.anonymous)
+            .bind(parsed.size)
+            .bind(parsed.numfiles)
+            .bind(approval_status)
+            .bind(media_info)
+            .bind(nfo_text)
+            .bind(price)
+            .bind(imdb_id)
+            .bind(serde_json::json!(shots))
+            .fetch_one(&state.repo.db)
+            .await;
+            match insert_res {
+                Ok(v) => v,
+                Err(e) => {
+                    // 并发上传同一 .torrent：判重与 INSERT 之间的窗口由唯一约束兜底，
+                    // 映射为语义化的重复结果而非裸 500（raw_info_hash 只有普通索引，见 0081）
+                    if e.to_string().contains("torrents_info_hash_key")
+                        || e.to_string().contains("duplicate key")
+                    {
+                        let existing: Option<i64> = sqlx::query_scalar(
+                            "SELECT id FROM torrents WHERE info_hash = $1 \
+                             ORDER BY id LIMIT 1",
+                        )
+                        .bind(&parsed.info_hash_hex)
+                        .fetch_optional(&state.repo.db)
+                        .await
+                        .unwrap_or(None);
+                        return Ok(UploadOutcome::Duplicate {
+                            id: existing,
+                            info_hash: parsed.info_hash_hex.clone(),
+                            pieces_hash: parsed.pieces_hash_hex.clone(),
+                        });
+                    }
+                    // 分类/媒介/学段/版本不存在 → 外键违规，是输入问题不是服务器故障
+                    return Err(crate::errors::db_to_domain(
+                        e,
+                        "分类/媒介/学段/版本",
+                    ));
+                }
             }
-            // 分类/媒介/学段/版本不存在 → 外键违规，是输入问题不是服务器故障
-            return Err(crate::errors::db_to_domain(e, "分类/媒介/学段/版本"));
         }
     };
 
     // 多维属性（第八轮 Section）与标签：外提至 sections_store::store_sections_tags
+    // （标签已在 INSERT 前按同一判据校验过，这里只会因写库失败而错）
     super::upload_sections::store_sections_tags(state, &form, auth, id).await?;
     // 新种子进列表：推进列表缓存代际，否则首屏 45s 内看不到刚发的种
     let app: &AppState = state;
@@ -299,82 +307,23 @@ async fn upload_core(
         .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 文件清单/自动促销/推荐位：外提至 upload_files_promo::store_files_promo
+    // （推荐位的权限与取值已在 INSERT 前校验，这里只负责写）
     super::upload_files_promo::store_files_promo(
-        state, &form, &parsed, id, auth,
+        state, &parsed, id, auth, promo,
     )
     .await?;
     // M28 插件 Hook：发布成功后分发（异步、失败不影响主流程）
     state.plugins.dispatch_upload(state.get_ref(), id, auth.id);
 
-    // 0075 聚合组推荐（未显式指定组时）：
-    //   a) pieces_hash 命中已有组 → 直接建议锁定（跨站同源再发布场景）
-    //   b) 否则名称相似度（trgm）> 0.4 的组 → 候选列表
-    //   c) 无组可荐但 pieces_hash 已存在同源种（0284 P1-4）→ same_source
-    //      提示「同源种子已存在」，防重复发布（NP 口径的辅种提示）
-    let mut group_suggest: serde_json::Value = serde_json::json!(null);
-    if form.group_id.is_none() {
-        let lock: Option<i64> = sqlx::query_scalar(
-            "SELECT t2.group_id FROM torrents t2 WHERE \
-             t2.pieces_hash = $1 AND t2.pieces_hash <> '' AND t2.group_id IS \
-             NOT NULL LIMIT 1",
-        )
-        .bind(&parsed.pieces_hash_hex)
-        .fetch_optional(&state.repo.db)
-        .await
-        .unwrap_or(None);
-        if let Some(gid) = lock {
-            let gname: String = sqlx::query_scalar(
-                "SELECT name FROM torrent_groups WHERE id = $1",
-            )
-            .bind(gid)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or_default();
-            group_suggest = serde_json::json!({ "locked": true, "group_id": gid, "name": gname });
-        } else {
-            let cands: Vec<(i64, String)> = sqlx::query_as(
-                                "SELECT g.id, \
-                 g.name FROM torrent_groups g WHERE similarity(g.name, $1) > 0.4 ORDER BY similarity(g.name, $1) DESC LIMIT 3",
-            )
-            .bind(&name)
-            .fetch_all(&state.repo.db)
-            .await
-            .unwrap_or_default();
-            if !cands.is_empty() {
-                group_suggest =
-                    serde_json::json!({ "locked": false, "candidates": cands });
-            } else {
-                let same: Option<(i64, String)> = sqlx::query_as(
-                    "SELECT id, name FROM torrents WHERE pieces_hash = $1 \
-                     AND pieces_hash <> '' AND id <> $2 \
-                     ORDER BY id LIMIT 1",
-                )
-                .bind(&parsed.pieces_hash_hex)
-                .bind(id)
-                .fetch_optional(&state.repo.db)
-                .await
-                .unwrap_or(None);
-                if let Some((sid, sname)) = same {
-                    group_suggest = serde_json::json!({
-                        "same_source": true,
-                        "torrent_id": sid, "name": sname,
-                    });
-                }
-            }
-        }
-    }
-
-    // 0075 免审积分：自动过审的发布连续 +1（被拒路径在 admin 审核处清零）
-    if auto_approve {
-        let _ = sqlx::query(
-            "UPDATE users SET approve_streak = \
-         approve_streak + 1 WHERE id = $1",
-        )
-        .bind(auth.id)
-        .execute(&state.repo.db)
-        .await;
-    }
-
+    // 聚合组推荐（同名候选 / 同源命中）：外提至 upload_suggest.rs
+    let group_suggest = super::upload_suggest::group_suggest(
+        &state.repo.db,
+        &parsed.pieces_hash_hex,
+        &name,
+        id,
+        group_id,
+    )
+    .await;
     Ok(UploadOutcome::Created(serde_json::json!({
         "id": id,
         "approval_status": approval_status,

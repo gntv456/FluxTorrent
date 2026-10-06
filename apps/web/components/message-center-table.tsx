@@ -18,6 +18,9 @@ export interface MessageRow {
   folder?: number | null;
   /** 系统通知（sender_id IS NULL，0123 视觉区分用）：🔔 徽标 + 禁用回复/转发 */
   is_system?: boolean | null;
+  /** 文案键 + 参数（0288 / P1-9）：命中本站字典时按键现取译文渲染 */
+  kind?: string | null;
+  params?: Record<string, unknown> | null;
 }
 
 export interface PmBox {
@@ -54,6 +57,19 @@ export function MessageTable({
 }) {
   const { dict, locale } = useI18n();
   const t = dict.messages;
+  // 0288 / P1-9：系统通知带 kind 时按键现取译文 + 插值（切语言翻得动）；
+  // 命中不到键（老消息、未知 kind）就回落后端存的成品文本。
+  const NOTICE: Record<string, { s: string; b: string }> = {
+    review_approved: { s: t.kindReviewApproved, b: t.bodyReviewApproved },
+    review_rejected: { s: t.kindReviewRejected, b: t.bodyReviewRejected },
+    group_new_version: { s: t.kindGroupNewVersion, b: t.bodyGroupNewVersion },
+  };
+  const keyed = (m: MessageRow, part: "s" | "b", fallback: string) => {
+    const k = m.kind ? NOTICE[m.kind] : undefined;
+    if (!k) return fallback;
+    const p = (m.params ?? {}) as Record<string, unknown>;
+    return k[part].replace(/\{(\w+)\}/g, (_x, key) => String(p[key] ?? ""));
+  };
   return (
     <table className="nexus-table">
       <thead>
@@ -117,12 +133,12 @@ export function MessageTable({
                       🔔
                     </span>
                   )}
-                  {m.subject}
+                  {keyed(m, "s", m.subject)}
                 </button>
                 {openId === m.id && (
                   <div className="mt-2 rounded-[var(--r-sm)] border border-dashed border-[var(--baozi-line)] bg-[var(--baozi-cream)] p-2">
                     <div className="text-sm">
-                      <MarkdownRenderer source={m.body} />
+                      <MarkdownRenderer source={keyed(m, "b", m.body)} />
                     </div>
                     <p className="mt-1 text-[11px] text-sub md:hidden">
                       {cp} · {time}

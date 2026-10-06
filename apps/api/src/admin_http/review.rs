@@ -9,6 +9,9 @@ use super::guard::staff;
 
 // ============ 种子审核 ============
 
+/// 审核队列条目（0285 补内容面）。
+/// 旧版只下发 id/name/owner_id/size/created_at —— 版主看不到简介/描述/文件数/截图/NFO/
+/// 查重命中/上传者历史，却要为一条种子的生死按「过/不过」，实际等于只看标题审。
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct PendingTorrent {
     id: i64,
@@ -16,22 +19,112 @@ struct PendingTorrent {
     owner_id: Option<i64>,
     size: i64,
     created_at: chrono::DateTime<chrono::Utc>,
+    owner_name: Option<String>,
+    category_name: Option<String>,
+    small_descr: String,
+    descr_excerpt: String,
+    numfiles: i32,
+    screenshots: i32,
+    has_nfo: bool,
+    has_media_info: bool,
+    anonymous: bool,
+    official_tag: bool,
+    price: i64,
+    dup_hash: i64,
+    dup_name: i64,
+    owner_approved: i64,
+    owner_denied: i64,
+}
+
+/// 队列查询参数（0286 分页 / 筛选 / 排序）。
+#[derive(Deserialize)]
+struct QueueQuery {
+    /// 排序：true（默认）= 最老优先，先到的先审；false = 最新优先
+    #[serde(default)]
+    oldest_first: Option<bool>,
+    #[serde(default)]
+    limit: Option<i64>,
+    #[serde(default)]
+    offset: Option<i64>,
+    #[serde(default)]
+    category_id: Option<i32>,
+    #[serde(default)]
+    owner_id: Option<i64>,
 }
 
 #[get("/admin/reviews")]
 async fn review_queue(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
+    q: web::Query<QueueQuery>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let rows: Vec<PendingTorrent> = sqlx::query_as(
-        "SELECT id, name, owner_id, size, created_at FROM torrents \
-         WHERE approval_status = 0 ORDER BY id LIMIT 200",
+    // 旧口径是 `ORDER BY id LIMIT 200` 且无分页：实测积压 207 条时只回 200 条，
+    // **最新提交的那几条根本不在返回里**（升序 + 截断 = 新种对审核员永久不可见）。
+    let limit = q.limit.unwrap_or(50).clamp(1, 200);
+    let offset = q.offset.unwrap_or(0).max(0);
+    let oldest_first = q.oldest_first.unwrap_or(true);
+    let filters = "WHERE t.approval_status = 0          AND ($1::int IS NULL OR t.category_id = $1)          AND ($2::bigint IS NULL OR t.owner_id = $2)".to_string();
+    let order = if oldest_first {
+        "ORDER BY t.created_at ASC, t.id ASC"
+    } else {
+        "ORDER BY t.created_at DESC, t.id DESC"
+    };
+    let sql = String::from(
+        r#"SELECT t.id, t.name, t.owner_id, t.size, t.created_at,
+                  u.username AS owner_name, c.name AS category_name,
+                  COALESCE(t.small_descr, '') AS small_descr,
+                  left(COALESCE(t.descr, ''), 800) AS descr_excerpt,
+                  COALESCE(t.numfiles, 0)::int AS numfiles,
+                  (CASE WHEN jsonb_typeof(t.screenshots) = 'array'
+                        THEN jsonb_array_length(t.screenshots)
+                        ELSE 0 END)::int AS screenshots,
+                  (COALESCE(t.nfo, '') <> '') AS has_nfo,
+                  (t.media_info IS NOT NULL) AS has_media_info,
+                  COALESCE(t.anonymous, false) AS anonymous,
+                  COALESCE(t.official_tag, false) AS official_tag,
+                  COALESCE(t.price, 0)::bigint AS price,
+                  (SELECT count(*) FROM torrents d
+                    WHERE d.info_hash = t.info_hash
+                      AND d.id <> t.id) AS dup_hash,
+                  (SELECT count(*) FROM torrents d
+                    WHERE d.id <> t.id
+                      AND lower(d.name) = lower(t.name)) AS dup_name,
+                  (SELECT count(*) FROM torrents w
+                    WHERE w.owner_id = t.owner_id
+                      AND w.approval_status = 1) AS owner_approved,
+                  (SELECT count(*) FROM torrents w
+                    WHERE w.owner_id = t.owner_id
+                      AND w.approval_status = 2) AS owner_denied
+           FROM torrents t
+           LEFT JOIN categories c ON c.id = t.category_id
+           LEFT JOIN users u ON u.id = t.owner_id
+           {FILTERS}
+           {ORDER}
+           LIMIT $3 OFFSET $4"#,
     )
+    .replace("{FILTERS}", &filters)
+    .replace("{ORDER}", order);
+    let rows: Vec<PendingTorrent> = sqlx::query_as(&sql)
+        .bind(q.category_id)
+    .bind(q.owner_id)
+    .bind(limit)
+    .bind(offset)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    let total: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM torrents t WHERE t.approval_status = 0          AND ($1::int IS NULL OR t.category_id = $1)          AND ($2::bigint IS NULL OR t.owner_id = $2)",
+    )
+    .bind(q.category_id)
+    .bind(q.owner_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "total": total, "limit": limit, "offset": offset,
+        "oldest_first": oldest_first, "items": rows,
+    })))
 }
 
 #[derive(Deserialize)]
@@ -52,6 +145,23 @@ async fn review_decide(
     body: web::Json<ReviewReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // 审核权独立判定（0285）：过去只判 staff.panel，审/改/删全挤在 torrent.manage。
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_REVIEW,
+    )
+    .await?;
+    // 利益冲突拦截（0285 实测：class 91 发布员可审并放行自己的种）
+    let owner_id: Option<i64> =
+        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+            .bind(body.torrent_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    if owner_id == Some(auth.id) {
+        return Err(DomainError::Validation("不能审核自己发布的种子".into()));
+    }
     let deny_reason_valid = if let Some(dr) = body.deny_reason_id {
         if body.approve {
             return Err(DomainError::Validation("通过时不需要拒绝原因".into()));
@@ -113,103 +223,24 @@ async fn review_decide(
     .bind(body.approve)
     .execute(&state.repo.db)
     .await;
-    // 0077 自动促销（U3D 口径）：过审时按 position 取第一条命中规则挂促销
+    // 过审副作用（自动促销 + 组订阅推送）：与批量裁决共用同一实现
     if body.approve {
-        let _ = sqlx::query(
-            r#"
-            INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source, created_by)
-            SELECT 'torrent', t.id, r.kind::promotion_kind_enum, now(),
-                   now() + make_interval(hours => r.hours), 'task'::promotion_source, $2
-            FROM torrents t
-            JOIN auto_promo_rules r ON r.enabled
-                 AND (r.name_regex = '' OR t.name ~* r.name_regex)
-                 AND (r.min_size = 0 OR t.size >= r.min_size)
-                 AND (r.max_size = 0 OR t.size < r.max_size)
-                 AND (r.category_id IS NULL OR r.category_id = t.category_id)
-            WHERE t.id = $1
-            ORDER BY r.position LIMIT 1
-            "#,
+        super::review_side_effects::apply_approval_side_effects(
+            &state.repo.db,
+            body.torrent_id,
+            auth.id,
         )
-        .bind(body.torrent_id)
-        .bind(auth.id)
-        .execute(&state.repo.db)
-        .await;
-    }
-    // 0075 组级订阅推送：入组种子过审 → 通知组订阅者（每人一信，含通知偏好过滤）
-    if body.approve {
-        let _ = sqlx::query(
-            r#"
-            INSERT INTO messages (sender_id, receiver_id, subject, body)
-            SELECT NULL, gs.user_id, '订阅的聚合组有新版本',
-                   format('你订阅的资源组「%s」有新种子过审：#%s %s。同类资源聚合页见种子详情。',
-                          g.name, t.id, t.name)
-            FROM torrents t
-            JOIN torrent_groups g ON g.id = t.group_id
-            JOIN group_subscriptions gs ON gs.group_id = g.id
-            WHERE t.id = $1
-              AND (u_notice_enabled(gs.user_id, 'group_new_version'))
-            "#,
-        )
-        .bind(body.torrent_id)
-        .execute(&state.repo.db)
         .await;
     }
     let action = if body.approve { "approve" } else { "reject" };
-    // U2 §12.5 审核结果通知：发布者站内信必达（+邮件尽力），被拒附理由。
-    {
-        let row: Option<(i64, String, Option<String>, Option<String>)> = sqlx::query_as(
-            "SELECT t.owner_id, t.title, d.label, t.deny_note FROM torrents t \
-             LEFT JOIN torrent_deny_reasons d ON d.id = t.deny_reason_id WHERE t.id = $1",
-        )
-        .bind(body.torrent_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .ok()
-        .flatten();
-        if let Some((owner, title, deny_label, deny_note)) = row {
-            let email: Option<String> = sqlx::query_scalar(
-                "SELECT email FROM users WHERE id = $1 AND email <> ''",
-            )
-            .bind(owner)
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten();
-            let (subject, body_text) = if body.approve {
-                (
-                    format!("种子过审：{title}"),
-                    format!(
-                        "你发布的种子已通过审核：#{id} {title}。",
-                        id = body.torrent_id
-                    ),
-                )
-            } else {
-                let why = deny_label.or(deny_note).unwrap_or_else(|| {
-                    let r = body.reason.trim();
-                    if r.is_empty() {
-                        "未注明".into()
-                    } else {
-                        r.to_string()
-                    }
-                });
-                (
-                    format!("种子被拒：{title}"),
-                    format!(
-                        "你发布的种子未通过审核：#{id} {title}\n原因：{why}\n可修改后重新发布。",
-                        id = body.torrent_id
-                    ),
-                )
-            };
-            crate::mailer::notify(
-                &state.repo.db,
-                owner,
-                email,
-                &subject,
-                &body_text,
-            )
-            .await;
-        }
-    }
+    // U2 §12.5 审核结果通知：取数与发送在 review_notify.rs（0285 拆出并修列名）
+    super::review_notify::notify_review_result(
+        &state,
+        body.torrent_id,
+        body.approve,
+        &body.reason,
+    )
+    .await;
     // 种子操作记录（torrent-operation-logs 口径）
     let _ = sqlx::query(
         "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \

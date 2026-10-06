@@ -261,10 +261,10 @@ async fn torrent_tags(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
-    require_auth(&req, &state).await?;
-    Ok(ok(
-        torrents::list_tags(&state.repo.db, path.into_inner()).await?
-    ))
+    let auth = require_auth(&req, &state).await?;
+    let id = path.into_inner();
+    let viewer = (auth.id, auth.class_id >= 90);
+    Ok(ok(torrents::list_tags(&state.repo.db, id, viewer).await?))
 }
 
 #[derive(Deserialize)]
