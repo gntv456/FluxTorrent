@@ -187,3 +187,17 @@ pub enum SpendOutcome {
     Spent,
     Replayed,
 }
+
+/// 发放侧对 `Replayed` 的处置：**当成失败**，让所在事务一起回滚。
+///
+/// 发放/入账的幂等键都带 uuid 或批次锚点，正常路径不可能重放；真撞上只可能是
+/// 请求里有重复目标或键被复用。此时若继续报 200，就是「接口成功而用户零到账」
+/// ——发放面最贵的一类缺陷（与 0291 实测 A1 同型）。
+pub fn expect_spent(out: SpendOutcome) -> DomainResult<()> {
+    match out {
+        SpendOutcome::Spent => Ok(()),
+        SpendOutcome::Replayed => Err(DomainError::Validation(
+            "发放未生效：幂等键重复（请检查目标名单里是否有重复用户）".into(),
+        )),
+    }
+}

@@ -19,6 +19,12 @@ struct UserMedalRow {
     source: String,
     wearing: bool,
     granted_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// 到期时间（0291）：后台早就有「改期」按钮，列表却不下发这一列——
+    /// 站长点改期之前看不到当前到期，等于闭眼改。NULL=永久。
+    expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// 已过期（0291）：有效期到 now 之前就不再生效，但行还在、
+    /// 用户页与列表都读不出「这枚已经废了」。改期按钮要能一眼找到该点的行。
+    expired: bool,
 }
 
 #[derive(Deserialize)]
@@ -43,7 +49,9 @@ async fn admin_user_medals(
     }
     let rows: Vec<UserMedalRow> = sqlx::query_as(
         r#"SELECT um.user_id, u.username, um.medal_id, m.name AS medal_name,
-                  um.source, um.wearing, um.granted_at
+                  um.source, um.wearing, um.granted_at, um.expires_at,
+                  (um.expires_at IS NOT NULL AND um.expires_at < now())
+                      AS expired
            FROM user_medals um
            JOIN users u ON u.id = um.user_id
            JOIN medals m ON m.id = um.medal_id
@@ -83,8 +91,20 @@ async fn admin_user_medal_revoke(
     body: web::Json<UserMedalDel>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::MEDAL_MANAGE,
+    )
+    .await?;
+    // 等级护栏（0291）：回收属伤害性动作，与发放侧同闸——此前 93 可以直接摘掉
+    // 站长(99) 的勋章，而给用户详情挂勋章都要严格高于目标。
+    crate::admin_http::guard::ensure_outranks(
+        &state.repo.db,
+        auth.class_id,
+        body.user_id,
+    )
+    .await?;
     let n = sqlx::query(
         "DELETE FROM user_medals WHERE user_id = $1 AND medal_id = $2",
     )
@@ -99,7 +119,13 @@ async fn admin_user_medal_revoke(
     }
     state
         .repo
-        .audit(Some(auth.id), "medal.revoke", Some(body.user_id))
+        .audit_detail(
+            Some(auth.id),
+            "medal.revoke",
+            Some(body.user_id),
+            None,
+            Some(serde_json::json!({ "medal_id": body.medal_id })),
+        )
         .await;
     modify_log(
         &state.repo.db,
