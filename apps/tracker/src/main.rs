@@ -71,12 +71,17 @@ async fn main() -> anyhow::Result<()> {
         default_interval: env_i64("ANN_INTERVAL_DEFAULT", 1800)
             .clamp(60, 86400),
     };
+    // peer 存活 TTL 基准（审计 10-06 第 4 条）：先按 env 兜底；guard 刷新拿到
+    // site_settings.announce_interval 后随动。warm-restore 之前设定，恢复判定
+    // 即用正确 TTL。
+    peers::set_interval_secs(cfg.default_interval);
     let state = web::Data::new(TrackerState {
         peers: PeerTable::new(),
         redis: redis.clone(),
         db,
         guard: RwLock::new(GuardInner {
             passkeys: HashMap::new(),
+            passkey_miss: HashMap::new(),
             ip_bans: HashMap::new(),
             agent_rules: None, // None 使首个请求必然触发首次加载（见 refresh_guard 的 stale 判定）
             announce_interval: cfg.default_interval,
@@ -190,7 +195,9 @@ async fn main() -> anyhow::Result<()> {
                     let last = st.ver.swap(v, Ordering::Relaxed);
                     if last != v {
                         st.force_refresh.store(true, Ordering::Relaxed);
-                        st.guard_write().passkeys.clear();
+                        let mut g = st.guard_write();
+                        g.passkeys.clear();
+                        g.passkey_miss.clear();
                     }
                 }
             }

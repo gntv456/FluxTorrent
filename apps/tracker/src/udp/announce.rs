@@ -42,7 +42,13 @@ pub(super) async fn announce(
     let downloaded = i64::from_be_bytes(pkt[56..64].try_into().unwrap());
     let left = i64::from_be_bytes(pkt[64..72].try_into().unwrap());
     let uploaded = i64::from_be_bytes(pkt[72..80].try_into().unwrap());
+    // 审计 10-06 第 1 条：UDP 侧对 left<0 曾原样透传（is_seeder=left==0 判种
+    // 侥幸不中，但负数 left 进事件流/计费口径未定义）——与 HTTP 同口径拒绝。
+    if left < 0 || uploaded < 0 || downloaded < 0 {
+        return UdpTracker::err_pkt(transaction_id, "统计数值无效");
+    }
     let event_u32 = u32::from_be_bytes(pkt[80..84].try_into().unwrap());
+    // numwant=0 合法（明确不要 peer 列表）；负数按 0
     let numwant =
         i32::from_be_bytes(pkt[92..96].try_into().unwrap()).max(0) as usize;
     let port = u16::from_be_bytes(pkt[96..98].try_into().unwrap());
@@ -144,9 +150,9 @@ pub(super) async fn announce(
     if event == "stopped" {
         if crate::peers::external::external_enabled() {
             let mut r = t.state.redis.clone();
-            let _ = crate::peers::external::remove(&mut r, &key).await;
+            let _ = crate::peers::external::remove(&mut r, &key, user_id).await;
         }
-        t.state.peers.remove(&key);
+        t.state.peers.remove_owned(&key, user_id);
     } else {
         let peer = Peer {
             key: key.clone(),
@@ -195,7 +201,7 @@ pub(super) async fn announce(
         let snap = crate::peers::external::snapshot(
             &mut r,
             &info_hash_hex,
-            numwant.clamp(1, 200),
+            numwant.clamp(0, 200),
             &key.peer_id,
         )
         .await;
@@ -203,7 +209,7 @@ pub(super) async fn announce(
     } else {
         let snap = t.state.peers.snapshot(
             &info_hash_hex,
-            numwant.clamp(1, 200),
+            numwant.clamp(0, 200),
             &key.peer_id,
         );
         (

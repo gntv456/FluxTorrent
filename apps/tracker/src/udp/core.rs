@@ -135,6 +135,17 @@ impl UdpTracker {
             if proto != PROTOCOL_ID {
                 return None; // 协议号不符：丢弃
             }
+            // connect 洪水防护（审计 10-06 第 8 条）：伪造 connect 会向会话表
+            // 灌条目。进程内本地窗口（不落 Redis）每 IP 600/min——正常客户端
+            // 60s 一次 connect，NAT 大出口仍有余量；超限静默丢弃（不回包，
+            // 不给放大面）。
+            if self
+                .state
+                .local
+                .over(&format!("udp:connect:{}", peer.ip()), 600)
+            {
+                return None;
+            }
             return Some(self.connect(pkt, peer, transaction_id));
         }
         match action {
@@ -158,11 +169,22 @@ impl UdpTracker {
         if pkt.len() != 16 {
             return Self::err_pkt(transaction_id, "connect 包长无效");
         }
-        // 会话表容量防护：满了先清过期再整体清（正常站点量级远达不到）
+        // 会话表容量防护：满了先清过期；仍满（伪造 connect 洪水）淘汰最旧的
+        // 25%——整体 clear 会把全部在线会话一并重置，攻击者可周期性反复触发
+        // （审计 10-06 第 8 条）。排序 O(n log n) 只在极端路径发生。
         if self.conns.len() >= CONN_CAP {
             self.conns.retain(|_, v| v.at.elapsed() < CONN_TTL);
             if self.conns.len() >= CONN_CAP {
-                self.conns.clear();
+                let mut ages: Vec<_> = self
+                    .conns
+                    .iter()
+                    .map(|e| (e.key().clone(), e.at))
+                    .collect();
+                ages.sort_unstable_by_key(|(_, at)| *at);
+                let cut = ages.len() / 4;
+                for (k, _) in ages.into_iter().take(cut) {
+                    self.conns.remove(&k);
+                }
             }
         }
         let conn_id = rand_u64();

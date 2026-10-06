@@ -50,17 +50,33 @@ pub(super) async fn scrape(
             "scrape 需在 info_hash 列表后附带 passkey",
         );
     }
-    if t.state.resolve_passkey_cached(passkey).await.is_none() {
+    let Some((_uid, _de, suspended)) =
+        t.state.resolve_passkey_cached(passkey).await
+    else {
         return UdpTracker::err_pkt(transaction_id, "passkey 无效");
+    };
+    if suspended {
+        return UdpTracker::err_pkt(transaction_id, "账号已被挂起");
     }
     let mut out = Vec::with_capacity(8 + n_hash * 12);
     out.extend_from_slice(&SCRAPE_ACTION.to_be_bytes());
     out.extend_from_slice(&transaction_id.to_be_bytes());
     for chunk in pkt[16..16 + n_hash * 20].chunks_exact(20) {
         let hexkey = crate::peers::hex(chunk);
-        let (s, l) = t.state.peers.counts(&hexkey);
-        out.extend_from_slice(&(s as i32).to_be_bytes());
-        out.extend_from_slice(&(l as i32).to_be_bytes());
+        // 白名单（审计 10-06 第 3 条）：与 HTTP scrape 同口径，未注册种子计 0；
+        // 外置模式计数同源（多副本互见），否则内存表。
+        let (s, l) = if !t.state.torrent_registered_scrape(&hexkey).await {
+            (0, 0)
+        } else if crate::peers::external::external_enabled() {
+            let mut r = t.state.redis.clone();
+            let (s, l) = crate::peers::external::counts(&mut r, &hexkey).await;
+            (s as i32, l as i32)
+        } else {
+            let (s, l) = t.state.peers.counts(&hexkey);
+            (s as i32, l as i32)
+        };
+        out.extend_from_slice(&s.to_be_bytes());
+        out.extend_from_slice(&l.to_be_bytes());
         out.extend_from_slice(&0i32.to_be_bytes()); // downloaded（BEP15 允许 0）
     }
     out
