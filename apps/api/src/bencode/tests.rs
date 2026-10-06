@@ -131,3 +131,50 @@ fn download_rebuild_strips_offtracker_sources() {
         "剥离不得改变 info_hash"
     );
 }
+
+#[test]
+fn parser_rejects_deep_nesting_and_len_overflow() {
+    // 深度：1 MiB 的 `l` 串（远小于 4 MiB 上传上限）曾能打爆请求线程栈
+    let deep = vec![b'l'; 200_000];
+    assert!(parse(&deep).is_err(), "深层嵌套必须被拒绝而不是栈溢出");
+    // 长度回绕：长度前缀本身写成 usize::MAX 时，release 下曾算出 end < start
+    // 而切片 panic；现在必须是错误
+    assert!(parse(b"18446744073709551615:x").is_err());
+    assert!(
+        parse(b"99999999999999999999:x").is_err(),
+        "超出 usize 的长度前缀"
+    );
+}
+
+#[test]
+fn download_rebuild_does_not_duplicate_private_key() {
+    let mut raw: Vec<u8> = Vec::new();
+    let info = Bencode::Dict(vec![
+        (b"length".to_vec(), Bencode::Int(1024)),
+        (b"name".to_vec(), Bencode::Bytes(b"t.bin".to_vec())),
+        (b"piece length".to_vec(), Bencode::Int(16384)),
+        (b"pieces".to_vec(), Bencode::Bytes(vec![3u8; 20])),
+    ]);
+    let root = Bencode::Dict(vec![
+        (b"private".to_vec(), Bencode::Int(0)),
+        (
+            b"announce".to_vec(),
+            Bencode::Bytes(b"http://old/a".to_vec()),
+        ),
+        (b"info".to_vec(), info),
+    ]);
+    encode(&root, &mut raw);
+    let out =
+        build_download_torrent(&raw, "http://t/announce/PK", &[]).unwrap();
+    let (parsed, _) = parse(&out).unwrap();
+    let pairs = match &parsed {
+        Bencode::Dict(p) => p,
+        _ => panic!("root dict"),
+    };
+    let n = pairs.iter().filter(|(k, _)| k == b"private").count();
+    assert_eq!(n, 1, "根级 private 必须唯一，重复键会让严格模式客户端拒读");
+    assert_eq!(
+        parse_torrent(&raw).unwrap().info_hash_hex,
+        parse_torrent(&out).unwrap().info_hash_hex
+    );
+}
