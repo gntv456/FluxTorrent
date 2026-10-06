@@ -317,7 +317,7 @@ def sec_e_reclaim():
     s, r = call("DELETE", "/admin/user-props/%s" % order, None,
                 PROBE["hr"][1])
     still = int(psql("SELECT count(*) FROM shop_orders WHERE id=%s" % order))
-    ok("E1 付费购买的背包单不得被直接删（那是退款范畴）",
+    ok("E1 付费购买的背包单不得被直接删（口径：购买即终局，无退款通道）",
        s in (400, 403) and still == 1, "HTTP %s 行仍在=%d" % (s, still))
 
     s, r = call("POST", "/admin/users/%d/grant-item/%d" % (uid, ITEM_RENAME),

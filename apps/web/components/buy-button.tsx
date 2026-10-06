@@ -196,6 +196,9 @@ export function BuyButton({
                   )}
                 </p>
               )}
+              {/* 口径（站长拍板）：道具购买后不可退。政策必须出现在付款之前，
+                  而不是等用户事后找上门——回收端点也只管管理发放的 0 价单。 */}
+              <p className="text-xs text-sub">{t.noRefund}</p>
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
