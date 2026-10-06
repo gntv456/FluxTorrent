@@ -133,6 +133,31 @@ fn download_rebuild_strips_offtracker_sources() {
 }
 
 #[test]
+fn download_rebuild_preserves_non_canonical_info_bytes() {
+    // 键序非 BEP3 排序的上传（重打包/跨站复种常见）：重编码会改字节序，
+    // 下载种的 info_hash 与入库时的 raw 口径分叉 —— M05 承诺「info 不动」，
+    // 此前只对规范输入成立（审计四轮实测复现）。
+    let bytes =
+        b"d4:infod12:piece lengthi16384e4:name8:test.bin6:lengthi1024eee"
+            .to_vec();
+    let pt_in = parse_torrent(&bytes).unwrap();
+    assert_ne!(
+        pt_in.raw_info_hash_hex, pt_in.info_hash_hex,
+        "构造输入必须为非规范键序（raw≠canonical），否则测不到修复路径"
+    );
+    let out =
+        build_download_torrent(&bytes, "http://t.example/announce/PK", &[])
+            .unwrap();
+    let pt_out = parse_torrent(&out).unwrap();
+    assert_eq!(
+        pt_out.raw_info_hash_hex, pt_in.raw_info_hash_hex,
+        "info 原始字节必须逐字节保留"
+    );
+    // 规范化口径亦不变（info 内容未动，仅键序）
+    assert_eq!(pt_out.info_hash_hex, pt_in.info_hash_hex);
+}
+
+#[test]
 fn parser_rejects_deep_nesting_and_len_overflow() {
     // 深度：1 MiB 的 `l` 串（远小于 4 MiB 上传上限）曾能打爆请求线程栈
     let deep = vec![b'l'; 200_000];
