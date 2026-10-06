@@ -369,7 +369,9 @@ html {
   background: var(--cloud);
   /* 站内锚点/返回顶部平滑滚动；reduced-motion 用户由下方媒体查询关掉 */
   scroll-behavior: smooth;
-  -webkit-tap-highlight-color: transparent;
+  /* 触控反馈（P0-3）：此前 transparent 把系统点按高亮也关了，弱网下
+     「点了没反应」。改为低强度品牌色高亮——即时确认点到，不刺眼。 */
+  -webkit-tap-highlight-color: rgba(59, 130, 246, 0.18);
 }
 
 @media (prefers-reduced-motion: reduce) {

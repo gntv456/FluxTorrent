@@ -44,6 +44,7 @@ const enBase: Omit<
     pleaseLogin: "Please sign in first",
     loadFailed: "Failed to load",
     loading: "Loading…",
+    pageLoading: "Opening page…",
     retry: "Retry",
     networkError: "Network error, please try again later",
     spark: "{magic}",

@@ -52,6 +52,7 @@ export const ja: DeepPartial<Dict> = {
     pageX: "ページ {x}",
     pleaseLogin: "ログインしてください",
     loading: "読み込み中…",
+    pageLoading: "ページを開いています…",
     retry: "再試行",
     loadFailed: "読み込みに失敗しました",
     save: "保存",

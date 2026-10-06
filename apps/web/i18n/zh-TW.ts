@@ -44,6 +44,7 @@ const zhTwBase: Omit<
     pleaseLogin: "請先登入",
     loadFailed: "載入失敗",
     loading: "載入中…",
+    pageLoading: "正在開啟頁面…",
     retry: "重試",
     networkError: "網路異常，請稍後再試",
     spark: "{magic}",
