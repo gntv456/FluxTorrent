@@ -11,6 +11,9 @@ export interface ShopItemRow {
   price: number;
   config: Record<string, unknown>;
   active: boolean;
+  /** 库存配额（0287）：null=不限量 */
+  stock_quota: number | null;
+  stock_used: number;
 }
 
 export interface UserPropRow {
@@ -43,6 +46,7 @@ export interface EditState {
     price: string;
     config: string;
     active: boolean;
+    stockQuota: string;
   };
 }
 

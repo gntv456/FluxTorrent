@@ -4,6 +4,7 @@ import type { AdminPanelsProps } from "./admin-user-detail-actions-forms";
 import {
   FIELD_CLS, PANEL_BOX_CLS, PLAIN_BTN_CLS, PLAIN_FIELD_CLS,
 } from "./admin-user-detail-actions-forms";
+import { ItemGroupSelect } from "./admin-user-detail-item-select";
 import { categoryLabels, itemKindLabels } from "./admin-user-detail-shared";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
@@ -96,6 +97,16 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
                 </option>
               ))}
             </select>
+            <input
+              type="number"
+              min={1}
+              max={3650}
+              value={props.medalDays}
+              onChange={(e) => props.setMedalDays(e.target.value)}
+              placeholder={u.medalDaysPh}
+              title={u.medalDaysPh}
+              className={`w-28 ${FIELD_CLS}`}
+            />
             <button
               className="baozi-button"
               disabled={busy || !props.medalId}
@@ -114,35 +125,15 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
             {fmt(u.itemHint, { magic: currency })}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={props.itemId}
-              onChange={(e) => props.setItemId(e.target.value)}
-              className={`max-w-80 ${FIELD_CLS}`}
-            >
-              <option value="">{u.pickItem}</option>
-              {Object.entries(
-                props.items.reduce<Record<string, typeof props.items>>(
-                  (acc, it) => {
-                    (acc[
-                      (IKL[it.kind] ?? it.kind).replaceAll(
-                        "CURRENCY",
-                        currency,
-                      )
-                    ] ??= []).push(it);
-                    return acc;
-                  },
-                  {},
-                ),
-              ).map(([kind, list]) => (
-                <optgroup key={kind} label={kind}>
-                  {list.map((it) => (
-                    <option key={it.id} value={it.id}>
-                      #{it.id} {it.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            <ItemGroupSelect
+              items={props.items}
+              currency={currency}
+              IKL={IKL}
+              itemId={props.itemId}
+              setItemId={props.setItemId}
+              fieldCls={FIELD_CLS}
+              emptyLabel={u.pickItem}
+            />
             <button
               className="baozi-button"
               disabled={busy || !props.itemId}
@@ -268,6 +259,17 @@ export function AdminActionPanelsMore(props: AdminPanelsProps) {
               onChange={(e) =>
                 props.setAdj({ ...props.adj, note: e.target.value })
               }
+              className={PLAIN_FIELD_CLS}
+            />
+          </label>
+          <label className="mt-2 flex flex-col gap-1 text-xs">
+            {u.adjIdem}
+            <input
+              value={props.adj.idem}
+              onChange={(e) =>
+                props.setAdj({ ...props.adj, idem: e.target.value })
+              }
+              placeholder={u.adjIdemPh}
               className={PLAIN_FIELD_CLS}
             />
           </label>

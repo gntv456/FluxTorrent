@@ -358,6 +358,12 @@ const zhCnBase = {
     to: "收件人用户名",
     /** 系统通知（sender_id IS NULL）在发件人列显示的名字 */
     systemSender: "系统通知",
+    kindReviewApproved: "种子过审：{name}",
+    kindReviewRejected: "种子被拒：{name}",
+    kindGroupNewVersion: "订阅的聚合组有新版本",
+    bodyReviewApproved: "你发布的种子已通过审核：#{id} {name}。",
+    bodyReviewRejected: "你发布的种子未通过审核：#{id} {name}\n原因：{reason}\n可修改后重新发布。",
+    bodyGroupNewVersion: "你订阅的资源组「{group}」有新种子过审：#{id} {name}。同类资源聚合页见种子详情。",
     subject: "主题",
     body: "正文",
     send: "发送",
@@ -1361,6 +1367,7 @@ const zhCnBase = {
     },
   },
   mytl: {
+    resubmit: "重新送审",
     title: "我的种子",
     subtitle: "做种 / 下载 / 发布一览",
     tabSeeding: "做种中",
@@ -2960,6 +2967,13 @@ const zhCnBase = {
     approved: "已通过 #{id}",
     rejected: "已拒绝 #{id}",
     queueEmpty: "队列清空 🎉",
+    queueTotal: "待审 {n} 条",
+    queuePrev: "上一页",
+    queueNext: "下一页",
+    queueWaiting: "已等 {t}",
+    queueOpen: "看详情",
+    denyPickNone: "手填理由",
+
     resolve: "标记已处理",
     resolved: "已处理举报 #{id}",
     noReports: "暂无举报",
@@ -3923,6 +3937,12 @@ const zhCnBase = {
     revoke: "回收",
     revokeFail: "回收失败",
     heldEmpty: "暂无持有记录",
+    redate: "改期",
+    redateTitle: "修改有效期：填天数 1-3650，留空=永久",
+    redatePrompt: "新有效期（天数 1-3650，留空=改为永久）：",
+    redateBad: "需为整数天数或留空",
+    redated: "已改期",
+    redateFail: "改期失败",
   },
   /** 考核岗位：指标目录（key 与后端 JIXIAO_METRIC_KEYS 白名单对应）。
    *  {magic} 占位符由 metricOptions() 替换为站点货币名。 */
@@ -4212,6 +4232,7 @@ const zhCnBase = {
     grantAllow: "授予（额外允许）",
     grantDeny: "拒绝（显式禁止）",
     medalHint: "管理发放（source=admin），已拥有 {n} 枚。",
+    medalDaysPh: "天数（留空=随勋章定义）",
     pickMedal: "选择勋章",
     medalGrant: "授予",
     submit: "提交",
@@ -4229,6 +4250,8 @@ const zhCnBase = {
     adjSpark: "{magic}增量",
     adjInvite: "邀请增发/回收",
     adjNote: "备注（入审计）",
+    adjIdem: "幂等键",
+    adjIdemPh: "8-120 字符；同键重复提交会被拒绝",
     adjustSubmit: "提交调整",
     // 管理操作按钮墙（admin-user-detail-actions）
     actionsTitle: "管理操作",
@@ -4366,6 +4389,8 @@ const zhCnBase = {
     cfgNone: "（不选）",
     fConfig: "config(JSON，专家模式可直接改)",
     active: "上架",
+    fStock: "限量库存",
+    fStockPh: "留空=不限量",
     formHint:
       "即时生效类（上传量/{magic}/邀请）发放直接入账；卡牌/装饰类入背包待用户使用。装扮类会自动补 slot/dressup，无需手填。",
     // 列表表格 + 顶层消息（admin-props-table / admin-props）
@@ -4374,6 +4399,7 @@ const zhCnBase = {
     listed: "上架",
     unlisted: "下架",
     delOrUnlist: "删除/下架",
+    thStock: "库存",
     tableEmpty: "暂无道具",
     deleted: "已删除",
     saved: "已保存",
