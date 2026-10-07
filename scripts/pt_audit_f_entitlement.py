@@ -259,6 +259,50 @@ def sec_f_source_wired():
 STOCK_BACKUP = {}
 
 
+def raw_write(headers):
+    """直接对 /auth/login 发一个写请求，只改头部形态，看闸门放不放行。
+    返回 (status, code)。用 root 的错误口令也行——我们要判的是 403 与否。"""
+    import urllib.request
+    import json as _json
+    url = BASE + "/auth/login"
+    data = _json.dumps({"username": "nobody_probe", "password": "x"}).encode()
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("Content-Type", "application/json")
+    for k, v in headers.items():
+        req.add_header(k, v)
+    try:
+        r = urllib.request.urlopen(req, data, timeout=20)
+        body = _json.loads(r.read())
+    except urllib.error.HTTPError as e:  # noqa: BLE001
+        try:
+            body = _json.loads(e.read())
+        except Exception:
+            body = {"code": None}
+        return e.code, body.get("code")
+    return r.status, body.get("code")
+
+
+def sec_g_write_origin():
+    print("\n--- G 写请求来源闸：同源代理形态必须放行 ---")
+    # 浏览器经 web 容器同源代理打进来时：Origin 是用户地址栏的 host，
+    # Host 是上游容器名，代理把用户 host 放进 x-forwarded-host。
+    # 0295 前闸门只比 Host ⇒ 这类请求全判跨站，实测连登录都 403/2003。
+    s, code = raw_write({
+        "Origin": "http://127.0.0.1:3000",
+        "X-Forwarded-Host": "127.0.0.1:3000",
+    })
+    ok("G1 同源代理形态（Origin == x-forwarded-host）不再被误拦",
+       code != 2003, (s, code))
+    s, code = raw_write({
+        "Origin": "http://evil.example",
+        "X-Forwarded-Host": "127.0.0.1:3000",
+    })
+    ok("G2 真跨站仍然 403（修的是误拦，不是把闸拆了）",
+       code == 2003, (s, code))
+    s, code = raw_write({"Origin": "http://evil.example"})
+    ok("G3 无转发头且 Origin 非白名单 ⇒ 仍然 403", code == 2003, (s, code))
+
+
 def cleanup():
     for uid in CREATED:
         try:
@@ -297,6 +341,7 @@ def main():
         sec_d_ad_free()
         sec_e_jobs()
         sec_f_source_wired()
+        sec_g_write_origin()
     finally:
         cleanup()
     summary()

@@ -47,11 +47,8 @@ pub(crate) fn origin_matches(req: &HttpRequest, origin: &str) -> bool {
     // （不剥会把同站 Referer 误判跨站——二轮审计发现，方向是误拒非放行）
     let authority = origin.split_once("://").map_or(origin, |(_, a)| a);
     let authority = authority.split(['/', '?']).next().unwrap_or(authority);
-    let host = req
-        .headers()
-        .get("host")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
+    // 浏览器可见的 host:port（同源代理下不能用 Host，见 write_origin 注释）
+    let host = crate::http::write_origin::browser_host(req);
     if !host.is_empty() && authority.eq_ignore_ascii_case(host) {
         return true;
     }
