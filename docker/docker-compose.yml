@@ -318,9 +318,11 @@ services:
     profiles: ["monitoring"]
     logging: *default-logging
     environment:
-      # monitoring profile 未启用时该服务不启动，空默认不影响主栈；
-      # 启用前必须在 .env 设置强密码（grafana 暴露在 127.0.0.1:3001）
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-}
+      # 三轮遗留（2026-10-07）：空默认回落 grafana 的 admin/admin（即使仅
+      # 127.0.0.1 也不该裸奔）。compose 插值不区分 profile，无法 :? 硬失败——
+      # 缺省改为高熵随机式占位（admin 无法直接登录），启用 monitoring 后
+      # 请在 .env 显式设置 GRAFANA_PASSWORD 再进面板
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-flux-grafana-CHANGE-ME-9f86d081884c7d65}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - ./monitoring/provisioning:/etc/grafana/provisioning:ro

@@ -55,6 +55,10 @@ frame-ancestors 'none'
 - 登录/敏感写：Redis 滑窗（`rl:` 键）；开放 API 独立 token 限流 60 req/min。
 - announce：tracker 侧防护缓存（Redis 3s 轮询版本号 bump），不打 PG。
 - IP：ip_bans 封禁 + testip 工具 + TRUST_PROXY/TRUST_PROXY_IP 双档 XFF 取信（默认不信任代理头，防伪造）。
+- **XFF 取信语义（2026-10-07 三轮审计后）**：`TRUST_PROXY=1` 时 api/tracker 取 XFF **右值**（链尾）——即「直连我的那台反代追加的值」。两条部署红线：
+  1. 反代必须用 `$proxy_add_x_forwarded_for`（追加语义）。若配成 `proxy_set_header X-Forwarded-For $http_x_forwarded_for`（透传客户端自带值），右值=攻击者伪造值，限流/ip_bans 整体失效。
+  2. api 容器端口不得直接对外（compose 默认绑 127.0.0.1）——直连暴露时客户端可自带「干净尾值」伪造来源 IP。
+  web 容器的 `/api` 同源代理只**原样透传** XFF（不自造首位，2026-10-07 修复），站长外层 nginx 的追加语义直接贯通到 api。闸门自检：`FLUX_API_BASE=... python scripts/pt_audit_f_entitlement.py sec_g_xff_chain`（G4：伪造 XFF 不得污染 login_events）。
 
 ## 审计与监控
 
