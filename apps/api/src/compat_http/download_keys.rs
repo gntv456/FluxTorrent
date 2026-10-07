@@ -88,13 +88,16 @@ struct DlTokenQuery {
 /// 与长期 Token / passkey 完全解耦 —— 泄露只影响单个种子 30 分钟。
 #[get("/downloads/{torrent_id}")]
 async fn download_key_fetch(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
     q: web::Query<DlTokenQuery>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let torrent_id = path.into_inner();
     let hash = sha3_hex(q.token.as_bytes());
-    // 凭证级限流：每凭证 20 次/分钟
+    // 凭证级限流：每凭证 20 次/分钟 + IP 级 30 次/分钟（四审 L1：凭证哈希
+    // 维度可被未知凭证的盲刷绕过——不存在的哈希每次都换新键，计数恒 1；
+    // IP 维度兜住枚举/盲刷面）
     {
         use redis::AsyncCommands;
         let mut c = state.redis.clone();
@@ -104,6 +107,19 @@ async fn download_key_fetch(
             let _: () = c.expire(&key, 60).await.unwrap_or(());
         }
         if n > 20 {
+            return Err(DomainError::RateLimited.into());
+        }
+        let ip = req
+            .connection_info()
+            .peer_addr()
+            .map(|a| a.to_string())
+            .unwrap_or_default();
+        let ikey = format!("rl:dlkey:use-ip:{}", ip);
+        let ipn: i64 = c.incr(&ikey, 1).await.unwrap_or(0);
+        if ipn == 1 {
+            let _: () = c.expire(&ikey, 60).await.unwrap_or(());
+        }
+        if ipn > 30 {
             return Err(DomainError::RateLimited.into());
         }
     }

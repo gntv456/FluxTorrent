@@ -374,31 +374,10 @@ async fn adapter_call(
             }
         }
     }
-    // 出网执行器：同步签名（guest ABI），在 spawn_blocking 线程内借
-    // tokio handle block_on 跑 async reqwest（reqwest 无 blocking feature）
-    let http = Arc::new(move |u: &str| -> Result<String, String> {
-        let rt = tokio::runtime::Handle::current();
-        let u = u.to_string();
-        rt.block_on(async move {
-                let client = reqwest::Client::new();
-                let resp = client
-                    .get(&u)
-                    .header(
-                    "User-Agent",
-                    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)                         AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
-                )
-                    .timeout(std::time::Duration::from_secs(20))
-                    .send()
-                    .await
-                    .map_err(|e| e.to_string())?;
-                let status = resp.status().as_u16();
-                let text = resp.text().await.map_err(|e| e.to_string())?;
-                if !(200..300).contains(&status) {
-                    return Err(format!("HTTP {status}"));
-                }
-                Ok(text)
-            })
-    });
+    // 四轮审计 M1（2026-10-07）：出网执行器复用 adapter_http_exec（禁重定向
+    // + 统一 UA/超时）——此前这里内联 Client::new() 默认跟随重定向，白名单
+    // 域 302 → 内网即可绕过 http_allow（admin-try 路径 SSRF）。
+    let http = adapter_http_exec();
     let wasm = wasm.clone();
     let manifest_err = manifest.adapter_id.clone();
     let result = {

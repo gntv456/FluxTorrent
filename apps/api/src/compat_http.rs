@@ -11,7 +11,7 @@
 //! 含时效/撤销/独立限流）；download.php 与凭证下载走 passkey / 一次性短 token ——
 //! 与 NexusPHP 生态工具的既有习惯一致。
 
-mod aliases;
+pub(crate) mod aliases;
 mod common;
 mod download_keys;
 mod nexusphp;

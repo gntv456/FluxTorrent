@@ -40,7 +40,7 @@ fn parse_range(h: &str, total: i64) -> Option<(u64, u64)> {
 /// 附件读取的可见性判定（0294 / 安全审计 P1-2）：
 /// shared=任何成员（图床/帖子引用语义）；private=上传者本人或 staff；
 /// staff=仅 staff。返回 None 表示无权（对外统一 404，不泄存在性）。
-async fn visibility_denied(
+pub(crate) async fn visibility_denied(
     db: &sqlx::PgPool,
     uid: i64,
     sha: &str,

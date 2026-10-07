@@ -28,7 +28,9 @@ pub async fn ensure_builtin_adapters(db: &PgPool) {
         "1.2.0",
         "metadata",
         "movie.douban.com/subject 页面 og: 元数据（移动端路径）",
-        &["https://m.douban.com", "https://movie.douban.com"],
+        // 四审 L3：纯域名前缀会把 https://m.douban.com.evil.tld 也放进
+        // starts_with ——种子即高危示范；改为 /** 全域模式
+        &["https://m.douban.com/**", "https://movie.douban.com/**"],
         30,
         DOUBAN_WASM,
     )];

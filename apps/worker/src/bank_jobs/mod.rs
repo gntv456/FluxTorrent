@@ -31,9 +31,10 @@ pub async fn bank_daily(db: &PgPool) {
         .await
         .and_then(|v| v.parse().ok())
         .unwrap_or(7);
+    // yesno 门槛（与 api 侧 loans.rs 同口径；历史种子值 "false" 按 false）
     let allow_negative: bool = setting(db, "bank_allow_negative")
         .await
-        .map(|v| v == "true")
+        .map(|v| v == "yes")
         .unwrap_or(false);
 
     let mut demand_rows = 0u64;

@@ -99,12 +99,20 @@ pub(super) async fn subtitle_upload(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 发字幕 +5 火花（旧站口径）
-    let idem = format!("subtitle:{}:{}", auth.id, id);
-    earn_spark(&state.repo.db, auth.id, 5, "subtitle", &idem).await?;
+    // 发字幕 +5 火花（旧站口径）——仅附件上传得奖励；外链填 URL 零成本刷分
+    // 不得发钱（四轮 A1）。奖励金额随链接与否落库。
+    let reward: i64 = if file_ref.starts_with("attach://") {
+        5
+    } else {
+        0
+    };
+    if reward > 0 {
+        let idem = format!("subtitle:{}:{}", auth.id, id);
+        earn_spark(&state.repo.db, auth.id, reward, "subtitle", &idem).await?;
+    }
     announce_upload(&state, &auth, &meta, body.title.trim()).await;
     Ok(ok(
-        serde_json::json!({ "id": id, "reward": 5, "status": status }),
+        serde_json::json!({ "id": id, "reward": reward, "status": status }),
     ))
 }
 
@@ -188,6 +196,9 @@ async fn resolve_file(
         .map(str::trim)
         .filter(|s| s.starts_with("http://") || s.starts_with("https://"))
     {
+        // 直链分支按人节流（throttle 5/min）：外链不改奖励口径，但防脚本批量
+        // 提交外链刷字幕条数/占审核队列
+        crate::http::throttle(state, format!("sub-link:{}", auth.id)).await?;
         Ok((link.to_string(), 0, None))
     } else {
         Err(DomainError::Validation(

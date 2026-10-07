@@ -24,6 +24,34 @@ use wasmtime::{Config, Engine, Linker, Store};
 use crate::errors::{DomainError, DomainResult};
 
 /// 死循环防线：epoch 预算（调用开始到 bump 的时间窗）
+/// guest 线性内存 + 表上限（四轮审计 M2）：64MiB 足够元数据抓取类适配器
+const GUEST_MEM_LIMIT: usize = 64 * 1024 * 1024;
+
+/// wasmtime ResourceLimiter 的最小实现：只限总量，不追踪增长语义
+struct MemLimiter {
+    limit: usize,
+}
+
+impl wasmtime::ResourceLimiter for MemLimiter {
+    fn memory_growing(
+        &mut self,
+        _current: usize,
+        desired: usize,
+        _maximum: Option<usize>,
+    ) -> Result<bool, wasmtime::Error> {
+        Ok(desired <= self.limit)
+    }
+
+    fn table_growing(
+        &mut self,
+        _current: usize,
+        desired: usize,
+        _maximum: Option<usize>,
+    ) -> Result<bool, wasmtime::Error> {
+        Ok(desired <= self.limit)
+    }
+}
+
 const EPOCH_TIMEOUT: Duration = Duration::from_secs(10);
 /// 单次适配器调用的挂钟上限（含 http_fetch 在内的总时长）
 const CALL_TIMEOUT: Duration = Duration::from_secs(25);
@@ -42,6 +70,8 @@ pub(crate) struct AdapterManifest {
 /// 一次调用的上下文（宿主状态）
 struct HostState {
     manifest: AdapterManifest,
+    /// guest 内存/表上限（四轮审计 M2）——limiter 回调借 data_mut 用
+    mem_limiter: MemLimiter,
     /// 进程内 KV（key 前缀 adapter_id 隔离）
     cache: Arc<Mutex<HashMap<String, (String, Instant)>>>,
     /// 限流：窗口起点 + 计数
@@ -95,6 +125,8 @@ impl HostState {
 /// wasmtime Engine 构造重，进程内以 OnceLock 共享）
 pub(crate) struct AdapterRuntime {
     pub engine: Engine,
+    /// 编译产物缓存（四轮 M2）：Module 可跨 Store 复用（Send+Sync）
+    module_cache: Mutex<HashMap<(String, String), wasmtime::Module>>,
 }
 
 impl AdapterRuntime {
@@ -107,8 +139,43 @@ impl AdapterRuntime {
             cfg.wasm_component_model(false);
             // crash-if-hung 不开（win 兼容）；epoch 由调用方 bump 线程驱动
             let engine = Engine::new(&cfg).expect("wasmtime engine init");
-            AdapterRuntime { engine }
+            AdapterRuntime {
+                engine,
+                module_cache: Mutex::new(HashMap::new()),
+            }
         })
+    }
+
+    /// 四轮审计 M2（2026-10-07）：Module 按 (adapter_id, wasm 指纹) 缓存——
+    /// 旧版每调用重编译 2MiB wasm，/ptgen 只需登录即可循环触发全量适配器
+    /// 重编译打满 CPU。指纹取 wasm sha3 前 16 hex，同 id 换内容自动失效。
+    fn module_cached(
+        &self,
+        manifest: &AdapterManifest,
+        wasm_bytes: &[u8],
+    ) -> DomainResult<wasmtime::Module> {
+        use sha3::Digest;
+        let mut h = sha3::Sha3_256::new();
+        h.update(wasm_bytes);
+        let d = h.finalize();
+        let fp: String =
+            d.iter().map(|b| format!("{b:02x}")).collect::<String>()[..16]
+                .to_string();
+        let key = (manifest.adapter_id.clone(), fp);
+        if let Some(m) = self.module_cache.lock().unwrap().get(&key) {
+            return Ok(m.clone());
+        }
+        let module =
+            wasmtime::Module::new(&self.engine, wasm_bytes).map_err(|e| {
+                adapter_err(manifest, &format!("wasm 编译失败: {e}"))
+            })?;
+        // 上限 32 条防无限增长（适配器总量个位数，32 是极宽裕的界）
+        let mut c = self.module_cache.lock().unwrap();
+        if c.len() >= 32 {
+            c.clear();
+        }
+        c.insert(key, module.clone());
+        Ok(module)
     }
 
     /// 出网白名单匹配（glob 近似：前缀 + `**` 尾通配）
@@ -142,7 +209,9 @@ impl AdapterRuntime {
                 let host = host_path.split('/').next().unwrap_or("");
                 host == prefix || host.ends_with(&format!(".{prefix}"))
             } else {
-                host_path.starts_with(base)
+                // base/** 模式：域名段必须精确等于 base，或以 base/ 开头
+                // （四审 L3：纯 starts_with(base) 放行 evil.tld 前缀仿冒域）
+                host_path == base || host_path.starts_with(&format!("{base}/"))
             }
         })
     }
@@ -157,13 +226,13 @@ impl AdapterRuntime {
         http: Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>,
         secrets: std::collections::HashMap<String, String>,
     ) -> DomainResult<String> {
-        let module =
-            wasmtime::Module::new(&self.engine, wasm_bytes).map_err(|e| {
-                adapter_err(manifest, &format!("wasm 编译失败: {e}"))
-            })?;
+        let module = self.module_cached(manifest, wasm_bytes)?;
         let mut store = Store::new(
             &self.engine,
             HostState {
+                mem_limiter: MemLimiter {
+                    limit: GUEST_MEM_LIMIT,
+                },
                 manifest: AdapterManifest {
                     adapter_id: manifest.adapter_id.clone(),
                     kind: manifest.kind.clone(),
@@ -177,6 +246,9 @@ impl AdapterRuntime {
                 secrets,
             },
         );
+        // 四轮审计 M2（2026-10-07）：guest 自行 memory.grow 无上限（wasmtime
+        // 实例可达 4GiB）——沙箱在 API 进程内，必须 limiter 硬限。
+        store.limiter(|state| &mut state.mem_limiter);
         store.set_epoch_deadline(1);
         // epoch bump 线程：EPOCH_TIMEOUT 后触发 trap
         let engine = self.engine.clone();

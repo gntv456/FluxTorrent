@@ -86,6 +86,10 @@ fn exact_route_module(path: &str) -> Option<&'static str> {
         ("/api/v1/me/staffmessages/confirm", key::MESSAGES),
         ("/api/v1/pool/honor", key::MAGIC_POOL),
         ("/api/v1/medal-rarities", key::MEDALS), // 三审 C-1：稀有度字典
+        // 四审 S2：/open/me/messages 与 /api/v1/messages 同数据域——此前它挂在
+        // /api/v1 scope 内却不经映射表，关掉 messages 模块后站内信仍能从
+        // OpenAPI Token 出口读到（两套鉴权、同一份隐私数据）。
+        ("/api/v1/open/me/messages", key::MESSAGES),
     ];
     TABLE.iter().find(|(p, _)| path == *p).map(|(_, k)| *k)
 }
@@ -152,6 +156,7 @@ mod tests {
             assert!(route_module(p).is_some(), "gateway missing {p}");
         }
         for p in [
+            "/api/v1/open/me/messages",
             "/api/v1/me/avatar-frame",
             "/api/v1/me/medals",
             "/api/v1/me/notice-prefs",

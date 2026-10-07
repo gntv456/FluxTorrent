@@ -89,7 +89,7 @@ pub(crate) async fn build_candidates(
                    OR $3::text = 'ai'
                    AND s.machine_translated
                    AND COALESCE(s.proofreader, '') = '')
-            ORDER BY 3 DESC LIMIT 10
+            ORDER BY 4 DESC LIMIT 10
             ON CONFLICT (period, subtitle_id) DO NOTHING
             "#,
         )

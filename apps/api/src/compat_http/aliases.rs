@@ -18,7 +18,10 @@ use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 /// 站点基址（详情页跳转用）：PUBLIC_SITE_URL 优先，否则按请求 Host 拼。
-fn site_base(req: &HttpRequest) -> String {
+/// 四审 L5：Host 是客户端可控头，未校验直接拼 base 会把攻击者域名写进
+/// RSS item 链接/邮件链接（钓鱼面）。字符白名单 + 必须含点号或 localhost，
+/// 不合法一律退固定回退值。
+pub(crate) fn site_base(req: &HttpRequest) -> String {
     std::env::var("PUBLIC_SITE_URL")
         .ok()
         .map(|v| v.trim().trim_end_matches('/').to_string())
@@ -27,10 +30,20 @@ fn site_base(req: &HttpRequest) -> String {
             req.headers()
                 .get("host")
                 .and_then(|v| v.to_str().ok())
-                .filter(|h| !h.is_empty())
+                .map(str::trim)
+                .filter(|h| sane_host(h))
                 .map(|h| format!("http://{h}"))
                 .unwrap_or_else(|| "http://localhost:3000".into())
         })
+}
+
+/// Host 白名单校验：字符集（字母数字 . : - [ ] 与 IPv6 字面量）且
+/// 含点号或就是 localhost——端口形态 example.com:8080 同样过。
+pub(crate) fn sane_host(h: &str) -> bool {
+    let ok = h
+        .bytes()
+        .all(|b| b.is_ascii_alphanumeric() || b".:-[]_".contains(&b));
+    ok && (h.contains('.') || h == "localhost")
 }
 
 /// 从 query string 取一个参数（原样返回，不做 URL 解码 —— passkey 是

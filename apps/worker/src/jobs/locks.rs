@@ -112,8 +112,12 @@ pub(crate) fn job_module(job_key: &str) -> Option<&'static str> {
             "subtitles"
         }
         "job:lottery_settle" => "forums",
-        "job:expire_medals" => "user_medals",
+        // 四审 S4：模块键是 medals（user_medals 是表名，恒查不到 → 锁失效）
+        "job:expire_medals" => "medals",
         "job:expire_invites" => "invites",
+        // 四审 S5：口粮券按 games_coupon_seed_hours 发放（games 模块的运营
+        // 动作），关 games 后不应继续发券
+        "job:game_coupons" => "games",
         _ => return None,
     })
 }

@@ -63,6 +63,13 @@ pub(super) async fn subtitle_request_create(
     if body.bounty < 0 {
         return Err(DomainError::Validation("悬赏不能为负".into()));
     }
+    // B2：offer_free 是站方出资给种子挂免费（promotions 本是 staff 专属权限），
+    // 不得让普通用户借求字幕动线下放——发起时非 staff 一律拒绝。
+    if body.offer_free && auth.class_id < 90 {
+        return Err(DomainError::Validation(
+            "限时免费由管理组设置，发起求字幕不能勾选".into(),
+        ));
+    }
     let mut tx = state
         .repo
         .db

@@ -149,7 +149,8 @@ async fn rss_feed(
                 .headers()
                 .get("host")
                 .and_then(|v| v.to_str().ok())
-                .filter(|h| !h.is_empty())
+                .map(str::trim)
+                .filter(|h| crate::compat_http::aliases::sane_host(h))
                 .map(|h| format!("http://{h}"))
                 .unwrap_or_else(|| "http://localhost:3000".into());
             host
