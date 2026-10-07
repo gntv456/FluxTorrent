@@ -17,9 +17,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import BASE, call, ok, summary  # noqa: E402
 import pt_audit_lib  # noqa: E402
 
-if os.environ.get("FLUX_API_BASE"):
-    BASE = os.environ["FLUX_API_BASE"]
-    pt_audit_lib.BASE = BASE
+WEB = "http://127.0.0.1:3000"
+# BASE 与 pt_audit_lib 同口径（含 /api/v1 后缀；env 未设时用 lib 缺省）
+BASE = os.environ.get("FLUX_API_BASE", pt_audit_lib.BASE)
+pt_audit_lib.BASE = BASE
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PW = "ProbePass123"
@@ -312,6 +313,37 @@ def sec_g_write_origin():
     ok("G3 无转发头且 Origin 非白名单 ⇒ 仍然 403", code == 2003, (s, code))
 
 
+def sec_g_xff_chain():
+    """三轮审计补：XFF 信任链——web 代理不得把请求头里可伪造的值前置
+    重组进 XFF（否则 api 按 XFF 取到的客户端 IP 全是假的，限流/封禁/
+    风控日志整体失效）。判据：带伪造 XFF 打 web 代理后，该请求在
+    login_events 落库的 ip 不等于伪造值。"""
+    import time as _t
+    print("--- G4 XFF 信任链：伪造 XFF 不得污染风控 IP ---")
+    mark = "xffprobe%d" % int(_t.time())
+    # 经 web 代理（3000）打一条带伪造 XFF 的登录失败
+    import urllib.request
+    import json as _json
+    url = WEB + "/api/v1/auth/login"
+    data = _json.dumps({"username": mark, "password": "x"}).encode()
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Origin", WEB.replace("0.0.0.0", "127.0.0.1"))
+    req.add_header("X-Forwarded-For", "6.6.6.6")
+    try:
+        urllib.request.urlopen(req, data, timeout=20)
+    except urllib.error.HTTPError:
+        pass  # 400 口令错误即到达业务层，足够
+    _t.sleep(1)
+    row = psql(
+        "SELECT count(*) FROM login_events "
+        "WHERE ip = '6.6.6.6'::inet "
+        "AND created_at > now() - interval '1 minute'"
+    )
+    ok("G4 伪造 XFF 未污染 login_events（记录条数应为 0）",
+       row.strip() == "0", row.strip()[:80])
+
+
 def cleanup():
     for uid in CREATED:
         try:
@@ -351,10 +383,17 @@ def main():
         sec_e_jobs()
         sec_f_source_wired()
         sec_g_write_origin()
+        sec_g_xff_chain()
     finally:
         cleanup()
     summary()
 
 
 if __name__ == "__main__":
-    main()
+    import sys as _sys
+    if len(_sys.argv) > 1 and _sys.argv[1].startswith("sec_"):
+        # 单节调试：FLUX_API_BASE=... pt_audit_f_entitlement.py sec_g_xff_chain
+        globals()[_sys.argv[1]]()
+        summary()
+    else:
+        main()

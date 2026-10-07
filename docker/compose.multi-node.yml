@@ -16,6 +16,14 @@
 # 硬约束（G30 附录 D）：web 与 api 必须同机——API_SERVER_URL 构建期烘焙进
 # next 产物（docker/web.Dockerfile），跨机拆分需 B 轨改造。
 # ⚠️ 新增服务/环境变量时两份 compose 需同步维护。
+#
+# ⚠️ 跨机数据层安全红线（三轮审计 2026-10-07）：M3 的 PG/Redis 默认仍绑
+# 127.0.0.1——跨机访问需改绑内网 IP，而连接串是明文密码。生产多机必须在
+# 传输层加密（任选其一）：
+#   - WireGuard 隧道：三机组网后 DB/Redis 只监听 wg 网段（推荐，最简）；
+#   - stunnel/haproxy TLS 前置 PG 与 Redis；
+#   - 云厂商私有网络 + 安全组（仅放行 M1/M2 网段，仍建议叠加密）。
+# 直接 0.0.0.0 裸奔等于把全站用户数据与计费流暴露给同 VPC 任意负载。
 
 x-logging: &default-logging
   driver: json-file
@@ -70,6 +78,10 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
     ports:
       - "127.0.0.1:${FLUX_REDIS_PORT:-6379}:6379"
+    # 三轮遗留（2026-10-07）：AOF 持久化必须有卷——无卷容器重建即丢全部
+    # 未消费 announce 事件流与死信（丢账）
+    volumes:
+      - redisdata:/data
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
@@ -213,6 +225,9 @@ services:
       # 直连暴露时必须留空，否则客户端可伪造头绕过 IP 封禁/限流）
       TRUST_PROXY: ${TRUST_PROXY:-}
       TRACKER_UDP_URL: ${TRACKER_UDP_URL:-}
+      # 三轮遗留（2026-10-07）：多副本 tracker 的前置条件——peer 表外置
+      # Redis（否则各副本内存表互不相见，swarm 视图割裂）
+      FLUX_TRACKER_PEER_STORE: redis
       # UDP 收包 worker 数（0227 G31 XL 档）：SO_REUSEPORT 多 socket 内核负载
       # 均衡；空/1 = 单循环（行为不变），大站建议 4
       TRACKER_UDP_WORKERS: ${TRACKER_UDP_WORKERS:-}
@@ -238,6 +253,8 @@ services:
     restart: unless-stopped
 
 volumes:
+  redisdata:
+    name: ${FLUX_REDIS_VOLUME:-docker_redisdata}
   pgdata:
     name: ${FLUX_PG_VOLUME:-docker_pgdata}
   attachments:
