@@ -1,61 +1,100 @@
-"""一次性审计：逐条比对 _sqlx_migrations 存档 checksum 与工作区迁移文件的 LF/CRLF 口径。
-sqlx (0.8) 存 sha384；判定每条是 LF、CRLF 还是内容漂移。只读，不写库。
+"""迁移校验和口径审计：以 **git blob 字节** 为准比对 _sqlx_migrations。
+sqlx (0.8) 存 sha384。只读，不写库。
 
-两类结果分开看：
-  问题（退出码 1）＝ 内容漂移 / 库里以 CRLF 记账 / 库里有记账但工作树已无该文件
-  信息（不算失败）＝ 工作树有文件但库里未记账 = 待应用的新迁移，属正常状态
+为什么判据必须落在 blob 上（2026-10-07 改版；旧版是假通过）：
+旧实现拿「工作区字节」算哈希，而这台 Windows 机器的工作区恰好是
+autocrlf 的 CRLF 形态、与当年记账的字节一致 ⇒ 永远全绿。
+可镜像是从**检出后的文件**构建的：`git archive` / 干净 clone / CI checkout
+都是 LF。于是凡「库里按 CRLF 记账、仓库 blob 是 LF」的迁移，
+在干净检出的构建里必然让 api 启动即
+`Error: migration NNN was previously applied but has been modified`
+——healthcheck 不过，worker 因依赖 api 也起不来。当天被咬两次
+（一次报 156，一次被我整批转成 CRLF 后报 1）。
 
-本次修正的两处自身缺陷：① SQL 拼接漏空格（"ORDER BY" + "version" → ORDER BYversion），
-psql 报错被静默吞掉，rows 为空 → 每条迁移都被误判成「APPLIED-IN-DB-BUT-FILE-MISSING」；
-② 那两个分支标签写反了（文件在库里无 = 待应用；库里有记账文件没了 才是缺文件）。
+结论口径：能在 blob 的 LF 字节上对上才算健康；只对 CRLF 工作区成立的，
+一律判问题（它意味着「只有这台机器的构建能上线」）。
 """
 import hashlib
 import os
+import re
 import subprocess
 import sys
 
-res = subprocess.run(
-    ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
-        "fluxtorrent", "-t", "-A", "-c",
-     "SELECT version, encode(checksum,'hex') FROM _sqlx_migrations "
-     "ORDER BY version"],
-    capture_output=True, text=True, encoding="utf-8", errors="replace")
-if res.returncode:
-    raise SystemExit("读取 _sqlx_migrations 失败：" + res.stderr.strip()[:200])
-rows = res.stdout.strip().splitlines()
-db = {}
-for r in rows:
-    if "|" in r:
-        v, c = r.split("|")
-        db[int(v)] = c
+MIG_DIR = "apps/api/migrations"
 
-bad, pending = [], []
-for name in sorted(os.listdir("apps/api/migrations")):
-    if not name.endswith(".sql"):
-        continue
-    ver = int(name[:4])
-    data = open(os.path.join("apps/api/migrations", name), "rb").read()
-    lf = hashlib.sha384(data).hexdigest()
-    crlf = hashlib.sha384(data.replace(b"\n", b"\r\n")).hexdigest()
-    stored = db.pop(ver, None)
-    if stored is None:
-        pending.append((ver, name))
-    elif stored == lf:
-        pass
-    elif stored == crlf:
-        bad.append((ver, "DB=CRLF", name))
-    else:
-        bad.append((ver, "CONTENT-MISMATCH", name))
-for ver in sorted(db):
-    bad.append((ver, "APPLIED-IN-DB-BUT-FILE-MISSING",
-               f"(db only, {db[ver][:12]}…)"))
 
-print("库里已应用: %d 条 / 工作树待应用: %d 条" % (len(rows), len(pending)))
-if pending:
-    print("  待应用: " + ", ".join(str(v) for v, _ in pending[-8:]))
-if bad:
-    print("problem rows:")
-    for b in bad:
-        print("  ", b)
-    sys.exit(1)
-print("all applied migrations match working-tree LF checksums")
+def sh(*args, binary=False):
+    r = subprocess.run(list(args), capture_output=True,
+                       **({"text": True, "encoding": "utf-8",
+                           "errors": "replace"} if not binary else {}))
+    return r
+
+
+def db_rows():
+    res = sh("docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
+             "fluxtorrent", "-t", "-A", "-c",
+             "SELECT version, encode(checksum,'hex') FROM _sqlx_migrations "
+             "ORDER BY version")
+    if res.returncode:
+        raise SystemExit("读取 _sqlx_migrations 失败：" + res.stderr[:200])
+    out = {}
+    for line in res.stdout.strip().splitlines():
+        if "|" in line:
+            v, c = line.split("|")
+            out[int(v)] = c.strip().lower()
+    return out
+
+
+def blob(rel):
+    r = sh("git", "cat-file", "blob", "HEAD:" + rel, binary=True)
+    return None if r.returncode else r.stdout
+
+
+def h(b):
+    return hashlib.sha384(b).hexdigest()
+
+
+def main():
+    if not os.path.isdir(MIG_DIR):
+        raise SystemExit("请在仓库根目录运行本脚本")
+    db = db_rows()
+    problems, pending, ok = [], [], 0
+    for name in sorted(os.listdir(MIG_DIR)):
+        if not re.match(r"^\d{4}_.*\.sql$", name):
+            continue
+        ver = int(name[:4])
+        b = blob(MIG_DIR + "/" + name)
+        if b is None:
+            problems.append((ver, "NOT-IN-HEAD", name))
+            continue
+        stored = db.pop(ver, None)
+        if stored is None:
+            pending.append((ver, name))
+            continue
+        lf = h(b.replace(b"\r\n", b"\n"))
+        crlf = h(b.replace(b"\n", b"\r\n"))
+        if stored == lf or stored == h(b):
+            ok += 1
+        elif stored == crlf:
+            problems.append((ver, "DB-CRLF-BLOB-LF（干净检出构建必拒启）", name))
+        else:
+            problems.append((ver, "CONTENT-MISMATCH", name))
+    for ver in sorted(db):
+        problems.append((ver, "APPLIED-IN-DB-BUT-FILE-MISSING",
+                         "(db only, %s…)" % db[ver][:12]))
+
+    print("库里已应用 %d 条 / blob 对得上 %d 条 / 待应用 %d 条"
+          % (len(db) + ok + len(problems), ok, len(pending)))
+    if pending:
+        print("  待应用: " + ", ".join(str(v) for v, _ in pending[-8:]))
+    if problems:
+        print("problem rows:")
+        for p in problems:
+            print("  ", p)
+        sys.exit(1)
+    print("OK: 每条已应用迁移的记账都能对上仓库 blob 的 LF 字节"
+          "（干净检出/CI 构建可启）")
+
+
+if __name__ == "__main__":
+    main()
