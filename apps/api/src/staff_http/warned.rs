@@ -120,6 +120,14 @@ pub async fn unwarn_user(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_WARN)
         .await?;
+    // 三轮审计 P1-2（2026-10-07）：挂警告有 outranks 而解警告没有——任何
+    // 90 档可为 93/99 消警告记录，干扰风控追溯。补齐与挂警告同款护栏。
+    crate::admin_http::guard::ensure_outranks(
+        &state.repo.db,
+        auth.class_id,
+        *path,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE users SET warned_until = NULL, \
      warned_reason = NULL WHERE id = $1",

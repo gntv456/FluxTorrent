@@ -57,14 +57,17 @@ pub async fn grant_food_coupons(db: &PgPool) -> anyhow::Result<u64> {
         return Ok(0);
     }
 
-    // 2) 给达标用户 +1 口粮券（与写入幂等表分两步：INSERT...RETURNING 已天然排除重复，
-    //    再批量 UPDATE 余额，避免同事务内对刚插入行的二次竞争）。
+    // 2) 给达标用户 +1 口粮券。三轮审计 P2（2026-10-07）：幂等表落库与
+    // 余额加分并入同一事务——旧版两步 autocommit，中间崩溃后重跑被
+    // ON CONFLICT DO NOTHING 挡住，该用户当日券永久少发。
+    let mut tx = db.begin().await?;
     let n = sqlx::query(
         "UPDATE users SET food_coupons = food_coupons + 1 WHERE id = ANY($1)",
     )
     .bind(&ids)
-    .execute(db)
+    .execute(&mut *tx)
     .await?
     .rows_affected();
+    tx.commit().await?;
     Ok(n)
 }

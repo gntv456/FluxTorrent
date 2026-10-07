@@ -193,6 +193,10 @@ async fn user_admin_delete(
     if uid == auth.id {
         return Err(DomainError::Validation("不能删除自己".into()));
     }
+    // 三轮审计 P1-1（2026-10-07）：补 ensure_outranks——其余全部用户写端点
+    // 都有严格大于护栏，唯独删除缺席：被封 99 的账号可被另一个 99 墓碑化
+    // （user_roles/user_permissions/messages 连带销毁，申诉凭据湮灭）。
+    super::guard::ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
     let status: Option<i16> =
         sqlx::query_scalar("SELECT status FROM users WHERE id = $1")
             .bind(uid)

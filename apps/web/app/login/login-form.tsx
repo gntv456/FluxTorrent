@@ -64,7 +64,13 @@ export function LoginForm() {
   const { dict } = useI18n();
   const router = useRouter();
   const search = useSearchParams();
-  const next = search.get("next") ?? "/torrents";
+  // 三轮审计（低危）：next 只允许站内相对路径——手构 /login?next=https://evil
+  // 会让已登录用户 router.push 外跳（钓鱼辅助）。须以 / 开头且不以 //（协议相对）开头。
+  const rawNext = search.get("next") ?? "/torrents";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//")
+      ? rawNext
+      : "/torrents";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");

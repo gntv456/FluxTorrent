@@ -31,15 +31,16 @@ async function proxy(req: NextRequest) {
     }
   });
   headers.set("x-forwarded-host", req.headers.get("host") ?? "");
+  // XFF 三轮审计（2026-10-07）：不再从请求头「猜」clientIp 放首位重组——
+  // 旧版取 x-real-ip ?? XFF 首值，直连 web 形态下这两者都是攻击者可设的
+  // 任意值，重组后 api 按 XFF 右值取到假 IP（绕 ip_bans/限流）。
+  // 改为原样透传 XFF：api 的 TRUST_PROXY 语义（右值=直连我的那台代理追加
+  // 的值）在宝塔形态（nginx→web→api）下取到 nginx 追加的真实客户端；
+  // 直连 web 形态下 XFF 是攻击者自带的假值——但那种形态 TRUST_PROXY 本就
+  // 不该开（api 用 socket 对端），不构成绕过。x-real-ip 原样透传（若外层
+  // 可信 nginx 设置了它，api 侧未来可用）。
   const xff = req.headers.get("x-forwarded-for");
-  const clientIp =
-    req.headers.get("x-real-ip") ??
-    xff?.split(",")[0]?.trim() ??
-    "unknown";
-  headers.set(
-    "x-forwarded-for",
-    xff ? `${clientIp}, ${xff}` : clientIp,
-  );
+  if (xff) headers.set("x-forwarded-for", xff);
 
   const init: RequestInit = {
     method: req.method,

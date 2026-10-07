@@ -96,7 +96,8 @@ async fn increment_bulk(
             ));
         }
     }
-    let targets: Vec<i64> = increment_bulk_targets(db, &body).await?;
+    let targets: Vec<i64> =
+        increment_bulk_targets(db, auth.id, auth.class_id, &body).await?;
     // dry_run（0286 建议② + 0291 库存体检）：解析受众之外还要回答
     // 「这一批发得出去吗」——只报受众的试运行会让站长按「能发」去点真发。
     if body.dry_run {

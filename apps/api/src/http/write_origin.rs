@@ -52,9 +52,17 @@ pub async fn write_origin_mw(
 /// （同一条 curl 不带 Origin 头则 200 —— 闸门只看浏览器才可能发的头，
 /// 所以这类失败在 CLI 闸门里永远是绿的，属"假通过"）。
 ///
-/// 安全性没有放宽：`X-Forwarded-Host` 是 fetch 的 forbidden header，
-/// 浏览器脚本改不了它，跨站页面伪造不出「与自己 Origin 一致的 XFH」；
-/// 只有我们自己的代理会写这个值。非浏览器客户端不发 Origin，本就放行。
+/// 安全性论证（三轮审计 2026-10-07 纠错重写——旧注释称 XFH 是 fetch 的
+/// forbidden header，**事实错误**：forbidden 列表只有 Host/Origin/Referer/
+/// Cookie/Sec-* 等，XFH 可被 JS 设置。实际安全性靠三点成立）：
+/// 1. 本站浏览器流量必经 web 代理，而代理**无条件覆盖** XFH 为入站 Host
+///    （route.ts），页面注入的 XFH 到不了 api；
+/// 2. Origin 是 forbidden header，跨站页面的 Origin 恒为其真实源，伪造
+///    不出「与代理写入的站点 Host 一致的 Origin」；
+/// 3. 带 XFH 自定义头的跨站 fetch 必触发 CORS 预检，白名单外 origin 拿
+///    不到预检通过。非浏览器客户端（curl）虽可伪造 Origin+XFH 一致骗过
+///    判据，但它同时也可「干脆不带 Origin」直接放行（工具客户端语义），
+///    且 host-only cookie 不随跨源请求携带——伪造无凭据增益。
 /// 多反代链路下取第一段（最靠近客户端的那个 host）。
 pub(crate) fn browser_host(req: &actix_web::HttpRequest) -> String {
     let fwd = req
