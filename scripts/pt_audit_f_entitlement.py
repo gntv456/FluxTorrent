@@ -8,6 +8,7 @@
 可 FLUX_API_BASE 覆盖基址。探针号与探针数据在 finally 自清。
 """
 import os
+import re
 import subprocess
 import sys
 import time
@@ -249,11 +250,19 @@ def sec_f_source_wired():
         except OSError:
             pass
     ok("F1 五个消费点至少 5 处引用判定函数", hits >= 5, hits)
-    donor_raw = subprocess.run(
-        ["grep", "-rn", "u.donor\\b", "apps/worker/src/jobs/seeding.rs"],
-        cwd=ROOT, capture_output=True, text=True)
-    ok("F2 做种结算不再裸读 u.donor", donor_raw.stdout.strip() == "",
-       donor_raw.stdout[:160])
+    # 做种结算必须走判定函数，不能再裸读 u.donor。
+    # （用 Python 扫而不起 grep 子进程：Windows 宿主上没有 grep，
+    # 上一版这里直接抛异常，闸门红得毫无意义。）
+    # 判据要跳过 SQL 注释（注释里正是在解释「此前直接读 u.donor」），
+    # 且 `pu.donor` 是 CTE 别名不是裸列读取——上一版把这两类都算成违规。
+    seed_src = os.path.join(ROOT, "apps/worker/src/jobs/seeding.rs")
+    with open(seed_src, encoding="utf-8") as f:
+        lines = [ln for ln in f.read().splitlines()
+                 if not ln.strip().startswith("--")]
+    bare = [ln.strip() for ln in lines
+            if re.search(r"\bu\.donor\b", ln)
+            and "donor_privileged" not in ln]
+    ok("F2 做种结算不再裸读 u.donor", bare == [], bare[:2])
 
 
 STOCK_BACKUP = {}
