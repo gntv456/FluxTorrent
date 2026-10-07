@@ -147,6 +147,11 @@ pub async fn apply_item_effect(
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
         // VIP 待遇到期延展（0079 G18：购买日 ≥ 到期日则从今天起算，否则续期——断购不惩罚）
+        // 0295：这里曾经顺带写 donor = TRUE。donor 的口径是「真金白银捐赠者」
+        // （payment/settle.rs、staff_http/donate_admin.rs 在真实入账时写），
+        // 而 donor 全库没有复位路径 ⇒ 魔力买 30 天贵宾拿到永久待遇 + 永久徽章。
+        // 站内魔力购买的权益一律由 vip_until / donor_until 驱动，判定点
+        // 收敛在 SQL 函数 donor_privileged()。
         "vip" | "app_vip" => {
             let days =
                 config.get("days").and_then(|v| v.as_i64()).unwrap_or(30);
@@ -155,8 +160,7 @@ pub async fn apply_item_effect(
             // 不 cast 就是「购买 500、扣款成功效果丢失」（商城审计 P0-1）
             sqlx::query(
                 "UPDATE users SET \
-                    vip_until = GREATEST(COALESCE(vip_until, now()), now()) + make_interval(days => $2::int), \
-                    donor = TRUE \
+                    vip_until = GREATEST(COALESCE(vip_until, now()), now()) + make_interval(days => $2::int) \
                  WHERE id = $1",
             )
             .bind(user_id)
@@ -165,7 +169,8 @@ pub async fn apply_item_effect(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
-        // 免广告（donor 待遇；NP 口径：15 天档）
+        // 特权档（0295 起有读者）：donor_until 计入 donor_privileged()，
+        // 到期即失效。注意商品「15 天去广告」已随 0295 下架——站内没有广告位。
         "ad_free" => {
             let days =
                 config.get("days").and_then(|v| v.as_i64()).unwrap_or(15);
@@ -201,16 +206,17 @@ pub async fn apply_item_effect(
                 .unwrap_or(false);
             if unlock {
                 // user_vouchers 无 (user_id,kind) 唯一约束（券类靠重复购买堆行），
-                // 解锁券防重：先查后插，重复购买/效果重放只留一张
-                let owned: bool = sqlx::query_scalar(
-                    "SELECT EXISTS(SELECT 1 FROM user_vouchers \
-                     WHERE user_id = $1 AND kind = 'title_unlock')",
+                // 解锁券防重：只拦「仍可用」的那张（未核销且未过期）。
+                // 0295 前这里用裸 EXISTS，已用过/已过期的旧券也会命中 → 跳过补发，
+                // 而购买侧没有对应护栏 ⇒ 二次购买扣魔力不发券（运营轮 P0-3）。
+                let usable: bool = sqlx::query_scalar(
+                    "SELECT has_usable_voucher($1, 'title_unlock')",
                 )
                 .bind(user_id)
                 .fetch_one(db)
                 .await
                 .unwrap_or(false);
-                if !owned {
+                if !usable {
                     sqlx::query(
                         "INSERT INTO user_vouchers (user_id, kind, source) \
                          VALUES ($1, 'title_unlock', 'shop')",

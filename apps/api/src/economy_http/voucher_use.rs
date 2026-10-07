@@ -202,7 +202,7 @@ async fn my_spark(
                        t.times_completed,
                        (GREATEST(sn.seeded_seconds, 0) / 3600.0)::double precision,
                        p.vol_base, p.rarity_k, p.rarity_exp, p.scale)) AS bonus_raw,
-                   bool_or(u.donor) AS donor
+                   bool_or(donor_privileged(u.id)) AS donor
             FROM snatches sn
             JOIN torrents t ON t.id = sn.torrent_id
             JOIN users u ON u.id = sn.user_id

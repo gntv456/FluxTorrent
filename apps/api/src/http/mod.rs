@@ -91,6 +91,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::attachment_video_upload::upload_video)
         .service(crate::attachment_video::head_attachment)
         .service(crate::auth_http::me_password_change)
+        .service(crate::auth_http::me_title_get)
         .service(crate::auth_http::me_title_set)
         .service(crate::auth_http::user_public_profile)
         .service(crate::auth_http::my_fields)

@@ -36,6 +36,11 @@ pub(crate) async fn run_named(
             n(seeding_reward(db, secs).await?)
         }
         "purge_old_login_events" => n(purge_old_login_events(db).await?),
+        // 0295（运营轮 P1-1/P1-6）：这两条此前只在 run.rs 的定时 tick 里，
+        // 目录/分派少了一边——usage_stats 在面板可见但手触永远「未知任务」，
+        // request_expire 干脆不在目录里，面板看不见也不能手触。
+        "usage_stats" => d(usage_stats_report(db).await?),
+        "request_expire" => n(request_expire(db).await?),
         "ratio_watch" => n(ratio_watch(db).await?),
         "dormant_mark" => n(dormant_mark(db).await?),
         "wishlist_notify" => n(wishlist_notify(db).await?),

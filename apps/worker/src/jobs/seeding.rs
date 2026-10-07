@@ -45,7 +45,10 @@ pub async fn seeding_reward(
             -- seeding_params() 内联进 nestloop 内层 → 每颗种子读 8 次 site_settings。
             WITH p AS MATERIALIZED (SELECT * FROM seeding_params()),
             per_torrent AS (
-                SELECT u.id AS user_id, u.donor,
+                -- donor_privileged（0295）：真捐赠永久，或 vip_until / donor_until
+                -- 任一未过期。此前这里直接读 u.donor，而魔力购买 VIP 会顺带把
+                -- donor 置 TRUE 且全库无复位路径 ⇒ 30 天待遇变永久。
+                SELECT u.id AS user_id, donor_privileged(u.id) AS donor,
                        seeding_torrent_bonus(
                            t.size,
                            t.seeders,

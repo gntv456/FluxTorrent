@@ -3,7 +3,7 @@
 //! title_unlock 券，用户在 UserCP 自助设置一次文字后核销。
 //! 此前该 SKU 预置 config.title，8 万买完头衔仍为空（无消费端）。
 
-use actix_web::{post, web, HttpRequest, HttpResponse};
+use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -14,6 +14,43 @@ use crate::state::AppState;
 #[derive(Deserialize)]
 pub struct TitleReq {
     title: String,
+}
+
+/// 头衔状态自读（0295）：当前头衔 + 手上的可用解锁券与到期时间。
+///
+/// 为什么要有这个接口：商店 80000 魔力的「自定义头衔」SKU 只发券，
+/// 核销端点 POST /me/title 自 0292 起就在，但**前端从未调用过它**
+/// （grep 全仓 0 命中）⇒ 用户买完没有入口用，券只能静静过期。
+/// 界面要说清「能改 / 不能改 / 何时失效」，必须先能读到状态。
+#[get("/me/title")]
+async fn me_title_get(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let row: Option<(Option<String>, Option<i64>, Option<String>)> =
+        sqlx::query_as(
+            "SELECT u.title, \
+             (SELECT count(*)::bigint FROM user_vouchers v \
+              WHERE v.user_id = u.id AND v.kind = 'title_unlock' \
+                AND v.used_at IS NULL AND v.expires_at > now()) AS usable, \
+             (SELECT max(v.expires_at)::text FROM user_vouchers v \
+              WHERE v.user_id = u.id AND v.kind = 'title_unlock' \
+                AND v.used_at IS NULL AND v.expires_at > now()) AS until \
+             FROM users u WHERE u.id = $1",
+        )
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((title, usable, until)) = row else {
+        return Err(DomainError::Unauthorized);
+    };
+    Ok(ok(serde_json::json!({
+        "title": title,
+        "usable": usable.unwrap_or(0),
+        "expires_at": until,
+    })))
 }
 
 /// 设置头衔（核销 title_unlock 券）。规则与 shop_effects 直设分支同口径：
@@ -37,11 +74,15 @@ async fn me_title_set(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 核销一张未用的解锁券（行锁防并发双用）
+    // 核销一张未用的解锁券（行锁防并发双用）。
+    // 0295（运营轮 P0-4）：必须同时判 expires_at——券默认 30 天有效（0001 起
+    // user_vouchers.expires_at 有 DEFAULT），此前过期券照样能改头衔，
+    // 等于「买 30 天，用一辈子」，与下载免流券（voucher_use.rs 判过期）不同口径。
     let voucher: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM user_vouchers \
          WHERE user_id = $1 AND kind = 'title_unlock' \
-         AND used_at IS NULL ORDER BY id LIMIT 1 FOR UPDATE",
+         AND used_at IS NULL AND expires_at > now() \
+         ORDER BY id LIMIT 1 FOR UPDATE",
     )
     .bind(auth.id)
     .fetch_optional(&mut *tx)
@@ -49,7 +90,8 @@ async fn me_title_set(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(voucher_id) = voucher else {
         return Err(DomainError::Validation(
-            "需要先在商店购买「自定义头衔」（或已使用过）".into(),
+            "需要一张可用的「自定义头衔」解锁券（已核销或已过期的券不能用）"
+                .into(),
         ));
     };
 
