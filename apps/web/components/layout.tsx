@@ -180,7 +180,7 @@ export async function MobileTabBar() {
             key={t.href}
             href={t.href}
             label={t.label}
-            className="-mt-6 flex flex-1 flex-col items-center justify-end gap-1 pb-1 text-[11px] font-bold text-sub"
+            className="-mt-6 flex flex-1 flex-col items-center justify-end gap-1 pb-1 text-[12px] font-bold text-sub"
           >
             <span
               aria-hidden
@@ -197,7 +197,7 @@ export async function MobileTabBar() {
             href={t.href}
             label={t.label}
             className="tablink flex min-h-[44px] flex-1 flex-col items-center
-              justify-center gap-0.5 py-1 text-[11px] text-sub active:text-sky"
+              justify-center gap-0.5 py-1 text-[12px] text-sub active:text-sky"
           >
             <span
               aria-hidden

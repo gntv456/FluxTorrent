@@ -94,7 +94,7 @@ function Board({
       ) : (
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b border-[var(--border-soft)] text-[11px] text-[var(--text-faint)]">
+            <tr className="border-b border-[var(--border-soft)] text-[12px] text-[var(--text-faint)]">
               <th className="w-12 py-2 pl-3 text-left font-bold">排名</th>
               <th className="py-2 text-left font-bold">用户</th>
               <th className="py-2 pr-3 text-right font-bold">
@@ -129,7 +129,7 @@ function Board({
                       >
                         {u.username}
                       </a>
-                      <span className="block max-w-[160px] truncate text-[11px] text-[var(--text-faint)]">
+                      <span className="block max-w-[160px] truncate text-[12px] text-[var(--text-faint)]">
                         {u.title || u.class_name}
                       </span>
                     </div>

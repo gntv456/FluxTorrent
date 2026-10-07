@@ -145,12 +145,12 @@
   align-items: center;
   gap: 4px;
   margin-top: 10px;
-  min-height: 30px;
+  min-height: 32px;
   padding: 4px 14px;
   border-radius: 999px;
   background: var(--surface-card);
   color: var(--sweet-sky-deep);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   box-shadow: 0 3px 8px rgba(74, 122, 176, 0.3);
   cursor: pointer;
@@ -303,7 +303,7 @@
   background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
   color: #6b4a1a;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   padding: 2px 6px;
   box-shadow: 0 2px 6px rgba(176, 138, 74, 0.35);
@@ -321,7 +321,7 @@
   background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
   color: #6b4a1a;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   padding: 2px 6px;
   letter-spacing: 0.1em;
@@ -343,7 +343,7 @@
   margin: 0;
   border-radius: 999px;
   padding: 2px 6px;
-  font-size: 9px;
+  font-size: 10px;
 }
 /* 文案区：名称 + 副标两行，去「去玩→」；右缘给行尾角标留白防叠。
    基础皮肤 .gc-body 是竖排大卡（padding:12px 14px），横排小卡里左侧
@@ -354,7 +354,12 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 0 40px 0 0;
+  /* 2026-10-07 模拟器真机联调修：右缘金胶囊宽约 48+right10 ≈ 58px，
+     412px 视口下两列卡 gc-body 仅 113px，40px 预留后剩 73px——
+     副标「集齐稀有卡，点亮图鉴」8 个字被截成「集齐稀有…」。
+     有角标的卡(hot/badge)才需要避让，没角标的卡白白损失 40px。
+     预留减半 + 副标字号保住 11px，两行语义可读。 */
+  padding: 0 22px 0 0;
 }
 [data-arcade="sweet"] .gc-sub {
   overflow: hidden;
@@ -370,7 +375,7 @@
 }
 [data-arcade="sweet"] .gc-sub {
   color: var(--sweet-ink-soft);
-  font-size: 11px;
+  font-size: 12px;
   margin: 0;
   /* 长副标省略号别钻到行尾金胶囊底下（胶囊宽 ~48 + right 10） */
   padding-right: 18px;
