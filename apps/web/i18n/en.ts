@@ -1271,6 +1271,16 @@ const enBase: Omit<
       avatarNote: "Max width 150px (will be scaled if necessary).",
       info: "About me",
       infoNote: "Shown on your profile page. BBCode allowed.",
+      titleLabel: "Custom title",
+      titleNote: "One line of your own text next to your name, up to 30 chars.",
+      titleVoucher: "Unlock voucher",
+      titleVoucherNone: "No usable voucher right now",
+      titleVoucherValid: "{n} usable, next one expires {date}",
+      titleSave: "Save title",
+      titleCost: "Saving redeems one voucher (clearing the title costs one " +
+        "too); used or expired vouchers cannot be reused",
+      titleBuy: "Buy in shop",
+      titleFailed: "Save failed, please retry",
     },
     tracker: {
       title: "Site",
