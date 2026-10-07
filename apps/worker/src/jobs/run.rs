@@ -4,10 +4,7 @@
 use super::*;
 use sqlx::PgPool;
 
-/// 角色分片（0225 G30-B1）：FLUX_WORKER_JOBS=逗号分隔 job 名（无 job: 前缀）。
-/// 非空时本实例只跑清单内的定时 job（手动触发认领不受限——面板操作应总有实例接）。
-/// 空缺省 = 全量（单实例行为不变）。示例：FLUX_WORKER_JOBS=consume_announce,
-/// consume_agent_blocks 让一台专吃计费流，另一台跑其余。
+/// 角色分片（0225 G30-B1）：FLUX_WORKER_JOBS=逗号分隔 job 名；空缺省=全量。
 fn job_shard() -> Option<Vec<String>> {
     let v = std::env::var("FLUX_WORKER_JOBS").unwrap_or_default();
     let list: Vec<String> = v
@@ -97,11 +94,10 @@ pub async fn run_all(
     redis: redis::aio::ConnectionManager,
 ) -> anyhow::Result<()> {
     let mut tick = every(60);
-    // 重型巡检（O(全表)：H&R 快照/里程碑/等级/死种入池）从 60s 降到 300s
+    // 重型巡检 O(全表) 300s；0071 反作弊/性能分档
     let mut tick5 = every(300);
     let mut hour_tick = every(3600);
     let mut last_bank_day: Option<chrono::NaiveDate> = None;
-    // 0071 反作弊/性能调度
     let mut tick10 = every(600);
     let mut tick30 = every(1800);
     let mut tick6h = every(6 * 3600);
@@ -114,10 +110,7 @@ pub async fn run_all(
     let mut manual_tasks = crate::shutdown::TaskSet::new();
     let shard = job_shard();
     if let Some(list) = &shard {
-        tracing::info!(
-            jobs = list.join(","),
-            "角色分片生效（仅清单内定时 job）"
-        );
+        tracing::info!(jobs = list.join(","), "角色分片生效");
     }
     sync_job_catalog(&db).await; // 目录同步（0218 G7）：面板以 job_status 为准
     loop {
@@ -160,6 +153,18 @@ pub async fn run_all(
                 crate::jobs::locks::mark_end(&db, "consume_agent_blocks",
                     None).await;
             }
+            // 交叉上报消费（2026-10-07 P0-2 治本）：把 leecher 佐证的上传量
+            // 累加进 upload_corroborated，作为计费侧上传量的可信上界。
+            {
+                let (db2, mut r) = (db.clone(), redis.clone());
+                crate::jobs::locks::mark_start(&db,
+                    "consume_xreport").await;
+                if let Err(e) = consume_xreport(&db2, &mut r).await {
+                    tracing::error!(?e, "consume_xreport 失败");
+                }
+                crate::jobs::locks::mark_end(&db, "consume_xreport",
+                    None).await;
+            }
             // ZT81：分离到后台执行，不再 join/await——原实现会把整个 select 循环
             // 卡到任务跑完，全表任务一慢，同分支的计费消费就跟着停摆。
             {
@@ -177,18 +182,14 @@ pub async fn run_all(
                     spawn_lock!(js, &db2, "job:lottery_settle",
                                 lottery_settle_due, &shard2);
                     while let Some(res) = js.join_next().await {
-                        let _ = res.map_err(|e| {
-                            tracing::error!(?e, "并发 job join 失败");
-                        });
+                        let _ = res.map_err(|e| tracing::error!(?e, "join 失败"));
                     }
                 });
             }
             bank_daily_gate(&db, &mut last_bank_day).await;
         }
         _ = hour_tick.tick() => {
-            // 首轮不跳过（幂等键护栏：seeding:{user}:{yyyymmddhh} 等，重跑零
-            // 副作用）；时魔参数全在 site_settings seeding_*（DB 函数统一读取）。
-            // 结算前先拿僵尸阈值传给结算 SQL（同 tick 内不依赖 sweep 是否跑过）
+            // 首轮不跳过（幂等键护栏，重跑零副作用）；僵尸阈值同 tick 现算
             let stale_secs = stale_peer_threshold_secs(&db).await;
             shard_lock!(&db, "job:seeding_reward",
                 seeding_reward(&db, stale_secs), &shard);
@@ -220,7 +221,7 @@ pub async fn run_all(
                 refundable_settle(&db), &shard);
             shard_lock!(&db, "job:achievement_grant",
                 achievement_grant(&db), &shard);
-            // 每日做种满 6h 发口粮券（games_coupon_seed_hours；幂等靠发放表 PK）
+            // 每日做种满 6h 发口粮券（幂等靠发放表 PK）
             shard_lock!(&db, "job:game_coupons",
                 grant_food_coupons(&db), &shard);
             // 字幕三扫（0148/0149）+ 卫生清理簇（邀请回收/凭证/日志/勋章）
@@ -257,19 +258,18 @@ pub async fn run_all(
                 spawn_lock!(js, &db2, "job:preserve_seed",
                             preserve_seed, &shard2);
                 while let Some(res) = js.join_next().await {
-                    let _ = res.map_err(|e| {
-                        tracing::error!(?e, "重型巡检 join 失败");
-                    });
+                    let _ = res.map_err(|e| tracing::error!(?e, "j"));
                 }
             });
         }
         _ = tick10.tick() => {
             if first_tick10 { first_tick10 = false; continue; }
             shard_lock!(&db, "job:cheat_audit", cheat_audit(&db), &shard);
-            // P1-5（2026-10-07 保种组审计）：作弊事件累进处置（用户告知/管理组
-            // 告警；经济拉黑在 seeding_reward 的 NOT EXISTS 承担）
+            // 作弊事件累进处置（P1-5）+ 对刷/谎报/BitThief 三件套（0301）
             shard_lock!(&db, "job:cheat_enforce",
                 cheat_enforce(&db), &shard);
+            shard_lock!(&db, "job:collusion_check",
+                collusion_check(&db), &shard);
         }
         _ = tick30.tick() => {
             if first_tick30 { first_tick30 = false; continue; }

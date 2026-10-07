@@ -65,6 +65,23 @@ pub async fn consume_announce(
                     .await;
                 touched_users.insert(ev.user);
                 touched_torrents.insert(torrent_id);
+                // 对刷检测日志（0301）：来源三元组落表，供 self_deal_check
+                // 做 30 分钟窗口聚合（同 IP 双账号一传一下）。失败仅告警——
+                // 日志缺失只降级检测灵敏度，不影响计费主链路。
+                if !ev.ip.is_empty() {
+                    let _ = sqlx::query(
+                        "INSERT INTO announce_ips \
+                         (user_id, ip, info_hash, seeding, leeching) \
+                         VALUES ($1, $2, $3, $4, $5)",
+                    )
+                    .bind(ev.user)
+                    .bind(&ev.ip)
+                    .bind(&ev.hash)
+                    .bind(ev.left == 0)
+                    .bind(ev.left > 0)
+                    .execute(db)
+                    .await;
+                }
                 // connectable 抽样联动（0071 P1-9 → 2026-10-07 保种组审计 P0-2）：
                 // 不可达 + 零上传 + 无监听端口 → 幽灵做种实锤。事件键从
                 // 'connectable' 改为 'ghost:{hash8}'——速度/回退/幽灵三类统一

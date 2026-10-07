@@ -67,6 +67,7 @@ pub(crate) async fn run_named(
         "dlq_watch" => n(dlq_watch(db, redis).await?),
         "cheat_audit" => n(cheat_audit(db).await?),
         "cheat_enforce" => n(cheat_enforce(db).await?),
+        "collusion_check" => n(collusion_check(db).await?),
         "multi_ip_check" => n(multi_ip_check(db).await?),
         "leak_scan" => n(leak_scan(db).await?),
         "reconcile_diff_alert" => d(reconcile_diff_alert(db).await?),

@@ -183,6 +183,10 @@ pub const JOBS: &[JobDef] = &[
         cadence: "10m",
     },
     JobDef {
+        name: "collusion_check",
+        cadence: "10m",
+    },
+    JobDef {
         name: "multi_ip_check",
         cadence: "30m",
     },

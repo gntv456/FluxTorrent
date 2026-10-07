@@ -14,6 +14,7 @@ mod billing_mults;
 mod catalog;
 mod cheat_enforce;
 mod class_adj;
+mod collusion;
 mod game_coupons;
 pub(crate) mod group;
 mod hr;
@@ -41,6 +42,7 @@ mod settle_periodic;
 mod subtitle_cert;
 mod subtitle_flow;
 mod sweep;
+mod xreport;
 
 mod social_team;
 mod social_team_expire;
@@ -62,6 +64,7 @@ pub(crate) use audit::*;
 pub(crate) use backfill::*;
 pub(crate) use cheat_enforce::*;
 pub(crate) use class_adj::*;
+pub(crate) use collusion::*;
 pub(crate) use game_coupons::*;
 pub(crate) use hr::*;
 pub(crate) use jixiao::*;
@@ -76,6 +79,7 @@ pub(crate) use subtitle_cert::*;
 pub(crate) use subtitle_flow::*;
 pub(crate) use sweep::*;
 pub(crate) use usage_stats::*;
+pub(crate) use xreport::*;
 
 #[cfg(test)]
 mod tests;
