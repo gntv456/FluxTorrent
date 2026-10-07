@@ -69,7 +69,12 @@ pub(crate) async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
         .await?;
         for (uid, amount) in &contribs {
             let idem = format!("funding-refund:{fid}:{uid}");
-            sqlx::query(
+            // 二轮审计（P2）：旧版 INSERT 与 UPDATE 是两条 autocommit——
+            // INSERT 落行后 UPDATE 的 NOT EXISTS 恒 false，退款余额永远
+            // 不被这条路径加上（只落流水，靠后续 reconcile 收敛）。改为
+            // 以 INSERT 的 rows_affected 判定「本次是否新入账」，新入账
+            // 才无条件 UPDATE 加余额（幂等语义不变：重复执行零副作用）。
+            let inserted = sqlx::query(
                 r#"
                 INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
                 SELECT nextval('spark_ledger_id_seq'), $1, $2, 'funding_refund', $3
@@ -80,18 +85,18 @@ pub(crate) async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
             .bind(amount)
             .bind(&idem)
             .execute(db)
-            .await?;
-            sqlx::query(
-                "UPDATE users SET spark_balance = \
-             spark_balance + $2 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM \
-             spark_ledger WHERE idempotency_key = $3)",
-            )
-            .bind(uid)
-            .bind(amount)
-            .bind(&idem)
-            .execute(db)
-            .await?;
-            refunds += 1;
+            .await?
+            .rows_affected();
+            if inserted > 0 {
+                sqlx::query(
+                    "UPDATE users SET spark_balance = spark_balance + $2                      WHERE id = $1",
+                )
+                .bind(uid)
+                .bind(amount)
+                .execute(db)
+                .await?;
+                refunds += 1;
+            }
         }
         // 全部退款成功 → 终态 2（失败时下一轮从 3 态重入续退，幂等键防双退）
         sqlx::query("UPDATE fundings SET status = 2 WHERE id = $1")

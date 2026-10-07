@@ -237,6 +237,18 @@ impl PeerTable {
             out.rotate_left(skip);
             out.truncate(n);
         }
+        // 二轮审计：retriable 也要轮转——旧版只取迭代序前 n 个已测 peer，
+        // 大站已测池 >n 时其余永不复测，connectable 冻结（先正常做种测得
+        // 可达、再撤监听伪造 announce，suspect_ghost_seed 永不触发）。
+        if !retriable.is_empty() {
+            let epoch = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs() as usize)
+                .unwrap_or(0)
+                / 300;
+            let skip = epoch % retriable.len();
+            retriable.rotate_left(skip);
+        }
         for r in retriable {
             if out.len() >= n {
                 break;

@@ -198,14 +198,34 @@ pub async fn upload_attachment(
         let d = h.finalize();
         d.iter().map(|b| format!("{b:02x}")).collect::<String>()
     };
-    // 去重：同 sha 已存在 → 直接复用（不重复占配额）
-    let exists: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM attachments WHERE sha256 = $1")
-            .bind(&sha)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    if exists.is_none() {
+    // 去重（二轮审计修订）：判存限「本人已有行」——0294 引入 visibility 后，
+    // 全局按 sha 判存会让 B 传 private 命中 A 的 shared 行：库里唯一行仍是
+    // A 的 shared，B 的"私有"附件实际全站可读（响应还回显 private 说谎）；
+    // 反向 A private / B shared 则 B 的图对全站 404。同人已有行才复用；
+    // 他人已有行且本次要 private 时改插独立行（物理文件共享不破坏，权限
+    // 行按人隔离）。shared 命中他人行维持旧行为（全站可读语义等价）。
+    let mine: Option<(i64, String)> = sqlx::query_as(
+        "SELECT id, visibility FROM attachments          WHERE sha256 = $1 AND user_id = $2",
+    )
+    .bind(&sha)
+    .bind(auth.id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let others_shared: bool = mine.is_none()
+        && sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM attachments               WHERE sha256 = $1 AND visibility = 'shared')",
+        )
+        .bind(&sha)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+    // 是否复用他人行（不插新行、不占配额）：仅「同人已有行」或「他人存在
+    // shared 行且本次也是 shared（缺省）」两种——语义等价（全站可读共享）。
+    // 其余组合（本次 private / 他人只有 private·staff 行）一律插独立行，
+    // 权限按人隔离；物理文件按 sha 共享不受影响。
+    let deduped = mine.is_some() || (visibility.is_empty() && others_shared);
+    if !deduped {
         // 0102 对象存储：按 storage_backend 分发（local 卷 / S3 兼容），目录结构与
         // 旧实现一致（sha 两级分片），读取端自动双后端回落——迁移期无缝。
         crate::storage::put(&state.repo.db, &sha, &bytes, &mime)
@@ -244,8 +264,17 @@ pub async fn upload_attachment(
         "algorithm": "sha3-256",
         "url": format!("/api/v1/attachments/{sha}"),
         "size": bytes.len(),
-        "deduplicated": exists.is_some(),
-        "visibility": if visibility.is_empty() { "shared" } else { &visibility },
+        // deduplicated=复用了已有权限行（本人或等价 shared）；visibility
+        // 如实回显**库里生效的行**的可见性——独立 private 行回 private，
+        // 复用 shared 行回 shared（旧版回显请求值，private 命中 shared 时说谎）
+        "deduplicated": deduped,
+        "visibility": if deduped && mine.is_none() {
+            "shared"
+        } else if visibility.is_empty() {
+            "shared"
+        } else {
+            &visibility
+        },
     })))
 }
 

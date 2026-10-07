@@ -163,9 +163,11 @@ pub(crate) async fn process_event(
         .bind(ev.user)
         .bind(format!("speed:{torrent_id}"))
         .bind(&ev.ip)
-        .bind(format!(
-            "over_ceiling held_up={held_up} held_down={held_down} secs={secs}"
-        ))
+        // 二轮审计：reason 是去重键的一部分，内嵌每次都变的数值会让
+        // ON CONFLICT 恒不命中 → hits 聚合失效、行无限膨胀，管理端前 200
+        // 条可被"每次超一点"的攻击冲掉（告警稀释）。数值挪出键：
+        // reason 固定文案聚合，明细走 tracing（有 request 上下文可查）。
+        .bind("over_ceiling（增量超物理速率上限，超出部分未入账）")
         .execute(&mut *tx)
         .await;
         tracing::warn!(

@@ -45,8 +45,10 @@ async fn visibility_denied(
     uid: i64,
     sha: &str,
 ) -> DomainResult<Option<bool>> {
-    // class_id 顺带取：staff 读 private/staff 附件均放行
-    let row: Option<(String, i64)> = sqlx::query_as(
+    // class_id 顺带取：staff 读 private/staff 附件均放行。
+    // users.class_id 是 INT4，必须按 i32 解码（二轮审计线上验证发现：
+    // i64 解码 INT4 报 mismatched types → 他人读取 private 附件 500）
+    let row: Option<(String, i32)> = sqlx::query_as(
         "SELECT a.visibility, u.class_id FROM attachments a \
          JOIN users u ON u.id = $1 WHERE a.sha256 = $2 AND a.user_id <> $1",
     )
@@ -78,6 +80,9 @@ pub async fn head_attachment(
     path: web::Path<String>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 二轮审计：GET 有 60/min 限流而 HEAD 没有——每请求一次 DB 双查询 +
+    // size 字节占位分配，可被无界打；与 GET 同桶限流
+    read_throttled(&state, auth.id).await?;
     let sha = path.into_inner();
     if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(DomainError::Validation("sha256 格式无效".into()));

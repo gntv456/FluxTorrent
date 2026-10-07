@@ -42,8 +42,11 @@ pub(crate) fn origin_matches(req: &HttpRequest, origin: &str) -> bool {
     if origin.is_empty() || origin == "null" {
         return false;
     }
-    // 本机同源：Origin 的 authority 与请求 Host 一致
+    // 本机同源：Origin 的 authority 与请求 Host 一致。
+    // Referer 兜底形态是完整 URL（带 path/query）：剥到首个 '/' 或 '?' 为止
+    // （不剥会把同站 Referer 误判跨站——二轮审计发现，方向是误拒非放行）
     let authority = origin.split_once("://").map_or(origin, |(_, a)| a);
+    let authority = authority.split(['/', '?']).next().unwrap_or(authority);
     let host = req
         .headers()
         .get("host")

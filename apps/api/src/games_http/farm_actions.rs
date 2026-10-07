@@ -16,9 +16,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::farm::{get_crop, get_plantable_crop, PlantReq};
-use super::helpers::{
-    check_rate_scoped, eco_i64, farm_wither_days, RateScope,
-};
+use super::helpers::{check_rate_scoped, eco_i64, farm_wither_days, RateScope};
 
 #[post("/farm/plant")]
 pub(super) async fn farm_plant(
