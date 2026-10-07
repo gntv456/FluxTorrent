@@ -60,6 +60,38 @@ fn every(secs: u64) -> tokio::time::Interval {
     i
 }
 
+/// 银行结算日切门（原 run.rs 60s 分支内联块抽出）：
+/// 站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证重启/宕机跨日也能补跑。
+async fn bank_daily_gate(
+    db: &PgPool,
+    last_bank_day: &mut Option<chrono::NaiveDate>,
+) {
+    let mut state = *last_bank_day;
+    let site_day =
+        (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
+    if state.is_none() {
+        state = Some(init_bank_day(db).await);
+    }
+    if state != Some(site_day) {
+        tracing::info!(?site_day, "bank_daily start");
+        // bank_daily 内部各子步骤自带日期游标/幂等键，锁内重跑安全
+        let db2 = db.clone();
+        with_lock(db, "job:bank_daily", async move {
+            crate::bank_jobs::bank_daily(&db2).await;
+            Ok::<(), anyhow::Error>(())
+        })
+        .await;
+        let after: Option<chrono::NaiveDate> =
+            sqlx::query_scalar("SELECT max(run_date) FROM bank_settle_runs")
+                .fetch_one(db)
+                .await
+                .ok()
+                .flatten();
+        state = Some(after.unwrap_or(site_day - chrono::Duration::days(1)));
+    }
+    *last_bank_day = state;
+}
+
 pub async fn run_all(
     db: PgPool,
     redis: redis::aio::ConnectionManager,
@@ -97,10 +129,8 @@ pub async fn run_all(
         _ = tick.tick() => {
             // 手动触发认领（0218 G7）：与定时同函数、同 advisory 锁，不阻塞本循环
             poll_manual_triggers(&db, &redis, &mut manual_tasks).await;
-            // 审计修复（多实例互斥 + 超时）：每个 job 包 advisory lock + 900s 超时。
-            // 多 worker 部署时同 job 只有抢到锁的实例执行（拿不到锁静默跳过本轮）；
-            // 卡死任务 15 分钟后被 timeout 掐掉、连接归还，不会拖垮整个调度循环。
-            // 失败/超时在 with_lock 内统一记日志（含 key），此处无需再逐个 match。
+            // 多实例互斥（with_lock：advisory lock + 900s 超时，拿不到锁静默
+            // 跳过本轮；失败/超时在 with_lock 内统一记日志）
             shard_lock!(&db, "job:expire_promotions",
                 expire_promotions(&db), &shard);
             shard_lock!(&db, "job:magic_pool_promo",
@@ -153,40 +183,12 @@ pub async fn run_all(
                     }
                 });
             }
-            // 银行结算：站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证 worker 重启/宕机跨日也能补跑
-            let site_day = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
-            if last_bank_day.is_none() {
-                last_bank_day = Some(init_bank_day(&db).await);
-            }
-            if last_bank_day != Some(site_day) {
-                tracing::info!(?site_day, "bank_daily start");
-                // bank_daily 内部各子步骤自带日期游标/幂等键，锁内重跑安全
-                let db2 = db.clone();
-                with_lock(&db, "job:bank_daily", async move {
-                    crate::bank_jobs::bank_daily(&db2).await;
-                    Ok::<(), anyhow::Error>(())
-                })
-                .await;
-                // 结算失败（游标未写）时保持 last_bank_day 落后，下一分钟 tick 重试整轮；
-                // 成功时以 bank_settle_runs 的 run_date 为准，避免与库内游标漂移。
-                let after: Option<chrono::NaiveDate> =
-                                            sqlx::query_scalar("SELECT \
-                     max(run_date) FROM bank_settle_runs")
-                        .fetch_one(&db)
-                        .await
-                        .ok()
-                        .flatten();
-                last_bank_day = Some(after.unwrap_or(site_day - chrono::Duration::days(1)));
-            }
+            bank_daily_gate(&db, &mut last_bank_day).await;
         }
         _ = hour_tick.tick() => {
-            // 审计修复：去掉 first_hour 首轮跳过——原逻辑为防启动风暴，但 worker
-            // 频繁重启（崩溃循环/滚动发布）时 hour_interval 每次都从第一 tick 起步，
-            // seeding_reward 可能数小时不被执行。本任务幂等键 = seeding:{user}:{yyyymmddhh}，
-            // 同小时重复执行零副作用；其余 hourly 任务也都自带幂等护栏，首轮直接跑安全。
-            // 时魔参数（底薪/封顶/曲线/体积基准/稀有度/标定）全在 site_settings `seeding_*`，
-            // 由 DB 函数 seeding_params() 统一读取 —— 调价不再改代码重发（迁移 0133）。
-            // 结算前先拿僵尸阈值传给结算 SQL（同 tick 内不依赖 sweep_stale_peers 是否跑过）
+            // 首轮不跳过（幂等键护栏：seeding:{user}:{yyyymmddhh} 等，重跑零
+            // 副作用）；时魔参数全在 site_settings seeding_*（DB 函数统一读取）。
+            // 结算前先拿僵尸阈值传给结算 SQL（同 tick 内不依赖 sweep 是否跑过）
             let stale_secs = stale_peer_threshold_secs(&db).await;
             shard_lock!(&db, "job:seeding_reward",
                 seeding_reward(&db, stale_secs), &shard);
@@ -207,9 +209,7 @@ pub async fn run_all(
             // 失败判定必须排在成功结算之后：恰好在期限内达标的队伍应算成功
             shard_lock!(&db, "job:social_team_expire",
                 social_team_expire(&db), &shard);
-            // 绩效考核月末结算（0106）：挂 hourly 而非 daily——daily tick 首轮被
-            // first_tick1d 跳过、重启后要等 24h 才首跑；hourly 首轮立即执行，
-            // 且本 job 幂等（settled_at 标记 + 发薪幂等键），空扫描是一次索引查询
+            // 绩效月末结算挂 hourly（0106）：daily 首轮被跳过、重启后要等 24h
             shard_lock!(&db, "job:jixiao_settle",
                 jixiao_settle(&db), &shard);
             shard_lock!(&db, "job:preserve_settle",
@@ -220,25 +220,21 @@ pub async fn run_all(
                 refundable_settle(&db), &shard);
             shard_lock!(&db, "job:achievement_grant",
                 achievement_grant(&db), &shard);
-            // 优先级①：每日做种满 6h（设置键 games_coupon_seed_hours 可调）发 1 张口粮券。
-            // 复用 seeding_reward 流水判定，幂等靠 food_coupon_grants 主键，重跑零副作用。
+            // 每日做种满 6h 发口粮券（games_coupon_seed_hours；幂等靠发放表 PK）
             shard_lock!(&db, "job:game_coupons",
                 grant_food_coupons(&db), &shard);
-            // 0148 字幕工作流：认领超时回池 + 交稿超时自动验收 + 月度评选候选
-            // 0149 认证字幕人：三阈值复扫（均幂等：CAS/UNIQUE/PK + 仅撤 auto 行）
+            // 字幕三扫（0148/0149）+ 卫生清理簇（邀请回收/凭证/日志/勋章）
             shard_lock!(&db, "job:subreq_sweep", subreq_sweep(&db), &shard);
             shard_lock!(&db, "job:subawards", subawards_build(&db), &shard);
             shard_lock!(&db, "job:subcert_sweep", subcert_sweep(&db), &shard);
             shard_lock!(&db, "job:expire_medals", expire_medals(&db), &shard);
-            // 卫生清理（NP docleanup 口径）：过期邀请落库回收 / 一次性凭证与重置 token 清理
             shard_lock!(&db, "job:expire_invites",
                 expire_invites(&db), &shard);
             shard_lock!(&db, "job:purge_expired_tokens",
                 purge_expired_tokens(&db), &shard);
-            // 运行日志保留期（0218 G6）：14 天 / 20 万行硬顶
             shard_lock!(&db, "job:purge_runtime_logs",
                 purge_runtime_logs(&db), &shard);
-            // DLQ 可见性：只进不出等于变相丢计费——有积压时通知管理组信箱
+            // DLQ 积压告警（只进不出等于变相丢计费）
             {
                 let (db2, mut r) = (db.clone(), redis.clone());
                 with_lock(&db, "job:dlq_watch", async move {
@@ -248,7 +244,7 @@ pub async fn run_all(
             }
         }
         _ = tick5.tick() => {
-            // 重型巡检（ZT81 从 60s 迁来）：O(全表)，300s 一轮且分离到后台。
+            // 重型巡检（ZT81 从 60s 迁来）：O(全表)，300s 一轮且分离到后台
             let (db2, shard2) = (db.clone(), shard.clone());
             tokio::spawn(async move {
                 let mut js = tokio::task::JoinSet::new();
@@ -270,6 +266,10 @@ pub async fn run_all(
         _ = tick10.tick() => {
             if first_tick10 { first_tick10 = false; continue; }
             shard_lock!(&db, "job:cheat_audit", cheat_audit(&db), &shard);
+            // P1-5（2026-10-07 保种组审计）：作弊事件累进处置（用户告知/管理组
+            // 告警；经济拉黑在 seeding_reward 的 NOT EXISTS 承担）
+            shard_lock!(&db, "job:cheat_enforce",
+                cheat_enforce(&db), &shard);
         }
         _ = tick30.tick() => {
             if first_tick30 { first_tick30 = false; continue; }

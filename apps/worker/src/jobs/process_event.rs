@@ -2,7 +2,8 @@
 //! 从 jobs.rs 按域拆出。
 
 use super::announce_main::AnnounceEvent;
-use super::billing::billing_multipliers;
+use super::billing_mults::resolve_billing_mults;
+use super::ledger_guard::ledger_guard;
 use sqlx::PgPool;
 
 /// ZT81（2026-10-02）：按**字符边界**截断。原实现用 `&s[..len.min(200)]` 按字节
@@ -36,66 +37,8 @@ pub(crate) async fn process_event(
         return Ok(None); // 种子确实不存在：跳过
     };
 
-    // 促销快照裁决（§5.4-⑦）——与 API 展示口径一致：同种子多条专属促销取最强档
-    // （修复前 ORDER BY id DESC 只认最新一条：先挂 free 后挂 half 时计费取 half、展示取 free）
-    // 裁决时点 = 事件时点 ev.ts（缺省 now）：积压重放时不再按过期后的价目补计费
-    let ev_time = ev.ts.unwrap_or_else(chrono::Utc::now);
-    // 审计修复（P0）：专属促销查询旧版把 $1 重复引用三次并 bind 三次 —— PG 扩展协议按
-    // 「最大占位符编号」要求 4 个参数，但未在 SQL 中出现的编号无法推断类型，
-    // Parse 阶段报 "could not determine data type of parameter $2"，每个 announce
-    // 事件重试 6 次进 DLQ，计费链路整体瘫痪。改为 $1/$4 显式引用 + 仅 bind 两个参数。
-    let kind: Option<String> = sqlx::query_scalar(
-        "SELECT kind::text FROM promotions WHERE torrent_id = $1 AND starts_at <= $2 AND ends_at > $2 \
-         ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 \
-                                  WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, id DESC \
-         LIMIT 1",
-    )
-    .bind(torrent_id)
-    .bind(ev_time)
-    .fetch_optional(db)
-    .await?;
-    // 审计修复（P0 真根因，PG 日志实锄）：旧 SQL 里 $1 出现 3 次（三个 EXISTS 子查询），
-    // Rust 侧只 bind 1 个参数 —— sqlx Describe/Bind 参数计数协商失败后发出 0 参数 Bind，
-    // "supplies 0 parameters" 每轮必炸，announce 计费自 07-11 起整体瘫痪。改写为 $1 单次引用。
-    let global: Option<String> = sqlx::query_scalar(
-        "SELECT kind::text FROM promotions p \
-         WHERE p.torrent_id IS NULL AND p.starts_at <= $4 AND p.ends_at > $4 \
-           AND (p.scope = 'global' \
-                OR (p.scope = 'official' AND (SELECT official_tag FROM torrents WHERE id = $1)) \
-                OR (p.scope = 'non_official' AND NOT (SELECT official_tag FROM torrents WHERE id = $2)) \
-                OR (p.scope = 'category' AND p.category_id = (SELECT category_id FROM torrents WHERE id = $3))) \
-         ORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 \
-                                  WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC \
-         LIMIT 1",
-    )
-    // 同值三占位符 + 三 bind（sqlx 按占位符种类计数；缺 bind 会 0 参数发送）
-    .bind(torrent_id)
-    .bind(torrent_id)
-    .bind(torrent_id)
-    .bind(ev_time)
-    .fetch_optional(db)
-    .await?;
-    let (up_mult, down_mult) =
-        billing_multipliers(kind.as_deref(), global.as_deref());
-
-    // 0073 券倍率叠加：free 券 → 下载计 0；neutral 券 → 上下行均计 0。
-    // 判定口径：本人该种存在绑定中（used_at 仍 NULL）的对应 kind 券；过期判定同促销用事件时点。
-    // 与促销取更优（乘法叠加：促销 x2 上传对 neutral 也归零，取对用户更优的 0）。
-    let voucher: Option<String> = sqlx::query_scalar(
-        "SELECT kind FROM user_vouchers \
-         WHERE user_id = $1::bigint AND used_torrent_id = $2::bigint AND used_at IS NULL AND expires_at > $3 \
-         ORDER BY CASE kind WHEN 'neutral' THEN 2 WHEN 'free' THEN 1 ELSE 0 END DESC LIMIT 1",
-    )
-    .bind(ev.user)
-    .bind(torrent_id)
-    .bind(ev_time)
-    .fetch_optional(db)
-    .await?;
-    let (up_mult, down_mult) = match voucher.as_deref() {
-        Some("neutral") => (0.0, 0.0),
-        Some("free") => (up_mult, 0.0),
-        _ => (up_mult, down_mult),
-    };
+    let (up_mult, down_mult, kind, global) =
+        resolve_billing_mults(db, ev, torrent_id).await?;
 
     // BEP3：ev.up/down 是客户端累计总量 —— 先取出上次上报值换算增量（P0 修复）
     let mut tx = db.begin().await?;
@@ -117,43 +60,21 @@ pub(crate) async fn process_event(
         return Ok(None);
     }
 
-    let last: Option<(i64, i64, Option<i64>)> = sqlx::query_as(
-        "SELECT last_up, \
-         last_down, \
-         EXTRACT(EPOCH FROM (now() - last_seen_at))::bigint \
-         FROM snatches WHERE user_id = $1 AND torrent_id = $2 FOR UPDATE",
-    )
-    .bind(ev.user)
-    .bind(torrent_id)
-    .fetch_optional(&mut *tx)
-    .await?;
-    let (last_up, last_down) = last.map(|(u, d, _)| (u, d)).unwrap_or((0, 0));
-    // 计数器回绕/客户端重置时按 0 处理
-    let raw_up = (ev.up - last_up).max(0);
-    let raw_down = (ev.down - last_down).max(0);
-    // 物理可入账上限（P0-1 主防线）：增量不得超过「距上次上报秒数 × 站点声明速率」。
-    // 旧实现只留痕不扣量，且 secs>=30 盲区让同秒连投的多笔大增量全额入账；
-    // 首报（无基线）按一个 announce 周期计，不惩罚正常下载。
-    // P2（2026-10-06 安全审计）：首报窗口从 seed_cap/2（缺省 900s）收紧到
-    // ≤300s——旧口径下「换 peer_id/换种子无限首报」每颗种子都能吃满
-    // 900s × 速率上限；300s 足以覆盖正常客户端首个 announce 周期
-    // （interval 缺省 1800s 时客户端首次汇报的增量本来就该按下载启动
-    // 时刻起算，900s 的宽限只便宜了伪造者）。
-    let secs = last
-        .and_then(|(_, _, s)| s)
-        .unwrap_or((seed_cap / 2).max(60).min(300))
-        .max(1);
-    let allowance = credit_ceiling(&mut tx).await.saturating_mul(secs);
-    let credit_up = raw_up.min(allowance);
-    let credit_down = raw_down.min(allowance);
-    let held_up = raw_up - credit_up;
-    let held_down = raw_down - credit_down;
+    let (
+        anchor_up,
+        anchor_down,
+        credit_up,
+        credit_down,
+        had_baseline,
+        held_up,
+        held_down,
+    ) = ledger_guard(&mut tx, ev, torrent_id, torrent_size, seed_cap).await?;
     let delta_up = (credit_up as f64 * up_mult) as i64;
     let delta_down = (credit_down as f64 * down_mult) as i64;
 
     // 超上限留痕：agent 沿用 cheat_audit 的 torrent:{id} 约定、speed: 前缀区分来源，
     // reason 带被扣量与证据，供管理组复核后用补量接口发还。
-    if last.is_some() && (held_up > 0 || held_down > 0) {
+    if had_baseline && (held_up > 0 || held_down > 0) {
         let _ = sqlx::query(
             "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
              VALUES ($1, $2, $3, $4) \
@@ -175,23 +96,34 @@ pub(crate) async fn process_event(
             torrent = torrent_id,
             held_up,
             held_down,
-            secs,
             "增量超物理速率上限，超出部分未入账"
         );
     }
 
-    let seeding = ev.left == 0;
+    // P0-2 幽灵做种三条件（保种组实测审计 2026-10-07）：left=0（数据完整）
+    // AND port>0（客户端开了监听端口——纯 curl 伪造 announce 恒 port=0）
+    // AND connectable!=0（回连不可达的挂种不算在种；None=本次未测，放行）。
+    // 实测旧口径下「无端口、无文件、无监听」的裸 HTTP GET 即可令 seeding=true、
+    // seeders+1、seeded_seconds 持续累计，做种收益/保种区/复活任务全链路可刷。
+    let seeding = ev.left == 0 && ev.port > 0 && ev.conn != Some(0);
+    // P0-2C completed 下载侧证据：累计入账下载量为 0 的 "completed" 是伪造
+    // （连一个字节都没下载过就宣布完成）。H&R buffer 用 10% 口径，这里只做
+    // 非零下限——宽松但足以拦「从未下载、伪造事件直接挂种」的路径。
+    let completed = ev.event == "completed" && ev.down > 0;
     // stopped = 客户端退出：与 tracker 侧 remove(peer) 对齐，DB 也不应继续标记在做种/下载
     let stopped = ev.event == "stopped";
     sqlx::query(
         r#"
-        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at, connectable, agent, progress)
-        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $11 THEN FALSE ELSE $7 END, CASE WHEN $11 THEN FALSE ELSE $8 END, CASE WHEN $9 THEN now() ELSE NULL END, now(), COALESCE($12, 1), $13, $14)
+        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at, connectable, agent, progress, last_port)
+        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $11 THEN FALSE ELSE $7 END, CASE WHEN $11 THEN FALSE ELSE $8 END, CASE WHEN $9 THEN now() ELSE NULL END, now(), COALESCE($12, 1), $13, $14, $15)
         ON CONFLICT (user_id, torrent_id) DO UPDATE SET
           uploaded = snatches.uploaded + EXCLUDED.uploaded,
           downloaded = snatches.downloaded + EXCLUDED.downloaded,
-          last_up = EXCLUDED.last_up,
-          last_down = EXCLUDED.last_down,
+          -- P0-1 基线单向（2026-10-07 审计）：last_up/last_down 是增量换算的锚点，
+          -- 必须只进不退——EXCLUDED 已是 Rust 侧守卫后的锚点（大幅回退沿用旧值），
+          -- GREATEST 再兜一层，防止任何路径把锚点拉低后重吃增量。
+          last_up = GREATEST(snatches.last_up, EXCLUDED.last_up),
+          last_down = GREATEST(snatches.last_down, EXCLUDED.last_down),
           leeching = CASE WHEN $11 THEN FALSE ELSE EXCLUDED.leeching END,
           seeding = CASE WHEN $11 THEN FALSE ELSE EXCLUDED.seeding OR snatches.seeding END,
           completed_at = COALESCE(snatches.completed_at, EXCLUDED.completed_at),
@@ -206,8 +138,9 @@ pub(crate) async fn process_event(
           ),
           -- connectable（0071）：tracker 回连抽样结果覆盖（NULL=本次未测，保持原值）
           connectable = COALESCE($12, snatches.connectable),
-          -- 客户端 UA / 实时进度（0098，viewsnatches 口径）：每次 announce 覆盖
-          agent = EXCLUDED.agent,
+          -- P2（2026-10-07 审计）：UDP 事件 agent 恒空，不能用它冲掉 HTTP 侧
+          -- 记录的真实 UA（取证口径以 HTTP announce 为准）
+          agent = COALESCE(NULLIF(EXCLUDED.agent, ''), snatches.agent),
           progress = EXCLUDED.progress,
           last_seen_at = now()
         "#,
@@ -216,11 +149,12 @@ pub(crate) async fn process_event(
     .bind(torrent_id)
     .bind(credit_up)
     .bind(credit_down)
-    .bind(ev.up)
-    .bind(ev.down)
-    .bind(!seeding)
+    // P0-1：写库锚点用守卫后的 anchor（大幅回退时沿用旧基线），与
+    // upsert 侧的 GREATEST 双保险——EXCLUDED.last_up 永远是「合法单调」的。
+    .bind(anchor_up)
+    .bind(anchor_down)    .bind(!seeding)
     .bind(seeding)
-    .bind(ev.event == "completed")
+    .bind(completed)
     // 审计修复（P0 真根因）：$10 在 SQL 中是 bigint（时长容忍窗）、$11 是 boolean（stopped），
     // 旧代码把两者绑反（stopped 在第 10 位、seed_cap 在第 11 位），
     // Describe 类型与实际 bind 值错位 → "bind message supplies 0 parameters" 持久报错，
@@ -236,6 +170,8 @@ pub(crate) async fn process_event(
     } else {
         0
     })
+    // P0-2：上报端口（幽灵做种判定基础；i32 与迁移 0298 列型一致）
+    .bind(ev.port as i32)
     .execute(&mut *tx)
     .await?;
 
@@ -278,29 +214,4 @@ pub(crate) async fn process_event(
     }
     tx.commit().await?;
     Ok(Some(torrent_id))
-}
-
-/// 单次 announce 可入账的速率上限（字节/秒）：`traffic_credit_max_bps`（0285）优先，
-/// 回落 `speed_alarm_bps`（告警线），都缺省/非法时回落 2 GiB/s（与旧默认一致）。
-/// 夹在 [1 MiB/s, 1 TiB/s]：填 0 或非数字不得把全站流量清零，也不得放开成无上限。
-async fn credit_ceiling(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> i64 {
-    let r = sqlx::query_scalar::<_, i64>(
-        "SELECT COALESCE( \
-           MAX(CASE WHEN name = 'traffic_credit_max_bps' THEN NULLIF(value, '')::bigint END), \
-           MAX(CASE WHEN name = 'speed_alarm_bps' THEN NULLIF(value, '')::bigint END), \
-           2147483648) \
-         FROM site_settings \
-         WHERE name IN ('traffic_credit_max_bps', 'speed_alarm_bps')",
-    )
-    .fetch_optional(&mut **tx)
-    .await;
-    match r {
-        Ok(v) => v
-            .unwrap_or(2_147_483_648)
-            .clamp(1_048_576, 1_099_511_627_776),
-        Err(e) => {
-            tracing::warn!(?e, "速率上限设定读取失败，回落 2 GiB/s");
-            2_147_483_648
-        }
-    }
 }

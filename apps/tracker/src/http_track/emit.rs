@@ -19,10 +19,14 @@ pub(crate) async fn emit_event(
     ip: &str,
     conn: i8,
     agent: &str,
+    port: u16,
 ) {
     let mut payload = serde_json::json!({
         "user": user, "hash": info_hash_hex, "up": up, "down": down,
         "event": event, "left": left,
+        // P0-2（2026-10-07 保种组审计）：上报端口进事件流——port=0 的
+        // 「幽灵做种」在计费侧不得按在种累计（无监听端口不可能提供上传）。
+        "port": port,
         "ts": chrono::Utc::now().to_rfc3339(),
     });
     // 0071：仅在有测量值时携带（worker 端 Option 语义：缺省 = 不覆盖 snatches.connectable）

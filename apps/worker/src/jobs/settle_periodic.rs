@@ -1,6 +1,6 @@
 //! 周期结算：高速标/复活/组队/愿望单/里程碑。
 //! 从 jobs.rs 按域拆出。
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 
 /// 盒子/高速做种打标（0077，U3D AutoHighspeedTag 口径）：近 7 天 snatches 上传统计速度
 /// 超 100MB/s 视为高速线路在做种 → torrents.highspeed = true（展示与激励用，不惩罚）。
@@ -42,7 +42,14 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
                       WHERE s.user_id = r.user_id
                         AND s.torrent_id = r.torrent_id
                         AND s.seeded_seconds >= r.required_hours * 3600
-                        AND s.seeding)
+                        AND s.seeding
+                        -- P0-2（2026-10-07 保种组审计）：幽灵挂种不计——实测
+                        -- port=0 纯 curl announce 无文件无下载即可累计做种时长
+                        -- 领取复活奖励；补与做种收益同口径的端口/回连过滤，
+                        -- 另要求存在真实下载（completed 侧证据：累计下载>0）。
+                        AND s.last_port > 0
+                        AND NOT COALESCE(s.connectable = 0, false)
+                        AND s.downloaded > 0)
         "#,
     )
     .fetch_all(db)

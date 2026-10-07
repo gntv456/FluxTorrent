@@ -189,7 +189,7 @@ pub(crate) async fn announce(
         state.peers.upsert(peer);
     }
 
-    // ④ 事件投递（fire-and-forget，失败仅告警；ip/conn 供 worker 反作弊分析）
+    // ④ 事件投递（fire-and-forget，失败仅告警；ip/conn/port 供 worker 反作弊分析）
     emit_event(
         &state.redis,
         &info_hash_hex,
@@ -201,6 +201,7 @@ pub(crate) async fn announce(
         &ip,
         state.peers.connectable_of(&key),
         &agent_str,
+        port,
     )
     .await;
 

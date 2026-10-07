@@ -82,6 +82,20 @@ pub(crate) fn env_i64(key: &str, default: i64) -> i64 {
         .unwrap_or(default)
 }
 
+fn trust_xff_depth() -> usize {
+    static V: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+    *V.get_or_init(|| {
+        std::env::var("TRUST_PROXY_DEPTH")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            // 缺省 1 = 单层反代（与旧「右值」语义兼容）；多层代理部署须显式
+            // 对齐拓扑：DEPTH=n 时取右数第 n 段（2026-10-07 保种组审计 P2：
+            // 攻击者自建代理追加 hop 时，右值可被伪造污染取证/绕过限流）
+            .unwrap_or(1)
+            .clamp(1, 8)
+    })
+}
+
 fn trust_xff() -> bool {
     static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *V.get_or_init(|| std::env::var("TRUST_PROXY").unwrap_or_default() == "1")
@@ -107,15 +121,27 @@ pub(crate) fn client_ip(
     params: &super::params::RawParams,
 ) -> String {
     if trust_xff() {
+        // 2026-10-07 保种组审计 P2：按 TRUST_PROXY_DEPTH 从右数第 n 段取值。
+        // 旧版恒取最右一段——单层反代下正确，但攻击者自建代理追加 hop 时
+        // 右值可控（污染 ip_bans/限流/事件流取证）。DEPTH 显式对齐部署
+        // 拓扑（n 层可信反代 → 右数第 n 段才是第一跳可信边界追加的地址）。
+        let depth = trust_xff_depth();
         if let Some(v) = req
             .headers()
             .get("x-forwarded-for")
             .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.split(',').next_back())
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
+            .map(|v| {
+                v.split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<_>>()
+            })
+            .filter(|parts| parts.len() >= depth)
+            .and_then(|parts| {
+                parts.get(parts.len() - depth).map(|s| s.to_string())
+            })
         {
-            return v.to_string();
+            return v;
         }
     } else if trust_param_ip() {
         // 二轮遗留（2026-10-07）：?ip= 是完全的客户端输入，旧版零校验直接
