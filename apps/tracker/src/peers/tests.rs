@@ -68,8 +68,10 @@ fn per_user_swarm_cap_evicts_oldest() {
         }
         t.upsert(p);
     }
-    // user1 配额 10 + user2 1 = 11（若没配额会 12）
-    assert_eq!(t.count_seeders("abc"), 11);
+    // P2-6（2026-10-07）：实时计数按 user_id 去重——11 条 peer 分属 user1(10)+user2(1)，
+    // 去重后 seeder 只算 2 个「人」。本测试的真正目的是**每账号配额淘汰**，
+    // 由下面的 snapshot 断言独立验证（p0 已淘汰）；计数断言同步为去重口径。
+    assert_eq!(t.count_seeders("abc"), 2);
     let snap = t.snapshot("abc", 50, "");
     assert!(!snap.v4.iter().any(|p| p.peer_id[..2] == *b"p0")); // p0 已淘汰
 }
@@ -117,12 +119,75 @@ fn swarm_isolation() {
     assert_eq!(t.swarms(), 2); // cold 桶不受影响
 }
 
+/// P2-6（2026-10-07）：同账号多 peer_id 不得把实时 seeders 灌成倍数。
+/// peer_id 客户端自报，修复前同一账号注册 N 个随机 peer_id 即可让
+/// 「1 个做种的人」显示成 N 个。权威计数在 snatches（按 user+torrent 唯一），
+/// 实时口径现与之对齐。
+#[test]
+fn seeders_deduped_by_user() {
+    let t = PeerTable::new();
+    // user 1 用 5 个 peer_id 做种（left=0）
+    for i in 0..5 {
+        t.upsert(mk_peer("abc", &format!("u1p{i}"), 0));
+    }
+    // user 2 也做种 1 个
+    t.upsert(Peer {
+        user_id: 2,
+        ..mk_peer("abc", "u2p0", 0)
+    });
+    // 2 个独立用户 → 只算 2 个做种者（修复前为 6）
+    assert_eq!(t.count_seeders("abc"), 2);
+    // leecher 侧同理
+    for i in 0..3 {
+        t.upsert(Peer {
+            user_id: 3,
+            ..mk_peer("abc", &format!("u3p{i}"), 100)
+        });
+    }
+    assert_eq!(t.count_leechers("abc"), 1);
+}
+
+/// P0-2 交叉上报校验（2026-10-07）：leecher 声明「从 peer X 下载了 N 字节」
+/// 时，tracker 必须把 peer_id 解析成真实可计费的上传者，并拒绝伪造/自证。
+#[test]
+fn corroboration_target_validates_peer() {
+    let t = PeerTable::new();
+    // user2 是本 swarm 的正常做种者 → 合法佐证目标
+    t.upsert(Peer {
+        user_id: 2,
+        ..mk_peer("abc", "seeder2", 0)
+    });
+    // user3 在下载（left>0）→ 不能作为「上传者」被佐证
+    t.upsert(Peer {
+        user_id: 3,
+        ..mk_peer("abc", "leecher3", 100)
+    });
+    // user4 做种但 port=0（未开监听）→ 不可连接，不应被佐证
+    t.upsert(Peer {
+        user_id: 4,
+        port: 0,
+        ..mk_peer("abc", "seeder4", 0)
+    });
+    // 合法：存活做种者被解析为其 user_id
+    assert_eq!(t.corroboration_target("abc", "seeder2", 1), Some(2));
+    // leecher 自己被佐证自己（user3 报 user3）→ 但 user3 是 leecher，拒绝
+    assert_eq!(t.corroboration_target("abc", "leecher3", 3), None);
+    // port=0 的做种者 → 拒绝
+    assert_eq!(t.corroboration_target("abc", "seeder4", 1), None);
+    // 不存在的 peer_id（凭空捏造）→ 拒绝
+    assert_eq!(t.corroboration_target("abc", "ghost_peer", 1), None);
+    // 自报自下载：user2 报自己 → 拒绝
+    assert_eq!(t.corroboration_target("abc", "seeder2", 2), None);
+    // 跨 swarm 不可解析
+    assert_eq!(t.corroboration_target("other", "seeder2", 1), None);
+}
+
 #[test]
 fn connectable_probe_roundtrip() {
     let t = PeerTable::new();
     t.upsert(mk_peer("abc", "p1", 0));
     t.upsert(mk_peer("def", "p2", 0));
-    let probes = t.sample_probes(10);
+    let probes = super::probes::sample_probes(&t.probe_candidates(), 10);
     assert_eq!(probes.len(), 2); // 未测优先
     t.set_connectable(&probes[0].0, false);
     t.set_connectable(&probes[1].0, true);
@@ -130,7 +195,7 @@ fn connectable_probe_roundtrip() {
     assert!(!t.all_unreachable(1));
     t.set_connectable(&probes[1].0, false);
     assert!(t.all_unreachable(1)); // 全部不可达
-    let again = t.sample_probes(10);
+    let again = super::probes::sample_probes(&t.probe_candidates(), 10);
     assert_eq!(again.len(), 2); // 已测 peer 进入复测轮替
 }
 

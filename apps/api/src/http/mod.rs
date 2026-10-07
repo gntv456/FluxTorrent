@@ -9,6 +9,7 @@
 pub(crate) mod write_origin;
 pub(crate) use write_origin::write_origin_mw;
 mod auth_infra;
+mod cheat_http;
 mod frames_gomoku;
 mod fun_links;
 mod home;
@@ -23,6 +24,7 @@ mod reports_http;
 pub mod view_layout;
 
 pub use auth_infra::*;
+pub use cheat_http::*;
 pub use frames_gomoku::*;
 pub use fun_links::*;
 pub use home::*;
@@ -139,6 +141,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::torrent_http::torrent_tag_put)
         .service(stats)
         .service(cheat_events_list)
+        .service(cheat_events_resolve)
         .service(reports_http::report_create)
         .service(rss_info)
         .service(news_create)

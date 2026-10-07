@@ -216,26 +216,43 @@ async fn main() -> anyhow::Result<()> {
             let mut tick = tokio::time::interval(Duration::from_secs(300));
             loop {
                 tick.tick().await;
-                for (key, probe_ip, probe_port) in st.peers.sample_probes(50) {
-                    let attempt = tokio::time::timeout(
-                        Duration::from_secs(3),
-                        tokio::net::TcpStream::connect((
-                            probe_ip.as_str(),
-                            probe_port,
-                        )),
-                    )
-                    .await;
-                    let reachable = matches!(attempt, Ok(Ok(_)));
-                    st.peers.set_connectable(&key, reachable);
-                    // 外置模式同步写回（0225 G30-B12）：多副本共读同一测量值
-                    if peers::external::external_enabled() {
-                        let mut r = st.redis.clone();
-                        peers::external::set_connectable(
-                            &mut r, &key, reachable,
+                // P0-1（2026-10-07 保种组审计二轮）：预算从固定 50 改为随在线
+                // 规模线性扩容（每 peer 每轮至少 1/8 覆盖，上限 400）。原实现
+                // 无论 swarm 多大每轮只抽 50 个：热门种子里绝大多数 peer 永远
+                // 轮不到探测，conn 恒为 None（未测）而被 seeding 判定直接放行
+                // ——幽灵做种因此几乎无门槛。并发回连（每探测 3s 超时，
+                // buffer_unordered(64) 限在飞数量），一轮内收敛。
+                let budget = (st.peers.len() / 8).clamp(50, 400);
+                let candidates = st.peers.probe_candidates();
+                let mut inflight = tokio::task::JoinSet::new();
+                for (key, probe_ip, probe_port) in
+                    peers::probes::sample_probes(&candidates, budget)
+                {
+                    let st2 = st.clone();
+                    inflight.spawn(async move {
+                        let attempt = tokio::time::timeout(
+                            Duration::from_secs(3),
+                            tokio::net::TcpStream::connect((
+                                probe_ip.as_str(),
+                                probe_port,
+                            )),
                         )
                         .await;
-                    }
+                        let reachable = matches!(attempt, Ok(Ok(_)));
+                        st2.peers.set_connectable(&key, reachable);
+                        // 外置模式同步写回（0225 G30-B12）：多副本共读同一测量值
+                        if peers::external::external_enabled() {
+                            let mut r = st2.redis.clone();
+                            peers::external::set_connectable(
+                                &mut r, &key, reachable,
+                            )
+                            .await;
+                        }
+                    });
                 }
+                // 等本轮全部探测收敛（每个探测自身 3s 超时，JoinSet
+                // 并发执行、在飞数量即预算上限 400，不会打爆 fd）
+                while inflight.join_next().await.is_some() {}
             }
         });
     }
