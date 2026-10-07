@@ -88,7 +88,7 @@ export function UploadDescrBlock({
   const bbPanel =
     "absolute z-10 mt-1 grid w-56 max-w-[calc(100vw-2.5rem)] gap-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] p-2 shadow-[var(--shadow-card)]";
   const bbSwatch =
-    "flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] text-[11px] text-ink hover:border-[var(--baozi-orange)]";
+    "flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-[var(--r-sm)] border border-[var(--baozi-line)] text-[12px] text-ink hover:border-[var(--baozi-orange)]";
 
   return (
     <FormRow label={dict.upload.descr}>

@@ -79,6 +79,12 @@ export function TorrentsHotkeys() {
         open();
       }
     };
+    // 2026-10-07 真机联调修：触屏设备没有键盘，提示条在手机上是纯噪音
+    // （8 秒占一行）——只在有 hover 能力的设备（桌面/平板外接键鼠）显示。
+    const finePointer =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (!finePointer) return;
     setShowHint(true);
     const timer = setTimeout(() => setShowHint(false), 8000);
     document.addEventListener("keydown", onKey);

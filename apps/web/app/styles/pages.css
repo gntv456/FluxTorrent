@@ -729,7 +729,7 @@ table.subtitles-upload-table {
 .tsb-hint {
   margin: 0;
   color: var(--text-sub, #8a7d6b);
-  font-size: 11.5px;
+  font-size: 12px;
 }
 .tsb-stack {
   display: flex;
@@ -2360,7 +2360,7 @@ textarea.bbcode {
 .pting-card__latest-label {
   flex: 0 0 auto;
   color: var(--baozi-orange-dark);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 800;
 }
 .pting-card__latest-title {
@@ -3248,7 +3248,7 @@ input.batch-all {
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--trow-cat, #93a1bc) 26%, transparent);
   color: var(--trow-cat, #93a1bc);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
 }
 .trow-card__cover img {
@@ -3261,7 +3261,7 @@ input.batch-all {
   bottom: 0;
   left: 0;
   padding: 1px 5px;
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 700;
 }
 .trow-card__body {
@@ -3281,7 +3281,7 @@ input.batch-all {
 }
 .trow-card__meta {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sub);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3290,7 +3290,7 @@ input.batch-all {
   display: flex;
   gap: 8px;
   margin-top: auto;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sub);
   font-variant-numeric: tabular-nums;
 }
@@ -3361,9 +3361,9 @@ input.batch-all {
 .mhome-head__stats > div { flex: 1; padding: 7px 4px 8px;
   border-radius: var(--r-md); background: var(--surface-card);
   text-align: center; }
-.mhome-head__stats dt { color: var(--text-faint); font-size: 11px;
+.mhome-head__stats dt { color: var(--text-faint); font-size: 12px;
   line-height: 1.3; }
-.mhome-head__stats dd { margin: 1px 0 0; font-size: 12.5px;
+.mhome-head__stats dd { margin: 1px 0 0; font-size: 13px;
   font-variant-numeric: tabular-nums; }
 .mhome-head__stats i {
   font-style: normal;
@@ -3405,6 +3405,10 @@ input.batch-all {
 /* ============ 行卡片左滑（M3） ============ */
 .trow-swipe {
   position: relative;
+  /* 2026-10-07 模拟器真机联调修：acts 靠 translateX(100%) 藏在右缘外，
+     但绝对定位盒仍参与文档横向溢出——安卓 WebView 整页可横滚 112px、
+     底 TabBar(inset-x-0) 被同一溢出拉宽到 525px。裁剪掉两侧。 */
+  overflow: hidden;
 }
 /* 操作层藏在前层右侧之外：未滑动时不可见，滑动时随前层左移露出。
    2026-10-03 修：此前缺初始位移，acts 直接压在卡片右缘，
@@ -3705,7 +3709,8 @@ input.batch-all {
     display: inline-block;
     margin-right: 6px;
     color: var(--sub);
-    font-size: 10.5px;
+    /* 2026-10-07 真机联调修：10.5px 小标签在 412px 下不可读，与眉标统一 11.5px */
+    font-size: 11.5px;
     font-weight: 600;
   }
 }

@@ -44,7 +44,9 @@ export default async function RulesPage() {
                     <h2 className="font-display text-base font-bold text-[var(--baozi-orange-dark)]">
                       {r.title}
                     </h2>
-                    <p className="mt-2 whitespace-pre-wrap leading-relaxed">{r.body}</p>
+                    <p className="mt-2 whitespace-pre-wrap leading-relaxed">
+                      {r.body}
+                    </p>
                   </section>
                 </td>
               </tr>
@@ -61,7 +63,7 @@ export default async function RulesPage() {
           <tbody>
             <tr>
               <td className="p-4">
-                <p className="text-[11px] text-sub">{dict.rules.updated}</p>
+                <p className="text-[12px] text-sub">{dict.rules.updated}</p>
                 {dict.rules.sections.map((sec) => (
                   <section key={sec.head} className="longform mt-4">
                     <h2 className="font-display text-base font-bold text-[var(--baozi-orange-dark)]">

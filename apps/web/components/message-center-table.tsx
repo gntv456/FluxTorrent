@@ -117,7 +117,7 @@ export function MessageTable({
                         : "📭"}
                 </span>
                 <span
-                  className={`text-[11px] ${unread ? "font-bold text-[var(--baozi-orange-dark)]" : "text-sub"}`}
+                  className={`text-[12px] ${unread ? "font-bold text-[var(--baozi-orange-dark)]" : "text-sub"}`}
                 >
                   {status}
                 </span>
@@ -140,7 +140,7 @@ export function MessageTable({
                     <div className="text-sm">
                       <MarkdownRenderer source={keyed(m, "b", m.body)} />
                     </div>
-                    <p className="mt-1 text-[11px] text-sub md:hidden">
+                    <p className="mt-1 text-[12px] text-sub md:hidden">
                       {cp} · {time}
                     </p>
                     {/* 系统通知没有对端用户，回复/转发无意义（0123 视觉区分的一部分） */}
@@ -166,7 +166,7 @@ export function MessageTable({
                 )}
               </td>
               <td className="hidden text-sky sm:table-cell">{cp}</td>
-              <td className="hidden text-[11px] text-sub md:table-cell">
+              <td className="hidden text-[12px] text-sub md:table-cell">
                 {time}
               </td>
                             <td

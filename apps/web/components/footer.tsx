@@ -30,9 +30,7 @@ export async function Footer() {
     { href: "/", label: dict.nav.home },
     { href: "/torrents", label: dict.nav.library },
     { href: "/torrents?official=1", label: dict.nav.official },
-    ...(mod("forums")
-      ? [{ href: "/forums", label: dict.nav.forums }]
-      : []),
+    ...(mod("forums") ? [{ href: "/forums", label: dict.nav.forums }] : []),
     { href: "/top", label: dict.nav.top },
     ...(mod("requests")
       ? [{ href: "/requests", label: dict.nav.requests }]
@@ -60,12 +58,12 @@ export async function Footer() {
             <h2 className="font-display text-sm font-bold text-ink">
               {dict.footer.linksTitle}
             </h2>
-            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+            <ul className="mt-1 flex flex-wrap gap-x-4">
               {links.map((l) => (
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="text-sm text-sky hover:text-[var(--baozi-orange)]"
+                    className="inline-block py-1.5 text-sm text-sky hover:text-[var(--baozi-orange)]"
                   >
                     {l.label}
                   </Link>
@@ -76,7 +74,7 @@ export async function Footer() {
                 <li key={`m${m.id}`}>
                   <MenuItemLink
                     item={m}
-                    className="text-sm text-sky hover:text-[var(--baozi-orange)]"
+                    className="inline-block py-1.5 text-sm text-sky hover:text-[var(--baozi-orange)]"
                   />
                 </li>
               ))}
@@ -86,11 +84,11 @@ export async function Footer() {
             <h2 className="font-display text-sm font-bold text-ink">
               {dict.footer.helpTitle}
             </h2>
-            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+            <ul className="mt-1 flex flex-wrap gap-x-4">
               <li>
                 <Link
                   href="/rules"
-                  className="text-sm text-sky hover:text-[var(--baozi-orange)]"
+                  className="inline-block py-1.5 text-sm text-sky hover:text-[var(--baozi-orange)]"
                 >
                   {dict.footer.rules}
                 </Link>
@@ -98,7 +96,7 @@ export async function Footer() {
               <li>
                 <Link
                   href="/faq"
-                  className="text-sm text-sky hover:text-[var(--baozi-orange)]"
+                  className="inline-block py-1.5 text-sm text-sky hover:text-[var(--baozi-orange)]"
                 >
                   {dict.footer.faq}
                 </Link>
@@ -106,7 +104,7 @@ export async function Footer() {
               <li>
                 <Link
                   href="/ban-log"
-                  className="text-sm text-sky hover:text-[var(--baozi-orange)]"
+                  className="inline-block py-1.5 text-sm text-sky hover:text-[var(--baozi-orange)]"
                 >
                   {dict.footer.banlog}
                 </Link>
@@ -133,26 +131,21 @@ export async function Footer() {
             {stats.torrents > 0 &&
             stats.dead === stats.torrents &&
             stats.seed_size === 0 ? (
-              <Link
-                href="/upload"
-                className="underline decoration-dotted"
-              >
+              <Link href="/upload" className="underline decoration-dotted">
                 {dict.footer.allDeadHint}
               </Link>
             ) : (
-              <span>
-                💀 {fmt(dict.footer.deadTorrents, { n: stats.dead })}
-              </span>
+              <span>💀 {fmt(dict.footer.deadTorrents, { n: stats.dead })}</span>
             )}
           </div>
         )}
 
         {/* 免责声明 + 版权条 */}
         <div className="mt-4 border-t border-dashed border-[var(--baozi-line-soft)] pt-3 text-center">
-          <p className="text-[11px] leading-relaxed text-sub">
+          <p className="text-[12px] leading-relaxed text-sub">
             {dict.footer.disclaimer}
           </p>
-          <p className="mt-1 text-[11px] text-sub">
+          <p className="mt-1 text-[12px] text-sub">
             {fmt(dict.footer.copyright, {
               site: siteName,
               date: foundedDate,
