@@ -41,6 +41,41 @@ pub async fn write_origin_mw(
     ))
 }
 
+/// 浏览器**实际看到**的 host:port——同源判据要用它，而不是 `Host`。
+///
+/// 为什么要单独取：本站的浏览器流量一律经 web 容器的同源代理
+/// （`apps/web/app/api/[...path]/route.ts`，它显式剥掉 `host` 并把
+/// 客户端可见的 host 写进 `x-forwarded-host`）。于是 api 侧看到的
+/// `Host` 是上游容器名（如 `api:8080`），永远不等于浏览器发来的
+/// `Origin: http://127.0.0.1:3000` ⇒ 二轮审计新加的写来源闸把所有
+/// UI 写请求判成跨站，实测连 `POST /auth/login` 都回 403/2003
+/// （同一条 curl 不带 Origin 头则 200 —— 闸门只看浏览器才可能发的头，
+/// 所以这类失败在 CLI 闸门里永远是绿的，属"假通过"）。
+///
+/// 安全性没有放宽：`X-Forwarded-Host` 是 fetch 的 forbidden header，
+/// 浏览器脚本改不了它，跨站页面伪造不出「与自己 Origin 一致的 XFH」；
+/// 只有我们自己的代理会写这个值。非浏览器客户端不发 Origin，本就放行。
+/// 多反代链路下取第一段（最靠近客户端的那个 host）。
+pub(crate) fn browser_host(req: &actix_web::HttpRequest) -> String {
+    let fwd = req
+        .headers()
+        .get("x-forwarded-host")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .split(',')
+        .next()
+        .map(str::trim)
+        .unwrap_or("");
+    if !fwd.is_empty() {
+        return fwd.to_string();
+    }
+    req.headers()
+        .get("host")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string()
+}
+
 /// Origin（优先）/Referer（兜底）存在时必须同源或白名单命中
 /// （origin_matches 与 login 表单闸共用实现）。
 fn origin_ok(req: &actix_web::HttpRequest) -> bool {

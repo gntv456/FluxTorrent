@@ -6,7 +6,7 @@
 //! plugins.rs，公告/趣味盒/友链在 news_fun.rs，首页板块在 home.rs；
 //! v1_scope 路由注册留在此（引用 crate::xxx_http 与子模块）。
 
-mod write_origin;
+pub(crate) mod write_origin;
 pub(crate) use write_origin::write_origin_mw;
 mod auth_infra;
 mod frames_gomoku;
