@@ -54,6 +54,10 @@ if [ "${1:-}" = "--with-pt" ]; then
   python scripts/e2e_hr_ops_invariants.py
   step "发种/审种动线不变式（0288：审核通知/队列分页/被拒自助/校验时序/结构校验/可见性闸门/批量裁决/最低标准）"
   python scripts/pt_audit_d_review_flow.py
+  step "道具发放面不变式（0291：单发/券/勋章/批量幂等/回收/台账，含「购买不可退」口径）"
+  python scripts/pt_audit_e_grant.py
+  step "权益与到期不变式（0295：待遇读时判定/券拦截与过期/任务手触真实性/写来源闸三态）"
+  python scripts/pt_audit_f_entitlement.py
 fi
 
 printf '\n本地闸门通过。\n'
