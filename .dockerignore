@@ -26,3 +26,7 @@ UI参考
 scripts/__pycache__
 .workbuddy
 _apilog*.txt
+
+# 安全审计卫生（2026-10-07）
+_jwt*
+*.jwt

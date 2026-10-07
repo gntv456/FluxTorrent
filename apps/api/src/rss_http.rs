@@ -54,7 +54,7 @@ async fn rss_feed(
     }
     // 0267 安全补：RSS 此前**没有限流** —— 一枚泄露的 passkey 可无限拉订阅源
     // （打库 + 放大信息面）。30 次/分钟对分钟级轮询的订阅器绰绰有余。
-    if crate::compat_http::limit_passkey(&state, "rss", &passkey, 30)
+    if crate::compat_http::limit_passkey(&state, &req, "rss", &passkey, 30)
         .await
         .is_err()
     {

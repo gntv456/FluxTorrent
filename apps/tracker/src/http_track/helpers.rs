@@ -118,7 +118,15 @@ pub(crate) fn client_ip(
             return v.to_string();
         }
     } else if trust_param_ip() {
-        if let Some(v) = params.get_str("ip").filter(|s| !s.is_empty()) {
+        // 二轮遗留（2026-10-07）：?ip= 是完全的客户端输入，旧版零校验直接
+        // 用作 ip_bans 匹配键/限流键/事件流 ip——误配此开关时攻击者换一个
+        // 任意串即打散所有限流桶并注入脏取证。至少做 IP 格式校验：必须是
+        // 可解析的 v4/v6 地址（BEP24 语义本来也只允许地址）。
+        if let Some(v) = params
+            .get_str("ip")
+            .filter(|s| !s.is_empty())
+            .filter(|s| s.parse::<std::net::IpAddr>().is_ok())
+        {
             return v;
         }
     }

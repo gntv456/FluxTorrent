@@ -142,6 +142,15 @@ async fn admin_backup_run(
     tokio::fs::write(&out, &st.stdout)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 二轮遗留（2026-10-07）：备份含全库敏感数据，落盘后收紧权限 600
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(
+            &out,
+            std::fs::Permissions::from_mode(0o600),
+        );
+    }
     state.repo.audit(Some(auth.id), "backup_run", None).await;
     Ok(ok(serde_json::json!({ "file": out, "bytes": n })))
 }

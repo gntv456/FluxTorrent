@@ -64,6 +64,29 @@ async fn set_post_like(
             > 0
     };
     if on && changed && author != auth.id && author != 0 {
+        // 二轮遗留（2026-10-07）：点赞奖励加账号年龄门槛——小号矩阵对新帖
+        // 逐帖互赞每对 (post, liker) +1 火力，幂等键只防重复不防「新号海量」。
+        // 注册满 7 天才计奖（点赞行照常记录，仅火花不发）；同 IP 检测交给
+        // 事后 ipcheck（实时 JOIN login_events 成本过高，不在点赞路径做）。
+        let liker_age_ok: bool = sqlx::query_scalar(
+            "SELECT (now() - created_at) >= interval '7 days'              FROM users WHERE id = $1",
+        )
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if !liker_age_ok {
+            let likes: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM post_likes WHERE post_id = $1",
+            )
+            .bind(pid)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            return Ok(ok(serde_json::json!({
+                "liked": true, "likes": likes, "reward": false,
+            })));
+        }
         let idem = format!("forum-like:{}:{}", pid, auth.id);
         // 通知与火花共用同一幂等键：`changed=true` 只保证「本次真的写入了点赞行」，
         // 但「取消后再点赞」同样会 changed=true。若不按幂等键判重，
