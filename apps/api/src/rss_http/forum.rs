@@ -26,8 +26,19 @@ async fn forum_rss_feed(
     q: web::Query<ForumRssQuery>,
 ) -> HttpResponse {
     let passkey = path.into_inner();
-    if passkey.len() != 32 {
+    // 四轮审计 M3（2026-10-07）：0267 限流补丁漏了论坛 RSS——主 RSS 有
+    // valid_passkey+双维限流，这里只查长度，匿名换随机 passkey 即无限
+    // 打 users 索引。对齐主 RSS 同款两闸。
+    if !crate::compat_http::valid_passkey(&passkey) {
         return HttpResponse::BadRequest().body("invalid passkey");
+    }
+    if crate::compat_http::limit_passkey(&state, &req, "rssforum", &passkey, 30)
+        .await
+        .is_err()
+    {
+        return HttpResponse::TooManyRequests()
+            .insert_header(("retry-after", "60"))
+            .body("rate limited");
     }
     let user: Option<(i64, i32)> = sqlx::query_as(
         "SELECT id, class_id FROM users WHERE passkey = $1 AND status < 2",
@@ -84,7 +95,8 @@ async fn forum_rss_feed(
             req.headers()
                 .get("host")
                 .and_then(|v| v.to_str().ok())
-                .filter(|h| !h.is_empty())
+                .map(str::trim)
+                .filter(|h| crate::compat_http::aliases::sane_host(h))
                 .map(|h| format!("http://{h}"))
                 .unwrap_or_else(|| "http://localhost:3000".into())
         });

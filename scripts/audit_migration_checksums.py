@@ -46,7 +46,15 @@ def db_rows():
 
 
 def blob(rel):
+    # 先看 HEAD，再看 index（新迁移已 add 未 commit 时 HEAD 里还没有）；
+    # 都没有才是真问题（工作区未 add 的新文件在干净检出里不存在，
+    # 若库里已记账就属于「DB 有账、仓库无文」，必须报出来）。
     r = sh("git", "cat-file", "blob", "HEAD:" + rel, binary=True)
+    if r.returncode:
+        ls = sh("git", "ls-files", "--stage", rel)
+        m = re.search(r"^100644 ([0-9a-f]{40}) 0\t", ls.stdout or "")
+        if m:
+            r = sh("git", "cat-file", "blob", m.group(1), binary=True)
     return None if r.returncode else r.stdout
 
 

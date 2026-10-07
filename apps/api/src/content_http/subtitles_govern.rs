@@ -29,6 +29,23 @@ pub(super) async fn subtitle_vote(
     if !(1..=10).contains(&body.score) {
         return Err(DomainError::Validation("评分需在 1-10 之间".into()));
     }
+    // C3：投票门槛——月度评选按评分加权，新号/低等级批量刷 10 分可捧私账。
+    // staff 放行；其余要求注册满 7 天且等级 ≥1（Peasant 不可投）。
+    if auth.class_id < 90 {
+        let qualified: bool = sqlx::query_scalar(
+            "SELECT (class_id >= 1 AND created_at < now() - interval '7 \"
+             days') FROM users WHERE id = $1",
+        )
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(false);
+        if !qualified {
+            return Err(DomainError::Validation(
+                "注册满 7 天且通过新手等级后才能为字幕评分".into(),
+            ));
+        }
+    }
     let exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM subtitles WHERE id = $1 AND deleted_at \
          IS NULL AND status = 1)",

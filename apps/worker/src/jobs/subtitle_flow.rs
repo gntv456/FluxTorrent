@@ -76,13 +76,25 @@ pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
     .await?;
     for (rid, claimer) in &expired {
         if let Some(uid) = claimer {
+            // B1：超时回池等价于系统代行弃单——必须落 subreq.abandon 审计，
+            // 否则「弃单禁令」只数主动弃单，故意拖到超时的霸单人绕过计数。
+            // worker 无 repo.audit，同款 INSERT（ref 内 by=sweep-timeout 留痕）。
+            let _ = sqlx::query(
+                "INSERT INTO audit_log (id, actor_id, action, ref) \
+                 VALUES (nextval('audit_log_id_seq'), $1, 'subreq.abandon', \
+                 $2::jsonb)",
+            )
+            .bind(uid)
+            .bind(format!("{{\"by\":\"sweep-timeout\",\"id\":{rid}}}"))
+            .execute(db)
+            .await;
             let _ = sqlx::query(
                 "INSERT INTO messages (sender_id, receiver_id, subject, body) \
                  VALUES (NULL, $1, '字幕认领已超时', $2)",
             )
             .bind(uid)
             .bind(format!(
-                "你认领的求字幕 #{rid} 已超时回池，其他用户可重新认领。"
+                "你认领的求字幕 #{rid} 已超时回池（计入弃单次数），其他用户可重新认领。"
             ))
             .execute(db)
             .await;
@@ -197,7 +209,7 @@ pub(crate) async fn subawards_build(db: &PgPool) -> anyhow::Result<()> {
                    OR $2::text = 'ai'
                    AND s.machine_translated
                    AND COALESCE(s.proofreader, '') = '')
-            ORDER BY 3 DESC LIMIT 10
+            ORDER BY 4 DESC LIMIT 10
             ON CONFLICT (period, subtitle_id) DO NOTHING
             "#,
         )

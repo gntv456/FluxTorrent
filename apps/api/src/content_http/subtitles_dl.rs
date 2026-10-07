@@ -42,12 +42,47 @@ pub(super) async fn subtitle_download(
     let Some((file_ref, torrent_id, title, lang, sub_ext)) = row else {
         return Err(DomainError::NotFound(sid));
     };
-    sqlx::query("UPDATE subtitles SET downloads = downloads + 1 WHERE id = $1")
-        .bind(sid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    // C2：下载计数去重——Redis SETNX 每 (字幕,用户) 每小时只计一次。
+    // 月度评选 downloads 占 0.05/名权重，重复点按可无限抬分；Redis 故障时
+    // 保守计一次（计数是统计面，不为它 fail-close 拦下载）。
+    {
+        use redis::AsyncCommands;
+        let mut c = state.redis.clone();
+        let k = format!("subdl:{}:{}", sid, auth.id);
+        // SET k 1 NX EX（与 twofa 重放闸同式）：nil=已存在（本小时内
+        // 计过数），Some(())=首次。Redis 故障时按首次计（统计面不 fail-close）
+        let fresh: Option<()> = redis::cmd("SET")
+            .arg(&k)
+            .arg(1i64)
+            .arg("NX")
+            .arg("EX")
+            .arg(3600u64)
+            .query_async(&mut c)
+            .await
+            .unwrap_or(None);
+        let fresh = fresh.is_some();
+        if fresh {
+            sqlx::query(
+                "UPDATE subtitles SET downloads = downloads + 1 WHERE id = $1",
+            )
+            .bind(sid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+    }
+    // C1：附件可见性闸门——字幕绕过附件接口直取他人 private 附件字节
+    // （借道 subtitles/{id}/download 不走 attachment_video 的 visibility 检查）。
     if let Some(sha) = file_ref.strip_prefix("attach://") {
+        if let Some(true) = crate::attachment_video::visibility_denied(
+            &state.repo.db,
+            auth.id,
+            sha,
+        )
+        .await?
+        {
+            return Err(DomainError::Forbidden);
+        }
         let row: Option<(String, i64)> = sqlx::query_as(
             "SELECT mime, size FROM attachments WHERE sha256 = $1",
         )

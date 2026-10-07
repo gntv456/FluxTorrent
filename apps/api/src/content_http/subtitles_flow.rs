@@ -50,6 +50,20 @@ pub(super) async fn subtitle_request_claim(
                 "你近期多次弃单，30 天内暂停认领求字幕".into(),
             ));
         }
+        // B1：并发在身单数上限——防霸住一串单坐等行情；staff 不受限
+        let open: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM subtitle_requests \"
+             WHERE claimed_by = $1 AND status IN (3, 4)",
+        )
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or(0);
+        if open >= 3 {
+            return Err(DomainError::Validation(
+                "你在身的求字幕已达 3 单，请先交稿或弃单后再认领".into(),
+            ));
+        }
     }
     // crew 校验（C3）
     let crew_max: i32 = super::subtitles_util::subtitle_setting(

@@ -183,10 +183,13 @@ async fn check_quota_and_rate(
     }
     let daily = setting_i64(&state.repo.db, "video_daily_limit", 5).await;
     if daily > 0 {
+        // 四审 E1：日界与站点其余「天」口径对齐（UTC+8，见 arcade/loan_repay
+        // 同式）——current_date 是容器 UTC，零点前后各传一次可翻倍绕过日限
         let today: i64 = sqlx::query_scalar(
             "SELECT count(*) FROM attachments \
              WHERE user_id = $1 AND kind = 'video' \
-             AND created_at::date = current_date",
+             AND ((created_at AT TIME ZONE 'UTC') + interval '8 hours')::date \
+               = ((now() AT TIME ZONE 'UTC') + interval '8 hours')::date",
         )
         .bind(uid)
         .fetch_one(&state.repo.db)

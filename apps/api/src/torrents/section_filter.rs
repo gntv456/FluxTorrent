@@ -195,7 +195,16 @@ fn is_uint(s: &str) -> bool {
     !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())
 }
 fn is_num(s: &str) -> bool {
-    s.parse::<f64>().is_ok()
+    // 四审 L4：Rust 的 f64 parse 接受 "inf"/"NaN"/"1e999"——这些值内插进
+    // SQL 数字比较要么语法炸 500，要么 inf 造出永真谓词（信息泄露面）。
+    // 拒绝非有限值与超长输入（1e999 解出 inf 也拦）。
+    if s.len() > 40 {
+        return false;
+    }
+    match s.parse::<f64>() {
+        Ok(v) => v.is_finite(),
+        Err(_) => false,
+    }
 }
 /// 宽松日期校验：`YYYY-MM-DD` 前缀（也接受完整 ISO 串）
 fn is_date(s: &str) -> bool {
@@ -297,6 +306,8 @@ mod tests {
     fn helpers_sane() {
         assert!(is_uint("123") && !is_uint("") && !is_uint("1a"));
         assert!(is_num("1.5") && !is_num("x"));
+        // 四审 L4：非有限值不入 SQL
+        assert!(!is_num("inf") && !is_num("NaN") && !is_num("1e999"));
         assert!(is_date("2024-05-01") && !is_date("2024-5-1"));
     }
 }

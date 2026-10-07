@@ -83,9 +83,11 @@ pub(super) async fn bank_settings(db: &PgPool) -> BankSettings {
             .await
             .and_then(|v| v.parse().ok())
             .unwrap_or(7),
+        // yesno 门槛（admin 保存路径只认 yes/no；四审 S1 修正口径，历史
+        // 种子值 "false" 一并按否处理）
         allow_negative: get(db, "bank_allow_negative")
             .await
-            .map(|v| v == "true")
+            .map(|v| v == "yes")
             .unwrap_or(false),
     }
 }
