@@ -4,7 +4,7 @@
 
 use sqlx::PgPool;
 
-use crate::domain::{new_passkey, UserAccount};
+use crate::domain::{new_passkey, passkey_grace_hours, UserAccount};
 use crate::errors::{DomainError, DomainResult};
 
 pub struct Repo {
@@ -217,12 +217,19 @@ impl Repo {
 
     pub async fn update_passkey(&self, user_id: i64) -> DomainResult<String> {
         let pk = new_passkey();
-        sqlx::query("UPDATE users SET passkey = $2 WHERE id = $1")
-            .bind(user_id)
-            .bind(&pk)
-            .execute(&self.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        // 旧密钥进宽限窗（审计 10-07 P1-4）：passkey 烤在用户已下载的每个
+        // .torrent 里，立刻失效等于手上所有种子集体停种。
+        sqlx::query(
+            "UPDATE users SET passkey_prev = passkey, passkey = $2, \
+                passkey_prev_until = now() + ($3::bigint * interval '1 hour') \
+             WHERE id = $1",
+        )
+        .bind(user_id)
+        .bind(&pk)
+        .bind(passkey_grace_hours())
+        .execute(&self.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
         Ok(pk)
     }
 

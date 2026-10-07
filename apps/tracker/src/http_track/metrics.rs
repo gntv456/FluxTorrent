@@ -25,12 +25,26 @@ pub(crate) fn metrics_authorized(req: &actix_web::HttpRequest) -> bool {
             .and_then(|v| v.to_str().ok())
             .unwrap_or_default()
     };
-    if hdr("x-metrics-token") == tok {
-        return true;
-    }
-    hdr("authorization")
+    let bearer = hdr("authorization")
         .strip_prefix("Bearer ")
-        .is_some_and(|t| t.trim() == tok)
+        .unwrap_or_default()
+        .trim();
+    ct_eq(hdr("x-metrics-token"), tok.clone())
+        || ct_eq(bearer, tok)
+}
+
+/// 定长时间比较：`/metrics` 挂在公网 :7070 上，`==` 的短路会把 token
+/// 变成可逐字节测的侧信道（无速率限制的那条路径）。
+fn ct_eq(a: &str, b: String) -> bool {
+    let (a, b) = (a.as_bytes(), b.as_bytes());
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for i in 0..a.len() {
+        diff |= a[i] ^ b[i];
+    }
+    diff == 0
 }
 
 /// Prometheus 指标端点：ANN_METRICS_TOKEN 未设置时返回 404（不暴露）；
@@ -78,6 +92,10 @@ pub(crate) async fn metrics(
             "flux_tracker_scrape_total {}\n",
             "# TYPE flux_tracker_redis_fallback_total counter\n",
             "flux_tracker_redis_fallback_total {}\n",
+            "# TYPE flux_tracker_ip_inject_rejected_total counter\n",
+            "flux_tracker_ip_inject_rejected_total {}\n",
+            "# TYPE flux_tracker_passkey_query_failed_total counter\n",
+            "flux_tracker_passkey_query_failed_total {}\n",
             "# TYPE flux_tracker_peers_active gauge\n",
             "flux_tracker_peers_active {}\n",
             "# TYPE flux_tracker_swarms_active gauge\n",
@@ -97,6 +115,8 @@ pub(crate) async fn metrics(
         m.announce_global_shed.load(Ordering::Relaxed),
         m.scrape_total.load(Ordering::Relaxed),
         m.redis_fallback.load(Ordering::Relaxed),
+        super::ip_trust::ip_inject_rejected(),
+        m.passkey_query_failed.load(Ordering::Relaxed),
         state.peers.len(),
         swarms,
         passkey_cache,

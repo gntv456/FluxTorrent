@@ -166,8 +166,8 @@ pub async fn build_torrent_bytes(
     // 地址须带 scheme（http(s):// 或 udp://），站长填裸域名时拒绝入库
     // 由管理端校验承担，这里只兜底跳过。
     {
-        let extra: Vec<String> = sqlx::query_scalar(
-            "SELECT url FROM tracker_urls WHERE enabled \
+        let extra: Vec<(String, bool)> = sqlx::query_as(
+            "SELECT url, with_passkey FROM tracker_urls WHERE enabled \
              ORDER BY priority, id",
         )
         .fetch_all(&state.repo.db)
@@ -187,7 +187,8 @@ pub async fn build_torrent_bytes(
                 .unwrap_or((u.to_string(), String::new()));
             base
         };
-        for url in extra {
+        let own_authority = authority_of(&announce);
+        for (url, carry_key) in extra {
             let url = url.trim().trim_end_matches('/').to_string();
             if url.is_empty() {
                 continue;
@@ -202,12 +203,26 @@ pub async fn build_torrent_bytes(
             if lower.contains("127.0.0.1") || lower.contains("localhost") {
                 continue;
             }
+            // 凭据外发守卫（审计 10-07 P1-7）：旧版对每条附加 tracker 都无条件拼
+            // `/{passkey}`，站长一旦把友站或公网 tracker 填进这个框，**全体用户**的
+            // 32 位 passkey 就被写进下发的 .torrent 并持续外发（对方可据此归因
+            // 用户在本站的全部做种行为，并能以其身份 announce）。
+            // 现在只有两种情况带密钥：地址属于本站，或该条显式勾了 with_passkey。
+            let ours = authority_of(&url) == own_authority;
             let full = if lower.starts_with("udp://") {
-                format!("{url}/{}", user.passkey)
+                if carry_key || ours {
+                    format!("{url}/{}", user.passkey)
+                } else {
+                    url.clone()
+                }
             } else {
                 // 允许站长填到 /announce 根或裸域名，统一剥后拼
                 let base = strip_announce(url.clone());
-                format!("{base}/announce/{}", user.passkey)
+                if carry_key || ours {
+                    format!("{base}/announce/{}", user.passkey)
+                } else {
+                    format!("{base}/announce")
+                }
             };
             let root = root_of(&full);
             if known_roots.iter().any(|k| k.contains(&root)) {
@@ -219,4 +234,41 @@ pub async fn build_torrent_bytes(
     }
     crate::bencode::build_download_torrent(&raw, &announce, &fallbacks)
         .map_err(DomainError::TorrentInvalid)
+}
+
+/// 取 URL 的 authority（host[:port]，小写、去 scheme）。
+pub(crate) fn authority_of(u: &str) -> String {
+    let rest = u
+        .trim()
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .trim_start_matches("udp://")
+        .trim_start_matches("tracker://");
+    let host = rest.split('/').next().unwrap_or(rest);
+    host.trim_end_matches('/').to_lowercase()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::authority_of;
+
+    #[test]
+    fn authority_matches_whatever_path_the_operator_pasted() {
+        // 站长可能填裸域名、/announce、或带 announce+passkey 的完整链
+        let a = authority_of("https://tracker.example.com:7070/announce/abc");
+        assert_eq!(a, "tracker.example.com:7070");
+        assert_eq!(
+            authority_of("https://TRACKER.example.com:7070/"),
+            "tracker.example.com:7070"
+        );
+        assert_eq!(
+            authority_of("udp://t.example.com:6969"),
+            "t.example.com:6969"
+        );
+        assert_eq!(authority_of("https://t.example.com"), "t.example.com");
+        assert_ne!(
+            authority_of("https://friend-site.org/announce"),
+            authority_of("https://tracker.example.com/announce/x")
+        );
+    }
 }

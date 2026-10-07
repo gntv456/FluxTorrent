@@ -62,6 +62,17 @@ pub fn new_passkey() -> String {
         .collect()
 }
 
+/// passkey 宽限窗（小时，默认 7 天）。审计 10-07 P1-4：passkey 被烤进用户
+/// 已下载的每一个 .torrent，改密/重置即刻失效等于集体停种——旧钥在这段窗口内
+/// 仍然可用，同时下发提示让用户换新种子。
+pub fn passkey_grace_hours() -> i64 {
+    std::env::var("PASSKEY_GRACE_HOURS")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(168)
+        .clamp(0, 24 * 30)
+}
+
 #[allow(dead_code)]
 pub fn new_invite_code() -> String {
     new_passkey()

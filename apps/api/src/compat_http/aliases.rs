@@ -128,8 +128,9 @@ async fn alias_userdetails(
         return Err(DomainError::Unauthorized);
     }
     super::limit_passkey(&state, &req, "npud", &passkey, 30).await?;
+    // 判据收在视图 user_by_passkey（改密/重置后的宽限窗内旧钥仍可解析）
     let uid: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE passkey = $1 AND status < 2",
+        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2",
     )
     .bind(&passkey)
     .fetch_optional(&state.repo.db)

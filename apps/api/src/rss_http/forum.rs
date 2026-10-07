@@ -41,7 +41,8 @@ async fn forum_rss_feed(
             .body("rate limited");
     }
     let user: Option<(i64, i32)> = sqlx::query_as(
-        "SELECT id, class_id FROM users WHERE passkey = $1 AND status < 2",
+        "SELECT id, class_id FROM user_by_passkey \
+         WHERE passkey = $1 AND status < 2",
     )
     .bind(&passkey)
     .fetch_optional(&state.repo.db)

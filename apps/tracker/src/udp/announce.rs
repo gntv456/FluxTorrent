@@ -52,11 +52,20 @@ pub(super) async fn announce(
     let numwant =
         i32::from_be_bytes(pkt[92..96].try_into().unwrap()).max(0) as usize;
     let port = u16::from_be_bytes(pkt[96..98].try_into().unwrap());
+    // BEP15 事件码：0=none 1=completed 2=started 3=stopped。
+    // 旧版漏了 2 ⇒ UDP 通道永远不产生 started 事件（审计 10-07 P3）。
     let event = match event_u32 {
         1 => "completed",
+        2 => "started",
         3 => "stopped",
         _ => "",
     };
+    // 特权端口拒绝（PT 惯例：UNIT3D 除 stopped 外拒 <1024 并有端口黑名单，
+    // NexusPHP portblacklisted()）：这类地址既不是真实 BT 监听端口，
+    // 又会被下发给同 swarm 的其他客户端、并被 tracker 自己回连探测。
+    if port != 0 && port < 1024 && event != "stopped" {
+        return UdpTracker::err_pkt(transaction_id, "port 无效（特权端口）");
+    }
     let ip = peer.ip().to_string();
 
     // —— 防护链（与 HTTP announce 同源） ——

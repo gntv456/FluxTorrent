@@ -25,11 +25,18 @@ pub(crate) fn sample_probes(
     swarms: &[SwarmCandidates],
     n: usize,
 ) -> Vec<(PeerKey, String, u16)> {
+    // 回连目标过滤（审计 10-07 P1-3 的纵深防御）：本环/未指定/组播/链路本地/
+    // 非法串一律不回连。tracker 是拿**客户端上报**的地址发起出站连接的，
+    // 不兜这层就成了内网端口探测器（实测过 ?ip=172.20.0.5&port=5432 连通）。
+    let probeable = |ip: &str| crate::http_track::ip_trust::probeable_ip(ip);
     let mut out: Vec<(PeerKey, String, u16)> = Vec::with_capacity(n);
     let mut retriable: Vec<(PeerKey, String, u16)> = Vec::new();
     for s in swarms {
         let cap = if s.hot { n } else { n / 4 };
         for (key, ip, port, connectable, _seeder) in &s.peers {
+            if !probeable(ip) {
+                continue;
+            }
             let bucket = if *connectable == CONN_UNTESTED {
                 &mut out
             } else {
@@ -69,4 +76,47 @@ pub(crate) fn sample_probes(
         out.push(r);
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn c(ip: &str, connectable: i8) -> SwarmCandidates {
+        SwarmCandidates {
+            hot: false,
+            peers: vec![(
+                PeerKey {
+                    info_hash: "aa".repeat(20),
+                    peer_id: "bb".repeat(20),
+                },
+                ip.to_string(),
+                51413,
+                connectable,
+                true,
+            )],
+        }
+    }
+
+    #[test]
+    fn never_probes_reserved_or_unparsable_addresses() {
+        for bad in [
+            "127.0.0.1",
+            "::1",
+            "224.0.0.5",
+            "169.254.1.1",
+            "fe80::1",
+            "0.0.0.0",
+            "not-an-ip",
+        ] {
+            let got = sample_probes(&[c(bad, CONN_UNTESTED)], 10);
+            assert!(got.is_empty(), "{bad} 不该被回连");
+        }
+        // 真实场景里 socket 对端就是内网地址（单机 docker 栈 172.x）——必须照测
+        assert_eq!(
+            sample_probes(&[c("172.20.0.1", CONN_UNTESTED)], 10).len(),
+            1
+        );
+        assert_eq!(sample_probes(&[c("8.8.8.8", CONN_UNTESTED)], 10).len(), 1);
+    }
 }

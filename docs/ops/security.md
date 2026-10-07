@@ -54,7 +54,10 @@ frame-ancestors 'none'
 
 - 登录/敏感写：Redis 滑窗（`rl:` 键）；开放 API 独立 token 限流 60 req/min。
 - announce：tracker 侧防护缓存（Redis 3s 轮询版本号 bump），不打 PG。
-- IP：ip_bans 封禁 + testip 工具 + TRUST_PROXY/TRUST_PROXY_IP 双档 XFF 取信（默认不信任代理头，防伪造）。
+- IP：ip_bans 封禁（0302 起支持 CIDR 段，`/0` 拒收）+ testip 工具。取信分两档，别再混称：
+  `TRUST_PROXY=1` 信 X-Forwarded-For（右数第 `TRUST_PROXY_DEPTH` 段）；
+  `TRUST_PROXY_IP=1` 信 announce 的 `?ip=` —— 那是**客户端自报**，比 XFF 更宽，只供调试。
+  两档取值都必须解析成合法地址且不属于保留/内网段（`ALLOW_PRIVATE_PEER_IP=1` 才放行 RFC1918/CGNAT/ULA），否则回落 socket 对端。
 - **XFF 取信语义（2026-10-07 三轮审计后）**：`TRUST_PROXY=1` 时 api/tracker 取 XFF **右值**（链尾）——即「直连我的那台反代追加的值」。两条部署红线：
   1. 反代必须用 `$proxy_add_x_forwarded_for`（追加语义）。若配成 `proxy_set_header X-Forwarded-For $http_x_forwarded_for`（透传客户端自带值），右值=攻击者伪造值，限流/ip_bans 整体失效。
   2. api 容器端口不得直接对外（compose 默认绑 127.0.0.1）——直连暴露时客户端可自带「干净尾值」伪造来源 IP。

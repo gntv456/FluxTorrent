@@ -36,6 +36,8 @@ pub(crate) struct Metrics {
     pub(crate) scrape_total: AtomicU64,
     /// Redis 故障 → 本地降级限流的触发次数（fail-open 窗口监测）
     pub(crate) redis_fallback: AtomicU64,
+    /// passkey 查询**报错**（≠ 查无此钥）的次数：瞬时抖动与真无效必须分开
+    pub(crate) passkey_query_failed: AtomicU64,
 }
 
 /// 本地滑动窗口限流（Redis 故障降级用）：key → (计数, 窗口起点)
@@ -82,84 +84,11 @@ pub(crate) fn env_i64(key: &str, default: i64) -> i64 {
         .unwrap_or(default)
 }
 
-fn trust_xff_depth() -> usize {
-    static V: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
-    *V.get_or_init(|| {
-        std::env::var("TRUST_PROXY_DEPTH")
-            .ok()
-            .and_then(|v| v.parse::<usize>().ok())
-            // 缺省 1 = 单层反代（与旧「右值」语义兼容）；多层代理部署须显式
-            // 对齐拓扑：DEPTH=n 时取右数第 n 段（2026-10-07 保种组审计 P2：
-            // 攻击者自建代理追加 hop 时，右值可被伪造污染取证/绕过限流）
-            .unwrap_or(1)
-            .clamp(1, 8)
-    })
-}
-
-fn trust_xff() -> bool {
-    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *V.get_or_init(|| std::env::var("TRUST_PROXY").unwrap_or_default() == "1")
-}
-
-fn trust_param_ip() -> bool {
-    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *V.get_or_init(|| {
-        std::env::var("TRUST_PROXY_IP").unwrap_or_default() == "1"
-    })
-}
-
-/// 客户端 IP 判定（announce/scrape 共用——审计 10-06 第 3 条：scrape 曾只认
-/// socket 对端，LB 后全部 peer IP 变 LB 地址，与 announce 口径分叉）。
-/// 安全：不信任客户端自报 —— 仅显式配置代理时采用。优先级：
-/// TRUST_PROXY=1 时 XFF **右值**（P1-4，2026-10-06 安全审计：旧版取首值，
-/// 依赖「反代追加而非覆盖」——nginx 误配透传 `$http_x_forwarded_for` 时
-/// 客户端可伪造任意 IP 绕过 ip_bans/限流。右值=直连我们的那台反代追加的
-/// 那段，单层反代下即真实客户端 IP）
-/// > TRUST_PROXY_IP=1 时 ?ip= 参数 > socket 对端。
-pub(crate) fn client_ip(
-    req: &actix_web::HttpRequest,
-    params: &super::params::RawParams,
-) -> String {
-    if trust_xff() {
-        // 2026-10-07 保种组审计 P2：按 TRUST_PROXY_DEPTH 从右数第 n 段取值。
-        // 旧版恒取最右一段——单层反代下正确，但攻击者自建代理追加 hop 时
-        // 右值可控（污染 ip_bans/限流/事件流取证）。DEPTH 显式对齐部署
-        // 拓扑（n 层可信反代 → 右数第 n 段才是第一跳可信边界追加的地址）。
-        let depth = trust_xff_depth();
-        if let Some(v) = req
-            .headers()
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-            .map(|v| {
-                v.split(',')
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                    .collect::<Vec<_>>()
-            })
-            .filter(|parts| parts.len() >= depth)
-            .and_then(|parts| {
-                parts.get(parts.len() - depth).map(|s| s.to_string())
-            })
-        {
-            return v;
-        }
-    } else if trust_param_ip() {
-        // 二轮遗留（2026-10-07）：?ip= 是完全的客户端输入，旧版零校验直接
-        // 用作 ip_bans 匹配键/限流键/事件流 ip——误配此开关时攻击者换一个
-        // 任意串即打散所有限流桶并注入脏取证。至少做 IP 格式校验：必须是
-        // 可解析的 v4/v6 地址（BEP24 语义本来也只允许地址）。
-        if let Some(v) = params
-            .get_str("ip")
-            .filter(|s| !s.is_empty())
-            .filter(|s| s.parse::<std::net::IpAddr>().is_ok())
-        {
-            return v;
-        }
-    }
-    req.peer_addr()
-        .map(|a| a.ip().to_string())
-        .unwrap_or_else(|| "0.0.0.0".into())
-}
+// IP 取信与校验整体搬到 ip_trust.rs（300 行门禁 + 便于单测）；
+// 这里再导出，使 announce/scrape 的 `use super::helpers::client_ip` 不变。
+pub(crate) use super::ip_trust::{
+    client_ip, injectable_ip, ip_inject_rejected, probeable_ip,
+};
 
 /// 内存防护缓存：高频路径不再逐请求打 PG。
 /// - passkey：60s TTL（挂起/禁下载最迟 60s 生效，可接受的折衷）

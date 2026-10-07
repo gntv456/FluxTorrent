@@ -16,6 +16,9 @@ use super::staff;
 struct TrackerUrlRow {
     id: i32,
     url: String,
+    /// 是否在该地址上携带本站 passkey（审计 10-07 P1-7）。
+    /// 默认 false：第三方 tracker 拿不到任何用户凭据。
+    with_passkey: bool,
     is_default: bool,
     enabled: bool,
     priority: i32,
@@ -29,7 +32,7 @@ async fn tracker_urls_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let rows: Vec<TrackerUrlRow> = sqlx::query_as(
-        "SELECT id, url, is_default, enabled, priority, \
+        "SELECT id, url, with_passkey, is_default, enabled, priority, \
          updated_at FROM tracker_urls ORDER BY priority, id",
     )
     .fetch_all(&state.repo.db)
@@ -41,6 +44,8 @@ async fn tracker_urls_list(
 #[derive(Deserialize)]
 struct TrackerUrlReq {
     url: String,
+    #[serde(default)]
+    with_passkey: Option<bool>,
     #[serde(default)]
     is_default: Option<bool>,
     #[serde(default)]
@@ -78,11 +83,14 @@ async fn tracker_url_add(
         return Err(DomainError::Validation("该 Tracker URL 已存在".into()));
     }
     let id: i32 = sqlx::query_scalar(
-        "INSERT INTO tracker_urls (url, is_default, enabled, priority) \
-         VALUES ($1, COALESCE($2, FALSE), COALESCE($3, TRUE), COALESCE($4, 0)) \
+        "INSERT INTO tracker_urls (url, with_passkey, is_default, \
+             enabled, priority) \
+         VALUES ($1, COALESCE($2, FALSE), COALESCE($3, FALSE), \
+                 COALESCE($4, TRUE), COALESCE($5, 0)) \
          RETURNING id",
     )
     .bind(url)
+    .bind(body.with_passkey)
     .bind(body.is_default)
     .bind(body.enabled)
     .bind(body.priority)
@@ -121,14 +129,19 @@ async fn tracker_url_update(
     .await?;
     let id = path.into_inner();
     let n = sqlx::query(
-        "UPDATE tracker_urls SET url = $2, is_default = COALESCE($3, is_default), \
-           enabled = COALESCE($4, enabled), priority = COALESCE($5, priority), updated_at = now() WHERE id = $1",
+        "UPDATE tracker_urls SET url = $2, \
+             is_default = COALESCE($3, is_default), \
+             enabled = COALESCE($4, enabled), \
+             priority = COALESCE($5, priority), \
+             with_passkey = COALESCE($6, with_passkey), \
+             updated_at = now() WHERE id = $1",
     )
     .bind(id)
     .bind(body.url.trim())
     .bind(body.is_default)
     .bind(body.enabled)
     .bind(body.priority)
+    .bind(body.with_passkey)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
