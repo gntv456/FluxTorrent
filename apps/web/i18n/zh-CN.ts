@@ -1235,6 +1235,16 @@ const zhCnBase = {
       avatarNote: "最大宽度为150像素（必要的时候会被缩放）。",
       info: "个人说明",
       infoNote: "显示在你的个人信息页面。允许使用BBCode代码。",
+      titleLabel: "自定义头衔",
+      titleNote: "用户名旁展示一行自定义文字，最长 30 字。",
+      titleVoucher: "解锁券",
+      titleVoucherNone: "当前没有可用解锁券",
+      titleVoucherValid: "可用 {n} 张，最近一张 {date} 到期",
+      titleSave: "保存头衔",
+      titleCost: "每次保存核销一张券（清空头衔同样消耗）；" +
+        "已核销或已过期的券不能使用",
+      titleBuy: "去商店购买",
+      titleFailed: "保存失败，请重试",
     },
     tracker: {
       title: "网站设定",

@@ -2,6 +2,7 @@
 
 import { useI18n } from "@/i18n/client";
 import { Row } from "@/components/usercp-row";
+import { TitleRow } from "@/components/usercp-title";
 import type { UserSettings } from "@/components/usercp";
 import { BANDWIDTH, COUNTRIES, ISPS } from "./usercp-personal-shared";
 
@@ -221,6 +222,9 @@ export function PersonalTab({
           <br />
           {t.avatarNote}
         </Row>
+        {/* 自定义头衔（0295 P0-5）：单独保存、单独读状态——它走券核销，
+            不能混进这张表的 PUT /me/settings 批量保存里。 */}
+        <TitleRow />
         <Row head={t.info}>
           <textarea
             className="uc-textarea"

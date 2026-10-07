@@ -1257,6 +1257,16 @@ const zhTwBase: Omit<
       avatarNote: "最大寬度為150像素（必要的時候會被縮放）。",
       info: "個人說明",
       infoNote: "顯示在你的個人信息頁面。允許使用BBCode代碼。",
+      titleLabel: "自定義頭銜",
+      titleNote: "用戶名旁展示一行自定義文字，最長 30 字。",
+      titleVoucher: "解鎖券",
+      titleVoucherNone: "當前沒有可用解鎖券",
+      titleVoucherValid: "可用 {n} 張，最近一張 {date} 到期",
+      titleSave: "保存頭銜",
+      titleCost: "每次保存核銷一張券（清空頭銜同樣消耗）；" +
+        "已核銷或已過期的券不能使用",
+      titleBuy: "去商店購買",
+      titleFailed: "保存失敗，請重試",
     },
     tracker: {
       title: "網站設定",
