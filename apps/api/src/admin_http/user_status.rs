@@ -127,6 +127,25 @@ async fn user_set_status(
     if body.status >= 1 {
         crate::http::bump_guard_ver(&state).await;
     }
+    // 三轮遗留（2026-10-07）：封禁同步回收其未用邀请码（置 status=2 作废）
+    // ——信任链在封禁动作上不能断开：被封者名下未过期码仍可注册小号。
+    if body.status == 2 {
+        let revoked = sqlx::query(
+            "UPDATE invites SET status = 2              WHERE inviter_id = $1 AND status = 0 AND expires_at > now()",
+        )
+        .bind(body.user_id)
+        .execute(&state.repo.db)
+        .await
+        .map(|r| r.rows_affected())
+        .unwrap_or(0);
+        if revoked > 0 {
+            tracing::info!(
+                uid = body.user_id,
+                revoked,
+                "封禁联动作废未用邀请码"
+            );
+        }
+    }
     // api 侧用户状态短缓存（5s TTL）同步失效：封禁/恢复立即生效
     state.user_status_cache.invalidate(body.user_id);
     state

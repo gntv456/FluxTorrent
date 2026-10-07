@@ -49,9 +49,12 @@ async fn dressup_list(
         "SELECT si.id AS item_id, si.name, si.kind, si.price, \
          si.config->>'slot' AS slot, si.config, \
          EXISTS(SELECT 1 FROM user_dressups ud \
-         WHERE ud.user_id = $1 AND ud.item_id = si.id) AS owned, \
+         WHERE ud.user_id = $1 AND ud.item_id = si.id \
+           AND (ud.expires_at IS NULL OR ud.expires_at > now())) AS owned, \
          COALESCE((SELECT ud.wearing FROM user_dressups ud \
-         WHERE ud.user_id = $1 AND ud.item_id = si.id), FALSE) AS wearing, \
+         WHERE ud.user_id = $1 AND ud.item_id = si.id \
+           AND (ud.expires_at IS NULL OR ud.expires_at > now())), FALSE) \
+         AS wearing, \
          COALESCE((SELECT ud.source FROM user_dressups ud \
          WHERE ud.user_id = $1 AND ud.item_id = si.id), '') AS source \
          FROM shop_items si WHERE si.active AND si.kind IN \
@@ -110,7 +113,8 @@ async fn dressup_wear(
         sqlx::query_as(
             "SELECT si.config->>'slot', si.kind, si.config \
          FROM user_dressups ud JOIN shop_items si ON si.id = ud.item_id \
-         WHERE ud.user_id = $1 AND ud.item_id = $2",
+         WHERE ud.user_id = $1 AND ud.item_id = $2 \
+           AND (ud.expires_at IS NULL OR ud.expires_at > now())",
         )
         .bind(auth.id)
         .bind(body.item_id)

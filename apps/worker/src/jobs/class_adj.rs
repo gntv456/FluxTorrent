@@ -124,6 +124,11 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
             continue;
         }
         let idem = format!("class_promo:{}:{}", uid, new_class);
+        // 三轮遗留（2026-10-07）：流水与余额同事务——旧注释自称「并入同一
+        // 事务」但实现是两条 autocommit，崩溃窗内「流水落、余额不加」
+        // （靠 2h seeding 重算自愈）。现真正收口：事务内 INSERT 判定 +
+        // 无条件 UPDATE（卫语句以本事务可见性为准）。
+        let mut tx = db.begin().await?;
         let credited = sqlx::query(
             r#"
             INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
@@ -134,26 +139,21 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
         .bind(uid)
         .bind(reward)
         .bind(&idem)
-        .execute(db)
+        .execute(&mut *tx)
         .await?
         .rows_affected();
         if credited > 0 {
-            // 余额入账与流水并入同一事务（ZT81 R1.6 修复二段）：旧版两条独立语句间
-            // 进程崩溃会「流水已落、余额没加」，且 UPDATE 的 NOT EXISTS 卫语句在
-            // 分区表上有已见自插入行的计划形态问题——单事务内改用「按流水行数对账」
-            // 的一步式 UPDATE，卫语句以本事务可见性为准，杜绝两条语句的窗口。
             if let Err(e) = sqlx::query(
-                "UPDATE users SET spark_balance = spark_balance + $2 \
-                 WHERE id = $1 AND EXISTS (SELECT 1 FROM spark_ledger \
-                 WHERE idempotency_key = $3)",
+                "UPDATE users SET spark_balance = spark_balance + $2                  WHERE id = $1",
             )
             .bind(uid)
             .bind(reward)
-            .bind(&idem)
-            .execute(db)
+            .execute(&mut *tx)
             .await
             {
+                tx.rollback().await?;
                 tracing::error!(%e, uid, "promotion balance update failed");
+                continue;
             }
             let level_name: String = sqlx::query_scalar(
                 "SELECT name FROM class_rules WHERE class_id = $1",
@@ -174,6 +174,9 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
             ))
             .execute(db)
             .await;
+            tx.commit().await?;
+        } else {
+            tx.rollback().await?;
         }
     }
     let demoted = sqlx::query(

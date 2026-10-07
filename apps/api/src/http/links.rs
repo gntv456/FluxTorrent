@@ -29,6 +29,10 @@ pub async fn link_apply(
     body: web::Json<LinkApplyBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    // 三轮遗留：友链 URL 协议白名单（管理员面也拦——账号被盗时防 javascript: 注入）
+    if !body.url.starts_with("https://") && !body.url.starts_with("http://") {
+        return Err(DomainError::Validation("友链仅支持 http(s) 地址".into()));
+    }
     if body.name.trim().is_empty() || body.url.trim().is_empty() {
         return Err(DomainError::Validation("站点名和 URL 必填".into()));
     }

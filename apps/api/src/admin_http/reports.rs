@@ -266,5 +266,10 @@ async fn report_release(
     if n == 0 {
         return Err(DomainError::Validation("举报不在你名下或已结案".into()));
     }
+    // 三轮遗留：释放认领与 claim/resolve 同为状态变更，补齐审计
+    state
+        .repo
+        .audit(Some(auth.id), "report_release", Some(body.report_id))
+        .await;
     Ok(ok(serde_json::json!({ "released": body.report_id })))
 }

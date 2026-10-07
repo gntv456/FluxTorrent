@@ -183,6 +183,16 @@ pub async fn hr_pardon_batch(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+        // 三轮遗留：批量赦免对齐单发的 hr_flag 回清——漏了这步时
+        // 用户侧 H&R 角标仍亮（展示层读 hr_flag）
+        sqlx::query(
+            "UPDATE snatches SET hr_flag = FALSE WHERE user_id = $1              AND torrent_id = $2",
+        )
+        .bind(it.user_id)
+        .bind(it.torrent_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
         pardoned.push(serde_json::json!({ "user_id": it.user_id, "torrent_id": it.torrent_id }));
     }
     state

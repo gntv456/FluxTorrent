@@ -85,7 +85,7 @@ async fn permission_matrix(
     })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 struct PermMatrixItem {
     role_type: String,
     role_key: String,
@@ -159,9 +159,17 @@ async fn permission_matrix_update(
         .rows_affected();
         changed += n;
     }
+    // 三轮遗留：矩阵审计带明细——只记「改过」不记改了哪些项，回溯
+    // 「谁给 90 档加了 user.adjust」要靠 binlog。items 快照进 extra。
     state
         .repo
-        .audit(Some(auth.id), "permission_matrix.update", None)
+        .audit_detail(
+            Some(auth.id),
+            "permission_matrix.update",
+            None,
+            None,
+            Some(serde_json::json!({ "items": body.items })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "changed": changed })))
 }

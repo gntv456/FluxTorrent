@@ -100,7 +100,7 @@ impl AuthRepo {
             }
             let inv = sqlx::query_scalar(
                                 "UPDATE invites SET status = 1, \
-                 used_by = $1 WHERE code = $2 AND status = 0 AND expires_at > now() RETURNING inviter_id",
+                 used_by = $1 WHERE code = $2 AND status = 0 AND expires_at > now()                  AND (SELECT status FROM users WHERE id = invites.inviter_id) < 2                  RETURNING inviter_id",
             )
             .bind(user_id)
             .bind(invite_code)

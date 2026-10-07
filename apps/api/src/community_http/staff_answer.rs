@@ -120,6 +120,10 @@ async fn staff_mark(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
+    // 三轮遗留：批量标记/删除是管理动作但零审计（删除是物理 DELETE）
+    if n > 0 {
+        state.repo.audit(Some(auth.id), "staffmsg_mark", None).await;
+    }
     Ok(ok(serde_json::json!({ "marked": n })))
 }
 
@@ -143,5 +147,12 @@ async fn staff_delete(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
         .rows_affected();
+    // 三轮遗留：物理删除管理组工单来信必须留痕
+    if n > 0 {
+        state
+            .repo
+            .audit(Some(auth.id), "staffmsg_delete", None)
+            .await;
+    }
     Ok(ok(serde_json::json!({ "deleted": n })))
 }
