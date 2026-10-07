@@ -28,6 +28,19 @@ use crate::state::AppState;
 
 // ============ 商店（M11） ============
 
+/// 二轮审计（P1）：重放补发的数量口径——以已付订单为准，不信本次 body.qty。
+#[derive(Clone, Copy)]
+enum PaidQty {
+    /// 卡牌类：已存在订单行数（一行=一张）
+    Rows(usize),
+    /// 其余类：已付总金额（÷单价=件数）
+    Amount(i64),
+}
+
+fn card_kind_probe(kind: &str) -> bool {
+    matches!(kind, "makeup_card" | "rename_card" | "temp_invite")
+}
+
 #[post("/shop/buy")]
 async fn shop_buy(
     req: HttpRequest,
@@ -88,6 +101,30 @@ async fn shop_buy(
         if owned {
             return Err(DomainError::Validation(
                 "你已拥有该装扮，无需重复购买（装扮类道具不叠加）".into(),
+            ));
+        }
+    }
+
+    // 0295（运营轮 P0-3）：头衔解锁券同样要在扣款前拦。此前装扮类有这道
+    // 护栏、头衔类没有——apply_item_effect 里的防重 EXISTS 又不判
+    // used_at / expires_at，于是「用过头衔券」的人再买：魔力照扣、券不发。
+    if kind == "custom_title"
+        && config
+            .get("unlock")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    {
+        let usable: bool =
+            sqlx::query_scalar("SELECT has_usable_voucher($1, 'title_unlock')")
+                .bind(auth.id)
+                .fetch_one(&state.repo.db)
+                .await
+                .unwrap_or(false);
+        if usable {
+            return Err(DomainError::Validation(
+                "你已有一张可用的「自定义头衔」解锁券（未核销且未过期），\
+                 无需重复购买"
+                    .into(),
             ));
         }
     }
@@ -185,6 +222,10 @@ async fn shop_buy(
     // （CAS 的 NOT effect_applied 条件天然只补未发的），没有才按原单返回。
     // 历史注：更早版本把 Replayed 整个吞掉继续走，卡牌类会用 `idem:2..N`
     // 新行绕过扣款白拿券——本分支保持「不插新订单行」，只放补发。
+    // 二轮审计（P1）：重放补发时数量必须以**已付订单行**为准，不能信本次
+    // body.qty——并发同键不同 qty（A qty=1 付款 / B qty=100 判 Replayed）或
+    // 崩溃窗口重试改大 qty，旧代码会按新 qty 插卡牌行/跑非卡牌轮次 = 超发。
+    let mut replay_ctx: Option<PaidQty> = None;
     if matches!(outcome, crate::economy_http::SpendOutcome::Replayed) {
         let pending: i64 = sqlx::query_scalar(
             "SELECT count(*) FROM shop_orders WHERE user_id = $1 \
@@ -225,6 +266,32 @@ async fn shop_buy(
             pending,
             "商店购买重放，补发未生效效果"
         );
+        // 已付数量：卡牌 = 已存在行数；其余 = 订单总额 ÷ 单价
+        let paid = if card_kind_probe(&kind) {
+            let rows: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM shop_orders WHERE user_id = $1                  AND (idempotency_key = $2 OR idempotency_key LIKE $3)",
+            )
+            .bind(auth.id)
+            .bind(&idem)
+            .bind(format!("{}:%", idem))
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(1)
+            .max(1);
+            PaidQty::Rows(rows as usize)
+        } else {
+            let amt: Option<i64> = sqlx::query_scalar(
+                "SELECT price FROM shop_orders WHERE user_id = $1                  AND idempotency_key = $2",
+            )
+            .bind(auth.id)
+            .bind(&idem)
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten();
+            PaidQty::Amount(amt.unwrap_or(total))
+        };
+        replay_ctx = Some(paid);
     }
 
     // 订单落库（幂等键唯一）。卡牌类（补签/改名/临时邀请）库存口径 = 订单行数
@@ -232,8 +299,14 @@ async fn shop_buy(
     //（键加序号后缀保持幂等）；其余类一行、price 记总额（0207）。
     let card_kind =
         matches!(kind.as_str(), "makeup_card" | "rename_card" | "temp_invite");
-    if card_kind && qty > 1 {
-        for k in 1..=qty {
+    let card_rows: usize = match replay_ctx {
+        // 重放：只允许补到「已付行数」——k 超出已付行数即跳过（不插新行，
+        // 堵并发同键不同 qty 的凭空造行）
+        Some(PaidQty::Rows(paid)) => paid,
+        _ => qty.max(1) as usize,
+    };
+    if card_kind && card_rows > 1 {
+        for k in 1..=card_rows {
             let key = if k == 1 {
                 idem.clone()
             } else {
@@ -299,7 +372,19 @@ async fn shop_buy(
         }
     }
     if !card_kind && applied > 0 {
-        let rounds = if stackable { qty } else { 1 };
+        let rounds: usize = match replay_ctx {
+            // 重放补发：件数 = 已付总额 ÷ 单价（首次已发 1 轮，见下循环从 1 起）
+            Some(PaidQty::Amount(amt)) if unit_price > 0 => {
+                ((amt / unit_price).max(1)) as usize
+            }
+            _ => {
+                if stackable {
+                    qty.max(1) as usize
+                } else {
+                    1
+                }
+            }
+        };
         let mut cfg = config.clone();
         cfg["item_id"] = serde_json::json!(body.item_id);
         for _ in 1..rounds {

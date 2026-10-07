@@ -115,7 +115,7 @@ pub(super) async fn top_boards(
     // 改 LEFT JOIN + HAVING count>0：有做种记录者才进榜，口径与做种收益一致
     let hourly_q = base(
         "(10 + count(*) * 2 + COALESCE(sum(t.size), 0) / 1099511627776.0) \
-            * CASE WHEN u.donor THEN 2 ELSE 1 END",
+            * CASE WHEN donor_privileged(u.id) THEN 2 ELSE 1 END",
         "JOIN snatches s ON s.user_id = u.id AND s.seeding LEFT JOIN torrents t ON t.id = s.torrent_id",
         "",
         "HAVING count(*) > 0",

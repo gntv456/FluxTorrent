@@ -93,6 +93,12 @@ pub const JOBS: &[JobDef] = &[
         cadence: "1h",
     },
     JobDef {
+        // 0295（运营轮 P1-6）：run.rs 的 1h tick 一直在跑它，但目录里没有，
+        // 于是后台面板看不见、也不能手触——补登记。
+        name: "request_expire",
+        cadence: "1h",
+    },
+    JobDef {
         name: "wishlist_notify",
         cadence: "1h",
     },

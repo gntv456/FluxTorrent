@@ -30,6 +30,7 @@ node scripts/i18n_guard.mjs
 node scripts/home_sections_guard.mjs
 node scripts/module_keys_guard.mjs
 node scripts/fake_switch_guard.mjs
+node scripts/job_catalog_guard.mjs
 node scripts/gacha_math_guard.mjs
 node scripts/gacha_pack_guard.mjs
 node scripts/terms_guard.mjs
