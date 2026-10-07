@@ -140,6 +140,12 @@ pub(crate) async fn gacha_grant_tickets(
         note = body.note.trim(),
         "gacha tickets granted"
     );
+    // 三轮审计 P1-2（2026-10-07）：发放必须落审计链——此前只有 tracing
+    // 应用日志，audit_log 哈希链里无痕，事后追责无据。
+    state
+        .repo
+        .audit(Some(auth.id), "gacha_grant_tickets", Some(body.user_id))
+        .await;
     Ok(ok(serde_json::json!({
         "userId": body.user_id, "ticketBalance": after,
         "granted": body.amount,
@@ -170,6 +176,10 @@ pub(crate) async fn gacha_grant_shards(
         note = body.note.trim(),
         "gacha shards granted"
     );
+    state
+        .repo
+        .audit(Some(auth.id), "gacha_grant_shards", Some(body.user_id))
+        .await;
     Ok(ok(serde_json::json!({
         "userId": body.user_id, "shardBalance": after,
         "granted": body.amount,

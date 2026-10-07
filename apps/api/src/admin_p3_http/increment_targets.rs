@@ -89,19 +89,30 @@ pub(super) async fn increment_bulk_validate(
 }
 
 /// 目标集合选择：指定用户优先（不叠加等级筛选，口径同 NP：receiver 直发）；
-/// 否则 classes OR roles，未封禁（status<2）
+/// 否则 classes OR roles，未封禁（status<2）。
+/// 三轮审计 P1（2026-10-07）：补操作者约束——单发路径（user_ops/
+/// user_grant_item/medal）全有 ensure_outranks（挡自己/同级/上级），批量侧
+/// 此前完全没有：持发放权限者可把自己/同级/上级塞进目标单次发任意额度。
+/// 与 medal 分支既有护栏同口径：指定名单剔除操作者本人；classes/roles
+/// 只选严格低于操作者等级的账号。
 pub(super) async fn increment_bulk_targets(
     db: &sqlx::PgPool,
+    actor_id: i64,
+    actor_class: i32,
     body: &IncrementBulkReq,
 ) -> DomainResult<Vec<i64>> {
     let targets: Vec<i64> = if !body.user_ids.is_empty() {
         // DISTINCT：受众里重复点了同一个人是常见手抖。不去重的话第二批
         // 起会撞同一批次+同一用户的幂等键（expect_spent 会把它判成失败），
         // 语义上「发给同一个人两次」也不该由名单里的重复决定。
+        // 剔除操作者本人（防自批火花/道具）；同级/上级名单目标保留 NP
+        // 直发口径，但自批不留口。
         sqlx::query_scalar(
-            "SELECT DISTINCT id FROM users WHERE id = ANY($1) AND status < 2",
+            "SELECT DISTINCT id FROM users \
+             WHERE id = ANY($1) AND status < 2 AND id <> $2",
         )
         .bind(&body.user_ids)
+        .bind(actor_id)
         .fetch_all(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
@@ -116,13 +127,17 @@ pub(super) async fn increment_bulk_targets(
                     .into(),
             );
         }
+        // 等级面收敛：只选严格低于操作者的档位（classes 显式列出的高档
+        // 也会被 AND class_id < $3 过滤，防 90 档选 99 档目标）
         let sql = format!(
-            "SELECT id FROM users WHERE status < 2 AND ({}) ORDER BY id",
+            "SELECT id FROM users WHERE status < 2 AND class_id < $3 \
+             AND ({}) ORDER BY id",
             clauses.join(" OR ")
         );
         sqlx::query_scalar(&sql)
             .bind(&body.classes)
             .bind(&body.roles)
+            .bind(actor_class)
             .fetch_all(db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?

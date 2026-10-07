@@ -29,36 +29,42 @@ pub(crate) async fn highspeed_tag(db: &PgPool) -> anyhow::Result<u64> {
 /// 且当前仍在做种 → 发奖（火花 + 1 枚免费券）+ 种子挂 7 天 free bump + 站内信。
 /// 幂等：状态 CAS（open→done），奖励只随成功转移发放一次。
 pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
-    let settled = sqlx::query(
+    // 三轮审计 P2（2026-10-07）：候选集只读（不再 CTE 内置 done）——旧版
+    // 先 autocommit 置 done 再循环发奖，中间崩溃的行被重跑的
+    // status='open' 排除，奖励永久丢失。置位挪进每行发奖事务（见下）。
+    let settled = sqlx::query_as::<_, (i64, i64, i64, i64)>(
         r#"
-        WITH done AS (
-            UPDATE resurrections r SET status = 'done', finished_at = now()
-            WHERE r.status = 'open'
-              AND r.team_id IS NULL
-              AND EXISTS (SELECT 1 FROM snatches s
-                          WHERE s.user_id = r.user_id AND s.torrent_id = r.torrent_id
-                            AND s.seeded_seconds >= r.required_hours * 3600 AND s.seeding)
-            RETURNING r.id, r.user_id, r.torrent_id, r.reward_sparks
-        )
-        SELECT d.id, d.user_id, d.torrent_id, d.reward_sparks FROM done d
+        SELECT r.id, r.user_id, r.torrent_id, r.reward_sparks
+        FROM resurrections r
+        WHERE r.status = 'open'
+          AND r.team_id IS NULL
+          AND EXISTS (SELECT 1 FROM snatches s
+                      WHERE s.user_id = r.user_id
+                        AND s.torrent_id = r.torrent_id
+                        AND s.seeded_seconds >= r.required_hours * 3600
+                        AND s.seeding)
         "#,
     )
     .fetch_all(db)
     .await?;
-    for row in &settled {
-        let (rid, uid, tid, reward): (i64, i64, i64, i64) = (
-            row.try_get(0)?,
-            row.try_get(1)?,
-            row.try_get(2)?,
-            row.try_get(3)?,
-        );
+    for &(rid, uid, tid, reward) in &settled {
         let idem = format!("resurrection:{rid}");
-        // 奖励链整段包进单事务（含幂等护栏）：CAS 已置 done 后崩溃，
-        // 重启重跑此循环仍能凭幂等键补发，不再永久丢奖励。
-        // 幂等护栏只在 INSERT 上判断：事务内已插入的行对本事务可见，
-        // UPDATE/赠券再带同款 NOT EXISTS 会恒不命中 → 整体回滚 → 奖励
-        // 静默丢失（链路缺陷 #10 同款）。
+        // 状态置位（open→done）与发奖同事务：回滚时状态回滚，重跑完整重试
         let mut tx = db.begin().await?;
+        let claimed = sqlx::query(
+            "UPDATE resurrections SET status = 'done', finished_at = now()              WHERE id = $1 AND status = 'open'",
+        )
+        .bind(rid)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+        if claimed == 0 {
+            tx.rollback().await?;
+            continue; // 并发 worker 已处理
+        }
+        // 奖励链与上方状态置位共用同一事务（幂等护栏只在 INSERT 上判断：
+        // 事务内已插入的行对本事务可见，UPDATE/赠券再带同款 NOT EXISTS
+        // 会恒不命中 → 整体回滚 → 奖励静默丢失——链路缺陷 #10 同款教训）。
         let inserted = sqlx::query(
             r#"
             INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)

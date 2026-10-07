@@ -45,18 +45,23 @@ pub(crate) async fn lottery_settle(
     let Some((winners, prize, _ticket)) = meta else {
         return Ok(0); // 已开/已取消：幂等静默
     };
+    // 三轮审计 P2（2026-10-07）：置 drawn 与发奖并入同一事务——旧版先
+    // autocommit 置位再开事务发奖，中间崩溃 = 状态已 drawn、重跑被
+    // WHERE status='open' 排除，奖金/退款永久卡死。现在 CAS 放进事务，
+    // 回滚时状态也回滚，重跑可完整重试。
+    let mut tx = db.begin().await?;
     let n = sqlx::query(
-        "UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = \
-         $1 AND status = 'open'",
+        "UPDATE topic_lotteries SET status = 'drawn' \
+         WHERE topic_id = $1 AND status = 'open'",
     )
     .bind(topic_id)
-    .execute(db)
+    .execute(&mut *tx)
     .await?
     .rows_affected();
     if n == 0 {
+        tx.rollback().await?;
         return Ok(0); // 并发对手（楼主手动开）赢了对局
     }
-    let mut tx = db.begin().await?;
     // 中奖名单：数据库侧 random() 洗牌取前 N（抽签随机性不由应用层承担）
     let picked: Vec<i64> = sqlx::query_scalar(
         "UPDATE lottery_entries SET won = TRUE \
