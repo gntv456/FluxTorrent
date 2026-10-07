@@ -52,7 +52,10 @@ pub async fn charge_for_download(
     .clamp(0, 90);
     let net = price * (100 - tax as i64) / 100;
     let tax_amount = price - net;
-    let month = chrono::Utc::now().format("%Y-%m").to_string();
+    // 三轮遗留：月度计费帽与绩效结算同一月键口径（站点时区 UTC+8）
+    let month = (chrono::Utc::now() + chrono::Duration::hours(8))
+        .format("%Y-%m")
+        .to_string();
 
     let mut tx = db
         .begin()

@@ -136,6 +136,14 @@ async fn ticket_update(
                     "指派对象不存在或不是工作人员（class≥50）".into(),
                 ));
             };
+            // 三轮遗留：指派目标须严格低于操作者——此前任何 staff.message
+            // 持有者可把工单指派给 93/99 制造骚扰
+            crate::admin_http::guard::ensure_outranks(
+                &state.repo.db,
+                auth.class_id,
+                uid,
+            )
+            .await?;
             Some(uid)
         }
         Some(_) => None, // 空串 = 清指派（置 NULL，见下方 clear_assign）

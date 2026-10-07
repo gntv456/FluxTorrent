@@ -148,6 +148,19 @@ pub async fn menu_item_validate(
             ));
         }
     }
+    // 三轮遗留：菜单 URL 协议白名单——外链必须 http(s)，站内链接以 / 开头
+    // （挡 javascript:/data: 与协议相对 //evil）
+    if let Some(u) = body.url.as_deref() {
+        let ok = u.is_empty()
+            || u.starts_with("https://")
+            || u.starts_with("http://")
+            || (u.starts_with('/') && !u.starts_with("//"));
+        if !ok {
+            return Err(DomainError::Validation(
+                "菜单链接仅支持 http(s) 或站内路径".into(),
+            ));
+        }
+    }
     if let Some(mc) = body.min_class {
         if !(0..=99).contains(&mc) {
             return Err(DomainError::Validation("min_class 取值 0-99".into()));

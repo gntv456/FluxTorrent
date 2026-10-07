@@ -60,6 +60,20 @@ pub async fn me_settings_put(
             }
         }
     }
+    // 三轮遗留（2026-10-07）：avatar_url 协议白名单——防 data: 内嵌绕图床、
+    // javascript: 残留浏览器执行、内网 URL 借 <img> 探测。只放行 http(s)、
+    // 站内相对路径与站内 /api/v1/attachments 引用。
+    if let Some(u) = b.avatar_url.as_deref() {
+        let ok = u.is_empty()
+            || u.starts_with("https://")
+            || u.starts_with("http://")
+            || (u.starts_with('/') && !u.starts_with("//"));
+        if !ok || u.len() > 500 {
+            return Err(DomainError::Validation(
+                "头像链接仅支持 http(s) 或站内路径".into(),
+            ));
+        }
+    }
     for n in [
         b.gender.map(|v| v as i32),
         b.country,

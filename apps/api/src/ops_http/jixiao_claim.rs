@@ -19,7 +19,11 @@ pub(super) async fn jixiao_claim(
     body: web::Json<ClaimReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let now_period = chrono::Utc::now().format("%Y-%m").to_string();
+    // 三轮遗留：月键统一站点时区（UTC+8）——worker 结算/admin 登记均用
+    // 站点月，此处曾是 UTC 月，月初 8h「本期」判定错位（补领窗口起算漂移）
+    let now_period = (chrono::Utc::now() + chrono::Duration::hours(8))
+        .format("%Y-%m")
+        .to_string();
     let period = body.period.clone().unwrap_or(now_period.clone());
 
     // 补领窗口：只能领当月或上月（且上月必须在窗口期内；月末已自动结算过的不可再领）

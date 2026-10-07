@@ -40,13 +40,28 @@ pub async fn preserve_settle(db: &PgPool) -> anyhow::Result<u64> {
     .unwrap_or(100);
     let res = sqlx::query(
         r#"
+        -- 三轮遗留（2026-10-07）：天数改为「已发次数 +1」而非挂钟差——旧口径
+        -- 停种 N 天后回来，中间天数照发（只需结算时点在种）。新口径：
+        -- 下一档 = 已结算 preserve 行数 + 1，停种期间不产生新行；
+        -- 仍要求结算时点在种 + 距上一档 ≥1 天（防反复上下线刷首档）。
         WITH due AS (
             SELECT sp.claimed_by AS user_id, sp.torrent_id,
-                   floor(EXTRACT(EPOCH FROM (now() - sp.claimed_at)) / 86400)::bigint AS day_index
+                   (SELECT count(*) FROM spark_ledger l
+                    WHERE l.kind = 'preserve_reward'
+                      AND l.idempotency_key LIKE 'preserve:' || sp.torrent_id || ':%'
+                      AND l.user_id = sp.claimed_by) + 1 AS day_index,
+                   COALESCE((SELECT max(l.created_at) FROM spark_ledger l
+                    WHERE l.kind = 'preserve_reward'
+                      AND l.idempotency_key LIKE 'preserve:' || sp.torrent_id || ':%'
+                      AND l.user_id = sp.claimed_by), sp.claimed_at) AS last_paid_at
             FROM seed_preserve sp
             JOIN snatches s
               ON s.torrent_id = sp.torrent_id AND s.user_id = sp.claimed_by AND s.seeding
             WHERE sp.claimed_by IS NOT NULL AND sp.exited_at IS NULL
+              AND now() - COALESCE((SELECT max(l.created_at) FROM spark_ledger l
+                    WHERE l.kind = 'preserve_reward'
+                      AND l.idempotency_key LIKE 'preserve:' || sp.torrent_id || ':%'
+                      AND l.user_id = sp.claimed_by), sp.claimed_at) >= interval '1 day'
         ),
         fresh AS (
             SELECT d.* FROM due d

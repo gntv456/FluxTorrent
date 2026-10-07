@@ -161,7 +161,7 @@ pub(super) async fn task_claim(
 
     // 一次性取任务配置：存在性/时段/限领/报名费/等级门槛/指标
     let task: Option<(bool, Option<i32>, i64, i32, serde_json::Value)> = sqlx::query_as(
-        "SELECT now() BETWEEN starts_at AND ends_at, claim_limit, fee, target_class, metric \
+        "SELECT starts_at <= now() AND now() < ends_at, claim_limit, fee, target_class, metric \
          FROM tasks WHERE id = $1",
     )
     .bind(body.task_id)

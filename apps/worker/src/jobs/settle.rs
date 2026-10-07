@@ -74,6 +74,10 @@ pub(crate) async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
             // 不被这条路径加上（只落流水，靠后续 reconcile 收敛）。改为
             // 以 INSERT 的 rows_affected 判定「本次是否新入账」，新入账
             // 才无条件 UPDATE 加余额（幂等语义不变：重复执行零副作用）。
+            // 三轮遗留（2026-10-07）：INSERT 与 UPDATE 并入同一事务——二轮
+            // 虽修了「UPDATE 恒 0 行」，但两条 autocommit 之间崩溃仍会
+            // 留下「流水已落、余额未加」的撕裂窗（靠 2h seeding 重算自愈）。
+            let mut tx = db.begin().await?;
             let inserted = sqlx::query(
                 r#"
                 INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
@@ -84,7 +88,7 @@ pub(crate) async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
             .bind(uid)
             .bind(amount)
             .bind(&idem)
-            .execute(db)
+            .execute(&mut *tx)
             .await?
             .rows_affected();
             if inserted > 0 {
@@ -93,10 +97,11 @@ pub(crate) async fn funding_settle(db: &PgPool) -> anyhow::Result<u64> {
                 )
                 .bind(uid)
                 .bind(amount)
-                .execute(db)
+                .execute(&mut *tx)
                 .await?;
                 refunds += 1;
             }
+            tx.commit().await?;
         }
         // 全部退款成功 → 终态 2（失败时下一轮从 3 态重入续退，幂等键防双退）
         sqlx::query("UPDATE fundings SET status = 2 WHERE id = $1")

@@ -23,6 +23,11 @@ self.addEventListener("install", (event) => {
 // 页面注册脚本发 SKIP_WAITING：新 SW 立即接管（配合页面刷新一次拿新 bundle）
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
+  // 三轮遗留（2026-10-07）：登出清页面缓存——PAGE_CACHE 里存着登录态
+  // RSC HTML（含用户名），共用设备离线态可回看上次用户的页面快照。
+  if (event.data === "CLEAR_PAGES") {
+    event.waitUntil(caches.delete(PAGE_CACHE));
+  }
 });
 
 self.addEventListener("activate", (event) => {

@@ -121,9 +121,11 @@ async fn awards_grant(
         if !(1..=3).contains(&g.rank) {
             return Err(DomainError::Validation("rank 需为 1/2/3".into()));
         }
+        // 三轮遗留（2026-10-07）：CAS 加「未发过奖」卫语句——旧版置位后
+        // 崩溃，重跑被 rank=0 条件跳过，火花永不发。幂等流水已存在时
+        // 视为已发过，跳过置位（skipped），未发条目可完整补发。
         let row: Option<(i64, i64, String)> = sqlx::query_as(
-            "UPDATE subtitle_awards SET rank = $2 WHERE id = $1 AND period \
-             = $3 AND rank = 0 RETURNING subtitle_id, user_id, tier",
+            "UPDATE subtitle_awards SET rank = $2 WHERE id = $1 AND period              = $3 AND rank = 0 AND NOT EXISTS (                SELECT 1 FROM spark_ledger WHERE kind = 'subtitle_award'                  AND idempotency_key = format('sub-award:{}:{}:{}', $3,                    (SELECT user_id FROM subtitle_awards WHERE id = $1), $2))              RETURNING subtitle_id, user_id, tier",
         )
         .bind(g.id)
         .bind(g.rank)

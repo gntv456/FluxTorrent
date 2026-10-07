@@ -142,6 +142,10 @@ async fn user_role_revoke(
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     let (uid, role_key) = path.into_inner();
+    // 三轮遗留：撤销与授予同权限口径——此前只要 staff 面即可摘任何下级的
+    // 职务（授予侧要求 ROLES_MANAGE），挂/摘不对称
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE)
+        .await?;
     ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
     let n = crate::authz::revoke_role(&state.repo.db, uid, &role_key)
         .await

@@ -110,6 +110,8 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
       // 后端撤销失败也照常清理本地凭证
     }
     localStorage.removeItem("flux.user");
+    // 三轮遗留：登出清 SW 页面缓存（含登录态 RSC 快照，防共用设备离线回看）
+    navigator.serviceWorker?.controller?.postMessage("CLEAR_PAGES");
     setSessionCookie(false);
     location.href = "/login";
   }

@@ -20,7 +20,7 @@ pub(super) async fn task_list(
             t.starts_at, t.ends_at, t.tier, t.subtitle, t.fee, t.duration_days, \
             COALESCE(t.claim_limit, t.quota_total) AS quota_total, t.sort, \
             EXISTS(SELECT 1 FROM task_claims tc WHERE tc.task_id = t.id AND tc.user_id = $1) AS claimed_by_me \
-         FROM tasks t WHERE now() BETWEEN t.starts_at AND t.ends_at \
+         FROM tasks t WHERE t.starts_at <= now() AND now() < t.ends_at \
          ORDER BY t.sort NULLS LAST, t.id",
     )
     .bind(uid)
