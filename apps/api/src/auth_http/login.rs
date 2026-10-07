@@ -49,7 +49,7 @@ pub(crate) fn origin_matches(req: &HttpRequest, origin: &str) -> bool {
     let authority = authority.split(['/', '?']).next().unwrap_or(authority);
     // 浏览器可见的 host:port（同源代理下不能用 Host，见 write_origin 注释）
     let host = crate::http::write_origin::browser_host(req);
-    if !host.is_empty() && authority.eq_ignore_ascii_case(host) {
+    if !host.is_empty() && authority.eq_ignore_ascii_case(&host) {
         return true;
     }
     // 显式白名单（反代/多域名场景与 CORS 同一份配置）
