@@ -7,6 +7,7 @@
 mod bencode;
 pub mod external;
 mod model;
+pub(crate) mod probes;
 mod table;
 
 pub use bencode::{

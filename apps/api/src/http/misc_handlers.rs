@@ -155,53 +155,6 @@ pub async fn stats(
     Ok(ok(val))
 }
 
-// ============ 作弊探测（0069 cheat_events 闭环查询端：tracker 拒绝 → worker 落库 → 后台可查） ============
-
-#[derive(Deserialize)]
-struct CheatEventsQuery {
-    limit: Option<i64>,
-}
-
-/// agent_rules 黑白名单命中记录（staff 专用）：按最近命中倒序
-#[get("/admin/cheat-events")]
-pub async fn cheat_events_list(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<CheatEventsQuery>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    require_staff(&auth)?;
-    let limit = q.limit.unwrap_or(50).clamp(1, 200);
-    let rows: Vec<(
-        i64,
-        i64,
-        String,
-        Option<String>,
-        String,
-        i64,
-        chrono::DateTime<chrono::Utc>,
-        chrono::DateTime<chrono::Utc>,
-    )> = sqlx::query_as(
-        "SELECT id, user_id, agent, peer_ip, reason, hits, first_seen, last_seen \
-             FROM cheat_events ORDER BY last_seen DESC LIMIT $1",
-    )
-    .bind(limit)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let items: Vec<_> = rows
-        .into_iter()
-        .map(|(id, uid, agent, ip, reason, hits, first, last)| {
-            serde_json::json!({
-                "id": id, "user_id": uid, "agent": agent, "peer_ip": ip,
-                "reason": reason, "hits": hits,
-                "first_seen": first, "last_seen": last,
-            })
-        })
-        .collect();
-    Ok(ok(serde_json::json!({ "items": items })))
-}
-
 #[get("/rss-info")]
 pub async fn rss_info(
     req: HttpRequest,

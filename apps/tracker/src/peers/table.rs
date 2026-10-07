@@ -182,22 +182,33 @@ impl PeerTable {
     }
 
     // 计数与 snapshot 同口径（审计 10-06）：port=0 不可连接，旧实现计数仍含 → 虚高。
+    //
+    // P2-6（2026-10-07）：再按 user_id 去重——peer_id 客户端自报，同一账号
+    // 可用多个随机 peer_id 在同一 swarm 里注册多条记录，把实时 seeders
+    // 灌成自己的倍数（每账号已有 MAX_PEERS_PER_USER=10 的表配额，但 10 条
+    // 仍足以让「1 个做种的人」显示成 10 个）。权威计数在 snatches（按
+    // user+torrent 唯一），实时口径与之对齐：同一用户在同一 swarm 内
+    // seeder / leecher 各只计一次。
     pub fn count_seeders(&self, info_hash: &str) -> usize {
         self.gc_swarm(info_hash);
+        let mut seen = std::collections::HashSet::new();
         self.swarms.get(info_hash).map_or(0, |s| {
             s.peers
                 .values()
                 .filter(|p| p.is_seeder() && p.port != 0)
+                .filter(|p| seen.insert(p.user_id))
                 .count()
         })
     }
 
     pub fn count_leechers(&self, info_hash: &str) -> usize {
         self.gc_swarm(info_hash);
+        let mut seen = std::collections::HashSet::new();
         self.swarms.get(info_hash).map_or(0, |s| {
             s.peers
                 .values()
                 .filter(|p| !p.is_seeder() && p.port != 0)
+                .filter(|p| seen.insert(p.user_id))
                 .count()
         })
     }
@@ -209,58 +220,61 @@ impl PeerTable {
         )
     }
 
-    /// connectable 抽样候选：优先未测（-1），其次轮替已测 peer（连通性会变化，需周期复测）。
-    /// 返回 (key, ip, port) 供 main 的 tokio 任务做 TCP 回连。
-    /// P2（2026-10-06 安全审计「幽灵做种」）：未测候选超编时按时间轮转起点
-    /// 截断——旧版固定取哈希序前 n 个，大池下排名靠后的未测 peer 可能永远
-    /// 轮不到（CONN_UNTESTED 长期滞留），而「不可达且零上传」过滤对未测
-    /// peer 不生效。轮转后每个未测 peer 在 ceil(total/n) 轮内必被抽中一次。
-    pub fn sample_probes(&self, n: usize) -> Vec<(PeerKey, String, u16)> {
-        let mut out: Vec<(PeerKey, String, u16)> = Vec::with_capacity(n);
-        let mut retriable: Vec<(PeerKey, String, u16)> = Vec::new();
-        for s in self.swarms.iter() {
-            for p in s.peers.values() {
-                if p.connectable == CONN_UNTESTED {
-                    out.push((p.key.clone(), p.ip.clone(), p.port));
-                } else if retriable.len() < n {
-                    retriable.push((p.key.clone(), p.ip.clone(), p.port));
-                }
-            }
+    /// 回连抽样候选快照（策略在 probes.rs：热 swarm 优先 + 未测轮转；
+    /// 2026-10-07 保种组审计 P2 抽出，table.rs 只负责收集不负责选取）。
+    pub(crate) fn probe_candidates(
+        &self,
+    ) -> Vec<super::probes::SwarmCandidates> {
+        self.swarms
+            .iter()
+            .map(|s| super::probes::SwarmCandidates {
+                hot: s.peers.values().any(|p| !p.is_seeder()),
+                peers: s
+                    .peers
+                    .values()
+                    .map(|p| {
+                        (
+                            p.key.clone(),
+                            p.ip.clone(),
+                            p.port,
+                            p.connectable,
+                            p.is_seeder(),
+                        )
+                    })
+                    .collect(),
+            })
+            .collect()
+    }
+
+    /// 交叉上报校验：给定 info_hash + peer_id，返回该 peer 的 user_id，
+    /// 仅当它是**当前存活且在做种**（left=0）的真实 peer 时返回。
+    /// leecher 声明「我从这个 peer 下载了 N 字节」时，tracker 用它把
+    /// peer_id 解析成可计费的上传者账号，并拒绝：
+    ///   · 不存在的 peer_id（凭空捏造上传者）
+    ///   · 指向自己（自己报自己下载 = 自己给自己刷上传）
+    ///   · 指向 leecher/非做种 peer（只有做种者才能提供上传）
+    /// 存活判定顺带做了 GC 语义外的惰性检查：peer 表本身按 TTL 除名，
+    /// 这里只认表内现有行。
+    pub fn corroboration_target(
+        &self,
+        info_hash: &str,
+        peer_id: &str,
+        leecher_id: i64,
+    ) -> Option<i64> {
+        self.gc_swarm(info_hash);
+        let s = self.swarms.get(info_hash)?;
+        let p = s.peers.get(peer_id)?;
+        if !p.is_seeder() || p.port == 0 {
+            return None;
         }
-        if out.len() > n {
-            let epoch = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs() as usize)
-                .unwrap_or(0)
-                / 300; // 抽样周期 5min，同轮内稳定、跨轮前进
-            let skip = epoch % out.len();
-            out.rotate_left(skip);
-            out.truncate(n);
+        if p.user_id == leecher_id {
+            return None; // 自报自下载
         }
-        // 二轮审计：retriable 也要轮转——旧版只取迭代序前 n 个已测 peer，
-        // 大站已测池 >n 时其余永不复测，connectable 冻结（先正常做种测得
-        // 可达、再撤监听伪造 announce，suspect_ghost_seed 永不触发）。
-        if !retriable.is_empty() {
-            let epoch = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs() as usize)
-                .unwrap_or(0)
-                / 300;
-            let skip = epoch % retriable.len();
-            retriable.rotate_left(skip);
-        }
-        for r in retriable {
-            if out.len() >= n {
-                break;
-            }
-            out.push(r);
-        }
-        out
+        Some(p.user_id)
     }
 
     /// 回连结果写回（peer 可能在检测间隙超时下线——不存在则忽略）
-    pub fn set_connectable(&self, key: &PeerKey, reachable: bool) {
-        if let Some(mut s) = self.swarms.get_mut(&key.info_hash) {
+    pub fn set_connectable(&self, key: &PeerKey, reachable: bool) {        if let Some(mut s) = self.swarms.get_mut(&key.info_hash) {
             if let Some(p) = s.peers.get_mut(&key.peer_id) {
                 p.connectable = if reachable { CONN_OK } else { CONN_DEAD };
             }
