@@ -44,6 +44,10 @@ pub async fn preserve_settle(db: &PgPool) -> anyhow::Result<u64> {
         -- 停种 N 天后回来，中间天数照发（只需结算时点在种）。新口径：
         -- 下一档 = 已结算 preserve 行数 + 1，停种期间不产生新行；
         -- 仍要求结算时点在种 + 距上一档 ≥1 天（防反复上下线刷首档）。
+        -- P0-2（2026-10-07 保种组审计）：「在种」补幽灵过滤——port>0 且回连
+        -- 非「不可达」。实测 port=0 的纯 curl announce 即可令 seeding=true，
+        -- 无文件无监听也能按天领保种奖励。connectable 为 NULL（未测）放行，
+        -- 与做种收益结算同口径。
         WITH due AS (
             SELECT sp.claimed_by AS user_id, sp.torrent_id,
                    (SELECT count(*) FROM spark_ledger l
@@ -58,6 +62,7 @@ pub async fn preserve_settle(db: &PgPool) -> anyhow::Result<u64> {
             JOIN snatches s
               ON s.torrent_id = sp.torrent_id AND s.user_id = sp.claimed_by AND s.seeding
             WHERE sp.claimed_by IS NOT NULL AND sp.exited_at IS NULL
+              AND s.last_port > 0 AND NOT COALESCE(s.connectable = 0, false)
               AND now() - COALESCE((SELECT max(l.created_at) FROM spark_ledger l
                     WHERE l.kind = 'preserve_reward'
                       AND l.idempotency_key LIKE 'preserve:' || sp.torrent_id || ':%'

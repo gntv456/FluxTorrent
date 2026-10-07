@@ -188,6 +188,7 @@ pub(super) async fn announce(
         &ip,
         connectable,
         "", // UDP 不携带 UA；agent 列以 HTTP announce 为准
+        port,
     )
     .await;
 

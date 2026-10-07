@@ -48,6 +48,13 @@ pub async fn seeding_reward(
                 -- donor_privileged（0295）：真捐赠永久，或 vip_until / donor_until
                 -- 任一未过期。此前这里直接读 u.donor，而魔力购买 VIP 会顺带把
                 -- donor 置 TRUE 且全库无复位路径 ⇒ 30 天待遇变永久。
+                -- P0-2（2026-10-07 保种组审计）：幽灵做种过滤从「connectable=0 且
+                -- uploaded=0」升级为三条件——port=0（未开监听，纯 curl 伪造）或
+                -- 回连不可达的行一律不计收益。实测旧口径下 port=0 的裸 HTTP
+                -- GET 即可令 seeding=true 领收益，且 uploaded>0/connectable 历史值
+                -- 都能绕过旧过滤。
+                -- cheat 拉黑（P1 累进处置）：存在任一未处置的 ghost/speed/reset
+                -- 类作弊事件的用户整体停发（管理组处置后自动恢复）。
                 SELECT u.id AS user_id, donor_privileged(u.id) AS donor,
                        seeding_torrent_bonus(
                            t.size,
@@ -60,10 +67,19 @@ pub async fn seeding_reward(
                 FROM users u
                 JOIN snatches s ON s.user_id = u.id AND s.seeding
                 JOIN torrents t ON t.id = s.torrent_id
-                  AND NOT (s.connectable::int = 0 AND s.uploaded = 0)
+                  AND s.last_port > 0
+                  AND NOT COALESCE(s.connectable = 0, false)
                 CROSS JOIN p
                 WHERE u.status < 2
                   AND s.last_seen_at > now() - ($2::bigint * interval '1 second')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM cheat_events c
+                      WHERE c.user_id = u.id AND c.resolved_at IS NULL
+                        AND (c.agent LIKE 'ghost:%' OR c.agent LIKE 'speed:%'
+                             OR c.agent LIKE 'reset:%'
+                             OR c.agent = 'connectable')
+                      LIMIT 1
+                  )
             ),
             per_user AS (
                 SELECT user_id, donor, sum(b) AS bonus_raw

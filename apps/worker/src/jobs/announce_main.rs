@@ -65,18 +65,24 @@ pub async fn consume_announce(
                     .await;
                 touched_users.insert(ev.user);
                 touched_torrents.insert(torrent_id);
-                // connectable 抽样联动（0071 P1-9）：不可达 + 零上传 →
-                // 疑似假保种，记入作弊探测
-                if ev.conn == Some(0) {
+                // connectable 抽样联动（0071 P1-9 → 2026-10-07 保种组审计 P0-2）：
+                // 不可达 + 零上传 + 无监听端口 → 幽灵做种实锤。事件键从
+                // 'connectable' 改为 'ghost:{hash8}'——速度/回退/幽灵三类统一
+                // 按种子分键（旧 'connectable' 是全账号单行，hits 聚合后无法
+                // 定位是哪颗种子在刷，累进处置也分不出轻重）。
+                if ev.conn == Some(0) && ev.port == 0 && ev.up == 0 {
+                    let ghost_key =
+                        format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]);
                     let _ = sqlx::query(
                         "INSERT INTO cheat_events (user_id, agent, \
-                         peer_ip, reason) VALUES ($1, 'connectable', \
-                         $2, 'suspect_ghost_seed') \
+                         peer_ip, reason) VALUES ($1, $2, \
+                         $3, 'ghost_seed（无监听端口且回连不可达的幽灵做种）') \
                          ON CONFLICT (user_id, agent, reason) DO UPDATE \
                            SET hits = cheat_events.hits + 1, \
                                last_seen = now()",
                     )
                     .bind(ev.user)
+                    .bind(&ghost_key)
                     .bind(&ev.ip)
                     .execute(db)
                     .await;
@@ -236,6 +242,12 @@ pub(crate) struct AnnounceEvent {
     /// announce 来源 IP（0071 反作弊：账号 IP 跳变/多 IP 分析）
     #[serde(default)]
     pub(crate) ip: String,
+    /// 上报监听端口（2026-10-07 保种组审计 P0-2）：0=客户端未开监听，
+    /// 「幽灵做种」判定基础（port=0 不可能提供上传，不得按在种累计）。
+    /// 旧事件缺省 0：升级窗口内的旧客户端按保守口径不计在种（真实客户端
+    /// 必带端口，缺省 0 影响面≈零）。
+    #[serde(default)]
+    pub(crate) port: u16,
     /// tracker 主动回连抽样结果（0071）：-1=未测（缺省/旧事件） 0=不可达 1=可达
     #[serde(default)]
     pub(crate) conn: Option<i16>,

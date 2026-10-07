@@ -37,7 +37,9 @@ pub(crate) async fn webhook_broadcast(db: &PgPool, text: &str) {
 
 /// 种子级 up/down 差额对账（NP cheaterbox 口径）：
 /// 虚报上传者没有对应真实下载方，同种子 7 天窗口 Σ(delta_up) − Σ(delta_down) 长期为正且巨大。
-/// 免费促销（free/x2free，含全局/官种/分类维度）天然产生差额，豁免。
+/// 免费促销（free/x2free）天然产生差额，豁免——按流水自身的 promotion_kind 豁免
+/// （2026-10-07 保种组审计 P2：旧版按**当前时刻**查促销表，促销结束后的 7 天窗口内
+/// 刷的量会被误豁免；且要求 COUNT(DISTINCT user_id)>=2，实测单账号刷 723GiB 零告警）。
 /// 命中 → cheat_events（agent='torrent_gap', agent 字段存 torrent:{id}）+ 首次进管理组信箱。
 pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
     let threshold_gb: i64 = sqlx::query_scalar::<_, String>(
@@ -52,13 +54,16 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
     .clamp(1, 10240);
     let threshold = threshold_gb * 1024 * 1024 * 1024;
 
+    // promotion_kind：free=1 x2free=3（promotion_kind_enum 标签序，见 promo_audit.rs）
     let rows: Vec<(i64, i64)> = sqlx::query_as(
         r#"
         SELECT torrent_id, SUM(delta_up) - SUM(delta_down) AS gap
         FROM traffic_ledger
         WHERE window_start > now() - interval '7 days'
+          AND COALESCE(promotion_kind, 0) NOT IN (1, 3)
         GROUP BY torrent_id
-        HAVING SUM(delta_up) - SUM(delta_down) > $1 AND COUNT(DISTINCT user_id) >= 2
+        HAVING SUM(delta_up) - SUM(delta_down) > $1
+           AND SUM(delta_up) > 5 * GREATEST(SUM(delta_down), 1)  -- 相对比率：up/down>5 才算异常
         "#,
     )
     .bind(threshold)
@@ -67,24 +72,6 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
 
     let mut first_hits = 0u64;
     for (torrent_id, gap) in rows {
-        // 免费促销豁免（与 hr_enforce 的免费判定同口径）。
-        // 审计修复：官方范围（scope='official'）促销此前不看 kind 整条豁免——
-        // 官方 x2（上传双倍、下载照计）也会把 up-down gap 洗成「免费」跳过审计。
-        // 收窄为：仅下载侧免费类 kind（free/x2free）豁免（x2free 上传虽双倍，但下载为 0，
-        // 天然产生 gap 且属官方促销口径，整条豁免）；其余 kind（x2/half/x2half/p30）一律不豁免。
-        let exempt: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM promotions p \
-             WHERE (p.torrent_id = $1 OR p.torrent_id IS NULL) \
-               AND p.starts_at <= now() AND p.ends_at > now() \
-               AND p.kind IN ('free','x2free'))",
-        )
-        .bind(torrent_id)
-        .fetch_one(db)
-        .await
-        .unwrap_or(false);
-        if exempt {
-            continue;
-        }
         let agent = format!("torrent:{torrent_id}");
         let existed: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM cheat_events WHERE \
