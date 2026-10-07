@@ -64,7 +64,7 @@ async fn rss_feed(
             .body("too many requests");
     }
     let user: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE passkey = $1 AND status < 2",
+        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2",
     )
     .bind(&passkey)
     .fetch_optional(&state.repo.db)

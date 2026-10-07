@@ -19,6 +19,19 @@ struct AgentRuleRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// pattern 会被 tracker 编译成正则（`guard_refresh.rs` 里 `Regex::new`），
+/// 编译失败就在加载阶段被跳过——站点侧看起来「已配置」，实际恒不生效。
+/// 所以在写入口就判掉：允许合法正则，拒绝非法语法与空模式。
+pub(crate) fn check_pattern(p: &str) -> DomainResult<()> {
+    // 详情（编译器报错）走日志，不进用户可见串：format! 拼的句子无法按原句查表
+    regex::Regex::new(p)
+        .map_err(|e| {
+            tracing::warn!(%e, %p, "agent_rules pattern 不是合法正则");
+            DomainError::Validation("pattern 需是合法正则表达式".into())
+        })
+        .map(|_| ())
+}
+
 #[get("/admin/agentrules")]
 async fn agent_rules_list(
     req: HttpRequest,
@@ -65,6 +78,7 @@ async fn agent_rules_add(
     if p.is_empty() || p.len() > 100 {
         return Err(DomainError::Validation("pattern 长度 1-100".into()));
     }
+    check_pattern(p)?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO agent_rules (mode, pattern, note, created_by) \
          VALUES ($1, $2, $3, $4) RETURNING id",
@@ -145,12 +159,18 @@ async fn agent_rules_import(
         return Err(DomainError::Validation("单次导入上限 500 条".into()));
     }
     let mut added = 0i64;
+    let mut invalid = 0i64;
     for r in &body.rules {
         if !["allow", "deny"].contains(&r.mode.as_str()) {
             continue; // 跳过非法条目，不整体失败
         }
         let p = r.pattern.trim();
         if p.is_empty() || p.len() > 100 {
+            invalid += 1;
+            continue; // 跳过非法条目，不整体失败
+        }
+        if check_pattern(p).is_err() {
+            invalid += 1;
             continue;
         }
         let n = sqlx::query(
@@ -174,7 +194,12 @@ async fn agent_rules_import(
         .audit(Some(auth.id), "agentrule.import", Some(added))
         .await;
     Ok(ok(
-        serde_json::json!({ "added": added, "skipped": body.rules.len() as i64 - added }),
+        serde_json::json!({
+            "added": added,
+            "skipped": body.rules.len() as i64 - added,
+            // 单独报出来：正则非法的规则存进去也不会生效，别让它假成功
+            "invalid": invalid,
+        }),
     ))
 }
 
@@ -207,4 +232,27 @@ async fn agent_rules_del(
         .await;
     crate::http::bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "deleted": body.id })))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::check_pattern;
+
+    #[test]
+    fn literal_substring_still_compiles() {
+        // 0036 注释举的例子：子串写法本身就是合法正则
+        assert!(check_pattern("Transmission/3").is_ok());
+        assert!(check_pattern("^qBittorrent/4\\.6").is_ok());
+    }
+
+    #[test]
+    fn invalid_regex_is_rejected_at_the_write_door() {
+        // 站长按「前缀匹配」直觉填的括号写法——旧版能存进去，但永远不生效
+        for bad in ["uTorrent/3.5.5 (build)", "(", "a{2,1}", "[z-a]", "*x"] {
+            assert!(
+                check_pattern(bad).is_err(),
+                "{bad} 应在写入口就被拒，而不是加载时静默跳过"
+            );
+        }
+    }
 }

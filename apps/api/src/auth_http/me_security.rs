@@ -57,15 +57,21 @@ pub async fn me_password_change(
         return Err(DomainError::Validation("旧密码不正确".into()));
     }
     let new_hash = domain::hash_password(&body.new_password)?;
-    // 改密同时轮换 passkey：引导期 root 等公开默认 passkey 不应在改密后继续可用
+    // 改密同时轮换 passkey：引导期 root 等公开默认 passkey 不应在改密后继续可用。
+    // 旧钥进 passkey_prev 宽限窗（审计 10-07 P1-4）：passkey 烤在用户已下载的
+    // 每一个 .torrent 里，即刻失效等于手上所有种子集体停种。
     let new_passkey = uuid::Uuid::new_v4().simple().to_string();
     let rotated: Option<String> = sqlx::query_scalar(
         "UPDATE users SET pass_hash = $2, passkey = $3, \
-         must_reset_password = false WHERE id = $1 RETURNING passkey",
+            must_reset_password = false, \
+            passkey_prev = passkey, \
+            passkey_prev_until = now() + ($4::bigint * interval '1 hour') \
+         WHERE id = $1 RETURNING passkey",
     )
     .bind(auth.id)
     .bind(&new_hash)
     .bind(&new_passkey)
+    .bind(domain::passkey_grace_hours())
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

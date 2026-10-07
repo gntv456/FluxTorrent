@@ -1,153 +1,15 @@
-//! 防护缓存刷新（passkey / ip_bans / agent_rules / interval）。
-//! 从 helpers.rs 按域拆出。
+//! passkey 缓存与限流窗口。
+//! 刷新与种子白名单在 guard_refresh.rs，段封禁/元数据/负缓存在 guard_store.rs。
 
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
+use super::guard_store;
 use super::helpers::{
-    AgentRule, TrackerState, GUARD_REFRESH, PASSKEY_CACHE_CAP,
-    PASSKEY_MISS_TTL, PASSKEY_TTL,
+    AgentRule, TrackerState, PASSKEY_CACHE_CAP, PASSKEY_MISS_TTL, PASSKEY_TTL,
 };
 
 impl TrackerState {
-    /// ip_bans / agent_rules / announce_interval 刷新（60s 节流；多数请求直接命中缓存返回）。
-    /// 管理端变更（flux:guard:ver 轮询置位 force_refresh）可立即触发。
-    /// 单项查询失败保留旧值，不做破坏性覆盖。
-    pub(crate) async fn refresh_guard(&self) {
-        let stale = {
-            let g = self.guard_read();
-            !self.force_refresh.load(Ordering::Relaxed)
-                && g.refreshed_at.elapsed() < GUARD_REFRESH
-                && g.agent_rules.is_some()
-        };
-        if stale {
-            return;
-        }
-        self.force_refresh.store(false, Ordering::Relaxed);
-        let bans: Option<Vec<(String, String)>> = sqlx::query_as(
-            "SELECT host(ip), COALESCE(reason, '') FROM ip_bans",
-        )
-        .fetch_all(&self.db)
-        .await
-        .ok();
-        let rules: Option<Vec<AgentRule>> = sqlx::query_as::<_, (String, String, String)>(
-                        "SELECT mode, pattern, \
-             COALESCE(peer_id_pattern, '') FROM agent_rules",
-        )
-        .fetch_all(&self.db)
-        .await
-        .ok()
-        .map(|rows| {
-            rows.into_iter()
-                .filter_map(|(mode, agent, peer)| {
-                    let agent_re = if agent.is_empty() {
-                        None
-                    } else {
-                        match regex::Regex::new(&agent) {
-                            Ok(r) => Some(r),
-                            Err(e) => {
-                                tracing::warn!(%agent, %e, "agent_rules 正则无效，规则跳过");
-                                return None;
-                            }
-                        }
-                    };
-                    let peer_re = if peer.is_empty() {
-                        None
-                    } else {
-                        match regex::Regex::new(&peer) {
-                            Ok(r) => Some(r),
-                            Err(e) => {
-                                tracing::warn!(%peer, %e, "agent_rules peer_id 正则无效，规则跳过");
-                                return None;
-                            }
-                        }
-                    };
-                    Some(AgentRule {
-                        deny: mode == "deny",
-                        agent_re,
-                        peer_re,
-                    })
-                })
-                .collect()
-        });
-        let interval: i64 = sqlx::query_scalar::<_, String>(
-            "SELECT value FROM site_settings WHERE name = 'announce_interval'",
-        )
-        .fetch_optional(&self.db)
-        .await
-        .ok()
-        .flatten()
-        .and_then(|v| v.parse::<i64>().ok())
-        .map(|v| v.clamp(60, 86400))
-        .unwrap_or(self.cfg.default_interval);
-        // peer 存活 TTL 随 interval 伸缩（审计 10-06 第 4 条）：leecher 曾硬编码
-        // 90s，interval=1800s 下两次 announce 之间即被除名，在线数长期偏低。
-        crate::peers::set_interval_secs(interval);
-        // 种子白名单（P0-2）：全量 info_hash 双口径（规范化 + 原始字节）。
-        // 大站量级 = 十万级字符串 HashSet，内存 ~20MB 内，60s 全量重拉可接受；
-        // 拉取失败保留旧快照（与 ip_bans 同纪律）。
-        let hashes: Option<std::collections::HashSet<String>> = sqlx::query_scalar::<_, String>(
-            "SELECT info_hash FROM torrents WHERE approval_status IN (0, 1) \
-             UNION SELECT raw_info_hash FROM torrents WHERE approval_status IN (0, 1) AND raw_info_hash IS NOT NULL",
-        )
-        .fetch_all(&self.db)
-        .await
-        .ok()
-        .map(|v| v.into_iter().collect());
-
-        let mut g = self.guard_write();
-        if let Some(b) = bans {
-            g.ip_bans = b.into_iter().collect();
-        }
-        if let Some(r) = rules {
-            g.agent_rules = Some(r);
-        }
-        if let Some(h) = hashes {
-            g.known_hashes = Some(h);
-        }
-        g.announce_interval = interval;
-        g.refreshed_at = Instant::now();
-    }
-
-    /// 种子白名单判定（P0-2）：info_hash 是否已在站内注册。
-    /// 命中缓存 O(1)；未命中（含快照未加载/新发种 60s 窗口）直查 PG，
-    /// 查询失败 fail-open（与 passkey 同纪律——DB 抖动不应打断全站 announce）。
-    pub(crate) async fn torrent_registered(&self, info_hash: &str) -> bool {
-        {
-            let g = self.guard_read();
-            if let Some(set) = &g.known_hashes {
-                if set.contains(info_hash) {
-                    return true;
-                }
-                // 快照非空且不含 → 大概率未注册；仍直查兜底新发种窗口
-            }
-        }
-        let known: Option<bool> = sqlx::query_scalar::<_, i64>(
-            "SELECT 1 FROM torrents WHERE (info_hash = $1 OR raw_info_hash = $1) \
-             AND approval_status IN (0, 1) LIMIT 1",
-        )
-        .bind(info_hash)
-        .fetch_optional(&self.db)
-        .await
-        .ok()
-        .map(|r| r.is_some());
-        known.unwrap_or(true)
-    }
-
-    /// scrape 用白名单判定（审计 10-06 第 3 条）：scrape 一次可带几十个
-    /// info_hash，逐 miss 直查 PG 等于把 scrape 变成 DB 放大器——只认 60s
-    /// 全量快照（未命中即未注册，计数按 0 回）。快照尚未完成首次加载时
-    /// 退化为直查（仅启动最初一瞬；scrape 链路先 refresh_guard 预热）。
-    pub(crate) async fn torrent_registered_scrape(
-        &self,
-        info_hash: &str,
-    ) -> bool {
-        if let Some(set) = &self.guard_read().known_hashes {
-            return set.contains(info_hash);
-        }
-        self.torrent_registered(info_hash).await
-    }
-
     /// passkey → (user_id, download_enabled, suspended)，60s 内存缓存。
     /// 未命中负缓存 30s（审计 10-06 第 7 条）：随机 passkey 洪水不落 PG。
     pub async fn resolve_passkey_cached(
@@ -168,15 +30,29 @@ impl TrackerState {
                 return None;
             }
         }
-        let row: Option<(i64, bool, bool)> =
-            sqlx::query_as::<_, (i64, bool, bool)>(
-                "SELECT id, download_enabled, \
-             suspended FROM users WHERE passkey = $1 AND status < 2",
-            )
-            .bind(passkey)
-            .fetch_one(&self.db)
-            .await
-            .ok();
+        // 改密后的宽限窗（审计 10-07 P1-4）：passkey 烤在用户已下载的每一个
+        // .torrent 里，旧密钥一失效就等于手上所有种子集体停种（libtorrent 系
+        // 客户端还会把 tracker 标成错误、长时间不再重试）。prev 由改密接口写入。
+        let outcome = sqlx::query_as::<_, (i64, bool, bool)>(
+            "SELECT id, download_enabled, suspended FROM user_by_passkey \
+             WHERE passkey = $1 AND status < 2",
+        )
+        .bind(passkey)
+        .fetch_optional(&self.db)
+        .await;
+        let row = match outcome {
+            Ok(r) => r,
+            Err(e) => {
+                // 查询失败 ≠ 密钥无效。旧实现用 `.ok()` 把两者混成一谈，
+                // 于是一次瞬时抖动就把**合法** passkey 负缓存 30s——表现成
+                // 全站「passkey 无效，请在站点重置」的假象。
+                tracing::warn!(%e, "passkey 查询失败，本次拒绝但不写负缓存");
+                self.metrics
+                    .passkey_query_failed
+                    .fetch_add(1, Ordering::Relaxed);
+                return None;
+            }
+        };
         let mut g = self.guard_write();
         if g.passkeys.len() + g.passkey_miss.len() >= PASSKEY_CACHE_CAP {
             g.passkeys.clear(); // 粗暴防膨胀：正常站点远达不到该量级
@@ -194,11 +70,6 @@ impl TrackerState {
             }
         }
         row
-    }
-
-    /// ip_bans 命中 → 封禁理由
-    pub fn ip_banned(&self, ip: &str) -> Option<String> {
-        self.guard_read().ip_bans.get(ip).cloned()
     }
 
     /// agent_rules 黑白名单判定（P0-7 交叉验证版）：
@@ -238,7 +109,10 @@ impl TrackerState {
         let mut c = self.redis.clone();
         match c.incr::<_, _, i64>(key, 1).await {
             Ok(n) => {
-                if n == 1 {
+                // INCR 后补 EXPIRE 若只试一次且失败，这个键就永不过期 ⇒
+                // 窗口再不重置，该 IP/用户等于被永久限流。pttl<0 即无 TTL，补一次。
+                let ttl = c.pttl::<_, i64>(key).await.unwrap_or(-1);
+                if ttl < 0 {
                     let _ = c.expire::<_, i64>(key, 60).await;
                 }
                 n > limit
@@ -267,6 +141,18 @@ impl TrackerState {
         self.rate_over(&k, self.cfg.user_per_min)
             .await
             .then_some("announce 频率超限（用户），请稍后再试")
+    }
+
+    /// scrape 独立限流（审计 10-07 P2）：旧版与 announce 共用 `rl:ann:ip:` 桶，
+    /// 一次全站轮询就把该 IP 的 announce 额度吃光，用户表现为「突然全站在报超限」。
+    pub async fn rate_limited_scrape(
+        &self,
+        ip: &str,
+    ) -> Option<&'static str> {
+        let k = format!("rl:scr:ip:{ip}");
+        self.rate_over(&k, guard_store::scr_per_min())
+            .await
+            .then_some("scrape 频率超限（IP），请稍后再试")
     }
 
     /// 全局应急熔断（ANN_RATE_GLOBAL_PER_MIN，0=关闭）：分布式洪水时保护后端不被打垮

@@ -60,17 +60,67 @@ pub(crate) async fn process_event(
         return Ok(None);
     }
 
-    let (
-        anchor_up,
-        anchor_down,
-        credit_up,
-        credit_down,
-        had_baseline,
-        held_up,
-        held_down,
-    ) = ledger_guard(&mut tx, ev, torrent_id, torrent_size, seed_cap).await?;
+    let g = ledger_guard(&mut tx, ev, torrent_id, torrent_size).await?;
+    let (anchor_up, anchor_down) = (g.anchor_up, g.anchor_down);
+    let (had_baseline, held_up, held_down) =
+        (g.had_baseline, g.held_up, g.held_down);
+    let mut credit_up = g.credit_up;
+    let credit_down = g.credit_down;
+
+    // P0-2 交叉上报上限（2026-10-07 治本）：uploader 的上传量只认「被 leecher
+    // 佐证过」的量。snatches.uploaded 是本账户在该种上已入账的终身上传，
+    // upload_corroborated.bytes 是被独立 leecher 确认过的可信总量；
+    // 本笔可再入账 = corroborated - 已入账。封顶后无法凭自报做高 ratio。
+    // 兼容：客户端未发 xreport（表里无该用户行）时维持原自报口径，
+    // 避免全站瞬间零计费——待客户端接入交叉上报后自动收紧。
+    let corroborated: Option<i64> = sqlx::query_scalar(
+        "SELECT bytes FROM upload_corroborated \
+         WHERE uploader_id = $1 AND torrent_id = $2",
+    )
+    .bind(ev.user)
+    .bind(torrent_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    let mut corr_held = 0i64;
+    if let Some(corr_total) = corroborated {
+        let acc_uploaded: i64 = sqlx::query_scalar(
+            "SELECT uploaded FROM snatches \
+             WHERE user_id = $1 AND torrent_id = $2",
+        )
+        .bind(ev.user)
+        .bind(torrent_id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .unwrap_or(0);
+        let room = (corr_total - acc_uploaded).max(0);
+        if credit_up > room {
+            corr_held = credit_up - room;
+            credit_up = room;
+        }
+    }
     let delta_up = (credit_up as f64 * up_mult) as i64;
     let delta_down = (credit_down as f64 * down_mult) as i64;
+
+    // 交叉佐证不足的扣量留痕：与 speed: 超速率同类，agent 用 corr: 前缀区分
+    if corr_held > 0 {
+        let _ = sqlx::query(
+            "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
+             VALUES ($1, $2, $3, 'uncorroborated_upload（自报上传量超出 leecher 佐证上限，超出部分未入账）') \
+             ON CONFLICT (user_id, agent, reason) DO UPDATE \
+               SET hits = cheat_events.hits + 1, last_seen = now()",
+        )
+        .bind(ev.user)
+        .bind(format!("corr:{torrent_id}"))
+        .bind(&ev.ip)
+        .execute(&mut *tx)
+        .await;
+        tracing::warn!(
+            user = ev.user,
+            torrent = torrent_id,
+            corr_held,
+            "自报上传超出交叉佐证上限，超出部分未入账"
+        );
+    }
 
     // 超上限留痕：agent 沿用 cheat_audit 的 torrent:{id} 约定、speed: 前缀区分来源，
     // reason 带被扣量与证据，供管理组复核后用补量接口发还。
@@ -100,16 +150,72 @@ pub(crate) async fn process_event(
         );
     }
 
-    // P0-2 幽灵做种三条件（保种组实测审计 2026-10-07）：left=0（数据完整）
-    // AND port>0（客户端开了监听端口——纯 curl 伪造 announce 恒 port=0）
-    // AND connectable!=0（回连不可达的挂种不算在种；None=本次未测，放行）。
-    // 实测旧口径下「无端口、无文件、无监听」的裸 HTTP GET 即可令 seeding=true、
-    // seeders+1、seeded_seconds 持续累计，做种收益/保种区/复活任务全链路可刷。
-    let seeding = ev.left == 0 && ev.port > 0 && ev.conn != Some(0);
-    // P0-2C completed 下载侧证据：累计入账下载量为 0 的 "completed" 是伪造
-    // （连一个字节都没下载过就宣布完成）。H&R buffer 用 10% 口径，这里只做
-    // 非零下限——宽松但足以拦「从未下载、伪造事件直接挂种」的路径。
-    let completed = ev.event == "completed" && ev.down > 0;
+    // P0-2 幽灵做种四条件（保种组实测审计 2026-10-07 二轮）：
+    //   left=0（声称数据完整）AND port>0（开了监听端口）AND
+    //   connectable!=0（回连不可达的不算）AND
+    //   **原始累计下载量 > 0**（真的下过数据）。
+    // 第四条是本轮新增的不变量：left=0 声称「我持有完整数据」，却从未
+    // 下载过一个字节 —— 逻辑上不可能（数据只能靠下载获得，跨种/秒传也
+    // 仍要经由本账户的 snatches 下载量）。此前只要开一个监听端口即可
+    // 伪装，conn 探测又只验 TCP 三手、且大 swarm 多数 peer 根本没轮到
+    // 探测（conn=None 直接放行），幽灵做种几乎无门槛。
+    // 判定用 `g.phys_down`（本笔 credited ∪ 历史 credited，倍率前物理量），
+    // 不再用 ev.down 这个自报读数——freeleech 下照常非零，不误杀真做种者。
+    let has_payload = g.phys_down > 0;
+    // 比例下限与 H&R buffer 同口径（size×10.4%），整数运算避免浮点误差。
+    let payload_ratio_ok = torrent_size <= 0
+        || g.phys_down.saturating_mul(1000)
+            >= torrent_size.saturating_mul(104);
+    let seeding = ev.left == 0
+        && ev.port > 0
+        && ev.conn != Some(0)
+        && has_payload
+        && payload_ratio_ok;
+    // P0-2C completed 下载侧证据（2026-10-07 二轮加固）：旧判据仅
+    // `event=="completed" && ev.down > 0` —— 报 1 字节 + 一个 completed
+    // 事件即可把 times_completed / 完成榜 / 「完成 N 颗」类任务考核全部
+    // 注水，且不要求 left=0（没下完也能标记完成，与真实语义不符）。
+    // 现在要求：① 真发 completed 事件；② left=0（确实下完）；
+    // ③ 物理下载量非零；④ 达种子大小 10%（低于 10% 属误触/秒删）；
+    // ⑤ 之前已有 peer 行——UNIT3D 口径：首报即自称完成的不算，否则一颗没人
+    // 碰过的种子可以被凭空刷 times_completed / 完成榜 / 「完成 N 颗」类考核。
+    let completed = ev.event == "completed"
+        && ev.left == 0
+        && has_payload
+        && payload_ratio_ok
+        && g.had_baseline;
+    // 幽灵签名留痕（2026-10-07 二轮）：声称 left=0（持有完整数据）却从未
+    // 下载过任何字节 —— 记 cheat_events 供管理组复核。
+    // 为什么不直接封号：确有合法例外（跨种/二传者从别处拿到数据直接做种，
+    // 本站 downloaded 恒为 0）。这类账号会被本判定挡下做种收益，但保留
+    // 人工申诉通道——管理组确认后可在 cheat_events 处置并放行，
+    // 比静默误杀或全站一刀切更稳妥。
+    // 顺带把「上传额远超下载额」也并入 reason：正常做种者上传可略大于
+    // 下载，但两个数量级的落差是纯刷量的强信号。
+    if ev.left == 0 && ev.port > 0 && !has_payload {
+        // 现场描述仍可引用自报读数，但判据已改用站点侧物理量
+        let ratio = if g.raw_down > 0 {
+            format!("（自报下载 {} 字节，credited 未达门槛）", g.raw_down)
+        } else {
+            format!("（声称上传 {} 字节）", g.raw_up)
+        };
+        let _ = sqlx::query(
+            "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
+             VALUES ($1, $2, $3, $4) \
+             ON CONFLICT (user_id, agent, reason) DO UPDATE \
+               SET hits = cheat_events.hits + 1, last_seen = now()",
+        )
+        .bind(ev.user)
+        .bind(format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]))
+        .bind(&ev.ip)
+        .bind(format!(
+            "ghost_seed（声称数据完整但从未下载，疑似幽灵做种{}；\
+             跨种/二传用户可申诉）",
+            ratio
+        ))
+        .execute(&mut *tx)
+        .await;
+    }
     // stopped = 客户端退出：与 tracker 侧 remove(peer) 对齐，DB 也不应继续标记在做种/下载
     let stopped = ev.event == "stopped";
     sqlx::query(

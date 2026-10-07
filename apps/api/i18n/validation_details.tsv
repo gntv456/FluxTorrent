@@ -48,3 +48,5 @@ key 需为小写字母/数字/下划线，≤40 字符	key 需為小寫字母/�
 本站要求提交 MediaInfo	本站要求提交 MediaInfo	This site requires MediaInfo
 该内容的删除状态已变化，请重试	該內容的刪除狀態已變化，請重試	The deletion state of this item changed; please retry
 单次最多处理 100 条	單次最多處理 100 條	At most 100 items per batch
+CIDR 前缀长度无效	CIDR 前綴長度無效	Invalid CIDR prefix length
+pattern 需是合法正则表达式	pattern 需是合法正則運算式	pattern must be a valid regular expression

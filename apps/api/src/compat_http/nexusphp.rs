@@ -419,7 +419,7 @@ async fn compat_np_download(
         }
     }
     let user_id: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE passkey = $1 AND status < 2 \
+        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2 \
          AND download_enabled AND NOT suspended",
     )
     .bind(&q.passkey)

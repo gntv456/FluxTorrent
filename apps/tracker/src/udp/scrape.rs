@@ -61,11 +61,17 @@ pub(super) async fn scrape(
     let mut out = Vec::with_capacity(8 + n_hash * 12);
     out.extend_from_slice(&SCRAPE_ACTION.to_be_bytes());
     out.extend_from_slice(&transaction_id.to_be_bytes());
-    for chunk in pkt[16..16 + n_hash * 20].chunks_exact(20) {
+    // 条数上限（审计 10-07 P2）：与 HTTP scrape 同档，超限只回前 N 条。
+    // 注意 passkey 的切片偏移仍按**原始** n_hash 算，截断只影响回包条数。
+    let cap = crate::http_track::guard_store::scrape_max_hashes();
+    let n_show = n_hash.min(cap);
+    for chunk in pkt[16..16 + n_show * 20].chunks_exact(20) {
         let hexkey = crate::peers::hex(chunk);
         // 白名单（审计 10-06 第 3 条）：与 HTTP scrape 同口径，未注册种子计 0；
         // 外置模式计数同源（多副本互见），否则内存表。
-        let (s, l) = if !t.state.torrent_registered_scrape(&hexkey).await {
+        let registered =
+            t.state.torrent_registered_scrape(&hexkey).await;
+        let (s, l) = if !registered {
             (0, 0)
         } else if crate::peers::external::external_enabled() {
             let mut r = t.state.redis.clone();
@@ -75,9 +81,14 @@ pub(super) async fn scrape(
             let (s, l) = t.state.peers.counts(&hexkey);
             (s as i32, l as i32)
         };
+        let done = if registered {
+            t.state.scrape_completed(&hexkey) as i32
+        } else {
+            0
+        };
         out.extend_from_slice(&s.to_be_bytes());
         out.extend_from_slice(&l.to_be_bytes());
-        out.extend_from_slice(&0i32.to_be_bytes()); // downloaded（BEP15 允许 0）
+        out.extend_from_slice(&done.to_be_bytes()); // BEP15 downloads
     }
     out
 }
