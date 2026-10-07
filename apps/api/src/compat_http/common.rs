@@ -31,6 +31,7 @@ pub(crate) fn valid_passkey(p: &str) -> bool {
 /// Redis 故障时 fail-close（与 http::throttle 一致，不给抖动期留缺口）。
 pub(crate) async fn limit_passkey(
     state: &web::Data<std::sync::Arc<AppState>>,
+    req: &actix_web::HttpRequest,
     scope: &str,
     passkey: &str,
     max: i64,
@@ -46,6 +47,21 @@ pub(crate) async fn limit_passkey(
         let _: () = c.expire(&key, 60).await.unwrap_or(());
     }
     if n > max {
+        return Err(DomainError::RateLimited);
+    }
+    // 二轮遗留（2026-10-07）：IP 第二维——旧版只按被试 passkey 分桶，攻击者
+    // 每次换随机 passkey 即新桶 = 等效无限流（匿名无界打 users 索引查询）。
+    // passkey 空间 36^32 枚举不可行，但资源消耗面要堵：同 IP 每分钟最多
+    // 120 次探测（覆盖正常用户多 passkey 端点的合理使用）。
+    let ip = crate::http::client_ip(req);
+    let ip_key = format!("rl:{scope}-ip:{}", ip);
+    let m: i64 = c.incr(&ip_key, 1).await.map_err(|e| {
+        DomainError::Internal(anyhow::anyhow!("限流服务不可用: {e}"))
+    })?;
+    if m == 1 {
+        let _: () = c.expire(&ip_key, 60).await.unwrap_or(());
+    }
+    if m > 120 {
         return Err(DomainError::RateLimited);
     }
     Ok(())

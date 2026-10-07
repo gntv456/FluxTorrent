@@ -103,6 +103,7 @@ async fn alias_takelogin(req: HttpRequest) -> DomainResult<HttpResponse> {
 #[get("/compat/nexusphp/userdetails.php")]
 async fn alias_userdetails(
     state: web::Data<std::sync::Arc<AppState>>,
+    req: HttpRequest,
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let passkey = q
@@ -113,7 +114,7 @@ async fn alias_userdetails(
     if !super::valid_passkey(&passkey) {
         return Err(DomainError::Unauthorized);
     }
-    super::limit_passkey(&state, "npud", &passkey, 30).await?;
+    super::limit_passkey(&state, &req, "npud", &passkey, 30).await?;
     let uid: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM users WHERE passkey = $1 AND status < 2",
     )

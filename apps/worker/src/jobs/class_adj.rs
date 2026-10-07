@@ -91,14 +91,35 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
     for row in &promoted {
         let (uid, old_class, new_class): (i64, i32, i32) =
             (row.try_get(0)?, row.try_get(1)?, row.try_get(2)?);
-        let reward: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(sum(promo_sparks),0)::bigint FROM class_rules \
-             WHERE class_id > $1 AND class_id <= $2",
+        // 二轮遗留（2026-10-07）：区间求和只看 (old, new]，幂等键只锚 new——
+        // 降级再升级（换目标档）会把已领过的中间档再发一遍。改为扣除
+        // 「历史已领过的档位」（扫 class_promotion 流水键解析档位）后求和。
+        let already: Vec<String> = sqlx::query_scalar(
+            "SELECT idempotency_key FROM spark_ledger              WHERE user_id = $1 AND kind = 'class_promotion'",
+        )
+        .bind(uid)
+        .fetch_all(db)
+        .await
+        .unwrap_or_default();
+        let claimed: Vec<i32> = already
+            .iter()
+            .filter_map(|k| k.rsplit(':').next()?.parse::<i32>().ok())
+            .collect();
+        let gross: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(sum(promo_sparks),0)::bigint FROM class_rules              WHERE class_id > $1 AND class_id <= $2",
         )
         .bind(old_class)
         .bind(new_class)
         .fetch_one(db)
         .await?;
+        let dedup: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(sum(promo_sparks),0)::bigint FROM class_rules              WHERE class_id = ANY($1)",
+        )
+        .bind(&claimed)
+        .fetch_one(db)
+        .await
+        .unwrap_or(0);
+        let reward: i64 = gross - dedup;
         if reward <= 0 {
             continue;
         }

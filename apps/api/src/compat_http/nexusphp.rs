@@ -392,9 +392,11 @@ struct NpDownloadQuery {
 #[get("/compat/nexusphp/download.php")]
 async fn compat_np_download(
     state: web::Data<std::sync::Arc<AppState>>,
+    req: HttpRequest,
     q: web::Query<NpDownloadQuery>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    // passkey 限流（防枚举/暴力）：每 passkey 30 次/分钟，复用 Redis 简单计数
+    // passkey 限流（防枚举/暴力）：每 passkey 30 次/分钟 + IP 维 120/min
+    // （换随机 passkey 打散桶的资源面，与 limit_passkey 同口径）
     let bucket = sha3_hex(q.passkey.as_bytes());
     let key = format!("rl:npdl:{}", &bucket[..16]);
     {
@@ -405,6 +407,14 @@ async fn compat_np_download(
             let _: () = c.expire(&key, 60).await.unwrap_or(());
         }
         if n > 30 {
+            return Err(DomainError::RateLimited.into());
+        }
+        let ip_key = format!("rl:npdl-ip:{}", crate::http::client_ip(&req));
+        let m: i64 = c.incr(&ip_key, 1).await.unwrap_or(0);
+        if m == 1 {
+            let _: () = c.expire(&ip_key, 60).await.unwrap_or(());
+        }
+        if m > 120 {
             return Err(DomainError::RateLimited.into());
         }
     }

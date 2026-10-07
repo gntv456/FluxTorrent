@@ -13,6 +13,11 @@ KEEP_DAYS="${1:-14}"
 STAMP=$(date +%F-%H%M%S)
 OUT_DIR="${FLUX_BACKUP_DIR:-./backups}"
 mkdir -p "$OUT_DIR"
+# 二轮遗留（2026-10-07）：dump 含 users 表（argon2 哈希/passkey/email/2FA
+# secret）——umask 077 让产物仅属主可读；redis 凭据走 REDISCLI_AUTH 环境变量
+# （-a 会让密码短暂出现在宿主进程列表）。
+umask 077
+export REDISCLI_AUTH="${REDIS_PASSWORD:-}"
 
 # PG 全量（含 schema + 数据 + _sqlx_migrations 迁移记账；-Fc 自定义压缩格式，
 # pg_restore 可选表恢复）
@@ -32,11 +37,11 @@ fi
 
 # Redis 事件流/DLQ 快照（BGSAVE 后拷 RDB）。计费未落库的事件在此，必须进备份。
 if docker ps --format '{{.Names}}' | grep -qx flux-redis; then
-  docker exec flux-redis redis-cli -a "$REDIS_PASSWORD" --no-auth-warning \
+  docker exec -e REDISCLI_AUTH flux-redis redis-cli --no-auth-warning \
     BGSAVE >/dev/null 2>&1 || true
   # 等 BGSAVE 落盘（最多 10s），再拷出 dump.rdb
   for _ in $(seq 1 10); do
-    if docker exec flux-redis redis-cli -a "$REDIS_PASSWORD" --no-auth-warning \
+    if docker exec -e REDISCLI_AUTH flux-redis redis-cli --no-auth-warning \
       INFO persistence 2>/dev/null | grep -q 'rdb_bgsave_in_progress:0'; then
       break
     fi

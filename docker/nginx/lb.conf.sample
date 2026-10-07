@@ -56,5 +56,8 @@ server {
     }
 }
 
-# TLS 由站长按域名自行终结（certbot / 云 LB 终结均可）；HSTS 由 web/api
-# 响应头自带。健康检查（外部拨测）：GET /health → 200，GET /api/v1/health → 200。
+# TLS 由站长按域名自行终结（certbot / 云 LB 终结均可）。
+# HSTS：api/web 的响应头**不带** HSTS（api 侧注释明确「由 TLS 终结的反代统一
+# 注入」）——若你在此层终结 TLS，请自行加：
+#   add_header Strict-Transport-Security "max-age=31536000" always;
+# 健康检查（外部拨测）：GET /health → 200，GET /api/v1/health → 200。
