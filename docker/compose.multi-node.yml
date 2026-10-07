@@ -62,7 +62,10 @@ services:
       resources:
         limits:
           memory: 384m
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    # 二轮审计（2026-10-07）：对齐单机 compose 2026-10-02 的修正——Redis 承载
+    # announce 计费事件流与死信，allkeys-lru 内存压力下会静默驱逐未计费的
+    # stream 条目（丢账）；改 noeviction + AOF everysec + 持久卷。
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--appendfsync", "everysec"]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
     ports:
