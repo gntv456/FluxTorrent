@@ -34,6 +34,12 @@ struct PendingTorrent {
     dup_name: i64,
     owner_approved: i64,
     owner_denied: i64,
+    /// 分型审核字段（0326）：kind|label → {v: 首值, vs: 全值}；NULL = 无维度
+    sections: Option<serde_json::Value>,
+    /// 工件清单（0323）；NULL = 无工件
+    artifacts: Option<serde_json::Value>,
+    /// 抓轨日志概要（0312）；NULL = 无日志
+    logs: Option<serde_json::Value>,
 }
 
 /// 队列查询参数（0286 分页 / 筛选 / 排序）。
@@ -106,7 +112,35 @@ async fn review_queue(
                       AND w.approval_status = 1) AS owner_approved,
                   (SELECT count(*) FROM torrents w
                     WHERE w.owner_id = t.owner_id
-                      AND w.approval_status = 2) AS owner_denied
+                      AND w.approval_status = 2) AS owner_denied,
+                  -- 分型审核字段（批次 3b/0326）：该种的维度键值对
+                  -- （季/话数/作者/版本/联赛…按站型不同），审核台据此
+                  -- 「审影视看季集、审音乐看日志分」而不是 11 型同一张脸
+                  (SELECT jsonb_object_agg(s.key, s.val) FROM (
+                      SELECT COALESCE(k.label, ts.kind) AS key,
+                             jsonb_build_object(
+                               'v', COALESCE(d.name, ts.value #>> '{}'),
+                               'vs', (SELECT jsonb_agg(COALESCE(d2.name,
+                                         ts2.value #>> '{}'))
+                                      FROM torrent_sections ts2
+                                      LEFT JOIN section_dict d2
+                                        ON d2.id = ts2.dict_id
+                                      WHERE ts2.torrent_id = t.id
+                                        AND ts2.kind = ts.kind)) AS val
+                      FROM torrent_sections ts
+                      LEFT JOIN section_dict d ON d.id = ts.dict_id
+                      LEFT JOIN section_kinds k ON k.kind = ts.kind
+                      WHERE ts.torrent_id = t.id) s) AS sections,
+                  -- 工件清单（0323 game/software：校验和/更新日志）
+                  (SELECT jsonb_agg(jsonb_build_object(
+                        'kind', a.kind, 'filename', a.filename,
+                        'sha256', a.sha256))
+                   FROM torrent_artifacts a WHERE a.torrent_id = t.id)
+                    AS artifacts,
+                  -- 抓轨日志（0312 音乐站）：最低分与碟数
+                  (SELECT jsonb_build_object(
+                        'min', min(l.log_score), 'discs', count(*))
+                   FROM torrent_logs l WHERE l.torrent_id = t.id) AS logs
            FROM torrents t
            LEFT JOIN categories c ON c.id = t.category_id
            LEFT JOIN users u ON u.id = t.owner_id

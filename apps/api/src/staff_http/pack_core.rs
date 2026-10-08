@@ -103,12 +103,18 @@ pub(crate) async fn apply_pack_full(
         } else {
             "((NULLIF(key, '')))"
         };
+        // 对外分类号（批次 3a/0325）：Newznab/Torznab 出口按此归位，
+        // 缺号全部回落 Other(8000)。merge 守站长改过的值；restore 按快照。
+        let nz = c
+            .get("newznab_id")
+            .and_then(|v| v.as_i64())
+            .map(|n| n as i32);
         let sql = format!(
             "INSERT INTO categories (id, key, name, icon_key, parent_id, sort, \
-             bg_color) \
+             bg_color, newznab_id) \
              VALUES (CASE WHEN $6 = '' THEN $1 ELSE $9 END, NULLIF($6, ''), $2, \
              COALESCE(NULLIF($3, ''), pick_category_icon($2)), $4, \
-             COALESCE($5, 100), NULLIF($8, '')) \
+             COALESCE($5, 100), NULLIF($8, ''), $10) \
              ON CONFLICT ({conflict_target}) DO UPDATE SET name = EXCLUDED.name, \
              parent_id = COALESCE($4, categories.parent_id), \
              sort = COALESCE($5, categories.sort), icon_key = COALESCE( \
@@ -116,7 +122,9 @@ pub(crate) async fn apply_pack_full(
              NULLIF(categories.icon_key, ''), NULLIF($3, ''), \
              pick_category_icon($2)), \
              bg_color = CASE WHEN $7 THEN EXCLUDED.bg_color \
-             ELSE COALESCE(EXCLUDED.bg_color, categories.bg_color) END"
+             ELSE COALESCE(EXCLUDED.bg_color, categories.bg_color) END, \
+             newznab_id = CASE WHEN $7 THEN EXCLUDED.newznab_id \
+             ELSE COALESCE(categories.newznab_id, EXCLUDED.newznab_id) END"
         );
         sqlx::query(&sql)
             .bind(id)
@@ -132,6 +140,7 @@ pub(crate) async fn apply_pack_full(
             .bind(mode == "restore")
             .bind(bg)
             .bind(next_id)
+            .bind(nz)
             .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
