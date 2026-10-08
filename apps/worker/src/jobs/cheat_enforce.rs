@@ -57,18 +57,36 @@ pub async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
     .await
     .unwrap_or(true);
 
+    // 累进告警线（0311 site_settings 化）：开源后出厂值人人可查，
+    // 各站按社区规模自调。缺行时回落出厂值 3/5。
+    let l1_hits: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'cheat_l1_hits'), 3)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(3);
+    let l2_hits: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'cheat_l2_hits'), 5)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(5);
+    let l2_hits = l2_hits.max(l1_hits); // 防倒挂：L2 不低于 L1
+
     let mut acted = 0u64;
     for (uid, agent, reason, hits) in rows {
         // L1：用户告知。六轮审计 P2-E 修两件：
         //  ① 阈值 hits>=1 太低——任何一条低置信信号（贴边节奏/单次超窗）
         //    就发信，且每轮（10 分钟）重发：实测用户 39 收 50 条同文提醒。
-        //    提到 hits>=3（L1 是教育性告知，不是处罚）。
+        //    提到 L1 线（默认 3；L1 是教育性告知，不是处罚）。
         //  ② 去重——文档声称的「每用户×事件只发一次」此前只对 L2 生效
         //    （staffmessages 靠 NOT EXISTS resolved 挡重），L1 无任何去重。
         //    与 L2 同源：该 (user, agent) 存在**已发出且对应事件未处置**
         //    的提醒即跳过——用 messages 的 subject + body 前缀匹配（messages
         //    无 (receiver, kind) 唯一键，不能上硬约束）。
-        if warn_action && hits >= 3 {
+        if warn_action && hits >= l1_hits {
             let n = sqlx::query(
                 "INSERT INTO messages (sender_id, receiver_id, subject, body) \
                  SELECT NULL, $1, '流量记录异常提醒', $2 \
@@ -98,7 +116,7 @@ pub async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
             }
         }
         // L2：管理组信箱（首次命中即报，同一 (user, agent) 7 天去重）
-        if hits >= 5 {
+        if hits >= l2_hits {
             let n = sqlx::query(
                 "INSERT INTO staffmessages \
                  (user_id, subject, body, permission) \

@@ -53,6 +53,17 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
     .unwrap_or(50)
     .clamp(1, 10240);
     let threshold = threshold_gb * 1024 * 1024 * 1024;
+    // 相对比率（0311 site_settings 化）：开源后出厂值 5 人人可查，各站自调
+    let gap_ratio: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'cheat_gap_ratio'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(5)
+    .clamp(2, 100);
 
     // promotion_kind：free=1 x2free=3（promotion_kind_enum 标签序，见 promo_audit.rs）
     let rows: Vec<(i64, i64)> = sqlx::query_as(
@@ -63,10 +74,11 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
           AND COALESCE(promotion_kind, 0) NOT IN (1, 3)
         GROUP BY torrent_id
         HAVING SUM(delta_up) - SUM(delta_down) > $1
-           AND SUM(delta_up) > 5 * GREATEST(SUM(delta_down), 1)  -- 相对比率：up/down>5 才算异常
+           AND SUM(delta_up) > $2 * GREATEST(SUM(delta_down), 1)  -- 相对比率：up/down 超过比率线才算异常
         "#,
     )
     .bind(threshold)
+    .bind(gap_ratio)
     .fetch_all(db)
     .await?;
 
