@@ -189,6 +189,54 @@ GBK_LOG = (
 ).encode("gb18030")
 
 
+# EAC 1.x 真实形态（2026-10-09 判分表重写后的打分回归样张）
+def _eac_track(n, ar_line):
+    return (
+        "Track  {n}\r\n"
+        "  Filename E:\\rip\\0{n}.flac\r\n"
+        "  Peak level 99.9 %\r\n"
+        "  Track quality 100.0 %\r\n"
+        "  Test CRC 2AFB9E3F\r\n"
+        "  Copy CRC 2AFB9E3F\r\n"
+        "{ar_line}\r\n"
+        "  Copy OK\r\n"
+    ).format(n=n, ar_line=ar_line)
+
+
+_HEAD = (
+    "Exact Audio Copy V1.3 from 23. August 2016\r\n"
+    "EAC extraction logfile from 5. February 2023, 14:30\r\n"
+    "Used drive  : HL-DT-ST BD-RE WH14NS40\r\n"
+    "Read mode               : Secure\r\n"
+)
+_TAIL = "No errors occurred\r\nEnd of status report\r\n"
+
+# 完整证据链 + AR 全过 = 100
+EAC_100 = (
+    _HEAD
+    + _eac_track(1, "  Accurately ripped (confidence 12) [2AFB9E3F]")
+    + _eac_track(2, "  Accurately ripped (confidence 10) [2AFB9E3F]")
+    + _TAIL
+).encode("utf-8")
+
+# 第 1 轨 AR 比对失败 + 第 2 轨没跑 AR：−30 −20 = 50
+EAC_50 = (
+    _HEAD
+    + _eac_track(
+        1, "  Cannot be verified as accurate (confidence 1) [00000000]")
+    + _eac_track(2, "")
+    + _TAIL
+).encode("utf-8")
+
+# Copy aborted → 直接 0（致命，不走扣分档）
+EAC_0 = (
+    _HEAD
+    + _eac_track(1, "  Accurately ripped (confidence 12) [2AFB9E3F]")
+    + "  Copy aborted\r\n"
+    "End of status report\r\n"
+).encode("utf-8")
+
+
 # ---------------------------------------------------------------- 主流程
 def main():
     tok = login()
@@ -209,7 +257,7 @@ def main():
     print("   原设置 %s" % orig)
     made = []
     try:
-        run_cases(tok, uid, made)
+        run_cases(tok, uid, made, orig)
     finally:
         # 兜底必须捕 BaseException：SystemExit 不是 Exception，
         # 早先版本让它逃掉 ⇒ 脏设置与脏种子留在原地
@@ -246,7 +294,7 @@ def tid_of(r):
     return (r.get("data") or {}).get("id")
 
 
-def run_cases(tok, uid, made):
+def run_cases(tok, uid, made, orig):
     # ---- 1. policy=off：日志被忽略，零落库
     set_kv("logcheck_policy", "off")
     tor = make_torrent()
@@ -262,6 +310,30 @@ def run_cases(tok, uid, made):
         "SELECT count(*) FROM torrent_logs WHERE torrent_id=%s" % tid)
     ok("off：零落库", stored == "0",
        "关了闸门还落库 = 存量站被新功能改了行为")
+
+    # ---- 1b. 判分表回归（2026-10-09 重写）：100 / 50 / 0 三档真日志样张
+    set_kv("logcheck_policy", "tag")
+    tor = make_torrent()
+    s, r = upload(
+        tok, tor,
+        logs=[("perfect.log", EAC_100), ("ar_fail.log", EAC_50),
+              ("aborted.log", EAC_0)],
+        name="Audit.Logcheck.Score")
+    ok("判分样张：三碟发种成功", s == 200 and r.get("code") == 0,
+       "%s %s" % (s, r))
+    if s == 200 and r.get("code") == 0:
+        made.append(r["data"]["id"])
+        tid = r["data"]["id"]
+        scores = psql(
+            "SELECT ordinal || '|' || COALESCE(log_score::text,'NULL') "
+            "FROM torrent_logs WHERE torrent_id=%s ORDER BY ordinal" % tid
+        ).splitlines()
+        ok("完美证据链 = 100 分", scores and scores[0].endswith("|100"),
+           scores)
+        ok("AR 失败+未验证 = 50 分（−30 −20 档）",
+           len(scores) > 1 and scores[1].endswith("|50"), scores)
+        ok("Copy aborted = 0 分（致命不走档）",
+           len(scores) > 2 and scores[2].endswith("|0"), scores)
 
     # ---- 2/3/4. policy=tag：unknown 不出分 / GBK 往返 / 多碟顺序
     set_kv("logcheck_policy", "tag")
