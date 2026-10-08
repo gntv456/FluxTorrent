@@ -34,16 +34,22 @@ _ck_result.txt
 _ck_probe.py
 
 # 调试/验证临时产物（跑完即弃；结论沉淀 _doc/，勿入库。仅根目录，不影响 apps/web/_inner.tsx）
+# 可复用工具一律放 scripts/（如 scripts/mobile/、redteam_compat_0267.py），不落根目录
 /_*.txt
 /_*.json
 /_*.png
 /_*.py
 /_*.js
+/_*.mjs
+/_*.sh
 /_*.log
 /_*.html
 /_*.sql
+/_*/
+!_doc/
 /_shots/
 __pycache__/
+target-headcheck/
 
 # 设计参考与竞品素材（第三方版权风险，不入库；借鉴结论沉淀 _doc/）
 UI参考/

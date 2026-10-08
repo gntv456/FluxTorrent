@@ -4,7 +4,7 @@
 > 0267（2026-10-02）修订：此前的「全绿」结论**过于乐观**——三条只验了「端点可达」，
 > 没验「工具的消费路径」。修订后按第三方工具的真实用法逐项复测。
 >
-> 验证方式：`_verify_compat_0267.py`（48 项断言，本地 docker 栈实测）。
+> 验证方式：`scripts/redteam_compat_0267.py`（48 项断言，本地 docker 栈实测）。
 > 相关：[ecosystem.md](ecosystem.md)（收录视角）· `_doc/开放API接入指南.md`（字段与用法）
 
 ## 矩阵（0267 复测后）
@@ -49,5 +49,5 @@
 ## 复测方法
 
 ```bash
-python _verify_compat_0267.py        # 48 项断言，本地栈实测
+python scripts/redteam_compat_0267.py   # 48 项断言，本地栈实测
 ```
