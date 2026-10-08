@@ -25,5 +25,6 @@ export default async (h) => {
     bodyHead: document.body.innerText.slice(0, 160),
   }))()`);
   console.log(JSON.stringify(probe, null, 1));
-  await h.shot('D:/FluxTorrent/scripts/mobile/shots/00-torrents.png');
+  await h.shot(new URL('./shots/00-torrents.png', import.meta.url).pathname
+      .replace(/^\/([A-Za-z]:)/, '$1'));
 };

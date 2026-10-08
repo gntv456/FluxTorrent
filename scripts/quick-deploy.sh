@@ -48,7 +48,7 @@ if [[ -d fluxtorrent/.git ]]; then
   git -C fluxtorrent pull --ff-only
 else
   echo ">> 克隆仓库 ..."
-  git clone https://github.com/gntv456/FluxTorrent.git fluxtorrent
+  git clone "${FLUX_REPO:-https://github.com/gntv456/FluxTorrent}.git" fluxtorrent
 fi
 cd fluxtorrent
 

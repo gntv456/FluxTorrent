@@ -10,8 +10,8 @@ UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
-OUT_DIR = pathlib.Path(r"D:\FluxTorrent\apps\web\public\fonts")
-CSS_OUT = pathlib.Path(r"D:\FluxTorrent\apps\web\app\styles\fonts-tide.css")
+OUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "apps/web/public/fonts"
+CSS_OUT = pathlib.Path(__file__).resolve().parents[1] / "apps/web/app/styles/fonts-tide.css"
 
 # 只取实际用到的字重：display 400（h1 默认）+ 700（加粗/板块标题）、mono 400/500
 FAMILIES = [
