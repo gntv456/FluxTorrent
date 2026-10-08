@@ -10,6 +10,7 @@ import { TorrentsPullRefresh } from "./_parts/refresh-mount";
 import { TorrentSplitView } from "./_parts/torrent-split";
 import { TorrentCards, TorrentPosters } from "./_parts/torrents-cards";
 import { TorrentsViewSwitch } from "./_parts/torrents-view-switch";
+import { TorrentsColSettings } from "./_parts/torrents-col-settings";
 import { TorrentsTableView } from "./_parts/torrents-table-view";
 import { TorrentsHotkeys } from "./_parts/torrents-hotkeys";
 import { TorrentHoverPreview } from "@/components/torrent-hover-preview";
@@ -50,8 +51,22 @@ export default async function TorrentsPage({
   );
   const { dict } = await getDict();
   // 列表形态（方案阶段二）：视图与每页条数都走 URL，未知值回落默认（table / 20）
-  const view = parseView(sp.view);
-  const pageSize = parsePageSize(sp.limit);
+  // 用户级列表偏好（0316）：URL 未显式指定时，回落用户偏好，再回落默认。
+  const userPrefs = await api
+    .get<{
+      view?: string;
+      per_page?: number;
+      hidden_cols?: string[];
+    }>("/api/v1/me/list-prefs")
+    .catch(() => null);
+  const view = sp.view
+    ? parseView(sp.view)
+    : parseView(userPrefs?.view ?? "table");
+  const pageSize = sp.limit
+    ? parsePageSize(sp.limit)
+    : parsePageSize(
+        userPrefs?.per_page ? String(userPrefs.per_page) : "20",
+      );
   const [profile, secDict, tagDict] = await Promise.all([
     loadPublic<{
       categories: {
@@ -78,7 +93,11 @@ export default async function TorrentsPage({
     >("/api/v1/tags-dict"),
   ]);
   // E6 视图布局：站点级列隐藏集合（profile.view_hidden.columns；空=全显示）
-  const hiddenCols = new Set(profile?.view_hidden?.columns ?? []);
+  // 用户级覆盖（0316）：叠加用户额外隐藏列（title/选择/行为列恒显，见表格门控）
+  const hiddenCols = new Set([
+    ...(profile?.view_hidden?.columns ?? []),
+    ...(userPrefs?.hidden_cols ?? []),
+  ]);
   const kinds: SectionKindMeta[] = secDict?.kinds ?? [];
   const dimKinds = kinds.filter((k) => (secDict?.[k.kind]?.length ?? 0) > 0);
   // 0160 起返回 { tags, groups }；旧形态（裸数组）兼容
@@ -206,13 +225,21 @@ export default async function TorrentsPage({
         <span className="num text-xs text-sub">
           {fmt(dict.torrents.total, { n: page.total_estimate })}
         </span>
-        <TorrentsViewSwitch
-          dict={dict}
-          sp={sp}
-          view={view}
-          pageSize={pageSize}
-          withParam={withParam}
-        />
+        <div className="flex items-center gap-3">
+          {/* 用户级列设置（0316）：仅表格视图有列可调 */}
+          {view === "table" && (
+            <TorrentsColSettings
+              initialHidden={userPrefs?.hidden_cols ?? []}
+            />
+          )}
+          <TorrentsViewSwitch
+            dict={dict}
+            sp={sp}
+            view={view}
+            pageSize={pageSize}
+            withParam={withParam}
+          />
+        </div>
       </div>
       {/* 键盘快捷键（/ 搜索、j/k 移动、Enter 打开）：挂载后短暂提示，8s 自动消失 */}
       <TorrentsHotkeys />

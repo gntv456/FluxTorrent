@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 
 /** 站免池捐赠表单（M13 众筹触发下月双免）：走 spark 支出管线，成功后刷新进度 */
 export function PoolDonate() {
-  const { dict, currency } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const router = useRouter();
   const [amount, setAmount] = useState("1000");
   const [msg, setMsg] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export function PoolDonate() {
           onClick={() => setAmount(String(v))}
           className="num min-h-[36px] rounded-full border border-line bg-[var(--surface-card)] px-3 text-xs text-sub active:scale-[0.97]"
         >
-          {v.toLocaleString("zh-CN")}
+          {v.toLocaleString(dateLocale(locale))}
         </button>
       ))}
       <button

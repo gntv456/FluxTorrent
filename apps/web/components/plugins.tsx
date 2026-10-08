@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 
 import { FrameShop } from "./plugins-frames";
 import { GomokuBoard } from "./plugins-gomoku";
@@ -26,7 +27,7 @@ interface Contest {
 // ============ 大赛 ============
 
 export function ContestBoard() {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.contests2;
   const [rows, setRows] = useState<Contest[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
@@ -79,8 +80,8 @@ export function ContestBoard() {
                 {c.descr && <p className="mt-1 text-xs text-sub">{c.descr}</p>}
               </td>
               <td className="text-xs text-sub">
-                {new Date(c.starts_at).toLocaleDateString("zh-CN")} ~{" "}
-                {new Date(c.ends_at).toLocaleDateString("zh-CN")}
+                {new Date(c.starts_at).toLocaleDateString(dateLocale(locale))} ~{" "}
+                {new Date(c.ends_at).toLocaleDateString(dateLocale(locale))}
               </td>
               <td className="num">{c.entries}</td>
               <td>{c.leader ? `${c.leader} (${c.leader_score ?? 0})` : "—"}</td>

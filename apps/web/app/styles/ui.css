@@ -454,3 +454,45 @@
   list-style: none;
   padding-left: 0.4em;
 }
+
+/* ---------- 头栏搜索：按钮 + 弹窗（2026-10-08 站长口径） ----------
+   触发按钮与主题切换同族（同圆角/同底色/同 hover 强调），只是多了文字标签；
+   <md 由 layout.tsx 那侧隐藏，不给 280px 折叠屏外屏态的右工具区加码。 */
+.gsearch-btn {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--baozi-line);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--baozi-ink);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.gsearch-btn:hover {
+  border-color: var(--baozi-orange);
+  color: var(--baozi-orange);
+}
+
+/* 弹窗里的搜索面板：`.gsearch` 原本按「贴顶下拉」设计（绝对定位 + 560px 上限），
+   放进 Modal 卡片必须改成静态展开——顶栏「更多 ▾」那条教训同样适用于这里：
+   绝对定位的下拉会被弹层容器裁掉，表现为「打了字却看不到结果」。 */
+.gsearch--dlg {
+  max-width: none;
+}
+.gsearch--dlg .gsearch__input {
+  min-height: 44px;
+  font-size: 15px;
+}
+.gsearch--dlg .gsearch__drop {
+  position: static;
+  max-height: 46vh;
+  margin-top: 8px;
+  box-shadow: none;
+}

@@ -33,7 +33,17 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const BASELINE = path.join(ROOT, "scripts", "fake_switch_baseline.json");
 const MIGRATIONS = path.join(ROOT, "apps", "api", "migrations");
-const SCAN_DIRS = ["apps/api/src", "apps/worker/src", "apps/web", "packages"];
+// 消费者扫描面必须含 tracker：probe_*/ratio_gate*/announce_pending_policy
+// 的读取方在 apps/tracker/src（guard_refresh 从 site_settings 拉取后经
+// Redis/静态量喂给探测循环与闸门）。漏扫 tracker 会把这些真消费者误判
+// 成假开关（2026-10-08 实炸：8 键全红，其中 6 键消费方就在 tracker）。
+const SCAN_DIRS = [
+  "apps/api/src",
+  "apps/worker/src",
+  "apps/tracker/src",
+  "apps/web",
+  "packages",
+];
 const SKIP_DIR =
   /(^|[/\\])(node_modules|\.next|coverage|target|dist|\.git)([/\\]|$)/;
 const EXT = new Set([".rs", ".ts", ".tsx", ".js", ".mjs", ".sql", ".json"]);

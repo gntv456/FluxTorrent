@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { dateLocale } from "@/i18n/config";
 import { petLineOf, PET_SPECIES_KEY } from "@/lib/pet-lines";
 import type { PetSpecies } from "@/lib/pet-lines";
 import { ProfileHero, StatTiles } from "./_parts/profile-hero";
@@ -121,13 +122,13 @@ export default async function UserProfilePage({
       icon: "✦",
       mod: "spark",
       label: t.sparkField,
-      value: Number(data.spark_balance).toLocaleString("en-US"),
+      value: Number(data.spark_balance).toLocaleString(dateLocale(locale)),
     },
     {
       key: "earn",
       icon: "★",
       label: t.seedEarnField,
-      value: Number(data.month_seed_earn).toLocaleString("en-US"),
+      value: Number(data.month_seed_earn).toLocaleString(dateLocale(locale)),
     },
   ];
   // 标签页文案 + 计数徽标

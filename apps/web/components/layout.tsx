@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getDict } from "@/i18n/server";
+import { dateLocale } from "@/i18n/config";
 import { getSiteProfile } from "@/lib/site-profile";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -11,7 +12,7 @@ import { Icon } from "@/components/icons";
 import { getMenuItems } from "@/lib/data";
 import { buildNav } from "@/lib/nav-menu";
 import { MobileNavShell } from "@/components/mobile-nav-shell";
-import { GlobalSearch } from "@/components/global-search";
+import { GlobalSearchDialog } from "@/components/global-search-dialog";
 import { TabLink } from "@/components/tab-link";
 import { api } from "@/lib/api-client";
 
@@ -41,7 +42,7 @@ export async function Header() {
         username: ov.username,
         className: ov.class_name ?? "",
         uploaded: `${Math.round((ov.uploaded ?? 0) / 1e9)}G`,
-        spark: (ov.spark_balance ?? 0).toLocaleString("en-US"),
+        spark: (ov.spark_balance ?? 0).toLocaleString(dateLocale(locale)),
       }
     : null;
   // 导航配置单源（M2）：桌面/抽屉/底 Tab「更多」共用 lib/nav-menu.ts
@@ -52,7 +53,6 @@ export async function Header() {
     modules: mod,
     customItems,
   });
-
 
   return (
     <>
@@ -81,16 +81,6 @@ export async function Header() {
             </span>
           </Link>
           <div className="min-w-0 flex-1">
-            {/* 全局搜索（0283 P1-6）：桌面常驻（lg+），聚合种子+论坛联想 */}
-            <div className="mb-2 hidden lg:block">
-              <GlobalSearch
-                placeholder={dict.common.globalSearchPh}
-                tipTorrents={dict.common.gsTorrents}
-                tipTopics={dict.common.gsTopics}
-                tipEmpty={dict.common.gsEmpty}
-                tipMore={dict.common.gsMore}
-              />
-            </div>
             {/* Suspense：MainMenu 用 useSearchParams 区分带参条目（官种），
                 预渲染路由要求它包在边界里 */}
             <Suspense fallback={null}>
@@ -106,6 +96,20 @@ export async function Header() {
             {/* M2 移动汉堡（<md）：抽屉与桌面同源配置；摘要行回落游客 */}
             <div className="md:hidden">
               <MobileNavShell primary={primary} groups={groups} summary={me} />
+            </div>
+            {/* 全局搜索（0283 P1-6 → 弹窗化）：以前它独占头栏一行，
+                实测头栏两行 117px；收成一个按钮 + 弹窗后一行 73px。
+                与主题切换同档（<md 隐藏）——280px 折叠屏外屏态的右工具区
+                本来就已经挤，不能再往里塞东西。 */}
+            <div className="hidden md:block">
+              <GlobalSearchDialog
+                label={dict.common.globalSearchBtn}
+                placeholder={dict.common.globalSearchPh}
+                tipTorrents={dict.common.gsTorrents}
+                tipTopics={dict.common.gsTopics}
+                tipEmpty={dict.common.gsEmpty}
+                tipMore={dict.common.gsMore}
+              />
             </div>
             {/* 主题切换 <md 收进汉堡抽屉：280px 折叠屏外屏态右工具区
                 （汉堡+主题+头像）会挤出横向滚动 */}

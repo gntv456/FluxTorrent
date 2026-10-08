@@ -5,6 +5,7 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 
 import { FunHistory } from "./fun-box-history";
 import { FunPublishForm } from "./fun-box-publish";
@@ -30,7 +31,7 @@ export interface FunItem {
  *  历史列表拆至 ./fun-box-history.tsx；
  *  发布表单拆至 ./fun-box-publish.tsx。 */
 export function FunBox({ embedded = false }: { embedded?: boolean }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.funbox;
   const [items, setItems] = useState<FunItem[] | null>(null);
   const [showMore, setShowMore] = useState(false);
@@ -203,7 +204,7 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
               <footer className="funbox__footer">
                 <span className="funbox__author">
                   {current.username ?? "—"} ·{" "}
-                  {new Date(current.added).toLocaleDateString("zh-CN")}
+                  {new Date(current.added).toLocaleDateString(dateLocale(locale))}
                 </span>
                 <div className="funbox__votes">
                   {current.my_vote ? (

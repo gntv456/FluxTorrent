@@ -237,7 +237,7 @@ export function LoginForm() {
             text-sm text-sub transition-colors hover:border-accent
             disabled:opacity-50"
         >
-          🔑 Passkey 登录
+          🔑 {dict.login.passkey}
         </button>
       </div>
 

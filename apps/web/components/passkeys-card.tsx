@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale, fmt } from "@/i18n/config";
 
 /** Passkey（WebAuthn）绑定卡（0227，P2）：
  *  usercp 安全设置内嵌——列出已绑凭证、浏览器注册新凭证（ES256）、解绑。
@@ -22,8 +23,7 @@ const B64URL = (buf: ArrayBuffer) =>
     .replace(/=+$/, "");
 
 export function PasskeysCard() {
-  const { dict } = useI18n();
-  void dict;
+  const { dict, locale } = useI18n();
   const [rows, setRows] = useState<PasskeyRow[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,7 +52,8 @@ export function PasskeysCard() {
         user_id: number;
       }>("/api/v1/auth/passkeys/begin", { label: "" });
       const label =
-        window.prompt("给这枚凭证起个名字（如：笔记本）", "") || "passkey";
+        window.prompt(dict.usercp.security.webauthnNamePrompt, "") ||
+        dict.usercp.security.webauthnNameFallback;
       const cred = await navigator.credentials.create({
         publicKey: {
           challenge: new TextEncoder().encode(begin.challenge),
@@ -67,7 +68,7 @@ export function PasskeysCard() {
           timeout: 60_000,
         },
       });
-      if (!cred) throw new Error("浏览器取消了注册");
+      if (!cred) throw new Error(dict.usercp.security.webauthnCancelErr);
       const c = cred as PublicKeyCredential;
       const r = c.response as AuthenticatorAttestationResponse & {
         getAuthenticatorData?: () => ArrayBuffer;
@@ -79,7 +80,7 @@ export function PasskeysCard() {
           getPublicKey?: () => ArrayBuffer | null;
         }
       ).getPublicKey?.();
-      if (!pk) throw new Error("浏览器不支持 getPublicKey()，请升级");
+      if (!pk) throw new Error(dict.usercp.security.webauthnNoPkErr);
       await api.post("/api/v1/auth/passkeys/finish", {
         cred_id: B64URL(c.rawId),
         public_key: B64URL(pk),
@@ -88,7 +89,7 @@ export function PasskeysCard() {
         sign_count: 0,
         label,
       });
-      setMsg("绑定成功");
+      setMsg(dict.usercp.security.webauthnBindOk);
       await load();
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : String(e));
@@ -113,7 +114,7 @@ export function PasskeysCard() {
     <section className="baozi-panel flex flex-col gap-2 p-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">
-          Passkey（指纹 / 安全钥匙）
+          {dict.usercp.security.webauthnTitle}
         </span>
         <button
           type="button"
@@ -122,12 +123,12 @@ export function PasskeysCard() {
           className="min-h-[32px] rounded-full bg-sky-deep px-3 text-xs
             font-bold text-white disabled:opacity-50"
         >
-          绑定新凭证
+          {dict.usercp.security.webauthnBind}
         </button>
       </div>
       {(rows ?? []).length === 0 && (
         <p className="text-xs text-sub">
-          {rows === null ? "…" : "尚未绑定 Passkey。绑定后可在登录页免密登录。"}
+          {rows === null ? "…" : dict.usercp.security.webauthnEmpty}
         </p>
       )}
       {(rows ?? []).map((r) => (
@@ -137,11 +138,19 @@ export function PasskeysCard() {
             rounded border border-line px-3 py-2 text-xs"
         >
           <span className="min-w-0 flex-1 truncate">
-            {r.label || "passkey"}
+            {r.label || dict.usercp.security.webauthnNameFallback}
             <span className="ml-2 text-fainter">
               {r.last_used_at
-                ? `最近使用 ${new Date(r.last_used_at).toLocaleDateString()}`
-                : `绑定于 ${new Date(r.created_at).toLocaleDateString()}`}
+                ? fmt(dict.usercp.security.webauthnLastUsed, {
+                    date: new Date(r.last_used_at).toLocaleDateString(
+                      dateLocale(locale),
+                    ),
+                  })
+                : fmt(dict.usercp.security.webauthnBoundAt, {
+                    date: new Date(r.created_at).toLocaleDateString(
+                      dateLocale(locale),
+                    ),
+                  })}
             </span>
           </span>
           <button
@@ -150,7 +159,7 @@ export function PasskeysCard() {
             onClick={() => void remove(r.cred_id)}
             className="shrink-0 text-danger disabled:opacity-50"
           >
-            解绑
+            {dict.usercp.security.webauthnUnbind}
           </button>
         </div>
       ))}

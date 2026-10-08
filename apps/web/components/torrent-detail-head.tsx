@@ -8,6 +8,7 @@ import { dateLocale, type Locale } from "@/i18n/config";
 import type { Dict } from "@/i18n/server";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { TorrentDetailExt } from "@/components/torrent-detail-blocks";
+import type { RipLog } from "@/components/torrent-rip-logs";
 
 /** 种子详情页海报头（馒头/阳光口径：左海报 + 右主信息 + 操作行 + 状态卡）。
  *  从 app/(main)/torrent/[id]/page.tsx 按域拆出；数据装载与派生值留在 page.tsx。
@@ -25,6 +26,7 @@ export function TorrentHead({
   subtitleChain,
   relTime,
   tags,
+  ripLogs,
   manage,
 }: {
   t: TorrentListItem;
@@ -44,11 +46,18 @@ export function TorrentHead({
   relTime: (iso: string) => string;
   /** 标签行（0173：副标题与发布人之间；undefined = 不渲染） */
   tags?: React.ReactNode;
+  /** 抓轨日志行（0312）：徽标取多碟**最低**分；无日志行不出徽标 */
+  ripLogs?: RipLog[];
   /** 管理操作（编辑/补种/删除/促销购）：渲染进头部管理行 */
   manage?: React.ReactNode;
 }) {
   const d = dict.tdetail;
   const promo = promotionBadge(t.promotion);
+  // 日志分徽标（0312）：多碟取**最低**，与后端 upload_logcheck::overall 同口径
+  const ripScores = (ripLogs ?? [])
+    .map((l) => l.log_score)
+    .filter((v): v is number => v !== null);
+  const ripScore = ripScores.length > 0 ? Math.min(...ripScores) : null;
   return (
     <section className="td-head nexus-detail">
       <PosterBlock
@@ -114,6 +123,16 @@ export function TorrentHead({
           {t.official && (
             <span className="sticker bg-indigo text-white">
               {dict.torrent.official}
+            </span>
+          )}
+          {ripScore !== null && (
+            <span
+              className={`sticker ${
+                ripScore >= 100 ? "bg-sun text-ink" : "bg-indigo text-ink"
+              }`}
+              title={d.ripLogs}
+            >
+              {d.ripBadge.replace("{n}", `${ripScore}`)}
             </span>
           )}
           {t.anonymous && (

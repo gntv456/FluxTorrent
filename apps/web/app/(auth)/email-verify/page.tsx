@@ -7,8 +7,11 @@
 import { Suspense, useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 function VerifyInner() {
+  const { dict } = useI18n();
   const sp = useSearchParams();
   const token = sp.get("token") ?? "";
   const [state, setState] = useState<"idle" | "ok" | "already" | "err">(
@@ -45,44 +48,48 @@ function VerifyInner() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4">
       <div className="card p-6">
-        <h1 className="font-display text-xl">邮箱激活</h1>
+        <h1 className="font-display text-xl">{dict.emailVerify.title}</h1>
         {state === "idle" && (
           <div className="mt-4 flex flex-col gap-3">
             <p className="text-sm text-muted">
-              点击下方按钮完成激活（链接 48 小时内有效，一次性使用）。
+              {fmt(dict.emailVerify.intro, { hours: 48 })}
             </p>
             <button
               className="btn btn-primary"
               disabled={!token}
               onClick={() => void verify()}
             >
-              激活我的账号
+              {dict.emailVerify.verifyBtn}
             </button>
           </div>
         )}
         {state === "ok" && (
           <p className="mt-4 text-sm">
-            ✅ 激活成功！现在可以
-            <a className="text-sky" href="/login">去登录</a> 了。
+            {dict.emailVerify.okPrefix}
+            <a className="text-sky" href="/login">
+              {dict.emailVerify.okLink}
+            </a>
+            {dict.emailVerify.okSuffix}
           </p>
         )}
         {state === "already" && (
           <p className="mt-4 text-sm">
-            该链接已被使用过——账号若已激活，直接
-            <a className="text-sky" href="/login"> 登录</a>即可。
+            {dict.emailVerify.alreadyPrefix}
+            <a className="text-sky" href="/login">
+              {dict.emailVerify.alreadyLink}
+            </a>
+            {dict.emailVerify.alreadySuffix}
           </p>
         )}
         {state === "err" && (
           <div className="mt-4 flex flex-col gap-3">
             <p className="text-sm text-destructive">{msg}</p>
-            <p className="text-xs text-muted">
-              链接过期？输入注册邮箱重新发送激活邮件。
-            </p>
+            <p className="text-xs text-muted">{dict.emailVerify.expiredHint}</p>
             <div className="flex gap-2">
               <input
                 className="min-h-[38px] flex-1 rounded border border-line
                   bg-cloud px-3 text-sm"
-                placeholder="注册邮箱"
+                placeholder={dict.emailVerify.emailPh}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 inputMode="email"
@@ -92,13 +99,11 @@ function VerifyInner() {
                 disabled={!email.includes("@")}
                 onClick={() => void resend()}
               >
-                重新发送
+                {dict.emailVerify.resendBtn}
               </button>
             </div>
             {resent && (
-              <p className="text-xs text-muted">
-                若该邮箱有未激活账号，激活邮件已发出（1 分钟内勿重复发送）。
-              </p>
+              <p className="text-xs text-muted">{dict.emailVerify.resentNote}</p>
             )}
           </div>
         )}

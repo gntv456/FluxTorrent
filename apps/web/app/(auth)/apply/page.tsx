@@ -1,6 +1,7 @@
 "use client";
 
 import { BTN_LG_SKY, INPUT_LG } from "@/lib/ui-classes";
+import { useI18n } from "@/i18n/client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -11,6 +12,7 @@ import { api, ApiError } from "@/lib/api-client";
  *  通过自动发绑定邮箱的邀请码（邮件通知）。通道关闭时整页降级提示。 */
 
 export default function ApplyPage() {
+  const { dict } = useI18n();
   const [open, setOpen] = useState<boolean | null>(null);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -49,20 +51,18 @@ export default function ApplyPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 py-8">
-      <h1 className="font-display text-2xl">申请入站</h1>
+      <h1 className="font-display text-2xl">{dict.apply.title}</h1>
       {open === false ? (
         <>
-          <p className="text-sm text-sub">
-            本站未开放申请通道。请通过受邀成员获取邀请码注册。
-          </p>
+          <p className="text-sm text-sub">{dict.apply.closedNote}</p>
           <Link href="/login" className="text-sm font-bold text-sky">
-            返回登录
+            {dict.apply.backToLogin}
           </Link>
         </>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-sub">期望的用户名</span>
+            <span className="text-sm text-sub">{dict.apply.usernameLabel}</span>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -73,9 +73,7 @@ export default function ApplyPage() {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-sub">
-              邮箱（通过后邀请码发往此处）
-            </span>
+            <span className="text-sm text-sub">{dict.apply.emailLabel}</span>
             <input
               type="email"
               value={email}
@@ -85,9 +83,7 @@ export default function ApplyPage() {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-sub">
-              佐证链接（至少一条：其他站点个人主页 / 证书记录，每行一条）
-            </span>
+            <span className="text-sm text-sub">{dict.apply.proofLabel}</span>
             <textarea
               value={proofLinks}
               onChange={(e) => setProofLinks(e.target.value)}
@@ -97,9 +93,7 @@ export default function ApplyPage() {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-sub">
-              申请理由（至少 20 字：你如何了解本站、能带来什么）
-            </span>
+            <span className="text-sm text-sub">{dict.apply.reasonLabel}</span>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -120,11 +114,9 @@ export default function ApplyPage() {
             </p>
           )}
           <button type="submit" disabled={busy} className={BTN_LG_SKY}>
-            {busy ? "提交中…" : "提交申请"}
+            {busy ? dict.apply.busy : dict.apply.submit}
           </button>
-          <p className="text-xs text-sub">
-            提交即表示同意站规；审核通常 1-3 天，结果邮件通知。
-          </p>
+          <p className="text-xs text-sub">{dict.apply.termsNote}</p>
         </form>
       )}
     </div>

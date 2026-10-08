@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { useI18n } from "@/i18n/client";
+import { dateLocale, type Locale } from "@/i18n/config";
 import { MedalIcon } from "@/components/medal-icon";
 import type { Overview } from "@/components/usercp";
 import {
@@ -36,7 +37,7 @@ function daysSince(iso: string | null): number {
 }
 
 export function OverviewTab({ ov, loading }: OverviewProps) {
-  const { dict, currency } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const t = dict.usercp.overview;
   // Hooks 必须先于早退（rules-of-hooks）：loading/空态判断移到 hook 之后
   // 补齐 30 天序列
@@ -74,7 +75,7 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
   return (
     <div className="usercp-dashboard">
       {/* 资料卡 */}
-      <ProfileCard ov={ov} t={t} dict={dict} />
+      <ProfileCard ov={ov} t={t} dict={dict} locale={locale} />
 
       {/* 分享率概况 */}
       <RatioCard
@@ -112,7 +113,13 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
       <SummaryRow ov={ov} t={t} dict={dict} seedPct={seedPct} />
 
       {/* 更多账户信息（经典 rowhead/rowfollow 表格） */}
-      <MoreInfoTable ov={ov} t={t} dict={dict} currency={currency} />
+      <MoreInfoTable
+        ov={ov}
+        t={t}
+        dict={dict}
+        currency={currency}
+        locale={locale}
+      />
 
       {/* 最近阅读主题 */}
       <RecentTopics t={t} />
@@ -125,10 +132,12 @@ function ProfileCard({
   ov,
   t,
   dict,
+  locale,
 }: {
   ov: Overview;
   t: Record<string, string>;
   dict: Dict;
+  locale: Locale;
 }) {
   return (
     <section className="uc-profile-card">
@@ -165,7 +174,7 @@ function ProfileCard({
         </h2>
         <p>
           {t.joined}
-          {new Date(ov.created_at ?? "").toLocaleString("zh-CN")}
+          {new Date(ov.created_at ?? "").toLocaleString(dateLocale(locale))}
           （{daysSince(ov.created_at)} {dict.usercp.days}）
         </p>
       </div>

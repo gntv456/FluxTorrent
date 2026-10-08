@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import { api } from "@/lib/api-client";
 
 export interface ArcadePackItem {
@@ -38,10 +39,9 @@ export interface ArcadePackData {
   items: ArcadePackItem[];
 }
 
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
-
 export function ArcadeBackpack({ pack }: { pack: ArcadePackData }) {
-  const { dict, currency } = useI18n();
+  const { dict, locale, currency } = useI18n();
+  const fmt = (n: number) => Math.round(n).toLocaleString(dateLocale(locale));
   const t = dict.games.arcade;
   const router = useRouter();
   const titles = dict.games as unknown as Record<string, { title?: string }>;

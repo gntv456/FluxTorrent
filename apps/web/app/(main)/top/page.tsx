@@ -1,6 +1,8 @@
 import { getTopBoards, TopRow } from "@/lib/data";
 import { formatBytes, avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { getDict } from "@/i18n/server";
+import { dateLocale, fmt } from "@/i18n/config";
+import type { Dict } from "@/i18n/zh-CN";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +15,13 @@ function medal(rank: number): string {
   return `${rank}`;
 }
 
-function fmtDuration(hours: number): string {
+function fmtDuration(hours: number, t: Dict["top"]): string {
   const h = Math.max(0, Math.floor(hours));
   const months = Math.floor(h / 720);
   const days = Math.floor((h % 720) / 24);
-  if (months > 0) return `${months} 个月 ${days} 天`;
-  if (days > 0) return `${days} 天 ${h % 24} 时`;
-  return `${h} 时`;
+  if (months > 0) return fmt(t.durMonthsDays, { m: months, d: days });
+  if (days > 0) return fmt(t.durDaysHours, { d: days, h: h % 24 });
+  return fmt(t.durHours, { h });
 }
 
 function Avatar({ u }: { u: TopRow }) {
@@ -57,12 +59,12 @@ function Avatar({ u }: { u: TopRow }) {
  *  改为由调用方按后端的**稳定 board key**显式传入，与语言无关。 */
 type BoardUnit = "size" | "hours" | "perHour" | "magic" | "count";
 
-function valueHeader(unit: BoardUnit, currency: string): string {
-  if (unit === "size") return "大小";
-  if (unit === "hours") return "时长";
-  if (unit === "perHour") return "每小时";
+function valueHeader(unit: BoardUnit, currency: string, t: Dict["top"]): string {
+  if (unit === "size") return t.unitSize;
+  if (unit === "hours") return t.unitHours;
+  if (unit === "perHour") return t.unitPerHour;
   if (unit === "magic") return currency;
-  return "数量";
+  return t.unitCount;
 }
 
 function Board({
@@ -73,6 +75,7 @@ function Board({
   fmt,
   unit,
   currency,
+  t,
 }: {
   icon: string;
   title: string;
@@ -81,6 +84,7 @@ function Board({
   fmt: (v: number) => string;
   unit: BoardUnit;
   currency: string;
+  t: Dict["top"];
 }) {
   return (
     <section className="baozi-panel overflow-hidden">
@@ -95,10 +99,12 @@ function Board({
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-[var(--border-soft)] text-[12px] text-[var(--text-faint)]">
-              <th className="w-12 py-2 pl-3 text-left font-bold">排名</th>
-              <th className="py-2 text-left font-bold">用户</th>
+              <th className="w-12 py-2 pl-3 text-left font-bold">
+                {t.colRank}
+              </th>
+              <th className="py-2 text-left font-bold">{t.colUser}</th>
               <th className="py-2 pr-3 text-right font-bold">
-                {valueHeader(unit, currency)}
+                {valueHeader(unit, currency, t)}
               </th>
             </tr>
           </thead>
@@ -148,7 +154,7 @@ function Board({
 }
 
 export default async function TopPage() {
-  const { dict, currency } = await getDict();
+  const { dict, locale, currency } = await getDict();
   const t = dict.top;
   const b = await getTopBoards();
 
@@ -168,7 +174,8 @@ export default async function TopPage() {
           rows={b.bonus}
           empty={t.empty}
           unit="magic"
-          fmt={(v) => Math.round(v).toLocaleString("zh-CN")}
+          t={t}
+          fmt={(v) => Math.round(v).toLocaleString(dateLocale(locale))}
         />
         <Board
           currency={currency}
@@ -177,6 +184,7 @@ export default async function TopPage() {
           rows={b.uploaded}
           empty={t.empty}
           unit="size"
+          t={t}
           fmt={formatBytes}
         />
         <Board
@@ -186,6 +194,7 @@ export default async function TopPage() {
           rows={b.downloaded}
           empty={t.empty}
           unit="size"
+          t={t}
           fmt={formatBytes}
         />
         <Board
@@ -195,7 +204,8 @@ export default async function TopPage() {
           rows={b.seedtime}
           empty={t.empty}
           unit="hours"
-          fmt={fmtDuration}
+          fmt={(v) => fmtDuration(v, t)}
+          t={t}
         />
         <Board
           currency={currency}
@@ -204,6 +214,7 @@ export default async function TopPage() {
           rows={b.hourly}
           empty={t.empty}
           unit="perHour"
+          t={t}
           fmt={(v) => v.toFixed(2)}
         />
         <Board
@@ -213,7 +224,8 @@ export default async function TopPage() {
           rows={b.torrents}
           empty={t.empty}
           unit="count"
-          fmt={(v) => Math.round(v).toLocaleString("zh-CN")}
+          t={t}
+          fmt={(v) => Math.round(v).toLocaleString(dateLocale(locale))}
         />
       </div>
     </div>

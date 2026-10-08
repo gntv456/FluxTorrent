@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { dateLocale } from "@/i18n/config";
 import { getSiteProfile } from "@/lib/site-profile";
 import type { Page, TorrentListItem } from "@fluxtorrent/domain-types";
 import { HomeSections } from "@/components/home-sections";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
 /** 首页（参考站 index.php 像素级复刻）：
  *  社区新鲜事 + 签到日历 → 新增资源统计图表 → 站点数据三列 + 幸运大转盘 → 免责/友链 → 最新种子海报墙 */
 export default async function HomePage() {
-  const { dict } = await getDict();
+  const { dict, locale } = await getDict();
   // showcase 模块键（0209 P2-18 接真）：海报墙此前只受排版控制，模块键空转——
   // 现在关 showcase = 不拉不渲染（与其它模块同口径）
   const profile = await getSiteProfile().catch(() => null);
@@ -54,7 +55,7 @@ export default async function HomePage() {
           (ov.downloaded ?? 0) > 0
             ? ((ov.uploaded ?? 0) / (ov.downloaded ?? 1)).toFixed(2)
             : "∞",
-        spark: (ov.spark_balance ?? 0).toLocaleString("en-US"),
+        spark: (ov.spark_balance ?? 0).toLocaleString(dateLocale(locale)),
       }
     : null;
   const brandName = profile?.brand || dict.common.brand;

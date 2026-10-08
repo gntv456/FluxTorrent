@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import { Icon } from "@/components/icons";
 
 interface Shout {
@@ -29,7 +30,7 @@ interface BotCommand {
 /** 聊天盒（shoutbox.php 复刻）：最近 50 条 + 发言框（1-300 字），15s 自动刷新
  *  0078：消息以 / 开头时额外调用 GET /shoutbox/bot/exec?cmd= 并把回话插入聊天流 */
 export function ShoutBox() {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.shoutbox;
   const tb = dict.shoutbot;
   const [items, setItems] = useState<Shout[] | null>(null);
@@ -107,7 +108,7 @@ export function ShoutBox() {
   }
 
   const timeStr = (iso: string) =>
-    new Date(iso).toLocaleTimeString("zh-CN", {
+    new Date(iso).toLocaleTimeString(dateLocale(locale), {
       hour: "2-digit",
       minute: "2-digit",
     });
