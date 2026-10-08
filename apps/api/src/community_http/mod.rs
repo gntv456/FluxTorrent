@@ -2,6 +2,7 @@
 //! 按域拆分（300 行门禁）：见各子模块头注释。
 
 use actix_web::web;
+mod artists;
 mod bounty;
 mod embed_rules;
 mod feed;
@@ -36,6 +37,7 @@ mod topic;
 mod topic_admin;
 mod topic_create;
 
+pub use artists::*;
 pub use bounty::*;
 pub use embed_rules::*;
 pub use feed::*;
@@ -71,6 +73,10 @@ pub use topic_create::*;
 
 pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
     scope
+        // 艺人实体（0327 music）：列表/艺人页/榜单
+        .service(artists_list)
+        .service(artists_top)
+        .service(artist_detail)
         // M14 勋章
         .service(medal_rarities)
         .service(medal_list)
