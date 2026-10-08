@@ -139,6 +139,63 @@ impl TrackerState {
                 "announce_pending_policy 读取失败，保留旧档位"
             ),
         }
+        // 即时分享率闸门的四个值（2026-10-08 站长拍板）。一次查全，
+        // 并沿用刚立的纪律：**查询失败保留旧值**，只有「行确实不存在」才用缺省。
+        // 缺省口径本身就是安全的：ratio_gate 缺省 warn（不拦）、
+        // ratiolimit 缺省 0（不设门槛）、ratio_gate_max 缺省 1.0（截断荒谬值）。
+        let gates: Result<Vec<(String, String)>, sqlx::Error> = sqlx::query_as(
+            "SELECT name, value FROM site_settings \
+                 WHERE name IN ('ratio_gate', 'ratiolimit', \
+                                 'ratio_gate_max', 'ratio_gate_grace_days')",
+        )
+        .fetch_all(&self.db)
+        .await;
+        match gates {
+            Ok(rows) => {
+                let keep = match super::ratio_gate::cfg_statics().read() {
+                    Ok(r) => *r,
+                    Err(e) => *e.into_inner(),
+                };
+                let mut next = super::ratio_gate::Gate {
+                    class_min: 0.0,
+                    class_age_days: 0,
+                    ..keep
+                };
+                for (k, v) in &rows {
+                    match k.as_str() {
+                        "ratio_gate" => {
+                            next.mode = super::ratio_gate::mode_of(v)
+                        }
+                        "ratiolimit" => {
+                            next.site_min =
+                                v.trim().parse::<f64>().unwrap_or(0.0).max(0.0)
+                        }
+                        "ratio_gate_max" => {
+                            next.ceiling =
+                                v.trim().parse::<f64>().unwrap_or(1.0)
+                        }
+                        "ratio_gate_grace_days" => {
+                            next.grace_days = v
+                                .trim()
+                                .parse::<i64>()
+                                .unwrap_or(7)
+                                .clamp(0, 365)
+                        }
+                        _ => {}
+                    }
+                }
+                super::ratio_gate::refresh_site(
+                    next.site_min,
+                    next.ceiling,
+                    next.grace_days,
+                    next.mode,
+                );
+            }
+            Err(e) => tracing::warn!(
+                %e,
+                "分享率闸门设定读取失败，保留上一次的值与档位"
+            ),
+        }
         // peer 存活 TTL 随 interval 伸缩（审计 10-06 第 4 条）：leecher 曾硬编码
         // 90s，interval=1800s 下两次 announce 之间即被除名，在线数长期偏低。
         crate::peers::set_interval_secs(interval);

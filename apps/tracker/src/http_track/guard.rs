@@ -10,17 +10,20 @@ use super::helpers::{
 };
 
 impl TrackerState {
-    /// passkey → (user_id, download_enabled, suspended, class_id)，60s 内存缓存。
-    /// 未命中负缓存 30s（审计 10-06 第 7 条）：随机 passkey 洪水不落 PG。
+    /// passkey → 用户快照，60s 内存缓存；未命中负缓存 30s（审计 10-06 第 7 条）：
+    /// 随机 passkey 洪水不落 PG。快照里除鉴权四件套外还带即时闸门要用的量
+    /// （上传/下载/注册天数/观察期/等级门槛）——**热路径不许再查一次**，
+    /// 所以一次 SQL 取全。
+    #[allow(clippy::type_complexity)]
     pub async fn resolve_passkey_cached(
         &self,
         passkey: &str,
-    ) -> Option<(i64, bool, bool, i32)> {
+    ) -> Option<super::ratio_gate::Pku> {
         {
             let g = self.guard_read();
-            if let Some((uid, de, su, cls, at)) = g.passkeys.get(passkey) {
+            if let Some((p, at)) = g.passkeys.get(passkey) {
                 if at.elapsed() < PASSKEY_TTL {
-                    return Some((*uid, *de, *su, *cls));
+                    return Some(*p);
                 }
             }
             if g.passkey_miss
@@ -32,10 +35,24 @@ impl TrackerState {
         }
         // 改密后的宽限窗（审计 10-07 P1-4）：passkey 烤在用户已下载的每一个
         // .torrent 里，旧密钥一失效就等于手上所有种子集体停种（libtorrent 系
-        // 客户端还会把 tracker 标成错误、长时间不再重试）。prev 由改密接口写入。
-        let outcome = sqlx::query_as::<_, (i64, bool, bool, i32)>(
-            "SELECT id, download_enabled, suspended, class_id \
-             FROM user_by_passkey WHERE passkey = $1 AND status < 2",
+        // 客户端还会把 tracker 标成错误、长时间不再重试）。prev 由改密接口写入；
+        // 显式「重置密钥」不再写 prev（五轮 P2-6：那是安全处置动作）。
+        let outcome = sqlx::query_as::<
+            _,
+            (i64, bool, bool, i32, i64, i64, i64, bool, f64, i64),
+        >(
+            "SELECT u.id, u.download_enabled, u.suspended, u.class_id, \
+                    COALESCE(u.uploaded, 0)::bigint, \
+                    COALESCE(u.downloaded, 0)::bigint, \
+                    COALESCE( \
+                      (EXTRACT(EPOCH FROM (now() - u.created_at))::bigint \
+                          / 86400)::bigint, -1)::bigint, \
+                    COALESCE(u.ratio_watch_until > now(), FALSE), \
+                    COALESCE(uc.min_ratio, 0)::float8, \
+                    COALESCE(uc.min_age_days, 0)::bigint \
+             FROM user_by_passkey u \
+             LEFT JOIN user_classes uc ON uc.id = u.class_id \
+             WHERE u.passkey = $1 AND u.status < 2",
         )
         .bind(passkey)
         .fetch_optional(&self.db)
@@ -53,22 +70,36 @@ impl TrackerState {
                 return None;
             }
         };
+        let pku = row.map(
+            |(id, de, su, cls, up, down, age, in_watch, cmin, cage)| {
+                super::ratio_gate::Pku {
+                    id,
+                    download_enabled: de,
+                    suspended: su,
+                    class_id: cls,
+                    uploaded: up,
+                    downloaded: down,
+                    age_days: age,
+                    in_watch,
+                    class_min_ratio: cmin,
+                    class_age_days: cage,
+                }
+            },
+        );
         let mut g = self.guard_write();
         if g.passkeys.len() + g.passkey_miss.len() >= PASSKEY_CACHE_CAP {
             g.passkeys.clear(); // 粗暴防膨胀：正常站点远达不到该量级
             g.passkey_miss.clear();
         }
-        match &row {
+        match &pku {
             Some(v) => {
-                g.passkeys
-                    .insert(passkey.to_string(), (v.0, v.1, v.2, v.3,
-                                                  Instant::now()));
+                g.passkeys.insert(passkey.to_string(), (*v, Instant::now()));
             }
             None => {
                 g.passkey_miss.insert(passkey.to_string(), Instant::now());
             }
         }
-        row
+        pku
     }
 
     /// agent_rules 黑白名单判定（P0-7 交叉验证版）：
@@ -144,10 +175,7 @@ impl TrackerState {
 
     /// scrape 独立限流（审计 10-07 P2）：旧版与 announce 共用 `rl:ann:ip:` 桶，
     /// 一次全站轮询就把该 IP 的 announce 额度吃光，用户表现为「突然全站在报超限」。
-    pub async fn rate_limited_scrape(
-        &self,
-        ip: &str,
-    ) -> Option<&'static str> {
+    pub async fn rate_limited_scrape(&self, ip: &str) -> Option<&'static str> {
         let k = format!("rl:scr:ip:{ip}");
         self.rate_over(&k, guard_store::scr_per_min())
             .await
@@ -171,7 +199,11 @@ impl TrackerState {
     ///
     /// Redis 不可达 ⇒ 一律 `true`（fail-open）：合并只是省 PG 负载，静默丢事件
     /// 会连带丢活跃度与完成数读数，代价比省下的事务大。
-    pub async fn claim_event_window(&self, user_id: i64, info_hash: &str) -> bool {
+    pub async fn claim_event_window(
+        &self,
+        user_id: i64,
+        info_hash: &str,
+    ) -> bool {
         let window = super::gate::merge_window_secs(
             self.intervals().0,
             super::gate::event_merge_pct(),

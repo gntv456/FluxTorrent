@@ -90,21 +90,50 @@ pub(crate) async fn announce(
         return bencode_err(msg);
     }
 
-    // ① passkey → user_id + 管理开关（内存缓存 60s，命中免查 PG）
-    let Some((user_id, download_enabled, suspended, class_id)) =
-        state.resolve_passkey_cached(&passkey).await
-    else {
+    // ① passkey → 用户快照（内存缓存 60s，命中免查 PG）
+    let Some(pku) = state.resolve_passkey_cached(&passkey).await else {
         state
             .metrics
             .announce_auth_fail
             .fetch_add(1, Ordering::Relaxed);
         return bencode_err("passkey 无效，请在站点重置");
     };
-    if suspended {
+    let (user_id, class_id) = (pku.id, pku.class_id);
+    if pku.suspended {
         return bencode_err("账号已挂起，请联系管理组");
     }
-    if !download_enabled && left > 0 {
+    if !pku.download_enabled && left > 0 {
         return bencode_err("下载权限已被禁用，请联系管理组");
+    }
+    // ①° 即时分享率闸门：**只拦下载**（left>0），做种永不拦——
+    // 拦做种等于把要补比率的人赶出 swarm，比率只会更差。
+    // 与 ratio_watch 的异步观察期并存：观察期内已处置，这里放行不重复罚。
+    // 档位默认 warn（只计数），门槛现网是 ratiolimit=6 + 等级全 0，
+    // 由 ratio_gate_max=1.0 截断，见 ratio_gate 模块的安全轨说明。
+    if left > 0 {
+        let gate = super::ratio_gate::gate_for(
+            pku.class_min_ratio,
+            pku.class_age_days,
+        );
+        match super::ratio_gate::decide(&gate, &pku.who()) {
+            super::ratio_gate::Decision::Block => {
+                state
+                    .metrics
+                    .ratio_gate_block
+                    .fetch_add(1, Ordering::Relaxed);
+                let (th, _) = super::ratio_gate::threshold(&gate);
+                return bencode_err(&format!(
+                    "分享率低于本站门槛（要求 {th:.2}），请先做种提升上传量"
+                ));
+            }
+            super::ratio_gate::Decision::Warn => {
+                state
+                    .metrics
+                    .ratio_gate_warn
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            super::ratio_gate::Decision::Allow => {}
+        }
     }
 
     // ①''' 种子白名单（P0-2）：info_hash 必须已在站内注册（过审或待审——审核期

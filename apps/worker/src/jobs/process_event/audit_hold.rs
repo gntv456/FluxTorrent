@@ -63,3 +63,38 @@ pub(super) async fn note_speed<'c>(
         "增量超物理速率上限，超出部分未入账"
     );
 }
+
+/// 幽灵做种画像留痕（判据本体在 `seeding_gate::verdict`，这里只管落账）。
+///
+/// `reason` 文案必须与历史行**逐字一致**：它是
+/// `ON CONFLICT (user_id, agent, reason)` 去重键的一部分，改一个字就会把
+/// 既有 hits 计数器劈成两段。所以这里用常量拼接，而不是 `\` 续行——
+/// 续行会被 rustfmt 归一成带空格的单行，那正是一次「没人同意的改名」。
+/// 变化的数值（自报读数）只进 tracing，不进 reason。
+const GHOST_PREFIX: &str = "ghost_seed（声称数据完整但从未下载，疑似幽灵做种";
+const GHOST_SUFFIX: &str = "；跨种/二传用户可申诉）";
+
+pub(super) async fn note_ghost<'c>(
+    exec: impl sqlx::Executor<'c, Database = sqlx::Postgres>,
+    ev: &AnnounceEvent,
+    raw_down: i64,
+    raw_up: i64,
+) {
+    let ratio = if raw_down > 0 {
+        format!("（自报下载 {raw_down} 字节，credited 未达门槛）")
+    } else {
+        format!("（声称上传 {raw_up} 字节）")
+    };
+    let _ = sqlx::query(
+        "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
+         VALUES ($1, $2, $3, $4) \
+         ON CONFLICT (user_id, agent, reason) DO UPDATE \
+           SET hits = cheat_events.hits + 1, last_seen = now()",
+    )
+    .bind(ev.user)
+    .bind(format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]))
+    .bind(&ev.ip)
+    .bind(format!("{GHOST_PREFIX}{ratio}{GHOST_SUFFIX}"))
+    .execute(exec)
+    .await;
+}

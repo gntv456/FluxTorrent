@@ -48,6 +48,11 @@ pub(crate) struct Metrics {
     /// （五轮 2026-10-08：佐证量过去只有 worker 侧的 10 GiB 荒废线，
     /// 一颗 4 MiB 的种可以被反复背书成 TiB 级「可信上传」）
     pub(crate) announce_xreport_rejected: AtomicU64,
+    /// 低分享率但只留痕（`ratio_gate=warn`）的次数：站长先看这个量，
+    /// 核对门槛数值合理之后再决定是否拧成 block
+    pub(crate) ratio_gate_warn: AtomicU64,
+    /// 低分享率被当场拒下载（`ratio_gate=block`）的次数
+    pub(crate) ratio_gate_block: AtomicU64,
 }
 
 /// 本地滑动窗口限流（Redis 故障降级用）：key → (计数, 窗口起点)
@@ -102,9 +107,10 @@ pub(crate) use super::ip_trust::client_ip;
 /// - passkey：60s TTL（挂起/禁下载最迟 60s 生效，可接受的折衷）
 /// - ip_bans / agent_rules / announce_interval：60s 定期刷新
 pub(crate) struct GuardInner {
-    /// (user_id, download_enabled, suspended, class_id, 缓存时刻)
-    pub(crate) passkeys:
-        HashMap<String, (i64, bool, bool, i32, Instant)>,
+    /// passkey → 用户快照（含即时闸门要用的量与观察期标记），60s TTL。
+    /// 值用 struct 而不是六元组：`ledger_guard` 那个 10 元组就是靠注释维系
+    /// 顺序，本轮 P0 的根因正是「读的人与写的人对同一组位置理解不同」。
+    pub(crate) passkeys: HashMap<String, (super::ratio_gate::Pku, Instant)>,
     /// 无效 passkey 负缓存（审计 10-06 第 7 条）：旧实现只缓存命中——
     /// 随机 passkey 洪水每发必查 PG，缓存形同虚设。
     pub(crate) passkey_miss: HashMap<String, Instant>,

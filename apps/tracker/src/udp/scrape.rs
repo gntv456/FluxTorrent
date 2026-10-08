@@ -50,12 +50,11 @@ pub(super) async fn scrape(
             "scrape 需在 info_hash 列表后附带 passkey",
         );
     }
-    let Some((uid, _de, suspended, class_id)) =
-        t.state.resolve_passkey_cached(passkey).await
-    else {
+    let Some(pku) = t.state.resolve_passkey_cached(passkey).await else {
         return UdpTracker::err_pkt(transaction_id, "passkey 无效");
     };
-    if suspended {
+    let (uid, class_id) = (pku.id, pku.class_id);
+    if pku.suspended {
         return UdpTracker::err_pkt(transaction_id, "账号已被挂起");
     }
     let mut out = Vec::with_capacity(8 + n_hash * 12);

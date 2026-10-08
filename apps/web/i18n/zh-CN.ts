@@ -1434,7 +1434,7 @@ const zhCnBase = {
     passkeyRotating: "轮换中…",
     passkeyRotated: "已轮换，请更新 BT 客户端中的种子地址",
     passkeyConfirm:
-      "轮换后所有正在做种/下载的客户端需重新下载种子文件，确认继续？",
+      "轮换后旧密钥立即失效：做种/下载中的客户端都要从本站重新下载种子文件，RSS 链接也需更换。确认继续？",
     bmRemove: "取消收藏",
     bmEmpty: "还没有收藏，去种子详情页点击「收藏」吧",
     tlSeeding: "做种中",

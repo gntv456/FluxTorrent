@@ -1456,7 +1456,7 @@ const zhTwBase: Omit<
     passkeyRotating: "輪換中…",
     passkeyRotated: "已輪換，請更新 BT 用戶端中的種子地址",
     passkeyConfirm:
-      "輪換後所有正在做種/下載的用戶端需重新下載種子檔案，確認繼續？",
+      "輪換後舊金鑰立即失效：做種/下載中的用戶端都要從本站重新下載種子檔案，RSS 連結也需更換。確認繼續？",
     bmRemove: "取消收藏",
     bmEmpty: "還沒有收藏，去種子詳情頁點擊「收藏」吧",
     tlSeeding: "做種中",

@@ -41,6 +41,12 @@ pub(crate) struct Evidence {
     pub(crate) phys_down: i64,
     pub(crate) corroborated: Option<i64>,
     pub(crate) had_baseline: bool,
+    /// 回连实测不可达是否**否决**在种（仅 `connectable_gate=hard` 为 true）。
+    /// 默认 off：不可达只留在 `snatches.connectable` 这一列供版主筛，
+    /// 不吃掉「在种」状态，也不另写 cheat_events——NAT 后没有映射入站端口的
+    /// 真做种者是常态（主流三家都只把可达性当信息位，见本轮报告 §八-7），
+    /// 把它记成作弊事件会把管理组信箱刷满并误伤真人。
+    pub(crate) conn_hard: bool,
     /// 本次是不是 `event=completed`
     pub(crate) completed_event: bool,
 }
@@ -72,8 +78,9 @@ pub(crate) fn verdict(x: &Evidence, torrent_size: i64) -> Verdict {
             .ge(&torrent_size.saturating_mul(104));
     let proven = has_payload || vouched_ok;
     let covered = ratio_ok || vouched_ok;
-    let seeding =
-        x.left == 0 && x.port > 0 && x.conn != Some(0) && proven && covered;
+    // 回连实测不可达只在 hard 档一票否决（缺省不否决，见 `conn_gate_hard`）。
+    let reachable = !x.conn_hard || x.conn != Some(0);
+    let seeding = x.left == 0 && x.port > 0 && reachable && proven && covered;
     let completed =
         x.completed_event && x.left == 0 && proven && covered && x.had_baseline;
     // 幽灵签名：既没真下过、也没达到可信规模的佐证
@@ -108,123 +115,67 @@ pub(crate) fn corr_room(
     (leecher_credited - already).max(0).min(claimed)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// `connectable_gate` 档位：**只有两档，不做三档假选择**。
+/// `off`（缺省）= 实测不可达不否决在种；`hard` = 否决（本站旧行为）。
+///
+/// 为什么默认 off：本轮拉源码核实过，UNIT3D 的 `config/announce.php`
+/// 里 `connectable_check` **默认 false**，且 `peers.connectable` 的唯一消费者是
+/// BON 积分条件；NexusPHP 建行时硬编码 `connectable='yes'`、按可达过滤的
+/// 那句 peerlist SQL 是注释掉的；Gazelle 的 `xbt_files_users.connectable`
+/// 默认 1 而 Ocelot 从不写它——**三家都只把可达性当信息位，没有一家拿它
+/// 否决在种或计费**。我们的 BT 握手 + piece 抽查让 `conn=0` 比以前有意义，
+/// 但拿它一票否决会把大量 NAT 后（没有映射入站端口）的真做种者判成不在种，
+/// 且在种数/保种考核/濒危种救援一起塌。要强口径的站点显式开 hard。
+///
+/// 曾经写过 soft 档（"只留痕不否决"）后删掉：留痕本来就是
+/// `snatches.connectable` 这一列，与 off 的行为没有任何差别——
+/// 一档没有后果的枚举就是本轮一直在报的那种假开关。
+pub(crate) fn conn_gate_hard() -> bool {
+    gate_cell().load(std::sync::atomic::Ordering::Relaxed)
+}
 
-    const GIB: i64 = 1024 * 1024 * 1024;
-    const SIZE: i64 = 100 * GIB;
-
-    fn x(phys_down: i64, corroborated: Option<i64>) -> Evidence {
-        Evidence {
-            left: 0,
-            port: 51413,
-            conn: None,
-            phys_down,
-            corroborated,
-            had_baseline: true,
-            completed_event: false,
+/// 每轮消费开头调一次（60s 节流；查询失败保留旧值，与 tracker 侧
+/// guard_refresh 同一纪律——闸门档位不该因一次抖动被重置）。
+pub(crate) async fn refresh_conn_gate(db: &sqlx::PgPool) {
+    use std::sync::atomic::Ordering;
+    use std::time::Instant;
+    static NEXT: std::sync::OnceLock<std::sync::Mutex<Instant>> =
+        std::sync::OnceLock::new();
+    let cell = NEXT.get_or_init(|| {
+        std::sync::Mutex::new(
+            Instant::now() - std::time::Duration::from_secs(60),
+        )
+    });
+    {
+        let Ok(g) = cell.lock() else { return };
+        if g.elapsed() < std::time::Duration::from_secs(60) {
+            return;
         }
     }
-
-    #[test]
-    fn threshold_is_the_same_yardstick_as_payload() {
-        assert_eq!(corr_threshold(SIZE), SIZE * 104 / 1000);
-        // 尺寸未知时不留「无规模豁免」的口子
-        assert_eq!(corr_threshold(0), GIB);
-        assert_eq!(corr_threshold(-5), GIB);
-    }
-
-    /// 五轮实测的那条攻击：1 字节佐证换整条幽灵做种豁免。
-    #[test]
-    fn one_byte_vouch_does_not_exempt_ghost() {
-        let v = verdict(&x(0, Some(1)), SIZE);
-        assert!(!v.seeding, "1 字节佐证不能证明手里有数据");
-        assert!(v.ghost_note, "零下载 + 不可信佐证仍应留幽灵痕");
-    }
-
-    #[test]
-    fn material_vouch_exempts_cross_site_seeder() {
-        // 辅种人群：phys_down 恒 0，但站内 leecher 真的从他身上下载够了量
-        let good = corr_threshold(SIZE);
-        let v = verdict(&x(0, Some(good)), SIZE);
-        assert!(v.seeding, "达到可信规模的佐证即物理证据");
-        assert!(!v.ghost_note);
-    }
-
-    #[test]
-    fn tiny_vouch_still_blocked_on_small_torrent() {
-        // 小种子也要按比例：1 MiB 种 × 10.4% ≈ 108 KiB
-        let small = 1024 * 1024;
-        let v = verdict(&x(0, Some(small * 104 / 1000 - 1)), small);
-        assert!(!v.seeding);
-        let v = verdict(&x(0, Some(small * 104 / 1000)), small);
-        assert!(v.seeding);
-    }
-
-    #[test]
-    fn real_downloader_seeds_without_any_vouch() {
-        let v = verdict(&x(SIZE / 2, None), SIZE);
-        assert!(v.seeding && !v.ghost_note);
-    }
-
-    #[test]
-    fn completed_needs_baseline_and_payload() {
-        let mut c = x(SIZE / 2, None);
-        c.completed_event = true;
-        // 首报即自称完成：UNIT3D 口径直接拒
-        c.had_baseline = false;
-        assert!(!verdict(&c, SIZE).completed, "没有既有 peer 行就不算完成");
-        // 有基线 + 有物理下载量 ⇒ 算
-        c.had_baseline = true;
-        assert!(verdict(&c, SIZE).completed);
-        // 只下了 1% 的「完成」不算
-        c.phys_down = SIZE / 100;
-        assert!(!verdict(&c, SIZE).completed, "未达比例下限的完成不算");
-        // 没发 completed 事件时，即使一切条件满足也不算
-        c.phys_down = SIZE;
-        c.completed_event = false;
-        assert!(!verdict(&c, SIZE).completed);
-    }
-
-    #[test]
-    fn probed_unreachable_never_counts_as_seeding() {
-        let mut c = x(SIZE, Some(9 * SIZE));
-        c.conn = Some(0);
-        assert!(
-            !verdict(&c, SIZE).seeding,
-            "回连实测不可达时再多的量也不算在种"
-        );
-        // 未测（None）不据此判作弊
-        c.conn = None;
-        assert!(verdict(&c, SIZE).seeding);
-    }
-
-    #[test]
-    fn port_zero_or_partial_left_is_not_seeding() {
-        let mut c = x(SIZE, None);
-        c.port = 0;
-        assert!(!verdict(&c, SIZE).seeding);
-        assert!(
-            !verdict(&c, SIZE).ghost_note,
-            "port=0 不是「声称在种」的现场"
-        );
-        c.port = 51413;
-        c.left = 1;
-        assert!(!verdict(&c, SIZE).seeding, "left>0 是在下载不是做种");
-    }
-
-    #[test]
-    fn corroboration_is_bounded_by_own_download() {
-        // leecher 自己只被记账下载了 3 GiB，却想为 A 背书 100 GiB
-        assert_eq!(corr_room(100 * GIB, 3 * GIB, 0), 3 * GIB);
-        // 已经背过 2 GiB ⇒ 只剩 1 GiB 的额度
-        assert_eq!(corr_room(100 * GIB, 3 * GIB, 2 * GIB), 1 * GIB);
-        // 背超了不再给额度，但也不许把已有佐证往回冲
-        assert_eq!(corr_room(10 * GIB, 3 * GIB, 5 * GIB), 0);
-        // 正常小额如实记账
-        assert_eq!(corr_room(GIB, 3 * GIB, 0), GIB);
-        assert_eq!(corr_room(0, 3 * GIB, 0), 0);
-        assert_eq!(corr_room(-1, 3 * GIB, 0), 0);
+    let v: Result<Option<String>, sqlx::Error> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'connectable_gate'",
+    )
+    .fetch_optional(db)
+    .await;
+    let hard = match v {
+        Ok(Some(t)) => t.trim() == "hard",
+        Ok(None) => false,
+        Err(e) => {
+            tracing::warn!(%e, "connectable_gate 读取失败，保留上次档位");
+            return;
+        }
+    };
+    gate_cell().store(hard, Ordering::Relaxed);
+    if let Ok(mut g) = cell.lock() {
+        *g = Instant::now();
     }
 }
+
+fn gate_cell() -> &'static std::sync::atomic::AtomicBool {
+    static G: std::sync::OnceLock<std::sync::atomic::AtomicBool> =
+        std::sync::OnceLock::new();
+    G.get_or_init(|| std::sync::atomic::AtomicBool::new(false))
+}
+
+#[cfg(test)]
+mod tests;

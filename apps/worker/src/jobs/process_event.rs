@@ -42,6 +42,8 @@ pub(crate) async fn process_event(
 
     let (up_mult, down_mult, kind, global) =
         resolve_billing_mults(db, ev, torrent_id).await?;
+    // 回连可达性档位（60s 节流读站点设定）：hard 才拿 conn=0 否决在种
+    seeding_gate::refresh_conn_gate(db).await;
 
     // BEP3：ev.up/down 是客户端累计总量 —— 先取出上次上报值换算增量（P0 修复）
     let mut tx = db.begin().await?;
@@ -131,6 +133,7 @@ pub(crate) async fn process_event(
             phys_down: g.phys_down,
             corroborated,
             had_baseline,
+            conn_hard: seeding_gate::conn_gate_hard(),
             completed_event: ev.event == "completed",
         },
         torrent_size,
@@ -140,28 +143,7 @@ pub(crate) async fn process_event(
     // 幽灵签名留痕（2026-10-08 收紧）：left=0 却零下载**且无可信佐证**。
     // 辅种者（佐证达门槛）不进待办；有下载未达 10.4% 的也不记（误触/秒删）。
     if ghost_note {
-        // 现场描述仍可引用自报读数，但判据已改用站点侧物理量
-        let ratio = if g.raw_down > 0 {
-            format!("（自报下载 {} 字节，credited 未达门槛）", g.raw_down)
-        } else {
-            format!("（声称上传 {} 字节）", g.raw_up)
-        };
-        let _ = sqlx::query(
-            "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
-             VALUES ($1, $2, $3, $4) \
-             ON CONFLICT (user_id, agent, reason) DO UPDATE \
-               SET hits = cheat_events.hits + 1, last_seen = now()",
-        )
-        .bind(ev.user)
-        .bind(format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]))
-        .bind(&ev.ip)
-        .bind(format!(
-            "ghost_seed（声称数据完整但从未下载，疑似幽灵做种{}；\
-             跨种/二传用户可申诉）",
-            ratio
-        ))
-        .execute(&mut *tx)
-        .await;
+        audit_hold::note_ghost(&mut *tx, ev, g.raw_down, g.raw_up).await;
     }
     // stopped = 客户端退出：与 tracker 侧 remove(peer) 对齐，DB 也不应继续标记在做种/下载
     let stopped = ev.event == "stopped";

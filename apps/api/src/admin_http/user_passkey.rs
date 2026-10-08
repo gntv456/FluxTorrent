@@ -101,7 +101,8 @@ pub async fn admin_passkey_reset(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (username, _) = target.ok_or(DomainError::NotFound(uid))?;
-    let passkey = state.repo.update_passkey(uid).await?;
+    // 代为重置同样是处置动作：旧钥立刻失效（grace=false）
+    let passkey = state.repo.update_passkey(uid, false).await?;
     crate::http::bump_guard_ver(&state).await;
     state
         .repo
