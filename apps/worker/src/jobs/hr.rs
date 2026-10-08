@@ -44,13 +44,23 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     .await
     .unwrap_or(48)
     .clamp(1, 24 * 365);
+    // 考察天数缺省（0311 site_settings 化）：与 seed_hours 同为三级 COALESCE
+    // （种子 hr_policy->days > 站点 hr_days > 14 兜底）。
+    let default_hr_days: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+         WHERE name = 'hr_days'), '')::bigint, 14)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(14)
+    .clamp(1, 365);
     // 1) 为新完成的下载建快照（幂等）；免费窗口内完成的不建快照（豁免）
     sqlx::query(
         r#"
         INSERT INTO hr_snapshots (user_id, torrent_id, required_seconds, deadline)
         SELECT s.user_id, s.torrent_id,
                COALESCE((t.hr_policy->>'seed_hours')::int, $2::int) * 3600,
-               s.completed_at + make_interval(days => COALESCE((t.hr_policy->>'days')::int, 14))
+               s.completed_at + make_interval(days => COALESCE((t.hr_policy->>'days')::int, $3::int))
         FROM snatches s
         JOIN torrents t ON t.id = s.torrent_id
         WHERE s.completed_at > now() - make_interval(hours => $1::int)
@@ -80,6 +90,7 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     )
     .bind(lookback_h as i32)
     .bind(default_hr_hours as i32)
+    .bind(default_hr_days as i32)
     .execute(db)
     .await?;
 
@@ -172,7 +183,8 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     }
 
     // 5) hr_flag 刷新（独立函数，口径注释见 refresh_hr_flag）
-    refresh_hr_flag(db, default_hr_hours as i32).await?;
+    refresh_hr_flag(db, default_hr_hours as i32, default_hr_days as i32)
+        .await?;
     Ok(())
 }
 
@@ -184,17 +196,20 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
 async fn refresh_hr_flag(
     db: &PgPool,
     default_hr_hours: i32,
+    default_hr_days: i32,
 ) -> anyhow::Result<()> {
     sqlx::query(
         // 审计修复（P1）：硬编码 14 天/120 小时与 hr_policy 可配口径脱节，逐种取 policy；
-        // 深测 2026-10-03：无 policy 种子的缺省同样走站点设定 hr_hours（与建快照口径一致）
+        // 深测 2026-10-03：无 policy 种子的缺省同样走站点设定 hr_hours（与建快照口径一致）；
+        // 0311：days 缺省同走站点设定 hr_days（与建快照口径一致）
         "UPDATE snatches s SET hr_flag = TRUE \
          FROM torrents t WHERE t.id = s.torrent_id AND s.completed_at IS NOT NULL \
            AND s.seeded_seconds < COALESCE((t.hr_policy->>'seed_hours')::int, $1::int) * 3600 \
-           AND s.completed_at < now() - make_interval(days => COALESCE((t.hr_policy->>'days')::int, 14)) \
+           AND s.completed_at < now() - make_interval(days => COALESCE((t.hr_policy->>'days')::int, $2::int)) \
            AND NOT s.hr_flag",
     )
     .bind(default_hr_hours)
+    .bind(default_hr_days)
     .execute(db)
     .await?;
     Ok(())

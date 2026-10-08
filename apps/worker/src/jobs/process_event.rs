@@ -256,7 +256,7 @@ pub(crate) async fn process_event(
         WHERE v.user_id = s.user_id AND v.used_torrent_id = s.torrent_id
           AND s.torrent_id = t.id AND s.user_id = $1 AND s.torrent_id = $2
           AND v.used_at IS NULL
-          AND s.downloaded > t.size * 104 / 1000   -- 4%（整数近似，宁早不晚）
+          AND s.downloaded > t.size * 104 / 1000   -- ≈10.4% buffer，与 hr.rs 建快照同阈值口径
         "#,
     )
     .bind(ev.user)

@@ -37,14 +37,27 @@ pub async fn reconcile_diff_alert(db: &PgPool) -> anyhow::Result<()> {
         )
         .fetch_one(db)
         .await?;
-    // 阈值 ±10GiB
-    const TRAFFIC_TOLERANCE: i64 = 10 * 1024 * 1024 * 1024;
+    // 阈值（0311 site_settings 化，anticheat_reconcile_tolerance_gb，缺省 10GiB）
+    let tolerance: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings \
+         WHERE name = 'anticheat_reconcile_tolerance_gb'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(10)
+    .clamp(1, 1024)
+        * 1024
+        * 1024
+        * 1024;
     for (name, ledger_v, snapshot_v) in [
         ("uploaded", ledger_up, snapshot_up),
         ("downloaded", ledger_down, snapshot_down),
     ] {
         let diff = ledger_v - snapshot_v;
-        if diff.abs() > TRAFFIC_TOLERANCE {
+        if diff.abs() > tolerance {
             tracing::error!(
                 field = name,
                 ledger = ledger_v,

@@ -23,7 +23,24 @@ use sqlx::PgPool;
 
 /// 单笔佐证的物理荒废线：超过它必然造假（一次 announce 之间不可能传完）。
 /// 保留是因为它能**留痕**；真正的额度控制在上界账本里。
-const ABSURD_BYTES: i64 = 10 * 1024 * 1024 * 1024;
+/// 0311 site_settings 化（anticheat_absurd_vouch_gb，默认 10GiB）：开源后
+/// 出厂值公开可查，各站自调；读取失败回落出厂值。
+async fn absurd_bytes(db: &PgPool) -> i64 {
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings \
+         WHERE name = 'anticheat_absurd_vouch_gb'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(10)
+    .clamp(1, 1024)
+        * 1024
+        * 1024
+        * 1024
+}
 
 #[derive(serde::Deserialize)]
 pub(crate) struct XReportEvent {
@@ -56,6 +73,7 @@ pub async fn consume_xreport(
         if ev.reports.is_empty() {
             return Ok(true);
         }
+        let absurd = absurd_bytes(db).await;
         // 解析 torrent（info_hash 双口径：规范化 / 客户端原始字节）
         let torrent_id: Option<i64> = sqlx::query_scalar(
             "SELECT id FROM torrents \
@@ -127,13 +145,13 @@ pub async fn consume_xreport(
                 .bind(over)
                 .execute(&mut *tx)
                 .await?;
-                // 单笔超物理可能（>10 GiB/次）：明显造假，留痕带 leecher IP
-                if *claimed > ABSURD_BYTES {
+                // 单笔超物理可能（超过站点配置的荒谬线）：明显造假，留痕带 leecher IP
+                if *claimed > absurd {
                     let _ = sqlx::query(
                         "INSERT INTO cheat_events \
                          (user_id, agent, peer_ip, reason) \
                          VALUES ($1, 'xreport:absurd', $2, \
-                         'xreport_absurd（单次佐证超 10GiB，疑似串通伪造）') \
+                         'xreport_absurd（单次佐证超站点配置的荒谬线，疑似串通伪造）') \
                          ON CONFLICT (user_id, agent, reason) DO UPDATE \
                            SET hits = cheat_events.hits + 1, \
                                last_seen = now()",

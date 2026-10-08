@@ -159,7 +159,8 @@ pub async fn self_deal_check(db: &PgPool) -> anyhow::Result<u64> {
 
 /// ② 谎报下载量：7 天窗口内 leecher 收到的佐证总量 vs 自报 downloaded。
 /// 佐证来自各 seeder 的 xreport（按 leecher 汇总 leecher_xreports）。
-/// 容差 20%（协议开销/未上报分片）；命中线 = 佐证 ≥ 自报×1.2 且差额 ≥ 1 GiB。
+/// 容差默认 20%（协议开销/未上报分片，site_settings 可调）；命中线 =
+/// 佐证 ≥ 自报×（collusion_tolerance_ratio_pct/100）且差额 ≥ collusion_min_gap_gb。
 /// 注意口径：自报 downloaded 是**累计值**而佐证只看 7 天窗口——窗口短于
 /// 账龄时天然「佐证 < 自报」，不会误报；只有「窗口内佐证反超累计自报」
 /// 才命中，即自报明显压低。
@@ -168,6 +169,32 @@ pub async fn down_under_check(db: &PgPool) -> anyhow::Result<u64> {
     // "Rust type i64 is not compatible with SQL type NUMERIC"——本 job 自
     // 上线起每 10 分钟必炸（worker 日志实锤），谎报下载检测从未跑通。
     // 必须显式 ::bigint（sqlx 的 NUMERIC 老坑）。
+    // 容差与最小命中差（0311 site_settings 化）：开源后出厂值公开，各站自调。
+    // 容差以百分比整数存储（120 = 1.2x），SQL 侧乘除防浮点。
+    let tolerance_pct: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings \
+         WHERE name = 'collusion_tolerance_ratio_pct'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(120)
+    .clamp(100, 500);
+    let min_gap: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'collusion_min_gap_gb'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(1)
+    .clamp(0, 1024)
+        * 1024
+        * 1024
+        * 1024;
     let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
         r#"
         SELECT l.leecher, l.corr_total, COALESCE(sum(s.downloaded), 0)::bigint
@@ -179,11 +206,13 @@ pub async fn down_under_check(db: &PgPool) -> anyhow::Result<u64> {
         ) l
         JOIN snatches s ON s.user_id = l.leecher
         GROUP BY l.leecher, l.corr_total
-        HAVING l.corr_total > COALESCE(sum(s.downloaded), 0)::bigint * 6 / 5
+        HAVING l.corr_total * 100 > COALESCE(sum(s.downloaded), 0)::bigint * $1
            AND l.corr_total - COALESCE(sum(s.downloaded), 0)::bigint
-               > 1073741824
+               > $2
         "#,
     )
+    .bind(tolerance_pct)
+    .bind(min_gap)
     .fetch_all(db)
     .await?;
     let mut n = 0u64;
