@@ -33,7 +33,7 @@ pub async fn site_type_pack_apply(
     }
     let pack: Option<SiteTypePack> = sqlx::query_as(
         "SELECT code, name, description, brand, categories, modules, \
-         sort, sections, tags, tagline, subtitle_kind, terms \
+         sort, sections, tags, tagline, subtitle_kind, terms, home_sections \
          FROM site_type_packs WHERE code = $1",
     )
     .bind(&body.code)
