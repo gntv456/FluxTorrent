@@ -13,6 +13,8 @@ use super::model::{
 };
 use super::ttl_for;
 
+mod table_persist;
+
 const MAX_PEERS_RESPONSE: usize = 50;
 /// 同账号同 swarm 的 peer 上限（审计 10-06）：防单账号刷随机 peer_id 制造
 /// 影子 peer 抬高在线数；超限淘汰该账号最旧的。
@@ -34,36 +36,6 @@ impl PeerTable {
         Self::default()
     }
 
-    /// 全量导出（Redis 快照用）：(info_hash, peers) 列表。
-    /// 大表下 JSON 体积 ≈ 每人 ~200B；10 万 peer ≈ 20MB，60s 周期可接受。
-    pub fn export(&self) -> Vec<(String, Vec<Peer>)> {
-        self.swarms
-            .iter()
-            .map(|s| (s.key().clone(), s.peers.values().cloned().collect()))
-            .collect()
-    }
-
-    /// 快照恢复（启动预热）：客户端 30min 内重 announce 可自愈，预热只为
-    /// 缩短空窗期——只恢复未超时的 peer（按 last_seen + 分档 TTL 判定）。
-    pub fn restore(&self, snap: Vec<(String, Vec<Peer>)>) -> usize {
-        let now = chrono::Utc::now();
-        let mut n = 0;
-        for (_ih, peers) in snap {
-            for p in peers {
-                if now
-                    .signed_duration_since(p.last_seen)
-                    .to_std()
-                    .unwrap_or_default()
-                    < ttl_for(p.left)
-                {
-                    self.upsert(p);
-                    n += 1;
-                }
-            }
-        }
-        n
-    }
-
     /// 活跃 peer 总数（/metrics 用；近似值——不触发 GC，精确性由各桶惰性 GC 保证）
     pub fn len(&self) -> usize {
         self.swarms.iter().map(|s| s.peers.len()).sum()
@@ -74,10 +46,17 @@ impl PeerTable {
         self.swarms.len()
     }
 
-    pub fn upsert(&self, mut peer: Peer) {
+    /// 写入/刷新一条 peer。返回 false = 槽位已被**其他账号**占用（顶号企图）：
+    /// 既不改写对方 ip/port/left，也不把对方的可达测量传给顶号者。
+    /// 审计 10-07 P1-1 实测：旧版无归属校验 ⇒ 先顶号再 stopped 就能把从未停种的
+    /// 受害者抹出 swarm，或搬运「回连可达」信用绕过幽灵做种的 conn 判据。
+    pub fn upsert(&self, mut peer: Peer) -> bool {
         let mut s = self.swarms.entry(peer.key.info_hash.clone()).or_default();
         // 重复 announce：保留此前的回连测量结果（抽样周期 5min，不能被每次 announce 重置）
         if let Some(old) = s.peers.get(&peer.key.peer_id) {
+            if old.user_id != peer.user_id {
+                return false;
+            }
             peer.connectable = old.connectable;
         }
         let is_new = !s.peers.contains_key(&peer.key.peer_id);
@@ -99,6 +78,7 @@ impl PeerTable {
                 }
             }
         }
+        true
     }
 
     /// 查询 peer 当前回连状态（-1 未测）
@@ -274,7 +254,8 @@ impl PeerTable {
     }
 
     /// 回连结果写回（peer 可能在检测间隙超时下线——不存在则忽略）
-    pub fn set_connectable(&self, key: &PeerKey, reachable: bool) {        if let Some(mut s) = self.swarms.get_mut(&key.info_hash) {
+    pub fn set_connectable(&self, key: &PeerKey, reachable: bool) {
+        if let Some(mut s) = self.swarms.get_mut(&key.info_hash) {
             if let Some(p) = s.peers.get_mut(&key.peer_id) {
                 p.connectable = if reachable { CONN_OK } else { CONN_DEAD };
             }

@@ -186,6 +186,20 @@ pub(crate) fn clear_miss() {
     }
 }
 
+/// 待审种子（approval_status=0）的准入档位（审计 10-07 P1-2，站长可配，
+/// 不把某一类站的审核流程焊进共享层）：0=allow_all（旧行为）；
+/// 1=self_seed_only（默认：可 announce 但非发布者/非 staff 拿不到他人 peer）；
+/// 2=owner_only（非发布者且非 staff 直接拒）。
+static PENDING_POLICY: std::sync::atomic::AtomicI8 =
+    std::sync::atomic::AtomicI8::new(1);
+
+pub(crate) fn pending_policy() -> i8 {
+    PENDING_POLICY.load(std::sync::atomic::Ordering::Relaxed)
+}
+pub(crate) fn set_pending_policy(v: i8) {
+    PENDING_POLICY.store(v, std::sync::atomic::Ordering::Relaxed);
+}
+
 /// scrape 侧限流档：与 announce 分桶（旧版共用 `rl:ann:ip:`，一次全站轮询
 /// 就把该 IP 的 announce 额度吃光，用户表现为「突然全站在报频率超限」）。
 pub(crate) fn scr_per_min() -> i64 {

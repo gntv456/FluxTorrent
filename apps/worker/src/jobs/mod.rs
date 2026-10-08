@@ -17,6 +17,8 @@ mod class_adj;
 mod collusion;
 mod game_coupons;
 pub(crate) mod group;
+mod group_housekeeping;
+mod group_parse;
 mod hr;
 mod hr_mail;
 mod hr_resolve;

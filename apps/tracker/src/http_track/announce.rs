@@ -3,11 +3,12 @@
 use actix_web::{get, web, HttpResponse};
 use std::sync::atomic::Ordering;
 
-use super::emit::{bencode_err, emit_agent_block, emit_event};
+use super::emit::{bencode_err, emit_agent_block, emit_event, emit_xreport};
 use super::helpers::{client_ip, TrackerState};
 use super::params::RawParams;
 
-use crate::peers::{bencode_announce, hex, Peer, PeerKey, CONN_UNTESTED};
+use crate::peers::{bencode_announce, hex, PeerKey};
+
 
 #[get("/announce/{passkey}")]
 pub(crate) async fn announce(
@@ -35,16 +36,14 @@ pub(crate) async fn announce(
 
     let info_hash_hex = hex(&info_hash_raw);
     let peer_id_hex = hex(&peer_id_raw);
-    let port_raw = params.get_i64("port", 0);
-    if !(0..=65535).contains(&port_raw) {
-        return bencode_err("port 无效");
-    }
-    let port: u16 = port_raw as u16;
-    let uploaded = params.get_i64("uploaded", 0);
-    let downloaded = params.get_i64("downloaded", 0);
-    if uploaded < 0 || downloaded < 0 {
-        return bencode_err("uploaded/downloaded 无效");
-    }
+    // 审计 10-07 P2-10：port/uploaded/downloaded 与 left 同口径严格解析。
+    // 旧写法走 get_i64 的「解析失败回落默认值」，`uploaded=9999...`（超 i64）
+    // 会被静默当 0 —— 客户端累计读数被清空，还会让 ledger_guard 误判
+    // 「读数回退」而记一条 counter_reset 作弊留痕。缺失仍按 0（stopped 允许）。
+    let (port, uploaded, downloaded) = match params.announce_nums() {
+        Ok(v) => v,
+        Err(resp) => return resp,
+    };
     // ZT81（2026-10-02）：left 缺失/负数不再静默按 0 处理。原实现缺 left 即判为
     // 做种（is_seeder = left==0），会把畸形 announce 计入 seeders 并喂 3720s TTL，
     // 造成在线做种数虚高。BEP3 中 left 为必填。
@@ -93,7 +92,7 @@ pub(crate) async fn announce(
     }
 
     // ① passkey → user_id + 管理开关（内存缓存 60s，命中免查 PG）
-    let Some((user_id, download_enabled, suspended)) =
+    let Some((user_id, download_enabled, suspended, class_id)) =
         state.resolve_passkey_cached(&passkey).await
     else {
         state
@@ -109,12 +108,9 @@ pub(crate) async fn announce(
         return bencode_err("下载权限已被禁用，请联系管理组");
     }
 
-    // ①''' 种子白名单（P0-2，2026-10-02 资深用户深测发现）：announce 对
-    // 任意伪造 info_hash 放行并计入 swarm——伪造种子可刷 swarm 计数/制造
-    // 幽灵 peer。私有 tracker 行业惯例：info_hash 必须已在站内注册
-    // （approval_status=1 过审或待审均可 announce——审核期发布者要先能做种；
-    // 回收站/被拒种子不再接受新 announce）。60s 缓存（guard 通道），
-    // DB 不可达时 fail-open（与 passkey 缓存同等降级纪律）。
+    // ①''' 种子白名单（P0-2）：info_hash 必须已在站内注册（过审或待审——审核期
+    // 发布者要先能做种；回收站/被拒不再接受新 announce）。60s 缓存，DB 不可达
+    // 时 fail-open（与 passkey 缓存同等降级纪律）。待审态对外可见性见下一段。
     if !state.torrent_registered(&info_hash_hex).await {
         state
             .metrics
@@ -123,6 +119,19 @@ pub(crate) async fn announce(
         return bencode_err("种子不存在或不可用（torrent unregistered）");
     }
 
+    // ①'' 准入判定（特权端口 / 谎报 left / 待审种子可见性）见 gate::announce_gate
+    let hide_peers = match super::gate::announce_gate(
+        &state,
+        &info_hash_hex,
+        user_id,
+        class_id,
+        left,
+        port,
+        event == "stopped",
+    ) {
+        Ok(hide) => hide,
+        Err(msg) => return bencode_err(msg),
+    };
     // ①' 每用户频率（按 user_id 而非 IP —— NAT 场景按 IP 会误伤）
     if let Some(msg) = state.rate_limited_user(user_id).await {
         state
@@ -161,32 +170,54 @@ pub(crate) async fn announce(
         peer_id: peer_id_hex.clone(),
     };
 
-    // stopped：移除 peer（归属校验——他人 peer_id 的 stopped 不生效）；其余 upsert。
+    // peer 落表统一走 gate::write_peer（stopped 归属校验 + 顶号拒写）。
     // 0225 G30-B12：FLUX_TRACKER_PEER_STORE=redis 时外置 Hash 为主（多副本
     // 互见），内存表仍同步维护（快照导出/降级路径不受影响）。
-    if event == "stopped" {
-        if crate::peers::external::external_enabled() {
-            let mut r = state.redis.clone();
-            let _ = crate::peers::external::remove(&mut r, &key, user_id).await;
+    if let Err(msg) = super::gate::write_peer(
+        &state,
+        &key,
+        &ip,
+        event,
+        port,
+        uploaded,
+        downloaded,
+        left,
+        user_id,
+    )
+    .await
+    {
+        return bencode_err(msg);
+    }
+
+    // 交叉上报（P0-2 治本，2026-10-07）：leecher 声明「本轮从哪些 peer
+    // 下载了多少字节」——`xreport=<peer_id_hex>:<bytes>`，可重复多段/逗号分隔。
+    // 这是把「上传量全自报」变成「上传量有第三方佐证」的关键：上传者的
+    // 上传额最终只认这些被 leecher 确认过的量（见 worker 侧消费）。
+    // 校验在 tracker 做（廉价、peer 表内存命中）：目标 peer 必须是本
+    // swarm 里**存活且在做种**的真实 peer，且不能是自己。
+    let mut xreports: Vec<(i64, i64)> = Vec::new();
+    for raw_seg in params.get_all("xreport") {
+        for item in raw_seg.split(',') {
+            let Some((pid_hex, bytes_s)) = item.rsplit_once(':') else {
+                continue;
+            };
+            let Ok(bytes) = bytes_s.parse::<i64>() else {
+                continue;
+            };
+            if bytes <= 0 {
+                continue;
+            }
+            let pid_norm = pid_hex.trim().to_ascii_lowercase();
+            if pid_norm.is_empty() {
+                continue;
+            }
+            if let Some(target_uid) = state
+                .peers
+                .corroboration_target(&info_hash_hex, &pid_norm, user_id)
+            {
+                xreports.push((target_uid, bytes));
+            }
         }
-        state.peers.remove_owned(&key, user_id);
-    } else {
-        let peer = Peer {
-            key: key.clone(),
-            ip: ip.clone(),
-            port,
-            uploaded,
-            downloaded,
-            left,
-            last_seen: chrono::Utc::now(),
-            user_id,
-            connectable: CONN_UNTESTED, // upsert 内部会保留既有测量值
-        };
-        if crate::peers::external::external_enabled() {
-            let mut r = state.redis.clone();
-            let _ = crate::peers::external::upsert(&mut r, peer.clone()).await;
-        }
-        state.peers.upsert(peer);
     }
 
     // ④ 事件投递（fire-and-forget，失败仅告警；ip/conn/port 供 worker 反作弊分析）
@@ -205,12 +236,26 @@ pub(crate) async fn announce(
     )
     .await;
 
+    // ④' 交叉上报投递：独立流，worker 侧用于佐证上传者的上传量。
+    // 单独一条流而非塞进 announce 事件：两类消费方（计费 / 上传佐证）
+    // 生命周期与幂等口径不同，混流会让任一方的重投影响另一方。
+    if !xreports.is_empty() {
+        emit_xreport(
+            &state.redis,
+            &info_hash_hex,
+            user_id,
+            &xreports,
+            &ip,
+        )
+        .await;
+    }
+
     // ③ compact 二进制响应（interval 按 site_settings.announce_interval 下发；BEP-7 v6 进 peers6）
     // 0267：`compact=0` 时回退 BEP3 原始 peer 字典列表，供不支持 BEP23 的老客户端；
     // 缺省/其它值一律按 compact（现代客户端的事实标准，也是唯一被压测覆盖的路径）。
     let compact = params.get_i64("compact", 1) != 0;
     let (interval, min_interval) = state.intervals();
-    let body = if event == "stopped" {
+    let body = if event == "stopped" || hide_peers {
         bencode_announce(0, 0, 0, &[], &[], interval, min_interval, compact)
     } else if crate::peers::external::external_enabled() {
         let mut r = state.redis.clone();

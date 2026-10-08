@@ -2,6 +2,7 @@
 
 pub(crate) mod announce;
 pub(crate) mod emit;
+pub(crate) mod gate;
 pub(crate) mod guard;
 pub(crate) mod guard_refresh;
 pub(crate) mod guard_store;

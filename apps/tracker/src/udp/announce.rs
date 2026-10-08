@@ -108,7 +108,7 @@ pub(super) async fn announce(
             "本 tracker 的 UDP 通道需扩展 passkey；请使用 HTTP announce（或联系站方客户端）",
         );
     }
-    let Some((user_id, download_enabled, suspended)) =
+    let Some((user_id, download_enabled, suspended, _class_id)) =
         t.state.resolve_passkey_cached(passkey).await
     else {
         return UdpTracker::err_pkt(transaction_id, "passkey 无效");
@@ -178,7 +178,13 @@ pub(super) async fn announce(
             let mut r = t.state.redis.clone();
             let _ = crate::peers::external::upsert(&mut r, peer.clone()).await;
         }
-        t.state.peers.upsert(peer);
+        // 归属校验（HTTP 侧同源，审计 10-07 P1-1）
+        if !t.state.peers.upsert(peer) {
+            return UdpTracker::err_pkt(
+                transaction_id,
+                "peer_id 与本站其他账号冲突，请重置 peer_id",
+            );
+        }
     }
     let connectable = if crate::peers::external::external_enabled() {
         let mut r = t.state.redis.clone();

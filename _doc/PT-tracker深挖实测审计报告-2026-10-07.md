@@ -484,3 +484,51 @@ P3-6 `no_peer_id=1`（`announce.rs`+`bencode.rs`）、P3-7 metrics 独立 bind�
    `params.rs`、`tracker/src/main.rs`、`peers/external.rs`、`peers/mod.rs`、
    `worker/jobs/group.rs`。等它们提交后，P1-1/P1-2/P2-1/2/3/5/10/11/12 一次接完，
    再 build tracker+worker+api → 部署 → 该探针必须跑到 22/22 或按剩余待办逐项交代。
+
+## 十三、批二落地与线上复验（2026-10-08）
+
+§十二的「未提交、未部署」状态到此结束。批二（P1-1/P1-2 + P2 参数面 + 流控闭环）
+已实现、已部署、已按修复后期望复验通过。
+
+### 验收结果（全绿）
+
+| 判据 | 结果 |
+| --- | --- |
+| `_verify_batch_1008.py`（22 条，编码修复后期望） | **22 passed, 0 failed** |
+| `_verify_tracker_round.py`（10-06 轮回归，20 条） | **20 passed, 0 failed** |
+| `cargo test -p flux-tracker` | **45 passed, 0 failed** |
+| `node scripts/line_limit_guard.mjs` | 本批文件零红（残留红均属另一路：`bt_probe.rs`/`peers/tests.rs`/`footer.tsx`/`pages.css`） |
+| `node scripts/check_type_drift.mjs` | TYPE_DRIFT_OK |
+| `python scripts/audit_migration_checksums.py` | 0303 提交后归零（此前唯一 problem row 就是「0303 NOT-IN-HEAD」） |
+| `/metrics` 新计数器 | 侧容器实喂：一条 `left>size` 的 announce ⇒ 拒 + `flux_tracker_announce_fake_left_total 1`（不是只声明不出数） |
+| 死消费者回收（P2-3） | 线上 `XINFO GROUPS flux:announce`：`consumers` 从修前实测的 **24** 降到 **2**，`pending=0`、`lag=0` |
+
+G1/G2（P0 幽灵做种/完成数）在 worker 出镜像前是红的，部署后翻绿：同一账号一次
+announce 报 `downloaded=种子大小` 现在得到 `seeding=false`、`completed_at IS NULL`、
+`times_completed` 不涨，而行内 credited 下载仍为 0——判据换到了站点侧物理量。
+
+### 一处探针自纠（不是代码回退）
+
+`_verify_tracker_round.py` 用例 4（numwant=0 合法性）随机命中了库里那颗
+96 字节的「对接自测种子」（id=40079），于是被新加的 K2 判据（`left>size` 拒）
+正确拒绝——断言的靶子是 numwant，不是 left。改为选 `size>=4096` 的种子后 20/20。
+**没动 K2 判据本身**，也没删那颗别人的自测种。
+
+### 随批落库的他人代码（必要依赖，已在 commit message 里点名）
+
+`apps/worker/src/jobs/xreport.rs` 自 `d2de0dd` 起 `use super::group::XREPORT_GROUP`，
+而该常量只存在于工作树 ⇒ **master 此刻 `cargo check -p flux-worker` 编不过**。
+本批把 `XREPORT_GROUP`、`emit_xreport`、announce 的 `xreport=` 解析一并写入，
+让「leecher 佐证上传量」这条链在生产者侧闭合（消费者侧 `jobs/xreport.rs` 早就在线）。
+
+另一路仍在改、**本批未提交**的：`tracker/src/main.rs` + `peers/mod.rs` + `peers/bt_probe.rs`
+（BT 握手回连探测，P0-1 那一支）、`worker/jobs/class_adj.rs` + `preserve.rs`
+（P2-8 发布者保种义务）、`seeding.rs`（`corr:` 前缀）。工作树原样保留。
+
+### 镜像口径提醒
+
+`tracker:latest` / `worker:latest` 由当前工作树重建（10-08 07:5x），因此**线上跑的
+包含上面那三块未提交在制品**；这是本仓「镜像=工作区快照」的一贯行为，读线上日志时
+不能只看已提交代码。行数门禁拆出的三个新模块（`group_parse.rs`、
+`peers/table/table_persist.rs`、`process_event/audit_hold.rs`）是纯搬运，
+不改线上语义。

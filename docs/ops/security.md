@@ -10,7 +10,7 @@
 | 会话 | JWT（HS256），签发密钥 `JWT_SECRET` ≥32 字节，生产模式启动即拒绝弱值 |
 | 2FA | TOTP（RFC 6238，开/关/管理员清除）+ WebAuthn passkey |
 | 登录防护 | Redis 滑窗限流（60s/5 次）+ 账户级失败锁定 |
-| passkey（tracker） | users.passkey CHAR(32)，泄漏可自助重置（重置后旧 key 立即失效） |
+| passkey（tracker） | users.passkey CHAR(32)，泄漏可自助重置；重置/改密后旧 key 进入宽限窗（`PASSKEY_GRACE_HOURS`，默认 7 天，迁移 0302）后失效 |
 | 注册防护 | 验证码四驱动（none/turnstile/recaptcha/hcaptcha）+ 一次性邮箱域名黑名单 + 邀请码邮箱绑定校验 |
 
 ## 传输与响应头
@@ -54,6 +54,10 @@ frame-ancestors 'none'
 
 - 登录/敏感写：Redis 滑窗（`rl:` 键）；开放 API 独立 token 限流 60 req/min。
 - announce：tracker 侧防护缓存（Redis 3s 轮询版本号 bump），不打 PG。
+- 待审种子准入：`site_settings.announce_pending_policy`（迁移 0303，后台「反作弊」卡片可选）——
+  `self_seed_only`（默认）照常接受发布者的 announce 与计费，但对非发布者/非员工清空 peer 列表与计数；
+  `allow_all` 为旧行为，`owner_only` 直接拒绝非发布者。站点详情页本就隐藏待审种（visibility.rs），
+  此项补齐 tracker 数据面的同一口径。
 - IP：ip_bans 封禁（0302 起支持 CIDR 段，`/0` 拒收）+ testip 工具。取信分两档，别再混称：
   `TRUST_PROXY=1` 信 X-Forwarded-For（右数第 `TRUST_PROXY_DEPTH` 段）；
   `TRUST_PROXY_IP=1` 信 announce 的 `?ip=` —— 那是**客户端自报**，比 XFF 更宽，只供调试。

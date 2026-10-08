@@ -58,6 +58,11 @@ pub async fn upsert(
         r#"local old = redis.call('HGET', KEYS[1], ARGV[1])
            if old then
              local ok, o = pcall(cjson.decode, old)
+             -- 归属校验（审计 10-07 P1-1，与内存表 upsert 同语义）：槽位属于
+             -- 别人就原样返回，不改写 ip/port/left，也不把可达测量传给顶号者
+             if ok and o.user_id ~= nil and tostring(o.user_id) ~= ARGV[4] then
+               return 2
+             end
              if ok and o.connectable ~= nil then
                local n = cjson.decode(ARGV[2])
                n.connectable = o.connectable
@@ -74,7 +79,8 @@ pub async fn upsert(
     inv.key(key)
         .arg(&peer.key.peer_id)
         .arg(new_val)
-        .arg(swarm_ttl_secs());
+        .arg(swarm_ttl_secs())
+        .arg(peer.user_id);
     let _: i32 = inv.invoke_async(redis).await?;
     Ok(())
 }
@@ -161,22 +167,24 @@ pub async fn snapshot(
     snap
 }
 
-/// 读：seeders/leechers 计数（与内存表口径一致：port=0 不计）
+/// 读：seeders/leechers 计数（与内存表口径一致：port=0 不计，
+/// 且按 user_id 去重——peer_id 客户端自报，同账号多 peer_id 不应
+/// 把实时在线数灌成倍数，见 table.rs::count_seeders P2-6 注释）
 pub async fn counts(
     redis: &mut ConnectionManager,
     info_hash: &str,
 ) -> (usize, usize) {
     let peers = swarm_peers(redis, info_hash).await;
-    (
-        peers
-            .iter()
-            .filter(|p| p.is_seeder() && p.port != 0)
-            .count(),
-        peers
-            .iter()
-            .filter(|p| !p.is_seeder() && p.port != 0)
-            .count(),
-    )
+    let mut seeders = std::collections::HashSet::new();
+    let mut leechers = std::collections::HashSet::new();
+    for p in peers.iter().filter(|p| p.port != 0) {
+        if p.is_seeder() {
+            seeders.insert(p.user_id);
+        } else {
+            leechers.insert(p.user_id);
+        }
+    }
+    (seeders.len(), leechers.len())
 }
 
 /// 读：回连状态（未命中 = 未测）

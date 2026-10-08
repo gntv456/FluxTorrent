@@ -46,6 +46,30 @@ pub(crate) async fn emit_event(
     xadd(redis, "flux:announce", &payload).await;
 }
 
+/// 交叉上报投递（2026-10-07 P0-2 治本）：把 leecher 声明的
+/// 「从 peer X 下载了 N 字节」推入独立流 flux:xreport，供 worker
+/// 佐证上传者的上传量。
+///
+/// 载荷：reports = [[上传者 user_id, 字节数], ...]（已在 tracker 侧
+/// 校验过：目标是本 swarm 存活做种 peer、且非自己）。ts 取事件时点，
+/// worker 按此裁决促销/时效，与 announce 事件同口径。
+pub(crate) async fn emit_xreport(
+    redis: &redis::aio::ConnectionManager,
+    info_hash_hex: &str,
+    leecher: i64,
+    reports: &[(i64, i64)],
+    ip: &str,
+) {
+    let payload = serde_json::json!({
+        "hash": info_hash_hex,
+        "leecher": leecher,
+        "reports": reports,
+        "ip": ip,
+        "ts": chrono::Utc::now().to_rfc3339(),
+    });
+    xadd(redis, "flux:xreport", &payload).await;
+}
+
 /// agent_rules 命中投递：同 (user, agent) 1 小时去重（SET NX EX），命中才 XADD flux:agent_block。
 /// worker 消费落 cheat_events（hits 累加 / 首次进管理组信箱）—— 高频拒绝路径零 DB 开销。
 pub(crate) async fn emit_agent_block(
@@ -83,7 +107,13 @@ pub(crate) async fn xadd(
     payload: &serde_json::Value,
 ) {
     let mut cmd = redis::cmd("XADD");
+    // 裁剪只发生在 worker 的消费轮里（announce_main 每轮 XTRIM ~10000），
+    // worker 停机/落后时这条流与 session、首页缓存同库 Redis ⇒ 无界增长会把
+    // 整站缓存一起拖垮。XADD 侧自己封顶（近似裁剪，开销可忽略）。
     cmd.arg(stream)
+        .arg("MAXLEN")
+        .arg("~")
+        .arg(200_000)
         .arg("*")
         .arg("payload")
         .arg(payload.to_string());
