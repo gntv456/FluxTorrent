@@ -50,6 +50,7 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
                         -- 数据来自外站，downloaded 恒 0，有 leecher 佐证上传
                         -- 即证明手里有数据，与 process_event 豁免同口径）。
                         AND s.last_port > 0
+                        -- 口径（0310）：仅 0(DEAD) 阻断；-2(SUSPECT)/-1(未测) 放行。
                         AND NOT COALESCE(s.connectable = 0, false)
                         AND (s.downloaded > 0 OR EXISTS (
                             SELECT 1 FROM upload_corroborated uc

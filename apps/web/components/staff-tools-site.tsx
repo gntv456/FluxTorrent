@@ -13,6 +13,7 @@ import type {
   AdItem,
   AgentRow,
   CleanupResult,
+  ConnDistRow,
   NotConnectRow,
   PollRow,
   SiteStats,
@@ -46,6 +47,7 @@ export function StaffSitePanel({
   );
   const [ads, setAds] = useState<AdItem[]>([]);
   const [notConnectRows, setNotConnectRows] = useState<NotConnectRow[]>([]);
+  const [connDist, setConnDist] = useState<ConnDistRow[]>([]);
   const [uploaderRows, setUploaderRows] = useState<UploaderRow[]>([]);
   const [agentRows, setAgentRows] = useState<AgentRow[]>([]);
   const [pollRows, setPollRows] = useState<PollRow[]>([]);
@@ -71,6 +73,12 @@ export function StaffSitePanel({
       .get<NotConnectRow[]>("/api/v1/admin/notconnectable")
       .then(setNotConnectRows)
       .catch(() => setNotConnectRows([]));
+    // 四档分布（0310）：-2「无法验证」与 0「不可信」分开看，是判断
+    // 该收紧口径还是误伤加密客户端的唯一依据。
+    api
+      .get<ConnDistRow[]>("/api/v1/admin/conn/dist")
+      .then(setConnDist)
+      .catch(() => setConnDist([]));
     api
       .get<UploaderRow[]>("/api/v1/admin/uploaders")
       .then(setUploaderRows)
@@ -222,6 +230,7 @@ export function StaffSitePanel({
           uploaderRows={uploaderRows}
           agentRows={agentRows}
           pollRows={pollRows}
+          connDist={connDist}
         />
       )}
       {tab === "ads" && (

@@ -177,6 +177,11 @@ pub async fn not_connectable(
         crate::authz::perm::NOTCONNECTABLE_VIEW,
     )
     .await?;
+    // ⚠️ 返回形状保持为**数组**（前端 staff-tools-site.tsx 按
+    // `NotConnectRow[]` 消费，改成对象会静默崩前端）。四档分布另走
+    // `/admin/conn/dist`，两者分开演进。
+    // 口径（0310）：默认只列 0(DEAD 实锤不可信)。站方若要排查「无法验证」
+    // 用 `/admin/conn/dist` 看 -2(SUSPECT) 的量与涉及用户数，不必逐个列。
     let rows: Vec<NotConnectRow> = sqlx::query_as(
         "SELECT u.id, u.username, count(DISTINCT s.torrent_id) AS torrents, u.last_seen_at \
          FROM users u JOIN snatches s ON s.user_id = u.id AND s.connectable = 0 \
@@ -184,6 +189,41 @@ pub async fn not_connectable(
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
+}
+
+/// 做种结论四档分布（只读观测，0310）：-1 未测 / -2 无法验证 / 0 不可信 / 1 可信。
+///
+/// 通用 PT 站运营用它在「收紧口径」与「误伤加密客户端」之间做判断：
+/// `-2` 大 → 站内有大量不响应明文协议的用户（加密客户端/白名单），此时把
+/// SUSPECT 当不可信来罚就是自伤做种供给；`0` 大 → 确有实锤作弊面。
+#[get("/admin/conn/dist")]
+pub async fn conn_dist(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::NOTCONNECTABLE_VIEW,
+    )
+    .await?;
+    let dist: Vec<ConnDistRow> = sqlx::query_as(
+        "SELECT connectable AS state, count(*) AS n, count(DISTINCT user_id) AS users \
+         FROM snatches WHERE connectable IS NOT NULL \
+         GROUP BY connectable ORDER BY connectable",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(dist))
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct ConnDistRow {
+    state: i16,
+    n: i64,
+    users: i64,
 }
 
 /// 上传者状态（uploaders.php 口径）：发布数 / 做种数 / 体积

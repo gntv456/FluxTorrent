@@ -202,6 +202,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::ad_toggle)
         .service(crate::staff_http::ad_delete)
         .service(crate::staff_http::not_connectable)
+        .service(crate::staff_http::conn_dist)
         .service(crate::staff_http::uploaders)
         .service(crate::staff_http::all_agents)
         .service(crate::staff_http::poll_overview)

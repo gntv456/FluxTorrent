@@ -260,9 +260,19 @@ impl PeerTable {
 
     /// 回连结果写回（peer 可能在检测间隙超时下线——不存在则忽略）
     pub fn set_connectable(&self, key: &PeerKey, reachable: bool) {
+        self.set_conn_state(key, if reachable { CONN_OK } else { CONN_DEAD });
+    }
+
+    /// 写回四档探测结论（2026-10-08）：见 `model::CONN_SUSPECT` 的定义。
+    /// 只写确定的结论；`CONN_UNTESTED` 不应由此路径写入（未探测就保持
+    /// 旧值，避免把「没轮到」误当成「测过了」）。
+    pub fn set_conn_state(&self, key: &PeerKey, state: i8) {
+        if state == CONN_UNTESTED {
+            return;
+        }
         if let Some(mut s) = self.swarms.get_mut(&key.info_hash) {
             if let Some(p) = s.peers.get_mut(&key.peer_id) {
-                p.connectable = if reachable { CONN_OK } else { CONN_DEAD };
+                p.connectable = state;
             }
         }
     }
