@@ -34,9 +34,13 @@ pub const DETAIL_SECTIONS: &[&str] = &[
     "descr",
     "mediainfo",
     "nfo",
+    // 抓轨日志（0312 音乐站 Logchecker）：无日志行时前端本就不渲染
+    "logs",
     "peers",
     "group",
     "collections",
+    // 相关种子（2026-10-08 相似推荐 P1）：无数据前端自隐，仍给配置关闭位
+    "related",
     "files",
     "subtitles",
     "snatches",

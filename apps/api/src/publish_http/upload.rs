@@ -62,11 +62,11 @@ async fn upload_core(
     crate::authz::require_perm(state, auth, crate::authz::perm::TORRENT_UPLOAD)
         .await?;
     // 体积上限、multipart 读取与元数据装配都在 upload_body.rs
-    let (bytes, nfo_bytes, mp_fields) =
+    let body =
         super::upload_body::read_body(&state.repo.db, &mut payload).await?;
-    let form = super::upload_fields::build_form(query_string, mp_fields)?;
+    let form = super::upload_fields::build_form(query_string, body.fields)?;
 
-    let parsed = crate::bencode::parse_torrent(&bytes)
+    let parsed = crate::bencode::parse_torrent(&body.torrent)
         .map_err(DomainError::TorrentInvalid)?;
     // 结构校验（P0-6 实测：无 `pieces`、`pieces` 非 20 倍数、`piece length=0`、
     // 总大小 0、空标题、`..\..\` 路径穿越 六种畸形 .torrent 全部 200 入库；
@@ -74,7 +74,7 @@ async fn upload_core(
     crate::bencode::validate_for_upload(&parsed)
         .map_err(DomainError::TorrentInvalid)?;
     // 站外取源键（HTTP seed / DHT 提示）入库这一侧直接拒收；下载侧另有剥离
-    crate::bencode::reject_off_tracker_sources(&bytes)
+    crate::bencode::reject_off_tracker_sources(&body.torrent)
         .map_err(DomainError::TorrentInvalid)?;
 
     // 重复检测（M04：info_hash 唯一）。**同一作者的墓碑（status=3）不算重复**——
@@ -194,10 +194,8 @@ async fn upload_core(
             return Err(DomainError::Validation("聚合组不存在".into()));
         }
     }
-    let nfo_text: Option<String> = nfo_bytes
-        .as_deref()
-        .map(decode_nfo)
-        .filter(|s| !s.trim().is_empty());
+    let nfo_dec = body.nfo.as_deref().map(decode_nfo);
+    let nfo_text: Option<String> = nfo_dec.filter(|s| !s.trim().is_empty());
     // ---- 以下全部在 INSERT 之前（P0-4：过去 tags / 推荐位 / 价格越界都在入库后
     //      才报错，留下待审残种 + 同一 .torrent 永久「种子重复」）----
     precheck::check_lengths(&form)?;
@@ -214,6 +212,7 @@ async fn upload_core(
     let shots = descr_images(form.descr.as_deref());
     precheck::check_quality(&state.repo.db, &form, &parsed, shots.len())
         .await?;
+    let rip = super::upload_logcheck::run(&body.logcheck, &body.logs)?;
     // sections 先整体校验再落种子：原先校验在 INSERT 之后、且与写入交织，
     // 报错时种子已入库，重试同一 .torrent 永远撞 TorrentDuplicate
     super::upload_sections::parse_sections(
@@ -339,6 +338,7 @@ async fn upload_core(
         state, &parsed, id, auth, promo,
     )
     .await?;
+    super::upload_logcheck::store(&state.repo.db, id, &rip).await?;
     // M28 插件 Hook：发布成功后分发（异步、失败不影响主流程）
     state.plugins.dispatch_upload(state.get_ref(), id, auth.id);
 

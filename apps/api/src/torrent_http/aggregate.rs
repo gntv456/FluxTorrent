@@ -29,6 +29,8 @@ struct TorrentAggregate {
     comments: Vec<torrents::CommentRow>,
     nfo: Option<String>,
     tags: serde_json::Value,
+    /// 抓轨日志清单（0312；正文不进首屏，点开走 /torrents/{id}/logs/{ordinal}）
+    logs: Vec<torrents::LogRow>,
 }
 
 /// 共享段缓存键：reveal 影响 owner_name 口径，必须分桶。
@@ -89,6 +91,7 @@ async fn torrent_aggregate(
     let files_f = torrents::list_files(&state.repo.db, id);
     let nfo_f = torrents::get_nfo(&state.repo.db, id, viewer);
     let tags_f = torrents::list_tags(&state.repo.db, id, viewer);
+    let logs_f = torrents::list_logs(&state.repo.db, id);
 
     // torrent/detail 失败才整体短路（种子不存在 → 404）；files/nfo/tags
     // 为纯静态块降级为空。detail/thanks 带 viewer 态，留在个人段实时算。
@@ -101,8 +104,9 @@ async fn torrent_aggregate(
             let empty = || serde_json::json!({ "dict": [], "mine": [] });
             tags_f.await.unwrap_or_else(|_| empty())
         },
+        async { logs_f.await.unwrap_or_default() },
     );
-    let (torrent_r, detail_r, files, nfo, tags) = joined;
+    let (torrent_r, detail_r, files, nfo, tags, logs) = joined;
     // 只有对外可见的种子才允许进共享缓存（见上方命中判定）
     let cacheable = matches!(&torrent_r, Ok(t) if t.approval_status == 1);
     let torrent = torrent_r?;
@@ -115,6 +119,7 @@ async fn torrent_aggregate(
         files,
         nfo,
         tags,
+        logs,
     };
     if cacheable {
         if let Ok(json) = serde_json::to_string(&shared) {
@@ -140,6 +145,7 @@ struct TorrentAggregateShared {
     files: Vec<torrents::FileRow>,
     nfo: Option<String>,
     tags: serde_json::Value,
+    logs: Vec<torrents::LogRow>,
 }
 
 /// 个人段：thanks（是否已感谢带 viewer 态）+ comments（点赞 viewer 态，0155）
@@ -186,5 +192,6 @@ async fn assemble(
         },
         nfo: shared.nfo,
         tags: shared.tags,
+        logs: shared.logs,
     })
 }

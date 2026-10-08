@@ -14,7 +14,9 @@ mod meta;
 mod pack_catalog;
 mod pack_format;
 mod pack_import;
-mod pack_kinds;
+// 站型包 apply（staff_http/pack_core.rs）要复用本模块的九列全字段解析，
+// 否则站型包写 section_kinds 会漏掉 field_type 等六类型元数据而静默降级回 select。
+pub(crate) mod pack_kinds;
 mod pack_store;
 mod packs;
 mod schema;

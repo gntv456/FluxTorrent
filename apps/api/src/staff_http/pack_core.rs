@@ -193,31 +193,7 @@ pub(crate) async fn apply_pack_full(
         if let Some(kinds) =
             sections.get("kinds").and_then(serde_json::Value::as_array)
         {
-            for k in kinds {
-                let (Some(kind), Some(label)) = (
-                    k.get("kind").and_then(serde_json::Value::as_str),
-                    k.get("label").and_then(serde_json::Value::as_str),
-                ) else {
-                    continue;
-                };
-                if !is_ascii_kind(kind) {
-                    continue;
-                }
-                let sort = k
-                    .get("sort")
-                    .and_then(serde_json::Value::as_i64)
-                    .unwrap_or(999) as i32;
-                sqlx::query(
-                    "INSERT INTO section_kinds (kind, label, sort) VALUES ($1, $2, $3) \
-                     ON CONFLICT (kind) DO UPDATE SET label = EXCLUDED.label, sort = EXCLUDED.sort",
-                )
-                .bind(kind)
-                .bind(label)
-                .bind(sort)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-            }
+            super::pack_types::apply_pack_kinds(&mut tx, kinds).await?;
         }
         if let Some(dict) =
             sections.get("dict").and_then(serde_json::Value::as_object)
