@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { AdminNavGroups } from "./admin-nav-groups";
+import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
 /** 管理面板条目（后端 /admin/staffpanel 返回，已按 min_class 过滤） */
 export interface PanelEntry {
   section: string;
@@ -108,7 +109,7 @@ export function AdminShell({
     url: "/admin?tool=ops",
     info: `${ops.versionTitle} / ${ops.backupsTitle} / ${ops.jobsTitle}`,
     tab_key: "ops",
-    min_class: 90,
+    min_class: STAFF_CLASS_MIN,
   };
   // 首页排版（0089）入口：同样恒定注入（后端保存端点要求 SETTINGS_MANAGE=99，
   // 无权时面板内保存报错；列表仅 sysop 可见，min_class=99）

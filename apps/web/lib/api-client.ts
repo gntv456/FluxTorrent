@@ -1,5 +1,6 @@
 import type { ApiEnvelope, Page, PageParams } from "@fluxtorrent/domain-types";
 import { LOCALE_COOKIE } from "@/i18n/config";
+import { apiServerBase } from "@/lib/api-upstream";
 
 /**
  * 统一 API 客户端（方案 §8.3.2：组件内禁止裸 fetch）。
@@ -36,8 +37,8 @@ export function setSessionCookie(loggedIn: boolean): void {
 
 function baseUrl(): string {
   if (typeof window === "undefined") {
-    // 服务端（RSC/容器内）：直连 api 服务
-    return process.env.API_SERVER_URL ?? "http://localhost:8080";
+    // 服务端（RSC/容器内）：直连 api 服务（单源见 api-upstream.ts）
+    return apiServerBase();
   }
   // 浏览器：同源相对路径，经 Next rewrites 转发（免 CORS、免暴露 API 端口）
   return process.env.NEXT_PUBLIC_API_URL ?? "";

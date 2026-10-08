@@ -71,7 +71,10 @@ export default async function AboutPage() {
           </a>
           <a
             className="text-link"
-            href={info?.docs_url || "https://wiki.ptang.top/ft/"}
+            href={
+              info?.docs_url ||
+              "https://github.com/gntv456/FluxTorrent#readme"
+            }
             target="_blank"
             rel="noreferrer"
           >
