@@ -10,7 +10,7 @@
 | 会话 | JWT（HS256），签发密钥 `JWT_SECRET` ≥32 字节，生产模式启动即拒绝弱值 |
 | 2FA | TOTP（RFC 6238，开/关/管理员清除）+ WebAuthn passkey |
 | 登录防护 | Redis 滑窗限流（60s/5 次）+ 账户级失败锁定 |
-| passkey（tracker） | users.passkey CHAR(32)，泄漏可自助重置；重置/改密后旧 key 进入宽限窗（`PASSKEY_GRACE_HOURS`，默认 7 天，迁移 0302）后失效 |
+| passkey（tracker） | users.passkey CHAR(32)。两种轮换语义分开：**显式「重置密钥」**（自助 usercp 与后台代为重置）是安全处置动作，旧钥不再进宽限窗、当场作废（tracker 侧随 `flux:guard:ver` 轮询清快照，≤3s）；**改密顺带轮换**才给宽限窗（`PASSKEY_GRACE_HOURS`，默认 7 天，迁移 0302/0308）——passkey 烤在用户已下载的每一个 .torrent 里，改密不该让手上种子集体停种 |
 | 注册防护 | 验证码四驱动（none/turnstile/recaptcha/hcaptcha）+ 一次性邮箱域名黑名单 + 邀请码邮箱绑定校验 |
 
 ## 传输与响应头
@@ -59,6 +59,21 @@ frame-ancestors 'none'
   `self_seed_only`（默认）照常接受发布者的 announce 与计费，但对非发布者/非员工清空 peer 列表与计数；
   `allow_all` 为旧行为，`owner_only` 直接拒绝非发布者。站点详情页本就隐藏待审种（visibility.rs），
   此项补齐 tracker 数据面的同一口径。
+- 回连可达性档位：`site_settings.connectable_gate`（迁移 0308）只有两档——`off`（默认）
+  tracker 的 TCP 回连 + BT 握手实测结果只写进 `snatches.connectable` 供版主筛，**不否决在种**；
+  `hard` 才把实测不可达判成不在种（本站旧行为）。缺省选 off 是按主流口径来的：UNIT3D 的
+  `connectable_check` 默认 false 且唯一消费者是 BON 条件、NexusPHP 建行硬编码 `'yes'`、
+  Ocelot 从不写该列——拿它一票否决会把 NAT 后没有映射入站端口的真做种者静默判成不在种
+  （在种数、保种考核、濒危种救援一起塌）。机房/公网可达的站想要硬口径再显式开 `hard`。
+- 即时分享率闸门：`site_settings.ratio_gate`（`off`/`warn` 默认/`block`，迁移 0308）。
+  拦的是**下载**（announce 的 `left > 0`），做种永不拦——拦做种等于把要补比率的人赶出
+  swarm，比率只会更差。门槛 = `min(max(user_classes.min_ratio, ratiolimit), ratio_gate_max)`，
+  豁免四条例外：员工（class ≥ 90）、`downloaded = 0`（比率无从计算）、注册未过
+  `ratio_gate_grace_days`（与等级 `min_age_days` 取较大者）、已在 `ratio_watch` 观察期内
+  （那条异步链已处置，不重复罚）。HTTP 与 UDP 两条通道共用同一个 `decide()`。
+  **开站前必查**：`ratiolimit` 是历史值（本仓库出厂样例是 6，等级 `min_ratio` 全 0），
+  照它直接开 `block` 等于把全站下载锁死；先设 `warn` 看
+  `flux_tracker_ratio_gate_warn_total` 的量，确认门槛数字合理再拧 `block`。
 - IP：ip_bans 封禁（0302 起支持 CIDR 段，`/0` 拒收）+ testip 工具。取信分两档，别再混称：
   `TRUST_PROXY=1` 信 X-Forwarded-For（右数第 `TRUST_PROXY_DEPTH` 段）；
   `TRUST_PROXY_IP=1` 信 announce 的 `?ip=` —— 那是**客户端自报**，比 XFF 更宽，只供调试。
