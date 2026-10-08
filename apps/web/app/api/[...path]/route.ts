@@ -15,8 +15,9 @@ import type { NextRequest } from "next/server";
  * method/headers/body 全透传，响应原样返回（含 Set-Cookie/流式附件下载）。
  */
 
-const UPSTREAM = () =>
-  process.env.API_SERVER_URL ?? "http://localhost:8080";
+import { apiServerBase } from "@/lib/api-upstream";
+
+const UPSTREAM = apiServerBase;
 
 async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;

@@ -12,6 +12,7 @@ import {
   type MedalDef, type RoleDef,
 } from "./increment-bulk-idem";
 import { BulkLedger } from "./increment-bulk-ledger";
+import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
 
 /** 第八轮 0065：批量发放（好学 increment-bulk.php 口径）
  *  合并原「魔力增减 / 上传量增减」两个页签：火花/上传量/邀请/补签卡
@@ -193,7 +194,7 @@ export function IncrementBulk() {
               <td className="rowhead align-top">{t.classes}</td>
               <td className="rowfollow">
                 <div className="grid grid-cols-2 gap-1 md:grid-cols-4">
-                  {classList.filter(([id]) => id < 90).map(([id, label]) => (
+                  {classList.filter(([id]) => id < STAFF_CLASS_MIN).map(([id, label]) => (
                     <label key={id} className="flex items-center gap-1.5 text-sm">
                       <input
                         type="checkbox"

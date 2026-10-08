@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import type { SubtitleRow } from "@/components/subtitle-board-shared";
 import {
   SubtitleRowActions,
@@ -15,6 +16,7 @@ import {
   loadLangDict,
   timeAgo,
 } from "@/components/subtitle-board-format";
+import { isStaffClass } from "@/lib/domain/user-class";
 
 export {
   boldRule,
@@ -45,7 +47,7 @@ export function SubtitleListTable({
   onReload: () => void;
   langs?: { code: string; name: string; flag: string }[];
 }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.subtitles;
   const [me, setMe] = useState<{
     id: number;
@@ -58,7 +60,7 @@ export function SubtitleListTable({
       .catch(() => setMe(null));
   }, []);
   const canModify = (s: SubtitleRow) =>
-    !!me && (me.id === s.user_id || (me.class_id ?? 0) >= 90);
+    !!me && (me.id === s.user_id || isStaffClass(me.class_id));
   return (
     <div
       className="baozi-wide-table-scroll subtitles-table-scroll"
@@ -175,7 +177,7 @@ export function SubtitleListTable({
               </td>
               <td
                 className="nowrap text-center"
-                title={new Date(s.created_at).toLocaleString("zh-CN")}
+                title={new Date(s.created_at).toLocaleString(dateLocale(locale))}
               >
                 {timeAgo(s.created_at)}
               </td>

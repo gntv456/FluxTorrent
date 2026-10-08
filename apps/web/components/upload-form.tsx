@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api-client";
+import { api, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { appendMeta, packSections } from "@/lib/upload-fields";
 import { fmt } from "@/i18n/config";
@@ -188,7 +188,7 @@ export function UploadForm() {
         pick_type: pickType,
       });
       // 同源相对路径走 Next rewrites 转发（与 api-client 同口径），避免依赖发布端口
-      const base = process.env.NEXT_PUBLIC_API_URL ?? "";
+      const base = rawFetchHelpers.base();
       const res = await fetch(`${base}/api/v1/torrents`, {
         method: "POST",
         body: form,

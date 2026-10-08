@@ -19,6 +19,7 @@ import { TorrentHead } from "@/components/torrent-detail-head";
 import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
 import { TorrentSubtitles } from "@/components/torrent-subtitles";
 import { TorrentPeers } from "@/components/torrent-peers";
+import { TorrentRelated } from "@/components/torrent-related";
 import {
   Comments,
   GroupVersions,
@@ -34,6 +35,7 @@ import type {
   TorrentComment,
   TorrentListItem,
 } from "@fluxtorrent/domain-types";
+import { isStaffClass } from "@/lib/domain/user-class";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +110,7 @@ export default async function TorrentDetailPage({
   // E6 视图布局：段落隐藏门（空集=全显示；模块开关仍优先，无数据仍不渲染）
   const sectOn = (k: string) =>
     !(profile?.view_hidden?.sections ?? []).includes(k);
-  const isStaff = (me?.class_id ?? 0) >= 90;
+  const isStaff = isStaffClass(me?.class_id);
   // 分类/学段/媒介/版本词表全部取自站点档案（后端为唯一真值源）；
   // 档案不可用时 editCats 为空——下拉只剩「请选择」、名称回落 #id，
   // 不再拿另一套硬编码词表顶替（那正是分类显示 bug 的源头）
@@ -321,6 +323,9 @@ export default async function TorrentDetailPage({
         relTime={relTime}
         sectOn={sectOn}
       />
+
+      {/* 相关种子（2026-10-08 P1 相似推荐）：懒加载，无数据自隐 */}
+      {sectOn("related") && <TorrentRelated torrentId={t.id} />}
 
       {/* M3：<md 底部固定操作条（收藏/复制/下载，键盘弹出自动让位） */}
       <TorrentActionBarMount

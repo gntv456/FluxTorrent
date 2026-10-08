@@ -13,6 +13,7 @@ import {
 import { UserTools } from "@/components/user-tools";
 import { UserCheckin } from "@/components/user-checkin";
 import { MedalIcon } from "@/components/medal-icon";
+import { isStaffClass } from "@/lib/domain/user-class";
 
 /** /me 返回口径（http.rs me handler）+ spark_balance */
 interface MeInfo {
@@ -263,7 +264,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
             {mod("tasks") && <a href="/tasks">{dict.nav.tasks}</a>}
             {mod("invites") && <a href="/invites">{dict.nav.invites}</a>}
             {mod("jixiao") && <a href="/jixiao">{dict.nav.jixiao}</a>}
-            {me.class_id !== undefined && me.class_id >= 90 && (
+            {isStaffClass(me.class_id) && (
               <Link
                 href="/admin"
                 className="font-bold text-[var(--baozi-orange-dark)]"

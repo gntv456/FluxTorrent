@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
 
 /** 捐赠订单后台管理（0209 P1-6）：列表/筛选/手工补单。
  *  网关掉单时站长此前只能进数据库——这里是运营侧出口。 */
@@ -263,7 +264,7 @@ export function AdminPanelEntries() {
         info: edit.info?.trim() ?? "",
         sort: edit.sort ?? 0,
         tab_key: edit.tab_key ?? "",
-        min_class: edit.min_class ?? 90,
+        min_class: edit.min_class ?? STAFF_CLASS_MIN,
         module_key: edit.module_key || null,
         perm_key: edit.perm_key || null,
       };
@@ -354,7 +355,7 @@ export function AdminPanelEntries() {
             {t.fMinClass}
             <input
               type="number"
-              value={edit.min_class ?? 90}
+              value={edit.min_class ?? STAFF_CLASS_MIN}
               onChange={(e) =>
                 setEdit({ ...edit, min_class: Number(e.target.value) })
               }
@@ -416,7 +417,7 @@ export function AdminPanelEntries() {
               info: "",
               sort: 0,
               tab_key: "",
-              min_class: 90,
+              min_class: STAFF_CLASS_MIN,
             })
           }
           className="min-h-[36px] rounded-full border border-line px-4 text-sm text-sky-deep"
