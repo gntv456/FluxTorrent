@@ -7,7 +7,7 @@ SER="${SER:-emulator-5554}"
 # 0) WebView 必须在前台——被别的 app 盖住时 CDP eval 会挂死(无响应也不报错)
 FOCUS=$("$ADB" -s $SER shell "dumpsys activity activities | grep topResumedActivity" | head -1)
 if ! echo "$FOCUS" | grep -q webview_shell; then
-  "$ADB" -s $SER shell "am force-stop com.kechengbiao.kechengbiao" >/dev/null 2>&1
+  "$ADB" -s $SER shell "am force-stop ${FOREGROUND_PKG:-com.kechengbiao.kechengbiao}" >/dev/null 2>&1
   "$ADB" -s $SER shell am start -a android.intent.action.VIEW -d "http://localhost:3000/torrents" >/dev/null 2>&1
   sleep 4
 fi

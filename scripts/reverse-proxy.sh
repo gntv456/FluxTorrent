@@ -13,8 +13,8 @@
 # 系统直装路径：/etc/nginx/conf.d/fluxtorrent-<域名>.conf 全量生成。
 #
 # 用法：
-#   bash scripts/reverse-proxy.sh --domain mfwg.ptang.top          # 全自动
-#   bash scripts/reverse-proxy.sh --domain mfwg.ptang.top --dry    # 只看要改什么
+#   bash scripts/reverse-proxy.sh --domain your-domain.example.com          # 全自动
+#   bash scripts/reverse-proxy.sh --domain your-domain.example.com --dry    # 只看要改什么
 #   bash scripts/reverse-proxy.sh --status                          # 只体检不改
 #
 # 证书不在本脚本职责内（宝塔 SSL 页一键 / certbot 一条命令），但会检查提醒。

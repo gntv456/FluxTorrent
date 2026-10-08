@@ -133,7 +133,9 @@ async function main() {
       clip = { x: 0, y: 0, width: Math.ceil(v.clientWidth || 412), height: Math.ceil(v.clientHeight || 915), scale: 1 };
     }
     const r = await sess.send('Page.captureScreenshot', { format: 'jpeg', quality: 70, ...(clip ? { clip } : {}) });
-    const { writeFile } = await import('fs/promises');
+    const { writeFile, mkdir } = await import('fs/promises');
+    const { dirname } = await import('path');
+    await mkdir(dirname(path), { recursive: true });
     await writeFile(path, Buffer.from(r.data, 'base64'));
     return path;
   };

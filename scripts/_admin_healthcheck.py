@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """控制面板全量体检：GET 全测，写接口做可回滚冒烟测试。"""
-import subprocess, json, time, base64, hmac, hashlib, sys
+import subprocess, json, time, base64, hmac, hashlib, sys, os
 
-env = open("D:/FluxTorrent/docker/.env", encoding="utf-8").read()
+# .env 位置可覆盖（默认：仓库根/docker/.env，随脚本位置推导）
+_ENV = os.environ.get("FLUX_ENV") or os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "docker", ".env")
+env = open(_ENV, encoding="utf-8").read()
 secret = [l.split("=",1)[1].strip() for l in env.splitlines() if l.startswith(
     "JWT_SECRET=")][0]
 b64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b"=").decode()

@@ -38,8 +38,10 @@ def main():
     ap.add_argument("--keep", action="store_true", help="保留演练库（调试用）")
     args = ap.parse_args()
 
-    url = os.environ.get("DATABASE_URL",
-        "postgres://flux:flux@127.0.0.1:5432/fluxtorrent")
+    # 不带口令的字面量缺省：本地 psql 靠 ~/.pgpass 或信任认证；
+    # 需要凭据时设 DATABASE_URL（与 compose 的 ${DB_PASSWORD:?} 同纪律）
+    url = os.environ.get(
+        "DATABASE_URL", "postgres://127.0.0.1:5432/fluxtorrent")
     u = urlparse(url)
     host = args.host or u.hostname or "127.0.0.1"
     port = args.port or str(u.port or 5432)

@@ -4,6 +4,7 @@
 用法：python _verify_compat_0267.py
 """
 import base64
+import os
 import hashlib
 import hmac
 import json
@@ -17,7 +18,10 @@ import xml.etree.ElementTree as ET
 
 API = "http://127.0.0.1:8080/api/v1"
 TRK = "http://127.0.0.1:7070"
-ROOT = "D:/FluxTorrent"
+ROOT = os.environ.get(
+    "FLUX_ROOT",
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+)
 
 ok_n = 0
 bad = []
