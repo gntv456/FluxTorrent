@@ -37,9 +37,18 @@ export interface TypePack {
   name: string;
   description: string | null;
   brand: string;
-  categories: { id: number; name: string }[];
+  categories: { id: number; key?: string; name: string }[];
   modules: Record<string, boolean>;
   sort: number;
+}
+
+/** diff 变更行（0317 H2）：键值行之外还有分类段行（改名/新增/失活） */
+export interface PackDiffChange {
+  key: string;
+  old?: string;
+  new?: string;
+  /** 分类段携带：在用种子数（改名/失活行） */
+  torrents?: number;
 }
 
 /** 站型包应用记录（G21）：回看 diff/计数，回滚 = 重放应用前快照 */
@@ -48,7 +57,7 @@ export interface PackApplyItem {
   pack_code: string;
   pack_name: string;
   mode: string;
-  changes: { key: string; old: string; new: string }[];
+  changes: PackDiffChange[];
   counts: Record<string, unknown>;
   applied_at: string;
   actor: string | null;

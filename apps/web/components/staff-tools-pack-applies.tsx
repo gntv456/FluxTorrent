@@ -42,9 +42,20 @@ export function StaffPackAppliesPanel({ rows, busy, guard }: PackAppliesProps) {
               <td className="colhead text-right">{dict.cmgmt.colActions}</td>
             </tr>
             {rows.map((r) => {
-              const lines = (r.changes ?? []).map(
-                (c) => `${c.key}: ${c.old} → ${c.new}`,
-              );
+              // 0317 H2：changes 里除键值行还有分类段行（改名/新增/失活），
+              // 与切换向导的 diff 渲染同口径
+              const lines = (r.changes ?? []).map((c) => {
+                if (c.key === "category_rename") {
+                  return `${c.old} → ${c.new}（在用种子 ${c.torrents ?? 0} 枚）`;
+                }
+                if (c.key === "category_new") {
+                  return `新增分类：${c.new}`;
+                }
+                if (c.key === "category_inactive") {
+                  return `${c.old}（在用种子 ${c.torrents ?? 0} 枚，包不含）`;
+                }
+                return `${c.key}: ${c.old ?? "(未设置)"} → ${c.new}`;
+              });
               const head = fmt(t.packDiffHead, { n: lines.length });
               const detail = lines.length
                 ? head +

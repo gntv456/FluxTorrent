@@ -11,7 +11,8 @@ use sqlx::PgPool;
 /// 返回 (categories 数, extras 应用清单)。
 ///
 /// mode 语义与既有 apply 端点一致：replace = 清空分类重建（有种子时拒绝）；
-/// merge = 保留现有分类，同 id 覆盖改名、新 id 追加；restore = 回滚快照重放。
+/// merge = 保留现有分类，同 key（0317 起跨包唯一；无 key 载荷回落同 id）
+/// 覆盖、新 key 追加；restore = 回滚快照重放。
 /// 注意：tagline 不在此处重置（0145 覆盖语义——站长自定义值保留，见 pack_apply 调用方）。
 pub(crate) async fn apply_pack_full(
     db: &PgPool,
@@ -23,7 +24,6 @@ pub(crate) async fn apply_pack_full(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let cats = pack.categories.as_array().cloned().unwrap_or_default();
-    let added = cats.len() as i64;
     if mode == "replace" {
         let used: i64 = sqlx::query_scalar("SELECT count(*) FROM torrents")
             .fetch_one(&mut *tx)
@@ -41,6 +41,16 @@ pub(crate) async fn apply_pack_full(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
+    // key 行的 id 由应用侧分配（0317 H1）：包里的 id 只是「空表 replace 时的
+    // 建议序号」，不能拿来直接 INSERT——跨包切换时旧行占着同号主键，会撞
+    // categories_pkey。max+1 分配在事务内逐行递增；apply 是 sysop 级低频
+    // 操作且 replace 已清表，无并发重号风险。
+    let mut next_id: i32 = sqlx::query_scalar(
+        "SELECT COALESCE(max(id), 0) + 1 FROM categories",
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     for (i, c) in cats.iter().enumerate() {
         let id = c
             .get("id")
@@ -54,45 +64,90 @@ pub(crate) async fn apply_pack_full(
         if name.is_empty() {
             continue;
         }
+        // 跨包稳定身份（H1/0317）：声明了 key 的分类按 key 匹配——不同包的
+        // 分类互不覆盖（key 全局唯一），切站型只会追加新行，不再把老分类
+        // 原地改名偷换在用种子的语义；id 退化为内部主键。老载荷无 key 时
+        // 保持同 id 覆盖的旧语义（restore 快照重放也走这条）。
+        let key = c
+            .get("key")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
         // 图标：包可带 icon_key；未带按 0166 模式表推断（现有非空优先；restore 快照优先）。
         // 层级/排序（G20）：包声明了才写（COALESCE 守旧值），载荷保证父先于子。
         let icon = c.get("icon_key").and_then(|v| v.as_str()).unwrap_or("");
-        let _ = sqlx::query(
-            "INSERT INTO categories (id, name, icon_key, parent_id, sort) \
-             VALUES ($1, $2, COALESCE(NULLIF($3, ''), \
-             pick_category_icon($2)), $4, COALESCE($5, 100)) \
-             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, \
+        // 分类色（0183/0317 H6）：包声明了才写（merge 守站长改过的值；
+        // restore 整段以快照为准覆盖）
+        let bg = c.get("bg_color").and_then(|v| v.as_str()).unwrap_or("");
+        // key 唯一性是表达式索引（NULLIF(key,'')，空串视同 NULL 不冲突），
+        // ON CONFLICT 必须写表达式推断形式；无 key 载荷回落主键 id
+        let conflict_target = if key.is_empty() {
+            "id"
+        } else {
+            "((NULLIF(key, '')))"
+        };
+        let sql = format!(
+            "INSERT INTO categories (id, key, name, icon_key, parent_id, sort, \
+             bg_color) \
+             VALUES (CASE WHEN $6 = '' THEN $1 ELSE $9 END, NULLIF($6, ''), $2, \
+             COALESCE(NULLIF($3, ''), pick_category_icon($2)), $4, \
+             COALESCE($5, 100), NULLIF($8, '')) \
+             ON CONFLICT ({conflict_target}) DO UPDATE SET name = EXCLUDED.name, \
              parent_id = COALESCE($4, categories.parent_id), \
              sort = COALESCE($5, categories.sort), icon_key = COALESCE( \
-             NULLIF(CASE WHEN $6 THEN $3 ELSE categories.icon_key END, ''), \
+             NULLIF(CASE WHEN $7 THEN $3 ELSE categories.icon_key END, ''), \
              NULLIF(categories.icon_key, ''), NULLIF($3, ''), \
-             pick_category_icon($2))",
-        )
-        .bind(id)
-        .bind(&name)
-        .bind(icon)
-        .bind(
-            c.get("parent_id")
-                .and_then(|v| v.as_i64())
-                .map(|p| p as i32),
-        )
-        .bind(c.get("sort").and_then(|v| v.as_i64()).map(|s| s as i32))
-        .bind(mode == "restore")
-        .execute(&mut *tx)
-        .await;
+             pick_category_icon($2)), \
+             bg_color = CASE WHEN $7 THEN EXCLUDED.bg_color \
+             ELSE COALESCE(EXCLUDED.bg_color, categories.bg_color) END"
+        );
+        sqlx::query(&sql)
+            .bind(id)
+            .bind(&name)
+            .bind(icon)
+            .bind(
+                c.get("parent_id")
+                    .and_then(|v| v.as_i64())
+                    .map(|p| p as i32),
+            )
+            .bind(c.get("sort").and_then(|v| v.as_i64()).map(|s| s as i32))
+            .bind(key)
+            .bind(mode == "restore")
+            .bind(bg)
+            .bind(next_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        next_id += 1;
     }
+    // 计数用实际写入行数（H5）：载荷长度在「包行被跳过/合并」时虚报成功
+    let added: i64 = cats
+        .iter()
+        .filter(|c| {
+            c.get("name")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|n| !n.is_empty())
+        })
+        .count() as i64;
     // site_type + 品牌默认
     sqlx::query("INSERT INTO site_settings (name, value) VALUES \
      ('site_type', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, \
      updated_at = now()")
         .bind(&pack.code).execute(&mut *tx).await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("INSERT INTO site_settings (name, value) VALUES \
-     ('site_name', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, \
-     updated_at = now()")
-        .bind(&pack.brand).execute(&mut *tx).await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    // 模块开关 → 站点设定键（textbooks 等）
+    // 站名守卫（H3）：brand 为空不写——site_name 是站名权威键（0214 收敛），
+    // 11 个预置包 brand 全空串，无条件写会把整站抬头清成空。restore 回滚
+    // 走 snapshot_to_pack 的 brand（快照里存的是当时的真实站名），同样适用。
+    if !pack.brand.trim().is_empty() {
+        sqlx::query("INSERT INTO site_settings (name, value) VALUES \
+         ('site_name', $1) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, \
+         updated_at = now()")
+            .bind(pack.brand.trim()).execute(&mut *tx).await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    // 模块开关 → 站点设定键（textbooks 等）。
+    // H4 覆盖语义：站长手工设置过的键登记在 pack_module_overrides（0318），
+    // apply 跳过——「我只想做音乐站」的手工关闭不再被切站型无声复位。
+    // restore（回滚快照重放）不受限：快照本身就是站长状态。
     if let Some(mods) = pack.modules.as_object() {
         for (k, v) in mods {
             let val = if v.as_bool().unwrap_or(false) {
@@ -100,7 +155,20 @@ pub(crate) async fn apply_pack_full(
             } else {
                 "no"
             };
-            let _ = sqlx::query(
+            if mode != "restore" {
+                let overridden: bool = sqlx::query_scalar(
+                    "SELECT EXISTS (SELECT 1 FROM pack_module_overrides \
+                     WHERE module_key = $1)",
+                )
+                .bind(k)
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap_or(false);
+                if overridden {
+                    continue;
+                }
+            }
+            sqlx::query(
                 "INSERT INTO site_settings (name, value) \
                  VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = \
                  EXCLUDED.value, updated_at = now()",
@@ -108,7 +176,8 @@ pub(crate) async fn apply_pack_full(
             .bind(format!("module_{k}"))
             .bind(val)
             .execute(&mut *tx)
-            .await;
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
     // 质量维度种子（0092）：包内定义的维度重建标签与选项。
