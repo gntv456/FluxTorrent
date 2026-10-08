@@ -4,9 +4,9 @@
  "vitest.config.ts": [],
  "vitest.setup.ts": [],
  "lib/api-client.ts": [
-  103,
-  135,
-  138
+  104,
+  136,
+  139
  ],
  "lib/data-content.ts": [],
  "lib/data-forum.ts": [],
@@ -136,7 +136,7 @@
  "components/admin-sections-kinds.tsx": [],
  "components/admin-sections.tsx": [],
  "components/admin-shell.tsx": [
-  245
+  246
  ],
  "components/admin-subtitles-awards.tsx": [],
  "components/admin-tagdict-form.tsx": [],
@@ -252,31 +252,9 @@
  "components/forum-follow.tsx": [],
  "components/forum-lottery.tsx": [],
  "components/forum-markdown.tsx": [],
- "components/forum-mod-bar.tsx": [
-  68,
-  74,
-  75,
-  86,
-  89,
-  111,
-  119,
-  127,
-  135,
-  143,
-  151,
-  164,
-  166,
-  191
- ],
+ "components/forum-mod-bar.tsx": [],
  "components/forum-poll.tsx": [],
- "components/forum-post-actions.tsx": [
-  45,
-  65,
-  72,
-  79,
-  86,
-  152
- ],
+ "components/forum-post-actions.tsx": [],
  "components/forum-report.tsx": [],
  "components/forum-search.tsx": [],
  "components/forum-topic-list.tsx": [
@@ -484,7 +462,14 @@
  "components/staff-tools-security.tsx": [],
  "components/staff-tools-seedstats.tsx": [],
  "components/staff-tools-site-ads.tsx": [],
- "components/staff-tools-site-lists.tsx": [],
+ "components/staff-tools-site-lists.tsx": [
+  16,
+  18,
+  19,
+  22,
+  23,
+  25
+ ],
  "components/staff-tools-site.tsx": [],
  "components/staff-tools-sys-agentrules.tsx": [],
  "components/staff-tools-sys.tsx": [],
@@ -618,11 +603,11 @@
   233
  ],
  "components/upload-form-files.tsx": [
-  84,
-  93,
-  95,
-  186,
-  234
+  85,
+  94,
+  96,
+  187,
+  237
  ],
  "components/upload-form-parts.tsx": [],
  "components/upload-form-quality.tsx": [
@@ -765,17 +750,7 @@
   186,
   274
  ],
- "app/(main)/top/page.tsx": [
-  20,
-  21,
-  22,
-  61,
-  62,
-  63,
-  65,
-  98,
-  99
- ],
+ "app/(main)/top/page.tsx": [],
  "app/(main)/textbooks/page.tsx": [],
  "app/(main)/teams/page.tsx": [],
  "app/(main)/tasks/page.tsx": [],
@@ -8346,13 +8321,9 @@
   196,
   212
  ],
- "app/(auth)/self-unban/page.tsx": [
-  21,
-  31,
-  50
- ],
+ "app/(auth)/self-unban/page.tsx": [],
  "app/api/[...path]/route.ts": [
-  71
+  72
  ],
  "components/gacha-rates.tsx": [
   16,
@@ -8381,21 +8352,9 @@
   72,
   103
  ],
- "components/passkeys-card.tsx": [
-  55,
-  70,
-  82,
-  91,
-  130,
-  143,
-  144
- ],
+ "components/passkeys-card.tsx": [],
  "lib/captcha-widget.ts": [],
- "app/(auth)/apply/page.tsx": [
-  52,
-  65,
-  123
- ],
+ "app/(auth)/apply/page.tsx": [],
  "components/gacha-album.tsx": [
   78,
   85,
@@ -8412,12 +8371,7 @@
   149,
   150
  ],
- "app/(auth)/email-verify/page.tsx": [
-  48,
-  66,
-  72,
-  85
- ],
+ "app/(auth)/email-verify/page.tsx": [],
  "components/game/scratch-coat.tsx": [
   66
  ],
@@ -8494,18 +8448,15 @@
   25,
   56
  ],
- "app/error.tsx": [
-  36,
-  37
- ],
- "app/not-found.tsx": [
-  26,
-  27
- ],
+ "app/error.tsx": [],
+ "app/not-found.tsx": [],
  "components/game/bigsmall-road.tsx": [
   130
  ],
  "components/game/game-records.tsx": [
   194
+ ],
+ "components/global-search-dialog.tsx": [
+  70
  ]
 }

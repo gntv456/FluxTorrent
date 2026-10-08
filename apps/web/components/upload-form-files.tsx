@@ -5,6 +5,7 @@ import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
+import { UploadRipLogs } from "@/components/upload-form-riplogs";
 
 /** 发布表单·文件与 NFO / 附件块（从 upload-form.tsx 按域拆出，300 行门禁）：
  *  种子文件选择、标题/副标题、IMDb 与 PT-Gen、NFO、图床附件、MediaInfo、
@@ -216,6 +217,8 @@ export function UploadFilesBlock({
           </label>
         </div>
       </FormRow>
+      {/* 抓轨日志（0312）：站点未开检查时后端忽略这些 part */}
+      <UploadRipLogs />
       <FormRow label={dict.upload.attachLabel}>
         <div className="flex flex-col gap-1">
           <label className="uf-drop uf-drop--optional">

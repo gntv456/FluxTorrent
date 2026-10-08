@@ -9,6 +9,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/i18n/client";
+import { dateLocale, type Locale } from "@/i18n/config";
 import type { Overview } from "@/components/usercp";
 
 interface DictProp {
@@ -106,10 +107,12 @@ export function MoreInfoTable({
   t,
   dict,
   currency,
+  locale,
 }: {
   ov: Overview;
   t: Record<string, string>;
   currency: string;
+  locale: Locale;
 } & DictProp) {
   return (
     <details className="uc-more" open>
@@ -120,7 +123,7 @@ export function MoreInfoTable({
           <tr>
             <td className="rowhead">{t.joinDate}</td>
             <td className="rowfollow">
-              {new Date(ov.created_at ?? "").toLocaleString("zh-CN")}（
+              {new Date(ov.created_at ?? "").toLocaleString(dateLocale(locale))}（
               {daysSince(ov.created_at)}
               {dict.usercp.days2}）
             </td>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { PANEL_LG_COL } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 
 export interface BoardData {
   week: string;
@@ -23,7 +24,7 @@ export default function LeaderboardPage({
 }: {
   initial: BoardData | null;
 }) {
-  const { dict, currency } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const tl = dict.games.lb;
   const [tab, setTab] = useState<BoardKey>("lucky");
   const data = initial;
@@ -31,8 +32,8 @@ export default function LeaderboardPage({
   const magic = tab === "lucky" || tab === "fishing";
   const fmt = (v: number) =>
     magic
-      ? `${v.toLocaleString("en-US")} ${currency}`
-      : `${v.toLocaleString("en-US")} ${tl.times}`;
+      ? `${v.toLocaleString(dateLocale(locale))} ${currency}`
+      : `${v.toLocaleString(dateLocale(locale))} ${tl.times}`;
   const pill =
     "rounded-full border px-3 py-1 text-xs font-bold transition-colors";
   const tabs: { key: BoardKey; label: string; tip: string }[] = [

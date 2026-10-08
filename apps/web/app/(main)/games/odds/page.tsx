@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { dateLocale } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
 import { PANEL_LG } from "@/lib/ui-classes";
 
@@ -58,7 +59,7 @@ const edge = (ev: number) => pct((1 - ev) * 100);
 export default async function OddsPage() {
   const gate = await requireModule("games");
   if (gate) return gate;
-  const { dict, currency } = await getDict();
+  const { dict, locale, currency } = await getDict();
   const t = dict.games.odds;
   const ov = await api
     .get<Overview>("/api/v1/games")
@@ -112,7 +113,7 @@ export default async function OddsPage() {
                 {p.kind === "item" && (
                   <span className="text-sub">
                     {" "}
-                    （{p.value.toLocaleString("en-US")} {currency}）
+                    （{p.value.toLocaleString(dateLocale(locale))} {currency}）
                   </span>
                 )}
               </td>

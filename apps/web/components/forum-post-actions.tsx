@@ -26,6 +26,7 @@ export function TopicModActions({
   forums: { id: number; name: string }[];
 }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [busy, setBusy] = useState(false);
   const [moveTo, setMoveTo] = useState("");
 
@@ -42,7 +43,7 @@ export function TopicModActions({
   }
 
   async function del() {
-    if (!window.confirm("删除主题将收回发帖奖励，且不可恢复，确认？")) return;
+    if (!window.confirm(dict.forums.delTopicConfirm)) return;
     setBusy(true);
     try {
       await api.del(`/api/v1/forums/topics/${topicId}`);
@@ -62,28 +63,28 @@ export function TopicModActions({
         disabled={busy}
         onClick={() => manage({ sticky: !sticky })}
       >
-        {sticky ? "取消置顶" : "置顶"}
+        {sticky ? dict.forums.unsticky : dict.forums.sticky}
       </button>
       <button
         className={btn}
         disabled={busy}
         onClick={() => manage({ locked: !locked })}
       >
-        {locked ? "解锁" : "锁定"}
+        {locked ? dict.forums.unlock : dict.forums.locked}
       </button>
       <button
         className={btn}
         disabled={busy}
         onClick={() => manage({ digest: !digest })}
       >
-        {digest ? "取消精华" : "加精"}
+        {digest ? dict.forums.undigest : dict.forums.digest}
       </button>
       <select
         value={moveTo}
         onChange={(e) => setMoveTo(e.target.value)}
         className="min-h-[36px] rounded-full border border-line bg-cloud px-3 text-xs outline-none focus:border-sky"
       >
-        <option value="">移动到…</option>
+        <option value="">{dict.forums.moveTo}</option>
         {forums.map((f) => (
           <option key={f.id} value={f.id}>
             {f.name}
@@ -96,7 +97,7 @@ export function TopicModActions({
           disabled={busy}
           onClick={() => manage({ move_to_forum_id: Number(moveTo) })}
         >
-          确认移动
+          {dict.forums.confirmMove}
         </button>
       )}
       <button
@@ -104,7 +105,7 @@ export function TopicModActions({
         disabled={busy}
         onClick={del}
       >
-        删除主题
+        {dict.forums.delTopic}
       </button>
     </div>
   );
@@ -149,7 +150,7 @@ export function PostActions({
   }
 
   async function del() {
-    if (!window.confirm("删除该帖（仅版主可操作），确认？")) return;
+    if (!window.confirm(dict.forums.delPostConfirm)) return;
     setBusy(true);
     try {
       await api.del(`/api/v1/forums/posts/${postId}`);
@@ -165,7 +166,7 @@ export function PostActions({
   return (
     <div className="contents">
       <button className={btn} onClick={() => setEditing(true)}>
-        编辑
+        {dict.forums.edit}
       </button>
       {canMod && !isSelf && (
         <button
@@ -173,7 +174,7 @@ export function PostActions({
           disabled={busy}
           onClick={del}
         >
-          删除
+          {dict.forums.del}
         </button>
       )}
       {msg && <span className="text-xs text-danger">{msg}</span>}

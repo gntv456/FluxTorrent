@@ -52,3 +52,11 @@ CIDR 前缀长度无效	CIDR 前綴長度無效	Invalid CIDR prefix length
 pattern 需是合法正则表达式	pattern 需是合法正則運算式	pattern must be a valid regular expression
 重提冷却中（被拒后请至少 10 分钟后再试，期间可修改内容）	重提冷卻中（被拒後請至少 10 分鐘後再試，期間可修改內容）	Resubmission cooldown active (please wait at least 10 minutes after rejection; you may edit in the meantime)
 不能把自己的候选转正（利益冲突）	不能把自己的候選轉正（利益衝突）	You cannot promote your own offer (conflict of interest)
+站点未配置对外访问地址（PUBLIC_API_URL），无法发送重置邮件	站點未配置對外訪問地址（PUBLIC_API_URL），無法發送重置郵件	Site base URL (PUBLIC_API_URL) is not configured; cannot send the reset email
+站点未配置对外访问地址（PUBLIC_WEB_URL），无法发送邀请邮件	站點未配置對外訪問地址（PUBLIC_WEB_URL），無法發送邀請郵件	Site base URL (PUBLIC_WEB_URL) is not configured; cannot send the invite email
+站点未配置对外访问地址（PUBLIC_SITE_URL），无法创建支付单	站點未配置對外訪問地址（PUBLIC_SITE_URL），無法建立支付單	Site base URL (PUBLIC_SITE_URL) is not configured; cannot create the payment order
+per_page 需为数字	per_page 需為數字	per_page must be a number
+per_page 只能是 20/50/100	per_page 只能是 20/50/100	per_page must be one of 20/50/100
+hidden_cols 需为数组	hidden_cols 需為陣列	hidden_cols must be an array
+view 需为字符串	view 需為字串	view must be a string
+view 只能是 table/card/poster	view 只能是 table/card/poster	view must be one of table/card/poster

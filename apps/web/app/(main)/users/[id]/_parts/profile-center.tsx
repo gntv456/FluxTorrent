@@ -175,12 +175,12 @@ export function CenterGrid({
         </Row>
         <Row label={t.sparkField} icon="✦">
           <span className="num">
-            {Number(data.spark_balance).toLocaleString("en-US")}
+            {Number(data.spark_balance).toLocaleString(dateLocale(locale))}
           </span>
         </Row>
         <Row label={t.seedEarnField} icon="★">
           <span className="num">
-            {`${Number(data.month_seed_earn).toLocaleString("en-US")}（${t.thisMonth}）`}
+            {`${Number(data.month_seed_earn).toLocaleString(dateLocale(locale))}（${t.thisMonth}）`}
           </span>
         </Row>
       </Card>

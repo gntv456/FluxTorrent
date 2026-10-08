@@ -198,7 +198,7 @@ export default async function TopicPage({
       </table>
       {detail.locked && !detail.can_mod ? (
         <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-center text-sm text-sub">
-          主题已锁定，无法回复
+          {dict.forums.lockedNoReply}
         </p>
       ) : detail.can_write ? (
         <ReplyBox
@@ -211,7 +211,7 @@ export default async function TopicPage({
         />
       ) : (
         <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-center text-sm text-sub">
-          您没有在本版块回帖的权限
+          {dict.forums.noReplyPermission}
         </p>
       )}
     </div>

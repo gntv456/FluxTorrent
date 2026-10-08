@@ -9,6 +9,7 @@
 import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import { api } from "@/lib/api-client";
 import { ArcadeFeed, type ArcadeFeedItem } from "./arcade-feed";
 import { ArcadeAlbum } from "./arcade-album";
@@ -77,10 +78,9 @@ export interface ArcadeMeta {
   checks: ArcadeCheck[];
 }
 
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
-
 export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
-  const { dict, currency } = useI18n();
+  const { dict, locale, currency } = useI18n();
+  const fmt = (n: number) => Math.round(n).toLocaleString(dateLocale(locale));
   const t = dict.games.arcade;
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);

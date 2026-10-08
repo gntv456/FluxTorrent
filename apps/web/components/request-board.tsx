@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import { RequestForm } from "@/components/request-board-form";
 import { RequestCardList } from "@/components/request-card-list";
 import { useIsCompact } from "@/lib/hooks/use-media";
@@ -33,7 +34,7 @@ export function RequestBoard({
   initialFinished: string;
   initialSearch: string;
 }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.requests;
   const [finished, setFinished] = useState(initialFinished);
   const [search, setSearch] = useState(initialSearch);
@@ -189,7 +190,7 @@ export function RequestBoard({
                   </td>
                   <td
                     className="nowrap"
-                    title={new Date(r.created_at).toLocaleString("zh-CN")}
+                    title={new Date(r.created_at).toLocaleString(dateLocale(locale))}
                   >
                     {timeAgo(r.created_at, dict.common)}
                   </td>

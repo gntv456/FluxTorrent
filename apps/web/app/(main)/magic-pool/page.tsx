@@ -2,6 +2,7 @@ import { getPool } from "@/lib/data";
 import { PANEL_LG } from "@/lib/ui-classes";
 import { PoolDonate } from "@/components/pool-donate";
 import { getDict } from "@/i18n/server";
+import { dateLocale } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export default async function MagicPoolPage() {
   const gate = await requireModule("magic_pool");
   if (gate) return gate;
 
-  const { dict, currency } = await getDict();
+  const { dict, locale, currency } = await getDict();
   const pool = await getPool();
   const pct = pool ? Math.min(100, Math.round(pool.progress * 100)) : 0;
   const t = dict.magicPool;
@@ -36,8 +37,8 @@ export default async function MagicPoolPage() {
         </div>
         {pool && (
           <p className="num mt-2 text-center text-sm text-sub">
-            {pool.donated.toLocaleString("zh-CN")} /{" "}
-            {pool.goal.toLocaleString("zh-CN")} {currency}（{pct}%）
+            {pool.donated.toLocaleString(dateLocale(locale))} /{" "}
+            {pool.goal.toLocaleString(dateLocale(locale))} {currency}（{pct}%）
           </p>
         )}
         {pool?.promo_started && (
@@ -57,7 +58,7 @@ export default async function MagicPoolPage() {
                   {name}
                 </span>
                 <span className="num text-sub">
-                  {amount.toLocaleString("zh-CN")}
+                  {amount.toLocaleString(dateLocale(locale))}
                 </span>
               </li>
             ))}

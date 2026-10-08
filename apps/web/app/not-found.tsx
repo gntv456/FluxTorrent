@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { getDict } from "@/i18n/server";
 
 /** 404 页（2026-10-03 新建）。
  *
@@ -17,17 +18,18 @@ import { EmptyState } from "@/components/ui/empty-state";
  * 注意：404 可能发生在登录前（错的分享链接），故不假设登录态，
  * 只给「返回首页」这个永远安全的出口。
  */
-export default function NotFound() {
+export default async function NotFound() {
+  const { dict } = await getDict();
   return (
     <main className="grid min-h-[60vh] place-items-center px-4">
       <div className="w-full max-w-md">
         <EmptyState
           icon="search"
-          title="404 · 页面不存在"
-          desc="链接可能已失效，或资源已被删除。种子页地址形如 /torrent/{id}，可回首页搜索关键词找到同类资源。"
+          title={dict.common.notFoundTitle}
+          desc={dict.common.notFoundDesc}
           action={
             <Link href="/" className="ui-btn ui-btn--primary">
-              返回首页
+              {dict.common.backIndex}
             </Link>
           }
         />

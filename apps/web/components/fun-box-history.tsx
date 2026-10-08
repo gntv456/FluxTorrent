@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 
 import type { FunItem } from "./fun-box";
 
@@ -20,7 +21,8 @@ export function FunHistory({
   setStatus: (id: number, status: "banned" | "normal") => void;
   remove: (id: number) => void;
 }) {
-  const t = useI18n().dict.funbox;
+  const i18n = useI18n();
+  const t = i18n.dict.funbox;
 
   return (
     <>
@@ -42,7 +44,7 @@ export function FunHistory({
                 <strong>{h.title}</strong>
                 <span className="funbox__history-meta">
                   {h.username ?? "—"} ·{" "}
-                  {new Date(h.added).toLocaleDateString("zh-CN")} · 😂{" "}
+                  {new Date(h.added).toLocaleDateString(dateLocale(i18n.locale))} · 😂{" "}
                   {h.fun_votes ?? 0} / 😑 {h.dull_votes ?? 0}
                   {h.status === "banned" && ` · ${t.bannedTag}`}
                 </span>

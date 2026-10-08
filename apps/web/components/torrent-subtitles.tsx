@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale } from "@/i18n/config";
 import type {
   SubtitleListResp,
   SubtitleRow,
@@ -27,7 +28,7 @@ export function TorrentSubtitles({
   torrentId: number;
   imdbId?: string | null;
 }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.subtitles;
   const [rows, setRows] = useState<SubtitleRow[] | null>(null);
   const [open, setOpen] = useState(false);
@@ -180,7 +181,7 @@ export function TorrentSubtitles({
                 </td>
                 <td
                   className="nowrap text-center text-sub"
-                  title={new Date(s.created_at).toLocaleString("zh-CN")}
+                  title={new Date(s.created_at).toLocaleString(dateLocale(locale))}
                 >
                   {timeAgo(s.created_at)}
                 </td>

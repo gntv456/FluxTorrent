@@ -1,0 +1,120 @@
+"use client";
+
+import { useState } from "react";
+import { api } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { formatBytes } from "@/lib/format";
+import { Fold } from "@/components/torrent-detail-parts";
+
+/**
+ * 抓轨日志面板（0312 音乐站 Logchecker）。
+ *
+ * 清单来自详情页 aggregate 的 `logs` 段（不含正文）；正文按碟懒加载
+ * ——单份 EAC 日志可上百 KiB，全内联会把首屏与共享段缓存一起打爆。
+ * 分数与问题都以后端解析结果为准，前端不重算（两套口径必然漂移）。
+ */
+
+export interface RipLog {
+  ordinal: number;
+  filename: string;
+  engine: string;
+  /** 0–100；null = 无法定分（不是 0 分） */
+  log_score: number | null;
+  tracks: number;
+  issues: { code: string; msg: string }[];
+  size: number;
+}
+
+interface RipLogBody extends RipLog {
+  torrent_id: number;
+  body: string;
+}
+
+export function TorrentRipLogs({
+  torrentId,
+  logs,
+}: {
+  torrentId: number;
+  logs: RipLog[];
+}) {
+  const { dict } = useI18n();
+  const d = dict.tdetail;
+  const [open, setOpen] = useState<number | null>(null);
+  const [body, setBody] = useState<Record<number, string>>({});
+  const [failed, setFailed] = useState<number | null>(null);
+
+  const toggle = async (ordinal: number) => {
+    if (open === ordinal) {
+      setOpen(null);
+      return;
+    }
+    setOpen(ordinal);
+    if (body[ordinal] !== undefined) return;
+    try {
+      const r = await api.get<RipLogBody>(
+        `/api/v1/torrents/${torrentId}/logs/${ordinal}`,
+      );
+      setBody((prev) => ({ ...prev, [ordinal]: r.body }));
+      setFailed(null);
+    } catch {
+      setFailed(ordinal);
+    }
+  };
+
+  // 无日志行整段不渲染（与 mediainfo/nfo 同口径）；段落显隐门在调用方
+  if (logs.length === 0) return null;
+  return (
+    <Fold title={d.ripLogs} count={logs.length}>
+      <ul className="td-riplogs">
+        {logs.map((l) => (
+          <li key={l.ordinal} className="td-riplogs__item">
+            <div className="td-riplogs__head">
+              <span className="td-riplogs__disc">
+                {d.ripDisc.replace("{n}", `${l.ordinal + 1}`)}
+              </span>
+              <span className={`sticker ${scoreTone(l.log_score)}`}>
+                {l.log_score === null
+                  ? d.ripUnscored
+                  : `${l.log_score}% · ${l.engine}`}
+              </span>
+              <span className="td-riplogs__file">{l.filename}</span>
+              <span className="td-riplogs__meta">
+                {d.ripTracks.replace("{n}", `${l.tracks}`)} ·{" "}
+                {formatBytes(l.size)}
+              </span>
+              <button
+                type="button"
+                className="td-riplogs__toggle"
+                onClick={() => toggle(l.ordinal)}
+              >
+                {d.ripViewLog}
+              </button>
+            </div>
+            {l.issues.length > 0 && (
+              <ul className="td-riplogs__issues">
+                {l.issues.map((i) => (
+                  <li key={i.code} className="text-sub">
+                    {i.msg}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {open === l.ordinal && (
+              <pre className="td-nfo">
+                {body[l.ordinal] ??
+                  (failed === l.ordinal ? d.ripLoadFailed : d.ripLoading)}
+              </pre>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Fold>
+  );
+}
+
+/** 分数→色档：满分最常见、未定分要看得出、低分必须显眼 */
+function scoreTone(score: number | null): string {
+  if (score === null) return "bg-indigo text-white";
+  if (score >= 100) return "bg-sun text-ink";
+  return "bg-indigo text-ink";
+}

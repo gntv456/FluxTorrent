@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { BoardBrief } from "@fluxtorrent/domain-types";
 import { api, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 /** 版块页「版主模式」批量工具栏。
  *
@@ -51,6 +53,7 @@ export function ForumModBar({
   onPickedAll: (ids: number[]) => void;
   onDone: () => void;
 }) {
+  const { dict } = useI18n();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const empty = ids.length === 0;
@@ -65,14 +68,14 @@ export function ForumModBar({
         ids,
         ...op,
       });
-      setMsg(`${label}：已处理 ${ids.length} 个主题`);
+      setMsg(fmt(dict.forums.modDoneTpl, { label, n: ids.length }));
       onPickedAll([]);
       onDone();
     } catch (e) {
       setMsg(
         e instanceof ApiError
-          ? `操作失败：${e.message}`
-          : "操作失败，请重试",
+          ? fmt(dict.forums.modOpFailed, { msg: e.message })
+          : dict.forums.modOpRetry,
       );
     } finally {
       setBusy(false);
@@ -83,10 +86,14 @@ export function ForumModBar({
     if (empty) return;
     const hit = forums.find((f) => f.id === target);
     const name = hit ? boardLabel(hit) : target;
-    if (!window.confirm(`把选中的 ${ids.length} 个主题移动到「${name}」？`)) {
+    if (
+      !window.confirm(
+        fmt(dict.forums.modMoveConfirm, { n: ids.length, name: String(name) }),
+      )
+    ) {
       return;
     }
-    run({ move_to_forum_id: target }, "已移动");
+    run({ move_to_forum_id: target }, dict.forums.modMovedLabel);
   }
 
   return (
@@ -98,9 +105,11 @@ export function ForumModBar({
       }
     >
       <span className="text-xs font-bold text-[var(--sky-deep)]">
-        🛡 版主模式
+        {dict.forums.modBarTitle}
       </span>
-      <span className={PICKED_TAG}>已选 {ids.length} 项</span>
+      <span className={PICKED_TAG}>
+        {fmt(dict.forums.modPicked, { n: ids.length })}
+      </span>
 
       <span className="h-4 w-px bg-[var(--border-strong)]" aria-hidden="true" />
 
@@ -108,49 +117,49 @@ export function ForumModBar({
         type="button"
         className={BTN}
         disabled={busy || empty}
-        onClick={() => run({ sticky: true }, "已置顶")}
+        onClick={() => run({ sticky: true }, dict.forums.modSticky)}
       >
-        置顶
+        {dict.forums.modSticky}
       </button>
       <button
         type="button"
         className={BTN}
         disabled={busy || empty}
-        onClick={() => run({ sticky: false }, "已取消置顶")}
+        onClick={() => run({ sticky: false }, dict.forums.modUnsticky)}
       >
-        取消置顶
+        {dict.forums.modUnsticky}
       </button>
       <button
         type="button"
         className={BTN}
         disabled={busy || empty}
-        onClick={() => run({ locked: true }, "已锁定")}
+        onClick={() => run({ locked: true }, dict.forums.modLock)}
       >
-        锁定
+        {dict.forums.modLock}
       </button>
       <button
         type="button"
         className={BTN}
         disabled={busy || empty}
-        onClick={() => run({ locked: false }, "已解锁")}
+        onClick={() => run({ locked: false }, dict.forums.modUnlock)}
       >
-        解锁
+        {dict.forums.modUnlock}
       </button>
       <button
         type="button"
         className={BTN}
         disabled={busy || empty}
-        onClick={() => run({ digest: true }, "已加精")}
+        onClick={() => run({ digest: true }, dict.forums.modDigest)}
       >
-        加精
+        {dict.forums.modDigest}
       </button>
       <button
         type="button"
         className={BTN}
         disabled={busy || empty}
-        onClick={() => run({ digest: false }, "已取消精华")}
+        onClick={() => run({ digest: false }, dict.forums.modUndigest)}
       >
-        取消精华
+        {dict.forums.modUndigest}
       </button>
 
       <select
@@ -161,9 +170,9 @@ export function ForumModBar({
           const t = Number(e.target.value);
           if (t) move(t);
         }}
-        title={empty ? "请先选择主题" : "移动选中的主题"}
+        title={empty ? dict.forums.modPickFirst : dict.forums.modMoveTitle}
       >
-        <option value="">移动 ▾</option>
+        <option value="">{dict.forums.modMoveLabel}</option>
         {forums.map((f) => (
           <option key={f.id} value={f.id}>
             {boardLabel(f)}
@@ -177,7 +186,7 @@ export function ForumModBar({
         disabled={busy || empty}
         onClick={() => onPickedAll([])}
       >
-        清空选择
+        {dict.forums.modClearPick}
       </button>
 
       <span className="flex-1" />
@@ -188,7 +197,7 @@ export function ForumModBar({
         disabled={pageIds.length === 0}
         onClick={() => onPickedAll(allPicked ? [] : pageIds)}
       >
-        {allPicked ? "取消全选" : "全选本页"}
+        {allPicked ? dict.forums.modUnpickAll : dict.forums.modPickAll}
       </button>
 
       {msg && (

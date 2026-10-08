@@ -1051,6 +1051,44 @@ a:hover {
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 
+/* 抓轨日志面板（0312）：一碟一行，行内「碟 n + 分数徽标 + 文件名 + 懒加载正文」 */
+.td-riplogs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.td-riplogs__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.td-riplogs__disc {
+  font-size: 12px;
+  font-weight: 600;
+}
+.td-riplogs__file {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.td-riplogs__meta,
+.td-riplogs__toggle {
+  font-size: 11px;
+  color: var(--sub);
+}
+.td-riplogs__issues {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  font-size: 11px;
+  list-style: disc;
+}
+
 /* 文件列表 */
 .td-files {
   width: 100%;
